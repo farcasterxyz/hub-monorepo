@@ -12,6 +12,7 @@
     "server": "npm run build && node build/server.js",
     "start": "npm run server",
     "test": "rm -rf ./build && jest src/",
+    "test:ci": "ENVIRONMENT=test jest src/ --ci --runInBand --forceExit",
     "typecheck": "tsc --noEmit"
   },
   "repository": {
