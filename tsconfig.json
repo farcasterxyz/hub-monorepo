@@ -9,8 +9,12 @@
     "skipLibCheck": true,                                /* Skip type checking all .d.ts files. */
     "rootDir": "src",
     "baseUrl": "./src",
+    "paths": {
+      "~/*": ["./*"]
+    },
   },
   "exclude": [
     "node_modules",
+    "jest.config.ts"
   ]
 }

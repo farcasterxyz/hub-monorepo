@@ -1,0 +1,32 @@
+{
+    "search.exclude": {
+      ".git": true,
+      ".eslintcache": true,
+      "build/{release,app/dist}": true,
+      "node_modules": true,
+      "npm-debug.log.*": true,
+      "test/**/__snapshots__": true,
+      "yarn.lock": true,
+      "*.{css,sass,scss}.d.ts": true
+    },
+    "editor.formatOnSave": true,
+    "[json]": {
+      "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    },
+    "[html]": {
+      "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    },
+    "[typescript]": {
+      "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    },
+    "[typescriptreact]": {
+      "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    },
+    "[javascript]": {
+      "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    },
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": true
+    }
+  }
+  
