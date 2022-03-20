@@ -1,9 +1,11 @@
-import { Cast, Root, SignedCastChain, SignedCastChainFragment, SignedMessage } from '~/types';
-import Engine from '~/engine';
+import { Cast, isCast, isRoot, Root, SignedCastChain, SignedCastChainFragment, SignedMessage } from '~/types';
+import Engine, { ChainFingerprint } from '~/engine';
 
 /** The Node brokers messages to clients and peers and passes new messages into the Engine for resolution  */
 class FCNode {
   public static instanceNames = ['Cook', 'Friar', 'Knight', 'Miller', 'Squire'] as const;
+  // TODO: Replace with usernames fetched from the on-chain Registry.
+  public static usernames = ['alice'];
 
   name: InstanceName;
   peers?: NodeList;
@@ -11,62 +13,95 @@ class FCNode {
 
   constructor(name: InstanceName) {
     this.name = name;
-    console.log(`${this.name} is starting`);
     this.engine = new Engine();
   }
 
   setPeers(peers: NodeList): void {
-    const registryCopy = new Map(peers);
-    registryCopy.delete(this.name);
-    this.peers = registryCopy;
+    this.peers = new Map(peers);
+    this.peers.delete(this.name); // remove self from list of peers
   }
 
-  ping(name: InstanceName): void {
-    if (!this.peers) {
-      console.log('No peers to ping');
-      return;
+  /** Sync chains with all peers at a random interval between 5 and 30 seconds */
+  async sync(): Promise<void> {
+    setInterval(() => {
+      this.peers?.forEach((peer) => {
+        FCNode.usernames.forEach((username) => {
+          this.syncUserWithPeer(username, peer);
+        });
+      });
+      console.log(`${this.name}: syncing with peers `);
+    }, Math.floor(Math.random() * 25_000) + 5_000);
+  }
+
+  /** Sync chains for a specific user with a specific peer */
+  syncUserWithPeer(username: string, peer: FCNode): void {
+    const prints = this.getChainFingerPrints(username) || [];
+    const peerPrints = peer.getChainFingerPrints(username) || [];
+
+    for (const peerPrint of peerPrints) {
+      const matchingPrint = prints.find((print) => print.rootBlockNum === peerPrint.rootBlockNum);
+
+      if (!matchingPrint) {
+        const newChain = peer.getChainFragment('alice', peerPrint.rootBlockNum, 0, peerPrint.lastMessageSequence || 0);
+        if (newChain) {
+          this.addChain(newChain);
+        }
+      } else if (matchingPrint) {
+        // TODO: We ignore all lower sequences, but these should be checked for conflicts.
+        const lastKnownSeq = matchingPrint.lastMessageSequence || 0;
+        const lastFoundSeq = peerPrint.lastMessageSequence || 0;
+        if (lastKnownSeq < lastFoundSeq) {
+          const newFrag = peer.getChainFragment('alice', peerPrint.rootBlockNum, lastKnownSeq, lastFoundSeq);
+
+          if (newFrag) {
+            this.addChain(newFrag);
+          }
+        }
+      }
     }
-
-    console.log(this.name + ' pings ' + name);
-    const targetNode = this.peers.get(name);
-    targetNode?.pong(this.name);
-  }
-
-  pingAll(): void {
-    if (!this.peers) {
-      console.log('No peers to ping');
-      return;
-    }
-
-    this.peers.forEach((_peer, name) => {
-      this.ping(name);
-    });
-  }
-
-  pong(from: string): void {
-    console.log(this.name + ' pongs ' + from);
   }
 
   /**
-   * P2P API
+   * P2P API's
    *
-   * These API's are tailed to nodes, and should not be called by clients because they can
-   * introduce unnecessary conflict states or errors which may adversely affect the client's
-   * trustworthiness on the network.
+   * These API's should be called by peer nodes during the sync process. They should never be called
+   * by clients, because they are less strict and this may cause more conflicts.
    */
-
-  /** TODO: Get the latest chain information for the current user, to allow syncing */
 
   /** Get a chain for the current user (default latest, accepts params for earlier blocks) */
   getChain(username: string): SignedCastChain | undefined {
     return this.engine.getLastChain(username);
   }
 
+  getChainFragment(
+    username: string,
+    rootBlock: number,
+    start: number,
+    end: number
+  ): SignedCastChain | SignedCastChainFragment | undefined {
+    const chain = this.engine.getChain(username, rootBlock);
+    if (!chain) {
+      return;
+    } else {
+      // TODO: Inspect the typing here...
+      if (start === 0) {
+        return chain.slice(start, end + 1) as SignedCastChain;
+      } else {
+        return chain.slice(start, end + 1) as SignedCastChainFragment;
+      }
+    }
+  }
+
+  /** Get the latest chain information for the current user, to allow syncing */
+  getChainFingerPrints(username: string): ChainFingerprint[] | undefined {
+    return this.engine.getChainFingerprints(username);
+  }
+
   /**
    * Client API
    *
-   * These API's are more tailored to clients and have stricter validations, which other nodes
-   * should not call, because it may cause network state to diverge.
+   * These API's should be called by clients to interact with the node. They should never be called
+   * by peers, because they are less strict and this may cause divergent network states.
    */
 
   /** Start a new chain for the user */
@@ -80,9 +115,13 @@ class FCNode {
   }
 
   /** Merge a partial chain into the latest chain */
-  addChain(messages: SignedCastChainFragment): void {
-    for (const cast of messages) {
-      this.engine.addCast(cast);
+  addChain(messages: SignedCastChain | SignedCastChainFragment): void {
+    for (const msg of messages) {
+      if (isRoot(msg)) {
+        this.addRoot(msg);
+      } else if (isCast(msg)) {
+        this.addCast(msg);
+      }
     }
   }
 
@@ -92,7 +131,7 @@ class FCNode {
   }
 }
 
-type NodeList = Map<InstanceName, FCNode>;
+export type NodeList = Map<InstanceName, FCNode>;
 export type InstanceName = typeof FCNode.instanceNames[number];
 
 export default FCNode;

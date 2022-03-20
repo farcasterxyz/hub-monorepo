@@ -9,3 +9,9 @@ export const hashMessage = (item: SignedMessage): string => {
 export const sign = (text: string, key: utils.SigningKey): string => {
   return utils.joinSignature(key.signDigest(text));
 };
+
+export const sleep = (ms: number) => {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+};

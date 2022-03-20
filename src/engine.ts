@@ -2,6 +2,13 @@ import { Cast, isCast, isRoot, Root, SignedCastChain, SignedMessage } from '~/ty
 import { hashMessage } from '~/utils';
 import { utils } from 'ethers';
 
+export interface ChainFingerprint {
+  rootBlockNum: number;
+  rootBlockHash: string;
+  lastMessageSequence: number | undefined;
+  lastMessageHash: string | undefined;
+}
+
 /** The Engine receives messages and determines the current state Farcaster network */
 class Engine {
   /** Mapping of usernames to their casts, which are stored as a series of signed chains */
@@ -9,6 +16,12 @@ class Engine {
 
   constructor() {
     this.castChains = new Map();
+  }
+
+  /** Get the most recent, valid SignedCastChain from a user */
+  getChain(username: string, rootBlockNum: number): SignedCastChain | undefined {
+    const chainList = this.castChains.get(username);
+    return chainList?.find((chain) => chain[0].message.rootBlock === rootBlockNum);
   }
 
   /** Get the most recent, valid SignedCastChain from a user */
@@ -21,6 +34,32 @@ class Engine {
   getLastMessage(username: string): SignedMessage | undefined {
     const chain = this.getLastChain(username);
     return chain ? chain[chain.length - 1] : undefined;
+  }
+
+  getChainFingerprints(username: string): ChainFingerprint[] {
+    const chains = this.castChains.get(username);
+    if (!chains) {
+      return [];
+    }
+
+    const fingerprints = chains.map((chain) => {
+      const root = chain[0];
+      const length = chain.length;
+      const lastMessage = chain[length - 1];
+
+      // TODO: Consider returning a zero value for these or otherwise changing the data structure.
+      const lastMessageSequence = length > 1 ? lastMessage.message.sequence : undefined;
+      const lastMessageHash = length > 1 ? lastMessage.hash : undefined;
+
+      return {
+        rootBlockNum: root.message.rootBlock,
+        rootBlockHash: root.message.body.blockHash,
+        lastMessageSequence,
+        lastMessageHash,
+      };
+    });
+
+    return fingerprints;
   }
 
   /** Add a new Root into a user's current SignedCastChain[], if valid */
