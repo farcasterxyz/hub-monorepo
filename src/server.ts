@@ -1,33 +1,34 @@
 import { exit } from 'process';
 import Client from '~/client';
+import Debugger from '~/debug';
 import FCNode, { InstanceName } from '~/node';
 import { isCast, isRoot } from '~/types';
 
-// Create 5 Nodes and add them to our NodeList
+// 1. Create 5 Farcaster nodes
 const nodeList = new Map<InstanceName, FCNode>();
 
 for (const name of FCNode.instanceNames) {
   nodeList.set(name, new FCNode(name));
 }
 
-// Give each node the NodeList and make them ping all their peers at regular intervals.
+Debugger.init(nodeList);
+
+// 2. Connect each node to their peers
 for (const node of nodeList.values()) {
   node.setPeers(nodeList);
-  setInterval(() => {
-    node.pingAll();
-  }, Math.floor(Math.random() * 30_000));
 }
 
-// Get a connection to an existing node and set up a client to generate messages.
+// 3. Get a connection to a single node
 const knightNode = nodeList.get('Knight');
 if (!knightNode) {
   console.log('The knight was not found!');
   exit();
 }
 
+// 4. Set up a Client
 const client = new Client('alice');
 
-// Generate a new root message, a cast and a few more casts and send them to the knoght.
+// 5. Send two messages, sequentially to the node.
 const m1 = client.generateRoot(0, '0x0');
 knightNode.addRoot(m1);
 
@@ -39,6 +40,10 @@ if (lastMsg) {
   }
 }
 
+Debugger.printState();
+
+// 6. Send multiple messages to the node.
+console.log('Client: adding two message into the chain');
 lastMsg = knightNode.getLastMessage(client.username);
 if (lastMsg) {
   if (isCast(lastMsg) || isRoot(lastMsg)) {
@@ -49,14 +54,20 @@ if (lastMsg) {
   }
 }
 
-// Check if all the messages settled correctly on the knight.
-let currentChain = knightNode.getChain(client.username);
-console.log(currentChain);
+Debugger.printState();
 
-// Start a new chain and send it to the knight.
+// 7. Start another chain and send it to the node.
+console.log('Client: starting a new chain');
 const b1 = client.generateRoot(1, '0x0');
 knightNode.addRoot(b1);
 
-// Check that the old chain was fully replaced by the new one.
-currentChain = knightNode.getChain(client.username);
-console.log(currentChain);
+Debugger.printState();
+
+// 8. Start syncing all nodes at random intervals.
+for (const node of nodeList.values()) {
+  node.sync();
+}
+
+setInterval(() => {
+  Debugger.printState();
+}, 5_000);
