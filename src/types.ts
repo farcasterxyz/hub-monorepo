@@ -12,8 +12,8 @@ export type RootMessageBody = {
 };
 
 export function isRoot(msg: SignedMessage): msg is SignedMessage<RootMessageBody> {
-  const body = (msg as SignedMessage<RootMessageBody>).message.body;
-  return body.type === 'root' && !!body.blockHash && !!body.prevRootBlockHash;
+  const body = (msg as SignedMessage<RootMessageBody>).message?.body;
+  return body && body.type === 'root' && !!body.blockHash && !!body.prevRootBlockHash;
 }
 
 type CastMessageBody = CastAddMessageBody | CastDeleteMessageBody;
@@ -34,8 +34,8 @@ export type CastAddMessageBody = {
 };
 
 function isCastAdd(msg: SignedMessage): msg is SignedMessage<CastAddMessageBody> {
-  const body = (msg as SignedMessage<CastAddMessageBody>).message.body;
-  return body.type === 'cast-add' && !!body.text;
+  const body = (msg as SignedMessage<CastAddMessageBody>).message?.body;
+  return body && body.type === 'cast-add' && !!body.text;
 }
 
 /** A message that removes a previous broadcast from a user. */
@@ -45,8 +45,8 @@ export type CastDeleteMessageBody = {
 };
 
 function isCastDelete(msg: SignedMessage): msg is SignedMessage<CastDeleteMessageBody> {
-  const body = (msg as SignedMessage<CastDeleteMessageBody>).message.body;
-  return body.type === 'cast-delete' && !!body.targetCastHash;
+  const body = (msg as SignedMessage<CastDeleteMessageBody>).message?.body;
+  return body && body.type === 'cast-delete' && !!body.targetCastHash;
 }
 
 type MessageBody = RootMessageBody | CastMessageBody;
