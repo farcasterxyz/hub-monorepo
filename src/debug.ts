@@ -27,7 +27,7 @@ const Debugger = {
     for (const username of FCNode.usernames) {
       console.log(`@${username}`);
       for (const node of nodes.values()) {
-        console.log(`|------${node.name.padEnd(6)}: `, visualizeChains(node.engine.castChains.get(username) || []));
+        console.log(`|------${node.name.padEnd(6)}: `, visualizeChains(node.engine.getCastChains(username) || []));
       }
       console.log('=====================================');
     }

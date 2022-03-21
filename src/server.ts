@@ -56,14 +56,7 @@ if (lastMsg) {
 
 Debugger.printState();
 
-// 7. Start another chain and send it to the node.
-console.log('Client: starting a new chain');
-const b1 = client.generateRoot(1, '0x0');
-knightNode.addRoot(b1);
-
-Debugger.printState();
-
-// 8. Start syncing all nodes at random intervals.
+// 7. Start syncing all nodes at random intervals.
 for (const node of nodeList.values()) {
   node.sync();
 }
@@ -71,3 +64,14 @@ for (const node of nodeList.values()) {
 setInterval(() => {
   Debugger.printState();
 }, 5_000);
+
+// 8. Start another chain and send it to the node.
+console.log('Client: starting a new chain');
+
+setTimeout(() => {
+  Debugger.printState();
+  const b1 = client.generateRoot(1, '0x0', m1.message.body.blockHash);
+  knightNode.addRoot(b1);
+}, 30_000);
+
+Debugger.printState();
