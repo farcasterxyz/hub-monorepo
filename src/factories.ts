@@ -1,6 +1,6 @@
 import { Factory } from 'fishery';
 import Faker from 'faker';
-import { ethers, utils } from 'ethers';
+import { ethers } from 'ethers';
 import { Cast, Root } from '~/types';
 import { hashMessage, sign } from '~/utils';
 
