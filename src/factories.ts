@@ -28,7 +28,7 @@ export const Factories = {
     return {
       message: {
         body: {
-          type: 'cast-add' as const,
+          type: 'cast-new' as const,
           text: Faker.lorem.sentence(2),
         },
         prevHash: Faker.datatype.hexaDecimal(64),

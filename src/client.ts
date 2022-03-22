@@ -1,4 +1,4 @@
-import { Cast, CastAddMessageBody, Root, RootMessageBody, SignedMessage } from '~/types';
+import { Cast, CastNewMessageBody, Root, RootMessageBody, SignedMessage } from '~/types';
 import { hashMessage, sign } from '~/utils';
 import { Wallet, utils } from 'ethers';
 
@@ -40,8 +40,8 @@ class Client {
     return item;
   }
 
-  generateCast(text: string, prevCast: Cast | Root): SignedMessage<CastAddMessageBody> {
-    const type = 'cast-add' as const;
+  generateCast(text: string, prevCast: Cast | Root): SignedMessage<CastNewMessageBody> {
+    const type = 'cast-new' as const;
     const signedAt = Date.now();
     const signer = this.wallet.address;
 

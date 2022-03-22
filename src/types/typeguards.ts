@@ -6,19 +6,19 @@ export function isRoot(msg: FC.SignedMessage): msg is FC.SignedMessage<FC.RootMe
 }
 
 export function isCast(msg: FC.SignedMessage): msg is FC.Cast {
-  return isCastAdd(msg) || isCastDelete(msg) || isCastRecast(msg);
+  return isCastNew(msg) || isCastDelete(msg) || isCastRecast(msg);
 }
-export function isCastAdd(msg: FC.SignedMessage): msg is FC.SignedMessage<FC.CastAddMessageBody> {
-  const body = (msg as FC.SignedMessage<FC.CastAddMessageBody>).message?.body;
-  return body && body.type === 'cast-add' && !!body.text;
+export function isCastNew(msg: FC.SignedMessage): msg is FC.SignedMessage<FC.CastNewMessageBody> {
+  const body = (msg as FC.SignedMessage<FC.CastNewMessageBody>).message?.body;
+  return body && body.type === 'cast-new' && !!body.text;
 }
 
 export function isCastDelete(msg: FC.SignedMessage): msg is FC.SignedMessage<FC.CastDeleteMessageBody> {
   const body = (msg as FC.SignedMessage<FC.CastDeleteMessageBody>).message?.body;
-  return body && body.type === 'cast-delete' && !!body.targetCastHash;
+  return body && body.type === 'cast-delete' && !!body.targetCastUri;
 }
 
 export function isCastRecast(msg: FC.SignedMessage): msg is FC.SignedMessage<FC.CastRecastMessageBody> {
   const body = (msg as FC.SignedMessage<FC.CastRecastMessageBody>).message?.body;
-  return body && body.type === 'cast-recast' && !!body.targetUri;
+  return body && body.type === 'cast-recast' && !!body.targetCastUri;
 }
