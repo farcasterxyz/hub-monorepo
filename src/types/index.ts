@@ -71,11 +71,14 @@ export type Root = SignedMessage<RootMessageBody>;
  * @prevRootLastHash - the hash of the last message to include from the previous SignedChain (or 0x0 to include all)
  */
 export type RootMessageBody = {
-  type: 'root';
   blockHash: string;
+  chainType: ChainType;
   prevRootBlockHash: string;
   prevRootLastHash: string;
+  type: 'root';
 };
+
+type ChainType = 'cast' | 'reaction' | 'follow';
 
 // ===========================
 //  Cast Types

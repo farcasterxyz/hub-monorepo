@@ -212,6 +212,7 @@ class Engine {
     }
     // TODO: Check that the blockHash is a real block and it's block matches rootBlock.
     // TODO: Check that prevRootBlockHash is either 0x0 or root block that we know about.
+    // TODO: Validate the chain type.
     return !!root;
   }
 

@@ -18,6 +18,7 @@ class Client {
       message: {
         body: {
           type: 'root' as const,
+          chainType: 'cast' as const,
           blockHash: ethblockHash,
           prevRootBlockHash: prevRootBlockHash || '0x0', // TODO: change
           prevRootLastHash: '0x0', // TODO: change, how are null props serialized.s
