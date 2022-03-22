@@ -1,9 +1,4 @@
-/**
- * The first message in every Signed Chain.
- *
- * TODO: choose a good name for this because it is not an easy concept to grok
- * suggestions include Life, Genesis, Origin, ChainStart, Root, Head
- */
+/**  The first message in every Signed Chain. */
 export type RootMessageBody = {
   type: 'root';
   blockHash: string;
@@ -19,7 +14,7 @@ export function isRoot(msg: SignedMessage): msg is SignedMessage<RootMessageBody
 type CastMessageBody = CastAddMessageBody | CastDeleteMessageBody;
 
 export function isCast(msg: SignedMessage): msg is SignedMessage<CastMessageBody> {
-  return isCastAdd(msg) || isCastDelete(msg);
+  return isCastAdd(msg) || isCastDelete(msg) || isCastRecast(msg);
 }
 
 /**
@@ -33,7 +28,7 @@ export type CastAddMessageBody = {
   type: 'cast-add';
 };
 
-function isCastAdd(msg: SignedMessage): msg is SignedMessage<CastAddMessageBody> {
+export function isCastAdd(msg: SignedMessage): msg is SignedMessage<CastAddMessageBody> {
   const body = (msg as SignedMessage<CastAddMessageBody>).message?.body;
   return body && body.type === 'cast-add' && !!body.text;
 }
@@ -44,12 +39,24 @@ export type CastDeleteMessageBody = {
   type: 'cast-delete';
 };
 
-function isCastDelete(msg: SignedMessage): msg is SignedMessage<CastDeleteMessageBody> {
+export function isCastDelete(msg: SignedMessage): msg is SignedMessage<CastDeleteMessageBody> {
   const body = (msg as SignedMessage<CastDeleteMessageBody>).message?.body;
   return body && body.type === 'cast-delete' && !!body.targetCastHash;
 }
 
-type MessageBody = RootMessageBody | CastMessageBody;
+/** A message that re-posts another cast in the current feed. */
+export type CastRecastMessageBody = {
+  targetCastHash: string;
+  type: 'cast-recast';
+  username: string;
+};
+
+export function isCastRecast(msg: SignedMessage): msg is SignedMessage<CastRecastMessageBody> {
+  const body = (msg as SignedMessage<CastRecastMessageBody>).message?.body;
+  return body && body.type === 'cast-recast' && !!body.targetCastHash && !!body.username;
+}
+
+type MessageBody = RootMessageBody | CastMessageBody | CastRecastMessageBody;
 
 // TODO: SignedMessage having a message component is confusing for variable naming.
 export type SignedMessage<T = MessageBody> = {
@@ -66,7 +73,6 @@ export type SignedMessage<T = MessageBody> = {
   // TODO: If this is not checked, should this be allowed to cause a failure when transmitted?
   schema: string;
   signature: string;
-  // TODO: consider tradeoffs between exposing the public key and the address.
   signer: string;
 };
 
