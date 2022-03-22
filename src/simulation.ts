@@ -1,6 +1,6 @@
 import { exit } from 'process';
 import Client from '~/client';
-import Debugger from '~/debug';
+import Debugger from '~/debugger';
 import FCNode, { InstanceName } from '~/node';
 import { isCast, isRoot } from '~/types';
 
