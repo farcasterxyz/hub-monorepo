@@ -99,12 +99,16 @@ export type CastMessageBody = CastNewMessageBody | CastDeleteMessageBody | CastR
  * @textHash - the keccak256 hash of the sText field which is hashed into the message.
  */
 export type CastNewMessageBody = {
-  _attachments: ObjectURI[];
+  _attachments: Attachments;
   _text: string;
   attachmentsHash: string;
   targetUri?: ObjectURI;
   textHash: string;
   type: 'cast-new';
+};
+
+type Attachments = {
+  items: ObjectURI[];
 };
 
 /**

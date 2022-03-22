@@ -54,7 +54,7 @@ class Client {
     const item = {
       message: {
         body: {
-          _attachments: [],
+          _attachments: { items: [] },
           _text: text,
           attachmentsHash: '0x0', // TODO - calculate this
           textHash: '0x0', // TODO: calculate this as a hash of the text

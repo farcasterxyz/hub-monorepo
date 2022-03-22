@@ -28,7 +28,7 @@ export const Factories = {
     return {
       message: {
         body: {
-          _attachments: [],
+          _attachments: { items: [] },
           _text: Faker.lorem.sentence(2),
           type: 'cast-new' as const,
           textHash: '',
