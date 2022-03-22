@@ -21,14 +21,17 @@ Then, from the project root, run `yarn install` to install NPM dependencies.
 Run `yarn dev` to begin the simulation in your terminal. You should see output like this and be able to watch the nodes converge to an identical state.
 
 ```bash
-===========Network Snapshot===========
-@alice
-|------Cook  :
-|------Friar :
-|------Knight:  *---
-|------Miller:
-|------Squire:
-=====================================
+┌────────┬──────────────────────────────────────────────────┐
+│ Cook   │                                                  │
+├────────┤                                                  │
+│ Friar  │                                                  │
+├────────┼───────────┬────────────┬────────────┬────────────┤
+│ Knight │ 🪴  ..0c11 │ 📢  ..7358 │ 📢  ..bb71 │ 📢  ..3180 │
+├────────┼───────────┴────────────┴────────────┴────────────┤
+│ Miller │                                                  │
+├────────┼───────────┬────────────┬────────────┬────────────┤
+│ Squire │ 🪴  ..0c11 │ 📢  ..7358 │ 📢  ..bb71 │ 📢  ..3180 │
+└────────┴───────────┴────────────┴────────────┴────────────┘
 ```
 
 ## Roadmap
@@ -43,7 +46,7 @@ Our focus is on identifying problem in this area quickly by taking shortcuts in 
 - [x] **Network Visualizations Pt.1** - bird's eye view of all the nodes and the length of chains
 - [x] **Roots** - implement consensus rules and unit tests for Roots
 - [ ] **Recast** - type structure for recasts in Cast Chains
-- [ ] **Network Visualizations Pt.2** - bird's eye view of the exact state of chains in nodes and clients
+- [x] **Network Visualizations Pt.2** - bird's eye view of the exact state of chains in nodes
 - [ ] **Registry Simulation** - logic and tests to handle new registrations and signer change events
 - [ ] **Casts** - implement consensus rules and unit tests for casts
 - [ ] **Conflict Proofs** - allow nodes to determine conflicts and "suspend" chains
