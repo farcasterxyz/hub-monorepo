@@ -206,6 +206,9 @@ class Engine {
   }
 
   private validateRoot(root: Root): boolean {
+    if (root.message.body.blockHash.length !== 66) {
+      return false;
+    }
     // TODO: Check that the blockHash is a real block and it's block matches rootBlock.
     // TODO: Check that prevRootBlockHash is either 0x0 or root block that we know about.
     return !!root;
