@@ -45,14 +45,16 @@ Our focus is on identifying problem in this area quickly by taking shortcuts in 
 - [x] **Basics** - a simple implementation of interfaces for a simulator, node, client and engine.
 - [x] **Network Visualizations Pt.1** - bird's eye view of all the nodes and the length of chains
 - [x] **Roots** - implement consensus rules and unit tests for Roots
-- [ ] **Recast** - type structure for recasts in Cast Chains
+- [x] **Recast** - type structure for recasts in Cast Chains
 - [x] **Network Visualizations Pt.2** - bird's eye view of the exact state of chains in nodes
 - [ ] **Registry Simulation** - logic and tests to handle new registrations and signer change events
 - [ ] **Casts** - implement consensus rules and unit tests for casts
-- [ ] **Conflict Proofs** - allow nodes to determine conflicts and "suspend" chains
 - [ ] **Root Stitching** - allow roots to partially select messages from previous roots and resolve conflicts
-- [ ] **Reactions** - implement reaction chains similar to cast chains
+- [ ] **Profile** - implement consensus rules and unit tests for profiles
+- [ ] **Conflict Proofs** - allow nodes to determine conflicts and "suspend" chains
+- [ ] **Verified Addresses** - implement consensus rules and unit tests for verified addresses
 - [ ] **Network Simulations** - game out and design complex edge cases to try and break the network
+- [ ] **Reactions** - implement reaction chains similar to cast chains
 
 ### Phase II - Smart Contract Integration
 
