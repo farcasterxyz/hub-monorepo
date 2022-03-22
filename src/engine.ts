@@ -218,6 +218,9 @@ class Engine {
   private validateCast(cast: Cast): boolean {
     // TODO: Check that the text value is hashed correctly.
     // TODO: Check that this is a valid cast in chain in strict mode.
+    // TODO: Enforce maximum numbber and size of attachments
+    // TODO: enforce maximum text length.
+    // TODO: enforce correct hashing of values.
     return !!cast;
   }
 

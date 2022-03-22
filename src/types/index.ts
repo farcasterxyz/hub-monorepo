@@ -40,7 +40,7 @@ type MessageBody = RootMessageBody | CastMessageBody | CastRecastMessageBody | R
 //  URI Types
 // ===========================
 
-type ObjectURI = FarcasterURI | ChainURI;
+type ObjectURI = FarcasterURI | ChainURI | HTTPURI;
 
 /**
  * A FarcasterURI points to any Farcaster message and is structured as farcaster://<user>/<type>:<id>
@@ -53,6 +53,8 @@ type FarcasterURI = string;
  * e.g. An NFT becomes chain://eip155:1/erc721:0xaba7161a7fb69c88e16ed9f455ce62b791ee4d03/7894
  */
 type ChainURI = string;
+
+type HTTPURI = string;
 
 // ===========================
 //  Root Types
@@ -87,12 +89,18 @@ export type CastMessageBody = CastNewMessageBody | CastDeleteMessageBody | CastR
 /**
  * A CastNewMessageBody represents a new, short-text public broadcast from a user.
  *
+ * @_text - the text of the Cast, the underscore prefix indicates that it is not hashed into the message.
+ * @_attachments - an array of up to 2 attachments, the underscore prefix indicates that it is not hashed into the message.
+ * @attachmentsHash - calculated by joining attachments into a single string and hashing it with keccak256.
  * @targetUri - the object that this Cast is replying to.
- * @text - the text of the Cast.
+ * @textHash - the keccak256 hash of the sText field which is hashed into the message.
  */
 export type CastNewMessageBody = {
+  _attachments: ObjectURI[];
+  _text: string;
+  attachmentsHash: string;
   targetUri?: ObjectURI;
-  text: string;
+  textHash: string;
   type: 'cast-new';
 };
 

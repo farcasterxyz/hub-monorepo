@@ -10,7 +10,9 @@ export function isCast(msg: FC.SignedMessage): msg is FC.Cast {
 }
 export function isCastNew(msg: FC.SignedMessage): msg is FC.SignedMessage<FC.CastNewMessageBody> {
   const body = (msg as FC.SignedMessage<FC.CastNewMessageBody>).message?.body;
-  return body && body.type === 'cast-new' && !!body.text;
+  return (
+    body && body.type === 'cast-new' && !!body._text && !!body.textHash && !!body.attachmentsHash && !!body._attachments
+  );
 }
 
 export function isCastDelete(msg: FC.SignedMessage): msg is FC.SignedMessage<FC.CastDeleteMessageBody> {

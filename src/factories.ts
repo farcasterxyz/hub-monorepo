@@ -28,8 +28,11 @@ export const Factories = {
     return {
       message: {
         body: {
+          _attachments: [],
+          _text: Faker.lorem.sentence(2),
           type: 'cast-new' as const,
-          text: Faker.lorem.sentence(2),
+          textHash: '',
+          attachmentsHash: '',
         },
         prevHash: Faker.datatype.hexaDecimal(64),
         rootBlock: Faker.datatype.number(10_000),

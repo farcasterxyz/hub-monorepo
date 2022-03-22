@@ -1,6 +1,7 @@
 import { SignedMessage } from '~/types';
 import { utils } from 'ethers';
 
+// TODO: ignore hashing for _properties
 export const hashMessage = (item: SignedMessage): string => {
   const stringifiedProps = JSON.stringify(item.message);
   return utils.keccak256(utils.toUtf8Bytes(stringifiedProps));
