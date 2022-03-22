@@ -1,7 +1,8 @@
-import { Cast, isCast, isRoot, Root, RootMessageBody, SignedCastChain, SignedMessage } from '~/types';
+import { Cast, Root, RootMessageBody, SignedCastChain, SignedMessage } from '~/types';
 import { hashMessage } from '~/utils';
 import { utils } from 'ethers';
 import { ok, err, Result } from 'neverthrow';
+import { isCast, isRoot } from '~/types/typeguards';
 
 export interface ChainFingerprint {
   rootBlockNum: number;

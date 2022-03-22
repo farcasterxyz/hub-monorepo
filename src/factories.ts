@@ -67,7 +67,7 @@ export const Factories = {
           type: 'root' as const,
           blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
           prevRootBlockHash: '0x0',
-          stitchHash: undefined,
+          prevRootLastHash: '0x0',
         },
         prevHash: '0x0',
         rootBlock: Faker.datatype.number(10_000),

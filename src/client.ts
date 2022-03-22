@@ -20,7 +20,7 @@ class Client {
           type: 'root' as const,
           blockHash: ethblockHash,
           prevRootBlockHash: prevRootBlockHash || '0x0', // TODO: change
-          stitchHash: undefined, // TODO: change, how are null props serialized.s
+          prevRootLastHash: '0x0', // TODO: change, how are null props serialized.s
         },
         prevHash: '0x0',
         rootBlock: ethBlockNum,

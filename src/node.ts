@@ -1,5 +1,6 @@
-import { Cast, isCast, isRoot, Root, SignedCastChain, SignedCastChainFragment, SignedMessage } from '~/types';
+import { Cast, Root, SignedCastChain, SignedCastChainFragment, SignedMessage } from '~/types';
 import Engine, { ChainFingerprint } from '~/engine';
+import { isCast, isRoot } from '~/types/typeguards';
 
 /** The Node brokers messages to clients and peers and passes new messages into the Engine for resolution  */
 class FCNode {

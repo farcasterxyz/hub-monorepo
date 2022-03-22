@@ -1,7 +1,8 @@
 import FCNode, { NodeList } from '~/node';
-import { isCast, SignedCastChain } from '~/types';
+import { SignedCastChain } from '~/types';
 import Table from 'cli-table3';
 import colors from 'colors/safe';
+import { isCast } from '~/types/typeguards';
 
 const rootEmoji = String.fromCodePoint(0x1fab4);
 const castEmoji = String.fromCodePoint(0x1f4e2);
