@@ -3,6 +3,7 @@ import Client from '~/client';
 import Debugger from '~/debugger';
 import FCNode, { InstanceName } from '~/node';
 import { isCast, isRoot } from '~/types';
+import Faker from 'faker';
 
 // 1. Create 5 Farcaster nodes
 const nodeList = new Map<InstanceName, FCNode>();
@@ -29,7 +30,7 @@ if (!knightNode) {
 const client = new Client('alice');
 
 // 5. Send two messages, sequentially to the node.
-const m1 = client.generateRoot(0, '0x0');
+const m1 = client.generateRoot(0, Faker.datatype.hexaDecimal(64).toLowerCase());
 knightNode.addRoot(m1);
 
 let lastMsg = knightNode.getLastMessage(client.username);
@@ -70,7 +71,7 @@ console.log('Client: starting a new chain');
 
 setTimeout(() => {
   Debugger.printState();
-  const b1 = client.generateRoot(1, '0x0', m1.message.body.blockHash);
+  const b1 = client.generateRoot(1, Faker.datatype.hexaDecimal(64).toLowerCase(), m1.message.body.blockHash);
   knightNode.addRoot(b1);
 }, 30_000);
 
