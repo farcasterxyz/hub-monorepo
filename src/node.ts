@@ -43,16 +43,16 @@ class FCNode {
       const matchingPrint = prints.find((print) => print.rootBlockNum === peerPrint.rootBlockNum);
 
       if (!matchingPrint) {
-        const newChain = peer.getChainFragment('alice', peerPrint.rootBlockNum, 0, peerPrint.lastMessageSequence || 0);
+        const newChain = peer.getChainFragment('alice', peerPrint.rootBlockNum, 0, peerPrint.lastMessageIndex || 0);
         if (newChain) {
           this.addChain(newChain);
         }
       } else if (matchingPrint) {
-        // TODO: We ignore all lower sequences, but these should be checked for conflicts.
-        const lastKnownSeq = matchingPrint.lastMessageSequence || 0;
-        const lastFoundSeq = peerPrint.lastMessageSequence || 0;
-        if (lastKnownSeq < lastFoundSeq) {
-          const newFrag = peer.getChainFragment('alice', peerPrint.rootBlockNum, lastKnownSeq, lastFoundSeq);
+        // TODO: We ignore all lower indices, but these should be checked for conflicts.
+        const lastKnownIdx = matchingPrint.lastMessageIndex || 0;
+        const lastFoundIdx = peerPrint.lastMessageIndex || 0;
+        if (lastKnownIdx < lastFoundIdx) {
+          const newFrag = peer.getChainFragment('alice', peerPrint.rootBlockNum, lastKnownIdx, lastFoundIdx);
 
           if (newFrag) {
             this.addChain(newFrag);

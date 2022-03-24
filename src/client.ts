@@ -25,7 +25,7 @@ class Client {
         },
         prevHash: '0x0',
         rootBlock: ethBlockNum,
-        sequence: 0,
+        index: 0,
         signedAt: Date.now(),
         username: this.username,
       },
@@ -46,9 +46,9 @@ class Client {
     const signedAt = Date.now();
     const signer = this.wallet.address;
 
-    // Reference the hash, sequence and rootBlock of the previous message.
+    // Reference the hash, index and rootBlock of the previous message.
     const rootBlock = prevCast.message.rootBlock;
-    const sequence = prevCast.message.sequence + 1;
+    const index = prevCast.message.index + 1;
     const prevHash = prevCast.hash;
 
     const item = {
@@ -62,7 +62,7 @@ class Client {
         },
         prevHash,
         rootBlock,
-        sequence,
+        index,
         signedAt,
         username: this.username,
       },

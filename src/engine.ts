@@ -7,7 +7,7 @@ import { isCast, isRoot } from '~/types/typeguards';
 export interface ChainFingerprint {
   rootBlockNum: number;
   rootBlockHash: string;
-  lastMessageSequence: number | undefined;
+  lastMessageIndex: number | undefined;
   lastMessageHash: string | undefined;
 }
 
@@ -57,13 +57,13 @@ class Engine {
       const lastMessage = chain[length - 1];
 
       // TODO: Consider returning a zero value for these or otherwise changing the data structure.
-      const lastMessageSequence = length > 1 ? lastMessage.message.sequence : undefined;
+      const lastMessageIndex = length > 1 ? lastMessage.message.index : undefined;
       const lastMessageHash = length > 1 ? lastMessage.hash : undefined;
 
       return {
         rootBlockNum: root.message.rootBlock,
         rootBlockHash: root.message.body.blockHash,
-        lastMessageSequence,
+        lastMessageIndex,
         lastMessageHash,
       };
     });
@@ -152,7 +152,7 @@ class Engine {
 
     // TODO: is this necessary?
     if (!prevMessage) {
-      if (newProps.sequence !== 0 || newProps.prevHash !== '0x0' || newProps.signedAt < 0) {
+      if (newProps.index !== 0 || newProps.prevHash !== '0x0' || newProps.signedAt < 0) {
         return false;
       }
 
@@ -164,7 +164,7 @@ class Engine {
         newProps.prevHash !== prevMessage.hash ||
         newProps.signedAt < prevProps.signedAt ||
         newProps.rootBlock !== prevProps.rootBlock ||
-        newProps.sequence !== prevProps.sequence + 1 ||
+        newProps.index !== prevProps.index + 1 ||
         message.signer !== prevMessage.signer
       ) {
         return false;

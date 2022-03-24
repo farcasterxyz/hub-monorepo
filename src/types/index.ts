@@ -21,7 +21,7 @@ export type SignedMessage<T = MessageBody> = {
  * @body - the body of the message, implemented by the specific interface.
  * @prevHash - the hash of the previous message
  * @rootBlock - the block number of the Ethereum block in the root message.
- * @sequence - the index of the message in the SignedChain, which functions as a Lamport timestamp.
+ * @index - the index of the message in the SignedChain, which functions as a Lamport timestamp.
  * @signedAt - the unix timestamp of when the message was signed
  * @username - the Farcaster username of the user that signed the message.
  */
@@ -29,7 +29,7 @@ type Message<T = MessageBody> = {
   body: T;
   prevHash: string;
   rootBlock: number;
-  sequence: number;
+  index: number;
   signedAt: number;
   username: string;
 };
