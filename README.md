@@ -1,6 +1,6 @@
 # Node Playground
 
-The playground is a simulated environment to test the [Farcaster v2 design](https://www.notion.so/farcasterxyz/v2-Design-1e3c5c77311744179ca0d570341feb62). There are four main parts to the playground:
+The playground is a simulated environment to test the [Farcaster v2 design](https://farcasterxyz.notion.site/v2-Design-1e3c5c77311744179ca0d570341feb62). There are four main parts to the playground:
 
 - [Simulator](src/simulation.ts) - an observervable environment where nodes and clients can be made to interact in different ways.
 - [Client](src/client.ts) - a class that can generate new signed messages, approximating a desktop or mobile application.
