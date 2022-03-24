@@ -10,7 +10,6 @@
 export type SignedMessage<T = MessageBody> = {
   hash: string;
   message: Message<T>;
-  schema: string; // TODO: should the schema be validated by nodes?
   signature: string;
   signer: string;
 };
@@ -40,7 +39,7 @@ type MessageBody = RootMessageBody | CastMessageBody | CastRecastMessageBody | R
 //  URI Types
 // ===========================
 
-type ObjectURI = FarcasterURI | ChainURI | HTTPURI;
+type URI = FarcasterURI | ChainURI | HTTPURI;
 
 /**
  * A FarcasterURI points to any Farcaster message and is structured as farcaster://<user>/<type>:<id>
@@ -75,7 +74,7 @@ export type RootMessageBody = {
   chainType: ChainType;
   prevRootBlockHash: string;
   prevRootLastHash: string;
-  type: 'root';
+  schema: 'farcaster.xyz/schemas/v1/root';
 };
 
 type ChainType = 'cast' | 'reaction' | 'follow';
@@ -102,13 +101,13 @@ export type CastNewMessageBody = {
   _attachments: Attachments;
   _text: string;
   attachmentsHash: string;
-  targetUri?: ObjectURI;
+  schema: 'farcaster.xyz/schemas/v1/cast-new';
+  targetUri?: URI;
   textHash: string;
-  type: 'cast-new';
 };
 
 type Attachments = {
-  items: ObjectURI[];
+  items: URI[];
 };
 
 /**
@@ -118,7 +117,7 @@ type Attachments = {
  */
 export type CastDeleteMessageBody = {
   targetCastUri: FarcasterURI;
-  type: 'cast-delete';
+  schema: 'farcaster.xyz/schemas/v1/cast-delete';
 };
 
 /**
@@ -128,7 +127,7 @@ export type CastDeleteMessageBody = {
  */
 export type CastRecastMessageBody = {
   targetCastUri: FarcasterURI;
-  type: 'cast-recast';
+  schema: 'farcaster.xyz/schemas/v1/cast-recast';
 };
 
 /** An ordered array of hash-linked and signed Casts starting with a root message */
@@ -155,8 +154,8 @@ export type Reaction = SignedMessage<ReactionMesageBody>;
 export type ReactionMesageBody = {
   active: boolean;
   emoji: string;
-  targetUri: ObjectURI;
-  type: 'reaction';
+  targetUri: URI;
+  schema: 'farcaster.xyz/schemas/v1/reaction';
 };
 
 /** An ordered array of hash-linked and signed Reactions starting with a Root */
@@ -181,7 +180,7 @@ export type Follow = SignedMessage<FollowMessageBody>;
 export type FollowMessageBody = {
   active: boolean;
   targetUri: FarcasterURI;
-  type: 'follow';
+  schema: 'farcaster.xyz/schemas/v1/follow';
 };
 
 /** An ordered array of hash-linked and signed Follows starting with a Root */

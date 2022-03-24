@@ -17,20 +17,19 @@ class Client {
     const item = {
       message: {
         body: {
-          type: 'root' as const,
-          chainType: 'cast' as const,
           blockHash: ethblockHash,
+          chainType: 'cast' as const,
           prevRootBlockHash: prevRootBlockHash || '0x0', // TODO: change
           prevRootLastHash: '0x0', // TODO: change, how are null props serialized.s
+          schema: 'farcaster.xyz/schemas/v1/root' as const,
         },
+        index: 0,
         prevHash: '0x0',
         rootBlock: ethBlockNum,
-        index: 0,
         signedAt: Date.now(),
         username: this.username,
       },
       hash: '',
-      schema: '',
       signature: '',
       signer: this.wallet.address,
     };
@@ -42,7 +41,7 @@ class Client {
   }
 
   generateCast(text: string, prevCast: Cast | Root): SignedMessage<CastNewMessageBody> {
-    const type = 'cast-new' as const;
+    const schema = 'farcaster.xyz/schemas/v1/cast-new' as const;
     const signedAt = Date.now();
     const signer = this.wallet.address;
 
@@ -58,16 +57,15 @@ class Client {
           _text: text,
           attachmentsHash: '0x0', // TODO - calculate this
           textHash: '0x0', // TODO: calculate this as a hash of the text
-          type,
+          schema,
         },
+        index,
         prevHash,
         rootBlock,
-        index,
         signedAt,
         username: this.username,
       },
       hash: '',
-      schema: '',
       signature: '',
       signer,
     };
