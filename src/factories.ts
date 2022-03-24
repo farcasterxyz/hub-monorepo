@@ -28,17 +28,19 @@ export const Factories = {
     return {
       message: {
         body: {
-          type: 'cast-add' as const,
-          text: Faker.lorem.sentence(2),
+          _attachments: { items: [] },
+          _text: Faker.lorem.sentence(2),
+          attachmentsHash: '',
+          schema: 'farcaster.xyz/schemas/v1/cast-new' as const,
+          textHash: '',
         },
+        index: Faker.datatype.number(),
         prevHash: Faker.datatype.hexaDecimal(64),
         rootBlock: Faker.datatype.number(10_000),
-        sequence: Faker.datatype.number(),
         signedAt: Faker.time.recent(),
         username: Faker.name.firstName().toLowerCase(),
       },
       hash: '',
-      schema: 'farcaster.xyz/schemas/v1/cast',
       signature: '',
       signer: '',
     };
@@ -64,19 +66,19 @@ export const Factories = {
     return {
       message: {
         body: {
-          type: 'root' as const,
           blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+          chainType: 'cast' as const,
           prevRootBlockHash: '0x0',
-          stitchHash: undefined,
+          prevRootLastHash: '0x0',
+          schema: 'farcaster.xyz/schemas/v1/root' as const,
         },
+        index: 0,
         prevHash: '0x0',
         rootBlock: Faker.datatype.number(10_000),
-        sequence: 0,
         signedAt: Date.now(),
         username: Faker.name.firstName().toLowerCase(),
       },
       hash: '',
-      schema: '',
       signature: '',
       signer: '',
     };

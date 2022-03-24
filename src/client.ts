@@ -1,4 +1,4 @@
-import { Cast, CastAddMessageBody, Root, RootMessageBody, SignedMessage } from '~/types';
+import { Cast, CastNewMessageBody, Root, RootMessageBody, SignedMessage } from '~/types';
 import { hashMessage, sign } from '~/utils';
 import { Wallet, utils } from 'ethers';
 
@@ -17,19 +17,19 @@ class Client {
     const item = {
       message: {
         body: {
-          type: 'root' as const,
           blockHash: ethblockHash,
+          chainType: 'cast' as const,
           prevRootBlockHash: prevRootBlockHash || '0x0', // TODO: change
-          stitchHash: undefined, // TODO: change, how are null props serialized.s
+          prevRootLastHash: '0x0', // TODO: change, how are null props serialized.s
+          schema: 'farcaster.xyz/schemas/v1/root' as const,
         },
+        index: 0,
         prevHash: '0x0',
         rootBlock: ethBlockNum,
-        sequence: 0,
         signedAt: Date.now(),
         username: this.username,
       },
       hash: '',
-      schema: '',
       signature: '',
       signer: this.wallet.address,
     };
@@ -40,30 +40,32 @@ class Client {
     return item;
   }
 
-  generateCast(text: string, prevCast: Cast | Root): SignedMessage<CastAddMessageBody> {
-    const type = 'cast-add' as const;
+  generateCast(text: string, prevCast: Cast | Root): SignedMessage<CastNewMessageBody> {
+    const schema = 'farcaster.xyz/schemas/v1/cast-new' as const;
     const signedAt = Date.now();
     const signer = this.wallet.address;
 
-    // Reference the hash, sequence and rootBlock of the previous message.
+    // Reference the hash, index and rootBlock of the previous message.
     const rootBlock = prevCast.message.rootBlock;
-    const sequence = prevCast.message.sequence + 1;
+    const index = prevCast.message.index + 1;
     const prevHash = prevCast.hash;
 
     const item = {
       message: {
         body: {
-          type,
-          text,
+          _attachments: { items: [] },
+          _text: text,
+          attachmentsHash: '0x0', // TODO - calculate this
+          textHash: '0x0', // TODO: calculate this as a hash of the text
+          schema,
         },
+        index,
         prevHash,
         rootBlock,
-        sequence,
         signedAt,
         username: this.username,
       },
       hash: '',
-      schema: '',
       signature: '',
       signer,
     };
