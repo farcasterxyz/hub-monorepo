@@ -83,4 +83,25 @@ export const Factories = {
       signer: '',
     };
   }),
+
+  /** Generate a new ETH Address with its corresponding private key */
+  EthAddress: Factory.define<EthAddress, any, EthAddress>(({ onCreate }) => {
+    onCreate(async (addressProps) => {
+      const wallet = new ethers.Wallet(addressProps.privateKey);
+      addressProps.address = await wallet.getAddress();
+      return addressProps;
+    });
+
+    const privateKey = Faker.datatype.hexaDecimal(64).toLowerCase();
+
+    return {
+      address: '',
+      privateKey,
+    };
+  }),
 };
+
+interface EthAddress {
+  address: string;
+  privateKey: string;
+}

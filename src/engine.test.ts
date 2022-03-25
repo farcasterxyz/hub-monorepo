@@ -1,6 +1,7 @@
-import Engine from '~/engine';
+import Engine, { Signer } from '~/engine';
 import { Factories } from '~/factories';
 import { Root } from '~/types';
+import Faker from 'faker';
 
 const engine = new Engine();
 const username = 'alice';
@@ -11,48 +12,87 @@ describe('addRoot', () => {
   let rootA130: Root;
   let rootA130B: Root;
   let rootB140: Root;
+  let rootC90: Root;
+
+  let alicePrivateKey: string;
+  let aliceAddress: string;
 
   beforeAll(async () => {
-    rootA110 = await Factories.Root.create({ message: { rootBlock: 110, username: 'alice' } });
+    const keypair = await Factories.EthAddress.create({});
+    alicePrivateKey = keypair.privateKey;
+    aliceAddress = keypair.address;
 
-    rootA120 = await Factories.Root.create({
-      message: {
-        rootBlock: 120,
-        username: 'alice',
-        body: { prevRootBlockHash: rootA110.message.body.blockHash },
-      },
-    });
+    rootC90 = await Factories.Root.create(
+      { message: { rootBlock: 90, username: 'alice' } },
+      { transient: { privateKey: alicePrivateKey } }
+    );
 
-    rootA130 = await Factories.Root.create({
-      message: {
-        rootBlock: 130,
-        username: 'alice',
-        body: { prevRootBlockHash: rootA120.message.body.blockHash },
-      },
-    });
+    rootA110 = await Factories.Root.create(
+      { message: { rootBlock: 110, username: 'alice' } },
+      { transient: { privateKey: alicePrivateKey } }
+    );
 
-    rootA130B = await Factories.Root.create({
-      message: {
-        rootBlock: 130,
-        username: 'alice',
-        body: rootA130.message.body,
-        signedAt: rootA130.message.signedAt + 1,
+    rootA120 = await Factories.Root.create(
+      {
+        message: {
+          rootBlock: 120,
+          username: 'alice',
+          body: { prevRootBlockHash: rootA110.message.body.blockHash },
+        },
+        signer: keypair.address,
       },
-    });
+      { transient: { privateKey: alicePrivateKey } }
+    );
 
-    rootB140 = await Factories.Root.create({
-      message: {
-        rootBlock: 140,
-        username: 'alice',
+    rootA130 = await Factories.Root.create(
+      {
+        message: {
+          rootBlock: 130,
+          username: 'alice',
+          body: { prevRootBlockHash: rootA120.message.body.blockHash },
+        },
       },
-    });
+      { transient: { privateKey: alicePrivateKey } }
+    );
+
+    rootA130B = await Factories.Root.create(
+      {
+        message: {
+          rootBlock: 130,
+          username: 'alice',
+          body: rootA130.message.body,
+          signedAt: rootA130.message.signedAt + 1,
+        },
+      },
+      { transient: { privateKey: alicePrivateKey } }
+    );
+
+    rootB140 = await Factories.Root.create(
+      {
+        message: {
+          rootBlock: 140,
+          username: 'alice',
+        },
+      },
+      { transient: { privateKey: alicePrivateKey } }
+    );
   });
 
   beforeEach(() => {
-    engine.reset();
+    engine.resetChains();
+    engine.resetUsers();
+
+    const aliceRegistrationSignerChange = {
+      blockNumber: 99,
+      blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+      logIndex: 0,
+      address: aliceAddress,
+    };
+
+    engine.addSignerChange('alice', aliceRegistrationSignerChange);
   });
 
-  const subject = () => engine.getCastChains(username);
+  const subject = () => engine.getChains(username);
 
   describe('fails with invalid inputs', () => {
     test('of string', async () => {
@@ -72,8 +112,47 @@ describe('addRoot', () => {
     // TODO: test with Reactions, Follows
   });
 
+  describe('fails with invalid signers', () => {
+    test('fails if the signer is unknown', async () => {
+      const root = await Factories.Root.create(
+        { message: { rootBlock: 100, username: 'alice' } },
+        { transient: { privateKey: Faker.datatype.hexaDecimal(64).toLowerCase() } }
+      );
+      const result = engine.addRoot(root);
+
+      expect(result.isOk()).toBe(false);
+      expect(result._unsafeUnwrapErr()).toBe('Invalid root');
+      expect(subject()).toEqual([]);
+    });
+
+    test('fails if the signer was valid before this block', async () => {
+      const changeSigner = {
+        blockNumber: 99,
+        blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+        logIndex: 1,
+        address: Faker.datatype.hexaDecimal(40).toLowerCase(),
+      };
+
+      engine.addSignerChange('alice', changeSigner);
+      const result = engine.addRoot(rootA110);
+      expect(result.isOk()).toBe(false);
+      expect(result._unsafeUnwrapErr()).toBe('Invalid root');
+      expect(subject()).toEqual([]);
+    });
+
+    test('fails if the signer was valid after this block', async () => {
+      const result = engine.addRoot(rootC90);
+      expect(result.isOk()).toBe(false);
+      expect(result._unsafeUnwrapErr()).toBe('Invalid root');
+      expect(subject()).toEqual([]);
+    });
+  });
+
   test('fails without mutating state if Root is an invalid message', async () => {
-    const root = await Factories.Root.create({ message: { rootBlock: 100, username: 'alice' } });
+    const root = await Factories.Root.create(
+      { message: { rootBlock: 100, username: 'alice' } },
+      { transient: { privateKey: alicePrivateKey } }
+    );
     engine.addRoot(root);
     expect(subject()).toEqual([[root]]);
 
@@ -83,8 +162,11 @@ describe('addRoot', () => {
     expect(subject()).toEqual([[root]]);
   });
 
-  test('fails if the user is unknown', async () => {
-    const root = await Factories.Root.create({ message: { rootBlock: 100, username: 'rob' } });
+  test('fails if the username is unknown, even if the signer is known', async () => {
+    const root = await Factories.Root.create(
+      { message: { rootBlock: 100, username: 'rob' } },
+      { transient: { privateKey: alicePrivateKey } }
+    );
     const rootRes = engine.addRoot(root);
 
     expect(rootRes.isOk()).toBe(false);
@@ -195,5 +277,67 @@ describe('addRoot', () => {
     });
 
     // TODO: Write tests once stitching is implemented.
+  });
+});
+
+describe('addSignerChange', () => {
+  // Change @charlie's signer at block 100.
+  const signerChange: Signer = {
+    address: Faker.datatype.hexaDecimal(40).toLowerCase(),
+    blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+    blockNumber: 100,
+    logIndex: 12,
+  };
+
+  // Change charlie's signer at block 200.
+  const signerChange200 = JSON.parse(JSON.stringify(signerChange)) as Signer;
+  signerChange200.blockHash = Faker.datatype.hexaDecimal(64).toLowerCase();
+  signerChange200.blockNumber = signerChange.blockNumber + 100;
+
+  // Change charlie's signer at block 50.
+  const signerChange50A = JSON.parse(JSON.stringify(signerChange)) as Signer;
+  signerChange50A.blockHash = Faker.datatype.hexaDecimal(64).toLowerCase();
+  signerChange50A.blockNumber = signerChange.blockNumber - 10;
+
+  // Change charlie's signer at block 50, at a higher index.
+  const signerChange50B = JSON.parse(JSON.stringify(signerChange50A)) as Signer;
+  signerChange50B.logIndex = signerChange.logIndex + 1;
+
+  const duplicateSignerChange50B = JSON.parse(JSON.stringify(signerChange50B)) as Signer;
+
+  const username = 'charlie';
+  const subject = () => engine.getSigners(username);
+
+  test('signer changes are added correctly', async () => {
+    const result = engine.addSignerChange(username, signerChange);
+    expect(result.isOk()).toBe(true);
+    expect(subject()).toEqual([signerChange]);
+  });
+
+  test('signer changes from later blocks are added after current blocks', async () => {
+    const result = engine.addSignerChange(username, signerChange200);
+    expect(result.isOk()).toBe(true);
+    expect(subject()).toEqual([signerChange, signerChange200]);
+  });
+
+  test('signer changes from earlier blocks are before current blocks', async () => {
+    const result = engine.addSignerChange(username, signerChange50A);
+    expect(result.isOk()).toBe(true);
+    expect(subject()).toEqual([signerChange50A, signerChange, signerChange200]);
+  });
+
+  test('signer changes in the same block are ordered by index', async () => {
+    const result = engine.addSignerChange(username, signerChange50B);
+    expect(result.isOk()).toBe(true);
+    expect(subject()).toEqual([signerChange50A, signerChange50B, signerChange, signerChange200]);
+  });
+
+  test('adding a duplicate signer change fails', async () => {
+    const result = engine.addSignerChange(username, duplicateSignerChange50B);
+    expect(result.isOk()).toBe(false);
+    expect(result._unsafeUnwrapErr()).toBe(
+      `addSignerChange: duplicate signer change ${signerChange50B.blockHash}:${signerChange50B.logIndex}`
+    );
+    expect(subject()).toEqual([signerChange50A, signerChange50B, signerChange, signerChange200]);
   });
 });

@@ -11,18 +11,29 @@ export interface ChainFingerprint {
   lastMessageHash: string | undefined;
 }
 
+export interface Signer {
+  address: string;
+  blockHash: string;
+  blockNumber: number;
+  logIndex: number;
+}
+
 /** The Engine receives messages and determines the current state Farcaster network */
 class Engine {
   /** Mapping of usernames to their casts, which are stored as a series of signed chains */
   private _castChains: Map<string, SignedCastChain[]>;
-  private _validUsernames: Array<string>;
+  private _users: Map<string, Signer[]>;
 
   constructor() {
     this._castChains = new Map();
-    this._validUsernames = ['alice'];
+    this._users = new Map();
   }
 
-  getCastChains(username: string): SignedCastChain[] {
+  getSigners(username: string): Signer[] | undefined {
+    return this._users.get(username);
+  }
+
+  getChains(username: string): SignedCastChain[] {
     const chainList = this._castChains.get(username);
     return chainList || [];
   }
@@ -143,8 +154,41 @@ class Engine {
     }
   }
 
-  reset(): void {
+  /** Add a new SignerChange event into the user's Signer Change array  */
+  addSignerChange(username: string, newSignerChange: Signer): Result<void, string> {
+    const signerChanges = this._users.get(username);
+
+    if (!signerChanges) {
+      this._users.set(username, [newSignerChange]);
+      return ok(undefined);
+    }
+
+    let signerIdx = 0;
+
+    // Insert the SignerChange into the array such that the array maintains ascending order
+    // of blockNumbers, followed by logIndex (for changes that occur within the same block).
+    for (const sc of signerChanges) {
+      if (sc.blockNumber < newSignerChange.blockNumber) {
+        signerIdx++;
+      } else if (sc.blockNumber === newSignerChange.blockNumber) {
+        if (sc.logIndex < newSignerChange.logIndex) {
+          signerIdx++;
+        } else if (sc.logIndex === newSignerChange.logIndex) {
+          return err(`addSignerChange: duplicate signer change ${sc.blockHash}:${sc.logIndex}`);
+        }
+      }
+    }
+
+    signerChanges.splice(signerIdx, 0, newSignerChange);
+    return ok(undefined);
+  }
+
+  resetChains(): void {
     this._castChains = new Map();
+  }
+
+  resetUsers(): void {
+    this._users = new Map();
   }
 
   private validateMessageChain(message: SignedMessage, prevMessage?: SignedMessage): boolean {
@@ -174,18 +218,39 @@ class Engine {
     return this.validateMessage(message);
   }
 
+  /** Determine the valid signer address for a username at a block */
+  private signerForBlock(username: string, blockNumber: number): string | undefined {
+    const signerChanges = this._users.get(username);
+
+    if (!signerChanges) {
+      return undefined;
+    }
+
+    let signer = undefined;
+
+    for (const sc of signerChanges) {
+      if (sc.blockNumber <= blockNumber) {
+        signer = sc.address;
+      }
+    }
+
+    return signer;
+  }
+
   private validateMessage(message: SignedMessage): boolean {
-    if (this._validUsernames.indexOf(message.message.username) === -1) {
+    // 1. Check that the signer was valid for the block in question.
+    const expectedSigner = this.signerForBlock(message.message.username, message.message.rootBlock);
+    if (!expectedSigner || expectedSigner !== message.signer) {
       return false;
     }
 
-    // Check that the hash value of the message was computed correctly.
+    // 2. Check that the hash value of the message was computed correctly.
     const computedHash = hashMessage(message);
     if (message.hash !== computedHash) {
       return false;
     }
 
-    // Check that the signature is valid
+    // 3. Check that the signature is valid
     const recoveredAddress = utils.recoverAddress(message.hash, message.signature);
     if (recoveredAddress !== message.signer) {
       return false;
@@ -202,7 +267,6 @@ class Engine {
     // TODO: check that all required properties are present.
     // TODO: check that username is known to the registry
     // TODO: check that the signer is the owner of the username.
-
     return false;
   }
 
