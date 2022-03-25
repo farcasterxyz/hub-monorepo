@@ -26,36 +26,46 @@ if (!knightNode) {
   exit();
 }
 
-// 4. Set up a Client
+Debugger.printState();
+
+// 4. Set up a Client to generate messages
 const client = new Client('alice');
 
+const signerChange = {
+  blockNumber: 99,
+  blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+  logIndex: 0,
+  address: client.address,
+};
+// In this step, we'd make each node listen to the registry for username registrations
+// and signer changes. For now, we take a shortcut and just tell the engine that a
+// registration has occured for alice.
+console.log(`Farcaster Registry: @alice was registered by ${client.address}`);
+for (const node of nodeList.values()) {
+  node.engine.addSignerChange('alice', signerChange);
+}
+
 // 5. Send two messages, sequentially to the node.
-const m1 = client.generateRoot(0, Faker.datatype.hexaDecimal(64).toLowerCase());
+console.log('Farcaster Client: @alice is starting a new chain');
+const m1 = client.generateRoot(signerChange.blockNumber, signerChange.blockHash);
 knightNode.addRoot(m1);
 
 let lastMsg = knightNode.getLastMessage(client.username);
-if (lastMsg) {
-  if (isCast(lastMsg) || isRoot(lastMsg)) {
-    const m2 = client.generateCast('Hello, world!', lastMsg);
-    knightNode.addCast(m2);
-  }
+if (lastMsg && isRoot(lastMsg)) {
+  console.log('Farcaster Client: @alice is casting one message');
+  const m2 = client.generateCast('Hello, world!', lastMsg);
+  knightNode.addCast(m2);
 }
-
-Debugger.printState();
 
 // 6. Send multiple messages to the node.
-console.log('Client: adding two message into the chain');
+console.log('Farcaster Client: @alice is casting two new messages');
 lastMsg = knightNode.getLastMessage(client.username);
-if (lastMsg) {
-  if (isCast(lastMsg) || isRoot(lastMsg)) {
-    const m3 = client.generateCast("I'm a cast!", lastMsg);
-    const m4 = client.generateCast('On another chain!', m3);
-    const chain = [m3, m4];
-    knightNode.addChain(chain);
-  }
+if (lastMsg && isCast(lastMsg)) {
+  const m3 = client.generateCast("I'm a cast!", lastMsg);
+  const m4 = client.generateCast('On another chain!', m3);
+  const chain = [m3, m4];
+  knightNode.addChain(chain);
 }
-
-Debugger.printState();
 
 // 7. Start syncing all nodes at random intervals.
 for (const node of nodeList.values()) {
@@ -66,13 +76,23 @@ setInterval(() => {
   Debugger.printState();
 }, 5_000);
 
-// 8. Start another chain and send it to the node.
-console.log('Client: starting a new chain');
-
+// 8. @alice changes her address and starts a new chain.
 setTimeout(() => {
-  Debugger.printState();
-  const b1 = client.generateRoot(1, Faker.datatype.hexaDecimal(64).toLowerCase(), m1.message.body.blockHash);
+  console.log('Farcaster Client: @alice is changing signers');
+  const client2 = new Client('alice');
+
+  const signerChange = {
+    blockNumber: 100,
+    blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+    logIndex: 0,
+    address: client2.address,
+  };
+
+  for (const node of nodeList.values()) {
+    node.engine.addSignerChange('alice', signerChange);
+  }
+
+  console.log('Farcaster Client: @alice is starting a new chain');
+  const b1 = client2.generateRoot(signerChange.blockNumber, signerChange.blockHash, m1.message.body.blockHash);
   knightNode.addRoot(b1);
 }, 30_000);
-
-Debugger.printState();

@@ -13,14 +13,18 @@ class Client {
     this.username = username;
   }
 
+  get address(): string {
+    return this.wallet.address;
+  }
+
   generateRoot(ethBlockNum: number, ethblockHash: string, prevRootBlockHash?: string): SignedMessage<RootMessageBody> {
     const item = {
       message: {
         body: {
           blockHash: ethblockHash,
           chainType: 'cast' as const,
-          prevRootBlockHash: prevRootBlockHash || '0x0', // TODO: change
-          prevRootLastHash: '0x0', // TODO: change, how are null props serialized.s
+          prevRootBlockHash: prevRootBlockHash || '0x0',
+          prevRootLastHash: '0x0',
           schema: 'farcaster.xyz/schemas/v1/root' as const,
         },
         index: 0,

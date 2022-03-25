@@ -1,6 +1,7 @@
 import { Cast, Root, SignedCastChain, SignedCastChainFragment, SignedMessage } from '~/types';
 import Engine, { ChainFingerprint } from '~/engine';
 import { isCast, isRoot } from '~/types/typeguards';
+import { Result } from 'neverthrow';
 
 /** The Node brokers messages to clients and peers and passes new messages into the Engine for resolution  */
 class FCNode {
@@ -106,13 +107,13 @@ class FCNode {
    */
 
   /** Start a new chain for the user */
-  addRoot(root: Root): void {
-    this.engine.addRoot(root);
+  addRoot(root: Root): Result<void, string> {
+    return this.engine.addRoot(root);
   }
 
   /** Merge a single message into the latest chain */
   addCast(Cast: Cast): void {
-    this.engine.addCast(Cast);
+    return this.engine.addCast(Cast);
   }
 
   /** Merge a partial chain into the latest chain */

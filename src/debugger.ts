@@ -47,7 +47,7 @@ const Debugger = {
       // Determine the chain which has the user's latest message, so that we can mark it green.
       let latestSignedAt = 0;
       nodes.forEach((node) => {
-        const chainLatestSignedAt = latestChainSignedAt(node.engine.getCastChains(username));
+        const chainLatestSignedAt = latestChainSignedAt(node.engine.getChains(username));
         if (chainLatestSignedAt > latestSignedAt) {
           latestSignedAt = chainLatestSignedAt;
         }
@@ -55,9 +55,9 @@ const Debugger = {
 
       // For each user's chain in each node, print the chain.
       for (const node of nodes.values()) {
-        const chainLatestSignedAt = latestChainSignedAt(node.engine.getCastChains(username));
+        const chainLatestSignedAt = latestChainSignedAt(node.engine.getChains(username));
         const color = chainLatestSignedAt === latestSignedAt ? colors.green : colors.red;
-        table.push({ [node.name]: visualizeChains(node.engine.getCastChains(username), color) });
+        table.push({ [node.name]: visualizeChains(node.engine.getChains(username), color) });
       }
     }
 
