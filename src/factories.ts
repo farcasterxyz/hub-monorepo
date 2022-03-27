@@ -1,15 +1,56 @@
 import { Factory } from 'fishery';
 import Faker from 'faker';
 import { ethers } from 'ethers';
-import { Cast, Root } from '~/types';
-import { hashMessage, sign } from '~/utils';
+import { CastNew, Root, CastRecast, CastDelete } from '~/types';
+import { hashMessage, hashFCObject, hashString, sign } from '~/utils';
 
 /**
  * ProtocolFactories are used to construct valid Farcaster Protocol JSON objects.
  */
 export const Factories = {
   /** Generate a valid Cast with randomized properties */
-  Cast: Factory.define<Cast, any, Cast>(({ onCreate, transientParams }) => {
+  Cast: Factory.define<CastNew, any, CastNew>(({ onCreate, transientParams }) => {
+    const { privateKey = Faker.datatype.hexaDecimal(64).toLowerCase() } = transientParams;
+    const wallet = new ethers.Wallet(privateKey);
+
+    onCreate(async (castProps) => {
+      const hash = hashMessage(castProps);
+      castProps.hash = hash;
+
+      castProps.signer = await wallet.getAddress();
+
+      const signature = sign(castProps.hash, wallet._signingKey());
+      castProps.signature = signature;
+
+      return castProps;
+    });
+
+    const _embed = { items: [] };
+    const _text = Faker.lorem.sentence(2);
+
+    return {
+      message: {
+        body: {
+          _embed,
+          _text,
+          embedHash: hashFCObject(_embed),
+          schema: 'farcaster.xyz/schemas/v1/cast-new' as const,
+          textHash: hashString(_text),
+        },
+        index: Faker.datatype.number(),
+        prevHash: Faker.datatype.hexaDecimal(64),
+        rootBlock: Faker.datatype.number(10_000),
+        signedAt: Faker.time.recent(),
+        username: Faker.name.firstName().toLowerCase(),
+      },
+      hash: '',
+      signature: '',
+      signer: '',
+    };
+  }),
+
+  /** Generate a valid Cast-Delete with randomized properties */
+  CastDelete: Factory.define<CastDelete, any, CastDelete>(({ onCreate, transientParams }) => {
     const { privateKey = Faker.datatype.hexaDecimal(64).toLowerCase() } = transientParams;
     const wallet = new ethers.Wallet(privateKey);
 
@@ -28,11 +69,43 @@ export const Factories = {
     return {
       message: {
         body: {
-          _attachments: { items: [] },
-          _text: Faker.lorem.sentence(2),
-          attachmentsHash: '',
-          schema: 'farcaster.xyz/schemas/v1/cast-new' as const,
-          textHash: '',
+          targetCastUri: 'farcaster://alice/cast/1', // TODO: Find some way to generate this.
+          schema: 'farcaster.xyz/schemas/v1/cast-delete' as const,
+        },
+        index: Faker.datatype.number(),
+        prevHash: Faker.datatype.hexaDecimal(64),
+        rootBlock: Faker.datatype.number(10_000),
+        signedAt: Faker.time.recent(),
+        username: Faker.name.firstName().toLowerCase(),
+      },
+      hash: '',
+      signature: '',
+      signer: '',
+    };
+  }),
+
+  /** Generate a valid Cast with randomized properties */
+  CastRecast: Factory.define<CastRecast, any, CastRecast>(({ onCreate, transientParams }) => {
+    const { privateKey = Faker.datatype.hexaDecimal(64).toLowerCase() } = transientParams;
+    const wallet = new ethers.Wallet(privateKey);
+
+    onCreate(async (castProps) => {
+      const hash = hashMessage(castProps);
+      castProps.hash = hash;
+
+      castProps.signer = await wallet.getAddress();
+
+      const signature = sign(castProps.hash, wallet._signingKey());
+      castProps.signature = signature;
+
+      return castProps;
+    });
+
+    return {
+      message: {
+        body: {
+          targetCastUri: 'farcaster://alice/cast/1', // TODO: Find some way to generate this.
+          schema: 'farcaster.xyz/schemas/v1/cast-recast' as const,
         },
         index: Faker.datatype.number(),
         prevHash: Faker.datatype.hexaDecimal(64),

@@ -1,8 +1,8 @@
 import { Cast, Root, RootMessageBody, SignedCastChain, SignedMessage } from '~/types';
-import { hashMessage } from '~/utils';
+import { hashFCObject, hashMessage } from '~/utils';
 import { utils } from 'ethers';
 import { ok, err, Result } from 'neverthrow';
-import { isCast, isRoot } from '~/types/typeguards';
+import { isCast, isCastNew, isRoot } from '~/types/typeguards';
 
 export interface ChainFingerprint {
   rootBlockNum: number;
@@ -131,13 +131,18 @@ class Engine {
   }
 
   /** Add a new Cast into an existing user's SignedCastChain[], if valid */
-  addCast(cast: Cast): void {
+  addCast(cast: Cast): Result<void, string> {
     const username = cast.message.username;
+
+    const signerChanges = this._users.get(username);
+    if (!signerChanges) {
+      return err('addCast: unknown user');
+    }
+
     const castChains = this._castChains.get(username);
 
     if (!castChains || castChains.length === 0) {
-      console.log("Can't add cast to unknown user");
-      return;
+      return err('addCast: unknown chain');
     }
 
     const matchingChain = castChains.find((chain) => chain[0].message.rootBlock === cast.message.rootBlock);
@@ -145,13 +150,17 @@ class Engine {
     // messages on this chain.
 
     if (!matchingChain) {
-      console.log("Can't add cast to unknown chain");
-      return;
+      return err('addCast: unknown chain');
     }
 
-    if (this.validateMessageChain(cast, matchingChain[matchingChain.length - 1])) {
-      matchingChain.push(cast);
+    if (!this.validateMessageChain(cast, matchingChain[matchingChain.length - 1])) {
+      return err('addCast: invalid message');
     }
+    matchingChain.push(cast);
+
+    // TODO: If it was a delete, inspect all chains and remove the text of the cast cast.
+
+    return ok(undefined);
   }
 
   /** Add a new SignerChange event into the user's Signer Change array  */
@@ -187,32 +196,32 @@ class Engine {
     this._castChains = new Map();
   }
 
-  resetUsers(): void {
+  resetSigners(): void {
     this._users = new Map();
   }
 
-  private validateMessageChain(message: SignedMessage, prevMessage?: SignedMessage): boolean {
+  private validateMessageChain(message: SignedMessage, prevMessage: SignedMessage): boolean {
+    if (isCast(message)) {
+      if (isRoot(prevMessage) && prevMessage.message.body.chainType !== 'cast') {
+        return false;
+      }
+
+      if (!isCast(prevMessage) && !isRoot(prevMessage)) {
+        return false;
+      }
+    }
+
     const newProps = message.message;
+    const prevProps = prevMessage.message;
 
-    // TODO: is this necessary?
-    if (!prevMessage) {
-      if (newProps.index !== 0 || newProps.prevHash !== '0x0' || newProps.signedAt < 0) {
-        return false;
-      }
-
-      // TODO: If the previous mesage is a root, check that the rootBlock is set correctly.
-    } else {
-      const prevProps = prevMessage.message;
-
-      if (
-        newProps.prevHash !== prevMessage.hash ||
-        newProps.signedAt < prevProps.signedAt ||
-        newProps.rootBlock !== prevProps.rootBlock ||
-        newProps.index !== prevProps.index + 1 ||
-        message.signer !== prevMessage.signer
-      ) {
-        return false;
-      }
+    if (
+      newProps.prevHash !== prevMessage.hash ||
+      newProps.signedAt < prevProps.signedAt ||
+      newProps.rootBlock !== prevProps.rootBlock ||
+      newProps.index !== prevProps.index + 1 ||
+      message.signer !== prevMessage.signer
+    ) {
+      return false;
     }
 
     return this.validateMessage(message);
@@ -263,6 +272,7 @@ class Engine {
     if (isRoot(message)) {
       return this.validateRoot(message);
     }
+
     // TODO: check that the schema is a valid and known schema.
     // TODO: check that all required properties are present.
     // TODO: check that username is known to the registry
@@ -281,11 +291,32 @@ class Engine {
   }
 
   private validateCast(cast: Cast): boolean {
-    // TODO: Check that the text value is hashed correctly.
-    // TODO: Check that this is a valid cast in chain in strict mode.
-    // TODO: Enforce maximum numbber and size of attachments
-    // TODO: enforce maximum text length.
-    // TODO: enforce correct hashing of values.
+    if (isCastNew(cast)) {
+      const text = cast.message.body._text;
+      const embed = cast.message.body._embed;
+
+      if (text) {
+        const computedTextHash = utils.keccak256(utils.toUtf8Bytes(text));
+        if (cast.message.body.textHash !== computedTextHash) {
+          return false;
+        }
+
+        if (text.length > 280) {
+          return false;
+        }
+      }
+
+      if (embed) {
+        const computedEmbedHash = hashFCObject(embed);
+        if (cast.message.body.embedHash !== computedEmbedHash) {
+          return false;
+        }
+
+        if (embed.items.length > 2) {
+          return false;
+        }
+      }
+    }
     return !!cast;
   }
 

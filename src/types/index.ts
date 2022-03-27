@@ -85,6 +85,9 @@ type ChainType = 'cast' | 'reaction' | 'follow';
 
 /** A Cast Message */
 export type Cast = SignedMessage<CastMessageBody>;
+export type CastNew = SignedMessage<CastNewMessageBody>;
+export type CastRecast = SignedMessage<CastRecastMessageBody>;
+export type CastDelete = SignedMessage<CastDeleteMessageBody>;
 
 export type CastMessageBody = CastNewMessageBody | CastDeleteMessageBody | CastRecastMessageBody;
 
@@ -92,21 +95,21 @@ export type CastMessageBody = CastNewMessageBody | CastDeleteMessageBody | CastR
  * A CastNewMessageBody represents a new, short-text public broadcast from a user.
  *
  * @_text - the text of the Cast, the underscore prefix indicates that it is not hashed into the message.
- * @_attachments - an array of up to 2 attachments, the underscore prefix indicates that it is not hashed into the message.
- * @attachmentsHash - calculated by joining attachments into a single string and hashing it with keccak256.
+ * @_embed - an array of up to 2 uris, the underscore prefix indicates that it is not hashed into the message.
+ * @embedHash - calculated by joining embeds into a single string and hashing it with keccak256.
  * @targetUri - the object that this Cast is replying to.
  * @textHash - the keccak256 hash of the sText field which is hashed into the message.
  */
 export type CastNewMessageBody = {
-  _attachments: Attachments;
+  _embed: Embed;
   _text: string;
-  attachmentsHash: string;
+  embedHash: string;
   schema: 'farcaster.xyz/schemas/v1/cast-new';
   targetUri?: URI;
   textHash: string;
 };
 
-type Attachments = {
+type Embed = {
   items: URI[];
 };
 
