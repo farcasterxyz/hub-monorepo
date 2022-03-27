@@ -85,6 +85,9 @@ type ChainType = 'cast' | 'reaction' | 'follow';
 
 /** A Cast Message */
 export type Cast = SignedMessage<CastMessageBody>;
+export type CastNew = SignedMessage<CastNewMessageBody>;
+export type CastRecast = SignedMessage<CastRecastMessageBody>;
+export type CastDelete = SignedMessage<CastDeleteMessageBody>;
 
 export type CastMessageBody = CastNewMessageBody | CastDeleteMessageBody | CastRecastMessageBody;
 
@@ -98,6 +101,7 @@ export type CastMessageBody = CastNewMessageBody | CastDeleteMessageBody | CastR
  * @textHash - the keccak256 hash of the sText field which is hashed into the message.
  */
 export type CastNewMessageBody = {
+  // TODO: rename attachments to attachment.
   _attachments: Attachments;
   _text: string;
   attachmentsHash: string;

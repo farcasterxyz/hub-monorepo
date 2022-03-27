@@ -112,7 +112,7 @@ class FCNode {
   }
 
   /** Merge a single message into the latest chain */
-  addCast(Cast: Cast): void {
+  addCast(Cast: Cast): Result<void, string> {
     return this.engine.addCast(Cast);
   }
 

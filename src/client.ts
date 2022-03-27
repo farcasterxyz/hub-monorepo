@@ -1,5 +1,5 @@
 import { Cast, CastNewMessageBody, Root, RootMessageBody, SignedMessage } from '~/types';
-import { hashMessage, sign } from '~/utils';
+import { hashFCObject, hashMessage, hashString, sign } from '~/utils';
 import { Wallet, utils } from 'ethers';
 
 class Client {
@@ -54,13 +54,15 @@ class Client {
     const index = prevCast.message.index + 1;
     const prevHash = prevCast.hash;
 
+    const _attachments = { items: [] };
+
     const item = {
       message: {
         body: {
-          _attachments: { items: [] },
+          _attachments,
           _text: text,
-          attachmentsHash: '0x0', // TODO - calculate this
-          textHash: '0x0', // TODO: calculate this as a hash of the text
+          attachmentsHash: hashFCObject(_attachments),
+          textHash: hashString(text),
           schema,
         },
         index,

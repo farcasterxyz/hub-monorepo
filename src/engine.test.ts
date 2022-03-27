@@ -1,6 +1,6 @@
 import Engine, { Signer } from '~/engine';
 import { Factories } from '~/factories';
-import { Root } from '~/types';
+import { Cast, Root } from '~/types';
 import Faker from 'faker';
 
 const engine = new Engine();
@@ -341,3 +341,381 @@ describe('addSignerChange', () => {
     expect(subject()).toEqual([signerChange50A, signerChange50B, signerChange, signerChange200]);
   });
 });
+
+describe('addCast', () => {
+  let alicePrivateKey: string;
+  let aliceAddress: string;
+  let root: Root;
+  let cast: Cast;
+  const subject = () => engine.getChains(username);
+
+  beforeAll(async () => {
+    const keypair = await Factories.EthAddress.create({});
+    alicePrivateKey = keypair.privateKey;
+    aliceAddress = keypair.address;
+
+    root = await Factories.Root.create(
+      { message: { rootBlock: 100, username: 'alice' } },
+      { transient: { privateKey: alicePrivateKey } }
+    );
+
+    cast = await Factories.Cast.create(
+      {
+        message: {
+          index: 1,
+          prevHash: root.hash,
+          rootBlock: root.message.rootBlock,
+          username: 'alice',
+          signedAt: root.message.signedAt + 1,
+        },
+      },
+      { transient: { privateKey: alicePrivateKey } }
+    );
+  });
+
+  // Every test should start with a valid signer and root for alice's chain.
+  beforeEach(() => {
+    engine.resetChains();
+
+    const aliceRegistrationSignerChange = {
+      blockNumber: 99,
+      blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+      logIndex: 0,
+      address: aliceAddress,
+    };
+
+    engine.addSignerChange('alice', aliceRegistrationSignerChange);
+    engine.addRoot(root);
+  });
+
+  /** Signed Chain Test */
+
+  test('fails if it the signer is unknown', async () => {
+    engine.resetChains();
+    engine.resetUsers();
+
+    const result = engine.addCast(cast);
+    expect(result._unsafeUnwrapErr()).toBe('addCast: unknown user');
+    expect(subject()).toEqual([]);
+  });
+
+  test('fails if the signed chain root is missing', async () => {
+    engine.resetChains();
+
+    const result = engine.addCast(cast);
+    expect(result._unsafeUnwrapErr()).toBe('addCast: unknown chain');
+    expect(subject()).toEqual([]);
+  });
+
+  test('fails if the signed chain root is missing, even when other roots are present', async () => {
+    engine.resetChains();
+
+    // Add a new root with a different block number.
+    const otherRoot = await Factories.Root.create(
+      { message: { rootBlock: 120, username: 'alice' } },
+      { transient: { privateKey: alicePrivateKey } }
+    );
+    expect(engine.addRoot(otherRoot).isOk()).toBe(true);
+
+    const result = engine.addCast(cast);
+    expect(result._unsafeUnwrapErr()).toBe('addCast: unknown chain');
+    expect(subject()).toEqual([[otherRoot]]);
+  });
+
+  test('fails if it does not match the type of the chain', async () => {
+    engine.resetChains();
+
+    // Add a root with a different type.
+    const root = await Factories.Root.create(
+      { message: { rootBlock: 100, username: 'alice', body: { chainType: 'follow' } } },
+      { transient: { privateKey: alicePrivateKey } }
+    );
+    expect(engine.addRoot(root).isOk()).toBe(true);
+
+    const result = engine.addCast(cast);
+    expect(result._unsafeUnwrapErr()).toBe('addCast: invalid message');
+    expect(subject()).toEqual([[root]]);
+  });
+
+  test('fails if it the rootBlock does not match the previous message', async () => {
+    const castInvalidRootBlock = JSON.parse(JSON.stringify(cast)) as Cast;
+    castInvalidRootBlock.message.rootBlock += 1;
+
+    const result = engine.addCast(castInvalidRootBlock);
+    expect(result._unsafeUnwrapErr()).toBe('addCast: unknown chain');
+    expect(subject()).toEqual([[root]]);
+  });
+
+  test('fails if the index was not incremented correcty', async () => {
+    // Index too high
+    const castInvalidIdxHigh = JSON.parse(JSON.stringify(cast)) as Cast;
+    castInvalidIdxHigh.message.index += 1;
+
+    const resultHigh = engine.addCast(castInvalidIdxHigh);
+    expect(resultHigh._unsafeUnwrapErr()).toBe('addCast: invalid message');
+    expect(subject()).toEqual([[root]]);
+
+    // Index too low
+    const castInvalidIdxLow = JSON.parse(JSON.stringify(cast)) as Cast;
+    castInvalidIdxLow.message.index += 1;
+
+    const resultLow = engine.addCast(castInvalidIdxLow);
+    expect(resultLow._unsafeUnwrapErr()).toBe('addCast: invalid message');
+    expect(subject()).toEqual([[root]]);
+  });
+
+  test('fails if the cast is a duplicate', async () => {
+    expect(engine.addCast(cast).isOk()).toBe(true);
+    expect(subject()).toEqual([[root, cast]]);
+
+    const castDuplicate = JSON.parse(JSON.stringify(cast)) as Cast;
+    const resultLow = engine.addCast(castDuplicate);
+    expect(resultLow._unsafeUnwrapErr()).toBe('addCast: invalid message');
+    expect(subject()).toEqual([[root, cast]]);
+  });
+
+  // TODO: When duplicate proofs are implemented, this test should be updated accordingly
+  test('fails if the cast conflicts with another cast', async () => {
+    expect(engine.addCast(cast).isOk()).toBe(true);
+    expect(subject()).toEqual([[root, cast]]);
+
+    const castConflict = await Factories.Cast.create(
+      {
+        message: {
+          index: 1,
+          prevHash: root.hash,
+          rootBlock: root.message.rootBlock,
+          username: 'alice',
+          signedAt: root.message.signedAt + 1,
+        },
+      },
+      { transient: { privateKey: alicePrivateKey } }
+    );
+
+    const result = engine.addCast(castConflict);
+    expect(result._unsafeUnwrapErr()).toBe('addCast: invalid message');
+    expect(subject()).toEqual([[root, cast]]);
+  });
+
+  test('fails if prevHash does not match the previous message hash', async () => {
+    const castInvalidPrevHash = JSON.parse(JSON.stringify(cast)) as Cast;
+    castInvalidPrevHash.message.prevHash = Faker.datatype.hexaDecimal(64).toLowerCase();
+
+    const result = engine.addCast(castInvalidPrevHash);
+    expect(result._unsafeUnwrapErr()).toBe('addCast: invalid message');
+    expect(subject()).toEqual([[root]]);
+  });
+
+  test('fails if the timestamp was older than the previous message timestamp', async () => {
+    const castInvalidSignedAt = JSON.parse(JSON.stringify(cast)) as Cast;
+    castInvalidSignedAt.message.signedAt = cast.message.signedAt - 1;
+
+    const result = engine.addCast(castInvalidSignedAt);
+    expect(result._unsafeUnwrapErr()).toBe('addCast: invalid message');
+    expect(subject()).toEqual([[root]]);
+  });
+
+  test('fails if the username does not match the previous value', async () => {
+    // TODO: this might be better suited for a unit test because it is dependent on so much state above.
+  });
+
+  test('fails if the signer does not match the previous message signer', async () => {
+    // We change the signer by creating a new cast with all the same parameters, except the private key.
+    // Faker will automatically generate a keypair, which is used as the signer and to create the signature.
+    const castInvalidSigner = await Factories.Cast.create({
+      message: {
+        index: 1,
+        prevHash: root.hash,
+        rootBlock: root.message.rootBlock,
+        username: 'alice',
+        signedAt: root.message.signedAt + 1,
+      },
+    });
+
+    const result = engine.addCast(castInvalidSigner);
+    expect(result._unsafeUnwrapErr()).toBe('addCast: invalid message');
+    expect(subject()).toEqual([[root]]);
+  });
+
+  test('fails if the signature is invalid', async () => {
+    const castInvalidSignature = JSON.parse(JSON.stringify(cast)) as Cast;
+    castInvalidSignature.signature =
+      '0x52afdda1d6701e29dcd91dea5539c32cdaa2227de257bc0784b1da04be5be32e6a92c934b5d20dd2cb2989f814e74de6b9e7bc1da130543a660822023f9fd0e91c';
+
+    const result = engine.addCast(castInvalidSignature);
+    expect(result._unsafeUnwrapErr()).toBe('addCast: invalid message');
+    expect(subject()).toEqual([[root]]);
+  });
+
+  /** Cast New */
+  test('fails if _text is greater than 280 chars', async () => {
+    const castLongText = await Factories.Cast.create(
+      {
+        message: {
+          index: 1,
+          prevHash: root.hash,
+          rootBlock: root.message.rootBlock,
+          username: 'alice',
+          signedAt: root.message.signedAt + 1,
+          body: {
+            _text: 'a'.repeat(281),
+          },
+        },
+      },
+      { transient: { privateKey: alicePrivateKey } }
+    );
+    const result = engine.addCast(castLongText);
+
+    expect(result.isOk()).toBe(false);
+    expect(result._unsafeUnwrapErr()).toBe('addCast: invalid message');
+    expect(subject()).toEqual([[root]]);
+  });
+
+  test('fails if the _text was not hashed correctly', async () => {
+    const castInvalidTextHash = await Factories.Cast.create(
+      {
+        message: {
+          index: 1,
+          prevHash: root.hash,
+          rootBlock: root.message.rootBlock,
+          username: 'alice',
+          signedAt: root.message.signedAt + 1,
+          body: {
+            _text: 'hello world!',
+            textHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+          },
+        },
+      },
+      { transient: { privateKey: alicePrivateKey } }
+    );
+    const result = engine.addCast(castInvalidTextHash);
+
+    expect(result.isOk()).toBe(false);
+    expect(result._unsafeUnwrapErr()).toBe('addCast: invalid message');
+    expect(subject()).toEqual([[root]]);
+  });
+
+  // TODO: test that the attachement object is correctly structured
+
+  test('fails if there are more than two attachments', async () => {
+    const castThreeAttachments = await Factories.Cast.create(
+      {
+        message: {
+          index: 1,
+          prevHash: root.hash,
+          rootBlock: root.message.rootBlock,
+          username: 'alice',
+          signedAt: root.message.signedAt + 1,
+          body: {
+            _attachments: { items: ['a', 'b', 'c'] },
+          },
+        },
+      },
+      { transient: { privateKey: alicePrivateKey } }
+    );
+
+    const result = engine.addCast(castThreeAttachments);
+    expect(result._unsafeUnwrapErr()).toBe('addCast: invalid message');
+    expect(subject()).toEqual([[root]]);
+  });
+
+  test('fails if _attachments was not hashed correctly', async () => {
+    const castInvalidAttachmentHash = await Factories.Cast.create(
+      {
+        message: {
+          index: 1,
+          prevHash: root.hash,
+          rootBlock: root.message.rootBlock,
+          username: 'alice',
+          signedAt: root.message.signedAt + 1,
+          body: {
+            _attachments: { items: ['a', 'b'] },
+            attachmentsHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+          },
+        },
+      },
+      { transient: { privateKey: alicePrivateKey } }
+    );
+
+    const result = engine.addCast(castInvalidAttachmentHash);
+    expect(result._unsafeUnwrapErr()).toBe('addCast: invalid message');
+    expect(subject()).toEqual([[root]]);
+  });
+
+  test('succeeds if a cast-new is added', async () => {
+    expect(engine.addCast(cast).isOk()).toBe(true);
+    expect(subject()).toEqual([[root, cast]]);
+  });
+
+  test('succeeds if a message is added without the text', async () => {
+    const castNoText = JSON.parse(JSON.stringify(cast));
+    castNoText.message.body._text = undefined;
+
+    expect(engine.addCast(castNoText).isOk()).toBe(true);
+    expect(subject()).toEqual([[root, castNoText]]);
+  });
+
+  /** Cast Delete */
+  // test('fails if uri is invalid', async () => {});
+  // test('adds a cast-delete correctly and deletes cast text if known', async () => {});
+
+  test('adds a cast-delete correctly and does nothing if unknown', async () => {
+    expect(engine.addCast(cast).isOk()).toBe(true);
+
+    const castDelete = await Factories.CastDelete.create(
+      {
+        message: {
+          index: 2,
+          prevHash: cast.hash,
+          rootBlock: root.message.rootBlock,
+          username: 'alice',
+          signedAt: cast.message.signedAt + 1,
+        },
+      },
+      { transient: { privateKey: alicePrivateKey } }
+    );
+
+    const result = engine.addCast(castDelete);
+    expect(result.isOk()).toBe(true);
+    expect(subject()).toEqual([[root, cast, castDelete]]);
+  });
+
+  /** Cast Recast */
+  // test('fails-recast if uri is invalid', async () => {});
+
+  test('adds a cast-recast correctly', async () => {
+    expect(engine.addCast(cast).isOk()).toBe(true);
+
+    const castRecast = await Factories.CastRecast.create(
+      {
+        message: {
+          index: 2,
+          prevHash: cast.hash,
+          rootBlock: root.message.rootBlock,
+          username: 'alice',
+          signedAt: cast.message.signedAt + 1,
+        },
+      },
+      { transient: { privateKey: alicePrivateKey } }
+    );
+
+    expect(engine.addCast(castRecast).isOk()).toBe(true);
+    expect(subject()).toEqual([[root, cast, castRecast]]);
+  });
+
+  /** Other  */
+  test('fails to add a root, reaction or follow when passed in here', async () => {
+    expect(engine.addCast(root as unknown as Cast).isOk()).toBe(false);
+    expect(subject()).toEqual([[root]]);
+    // TODO: Add reactions and follows once implemented.
+  });
+
+  /** Signer Changes */
+  // Casts can be added even after the signer for a root changes.
+});
+
+// TODO: Mixed chain test (try adding a cast and then a reaction)
+// TODO: What if you get a message once with text and without text? What do you accept?
+// TODO: What if you receive the delete in chain B and then the full Cast later in chain A?
+// TODO: Strict mode for clients.
+// TODO: URI Validation
