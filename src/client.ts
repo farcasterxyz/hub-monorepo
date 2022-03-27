@@ -54,14 +54,14 @@ class Client {
     const index = prevCast.message.index + 1;
     const prevHash = prevCast.hash;
 
-    const _attachments = { items: [] };
+    const _embed = { items: [] };
 
     const item = {
       message: {
         body: {
-          _attachments,
+          _embed,
           _text: text,
-          attachmentsHash: hashFCObject(_attachments),
+          embedHash: hashFCObject(_embed),
           textHash: hashString(text),
           schema,
         },

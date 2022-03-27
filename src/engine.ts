@@ -196,15 +196,11 @@ class Engine {
     this._castChains = new Map();
   }
 
-  resetUsers(): void {
+  resetSigners(): void {
     this._users = new Map();
   }
 
   private validateMessageChain(message: SignedMessage, prevMessage: SignedMessage): boolean {
-    // Must be the same type as the previous message.
-    // If this is a cast, then previous message must be a cast or root type.
-    // TODO: If the previous mesage is a root, check that the rootBlock is set correctly.
-
     if (isCast(message)) {
       if (isRoot(prevMessage) && prevMessage.message.body.chainType !== 'cast') {
         return false;
@@ -297,7 +293,7 @@ class Engine {
   private validateCast(cast: Cast): boolean {
     if (isCastNew(cast)) {
       const text = cast.message.body._text;
-      const attachments = cast.message.body._attachments;
+      const embed = cast.message.body._embed;
 
       if (text) {
         const computedTextHash = utils.keccak256(utils.toUtf8Bytes(text));
@@ -310,13 +306,13 @@ class Engine {
         }
       }
 
-      if (attachments) {
-        const computedAttachmentsHash = hashFCObject(attachments);
-        if (cast.message.body.attachmentsHash !== computedAttachmentsHash) {
+      if (embed) {
+        const computedEmbedHash = hashFCObject(embed);
+        if (cast.message.body.embedHash !== computedEmbedHash) {
           return false;
         }
 
-        if (attachments.items.length > 2) {
+        if (embed.items.length > 2) {
           return false;
         }
       }

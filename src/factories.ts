@@ -1,7 +1,7 @@
 import { Factory } from 'fishery';
 import Faker from 'faker';
 import { ethers } from 'ethers';
-import { CastNew, CastDeleteMessageBody, Root, SignedMessage, CastRecast, CastDelete } from '~/types';
+import { CastNew, Root, CastRecast, CastDelete } from '~/types';
 import { hashMessage, hashFCObject, hashString, sign } from '~/utils';
 
 /**
@@ -25,17 +25,17 @@ export const Factories = {
       return castProps;
     });
 
-    const text = Faker.lorem.sentence(2);
-    const attachments = { items: [] };
+    const _embed = { items: [] };
+    const _text = Faker.lorem.sentence(2);
 
     return {
       message: {
         body: {
-          _attachments: attachments,
-          _text: text,
-          attachmentsHash: hashFCObject(attachments),
+          _embed,
+          _text,
+          embedHash: hashFCObject(_embed),
           schema: 'farcaster.xyz/schemas/v1/cast-new' as const,
-          textHash: hashString(text),
+          textHash: hashString(_text),
         },
         index: Faker.datatype.number(),
         prevHash: Faker.datatype.hexaDecimal(64),

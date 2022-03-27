@@ -80,7 +80,7 @@ describe('addRoot', () => {
 
   beforeEach(() => {
     engine.resetChains();
-    engine.resetUsers();
+    engine.resetSigners();
 
     const aliceRegistrationSignerChange = {
       blockNumber: 99,
@@ -371,6 +371,8 @@ describe('addCast', () => {
       },
       { transient: { privateKey: alicePrivateKey } }
     );
+
+    engine.resetSigners();
   });
 
   // Every test should start with a valid signer and root for alice's chain.
@@ -390,24 +392,15 @@ describe('addCast', () => {
 
   /** Signed Chain Test */
 
-  test('fails if it the signer is unknown', async () => {
-    engine.resetChains();
-    engine.resetUsers();
+  test('fails if the signer is unknown', async () => {
+    engine.resetSigners();
 
     const result = engine.addCast(cast);
     expect(result._unsafeUnwrapErr()).toBe('addCast: unknown user');
-    expect(subject()).toEqual([]);
+    expect(subject()).toEqual([[root]]);
   });
 
-  test('fails if the signed chain root is missing', async () => {
-    engine.resetChains();
-
-    const result = engine.addCast(cast);
-    expect(result._unsafeUnwrapErr()).toBe('addCast: unknown chain');
-    expect(subject()).toEqual([]);
-  });
-
-  test('fails if the signed chain root is missing, even when other roots are present', async () => {
+  test('fails if the root of the signed chain is missing', async () => {
     engine.resetChains();
 
     // Add a new root with a different block number.
@@ -457,7 +450,7 @@ describe('addCast', () => {
 
     // Index too low
     const castInvalidIdxLow = JSON.parse(JSON.stringify(cast)) as Cast;
-    castInvalidIdxLow.message.index += 1;
+    castInvalidIdxLow.message.index -= 1;
 
     const resultLow = engine.addCast(castInvalidIdxLow);
     expect(resultLow._unsafeUnwrapErr()).toBe('addCast: invalid message');
@@ -597,8 +590,8 @@ describe('addCast', () => {
 
   // TODO: test that the attachement object is correctly structured
 
-  test('fails if there are more than two attachments', async () => {
-    const castThreeAttachments = await Factories.Cast.create(
+  test('fails if there are more than two embeds', async () => {
+    const castThreeEmbeds = await Factories.Cast.create(
       {
         message: {
           index: 1,
@@ -607,19 +600,19 @@ describe('addCast', () => {
           username: 'alice',
           signedAt: root.message.signedAt + 1,
           body: {
-            _attachments: { items: ['a', 'b', 'c'] },
+            _embed: { items: ['a', 'b', 'c'] },
           },
         },
       },
       { transient: { privateKey: alicePrivateKey } }
     );
 
-    const result = engine.addCast(castThreeAttachments);
+    const result = engine.addCast(castThreeEmbeds);
     expect(result._unsafeUnwrapErr()).toBe('addCast: invalid message');
     expect(subject()).toEqual([[root]]);
   });
 
-  test('fails if _attachments was not hashed correctly', async () => {
+  test('fails if _embed was not hashed correctly', async () => {
     const castInvalidAttachmentHash = await Factories.Cast.create(
       {
         message: {
@@ -629,8 +622,8 @@ describe('addCast', () => {
           username: 'alice',
           signedAt: root.message.signedAt + 1,
           body: {
-            _attachments: { items: ['a', 'b'] },
-            attachmentsHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+            _embed: { items: ['a', 'b'] },
+            embedHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
           },
         },
       },
@@ -710,12 +703,20 @@ describe('addCast', () => {
     // TODO: Add reactions and follows once implemented.
   });
 
-  /** Signer Changes */
-  // Casts can be added even after the signer for a root changes.
+  test('succeeds even after receiving a signer change event', async () => {
+    const signerChange2 = {
+      blockNumber: 150,
+      blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+      logIndex: 0,
+      address: aliceAddress,
+    };
+
+    engine.addSignerChange('alice', signerChange2);
+
+    expect(engine.addCast(cast).isOk()).toBe(true);
+    expect(subject()).toEqual([[root, cast]]);
+    // TODO: Add reactions and follows once implemented.
+  });
 });
 
 // TODO: Mixed chain test (try adding a cast and then a reaction)
-// TODO: What if you get a message once with text and without text? What do you accept?
-// TODO: What if you receive the delete in chain B and then the full Cast later in chain A?
-// TODO: Strict mode for clients.
-// TODO: URI Validation
