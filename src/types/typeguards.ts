@@ -1,24 +1,24 @@
 import * as FC from '~/types';
 
-export function isRoot(msg: FC.SignedMessage): msg is FC.SignedMessage<FC.RootMessageBody> {
-  const body = (msg as FC.SignedMessage<FC.RootMessageBody>).message?.body;
-  return body && body.schema === 'farcaster.xyz/schemas/v1/root' && !!body.blockHash && !!body.prevRootBlockHash;
+export function isRoot(msg: FC.Message): msg is FC.Message<FC.RootMessageBody> {
+  const body = (msg as FC.Message<FC.RootMessageBody>).data?.body;
+  return body && body.schema === 'farcaster.xyz/schemas/v1/root' && !!body.blockHash;
 }
 
-export function isCast(msg: FC.SignedMessage): msg is FC.Cast {
+export function isCast(msg: FC.Message): msg is FC.Cast {
   return isCastNew(msg) || isCastDelete(msg) || isCastRecast(msg);
 }
-export function isCastNew(msg: FC.SignedMessage): msg is FC.SignedMessage<FC.CastNewMessageBody> {
-  const body = (msg as FC.SignedMessage<FC.CastNewMessageBody>).message?.body;
-  return body && body.schema === 'farcaster.xyz/schemas/v1/cast-new' && !!body.textHash && !!body.embedHash;
+export function isCastNew(msg: FC.Message): msg is FC.Message<FC.CastShortMessageBody> {
+  const body = (msg as FC.Message<FC.CastShortMessageBody>).data?.body;
+  return body && body.schema === 'farcaster.xyz/schemas/v1/cast-short' && !!body.text && !!body.embed;
 }
 
-export function isCastDelete(msg: FC.SignedMessage): msg is FC.SignedMessage<FC.CastDeleteMessageBody> {
-  const body = (msg as FC.SignedMessage<FC.CastDeleteMessageBody>).message?.body;
-  return body && body.schema === 'farcaster.xyz/schemas/v1/cast-delete' && !!body.targetCastUri;
+export function isCastDelete(msg: FC.Message): msg is FC.Message<FC.CastDeleteMessageBody> {
+  const body = (msg as FC.Message<FC.CastDeleteMessageBody>).data?.body;
+  return body && body.schema === 'farcaster.xyz/schemas/v1/cast-delete' && !!body.targetHash;
 }
 
-export function isCastRecast(msg: FC.SignedMessage): msg is FC.SignedMessage<FC.CastRecastMessageBody> {
-  const body = (msg as FC.SignedMessage<FC.CastRecastMessageBody>).message?.body;
+export function isCastRecast(msg: FC.Message): msg is FC.Message<FC.CastRecastMessageBody> {
+  const body = (msg as FC.Message<FC.CastRecastMessageBody>).data?.body;
   return body && body.schema === 'farcaster.xyz/schemas/v1/cast-recast' && !!body.targetCastUri;
 }

@@ -2,7 +2,6 @@ import { exit } from 'process';
 import Client from '~/client';
 import Debugger from '~/debugger';
 import FCNode, { InstanceName } from '~/node';
-import { isCast, isRoot } from '~/types/typeguards';
 import Faker from 'faker';
 
 // 1. Create 5 Farcaster nodes
@@ -47,25 +46,19 @@ for (const node of nodeList.values()) {
 
 // 5. Send two messages, sequentially to the node.
 console.log('Farcaster Client: @alice is starting a new chain');
-const m1 = client.generateRoot(signerChange.blockNumber, signerChange.blockHash);
-knightNode.addRoot(m1);
+const root1 = client.generateRoot(signerChange.blockNumber, signerChange.blockHash);
+knightNode.addRoot(root1);
 
-let lastMsg = knightNode.getLastMessage(client.username);
-if (lastMsg && isRoot(lastMsg)) {
-  console.log('Farcaster Client: @alice is casting one message');
-  const m2 = client.generateCast('Hello, world!', lastMsg);
-  knightNode.addCast(m2);
-}
+console.log('Farcaster Client: @alice is casting one message');
+const m2 = client.generateCast('Hello, world!', root1);
+knightNode.addCast(m2);
 
 // 6. Send multiple messages to the node.
 console.log('Farcaster Client: @alice is casting two new messages');
-lastMsg = knightNode.getLastMessage(client.username);
-if (lastMsg && isCast(lastMsg)) {
-  const m3 = client.generateCast("I'm a cast!", lastMsg);
-  const m4 = client.generateCast('On another chain!', m3);
-  const chain = [m3, m4];
-  knightNode.addChain(chain);
-}
+const m3 = client.generateCast("I'm a cast!", root1);
+knightNode.addCast(m3);
+const m4 = client.generateCast('On another chain!', root1);
+knightNode.addCast(m4);
 
 // 7. Start syncing all nodes at random intervals.
 for (const node of nodeList.values()) {
@@ -76,7 +69,14 @@ setInterval(() => {
   Debugger.printState();
 }, 5_000);
 
-// 8. @alice changes her address and starts a new chain.
+// 8. @alice deletes a cast
+setTimeout(() => {
+  console.log('Farcaster Client: @alice is deleting her last cast');
+  const d1 = client.generateCastDelete(m3, root1);
+  knightNode.addCast(d1);
+}, 30_000);
+
+// 9. @alice changes her address and starts a new chain.
 setTimeout(() => {
   console.log('Farcaster Client: @alice is changing signers');
   const client2 = new Client('alice');
@@ -93,6 +93,6 @@ setTimeout(() => {
   }
 
   console.log('Farcaster Client: @alice is starting a new chain');
-  const b1 = client2.generateRoot(signerChange.blockNumber, signerChange.blockHash, m1.message.body.blockHash);
+  const b1 = client2.generateRoot(signerChange.blockNumber, signerChange.blockHash);
   knightNode.addRoot(b1);
-}, 30_000);
+}, 60_000);
