@@ -2,7 +2,6 @@ import { exit } from 'process';
 import Client from '~/client';
 import Debugger from '~/debugger';
 import FCNode, { InstanceName } from '~/node';
-import { isCast, isRoot } from '~/types/typeguards';
 import Faker from 'faker';
 
 // 1. Create 5 Farcaster nodes
@@ -46,26 +45,20 @@ for (const node of nodeList.values()) {
 }
 
 // 5. Send two messages, sequentially to the node.
-console.log('Farcaster Client: @alice is starting a new chain');
-const m1 = client.generateRoot(signerChange.blockNumber, signerChange.blockHash);
-knightNode.addRoot(m1);
+console.log('FCClient: @alice is broadcasting a new root');
+const root1 = client.makeRoot(signerChange.blockNumber, signerChange.blockHash);
+knightNode.addRoot(root1);
 
-let lastMsg = knightNode.getLastMessage(client.username);
-if (lastMsg && isRoot(lastMsg)) {
-  console.log('Farcaster Client: @alice is casting one message');
-  const m2 = client.generateCast('Hello, world!', lastMsg);
-  knightNode.addCast(m2);
-}
+console.log('FCClient: @alice is casting a message');
+const cs1 = client.makeCastShort('Hello, world!', root1);
+knightNode.addCast(cs1);
 
 // 6. Send multiple messages to the node.
-console.log('Farcaster Client: @alice is casting two new messages');
-lastMsg = knightNode.getLastMessage(client.username);
-if (lastMsg && isCast(lastMsg)) {
-  const m3 = client.generateCast("I'm a cast!", lastMsg);
-  const m4 = client.generateCast('On another chain!', m3);
-  const chain = [m3, m4];
-  knightNode.addChain(chain);
-}
+console.log('FCClient: @alice is casting two messages');
+const cs2 = client.makeCastShort('One pack of cookies please', root1);
+knightNode.addCast(cs2);
+const cs3 = client.makeCastShort('Another one!', root1);
+knightNode.addCast(cs3);
 
 // 7. Start syncing all nodes at random intervals.
 for (const node of nodeList.values()) {
@@ -76,9 +69,16 @@ setInterval(() => {
   Debugger.printState();
 }, 5_000);
 
-// 8. @alice changes her address and starts a new chain.
+// 8. @alice deletes a cast
 setTimeout(() => {
-  console.log('Farcaster Client: @alice is changing signers');
+  console.log('FCClient: @alice is deleting a cast');
+  const cd1 = client.makeCastDelete(cs2, root1);
+  knightNode.addCast(cd1);
+}, 30_000);
+
+// 9. @alice changes her address and issues a new root.
+setTimeout(() => {
+  console.log('FCClient: @alice is changing signers');
   const client2 = new Client('alice');
 
   const signerChange = {
@@ -92,7 +92,7 @@ setTimeout(() => {
     node.engine.addSignerChange('alice', signerChange);
   }
 
-  console.log('Farcaster Client: @alice is starting a new chain');
-  const b1 = client2.generateRoot(signerChange.blockNumber, signerChange.blockHash, m1.message.body.blockHash);
+  console.log('FCClient: @alice is starting a new chain');
+  const b1 = client2.makeRoot(signerChange.blockNumber, signerChange.blockHash);
   knightNode.addRoot(b1);
-}, 30_000);
+}, 60_000);

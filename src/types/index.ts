@@ -1,39 +1,151 @@
 /**
- * A SignedMessage is a generic type that represents any cryptographically signed Message on Farcaster
+ * Message is a generic type that represents any cryptographically signed Message on Farcaster
  *
- * @message - the message that is being signed.
+ * @data - the data that is being signed.
  * @hash - the keccak256 hash of the message.
- * @schema - the schema of the message.
  * @signature - the ecdsa signature of the hash of the message.
  * @signer - the ethereum address whose private key was used to create the signature
  */
-export type SignedMessage<T = MessageBody> = {
+export type Message<T = MessageBody> = {
+  data: Data<T>;
   hash: string;
-  message: Message<T>;
   signature: string;
   signer: string;
 };
 
 /**
- * A Message is a generic type that represents any unsigned Message on Farcaster.
+ * Data is a generic type that holds the part of the message that is going to be signed.
  *
- * @body - the body of the message, implemented by the specific interface.
- * @prevHash - the hash of the previous message
- * @rootBlock - the block number of the Ethereum block in the root message.
- * @index - the index of the message in the SignedChain, which functions as a Lamport timestamp.
- * @signedAt - the unix timestamp of when the message was signed
- * @username - the Farcaster username of the user that signed the message.
+ * @body - the body of the message which is implemented by the specific type
+ * @rootBlock - the block number of the ethereum block in the root
+ * @signedAt - the unix timestamp at which the message was signed
+ * @username - the farcaster username owned by the signer at the time of signature
  */
-type Message<T = MessageBody> = {
+type Data<T = MessageBody> = {
   body: T;
-  prevHash: string;
   rootBlock: number;
-  index: number;
   signedAt: number;
   username: string;
 };
 
 type MessageBody = RootMessageBody | CastMessageBody | CastRecastMessageBody | ReactionMesageBody | FollowMessageBody;
+
+// ===========================
+//  Root Types
+// ===========================
+
+/** A Root Message */
+export type Root = Message<RootMessageBody>;
+
+/**
+ * A RootMessageBody is the first message in every signed chain, which must point to a unique, valid Ethereum block for ordering purposes.
+ *
+ * @blockHash - the hash of the ETH block from message.rootBlock
+ */
+export type RootMessageBody = {
+  blockHash: string;
+  schema: 'farcaster.xyz/schemas/v1/root';
+};
+
+// ===========================
+//  Cast Types
+// ===========================
+
+/** A Cast Message */
+export type Cast = Message<CastMessageBody>;
+export type CastShort = Message<CastShortMessageBody>;
+export type CastRecast = Message<CastRecastMessageBody>;
+export type CastDelete = Message<CastDeleteMessageBody>;
+
+export type CastMessageBody = CastShortMessageBody | CastDeleteMessageBody | CastRecastMessageBody;
+
+/**
+ * A CastShortMessageBody represents a new, short-text public broadcast from a user.
+ *
+ * @text - the text of the Cast
+ * @embed -
+ * @schema -
+ * @targetUri - the object that this Cast is replying to.
+ */
+export type CastShortMessageBody = {
+  embed: Embed;
+  text: string;
+  schema: 'farcaster.xyz/schemas/v1/cast-short';
+  targetUri?: URI;
+};
+
+type Embed = {
+  items: URI[];
+};
+
+/**
+ * A CastDeleteMessageBody indicates that a previous Cast should be removed from the feed.
+ *
+ * @targetHash - the hash of the cast that is beign deleted.
+ */
+export type CastDeleteMessageBody = {
+  // TODO: is there any benefit to making this a URI, like a recast?
+  targetHash: string;
+  schema: 'farcaster.xyz/schemas/v1/cast-delete';
+};
+
+/**
+ * A CastRecastMessageBody indicates that a Cast should be re-displayed in the user's feed.
+ *
+ * @targetCastUri - the cast that is to be recast
+ */
+export type CastRecastMessageBody = {
+  targetCastUri: FarcasterURI;
+  schema: 'farcaster.xyz/schemas/v1/cast-recast';
+};
+
+//  ===========================
+//  Reaction Types
+//  ===========================
+
+/** A Reaction Message */
+export type Reaction = Message<ReactionMesageBody>;
+
+/**
+ * A ReactionMessageBody represents the addition or removal of a reaction on an Object.
+ *
+ * @active - whether the reaction is active or not.
+ * @emoji - the unicode character that represents the reaction.
+ * @targetUri - the object that is being reacted to.
+ * @schema -
+ */
+export type ReactionMesageBody = {
+  active: boolean;
+  emoji: string;
+  targetUri: URI;
+  schema: 'farcaster.xyz/schemas/v1/reaction';
+};
+
+/** An ordered array of hash-linked and signed Reactions starting with a Root */
+export type SignedReactionChain = [root: Message<RootMessageBody>, ...casts: Message<ReactionMesageBody>[]];
+
+/** An ordered array of hash-linked and signed Reactions */
+export type SignedReactionChainFragment = Message<ReactionMesageBody>[];
+
+//  ===========================
+//  Follow Types
+//  ===========================
+
+/** A Follow Message */
+export type Follow = Message<FollowMessageBody>;
+
+/**
+ * A FollowMessage represents the addition or removal of a follow on a username.
+ *
+ * @active - whether the reaction is active or not.
+ * @targetUri - the user that is being followed. (e.g. farcaster://alice)
+ * @schema -
+ */
+export type FollowMessageBody = {
+  active: boolean;
+  targetUri: FarcasterURI;
+  schema: 'farcaster.xyz/schemas/v1/follow';
+};
 
 // ===========================
 //  URI Types
@@ -54,140 +166,3 @@ type FarcasterURI = string;
 type ChainURI = string;
 
 type HTTPURI = string;
-
-// ===========================
-//  Root Types
-// ===========================
-
-/** A Root Message */
-export type Root = SignedMessage<RootMessageBody>;
-
-/**
- * A RootMessageBody is the first message in every signed chain, which must point to a unique, valid Ethereum block for ordering purposes.
- *
- * @blockHash - the hash of the ETH block from message.rootBlock
- * @prevRootBlockHash - the hash of the ETH block from the previous root message (or 0x0 if none)
- * @prevRootLastHash - the hash of the last message to include from the previous SignedChain (or 0x0 to include all)
- */
-export type RootMessageBody = {
-  blockHash: string;
-  chainType: ChainType;
-  prevRootBlockHash: string;
-  prevRootLastHash: string;
-  schema: 'farcaster.xyz/schemas/v1/root';
-};
-
-type ChainType = 'cast' | 'reaction' | 'follow';
-
-// ===========================
-//  Cast Types
-// ===========================
-
-/** A Cast Message */
-export type Cast = SignedMessage<CastMessageBody>;
-export type CastNew = SignedMessage<CastNewMessageBody>;
-export type CastRecast = SignedMessage<CastRecastMessageBody>;
-export type CastDelete = SignedMessage<CastDeleteMessageBody>;
-
-export type CastMessageBody = CastNewMessageBody | CastDeleteMessageBody | CastRecastMessageBody;
-
-/**
- * A CastNewMessageBody represents a new, short-text public broadcast from a user.
- *
- * @_text - the text of the Cast, the underscore prefix indicates that it is not hashed into the message.
- * @_embed - an array of up to 2 uris, the underscore prefix indicates that it is not hashed into the message.
- * @embedHash - calculated by joining embeds into a single string and hashing it with keccak256.
- * @targetUri - the object that this Cast is replying to.
- * @textHash - the keccak256 hash of the sText field which is hashed into the message.
- */
-export type CastNewMessageBody = {
-  _embed: Embed;
-  _text: string;
-  embedHash: string;
-  schema: 'farcaster.xyz/schemas/v1/cast-new';
-  targetUri?: URI;
-  textHash: string;
-};
-
-type Embed = {
-  items: URI[];
-};
-
-/**
- * A CastDeleteMessageBody indicates that a previous Cast should be removed from the feed.
- *
- * @targetCastUri - the CastNew that is being deleted.
- */
-export type CastDeleteMessageBody = {
-  targetCastUri: FarcasterURI;
-  schema: 'farcaster.xyz/schemas/v1/cast-delete';
-};
-
-/**
- * A CastRecastMessageBody indicates that a Cast should be re-displayed in the user's feed.
- *
- * @targetCastUri - the CastNew that is being re-displayed.
- */
-export type CastRecastMessageBody = {
-  targetCastUri: FarcasterURI;
-  schema: 'farcaster.xyz/schemas/v1/cast-recast';
-};
-
-/** An ordered array of hash-linked and signed Casts starting with a root message */
-export type SignedCastChain = [root: SignedMessage<RootMessageBody>, ...casts: SignedMessage<CastMessageBody>[]];
-
-/** An ordered array of hash-linked and signed Casts */
-export type SignedCastChainFragment = SignedMessage<CastMessageBody>[];
-
-//  ===========================
-//  Reaction Types
-//  ===========================
-
-/** A Reaction Message */
-export type Reaction = SignedMessage<ReactionMesageBody>;
-
-/**
- * A ReactionMessageBody represents the addition or removal of a reaction on an Object.
- *
- * @active - whether the reaction is active or not.
- * @emoji - the unicode character that represents the reaction.
- * @targetUri - the object that is being reacted to.
- * @type - 'reaction'
- */
-export type ReactionMesageBody = {
-  active: boolean;
-  emoji: string;
-  targetUri: URI;
-  schema: 'farcaster.xyz/schemas/v1/reaction';
-};
-
-/** An ordered array of hash-linked and signed Reactions starting with a Root */
-export type SignedReactionChain = [root: SignedMessage<RootMessageBody>, ...casts: SignedMessage<ReactionMesageBody>[]];
-
-/** An ordered array of hash-linked and signed Reactions */
-export type SignedReactionChainFragment = SignedMessage<ReactionMesageBody>[];
-
-//  ===========================
-//  Follow Types
-//  ===========================
-
-/** A Follow Message */
-export type Follow = SignedMessage<FollowMessageBody>;
-
-/**
- * A FollowMessage represents the addition or removal of a follow on a username.
- *
- * @active - whether the reaction is active or not.
- * @targetUri - the user that is being followed. (e.g. farcaster://alice)
- */
-export type FollowMessageBody = {
-  active: boolean;
-  targetUri: FarcasterURI;
-  schema: 'farcaster.xyz/schemas/v1/follow';
-};
-
-/** An ordered array of hash-linked and signed Follows starting with a Root */
-export type SignedFollowChain = [root: SignedMessage<RootMessageBody>, ...casts: SignedMessage<FollowMessageBody>[]];
-
-/** An ordered array of hash-linked and signed Follows */
-export type SignedFollowChainFragment = SignedMessage<FollowMessageBody>[];

@@ -1,15 +1,15 @@
 import { Factory } from 'fishery';
 import Faker from 'faker';
 import { ethers } from 'ethers';
-import { CastNew, Root, CastRecast, CastDelete } from '~/types';
-import { hashMessage, hashFCObject, hashString, sign } from '~/utils';
+import { CastShort, Root, CastRecast, CastDelete } from '~/types';
+import { hashMessage, sign } from '~/utils';
 
 /**
  * ProtocolFactories are used to construct valid Farcaster Protocol JSON objects.
  */
 export const Factories = {
   /** Generate a valid Cast with randomized properties */
-  Cast: Factory.define<CastNew, any, CastNew>(({ onCreate, transientParams }) => {
+  Cast: Factory.define<CastShort, any, CastShort>(({ onCreate, transientParams }) => {
     const { privateKey = Faker.datatype.hexaDecimal(64).toLowerCase() } = transientParams;
     const wallet = new ethers.Wallet(privateKey);
 
@@ -25,20 +25,16 @@ export const Factories = {
       return castProps;
     });
 
-    const _embed = { items: [] };
-    const _text = Faker.lorem.sentence(2);
+    const embed = { items: [] };
+    const text = Faker.lorem.sentence(2);
 
     return {
-      message: {
+      data: {
         body: {
-          _embed,
-          _text,
-          embedHash: hashFCObject(_embed),
-          schema: 'farcaster.xyz/schemas/v1/cast-new' as const,
-          textHash: hashString(_text),
+          embed,
+          text,
+          schema: 'farcaster.xyz/schemas/v1/cast-short' as const,
         },
-        index: Faker.datatype.number(),
-        prevHash: Faker.datatype.hexaDecimal(64),
         rootBlock: Faker.datatype.number(10_000),
         signedAt: Faker.time.recent(),
         username: Faker.name.firstName().toLowerCase(),
@@ -67,13 +63,11 @@ export const Factories = {
     });
 
     return {
-      message: {
+      data: {
         body: {
-          targetCastUri: 'farcaster://alice/cast/1', // TODO: Find some way to generate this.
+          targetHash: Faker.datatype.hexaDecimal(40).toLowerCase(),
           schema: 'farcaster.xyz/schemas/v1/cast-delete' as const,
         },
-        index: Faker.datatype.number(),
-        prevHash: Faker.datatype.hexaDecimal(64),
         rootBlock: Faker.datatype.number(10_000),
         signedAt: Faker.time.recent(),
         username: Faker.name.firstName().toLowerCase(),
@@ -102,13 +96,11 @@ export const Factories = {
     });
 
     return {
-      message: {
+      data: {
         body: {
           targetCastUri: 'farcaster://alice/cast/1', // TODO: Find some way to generate this.
           schema: 'farcaster.xyz/schemas/v1/cast-recast' as const,
         },
-        index: Faker.datatype.number(),
-        prevHash: Faker.datatype.hexaDecimal(64),
         rootBlock: Faker.datatype.number(10_000),
         signedAt: Faker.time.recent(),
         username: Faker.name.firstName().toLowerCase(),
@@ -137,16 +129,11 @@ export const Factories = {
     });
 
     return {
-      message: {
+      data: {
         body: {
           blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-          chainType: 'cast' as const,
-          prevRootBlockHash: '0x0',
-          prevRootLastHash: '0x0',
           schema: 'farcaster.xyz/schemas/v1/root' as const,
         },
-        index: 0,
-        prevHash: '0x0',
         rootBlock: Faker.datatype.number(10_000),
         signedAt: Date.now(),
         username: Faker.name.firstName().toLowerCase(),

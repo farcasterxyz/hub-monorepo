@@ -1,5 +1,5 @@
-import { Cast, CastNewMessageBody, Root, RootMessageBody, SignedMessage } from '~/types';
-import { hashFCObject, hashMessage, hashString, sign } from '~/utils';
+import { Root, RootMessageBody, Message, CastShortMessageBody, CastDeleteMessageBody, Cast } from '~/types';
+import { hashMessage, sign } from '~/utils';
 import { Wallet, utils } from 'ethers';
 
 class Client {
@@ -17,18 +17,13 @@ class Client {
     return this.wallet.address;
   }
 
-  generateRoot(ethBlockNum: number, ethblockHash: string, prevRootBlockHash?: string): SignedMessage<RootMessageBody> {
+  makeRoot(ethBlockNum: number, ethblockHash: string): Message<RootMessageBody> {
     const item = {
-      message: {
+      data: {
         body: {
           blockHash: ethblockHash,
-          chainType: 'cast' as const,
-          prevRootBlockHash: prevRootBlockHash || '0x0',
-          prevRootLastHash: '0x0',
           schema: 'farcaster.xyz/schemas/v1/root' as const,
         },
-        index: 0,
-        prevHash: '0x0',
         rootBlock: ethBlockNum,
         signedAt: Date.now(),
         username: this.username,
@@ -44,29 +39,50 @@ class Client {
     return item;
   }
 
-  generateCast(text: string, prevCast: Cast | Root): SignedMessage<CastNewMessageBody> {
-    const schema = 'farcaster.xyz/schemas/v1/cast-new' as const;
+  makeCastShort(text: string, root: Root): Message<CastShortMessageBody> {
+    const schema = 'farcaster.xyz/schemas/v1/cast-short' as const;
     const signedAt = Date.now();
     const signer = this.wallet.address;
 
-    // Reference the hash, index and rootBlock of the previous message.
-    const rootBlock = prevCast.message.rootBlock;
-    const index = prevCast.message.index + 1;
-    const prevHash = prevCast.hash;
+    const rootBlock = root.data.rootBlock;
 
-    const _embed = { items: [] };
+    const embed = { items: [] };
 
     const item = {
-      message: {
+      data: {
         body: {
-          _embed,
-          _text: text,
-          embedHash: hashFCObject(_embed),
-          textHash: hashString(text),
+          embed,
+          text: text,
           schema,
         },
-        index,
-        prevHash,
+        rootBlock,
+        signedAt,
+        username: this.username,
+      },
+      hash: '',
+      signature: '',
+      signer,
+    };
+
+    item.hash = hashMessage(item);
+    item.signature = sign(item.hash, this.signingKey);
+
+    return item;
+  }
+
+  makeCastDelete(targetCast: Cast, root: Root): Message<CastDeleteMessageBody> {
+    const schema = 'farcaster.xyz/schemas/v1/cast-delete' as const;
+    const signedAt = Date.now();
+    const signer = this.wallet.address;
+
+    const rootBlock = root.data.rootBlock;
+
+    const item = {
+      data: {
+        body: {
+          targetHash: targetCast.hash,
+          schema,
+        },
         rootBlock,
         signedAt,
         username: this.username,

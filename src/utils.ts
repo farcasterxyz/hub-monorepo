@@ -1,9 +1,9 @@
-import { SignedMessage } from '~/types';
+import { Message } from '~/types';
 import { utils } from 'ethers';
 import canonicalize from 'canonicalize';
 
-export const hashMessage = (item: SignedMessage): string => {
-  return hashFCObject(item.message);
+export const hashMessage = (item: Message): string => {
+  return hashFCObject(item.data);
 };
 
 /**
