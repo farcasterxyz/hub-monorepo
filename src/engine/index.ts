@@ -2,8 +2,8 @@ import { Cast, Root, RootMessageBody, Message } from '~/types';
 import { hashMessage } from '~/utils';
 import { utils } from 'ethers';
 import { ok, err, Result } from 'neverthrow';
-import { isCast, isCastDelete, isCastNew, isCastRecast, isRoot } from '~/types/typeguards';
-import CastSet from '~/set';
+import { isCast, isCastDelete, isCastShort, isCastRecast, isRoot } from '~/types/typeguards';
+import CastSet from '~/castSet';
 
 export interface getUserFingerprint {
   rootBlockNum: number;
@@ -35,9 +35,9 @@ class Engine {
     return this._users.get(username) || [];
   }
 
-  getUserFingerprint(): void {
-    return undefined;
-  }
+  /**
+   * Root Methods
+   */
 
   getRoot(username: string): Message<RootMessageBody> | undefined {
     return this._roots.get(username);
@@ -49,14 +49,12 @@ class Engine {
       return err('addRoot: invalid root');
     }
 
+    // TODO: verify that the block and hash are from a valid ethereum block.
+
     const validation = this.validateMessage(root);
     if (!validation.isOk()) {
       return validation;
     }
-
-    // TODO: verify that the block and hash are from a valid ethereum block.
-
-    // Now, check the merge rules to see if we can replace the previous root with this one.
 
     const username = root.data.username;
     const currentRoot = this._roots.get(username);
@@ -66,7 +64,6 @@ class Engine {
       return ok(undefined);
     }
 
-    // TODO: extract logic to helper.
     if (currentRoot.data.rootBlock < root.data.rootBlock) {
       this._roots.set(username, root);
       this._casts.set(username, new CastSet());
@@ -88,7 +85,6 @@ class Engine {
 
   /**
    * Cast Methods
-   *
    */
 
   getCast(username: string, hash: string): Cast | undefined {
@@ -126,7 +122,6 @@ class Engine {
         return err('addCast: unknown user');
       }
 
-      // TODO: this is probably a more graceful way to do this
       if (!this.validateMessage(cast).isOk()) {
         return this.validateMessage(cast);
       }
@@ -141,7 +136,7 @@ class Engine {
         return castSet.delete(cast);
       }
 
-      if (isCastNew(cast) || isCastRecast(cast)) {
+      if (isCastShort(cast) || isCastRecast(cast)) {
         return castSet.add(cast);
       }
 
@@ -289,7 +284,7 @@ class Engine {
   }
 
   private validateCast(cast: Cast): Result<void, string> {
-    if (isCastNew(cast)) {
+    if (isCastShort(cast)) {
       const text = cast.data.body.text;
       const embed = cast.data.body.embed;
 
@@ -302,7 +297,7 @@ class Engine {
       }
     }
 
-    // TODO: For delete cash, validate hash length.
+    // TODO: For delete cast, validate hash length.
 
     return ok(undefined);
   }

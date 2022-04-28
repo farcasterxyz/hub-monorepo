@@ -47,8 +47,8 @@ Our focus is on identifying problem in this area quickly by taking shortcuts in 
 - [x] **Roots** - implement consensus rules and unit tests for Roots
 - [x] **Registry Simulation** - logic and tests to handle new registrations and signer change events
 - [x] **Casts** - implement consensus rules and unit tests for Casts
-- [ ] **Reactions** - implement reaction chains similar to cast chains
-- [ ] **Network Simulations** - game out and design complex edge cases to try and break the network
+- [ ] **Reactions** - implement consensus rules and unit tests for reactions
+- [ ] **Network Simulations** - run complex edge cases on the network
 
 ### Phase II - Smart Contract Integration
 
@@ -56,7 +56,7 @@ Implement the remaining data structures, which at this point should just be exte
 
 - [ ] **Profile** - implement consensus rules and unit tests for profile data
 - [ ] **Verified Addresses** - implement consensus rules and unit tests for verified addresses
-- [ ] **Follows** - implement reaction chains similar to follows
+- [ ] **Follows** - implement consensus rules and unit tests for follows
 
 ### Phase III - Smart Contract Integration
 

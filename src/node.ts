@@ -22,7 +22,7 @@ class FCNode {
     this.peers.delete(this.name); // remove self from list of peers
   }
 
-  /** Sync chains with all peers at a random interval between 5 and 30 seconds */
+  /** Sync messages with all peers at a random interval between 5 and 30 seconds */
   async sync(): Promise<void> {
     setInterval(() => {
       this.peers?.forEach((peer) => {
@@ -107,12 +107,10 @@ class FCNode {
    * by peers, because they are less strict and this may cause divergent network states.
    */
 
-  /** Start a new chain for the user */
   addRoot(root: Root): Result<void, string> {
     return this.engine.addRoot(root);
   }
 
-  /** Merge a single message into the latest chain */
   addCast(Cast: Cast): Result<void, string> {
     return this.engine.addCast(Cast);
   }

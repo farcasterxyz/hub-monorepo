@@ -6,9 +6,9 @@ export function isRoot(msg: FC.Message): msg is FC.Message<FC.RootMessageBody> {
 }
 
 export function isCast(msg: FC.Message): msg is FC.Cast {
-  return isCastNew(msg) || isCastDelete(msg) || isCastRecast(msg);
+  return isCastShort(msg) || isCastDelete(msg) || isCastRecast(msg);
 }
-export function isCastNew(msg: FC.Message): msg is FC.Message<FC.CastShortMessageBody> {
+export function isCastShort(msg: FC.Message): msg is FC.Message<FC.CastShortMessageBody> {
   const body = (msg as FC.Message<FC.CastShortMessageBody>).data?.body;
   return body && body.schema === 'farcaster.xyz/schemas/v1/cast-short' && !!body.text && !!body.embed;
 }

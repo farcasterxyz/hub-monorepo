@@ -1,19 +1,19 @@
 import { Result, ok, err } from 'neverthrow';
 import { CastDeleteMessageBody, CastRecastMessageBody, CastShortMessageBody, Message } from '~/types';
 
-type TwoPhaseSetAddType = CastRecastMessageBody | CastShortMessageBody;
-type TwoPhaseSetDeleteType = CastDeleteMessageBody;
+type SetAddType = CastRecastMessageBody | CastShortMessageBody;
+type SetDeleteType = CastDeleteMessageBody;
 
 class CastSet {
-  private _adds: Map<string, Message<any>>;
-  private _deletes: Map<string, Message<any>>;
+  private _adds: Map<string, Message<SetAddType>>;
+  private _deletes: Map<string, Message<SetDeleteType>>;
 
   constructor() {
     this._adds = new Map();
     this._deletes = new Map();
   }
 
-  get(hash: string): Message<TwoPhaseSetAddType> | undefined {
+  get(hash: string): Message<SetAddType | SetDeleteType> | undefined {
     return this._adds.get(hash) || this._deletes.get(hash);
   }
 
@@ -25,7 +25,7 @@ class CastSet {
     return Array.from(this._deletes.keys());
   }
 
-  add(message: Message<TwoPhaseSetAddType>): Result<void, string> {
+  add(message: Message<SetAddType>): Result<void, string> {
     // TODO: Validate the type of message.
 
     if (this._deletes.get(message.hash)) {
@@ -40,7 +40,7 @@ class CastSet {
     return ok(undefined);
   }
 
-  delete(message: Message<TwoPhaseSetDeleteType>): Result<void, string> {
+  delete(message: Message<SetDeleteType>): Result<void, string> {
     // TODO: runtime type checks.
 
     const targetHash = message.data.body.targetHash;

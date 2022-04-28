@@ -1,5 +1,5 @@
 import { Factories } from '~/factories';
-import CastSet from '~/set';
+import CastSet from '~/castSet';
 import { CastDeleteMessageBody, CastShortMessageBody, Message } from '~/types';
 
 const set = new CastSet();

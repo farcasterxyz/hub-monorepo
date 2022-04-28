@@ -17,7 +17,7 @@ class Client {
     return this.wallet.address;
   }
 
-  generateRoot(ethBlockNum: number, ethblockHash: string): Message<RootMessageBody> {
+  makeRoot(ethBlockNum: number, ethblockHash: string): Message<RootMessageBody> {
     const item = {
       data: {
         body: {
@@ -39,7 +39,7 @@ class Client {
     return item;
   }
 
-  generateCast(text: string, root: Root): Message<CastShortMessageBody> {
+  makeCastShort(text: string, root: Root): Message<CastShortMessageBody> {
     const schema = 'farcaster.xyz/schemas/v1/cast-short' as const;
     const signedAt = Date.now();
     const signer = this.wallet.address;
@@ -70,7 +70,7 @@ class Client {
     return item;
   }
 
-  generateCastDelete(targetCast: Cast, root: Root): Message<CastDeleteMessageBody> {
+  makeCastDelete(targetCast: Cast, root: Root): Message<CastDeleteMessageBody> {
     const schema = 'farcaster.xyz/schemas/v1/cast-delete' as const;
     const signedAt = Date.now();
     const signer = this.wallet.address;

@@ -132,13 +132,8 @@ export const Factories = {
       data: {
         body: {
           blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-          chainType: 'cast' as const,
-          prevRootBlockHash: '0x0',
-          prevRootLastHash: '0x0',
           schema: 'farcaster.xyz/schemas/v1/root' as const,
         },
-        index: 0,
-        prevHash: '0x0',
         rootBlock: Faker.datatype.number(10_000),
         signedAt: Date.now(),
         username: Faker.name.firstName().toLowerCase(),

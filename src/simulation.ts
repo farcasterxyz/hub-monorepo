@@ -45,20 +45,20 @@ for (const node of nodeList.values()) {
 }
 
 // 5. Send two messages, sequentially to the node.
-console.log('Farcaster Client: @alice is starting a new chain');
-const root1 = client.generateRoot(signerChange.blockNumber, signerChange.blockHash);
+console.log('FCClient: @alice is broadcasting a new root');
+const root1 = client.makeRoot(signerChange.blockNumber, signerChange.blockHash);
 knightNode.addRoot(root1);
 
-console.log('Farcaster Client: @alice is casting one message');
-const m2 = client.generateCast('Hello, world!', root1);
-knightNode.addCast(m2);
+console.log('FCClient: @alice is casting a message');
+const cs1 = client.makeCastShort('Hello, world!', root1);
+knightNode.addCast(cs1);
 
 // 6. Send multiple messages to the node.
-console.log('Farcaster Client: @alice is casting two new messages');
-const m3 = client.generateCast("I'm a cast!", root1);
-knightNode.addCast(m3);
-const m4 = client.generateCast('On another chain!', root1);
-knightNode.addCast(m4);
+console.log('FCClient: @alice is casting two messages');
+const cs2 = client.makeCastShort('One pack of cookies please', root1);
+knightNode.addCast(cs2);
+const cs3 = client.makeCastShort('Another one!', root1);
+knightNode.addCast(cs3);
 
 // 7. Start syncing all nodes at random intervals.
 for (const node of nodeList.values()) {
@@ -71,14 +71,14 @@ setInterval(() => {
 
 // 8. @alice deletes a cast
 setTimeout(() => {
-  console.log('Farcaster Client: @alice is deleting her last cast');
-  const d1 = client.generateCastDelete(m3, root1);
-  knightNode.addCast(d1);
+  console.log('FCClient: @alice is deleting a cast');
+  const cd1 = client.makeCastDelete(cs2, root1);
+  knightNode.addCast(cd1);
 }, 30_000);
 
-// 9. @alice changes her address and starts a new chain.
+// 9. @alice changes her address and issues a new root.
 setTimeout(() => {
-  console.log('Farcaster Client: @alice is changing signers');
+  console.log('FCClient: @alice is changing signers');
   const client2 = new Client('alice');
 
   const signerChange = {
@@ -92,7 +92,7 @@ setTimeout(() => {
     node.engine.addSignerChange('alice', signerChange);
   }
 
-  console.log('Farcaster Client: @alice is starting a new chain');
-  const b1 = client2.generateRoot(signerChange.blockNumber, signerChange.blockHash);
+  console.log('FCClient: @alice is starting a new chain');
+  const b1 = client2.makeRoot(signerChange.blockNumber, signerChange.blockHash);
   knightNode.addRoot(b1);
 }, 60_000);
