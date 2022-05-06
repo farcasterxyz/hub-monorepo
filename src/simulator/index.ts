@@ -2,6 +2,8 @@ import Client from '~/client';
 import FCNode, { InstanceName } from '~/node';
 import Faker from 'faker';
 import Debugger from '~/debugger';
+import { Cast, Message, RootMessageBody } from '~/types';
+import { isRoot } from '~/types/typeguards';
 
 abstract class Simulator {
   nodes: Map<InstanceName, FCNode>;
@@ -9,8 +11,9 @@ abstract class Simulator {
   blockNumber: number;
   blockHash: string;
   name: string;
+  duration: number;
 
-  constructor(name: string) {
+  constructor(name: string, duration: number) {
     this.name = name;
     this.nodes = new Map();
     for (const name of FCNode.instanceNames) {
@@ -24,29 +27,38 @@ abstract class Simulator {
 
     this.blockNumber = 100;
     this.blockHash = Faker.datatype.hexaDecimal(64).toLowerCase();
+    this.duration = duration;
   }
 
-  run(duration: number) {
+  run() {
     Debugger.printSimulationStart(this.name);
-    this.runNodes(duration);
-    this.runClients(duration);
-    this.runBlockchain(duration);
+    this.runNodes();
+    this.runClients();
+    this.runBlockchain();
 
     return new Promise<void>((resolve) => {
       setTimeout(() => {
         Debugger.printSimulationEnd(this.name);
         resolve();
-      }, duration + 1);
+      }, this.duration + 1);
     });
   }
 
-  abstract runNodes(duration: number): void;
-  abstract runClients(duration: number): void;
-  abstract runBlockchain(duration: number): void;
+  abstract runNodes(): void;
+  abstract runClients(): void;
+  abstract runBlockchain(): void;
 
   stepBlockForward() {
     this.blockNumber++;
     this.blockHash = Faker.datatype.hexaDecimal(64).toLowerCase();
+  }
+
+  /** Pushes message to a node after optional delay */
+  broadcastToNode(message: Message<RootMessageBody> | Cast, node: FCNode, delay?: number) {
+    setTimeout(() => {
+      Debugger.printBroadcast(message, node);
+      isRoot(message) ? node.addRoot(message) : node.addCast(message);
+    }, delay || 0);
   }
 }
 

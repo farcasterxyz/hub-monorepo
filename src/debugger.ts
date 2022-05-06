@@ -61,7 +61,20 @@ const Debugger = {
   },
 
   printNodeSync: (node: FCNode): void => {
-    console.log(`${nodeEmoji} ${Debugger._padString(node.name.toLowerCase(), 6)} | syncing with peers `);
+    let peerStr = '';
+    let peerCounter = 0;
+
+    if (node.peers) {
+      for (const peer of node.peers.values()) {
+        if (peerCounter > 0) {
+          peerStr += ', ';
+        }
+        peerStr += peer.name.toLowerCase();
+        peerCounter++;
+      }
+    }
+
+    console.log(`${nodeEmoji} ${Debugger._padString(node.name.toLowerCase(), 6)} | syncing with ${peerStr} `);
   },
 
   printNodes: (nodes: NodeDirectory): void => {
