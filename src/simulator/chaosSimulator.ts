@@ -1,17 +1,21 @@
 import Client from '~/client';
 import Debugger from '~/debugger';
-import FCNode from '~/node';
 import Faker from 'faker';
-import { isRoot } from '~/types/typeguards';
-import { Cast, Message, RootMessageBody } from '~/types';
 import Simulator from '~/simulator';
+
+/**
+ * Chaos Simulator
+ *
+ * Clients send messages to random nodes in random order with randomzied delays. Nodes sync with other nodes every 10 seconds, but with a 33% chance
+ * of sync failure.
+ */
 
 class ChaosSimulator extends Simulator {
   constructor() {
-    super('ChaosSimulator');
+    super('ChaosSimulator', 120_000);
   }
 
-  async runBlockchain(duration: number) {
+  async runBlockchain() {
     const intervalId = setInterval(() => {
       this.stepBlockForward();
       Debugger.printNewBlock(this.blockNumber, this.blockHash);
@@ -19,10 +23,10 @@ class ChaosSimulator extends Simulator {
 
     setTimeout(() => {
       clearInterval(intervalId);
-    }, duration);
+    }, this.duration);
   }
 
-  async runNodes(duration: number) {
+  async runNodes() {
     Debugger.printNodes(this.nodes);
 
     for (const node of this.nodes.values()) {
@@ -31,7 +35,7 @@ class ChaosSimulator extends Simulator {
 
     const intervalId = setInterval(async () => {
       for (const node of this.nodes.values()) {
-        if (Math.random() < 0.25) {
+        if (Math.random() < 0.33) {
           await node.sync();
           Debugger.printNodeSync(node);
         }
@@ -42,7 +46,7 @@ class ChaosSimulator extends Simulator {
     setTimeout(() => {
       Debugger.printNodes(this.nodes);
       clearInterval(intervalId);
-    }, duration);
+    }, this.duration);
   }
 
   async runClients() {
@@ -56,8 +60,10 @@ class ChaosSimulator extends Simulator {
 
     // Create messages for clients and broadcast them at random
     Array.from(this.clients.values()).map((client) => {
-      const messages = this.generateHistory(client);
-      this.broadcast(messages);
+      const messages = this.generateMessages(client);
+      const nodes = Array.from(this.nodes.values());
+      const node = nodes[Math.floor(Math.random() * nodes.length)];
+      messages.map((message) => this.broadcastToNode(message, node, Math.random() * 60_000));
     });
   }
 
@@ -70,7 +76,7 @@ class ChaosSimulator extends Simulator {
     };
   }
 
-  generateHistory(client: Client) {
+  generateMessages(client: Client) {
     const root1 = client.makeRoot(this.blockNumber, this.blockHash);
     const cs1 = client.makeCastShort(Faker.lorem.words(3), root1);
     const cs2 = client.makeCastShort(Faker.lorem.words(3), root1);
@@ -78,21 +84,6 @@ class ChaosSimulator extends Simulator {
     const cd1 = client.makeCastDelete(cs2, root1);
     const cs4 = client.makeCastShort(Faker.lorem.words(3), root1);
     return [root1, cs1, cs2, cs3, cd1, cs4];
-  }
-
-  /** Given a set of messages and a client, determines which nodes should receive messages, when and in what order */
-  broadcast(messages: Message<any>[]) {
-    const nodes = Array.from(this.nodes.values());
-    const node = nodes[Math.floor(Math.random() * nodes.length)];
-    messages.map((message) => this.broadcastToNode(message, node, Math.random() * 60_000));
-  }
-
-  /** Pushes message to a node after optional delay */
-  private broadcastToNode(message: Message<RootMessageBody> | Cast, node: FCNode, delay?: number) {
-    setTimeout(() => {
-      Debugger.printBroadcast(message, node);
-      isRoot(message) ? node.addRoot(message) : node.addCast(message);
-    }, delay || 0);
   }
 }
 
