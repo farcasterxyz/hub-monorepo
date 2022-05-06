@@ -3,6 +3,8 @@ import { hashMessage, sign } from '~/utils';
 import { Wallet, utils } from 'ethers';
 
 class Client {
+  public static instanceNames = ['alice', 'bob'];
+
   wallet: Wallet;
   signingKey: utils.SigningKey;
   username: string;
