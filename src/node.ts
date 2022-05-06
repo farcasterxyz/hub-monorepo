@@ -6,10 +6,10 @@ import { Result } from 'neverthrow';
 class FCNode {
   public static instanceNames = ['Cook', 'Friar', 'Knight', 'Miller', 'Squire'] as const;
   // TODO: Replace with usernames fetched from the on-chain Registry.
-  public static usernames = ['alice'];
+  public static usernames = ['alice', 'bob'];
 
   name: InstanceName;
-  peers?: NodeList;
+  peers?: NodeDirectory;
   engine: Engine;
 
   constructor(name: InstanceName) {
@@ -17,21 +17,21 @@ class FCNode {
     this.engine = new Engine();
   }
 
-  setPeers(peers: NodeList): void {
+  setPeers(peers: NodeDirectory): void {
     this.peers = new Map(peers);
     this.peers.delete(this.name); // remove self from list of peers
   }
 
-  /** Sync messages with all peers at a random interval between 5 and 30 seconds */
+  /** Sync messages with all peers */
   async sync(): Promise<void> {
-    setInterval(() => {
-      this.peers?.forEach((peer) => {
-        FCNode.usernames.forEach((username) => {
-          this.syncUserWithPeer(username, peer);
-        });
-      });
-      console.log(`${this.name}: syncing with peers `);
-    }, Math.floor(Math.random() * 25_000) + 5_000);
+    this.peers?.forEach((peer) => this.syncWithPeer(peer));
+  }
+
+  /** Sync messages with a specific peer */
+  syncWithPeer(peer: FCNode): void {
+    FCNode.usernames.forEach((username) => {
+      this.syncUserWithPeer(username, peer);
+    });
   }
 
   /** Sync messages for a specific user with a specific peer */
@@ -116,7 +116,7 @@ class FCNode {
   }
 }
 
-export type NodeList = Map<InstanceName, FCNode>;
+export type NodeDirectory = Map<InstanceName, FCNode>;
 export type InstanceName = typeof FCNode.instanceNames[number];
 
 export default FCNode;
