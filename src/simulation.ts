@@ -13,8 +13,8 @@ const runSimulations = async () => {
   const splitSim = new SplitBrainSimulator();
   await splitSim.run();
 
-  const partAltSim = new SplitBrainAltSimulator();
-  await partAltSim.run();
+  const splitAltSim = new SplitBrainAltSimulator();
+  await splitAltSim.run();
 };
 
 runSimulations();

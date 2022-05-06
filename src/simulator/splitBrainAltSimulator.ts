@@ -115,9 +115,4 @@ class SplitBrainAltSimulator extends Simulator {
   }
 }
 
-/**
- * SplitBrain Simulator --
- *
- * Clients send a root message to all nodes, but send each subsequen
- */
 export default SplitBrainAltSimulator;
