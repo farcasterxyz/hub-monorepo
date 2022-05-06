@@ -197,7 +197,47 @@ describe('addRoot', () => {
       expect(engine.getCastAdds(username)).toEqual([]);
     });
 
-    // test('succeeds if the root block is identical but lexicographical hash value is greater', async () => {});
+    test('succeeds if the root block is identical but lexicographical hash value is lower', async () => {
+      const transient = { transient: { privateKey: alicePrivateKey } };
+
+      const signerChange = {
+        blockNumber: 99,
+        blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+        logIndex: 0,
+        address: aliceAddress,
+      };
+
+      engine.addSignerChange('bob', signerChange);
+
+      const root1 = await Factories.Root.create(
+        {
+          data: { rootBlock: 100, username: 'bob', signedAt: Date.now() },
+        },
+        transient
+      );
+
+      const root2 = await Factories.Root.create(
+        {
+          data: { rootBlock: 100, username: 'bob', signedAt: Date.now() + 5 * 60 * 1000 },
+        },
+        transient
+      );
+
+      if (root1.hash > root2.hash) {
+        engine.addRoot(root1);
+        expect(engine.getRoot('bob')).toEqual(root1);
+
+        engine.addRoot(root2);
+        expect(engine.getRoot('bob')).toEqual(root2);
+      } else {
+        engine.addRoot(root2);
+        expect(engine.getRoot('bob')).toEqual(root2);
+
+        engine.addRoot(root1);
+        expect(engine.getRoot('bob')).toEqual(root1);
+      }
+    });
+
     // test('fails if the root block is identical but lexicographical hash value is lower', async () => {});
 
     test('fails if the root is a duplicate', async () => {
