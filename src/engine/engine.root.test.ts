@@ -1,6 +1,7 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
 import { Cast, Root } from '~/types';
+import { lexicographicalCompare } from '~/utils';
 import Faker from 'faker';
 
 const engine = new Engine();
@@ -10,6 +11,7 @@ describe('addRoot', () => {
   let root100: Root;
   let root110: Root;
   let root90: Root;
+  let transient: { transient: { privateKey: string } };
 
   let alicePrivateKey: string;
   let aliceAddress: string;
@@ -19,7 +21,7 @@ describe('addRoot', () => {
     const keypair = await Factories.EthAddress.create({});
     alicePrivateKey = keypair.privateKey;
     aliceAddress = keypair.address;
-    const transient = { transient: { privateKey: alicePrivateKey } };
+    transient = { transient: { privateKey: alicePrivateKey } };
 
     root100 = await Factories.Root.create({ data: { rootBlock: 100, username: 'alice' } }, transient);
 
@@ -198,8 +200,6 @@ describe('addRoot', () => {
     });
 
     test('succeeds if the root block is identical but lexicographical hash value is lower', async () => {
-      const transient = { transient: { privateKey: alicePrivateKey } };
-
       const signerChange = {
         blockNumber: 99,
         blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
@@ -223,7 +223,7 @@ describe('addRoot', () => {
         transient
       );
 
-      if (root1.hash > root2.hash) {
+      if (lexicographicalCompare(root1.hash, root2.hash) > 0) {
         engine.addRoot(root1);
         expect(engine.getRoot('bob')).toEqual(root1);
 
