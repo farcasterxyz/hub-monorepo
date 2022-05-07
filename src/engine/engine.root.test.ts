@@ -11,6 +11,8 @@ describe('addRoot', () => {
   let root100: Root;
   let root110: Root;
   let root90: Root;
+  let root1: Root;
+  let root2: Root;
   let transient: { transient: { privateKey: string } };
 
   let alicePrivateKey: string;
@@ -36,6 +38,20 @@ describe('addRoot', () => {
     );
 
     root90 = await Factories.Root.create({ data: { rootBlock: 90, username: 'alice' } }, transient);
+
+    root1 = await Factories.Root.create(
+      {
+        data: { rootBlock: 100, username: 'bob', signedAt: Date.now() },
+      },
+      transient
+    );
+
+    root2 = await Factories.Root.create(
+      {
+        data: { rootBlock: 100, username: 'bob', signedAt: Date.now() + 5 * 60 * 1000 },
+      },
+      transient
+    );
   });
 
   // Every test should start with a valid signer for alice.
@@ -50,6 +66,8 @@ describe('addRoot', () => {
       address: aliceAddress,
     };
     engine.addSignerChange('alice', aliceRegistrationSignerChange);
+
+    engine.addSignerChange('bob', aliceRegistrationSignerChange);
   });
 
   describe('input validation: ', () => {
@@ -200,29 +218,6 @@ describe('addRoot', () => {
     });
 
     test('succeeds if the root block is identical but lexicographical hash value is lower', async () => {
-      const signerChange = {
-        blockNumber: 99,
-        blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-        logIndex: 0,
-        address: aliceAddress,
-      };
-
-      engine.addSignerChange('bob', signerChange);
-
-      const root1 = await Factories.Root.create(
-        {
-          data: { rootBlock: 100, username: 'bob', signedAt: Date.now() },
-        },
-        transient
-      );
-
-      const root2 = await Factories.Root.create(
-        {
-          data: { rootBlock: 100, username: 'bob', signedAt: Date.now() + 5 * 60 * 1000 },
-        },
-        transient
-      );
-
       if (lexicographicalCompare(root1.hash, root2.hash) > 0) {
         engine.addRoot(root1);
         expect(engine.getRoot('bob')).toEqual(root1);
@@ -238,7 +233,21 @@ describe('addRoot', () => {
       }
     });
 
-    // test('fails if the root block is identical but lexicographical hash value is lower', async () => {});
+    test('fails if the root block is identical but lexicographical hash value is lower', async () => {
+      if (lexicographicalCompare(root1.hash, root2.hash) < 0) {
+        engine.addRoot(root1);
+        expect(engine.getRoot('bob')).toEqual(root1);
+
+        expect(engine.addRoot(root2)._unsafeUnwrapErr()).toEqual('addRoot: provided root was older (higher hash)');
+        expect(engine.getRoot('bob')).toEqual(root1);
+      } else {
+        engine.addRoot(root2);
+        expect(engine.getRoot('bob')).toEqual(root2);
+
+        expect(engine.addRoot(root1)._unsafeUnwrapErr()).toEqual('addRoot: provided root was older (higher hash)');
+        expect(engine.getRoot('bob')).toEqual(root2);
+      }
+    });
 
     test('fails if the root is a duplicate', async () => {
       expect(engine.addRoot(root100)._unsafeUnwrapErr()).toEqual('addRoot: provided root was a duplicate');
