@@ -90,13 +90,13 @@ describe('lexicographicalCompare', () => {
   });
 
   test('compare strings first input has additional char', async () => {
-    const cmp = lexicographicalCompare('hello', 'helloa');
-    expect(cmp).toBeLessThan(0);
+    const cmp = lexicographicalCompare('helloa', 'hello');
+    expect(cmp).toBeGreaterThan(0);
   });
 
   test('compare strings second input has additional char', async () => {
-    const cmp = lexicographicalCompare('helloa', 'hello');
-    expect(cmp).toBeGreaterThan(0);
+    const cmp = lexicographicalCompare('hello', 'helloa');
+    expect(cmp).toBeLessThan(0);
   });
 
   test('compare strings second input has additional char', async () => {
