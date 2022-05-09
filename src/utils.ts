@@ -50,3 +50,29 @@ const removeProps = (obj: Record<string, any>): void => {
     });
   }
 };
+
+/**
+ * Function to provide lexicographical comparing of 2 strings as is done in C's `strcmp`.
+ * This is necessary since we don't want to rely on javascripts inherent comparators and
+ * allows for easy reproduction in other languages.
+ */
+export const lexicographicalCompare = (a: string, b: string): number => {
+  const asciiA = a?.charCodeAt(0);
+  const asciiB = b?.charCodeAt(0);
+
+  if (!asciiA && !asciiB) {
+    return 0;
+  } else if (!asciiA) {
+    return -1;
+  } else if (!asciiB) {
+    return 1;
+  } else {
+    const diff = asciiA - asciiB;
+
+    if (diff != 0) {
+      return diff;
+    } else {
+      return lexicographicalCompare(a.slice(1), b.slice(1));
+    }
+  }
+};

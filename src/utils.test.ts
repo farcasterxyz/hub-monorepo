@@ -1,4 +1,4 @@
-import { hashFCObject } from '~/utils';
+import { hashFCObject, lexicographicalCompare } from '~/utils';
 
 describe('hashFCObject', () => {
   const keccakEmptyObject = '0xb48d38f93eaa084033fc5970bf96e559c33c4cdc07d889ab00b4d63f9590739d';
@@ -60,5 +60,52 @@ describe('hashFCObject', () => {
     };
     const hash = hashFCObject(underscoredObject);
     expect(hash).toEqual(keccakSimpleObject);
+  });
+});
+
+describe('lexicographicalCompare', () => {
+  test('compare strings of the same length, lower one first', async () => {
+    const cmp = lexicographicalCompare('hello', 'world');
+    expect(cmp).toBeLessThan(0);
+  });
+
+  test('compare strings of the same length, higher one first', async () => {
+    const cmp = lexicographicalCompare('world', 'hello');
+    expect(cmp).toBeGreaterThan(0);
+  });
+
+  test('compare strings of the same length, equal', async () => {
+    const cmp = lexicographicalCompare('hello', 'hello');
+    expect(cmp).toEqual(0);
+  });
+
+  test('compare strings first input is null', async () => {
+    const cmp = lexicographicalCompare('', 'world');
+    expect(cmp).toBeLessThan(0);
+  });
+
+  test('compare strings second input is null', async () => {
+    const cmp = lexicographicalCompare('hello', '');
+    expect(cmp).toBeGreaterThan(0);
+  });
+
+  test('compare strings first input has additional char', async () => {
+    const cmp = lexicographicalCompare('helloa', 'hello');
+    expect(cmp).toBeGreaterThan(0);
+  });
+
+  test('compare strings second input has additional char', async () => {
+    const cmp = lexicographicalCompare('hello', 'helloa');
+    expect(cmp).toBeLessThan(0);
+  });
+
+  test('compare strings second input has additional char', async () => {
+    const cmp = lexicographicalCompare('a', 'A');
+    expect(cmp).toBeGreaterThan(0);
+  });
+
+  test('compare strings first input is uppercase second input is lower case', async () => {
+    const cmp = lexicographicalCompare('A', 'a');
+    expect(cmp).toBeLessThan(0);
   });
 });
