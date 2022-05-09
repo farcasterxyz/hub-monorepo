@@ -1,5 +1,5 @@
 import { Cast, Root, RootMessageBody, Message } from '~/types';
-import { hashMessage, lexicographicalCompare } from '~/utils';
+import { hashMessage, hashCompare } from '~/utils';
 import { utils } from 'ethers';
 import { ok, err, Result } from 'neverthrow';
 import { isCast, isCastDelete, isCastShort, isCastRecast, isRoot } from '~/types/typeguards';
@@ -71,12 +71,12 @@ class Engine {
     } else if (currentRoot.data.rootBlock > root.data.rootBlock) {
       return err('addRoot: provided root was older (lower block)');
     } else {
-      const lexCmp = lexicographicalCompare(root.hash, currentRoot.hash);
-      if (lexCmp < 0) {
+      const hashCmp = hashCompare(root.hash, currentRoot.hash);
+      if (hashCmp < 0) {
         this._roots.set(username, root);
         this._casts.set(username, new CastSet());
         return ok(undefined);
-      } else if (lexCmp > 1) {
+      } else if (hashCmp > 1) {
         return err('addRoot: provided root was older (higher hash)');
       } else {
         return err('addRoot: provided root was a duplicate');

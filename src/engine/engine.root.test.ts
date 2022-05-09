@@ -1,7 +1,7 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
 import { Cast, Root } from '~/types';
-import { lexicographicalCompare } from '~/utils';
+import { hashCompare } from '~/utils';
 import Faker from 'faker';
 
 const engine = new Engine();
@@ -218,7 +218,7 @@ describe('addRoot', () => {
     });
 
     test('succeeds if the root block is identical but lexicographical hash value is lower', async () => {
-      if (lexicographicalCompare(root200_1.hash, root200_2.hash) > 0) {
+      if (hashCompare(root200_1.hash, root200_2.hash) > 0) {
         engine.addRoot(root200_1);
         expect(engine.getRoot('alice')).toEqual(root200_1);
 
@@ -234,7 +234,7 @@ describe('addRoot', () => {
     });
 
     test('fails if the root block is identical but lexicographical hash value is lower', async () => {
-      if (lexicographicalCompare(root200_1.hash, root200_2.hash) < 0) {
+      if (hashCompare(root200_1.hash, root200_2.hash) < 0) {
         engine.addRoot(root200_1);
         expect(engine.getRoot('alice')).toEqual(root200_1);
 

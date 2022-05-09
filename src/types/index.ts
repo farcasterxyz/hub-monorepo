@@ -28,7 +28,7 @@ type Data<T = MessageBody> = {
   username: string;
 };
 
-type MessageBody = RootMessageBody | CastMessageBody | CastRecastMessageBody | ReactionMesageBody | FollowMessageBody;
+type MessageBody = RootMessageBody | CastMessageBody | CastRecastMessageBody | ReactionMessageBody | FollowMessageBody;
 
 // ===========================
 //  Root Types
@@ -104,28 +104,30 @@ export type CastRecastMessageBody = {
 //  ===========================
 
 /** A Reaction Message */
-export type Reaction = Message<ReactionMesageBody>;
+export type Reaction = Message<ReactionMessageBody>;
 
 /**
  * A ReactionMessageBody represents the addition or removal of a reaction on an Object.
  *
  * @active - whether the reaction is active or not.
- * @emoji - the unicode character that represents the reaction.
  * @targetUri - the object that is being reacted to.
+ * @type - the type of reaction.
  * @schema -
  */
-export type ReactionMesageBody = {
+export type ReactionMessageBody = {
   active: boolean;
-  emoji: string;
   targetUri: URI;
+  type: ReactionType;
   schema: 'farcaster.xyz/schemas/v1/reaction';
 };
 
+export type ReactionType = 'like';
+
 /** An ordered array of hash-linked and signed Reactions starting with a Root */
-export type SignedReactionChain = [root: Message<RootMessageBody>, ...casts: Message<ReactionMesageBody>[]];
+export type SignedReactionChain = [root: Message<RootMessageBody>, ...casts: Message<ReactionMessageBody>[]];
 
 /** An ordered array of hash-linked and signed Reactions */
-export type SignedReactionChainFragment = Message<ReactionMesageBody>[];
+export type SignedReactionChainFragment = Message<ReactionMessageBody>[];
 
 //  ===========================
 //  Follow Types
