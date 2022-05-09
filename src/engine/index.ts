@@ -76,7 +76,7 @@ class Engine {
         this._roots.set(username, root);
         this._casts.set(username, new CastSet());
         return ok(undefined);
-      } else if (hashCmp > 1) {
+      } else if (hashCmp >= 1) {
         return err('addRoot: provided root was older (higher hash)');
       } else {
         return err('addRoot: provided root was a duplicate');
