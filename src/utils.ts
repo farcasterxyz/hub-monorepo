@@ -53,7 +53,7 @@ const removeProps = (obj: Record<string, any>): void => {
 
 /**
  * Compares the lexiocographical order of two hashes using their UTF-16 character values.
- * Returns -1 if a < b, 0 if a = b and 1 if a > b.
+ * Returns negative values if a < b, 0 if a = b and positive values if a > b.
  **/
 export const hashCompare = (a: string, b: string): number => {
   const asciiA = a?.charCodeAt(0);

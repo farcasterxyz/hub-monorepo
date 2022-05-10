@@ -18,7 +18,7 @@ export type Message<T = Body> = {
  *
  * @body - the body of the message which is implemented by the specific type
  * @rootBlock - the block number of the ethereum block in the root
- * @signedAt - the unix timestamp at which the message was signed
+ * @signedAt - the utc unix timestamp at which the message was signed
  * @username - the farcaster username owned by the signer at the time of signature
  */
 type Data<T = Body> = {
@@ -28,19 +28,20 @@ type Data<T = Body> = {
   username: string;
 };
 
-type Body = RootBody | CastBody | CastRecastBody | ReactionBody | FollowBody;
+type Body = RootBody | CastBody | ReactionBody;
 
 // ===========================
 //  Root Types
 // ===========================
 
-/** A Root Message */
+/** A Root is the first message a user sends, which must point to a unique, valid Ethereum block for ordering purposes. */
 export type Root = Message<RootBody>;
 
 /**
- * A RootBody is the first message in every signed chain, which must point to a unique, valid Ethereum block for ordering purposes.
+ * Body of a Root Message
  *
  * @blockHash - the hash of the ETH block from message.rootBlock
+ * @schema - the schema of the message
  */
 export type RootBody = {
   blockHash: string;
@@ -53,14 +54,20 @@ export type RootBody = {
 
 /** A Cast Message */
 export type Cast = Message<CastBody>;
+
+/**A CastShort is a short-text public cast from a user */
 export type CastShort = Message<CastShortBody>;
+
+/** A CastReact is a share of an existing cast-short from any user */
 export type CastRecast = Message<CastRecastBody>;
+
+/** A CastDelete is a delete of an existing cast from the same user */
 export type CastDelete = Message<CastDeleteBody>;
 
 export type CastBody = CastShortBody | CastDeleteBody | CastRecastBody;
 
 /**
- * A CastShortBody represents a new, short-text public broadcast from a user.
+ * Body of a CastShort Message
  *
  * @text - the text of the Cast
  * @embed -
@@ -69,9 +76,9 @@ export type CastBody = CastShortBody | CastDeleteBody | CastRecastBody;
  */
 export type CastShortBody = {
   embed: Embed;
-  text: string;
   schema: 'farcaster.xyz/schemas/v1/cast-short';
   targetUri?: URI;
+  text: string;
 };
 
 type Embed = {
@@ -116,38 +123,12 @@ export type Reaction = Message<ReactionBody>;
  */
 export type ReactionBody = {
   active: boolean;
+  schema: 'farcaster.xyz/schemas/v1/reaction';
   targetUri: URI;
   type: ReactionType;
-  schema: 'farcaster.xyz/schemas/v1/reaction';
 };
 
 export type ReactionType = 'like';
-
-/** An ordered array of hash-linked and signed Reactions starting with a Root */
-export type SignedReactionChain = [root: Message<RootBody>, ...casts: Message<ReactionBody>[]];
-
-/** An ordered array of hash-linked and signed Reactions */
-export type SignedReactionChainFragment = Message<ReactionBody>[];
-
-//  ===========================
-//  Follow Types
-//  ===========================
-
-/** A Follow Message */
-export type Follow = Message<FollowBody>;
-
-/**
- * A FollowMessage represents the addition or removal of a follow on a username.
- *
- * @active - whether the reaction is active or not.
- * @targetUri - the user that is being followed. (e.g. farcaster://alice)
- * @schema -
- */
-export type FollowBody = {
-  active: boolean;
-  targetUri: FarcasterURI;
-  schema: 'farcaster.xyz/schemas/v1/follow';
-};
 
 // ===========================
 //  URI Types

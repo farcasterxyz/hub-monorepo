@@ -63,6 +63,7 @@ class ChaosSimulator extends Simulator {
       const messages = this.generateMessages(client);
       const nodes = Array.from(this.nodes.values());
       const node = nodes[Math.floor(Math.random() * nodes.length)];
+      // Send the root early, so we have some interesting merges
       const root = messages[0];
       this.broadcastToNode(root, node, Math.random() * 5_000);
       const nonRootMessages = messages.slice(1);

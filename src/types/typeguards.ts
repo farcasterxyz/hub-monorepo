@@ -2,7 +2,7 @@ import * as FC from '~/types';
 
 export function isRoot(msg: FC.Message): msg is FC.Root {
   const body = (msg as FC.Root).data?.body;
-  return body && body.schema === 'farcaster.xyz/schemas/v1/root' && !!body.blockHash;
+  return body && body.schema === 'farcaster.xyz/schemas/v1/root' && typeof body.blockHash == 'string';
 }
 
 export function isCast(msg: FC.Message): msg is FC.Cast {
@@ -10,7 +10,13 @@ export function isCast(msg: FC.Message): msg is FC.Cast {
 }
 export function isCastShort(msg: FC.Message): msg is FC.CastShort {
   const body = (msg as FC.CastShort).data?.body;
-  return body && body.schema === 'farcaster.xyz/schemas/v1/cast-short' && typeof body.text === 'string' && !!body.embed;
+  return (
+    body &&
+    body.schema === 'farcaster.xyz/schemas/v1/cast-short' &&
+    typeof body.text === 'string' &&
+    !!body.embed &&
+    Array.isArray(body.embed.items)
+  );
 }
 
 export function isCastDelete(msg: FC.Message): msg is FC.CastDelete {
@@ -30,6 +36,6 @@ export function isReaction(msg: FC.Message): msg is FC.Reaction {
     body.schema === 'farcaster.xyz/schemas/v1/reaction' &&
     typeof body.active === 'boolean' &&
     typeof body.targetUri === 'string' &&
-    !!body.type
+    body.type === 'like'
   );
 }

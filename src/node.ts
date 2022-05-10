@@ -39,7 +39,7 @@ class FCNode {
     const selfRoot = this.getRoot(username);
     const peerRoot = peer.getRoot(username);
     if (peerRoot) {
-      // 1. Compare roots and add the peer's root if newer.
+      // 1. Compare roots and add the peer's root if equal or newer.
       if (!selfRoot || selfRoot.data.rootBlock <= peerRoot.data.rootBlock) {
         this.mergeRoot(peerRoot);
       }
@@ -47,8 +47,8 @@ class FCNode {
       // 2. Compare hashes of casts and merge any new ones discovered.
       const selfCastHashes = this.getAllCastHashes(username);
       const peerCastHashes = peer.getAllCastHashes(username);
-      const missingCastAddsHashes = peerCastHashes.filter((h) => !selfCastHashes.includes(h));
-      peer.getCasts(username, missingCastAddsHashes).map((message) => this.mergeCast(message));
+      const missingCastHashes = peerCastHashes.filter((h) => !selfCastHashes.includes(h));
+      peer.getCasts(username, missingCastHashes).map((message) => this.mergeCast(message));
 
       // 3. Compare hashes of reactions and merge any new ones discovered.
       const selfReactionHashes = this.getAllReactionHashes(username);

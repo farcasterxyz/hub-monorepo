@@ -2,10 +2,8 @@ import { Result, ok, err } from 'neverthrow';
 import { Cast, CastDelete, CastRecast, CastShort } from '~/types';
 import { isCastDelete, isCastRecast, isCastShort } from '~/types/typeguards';
 
-type SetAddType = CastShort | CastRecast;
-
 class CastSet {
-  private _adds: Map<string, SetAddType>;
+  private _adds: Map<string, CastShort | CastRecast>;
   private _deletes: Map<string, CastDelete>;
 
   constructor() {
@@ -14,7 +12,7 @@ class CastSet {
   }
 
   /** Get a cast by its hash */
-  get(hash: string): SetAddType | CastDelete | undefined {
+  get(hash: string): CastShort | CastRecast | CastDelete | undefined {
     return this._adds.get(hash) || this._deletes.get(hash);
   }
 
