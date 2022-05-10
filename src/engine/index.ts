@@ -3,8 +3,8 @@ import { hashMessage, hashCompare } from '~/utils';
 import { utils } from 'ethers';
 import { ok, err, Result } from 'neverthrow';
 import { isCast, isCastShort, isRoot, isReaction } from '~/types/typeguards';
-import CastSet from '~/castSet';
-import ReactionSet from '~/reactionSet';
+import CastSet from '~/sets/castSet';
+import ReactionSet from '~/sets/reactionSet';
 
 export interface getUserFingerprint {
   rootBlockNum: number;

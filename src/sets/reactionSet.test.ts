@@ -1,5 +1,5 @@
 import { Factories } from '~/factories';
-import ReactionSet from '~/reactionSet';
+import ReactionSet from '~/sets/reactionSet';
 import { Reaction } from '~/types';
 import { hashCompare } from '~/utils';
 

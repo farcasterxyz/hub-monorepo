@@ -1,5 +1,5 @@
 import { Factories } from '~/factories';
-import CastSet from '~/castSet';
+import CastSet from '~/sets/castSet';
 import { CastDelete, CastShort } from '~/types';
 
 const set = new CastSet();
