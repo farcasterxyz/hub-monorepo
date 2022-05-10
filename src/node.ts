@@ -107,8 +107,12 @@ class FCNode {
   }
 
   /** Get reactions by hash */
-  getReactions(username: string, hashes: string[]): Message<any>[] {
+  getReactions(username: string, hashes?: string[]): Reaction[] {
     const reactions = [];
+
+    if (!hashes) {
+      return this.engine.getReactions(username);
+    }
 
     for (const hash of hashes) {
       const message = this.engine.getReaction(username, hash);

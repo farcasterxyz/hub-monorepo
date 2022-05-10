@@ -1,4 +1,13 @@
-import { Root, RootMessageBody, Message, CastShortMessageBody, CastDeleteMessageBody, Cast } from '~/types';
+import {
+  Root,
+  RootMessageBody,
+  Message,
+  CastShortMessageBody,
+  CastDeleteMessageBody,
+  Cast,
+  ReactionMessageBody,
+  CastShort,
+} from '~/types';
 import { hashMessage, sign } from '~/utils';
 import { Wallet, utils } from 'ethers';
 
@@ -83,6 +92,37 @@ class Client {
       data: {
         body: {
           targetHash: targetCast.hash,
+          schema,
+        },
+        rootBlock,
+        signedAt,
+        username: this.username,
+      },
+      hash: '',
+      signature: '',
+      signer,
+    };
+
+    item.hash = hashMessage(item);
+    item.signature = sign(item.hash, this.signingKey);
+
+    return item;
+  }
+
+  makeReaction(targetCast: CastShort, root: Root, active = true): Message<ReactionMessageBody> {
+    const schema = 'farcaster.xyz/schemas/v1/reaction' as const;
+    const signedAt = Date.now();
+    const signer = this.wallet.address;
+
+    const rootBlock = root.data.rootBlock;
+
+    const item = {
+      data: {
+        body: {
+          active,
+          // TODO: When we implement URI generation, this should be generated from the cast
+          targetUri: targetCast.hash,
+          type: 'like' as const,
           schema,
         },
         rootBlock,

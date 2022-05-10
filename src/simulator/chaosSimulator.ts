@@ -63,7 +63,10 @@ class ChaosSimulator extends Simulator {
       const messages = this.generateMessages(client);
       const nodes = Array.from(this.nodes.values());
       const node = nodes[Math.floor(Math.random() * nodes.length)];
-      messages.map((message) => this.broadcastToNode(message, node, Math.random() * 60_000));
+      const root = messages[0];
+      this.broadcastToNode(root, node, Math.random() * 5_000);
+      const nonRootMessages = messages.slice(1);
+      nonRootMessages.map((message) => this.broadcastToNode(message, node, Math.random() * 60_000));
     });
   }
 
@@ -83,7 +86,9 @@ class ChaosSimulator extends Simulator {
     const cs3 = client.makeCastShort(Faker.lorem.words(3), root1);
     const cd1 = client.makeCastDelete(cs2, root1);
     const cs4 = client.makeCastShort(Faker.lorem.words(3), root1);
-    return [root1, cs1, cs2, cs3, cd1, cs4];
+    const ra1 = client.makeReaction(cs4, root1);
+    const ru1 = client.makeReaction(cs4, root1, false);
+    return [root1, cs1, cs2, cs3, cd1, cs4, ra1, ru1];
   }
 }
 

@@ -1,11 +1,12 @@
 import FCNode, { NodeDirectory } from '~/node';
 import Table from 'cli-table3';
 import colors from 'colors/safe';
-import { isCast, isCastDelete, isCastShort, isRoot } from '~/types/typeguards';
+import { isCast, isCastDelete, isCastShort, isReaction, isRoot } from '~/types/typeguards';
 import { Message } from '~/types';
 
 const rootEmoji = String.fromCodePoint(0x1fab4);
 const castEmoji = String.fromCodePoint(0x1f4e2);
+const reactionEmoji = String.fromCodePoint(0x1f4e1);
 const personEmoji = String.fromCodePoint(0x1f9d1);
 const nodeEmoji = String.fromCodePoint(0x1f916);
 const chainEmoji = String.fromCodePoint(0x1f517);
@@ -50,6 +51,15 @@ const Debugger = {
     if (isCastDelete(message)) {
       type = Debugger._padString('cst-del', 7);
       data = '0x' + message.data.body.targetHash.slice(message.data.body.targetHash.length - 3);
+    }
+
+    if (isReaction(message)) {
+      if (message.data.body.active) {
+        type = Debugger._padString('rctn-a', 7);
+      } else {
+        type = Debugger._padString('rctn-d', 7);
+      }
+      data = '0x' + message.data.body.targetUri.slice(message.data.body.targetUri.length - 3);
     }
 
     let outLine = `${username} > ${nodeName} | ${type} | ${hash} `;
@@ -109,11 +119,13 @@ const Debugger = {
         }
 
         // If this node is the "latest" according to our approximate heuristic, show it in green otherwise in red.
-        const isLatest = root?.data.rootBlock === blockNum && Debugger._castSetSize(node, username) === setSize;
+        const isLatest = root?.data.rootBlock === blockNum && Debugger._messageSetSize(node, username) === setSize;
         const color = isLatest ? colors.green : colors.red;
 
         const messages: Message<any>[] = node.getCastAdds(username);
         messages.unshift(root);
+        const reactions = node.getReactions(username);
+        messages.push(...reactions);
         table.push({ [node.name]: Debugger._visualizeMessages(messages, color) });
       }
       console.log(username);
@@ -142,7 +154,7 @@ const Debugger = {
           largestMessageSetSize = 0;
         }
 
-        const size = Debugger._castSetSize(node, username);
+        const size = Debugger._messageSetSize(node, username);
         if (size > largestMessageSetSize) {
           largestMessageSetSize = size;
         }
@@ -152,15 +164,26 @@ const Debugger = {
     return { blockNum: highestKnownBlock, setSize: largestMessageSetSize };
   },
 
-  /** Determine the total number of messages in a user's Cast Set */
-  _castSetSize: (node: FCNode, username: string) => {
-    return node.getCastAddsHashes(username).length + node.getCastDeletesHashes(username).length;
+  /** Determine the total number of messages in a user's sets */
+  _messageSetSize: (node: FCNode, username: string) => {
+    return (
+      node.getCastAddsHashes(username).length +
+      node.getCastDeletesHashes(username).length +
+      node.getReactionHashes(username).length
+    );
   },
 
   /** Convert a Message[] into a human readable string */
   _visualizeMessages: (messages: Message<any>[], color: (str: string) => string): string[] => {
     return messages.map((msg) => {
-      const visual = isCast(msg) ? castEmoji : rootEmoji;
+      let visual;
+      if (isRoot(msg)) {
+        visual = rootEmoji;
+      } else if (isReaction(msg)) {
+        visual = reactionEmoji;
+      } else {
+        visual = castEmoji;
+      }
       return color(visual + '  ' + msg.hash.slice(msg.hash.length - 3, msg.hash.length));
     });
   },

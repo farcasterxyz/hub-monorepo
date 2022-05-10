@@ -159,6 +159,11 @@ class Engine {
     return reactionSet ? reactionSet.get(hash) : undefined;
   }
 
+  getReactions(username: string): Reaction[] {
+    const reactionSet = this._reactions.get(username);
+    return reactionSet ? reactionSet._getActiveReactions() : [];
+  }
+
   getReactionHashes(username: string): string[] {
     const reactionSet = this._reactions.get(username);
     return reactionSet ? reactionSet.getHashes() : [];

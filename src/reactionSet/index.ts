@@ -1,5 +1,5 @@
 import { Result, ok, err } from 'neverthrow';
-import { Message, ReactionMessageBody } from '~/types';
+import { Message, Reaction, ReactionMessageBody } from '~/types';
 import { isReaction } from '~/types/typeguards';
 import { hashCompare } from '~/utils';
 
@@ -73,13 +73,14 @@ class ReactionSet {
   }
 
   // Testing Only Methods
-  _getActiveReactions(): Message<any>[] {
+  _getActiveReactions(): Reaction[] {
     return Array.from(this.hashToReaction.values()).filter((reaction) => reaction.data.body.active);
   }
 
-  _getInactiveReactions(): Message<any>[] {
+  _getInactiveReactions(): Reaction[] {
     return Array.from(this.hashToReaction.values()).filter((reaction) => !reaction.data.body.active);
   }
+
   _reset(): void {
     this.hashToReaction = new Map();
     this.keyToHash = new Map();

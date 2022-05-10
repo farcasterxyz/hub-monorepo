@@ -2,8 +2,8 @@ import Client from '~/client';
 import FCNode, { InstanceName } from '~/node';
 import Faker from 'faker';
 import Debugger from '~/debugger';
-import { Cast, Message, RootMessageBody } from '~/types';
-import { isRoot } from '~/types/typeguards';
+import { Cast, Message, Reaction, RootMessageBody } from '~/types';
+import { isReaction, isRoot } from '~/types/typeguards';
 
 abstract class Simulator {
   nodes: Map<InstanceName, FCNode>;
@@ -54,10 +54,17 @@ abstract class Simulator {
   }
 
   /** Pushes message to a node after optional delay */
-  broadcastToNode(message: Message<RootMessageBody> | Cast, node: FCNode, delay?: number) {
+  broadcastToNode(message: Message<RootMessageBody> | Cast | Reaction, node: FCNode, delay?: number) {
     setTimeout(() => {
       Debugger.printBroadcast(message, node);
-      isRoot(message) ? node.addRoot(message) : node.addCast(message);
+
+      if (isRoot(message)) {
+        node.addRoot(message);
+      } else if (isReaction(message)) {
+        node.addReaction(message);
+      } else {
+        node.addCast(message);
+      }
     }, delay || 0);
   }
 }
