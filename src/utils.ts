@@ -52,11 +52,10 @@ const removeProps = (obj: Record<string, any>): void => {
 };
 
 /**
- * Function to provide lexicographical comparing of 2 strings as is done in C's `strcmp`.
- * This is necessary since we don't want to rely on javascripts inherent comparators and
- * allows for easy reproduction in other languages.
- */
-export const lexicographicalCompare = (a: string, b: string): number => {
+ * Compares the lexiocographical order of two hashes using their UTF-16 character values.
+ * Returns negative values if a < b, 0 if a = b and positive values if a > b.
+ **/
+export const hashCompare = (a: string, b: string): number => {
   const asciiA = a?.charCodeAt(0);
   const asciiB = b?.charCodeAt(0);
 
@@ -72,7 +71,7 @@ export const lexicographicalCompare = (a: string, b: string): number => {
     if (diff != 0) {
       return diff;
     } else {
-      return lexicographicalCompare(a.slice(1), b.slice(1));
+      return hashCompare(a.slice(1), b.slice(1));
     }
   }
 };

@@ -6,7 +6,7 @@
  * @signature - the ecdsa signature of the hash of the message.
  * @signer - the ethereum address whose private key was used to create the signature
  */
-export type Message<T = MessageBody> = {
+export type Message<T = Body> = {
   data: Data<T>;
   hash: string;
   signature: string;
@@ -18,31 +18,32 @@ export type Message<T = MessageBody> = {
  *
  * @body - the body of the message which is implemented by the specific type
  * @rootBlock - the block number of the ethereum block in the root
- * @signedAt - the unix timestamp at which the message was signed
+ * @signedAt - the utc unix timestamp at which the message was signed
  * @username - the farcaster username owned by the signer at the time of signature
  */
-type Data<T = MessageBody> = {
+type Data<T = Body> = {
   body: T;
   rootBlock: number;
   signedAt: number;
   username: string;
 };
 
-type MessageBody = RootMessageBody | CastMessageBody | CastRecastMessageBody | ReactionMesageBody | FollowMessageBody;
+type Body = RootBody | CastBody | ReactionBody;
 
 // ===========================
 //  Root Types
 // ===========================
 
-/** A Root Message */
-export type Root = Message<RootMessageBody>;
+/** A Root is the first message a user sends, which must point to a unique, valid Ethereum block for ordering purposes. */
+export type Root = Message<RootBody>;
 
 /**
- * A RootMessageBody is the first message in every signed chain, which must point to a unique, valid Ethereum block for ordering purposes.
+ * Body of a Root Message
  *
  * @blockHash - the hash of the ETH block from message.rootBlock
+ * @schema - the schema of the message
  */
-export type RootMessageBody = {
+export type RootBody = {
   blockHash: string;
   schema: 'farcaster.xyz/schemas/v1/root';
 };
@@ -52,26 +53,32 @@ export type RootMessageBody = {
 // ===========================
 
 /** A Cast Message */
-export type Cast = Message<CastMessageBody>;
-export type CastShort = Message<CastShortMessageBody>;
-export type CastRecast = Message<CastRecastMessageBody>;
-export type CastDelete = Message<CastDeleteMessageBody>;
+export type Cast = Message<CastBody>;
 
-export type CastMessageBody = CastShortMessageBody | CastDeleteMessageBody | CastRecastMessageBody;
+/**A CastShort is a short-text public cast from a user */
+export type CastShort = Message<CastShortBody>;
+
+/** A CastReact is a share of an existing cast-short from any user */
+export type CastRecast = Message<CastRecastBody>;
+
+/** A CastDelete is a delete of an existing cast from the same user */
+export type CastDelete = Message<CastDeleteBody>;
+
+export type CastBody = CastShortBody | CastDeleteBody | CastRecastBody;
 
 /**
- * A CastShortMessageBody represents a new, short-text public broadcast from a user.
+ * Body of a CastShort Message
  *
  * @text - the text of the Cast
  * @embed -
  * @schema -
  * @targetUri - the object that this Cast is replying to.
  */
-export type CastShortMessageBody = {
+export type CastShortBody = {
   embed: Embed;
-  text: string;
   schema: 'farcaster.xyz/schemas/v1/cast-short';
   targetUri?: URI;
+  text: string;
 };
 
 type Embed = {
@@ -79,22 +86,22 @@ type Embed = {
 };
 
 /**
- * A CastDeleteMessageBody indicates that a previous Cast should be removed from the feed.
+ * A CastDeleteBody indicates that a previous Cast should be removed from the feed.
  *
  * @targetHash - the hash of the cast that is beign deleted.
  */
-export type CastDeleteMessageBody = {
+export type CastDeleteBody = {
   // TODO: is there any benefit to making this a URI, like a recast?
   targetHash: string;
   schema: 'farcaster.xyz/schemas/v1/cast-delete';
 };
 
 /**
- * A CastRecastMessageBody indicates that a Cast should be re-displayed in the user's feed.
+ * A CastRecastBody indicates that a Cast should be re-displayed in the user's feed.
  *
  * @targetCastUri - the cast that is to be recast
  */
-export type CastRecastMessageBody = {
+export type CastRecastBody = {
   targetCastUri: FarcasterURI;
   schema: 'farcaster.xyz/schemas/v1/cast-recast';
 };
@@ -104,48 +111,24 @@ export type CastRecastMessageBody = {
 //  ===========================
 
 /** A Reaction Message */
-export type Reaction = Message<ReactionMesageBody>;
+export type Reaction = Message<ReactionBody>;
 
 /**
- * A ReactionMessageBody represents the addition or removal of a reaction on an Object.
+ * A ReactionBody represents the addition or removal of a reaction on an Object.
  *
  * @active - whether the reaction is active or not.
- * @emoji - the unicode character that represents the reaction.
  * @targetUri - the object that is being reacted to.
+ * @type - the type of reaction.
  * @schema -
  */
-export type ReactionMesageBody = {
+export type ReactionBody = {
   active: boolean;
-  emoji: string;
-  targetUri: URI;
   schema: 'farcaster.xyz/schemas/v1/reaction';
+  targetUri: URI;
+  type: ReactionType;
 };
 
-/** An ordered array of hash-linked and signed Reactions starting with a Root */
-export type SignedReactionChain = [root: Message<RootMessageBody>, ...casts: Message<ReactionMesageBody>[]];
-
-/** An ordered array of hash-linked and signed Reactions */
-export type SignedReactionChainFragment = Message<ReactionMesageBody>[];
-
-//  ===========================
-//  Follow Types
-//  ===========================
-
-/** A Follow Message */
-export type Follow = Message<FollowMessageBody>;
-
-/**
- * A FollowMessage represents the addition or removal of a follow on a username.
- *
- * @active - whether the reaction is active or not.
- * @targetUri - the user that is being followed. (e.g. farcaster://alice)
- * @schema -
- */
-export type FollowMessageBody = {
-  active: boolean;
-  targetUri: FarcasterURI;
-  schema: 'farcaster.xyz/schemas/v1/follow';
-};
+export type ReactionType = 'like';
 
 // ===========================
 //  URI Types

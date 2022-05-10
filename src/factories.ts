@@ -1,7 +1,7 @@
 import { Factory } from 'fishery';
 import Faker from 'faker';
 import { ethers } from 'ethers';
-import { CastShort, Root, CastRecast, CastDelete } from '~/types';
+import { CastShort, Root, CastRecast, CastDelete, Reaction } from '~/types';
 import { hashMessage, sign } from '~/utils';
 
 /**
@@ -157,6 +157,41 @@ export const Factories = {
     return {
       address: '',
       privateKey,
+    };
+  }),
+
+  /** Generate a valid Reaction with randomized properties */
+  Reaction: Factory.define<Reaction, any, Reaction>(({ onCreate, transientParams }) => {
+    const { privateKey = Faker.datatype.hexaDecimal(64).toLowerCase() } = transientParams;
+    const wallet = new ethers.Wallet(privateKey);
+
+    onCreate(async (castProps) => {
+      const hash = hashMessage(castProps);
+      castProps.hash = hash;
+
+      castProps.signer = await wallet.getAddress();
+
+      const signature = sign(castProps.hash, wallet._signingKey());
+      castProps.signature = signature;
+
+      return castProps;
+    });
+
+    return {
+      data: {
+        body: {
+          active: true,
+          targetUri: Faker.internet.url(),
+          type: 'like',
+          schema: 'farcaster.xyz/schemas/v1/reaction' as const,
+        },
+        rootBlock: Faker.datatype.number(10_000),
+        signedAt: Faker.time.recent(),
+        username: Faker.name.firstName().toLowerCase(),
+      },
+      hash: '',
+      signature: '',
+      signer: '',
     };
   }),
 };

@@ -1,9 +1,10 @@
-import { Cast, Root, RootMessageBody, Message } from '~/types';
-import { hashMessage, lexicographicalCompare } from '~/utils';
+import { Cast, Root, Message, Reaction } from '~/types';
+import { hashMessage, hashCompare } from '~/utils';
 import { utils } from 'ethers';
 import { ok, err, Result } from 'neverthrow';
-import { isCast, isCastDelete, isCastShort, isCastRecast, isRoot } from '~/types/typeguards';
-import CastSet from '~/castSet';
+import { isCast, isCastShort, isRoot, isReaction } from '~/types/typeguards';
+import CastSet from '~/sets/castSet';
+import ReactionSet from '~/sets/reactionSet';
 
 export interface getUserFingerprint {
   rootBlockNum: number;
@@ -21,14 +22,16 @@ export interface Signer {
 
 /** The Engine receives messages and determines the current state Farcaster network */
 class Engine {
-  private _users: Map<string, Signer[]>;
-  private _roots: Map<string, Message<RootMessageBody>>;
   private _casts: Map<string, CastSet>;
+  private _reactions: Map<string, ReactionSet>;
+  private _roots: Map<string, Root>;
+  private _users: Map<string, Signer[]>;
 
   constructor() {
     this._casts = new Map();
-    this._users = new Map();
+    this._reactions = new Map();
     this._roots = new Map();
+    this._users = new Map();
   }
 
   getSigners(username: string): Signer[] {
@@ -39,14 +42,14 @@ class Engine {
    * Root Methods
    */
 
-  getRoot(username: string): Message<RootMessageBody> | undefined {
+  getRoot(username: string): Root | undefined {
     return this._roots.get(username);
   }
 
   /** Add a new root for a username, if valid */
-  addRoot(root: Root): Result<void, string> {
+  mergeRoot(root: Root): Result<void, string> {
     if (!isRoot(root)) {
-      return err('addRoot: invalid root');
+      return err('mergeRoot: invalid root');
     }
 
     // TODO: verify that the block and hash are from a valid ethereum block.
@@ -69,17 +72,17 @@ class Engine {
       this._casts.set(username, new CastSet());
       return ok(undefined);
     } else if (currentRoot.data.rootBlock > root.data.rootBlock) {
-      return err('addRoot: provided root was older (lower block)');
+      return err('mergeRoot: provided root was older (lower block)');
     } else {
-      const lexCmp = lexicographicalCompare(root.hash, currentRoot.hash);
-      if (lexCmp < 0) {
+      const hashCmp = hashCompare(currentRoot.hash, root.hash);
+      if (hashCmp < 0) {
         this._roots.set(username, root);
         this._casts.set(username, new CastSet());
         return ok(undefined);
-      } else if (lexCmp > 1) {
-        return err('addRoot: provided root was older (higher hash)');
+      } else if (hashCmp >= 1) {
+        return err('mergeRoot: newer root was present (lexicographically higher hash)');
       } else {
-        return err('addRoot: provided root was a duplicate');
+        return err('mergeRoot: provided root was a duplicate');
       }
     }
   }
@@ -88,39 +91,32 @@ class Engine {
    * Cast Methods
    */
 
+  /** Get a cast for a username by its hash */
   getCast(username: string, hash: string): Cast | undefined {
     const castSet = this._casts.get(username);
     return castSet ? castSet.get(hash) : undefined;
   }
 
-  getCastAdds(username: string): Cast[] {
+  /** Get hashes of undeleted cast messages for a username */
+  getCastHashes(username: string): string[] {
     const castSet = this._casts.get(username);
-    return castSet ? castSet._getAdds() : [];
+    return castSet ? castSet.getHashes() : [];
   }
 
-  getCastDeletes(username: string): Cast[] {
+  /** Get hashes of all cast messages for a username */
+  getAllCastHashes(username: string): string[] {
     const castSet = this._casts.get(username);
-    return castSet ? castSet._getDeletes() : [];
+    return castSet ? castSet.getAllHashes() : [];
   }
 
-  getCastAddsHashes(username: string): string[] {
-    const castSet = this._casts.get(username);
-    return castSet ? castSet.getAddsHashes() : [];
-  }
-
-  getCastDeletesHashes(username: string): string[] {
-    const castSet = this._casts.get(username);
-    return castSet ? castSet.getDeletesHashes() : [];
-  }
-
-  /** Add a new Cast into the CastSet if valid */
-  addCast(cast: Cast): Result<void, string> {
+  /** Merge a cast into the set */
+  mergeCast(cast: Cast): Result<void, string> {
     try {
       const username = cast.data.username;
 
       const signerChanges = this._users.get(username);
       if (!signerChanges) {
-        return err('addCast: unknown user');
+        return err('mergeCast: unknown user');
       }
 
       if (!this.validateMessage(cast).isOk()) {
@@ -133,15 +129,55 @@ class Engine {
         this._casts.set(username, castSet);
       }
 
-      if (isCastDelete(cast)) {
-        return castSet.delete(cast);
+      return castSet.merge(cast);
+    } catch (e: any) {
+      return err('mergeCast: unexpected error');
+    }
+  }
+
+  /**
+   * Reaction Methods
+   */
+
+  /** Get a reaction for a username by hash */
+  getReaction(username: string, hash: string): Reaction | undefined {
+    const reactionSet = this._reactions.get(username);
+    return reactionSet ? reactionSet.get(hash) : undefined;
+  }
+
+  /** Get hashes of all known reactions for a username */
+  getReactionHashes(username: string): string[] {
+    const reactionSet = this._reactions.get(username);
+    return reactionSet ? reactionSet.getHashes() : [];
+  }
+
+  /** Get hashes of all known reactions for a username */
+  getAllReactionHashes(username: string): string[] {
+    const reactionSet = this._reactions.get(username);
+    return reactionSet ? reactionSet.getAllHashes() : [];
+  }
+
+  /** Merge a reaction into the set  */
+  mergeReaction(reaction: Reaction): Result<void, string> {
+    try {
+      const username = reaction.data.username;
+
+      const signerChanges = this._users.get(username);
+      if (!signerChanges) {
+        return err('mergeReaction: unknown user');
       }
 
-      if (isCastShort(cast) || isCastRecast(cast)) {
-        return castSet.add(cast);
+      if (!this.validateMessage(reaction).isOk()) {
+        return this.validateMessage(reaction);
       }
 
-      return err('engine.addCast: unknown cast type');
+      let reactionSet = this._reactions.get(username);
+      if (!reactionSet) {
+        reactionSet = new ReactionSet();
+        this._reactions.set(username, reactionSet);
+      }
+
+      return reactionSet.merge(reaction);
     } catch (e: any) {
       return err('addCast: unexpected error');
     }
@@ -190,6 +226,7 @@ class Engine {
     this._resetCasts();
     this._resetSigners();
     this._resetRoots();
+    this._resetReactions();
   }
 
   _resetCasts(): void {
@@ -202,6 +239,20 @@ class Engine {
 
   _resetRoots(): void {
     this._roots = new Map();
+  }
+
+  _resetReactions(): void {
+    this._reactions = new Map();
+  }
+
+  _getCastAdds(username: string): Cast[] {
+    const castSet = this._casts.get(username);
+    return castSet ? castSet._getAdds() : [];
+  }
+
+  _getActiveReactions(username: string): Reaction[] {
+    const reactionSet = this._reactions.get(username);
+    return reactionSet ? reactionSet._getActiveReactions() : [];
   }
 
   /** Determine the valid signer address for a username at a block */
@@ -269,6 +320,10 @@ class Engine {
       return this.validateCast(message);
     }
 
+    if (isReaction(message)) {
+      return this.validateReaction();
+    }
+
     // TODO: check that the schema is a valid and known schema.
     // TODO: check that all required properties are present.
     // TODO: check that username is known to the registry
@@ -300,6 +355,11 @@ class Engine {
 
     // TODO: For delete cast, validate hash length.
 
+    return ok(undefined);
+  }
+
+  private validateReaction(): Result<void, string> {
+    // TODO: validate targetUri, schema
     return ok(undefined);
   }
 }

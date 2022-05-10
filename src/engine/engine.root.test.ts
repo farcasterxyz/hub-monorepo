@@ -1,13 +1,13 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
 import { Cast, Root } from '~/types';
-import { lexicographicalCompare } from '~/utils';
+import { hashCompare } from '~/utils';
 import Faker from 'faker';
 
 const engine = new Engine();
 const username = 'alice';
 
-describe('addRoot', () => {
+describe('mergeRoot', () => {
   let root100: Root;
   let root110: Root;
   let root90: Root;
@@ -72,14 +72,14 @@ describe('addRoot', () => {
 
   describe('input validation: ', () => {
     test('bad type (string) should fail', async () => {
-      const invalidTypeRes = engine.addRoot('bar' as unknown as Root);
-      expect(invalidTypeRes._unsafeUnwrapErr()).toBe('addRoot: invalid root');
+      const invalidTypeRes = engine.mergeRoot('bar' as unknown as Root);
+      expect(invalidTypeRes._unsafeUnwrapErr()).toBe('mergeRoot: invalid root');
     });
 
     test('incorrect type (cast) should fail', async () => {
       const cast = await Factories.Cast.create();
-      const castRes = engine.addRoot(cast as unknown as Root);
-      expect(castRes._unsafeUnwrapErr()).toBe('addRoot: invalid root');
+      const castRes = engine.mergeRoot(cast as unknown as Root);
+      expect(castRes._unsafeUnwrapErr()).toBe('mergeRoot: invalid root');
     });
 
     // TODO: test with Reactions, Follows
@@ -88,7 +88,7 @@ describe('addRoot', () => {
   describe('signer validation:', () => {
     test('fails if there are no known signers', async () => {
       engine._resetSigners();
-      const result = engine.addRoot(root100);
+      const result = engine.mergeRoot(root100);
       expect(result._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
       expect(subject()).toEqual(undefined);
     });
@@ -102,7 +102,7 @@ describe('addRoot', () => {
       };
       engine.addSignerChange('alice', changeSigner);
 
-      expect(engine.addRoot(root100)._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
+      expect(engine.mergeRoot(root100)._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
       expect(subject()).toEqual(undefined);
     });
 
@@ -117,7 +117,7 @@ describe('addRoot', () => {
 
       engine.addSignerChange('alice', changeSigner);
 
-      const result = engine.addRoot(root100);
+      const result = engine.mergeRoot(root100);
       expect(result._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
       expect(subject()).toEqual(undefined);
     });
@@ -126,7 +126,7 @@ describe('addRoot', () => {
       // Calling Factory without specifying a signing key makes Faker choose a random one
       const invalidSigner = await Factories.Root.create({ data: { rootBlock: 100, username: 'alice' } });
 
-      expect(engine.addRoot(invalidSigner)._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
+      expect(engine.mergeRoot(invalidSigner)._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
       expect(subject()).toEqual(undefined);
     });
 
@@ -136,7 +136,7 @@ describe('addRoot', () => {
         { transient: { privateKey: alicePrivateKey } }
       );
 
-      expect(engine.addRoot(root)._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
+      expect(engine.mergeRoot(root)._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
       expect(subject()).toEqual(undefined);
     });
 
@@ -150,7 +150,7 @@ describe('addRoot', () => {
 
       engine.addSignerChange('alice', signerChange2);
 
-      expect(engine.addRoot(root100).isOk()).toBe(true);
+      expect(engine.mergeRoot(root100).isOk()).toBe(true);
       expect(subject()).toEqual(root100);
     });
   });
@@ -160,7 +160,7 @@ describe('addRoot', () => {
       const invalidHash = JSON.parse(JSON.stringify(root100)) as Root;
       invalidHash.hash = '0xd4126acebadb14b41943fc10599c00e2e3627f1e38672c8476277ecf17accb48';
 
-      expect(engine.addRoot(invalidHash)._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
+      expect(engine.mergeRoot(invalidHash)._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
       expect(subject()).toEqual(undefined);
     });
 
@@ -169,7 +169,7 @@ describe('addRoot', () => {
       invalidSignature.signature =
         '0x52afdda1d6701e29dcd91dea5539c32cdaa2227de257bc0784b1da04be5be32e6a92c934b5d20dd2cb2989f814e74de6b9e7bc1da130543a660822023f9fd0e91c';
 
-      expect(engine.addCast(invalidSignature)._unsafeUnwrapErr()).toBe('validateMessage: invalid signature');
+      expect(engine.mergeCast(invalidSignature)._unsafeUnwrapErr()).toBe('validateMessage: invalid signature');
       expect(subject()).toEqual(undefined);
     });
 
@@ -179,7 +179,7 @@ describe('addRoot', () => {
         { data: { rootBlock: 120, username: 'alice', signedAt: elevenMinutesAhead } },
         { transient: { privateKey: alicePrivateKey } }
       );
-      expect(engine.addRoot(futureRoot)._unsafeUnwrapErr()).toEqual(
+      expect(engine.mergeRoot(futureRoot)._unsafeUnwrapErr()).toEqual(
         'validateMessage: signedAt more than 10 mins in the future'
       );
     });
@@ -195,7 +195,7 @@ describe('addRoot', () => {
     let cast: Cast;
 
     beforeEach(async () => {
-      engine.addRoot(root100);
+      engine.mergeRoot(root100);
 
       cast = await Factories.Cast.create(
         {
@@ -207,52 +207,48 @@ describe('addRoot', () => {
         },
         { transient: { privateKey: alicePrivateKey } }
       );
-      engine.addCast(cast);
+      engine.mergeCast(cast);
     });
 
     test('succeeds and wipes messages if the root block is higher', async () => {
-      expect(engine.getCastAdds(username)).toEqual([cast]);
-      engine.addRoot(root110);
+      expect(engine._getCastAdds(username)).toEqual([cast]);
+      engine.mergeRoot(root110);
       expect(subject()).toEqual(root110);
-      expect(engine.getCastAdds(username)).toEqual([]);
-    });
-
-    test('succeeds if the root block is identical but lexicographical hash value is lower', async () => {
-      if (lexicographicalCompare(root200_1.hash, root200_2.hash) > 0) {
-        engine.addRoot(root200_1);
-        expect(engine.getRoot('alice')).toEqual(root200_1);
-
-        engine.addRoot(root200_2);
-        expect(engine.getRoot('alice')).toEqual(root200_2);
-      } else {
-        engine.addRoot(root200_2);
-        expect(engine.getRoot('alice')).toEqual(root200_2);
-
-        engine.addRoot(root200_1);
-        expect(engine.getRoot('alice')).toEqual(root200_1);
-      }
+      expect(engine._getCastAdds(username)).toEqual([]);
     });
 
     test('fails if the root block is identical but lexicographical hash value is lower', async () => {
-      if (lexicographicalCompare(root200_1.hash, root200_2.hash) < 0) {
-        engine.addRoot(root200_1);
-        expect(engine.getRoot('alice')).toEqual(root200_1);
-
-        expect(engine.addRoot(root200_2)._unsafeUnwrapErr()).toEqual('addRoot: provided root was older (higher hash)');
-        expect(engine.getRoot('alice')).toEqual(root200_1);
+      if (hashCompare(root200_1.hash, root200_2.hash) > 0) {
+        expect(engine.mergeRoot(root200_1).isOk()).toEqual(true);
+        expect(engine.mergeRoot(root200_2)._unsafeUnwrapErr()).toEqual(
+          'mergeRoot: newer root was present (lexicographically higher hash)'
+        );
+        expect(subject()).toEqual(root200_1);
       } else {
-        engine.addRoot(root200_2);
-        expect(engine.getRoot('alice')).toEqual(root200_2);
+        expect(engine.mergeRoot(root200_2).isOk()).toEqual(true);
+        expect(engine.mergeRoot(root200_1)._unsafeUnwrapErr()).toEqual(
+          'mergeRoot: newer root was present (lexicographically higher hash)'
+        );
+        expect(subject()).toEqual(root200_2);
+      }
+    });
 
-        expect(engine.addRoot(root200_1)._unsafeUnwrapErr()).toEqual('addRoot: provided root was older (higher hash)');
-        expect(engine.getRoot('alice')).toEqual(root200_2);
+    test('succeeds if the root block is identical but lexicographical hash value is higher', async () => {
+      if (hashCompare(root200_1.hash, root200_2.hash) < 0) {
+        expect(engine.mergeRoot(root200_1).isOk()).toEqual(true);
+        expect(engine.mergeRoot(root200_2).isOk()).toEqual(true);
+        expect(subject()).toEqual(root200_2);
+      } else {
+        expect(engine.mergeRoot(root200_2).isOk()).toEqual(true);
+        expect(engine.mergeRoot(root200_1).isOk()).toEqual(true);
+        expect(subject()).toEqual(root200_1);
       }
     });
 
     test('fails if the root is a duplicate', async () => {
-      expect(engine.addRoot(root100)._unsafeUnwrapErr()).toEqual('addRoot: provided root was a duplicate');
+      expect(engine.mergeRoot(root100)._unsafeUnwrapErr()).toEqual('mergeRoot: provided root was a duplicate');
       expect(subject()).toEqual(root100);
-      expect(engine.getCastAdds(username)).toEqual([cast]);
+      expect(engine._getCastAdds(username)).toEqual([cast]);
     });
 
     test("fails and preserves messages if the root block is older than the last know root's block", async () => {
@@ -266,9 +262,9 @@ describe('addRoot', () => {
       engine.addSignerChange('alice', changeSigner);
 
       // try to add a valid root at 90, when there is already a root at 100.
-      expect(engine.addRoot(root90)._unsafeUnwrapErr()).toEqual('addRoot: provided root was older (lower block)');
+      expect(engine.mergeRoot(root90)._unsafeUnwrapErr()).toEqual('mergeRoot: provided root was older (lower block)');
       expect(subject()).toEqual(root100);
-      expect(engine.getCastAdds(username)).toEqual([cast]);
+      expect(engine._getCastAdds(username)).toEqual([cast]);
     });
   });
 });
