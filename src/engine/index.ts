@@ -1,9 +1,10 @@
-import { Cast, Root, RootMessageBody, Message } from '~/types';
+import { Cast, Root, RootMessageBody, Message, Reaction } from '~/types';
 import { hashMessage, hashCompare } from '~/utils';
 import { utils } from 'ethers';
 import { ok, err, Result } from 'neverthrow';
-import { isCast, isCastDelete, isCastShort, isCastRecast, isRoot } from '~/types/typeguards';
+import { isCast, isCastDelete, isCastShort, isCastRecast, isRoot, isReaction } from '~/types/typeguards';
 import CastSet from '~/castSet';
+import ReactionSet from '~/reactionSet';
 
 export interface getUserFingerprint {
   rootBlockNum: number;
@@ -24,9 +25,11 @@ class Engine {
   private _users: Map<string, Signer[]>;
   private _roots: Map<string, Message<RootMessageBody>>;
   private _casts: Map<string, CastSet>;
+  private _reactions: Map<string, ReactionSet>;
 
   constructor() {
     this._casts = new Map();
+    this._reactions = new Map();
     this._users = new Map();
     this._roots = new Map();
   }
@@ -142,6 +145,46 @@ class Engine {
       }
 
       return err('engine.addCast: unknown cast type');
+    } catch (e: any) {
+      return err('addCast: unexpected error');
+    }
+  }
+
+  /**
+   * Reaction Methods
+   */
+
+  getReaction(username: string, hash: string): Reaction | undefined {
+    const reactionSet = this._reactions.get(username);
+    return reactionSet ? reactionSet.get(hash) : undefined;
+  }
+
+  getReactionHashes(username: string): string[] {
+    const reactionSet = this._reactions.get(username);
+    return reactionSet ? reactionSet.getHashes() : [];
+  }
+
+  /** Add a new Cast into the CastSet if valid */
+  addReaction(reaction: Reaction): Result<void, string> {
+    try {
+      const username = reaction.data.username;
+
+      const signerChanges = this._users.get(username);
+      if (!signerChanges) {
+        return err('addReaction: unknown user');
+      }
+
+      if (!this.validateMessage(reaction).isOk()) {
+        return this.validateMessage(reaction);
+      }
+
+      let reactionSet = this._reactions.get(username);
+      if (!reactionSet) {
+        reactionSet = new ReactionSet();
+        this._reactions.set(username, reactionSet);
+      }
+
+      return reactionSet.merge(reaction);
     } catch (e: any) {
       return err('addCast: unexpected error');
     }
@@ -269,6 +312,10 @@ class Engine {
       return this.validateCast(message);
     }
 
+    if (isReaction(message)) {
+      return this.validateReaction(message);
+    }
+
     // TODO: check that the schema is a valid and known schema.
     // TODO: check that all required properties are present.
     // TODO: check that username is known to the registry
@@ -300,6 +347,14 @@ class Engine {
 
     // TODO: For delete cast, validate hash length.
 
+    return ok(undefined);
+  }
+
+  private validateReaction(reaction: Reaction): Result<void, string> {
+    // TODO: validate targetUri, schema
+    if (reaction.data.body.type !== 'like') {
+      return err('validateReaction: invalid type');
+    }
     return ok(undefined);
   }
 }

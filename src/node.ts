@@ -1,4 +1,4 @@
-import { Cast, Root, Message, RootMessageBody } from '~/types';
+import { Cast, Root, Message, RootMessageBody, Reaction } from '~/types';
 import Engine from '~/engine';
 import { Result } from 'neverthrow';
 
@@ -55,6 +55,12 @@ class FCNode {
       const peerCastDeleteHashes = peer.getCastDeletesHashes(username);
       const missingCastDeleteHashes = peerCastDeleteHashes.filter((h) => !selfCastDeleteHashes.includes(h));
       peer.getCasts(username, missingCastDeleteHashes).map((message) => this.addCast(message));
+
+      // 4. Compare Reactions and ingest the new ones.
+      const selfReactionHashes = this.getReactionHashes(username);
+      const peerReactionHashes = peer.getReactionHashes(username);
+      const missingReactionHashes = peerReactionHashes.filter((h) => !selfReactionHashes.includes(h));
+      peer.getReactions(username, missingReactionHashes).map((reaction) => this.addReaction(reaction));
     }
   }
 
@@ -100,6 +106,24 @@ class FCNode {
     return this.engine.getCastDeletesHashes(username);
   }
 
+  /** Get reactions by hash */
+  getReactions(username: string, hashes: string[]): Message<any>[] {
+    const reactions = [];
+
+    for (const hash of hashes) {
+      const message = this.engine.getReaction(username, hash);
+      if (message) {
+        reactions.push(message);
+      }
+    }
+
+    return reactions;
+  }
+
+  getReactionHashes(username: string): string[] {
+    return this.engine.getReactionHashes(username);
+  }
+
   /**
    * Client API
    *
@@ -111,8 +135,12 @@ class FCNode {
     return this.engine.addRoot(root);
   }
 
-  addCast(Cast: Cast): Result<void, string> {
-    return this.engine.addCast(Cast);
+  addCast(cast: Cast): Result<void, string> {
+    return this.engine.addCast(cast);
+  }
+
+  addReaction(reaction: Reaction): Result<void, string> {
+    return this.engine.addReaction(reaction);
   }
 }
 
