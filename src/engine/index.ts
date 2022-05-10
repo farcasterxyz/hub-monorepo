@@ -136,15 +136,6 @@ class Engine {
   }
 
   /**
-   * Cast Testing Methods
-   */
-
-  _getCastAdds(username: string): Cast[] {
-    const castSet = this._casts.get(username);
-    return castSet ? castSet._getAdds() : [];
-  }
-
-  /**
    * Reaction Methods
    */
 
@@ -235,6 +226,7 @@ class Engine {
     this._resetCasts();
     this._resetSigners();
     this._resetRoots();
+    this._resetReactions();
   }
 
   _resetCasts(): void {
@@ -247,6 +239,20 @@ class Engine {
 
   _resetRoots(): void {
     this._roots = new Map();
+  }
+
+  _resetReactions(): void {
+    this._reactions = new Map();
+  }
+
+  _getCastAdds(username: string): Cast[] {
+    const castSet = this._casts.get(username);
+    return castSet ? castSet._getAdds() : [];
+  }
+
+  _getActiveReactions(username: string): Reaction[] {
+    const reactionSet = this._reactions.get(username);
+    return reactionSet ? reactionSet._getActiveReactions() : [];
   }
 
   /** Determine the valid signer address for a username at a block */
@@ -315,7 +321,7 @@ class Engine {
     }
 
     if (isReaction(message)) {
-      return this.validateReaction(message);
+      return this.validateReaction();
     }
 
     // TODO: check that the schema is a valid and known schema.
@@ -352,11 +358,8 @@ class Engine {
     return ok(undefined);
   }
 
-  private validateReaction(reaction: Reaction): Result<void, string> {
+  private validateReaction(): Result<void, string> {
     // TODO: validate targetUri, schema
-    if (reaction.data.body.type !== 'like') {
-      return err('validateReaction: invalid type');
-    }
     return ok(undefined);
   }
 }

@@ -37,7 +37,7 @@ class CastSet {
       return this.add(cast);
     }
 
-    return err('CastSet.merge: unknown cast type');
+    return err('CastSet.merge: invalid cast');
   }
 
   /**
