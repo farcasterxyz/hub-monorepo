@@ -217,39 +217,31 @@ describe('mergeRoot', () => {
       expect(engine._getCastAdds(username)).toEqual([]);
     });
 
-    test('succeeds if the root block is identical but lexicographical hash value is lower', async () => {
+    test('fails if the root block is identical but lexicographical hash value is lower', async () => {
       if (hashCompare(root200_1.hash, root200_2.hash) > 0) {
-        engine.mergeRoot(root200_1);
-        expect(engine.getRoot('alice')).toEqual(root200_1);
-
-        engine.mergeRoot(root200_2);
-        expect(engine.getRoot('alice')).toEqual(root200_2);
+        expect(engine.mergeRoot(root200_1).isOk()).toEqual(true);
+        expect(engine.mergeRoot(root200_2)._unsafeUnwrapErr()).toEqual(
+          'mergeRoot: newer root was present (lexicographically higher hash)'
+        );
+        expect(subject()).toEqual(root200_1);
       } else {
-        engine.mergeRoot(root200_2);
-        expect(engine.getRoot('alice')).toEqual(root200_2);
-
-        engine.mergeRoot(root200_1);
-        expect(engine.getRoot('alice')).toEqual(root200_1);
+        expect(engine.mergeRoot(root200_2).isOk()).toEqual(true);
+        expect(engine.mergeRoot(root200_1)._unsafeUnwrapErr()).toEqual(
+          'mergeRoot: newer root was present (lexicographically higher hash)'
+        );
+        expect(subject()).toEqual(root200_2);
       }
     });
 
-    test('fails if the root block is identical but lexicographical hash value is lower', async () => {
+    test('succeeds if the root block is identical but lexicographical hash value is higher', async () => {
       if (hashCompare(root200_1.hash, root200_2.hash) < 0) {
-        engine.mergeRoot(root200_1);
-        expect(engine.getRoot('alice')).toEqual(root200_1);
-
-        expect(engine.mergeRoot(root200_2)._unsafeUnwrapErr()).toEqual(
-          'mergeRoot: provided root was older (higher hash)'
-        );
-        expect(engine.getRoot('alice')).toEqual(root200_1);
+        expect(engine.mergeRoot(root200_1).isOk()).toEqual(true);
+        expect(engine.mergeRoot(root200_2).isOk()).toEqual(true);
+        expect(subject()).toEqual(root200_2);
       } else {
-        engine.mergeRoot(root200_2);
-        expect(engine.getRoot('alice')).toEqual(root200_2);
-
-        expect(engine.mergeRoot(root200_1)._unsafeUnwrapErr()).toEqual(
-          'mergeRoot: provided root was older (higher hash)'
-        );
-        expect(engine.getRoot('alice')).toEqual(root200_2);
+        expect(engine.mergeRoot(root200_2).isOk()).toEqual(true);
+        expect(engine.mergeRoot(root200_1).isOk()).toEqual(true);
+        expect(subject()).toEqual(root200_1);
       }
     });
 

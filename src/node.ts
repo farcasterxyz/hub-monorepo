@@ -1,4 +1,4 @@
-import { Cast, Root, Message, Reaction } from '~/types';
+import { Cast, Root, Reaction } from '~/types';
 import Engine from '~/engine';
 import { Result } from 'neverthrow';
 
@@ -71,7 +71,7 @@ class FCNode {
   }
 
   /** Get casts by hash, or corresponding delete message */
-  getCasts(username: string, hashes: string[]): Message<any>[] {
+  getCasts(username: string, hashes: string[]): Cast[] {
     const messages = [];
 
     for (const hash of hashes) {

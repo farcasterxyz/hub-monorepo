@@ -1,15 +1,15 @@
 import { Factories } from '~/factories';
 import CastSet from '~/castSet';
-import { CastDeleteMessageBody, CastShortMessageBody, Message } from '~/types';
+import { CastDelete, CastShort } from '~/types';
 
 const set = new CastSet();
 
 describe('merge', () => {
-  let castShort1: Message<CastShortMessageBody>;
-  let castShort2: Message<CastShortMessageBody>;
+  let castShort1: CastShort;
+  let castShort2: CastShort;
 
-  let castDelete1: Message<CastDeleteMessageBody>;
-  let castDelete2: Message<CastDeleteMessageBody>;
+  let castDelete1: CastDelete;
+  let castDelete2: CastDelete;
 
   beforeAll(async () => {
     castShort1 = await Factories.Cast.create();

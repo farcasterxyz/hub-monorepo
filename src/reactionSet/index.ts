@@ -50,22 +50,22 @@ class ReactionSet {
       return ok(undefined);
     }
 
-    const existingReaction = this.hashToReaction.get(existingReactionHash);
-    if (!existingReaction) {
+    const currentReaction = this.hashToReaction.get(existingReactionHash);
+    if (!currentReaction) {
       return err('ReactionSet.merge: unexpected state');
     }
 
-    if (existingReaction.data.signedAt > reaction.data.signedAt) {
+    if (currentReaction.data.signedAt > reaction.data.signedAt) {
       return err('ReactionSet.merge: newer reaction was present');
     }
 
-    if (existingReaction.data.signedAt < reaction.data.signedAt) {
+    if (currentReaction.data.signedAt < reaction.data.signedAt) {
       this.addOrUpdateReaction(reaction);
       return ok(undefined);
     }
 
     // If the timestamp is equal, compare the lexicographic order of the hashes.
-    const hashCmp = hashCompare(existingReaction.hash, reaction.hash);
+    const hashCmp = hashCompare(currentReaction.hash, reaction.hash);
     if (hashCmp < 0) {
       this.addOrUpdateReaction(reaction);
       return ok(undefined);

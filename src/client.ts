@@ -19,7 +19,7 @@ class Client {
     return this.wallet.address;
   }
 
-  makeRoot(ethBlockNum: number, ethblockHash: string): FC.Message<FC.RootMessageBody> {
+  makeRoot(ethBlockNum: number, ethblockHash: string): FC.Root {
     const item = {
       data: {
         body: {
@@ -41,7 +41,7 @@ class Client {
     return item;
   }
 
-  makeCastShort(text: string, root: FC.Root): FC.Message<FC.CastShortMessageBody> {
+  makeCastShort(text: string, root: FC.Root): FC.CastShort {
     const schema = 'farcaster.xyz/schemas/v1/cast-short' as const;
     const signedAt = Date.now();
     const signer = this.wallet.address;
@@ -72,7 +72,7 @@ class Client {
     return item;
   }
 
-  makeCastDelete(targetCast: FC.Cast, root: FC.Root): FC.Message<FC.CastDeleteMessageBody> {
+  makeCastDelete(targetCast: FC.Cast, root: FC.Root): FC.CastDelete {
     const schema = 'farcaster.xyz/schemas/v1/cast-delete' as const;
     const signedAt = Date.now();
     const signer = this.wallet.address;
@@ -100,7 +100,7 @@ class Client {
     return item;
   }
 
-  makeReaction(targetCast: FC.CastShort, root: FC.Root, active = true): FC.Message<FC.ReactionMessageBody> {
+  makeReaction(targetCast: FC.CastShort, root: FC.Root, active = true): FC.Reaction {
     const schema = 'farcaster.xyz/schemas/v1/reaction' as const;
     const signedAt = Date.now();
     const signer = this.wallet.address;
