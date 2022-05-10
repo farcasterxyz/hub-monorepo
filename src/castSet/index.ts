@@ -1,31 +1,52 @@
 import { Result, ok, err } from 'neverthrow';
-import { CastDeleteMessageBody, CastRecastMessageBody, CastShortMessageBody, Message } from '~/types';
+import { Cast, CastDelete, CastRecast, CastShort } from '~/types';
+import { isCastDelete, isCastRecast, isCastShort } from '~/types/typeguards';
 
-type SetAddType = CastRecastMessageBody | CastShortMessageBody;
-type SetDeleteType = CastDeleteMessageBody;
+type SetAddType = CastShort | CastRecast;
 
 class CastSet {
-  private _adds: Map<string, Message<SetAddType>>;
-  private _deletes: Map<string, Message<SetDeleteType>>;
+  private _adds: Map<string, SetAddType>;
+  private _deletes: Map<string, CastDelete>;
 
   constructor() {
     this._adds = new Map();
     this._deletes = new Map();
   }
 
-  get(hash: string): Message<SetAddType | SetDeleteType> | undefined {
+  /** Get a cast by its hash */
+  get(hash: string): SetAddType | CastDelete | undefined {
     return this._adds.get(hash) || this._deletes.get(hash);
   }
 
-  getAddsHashes(): string[] {
+  /** Get hashes of all active casts */
+  getHashes(): string[] {
     return Array.from(this._adds.keys());
   }
 
-  getDeletesHashes(): string[] {
-    return Array.from(this._deletes.keys());
+  /** Get hashes of all casts */
+  getAllHashes(): string[] {
+    const keys = this.getHashes();
+    keys.push(...Array.from(this._deletes.keys()));
+    return keys;
   }
 
-  add(message: Message<SetAddType>): Result<void, string> {
+  merge(cast: Cast): Result<void, string> {
+    if (isCastDelete(cast)) {
+      return this.delete(cast);
+    }
+
+    if (isCastRecast(cast) || isCastShort(cast)) {
+      return this.add(cast);
+    }
+
+    return err('CastSet.merge: unknown cast type');
+  }
+
+  /**
+   * Private Methods
+   */
+
+  private add(message: CastShort | CastRecast): Result<void, string> {
     // TODO: Validate the type of message.
 
     if (this._deletes.get(message.hash)) {
@@ -40,7 +61,7 @@ class CastSet {
     return ok(undefined);
   }
 
-  delete(message: Message<SetDeleteType>): Result<void, string> {
+  private delete(message: CastDelete): Result<void, string> {
     // TODO: runtime type checks.
 
     const targetHash = message.data.body.targetHash;
@@ -56,11 +77,15 @@ class CastSet {
     return ok(undefined);
   }
 
-  _getAdds(): Message<any>[] {
+  /**
+   * Testing Methods
+   */
+
+  _getAdds(): (CastShort | CastRecast)[] {
     return Array.from(this._adds.values());
   }
 
-  _getDeletes(): Message<any>[] {
+  _getDeletes(): CastDelete[] {
     return Array.from(this._deletes.values());
   }
 

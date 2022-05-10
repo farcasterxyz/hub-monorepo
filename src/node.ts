@@ -1,4 +1,4 @@
-import { Cast, Root, Message, RootMessageBody, Reaction } from '~/types';
+import { Cast, Root, Message, Reaction } from '~/types';
 import Engine from '~/engine';
 import { Result } from 'neverthrow';
 
@@ -41,26 +41,20 @@ class FCNode {
     if (peerRoot) {
       // 1. Compare roots and add the peer's root if newer.
       if (!selfRoot || selfRoot.data.rootBlock <= peerRoot.data.rootBlock) {
-        this.addRoot(peerRoot);
+        this.mergeRoot(peerRoot);
       }
 
-      // 2. Compare CastAdd messages and ingest new ones.
-      const selfCastAddHashes = this.getCastAddsHashes(username);
-      const peerCastAddHashes = peer.getCastAddsHashes(username);
-      const missingCastAddsHashes = peerCastAddHashes.filter((h) => !selfCastAddHashes.includes(h));
-      peer.getCasts(username, missingCastAddsHashes).map((message) => this.addCast(message));
+      // 2. Compare hashes of casts and merge any new ones discovered.
+      const selfCastHashes = this.getAllCastHashes(username);
+      const peerCastHashes = peer.getAllCastHashes(username);
+      const missingCastAddsHashes = peerCastHashes.filter((h) => !selfCastHashes.includes(h));
+      peer.getCasts(username, missingCastAddsHashes).map((message) => this.mergeCast(message));
 
-      // 3. Compare CastDelete messages and ingest new ones.
-      const selfCastDeleteHashes = this.getCastDeletesHashes(username);
-      const peerCastDeleteHashes = peer.getCastDeletesHashes(username);
-      const missingCastDeleteHashes = peerCastDeleteHashes.filter((h) => !selfCastDeleteHashes.includes(h));
-      peer.getCasts(username, missingCastDeleteHashes).map((message) => this.addCast(message));
-
-      // 4. Compare Reactions and ingest the new ones.
-      const selfReactionHashes = this.getReactionHashes(username);
-      const peerReactionHashes = peer.getReactionHashes(username);
+      // 3. Compare hashes of reactions and merge any new ones discovered.
+      const selfReactionHashes = this.getAllReactionHashes(username);
+      const peerReactionHashes = peer.getAllReactionHashes(username);
       const missingReactionHashes = peerReactionHashes.filter((h) => !selfReactionHashes.includes(h));
-      peer.getReactions(username, missingReactionHashes).map((reaction) => this.addReaction(reaction));
+      peer.getReactions(username, missingReactionHashes).map((reaction) => this.mergeReaction(reaction));
     }
   }
 
@@ -72,7 +66,7 @@ class FCNode {
    */
 
   /** Get the Root Message for a username */
-  getRoot(username: string): Message<RootMessageBody> | undefined {
+  getRoot(username: string): Root | undefined {
     return this.engine.getRoot(username);
   }
 
@@ -90,42 +84,26 @@ class FCNode {
     return messages;
   }
 
-  getCastAdds(username: string): Cast[] {
-    return this.engine.getCastAdds(username);
+  getCastHashes(username: string): string[] {
+    return this.engine.getCastHashes(username);
   }
 
-  getCastDeletes(username: string): Cast[] {
-    return this.engine.getCastAdds(username);
+  getAllCastHashes(username: string): string[] {
+    return this.engine.getAllCastHashes(username);
   }
 
-  getCastAddsHashes(username: string): string[] {
-    return this.engine.getCastAddsHashes(username);
-  }
-
-  getCastDeletesHashes(username: string): string[] {
-    return this.engine.getCastDeletesHashes(username);
-  }
-
-  /** Get reactions by hash */
-  getReactions(username: string, hashes?: string[]): Reaction[] {
-    const reactions = [];
-
-    if (!hashes) {
-      return this.engine.getReactions(username);
-    }
-
-    for (const hash of hashes) {
-      const message = this.engine.getReaction(username, hash);
-      if (message) {
-        reactions.push(message);
-      }
-    }
-
-    return reactions;
+  getReactions(username: string, hashes: string[]): Reaction[] {
+    return hashes
+      .map((hash) => this.engine.getReaction(username, hash))
+      .filter((reaction): reaction is Reaction => !!reaction);
   }
 
   getReactionHashes(username: string): string[] {
     return this.engine.getReactionHashes(username);
+  }
+
+  getAllReactionHashes(username: string): string[] {
+    return this.engine.getAllReactionHashes(username);
   }
 
   /**
@@ -135,16 +113,16 @@ class FCNode {
    * by peers, because they are less strict and this may cause divergent network states.
    */
 
-  addRoot(root: Root): Result<void, string> {
-    return this.engine.addRoot(root);
+  mergeRoot(root: Root): Result<void, string> {
+    return this.engine.mergeRoot(root);
   }
 
-  addCast(cast: Cast): Result<void, string> {
-    return this.engine.addCast(cast);
+  mergeCast(cast: Cast): Result<void, string> {
+    return this.engine.mergeCast(cast);
   }
 
-  addReaction(reaction: Reaction): Result<void, string> {
-    return this.engine.addReaction(reaction);
+  mergeReaction(reaction: Reaction): Result<void, string> {
+    return this.engine.mergeReaction(reaction);
   }
 }
 

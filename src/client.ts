@@ -1,13 +1,4 @@
-import {
-  Root,
-  RootMessageBody,
-  Message,
-  CastShortMessageBody,
-  CastDeleteMessageBody,
-  Cast,
-  ReactionMessageBody,
-  CastShort,
-} from '~/types';
+import * as FC from '~/types';
 import { hashMessage, sign } from '~/utils';
 import { Wallet, utils } from 'ethers';
 
@@ -28,7 +19,7 @@ class Client {
     return this.wallet.address;
   }
 
-  makeRoot(ethBlockNum: number, ethblockHash: string): Message<RootMessageBody> {
+  makeRoot(ethBlockNum: number, ethblockHash: string): FC.Message<FC.RootMessageBody> {
     const item = {
       data: {
         body: {
@@ -50,7 +41,7 @@ class Client {
     return item;
   }
 
-  makeCastShort(text: string, root: Root): Message<CastShortMessageBody> {
+  makeCastShort(text: string, root: FC.Root): FC.Message<FC.CastShortMessageBody> {
     const schema = 'farcaster.xyz/schemas/v1/cast-short' as const;
     const signedAt = Date.now();
     const signer = this.wallet.address;
@@ -81,7 +72,7 @@ class Client {
     return item;
   }
 
-  makeCastDelete(targetCast: Cast, root: Root): Message<CastDeleteMessageBody> {
+  makeCastDelete(targetCast: FC.Cast, root: FC.Root): FC.Message<FC.CastDeleteMessageBody> {
     const schema = 'farcaster.xyz/schemas/v1/cast-delete' as const;
     const signedAt = Date.now();
     const signer = this.wallet.address;
@@ -109,7 +100,7 @@ class Client {
     return item;
   }
 
-  makeReaction(targetCast: CastShort, root: Root, active = true): Message<ReactionMessageBody> {
+  makeReaction(targetCast: FC.CastShort, root: FC.Root, active = true): FC.Message<FC.ReactionMessageBody> {
     const schema = 'farcaster.xyz/schemas/v1/reaction' as const;
     const signedAt = Date.now();
     const signer = this.wallet.address;

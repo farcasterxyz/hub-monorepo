@@ -1,15 +1,36 @@
 import FCNode, { NodeDirectory } from '~/node';
 import Table from 'cli-table3';
 import colors from 'colors/safe';
-import { isCast, isCastDelete, isCastShort, isReaction, isRoot } from '~/types/typeguards';
-import { Message } from '~/types';
+import { isCastDelete, isCastShort, isReaction, isRoot } from '~/types/typeguards';
+import { Cast, Reaction, Root } from '~/types';
 
 const rootEmoji = String.fromCodePoint(0x1fab4);
 const castEmoji = String.fromCodePoint(0x1f4e2);
-const reactionEmoji = String.fromCodePoint(0x1f4e1);
+const reactionEmoji = String.fromCodePoint(0x1f600);
 const personEmoji = String.fromCodePoint(0x1f9d1);
 const nodeEmoji = String.fromCodePoint(0x1f916);
 const chainEmoji = String.fromCodePoint(0x1f517);
+
+const tableStyle = {
+  chars: {
+    top: '═',
+    'top-mid': ' ',
+    'top-left': '╔',
+    'top-right': '╗',
+    bottom: '═',
+    'bottom-mid': ' ',
+    'bottom-left': '╚',
+    'bottom-right': '╝',
+    left: '║',
+    'left-mid': ' ',
+    mid: '-',
+    'mid-mid': ' ',
+    right: '║',
+    'right-mid': '',
+    middle: ' ',
+  },
+  style: { compact: true },
+};
 
 /**
  * Debugger helps visualize the current state of messages across nodes in the network
@@ -32,7 +53,7 @@ const Debugger = {
     console.log(`${chainEmoji} block  | num: ${blockNumber} hash: ${blockHash.slice(blockHash.length - 3)}`);
   },
 
-  printBroadcast: (message: Message, node: FCNode): void => {
+  printBroadcast: (message: Cast | Reaction | Root, node: FCNode): void => {
     const username = personEmoji + ' ' + Debugger._padString(message.data.username, 5);
     const hash = message.hash.slice(message.hash.length - 3);
     const nodeName = nodeEmoji + ' ' + Debugger._padString(node.name.toLowerCase(), 6);
@@ -54,11 +75,8 @@ const Debugger = {
     }
 
     if (isReaction(message)) {
-      if (message.data.body.active) {
-        type = Debugger._padString('rctn-a', 7);
-      } else {
-        type = Debugger._padString('rctn-d', 7);
-      }
+      const typeName = message.data.body.active ? 'rct-add' : 'rct-rem';
+      type = Debugger._padString(typeName, 7);
       data = '0x' + message.data.body.targetUri.slice(message.data.body.targetUri.length - 3);
     }
 
@@ -90,44 +108,34 @@ const Debugger = {
   printNodes: (nodes: NodeDirectory): void => {
     console.log('');
     for (const username of FCNode.usernames) {
-      const table = new Table({
-        chars: {
-          top: '═',
-          'top-mid': ' ',
-          'top-left': '╔',
-          'top-right': '╗',
-          bottom: '═',
-          'bottom-mid': ' ',
-          'bottom-left': '╚',
-          'bottom-right': '╝',
-          left: '║',
-          'left-mid': ' ',
-          mid: '-',
-          'mid-mid': ' ',
-          right: '║',
-          'right-mid': '',
-          middle: ' ',
-        },
-        style: { compact: true },
-      });
-      const { blockNum, setSize } = Debugger._latestCastSetFingerprint(username, nodes);
+      const table = new Table(tableStyle);
+      const { blockNum, setSize } = Debugger._latestUserState(username, nodes);
+
       for (const node of nodes.values()) {
         const root = node.getRoot(username);
+        const nodeName = node.name.toLowerCase();
+
         if (!root) {
-          table.push({ [node.name]: Debugger._visualizeMessages([], colors.red) });
+          table.push({ [nodeName]: Debugger._visualizeState({}, colors.red) });
           continue;
         }
 
-        // If this node is the "latest" according to our approximate heuristic, show it in green otherwise in red.
-        const isLatest = root?.data.rootBlock === blockNum && Debugger._messageSetSize(node, username) === setSize;
+        // If this node is the "latest" according to heuristic, show it in green otherwise in red.
+        const isLatest = root?.data.rootBlock === blockNum && Debugger._numMessages(node, username) === setSize;
         const color = isLatest ? colors.green : colors.red;
 
-        const messages: Message<any>[] = node.getCastAdds(username);
-        messages.unshift(root);
-        const reactions = node.getReactions(username);
-        messages.push(...reactions);
-        table.push({ [node.name]: Debugger._visualizeMessages(messages, color) });
+        const castHashes = node.getCastHashes(username);
+        const reactionHashes = node.getReactionHashes(username);
+
+        const messages = {
+          rootHashes: [root.hash],
+          castHashes,
+          reactionHashes,
+        };
+
+        table.push({ [nodeName]: Debugger._visualizeState(messages, color) });
       }
+
       console.log(username);
       console.log(table.toString());
     }
@@ -135,13 +143,12 @@ const Debugger = {
   },
 
   /**
-   * Calculates the fingerprint of the "latest" Cast Set.
+   * Returns the "latest" state of a user across all nodes.
    *
-   * The latest set is defined as the one with the highest root block and the most messages. This
-   * is a convenient approximation for comparing sets before applying an actual merge operation,
-   * but is not always accurate.
+   * Find the state with the highest root block number and most messages. This isn't guaranteed to
+   * be the latest, but is a fast approximation.
    */
-  _latestCastSetFingerprint: (username: string, nodes: NodeDirectory): { blockNum: number; setSize: number } => {
+  _latestUserState: (username: string, nodes: NodeDirectory): { blockNum: number; setSize: number } => {
     let highestKnownBlock = 0;
     let largestMessageSetSize = 0;
 
@@ -154,7 +161,7 @@ const Debugger = {
           largestMessageSetSize = 0;
         }
 
-        const size = Debugger._messageSetSize(node, username);
+        const size = Debugger._numMessages(node, username);
         if (size > largestMessageSetSize) {
           largestMessageSetSize = size;
         }
@@ -164,28 +171,28 @@ const Debugger = {
     return { blockNum: highestKnownBlock, setSize: largestMessageSetSize };
   },
 
-  /** Determine the total number of messages in a user's sets */
-  _messageSetSize: (node: FCNode, username: string) => {
-    return (
-      node.getCastAddsHashes(username).length +
-      node.getCastDeletesHashes(username).length +
-      node.getReactionHashes(username).length
-    );
+  /** Returns the number of messages for a user in a given node */
+  _numMessages: (node: FCNode, username: string) => {
+    return node.getAllCastHashes(username).length + node.getAllReactionHashes(username).length;
   },
 
   /** Convert a Message[] into a human readable string */
-  _visualizeMessages: (messages: Message<any>[], color: (str: string) => string): string[] => {
-    return messages.map((msg) => {
-      let visual;
-      if (isRoot(msg)) {
-        visual = rootEmoji;
-      } else if (isReaction(msg)) {
-        visual = reactionEmoji;
-      } else {
-        visual = castEmoji;
-      }
-      return color(visual + '  ' + msg.hash.slice(msg.hash.length - 3, msg.hash.length));
-    });
+  _visualizeState: (nodeState: Record<string, string[]>, color: (str: string) => string): string[] => {
+    if (!nodeState.rootHashes) {
+      return [];
+    }
+
+    const output = [];
+    output.push(...nodeState.rootHashes.map((hash: string) => Debugger._visualizeMessage(hash, rootEmoji, color)));
+    output.push(...nodeState.castHashes.map((hash: string) => Debugger._visualizeMessage(hash, castEmoji, color)));
+    output.push(
+      ...nodeState.reactionHashes.map((hash: string) => Debugger._visualizeMessage(hash, reactionEmoji, color))
+    );
+    return output;
+  },
+
+  _visualizeMessage: (hash: string, emoji: string, color: (str: string) => string): string => {
+    return color(emoji + '  ' + hash.slice(hash.length - 3, hash.length));
   },
 
   _padString: (str: string, length: number): string => {

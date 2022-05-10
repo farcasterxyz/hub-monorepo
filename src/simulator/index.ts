@@ -59,11 +59,11 @@ abstract class Simulator {
       Debugger.printBroadcast(message, node);
 
       if (isRoot(message)) {
-        node.addRoot(message);
+        node.mergeRoot(message);
       } else if (isReaction(message)) {
-        node.addReaction(message);
+        node.mergeReaction(message);
       } else {
-        node.addCast(message);
+        node.mergeCast(message);
       }
     }, delay || 0);
   }
