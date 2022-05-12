@@ -56,7 +56,7 @@ const Debugger = {
     activity.push(`${name} is ending...`);
     this._logSeparator();
     activity.push('');
-    Debugger._render();
+    Debugger._dumpToConsole();
   },
 
   printNewBlock(blockNumber: number, blockHash: string) {
@@ -196,6 +196,16 @@ const Debugger = {
     const logs = activity.reduce((accum, next) => `${accum}${next}\n`, ``);
     const network = nodeStatus.reduce((accum, next) => `${accum}${next}\n`, ``);
     logUpdate(`${logs}${network}`);
+  },
+
+  /** Log completed simulation via console.log */
+  _dumpToConsole() {
+    const lines = activity.slice();
+    activity.length = 0;
+    Debugger._render();
+    for (const line of lines) {
+      console.log(line);
+    }
   },
 
   /** Convert a Message[] into a human readable string */
