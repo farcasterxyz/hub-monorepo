@@ -1,5 +1,6 @@
 import FCNode, { NodeDirectory } from '~/node';
 import Table from 'cli-table3';
+import logUpdate from 'log-update';
 import colors from 'colors/safe';
 import { isCastDelete, isCastShort, isReaction, isRoot } from '~/types/typeguards';
 import { Cast, Reaction, Root } from '~/types';
@@ -32,25 +33,35 @@ const tableStyle = {
   style: { compact: true },
 };
 
+/** Store sections of terminal output separately for rendering */
+const activity: string[] = [];
+const nodeStatus: string[] = [];
+
 /**
  * Debugger helps visualize the current state of messages across nodes in the network
  */
+
 const Debugger = {
   printSimulationStart: (name: string) => {
     Debugger._logSeparator();
-    console.log(`${name} is starting...`);
+    activity.push(`${name} is starting...`);
     Debugger._logSeparator();
+    Debugger._render();
   },
 
   printSimulationEnd(name: string) {
+    activity.push(...nodeStatus);
+    nodeStatus.length = 0;
     this._logSeparator();
-    console.log(`${name} is ending...`);
+    activity.push(`${name} is ending...`);
     this._logSeparator();
-    console.log('');
+    activity.push('');
+    Debugger._dumpToConsole();
   },
 
   printNewBlock(blockNumber: number, blockHash: string) {
-    console.log(`${chainEmoji} block  | num: ${blockNumber} hash: ${blockHash.slice(blockHash.length - 3)}`);
+    activity.push(`${chainEmoji} block  | num: ${blockNumber} hash: ${blockHash.slice(blockHash.length - 3)}`);
+    Debugger._render();
   },
 
   printBroadcast: (message: Cast | Reaction | Root, node: FCNode): void => {
@@ -85,7 +96,8 @@ const Debugger = {
       outLine += `| ${data} `;
     }
 
-    console.log(outLine);
+    activity.push(outLine);
+    Debugger._render();
   },
 
   printNodeSync: (node: FCNode): void => {
@@ -102,11 +114,14 @@ const Debugger = {
       }
     }
 
-    console.log(`${nodeEmoji} ${Debugger._padString(node.name.toLowerCase(), 6)} | syncing with ${peerStr} `);
+    activity.push(`${nodeEmoji} ${Debugger._padString(node.name.toLowerCase(), 6)} | syncing with ${peerStr} `);
+    Debugger._render();
   },
 
   printNodes: (nodes: NodeDirectory): void => {
-    console.log('');
+    // First, empty array to achieve "in-line" update effect when rendering table
+    nodeStatus.length = 0;
+    nodeStatus.push('');
     for (const username of FCNode.usernames) {
       const table = new Table(tableStyle);
       const { blockNum, setSize } = Debugger._latestUserState(username, nodes);
@@ -136,10 +151,10 @@ const Debugger = {
         table.push({ [nodeName]: Debugger._visualizeState(messages, color) });
       }
 
-      console.log(username);
-      console.log(table.toString());
+      nodeStatus.push(username);
+      nodeStatus.push(table.toString());
     }
-    console.log('');
+    nodeStatus.push('');
   },
 
   /**
@@ -176,6 +191,23 @@ const Debugger = {
     return node.getAllCastHashes(username).length + node.getAllReactionHashes(username).length;
   },
 
+  /** Draw logs and network table to stdout */
+  _render() {
+    const logs = activity.reduce((accum, next) => `${accum}${next}\n`, ``);
+    const network = nodeStatus.reduce((accum, next) => `${accum}${next}\n`, ``);
+    logUpdate(`${logs}${network}`);
+  },
+
+  /** Log completed simulation via console.log */
+  _dumpToConsole() {
+    const lines = activity.slice();
+    activity.length = 0;
+    Debugger._render();
+    for (const line of lines) {
+      console.log(line);
+    }
+  },
+
   /** Convert a Message[] into a human readable string */
   _visualizeState: (nodeState: Record<string, string[]>, color: (str: string) => string): string[] => {
     if (!nodeState.rootHashes) {
@@ -203,7 +235,7 @@ const Debugger = {
   },
 
   _logSeparator(width = 50): void {
-    console.log('═'.repeat(width));
+    activity.push('═'.repeat(width));
   },
 };
 
