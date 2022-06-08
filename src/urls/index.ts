@@ -1,6 +1,7 @@
 import { Result, err, ok } from 'neverthrow';
 import { CastId, UserId } from '~/urls/identifiers';
 import { parse as rawUriParse, URIComponents } from 'uri-js';
+import { ChainId } from 'caip';
 
 export function parseUrl(url: string, allowUnrecognized = true): Result<URL, string> {
   // extract scheme
@@ -15,8 +16,13 @@ export function parseUrl(url: string, allowUnrecognized = true): Result<URL, str
   switch (baseURI.scheme) {
     case undefined:
       return err('parseUrl: URL is missing scheme');
+
     case FarcasterURL.SCHEME:
       return UserURL.parse(url).orElse(() => CastURL.parse(url));
+
+    case ChainURL.SCHEME:
+      return ChainURL.parse(url);
+
     default:
       if (!allowUnrecognized) {
         return err(`parseUrl: Unrecognized scheme '${baseURI.scheme}'`);
@@ -101,5 +107,47 @@ export class CastURL extends FarcasterURL {
 
   public toString(): string {
     return FarcasterURL.SCHEME + '://' + this.castId.toString();
+  }
+}
+
+export abstract class BaseChainURL extends URL {
+  public static readonly SCHEME = 'chain';
+  public readonly scheme = ChainURL.SCHEME;
+}
+
+export class ChainURL extends BaseChainURL {
+  public readonly chainId: ChainId;
+
+  public static parse(_url: string): Result<ChainURL, string> {
+    const schemePrefix = this.SCHEME + '://';
+
+    if (!_url.startsWith(schemePrefix)) {
+      return err(`URL missing 'chain' scheme`);
+    }
+
+    const remainder = _url.substring(_url.indexOf(schemePrefix) + schemePrefix.length);
+
+    try {
+      const chainIdParams = ChainId.parse(remainder);
+      const chainId = new ChainId(chainIdParams);
+
+      // check for extra invalid data before or after the chain ID
+      const referenceRegex = new RegExp('^' + ChainId.spec.parameters.values[1].regex + '$');
+      if (!referenceRegex.test(chainId.reference)) {
+        return err(`ChainURL.parse: invalid extra data after ChainId: '${remainder}`);
+      }
+      return ok(new ChainURL(chainId));
+    } catch (e) {
+      return err(`ChainURL.parse: unable to parse '${_url}`);
+    }
+  }
+
+  public constructor(chainId: ChainId) {
+    super();
+    this.chainId = chainId;
+  }
+
+  public toString(): string {
+    return BaseChainURL.SCHEME + '://' + this.chainId.toString();
   }
 }

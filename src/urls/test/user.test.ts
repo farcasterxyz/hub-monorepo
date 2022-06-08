@@ -31,10 +31,11 @@ const negativeTestCases: Array<ParserTestCase> = [
   // missing scheme
   'id:1',
 
+  // wrong scheme
+  'http://id:1',
+
   // missing value
   farcasterURLPrefix + 'id:',
-
-  // also missing value
   farcasterURLPrefix + 'id',
 
   // leading zeroes not permitted

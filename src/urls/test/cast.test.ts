@@ -32,10 +32,11 @@ const negativeTestCases: Array<ParserTestCase> = [
   // missing scheme
   'id:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
 
+  // wrong scheme
+  'http://id:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+
   // missing cast hash
   farcasterURLPrefix + 'id:1/cast:',
-
-  // also missing cast hash
   farcasterURLPrefix + 'id:1/cast',
 
   // hash is missing leading 0x
