@@ -36,7 +36,6 @@ class CastSet {
     if (isCastRecast(cast) || isCastShort(cast)) {
       return this.add(cast);
     }
-
     return err('CastSet.merge: invalid cast');
   }
 

@@ -2,6 +2,8 @@ import Engine from '~/engine';
 import { Factories } from '~/factories';
 import { Cast, Reaction, Root } from '~/types';
 import Faker from 'faker';
+import { hashCompare, generatePublicPrivateKeys, convertToHex } from '~/utils';
+import { hexToBytes } from 'ethereum-cryptography/utils';
 
 const engine = new Engine();
 const username = 'alice';
@@ -12,17 +14,18 @@ describe('mergeCast', () => {
   let root: Root;
   let cast: Cast;
   let reaction: Reaction;
+  let transient: { transient: { privateKey: Uint8Array } };
   const subject = () => engine._getCastAdds(username);
 
   beforeAll(async () => {
-    const keypair = await Factories.EthAddress.create({});
-    alicePrivateKey = keypair.privateKey;
-    aliceAddress = keypair.address;
+    const publicPrivateKeys = await generatePublicPrivateKeys([username]);
+    const privateKeyBuffer = publicPrivateKeys.get(username)?.get('privateKey') as Uint8Array;
+    alicePrivateKey = await convertToHex(privateKeyBuffer);
+    const addressBuffer = publicPrivateKeys.get(username)?.get('publicKey') as Uint8Array;
+    aliceAddress = await convertToHex(addressBuffer);
+    transient = { transient: { privateKey: hexToBytes(alicePrivateKey) } };
 
-    root = await Factories.Root.create(
-      { data: { rootBlock: 100, username: 'alice' } },
-      { transient: { privateKey: alicePrivateKey } }
-    );
+    root = await Factories.Root.create({ data: { rootBlock: 100, username: 'alice' } }, transient);
 
     cast = await Factories.Cast.create(
       {
@@ -32,7 +35,7 @@ describe('mergeCast', () => {
           signedAt: root.data.signedAt + 1,
         },
       },
-      { transient: { privateKey: alicePrivateKey } }
+      transient
     );
 
     reaction = await Factories.Reaction.create(
@@ -43,7 +46,7 @@ describe('mergeCast', () => {
           signedAt: root.data.signedAt + 1,
         },
       },
-      { transient: { privateKey: alicePrivateKey } }
+      transient
     );
     engine._resetSigners();
   });
@@ -65,11 +68,11 @@ describe('mergeCast', () => {
 
   test('fails to add a root, reaction or follow when passed in here', async () => {
     const invalidCast = root as unknown as Cast;
-    expect(engine.mergeCast(invalidCast)._unsafeUnwrapErr()).toBe('CastSet.merge: invalid cast');
+    expect((await engine.mergeCast(invalidCast))._unsafeUnwrapErr()).toBe('CastSet.merge: invalid cast');
     expect(subject()).toEqual([]);
 
     const invalidReactionCast = reaction as unknown as Cast;
-    expect(engine.mergeCast(invalidReactionCast)._unsafeUnwrapErr()).toBe('CastSet.merge: invalid cast');
+    expect((await engine.mergeCast(invalidReactionCast))._unsafeUnwrapErr()).toBe('CastSet.merge: invalid cast');
     expect(subject()).toEqual([]);
   });
 
@@ -78,7 +81,7 @@ describe('mergeCast', () => {
       engine._resetSigners();
 
       const result = engine.mergeCast(cast);
-      expect(result._unsafeUnwrapErr()).toBe('mergeCast: unknown user');
+      expect((await result)._unsafeUnwrapErr()).toBe('mergeCast: unknown user');
       expect(subject()).toEqual([]);
     });
 
@@ -92,7 +95,7 @@ describe('mergeCast', () => {
       };
       engine.addSignerChange('alice', changeSigner);
 
-      expect(engine.mergeCast(cast)._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
+      expect((await engine.mergeCast(cast))._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
       expect(subject()).toEqual([]);
     });
 
@@ -108,7 +111,7 @@ describe('mergeCast', () => {
       engine.addSignerChange('alice', changeSigner);
 
       const result = engine.mergeCast(cast);
-      expect(result._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
+      expect((await result)._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
       expect(subject()).toEqual([]);
     });
 
@@ -121,7 +124,7 @@ describe('mergeCast', () => {
       });
 
       const result = engine.mergeCast(castInvalidSigner);
-      expect(result._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
+      expect((await result)._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
       expect(subject()).toEqual([]);
     });
 
@@ -134,10 +137,10 @@ describe('mergeCast', () => {
             signedAt: root.data.signedAt + 1,
           },
         },
-        { transient: { privateKey: alicePrivateKey } }
+        transient
       );
 
-      expect(engine.mergeCast(unknownUser)._unsafeUnwrapErr()).toBe('mergeCast: unknown user');
+      expect((await engine.mergeCast(unknownUser))._unsafeUnwrapErr()).toBe('mergeCast: unknown user');
       expect(subject()).toEqual([]);
     });
 
@@ -151,7 +154,7 @@ describe('mergeCast', () => {
 
       engine.addSignerChange('alice', signerChange);
 
-      expect(engine.mergeCast(cast).isOk()).toBe(true);
+      expect((await engine.mergeCast(cast)).isOk()).toBe(true);
       expect(subject()).toEqual([cast]);
     });
   });
@@ -161,16 +164,16 @@ describe('mergeCast', () => {
       const invalidHash = JSON.parse(JSON.stringify(cast)) as Cast;
       invalidHash.hash = '0xd4126acebadb14b41943fc10599c00e2e3627f1e38672c8476277ecf17accb48';
 
-      expect(engine.mergeCast(invalidHash)._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
+      expect((await engine.mergeCast(invalidHash))._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
       expect(subject()).toEqual([]);
     });
 
     test('fails if the signature is invalid', async () => {
       const invalidSignature = JSON.parse(JSON.stringify(cast)) as Cast;
       invalidSignature.signature =
-        '0x52afdda1d6701e29dcd91dea5539c32cdaa2227de257bc0784b1da04be5be32e6a92c934b5d20dd2cb2989f814e74de6b9e7bc1da130543a660822023f9fd0e91c';
+        '0x5b699d494b515b22258c01ad19710d44c3f12235f0c01e91d09a1e4e2cd25d80c77026a7319906da3b8ce62abc18477c19e444a02949a0dde54f8cadef889502';
 
-      expect(engine.mergeCast(invalidSignature)._unsafeUnwrapErr()).toBe('validateMessage: invalid signature');
+      expect((await engine.mergeCast(invalidSignature))._unsafeUnwrapErr()).toBe('validateMessage: invalid signature');
       expect(subject()).toEqual([]);
     });
 
@@ -185,10 +188,10 @@ describe('mergeCast', () => {
             signedAt: elevenMinutesAhead,
           },
         },
-        { transient: { privateKey: alicePrivateKey } }
+        transient
       );
 
-      expect(engine.mergeCast(futureCast)._unsafeUnwrapErr()).toEqual(
+      expect((await engine.mergeCast(futureCast))._unsafeUnwrapErr()).toEqual(
         'validateMessage: signedAt more than 10 mins in the future'
       );
     });
@@ -197,7 +200,7 @@ describe('mergeCast', () => {
   describe('root validation: ', () => {
     test('fails if there is no root', async () => {
       engine._resetRoots();
-      const result = engine.mergeCast(cast);
+      const result = await engine.mergeCast(cast);
       expect(result._unsafeUnwrapErr()).toBe('validateMessage: no root present');
       expect(subject()).toEqual([]);
     });
@@ -210,7 +213,7 @@ describe('mergeCast', () => {
             rootBlock: root.data.rootBlock + 1,
           },
         },
-        { transient: { privateKey: alicePrivateKey } }
+        transient
       );
 
       const invalidEarlyRootBlock = await Factories.Cast.create(
@@ -220,15 +223,15 @@ describe('mergeCast', () => {
             rootBlock: root.data.rootBlock - 1,
           },
         },
-        { transient: { privateKey: alicePrivateKey } }
+        transient
       );
 
-      expect(engine.mergeCast(invalidLateRootBlock)._unsafeUnwrapErr()).toBe(
+      expect((await engine.mergeCast(invalidLateRootBlock))._unsafeUnwrapErr()).toBe(
         'validateMessage: root block does not match'
       );
       expect(subject()).toEqual([]);
 
-      expect(engine.mergeCast(invalidEarlyRootBlock)._unsafeUnwrapErr()).toBe(
+      expect((await engine.mergeCast(invalidEarlyRootBlock))._unsafeUnwrapErr()).toBe(
         'validateMessage: root block does not match'
       );
       expect(subject()).toEqual([]);
@@ -243,10 +246,10 @@ describe('mergeCast', () => {
             signedAt: root.data.signedAt - 1,
           },
         },
-        { transient: { privateKey: alicePrivateKey } }
+        transient
       );
 
-      expect(engine.mergeCast(pastCast)._unsafeUnwrapErr()).toEqual(
+      expect((await engine.mergeCast(pastCast))._unsafeUnwrapErr()).toEqual(
         'validateMessage: message timestamp was earlier than root'
       );
     });
@@ -270,9 +273,9 @@ describe('mergeCast', () => {
             },
           },
         },
-        { transient: { privateKey: alicePrivateKey } }
+        transient
       );
-      const result = engine.mergeCast(castLongText);
+      const result = await engine.mergeCast(castLongText);
 
       expect(result.isOk()).toBe(false);
       expect(result._unsafeUnwrapErr()).toBe('validateCast: text > 280 chars');
@@ -290,10 +293,10 @@ describe('mergeCast', () => {
             },
           },
         },
-        { transient: { privateKey: alicePrivateKey } }
+        transient
       );
 
-      const result = engine.mergeCast(castThreeEmbeds);
+      const result = await engine.mergeCast(castThreeEmbeds);
       expect(result._unsafeUnwrapErr()).toBe('validateCast: embeds > 2');
       expect(subject()).toEqual([]);
     });
@@ -303,14 +306,14 @@ describe('mergeCast', () => {
 
   describe('cast-short merge: ', () => {
     test('succeeds if a valid cast-short is added', async () => {
-      expect(engine.mergeCast(cast).isOk()).toBe(true);
+      expect((await engine.mergeCast(cast)).isOk()).toBe(true);
       expect(subject()).toEqual([cast]);
     });
   });
 
   describe('cast-delete merge: ', () => {
     test('succeeds and removes cast if known', async () => {
-      expect(engine.mergeCast(cast).isOk()).toBe(true);
+      expect((await engine.mergeCast(cast)).isOk()).toBe(true);
 
       const castDelete = await Factories.CastDelete.create(
         {
@@ -322,15 +325,15 @@ describe('mergeCast', () => {
             username: 'alice',
           },
         },
-        { transient: { privateKey: alicePrivateKey } }
+        transient
       );
 
-      expect(engine.mergeCast(castDelete).isOk()).toBe(true);
+      expect((await engine.mergeCast(castDelete)).isOk()).toBe(true);
       expect(subject()).toEqual([]);
     });
 
     test('succeeds and does nothing if cast is unknown', async () => {
-      expect(engine.mergeCast(cast).isOk()).toBe(true);
+      expect((await engine.mergeCast(cast)).isOk()).toBe(true);
 
       const castDelete = await Factories.CastDelete.create(
         {
@@ -339,10 +342,10 @@ describe('mergeCast', () => {
             username: 'alice',
           },
         },
-        { transient: { privateKey: alicePrivateKey } }
+        transient
       );
 
-      expect(engine.mergeCast(castDelete).isOk()).toBe(true);
+      expect((await engine.mergeCast(castDelete)).isOk()).toBe(true);
       expect(subject()).toEqual([cast]);
     });
 
@@ -351,7 +354,7 @@ describe('mergeCast', () => {
 
   describe('cast-recast merge: ', () => {
     test('succeeds', async () => {
-      expect(engine.mergeCast(cast).isOk()).toBe(true);
+      expect((await engine.mergeCast(cast)).isOk()).toBe(true);
 
       const castRecast = await Factories.CastRecast.create(
         {
@@ -360,10 +363,10 @@ describe('mergeCast', () => {
             username: 'alice',
           },
         },
-        { transient: { privateKey: alicePrivateKey } }
+        transient
       );
 
-      expect(engine.mergeCast(castRecast).isOk()).toBe(true);
+      expect((await engine.mergeCast(castRecast)).isOk()).toBe(true);
       expect(subject()).toEqual([cast, castRecast]);
     });
 

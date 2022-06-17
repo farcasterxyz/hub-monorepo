@@ -1,10 +1,12 @@
 import { Cast, Root, Message, Reaction } from '~/types';
 import { hashMessage, hashCompare } from '~/utils';
-import { utils } from 'ethers';
+import * as ed from '@noble/ed25519';
+import { hexToBytes } from 'ethereum-cryptography/utils';
 import { ok, err, Result } from 'neverthrow';
 import { isCast, isCastShort, isRoot, isReaction } from '~/types/typeguards';
 import CastSet from '~/sets/castSet';
 import ReactionSet from '~/sets/reactionSet';
+import { isCommunityResourcable } from '@ethersproject/providers';
 
 export interface getUserFingerprint {
   rootBlockNum: number;
@@ -47,14 +49,14 @@ class Engine {
   }
 
   /** Add a new root for a username, if valid */
-  mergeRoot(root: Root): Result<void, string> {
+  async mergeRoot(root: Root): Promise<Result<void, string>> {
     if (!isRoot(root)) {
       return err('mergeRoot: invalid root');
     }
 
     // TODO: verify that the block and hash are from a valid ethereum block.
 
-    const validation = this.validateMessage(root);
+    const validation = await this.validateMessage(root);
     if (!validation.isOk()) {
       return validation;
     }
@@ -110,7 +112,7 @@ class Engine {
   }
 
   /** Merge a cast into the set */
-  mergeCast(cast: Cast): Result<void, string> {
+  async mergeCast(cast: Cast): Promise<Result<void, string>> {
     try {
       const username = cast.data.username;
 
@@ -118,19 +120,18 @@ class Engine {
       if (!signerChanges) {
         return err('mergeCast: unknown user');
       }
-
-      if (!this.validateMessage(cast).isOk()) {
-        return this.validateMessage(cast);
+      if (!(await this.validateMessage(cast)).isOk()) {
+        const validation = await this.validateMessage(cast);
+        return validation;
       }
-
       let castSet = this._casts.get(username);
       if (!castSet) {
         castSet = new CastSet();
         this._casts.set(username, castSet);
       }
-
       return castSet.merge(cast);
     } catch (e: any) {
+      console.error(e);
       return err('mergeCast: unexpected error');
     }
   }
@@ -158,7 +159,7 @@ class Engine {
   }
 
   /** Merge a reaction into the set  */
-  mergeReaction(reaction: Reaction): Result<void, string> {
+  async mergeReaction(reaction: Reaction): Promise<Result<void, string>> {
     try {
       const username = reaction.data.username;
 
@@ -167,8 +168,8 @@ class Engine {
         return err('mergeReaction: unknown user');
       }
 
-      if (!this.validateMessage(reaction).isOk()) {
-        return this.validateMessage(reaction);
+      if (!(await this.validateMessage(reaction)).isOk()) {
+        return await this.validateMessage(reaction);
       }
 
       let reactionSet = this._reactions.get(username);
@@ -258,7 +259,6 @@ class Engine {
   /** Determine the valid signer address for a username at a block */
   private signerForBlock(username: string, blockNumber: number): string | undefined {
     const signerChanges = this._users.get(username);
-
     if (!signerChanges) {
       return undefined;
     }
@@ -270,11 +270,10 @@ class Engine {
         signer = sc.address;
       }
     }
-
     return signer;
   }
 
-  private validateMessage(message: Message): Result<void, string> {
+  private async validateMessage(message: Message): Promise<Result<void, string>> {
     // 1. Check that the signer was valid for the block in question.
     const expectedSigner = this.signerForBlock(message.data.username, message.data.rootBlock);
     if (!expectedSigner || expectedSigner !== message.signer) {
@@ -282,14 +281,22 @@ class Engine {
     }
 
     // 2. Check that the hash value of the message was computed correctly.
-    const computedHash = hashMessage(message);
+    const computedHash = await hashMessage(message);
     if (message.hash !== computedHash) {
       return err('validateMessage: invalid hash');
     }
 
-    // 3. Check that the signature is valid
-    const recoveredAddress = utils.recoverAddress(message.hash, message.signature);
-    if (recoveredAddress !== message.signer) {
+    // 3. Check that the message is valid.
+    // ed25519 library hates strings for some reason, so we need to convert to a buffer
+
+    // console.log("Here's the signature", message.signature);
+
+    const recoveredAddress = await ed.verify(
+      hexToBytes(message.signature),
+      hexToBytes(message.hash),
+      hexToBytes(message.signer)
+    );
+    if (!recoveredAddress) {
       return err('validateMessage: invalid signature');
     }
 

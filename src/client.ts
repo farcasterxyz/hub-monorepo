@@ -1,25 +1,28 @@
 import * as FC from '~/types';
-import { hashMessage, sign } from '~/utils';
-import { Wallet, utils } from 'ethers';
+import { hashMessage, sign, convertToHex } from '~/utils';
+import * as ed from '@noble/ed25519';
 
 class Client {
-  public static instanceNames = ['alice', 'bob'];
+  public instanceNames: string[];
 
-  wallet: Wallet;
-  signingKey: utils.SigningKey;
+  publicKey: Uint8Array;
+  privateKey: Uint8Array;
   username: string;
 
-  constructor(username: string) {
-    this.wallet = Wallet.createRandom();
-    this.signingKey = new utils.SigningKey(this.wallet.privateKey);
+  constructor(username: string, privateKey: Uint8Array, publicKey: Uint8Array, instanceNames: string[]) {
+    this.privateKey = privateKey;
+    this.publicKey = publicKey;
     this.username = username;
+    this.instanceNames = instanceNames;
   }
 
-  get address(): string {
-    return this.wallet.address;
+  get address(): Promise<string> {
+    return (async () => {
+      return await convertToHex(this.publicKey);
+    })();
   }
 
-  makeRoot(ethBlockNum: number, ethblockHash: string): FC.Root {
+  async makeRoot(ethBlockNum: number, ethblockHash: string): Promise<FC.Root> {
     const item = {
       data: {
         body: {
@@ -32,19 +35,19 @@ class Client {
       },
       hash: '',
       signature: '',
-      signer: this.wallet.address,
+      signer: await convertToHex(this.publicKey),
     };
 
-    item.hash = hashMessage(item);
-    item.signature = sign(item.hash, this.signingKey);
+    item.hash = await hashMessage(item);
+    item.signature = await sign(item.hash, this.privateKey);
 
     return item;
   }
 
-  makeCastShort(text: string, root: FC.Root): FC.CastShort {
+  async makeCastShort(text: string, root: FC.Root): Promise<FC.CastShort> {
     const schema = 'farcaster.xyz/schemas/v1/cast-short' as const;
     const signedAt = Date.now();
-    const signer = this.wallet.address;
+    const signer = await convertToHex(this.publicKey);
 
     const rootBlock = root.data.rootBlock;
 
@@ -66,16 +69,15 @@ class Client {
       signer,
     };
 
-    item.hash = hashMessage(item);
-    item.signature = sign(item.hash, this.signingKey);
-
+    item.hash = await hashMessage(item);
+    item.signature = await sign(item.hash, this.privateKey);
     return item;
   }
 
-  makeCastDelete(targetCast: FC.Cast, root: FC.Root): FC.CastDelete {
+  async makeCastDelete(targetCast: FC.Cast, root: FC.Root): Promise<FC.CastDelete> {
     const schema = 'farcaster.xyz/schemas/v1/cast-delete' as const;
     const signedAt = Date.now();
-    const signer = this.wallet.address;
+    const signer = await convertToHex(this.publicKey);
 
     const rootBlock = root.data.rootBlock;
 
@@ -94,16 +96,16 @@ class Client {
       signer,
     };
 
-    item.hash = hashMessage(item);
-    item.signature = sign(item.hash, this.signingKey);
+    item.hash = await hashMessage(item);
+    item.signature = await sign(item.hash, this.privateKey);
 
     return item;
   }
 
-  makeReaction(targetCast: FC.CastShort, root: FC.Root, active = true): FC.Reaction {
+  async makeReaction(targetCast: FC.CastShort, root: FC.Root, active = true): Promise<FC.Reaction> {
     const schema = 'farcaster.xyz/schemas/v1/reaction' as const;
     const signedAt = Date.now();
-    const signer = this.wallet.address;
+    const signer = await convertToHex(this.publicKey);
 
     const rootBlock = root.data.rootBlock;
 
@@ -125,8 +127,8 @@ class Client {
       signer,
     };
 
-    item.hash = hashMessage(item);
-    item.signature = sign(item.hash, this.signingKey);
+    item.hash = await hashMessage(item);
+    item.signature = await sign(item.hash, this.privateKey);
 
     return item;
   }
