@@ -1,5 +1,6 @@
-import { Message } from '~/types';
+import { KeyPair, Message } from '~/types';
 import canonicalize from 'canonicalize';
+import { utils } from 'ethers';
 import * as ed from '@noble/ed25519';
 import { blake2b } from 'ethereum-cryptography/blake2b';
 import { hexToBytes, utf8ToBytes } from 'ethereum-cryptography/utils';
@@ -12,7 +13,7 @@ export const hashMessage = async (item: Message): Promise<string> => {
  * Calculates a unique hash for an object according to the Farcaster spec.
  *
  * The object is canonicalized before hashing, and all properties that start with an underscore are removed,
- * after which the string is passed to keccak256.
+ * after which the string is passed to blake2b.
  */
 export const hashFCObject = async (object: Record<string, any>): Promise<string> => {
   // Remove any keys that start with _ before hashing, as these are intended to be unhashed.
@@ -21,19 +22,30 @@ export const hashFCObject = async (object: Record<string, any>): Promise<string>
 
   // Canonicalize the object according to JCS: https://datatracker.ietf.org/doc/html/rfc8785
   const canonicalizedObject = canonicalize(objectCopy) || '';
-  return await hashString(canonicalizedObject);
+  return await blake2BHash(canonicalizedObject);
 };
 
 /** Calculates the blake2b hash for a string*/
-export const hashString = async (str: string): Promise<string> => {
+export const blake2BHash = async (str: string): Promise<string> => {
   // Double conversion is ugly but necessary to work with both hashing and signing libraries
   return convertToHex(blake2b(utf8ToBytes(str)));
 };
 
-export const sign = async (text: string, key: Uint8Array): Promise<string> => {
+/** Calculates the keccak256 hash for a string */
+export const keccak256String = (str: string): string => {
+  return utils.keccak256(utf8ToBytes(str));
+};
+
+/** Signs message with ed25519 elliptic curve */
+export const signEd25519 = async (text: string, key: Uint8Array): Promise<string> => {
   const message: Uint8Array = hexToBytes(text);
   const signature = await ed.sign(message, key);
   return convertToHex(signature);
+};
+
+/** Signs message with secp256k1 elliptic curve */
+export const signSecp256k1 = (text: string, key: utils.SigningKey): string => {
+  return utils.joinSignature(key.signDigest(text));
 };
 
 export const sleep = (ms: number) => {
@@ -80,22 +92,15 @@ export const hashCompare = (a: string, b: string): number => {
   }
 };
 
-export const generatePublicPrivateKeys = async (
-  instanceNames: string[]
-): Promise<Map<string, Map<string, Uint8Array>>> => {
-  const publicPrivateKeys = new Map<string, Map<string, Uint8Array>>();
+export const generateEd25519KeyPair = async (): Promise<KeyPair> => {
+  const privateKey = ed.utils.randomPrivateKey();
+  const publicKey = await ed.getPublicKey(privateKey);
 
-  for (const instanceName of instanceNames) {
-    const name = new Map<string, Uint8Array>();
-    const privateKey = ed.utils.randomPrivateKey();
-    const publicKey = await ed.getPublicKey(privateKey);
-
-    name.set('privateKey', privateKey);
-    name.set('publicKey', publicKey);
-    publicPrivateKeys.set(instanceName, name);
-  }
-
-  return publicPrivateKeys;
+  const newKeyPair: KeyPair = {
+    privateKey: privateKey,
+    publicKey: publicKey,
+  };
+  return newKeyPair;
 };
 
 export const convertToHex = async (text: Uint8Array): Promise<string> => {

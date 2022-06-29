@@ -2,7 +2,7 @@ import Engine from '~/engine';
 import { Factories } from '~/factories';
 import { Cast, Reaction, Root } from '~/types';
 import Faker from 'faker';
-import { generatePublicPrivateKeys, convertToHex } from '~/utils';
+import { generateEd25519KeyPair, convertToHex } from '~/utils';
 import { hexToBytes } from 'ethereum-cryptography/utils';
 
 const engine = new Engine();
@@ -18,10 +18,10 @@ describe('mergeReaction', () => {
   const subject = () => engine._getActiveReactions(username);
 
   beforeAll(async () => {
-    const publicPrivateKeys = await generatePublicPrivateKeys([username]);
-    const privateKeyBuffer = publicPrivateKeys.get(username)?.get('privateKey') as Uint8Array;
+    const keyPair = await generateEd25519KeyPair();
+    const privateKeyBuffer = keyPair.privateKey;
     alicePrivateKey = await convertToHex(privateKeyBuffer);
-    const addressBuffer = publicPrivateKeys.get(username)?.get('publicKey') as Uint8Array;
+    const addressBuffer = keyPair.publicKey;
     aliceAddress = await convertToHex(addressBuffer);
     transient = { transient: { privateKey: hexToBytes(alicePrivateKey) } };
 

@@ -13,21 +13,10 @@ import { convertToHex } from '~/utils';
 class ChaosSimulator extends Simulator {
   clients: Map<string, Client>;
 
-  constructor(publicPrivateKeys: Map<string, Map<string, Uint8Array>>, instanceNames: string[]) {
+  constructor(clients: Map<string, Client>) {
     super('ChaosSimulator', 120_000);
 
-    this.clients = new Map();
-    for (const name of instanceNames) {
-      this.clients.set(
-        name,
-        new Client(
-          name,
-          publicPrivateKeys.get(name)?.get('privateKey') as Uint8Array,
-          publicPrivateKeys.get(name)?.get('publicKey') as Uint8Array,
-          instanceNames
-        )
-      );
-    }
+    this.clients = clients;
   }
 
   async runBlockchain() {

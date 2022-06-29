@@ -1,7 +1,7 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
 import { Cast, Root } from '~/types';
-import { hashCompare, generatePublicPrivateKeys, convertToHex } from '~/utils';
+import { hashCompare, generateEd25519KeyPair, convertToHex } from '~/utils';
 import Faker from 'faker';
 import { hexToBytes } from 'ethereum-cryptography/utils';
 
@@ -21,10 +21,10 @@ describe('mergeRoot', () => {
   const subject = () => engine.getRoot(username);
 
   beforeAll(async () => {
-    const publicPrivateKeys = await generatePublicPrivateKeys([username]);
-    const privateKeyBuffer = publicPrivateKeys.get(username)?.get('privateKey') as Uint8Array;
+    const keyPair = await generateEd25519KeyPair();
+    const privateKeyBuffer = keyPair.privateKey;
     alicePrivateKey = await convertToHex(privateKeyBuffer);
-    const addressBuffer = publicPrivateKeys.get(username)?.get('publicKey') as Uint8Array;
+    const addressBuffer = keyPair.publicKey;
     aliceAddress = await convertToHex(addressBuffer);
     transient = { transient: { privateKey: hexToBytes(alicePrivateKey) } };
 

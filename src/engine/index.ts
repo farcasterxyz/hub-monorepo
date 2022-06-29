@@ -6,7 +6,6 @@ import { ok, err, Result } from 'neverthrow';
 import { isCast, isCastShort, isRoot, isReaction } from '~/types/typeguards';
 import CastSet from '~/sets/castSet';
 import ReactionSet from '~/sets/reactionSet';
-import { isCommunityResourcable } from '@ethersproject/providers';
 
 export interface getUserFingerprint {
   rootBlockNum: number;
@@ -288,8 +287,6 @@ class Engine {
 
     // 3. Check that the message is valid.
     // ed25519 library hates strings for some reason, so we need to convert to a buffer
-
-    // console.log("Here's the signature", message.signature);
 
     const recoveredAddress = await ed.verify(
       hexToBytes(message.signature),

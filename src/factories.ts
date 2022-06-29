@@ -2,7 +2,7 @@ import { Factory } from 'fishery';
 import Faker from 'faker';
 import { ethers } from 'ethers';
 import { CastShort, Root, CastRecast, CastDelete, Reaction } from '~/types';
-import { convertToHex, hashMessage, sign } from '~/utils';
+import { convertToHex, hashMessage, signEd25519 } from '~/utils';
 import * as ed from '@noble/ed25519';
 
 /**
@@ -20,7 +20,7 @@ export const Factories = {
 
       castProps.signer = await convertToHex(publicKey);
 
-      const signature = await sign(castProps.hash, privateKey);
+      const signature = await signEd25519(castProps.hash, privateKey);
       castProps.signature = signature;
 
       return castProps;
@@ -57,7 +57,7 @@ export const Factories = {
 
       castProps.signer = await convertToHex(publicKey);
 
-      const signature = await sign(castProps.hash, privateKey);
+      const signature = await signEd25519(castProps.hash, privateKey);
       castProps.signature = signature;
 
       return castProps;
@@ -90,7 +90,7 @@ export const Factories = {
 
       castProps.signer = await convertToHex(publicKey);
 
-      const signature = await sign(castProps.hash, privateKey);
+      const signature = await signEd25519(castProps.hash, privateKey);
       castProps.signature = signature;
 
       return castProps;
@@ -122,7 +122,7 @@ export const Factories = {
 
       rootProps.signer = await convertToHex(publicKey);
 
-      const signature = await sign(rootProps.hash, privateKey);
+      const signature = await signEd25519(rootProps.hash, privateKey);
       rootProps.signature = signature;
 
       return rootProps;
@@ -171,7 +171,7 @@ export const Factories = {
 
       castProps.signer = await convertToHex(publicKey);
 
-      const signature = await sign(castProps.hash, privateKey);
+      const signature = await signEd25519(castProps.hash, privateKey);
       castProps.signature = signature;
 
       return castProps;

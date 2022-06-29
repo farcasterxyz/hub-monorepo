@@ -1,19 +1,15 @@
 import * as FC from '~/types';
-import { hashMessage, sign, convertToHex } from '~/utils';
-import * as ed from '@noble/ed25519';
+import { hashMessage, signEd25519, convertToHex } from '~/utils';
 
 class Client {
-  public instanceNames: string[];
-
   publicKey: Uint8Array;
   privateKey: Uint8Array;
   username: string;
 
-  constructor(username: string, privateKey: Uint8Array, publicKey: Uint8Array, instanceNames: string[]) {
+  constructor(username: string, privateKey: Uint8Array, publicKey: Uint8Array) {
     this.privateKey = privateKey;
     this.publicKey = publicKey;
     this.username = username;
-    this.instanceNames = instanceNames;
   }
 
   get address(): Promise<string> {
@@ -39,7 +35,7 @@ class Client {
     };
 
     item.hash = await hashMessage(item);
-    item.signature = await sign(item.hash, this.privateKey);
+    item.signature = await signEd25519(item.hash, this.privateKey);
 
     return item;
   }
@@ -70,7 +66,7 @@ class Client {
     };
 
     item.hash = await hashMessage(item);
-    item.signature = await sign(item.hash, this.privateKey);
+    item.signature = await signEd25519(item.hash, this.privateKey);
     return item;
   }
 
@@ -97,7 +93,7 @@ class Client {
     };
 
     item.hash = await hashMessage(item);
-    item.signature = await sign(item.hash, this.privateKey);
+    item.signature = await signEd25519(item.hash, this.privateKey);
 
     return item;
   }
@@ -128,7 +124,7 @@ class Client {
     };
 
     item.hash = await hashMessage(item);
-    item.signature = await sign(item.hash, this.privateKey);
+    item.signature = await signEd25519(item.hash, this.privateKey);
 
     return item;
   }
