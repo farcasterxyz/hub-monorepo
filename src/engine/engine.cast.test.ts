@@ -19,10 +19,13 @@ describe('mergeCast', () => {
 
   beforeAll(async () => {
     const keyPair = await generateEd25519KeyPair();
+
     const privateKeyBuffer = keyPair.privateKey;
     alicePrivateKey = await convertToHex(privateKeyBuffer);
+
     const addressBuffer = keyPair.publicKey;
     aliceAddress = await convertToHex(addressBuffer);
+
     transient = { transient: { privateKey: hexToBytes(alicePrivateKey) } };
 
     root = await Factories.Root.create({ data: { rootBlock: 100, username: 'alice' } }, transient);

@@ -119,10 +119,13 @@ class Engine {
       if (!signerChanges) {
         return err('mergeCast: unknown user');
       }
-      if (!(await this.validateMessage(cast)).isOk()) {
+
+      const isCastValidResult = await this.validateMessage(cast);
+      if (isCastValidResult.isErr()) {
         const validation = await this.validateMessage(cast);
         return validation;
       }
+
       let castSet = this._casts.get(username);
       if (!castSet) {
         castSet = new CastSet();
@@ -130,7 +133,6 @@ class Engine {
       }
       return castSet.merge(cast);
     } catch (e: any) {
-      console.error(e);
       return err('mergeCast: unexpected error');
     }
   }
@@ -167,7 +169,8 @@ class Engine {
         return err('mergeReaction: unknown user');
       }
 
-      if (!(await this.validateMessage(reaction)).isOk()) {
+      const isReactionValidResult = await this.validateMessage(reaction);
+      if (isReactionValidResult.isErr()) {
         return await this.validateMessage(reaction);
       }
 
