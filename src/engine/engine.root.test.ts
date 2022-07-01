@@ -1,8 +1,9 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
 import { Cast, Root } from '~/types';
-import { hashCompare } from '~/utils';
+import { hashCompare, generateEd25519KeyPair, convertToHex } from '~/utils';
 import Faker from 'faker';
+import { hexToBytes } from 'ethereum-cryptography/utils';
 
 const engine = new Engine();
 const username = 'alice';
@@ -13,17 +14,19 @@ describe('mergeRoot', () => {
   let root90: Root;
   let root200_1: Root;
   let root200_2: Root;
-  let transient: { transient: { privateKey: string } };
+  let transient: { transient: { privateKey: Uint8Array } };
 
   let alicePrivateKey: string;
   let aliceAddress: string;
   const subject = () => engine.getRoot(username);
 
   beforeAll(async () => {
-    const keypair = await Factories.EthAddress.create({});
-    alicePrivateKey = keypair.privateKey;
-    aliceAddress = keypair.address;
-    transient = { transient: { privateKey: alicePrivateKey } };
+    const keyPair = await generateEd25519KeyPair();
+    const privateKeyBuffer = keyPair.privateKey;
+    alicePrivateKey = await convertToHex(privateKeyBuffer);
+    const addressBuffer = keyPair.publicKey;
+    aliceAddress = await convertToHex(addressBuffer);
+    transient = { transient: { privateKey: hexToBytes(alicePrivateKey) } };
 
     root100 = await Factories.Root.create({ data: { rootBlock: 100, username: 'alice' } }, transient);
 
@@ -72,13 +75,13 @@ describe('mergeRoot', () => {
 
   describe('input validation: ', () => {
     test('bad type (string) should fail', async () => {
-      const invalidTypeRes = engine.mergeRoot('bar' as unknown as Root);
+      const invalidTypeRes = await engine.mergeRoot('bar' as unknown as Root);
       expect(invalidTypeRes._unsafeUnwrapErr()).toBe('mergeRoot: invalid root');
     });
 
     test('incorrect type (cast) should fail', async () => {
       const cast = await Factories.Cast.create();
-      const castRes = engine.mergeRoot(cast as unknown as Root);
+      const castRes = await engine.mergeRoot(cast as unknown as Root);
       expect(castRes._unsafeUnwrapErr()).toBe('mergeRoot: invalid root');
     });
 
@@ -88,7 +91,7 @@ describe('mergeRoot', () => {
   describe('signer validation:', () => {
     test('fails if there are no known signers', async () => {
       engine._resetSigners();
-      const result = engine.mergeRoot(root100);
+      const result = await engine.mergeRoot(root100);
       expect(result._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
       expect(subject()).toEqual(undefined);
     });
@@ -102,7 +105,7 @@ describe('mergeRoot', () => {
       };
       engine.addSignerChange('alice', changeSigner);
 
-      expect(engine.mergeRoot(root100)._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
+      expect((await engine.mergeRoot(root100))._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
       expect(subject()).toEqual(undefined);
     });
 
@@ -117,7 +120,7 @@ describe('mergeRoot', () => {
 
       engine.addSignerChange('alice', changeSigner);
 
-      const result = engine.mergeRoot(root100);
+      const result = await engine.mergeRoot(root100);
       expect(result._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
       expect(subject()).toEqual(undefined);
     });
@@ -126,17 +129,14 @@ describe('mergeRoot', () => {
       // Calling Factory without specifying a signing key makes Faker choose a random one
       const invalidSigner = await Factories.Root.create({ data: { rootBlock: 100, username: 'alice' } });
 
-      expect(engine.mergeRoot(invalidSigner)._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
+      expect((await engine.mergeRoot(invalidSigner))._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
       expect(subject()).toEqual(undefined);
     });
 
     test('fails if the signer was valid, but the username was invalid', async () => {
-      const root = await Factories.Root.create(
-        { data: { rootBlock: 100, username: 'rob' } },
-        { transient: { privateKey: alicePrivateKey } }
-      );
+      const root = await Factories.Root.create({ data: { rootBlock: 100, username: 'rob' } }, transient);
 
-      expect(engine.mergeRoot(root)._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
+      expect((await engine.mergeRoot(root))._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
       expect(subject()).toEqual(undefined);
     });
 
@@ -150,7 +150,7 @@ describe('mergeRoot', () => {
 
       engine.addSignerChange('alice', signerChange2);
 
-      expect(engine.mergeRoot(root100).isOk()).toBe(true);
+      expect((await engine.mergeRoot(root100)).isOk()).toBe(true);
       expect(subject()).toEqual(root100);
     });
   });
@@ -160,16 +160,15 @@ describe('mergeRoot', () => {
       const invalidHash = JSON.parse(JSON.stringify(root100)) as Root;
       invalidHash.hash = '0xd4126acebadb14b41943fc10599c00e2e3627f1e38672c8476277ecf17accb48';
 
-      expect(engine.mergeRoot(invalidHash)._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
+      expect((await engine.mergeRoot(invalidHash))._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
       expect(subject()).toEqual(undefined);
     });
 
     test('fails if the signature is invalid', async () => {
       const invalidSignature = JSON.parse(JSON.stringify(root100)) as Cast;
       invalidSignature.signature =
-        '0x52afdda1d6701e29dcd91dea5539c32cdaa2227de257bc0784b1da04be5be32e6a92c934b5d20dd2cb2989f814e74de6b9e7bc1da130543a660822023f9fd0e91c';
-
-      expect(engine.mergeCast(invalidSignature)._unsafeUnwrapErr()).toBe('validateMessage: invalid signature');
+        '0x5b699d494b515b22258c01ad19710d44c3f12235f0c01e91d09a1e4e2cd25d80c77026a7319906da3b8ce62abc18477c19e444a02949a0dde54f8cadef889502';
+      expect((await engine.mergeCast(invalidSignature))._unsafeUnwrapErr()).toBe('validateMessage: invalid signature');
       expect(subject()).toEqual(undefined);
     });
 
@@ -177,9 +176,9 @@ describe('mergeRoot', () => {
       const elevenMinutesAhead = Date.now() + 11 * 60 * 1000;
       const futureRoot = await Factories.Root.create(
         { data: { rootBlock: 120, username: 'alice', signedAt: elevenMinutesAhead } },
-        { transient: { privateKey: alicePrivateKey } }
+        transient
       );
-      expect(engine.mergeRoot(futureRoot)._unsafeUnwrapErr()).toEqual(
+      expect((await engine.mergeRoot(futureRoot))._unsafeUnwrapErr()).toEqual(
         'validateMessage: signedAt more than 10 mins in the future'
       );
     });
@@ -195,7 +194,7 @@ describe('mergeRoot', () => {
     let cast: Cast;
 
     beforeEach(async () => {
-      engine.mergeRoot(root100);
+      await engine.mergeRoot(root100);
 
       cast = await Factories.Cast.create(
         {
@@ -205,28 +204,28 @@ describe('mergeRoot', () => {
             signedAt: root100.data.signedAt + 1,
           },
         },
-        { transient: { privateKey: alicePrivateKey } }
+        transient
       );
-      engine.mergeCast(cast);
+      await engine.mergeCast(cast);
     });
 
     test('succeeds and wipes messages if the root block is higher', async () => {
       expect(engine._getCastAdds(username)).toEqual([cast]);
-      engine.mergeRoot(root110);
+      await engine.mergeRoot(root110);
       expect(subject()).toEqual(root110);
       expect(engine._getCastAdds(username)).toEqual([]);
     });
 
     test('fails if the root block is identical but lexicographical hash value is lower', async () => {
       if (hashCompare(root200_1.hash, root200_2.hash) > 0) {
-        expect(engine.mergeRoot(root200_1).isOk()).toEqual(true);
-        expect(engine.mergeRoot(root200_2)._unsafeUnwrapErr()).toEqual(
+        expect((await engine.mergeRoot(root200_1)).isOk()).toEqual(true);
+        expect((await engine.mergeRoot(root200_2))._unsafeUnwrapErr()).toEqual(
           'mergeRoot: newer root was present (lexicographically higher hash)'
         );
         expect(subject()).toEqual(root200_1);
       } else {
-        expect(engine.mergeRoot(root200_2).isOk()).toEqual(true);
-        expect(engine.mergeRoot(root200_1)._unsafeUnwrapErr()).toEqual(
+        expect((await engine.mergeRoot(root200_2)).isOk()).toEqual(true);
+        expect((await engine.mergeRoot(root200_1))._unsafeUnwrapErr()).toEqual(
           'mergeRoot: newer root was present (lexicographically higher hash)'
         );
         expect(subject()).toEqual(root200_2);
@@ -235,18 +234,18 @@ describe('mergeRoot', () => {
 
     test('succeeds if the root block is identical but lexicographical hash value is higher', async () => {
       if (hashCompare(root200_1.hash, root200_2.hash) < 0) {
-        expect(engine.mergeRoot(root200_1).isOk()).toEqual(true);
-        expect(engine.mergeRoot(root200_2).isOk()).toEqual(true);
+        expect((await engine.mergeRoot(root200_1)).isOk()).toEqual(true);
+        expect((await engine.mergeRoot(root200_2)).isOk()).toEqual(true);
         expect(subject()).toEqual(root200_2);
       } else {
-        expect(engine.mergeRoot(root200_2).isOk()).toEqual(true);
-        expect(engine.mergeRoot(root200_1).isOk()).toEqual(true);
+        expect((await engine.mergeRoot(root200_2)).isOk()).toEqual(true);
+        expect((await engine.mergeRoot(root200_1)).isOk()).toEqual(true);
         expect(subject()).toEqual(root200_1);
       }
     });
 
     test('fails if the root is a duplicate', async () => {
-      expect(engine.mergeRoot(root100)._unsafeUnwrapErr()).toEqual('mergeRoot: provided root was a duplicate');
+      expect((await engine.mergeRoot(root100))._unsafeUnwrapErr()).toEqual('mergeRoot: provided root was a duplicate');
       expect(subject()).toEqual(root100);
       expect(engine._getCastAdds(username)).toEqual([cast]);
     });
@@ -262,7 +261,9 @@ describe('mergeRoot', () => {
       engine.addSignerChange('alice', changeSigner);
 
       // try to add a valid root at 90, when there is already a root at 100.
-      expect(engine.mergeRoot(root90)._unsafeUnwrapErr()).toEqual('mergeRoot: provided root was older (lower block)');
+      expect((await engine.mergeRoot(root90))._unsafeUnwrapErr()).toEqual(
+        'mergeRoot: provided root was older (lower block)'
+      );
       expect(subject()).toEqual(root100);
       expect(engine._getCastAdds(username)).toEqual([cast]);
     });

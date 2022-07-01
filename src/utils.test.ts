@@ -1,7 +1,8 @@
 import { hashFCObject, hashCompare } from '~/utils';
 
 describe('hashFCObject', () => {
-  const keccakEmptyObject = '0xb48d38f93eaa084033fc5970bf96e559c33c4cdc07d889ab00b4d63f9590739d';
+  const blake2bEmptyObject =
+    '0x9327a492264ecac0806b031b780241d86cabe38348fe49c4c5a610ee584cfbaaefd3fdffd1b1b54c9ee225820433a7f902c688b2e123181a56c73b9cbf9cd13f';
 
   const simpleObject = {
     cat: {
@@ -14,17 +15,18 @@ describe('hashFCObject', () => {
     },
   };
 
-  const keccakSimpleObject = '0xe65bac56b00ed02f3672b7f1e0ed5e77f7f0a56d51c0fbdf1af696ae140006fa';
+  const blake2bSimpleObject =
+    '0x664ea872832e83efb1a907a2d1d7e817cf181ff40084109c917e8199302b7d0612b278c5ff35b0c783f6f8c06b506a5c3edbae54a3f4dbc1b1218cf4a1a1c646';
 
   test('hashes empty object correctly', async () => {
-    const hash = hashFCObject({});
+    const hash = await hashFCObject({});
 
-    expect(hash).toEqual(keccakEmptyObject);
+    expect(hash).toEqual(blake2bEmptyObject);
   });
 
   test('hashes ordered objects correctly', async () => {
-    const hash = hashFCObject(simpleObject);
-    expect(hash).toEqual(keccakSimpleObject);
+    const hash = await hashFCObject(simpleObject);
+    expect(hash).toEqual(blake2bSimpleObject);
   });
 
   test('re-orders objects before hashing them', async () => {
@@ -39,8 +41,8 @@ describe('hashFCObject', () => {
       },
     };
 
-    const hash = hashFCObject(reorderedObject);
-    expect(hash).toEqual(keccakSimpleObject);
+    const hash = await hashFCObject(reorderedObject);
+    expect(hash).toEqual(blake2bSimpleObject);
   });
 
   test('removes underscore keys before hashing objects', async () => {
@@ -58,8 +60,8 @@ describe('hashFCObject', () => {
         name: 'Fido',
       },
     };
-    const hash = hashFCObject(underscoredObject);
-    expect(hash).toEqual(keccakSimpleObject);
+    const hash = await hashFCObject(underscoredObject);
+    expect(hash).toEqual(blake2bSimpleObject);
   });
 });
 

@@ -113,16 +113,16 @@ class FCNode {
    * by peers, because they are less strict and this may cause divergent network states.
    */
 
-  mergeRoot(root: Root): Result<void, string> {
-    return this.engine.mergeRoot(root);
+  async mergeRoot(root: Root): Promise<Result<void, string>> {
+    return await this.engine.mergeRoot(root);
   }
 
-  mergeCast(cast: Cast): Result<void, string> {
-    return this.engine.mergeCast(cast);
+  async mergeCast(cast: Cast): Promise<Result<void, string>> {
+    return await this.engine.mergeCast(cast);
   }
 
-  mergeReaction(reaction: Reaction): Result<void, string> {
-    return this.engine.mergeReaction(reaction);
+  async mergeReaction(reaction: Reaction): Promise<Result<void, string>> {
+    return await this.engine.mergeReaction(reaction);
   }
 }
 

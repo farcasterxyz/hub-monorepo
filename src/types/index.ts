@@ -149,3 +149,17 @@ type FarcasterURI = string;
 type ChainURI = string;
 
 type HTTPURI = string;
+
+// ===========================
+//  Misc Types
+// ===========================
+
+/**
+ * A KeyPair that is used in the signing process
+ * @privateKey - the private key of the user
+ * @publicKey - the public key of the user
+ */
+export type KeyPair = {
+  privateKey: Uint8Array;
+  publicKey: Uint8Array;
+};

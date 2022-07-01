@@ -2,7 +2,7 @@ import Client from '~/client';
 import Debugger from '~/debugger';
 import Faker from 'faker';
 import Simulator from '~/simulator';
-
+import { convertToHex } from '~/utils';
 /**
  * Chaos Simulator
  *
@@ -11,8 +11,12 @@ import Simulator from '~/simulator';
  */
 
 class ChaosSimulator extends Simulator {
-  constructor() {
+  clients: Map<string, Client>;
+
+  constructor(clients: Map<string, Client>) {
     super('ChaosSimulator', 120_000);
+
+    this.clients = clients;
   }
 
   async runBlockchain() {
@@ -54,13 +58,13 @@ class ChaosSimulator extends Simulator {
     for (const client of this.clients.values()) {
       const signerChange = this.generateSignerChange(client);
       for (const node of this.nodes.values()) {
-        node.engine.addSignerChange(client.username, signerChange);
+        node.engine.addSignerChange(client.username, await signerChange);
       }
     }
 
     // Create messages for clients and broadcast them at random
-    Array.from(this.clients.values()).map((client) => {
-      const messages = this.generateMessages(client);
+    Array.from(this.clients.values()).map(async (client) => {
+      const messages = await this.generateMessages(client);
       const nodes = Array.from(this.nodes.values());
       const node = nodes[Math.floor(Math.random() * nodes.length)];
       // Send the root early, so we have some interesting merges
@@ -71,24 +75,24 @@ class ChaosSimulator extends Simulator {
     });
   }
 
-  generateSignerChange(client: Client, logIndex?: number) {
+  async generateSignerChange(client: Client, logIndex?: number) {
     return {
       blockNumber: this.blockNumber,
       blockHash: this.blockHash,
       logIndex: logIndex || 0,
-      address: client.address,
+      address: await convertToHex(client.publicKey),
     };
   }
 
-  generateMessages(client: Client) {
-    const root1 = client.makeRoot(this.blockNumber, this.blockHash);
-    const cs1 = client.makeCastShort(Faker.lorem.words(3), root1);
-    const cs2 = client.makeCastShort(Faker.lorem.words(3), root1);
-    const cs3 = client.makeCastShort(Faker.lorem.words(3), root1);
-    const cd1 = client.makeCastDelete(cs2, root1);
-    const cs4 = client.makeCastShort(Faker.lorem.words(3), root1);
-    const ra1 = client.makeReaction(cs4, root1);
-    const ru1 = client.makeReaction(cs4, root1, false);
+  async generateMessages(client: Client) {
+    const root1 = await client.makeRoot(this.blockNumber, this.blockHash);
+    const cs1 = await client.makeCastShort(Faker.lorem.words(3), root1);
+    const cs2 = await client.makeCastShort(Faker.lorem.words(3), root1);
+    const cs3 = await client.makeCastShort(Faker.lorem.words(3), root1);
+    const cd1 = await client.makeCastDelete(cs2, root1);
+    const cs4 = await client.makeCastShort(Faker.lorem.words(3), root1);
+    const ra1 = await client.makeReaction(cs4, root1);
+    const ru1 = await client.makeReaction(cs4, root1, false);
     return [root1, cs1, cs2, cs3, cd1, cs4, ra1, ru1];
   }
 }
