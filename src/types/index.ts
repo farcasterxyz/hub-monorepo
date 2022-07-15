@@ -1,3 +1,5 @@
+import { ethers } from 'ethers';
+
 /**
  * Message is a generic type that represents any cryptographically signed Message on Farcaster
  *
@@ -28,7 +30,7 @@ type Data<T = Body> = {
   username: string;
 };
 
-type Body = RootBody | CastBody | ReactionBody;
+type Body = RootBody | CastBody | ReactionBody | VerificationAddBody | VerificationRemoveBody;
 
 // ===========================
 //  Root Types
@@ -130,25 +132,87 @@ export type ReactionBody = {
 
 export type ReactionType = 'like';
 
+//  ===========================
+//  Verification Types
+//  ===========================
+
+export type Verification = VerificationAdd | VerificationRemove;
+
+/** VerificationAdd message */
+export type VerificationAdd = Message<VerificationAddBody>;
+
+/**
+ * A VerificationAddBody represents a signed claim between a Farcaster account and an external key pair (i.e. an Ethereum key pair).
+ *
+ * @externalAddressUri - the Ethereum address that is part of the verification claim.
+ * @claimHash - the hash of the verification claim.
+ * @externalSignature - the signature of the hash of the verification claim, signed by the external key pair.
+ * @externalSignatureType -
+ * @schema -
+ */
+export type VerificationAddBody = {
+  externalAddressUri: URI;
+  claimHash: string;
+  externalSignature: string;
+  externalSignatureType: 'secp256k1-address-ownership'; // TODO: agree on standard for these
+  schema: 'farcaster.xyz/schemas/v1/verification-add';
+};
+
+/**
+ * A VerificationAddFactoryTransientParams is passed to the VerificationAdd factory
+ *
+ * @privateKey - the private key for signing the VerificationAdd message
+ * @ethWallet - the wallet to sign the claimHash
+ */
+export type VerificationAddFactoryTransientParams = {
+  privateKey?: Uint8Array;
+  ethWallet?: ethers.Wallet;
+};
+
+/**
+ * A VerificationClaim is an object that includes both the farcaster account and external address
+ *
+ * @username - the farcaster username
+ * @externalAddressUri - URI of the external address (i.e. Ethereum address)
+ */
+export type VerificationClaim = {
+  username: string; // TODO: make this account rather than username when we migrate the rest of the codebase to that
+  externalAddressUri: URI; // TODO: constrain this farther
+};
+
+/** VerificationRemove message */
+export type VerificationRemove = Message<VerificationRemoveBody>;
+
+/**
+ * A VerificationRemoveBody represents the deletion of a verification
+ *
+ * @verificationClaimHash - TODO
+ * @schema -
+ */
+export type VerificationRemoveBody = {
+  verificationClaimHash: string; // TODO: clarify whether this is the VerificationAdd hash or the claimHash
+  schema: 'farcaster.xyz/schemas/v1/verification-remove';
+};
+
 // ===========================
 //  URI Types
 // ===========================
 
-type URI = FarcasterURI | ChainURI | HTTPURI;
+export type URI = FarcasterURI | ChainURI | HTTPURI;
 
 /**
  * A FarcasterURI points to any Farcaster message and is structured as farcaster://<user>/<type>:<id>
  * e.g. A Cast from Alice becomes farcaster://alice/cast-new:0x4eCCe9ba252fC2a05F2A7B0a55943C756eCDA6b9
  */
-type FarcasterURI = string;
+export type FarcasterURI = string;
 
 /**
  * A Chain URI points to on-chain assets using the CAIP-20 standard with a `chain://` prefix.
  * e.g. An NFT becomes chain://eip155:1/erc721:0xaba7161a7fb69c88e16ed9f455ce62b791ee4d03/7894
  */
-type ChainURI = string;
+export type ChainURI = string;
 
-type HTTPURI = string;
+export type HTTPURI = string;
 
 // ===========================
 //  Misc Types

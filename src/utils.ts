@@ -1,6 +1,6 @@
 import { KeyPair, Message } from '~/types';
 import canonicalize from 'canonicalize';
-import { utils } from 'ethers';
+import { ethers, utils } from 'ethers';
 import * as ed from '@noble/ed25519';
 import { blake2b } from 'ethereum-cryptography/blake2b';
 import { hexToBytes, utf8ToBytes } from 'ethereum-cryptography/utils';
@@ -90,6 +90,12 @@ export const hashCompare = (a: string, b: string): number => {
       return hashCompare(a.slice(1), b.slice(1));
     }
   }
+};
+
+export const generateSecp256k1SigningKey = (): utils.SigningKey => {
+  // return new utils.SigningKey(utils.randomBytes(32));
+  const wallet = ethers.Wallet.createRandom();
+  return new utils.SigningKey(wallet.privateKey);
 };
 
 export const generateEd25519KeyPair = async (): Promise<KeyPair> => {

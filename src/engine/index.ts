@@ -1,11 +1,13 @@
-import { Cast, Root, Message, Reaction } from '~/types';
-import { hashMessage, hashCompare } from '~/utils';
+import { Cast, Root, Message, Reaction, VerificationAdd, VerificationClaim } from '~/types';
+import { hashMessage, hashCompare, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
 import { hexToBytes } from 'ethereum-cryptography/utils';
 import { ok, err, Result } from 'neverthrow';
-import { isCast, isCastShort, isRoot, isReaction } from '~/types/typeguards';
+import { utils } from 'ethers';
+import { isCast, isCastShort, isRoot, isReaction, isVerificationAdd } from '~/types/typeguards';
 import CastSet from '~/sets/castSet';
 import ReactionSet from '~/sets/reactionSet';
+import VerificationsSet from '~/sets/verificationsSet';
 
 export interface getUserFingerprint {
   rootBlockNum: number;
@@ -21,18 +23,20 @@ export interface Signer {
   logIndex: number;
 }
 
-/** The Engine receives messages and determines the current state Farcaster network */
+/** The Engine receives messages and determines the current state of the Farcaster network */
 class Engine {
   private _casts: Map<string, CastSet>;
   private _reactions: Map<string, ReactionSet>;
   private _roots: Map<string, Root>;
   private _users: Map<string, Signer[]>;
+  private _verifications: Map<string, VerificationsSet>;
 
   constructor() {
     this._casts = new Map();
     this._reactions = new Map();
     this._roots = new Map();
     this._users = new Map();
+    this._verifications = new Map();
   }
 
   getSigners(username: string): Signer[] {
@@ -186,6 +190,30 @@ class Engine {
     }
   }
 
+  /** Merge verification add into the set */
+  async mergeVerificationAdd(verificationAdd: VerificationAdd): Promise<Result<void, string>> {
+    try {
+      const username = verificationAdd.data.username; // TODO: change to account
+      const signerChanges = this._users.get(username);
+      if (!signerChanges) {
+        return err('mergeVerificationAdd: unknown user');
+      }
+      const isVerificationAddValidResult = await this.validateMessage(verificationAdd);
+      if (isVerificationAddValidResult.isErr()) return isVerificationAddValidResult;
+
+      let verificationsSet = this._verifications.get(username);
+      if (!verificationsSet) {
+        verificationsSet = new VerificationsSet();
+        this._verifications.set(username, verificationsSet);
+      }
+
+      return verificationsSet.merge(verificationAdd);
+    } catch (e: any) {
+      console.log('ERROR', e);
+      return err('mergeVerificationAdd: unexpected error');
+    }
+  }
+
   /**
    * Signer Methods
    */
@@ -230,6 +258,7 @@ class Engine {
     this._resetSigners();
     this._resetRoots();
     this._resetReactions();
+    this._resetVerifications();
   }
 
   _resetCasts(): void {
@@ -248,6 +277,10 @@ class Engine {
     this._reactions = new Map();
   }
 
+  _resetVerifications(): void {
+    this._verifications = new Map();
+  }
+
   _getCastAdds(username: string): Cast[] {
     const castSet = this._casts.get(username);
     return castSet ? castSet._getAdds() : [];
@@ -256,6 +289,11 @@ class Engine {
   _getActiveReactions(username: string): Reaction[] {
     const reactionSet = this._reactions.get(username);
     return reactionSet ? reactionSet._getActiveReactions() : [];
+  }
+
+  _getVerificationAdds(username: string): VerificationAdd[] {
+    const verificationsSet = this._verifications.get(username);
+    return verificationsSet ? verificationsSet._getAdds() : [];
   }
 
   /** Determine the valid signer address for a username at a block */
@@ -331,6 +369,10 @@ class Engine {
       return this.validateReaction();
     }
 
+    if (isVerificationAdd(message)) {
+      return this.validateVerificationAdd(message);
+    }
+
     // TODO: check that the schema is a valid and known schema.
     // TODO: check that all required properties are present.
     // TODO: check that username is known to the registry
@@ -367,6 +409,35 @@ class Engine {
 
   private validateReaction(): Result<void, string> {
     // TODO: validate targetUri, schema
+    return ok(undefined);
+  }
+
+  private async validateVerificationAdd(message: VerificationAdd): Promise<Result<void, string>> {
+    const { externalAddressUri, externalSignature, externalSignatureType, claimHash } = message.data.body;
+
+    if (externalSignatureType !== 'secp256k1-address-ownership')
+      return err('validateVerificationAdd: invalid externalSignatureType');
+
+    // TODO: check claimHash
+    const verificationClaim: VerificationClaim = {
+      username: message.data.username,
+      externalAddressUri: message.data.body.externalAddressUri,
+    };
+    const reconstructedClaimHash = await hashFCObject(verificationClaim);
+    if (reconstructedClaimHash !== claimHash) {
+      return err('validateVerificationAdd: invalid claimHash');
+    }
+
+    try {
+      const verifiedExternalAddress = utils.verifyMessage(claimHash, externalSignature);
+      if (verifiedExternalAddress !== externalAddressUri) {
+        return err('validateVerificationAdd: externalSignature does not match externalAddressUri');
+      }
+    } catch (e: any) {
+      // TODO: pass through more helpful errors from Ethers
+      return err('validateVerificationAdd: invalid externalSignature');
+    }
+
     return ok(undefined);
   }
 }

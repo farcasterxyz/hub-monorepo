@@ -128,6 +128,49 @@ class Client {
 
     return item;
   }
+
+  makeVerificationClaim(externalAddressUri: FC.URI): FC.VerificationClaim {
+    return {
+      username: this.username,
+      externalAddressUri,
+    };
+  }
+
+  async makeVerificationAdd(
+    claim: FC.VerificationClaim,
+    root: FC.Root,
+    signedClaim: string
+  ): Promise<FC.VerificationAdd> {
+    const schema = 'farcaster.xyz/schemas/v1/verification-add' as const;
+    const externalSignatureType = 'secp256k1-address-ownership' as const;
+    const signedAt = Date.now();
+    const signer = await convertToHex(this.publicKey);
+
+    // TODO: what is rootBlock and why is it needed?
+    const rootBlock = root.data.rootBlock;
+
+    const message = {
+      data: {
+        body: {
+          schema,
+          verificationClaim: claim,
+          externalSignature: signedClaim,
+          externalSignatureType,
+        },
+        rootBlock,
+        signedAt,
+        username: this.username,
+      },
+      hash: '',
+      signature: '',
+      signer,
+    };
+
+    message.hash = await hashMessage(message);
+    message.signature = await signEd25519(message.hash, this.privateKey);
+
+    return message;
+  }
 }
 
 export default Client;

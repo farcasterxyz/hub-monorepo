@@ -2,7 +2,9 @@ import Client from '~/client';
 import Debugger from '~/debugger';
 import Faker from 'faker';
 import Simulator from '~/simulator';
-import { convertToHex } from '~/utils';
+import { ethers, utils } from 'ethers';
+import * as FC from '~/types';
+import { convertToHex, generateSecp256k1SigningKey, hashFCObject, signSecp256k1 } from '~/utils';
 
 /**
  * Basic Simulator
@@ -77,6 +79,15 @@ class BasicSimulator extends Simulator {
     };
   }
 
+  async generateRandomVerification(client: Client, root: FC.Root): Promise<FC.VerificationAdd> {
+    const randomEthWallet = ethers.Wallet.createRandom();
+    const ethAddress = randomEthWallet.address;
+    const claim = client.makeVerificationClaim(ethAddress);
+    const hashedClaim = await hashFCObject(claim);
+    const externalSignature = await randomEthWallet.signMessage(hashedClaim);
+    return client.makeVerificationAdd(claim, root, externalSignature);
+  }
+
   async generateMessages(client: Client) {
     const root1 = await client.makeRoot(this.blockNumber, this.blockHash);
     const cs1 = await client.makeCastShort(Faker.lorem.words(3), root1);
@@ -86,7 +97,9 @@ class BasicSimulator extends Simulator {
     const cs4 = await client.makeCastShort(Faker.lorem.words(3), root1);
     const ra1 = await client.makeReaction(cs4, root1);
     const ru1 = await client.makeReaction(cs4, root1, false);
-    return [root1, cs1, cs2, cs3, cd1, cs4, ra1, ru1];
+    const v1 = await this.generateRandomVerification(client, root1);
+    console.log('VerificationAdd', v1);
+    return [root1, cs1, cs2, cs3, cd1, cs4, ra1, ru1, v1];
   }
 }
 

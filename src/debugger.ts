@@ -3,7 +3,7 @@ import Table from 'cli-table3';
 import logUpdate from 'log-update';
 import colors from 'colors/safe';
 import { isCastDelete, isCastShort, isReaction, isRoot } from '~/types/typeguards';
-import { Cast, Reaction, Root } from '~/types';
+import { Cast, Reaction, Root, Message } from '~/types';
 
 const rootEmoji = String.fromCodePoint(0x1fab4);
 const castEmoji = String.fromCodePoint(0x1f4e2);
@@ -64,7 +64,7 @@ const Debugger = {
     Debugger._render();
   },
 
-  printBroadcast: (message: Cast | Reaction | Root, node: FCNode): void => {
+  printBroadcast: (message: Message, node: FCNode): void => {
     const username = personEmoji + ' ' + Debugger._padString(message.data.username, 5);
     const hash = message.hash.slice(message.hash.length - 3);
     const nodeName = nodeEmoji + ' ' + Debugger._padString(node.name.toLowerCase(), 6);
