@@ -23,14 +23,14 @@ export type Message<T = Body> = {
  * @signedAt - the utc unix timestamp at which the message was signed
  * @username - the farcaster username owned by the signer at the time of signature
  */
-type Data<T = Body> = {
+export type Data<T = Body> = {
   body: T;
   rootBlock: number;
   signedAt: number;
   username: string;
 };
 
-type Body = RootBody | CastBody | ReactionBody | VerificationAddBody | VerificationRemoveBody;
+export type Body = RootBody | CastBody | ReactionBody | VerificationAddBody | VerificationRemoveBody;
 
 // ===========================
 //  Root Types
