@@ -143,7 +143,7 @@ class Client {
     root: FC.Root
   ): Promise<FC.VerificationAdd> {
     const schema = 'farcaster.xyz/schemas/v1/verification-add' as const;
-    const externalSignatureType = 'secp256k1-address-ownership' as const;
+    const externalSignatureType = 'secp256k1-eip-191' as const;
     const signedAt = Date.now();
     const signer = await convertToHex(this.publicKey);
 

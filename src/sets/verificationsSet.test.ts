@@ -1,7 +1,6 @@
 import { Factories } from '~/factories';
 import VerificationsSet from '~/sets/verificationsSet';
-import { CastShort, CastDelete, VerificationAdd, VerificationRemove } from '~/types';
-import { hashCompare } from '~/utils';
+import { VerificationAdd, VerificationRemove } from '~/types';
 
 const set = new VerificationsSet();
 const adds = () => set._getAdds();
@@ -37,7 +36,7 @@ describe('merge', () => {
     test('fails if the add was already deleted', async () => {
       const verificationAddMessage = await Factories.VerificationAdd.create();
       const verificationRemoveMessage = await Factories.VerificationRemove.create({
-        data: { body: { verificationClaimHash: verificationAddMessage.hash } },
+        data: { body: { verificationAddHash: verificationAddMessage.hash } },
       });
       expect(set.merge(verificationRemoveMessage).isOk()).toBe(true);
       expect(set.merge(verificationAddMessage).isOk()).toBe(false);
@@ -55,7 +54,7 @@ describe('merge', () => {
     test('succeeds with a valid VerificationRemove message', async () => {
       const verificationAddMessage = await Factories.VerificationAdd.create();
       const verificationRemoveMessage = await Factories.VerificationRemove.create({
-        data: { body: { verificationClaimHash: verificationAddMessage.hash } },
+        data: { body: { verificationAddHash: verificationAddMessage.hash } },
       });
       expect(set.merge(verificationAddMessage).isOk()).toBe(true);
       expect(set.merge(verificationRemoveMessage).isOk()).toBe(true);

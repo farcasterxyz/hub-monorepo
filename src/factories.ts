@@ -244,7 +244,7 @@ export const Factories = {
             externalAddressUri: ethWallet.address,
             claimHash: '',
             externalSignature: '',
-            externalSignatureType: 'secp256k1-address-ownership',
+            externalSignatureType: 'secp256k1-eip-191',
             schema: 'farcaster.xyz/schemas/v1/verification-add' as const,
           },
           rootBlock: Faker.datatype.number(10_000),
@@ -278,7 +278,7 @@ export const Factories = {
     return {
       data: {
         body: {
-          verificationClaimHash: Faker.datatype.hexaDecimal(40).toLowerCase(),
+          verificationAddHash: Faker.datatype.hexaDecimal(40).toLowerCase(),
           schema: 'farcaster.xyz/schemas/v1/verification-remove' as const,
         },
         rootBlock: Faker.datatype.number(10_000),

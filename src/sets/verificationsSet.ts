@@ -66,16 +66,16 @@ class VerificationsSet {
       return err('VerificationsSet.delete: invalid message format');
     }
 
-    const { verificationClaimHash } = message.data.body;
-    if (this._deletes.get(verificationClaimHash)) {
+    const { verificationAddHash } = message.data.body;
+    if (this._deletes.get(verificationAddHash)) {
       return err('VerificationsSet.delete: verification is already deleted');
     }
 
-    if (this._adds.get(verificationClaimHash)) {
-      this._adds.delete(verificationClaimHash);
+    if (this._adds.get(verificationAddHash)) {
+      this._adds.delete(verificationAddHash);
     }
 
-    this._deletes.set(verificationClaimHash, message);
+    this._deletes.set(verificationAddHash, message);
     return ok(undefined);
   }
 

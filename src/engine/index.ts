@@ -134,10 +134,7 @@ class Engine {
       }
 
       const isCastValidResult = await this.validateMessage(cast);
-      if (isCastValidResult.isErr()) {
-        const validation = await this.validateMessage(cast);
-        return validation;
-      }
+      if (isCastValidResult.isErr()) return isCastValidResult;
 
       let castSet = this._casts.get(username);
       if (!castSet) {
@@ -183,9 +180,7 @@ class Engine {
       }
 
       const isReactionValidResult = await this.validateMessage(reaction);
-      if (isReactionValidResult.isErr()) {
-        return await this.validateMessage(reaction);
-      }
+      if (isReactionValidResult.isErr()) return isReactionValidResult;
 
       let reactionSet = this._reactions.get(username);
       if (!reactionSet) {
@@ -326,6 +321,11 @@ class Engine {
     return verificationsSet ? verificationsSet._getAdds() : [];
   }
 
+  _getVerificationRemoves(username: string): VerificationRemove[] {
+    const verificationsSet = this._verifications.get(username);
+    return verificationsSet ? verificationsSet._getDeletes() : [];
+  }
+
   /** Determine the valid signer address for a username at a block */
   private signerForBlock(username: string, blockNumber: number): string | undefined {
     const signerChanges = this._users.get(username);
@@ -449,7 +449,7 @@ class Engine {
   private async validateVerificationAdd(message: VerificationAdd): Promise<Result<void, string>> {
     const { externalAddressUri, externalSignature, externalSignatureType, claimHash } = message.data.body;
 
-    if (externalSignatureType !== 'secp256k1-address-ownership')
+    if (externalSignatureType !== 'secp256k1-eip-191')
       return err('validateVerificationAdd: invalid externalSignatureType');
 
     const verificationClaim: VerificationClaim = {
@@ -474,8 +474,8 @@ class Engine {
     return ok(undefined);
   }
 
-  private async validateVerificationRemove(message: VerificationRemove): Promise<Result<void, string>> {
-    // TODO: validate target hash
+  private async validateVerificationRemove(_message: VerificationRemove): Promise<Result<void, string>> {
+    // TODO: validate verificationAddHash is a real hash
     return ok(undefined);
   }
 }

@@ -105,7 +105,7 @@ const Debugger = {
 
     if (isVerificationRemove(message)) {
       type = Debugger._padString('ver-rem', 7);
-      data = message.data.body.verificationClaimHash.slice(0, 7);
+      data = message.data.body.verificationAddHash.slice(0, 7);
     }
 
     let outLine = `${username} > ${nodeName} | ${type} | ${hash} `;

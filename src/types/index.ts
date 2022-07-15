@@ -147,14 +147,14 @@ export type VerificationAdd = Message<VerificationAddBody>;
  * @externalAddressUri - the Ethereum address that is part of the verification claim.
  * @claimHash - the hash of the verification claim.
  * @externalSignature - the signature of the hash of the verification claim, signed by the external key pair.
- * @externalSignatureType -
+ * @externalSignatureType - type of signature from set of supported types (see https://eips.ethereum.org/EIPS/eip-191 for 'secp256k1-eip-191')
  * @schema -
  */
 export type VerificationAddBody = {
   externalAddressUri: URI;
   claimHash: string;
   externalSignature: string;
-  externalSignatureType: 'secp256k1-address-ownership'; // TODO: agree on standard for these
+  externalSignatureType: 'secp256k1-eip-191';
   schema: 'farcaster.xyz/schemas/v1/verification-add';
 };
 
@@ -186,11 +186,11 @@ export type VerificationRemove = Message<VerificationRemoveBody>;
 /**
  * A VerificationRemoveBody represents the deletion of a verification
  *
- * @verificationClaimHash - TODO
+ * @verificationAddHash - hash of VerificationAdd message
  * @schema -
  */
 export type VerificationRemoveBody = {
-  verificationClaimHash: string; // TODO: clarify whether this is the VerificationAdd hash or the claimHash
+  verificationAddHash: string;
   schema: 'farcaster.xyz/schemas/v1/verification-remove';
 };
 
