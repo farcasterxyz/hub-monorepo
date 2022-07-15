@@ -92,21 +92,18 @@ class SignerNode {
 
 class Signer {
   public custodyAddressRoot: SignerNode;
-  constructor(custodyAddressPubkey: string, firstChildPubkey: string) {
-    this.custodyAddressRoot = new SignerNode(custodyAddressPubkey);
-
-    const childSignerNode = new SignerNode(firstChildPubkey);
-    this.custodyAddressRoot.addChild(childSignerNode);
+  constructor(custodyAddressPubkeyRoot: string) {
+    this.custodyAddressRoot = new SignerNode(custodyAddressPubkeyRoot);
   }
 
   // TODO
-  public addKey(parentKeyPublicKey: string, childKeyPublicKey: string): boolean {
+  public addDelegate(parentKeyPublicKey: string, childKeyPublicKey: string): boolean {
     console.log(parentKeyPublicKey, childKeyPublicKey);
     return false;
   }
 
   // TODO
-  public removeKey(parentKeyPublicKey: string, childKeyPublicKey: string): boolean {
+  public removeDelegate(parentKeyPublicKey: string, childKeyPublicKey: string): boolean {
     console.log(parentKeyPublicKey, childKeyPublicKey);
     return false;
   }
@@ -115,18 +112,18 @@ class Signer {
 class SignerSet {
   private signers: Signer[];
 
-  constructor(signerAddition: SignerAddition) {
+  constructor(custodyAddressPubkey: string) {
     this.signers = [];
-    this.signers.push(this._newSigner(signerAddition));
+    this.signers.push(this._newSigner(custodyAddressPubkey));
   }
 
-  public addSigner(signerAddition: SignerAddition): boolean {
-    this.signers.push(this._newSigner(signerAddition));
+  public addSigner(custodyAddressPubkey: string): boolean {
+    this.signers.push(this._newSigner(custodyAddressPubkey));
     return true;
   }
 
   // TODO
-  public addKey(signerKeyAddition: SignerAddition): boolean {
+  public addDelegate(signerKeyAddition: SignerAddition): boolean {
     // search through signers for which parent key to add the key to
     return true;
   }
@@ -136,8 +133,8 @@ class SignerSet {
     return false;
   }
 
-  private _newSigner(signerAddition: SignerAddition) {
-    return new Signer(signerAddition.envelope.parentSignerPubkey, signerAddition.envelope.childSignerPubkey);
+  private _newSigner(custodyAddressPubkey: string) {
+    return new Signer(custodyAddressPubkey);
   }
 }
 
