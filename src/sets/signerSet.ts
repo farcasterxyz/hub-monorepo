@@ -145,7 +145,7 @@ class SignerSet {
     return false;
   }
 
-  public numSigners(): Integer {
+  public numSigners(): number {
     return this.signers.length;
   }
 
