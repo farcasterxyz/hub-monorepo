@@ -2,8 +2,16 @@ import FCNode, { NodeDirectory } from '~/node';
 import Table from 'cli-table3';
 import logUpdate from 'log-update';
 import colors from 'colors/safe';
-import { isCastDelete, isCastShort, isReaction, isRoot } from '~/types/typeguards';
-import { Cast, Reaction, Root, Message } from '~/types';
+import {
+  isCastDelete,
+  isCastShort,
+  isReaction,
+  isRoot,
+  isVerification,
+  isVerificationAdd,
+  isVerificationRemove,
+} from '~/types/typeguards';
+import { Message } from '~/types';
 
 const rootEmoji = String.fromCodePoint(0x1fab4);
 const castEmoji = String.fromCodePoint(0x1f4e2);
@@ -89,6 +97,16 @@ const Debugger = {
       const typeName = message.data.body.active ? 'rct-add' : 'rct-rem';
       type = Debugger._padString(typeName, 7);
       data = '0x' + message.data.body.targetUri.slice(message.data.body.targetUri.length - 3);
+    }
+
+    if (isVerificationAdd(message)) {
+      type = Debugger._padString('ver-add', 7);
+      data = message.data.body.externalAddressUri.slice(0, 7);
+    }
+
+    if (isVerificationRemove(message)) {
+      type = Debugger._padString('ver-rem', 7);
+      data = message.data.body.verificationClaimHash.slice(0, 7);
     }
 
     let outLine = `${username} > ${nodeName} | ${type} | ${hash} `;

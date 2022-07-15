@@ -1,8 +1,8 @@
 import FCNode, { InstanceName } from '~/node';
 import Faker from 'faker';
 import Debugger from '~/debugger';
-import { Cast, Reaction, Root, Verification, Message } from '~/types';
-import { isReaction, isRoot, isCast } from '~/types/typeguards';
+import { Message } from '~/types';
+import { isReaction, isRoot, isCast, isVerification } from '~/types/typeguards';
 
 abstract class Simulator {
   nodes: Map<InstanceName, FCNode>;
@@ -56,9 +56,10 @@ abstract class Simulator {
         node.mergeReaction(message);
       } else if (isCast(message)) {
         node.mergeCast(message);
+      } else if (isVerification(message)) {
+        node.mergeVerification(message);
       } else {
-        // TODO
-        console.log('Reached unknown message type', 'broadcastToNode');
+        // TODO: decide how to handle unknown message type
       }
     }, delay || 0);
   }

@@ -41,6 +41,10 @@ export function isReaction(msg: FC.Message): msg is FC.Reaction {
   );
 }
 
+export function isVerification(msg: FC.Message): msg is FC.Verification {
+  return isVerificationAdd(msg) || isVerificationRemove(msg);
+}
+
 export function isVerificationAdd(msg: FC.Message): msg is FC.VerificationAdd {
   const body = (msg as FC.VerificationAdd).data?.body;
   return (
