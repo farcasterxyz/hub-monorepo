@@ -145,6 +145,10 @@ class SignerSet {
     return false;
   }
 
+  public numSigners(): Integer {
+    return this.signers.length;
+  }
+
   private _newSigner(custodyAddressPubkey: string) {
     return new Signer(custodyAddressPubkey);
   }

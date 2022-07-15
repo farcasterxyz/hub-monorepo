@@ -7,7 +7,7 @@ import secp256k1 from 'secp256k1';
 const signerSet = new SignerSet();
 
 describe('create signer set', () => {
-  test('fails with incorrect custody address public key', async () => {
+  test('happy path', async () => {
     // generate custodyAddressPubkey
     let privKey;
     do {
@@ -15,14 +15,11 @@ describe('create signer set', () => {
     } while (!secp256k1.privateKeyVerify(privKey));
     const pubKey = secp256k1.publicKeyCreate(privKey);
 
-    // generate child key
-
     console.log(signerSet);
     const encodedPubkey = Buffer.from(pubKey.toString()).toString('base64');
 
     signerSet.addSigner(encodedPubkey);
-    console.log(signerSet);
-    expect(true).toEqual(true); // placeholder assertion
+    expect(signerSet.numSigners).toEqual(1);
   });
 });
 
