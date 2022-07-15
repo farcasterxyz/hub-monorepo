@@ -36,14 +36,109 @@
       constructor(custodyAddressPublicKey: string)
 
       addKey(parentKeyPublicKey string, childKeyPublicKey string): boolean
+      addSigner(): boolean      
+
       removeKey(parentKeyPublicKey string, childKeyPublicKey string): boolean 
-      addRoot()
+      removePriorSigners(): boolean
     }
 */
-class SignerSet {
-  private custodyAddressPublicKey: string;
 
-  constructor(custodyAddressPublicKey: string) {
-    this.custodyAddressPublicKey = custodyAddressPublicKey;
+import { Signature } from 'ethers';
+
+export interface SignerAddition {
+  message: {
+    body: {
+      parentKey: string;
+      childKey: string;
+      schema: string;
+    };
+    address: string;
+  };
+  envelope: {
+    hash: string;
+    hashType: HashAlgorithm;
+    parentSignature: string;
+    parentSignatureType: SignatureAlgorithm;
+    parentSignerPubkey: string;
+    childSignature: string;
+    childSignatureType: SignatureAlgorithm;
+    childSignerPubkey: string;
+  };
+}
+
+export enum SignatureAlgorithm {
+  EcdsaSecp256k1 = 'ecdsa-secp256k1',
+  Ed25519 = 'ed25519',
+}
+
+export enum HashAlgorithm {
+  Keccak256 = 'keccak256',
+  Blake2b = 'blake2b',
+}
+
+class SignerNode {
+  public pubkey: string;
+  public delegates: SignerNode[];
+
+  constructor(pubkey: string) {
+    this.pubkey = pubkey;
+    this.delegates = [];
+  }
+
+  addChild(child: SignerNode) {
+    this.delegates.push(child);
   }
 }
+
+class Signer {
+  public custodyAddressRoot: SignerNode;
+  constructor(custodyAddressPubkey: string, firstChildPubkey: string) {
+    this.custodyAddressRoot = new SignerNode(custodyAddressPubkey);
+
+    const childSignerNode = new SignerNode(firstChildPubkey);
+    this.custodyAddressRoot.addChild(childSignerNode);
+  }
+
+  // TODO
+  public addKey(parentKeyPublicKey: string, childKeyPublicKey: string): boolean {
+    console.log(parentKeyPublicKey, childKeyPublicKey);
+    return false;
+  }
+
+  // TODO
+  public removeKey(parentKeyPublicKey: string, childKeyPublicKey: string): boolean {
+    console.log(parentKeyPublicKey, childKeyPublicKey);
+    return false;
+  }
+}
+
+class SignerSet {
+  private signers: Signer[];
+
+  constructor(signerAddition: SignerAddition) {
+    this.signers = [];
+    this.signers.push(this._newSigner(signerAddition));
+  }
+
+  public addSigner(signerAddition: SignerAddition): boolean {
+    this.signers.push(this._newSigner(signerAddition));
+    return true;
+  }
+
+  // TODO
+  public addKey(signerKeyAddition: SignerAddition): boolean {
+    // search through signers for which parent key to add the key to
+    return true;
+  }
+
+  // TODO - optional
+  public revokePastSigners(): boolean {
+    return false;
+  }
+
+  private _newSigner(signerAddition: SignerAddition) {
+    return new Signer(signerAddition.envelope.parentSignerPubkey, signerAddition.envelope.childSignerPubkey);
+  }
+}
+
+export default SignerSet;
