@@ -85,8 +85,12 @@ class SignerNode {
     this.delegates = [];
   }
 
-  addChild(child: SignerNode) {
+  addDelegate(child: SignerNode) {
     this.delegates.push(child);
+  }
+
+  removeDelegate(pubkey: string): boolean {
+    return false;
   }
 }
 
@@ -96,34 +100,42 @@ class Signer {
     this.custodyAddressRoot = new SignerNode(custodyAddressPubkeyRoot);
   }
 
-  // TODO
+  // addDelegate adds a delegate key to a parent key if possible.
+  // returns true if so, else returns false
   public addDelegate(parentKeyPublicKey: string, childKeyPublicKey: string): boolean {
     console.log(parentKeyPublicKey, childKeyPublicKey);
     return false;
   }
 
-  // TODO
+  // removeDelegate removes a delegate from a parent key and cascade removes all keys in the subtree
+  // returns true if possible, else returns false
   public removeDelegate(parentKeyPublicKey: string, childKeyPublicKey: string): boolean {
     console.log(parentKeyPublicKey, childKeyPublicKey);
     return false;
+  }
+
+  private getParent(parentKeyPublicKey: string): SignerNode | null {
+    return null;
   }
 }
 
 class SignerSet {
   private signers: Signer[];
 
-  constructor(custodyAddressPubkey: string) {
+  constructor() {
     this.signers = [];
-    this.signers.push(this._newSigner(custodyAddressPubkey));
   }
 
+  // Verification is done by the Ethereum blockchain i.e. the on-chain register/transfer event
+  // that triggers the addition of a Signer is proof the custody address being added owns the associated
+  // account id
   public addSigner(custodyAddressPubkey: string): boolean {
     this.signers.push(this._newSigner(custodyAddressPubkey));
     return true;
   }
 
-  // TODO
-  public addDelegate(signerKeyAddition: SignerAddition): boolean {
+  // addDelegate searches through signers for which parent key to add the key to
+  public addDelegate(delegateAddition: SignerAddition): boolean {
     // search through signers for which parent key to add the key to
     return true;
   }

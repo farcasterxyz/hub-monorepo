@@ -1,42 +1,52 @@
 /* eslint-disable no-restricted-imports */
 import SignerSet, { SignerAddition, SignatureAlgorithm, HashAlgorithm } from './signerSet';
 import { blake2BHash } from '~/utils';
+import { randomBytes } from 'crypto';
+import secp256k1 from 'secp256k1';
 
-describe('create signer set', async () => {
-  const hash = await blake2BHash('foobar');
+const signerSet = new SignerSet();
 
-  // generate parent key
-  // generate child key
-
-  const signerAddition = <SignerAddition>{
-    message: {
-      body: {
-        parentKey: '',
-        childKey: '',
-        schema: '',
-      },
-      address: '',
-    },
-    envelope: {
-      hash: hash,
-      hashType: HashAlgorithm.Blake2b,
-      parentSignature: '',
-      parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-      parentSignerPubkey: '',
-      childSignature: '',
-      childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-      childSignerPubkey: '',
-    },
-  };
-
-  const signerSet = new SignerSet(signerAddition);
-  console.log(signerSet);
+describe('create signer set', () => {
   test('fails with incorrect custody address public key', async () => {
+    // generate custodyAddressPubkey
+    let privKey;
+    do {
+      privKey = randomBytes(32);
+    } while (!secp256k1.privateKeyVerify(privKey));
+    const pubKey = secp256k1.publicKeyCreate(privKey);
+
+    // generate child key
+
+    console.log(signerSet);
+    const encodedPubkey = Buffer.from(pubKey.toString()).toString('base64');
+
+    signerSet.addSigner(encodedPubkey);
+    console.log(signerSet);
     expect(true).toEqual(true); // placeholder assertion
   });
 });
 
-describe('add key', () => {
+describe('add delegate', () => {
+  // const signerAddition = <SignerAddition>{
+  //   message: {
+  //     body: {
+  //       parentKey: '',
+  //       childKey: '',
+  //       schema: '',
+  //     },
+  //     address: '',
+  //   },
+  //   envelope: {
+  //     hash: hash,
+  //     hashType: HashAlgorithm.Blake2b,
+  //     parentSignature: '',
+  //     parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
+  //     parentSignerPubkey: '',
+  //     childSignature: '',
+  //     childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
+  //     childSignerPubkey: '',
+  //   },
+  // };
   test('fails when claimed parent is not actual parent of child', async () => {
     expect(true).toEqual(true);
   });
