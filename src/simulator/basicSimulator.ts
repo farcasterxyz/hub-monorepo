@@ -96,8 +96,10 @@ class BasicSimulator extends Simulator {
     const cs4 = await client.makeCastShort(Faker.lorem.words(3), root1);
     const ra1 = await client.makeReaction(cs4, root1);
     const ru1 = await client.makeReaction(cs4, root1, false);
-    const v1 = await this.generateRandomVerification(client, root1);
-    return [root1, cs1, cs2, cs3, cd1, cs4, ra1, ru1, v1];
+    const vAdd1 = await this.generateRandomVerification(client, root1);
+    const vAdd2 = await this.generateRandomVerification(client, root1);
+    const vRem1 = await client.makeVerificationRemove(vAdd1, root1);
+    return [root1, cs1, cs2, cs3, cd1, cs4, ra1, ru1, vAdd1, vAdd2, vRem1];
   }
 }
 
