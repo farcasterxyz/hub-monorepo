@@ -13,7 +13,7 @@ import * as ed from '@noble/ed25519';
 import { hexToBytes } from 'ethereum-cryptography/utils';
 import { ok, err, Result } from 'neverthrow';
 import { utils } from 'ethers';
-import { isCast, isCastShort, isRoot, isReaction, isVerificationAdd } from '~/types/typeguards';
+import { isCast, isCastShort, isRoot, isReaction, isVerificationAdd, isVerificationRemove } from '~/types/typeguards';
 import CastSet from '~/sets/castSet';
 import ReactionSet from '~/sets/reactionSet';
 import VerificationsSet from '~/sets/verificationsSet';
@@ -403,6 +403,10 @@ class Engine {
       return this.validateVerificationAdd(message);
     }
 
+    if (isVerificationRemove(message)) {
+      return this.validateVerificationRemove(message);
+    }
+
     // TODO: check that the schema is a valid and known schema.
     // TODO: check that all required properties are present.
     // TODO: check that username is known to the registry
@@ -467,6 +471,11 @@ class Engine {
       return err('validateVerificationAdd: invalid externalSignature');
     }
 
+    return ok(undefined);
+  }
+
+  private async validateVerificationRemove(message: VerificationRemove): Promise<Result<void, string>> {
+    // TODO: validate target hash
     return ok(undefined);
   }
 }

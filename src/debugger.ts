@@ -7,7 +7,6 @@ import {
   isCastShort,
   isReaction,
   isRoot,
-  isVerification,
   isVerificationAdd,
   isVerificationRemove,
 } from '~/types/typeguards';

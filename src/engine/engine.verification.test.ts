@@ -73,7 +73,7 @@ describe('mergeVerification', () => {
     expect((await engine.mergeVerification(cast)).isOk()).toBe(false);
   });
 
-  test('fails if signer is not valid', async () => {
+  test('fails if message signer is not valid', async () => {
     engine._resetSigners();
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
@@ -230,6 +230,34 @@ describe('mergeVerification', () => {
     );
     const res = await engine.mergeVerification(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe('validateMessage: no root present');
+    expect(engine._getVerificationAdds('alice')).toEqual([]);
+  });
+
+  test('succeeds with a valid VerificationRemove', async () => {
+    const verificationAddMessage = await Factories.VerificationAdd.create(
+      {
+        data: {
+          rootBlock: aliceRoot.data.rootBlock,
+          username: 'alice',
+          signedAt: aliceRoot.data.signedAt + 1,
+        },
+      },
+      transientParams
+    );
+    expect((await engine.mergeVerification(verificationAddMessage)).isOk()).toBe(true);
+    expect(engine._getVerificationAdds('alice')).toEqual([verificationAddMessage]);
+    const verificationRemoveMessage = await Factories.VerificationRemove.create(
+      {
+        data: {
+          rootBlock: aliceRoot.data.rootBlock,
+          username: 'alice',
+          signedAt: aliceRoot.data.signedAt + 1,
+          body: { verificationClaimHash: verificationAddMessage.hash },
+        },
+      },
+      transientParams
+    );
+    expect((await engine.mergeVerification(verificationRemoveMessage)).isOk()).toBe(true);
     expect(engine._getVerificationAdds('alice')).toEqual([]);
   });
 });
