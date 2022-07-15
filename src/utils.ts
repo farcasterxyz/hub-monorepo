@@ -43,6 +43,11 @@ export const signEd25519 = async (text: string, key: Uint8Array): Promise<string
   return convertToHex(signature);
 };
 
+/** Signs message with secp256k1 elliptic curve */
+export const signSecp256k1 = (text: string, key: utils.SigningKey): string => {
+  return utils.joinSignature(key.signDigest(text));
+};
+
 export const sleep = (ms: number) => {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
