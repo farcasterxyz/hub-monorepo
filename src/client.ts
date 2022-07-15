@@ -1,5 +1,5 @@
 import * as FC from '~/types';
-import { hashMessage, signEd25519, convertToHex } from '~/utils';
+import { hashMessage, signEd25519, convertToHex, hashFCObject } from '~/utils';
 
 class Client {
   publicKey: Uint8Array;
@@ -129,33 +129,34 @@ class Client {
     return item;
   }
 
-  makeVerificationClaim(externalAddressUri: FC.URI): FC.VerificationClaim {
-    return {
+  async makeVerificationClaimHash(externalAddressUri: FC.URI): Promise<string> {
+    return await hashFCObject({
       username: this.username,
       externalAddressUri,
-    };
+    } as FC.VerificationClaim);
   }
 
   async makeVerificationAdd(
-    claim: FC.VerificationClaim,
-    root: FC.Root,
-    signedClaim: string
+    externalAddressUri: FC.URI,
+    claimHash: string,
+    externalSignature: string,
+    root: FC.Root
   ): Promise<FC.VerificationAdd> {
     const schema = 'farcaster.xyz/schemas/v1/verification-add' as const;
     const externalSignatureType = 'secp256k1-address-ownership' as const;
     const signedAt = Date.now();
     const signer = await convertToHex(this.publicKey);
 
-    // TODO: what is rootBlock and why is it needed?
     const rootBlock = root.data.rootBlock;
 
     const message = {
       data: {
         body: {
           schema,
-          verificationClaim: claim,
-          externalSignature: signedClaim,
+          externalAddressUri,
+          externalSignature,
           externalSignatureType,
+          claimHash,
         },
         rootBlock,
         signedAt,
@@ -171,6 +172,10 @@ class Client {
 
     return message;
   }
+
+  // async makeVerificationRemove(): Promise<FC.VerificationRemove> {
+  //   // TODO
+  // }
 }
 
 export default Client;
