@@ -21,3 +21,24 @@ constructor(custodyAddressPublicKey: string)
       removePriorSigners(): boolean
     }
 ```
+
+### AddDelegate
+
+inputs: SignerAddition
+assumptions: validation has already been done by engine and we just need to insert if possible
+
+Naive solution:
+
+- iterate through all Signers
+- for each Signer, traverse the entire tree and check if a parent key is found. Once the parent key is found, return the parent key
+- Check if the parent key has a child with the pubkey value
+
+Pros:
+
+- doesn't require changing/ adding data structures
+
+Cons:
+
+- can get slow as more delegates \* signers are added
+
+consider: adding a parentKeyIndex

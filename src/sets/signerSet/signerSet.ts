@@ -58,8 +58,22 @@ class Signer {
   // addDelegate adds a delegate key to a parent key if possible.
   // returns true if so, else returns false
   public addDelegate(parentKeyPublicKey: string, childKeyPublicKey: string): boolean {
-    console.log(parentKeyPublicKey, childKeyPublicKey);
-    return false;
+    // traverse tree until parent key is found
+    const parentKeyNode = this.getNodeWithPubkey(parentKeyPublicKey, this.custodyAddressRoot);
+    if (parentKeyNode === null) {
+      return false;
+    }
+
+    // confirm child key does not exist
+    const childKeyNode = this.getNodeWithPubkey(childKeyPublicKey, this.custodyAddressRoot);
+    if (childKeyNode !== null) {
+      return false;
+    }
+
+    const delegate = new SignerNode(childKeyPublicKey);
+    parentKeyNode.addDelegate(delegate);
+
+    return true;
   }
 
   // removeDelegate removes a delegate from a parent key and cascade removes all keys in the subtree
@@ -69,7 +83,19 @@ class Signer {
     return false;
   }
 
-  private getParent(parentKeyPublicKey: string): SignerNode | null {
+  private getNodeWithPubkey(pubkeyValue: string, root: SignerNode): SignerNode | null {
+    if (root.pubkey === pubkeyValue) {
+      return root;
+    }
+
+    for (let delegateIdx = 0; delegateIdx < root.delegates.length; delegateIdx++) {
+      const delegate = root.delegates[delegateIdx];
+      const node = this.getNodeWithPubkey(pubkeyValue, delegate);
+      if (node !== null) {
+        return node;
+      }
+    }
+
     return null;
   }
 }
@@ -92,7 +118,14 @@ class SignerSet {
   // addDelegate searches through signers for which parent key to add the key to
   public addDelegate(delegateAddition: SignerAddition): boolean {
     // search through signers for which parent key to add the key to
-    return true;
+    for (let signerIdx = 0; signerIdx < this.signers.length; signerIdx++) {
+      const signer = this.signers[signerIdx];
+      if (signer.addDelegate(delegateAddition.message.body.parentKey, delegateAddition.message.body.childKey)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   // removeDelegate searches through signers for which parent key to add the key to

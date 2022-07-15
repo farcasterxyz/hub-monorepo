@@ -1,6 +1,5 @@
 /* eslint-disable no-restricted-imports */
 import SignerSet, { SignerAddition, SignatureAlgorithm, HashAlgorithm } from './signerSet';
-import { blake2BHash } from '~/utils';
 import { blake2b } from 'ethereum-cryptography/blake2b';
 import { randomBytes } from 'crypto';
 import secp256k1 from 'secp256k1';
@@ -15,13 +14,13 @@ describe('create signer set', () => {
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
 
     signerSet.addSigner(signerRootEncodedPubkey);
-    expect(signerSet.numSigners).toEqual(1);
+    expect(signerSet.numSigners()).toEqual(1);
 
     const childKey = newSecp256k1Key();
     const childPubkey = secp256k1.publicKeyCreate(childKey);
     const childEncodedPubkey = Buffer.from(childPubkey.toString()).toString('base64');
 
-    const hash = blake2b(Buffer.from('foobar'));
+    const hash = blake2b(randomBytes(32), 32);
     // sign with rootPubkey aka parentSignature
     const rootKeySig = secp256k1.ecdsaSign(hash, rootKey);
     // sign with childPubkey aka childSignature
@@ -42,7 +41,7 @@ describe('create signer set', () => {
         parentSignature: base64EncodeUInt8Arr(rootKeySig.signature),
         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
         parentSignerPubkey: signerRootEncodedPubkey,
-        childSignature: base64EncodeUInt8Arr(rootKeySig.signature),
+        childSignature: base64EncodeUInt8Arr(childKeySig.signature),
         childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
         childSignerPubkey: childEncodedPubkey,
       },
@@ -51,7 +50,7 @@ describe('create signer set', () => {
     const addWorked = signerSet.addDelegate(signerAddition);
     expect(addWorked).toEqual(true);
 
-    const removeWorked = signerSet.removeDelegate(childEncodedPubkey);
+    // const removeWorked = signerSet.removeDelegate(childEncodedPubkey);
   });
 });
 
