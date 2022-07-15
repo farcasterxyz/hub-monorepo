@@ -16,7 +16,7 @@ import { hexToBytes } from 'ethereum-cryptography/utils';
 const engine = new Engine();
 
 // TODO: add test helpers to clean up the setup of these tests
-describe('mergeVerificationAdd', () => {
+describe('mergeVerification', () => {
   let alicePrivateKey: string;
   let aliceAddress: string;
   let aliceRoot: Root;
@@ -59,7 +59,7 @@ describe('mergeVerificationAdd', () => {
       },
       transientParams
     );
-    expect((await engine.mergeVerificationAdd(verificationAddMessage)).isOk()).toBe(true);
+    expect((await engine.mergeVerification(verificationAddMessage)).isOk()).toBe(true);
     expect(engine._getVerificationAdds('alice')).toEqual([verificationAddMessage]);
   });
 
@@ -70,7 +70,7 @@ describe('mergeVerificationAdd', () => {
       },
       transientParams
     )) as unknown as VerificationAdd;
-    expect((await engine.mergeVerificationAdd(cast)).isOk()).toBe(false);
+    expect((await engine.mergeVerification(cast)).isOk()).toBe(false);
   });
 
   test('fails if signer is not valid', async () => {
@@ -85,8 +85,8 @@ describe('mergeVerificationAdd', () => {
       },
       transientParams
     );
-    expect((await engine.mergeVerificationAdd(verificationAddMessage))._unsafeUnwrapErr()).toBe(
-      'mergeVerificationAdd: unknown user'
+    expect((await engine.mergeVerification(verificationAddMessage))._unsafeUnwrapErr()).toBe(
+      'mergeVerification: unknown user'
     );
     expect(engine._getVerificationAdds('alice')).toEqual([]);
   });
@@ -103,7 +103,7 @@ describe('mergeVerificationAdd', () => {
       },
       transientParams
     );
-    const res = await engine.mergeVerificationAdd(verificationAddMessage);
+    const res = await engine.mergeVerification(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe('validateVerificationAdd: invalid externalSignature');
     expect(engine._getVerificationAdds('alice')).toEqual([]);
   });
@@ -123,7 +123,7 @@ describe('mergeVerificationAdd', () => {
       },
       transientParams
     );
-    const res = await engine.mergeVerificationAdd(verificationAddMessage);
+    const res = await engine.mergeVerification(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe('validateVerificationAdd: externalSignature does not match externalAddressUri');
     expect(engine._getVerificationAdds('alice')).toEqual([]);
   });
@@ -140,7 +140,7 @@ describe('mergeVerificationAdd', () => {
       },
       transientParams
     );
-    const res = await engine.mergeVerificationAdd(verificationAddMessage);
+    const res = await engine.mergeVerification(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe('validateVerificationAdd: invalid claimHash');
     expect(engine._getVerificationAdds('alice')).toEqual([]);
   });
@@ -157,7 +157,7 @@ describe('mergeVerificationAdd', () => {
       },
       transientParams
     );
-    const res = await engine.mergeVerificationAdd(verificationAddMessage);
+    const res = await engine.mergeVerification(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe('validateMessage: unknown message');
     expect(engine._getVerificationAdds('alice')).toEqual([]);
   });
@@ -176,7 +176,7 @@ describe('mergeVerificationAdd', () => {
       transientParams
     );
     verificationAddMessage.hash = await hashFCObject({ foo: 'bar' });
-    const res = await engine.mergeVerificationAdd(verificationAddMessage);
+    const res = await engine.mergeVerification(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
     expect(engine._getVerificationAdds('alice')).toEqual([]);
   });
@@ -194,7 +194,7 @@ describe('mergeVerificationAdd', () => {
     );
     verificationAddMessage.signature =
       '0x5b699d494b515b22258c01ad19710d44c3f12235f0c01e91d09a1e4e2cd25d80c77026a7319906da3b8ce62abc18477c19e444a02949a0dde54f8cadef889502';
-    const res = await engine.mergeVerificationAdd(verificationAddMessage);
+    const res = await engine.mergeVerification(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid signature');
     expect(engine._getVerificationAdds('alice')).toEqual([]);
   });
@@ -211,7 +211,7 @@ describe('mergeVerificationAdd', () => {
       },
       transientParams
     );
-    const res = await engine.mergeVerificationAdd(verificationAddMessage);
+    const res = await engine.mergeVerification(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe('validateMessage: signedAt more than 10 mins in the future');
     expect(engine._getVerificationAdds('alice')).toEqual([]);
   });
@@ -228,7 +228,7 @@ describe('mergeVerificationAdd', () => {
       },
       transientParams
     );
-    const res = await engine.mergeVerificationAdd(verificationAddMessage);
+    const res = await engine.mergeVerification(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe('validateMessage: no root present');
     expect(engine._getVerificationAdds('alice')).toEqual([]);
   });

@@ -1,4 +1,13 @@
-import { Cast, Root, Message, Reaction, VerificationAdd, VerificationClaim } from '~/types';
+import {
+  Cast,
+  Root,
+  Message,
+  Reaction,
+  Verification,
+  VerificationAdd,
+  VerificationRemove,
+  VerificationClaim,
+} from '~/types';
 import { hashMessage, hashCompare, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
 import { hexToBytes } from 'ethereum-cryptography/utils';
@@ -190,16 +199,38 @@ class Engine {
     }
   }
 
-  /** Merge verification add into the set */
-  async mergeVerificationAdd(verificationAdd: VerificationAdd): Promise<Result<void, string>> {
+  /**
+   * Verification methods
+   */
+
+  /** Get a verification for a username by hash */
+  getVerification(username: string, hash: string): Verification | undefined {
+    const verificationsSet = this._verifications.get(username);
+    return verificationsSet ? verificationsSet.get(hash) : undefined;
+  }
+
+  /** Get hashes of known active verifications for a username */
+  getVerificationHashes(username: string): string[] {
+    const verificationsSet = this._verifications.get(username);
+    return verificationsSet ? verificationsSet.getHashes() : [];
+  }
+
+  /** Get hashes of all known verifications for a username */
+  getAllVerificationHashes(username: string): string[] {
+    const verificationsSet = this._verifications.get(username);
+    return verificationsSet ? verificationsSet.getAllHashes() : [];
+  }
+
+  /** Merge verification message into the set */
+  async mergeVerification(verification: Verification): Promise<Result<void, string>> {
     try {
-      const username = verificationAdd.data.username; // TODO: change to account
+      const username = verification.data.username;
       const signerChanges = this._users.get(username);
       if (!signerChanges) {
-        return err('mergeVerificationAdd: unknown user');
+        return err('mergeVerification: unknown user');
       }
-      const isVerificationAddValidResult = await this.validateMessage(verificationAdd);
-      if (isVerificationAddValidResult.isErr()) return isVerificationAddValidResult;
+      const isVerificationValidResult = await this.validateMessage(verification);
+      if (isVerificationValidResult.isErr()) return isVerificationValidResult;
 
       let verificationsSet = this._verifications.get(username);
       if (!verificationsSet) {
@@ -207,10 +238,9 @@ class Engine {
         this._verifications.set(username, verificationsSet);
       }
 
-      return verificationsSet.merge(verificationAdd);
+      return verificationsSet.merge(verification);
     } catch (e: any) {
-      console.log('ERROR', e);
-      return err('mergeVerificationAdd: unexpected error');
+      return err('mergeVerification: unexpected error');
     }
   }
 
@@ -418,7 +448,6 @@ class Engine {
     if (externalSignatureType !== 'secp256k1-address-ownership')
       return err('validateVerificationAdd: invalid externalSignatureType');
 
-    // TODO: check claimHash
     const verificationClaim: VerificationClaim = {
       username: message.data.username,
       externalAddressUri: message.data.body.externalAddressUri,
