@@ -12,6 +12,15 @@
       - validation passes only if the message is signed by a key inside this set
     - when a key is revoked, all messages must be deleted
       - reason: messages coming in are unordered so impossible to tell if a message is created from an Attacker or Owner
+    - all prior custody keys remain valid
+    - signerSet is set of Signer tree structures
+    - nuke message that lets you nuke all prior messages 
+    - what creates a new signer (v2)
+      - registering a new account id --> register event 
+      - calling transfer function --> transfer event
+    - https://github.com/farcasterxyz/protocol#46-root-signer-revocations (optional but would be good to get in if possible)
+    - 1-1 account id <-> custody address
+    - prior custody address can auth a delegate that signs messages
   
   Questions:
     - is parentKey in https://github.com/merkle-manufactory/backend/blob/be593d2d54ebeeb7353cb9ae3c60fc62a92e790d/src/util/shared/types/backendApi.ts#L944 the publicKey string representation of the keypair?
@@ -28,6 +37,13 @@
 
       addKey(parentKeyPublicKey string, childKeyPublicKey string): boolean
       removeKey(parentKeyPublicKey string, childKeyPublicKey string): boolean 
+      addRoot()
     }
 */
-class SignerSet {}
+class SignerSet {
+  private custodyAddressPublicKey: string;
+
+  constructor(custodyAddressPublicKey: string) {
+    this.custodyAddressPublicKey = custodyAddressPublicKey;
+  }
+}
