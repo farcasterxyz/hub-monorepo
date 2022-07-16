@@ -50,7 +50,7 @@ class VerificationsSet {
     }
 
     if (this._deletes.get(message.hash)) {
-      return err('VerificationsSet.add: verification was deleted');
+      return err('VerificationsSet.add: verification is already deleted');
     }
 
     if (this._adds.get(message.hash)) {

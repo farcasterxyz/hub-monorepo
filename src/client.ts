@@ -1,4 +1,3 @@
-import { measureMemory } from 'vm';
 import * as FC from '~/types';
 import { hashMessage, signEd25519, convertToHex, hashFCObject } from '~/utils';
 
@@ -36,7 +35,7 @@ class Client {
       body: {
         blockHash: ethblockHash,
         schema: 'farcaster.xyz/schemas/v1/root',
-      } as FC.RootBody,
+      },
       rootBlock: ethBlockNum,
       signedAt: Date.now(),
       username: this.username,
@@ -113,7 +112,7 @@ class Client {
     return await hashFCObject({
       username: this.username,
       externalAddressUri,
-    } as FC.VerificationClaim);
+    });
   }
 
   async makeVerificationAdd(
@@ -129,7 +128,7 @@ class Client {
         externalSignature,
         externalSignatureType: 'secp256k1-eip-191',
         claimHash,
-      } as FC.VerificationAddBody,
+      },
       rootBlock: root.data.rootBlock,
       signedAt: Date.now(),
       username: this.username,
@@ -142,7 +141,7 @@ class Client {
       body: {
         schema: 'farcaster.xyz/schemas/v1/verification-remove',
         verificationAddHash: verificationAdd.hash,
-      } as FC.VerificationRemoveBody,
+      },
       rootBlock: root.data.rootBlock,
       signedAt: Date.now(),
       username: this.username,
