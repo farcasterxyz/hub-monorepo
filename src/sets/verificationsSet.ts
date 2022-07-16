@@ -11,8 +11,8 @@ class VerificationsSet {
     this._deletes = new Map();
   }
 
-  /** Get a cast by its hash */
-  get(hash: string): VerificationAdd | VerificationRemove | undefined {
+  /** Get a verification by its hash */
+  get(hash: string): Verification | undefined {
     return this._adds.get(hash) || this._deletes.get(hash);
   }
 
