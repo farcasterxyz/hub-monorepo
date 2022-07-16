@@ -114,6 +114,15 @@ class Signer {
     return false;
   }
 
+  public nodeWithPubkeyExists(pubkeyValue: string): boolean {
+    const node = this.getNodeWithPubkey(pubkeyValue, this.custodyAddressRoot);
+    if (node === null) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+
   private getNodeWithPubkey(pubkeyValue: string, root: SignerNode): SignerNode | null {
     if (root.pubkey === pubkeyValue) {
       return root;
@@ -133,21 +142,37 @@ class Signer {
 
 class SignerSet {
   private signers: Signer[];
+  private revokedDelegates: Set<string>;
 
   constructor() {
     this.signers = [];
+    this.revokedDelegates = new Set<string>();
   }
 
   // Verification is done by the Ethereum blockchain i.e. the on-chain register/transfer event
   // that triggers the addition of a Signer is proof the custody address being added owns the associated
   // account id
   public addSigner(custodyAddressPubkey: string): boolean {
+    for (let signerIdx = 0; signerIdx < this.signers.length; signerIdx++) {
+      const signer = this.signers[signerIdx];
+      if (signer.nodeWithPubkeyExists(custodyAddressPubkey)) {
+        console.error('node with key value already exists in SignerSet');
+        return false;
+      }
+    }
+
     this.signers.push(this._newSigner(custodyAddressPubkey));
     return true;
   }
 
   // addDelegate searches through signers for which parent key to add the key to
   public addDelegate(delegateAddition: SignerAddition): boolean {
+    // check if key is in removedNodes set
+    if (this.revokedDelegates.has(delegateAddition.envelope.childSignerPubkey)) {
+      console.error('delegate key has been revoked for this account: ' + delegateAddition.envelope.childSignerPubkey);
+      return false;
+    }
+
     // search through signers for which parent key to add the key to
     for (let signerIdx = 0; signerIdx < this.signers.length; signerIdx++) {
       const signer = this.signers[signerIdx];
@@ -161,12 +186,15 @@ class SignerSet {
 
   // removeDelegate searches through signers for which parent key to add the key to
   public removeDelegate(delegateRemoval: SignerRemove): boolean {
-    // search through signers for which parent key to remove the delegate from
-    // TODO: do we need to check if any signers hold the child key as a root, as an edge case?
+    if (this.revokedDelegates.has(delegateRemoval.message.body.childKey)) {
+      console.error('delegate key has already been revoked in this account');
+      return false;
+    }
 
     for (let signerIdx = 0; signerIdx < this.signers.length; signerIdx++) {
       const signer = this.signers[signerIdx];
       if (signer.removeDelegate(delegateRemoval.envelope.parentSignerPubkey, delegateRemoval.message.body.childKey)) {
+        this.revokedDelegates.add(delegateRemoval.message.body.childKey);
         return true;
       }
     }
