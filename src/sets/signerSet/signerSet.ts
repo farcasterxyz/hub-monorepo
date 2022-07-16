@@ -21,6 +21,23 @@ export interface SignerAddition {
   };
 }
 
+export interface SignerRemove {
+  message: {
+    body: {
+      childKey: string;
+      schema: string;
+    };
+    account: number;
+  };
+  envelope: {
+    hash: string;
+    hashType: HashAlgorithm;
+    parentSignature: string;
+    parentSignatureType: SignatureAlgorithm;
+    parentSignerPubkey: string;
+  };
+}
+
 export enum SignatureAlgorithm {
   EcdsaSecp256k1 = 'ecdsa-secp256k1',
   Ed25519 = 'ed25519',
@@ -70,6 +87,8 @@ class Signer {
       return false;
     }
 
+    // TODO: once we are tracking removed nodes, we must ensure child node is not found inside the removed set either
+
     const delegate = new SignerNode(childKeyPublicKey);
     parentKeyNode.addDelegate(delegate);
 
@@ -79,7 +98,19 @@ class Signer {
   // removeDelegate removes a delegate from a parent key and cascade removes all keys in the subtree
   // returns true if possible, else returns false
   public removeDelegate(parentKeyPublicKey: string, childKeyPublicKey: string): boolean {
-    console.log(parentKeyPublicKey, childKeyPublicKey);
+    const parentKeyNode = this.getNodeWithPubkey(parentKeyPublicKey, this.custodyAddressRoot);
+    if (parentKeyNode === null) {
+      return false;
+    }
+
+    for (let delegateIdx = 0; delegateIdx < parentKeyNode.delegates.length; delegateIdx++) {
+      const delegate = parentKeyNode.delegates[delegateIdx];
+      if (delegate.pubkey === childKeyPublicKey) {
+        parentKeyNode.delegates = parentKeyNode.delegates.splice(delegateIdx, delegateIdx);
+        return true;
+      }
+    }
+
     return false;
   }
 
@@ -129,9 +160,18 @@ class SignerSet {
   }
 
   // removeDelegate searches through signers for which parent key to add the key to
-  public removeDelegate(delegatePubkey: string): boolean {
-    // search through signers for which parent key to add the key to
-    return true;
+  public removeDelegate(delegateRemoval: SignerRemove): boolean {
+    // search through signers for which parent key to remove the delegate from
+    // TODO: do we need to check if any signers hold the child key as a root, as an edge case?
+
+    for (let signerIdx = 0; signerIdx < this.signers.length; signerIdx++) {
+      const signer = this.signers[signerIdx];
+      if (signer.removeDelegate(delegateRemoval.envelope.parentSignerPubkey, delegateRemoval.message.body.childKey)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   // TODO - optional
