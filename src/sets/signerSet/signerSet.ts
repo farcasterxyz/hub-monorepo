@@ -149,16 +149,24 @@ class SignerSet {
     this.revokedDelegates = new Set<string>();
   }
 
+  private pubkeyExistsInSignerSet(pubkey: string): boolean {
+    for (let signerIdx = 0; signerIdx < this.signers.length; signerIdx++) {
+      const signer = this.signers[signerIdx];
+      if (signer.nodeWithPubkeyExists(pubkey)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   // Verification is done by the Ethereum blockchain i.e. the on-chain register/transfer event
   // that triggers the addition of a Signer is proof the custody address being added owns the associated
   // account id
   public addSigner(custodyAddressPubkey: string): boolean {
-    for (let signerIdx = 0; signerIdx < this.signers.length; signerIdx++) {
-      const signer = this.signers[signerIdx];
-      if (signer.nodeWithPubkeyExists(custodyAddressPubkey)) {
-        console.error('node with key value already exists in SignerSet');
-        return false;
-      }
+    if (this.pubkeyExistsInSignerSet(custodyAddressPubkey)) {
+      console.error('node with key value already exists in SignerSet');
+      return false;
     }
 
     this.signers.push(this._newSigner(custodyAddressPubkey));
@@ -170,6 +178,12 @@ class SignerSet {
     // check if key is in removedNodes set
     if (this.revokedDelegates.has(delegateAddition.envelope.childSignerPubkey)) {
       console.error('delegate key has been revoked for this account: ' + delegateAddition.envelope.childSignerPubkey);
+      return false;
+    }
+
+    // check if delegate exists in signer set
+    if (this.pubkeyExistsInSignerSet(delegateAddition.envelope.childSignerPubkey)) {
+      console.error('node with key value already exists in SignerSet');
       return false;
     }
 

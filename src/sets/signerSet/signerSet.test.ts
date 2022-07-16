@@ -86,6 +86,65 @@ describe('add delegate', () => {
     expect(addWorked).toEqual(true);
   });
 
+  test('fails when delegate exists in another signer', async () => {
+    const rootKey2 = newSecp256k1Key();
+    const signerRootPubkey2 = secp256k1.publicKeyCreate(rootKey2);
+    const signerRootEncodedPubkey2 = Buffer.from(signerRootPubkey2.toString()).toString('base64');
+    const rootKeySig2 = secp256k1.ecdsaSign(hash, rootKey2);
+
+    signerSet.addSigner(signerRootEncodedPubkey2);
+    expect(signerSet.numSigners()).toEqual(2);
+
+    let signerAddition = <SignerAddition>{
+      message: {
+        body: {
+          parentKey: signerRootEncodedPubkey,
+          childKey: childEncodedPubkey,
+          schema: FarcasterSchemaUrl,
+        },
+        account: 1,
+      },
+      envelope: {
+        hash: base64EncodeUInt8Arr(hash),
+        hashType: HashAlgorithm.Blake2b,
+        parentSignature: base64EncodeUInt8Arr(rootKeySig.signature),
+        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
+        parentSignerPubkey: signerRootEncodedPubkey,
+        childSignature: base64EncodeUInt8Arr(childKeySig.signature),
+        childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
+        childSignerPubkey: childEncodedPubkey,
+      },
+    };
+
+    let addWorked = signerSet.addDelegate(signerAddition);
+    expect(addWorked).toEqual(true);
+
+    signerAddition = <SignerAddition>{
+      message: {
+        body: {
+          // parent is a root to a different Signer
+          parentKey: signerRootEncodedPubkey2,
+          childKey: childEncodedPubkey,
+          schema: FarcasterSchemaUrl,
+        },
+        account: 1,
+      },
+      envelope: {
+        hash: base64EncodeUInt8Arr(hash),
+        hashType: HashAlgorithm.Blake2b,
+        parentSignature: base64EncodeUInt8Arr(rootKe.signature),
+        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
+        parentSignerPubkey: signerRootEncodedPubkey2,
+        childSignature: base64EncodeUInt8Arr(childKeySig.signature),
+        childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
+        childSignerPubkey: childEncodedPubkey,
+      },
+    };
+
+    addWorked = signerSet.addDelegate(signerAddition);
+    expect(addWorked).toEqual(false);
+  });
+
   test('fails when claimed parent does not exist', async () => {
     const signerAddition = <SignerAddition>{
       message: {
