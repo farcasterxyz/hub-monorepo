@@ -48,31 +48,29 @@ export enum HashAlgorithm {
 
 class SignerNode {
   public pubkey: string;
+  public msg: SignerAddition | null;
   public delegates: SignerNode[];
 
-  constructor(pubkey: string) {
+  constructor(pubkey: string, msg: SignerAddition | null) {
     this.pubkey = pubkey;
     this.delegates = [];
+    this.msg = msg;
   }
 
   addDelegate(child: SignerNode) {
     this.delegates.push(child);
-  }
-
-  removeDelegate(pubkey: string): boolean {
-    return false;
   }
 }
 
 class Signer {
   public custodyAddressRoot: SignerNode;
   constructor(custodyAddressPubkeyRoot: string) {
-    this.custodyAddressRoot = new SignerNode(custodyAddressPubkeyRoot);
+    this.custodyAddressRoot = new SignerNode(custodyAddressPubkeyRoot, null);
   }
 
   // addDelegate adds a delegate key to a parent key if possible.
   // returns true if so, else returns false
-  public addDelegate(parentKeyPublicKey: string, childKeyPublicKey: string): boolean {
+  public addDelegate(parentKeyPublicKey: string, childKeyPublicKey: string, msg: SignerAddition): boolean {
     // traverse tree until parent key is found
     const parentKeyNode = this.getNodeWithPubkey(parentKeyPublicKey, this.custodyAddressRoot);
     if (parentKeyNode === null) {
@@ -85,9 +83,7 @@ class Signer {
       return false;
     }
 
-    // TODO: once we are tracking removed nodes, we must ensure child node is not found inside the removed set either
-
-    const delegate = new SignerNode(childKeyPublicKey);
+    const delegate = new SignerNode(childKeyPublicKey, msg);
     parentKeyNode.addDelegate(delegate);
 
     return true;
@@ -112,6 +108,7 @@ class Signer {
     return false;
   }
 
+  // nodeWithPubkeyExists checks if there is a node with the input pubkeyValue in the Signer
   public nodeWithPubkeyExists(pubkeyValue: string): boolean {
     const node = this.getNodeWithPubkey(pubkeyValue, this.custodyAddressRoot);
     if (node === null) {
@@ -121,6 +118,7 @@ class Signer {
     }
   }
 
+  // getNodeWithPubkey returns a SignerNode with the given pubkeyValue if one exists
   private getNodeWithPubkey(pubkeyValue: string, root: SignerNode): SignerNode | null {
     if (root.pubkey === pubkeyValue) {
       return root;
@@ -140,11 +138,11 @@ class Signer {
 
 class SignerSet {
   private signers: Signer[];
-  private revokedDelegates: Set<string>;
+  private revokedDelegates: Map<string, SignerRemove>;
 
   constructor() {
     this.signers = [];
-    this.revokedDelegates = new Set<string>();
+    this.revokedDelegates = new Map<string, SignerRemove>();
   }
 
   private pubkeyExistsInSignerSet(pubkey: string): boolean {
@@ -188,7 +186,13 @@ class SignerSet {
     // search through signers for which parent key to add the key to
     for (let signerIdx = 0; signerIdx < this.signers.length; signerIdx++) {
       const signer = this.signers[signerIdx];
-      if (signer.addDelegate(delegateAddition.message.body.parentKey, delegateAddition.message.body.childKey)) {
+      if (
+        signer.addDelegate(
+          delegateAddition.message.body.parentKey,
+          delegateAddition.message.body.childKey,
+          delegateAddition
+        )
+      ) {
         return true;
       }
     }
@@ -206,7 +210,7 @@ class SignerSet {
     for (let signerIdx = 0; signerIdx < this.signers.length; signerIdx++) {
       const signer = this.signers[signerIdx];
       if (signer.removeDelegate(delegateRemoval.envelope.parentSignerPubkey, delegateRemoval.message.body.childKey)) {
-        this.revokedDelegates.add(delegateRemoval.message.body.childKey);
+        this.revokedDelegates.set(delegateRemoval.message.body.childKey, delegateRemoval);
         return true;
       }
     }
