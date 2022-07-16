@@ -63,8 +63,9 @@ Remaining SignerSet implementation work:
 - **Cleanup work**
 
 1. Change Spec to be up-to-date with implementation in terms of terminology, for SignerSet scoped content. (e.g. Accounts are written "Usernames" in spec)
-2. Inline code docs
-3. README.md should be a usage doc and this scratchpad should be moved to a .scratch.md file.
+2. Implement the rest of the unit tests
+3. Inline code docs
+4. README.md should be a usage doc and this scratchpad should be moved to a .scratch.md file.
 
 - **Hub integration**
 
