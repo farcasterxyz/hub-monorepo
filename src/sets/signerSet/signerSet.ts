@@ -1,5 +1,3 @@
-import { Signature } from 'ethers';
-
 export interface SignerAddition {
   message: {
     body: {
