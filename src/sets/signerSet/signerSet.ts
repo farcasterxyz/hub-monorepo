@@ -1,4 +1,4 @@
-export interface SignerAddition {
+export interface SignerAdd {
   message: {
     body: {
       parentKey: string;
@@ -48,10 +48,10 @@ export enum HashAlgorithm {
 
 class SignerNode {
   public pubkey: string;
-  public msg: SignerAddition | null;
+  public msg: SignerAdd | null;
   public delegates: SignerNode[];
 
-  constructor(pubkey: string, msg: SignerAddition | null) {
+  constructor(pubkey: string, msg: SignerAdd | null) {
     this.pubkey = pubkey;
     this.delegates = [];
     this.msg = msg;
@@ -70,7 +70,7 @@ class Signer {
 
   // addDelegate adds a delegate key to a parent key if possible.
   // returns true if so, else returns false
-  public addDelegate(parentKeyPublicKey: string, childKeyPublicKey: string, msg: SignerAddition): boolean {
+  public addDelegate(parentKeyPublicKey: string, childKeyPublicKey: string, msg: SignerAdd): boolean {
     // traverse tree until parent key is found
     const parentKeyNode = this.getNodeWithPubkey(parentKeyPublicKey, this.custodyAddressRoot);
     if (parentKeyNode === null) {
@@ -170,7 +170,7 @@ class SignerSet {
   }
 
   // addDelegate searches through signers for which parent key to add the key to
-  public addDelegate(delegateAddition: SignerAddition): boolean {
+  public addDelegate(delegateAddition: SignerAdd): boolean {
     // check if key is in removedNodes set
     if (this.revokedDelegates.has(delegateAddition.envelope.childSignerPubkey)) {
       console.error('delegate key has been revoked for this account: ' + delegateAddition.envelope.childSignerPubkey);

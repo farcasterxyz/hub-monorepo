@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable no-restricted-imports */
-import SignerSet, { SignerAddition, SignatureAlgorithm, HashAlgorithm, SignerRemove } from './signerSet';
+import SignerSet, { SignerAdd, SignatureAlgorithm, HashAlgorithm, SignerRemove } from './signerSet';
 import { blake2b } from 'ethereum-cryptography/blake2b';
 import { randomBytes } from 'crypto';
-
 const secp = require('ethereum-cryptography/secp256k1');
+
 const FarcasterSchemaUrl = 'farcaster.xyz/schemas/v1/signer-authorize';
 
 describe('create signer set', () => {
@@ -62,7 +62,7 @@ describe('add delegate', () => {
     const rootKeySig = secp.signSync(hash, rootKey);
     const childKeySig = secp.signSync(hash, childKey);
 
-    const signerAddition = <SignerAddition>{
+    const signerAddition = <SignerAdd>{
       message: {
         body: {
           parentKey: signerRootEncodedPubkey,
@@ -114,7 +114,7 @@ describe('add delegate', () => {
     signerSet.addSigner(signerRootEncodedPubkey2);
     expect(signerSet.numSigners()).toEqual(2);
 
-    let signerAddition = <SignerAddition>{
+    let signerAddition = <SignerAdd>{
       message: {
         body: {
           parentKey: signerRootEncodedPubkey,
@@ -138,7 +138,7 @@ describe('add delegate', () => {
     let addWorked = signerSet.addDelegate(signerAddition);
     expect(addWorked).toEqual(true);
 
-    signerAddition = <SignerAddition>{
+    signerAddition = <SignerAdd>{
       message: {
         body: {
           // parent is a root to a different Signer
@@ -183,7 +183,7 @@ describe('add delegate', () => {
     const rootKeySig = secp.signSync(hash, rootKey);
     const childKeySig = secp.signSync(hash, childKey);
 
-    const signerAddition = <SignerAddition>{
+    const signerAddition = <SignerAdd>{
       message: {
         body: {
           parentKey: 'foobar',
@@ -227,7 +227,7 @@ describe('add delegate', () => {
     const rootKeySig = secp.signSync(hash, rootKey);
     const childKeySig = secp.signSync(hash, childKey);
 
-    const signerAddition = <SignerAddition>{
+    const signerAddition = <SignerAdd>{
       message: {
         body: {
           parentKey: signerRootEncodedPubkey,
@@ -295,7 +295,7 @@ describe('add delegate', () => {
     const rootKeySig = secp.signSync(hash, rootKey);
     const childKeySig = secp.signSync(hash, childKey);
 
-    const signerAddition = <SignerAddition>{
+    const signerAddition = <SignerAdd>{
       message: {
         body: {
           parentKey: signerRootEncodedPubkey,
@@ -345,12 +345,12 @@ describe('remove delegate', () => {
     const childKeySig = secp.signSync(hash, childKey);
 
     // Add Delegate to root
-    const signerAddition = <SignerAddition>{
+    const signerAddition = <SignerAdd>{
       message: {
         body: {
           parentKey: signerRootEncodedPubkey,
           childKey: childEncodedPubkey,
-          schema: 'farcaster.xyz/schemas/v1/signer-authorize',
+          schema: FarcasterSchemaUrl,
         },
         account: 1,
       },
@@ -376,7 +376,7 @@ describe('remove delegate', () => {
     const childEncodedPubkey1_1 = Buffer.from(childPubkey1_1.toString()).toString('base64');
     const childKey1_1Sig = secp.signSync(hash, childKey1_1);
 
-    const signerAddition2_1 = <SignerAddition>{
+    const signerAddition2_1 = <SignerAdd>{
       message: {
         body: {
           parentKey: childEncodedPubkey,
@@ -406,7 +406,7 @@ describe('remove delegate', () => {
       message: {
         body: {
           childKey: childEncodedPubkey1_1,
-          schema: 'farcaster.xyz/schemas/v1/signer-authorize',
+          schema: FarcasterSchemaUrl,
         },
         account: 1,
       },
@@ -443,12 +443,12 @@ describe('remove delegate', () => {
     const childKeySig = secp.signSync(hash, childKey);
 
     // Add Delegate to root
-    const signerAddition = <SignerAddition>{
+    const signerAddition = <SignerAdd>{
       message: {
         body: {
           parentKey: signerRootEncodedPubkey,
           childKey: childEncodedPubkey,
-          schema: 'farcaster.xyz/schemas/v1/signer-authorize',
+          schema: FarcasterSchemaUrl,
         },
         account: 1,
       },
