@@ -117,14 +117,8 @@ class SignerSet {
       const proposedEdgeHash = blake2BHash(`${proposedParentPubkey}${delegate}`);
 
       if (existingEdgeHash < proposedEdgeHash) {
-        // remove subtree
-        const subtreeRemoved = this._removeSubtree(delegate);
-        if (!subtreeRemoved) {
-          return err(`could not remove delegate subtree ${delegate}`);
-        }
-
         // remove delegate edge from existing parent
-        const removed = this._removeDelegateEdge(existingParentPubkey, delegate);
+        const removed = this._removeDelegate(existingParentPubkey, delegate, undefined);
         if (!removed) {
           return err(`could not remove delegate ${delegate} from ${existingParentPubkey}`);
         }
@@ -183,14 +177,9 @@ class SignerSet {
       return err(`${delegate} not a child of ${parent}`);
     }
 
-    const subtreeRemoved = this._removeSubtree(delegate);
+    const subtreeRemoved = this._removeDelegate(parent, delegate, removeMsg);
     if (!subtreeRemoved) {
       return err(`${delegate} subtree could not be removed`);
-    }
-
-    const removed = this._removeDelegateEdge(parent, delegate);
-    if (!removed) {
-      return err(`${delegate} could not be removed from ${parent}`);
     }
 
     this.removed.set(delegate, removeMsg);
@@ -223,30 +212,55 @@ class SignerSet {
     return true;
   }
 
-  private _removeDelegateEdge(parentPubkey: string, delegate: string): boolean {
+  /* _removeDelegate removes the delegatePubkey as a child from the parentPubkey and also its entire subtree */
+  private _removeDelegate(parentPubkey: string, delegatePubkey: string, removeMsg?: SignerRemove): boolean {
+    this._removeDelegateSubtree(delegatePubkey, removeMsg);
+
     const children = this.edges.get(parentPubkey);
     if (children === undefined) {
-      console.error(`delegate ${delegate} exists in add set, not in revoked but no corresponding edge`);
+      console.error(`delegate ${delegatePubkey} exists in add set, is not in revoked but no corresponding edge`);
       return false;
     }
 
-    children.delete(delegate);
+    children.delete(delegatePubkey);
     this.edges.set(parentPubkey, children);
 
     const newChildren = this.edges.get(parentPubkey);
-    if (newChildren !== undefined && newChildren.has(delegate)) {
+    if (newChildren !== undefined && newChildren.has(delegatePubkey)) {
       return false;
     }
 
     return true;
   }
 
-  private _removeSubtree(pubkey: string): boolean {
-    if (!this.edges.has(pubkey)) {
+  /* 
+    _removeDelegateSubtree removes the delegatePubkey subtree recursively 
+    and adds to remove set if removeMsg is not null 
+
+    @param delegatePubkey the pubkey of the subtree root
+    @param removeMsg an optional message in the case this is used for delegate signer revocations
+    @returns true if the deletion process was successful 
+  */
+  private _removeDelegateSubtree(delegatePubkey: string, removeMsg?: SignerRemove): boolean {
+    if (this.edges.size === 0 || !this.edges.has(delegatePubkey)) {
+      return true;
+    }
+
+    const children = this.edges.get(delegatePubkey);
+    if (children === undefined) {
       return false;
     }
 
-    return this.edges.delete(pubkey);
+    children.forEach((child) => {
+      this._removeDelegateSubtree(child, removeMsg);
+    });
+
+    this.edges.delete(delegatePubkey);
+    if (removeMsg !== undefined) {
+      this.removed.set(delegatePubkey, removeMsg);
+    }
+
+    return true;
   }
 
   private _nodeWithPubkeyExists(pubkey: string): boolean {
