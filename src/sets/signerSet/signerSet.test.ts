@@ -16,7 +16,7 @@ describe('create signer set', () => {
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
 
     expect(signerSet.addSigner(signerRootEncodedPubkey)).toEqual(true);
-    expect(signerSet.numSigners()).toEqual(1);
+    expect(signerSet._numSigners()).toEqual(1);
 
     // generate custodyAddressPubkey
     const rootKey2 = newSecp256k1Key();
@@ -24,7 +24,7 @@ describe('create signer set', () => {
     const signerRootEncodedPubkey2 = Buffer.from(signerRootPubkey2.toString()).toString('base64');
 
     expect(signerSet.addSigner(signerRootEncodedPubkey2)).toEqual(true);
-    expect(signerSet.numSigners()).toEqual(2);
+    expect(signerSet._numSigners()).toEqual(2);
   });
 
   test('fails when same root is tried to be added twice', async () => {
@@ -35,10 +35,10 @@ describe('create signer set', () => {
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
 
     expect(signerSet.addSigner(signerRootEncodedPubkey)).toEqual(true);
-    expect(signerSet.numSigners()).toEqual(1);
+    expect(signerSet._numSigners()).toEqual(1);
 
     expect(signerSet.addSigner(signerRootEncodedPubkey)).toEqual(false);
-    expect(signerSet.numSigners()).toEqual(1);
+    expect(signerSet._numSigners()).toEqual(1);
   });
 });
 
@@ -52,7 +52,7 @@ describe('add delegate', () => {
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
 
     signerSet.addSigner(signerRootEncodedPubkey);
-    expect(signerSet.numSigners()).toEqual(1);
+    expect(signerSet._numSigners()).toEqual(1);
 
     const childKey = newSecp256k1Key();
     const childPubkey = secp.getPublicKey(childKey);
@@ -96,7 +96,7 @@ describe('add delegate', () => {
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
 
     signerSet.addSigner(signerRootEncodedPubkey);
-    expect(signerSet.numSigners()).toEqual(1);
+    expect(signerSet._numSigners()).toEqual(1);
 
     const childKey = newSecp256k1Key();
     const childPubkey = secp.getPublicKey(childKey);
@@ -112,7 +112,7 @@ describe('add delegate', () => {
     const rootKeySig2 = secp.signSync(hash, rootKey2);
 
     signerSet.addSigner(signerRootEncodedPubkey2);
-    expect(signerSet.numSigners()).toEqual(2);
+    expect(signerSet._numSigners()).toEqual(2);
 
     let signerAddition = <SignerAdd>{
       message: {
@@ -173,7 +173,7 @@ describe('add delegate', () => {
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
 
     signerSet.addSigner(signerRootEncodedPubkey);
-    expect(signerSet.numSigners()).toEqual(1);
+    expect(signerSet._numSigners()).toEqual(1);
 
     const childKey = newSecp256k1Key();
     const childPubkey = secp.getPublicKey(childKey);
@@ -217,7 +217,7 @@ describe('add delegate', () => {
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
 
     signerSet.addSigner(signerRootEncodedPubkey);
-    expect(signerSet.numSigners()).toEqual(1);
+    expect(signerSet._numSigners()).toEqual(1);
 
     const childKey = newSecp256k1Key();
     const childPubkey = secp.getPublicKey(childKey);
@@ -285,7 +285,7 @@ describe('add delegate', () => {
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
 
     signerSet.addSigner(signerRootEncodedPubkey);
-    expect(signerSet.numSigners()).toEqual(1);
+    expect(signerSet._numSigners()).toEqual(1);
 
     const childKey = newSecp256k1Key();
     const childPubkey = secp.getPublicKey(childKey);
@@ -334,7 +334,7 @@ describe('remove delegate', () => {
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
 
     signerSet.addSigner(signerRootEncodedPubkey);
-    expect(signerSet.numSigners()).toEqual(1);
+    expect(signerSet._numSigners()).toEqual(1);
 
     const childKey = newSecp256k1Key();
     const childPubkey = secp.getPublicKey(childKey);
@@ -432,7 +432,7 @@ describe('remove delegate', () => {
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
 
     signerSet.addSigner(signerRootEncodedPubkey);
-    expect(signerSet.numSigners()).toEqual(1);
+    expect(signerSet._numSigners()).toEqual(1);
 
     const childKey = newSecp256k1Key();
     const childPubkey = secp.getPublicKey(childKey);
