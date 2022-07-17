@@ -140,7 +140,7 @@ class Client {
     const message = await this.makeMessage({
       body: {
         schema: 'farcaster.xyz/schemas/v1/verification-remove',
-        verificationAddHash: verificationAdd.hash,
+        claimHash: verificationAdd.data.body.claimHash,
       },
       rootBlock: root.data.rootBlock,
       signedAt: Date.now(),

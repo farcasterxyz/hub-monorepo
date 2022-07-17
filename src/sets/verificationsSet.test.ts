@@ -1,6 +1,10 @@
+import { ethers } from 'ethers';
 import { Factories } from '~/factories';
+import Faker from 'faker';
 import VerificationsSet from '~/sets/verificationsSet';
-import { VerificationAdd, VerificationRemove } from '~/types';
+import { Verification, VerificationAdd, VerificationRemove } from '~/types';
+import { convertToHex, generateEd25519KeyPair } from '~/utils';
+import { hexToBytes } from 'ethereum-cryptography/utils';
 
 const set = new VerificationsSet();
 const adds = () => set._getAdds();
@@ -11,84 +15,165 @@ describe('merge', () => {
     set._reset();
   });
 
+  test('fails with an incorrect message type', async () => {
+    const cast = (await Factories.Cast.create()) as unknown as Verification;
+    expect(set.merge(cast).isOk()).toBe(false);
+    expect(adds()).toEqual([]);
+    expect(deletes()).toEqual([]);
+  });
+
   describe('add', () => {
+    let add1: VerificationAdd;
+
+    beforeAll(async () => {
+      add1 = await Factories.VerificationAdd.create();
+    });
+
     test('succeeds with a valid VerificationAdd message', async () => {
-      const verificationAddMessage = await Factories.VerificationAdd.create();
-      expect(set.merge(verificationAddMessage).isOk()).toBe(true);
-      expect(adds()).toEqual([verificationAddMessage]);
+      expect(set.merge(add1).isOk()).toBe(true);
+      expect(adds()).toEqual([add1]);
     });
 
     test('succeeds with multiple valid VerificationAdd messages', async () => {
-      const v1 = await Factories.VerificationAdd.create();
-      const v2 = await Factories.VerificationAdd.create();
-      expect(set.merge(v1).isOk()).toBe(true);
-      expect(set.merge(v2).isOk()).toBe(true);
+      const add2 = await Factories.VerificationAdd.create();
+      expect(set.merge(add1).isOk()).toBe(true);
+      expect(set.merge(add2).isOk()).toBe(true);
       expect(adds().length).toEqual(2);
     });
 
-    test('fails if valid VerificationAdd message was already added', async () => {
-      const verificationAddMessage = await Factories.VerificationAdd.create();
-      expect(set.merge(verificationAddMessage).isOk()).toBe(true);
-      expect(set.merge(verificationAddMessage).isOk()).toBe(false);
-      expect(adds()).toEqual([verificationAddMessage]);
+    test('fails if same, valid VerificationAdd message was already added', async () => {
+      expect(set.merge(add1).isOk()).toBe(true);
+      expect(set.merge(add1).isOk()).toBe(false);
+      expect(adds()).toEqual([add1]);
     });
 
-    test('fails if the add was already deleted', async () => {
-      const verificationAddMessage = await Factories.VerificationAdd.create();
-      const verificationRemoveMessage = await Factories.VerificationRemove.create({
-        data: { body: { verificationAddHash: verificationAddMessage.hash } },
+    describe('when claimHash already added', () => {
+      let add2: VerificationAdd;
+
+      beforeAll(async () => {
+        const {
+          data: {
+            signedAt,
+            body: { claimHash },
+          },
+        } = add1;
+        add2 = await Factories.VerificationAdd.create({ data: { signedAt: signedAt + 2, body: { claimHash } } });
       });
-      expect(set.merge(verificationRemoveMessage).isOk()).toBe(true);
-      expect(set.merge(verificationAddMessage).isOk()).toBe(false);
-      expect(adds()).toEqual([]);
+
+      test('succeeds with a later timestamp than existing add message', async () => {
+        expect(set.merge(add1).isOk()).toBe(true);
+        expect(set.merge(add2).isOk()).toBe(true);
+        expect(adds()).toEqual([add2]);
+      });
+
+      test('fails with an earlier timestamp than existing add message', async () => {
+        expect(set.merge(add2).isOk()).toBe(true);
+        expect(set.merge(add1).isOk()).toBe(false);
+        expect(adds()).toEqual([add2]);
+      });
     });
 
-    test('fails with an incorrect message type', async () => {
-      const cast = (await Factories.Cast.create()) as unknown as VerificationAdd;
-      expect(set.merge(cast).isOk()).toBe(false);
-      expect(adds()).toEqual([]);
+    describe('when claimHash already deleted', () => {
+      let rem1: VerificationRemove;
+      let add2: VerificationAdd;
+
+      beforeAll(async () => {
+        const {
+          data: {
+            signedAt,
+            body: { claimHash },
+          },
+        } = add1;
+        rem1 = await Factories.VerificationRemove.create({ data: { signedAt: signedAt + 1, body: { claimHash } } });
+        add2 = await Factories.VerificationAdd.create({ data: { signedAt: signedAt + 2, body: { claimHash } } });
+      });
+
+      test('succeeds with a later timestamp than existing remove message', async () => {
+        expect(set.merge(add1).isOk()).toBe(true);
+        expect(adds()).toEqual([add1]);
+        expect(set.merge(rem1).isOk()).toBe(true);
+        expect(adds()).toEqual([]);
+        expect(deletes()).toEqual([rem1]);
+        expect(set.merge(add2).isOk()).toBe(true);
+        expect(adds()).toEqual([add2]);
+        expect(deletes()).toEqual([]);
+      });
+
+      test('fails with an earlier timestamp than existing remove message', async () => {
+        expect(set.merge(rem1).isOk()).toBe(true);
+        expect(set.merge(add1).isOk()).toBe(false);
+        expect(adds()).toEqual([]);
+      });
+
+      test('fails with the same timestamp as remove message', async () => {
+        const {
+          data: {
+            signedAt,
+            body: { claimHash },
+          },
+        } = rem1;
+        const add3 = await Factories.VerificationAdd.create({ data: { signedAt, body: { claimHash } } });
+        expect(set.merge(rem1).isOk()).toBe(true);
+        expect(set.merge(add3).isOk()).toBe(false);
+        expect(adds()).toEqual([]);
+      });
+
+      test('reaches consensus even when messages are out of order', async () => {
+        expect(set.merge(add2).isOk()).toBe(true);
+        expect(set.merge(rem1).isOk()).toBe(false);
+        expect(set.merge(add1).isOk()).toBe(false);
+        expect(adds()).toEqual([add2]);
+        expect(deletes()).toEqual([]);
+      });
     });
   });
 
   describe('remove', () => {
-    test('succeeds with a valid VerificationRemove message', async () => {
-      const verificationAddMessage = await Factories.VerificationAdd.create();
-      const verificationRemoveMessage = await Factories.VerificationRemove.create({
-        data: { body: { verificationAddHash: verificationAddMessage.hash } },
+    let add1: VerificationAdd;
+    let rem1: VerificationRemove;
+
+    beforeAll(async () => {
+      add1 = await Factories.VerificationAdd.create();
+      rem1 = await Factories.VerificationRemove.create({
+        data: { signedAt: add1.data.signedAt + 1, body: { claimHash: add1.data.body.claimHash } },
       });
-      expect(set.merge(verificationAddMessage).isOk()).toBe(true);
-      expect(set.merge(verificationRemoveMessage).isOk()).toBe(true);
-      expect(set._getAdds()).toEqual([]);
-      expect(deletes()).toEqual([verificationRemoveMessage]);
+    });
+
+    test('succeeds with a valid VerificationRemove message', async () => {
+      expect(set.merge(add1).isOk()).toBe(true);
+      expect(set.merge(rem1).isOk()).toBe(true);
+      expect(adds()).toEqual([]);
+      expect(deletes()).toEqual([rem1]);
     });
 
     test("succeeds even if the VerificationAdd message doesn't exist", async () => {
-      const verificationRemoveMessage = await Factories.VerificationRemove.create();
-      expect(set._getAdds()).toEqual([]);
-      expect(set.merge(verificationRemoveMessage).isOk()).toBe(true);
-      expect(deletes()).toEqual([verificationRemoveMessage]);
+      expect(adds()).toEqual([]);
+      expect(set.merge(rem1).isOk()).toBe(true);
+      expect(deletes()).toEqual([rem1]);
+      expect(adds()).toEqual([]);
     });
 
     test('succeeds with multiple valid VerificationRemove messages', async () => {
-      expect(set._getAdds()).toEqual([]);
-      const remove1 = await Factories.VerificationRemove.create();
-      const remove2 = await Factories.VerificationRemove.create();
-      expect(set.merge(remove1).isOk()).toBe(true);
-      expect(set.merge(remove2).isOk()).toBe(true);
+      expect(adds()).toEqual([]);
+      const rem2 = await Factories.VerificationRemove.create();
+      expect(set.merge(rem1).isOk()).toBe(true);
+      expect(set.merge(rem2).isOk()).toBe(true);
       expect(deletes().length).toEqual(2);
     });
 
     test('fails if the same VerificationRemove message is added twice', async () => {
-      const verificationRemoveMessage = await Factories.VerificationRemove.create();
-      expect(set.merge(verificationRemoveMessage).isOk()).toBe(true);
-      expect(set.merge(verificationRemoveMessage).isOk()).toBe(false);
-      expect(set._getAdds()).toEqual([]);
-      expect(deletes()).toEqual([verificationRemoveMessage]);
+      expect(set.merge(rem1).isOk()).toBe(true);
+      expect(set.merge(rem1).isOk()).toBe(false);
+      expect(deletes()).toEqual([rem1]);
     });
 
-    test('fails with an incorrect message type', async () => {
-      const cast = (await Factories.Cast.create()) as unknown as VerificationRemove;
-      expect(set.merge(cast).isOk()).toBe(false);
+    test('fails if matching VerificationAdd message has a later timestamp', async () => {
+      const add2 = await Factories.VerificationAdd.create({
+        data: { signedAt: rem1.data.signedAt + 2, body: { claimHash: rem1.data.body.claimHash } },
+      });
+      expect(set.merge(add2).isOk()).toBe(true);
+      expect(set.merge(rem1).isOk()).toBe(false);
+      expect(adds()).toEqual([add2]);
       expect(deletes()).toEqual([]);
     });
   });

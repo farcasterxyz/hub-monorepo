@@ -7,6 +7,7 @@ import {
   isCastShort,
   isReaction,
   isRoot,
+  isVerification,
   isVerificationAdd,
   isVerificationRemove,
 } from '~/types/typeguards';
@@ -100,12 +101,14 @@ const Debugger = {
 
     if (isVerificationAdd(message)) {
       type = Debugger._padString('ver-add', 7);
-      data = message.data.body.externalAddressUri.slice(0, 7);
     }
 
     if (isVerificationRemove(message)) {
       type = Debugger._padString('ver-rem', 7);
-      data = message.data.body.verificationAddHash.slice(0, 7);
+    }
+
+    if (isVerification(message)) {
+      data = message.data.body.claimHash.slice(0, 7);
     }
 
     let outLine = `${username} > ${nodeName} | ${type} | ${hash} `;

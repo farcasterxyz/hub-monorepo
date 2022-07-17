@@ -53,7 +53,8 @@ export function isVerificationAdd(msg: FC.Message): msg is FC.VerificationAdd {
     body.externalSignatureType === 'secp256k1-eip-191' &&
     typeof body.externalSignature === 'string' &&
     typeof body.externalAddressUri === 'string' &&
-    typeof body.claimHash === 'string'
+    typeof body.claimHash === 'string' &&
+    body.claimHash.length > 0
   );
 }
 
@@ -62,6 +63,7 @@ export function isVerificationRemove(msg: FC.Message): msg is FC.VerificationRem
   return (
     body &&
     body.schema === 'farcaster.xyz/schemas/v1/verification-remove' &&
-    typeof body.verificationAddHash === 'string'
+    typeof body.claimHash === 'string' &&
+    body.claimHash.length > 0
   );
 }

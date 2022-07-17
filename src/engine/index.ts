@@ -198,20 +198,20 @@ class Engine {
    * Verification methods
    */
 
-  /** Get a verification for a username by hash */
-  getVerification(username: string, hash: string): Verification | undefined {
+  /** Get a verification for a username by claimHash */
+  getVerification(username: string, claimHash: string): Verification | undefined {
     const verificationsSet = this._verifications.get(username);
-    return verificationsSet ? verificationsSet.get(hash) : undefined;
+    return verificationsSet ? verificationsSet.get(claimHash) : undefined;
   }
 
-  /** Get hashes of known active verifications for a username */
-  getVerificationHashes(username: string): string[] {
+  /** Get claimHashes of known active verifications for a username */
+  getVerificationClaimHashes(username: string): string[] {
     const verificationsSet = this._verifications.get(username);
-    return verificationsSet ? verificationsSet.getHashes() : [];
+    return verificationsSet ? verificationsSet.getClaimHashes() : [];
   }
 
-  /** Get hashes of all known verifications for a username */
-  getAllVerificationHashes(username: string): string[] {
+  /** Get claimHashes of all known verifications for a username */
+  getAllVerificationClaimHashes(username: string): string[] {
     const verificationsSet = this._verifications.get(username);
     return verificationsSet ? verificationsSet.getAllHashes() : [];
   }
@@ -475,7 +475,7 @@ class Engine {
   }
 
   private async validateVerificationRemove(_message: VerificationRemove): Promise<Result<void, string>> {
-    // TODO: validate verificationAddHash is a real hash
+    // TODO: validate claimHash is a real hash
     return ok(undefined);
   }
 }

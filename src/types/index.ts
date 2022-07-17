@@ -161,8 +161,8 @@ export type VerificationAddBody = {
 /**
  * A VerificationAddFactoryTransientParams is passed to the VerificationAdd factory
  *
- * @privateKey - the private key for signing the VerificationAdd message
- * @ethWallet - the wallet to sign the claimHash
+ * @privateKey - the private key for signing the Verification message
+ * @ethWallet - the wallet to generate and/or sign the claimHash
  */
 export type VerificationAddFactoryTransientParams = {
   privateKey?: Uint8Array;
@@ -186,12 +186,23 @@ export type VerificationRemove = Message<VerificationRemoveBody>;
 /**
  * A VerificationRemoveBody represents the deletion of a verification
  *
- * @verificationAddHash - hash of VerificationAdd message
+ * @claimHash - hash of the verification claim
  * @schema -
  */
 export type VerificationRemoveBody = {
-  verificationAddHash: string;
+  claimHash: string;
   schema: 'farcaster.xyz/schemas/v1/verification-remove';
+};
+
+/**
+ * A VerificationRemoveFactoryTransientParams is passed to the VerificationRemove factory
+ *
+ * @privateKey - the private key for signing the Verification message
+ * @externalAddressUri - the external address to generate the claimHash
+ */
+export type VerificationRemoveFactoryTransientParams = {
+  privateKey?: Uint8Array;
+  externalAddressUri?: string;
 };
 
 // ===========================

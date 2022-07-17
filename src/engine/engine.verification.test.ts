@@ -245,8 +245,8 @@ describe('mergeVerification', () => {
         data: {
           rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: aliceRoot.data.signedAt + 1,
-          body: { verificationAddHash: verificationAddMessage.hash },
+          signedAt: verificationAddMessage.data.signedAt + 1,
+          body: { claimHash: verificationAddMessage.data.body.claimHash },
         },
       },
       transientParams
@@ -272,8 +272,8 @@ describe('mergeVerification', () => {
         data: {
           rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: aliceRoot.data.signedAt + 1,
-          body: { verificationAddHash: verificationAddMessage.hash },
+          signedAt: verificationAddMessage.data.signedAt + 1,
+          body: { claimHash: verificationAddMessage.data.body.claimHash },
         },
       },
       transientParams

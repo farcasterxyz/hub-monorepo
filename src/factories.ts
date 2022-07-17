@@ -10,6 +10,7 @@ import {
   VerificationAdd,
   VerificationRemove,
   VerificationClaim,
+  VerificationRemoveFactoryTransientParams,
   VerificationAddFactoryTransientParams,
 } from '~/types';
 import { convertToHex, hashMessage, signEd25519, hashFCObject } from '~/utils';
@@ -259,37 +260,51 @@ export const Factories = {
   ),
 
   /** Generate a VerificationRemove message */
-  VerificationRemove: Factory.define<VerificationRemove, any, VerificationRemove>(({ onCreate, transientParams }) => {
-    const { privateKey = ed.utils.randomPrivateKey() } = transientParams;
+  VerificationRemove: Factory.define<VerificationRemove, VerificationRemoveFactoryTransientParams, VerificationRemove>(
+    ({ onCreate, transientParams }) => {
+      const {
+        privateKey = ed.utils.randomPrivateKey(),
+        externalAddressUri = Faker.datatype.hexaDecimal(40).toLowerCase(),
+      } = transientParams;
 
-    onCreate(async (castProps) => {
-      const publicKey = await ed.getPublicKey(privateKey);
-      const hash = await hashMessage(castProps);
-      castProps.hash = hash;
+      onCreate(async (castProps) => {
+        /** Generate claimHash is missing */
+        if (!castProps.data.body.claimHash) {
+          const verificationClaim: VerificationClaim = {
+            username: castProps.data.username,
+            externalAddressUri,
+          };
+          castProps.data.body.claimHash = await hashFCObject(verificationClaim);
+        }
 
-      castProps.signer = await convertToHex(publicKey);
+        const publicKey = await ed.getPublicKey(privateKey);
+        const hash = await hashMessage(castProps);
+        castProps.hash = hash;
 
-      const signature = await signEd25519(castProps.hash, privateKey);
-      castProps.signature = signature;
+        castProps.signer = await convertToHex(publicKey);
 
-      return castProps;
-    });
+        const signature = await signEd25519(castProps.hash, privateKey);
+        castProps.signature = signature;
 
-    return {
-      data: {
-        body: {
-          verificationAddHash: Faker.datatype.hexaDecimal(40).toLowerCase(),
-          schema: 'farcaster.xyz/schemas/v1/verification-remove' as const,
+        return castProps;
+      });
+
+      return {
+        data: {
+          body: {
+            claimHash: '',
+            schema: 'farcaster.xyz/schemas/v1/verification-remove' as const,
+          },
+          rootBlock: Faker.datatype.number(10_000),
+          signedAt: Faker.time.recent(),
+          username: Faker.name.firstName().toLowerCase(),
         },
-        rootBlock: Faker.datatype.number(10_000),
-        signedAt: Faker.time.recent(),
-        username: Faker.name.firstName().toLowerCase(),
-      },
-      hash: '',
-      signature: '',
-      signer: '',
-    };
-  }),
+        hash: '',
+        signature: '',
+        signer: '',
+      };
+    }
+  ),
 };
 
 interface EthAddress {

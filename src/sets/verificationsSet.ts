@@ -1,8 +1,9 @@
 import { Result, ok, err } from 'neverthrow';
-import { Verification, VerificationAdd, VerificationRemove } from '~/types';
+import { Verification, VerificationAdd, VerificationRemove, URI } from '~/types';
 import { isVerificationAdd, isVerificationRemove } from '~/types/typeguards';
 
 class VerificationsSet {
+  /** Both maps indexed by claimHash */
   private _adds: Map<string, VerificationAdd>;
   private _deletes: Map<string, VerificationRemove>;
 
@@ -11,21 +12,24 @@ class VerificationsSet {
     this._deletes = new Map();
   }
 
-  /** Get a verification by its hash */
-  get(hash: string): Verification | undefined {
-    return this._adds.get(hash) || this._deletes.get(hash);
+  /** Get a verification by its claimHash */
+  get(claimHash: string): Verification | undefined {
+    return this._adds.get(claimHash) || this._deletes.get(claimHash);
   }
 
-  /** Get hashes of all active verifications */
-  getHashes(): string[] {
+  /** Get claimHashes of all active verifications */
+  getClaimHashes(): string[] {
     return Array.from(this._adds.keys());
   }
 
-  /** Get hashes of all verifications */
+  /** Get claimHashes of all verifications (both added and deleted) */
   getAllHashes(): string[] {
-    const keys = this.getHashes();
-    keys.push(...Array.from(this._deletes.keys()));
-    return keys;
+    return [...this.getClaimHashes(), ...Array.from(this._deletes.keys())];
+  }
+
+  /** Helper to get externalAddressURIs that are currently verified */
+  getVerifiedExternalAddressURIs(): string[] {
+    return Array.from(this._adds.values()).map((message) => message.data.body.externalAddressUri);
   }
 
   merge(message: Verification): Result<void, string> {
@@ -49,33 +53,81 @@ class VerificationsSet {
       return err('VerificationsSet.add: invalid message format');
     }
 
-    if (this._deletes.get(message.hash)) {
+    const {
+      data: {
+        body: { claimHash },
+        signedAt,
+      },
+      hash,
+    } = message;
+
+    const existingRemove = this._deletes.get(claimHash);
+    if (existingRemove && existingRemove.data.signedAt >= signedAt) {
       return err('VerificationsSet.add: verification is already deleted');
     }
 
-    if (this._adds.get(message.hash)) {
-      return err('VerificationsSet.add: verification is already added');
+    const existingAdd = this._adds.get(claimHash);
+    if (existingAdd) {
+      if (existingAdd.hash === hash) {
+        return err('VerificationsSet.add: duplicate message');
+      }
+
+      if (existingAdd.data.signedAt > signedAt) {
+        return err('VerificationsSet.add: verification is already added');
+      }
+
+      if (existingAdd.data.signedAt === signedAt) {
+        // TODO
+      }
     }
 
-    this._adds.set(message.hash, message);
+    if (existingRemove) {
+      this._deletes.delete(claimHash);
+    }
+
+    this._adds.set(claimHash, message);
     return ok(undefined);
   }
 
+  // TODO: handle edge cases
   private delete(message: VerificationRemove): Result<void, string> {
     if (!isVerificationRemove(message)) {
       return err('VerificationsSet.delete: invalid message format');
     }
 
-    const { verificationAddHash } = message.data.body;
-    if (this._deletes.get(verificationAddHash)) {
-      return err('VerificationsSet.delete: verification is already deleted');
+    const {
+      data: {
+        body: { claimHash },
+        signedAt,
+      },
+      hash,
+    } = message;
+
+    const existingRemove = this._deletes.get(claimHash);
+    if (existingRemove) {
+      if (existingRemove.hash === hash) {
+        return err('VerificationsSet.delete: duplicate message');
+      }
+
+      if (existingRemove.data.signedAt > signedAt) {
+        return err('VerificationsSet.delete: verification is already deleted');
+      }
+
+      if (existingRemove.data.signedAt === signedAt) {
+        // TODO
+      }
     }
 
-    if (this._adds.get(verificationAddHash)) {
-      this._adds.delete(verificationAddHash);
+    const existingAdd = this._adds.get(claimHash);
+    if (existingAdd && existingAdd.data.signedAt > signedAt) {
+      return err('VerificationsSet.delete: verification has already been re-added');
     }
 
-    this._deletes.set(verificationAddHash, message);
+    if (existingAdd) {
+      this._adds.delete(claimHash);
+    }
+
+    this._deletes.set(claimHash, message);
     return ok(undefined);
   }
 
