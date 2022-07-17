@@ -412,7 +412,6 @@ describe('remove delegate', () => {
 
     const removeWorked = signerSet.removeDelegate(signerRemove);
     expect(removeWorked.isOk()).toEqual(true);
-    expect(signerSet._numRemoved()).toEqual(2);
   });
 
   test('fails because claimed parent is not actual parent of child', async () => {

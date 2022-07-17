@@ -118,7 +118,7 @@ class SignerSet {
 
       if (existingEdgeHash < proposedEdgeHash) {
         // remove delegate edge from existing parent
-        const removed = this._removeDelegate(existingParentPubkey, delegate, undefined);
+        const removed = this._removeDelegate(existingParentPubkey, delegate);
         if (!removed) {
           return err(`could not remove delegate ${delegate} from ${existingParentPubkey}`);
         }
@@ -177,7 +177,7 @@ class SignerSet {
       return err(`${delegate} not a child of ${parent}`);
     }
 
-    const subtreeRemoved = this._removeDelegate(parent, delegate, removeMsg);
+    const subtreeRemoved = this._removeDelegate(parent, delegate);
     if (!subtreeRemoved) {
       return err(`${delegate} subtree could not be removed`);
     }
@@ -189,11 +189,6 @@ class SignerSet {
   /* used for testing purposes */
   public _numSigners(): number {
     return this.custodySigners.size;
-  }
-
-  /* used for testing purposes */
-  public _numRemoved(): number {
-    return this.removed.size;
   }
 
   private _addDelegateEdge(parent: string, child: string): boolean {
@@ -219,8 +214,8 @@ class SignerSet {
   }
 
   /* _removeDelegate removes the delegatePubkey as a child from the parentPubkey and also its entire subtree */
-  private _removeDelegate(parent: string, child: string, removeMsg?: SignerRemove): boolean {
-    this._removeDelegateSubtree(child, removeMsg);
+  private _removeDelegate(parent: string, child: string): boolean {
+    this._removeDelegateSubtree(child);
 
     const children = this.edges.get(parent);
     if (children === undefined) {
@@ -247,7 +242,7 @@ class SignerSet {
     @param removeMsg an optional message in the case this is used for delegate signer revocations
     @returns true if the deletion process was successful 
   */
-  private _removeDelegateSubtree(delegatePubkey: string, removeMsg?: SignerRemove): boolean {
+  private _removeDelegateSubtree(delegatePubkey: string): boolean {
     if (this.edges.size === 0 || !this.edges.has(delegatePubkey)) {
       return true;
     }
@@ -258,13 +253,10 @@ class SignerSet {
     }
 
     children.forEach((child) => {
-      this._removeDelegateSubtree(child, removeMsg);
+      this._removeDelegateSubtree(child);
     });
 
     this.edges.delete(delegatePubkey);
-    if (removeMsg !== undefined) {
-      this.removed.set(delegatePubkey, removeMsg);
-    }
 
     return true;
   }
