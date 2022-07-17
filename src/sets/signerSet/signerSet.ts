@@ -123,6 +123,13 @@ class SignerSet {
       const proposedEdgeHash = blake2BHash(`${proposedParentPubkey}${delegate}`);
 
       if (existingEdgeHash < proposedEdgeHash) {
+        // remove subtree
+        const subtreeRemoved = this._removeSubtree(delegate);
+        if (!subtreeRemoved) {
+          console.error(`could not remove delegate subtree ${delegate}`);
+          return false;
+        }
+
         // remove delegate edge from existing parent
         const removed = this._removeDelegateEdge(existingParentPubkey, delegate);
         if (!removed) {
