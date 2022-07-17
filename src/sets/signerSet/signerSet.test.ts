@@ -8,7 +8,7 @@ const secp = require('ethereum-cryptography/secp256k1');
 const FarcasterSchemaUrl = 'farcaster.xyz/schemas/v1/signer-authorize';
 
 describe('create signer set', () => {
-  test('happy path', async () => {
+  test('successfully creates a signer set', async () => {
     const signerSet = new SignerSet();
     // generate custodyAddressPubkey
     const custodySigner = newSecp256k1Key();
@@ -43,7 +43,7 @@ describe('create signer set', () => {
 });
 
 describe('add delegate', () => {
-  test('happy path', async () => {
+  test('successfully adds a delegate to a signer set', async () => {
     const signerSet = new SignerSet();
 
     // generate custodyAddressPubkey
