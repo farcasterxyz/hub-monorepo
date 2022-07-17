@@ -15,7 +15,7 @@ describe('create signer set', () => {
     const signerRootPubkey = secp.getPublicKey(custodySigner);
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
 
-    expect(signerSet.addCustody(signerRootEncodedPubkey)).toEqual(true);
+    expect(signerSet.addCustody(signerRootEncodedPubkey).isOk()).toEqual(true);
     expect(signerSet._numSigners()).toEqual(1);
 
     // generate custodyAddressPubkey
@@ -23,7 +23,7 @@ describe('create signer set', () => {
     const signerRootPubkey2 = secp.getPublicKey(custodySigner2);
     const signerRootEncodedPubkey2 = Buffer.from(signerRootPubkey2.toString()).toString('base64');
 
-    expect(signerSet.addCustody(signerRootEncodedPubkey2)).toEqual(true);
+    expect(signerSet.addCustody(signerRootEncodedPubkey2).isOk()).toEqual(true);
     expect(signerSet._numSigners()).toEqual(2);
   });
 
@@ -34,10 +34,10 @@ describe('create signer set', () => {
     const signerRootPubkey = secp.getPublicKey(custodySigner);
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
 
-    expect(signerSet.addCustody(signerRootEncodedPubkey)).toEqual(true);
+    expect(signerSet.addCustody(signerRootEncodedPubkey).isOk()).toEqual(true);
     expect(signerSet._numSigners()).toEqual(1);
 
-    expect(signerSet.addCustody(signerRootEncodedPubkey)).toEqual(false);
+    expect(signerSet.addCustody(signerRootEncodedPubkey).isOk()).toEqual(false);
     expect(signerSet._numSigners()).toEqual(1);
   });
 });
@@ -84,7 +84,7 @@ describe('add delegate', () => {
     };
 
     const addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked).toEqual(true);
+    expect(addWorked.isOk()).toEqual(true);
   });
 
   test('fails when delegate exists in another signer', async () => {
@@ -111,7 +111,7 @@ describe('add delegate', () => {
     const signerRootEncodedPubkey2 = Buffer.from(signerRootPubkey2.toString()).toString('base64');
     const custodySignerSig2 = secp.signSync(hash, custodySigner2);
 
-    signerSet.addCustody(signerRootEncodedPubkey2);
+    expect(signerSet.addCustody(signerRootEncodedPubkey2).isOk()).toBe(true);
     expect(signerSet._numSigners()).toEqual(2);
 
     let signerAddition = <SignerAdd>{
@@ -136,7 +136,7 @@ describe('add delegate', () => {
     };
 
     let addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked).toEqual(true);
+    expect(addWorked.isOk()).toEqual(true);
 
     signerAddition = <SignerAdd>{
       message: {
@@ -161,7 +161,7 @@ describe('add delegate', () => {
     };
 
     addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked).toEqual(false);
+    expect(addWorked.isOk()).toEqual(false);
   });
 
   test('fails when claimed parent does not exist', async () => {
@@ -205,7 +205,7 @@ describe('add delegate', () => {
     };
 
     const addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked).toEqual(false);
+    expect(addWorked.isOk()).toEqual(false);
   });
 
   test('fails when child is in removed nodes', async () => {
@@ -249,7 +249,7 @@ describe('add delegate', () => {
     };
 
     let addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked).toEqual(true);
+    expect(addWorked.isOk()).toEqual(true);
 
     const signerRemove = <SignerRemove>{
       message: {
@@ -269,11 +269,11 @@ describe('add delegate', () => {
     };
 
     const removeWorked = signerSet.removeDelegate(signerRemove);
-    expect(removeWorked).toEqual(true);
+    expect(removeWorked.isOk()).toEqual(true);
 
     // This will fail since delegate has been revoked
     addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked).toEqual(false);
+    expect(addWorked.isOk()).toEqual(false);
   });
 
   test('fails when child is an existing node', async () => {
@@ -317,10 +317,10 @@ describe('add delegate', () => {
     };
 
     let addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked).toEqual(true);
+    expect(addWorked.isOk()).toEqual(true);
 
     addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked).toEqual(false);
+    expect(addWorked.isOk()).toEqual(false);
   });
 });
 
@@ -367,7 +367,7 @@ describe('remove delegate', () => {
     };
 
     const addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked).toEqual(true);
+    expect(addWorked.isOk()).toEqual(true);
 
     // Add Delegate 1_1 to Delegate 1
 
@@ -398,7 +398,7 @@ describe('remove delegate', () => {
     };
 
     const addWorked2_1 = signerSet.addDelegate(signerAddition2_1);
-    expect(addWorked2_1).toEqual(true);
+    expect(addWorked2_1.isOk()).toEqual(true);
 
     // Remove delegate 2_1 fail
 
@@ -420,7 +420,7 @@ describe('remove delegate', () => {
     };
 
     const removeWorked = signerSet.removeDelegate(signerRemove2_1);
-    expect(removeWorked).toEqual(false);
+    expect(removeWorked.isOk()).toEqual(false);
   });
 
   test('fails because delegate has been revoked', async () => {
@@ -465,7 +465,7 @@ describe('remove delegate', () => {
     };
 
     const addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked).toEqual(true);
+    expect(addWorked.isOk()).toEqual(true);
 
     // Remove delegate
     const signerRemove = <SignerRemove>{
@@ -486,11 +486,11 @@ describe('remove delegate', () => {
     };
 
     let removeWorked = signerSet.removeDelegate(signerRemove);
-    expect(removeWorked).toEqual(true);
+    expect(removeWorked.isOk()).toEqual(true);
 
     // Fails since Delegate has already been revoked
     removeWorked = signerSet.removeDelegate(signerRemove);
-    expect(removeWorked).toEqual(false);
+    expect(removeWorked.isOk()).toEqual(false);
   });
 });
 

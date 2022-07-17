@@ -1,4 +1,4 @@
-import { stringify } from 'querystring';
+import { Result, ok, err } from 'neverthrow';
 import { blake2BHash } from '~/utils';
 
 export interface SignerAdd {
@@ -73,33 +73,30 @@ class SignerSet {
   }
 
   /* addCustody adds a custody signer  */
-  public addCustody(custodySignerPubkey: string): boolean {
+  public addCustody(custodySignerPubkey: string): Result<void, string> {
     if (this._nodeWithPubkeyExists(custodySignerPubkey)) {
-      console.error('node with key value already exists in SignerSet');
-      return false;
+      return err(`${custodySignerPubkey} already exists`);
     }
 
     this.custodySigners.add(custodySignerPubkey);
     this.edges.set(custodySignerPubkey, new Set<string>());
-    return true;
+    return ok(undefined);
   }
 
   /* addDelegate adds the proposed delegate signer if possible under the proposed parent */
-  public addDelegate(delegateAddition: SignerAdd): boolean {
+  public addDelegate(delegateAddition: SignerAdd): Result<void, string> {
     const delegate = delegateAddition.envelope.childSignerPubkey;
     const proposedParentPubkey = delegateAddition.envelope.parentSignerPubkey;
     const existingSignerAdd = this.adds.get(delegate);
 
     // check if proposed Delegate is in this.revoked
     if (this.revoked.has(delegate)) {
-      console.error(`delegate key has been revoked for this account: ${delegateAddition.envelope.childSignerPubkey}`);
-      return false;
+      return err(`delegate key has been revoked for this account: ${delegateAddition.envelope.childSignerPubkey}`);
     }
 
     // check if Delegate is in add set
     if (this.adds.has(delegate)) {
-      console.error(`delegate ${delegate} has been added already`);
-      return false;
+      return err(`delegate ${delegate} has been added already`);
     }
 
     // check if proposed parent pubkey is not in revoked and exists
@@ -108,8 +105,7 @@ class SignerSet {
       this.revoked.has(proposedParentPubkey) ||
       (!this.adds.has(proposedParentPubkey) && !this.custodySigners.has(proposedParentPubkey))
     ) {
-      console.error(`unable to use ${proposedParentPubkey}`);
-      return false;
+      return err(`unable to use ${proposedParentPubkey}`);
     }
 
     // check if there is an existing edge with the proposed delegate under a different parent
@@ -124,97 +120,81 @@ class SignerSet {
         // remove subtree
         const subtreeRemoved = this._removeSubtree(delegate);
         if (!subtreeRemoved) {
-          console.error(`could not remove delegate subtree ${delegate}`);
-          return false;
+          return err(`could not remove delegate subtree ${delegate}`);
         }
 
         // remove delegate edge from existing parent
         const removed = this._removeDelegateEdge(existingParentPubkey, delegate);
         if (!removed) {
-          console.error(`could not remove delegate ${delegate} from ${existingParentPubkey}`);
-          return false;
+          return err(`could not remove delegate ${delegate} from ${existingParentPubkey}`);
         }
 
         // add delegate edge to proposed parent
         const added = this._addDelegateEdge(proposedParentPubkey, delegate);
         if (!added) {
-          console.error(`could not add delegate ${delegate} to parent ${proposedParentPubkey}`);
-          return false;
+          return err(`could not add delegate ${delegate} to parent ${proposedParentPubkey}`);
         }
 
         // replace existing add with new SignerAdd structure
         this.adds.set(delegate, delegateAddition);
-        return true;
+        return ok(undefined);
       } else {
         // do not do anything since the existing edge hash is lexicographically higher
         // than the proposed edge hash
-        return false;
+        return err(`delegate ${delegate} already exists under ${existingParentPubkey}`);
       }
     } else {
       const added = this._addDelegateEdge(proposedParentPubkey, delegate);
       if (!added) {
-        console.error(`could not add delegate ${delegate} to parent ${proposedParentPubkey}`);
-        return false;
+        return err(`could not add delegate ${delegate} to parent ${proposedParentPubkey}`);
       }
 
       // replace existing add with new SignerAdd structure
       this.adds.set(delegate, delegateAddition);
-
-      return true;
+      return ok(undefined);
     }
   }
 
   // removeDelegate searches through signers for which parent key to add the key to
-  public removeDelegate(removeMsg: SignerRemove): boolean {
+  public removeDelegate(removeMsg: SignerRemove): Result<void, string> {
     /* new code */
     const delegate = removeMsg.message.body.childKey;
     const parent = removeMsg.envelope.parentSignerPubkey;
 
     // check that delegate nor parent are in revoked set
     if (this.revoked.has(delegate) || this.revoked.has(parent)) {
-      console.error(`delegate ${delegate} or ${parent} has already been revoked in this account`);
-      return false;
+      return err(`delegate ${delegate} or ${parent} has already been revoked in this account`);
     }
 
     // check that delegate exists and maps to proposed parent
     const existingSignerAdd = this.adds.get(delegate);
     if (existingSignerAdd === undefined) {
-      console.error(`${delegate} does not exist in adds set`);
-      return false;
+      return err(`${delegate} does not exist in adds set`);
     }
 
     // get parent edge if exists
     const parentEdge = this.edges.get(parent);
     if (parentEdge === undefined) {
-      console.error(`no edges found for ${parent}`);
-      return false;
+      return err(`no edges found for ${parent}`);
     }
 
     // confirm parent has delegate
     if (!parentEdge.has(delegate)) {
-      console.error(`${delegate} not a child of ${parent}`);
-      return false;
+      return err(`${delegate} not a child of ${parent}`);
     }
 
     const subtreeRemoved = this._removeSubtree(delegate);
     if (!subtreeRemoved) {
-      console.error(`${delegate} subtree could not be removed`);
-      return false;
+      return err(`${delegate} subtree could not be removed`);
     }
 
     const removed = this._removeDelegateEdge(parent, delegate);
     if (!removed) {
-      console.error(`${delegate} could not be removed from ${parent}`);
-      return false;
+      return err(`${delegate} could not be removed from ${parent}`);
     }
 
     this.revoked.set(delegate, removeMsg);
-    return true;
-  }
-
-  // TODO - optional
-  public revokePastSigners(): boolean {
-    return false;
+    return ok(undefined);
   }
 
   public _numSigners(): number {
