@@ -74,7 +74,8 @@ class SignerSet {
   /* addCustody adds a custody signer  */
   public addCustody(custodySignerPubkey: string): Result<void, string> {
     if (this._nodeWithPubkeyExists(custodySignerPubkey)) {
-      return err(`${custodySignerPubkey} already exists`);
+      // idempotent
+      return ok(undefined);
     }
 
     this.custodySigners.add(custodySignerPubkey);

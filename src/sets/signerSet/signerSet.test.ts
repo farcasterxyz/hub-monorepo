@@ -25,7 +25,7 @@ describe('create signer set', () => {
     expect(signerSet._numSigners()).toEqual(2);
   });
 
-  test('fails when same root is tried to be added twice', async () => {
+  test('successfully idempotent when same root is tried to be added twice', async () => {
     const signerSet = new SignerSet();
     const custodySigner = newSecp256k1Key();
     const custodySignerPubkey = secp.getPublicKey(custodySigner);
@@ -34,7 +34,7 @@ describe('create signer set', () => {
     expect(signerSet.addCustody(custodySignerEncodedPubkey).isOk()).toEqual(true);
     expect(signerSet._numSigners()).toEqual(1);
 
-    expect(signerSet.addCustody(custodySignerEncodedPubkey).isOk()).toEqual(false);
+    expect(signerSet.addCustody(custodySignerEncodedPubkey).isOk()).toEqual(true);
     expect(signerSet._numSigners()).toEqual(1);
   });
 });
