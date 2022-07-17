@@ -81,9 +81,9 @@ describe('merge', () => {
               signedAt,
               body: { claimHash },
             },
-            hash,
           } = add1;
-          add3 = await Factories.VerificationAdd.create({ data: { signedAt, body: { claimHash } }, hash: `${hash}a` });
+          add3 = await Factories.VerificationAdd.create({ data: { signedAt, body: { claimHash } } });
+          add3.hash = add1.hash + 'a';
         });
 
         test('succeeds with higher lexicographical order', () => {
