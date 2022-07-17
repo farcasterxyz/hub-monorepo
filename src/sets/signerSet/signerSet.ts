@@ -72,21 +72,19 @@ class SignerSet {
     this.custodySigners = new Set<string>();
   }
 
-  // Verification is done by the Ethereum blockchain i.e. the on-chain register/transfer event
-  // that triggers the addition of a Signer is proof the custody address being added owns the associated
-  // account id
-  public addSigner(custodyAddressPubkey: string): boolean {
-    if (this._nodeWithPubkeyExists(custodyAddressPubkey)) {
+  /* addCustody adds a custody signer  */
+  public addCustody(custodySignerPubkey: string): boolean {
+    if (this._nodeWithPubkeyExists(custodySignerPubkey)) {
       console.error('node with key value already exists in SignerSet');
       return false;
     }
 
-    this.custodySigners.add(custodyAddressPubkey);
-    this.edges.set(custodyAddressPubkey, new Set<string>());
+    this.custodySigners.add(custodySignerPubkey);
+    this.edges.set(custodySignerPubkey, new Set<string>());
     return true;
   }
 
-  /* addDelegate adds the proposed delegate if possible under the proposed parent */
+  /* addDelegate adds the proposed delegate signer if possible under the proposed parent */
   public addDelegate(delegateAddition: SignerAdd): boolean {
     const delegate = delegateAddition.envelope.childSignerPubkey;
     const proposedParentPubkey = delegateAddition.envelope.parentSignerPubkey;
