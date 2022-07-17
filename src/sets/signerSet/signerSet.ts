@@ -186,8 +186,14 @@ class SignerSet {
     return ok(undefined);
   }
 
+  /* used for testing purposes */
   public _numSigners(): number {
     return this.custodySigners.size;
+  }
+
+  /* used for testing purposes */
+  public _numRemoved(): number {
+    return this.removed.size;
   }
 
   private _addDelegateEdge(parentPubkey: string, delegate: string): boolean {
