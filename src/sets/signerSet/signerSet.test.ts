@@ -11,30 +11,30 @@ describe('create signer set', () => {
   test('successfully creates a signer set', async () => {
     const signerSet = new SignerSet();
     const custodySigner = newSecp256k1Key();
-    const signerRootPubkey = secp.getPublicKey(custodySigner);
-    const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
+    const custodySignerPubkey = secp.getPublicKey(custodySigner);
+    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
 
-    expect(signerSet.addCustody(signerRootEncodedPubkey).isOk()).toEqual(true);
+    expect(signerSet.addCustody(custodySignerEncodedPubkey).isOk()).toEqual(true);
     expect(signerSet._numSigners()).toEqual(1);
 
     const custodySigner2 = newSecp256k1Key();
-    const signerRootPubkey2 = secp.getPublicKey(custodySigner2);
-    const signerRootEncodedPubkey2 = Buffer.from(signerRootPubkey2.toString()).toString('base64');
+    const custodySignerPubkey2 = secp.getPublicKey(custodySigner2);
+    const custodySignerEncodedPubkey2 = Buffer.from(custodySignerPubkey2.toString()).toString('base64');
 
-    expect(signerSet.addCustody(signerRootEncodedPubkey2).isOk()).toEqual(true);
+    expect(signerSet.addCustody(custodySignerEncodedPubkey2).isOk()).toEqual(true);
     expect(signerSet._numSigners()).toEqual(2);
   });
 
   test('fails when same root is tried to be added twice', async () => {
     const signerSet = new SignerSet();
     const custodySigner = newSecp256k1Key();
-    const signerRootPubkey = secp.getPublicKey(custodySigner);
-    const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
+    const custodySignerPubkey = secp.getPublicKey(custodySigner);
+    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
 
-    expect(signerSet.addCustody(signerRootEncodedPubkey).isOk()).toEqual(true);
+    expect(signerSet.addCustody(custodySignerEncodedPubkey).isOk()).toEqual(true);
     expect(signerSet._numSigners()).toEqual(1);
 
-    expect(signerSet.addCustody(signerRootEncodedPubkey).isOk()).toEqual(false);
+    expect(signerSet.addCustody(custodySignerEncodedPubkey).isOk()).toEqual(false);
     expect(signerSet._numSigners()).toEqual(1);
   });
 });
@@ -44,10 +44,10 @@ describe('add delegate', () => {
     const signerSet = new SignerSet();
 
     const custodySigner = newSecp256k1Key();
-    const signerRootPubkey = secp.getPublicKey(custodySigner);
-    const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
+    const custodySignerPubkey = secp.getPublicKey(custodySigner);
+    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
 
-    signerSet.addCustody(signerRootEncodedPubkey);
+    signerSet.addCustody(custodySignerEncodedPubkey);
     expect(signerSet._numSigners()).toEqual(1);
 
     const childKey = newSecp256k1Key();
@@ -61,7 +61,7 @@ describe('add delegate', () => {
     const signerAddition = <SignerAdd>{
       message: {
         body: {
-          parentKey: signerRootEncodedPubkey,
+          parentKey: custodySignerEncodedPubkey,
           childKey: childEncodedPubkey,
           schema: FarcasterSchemaUrl,
         },
@@ -72,7 +72,7 @@ describe('add delegate', () => {
         hashType: HashAlgorithm.Blake2b,
         parentSignature: base64EncodeUInt8Arr(custodySignerSig),
         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: signerRootEncodedPubkey,
+        parentSignerPubkey: custodySignerEncodedPubkey,
         childSignature: base64EncodeUInt8Arr(childKeySig),
         childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
         childSignerPubkey: childEncodedPubkey,
@@ -87,10 +87,10 @@ describe('add delegate', () => {
     const signerSet = new SignerSet();
 
     const custodySigner = newSecp256k1Key();
-    const signerRootPubkey = secp.getPublicKey(custodySigner);
-    const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
+    const custodySignerPubkey = secp.getPublicKey(custodySigner);
+    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
 
-    signerSet.addCustody(signerRootEncodedPubkey);
+    signerSet.addCustody(custodySignerEncodedPubkey);
     expect(signerSet._numSigners()).toEqual(1);
 
     const childKey = newSecp256k1Key();
@@ -102,17 +102,17 @@ describe('add delegate', () => {
     const childKeySig = secp.signSync(hash, childKey);
 
     const custodySigner2 = newSecp256k1Key();
-    const signerRootPubkey2 = secp.getPublicKey(custodySigner2);
-    const signerRootEncodedPubkey2 = Buffer.from(signerRootPubkey2.toString()).toString('base64');
+    const custodySignerPubkey2 = secp.getPublicKey(custodySigner2);
+    const custodySignerEncodedPubkey2 = Buffer.from(custodySignerPubkey2.toString()).toString('base64');
     const custodySignerSig2 = secp.signSync(hash, custodySigner2);
 
-    expect(signerSet.addCustody(signerRootEncodedPubkey2).isOk()).toBe(true);
+    expect(signerSet.addCustody(custodySignerEncodedPubkey2).isOk()).toBe(true);
     expect(signerSet._numSigners()).toEqual(2);
 
     let signerAddition = <SignerAdd>{
       message: {
         body: {
-          parentKey: signerRootEncodedPubkey,
+          parentKey: custodySignerEncodedPubkey,
           childKey: childEncodedPubkey,
           schema: FarcasterSchemaUrl,
         },
@@ -123,7 +123,7 @@ describe('add delegate', () => {
         hashType: HashAlgorithm.Blake2b,
         parentSignature: base64EncodeUInt8Arr(custodySignerSig),
         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: signerRootEncodedPubkey,
+        parentSignerPubkey: custodySignerEncodedPubkey,
         childSignature: base64EncodeUInt8Arr(childKeySig),
         childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
         childSignerPubkey: childEncodedPubkey,
@@ -137,7 +137,7 @@ describe('add delegate', () => {
       message: {
         body: {
           // parent is a root to a different Signer
-          parentKey: signerRootEncodedPubkey2,
+          parentKey: custodySignerEncodedPubkey2,
           childKey: childEncodedPubkey,
           schema: FarcasterSchemaUrl,
         },
@@ -148,7 +148,7 @@ describe('add delegate', () => {
         hashType: HashAlgorithm.Blake2b,
         parentSignature: base64EncodeUInt8Arr(custodySignerSig2),
         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: signerRootEncodedPubkey2,
+        parentSignerPubkey: custodySignerEncodedPubkey2,
         childSignature: base64EncodeUInt8Arr(childKeySig),
         childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
         childSignerPubkey: childEncodedPubkey,
@@ -163,10 +163,10 @@ describe('add delegate', () => {
     const signerSet = new SignerSet();
 
     const custodySigner = newSecp256k1Key();
-    const signerRootPubkey = secp.getPublicKey(custodySigner);
-    const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
+    const custodySignerPubkey = secp.getPublicKey(custodySigner);
+    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
 
-    signerSet.addCustody(signerRootEncodedPubkey);
+    signerSet.addCustody(custodySignerEncodedPubkey);
     expect(signerSet._numSigners()).toEqual(1);
 
     const childKey = newSecp256k1Key();
@@ -206,10 +206,10 @@ describe('add delegate', () => {
     const signerSet = new SignerSet();
 
     const custodySigner = newSecp256k1Key();
-    const signerRootPubkey = secp.getPublicKey(custodySigner);
-    const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
+    const custodySignerPubkey = secp.getPublicKey(custodySigner);
+    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
 
-    signerSet.addCustody(signerRootEncodedPubkey);
+    signerSet.addCustody(custodySignerEncodedPubkey);
     expect(signerSet._numSigners()).toEqual(1);
 
     const childKey = newSecp256k1Key();
@@ -223,7 +223,7 @@ describe('add delegate', () => {
     const signerAddition = <SignerAdd>{
       message: {
         body: {
-          parentKey: signerRootEncodedPubkey,
+          parentKey: custodySignerEncodedPubkey,
           childKey: childEncodedPubkey,
           schema: FarcasterSchemaUrl,
         },
@@ -234,7 +234,7 @@ describe('add delegate', () => {
         hashType: HashAlgorithm.Blake2b,
         parentSignature: base64EncodeUInt8Arr(custodySignerSig),
         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: signerRootEncodedPubkey,
+        parentSignerPubkey: custodySignerEncodedPubkey,
         childSignature: base64EncodeUInt8Arr(childKeySig),
         childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
         childSignerPubkey: childEncodedPubkey,
@@ -257,7 +257,7 @@ describe('add delegate', () => {
         hashType: HashAlgorithm.Blake2b,
         parentSignature: base64EncodeUInt8Arr(childKeySig),
         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: signerRootEncodedPubkey,
+        parentSignerPubkey: custodySignerEncodedPubkey,
       },
     };
 
@@ -273,10 +273,10 @@ describe('add delegate', () => {
     const signerSet = new SignerSet();
 
     const custodySigner = newSecp256k1Key();
-    const signerRootPubkey = secp.getPublicKey(custodySigner);
-    const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
+    const custodySignerPubkey = secp.getPublicKey(custodySigner);
+    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
 
-    signerSet.addCustody(signerRootEncodedPubkey);
+    signerSet.addCustody(custodySignerEncodedPubkey);
     expect(signerSet._numSigners()).toEqual(1);
 
     const childKey = newSecp256k1Key();
@@ -290,7 +290,7 @@ describe('add delegate', () => {
     const signerAddition = <SignerAdd>{
       message: {
         body: {
-          parentKey: signerRootEncodedPubkey,
+          parentKey: custodySignerEncodedPubkey,
           childKey: childEncodedPubkey,
           schema: FarcasterSchemaUrl,
         },
@@ -301,7 +301,7 @@ describe('add delegate', () => {
         hashType: HashAlgorithm.Blake2b,
         parentSignature: base64EncodeUInt8Arr(custodySignerSig),
         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: signerRootEncodedPubkey,
+        parentSignerPubkey: custodySignerEncodedPubkey,
         childSignature: base64EncodeUInt8Arr(childKeySig),
         childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
         childSignerPubkey: childEncodedPubkey,
@@ -321,10 +321,10 @@ describe('remove delegate', () => {
     const signerSet = new SignerSet();
 
     const custodySigner = newSecp256k1Key();
-    const signerRootPubkey = secp.getPublicKey(custodySigner);
-    const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
+    const custodySignerPubkey = secp.getPublicKey(custodySigner);
+    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
 
-    signerSet.addCustody(signerRootEncodedPubkey);
+    signerSet.addCustody(custodySignerEncodedPubkey);
     expect(signerSet._numSigners()).toEqual(1);
 
     const childKey = newSecp256k1Key();
@@ -339,7 +339,7 @@ describe('remove delegate', () => {
     const signerAddition = <SignerAdd>{
       message: {
         body: {
-          parentKey: signerRootEncodedPubkey,
+          parentKey: custodySignerEncodedPubkey,
           childKey: childEncodedPubkey,
           schema: FarcasterSchemaUrl,
         },
@@ -350,7 +350,7 @@ describe('remove delegate', () => {
         hashType: HashAlgorithm.Blake2b,
         parentSignature: base64EncodeUInt8Arr(custodySignerSig),
         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: signerRootEncodedPubkey,
+        parentSignerPubkey: custodySignerEncodedPubkey,
         childSignature: base64EncodeUInt8Arr(childKeySig),
         childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
         childSignerPubkey: childEncodedPubkey,
@@ -406,7 +406,7 @@ describe('remove delegate', () => {
         hashType: HashAlgorithm.Blake2b,
         parentSignature: base64EncodeUInt8Arr(custodySignerSig),
         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: signerRootEncodedPubkey,
+        parentSignerPubkey: custodySignerEncodedPubkey,
       },
     };
 
@@ -418,10 +418,10 @@ describe('remove delegate', () => {
     const signerSet = new SignerSet();
 
     const custodySigner = newSecp256k1Key();
-    const signerRootPubkey = secp.getPublicKey(custodySigner);
-    const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
+    const custodySignerPubkey = secp.getPublicKey(custodySigner);
+    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
 
-    signerSet.addCustody(signerRootEncodedPubkey);
+    signerSet.addCustody(custodySignerEncodedPubkey);
     expect(signerSet._numSigners()).toEqual(1);
 
     const childKey = newSecp256k1Key();
@@ -436,7 +436,7 @@ describe('remove delegate', () => {
     const signerAddition = <SignerAdd>{
       message: {
         body: {
-          parentKey: signerRootEncodedPubkey,
+          parentKey: custodySignerEncodedPubkey,
           childKey: childEncodedPubkey,
           schema: FarcasterSchemaUrl,
         },
@@ -447,7 +447,7 @@ describe('remove delegate', () => {
         hashType: HashAlgorithm.Blake2b,
         parentSignature: base64EncodeUInt8Arr(custodySignerSig),
         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: signerRootEncodedPubkey,
+        parentSignerPubkey: custodySignerEncodedPubkey,
         childSignature: base64EncodeUInt8Arr(childKeySig),
         childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
         childSignerPubkey: childEncodedPubkey,
@@ -471,7 +471,7 @@ describe('remove delegate', () => {
         hashType: HashAlgorithm.Blake2b,
         parentSignature: base64EncodeUInt8Arr(childKeySig),
         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: signerRootEncodedPubkey,
+        parentSignerPubkey: custodySignerEncodedPubkey,
       },
     };
 
