@@ -87,7 +87,7 @@ describe('add delegate', () => {
     expect(addWorked.isOk()).toEqual(true);
   });
 
-  test('fails when delegate exists in another signer', async () => {
+  test('fails when delegate exists in another custody signer', async () => {
     const signerSet = new SignerSet();
 
     // generate custodyAddressPubkey
