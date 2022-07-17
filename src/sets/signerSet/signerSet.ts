@@ -196,22 +196,22 @@ class SignerSet {
     return this.removed.size;
   }
 
-  private _addDelegateEdge(parentPubkey: string, delegate: string): boolean {
-    const parentChildren = this.edges.get(parentPubkey);
+  private _addDelegateEdge(parent: string, child: string): boolean {
+    const parentChildren = this.edges.get(parent);
     if (parentChildren === undefined) {
-      console.error(`pubkey ${parentPubkey} exists in edges set, not in revoked but no corresponding edge`);
+      console.error(`pubkey ${parent} exists in edges set, not in revoked but no corresponding edge`);
       return false;
     }
 
-    parentChildren.add(delegate);
-    this.edges.set(parentPubkey, parentChildren);
-    const newParentChildren = this.edges.get(parentPubkey);
-    if (newParentChildren !== undefined && !newParentChildren.has(delegate)) {
+    parentChildren.add(child);
+    this.edges.set(parent, parentChildren);
+    const newParentChildren = this.edges.get(parent);
+    if (newParentChildren !== undefined && !newParentChildren.has(child)) {
       return false;
     }
 
-    this.edges.set(delegate, new Set<string>());
-    if (this.edges.get(delegate) === undefined) {
+    this.edges.set(child, new Set<string>());
+    if (this.edges.get(child) === undefined) {
       return false;
     }
 
@@ -219,20 +219,20 @@ class SignerSet {
   }
 
   /* _removeDelegate removes the delegatePubkey as a child from the parentPubkey and also its entire subtree */
-  private _removeDelegate(parentPubkey: string, delegatePubkey: string, removeMsg?: SignerRemove): boolean {
-    this._removeDelegateSubtree(delegatePubkey, removeMsg);
+  private _removeDelegate(parent: string, child: string, removeMsg?: SignerRemove): boolean {
+    this._removeDelegateSubtree(child, removeMsg);
 
-    const children = this.edges.get(parentPubkey);
+    const children = this.edges.get(parent);
     if (children === undefined) {
-      console.error(`delegate ${delegatePubkey} exists in add set, is not in revoked but no corresponding edge`);
+      console.error(`delegate ${child} exists in add set, is not in revoked but no corresponding edge`);
       return false;
     }
 
-    children.delete(delegatePubkey);
-    this.edges.set(parentPubkey, children);
+    children.delete(child);
+    this.edges.set(parent, children);
 
-    const newChildren = this.edges.get(parentPubkey);
-    if (newChildren !== undefined && newChildren.has(delegatePubkey)) {
+    const newChildren = this.edges.get(parent);
+    if (newChildren !== undefined && newChildren.has(child)) {
       return false;
     }
 
