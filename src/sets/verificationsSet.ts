@@ -50,10 +50,6 @@ class VerificationsSet {
    */
 
   private add(message: VerificationAdd): Result<void, string> {
-    if (!isVerificationAdd(message)) {
-      return err('VerificationsSet.add: invalid message format');
-    }
-
     const {
       data: {
         body: { claimHash },
@@ -92,10 +88,6 @@ class VerificationsSet {
 
   // TODO: handle edge cases
   private delete(message: VerificationRemove): Result<void, string> {
-    if (!isVerificationRemove(message)) {
-      return err('VerificationsSet.delete: invalid message format');
-    }
-
     const {
       data: {
         body: { claimHash },
