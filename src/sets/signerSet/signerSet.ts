@@ -57,8 +57,8 @@ class SignerSet {
   // new code
   /* adds is a Map of (delegatePubkey, SignerAdd) */
   private adds: Map<string, SignerAdd>;
-  /* revoked is a Map of (delegatePubkey, SignerRemove) */
-  private revoked: Map<string, SignerRemove>;
+  /* removed is a Map of (delegatePubkey, SignerRemove) */
+  private removed: Map<string, SignerRemove>;
   /* edges is a Map of (parentPubkey (delegate or custody signer), Set<childPubkey>) */
   private edges: Map<string, Set<string>>;
   /* custodySigners is a set of custody signer pubkey values */
@@ -66,7 +66,7 @@ class SignerSet {
 
   constructor() {
     this.adds = new Map<string, SignerAdd>();
-    this.revoked = new Map<string, SignerRemove>();
+    this.removed = new Map<string, SignerRemove>();
     this.edges = new Map<string, Set<string>>();
     this.custodySigners = new Set<string>();
   }
@@ -88,8 +88,8 @@ class SignerSet {
     const proposedParentPubkey = delegateAddition.envelope.parentSignerPubkey;
     const existingSignerAdd = this.adds.get(delegate);
 
-    // check if proposed Delegate is in this.revoked
-    if (this.revoked.has(delegate)) {
+    // check if proposed Delegate is in this.removed
+    if (this.removed.has(delegate)) {
       return err(`delegate key has been revoked for this account: ${delegateAddition.envelope.childSignerPubkey}`);
     }
 
@@ -101,7 +101,7 @@ class SignerSet {
     // check if proposed parent pubkey is not in revoked and exists
     // either as a delegate or custody signer
     if (
-      this.revoked.has(proposedParentPubkey) ||
+      this.removed.has(proposedParentPubkey) ||
       (!this.adds.has(proposedParentPubkey) && !this.custodySigners.has(proposedParentPubkey))
     ) {
       return err(`unable to use ${proposedParentPubkey}`);
@@ -162,7 +162,7 @@ class SignerSet {
     const parent = removeMsg.envelope.parentSignerPubkey;
 
     // check that delegate nor parent are in revoked set
-    if (this.revoked.has(delegate) || this.revoked.has(parent)) {
+    if (this.removed.has(delegate) || this.removed.has(parent)) {
       return err(`delegate ${delegate} or ${parent} has already been revoked in this account`);
     }
 
@@ -193,7 +193,7 @@ class SignerSet {
       return err(`${delegate} could not be removed from ${parent}`);
     }
 
-    this.revoked.set(delegate, removeMsg);
+    this.removed.set(delegate, removeMsg);
     return ok(undefined);
   }
 
@@ -250,7 +250,7 @@ class SignerSet {
   }
 
   private _nodeWithPubkeyExists(pubkey: string): boolean {
-    return (this.adds.has(pubkey) || this.custodySigners.has(pubkey)) && !this.revoked.has(pubkey);
+    return (this.adds.has(pubkey) || this.custodySigners.has(pubkey)) && !this.removed.has(pubkey);
   }
 }
 
