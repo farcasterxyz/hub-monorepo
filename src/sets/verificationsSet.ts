@@ -1,6 +1,7 @@
 import { Result, ok, err } from 'neverthrow';
 import { Verification, VerificationAdd, VerificationRemove, URI } from '~/types';
 import { isVerificationAdd, isVerificationRemove } from '~/types/typeguards';
+import { hashCompare } from '~/utils';
 
 class VerificationsSet {
   /** Both maps indexed by claimHash */
@@ -76,8 +77,8 @@ class VerificationsSet {
         return err('VerificationsSet.add: verification is already added');
       }
 
-      if (existingAdd.data.signedAt === signedAt) {
-        // TODO
+      if (existingAdd.data.signedAt === signedAt && hashCompare(existingAdd.hash, hash) > 0) {
+        return err('VerificationsSet.add: verification is already added with higher lexicographical hash');
       }
     }
 
@@ -113,8 +114,8 @@ class VerificationsSet {
         return err('VerificationsSet.delete: verification is already deleted');
       }
 
-      if (existingRemove.data.signedAt === signedAt) {
-        // TODO
+      if (existingRemove.data.signedAt === signedAt && hashCompare(existingRemove.hash, hash) > 0) {
+        return err('VerificationsSet.delete: verification is already deleted with higher lexiocographical hash');
       }
     }
 

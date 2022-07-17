@@ -71,6 +71,33 @@ describe('merge', () => {
         expect(set.merge(add1).isOk()).toBe(false);
         expect(adds()).toEqual([add2]);
       });
+
+      describe('with same timestamp', () => {
+        let add3: VerificationAdd;
+
+        beforeAll(async () => {
+          const {
+            data: {
+              signedAt,
+              body: { claimHash },
+            },
+            hash,
+          } = add1;
+          add3 = await Factories.VerificationAdd.create({ data: { signedAt, body: { claimHash } }, hash: `${hash}a` });
+        });
+
+        test('succeeds with higher lexicographical order', () => {
+          expect(set.merge(add1).isOk()).toBe(true);
+          expect(set.merge(add3).isOk()).toBe(true);
+          expect(adds()).toEqual([add3]);
+        });
+
+        test('fails with lower lexicographical order', () => {
+          expect(set.merge(add3).isOk()).toBe(true);
+          expect(set.merge(add1).isOk()).toBe(false);
+          expect(adds()).toEqual([add3]);
+        });
+      });
     });
 
     describe('when claimHash already deleted', () => {
