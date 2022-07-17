@@ -65,7 +65,6 @@ class SignerSet {
   private custodySigners: Set<string>;
 
   constructor() {
-    // new code
     this.adds = new Map<string, SignerAdd>();
     this.revoked = new Map<string, SignerRemove>();
     this.edges = new Map<string, Set<string>>();
