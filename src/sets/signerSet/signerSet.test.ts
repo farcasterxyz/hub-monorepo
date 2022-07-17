@@ -10,7 +10,6 @@ const FarcasterSchemaUrl = 'farcaster.xyz/schemas/v1/signer-authorize';
 describe('create signer set', () => {
   test('successfully creates a signer set', async () => {
     const signerSet = new SignerSet();
-    // generate custodyAddressPubkey
     const custodySigner = newSecp256k1Key();
     const signerRootPubkey = secp.getPublicKey(custodySigner);
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
@@ -18,7 +17,6 @@ describe('create signer set', () => {
     expect(signerSet.addCustody(signerRootEncodedPubkey).isOk()).toEqual(true);
     expect(signerSet._numSigners()).toEqual(1);
 
-    // generate custodyAddressPubkey
     const custodySigner2 = newSecp256k1Key();
     const signerRootPubkey2 = secp.getPublicKey(custodySigner2);
     const signerRootEncodedPubkey2 = Buffer.from(signerRootPubkey2.toString()).toString('base64');
@@ -29,7 +27,6 @@ describe('create signer set', () => {
 
   test('fails when same root is tried to be added twice', async () => {
     const signerSet = new SignerSet();
-    // generate custodyAddressPubkey
     const custodySigner = newSecp256k1Key();
     const signerRootPubkey = secp.getPublicKey(custodySigner);
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
@@ -46,7 +43,6 @@ describe('add delegate', () => {
   test('successfully adds a delegate to a signer set', async () => {
     const signerSet = new SignerSet();
 
-    // generate custodyAddressPubkey
     const custodySigner = newSecp256k1Key();
     const signerRootPubkey = secp.getPublicKey(custodySigner);
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
@@ -90,7 +86,6 @@ describe('add delegate', () => {
   test('fails when delegate exists in another custody signer', async () => {
     const signerSet = new SignerSet();
 
-    // generate custodyAddressPubkey
     const custodySigner = newSecp256k1Key();
     const signerRootPubkey = secp.getPublicKey(custodySigner);
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
@@ -167,7 +162,6 @@ describe('add delegate', () => {
   test('fails when claimed parent does not exist', async () => {
     const signerSet = new SignerSet();
 
-    // generate custodyAddressPubkey
     const custodySigner = newSecp256k1Key();
     const signerRootPubkey = secp.getPublicKey(custodySigner);
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
@@ -211,7 +205,6 @@ describe('add delegate', () => {
   test('fails when child is in removed nodes', async () => {
     const signerSet = new SignerSet();
 
-    // generate custodyAddressPubkey
     const custodySigner = newSecp256k1Key();
     const signerRootPubkey = secp.getPublicKey(custodySigner);
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
@@ -279,7 +272,6 @@ describe('add delegate', () => {
   test('fails when child is an existing node', async () => {
     const signerSet = new SignerSet();
 
-    // generate custodyAddressPubkey
     const custodySigner = newSecp256k1Key();
     const signerRootPubkey = secp.getPublicKey(custodySigner);
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
@@ -328,7 +320,6 @@ describe('remove delegate', () => {
   test('fails because claimed parent is not actual parent of child', async () => {
     const signerSet = new SignerSet();
 
-    // generate custodyAddressPubkey
     const custodySigner = newSecp256k1Key();
     const signerRootPubkey = secp.getPublicKey(custodySigner);
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
@@ -426,7 +417,6 @@ describe('remove delegate', () => {
   test('fails because delegate has been revoked', async () => {
     const signerSet = new SignerSet();
 
-    // generate custodyAddressPubkey
     const custodySigner = newSecp256k1Key();
     const signerRootPubkey = secp.getPublicKey(custodySigner);
     const signerRootEncodedPubkey = Buffer.from(signerRootPubkey.toString()).toString('base64');
