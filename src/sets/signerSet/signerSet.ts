@@ -107,7 +107,8 @@ class SignerSet {
       return err(`unable to use ${proposedParentPubkey}`);
     }
 
-    // check if there is an existing edge with the proposed delegate under a different parent
+    // Concurrent Edge Case handling for when the delegate exists under a different parent
+    // See the "Conflicting Parents" section in https://farcasterxyz.notion.site/Signer-Set-85706ad04aea4bb6a3ac4e30f07bcd09
     if (existingSignerAdd !== undefined && existingSignerAdd.envelope.parentSignerPubkey !== proposedParentPubkey) {
       // check if current edge has a higher lexicographical hash than the proposed edge
       const existingParentPubkey = existingSignerAdd.envelope.parentSignerPubkey;
