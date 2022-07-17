@@ -116,8 +116,7 @@ class SignerSet {
 
     // check if there is an existing edge with the proposed delegate under a different parent
     if (existingSignerAdd !== undefined && existingSignerAdd.envelope.parentSignerPubkey !== proposedParentPubkey) {
-      // check if delegate exists in signer set under a different parent pubkey
-      // if it does, check if current edge has a higher lexicographical hash than the proposed edge
+      // check if current edge has a higher lexicographical hash than the proposed edge
       const existingParentPubkey = existingSignerAdd.envelope.parentSignerPubkey;
       // compute hash of existing parentPubkey + childPubkey edge
       const existingEdgeHash = blake2BHash(`${existingParentPubkey}${delegate}`);
