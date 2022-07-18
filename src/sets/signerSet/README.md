@@ -1,4 +1,4 @@
-## Leftover tasks
+## Leftover tasks (not in order of priority)
 
 1. Code cleanup
 2. Inline docs
@@ -15,6 +15,7 @@
 13. Ensure we are returning errors to caller when appropriate and no-oping when appropriate.
 14. Address TODOs
 15. Double check error messages have good copy
+16. Refactor custodySet to be associated with a block number for future implementation of revoking past custody signers. See [comment here](https://github.com/farcasterxyz/hub/pull/36/files?short_path=9d949d6#r922773712) for a rough spec.
 
 ## Concurrent Edge Case Testing
 
