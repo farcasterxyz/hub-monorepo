@@ -97,7 +97,12 @@ describe('add delegate', () => {
     const childPubkey = secp.getPublicKey(childKey);
     const childEncodedPubkey = Buffer.from(childPubkey.toString()).toString('base64');
 
-    const hash = blake2b(randomBytes(32), 32);
+    const hashBytes = randomBytes(32);
+    const hash = blake2b(hashBytes, 32);
+
+    hashBytes[0] += 1;
+    const higherHash = blake2b(hashBytes);
+
     const custodySignerSig = secp.signSync(hash, custodySigner);
     const childKeySig = secp.signSync(hash, childKey);
 
@@ -119,7 +124,7 @@ describe('add delegate', () => {
         account: 1,
       },
       envelope: {
-        hash: base64EncodeUInt8Arr(hash),
+        hash: base64EncodeUInt8Arr(higherHash),
         hashType: HashAlgorithm.Blake2b,
         parentSignature: base64EncodeUInt8Arr(custodySignerSig),
         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
