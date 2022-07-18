@@ -146,7 +146,7 @@ describe('mergeVerification', () => {
           rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: aliceRoot.data.signedAt + 1,
-          body: { externalSignatureType: 'bar' as unknown as 'secp256k1-eip-191' },
+          body: { externalSignatureType: 'bar' as unknown as 'eip-191-0x45' },
         },
       },
       transientParams

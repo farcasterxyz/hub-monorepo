@@ -50,7 +50,7 @@ export function isVerificationAdd(msg: FC.Message): msg is FC.VerificationAdd {
   return (
     body &&
     body.schema === 'farcaster.xyz/schemas/v1/verification-add' &&
-    body.externalSignatureType === 'secp256k1-eip-191' &&
+    body.externalSignatureType === 'eip-191-0x45' &&
     typeof body.externalSignature === 'string' &&
     typeof body.externalAddressUri === 'string' &&
     typeof body.claimHash === 'string' &&

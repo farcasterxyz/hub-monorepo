@@ -126,7 +126,7 @@ class Client {
         schema: 'farcaster.xyz/schemas/v1/verification-add',
         externalAddressUri,
         externalSignature,
-        externalSignatureType: 'secp256k1-eip-191',
+        externalSignatureType: 'eip-191-0x45',
         claimHash,
       },
       rootBlock: root.data.rootBlock,
