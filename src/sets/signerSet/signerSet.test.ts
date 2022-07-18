@@ -602,9 +602,10 @@ describe('concurrent edge case', () => {
     const childPubkey = secp.getPublicKey(childKey);
     const childEncodedPubkey = Buffer.from(childPubkey.toString()).toString('base64');
 
-    const hashDelegate1 = blake2b(randomBytes(32), 32);
-    const custodySignerSig = secp.signSync(hashDelegate1, custodySigner);
-    const childKeySig = secp.signSync(hashDelegate1, childKey);
+    const hashDelegateBytes1 = randomBytes(32);
+    let hash = blake2b(hashDelegateBytes1, 32);
+    const custodySignerSig = secp.signSync(hash, custodySigner);
+    const childKeySig = secp.signSync(hash, childKey);
 
     // Add Delegate 1 to root
     const signerAddition = <SignerAdd>{
@@ -617,7 +618,7 @@ describe('concurrent edge case', () => {
         account: 1,
       },
       envelope: {
-        hash: base64EncodeUInt8Arr(hashDelegate1),
+        hash: base64EncodeUInt8Arr(hash),
         hashType: HashAlgorithm.Blake2b,
         parentSignature: base64EncodeUInt8Arr(custodySignerSig),
         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
@@ -632,7 +633,7 @@ describe('concurrent edge case', () => {
     expect(addWorked.isOk()).toEqual(true);
 
     // Add Delegate 2 to root
-    let hash = blake2b(randomBytes(32), 32);
+    hash = blake2b(randomBytes(32), 32);
     const childKey2 = newSecp256k1Key();
     const childPubkey2 = secp.getPublicKey(childKey2);
     const childEncodedPubkey2 = Buffer.from(childPubkey2.toString()).toString('base64');
@@ -716,7 +717,8 @@ describe('concurrent edge case', () => {
     expect(removeWorked.isOk()).toBe(true);
 
     // Add delegate 1_1 to delegate 2
-    hashDelegate1[0] += 1;
+    hashDelegateBytes1[0] += 1;
+    hash = blake2b(hashDelegateBytes1);
     const signerAddition1_1To2_1 = <SignerAdd>{
       message: {
         body: {
@@ -727,7 +729,7 @@ describe('concurrent edge case', () => {
         account: 1,
       },
       envelope: {
-        hash: base64EncodeUInt8Arr(hashDelegate1),
+        hash: base64EncodeUInt8Arr(hash),
         hashType: HashAlgorithm.Blake2b,
         parentSignature: base64EncodeUInt8Arr(childKey2Sig),
         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,

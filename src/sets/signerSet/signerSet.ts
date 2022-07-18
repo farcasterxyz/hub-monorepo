@@ -1,7 +1,5 @@
-import { sign } from 'crypto';
 import { Result, ok, err } from 'neverthrow';
-import { getEnabledCategories } from 'trace_events';
-import { blake2BHash, hashCompare } from '~/utils';
+import { hashCompare } from '~/utils';
 
 export interface SignerAdd {
   message: {
@@ -113,17 +111,35 @@ class SignerSet {
 
         const hashVal = hashCompare(existingEdge.hash, edge.hash);
         // new edge won
-        if (hashVal > 0) {
+        if (hashVal < 0) {
           this._moveChildToNewParent(existingEdge.parentPubkey, child, edge.hash);
-        } else if (hashVal < 0) {
+        } else if (hashVal > 0) {
           return err(`existing edge with parent ${existingEdge.parentPubkey} preserves delegate`);
         }
         return ok(undefined);
       }
 
       if (this.removed.has(child)) {
-        // TODO: add logic for handling concurrent edge case of conflicting rem-add
-        return err(`${child} is in removed set`);
+        // handles concurrent edge case of conflicting rem-add
+        // get edge of parent and check if new parent wins hash competition
+        const existingEdge = this._getEdgeFromChild(child, 'SignerAdd');
+        if (existingEdge === undefined) {
+          return err(`edge with delegate ${child} does not exist`);
+        }
+        this._addEdgeIfNotExists(edge);
+
+        const hashVal = hashCompare(existingEdge.hash, edge.hash);
+        // new edge won
+        if (hashVal < 0) {
+          this.removed.delete(child);
+          this.adds.add(child);
+          this._moveChildToNewParent(existingEdge.parentPubkey, child, edge.hash);
+          // move all descendants in subtree including child to add set from removed
+          this._unremoveDelegateSubtree(child);
+        } else if (hashVal > 0) {
+          return err(`existing edge with parent ${existingEdge.parentPubkey} preserves delegate`);
+        }
+        return ok(undefined);
       }
 
       this.adds.add(child);
@@ -135,7 +151,7 @@ class SignerSet {
 
     if (this.removed.has(newParent)) {
       if (this.removed.has(child)) {
-        this._removeEdgeIfExists(edge);
+        // this._removeEdgeIfExists(edge);
         return ok(undefined);
       }
 
@@ -177,11 +193,11 @@ class SignerSet {
       if (this.adds.has(child)) {
         this.adds.delete(child);
         this.removed.add(child);
-        this._removeEdgeIfExists(<EdgeMsg>{
-          parentPubkey: parent,
-          childPubkey: child,
-          type: 'SignerAdd',
-        });
+        // this._removeEdgeIfExists(<EdgeMsg>{
+        //   parentPubkey: parent,
+        //   childPubkey: child,
+        //   type: 'SignerAdd',
+        // });
 
         this._addEdgeIfNotExists(edge);
         this._removeDelegateSubtree(child);
@@ -204,7 +220,7 @@ class SignerSet {
         // remove SignerAdd edge if exists
         const addEdge = edge;
         addEdge.type = 'SignerAdd';
-        this._removeEdgeIfExists(addEdge);
+        // this._removeEdgeIfExists(addEdge);
         // add SignerRemove edge msg if not exists
         this._addEdgeIfNotExists(edge);
       }
@@ -312,6 +328,22 @@ class SignerSet {
 
     children.forEach((child) => {
       this._removeDelegateSubtree(child);
+    });
+
+    return ok(undefined);
+  }
+
+  private _unremoveDelegateSubtree(delegatePubkey: string): Result<void, string> {
+    this.removed.delete(delegatePubkey);
+    this.adds.add(delegatePubkey);
+
+    const children = this.tree.get(delegatePubkey);
+    if (children === undefined) {
+      return err(`${delegatePubkey} has a null children set`);
+    }
+
+    children.forEach((child) => {
+      this._unremoveDelegateSubtree(child);
     });
 
     return ok(undefined);
