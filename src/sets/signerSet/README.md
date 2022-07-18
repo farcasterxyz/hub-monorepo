@@ -14,6 +14,7 @@
 12. Address nit comments
 13. Ensure we are returning errors to caller when appropriate and no-oping when appropriate.
 14. Address TODOs
+15. Double check error messages have good copy
 
 ## Concurrent Edge Case Testing
 
