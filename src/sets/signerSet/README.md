@@ -13,6 +13,7 @@
 11. Ensure in tests that hash values are different for each SignerAdd/SignerRemove in a test
 12. Address nit comments
 13. Ensure we are returning errors to caller when appropriate and no-oping when appropriate.
+14. Address TODOs
 
 ## Concurrent Edge Case Testing
 
