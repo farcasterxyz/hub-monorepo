@@ -151,7 +151,7 @@ class SignerSet {
 
     if (this.removed.has(newParent)) {
       if (this.removed.has(child)) {
-        // this._removeEdgeIfExists(edge);
+        this._removeEdgeIfExists(edge);
         return ok(undefined);
       }
 
@@ -193,11 +193,11 @@ class SignerSet {
       if (this.adds.has(child)) {
         this.adds.delete(child);
         this.removed.add(child);
-        // this._removeEdgeIfExists(<EdgeMsg>{
-        //   parentPubkey: parent,
-        //   childPubkey: child,
-        //   type: 'SignerAdd',
-        // });
+        this._removeEdgeIfExists(<EdgeMsg>{
+          parentPubkey: parent,
+          childPubkey: child,
+          type: 'SignerAdd',
+        });
 
         this._addEdgeIfNotExists(edge);
         this._removeDelegateSubtree(child);
@@ -220,7 +220,7 @@ class SignerSet {
         // remove SignerAdd edge if exists
         const addEdge = edge;
         addEdge.type = 'SignerAdd';
-        // this._removeEdgeIfExists(addEdge);
+        this._removeEdgeIfExists(addEdge);
         // add SignerRemove edge msg if not exists
         this._addEdgeIfNotExists(edge);
       }
@@ -262,7 +262,8 @@ class SignerSet {
     for (let edgeIdx = 0; edgeIdx < this.edges.length; edgeIdx++) {
       const edge = this.edges[edgeIdx];
       if (edge.parentPubkey === msg.parentPubkey && edge.childPubkey === msg.childPubkey && edge.type === msg.type) {
-        this.edges = this.edges.splice(edgeIdx, edgeIdx);
+        this.edges.splice(edgeIdx, 1);
+        return ok(undefined);
       }
     }
 

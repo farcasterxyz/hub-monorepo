@@ -718,7 +718,7 @@ describe('concurrent edge case', () => {
 
     // Add delegate 1_1 to delegate 2
     hashDelegateBytes1[0] += 1;
-    hash = blake2b(hashDelegateBytes1);
+    hash = blake2b(hashDelegateBytes1, 32);
     const signerAddition1_1To2_1 = <SignerAdd>{
       message: {
         body: {
