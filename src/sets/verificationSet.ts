@@ -86,7 +86,6 @@ class VerificationSet {
     return ok(undefined);
   }
 
-  // TODO: handle edge cases
   private remove(message: VerificationRemove): Result<void, string> {
     const {
       data: {
