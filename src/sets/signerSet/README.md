@@ -4,12 +4,14 @@
 2. Inline docs
 3. Properly test concurrent edge cases
 4. Comprehensive error handling (not handling for all boolean return values at the moment)
-5. Do we need `_addEdgeIfNotExists` and `_removeEdgeIfExists`?
-6. DRY test setup
-7. Move out of `signerSet` folder
-8. Refactor SignerAdd/ SignerRemove message types and move to types/index.ts
-9. Hardcode Farcaster schema URL for `schema` attribute
-10. Ensure in tests that hash values are different for each SignerAdd/SignerRemove in a test
+5. Ensure Result<<type>, string> is being returned for all functions and errors are being bubbled up appropriately
+6. Do we need `_addEdgeIfNotExists` and `_removeEdgeIfExists`?
+7. DRY test setup
+8. Move out of `signerSet` folder
+9. Refactor SignerAdd/ SignerRemove message types and move to types/index.ts
+10. Hardcode Farcaster schema URL for `schema` attribute
+11. Ensure in tests that hash values are different for each SignerAdd/SignerRemove in a test
+12. Address nit comments
 
 ## Concurrent Edge Case Testing
 
@@ -25,7 +27,7 @@ Converged State Expectation: delegate and its subtree are either moved to new pa
 
 Converged State Expectation: old parent is revoked and new parent has delegate and subtree under it.
 
-- [] Unit test
+- [x] Unit test
 
 3. Concurrently add a child and remove a subtree that contains the child. Ensure that child is permanently revoked and that new edge is not added in tree.
 

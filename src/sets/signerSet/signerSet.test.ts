@@ -587,6 +587,7 @@ describe('remove delegate', () => {
 });
 
 describe('concurrent edge case', () => {
+  // TODO: move concurrent edge case of other conflicting-parent case from above in 'add delegate' describe
   test('"rem" happens on parent of delegate before "add" that moves delegate and subtree to new parent', async () => {
     const signerSet = new SignerSet();
 
@@ -712,7 +713,7 @@ describe('concurrent edge case', () => {
     };
 
     const removeWorked = signerSet.removeDelegate(signerRemove);
-    expect(removeWorked).toBe(true);
+    expect(removeWorked.isOk()).toBe(true);
 
     // Add delegate 1_1 to delegate 2
     hashDelegate1[0] += 1;

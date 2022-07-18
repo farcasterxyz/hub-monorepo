@@ -122,12 +122,14 @@ class SignerSet {
       }
 
       if (this.removed.has(child)) {
+        // TODO: add logic for handling concurrent edge case of conflicting rem-add
         return err(`${child} is in removed set`);
       }
 
       this.adds.add(child);
       this._addEdgeIfNotExists(edge);
       this._addChildToParent(newParent, child);
+      this.tree.set(child, new Set<string>());
       return ok(undefined);
     }
 
