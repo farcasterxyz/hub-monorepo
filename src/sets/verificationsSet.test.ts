@@ -4,7 +4,7 @@ import { Verification, VerificationAdd, VerificationRemove } from '~/types';
 
 const set = new VerificationsSet();
 const adds = () => set._getAdds();
-const deletes = () => set._getDeletes();
+const removes = () => set._getRemoves();
 
 describe('merge', () => {
   beforeEach(() => {
@@ -15,7 +15,7 @@ describe('merge', () => {
     const cast = (await Factories.Cast.create()) as unknown as Verification;
     expect(set.merge(cast).isOk()).toBe(false);
     expect(adds()).toEqual([]);
-    expect(deletes()).toEqual([]);
+    expect(removes()).toEqual([]);
   });
 
   describe('add', () => {
@@ -96,7 +96,7 @@ describe('merge', () => {
       });
     });
 
-    describe('when claimHash already deleted', () => {
+    describe('when claimHash already removed', () => {
       let rem1: VerificationRemove;
       let add2: VerificationAdd;
 
@@ -116,10 +116,10 @@ describe('merge', () => {
         expect(adds()).toEqual([add1]);
         expect(set.merge(rem1).isOk()).toBe(true);
         expect(adds()).toEqual([]);
-        expect(deletes()).toEqual([rem1]);
+        expect(removes()).toEqual([rem1]);
         expect(set.merge(add2).isOk()).toBe(true);
         expect(adds()).toEqual([add2]);
-        expect(deletes()).toEqual([]);
+        expect(removes()).toEqual([]);
       });
 
       test('fails with an earlier timestamp than existing remove message', async () => {
@@ -146,7 +146,7 @@ describe('merge', () => {
         expect(set.merge(rem1).isOk()).toBe(false);
         expect(set.merge(add1).isOk()).toBe(false);
         expect(adds()).toEqual([add2]);
-        expect(deletes()).toEqual([]);
+        expect(removes()).toEqual([]);
       });
     });
   });
@@ -166,13 +166,13 @@ describe('merge', () => {
       expect(set.merge(add1).isOk()).toBe(true);
       expect(set.merge(rem1).isOk()).toBe(true);
       expect(adds()).toEqual([]);
-      expect(deletes()).toEqual([rem1]);
+      expect(removes()).toEqual([rem1]);
     });
 
     test("succeeds even if the VerificationAdd message doesn't exist", async () => {
       expect(adds()).toEqual([]);
       expect(set.merge(rem1).isOk()).toBe(true);
-      expect(deletes()).toEqual([rem1]);
+      expect(removes()).toEqual([rem1]);
       expect(adds()).toEqual([]);
     });
 
@@ -181,13 +181,13 @@ describe('merge', () => {
       const rem2 = await Factories.VerificationRemove.create();
       expect(set.merge(rem1).isOk()).toBe(true);
       expect(set.merge(rem2).isOk()).toBe(true);
-      expect(deletes().length).toEqual(2);
+      expect(removes().length).toEqual(2);
     });
 
     test('fails if the same VerificationRemove message is added twice', async () => {
       expect(set.merge(rem1).isOk()).toBe(true);
       expect(set.merge(rem1).isOk()).toBe(false);
-      expect(deletes()).toEqual([rem1]);
+      expect(removes()).toEqual([rem1]);
     });
 
     test('fails if matching VerificationAdd message has a later timestamp', async () => {
@@ -197,7 +197,7 @@ describe('merge', () => {
       expect(set.merge(add2).isOk()).toBe(true);
       expect(set.merge(rem1).isOk()).toBe(false);
       expect(adds()).toEqual([add2]);
-      expect(deletes()).toEqual([]);
+      expect(removes()).toEqual([]);
     });
   });
 });

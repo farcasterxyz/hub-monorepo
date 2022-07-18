@@ -323,7 +323,7 @@ class Engine {
 
   _getVerificationRemoves(username: string): VerificationRemove[] {
     const verificationsSet = this._verifications.get(username);
-    return verificationsSet ? verificationsSet._getDeletes() : [];
+    return verificationsSet ? verificationsSet._getRemoves() : [];
   }
 
   /** Determine the valid signer address for a username at a block */

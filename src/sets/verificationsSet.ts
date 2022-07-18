@@ -6,16 +6,16 @@ import { hashCompare } from '~/utils';
 class VerificationsSet {
   /** Both maps indexed by claimHash */
   private _adds: Map<string, VerificationAdd>;
-  private _deletes: Map<string, VerificationRemove>;
+  private _removes: Map<string, VerificationRemove>;
 
   constructor() {
     this._adds = new Map();
-    this._deletes = new Map();
+    this._removes = new Map();
   }
 
   /** Get a verification by its claimHash */
   get(claimHash: string): Verification | undefined {
-    return this._adds.get(claimHash) || this._deletes.get(claimHash);
+    return this._adds.get(claimHash) || this._removes.get(claimHash);
   }
 
   /** Get claimHashes of all active verifications */
@@ -23,9 +23,9 @@ class VerificationsSet {
     return Array.from(this._adds.keys());
   }
 
-  /** Get claimHashes of all verifications (both added and deleted) */
+  /** Get claimHashes of all verifications (both adds and removes) */
   getAllHashes(): string[] {
-    return [...this.getClaimHashes(), ...Array.from(this._deletes.keys())];
+    return [...this.getClaimHashes(), ...Array.from(this._removes.keys())];
   }
 
   /** Helper to get externalAddressURIs that are currently verified */
@@ -35,7 +35,7 @@ class VerificationsSet {
 
   merge(message: Verification): Result<void, string> {
     if (isVerificationRemove(message)) {
-      return this.delete(message);
+      return this.remove(message);
     }
 
     if (isVerificationAdd(message)) {
@@ -58,9 +58,9 @@ class VerificationsSet {
       hash,
     } = message;
 
-    const existingRemove = this._deletes.get(claimHash);
+    const existingRemove = this._removes.get(claimHash);
     if (existingRemove && existingRemove.data.signedAt >= signedAt) {
-      return err('VerificationsSet.add: verification is already deleted');
+      return err('VerificationsSet.add: verification is already removed');
     }
 
     const existingAdd = this._adds.get(claimHash);
@@ -79,7 +79,7 @@ class VerificationsSet {
     }
 
     if (existingRemove) {
-      this._deletes.delete(claimHash);
+      this._removes.delete(claimHash);
     }
 
     this._adds.set(claimHash, message);
@@ -87,7 +87,7 @@ class VerificationsSet {
   }
 
   // TODO: handle edge cases
-  private delete(message: VerificationRemove): Result<void, string> {
+  private remove(message: VerificationRemove): Result<void, string> {
     const {
       data: {
         body: { claimHash },
@@ -96,31 +96,31 @@ class VerificationsSet {
       hash,
     } = message;
 
-    const existingRemove = this._deletes.get(claimHash);
+    const existingRemove = this._removes.get(claimHash);
     if (existingRemove) {
       if (existingRemove.hash === hash) {
-        return err('VerificationsSet.delete: duplicate message');
+        return err('VerificationsSet.remove: duplicate message');
       }
 
       if (existingRemove.data.signedAt > signedAt) {
-        return err('VerificationsSet.delete: verification is already deleted');
+        return err('VerificationsSet.remove: verification is already removed');
       }
 
       if (existingRemove.data.signedAt === signedAt && hashCompare(existingRemove.hash, hash) > 0) {
-        return err('VerificationsSet.delete: verification is already deleted with higher lexiocographical hash');
+        return err('VerificationsSet.remove: verification is already removed with higher lexiocographical hash');
       }
     }
 
     const existingAdd = this._adds.get(claimHash);
     if (existingAdd && existingAdd.data.signedAt > signedAt) {
-      return err('VerificationsSet.delete: verification has already been re-added');
+      return err('VerificationsSet.remove: verification has already been re-added');
     }
 
     if (existingAdd) {
       this._adds.delete(claimHash);
     }
 
-    this._deletes.set(claimHash, message);
+    this._removes.set(claimHash, message);
     return ok(undefined);
   }
 
@@ -132,13 +132,13 @@ class VerificationsSet {
     return Array.from(this._adds.values());
   }
 
-  _getDeletes(): VerificationRemove[] {
-    return Array.from(this._deletes.values());
+  _getRemoves(): VerificationRemove[] {
+    return Array.from(this._removes.values());
   }
 
   _reset(): void {
     this._adds = new Map();
-    this._deletes = new Map();
+    this._removes = new Map();
   }
 }
 
