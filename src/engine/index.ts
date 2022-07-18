@@ -16,7 +16,7 @@ import { utils } from 'ethers';
 import { isCast, isCastShort, isRoot, isReaction, isVerificationAdd, isVerificationRemove } from '~/types/typeguards';
 import CastSet from '~/sets/castSet';
 import ReactionSet from '~/sets/reactionSet';
-import VerificationsSet from '~/sets/verificationsSet';
+import VerificationSet from '~/sets/verificationSet';
 
 export interface getUserFingerprint {
   rootBlockNum: number;
@@ -38,7 +38,7 @@ class Engine {
   private _reactions: Map<string, ReactionSet>;
   private _roots: Map<string, Root>;
   private _users: Map<string, Signer[]>;
-  private _verifications: Map<string, VerificationsSet>;
+  private _verifications: Map<string, VerificationSet>;
 
   constructor() {
     this._casts = new Map();
@@ -200,20 +200,20 @@ class Engine {
 
   /** Get a verification for a username by claimHash */
   getVerification(username: string, claimHash: string): Verification | undefined {
-    const verificationsSet = this._verifications.get(username);
-    return verificationsSet ? verificationsSet.get(claimHash) : undefined;
+    const verificationSet = this._verifications.get(username);
+    return verificationSet ? verificationSet.get(claimHash) : undefined;
   }
 
   /** Get claimHashes of known active verifications for a username */
   getVerificationClaimHashes(username: string): string[] {
-    const verificationsSet = this._verifications.get(username);
-    return verificationsSet ? verificationsSet.getClaimHashes() : [];
+    const verificationSet = this._verifications.get(username);
+    return verificationSet ? verificationSet.getClaimHashes() : [];
   }
 
   /** Get claimHashes of all known verifications for a username */
   getAllVerificationClaimHashes(username: string): string[] {
-    const verificationsSet = this._verifications.get(username);
-    return verificationsSet ? verificationsSet.getAllHashes() : [];
+    const verificationSet = this._verifications.get(username);
+    return verificationSet ? verificationSet.getAllHashes() : [];
   }
 
   /** Merge verification message into the set */
@@ -227,13 +227,13 @@ class Engine {
       const isVerificationValidResult = await this.validateMessage(verification);
       if (isVerificationValidResult.isErr()) return isVerificationValidResult;
 
-      let verificationsSet = this._verifications.get(username);
-      if (!verificationsSet) {
-        verificationsSet = new VerificationsSet();
-        this._verifications.set(username, verificationsSet);
+      let verificationSet = this._verifications.get(username);
+      if (!verificationSet) {
+        verificationSet = new VerificationSet();
+        this._verifications.set(username, verificationSet);
       }
 
-      return verificationsSet.merge(verification);
+      return verificationSet.merge(verification);
     } catch (e: any) {
       return err('mergeVerification: unexpected error');
     }
@@ -317,13 +317,13 @@ class Engine {
   }
 
   _getVerificationAdds(username: string): VerificationAdd[] {
-    const verificationsSet = this._verifications.get(username);
-    return verificationsSet ? verificationsSet._getAdds() : [];
+    const verificationSet = this._verifications.get(username);
+    return verificationSet ? verificationSet._getAdds() : [];
   }
 
   _getVerificationRemoves(username: string): VerificationRemove[] {
-    const verificationsSet = this._verifications.get(username);
-    return verificationsSet ? verificationsSet._getRemoves() : [];
+    const verificationSet = this._verifications.get(username);
+    return verificationSet ? verificationSet._getRemoves() : [];
   }
 
   /** Determine the valid signer address for a username at a block */

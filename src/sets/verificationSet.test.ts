@@ -1,8 +1,8 @@
 import { Factories } from '~/factories';
-import VerificationsSet from '~/sets/verificationsSet';
+import VerificationSet from '~/sets/verificationSet';
 import { Verification, VerificationAdd, VerificationRemove } from '~/types';
 
-const set = new VerificationsSet();
+const set = new VerificationSet();
 const adds = () => set._getAdds();
 const removes = () => set._getRemoves();
 

@@ -3,7 +3,7 @@ import { Verification, VerificationAdd, VerificationRemove } from '~/types';
 import { isVerificationAdd, isVerificationRemove } from '~/types/typeguards';
 import { hashCompare } from '~/utils';
 
-class VerificationsSet {
+class VerificationSet {
   /** Both maps indexed by claimHash */
   private _adds: Map<string, VerificationAdd>;
   private _removes: Map<string, VerificationRemove>;
@@ -42,7 +42,7 @@ class VerificationsSet {
       return this.add(message);
     }
 
-    return err('VerificationsSet.merge: invalid message format');
+    return err('VerificationSet.merge: invalid message format');
   }
 
   /**
@@ -60,21 +60,21 @@ class VerificationsSet {
 
     const existingRemove = this._removes.get(claimHash);
     if (existingRemove && existingRemove.data.signedAt >= signedAt) {
-      return err('VerificationsSet.add: verification is already removed');
+      return err('VerificationSet.add: verification is already removed');
     }
 
     const existingAdd = this._adds.get(claimHash);
     if (existingAdd) {
       if (existingAdd.hash === hash) {
-        return err('VerificationsSet.add: duplicate message');
+        return err('VerificationSet.add: duplicate message');
       }
 
       if (existingAdd.data.signedAt > signedAt) {
-        return err('VerificationsSet.add: verification is already added');
+        return err('VerificationSet.add: verification is already added');
       }
 
       if (existingAdd.data.signedAt === signedAt && hashCompare(existingAdd.hash, hash) > 0) {
-        return err('VerificationsSet.add: verification is already added with higher lexicographical hash');
+        return err('VerificationSet.add: verification is already added with higher lexicographical hash');
       }
     }
 
@@ -99,21 +99,21 @@ class VerificationsSet {
     const existingRemove = this._removes.get(claimHash);
     if (existingRemove) {
       if (existingRemove.hash === hash) {
-        return err('VerificationsSet.remove: duplicate message');
+        return err('VerificationSet.remove: duplicate message');
       }
 
       if (existingRemove.data.signedAt > signedAt) {
-        return err('VerificationsSet.remove: verification is already removed');
+        return err('VerificationSet.remove: verification is already removed');
       }
 
       if (existingRemove.data.signedAt === signedAt && hashCompare(existingRemove.hash, hash) > 0) {
-        return err('VerificationsSet.remove: verification is already removed with higher lexiocographical hash');
+        return err('VerificationSet.remove: verification is already removed with higher lexiocographical hash');
       }
     }
 
     const existingAdd = this._adds.get(claimHash);
     if (existingAdd && existingAdd.data.signedAt > signedAt) {
-      return err('VerificationsSet.remove: verification has already been re-added');
+      return err('VerificationSet.remove: verification has already been re-added');
     }
 
     if (existingAdd) {
@@ -142,4 +142,4 @@ class VerificationsSet {
   }
 }
 
-export default VerificationsSet;
+export default VerificationSet;
