@@ -12,6 +12,7 @@
 10. Hardcode Farcaster schema URL for `schema` attribute
 11. Ensure in tests that hash values are different for each SignerAdd/SignerRemove in a test
 12. Address nit comments
+13. Ensure we are returning errors to caller when appropriate and no-oping when appropriate.
 
 ## Concurrent Edge Case Testing
 
@@ -56,5 +57,15 @@ if parent in adds or parent in custodySigners:
 - [actual and mention of edge case logic for handling "rem" on parent and then "add" on one of its delegates in which new parent has a higher lexicographical hash](https://github.com/farcasterxyz/hub/pull/36/files#diff-1b97142d99baef4457c1ee2d7a58cf927584d76586bd9156fd21382c06328ba1R122-R143)
 
 ```
-
+if parent is in adds set or in custodySigners set:
+  if child is in removed set:
+    get existing m edge of child
+    add m edge
+    compare hash value of existing m edge and m edge
+    if existing m edge hash value is higher:
+      return error that delegate exists under revoked parent
+    if m edge hash value is higher:
+      move child from removed to adds set
+      move child from existing parent to new parent
+      recursively move all delegate children from removed to adds set
 ```
