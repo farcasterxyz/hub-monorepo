@@ -206,7 +206,6 @@ class SignerSet {
       }
 
       if (this.removed.has(child)) {
-        // TODO: do we do the same thing in adds-removed as removed-removed? (look below)
         return ok(undefined); // no-op
       }
 
@@ -217,12 +216,7 @@ class SignerSet {
 
     if (this.removed.has(parent)) {
       if (this.removed.has(child)) {
-        // remove SignerAdd edge if exists
-        const addEdge = edge;
-        addEdge.type = 'SignerAdd';
-        this._removeEdgeIfExists(addEdge);
-        // add SignerRemove edge msg if not exists
-        this._addEdgeIfNotExists(edge);
+        return ok(undefined); // no-op
       }
 
       // logically, this case should never happen
