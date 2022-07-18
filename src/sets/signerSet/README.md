@@ -7,6 +7,9 @@
 5. Ensure Result<<type>, string> is being returned for all functions and errors are being bubbled up appropriately
 6. Do we need `_addEdgeIfNotExists` and `_removeEdgeIfExists`?
 7. DRY test setup
+
+- e.g. [this pattern](https://github.com/farcasterxyz/hub/pull/36/files#diff-a93a2f79448411e7ad9068f1d40e8106f07c064449b9438bdaeb7144ba2a8a5bR89-R91) of creating a pubkey is used a lot and can be abstracted out
+
 8. Move out of `signerSet` folder
 9. Refactor SignerAdd/ SignerRemove message types and move to types/index.ts
 10. Hardcode Farcaster schema URL for `schema` attribute
