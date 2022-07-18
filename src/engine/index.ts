@@ -404,7 +404,7 @@ class Engine {
     }
 
     if (isVerificationRemove(message)) {
-      return this.validateVerificationRemove(message);
+      return this.validateVerificationRemove();
     }
 
     // TODO: check that the schema is a valid and known schema.
@@ -473,7 +473,7 @@ class Engine {
     return ok(undefined);
   }
 
-  private async validateVerificationRemove(_message: VerificationRemove): Promise<Result<void, string>> {
+  private async validateVerificationRemove(): Promise<Result<void, string>> {
     // TODO: validate claimHash is a real hash
     return ok(undefined);
   }

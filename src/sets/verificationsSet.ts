@@ -1,5 +1,5 @@
 import { Result, ok, err } from 'neverthrow';
-import { Verification, VerificationAdd, VerificationRemove, URI } from '~/types';
+import { Verification, VerificationAdd, VerificationRemove } from '~/types';
 import { isVerificationAdd, isVerificationRemove } from '~/types/typeguards';
 import { hashCompare } from '~/utils';
 

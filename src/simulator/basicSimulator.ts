@@ -2,7 +2,7 @@ import Client from '~/client';
 import Debugger from '~/debugger';
 import Faker from 'faker';
 import Simulator from '~/simulator';
-import { ethers, utils } from 'ethers';
+import { ethers } from 'ethers';
 import * as FC from '~/types';
 import { convertToHex } from '~/utils';
 

@@ -1,10 +1,6 @@
-import { ethers } from 'ethers';
 import { Factories } from '~/factories';
-import Faker from 'faker';
 import VerificationsSet from '~/sets/verificationsSet';
 import { Verification, VerificationAdd, VerificationRemove } from '~/types';
-import { convertToHex, generateEd25519KeyPair } from '~/utils';
-import { hexToBytes } from 'ethereum-cryptography/utils';
 
 const set = new VerificationsSet();
 const adds = () => set._getAdds();
