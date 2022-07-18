@@ -585,7 +585,7 @@ describe('remove delegate', () => {
 
 describe('concurrent edge case', () => {
   // TODO: move concurrent edge case of other conflicting-parent case from above in 'add delegate' describe
-  test('"rem" happens on parent of delegate before "add" that moves delegate and subtree to new parent', async () => {
+  test('"rem" happens on parent of delegate before "add" that moves delegate and subtree to new parent because it has a higher lexicographical hash', async () => {
     const signerSet = new SignerSet();
 
     const custodySigner = newSecp256k1Key();
