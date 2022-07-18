@@ -83,7 +83,7 @@ describe('add delegate', () => {
     expect(addWorked.isOk()).toEqual(true);
   });
 
-  test('fails when delegate exists in another custody signer', async () => {
+  test('fails when delegate already exists with a higher edge hash with parent', async () => {
     const signerSet = new SignerSet();
 
     const custodySigner = newSecp256k1Key();
@@ -269,7 +269,7 @@ describe('add delegate', () => {
     expect(addWorked.isOk()).toEqual(false);
   });
 
-  test('fails when child is an existing node', async () => {
+  test('no-ops when child is in adds set with same parent edge', async () => {
     const signerSet = new SignerSet();
 
     const custodySigner = newSecp256k1Key();
@@ -312,7 +312,7 @@ describe('add delegate', () => {
     expect(addWorked.isOk()).toEqual(true);
 
     addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked.isOk()).toEqual(false);
+    expect(addWorked.isOk()).toEqual(true);
   });
 });
 
@@ -511,7 +511,7 @@ describe('remove delegate', () => {
     expect(removeWorked.isOk()).toEqual(false);
   });
 
-  test('fails because delegate has been revoked', async () => {
+  test('no-ops because delegate has already been revoked', async () => {
     const signerSet = new SignerSet();
 
     const custodySigner = newSecp256k1Key();
@@ -577,7 +577,7 @@ describe('remove delegate', () => {
 
     // Fails since Delegate has already been revoked
     removeWorked = signerSet.removeDelegate(signerRemove);
-    expect(removeWorked.isOk()).toEqual(false);
+    expect(removeWorked.isOk()).toEqual(true);
   });
 });
 
