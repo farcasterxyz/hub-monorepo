@@ -103,11 +103,11 @@ class SignerSet {
 
     if (this.adds.has(newParent) || this.custodySigners.has(newParent)) {
       if (this.adds.has(child)) {
-        this._addEdgeIfNotExists(edge);
         const existingEdge = this._getEdgeFromChild(child, 'SignerAdd');
         if (existingEdge === undefined) {
           return err(`edge with delegate ${child} does not exist`);
         }
+        this._addEdgeIfNotExists(edge);
 
         const hashVal = hashCompare(existingEdge.hash, edge.hash);
         // new edge won
