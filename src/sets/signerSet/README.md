@@ -34,3 +34,27 @@ Converged State Expectation: old parent is revoked and new parent has delegate a
 Converged State Expectation: immediate delegate and its entire subtree is revoked including the "child". Subtree is not inside `tree`.
 
 - [] Unit test
+
+## Things missing in pseudocode
+
+`addDelegate`
+
+- [actual edge case logic for handling conflicting parents](https://github.com/farcasterxyz/hub/pull/36/files#diff-1b97142d99baef4457c1ee2d7a58cf927584d76586bd9156fd21382c06328ba1R105-R120)
+
+```
+if parent in adds or parent in custodySigners:
+  if child in adds:
+    get existing m edge
+    add m edge
+    compare hash values and choose highest lexicographical hash value of existing m edge or m edge
+    if existing m edge hash value is higher:
+      return error that delegate cannot be added since it exists under another parent
+    if m edge hash value is higher:
+      move delegate to m edge parent
+```
+
+- [actual and mention of edge case logic for handling "rem" on parent and then "add" on one of its delegates in which new parent has a higher lexicographical hash](https://github.com/farcasterxyz/hub/pull/36/files#diff-1b97142d99baef4457c1ee2d7a58cf927584d76586bd9156fd21382c06328ba1R122-R143)
+
+```
+
+```

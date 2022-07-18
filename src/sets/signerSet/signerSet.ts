@@ -137,7 +137,7 @@ class SignerSet {
           // move all descendants in subtree including child to add set from removed
           this._unremoveDelegateSubtree(child);
         } else if (hashVal > 0) {
-          return err(`existing edge with parent ${existingEdge.parentPubkey} preserves delegate`);
+          return err(`revoked parent ${existingEdge.parentPubkey} preserves delegate ${child}`);
         }
         return ok(undefined);
       }
