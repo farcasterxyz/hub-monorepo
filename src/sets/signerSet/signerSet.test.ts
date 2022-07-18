@@ -100,9 +100,6 @@ describe('add delegate', () => {
     const hashBytes = randomBytes(32);
     const hash = blake2b(hashBytes, 32);
 
-    hashBytes[0] += 1;
-    const higherHash = blake2b(hashBytes);
-
     const custodySignerSig = secp.signSync(hash, custodySigner);
     const childKeySig = secp.signSync(hash, childKey);
 
@@ -124,7 +121,7 @@ describe('add delegate', () => {
         account: 1,
       },
       envelope: {
-        hash: base64EncodeUInt8Arr(higherHash),
+        hash: 'zzzzzzzzzzzzzz',
         hashType: HashAlgorithm.Blake2b,
         parentSignature: base64EncodeUInt8Arr(custodySignerSig),
         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
@@ -717,8 +714,6 @@ describe('concurrent edge case', () => {
     expect(removeWorked.isOk()).toBe(true);
 
     // Add delegate 1_1 to delegate 2
-    hashDelegateBytes1[0] += 1;
-    hash = blake2b(hashDelegateBytes1, 32);
     const signerAddition1_1To2_1 = <SignerAdd>{
       message: {
         body: {
@@ -729,7 +724,7 @@ describe('concurrent edge case', () => {
         account: 1,
       },
       envelope: {
-        hash: base64EncodeUInt8Arr(hash),
+        hash: 'zzzzzzzzzzzzzz',
         hashType: HashAlgorithm.Blake2b,
         parentSignature: base64EncodeUInt8Arr(childKey2Sig),
         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
