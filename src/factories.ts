@@ -1,8 +1,8 @@
 import { Factory } from 'fishery';
 import Faker from 'faker';
 import { ethers } from 'ethers';
-import { CastShort, Root, CastRecast, CastDelete, Reaction } from '~/types';
-import { convertToHex, hashMessage, signEd25519 } from '~/utils';
+import { CastShort, Root, CastRecast, CastDelete, Reaction, SignerAdd, SignerRemove, SignerEdge } from '~/types';
+import { convertToHex, hashFCObject, hashMessage, signEd25519 } from '~/utils';
 import * as ed from '@noble/ed25519';
 
 /**
@@ -184,6 +184,94 @@ export const Factories = {
           targetUri: Faker.internet.url(),
           type: 'like',
           schema: 'farcaster.xyz/schemas/v1/reaction' as const,
+        },
+        rootBlock: Faker.datatype.number(10_000),
+        signedAt: Faker.time.recent(),
+        username: Faker.name.firstName().toLowerCase(),
+      },
+      hash: '',
+      signature: '',
+      signer: '',
+    };
+  }),
+
+  /** Generate a valid SignerAdd */
+  // TODO: constrain transient params
+  SignerAdd: Factory.define<SignerAdd, any, SignerAdd>(({ onCreate, transientParams }) => {
+    const { privateKey = ed.utils.randomPrivateKey(), childPrivateKey = ed.utils.randomPrivateKey() } = transientParams;
+
+    onCreate(async (props) => {
+      const parentPubKey = await convertToHex(await ed.getPublicKey(privateKey));
+      const childPubKey = await convertToHex(await ed.getPublicKey(childPrivateKey));
+
+      // TODO: figure out how to correctly avoid overwriting whatever data is already there
+      props.data.body.childKey = childPubKey;
+
+      /** Generate edgeHash if missing */
+      if (!props.data.body.edgeHash) {
+        const edge: SignerEdge = {
+          parentKey: parentPubKey,
+          childKey: props.data.body.childKey,
+        };
+        props.data.body.edgeHash = await hashFCObject(edge);
+      }
+
+      /** Generate childSignature if missing */
+      if (!props.data.body.childSignature) {
+        props.data.body.childSignature = await signEd25519(props.data.body.edgeHash, childPrivateKey);
+      }
+
+      const hash = await hashMessage(props);
+      props.hash = hash;
+      props.signer = parentPubKey;
+      const signature = await signEd25519(props.hash, privateKey);
+      props.signature = signature;
+
+      return props;
+    });
+
+    return {
+      data: {
+        body: {
+          childKey: '',
+          edgeHash: '',
+          childSignature: '',
+          childSignatureType: 'ed25519', // TODO: support other types
+          schema: 'farcaster.xyz/schemas/v1/signer-add',
+        },
+        rootBlock: Faker.datatype.number(10_000),
+        signedAt: Faker.time.recent(),
+        username: Faker.name.firstName().toLowerCase(),
+      },
+      hash: '',
+      signature: '',
+      signer: '',
+    };
+  }),
+
+  /** Generate a valid SignerRemove */
+  // TODO: constrain transient params
+  SignerRemove: Factory.define<SignerRemove, any, SignerRemove>(({ onCreate, transientParams }) => {
+    const { privateKey = ed.utils.randomPrivateKey() } = transientParams;
+
+    onCreate(async (props) => {
+      const publicKey = await ed.getPublicKey(privateKey);
+      const hash = await hashMessage(props);
+      props.hash = hash;
+
+      props.signer = await convertToHex(publicKey);
+
+      const signature = await signEd25519(props.hash, privateKey);
+      props.signature = signature;
+
+      return props;
+    });
+
+    return {
+      data: {
+        body: {
+          childKey: '', // TODO: fake this
+          schema: 'farcaster.xyz/schemas/v1/signer-remove',
         },
         rootBlock: Faker.datatype.number(10_000),
         signedAt: Faker.time.recent(),

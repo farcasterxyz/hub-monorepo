@@ -28,7 +28,7 @@ type Data<T = Body> = {
   username: string;
 };
 
-type Body = RootBody | CastBody | ReactionBody;
+type Body = RootBody | CastBody | ReactionBody | SignerAddBody | SignerRemoveBody;
 
 // ===========================
 //  Root Types
@@ -129,6 +129,54 @@ export type ReactionBody = {
 };
 
 export type ReactionType = 'like';
+
+// ===========================
+// Signer Types
+// ===========================
+
+export type SignerMessage = SignerAdd | SignerRemove;
+
+export type SignerAdd = Message<SignerAddBody>;
+
+export type SignerAddBody = {
+  childKey: string;
+  edgeHash: string;
+  childSignature: string;
+  childSignatureType: 'ed25519'; // TODO: support others
+  schema: 'farcaster.xyz/schemas/v1/signer-add';
+};
+
+export type SignerEdge = {
+  childKey: string;
+  parentKey: string;
+};
+
+export type SignerRemove = Message<SignerRemoveBody>;
+
+export type SignerRemoveBody = {
+  childKey: string;
+  schema: 'farcaster.xyz/schemas/v1/signer-remove';
+};
+
+// TODO: decide if I need this
+export type EdgeMsg = {
+  hash: string;
+  parentPubkey: string;
+  childPubkey: string;
+  type: 'SignerAdd' | 'SignerRemove';
+};
+
+// TODO: use this more broadly
+export enum SignatureAlgorithm {
+  EcdsaSecp256k1 = 'ecdsa-secp256k1',
+  Ed25519 = 'ed25519',
+}
+
+// TODO: use this more broadly
+export enum HashAlgorithm {
+  Keccak256 = 'keccak256',
+  Blake2b = 'blake2b',
+}
 
 // ===========================
 //  URI Types

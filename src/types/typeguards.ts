@@ -39,3 +39,21 @@ export function isReaction(msg: FC.Message): msg is FC.Reaction {
     body.type === 'like'
   );
 }
+
+export function isSignerAdd(msg: FC.Message): msg is FC.SignerAdd {
+  const body = (msg as FC.SignerAdd).data?.body;
+  return (
+    body &&
+    body.schema === 'farcaster.xyz/schemas/v1/signer-add' &&
+    typeof body.childKey === 'string' &&
+    body.childSignatureType === 'ed25519' &&
+    typeof body.childSignature === 'string' &&
+    typeof body.edgeHash === 'string' &&
+    body.edgeHash.length > 0
+  );
+}
+
+export function isSignerRemove(msg: FC.Message): msg is FC.SignerRemove {
+  const body = (msg as FC.SignerRemove).data?.body;
+  return body && body.schema === 'farcaster.xyz/schemas/v1/signer-remove' && typeof body.childKey === 'string';
+}

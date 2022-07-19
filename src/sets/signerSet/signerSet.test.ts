@@ -1,11 +1,23 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable no-restricted-imports */
-import SignerSet, { SignerAdd, SignatureAlgorithm, HashAlgorithm, SignerRemove } from './signerSet';
+import { SignerAdd, SignatureAlgorithm, HashAlgorithm, SignerRemove, KeyPair } from '~/types';
+import SignerSet from './signerSet';
 import { blake2b } from 'ethereum-cryptography/blake2b';
 import { randomBytes } from 'crypto';
+import { Factories } from '~/factories';
 const secp = require('ethereum-cryptography/secp256k1');
+import * as ed from '@noble/ed25519';
+import { convertToHex, generateEd25519KeyPair } from '~/utils';
 
 const FarcasterSchemaUrl = 'farcaster.xyz/schemas/v1/signer-authorize';
+
+const newSecp256k1Key = () => {
+  return randomBytes(32);
+};
+
+const base64EncodeUInt8Arr = (arr: Uint8Array) => {
+  return Buffer.from(arr).toString('base64');
+};
 
 describe('create signer set', () => {
   test('successfully creates a signer set', async () => {
@@ -39,711 +51,368 @@ describe('create signer set', () => {
   });
 });
 
-describe('add delegate', () => {
-  test('successfully adds a delegate to a signer set', async () => {
-    const signerSet = new SignerSet();
+describe('merge', () => {
+  const set = new SignerSet();
+  const adds = () => set._getAdds();
+  const removes = () => set._getRemoves();
+  const edges = () => set._getEdges();
+  const edgeHashes = () => set._getEdges().map((edge) => edge.hash);
 
-    const custodySigner = newSecp256k1Key();
-    const custodySignerPubkey = secp.getPublicKey(custodySigner);
-    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
+  let custodyKeyPair: KeyPair;
+  let custodyPubKey: string;
 
-    signerSet.addCustody(custodySignerEncodedPubkey);
-    expect(signerSet._numSigners()).toEqual(1);
+  let a: KeyPair;
+  let addA: SignerAdd;
+  let remA: SignerRemove;
+  let b: KeyPair;
+  let addB: SignerAdd;
+  let c: KeyPair;
+  let addCToA: SignerAdd;
+  let addCToB: SignerAdd;
+  let remCFromA: SignerRemove;
 
-    const childKey = newSecp256k1Key();
-    const childPubkey = secp.getPublicKey(childKey);
-    const childEncodedPubkey = Buffer.from(childPubkey.toString()).toString('base64');
-
-    const hash = blake2b(randomBytes(32), 32);
-    const custodySignerSig = secp.signSync(hash, custodySigner);
-    const childKeySig = secp.signSync(hash, childKey);
-
-    const signerAddition = <SignerAdd>{
-      message: {
-        body: {
-          parentKey: custodySignerEncodedPubkey,
-          childKey: childEncodedPubkey,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: base64EncodeUInt8Arr(hash),
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(custodySignerSig),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: custodySignerEncodedPubkey,
-        childSignature: base64EncodeUInt8Arr(childKeySig),
-        childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        childSignerPubkey: childEncodedPubkey,
-      },
-    };
-
-    const addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked.isOk()).toEqual(true);
+  beforeAll(async () => {
+    custodyKeyPair = await generateEd25519KeyPair();
+    custodyPubKey = await convertToHex(custodyKeyPair.publicKey);
+    a = await generateEd25519KeyPair();
+    addA = await Factories.SignerAdd.create(
+      {},
+      { transient: { privateKey: custodyKeyPair.privateKey, childPrivateKey: a.privateKey } }
+    );
+    remA = await Factories.SignerRemove.create(
+      { data: { body: { childKey: addA.data.body.childKey } } },
+      { transient: { privateKey: custodyKeyPair.privateKey } }
+    );
+    b = await generateEd25519KeyPair();
+    addB = await Factories.SignerAdd.create(
+      {},
+      { transient: { privateKey: custodyKeyPair.privateKey, childPrivateKey: b.privateKey } }
+    );
+    c = await generateEd25519KeyPair();
+    addCToA = await Factories.SignerAdd.create(
+      {},
+      { transient: { privateKey: a.privateKey, childPrivateKey: c.privateKey } }
+    );
+    addCToB = await Factories.SignerAdd.create(
+      {},
+      { transient: { privateKey: b.privateKey, childPrivateKey: c.privateKey } }
+    );
+    remCFromA = await Factories.SignerRemove.create(
+      { data: { body: { childKey: addCToA.data.body.childKey } } },
+      { transient: { privateKey: a.privateKey } }
+    );
   });
 
-  test('fails when delegate already exists with a higher edge hash with parent', async () => {
-    const signerSet = new SignerSet();
-
-    const custodySigner = newSecp256k1Key();
-    const custodySignerPubkey = secp.getPublicKey(custodySigner);
-    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
-
-    signerSet.addCustody(custodySignerEncodedPubkey);
-    expect(signerSet._numSigners()).toEqual(1);
-
-    const childKey = newSecp256k1Key();
-    const childPubkey = secp.getPublicKey(childKey);
-    const childEncodedPubkey = Buffer.from(childPubkey.toString()).toString('base64');
-
-    const hashBytes = randomBytes(32);
-    const hash = blake2b(hashBytes, 32);
-
-    const custodySignerSig = secp.signSync(hash, custodySigner);
-    const childKeySig = secp.signSync(hash, childKey);
-
-    const custodySigner2 = newSecp256k1Key();
-    const custodySignerPubkey2 = secp.getPublicKey(custodySigner2);
-    const custodySignerEncodedPubkey2 = Buffer.from(custodySignerPubkey2.toString()).toString('base64');
-    const custodySignerSig2 = secp.signSync(hash, custodySigner2);
-
-    expect(signerSet.addCustody(custodySignerEncodedPubkey2).isOk()).toBe(true);
-    expect(signerSet._numSigners()).toEqual(2);
-
-    let signerAddition = <SignerAdd>{
-      message: {
-        body: {
-          parentKey: custodySignerEncodedPubkey,
-          childKey: childEncodedPubkey,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: 'zzzzzzzzzzzzzz',
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(custodySignerSig),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: custodySignerEncodedPubkey,
-        childSignature: base64EncodeUInt8Arr(childKeySig),
-        childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        childSignerPubkey: childEncodedPubkey,
-      },
-    };
-
-    let addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked.isOk()).toEqual(true);
-
-    signerAddition = <SignerAdd>{
-      message: {
-        body: {
-          // parent is a root to a different Signer
-          parentKey: custodySignerEncodedPubkey2,
-          childKey: childEncodedPubkey,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: base64EncodeUInt8Arr(hash),
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(custodySignerSig2),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: custodySignerEncodedPubkey2,
-        childSignature: base64EncodeUInt8Arr(childKeySig),
-        childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        childSignerPubkey: childEncodedPubkey,
-      },
-    };
-
-    addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked.isOk()).toEqual(false);
+  beforeEach(() => {
+    set._reset();
+    set.addCustody(custodyPubKey); // TODO: validation?
   });
 
-  test('fails when claimed parent does not exist', async () => {
-    const signerSet = new SignerSet();
+  describe('addDelegate', () => {
+    test('succeeds with a valid SignerAdd message', async () => {
+      const res = set.merge(addA);
+      console.log(res);
+      expect(res.isOk()).toEqual(true);
+      expect(adds()).toEqual([addA.data.body.childKey]);
+      expect(edgeHashes().includes(addA.hash)).toBe(true);
+    });
 
-    const custodySigner = newSecp256k1Key();
-    const custodySignerPubkey = secp.getPublicKey(custodySigner);
-    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
+    test('succeeds with a duplicate valid SignerAdd message', async () => {
+      expect(set.merge(addA).isOk()).toBe(true);
+      expect(set.merge(addA).isOk()).toBe(true);
+      expect(adds()).toEqual([addA.data.body.childKey]);
+      expect(edgeHashes().includes(addA.hash)).toBe(true);
+    });
 
-    signerSet.addCustody(custodySignerEncodedPubkey);
-    expect(signerSet._numSigners()).toEqual(1);
+    test('succeeds when adding a child to another delegate', async () => {
+      expect(set.merge(addA).isOk()).toBe(true);
+      expect(set.merge(addCToA).isOk()).toBe(true);
+      expect(adds().length).toEqual(2);
+      expect(edgeHashes()).toEqual([addA.hash, addCToA.hash]);
+    });
 
-    const childKey = newSecp256k1Key();
-    const childPubkey = secp.getPublicKey(childKey);
-    const childEncodedPubkey = Buffer.from(childPubkey.toString()).toString('base64');
+    describe('when delegate already exists', () => {
+      describe('with different parent', () => {
+        test('fails with a lower message hash', async () => {
+          expect(set.merge(addA).isOk()).toBe(true);
+          expect(set.merge(addB).isOk()).toBe(true);
+          expect(set.merge(addCToA).isOk()).toBe(true);
+          expect(adds().length).toEqual(3);
+          const addCToBFail: SignerAdd = { ...addCToB, hash: addCToA.hash.slice(0, -1) };
+          expect(set.merge(Object.assign(addCToBFail)).isOk()).toBe(false);
+          expect(adds().length).toEqual(3);
+          console.log(adds(), removes(), edges());
+        });
 
-    const hash = blake2b(randomBytes(32), 32);
-    const custodySignerSig = secp.signSync(hash, custodySigner);
-    const childKeySig = secp.signSync(hash, childKey);
+        test('succeeds with a higher message hash', async () => {
+          expect(set.merge(addA).isOk()).toBe(true);
+          expect(set.merge(addB).isOk()).toBe(true);
+          expect(set.merge(addCToA).isOk()).toBe(true);
+          expect(adds().length).toEqual(3);
+          const addCToBSuccess: SignerAdd = { ...addCToB, hash: addCToA.hash + 'a' };
+          expect(set.merge(addCToBSuccess).isOk()).toBe(true);
+          expect(adds().length).toEqual(3);
+          console.log(adds(), removes(), edges());
+        });
+      });
 
-    const signerAddition = <SignerAdd>{
-      message: {
-        body: {
-          parentKey: 'foobar',
-          childKey: childEncodedPubkey,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: base64EncodeUInt8Arr(hash),
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(custodySignerSig),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: 'foobar',
-        childSignature: base64EncodeUInt8Arr(childKeySig),
-        childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        childSignerPubkey: childEncodedPubkey,
-      },
-    };
+      describe('with same parent', () => {
+        let addCToADuplicate: SignerAdd;
 
-    const addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked.isOk()).toEqual(false);
+        beforeAll(async () => {
+          addCToADuplicate = await Factories.SignerAdd.create(
+            {},
+            { transient: { privateKey: a.privateKey, childPrivateKey: c.privateKey } }
+          );
+        });
+
+        test('fails with a lower message hash', async () => {
+          expect(set.merge(addA).isOk()).toBe(true);
+          expect(set.merge(addCToA).isOk()).toBe(true);
+          const addCToADuplicateFail: SignerAdd = { ...addCToADuplicate, hash: addCToA.hash.slice(0, -1) };
+          expect(set.merge(Object.assign(addCToADuplicateFail)).isOk()).toBe(false);
+          expect(edgeHashes().includes(addCToADuplicateFail.hash)).toBe(false);
+          expect(edgeHashes().includes(addCToA.hash)).toBe(true);
+        });
+
+        test('succeeds with a higher message hash', async () => {
+          expect(set.merge(addA).isOk()).toBe(true);
+          expect(set.merge(addCToA).isOk()).toBe(true);
+          const addCToADuplicateSuccess: SignerAdd = { ...addCToADuplicate, hash: addCToA.hash + 'z' };
+          expect(set.merge(Object.assign(addCToADuplicateSuccess)).isOk()).toBe(true);
+          expect(edgeHashes().includes(addCToADuplicateSuccess.hash)).toBe(true);
+          expect(edgeHashes().includes(addCToA.hash)).toBe(false);
+        });
+      });
+    });
+
+    test('fails when parent does not exist', async () => {
+      expect(adds()).toEqual([]);
+      expect(set.merge(addCToA).isOk()).toBe(false);
+      expect(adds()).toEqual([]);
+      expect(edgeHashes()).toEqual([]);
+    });
+
+    test('fails when delegate has already been removed', async () => {
+      const remC = await Factories.SignerRemove.create(
+        { data: { body: { childKey: addCToA.data.body.childKey } } },
+        { transient: { privateKey: a.privateKey } }
+      );
+      expect(set.merge(addA).isOk()).toBe(true);
+      console.log('remC', remC, adds(), removes(), edges());
+      const res = set.merge(remC);
+      console.log(res);
+      expect(res.isOk()).toBe(true);
+      expect(set.merge(addCToA).isOk()).toBe(false);
+    });
   });
 
-  test('fails when child is in removed nodes', async () => {
-    const signerSet = new SignerSet();
+  describe('removeDelegate', () => {
+    test('succeeds with a valid SignerRemove message', async () => {
+      expect(set.merge(addA).isOk()).toBe(true);
+      expect(set.merge(remA).isOk()).toBe(true);
+      expect(adds()).toEqual([]);
+      expect(removes()).toEqual([remA.data.body.childKey]);
+      expect(edges()).toEqual([]);
+    });
 
-    const custodySigner = newSecp256k1Key();
-    const custodySignerPubkey = secp.getPublicKey(custodySigner);
-    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
+    test("succeeds when child hasn't been added yet", () => {
+      expect(set.merge(remA).isOk()).toBe(true);
+      expect(adds()).toEqual([]);
+      expect(removes()).toEqual([remA.data.body.childKey]);
+      expect(edgeHashes().includes(addA.hash)).toBe(false);
+    });
 
-    signerSet.addCustody(custodySignerEncodedPubkey);
-    expect(signerSet._numSigners()).toEqual(1);
+    test('succeeds and removes subtree', () => {
+      expect(set.merge(addA).isOk()).toBe(true);
+      expect(set.merge(addCToA).isOk()).toBe(true);
+      expect(set.merge(remA).isOk()).toBe(true);
+      expect(adds()).toEqual([]);
+      expect(removes().length).toEqual(2); // TODO: is that true?
+      expect(edges()).toEqual([]);
+    });
 
-    const childKey = newSecp256k1Key();
-    const childPubkey = secp.getPublicKey(childKey);
-    const childEncodedPubkey = Buffer.from(childPubkey.toString()).toString('base64');
+    test("fails when child doesn't belong to parent", async () => {
+      expect(set.merge(addA).isOk()).toBe(true);
+      expect(set.merge(addCToA).isOk()).toBe(true);
+      const remC = await Factories.SignerRemove.create(
+        { data: { body: { childKey: addCToA.data.body.childKey } } },
+        { transient: { privateKey: custodyKeyPair.privateKey } }
+      );
+      expect(set.merge(remC).isOk()).toBe(false);
+      expect(removes()).toEqual([]);
+    });
 
-    const hash = blake2b(randomBytes(32), 32);
-    const custodySignerSig = secp.signSync(hash, custodySigner);
-    const childKeySig = secp.signSync(hash, childKey);
+    test('succeeds when child belongs to parent', async () => {
+      expect(set.merge(addA).isOk()).toBe(true);
+      expect(set.merge(addCToA).isOk()).toBe(true);
+      expect(set.merge(remCFromA).isOk()).toBe(true);
+      expect(removes()).toEqual([remCFromA.data.body.childKey]);
+    });
 
-    const signerAddition = <SignerAdd>{
-      message: {
-        body: {
-          parentKey: custodySignerEncodedPubkey,
-          childKey: childEncodedPubkey,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: base64EncodeUInt8Arr(hash),
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(custodySignerSig),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: custodySignerEncodedPubkey,
-        childSignature: base64EncodeUInt8Arr(childKeySig),
-        childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        childSignerPubkey: childEncodedPubkey,
-      },
-    };
-
-    let addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked.isOk()).toEqual(true);
-
-    const signerRemove = <SignerRemove>{
-      message: {
-        body: {
-          childKey: childEncodedPubkey,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: base64EncodeUInt8Arr(hash),
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(childKeySig),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: custodySignerEncodedPubkey,
-      },
-    };
-
-    const removeWorked = signerSet.removeDelegate(signerRemove);
-    expect(removeWorked.isOk()).toEqual(true);
-
-    // This will fail since delegate has been revoked
-    addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked.isOk()).toEqual(false);
-  });
-
-  test('no-ops when child is in adds set with same parent edge', async () => {
-    const signerSet = new SignerSet();
-
-    const custodySigner = newSecp256k1Key();
-    const custodySignerPubkey = secp.getPublicKey(custodySigner);
-    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
-
-    signerSet.addCustody(custodySignerEncodedPubkey);
-    expect(signerSet._numSigners()).toEqual(1);
-
-    const childKey = newSecp256k1Key();
-    const childPubkey = secp.getPublicKey(childKey);
-    const childEncodedPubkey = Buffer.from(childPubkey.toString()).toString('base64');
-
-    const hash = blake2b(randomBytes(32), 32);
-    const custodySignerSig = secp.signSync(hash, custodySigner);
-    const childKeySig = secp.signSync(hash, childKey);
-
-    const signerAddition = <SignerAdd>{
-      message: {
-        body: {
-          parentKey: custodySignerEncodedPubkey,
-          childKey: childEncodedPubkey,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: base64EncodeUInt8Arr(hash),
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(custodySignerSig),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: custodySignerEncodedPubkey,
-        childSignature: base64EncodeUInt8Arr(childKeySig),
-        childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        childSignerPubkey: childEncodedPubkey,
-      },
-    };
-
-    let addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked.isOk()).toEqual(true);
-
-    addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked.isOk()).toEqual(true);
+    test('succeeds with duplicate signer remove message', () => {
+      expect(set.merge(addA).isOk()).toBe(true);
+      expect(set.merge(remA).isOk()).toBe(true);
+      expect(set.merge(remA).isOk()).toBe(true);
+    });
   });
 });
 
-describe('remove delegate', () => {
-  test('successfully deletes delegates and child delegate', async () => {
-    const signerSet = new SignerSet();
+// describe('remove delegate', () => {
 
-    const custodySigner = newSecp256k1Key();
-    const custodySignerPubkey = secp.getPublicKey(custodySigner);
-    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
+// describe('concurrent edge case', () => {
+//   // TODO: move concurrent edge case of other conflicting-parent case from above in 'add delegate' describe
+//   test('"rem" happens on parent of delegate before "add" that moves delegate and subtree to new parent because it has a higher lexicographical hash', async () => {
+//     const signerSet = new SignerSet();
 
-    signerSet.addCustody(custodySignerEncodedPubkey);
-    expect(signerSet._numSigners()).toEqual(1);
+//     const custodySigner = newSecp256k1Key();
+//     const custodySignerPubkey = secp.getPublicKey(custodySigner);
+//     const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
 
-    const childKey = newSecp256k1Key();
-    const childPubkey = secp.getPublicKey(childKey);
-    const childEncodedPubkey = Buffer.from(childPubkey.toString()).toString('base64');
+//     signerSet.addCustody(custodySignerEncodedPubkey);
+//     expect(signerSet._numSigners()).toEqual(1);
 
-    const hash = blake2b(randomBytes(32), 32);
-    const custodySignerSig = secp.signSync(hash, custodySigner);
-    const childKeySig = secp.signSync(hash, childKey);
+//     const childKey = newSecp256k1Key();
+//     const childPubkey = secp.getPublicKey(childKey);
+//     const childEncodedPubkey = Buffer.from(childPubkey.toString()).toString('base64');
 
-    // Add Delegate to root
-    const signerAddition = <SignerAdd>{
-      message: {
-        body: {
-          parentKey: custodySignerEncodedPubkey,
-          childKey: childEncodedPubkey,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: base64EncodeUInt8Arr(hash),
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(custodySignerSig),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: custodySignerEncodedPubkey,
-        childSignature: base64EncodeUInt8Arr(childKeySig),
-        childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        childSignerPubkey: childEncodedPubkey,
-      },
-    };
+//     const hashDelegateBytes1 = randomBytes(32);
+//     let hash = blake2b(hashDelegateBytes1, 32);
+//     const custodySignerSig = secp.signSync(hash, custodySigner);
+//     const childKeySig = secp.signSync(hash, childKey);
 
-    const addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked.isOk()).toEqual(true);
+//     // Add Delegate 1 to root
+//     const signerAddition = <SignerAdd>{
+//       message: {
+//         body: {
+//           parentKey: custodySignerEncodedPubkey,
+//           childKey: childEncodedPubkey,
+//           schema: FarcasterSchemaUrl,
+//         },
+//         account: 1,
+//       },
+//       envelope: {
+//         hash: base64EncodeUInt8Arr(hash),
+//         hashType: HashAlgorithm.Blake2b,
+//         parentSignature: base64EncodeUInt8Arr(custodySignerSig),
+//         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
+//         parentSignerPubkey: custodySignerEncodedPubkey,
+//         childSignature: base64EncodeUInt8Arr(childKeySig),
+//         childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
+//         childSignerPubkey: childEncodedPubkey,
+//       },
+//     };
 
-    // Add Delegate 1_1 to Delegate 1
+//     const addWorked = signerSet.addDelegate(signerAddition);
+//     expect(addWorked.isOk()).toEqual(true);
 
-    const childKey1_1 = newSecp256k1Key();
-    const childPubkey1_1 = secp.getPublicKey(childKey1_1);
-    const childEncodedPubkey1_1 = Buffer.from(childPubkey1_1.toString()).toString('base64');
-    const childKey1_1Sig = secp.signSync(hash, childKey1_1);
+//     // Add Delegate 2 to root
+//     hash = blake2b(randomBytes(32), 32);
+//     const childKey2 = newSecp256k1Key();
+//     const childPubkey2 = secp.getPublicKey(childKey2);
+//     const childEncodedPubkey2 = Buffer.from(childPubkey2.toString()).toString('base64');
+//     const childKey2Sig = secp.signSync(hash, childKey2);
 
-    const signerAddition2_1 = <SignerAdd>{
-      message: {
-        body: {
-          parentKey: childEncodedPubkey,
-          childKey: childEncodedPubkey1_1,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: base64EncodeUInt8Arr(hash),
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(childKeySig),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: childEncodedPubkey,
-        childSignature: base64EncodeUInt8Arr(childKey1_1Sig),
-        childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        childSignerPubkey: childEncodedPubkey1_1,
-      },
-    };
+//     const signerAddition2 = <SignerAdd>{
+//       message: {
+//         body: {
+//           parentKey: custodySignerEncodedPubkey,
+//           childKey: childEncodedPubkey2,
+//           schema: FarcasterSchemaUrl,
+//         },
+//         account: 1,
+//       },
+//       envelope: {
+//         hash: base64EncodeUInt8Arr(hash),
+//         hashType: HashAlgorithm.Blake2b,
+//         parentSignature: base64EncodeUInt8Arr(custodySignerSig),
+//         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
+//         parentSignerPubkey: custodySignerEncodedPubkey,
+//         childSignature: base64EncodeUInt8Arr(childKeySig),
+//         childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
+//         childSignerPubkey: childEncodedPubkey2,
+//       },
+//     };
 
-    const addWorked2_1 = signerSet.addDelegate(signerAddition2_1);
-    expect(addWorked2_1.isOk()).toEqual(true);
+//     const addWorked2 = signerSet.addDelegate(signerAddition2);
+//     expect(addWorked2.isOk()).toEqual(true);
 
-    // Remove delegate 1 (and 1_1) success
+//     // Add Delegate 1_1 to Delegate 1
+//     hash = blake2b(randomBytes(32), 32);
+//     const childKey1_1 = newSecp256k1Key();
+//     const childPubkey1_1 = secp.getPublicKey(childKey1_1);
+//     const childEncodedPubkey1_1 = Buffer.from(childPubkey1_1.toString()).toString('base64');
+//     const childKey1_1Sig = secp.signSync(hash, childKey1_1);
 
-    const signerRemove = <SignerRemove>{
-      message: {
-        body: {
-          childKey: childEncodedPubkey,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: base64EncodeUInt8Arr(hash),
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(custodySignerSig),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: custodySignerEncodedPubkey,
-      },
-    };
+//     const signerAddition1_1 = <SignerAdd>{
+//       message: {
+//         body: {
+//           parentKey: childEncodedPubkey,
+//           childKey: childEncodedPubkey1_1,
+//           schema: FarcasterSchemaUrl,
+//         },
+//         account: 1,
+//       },
+//       envelope: {
+//         hash: base64EncodeUInt8Arr(hash),
+//         hashType: HashAlgorithm.Blake2b,
+//         parentSignature: base64EncodeUInt8Arr(childKeySig),
+//         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
+//         parentSignerPubkey: childEncodedPubkey,
+//         childSignature: base64EncodeUInt8Arr(childKey1_1Sig),
+//         childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
+//         childSignerPubkey: childEncodedPubkey1_1,
+//       },
+//     };
 
-    const removeWorked = signerSet.removeDelegate(signerRemove);
-    expect(removeWorked.isOk()).toEqual(true);
-  });
+//     const addWorked1_1 = signerSet.addDelegate(signerAddition1_1);
+//     expect(addWorked1_1.isOk()).toEqual(true);
 
-  test('fails because claimed parent is not actual parent of child', async () => {
-    const signerSet = new SignerSet();
+//     // Remove delegate 1 (and 1_1) success
+//     hash = blake2b(randomBytes(32), 32);
+//     const signerRemove = <SignerRemove>{
+//       message: {
+//         body: {
+//           childKey: childEncodedPubkey,
+//           schema: FarcasterSchemaUrl,
+//         },
+//         account: 1,
+//       },
+//       envelope: {
+//         hash: base64EncodeUInt8Arr(hash),
+//         hashType: HashAlgorithm.Blake2b,
+//         parentSignature: base64EncodeUInt8Arr(custodySignerSig),
+//         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
+//         parentSignerPubkey: custodySignerEncodedPubkey,
+//       },
+//     };
 
-    const custodySigner = newSecp256k1Key();
-    const custodySignerPubkey = secp.getPublicKey(custodySigner);
-    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
+//     const removeWorked = signerSet.removeDelegate(signerRemove);
+//     expect(removeWorked.isOk()).toBe(true);
 
-    signerSet.addCustody(custodySignerEncodedPubkey);
-    expect(signerSet._numSigners()).toEqual(1);
+//     // Add delegate 1_1 to delegate 2
+//     const signerAddition1_1To2_1 = <SignerAdd>{
+//       message: {
+//         body: {
+//           parentKey: childEncodedPubkey2,
+//           childKey: childEncodedPubkey1_1,
+//           schema: FarcasterSchemaUrl,
+//         },
+//         account: 1,
+//       },
+//       envelope: {
+//         hash: 'zzzzzzzzzzzzzz',
+//         hashType: HashAlgorithm.Blake2b,
+//         parentSignature: base64EncodeUInt8Arr(childKey2Sig),
+//         parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
+//         parentSignerPubkey: childEncodedPubkey2,
+//         childSignature: base64EncodeUInt8Arr(childKeySig),
+//         childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
+//         childSignerPubkey: childEncodedPubkey1_1,
+//       },
+//     };
 
-    const childKey = newSecp256k1Key();
-    const childPubkey = secp.getPublicKey(childKey);
-    const childEncodedPubkey = Buffer.from(childPubkey.toString()).toString('base64');
-
-    const hash = blake2b(randomBytes(32), 32);
-    const custodySignerSig = secp.signSync(hash, custodySigner);
-    const childKeySig = secp.signSync(hash, childKey);
-
-    // Add Delegate to root
-    const signerAddition = <SignerAdd>{
-      message: {
-        body: {
-          parentKey: custodySignerEncodedPubkey,
-          childKey: childEncodedPubkey,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: base64EncodeUInt8Arr(hash),
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(custodySignerSig),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: custodySignerEncodedPubkey,
-        childSignature: base64EncodeUInt8Arr(childKeySig),
-        childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        childSignerPubkey: childEncodedPubkey,
-      },
-    };
-
-    const addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked.isOk()).toEqual(true);
-
-    // Add Delegate 1_1 to Delegate 1
-
-    const childKey1_1 = newSecp256k1Key();
-    const childPubkey1_1 = secp.getPublicKey(childKey1_1);
-    const childEncodedPubkey1_1 = Buffer.from(childPubkey1_1.toString()).toString('base64');
-    const childKey1_1Sig = secp.signSync(hash, childKey1_1);
-
-    const signerAddition2_1 = <SignerAdd>{
-      message: {
-        body: {
-          parentKey: childEncodedPubkey,
-          childKey: childEncodedPubkey1_1,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: base64EncodeUInt8Arr(hash),
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(childKeySig),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: childEncodedPubkey,
-        childSignature: base64EncodeUInt8Arr(childKey1_1Sig),
-        childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        childSignerPubkey: childEncodedPubkey1_1,
-      },
-    };
-
-    const addWorked2_1 = signerSet.addDelegate(signerAddition2_1);
-    expect(addWorked2_1.isOk()).toEqual(true);
-
-    // Remove delegate 2_1 fail
-
-    const signerRemove2_1 = <SignerRemove>{
-      message: {
-        body: {
-          childKey: childEncodedPubkey1_1,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: base64EncodeUInt8Arr(hash),
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(custodySignerSig),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: custodySignerEncodedPubkey,
-      },
-    };
-
-    const removeWorked = signerSet.removeDelegate(signerRemove2_1);
-    expect(removeWorked.isOk()).toEqual(false);
-  });
-
-  test('no-ops because delegate has already been revoked', async () => {
-    const signerSet = new SignerSet();
-
-    const custodySigner = newSecp256k1Key();
-    const custodySignerPubkey = secp.getPublicKey(custodySigner);
-    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
-
-    signerSet.addCustody(custodySignerEncodedPubkey);
-    expect(signerSet._numSigners()).toEqual(1);
-
-    const childKey = newSecp256k1Key();
-    const childPubkey = secp.getPublicKey(childKey);
-    const childEncodedPubkey = Buffer.from(childPubkey.toString()).toString('base64');
-
-    const hash = blake2b(randomBytes(32), 32);
-    const custodySignerSig = secp.signSync(hash, custodySigner);
-    const childKeySig = secp.signSync(hash, childKey);
-
-    // Add Delegate to root
-    const signerAddition = <SignerAdd>{
-      message: {
-        body: {
-          parentKey: custodySignerEncodedPubkey,
-          childKey: childEncodedPubkey,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: base64EncodeUInt8Arr(hash),
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(custodySignerSig),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: custodySignerEncodedPubkey,
-        childSignature: base64EncodeUInt8Arr(childKeySig),
-        childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        childSignerPubkey: childEncodedPubkey,
-      },
-    };
-
-    const addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked.isOk()).toEqual(true);
-
-    // Remove delegate
-    const signerRemove = <SignerRemove>{
-      message: {
-        body: {
-          childKey: childEncodedPubkey,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: base64EncodeUInt8Arr(hash),
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(childKeySig),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: custodySignerEncodedPubkey,
-      },
-    };
-
-    let removeWorked = signerSet.removeDelegate(signerRemove);
-    expect(removeWorked.isOk()).toEqual(true);
-
-    // Fails since Delegate has already been revoked
-    removeWorked = signerSet.removeDelegate(signerRemove);
-    expect(removeWorked.isOk()).toEqual(true);
-  });
-});
-
-describe('concurrent edge case', () => {
-  // TODO: move concurrent edge case of other conflicting-parent case from above in 'add delegate' describe
-  test('"rem" happens on parent of delegate before "add" that moves delegate and subtree to new parent because it has a higher lexicographical hash', async () => {
-    const signerSet = new SignerSet();
-
-    const custodySigner = newSecp256k1Key();
-    const custodySignerPubkey = secp.getPublicKey(custodySigner);
-    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
-
-    signerSet.addCustody(custodySignerEncodedPubkey);
-    expect(signerSet._numSigners()).toEqual(1);
-
-    const childKey = newSecp256k1Key();
-    const childPubkey = secp.getPublicKey(childKey);
-    const childEncodedPubkey = Buffer.from(childPubkey.toString()).toString('base64');
-
-    const hashDelegateBytes1 = randomBytes(32);
-    let hash = blake2b(hashDelegateBytes1, 32);
-    const custodySignerSig = secp.signSync(hash, custodySigner);
-    const childKeySig = secp.signSync(hash, childKey);
-
-    // Add Delegate 1 to root
-    const signerAddition = <SignerAdd>{
-      message: {
-        body: {
-          parentKey: custodySignerEncodedPubkey,
-          childKey: childEncodedPubkey,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: base64EncodeUInt8Arr(hash),
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(custodySignerSig),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: custodySignerEncodedPubkey,
-        childSignature: base64EncodeUInt8Arr(childKeySig),
-        childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        childSignerPubkey: childEncodedPubkey,
-      },
-    };
-
-    const addWorked = signerSet.addDelegate(signerAddition);
-    expect(addWorked.isOk()).toEqual(true);
-
-    // Add Delegate 2 to root
-    hash = blake2b(randomBytes(32), 32);
-    const childKey2 = newSecp256k1Key();
-    const childPubkey2 = secp.getPublicKey(childKey2);
-    const childEncodedPubkey2 = Buffer.from(childPubkey2.toString()).toString('base64');
-    const childKey2Sig = secp.signSync(hash, childKey2);
-
-    const signerAddition2 = <SignerAdd>{
-      message: {
-        body: {
-          parentKey: custodySignerEncodedPubkey,
-          childKey: childEncodedPubkey2,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: base64EncodeUInt8Arr(hash),
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(custodySignerSig),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: custodySignerEncodedPubkey,
-        childSignature: base64EncodeUInt8Arr(childKeySig),
-        childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        childSignerPubkey: childEncodedPubkey2,
-      },
-    };
-
-    const addWorked2 = signerSet.addDelegate(signerAddition2);
-    expect(addWorked2.isOk()).toEqual(true);
-
-    // Add Delegate 1_1 to Delegate 1
-    hash = blake2b(randomBytes(32), 32);
-    const childKey1_1 = newSecp256k1Key();
-    const childPubkey1_1 = secp.getPublicKey(childKey1_1);
-    const childEncodedPubkey1_1 = Buffer.from(childPubkey1_1.toString()).toString('base64');
-    const childKey1_1Sig = secp.signSync(hash, childKey1_1);
-
-    const signerAddition1_1 = <SignerAdd>{
-      message: {
-        body: {
-          parentKey: childEncodedPubkey,
-          childKey: childEncodedPubkey1_1,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: base64EncodeUInt8Arr(hash),
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(childKeySig),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: childEncodedPubkey,
-        childSignature: base64EncodeUInt8Arr(childKey1_1Sig),
-        childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        childSignerPubkey: childEncodedPubkey1_1,
-      },
-    };
-
-    const addWorked1_1 = signerSet.addDelegate(signerAddition1_1);
-    expect(addWorked1_1.isOk()).toEqual(true);
-
-    // Remove delegate 1 (and 1_1) success
-    hash = blake2b(randomBytes(32), 32);
-    const signerRemove = <SignerRemove>{
-      message: {
-        body: {
-          childKey: childEncodedPubkey,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: base64EncodeUInt8Arr(hash),
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(custodySignerSig),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: custodySignerEncodedPubkey,
-      },
-    };
-
-    const removeWorked = signerSet.removeDelegate(signerRemove);
-    expect(removeWorked.isOk()).toBe(true);
-
-    // Add delegate 1_1 to delegate 2
-    const signerAddition1_1To2_1 = <SignerAdd>{
-      message: {
-        body: {
-          parentKey: childEncodedPubkey2,
-          childKey: childEncodedPubkey1_1,
-          schema: FarcasterSchemaUrl,
-        },
-        account: 1,
-      },
-      envelope: {
-        hash: 'zzzzzzzzzzzzzz',
-        hashType: HashAlgorithm.Blake2b,
-        parentSignature: base64EncodeUInt8Arr(childKey2Sig),
-        parentSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        parentSignerPubkey: childEncodedPubkey2,
-        childSignature: base64EncodeUInt8Arr(childKeySig),
-        childSignatureType: SignatureAlgorithm.EcdsaSecp256k1,
-        childSignerPubkey: childEncodedPubkey1_1,
-      },
-    };
-
-    const addWorked1_1To2_1 = signerSet.addDelegate(signerAddition1_1To2_1);
-    expect(addWorked1_1To2_1.isOk()).toEqual(true);
-  });
-});
-
-function newSecp256k1Key() {
-  return randomBytes(32);
-}
-
-function base64EncodeUInt8Arr(arr: Uint8Array) {
-  return Buffer.from(arr).toString('base64');
-}
+//     const addWorked1_1To2_1 = signerSet.addDelegate(signerAddition1_1To2_1);
+//     expect(addWorked1_1To2_1.isOk()).toEqual(true);
+//   });
+// });
