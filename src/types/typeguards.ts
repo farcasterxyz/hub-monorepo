@@ -8,6 +8,7 @@ export function isRoot(msg: FC.Message): msg is FC.Root {
 export function isCast(msg: FC.Message): msg is FC.Cast {
   return isCastShort(msg) || isCastDelete(msg) || isCastRecast(msg);
 }
+
 export function isCastShort(msg: FC.Message): msg is FC.CastShort {
   const body = (msg as FC.CastShort).data?.body;
   return (
@@ -56,4 +57,31 @@ export function isSignerAdd(msg: FC.Message): msg is FC.SignerAdd {
 export function isSignerRemove(msg: FC.Message): msg is FC.SignerRemove {
   const body = (msg as FC.SignerRemove).data?.body;
   return body && body.schema === 'farcaster.xyz/schemas/v1/signer-remove' && typeof body.childKey === 'string';
+}
+
+export function isVerification(msg: FC.Message): msg is FC.Verification {
+  return isVerificationAdd(msg) || isVerificationRemove(msg);
+}
+
+export function isVerificationAdd(msg: FC.Message): msg is FC.VerificationAdd {
+  const body = (msg as FC.VerificationAdd).data?.body;
+  return (
+    body &&
+    body.schema === 'farcaster.xyz/schemas/v1/verification-add' &&
+    body.externalSignatureType === 'eip-191-0x45' &&
+    typeof body.externalSignature === 'string' &&
+    typeof body.externalAddressUri === 'string' &&
+    typeof body.claimHash === 'string' &&
+    body.claimHash.length > 0
+  );
+}
+
+export function isVerificationRemove(msg: FC.Message): msg is FC.VerificationRemove {
+  const body = (msg as FC.VerificationRemove).data?.body;
+  return (
+    body &&
+    body.schema === 'farcaster.xyz/schemas/v1/verification-remove' &&
+    typeof body.claimHash === 'string' &&
+    body.claimHash.length > 0
+  );
 }

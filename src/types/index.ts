@@ -1,3 +1,5 @@
+import { ethers } from 'ethers';
+
 /**
  * Message is a generic type that represents any cryptographically signed Message on Farcaster
  *
@@ -21,14 +23,21 @@ export type Message<T = Body> = {
  * @signedAt - the utc unix timestamp at which the message was signed
  * @username - the farcaster username owned by the signer at the time of signature
  */
-type Data<T = Body> = {
+export type Data<T = Body> = {
   body: T;
   rootBlock: number;
   signedAt: number;
   username: string;
 };
 
-type Body = RootBody | CastBody | ReactionBody | SignerAddBody | SignerRemoveBody;
+export type Body =
+  | RootBody
+  | CastBody
+  | ReactionBody
+  | VerificationAddBody
+  | VerificationRemoveBody
+  | SignerAddBody
+  | SignerRemoveBody;
 
 // ===========================
 //  Root Types
@@ -130,6 +139,79 @@ export type ReactionBody = {
 
 export type ReactionType = 'like';
 
+//  ===========================
+//  Verification Types
+//  ===========================
+
+export type Verification = VerificationAdd | VerificationRemove;
+
+/** VerificationAdd message */
+export type VerificationAdd = Message<VerificationAddBody>;
+
+/**
+ * A VerificationAddBody represents a signed claim between a Farcaster account and an external key pair (i.e. an Ethereum key pair).
+ *
+ * @externalAddressUri - the Ethereum address that is part of the verification claim.
+ * @claimHash - the hash of the verification claim.
+ * @externalSignature - the signature of the hash of the verification claim, signed by the external key pair.
+ * @externalSignatureType - type of signature from set of supported types (see version 0x45 of https://eips.ethereum.org/EIPS/eip-191 for 'eip-191-0x45')
+ * @schema -
+ */
+export type VerificationAddBody = {
+  externalAddressUri: URI;
+  claimHash: string;
+  externalSignature: string;
+  externalSignatureType: 'eip-191-0x45';
+  schema: 'farcaster.xyz/schemas/v1/verification-add';
+};
+
+/**
+ * A VerificationAddFactoryTransientParams is passed to the VerificationAdd factory
+ *
+ * @privateKey - the private key for signing the Verification message
+ * @ethWallet - the wallet to generate and/or sign the claimHash
+ */
+export type VerificationAddFactoryTransientParams = {
+  privateKey?: Uint8Array;
+  ethWallet?: ethers.Wallet;
+};
+
+/**
+ * A VerificationClaim is an object that includes both the farcaster account and external address
+ *
+ * @username - the farcaster username
+ * @externalAddressUri - URI of the external address (i.e. Ethereum address)
+ */
+export type VerificationClaim = {
+  username: string; // TODO: make this account rather than username when we migrate the rest of the codebase to that
+  externalAddressUri: URI; // TODO: constrain this farther
+};
+
+/** VerificationRemove message */
+export type VerificationRemove = Message<VerificationRemoveBody>;
+
+/**
+ * A VerificationRemoveBody represents the deletion of a verification
+ *
+ * @claimHash - hash of the verification claim
+ * @schema -
+ */
+export type VerificationRemoveBody = {
+  claimHash: string;
+  schema: 'farcaster.xyz/schemas/v1/verification-remove';
+};
+
+/**
+ * A VerificationRemoveFactoryTransientParams is passed to the VerificationRemove factory
+ *
+ * @privateKey - the private key for signing the Verification message
+ * @externalAddressUri - the external address to generate the claimHash
+ */
+export type VerificationRemoveFactoryTransientParams = {
+  privateKey?: Uint8Array;
+  externalAddressUri?: string;
+};
+
 // ===========================
 // Signer Types
 // ===========================
@@ -182,21 +264,21 @@ export enum HashAlgorithm {
 //  URI Types
 // ===========================
 
-type URI = FarcasterURI | ChainURI | HTTPURI;
+export type URI = FarcasterURI | ChainURI | HTTPURI;
 
 /**
  * A FarcasterURI points to any Farcaster message and is structured as farcaster://<user>/<type>:<id>
  * e.g. A Cast from Alice becomes farcaster://alice/cast-new:0x4eCCe9ba252fC2a05F2A7B0a55943C756eCDA6b9
  */
-type FarcasterURI = string;
+export type FarcasterURI = string;
 
 /**
  * A Chain URI points to on-chain assets using the CAIP-20 standard with a `chain://` prefix.
  * e.g. An NFT becomes chain://eip155:1/erc721:0xaba7161a7fb69c88e16ed9f455ce62b791ee4d03/7894
  */
-type ChainURI = string;
+export type ChainURI = string;
 
-type HTTPURI = string;
+export type HTTPURI = string;
 
 // ===========================
 //  Misc Types

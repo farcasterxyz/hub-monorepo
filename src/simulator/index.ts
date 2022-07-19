@@ -1,8 +1,8 @@
 import FCNode, { InstanceName } from '~/node';
 import Faker from 'faker';
 import Debugger from '~/debugger';
-import { Cast, Reaction, Root } from '~/types';
-import { isReaction, isRoot } from '~/types/typeguards';
+import { Message } from '~/types';
+import { isReaction, isRoot, isCast, isVerification } from '~/types/typeguards';
 
 abstract class Simulator {
   nodes: Map<InstanceName, FCNode>;
@@ -47,15 +47,19 @@ abstract class Simulator {
   }
 
   /** Pushes message to a node after optional delay */
-  broadcastToNode(message: Root | Cast | Reaction, node: FCNode, delay?: number) {
+  broadcastToNode(message: Message, node: FCNode, delay?: number) {
     setTimeout(() => {
       Debugger.printBroadcast(message, node);
       if (isRoot(message)) {
         node.mergeRoot(message);
       } else if (isReaction(message)) {
         node.mergeReaction(message);
-      } else {
+      } else if (isCast(message)) {
         node.mergeCast(message);
+      } else if (isVerification(message)) {
+        node.mergeVerification(message);
+      } else {
+        // TODO: decide how to handle unknown message type
       }
     }, delay || 0);
   }
