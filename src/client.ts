@@ -1,5 +1,5 @@
 import * as FC from '~/types';
-import { hashMessage, signEd25519, convertToHex } from '~/utils';
+import { hashMessage, signEd25519, convertToHex, hashFCObject } from '~/utils';
 
 class Client {
   publicKey: Uint8Array;
@@ -18,115 +18,135 @@ class Client {
     })();
   }
 
-  async makeRoot(ethBlockNum: number, ethblockHash: string): Promise<FC.Root> {
-    const item = {
-      data: {
-        body: {
-          blockHash: ethblockHash,
-          schema: 'farcaster.xyz/schemas/v1/root' as const,
-        },
-        rootBlock: ethBlockNum,
-        signedAt: Date.now(),
-        username: this.username,
-      },
+  async makeMessage(data: FC.Data): Promise<FC.Message> {
+    const message = {
+      data,
       hash: '',
       signature: '',
       signer: await convertToHex(this.publicKey),
     };
+    message.hash = await hashMessage(message);
+    message.signature = await signEd25519(message.hash, this.privateKey);
+    return message;
+  }
 
-    item.hash = await hashMessage(item);
-    item.signature = await signEd25519(item.hash, this.privateKey);
-
-    return item;
+  async makeRoot(ethBlockNum: number, ethblockHash: string): Promise<FC.Root> {
+    const message = await this.makeMessage({
+      body: {
+        blockHash: ethblockHash,
+        schema: 'farcaster.xyz/schemas/v1/root',
+      },
+      rootBlock: ethBlockNum,
+      signedAt: Date.now(),
+      username: this.username,
+    });
+    return message as FC.Root;
   }
 
   async makeCastShort(text: string, root: FC.Root): Promise<FC.CastShort> {
     const schema = 'farcaster.xyz/schemas/v1/cast-short' as const;
     const signedAt = Date.now();
-    const signer = await convertToHex(this.publicKey);
 
     const rootBlock = root.data.rootBlock;
 
     const embed = { items: [] };
 
-    const item = {
-      data: {
-        body: {
-          embed,
-          text: text,
-          schema,
-        },
-        rootBlock,
-        signedAt,
-        username: this.username,
+    const messageData = {
+      body: {
+        embed,
+        text,
+        schema,
       },
-      hash: '',
-      signature: '',
-      signer,
+      rootBlock,
+      signedAt,
+      username: this.username,
     };
 
-    item.hash = await hashMessage(item);
-    item.signature = await signEd25519(item.hash, this.privateKey);
-    return item;
+    const message = await this.makeMessage(messageData);
+    return message as FC.CastShort;
   }
 
   async makeCastDelete(targetCast: FC.Cast, root: FC.Root): Promise<FC.CastDelete> {
     const schema = 'farcaster.xyz/schemas/v1/cast-delete' as const;
     const signedAt = Date.now();
-    const signer = await convertToHex(this.publicKey);
 
     const rootBlock = root.data.rootBlock;
 
-    const item = {
-      data: {
-        body: {
-          targetHash: targetCast.hash,
-          schema,
-        },
-        rootBlock,
-        signedAt,
-        username: this.username,
+    const messageData = {
+      body: {
+        targetHash: targetCast.hash,
+        schema,
       },
-      hash: '',
-      signature: '',
-      signer,
+      rootBlock,
+      signedAt,
+      username: this.username,
     };
+    const message = await this.makeMessage(messageData);
 
-    item.hash = await hashMessage(item);
-    item.signature = await signEd25519(item.hash, this.privateKey);
-
-    return item;
+    return message as FC.CastDelete;
   }
 
   async makeReaction(targetCast: FC.CastShort, root: FC.Root, active = true): Promise<FC.Reaction> {
     const schema = 'farcaster.xyz/schemas/v1/reaction' as const;
     const signedAt = Date.now();
-    const signer = await convertToHex(this.publicKey);
 
     const rootBlock = root.data.rootBlock;
 
-    const item = {
-      data: {
-        body: {
-          active,
-          // TODO: When we implement URI generation, this should be generated from the cast
-          targetUri: targetCast.hash,
-          type: 'like' as const,
-          schema,
-        },
-        rootBlock,
-        signedAt,
-        username: this.username,
+    const messageData = {
+      body: {
+        active,
+        // TODO: When we implement URI generation, this should be generated from the cast
+        targetUri: targetCast.hash,
+        type: 'like' as const,
+        schema,
       },
-      hash: '',
-      signature: '',
-      signer,
+      rootBlock,
+      signedAt,
+      username: this.username,
     };
+    const message = await this.makeMessage(messageData);
+    return message as FC.Reaction;
+  }
 
-    item.hash = await hashMessage(item);
-    item.signature = await signEd25519(item.hash, this.privateKey);
+  async makeVerificationClaimHash(externalAddressUri: FC.URI): Promise<string> {
+    return await hashFCObject({
+      username: this.username,
+      externalAddressUri,
+    });
+  }
 
-    return item;
+  async makeVerificationAdd(
+    externalAddressUri: FC.URI,
+    claimHash: string,
+    externalSignature: string,
+    root: FC.Root
+  ): Promise<FC.VerificationAdd> {
+    const message = await this.makeMessage({
+      body: {
+        schema: 'farcaster.xyz/schemas/v1/verification-add',
+        externalAddressUri,
+        externalSignature,
+        externalSignatureType: 'eip-191-0x45',
+        claimHash,
+      },
+      rootBlock: root.data.rootBlock,
+      signedAt: Date.now(),
+      username: this.username,
+    });
+    return message as FC.VerificationAdd;
+  }
+
+  async makeVerificationRemove(verificationAdd: FC.VerificationAdd, root: FC.Root): Promise<FC.VerificationRemove> {
+    const message = await this.makeMessage({
+      body: {
+        schema: 'farcaster.xyz/schemas/v1/verification-remove',
+        claimHash: verificationAdd.data.body.claimHash,
+      },
+      rootBlock: root.data.rootBlock,
+      signedAt: Date.now(),
+      username: this.username,
+    });
+    return message as FC.VerificationRemove;
   }
 }
 

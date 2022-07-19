@@ -1,8 +1,19 @@
 import { Factory } from 'fishery';
 import Faker from 'faker';
 import { ethers } from 'ethers';
-import { CastShort, Root, CastRecast, CastDelete, Reaction } from '~/types';
-import { convertToHex, hashMessage, signEd25519 } from '~/utils';
+import {
+  CastShort,
+  Root,
+  CastRecast,
+  CastDelete,
+  Reaction,
+  VerificationAdd,
+  VerificationRemove,
+  VerificationClaim,
+  VerificationRemoveFactoryTransientParams,
+  VerificationAddFactoryTransientParams,
+} from '~/types';
+import { convertToHex, hashMessage, signEd25519, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
 
 /**
@@ -194,6 +205,106 @@ export const Factories = {
       signer: '',
     };
   }),
+
+  /** Generate a VerificationAdd message */
+  VerificationAdd: Factory.define<VerificationAdd, VerificationAddFactoryTransientParams, VerificationAdd>(
+    ({ onCreate, transientParams }) => {
+      const { privateKey = ed.utils.randomPrivateKey(), ethWallet = ethers.Wallet.createRandom() } = transientParams;
+
+      onCreate(async (castProps) => {
+        /** Generate claimHash is missing */
+        if (!castProps.data.body.claimHash) {
+          const verificationClaim: VerificationClaim = {
+            username: castProps.data.username,
+            externalAddressUri: castProps.data.body.externalAddressUri,
+          };
+          castProps.data.body.claimHash = await hashFCObject(verificationClaim);
+        }
+
+        /** Generate externalSignature if missing */
+        if (!castProps.data.body.externalSignature) {
+          castProps.data.body.externalSignature = await ethWallet.signMessage(castProps.data.body.claimHash);
+        }
+
+        /** Complete envelope */
+        const publicKey = await ed.getPublicKey(privateKey);
+        const hash = await hashMessage(castProps);
+        castProps.hash = hash;
+
+        castProps.signer = await convertToHex(publicKey);
+
+        const signature = await signEd25519(castProps.hash, privateKey);
+        castProps.signature = signature;
+
+        return castProps;
+      });
+
+      return {
+        data: {
+          body: {
+            externalAddressUri: ethWallet.address,
+            claimHash: '',
+            externalSignature: '',
+            externalSignatureType: 'eip-191-0x45',
+            schema: 'farcaster.xyz/schemas/v1/verification-add' as const,
+          },
+          rootBlock: Faker.datatype.number(10_000),
+          signedAt: Faker.time.recent(),
+          username: Faker.name.firstName().toLowerCase(),
+        },
+        hash: '',
+        signature: '',
+        signer: '',
+      };
+    }
+  ),
+
+  /** Generate a VerificationRemove message */
+  VerificationRemove: Factory.define<VerificationRemove, VerificationRemoveFactoryTransientParams, VerificationRemove>(
+    ({ onCreate, transientParams }) => {
+      const {
+        privateKey = ed.utils.randomPrivateKey(),
+        externalAddressUri = Faker.datatype.hexaDecimal(40).toLowerCase(),
+      } = transientParams;
+
+      onCreate(async (castProps) => {
+        /** Generate claimHash is missing */
+        if (!castProps.data.body.claimHash) {
+          const verificationClaim: VerificationClaim = {
+            username: castProps.data.username,
+            externalAddressUri,
+          };
+          castProps.data.body.claimHash = await hashFCObject(verificationClaim);
+        }
+
+        const publicKey = await ed.getPublicKey(privateKey);
+        const hash = await hashMessage(castProps);
+        castProps.hash = hash;
+
+        castProps.signer = await convertToHex(publicKey);
+
+        const signature = await signEd25519(castProps.hash, privateKey);
+        castProps.signature = signature;
+
+        return castProps;
+      });
+
+      return {
+        data: {
+          body: {
+            claimHash: '',
+            schema: 'farcaster.xyz/schemas/v1/verification-remove' as const,
+          },
+          rootBlock: Faker.datatype.number(10_000),
+          signedAt: Faker.time.recent(),
+          username: Faker.name.firstName().toLowerCase(),
+        },
+        hash: '',
+        signature: '',
+        signer: '',
+      };
+    }
+  ),
 };
 
 interface EthAddress {

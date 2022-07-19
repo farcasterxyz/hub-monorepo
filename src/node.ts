@@ -1,4 +1,4 @@
-import { Cast, Root, Reaction } from '~/types';
+import { Cast, Root, Reaction, Verification } from '~/types';
 import Engine from '~/engine';
 import { Result } from 'neverthrow';
 
@@ -123,6 +123,10 @@ class FCNode {
 
   async mergeReaction(reaction: Reaction): Promise<Result<void, string>> {
     return await this.engine.mergeReaction(reaction);
+  }
+
+  async mergeVerification(verification: Verification): Promise<Result<void, string>> {
+    return await this.engine.mergeVerification(verification);
   }
 }
 

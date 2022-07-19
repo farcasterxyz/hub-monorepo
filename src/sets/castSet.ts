@@ -63,7 +63,7 @@ class CastSet {
 
     const targetHash = message.data.body.targetHash;
     if (this._deletes.get(targetHash)) {
-      return err('CastSet.add: delete is already present');
+      return err('CastSet.delete: delete is already present');
     }
 
     if (this._adds.get(targetHash)) {

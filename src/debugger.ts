@@ -2,8 +2,16 @@ import FCNode, { NodeDirectory } from '~/node';
 import Table from 'cli-table3';
 import logUpdate from 'log-update';
 import colors from 'colors/safe';
-import { isCastDelete, isCastShort, isReaction, isRoot } from '~/types/typeguards';
-import { Cast, Reaction, Root } from '~/types';
+import {
+  isCastDelete,
+  isCastShort,
+  isReaction,
+  isRoot,
+  isVerification,
+  isVerificationAdd,
+  isVerificationRemove,
+} from '~/types/typeguards';
+import { Message } from '~/types';
 
 const rootEmoji = String.fromCodePoint(0x1fab4);
 const castEmoji = String.fromCodePoint(0x1f4e2);
@@ -64,7 +72,7 @@ const Debugger = {
     Debugger._render();
   },
 
-  printBroadcast: (message: Cast | Reaction | Root, node: FCNode): void => {
+  printBroadcast: (message: Message, node: FCNode): void => {
     const username = personEmoji + ' ' + Debugger._padString(message.data.username, 5);
     const hash = message.hash.slice(message.hash.length - 3);
     const nodeName = nodeEmoji + ' ' + Debugger._padString(node.name.toLowerCase(), 6);
@@ -89,6 +97,18 @@ const Debugger = {
       const typeName = message.data.body.active ? 'rct-add' : 'rct-rem';
       type = Debugger._padString(typeName, 7);
       data = '0x' + message.data.body.targetUri.slice(message.data.body.targetUri.length - 3);
+    }
+
+    if (isVerificationAdd(message)) {
+      type = Debugger._padString('ver-add', 7);
+    }
+
+    if (isVerificationRemove(message)) {
+      type = Debugger._padString('ver-rem', 7);
+    }
+
+    if (isVerification(message)) {
+      data = message.data.body.claimHash.slice(0, 7);
     }
 
     let outLine = `${username} > ${nodeName} | ${type} | ${hash} `;
