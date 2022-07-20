@@ -115,7 +115,7 @@ class SplitBrainSimulator extends Simulator {
     const cs1 = await client.makeCastShort(Faker.lorem.words(3), root1);
     const cs2 = await client.makeCastShort(Faker.lorem.words(3), root1);
     const cs3 = await client.makeCastShort(Faker.lorem.words(3), root1);
-    const cd1 = await client.makeCastDelete(cs2, root1);
+    const cd1 = await client.makeCastRemove(cs2, root1);
     const cs4 = await client.makeCastShort(Faker.lorem.words(3), root1);
     const ra1 = await client.makeReaction(cs4, root1);
     const ru1 = await client.makeReaction(cs4, root1, false);

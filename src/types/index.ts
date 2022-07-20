@@ -63,10 +63,10 @@ export type CastShort = Message<CastShortBody>;
 /** A CastReact is a share of an existing cast-short from any user */
 export type CastRecast = Message<CastRecastBody>;
 
-/** A CastDelete is a delete of an existing cast from the same user */
-export type CastDelete = Message<CastDeleteBody>;
+/** A CastRemove is a remove of an existing cast from the same user */
+export type CastRemove = Message<CastRemoveBody>;
 
-export type CastBody = CastShortBody | CastDeleteBody | CastRecastBody;
+export type CastBody = CastShortBody | CastRemoveBody | CastRecastBody;
 
 /**
  * Body of a CastShort Message
@@ -88,14 +88,14 @@ type Embed = {
 };
 
 /**
- * A CastDeleteBody indicates that a previous Cast should be removed from the feed.
+ * A CastRemoveBody indicates that a previous Cast should be removed from the feed.
  *
- * @targetHash - the hash of the cast that is beign deleted.
+ * @targetHash - the hash of the cast that is being removed.
  */
-export type CastDeleteBody = {
+export type CastRemoveBody = {
   // TODO: is there any benefit to making this a URI, like a recast?
   targetHash: string;
-  schema: 'farcaster.xyz/schemas/v1/cast-delete';
+  schema: 'farcaster.xyz/schemas/v1/cast-remove';
 };
 
 /**

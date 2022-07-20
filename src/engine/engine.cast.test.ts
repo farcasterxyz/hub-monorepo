@@ -314,11 +314,11 @@ describe('mergeCast', () => {
     });
   });
 
-  describe('cast-delete merge: ', () => {
+  describe('cast-remove merge: ', () => {
     test('succeeds and removes cast if known', async () => {
       expect((await engine.mergeCast(cast)).isOk()).toBe(true);
 
-      const castDelete = await Factories.CastDelete.create(
+      const castRemove = await Factories.CastRemove.create(
         {
           data: {
             rootBlock: root.data.rootBlock,
@@ -331,14 +331,14 @@ describe('mergeCast', () => {
         transient
       );
 
-      expect((await engine.mergeCast(castDelete)).isOk()).toBe(true);
+      expect((await engine.mergeCast(castRemove)).isOk()).toBe(true);
       expect(subject()).toEqual([]);
     });
 
     test('succeeds and does nothing if cast is unknown', async () => {
       expect((await engine.mergeCast(cast)).isOk()).toBe(true);
 
-      const castDelete = await Factories.CastDelete.create(
+      const castRemove = await Factories.CastRemove.create(
         {
           data: {
             rootBlock: root.data.rootBlock,
@@ -348,11 +348,11 @@ describe('mergeCast', () => {
         transient
       );
 
-      expect((await engine.mergeCast(castDelete)).isOk()).toBe(true);
+      expect((await engine.mergeCast(castRemove)).isOk()).toBe(true);
       expect(subject()).toEqual([cast]);
     });
 
-    // test('fails if delete timestamp is < cast timestamp', async () => {});
+    // test('fails if remove timestamp is < cast timestamp', async () => {});
   });
 
   describe('cast-recast merge: ', () => {

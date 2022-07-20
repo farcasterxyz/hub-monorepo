@@ -66,8 +66,8 @@ class Client {
     return message as FC.CastShort;
   }
 
-  async makeCastDelete(targetCast: FC.Cast, root: FC.Root): Promise<FC.CastDelete> {
-    const schema = 'farcaster.xyz/schemas/v1/cast-delete' as const;
+  async makeCastRemove(targetCast: FC.Cast, root: FC.Root): Promise<FC.CastRemove> {
+    const schema = 'farcaster.xyz/schemas/v1/cast-remove' as const;
     const signedAt = Date.now();
 
     const rootBlock = root.data.rootBlock;
@@ -83,7 +83,7 @@ class Client {
     };
     const message = await this.makeMessage(messageData);
 
-    return message as FC.CastDelete;
+    return message as FC.CastRemove;
   }
 
   async makeReaction(targetCast: FC.CastShort, root: FC.Root, active = true): Promise<FC.Reaction> {

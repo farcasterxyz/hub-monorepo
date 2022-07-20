@@ -6,7 +6,7 @@ export function isRoot(msg: FC.Message): msg is FC.Root {
 }
 
 export function isCast(msg: FC.Message): msg is FC.Cast {
-  return isCastShort(msg) || isCastDelete(msg) || isCastRecast(msg);
+  return isCastShort(msg) || isCastRemove(msg) || isCastRecast(msg);
 }
 
 export function isCastShort(msg: FC.Message): msg is FC.CastShort {
@@ -20,9 +20,9 @@ export function isCastShort(msg: FC.Message): msg is FC.CastShort {
   );
 }
 
-export function isCastDelete(msg: FC.Message): msg is FC.CastDelete {
-  const body = (msg as FC.CastDelete).data?.body;
-  return body && body.schema === 'farcaster.xyz/schemas/v1/cast-delete' && typeof body.targetHash === 'string';
+export function isCastRemove(msg: FC.Message): msg is FC.CastRemove {
+  const body = (msg as FC.CastRemove).data?.body;
+  return body && body.schema === 'farcaster.xyz/schemas/v1/cast-remove' && typeof body.targetHash === 'string';
 }
 
 export function isCastRecast(msg: FC.Message): msg is FC.CastRecast {

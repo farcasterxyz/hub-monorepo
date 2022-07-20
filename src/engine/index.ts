@@ -111,7 +111,7 @@ class Engine {
     return castSet ? castSet.get(hash) : undefined;
   }
 
-  /** Get hashes of undeleted cast messages for a username */
+  /** Get hashes of unremoved cast messages for a username */
   getCastHashes(username: string): string[] {
     const castSet = this._casts.get(username);
     return castSet ? castSet.getHashes() : [];
@@ -436,7 +436,7 @@ class Engine {
       }
     }
 
-    // TODO: For delete cast, validate hash length.
+    // TODO: For remove cast, validate hash length.
 
     return ok(undefined);
   }
