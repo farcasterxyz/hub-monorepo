@@ -240,14 +240,6 @@ export type SignerRemoveBody = {
   schema: 'farcaster.xyz/schemas/v1/signer-remove';
 };
 
-// TODO: decide if I need this
-export type EdgeMsg = {
-  hash: string;
-  parentPubkey: string;
-  childPubkey: string;
-  type: 'SignerAdd' | 'SignerRemove';
-};
-
 // TODO: use this more broadly
 export enum SignatureAlgorithm {
   EcdsaSecp256k1 = 'ecdsa-secp256k1',

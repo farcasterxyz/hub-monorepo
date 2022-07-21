@@ -1,5 +1,5 @@
 import { Result, ok, err } from 'neverthrow';
-import { EdgeMsg, SignerAdd, SignerEdge, SignerMessage, SignerRemove } from '~/types';
+import { SignerAdd, SignerMessage, SignerRemove } from '~/types';
 import { isSignerAdd, isSignerRemove } from '~/types/typeguards';
 import { hashCompare } from '~/utils';
 
@@ -10,8 +10,6 @@ import { hashCompare } from '~/utils';
 class SignerSet {
   private _vertexAdds: Set<string>; // pubKey
   private _vertexRemoves: Set<string>; // pubKey
-  // private _edgeAdds: Map<string, Map<string, string>>; // <parentKey, <childKey, SignerAdd hash>>
-  // private _edgeRemoves: Map<string, Map<string, string>>; // <parentKey, <childKey, SignerAdd hash>>
   private _edgeAdds: Map<string, string>; // <<parentKey, childKey>, hash>
   private _edgeRemoves: Map<string, string>; // <<parentKey, childKey>, hash>
   private _messages: Map<string, SignerMessage>; // message hash => SignerAdd | SignerRemove
@@ -31,71 +29,8 @@ class SignerSet {
   }
 
   private get _edges() {
-    // const edgesUnionMap: Map<string, Map<string, string>> = new Map();
-    // [this._edgeAdds, this._edgeRemoves].forEach((edgesMap) => {
-    //   edgesMap.forEach((childKeyMap, parentKey) => {
-    //     edgesUnionMap.set(parentKey, new Map([...(edgesUnionMap.get(parentKey) || new Map()), ...childKeyMap]));
-    //   });
-    // });
-    // return edgesUnionMap;
     return new Map([...this._edgeAdds, ...this._edgeRemoves]);
   }
-
-  // private get _edgeAddsByChild() {
-  //   const byChild = new Map<string, Set<string>>();
-  //   for (const edgeKey of this._edgeAdds.keys()) {
-  //     const { childPubKey } = this.getPubKeysFromEdgeKey(edgeKey);
-  //     const existingSet = byChild.get(childPubKey) || new Set();
-  //     existingSet.add(edgeKey);
-  //     byChild.set(childPubKey, existingSet);
-  //   }
-  //   return byChild;
-  // }
-
-  // private get _edgeRemovesByChild() {
-  //   const byChild = new Map<string, Set<string>>();
-  //   for (const edgeKey of this._edgeRemoves.keys()) {
-  //     const { childPubKey } = this.getPubKeysFromEdgeKey(edgeKey);
-  //     const existingSet = byChild.get(childPubKey) || new Set();
-  //     existingSet.add(edgeKey);
-  //     byChild.set(childPubKey, existingSet);
-  //   }
-  //   return byChild;
-  // }
-
-  // private get _edgesByChild() {
-  //   return new Map([...this._edgeAddsByChild, ...this._edgeRemovesByChild]);
-  // }
-
-  // private get _edgesByParent() {
-  //   const byParent = new Map<string, Set<string>>();
-  //   for (const edgeKey of this._edges.keys()) {
-  //     const { parentPubKey } = this.getPubKeysFromEdgeKey(edgeKey);
-  //     const existingSet = byParent.get(parentPubKey) || new Set();
-  //     existingSet.add(edgeKey);
-  //     byParent.set(parentPubKey, existingSet);
-  //   }
-  //   return byParent;
-  // }
-
-  // Invert edges map (i.e. _edgeAdds, _edgeRemoves) from <parent, <child, hash>> to <child, <parent, hash>>
-  // private _getInvertedEdges(edgesMap: Map<string, Map<string, string>>) {
-  //   const invertedMap: Map<string, Map<string, string>> = new Map();
-  //   edgesMap.forEach((childKeyMap, parentKey) => {
-  //     childKeyMap.forEach((hash, childKey) => {
-  //       invertedMap.set(childKey, new Map([...(invertedMap.get(childKey) || new Map()), [parentKey, hash]]));
-  //     });
-  //   });
-  //   return invertedMap;
-  // }
-
-  // getEdgeAddsParentPubKeyOfChild(childKey: string) {
-  //   for (const edgeKey of this._edgeAdds.keys()) {
-  //     const { parentPubKey, childPubKey } = this.getPubKeysFromEdgeKey(edgeKey);
-  //     if (childPubKey === childKey) return parentPubKey;
-  //   }
-  //   return null;
-  // }
 
   getEdgeKey(parentPubKey: string, childPubKey: string): string {
     return [parentPubKey, childPubKey].toString();
