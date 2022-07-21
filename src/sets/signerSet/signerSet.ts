@@ -207,7 +207,7 @@ class SignerSet {
 
       // If child exists in vAdds
       else if (this._vertexAdds.has(childPubKey)) {
-        // TODO: make this nicer
+        // TODO: make this more robust
         const [existingEdgeKey] = this._getEdgesByChild(this._edgeAdds).get(childPubKey) || new Set();
         if (!existingEdgeKey) {
           return err('SignerSet.add: edgeAdds is in bad state');
