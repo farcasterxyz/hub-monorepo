@@ -10,13 +10,13 @@ import { hashCompare } from '~/utils';
 class SignerSet {
   private _vertexAdds: Set<string>; // pubKey
   private _vertexRemoves: Set<string>; // pubKey
-  private _edgeAdds: Map<string, string>; // <<parentKey, childKey>, hash>
-  private _edgeRemoves: Map<string, string>; // <<parentKey, childKey>, hash>
+  private _edgeAdds: Map<string, string>; // <parentKey, childKey>, hash
+  private _edgeRemoves: Map<string, string>; // <parentKey, childKey>, hash
   private _messages: Map<string, SignerMessage>; // message hash => SignerAdd | SignerRemove
-  private _custodySigners: Set<string>; // TODO: rename?
+  private _custodySigners: Set<string>; // custodyPubKey
 
   constructor() {
-    this._custodySigners = new Set<string>();
+    this._custodySigners = new Set();
     this._vertexAdds = new Set();
     this._vertexRemoves = new Set();
     this._edgeAdds = new Map();
