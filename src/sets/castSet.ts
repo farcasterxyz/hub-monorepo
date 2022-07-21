@@ -1,19 +1,19 @@
 import { Result, ok, err } from 'neverthrow';
-import { Cast, CastDelete, CastRecast, CastShort } from '~/types';
-import { isCastDelete, isCastRecast, isCastShort } from '~/types/typeguards';
+import { Cast, CastRemove, CastRecast, CastShort } from '~/types';
+import { isCastRemove, isCastRecast, isCastShort } from '~/types/typeguards';
 
 class CastSet {
   private _adds: Map<string, CastShort | CastRecast>;
-  private _deletes: Map<string, CastDelete>;
+  private _removes: Map<string, CastRemove>;
 
   constructor() {
     this._adds = new Map();
-    this._deletes = new Map();
+    this._removes = new Map();
   }
 
   /** Get a cast by its hash */
-  get(hash: string): CastShort | CastRecast | CastDelete | undefined {
-    return this._adds.get(hash) || this._deletes.get(hash);
+  get(hash: string): CastShort | CastRecast | CastRemove | undefined {
+    return this._adds.get(hash) || this._removes.get(hash);
   }
 
   /** Get hashes of all active casts */
@@ -24,13 +24,13 @@ class CastSet {
   /** Get hashes of all casts */
   getAllHashes(): string[] {
     const keys = this.getHashes();
-    keys.push(...Array.from(this._deletes.keys()));
+    keys.push(...Array.from(this._removes.keys()));
     return keys;
   }
 
   merge(cast: Cast): Result<void, string> {
-    if (isCastDelete(cast)) {
-      return this.delete(cast);
+    if (isCastRemove(cast)) {
+      return this.remove(cast);
     }
 
     if (isCastRecast(cast) || isCastShort(cast)) {
@@ -46,8 +46,8 @@ class CastSet {
   private add(message: CastShort | CastRecast): Result<void, string> {
     // TODO: Validate the type of message.
 
-    if (this._deletes.get(message.hash)) {
-      return err('CastSet.add: message was deleted');
+    if (this._removes.get(message.hash)) {
+      return err('CastSet.add: message was removed');
     }
 
     if (this._adds.get(message.hash)) {
@@ -58,19 +58,19 @@ class CastSet {
     return ok(undefined);
   }
 
-  private delete(message: CastDelete): Result<void, string> {
+  private remove(message: CastRemove): Result<void, string> {
     // TODO: runtime type checks.
 
     const targetHash = message.data.body.targetHash;
-    if (this._deletes.get(targetHash)) {
-      return err('CastSet.delete: delete is already present');
+    if (this._removes.get(targetHash)) {
+      return err('CastSet.remove: remove is already present');
     }
 
     if (this._adds.get(targetHash)) {
       this._adds.delete(targetHash);
     }
 
-    this._deletes.set(targetHash, message);
+    this._removes.set(targetHash, message);
     return ok(undefined);
   }
 
@@ -82,13 +82,13 @@ class CastSet {
     return Array.from(this._adds.values());
   }
 
-  _getDeletes(): CastDelete[] {
-    return Array.from(this._deletes.values());
+  _getRemoves(): CastRemove[] {
+    return Array.from(this._removes.values());
   }
 
   _reset(): void {
     this._adds = new Map();
-    this._deletes = new Map();
+    this._removes = new Map();
   }
 }
 

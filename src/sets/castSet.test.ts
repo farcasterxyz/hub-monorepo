@@ -1,6 +1,6 @@
 import { Factories } from '~/factories';
 import CastSet from '~/sets/castSet';
-import { CastDelete, CastShort } from '~/types';
+import { CastRemove, CastShort } from '~/types';
 
 const set = new CastSet();
 
@@ -8,14 +8,14 @@ describe('merge', () => {
   let castShort1: CastShort;
   let castShort2: CastShort;
 
-  let castDelete1: CastDelete;
-  let castDelete2: CastDelete;
+  let castRemove1: CastRemove;
+  let castRemove2: CastRemove;
 
   beforeAll(async () => {
     castShort1 = await Factories.Cast.create();
     castShort2 = await Factories.Cast.create();
 
-    castDelete1 = await Factories.CastDelete.create({
+    castRemove1 = await Factories.CastRemove.create({
       data: {
         body: {
           targetHash: castShort1.hash,
@@ -23,7 +23,7 @@ describe('merge', () => {
       },
     });
 
-    castDelete2 = await Factories.CastDelete.create({
+    castRemove2 = await Factories.CastRemove.create({
       data: {
         body: {
           targetHash: castShort2.hash,
@@ -36,7 +36,7 @@ describe('merge', () => {
     set._reset();
   });
 
-  describe('cast-add', () => {
+  describe('add', () => {
     const subject = () => set._getAdds();
 
     test('succeeds with a valid add message', async () => {
@@ -51,8 +51,8 @@ describe('merge', () => {
       expect(new Set(subject())).toEqual(new Set([castShort2, castShort1]));
     });
 
-    test('fails if the add was already deleted', async () => {
-      expect(set.merge(castDelete1).isOk()).toBe(true);
+    test('fails if the add was already removed', async () => {
+      expect(set.merge(castRemove1).isOk()).toBe(true);
       expect(set.merge(castShort1).isOk()).toBe(false);
       expect(subject()).toEqual([]);
     });
@@ -66,34 +66,34 @@ describe('merge', () => {
     // test('fails with an incorrect message type', async () => {});
   });
 
-  describe('cast-delete', () => {
-    const subject = () => set._getDeletes();
+  describe('remove', () => {
+    const subject = () => set._getRemoves();
 
     test("succeeds even if the add message doesn't exist", async () => {
       expect(set._getAdds()).toEqual([]);
-      expect(set.merge(castDelete1).isOk()).toBe(true);
-      expect(subject()).toEqual([castDelete1]);
+      expect(set.merge(castRemove1).isOk()).toBe(true);
+      expect(subject()).toEqual([castRemove1]);
     });
 
-    test('succeeds with multiple delete messages', async () => {
+    test('succeeds with multiple remove messages', async () => {
       expect(set._getAdds()).toEqual([]);
-      expect(set.merge(castDelete1).isOk()).toBe(true);
-      expect(set.merge(castDelete2).isOk()).toBe(true);
-      expect(subject()).toEqual([castDelete1, castDelete2]);
+      expect(set.merge(castRemove1).isOk()).toBe(true);
+      expect(set.merge(castRemove2).isOk()).toBe(true);
+      expect(subject()).toEqual([castRemove1, castRemove2]);
     });
 
     test('succeeds and removes the add message if it exists', async () => {
       expect(set.merge(castShort1).isOk()).toBe(true);
-      expect(set.merge(castDelete1).isOk()).toBe(true);
+      expect(set.merge(castRemove1).isOk()).toBe(true);
       expect(set._getAdds()).toEqual([]);
-      expect(subject()).toEqual([castDelete1]);
+      expect(subject()).toEqual([castRemove1]);
     });
 
-    test('fails if the same delete message is added twice', async () => {
-      expect(set.merge(castDelete1).isOk()).toBe(true);
-      expect(set.merge(castDelete1).isOk()).toBe(false);
+    test('fails if the same remove message is added twice', async () => {
+      expect(set.merge(castRemove1).isOk()).toBe(true);
+      expect(set.merge(castRemove1).isOk()).toBe(false);
       expect(set._getAdds()).toEqual([]);
-      expect(subject()).toEqual([castDelete1]);
+      expect(subject()).toEqual([castRemove1]);
     });
 
     // test('fails with an incorrect message type', async () => {});
