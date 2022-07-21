@@ -66,6 +66,17 @@ class SignerSet {
     return ok(undefined);
   }
 
+  mergeSignerRemove(message: SignerRemove): Result<void, string> {
+    const parentPubKey = message.signer;
+    const childPubKey = message.data.body.childKey;
+
+    const res = this._remove(parentPubKey, childPubKey);
+    if (res.isErr()) return res;
+
+    this._messages.set(message.hash, message);
+    return ok(undefined);
+  }
+
   addCustody(custodySignerPubkey: string): Result<void, string> {
     if (this._custodySigners.has(custodySignerPubkey)) {
       // idempotent
@@ -106,7 +117,7 @@ class SignerSet {
     const edgeKey = this.getEdgeKey(parentPubKey, childPubKey);
     // If parent is missing
     if (!this._vertices.has(parentPubKey) && !this._custodySigners.has(parentPubKey)) {
-      return err('SignerSet.add: parent does not exist in graph');
+      return err('SignerSet._add: parent does not exist in graph');
     }
 
     // If (parent, child) exists in eAdds
@@ -142,31 +153,27 @@ class SignerSet {
 
       // If child exists in vAdds
       else if (this._vertexAdds.has(childPubKey)) {
-        // TODO: make this more robust
-        const [existingEdgeKey] = this._getEdgesByChild(this._edgeAdds).get(childPubKey) || new Set();
-        if (!existingEdgeKey) {
-          return err('SignerSet.add: edgeAdds is in bad state');
-        }
-        const existingEdgeHash = this._edgeAdds.get(existingEdgeKey)!;
-        const existingHashIsGreater = hashCompare(existingEdgeHash, hash);
+        (this._getEdgesByChild(this._edgeAdds).get(childPubKey) || new Set()).forEach((existingEdgeKey) => {
+          const existingEdgeHash = this._edgeAdds.get(existingEdgeKey);
+          if (!existingEdgeHash) return err('SignerSet._add: parent edge not found');
 
-        // If existing message wins
-        if (existingHashIsGreater > 0) {
-          // Add (parent, child) to eRems
-          this._edgeRemoves.set(edgeKey, hash);
-          return ok(undefined);
-        }
+          // If existing message wins
+          if (hashCompare(existingEdgeHash, hash) > 0) {
+            // Add (parent, child) to eRems
+            this._edgeRemoves.set(edgeKey, hash);
+            return ok(undefined);
+          }
 
-        // If new message wins
-        else if (existingHashIsGreater < 0) {
-          // Move existing edge to eRems
-          this._edgeAdds.delete(existingEdgeKey);
-          this._edgeRemoves.set(existingEdgeKey, existingEdgeHash);
-          // Add (parent, child) to eAdds
-          this._edgeAdds.set(edgeKey, hash);
-
-          return ok(undefined);
-        }
+          // If new message wins
+          else {
+            // Move existing edge to eRems
+            this._edgeAdds.delete(existingEdgeKey);
+            this._edgeRemoves.set(existingEdgeKey, existingEdgeHash);
+            // Add (parent, child) to eAdds
+            this._edgeAdds.set(edgeKey, hash);
+          }
+        });
+        return ok(undefined);
       }
 
       // If child exists in vRems
@@ -226,26 +233,13 @@ class SignerSet {
     return ok(undefined);
   }
 
-  mergeSignerRemove(message: SignerRemove): Result<void, string> {
-    const parentPubKey = message.signer;
-    const childPubKey = message.data.body.childKey;
-    const edgeKey = this.getEdgeKey(parentPubKey, childPubKey);
-
-    const res = this.remove(parentPubKey, childPubKey);
-    if (res.isErr()) return res;
-
-    // Add message to store and return
-    this._messages.set(message.hash, message);
-    return ok(undefined);
-  }
-
   // TODO: is this ever called?
   private _removeEdge(edgeKey: string): Result<void, string> {
     const { parentPubKey, childPubKey } = this.getPubKeysFromEdgeKey(edgeKey);
-    return this.remove(parentPubKey, childPubKey);
+    return this._remove(parentPubKey, childPubKey);
   }
 
-  private remove(parentPubKey: string, childPubKey: string): Result<void, string> {
+  private _remove(parentPubKey: string, childPubKey: string): Result<void, string> {
     const edgeKey = this.getEdgeKey(parentPubKey, childPubKey);
 
     // If (parent, child) does not exist in graph
@@ -255,7 +249,9 @@ class SignerSet {
     if (this._vertexAdds.has(childPubKey)) {
       // For all (*,child) in eAdds, move to eRems
       (this._getEdgesByChild(this._edges).get(childPubKey) || new Set()).forEach((edgeKey) => {
-        const existingHash = this._edgeAdds.get(edgeKey)!;
+        const existingHash = this._edgeAdds.get(edgeKey);
+        if (!existingHash) return err('SignerSet._remove: existing parent edge not found');
+
         this._edgeAdds.delete(edgeKey);
         this._edgeRemoves.set(edgeKey, existingHash);
       });

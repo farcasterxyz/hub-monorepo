@@ -1,36 +1,26 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
-/* eslint-disable no-restricted-imports */
-import { SignerAdd, SignatureAlgorithm, HashAlgorithm, SignerRemove, KeyPair } from '~/types';
-import SignerSet from './signerSet';
-import { blake2b } from 'ethereum-cryptography/blake2b';
+import { SignerAdd, SignerRemove, KeyPair } from '~/types';
+import SignerSet from '~/sets/signerSet';
 import { randomBytes } from 'crypto';
 import { Factories } from '~/factories';
-const secp = require('ethereum-cryptography/secp256k1');
-import * as ed from '@noble/ed25519';
+import * as secp256k1 from 'ethereum-cryptography/secp256k1';
 import { convertToHex, generateEd25519KeyPair } from '~/utils';
-
-const FarcasterSchemaUrl = 'farcaster.xyz/schemas/v1/signer-authorize';
 
 const newSecp256k1Key = () => {
   return randomBytes(32);
-};
-
-const base64EncodeUInt8Arr = (arr: Uint8Array) => {
-  return Buffer.from(arr).toString('base64');
 };
 
 describe('create signer set', () => {
   test('successfully creates a signer set', async () => {
     const signerSet = new SignerSet();
     const custodySigner = newSecp256k1Key();
-    const custodySignerPubkey = secp.getPublicKey(custodySigner);
+    const custodySignerPubkey = secp256k1.getPublicKey(custodySigner);
     const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
 
     expect(signerSet.addCustody(custodySignerEncodedPubkey).isOk()).toEqual(true);
     expect(signerSet._numSigners()).toEqual(1);
 
     const custodySigner2 = newSecp256k1Key();
-    const custodySignerPubkey2 = secp.getPublicKey(custodySigner2);
+    const custodySignerPubkey2 = secp256k1.getPublicKey(custodySigner2);
     const custodySignerEncodedPubkey2 = Buffer.from(custodySignerPubkey2.toString()).toString('base64');
 
     expect(signerSet.addCustody(custodySignerEncodedPubkey2).isOk()).toEqual(true);
@@ -40,7 +30,7 @@ describe('create signer set', () => {
   test('successfully idempotent when same root is tried to be added twice', async () => {
     const signerSet = new SignerSet();
     const custodySigner = newSecp256k1Key();
-    const custodySignerPubkey = secp.getPublicKey(custodySigner);
+    const custodySignerPubkey = secp256k1.getPublicKey(custodySigner);
     const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
 
     expect(signerSet.addCustody(custodySignerEncodedPubkey).isOk()).toEqual(true);
