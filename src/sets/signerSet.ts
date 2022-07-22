@@ -83,7 +83,7 @@ class SignerSet {
     const parentPubKey = message.signer;
     const childPubKey = message.data.body.childKey;
 
-    const res = this._add(parentPubKey, childPubKey, message.hash);
+    const res = this.add(parentPubKey, childPubKey, message.hash);
     if (res.isErr()) return res;
 
     this._messages.set(message.hash, message);
@@ -94,7 +94,7 @@ class SignerSet {
     const parentPubKey = message.signer;
     const childPubKey = message.data.body.childKey;
 
-    const res = this._remove(parentPubKey, childPubKey);
+    const res = this.remove(parentPubKey, childPubKey);
     if (res.isErr()) return res;
 
     this._messages.set(message.hash, message);
@@ -137,17 +137,17 @@ class SignerSet {
     return byChildMap;
   }
 
-  private _add(parentPubKey: string, childPubKey: string, hash: string): Result<void, string> {
+  private add(parentPubKey: string, childPubKey: string, hash: string): Result<void, string> {
     const edgeKey = this.getEdgeKey(parentPubKey, childPubKey);
 
     // If parent is missing
     if (!this._vertices.has(parentPubKey) && !this._custodySigners.has(parentPubKey)) {
-      return err('SignerSet._add: parent does not exist in graph');
+      return err('SignerSet.add: parent does not exist in graph');
     }
 
     // If parent and child are the same
     if (parentPubKey === childPubKey) {
-      return err('SignerSet._add: parent and child must be different');
+      return err('SignerSet.add: parent and child must be different');
     }
 
     // If (parent, child) exists in eAdds
@@ -211,7 +211,7 @@ class SignerSet {
         // For each edge (*, child) in edgeAdds (though there should be only one parent)
         (this._edgeAddsByChild.get(childPubKey) || new Set()).forEach((existingEdgeKey) => {
           const existingEdgeHash = this._edgeAdds.get(existingEdgeKey);
-          if (!existingEdgeHash) return err('SignerSet._add: parent edge not found');
+          if (!existingEdgeHash) return err('SignerSet.add: parent edge not found');
 
           // If existing message wins
           if (hashCompare(existingEdgeHash, hash) > 0) {
@@ -257,7 +257,7 @@ class SignerSet {
         this._edgeRemoves.set(edgeKey, hash);
 
         // For all (child,*) in edges, remove subtree (child and all children vertices and edges)
-        this._removeSubtree(childPubKey);
+        this.removeSubtree(childPubKey);
 
         return ok(undefined);
       }
@@ -275,7 +275,7 @@ class SignerSet {
     return ok(undefined);
   }
 
-  private _removeSubtree(rootPubKey: string): Result<void, string> {
+  private removeSubtree(rootPubKey: string): Result<void, string> {
     // Move root to vRems
     this._vertexAdds.delete(rootPubKey);
     this._vertexRemoves.add(rootPubKey);
@@ -283,19 +283,19 @@ class SignerSet {
     // Remove all edges where rootPubKey is parent
     const parentEdges = this._edgesByParent.get(rootPubKey) || new Set();
     parentEdges.forEach((edgeKey) => {
-      const res = this._removeEdge(edgeKey);
+      const res = this.removeEdge(edgeKey);
       if (res.isErr()) return res;
     });
 
     return ok(undefined);
   }
 
-  private _removeEdge(edgeKey: string): Result<void, string> {
+  private removeEdge(edgeKey: string): Result<void, string> {
     const { parentPubKey, childPubKey } = this.getPubKeysFromEdgeKey(edgeKey);
-    return this._remove(parentPubKey, childPubKey);
+    return this.remove(parentPubKey, childPubKey);
   }
 
-  private _remove(parentPubKey: string, childPubKey: string): Result<void, string> {
+  private remove(parentPubKey: string, childPubKey: string): Result<void, string> {
     const edgeKey = this.getEdgeKey(parentPubKey, childPubKey);
 
     // If (parent, child) does not exist in graph
@@ -306,19 +306,19 @@ class SignerSet {
       // For all (*,child) in eAdds, move to eRems
       (this._edgesByChild.get(childPubKey) || new Set()).forEach((edgeKey) => {
         const existingHash = this._edgeAdds.get(edgeKey);
-        if (!existingHash) return err('SignerSet._remove: existing parent edge not found');
+        if (!existingHash) return err('SignerSet.remove: existing parent edge not found');
 
         this._edgeAdds.delete(edgeKey);
         this._edgeRemoves.set(edgeKey, existingHash);
       });
 
       // Remove subtree
-      const res = this._removeSubtree(childPubKey);
+      const res = this.removeSubtree(childPubKey);
       if (res.isErr()) return res;
 
       // For all (child,*) in edges, remove edge
       (this._edgesByParent.get(childPubKey) || new Set()).forEach((edgeKey) => {
-        this._removeEdge(edgeKey);
+        this.removeEdge(edgeKey);
       });
 
       return ok(undefined);
