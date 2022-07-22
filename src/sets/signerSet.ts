@@ -291,6 +291,10 @@ class SignerSet {
     return this._custodySigners.size;
   }
 
+  _getCustodySigners() {
+    return this._custodySigners;
+  }
+
   _getVertexAdds() {
     return this._vertexAdds;
   }
@@ -305,6 +309,10 @@ class SignerSet {
 
   _getEdgeRemoves() {
     return this._edgeRemoves;
+  }
+
+  _getMessages() {
+    return this._messages;
   }
 }
 

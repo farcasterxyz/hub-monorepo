@@ -1,53 +1,53 @@
 import { SignerAdd, SignerRemove, KeyPair } from '~/types';
 import SignerSet from '~/sets/signerSet';
-import { randomBytes } from 'crypto';
 import { Factories } from '~/factories';
 import * as secp256k1 from 'ethereum-cryptography/secp256k1';
 import { convertToHex, generateEd25519KeyPair } from '~/utils';
 
-const newSecp256k1Key = () => {
-  return randomBytes(32);
-};
+const set = new SignerSet();
+const vAdds = () => set._getVertexAdds();
+const vRems = () => set._getVertexRemoves();
+const eAdds = () => set._getEdgeAdds();
+const eRems = () => set._getEdgeRemoves();
+const custodySigners = () => set._getCustodySigners();
 
-describe('create signer set', () => {
-  test('successfully creates a signer set', async () => {
-    const signerSet = new SignerSet();
-    const custodySigner = newSecp256k1Key();
-    const custodySignerPubkey = secp256k1.getPublicKey(custodySigner);
-    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
+describe('addCustody', () => {
+  let custody1: string;
+  let custody2: string;
 
-    expect(signerSet.addCustody(custodySignerEncodedPubkey).isOk()).toEqual(true);
-    expect(signerSet._numSigners()).toEqual(1);
-
-    const custodySigner2 = newSecp256k1Key();
-    const custodySignerPubkey2 = secp256k1.getPublicKey(custodySigner2);
-    const custodySignerEncodedPubkey2 = Buffer.from(custodySignerPubkey2.toString()).toString('base64');
-
-    expect(signerSet.addCustody(custodySignerEncodedPubkey2).isOk()).toEqual(true);
-    expect(signerSet._numSigners()).toEqual(2);
+  beforeAll(async () => {
+    const custody1PrivateKey = secp256k1.utils.randomPrivateKey();
+    custody1 = await convertToHex(secp256k1.getPublicKey(custody1PrivateKey));
+    const custody2PrivateKey = secp256k1.utils.randomPrivateKey();
+    custody2 = await convertToHex(secp256k1.getPublicKey(custody2PrivateKey));
   });
 
-  test('successfully idempotent when same root is tried to be added twice', async () => {
-    const signerSet = new SignerSet();
-    const custodySigner = newSecp256k1Key();
-    const custodySignerPubkey = secp256k1.getPublicKey(custodySigner);
-    const custodySignerEncodedPubkey = Buffer.from(custodySignerPubkey.toString()).toString('base64');
+  beforeEach(() => {
+    set._reset();
+  });
 
-    expect(signerSet.addCustody(custodySignerEncodedPubkey).isOk()).toEqual(true);
-    expect(signerSet._numSigners()).toEqual(1);
+  test('succeeds with new custody signer', () => {
+    expect(set.addCustody(custody1).isOk()).toBe(true);
+    expect(custodySigners()).toContain(custody1);
+    expect(vAdds().size).toEqual(0);
+  });
 
-    expect(signerSet.addCustody(custodySignerEncodedPubkey).isOk()).toEqual(true);
-    expect(signerSet._numSigners()).toEqual(1);
+  test('succeeds with multiple new custody signers', () => {
+    expect(set.addCustody(custody1).isOk()).toBe(true);
+    expect(set.addCustody(custody2).isOk()).toBe(true);
+    expect(custodySigners()).toContain(custody1);
+    expect(custodySigners()).toContain(custody2);
+    expect(vAdds().size).toEqual(0);
+  });
+
+  test('succeeds with a duplicate custody signer (idempotent)', () => {
+    expect(set.addCustody(custody1).isOk()).toBe(true);
+    expect(set.addCustody(custody1).isOk()).toBe(true);
+    expect(custodySigners()).toEqual(new Set([custody1]));
   });
 });
 
 describe('merge', () => {
-  const set = new SignerSet();
-  const vAdds = () => set._getVertexAdds();
-  const vRems = () => set._getVertexRemoves();
-  const eAdds = () => set._getEdgeAdds();
-  const eRems = () => set._getEdgeRemoves();
-
   let custodyKeyPair: KeyPair;
   let custodyPubKey: string;
 
