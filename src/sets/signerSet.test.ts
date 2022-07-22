@@ -10,6 +10,7 @@ const vRems = () => set._getVertexRemoves();
 const eAdds = () => set._getEdgeAdds();
 const eRems = () => set._getEdgeRemoves();
 const custodySigners = () => set._getCustodySigners();
+const messages = () => set._getMessages();
 
 describe('addCustody', () => {
   let custody1: string;
@@ -95,29 +96,31 @@ describe('merge', () => {
 
   beforeEach(() => {
     set._reset();
-    set.addCustody(custodyPubKey); // TODO: validation?
+    set.addCustody(custodyPubKey);
   });
 
   describe('add', () => {
-    test('succeeds with a valid SignerAdd message', async () => {
+    test('succeeds with a valid SignerAdd message', () => {
       const res = set.merge(addA);
       expect(res.isOk()).toEqual(true);
       expect(vAdds()).toEqual(new Set([addA.data.body.childKey]));
       expect(vRems()).toEqual(new Set());
       expect(eAdds().values()).toContain(addA.hash);
       expect(eRems()).toEqual(new Map());
+      expect(messages().keys()).toContain(addA.hash);
     });
 
-    test('succeeds with a duplicate valid SignerAdd message', async () => {
+    test('succeeds with a duplicate valid SignerAdd message', () => {
       expect(set.merge(addA).isOk()).toBe(true);
       expect(set.merge(addA).isOk()).toBe(true);
       expect(vAdds()).toEqual(new Set([addA.data.body.childKey]));
       expect(vRems()).toEqual(new Set());
       expect(eAdds().values()).toContain(addA.hash);
       expect(eRems()).toEqual(new Map());
+      expect(messages().size).toEqual(1);
     });
 
-    test('succeeds when adding a child to a parent', async () => {
+    test('succeeds when adding a child to a parent', () => {
       expect(set.merge(addA).isOk()).toBe(true);
       expect(set.merge(addCToA).isOk()).toBe(true);
       expect(vAdds().size).toEqual(2);
@@ -126,29 +129,26 @@ describe('merge', () => {
 
     describe('when child already exists', () => {
       describe('with different parent', () => {
-        // TODO: improve wording here
-        test('succeeds with a lower message hash but does not add edge to tree', async () => {
+        test('succeeds with a lower message hash but moves new edge to edgeRemoves', () => {
           expect(set.merge(addA).isOk()).toBe(true);
           expect(set.merge(addB).isOk()).toBe(true);
           expect(set.merge(addCToA).isOk()).toBe(true);
           expect(vAdds().size).toEqual(3);
-          const addCToBFail: SignerAdd = { ...addCToB, hash: addCToA.hash.slice(0, -1) };
-          const res = set.merge(addCToBFail);
-          expect(res.isOk()).toBe(true);
-
+          const addCToBLowerHash: SignerAdd = { ...addCToB, hash: addCToA.hash.slice(0, -1) };
+          expect(set.merge(addCToBLowerHash).isOk()).toBe(true);
           expect(vAdds().size).toEqual(3);
-          expect(eRems().values()).toContain(addCToBFail.hash);
+          expect(eRems().values()).toContain(addCToBLowerHash.hash);
         });
 
-        test('succeeds with a higher message hash', async () => {
+        test('succeeds with a higher message hash', () => {
           expect(set.merge(addA).isOk()).toBe(true);
           expect(set.merge(addB).isOk()).toBe(true);
           expect(set.merge(addCToA).isOk()).toBe(true);
           expect(vAdds().size).toEqual(3);
-          const addCToBSuccess: SignerAdd = { ...addCToB, hash: addCToA.hash + 'a' };
-          expect(set.merge(addCToBSuccess).isOk()).toBe(true);
+          const addCToBHigherHash: SignerAdd = { ...addCToB, hash: addCToA.hash + 'a' };
+          expect(set.merge(addCToBHigherHash).isOk()).toBe(true);
           expect(vAdds().size).toEqual(3);
-          expect(eAdds().values()).toContain(addCToBSuccess.hash);
+          expect(eAdds().values()).toContain(addCToBHigherHash.hash);
           expect(eRems().values()).toContain(addCToA.hash);
         });
       });
@@ -163,8 +163,7 @@ describe('merge', () => {
           );
         });
 
-        // TODO: should this "succeed" or give some other response?
-        test('succeeds with a lower message hash but does not update edgeAdds set', async () => {
+        test('succeeds with a lower message hash but does not update edgeAdds', () => {
           expect(set.merge(addA).isOk()).toBe(true);
           expect(set.merge(addCToA).isOk()).toBe(true);
           const addCToADuplicateFail: SignerAdd = { ...addCToADuplicate, hash: addCToA.hash.slice(0, -1) };
@@ -174,7 +173,7 @@ describe('merge', () => {
           expect(eRems().size).toEqual(0);
         });
 
-        test('succeeds with a higher message hash', async () => {
+        test('succeeds with a higher message hash', () => {
           expect(set.merge(addA).isOk()).toBe(true);
           expect(set.merge(addCToA).isOk()).toBe(true);
           const addCToADuplicateSuccess: SignerAdd = { ...addCToADuplicate, hash: addCToA.hash + 'z' };
@@ -186,14 +185,15 @@ describe('merge', () => {
       });
     });
 
-    test('fails when parent does not exist', async () => {
+    test('fails when parent does not exist', () => {
       expect(vAdds().size).toEqual(0);
       expect(set.merge(addCToA).isOk()).toBe(false);
       expect(vAdds().size).toEqual(0);
       expect(eAdds().size).toEqual(0);
+      expect(messages().keys()).not.toContain(addCToA.hash);
     });
 
-    test('succeeds and removes new edge when child has already been deleted by another parent', async () => {
+    test('succeeds when child has already been deleted by another parent and moves new edge to edgeRemoves', () => {
       expect(set.merge(addA).isOk()).toBe(true);
       expect(set.merge(addCToA).isOk()).toBe(true);
       expect(set.merge(addB).isOk()).toBe(true);
@@ -203,16 +203,60 @@ describe('merge', () => {
       expect(vRems()).toContain(addCToB.data.body.childKey);
       expect(eRems().values()).toContain(addCToB.hash);
     });
+
+    test('succeeds when creating a cycle in edgeAdds tree but moves new edge to edgeAdds', async () => {
+      expect(set.merge(addA).isOk()).toBe(true);
+      expect(set.merge(addCToA).isOk()).toBe(true);
+      const addAToCHigherHash = await Factories.SignerAdd.create(
+        {},
+        { transient: { privateKey: c.privateKey, childPrivateKey: a.privateKey } }
+      );
+      addAToCHigherHash.hash = addA.hash + 'a';
+      expect(set.merge(addAToCHigherHash).isOk()).toBe(true);
+      expect(eRems().values()).toContain(addAToCHigherHash.hash);
+    });
+
+    test('succeeds when creating a cycle in edgeRemoves graph', async () => {
+      expect(set.merge(addA).isOk()).toBe(true);
+      expect(set.merge(addB).isOk()).toBe(true);
+      expect(set.merge(addCToA).isOk()).toBe(true);
+      expect(vAdds().size).toEqual(3);
+      const addCToBHigherHash: SignerAdd = { ...addCToB, hash: addCToA.hash + 'a' };
+      expect(set.merge(addCToBHigherHash).isOk()).toBe(true);
+      expect(eRems().values()).toContain(addCToA.hash);
+      const addAToCHigherHash = await Factories.SignerAdd.create(
+        {},
+        { transient: { privateKey: c.privateKey, childPrivateKey: a.privateKey } }
+      );
+      addAToCHigherHash.hash = addA.hash + 'a';
+      expect(set.merge(addAToCHigherHash).isOk()).toBe(true);
+      expect(eAdds().values()).toContain(addAToCHigherHash.hash);
+      expect(eRems().values()).toContain(addA.hash);
+    });
+
+    test('fails when child is a custody signer', async () => {
+      expect(set.merge(addA).isOk()).toBe(true);
+      const newCustodyPrivateKey = secp256k1.utils.randomPrivateKey();
+      const newCustodyPubKey = await convertToHex(secp256k1.getPublicKey(newCustodyPrivateKey));
+      expect(set.addCustody(newCustodyPubKey).isOk()).toBe(true);
+      const addCustodyToA = await Factories.SignerAdd.create(
+        {},
+        { transient: { privateKey: a.privateKey, childPrivateKey: newCustodyPrivateKey } }
+      );
+      expect(set.merge(addCustodyToA).isOk()).toBe(true);
+    });
   });
 
-  describe('removeDelegate', () => {
-    test('succeeds with a valid SignerRemove message', async () => {
+  describe('remove', () => {
+    test('succeeds with a valid SignerRemove message', () => {
       expect(set.merge(addA).isOk()).toBe(true);
       expect(set.merge(remA).isOk()).toBe(true);
       expect(vAdds()).toEqual(new Set());
       expect(vRems()).toEqual(new Set([remA.data.body.childKey]));
       expect(eAdds()).toEqual(new Map());
       expect(eRems().values()).toContain(addA.hash);
+      expect(messages().keys()).toContain(addA.hash);
+      expect(messages().keys()).toContain(remA.hash);
     });
 
     test("fails when child hasn't been added yet", () => {
@@ -220,6 +264,7 @@ describe('merge', () => {
       expect(set.merge(remA).isOk()).toBe(false);
       expect(vAdds()).toEqual(new Set());
       expect(vRems()).toEqual(new Set());
+      expect(messages().keys()).not.toContain(remA.hash);
     });
 
     test('succeeds and removes subtree', () => {
@@ -244,7 +289,7 @@ describe('merge', () => {
       expect(vRems()).toEqual(new Set());
     });
 
-    test('succeeds when child belongs to parent', async () => {
+    test('succeeds when child belongs to parent', () => {
       expect(set.merge(addA).isOk()).toBe(true);
       expect(set.merge(addCToA).isOk()).toBe(true);
       expect(set.merge(remCFromA).isOk()).toBe(true);

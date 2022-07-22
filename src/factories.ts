@@ -236,8 +236,7 @@ export const Factories = {
         props.data.body.childSignature = await signEd25519(props.data.body.edgeHash, childPrivateKey);
       }
 
-      const hash = await hashMessage(props);
-      props.hash = hash;
+      props.hash = await hashMessage(props);
       props.signer = parentPubKey;
       const signature = await signEd25519(props.hash, privateKey);
       props.signature = signature;
@@ -271,8 +270,7 @@ export const Factories = {
 
       onCreate(async (props) => {
         const publicKey = await ed.getPublicKey(privateKey);
-        const hash = await hashMessage(props);
-        props.hash = hash;
+        props.hash = await hashMessage(props);
 
         props.signer = await convertToHex(publicKey);
 

@@ -32,6 +32,30 @@ class SignerSet {
     return new Map([...this._edgeAdds, ...this._edgeRemoves]);
   }
 
+  private get _edgeAddsByChild() {
+    return this._getEdgesByChild(this._edgeAdds);
+  }
+
+  private get _edgeRemovesByChild() {
+    return this._getEdgesByChild(this._edgeRemoves);
+  }
+
+  private get _edgesByChild() {
+    return this._getEdgesByChild(this._edges);
+  }
+
+  private get _edgeAddsByParent() {
+    return this._getEdgesByParent(this._edgeAdds);
+  }
+
+  private get _edgeRemovesByParent() {
+    return this._getEdgesByParent(this._edgeRemoves);
+  }
+
+  private get _edgesByParent() {
+    return this._getEdgesByParent(this._edges);
+  }
+
   getEdgeKey(parentPubKey: string, childPubKey: string): string {
     return [parentPubKey, childPubKey].toString();
   }
@@ -115,9 +139,15 @@ class SignerSet {
 
   private _add(parentPubKey: string, childPubKey: string, hash: string): Result<void, string> {
     const edgeKey = this.getEdgeKey(parentPubKey, childPubKey);
+
     // If parent is missing
     if (!this._vertices.has(parentPubKey) && !this._custodySigners.has(parentPubKey)) {
       return err('SignerSet._add: parent does not exist in graph');
+    }
+
+    // If parent and child are the same
+    if (parentPubKey === childPubKey) {
+      return err('SignerSet._add: parent and child must be different');
     }
 
     // If (parent, child) exists in eAdds
@@ -130,7 +160,7 @@ class SignerSet {
       return ok(undefined);
     }
 
-    // If (a,b) exists in eRems, TODO
+    // If (parent, child) exists in eRems
     const existingEdgeRemovesHash = this._edgeRemoves.get(edgeKey);
     if (existingEdgeRemovesHash) {
       // Update eRems with higher order hash
@@ -153,7 +183,33 @@ class SignerSet {
 
       // If child exists in vAdds
       else if (this._vertexAdds.has(childPubKey)) {
-        (this._getEdgesByChild(this._edgeAdds).get(childPubKey) || new Set()).forEach((existingEdgeKey) => {
+        // Get all parents of parentPubKey by traversing edgeAdds
+        const parentsOfParent: string[] = [];
+        let parentEdgesToTraverse = this._edgeAddsByChild.get(parentPubKey) || new Set();
+        while (parentEdgesToTraverse.size > 0) {
+          const newParentEdgesToTraverse = new Set<string>();
+          parentEdgesToTraverse.forEach((edgeKey) => {
+            const { parentPubKey } = this.getPubKeysFromEdgeKey(edgeKey);
+            parentsOfParent.push(parentPubKey);
+            // Stop traversal once a custody signer is found
+            if (!this._custodySigners.has(parentPubKey)) {
+              (this._edgeAddsByChild.get(parentPubKey) || new Set()).forEach((parentEdgeKey) =>
+                newParentEdgesToTraverse.add(parentEdgeKey)
+              );
+            }
+          });
+          parentEdgesToTraverse = newParentEdgesToTraverse;
+        }
+
+        // If parents of parentPubKey includes childPubKey (i.e. a cycle)
+        if (parentsOfParent.includes(childPubKey)) {
+          // Add (parent, child) to edgeRemoves
+          this._edgeRemoves.set(edgeKey, hash);
+          return ok(undefined);
+        }
+
+        // For each edge (*, child) in edgeAdds (though there should be only one parent)
+        (this._edgeAddsByChild.get(childPubKey) || new Set()).forEach((existingEdgeKey) => {
           const existingEdgeHash = this._edgeAdds.get(existingEdgeKey);
           if (!existingEdgeHash) return err('SignerSet._add: parent edge not found');
 
@@ -161,7 +217,6 @@ class SignerSet {
           if (hashCompare(existingEdgeHash, hash) > 0) {
             // Add (parent, child) to eRems
             this._edgeRemoves.set(edgeKey, hash);
-            return ok(undefined);
           }
 
           // If new message wins
@@ -173,6 +228,7 @@ class SignerSet {
             this._edgeAdds.set(edgeKey, hash);
           }
         });
+
         return ok(undefined);
       }
 
@@ -200,8 +256,8 @@ class SignerSet {
         // Add (parent, child) to eRems
         this._edgeRemoves.set(edgeKey, hash);
 
-        // For all (b,*) in edges
-        this._removeSubtree(childPubKey); // TODO: should removeSubtree also move child to vRems
+        // For all (child,*) in edges, remove subtree (child and all children vertices and edges)
+        this._removeSubtree(childPubKey);
 
         return ok(undefined);
       }
@@ -225,15 +281,15 @@ class SignerSet {
     this._vertexRemoves.add(rootPubKey);
 
     // Remove all edges where rootPubKey is parent
-    const parentEdges = this._getEdgesByParent(this._edges).get(rootPubKey) || new Set();
+    const parentEdges = this._edgesByParent.get(rootPubKey) || new Set();
     parentEdges.forEach((edgeKey) => {
-      this._removeEdge(edgeKey);
+      const res = this._removeEdge(edgeKey);
+      if (res.isErr()) return res;
     });
 
     return ok(undefined);
   }
 
-  // TODO: is this ever called?
   private _removeEdge(edgeKey: string): Result<void, string> {
     const { parentPubKey, childPubKey } = this.getPubKeysFromEdgeKey(edgeKey);
     return this._remove(parentPubKey, childPubKey);
@@ -248,7 +304,7 @@ class SignerSet {
     // If child exists in vAdds
     if (this._vertexAdds.has(childPubKey)) {
       // For all (*,child) in eAdds, move to eRems
-      (this._getEdgesByChild(this._edges).get(childPubKey) || new Set()).forEach((edgeKey) => {
+      (this._edgesByChild.get(childPubKey) || new Set()).forEach((edgeKey) => {
         const existingHash = this._edgeAdds.get(edgeKey);
         if (!existingHash) return err('SignerSet._remove: existing parent edge not found');
 
@@ -257,10 +313,11 @@ class SignerSet {
       });
 
       // Remove subtree
-      this._removeSubtree(childPubKey); // TODO: handle errors
+      const res = this._removeSubtree(childPubKey);
+      if (res.isErr()) return res;
 
       // For all (child,*) in edges, remove edge
-      (this._getEdgesByParent(this._edges).get(childPubKey) || new Set()).forEach((edgeKey) => {
+      (this._edgesByParent.get(childPubKey) || new Set()).forEach((edgeKey) => {
         this._removeEdge(edgeKey);
       });
 
@@ -309,6 +366,10 @@ class SignerSet {
 
   _getEdgeRemoves() {
     return this._edgeRemoves;
+  }
+
+  _getEdges() {
+    return this._edges;
   }
 
   _getMessages() {
