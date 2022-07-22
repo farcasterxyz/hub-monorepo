@@ -15,6 +15,8 @@ import {
   SignerAdd,
   SignerRemove,
   SignerEdge,
+  SignerRemoveFactoryTransientParams,
+  SignerAddFactoryTransientParams,
 } from '~/types';
 import { convertToHex, hashMessage, signEd25519, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
@@ -210,8 +212,7 @@ export const Factories = {
   }),
 
   /** Generate a valid SignerAdd */
-  // TODO: constrain transient params
-  SignerAdd: Factory.define<SignerAdd, any, SignerAdd>(({ onCreate, transientParams }) => {
+  SignerAdd: Factory.define<SignerAdd, SignerAddFactoryTransientParams, SignerAdd>(({ onCreate, transientParams }) => {
     const { privateKey = ed.utils.randomPrivateKey(), childPrivateKey = ed.utils.randomPrivateKey() } = transientParams;
 
     onCreate(async (props) => {
@@ -250,7 +251,7 @@ export const Factories = {
           childKey: '',
           edgeHash: '',
           childSignature: '',
-          childSignatureType: 'ed25519', // TODO: support other types
+          childSignatureType: 'ed25519',
           schema: 'farcaster.xyz/schemas/v1/signer-add',
         },
         rootBlock: Faker.datatype.number(10_000),
@@ -264,38 +265,39 @@ export const Factories = {
   }),
 
   /** Generate a valid SignerRemove */
-  // TODO: constrain transient params
-  SignerRemove: Factory.define<SignerRemove, any, SignerRemove>(({ onCreate, transientParams }) => {
-    const { privateKey = ed.utils.randomPrivateKey() } = transientParams;
+  SignerRemove: Factory.define<SignerRemove, SignerRemoveFactoryTransientParams, SignerRemove>(
+    ({ onCreate, transientParams }) => {
+      const { privateKey = ed.utils.randomPrivateKey() } = transientParams;
 
-    onCreate(async (props) => {
-      const publicKey = await ed.getPublicKey(privateKey);
-      const hash = await hashMessage(props);
-      props.hash = hash;
+      onCreate(async (props) => {
+        const publicKey = await ed.getPublicKey(privateKey);
+        const hash = await hashMessage(props);
+        props.hash = hash;
 
-      props.signer = await convertToHex(publicKey);
+        props.signer = await convertToHex(publicKey);
 
-      const signature = await signEd25519(props.hash, privateKey);
-      props.signature = signature;
+        const signature = await signEd25519(props.hash, privateKey);
+        props.signature = signature;
 
-      return props;
-    });
+        return props;
+      });
 
-    return {
-      data: {
-        body: {
-          childKey: '', // TODO: fake this
-          schema: 'farcaster.xyz/schemas/v1/signer-remove',
+      return {
+        data: {
+          body: {
+            childKey: '', // TODO: fake this
+            schema: 'farcaster.xyz/schemas/v1/signer-remove',
+          },
+          rootBlock: Faker.datatype.number(10_000),
+          signedAt: Faker.time.recent(),
+          username: Faker.name.firstName().toLowerCase(),
         },
-        rootBlock: Faker.datatype.number(10_000),
-        signedAt: Faker.time.recent(),
-        username: Faker.name.firstName().toLowerCase(),
-      },
-      hash: '',
-      signature: '',
-      signer: '',
-    };
-  }),
+        hash: '',
+        signature: '',
+        signer: '',
+      };
+    }
+  ),
   /** Generate a VerificationAdd message */
   VerificationAdd: Factory.define<VerificationAdd, VerificationAddFactoryTransientParams, VerificationAdd>(
     ({ onCreate, transientParams }) => {

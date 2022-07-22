@@ -191,7 +191,7 @@ export type VerificationClaim = {
 export type VerificationRemove = Message<VerificationRemoveBody>;
 
 /**
- * A VerificationRemoveBody represents the deletion of a verification
+ * A VerificationRemoveBody represents the removal of a verification
  *
  * @claimHash - hash of the verification claim
  * @schema -
@@ -218,8 +218,18 @@ export type VerificationRemoveFactoryTransientParams = {
 
 export type SignerMessage = SignerAdd | SignerRemove;
 
+/** SignerAdd message */
 export type SignerAdd = Message<SignerAddBody>;
 
+/**
+ * A SignerAddBody represents a bi-directional proof between a child signer and parent signer
+ *
+ * @childKey - the child public key
+ * @edgeHash - the hash of the SignerEdge containing both public keys
+ * @childSignature - the signature of the edgeHash, signed by childKey
+ * @childSignatureType - type of child signature from set of supported types
+ * @schema -
+ */
 export type SignerAddBody = {
   childKey: string;
   edgeHash: string;
@@ -228,16 +238,43 @@ export type SignerAddBody = {
   schema: 'farcaster.xyz/schemas/v1/signer-add';
 };
 
+/**
+ * A SignerAddFactoryTransientParams is passed to the SignerAdd factory
+ *
+ * @privateKey - the private key for signing the SignerAdd message
+ * @childPrivateKey - the private key for signing the edgeHash
+ */
+export type SignerAddFactoryTransientParams = {
+  privateKey?: Uint8Array;
+  childPrivateKey?: Uint8Array;
+};
+
+/**
+ * A SignerEdge is an object that contains both the child public key and parent public key
+ */
 export type SignerEdge = {
   childKey: string;
   parentKey: string;
 };
 
+/** SignerRemove message */
 export type SignerRemove = Message<SignerRemoveBody>;
 
+/**
+ * A SignerRemoveBody represents the removal of a signer
+ */
 export type SignerRemoveBody = {
   childKey: string;
   schema: 'farcaster.xyz/schemas/v1/signer-remove';
+};
+
+/**
+ * A SignerRemoveFactoryTransientParams is passed to the SignerRemove factory
+ *
+ * @privateKey - the private key for signing the SignerRemove message, should be the parent of the childKey
+ */
+export type SignerRemoveFactoryTransientParams = {
+  privateKey?: Uint8Array;
 };
 
 // TODO: use this more broadly
