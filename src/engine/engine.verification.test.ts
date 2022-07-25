@@ -112,13 +112,13 @@ describe('mergeVerification', () => {
           rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: aliceRoot.data.signedAt + 1,
-          body: { externalAddressUri: ethWalletAlice.address },
+          body: { externalUri: ethWalletAlice.address },
         },
       },
       transientParams
     );
     const res = await engine.mergeVerification(verificationAddMessage);
-    expect(res._unsafeUnwrapErr()).toBe('validateVerificationAdd: externalSignature does not match externalAddressUri');
+    expect(res._unsafeUnwrapErr()).toBe('validateVerificationAdd: externalSignature does not match externalUri');
     expect(engine._getVerificationAdds('alice')).toEqual([]);
   });
 

@@ -52,7 +52,7 @@ export function isVerificationAdd(msg: FC.Message): msg is FC.VerificationAdd {
     body.schema === 'farcaster.xyz/schemas/v1/verification-add' &&
     body.externalSignatureType === 'eip-191-0x45' &&
     typeof body.externalSignature === 'string' &&
-    typeof body.externalAddressUri === 'string' &&
+    typeof body.externalUri === 'string' &&
     typeof body.claimHash === 'string' &&
     body.claimHash.length > 0
   );
