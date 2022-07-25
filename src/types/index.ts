@@ -142,16 +142,16 @@ export type Verification = VerificationAdd | VerificationRemove;
 export type VerificationAdd = Message<VerificationAddBody>;
 
 /**
- * A VerificationAddBody represents a signed claim between a Farcaster account and an external key pair (i.e. an Ethereum key pair).
+ * A VerificationAddBody represents a signed claim between a Farcaster account and an external entity (i.e. an Ethereum address).
  *
- * @externalAddressUri - the Ethereum address that is part of the verification claim.
+ * @externalUri - the URI of the external entity
  * @claimHash - the hash of the verification claim.
  * @externalSignature - the signature of the hash of the verification claim, signed by the external key pair.
  * @externalSignatureType - type of signature from set of supported types (see version 0x45 of https://eips.ethereum.org/EIPS/eip-191 for 'eip-191-0x45')
  * @schema -
  */
 export type VerificationAddBody = {
-  externalAddressUri: URI;
+  externalUri: URI;
   claimHash: string;
   externalSignature: string;
   externalSignatureType: 'eip-191-0x45';
@@ -173,11 +173,11 @@ export type VerificationAddFactoryTransientParams = {
  * A VerificationClaim is an object that includes both the farcaster account and external address
  *
  * @username - the farcaster username
- * @externalAddressUri - URI of the external address (i.e. Ethereum address)
+ * @externalUri - URI of the external address (i.e. Ethereum address)
  */
 export type VerificationClaim = {
   username: string; // TODO: make this account rather than username when we migrate the rest of the codebase to that
-  externalAddressUri: URI; // TODO: constrain this farther
+  externalUri: URI; // TODO: constrain this farther
 };
 
 /** VerificationRemove message */
@@ -198,11 +198,11 @@ export type VerificationRemoveBody = {
  * A VerificationRemoveFactoryTransientParams is passed to the VerificationRemove factory
  *
  * @privateKey - the private key for signing the Verification message
- * @externalAddressUri - the external address to generate the claimHash
+ * @externalUri - the external address to generate the claimHash
  */
 export type VerificationRemoveFactoryTransientParams = {
   privateKey?: Uint8Array;
-  externalAddressUri?: string;
+  externalUri?: string;
 };
 
 // ===========================

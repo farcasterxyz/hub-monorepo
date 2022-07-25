@@ -216,7 +216,7 @@ export const Factories = {
         if (!castProps.data.body.claimHash) {
           const verificationClaim: VerificationClaim = {
             username: castProps.data.username,
-            externalAddressUri: castProps.data.body.externalAddressUri,
+            externalUri: castProps.data.body.externalUri,
           };
           castProps.data.body.claimHash = await hashFCObject(verificationClaim);
         }
@@ -242,7 +242,7 @@ export const Factories = {
       return {
         data: {
           body: {
-            externalAddressUri: ethWallet.address,
+            externalUri: ethWallet.address,
             claimHash: '',
             externalSignature: '',
             externalSignatureType: 'eip-191-0x45',
@@ -262,17 +262,15 @@ export const Factories = {
   /** Generate a VerificationRemove message */
   VerificationRemove: Factory.define<VerificationRemove, VerificationRemoveFactoryTransientParams, VerificationRemove>(
     ({ onCreate, transientParams }) => {
-      const {
-        privateKey = ed.utils.randomPrivateKey(),
-        externalAddressUri = Faker.datatype.hexaDecimal(40).toLowerCase(),
-      } = transientParams;
+      const { privateKey = ed.utils.randomPrivateKey(), externalUri = Faker.datatype.hexaDecimal(40).toLowerCase() } =
+        transientParams;
 
       onCreate(async (castProps) => {
         /** Generate claimHash is missing */
         if (!castProps.data.body.claimHash) {
           const verificationClaim: VerificationClaim = {
             username: castProps.data.username,
-            externalAddressUri,
+            externalUri,
           };
           castProps.data.body.claimHash = await hashFCObject(verificationClaim);
         }
