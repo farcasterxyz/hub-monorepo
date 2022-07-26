@@ -28,9 +28,9 @@ class VerificationSet {
     return [...this.getClaimHashes(), ...Array.from(this._removes.keys())];
   }
 
-  /** Helper to get externalAddressURIs that are currently verified */
-  getVerifiedExternalAddressURIs(): string[] {
-    return Array.from(this._adds.values()).map((message) => message.data.body.externalAddressUri);
+  /** Helper to get external URIs that are currently verified */
+  getVerifiedExternalUris(): string[] {
+    return Array.from(this._adds.values()).map((message) => message.data.body.externalUri);
   }
 
   merge(message: Verification): Result<void, string> {

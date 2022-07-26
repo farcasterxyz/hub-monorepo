@@ -5,7 +5,7 @@ import {
   CastShort,
   Root,
   CastRecast,
-  CastDelete,
+  CastRemove,
   Reaction,
   VerificationAdd,
   VerificationRemove,
@@ -62,8 +62,8 @@ export const Factories = {
     };
   }),
 
-  /** Generate a valid Cast-Delete with randomized properties */
-  CastDelete: Factory.define<CastDelete, any, CastDelete>(({ onCreate, transientParams }) => {
+  /** Generate a valid CastRemove with randomized properties */
+  CastRemove: Factory.define<CastRemove, any, CastRemove>(({ onCreate, transientParams }) => {
     const { privateKey = ed.utils.randomPrivateKey() } = transientParams;
 
     onCreate(async (castProps) => {
@@ -83,7 +83,7 @@ export const Factories = {
       data: {
         body: {
           targetHash: Faker.datatype.hexaDecimal(40).toLowerCase(),
-          schema: 'farcaster.xyz/schemas/v1/cast-delete' as const,
+          schema: 'farcaster.xyz/schemas/v1/cast-remove',
         },
         rootBlock: Faker.datatype.number(10_000),
         signedAt: Faker.time.recent(),
@@ -306,7 +306,7 @@ export const Factories = {
         if (!castProps.data.body.claimHash) {
           const verificationClaim: VerificationClaim = {
             username: castProps.data.username,
-            externalAddressUri: castProps.data.body.externalAddressUri,
+            externalUri: castProps.data.body.externalUri,
           };
           castProps.data.body.claimHash = await hashFCObject(verificationClaim);
         }
@@ -332,7 +332,7 @@ export const Factories = {
       return {
         data: {
           body: {
-            externalAddressUri: ethWallet.address,
+            externalUri: ethWallet.address,
             claimHash: '',
             externalSignature: '',
             externalSignatureType: 'eip-191-0x45',
@@ -352,17 +352,15 @@ export const Factories = {
   /** Generate a VerificationRemove message */
   VerificationRemove: Factory.define<VerificationRemove, VerificationRemoveFactoryTransientParams, VerificationRemove>(
     ({ onCreate, transientParams }) => {
-      const {
-        privateKey = ed.utils.randomPrivateKey(),
-        externalAddressUri = Faker.datatype.hexaDecimal(40).toLowerCase(),
-      } = transientParams;
+      const { privateKey = ed.utils.randomPrivateKey(), externalUri = Faker.datatype.hexaDecimal(40).toLowerCase() } =
+        transientParams;
 
       onCreate(async (castProps) => {
         /** Generate claimHash is missing */
         if (!castProps.data.body.claimHash) {
           const verificationClaim: VerificationClaim = {
             username: castProps.data.username,
-            externalAddressUri,
+            externalUri,
           };
           castProps.data.body.claimHash = await hashFCObject(verificationClaim);
         }

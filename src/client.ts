@@ -66,8 +66,8 @@ class Client {
     return message as FC.CastShort;
   }
 
-  async makeCastDelete(targetCast: FC.Cast, root: FC.Root): Promise<FC.CastDelete> {
-    const schema = 'farcaster.xyz/schemas/v1/cast-delete' as const;
+  async makeCastRemove(targetCast: FC.Cast, root: FC.Root): Promise<FC.CastRemove> {
+    const schema = 'farcaster.xyz/schemas/v1/cast-remove' as const;
     const signedAt = Date.now();
 
     const rootBlock = root.data.rootBlock;
@@ -83,7 +83,7 @@ class Client {
     };
     const message = await this.makeMessage(messageData);
 
-    return message as FC.CastDelete;
+    return message as FC.CastRemove;
   }
 
   async makeReaction(targetCast: FC.CastShort, root: FC.Root, active = true): Promise<FC.Reaction> {
@@ -108,15 +108,15 @@ class Client {
     return message as FC.Reaction;
   }
 
-  async makeVerificationClaimHash(externalAddressUri: FC.URI): Promise<string> {
+  async makeVerificationClaimHash(externalUri: FC.URI): Promise<string> {
     return await hashFCObject({
       username: this.username,
-      externalAddressUri,
+      externalUri,
     });
   }
 
   async makeVerificationAdd(
-    externalAddressUri: FC.URI,
+    externalUri: FC.URI,
     claimHash: string,
     externalSignature: string,
     root: FC.Root
@@ -124,7 +124,7 @@ class Client {
     const message = await this.makeMessage({
       body: {
         schema: 'farcaster.xyz/schemas/v1/verification-add',
-        externalAddressUri,
+        externalUri,
         externalSignature,
         externalSignatureType: 'eip-191-0x45',
         claimHash,

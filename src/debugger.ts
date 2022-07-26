@@ -3,7 +3,7 @@ import Table from 'cli-table3';
 import logUpdate from 'log-update';
 import colors from 'colors/safe';
 import {
-  isCastDelete,
+  isCastRemove,
   isCastShort,
   isReaction,
   isRoot,
@@ -88,8 +88,8 @@ const Debugger = {
       data = message.data.body.text.slice(0, 5) + '...';
     }
 
-    if (isCastDelete(message)) {
-      type = Debugger._padString('cst-del', 7);
+    if (isCastRemove(message)) {
+      type = Debugger._padString('cst-rem', 7);
       data = '0x' + message.data.body.targetHash.slice(message.data.body.targetHash.length - 3);
     }
 

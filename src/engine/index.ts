@@ -111,7 +111,7 @@ class Engine {
     return castSet ? castSet.get(hash) : undefined;
   }
 
-  /** Get hashes of undeleted cast messages for a username */
+  /** Get hashes of unremoved cast messages for a username */
   getCastHashes(username: string): string[] {
     const castSet = this._casts.get(username);
     return castSet ? castSet.getHashes() : [];
@@ -436,7 +436,7 @@ class Engine {
       }
     }
 
-    // TODO: For delete cast, validate hash length.
+    // TODO: For remove cast, validate hash length.
 
     return ok(undefined);
   }
@@ -447,13 +447,13 @@ class Engine {
   }
 
   private async validateVerificationAdd(message: VerificationAdd): Promise<Result<void, string>> {
-    const { externalAddressUri, externalSignature, externalSignatureType, claimHash } = message.data.body;
+    const { externalUri, externalSignature, externalSignatureType, claimHash } = message.data.body;
 
     if (externalSignatureType !== 'eip-191-0x45') return err('validateVerificationAdd: invalid externalSignatureType');
 
     const verificationClaim: VerificationClaim = {
       username: message.data.username,
-      externalAddressUri: message.data.body.externalAddressUri,
+      externalUri: message.data.body.externalUri,
     };
     const reconstructedClaimHash = await hashFCObject(verificationClaim);
     if (reconstructedClaimHash !== claimHash) {
@@ -462,8 +462,8 @@ class Engine {
 
     try {
       const verifiedExternalAddress = utils.verifyMessage(claimHash, externalSignature);
-      if (verifiedExternalAddress !== externalAddressUri) {
-        return err('validateVerificationAdd: externalSignature does not match externalAddressUri');
+      if (verifiedExternalAddress !== externalUri) {
+        return err('validateVerificationAdd: externalSignature does not match externalUri');
       }
     } catch (e: any) {
       // TODO: pass through more helpful errors from Ethers
