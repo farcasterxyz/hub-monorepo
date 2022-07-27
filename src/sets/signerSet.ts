@@ -275,26 +275,6 @@ class SignerSet {
     return ok(undefined);
   }
 
-  private removeSubtree(rootPubKey: string): Result<void, string> {
-    // Move root to vRems
-    this._vertexAdds.delete(rootPubKey);
-    this._vertexRemoves.add(rootPubKey);
-
-    // Remove all edges where rootPubKey is parent
-    const parentEdges = this._edgesByParent.get(rootPubKey) || new Set();
-    parentEdges.forEach((edgeKey) => {
-      const res = this.removeEdge(edgeKey);
-      if (res.isErr()) return res;
-    });
-
-    return ok(undefined);
-  }
-
-  private removeEdge(edgeKey: string): Result<void, string> {
-    const { parentPubKey, childPubKey } = this.getPubKeysFromEdgeKey(edgeKey);
-    return this.remove(parentPubKey, childPubKey);
-  }
-
   private remove(parentPubKey: string, childPubKey: string): Result<void, string> {
     const edgeKey = this.getEdgeKey(parentPubKey, childPubKey);
 
@@ -303,15 +283,6 @@ class SignerSet {
 
     // If child exists in vAdds
     if (this._vertexAdds.has(childPubKey)) {
-      // For all (*,child) in eAdds, move to eRems
-      (this._edgesByChild.get(childPubKey) || new Set()).forEach((edgeKey) => {
-        const existingHash = this._edgeAdds.get(edgeKey);
-        if (!existingHash) return err('SignerSet.remove: existing parent edge not found');
-
-        this._edgeAdds.delete(edgeKey);
-        this._edgeRemoves.set(edgeKey, existingHash);
-      });
-
       // Remove subtree
       const res = this.removeSubtree(childPubKey);
       if (res.isErr()) return res;
@@ -328,6 +299,41 @@ class SignerSet {
     if (this._vertexRemoves.has(childPubKey)) {
       return ok(undefined);
     }
+
+    return ok(undefined);
+  }
+
+  private removeEdge(edgeKey: string): Result<void, string> {
+    const { parentPubKey, childPubKey } = this.getPubKeysFromEdgeKey(edgeKey);
+    return this.remove(parentPubKey, childPubKey);
+  }
+
+  /**
+   * removeSubtree performs three operations given a public key (root of the subtree):
+   * 1. Move parent edge (*,root) from eAdds to eRems
+   * 2. Move root to vRems
+   * 3. For all edges (root,*), run remove(root,*), recursively removing the descendents of root
+   */
+  private removeSubtree(rootPubKey: string): Result<void, string> {
+    // For all (*,root) in eAdds, move to eRems
+    (this._edgesByChild.get(rootPubKey) || new Set()).forEach((edgeKey) => {
+      const existingHash = this._edgeAdds.get(edgeKey);
+      if (!existingHash) return err('SignerSet.removeSubtree: unexpected state');
+
+      this._edgeAdds.delete(edgeKey);
+      this._edgeRemoves.set(edgeKey, existingHash);
+    });
+
+    // Move root to vRems
+    this._vertexAdds.delete(rootPubKey);
+    this._vertexRemoves.add(rootPubKey);
+
+    // Remove all edges where rootPubKey is parent
+    const parentEdges = this._edgesByParent.get(rootPubKey) || new Set();
+    parentEdges.forEach((edgeKey) => {
+      const res = this.removeEdge(edgeKey);
+      if (res.isErr()) return res;
+    });
 
     return ok(undefined);
   }

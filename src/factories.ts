@@ -17,6 +17,7 @@ import {
   SignerEdge,
   SignerRemoveFactoryTransientParams,
   SignerAddFactoryTransientParams,
+  SignatureAlgorithm,
 } from '~/types';
 import { convertToHex, hashMessage, signEd25519, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
@@ -219,8 +220,10 @@ export const Factories = {
       const parentPubKey = await convertToHex(await ed.getPublicKey(privateKey));
       const childPubKey = await convertToHex(await ed.getPublicKey(childPrivateKey));
 
-      // TODO: figure out how to correctly avoid overwriting whatever data is already there
-      props.data.body.childKey = childPubKey;
+      /** Set childKey if missing */
+      if (!props.data.body.childKey) {
+        props.data.body.childKey = childPubKey;
+      }
 
       /** Generate edgeHash if missing */
       if (!props.data.body.edgeHash) {
@@ -250,7 +253,7 @@ export const Factories = {
           childKey: '',
           edgeHash: '',
           childSignature: '',
-          childSignatureType: 'ed25519',
+          childSignatureType: SignatureAlgorithm.Ed25519,
           schema: 'farcaster.xyz/schemas/v1/signer-add',
         },
         rootBlock: Faker.datatype.number(10_000),
@@ -283,7 +286,7 @@ export const Factories = {
       return {
         data: {
           body: {
-            childKey: '', // TODO: fake this
+            childKey: '',
             schema: 'farcaster.xyz/schemas/v1/signer-remove',
           },
           rootBlock: Faker.datatype.number(10_000),
@@ -302,7 +305,7 @@ export const Factories = {
       const { privateKey = ed.utils.randomPrivateKey(), ethWallet = ethers.Wallet.createRandom() } = transientParams;
 
       onCreate(async (castProps) => {
-        /** Generate claimHash is missing */
+        /** Generate claimHash if missing */
         if (!castProps.data.body.claimHash) {
           const verificationClaim: VerificationClaim = {
             username: castProps.data.username,
@@ -356,7 +359,7 @@ export const Factories = {
         transientParams;
 
       onCreate(async (castProps) => {
-        /** Generate claimHash is missing */
+        /** Generate claimHash if missing */
         if (!castProps.data.body.claimHash) {
           const verificationClaim: VerificationClaim = {
             username: castProps.data.username,

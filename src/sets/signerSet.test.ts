@@ -245,6 +245,20 @@ describe('merge', () => {
       );
       expect(set.merge(addCustodyToA).isOk()).toBe(true);
     });
+
+    test('succeeds and removes child when adding an edge from a parent in vRems', () => {
+      expect(set.merge(addB).isOk()).toBe(true);
+      expect(set.merge(addCToB).isOk()).toBe(true);
+      expect(set.merge(addA).isOk()).toBe(true);
+      expect(set.merge(remA).isOk()).toBe(true);
+      expect(vAdds()).toEqual(new Set([addB.data.body.childKey, addCToB.data.body.childKey]));
+      expect(vRems()).toEqual(new Set([addA.data.body.childKey]));
+      expect(eRems().values()).toContain(addA.hash);
+      expect(set.merge(addCToA).isOk()).toBe(true);
+      expect(vRems()).toContain(addCToA.data.body.childKey);
+      expect(eRems().values()).toContain(addCToA.hash);
+      expect(eRems().values()).toContain(addCToB.hash);
+    });
   });
 
   describe('remove', () => {

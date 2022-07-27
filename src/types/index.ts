@@ -4,7 +4,7 @@ import { ethers } from 'ethers';
  * Message is a generic type that represents any cryptographically signed Message on Farcaster
  *
  * @data - the data that is being signed.
- * @hash - the keccak256 hash of the message.
+ * @hash - the blake2b hash of the message.
  * @signature - the ecdsa signature of the hash of the message.
  * @signer - the ethereum address whose private key was used to create the signature
  */
@@ -234,7 +234,7 @@ export type SignerAddBody = {
   childKey: string;
   edgeHash: string;
   childSignature: string;
-  childSignatureType: 'ed25519'; // TODO: support others
+  childSignatureType: SignatureAlgorithm.Ed25519;
   schema: 'farcaster.xyz/schemas/v1/signer-add';
 };
 
@@ -277,16 +277,10 @@ export type SignerRemoveFactoryTransientParams = {
   privateKey?: Uint8Array;
 };
 
-// TODO: use this more broadly
+/** SignatureAlgorithm enum */
 export enum SignatureAlgorithm {
   EcdsaSecp256k1 = 'ecdsa-secp256k1',
   Ed25519 = 'ed25519',
-}
-
-// TODO: use this more broadly
-export enum HashAlgorithm {
-  Keccak256 = 'keccak256',
-  Blake2b = 'blake2b',
 }
 
 // ===========================
