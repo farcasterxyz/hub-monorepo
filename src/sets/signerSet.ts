@@ -8,12 +8,12 @@ import { hashCompare } from '~/utils';
   for Signing and their corresponding delegates.
 */
 class SignerSet {
+  private _custodySigners: Set<string>; // custodyPubKey
   private _vertexAdds: Set<string>; // pubKey
   private _vertexRemoves: Set<string>; // pubKey
   private _edgeAdds: Map<string, string>; // <parentKey, childKey>, hash
   private _edgeRemoves: Map<string, string>; // <parentKey, childKey>, hash
   private _messages: Map<string, SignerMessage>; // message hash => SignerAdd | SignerRemove
-  private _custodySigners: Set<string>; // custodyPubKey
 
   constructor() {
     this._custodySigners = new Set();
@@ -33,27 +33,37 @@ class SignerSet {
   }
 
   private get _edgeAddsByChild() {
-    return this._getEdgesByChild(this._edgeAdds);
+    return this.getEdgesByChild(this._edgeAdds);
   }
 
   private get _edgeRemovesByChild() {
-    return this._getEdgesByChild(this._edgeRemoves);
+    return this.getEdgesByChild(this._edgeRemoves);
   }
 
   private get _edgesByChild() {
-    return this._getEdgesByChild(this._edges);
+    return this.getEdgesByChild(this._edges);
   }
 
   private get _edgeAddsByParent() {
-    return this._getEdgesByParent(this._edgeAdds);
+    return this.getEdgesByParent(this._edgeAdds);
   }
 
   private get _edgeRemovesByParent() {
-    return this._getEdgesByParent(this._edgeRemoves);
+    return this.getEdgesByParent(this._edgeRemoves);
   }
 
   private get _edgesByParent() {
-    return this._getEdgesByParent(this._edges);
+    return this.getEdgesByParent(this._edges);
+  }
+
+  // TODO: add more helper functions as we integrate signer set into engine
+
+  getDelegates(): string[] {
+    return Array.from(this._vertexAdds);
+  }
+
+  getAllDelegates(): string[] {
+    return Array.from(this._vertices);
   }
 
   getEdgeKey(parentPubKey: string, childPubKey: string): string {
@@ -102,20 +112,21 @@ class SignerSet {
   }
 
   addCustody(custodySignerPubkey: string): Result<void, string> {
-    if (this._custodySigners.has(custodySignerPubkey)) {
-      // idempotent
-      return ok(undefined);
-    }
+    if (this._custodySigners.has(custodySignerPubkey)) return ok(undefined);
 
     if (this._vertices.has(custodySignerPubkey)) {
-      return err('SignerSet.addCustody: pubKey already exists as a delegate');
+      return err('SignerSet.addCustody: custodySignerPubkey already exists as a delegate');
     }
 
     this._custodySigners.add(custodySignerPubkey);
     return ok(undefined);
   }
 
-  private _getEdgesByChild(edges: Map<string, string>) {
+  /**
+   * Private Methods
+   */
+
+  private getEdgesByChild(edges: Map<string, string>) {
     const byChildMap = new Map<string, Set<string>>();
     for (const edgeKey of edges.keys()) {
       const { childPubKey } = this.getPubKeysFromEdgeKey(edgeKey);
@@ -126,7 +137,7 @@ class SignerSet {
     return byChildMap;
   }
 
-  private _getEdgesByParent(edges: Map<string, string>) {
+  private getEdgesByParent(edges: Map<string, string>) {
     const byChildMap = new Map<string, Set<string>>();
     for (const edgeKey of edges.keys()) {
       const { parentPubKey } = this.getPubKeysFromEdgeKey(edgeKey);
@@ -211,7 +222,7 @@ class SignerSet {
         // For each edge (*, child) in edgeAdds (though there should be only one parent)
         (this._edgeAddsByChild.get(childPubKey) || new Set()).forEach((existingEdgeKey) => {
           const existingEdgeHash = this._edgeAdds.get(existingEdgeKey);
-          if (!existingEdgeHash) return err('SignerSet.add: parent edge not found');
+          if (!existingEdgeHash) return err('SignerSet.add: unexpected state');
 
           // If existing message wins
           if (hashCompare(existingEdgeHash, hash) > 0) {
@@ -341,6 +352,7 @@ class SignerSet {
   /**
    * Testing Methods
    */
+
   _reset(): void {
     this._custodySigners = new Set();
     this._vertexAdds = new Set();
