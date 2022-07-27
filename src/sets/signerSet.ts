@@ -282,7 +282,6 @@ class SignerSet {
       }
     }
 
-    // TODO: do we ever get here?
     return ok(undefined);
   }
 
