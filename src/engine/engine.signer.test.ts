@@ -1,21 +1,8 @@
 import Engine, { Signer } from '~/engine';
 import Faker from 'faker';
 import { Factories } from '~/factories';
-import {
-  CastShortBody,
-  Data,
-  KeyPair,
-  Root,
-  SignatureAlgorithm,
-  SignerAdd,
-  SignerAddFactoryTransientParams,
-  SignerMessage,
-  SignerRemove,
-} from '~/types';
+import { KeyPair, Root, SignatureAlgorithm, SignerAdd, SignerMessage, SignerRemove } from '~/types';
 import { blake2BHash, convertToHex, generateEd25519KeyPair, hashFCObject } from '~/utils';
-import { hexToBytes } from 'ethereum-cryptography/utils';
-import * as secp256k1 from 'ethereum-cryptography/secp256k1';
-import { isSignerAdd } from '~/types/typeguards';
 
 const engine = new Engine();
 
@@ -83,9 +70,7 @@ describe('addSignerChange', () => {
 
 describe('mergeSignerMessage', () => {
   let aliceKeyPair: KeyPair;
-  let alicePrivateKey: string;
   let alicePubKey: string;
-  let aliceCustody: string;
   let aliceRoot: Root;
   let aliceSignerChange: Signer;
   let aliceTransientParams: { privateKey: Uint8Array };
@@ -98,7 +83,6 @@ describe('mergeSignerMessage', () => {
   // Generate key pair for alice and root message
   beforeAll(async () => {
     aliceKeyPair = await generateEd25519KeyPair();
-    alicePrivateKey = await convertToHex(aliceKeyPair.privateKey);
     alicePubKey = await convertToHex(aliceKeyPair.publicKey);
     aliceTransientParams = { privateKey: aliceKeyPair.privateKey };
     aliceRoot = await Factories.Root.create(

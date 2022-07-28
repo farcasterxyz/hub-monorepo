@@ -7,7 +7,6 @@ import {
   VerificationAdd,
   VerificationRemove,
   VerificationClaim,
-  SignerRemove,
   SignerAdd,
   SignatureAlgorithm,
   SignerEdge,

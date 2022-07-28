@@ -5,7 +5,6 @@ import Faker from 'faker';
 import { ethers } from 'ethers';
 import { generateEd25519KeyPair, convertToHex, hashFCObject } from '~/utils';
 import { hexToBytes } from 'ethereum-cryptography/utils';
-import { isVerificationAdd } from '~/types/typeguards';
 
 const engine = new Engine();
 
