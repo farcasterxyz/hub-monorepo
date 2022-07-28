@@ -48,7 +48,7 @@ describe('mergeReaction', () => {
       },
       transient
     );
-    engine._resetSigners();
+    engine._resetUsers();
   });
 
   // Every test should start with a valid signer and root for alice
@@ -82,7 +82,7 @@ describe('mergeReaction', () => {
 
   describe('signer validation: ', () => {
     test('fails if there are no known signers', async () => {
-      engine._resetSigners();
+      engine._resetUsers();
 
       const result = await engine.mergeReaction(reaction);
       expect(result._unsafeUnwrapErr()).toBe('mergeReaction: unknown user');
@@ -104,7 +104,7 @@ describe('mergeReaction', () => {
     });
 
     test('fails if the signer was valid, but only after this block', async () => {
-      engine._resetSigners();
+      engine._resetUsers();
       const changeSigner = {
         blockNumber: 101,
         blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),

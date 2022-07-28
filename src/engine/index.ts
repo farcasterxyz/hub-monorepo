@@ -7,16 +7,31 @@ import {
   VerificationAdd,
   VerificationRemove,
   VerificationClaim,
+  SignerRemove,
+  SignerAdd,
+  SignatureAlgorithm,
+  SignerEdge,
+  SignerMessage,
 } from '~/types';
 import { hashMessage, hashCompare, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
 import { hexToBytes } from 'ethereum-cryptography/utils';
 import { ok, err, Result } from 'neverthrow';
 import { utils } from 'ethers';
-import { isCast, isCastShort, isRoot, isReaction, isVerificationAdd, isVerificationRemove } from '~/types/typeguards';
+import {
+  isCast,
+  isCastShort,
+  isRoot,
+  isReaction,
+  isVerificationAdd,
+  isVerificationRemove,
+  isSignerAdd,
+  isSignerRemove,
+} from '~/types/typeguards';
 import CastSet from '~/sets/castSet';
 import ReactionSet from '~/sets/reactionSet';
 import VerificationSet from '~/sets/verificationSet';
+import SignerSet from '~/sets/signerSet';
 
 export interface getUserFingerprint {
   rootBlockNum: number;
@@ -39,6 +54,7 @@ class Engine {
   private _roots: Map<string, Root>;
   private _users: Map<string, Signer[]>;
   private _verifications: Map<string, VerificationSet>;
+  private _signers: Map<string, SignerSet>;
 
   constructor() {
     this._casts = new Map();
@@ -46,6 +62,7 @@ class Engine {
     this._roots = new Map();
     this._users = new Map();
     this._verifications = new Map();
+    this._signers = new Map();
   }
 
   getSigners(username: string): Signer[] {
@@ -272,6 +289,34 @@ class Engine {
     return ok(undefined);
   }
 
+  addCustody(username: string, custodyPubKey: string): Result<void, string> {
+    let signerSet = this._signers.get(username);
+    if (!signerSet) {
+      signerSet = new SignerSet();
+      this._signers.set(username, signerSet);
+    }
+    return signerSet.addCustody(custodyPubKey);
+  }
+
+  /** Merge signer message into the set */
+  async mergeSignerMessage(message: SignerMessage): Promise<Result<void, string>> {
+    const username = message.data.username;
+    const signerChanges = this._users.get(username);
+    if (!signerChanges) {
+      return err('mergeSignerMessage: unknown user');
+    }
+    const isMessageValidResult = await this.validateMessage(message);
+    if (isMessageValidResult.isErr()) return isMessageValidResult;
+
+    let signerSet = this._signers.get(username);
+    if (!signerSet) {
+      signerSet = new SignerSet();
+      this._signers.set(username, signerSet);
+    }
+
+    return signerSet.merge(message);
+  }
+
   /**
    * Internal Methods
    *
@@ -280,6 +325,7 @@ class Engine {
 
   _reset(): void {
     this._resetCasts();
+    this._resetUsers();
     this._resetSigners();
     this._resetRoots();
     this._resetReactions();
@@ -291,6 +337,10 @@ class Engine {
   }
 
   _resetSigners(): void {
+    this._signers = new Map();
+  }
+
+  _resetUsers(): void {
     this._users = new Map();
   }
 
@@ -324,6 +374,16 @@ class Engine {
   _getVerificationRemoves(username: string): VerificationRemove[] {
     const verificationSet = this._verifications.get(username);
     return verificationSet ? verificationSet._getRemoves() : [];
+  }
+
+  _getSigners(username: string): string[] {
+    const signerSet = this._signers.get(username);
+    return signerSet ? Array.from(signerSet._getVertexAdds()) : [];
+  }
+
+  _getCustodySigners(username: string): string[] {
+    const signerSet = this._signers.get(username);
+    return signerSet ? Array.from(signerSet._getCustodySigners()) : [];
   }
 
   /** Determine the valid signer address for a username at a block */
@@ -407,6 +467,14 @@ class Engine {
       return this.validateVerificationRemove();
     }
 
+    if (isSignerAdd(message)) {
+      return this.validateSignerAdd(message);
+    }
+
+    if (isSignerRemove(message)) {
+      return this.validateSignerRemove();
+    }
+
     // TODO: check that the schema is a valid and known schema.
     // TODO: check that all required properties are present.
     // TODO: check that username is known to the registry
@@ -475,6 +543,39 @@ class Engine {
 
   private async validateVerificationRemove(): Promise<Result<void, string>> {
     // TODO: validate claimHash is a real hash
+    return ok(undefined);
+  }
+
+  private async validateSignerAdd(message: SignerAdd): Promise<Result<void, string>> {
+    const { childSignatureType, childSignature, childKey, edgeHash } = message.data.body;
+
+    /** Validate childSignatureType */
+    if (childSignatureType !== SignatureAlgorithm.Ed25519) return err('validateSignerAdd: invalid childSignatureType');
+
+    /** Validate edgeHash */
+    const signerEdge: SignerEdge = { childKey, parentKey: message.signer };
+    const reconstructedEdgeHash = await hashFCObject(signerEdge);
+    if (reconstructedEdgeHash !== edgeHash) return err('validateSignerAdd: invalid edgeHash');
+
+    /** Validate childSignature */
+    try {
+      const childSignatureIsValid = await ed.verify(
+        hexToBytes(childSignature),
+        hexToBytes(edgeHash),
+        hexToBytes(childKey)
+      );
+      if (!childSignatureIsValid) {
+        return err('validateSignerAdd: childSignature does not match childKey');
+      }
+    } catch (e: any) {
+      return err('validateSignerAdd: invalid childSignature');
+    }
+
+    return ok(undefined);
+  }
+
+  private async validateSignerRemove(): Promise<Result<void, string>> {
+    // TODO: any SignerRemove custom validations?
     return ok(undefined);
   }
 }

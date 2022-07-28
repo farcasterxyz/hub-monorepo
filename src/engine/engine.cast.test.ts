@@ -51,7 +51,7 @@ describe('mergeCast', () => {
       },
       transient
     );
-    engine._resetSigners();
+    engine._resetUsers();
   });
 
   // Every test should start with a valid signer and root for alice
@@ -81,7 +81,7 @@ describe('mergeCast', () => {
 
   describe('signer validation: ', () => {
     test('fails if there are no known signers', async () => {
-      engine._resetSigners();
+      engine._resetUsers();
 
       const result = engine.mergeCast(cast);
       expect((await result)._unsafeUnwrapErr()).toBe('mergeCast: unknown user');
@@ -103,7 +103,7 @@ describe('mergeCast', () => {
     });
 
     test('fails if the signer was valid, but only after this block', async () => {
-      engine._resetSigners();
+      engine._resetUsers();
       const changeSigner = {
         blockNumber: 101,
         blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),

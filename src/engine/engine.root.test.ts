@@ -90,7 +90,7 @@ describe('mergeRoot', () => {
 
   describe('signer validation:', () => {
     test('fails if there are no known signers', async () => {
-      engine._resetSigners();
+      engine._resetUsers();
       const result = await engine.mergeRoot(root100);
       expect(result._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
       expect(subject()).toEqual(undefined);
@@ -110,7 +110,7 @@ describe('mergeRoot', () => {
     });
 
     test('fails if the signer was valid, but only after this block', async () => {
-      engine._resetSigners();
+      engine._resetUsers();
       const changeSigner = {
         blockNumber: 101,
         blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),

@@ -5,6 +5,7 @@ import Faker from 'faker';
 import { ethers } from 'ethers';
 import { generateEd25519KeyPair, convertToHex, hashFCObject } from '~/utils';
 import { hexToBytes } from 'ethereum-cryptography/utils';
+import { isVerificationAdd } from '~/types/typeguards';
 
 const engine = new Engine();
 
@@ -68,7 +69,7 @@ describe('mergeVerification', () => {
   });
 
   test('fails if message signer is not valid', async () => {
-    engine._resetSigners();
+    engine._resetUsers();
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
