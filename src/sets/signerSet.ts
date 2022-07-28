@@ -6,6 +6,33 @@ import { hashCompare } from '~/utils';
 /*   
   SignerSet manages the account's associated custody addresses authorized 
   for Signing and their corresponding delegates.
+
+  This implementation uses a modified 2P2P set. There are four sets in total:
+
+  (1) vertexAdds: add set for vertices
+  (2) vertexRemoves: remove set for vertices
+  (3) edgeAdds: add set for edges
+  (4) edgeremoves: remove set for edges
+  
+  The design diverges from a conventional 2P2P set in two ways:
+
+  (1) Vertices and edges are moved between sets, so a given vertex or edge can only exist in 
+      its respective adds or removes set 
+  (2) The edges set store the edge tuple (parent, child) as well as the hash of the SignerAdd
+      message that added that edge to the graph
+
+  In practice, there is a constraint that the edges add set is a tree and the edges 
+  remove set is a rooted directed graph. But that constraint is only a bi-product of the add
+  and remove methods, and it is not enforced by the data structure. This implementation 
+  favors keeping the edgeAdds and edgeRemoves data structure the same, which makes the sets
+  easier to compare. This decision has two downsides:
+
+  (1) Tree and edge traversal is not as efficient as it could be. See the getEdgesByChild 
+      and getEdgesbyParent methods which filter keys in the edges maps by the child or parent 
+      members of the tuple.
+  (2) At points in the code where we need to get the parent of a vertex b in edgeAdds, we
+      loop through edges in edgeAdds where (*,b) even though practically we know there is only
+      one edge that fits that criteria. See the removeSubtree method for an example.
 */
 class SignerSet {
   private _custodySigners: Set<string>; // custodyPubKey
@@ -22,38 +49,6 @@ class SignerSet {
     this._edgeAdds = new Map();
     this._edgeRemoves = new Map();
     this._messages = new Map();
-  }
-
-  private get _vertices() {
-    return new Set([...this._vertexAdds, ...this._vertexRemoves]);
-  }
-
-  private get _edges() {
-    return new Map([...this._edgeAdds, ...this._edgeRemoves]);
-  }
-
-  private get _edgeAddsByChild() {
-    return this.getEdgesByChild(this._edgeAdds);
-  }
-
-  private get _edgeRemovesByChild() {
-    return this.getEdgesByChild(this._edgeRemoves);
-  }
-
-  private get _edgesByChild() {
-    return this.getEdgesByChild(this._edges);
-  }
-
-  private get _edgeAddsByParent() {
-    return this.getEdgesByParent(this._edgeAdds);
-  }
-
-  private get _edgeRemovesByParent() {
-    return this.getEdgesByParent(this._edgeRemoves);
-  }
-
-  private get _edgesByParent() {
-    return this.getEdgesByParent(this._edges);
   }
 
   // TODO: add more helper functions as we integrate signer set into engine
@@ -89,28 +84,6 @@ class SignerSet {
     return err('SignerSet.merge: invalid message format');
   }
 
-  mergeSignerAdd(message: SignerAdd): Result<void, string> {
-    const parentPubKey = message.signer;
-    const childPubKey = message.data.body.childKey;
-
-    const res = this.add(parentPubKey, childPubKey, message.hash);
-    if (res.isErr()) return res;
-
-    this._messages.set(message.hash, message);
-    return ok(undefined);
-  }
-
-  mergeSignerRemove(message: SignerRemove): Result<void, string> {
-    const parentPubKey = message.signer;
-    const childPubKey = message.data.body.childKey;
-
-    const res = this.remove(parentPubKey, childPubKey);
-    if (res.isErr()) return res;
-
-    this._messages.set(message.hash, message);
-    return ok(undefined);
-  }
-
   addCustody(custodySignerPubkey: string): Result<void, string> {
     if (this._custodySigners.has(custodySignerPubkey)) return ok(undefined);
 
@@ -125,6 +98,38 @@ class SignerSet {
   /**
    * Private Methods
    */
+
+  private get _vertices() {
+    return new Set([...this._vertexAdds, ...this._vertexRemoves]);
+  }
+
+  private get _edges() {
+    return new Map([...this._edgeAdds, ...this._edgeRemoves]);
+  }
+
+  private get _edgeAddsByChild() {
+    return this.getEdgesByChild(this._edgeAdds);
+  }
+
+  private get _edgeRemovesByChild() {
+    return this.getEdgesByChild(this._edgeRemoves);
+  }
+
+  private get _edgesByChild() {
+    return this.getEdgesByChild(this._edges);
+  }
+
+  private get _edgeAddsByParent() {
+    return this.getEdgesByParent(this._edgeAdds);
+  }
+
+  private get _edgeRemovesByParent() {
+    return this.getEdgesByParent(this._edgeRemoves);
+  }
+
+  private get _edgesByParent() {
+    return this.getEdgesByParent(this._edges);
+  }
 
   private getEdgesByChild(edges: Map<string, string>) {
     const byChildMap = new Map<string, Set<string>>();
@@ -146,6 +151,28 @@ class SignerSet {
       byChildMap.set(parentPubKey, existingSet);
     }
     return byChildMap;
+  }
+
+  private mergeSignerAdd(message: SignerAdd): Result<void, string> {
+    const parentPubKey = message.signer;
+    const childPubKey = message.data.body.childKey;
+
+    const res = this.add(parentPubKey, childPubKey, message.hash);
+    if (res.isErr()) return res;
+
+    this._messages.set(message.hash, message);
+    return ok(undefined);
+  }
+
+  private mergeSignerRemove(message: SignerRemove): Result<void, string> {
+    const parentPubKey = message.signer;
+    const childPubKey = message.data.body.childKey;
+
+    const res = this.remove(parentPubKey, childPubKey);
+    if (res.isErr()) return res;
+
+    this._messages.set(message.hash, message);
+    return ok(undefined);
   }
 
   private add(parentPubKey: string, childPubKey: string, hash: string): Result<void, string> {
