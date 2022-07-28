@@ -204,7 +204,7 @@ describe('merge', () => {
       expect(eRems().values()).toContain(addCToB.hash);
     });
 
-    test('succeeds when creating a cycle in edgeAdds tree but moves new edge to edgeAdds', async () => {
+    test('succeeds when creating a cycle in edgeAdds tree but moves new edge to edgeRemoves', async () => {
       expect(set.merge(addA).isOk()).toBe(true);
       expect(set.merge(addCToA).isOk()).toBe(true);
       const addAToCHigherHash = await Factories.SignerAdd.create(
@@ -240,10 +240,10 @@ describe('merge', () => {
       const newCustodyPubKey = await convertToHex(secp256k1.getPublicKey(newCustodyPrivateKey));
       expect(set.addCustody(newCustodyPubKey).isOk()).toBe(true);
       const addCustodyToA = await Factories.SignerAdd.create(
-        {},
+        { data: { body: { childKey: newCustodyPubKey } } },
         { transient: { privateKey: a.privateKey, childPrivateKey: newCustodyPrivateKey } }
       );
-      expect(set.merge(addCustodyToA).isOk()).toBe(true);
+      expect(set.merge(addCustodyToA).isOk()).toBe(false);
     });
 
     test('succeeds and removes child when adding an edge from a parent in vRems', () => {
