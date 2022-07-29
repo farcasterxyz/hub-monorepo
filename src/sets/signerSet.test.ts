@@ -1,8 +1,8 @@
-import { SignerAdd, SignerRemove, KeyPair } from '~/types';
+import { SignerAdd, SignerRemove, EthereumSigner, EddsaSigner } from '~/types';
 import SignerSet from '~/sets/signerSet';
 import { Factories } from '~/factories';
-import * as secp256k1 from 'ethereum-cryptography/secp256k1';
-import { convertToHex, generateEd25519KeyPair } from '~/utils';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
+import { ethers } from 'ethers';
 
 const set = new SignerSet();
 const vAdds = () => set._getVertexAdds();
@@ -17,10 +17,10 @@ describe('addCustody', () => {
   let custody2: string;
 
   beforeAll(async () => {
-    const custody1PrivateKey = secp256k1.utils.randomPrivateKey();
-    custody1 = await convertToHex(secp256k1.getPublicKey(custody1PrivateKey));
-    const custody2PrivateKey = secp256k1.utils.randomPrivateKey();
-    custody2 = await convertToHex(secp256k1.getPublicKey(custody2PrivateKey));
+    const custodyWallet1 = ethers.Wallet.createRandom();
+    custody1 = custodyWallet1.address;
+    const custodyWallet2 = ethers.Wallet.createRandom();
+    custody2 = custodyWallet2.address;
   });
 
   beforeEach(() => {
@@ -49,54 +49,39 @@ describe('addCustody', () => {
 });
 
 describe('merge', () => {
-  let custodyKeyPair: KeyPair;
-  let custodyPubKey: string;
-
-  let a: KeyPair;
+  let custodySigner: EthereumSigner;
+  let a: EddsaSigner;
   let addA: SignerAdd;
   let remA: SignerRemove;
-  let b: KeyPair;
+  let b: EddsaSigner;
   let addB: SignerAdd;
-  let c: KeyPair;
+  let c: EddsaSigner;
   let addCToA: SignerAdd;
   let addCToB: SignerAdd;
   let remCFromA: SignerRemove;
 
   beforeAll(async () => {
-    custodyKeyPair = await generateEd25519KeyPair();
-    custodyPubKey = await convertToHex(custodyKeyPair.publicKey);
-    a = await generateEd25519KeyPair();
-    addA = await Factories.SignerAdd.create(
-      {},
-      { transient: { privateKey: custodyKeyPair.privateKey, childPrivateKey: a.privateKey } }
-    );
+    custodySigner = await generateEthereumSigner();
+    a = await generateEd25519Signer();
+    addA = await Factories.SignerAdd.create({}, { transient: { signer: custodySigner, childSigner: a } });
     remA = await Factories.SignerRemove.create(
       { data: { body: { childKey: addA.data.body.childKey } } },
-      { transient: { privateKey: custodyKeyPair.privateKey } }
+      { transient: { signer: custodySigner } }
     );
-    b = await generateEd25519KeyPair();
-    addB = await Factories.SignerAdd.create(
-      {},
-      { transient: { privateKey: custodyKeyPair.privateKey, childPrivateKey: b.privateKey } }
-    );
-    c = await generateEd25519KeyPair();
-    addCToA = await Factories.SignerAdd.create(
-      {},
-      { transient: { privateKey: a.privateKey, childPrivateKey: c.privateKey } }
-    );
-    addCToB = await Factories.SignerAdd.create(
-      {},
-      { transient: { privateKey: b.privateKey, childPrivateKey: c.privateKey } }
-    );
+    b = await generateEd25519Signer();
+    addB = await Factories.SignerAdd.create({}, { transient: { signer: custodySigner, childSigner: b } });
+    c = await generateEd25519Signer();
+    addCToA = await Factories.SignerAdd.create({}, { transient: { signer: a, childSigner: c } });
+    addCToB = await Factories.SignerAdd.create({}, { transient: { signer: b, childSigner: c } });
     remCFromA = await Factories.SignerRemove.create(
       { data: { body: { childKey: addCToA.data.body.childKey } } },
-      { transient: { privateKey: a.privateKey } }
+      { transient: { signer: a } }
     );
   });
 
   beforeEach(() => {
     set._reset();
-    set.addCustody(custodyPubKey);
+    set.addCustody(custodySigner.signerKey);
   });
 
   describe('add', () => {
@@ -157,10 +142,7 @@ describe('merge', () => {
         let addCToADuplicate: SignerAdd;
 
         beforeAll(async () => {
-          addCToADuplicate = await Factories.SignerAdd.create(
-            {},
-            { transient: { privateKey: a.privateKey, childPrivateKey: c.privateKey } }
-          );
+          addCToADuplicate = await Factories.SignerAdd.create({}, { transient: { signer: a, childSigner: c } });
         });
 
         test('succeeds with a lower message hash but does not update edgeAdds', () => {
@@ -168,7 +150,7 @@ describe('merge', () => {
           expect(set.merge(addCToA).isOk()).toBe(true);
           const addCToADuplicateFail: SignerAdd = { ...addCToADuplicate, hash: addCToA.hash.slice(0, -1) };
           expect(set.merge(addCToADuplicateFail).isOk()).toBe(true);
-          const edgeKey = set.getEdgeKey(addCToA.signer, addCToA.data.body.childKey);
+          const edgeKey = set.constructEdgeKey(addCToA.signer, addCToA.data.body.childKey);
           expect(eAdds().get(edgeKey)).toEqual(addCToA.hash);
           expect(eRems().size).toEqual(0);
         });
@@ -178,7 +160,7 @@ describe('merge', () => {
           expect(set.merge(addCToA).isOk()).toBe(true);
           const addCToADuplicateSuccess: SignerAdd = { ...addCToADuplicate, hash: addCToA.hash + 'z' };
           expect(set.merge(addCToADuplicateSuccess).isOk()).toBe(true);
-          const edgeKey = set.getEdgeKey(addCToA.signer, addCToA.data.body.childKey);
+          const edgeKey = set.constructEdgeKey(addCToA.signer, addCToA.data.body.childKey);
           expect(eAdds().get(edgeKey)).toEqual(addCToADuplicateSuccess.hash);
           expect(eRems().size).toEqual(0);
         });
@@ -207,10 +189,7 @@ describe('merge', () => {
     test('succeeds when creating a cycle in edgeAdds tree but moves new edge to edgeRemoves', async () => {
       expect(set.merge(addA).isOk()).toBe(true);
       expect(set.merge(addCToA).isOk()).toBe(true);
-      const addAToCHigherHash = await Factories.SignerAdd.create(
-        {},
-        { transient: { privateKey: c.privateKey, childPrivateKey: a.privateKey } }
-      );
+      const addAToCHigherHash = await Factories.SignerAdd.create({}, { transient: { signer: c, childSigner: a } });
       addAToCHigherHash.hash = addA.hash + 'a';
       expect(set.merge(addAToCHigherHash).isOk()).toBe(true);
       expect(eRems().values()).toContain(addAToCHigherHash.hash);
@@ -224,26 +203,11 @@ describe('merge', () => {
       const addCToBHigherHash: SignerAdd = { ...addCToB, hash: addCToA.hash + 'a' };
       expect(set.merge(addCToBHigherHash).isOk()).toBe(true);
       expect(eRems().values()).toContain(addCToA.hash);
-      const addAToCHigherHash = await Factories.SignerAdd.create(
-        {},
-        { transient: { privateKey: c.privateKey, childPrivateKey: a.privateKey } }
-      );
+      const addAToCHigherHash = await Factories.SignerAdd.create({}, { transient: { signer: c, childSigner: a } });
       addAToCHigherHash.hash = addA.hash + 'a';
       expect(set.merge(addAToCHigherHash).isOk()).toBe(true);
       expect(eAdds().values()).toContain(addAToCHigherHash.hash);
       expect(eRems().values()).toContain(addA.hash);
-    });
-
-    test('fails when child is a custody signer', async () => {
-      expect(set.merge(addA).isOk()).toBe(true);
-      const newCustodyPrivateKey = secp256k1.utils.randomPrivateKey();
-      const newCustodyPubKey = await convertToHex(secp256k1.getPublicKey(newCustodyPrivateKey));
-      expect(set.addCustody(newCustodyPubKey).isOk()).toBe(true);
-      const addCustodyToA = await Factories.SignerAdd.create(
-        { data: { body: { childKey: newCustodyPubKey } } },
-        { transient: { privateKey: a.privateKey, childPrivateKey: newCustodyPrivateKey } }
-      );
-      expect(set.merge(addCustodyToA).isOk()).toBe(false);
     });
 
     test('succeeds and removes child when adding an edge from a parent in vRems', () => {
@@ -297,7 +261,7 @@ describe('merge', () => {
       expect(set.merge(addCToA).isOk()).toBe(true);
       const remC = await Factories.SignerRemove.create(
         { data: { body: { childKey: addCToA.data.body.childKey } } },
-        { transient: { privateKey: custodyKeyPair.privateKey } }
+        { transient: { signer: custodySigner } }
       );
       expect(set.merge(remC).isOk()).toBe(false);
       expect(vRems()).toEqual(new Set());

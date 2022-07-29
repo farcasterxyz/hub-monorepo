@@ -245,8 +245,8 @@ export type SignerAddBody = {
  * @childPrivateKey - the private key for signing the edgeHash
  */
 export type SignerAddFactoryTransientParams = {
-  privateKey?: Uint8Array;
-  childPrivateKey?: Uint8Array;
+  signer?: MessageSigner;
+  childSigner?: EddsaSigner;
 };
 
 /**
@@ -274,13 +274,13 @@ export type SignerRemoveBody = {
  * @privateKey - the private key for signing the SignerRemove message, should be the parent of the childKey
  */
 export type SignerRemoveFactoryTransientParams = {
-  privateKey?: Uint8Array;
+  signer?: MessageSigner;
 };
 
 /** SignatureAlgorithm enum */
 export enum SignatureAlgorithm {
-  EcdsaSecp256k1 = 'ecdsa-secp256k1',
   Ed25519 = 'ed25519',
+  EthereumPersonalSign = 'eth-personal-sign',
 }
 
 // ===========================
@@ -315,4 +315,18 @@ export type HTTPURI = string;
 export type KeyPair = {
   privateKey: Uint8Array;
   publicKey: Uint8Array;
+};
+
+export type MessageSigner = EddsaSigner | EthereumSigner;
+
+export type EddsaSigner = {
+  privateKey: Uint8Array;
+  signerKey: string; // Public key hex
+  type: SignatureAlgorithm.Ed25519;
+};
+
+export type EthereumSigner = {
+  wallet: ethers.Wallet;
+  signerKey: string; // Address
+  type: SignatureAlgorithm.EthereumPersonalSign;
 };

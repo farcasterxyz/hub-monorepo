@@ -19,7 +19,7 @@ import {
   SignerAddFactoryTransientParams,
   SignatureAlgorithm,
 } from '~/types';
-import { convertToHex, hashMessage, signEd25519, hashFCObject } from '~/utils';
+import { convertToHex, hashMessage, signEd25519, hashFCObject, generateEd25519Signer } from '~/utils';
 import * as ed from '@noble/ed25519';
 
 /**
@@ -214,21 +214,21 @@ export const Factories = {
 
   /** Generate a valid SignerAdd */
   SignerAdd: Factory.define<SignerAdd, SignerAddFactoryTransientParams, SignerAdd>(({ onCreate, transientParams }) => {
-    const { privateKey = ed.utils.randomPrivateKey(), childPrivateKey = ed.utils.randomPrivateKey() } = transientParams;
-
     onCreate(async (props) => {
-      const parentPubKey = await convertToHex(await ed.getPublicKey(privateKey));
-      const childPubKey = await convertToHex(await ed.getPublicKey(childPrivateKey));
+      const signer = transientParams.signer || (await generateEd25519Signer());
+      const childSigner = transientParams.childSigner || (await generateEd25519Signer());
+      const parentKey = signer.signerKey;
+      const childKey = childSigner.signerKey;
 
       /** Set childKey if missing */
       if (!props.data.body.childKey) {
-        props.data.body.childKey = childPubKey;
+        props.data.body.childKey = childKey;
       }
 
       /** Generate edgeHash if missing */
       if (!props.data.body.edgeHash) {
         const edge: SignerEdge = {
-          parentKey: parentPubKey,
+          parentKey: parentKey,
           childKey: props.data.body.childKey,
         };
         props.data.body.edgeHash = await hashFCObject(edge);
@@ -236,13 +236,17 @@ export const Factories = {
 
       /** Generate childSignature if missing */
       if (!props.data.body.childSignature) {
-        props.data.body.childSignature = await signEd25519(props.data.body.edgeHash, childPrivateKey);
+        props.data.body.childSignature = await signEd25519(props.data.body.edgeHash, childSigner.privateKey);
       }
 
       props.hash = await hashMessage(props);
-      props.signer = parentPubKey;
-      const signature = await signEd25519(props.hash, privateKey);
-      props.signature = signature;
+      props.signer = parentKey;
+
+      if (signer.type === SignatureAlgorithm.EthereumPersonalSign) {
+        props.signature = await signer.wallet.signMessage(props.hash);
+      } else if (signer.type === SignatureAlgorithm.Ed25519) {
+        props.signature = await signEd25519(props.hash, signer.privateKey);
+      }
 
       return props;
     });
@@ -269,16 +273,18 @@ export const Factories = {
   /** Generate a valid SignerRemove */
   SignerRemove: Factory.define<SignerRemove, SignerRemoveFactoryTransientParams, SignerRemove>(
     ({ onCreate, transientParams }) => {
-      const { privateKey = ed.utils.randomPrivateKey() } = transientParams;
-
       onCreate(async (props) => {
-        const publicKey = await ed.getPublicKey(privateKey);
+        const signer = transientParams.signer || (await generateEd25519Signer());
+        const parentKey = signer.signerKey;
+
         props.hash = await hashMessage(props);
+        props.signer = parentKey;
 
-        props.signer = await convertToHex(publicKey);
-
-        const signature = await signEd25519(props.hash, privateKey);
-        props.signature = signature;
+        if (signer.type === SignatureAlgorithm.EthereumPersonalSign) {
+          props.signature = await signer.wallet.signMessage(props.hash);
+        } else if (signer.type === SignatureAlgorithm.Ed25519) {
+          props.signature = await signEd25519(props.hash, signer.privateKey);
+        }
 
         return props;
       });
