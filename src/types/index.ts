@@ -245,7 +245,6 @@ export enum SignatureAlgorithm {
 /** MessageFactoryTransientParams is the generic transient params type for factories */
 export type MessageFactoryTransientParams = {
   signer?: MessageSigner;
-  // privateKey?: Uint8Array;
 };
 
 export type MessageSigner = Ed25519Signer | EthereumSigner;
