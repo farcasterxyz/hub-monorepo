@@ -23,7 +23,10 @@ import {
 } from '~/types';
 import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
-const getMessageSigner = async (props: Message, transientParams: MessageFactoryTransientParams) => {
+const getMessageSigner = async (
+  props: Message,
+  transientParams: MessageFactoryTransientParams
+): Promise<MessageSigner> => {
   /** Check if transientParams already has a signer */
   if (transientParams.signer) return transientParams.signer;
 

@@ -5,7 +5,6 @@ import {
   Ed25519Signer,
   EthereumSigner,
   KeyPair,
-  MessageFactoryTransientParams,
   Root,
   SignatureAlgorithm,
   SignerAdd,
@@ -88,14 +87,11 @@ describe('addSignerChange', () => {
 describe('mergeSignerMessage', () => {
   let aliceCustodySigner: EthereumSigner;
   let aliceDelegateSigner: Ed25519Signer;
-
   let aliceRoot: Root;
   let aliceSignerChange: Signer;
   let genericMessageData: { rootBlock: number; username: string; signedAt: number };
-  let aKeyPair: KeyPair;
-  let aPubKey: string;
-  let aliceSignerAddA: SignerAdd;
-  let aliceSignerRemoveA: SignerRemove;
+  let aliceSignerAddDelegate: SignerAdd;
+  let aliceSignerRemoveDelegate: SignerRemove;
 
   // Generate key pair for alice and root message
   beforeAll(async () => {
@@ -116,13 +112,11 @@ describe('mergeSignerMessage', () => {
       username: 'alice',
       signedAt: aliceRoot.data.signedAt + 1,
     };
-    aKeyPair = await generateEd25519KeyPair();
-    aPubKey = await convertToHex(aKeyPair.publicKey);
-    aliceSignerAddA = await Factories.SignerAdd.create(
+    aliceSignerAddDelegate = await Factories.SignerAdd.create(
       { data: genericMessageData },
       { transient: { signer: aliceCustodySigner, childSigner: aliceDelegateSigner } }
     );
-    aliceSignerRemoveA = await Factories.SignerRemove.create(
+    aliceSignerRemoveDelegate = await Factories.SignerRemove.create(
       { data: { ...genericMessageData, body: { childKey: aliceDelegateSigner.signerKey } } },
       { transient: { signer: aliceCustodySigner } }
     );
@@ -135,14 +129,14 @@ describe('mergeSignerMessage', () => {
     engine.mergeRoot(aliceRoot);
   });
 
-  test('fails without a custody public key', async () => {
+  test('fails without a custody address', async () => {
     expect(engine._getCustodySigners('alice')).toEqual([]);
-    const res = await engine.mergeSignerMessage(aliceSignerAddA);
+    const res = await engine.mergeSignerMessage(aliceSignerAddDelegate);
     expect(res.isOk()).toBe(false);
     expect(engine._getSigners('alice')).toEqual([]);
   });
 
-  describe('with a custody public key', () => {
+  describe('with a custody address', () => {
     beforeEach(() => {
       engine.addCustody('alice', aliceCustodySigner.signerKey);
     });
@@ -156,9 +150,9 @@ describe('mergeSignerMessage', () => {
     });
 
     test('succeeds with a valid SignerAdd', async () => {
-      const res = await engine.mergeSignerMessage(aliceSignerAddA);
+      const res = await engine.mergeSignerMessage(aliceSignerAddDelegate);
       expect(res.isOk()).toBe(true);
-      expect(engine._getSigners('alice')).toEqual([aPubKey]);
+      expect(engine._getSigners('alice')).toEqual([aliceDelegateSigner.signerKey]);
     });
 
     test('fails with malformed childSignature', async () => {
@@ -211,7 +205,7 @@ describe('mergeSignerMessage', () => {
     });
 
     test('fails with invalid hash', async () => {
-      const signerAddClone = { ...aliceSignerAddA };
+      const signerAddClone = { ...aliceSignerAddDelegate };
       signerAddClone.hash = await hashFCObject({ foo: 'bar' });
       const res = await engine.mergeSignerMessage(signerAddClone);
       expect(res.isOk()).toBe(false);
@@ -220,7 +214,7 @@ describe('mergeSignerMessage', () => {
     });
 
     test('fails with invalid signature', async () => {
-      const signerAddClone = { ...aliceSignerAddA };
+      const signerAddClone = { ...aliceSignerAddDelegate };
       signerAddClone.signature =
         '0x5b699d494b515b22258c01ad19710d44c3f12235f0c01e91d09a1e4e2cd25d80c77026a7319906da3b8ce62abc18477c19e444a02949a0dde54f8cadef889502';
       const res = await engine.mergeSignerMessage(signerAddClone);
@@ -244,22 +238,22 @@ describe('mergeSignerMessage', () => {
 
     test('fails if there is no root', async () => {
       engine._resetRoots();
-      const res = await engine.mergeSignerMessage(aliceSignerAddA);
+      const res = await engine.mergeSignerMessage(aliceSignerAddDelegate);
       expect(res.isOk()).toBe(false);
       expect(res._unsafeUnwrapErr()).toBe('validateMessage: no root present');
       expect(engine._getSigners('alice')).toEqual([]);
     });
 
     test('succeeds with a valid SignerRemove', async () => {
-      expect((await engine.mergeSignerMessage(aliceSignerAddA)).isOk()).toBe(true);
-      expect(engine._getSigners('alice')).toEqual([aPubKey]);
-      const res = await engine.mergeSignerMessage(aliceSignerRemoveA);
+      expect((await engine.mergeSignerMessage(aliceSignerAddDelegate)).isOk()).toBe(true);
+      expect(engine._getSigners('alice')).toEqual([aliceDelegateSigner.signerKey]);
+      const res = await engine.mergeSignerMessage(aliceSignerRemoveDelegate);
       expect(res.isOk()).toBe(true);
       expect(engine._getSigners('alice')).toEqual([]);
     });
 
     test('fails with a valid SignerRemove when relevant SignerAdd has not been merged', async () => {
-      const res = await engine.mergeSignerMessage(aliceSignerRemoveA);
+      const res = await engine.mergeSignerMessage(aliceSignerRemoveDelegate);
       expect(res.isOk()).toBe(false);
       expect(res._unsafeUnwrapErr()).toBe('SignerSet.remove: edge does not exist');
       expect(engine._getSigners('alice')).toEqual([]);
