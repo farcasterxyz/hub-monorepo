@@ -238,7 +238,7 @@ export type SignerAddBody = {
 /**
  * A SignerAddFactoryTransientParams is passed to the SignerAdd factory
  *
- * @childPrivateKey - the private key for signing the edgeHash
+ * @childSigner - the Ed25519 signer for signing the edgeHash
  */
 export type SignerAddFactoryTransientParams = MessageFactoryTransientParams & {
   childSigner?: Ed25519Signer;
@@ -303,7 +303,7 @@ export enum SignatureAlgorithm {
   EthereumPersonalSign = 'eth-personal-sign',
 }
 
-/** MessageFactoryTransientParams is the generic transient params type for factories */
+/** MessageFactoryTransientParams is the generic transient params type for message factories */
 export type MessageFactoryTransientParams = {
   signer?: MessageSigner;
 };

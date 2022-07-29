@@ -23,6 +23,16 @@ import {
 } from '~/types';
 import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
+const getMessageSigner = async (props: Message, transientParams: MessageFactoryTransientParams) => {
+  /** Check if transientParams already has a signer */
+  if (transientParams.signer) return transientParams.signer;
+
+  /** Check if props has signatureType set  */
+  if (props.signatureType === SignatureAlgorithm.EthereumPersonalSign) return await generateEthereumSigner();
+
+  /** Otherwise generate default signer */
+  return await generateEd25519Signer();
+};
 /**
  * addEnvelopeToMessage adds hash, signer, signature, and signatureType to a message
  * object using the signer in transientParams if one is present
@@ -31,14 +41,7 @@ const addEnvelopeToMessage = async (
   props: Message,
   transientParams: MessageFactoryTransientParams
 ): Promise<Message> => {
-  let signer: MessageSigner;
-  if (transientParams.signer) {
-    signer = transientParams.signer;
-  } else if (props.signatureType === SignatureAlgorithm.EthereumPersonalSign) {
-    signer = await generateEthereumSigner();
-  } else {
-    signer = await generateEd25519Signer();
-  }
+  const signer = await getMessageSigner(props, transientParams);
   props.hash = await hashMessage(props);
   props.signer = signer.signerKey;
   if (signer.type === SignatureAlgorithm.EthereumPersonalSign) {
@@ -175,17 +178,10 @@ export const Factories = {
     };
   }),
 
-  /** Generate a valid SignerAdd */
+  /** Generate a valid SignerAdd with randomized properties */
   SignerAdd: Factory.define<SignerAdd, SignerAddFactoryTransientParams, SignerAdd>(({ onCreate, transientParams }) => {
     onCreate(async (props) => {
-      let signer: MessageSigner;
-      if (transientParams.signer) {
-        signer = transientParams.signer;
-      } else if (props.signatureType === SignatureAlgorithm.EthereumPersonalSign) {
-        signer = await generateEthereumSigner();
-      } else {
-        signer = await generateEd25519Signer();
-      }
+      const signer = await getMessageSigner(props, transientParams);
       const childSigner = transientParams.childSigner || (await generateEd25519Signer());
       const parentKey = signer.signerKey;
       const childKey = childSigner.signerKey;
@@ -209,7 +205,7 @@ export const Factories = {
         props.data.body.childSignature = await signEd25519(props.data.body.edgeHash, childSigner.privateKey);
       }
 
-      return (await addEnvelopeToMessage(props, transientParams)) as SignerAdd;
+      return (await addEnvelopeToMessage(props, { ...transientParams, signer })) as SignerAdd;
     });
 
     return {
@@ -232,7 +228,7 @@ export const Factories = {
     };
   }),
 
-  /** Generate a valid SignerRemove */
+  /** Generate a valid SignerRemove with randomized properties */
   SignerRemove: Factory.define<SignerRemove, MessageFactoryTransientParams, SignerRemove>(
     ({ onCreate, transientParams }) => {
       onCreate(async (props) => {
@@ -257,7 +253,7 @@ export const Factories = {
     }
   ),
 
-  /** Generate a VerificationAdd message */
+  /** Generate a VerificationAdd message with randomized properties */
   VerificationAdd: Factory.define<VerificationAdd, VerificationAddFactoryTransientParams, VerificationAdd>(
     ({ onCreate, transientParams }) => {
       const { ethWallet = ethers.Wallet.createRandom() } = transientParams;
@@ -302,7 +298,7 @@ export const Factories = {
     }
   ),
 
-  /** Generate a VerificationRemove message */
+  /** Generate a VerificationRemove message with randomized properties */
   VerificationRemove: Factory.define<VerificationRemove, VerificationRemoveFactoryTransientParams, VerificationRemove>(
     ({ onCreate, transientParams }) => {
       const { externalUri = Faker.datatype.hexaDecimal(40).toLowerCase() } = transientParams;
