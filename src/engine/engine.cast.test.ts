@@ -1,32 +1,32 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
-import { Cast, Reaction, Root } from '~/types';
+import { Cast, MessageFactoryTransientParams, MessageSigner, Reaction, Root } from '~/types';
 import Faker from 'faker';
-import { generateEd25519KeyPair, convertToHex } from '~/utils';
-import { hexToBytes } from 'ethereum-cryptography/utils';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
 const engine = new Engine();
 const username = 'alice';
 
 describe('mergeCast', () => {
-  let alicePrivateKey: string;
+  // let alicePrivateKey: string;
+  let aliceSigner: MessageSigner;
   let aliceAddress: string;
   let root: Root;
   let cast: Cast;
   let reaction: Reaction;
-  let transient: { transient: { privateKey: Uint8Array } };
+  let transient: { transient: MessageFactoryTransientParams };
   const subject = () => engine._getCastAdds(username);
 
   beforeAll(async () => {
-    const keyPair = await generateEd25519KeyPair();
+    // Randomly generate either an Ed25519 or Ethereum signer
+    if (Math.random() > 0.5) {
+      aliceSigner = await generateEd25519Signer();
+    } else {
+      aliceSigner = await generateEthereumSigner();
+    }
+    aliceAddress = aliceSigner.signerKey;
 
-    const privateKeyBuffer = keyPair.privateKey;
-    alicePrivateKey = await convertToHex(privateKeyBuffer);
-
-    const addressBuffer = keyPair.publicKey;
-    aliceAddress = await convertToHex(addressBuffer);
-
-    transient = { transient: { privateKey: hexToBytes(alicePrivateKey) } };
+    transient = { transient: { signer: aliceSigner } };
 
     root = await Factories.Root.create({ data: { rootBlock: 100, username: 'alice' } }, transient);
 

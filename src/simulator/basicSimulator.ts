@@ -4,7 +4,6 @@ import Faker from 'faker';
 import Simulator from '~/simulator';
 import { ethers } from 'ethers';
 import * as FC from '~/types';
-import { convertToHex } from '~/utils';
 
 /**
  * Basic Simulator
@@ -75,7 +74,7 @@ class BasicSimulator extends Simulator {
       blockNumber: this.blockNumber,
       blockHash: this.blockHash,
       logIndex: logIndex || 0,
-      address: await convertToHex(client.publicKey),
+      address: client.signer.signerKey,
     };
   }
 

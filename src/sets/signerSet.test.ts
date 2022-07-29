@@ -1,4 +1,4 @@
-import { SignerAdd, SignerRemove, EthereumSigner, EddsaSigner } from '~/types';
+import { SignerAdd, SignerRemove, EthereumSigner, Ed25519Signer } from '~/types';
 import SignerSet from '~/sets/signerSet';
 import { Factories } from '~/factories';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
@@ -50,12 +50,12 @@ describe('addCustody', () => {
 
 describe('merge', () => {
   let custodySigner: EthereumSigner;
-  let a: EddsaSigner;
+  let a: Ed25519Signer;
   let addA: SignerAdd;
   let remA: SignerRemove;
-  let b: EddsaSigner;
+  let b: Ed25519Signer;
   let addB: SignerAdd;
-  let c: EddsaSigner;
+  let c: Ed25519Signer;
   let addCToA: SignerAdd;
   let addCToB: SignerAdd;
   let remCFromA: SignerRemove;

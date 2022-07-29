@@ -1,21 +1,17 @@
 import * as FC from '~/types';
-import { hashMessage, signEd25519, convertToHex, hashFCObject } from '~/utils';
+import { hashMessage, signEd25519, hashFCObject } from '~/utils';
 
 class Client {
-  publicKey: Uint8Array;
-  privateKey: Uint8Array;
+  signer: FC.MessageSigner;
   username: string;
 
-  constructor(username: string, privateKey: Uint8Array, publicKey: Uint8Array) {
-    this.privateKey = privateKey;
-    this.publicKey = publicKey;
+  constructor(username: string, signer: FC.MessageSigner) {
     this.username = username;
+    this.signer = signer;
   }
 
-  get address(): Promise<string> {
-    return (async () => {
-      return await convertToHex(this.publicKey);
-    })();
+  get address() {
+    return this.signer.signerKey;
   }
 
   async makeMessage(data: FC.Data): Promise<FC.Message> {
@@ -23,10 +19,15 @@ class Client {
       data,
       hash: '',
       signature: '',
-      signer: await convertToHex(this.publicKey),
+      signatureType: this.signer.type,
+      signer: this.signer.signerKey,
     };
     message.hash = await hashMessage(message);
-    message.signature = await signEd25519(message.hash, this.privateKey);
+    if (this.signer.type === FC.SignatureAlgorithm.EthereumPersonalSign) {
+      message.signature = await this.signer.wallet.signMessage(message.hash);
+    } else if (this.signer.type === FC.SignatureAlgorithm.Ed25519) {
+      message.signature = await signEd25519(message.hash, this.signer.privateKey);
+    }
     return message;
   }
 
