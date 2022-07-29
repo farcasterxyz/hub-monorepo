@@ -1,8 +1,24 @@
 import Engine, { Signer } from '~/engine';
 import Faker from 'faker';
 import { Factories } from '~/factories';
-import { KeyPair, Root, SignatureAlgorithm, SignerAdd, SignerMessage, SignerRemove } from '~/types';
-import { blake2BHash, convertToHex, generateEd25519KeyPair, hashFCObject } from '~/utils';
+import {
+  EddsaSigner,
+  EthereumSigner,
+  KeyPair,
+  Root,
+  SignatureAlgorithm,
+  SignerAdd,
+  SignerMessage,
+  SignerRemove,
+} from '~/types';
+import {
+  blake2BHash,
+  convertToHex,
+  generateEd25519KeyPair,
+  generateEd25519Signer,
+  generateEthereumSigner,
+  hashFCObject,
+} from '~/utils';
 
 const engine = new Engine();
 
@@ -69,6 +85,9 @@ describe('addSignerChange', () => {
 });
 
 describe('mergeSignerMessage', () => {
+  let aliceCustodySigner: EthereumSigner;
+  let aliceDelegateSigner: EddsaSigner;
+
   let aliceKeyPair: KeyPair;
   let alicePubKey: string;
   let aliceRoot: Root;
@@ -82,18 +101,22 @@ describe('mergeSignerMessage', () => {
 
   // Generate key pair for alice and root message
   beforeAll(async () => {
-    aliceKeyPair = await generateEd25519KeyPair();
-    alicePubKey = await convertToHex(aliceKeyPair.publicKey);
-    aliceTransientParams = { privateKey: aliceKeyPair.privateKey };
+    aliceCustodySigner = await generateEthereumSigner();
+    aliceDelegateSigner = await generateEd25519Signer();
+
+    // aliceKeyPair = await generateEd25519KeyPair();
+    // alicePubKey = await convertToHex(aliceKeyPair.publicKey);
+    // aliceTransientParams = { privateKey: aliceKeyPair.privateKey };
+
     aliceRoot = await Factories.Root.create(
       { data: { rootBlock: 100, username: 'alice' } },
-      { transient: aliceTransientParams }
+      { transient: { privateKey: aliceCustodySigner.wallet.privateKey } }
     );
     aliceSignerChange = {
       blockNumber: 99,
       blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
       logIndex: 0,
-      address: alicePubKey,
+      address: aliceCustodySigner.signerKey,
     };
     genericMessageData = {
       rootBlock: aliceRoot.data.rootBlock,
@@ -104,11 +127,11 @@ describe('mergeSignerMessage', () => {
     aPubKey = await convertToHex(aKeyPair.publicKey);
     aliceSignerAddA = await Factories.SignerAdd.create(
       { data: genericMessageData },
-      { transient: { ...aliceTransientParams, childPrivateKey: aKeyPair.privateKey } }
+      { transient: { signer: aliceCustodySigner, childSigner: aliceDelegateSigner } }
     );
     aliceSignerRemoveA = await Factories.SignerRemove.create(
-      { data: { ...genericMessageData, body: { childKey: aPubKey } } },
-      { transient: aliceTransientParams }
+      { data: { ...genericMessageData, body: { childKey: aliceDelegateSigner.signerKey } } },
+      { transient: { signer: aliceCustodySigner } }
     );
   });
 
@@ -128,13 +151,13 @@ describe('mergeSignerMessage', () => {
 
   describe('with a custody public key', () => {
     beforeEach(() => {
-      engine.addCustody('alice', alicePubKey);
+      engine.addCustody('alice', aliceCustodySigner.signerKey);
     });
 
     test('fails with invalid message type', async () => {
       const cast = (await Factories.Cast.create(
         { data: genericMessageData },
-        { transient: aliceTransientParams }
+        { transient: { privateKey: aliceCustodySigner.wallet.privateKey } }
       )) as unknown as SignerMessage;
       expect((await engine.mergeSignerMessage(cast)).isOk()).toBe(false);
     });
@@ -148,7 +171,7 @@ describe('mergeSignerMessage', () => {
     test('fails with malformed childSignature', async () => {
       const badSignerAdd = await Factories.SignerAdd.create(
         { data: { ...genericMessageData, body: { childSignature: 'foo' } } },
-        { transient: aliceTransientParams }
+        { transient: { signer: aliceCustodySigner } }
       );
       const res = await engine.mergeSignerMessage(badSignerAdd);
       expect(res.isOk()).toBe(false);
@@ -161,7 +184,7 @@ describe('mergeSignerMessage', () => {
       const childPubKey = await convertToHex(childKeyPair.publicKey);
       const badSignerAdd = await Factories.SignerAdd.create(
         { data: { ...genericMessageData, body: { childKey: childPubKey } } },
-        { transient: aliceTransientParams }
+        { transient: { signer: aliceCustodySigner } }
       );
       const res = await engine.mergeSignerMessage(badSignerAdd);
       expect(res.isOk()).toBe(false);
@@ -173,7 +196,7 @@ describe('mergeSignerMessage', () => {
       const badEdgeHash = await blake2BHash('bar');
       const badSignerAdd = await Factories.SignerAdd.create(
         { data: { ...genericMessageData, body: { edgeHash: badEdgeHash } } },
-        { transient: aliceTransientParams }
+        { transient: { signer: aliceCustodySigner } }
       );
       const res = await engine.mergeSignerMessage(badSignerAdd);
       expect(res.isOk()).toBe(false);
@@ -186,7 +209,7 @@ describe('mergeSignerMessage', () => {
         {
           data: { ...genericMessageData, body: { childSignatureType: 'bar' as unknown as SignatureAlgorithm.Ed25519 } },
         },
-        { transient: aliceTransientParams }
+        { transient: { signer: aliceCustodySigner } }
       );
       const res = await engine.mergeSignerMessage(badSignerAdd);
       expect(res.isOk()).toBe(false);
@@ -218,7 +241,7 @@ describe('mergeSignerMessage', () => {
         {
           data: { ...genericMessageData, signedAt: Date.now() + 11 * 60 * 1000 },
         },
-        { transient: aliceTransientParams }
+        { transient: { signer: aliceCustodySigner } }
       );
       const res = await engine.mergeSignerMessage(badSignerAdd);
       expect(res.isOk()).toBe(false);
