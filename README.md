@@ -62,7 +62,7 @@ Implement the remaining data structures, which at this point should just be exte
 
 Connect to a working version of our smart contract and respond to events in real time.
 
-### Phase III - P2P & Tansport Implementation
+### Phase III - P2P & Transport Implementation
 
 Implement a mechanism to discover peers efficiently and to standardize a format for sending data over the wire.
 

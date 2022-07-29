@@ -12,6 +12,7 @@ export type Message<T = Body> = {
   data: Data<T>;
   hash: string;
   signature: string;
+  signatureType: SignatureAlgorithm;
   signer: string;
 };
 
@@ -168,11 +169,9 @@ export type VerificationAddBody = {
 /**
  * A VerificationAddFactoryTransientParams is passed to the VerificationAdd factory
  *
- * @privateKey - the private key for signing the Verification message
  * @ethWallet - the wallet to generate and/or sign the claimHash
  */
-export type VerificationAddFactoryTransientParams = {
-  privateKey?: Uint8Array;
+export type VerificationAddFactoryTransientParams = MessageFactoryTransientParams & {
   ethWallet?: ethers.Wallet;
 };
 
@@ -204,11 +203,9 @@ export type VerificationRemoveBody = {
 /**
  * A VerificationRemoveFactoryTransientParams is passed to the VerificationRemove factory
  *
- * @privateKey - the private key for signing the Verification message
  * @externalUri - the external address to generate the claimHash
  */
-export type VerificationRemoveFactoryTransientParams = {
-  privateKey?: Uint8Array;
+export type VerificationRemoveFactoryTransientParams = MessageFactoryTransientParams & {
   externalUri?: string;
 };
 
@@ -241,12 +238,10 @@ export type SignerAddBody = {
 /**
  * A SignerAddFactoryTransientParams is passed to the SignerAdd factory
  *
- * @privateKey - the private key for signing the SignerAdd message
- * @childPrivateKey - the private key for signing the edgeHash
+ * @childSigner - the Ed25519 signer for signing the edgeHash
  */
-export type SignerAddFactoryTransientParams = {
-  signer?: MessageSigner;
-  childSigner?: EddsaSigner;
+export type SignerAddFactoryTransientParams = MessageFactoryTransientParams & {
+  childSigner?: Ed25519Signer;
 };
 
 /**
@@ -267,21 +262,6 @@ export type SignerRemoveBody = {
   childKey: string;
   schema: 'farcaster.xyz/schemas/v1/signer-remove';
 };
-
-/**
- * A SignerRemoveFactoryTransientParams is passed to the SignerRemove factory
- *
- * @privateKey - the private key for signing the SignerRemove message, should be the parent of the childKey
- */
-export type SignerRemoveFactoryTransientParams = {
-  signer?: MessageSigner;
-};
-
-/** SignatureAlgorithm enum */
-export enum SignatureAlgorithm {
-  Ed25519 = 'ed25519',
-  EthereumPersonalSign = 'eth-personal-sign',
-}
 
 // ===========================
 //  URI Types
@@ -317,14 +297,27 @@ export type KeyPair = {
   publicKey: Uint8Array;
 };
 
-export type MessageSigner = EddsaSigner | EthereumSigner;
+/** SignatureAlgorithm enum */
+export enum SignatureAlgorithm {
+  Ed25519 = 'ed25519',
+  EthereumPersonalSign = 'eth-personal-sign',
+}
 
-export type EddsaSigner = {
+/** MessageFactoryTransientParams is the generic transient params type for message factories */
+export type MessageFactoryTransientParams = {
+  signer?: MessageSigner;
+};
+
+export type MessageSigner = Ed25519Signer | EthereumSigner;
+
+/** An Ed25519Signer is a MessageSigner object with a Ed25519 private key */
+export type Ed25519Signer = {
   privateKey: Uint8Array;
   signerKey: string; // Public key hex
   type: SignatureAlgorithm.Ed25519;
 };
 
+/** An EthereumSigner is a MessageSigner object with an ethers wallet */
 export type EthereumSigner = {
   wallet: ethers.Wallet;
   signerKey: string; // Address

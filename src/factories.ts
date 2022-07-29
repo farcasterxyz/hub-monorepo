@@ -15,32 +15,52 @@ import {
   SignerAdd,
   SignerRemove,
   SignerEdge,
-  SignerRemoveFactoryTransientParams,
   SignerAddFactoryTransientParams,
   SignatureAlgorithm,
+  Message,
+  MessageFactoryTransientParams,
+  MessageSigner,
 } from '~/types';
-import { convertToHex, hashMessage, signEd25519, hashFCObject, generateEd25519Signer } from '~/utils';
-import * as ed from '@noble/ed25519';
+import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
+
+const getMessageSigner = async (props: Message, transientParams: MessageFactoryTransientParams) => {
+  /** Check if transientParams already has a signer */
+  if (transientParams.signer) return transientParams.signer;
+
+  /** Check if props has signatureType set  */
+  if (props.signatureType === SignatureAlgorithm.EthereumPersonalSign) return await generateEthereumSigner();
+
+  /** Otherwise generate default signer */
+  return await generateEd25519Signer();
+};
+/**
+ * addEnvelopeToMessage adds hash, signer, signature, and signatureType to a message
+ * object using the signer in transientParams if one is present
+ */
+const addEnvelopeToMessage = async (
+  props: Message,
+  transientParams: MessageFactoryTransientParams
+): Promise<Message> => {
+  const signer = await getMessageSigner(props, transientParams);
+  props.hash = await hashMessage(props);
+  props.signer = signer.signerKey;
+  if (signer.type === SignatureAlgorithm.EthereumPersonalSign) {
+    props.signature = await signer.wallet.signMessage(props.hash);
+  } else if (signer.type === SignatureAlgorithm.Ed25519) {
+    props.signature = await signEd25519(props.hash, signer.privateKey);
+  }
+  props.signatureType = signer.type;
+  return props;
+};
 
 /**
  * ProtocolFactories are used to construct valid Farcaster Protocol JSON objects.
  */
 export const Factories = {
   /** Generate a valid Cast with randomized properties */
-  Cast: Factory.define<CastShort, any, CastShort>(({ onCreate, transientParams }) => {
-    const { privateKey = ed.utils.randomPrivateKey() } = transientParams;
-
+  Cast: Factory.define<CastShort, MessageFactoryTransientParams, CastShort>(({ onCreate, transientParams }) => {
     onCreate(async (castProps) => {
-      const publicKey = await ed.getPublicKey(privateKey);
-      const hash = await hashMessage(castProps);
-      castProps.hash = hash;
-
-      castProps.signer = await convertToHex(publicKey);
-
-      const signature = await signEd25519(castProps.hash, privateKey);
-      castProps.signature = signature;
-
-      return castProps;
+      return (await addEnvelopeToMessage(castProps, transientParams)) as CastShort;
     });
 
     const embed = { items: [] };
@@ -59,25 +79,15 @@ export const Factories = {
       },
       hash: '',
       signature: '',
+      signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
       signer: '',
     };
   }),
 
   /** Generate a valid CastRemove with randomized properties */
-  CastRemove: Factory.define<CastRemove, any, CastRemove>(({ onCreate, transientParams }) => {
-    const { privateKey = ed.utils.randomPrivateKey() } = transientParams;
-
+  CastRemove: Factory.define<CastRemove, MessageFactoryTransientParams, CastRemove>(({ onCreate, transientParams }) => {
     onCreate(async (castProps) => {
-      const publicKey = await ed.getPublicKey(privateKey);
-      const hash = await hashMessage(castProps);
-      castProps.hash = hash;
-
-      castProps.signer = await convertToHex(publicKey);
-
-      const signature = await signEd25519(castProps.hash, privateKey);
-      castProps.signature = signature;
-
-      return castProps;
+      return (await addEnvelopeToMessage(castProps, transientParams)) as CastRemove;
     });
 
     return {
@@ -92,25 +102,15 @@ export const Factories = {
       },
       hash: '',
       signature: '',
+      signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
       signer: '',
     };
   }),
 
   /** Generate a valid Cast with randomized properties */
-  CastRecast: Factory.define<CastRecast, any, CastRecast>(({ onCreate, transientParams }) => {
-    const { privateKey = ed.utils.randomPrivateKey() } = transientParams;
-
+  CastRecast: Factory.define<CastRecast, MessageFactoryTransientParams, CastRecast>(({ onCreate, transientParams }) => {
     onCreate(async (castProps) => {
-      const publicKey = await ed.getPublicKey(privateKey);
-      const hash = await hashMessage(castProps);
-      castProps.hash = hash;
-
-      castProps.signer = await convertToHex(publicKey);
-
-      const signature = await signEd25519(castProps.hash, privateKey);
-      castProps.signature = signature;
-
-      return castProps;
+      return (await addEnvelopeToMessage(castProps, transientParams)) as CastRecast;
     });
 
     return {
@@ -125,24 +125,15 @@ export const Factories = {
       },
       hash: '',
       signature: '',
+      signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
       signer: '',
     };
   }),
 
   /** Generate a valid Root with randomized properties */
-  Root: Factory.define<Root, any, Root>(({ onCreate, transientParams }) => {
-    const { privateKey = ed.utils.randomPrivateKey() } = transientParams;
+  Root: Factory.define<Root, MessageFactoryTransientParams, Root>(({ onCreate, transientParams }) => {
     onCreate(async (rootProps) => {
-      const publicKey = await ed.getPublicKey(privateKey);
-      const hash = await hashMessage(rootProps);
-      rootProps.hash = hash;
-
-      rootProps.signer = await convertToHex(publicKey);
-
-      const signature = await signEd25519(rootProps.hash, privateKey);
-      rootProps.signature = signature;
-
-      return rootProps;
+      return (await addEnvelopeToMessage(rootProps, transientParams)) as Root;
     });
 
     return {
@@ -157,41 +148,15 @@ export const Factories = {
       },
       hash: '',
       signature: '',
+      signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
       signer: '',
     };
   }),
 
-  /** Generate a new ETH Address with its corresponding private key */
-  EthAddress: Factory.define<EthAddress, any, EthAddress>(({ onCreate }) => {
-    onCreate(async (addressProps) => {
-      const wallet = new ethers.Wallet(addressProps.privateKey);
-      addressProps.address = await wallet.getAddress();
-      return addressProps;
-    });
-
-    const privateKey = Faker.datatype.hexaDecimal(64).toLowerCase();
-
-    return {
-      address: '',
-      privateKey,
-    };
-  }),
-
   /** Generate a valid Reaction with randomized properties */
-  Reaction: Factory.define<Reaction, any, Reaction>(({ onCreate, transientParams }) => {
-    const { privateKey = ed.utils.randomPrivateKey() } = transientParams;
-
+  Reaction: Factory.define<Reaction, MessageFactoryTransientParams, Reaction>(({ onCreate, transientParams }) => {
     onCreate(async (castProps) => {
-      const publicKey = await ed.getPublicKey(privateKey);
-      const hash = await hashMessage(castProps);
-      castProps.hash = hash;
-
-      castProps.signer = await convertToHex(publicKey);
-
-      const signature = await signEd25519(castProps.hash, privateKey);
-      castProps.signature = signature;
-
-      return castProps;
+      return (await addEnvelopeToMessage(castProps, transientParams)) as Reaction;
     });
 
     return {
@@ -208,14 +173,15 @@ export const Factories = {
       },
       hash: '',
       signature: '',
+      signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
       signer: '',
     };
   }),
 
-  /** Generate a valid SignerAdd */
+  /** Generate a valid SignerAdd with randomized properties */
   SignerAdd: Factory.define<SignerAdd, SignerAddFactoryTransientParams, SignerAdd>(({ onCreate, transientParams }) => {
     onCreate(async (props) => {
-      const signer = transientParams.signer || (await generateEd25519Signer());
+      const signer = await getMessageSigner(props, transientParams);
       const childSigner = transientParams.childSigner || (await generateEd25519Signer());
       const parentKey = signer.signerKey;
       const childKey = childSigner.signerKey;
@@ -239,16 +205,7 @@ export const Factories = {
         props.data.body.childSignature = await signEd25519(props.data.body.edgeHash, childSigner.privateKey);
       }
 
-      props.hash = await hashMessage(props);
-      props.signer = parentKey;
-
-      if (signer.type === SignatureAlgorithm.EthereumPersonalSign) {
-        props.signature = await signer.wallet.signMessage(props.hash);
-      } else if (signer.type === SignatureAlgorithm.Ed25519) {
-        props.signature = await signEd25519(props.hash, signer.privateKey);
-      }
-
-      return props;
+      return (await addEnvelopeToMessage(props, { ...transientParams, signer })) as SignerAdd;
     });
 
     return {
@@ -266,27 +223,16 @@ export const Factories = {
       },
       hash: '',
       signature: '',
+      signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
       signer: '',
     };
   }),
 
-  /** Generate a valid SignerRemove */
-  SignerRemove: Factory.define<SignerRemove, SignerRemoveFactoryTransientParams, SignerRemove>(
+  /** Generate a valid SignerRemove with randomized properties */
+  SignerRemove: Factory.define<SignerRemove, MessageFactoryTransientParams, SignerRemove>(
     ({ onCreate, transientParams }) => {
       onCreate(async (props) => {
-        const signer = transientParams.signer || (await generateEd25519Signer());
-        const parentKey = signer.signerKey;
-
-        props.hash = await hashMessage(props);
-        props.signer = parentKey;
-
-        if (signer.type === SignatureAlgorithm.EthereumPersonalSign) {
-          props.signature = await signer.wallet.signMessage(props.hash);
-        } else if (signer.type === SignatureAlgorithm.Ed25519) {
-          props.signature = await signEd25519(props.hash, signer.privateKey);
-        }
-
-        return props;
+        return (await addEnvelopeToMessage(props, transientParams)) as SignerRemove;
       });
 
       return {
@@ -301,41 +247,34 @@ export const Factories = {
         },
         hash: '',
         signature: '',
+        signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
         signer: '',
       };
     }
   ),
-  /** Generate a VerificationAdd message */
+
+  /** Generate a VerificationAdd message with randomized properties */
   VerificationAdd: Factory.define<VerificationAdd, VerificationAddFactoryTransientParams, VerificationAdd>(
     ({ onCreate, transientParams }) => {
-      const { privateKey = ed.utils.randomPrivateKey(), ethWallet = ethers.Wallet.createRandom() } = transientParams;
+      const { ethWallet = ethers.Wallet.createRandom() } = transientParams;
 
-      onCreate(async (castProps) => {
+      onCreate(async (props) => {
         /** Generate claimHash if missing */
-        if (!castProps.data.body.claimHash) {
+        if (!props.data.body.claimHash) {
           const verificationClaim: VerificationClaim = {
-            username: castProps.data.username,
-            externalUri: castProps.data.body.externalUri,
+            username: props.data.username,
+            externalUri: props.data.body.externalUri,
           };
-          castProps.data.body.claimHash = await hashFCObject(verificationClaim);
+          props.data.body.claimHash = await hashFCObject(verificationClaim);
         }
 
         /** Generate externalSignature if missing */
-        if (!castProps.data.body.externalSignature) {
-          castProps.data.body.externalSignature = await ethWallet.signMessage(castProps.data.body.claimHash);
+        if (!props.data.body.externalSignature) {
+          props.data.body.externalSignature = await ethWallet.signMessage(props.data.body.claimHash);
         }
 
         /** Complete envelope */
-        const publicKey = await ed.getPublicKey(privateKey);
-        const hash = await hashMessage(castProps);
-        castProps.hash = hash;
-
-        castProps.signer = await convertToHex(publicKey);
-
-        const signature = await signEd25519(castProps.hash, privateKey);
-        castProps.signature = signature;
-
-        return castProps;
+        return (await addEnvelopeToMessage(props, transientParams)) as VerificationAdd;
       });
 
       return {
@@ -353,37 +292,29 @@ export const Factories = {
         },
         hash: '',
         signature: '',
+        signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
         signer: '',
       };
     }
   ),
 
-  /** Generate a VerificationRemove message */
+  /** Generate a VerificationRemove message with randomized properties */
   VerificationRemove: Factory.define<VerificationRemove, VerificationRemoveFactoryTransientParams, VerificationRemove>(
     ({ onCreate, transientParams }) => {
-      const { privateKey = ed.utils.randomPrivateKey(), externalUri = Faker.datatype.hexaDecimal(40).toLowerCase() } =
-        transientParams;
+      const { externalUri = Faker.datatype.hexaDecimal(40).toLowerCase() } = transientParams;
 
-      onCreate(async (castProps) => {
+      onCreate(async (props) => {
         /** Generate claimHash if missing */
-        if (!castProps.data.body.claimHash) {
+        if (!props.data.body.claimHash) {
           const verificationClaim: VerificationClaim = {
-            username: castProps.data.username,
+            username: props.data.username,
             externalUri,
           };
-          castProps.data.body.claimHash = await hashFCObject(verificationClaim);
+          props.data.body.claimHash = await hashFCObject(verificationClaim);
         }
 
-        const publicKey = await ed.getPublicKey(privateKey);
-        const hash = await hashMessage(castProps);
-        castProps.hash = hash;
-
-        castProps.signer = await convertToHex(publicKey);
-
-        const signature = await signEd25519(castProps.hash, privateKey);
-        castProps.signature = signature;
-
-        return castProps;
+        /** Complete envelope */
+        return (await addEnvelopeToMessage(props, transientParams)) as VerificationRemove;
       });
 
       return {
@@ -398,13 +329,9 @@ export const Factories = {
         },
         hash: '',
         signature: '',
+        signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
         signer: '',
       };
     }
   ),
 };
-
-interface EthAddress {
-  address: string;
-  privateKey: string;
-}

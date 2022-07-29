@@ -1,4 +1,4 @@
-import { EddsaSigner, EthereumSigner, KeyPair, Message, SignatureAlgorithm } from '~/types';
+import { Ed25519Signer, EthereumSigner, KeyPair, Message, SignatureAlgorithm } from '~/types';
 import canonicalize from 'canonicalize';
 import { ethers, utils } from 'ethers';
 import * as ed from '@noble/ed25519';
@@ -107,7 +107,7 @@ export const convertToHex = async (text: Uint8Array): Promise<string> => {
   return '0x' + ed.utils.bytesToHex(text);
 };
 
-export const generateEd25519Signer = async (): Promise<EddsaSigner> => {
+export const generateEd25519Signer = async (): Promise<Ed25519Signer> => {
   const { privateKey, publicKey } = await generateEd25519KeyPair();
   const signerKey = await convertToHex(publicKey);
   return { privateKey, signerKey, type: SignatureAlgorithm.Ed25519 };

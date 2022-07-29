@@ -2,9 +2,10 @@ import Engine, { Signer } from '~/engine';
 import Faker from 'faker';
 import { Factories } from '~/factories';
 import {
-  EddsaSigner,
+  Ed25519Signer,
   EthereumSigner,
   KeyPair,
+  MessageFactoryTransientParams,
   Root,
   SignatureAlgorithm,
   SignerAdd,
@@ -86,13 +87,10 @@ describe('addSignerChange', () => {
 
 describe('mergeSignerMessage', () => {
   let aliceCustodySigner: EthereumSigner;
-  let aliceDelegateSigner: EddsaSigner;
+  let aliceDelegateSigner: Ed25519Signer;
 
-  let aliceKeyPair: KeyPair;
-  let alicePubKey: string;
   let aliceRoot: Root;
   let aliceSignerChange: Signer;
-  let aliceTransientParams: { privateKey: Uint8Array };
   let genericMessageData: { rootBlock: number; username: string; signedAt: number };
   let aKeyPair: KeyPair;
   let aPubKey: string;
@@ -103,14 +101,9 @@ describe('mergeSignerMessage', () => {
   beforeAll(async () => {
     aliceCustodySigner = await generateEthereumSigner();
     aliceDelegateSigner = await generateEd25519Signer();
-
-    // aliceKeyPair = await generateEd25519KeyPair();
-    // alicePubKey = await convertToHex(aliceKeyPair.publicKey);
-    // aliceTransientParams = { privateKey: aliceKeyPair.privateKey };
-
     aliceRoot = await Factories.Root.create(
       { data: { rootBlock: 100, username: 'alice' } },
-      { transient: { privateKey: aliceCustodySigner.wallet.privateKey } }
+      { transient: { signer: aliceCustodySigner } }
     );
     aliceSignerChange = {
       blockNumber: 99,
@@ -157,7 +150,7 @@ describe('mergeSignerMessage', () => {
     test('fails with invalid message type', async () => {
       const cast = (await Factories.Cast.create(
         { data: genericMessageData },
-        { transient: { privateKey: aliceCustodySigner.wallet.privateKey } }
+        { transient: { signer: aliceCustodySigner } }
       )) as unknown as SignerMessage;
       expect((await engine.mergeSignerMessage(cast)).isOk()).toBe(false);
     });

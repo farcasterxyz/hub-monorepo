@@ -1,29 +1,30 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
-import { Cast, Reaction, Root } from '~/types';
+import { Cast, MessageFactoryTransientParams, MessageSigner, Reaction, Root } from '~/types';
 import Faker from 'faker';
-import { generateEd25519KeyPair, convertToHex } from '~/utils';
-import { hexToBytes } from 'ethereum-cryptography/utils';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
 const engine = new Engine();
 const username = 'alice';
 
 describe('mergeReaction', () => {
-  let alicePrivateKey: string;
+  let aliceSigner: MessageSigner;
   let aliceAddress: string;
   let root: Root;
   let cast: Cast;
   let reaction: Reaction;
-  let transient: { transient: { privateKey: Uint8Array } };
+  let transient: { transient: MessageFactoryTransientParams };
   const subject = () => engine._getActiveReactions(username);
 
   beforeAll(async () => {
-    const keyPair = await generateEd25519KeyPair();
-    const privateKeyBuffer = keyPair.privateKey;
-    alicePrivateKey = await convertToHex(privateKeyBuffer);
-    const addressBuffer = keyPair.publicKey;
-    aliceAddress = await convertToHex(addressBuffer);
-    transient = { transient: { privateKey: hexToBytes(alicePrivateKey) } };
+    // Randomly generate either an Ed25519 or Ethereum signer
+    if (Math.random() > 0.5) {
+      aliceSigner = await generateEd25519Signer();
+    } else {
+      aliceSigner = await generateEthereumSigner();
+    }
+    aliceAddress = aliceSigner.signerKey;
+    transient = { transient: { signer: aliceSigner } };
 
     root = await Factories.Root.create({ data: { rootBlock: 100, username: 'alice' } }, transient);
 
@@ -176,7 +177,6 @@ describe('mergeReaction', () => {
       const invalidSignature = JSON.parse(JSON.stringify(reaction)) as Reaction;
       invalidSignature.signature =
         '0x5b699d494b515b22258c01ad19710d44c3f12235f0c01e91d09a1e4e2cd25d80c77026a7319906da3b8ce62abc18477c19e444a02949a0dde54f8cadef889502';
-
       expect((await engine.mergeReaction(invalidSignature))._unsafeUnwrapErr()).toBe(
         'validateMessage: invalid signature'
       );

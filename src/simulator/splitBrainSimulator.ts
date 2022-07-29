@@ -2,7 +2,6 @@ import Client from '~/client';
 import Debugger from '~/debugger';
 import Faker from 'faker';
 import Simulator from '~/simulator';
-import { convertToHex } from '~/utils';
 
 const duration = 40_000;
 const name = 'SplitBrainSimulator';
@@ -106,7 +105,7 @@ class SplitBrainSimulator extends Simulator {
       blockNumber: this.blockNumber,
       blockHash: this.blockHash,
       logIndex: logIndex || 0,
-      address: await convertToHex(client.publicKey),
+      address: client.signer.signerKey,
     };
   }
 
