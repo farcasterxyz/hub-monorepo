@@ -12,6 +12,7 @@ export type Message<T = Body> = {
   data: Data<T>;
   hash: string;
   signature: string;
+  signatureType: SignatureAlgorithm;
   signer: string;
 };
 
@@ -161,11 +162,9 @@ export type VerificationAddBody = {
 /**
  * A VerificationAddFactoryTransientParams is passed to the VerificationAdd factory
  *
- * @privateKey - the private key for signing the Verification message
  * @ethWallet - the wallet to generate and/or sign the claimHash
  */
-export type VerificationAddFactoryTransientParams = {
-  privateKey?: Uint8Array;
+export type VerificationAddFactoryTransientParams = MessageFactoryTransientParams & {
   ethWallet?: ethers.Wallet;
 };
 
@@ -197,11 +196,9 @@ export type VerificationRemoveBody = {
 /**
  * A VerificationRemoveFactoryTransientParams is passed to the VerificationRemove factory
  *
- * @privateKey - the private key for signing the Verification message
  * @externalUri - the external address to generate the claimHash
  */
-export type VerificationRemoveFactoryTransientParams = {
-  privateKey?: Uint8Array;
+export type VerificationRemoveFactoryTransientParams = MessageFactoryTransientParams & {
   externalUri?: string;
 };
 
@@ -237,4 +234,32 @@ export type HTTPURI = string;
 export type KeyPair = {
   privateKey: Uint8Array;
   publicKey: Uint8Array;
+};
+
+/** SignatureAlgorithm enum */
+export enum SignatureAlgorithm {
+  Ed25519 = 'ed25519',
+  EthereumPersonalSign = 'eth-personal-sign',
+}
+
+/** MessageFactoryTransientParams is the generic transient params type for factories */
+export type MessageFactoryTransientParams = {
+  signer?: MessageSigner;
+  // privateKey?: Uint8Array;
+};
+
+export type MessageSigner = Ed25519Signer | EthereumSigner;
+
+/** An Ed25519Signer is a MessageSigner object with a Ed25519 private key */
+export type Ed25519Signer = {
+  privateKey: Uint8Array;
+  signerKey: string; // Public key hex
+  type: SignatureAlgorithm.Ed25519;
+};
+
+/** An EthereumSigner is a MessageSigner object with an ethers wallet */
+export type EthereumSigner = {
+  wallet: ethers.Wallet;
+  signerKey: string; // Address
+  type: SignatureAlgorithm.EthereumPersonalSign;
 };
