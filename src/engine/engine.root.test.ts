@@ -64,14 +64,15 @@ describe('mergeRoot', () => {
   beforeEach(() => {
     engine._reset();
 
-    // Register the Ethereum address as a valid signer for @alice at block 99
-    const aliceRegistrationSignerChange = {
-      blockNumber: 99,
-      blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-      logIndex: 0,
-      address: aliceAddress,
-    };
-    engine.addSignerChange('alice', aliceRegistrationSignerChange);
+    // // Register the Ethereum address as a valid signer for @alice at block 99
+    // const aliceRegistrationSignerChange = {
+    //   blockNumber: 99,
+    //   blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+    //   logIndex: 0,
+    //   address: aliceAddress,
+    // };
+    // engine.addSignerChange('alice', aliceRegistrationSignerChange);
+    engine.addCustody('alice', aliceSigner.signerKey);
   });
 
   describe('input validation: ', () => {
@@ -91,38 +92,10 @@ describe('mergeRoot', () => {
 
   describe('signer validation:', () => {
     test('fails if there are no known signers', async () => {
-      engine._resetUsers();
+      engine._resetSigners();
       const result = await engine.mergeRoot(root100);
-      expect(result._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
-      expect(subject()).toEqual(undefined);
-    });
-
-    test('fails if the signer was valid, but it changed before this block', async () => {
-      const changeSigner = {
-        blockNumber: 99,
-        blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-        logIndex: 1,
-        address: Faker.datatype.hexaDecimal(40).toLowerCase(),
-      };
-      engine.addSignerChange('alice', changeSigner);
-
-      expect((await engine.mergeRoot(root100))._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
-      expect(subject()).toEqual(undefined);
-    });
-
-    test('fails if the signer was valid, but only after this block', async () => {
-      engine._resetUsers();
-      const changeSigner = {
-        blockNumber: 101,
-        blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-        logIndex: 0,
-        address: aliceAddress,
-      };
-
-      engine.addSignerChange('alice', changeSigner);
-
-      const result = await engine.mergeRoot(root100);
-      expect(result._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
+      expect(result.isOk()).toBe(false);
+      expect(result._unsafeUnwrapErr()).toBe('validateMessage: unknown user');
       expect(subject()).toEqual(undefined);
     });
 
@@ -137,7 +110,7 @@ describe('mergeRoot', () => {
     test('fails if the signer was valid, but the username was invalid', async () => {
       const root = await Factories.Root.create({ data: { rootBlock: 100, username: 'rob' } }, transient);
 
-      expect((await engine.mergeRoot(root))._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
+      expect((await engine.mergeRoot(root))._unsafeUnwrapErr()).toBe('validateMessage: unknown user');
       expect(subject()).toEqual(undefined);
     });
 

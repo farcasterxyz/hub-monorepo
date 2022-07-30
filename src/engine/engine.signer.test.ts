@@ -4,7 +4,6 @@ import { Factories } from '~/factories';
 import {
   Ed25519Signer,
   EthereumSigner,
-  KeyPair,
   Root,
   SignatureAlgorithm,
   SignerAdd,
@@ -88,7 +87,6 @@ describe('mergeSignerMessage', () => {
   let aliceCustodySigner: EthereumSigner;
   let aliceDelegateSigner: Ed25519Signer;
   let aliceRoot: Root;
-  let aliceSignerChange: Signer;
   let genericMessageData: { rootBlock: number; username: string; signedAt: number };
   let aliceSignerAddDelegate: SignerAdd;
   let aliceSignerRemoveDelegate: SignerRemove;
@@ -101,12 +99,6 @@ describe('mergeSignerMessage', () => {
       { data: { rootBlock: 100, username: 'alice' } },
       { transient: { signer: aliceCustodySigner } }
     );
-    aliceSignerChange = {
-      blockNumber: 99,
-      blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-      logIndex: 0,
-      address: aliceCustodySigner.signerKey,
-    };
     genericMessageData = {
       rootBlock: aliceRoot.data.rootBlock,
       username: 'alice',
@@ -125,11 +117,13 @@ describe('mergeSignerMessage', () => {
   // Every test should start with a valid signer and root for alice
   beforeEach(() => {
     engine._reset();
-    engine.addSignerChange('alice', aliceSignerChange);
-    engine.mergeRoot(aliceRoot);
   });
 
   test('fails without a custody address', async () => {
+    // Hack to add root
+    engine.addCustody('alice', aliceCustodySigner.signerKey);
+    expect((await engine.mergeRoot(aliceRoot)).isOk()).toBe(true);
+    engine._resetSigners();
     expect(engine._getCustodySigners('alice')).toEqual([]);
     const res = await engine.mergeSignerMessage(aliceSignerAddDelegate);
     expect(res.isOk()).toBe(false);
@@ -137,8 +131,9 @@ describe('mergeSignerMessage', () => {
   });
 
   describe('with a custody address', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       engine.addCustody('alice', aliceCustodySigner.signerKey);
+      await engine.mergeRoot(aliceRoot);
     });
 
     test('fails with invalid message type', async () => {

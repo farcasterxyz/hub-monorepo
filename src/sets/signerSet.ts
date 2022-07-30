@@ -63,6 +63,10 @@ class SignerSet {
     return Array.from(this._vertices);
   }
 
+  getSigners(): Set<string> {
+    return new Set([...this._custodyAddresses, ...this._vertexAdds]);
+  }
+
   constructEdgeKey(parentKey: string, childKey: string): string {
     return [parentKey, childKey].toString();
   }

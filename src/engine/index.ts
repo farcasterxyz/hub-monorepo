@@ -82,8 +82,6 @@ class Engine {
       return err('mergeRoot: invalid root');
     }
 
-    // TODO: verify that the block and hash are from a valid ethereum block.
-
     const validation = await this.validateMessage(root);
     if (!validation.isOk()) {
       return validation;
@@ -144,8 +142,7 @@ class Engine {
     try {
       const username = cast.data.username;
 
-      const signerChanges = this._users.get(username);
-      if (!signerChanges) {
+      if (!this._signers.get(username)) {
         return err('mergeCast: unknown user');
       }
 
@@ -190,8 +187,7 @@ class Engine {
     try {
       const username = reaction.data.username;
 
-      const signerChanges = this._users.get(username);
-      if (!signerChanges) {
+      if (!this._signers.get(username)) {
         return err('mergeReaction: unknown user');
       }
 
@@ -234,25 +230,21 @@ class Engine {
 
   /** Merge verification message into the set */
   async mergeVerification(verification: Verification): Promise<Result<void, string>> {
-    try {
-      const username = verification.data.username;
-      const signerChanges = this._users.get(username);
-      if (!signerChanges) {
-        return err('mergeVerification: unknown user');
-      }
-      const isVerificationValidResult = await this.validateMessage(verification);
-      if (isVerificationValidResult.isErr()) return isVerificationValidResult;
-
-      let verificationSet = this._verifications.get(username);
-      if (!verificationSet) {
-        verificationSet = new VerificationSet();
-        this._verifications.set(username, verificationSet);
-      }
-
-      return verificationSet.merge(verification);
-    } catch (e: any) {
-      return err('mergeVerification: unexpected error');
+    const username = verification.data.username;
+    const signerSet = this._signers.get(username);
+    if (!signerSet) {
+      return err('mergeVerification: unknown user');
     }
+    const isVerificationValidResult = await this.validateMessage(verification);
+    if (isVerificationValidResult.isErr()) return isVerificationValidResult;
+
+    let verificationSet = this._verifications.get(username);
+    if (!verificationSet) {
+      verificationSet = new VerificationSet();
+      this._verifications.set(username, verificationSet);
+    }
+
+    return verificationSet.merge(verification);
   }
 
   /**
@@ -300,18 +292,11 @@ class Engine {
   /** Merge signer message into the set */
   async mergeSignerMessage(message: SignerMessage): Promise<Result<void, string>> {
     const username = message.data.username;
-    const signerChanges = this._users.get(username);
-    if (!signerChanges) {
-      return err('mergeSignerMessage: unknown user');
-    }
+    const signerSet = this._signers.get(username);
+    if (!signerSet) return err('mergeSignerMessage: unknown user');
+
     const isMessageValidResult = await this.validateMessage(message);
     if (isMessageValidResult.isErr()) return isMessageValidResult;
-
-    let signerSet = this._signers.get(username);
-    if (!signerSet) {
-      signerSet = new SignerSet();
-      this._signers.set(username, signerSet);
-    }
 
     return signerSet.merge(message);
   }
@@ -403,11 +388,17 @@ class Engine {
   }
 
   private async validateMessage(message: Message): Promise<Result<void, string>> {
-    // 1. Check that the signer was valid for the block in question.
-    const expectedSigner = this.signerForBlock(message.data.username, message.data.rootBlock);
-    if (!expectedSigner || expectedSigner !== message.signer) {
-      return err('validateMessage: invalid signer');
-    }
+    // 1. Check that the signer is valid for the account
+    const signerSet = this._signers.get(message.data.username);
+    if (!signerSet) return err('validateMessage: unknown user');
+    const validSigners = signerSet.getSigners();
+    if (!validSigners.has(message.signer)) return err('validateMessage: invalid signer');
+
+    // // 1. Check that the signer was valid for the block in question.
+    // const expectedSigner = this.signerForBlock(message.data.username, message.data.rootBlock);
+    // if (!expectedSigner || expectedSigner !== message.signer) {
+    //   return err('validateMessage: invalid signer');
+    // }
 
     // 2. Check that the hash value of the message was computed correctly.
     const computedHash = await hashMessage(message);

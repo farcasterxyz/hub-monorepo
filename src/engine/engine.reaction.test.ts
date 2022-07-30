@@ -9,7 +9,6 @@ const username = 'alice';
 
 describe('mergeReaction', () => {
   let aliceSigner: MessageSigner;
-  let aliceAddress: string;
   let root: Root;
   let cast: Cast;
   let reaction: Reaction;
@@ -23,7 +22,6 @@ describe('mergeReaction', () => {
     } else {
       aliceSigner = await generateEthereumSigner();
     }
-    aliceAddress = aliceSigner.signerKey;
     transient = { transient: { signer: aliceSigner } };
 
     root = await Factories.Root.create({ data: { rootBlock: 100, username: 'alice' } }, transient);
@@ -56,14 +54,15 @@ describe('mergeReaction', () => {
   beforeEach(() => {
     engine._reset();
 
-    const aliceRegistrationSignerChange = {
-      blockNumber: 99,
-      blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-      logIndex: 0,
-      address: aliceAddress,
-    };
+    // const aliceRegistrationSignerChange = {
+    //   blockNumber: 99,
+    //   blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+    //   logIndex: 0,
+    //   address: aliceAddress,
+    // };
 
-    engine.addSignerChange('alice', aliceRegistrationSignerChange);
+    // engine.addSignerChange('alice', aliceRegistrationSignerChange);
+    engine.addCustody('alice', aliceSigner.signerKey);
     engine.mergeRoot(root);
   });
 
@@ -83,40 +82,10 @@ describe('mergeReaction', () => {
 
   describe('signer validation: ', () => {
     test('fails if there are no known signers', async () => {
-      engine._resetUsers();
+      engine._resetSigners();
 
       const result = await engine.mergeReaction(reaction);
       expect(result._unsafeUnwrapErr()).toBe('mergeReaction: unknown user');
-      expect(subject()).toEqual([]);
-    });
-
-    test('fails if the signer was valid, but it changed before this block', async () => {
-      // move the username alice to a different address
-      const changeSigner = {
-        blockNumber: 99,
-        blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-        logIndex: 1,
-        address: Faker.datatype.hexaDecimal(40).toLowerCase(),
-      };
-      engine.addSignerChange('alice', changeSigner);
-
-      expect((await engine.mergeReaction(reaction))._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
-      expect(subject()).toEqual([]);
-    });
-
-    test('fails if the signer was valid, but only after this block', async () => {
-      engine._resetUsers();
-      const changeSigner = {
-        blockNumber: 101,
-        blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-        logIndex: 0,
-        address: aliceAddress,
-      };
-
-      engine.addSignerChange('alice', changeSigner);
-
-      const result = await engine.mergeReaction(reaction);
-      expect(result._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
       expect(subject()).toEqual([]);
     });
 

@@ -1,7 +1,6 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
 import { MessageSigner, Root, Verification, VerificationAddFactoryTransientParams } from '~/types';
-import Faker from 'faker';
 import { ethers } from 'ethers';
 import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
@@ -11,7 +10,6 @@ const engine = new Engine();
 // TODO: refactor these tests to be faster (currently ~7s)
 describe('mergeVerification', () => {
   let aliceSigner: MessageSigner;
-  let aliceAddress: string;
   let aliceRoot: Root;
   let transientParams: { transient: VerificationAddFactoryTransientParams };
 
@@ -23,7 +21,6 @@ describe('mergeVerification', () => {
     } else {
       aliceSigner = await generateEthereumSigner();
     }
-    aliceAddress = aliceSigner.signerKey;
     transientParams = { transient: { signer: aliceSigner } };
     aliceRoot = await Factories.Root.create({ data: { rootBlock: 100, username: 'alice' } }, transientParams);
   });
@@ -31,15 +28,7 @@ describe('mergeVerification', () => {
   // Every test should start with a valid signer and root for alice
   beforeEach(() => {
     engine._reset();
-
-    const aliceRegistrationSignerChange = {
-      blockNumber: 99,
-      blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-      logIndex: 0,
-      address: aliceAddress,
-    };
-
-    engine.addSignerChange('alice', aliceRegistrationSignerChange);
+    engine.addCustody('alice', aliceSigner.signerKey);
     engine.mergeRoot(aliceRoot);
   });
 
@@ -64,12 +53,13 @@ describe('mergeVerification', () => {
       },
       transientParams
     );
-    expect((await engine.mergeVerification(verificationAddMessage)).isOk()).toBe(true);
+    const res = await engine.mergeVerification(verificationAddMessage);
+    expect(res.isOk()).toBe(true);
     expect(engine._getVerificationAdds('alice')).toEqual([verificationAddMessage]);
   });
 
   test('fails if message signer is not valid', async () => {
-    engine._resetUsers();
+    engine._resetSigners();
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
