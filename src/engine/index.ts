@@ -410,7 +410,7 @@ class Engine {
     if (message.signatureType === SignatureAlgorithm.EthereumPersonalSign) {
       try {
         const recoveredSigner = ethers.utils.verifyMessage(message.hash, message.signature);
-        if (recoveredSigner !== message.signer) {
+        if (recoveredSigner.toLowerCase() !== message.signer.toLowerCase()) {
           return err('validateMessage: invalid signature');
         }
       } catch (e: any) {

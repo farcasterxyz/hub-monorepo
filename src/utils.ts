@@ -115,5 +115,6 @@ export const generateEd25519Signer = async (): Promise<Ed25519Signer> => {
 
 export const generateEthereumSigner = async (): Promise<EthereumSigner> => {
   const wallet = ethers.Wallet.createRandom();
-  return { wallet, signerKey: wallet.address, type: SignatureAlgorithm.EthereumPersonalSign };
+  const signerKey = wallet.address.toLowerCase();
+  return { wallet, signerKey, type: SignatureAlgorithm.EthereumPersonalSign };
 };
