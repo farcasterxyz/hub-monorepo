@@ -8,7 +8,6 @@ const engine = new Engine();
 const username = 'alice';
 
 describe('mergeCast', () => {
-  // let alicePrivateKey: string;
   let aliceSigner: MessageSigner;
   let aliceAddress: string;
   let root: Root;
