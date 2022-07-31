@@ -17,12 +17,7 @@ describe('mergeVerification', () => {
 
   // Generate key pair for alice and root message
   beforeAll(async () => {
-    // Randomly generate either an Ed25519 or Ethereum signer
-    if (Math.random() > 0.5) {
-      aliceSigner = await generateEd25519Signer();
-    } else {
-      aliceSigner = await generateEthereumSigner();
-    }
+    aliceSigner = await generateEd25519Signer();
     aliceAddress = aliceSigner.signerKey;
     transientParams = { transient: { signer: aliceSigner } };
     aliceRoot = await Factories.Root.create({ data: { rootBlock: 100, username: 'alice' } }, transientParams);

@@ -17,12 +17,7 @@ describe('mergeReaction', () => {
   const subject = () => engine._getActiveReactions(username);
 
   beforeAll(async () => {
-    // Randomly generate either an Ed25519 or Ethereum signer
-    if (Math.random() > 0.5) {
-      aliceSigner = await generateEd25519Signer();
-    } else {
-      aliceSigner = await generateEthereumSigner();
-    }
+    aliceSigner = await generateEd25519Signer();
     aliceAddress = aliceSigner.signerKey;
     transient = { transient: { signer: aliceSigner } };
 
