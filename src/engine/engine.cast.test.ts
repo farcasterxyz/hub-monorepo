@@ -2,13 +2,12 @@ import Engine from '~/engine';
 import { Factories } from '~/factories';
 import { Cast, MessageFactoryTransientParams, MessageSigner, Reaction, Root } from '~/types';
 import Faker from 'faker';
-import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
+import { generateEd25519Signer } from '~/utils';
 
 const engine = new Engine();
 const username = 'alice';
 
 describe('mergeCast', () => {
-  // let alicePrivateKey: string;
   let aliceSigner: MessageSigner;
   let aliceAddress: string;
   let root: Root;
@@ -18,12 +17,7 @@ describe('mergeCast', () => {
   const subject = () => engine._getCastAdds(username);
 
   beforeAll(async () => {
-    // Randomly generate either an Ed25519 or Ethereum signer
-    if (Math.random() > 0.5) {
-      aliceSigner = await generateEd25519Signer();
-    } else {
-      aliceSigner = await generateEthereumSigner();
-    }
+    aliceSigner = await generateEd25519Signer();
     aliceAddress = aliceSigner.signerKey;
 
     transient = { transient: { signer: aliceSigner } };
