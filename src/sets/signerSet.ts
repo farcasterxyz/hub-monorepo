@@ -252,37 +252,9 @@ class SignerSet {
 
       // If child exists in vAdds
       else if (this._vertexAdds.has(childKey)) {
-        /**
-         * Get all ascendents of parentKey in edgeAdds in order to prevent the new edge from
-         * creating a cycle in edgeAdds. The new edge (parentKey, childKey) will create
-         * a cycle if childKey already exists in the ascendents of parentKey.
-         */
-        const parentsOfParent: string[] = [];
-        let parentEdgesToTraverse = this._edgeAddsByChild.get(parentKey) || new Set();
-        while (parentEdgesToTraverse.size > 0) {
-          const newParentEdgesToTraverse = new Set<string>();
-          parentEdgesToTraverse.forEach((edgeKey) => {
-            const { parentKey } = this.deconstructEdgeKey(edgeKey);
-            parentsOfParent.push(parentKey);
-            // Stop traversal once a custody signer is found
-            if (!this._custodyAddresses.has(parentKey)) {
-              (this._edgeAddsByChild.get(parentKey) || new Set()).forEach((parentEdgeKey) =>
-                newParentEdgesToTraverse.add(parentEdgeKey)
-              );
-            }
-          });
-          parentEdgesToTraverse = newParentEdgesToTraverse;
-        }
-
-        // If parents of parentKey includes childKey (i.e. a cycle)
-        if (parentsOfParent.includes(childKey)) {
-          // Add (parent, child) to edgeRemoves
-          this._edgeRemoves.set(edgeKey, hash);
-          return ok(undefined);
-        }
-
         // For each edge (*, child) in edgeAdds (though there should be only one parent)
-        (this._edgeAddsByChild.get(childKey) || new Set()).forEach((existingEdgeKey) => {
+        const parentEdges = this._edgeAddsByChild.get(childKey) || new Set();
+        for (const existingEdgeKey of parentEdges) {
           const existingEdgeHash = this._edgeAdds.get(existingEdgeKey);
           if (!existingEdgeHash) return err('SignerSet.add: unexpected state');
 
@@ -294,13 +266,38 @@ class SignerSet {
 
           // If new message wins
           else {
+            /**
+             * Get all ascendents of parentKey in edgeAdds in order to prevent the new edge from
+             * creating a cycle in edgeAdds. The new edge (parentKey, childKey) will create
+             * a cycle if childKey already exists in the ascendents of parentKey.
+             */
+            const parentsOfParent: string[] = [];
+            let parentEdgesToTraverse = this._edgeAddsByChild.get(parentKey) || new Set();
+            while (parentEdgesToTraverse.size > 0) {
+              const newParentEdgesToTraverse = new Set<string>();
+              parentEdgesToTraverse.forEach((edgeKey) => {
+                const { parentKey } = this.deconstructEdgeKey(edgeKey);
+                parentsOfParent.push(parentKey);
+                // Stop traversal once a custody signer is found
+                if (!this._custodyAddresses.has(parentKey)) {
+                  (this._edgeAddsByChild.get(parentKey) || new Set()).forEach((parentEdgeKey) =>
+                    newParentEdgesToTraverse.add(parentEdgeKey)
+                  );
+                }
+              });
+              parentEdgesToTraverse = newParentEdgesToTraverse;
+            }
+
+            // If parents of parentKey includes childKey (i.e. a cycle)
+            if (parentsOfParent.includes(childKey)) return err('SignerSet.add: cycle detected');
+
             // Move existing edge to eRems
             this._edgeAdds.delete(existingEdgeKey);
             this._edgeRemoves.set(existingEdgeKey, existingEdgeHash);
             // Add (parent, child) to eAdds
             this._edgeAdds.set(edgeKey, hash);
           }
-        });
+        }
 
         return ok(undefined);
       }

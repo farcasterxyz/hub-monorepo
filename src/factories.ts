@@ -19,7 +19,6 @@ import {
   SignatureAlgorithm,
   Message,
   MessageFactoryTransientParams,
-  MessageSigner,
 } from '~/types';
 import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
