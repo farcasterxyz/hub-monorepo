@@ -2,7 +2,7 @@ import Engine from '~/engine';
 import { Factories } from '~/factories';
 import { Cast, MessageFactoryTransientParams, MessageSigner, Reaction, Root } from '~/types';
 import Faker from 'faker';
-import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
+import { generateEd25519Signer } from '~/utils';
 
 const engine = new Engine();
 const username = 'alice';

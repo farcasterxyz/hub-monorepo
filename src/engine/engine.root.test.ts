@@ -1,7 +1,7 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
 import { Cast, MessageFactoryTransientParams, MessageSigner, Root } from '~/types';
-import { hashCompare, generateEd25519Signer, generateEthereumSigner } from '~/utils';
+import { hashCompare, generateEd25519Signer } from '~/utils';
 import Faker from 'faker';
 
 const engine = new Engine();

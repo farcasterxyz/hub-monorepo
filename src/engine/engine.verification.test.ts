@@ -3,7 +3,7 @@ import { Factories } from '~/factories';
 import { MessageSigner, Root, Verification, VerificationAddFactoryTransientParams } from '~/types';
 import Faker from 'faker';
 import { ethers } from 'ethers';
-import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
+import { hashFCObject, generateEd25519Signer } from '~/utils';
 
 const engine = new Engine();
 
