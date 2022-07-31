@@ -2,7 +2,6 @@ import { SignerAdd, SignerRemove, EthereumSigner, Ed25519Signer } from '~/types'
 import SignerSet from '~/sets/signerSet';
 import { Factories } from '~/factories';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
-import { ethers } from 'ethers';
 
 const set = new SignerSet();
 const vAdds = () => set._getVertexAdds();
