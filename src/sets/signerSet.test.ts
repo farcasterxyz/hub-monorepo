@@ -15,47 +15,60 @@ const custodySigners = () => set._getCustodySigners();
 const messages = () => set._getMessages();
 const messageHashes = () => new Set([...messages().keys()]);
 
+let custodySigner: EthereumSigner;
+
+beforeAll(async () => {
+  custodySigner = await generateEthereumSigner();
+});
+
 describe('addCustody', () => {
-  let custody1: string;
-  let custody2: string;
+  let custody2: EthereumSigner;
 
   beforeAll(async () => {
-    const custodyWallet1 = ethers.Wallet.createRandom();
-    custody1 = custodyWallet1.address;
-    const custodyWallet2 = ethers.Wallet.createRandom();
-    custody2 = custodyWallet2.address;
+    custody2 = await generateEthereumSigner();
   });
 
   beforeEach(() => {
     set._reset();
   });
 
-  afterEach(() => {
+  test('succeeds with new custody signer', () => {
+    expect(set.addCustody(custodySigner.signerKey).isOk()).toBe(true);
+    expect(custodySigners()).toContain(custodySigner.signerKey);
+    expect(vAdds()).toEqual(new Set());
     expect(messageHashes()).toEqual(new Set());
   });
 
-  test('succeeds with new custody signer', () => {
-    expect(set.addCustody(custody1).isOk()).toBe(true);
-    expect(custodySigners()).toContain(custody1);
-    expect(vAdds().size).toEqual(0);
-  });
-
   test('succeeds with multiple new custody signers', () => {
-    expect(set.addCustody(custody1).isOk()).toBe(true);
-    expect(set.addCustody(custody2).isOk()).toBe(true);
-    expect(custodySigners()).toEqual(new Set([custody1, custody2]));
-    expect(vAdds().size).toEqual(0);
+    expect(set.addCustody(custodySigner.signerKey).isOk()).toBe(true);
+    expect(set.addCustody(custody2.signerKey).isOk()).toBe(true);
+    expect(custodySigners()).toEqual(new Set([custodySigner.signerKey, custody2.signerKey]));
+    expect(vAdds()).toEqual(new Set());
+    expect(messageHashes()).toEqual(new Set());
   });
 
   test('succeeds with a duplicate custody signer (idempotent)', () => {
-    expect(set.addCustody(custody1).isOk()).toBe(true);
-    expect(set.addCustody(custody1).isOk()).toBe(true);
-    expect(custodySigners()).toEqual(new Set([custody1]));
+    expect(set.addCustody(custodySigner.signerKey).isOk()).toBe(true);
+    expect(set.addCustody(custodySigner.signerKey).isOk()).toBe(true);
+    expect(custodySigners()).toEqual(new Set([custodySigner.signerKey]));
+    expect(vAdds()).toEqual(new Set());
+    expect(messageHashes()).toEqual(new Set());
+  });
+
+  test('fails when custody signer is already a delegate', async () => {
+    expect(set.addCustody(custodySigner.signerKey).isOk()).toBe(true);
+    const add = await Factories.SignerAdd.create({}, { transient: { signer: custodySigner } });
+    expect(set.merge(add).isOk()).toBe(true);
+    const res = set.addCustody(add.data.body.childKey);
+    expect(res.isOk()).toBe(false);
+    expect(res._unsafeUnwrapErr()).toBe('SignerSet.addCustody: custodyAddress already exists as a delegate');
+    expect(custodySigners()).toEqual(new Set([custodySigner.signerKey]));
+    expect(vAdds()).toEqual(new Set([add.data.body.childKey]));
+    expect(messageHashes()).toEqual(new Set([add.hash]));
   });
 });
 
 describe('merge', () => {
-  let custodySigner: EthereumSigner;
   let a: Ed25519Signer;
   let addA: SignerAdd;
   let remA: SignerRemove;
@@ -70,7 +83,6 @@ describe('merge', () => {
   let addDToC: SignerAdd;
 
   beforeAll(async () => {
-    custodySigner = await generateEthereumSigner();
     a = await generateEd25519Signer();
     addA = await Factories.SignerAdd.create({}, { transient: { signer: custodySigner, childSigner: a } });
     remA = await Factories.SignerRemove.create(
@@ -287,9 +299,9 @@ describe('merge', () => {
         for (const msg of messages) {
           expect(set.merge(msg).isOk()).toBe(true);
         }
-        expect(vAdds()).toEqual(new Set([]));
+        expect(vAdds()).toEqual(new Set());
         expect(vRems()).toEqual(new Set([a.signerKey, c.signerKey, d.signerKey]));
-        expect(eAddsHashes()).toEqual(new Set([]));
+        expect(eAddsHashes()).toEqual(new Set());
         expect(eRemsHashes()).toEqual(new Set([addA.hash, addCToA.hash, addDToC.hash]));
         expect(messageHashes()).toEqual(new Set(messages.map((msg) => msg.hash)));
       });
@@ -337,9 +349,9 @@ describe('merge', () => {
     test('succeeds with a valid SignerRemove message', () => {
       expect(set.merge(addA).isOk()).toBe(true);
       expect(set.merge(remA).isOk()).toBe(true);
-      expect(vAdds()).toEqual(new Set([]));
+      expect(vAdds()).toEqual(new Set());
       expect(vRems()).toEqual(new Set([a.signerKey]));
-      expect(eAddsHashes()).toEqual(new Set([]));
+      expect(eAddsHashes()).toEqual(new Set());
       expect(eRemsHashes()).toEqual(new Set([addA.hash]));
       expect(messageHashes()).toEqual(new Set([addA.hash, remA.hash]));
     });
@@ -357,9 +369,9 @@ describe('merge', () => {
       expect(set.merge(addA).isOk()).toBe(true);
       expect(set.merge(addCToA).isOk()).toBe(true);
       expect(set.merge(remA).isOk()).toBe(true);
-      expect(vAdds()).toEqual(new Set([]));
+      expect(vAdds()).toEqual(new Set());
       expect(vRems()).toEqual(new Set([a.signerKey, c.signerKey]));
-      expect(eAddsHashes()).toEqual(new Set([]));
+      expect(eAddsHashes()).toEqual(new Set());
       expect(eRemsHashes()).toEqual(new Set([addA.hash, addCToA.hash]));
       expect(messageHashes()).toEqual(new Set([addA.hash, remA.hash, addCToA.hash]));
     });
@@ -394,9 +406,9 @@ describe('merge', () => {
       expect(set.merge(addA).isOk()).toBe(true);
       expect(set.merge(remA).isOk()).toBe(true);
       expect(set.merge(remA).isOk()).toBe(true);
-      expect(vAdds()).toEqual(new Set([]));
+      expect(vAdds()).toEqual(new Set());
       expect(vRems()).toEqual(new Set([a.signerKey]));
-      expect(eAddsHashes()).toEqual(new Set([]));
+      expect(eAddsHashes()).toEqual(new Set());
       expect(eRemsHashes()).toEqual(new Set([addA.hash]));
       expect(messageHashes()).toEqual(new Set([addA.hash, remA.hash]));
     });
@@ -406,9 +418,9 @@ describe('merge', () => {
       for (const msg of messages) {
         expect(set.merge(msg).isOk()).toBe(true);
       }
-      expect(vAdds()).toEqual(new Set([]));
+      expect(vAdds()).toEqual(new Set());
       expect(vRems()).toEqual(new Set([a.signerKey, c.signerKey]));
-      expect(eAddsHashes()).toEqual(new Set([]));
+      expect(eAddsHashes()).toEqual(new Set());
       expect(eRemsHashes()).toEqual(new Set([addA.hash, addCToA.hash]));
       expect(messageHashes()).toEqual(new Set(messages.map((msg) => msg.hash)));
     });
