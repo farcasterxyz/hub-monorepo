@@ -72,7 +72,7 @@ export const Factories = {
       },
       hash: '',
       signature: '',
-      signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
+      signatureType: SignatureAlgorithm.Ed25519,
       signer: '',
     };
   }),
@@ -95,7 +95,7 @@ export const Factories = {
       },
       hash: '',
       signature: '',
-      signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
+      signatureType: SignatureAlgorithm.Ed25519,
       signer: '',
     };
   }),
@@ -118,7 +118,7 @@ export const Factories = {
       },
       hash: '',
       signature: '',
-      signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
+      signatureType: SignatureAlgorithm.Ed25519,
       signer: '',
     };
   }),
@@ -141,7 +141,7 @@ export const Factories = {
       },
       hash: '',
       signature: '',
-      signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
+      signatureType: SignatureAlgorithm.Ed25519,
       signer: '',
     };
   }),
@@ -166,7 +166,7 @@ export const Factories = {
       },
       hash: '',
       signature: '',
-      signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
+      signatureType: SignatureAlgorithm.Ed25519,
       signer: '',
     };
   }),
@@ -210,7 +210,7 @@ export const Factories = {
         },
         hash: '',
         signature: '',
-        signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
+        signatureType: SignatureAlgorithm.Ed25519,
         signer: '',
       };
     }
@@ -247,7 +247,7 @@ export const Factories = {
         },
         hash: '',
         signature: '',
-        signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
+        signatureType: SignatureAlgorithm.Ed25519,
         signer: '',
       };
     }
