@@ -1,3 +1,4 @@
+import { timeStamp } from 'console';
 import { Result, ok, err } from 'neverthrow';
 import { SignerAdd, SignerMessage, SignerRemove } from '~/types';
 import { isSignerAdd, isSignerRemove } from '~/types/typeguards';
@@ -37,7 +38,8 @@ import { hashCompare } from '~/utils';
       one edge that fits that criteria. See the removeSubtree method for an example.
 */
 class SignerSet {
-  private _custodyAddresses: Set<string>; // custody address
+  private _custodyAdds: Set<string>; // custody address
+  private _custodyRemoves: Set<string>; // custody address
   private _vertexAdds: Set<string>; // pubKey
   private _vertexRemoves: Set<string>; // pubKey
   private _edgeAdds: Map<string, string>; // <parentKey, childKey>, hash
@@ -45,7 +47,8 @@ class SignerSet {
   private _messages: Map<string, SignerMessage>; // message hash => SignerAdd | SignerRemove
 
   constructor() {
-    this._custodyAddresses = new Set();
+    this._custodyAdds = new Set();
+    this._custodyRemoves = new Set();
     this._vertexAdds = new Set();
     this._vertexRemoves = new Set();
     this._edgeAdds = new Map();
@@ -54,6 +57,10 @@ class SignerSet {
   }
 
   // TODO: add more helper functions as we integrate signer set into engine
+
+  getCustodyAddresses(): string[] {
+    return Array.from(this._custodyAdds);
+  }
 
   getDelegates(): string[] {
     return Array.from(this._vertexAdds);
@@ -64,7 +71,7 @@ class SignerSet {
   }
 
   constructEdgeKey(parentKey: string, childKey: string): string {
-    return [parentKey, childKey].toString();
+    return [parentKey.toLowerCase(), childKey.toLowerCase()].toString();
   }
 
   deconstructEdgeKey(edgeKey: string): { parentKey: string; childKey: string } {
@@ -86,14 +93,53 @@ class SignerSet {
     return err('SignerSet.merge: invalid message format');
   }
 
+  /**
+   * addCustody adds a custody address (lowercased) to custodyAdds set.
+   *
+   * @param custodyAddress - custody address to add to custodyAdds set
+   */
   addCustody(custodyAddress: string): Result<void, string> {
-    if (this._custodyAddresses.has(custodyAddress)) return ok(undefined);
+    const lowercaseAddress = custodyAddress.toLowerCase();
 
-    if (this._vertices.has(custodyAddress)) {
+    // No-op if address already exists in custodyAdds
+    if (this._custodyAdds.has(lowercaseAddress)) return ok(undefined);
+
+    // Fail if address already exists as a delegate
+    if (this._vertices.has(lowercaseAddress))
       return err('SignerSet.addCustody: custodyAddress already exists as a delegate');
+
+    // Fail if address has already been removed
+    if (this._custodyRemoves.has(lowercaseAddress)) return err('SignerSet.addCustody: custodyAddress has been removed');
+
+    // Add address to custodyAdds set
+    this._custodyAdds.add(lowercaseAddress);
+    return ok(undefined);
+  }
+
+  /**
+   * removeCustody moves a custody address (lowercased) from the custodyAdds set to the custodyRemoves set.
+   *
+   * @param custodyAddress - custody address to move to custodyRemoves set
+   */
+  removeCustody(custodyAddress: string): Result<void, string> {
+    const lowercaseAddress = custodyAddress.toLowerCase();
+
+    // No-op if address already exists in custodyRemoves
+    if (this._custodyRemoves.has(lowercaseAddress)) return ok(undefined);
+
+    // Fail if address does not exist in custodyAdds
+    if (!this._custodyAdds.has(lowercaseAddress)) return err('SignerSet.removeCustody: custodyAddress does not exist');
+
+    // For each edge (custody, *), remove subtree
+    for (const edgeKey of this._edgeAddsByParent.get(lowercaseAddress) || new Set()) {
+      const { childKey } = this.deconstructEdgeKey(edgeKey);
+      const res = this.removeSubtree(childKey);
+      if (res.isErr()) return res;
     }
 
-    this._custodyAddresses.add(custodyAddress);
+    // Move address from custodyAdds to custodyRemoves
+    this._custodyAdds.delete(lowercaseAddress);
+    this._custodyRemoves.add(lowercaseAddress);
     return ok(undefined);
   }
 
@@ -107,6 +153,10 @@ class SignerSet {
 
   private get _edges() {
     return new Map([...this._edgeAdds, ...this._edgeRemoves]);
+  }
+
+  private get _custodyAddresses() {
+    return new Set([...this._custodyAdds, ...this._custodyRemoves]);
   }
 
   private get _edgeAddsByChild() {
@@ -239,8 +289,8 @@ class SignerSet {
       return ok(undefined);
     }
 
-    // If parent exists in vAdds or custody signers
-    if (this._vertexAdds.has(parentKey) || this._custodyAddresses.has(parentKey)) {
+    // If parent exists in vAdds or custodyAdds
+    if (this._vertexAdds.has(parentKey) || this._custodyAdds.has(parentKey)) {
       // If child does not exist in vertices
       if (!this._vertices.has(childKey)) {
         // Add child to vAdds and (a,b) to eAdds
@@ -310,8 +360,8 @@ class SignerSet {
       }
     }
 
-    // If parent exists in vRems
-    else if (this._vertexRemoves.has(parentKey)) {
+    // If parent exists in vRems or custodyRems
+    else if (this._vertexRemoves.has(parentKey) || this._custodyRemoves.has(parentKey)) {
       // If child does not exist in vertices
       if (!this._vertices.has(childKey)) {
         // Add child to vRems
@@ -416,7 +466,8 @@ class SignerSet {
    */
 
   _reset(): void {
-    this._custodyAddresses = new Set();
+    this._custodyAdds = new Set();
+    this._custodyRemoves = new Set();
     this._vertexAdds = new Set();
     this._vertexRemoves = new Set();
     this._edgeAdds = new Map();
@@ -424,12 +475,16 @@ class SignerSet {
     this._messages = new Map();
   }
 
-  _numSigners(): number {
-    return this._custodyAddresses.size;
+  _getCustodyAddresses() {
+    return this._custodyAddresses;
   }
 
-  _getCustodySigners() {
-    return this._custodyAddresses;
+  _getCustodyAdds() {
+    return this._custodyAdds;
+  }
+
+  _getCustodyRemoves() {
+    return this._custodyRemoves;
   }
 
   _getVertexAdds() {
