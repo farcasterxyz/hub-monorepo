@@ -32,6 +32,7 @@ const getMessageSigner = async (props: Message, transientParams: MessageFactoryT
   /** Otherwise generate default signer */
   return await generateEd25519Signer();
 };
+
 /**
  * addEnvelopeToMessage adds hash, signer, signature, and signatureType to a message
  * object using the signer in transientParams if one is present

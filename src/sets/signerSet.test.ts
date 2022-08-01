@@ -364,15 +364,18 @@ describe('merge', () => {
       expect(messageHashes()).toEqual(new Set());
     });
 
-    test('succeeds and removes subtree', () => {
-      expect(set.merge(addA).isOk()).toBe(true);
-      expect(set.merge(addCToA).isOk()).toBe(true);
-      expect(set.merge(remA).isOk()).toBe(true);
-      expect(vAdds()).toEqual(new Set());
-      expect(vRems()).toEqual(new Set([a.signerKey, c.signerKey]));
-      expect(eAddsHashes()).toEqual(new Set());
-      expect(eRemsHashes()).toEqual(new Set([addA.hash, addCToA.hash]));
-      expect(messageHashes()).toEqual(new Set([addA.hash, remA.hash, addCToA.hash]));
+    test('succeeds and removes subtree', async () => {
+      const e = await generateEd25519Signer();
+      const addEToC = await Factories.SignerAdd.create({}, { transient: { signer: c, childSigner: e } });
+      const messages = [addA, addB, addCToA, addDToC, addEToC, remA];
+      for (const msg of messages) {
+        expect(set.merge(msg).isOk()).toBe(true);
+      }
+      expect(vAdds()).toEqual(new Set([b.signerKey]));
+      expect(vRems()).toEqual(new Set([a.signerKey, c.signerKey, d.signerKey, e.signerKey]));
+      expect(eAddsHashes()).toEqual(new Set([addB.hash]));
+      expect(eRemsHashes()).toEqual(new Set([addA.hash, addCToA.hash, addDToC.hash, addEToC.hash]));
+      expect(messageHashes()).toEqual(new Set(messages.map((msg) => msg.hash)));
     });
 
     test("fails when child doesn't belong to parent", async () => {
