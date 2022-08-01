@@ -2,7 +2,7 @@ import Engine from '~/engine';
 import { Factories } from '~/factories';
 import { MessageSigner, Root, Verification, VerificationAddFactoryTransientParams } from '~/types';
 import { ethers } from 'ethers';
-import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
+import { hashFCObject, generateEd25519Signer } from '~/utils';
 
 const engine = new Engine();
 
@@ -15,12 +15,7 @@ describe('mergeVerification', () => {
 
   // Generate key pair for alice and root message
   beforeAll(async () => {
-    // Randomly generate either an Ed25519 or Ethereum signer
-    if (Math.random() > 0.5) {
-      aliceSigner = await generateEd25519Signer();
-    } else {
-      aliceSigner = await generateEthereumSigner();
-    }
+    aliceSigner = await generateEd25519Signer();
     transientParams = { transient: { signer: aliceSigner } };
     aliceRoot = await Factories.Root.create({ data: { rootBlock: 100, username: 'alice' } }, transientParams);
   });

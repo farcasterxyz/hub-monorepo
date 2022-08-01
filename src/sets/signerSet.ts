@@ -37,7 +37,8 @@ import { hashCompare } from '~/utils';
       one edge that fits that criteria. See the removeSubtree method for an example.
 */
 class SignerSet {
-  private _custodyAddresses: Set<string>; // custody address
+  private _custodyAdds: Set<string>; // custody address
+  private _custodyRemoves: Set<string>; // custody address
   private _vertexAdds: Set<string>; // pubKey
   private _vertexRemoves: Set<string>; // pubKey
   private _edgeAdds: Map<string, string>; // <parentKey, childKey>, hash
@@ -45,7 +46,8 @@ class SignerSet {
   private _messages: Map<string, SignerMessage>; // message hash => SignerAdd | SignerRemove
 
   constructor() {
-    this._custodyAddresses = new Set();
+    this._custodyAdds = new Set();
+    this._custodyRemoves = new Set();
     this._vertexAdds = new Set();
     this._vertexRemoves = new Set();
     this._edgeAdds = new Map();
@@ -54,6 +56,10 @@ class SignerSet {
   }
 
   // TODO: add more helper functions as we integrate signer set into engine
+
+  getCustodyAddresses(): string[] {
+    return Array.from(this._custodyAdds);
+  }
 
   getDelegates(): string[] {
     return Array.from(this._vertexAdds);
@@ -64,11 +70,15 @@ class SignerSet {
   }
 
   getSigners(): Set<string> {
-    return new Set([...this._custodyAddresses, ...this._vertexAdds]);
+    return new Set([...this._custodyAdds, ...this._vertexAdds]);
+  }
+
+  sanitizeKey(key: string): string {
+    return key.toLowerCase();
   }
 
   constructEdgeKey(parentKey: string, childKey: string): string {
-    return [parentKey, childKey].toString();
+    return [this.sanitizeKey(parentKey), this.sanitizeKey(childKey)].toString();
   }
 
   deconstructEdgeKey(edgeKey: string): { parentKey: string; childKey: string } {
@@ -90,14 +100,53 @@ class SignerSet {
     return err('SignerSet.merge: invalid message format');
   }
 
+  /**
+   * addCustody adds a custody address to custodyAdds set.
+   *
+   * @param custodyAddress - custody address to add to custodyAdds set
+   */
   addCustody(custodyAddress: string): Result<void, string> {
-    if (this._custodyAddresses.has(custodyAddress)) return ok(undefined);
+    const sanitizedAddress = this.sanitizeKey(custodyAddress);
 
-    if (this._vertices.has(custodyAddress)) {
+    // No-op if address already exists in custodyAdds
+    if (this._custodyAdds.has(sanitizedAddress)) return ok(undefined);
+
+    // Fail if address already exists as a delegate
+    if (this._vertices.has(sanitizedAddress))
       return err('SignerSet.addCustody: custodyAddress already exists as a delegate');
+
+    // Fail if address has already been removed
+    if (this._custodyRemoves.has(sanitizedAddress)) return err('SignerSet.addCustody: custodyAddress has been removed');
+
+    // Add address to custodyAdds set
+    this._custodyAdds.add(sanitizedAddress);
+    return ok(undefined);
+  }
+
+  /**
+   * removeCustody moves a custody address from the custodyAdds set to the custodyRemoves set.
+   *
+   * @param custodyAddress - custody address to move to custodyRemoves set
+   */
+  removeCustody(custodyAddress: string): Result<void, string> {
+    const sanitizedAddress = this.sanitizeKey(custodyAddress);
+
+    // No-op if address already exists in custodyRemoves
+    if (this._custodyRemoves.has(sanitizedAddress)) return ok(undefined);
+
+    // Fail if address does not exist in custodyAdds
+    if (!this._custodyAdds.has(sanitizedAddress)) return err('SignerSet.removeCustody: custodyAddress does not exist');
+
+    // For each edge (custody, *), remove subtree
+    for (const edgeKey of this._edgeAddsByParent.get(sanitizedAddress) || new Set()) {
+      const { childKey } = this.deconstructEdgeKey(edgeKey);
+      const res = this.removeSubtree(childKey);
+      if (res.isErr()) return res;
     }
 
-    this._custodyAddresses.add(custodyAddress);
+    // Move address from custodyAdds to custodyRemoves
+    this._custodyAdds.delete(sanitizedAddress);
+    this._custodyRemoves.add(sanitizedAddress);
     return ok(undefined);
   }
 
@@ -111,6 +160,10 @@ class SignerSet {
 
   private get _edges() {
     return new Map([...this._edgeAdds, ...this._edgeRemoves]);
+  }
+
+  private get _custodyAddresses() {
+    return new Set([...this._custodyAdds, ...this._custodyRemoves]);
   }
 
   private get _edgeAddsByChild() {
@@ -182,8 +235,8 @@ class SignerSet {
    * @param message - a SignerAdd message
    */
   private mergeSignerAdd(message: SignerAdd): Result<void, string> {
-    const parentKey = message.signer;
-    const childKey = message.data.body.childKey;
+    const parentKey = this.sanitizeKey(message.signer);
+    const childKey = this.sanitizeKey(message.data.body.childKey);
 
     const res = this.add(parentKey, childKey, message.hash);
     if (res.isErr()) return res;
@@ -199,8 +252,8 @@ class SignerSet {
    * @param message - a SignerRemove message
    */
   private mergeSignerRemove(message: SignerRemove): Result<void, string> {
-    const parentKey = message.signer;
-    const childKey = message.data.body.childKey;
+    const parentKey = this.sanitizeKey(message.signer);
+    const childKey = this.sanitizeKey(message.data.body.childKey);
 
     const res = this.remove(parentKey, childKey);
     if (res.isErr()) return res;
@@ -209,6 +262,13 @@ class SignerSet {
     return ok(undefined);
   }
 
+  /**
+   * add attemps to add childKey as a delegate of parentKey. See inline comments for detailed behavior.
+   *
+   * @param parentKey - sanitized parent key (either custody address or delegate public key)
+   * @param childKey - sanitized child public key
+   * @param hash - relevant SignerAdd message hash
+   */
   private add(parentKey: string, childKey: string, hash: string): Result<void, string> {
     const edgeKey = this.constructEdgeKey(parentKey, childKey);
 
@@ -243,8 +303,8 @@ class SignerSet {
       return ok(undefined);
     }
 
-    // If parent exists in vAdds or custody signers
-    if (this._vertexAdds.has(parentKey) || this._custodyAddresses.has(parentKey)) {
+    // If parent exists in vAdds or custodyAdds
+    if (this._vertexAdds.has(parentKey) || this._custodyAdds.has(parentKey)) {
       // If child does not exist in vertices
       if (!this._vertices.has(childKey)) {
         // Add child to vAdds and (a,b) to eAdds
@@ -256,37 +316,9 @@ class SignerSet {
 
       // If child exists in vAdds
       else if (this._vertexAdds.has(childKey)) {
-        /**
-         * Get all ascendents of parentKey in edgeAdds in order to prevent the new edge from
-         * creating a cycle in edgeAdds. The new edge (parentKey, childKey) will create
-         * a cycle if childKey already exists in the ascendents of parentKey.
-         */
-        const parentsOfParent: string[] = [];
-        let parentEdgesToTraverse = this._edgeAddsByChild.get(parentKey) || new Set();
-        while (parentEdgesToTraverse.size > 0) {
-          const newParentEdgesToTraverse = new Set<string>();
-          parentEdgesToTraverse.forEach((edgeKey) => {
-            const { parentKey } = this.deconstructEdgeKey(edgeKey);
-            parentsOfParent.push(parentKey);
-            // Stop traversal once a custody signer is found
-            if (!this._custodyAddresses.has(parentKey)) {
-              (this._edgeAddsByChild.get(parentKey) || new Set()).forEach((parentEdgeKey) =>
-                newParentEdgesToTraverse.add(parentEdgeKey)
-              );
-            }
-          });
-          parentEdgesToTraverse = newParentEdgesToTraverse;
-        }
-
-        // If parents of parentKey includes childKey (i.e. a cycle)
-        if (parentsOfParent.includes(childKey)) {
-          // Add (parent, child) to edgeRemoves
-          this._edgeRemoves.set(edgeKey, hash);
-          return ok(undefined);
-        }
-
         // For each edge (*, child) in edgeAdds (though there should be only one parent)
-        (this._edgeAddsByChild.get(childKey) || new Set()).forEach((existingEdgeKey) => {
+        const parentEdges = this._edgeAddsByChild.get(childKey) || new Set();
+        for (const existingEdgeKey of parentEdges) {
           const existingEdgeHash = this._edgeAdds.get(existingEdgeKey);
           if (!existingEdgeHash) return err('SignerSet.add: unexpected state');
 
@@ -298,13 +330,38 @@ class SignerSet {
 
           // If new message wins
           else {
+            /**
+             * Get all ascendents of parentKey in edgeAdds in order to prevent the new edge from
+             * creating a cycle in edgeAdds. The new edge (parentKey, childKey) will create
+             * a cycle if childKey already exists in the ascendents of parentKey.
+             */
+            const parentsOfParent: string[] = [];
+            let parentEdgesToTraverse = this._edgeAddsByChild.get(parentKey) || new Set();
+            while (parentEdgesToTraverse.size > 0) {
+              const newParentEdgesToTraverse = new Set<string>();
+              parentEdgesToTraverse.forEach((edgeKey) => {
+                const { parentKey } = this.deconstructEdgeKey(edgeKey);
+                parentsOfParent.push(parentKey);
+                // Stop traversal once a custody signer is found
+                if (!this._custodyAddresses.has(parentKey)) {
+                  (this._edgeAddsByChild.get(parentKey) || new Set()).forEach((parentEdgeKey) =>
+                    newParentEdgesToTraverse.add(parentEdgeKey)
+                  );
+                }
+              });
+              parentEdgesToTraverse = newParentEdgesToTraverse;
+            }
+
+            // If parents of parentKey includes childKey (i.e. a cycle)
+            if (parentsOfParent.includes(childKey)) return err('SignerSet.add: cycle detected');
+
             // Move existing edge to eRems
             this._edgeAdds.delete(existingEdgeKey);
             this._edgeRemoves.set(existingEdgeKey, existingEdgeHash);
             // Add (parent, child) to eAdds
             this._edgeAdds.set(edgeKey, hash);
           }
-        });
+        }
 
         return ok(undefined);
       }
@@ -317,8 +374,8 @@ class SignerSet {
       }
     }
 
-    // If parent exists in vRems
-    else if (this._vertexRemoves.has(parentKey)) {
+    // If parent exists in vRems or custodyRems
+    else if (this._vertexRemoves.has(parentKey) || this._custodyRemoves.has(parentKey)) {
       // If child does not exist in vertices
       if (!this._vertices.has(childKey)) {
         // Add child to vRems
@@ -351,6 +408,12 @@ class SignerSet {
     return ok(undefined);
   }
 
+  /**
+   * remove attempts to remove childKey as a delegate of parentKey. See inline comments for detailed behavior.
+   *
+   * @param parentKey - sanitized parent key (either custody address or delegate public key)
+   * @param childKey - sanitized child public key
+   */
   private remove(parentKey: string, childKey: string): Result<void, string> {
     const edgeKey = this.constructEdgeKey(parentKey, childKey);
 
@@ -423,7 +486,8 @@ class SignerSet {
    */
 
   _reset(): void {
-    this._custodyAddresses = new Set();
+    this._custodyAdds = new Set();
+    this._custodyRemoves = new Set();
     this._vertexAdds = new Set();
     this._vertexRemoves = new Set();
     this._edgeAdds = new Map();
@@ -431,12 +495,16 @@ class SignerSet {
     this._messages = new Map();
   }
 
-  _numSigners(): number {
-    return this._custodyAddresses.size;
+  _getCustodyAddresses() {
+    return this._custodyAddresses;
   }
 
-  _getCustodySigners() {
-    return this._custodyAddresses;
+  _getCustodyAdds() {
+    return this._custodyAdds;
+  }
+
+  _getCustodyRemoves() {
+    return this._custodyRemoves;
   }
 
   _getVertexAdds() {

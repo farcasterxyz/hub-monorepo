@@ -2,7 +2,7 @@ import Engine from '~/engine';
 import { Factories } from '~/factories';
 import { Cast, MessageFactoryTransientParams, MessageSigner, Reaction, Root } from '~/types';
 import Faker from 'faker';
-import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
+import { generateEd25519Signer } from '~/utils';
 
 const engine = new Engine();
 const username = 'alice';
@@ -16,12 +16,7 @@ describe('mergeReaction', () => {
   const subject = () => engine._getActiveReactions(username);
 
   beforeAll(async () => {
-    // Randomly generate either an Ed25519 or Ethereum signer
-    if (Math.random() > 0.5) {
-      aliceSigner = await generateEd25519Signer();
-    } else {
-      aliceSigner = await generateEthereumSigner();
-    }
+    aliceSigner = await generateEd25519Signer();
     transient = { transient: { signer: aliceSigner } };
 
     root = await Factories.Root.create({ data: { rootBlock: 100, username: 'alice' } }, transient);

@@ -367,7 +367,7 @@ class Engine {
 
   _getCustodySigners(username: string): string[] {
     const signerSet = this._signers.get(username);
-    return signerSet ? Array.from(signerSet._getCustodySigners()) : [];
+    return signerSet ? Array.from(signerSet._getCustodyAdds()) : [];
   }
 
   /** Determine the valid signer address for a username at a block */

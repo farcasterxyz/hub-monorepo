@@ -36,6 +36,7 @@ const getMessageSigner = async (
   /** Otherwise generate default signer */
   return await generateEd25519Signer();
 };
+
 /**
  * addEnvelopeToMessage adds hash, signer, signature, and signatureType to a message
  * object using the signer in transientParams if one is present
@@ -82,7 +83,7 @@ export const Factories = {
       },
       hash: '',
       signature: '',
-      signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
+      signatureType: SignatureAlgorithm.Ed25519,
       signer: '',
     };
   }),
@@ -105,7 +106,7 @@ export const Factories = {
       },
       hash: '',
       signature: '',
-      signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
+      signatureType: SignatureAlgorithm.Ed25519,
       signer: '',
     };
   }),
@@ -128,7 +129,7 @@ export const Factories = {
       },
       hash: '',
       signature: '',
-      signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
+      signatureType: SignatureAlgorithm.Ed25519,
       signer: '',
     };
   }),
@@ -151,7 +152,7 @@ export const Factories = {
       },
       hash: '',
       signature: '',
-      signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
+      signatureType: SignatureAlgorithm.Ed25519,
       signer: '',
     };
   }),
@@ -176,7 +177,7 @@ export const Factories = {
       },
       hash: '',
       signature: '',
-      signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
+      signatureType: SignatureAlgorithm.Ed25519,
       signer: '',
     };
   }),
@@ -295,7 +296,7 @@ export const Factories = {
         },
         hash: '',
         signature: '',
-        signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
+        signatureType: SignatureAlgorithm.Ed25519,
         signer: '',
       };
     }
@@ -332,7 +333,7 @@ export const Factories = {
         },
         hash: '',
         signature: '',
-        signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
+        signatureType: SignatureAlgorithm.Ed25519,
         signer: '',
       };
     }
