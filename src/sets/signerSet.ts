@@ -1,4 +1,3 @@
-import { timeStamp } from 'console';
 import { Result, ok, err } from 'neverthrow';
 import { SignerAdd, SignerMessage, SignerRemove } from '~/types';
 import { isSignerAdd, isSignerRemove } from '~/types/typeguards';
@@ -70,8 +69,12 @@ class SignerSet {
     return Array.from(this._vertices);
   }
 
+  sanitizeKey(key: string): string {
+    return key.toLowerCase();
+  }
+
   constructEdgeKey(parentKey: string, childKey: string): string {
-    return [parentKey.toLowerCase(), childKey.toLowerCase()].toString();
+    return [this.sanitizeKey(parentKey), this.sanitizeKey(childKey)].toString();
   }
 
   deconstructEdgeKey(edgeKey: string): { parentKey: string; childKey: string } {
@@ -94,52 +97,52 @@ class SignerSet {
   }
 
   /**
-   * addCustody adds a custody address (lowercased) to custodyAdds set.
+   * addCustody adds a custody address to custodyAdds set.
    *
    * @param custodyAddress - custody address to add to custodyAdds set
    */
   addCustody(custodyAddress: string): Result<void, string> {
-    const lowercaseAddress = custodyAddress.toLowerCase();
+    const sanitizedAddress = this.sanitizeKey(custodyAddress);
 
     // No-op if address already exists in custodyAdds
-    if (this._custodyAdds.has(lowercaseAddress)) return ok(undefined);
+    if (this._custodyAdds.has(sanitizedAddress)) return ok(undefined);
 
     // Fail if address already exists as a delegate
-    if (this._vertices.has(lowercaseAddress))
+    if (this._vertices.has(sanitizedAddress))
       return err('SignerSet.addCustody: custodyAddress already exists as a delegate');
 
     // Fail if address has already been removed
-    if (this._custodyRemoves.has(lowercaseAddress)) return err('SignerSet.addCustody: custodyAddress has been removed');
+    if (this._custodyRemoves.has(sanitizedAddress)) return err('SignerSet.addCustody: custodyAddress has been removed');
 
     // Add address to custodyAdds set
-    this._custodyAdds.add(lowercaseAddress);
+    this._custodyAdds.add(sanitizedAddress);
     return ok(undefined);
   }
 
   /**
-   * removeCustody moves a custody address (lowercased) from the custodyAdds set to the custodyRemoves set.
+   * removeCustody moves a custody address from the custodyAdds set to the custodyRemoves set.
    *
    * @param custodyAddress - custody address to move to custodyRemoves set
    */
   removeCustody(custodyAddress: string): Result<void, string> {
-    const lowercaseAddress = custodyAddress.toLowerCase();
+    const sanitizedAddress = this.sanitizeKey(custodyAddress);
 
     // No-op if address already exists in custodyRemoves
-    if (this._custodyRemoves.has(lowercaseAddress)) return ok(undefined);
+    if (this._custodyRemoves.has(sanitizedAddress)) return ok(undefined);
 
     // Fail if address does not exist in custodyAdds
-    if (!this._custodyAdds.has(lowercaseAddress)) return err('SignerSet.removeCustody: custodyAddress does not exist');
+    if (!this._custodyAdds.has(sanitizedAddress)) return err('SignerSet.removeCustody: custodyAddress does not exist');
 
     // For each edge (custody, *), remove subtree
-    for (const edgeKey of this._edgeAddsByParent.get(lowercaseAddress) || new Set()) {
+    for (const edgeKey of this._edgeAddsByParent.get(sanitizedAddress) || new Set()) {
       const { childKey } = this.deconstructEdgeKey(edgeKey);
       const res = this.removeSubtree(childKey);
       if (res.isErr()) return res;
     }
 
     // Move address from custodyAdds to custodyRemoves
-    this._custodyAdds.delete(lowercaseAddress);
-    this._custodyRemoves.add(lowercaseAddress);
+    this._custodyAdds.delete(sanitizedAddress);
+    this._custodyRemoves.add(sanitizedAddress);
     return ok(undefined);
   }
 
@@ -228,8 +231,8 @@ class SignerSet {
    * @param message - a SignerAdd message
    */
   private mergeSignerAdd(message: SignerAdd): Result<void, string> {
-    const parentKey = message.signer;
-    const childKey = message.data.body.childKey;
+    const parentKey = this.sanitizeKey(message.signer);
+    const childKey = this.sanitizeKey(message.data.body.childKey);
 
     const res = this.add(parentKey, childKey, message.hash);
     if (res.isErr()) return res;
@@ -245,8 +248,8 @@ class SignerSet {
    * @param message - a SignerRemove message
    */
   private mergeSignerRemove(message: SignerRemove): Result<void, string> {
-    const parentKey = message.signer;
-    const childKey = message.data.body.childKey;
+    const parentKey = this.sanitizeKey(message.signer);
+    const childKey = this.sanitizeKey(message.data.body.childKey);
 
     const res = this.remove(parentKey, childKey);
     if (res.isErr()) return res;
@@ -255,6 +258,13 @@ class SignerSet {
     return ok(undefined);
   }
 
+  /**
+   * add attemps to add childKey as a delegate of parentKey. See inline comments for detailed behavior.
+   *
+   * @param parentKey - sanitized parent key (either custody address or delegate public key)
+   * @param childKey - sanitized child public key
+   * @param hash - relevant SignerAdd message hash
+   */
   private add(parentKey: string, childKey: string, hash: string): Result<void, string> {
     const edgeKey = this.constructEdgeKey(parentKey, childKey);
 
@@ -394,6 +404,12 @@ class SignerSet {
     return ok(undefined);
   }
 
+  /**
+   * remove attempts to remove childKey as a delegate of parentKey. See inline comments for detailed behavior.
+   *
+   * @param parentKey - sanitized parent key (either custody address or delegate public key)
+   * @param childKey - sanitized child public key
+   */
   private remove(parentKey: string, childKey: string): Result<void, string> {
     const edgeKey = this.constructEdgeKey(parentKey, childKey);
 
