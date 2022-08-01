@@ -24,26 +24,26 @@ import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generate
  * object using the signer in transientParams if one is present
  */
 const addEnvelopeToMessage = async (
-  props: Message,
+  message: Message,
   transientParams: MessageFactoryTransientParams
 ): Promise<Message> => {
   let signer: MessageSigner;
   if (transientParams.signer) {
     signer = transientParams.signer;
-  } else if (props.signatureType === SignatureAlgorithm.EthereumPersonalSign) {
+  } else if (message.signatureType === SignatureAlgorithm.EthereumPersonalSign) {
     signer = await generateEthereumSigner();
   } else {
     signer = await generateEd25519Signer();
   }
-  props.hash = await hashMessage(props);
-  props.signer = signer.signerKey;
+  message.hash = await hashMessage(message);
+  message.signer = signer.signerKey;
   if (signer.type === SignatureAlgorithm.EthereumPersonalSign) {
-    props.signature = await signer.wallet.signMessage(props.hash);
+    message.signature = await signer.wallet.signMessage(message.hash);
   } else if (signer.type === SignatureAlgorithm.Ed25519) {
-    props.signature = await signEd25519(props.hash, signer.privateKey);
+    message.signature = await signEd25519(message.hash, signer.privateKey);
   }
-  props.signatureType = signer.type;
-  return props;
+  message.signatureType = signer.type;
+  return message;
 };
 
 /**
