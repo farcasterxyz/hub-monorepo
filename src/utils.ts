@@ -31,11 +31,6 @@ export const blake2BHash = async (str: string): Promise<string> => {
   return convertToHex(blake2b(utf8ToBytes(str)));
 };
 
-/** Calculates the keccak256 hash for a string */
-export const keccak256String = (str: string): string => {
-  return utils.keccak256(utf8ToBytes(str));
-};
-
 /** Signs message with ed25519 elliptic curve */
 export const signEd25519 = async (text: string, key: Uint8Array): Promise<string> => {
   const message: Uint8Array = hexToBytes(text);
