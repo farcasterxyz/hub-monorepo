@@ -1,6 +1,6 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
-import { HashAlgorithm, MessageSigner, Root, Verification, VerificationAddFactoryTransientParams } from '~/types';
+import { MessageSigner, Root, Verification, VerificationAddFactoryTransientParams } from '~/types';
 import Faker from 'faker';
 import { ethers } from 'ethers';
 import { hashFCObject, generateEd25519Signer } from '~/utils';

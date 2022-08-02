@@ -1,4 +1,4 @@
-import { Ed25519Signer, EthereumSigner, KeyPair, Message, SignatureAlgorithm, HashAlgorithm } from '~/types';
+import { Ed25519Signer, EthereumSigner, KeyPair, Message, SignatureAlgorithm } from '~/types';
 import canonicalize from 'canonicalize';
 import { ethers, utils } from 'ethers';
 import * as ed from '@noble/ed25519';
@@ -15,10 +15,7 @@ export const hashMessage = async (item: Message): Promise<string> => {
  * The object is canonicalized before hashing, and all properties that start with an underscore are removed,
  * after which the string is passed to blake2b.
  */
-export const hashFCObject = async (
-  object: Record<string, any>,
-  algorithm: HashAlgorithm = HashAlgorithm.Blake2b
-): Promise<string> => {
+export const hashFCObject = async (object: Record<string, any>): Promise<string> => {
   // Remove any keys that start with _ before hashing, as these are intended to be unhashed.
   const objectCopy = JSON.parse(JSON.stringify(object));
   removeProps(objectCopy);
