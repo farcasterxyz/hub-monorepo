@@ -1,9 +1,8 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
-import { Cast, Root } from '~/types';
-import { hashCompare, generateEd25519KeyPair, convertToHex } from '~/utils';
+import { Cast, MessageFactoryTransientParams, MessageSigner, Root } from '~/types';
+import { hashCompare, generateEd25519Signer } from '~/utils';
 import Faker from 'faker';
-import { hexToBytes } from 'ethereum-cryptography/utils';
 
 const engine = new Engine();
 const username = 'alice';
@@ -14,19 +13,16 @@ describe('mergeRoot', () => {
   let root90: Root;
   let root200_1: Root;
   let root200_2: Root;
-  let transient: { transient: { privateKey: Uint8Array } };
+  let transient: { transient: MessageFactoryTransientParams };
 
-  let alicePrivateKey: string;
+  let aliceSigner: MessageSigner;
   let aliceAddress: string;
   const subject = () => engine.getRoot(username);
 
   beforeAll(async () => {
-    const keyPair = await generateEd25519KeyPair();
-    const privateKeyBuffer = keyPair.privateKey;
-    alicePrivateKey = await convertToHex(privateKeyBuffer);
-    const addressBuffer = keyPair.publicKey;
-    aliceAddress = await convertToHex(addressBuffer);
-    transient = { transient: { privateKey: hexToBytes(alicePrivateKey) } };
+    aliceSigner = await generateEd25519Signer();
+    aliceAddress = aliceSigner.signerKey;
+    transient = { transient: { signer: aliceSigner } };
 
     root100 = await Factories.Root.create({ data: { rootBlock: 100, username: 'alice' } }, transient);
 

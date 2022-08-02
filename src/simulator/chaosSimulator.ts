@@ -2,14 +2,13 @@ import Client from '~/client';
 import Debugger from '~/debugger';
 import Faker from 'faker';
 import Simulator from '~/simulator';
-import { convertToHex } from '~/utils';
+
 /**
  * Chaos Simulator
  *
  * Clients send messages to random nodes in random order with randomzied delays. Nodes sync with other nodes every 10 seconds, but with a 33% chance
  * of sync failure.
  */
-
 class ChaosSimulator extends Simulator {
   clients: Map<string, Client>;
 
@@ -80,7 +79,7 @@ class ChaosSimulator extends Simulator {
       blockNumber: this.blockNumber,
       blockHash: this.blockHash,
       logIndex: logIndex || 0,
-      address: await convertToHex(client.publicKey),
+      address: client.signer.signerKey,
     };
   }
 

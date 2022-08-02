@@ -1,29 +1,25 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
-import { Root, Verification, VerificationAddFactoryTransientParams } from '~/types';
+import { MessageSigner, Root, Verification, VerificationAddFactoryTransientParams } from '~/types';
 import Faker from 'faker';
 import { ethers } from 'ethers';
-import { generateEd25519KeyPair, convertToHex, hashFCObject } from '~/utils';
-import { hexToBytes } from 'ethereum-cryptography/utils';
+import { hashFCObject, generateEd25519Signer } from '~/utils';
 
 const engine = new Engine();
 
 // TODO: add test helpers to clean up the setup of these tests
 // TODO: refactor these tests to be faster (currently ~7s)
 describe('mergeVerification', () => {
-  let alicePrivateKey: string;
+  let aliceSigner: MessageSigner;
   let aliceAddress: string;
   let aliceRoot: Root;
   let transientParams: { transient: VerificationAddFactoryTransientParams };
 
   // Generate key pair for alice and root message
   beforeAll(async () => {
-    const keyPair = await generateEd25519KeyPair();
-    const privateKeyBuffer = keyPair.privateKey;
-    alicePrivateKey = await convertToHex(privateKeyBuffer);
-    const addressBuffer = keyPair.publicKey;
-    aliceAddress = await convertToHex(addressBuffer);
-    transientParams = { transient: { privateKey: hexToBytes(alicePrivateKey) } };
+    aliceSigner = await generateEd25519Signer();
+    aliceAddress = aliceSigner.signerKey;
+    transientParams = { transient: { signer: aliceSigner } };
     aliceRoot = await Factories.Root.create({ data: { rootBlock: 100, username: 'alice' } }, transientParams);
   });
 

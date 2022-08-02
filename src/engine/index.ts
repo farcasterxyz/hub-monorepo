@@ -7,12 +7,13 @@ import {
   VerificationAdd,
   VerificationRemove,
   VerificationClaim,
+  SignatureAlgorithm,
 } from '~/types';
 import { hashMessage, hashCompare, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
 import { hexToBytes } from 'ethereum-cryptography/utils';
 import { ok, err, Result } from 'neverthrow';
-import { utils } from 'ethers';
+import { ethers, utils } from 'ethers';
 import { isCast, isCastShort, isRoot, isReaction, isVerificationAdd, isVerificationRemove } from '~/types/typeguards';
 import CastSet from '~/sets/castSet';
 import ReactionSet from '~/sets/reactionSet';
@@ -356,16 +357,27 @@ class Engine {
       return err('validateMessage: invalid hash');
     }
 
-    // 3. Check that the message is valid.
-    // ed25519 library hates strings for some reason, so we need to convert to a buffer
-
-    const recoveredAddress = await ed.verify(
-      hexToBytes(message.signature),
-      hexToBytes(message.hash),
-      hexToBytes(message.signer)
-    );
-    if (!recoveredAddress) {
-      return err('validateMessage: invalid signature');
+    // 3. Check that the signatureType and signature are valid.
+    if (message.signatureType === SignatureAlgorithm.EthereumPersonalSign) {
+      try {
+        const recoveredSigner = ethers.utils.verifyMessage(message.hash, message.signature);
+        if (recoveredSigner.toLowerCase() !== message.signer.toLowerCase()) {
+          return err('validateMessage: invalid signature');
+        }
+      } catch (e: any) {
+        return err('validateMessage: invalid signature');
+      }
+    } else if (message.signatureType === SignatureAlgorithm.Ed25519) {
+      const signatureIsValid = await ed.verify(
+        hexToBytes(message.signature),
+        hexToBytes(message.hash),
+        hexToBytes(message.signer)
+      );
+      if (!signatureIsValid) {
+        return err('validateMessage: invalid signature');
+      }
+    } else {
+      return err('validateMessage: invalid signatureType');
     }
 
     // 4. Verify that the timestamp is not too far in the future.

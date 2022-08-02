@@ -1,6 +1,6 @@
-import { KeyPair, Message } from '~/types';
+import { Ed25519Signer, EthereumSigner, KeyPair, Message, SignatureAlgorithm } from '~/types';
 import canonicalize from 'canonicalize';
-import { utils } from 'ethers';
+import { ethers, utils } from 'ethers';
 import * as ed from '@noble/ed25519';
 import { blake2b } from 'ethereum-cryptography/blake2b';
 import { hexToBytes, utf8ToBytes } from 'ethereum-cryptography/utils';
@@ -105,4 +105,16 @@ export const generateEd25519KeyPair = async (): Promise<KeyPair> => {
 
 export const convertToHex = async (text: Uint8Array): Promise<string> => {
   return '0x' + ed.utils.bytesToHex(text);
+};
+
+export const generateEd25519Signer = async (): Promise<Ed25519Signer> => {
+  const { privateKey, publicKey } = await generateEd25519KeyPair();
+  const signerKey = await convertToHex(publicKey);
+  return { privateKey, signerKey, type: SignatureAlgorithm.Ed25519 };
+};
+
+export const generateEthereumSigner = async (): Promise<EthereumSigner> => {
+  const wallet = ethers.Wallet.createRandom();
+  const signerKey = wallet.address.toLowerCase();
+  return { wallet, signerKey, type: SignatureAlgorithm.EthereumPersonalSign };
 };
