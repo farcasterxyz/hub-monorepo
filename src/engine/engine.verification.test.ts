@@ -165,7 +165,7 @@ describe('mergeVerification', () => {
       },
       transientParams
     );
-    verificationAddMessage.hash = await hashFCObject({ foo: 'bar' }, HashAlgorithm.Blake2b);
+    verificationAddMessage.hash = await hashFCObject({ foo: 'bar' });
     const res = await engine.mergeVerification(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
     expect(engine._getVerificationAdds('alice')).toEqual([]);

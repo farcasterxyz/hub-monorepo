@@ -24,13 +24,13 @@ describe('hashFCObject', () => {
     '0x664ea872832e83efb1a907a2d1d7e817cf181ff40084109c917e8199302b7d0612b278c5ff35b0c783f6f8c06b506a5c3edbae54a3f4dbc1b1218cf4a1a1c646';
 
   test('hashes empty object correctly', async () => {
-    const hash = await hashFCObject({}, HashAlgorithm.Blake2b);
+    const hash = await hashFCObject({});
 
     expect(hash).toEqual(blake2bEmptyObject);
   });
 
   test('hashes ordered objects correctly', async () => {
-    const hash = await hashFCObject(simpleObject, HashAlgorithm.Blake2b);
+    const hash = await hashFCObject(simpleObject);
     expect(hash).toEqual(blake2bSimpleObject);
   });
 
@@ -46,7 +46,7 @@ describe('hashFCObject', () => {
       },
     };
 
-    const hash = await hashFCObject(reorderedObject, HashAlgorithm.Blake2b);
+    const hash = await hashFCObject(reorderedObject);
     expect(hash).toEqual(blake2bSimpleObject);
   });
 
@@ -65,7 +65,7 @@ describe('hashFCObject', () => {
         name: 'Fido',
       },
     };
-    const hash = await hashFCObject(underscoredObject, HashAlgorithm.Blake2b);
+    const hash = await hashFCObject(underscoredObject);
     expect(hash).toEqual(blake2bSimpleObject);
   });
 });

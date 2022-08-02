@@ -353,8 +353,8 @@ class Engine {
     }
 
     // 2. Check that the hashType and hash are valid
-    if (message.hashType === HashAlgorithm.Blake2b || message.hashType === HashAlgorithm.Keccak256) {
-      const computedHash = await hashMessage(message, message.hashType);
+    if (message.hashType === HashAlgorithm.Blake2b) {
+      const computedHash = await hashMessage(message);
       if (message.hash !== computedHash) {
         return err('validateMessage: invalid hash');
       }
@@ -472,7 +472,7 @@ class Engine {
       username: message.data.username,
       externalUri: message.data.body.externalUri,
     };
-    const reconstructedClaimHash = await hashFCObject(verificationClaim, HashAlgorithm.Blake2b);
+    const reconstructedClaimHash = await hashFCObject(verificationClaim);
     if (reconstructedClaimHash !== claimHash) {
       return err('validateVerificationAdd: invalid claimHash');
     }

@@ -36,11 +36,7 @@ const addEnvelopeToMessage = async (
   } else {
     signer = await generateEd25519Signer();
   }
-  if (message.hashType === HashAlgorithm.Blake2b) {
-    message.hash = await hashMessage(message, HashAlgorithm.Blake2b);
-  } else if (message.hashType === HashAlgorithm.Keccak256) {
-    message.hash = await hashMessage(message, HashAlgorithm.Keccak256);
-  }
+  message.hash = await hashMessage(message);
   message.signer = signer.signerKey;
   if (signer.type === SignatureAlgorithm.EthereumPersonalSign) {
     message.signature = await signer.wallet.signMessage(message.hash);
@@ -193,7 +189,7 @@ export const Factories = {
             username: props.data.username,
             externalUri: props.data.body.externalUri,
           };
-          props.data.body.claimHash = await hashFCObject(verificationClaim, HashAlgorithm.Blake2b);
+          props.data.body.claimHash = await hashFCObject(verificationClaim);
         }
 
         /** Generate externalSignature if missing */
@@ -239,7 +235,7 @@ export const Factories = {
             username: props.data.username,
             externalUri,
           };
-          props.data.body.claimHash = await hashFCObject(verificationClaim, HashAlgorithm.Blake2b);
+          props.data.body.claimHash = await hashFCObject(verificationClaim);
         }
 
         /** Complete envelope */

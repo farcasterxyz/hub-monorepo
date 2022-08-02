@@ -5,8 +5,8 @@ import * as ed from '@noble/ed25519';
 import { blake2b } from 'ethereum-cryptography/blake2b';
 import { hexToBytes, utf8ToBytes } from 'ethereum-cryptography/utils';
 
-export const hashMessage = async (item: Message, algorithm: HashAlgorithm): Promise<string> => {
-  return await hashFCObject(item.data, algorithm);
+export const hashMessage = async (item: Message): Promise<string> => {
+  return await hashFCObject(item.data);
 };
 
 /**
@@ -15,16 +15,16 @@ export const hashMessage = async (item: Message, algorithm: HashAlgorithm): Prom
  * The object is canonicalized before hashing, and all properties that start with an underscore are removed,
  * after which the string is passed to blake2b.
  */
-export const hashFCObject = async (object: Record<string, any>, algorithm: HashAlgorithm): Promise<string> => {
+export const hashFCObject = async (
+  object: Record<string, any>,
+  algorithm: HashAlgorithm = HashAlgorithm.Blake2b
+): Promise<string> => {
   // Remove any keys that start with _ before hashing, as these are intended to be unhashed.
   const objectCopy = JSON.parse(JSON.stringify(object));
   removeProps(objectCopy);
 
   // Canonicalize the object according to JCS: https://datatracker.ietf.org/doc/html/rfc8785
   const canonicalizedObject = canonicalize(objectCopy) || '';
-  if (algorithm === HashAlgorithm.Keccak256) {
-    return keccak256Hash(canonicalizedObject);
-  }
   return await blake2BHash(canonicalizedObject);
 };
 
@@ -32,11 +32,6 @@ export const hashFCObject = async (object: Record<string, any>, algorithm: HashA
 export const blake2BHash = async (str: string): Promise<string> => {
   // Double conversion is ugly but necessary to work with both hashing and signing libraries
   return convertToHex(blake2b(utf8ToBytes(str)));
-};
-
-/** Calculates the keccak256 hash for a string */
-export const keccak256Hash = (str: string): string => {
-  return utils.keccak256(utf8ToBytes(str));
 };
 
 /** Signs message with ed25519 elliptic curve */
