@@ -57,20 +57,28 @@ class SignerSet {
 
   // TODO: add more helper functions as we integrate signer set into engine
 
-  getCustodyAddresses(): string[] {
-    return Array.from(this._custodyAdds);
+  getCustodyAddresses(): Set<string> {
+    return this._custodyAdds;
   }
 
-  getDelegates(): string[] {
-    return Array.from(this._vertexAdds);
+  getDelegateSigners(): Set<string> {
+    return this._vertexAdds;
   }
 
-  getAllDelegates(): string[] {
-    return Array.from(this._vertices);
-  }
-
-  getSigners(): Set<string> {
+  getAllSigners(): Set<string> {
     return new Set([...this._custodyAdds, ...this._vertexAdds]);
+  }
+
+  isValidSigner(signerKey: string) {
+    return this.isValidDelegateSigner(signerKey) || this.isValidCustodySigner(signerKey);
+  }
+
+  isValidCustodySigner(custodyAddress: string) {
+    return this._custodyAdds.has(this.sanitizeKey(custodyAddress));
+  }
+
+  isValidDelegateSigner(signerKey: string) {
+    return this._vertexAdds.has(this.sanitizeKey(signerKey));
   }
 
   sanitizeKey(key: string): string {

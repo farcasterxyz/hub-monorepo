@@ -20,19 +20,16 @@ export type Message<T = Body> = {
  * Data is a generic type that holds the part of the message that is going to be signed.
  *
  * @body - the body of the message which is implemented by the specific type
- * @rootBlock - the block number of the ethereum block in the root
  * @signedAt - the utc unix timestamp at which the message was signed
  * @username - the farcaster username owned by the signer at the time of signature
  */
 export type Data<T = Body> = {
   body: T;
-  rootBlock: number;
   signedAt: number;
   username: string;
 };
 
 export type Body =
-  | RootBody
   | CastBody
   | ReactionBody
   | VerificationAddBody
@@ -40,23 +37,23 @@ export type Body =
   | SignerAddBody
   | SignerRemoveBody;
 
-// ===========================
-//  Root Types
-// ===========================
+// // ===========================
+// //  Root Types
+// // ===========================
 
-/** A Root is the first message a user sends, which must point to a unique, valid Ethereum block for ordering purposes. */
-export type Root = Message<RootBody>;
+// /** A Root is the first message a user sends, which must point to a unique, valid Ethereum block for ordering purposes. */
+// export type Root = Message<RootBody>;
 
-/**
- * Body of a Root Message
- *
- * @blockHash - the hash of the ETH block from message.rootBlock
- * @schema - the schema of the message
- */
-export type RootBody = {
-  blockHash: string;
-  schema: 'farcaster.xyz/schemas/v1/root';
-};
+// /**
+//  * Body of a Root Message
+//  *
+//  * @blockHash - the hash of the ETH block from message.rootBlock
+//  * @schema - the schema of the message
+//  */
+// export type RootBody = {
+//   blockHash: string;
+//   schema: 'farcaster.xyz/schemas/v1/root';
+// };
 
 // ===========================
 //  Cast Types

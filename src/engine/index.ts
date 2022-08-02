@@ -1,6 +1,5 @@
 import {
   Cast,
-  Root,
   Message,
   Reaction,
   Verification,
@@ -12,7 +11,7 @@ import {
   SignerEdge,
   SignerMessage,
 } from '~/types';
-import { hashMessage, hashCompare, hashFCObject } from '~/utils';
+import { hashMessage, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
 import { hexToBytes } from 'ethereum-cryptography/utils';
 import { ok, err, Result } from 'neverthrow';
@@ -20,99 +19,30 @@ import { ethers, utils } from 'ethers';
 import {
   isCast,
   isCastShort,
-  isRoot,
   isReaction,
   isVerificationAdd,
   isVerificationRemove,
   isSignerAdd,
   isSignerRemove,
+  isSignerMessage,
 } from '~/types/typeguards';
 import CastSet from '~/sets/castSet';
 import ReactionSet from '~/sets/reactionSet';
 import VerificationSet from '~/sets/verificationSet';
 import SignerSet from '~/sets/signerSet';
 
-export interface getUserFingerprint {
-  rootBlockNum: number;
-  rootBlockHash: string;
-  lastMessageIndex: number | undefined;
-  lastMessageHash: string | undefined;
-}
-
-export interface Signer {
-  address: string;
-  blockHash: string;
-  blockNumber: number;
-  logIndex: number;
-}
-
 /** The Engine receives messages and determines the current state of the Farcaster network */
 class Engine {
   private _casts: Map<string, CastSet>;
   private _reactions: Map<string, ReactionSet>;
-  private _roots: Map<string, Root>;
-  private _users: Map<string, Signer[]>;
   private _verifications: Map<string, VerificationSet>;
   private _signers: Map<string, SignerSet>;
 
   constructor() {
     this._casts = new Map();
     this._reactions = new Map();
-    this._roots = new Map();
-    this._users = new Map();
     this._verifications = new Map();
     this._signers = new Map();
-  }
-
-  getSigners(username: string): Signer[] {
-    return this._users.get(username) || [];
-  }
-
-  /**
-   * Root Methods
-   */
-
-  getRoot(username: string): Root | undefined {
-    return this._roots.get(username);
-  }
-
-  /** Add a new root for a username, if valid */
-  async mergeRoot(root: Root): Promise<Result<void, string>> {
-    if (!isRoot(root)) {
-      return err('mergeRoot: invalid root');
-    }
-
-    const validation = await this.validateMessage(root);
-    if (!validation.isOk()) {
-      return validation;
-    }
-
-    const username = root.data.username;
-    const currentRoot = this._roots.get(username);
-
-    if (!currentRoot) {
-      this._roots.set(username, root);
-      return ok(undefined);
-    }
-
-    if (currentRoot.data.rootBlock < root.data.rootBlock) {
-      this._roots.set(username, root);
-      this._casts.set(username, new CastSet());
-      return ok(undefined);
-    } else if (currentRoot.data.rootBlock > root.data.rootBlock) {
-      return err('mergeRoot: provided root was older (lower block)');
-    } else {
-      const hashCmp = hashCompare(currentRoot.hash, root.hash);
-      if (hashCmp < 0) {
-        this._roots.set(username, root);
-        this._casts.set(username, new CastSet());
-        return ok(undefined);
-      } else if (hashCmp >= 1) {
-        return err('mergeRoot: newer root was present (lexicographically higher hash)');
-      } else {
-        return err('mergeRoot: provided root was a duplicate');
-      }
-    }
   }
 
   /**
@@ -251,42 +181,19 @@ class Engine {
    * Signer Methods
    */
 
-  /** Add a new SignerChange event into the user's Signer Change array  */
-  addSignerChange(username: string, newSignerChange: Signer): Result<void, string> {
-    const signerChanges = this._users.get(username);
-
-    if (!signerChanges) {
-      this._users.set(username, [newSignerChange]);
-      return ok(undefined);
-    }
-
-    let signerIdx = 0;
-
-    // Insert the SignerChange into the array such that the array maintains ascending order
-    // of blockNumbers, followed by logIndex (for changes that occur within the same block).
-    for (const sc of signerChanges) {
-      if (sc.blockNumber < newSignerChange.blockNumber) {
-        signerIdx++;
-      } else if (sc.blockNumber === newSignerChange.blockNumber) {
-        if (sc.logIndex < newSignerChange.logIndex) {
-          signerIdx++;
-        } else if (sc.logIndex === newSignerChange.logIndex) {
-          return err(`addSignerChange: duplicate signer change ${sc.blockHash}:${sc.logIndex}`);
-        }
-      }
-    }
-
-    signerChanges.splice(signerIdx, 0, newSignerChange);
-    return ok(undefined);
-  }
-
-  addCustody(username: string, custodyPubKey: string): Result<void, string> {
+  addCustody(username: string, custodyAddress: string): Result<void, string> {
     let signerSet = this._signers.get(username);
     if (!signerSet) {
       signerSet = new SignerSet();
       this._signers.set(username, signerSet);
     }
-    return signerSet.addCustody(custodyPubKey);
+    return signerSet.addCustody(custodyAddress);
+  }
+
+  removeCustody(username: string, custodyAddress: string): Result<void, string> {
+    const signerSet = this._signers.get(username);
+    if (!signerSet) return err('removeCustody: unknown user');
+    return signerSet.removeCustody(custodyAddress);
   }
 
   /** Merge signer message into the set */
@@ -309,9 +216,7 @@ class Engine {
 
   _reset(): void {
     this._resetCasts();
-    this._resetUsers();
     this._resetSigners();
-    this._resetRoots();
     this._resetReactions();
     this._resetVerifications();
   }
@@ -322,14 +227,6 @@ class Engine {
 
   _resetSigners(): void {
     this._signers = new Map();
-  }
-
-  _resetUsers(): void {
-    this._users = new Map();
-  }
-
-  _resetRoots(): void {
-    this._roots = new Map();
   }
 
   _resetReactions(): void {
@@ -370,35 +267,15 @@ class Engine {
     return signerSet ? Array.from(signerSet._getCustodyAdds()) : [];
   }
 
-  /** Determine the valid signer address for a username at a block */
-  private signerForBlock(username: string, blockNumber: number): string | undefined {
-    const signerChanges = this._users.get(username);
-    if (!signerChanges) {
-      return undefined;
-    }
-
-    let signer = undefined;
-
-    for (const sc of signerChanges) {
-      if (sc.blockNumber <= blockNumber) {
-        signer = sc.address;
-      }
-    }
-    return signer;
-  }
-
   private async validateMessage(message: Message): Promise<Result<void, string>> {
     // 1. Check that the signer is valid for the account
     const signerSet = this._signers.get(message.data.username);
     if (!signerSet) return err('validateMessage: unknown user');
-    const validSigners = signerSet.getSigners();
-    if (!validSigners.has(message.signer)) return err('validateMessage: invalid signer');
-
-    // // 1. Check that the signer was valid for the block in question.
-    // const expectedSigner = this.signerForBlock(message.data.username, message.data.rootBlock);
-    // if (!expectedSigner || expectedSigner !== message.signer) {
-    //   return err('validateMessage: invalid signer');
-    // }
+    // A signer message can be signed by a custody address or delegate. All other messages have to be signed by delegates.
+    const isValidSigner =
+      (isSignerMessage(message) && signerSet.isValidSigner(message.signer)) ||
+      signerSet.isValidDelegateSigner(message.signer);
+    if (!isValidSigner) return err('validateMessage: invalid signer');
 
     // 2. Check that the hash value of the message was computed correctly.
     const computedHash = await hashMessage(message);
@@ -435,23 +312,6 @@ class Engine {
       return err('validateMessage: signedAt more than 10 mins in the future');
     }
 
-    if (isRoot(message)) {
-      return this.validateRoot(message);
-    }
-
-    const root = this._roots.get(message.data.username);
-    if (!root) {
-      return err('validateMessage: no root present');
-    }
-
-    if (root.data.rootBlock !== message.data.rootBlock) {
-      return err('validateMessage: root block does not match');
-    }
-
-    if (root.data.signedAt >= message.data.signedAt) {
-      return err('validateMessage: message timestamp was earlier than root');
-    }
-
     if (isCast(message)) {
       return this.validateCast(message);
     }
@@ -481,14 +341,6 @@ class Engine {
     // TODO: check that username is known to the registry
     // TODO: check that the signer is the owner of the username.
     return err('validateMessage: unknown message');
-  }
-
-  private validateRoot(root: Root): Result<void, string> {
-    // TODO: Check that the blockHash is a real block and it's block matches rootBlock.
-    if (root.data.body.blockHash.length !== 66) {
-      return err('validateRoot: invalid eth block hash');
-    }
-    return ok(undefined);
   }
 
   private validateCast(cast: Cast): Result<void, string> {

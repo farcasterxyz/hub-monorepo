@@ -1,36 +1,39 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
-import { MessageSigner, Root, Verification, VerificationAddFactoryTransientParams } from '~/types';
+import { Ed25519Signer, EthereumSigner, SignerAdd, Verification, VerificationAddFactoryTransientParams } from '~/types';
 import { ethers } from 'ethers';
-import { hashFCObject, generateEd25519Signer } from '~/utils';
+import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
 const engine = new Engine();
 
 // TODO: add test helpers to clean up the setup of these tests
 // TODO: refactor these tests to be faster (currently ~7s)
 describe('mergeVerification', () => {
-  let aliceSigner: MessageSigner;
-  let aliceRoot: Root;
+  let aliceCustody: EthereumSigner;
+  let aliceSigner: Ed25519Signer;
   let transientParams: { transient: VerificationAddFactoryTransientParams };
+  let aliceSignerAdd: SignerAdd;
 
-  // Generate key pair for alice and root message
   beforeAll(async () => {
+    aliceCustody = await generateEthereumSigner();
     aliceSigner = await generateEd25519Signer();
     transientParams = { transient: { signer: aliceSigner } };
-    aliceRoot = await Factories.Root.create({ data: { rootBlock: 100, username: 'alice' } }, transientParams);
+    aliceSignerAdd = await Factories.SignerAdd.create(
+      { data: { username: 'alice' } },
+      { transient: { signer: aliceCustody, childSigner: aliceSigner } }
+    );
   });
 
-  // Every test should start with a valid signer and root for alice
   beforeEach(() => {
     engine._reset();
-    engine.addCustody('alice', aliceSigner.signerKey);
-    engine.mergeRoot(aliceRoot);
+    engine.addCustody('alice', aliceCustody.signerKey);
+    engine.mergeSignerMessage(aliceSignerAdd);
   });
 
   test('fails with invalid message type', async () => {
     const cast = (await Factories.Cast.create(
       {
-        data: { rootBlock: aliceRoot.data.rootBlock, username: 'alice', signedAt: aliceRoot.data.signedAt + 1 },
+        data: { username: 'alice' },
       },
       transientParams
     )) as unknown as Verification;
@@ -41,9 +44,7 @@ describe('mergeVerification', () => {
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: aliceRoot.data.signedAt + 1,
         },
       },
       transientParams
@@ -58,9 +59,7 @@ describe('mergeVerification', () => {
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: aliceRoot.data.signedAt + 1,
         },
       },
       transientParams
@@ -75,9 +74,7 @@ describe('mergeVerification', () => {
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: aliceRoot.data.signedAt + 1,
           body: { externalSignature: 'foo' },
         },
       },
@@ -95,9 +92,7 @@ describe('mergeVerification', () => {
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: aliceRoot.data.signedAt + 1,
           body: { externalUri: ethWalletAlice.address },
         },
       },
@@ -112,9 +107,7 @@ describe('mergeVerification', () => {
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: aliceRoot.data.signedAt + 1,
           body: { claimHash: 'bar' },
         },
       },
@@ -129,9 +122,7 @@ describe('mergeVerification', () => {
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: aliceRoot.data.signedAt + 1,
           body: { externalSignatureType: 'bar' as unknown as 'eip-191-0x45' },
         },
       },
@@ -148,9 +139,7 @@ describe('mergeVerification', () => {
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: aliceRoot.data.signedAt + 1,
         },
       },
       transientParams
@@ -165,9 +154,7 @@ describe('mergeVerification', () => {
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: aliceRoot.data.signedAt + 1,
         },
       },
       transientParams
@@ -184,7 +171,6 @@ describe('mergeVerification', () => {
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: elevenMinutesAhead,
         },
@@ -196,30 +182,11 @@ describe('mergeVerification', () => {
     expect(engine._getVerificationAdds('alice')).toEqual([]);
   });
 
-  test('fails if there is no root', async () => {
-    engine._resetRoots();
-    const verificationAddMessage = await Factories.VerificationAdd.create(
-      {
-        data: {
-          rootBlock: aliceRoot.data.rootBlock,
-          username: 'alice',
-          signedAt: aliceRoot.data.signedAt + 1,
-        },
-      },
-      transientParams
-    );
-    const res = await engine.mergeVerification(verificationAddMessage);
-    expect(res._unsafeUnwrapErr()).toBe('validateMessage: no root present');
-    expect(engine._getVerificationAdds('alice')).toEqual([]);
-  });
-
   test('succeeds with a valid VerificationRemove', async () => {
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: aliceRoot.data.signedAt + 1,
         },
       },
       transientParams
@@ -229,7 +196,6 @@ describe('mergeVerification', () => {
     const verificationRemoveMessage = await Factories.VerificationRemove.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: verificationAddMessage.data.signedAt + 1,
           body: { claimHash: verificationAddMessage.data.body.claimHash },
@@ -246,9 +212,7 @@ describe('mergeVerification', () => {
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: aliceRoot.data.signedAt + 1,
         },
       },
       transientParams
@@ -256,7 +220,6 @@ describe('mergeVerification', () => {
     const verificationRemoveMessage = await Factories.VerificationRemove.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: verificationAddMessage.data.signedAt + 1,
           body: { claimHash: verificationAddMessage.data.body.claimHash },

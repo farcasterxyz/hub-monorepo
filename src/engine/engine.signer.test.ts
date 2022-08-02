@@ -1,15 +1,6 @@
-import Engine, { Signer } from '~/engine';
-import Faker from 'faker';
+import Engine from '~/engine';
 import { Factories } from '~/factories';
-import {
-  Ed25519Signer,
-  EthereumSigner,
-  Root,
-  SignatureAlgorithm,
-  SignerAdd,
-  SignerMessage,
-  SignerRemove,
-} from '~/types';
+import { Ed25519Signer, EthereumSigner, SignatureAlgorithm, SignerAdd, SignerMessage, SignerRemove } from '~/types';
 import {
   blake2BHash,
   convertToHex,
@@ -21,88 +12,18 @@ import {
 
 const engine = new Engine();
 
-describe('addSignerChange', () => {
-  // Change @charlie's signer at block 100.
-  const signerChange: Signer = {
-    address: Faker.datatype.hexaDecimal(40).toLowerCase(),
-    blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-    blockNumber: 100,
-    logIndex: 12,
-  };
-
-  // Change charlie's signer at block 200.
-  const signerChange200 = JSON.parse(JSON.stringify(signerChange)) as Signer;
-  signerChange200.blockHash = Faker.datatype.hexaDecimal(64).toLowerCase();
-  signerChange200.blockNumber = signerChange.blockNumber + 100;
-
-  // Change charlie's signer at block 50.
-  const signerChange50A = JSON.parse(JSON.stringify(signerChange)) as Signer;
-  signerChange50A.blockHash = Faker.datatype.hexaDecimal(64).toLowerCase();
-  signerChange50A.blockNumber = signerChange.blockNumber - 10;
-
-  // Change charlie's signer at block 50, at a higher index.
-  const signerChange50B = JSON.parse(JSON.stringify(signerChange50A)) as Signer;
-  signerChange50B.logIndex = signerChange.logIndex + 1;
-
-  const duplicateSignerChange50B = JSON.parse(JSON.stringify(signerChange50B)) as Signer;
-
-  const username = 'charlie';
-  const subject = () => engine.getSigners(username);
-
-  test('signer changes are added correctly', async () => {
-    const result = engine.addSignerChange(username, signerChange);
-    expect(result.isOk()).toBe(true);
-    expect(subject()).toEqual([signerChange]);
-  });
-
-  test('signer changes from later blocks are added after current blocks', async () => {
-    const result = engine.addSignerChange(username, signerChange200);
-    expect(result.isOk()).toBe(true);
-    expect(subject()).toEqual([signerChange, signerChange200]);
-  });
-
-  test('signer changes from earlier blocks are before current blocks', async () => {
-    const result = engine.addSignerChange(username, signerChange50A);
-    expect(result.isOk()).toBe(true);
-    expect(subject()).toEqual([signerChange50A, signerChange, signerChange200]);
-  });
-
-  test('signer changes in the same block are ordered by index', async () => {
-    const result = engine.addSignerChange(username, signerChange50B);
-    expect(result.isOk()).toBe(true);
-    expect(subject()).toEqual([signerChange50A, signerChange50B, signerChange, signerChange200]);
-  });
-
-  test('adding a duplicate signer change fails', async () => {
-    const result = engine.addSignerChange(username, duplicateSignerChange50B);
-    expect(result.isOk()).toBe(false);
-    expect(result._unsafeUnwrapErr()).toBe(
-      `addSignerChange: duplicate signer change ${signerChange50B.blockHash}:${signerChange50B.logIndex}`
-    );
-    expect(subject()).toEqual([signerChange50A, signerChange50B, signerChange, signerChange200]);
-  });
-});
-
 describe('mergeSignerMessage', () => {
   let aliceCustodySigner: EthereumSigner;
   let aliceDelegateSigner: Ed25519Signer;
-  let aliceRoot: Root;
-  let genericMessageData: { rootBlock: number; username: string; signedAt: number };
+  let genericMessageData: { username: string };
   let aliceSignerAddDelegate: SignerAdd;
   let aliceSignerRemoveDelegate: SignerRemove;
 
-  // Generate key pair for alice and root message
   beforeAll(async () => {
     aliceCustodySigner = await generateEthereumSigner();
     aliceDelegateSigner = await generateEd25519Signer();
-    aliceRoot = await Factories.Root.create(
-      { data: { rootBlock: 100, username: 'alice' } },
-      { transient: { signer: aliceCustodySigner } }
-    );
     genericMessageData = {
-      rootBlock: aliceRoot.data.rootBlock,
       username: 'alice',
-      signedAt: aliceRoot.data.signedAt + 1,
     };
     aliceSignerAddDelegate = await Factories.SignerAdd.create(
       { data: genericMessageData },
@@ -114,17 +35,11 @@ describe('mergeSignerMessage', () => {
     );
   });
 
-  // Every test should start with a valid signer and root for alice
   beforeEach(() => {
     engine._reset();
   });
 
   test('fails without a custody address', async () => {
-    // Hack to add root
-    engine.addCustody('alice', aliceCustodySigner.signerKey);
-    expect((await engine.mergeRoot(aliceRoot)).isOk()).toBe(true);
-    engine._resetSigners();
-    expect(engine._getCustodySigners('alice')).toEqual([]);
     const res = await engine.mergeSignerMessage(aliceSignerAddDelegate);
     expect(res.isOk()).toBe(false);
     expect(engine._getSigners('alice')).toEqual([]);
@@ -133,7 +48,6 @@ describe('mergeSignerMessage', () => {
   describe('with a custody address', () => {
     beforeEach(async () => {
       engine.addCustody('alice', aliceCustodySigner.signerKey);
-      await engine.mergeRoot(aliceRoot);
     });
 
     test('fails with invalid message type', async () => {
@@ -195,7 +109,7 @@ describe('mergeSignerMessage', () => {
       );
       const res = await engine.mergeSignerMessage(badSignerAdd);
       expect(res.isOk()).toBe(false);
-      expect(res._unsafeUnwrapErr()).toBe('validateMessage: unknown message');
+      expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
       expect(engine._getSigners('alice')).toEqual([]);
     });
 
@@ -228,14 +142,6 @@ describe('mergeSignerMessage', () => {
       const res = await engine.mergeSignerMessage(badSignerAdd);
       expect(res.isOk()).toBe(false);
       expect(res._unsafeUnwrapErr()).toBe('validateMessage: signedAt more than 10 mins in the future');
-      expect(engine._getSigners('alice')).toEqual([]);
-    });
-
-    test('fails if there is no root', async () => {
-      engine._resetRoots();
-      const res = await engine.mergeSignerMessage(aliceSignerAddDelegate);
-      expect(res.isOk()).toBe(false);
-      expect(res._unsafeUnwrapErr()).toBe('validateMessage: no root present');
       expect(engine._getSigners('alice')).toEqual([]);
     });
 

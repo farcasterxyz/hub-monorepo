@@ -1,10 +1,5 @@
 import * as FC from '~/types';
 
-export function isRoot(msg: FC.Message): msg is FC.Root {
-  const body = (msg as FC.Root).data?.body;
-  return body && body.schema === 'farcaster.xyz/schemas/v1/root' && typeof body.blockHash == 'string';
-}
-
 export function isCast(msg: FC.Message): msg is FC.Cast {
   return isCastShort(msg) || isCastRemove(msg) || isCastRecast(msg);
 }
@@ -39,6 +34,10 @@ export function isReaction(msg: FC.Message): msg is FC.Reaction {
     typeof body.targetUri === 'string' &&
     body.type === 'like'
   );
+}
+
+export function isSignerMessage(msg: FC.Message) {
+  return isSignerAdd(msg) || isSignerRemove(msg);
 }
 
 export function isSignerAdd(msg: FC.Message): msg is FC.SignerAdd {

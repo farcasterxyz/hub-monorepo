@@ -2,7 +2,7 @@ import FCNode, { InstanceName } from '~/node';
 import Faker from 'faker';
 import Debugger from '~/debugger';
 import { Message } from '~/types';
-import { isReaction, isRoot, isCast, isVerification } from '~/types/typeguards';
+import { isReaction, isCast, isVerification, isSignerMessage } from '~/types/typeguards';
 
 abstract class Simulator {
   nodes: Map<InstanceName, FCNode>;
@@ -50,14 +50,14 @@ abstract class Simulator {
   broadcastToNode(message: Message, node: FCNode, delay?: number) {
     setTimeout(() => {
       Debugger.printBroadcast(message, node);
-      if (isRoot(message)) {
-        node.mergeRoot(message);
-      } else if (isReaction(message)) {
+      if (isReaction(message)) {
         node.mergeReaction(message);
       } else if (isCast(message)) {
         node.mergeCast(message);
       } else if (isVerification(message)) {
         node.mergeVerification(message);
+      } else if (isSignerMessage(message)) {
+        // TODO: support signers
       } else {
         // TODO: decide how to handle unknown message type
       }
