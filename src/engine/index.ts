@@ -8,6 +8,7 @@ import {
   VerificationRemove,
   VerificationClaim,
   SignatureAlgorithm,
+  HashAlgorithm,
 } from '~/types';
 import { hashMessage, hashCompare, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
@@ -351,10 +352,14 @@ class Engine {
       return err('validateMessage: invalid signer');
     }
 
-    // 2. Check that the hash value of the message was computed correctly.
-    const computedHash = await hashMessage(message);
-    if (message.hash !== computedHash) {
-      return err('validateMessage: invalid hash');
+    // 2. Check that the hashType and hash are valid
+    if (message.hashType === HashAlgorithm.Blake2b || message.hashType === HashAlgorithm.Keccak256) {
+      const computedHash = await hashMessage(message, message.hashType);
+      if (message.hash !== computedHash) {
+        return err('validateMessage: invalid hash');
+      }
+    } else {
+      return err('validateMessage: invalid hashType');
     }
 
     // 3. Check that the signatureType and signature are valid.
@@ -467,7 +472,7 @@ class Engine {
       username: message.data.username,
       externalUri: message.data.body.externalUri,
     };
-    const reconstructedClaimHash = await hashFCObject(verificationClaim);
+    const reconstructedClaimHash = await hashFCObject(verificationClaim, HashAlgorithm.Blake2b);
     if (reconstructedClaimHash !== claimHash) {
       return err('validateVerificationAdd: invalid claimHash');
     }

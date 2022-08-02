@@ -1,6 +1,6 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
-import { MessageSigner, Root, Verification, VerificationAddFactoryTransientParams } from '~/types';
+import { HashAlgorithm, MessageSigner, Root, Verification, VerificationAddFactoryTransientParams } from '~/types';
 import Faker from 'faker';
 import { ethers } from 'ethers';
 import { hashFCObject, generateEd25519Signer } from '~/utils';
@@ -165,7 +165,7 @@ describe('mergeVerification', () => {
       },
       transientParams
     );
-    verificationAddMessage.hash = await hashFCObject({ foo: 'bar' });
+    verificationAddMessage.hash = await hashFCObject({ foo: 'bar' }, HashAlgorithm.Blake2b);
     const res = await engine.mergeVerification(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
     expect(engine._getVerificationAdds('alice')).toEqual([]);

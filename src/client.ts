@@ -1,5 +1,6 @@
+import { keccak256 } from 'ethers/lib/utils';
 import * as FC from '~/types';
-import { hashMessage, signEd25519, hashFCObject } from '~/utils';
+import { hashMessage, signEd25519, hashFCObject, blake2BHash } from '~/utils';
 
 class Client {
   signer: FC.MessageSigner;
@@ -18,11 +19,16 @@ class Client {
     const message = {
       data,
       hash: '',
+      hashType: FC.HashAlgorithm.Blake2b,
       signature: '',
       signatureType: this.signer.type,
       signer: this.signer.signerKey,
     };
-    message.hash = await hashMessage(message);
+    if (message.hashType === FC.HashAlgorithm.Blake2b) {
+      message.hash = await hashMessage(message, FC.HashAlgorithm.Blake2b);
+    } else if (message.hashType === FC.HashAlgorithm.Keccak256) {
+      message.hash = await hashMessage(message, FC.HashAlgorithm.Keccak256);
+    }
     if (this.signer.type === FC.SignatureAlgorithm.EthereumPersonalSign) {
       message.signature = await this.signer.wallet.signMessage(message.hash);
     } else if (this.signer.type === FC.SignatureAlgorithm.Ed25519) {
@@ -110,10 +116,13 @@ class Client {
   }
 
   async makeVerificationClaimHash(externalUri: FC.URI): Promise<string> {
-    return await hashFCObject({
-      username: this.username,
-      externalUri,
-    });
+    return await hashFCObject(
+      {
+        username: this.username,
+        externalUri,
+      },
+      FC.HashAlgorithm.Blake2b
+    );
   }
 
   async makeVerificationAdd(

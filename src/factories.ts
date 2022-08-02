@@ -16,6 +16,7 @@ import {
   Message,
   SignatureAlgorithm,
   MessageSigner,
+  HashAlgorithm,
 } from '~/types';
 import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
@@ -35,7 +36,11 @@ const addEnvelopeToMessage = async (
   } else {
     signer = await generateEd25519Signer();
   }
-  message.hash = await hashMessage(message);
+  if (message.hashType === HashAlgorithm.Blake2b) {
+    message.hash = await hashMessage(message, HashAlgorithm.Blake2b);
+  } else if (message.hashType === HashAlgorithm.Keccak256) {
+    message.hash = await hashMessage(message, HashAlgorithm.Keccak256);
+  }
   message.signer = signer.signerKey;
   if (signer.type === SignatureAlgorithm.EthereumPersonalSign) {
     message.signature = await signer.wallet.signMessage(message.hash);
@@ -71,6 +76,7 @@ export const Factories = {
         username: Faker.name.firstName().toLowerCase(),
       },
       hash: '',
+      hashType: HashAlgorithm.Blake2b,
       signature: '',
       signatureType: SignatureAlgorithm.Ed25519,
       signer: '',
@@ -94,6 +100,7 @@ export const Factories = {
         username: Faker.name.firstName().toLowerCase(),
       },
       hash: '',
+      hashType: HashAlgorithm.Blake2b,
       signature: '',
       signatureType: SignatureAlgorithm.Ed25519,
       signer: '',
@@ -117,6 +124,7 @@ export const Factories = {
         username: Faker.name.firstName().toLowerCase(),
       },
       hash: '',
+      hashType: HashAlgorithm.Blake2b,
       signature: '',
       signatureType: SignatureAlgorithm.Ed25519,
       signer: '',
@@ -140,6 +148,7 @@ export const Factories = {
         username: Faker.name.firstName().toLowerCase(),
       },
       hash: '',
+      hashType: HashAlgorithm.Blake2b,
       signature: '',
       signatureType: SignatureAlgorithm.Ed25519,
       signer: '',
@@ -165,6 +174,7 @@ export const Factories = {
         username: Faker.name.firstName().toLowerCase(),
       },
       hash: '',
+      hashType: HashAlgorithm.Blake2b,
       signature: '',
       signatureType: SignatureAlgorithm.Ed25519,
       signer: '',
@@ -183,7 +193,7 @@ export const Factories = {
             username: props.data.username,
             externalUri: props.data.body.externalUri,
           };
-          props.data.body.claimHash = await hashFCObject(verificationClaim);
+          props.data.body.claimHash = await hashFCObject(verificationClaim, HashAlgorithm.Blake2b);
         }
 
         /** Generate externalSignature if missing */
@@ -209,6 +219,7 @@ export const Factories = {
           username: Faker.name.firstName().toLowerCase(),
         },
         hash: '',
+        hashType: HashAlgorithm.Blake2b,
         signature: '',
         signatureType: SignatureAlgorithm.Ed25519,
         signer: '',
@@ -228,7 +239,7 @@ export const Factories = {
             username: props.data.username,
             externalUri,
           };
-          props.data.body.claimHash = await hashFCObject(verificationClaim);
+          props.data.body.claimHash = await hashFCObject(verificationClaim, HashAlgorithm.Blake2b);
         }
 
         /** Complete envelope */
@@ -246,6 +257,7 @@ export const Factories = {
           username: Faker.name.firstName().toLowerCase(),
         },
         hash: '',
+        hashType: HashAlgorithm.Blake2b,
         signature: '',
         signatureType: SignatureAlgorithm.Ed25519,
         signer: '',

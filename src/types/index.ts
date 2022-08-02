@@ -11,6 +11,7 @@ import { ethers } from 'ethers';
 export type Message<T = Body> = {
   data: Data<T>;
   hash: string;
+  hashType: HashAlgorithm;
   signature: string;
   signatureType: SignatureAlgorithm;
   signer: string;
@@ -235,6 +236,12 @@ export type KeyPair = {
   privateKey: Uint8Array;
   publicKey: Uint8Array;
 };
+
+/** HashingAlgorithm enum */
+export enum HashAlgorithm {
+  Blake2b = 'blake2b',
+  Keccak256 = 'keccak256',
+}
 
 /** SignatureAlgorithm enum */
 export enum SignatureAlgorithm {
