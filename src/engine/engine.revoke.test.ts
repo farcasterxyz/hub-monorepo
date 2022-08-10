@@ -7,20 +7,11 @@ import {
   Ed25519Signer,
   EthereumSigner,
   Reaction,
-  SignatureAlgorithm,
   SignerAdd,
-  SignerMessage,
   SignerRemove,
   VerificationAdd,
 } from '~/types';
-import {
-  blake2BHash,
-  convertToHex,
-  generateEd25519KeyPair,
-  generateEd25519Signer,
-  generateEthereumSigner,
-  hashFCObject,
-} from '~/utils';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
 const engine = new Engine();
 
@@ -120,6 +111,15 @@ describe('revokeSignerMessages', () => {
       expect(aliceCasts()).toEqual([]);
       expect(aliceReactions()).toEqual([]);
       expect(aliceVerifications()).toEqual([]);
+    });
+
+    test('does not drop signed messages when there are no earlier custody addresses', async () => {
+      const res = await engine.mergeSignerMessage(aliceCustodyRemove);
+      expect(res.isOk()).toBe(true);
+      expect(aliceAllSigners()).toEqual(new Set([aliceCustody.signerKey, aliceSigner.signerKey]));
+      expect(aliceCasts()).toEqual([aliceCast]);
+      expect(aliceReactions()).toEqual([aliceReaction]);
+      expect(aliceVerifications()).toEqual([aliceVerification]);
     });
 
     test('does not drop signed messages when signer is added by a new custody address', async () => {
