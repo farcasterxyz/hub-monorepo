@@ -33,7 +33,6 @@ export type SignerSetEvents = {
   removeCustody: (custodyAddress: string) => void;
   addSigner: (signerKey: string) => void;
   removeSigner: (signerKey: string) => void;
-  revokeMessage: (message: SignerMessage | CustodyRemoveAll) => void;
 };
 
 class SignerSet extends TypedEmitter<SignerSetEvents> {
@@ -50,7 +49,29 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     this._signerRemoves = new Map();
   }
 
-  // TODO: add more helper functions as we integrate signer set into engine
+  getCustodyAddresses(): Set<string> {
+    return new Set([...this._custodyAdds.keys()]);
+  }
+
+  getDelegateSigners(): Set<string> {
+    return new Set([...this._signerAdds.keys()]);
+  }
+
+  getAllSigners(): Set<string> {
+    return new Set([...this.getCustodyAddresses(), ...this.getDelegateSigners()]);
+  }
+
+  lookup(signer: string) {
+    return this.lookupCustody(signer) || this.lookupSigner(signer);
+  }
+
+  lookupCustody(custodyAddress: string) {
+    return this._custodyAdds.get(custodyAddress);
+  }
+
+  lookupSigner(signer: string) {
+    return this._signerAdds.get(signer);
+  }
 
   sanitizeKey(key: string): string {
     return key.toLowerCase();
@@ -70,41 +91,6 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     }
 
     return err('SignerSet.merge: invalid message format');
-  }
-
-  /**
-   * revokeMessages drops all messages from the set signed by the provided signer
-   *
-   * @param signer - custody address or signer public key
-   */
-  revokeMessages(signer: string): Result<void, string> {
-    const sanitizedSigner = this.sanitizeKey(signer);
-
-    // Look through signerAdds
-    for (const [signerKey, signerAdd] of this._signerAdds) {
-      if (this.sanitizeKey(signerAdd.signer) === sanitizedSigner) {
-        this._signerAdds.delete(signerKey);
-        this.emit('revokeMessage', signerAdd);
-      }
-    }
-
-    // Look through signerRemoves
-    for (const [signerKey, signerRemove] of this._signerRemoves) {
-      if (this.sanitizeKey(signerRemove.signer) === sanitizedSigner) {
-        this._signerRemoves.delete(signerKey);
-        this.emit('revokeMessage', signerRemove);
-      }
-    }
-
-    // Look through custodyRemoves
-    for (const [custodyAddress, custodyRemoveAll] of this._custodyRemoves) {
-      if (this.sanitizeKey(custodyRemoveAll.signer) === sanitizedSigner) {
-        this._custodyRemoves.delete(custodyAddress);
-        this.emit('revokeMessage', custodyRemoveAll);
-      }
-    }
-
-    return ok(undefined);
   }
 
   /**
@@ -164,19 +150,34 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     if (!custodyAddEvent) return err('SignerSet.mergeCustodyRemoveAll: custodyAddress does not exist');
 
     // For each custody address, remove if block number is before signer
-    const removedCustodyAddresses = [];
     for (const [address, addEvent] of this._custodyAdds) {
       if (addEvent.blockNumber < custodyAddEvent.blockNumber) {
+        // Look through signerAdds
+        for (const [signerKey, signerAdd] of this._signerAdds) {
+          if (this.sanitizeKey(signerAdd.signer) === address) {
+            this._signerAdds.delete(signerKey);
+            this.emit('removeSigner', signerKey);
+          }
+        }
+
+        // Look through signerRemoves
+        for (const [signerKey, signerRemove] of this._signerRemoves) {
+          if (this.sanitizeKey(signerRemove.signer) === address) {
+            this._signerRemoves.delete(signerKey);
+          }
+        }
+
+        // Look through custodyRemoves
+        for (const [custodyAddress, custodyRemoveAll] of this._custodyRemoves) {
+          if (this.sanitizeKey(custodyRemoveAll.signer) === address) {
+            this._custodyRemoves.delete(custodyAddress);
+          }
+        }
+
         this._custodyAdds.delete(address);
         this._custodyRemoves.set(address, message);
-        removedCustodyAddresses.push(address);
+        this.emit('removeCustody', address);
       }
-    }
-
-    // Emit removeCustody events
-    for (const custodyAddress of removedCustodyAddresses) {
-      this.emit('removeCustody', custodyAddress);
-      this.revokeMessages(custodyAddress);
     }
 
     return ok(undefined);

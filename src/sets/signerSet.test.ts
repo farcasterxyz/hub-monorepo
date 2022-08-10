@@ -10,13 +10,7 @@ const signerAdds = () => set._getSignerAdds();
 const signerRems = () => set._getSignerRemoves();
 
 let events: any[] = [];
-const eventNames: (keyof SignerSetEvents)[] = [
-  'addCustody',
-  'removeCustody',
-  'addSigner',
-  'removeSigner',
-  'revokeMessage',
-];
+const eventNames: (keyof SignerSetEvents)[] = ['addCustody', 'removeCustody', 'addSigner', 'removeSigner'];
 for (const eventName of eventNames) {
   set.addListener(eventName, (...args: any[]) => events.push([eventName, ...args]));
 }
@@ -235,7 +229,7 @@ describe('merge', () => {
         expect(events).toEqual([['addCustody', custody1.signerKey]]);
       });
 
-      test('succeeds and revokes messages signed by removed custody address', () => {
+      test('succeeds and removes signers added by removed custody address', () => {
         expect(set.merge(addA).isOk()).toBe(true);
         expect(set.addCustody(addCustody2).isOk()).toBe(true);
         expect(set.merge(removeAllCustody2).isOk()).toBe(true);
@@ -247,8 +241,8 @@ describe('merge', () => {
           ['addCustody', custody1.signerKey],
           ['addSigner', a.signerKey],
           ['addCustody', custody2.signerKey],
+          ['removeSigner', a.signerKey],
           ['removeCustody', custody1.signerKey],
-          ['revokeMessage', addA],
         ]);
       });
     });
