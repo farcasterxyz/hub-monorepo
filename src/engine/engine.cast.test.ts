@@ -1,6 +1,6 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
-import { Cast, EthereumSigner, MessageSigner, Reaction, SignerAdd, SignerRemove } from '~/types';
+import { Cast, CustodyAddEvent, EthereumSigner, MessageSigner, Reaction, SignerAdd, SignerRemove } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
 const engine = new Engine();
@@ -8,6 +8,7 @@ const username = 'alice';
 
 describe('mergeCast', () => {
   let aliceCustodySigner: EthereumSigner;
+  let aliceCustodyAdd: CustodyAddEvent;
   let aliceDelegateSigner: MessageSigner;
   let cast: Cast;
   let reaction: Reaction;
@@ -17,6 +18,7 @@ describe('mergeCast', () => {
 
   beforeAll(async () => {
     aliceCustodySigner = await generateEthereumSigner();
+    aliceCustodyAdd = await Factories.CustodyAddEvent.create({}, { transient: { signer: aliceCustodySigner } });
     aliceDelegateSigner = await generateEd25519Signer();
 
     cast = await Factories.Cast.create(
@@ -48,7 +50,7 @@ describe('mergeCast', () => {
 
   beforeEach(() => {
     engine._reset();
-    engine.addCustody('alice', aliceCustodySigner.signerKey);
+    engine.addCustody('alice', aliceCustodyAdd);
     engine.mergeSignerMessage(addDelegateSigner);
   });
 
@@ -72,7 +74,7 @@ describe('mergeCast', () => {
 
     describe('with custody address', () => {
       beforeEach(() => {
-        engine.addCustody('alice', aliceCustodySigner.signerKey);
+        engine.addCustody('alice', aliceCustodyAdd);
       });
 
       test('fails if signer is custody address', async () => {

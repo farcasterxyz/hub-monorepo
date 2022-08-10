@@ -1,6 +1,13 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
-import { Ed25519Signer, EthereumSigner, SignerAdd, Verification, VerificationAddFactoryTransientParams } from '~/types';
+import {
+  CustodyAddEvent,
+  Ed25519Signer,
+  EthereumSigner,
+  SignerAdd,
+  Verification,
+  VerificationAddFactoryTransientParams,
+} from '~/types';
 import { ethers } from 'ethers';
 import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
@@ -10,12 +17,14 @@ const engine = new Engine();
 // TODO: refactor these tests to be faster (currently ~7s)
 describe('mergeVerification', () => {
   let aliceCustody: EthereumSigner;
+  let aliceCustodyAdd: CustodyAddEvent;
   let aliceSigner: Ed25519Signer;
   let transientParams: { transient: VerificationAddFactoryTransientParams };
   let aliceSignerAdd: SignerAdd;
 
   beforeAll(async () => {
     aliceCustody = await generateEthereumSigner();
+    aliceCustodyAdd = await Factories.CustodyAddEvent.create({}, { transient: { signer: aliceCustody } });
     aliceSigner = await generateEd25519Signer();
     transientParams = { transient: { signer: aliceSigner } };
     aliceSignerAdd = await Factories.SignerAdd.create(
@@ -26,7 +35,7 @@ describe('mergeVerification', () => {
 
   beforeEach(() => {
     engine._reset();
-    engine.addCustody('alice', aliceCustody.signerKey);
+    engine.addCustody('alice', aliceCustodyAdd);
     engine.mergeSignerMessage(aliceSignerAdd);
   });
 

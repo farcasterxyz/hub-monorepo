@@ -1,6 +1,14 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
-import { Cast, Ed25519Signer, EthereumSigner, MessageFactoryTransientParams, Reaction, SignerAdd } from '~/types';
+import {
+  Cast,
+  CustodyAddEvent,
+  Ed25519Signer,
+  EthereumSigner,
+  MessageFactoryTransientParams,
+  Reaction,
+  SignerAdd,
+} from '~/types';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
 const engine = new Engine();
@@ -8,6 +16,7 @@ const username = 'alice';
 
 describe('mergeReaction', () => {
   let aliceCustody: EthereumSigner;
+  let aliceCustodyAdd: CustodyAddEvent;
   let aliceSigner: Ed25519Signer;
   let aliceSignerAdd: SignerAdd;
   let cast: Cast;
@@ -17,6 +26,7 @@ describe('mergeReaction', () => {
 
   beforeAll(async () => {
     aliceCustody = await generateEthereumSigner();
+    aliceCustodyAdd = await Factories.CustodyAddEvent.create({}, { transient: { signer: aliceCustody } });
     aliceSigner = await generateEd25519Signer();
     aliceSignerAdd = await Factories.SignerAdd.create(
       { data: { username: 'alice' } },
@@ -29,7 +39,7 @@ describe('mergeReaction', () => {
 
   beforeEach(async () => {
     engine._reset();
-    engine.addCustody('alice', aliceCustody.signerKey);
+    engine.addCustody('alice', aliceCustodyAdd);
     await engine.mergeSignerMessage(aliceSignerAdd);
   });
 

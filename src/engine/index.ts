@@ -10,6 +10,8 @@ import {
   SignatureAlgorithm,
   SignerEdge,
   SignerMessage,
+  CustodyRemoveAll,
+  CustodyAddEvent,
 } from '~/types';
 import { hashMessage, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
@@ -25,6 +27,7 @@ import {
   isSignerAdd,
   isSignerRemove,
   isSignerMessage,
+  isCustodyRemoveAll,
 } from '~/types/typeguards';
 import CastSet from '~/sets/castSet';
 import ReactionSet from '~/sets/reactionSet';
@@ -181,23 +184,21 @@ class Engine {
    * Signer Methods
    */
 
-  addCustody(username: string, custodyAddress: string): Result<void, string> {
+  addCustody(username: string, addEvent: CustodyAddEvent): Result<void, string> {
     let signerSet = this._signers.get(username);
     if (!signerSet) {
       signerSet = new SignerSet();
+
+      // Subscribe to events in order to revoke messages when signers are removed
+      signerSet.on('removeSigner', (signerKey) => this.revokeSignerMessages(username, signerKey));
+
       this._signers.set(username, signerSet);
     }
-    return signerSet.addCustody(custodyAddress);
-  }
-
-  removeCustody(username: string, custodyAddress: string): Result<void, string> {
-    const signerSet = this._signers.get(username);
-    if (!signerSet) return err('removeCustody: unknown user');
-    return signerSet.removeCustody(custodyAddress);
+    return signerSet.addCustody(addEvent);
   }
 
   /** Merge signer message into the set */
-  async mergeSignerMessage(message: SignerMessage): Promise<Result<void, string>> {
+  async mergeSignerMessage(message: SignerMessage | CustodyRemoveAll): Promise<Result<void, string>> {
     const username = message.data.username;
     const signerSet = this._signers.get(username);
     if (!signerSet) return err('mergeSignerMessage: unknown user');
@@ -209,72 +210,22 @@ class Engine {
   }
 
   /**
-   * Internal Methods
-   *
-   * Public methods used only for testing, or private methods
+   * Private Methods
    */
 
-  _reset(): void {
-    this._resetCasts();
-    this._resetSigners();
-    this._resetReactions();
-    this._resetVerifications();
-  }
-
-  _resetCasts(): void {
-    this._casts = new Map();
-  }
-
-  _resetSigners(): void {
-    this._signers = new Map();
-  }
-
-  _resetReactions(): void {
-    this._reactions = new Map();
-  }
-
-  _resetVerifications(): void {
-    this._verifications = new Map();
-  }
-
-  _getCastAdds(username: string): Cast[] {
-    const castSet = this._casts.get(username);
-    return castSet ? castSet._getAdds() : [];
-  }
-
-  _getActiveReactions(username: string): Reaction[] {
-    const reactionSet = this._reactions.get(username);
-    return reactionSet ? reactionSet._getActiveReactions() : [];
-  }
-
-  _getVerificationAdds(username: string): VerificationAdd[] {
-    const verificationSet = this._verifications.get(username);
-    return verificationSet ? verificationSet._getAdds() : [];
-  }
-
-  _getVerificationRemoves(username: string): VerificationRemove[] {
-    const verificationSet = this._verifications.get(username);
-    return verificationSet ? verificationSet._getRemoves() : [];
-  }
-
-  _getSigners(username: string): string[] {
-    const signerSet = this._signers.get(username);
-    return signerSet ? Array.from(signerSet._getVertexAdds()) : [];
-  }
-
-  _getCustodySigners(username: string): string[] {
-    const signerSet = this._signers.get(username);
-    return signerSet ? Array.from(signerSet._getCustodyAdds()) : [];
+  private revokeSignerMessages(username: string, signer: string): Result<void, string> {
+    // TODO
+    return ok(undefined);
   }
 
   private async validateMessage(message: Message): Promise<Result<void, string>> {
     // 1. Check that the signer is valid for the account
     const signerSet = this._signers.get(message.data.username);
     if (!signerSet) return err('validateMessage: unknown user');
-    // A signer message can be signed by a custody address or delegate. All other messages have to be signed by delegates.
+
+    // A signer message must be signed by a custody address. All other messages have to be signed by delegates.
     const isValidSigner =
-      (isSignerMessage(message) && signerSet.isValidSigner(message.signer)) ||
-      signerSet.isValidDelegateSigner(message.signer);
+      (isSignerMessage(message) && signerSet.lookupCustody(message.signer)) || signerSet.lookupSigner(message.signer);
     if (!isValidSigner) return err('validateMessage: invalid signer');
 
     // 2. Check that the hash value of the message was computed correctly.
@@ -326,6 +277,10 @@ class Engine {
 
     if (isVerificationRemove(message)) {
       return this.validateVerificationRemove();
+    }
+
+    if (isCustodyRemoveAll(message)) {
+      return this.validateCustodyRemoveAll();
     }
 
     if (isSignerAdd(message)) {
@@ -430,6 +385,73 @@ class Engine {
   private async validateSignerRemove(): Promise<Result<void, string>> {
     // TODO: any SignerRemove custom validations?
     return ok(undefined);
+  }
+
+  private async validateCustodyRemoveAll(): Promise<Result<void, string>> {
+    // TODO: any CustodyRemoveAll custom validation?
+    return ok(undefined);
+  }
+
+  /**
+   * Testing Methods
+   */
+
+  _reset(): void {
+    this._resetCasts();
+    this._resetSigners();
+    this._resetReactions();
+    this._resetVerifications();
+  }
+
+  _resetCasts(): void {
+    this._casts = new Map();
+  }
+
+  _resetSigners(): void {
+    this._signers = new Map();
+  }
+
+  _resetReactions(): void {
+    this._reactions = new Map();
+  }
+
+  _resetVerifications(): void {
+    this._verifications = new Map();
+  }
+
+  _getCastAdds(username: string): Cast[] {
+    const castSet = this._casts.get(username);
+    return castSet ? castSet._getAdds() : [];
+  }
+
+  _getActiveReactions(username: string): Reaction[] {
+    const reactionSet = this._reactions.get(username);
+    return reactionSet ? reactionSet._getActiveReactions() : [];
+  }
+
+  _getVerificationAdds(username: string): VerificationAdd[] {
+    const verificationSet = this._verifications.get(username);
+    return verificationSet ? verificationSet._getAdds() : [];
+  }
+
+  _getVerificationRemoves(username: string): VerificationRemove[] {
+    const verificationSet = this._verifications.get(username);
+    return verificationSet ? verificationSet._getRemoves() : [];
+  }
+
+  _getAllSigners(username: string): Set<string> {
+    const signerSet = this._signers.get(username);
+    return signerSet ? signerSet.getAllSigners() : new Set();
+  }
+
+  _getCustodyAddresses(username: string): Set<string> {
+    const signerSet = this._signers.get(username);
+    return signerSet ? signerSet.getCustodyAddresses() : new Set();
+  }
+
+  _getDelegateSigners(username: string): Set<string> {
+    const signerSet = this._signers.get(username);
+    return signerSet ? signerSet.getDelegateSigners() : new Set();
   }
 }
 
