@@ -115,6 +115,25 @@ describe('addCustody', () => {
     ]);
   });
 
+  test('succeeds with multiple new custody addresses in the same block', () => {
+    const addSameBlock: CustodyAddEvent = { ...addCustody2, blockNumber: addCustody1.blockNumber };
+    expect(set.addCustody(addCustody1).isOk()).toBe(true);
+    expect(set.addCustody(addSameBlock).isOk()).toBe(true);
+    expect(custodyAdds()).toEqual(
+      new Map([
+        [custody1.signerKey, addCustody1],
+        [custody2.signerKey, addSameBlock],
+      ])
+    );
+    expect(custodyRems()).toEqual(new Map());
+    expect(signerAdds()).toEqual(new Map());
+    expect(signerRems()).toEqual(new Map());
+    expect(events).toEqual([
+      ['addCustody', custody1.signerKey],
+      ['addCustody', custody2.signerKey],
+    ]);
+  });
+
   test('succeeds (no-ops) with a duplicate custody address', () => {
     expect(set.addCustody(addCustody1).isOk()).toBe(true);
     expect(set.addCustody(addCustody1).isOk()).toBe(true);
@@ -243,6 +262,27 @@ describe('merge', () => {
           ['addCustody', custody2.signerKey],
           ['removeSigner', a.signerKey],
           ['removeCustody', custody1.signerKey],
+        ]);
+      });
+
+      test('succeeds and keeps custody addresses from the same block', () => {
+        const addSameBlock: CustodyAddEvent = { ...addCustody2, blockNumber: addCustody1.blockNumber };
+        expect(set.merge(addA).isOk()).toBe(true);
+        expect(set.addCustody(addSameBlock).isOk()).toBe(true);
+        expect(set.merge(removeAllCustody2).isOk()).toBe(true);
+        expect(custodyAdds()).toEqual(
+          new Map([
+            [custody1.signerKey, addCustody1],
+            [custody2.signerKey, addSameBlock],
+          ])
+        );
+        expect(custodyRems()).toEqual(new Map());
+        expect(signerAdds()).toEqual(new Map([[a.signerKey, addA]]));
+        expect(signerRems()).toEqual(new Map());
+        expect(events).toEqual([
+          ['addCustody', custody1.signerKey],
+          ['addSigner', a.signerKey],
+          ['addCustody', custody2.signerKey],
         ]);
       });
     });
