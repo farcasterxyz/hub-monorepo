@@ -6,7 +6,6 @@ import {
   isCastRemove,
   isCastShort,
   isReaction,
-  isRoot,
   isVerification,
   isVerificationAdd,
   isVerificationRemove,
@@ -79,10 +78,6 @@ const Debugger = {
     let type = 'unknown';
     let data = '';
 
-    if (isRoot(message)) {
-      type = Debugger._padString('root', 7);
-    }
-
     if (isCastShort(message)) {
       type = Debugger._padString('cst-srt', 7);
       data = message.data.body.text.slice(0, 5) + '...';
@@ -147,23 +142,24 @@ const Debugger = {
       const { blockNum, setSize } = Debugger._latestUserState(username, nodes);
 
       for (const node of nodes.values()) {
-        const root = node.getRoot(username);
+        // const root = node.getRoot(username);
         const nodeName = node.name.toLowerCase();
 
-        if (!root) {
-          table.push({ [nodeName]: Debugger._visualizeState({}, colors.red) });
-          continue;
-        }
+        // if (!root) {
+        //   table.push({ [nodeName]: Debugger._visualizeState({}, colors.red) });
+        //   continue;
+        // }
 
         // If this node is the "latest" according to heuristic, show it in green otherwise in red.
-        const isLatest = root?.data.rootBlock === blockNum && Debugger._numMessages(node, username) === setSize;
+        // const isLatest = root?.data.rootBlock === blockNum && Debugger._numMessages(node, username) === setSize;
+        const isLatest = Debugger._numMessages(node, username) === setSize;
         const color = isLatest ? colors.green : colors.red;
 
         const castHashes = node.getCastHashes(username);
         const reactionHashes = node.getReactionHashes(username);
 
         const messages = {
-          rootHashes: [root.hash],
+          // rootHashes: [root.hash],
           castHashes,
           reactionHashes,
         };
@@ -184,23 +180,23 @@ const Debugger = {
    * be the latest, but is a fast approximation.
    */
   _latestUserState: (username: string, nodes: NodeDirectory): { blockNum: number; setSize: number } => {
-    let highestKnownBlock = 0;
+    const highestKnownBlock = 0;
     let largestMessageSetSize = 0;
 
     nodes.forEach((node) => {
-      const root = node.getRoot(username);
+      // const root = node.getRoot(username);
 
-      if (root && root.data.rootBlock >= highestKnownBlock) {
-        if (root.data.rootBlock > highestKnownBlock) {
-          highestKnownBlock = root.data.rootBlock;
-          largestMessageSetSize = 0;
-        }
+      // if (root && root.data.rootBlock >= highestKnownBlock) {
+      //   if (root.data.rootBlock > highestKnownBlock) {
+      //     highestKnownBlock = root.data.rootBlock;
+      //     largestMessageSetSize = 0;
+      //   }
 
-        const size = Debugger._numMessages(node, username);
-        if (size > largestMessageSetSize) {
-          largestMessageSetSize = size;
-        }
+      const size = Debugger._numMessages(node, username);
+      if (size > largestMessageSetSize) {
+        largestMessageSetSize = size;
       }
+      // }
     });
 
     return { blockNum: highestKnownBlock, setSize: largestMessageSetSize };

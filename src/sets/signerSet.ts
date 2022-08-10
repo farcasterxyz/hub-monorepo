@@ -2,7 +2,7 @@ import { TypedEmitter } from 'tiny-typed-emitter';
 import { Result, ok, err } from 'neverthrow';
 import { CustodyAddEvent, CustodyRemoveAll, SignerAdd, SignerMessage, SignerRemove } from '~/types';
 import { isCustodyRemoveAll, isSignerAdd, isSignerRemove } from '~/types/typeguards';
-import { hashCompare } from '~/utils';
+import { hashCompare, sanitizeSigner } from '~/utils';
 
 /*   
   SignerSet manages the account's associated custody addresses authorized 
@@ -73,10 +73,6 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     return this._signerAdds.get(signer);
   }
 
-  sanitizeKey(key: string): string {
-    return key.toLowerCase();
-  }
-
   merge(message: SignerMessage | CustodyRemoveAll): Result<void, string> {
     if (isCustodyRemoveAll(message)) {
       return this.mergeCustodyRemoveAll(message);
@@ -99,7 +95,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
    * @param event - event from Farcaster ID Registry
    */
   addCustody(event: CustodyAddEvent): Result<void, string> {
-    const sanitizedAddress = this.sanitizeKey(event.custodyAddress);
+    const sanitizedAddress = sanitizeSigner(event.custodyAddress);
 
     // If custody exists in custodyAdds
     const existingCustodyAdd = this._custodyAdds.get(sanitizedAddress);
@@ -111,11 +107,11 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     // If custody exists in custodyRemoves
     const existingCustodyRemove = this._custodyRemoves.get(sanitizedAddress);
     if (existingCustodyRemove) {
-      const existingCustodyAddEvent = this._custodyAdds.get(this.sanitizeKey(existingCustodyRemove.signer));
+      const existingCustodyAddEvent = this._custodyAdds.get(sanitizeSigner(existingCustodyRemove.signer));
 
       if (existingCustodyAddEvent) {
         // If existing block number wins (same or greater block), no-op
-        if (existingCustodyAddEvent.blockNumber > event.blockNumber) return ok(undefined);
+        if (existingCustodyAddEvent.blockNumber >= event.blockNumber) return ok(undefined);
 
         // If new block number wins, remove address from removes
         if (existingCustodyAddEvent.blockNumber < event.blockNumber) {
@@ -140,7 +136,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
    * @param message - CustodyRemoveAll message
    */
   private mergeCustodyRemoveAll(message: CustodyRemoveAll): Result<void, string> {
-    const sanitizedAddress = this.sanitizeKey(message.signer);
+    const sanitizedAddress = sanitizeSigner(message.signer);
 
     // If custodyAddress exists in custodyRemoves, no-op
     if (this._custodyRemoves.has(sanitizedAddress)) return ok(undefined);
@@ -154,7 +150,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
       if (addEvent.blockNumber < custodyAddEvent.blockNumber) {
         // Look through signerAdds
         for (const [signerKey, signerAdd] of this._signerAdds) {
-          if (this.sanitizeKey(signerAdd.signer) === address) {
+          if (sanitizeSigner(signerAdd.signer) === address) {
             this._signerAdds.delete(signerKey);
             this.emit('removeSigner', signerKey);
           }
@@ -162,14 +158,14 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
 
         // Look through signerRemoves
         for (const [signerKey, signerRemove] of this._signerRemoves) {
-          if (this.sanitizeKey(signerRemove.signer) === address) {
+          if (sanitizeSigner(signerRemove.signer) === address) {
             this._signerRemoves.delete(signerKey);
           }
         }
 
         // Look through custodyRemoves
         for (const [custodyAddress, custodyRemoveAll] of this._custodyRemoves) {
-          if (this.sanitizeKey(custodyRemoveAll.signer) === address) {
+          if (sanitizeSigner(custodyRemoveAll.signer) === address) {
             this._custodyRemoves.delete(custodyAddress);
           }
         }
@@ -189,8 +185,8 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
    * @param message - a SignerAdd message
    */
   private mergeSignerAdd(message: SignerAdd): Result<void, string> {
-    const custodyAddress = this.sanitizeKey(message.signer);
-    const signerKey = this.sanitizeKey(message.data.body.childKey);
+    const custodyAddress = sanitizeSigner(message.signer);
+    const signerKey = sanitizeSigner(message.data.body.childKey);
 
     // If custody address has been removed, no-op
     if (this._custodyRemoves.has(custodyAddress)) return ok(undefined);
@@ -202,7 +198,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     // If signer add exists
     const existingSignerAdd = this._signerAdds.get(signerKey);
     if (existingSignerAdd) {
-      const existingCustodyAddEvent = this._custodyAdds.get(this.sanitizeKey(existingSignerAdd.signer));
+      const existingCustodyAddEvent = this._custodyAdds.get(sanitizeSigner(existingSignerAdd.signer));
 
       if (existingCustodyAddEvent) {
         // If existing block number wins, no-op
@@ -232,7 +228,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     // If signer remove exists
     const existingSignerRemove = this._signerRemoves.get(signerKey);
     if (existingSignerRemove) {
-      const existingCustodyAddEvent = this._custodyAdds.get(this.sanitizeKey(existingSignerRemove.signer));
+      const existingCustodyAddEvent = this._custodyAdds.get(sanitizeSigner(existingSignerRemove.signer));
 
       if (existingCustodyAddEvent) {
         // If existing block number wins (same block number or greater), no-op
@@ -256,8 +252,8 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
    * @param message - a SignerRemove message
    */
   private mergeSignerRemove(message: SignerRemove): Result<void, string> {
-    const custodyAddress = this.sanitizeKey(message.signer);
-    const signerKey = this.sanitizeKey(message.data.body.childKey);
+    const custodyAddress = sanitizeSigner(message.signer);
+    const signerKey = sanitizeSigner(message.data.body.childKey);
 
     // If custody address has been removed, no-op
     if (this._custodyRemoves.has(custodyAddress)) return ok(undefined);
@@ -269,7 +265,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     // If signer remove exists
     const existingSignerRemove = this._signerRemoves.get(signerKey);
     if (existingSignerRemove) {
-      const existingCustodyAddEvent = this._custodyAdds.get(this.sanitizeKey(existingSignerRemove.signer));
+      const existingCustodyAddEvent = this._custodyAdds.get(sanitizeSigner(existingSignerRemove.signer));
 
       if (existingCustodyAddEvent) {
         // If existing block number wins, no-op
@@ -299,7 +295,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     // If signer add exists
     const existingSignerAdd = this._signerAdds.get(signerKey);
     if (existingSignerAdd) {
-      const existingCustodyAddEvent = this._custodyAdds.get(this.sanitizeKey(existingSignerAdd.signer));
+      const existingCustodyAddEvent = this._custodyAdds.get(sanitizeSigner(existingSignerAdd.signer));
 
       if (existingCustodyAddEvent) {
         // If existing block number wins (greater only), no-op

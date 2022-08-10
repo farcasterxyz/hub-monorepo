@@ -3,7 +3,6 @@ import Faker from 'faker';
 import { ethers } from 'ethers';
 import {
   CastShort,
-  Root,
   CastRecast,
   CastRemove,
   Reaction,
@@ -19,13 +18,17 @@ import {
   SignatureAlgorithm,
   Message,
   MessageFactoryTransientParams,
+  MessageSigner,
   CustodyAddEvent,
   EthereumSigner,
   CustodyRemoveAll,
 } from '~/types';
 import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
-const getMessageSigner = async (props: Message, transientParams: MessageFactoryTransientParams) => {
+const getMessageSigner = async (
+  props: Message,
+  transientParams: MessageFactoryTransientParams
+): Promise<MessageSigner> => {
   /** Check if transientParams already has a signer */
   if (transientParams.signer) return transientParams.signer;
 
@@ -133,28 +136,28 @@ export const Factories = {
     };
   }),
 
-  /** Generate a valid Root with randomized properties */
-  Root: Factory.define<Root, MessageFactoryTransientParams, Root>(({ onCreate, transientParams }) => {
-    onCreate(async (rootProps) => {
-      return (await addEnvelopeToMessage(rootProps, transientParams)) as Root;
-    });
+  // /** Generate a valid Root with randomized properties */
+  // Root: Factory.define<Root, MessageFactoryTransientParams, Root>(({ onCreate, transientParams }) => {
+  //   onCreate(async (rootProps) => {
+  //     return (await addEnvelopeToMessage(rootProps, transientParams)) as Root;
+  //   });
 
-    return {
-      data: {
-        body: {
-          blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-          schema: 'farcaster.xyz/schemas/v1/root' as const,
-        },
-        rootBlock: Faker.datatype.number(10_000),
-        signedAt: Date.now(),
-        username: Faker.name.firstName().toLowerCase(),
-      },
-      hash: '',
-      signature: '',
-      signatureType: SignatureAlgorithm.Ed25519,
-      signer: '',
-    };
-  }),
+  //   return {
+  //     data: {
+  //       body: {
+  //         blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+  //         schema: 'farcaster.xyz/schemas/v1/root' as const,
+  //       },
+  //       rootBlock: Faker.datatype.number(10_000),
+  //       signedAt: Date.now(),
+  //       username: Faker.name.firstName().toLowerCase(),
+  //     },
+  //     hash: '',
+  //     signature: '',
+  //     signatureType: SignatureAlgorithm.Ed25519,
+  //     signer: '',
+  //   };
+  // }),
 
   /** Generate a valid Reaction with randomized properties */
   Reaction: Factory.define<Reaction, MessageFactoryTransientParams, Reaction>(({ onCreate, transientParams }) => {

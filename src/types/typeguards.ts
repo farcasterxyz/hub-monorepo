@@ -1,13 +1,8 @@
 import * as FC from '~/types';
 
-export const isRoot = (msg: FC.Message): msg is FC.Root => {
-  const body = (msg as FC.Root).data?.body;
-  return body && body.schema === 'farcaster.xyz/schemas/v1/root' && typeof body.blockHash == 'string';
-};
-
-export const isCast = (msg: FC.Message): msg is FC.Cast => {
+export function isCast(msg: FC.Message): msg is FC.Cast {
   return isCastShort(msg) || isCastRemove(msg) || isCastRecast(msg);
-};
+}
 
 export const isCastShort = (msg: FC.Message): msg is FC.CastShort => {
   const body = (msg as FC.CastShort).data?.body;
@@ -41,13 +36,17 @@ export const isReaction = (msg: FC.Message): msg is FC.Reaction => {
   );
 };
 
+export const isSignerMessage = (msg: FC.Message) => {
+  return isSignerAdd(msg) || isSignerRemove(msg) || isCustodyRemoveAll(msg);
+};
+
 export const isSignerAdd = (msg: FC.Message): msg is FC.SignerAdd => {
   const body = (msg as FC.SignerAdd).data?.body;
   return (
     body &&
     body.schema === 'farcaster.xyz/schemas/v1/signer-add' &&
     typeof body.childKey === 'string' &&
-    body.childSignatureType === 'ed25519' &&
+    body.childSignatureType === FC.SignatureAlgorithm.Ed25519 &&
     typeof body.childSignature === 'string' &&
     typeof body.edgeHash === 'string' &&
     body.edgeHash.length > 0

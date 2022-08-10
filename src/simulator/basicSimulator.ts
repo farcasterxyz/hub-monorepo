@@ -54,9 +54,9 @@ class BasicSimulator extends Simulator {
   async runClients() {
     // Create a valid signer for every client and broadcast it.
     for (const client of this.clients.values()) {
-      const signerChange = this.generateSignerChange(client);
+      // const signerChange = this.generateSignerChange(client);
       for (const node of this.nodes.values()) {
-        node.engine.addSignerChange(client.username, await signerChange);
+        // node.engine.addSignerChange(client.username, await signerChange);
       }
     }
 
@@ -69,36 +69,35 @@ class BasicSimulator extends Simulator {
     });
   }
 
-  async generateSignerChange(client: Client, logIndex?: number) {
-    return {
-      blockNumber: this.blockNumber,
-      blockHash: this.blockHash,
-      logIndex: logIndex || 0,
-      address: client.signer.signerKey,
-    };
-  }
+  // async generateSignerChange(client: Client, logIndex?: number) {
+  //   return {
+  //     blockNumber: this.blockNumber,
+  //     blockHash: this.blockHash,
+  //     logIndex: logIndex || 0,
+  //     address: client.signer.signerKey,
+  //   };
+  // }
 
-  async generateRandomVerification(client: Client, root: FC.Root): Promise<FC.VerificationAdd> {
+  async generateRandomVerification(client: Client): Promise<FC.VerificationAdd> {
     const randomEthWallet = ethers.Wallet.createRandom();
     const ethAddress = randomEthWallet.address;
     const claimToSign = await client.makeVerificationClaimHash(ethAddress);
     const externalSignature = await randomEthWallet.signMessage(claimToSign);
-    return client.makeVerificationAdd(ethAddress, claimToSign, externalSignature, root);
+    return client.makeVerificationAdd(ethAddress, claimToSign, externalSignature);
   }
 
   async generateMessages(client: Client) {
-    const root1 = await client.makeRoot(this.blockNumber, this.blockHash);
-    const cs1 = await client.makeCastShort(Faker.lorem.words(3), root1);
-    const cs2 = await client.makeCastShort(Faker.lorem.words(3), root1);
-    const cs3 = await client.makeCastShort(Faker.lorem.words(3), root1);
-    const cd1 = await client.makeCastRemove(cs2, root1);
-    const cs4 = await client.makeCastShort(Faker.lorem.words(3), root1);
-    const ra1 = await client.makeReaction(cs4, root1);
-    const ru1 = await client.makeReaction(cs4, root1, false);
-    const vAdd1 = await this.generateRandomVerification(client, root1);
-    const vAdd2 = await this.generateRandomVerification(client, root1);
-    const vRem1 = await client.makeVerificationRemove(vAdd1, root1);
-    return [root1, cs1, cs2, cs3, cd1, cs4, ra1, ru1, vAdd1, vAdd2, vRem1];
+    const cs1 = await client.makeCastShort(Faker.lorem.words(3));
+    const cs2 = await client.makeCastShort(Faker.lorem.words(3));
+    const cs3 = await client.makeCastShort(Faker.lorem.words(3));
+    const cd1 = await client.makeCastRemove(cs2);
+    const cs4 = await client.makeCastShort(Faker.lorem.words(3));
+    const ra1 = await client.makeReaction(cs4);
+    const ru1 = await client.makeReaction(cs4, false);
+    const vAdd1 = await this.generateRandomVerification(client);
+    const vAdd2 = await this.generateRandomVerification(client);
+    const vRem1 = await client.makeVerificationRemove(vAdd1.data.body.claimHash);
+    return [cs1, cs2, cs3, cd1, cs4, ra1, ru1, vAdd1, vAdd2, vRem1];
   }
 }
 

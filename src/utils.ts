@@ -131,3 +131,7 @@ export const generateEthereumSigner = async (): Promise<EthereumSigner> => {
   const signerKey = wallet.address.toLowerCase();
   return { wallet, signerKey, type: SignatureAlgorithm.EthereumPersonalSign };
 };
+
+export const sanitizeSigner = (signer: string): string => {
+  return signer.toLowerCase();
+};
