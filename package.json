@@ -9,7 +9,7 @@
     "prepare": "husky install",
     "lint": "eslint . --ext .ts",
     "lint:fix": "npm run lint -- --fix",
-    "server": "npm run build && node build/simulation.js",
+    "server": "npm run build",
     "start": "npm run server",
     "test": "rm -rf ./build && jest src/",
     "test:ci": "ENVIRONMENT=test jest src/ --ci --runInBand --forceExit --coverage",
