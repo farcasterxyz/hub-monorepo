@@ -35,8 +35,7 @@ class SignerSet {
     return key.toLowerCase();
   }
 
-  merge(message: SignerMessage): Result<void, string> {
-    // if (this._messages.get(message.hash)) return ok(undefined); // Duplicate message
+  merge(message: SignerMessage | CustodyRemoveAll): Result<void, string> {
     if (isCustodyRemoveAll(message)) {
       return this.mergeCustodyRemoveAll(message);
     }
@@ -146,8 +145,8 @@ class SignerSet {
     const signerKey = this.sanitizeKey(message.data.body.childKey);
 
     // If custody address has been removed
-    if (this._custodyRemoves.has(custodyAddress))
-      return err('SignerSet.mergeSignerAdd: custodyAddress has been removed');
+    if (this._custodyRemoves.has(custodyAddress)) return ok(undefined); // No-op
+    // return err('SignerSet.mergeSignerAdd: custodyAddress has been removed');
 
     // If custody address is missing
     const custodyAddEvent = this._custodyAdds.get(custodyAddress);
@@ -166,7 +165,16 @@ class SignerSet {
         // If new block number wins, continue execution
 
         // If block numbers are the same
-        // TODO
+        if (existingCustodyAddEvent.blockNumber === custodyAddEvent.blockNumber) {
+          if (existingCustodyAddEvent.custodyAddress === custodyAddEvent.custodyAddress) {
+            // Keep higher hash
+            if (hashCompare(existingSignerAdd.hash, message.hash) >= 0) {
+              return ok(undefined); // No-op
+            }
+          }
+
+          // TODO
+        }
       }
     }
 
@@ -176,7 +184,7 @@ class SignerSet {
 
       if (existingCustodyAddEvent) {
         // If existing block number wins
-        if (existingCustodyAddEvent.blockNumber > custodyAddEvent.blockNumber) {
+        if (existingCustodyAddEvent.blockNumber >= custodyAddEvent.blockNumber) {
           return ok(undefined); // No-op
         }
 
@@ -204,8 +212,8 @@ class SignerSet {
     const signerKey = this.sanitizeKey(message.data.body.childKey);
 
     // If custody address has been removed
-    if (this._custodyRemoves.has(custodyAddress))
-      return err('SignerSet.mergeSignerRemove: custodyAddress has been removed');
+    if (this._custodyRemoves.has(custodyAddress)) return ok(undefined); // No-op
+    // return err('SignerSet.mergeSignerAdd: custodyAddress has been removed');
 
     // If custody address is missing
     const custodyAddEvent = this._custodyAdds.get(custodyAddress);
@@ -224,7 +232,16 @@ class SignerSet {
         // If new block number wins, continue execution
 
         // If block numbers are the same
-        // TODO
+        if (existingCustodyAddEvent.blockNumber === custodyAddEvent.blockNumber) {
+          if (existingCustodyAddEvent.custodyAddress === custodyAddEvent.custodyAddress) {
+            // Keep higher hash
+            if (hashCompare(existingSignerRemove.hash, message.hash) >= 0) {
+              return ok(undefined); // No-op
+            }
+          }
+
+          // TODO
+        }
       }
     }
 
@@ -238,8 +255,8 @@ class SignerSet {
           return ok(undefined); // No-op
         }
 
-        // If new block number wins, remove signer from signerAdds
-        if (existingCustodyAddEvent.blockNumber < custodyAddEvent.blockNumber) {
+        // If new block number wins, continue execution
+        if (existingCustodyAddEvent.blockNumber <= custodyAddEvent.blockNumber) {
           this._signerAdds.delete(signerKey);
         }
 
