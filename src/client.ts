@@ -147,6 +147,7 @@ class Client {
     const message = {
       data,
       hash: '',
+      hashType: FC.HashAlgorithm.Blake2b,
       signature: '',
       signatureType: this.signer.type,
       signer: this.signer.signerKey,

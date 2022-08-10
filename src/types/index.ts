@@ -5,12 +5,15 @@ import { ethers } from 'ethers';
  *
  * @data - the data that is being signed.
  * @hash - the blake2b hash of the message.
- * @signature - the ecdsa signature of the hash of the message.
+ * @hashType - the type of hash algorithm used to calculate the hash
+ * @signature - the ecdsa signature of the hash of the message
+ * @signatureType - the type of signing algorithm used to sign the message
  * @signer - the ethereum address whose private key was used to create the signature
  */
 export type Message<T = Body> = {
   data: Data<T>;
   hash: string;
+  hashType: HashAlgorithm;
   signature: string;
   signatureType: SignatureAlgorithm;
   signer: string;
@@ -312,6 +315,11 @@ export type KeyPair = {
   privateKey: Uint8Array;
   publicKey: Uint8Array;
 };
+
+/** HashAlgorithm enum */
+export enum HashAlgorithm {
+  Blake2b = 'blake2b',
+}
 
 /** SignatureAlgorithm enum */
 export enum SignatureAlgorithm {
