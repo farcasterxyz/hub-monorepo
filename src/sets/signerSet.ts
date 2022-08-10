@@ -1,3 +1,4 @@
+import { TypedEmitter } from 'tiny-typed-emitter';
 import { Result, ok, err } from 'neverthrow';
 import { CustodyAddEvent, CustodyRemoveAll, SignerAdd, SignerMessage, SignerRemove } from '~/types';
 import { isCustodyRemoveAll, isSignerAdd, isSignerRemove } from '~/types/typeguards';
@@ -26,13 +27,23 @@ import { hashCompare } from '~/utils';
       - If custody addresses have the same order (i.e. they are identical)
         - Message with higher lexicographical hash wins
 */
-class SignerSet {
+
+export type SignerSetEvents = {
+  addCustody: (custodyAddress: string) => void;
+  removeCustody: (custodyAddress: string) => void;
+  addSigner: (signerKey: string) => void;
+  removeSigner: (signerKey: string) => void;
+  revokeMessage: (message: SignerMessage | CustodyRemoveAll) => void;
+};
+
+class SignerSet extends TypedEmitter<SignerSetEvents> {
   private _custodyAdds: Map<string, CustodyAddEvent>;
   private _custodyRemoves: Map<string, CustodyRemoveAll>;
   private _signerAdds: Map<string, SignerAdd>;
   private _signerRemoves: Map<string, SignerRemove>;
 
   constructor() {
+    super();
     this._custodyAdds = new Map();
     this._custodyRemoves = new Map();
     this._signerAdds = new Map();
@@ -62,6 +73,41 @@ class SignerSet {
   }
 
   /**
+   * revokeMessages drops all messages from the set signed by the provided signer
+   *
+   * @param signer - custody address or signer public key
+   */
+  revokeMessages(signer: string): Result<void, string> {
+    const sanitizedSigner = this.sanitizeKey(signer);
+
+    // Look through signerAdds
+    for (const [signerKey, signerAdd] of this._signerAdds) {
+      if (this.sanitizeKey(signerAdd.signer) === sanitizedSigner) {
+        this._signerAdds.delete(signerKey);
+        this.emit('revokeMessage', signerAdd);
+      }
+    }
+
+    // Look through signerRemoves
+    for (const [signerKey, signerRemove] of this._signerRemoves) {
+      if (this.sanitizeKey(signerRemove.signer) === sanitizedSigner) {
+        this._signerRemoves.delete(signerKey);
+        this.emit('revokeMessage', signerRemove);
+      }
+    }
+
+    // Look through custodyRemoves
+    for (const [custodyAddress, custodyRemoveAll] of this._custodyRemoves) {
+      if (this.sanitizeKey(custodyRemoveAll.signer) === sanitizedSigner) {
+        this._custodyRemoves.delete(custodyAddress);
+        this.emit('revokeMessage', custodyRemoveAll);
+      }
+    }
+
+    return ok(undefined);
+  }
+
+  /**
    * addCustody adds a custody address to custodyAdds set.
    *
    * @param event - event from Farcaster ID Registry
@@ -72,8 +118,8 @@ class SignerSet {
     // If custody exists in custodyAdds
     const existingCustodyAdd = this._custodyAdds.get(sanitizedAddress);
     if (existingCustodyAdd) {
-      // If existing block number wins, no-op
-      if (existingCustodyAdd.blockNumber > event.blockNumber) return ok(undefined);
+      // If existing block number wins (greater or equal), no-op
+      if (existingCustodyAdd.blockNumber >= event.blockNumber) return ok(undefined);
     }
 
     // If custody exists in custodyRemoves
@@ -93,6 +139,7 @@ class SignerSet {
     }
 
     this._custodyAdds.set(sanitizedAddress, event);
+    this.emit('addCustody', sanitizedAddress);
     return ok(undefined);
   }
 
@@ -126,9 +173,10 @@ class SignerSet {
       }
     }
 
-    // Revoke removed custody addresses
+    // Emit removeCustody events
     for (const custodyAddress of removedCustodyAddresses) {
-      // TODO: revoke
+      this.emit('removeCustody', custodyAddress);
+      this.revokeMessages(custodyAddress);
     }
 
     return ok(undefined);
@@ -197,6 +245,7 @@ class SignerSet {
     }
 
     this._signerAdds.set(signerKey, message);
+    this.emit('addSigner', signerKey);
     return ok(undefined);
   }
 
@@ -263,7 +312,7 @@ class SignerSet {
     }
 
     this._signerRemoves.set(signerKey, message);
-    // TODO: revoke signerKey
+    this.emit('removeSigner', signerKey);
     return ok(undefined);
   }
 
