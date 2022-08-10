@@ -19,6 +19,9 @@ import {
   SignatureAlgorithm,
   Message,
   MessageFactoryTransientParams,
+  CustodyAddEvent,
+  EthereumSigner,
+  CustodyRemoveAll,
 } from '~/types';
 import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
@@ -177,6 +180,48 @@ export const Factories = {
       signer: '',
     };
   }),
+
+  /** Generate a valid CustodyAddEvent with randomized properties */
+  CustodyAddEvent: Factory.define<CustodyAddEvent, { signer?: EthereumSigner }, CustodyAddEvent>(
+    ({ onCreate, transientParams }) => {
+      onCreate(async (props) => {
+        const signer = transientParams.signer || (await generateEthereumSigner());
+        if (!props.custodyAddress) {
+          props.custodyAddress = signer.signerKey;
+        }
+        return props;
+      });
+
+      return {
+        custodyAddress: '',
+        blockNumber: Faker.datatype.number(10_000),
+      };
+    }
+  ),
+
+  /** Generate a valid CustodyRemoveAll with randomized properties */
+  CustodyRemoveAll: Factory.define<CustodyRemoveAll, MessageFactoryTransientParams, CustodyRemoveAll>(
+    ({ onCreate, transientParams }) => {
+      onCreate(async (castProps) => {
+        return (await addEnvelopeToMessage(castProps, transientParams)) as CustodyRemoveAll;
+      });
+
+      return {
+        data: {
+          body: {
+            schema: 'farcaster.xyz/schemas/v1/custody-remove-all' as const,
+          },
+          rootBlock: Faker.datatype.number(10_000),
+          signedAt: Faker.time.recent(),
+          username: Faker.name.firstName().toLowerCase(),
+        },
+        hash: '',
+        signature: '',
+        signatureType: SignatureAlgorithm.EthereumPersonalSign,
+        signer: '',
+      };
+    }
+  ),
 
   /** Generate a valid SignerAdd with randomized properties */
   SignerAdd: Factory.define<SignerAdd, SignerAddFactoryTransientParams, SignerAdd>(({ onCreate, transientParams }) => {

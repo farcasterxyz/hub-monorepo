@@ -38,7 +38,8 @@ export type Body =
   | VerificationAddBody
   | VerificationRemoveBody
   | SignerAddBody
-  | SignerRemoveBody;
+  | SignerRemoveBody
+  | CustodyRemoveAllBody;
 
 // ===========================
 //  Root Types
@@ -261,6 +262,24 @@ export type SignerRemove = Message<SignerRemoveBody>;
 export type SignerRemoveBody = {
   childKey: string;
   schema: 'farcaster.xyz/schemas/v1/signer-remove';
+};
+
+/** CustodyRemoveAll message */
+export type CustodyRemoveAll = Message<CustodyRemoveAllBody>;
+
+/**
+ * A CustodyRemoveAllBody represents the removal of all custody addresses before a given block
+ */
+export type CustodyRemoveAllBody = {
+  schema: 'farcaster.xyz/schemas/v1/custody-remove-all';
+};
+
+/**
+ * A CustodyAddEvent represents an event from the ID contract
+ */
+export type CustodyAddEvent = {
+  custodyAddress: string;
+  blockNumber: number;
 };
 
 // ===========================
