@@ -190,7 +190,7 @@ class Engine {
       signerSet = new SignerSet();
 
       // Subscribe to events in order to revoke messages when signers are removed
-      signerSet.on('removeSigner', (signerKey) => this.revokeSignerMessages(username, signerKey));
+      signerSet.on('removeSigner', (signerKey) => this.revokeSigner(username, signerKey));
 
       this._signers.set(username, signerSet);
     }
@@ -213,8 +213,19 @@ class Engine {
    * Private Methods
    */
 
-  private revokeSignerMessages(username: string, signer: string): Result<void, string> {
-    // TODO
+  private revokeSigner(username: string, signer: string): Result<void, string> {
+    // Revoke casts
+    const castSet = this._casts.get(username);
+    if (castSet) castSet.revokeSigner(signer);
+
+    // Revoke reactions
+    const reactionSet = this._reactions.get(username);
+    if (reactionSet) reactionSet.revokeSigner(signer);
+
+    // Revoke verifications
+    const verificationSet = this._verifications.get(username);
+    if (verificationSet) verificationSet.revokeSigner(signer);
+
     return ok(undefined);
   }
 

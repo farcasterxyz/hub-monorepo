@@ -1,7 +1,7 @@
 import { Result, ok, err } from 'neverthrow';
 import { Verification, VerificationAdd, VerificationRemove } from '~/types';
 import { isVerificationAdd, isVerificationRemove } from '~/types/typeguards';
-import { hashCompare } from '~/utils';
+import { hashCompare, sanitizeSigner } from '~/utils';
 
 class VerificationSet {
   /** Both maps indexed by claimHash */
@@ -43,6 +43,24 @@ class VerificationSet {
     }
 
     return err('VerificationSet.merge: invalid message format');
+  }
+
+  revokeSigner(signer: string): Result<void, string> {
+    // Look through adds
+    for (const [claimHash, verification] of this._adds) {
+      if (sanitizeSigner(verification.signer) === signer) {
+        this._adds.delete(claimHash);
+      }
+    }
+
+    // Look through removes
+    for (const [claimHash, verification] of this._removes) {
+      if (sanitizeSigner(verification.signer) === signer) {
+        this._removes.delete(claimHash);
+      }
+    }
+
+    return ok(undefined);
   }
 
   /**

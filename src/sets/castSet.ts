@@ -1,6 +1,7 @@
 import { Result, ok, err } from 'neverthrow';
 import { Cast, CastRemove, CastRecast, CastShort } from '~/types';
 import { isCastRemove, isCastRecast, isCastShort } from '~/types/typeguards';
+import { sanitizeSigner } from '~/utils';
 
 class CastSet {
   private _adds: Map<string, CastShort | CastRecast>;
@@ -37,6 +38,24 @@ class CastSet {
       return this.add(cast);
     }
     return err('CastSet.merge: invalid cast');
+  }
+
+  revokeSigner(signer: string): Result<void, string> {
+    // Look through adds
+    for (const [hash, cast] of this._adds) {
+      if (sanitizeSigner(cast.signer) === signer) {
+        this._adds.delete(hash);
+      }
+    }
+
+    // Look through removes
+    for (const [hash, cast] of this._removes) {
+      if (sanitizeSigner(cast.signer) === signer) {
+        this._removes.delete(hash);
+      }
+    }
+
+    return ok(undefined);
   }
 
   /**
