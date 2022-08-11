@@ -6,11 +6,11 @@ const set = new VerificationSet();
 const adds = () => set._getAdds();
 const removes = () => set._getRemoves();
 
-describe('merge', () => {
-  beforeEach(() => {
-    set._reset();
-  });
+beforeEach(() => {
+  set._reset();
+});
 
+describe('merge', () => {
   test('fails with an incorrect message type', async () => {
     const cast = (await Factories.Cast.create()) as unknown as Verification;
     expect(set.merge(cast).isOk()).toBe(false);
@@ -199,5 +199,43 @@ describe('merge', () => {
       expect(adds()).toEqual([add2]);
       expect(removes()).toEqual([]);
     });
+  });
+});
+
+describe('revokeSigner', () => {
+  let add1: VerificationAdd;
+  let rem1: VerificationRemove;
+  let add2: VerificationAdd;
+
+  beforeAll(async () => {
+    add1 = await Factories.VerificationAdd.create();
+    rem1 = await Factories.VerificationRemove.create({ data: { body: { claimHash: add1.data.body.claimHash } } });
+    add2 = await Factories.VerificationAdd.create();
+  });
+
+  test('succeeds without any messages', () => {
+    expect(set.revokeSigner(add1.signer).isOk()).toBe(true);
+  });
+
+  test('succeeds and drops add messages', () => {
+    expect(set.merge(add1).isOk()).toBe(true);
+    expect(set.revokeSigner(add1.signer).isOk()).toBe(true);
+    expect(set._getAdds()).toEqual([]);
+    expect(set._getRemoves()).toEqual([]);
+  });
+
+  test('succeeds and drops remove messages', () => {
+    expect(set.merge(rem1).isOk()).toBe(true);
+    expect(set.revokeSigner(rem1.signer).isOk()).toBe(true);
+    expect(set._getAdds()).toEqual([]);
+    expect(set._getRemoves()).toEqual([]);
+  });
+
+  test('suceeds and only removes messages from signer', () => {
+    expect(set.merge(add1).isOk()).toBe(true);
+    expect(set.merge(add2).isOk()).toBe(true);
+    expect(set.revokeSigner(add2.signer).isOk()).toBe(true);
+    expect(set._getAdds()).toEqual([add1]);
+    expect(set._getRemoves()).toEqual([]);
   });
 });
