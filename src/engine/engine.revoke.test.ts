@@ -53,15 +53,15 @@ beforeAll(async () => {
   aliceSigner = await generateEd25519Signer();
   aliceSignerAdd = await Factories.SignerAdd.create(
     { data: { username: 'alice' } },
-    { transient: { signer: aliceCustody, childSigner: aliceSigner } }
+    { transient: { signer: aliceCustody, delegateSigner: aliceSigner } }
   );
   aliceSignerAdd2 = await Factories.SignerAdd.create(
     { data: { username: 'alice' } },
-    { transient: { signer: aliceCustody2, childSigner: aliceSigner } }
+    { transient: { signer: aliceCustody2, delegateSigner: aliceSigner } }
   );
   aliceSignerRemove = await Factories.SignerRemove.create(
     {
-      data: { username: 'alice', body: { childKey: aliceSigner.signerKey } },
+      data: { username: 'alice', body: { delegate: aliceSigner.signerKey } },
     },
     { transient: { signer: aliceCustody } }
   );

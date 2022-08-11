@@ -30,7 +30,7 @@ describe('mergeReaction', () => {
     aliceSigner = await generateEd25519Signer();
     aliceSignerAdd = await Factories.SignerAdd.create(
       { data: { username: 'alice' } },
-      { transient: { signer: aliceCustody, childSigner: aliceSigner } }
+      { transient: { signer: aliceCustody, delegateSigner: aliceSigner } }
     );
     transient = { transient: { signer: aliceSigner } };
     cast = await Factories.Cast.create({ data: { username: 'alice' } }, transient);

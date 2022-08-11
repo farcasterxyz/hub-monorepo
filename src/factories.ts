@@ -80,7 +80,6 @@ export const Factories = {
           text,
           schema: 'farcaster.xyz/schemas/v1/cast-short' as const,
         },
-        rootBlock: Faker.datatype.number(10_000),
         signedAt: Faker.time.recent(),
         username: Faker.name.firstName().toLowerCase(),
       },
@@ -104,7 +103,6 @@ export const Factories = {
           targetHash: Faker.datatype.hexaDecimal(40).toLowerCase(),
           schema: 'farcaster.xyz/schemas/v1/cast-remove',
         },
-        rootBlock: Faker.datatype.number(10_000),
         signedAt: Faker.time.recent(),
         username: Faker.name.firstName().toLowerCase(),
       },
@@ -128,7 +126,6 @@ export const Factories = {
           targetCastUri: 'farcaster://alice/cast/1', // TODO: Find some way to generate this.
           schema: 'farcaster.xyz/schemas/v1/cast-recast' as const,
         },
-        rootBlock: Faker.datatype.number(10_000),
         signedAt: Faker.time.recent(),
         username: Faker.name.firstName().toLowerCase(),
       },
@@ -139,29 +136,6 @@ export const Factories = {
       signer: '',
     };
   }),
-
-  // /** Generate a valid Root with randomized properties */
-  // Root: Factory.define<Root, MessageFactoryTransientParams, Root>(({ onCreate, transientParams }) => {
-  //   onCreate(async (rootProps) => {
-  //     return (await addEnvelopeToMessage(rootProps, transientParams)) as Root;
-  //   });
-
-  //   return {
-  //     data: {
-  //       body: {
-  //         blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-  //         schema: 'farcaster.xyz/schemas/v1/root' as const,
-  //       },
-  //       rootBlock: Faker.datatype.number(10_000),
-  //       signedAt: Date.now(),
-  //       username: Faker.name.firstName().toLowerCase(),
-  //     },
-  //     hash: '',
-  //     signature: '',
-  //     signatureType: SignatureAlgorithm.Ed25519,
-  //     signer: '',
-  //   };
-  // }),
 
   /** Generate a valid Reaction with randomized properties */
   Reaction: Factory.define<Reaction, MessageFactoryTransientParams, Reaction>(({ onCreate, transientParams }) => {
@@ -177,7 +151,6 @@ export const Factories = {
           type: 'like',
           schema: 'farcaster.xyz/schemas/v1/reaction' as const,
         },
-        rootBlock: Faker.datatype.number(10_000),
         signedAt: Faker.time.recent(),
         username: Faker.name.firstName().toLowerCase(),
       },
@@ -219,7 +192,6 @@ export const Factories = {
           body: {
             schema: 'farcaster.xyz/schemas/v1/custody-remove-all' as const,
           },
-          rootBlock: Faker.datatype.number(10_000),
           signedAt: Faker.time.recent(),
           username: Faker.name.firstName().toLowerCase(),
         },
@@ -236,27 +208,27 @@ export const Factories = {
   SignerAdd: Factory.define<SignerAdd, SignerAddFactoryTransientParams, SignerAdd>(({ onCreate, transientParams }) => {
     onCreate(async (props) => {
       const signer = await getMessageSigner(props, transientParams);
-      const childSigner = transientParams.childSigner || (await generateEd25519Signer());
-      const parentKey = signer.signerKey;
-      const childKey = childSigner.signerKey;
+      const delegateSigner = transientParams.delegateSigner || (await generateEd25519Signer());
+      const custodyAddress = signer.signerKey;
+      const delegate = delegateSigner.signerKey;
 
-      /** Set childKey if missing */
-      if (!props.data.body.childKey) {
-        props.data.body.childKey = childKey;
+      /** Set delegate if missing */
+      if (!props.data.body.delegate) {
+        props.data.body.delegate = delegate;
       }
 
       /** Generate edgeHash if missing */
       if (!props.data.body.edgeHash) {
         const edge: SignerEdge = {
-          parentKey: parentKey,
-          childKey: props.data.body.childKey,
+          custody: custodyAddress,
+          delegate: props.data.body.delegate,
         };
         props.data.body.edgeHash = await hashFCObject(edge);
       }
 
-      /** Generate childSignature if missing */
-      if (!props.data.body.childSignature) {
-        props.data.body.childSignature = await signEd25519(props.data.body.edgeHash, childSigner.privateKey);
+      /** Generate delegateSignature if missing */
+      if (!props.data.body.delegateSignature) {
+        props.data.body.delegateSignature = await signEd25519(props.data.body.edgeHash, delegateSigner.privateKey);
       }
 
       return (await addEnvelopeToMessage(props, { ...transientParams, signer })) as SignerAdd;
@@ -265,13 +237,12 @@ export const Factories = {
     return {
       data: {
         body: {
-          childKey: '',
+          delegate: '',
           edgeHash: '',
-          childSignature: '',
-          childSignatureType: SignatureAlgorithm.Ed25519,
+          delegateSignature: '',
+          delegateSignatureType: SignatureAlgorithm.Ed25519,
           schema: 'farcaster.xyz/schemas/v1/signer-add',
         },
-        rootBlock: Faker.datatype.number(10_000),
         signedAt: Faker.time.recent(),
         username: Faker.name.firstName().toLowerCase(),
       },
@@ -293,10 +264,9 @@ export const Factories = {
       return {
         data: {
           body: {
-            childKey: '',
+            delegate: '',
             schema: 'farcaster.xyz/schemas/v1/signer-remove',
           },
-          rootBlock: Faker.datatype.number(10_000),
           signedAt: Faker.time.recent(),
           username: Faker.name.firstName().toLowerCase(),
         },
@@ -342,7 +312,6 @@ export const Factories = {
             externalSignatureType: 'eip-191-0x45',
             schema: 'farcaster.xyz/schemas/v1/verification-add' as const,
           },
-          rootBlock: Faker.datatype.number(10_000),
           signedAt: Faker.time.recent(),
           username: Faker.name.firstName().toLowerCase(),
         },
@@ -380,7 +349,6 @@ export const Factories = {
             claimHash: '',
             schema: 'farcaster.xyz/schemas/v1/verification-remove' as const,
           },
-          rootBlock: Faker.datatype.number(10_000),
           signedAt: Faker.time.recent(),
           username: Faker.name.firstName().toLowerCase(),
         },

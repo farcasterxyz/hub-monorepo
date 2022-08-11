@@ -108,13 +108,13 @@ class Client {
     return message as FC.VerificationRemove;
   }
 
-  async makeSignerAdd(childKey: string, edgeHash: string, childSignature: string): Promise<FC.SignerAdd> {
+  async makeSignerAdd(delegate: string, edgeHash: string, delegateSignature: string): Promise<FC.SignerAdd> {
     const message = await this.makeMessage({
       body: {
-        childKey,
+        delegate,
         edgeHash,
-        childSignature,
-        childSignatureType: FC.SignatureAlgorithm.Ed25519,
+        delegateSignature,
+        delegateSignatureType: FC.SignatureAlgorithm.Ed25519,
         schema: 'farcaster.xyz/schemas/v1/signer-add',
       },
       signedAt: Date.now(),
@@ -123,18 +123,18 @@ class Client {
     return message as FC.SignerAdd;
   }
 
-  async makeSignerEdgeHash(parentKey: string, childKey: string): Promise<string> {
+  async makeSignerEdgeHash(custody: string, delegate: string): Promise<string> {
     const signerEdge: FC.SignerEdge = {
-      childKey,
-      parentKey,
+      custody,
+      delegate,
     };
     return await hashFCObject(signerEdge);
   }
 
-  async makeSignerRemove(childKey: string): Promise<FC.SignerRemove> {
+  async makeSignerRemove(delegate: string): Promise<FC.SignerRemove> {
     const message = await this.makeMessage({
       body: {
-        childKey,
+        delegate,
         schema: 'farcaster.xyz/schemas/v1/signer-remove',
       },
       signedAt: Date.now(),

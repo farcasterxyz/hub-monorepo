@@ -41,24 +41,6 @@ export type Body =
   | SignerRemoveBody
   | CustodyRemoveAllBody;
 
-// // ===========================
-// //  Root Types
-// // ===========================
-
-// /** A Root is the first message a user sends, which must point to a unique, valid Ethereum block for ordering purposes. */
-// export type Root = Message<RootBody>;
-
-// /**
-//  * Body of a Root Message
-//  *
-//  * @blockHash - the hash of the ETH block from message.rootBlock
-//  * @schema - the schema of the message
-//  */
-// export type RootBody = {
-//   blockHash: string;
-//   schema: 'farcaster.xyz/schemas/v1/root';
-// };
-
 // ===========================
 //  Cast Types
 // ===========================
@@ -220,47 +202,47 @@ export type SignerMessage = SignerAdd | SignerRemove;
 export type SignerAdd = Message<SignerAddBody>;
 
 /**
- * A SignerAddBody represents a bi-directional proof between a child signer and parent signer
+ * A SignerAddBody represents a bi-directional proof between a custody address and a delegate signer
  *
- * @childKey - the child public key
+ * @delegate - the delegate public key
  * @edgeHash - the hash of the SignerEdge containing both public keys
- * @childSignature - the signature of the edgeHash, signed by childKey
- * @childSignatureType - type of child signature from set of supported types
+ * @delegateSignature - the signature of the edgeHash, signed by delegate
+ * @delegateSignatureType - type of delegate signature from set of supported types
  * @schema -
  */
 export type SignerAddBody = {
-  childKey: string;
+  delegate: string;
   edgeHash: string;
-  childSignature: string;
-  childSignatureType: SignatureAlgorithm.Ed25519;
+  delegateSignature: string;
+  delegateSignatureType: SignatureAlgorithm.Ed25519;
   schema: 'farcaster.xyz/schemas/v1/signer-add';
 };
 
 /**
  * A SignerAddFactoryTransientParams is passed to the SignerAdd factory
  *
- * @childSigner - the Ed25519 signer for signing the edgeHash
+ * @delegateSigner - the Ed25519 signer for signing the edgeHash
  */
 export type SignerAddFactoryTransientParams = MessageFactoryTransientParams & {
-  childSigner?: Ed25519Signer;
+  delegateSigner?: Ed25519Signer;
 };
 
 /**
- * A SignerEdge is an object that contains both the child public key and parent public key
+ * A SignerEdge is an object that contains both the custody address and the delegate signer
  */
 export type SignerEdge = {
-  childKey: string;
-  parentKey: string;
+  custody: string;
+  delegate: string;
 };
 
 /** SignerRemove message */
 export type SignerRemove = Message<SignerRemoveBody>;
 
 /**
- * A SignerRemoveBody represents the removal of a signer
+ * A SignerRemoveBody represents the removal of a delegate signer
  */
 export type SignerRemoveBody = {
-  childKey: string;
+  delegate: string;
   schema: 'farcaster.xyz/schemas/v1/signer-remove';
 };
 
@@ -275,11 +257,12 @@ export type CustodyRemoveAllBody = {
 };
 
 /**
- * A CustodyAddEvent represents an event from the ID contract
+ * A CustodyAddEvent represents a Transfer or Register event from the ID contract
  */
 export type CustodyAddEvent = {
   custodyAddress: string;
   blockNumber: number;
+  // TODO: expand once we decide how to represent on-chain events
 };
 
 // ===========================

@@ -29,7 +29,7 @@ describe('mergeVerification', () => {
     transientParams = { transient: { signer: aliceSigner } };
     aliceSignerAdd = await Factories.SignerAdd.create(
       { data: { username: 'alice' } },
-      { transient: { signer: aliceCustody, childSigner: aliceSigner } }
+      { transient: { signer: aliceCustody, delegateSigner: aliceSigner } }
     );
   });
 

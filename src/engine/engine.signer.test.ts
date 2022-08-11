@@ -41,10 +41,10 @@ describe('mergeSignerMessage', () => {
     aliceDelegateSigner = await generateEd25519Signer();
     aliceSignerAddDelegate = await Factories.SignerAdd.create(
       { data: { username: 'alice' } },
-      { transient: { signer: aliceCustodySigner, childSigner: aliceDelegateSigner } }
+      { transient: { signer: aliceCustodySigner, delegateSigner: aliceDelegateSigner } }
     );
     aliceSignerRemoveDelegate = await Factories.SignerRemove.create(
-      { data: { username: 'alice', body: { childKey: aliceDelegateSigner.signerKey } } },
+      { data: { username: 'alice', body: { delegate: aliceDelegateSigner.signerKey } } },
       { transient: { signer: aliceCustodySigner } }
     );
   });
@@ -84,27 +84,27 @@ describe('mergeSignerMessage', () => {
       expect(aliceAllSigners()).toEqual(new Set([aliceCustodySigner.signerKey, aliceDelegateSigner.signerKey]));
     });
 
-    test('fails with malformed childSignature', async () => {
+    test('fails with malformed delegateSignature', async () => {
       const badSignerAdd = await Factories.SignerAdd.create(
-        { data: { username: 'alice', body: { childSignature: 'foo' } } },
+        { data: { username: 'alice', body: { delegateSignature: 'foo' } } },
         { transient: { signer: aliceCustodySigner } }
       );
       const res = await engine.mergeSignerMessage(badSignerAdd);
       expect(res.isOk()).toBe(false);
-      expect(res._unsafeUnwrapErr()).toBe('validateSignerAdd: invalid childSignature');
+      expect(res._unsafeUnwrapErr()).toBe('validateSignerAdd: invalid delegateSignature');
       expect(aliceAllSigners()).toEqual(new Set([aliceCustodySigner.signerKey]));
     });
 
-    test('fails when childSignature and childKey do not match', async () => {
-      const childKeyPair = await generateEd25519KeyPair();
-      const childPubKey = await convertToHex(childKeyPair.publicKey);
+    test('fails when delegateSignature and delegate do not match', async () => {
+      const delegateKeyPair = await generateEd25519KeyPair();
+      const delegatePubKey = await convertToHex(delegateKeyPair.publicKey);
       const badSignerAdd = await Factories.SignerAdd.create(
-        { data: { username: 'alice', body: { childKey: childPubKey } } },
+        { data: { username: 'alice', body: { delegate: delegatePubKey } } },
         { transient: { signer: aliceCustodySigner } }
       );
       const res = await engine.mergeSignerMessage(badSignerAdd);
       expect(res.isOk()).toBe(false);
-      expect(res._unsafeUnwrapErr()).toBe('validateSignerAdd: childSignature does not match childKey');
+      expect(res._unsafeUnwrapErr()).toBe('validateSignerAdd: delegateSignature does not match delegate');
       expect(aliceAllSigners()).toEqual(new Set([aliceCustodySigner.signerKey]));
     });
 
@@ -120,10 +120,10 @@ describe('mergeSignerMessage', () => {
       expect(aliceAllSigners()).toEqual(new Set([aliceCustodySigner.signerKey]));
     });
 
-    test('fails with invalid childSignatureType', async () => {
+    test('fails with invalid delegateSignatureType', async () => {
       const badSignerAdd = await Factories.SignerAdd.create(
         {
-          data: { username: 'alice', body: { childSignatureType: 'bar' as unknown as SignatureAlgorithm.Ed25519 } },
+          data: { username: 'alice', body: { delegateSignatureType: 'bar' as unknown as SignatureAlgorithm.Ed25519 } },
         },
         { transient: { signer: aliceCustodySigner } }
       );

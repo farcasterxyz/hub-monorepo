@@ -201,7 +201,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
    */
   private mergeSignerAdd(message: SignerAdd): Result<void, string> {
     const custodyAddress = sanitizeSigner(message.signer);
-    const signerKey = sanitizeSigner(message.data.body.childKey);
+    const signerKey = sanitizeSigner(message.data.body.delegate);
 
     // If custody address has been removed, no-op
     if (this._custodyRemoves.has(custodyAddress)) return ok(undefined);
@@ -272,7 +272,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
    */
   private mergeSignerRemove(message: SignerRemove): Result<void, string> {
     const custodyAddress = sanitizeSigner(message.signer);
-    const signerKey = sanitizeSigner(message.data.body.childKey);
+    const signerKey = sanitizeSigner(message.data.body.delegate);
 
     // If custody address has been removed, no-op
     if (this._custodyRemoves.has(custodyAddress)) return ok(undefined);

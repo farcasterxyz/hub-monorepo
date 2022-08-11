@@ -371,28 +371,29 @@ class Engine {
   }
 
   private async validateSignerAdd(message: SignerAdd): Promise<Result<void, string>> {
-    const { childSignatureType, childSignature, childKey, edgeHash } = message.data.body;
+    const { delegateSignatureType, delegateSignature, delegate, edgeHash } = message.data.body;
 
-    /** Validate childSignatureType */
-    if (childSignatureType !== SignatureAlgorithm.Ed25519) return err('validateSignerAdd: invalid childSignatureType');
+    /** Validate delegateSignatureType */
+    if (delegateSignatureType !== SignatureAlgorithm.Ed25519)
+      return err('validateSignerAdd: invalid delegateSignatureType');
 
     /** Validate edgeHash */
-    const signerEdge: SignerEdge = { childKey, parentKey: message.signer };
+    const signerEdge: SignerEdge = { delegate, custody: message.signer };
     const reconstructedEdgeHash = await hashFCObject(signerEdge);
     if (reconstructedEdgeHash !== edgeHash) return err('validateSignerAdd: invalid edgeHash');
 
-    /** Validate childSignature */
+    /** Validate delegateSignature */
     try {
-      const childSignatureIsValid = await ed.verify(
-        hexToBytes(childSignature),
+      const delegateSignatureIsValid = await ed.verify(
+        hexToBytes(delegateSignature),
         hexToBytes(edgeHash),
-        hexToBytes(childKey)
+        hexToBytes(delegate)
       );
-      if (!childSignatureIsValid) {
-        return err('validateSignerAdd: childSignature does not match childKey');
+      if (!delegateSignatureIsValid) {
+        return err('validateSignerAdd: delegateSignature does not match delegate');
       }
     } catch (e: any) {
-      return err('validateSignerAdd: invalid childSignature');
+      return err('validateSignerAdd: invalid delegateSignature');
     }
 
     return ok(undefined);

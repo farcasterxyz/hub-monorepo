@@ -45,9 +45,9 @@ export const isSignerAdd = (msg: FC.Message): msg is FC.SignerAdd => {
   return (
     body &&
     body.schema === 'farcaster.xyz/schemas/v1/signer-add' &&
-    typeof body.childKey === 'string' &&
-    body.childSignatureType === FC.SignatureAlgorithm.Ed25519 &&
-    typeof body.childSignature === 'string' &&
+    typeof body.delegate === 'string' &&
+    body.delegateSignatureType === FC.SignatureAlgorithm.Ed25519 &&
+    typeof body.delegateSignature === 'string' &&
     typeof body.edgeHash === 'string' &&
     body.edgeHash.length > 0
   );
@@ -55,7 +55,7 @@ export const isSignerAdd = (msg: FC.Message): msg is FC.SignerAdd => {
 
 export const isSignerRemove = (msg: FC.Message): msg is FC.SignerRemove => {
   const body = (msg as FC.SignerRemove).data?.body;
-  return body && body.schema === 'farcaster.xyz/schemas/v1/signer-remove' && typeof body.childKey === 'string';
+  return body && body.schema === 'farcaster.xyz/schemas/v1/signer-remove' && typeof body.delegate === 'string';
 };
 
 export const isCustodyRemoveAll = (msg: FC.Message): msg is FC.CustodyRemoveAll => {

@@ -53,27 +53,27 @@ beforeAll(async () => {
     { transient: { signer: custody3 } }
   );
   a = await generateEd25519Signer();
-  addA = await Factories.SignerAdd.create({}, { transient: { signer: custody1, childSigner: a } });
+  addA = await Factories.SignerAdd.create({}, { transient: { signer: custody1, delegateSigner: a } });
   remA = await Factories.SignerRemove.create(
-    { data: { body: { childKey: a.signerKey } } },
+    { data: { body: { delegate: a.signerKey } } },
     { transient: { signer: custody1 } }
   );
-  addA2 = await Factories.SignerAdd.create({}, { transient: { signer: custody2, childSigner: a } });
+  addA2 = await Factories.SignerAdd.create({}, { transient: { signer: custody2, delegateSigner: a } });
   remA2 = await Factories.SignerRemove.create(
-    { data: { body: { childKey: a.signerKey } } },
+    { data: { body: { delegate: a.signerKey } } },
     { transient: { signer: custody2 } }
   );
-  addA3 = await Factories.SignerAdd.create({}, { transient: { signer: custody3, childSigner: a } });
+  addA3 = await Factories.SignerAdd.create({}, { transient: { signer: custody3, delegateSigner: a } });
   b = await generateEd25519Signer();
-  addB = await Factories.SignerAdd.create({}, { transient: { signer: custody1, childSigner: b } });
+  addB = await Factories.SignerAdd.create({}, { transient: { signer: custody1, delegateSigner: b } });
   c = await generateEd25519Signer();
-  addCToA = await Factories.SignerAdd.create({}, { transient: { signer: a, childSigner: c } });
+  addCToA = await Factories.SignerAdd.create({}, { transient: { signer: a, delegateSigner: c } });
   remAFromA = await Factories.SignerRemove.create(
-    { data: { body: { childKey: a.signerKey } } },
+    { data: { body: { delegate: a.signerKey } } },
     { transient: { signer: a } }
   );
   remBFromA = await Factories.SignerRemove.create(
-    { data: { body: { childKey: b.signerKey } } },
+    { data: { body: { delegate: b.signerKey } } },
     { transient: { signer: a } }
   );
 });

@@ -37,12 +37,12 @@ describe('mergeCast', () => {
 
     addDelegateSigner = await Factories.SignerAdd.create(
       { data: { username: 'alice' } },
-      { transient: { signer: aliceCustodySigner, childSigner: aliceDelegateSigner } }
+      { transient: { signer: aliceCustodySigner, delegateSigner: aliceDelegateSigner } }
     );
 
     removeDelegateSigner = await Factories.SignerRemove.create(
       {
-        data: { username: 'alice', body: { childKey: aliceDelegateSigner.signerKey } },
+        data: { username: 'alice', body: { delegate: aliceDelegateSigner.signerKey } },
       },
       { transient: { signer: aliceCustodySigner } }
     );
