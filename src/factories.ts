@@ -26,15 +26,18 @@ import {
 } from '~/types';
 import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
+/**
+ * getMessageSigner gets or generates a signer based on a message and transient params object
+ */
 const getMessageSigner = async (
-  props: Message,
+  message: Message,
   transientParams: MessageFactoryTransientParams
 ): Promise<MessageSigner> => {
   /** Check if transientParams already has a signer */
   if (transientParams.signer) return transientParams.signer;
 
-  /** Check if props has signatureType set  */
-  if (props.signatureType === SignatureAlgorithm.EthereumPersonalSign) return await generateEthereumSigner();
+  /** Check if message has signatureType set  */
+  if (message.signatureType === SignatureAlgorithm.EthereumPersonalSign) return await generateEthereumSigner();
 
   /** Otherwise generate default signer */
   return await generateEd25519Signer();
@@ -45,19 +48,19 @@ const getMessageSigner = async (
  * object using the signer in transientParams if one is present
  */
 const addEnvelopeToMessage = async (
-  props: Message,
+  message: Message,
   transientParams: MessageFactoryTransientParams
 ): Promise<Message> => {
-  const signer = await getMessageSigner(props, transientParams);
-  props.hash = await hashMessage(props);
-  props.signer = signer.signerKey;
+  const signer = await getMessageSigner(message, transientParams);
+  message.hash = await hashMessage(message);
+  message.signer = signer.signerKey;
   if (signer.type === SignatureAlgorithm.EthereumPersonalSign) {
-    props.signature = await signer.wallet.signMessage(props.hash);
+    message.signature = await signer.wallet.signMessage(message.hash);
   } else if (signer.type === SignatureAlgorithm.Ed25519) {
-    props.signature = await signEd25519(props.hash, signer.privateKey);
+    message.signature = await signEd25519(message.hash, signer.privateKey);
   }
-  props.signatureType = signer.type;
-  return props;
+  message.signatureType = signer.type;
+  return message;
 };
 
 /**
@@ -66,8 +69,8 @@ const addEnvelopeToMessage = async (
 export const Factories = {
   /** Generate a valid Cast with randomized properties */
   Cast: Factory.define<CastShort, MessageFactoryTransientParams, CastShort>(({ onCreate, transientParams }) => {
-    onCreate(async (castProps) => {
-      return (await addEnvelopeToMessage(castProps, transientParams)) as CastShort;
+    onCreate(async (props) => {
+      return (await addEnvelopeToMessage(props, transientParams)) as CastShort;
     });
 
     const embed = { items: [] };
@@ -93,8 +96,8 @@ export const Factories = {
 
   /** Generate a valid CastRemove with randomized properties */
   CastRemove: Factory.define<CastRemove, MessageFactoryTransientParams, CastRemove>(({ onCreate, transientParams }) => {
-    onCreate(async (castProps) => {
-      return (await addEnvelopeToMessage(castProps, transientParams)) as CastRemove;
+    onCreate(async (props) => {
+      return (await addEnvelopeToMessage(props, transientParams)) as CastRemove;
     });
 
     return {
@@ -116,8 +119,8 @@ export const Factories = {
 
   /** Generate a valid Cast with randomized properties */
   CastRecast: Factory.define<CastRecast, MessageFactoryTransientParams, CastRecast>(({ onCreate, transientParams }) => {
-    onCreate(async (castProps) => {
-      return (await addEnvelopeToMessage(castProps, transientParams)) as CastRecast;
+    onCreate(async (props) => {
+      return (await addEnvelopeToMessage(props, transientParams)) as CastRecast;
     });
 
     return {
@@ -139,8 +142,8 @@ export const Factories = {
 
   /** Generate a valid Reaction with randomized properties */
   Reaction: Factory.define<Reaction, MessageFactoryTransientParams, Reaction>(({ onCreate, transientParams }) => {
-    onCreate(async (castProps) => {
-      return (await addEnvelopeToMessage(castProps, transientParams)) as Reaction;
+    onCreate(async (props) => {
+      return (await addEnvelopeToMessage(props, transientParams)) as Reaction;
     });
 
     return {
@@ -183,8 +186,8 @@ export const Factories = {
   /** Generate a valid CustodyRemoveAll with randomized properties */
   CustodyRemoveAll: Factory.define<CustodyRemoveAll, MessageFactoryTransientParams, CustodyRemoveAll>(
     ({ onCreate, transientParams }) => {
-      onCreate(async (castProps) => {
-        return (await addEnvelopeToMessage(castProps, transientParams)) as CustodyRemoveAll;
+      onCreate(async (props) => {
+        return (await addEnvelopeToMessage(props, transientParams)) as CustodyRemoveAll;
       });
 
       return {
