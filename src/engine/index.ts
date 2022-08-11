@@ -185,7 +185,7 @@ class Engine {
    * Signer Methods
    */
 
-  addCustody(username: string, addEvent: CustodyAddEvent): Result<void, string> {
+  mergeCustodyEvent(username: string, custodyEvent: CustodyAddEvent): Result<void, string> {
     let signerSet = this._signers.get(username);
     if (!signerSet) {
       signerSet = new SignerSet();
@@ -195,11 +195,11 @@ class Engine {
 
       this._signers.set(username, signerSet);
     }
-    return signerSet.addCustody(addEvent);
+    return signerSet.mergeCustodyEvent(custodyEvent);
   }
 
   /** Merge signer message into the set */
-  async mergeSignerMessage(message: SignerMessage | CustodyRemoveAll): Promise<Result<void, string>> {
+  async mergeSignerMessage(message: SignerMessage): Promise<Result<void, string>> {
     const username = message.data.username;
     const signerSet = this._signers.get(username);
     if (!signerSet) return err('mergeSignerMessage: unknown user');

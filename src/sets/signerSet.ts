@@ -90,7 +90,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
   }
 
   /**
-   * addCustody adds a custody address to custodyAdds set. The method follows this high-level logic:
+   * mergeCustodyEvent adds a custody address to custodyAdds set. The method follows this high-level logic:
    * - If the new address has never been seen before, add it
    * - If the new address is already in custodyAdds, keep the entry with a higher block number
    * - If the new address is in custodyRemoves, find the block number of the address that removed it
@@ -98,7 +98,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
    *
    * @param event - event from Farcaster ID Registry
    */
-  addCustody(event: CustodyAddEvent): Result<void, string> {
+  mergeCustodyEvent(event: CustodyAddEvent): Result<void, string> {
     const sanitizedAddress = sanitizeSigner(event.custodyAddress);
 
     // If custody exists in custodyAdds

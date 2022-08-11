@@ -35,7 +35,7 @@ describe('mergeVerification', () => {
 
   beforeEach(() => {
     engine._reset();
-    engine.addCustody('alice', aliceCustodyAdd);
+    engine.mergeCustodyEvent('alice', aliceCustodyAdd);
     engine.mergeSignerMessage(aliceSignerAdd);
   });
 

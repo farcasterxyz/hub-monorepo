@@ -89,7 +89,7 @@ beforeEach(() => {
 
 describe('addCustody', () => {
   test('succeeds with new custody address', () => {
-    expect(set.addCustody(addCustody1).isOk()).toBe(true);
+    expect(set.mergeCustodyEvent(addCustody1).isOk()).toBe(true);
     expect(custodyAdds()).toEqual(new Map([[custody1.signerKey, addCustody1]]));
     expect(custodyRems()).toEqual(new Map());
     expect(signerAdds()).toEqual(new Map());
@@ -98,8 +98,8 @@ describe('addCustody', () => {
   });
 
   test('succeeds with multiple new custody addresses', () => {
-    expect(set.addCustody(addCustody1).isOk()).toBe(true);
-    expect(set.addCustody(addCustody2).isOk()).toBe(true);
+    expect(set.mergeCustodyEvent(addCustody1).isOk()).toBe(true);
+    expect(set.mergeCustodyEvent(addCustody2).isOk()).toBe(true);
     expect(custodyAdds()).toEqual(
       new Map([
         [custody1.signerKey, addCustody1],
@@ -117,8 +117,8 @@ describe('addCustody', () => {
 
   test('succeeds with multiple new custody addresses in the same block', () => {
     const addSameBlock: CustodyAddEvent = { ...addCustody2, blockNumber: addCustody1.blockNumber };
-    expect(set.addCustody(addCustody1).isOk()).toBe(true);
-    expect(set.addCustody(addSameBlock).isOk()).toBe(true);
+    expect(set.mergeCustodyEvent(addCustody1).isOk()).toBe(true);
+    expect(set.mergeCustodyEvent(addSameBlock).isOk()).toBe(true);
     expect(custodyAdds()).toEqual(
       new Map([
         [custody1.signerKey, addCustody1],
@@ -135,8 +135,8 @@ describe('addCustody', () => {
   });
 
   test('succeeds (no-ops) with a duplicate custody address', () => {
-    expect(set.addCustody(addCustody1).isOk()).toBe(true);
-    expect(set.addCustody(addCustody1).isOk()).toBe(true);
+    expect(set.mergeCustodyEvent(addCustody1).isOk()).toBe(true);
+    expect(set.mergeCustodyEvent(addCustody1).isOk()).toBe(true);
     expect(custodyAdds()).toEqual(new Map([[custody1.signerKey, addCustody1]]));
     expect(custodyRems()).toEqual(new Map());
     expect(signerAdds()).toEqual(new Map());
@@ -145,10 +145,10 @@ describe('addCustody', () => {
   });
 
   test('succeeds (no-ops) when custody address has been removed', () => {
-    expect(set.addCustody(addCustody1).isOk()).toBe(true);
-    expect(set.addCustody(addCustody2).isOk()).toBe(true);
+    expect(set.mergeCustodyEvent(addCustody1).isOk()).toBe(true);
+    expect(set.mergeCustodyEvent(addCustody2).isOk()).toBe(true);
     expect(set.merge(removeAllCustody2).isOk()).toBe(true);
-    expect(set.addCustody(addCustody1).isOk()).toBe(true);
+    expect(set.mergeCustodyEvent(addCustody1).isOk()).toBe(true);
     expect(custodyAdds()).toEqual(new Map([[custody2.signerKey, addCustody2]]));
     expect(custodyRems()).toEqual(new Map([[custody1.signerKey, removeAllCustody2]]));
     expect(signerAdds()).toEqual(new Map());
@@ -174,8 +174,8 @@ describe('merge', () => {
   });
 
   test('succeeds (no-ops) when custody address has been removed', () => {
-    expect(set.addCustody(addCustody1).isOk()).toBe(true);
-    expect(set.addCustody(addCustody2).isOk()).toBe(true);
+    expect(set.mergeCustodyEvent(addCustody1).isOk()).toBe(true);
+    expect(set.mergeCustodyEvent(addCustody2).isOk()).toBe(true);
     expect(set.merge(removeAllCustody2).isOk()).toBe(true);
     expect(set.merge(addA).isOk()).toBe(true);
     expect(custodyAdds()).toEqual(new Map([[custody2.signerKey, addCustody2]]));
@@ -191,7 +191,7 @@ describe('merge', () => {
 
   describe('with custody address', () => {
     beforeEach(() => {
-      set.addCustody(addCustody1);
+      set.mergeCustodyEvent(addCustody1);
       expect(custodyAdds()).toEqual(new Map([[custody1.signerKey, addCustody1]]));
     });
 
@@ -206,7 +206,7 @@ describe('merge', () => {
       });
 
       test('succeeds and removes previous custody addresses', () => {
-        expect(set.addCustody(addCustody2).isOk()).toBe(true);
+        expect(set.mergeCustodyEvent(addCustody2).isOk()).toBe(true);
         expect(set.merge(removeAllCustody2).isOk()).toBe(true);
         expect(custodyAdds()).toEqual(new Map([[custody2.signerKey, addCustody2]]));
         expect(custodyRems()).toEqual(new Map([[custody1.signerKey, removeAllCustody2]]));
@@ -220,7 +220,7 @@ describe('merge', () => {
       });
 
       test('succeeds and does not remove more recent custody addresses', () => {
-        expect(set.addCustody(addCustody2).isOk()).toBe(true);
+        expect(set.mergeCustodyEvent(addCustody2).isOk()).toBe(true);
         expect(set.merge(removeAllCustody1).isOk()).toBe(true);
         expect(custodyAdds()).toEqual(
           new Map([
@@ -250,7 +250,7 @@ describe('merge', () => {
 
       test('succeeds and removes signers added by removed custody address', () => {
         expect(set.merge(addA).isOk()).toBe(true);
-        expect(set.addCustody(addCustody2).isOk()).toBe(true);
+        expect(set.mergeCustodyEvent(addCustody2).isOk()).toBe(true);
         expect(set.merge(removeAllCustody2).isOk()).toBe(true);
         expect(custodyAdds()).toEqual(new Map([[custody2.signerKey, addCustody2]]));
         expect(custodyRems()).toEqual(new Map([[custody1.signerKey, removeAllCustody2]]));
@@ -268,7 +268,7 @@ describe('merge', () => {
       test('succeeds and keeps custody addresses from the same block', () => {
         const addSameBlock: CustodyAddEvent = { ...addCustody2, blockNumber: addCustody1.blockNumber };
         expect(set.merge(addA).isOk()).toBe(true);
-        expect(set.addCustody(addSameBlock).isOk()).toBe(true);
+        expect(set.mergeCustodyEvent(addSameBlock).isOk()).toBe(true);
         expect(set.merge(removeAllCustody2).isOk()).toBe(true);
         expect(custodyAdds()).toEqual(
           new Map([
@@ -330,7 +330,7 @@ describe('merge', () => {
 
       describe('when signer already exists from different custody address', () => {
         beforeEach(() => {
-          expect(set.addCustody(addCustody2).isOk()).toBe(true);
+          expect(set.mergeCustodyEvent(addCustody2).isOk()).toBe(true);
         });
 
         test('succeeds with later custody address', () => {
@@ -374,7 +374,7 @@ describe('merge', () => {
 
         describe('with same block number', () => {
           beforeEach(() => {
-            expect(set.addCustody(addCustody3).isOk()).toBe(true);
+            expect(set.mergeCustodyEvent(addCustody3).isOk()).toBe(true);
           });
 
           test('succeeds with higher custody address order', () => {
@@ -457,7 +457,7 @@ describe('merge', () => {
 
       describe('when signer has been removed', () => {
         beforeEach(() => {
-          expect(set.addCustody(addCustody2).isOk()).toBe(true);
+          expect(set.mergeCustodyEvent(addCustody2).isOk()).toBe(true);
         });
 
         test('succeeds with later custody address', () => {
@@ -502,7 +502,7 @@ describe('merge', () => {
 
       describe('when signer is added and removed by two custody addresses', () => {
         beforeEach(() => {
-          expect(set.addCustody(addCustody2).isOk()).toBe(true);
+          expect(set.mergeCustodyEvent(addCustody2).isOk()).toBe(true);
         });
 
         afterEach(() => {

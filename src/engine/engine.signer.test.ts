@@ -61,7 +61,7 @@ describe('mergeSignerMessage', () => {
 
   describe('with a custody address', () => {
     beforeEach(async () => {
-      engine.addCustody('alice', aliceCustodyAdd);
+      engine.mergeCustodyEvent('alice', aliceCustodyAdd);
     });
 
     test('fails with invalid message type', async () => {

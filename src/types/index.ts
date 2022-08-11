@@ -196,7 +196,7 @@ export type VerificationRemoveFactoryTransientParams = MessageFactoryTransientPa
 // Signer Types
 // ===========================
 
-export type SignerMessage = SignerAdd | SignerRemove;
+export type SignerMessage = SignerAdd | SignerRemove | CustodyRemoveAll;
 
 /** SignerAdd message */
 export type SignerAdd = Message<SignerAddBody>;

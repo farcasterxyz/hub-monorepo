@@ -39,7 +39,7 @@ describe('mergeReaction', () => {
 
   beforeEach(async () => {
     engine._reset();
-    engine.addCustody('alice', aliceCustodyAdd);
+    engine.mergeCustodyEvent('alice', aliceCustodyAdd);
     await engine.mergeSignerMessage(aliceSignerAdd);
   });
 

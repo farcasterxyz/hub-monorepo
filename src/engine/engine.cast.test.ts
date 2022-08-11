@@ -50,7 +50,7 @@ describe('mergeCast', () => {
 
   beforeEach(() => {
     engine._reset();
-    engine.addCustody('alice', aliceCustodyAdd);
+    engine.mergeCustodyEvent('alice', aliceCustodyAdd);
     engine.mergeSignerMessage(addDelegateSigner);
   });
 
@@ -74,7 +74,7 @@ describe('mergeCast', () => {
 
     describe('with custody address', () => {
       beforeEach(() => {
-        engine.addCustody('alice', aliceCustodyAdd);
+        engine.mergeCustodyEvent('alice', aliceCustodyAdd);
       });
 
       test('fails if signer is custody address', async () => {
