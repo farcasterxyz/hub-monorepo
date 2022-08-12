@@ -101,29 +101,27 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
   mergeCustodyEvent(event: CustodyAddEvent): Result<void, string> {
     const sanitizedAddress = sanitizeSigner(event.custodyAddress);
 
-    // If custody exists in custodyAdds
+    // Check custodyAdds for the new custody address
+    // If it is already added via an event in the same block or a later one, no-op
     const existingCustodyAdd = this._custodyAdds.get(sanitizedAddress);
-    if (existingCustodyAdd) {
-      // If existing block number wins (greater or equal), no-op
-      if (existingCustodyAdd.blockNumber >= event.blockNumber) return ok(undefined);
-    }
+    if (existingCustodyAdd && existingCustodyAdd.blockNumber >= event.blockNumber) return ok(undefined);
 
-    // If custody exists in custodyRemoves
+    // Check custodyRemoves for the new custody address
     const existingCustodyRemove = this._custodyRemoves.get(sanitizedAddress);
     if (existingCustodyRemove) {
+      // If it has been removed, check the removing address (custody address that signed the relevant CustodyRemoveAll message)
       const existingCustodyAddEvent = this._custodyAdds.get(sanitizeSigner(existingCustodyRemove.signer));
-
       if (existingCustodyAddEvent) {
-        // If existing block number wins (same or greater block), no-op
+        // If the removing address was added in the same block or a later one, no-op
         if (existingCustodyAddEvent.blockNumber >= event.blockNumber) return ok(undefined);
-
-        // If new block number wins, remove address from removes
+        // If the removing address was added in an earlier block, over-write the remove by dropping it
         if (existingCustodyAddEvent.blockNumber < event.blockNumber) {
           this._custodyRemoves.delete(sanitizedAddress);
         }
       }
     }
 
+    // Add the new custody address and emit an addCustody event
     this._custodyAdds.set(sanitizedAddress, event);
     this.emit('addCustody', sanitizedAddress);
     return ok(undefined);

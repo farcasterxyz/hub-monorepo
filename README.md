@@ -16,7 +16,3 @@ First, ensure that the following are installed globally on your machine:
 - [Yarn](https://classic.yarnpkg.com/lang/en/docs/install)
 
 Then, from the project root, run `yarn install` to install NPM dependencies.
-
-## Roadmap
-
-Roadmap is coming soon.

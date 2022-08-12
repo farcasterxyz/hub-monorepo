@@ -10,7 +10,6 @@ import {
   SignatureAlgorithm,
   SignerEdge,
   SignerMessage,
-  CustodyRemoveAll,
   CustodyAddEvent,
   HashAlgorithm,
 } from '~/types';

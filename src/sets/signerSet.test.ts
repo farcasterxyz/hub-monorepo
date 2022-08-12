@@ -159,6 +159,32 @@ describe('addCustody', () => {
       ['removeCustody', custody1.signerKey],
     ]);
   });
+
+  test('succeeds when custody address is re-added with higher block number', () => {
+    expect(set.mergeCustodyEvent(addCustody1).isOk()).toBe(true);
+    expect(set.mergeCustodyEvent(addCustody2).isOk()).toBe(true);
+    expect(set.merge(removeAllCustody2).isOk()).toBe(true);
+    const reAddCustody1: CustodyAddEvent = {
+      custodyAddress: custody1.signerKey,
+      blockNumber: addCustody2.blockNumber + 1,
+    };
+    expect(set.mergeCustodyEvent(reAddCustody1).isOk()).toBe(true);
+    expect(custodyAdds()).toEqual(
+      new Map([
+        [custody2.signerKey, addCustody2],
+        [custody1.signerKey, reAddCustody1],
+      ])
+    );
+    expect(custodyRems()).toEqual(new Map());
+    expect(signerAdds()).toEqual(new Map());
+    expect(signerRems()).toEqual(new Map());
+    expect(events).toEqual([
+      ['addCustody', custody1.signerKey],
+      ['addCustody', custody2.signerKey],
+      ['removeCustody', custody1.signerKey],
+      ['addCustody', custody1.signerKey],
+    ]);
+  });
 });
 
 describe('merge', () => {
