@@ -1,6 +1,6 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
-import { MessageSigner, Root, Verification, VerificationAddFactoryTransientParams } from '~/types';
+import { MessageSigner, Root, Verification, VerificationAddFactoryTransientParams, VerificationClaim } from '~/types';
 import Faker from 'faker';
 import { ethers } from 'ethers';
 import { hashFCObject, generateEd25519Signer } from '~/utils';
@@ -13,14 +13,28 @@ describe('mergeVerification', () => {
   let aliceSigner: MessageSigner;
   let aliceAddress: string;
   let aliceRoot: Root;
+  let aliceEthWallet: ethers.Wallet;
+  let aliceClaimHash: string;
+  let aliceExternalSignature: string;
   let transientParams: { transient: VerificationAddFactoryTransientParams };
 
   // Generate key pair for alice and root message
   beforeAll(async () => {
     aliceSigner = await generateEd25519Signer();
+    aliceEthWallet = ethers.Wallet.createRandom();
     aliceAddress = aliceSigner.signerKey;
-    transientParams = { transient: { signer: aliceSigner } };
+    transientParams = { transient: { signer: aliceSigner, ethWallet: aliceEthWallet } };
     aliceRoot = await Factories.Root.create({ data: { rootBlock: 100, username: 'alice' } }, transientParams);
+
+    // Generate a claim hash for alice
+    const verificationClaim: VerificationClaim = {
+      username: 'alice',
+      externalUri: aliceEthWallet.address,
+    };
+    aliceClaimHash = await hashFCObject(verificationClaim);
+
+    // Generate an external signature for alice
+    aliceExternalSignature = await aliceEthWallet.signMessage(aliceClaimHash);
   });
 
   // Every test should start with a valid signer and root for alice
@@ -55,6 +69,10 @@ describe('mergeVerification', () => {
           rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: aliceRoot.data.signedAt + 1,
+          body: {
+            claimHash: aliceClaimHash,
+            externalSignature: aliceExternalSignature,
+          },
         },
       },
       transientParams
@@ -71,6 +89,10 @@ describe('mergeVerification', () => {
           rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: aliceRoot.data.signedAt + 1,
+          body: {
+            claimHash: aliceClaimHash,
+            externalSignature: aliceExternalSignature,
+          },
         },
       },
       transientParams
@@ -88,7 +110,7 @@ describe('mergeVerification', () => {
           rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: aliceRoot.data.signedAt + 1,
-          body: { externalSignature: 'foo' },
+          body: { externalSignature: 'foo', claimHash: aliceClaimHash },
         },
       },
       transientParams
@@ -100,15 +122,16 @@ describe('mergeVerification', () => {
 
   test('fails with externalSignature from unknown address', async () => {
     const ethWalletAlice = ethers.Wallet.createRandom();
-    const ethWalletBob = ethers.Wallet.createRandom();
-    transientParams.transient.ethWallet = ethWalletBob;
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
           rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: aliceRoot.data.signedAt + 1,
-          body: { externalUri: ethWalletAlice.address },
+          body: {
+            externalUri: ethWalletAlice.address,
+            externalSignature: aliceExternalSignature,
+          },
         },
       },
       transientParams
@@ -125,7 +148,7 @@ describe('mergeVerification', () => {
           rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: aliceRoot.data.signedAt + 1,
-          body: { claimHash: 'bar' },
+          body: { claimHash: 'bar', externalSignature: aliceExternalSignature },
         },
       },
       transientParams
@@ -142,7 +165,11 @@ describe('mergeVerification', () => {
           rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: aliceRoot.data.signedAt + 1,
-          body: { externalSignatureType: 'bar' as unknown as 'eip-191-0x45' },
+          body: {
+            claimHash: aliceClaimHash,
+            externalSignature: aliceExternalSignature,
+            externalSignatureType: 'bar' as unknown as 'eip-191-0x45',
+          },
         },
       },
       transientParams
@@ -161,6 +188,10 @@ describe('mergeVerification', () => {
           rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: aliceRoot.data.signedAt + 1,
+          body: {
+            claimHash: aliceClaimHash,
+            externalSignature: aliceExternalSignature,
+          },
         },
       },
       transientParams
@@ -178,6 +209,10 @@ describe('mergeVerification', () => {
           rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: aliceRoot.data.signedAt + 1,
+          body: {
+            claimHash: aliceClaimHash,
+            externalSignature: aliceExternalSignature,
+          },
         },
       },
       transientParams
@@ -197,6 +232,10 @@ describe('mergeVerification', () => {
           rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: elevenMinutesAhead,
+          body: {
+            claimHash: aliceClaimHash,
+            externalSignature: aliceExternalSignature,
+          },
         },
       },
       transientParams
@@ -214,6 +253,10 @@ describe('mergeVerification', () => {
           rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: aliceRoot.data.signedAt + 1,
+          body: {
+            claimHash: aliceClaimHash,
+            externalSignature: aliceExternalSignature,
+          },
         },
       },
       transientParams
@@ -230,6 +273,10 @@ describe('mergeVerification', () => {
           rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: aliceRoot.data.signedAt + 1,
+          body: {
+            claimHash: aliceClaimHash,
+            externalSignature: aliceExternalSignature,
+          },
         },
       },
       transientParams
@@ -259,6 +306,10 @@ describe('mergeVerification', () => {
           rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: aliceRoot.data.signedAt + 1,
+          body: {
+            claimHash: aliceClaimHash,
+            externalSignature: aliceExternalSignature,
+          },
         },
       },
       transientParams
