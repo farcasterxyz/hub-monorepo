@@ -95,8 +95,6 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
    * - If the new address is already in custodyAdds, keep the entry with a higher block number
    * - If the new address is in custodyRemoves, find the block number of the address that removed it
    *   and move the address to custodyAdds if the new entry has a higher block number
-   *
-   * @param event - event from Farcaster ID Registry
    */
   mergeCustodyEvent(event: CustodyAddEvent): Result<void, string> {
     const sanitizedAddress = sanitizeSigner(event.custodyAddress);
@@ -132,30 +130,28 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
    */
 
   /**
-   * mergeCustodyRemoveAll moves all address in custodyAdds with a block number before the
+   * mergeCustodyRemoveAll moves all addresses in custodyAdds with a block number before the
    * signer of the CustodyRemoveAll message to custodyRemoves.
    *
    * Custody addresses that were added in the same block as the signer of the CustodyRemoveAll
    * message will not be removed.
-   *
-   * @param message - CustodyRemoveAll message
    */
   private mergeCustodyRemoveAll(message: CustodyRemoveAll): Result<void, string> {
     const sanitizedAddress = sanitizeSigner(message.signer);
 
-    // If custodyAddress exists in custodyRemoves, no-op
+    // If the signer (custody address) of the remove message has already been removed, it means
+    // a remove message from a later block has already been accepted and the new one is redundant
     if (this._custodyRemoves.has(sanitizedAddress)) return ok(undefined);
 
-    // If custodyAddress does not exist in custodyAdds, fail
+    // If the signer (custody address) of the remove message has not been added, fail, because
+    // we need the add event to tell us what block number we should remove addresses up to
     const custodyAddEvent = this._custodyAdds.get(sanitizedAddress);
     if (!custodyAddEvent) return err('SignerSet.mergeCustodyRemoveAll: custodyAddress does not exist');
 
-    // For each custody address, remove if block number is before signer
+    // For each custody address, compare the block it was added with the block of the remove message signer
+    // If it was added in an earlier block, drop or over-write all messages signed by that address and remove it
     for (const [address, addEvent] of this._custodyAdds) {
       if (addEvent.blockNumber < custodyAddEvent.blockNumber) {
-        // Before we remove the custody address, we should revoke the signer by dropping all messages signed
-        // by that custody address from the set
-
         // Drop all SignerAdd messages signed by the custody address being removed
         for (const [signerKey, signerAdd] of this._signerAdds) {
           if (sanitizeSigner(signerAdd.signer) === address) {
@@ -171,14 +167,17 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
           }
         }
 
-        // Drop all CustodyRemoveAll messages signed by the custody address being removed
+        // Over-write all custody remove messages signed by the custody address being removed
         for (const [custodyAddress, custodyRemoveAll] of this._custodyRemoves) {
           if (sanitizeSigner(custodyRemoveAll.signer) === address) {
-            this._custodyRemoves.delete(custodyAddress);
+            this._custodyRemoves.set(custodyAddress, message);
+            // Re-emit removeCustody event for this address so that subscribers know the custody address
+            // responsible for the removal has changed
+            this.emit('removeCustody', custodyAddress);
           }
         }
 
-        // Once the messages signed by the custody address have been dropped, remove the custody address
+        // Once the messages signed by the custody address have been dropped or over-written, remove the custody address
         this._custodyAdds.delete(address);
         this._custodyRemoves.set(address, message);
         this.emit('removeCustody', address);
@@ -194,17 +193,15 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
    * - If the new signer is already in signerAdds, keep the entry that was signed by a custody address with a higher block number
    * - If the new signer is in signerRemoves, find the block number of the address that removed it and move the address
    *   to signerAdds if the new entry was signed by an address with a higher block number
-   *
-   * @param message - a SignerAdd message
    */
   private mergeSignerAdd(message: SignerAdd): Result<void, string> {
     const custodyAddress = sanitizeSigner(message.signer);
     const signerKey = sanitizeSigner(message.data.body.delegate);
 
-    // If custody address has been removed, no-op
+    // If add message signer (custody address) has been removed, no-op
     if (this._custodyRemoves.has(custodyAddress)) return ok(undefined);
 
-    // If custody address is missing, fail
+    // If add message signer (custody address) has not been added, fail
     const custodyAddEvent = this._custodyAdds.get(custodyAddress);
     if (!custodyAddEvent) return err('SignerSet.mergeSignerAdd: custodyAddress does not exist');
 
@@ -265,8 +262,6 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
    * - If the new signer is already in signerRemoves, keep the entry that was signed by a custody address with a higher block number
    * - If the new signer is in signerAdds, find the block number of the address that added it and move the address to
    *   signerRemoves if the new entry was signed by an address with a higher block number
-   *
-   * @param message - a SignerRemove message
    */
   private mergeSignerRemove(message: SignerRemove): Result<void, string> {
     const custodyAddress = sanitizeSigner(message.signer);

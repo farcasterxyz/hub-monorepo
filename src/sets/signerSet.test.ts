@@ -23,6 +23,7 @@ let addCustody2: CustodyAddEvent;
 let removeAllCustody2: CustodyRemoveAll;
 let custody3: EthereumSigner;
 let addCustody3: CustodyAddEvent;
+let removeAllCustody3: CustodyRemoveAll;
 let a: Ed25519Signer;
 let addA: SignerAdd;
 let remA: SignerRemove;
@@ -52,6 +53,7 @@ beforeAll(async () => {
     { blockNumber: addCustody2.blockNumber },
     { transient: { signer: custody3 } }
   );
+  removeAllCustody3 = await Factories.CustodyRemoveAll.create({}, { transient: { signer: custody3 } });
   a = await generateEd25519Signer();
   addA = await Factories.SignerAdd.create({}, { transient: { signer: custody1, delegateSigner: a } });
   remA = await Factories.SignerRemove.create(
@@ -274,7 +276,7 @@ describe('merge', () => {
         expect(events).toEqual([['addCustody', custody1.signerKey]]);
       });
 
-      test('succeeds and removes signers added by removed custody address', () => {
+      test('succeeds and drops signers', () => {
         expect(set.merge(addA).isOk()).toBe(true);
         expect(set.mergeCustodyEvent(addCustody2).isOk()).toBe(true);
         expect(set.merge(removeAllCustody2).isOk()).toBe(true);
@@ -288,6 +290,52 @@ describe('merge', () => {
           ['addCustody', custody2.signerKey],
           ['removeSigner', a.signerKey],
           ['removeCustody', custody1.signerKey],
+        ]);
+      });
+
+      test('succeeds and drops removed signers', () => {
+        expect(set.merge(addA).isOk()).toBe(true);
+        expect(set.merge(remA).isOk()).toBe(true);
+        expect(set.mergeCustodyEvent(addCustody2).isOk()).toBe(true);
+        expect(set.merge(removeAllCustody2).isOk()).toBe(true);
+        expect(custodyAdds()).toEqual(new Map([[custody2.signerKey, addCustody2]]));
+        expect(custodyRems()).toEqual(new Map([[custody1.signerKey, removeAllCustody2]]));
+        expect(signerAdds()).toEqual(new Map());
+        expect(signerRems()).toEqual(new Map());
+        expect(events).toEqual([
+          ['addCustody', custody1.signerKey],
+          ['addSigner', a.signerKey],
+          ['removeSigner', a.signerKey],
+          ['addCustody', custody2.signerKey],
+          ['removeCustody', custody1.signerKey],
+        ]);
+      });
+
+      test('succeeds and over-writes custody remove messages', () => {
+        expect(set.mergeCustodyEvent(addCustody2).isOk()).toBe(true);
+        expect(set.merge(removeAllCustody2).isOk()).toBe(true);
+        const addCustody3Later: CustodyAddEvent = {
+          custodyAddress: custody3.signerKey,
+          blockNumber: addCustody2.blockNumber + 1,
+        };
+        expect(set.mergeCustodyEvent(addCustody3Later).isOk()).toBe(true);
+        expect(set.merge(removeAllCustody3).isOk()).toBe(true);
+        expect(custodyAdds()).toEqual(new Map([[custody3.signerKey, addCustody3Later]]));
+        expect(custodyRems()).toEqual(
+          new Map([
+            [custody1.signerKey, removeAllCustody3],
+            [custody2.signerKey, removeAllCustody3],
+          ])
+        );
+        expect(signerAdds()).toEqual(new Map());
+        expect(signerRems()).toEqual(new Map());
+        expect(events).toEqual([
+          ['addCustody', custody1.signerKey],
+          ['addCustody', custody2.signerKey],
+          ['removeCustody', custody1.signerKey],
+          ['addCustody', custody3.signerKey],
+          ['removeCustody', custody1.signerKey],
+          ['removeCustody', custody2.signerKey],
         ]);
       });
 
