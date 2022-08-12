@@ -116,6 +116,8 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
         if (existingCustodyAddEvent.blockNumber < event.blockNumber) {
           this._custodyRemoves.delete(sanitizedAddress);
         }
+      } else {
+        return err('SignerSet.mergeCustodyEvent: unexpected state');
       }
     }
 
@@ -232,6 +234,8 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
             return ok(undefined);
           }
         }
+      } else {
+        return err('SignerSet.mergeSignerAdd: unexpected state');
       }
     }
 
@@ -248,6 +252,8 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
         if (existingCustodyAddEvent.blockNumber < custodyAddEvent.blockNumber) {
           this._signerRemoves.delete(signerKey);
         }
+      } else {
+        return err('SignerSet.mergeSignerAdd: unexpected state');
       }
     }
 
@@ -301,6 +307,8 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
             return ok(undefined);
           }
         }
+      } else {
+        return err('SignerSet.mergeSignerRemove: unexpected state');
       }
     }
 
@@ -317,6 +325,8 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
         if (existingCustodyAddEvent.blockNumber <= custodyAddEvent.blockNumber) {
           this._signerAdds.delete(signerKey);
         }
+      } else {
+        return err('SignerSet.mergeSignerRemove: unexpected state');
       }
     }
 
