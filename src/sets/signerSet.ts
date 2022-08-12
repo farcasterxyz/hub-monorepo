@@ -293,7 +293,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
             return ok(undefined);
           }
 
-          // If the custody addreses are different and existing custody address has a higher order, no-op
+          // If the custody addresses are different and existing custody address has a higher order, no-op
           if (
             existingCustodyAddEvent.custodyAddress !== custodyAddEvent.custodyAddress &&
             hashCompare(existingCustodyAddEvent.custodyAddress, custodyAddress) >= 0

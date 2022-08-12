@@ -89,7 +89,42 @@ beforeEach(() => {
   set._reset();
 });
 
-describe('addCustody', () => {
+describe('lookup', () => {
+  test('fails when custody address does not exist', () => {
+    expect(set.lookup(custody1.signerKey)).toBeFalsy();
+  });
+
+  test('returns CustodyAddEvent when custody address has been added', () => {
+    set.mergeCustodyEvent(addCustody1);
+    expect(set.lookup(custody1.signerKey)).toEqual(addCustody1);
+  });
+
+  test('fails when custody address has been removed', () => {
+    set.mergeCustodyEvent(addCustody1);
+    set.mergeCustodyEvent(addCustody2);
+    set.merge(removeAllCustody2);
+    expect(set.lookup(custody1.signerKey)).toBeFalsy();
+  });
+
+  test('fails when delegate signer does not exist', () => {
+    expect(set.lookup(a.signerKey)).toBeFalsy();
+  });
+
+  test('returns SignerAdd when delegate signer has been added', () => {
+    set.mergeCustodyEvent(addCustody1);
+    set.merge(addA);
+    expect(set.lookup(a.signerKey)).toEqual(addA);
+  });
+
+  test('fails when delegate signer has been removed', () => {
+    set.mergeCustodyEvent(addCustody1);
+    set.merge(addA);
+    set.merge(remA);
+    expect(set.lookup(a.signerKey)).toBeFalsy();
+  });
+});
+
+describe('mergeCustodyEvent', () => {
   test('succeeds with new custody address', () => {
     expect(set.mergeCustodyEvent(addCustody1).isOk()).toBe(true);
     expect(custodyAdds()).toEqual(new Map([[custody1.signerKey, addCustody1]]));
@@ -190,6 +225,13 @@ describe('addCustody', () => {
 });
 
 describe('merge', () => {
+  test('fails with invalid message type', async () => {
+    const invalidMessage = (await Factories.Cast.create()) as any as SignerAdd;
+    const res = set.merge(invalidMessage);
+    expect(res.isOk()).toBe(false);
+    expect(res._unsafeUnwrapErr()).toBe('SignerSet.merge: invalid message format');
+  });
+
   test('fails without custody address', () => {
     const res = set.merge(addA);
     expect(res.isOk()).toBe(false);
@@ -707,6 +749,59 @@ describe('merge', () => {
           ['addSigner', a.signerKey],
           ['addSigner', b.signerKey],
         ]);
+      });
+
+      describe('when signer is removed by different custody addresses from the same block', () => {
+        let custody4Address: string;
+        let addCustody4: CustodyAddEvent;
+        let remA4: SignerRemove;
+
+        beforeAll(() => {
+          custody4Address = custody1.signerKey + 'a';
+          addCustody4 = { custodyAddress: custody4Address, blockNumber: addCustody1.blockNumber };
+          remA4 = { ...remA, signer: custody4Address };
+        });
+
+        beforeEach(() => {
+          expect(set.mergeCustodyEvent(addCustody4));
+        });
+
+        afterAll(() => {
+          expect(custodyAdds()).toEqual(
+            new Map([
+              [custody1.signerKey, addCustody1],
+              [custody4Address, addCustody4],
+            ])
+          );
+          expect(custodyRems()).toEqual(new Map());
+          expect(signerAdds()).toEqual(new Map());
+          expect(signerRems()).toEqual(new Map([[a.signerKey, remA4]]));
+        });
+
+        test('succeeds with higher custody address order', () => {
+          expect(set.merge(addA).isOk()).toBe(true);
+          expect(set.merge(remA).isOk()).toBe(true);
+          expect(set.merge(remA4).isOk()).toBe(true);
+          expect(events).toEqual([
+            ['addCustody', custody1.signerKey],
+            ['addCustody', custody4Address],
+            ['addSigner', a.signerKey],
+            ['removeSigner', a.signerKey],
+            ['removeSigner', a.signerKey],
+          ]);
+        });
+
+        test('succeeds (no-ops) with lower custody address order', () => {
+          expect(set.merge(addA).isOk()).toBe(true);
+          expect(set.merge(remA4).isOk()).toBe(true);
+          expect(set.merge(remA).isOk()).toBe(true);
+          expect(events).toEqual([
+            ['addCustody', custody1.signerKey],
+            ['addCustody', custody4Address],
+            ['addSigner', a.signerKey],
+            ['removeSigner', a.signerKey],
+          ]);
+        });
       });
     });
   });
