@@ -131,7 +131,7 @@ describe('mergeCustodyEvent', () => {
     expect(custodyRems()).toEqual(new Map());
     expect(signerAdds()).toEqual(new Map());
     expect(signerRems()).toEqual(new Map());
-    expect(events).toEqual([['addCustody', custody1.signerKey]]);
+    expect(events).toEqual([['addCustody', custody1.signerKey, addCustody1]]);
   });
 
   test('succeeds with multiple new custody addresses', () => {
@@ -147,8 +147,8 @@ describe('mergeCustodyEvent', () => {
     expect(signerAdds()).toEqual(new Map());
     expect(signerRems()).toEqual(new Map());
     expect(events).toEqual([
-      ['addCustody', custody1.signerKey],
-      ['addCustody', custody2.signerKey],
+      ['addCustody', custody1.signerKey, addCustody1],
+      ['addCustody', custody2.signerKey, addCustody2],
     ]);
   });
 
@@ -166,8 +166,8 @@ describe('mergeCustodyEvent', () => {
     expect(signerAdds()).toEqual(new Map());
     expect(signerRems()).toEqual(new Map());
     expect(events).toEqual([
-      ['addCustody', custody1.signerKey],
-      ['addCustody', custody2.signerKey],
+      ['addCustody', custody1.signerKey, addCustody1],
+      ['addCustody', custody2.signerKey, addSameBlock],
     ]);
   });
 
@@ -178,7 +178,7 @@ describe('mergeCustodyEvent', () => {
     expect(custodyRems()).toEqual(new Map());
     expect(signerAdds()).toEqual(new Map());
     expect(signerRems()).toEqual(new Map());
-    expect(events).toEqual([['addCustody', custody1.signerKey]]);
+    expect(events).toEqual([['addCustody', custody1.signerKey, addCustody1]]);
   });
 
   test('succeeds (no-ops) when custody address has been removed', () => {
@@ -191,9 +191,9 @@ describe('mergeCustodyEvent', () => {
     expect(signerAdds()).toEqual(new Map());
     expect(signerRems()).toEqual(new Map());
     expect(events).toEqual([
-      ['addCustody', custody1.signerKey],
-      ['addCustody', custody2.signerKey],
-      ['removeCustody', custody1.signerKey],
+      ['addCustody', custody1.signerKey, addCustody1],
+      ['addCustody', custody2.signerKey, addCustody2],
+      ['removeCustody', custody1.signerKey, removeAllCustody2],
     ]);
   });
 
@@ -216,10 +216,10 @@ describe('mergeCustodyEvent', () => {
     expect(signerAdds()).toEqual(new Map());
     expect(signerRems()).toEqual(new Map());
     expect(events).toEqual([
-      ['addCustody', custody1.signerKey],
-      ['addCustody', custody2.signerKey],
-      ['removeCustody', custody1.signerKey],
-      ['addCustody', custody1.signerKey],
+      ['addCustody', custody1.signerKey, addCustody1],
+      ['addCustody', custody2.signerKey, addCustody2],
+      ['removeCustody', custody1.signerKey, removeAllCustody2],
+      ['addCustody', custody1.signerKey, reAddCustody1],
     ]);
   });
 });
@@ -253,9 +253,9 @@ describe('merge', () => {
     expect(signerAdds()).toEqual(new Map());
     expect(signerRems()).toEqual(new Map());
     expect(events).toEqual([
-      ['addCustody', custody1.signerKey],
-      ['addCustody', custody2.signerKey],
-      ['removeCustody', custody1.signerKey],
+      ['addCustody', custody1.signerKey, addCustody1],
+      ['addCustody', custody2.signerKey, addCustody2],
+      ['removeCustody', custody1.signerKey, removeAllCustody2],
     ]);
   });
 
@@ -272,7 +272,7 @@ describe('merge', () => {
         expect(custodyRems()).toEqual(new Map());
         expect(signerAdds()).toEqual(new Map());
         expect(signerRems()).toEqual(new Map());
-        expect(events).toEqual([['addCustody', custody1.signerKey]]);
+        expect(events).toEqual([['addCustody', custody1.signerKey, addCustody1]]);
       });
 
       test('succeeds and removes previous custody addresses', () => {
@@ -283,9 +283,9 @@ describe('merge', () => {
         expect(signerAdds()).toEqual(new Map());
         expect(signerRems()).toEqual(new Map());
         expect(events).toEqual([
-          ['addCustody', custody1.signerKey],
-          ['addCustody', custody2.signerKey],
-          ['removeCustody', custody1.signerKey],
+          ['addCustody', custody1.signerKey, addCustody1],
+          ['addCustody', custody2.signerKey, addCustody2],
+          ['removeCustody', custody1.signerKey, removeAllCustody2],
         ]);
       });
 
@@ -302,8 +302,8 @@ describe('merge', () => {
         expect(signerAdds()).toEqual(new Map());
         expect(signerRems()).toEqual(new Map());
         expect(events).toEqual([
-          ['addCustody', custody1.signerKey],
-          ['addCustody', custody2.signerKey],
+          ['addCustody', custody1.signerKey, addCustody1],
+          ['addCustody', custody2.signerKey, addCustody2],
         ]);
       });
 
@@ -315,7 +315,7 @@ describe('merge', () => {
         expect(custodyRems()).toEqual(new Map());
         expect(signerAdds()).toEqual(new Map());
         expect(signerRems()).toEqual(new Map());
-        expect(events).toEqual([['addCustody', custody1.signerKey]]);
+        expect(events).toEqual([['addCustody', custody1.signerKey, addCustody1]]);
       });
 
       test('succeeds and drops signers', () => {
@@ -327,11 +327,11 @@ describe('merge', () => {
         expect(signerAdds()).toEqual(new Map());
         expect(signerRems()).toEqual(new Map());
         expect(events).toEqual([
-          ['addCustody', custody1.signerKey],
-          ['addSigner', a.signerKey],
-          ['addCustody', custody2.signerKey],
-          ['removeSigner', a.signerKey],
-          ['removeCustody', custody1.signerKey],
+          ['addCustody', custody1.signerKey, addCustody1],
+          ['addSigner', a.signerKey, addA],
+          ['addCustody', custody2.signerKey, addCustody2],
+          ['removeSigner', a.signerKey], // Revoke signer
+          ['removeCustody', custody1.signerKey, removeAllCustody2],
         ]);
       });
 
@@ -345,11 +345,11 @@ describe('merge', () => {
         expect(signerAdds()).toEqual(new Map());
         expect(signerRems()).toEqual(new Map());
         expect(events).toEqual([
-          ['addCustody', custody1.signerKey],
-          ['addSigner', a.signerKey],
-          ['removeSigner', a.signerKey],
-          ['addCustody', custody2.signerKey],
-          ['removeCustody', custody1.signerKey],
+          ['addCustody', custody1.signerKey, addCustody1],
+          ['addSigner', a.signerKey, addA],
+          ['removeSigner', a.signerKey, remA],
+          ['addCustody', custody2.signerKey, addCustody2],
+          ['removeCustody', custody1.signerKey, removeAllCustody2],
         ]);
       });
 
@@ -372,12 +372,12 @@ describe('merge', () => {
         expect(signerAdds()).toEqual(new Map());
         expect(signerRems()).toEqual(new Map());
         expect(events).toEqual([
-          ['addCustody', custody1.signerKey],
-          ['addCustody', custody2.signerKey],
-          ['removeCustody', custody1.signerKey],
-          ['addCustody', custody3.signerKey],
-          ['removeCustody', custody1.signerKey],
-          ['removeCustody', custody2.signerKey],
+          ['addCustody', custody1.signerKey, addCustody1],
+          ['addCustody', custody2.signerKey, addCustody2],
+          ['removeCustody', custody1.signerKey, removeAllCustody2],
+          ['addCustody', custody3.signerKey, addCustody3Later],
+          ['removeCustody', custody1.signerKey, removeAllCustody3],
+          ['removeCustody', custody2.signerKey, removeAllCustody3],
         ]);
       });
 
@@ -396,9 +396,9 @@ describe('merge', () => {
         expect(signerAdds()).toEqual(new Map([[a.signerKey, addA]]));
         expect(signerRems()).toEqual(new Map());
         expect(events).toEqual([
-          ['addCustody', custody1.signerKey],
-          ['addSigner', a.signerKey],
-          ['addCustody', custody2.signerKey],
+          ['addCustody', custody1.signerKey, addCustody1],
+          ['addSigner', a.signerKey, addA],
+          ['addCustody', custody2.signerKey, addSameBlock],
         ]);
       });
     });
@@ -411,8 +411,8 @@ describe('merge', () => {
         expect(signerAdds()).toEqual(new Map([[a.signerKey, addA]]));
         expect(signerRems()).toEqual(new Map());
         expect(events).toEqual([
-          ['addCustody', custody1.signerKey],
-          ['addSigner', a.signerKey],
+          ['addCustody', custody1.signerKey, addCustody1],
+          ['addSigner', a.signerKey, addA],
         ]);
       });
 
@@ -424,8 +424,8 @@ describe('merge', () => {
         expect(signerAdds()).toEqual(new Map([[a.signerKey, addA]]));
         expect(signerRems()).toEqual(new Map());
         expect(events).toEqual([
-          ['addCustody', custody1.signerKey],
-          ['addSigner', a.signerKey],
+          ['addCustody', custody1.signerKey, addCustody1],
+          ['addSigner', a.signerKey, addA],
         ]);
       });
 
@@ -439,8 +439,8 @@ describe('merge', () => {
         expect(signerAdds()).toEqual(new Map([[a.signerKey, addA]]));
         expect(signerRems()).toEqual(new Map());
         expect(events).toEqual([
-          ['addCustody', custody1.signerKey],
-          ['addSigner', a.signerKey],
+          ['addCustody', custody1.signerKey, addCustody1],
+          ['addSigner', a.signerKey, addA],
         ]);
       });
 
@@ -462,10 +462,10 @@ describe('merge', () => {
           expect(signerAdds()).toEqual(new Map([[a.signerKey, addA2]]));
           expect(signerRems()).toEqual(new Map());
           expect(events).toEqual([
-            ['addCustody', custody1.signerKey],
-            ['addCustody', custody2.signerKey],
-            ['addSigner', a.signerKey],
-            ['addSigner', a.signerKey],
+            ['addCustody', custody1.signerKey, addCustody1],
+            ['addCustody', custody2.signerKey, addCustody2],
+            ['addSigner', a.signerKey, addA],
+            ['addSigner', a.signerKey, addA2],
           ]);
         });
 
@@ -482,9 +482,9 @@ describe('merge', () => {
           expect(signerAdds()).toEqual(new Map([[a.signerKey, addA2]]));
           expect(signerRems()).toEqual(new Map());
           expect(events).toEqual([
-            ['addCustody', custody1.signerKey],
-            ['addCustody', custody2.signerKey],
-            ['addSigner', a.signerKey],
+            ['addCustody', custody1.signerKey, addCustody1],
+            ['addCustody', custody2.signerKey, addCustody2],
+            ['addSigner', a.signerKey, addA2],
           ]);
         });
 
@@ -507,11 +507,11 @@ describe('merge', () => {
             expect(signerAdds()).toEqual(new Map([[a.signerKey, addA3]]));
             expect(signerRems()).toEqual(new Map());
             expect(events).toEqual([
-              ['addCustody', custody1.signerKey],
-              ['addCustody', custody2.signerKey],
-              ['addCustody', custody3.signerKey],
-              ['addSigner', a.signerKey],
-              ['addSigner', a.signerKey],
+              ['addCustody', custody1.signerKey, addCustody1],
+              ['addCustody', custody2.signerKey, addCustody2],
+              ['addCustody', custody3.signerKey, addCustody3],
+              ['addSigner', a.signerKey, addA2],
+              ['addSigner', a.signerKey, addA3],
             ]);
           });
 
@@ -529,10 +529,10 @@ describe('merge', () => {
             expect(signerAdds()).toEqual(new Map([[a.signerKey, addA3]]));
             expect(signerRems()).toEqual(new Map());
             expect(events).toEqual([
-              ['addCustody', custody1.signerKey],
-              ['addCustody', custody2.signerKey],
-              ['addCustody', custody3.signerKey],
-              ['addSigner', a.signerKey],
+              ['addCustody', custody1.signerKey, addCustody1],
+              ['addCustody', custody2.signerKey, addCustody2],
+              ['addCustody', custody3.signerKey, addCustody3],
+              ['addSigner', a.signerKey, addA3],
             ]);
           });
         });
@@ -551,9 +551,9 @@ describe('merge', () => {
           expect(signerAdds()).toEqual(new Map([[a.signerKey, addAHigherHash]]));
           expect(signerRems()).toEqual(new Map());
           expect(events).toEqual([
-            ['addCustody', custody1.signerKey],
-            ['addSigner', a.signerKey],
-            ['addSigner', a.signerKey],
+            ['addCustody', custody1.signerKey, addCustody1],
+            ['addSigner', a.signerKey, addA],
+            ['addSigner', a.signerKey, addAHigherHash],
           ]);
         });
 
@@ -565,8 +565,8 @@ describe('merge', () => {
           expect(signerAdds()).toEqual(new Map([[a.signerKey, addA]]));
           expect(signerRems()).toEqual(new Map());
           expect(events).toEqual([
-            ['addCustody', custody1.signerKey],
-            ['addSigner', a.signerKey],
+            ['addCustody', custody1.signerKey, addCustody1],
+            ['addSigner', a.signerKey, addA],
           ]);
         });
       });
@@ -589,10 +589,10 @@ describe('merge', () => {
           expect(signerAdds()).toEqual(new Map([[a.signerKey, addA2]]));
           expect(signerRems()).toEqual(new Map());
           expect(events).toEqual([
-            ['addCustody', custody1.signerKey],
-            ['addCustody', custody2.signerKey],
-            ['removeSigner', a.signerKey],
-            ['addSigner', a.signerKey],
+            ['addCustody', custody1.signerKey, addCustody1],
+            ['addCustody', custody2.signerKey, addCustody2],
+            ['removeSigner', a.signerKey, remA],
+            ['addSigner', a.signerKey, addA2],
           ]);
         });
 
@@ -609,9 +609,9 @@ describe('merge', () => {
           expect(signerAdds()).toEqual(new Map());
           expect(signerRems()).toEqual(new Map([[a.signerKey, remA2]]));
           expect(events).toEqual([
-            ['addCustody', custody1.signerKey],
-            ['addCustody', custody2.signerKey],
-            ['removeSigner', a.signerKey],
+            ['addCustody', custody1.signerKey, addCustody1],
+            ['addCustody', custody2.signerKey, addCustody2],
+            ['removeSigner', a.signerKey, remA2],
           ]);
         });
       });
@@ -638,11 +638,11 @@ describe('merge', () => {
             expect(set.merge(msg).isOk()).toBe(true);
           }
           expect(events).toEqual([
-            ['addCustody', custody1.signerKey],
-            ['addCustody', custody2.signerKey],
-            ['addSigner', a.signerKey],
-            ['addSigner', a.signerKey],
-            ['removeSigner', a.signerKey],
+            ['addCustody', custody1.signerKey, addCustody1],
+            ['addCustody', custody2.signerKey, addCustody2],
+            ['addSigner', a.signerKey, addA],
+            ['addSigner', a.signerKey, addA2],
+            ['removeSigner', a.signerKey, remA2],
           ]);
         });
 
@@ -651,10 +651,10 @@ describe('merge', () => {
             expect(set.merge(msg).isOk()).toBe(true);
           }
           expect(events).toEqual([
-            ['addCustody', custody1.signerKey],
-            ['addCustody', custody2.signerKey],
-            ['removeSigner', a.signerKey],
-            ['removeSigner', a.signerKey],
+            ['addCustody', custody1.signerKey, addCustody1],
+            ['addCustody', custody2.signerKey, addCustody2],
+            ['removeSigner', a.signerKey, remA],
+            ['removeSigner', a.signerKey, remA2],
           ]);
         });
 
@@ -663,12 +663,12 @@ describe('merge', () => {
             expect(set.merge(msg).isOk()).toBe(true);
           }
           expect(events).toEqual([
-            ['addCustody', custody1.signerKey],
-            ['addCustody', custody2.signerKey],
-            ['addSigner', a.signerKey],
-            ['removeSigner', a.signerKey],
-            ['addSigner', a.signerKey],
-            ['removeSigner', a.signerKey],
+            ['addCustody', custody1.signerKey, addCustody1],
+            ['addCustody', custody2.signerKey, addCustody2],
+            ['addSigner', a.signerKey, addA],
+            ['removeSigner', a.signerKey, remA],
+            ['addSigner', a.signerKey, addA2],
+            ['removeSigner', a.signerKey, remA2],
           ]);
         });
       });
@@ -683,9 +683,9 @@ describe('merge', () => {
         expect(signerAdds()).toEqual(new Map());
         expect(signerRems()).toEqual(new Map([[a.signerKey, remA]]));
         expect(events).toEqual([
-          ['addCustody', custody1.signerKey],
-          ['addSigner', a.signerKey],
-          ['removeSigner', a.signerKey],
+          ['addCustody', custody1.signerKey, addCustody1],
+          ['addSigner', a.signerKey, addA],
+          ['removeSigner', a.signerKey, remA],
         ]);
       });
 
@@ -696,8 +696,8 @@ describe('merge', () => {
         expect(signerAdds()).toEqual(new Map());
         expect(signerRems()).toEqual(new Map([[a.signerKey, remA]]));
         expect(events).toEqual([
-          ['addCustody', custody1.signerKey],
-          ['removeSigner', a.signerKey],
+          ['addCustody', custody1.signerKey, addCustody1],
+          ['removeSigner', a.signerKey, remA],
         ]);
       });
 
@@ -709,8 +709,8 @@ describe('merge', () => {
         expect(signerAdds()).toEqual(new Map());
         expect(signerRems()).toEqual(new Map([[a.signerKey, remA]]));
         expect(events).toEqual([
-          ['addCustody', custody1.signerKey],
-          ['removeSigner', a.signerKey],
+          ['addCustody', custody1.signerKey, addCustody1],
+          ['removeSigner', a.signerKey, remA],
         ]);
       });
 
@@ -724,8 +724,8 @@ describe('merge', () => {
         expect(signerAdds()).toEqual(new Map([[a.signerKey, addA]]));
         expect(signerRems()).toEqual(new Map());
         expect(events).toEqual([
-          ['addCustody', custody1.signerKey],
-          ['addSigner', a.signerKey],
+          ['addCustody', custody1.signerKey, addCustody1],
+          ['addSigner', a.signerKey, addA],
         ]);
       });
 
@@ -745,9 +745,9 @@ describe('merge', () => {
         );
         expect(signerRems()).toEqual(new Map());
         expect(events).toEqual([
-          ['addCustody', custody1.signerKey],
-          ['addSigner', a.signerKey],
-          ['addSigner', b.signerKey],
+          ['addCustody', custody1.signerKey, addCustody1],
+          ['addSigner', a.signerKey, addA],
+          ['addSigner', b.signerKey, addB],
         ]);
       });
 
@@ -783,11 +783,11 @@ describe('merge', () => {
           expect(set.merge(remA).isOk()).toBe(true);
           expect(set.merge(remA4).isOk()).toBe(true);
           expect(events).toEqual([
-            ['addCustody', custody1.signerKey],
-            ['addCustody', custody4Address],
-            ['addSigner', a.signerKey],
-            ['removeSigner', a.signerKey],
-            ['removeSigner', a.signerKey],
+            ['addCustody', custody1.signerKey, addCustody1],
+            ['addCustody', custody4Address, addCustody4],
+            ['addSigner', a.signerKey, addA],
+            ['removeSigner', a.signerKey, remA],
+            ['removeSigner', a.signerKey, remA4],
           ]);
         });
 
@@ -796,10 +796,10 @@ describe('merge', () => {
           expect(set.merge(remA4).isOk()).toBe(true);
           expect(set.merge(remA).isOk()).toBe(true);
           expect(events).toEqual([
-            ['addCustody', custody1.signerKey],
-            ['addCustody', custody4Address],
-            ['addSigner', a.signerKey],
-            ['removeSigner', a.signerKey],
+            ['addCustody', custody1.signerKey, addCustody1],
+            ['addCustody', custody4Address, addCustody4],
+            ['addSigner', a.signerKey, addA],
+            ['removeSigner', a.signerKey, remA4],
           ]);
         });
       });
