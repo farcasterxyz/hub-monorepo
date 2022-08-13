@@ -24,7 +24,7 @@ describe('mergeVerification', () => {
   let aliceClaimHash: string;
   let aliceExternalSignature: string;
   let transientParams: { transient: VerificationAddFactoryTransientParams };
-  let genericVerificationAddMessage: VerificationAdd;
+  let genericVerificationAdd: VerificationAdd;
 
   // Generate key pair for alice and root message
   beforeAll(async () => {
@@ -42,7 +42,7 @@ describe('mergeVerification', () => {
 
     aliceExternalSignature = await aliceEthWallet.signMessage(aliceClaimHash);
 
-    genericVerificationAddMessage = await Factories.VerificationAdd.create(
+    genericVerificationAdd = await Factories.VerificationAdd.create(
       {
         data: {
           rootBlock: aliceRoot.data.rootBlock,
@@ -84,13 +84,13 @@ describe('mergeVerification', () => {
   });
 
   test('succeeds with a valid VerificationAdd', async () => {
-    expect((await engine.mergeVerification(genericVerificationAddMessage)).isOk()).toBe(true);
-    expect(engine._getVerificationAdds('alice')).toEqual([genericVerificationAddMessage]);
+    expect((await engine.mergeVerification(genericVerificationAdd)).isOk()).toBe(true);
+    expect(engine._getVerificationAdds('alice')).toEqual([genericVerificationAdd]);
   });
 
   test('fails if message signer is not valid', async () => {
     engine._resetSigners();
-    expect((await engine.mergeVerification(genericVerificationAddMessage))._unsafeUnwrapErr()).toBe(
+    expect((await engine.mergeVerification(genericVerificationAdd))._unsafeUnwrapErr()).toBe(
       'mergeVerification: unknown user'
     );
     expect(engine._getVerificationAdds('alice')).toEqual([]);
@@ -175,22 +175,21 @@ describe('mergeVerification', () => {
   // TODO: share these generic message validation tests between engine tests
 
   test('fails with invalid hash', async () => {
-    const messageHash = genericVerificationAddMessage.hash;
-    genericVerificationAddMessage.hash = await hashFCObject({ foo: 'bar' });
-    const res = await engine.mergeVerification(genericVerificationAddMessage);
+    const badHashVerification: VerificationAdd = { ...genericVerificationAdd, hash: 'foo' };
+    const res = await engine.mergeVerification(badHashVerification);
     expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
     expect(engine._getVerificationAdds('alice')).toEqual([]);
-    genericVerificationAddMessage.hash = messageHash;
   });
 
   test('fails with invalid signature', async () => {
-    const messageSignature = genericVerificationAddMessage.signature;
-    genericVerificationAddMessage.signature =
-      '0x5b699d494b515b22258c01ad19710d44c3f12235f0c01e91d09a1e4e2cd25d80c77026a7319906da3b8ce62abc18477c19e444a02949a0dde54f8cadef889502';
-    const res = await engine.mergeVerification(genericVerificationAddMessage);
+    const badMessageSignature: VerificationAdd = {
+      ...genericVerificationAdd,
+      signature:
+        '0x5b699d494b515b22258c01ad19710d44c3f12235f0c01e91d09a1e4e2cd25d80c77026a7319906da3b8ce62abc18477c19e444a02949a0dde54f8cadef889502',
+    };
+    const res = await engine.mergeVerification(badMessageSignature);
     expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid signature');
     expect(engine._getVerificationAdds('alice')).toEqual([]);
-    genericVerificationAddMessage.signature = messageSignature;
   });
 
   test('fails if signedAt is > current time + safety margin', async () => {
@@ -216,21 +215,21 @@ describe('mergeVerification', () => {
 
   test('fails if there is no root', async () => {
     engine._resetRoots();
-    const res = await engine.mergeVerification(genericVerificationAddMessage);
+    const res = await engine.mergeVerification(genericVerificationAdd);
     expect(res._unsafeUnwrapErr()).toBe('validateMessage: no root present');
     expect(engine._getVerificationAdds('alice')).toEqual([]);
   });
 
   test('succeeds with a valid VerificationRemove', async () => {
-    expect((await engine.mergeVerification(genericVerificationAddMessage)).isOk()).toBe(true);
-    expect(engine._getVerificationAdds('alice')).toEqual([genericVerificationAddMessage]);
+    expect((await engine.mergeVerification(genericVerificationAdd)).isOk()).toBe(true);
+    expect(engine._getVerificationAdds('alice')).toEqual([genericVerificationAdd]);
     const verificationRemoveMessage = await Factories.VerificationRemove.create(
       {
         data: {
           rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: genericVerificationAddMessage.data.signedAt + 1,
-          body: { claimHash: genericVerificationAddMessage.data.body.claimHash },
+          signedAt: genericVerificationAdd.data.signedAt + 1,
+          body: { claimHash: genericVerificationAdd.data.body.claimHash },
         },
       },
       transientParams
@@ -246,8 +245,8 @@ describe('mergeVerification', () => {
         data: {
           rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: genericVerificationAddMessage.data.signedAt + 1,
-          body: { claimHash: genericVerificationAddMessage.data.body.claimHash },
+          signedAt: genericVerificationAdd.data.signedAt + 1,
+          body: { claimHash: genericVerificationAdd.data.body.claimHash },
         },
       },
       transientParams
@@ -255,7 +254,7 @@ describe('mergeVerification', () => {
     expect((await engine.mergeVerification(verificationRemoveMessage)).isOk()).toBe(true);
     expect(engine._getVerificationRemoves('alice')).toEqual([verificationRemoveMessage]);
     expect(engine._getVerificationAdds('alice')).toEqual([]);
-    expect((await engine.mergeVerification(genericVerificationAddMessage)).isOk()).toBe(false);
+    expect((await engine.mergeVerification(genericVerificationAdd)).isOk()).toBe(false);
     expect(engine._getVerificationAdds('alice')).toEqual([]);
   });
 });
