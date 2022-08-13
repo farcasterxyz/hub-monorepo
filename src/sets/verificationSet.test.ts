@@ -22,20 +22,56 @@ describe('merge', () => {
   let aliceExternalSignature: string;
   let transientParams: { transient: VerificationAddFactoryTransientParams };
 
+  let add1: VerificationAdd;
+  let add2: VerificationAdd;
+  let add3: VerificationAdd;
+
+  let rem1: VerificationRemove;
+  let rem2: VerificationRemove;
+
   beforeAll(async () => {
     aliceSigner = await generateEd25519Signer();
     aliceEthWallet = ethers.Wallet.createRandom();
     transientParams = { transient: { signer: aliceSigner, ethWallet: aliceEthWallet } };
 
-    // Generate a claim hash for alice
     const verificationClaim: VerificationClaim = {
       username: 'alice',
       externalUri: aliceEthWallet.address,
     };
     aliceClaimHash = await hashFCObject(verificationClaim);
 
-    // Generate an external signature for alice
     aliceExternalSignature = await aliceEthWallet.signMessage(aliceClaimHash);
+
+    add1 = await Factories.VerificationAdd.create(
+      {
+        data: {
+          username: 'alice',
+          body: {
+            claimHash: aliceClaimHash,
+            externalSignature: aliceExternalSignature,
+          },
+        },
+      },
+      transientParams
+    );
+
+    const { signedAt } = add1.data;
+
+    add2 = await Factories.VerificationAdd.create(
+      { data: { signedAt: signedAt + 2, body: { claimHash: aliceClaimHash } } },
+      transientParams
+    );
+
+    add3 = await Factories.VerificationAdd.create(
+      { data: { signedAt: signedAt, body: { claimHash: aliceClaimHash } } },
+      transientParams
+    );
+    add3.hash = add1.hash + 'a';
+
+    rem1 = await Factories.VerificationRemove.create({
+      data: { signedAt: signedAt + 1, body: { claimHash: aliceClaimHash } },
+    });
+    rem2 = await Factories.VerificationRemove.create();
   });
 
   beforeEach(() => {
@@ -50,23 +86,6 @@ describe('merge', () => {
   });
 
   describe('add', () => {
-    let add1: VerificationAdd;
-
-    beforeAll(async () => {
-      add1 = await Factories.VerificationAdd.create(
-        {
-          data: {
-            username: 'alice',
-            body: {
-              claimHash: aliceClaimHash,
-              externalSignature: aliceExternalSignature,
-            },
-          },
-        },
-        transientParams
-      );
-    });
-
     test('succeeds with a valid VerificationAdd message', async () => {
       expect(set.merge(add1).isOk()).toBe(true);
       expect(adds()).toEqual([add1]);
@@ -86,21 +105,6 @@ describe('merge', () => {
     });
 
     describe('when claimHash already added', () => {
-      let add2: VerificationAdd;
-
-      beforeAll(async () => {
-        const {
-          data: {
-            signedAt,
-            body: { claimHash },
-          },
-        } = add1;
-        add2 = await Factories.VerificationAdd.create(
-          { data: { signedAt: signedAt + 2, body: { claimHash } } },
-          transientParams
-        );
-      });
-
       test('succeeds with a later timestamp than existing add message', async () => {
         expect(set.merge(add1).isOk()).toBe(true);
         expect(set.merge(add2).isOk()).toBe(true);
@@ -114,19 +118,6 @@ describe('merge', () => {
       });
 
       describe('with same timestamp', () => {
-        let add3: VerificationAdd;
-
-        beforeAll(async () => {
-          const {
-            data: {
-              signedAt,
-              body: { claimHash },
-            },
-          } = add1;
-          add3 = await Factories.VerificationAdd.create({ data: { signedAt, body: { claimHash } } }, transientParams);
-          add3.hash = add1.hash + 'a';
-        });
-
         test('succeeds with higher lexicographical order', () => {
           expect(set.merge(add1).isOk()).toBe(true);
           expect(set.merge(add3).isOk()).toBe(true);
@@ -142,23 +133,6 @@ describe('merge', () => {
     });
 
     describe('when claimHash already removed', () => {
-      let rem1: VerificationRemove;
-      let add2: VerificationAdd;
-
-      beforeAll(async () => {
-        const {
-          data: {
-            signedAt,
-            body: { claimHash },
-          },
-        } = add1;
-        rem1 = await Factories.VerificationRemove.create({ data: { signedAt: signedAt + 1, body: { claimHash } } });
-        add2 = await Factories.VerificationAdd.create(
-          { data: { signedAt: signedAt + 2, body: { claimHash } } },
-          transientParams
-        );
-      });
-
       test('succeeds with a later timestamp than existing remove message', async () => {
         expect(set.merge(add1).isOk()).toBe(true);
         expect(adds()).toEqual([add1]);
@@ -177,16 +151,6 @@ describe('merge', () => {
       });
 
       test('fails with the same timestamp as remove message', async () => {
-        const {
-          data: {
-            signedAt,
-            body: { claimHash },
-          },
-        } = rem1;
-        const add3 = await Factories.VerificationAdd.create(
-          { data: { signedAt, body: { claimHash } } },
-          transientParams
-        );
         expect(set.merge(rem1).isOk()).toBe(true);
         expect(set.merge(add3).isOk()).toBe(false);
         expect(adds()).toEqual([]);
@@ -203,16 +167,6 @@ describe('merge', () => {
   });
 
   describe('remove', () => {
-    let add1: VerificationAdd;
-    let rem1: VerificationRemove;
-
-    beforeAll(async () => {
-      add1 = await Factories.VerificationAdd.create({}, transientParams);
-      rem1 = await Factories.VerificationRemove.create({
-        data: { signedAt: add1.data.signedAt + 1, body: { claimHash: add1.data.body.claimHash } },
-      });
-    });
-
     test('succeeds with a valid VerificationRemove message', async () => {
       expect(set.merge(add1).isOk()).toBe(true);
       expect(set.merge(rem1).isOk()).toBe(true);
@@ -229,7 +183,6 @@ describe('merge', () => {
 
     test('succeeds with multiple valid VerificationRemove messages', async () => {
       expect(adds()).toEqual([]);
-      const rem2 = await Factories.VerificationRemove.create();
       expect(set.merge(rem1).isOk()).toBe(true);
       expect(set.merge(rem2).isOk()).toBe(true);
       expect(removes().length).toEqual(2);
@@ -242,12 +195,6 @@ describe('merge', () => {
     });
 
     test('fails if matching VerificationAdd message has a later timestamp', async () => {
-      const add2 = await Factories.VerificationAdd.create(
-        {
-          data: { signedAt: rem1.data.signedAt + 2, body: { claimHash: rem1.data.body.claimHash } },
-        },
-        transientParams
-      );
       expect(set.merge(add2).isOk()).toBe(true);
       expect(set.merge(rem1).isOk()).toBe(false);
       expect(adds()).toEqual([add2]);
