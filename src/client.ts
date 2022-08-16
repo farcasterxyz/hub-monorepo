@@ -120,6 +120,7 @@ class Client {
   async makeVerificationAdd(
     externalUri: FC.URI,
     claimHash: string,
+    blockHash: string,
     externalSignature: string,
     root: FC.Root
   ): Promise<FC.VerificationAdd> {
@@ -130,6 +131,7 @@ class Client {
         externalSignature,
         externalSignatureType: 'eip-191-0x45',
         claimHash,
+        blockHash,
       },
       rootBlock: root.data.rootBlock,
       signedAt: Date.now(),

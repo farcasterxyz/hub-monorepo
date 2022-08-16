@@ -83,7 +83,8 @@ class BasicSimulator extends Simulator {
     const ethAddress = randomEthWallet.address;
     const claimToSign = await client.makeVerificationClaimHash(ethAddress);
     const externalSignature = await randomEthWallet.signMessage(claimToSign);
-    return client.makeVerificationAdd(ethAddress, claimToSign, externalSignature, root);
+    const blockHash = this.blockHash;
+    return client.makeVerificationAdd(ethAddress, claimToSign, blockHash, externalSignature, root);
   }
 
   async generateMessages(client: Client) {
