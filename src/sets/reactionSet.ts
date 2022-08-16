@@ -1,7 +1,7 @@
 import { Result, ok, err } from 'neverthrow';
 import { Reaction } from '~/types';
 import { isReaction } from '~/types/typeguards';
-import { hashCompare } from '~/utils';
+import { hashCompare, sanitizeSigner } from '~/utils';
 
 /**
  * ReactionSet stores and fetches reactions for a single username.
@@ -74,6 +74,17 @@ class ReactionSet {
     } else {
       return err('ReactionSet.merge: duplicate reaction');
     }
+  }
+
+  revokeSigner(signer: string): Result<void, string> {
+    for (const [key, hash] of this.keyToHash) {
+      const reaction = this.hashToReaction.get(hash);
+      if (reaction && sanitizeSigner(reaction.signer) === signer) {
+        this.hashToReaction.delete(hash);
+        this.keyToHash.delete(key);
+      }
+    }
+    return ok(undefined);
   }
 
   /**

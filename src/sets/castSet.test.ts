@@ -4,38 +4,37 @@ import { CastRemove, CastShort } from '~/types';
 
 const set = new CastSet();
 
+let castShort1: CastShort;
+let castShort2: CastShort;
+let castRemove1: CastRemove;
+let castRemove2: CastRemove;
+
+beforeAll(async () => {
+  castShort1 = await Factories.Cast.create();
+  castShort2 = await Factories.Cast.create();
+
+  castRemove1 = await Factories.CastRemove.create({
+    data: {
+      body: {
+        targetHash: castShort1.hash,
+      },
+    },
+  });
+
+  castRemove2 = await Factories.CastRemove.create({
+    data: {
+      body: {
+        targetHash: castShort2.hash,
+      },
+    },
+  });
+});
+
+beforeEach(() => {
+  set._reset();
+});
+
 describe('merge', () => {
-  let castShort1: CastShort;
-  let castShort2: CastShort;
-
-  let castRemove1: CastRemove;
-  let castRemove2: CastRemove;
-
-  beforeAll(async () => {
-    castShort1 = await Factories.Cast.create();
-    castShort2 = await Factories.Cast.create();
-
-    castRemove1 = await Factories.CastRemove.create({
-      data: {
-        body: {
-          targetHash: castShort1.hash,
-        },
-      },
-    });
-
-    castRemove2 = await Factories.CastRemove.create({
-      data: {
-        body: {
-          targetHash: castShort2.hash,
-        },
-      },
-    });
-  });
-
-  beforeEach(() => {
-    set._reset();
-  });
-
   describe('add', () => {
     const subject = () => set._getAdds();
 
@@ -97,5 +96,33 @@ describe('merge', () => {
     });
 
     // test('fails with an incorrect message type', async () => {});
+  });
+});
+
+describe('revokeSigner', () => {
+  test('succeeds without any messages', () => {
+    expect(set.revokeSigner(castShort1.signer).isOk()).toBe(true);
+  });
+
+  test('succeeds and drops add messages', () => {
+    expect(set.merge(castShort1).isOk()).toBe(true);
+    expect(set.revokeSigner(castShort1.signer).isOk()).toBe(true);
+    expect(set._getAdds()).toEqual([]);
+    expect(set._getRemoves()).toEqual([]);
+  });
+
+  test('succeeds and drops remove messages', () => {
+    expect(set.merge(castRemove1).isOk()).toBe(true);
+    expect(set.revokeSigner(castRemove1.signer).isOk()).toBe(true);
+    expect(set._getAdds()).toEqual([]);
+    expect(set._getRemoves()).toEqual([]);
+  });
+
+  test('suceeds and only removes messages from signer', () => {
+    expect(set.merge(castShort1).isOk()).toBe(true);
+    expect(set.merge(castShort2).isOk()).toBe(true);
+    expect(set.revokeSigner(castShort1.signer).isOk()).toBe(true);
+    expect(set._getAdds()).toEqual([castShort2]);
+    expect(set._getRemoves()).toEqual([]);
   });
 });

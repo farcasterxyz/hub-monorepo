@@ -1,4 +1,5 @@
 import { Factories } from '~/factories';
+import Faker from 'faker';
 import VerificationSet from '~/sets/verificationSet';
 import {
   Ed25519Signer,
@@ -14,52 +15,46 @@ const set = new VerificationSet();
 const adds = () => set._getAdds();
 const removes = () => set._getRemoves();
 
+let signer: Ed25519Signer;
+let ethWallet: ethers.Wallet;
+let transientParams: { transient: VerificationAddFactoryTransientParams };
+let add1: VerificationAdd;
+let add2: VerificationAdd;
+let rem1: VerificationRemove;
+let rem2: VerificationRemove;
+
+beforeAll(async () => {
+  signer = await generateEd25519Signer();
+  ethWallet = ethers.Wallet.createRandom();
+  transientParams = { transient: { signer: signer, ethWallet: ethWallet } };
+  add1 = await Factories.VerificationAdd.create(
+    {
+      data: {
+        username: 'alice',
+      },
+    },
+    transientParams
+  );
+  add2 = await Factories.VerificationAdd.create({}, transientParams);
+  rem1 = await Factories.VerificationRemove.create(
+    {
+      data: { signedAt: add1.data.signedAt + 1, body: { claimHash: add1.data.body.claimHash } },
+    },
+    transientParams
+  );
+  rem2 = await Factories.VerificationRemove.create(
+    {
+      data: { signedAt: add2.data.signedAt + 1, body: { claimHash: add2.data.body.claimHash } },
+    },
+    transientParams
+  );
+});
+
+beforeEach(() => {
+  set._reset();
+});
+
 describe('merge', () => {
-  let signer: Ed25519Signer;
-  let ethWallet: ethers.Wallet;
-  let transientParams: { transient: VerificationAddFactoryTransientParams };
-
-  let add1: VerificationAdd;
-  let add2: VerificationAdd;
-
-  let rem1: VerificationRemove;
-  let rem2: VerificationRemove;
-
-  beforeAll(async () => {
-    signer = await generateEd25519Signer();
-    ethWallet = ethers.Wallet.createRandom();
-    transientParams = { transient: { signer: signer, ethWallet: ethWallet } };
-
-    add1 = await Factories.VerificationAdd.create(
-      {
-        data: {
-          username: 'alice',
-        },
-      },
-      transientParams
-    );
-
-    add2 = await Factories.VerificationAdd.create({}, transientParams);
-
-    rem1 = await Factories.VerificationRemove.create(
-      {
-        data: { signedAt: add1.data.signedAt + 1, body: { claimHash: add1.data.body.claimHash } },
-      },
-      transientParams
-    );
-
-    rem2 = await Factories.VerificationRemove.create(
-      {
-        data: { signedAt: add2.data.signedAt + 1, body: { claimHash: add2.data.body.claimHash } },
-      },
-      transientParams
-    );
-  });
-
-  beforeEach(() => {
-    set._reset();
-  });
-
   test('fails with an incorrect message type', async () => {
     const cast = (await Factories.Cast.create()) as unknown as Verification;
     expect(set.merge(cast).isOk()).toBe(false);
@@ -195,5 +190,34 @@ describe('merge', () => {
       expect(adds()).toEqual([add1Later]);
       expect(removes()).toEqual([]);
     });
+  });
+});
+
+describe('revokeSigner', () => {
+  test('succeeds without any messages', () => {
+    expect(set.revokeSigner(add1.signer).isOk()).toBe(true);
+  });
+
+  test('succeeds and drops add messages', () => {
+    expect(set.merge(add1).isOk()).toBe(true);
+    expect(set.revokeSigner(add1.signer).isOk()).toBe(true);
+    expect(set._getAdds()).toEqual([]);
+    expect(set._getRemoves()).toEqual([]);
+  });
+
+  test('succeeds and drops remove messages', () => {
+    expect(set.merge(rem1).isOk()).toBe(true);
+    expect(set.revokeSigner(rem1.signer).isOk()).toBe(true);
+    expect(set._getAdds()).toEqual([]);
+    expect(set._getRemoves()).toEqual([]);
+  });
+
+  test('suceeds and only removes messages from signer', () => {
+    const add2NewSigner: VerificationAdd = { ...add2, signer: Faker.datatype.hexaDecimal(32) };
+    expect(set.merge(add1).isOk()).toBe(true);
+    expect(set.merge(add2NewSigner).isOk()).toBe(true);
+    expect(set.revokeSigner(add2NewSigner.signer).isOk()).toBe(true);
+    expect(set._getAdds()).toEqual([add1]);
+    expect(set._getRemoves()).toEqual([]);
   });
 });

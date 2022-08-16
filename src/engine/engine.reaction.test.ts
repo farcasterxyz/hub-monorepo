@@ -1,117 +1,65 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
-import { Cast, MessageFactoryTransientParams, MessageSigner, Reaction, Root } from '~/types';
-import Faker from 'faker';
-import { generateEd25519Signer } from '~/utils';
+import {
+  Cast,
+  Ed25519Signer,
+  EthereumSigner,
+  IDRegistryEvent,
+  MessageFactoryTransientParams,
+  Reaction,
+  SignerAdd,
+} from '~/types';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
 const engine = new Engine();
 const username = 'alice';
 
 describe('mergeReaction', () => {
-  let aliceSigner: MessageSigner;
-  let aliceAddress: string;
-  let root: Root;
+  let aliceCustody: EthereumSigner;
+  let aliceCustodyRegister: IDRegistryEvent;
+  let aliceSigner: Ed25519Signer;
+  let aliceSignerAdd: SignerAdd;
   let cast: Cast;
   let reaction: Reaction;
   let transient: { transient: MessageFactoryTransientParams };
   const subject = () => engine._getActiveReactions(username);
 
   beforeAll(async () => {
+    aliceCustody = await generateEthereumSigner();
+    aliceCustodyRegister = await Factories.IDRegistryEvent.create({
+      args: { to: aliceCustody.signerKey },
+      name: 'Register',
+    });
     aliceSigner = await generateEd25519Signer();
-    aliceAddress = aliceSigner.signerKey;
+    aliceSignerAdd = await Factories.SignerAdd.create(
+      { data: { username: 'alice' } },
+      { transient: { signer: aliceCustody, delegateSigner: aliceSigner } }
+    );
     transient = { transient: { signer: aliceSigner } };
-
-    root = await Factories.Root.create({ data: { rootBlock: 100, username: 'alice' } }, transient);
-
-    cast = await Factories.Cast.create(
-      {
-        data: {
-          rootBlock: root.data.rootBlock,
-          username: 'alice',
-          signedAt: root.data.signedAt + 1,
-        },
-      },
-      transient
-    );
-
-    reaction = await Factories.Reaction.create(
-      {
-        data: {
-          rootBlock: root.data.rootBlock,
-          username: 'alice',
-          signedAt: root.data.signedAt + 1,
-        },
-      },
-      transient
-    );
-    engine._resetSigners();
+    cast = await Factories.Cast.create({ data: { username: 'alice' } }, transient);
+    reaction = await Factories.Reaction.create({ data: { username: 'alice' } }, transient);
   });
 
-  // Every test should start with a valid signer and root for alice
-  beforeEach(() => {
+  beforeEach(async () => {
     engine._reset();
-
-    const aliceRegistrationSignerChange = {
-      blockNumber: 99,
-      blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-      logIndex: 0,
-      address: aliceAddress,
-    };
-
-    engine.addSignerChange('alice', aliceRegistrationSignerChange);
-    engine.mergeRoot(root);
+    engine.mergeIDRegistryEvent('alice', aliceCustodyRegister);
+    await engine.mergeSignerMessage(aliceSignerAdd);
   });
 
-  test('fails to add a root or cast when passed in here', async () => {
-    const invalidRootReaction = root as unknown as Reaction;
-    expect((await engine.mergeReaction(invalidRootReaction))._unsafeUnwrapErr()).toBe(
-      'ReactionSet.merge: invalid reaction'
-    );
-    expect(subject()).toEqual([]);
-
+  test('fails with invalid message type', async () => {
     const invalidCastReaction = cast as unknown as Reaction;
-    expect((await engine.mergeReaction(invalidCastReaction))._unsafeUnwrapErr()).toBe(
-      'ReactionSet.merge: invalid reaction'
-    );
+    const result = await engine.mergeReaction(invalidCastReaction);
+    expect(result.isOk()).toBe(false);
+    expect(result._unsafeUnwrapErr()).toBe('ReactionSet.merge: invalid reaction');
     expect(subject()).toEqual([]);
   });
 
-  describe('signer validation: ', () => {
+  describe('signer validation', () => {
     test('fails if there are no known signers', async () => {
       engine._resetSigners();
 
       const result = await engine.mergeReaction(reaction);
       expect(result._unsafeUnwrapErr()).toBe('mergeReaction: unknown user');
-      expect(subject()).toEqual([]);
-    });
-
-    test('fails if the signer was valid, but it changed before this block', async () => {
-      // move the username alice to a different address
-      const changeSigner = {
-        blockNumber: 99,
-        blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-        logIndex: 1,
-        address: Faker.datatype.hexaDecimal(40).toLowerCase(),
-      };
-      engine.addSignerChange('alice', changeSigner);
-
-      expect((await engine.mergeReaction(reaction))._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
-      expect(subject()).toEqual([]);
-    });
-
-    test('fails if the signer was valid, but only after this block', async () => {
-      engine._resetSigners();
-      const changeSigner = {
-        blockNumber: 101,
-        blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-        logIndex: 0,
-        address: aliceAddress,
-      };
-
-      engine.addSignerChange('alice', changeSigner);
-
-      const result = await engine.mergeReaction(reaction);
-      expect(result._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
       expect(subject()).toEqual([]);
     });
 
@@ -129,37 +77,14 @@ describe('mergeReaction', () => {
     });
 
     test('fails if the signer was valid, but the username was invalid', async () => {
-      const unknownUser = await Factories.Reaction.create(
-        {
-          data: {
-            rootBlock: root.data.rootBlock,
-            username: 'rob',
-            signedAt: root.data.signedAt + 1,
-          },
-        },
-        transient
-      );
+      const unknownUser = await Factories.Reaction.create({ data: { username: 'rob' } }, transient);
 
       expect((await engine.mergeReaction(unknownUser))._unsafeUnwrapErr()).toBe('mergeReaction: unknown user');
       expect(subject()).toEqual([]);
     });
-
-    test('succeeds if the signer was valid, even if it changes in a later block', async () => {
-      const signerChange = {
-        blockNumber: 150,
-        blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-        logIndex: 0,
-        address: Faker.datatype.hexaDecimal(40).toLowerCase(),
-      };
-
-      engine.addSignerChange('alice', signerChange);
-
-      expect((await engine.mergeReaction(reaction)).isOk()).toBe(true);
-      expect(subject()).toEqual([reaction]);
-    });
   });
 
-  describe('message validation: ', () => {
+  describe('message validation', () => {
     test('fails if the hash is invalid', async () => {
       const invalidHash = JSON.parse(JSON.stringify(reaction)) as Reaction;
       invalidHash.hash = '0xd4126acebadb14b41943fc10599c00e2e3627f1e38672c8476277ecf17accb48';
@@ -185,7 +110,7 @@ describe('mergeReaction', () => {
         {
           data: {
             username: 'alice',
-            rootBlock: root.data.rootBlock,
+
             signedAt: elevenMinutesAhead,
           },
         },
@@ -198,92 +123,30 @@ describe('mergeReaction', () => {
     });
   });
 
-  describe('root validation: ', () => {
-    test('fails if there is no root', async () => {
-      engine._resetRoots();
-      const result = await engine.mergeReaction(reaction);
-      expect(result._unsafeUnwrapErr()).toBe('validateMessage: no root present');
-      expect(subject()).toEqual([]);
-    });
+  // test('fails if the schema is invalid', async () => {});
+  // test('fails if targetUri does not match schema', async () => {});
+  test('fails if the type is invalid', async () => {
+    const reactionInvalidType = await Factories.Reaction.create(
+      {
+        data: {
+          username: 'alice',
 
-    test('fails if the message does not reference the correct root', async () => {
-      const invalidLateRootBlock = await Factories.Reaction.create(
-        {
-          data: {
-            username: 'alice',
-            rootBlock: root.data.rootBlock + 1,
+          body: {
+            type: 'wrong' as unknown as any,
           },
         },
-        transient
-      );
+      },
+      transient
+    );
+    const result = await engine.mergeReaction(reactionInvalidType);
 
-      const invalidEarlyRootBlock = await Factories.Reaction.create(
-        {
-          data: {
-            username: 'alice',
-            rootBlock: root.data.rootBlock - 1,
-          },
-        },
-        transient
-      );
-
-      expect((await engine.mergeReaction(invalidLateRootBlock))._unsafeUnwrapErr()).toBe(
-        'validateMessage: root block does not match'
-      );
-      expect(subject()).toEqual([]);
-
-      expect((await engine.mergeReaction(invalidEarlyRootBlock))._unsafeUnwrapErr()).toBe(
-        'validateMessage: root block does not match'
-      );
-      expect(subject()).toEqual([]);
-    });
-
-    test('fails if signedAt is < than the roots signedAt', async () => {
-      const pastCast = await Factories.Reaction.create(
-        {
-          data: {
-            username: 'alice',
-            rootBlock: root.data.rootBlock,
-            signedAt: root.data.signedAt - 1,
-          },
-        },
-        transient
-      );
-
-      expect((await engine.mergeReaction(pastCast))._unsafeUnwrapErr()).toEqual(
-        'validateMessage: message timestamp was earlier than root'
-      );
-    });
+    expect(result.isOk()).toBe(false);
+    expect(result._unsafeUnwrapErr()).toBe('validateMessage: unknown message');
+    expect(subject()).toEqual([]);
   });
 
-  describe('reaction validation: ', () => {
-    // test('fails if the schema is invalid', async () => {});
-    // test('fails if targetUri does not match schema', async () => {});
-    test('fails if the type is invalid', async () => {
-      const reactionInvalidType = await Factories.Reaction.create(
-        {
-          data: {
-            username: 'alice',
-            rootBlock: root.data.rootBlock,
-            body: {
-              type: 'wrong' as unknown as any,
-            },
-          },
-        },
-        transient
-      );
-      const result = await engine.mergeReaction(reactionInvalidType);
-
-      expect(result.isOk()).toBe(false);
-      expect(result._unsafeUnwrapErr()).toBe('validateMessage: unknown message');
-      expect(subject()).toEqual([]);
-    });
-  });
-
-  describe('reaction merge: ', () => {
-    test('succeeds if a valid active reaction is added', async () => {
-      expect((await engine.mergeReaction(reaction)).isOk()).toBe(true);
-      expect(subject()).toEqual([reaction]);
-    });
+  test('succeeds if a valid active reaction is added', async () => {
+    expect((await engine.mergeReaction(reaction)).isOk()).toBe(true);
+    expect(subject()).toEqual([reaction]);
   });
 });

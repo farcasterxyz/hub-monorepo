@@ -1,4 +1,4 @@
-import { Cast, Root, Reaction, Verification } from '~/types';
+import { Cast, Reaction, SignerMessage, Verification } from '~/types';
 import Engine from '~/engine';
 import { Result } from 'neverthrow';
 
@@ -36,26 +36,19 @@ class FCNode {
 
   /** Sync messages for a specific user with a specific peer */
   syncUserWithPeer(username: string, peer: FCNode): void {
-    const selfRoot = this.getRoot(username);
-    const peerRoot = peer.getRoot(username);
-    if (peerRoot) {
-      // 1. Compare roots and add the peer's root if equal or newer.
-      if (!selfRoot || selfRoot.data.rootBlock <= peerRoot.data.rootBlock) {
-        this.mergeRoot(peerRoot);
-      }
+    // 1. Compare hashes of casts and merge any new ones discovered.
+    const selfCastHashes = this.getAllCastHashes(username);
+    const peerCastHashes = peer.getAllCastHashes(username);
+    const missingCastHashes = peerCastHashes.filter((h) => !selfCastHashes.includes(h));
+    peer.getCasts(username, missingCastHashes).map((message) => this.mergeCast(message));
 
-      // 2. Compare hashes of casts and merge any new ones discovered.
-      const selfCastHashes = this.getAllCastHashes(username);
-      const peerCastHashes = peer.getAllCastHashes(username);
-      const missingCastHashes = peerCastHashes.filter((h) => !selfCastHashes.includes(h));
-      peer.getCasts(username, missingCastHashes).map((message) => this.mergeCast(message));
+    // 2. Compare hashes of reactions and merge any new ones discovered.
+    const selfReactionHashes = this.getAllReactionHashes(username);
+    const peerReactionHashes = peer.getAllReactionHashes(username);
+    const missingReactionHashes = peerReactionHashes.filter((h) => !selfReactionHashes.includes(h));
+    peer.getReactions(username, missingReactionHashes).map((reaction) => this.mergeReaction(reaction));
 
-      // 3. Compare hashes of reactions and merge any new ones discovered.
-      const selfReactionHashes = this.getAllReactionHashes(username);
-      const peerReactionHashes = peer.getAllReactionHashes(username);
-      const missingReactionHashes = peerReactionHashes.filter((h) => !selfReactionHashes.includes(h));
-      peer.getReactions(username, missingReactionHashes).map((reaction) => this.mergeReaction(reaction));
-    }
+    // TODO: support verifications and signers
   }
 
   /**
@@ -64,11 +57,6 @@ class FCNode {
    * These API's should be called by peer nodes during the sync process. They should never be called
    * by clients, because they are less strict and this may cause more conflicts.
    */
-
-  /** Get the Root Message for a username */
-  getRoot(username: string): Root | undefined {
-    return this.engine.getRoot(username);
-  }
 
   /** Get casts by hash, or corresponding delete message */
   getCasts(username: string, hashes: string[]): Cast[] {
@@ -106,16 +94,14 @@ class FCNode {
     return this.engine.getAllReactionHashes(username);
   }
 
+  // TODO: add verifications and signers methods
+
   /**
    * Client API
    *
    * These API's should be called by clients to interact with the node. They should never be called
    * by peers, because they are less strict and this may cause divergent network states.
    */
-
-  async mergeRoot(root: Root): Promise<Result<void, string>> {
-    return await this.engine.mergeRoot(root);
-  }
 
   async mergeCast(cast: Cast): Promise<Result<void, string>> {
     return await this.engine.mergeCast(cast);
@@ -127,6 +113,10 @@ class FCNode {
 
   async mergeVerification(verification: Verification): Promise<Result<void, string>> {
     return await this.engine.mergeVerification(verification);
+  }
+
+  async mergeSignerMessage(signerMessage: SignerMessage): Promise<Result<void, string>> {
+    return await this.engine.mergeSignerMessage(signerMessage);
   }
 }
 
