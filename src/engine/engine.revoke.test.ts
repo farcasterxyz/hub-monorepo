@@ -2,7 +2,7 @@ import Engine from '~/engine';
 import { Factories } from '~/factories';
 import {
   CastShort,
-  CustodyAddEvent,
+  IDRegistryEvent,
   CustodyRemoveAll,
   Ed25519Signer,
   EthereumSigner,
@@ -21,10 +21,10 @@ const aliceReactions = () => engine._getActiveReactions('alice');
 const aliceVerifications = () => engine._getVerificationAdds('alice');
 
 let aliceCustody: EthereumSigner;
-let aliceCustodyAdd: CustodyAddEvent;
+let aliceCustodyRegister: IDRegistryEvent;
 let aliceCustodyRemove: CustodyRemoveAll;
 let aliceCustody2: EthereumSigner;
-let aliceCustody2Add: CustodyAddEvent;
+let aliceCustody2Transfer: IDRegistryEvent;
 let aliceCustody2Remove: CustodyRemoveAll;
 let aliceSigner: Ed25519Signer;
 let aliceSignerAdd: SignerAdd;
@@ -36,16 +36,20 @@ let aliceVerification: VerificationAdd;
 
 beforeAll(async () => {
   aliceCustody = await generateEthereumSigner();
-  aliceCustodyAdd = await Factories.CustodyAddEvent.create({}, { transient: { signer: aliceCustody } });
+  aliceCustodyRegister = await Factories.IDRegistryEvent.create({
+    args: { to: aliceCustody.signerKey },
+    name: 'Register',
+  });
   aliceCustodyRemove = await Factories.CustodyRemoveAll.create(
     { data: { username: 'alice' } },
     { transient: { signer: aliceCustody } }
   );
   aliceCustody2 = await generateEthereumSigner();
-  aliceCustody2Add = await Factories.CustodyAddEvent.create(
-    { blockNumber: aliceCustodyAdd.blockNumber + 1 },
-    { transient: { signer: aliceCustody2 } }
-  );
+  aliceCustody2Transfer = await Factories.IDRegistryEvent.create({
+    args: { to: aliceCustody2.signerKey },
+    blockNumber: aliceCustodyRegister.blockNumber + 1,
+    name: 'Transfer',
+  });
   aliceCustody2Remove = await Factories.CustodyRemoveAll.create(
     { data: { username: 'alice' } },
     { transient: { signer: aliceCustody2 } }
@@ -83,7 +87,7 @@ describe('revokeSignerMessages', () => {
 
   describe('with messages signed by delegate', () => {
     beforeEach(async () => {
-      await engine.mergeCustodyEvent('alice', aliceCustodyAdd);
+      await engine.mergeIDRegistryEvent('alice', aliceCustodyRegister);
       await engine.mergeSignerMessage(aliceSignerAdd);
       await engine.mergeCast(aliceCast);
       await engine.mergeReaction(aliceReaction);
@@ -104,7 +108,7 @@ describe('revokeSignerMessages', () => {
     });
 
     test('drops all signed messages when custody address is removed', async () => {
-      await engine.mergeCustodyEvent('alice', aliceCustody2Add);
+      await engine.mergeIDRegistryEvent('alice', aliceCustody2Transfer);
       const res = await engine.mergeSignerMessage(aliceCustody2Remove);
       expect(res.isOk()).toBe(true);
       expect(aliceAllSigners()).toEqual(new Set([aliceCustody2.signerKey]));
@@ -123,7 +127,7 @@ describe('revokeSignerMessages', () => {
     });
 
     test('does not drop signed messages when signer is added by a new custody address', async () => {
-      await engine.mergeCustodyEvent('alice', aliceCustody2Add);
+      await engine.mergeIDRegistryEvent('alice', aliceCustody2Transfer);
       await engine.mergeSignerMessage(aliceSignerAdd2);
       const res = await engine.mergeSignerMessage(aliceCustody2Remove);
       expect(res.isOk()).toBe(true);

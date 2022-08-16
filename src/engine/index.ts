@@ -10,8 +10,8 @@ import {
   SignatureAlgorithm,
   SignerEdge,
   SignerMessage,
-  CustodyAddEvent,
   HashAlgorithm,
+  IDRegistryEvent,
 } from '~/types';
 import { hashMessage, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
@@ -184,7 +184,7 @@ class Engine {
    * Signer Methods
    */
 
-  mergeCustodyEvent(username: string, custodyEvent: CustodyAddEvent): Result<void, string> {
+  mergeIDRegistryEvent(username: string, event: IDRegistryEvent): Result<void, string> {
     let signerSet = this._signers.get(username);
     if (!signerSet) {
       signerSet = new SignerSet();
@@ -194,7 +194,7 @@ class Engine {
 
       this._signers.set(username, signerSet);
     }
-    return signerSet.mergeCustodyEvent(custodyEvent);
+    return signerSet.mergeIDRegistryEvent(event);
   }
 
   /** Merge signer message into the set */

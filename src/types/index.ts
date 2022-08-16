@@ -256,13 +256,18 @@ export type CustodyRemoveAllBody = {
   schema: 'farcaster.xyz/schemas/v1/custody-remove-all';
 };
 
-/**
- * A CustodyAddEvent represents a Transfer or Register event from the ID contract
- */
-export type CustodyAddEvent = {
-  custodyAddress: string;
+export type IDRegistryEvent = {
+  args: IDRegistryArgs;
   blockNumber: number;
-  // TODO: expand once we decide how to represent on-chain events
+  blockHash: string;
+  transactionHash: string;
+  logIndex: number;
+  name: 'Register' | 'Transfer';
+};
+
+export type IDRegistryArgs = {
+  to: string;
+  id: number;
 };
 
 // ===========================

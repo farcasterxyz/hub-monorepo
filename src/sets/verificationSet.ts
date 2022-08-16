@@ -48,14 +48,14 @@ class VerificationSet {
   revokeSigner(signer: string): Result<void, string> {
     // Look through adds
     for (const [claimHash, verification] of this._adds) {
-      if (sanitizeSigner(verification.signer) === signer) {
+      if (sanitizeSigner(verification.signer) === sanitizeSigner(signer)) {
         this._adds.delete(claimHash);
       }
     }
 
     // Look through removes
     for (const [claimHash, verification] of this._removes) {
-      if (sanitizeSigner(verification.signer) === signer) {
+      if (sanitizeSigner(verification.signer) === sanitizeSigner(signer)) {
         this._removes.delete(claimHash);
       }
     }

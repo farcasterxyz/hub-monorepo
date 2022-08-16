@@ -19,10 +19,9 @@ import {
   Message,
   MessageFactoryTransientParams,
   MessageSigner,
-  CustodyAddEvent,
-  EthereumSigner,
   CustodyRemoveAll,
   HashAlgorithm,
+  IDRegistryEvent,
 } from '~/types';
 import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
@@ -165,23 +164,24 @@ export const Factories = {
     };
   }),
 
-  /** Generate a valid CustodyAddEvent with randomized properties */
-  CustodyAddEvent: Factory.define<CustodyAddEvent, { signer?: EthereumSigner }, CustodyAddEvent>(
-    ({ onCreate, transientParams }) => {
-      onCreate(async (props) => {
-        const signer = transientParams.signer || (await generateEthereumSigner());
-        if (!props.custodyAddress) {
-          props.custodyAddress = signer.signerKey;
-        }
-        return props;
-      });
+  /** Generate a valid IDRegistryEvent with randomized properties */
+  IDRegistryEvent: Factory.define<IDRegistryEvent, any, IDRegistryEvent>(({ onCreate }) => {
+    onCreate(async (props) => {
+      return props;
+    });
 
-      return {
-        custodyAddress: '',
-        blockNumber: Faker.datatype.number(10_000),
-      };
-    }
-  ),
+    return {
+      args: {
+        to: Faker.datatype.hexaDecimal(32),
+        id: Faker.datatype.number(),
+      },
+      blockNumber: Faker.datatype.number(10_000),
+      blockHash: Faker.datatype.hexaDecimal(64),
+      transactionHash: Faker.datatype.hexaDecimal(64),
+      logIndex: Faker.datatype.number(),
+      name: 'Register',
+    };
+  }),
 
   /** Generate a valid CustodyRemoveAll with randomized properties */
   CustodyRemoveAll: Factory.define<CustodyRemoveAll, MessageFactoryTransientParams, CustodyRemoveAll>(
