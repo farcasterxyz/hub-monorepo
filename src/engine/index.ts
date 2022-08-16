@@ -471,6 +471,7 @@ class Engine {
     const verificationClaim: VerificationClaim = {
       username: message.data.username,
       externalUri: message.data.body.externalUri,
+      blockHash: message.data.body.blockHash,
     };
     const reconstructedClaimHash = await hashFCObject(verificationClaim);
     if (reconstructedClaimHash !== claimHash) {

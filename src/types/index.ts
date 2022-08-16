@@ -150,13 +150,15 @@ export type VerificationAdd = Message<VerificationAddBody>;
  *
  * @externalUri - the URI of the external entity
  * @claimHash - the hash of the verification claim.
+ * @blockHash - the block hash of the current block
  * @externalSignature - the signature of the hash of the verification claim, signed by the external key pair.
- * @externalSignatureType - type of signature from set of supported types (see version 0x45 of https://eips.ethereum.org/EIPS/eip-191 for 'eip-191-0x45')
+ * @externalSignatureType - type of signature from set of supported types (see version 0x45 of https://eips.ethereum.org/EIPS/eip-191 for 'eip-191-0x45').
  * @schema -
  */
 export type VerificationAddBody = {
   externalUri: URI;
   claimHash: string;
+  blockHash: string;
   externalSignature: string;
   externalSignatureType: 'eip-191-0x45';
   schema: 'farcaster.xyz/schemas/v1/verification-add';
@@ -176,10 +178,12 @@ export type VerificationAddFactoryTransientParams = MessageFactoryTransientParam
  *
  * @username - the farcaster username
  * @externalUri - URI of the external address (i.e. Ethereum address)
+ * @blockHash - block hash from the current Ethereum block
  */
 export type VerificationClaim = {
   username: string; // TODO: make this account rather than username when we migrate the rest of the codebase to that
   externalUri: URI; // TODO: constrain this farther
+  blockHash: string;
 };
 
 /** VerificationRemove message */
