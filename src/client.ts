@@ -87,7 +87,7 @@ class Client {
         schema: 'farcaster.xyz/schemas/v1/verification-add',
         externalUri,
         externalSignature,
-        externalSignatureType: 'eip-191-0x45',
+        externalSignatureType: FC.SignatureAlgorithm.EthereumPersonalSign,
         claimHash,
       },
       signedAt: Date.now(),

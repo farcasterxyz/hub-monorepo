@@ -80,7 +80,7 @@ export const Factories = {
         body: {
           embed,
           text,
-          schema: 'farcaster.xyz/schemas/v1/cast-short' as const,
+          schema: 'farcaster.xyz/schemas/v1/cast-short',
         },
         signedAt: Faker.time.recent(),
         username: Faker.name.firstName().toLowerCase(),
@@ -126,7 +126,7 @@ export const Factories = {
       data: {
         body: {
           targetCastUri: 'farcaster://alice/cast/1', // TODO: Find some way to generate this.
-          schema: 'farcaster.xyz/schemas/v1/cast-recast' as const,
+          schema: 'farcaster.xyz/schemas/v1/cast-recast',
         },
         signedAt: Faker.time.recent(),
         username: Faker.name.firstName().toLowerCase(),
@@ -151,7 +151,7 @@ export const Factories = {
           active: true,
           targetUri: Faker.internet.url(),
           type: 'like',
-          schema: 'farcaster.xyz/schemas/v1/reaction' as const,
+          schema: 'farcaster.xyz/schemas/v1/reaction',
         },
         signedAt: Faker.time.recent(),
         username: Faker.name.firstName().toLowerCase(),
@@ -193,7 +193,7 @@ export const Factories = {
       return {
         data: {
           body: {
-            schema: 'farcaster.xyz/schemas/v1/custody-remove-all' as const,
+            schema: 'farcaster.xyz/schemas/v1/custody-remove-all',
           },
           signedAt: Faker.time.recent(),
           username: Faker.name.firstName().toLowerCase(),
@@ -312,8 +312,8 @@ export const Factories = {
             externalUri: ethWallet.address,
             claimHash: '',
             externalSignature: '',
-            externalSignatureType: 'eip-191-0x45',
-            schema: 'farcaster.xyz/schemas/v1/verification-add' as const,
+            externalSignatureType: SignatureAlgorithm.EthereumPersonalSign,
+            schema: 'farcaster.xyz/schemas/v1/verification-add',
           },
           signedAt: Faker.time.recent(),
           username: Faker.name.firstName().toLowerCase(),

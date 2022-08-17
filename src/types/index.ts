@@ -138,14 +138,14 @@ export type VerificationAdd = Message<VerificationAddBody>;
  * @externalUri - the URI of the external entity
  * @claimHash - the hash of the verification claim.
  * @externalSignature - the signature of the hash of the verification claim, signed by the external key pair.
- * @externalSignatureType - type of signature from set of supported types (see version 0x45 of https://eips.ethereum.org/EIPS/eip-191 for 'eip-191-0x45')
+ * @externalSignatureType - type of signature from set of supported types (see version 0x45 of https://eips.ethereum.org/EIPS/eip-191 for 'eth-personal-sign')
  * @schema -
  */
 export type VerificationAddBody = {
   externalUri: URI;
   claimHash: string;
   externalSignature: string;
-  externalSignatureType: 'eip-191-0x45';
+  externalSignatureType: SignatureAlgorithm.EthereumPersonalSign;
   schema: 'farcaster.xyz/schemas/v1/verification-add';
 };
 
@@ -312,7 +312,7 @@ export enum HashAlgorithm {
 /** SignatureAlgorithm enum */
 export enum SignatureAlgorithm {
   Ed25519 = 'ed25519',
-  EthereumPersonalSign = 'eth-personal-sign',
+  EthereumPersonalSign = 'eth-personal-sign', // EIP 191 version 0x45 of https://eips.ethereum.org/EIPS/eip-191
 }
 
 /** MessageFactoryTransientParams is the generic transient params type for message factories */

@@ -72,7 +72,7 @@ export const isVerificationAdd = (msg: FC.Message): msg is FC.VerificationAdd =>
   return (
     body &&
     body.schema === 'farcaster.xyz/schemas/v1/verification-add' &&
-    body.externalSignatureType === 'eip-191-0x45' &&
+    body.externalSignatureType === FC.SignatureAlgorithm.EthereumPersonalSign &&
     typeof body.externalSignature === 'string' &&
     typeof body.externalUri === 'string' &&
     typeof body.claimHash === 'string' &&

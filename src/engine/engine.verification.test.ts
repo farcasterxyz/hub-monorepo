@@ -9,6 +9,7 @@ import {
   VerificationAdd,
   VerificationClaim,
   IDRegistryEvent,
+  SignatureAlgorithm,
 } from '~/types';
 import { Wallet } from 'ethers';
 import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
@@ -150,7 +151,7 @@ describe('mergeVerification', () => {
           body: {
             claimHash: aliceClaimHash,
             externalSignature: aliceExternalSignature,
-            externalSignatureType: 'bar' as unknown as 'eip-191-0x45',
+            externalSignatureType: 'bar' as unknown as SignatureAlgorithm.EthereumPersonalSign,
           },
         },
       },
