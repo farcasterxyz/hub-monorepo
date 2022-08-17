@@ -340,7 +340,8 @@ class Engine {
   private async validateVerificationAdd(message: VerificationAdd): Promise<Result<void, string>> {
     const { externalUri, externalSignature, externalSignatureType, claimHash } = message.data.body;
 
-    if (externalSignatureType !== 'eip-191-0x45') return err('validateVerificationAdd: invalid externalSignatureType');
+    if (externalSignatureType !== SignatureAlgorithm.EthereumPersonalSign)
+      return err('validateVerificationAdd: invalid externalSignatureType');
 
     const verificationClaim: VerificationClaim = {
       username: message.data.username,
