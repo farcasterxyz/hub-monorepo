@@ -2,8 +2,9 @@
 
 1. [How to Contribute](#1-how-to-contribute)
    1. [Proposing Changes](#11-proposing-changes)
-   2. [Writing Tests](#12-writing-tests)
-   3. [Getting A Review](#13-getting-a-review)
+   2. [Signing Commits](#12-signing-commits)
+   3. [Writing Tests](#13-writing-tests)
+   4. [Getting A Review](#13-getting-a-review)
 
 ## 1. How to Contribute
 
@@ -26,7 +27,29 @@ If you're considering making a code change, we really appreciate it! Before you 
 - If your proposal is a new hub feature, consider opening an issue first to get buy-in.
 - If your issue is a small bugfix or improvement, you can simply make the changes and open the PR.
 
-### 1.2. Writing Tests
+### 1.2. Signing Commits
+
+All commits need to be signed with a GPG key. This adds a second factor of authentication that proves that it came from
+you, and not someone who managed to compromise your GitHub account. You can enable signing by following these steps:
+
+1. [Generate GPG Keys](https://help.github.com/en/github/authenticating-to-github/generating-a-new-gpg-key) and upload them to your Github account, [GPG Suite](https://gpgtools.org/) is recommended for OSX
+
+2. Use `gpg-agent` to remember your password locally
+
+```bash
+vi ~/.gnupg/gpg-agent.conf
+
+default-cache-ttl 100000000
+max-cache-ttl 100000000
+```
+
+3. Configure Git to [use your keys when signing](https://help.github.com/en/github/authenticating-to-github/telling-git-about-your-signing-key).
+
+4. Configure Git to always sign commits by running `git config --global commit.gpgsign true`
+
+5. Commit all changes with your usual git commands and you should see a `Verified` badge near your commits
+
+### 1.3. Writing Tests
 
 All changes that involve features or bugfixes should be accompanied by tests, and remember that:
 

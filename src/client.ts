@@ -14,42 +14,9 @@ class Client {
     return this.signer.signerKey;
   }
 
-  async makeMessage(data: FC.Data): Promise<FC.Message> {
-    const message = {
-      data,
-      hash: '',
-      hashType: FC.HashAlgorithm.Blake2b,
-      signature: '',
-      signatureType: this.signer.type,
-      signer: this.signer.signerKey,
-    };
-    message.hash = await hashMessage(message);
-    if (this.signer.type === FC.SignatureAlgorithm.EthereumPersonalSign) {
-      message.signature = await this.signer.wallet.signMessage(message.hash);
-    } else if (this.signer.type === FC.SignatureAlgorithm.Ed25519) {
-      message.signature = await signEd25519(message.hash, this.signer.privateKey);
-    }
-    return message;
-  }
-
-  async makeRoot(ethBlockNum: number, ethblockHash: string): Promise<FC.Root> {
-    const message = await this.makeMessage({
-      body: {
-        blockHash: ethblockHash,
-        schema: 'farcaster.xyz/schemas/v1/root',
-      },
-      rootBlock: ethBlockNum,
-      signedAt: Date.now(),
-      username: this.username,
-    });
-    return message as FC.Root;
-  }
-
-  async makeCastShort(text: string, root: FC.Root): Promise<FC.CastShort> {
+  async makeCastShort(text: string): Promise<FC.CastShort> {
     const schema = 'farcaster.xyz/schemas/v1/cast-short' as const;
     const signedAt = Date.now();
-
-    const rootBlock = root.data.rootBlock;
 
     const embed = { items: [] };
 
@@ -59,7 +26,6 @@ class Client {
         text,
         schema,
       },
-      rootBlock,
       signedAt,
       username: this.username,
     };
@@ -68,18 +34,15 @@ class Client {
     return message as FC.CastShort;
   }
 
-  async makeCastRemove(targetCast: FC.Cast, root: FC.Root): Promise<FC.CastRemove> {
+  async makeCastRemove(targetCast: FC.Cast): Promise<FC.CastRemove> {
     const schema = 'farcaster.xyz/schemas/v1/cast-remove' as const;
     const signedAt = Date.now();
-
-    const rootBlock = root.data.rootBlock;
 
     const messageData = {
       body: {
         targetHash: targetCast.hash,
         schema,
       },
-      rootBlock,
       signedAt,
       username: this.username,
     };
@@ -88,11 +51,9 @@ class Client {
     return message as FC.CastRemove;
   }
 
-  async makeReaction(targetCast: FC.CastShort, root: FC.Root, active = true): Promise<FC.Reaction> {
+  async makeReaction(targetCast: FC.CastShort, active = true): Promise<FC.Reaction> {
     const schema = 'farcaster.xyz/schemas/v1/reaction' as const;
     const signedAt = Date.now();
-
-    const rootBlock = root.data.rootBlock;
 
     const messageData = {
       body: {
@@ -102,7 +63,6 @@ class Client {
         type: 'like' as const,
         schema,
       },
-      rootBlock,
       signedAt,
       username: this.username,
     };
@@ -121,36 +81,86 @@ class Client {
     externalUri: FC.URI,
     claimHash: string,
     blockHash: string,
-    externalSignature: string,
-    root: FC.Root
+    externalSignature: string
   ): Promise<FC.VerificationAdd> {
     const message = await this.makeMessage({
       body: {
         schema: 'farcaster.xyz/schemas/v1/verification-add',
         externalUri,
         externalSignature,
-        externalSignatureType: 'eip-191-0x45',
+        externalSignatureType: FC.SignatureAlgorithm.EthereumPersonalSign,
         claimHash,
         blockHash,
       },
-      rootBlock: root.data.rootBlock,
       signedAt: Date.now(),
       username: this.username,
     });
     return message as FC.VerificationAdd;
   }
 
-  async makeVerificationRemove(verificationAdd: FC.VerificationAdd, root: FC.Root): Promise<FC.VerificationRemove> {
+  async makeVerificationRemove(claimHash: string): Promise<FC.VerificationRemove> {
     const message = await this.makeMessage({
       body: {
         schema: 'farcaster.xyz/schemas/v1/verification-remove',
-        claimHash: verificationAdd.data.body.claimHash,
+        claimHash,
       },
-      rootBlock: root.data.rootBlock,
       signedAt: Date.now(),
       username: this.username,
     });
     return message as FC.VerificationRemove;
+  }
+
+  async makeSignerAdd(delegate: string, edgeHash: string, delegateSignature: string): Promise<FC.SignerAdd> {
+    const message = await this.makeMessage({
+      body: {
+        delegate,
+        edgeHash,
+        delegateSignature,
+        delegateSignatureType: FC.SignatureAlgorithm.Ed25519,
+        schema: 'farcaster.xyz/schemas/v1/signer-add',
+      },
+      signedAt: Date.now(),
+      username: this.username,
+    });
+    return message as FC.SignerAdd;
+  }
+
+  async makeSignerEdgeHash(custody: string, delegate: string): Promise<string> {
+    const signerEdge: FC.SignerEdge = {
+      custody,
+      delegate,
+    };
+    return await hashFCObject(signerEdge);
+  }
+
+  async makeSignerRemove(delegate: string): Promise<FC.SignerRemove> {
+    const message = await this.makeMessage({
+      body: {
+        delegate,
+        schema: 'farcaster.xyz/schemas/v1/signer-remove',
+      },
+      signedAt: Date.now(),
+      username: this.username,
+    });
+    return message as FC.SignerRemove;
+  }
+
+  private async makeMessage(data: FC.Data): Promise<FC.Message> {
+    const message = {
+      data,
+      hash: '',
+      hashType: FC.HashAlgorithm.Blake2b,
+      signature: '',
+      signatureType: this.signer.type,
+      signer: this.signer.signerKey,
+    };
+    message.hash = await hashMessage(message);
+    if (this.signer.type === FC.SignatureAlgorithm.EthereumPersonalSign) {
+      message.signature = await this.signer.wallet.signMessage(message.hash);
+    } else if (this.signer.type === FC.SignatureAlgorithm.Ed25519) {
+      message.signature = await signEd25519(message.hash, this.signer.privateKey);
+    }
+    return message;
   }
 }
 

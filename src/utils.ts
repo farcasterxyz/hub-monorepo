@@ -102,14 +102,31 @@ export const convertToHex = async (text: Uint8Array): Promise<string> => {
   return '0x' + ed.utils.bytesToHex(text);
 };
 
+/**
+ * generateEd25519Signer creates a MessageSigner with an Ed25519 private key,
+ * public key as signerKey, and Ed25519 signature type.
+ *
+ * Messages can be signed using ed.sign() and verified using ed.verify()
+ */
 export const generateEd25519Signer = async (): Promise<Ed25519Signer> => {
   const { privateKey, publicKey } = await generateEd25519KeyPair();
   const signerKey = await convertToHex(publicKey);
   return { privateKey, signerKey, type: SignatureAlgorithm.Ed25519 };
 };
 
+/**
+ * generateEthereumSigner creates a MessageSigner with an ethers wallet,
+ * lowercased wallet address as signerKey, and EthereumPersonalSign signature type.
+ *
+ * Messages can be signed using wallet.signMessage(), which creates an EIP 191 version 0x45
+ * compliant signature, and verified using wallet.verifyMessage()
+ */
 export const generateEthereumSigner = async (): Promise<EthereumSigner> => {
   const wallet = ethers.Wallet.createRandom();
   const signerKey = wallet.address.toLowerCase();
   return { wallet, signerKey, type: SignatureAlgorithm.EthereumPersonalSign };
+};
+
+export const sanitizeSigner = (signer: string): string => {
+  return signer.toLowerCase();
 };

@@ -1,39 +1,49 @@
 import Engine from '~/engine';
 import { Factories } from '~/factories';
 import {
-  MessageSigner,
-  Root,
+  Ed25519Signer,
+  EthereumSigner,
+  SignerAdd,
   Verification,
-  VerificationAdd,
   VerificationAddFactoryTransientParams,
+  VerificationAdd,
   VerificationClaim,
+  IDRegistryEvent,
+  SignatureAlgorithm,
 } from '~/types';
 import Faker from 'faker';
-import { ethers } from 'ethers';
-import { hashFCObject, generateEd25519Signer } from '~/utils';
+import { Wallet } from 'ethers';
+import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
 const engine = new Engine();
 
 // TODO: add test helpers to clean up the setup of these tests
-// TODO: refactor these tests to be faster (currently ~7s)
 describe('mergeVerification', () => {
-  let aliceSigner: MessageSigner;
-  let aliceAddress: string;
-  let aliceRoot: Root;
+  let aliceCustody: EthereumSigner;
+  let aliceCustodyRegister: IDRegistryEvent;
+  let aliceSigner: Ed25519Signer;
+  let aliceSignerAdd: SignerAdd;
   let aliceBlockHash: string;
-  let aliceEthWallet: ethers.Wallet;
+  let aliceEthWallet: Wallet;
   let aliceClaimHash: string;
   let aliceExternalSignature: string;
   let transientParams: { transient: VerificationAddFactoryTransientParams };
   let genericVerificationAdd: VerificationAdd;
 
-  // Generate key pair for alice and root message
   beforeAll(async () => {
+    aliceCustody = await generateEthereumSigner();
+    aliceCustodyRegister = await Factories.IDRegistryEvent.create({
+      args: { to: aliceCustody.signerKey },
+      name: 'Register',
+    });
     aliceSigner = await generateEd25519Signer();
-    aliceEthWallet = ethers.Wallet.createRandom();
-    aliceAddress = aliceSigner.signerKey;
+    transientParams = { transient: { signer: aliceSigner } };
+    aliceSignerAdd = await Factories.SignerAdd.create(
+      { data: { username: 'alice' } },
+      { transient: { signer: aliceCustody, delegateSigner: aliceSigner } }
+    );
+    aliceEthWallet = Wallet.createRandom();
     transientParams = { transient: { signer: aliceSigner, ethWallet: aliceEthWallet } };
-    aliceRoot = await Factories.Root.create({ data: { rootBlock: 100, username: 'alice' } }, transientParams);
     aliceBlockHash = Faker.datatype.hexaDecimal(64).toLowerCase();
 
     const verificationClaim: VerificationClaim = {
@@ -48,9 +58,7 @@ describe('mergeVerification', () => {
     genericVerificationAdd = await Factories.VerificationAdd.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: aliceRoot.data.signedAt + 1,
           body: {
             claimHash: aliceClaimHash,
             blockHash: aliceBlockHash,
@@ -62,25 +70,16 @@ describe('mergeVerification', () => {
     );
   });
 
-  // Every test should start with a valid signer and root for alice
   beforeEach(() => {
     engine._reset();
-
-    const aliceRegistrationSignerChange = {
-      blockNumber: 99,
-      blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-      logIndex: 0,
-      address: aliceAddress,
-    };
-
-    engine.addSignerChange('alice', aliceRegistrationSignerChange);
-    engine.mergeRoot(aliceRoot);
+    engine.mergeIDRegistryEvent('alice', aliceCustodyRegister);
+    engine.mergeSignerMessage(aliceSignerAdd);
   });
 
   test('fails with invalid message type', async () => {
     const cast = (await Factories.Cast.create(
       {
-        data: { rootBlock: aliceRoot.data.rootBlock, username: 'alice', signedAt: aliceRoot.data.signedAt + 1 },
+        data: { username: 'alice' },
       },
       transientParams
     )) as unknown as Verification;
@@ -104,9 +103,7 @@ describe('mergeVerification', () => {
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: aliceRoot.data.signedAt + 1,
           body: { externalSignature: 'foo', claimHash: aliceClaimHash, blockHash: aliceBlockHash },
         },
       },
@@ -118,13 +115,11 @@ describe('mergeVerification', () => {
   });
 
   test('fails with externalSignature from unknown address', async () => {
-    const ethWalletAlice = ethers.Wallet.createRandom();
+    const ethWalletAlice = Wallet.createRandom();
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: aliceRoot.data.signedAt + 1,
           body: {
             externalUri: ethWalletAlice.address,
             externalSignature: aliceExternalSignature,
@@ -142,9 +137,7 @@ describe('mergeVerification', () => {
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: aliceRoot.data.signedAt + 1,
           body: { claimHash: 'bar', externalSignature: aliceExternalSignature },
         },
       },
@@ -159,9 +152,7 @@ describe('mergeVerification', () => {
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: aliceRoot.data.signedAt + 1,
           body: {
             claimHash: aliceClaimHash,
             blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
@@ -180,13 +171,11 @@ describe('mergeVerification', () => {
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
-          signedAt: aliceRoot.data.signedAt + 1,
           body: {
             claimHash: aliceClaimHash,
             externalSignature: aliceExternalSignature,
-            externalSignatureType: 'bar' as unknown as 'eip-191-0x45',
+            externalSignatureType: 'bar' as unknown as SignatureAlgorithm.EthereumPersonalSign,
           },
         },
       },
@@ -222,7 +211,6 @@ describe('mergeVerification', () => {
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: elevenMinutesAhead,
           body: {
@@ -238,20 +226,12 @@ describe('mergeVerification', () => {
     expect(engine._getVerificationAdds('alice')).toEqual([]);
   });
 
-  test('fails if there is no root', async () => {
-    engine._resetRoots();
-    const res = await engine.mergeVerification(genericVerificationAdd);
-    expect(res._unsafeUnwrapErr()).toBe('validateMessage: no root present');
-    expect(engine._getVerificationAdds('alice')).toEqual([]);
-  });
-
   test('succeeds with a valid VerificationRemove', async () => {
     expect((await engine.mergeVerification(genericVerificationAdd)).isOk()).toBe(true);
     expect(engine._getVerificationAdds('alice')).toEqual([genericVerificationAdd]);
     const verificationRemoveMessage = await Factories.VerificationRemove.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: genericVerificationAdd.data.signedAt + 1,
           body: { claimHash: genericVerificationAdd.data.body.claimHash },
@@ -268,7 +248,6 @@ describe('mergeVerification', () => {
     const verificationRemoveMessage = await Factories.VerificationRemove.create(
       {
         data: {
-          rootBlock: aliceRoot.data.rootBlock,
           username: 'alice',
           signedAt: genericVerificationAdd.data.signedAt + 1,
           body: { claimHash: genericVerificationAdd.data.body.claimHash },

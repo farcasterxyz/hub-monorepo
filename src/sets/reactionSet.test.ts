@@ -5,15 +5,15 @@ import { hashCompare } from '~/utils';
 
 const set = new ReactionSet();
 
+beforeEach(() => {
+  set._reset();
+});
+
 describe('add reaction', () => {
   let activeReaction: Reaction;
 
   beforeAll(async () => {
     activeReaction = await Factories.Reaction.create();
-  });
-
-  beforeEach(() => {
-    set._reset();
   });
 
   const subject = () => set._getActiveReactions();
@@ -249,5 +249,34 @@ describe('add reaction', () => {
         });
       });
     });
+  });
+});
+
+describe('revokeSigner', () => {
+  let reaction: Reaction;
+  let reaction2: Reaction;
+
+  beforeAll(async () => {
+    reaction = await Factories.Reaction.create();
+    reaction2 = await Factories.Reaction.create();
+  });
+
+  test('succeeds without any messages', () => {
+    expect(set.revokeSigner(reaction.signer).isOk()).toBe(true);
+  });
+
+  test('succeeds and drops messages', () => {
+    expect(set.merge(reaction).isOk()).toBe(true);
+    expect(set.revokeSigner(reaction.signer).isOk()).toBe(true);
+    expect(set._getActiveReactions()).toEqual([]);
+    expect(set._getInactiveReactions()).toEqual([]);
+  });
+
+  test('suceeds and only removes messages from signer', () => {
+    expect(set.merge(reaction).isOk()).toBe(true);
+    expect(set.merge(reaction2).isOk()).toBe(true);
+    expect(set.revokeSigner(reaction2.signer).isOk()).toBe(true);
+    expect(set._getActiveReactions()).toEqual([reaction]);
+    expect(set._getInactiveReactions()).toEqual([]);
   });
 });

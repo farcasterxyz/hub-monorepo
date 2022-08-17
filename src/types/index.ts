@@ -23,36 +23,23 @@ export type Message<T = Body> = {
  * Data is a generic type that holds the part of the message that is going to be signed
  *
  * @body - the body of the message which is implemented by the specific type
- * @rootBlock - the block number of the ethereum block in the root
  * @signedAt - the utc unix timestamp at which the message was signed
  * @username - the farcaster username owned by the signer at the time of signature
  */
 export type Data<T = Body> = {
   body: T;
-  rootBlock: number;
   signedAt: number;
   username: string;
 };
 
-export type Body = RootBody | CastBody | ReactionBody | VerificationAddBody | VerificationRemoveBody;
-
-// ===========================
-//  Root Types
-// ===========================
-
-/** A Root is the first message a user sends, which must point to a unique, valid Ethereum block for ordering purposes */
-export type Root = Message<RootBody>;
-
-/**
- * Body of a Root Message
- *
- * @blockHash - the hash of the ETH block from message.rootBlock
- * @schema - the schema of the message
- */
-export type RootBody = {
-  blockHash: string;
-  schema: 'farcaster.xyz/schemas/v1/root';
-};
+export type Body =
+  | CastBody
+  | ReactionBody
+  | VerificationAddBody
+  | VerificationRemoveBody
+  | SignerAddBody
+  | SignerRemoveBody
+  | CustodyRemoveAllBody;
 
 // ===========================
 //  Cast Types
@@ -152,7 +139,7 @@ export type VerificationAdd = Message<VerificationAddBody>;
  * @claimHash - the hash of the verification claim
  * @blockHash - the block hash of the current block
  * @externalSignature - the signature of the hash of the verification claim, signed by the external key pair
- * @externalSignatureType - type of signature from set of supported types (see version 0x45 of https://eips.ethereum.org/EIPS/eip-191 for 'eip-191-0x45')
+ * @externalSignatureType - type of signature from set of supported types (see version 0x45 of https://eips.ethereum.org/EIPS/eip-191 for 'eth-personal-sign')
  * @schema -
  */
 export type VerificationAddBody = {
@@ -160,7 +147,7 @@ export type VerificationAddBody = {
   claimHash: string;
   blockHash: string;
   externalSignature: string;
-  externalSignatureType: 'eip-191-0x45';
+  externalSignatureType: SignatureAlgorithm.EthereumPersonalSign;
   schema: 'farcaster.xyz/schemas/v1/verification-add';
 };
 
@@ -190,7 +177,7 @@ export type VerificationClaim = {
 export type VerificationRemove = Message<VerificationRemoveBody>;
 
 /**
- * A VerificationRemoveBody represents the deletion of a verification
+ * A VerificationRemoveBody represents the removal of a verification
  *
  * @claimHash - hash of the verification claim
  * @schema -
@@ -207,6 +194,84 @@ export type VerificationRemoveBody = {
  */
 export type VerificationRemoveFactoryTransientParams = MessageFactoryTransientParams & {
   externalUri?: string;
+};
+
+// ===========================
+// Signer Types
+// ===========================
+
+export type SignerMessage = SignerAdd | SignerRemove | CustodyRemoveAll;
+
+/** SignerAdd message */
+export type SignerAdd = Message<SignerAddBody>;
+
+/**
+ * A SignerAddBody represents a bi-directional proof between a custody address and a delegate signer
+ *
+ * @delegate - the delegate public key
+ * @edgeHash - the hash of the SignerEdge containing both public keys
+ * @delegateSignature - the signature of the edgeHash, signed by delegate
+ * @delegateSignatureType - type of delegate signature from set of supported types
+ * @schema -
+ */
+export type SignerAddBody = {
+  delegate: string;
+  edgeHash: string;
+  delegateSignature: string;
+  delegateSignatureType: SignatureAlgorithm.Ed25519;
+  schema: 'farcaster.xyz/schemas/v1/signer-add';
+};
+
+/**
+ * A SignerAddFactoryTransientParams is passed to the SignerAdd factory
+ *
+ * @delegateSigner - the Ed25519 signer for signing the edgeHash
+ */
+export type SignerAddFactoryTransientParams = MessageFactoryTransientParams & {
+  delegateSigner?: Ed25519Signer;
+};
+
+/**
+ * A SignerEdge is an object that contains both the custody address and the delegate signer
+ */
+export type SignerEdge = {
+  custody: string;
+  delegate: string;
+};
+
+/** SignerRemove message */
+export type SignerRemove = Message<SignerRemoveBody>;
+
+/**
+ * A SignerRemoveBody represents the removal of a delegate signer
+ */
+export type SignerRemoveBody = {
+  delegate: string;
+  schema: 'farcaster.xyz/schemas/v1/signer-remove';
+};
+
+/** CustodyRemoveAll message */
+export type CustodyRemoveAll = Message<CustodyRemoveAllBody>;
+
+/**
+ * A CustodyRemoveAllBody represents the removal of all custody addresses before a given block
+ */
+export type CustodyRemoveAllBody = {
+  schema: 'farcaster.xyz/schemas/v1/custody-remove-all';
+};
+
+export type IDRegistryEvent = {
+  args: IDRegistryArgs;
+  blockNumber: number;
+  blockHash: string;
+  transactionHash: string;
+  logIndex: number;
+  name: 'Register' | 'Transfer';
+};
+
+export type IDRegistryArgs = {
+  to: string;
+  id: number;
 };
 
 // ===========================
@@ -251,10 +316,10 @@ export enum HashAlgorithm {
 /** SignatureAlgorithm enum */
 export enum SignatureAlgorithm {
   Ed25519 = 'ed25519',
-  EthereumPersonalSign = 'eth-personal-sign',
+  EthereumPersonalSign = 'eth-personal-sign', // EIP 191 version 0x45 of https://eips.ethereum.org/EIPS/eip-191
 }
 
-/** MessageFactoryTransientParams is the generic transient params type for factories */
+/** MessageFactoryTransientParams is the generic transient params type for message factories */
 export type MessageFactoryTransientParams = {
   signer?: MessageSigner;
 };
