@@ -11,6 +11,7 @@ import {
   IDRegistryEvent,
   SignatureAlgorithm,
 } from '~/types';
+import Faker from 'faker';
 import { Wallet } from 'ethers';
 import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
@@ -22,6 +23,7 @@ describe('mergeVerification', () => {
   let aliceCustodyRegister: IDRegistryEvent;
   let aliceSigner: Ed25519Signer;
   let aliceSignerAdd: SignerAdd;
+  let aliceBlockHash: string;
   let aliceEthWallet: Wallet;
   let aliceClaimHash: string;
   let aliceExternalSignature: string;
@@ -42,10 +44,12 @@ describe('mergeVerification', () => {
     );
     aliceEthWallet = Wallet.createRandom();
     transientParams = { transient: { signer: aliceSigner, ethWallet: aliceEthWallet } };
+    aliceBlockHash = Faker.datatype.hexaDecimal(64).toLowerCase();
 
     const verificationClaim: VerificationClaim = {
       username: 'alice',
       externalUri: aliceEthWallet.address,
+      blockHash: aliceBlockHash,
     };
     aliceClaimHash = await hashFCObject(verificationClaim);
 
@@ -57,6 +61,7 @@ describe('mergeVerification', () => {
           username: 'alice',
           body: {
             claimHash: aliceClaimHash,
+            blockHash: aliceBlockHash,
             externalSignature: aliceExternalSignature,
           },
         },
@@ -99,7 +104,7 @@ describe('mergeVerification', () => {
       {
         data: {
           username: 'alice',
-          body: { externalSignature: 'foo', claimHash: aliceClaimHash },
+          body: { externalSignature: 'foo', claimHash: aliceClaimHash, blockHash: aliceBlockHash },
         },
       },
       transientParams
@@ -134,6 +139,25 @@ describe('mergeVerification', () => {
         data: {
           username: 'alice',
           body: { claimHash: 'bar', externalSignature: aliceExternalSignature },
+        },
+      },
+      transientParams
+    );
+    const res = await engine.mergeVerification(verificationAddMessage);
+    expect(res._unsafeUnwrapErr()).toBe('validateVerificationAdd: invalid claimHash');
+    expect(engine._getVerificationAdds('alice')).toEqual([]);
+  });
+
+  test('fails with invalid blockHash', async () => {
+    const verificationAddMessage = await Factories.VerificationAdd.create(
+      {
+        data: {
+          username: 'alice',
+          body: {
+            claimHash: aliceClaimHash,
+            blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+            externalSignature: aliceExternalSignature,
+          },
         },
       },
       transientParams

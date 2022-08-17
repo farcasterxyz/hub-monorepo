@@ -80,6 +80,7 @@ class Client {
   async makeVerificationAdd(
     externalUri: FC.URI,
     claimHash: string,
+    blockHash: string,
     externalSignature: string
   ): Promise<FC.VerificationAdd> {
     const message = await this.makeMessage({
@@ -89,6 +90,7 @@ class Client {
         externalSignature,
         externalSignatureType: FC.SignatureAlgorithm.EthereumPersonalSign,
         claimHash,
+        blockHash,
       },
       signedAt: Date.now(),
       username: this.username,

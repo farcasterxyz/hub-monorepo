@@ -293,6 +293,7 @@ export const Factories = {
           const verificationClaim: VerificationClaim = {
             username: props.data.username,
             externalUri: props.data.body.externalUri,
+            blockHash: props.data.body.blockHash,
           };
           props.data.body.claimHash = await hashFCObject(verificationClaim);
         }
@@ -311,6 +312,7 @@ export const Factories = {
           body: {
             externalUri: ethWallet.address,
             claimHash: '',
+            blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
             externalSignature: '',
             externalSignatureType: SignatureAlgorithm.EthereumPersonalSign,
             schema: 'farcaster.xyz/schemas/v1/verification-add',
@@ -338,6 +340,7 @@ export const Factories = {
           const verificationClaim: VerificationClaim = {
             username: props.data.username,
             externalUri,
+            blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
           };
           props.data.body.claimHash = await hashFCObject(verificationClaim);
         }

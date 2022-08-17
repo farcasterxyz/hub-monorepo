@@ -20,7 +20,7 @@ export type Message<T = Body> = {
 };
 
 /**
- * Data is a generic type that holds the part of the message that is going to be signed.
+ * Data is a generic type that holds the part of the message that is going to be signed
  *
  * @body - the body of the message which is implemented by the specific type
  * @signedAt - the utc unix timestamp at which the message was signed
@@ -65,7 +65,7 @@ export type CastBody = CastShortBody | CastRemoveBody | CastRecastBody;
  * @text - the text of the Cast
  * @embed -
  * @schema -
- * @targetUri - the object that this Cast is replying to.
+ * @targetUri - the object that this Cast is replying to
  */
 export type CastShortBody = {
   embed: Embed;
@@ -79,9 +79,9 @@ type Embed = {
 };
 
 /**
- * A CastRemoveBody indicates that a previous Cast should be removed from the feed.
+ * A CastRemoveBody indicates that a previous Cast should be removed from the feed
  *
- * @targetHash - the hash of the cast that is being removed.
+ * @targetHash - the hash of the cast that is being removed
  */
 export type CastRemoveBody = {
   // TODO: is there any benefit to making this a URI, like a recast?
@@ -90,7 +90,7 @@ export type CastRemoveBody = {
 };
 
 /**
- * A CastRecastBody indicates that a Cast should be re-displayed in the user's feed.
+ * A CastRecastBody indicates that a Cast should be re-displayed in the user's feed
  *
  * @targetCastUri - the cast that is to be recast
  */
@@ -107,11 +107,11 @@ export type CastRecastBody = {
 export type Reaction = Message<ReactionBody>;
 
 /**
- * A ReactionBody represents the addition or removal of a reaction on an Object.
+ * A ReactionBody represents the addition or removal of a reaction on an Object
  *
- * @active - whether the reaction is active or not.
- * @targetUri - the object that is being reacted to.
- * @type - the type of reaction.
+ * @active - whether the reaction is active or not
+ * @targetUri - the object that is being reacted to
+ * @type - the type of reaction
  * @schema -
  */
 export type ReactionBody = {
@@ -133,17 +133,19 @@ export type Verification = VerificationAdd | VerificationRemove;
 export type VerificationAdd = Message<VerificationAddBody>;
 
 /**
- * A VerificationAddBody represents a signed claim between a Farcaster account and an external entity (i.e. an Ethereum address).
+ * A VerificationAddBody represents a signed claim between a Farcaster account and an external entity (i.e. an Ethereum address)
  *
  * @externalUri - the URI of the external entity
- * @claimHash - the hash of the verification claim.
- * @externalSignature - the signature of the hash of the verification claim, signed by the external key pair.
+ * @claimHash - the hash of the verification claim
+ * @blockHash - the block hash of the current block
+ * @externalSignature - the signature of the hash of the verification claim, signed by the external key pair
  * @externalSignatureType - type of signature from set of supported types (see version 0x45 of https://eips.ethereum.org/EIPS/eip-191 for 'eth-personal-sign')
  * @schema -
  */
 export type VerificationAddBody = {
   externalUri: URI;
   claimHash: string;
+  blockHash: string;
   externalSignature: string;
   externalSignatureType: SignatureAlgorithm.EthereumPersonalSign;
   schema: 'farcaster.xyz/schemas/v1/verification-add';
@@ -163,10 +165,12 @@ export type VerificationAddFactoryTransientParams = MessageFactoryTransientParam
  *
  * @username - the farcaster username
  * @externalUri - URI of the external address (i.e. Ethereum address)
+ * @blockHash - block hash from the current Ethereum block
  */
 export type VerificationClaim = {
   username: string; // TODO: make this account rather than username when we migrate the rest of the codebase to that
   externalUri: URI; // TODO: constrain this farther
+  blockHash: string;
 };
 
 /** VerificationRemove message */
@@ -283,7 +287,7 @@ export type URI = FarcasterURI | ChainURI | HTTPURI;
 export type FarcasterURI = string;
 
 /**
- * A Chain URI points to on-chain assets using the CAIP-20 standard with a `chain://` prefix.
+ * A Chain URI points to on-chain assets using the CAIP-20 standard with a `chain://` prefix
  * e.g. An NFT becomes chain://eip155:1/erc721:0xaba7161a7fb69c88e16ed9f455ce62b791ee4d03/7894
  */
 export type ChainURI = string;

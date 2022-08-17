@@ -12,6 +12,7 @@ import {
   isVerificationAdd,
   isVerificationRemove,
 } from '~/types/typeguards';
+import Faker from 'faker';
 import { convertToHex, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 import { ethers } from 'ethers';
 
@@ -81,7 +82,8 @@ describe('when signer is a delegate signer', () => {
     test('succeeds', async () => {
       const claimHash = await client.makeVerificationClaimHash(wallet.address);
       const externalSignature = await wallet.signMessage(claimHash);
-      const message = await client.makeVerificationAdd(wallet.address, claimHash, externalSignature);
+      const blockHash = Faker.datatype.hexaDecimal(64).toLowerCase();
+      const message = await client.makeVerificationAdd(wallet.address, claimHash, blockHash, externalSignature);
       expect(isVerificationAdd(message)).toBe(true);
     });
   });
