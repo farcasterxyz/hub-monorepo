@@ -207,7 +207,7 @@ export const Factories = {
           body: {
             externalUri: ethWallet.address,
             claimHash: '',
-            blockHash: '',
+            blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
             externalSignature: '',
             externalSignatureType: 'eip-191-0x45',
             schema: 'farcaster.xyz/schemas/v1/verification-add' as const,
