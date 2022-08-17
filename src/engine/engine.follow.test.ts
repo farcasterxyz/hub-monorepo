@@ -8,7 +8,6 @@ import {
   Follow,
   IDRegistryEvent,
   MessageFactoryTransientParams,
-  Reaction,
   SignerAdd,
 } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';

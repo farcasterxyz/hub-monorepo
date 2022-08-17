@@ -6,10 +6,15 @@ import { hashCompare, sanitizeSigner } from '~/utils';
 /**
  * FollowSet stores and fetches follow actions for a Farcaster ID.
  *
- * TODO: add more info
+ * The FollowSet is implemented as a modified LWW set. Follow objects are stored in the hashToFollow map,
+ * indexed by message hash. Another data structure, targetToHash, stores references from a targetURI (i.e. user URI)
+ * to the most recent follow message hash.
+ *
+ * When two follow messages conflict, the one with the later signedAt timestamp wins. If two messages have the same timestamp,
+ * the remove (i.e. where active is false) wins. If two messages have the same active value, the message with the higher
+ * lexicographical hash wins.
  */
 class FollowSet {
-  /** Both maps indexed by targetURI */
   private hashToFollow: Map<string, Follow>;
   private targetToHash: Map<string, string>;
 

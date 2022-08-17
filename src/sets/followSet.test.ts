@@ -1,8 +1,8 @@
 import { Factories } from '~/factories';
 import Faker from 'faker';
 import FollowSet from '~/sets/followSet';
-import { Ed25519Signer, Follow, Reaction, URI } from '~/types';
-import { generateEd25519Signer, hashCompare } from '~/utils';
+import { Ed25519Signer, Follow, URI } from '~/types';
+import { generateEd25519Signer } from '~/utils';
 
 const set = new FollowSet();
 const activeFollows = () => set._getActiveFollows();
