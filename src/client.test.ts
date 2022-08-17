@@ -2,10 +2,12 @@ import { hexToBytes } from 'ethereum-cryptography/utils';
 import Client from '~/client';
 import { Factories } from '~/factories';
 import * as ed from '@noble/ed25519';
+import Faker from 'faker';
 import { CastShort, Ed25519Signer, EthereumSigner } from '~/types';
 import {
   isCastRemove,
   isCastShort,
+  isFollow,
   isReaction,
   isSignerAdd,
   isSignerRemove,
@@ -91,6 +93,14 @@ describe('when signer is a delegate signer', () => {
       const claimHash = await client.makeVerificationClaimHash(wallet.address);
       const message = await client.makeVerificationRemove(claimHash);
       expect(isVerificationRemove(message)).toBe(true);
+    });
+  });
+
+  describe('makeFollow', () => {
+    test('succeeds', async () => {
+      const targetUser = Faker.internet.url();
+      const message = await client.makeFollow(targetUser);
+      expect(isFollow(message)).toBe(true);
     });
   });
 });

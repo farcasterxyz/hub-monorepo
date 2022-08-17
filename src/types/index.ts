@@ -39,7 +39,8 @@ export type Body =
   | VerificationRemoveBody
   | SignerAddBody
   | SignerRemoveBody
-  | CustodyRemoveAllBody;
+  | CustodyRemoveAllBody
+  | FollowBody;
 
 // ===========================
 //  Cast Types
@@ -122,6 +123,26 @@ export type ReactionBody = {
 };
 
 export type ReactionType = 'like';
+
+//  ===========================
+//  Follow Types
+//  ===========================
+
+/** A Follow message */
+export type Follow = Message<FollowBody>;
+
+/**
+ * A FollowAddBody represents the addition of a follow action on an Farcaster object
+ *
+ * @active - whether the follow is active or not
+ * @targetUri - the object that is being followed
+ * @schema -
+ */
+export type FollowBody = {
+  active: boolean;
+  schema: 'farcaster.xyz/schemas/v1/follow';
+  targetUri: URI;
+};
 
 //  ===========================
 //  Verification Types
