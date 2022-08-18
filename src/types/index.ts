@@ -24,12 +24,12 @@ export type Message<T = Body> = {
  *
  * @body - the body of the message which is implemented by the specific type
  * @signedAt - the utc unix timestamp at which the message was signed
- * @username - the farcaster username owned by the signer at the time of signature
+ * @fid - the Farcaster ID owned by the signer at the time of signature
  */
 export type Data<T = Body> = {
   body: T;
   signedAt: number;
-  username: string;
+  fid: number;
 };
 
 export type Body =
@@ -184,12 +184,12 @@ export type VerificationAddFactoryTransientParams = MessageFactoryTransientParam
 /**
  * A VerificationClaim is an object that includes both the farcaster account and external address
  *
- * @username - the farcaster username
+ * @fid - the Farcaster ID
  * @externalUri - URI of the external address (i.e. Ethereum address)
- * @blockHash - block hash from the current Ethereum block
+ * @blockHash - current Ethereum block hash
  */
 export type VerificationClaim = {
-  username: string; // TODO: make this account rather than username when we migrate the rest of the codebase to that
+  fid: number;
   externalUri: URI; // TODO: constrain this farther
   blockHash: string;
 };

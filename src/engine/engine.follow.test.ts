@@ -13,6 +13,7 @@ import {
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
 const engine = new Engine();
+const aliceFid = Faker.datatype.number();
 
 describe('mergeFollow', () => {
   let aliceCustody: EthereumSigner;
@@ -24,7 +25,7 @@ describe('mergeFollow', () => {
   let unfollow: Follow;
   let transientParams: { transient: MessageFactoryTransientParams };
 
-  const aliceFollows = () => engine._getActiveFollows('alice');
+  const aliceFollows = () => engine._getActiveFollows(aliceFid);
 
   beforeAll(async () => {
     aliceCustody = await generateEthereumSigner();
@@ -34,21 +35,21 @@ describe('mergeFollow', () => {
     });
     aliceSigner = await generateEd25519Signer();
     aliceSignerAdd = await Factories.SignerAdd.create(
-      { data: { username: 'alice' } },
+      { data: { fid: aliceFid } },
       { transient: { signer: aliceCustody, delegateSigner: aliceSigner } }
     );
     transientParams = { transient: { signer: aliceSigner } };
-    cast = await Factories.Cast.create({ data: { username: 'alice' } }, transientParams);
-    follow = await Factories.Follow.create({ data: { username: 'alice', body: { active: true } } }, transientParams);
+    cast = await Factories.Cast.create({ data: { fid: aliceFid } }, transientParams);
+    follow = await Factories.Follow.create({ data: { fid: aliceFid, body: { active: true } } }, transientParams);
     unfollow = await Factories.Follow.create(
-      { data: { username: 'alice', body: { targetUri: follow.data.body.targetUri, active: false } } },
+      { data: { fid: aliceFid, body: { targetUri: follow.data.body.targetUri, active: false } } },
       transientParams
     );
   });
 
   beforeEach(async () => {
     engine._reset();
-    engine.mergeIDRegistryEvent('alice', aliceCustodyRegister);
+    engine.mergeIDRegistryEvent(aliceFid, aliceCustodyRegister);
     await engine.mergeSignerMessage(aliceSignerAdd);
   });
 
@@ -72,7 +73,7 @@ describe('mergeFollow', () => {
       // Calling Factory without specifying a signing key makes Faker choose a random one
       const followNewSigner = await Factories.Follow.create({
         data: {
-          username: 'alice',
+          fid: aliceFid,
           body: { targetUri: follow.data.body.targetUri, active: true },
         },
       });
@@ -82,9 +83,9 @@ describe('mergeFollow', () => {
       expect(aliceFollows()).toEqual(new Set());
     });
 
-    test('fails if the signer is valid, but the username is invalid', async () => {
+    test('fails if the signer is valid, but the fid is invalid', async () => {
       const unknownUser = await Factories.Follow.create(
-        { data: { username: 'bob', body: { active: true } } },
+        { data: { fid: aliceFid + 1, body: { active: true } } },
         transientParams
       );
       const res = await engine.mergeFollow(unknownUser);
@@ -116,7 +117,7 @@ describe('mergeFollow', () => {
       const futureFollow = await Factories.Follow.create(
         {
           data: {
-            username: 'alice',
+            fid: aliceFid,
             signedAt: elevenMinutesAhead,
           },
         },

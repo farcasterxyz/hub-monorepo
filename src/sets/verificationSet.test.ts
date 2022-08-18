@@ -27,14 +27,7 @@ beforeAll(async () => {
   signer = await generateEd25519Signer();
   ethWallet = ethers.Wallet.createRandom();
   transientParams = { transient: { signer: signer, ethWallet: ethWallet } };
-  add1 = await Factories.VerificationAdd.create(
-    {
-      data: {
-        username: 'alice',
-      },
-    },
-    transientParams
-  );
+  add1 = await Factories.VerificationAdd.create({}, transientParams);
   add2 = await Factories.VerificationAdd.create({}, transientParams);
   rem1 = await Factories.VerificationRemove.create(
     {

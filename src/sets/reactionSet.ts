@@ -4,7 +4,7 @@ import { isReaction } from '~/types/typeguards';
 import { hashCompare, sanitizeSigner } from '~/utils';
 
 /**
- * ReactionSet stores and fetches reactions for a single username.
+ * ReactionSet stores and fetches reactions for a Farcaster account.
  *
  * Reactions can be toggled on and off, and they are merged into this data structure such that the
  * latest reaction of a certain type for a target overwrites previous ones. The data structure is

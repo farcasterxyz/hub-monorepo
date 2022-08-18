@@ -1,3 +1,4 @@
+import Faker from 'faker';
 import Engine from '~/engine';
 import { Factories } from '~/factories';
 import {
@@ -20,8 +21,9 @@ import {
 } from '~/utils';
 
 const engine = new Engine();
+const aliceFid = Faker.datatype.number();
 
-const aliceAllSigners = () => engine._getAllSigners('alice');
+const aliceAllSigners = () => engine._getAllSigners(aliceFid);
 
 describe('mergeSignerMessage', () => {
   let aliceCustodySigner: EthereumSigner;
@@ -38,16 +40,16 @@ describe('mergeSignerMessage', () => {
       name: 'Register',
     });
     aliceCustodyRemoveAll = await Factories.CustodyRemoveAll.create(
-      { data: { username: 'alice' } },
+      { data: { fid: aliceFid } },
       { transient: { signer: aliceCustodySigner } }
     );
     aliceDelegateSigner = await generateEd25519Signer();
     aliceSignerAddDelegate = await Factories.SignerAdd.create(
-      { data: { username: 'alice' } },
+      { data: { fid: aliceFid } },
       { transient: { signer: aliceCustodySigner, delegateSigner: aliceDelegateSigner } }
     );
     aliceSignerRemoveDelegate = await Factories.SignerRemove.create(
-      { data: { username: 'alice', body: { delegate: aliceDelegateSigner.signerKey } } },
+      { data: { fid: aliceFid, body: { delegate: aliceDelegateSigner.signerKey } } },
       { transient: { signer: aliceCustodySigner } }
     );
   });
@@ -64,12 +66,12 @@ describe('mergeSignerMessage', () => {
 
   describe('with a custody address', () => {
     beforeEach(async () => {
-      engine.mergeIDRegistryEvent('alice', aliceCustodyRegister);
+      engine.mergeIDRegistryEvent(aliceFid, aliceCustodyRegister);
     });
 
     test('fails with invalid message type', async () => {
       const cast = (await Factories.Cast.create(
-        { data: { username: 'alice' } },
+        { data: { fid: aliceFid } },
         { transient: { signer: aliceCustodySigner } }
       )) as unknown as SignerMessage;
       expect((await engine.mergeSignerMessage(cast)).isOk()).toBe(false);
@@ -89,7 +91,7 @@ describe('mergeSignerMessage', () => {
 
     test('fails with malformed delegateSignature', async () => {
       const badSignerAdd = await Factories.SignerAdd.create(
-        { data: { username: 'alice', body: { delegateSignature: 'foo' } } },
+        { data: { fid: aliceFid, body: { delegateSignature: 'foo' } } },
         { transient: { signer: aliceCustodySigner } }
       );
       const res = await engine.mergeSignerMessage(badSignerAdd);
@@ -102,7 +104,7 @@ describe('mergeSignerMessage', () => {
       const delegateKeyPair = await generateEd25519KeyPair();
       const delegatePubKey = await convertToHex(delegateKeyPair.publicKey);
       const badSignerAdd = await Factories.SignerAdd.create(
-        { data: { username: 'alice', body: { delegate: delegatePubKey } } },
+        { data: { fid: aliceFid, body: { delegate: delegatePubKey } } },
         { transient: { signer: aliceCustodySigner } }
       );
       const res = await engine.mergeSignerMessage(badSignerAdd);
@@ -114,7 +116,7 @@ describe('mergeSignerMessage', () => {
     test('fails with invalid edgeHash', async () => {
       const badEdgeHash = await blake2BHash('bar');
       const badSignerAdd = await Factories.SignerAdd.create(
-        { data: { username: 'alice', body: { edgeHash: badEdgeHash } } },
+        { data: { fid: aliceFid, body: { edgeHash: badEdgeHash } } },
         { transient: { signer: aliceCustodySigner } }
       );
       const res = await engine.mergeSignerMessage(badSignerAdd);
@@ -126,7 +128,7 @@ describe('mergeSignerMessage', () => {
     test('fails with invalid delegateSignatureType', async () => {
       const badSignerAdd = await Factories.SignerAdd.create(
         {
-          data: { username: 'alice', body: { delegateSignatureType: 'bar' as unknown as SignatureAlgorithm.Ed25519 } },
+          data: { fid: aliceFid, body: { delegateSignatureType: 'bar' as unknown as SignatureAlgorithm.Ed25519 } },
         },
         { transient: { signer: aliceCustodySigner } }
       );
@@ -158,7 +160,7 @@ describe('mergeSignerMessage', () => {
     test('fails if signedAt is > current time + safety margin', async () => {
       const badSignerAdd = await Factories.SignerAdd.create(
         {
-          data: { username: 'alice', signedAt: Date.now() + 11 * 60 * 1000 },
+          data: { fid: aliceFid, signedAt: Date.now() + 11 * 60 * 1000 },
         },
         { transient: { signer: aliceCustodySigner } }
       );
