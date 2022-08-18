@@ -1,10 +1,11 @@
+import Faker from 'faker';
 import Engine from '~/engine';
 import { Factories } from '~/factories';
 import { Cast, EthereumSigner, IDRegistryEvent, MessageSigner, Reaction, SignerAdd, SignerRemove } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
 const engine = new Engine();
-const username = 'alice';
+const aliceFid = Faker.datatype.number();
 
 describe('mergeCast', () => {
   let aliceCustodySigner: EthereumSigner;
@@ -12,7 +13,7 @@ describe('mergeCast', () => {
   let aliceDelegateSigner: MessageSigner;
   let cast: Cast;
   let reaction: Reaction;
-  const subject = () => engine._getCastAdds(username);
+  const subject = () => engine._getCastAdds(aliceFid);
   let addDelegateSigner: SignerAdd;
   let removeDelegateSigner: SignerRemove;
 
@@ -26,26 +27,26 @@ describe('mergeCast', () => {
 
     cast = await Factories.Cast.create(
       {
-        data: { username: 'alice' },
+        data: { fid: aliceFid },
       },
       { transient: { signer: aliceDelegateSigner } }
     );
 
     reaction = await Factories.Reaction.create(
       {
-        data: { username: 'alice' },
+        data: { fid: aliceFid },
       },
       { transient: { signer: aliceDelegateSigner } }
     );
 
     addDelegateSigner = await Factories.SignerAdd.create(
-      { data: { username: 'alice' } },
+      { data: { fid: aliceFid } },
       { transient: { signer: aliceCustodySigner, delegateSigner: aliceDelegateSigner } }
     );
 
     removeDelegateSigner = await Factories.SignerRemove.create(
       {
-        data: { username: 'alice', body: { delegate: aliceDelegateSigner.signerKey } },
+        data: { fid: aliceFid, body: { delegate: aliceDelegateSigner.signerKey } },
       },
       { transient: { signer: aliceCustodySigner } }
     );
@@ -53,7 +54,7 @@ describe('mergeCast', () => {
 
   beforeEach(() => {
     engine._reset();
-    engine.mergeIDRegistryEvent('alice', aliceCustodyRegister);
+    engine.mergeIDRegistryEvent(aliceFid, aliceCustodyRegister);
     engine.mergeSignerMessage(addDelegateSigner);
   });
 
@@ -77,13 +78,13 @@ describe('mergeCast', () => {
 
     describe('with custody address', () => {
       beforeEach(() => {
-        engine.mergeIDRegistryEvent('alice', aliceCustodyRegister);
+        engine.mergeIDRegistryEvent(aliceFid, aliceCustodyRegister);
       });
 
       test('fails if signer is custody address', async () => {
         const custodyCast = await Factories.Cast.create(
           {
-            data: { username: 'alice' },
+            data: { fid: aliceFid },
           },
           { transient: { signer: aliceCustodySigner } }
         );
@@ -119,9 +120,9 @@ describe('mergeCast', () => {
           expect(subject()).toEqual([]);
         });
 
-        test('fails with invalid username', async () => {
+        test('fails with invalid fid', async () => {
           const unknownUser = await Factories.Cast.create(
-            { data: { username: 'rob' } },
+            { data: { fid: aliceFid + 1 } },
             { transient: { signer: aliceDelegateSigner } }
           );
           const result = await engine.mergeCast(unknownUser);
@@ -135,7 +136,7 @@ describe('mergeCast', () => {
         // Calling Factory without specifying a signing key makes Faker choose a random one
         const castInvalidSigner = await Factories.Cast.create({
           data: {
-            username: 'alice',
+            fid: aliceFid,
           },
         });
 
@@ -173,7 +174,7 @@ describe('mergeCast', () => {
       const futureCast = await Factories.Cast.create(
         {
           data: {
-            username: 'alice',
+            fid: aliceFid,
             signedAt: elevenMinutesAhead,
           },
         },
@@ -197,7 +198,7 @@ describe('mergeCast', () => {
       const castLongText = await Factories.Cast.create(
         {
           data: {
-            username: 'alice',
+            fid: aliceFid,
             body: {
               text: 'a'.repeat(281),
             },
@@ -216,7 +217,7 @@ describe('mergeCast', () => {
       const castThreeEmbeds = await Factories.Cast.create(
         {
           data: {
-            username: 'alice',
+            fid: aliceFid,
             body: {
               embed: { items: ['a', 'b', 'c'] },
             },
@@ -249,7 +250,7 @@ describe('mergeCast', () => {
             body: {
               targetHash: cast.hash,
             },
-            username: 'alice',
+            fid: aliceFid,
           },
         },
         { transient: { signer: aliceDelegateSigner } }
@@ -265,7 +266,7 @@ describe('mergeCast', () => {
       const castRemove = await Factories.CastRemove.create(
         {
           data: {
-            username: 'alice',
+            fid: aliceFid,
           },
         },
         { transient: { signer: aliceDelegateSigner } }
@@ -285,7 +286,7 @@ describe('mergeCast', () => {
       const castRecast = await Factories.CastRecast.create(
         {
           data: {
-            username: 'alice',
+            fid: aliceFid,
           },
         },
         { transient: { signer: aliceDelegateSigner } }

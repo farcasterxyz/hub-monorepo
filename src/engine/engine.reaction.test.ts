@@ -1,3 +1,4 @@
+import Faker from 'faker';
 import Engine from '~/engine';
 import { Factories } from '~/factories';
 import {
@@ -12,7 +13,7 @@ import {
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
 const engine = new Engine();
-const username = 'alice';
+const aliceFid = Faker.datatype.number();
 
 describe('mergeReaction', () => {
   let aliceCustody: EthereumSigner;
@@ -22,7 +23,7 @@ describe('mergeReaction', () => {
   let cast: Cast;
   let reaction: Reaction;
   let transient: { transient: MessageFactoryTransientParams };
-  const subject = () => engine._getActiveReactions(username);
+  const subject = () => engine._getActiveReactions(aliceFid);
 
   beforeAll(async () => {
     aliceCustody = await generateEthereumSigner();
@@ -32,17 +33,17 @@ describe('mergeReaction', () => {
     });
     aliceSigner = await generateEd25519Signer();
     aliceSignerAdd = await Factories.SignerAdd.create(
-      { data: { username: 'alice' } },
+      { data: { fid: aliceFid } },
       { transient: { signer: aliceCustody, delegateSigner: aliceSigner } }
     );
     transient = { transient: { signer: aliceSigner } };
-    cast = await Factories.Cast.create({ data: { username: 'alice' } }, transient);
-    reaction = await Factories.Reaction.create({ data: { username: 'alice' } }, transient);
+    cast = await Factories.Cast.create({ data: { fid: aliceFid } }, transient);
+    reaction = await Factories.Reaction.create({ data: { fid: aliceFid } }, transient);
   });
 
   beforeEach(async () => {
     engine._reset();
-    engine.mergeIDRegistryEvent('alice', aliceCustodyRegister);
+    engine.mergeIDRegistryEvent(aliceFid, aliceCustodyRegister);
     await engine.mergeSignerMessage(aliceSignerAdd);
   });
 
@@ -67,7 +68,7 @@ describe('mergeReaction', () => {
       // Calling Factory without specifying a signing key makes Faker choose a random one
       const reactionInvalidSigner = await Factories.Reaction.create({
         data: {
-          username: 'alice',
+          fid: aliceFid,
         },
       });
 
@@ -76,8 +77,8 @@ describe('mergeReaction', () => {
       expect(subject()).toEqual([]);
     });
 
-    test('fails if the signer was valid, but the username was invalid', async () => {
-      const unknownUser = await Factories.Reaction.create({ data: { username: 'rob' } }, transient);
+    test('fails if the signer was valid, but the fid was invalid', async () => {
+      const unknownUser = await Factories.Reaction.create({ data: { fid: aliceFid + 1 } }, transient);
 
       expect((await engine.mergeReaction(unknownUser))._unsafeUnwrapErr()).toBe('mergeReaction: unknown user');
       expect(subject()).toEqual([]);
@@ -109,7 +110,7 @@ describe('mergeReaction', () => {
       const futureReaction = await Factories.Reaction.create(
         {
           data: {
-            username: 'alice',
+            fid: aliceFid,
 
             signedAt: elevenMinutesAhead,
           },
@@ -129,7 +130,7 @@ describe('mergeReaction', () => {
     const reactionInvalidType = await Factories.Reaction.create(
       {
         data: {
-          username: 'alice',
+          fid: aliceFid,
 
           body: {
             type: 'wrong' as unknown as any,
