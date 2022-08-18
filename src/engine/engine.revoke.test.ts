@@ -10,6 +10,7 @@ import {
   SignerAdd,
   SignerRemove,
   VerificationAdd,
+  Follow,
 } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
@@ -19,6 +20,7 @@ const aliceAllSigners = () => engine._getAllSigners('alice');
 const aliceCasts = () => engine._getCastAdds('alice');
 const aliceReactions = () => engine._getActiveReactions('alice');
 const aliceVerifications = () => engine._getVerificationAdds('alice');
+const aliceFollows = () => engine._getActiveFollows('alice');
 
 let aliceCustody: EthereumSigner;
 let aliceCustodyRegister: IDRegistryEvent;
@@ -33,6 +35,7 @@ let aliceSignerRemove: SignerRemove;
 let aliceCast: CastShort;
 let aliceReaction: Reaction;
 let aliceVerification: VerificationAdd;
+let aliceFollow: Follow;
 
 beforeAll(async () => {
   aliceCustody = await generateEthereumSigner();
@@ -78,6 +81,7 @@ beforeAll(async () => {
     { data: { username: 'alice' } },
     { transient: { signer: aliceSigner } }
   );
+  aliceFollow = await Factories.Follow.create({ data: { username: 'alice' } }, { transient: { signer: aliceSigner } });
 });
 
 describe('revokeSignerMessages', () => {
@@ -92,10 +96,12 @@ describe('revokeSignerMessages', () => {
       await engine.mergeCast(aliceCast);
       await engine.mergeReaction(aliceReaction);
       await engine.mergeVerification(aliceVerification);
+      await engine.mergeFollow(aliceFollow);
       expect(aliceAllSigners()).toEqual(new Set([aliceCustody.signerKey, aliceSigner.signerKey]));
       expect(aliceCasts()).toEqual([aliceCast]);
       expect(aliceReactions()).toEqual([aliceReaction]);
       expect(aliceVerifications()).toEqual([aliceVerification]);
+      expect(aliceFollows()).toEqual(new Set([aliceFollow]));
     });
 
     test('drops all signed messages when the delegate is removed', async () => {
@@ -105,6 +111,7 @@ describe('revokeSignerMessages', () => {
       expect(aliceCasts()).toEqual([]);
       expect(aliceReactions()).toEqual([]);
       expect(aliceVerifications()).toEqual([]);
+      expect(aliceFollows()).toEqual(new Set());
     });
 
     test('drops all signed messages when custody address is removed', async () => {
@@ -115,6 +122,7 @@ describe('revokeSignerMessages', () => {
       expect(aliceCasts()).toEqual([]);
       expect(aliceReactions()).toEqual([]);
       expect(aliceVerifications()).toEqual([]);
+      expect(aliceFollows()).toEqual(new Set());
     });
 
     test('does not drop signed messages when there are no earlier custody addresses', async () => {
@@ -124,6 +132,7 @@ describe('revokeSignerMessages', () => {
       expect(aliceCasts()).toEqual([aliceCast]);
       expect(aliceReactions()).toEqual([aliceReaction]);
       expect(aliceVerifications()).toEqual([aliceVerification]);
+      expect(aliceFollows()).toEqual(new Set([aliceFollow]));
     });
 
     test('does not drop signed messages when signer is added by a new custody address', async () => {
@@ -135,6 +144,7 @@ describe('revokeSignerMessages', () => {
       expect(aliceCasts()).toEqual([aliceCast]);
       expect(aliceReactions()).toEqual([aliceReaction]);
       expect(aliceVerifications()).toEqual([aliceVerification]);
+      expect(aliceFollows()).toEqual(new Set([aliceFollow]));
     });
   });
 });

@@ -12,6 +12,7 @@ import {
   SignerMessage,
   HashAlgorithm,
   IDRegistryEvent,
+  Follow,
 } from '~/types';
 import { hashMessage, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
@@ -28,11 +29,13 @@ import {
   isSignerRemove,
   isSignerMessage,
   isCustodyRemoveAll,
+  isFollow,
 } from '~/types/typeguards';
 import CastSet from '~/sets/castSet';
 import ReactionSet from '~/sets/reactionSet';
 import VerificationSet from '~/sets/verificationSet';
 import SignerSet from '~/sets/signerSet';
+import FollowSet from '~/sets/followSet';
 
 /** The Engine receives messages and determines the current state of the Farcaster network */
 class Engine {
@@ -40,12 +43,14 @@ class Engine {
   private _reactions: Map<string, ReactionSet>;
   private _verifications: Map<string, VerificationSet>;
   private _signers: Map<string, SignerSet>;
+  private _follows: Map<string, FollowSet>;
 
   constructor() {
     this._casts = new Map();
     this._reactions = new Map();
     this._verifications = new Map();
     this._signers = new Map();
+    this._follows = new Map();
   }
 
   /**
@@ -135,7 +140,54 @@ class Engine {
 
       return reactionSet.merge(reaction);
     } catch (e: any) {
-      return err('addCast: unexpected error');
+      return err('mergeReaction: unexpected error');
+    }
+  }
+
+  /**
+   * Follow Methods
+   */
+
+  /** Get a follow for a username by hash */
+  getFollow(username: string, hash: string): Follow | undefined {
+    const followSet = this._follows.get(username);
+    return followSet ? followSet.get(hash) : undefined;
+  }
+
+  /** Get hashes of all known follows for a username */
+  getFollowHashes(username: string): string[] {
+    const followSet = this._follows.get(username);
+    return followSet ? followSet.getHashes() : [];
+  }
+
+  /** Get hashes of all known follows for a username */
+  getAllFollowHashes(username: string): string[] {
+    const followSet = this._follows.get(username);
+    return followSet ? followSet.getAllHashes() : [];
+  }
+
+  /** Merge a follow into the set  */
+  async mergeFollow(follow: Follow): Promise<Result<void, string>> {
+    try {
+      const username = follow.data.username;
+
+      if (!this._signers.get(username)) {
+        return err('mergeFollow: unknown user');
+      }
+
+      const isFollowValidResult = await this.validateMessage(follow);
+      if (isFollowValidResult.isErr()) return isFollowValidResult;
+
+      let followSet = this._follows.get(username);
+      if (!followSet) {
+        followSet = new FollowSet();
+        this._follows.set(username, followSet);
+      }
+
+      return followSet.merge(follow);
+    } catch (e: any) {
+      console.log('error', e);
+      return err('mergeFollow: unexpected error');
     }
   }
 
@@ -226,6 +278,10 @@ class Engine {
     const verificationSet = this._verifications.get(username);
     if (verificationSet) verificationSet.revokeSigner(signer);
 
+    // Revoke follows
+    const followSet = this._follows.get(username);
+    if (followSet) followSet.revokeSigner(signer);
+
     return ok(undefined);
   }
 
@@ -260,12 +316,16 @@ class Engine {
         return err('validateMessage: invalid signature');
       }
     } else if (message.signatureType === SignatureAlgorithm.Ed25519) {
-      const signatureIsValid = await ed.verify(
-        hexToBytes(message.signature),
-        hexToBytes(message.hash),
-        hexToBytes(message.signer)
-      );
-      if (!signatureIsValid) {
+      try {
+        const signatureIsValid = await ed.verify(
+          hexToBytes(message.signature),
+          hexToBytes(message.hash),
+          hexToBytes(message.signer)
+        );
+        if (!signatureIsValid) {
+          return err('validateMessage: invalid signature');
+        }
+      } catch (e: any) {
         return err('validateMessage: invalid signature');
       }
     } else {
@@ -304,6 +364,10 @@ class Engine {
 
     if (isSignerRemove(message)) {
       return this.validateSignerRemove();
+    }
+
+    if (isFollow(message)) {
+      return this.validateFollow();
     }
 
     // TODO: check that the schema is a valid and known schema.
@@ -410,6 +474,11 @@ class Engine {
     return ok(undefined);
   }
 
+  private async validateFollow(): Promise<Result<void, string>> {
+    // TODO: any Follow custom validation?
+    return ok(undefined);
+  }
+
   /**
    * Testing Methods
    */
@@ -419,6 +488,7 @@ class Engine {
     this._resetSigners();
     this._resetReactions();
     this._resetVerifications();
+    this._resetFollows();
   }
 
   _resetCasts(): void {
@@ -437,6 +507,10 @@ class Engine {
     this._verifications = new Map();
   }
 
+  _resetFollows(): void {
+    this._follows = new Map();
+  }
+
   _getCastAdds(username: string): Cast[] {
     const castSet = this._casts.get(username);
     return castSet ? castSet._getAdds() : [];
@@ -445,6 +519,11 @@ class Engine {
   _getActiveReactions(username: string): Reaction[] {
     const reactionSet = this._reactions.get(username);
     return reactionSet ? reactionSet._getActiveReactions() : [];
+  }
+
+  _getActiveFollows(username: string): Set<Follow> {
+    const followSet = this._follows.get(username);
+    return followSet ? followSet._getActiveFollows() : new Set();
   }
 
   _getVerificationAdds(username: string): VerificationAdd[] {

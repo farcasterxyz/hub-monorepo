@@ -22,6 +22,7 @@ import {
   CustodyRemoveAll,
   HashAlgorithm,
   IDRegistryEvent,
+  Follow,
 } from '~/types';
 import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
@@ -152,6 +153,30 @@ export const Factories = {
           targetUri: Faker.internet.url(),
           type: 'like',
           schema: 'farcaster.xyz/schemas/v1/reaction',
+        },
+        signedAt: Faker.time.recent(),
+        username: Faker.name.firstName().toLowerCase(),
+      },
+      hash: '',
+      hashType: HashAlgorithm.Blake2b,
+      signature: '',
+      signatureType: SignatureAlgorithm.Ed25519,
+      signer: '',
+    };
+  }),
+
+  /** Generate a valid Follow with randomized properties */
+  Follow: Factory.define<Follow, MessageFactoryTransientParams, Follow>(({ onCreate, transientParams }) => {
+    onCreate(async (props) => {
+      return (await addEnvelopeToMessage(props, transientParams)) as Follow;
+    });
+
+    return {
+      data: {
+        body: {
+          active: true,
+          targetUri: Faker.internet.url(),
+          schema: 'farcaster.xyz/schemas/v1/follow',
         },
         signedAt: Faker.time.recent(),
         username: Faker.name.firstName().toLowerCase(),

@@ -70,6 +70,22 @@ class Client {
     return message as FC.Reaction;
   }
 
+  async makeFollow(targetUser: FC.URI, active = true): Promise<FC.Follow> {
+    const schema = 'farcaster.xyz/schemas/v1/follow' as const;
+    const signedAt = Date.now();
+    const messageData = {
+      body: {
+        active,
+        targetUri: targetUser,
+        schema,
+      },
+      signedAt,
+      username: this.username,
+    };
+    const message = await this.makeMessage(messageData);
+    return message as FC.Follow;
+  }
+
   async makeVerificationClaimHash(externalUri: FC.URI): Promise<string> {
     return await hashFCObject({
       username: this.username,
