@@ -6,6 +6,7 @@ import { CastShort, Ed25519Signer, EthereumSigner } from '~/types';
 import {
   isCastRemove,
   isCastShort,
+  isFollow,
   isReaction,
   isSignerAdd,
   isSignerRemove,
@@ -16,7 +17,8 @@ import Faker from 'faker';
 import { convertToHex, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 import { ethers } from 'ethers';
 
-const username = 'alice';
+const fid = Faker.datatype.number();
+
 let custodySigner: EthereumSigner;
 let delegateSigner: Ed25519Signer;
 let wallet: ethers.Wallet;
@@ -27,12 +29,12 @@ beforeAll(async () => {
   custodySigner = await generateEthereumSigner();
   delegateSigner = await generateEd25519Signer();
   wallet = ethers.Wallet.createRandom();
-  castShort = await Factories.Cast.create({ data: { username } }, { transient: { signer: delegateSigner } });
+  castShort = await Factories.Cast.create({ data: { fid } }, { transient: { signer: delegateSigner } });
 });
 
 describe('when signer is a custody address', () => {
   beforeAll(() => {
-    client = new Client(username, custodySigner);
+    client = new Client(fid, custodySigner);
   });
 
   describe('makeSignerAdd', () => {
@@ -54,7 +56,7 @@ describe('when signer is a custody address', () => {
 
 describe('when signer is a delegate signer', () => {
   beforeAll(() => {
-    client = new Client(username, delegateSigner);
+    client = new Client(fid, delegateSigner);
   });
 
   describe('makeCastShort', () => {
@@ -93,6 +95,14 @@ describe('when signer is a delegate signer', () => {
       const claimHash = await client.makeVerificationClaimHash(wallet.address);
       const message = await client.makeVerificationRemove(claimHash);
       expect(isVerificationRemove(message)).toBe(true);
+    });
+  });
+
+  describe('makeFollow', () => {
+    test('succeeds', async () => {
+      const targetUser = Faker.internet.url();
+      const message = await client.makeFollow(targetUser);
+      expect(isFollow(message)).toBe(true);
     });
   });
 });

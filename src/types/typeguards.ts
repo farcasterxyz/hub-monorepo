@@ -89,3 +89,13 @@ export const isVerificationRemove = (msg: FC.Message): msg is FC.VerificationRem
     body.claimHash.length > 0
   );
 };
+
+export const isFollow = (msg: FC.Message): msg is FC.Follow => {
+  const body = (msg as FC.Follow).data?.body;
+  return (
+    body &&
+    body.schema === 'farcaster.xyz/schemas/v1/follow' &&
+    typeof body.active === 'boolean' &&
+    typeof body.targetUri === 'string'
+  );
+};

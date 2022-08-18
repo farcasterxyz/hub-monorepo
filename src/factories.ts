@@ -22,6 +22,7 @@ import {
   CustodyRemoveAll,
   HashAlgorithm,
   IDRegistryEvent,
+  Follow,
 } from '~/types';
 import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
@@ -83,7 +84,7 @@ export const Factories = {
           schema: 'farcaster.xyz/schemas/v1/cast-short',
         },
         signedAt: Faker.time.recent(),
-        username: Faker.name.firstName().toLowerCase(),
+        fid: Faker.datatype.number(),
       },
       hash: '',
       hashType: HashAlgorithm.Blake2b,
@@ -106,7 +107,7 @@ export const Factories = {
           schema: 'farcaster.xyz/schemas/v1/cast-remove',
         },
         signedAt: Faker.time.recent(),
-        username: Faker.name.firstName().toLowerCase(),
+        fid: Faker.datatype.number(),
       },
       hash: '',
       hashType: HashAlgorithm.Blake2b,
@@ -129,7 +130,7 @@ export const Factories = {
           schema: 'farcaster.xyz/schemas/v1/cast-recast',
         },
         signedAt: Faker.time.recent(),
-        username: Faker.name.firstName().toLowerCase(),
+        fid: Faker.datatype.number(),
       },
       hash: '',
       hashType: HashAlgorithm.Blake2b,
@@ -154,7 +155,31 @@ export const Factories = {
           schema: 'farcaster.xyz/schemas/v1/reaction',
         },
         signedAt: Faker.time.recent(),
-        username: Faker.name.firstName().toLowerCase(),
+        fid: Faker.datatype.number(),
+      },
+      hash: '',
+      hashType: HashAlgorithm.Blake2b,
+      signature: '',
+      signatureType: SignatureAlgorithm.Ed25519,
+      signer: '',
+    };
+  }),
+
+  /** Generate a valid Follow with randomized properties */
+  Follow: Factory.define<Follow, MessageFactoryTransientParams, Follow>(({ onCreate, transientParams }) => {
+    onCreate(async (props) => {
+      return (await addEnvelopeToMessage(props, transientParams)) as Follow;
+    });
+
+    return {
+      data: {
+        body: {
+          active: true,
+          targetUri: Faker.internet.url(),
+          schema: 'farcaster.xyz/schemas/v1/follow',
+        },
+        signedAt: Faker.time.recent(),
+        fid: Faker.datatype.number(),
       },
       hash: '',
       hashType: HashAlgorithm.Blake2b,
@@ -196,7 +221,7 @@ export const Factories = {
             schema: 'farcaster.xyz/schemas/v1/custody-remove-all',
           },
           signedAt: Faker.time.recent(),
-          username: Faker.name.firstName().toLowerCase(),
+          fid: Faker.datatype.number(),
         },
         hash: '',
         hashType: HashAlgorithm.Blake2b,
@@ -247,7 +272,7 @@ export const Factories = {
           schema: 'farcaster.xyz/schemas/v1/signer-add',
         },
         signedAt: Faker.time.recent(),
-        username: Faker.name.firstName().toLowerCase(),
+        fid: Faker.datatype.number(),
       },
       hash: '',
       hashType: HashAlgorithm.Blake2b,
@@ -271,7 +296,7 @@ export const Factories = {
             schema: 'farcaster.xyz/schemas/v1/signer-remove',
           },
           signedAt: Faker.time.recent(),
-          username: Faker.name.firstName().toLowerCase(),
+          fid: Faker.datatype.number(),
         },
         hash: '',
         hashType: HashAlgorithm.Blake2b,
@@ -291,7 +316,7 @@ export const Factories = {
         /** Generate claimHash if missing */
         if (!props.data.body.claimHash) {
           const verificationClaim: VerificationClaim = {
-            username: props.data.username,
+            fid: props.data.fid,
             externalUri: props.data.body.externalUri,
             blockHash: props.data.body.blockHash,
           };
@@ -318,7 +343,7 @@ export const Factories = {
             schema: 'farcaster.xyz/schemas/v1/verification-add',
           },
           signedAt: Faker.time.recent(),
-          username: Faker.name.firstName().toLowerCase(),
+          fid: Faker.datatype.number(),
         },
         hash: '',
         hashType: HashAlgorithm.Blake2b,
@@ -338,7 +363,7 @@ export const Factories = {
         /** Generate claimHash if missing */
         if (!props.data.body.claimHash) {
           const verificationClaim: VerificationClaim = {
-            username: props.data.username,
+            fid: props.data.fid,
             externalUri,
             blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
           };
@@ -356,7 +381,7 @@ export const Factories = {
             schema: 'farcaster.xyz/schemas/v1/verification-remove' as const,
           },
           signedAt: Faker.time.recent(),
-          username: Faker.name.firstName().toLowerCase(),
+          fid: Faker.datatype.number(),
         },
         hash: '',
         hashType: HashAlgorithm.Blake2b,

@@ -3,10 +3,10 @@ import { hashMessage, signEd25519, hashFCObject } from '~/utils';
 
 class Client {
   signer: FC.MessageSigner;
-  username: string;
+  fid: number;
 
-  constructor(username: string, signer: FC.MessageSigner) {
-    this.username = username;
+  constructor(fid: number, signer: FC.MessageSigner) {
+    this.fid = fid;
     this.signer = signer;
   }
 
@@ -27,7 +27,7 @@ class Client {
         schema,
       },
       signedAt,
-      username: this.username,
+      fid: this.fid,
     };
 
     const message = await this.makeMessage(messageData);
@@ -44,7 +44,7 @@ class Client {
         schema,
       },
       signedAt,
-      username: this.username,
+      fid: this.fid,
     };
     const message = await this.makeMessage(messageData);
 
@@ -64,15 +64,31 @@ class Client {
         schema,
       },
       signedAt,
-      username: this.username,
+      fid: this.fid,
     };
     const message = await this.makeMessage(messageData);
     return message as FC.Reaction;
   }
 
+  async makeFollow(targetUser: FC.URI, active = true): Promise<FC.Follow> {
+    const schema = 'farcaster.xyz/schemas/v1/follow' as const;
+    const signedAt = Date.now();
+    const messageData = {
+      body: {
+        active,
+        targetUri: targetUser,
+        schema,
+      },
+      signedAt,
+      fid: this.fid,
+    };
+    const message = await this.makeMessage(messageData);
+    return message as FC.Follow;
+  }
+
   async makeVerificationClaimHash(externalUri: FC.URI): Promise<string> {
     return await hashFCObject({
-      username: this.username,
+      fid: this.fid,
       externalUri,
     });
   }
@@ -93,7 +109,7 @@ class Client {
         blockHash,
       },
       signedAt: Date.now(),
-      username: this.username,
+      fid: this.fid,
     });
     return message as FC.VerificationAdd;
   }
@@ -105,7 +121,7 @@ class Client {
         claimHash,
       },
       signedAt: Date.now(),
-      username: this.username,
+      fid: this.fid,
     });
     return message as FC.VerificationRemove;
   }
@@ -120,7 +136,7 @@ class Client {
         schema: 'farcaster.xyz/schemas/v1/signer-add',
       },
       signedAt: Date.now(),
-      username: this.username,
+      fid: this.fid,
     });
     return message as FC.SignerAdd;
   }
@@ -140,7 +156,7 @@ class Client {
         schema: 'farcaster.xyz/schemas/v1/signer-remove',
       },
       signedAt: Date.now(),
-      username: this.username,
+      fid: this.fid,
     });
     return message as FC.SignerRemove;
   }
