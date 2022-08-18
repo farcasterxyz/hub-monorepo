@@ -2,7 +2,6 @@ import { hexToBytes } from 'ethereum-cryptography/utils';
 import Client from '~/client';
 import { Factories } from '~/factories';
 import * as ed from '@noble/ed25519';
-import Faker from 'faker';
 import { CastShort, Ed25519Signer, EthereumSigner } from '~/types';
 import {
   isCastRemove,
