@@ -3,7 +3,7 @@ import { CastId, UserId } from '~/urls/identifiers';
 import { parse as rawUriParse, URIComponents } from 'uri-js';
 import { ChainId } from 'caip';
 
-export function parseUrl(url: string, allowUnrecognized = true): Result<URL, string> {
+export const parseUrl = (url: string, allowUnrecognized = true): Result<URL, string> => {
   // extract scheme
   let baseURI: URIComponents;
   try {
@@ -29,7 +29,7 @@ export function parseUrl(url: string, allowUnrecognized = true): Result<URL, str
       }
       return ok(new UnrecognizedURL(baseURI.scheme, url));
   }
-}
+};
 
 export abstract class URL {
   public abstract readonly scheme: string;

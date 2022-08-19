@@ -111,8 +111,8 @@ const negativeTestCases: Array<ParserTestCase> = [
 
 testCases.push(...negativeTestCases);
 
-describe('ChainURL', function () {
-  test.each(testCases)('$given', function ({ given, expectParsable, expectChainId }) {
+describe('ChainURL', () => {
+  test.each(testCases)('$given', ({ given, expectParsable, expectChainId }) => {
     const result = ChainURL.parse(given);
 
     if (expectParsable) {

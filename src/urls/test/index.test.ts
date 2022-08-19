@@ -1,13 +1,13 @@
 import { parseUrl, UnrecognizedURL } from '~/urls';
 import { expectInstanceOf } from '~/urls/test/utils';
 
-describe('URLs', function () {
-  test('Missing scheme', function () {
+describe('URLs', () => {
+  test('Missing scheme', () => {
     const result = parseUrl('path/without/scheme');
     expect(result._unsafeUnwrapErr()).toContain('URL is missing scheme');
   });
 
-  test('Unrecognized scheme', function () {
+  test('Unrecognized scheme', () => {
     const unrecognizedURLStr = 'mailto:johndoe@example.com';
 
     let result = parseUrl(unrecognizedURLStr, true /* allowUnrecognized */);

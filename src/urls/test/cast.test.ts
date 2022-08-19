@@ -77,8 +77,8 @@ const negativeTestCases: Array<ParserTestCase> = [
 
 testCases.push(...negativeTestCases);
 
-describe('CastURL', function () {
-  test.each(testCases)('$given', function ({ given, expectParsable, expectUserId, expectCastId }) {
+describe('CastURL', () => {
+  test.each(testCases)('$given', ({ given, expectParsable, expectUserId, expectCastId }) => {
     const result = CastURL.parse(given);
 
     if (expectParsable) {

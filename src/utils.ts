@@ -52,7 +52,7 @@ export const sleep = (ms: number) => {
 const removeProps = (obj: Record<string, any>): void => {
   // Recursively remove any properties whose key starts with an _
   if (typeof obj === 'object' && obj != null) {
-    Object.getOwnPropertyNames(obj).forEach(function (key) {
+    Object.getOwnPropertyNames(obj).forEach((key) => {
       if (key[0] === '_') {
         delete obj[key];
       } else {
