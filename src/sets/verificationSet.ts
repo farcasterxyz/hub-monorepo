@@ -68,35 +68,19 @@ class VerificationSet {
    */
 
   private add(message: VerificationAdd): Result<void, string> {
-    const {
-      data: {
-        body: { claimHash },
-        signedAt,
-      },
-      hash,
-    } = message;
-
-    const existingRemove = this._removes.get(claimHash);
-    if (existingRemove && existingRemove.data.signedAt >= signedAt) {
-      return err('VerificationSet.add: verification is already removed');
-    }
+    const { claimHash } = message.data.body;
 
     const existingAdd = this._adds.get(claimHash);
     if (existingAdd) {
-      if (existingAdd.hash === hash) {
-        return err('VerificationSet.add: duplicate message');
-      }
+      if (existingAdd.data.signedAt > message.data.signedAt) return ok(undefined);
 
-      if (existingAdd.data.signedAt > signedAt) {
-        return err('VerificationSet.add: verification is already added');
-      }
-
-      if (existingAdd.data.signedAt === signedAt && hashCompare(existingAdd.hash, hash) > 0) {
-        return err('VerificationSet.add: verification is already added with higher lexicographical hash');
-      }
+      if (existingAdd.data.signedAt === message.data.signedAt && hashCompare(existingAdd.hash, message.hash) >= 0)
+        return ok(undefined);
     }
 
+    const existingRemove = this._removes.get(claimHash);
     if (existingRemove) {
+      if (existingRemove.data.signedAt >= message.data.signedAt) return ok(undefined);
       this._removes.delete(claimHash);
     }
 
@@ -105,35 +89,19 @@ class VerificationSet {
   }
 
   private remove(message: VerificationRemove): Result<void, string> {
-    const {
-      data: {
-        body: { claimHash },
-        signedAt,
-      },
-      hash,
-    } = message;
+    const { claimHash } = message.data.body;
 
     const existingRemove = this._removes.get(claimHash);
     if (existingRemove) {
-      if (existingRemove.hash === hash) {
-        return err('VerificationSet.remove: duplicate message');
-      }
+      if (existingRemove.data.signedAt > message.data.signedAt) return ok(undefined);
 
-      if (existingRemove.data.signedAt > signedAt) {
-        return err('VerificationSet.remove: verification is already removed');
-      }
-
-      if (existingRemove.data.signedAt === signedAt && hashCompare(existingRemove.hash, hash) > 0) {
-        return err('VerificationSet.remove: verification is already removed with higher lexiocographical hash');
-      }
+      if (existingRemove.data.signedAt === message.data.signedAt && hashCompare(existingRemove.hash, message.hash) >= 0)
+        return ok(undefined);
     }
 
     const existingAdd = this._adds.get(claimHash);
-    if (existingAdd && existingAdd.data.signedAt > signedAt) {
-      return err('VerificationSet.remove: verification has already been re-added');
-    }
-
     if (existingAdd) {
+      if (existingAdd.data.signedAt > message.data.signedAt) return ok(undefined);
       this._adds.delete(claimHash);
     }
 

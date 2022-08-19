@@ -50,7 +50,9 @@ beforeEach(() => {
 describe('merge', () => {
   test('fails with an incorrect message type', async () => {
     const cast = (await Factories.Cast.create()) as unknown as Verification;
-    expect(set.merge(cast).isOk()).toBe(false);
+    const res = set.merge(cast);
+    expect(res.isOk()).toBe(false);
+    expect(res._unsafeUnwrapErr()).toEqual('VerificationSet.merge: invalid message format');
     expect(adds()).toEqual([]);
     expect(removes()).toEqual([]);
   });
@@ -67,43 +69,47 @@ describe('merge', () => {
       expect(adds().length).toEqual(2);
     });
 
-    test('fails if same, valid VerificationAdd message was already added', () => {
+    test('succeeds (no-ops) if same, valid VerificationAdd message was already added', () => {
       expect(set.merge(add1).isOk()).toBe(true);
-      expect(set.merge(add1).isOk()).toBe(false);
+      expect(set.merge(add1).isOk()).toBe(true);
       expect(adds()).toEqual([add1]);
     });
 
     describe('when claimHash already added', () => {
       let add1Later: VerificationAdd;
+
       beforeAll(() => {
         add1Later = { ...add1, data: { ...add1.data, signedAt: add1.data.signedAt + 1 }, hash: add1.hash + 'a' };
       });
+
       test('succeeds with a later timestamp than existing add message', () => {
         expect(set.merge(add1).isOk()).toBe(true);
         expect(set.merge(add1Later).isOk()).toBe(true);
         expect(adds()).toEqual([add1Later]);
       });
 
-      test('fails with an earlier timestamp than existing add message', () => {
+      test('succeeds (no-ops) with an earlier timestamp than existing add message', () => {
         expect(set.merge(add1Later).isOk()).toBe(true);
-        expect(set.merge(add1).isOk()).toBe(false);
+        expect(set.merge(add1).isOk()).toBe(true);
         expect(adds()).toEqual([add1Later]);
       });
 
       describe('with same timestamp', () => {
         let add1HigherHash: VerificationAdd;
+
         beforeAll(() => {
           add1HigherHash = { ...add1, hash: add1.hash + 'a' };
         });
+
         test('succeeds with higher lexicographical order', () => {
           expect(set.merge(add1).isOk()).toBe(true);
           expect(set.merge(add1HigherHash).isOk()).toBe(true);
           expect(adds()).toEqual([add1HigherHash]);
         });
 
-        test('fails with lower lexicographical order', () => {
+        test('succeeds (no-ops) with lower lexicographical order', () => {
           expect(set.merge(add1HigherHash).isOk()).toBe(true);
-          expect(set.merge(add1).isOk()).toBe(false);
+          expect(set.merge(add1).isOk()).toBe(true);
           expect(adds()).toEqual([add1HigherHash]);
         });
       });
@@ -111,9 +117,11 @@ describe('merge', () => {
 
     describe('when claimHash already removed', () => {
       let add1Later: VerificationAdd;
+
       beforeAll(() => {
         add1Later = { ...add1, data: { ...add1.data, signedAt: rem1.data.signedAt + 1 } };
       });
+
       test('succeeds with a later timestamp than existing remove message', () => {
         expect(set.merge(add1).isOk()).toBe(true);
         expect(adds()).toEqual([add1]);
@@ -125,23 +133,23 @@ describe('merge', () => {
         expect(removes()).toEqual([]);
       });
 
-      test('fails with an earlier timestamp than existing remove message', () => {
+      test('succeeds (no-ops) with an earlier timestamp than existing remove message', () => {
         expect(set.merge(rem1).isOk()).toBe(true);
-        expect(set.merge(add1).isOk()).toBe(false);
+        expect(set.merge(add1).isOk()).toBe(true);
         expect(adds()).toEqual([]);
       });
 
-      test('fails with the same timestamp as remove message', () => {
+      test('succeeds (no-ops) with the same timestamp as remove message', () => {
         const add1SameTime = { ...add1, data: { ...add1.data, signedAt: rem1.data.signedAt } };
         expect(set.merge(rem1).isOk()).toBe(true);
-        expect(set.merge(add1SameTime).isOk()).toBe(false);
+        expect(set.merge(add1SameTime).isOk()).toBe(true);
         expect(adds()).toEqual([]);
       });
 
       test('reaches consensus even when messages are out of order', () => {
         expect(set.merge(add1Later).isOk()).toBe(true);
-        expect(set.merge(rem1).isOk()).toBe(false);
-        expect(set.merge(add1).isOk()).toBe(false);
+        expect(set.merge(rem1).isOk()).toBe(true);
+        expect(set.merge(add1).isOk()).toBe(true);
         expect(adds()).toEqual([add1Later]);
         expect(removes()).toEqual([]);
       });
@@ -170,16 +178,16 @@ describe('merge', () => {
       expect(removes().length).toEqual(2);
     });
 
-    test('fails if the same VerificationRemove message is added twice', () => {
+    test('succeeds (no-ops) if the same VerificationRemove message is added twice', () => {
       expect(set.merge(rem1).isOk()).toBe(true);
-      expect(set.merge(rem1).isOk()).toBe(false);
+      expect(set.merge(rem1).isOk()).toBe(true);
       expect(removes()).toEqual([rem1]);
     });
 
-    test('fails if matching VerificationAdd message has a later timestamp', () => {
+    test('succeeds (no-ops) if matching VerificationAdd message has a later timestamp', () => {
       const add1Later = { ...add1, data: { ...add1.data, signedAt: rem1.data.signedAt + 1 } };
       expect(set.merge(add1Later).isOk()).toBe(true);
-      expect(set.merge(rem1).isOk()).toBe(false);
+      expect(set.merge(rem1).isOk()).toBe(true);
       expect(adds()).toEqual([add1Later]);
       expect(removes()).toEqual([]);
     });

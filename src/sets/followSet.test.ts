@@ -39,7 +39,7 @@ beforeEach(() => {
 describe('merge', () => {
   test('fails with invalid message format', async () => {
     const invalidFollow = (await Factories.Cast.create()) as unknown as Follow;
-    const res = await set.merge(invalidFollow);
+    const res = set.merge(invalidFollow);
     expect(res.isOk()).toBe(false);
     expect(res._unsafeUnwrapErr()).toBe('FollowSet.merge: invalid message format');
     expect(activeFollows()).toEqual(new Set());

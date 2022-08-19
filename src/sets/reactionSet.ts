@@ -39,7 +39,7 @@ class ReactionSet {
   /** Merge a new reaction into the set */
   merge(reaction: Reaction): Result<void, string> {
     if (!isReaction(reaction)) {
-      return err('ReactionSet.merge: invalid reaction');
+      return err('ReactionSet.merge: invalid message format');
     }
 
     const targetUri = reaction.data.body.targetUri;
@@ -55,25 +55,18 @@ class ReactionSet {
       return err('ReactionSet.merge: unexpected state');
     }
 
-    if (currentReaction.data.signedAt > reaction.data.signedAt) {
-      return err('ReactionSet.merge: newer reaction was present');
-    }
+    if (currentReaction.data.signedAt > reaction.data.signedAt) return ok(undefined);
 
     if (currentReaction.data.signedAt < reaction.data.signedAt) {
       this.addOrUpdateReaction(reaction);
       return ok(undefined);
     }
 
-    // If the timestamp is equal, compare the lexicographic order of the hashes.
-    const hashCmp = hashCompare(currentReaction.hash, reaction.hash);
-    if (hashCmp < 0) {
-      this.addOrUpdateReaction(reaction);
-      return ok(undefined);
-    } else if (hashCmp >= 1) {
-      return err('ReactionSet.merge: newer reaction was present (lexicographic tiebreaker)');
-    } else {
-      return err('ReactionSet.merge: duplicate reaction');
-    }
+    // If the timestamp is equal, compare the lexicographic order of the hashes
+    if (hashCompare(currentReaction.hash, reaction.hash) >= 0) return ok(undefined);
+
+    this.addOrUpdateReaction(reaction);
+    return ok(undefined);
   }
 
   revokeSigner(signer: string): Result<void, string> {
