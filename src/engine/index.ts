@@ -1,134 +1,87 @@
-import { Cast, Root, Message, Reaction } from '~/types';
-import { hashMessage, hashCompare } from '~/utils';
-import { utils } from 'ethers';
+import {
+  Cast,
+  Message,
+  Reaction,
+  Verification,
+  VerificationAdd,
+  VerificationRemove,
+  VerificationClaim,
+  SignerAdd,
+  SignatureAlgorithm,
+  SignerEdge,
+  SignerMessage,
+  HashAlgorithm,
+  IDRegistryEvent,
+  Follow,
+  URI,
+} from '~/types';
+import { hashMessage, hashFCObject } from '~/utils';
+import * as ed from '@noble/ed25519';
+import { hexToBytes } from 'ethereum-cryptography/utils';
 import { ok, err, Result } from 'neverthrow';
-import { isCast, isCastShort, isRoot, isReaction } from '~/types/typeguards';
+import { ethers, utils } from 'ethers';
+import {
+  isCast,
+  isCastShort,
+  isReaction,
+  isVerificationAdd,
+  isVerificationRemove,
+  isSignerAdd,
+  isSignerRemove,
+  isSignerMessage,
+  isCustodyRemoveAll,
+  isFollow,
+} from '~/types/typeguards';
 import CastSet from '~/sets/castSet';
 import ReactionSet from '~/sets/reactionSet';
+import VerificationSet from '~/sets/verificationSet';
+import SignerSet from '~/sets/signerSet';
+import FollowSet from '~/sets/followSet';
 
-export interface getUserFingerprint {
-  rootBlockNum: number;
-  rootBlockHash: string;
-  lastMessageIndex: number | undefined;
-  lastMessageHash: string | undefined;
-}
-
-export interface Signer {
-  address: string;
-  blockHash: string;
-  blockNumber: number;
-  logIndex: number;
-}
-
-/** The Engine receives messages and determines the current state Farcaster network */
+/** The Engine receives messages and determines the current state of the Farcaster network */
 class Engine {
-  private _casts: Map<string, CastSet>;
-  private _reactions: Map<string, ReactionSet>;
-  private _roots: Map<string, Root>;
-  private _users: Map<string, Signer[]>;
+  /** Maps of sets, indexed by fid */
+  private _casts: Map<number, CastSet>;
+  private _reactions: Map<number, ReactionSet>;
+  private _verifications: Map<number, VerificationSet>;
+  private _signers: Map<number, SignerSet>;
+  private _follows: Map<number, FollowSet>;
 
   constructor() {
     this._casts = new Map();
     this._reactions = new Map();
-    this._roots = new Map();
-    this._users = new Map();
-  }
-
-  getSigners(username: string): Signer[] {
-    return this._users.get(username) || [];
-  }
-
-  /**
-   * Root Methods
-   */
-
-  getRoot(username: string): Root | undefined {
-    return this._roots.get(username);
-  }
-
-  /** Add a new root for a username, if valid */
-  mergeRoot(root: Root): Result<void, string> {
-    if (!isRoot(root)) {
-      return err('mergeRoot: invalid root');
-    }
-
-    // TODO: verify that the block and hash are from a valid ethereum block.
-
-    const validation = this.validateMessage(root);
-    if (!validation.isOk()) {
-      return validation;
-    }
-
-    const username = root.data.username;
-    const currentRoot = this._roots.get(username);
-
-    if (!currentRoot) {
-      this._roots.set(username, root);
-      return ok(undefined);
-    }
-
-    if (currentRoot.data.rootBlock < root.data.rootBlock) {
-      this._roots.set(username, root);
-      this._casts.set(username, new CastSet());
-      return ok(undefined);
-    } else if (currentRoot.data.rootBlock > root.data.rootBlock) {
-      return err('mergeRoot: provided root was older (lower block)');
-    } else {
-      const hashCmp = hashCompare(currentRoot.hash, root.hash);
-      if (hashCmp < 0) {
-        this._roots.set(username, root);
-        this._casts.set(username, new CastSet());
-        return ok(undefined);
-      } else if (hashCmp >= 1) {
-        return err('mergeRoot: newer root was present (lexicographically higher hash)');
-      } else {
-        return err('mergeRoot: provided root was a duplicate');
-      }
-    }
+    this._verifications = new Map();
+    this._signers = new Map();
+    this._follows = new Map();
   }
 
   /**
    * Cast Methods
    */
 
-  /** Get a cast for a username by its hash */
-  getCast(username: string, hash: string): Cast | undefined {
-    const castSet = this._casts.get(username);
+  /** Get a cast for an fid by its hash */
+  getCast(fid: number, hash: string): Cast | undefined {
+    const castSet = this._casts.get(fid);
     return castSet ? castSet.get(hash) : undefined;
   }
 
-  /** Get hashes of undeleted cast messages for a username */
-  getCastHashes(username: string): string[] {
-    const castSet = this._casts.get(username);
-    return castSet ? castSet.getHashes() : [];
-  }
-
-  /** Get hashes of all cast messages for a username */
-  getAllCastHashes(username: string): string[] {
-    const castSet = this._casts.get(username);
-    return castSet ? castSet.getAllHashes() : [];
-  }
-
   /** Merge a cast into the set */
-  mergeCast(cast: Cast): Result<void, string> {
+  async mergeCast(cast: Cast): Promise<Result<void, string>> {
     try {
-      const username = cast.data.username;
+      const { fid } = cast.data;
 
-      const signerChanges = this._users.get(username);
-      if (!signerChanges) {
+      if (!this._signers.get(fid)) {
         return err('mergeCast: unknown user');
       }
 
-      if (!this.validateMessage(cast).isOk()) {
-        return this.validateMessage(cast);
-      }
+      const isCastValidResult = await this.validateMessage(cast);
+      if (isCastValidResult.isErr()) return isCastValidResult;
 
-      let castSet = this._casts.get(username);
+      let castSet = this._casts.get(fid);
       if (!castSet) {
         castSet = new CastSet();
-        this._casts.set(username, castSet);
+        this._casts.set(fid, castSet);
       }
-
       return castSet.merge(cast);
     } catch (e: any) {
       return err('mergeCast: unexpected error');
@@ -139,181 +92,204 @@ class Engine {
    * Reaction Methods
    */
 
-  /** Get a reaction for a username by hash */
-  getReaction(username: string, hash: string): Reaction | undefined {
-    const reactionSet = this._reactions.get(username);
-    return reactionSet ? reactionSet.get(hash) : undefined;
-  }
-
-  /** Get hashes of all known reactions for a username */
-  getReactionHashes(username: string): string[] {
-    const reactionSet = this._reactions.get(username);
-    return reactionSet ? reactionSet.getHashes() : [];
-  }
-
-  /** Get hashes of all known reactions for a username */
-  getAllReactionHashes(username: string): string[] {
-    const reactionSet = this._reactions.get(username);
-    return reactionSet ? reactionSet.getAllHashes() : [];
+  /** Get a reaction for an fid by target URI */
+  getReaction(fid: number, targetURI: URI): Reaction | undefined {
+    const reactionSet = this._reactions.get(fid);
+    return reactionSet ? reactionSet.get(targetURI) : undefined;
   }
 
   /** Merge a reaction into the set  */
-  mergeReaction(reaction: Reaction): Result<void, string> {
+  async mergeReaction(reaction: Reaction): Promise<Result<void, string>> {
     try {
-      const username = reaction.data.username;
+      const { fid } = reaction.data;
 
-      const signerChanges = this._users.get(username);
-      if (!signerChanges) {
+      if (!this._signers.get(fid)) {
         return err('mergeReaction: unknown user');
       }
 
-      if (!this.validateMessage(reaction).isOk()) {
-        return this.validateMessage(reaction);
-      }
+      const isReactionValidResult = await this.validateMessage(reaction);
+      if (isReactionValidResult.isErr()) return isReactionValidResult;
 
-      let reactionSet = this._reactions.get(username);
+      let reactionSet = this._reactions.get(fid);
       if (!reactionSet) {
         reactionSet = new ReactionSet();
-        this._reactions.set(username, reactionSet);
+        this._reactions.set(fid, reactionSet);
       }
 
       return reactionSet.merge(reaction);
     } catch (e: any) {
-      return err('addCast: unexpected error');
+      return err('mergeReaction: unexpected error');
     }
+  }
+
+  /**
+   * Follow Methods
+   */
+
+  /** Get a follow for an fid by target URI */
+  getFollow(fid: number, targetURI: string): Follow | undefined {
+    const followSet = this._follows.get(fid);
+    return followSet ? followSet.get(targetURI) : undefined;
+  }
+
+  /** Merge a follow into the set  */
+  async mergeFollow(follow: Follow): Promise<Result<void, string>> {
+    try {
+      const { fid } = follow.data;
+
+      if (!this._signers.get(fid)) {
+        return err('mergeFollow: unknown user');
+      }
+
+      const isFollowValidResult = await this.validateMessage(follow);
+      if (isFollowValidResult.isErr()) return isFollowValidResult;
+
+      let followSet = this._follows.get(fid);
+      if (!followSet) {
+        followSet = new FollowSet();
+        this._follows.set(fid, followSet);
+      }
+
+      return followSet.merge(follow);
+    } catch (e: any) {
+      console.log('error', e);
+      return err('mergeFollow: unexpected error');
+    }
+  }
+
+  /**
+   * Verification methods
+   */
+
+  /** Get a verification for an fid by claimHash */
+  getVerification(fid: number, claimHash: string): Verification | undefined {
+    const verificationSet = this._verifications.get(fid);
+    return verificationSet ? verificationSet.get(claimHash) : undefined;
+  }
+
+  /** Merge verification message into the set */
+  async mergeVerification(verification: Verification): Promise<Result<void, string>> {
+    const { fid } = verification.data;
+    const signerSet = this._signers.get(fid);
+    if (!signerSet) {
+      return err('mergeVerification: unknown user');
+    }
+    const isVerificationValidResult = await this.validateMessage(verification);
+    if (isVerificationValidResult.isErr()) return isVerificationValidResult;
+
+    let verificationSet = this._verifications.get(fid);
+    if (!verificationSet) {
+      verificationSet = new VerificationSet();
+      this._verifications.set(fid, verificationSet);
+    }
+
+    return verificationSet.merge(verification);
   }
 
   /**
    * Signer Methods
    */
 
-  /** Add a new SignerChange event into the user's Signer Change array  */
-  addSignerChange(username: string, newSignerChange: Signer): Result<void, string> {
-    const signerChanges = this._users.get(username);
+  mergeIDRegistryEvent(fid: number, event: IDRegistryEvent): Result<void, string> {
+    let signerSet = this._signers.get(fid);
+    if (!signerSet) {
+      signerSet = new SignerSet();
 
-    if (!signerChanges) {
-      this._users.set(username, [newSignerChange]);
-      return ok(undefined);
+      // Subscribe to events in order to revoke messages when signers are removed
+      signerSet.on('removeSigner', (signerKey) => this.revokeSigner(fid, signerKey));
+
+      this._signers.set(fid, signerSet);
     }
+    return signerSet.mergeIDRegistryEvent(event);
+  }
 
-    let signerIdx = 0;
+  /** Merge signer message into the set */
+  async mergeSignerMessage(message: SignerMessage): Promise<Result<void, string>> {
+    const { fid } = message.data;
+    const signerSet = this._signers.get(fid);
+    if (!signerSet) return err('mergeSignerMessage: unknown user');
 
-    // Insert the SignerChange into the array such that the array maintains ascending order
-    // of blockNumbers, followed by logIndex (for changes that occur within the same block).
-    for (const sc of signerChanges) {
-      if (sc.blockNumber < newSignerChange.blockNumber) {
-        signerIdx++;
-      } else if (sc.blockNumber === newSignerChange.blockNumber) {
-        if (sc.logIndex < newSignerChange.logIndex) {
-          signerIdx++;
-        } else if (sc.logIndex === newSignerChange.logIndex) {
-          return err(`addSignerChange: duplicate signer change ${sc.blockHash}:${sc.logIndex}`);
-        }
-      }
-    }
+    const isMessageValidResult = await this.validateMessage(message);
+    if (isMessageValidResult.isErr()) return isMessageValidResult;
 
-    signerChanges.splice(signerIdx, 0, newSignerChange);
-    return ok(undefined);
+    return signerSet.merge(message);
   }
 
   /**
-   * Internal Methods
-   *
-   * Public methods used only for testing, or private methods
+   * Private Methods
    */
 
-  _reset(): void {
-    this._resetCasts();
-    this._resetSigners();
-    this._resetRoots();
-    this._resetReactions();
+  private revokeSigner(fid: number, signer: string): Result<void, string> {
+    // Revoke casts
+    const castSet = this._casts.get(fid);
+    if (castSet) castSet.revokeSigner(signer);
+
+    // Revoke reactions
+    const reactionSet = this._reactions.get(fid);
+    if (reactionSet) reactionSet.revokeSigner(signer);
+
+    // Revoke verifications
+    const verificationSet = this._verifications.get(fid);
+    if (verificationSet) verificationSet.revokeSigner(signer);
+
+    // Revoke follows
+    const followSet = this._follows.get(fid);
+    if (followSet) followSet.revokeSigner(signer);
+
+    return ok(undefined);
   }
 
-  _resetCasts(): void {
-    this._casts = new Map();
-  }
+  private async validateMessage(message: Message): Promise<Result<void, string>> {
+    // 1. Check that the signer is valid for the account
+    const signerSet = this._signers.get(message.data.fid);
+    if (!signerSet) return err('validateMessage: unknown user');
 
-  _resetSigners(): void {
-    this._users = new Map();
-  }
+    // A signer message must be signed by a custody address. All other messages have to be signed by delegates.
+    const isValidSigner =
+      (isSignerMessage(message) && signerSet.getCustody(message.signer)) || signerSet.getSigner(message.signer);
+    if (!isValidSigner) return err('validateMessage: invalid signer');
 
-  _resetRoots(): void {
-    this._roots = new Map();
-  }
-
-  _resetReactions(): void {
-    this._reactions = new Map();
-  }
-
-  _getCastAdds(username: string): Cast[] {
-    const castSet = this._casts.get(username);
-    return castSet ? castSet._getAdds() : [];
-  }
-
-  _getActiveReactions(username: string): Reaction[] {
-    const reactionSet = this._reactions.get(username);
-    return reactionSet ? reactionSet._getActiveReactions() : [];
-  }
-
-  /** Determine the valid signer address for a username at a block */
-  private signerForBlock(username: string, blockNumber: number): string | undefined {
-    const signerChanges = this._users.get(username);
-
-    if (!signerChanges) {
-      return undefined;
-    }
-
-    let signer = undefined;
-
-    for (const sc of signerChanges) {
-      if (sc.blockNumber <= blockNumber) {
-        signer = sc.address;
+    // 2. Check that the hashType and hash are valid
+    if (message.hashType === HashAlgorithm.Blake2b) {
+      const computedHash = await hashMessage(message);
+      if (message.hash !== computedHash) {
+        return err('validateMessage: invalid hash');
       }
+    } else {
+      return err('validateMessage: invalid hashType');
     }
 
-    return signer;
-  }
-
-  private validateMessage(message: Message): Result<void, string> {
-    // 1. Check that the signer was valid for the block in question.
-    const expectedSigner = this.signerForBlock(message.data.username, message.data.rootBlock);
-    if (!expectedSigner || expectedSigner !== message.signer) {
-      return err('validateMessage: invalid signer');
-    }
-
-    // 2. Check that the hash value of the message was computed correctly.
-    const computedHash = hashMessage(message);
-    if (message.hash !== computedHash) {
-      return err('validateMessage: invalid hash');
-    }
-
-    // 3. Check that the signature is valid
-    const recoveredAddress = utils.recoverAddress(message.hash, message.signature);
-    if (recoveredAddress !== message.signer) {
-      return err('validateMessage: invalid signature');
+    // 3. Check that the signatureType and signature are valid.
+    if (message.signatureType === SignatureAlgorithm.EthereumPersonalSign) {
+      try {
+        const recoveredSigner = ethers.utils.verifyMessage(message.hash, message.signature);
+        if (recoveredSigner.toLowerCase() !== message.signer.toLowerCase()) {
+          return err('validateMessage: invalid signature');
+        }
+      } catch (e: any) {
+        return err('validateMessage: invalid signature');
+      }
+    } else if (message.signatureType === SignatureAlgorithm.Ed25519) {
+      try {
+        const signatureIsValid = await ed.verify(
+          hexToBytes(message.signature),
+          hexToBytes(message.hash),
+          hexToBytes(message.signer)
+        );
+        if (!signatureIsValid) {
+          return err('validateMessage: invalid signature');
+        }
+      } catch (e: any) {
+        return err('validateMessage: invalid signature');
+      }
+    } else {
+      return err('validateMessage: invalid signatureType');
     }
 
     // 4. Verify that the timestamp is not too far in the future.
     const tenMinutes = 10 * 60 * 1000;
     if (message.data.signedAt - Date.now() > tenMinutes) {
       return err('validateMessage: signedAt more than 10 mins in the future');
-    }
-
-    if (isRoot(message)) {
-      return this.validateRoot(message);
-    }
-
-    const root = this._roots.get(message.data.username);
-    if (!root) {
-      return err('validateMessage: no root present');
-    }
-
-    if (root.data.rootBlock !== message.data.rootBlock) {
-      return err('validateMessage: root block does not match');
-    }
-
-    if (root.data.signedAt >= message.data.signedAt) {
-      return err('validateMessage: message timestamp was earlier than root');
     }
 
     if (isCast(message)) {
@@ -324,19 +300,34 @@ class Engine {
       return this.validateReaction();
     }
 
-    // TODO: check that the schema is a valid and known schema.
-    // TODO: check that all required properties are present.
-    // TODO: check that username is known to the registry
-    // TODO: check that the signer is the owner of the username.
-    return err('validateMessage: unknown message');
-  }
-
-  private validateRoot(root: Root): Result<void, string> {
-    // TODO: Check that the blockHash is a real block and it's block matches rootBlock.
-    if (root.data.body.blockHash.length !== 66) {
-      return err('validateRoot: invalid eth block hash');
+    if (isVerificationAdd(message)) {
+      return this.validateVerificationAdd(message);
     }
-    return ok(undefined);
+
+    if (isVerificationRemove(message)) {
+      return this.validateVerificationRemove();
+    }
+
+    if (isCustodyRemoveAll(message)) {
+      return this.validateCustodyRemoveAll();
+    }
+
+    if (isSignerAdd(message)) {
+      return this.validateSignerAdd(message);
+    }
+
+    if (isSignerRemove(message)) {
+      return this.validateSignerRemove();
+    }
+
+    if (isFollow(message)) {
+      return this.validateFollow();
+    }
+
+    // TODO: check that the schema is a valid and known schema
+    // TODO: check that all required properties are present
+    // TODO: check that fid is known to the registry
+    return err('validateMessage: unknown message');
   }
 
   private validateCast(cast: Cast): Result<void, string> {
@@ -353,7 +344,7 @@ class Engine {
       }
     }
 
-    // TODO: For delete cast, validate hash length.
+    // TODO: For remove cast, validate hash length.
 
     return ok(undefined);
   }
@@ -361,6 +352,156 @@ class Engine {
   private validateReaction(): Result<void, string> {
     // TODO: validate targetUri, schema
     return ok(undefined);
+  }
+
+  private async validateVerificationAdd(message: VerificationAdd): Promise<Result<void, string>> {
+    const { externalUri, externalSignature, externalSignatureType, claimHash } = message.data.body;
+
+    if (externalSignatureType !== SignatureAlgorithm.EthereumPersonalSign)
+      return err('validateVerificationAdd: invalid externalSignatureType');
+
+    const verificationClaim: VerificationClaim = {
+      fid: message.data.fid,
+      externalUri: message.data.body.externalUri,
+      blockHash: message.data.body.blockHash,
+    };
+    const reconstructedClaimHash = await hashFCObject(verificationClaim);
+    if (reconstructedClaimHash !== claimHash) {
+      return err('validateVerificationAdd: invalid claimHash');
+    }
+
+    try {
+      const verifiedExternalAddress = utils.verifyMessage(claimHash, externalSignature);
+      if (verifiedExternalAddress !== externalUri) {
+        return err('validateVerificationAdd: externalSignature does not match externalUri');
+      }
+    } catch (e: any) {
+      // TODO: pass through more helpful errors from Ethers
+      return err('validateVerificationAdd: invalid externalSignature');
+    }
+
+    return ok(undefined);
+  }
+
+  private async validateVerificationRemove(): Promise<Result<void, string>> {
+    // TODO: validate claimHash is a real hash
+    return ok(undefined);
+  }
+
+  private async validateSignerAdd(message: SignerAdd): Promise<Result<void, string>> {
+    const { delegateSignatureType, delegateSignature, delegate, edgeHash } = message.data.body;
+
+    /** Validate delegateSignatureType */
+    if (delegateSignatureType !== SignatureAlgorithm.Ed25519)
+      return err('validateSignerAdd: invalid delegateSignatureType');
+
+    /** Validate edgeHash */
+    const signerEdge: SignerEdge = { delegate, custody: message.signer };
+    const reconstructedEdgeHash = await hashFCObject(signerEdge);
+    if (reconstructedEdgeHash !== edgeHash) return err('validateSignerAdd: invalid edgeHash');
+
+    /** Validate delegateSignature */
+    try {
+      const delegateSignatureIsValid = await ed.verify(
+        hexToBytes(delegateSignature),
+        hexToBytes(edgeHash),
+        hexToBytes(delegate)
+      );
+      if (!delegateSignatureIsValid) {
+        return err('validateSignerAdd: delegateSignature does not match delegate');
+      }
+    } catch (e: any) {
+      return err('validateSignerAdd: invalid delegateSignature');
+    }
+
+    return ok(undefined);
+  }
+
+  private async validateSignerRemove(): Promise<Result<void, string>> {
+    // TODO: any SignerRemove custom validations?
+    return ok(undefined);
+  }
+
+  private async validateCustodyRemoveAll(): Promise<Result<void, string>> {
+    // TODO: any CustodyRemoveAll custom validation?
+    return ok(undefined);
+  }
+
+  private async validateFollow(): Promise<Result<void, string>> {
+    // TODO: any Follow custom validation?
+    return ok(undefined);
+  }
+
+  /**
+   * Testing Methods
+   */
+
+  _reset(): void {
+    this._resetCasts();
+    this._resetSigners();
+    this._resetReactions();
+    this._resetVerifications();
+    this._resetFollows();
+  }
+
+  _resetCasts(): void {
+    this._casts = new Map();
+  }
+
+  _resetSigners(): void {
+    this._signers = new Map();
+  }
+
+  _resetReactions(): void {
+    this._reactions = new Map();
+  }
+
+  _resetVerifications(): void {
+    this._verifications = new Map();
+  }
+
+  _resetFollows(): void {
+    this._follows = new Map();
+  }
+
+  _getCastAdds(fid: number): Cast[] {
+    const castSet = this._casts.get(fid);
+    return castSet ? castSet._getAdds() : [];
+  }
+
+  _getActiveReactions(fid: number): Reaction[] {
+    const reactionSet = this._reactions.get(fid);
+    return reactionSet ? reactionSet._getActiveReactions() : [];
+  }
+
+  _getActiveFollows(fid: number): Set<Follow> {
+    const followSet = this._follows.get(fid);
+    return followSet ? followSet._getActiveFollows() : new Set();
+  }
+
+  _getVerificationAdds(fid: number): VerificationAdd[] {
+    const verificationSet = this._verifications.get(fid);
+    return verificationSet ? verificationSet._getAdds() : [];
+  }
+
+  _getVerificationRemoves(fid: number): VerificationRemove[] {
+    const verificationSet = this._verifications.get(fid);
+    return verificationSet ? verificationSet._getRemoves() : [];
+  }
+
+  _getAllSigners(fid: number): Set<string> {
+    const signerSet = this._signers.get(fid);
+    return signerSet ? signerSet.getAllSigners() : new Set();
+  }
+
+  _getCustodyAddresses(fid: number): Set<string> {
+    const signerSet = this._signers.get(fid);
+    return signerSet ? signerSet.getCustodyAddresses() : new Set();
+  }
+
+  _getDelegateSigners(fid: number): Set<string> {
+    const signerSet = this._signers.get(fid);
+    return signerSet ? signerSet.getDelegateSigners() : new Set();
   }
 }
 

@@ -1,66 +1,186 @@
-import Engine, { Signer } from '~/engine';
 import Faker from 'faker';
+import Engine from '~/engine';
+import { Factories } from '~/factories';
+import {
+  CustodyRemoveAll,
+  Ed25519Signer,
+  EthereumSigner,
+  SignatureAlgorithm,
+  SignerAdd,
+  SignerMessage,
+  SignerRemove,
+  IDRegistryEvent,
+} from '~/types';
+import {
+  blake2BHash,
+  convertToHex,
+  generateEd25519KeyPair,
+  generateEd25519Signer,
+  generateEthereumSigner,
+  hashFCObject,
+} from '~/utils';
 
 const engine = new Engine();
+const aliceFid = Faker.datatype.number();
 
-describe('addSignerChange', () => {
-  // Change @charlie's signer at block 100.
-  const signerChange: Signer = {
-    address: Faker.datatype.hexaDecimal(40).toLowerCase(),
-    blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-    blockNumber: 100,
-    logIndex: 12,
-  };
+const aliceAllSigners = () => engine._getAllSigners(aliceFid);
 
-  // Change charlie's signer at block 200.
-  const signerChange200 = JSON.parse(JSON.stringify(signerChange)) as Signer;
-  signerChange200.blockHash = Faker.datatype.hexaDecimal(64).toLowerCase();
-  signerChange200.blockNumber = signerChange.blockNumber + 100;
+describe('mergeSignerMessage', () => {
+  let aliceCustodySigner: EthereumSigner;
+  let aliceCustodyRegister: IDRegistryEvent;
+  let aliceCustodyRemoveAll: CustodyRemoveAll;
+  let aliceDelegateSigner: Ed25519Signer;
+  let aliceSignerAddDelegate: SignerAdd;
+  let aliceSignerRemoveDelegate: SignerRemove;
 
-  // Change charlie's signer at block 50.
-  const signerChange50A = JSON.parse(JSON.stringify(signerChange)) as Signer;
-  signerChange50A.blockHash = Faker.datatype.hexaDecimal(64).toLowerCase();
-  signerChange50A.blockNumber = signerChange.blockNumber - 10;
-
-  // Change charlie's signer at block 50, at a higher index.
-  const signerChange50B = JSON.parse(JSON.stringify(signerChange50A)) as Signer;
-  signerChange50B.logIndex = signerChange.logIndex + 1;
-
-  const duplicateSignerChange50B = JSON.parse(JSON.stringify(signerChange50B)) as Signer;
-
-  const username = 'charlie';
-  const subject = () => engine.getSigners(username);
-
-  test('signer changes are added correctly', async () => {
-    const result = engine.addSignerChange(username, signerChange);
-    expect(result.isOk()).toBe(true);
-    expect(subject()).toEqual([signerChange]);
-  });
-
-  test('signer changes from later blocks are added after current blocks', async () => {
-    const result = engine.addSignerChange(username, signerChange200);
-    expect(result.isOk()).toBe(true);
-    expect(subject()).toEqual([signerChange, signerChange200]);
-  });
-
-  test('signer changes from earlier blocks are before current blocks', async () => {
-    const result = engine.addSignerChange(username, signerChange50A);
-    expect(result.isOk()).toBe(true);
-    expect(subject()).toEqual([signerChange50A, signerChange, signerChange200]);
-  });
-
-  test('signer changes in the same block are ordered by index', async () => {
-    const result = engine.addSignerChange(username, signerChange50B);
-    expect(result.isOk()).toBe(true);
-    expect(subject()).toEqual([signerChange50A, signerChange50B, signerChange, signerChange200]);
-  });
-
-  test('adding a duplicate signer change fails', async () => {
-    const result = engine.addSignerChange(username, duplicateSignerChange50B);
-    expect(result.isOk()).toBe(false);
-    expect(result._unsafeUnwrapErr()).toBe(
-      `addSignerChange: duplicate signer change ${signerChange50B.blockHash}:${signerChange50B.logIndex}`
+  beforeAll(async () => {
+    aliceCustodySigner = await generateEthereumSigner();
+    aliceCustodyRegister = await Factories.IDRegistryEvent.create({
+      args: { to: aliceCustodySigner.signerKey },
+      name: 'Register',
+    });
+    aliceCustodyRemoveAll = await Factories.CustodyRemoveAll.create(
+      { data: { fid: aliceFid } },
+      { transient: { signer: aliceCustodySigner } }
     );
-    expect(subject()).toEqual([signerChange50A, signerChange50B, signerChange, signerChange200]);
+    aliceDelegateSigner = await generateEd25519Signer();
+    aliceSignerAddDelegate = await Factories.SignerAdd.create(
+      { data: { fid: aliceFid } },
+      { transient: { signer: aliceCustodySigner, delegateSigner: aliceDelegateSigner } }
+    );
+    aliceSignerRemoveDelegate = await Factories.SignerRemove.create(
+      { data: { fid: aliceFid, body: { delegate: aliceDelegateSigner.signerKey } } },
+      { transient: { signer: aliceCustodySigner } }
+    );
+  });
+
+  beforeEach(() => {
+    engine._reset();
+  });
+
+  test('fails without a custody address', async () => {
+    const res = await engine.mergeSignerMessage(aliceSignerAddDelegate);
+    expect(res.isOk()).toBe(false);
+    expect(aliceAllSigners()).toEqual(new Set());
+  });
+
+  describe('with a custody address', () => {
+    beforeEach(async () => {
+      engine.mergeIDRegistryEvent(aliceFid, aliceCustodyRegister);
+    });
+
+    test('fails with invalid message type', async () => {
+      const cast = (await Factories.Cast.create(
+        { data: { fid: aliceFid } },
+        { transient: { signer: aliceCustodySigner } }
+      )) as unknown as SignerMessage;
+      expect((await engine.mergeSignerMessage(cast)).isOk()).toBe(false);
+    });
+
+    test('succeeds with valid CustodyRemoveAll', async () => {
+      const res = await engine.mergeSignerMessage(aliceCustodyRemoveAll);
+      expect(res.isOk()).toBe(true);
+      expect(aliceAllSigners()).toEqual(new Set([aliceCustodySigner.signerKey]));
+    });
+
+    test('succeeds with a valid SignerAdd', async () => {
+      const res = await engine.mergeSignerMessage(aliceSignerAddDelegate);
+      expect(res.isOk()).toBe(true);
+      expect(aliceAllSigners()).toEqual(new Set([aliceCustodySigner.signerKey, aliceDelegateSigner.signerKey]));
+    });
+
+    test('fails with malformed delegateSignature', async () => {
+      const badSignerAdd = await Factories.SignerAdd.create(
+        { data: { fid: aliceFid, body: { delegateSignature: 'foo' } } },
+        { transient: { signer: aliceCustodySigner } }
+      );
+      const res = await engine.mergeSignerMessage(badSignerAdd);
+      expect(res.isOk()).toBe(false);
+      expect(res._unsafeUnwrapErr()).toBe('validateSignerAdd: invalid delegateSignature');
+      expect(aliceAllSigners()).toEqual(new Set([aliceCustodySigner.signerKey]));
+    });
+
+    test('fails when delegateSignature and delegate do not match', async () => {
+      const delegateKeyPair = await generateEd25519KeyPair();
+      const delegatePubKey = await convertToHex(delegateKeyPair.publicKey);
+      const badSignerAdd = await Factories.SignerAdd.create(
+        { data: { fid: aliceFid, body: { delegate: delegatePubKey } } },
+        { transient: { signer: aliceCustodySigner } }
+      );
+      const res = await engine.mergeSignerMessage(badSignerAdd);
+      expect(res.isOk()).toBe(false);
+      expect(res._unsafeUnwrapErr()).toBe('validateSignerAdd: delegateSignature does not match delegate');
+      expect(aliceAllSigners()).toEqual(new Set([aliceCustodySigner.signerKey]));
+    });
+
+    test('fails with invalid edgeHash', async () => {
+      const badEdgeHash = await blake2BHash('bar');
+      const badSignerAdd = await Factories.SignerAdd.create(
+        { data: { fid: aliceFid, body: { edgeHash: badEdgeHash } } },
+        { transient: { signer: aliceCustodySigner } }
+      );
+      const res = await engine.mergeSignerMessage(badSignerAdd);
+      expect(res.isOk()).toBe(false);
+      expect(res._unsafeUnwrapErr()).toBe('validateSignerAdd: invalid edgeHash');
+      expect(aliceAllSigners()).toEqual(new Set([aliceCustodySigner.signerKey]));
+    });
+
+    test('fails with invalid delegateSignatureType', async () => {
+      const badSignerAdd = await Factories.SignerAdd.create(
+        {
+          data: { fid: aliceFid, body: { delegateSignatureType: 'bar' as unknown as SignatureAlgorithm.Ed25519 } },
+        },
+        { transient: { signer: aliceCustodySigner } }
+      );
+      const res = await engine.mergeSignerMessage(badSignerAdd);
+      expect(res.isOk()).toBe(false);
+      expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
+      expect(aliceAllSigners()).toEqual(new Set([aliceCustodySigner.signerKey]));
+    });
+
+    test('fails with invalid hash', async () => {
+      const signerAddClone = { ...aliceSignerAddDelegate };
+      signerAddClone.hash = await hashFCObject({ foo: 'bar' });
+      const res = await engine.mergeSignerMessage(signerAddClone);
+      expect(res.isOk()).toBe(false);
+      expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
+      expect(aliceAllSigners()).toEqual(new Set([aliceCustodySigner.signerKey]));
+    });
+
+    test('fails with invalid signature', async () => {
+      const signerAddClone = { ...aliceSignerAddDelegate };
+      signerAddClone.signature =
+        '0x5b699d494b515b22258c01ad19710d44c3f12235f0c01e91d09a1e4e2cd25d80c77026a7319906da3b8ce62abc18477c19e444a02949a0dde54f8cadef889502';
+      const res = await engine.mergeSignerMessage(signerAddClone);
+      expect(res.isOk()).toBe(false);
+      expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid signature');
+      expect(aliceAllSigners()).toEqual(new Set([aliceCustodySigner.signerKey]));
+    });
+
+    test('fails if signedAt is > current time + safety margin', async () => {
+      const badSignerAdd = await Factories.SignerAdd.create(
+        {
+          data: { fid: aliceFid, signedAt: Date.now() + 11 * 60 * 1000 },
+        },
+        { transient: { signer: aliceCustodySigner } }
+      );
+      const res = await engine.mergeSignerMessage(badSignerAdd);
+      expect(res.isOk()).toBe(false);
+      expect(res._unsafeUnwrapErr()).toBe('validateMessage: signedAt more than 10 mins in the future');
+      expect(aliceAllSigners()).toEqual(new Set([aliceCustodySigner.signerKey]));
+    });
+
+    test('succeeds with a valid SignerRemove', async () => {
+      expect((await engine.mergeSignerMessage(aliceSignerAddDelegate)).isOk()).toBe(true);
+      expect(aliceAllSigners()).toEqual(new Set([aliceCustodySigner.signerKey, aliceDelegateSigner.signerKey]));
+      const res = await engine.mergeSignerMessage(aliceSignerRemoveDelegate);
+      expect(res.isOk()).toBe(true);
+      expect(aliceAllSigners()).toEqual(new Set([aliceCustodySigner.signerKey]));
+    });
+
+    test('succeeds with a valid SignerRemove when relevant SignerAdd has not been merged', async () => {
+      expect((await engine.mergeSignerMessage(aliceSignerRemoveDelegate)).isOk()).toBe(true);
+      expect(aliceAllSigners()).toEqual(new Set([aliceCustodySigner.signerKey]));
+    });
   });
 });

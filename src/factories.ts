@@ -1,28 +1,76 @@
 import { Factory } from 'fishery';
 import Faker from 'faker';
 import { ethers } from 'ethers';
-import { CastShort, Root, CastRecast, CastDelete, Reaction } from '~/types';
-import { hashMessage, sign } from '~/utils';
+import {
+  CastShort,
+  CastRecast,
+  CastRemove,
+  Reaction,
+  VerificationAdd,
+  VerificationRemove,
+  VerificationClaim,
+  VerificationRemoveFactoryTransientParams,
+  VerificationAddFactoryTransientParams,
+  SignerAdd,
+  SignerRemove,
+  SignerEdge,
+  SignerAddFactoryTransientParams,
+  SignatureAlgorithm,
+  Message,
+  MessageFactoryTransientParams,
+  MessageSigner,
+  CustodyRemoveAll,
+  HashAlgorithm,
+  IDRegistryEvent,
+  Follow,
+} from '~/types';
+import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
+
+/**
+ * getMessageSigner gets or generates a signer based on a message and transient params object
+ */
+const getMessageSigner = async (
+  message: Message,
+  transientParams: MessageFactoryTransientParams
+): Promise<MessageSigner> => {
+  /** Check if transientParams already has a signer */
+  if (transientParams.signer) return transientParams.signer;
+
+  /** Check if message has signatureType set  */
+  if (message.signatureType === SignatureAlgorithm.EthereumPersonalSign) return await generateEthereumSigner();
+
+  /** Otherwise generate default signer */
+  return await generateEd25519Signer();
+};
+
+/**
+ * addEnvelopeToMessage adds hash, signer, signature, and signatureType to a message
+ * object using the signer in transientParams if one is present
+ */
+const addEnvelopeToMessage = async (
+  message: Message,
+  transientParams: MessageFactoryTransientParams
+): Promise<Message> => {
+  const signer = await getMessageSigner(message, transientParams);
+  message.hash = await hashMessage(message);
+  message.signer = signer.signerKey;
+  if (signer.type === SignatureAlgorithm.EthereumPersonalSign) {
+    message.signature = await signer.wallet.signMessage(message.hash);
+  } else if (signer.type === SignatureAlgorithm.Ed25519) {
+    message.signature = await signEd25519(message.hash, signer.privateKey);
+  }
+  message.signatureType = signer.type;
+  return message;
+};
 
 /**
  * ProtocolFactories are used to construct valid Farcaster Protocol JSON objects.
  */
 export const Factories = {
   /** Generate a valid Cast with randomized properties */
-  Cast: Factory.define<CastShort, any, CastShort>(({ onCreate, transientParams }) => {
-    const { privateKey = Faker.datatype.hexaDecimal(64).toLowerCase() } = transientParams;
-    const wallet = new ethers.Wallet(privateKey);
-
-    onCreate(async (castProps) => {
-      const hash = hashMessage(castProps);
-      castProps.hash = hash;
-
-      castProps.signer = await wallet.getAddress();
-
-      const signature = sign(castProps.hash, wallet._signingKey());
-      castProps.signature = signature;
-
-      return castProps;
+  Cast: Factory.define<CastShort, MessageFactoryTransientParams, CastShort>(({ onCreate, transientParams }) => {
+    onCreate(async (props) => {
+      return (await addEnvelopeToMessage(props, transientParams)) as CastShort;
     });
 
     const embed = { items: [] };
@@ -33,148 +81,69 @@ export const Factories = {
         body: {
           embed,
           text,
-          schema: 'farcaster.xyz/schemas/v1/cast-short' as const,
+          schema: 'farcaster.xyz/schemas/v1/cast-short',
         },
-        rootBlock: Faker.datatype.number(10_000),
         signedAt: Faker.time.recent(),
-        username: Faker.name.firstName().toLowerCase(),
+        fid: Faker.datatype.number(),
       },
       hash: '',
+      hashType: HashAlgorithm.Blake2b,
       signature: '',
+      signatureType: SignatureAlgorithm.Ed25519,
       signer: '',
     };
   }),
 
-  /** Generate a valid Cast-Delete with randomized properties */
-  CastDelete: Factory.define<CastDelete, any, CastDelete>(({ onCreate, transientParams }) => {
-    const { privateKey = Faker.datatype.hexaDecimal(64).toLowerCase() } = transientParams;
-    const wallet = new ethers.Wallet(privateKey);
-
-    onCreate(async (castProps) => {
-      const hash = hashMessage(castProps);
-      castProps.hash = hash;
-
-      castProps.signer = await wallet.getAddress();
-
-      const signature = sign(castProps.hash, wallet._signingKey());
-      castProps.signature = signature;
-
-      return castProps;
+  /** Generate a valid CastRemove with randomized properties */
+  CastRemove: Factory.define<CastRemove, MessageFactoryTransientParams, CastRemove>(({ onCreate, transientParams }) => {
+    onCreate(async (props) => {
+      return (await addEnvelopeToMessage(props, transientParams)) as CastRemove;
     });
 
     return {
       data: {
         body: {
           targetHash: Faker.datatype.hexaDecimal(40).toLowerCase(),
-          schema: 'farcaster.xyz/schemas/v1/cast-delete' as const,
+          schema: 'farcaster.xyz/schemas/v1/cast-remove',
         },
-        rootBlock: Faker.datatype.number(10_000),
         signedAt: Faker.time.recent(),
-        username: Faker.name.firstName().toLowerCase(),
+        fid: Faker.datatype.number(),
       },
       hash: '',
+      hashType: HashAlgorithm.Blake2b,
       signature: '',
+      signatureType: SignatureAlgorithm.Ed25519,
       signer: '',
     };
   }),
 
   /** Generate a valid Cast with randomized properties */
-  CastRecast: Factory.define<CastRecast, any, CastRecast>(({ onCreate, transientParams }) => {
-    const { privateKey = Faker.datatype.hexaDecimal(64).toLowerCase() } = transientParams;
-    const wallet = new ethers.Wallet(privateKey);
-
-    onCreate(async (castProps) => {
-      const hash = hashMessage(castProps);
-      castProps.hash = hash;
-
-      castProps.signer = await wallet.getAddress();
-
-      const signature = sign(castProps.hash, wallet._signingKey());
-      castProps.signature = signature;
-
-      return castProps;
+  CastRecast: Factory.define<CastRecast, MessageFactoryTransientParams, CastRecast>(({ onCreate, transientParams }) => {
+    onCreate(async (props) => {
+      return (await addEnvelopeToMessage(props, transientParams)) as CastRecast;
     });
 
     return {
       data: {
         body: {
           targetCastUri: 'farcaster://alice/cast/1', // TODO: Find some way to generate this.
-          schema: 'farcaster.xyz/schemas/v1/cast-recast' as const,
+          schema: 'farcaster.xyz/schemas/v1/cast-recast',
         },
-        rootBlock: Faker.datatype.number(10_000),
         signedAt: Faker.time.recent(),
-        username: Faker.name.firstName().toLowerCase(),
+        fid: Faker.datatype.number(),
       },
       hash: '',
+      hashType: HashAlgorithm.Blake2b,
       signature: '',
+      signatureType: SignatureAlgorithm.Ed25519,
       signer: '',
-    };
-  }),
-
-  /** Generate a valid Cast with randomized properties */
-  Root: Factory.define<Root, any, Root>(({ onCreate, transientParams }) => {
-    const { privateKey = Faker.datatype.hexaDecimal(64).toLowerCase() } = transientParams;
-    const wallet = new ethers.Wallet(privateKey);
-
-    onCreate(async (rootProps) => {
-      const hash = hashMessage(rootProps);
-      rootProps.hash = hash;
-
-      rootProps.signer = await wallet.getAddress();
-
-      const signature = sign(rootProps.hash, wallet._signingKey());
-      rootProps.signature = signature;
-
-      return rootProps;
-    });
-
-    return {
-      data: {
-        body: {
-          blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-          schema: 'farcaster.xyz/schemas/v1/root' as const,
-        },
-        rootBlock: Faker.datatype.number(10_000),
-        signedAt: Date.now(),
-        username: Faker.name.firstName().toLowerCase(),
-      },
-      hash: '',
-      signature: '',
-      signer: '',
-    };
-  }),
-
-  /** Generate a new ETH Address with its corresponding private key */
-  EthAddress: Factory.define<EthAddress, any, EthAddress>(({ onCreate }) => {
-    onCreate(async (addressProps) => {
-      const wallet = new ethers.Wallet(addressProps.privateKey);
-      addressProps.address = await wallet.getAddress();
-      return addressProps;
-    });
-
-    const privateKey = Faker.datatype.hexaDecimal(64).toLowerCase();
-
-    return {
-      address: '',
-      privateKey,
     };
   }),
 
   /** Generate a valid Reaction with randomized properties */
-  Reaction: Factory.define<Reaction, any, Reaction>(({ onCreate, transientParams }) => {
-    const { privateKey = Faker.datatype.hexaDecimal(64).toLowerCase() } = transientParams;
-    const wallet = new ethers.Wallet(privateKey);
-
-    onCreate(async (castProps) => {
-      const hash = hashMessage(castProps);
-      castProps.hash = hash;
-
-      castProps.signer = await wallet.getAddress();
-
-      const signature = sign(castProps.hash, wallet._signingKey());
-      castProps.signature = signature;
-
-      return castProps;
+  Reaction: Factory.define<Reaction, MessageFactoryTransientParams, Reaction>(({ onCreate, transientParams }) => {
+    onCreate(async (props) => {
+      return (await addEnvelopeToMessage(props, transientParams)) as Reaction;
     });
 
     return {
@@ -183,20 +152,243 @@ export const Factories = {
           active: true,
           targetUri: Faker.internet.url(),
           type: 'like',
-          schema: 'farcaster.xyz/schemas/v1/reaction' as const,
+          schema: 'farcaster.xyz/schemas/v1/reaction',
         },
-        rootBlock: Faker.datatype.number(10_000),
         signedAt: Faker.time.recent(),
-        username: Faker.name.firstName().toLowerCase(),
+        fid: Faker.datatype.number(),
       },
       hash: '',
+      hashType: HashAlgorithm.Blake2b,
       signature: '',
+      signatureType: SignatureAlgorithm.Ed25519,
       signer: '',
     };
   }),
-};
 
-interface EthAddress {
-  address: string;
-  privateKey: string;
-}
+  /** Generate a valid Follow with randomized properties */
+  Follow: Factory.define<Follow, MessageFactoryTransientParams, Follow>(({ onCreate, transientParams }) => {
+    onCreate(async (props) => {
+      return (await addEnvelopeToMessage(props, transientParams)) as Follow;
+    });
+
+    return {
+      data: {
+        body: {
+          active: true,
+          targetUri: Faker.internet.url(),
+          schema: 'farcaster.xyz/schemas/v1/follow',
+        },
+        signedAt: Faker.time.recent(),
+        fid: Faker.datatype.number(),
+      },
+      hash: '',
+      hashType: HashAlgorithm.Blake2b,
+      signature: '',
+      signatureType: SignatureAlgorithm.Ed25519,
+      signer: '',
+    };
+  }),
+
+  /** Generate a valid IDRegistryEvent with randomized properties */
+  IDRegistryEvent: Factory.define<IDRegistryEvent, any, IDRegistryEvent>(({ onCreate }) => {
+    onCreate(async (props) => {
+      return props;
+    });
+
+    return {
+      args: {
+        to: Faker.datatype.hexaDecimal(32),
+        id: Faker.datatype.number(),
+      },
+      blockNumber: Faker.datatype.number(10_000),
+      blockHash: Faker.datatype.hexaDecimal(64),
+      transactionHash: Faker.datatype.hexaDecimal(64),
+      logIndex: Faker.datatype.number(),
+      name: 'Register',
+    };
+  }),
+
+  /** Generate a valid CustodyRemoveAll with randomized properties */
+  CustodyRemoveAll: Factory.define<CustodyRemoveAll, MessageFactoryTransientParams, CustodyRemoveAll>(
+    ({ onCreate, transientParams }) => {
+      onCreate(async (props) => {
+        return (await addEnvelopeToMessage(props, transientParams)) as CustodyRemoveAll;
+      });
+
+      return {
+        data: {
+          body: {
+            schema: 'farcaster.xyz/schemas/v1/custody-remove-all',
+          },
+          signedAt: Faker.time.recent(),
+          fid: Faker.datatype.number(),
+        },
+        hash: '',
+        hashType: HashAlgorithm.Blake2b,
+        signature: '',
+        signatureType: SignatureAlgorithm.EthereumPersonalSign,
+        signer: '',
+      };
+    }
+  ),
+
+  /** Generate a valid SignerAdd with randomized properties */
+  SignerAdd: Factory.define<SignerAdd, SignerAddFactoryTransientParams, SignerAdd>(({ onCreate, transientParams }) => {
+    onCreate(async (props) => {
+      const signer = await getMessageSigner(props, transientParams);
+      const delegateSigner = transientParams.delegateSigner || (await generateEd25519Signer());
+      const custodyAddress = signer.signerKey;
+      const delegate = delegateSigner.signerKey;
+
+      /** Set delegate if missing */
+      if (!props.data.body.delegate) {
+        props.data.body.delegate = delegate;
+      }
+
+      /** Generate edgeHash if missing */
+      if (!props.data.body.edgeHash) {
+        const edge: SignerEdge = {
+          custody: custodyAddress,
+          delegate: props.data.body.delegate,
+        };
+        props.data.body.edgeHash = await hashFCObject(edge);
+      }
+
+      /** Generate delegateSignature if missing */
+      if (!props.data.body.delegateSignature) {
+        props.data.body.delegateSignature = await signEd25519(props.data.body.edgeHash, delegateSigner.privateKey);
+      }
+
+      return (await addEnvelopeToMessage(props, { ...transientParams, signer })) as SignerAdd;
+    });
+
+    return {
+      data: {
+        body: {
+          delegate: '',
+          edgeHash: '',
+          delegateSignature: '',
+          delegateSignatureType: SignatureAlgorithm.Ed25519,
+          schema: 'farcaster.xyz/schemas/v1/signer-add',
+        },
+        signedAt: Faker.time.recent(),
+        fid: Faker.datatype.number(),
+      },
+      hash: '',
+      hashType: HashAlgorithm.Blake2b,
+      signature: '',
+      signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
+      signer: '',
+    };
+  }),
+
+  /** Generate a valid SignerRemove with randomized properties */
+  SignerRemove: Factory.define<SignerRemove, MessageFactoryTransientParams, SignerRemove>(
+    ({ onCreate, transientParams }) => {
+      onCreate(async (props) => {
+        return (await addEnvelopeToMessage(props, transientParams)) as SignerRemove;
+      });
+
+      return {
+        data: {
+          body: {
+            delegate: '',
+            schema: 'farcaster.xyz/schemas/v1/signer-remove',
+          },
+          signedAt: Faker.time.recent(),
+          fid: Faker.datatype.number(),
+        },
+        hash: '',
+        hashType: HashAlgorithm.Blake2b,
+        signature: '',
+        signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
+        signer: '',
+      };
+    }
+  ),
+
+  /** Generate a VerificationAdd message with randomized properties */
+  VerificationAdd: Factory.define<VerificationAdd, VerificationAddFactoryTransientParams, VerificationAdd>(
+    ({ onCreate, transientParams }) => {
+      const { ethWallet = ethers.Wallet.createRandom() } = transientParams;
+
+      onCreate(async (props) => {
+        /** Generate claimHash if missing */
+        if (!props.data.body.claimHash) {
+          const verificationClaim: VerificationClaim = {
+            fid: props.data.fid,
+            externalUri: props.data.body.externalUri,
+            blockHash: props.data.body.blockHash,
+          };
+          props.data.body.claimHash = await hashFCObject(verificationClaim);
+        }
+
+        /** Generate externalSignature if missing */
+        if (!props.data.body.externalSignature) {
+          props.data.body.externalSignature = await ethWallet.signMessage(props.data.body.claimHash);
+        }
+
+        /** Complete envelope */
+        return (await addEnvelopeToMessage(props, transientParams)) as VerificationAdd;
+      });
+
+      return {
+        data: {
+          body: {
+            externalUri: ethWallet.address,
+            claimHash: '',
+            blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+            externalSignature: '',
+            externalSignatureType: SignatureAlgorithm.EthereumPersonalSign,
+            schema: 'farcaster.xyz/schemas/v1/verification-add',
+          },
+          signedAt: Faker.time.recent(),
+          fid: Faker.datatype.number(),
+        },
+        hash: '',
+        hashType: HashAlgorithm.Blake2b,
+        signature: '',
+        signatureType: SignatureAlgorithm.Ed25519,
+        signer: '',
+      };
+    }
+  ),
+
+  /** Generate a VerificationRemove message with randomized properties */
+  VerificationRemove: Factory.define<VerificationRemove, VerificationRemoveFactoryTransientParams, VerificationRemove>(
+    ({ onCreate, transientParams }) => {
+      const { externalUri = Faker.datatype.hexaDecimal(40).toLowerCase() } = transientParams;
+
+      onCreate(async (props) => {
+        /** Generate claimHash if missing */
+        if (!props.data.body.claimHash) {
+          const verificationClaim: VerificationClaim = {
+            fid: props.data.fid,
+            externalUri,
+            blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+          };
+          props.data.body.claimHash = await hashFCObject(verificationClaim);
+        }
+
+        /** Complete envelope */
+        return (await addEnvelopeToMessage(props, transientParams)) as VerificationRemove;
+      });
+
+      return {
+        data: {
+          body: {
+            claimHash: '',
+            schema: 'farcaster.xyz/schemas/v1/verification-remove' as const,
+          },
+          signedAt: Faker.time.recent(),
+          fid: Faker.datatype.number(),
+        },
+        hash: '',
+        hashType: HashAlgorithm.Blake2b,
+        signature: '',
+        signatureType: SignatureAlgorithm.Ed25519,
+        signer: '',
+      };
+    }
+  ),
+};
