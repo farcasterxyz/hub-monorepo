@@ -16,7 +16,7 @@ const testCases = new Array<ParserTestCase>();
 
 const positiveTestCases: Array<PositiveTestCase> = [
   {
-    given: farcasterURLPrefix + 'id:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+    given: farcasterURLPrefix + 'fid:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
     expectUserId: '1',
     expectCastId: '0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
   },
@@ -31,46 +31,46 @@ testCases.push(
 
 const negativeTestCases: Array<ParserTestCase> = [
   // missing scheme
-  'id:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+  'fid:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
 
   // wrong scheme
-  'http://id:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+  'http://fid:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
 
   // missing cast hash
-  farcasterURLPrefix + 'id:1/cast:',
-  farcasterURLPrefix + 'id:1/cast',
+  farcasterURLPrefix + 'fid:1/cast:',
+  farcasterURLPrefix + 'fid:1/cast',
 
   // hash is missing leading 0x
-  farcasterURLPrefix + 'id:1/cast:508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
-  farcasterURLPrefix + 'id:1/cast:00508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+  farcasterURLPrefix + 'fid:1/cast:508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+  farcasterURLPrefix + 'fid:1/cast:00508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
 
   // missing `cast` namespace
-  farcasterURLPrefix + 'id:1/0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
-  farcasterURLPrefix + 'id:1/:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+  farcasterURLPrefix + 'fid:1/0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+  farcasterURLPrefix + 'fid:1/:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
 
   // missing separator
-  farcasterURLPrefix + 'id:1cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+  farcasterURLPrefix + 'fid:1cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
 
   // incorrect namespace
-  farcasterURLPrefix + 'id:1/wrongidentifier:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+  farcasterURLPrefix + 'fid:1/wrongidentifier:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
 
   // superfluous prefix
-  farcasterURLPrefix + 'id:1/prefixcast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c866759821',
-  farcasterURLPrefix + 'id:1/cast:prefix0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c866759821',
+  farcasterURLPrefix + 'fid:1/prefixcast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c866759821',
+  farcasterURLPrefix + 'fid:1/cast:prefix0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c866759821',
 
   // invalid characters in ID
-  farcasterURLPrefix + 'id:1/cast:0xxxxxxxxx327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
-  farcasterURLPrefix + 'id:1/cast:0x5-8c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
-  farcasterURLPrefix + 'id:1/cast:0x5 8c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+  farcasterURLPrefix + 'fid:1/cast:0xxxxxxxxx327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+  farcasterURLPrefix + 'fid:1/cast:0x5-8c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+  farcasterURLPrefix + 'fid:1/cast:0x5 8c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
 
   // invalid trailing slash
-  farcasterURLPrefix + 'id:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982/',
+  farcasterURLPrefix + 'fid:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982/',
 
   // too long
-  farcasterURLPrefix + 'id:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c866759820',
+  farcasterURLPrefix + 'fid:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c866759820',
 
   // too short
-  farcasterURLPrefix + 'id:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c8667598',
+  farcasterURLPrefix + 'fid:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c8667598',
 ].map((given) => ({
   given,
   expectParsable: false,

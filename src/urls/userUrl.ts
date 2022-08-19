@@ -5,13 +5,13 @@ import { FarcasterURL } from '~/urls/baseUrl';
 
 export const FarcasterIdSpec: IdentifierSpec = {
   name: 'farcasterId',
-  regex: 'id:[1-9][0-9]{0,77}',
+  regex: 'fid:[1-9][0-9]{0,77}',
   parameters: {
     delimiter: ':',
     values: {
       0: {
         name: 'namespace',
-        regex: '^id$',
+        regex: '^fid$',
       },
       1: {
         name: 'value',
@@ -22,7 +22,7 @@ export const FarcasterIdSpec: IdentifierSpec = {
 };
 
 export interface FarcasterIdParams {
-  namespace: 'id';
+  namespace: 'fid';
   value: string;
 }
 
@@ -31,18 +31,18 @@ export type FarcasterIdConstructorArgs = Omit<FarcasterIdParams, 'namespace'>;
 export class FarcasterId {
   public static spec = FarcasterIdSpec;
 
-  public static parse(id: string): Result<FarcasterIdParams, string> {
-    if (!isValidId(id, this.spec)) {
-      return err(`Invalid ${this.spec.name} provided: ${id}`);
+  public static parse(fid: string): Result<FarcasterIdParams, string> {
+    if (!isValidId(fid, this.spec)) {
+      return err(`Invalid ${this.spec.name} provided: ${fid}`);
     }
-    return ok(new FarcasterId(getParams<FarcasterIdParams>(id, this.spec)).toJSON());
+    return ok(new FarcasterId(getParams<FarcasterIdParams>(fid, this.spec)).toJSON());
   }
 
   public static format(params: FarcasterIdParams): string {
     return joinParams(params as any, this.spec);
   }
 
-  private readonly namespace: 'id' = 'id';
+  private readonly namespace: 'fid' = 'fid';
   public readonly value: string;
 
   constructor(params: FarcasterIdConstructorArgs | string) {

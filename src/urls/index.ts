@@ -1,3 +1,9 @@
+/**
+ * Farcaster URLs draw from the structure of the caip-js library.
+ * See the following for caip-js documentation:
+ * https://github.com/ChainAgnostic/caip-js
+ */
+
 import { Result, err, ok } from 'neverthrow';
 import { parse as rawUriParse, URIComponents } from 'uri-js';
 import { FarcasterURL, UnrecognizedURL } from '~/urls/baseUrl';
