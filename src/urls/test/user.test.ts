@@ -83,7 +83,7 @@ describe('UserURL', () => {
 
     if (expectParsable) {
       const userURL = result._unsafeUnwrap();
-      expect(userURL.userId.value).toEqual(expectUserId);
+      expect(userURL.farcasterId.value).toEqual(expectUserId);
 
       // check that it serializes back to the same original string
       expect(userURL.toString()).toEqual(given);

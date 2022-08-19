@@ -2,8 +2,8 @@ import type { IdentifierSpec } from 'caip/dist/types';
 
 export const REGEX_BLAKE2B_HASH = '0x[a-f0-9]{64}';
 
-export const UserIdSpec: IdentifierSpec = {
-  name: 'userId',
+export const FarcasterIdSpec: IdentifierSpec = {
+  name: 'farcasterId',
   regex: 'id:[1-9][0-9]{0,77}',
   parameters: {
     delimiter: ':',
@@ -40,11 +40,11 @@ export const CastHashSpec: IdentifierSpec = {
 
 export const CastIdSpec: IdentifierSpec = {
   name: 'castId',
-  regex: UserIdSpec.regex + '/' + CastHashSpec.regex,
+  regex: FarcasterIdSpec.regex + '/' + CastHashSpec.regex,
   parameters: {
     delimiter: '/',
     values: {
-      0: UserIdSpec,
+      0: FarcasterIdSpec,
       1: CastHashSpec,
     },
   },

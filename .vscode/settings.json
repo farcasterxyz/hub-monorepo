@@ -18,6 +18,9 @@
     },
     "editor.codeActionsOnSave": {
       "source.fixAll.eslint": true
-    }
+    },
+    "cSpell.words": [
+      "farcaster"
+    ]
   }
   

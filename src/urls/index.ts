@@ -1,5 +1,5 @@
 import { Result, err, ok } from 'neverthrow';
-import { CastId, UserId } from '~/urls/identifiers';
+import { CastId, FarcasterId } from '~/urls/identifiers';
 import { parse as rawUriParse, URIComponents } from 'uri-js';
 import { ChainId } from 'caip';
 
@@ -53,45 +53,45 @@ export abstract class FarcasterURL extends URL {
 }
 
 export class UserURL extends FarcasterURL {
-  public readonly userId: UserId;
+  public readonly farcasterId: FarcasterId;
 
-  public static parse(_url: string): Result<UserURL, string> {
+  public static parse(url: string): Result<UserURL, string> {
     const schemePrefix = this.SCHEME + '://';
 
-    if (!_url.startsWith(schemePrefix)) {
+    if (!url.startsWith(schemePrefix)) {
       return err(`URL missing 'farcaster' scheme`);
     }
 
-    const remainder = _url.substring(_url.indexOf(schemePrefix) + schemePrefix.length);
+    const remainder = url.substring(url.indexOf(schemePrefix) + schemePrefix.length);
 
-    const maybeUserIdParams = UserId.parse(remainder);
-    return maybeUserIdParams.map((userIdParams) => {
-      const userId = new UserId(userIdParams);
+    const maybeFarcasterIdParams = FarcasterId.parse(remainder);
+    return maybeFarcasterIdParams.map((userIdParams) => {
+      const userId = new FarcasterId(userIdParams);
       return new UserURL(userId);
     });
   }
 
-  public constructor(userId: UserId) {
+  public constructor(farcasterId: FarcasterId) {
     super();
-    this.userId = userId;
+    this.farcasterId = farcasterId;
   }
 
   public toString(): string {
-    return FarcasterURL.SCHEME + '://' + this.userId.toString();
+    return FarcasterURL.SCHEME + '://' + this.farcasterId.toString();
   }
 }
 
 export class CastURL extends FarcasterURL {
   public readonly castId: CastId;
 
-  public static parse(_url: string): Result<CastURL, string> {
+  public static parse(url: string): Result<CastURL, string> {
     const schemePrefix = this.SCHEME + '://';
 
-    if (!_url.startsWith(schemePrefix)) {
+    if (!url.startsWith(schemePrefix)) {
       return err(`URL missing 'farcaster' scheme`);
     }
 
-    const remainder = _url.substring(_url.indexOf(schemePrefix) + schemePrefix.length);
+    const remainder = url.substring(url.indexOf(schemePrefix) + schemePrefix.length);
 
     const maybeCastIdParams = CastId.parse(remainder);
     return maybeCastIdParams.map((castIdParams) => {
@@ -118,14 +118,14 @@ export abstract class BaseChainURL extends URL {
 export class ChainURL extends BaseChainURL {
   public readonly chainId: ChainId;
 
-  public static parse(_url: string): Result<ChainURL, string> {
+  public static parse(url: string): Result<ChainURL, string> {
     const schemePrefix = this.SCHEME + '://';
 
-    if (!_url.startsWith(schemePrefix)) {
+    if (!url.startsWith(schemePrefix)) {
       return err(`URL missing 'chain' scheme`);
     }
 
-    const remainder = _url.substring(_url.indexOf(schemePrefix) + schemePrefix.length);
+    const remainder = url.substring(url.indexOf(schemePrefix) + schemePrefix.length);
 
     try {
       const chainIdParams = ChainId.parse(remainder);
@@ -138,7 +138,7 @@ export class ChainURL extends BaseChainURL {
       }
       return ok(new ChainURL(chainId));
     } catch (e) {
-      return err(`ChainURL.parse: unable to parse '${_url}`);
+      return err(`ChainURL.parse: unable to parse '${url}`);
     }
   }
 

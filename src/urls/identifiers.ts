@@ -1,40 +1,41 @@
 import { joinParams, getParams, isValidId } from '~/urls/utils';
-import { UserIdSpec, CastIdSpec, CastHashSpec } from '~/urls/specs';
+import { FarcasterIdSpec, CastIdSpec, CastHashSpec } from '~/urls/specs';
 import { err, ok, Result } from 'neverthrow';
+import { KeyValue, Params } from 'caip/dist/types';
 
-export interface UserIdParams {
+export interface FarcasterIdParams {
   namespace: 'id';
   value: string;
 }
 
-export type UserIdConstructorArgs = Omit<UserIdParams, 'namespace'>;
+export type FarcasterIdConstructorArgs = Omit<FarcasterIdParams, 'namespace'>;
 
-export class UserId {
-  public static spec = UserIdSpec;
+export class FarcasterId {
+  public static spec = FarcasterIdSpec;
 
-  public static parse(id: string): Result<UserIdParams, string> {
+  public static parse(id: string): Result<FarcasterIdParams, string> {
     if (!isValidId(id, this.spec)) {
       return err(`Invalid ${this.spec.name} provided: ${id}`);
     }
-    return ok(new UserId(getParams<UserIdParams>(id, this.spec)).toJSON());
+    return ok(new FarcasterId(getParams<FarcasterIdParams>(id, this.spec)).toJSON());
   }
 
-  public static format(params: UserIdParams): string {
+  public static format(params: FarcasterIdParams): string {
     return joinParams(params as any, this.spec);
   }
 
   private readonly namespace: 'id' = 'id';
   public readonly value: string;
 
-  constructor(params: UserIdConstructorArgs | string) {
+  constructor(params: FarcasterIdConstructorArgs | string) {
     if (typeof params === 'string') {
-      const maybeParsed = UserId.parse(params);
+      const maybeParsed = FarcasterId.parse(params);
       if (maybeParsed.isErr()) {
         throw maybeParsed.error;
       }
       params = maybeParsed.value;
     } else {
-      const userIdSpec = UserId.spec.parameters.values[1];
+      const userIdSpec = FarcasterId.spec.parameters.values[1];
       if (!RegExp(userIdSpec.regex).test(params.value)) {
         throw new Error(`Invalid ${userIdSpec.name} provided: ${params.value}`);
       }
@@ -44,10 +45,10 @@ export class UserId {
   }
 
   public toString(): string {
-    return UserId.format(this.toJSON());
+    return FarcasterId.format(this.toJSON());
   }
 
-  public toJSON(): UserIdParams {
+  public toJSON(): FarcasterIdParams {
     return {
       namespace: this.namespace,
       value: this.value,
@@ -109,12 +110,12 @@ export class CastHash {
 }
 
 export interface CastIdParams {
-  userId: string | UserIdParams;
+  userId: string | FarcasterIdParams;
   castHash: string | CastHashParams;
 }
 
 export type CastIdConstructorArgs = {
-  userId: string | UserIdConstructorArgs;
+  userId: string | FarcasterIdConstructorArgs;
   castHash: string | CastHashConstructorArgs;
 };
 
@@ -138,7 +139,7 @@ export class CastId {
 
   private readonly messageType: 'cast' = 'cast';
 
-  public readonly userId: UserId;
+  public readonly userId: FarcasterId;
   public readonly castHash: CastHash;
 
   constructor(params: CastIdConstructorArgs | string) {
@@ -150,7 +151,7 @@ export class CastId {
       params = maybeParsed.value;
     }
 
-    this.userId = new UserId(params.userId);
+    this.userId = new FarcasterId(params.userId);
     this.castHash = new CastHash(params.castHash);
   }
 
