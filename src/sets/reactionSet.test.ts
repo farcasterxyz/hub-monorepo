@@ -1,21 +1,49 @@
+import Faker from 'faker';
 import { Factories } from '~/factories';
 import ReactionSet from '~/sets/reactionSet';
-import { Reaction } from '~/types';
+import { Reaction, URI } from '~/types';
 import { hashCompare } from '~/utils';
 
 const set = new ReactionSet();
+
+let targetUri: URI;
+let activeReaction: Reaction;
+let inactiveReaction: Reaction;
+
+beforeAll(async () => {
+  targetUri = Faker.internet.url();
+  activeReaction = await Factories.Reaction.create({ data: { body: { targetUri } } });
+  inactiveReaction = await Factories.Reaction.create({
+    data: { body: { targetUri, active: false }, signedAt: activeReaction.data.signedAt + 1 },
+  });
+});
 
 beforeEach(() => {
   set._reset();
 });
 
-describe('add reaction', () => {
-  let activeReaction: Reaction;
-
-  beforeAll(async () => {
-    activeReaction = await Factories.Reaction.create();
+describe('get', () => {
+  test('fails when reaction does not exist', () => {
+    expect(set.get(targetUri)).toBeFalsy();
   });
 
+  test('returns Reaction when active', () => {
+    set.merge(activeReaction);
+    expect(set.get(targetUri)).toEqual(activeReaction);
+  });
+
+  test('returns Reaction when inactive', () => {
+    set.merge(inactiveReaction);
+    expect(set.get(targetUri)).toEqual(inactiveReaction);
+  });
+
+  test('fails when using message hash', () => {
+    set.merge(activeReaction);
+    expect(set.get(activeReaction.hash)).toBeFalsy();
+  });
+});
+
+describe('merge', () => {
   const subject = () => set._getActiveReactions();
 
   test('fails with an incorrect message type', async () => {
@@ -99,23 +127,6 @@ describe('add reaction', () => {
   });
 
   describe('inactive', () => {
-    let inactiveReaction: Reaction;
-    let targetUri: string;
-
-    beforeAll(async () => {
-      targetUri = activeReaction.data.body.targetUri;
-
-      inactiveReaction = await Factories.Reaction.create({
-        data: {
-          body: {
-            targetUri,
-            active: false,
-          },
-          signedAt: activeReaction.data.signedAt + 1,
-        },
-      });
-    });
-
     test('works when inactive passed in', async () => {
       expect(set.merge(inactiveReaction).isOk()).toBe(true);
       expect(subject()).toEqual([]);

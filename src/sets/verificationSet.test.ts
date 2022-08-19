@@ -47,6 +47,27 @@ beforeEach(() => {
   set._reset();
 });
 
+describe('get', () => {
+  test('fails when verification does not exist', () => {
+    expect(set.get(add1.data.body.claimHash)).toBeFalsy();
+  });
+
+  test('returns VerificationAdd when added', () => {
+    set.merge(add1);
+    expect(set.get(add1.data.body.claimHash)).toEqual(add1);
+  });
+
+  test('returns VerificationRemove when removed', () => {
+    set.merge(rem1);
+    expect(set.get(add1.data.body.claimHash)).toEqual(rem1);
+  });
+
+  test('fails when using message hash', () => {
+    set.merge(add1);
+    expect(set.get(add1.hash)).toBeFalsy();
+  });
+});
+
 describe('merge', () => {
   test('fails with an incorrect message type', async () => {
     const cast = (await Factories.Cast.create()) as unknown as Verification;
