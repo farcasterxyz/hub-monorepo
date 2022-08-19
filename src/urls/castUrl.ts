@@ -90,12 +90,12 @@ export class CastHash {
 }
 
 export interface CastIdParams {
-  userId: string | FarcasterIdParams;
+  farcasterId: string | FarcasterIdParams;
   castHash: string | CastHashParams;
 }
 
 export type CastIdConstructorArgs = {
-  userId: string | FarcasterIdConstructorArgs;
+  farcasterId: string | FarcasterIdConstructorArgs;
   castHash: string | CastHashConstructorArgs;
 };
 
@@ -131,7 +131,7 @@ export class CastId {
       params = maybeParsed.value;
     }
 
-    this.userId = new FarcasterId(params.userId);
+    this.userId = new FarcasterId(params.farcasterId);
     this.castHash = new CastHash(params.castHash);
   }
 
@@ -141,7 +141,7 @@ export class CastId {
 
   public toJSON(): CastIdParams {
     return {
-      userId: this.userId.toJSON(),
+      farcasterId: this.userId.toJSON(),
       castHash: this.castHash.toJSON(),
     };
   }
