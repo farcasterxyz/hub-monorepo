@@ -36,10 +36,31 @@ beforeEach(() => {
   set._reset();
 });
 
+describe('get', () => {
+  test('fails when follow does not exist', () => {
+    expect(set.get(a)).toBeFalsy();
+  });
+
+  test('returns Follow when active', () => {
+    set.merge(followA);
+    expect(set.get(a)).toEqual(followA);
+  });
+
+  test('returns Follow when inactive', () => {
+    set.merge(unfollowA);
+    expect(set.get(a)).toEqual(unfollowA);
+  });
+
+  test('fails when using message hash', () => {
+    set.merge(followA);
+    expect(set.get(followA.hash)).toBeFalsy();
+  });
+});
+
 describe('merge', () => {
   test('fails with invalid message format', async () => {
     const invalidFollow = (await Factories.Cast.create()) as unknown as Follow;
-    const res = await set.merge(invalidFollow);
+    const res = set.merge(invalidFollow);
     expect(res.isOk()).toBe(false);
     expect(res._unsafeUnwrapErr()).toBe('FollowSet.merge: invalid message format');
     expect(activeFollows()).toEqual(new Set());

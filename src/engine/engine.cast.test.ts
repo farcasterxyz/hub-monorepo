@@ -60,7 +60,9 @@ describe('mergeCast', () => {
 
   test('fails with invalid message type', async () => {
     const invalidReactionCast = reaction as unknown as Cast;
-    expect((await engine.mergeCast(invalidReactionCast))._unsafeUnwrapErr()).toBe('CastSet.merge: invalid cast');
+    expect((await engine.mergeCast(invalidReactionCast))._unsafeUnwrapErr()).toBe(
+      'CastSet.merge: invalid message format'
+    );
     expect(subject()).toEqual([]);
   });
 

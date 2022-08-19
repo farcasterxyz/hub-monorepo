@@ -63,15 +63,15 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     return new Set([...this.getCustodyAddresses(), ...this.getDelegateSigners()]);
   }
 
-  lookup(signer: string) {
-    return this.lookupCustody(signer) || this.lookupSigner(signer);
+  get(signer: string) {
+    return this.getCustody(signer) || this.getSigner(signer);
   }
 
-  lookupCustody(custodyAddress: string) {
+  getCustody(custodyAddress: string) {
     return this._custodyAdds.get(custodyAddress);
   }
 
-  lookupSigner(signer: string) {
+  getSigner(signer: string) {
     return this._signerAdds.get(signer);
   }
 

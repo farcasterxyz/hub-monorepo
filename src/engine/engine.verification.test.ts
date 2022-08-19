@@ -259,7 +259,7 @@ describe('mergeVerification', () => {
     expect((await engine.mergeVerification(verificationRemoveMessage)).isOk()).toBe(true);
     expect(engine._getVerificationRemoves(aliceFid)).toEqual([verificationRemoveMessage]);
     expect(engine._getVerificationAdds(aliceFid)).toEqual([]);
-    expect((await engine.mergeVerification(genericVerificationAdd)).isOk()).toBe(false);
+    expect((await engine.mergeVerification(genericVerificationAdd)).isOk()).toBe(true);
     expect(engine._getVerificationAdds(aliceFid)).toEqual([]);
   });
 });
