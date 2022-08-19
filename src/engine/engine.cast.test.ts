@@ -20,7 +20,7 @@ describe('mergeCast', () => {
   beforeAll(async () => {
     aliceCustodySigner = await generateEthereumSigner();
     aliceCustodyRegister = await Factories.IDRegistryEvent.create({
-      args: { to: aliceCustodySigner.signerKey },
+      args: { to: aliceCustodySigner.signerKey, id: aliceFid },
       name: 'Register',
     });
     aliceDelegateSigner = await generateEd25519Signer();
@@ -54,7 +54,7 @@ describe('mergeCast', () => {
 
   beforeEach(() => {
     engine._reset();
-    engine.mergeIDRegistryEvent(aliceFid, aliceCustodyRegister);
+    engine.mergeIDRegistryEvent(aliceCustodyRegister);
     engine.mergeSignerMessage(addDelegateSigner);
   });
 
@@ -78,7 +78,7 @@ describe('mergeCast', () => {
 
     describe('with custody address', () => {
       beforeEach(() => {
-        engine.mergeIDRegistryEvent(aliceFid, aliceCustodyRegister);
+        engine.mergeIDRegistryEvent(aliceCustodyRegister);
       });
 
       test('fails if signer is custody address', async () => {
