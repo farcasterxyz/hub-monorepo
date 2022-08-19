@@ -34,6 +34,23 @@ beforeEach(() => {
   set._reset();
 });
 
+describe('get', () => {
+  test('fails when cast does not exist', () => {
+    expect(set.get(castShort1.hash)).toBeFalsy();
+  });
+
+  test('returns CastShort when cast has been added', () => {
+    set.merge(castShort1);
+    expect(set.get(castShort1.hash)).toEqual(castShort1);
+  });
+
+  test('returns CastRemove when cast has been removed', () => {
+    set.merge(castShort1);
+    set.merge(castRemove1);
+    expect(set.get(castShort1.hash)).toEqual(castRemove1);
+  });
+});
+
 describe('merge', () => {
   test('fails with invalid message format', async () => {
     const invalidCast = (await Factories.Follow.create()) as unknown as CastShort;

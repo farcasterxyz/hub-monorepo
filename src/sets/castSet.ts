@@ -17,17 +17,7 @@ class CastSet {
     return this._adds.get(hash) || this._removes.get(hash);
   }
 
-  /** Get hashes of all active casts */
-  getHashes(): string[] {
-    return Array.from(this._adds.keys());
-  }
-
-  /** Get hashes of all casts */
-  getAllHashes(): string[] {
-    const keys = this.getHashes();
-    keys.push(...Array.from(this._removes.keys()));
-    return keys;
-  }
+  // TODO: add query API
 
   merge(cast: Cast): Result<void, string> {
     if (isCastRemove(cast)) {

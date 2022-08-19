@@ -18,20 +18,7 @@ class VerificationSet {
     return this._adds.get(claimHash) || this._removes.get(claimHash);
   }
 
-  /** Get claimHashes of all active verifications */
-  getClaimHashes(): string[] {
-    return Array.from(this._adds.keys());
-  }
-
-  /** Get claimHashes of all verifications (both adds and removes) */
-  getAllHashes(): string[] {
-    return [...this.getClaimHashes(), ...Array.from(this._removes.keys())];
-  }
-
-  /** Helper to get external URIs that are currently verified */
-  getVerifiedExternalUris(): string[] {
-    return Array.from(this._adds.values()).map((message) => message.data.body.externalUri);
-  }
+  // TODO: add query API
 
   merge(message: Verification): Result<void, string> {
     if (isVerificationRemove(message)) {

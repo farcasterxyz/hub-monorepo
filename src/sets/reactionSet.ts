@@ -1,5 +1,5 @@
 import { Result, ok, err } from 'neverthrow';
-import { Reaction } from '~/types';
+import { Reaction, URI } from '~/types';
 import { isReaction } from '~/types/typeguards';
 import { hashCompare, sanitizeSigner } from '~/utils';
 
@@ -12,29 +12,20 @@ import { hashCompare, sanitizeSigner } from '~/utils';
  */
 class ReactionSet {
   private hashToReaction: Map<string, Reaction>;
-  private keyToHash: Map<string, string>;
+  private targetToHash: Map<string, string>;
 
   constructor() {
     this.hashToReaction = new Map();
-    this.keyToHash = new Map();
+    this.targetToHash = new Map();
   }
 
-  /** Get a reaction by its hash */
-  get(hash: string): Reaction | undefined {
-    return this.hashToReaction.get(hash);
+  /** Get a reaction by its targetURI */
+  get(targetUri: URI): Reaction | undefined {
+    const hash = this.targetToHash.get(targetUri);
+    return hash ? this.hashToReaction.get(hash) : undefined;
   }
 
-  /** Get hashes of active reactions. */
-  getHashes(): string[] {
-    return Array.from(this.hashToReaction.values())
-      .filter((reaction) => reaction.data.body.active)
-      .map((reaction) => reaction.hash);
-  }
-
-  /** Get hashes of all known reactions. */
-  getAllHashes(): string[] {
-    return Array.from(this.hashToReaction.keys());
-  }
+  // TODO: add query API
 
   /** Merge a new reaction into the set */
   merge(reaction: Reaction): Result<void, string> {
@@ -43,7 +34,7 @@ class ReactionSet {
     }
 
     const targetUri = reaction.data.body.targetUri;
-    const existingReactionHash = this.keyToHash.get(targetUri);
+    const existingReactionHash = this.targetToHash.get(targetUri);
 
     if (!existingReactionHash) {
       this.mergeReaction(reaction);
@@ -70,11 +61,11 @@ class ReactionSet {
   }
 
   revokeSigner(signer: string): Result<void, string> {
-    for (const [key, hash] of this.keyToHash) {
+    for (const [key, hash] of this.targetToHash) {
       const reaction = this.hashToReaction.get(hash);
       if (reaction && sanitizeSigner(reaction.signer) === signer) {
         this.hashToReaction.delete(hash);
-        this.keyToHash.delete(key);
+        this.targetToHash.delete(key);
       }
     }
     return ok(undefined);
@@ -85,7 +76,7 @@ class ReactionSet {
    */
 
   private addOrUpdateReaction(reaction: Reaction): void {
-    const prevHash = this.keyToHash.get(reaction.data.body.targetUri);
+    const prevHash = this.targetToHash.get(reaction.data.body.targetUri);
     if (prevHash) {
       this.hashToReaction.delete(prevHash);
     }
@@ -93,7 +84,7 @@ class ReactionSet {
   }
 
   private mergeReaction(reaction: Reaction): void {
-    this.keyToHash.set(reaction.data.body.targetUri, reaction.hash);
+    this.targetToHash.set(reaction.data.body.targetUri, reaction.hash);
     this.hashToReaction.set(reaction.hash, reaction);
   }
 
@@ -111,7 +102,7 @@ class ReactionSet {
 
   _reset(): void {
     this.hashToReaction = new Map();
-    this.keyToHash = new Map();
+    this.targetToHash = new Map();
   }
 }
 
