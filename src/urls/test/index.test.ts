@@ -1,5 +1,6 @@
-import { parseUrl, UnrecognizedURL } from '~/urls';
+import { parseUrl } from '~/urls';
 import { expectInstanceOf } from '~/urls/test/utils';
+import { UnrecognizedURL } from '~/urls/baseUrl';
 
 describe('URLs', () => {
   test('Missing scheme', () => {

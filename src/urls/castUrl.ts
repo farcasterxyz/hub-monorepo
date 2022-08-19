@@ -1,67 +1,47 @@
-import { joinParams, getParams, isValidId } from '~/urls/utils';
-import { FarcasterIdSpec, CastIdSpec, CastHashSpec } from '~/urls/specs';
-import { err, ok, Result } from 'neverthrow';
-import { KeyValue, Params } from 'caip/dist/types';
+import type { IdentifierSpec } from 'caip/dist/types';
+import { Result, err, ok } from 'neverthrow';
+import { FarcasterIdParams, FarcasterIdConstructorArgs, FarcasterId, FarcasterIdSpec } from '~/urls/userUrl';
+import { isValidId, getParams, joinParams } from '~/urls/utils';
+import { FarcasterURL } from '~/urls/baseUrl';
 
-export interface FarcasterIdParams {
-  namespace: 'id';
-  value: string;
-}
+const REGEX_BLAKE2B_HASH = '0x[a-f0-9]{64}';
 
-export type FarcasterIdConstructorArgs = Omit<FarcasterIdParams, 'namespace'>;
+const CastHashSpec: IdentifierSpec = {
+  name: 'castHash',
+  regex: 'cast:' + REGEX_BLAKE2B_HASH,
+  parameters: {
+    delimiter: ':',
+    values: {
+      0: {
+        name: 'messageType',
+        regex: '^cast$',
+      },
+      1: {
+        name: 'value',
+        regex: '^' + REGEX_BLAKE2B_HASH + '$',
+      },
+    },
+  },
+};
 
-export class FarcasterId {
-  public static spec = FarcasterIdSpec;
-
-  public static parse(id: string): Result<FarcasterIdParams, string> {
-    if (!isValidId(id, this.spec)) {
-      return err(`Invalid ${this.spec.name} provided: ${id}`);
-    }
-    return ok(new FarcasterId(getParams<FarcasterIdParams>(id, this.spec)).toJSON());
-  }
-
-  public static format(params: FarcasterIdParams): string {
-    return joinParams(params as any, this.spec);
-  }
-
-  private readonly namespace: 'id' = 'id';
-  public readonly value: string;
-
-  constructor(params: FarcasterIdConstructorArgs | string) {
-    if (typeof params === 'string') {
-      const maybeParsed = FarcasterId.parse(params);
-      if (maybeParsed.isErr()) {
-        throw maybeParsed.error;
-      }
-      params = maybeParsed.value;
-    } else {
-      const userIdSpec = FarcasterId.spec.parameters.values[1];
-      if (!RegExp(userIdSpec.regex).test(params.value)) {
-        throw new Error(`Invalid ${userIdSpec.name} provided: ${params.value}`);
-      }
-    }
-
-    this.value = params.value;
-  }
-
-  public toString(): string {
-    return FarcasterId.format(this.toJSON());
-  }
-
-  public toJSON(): FarcasterIdParams {
-    return {
-      namespace: this.namespace,
-      value: this.value,
-    };
-  }
-}
+const CastIdSpec: IdentifierSpec = {
+  name: 'castId',
+  regex: FarcasterIdSpec.regex + '/' + CastHashSpec.regex,
+  parameters: {
+    delimiter: '/',
+    values: {
+      0: FarcasterIdSpec,
+      1: CastHashSpec,
+    },
+  },
+};
 
 export interface CastHashParams {
   messageType: 'cast';
   value: string;
 }
 
-type CastHashConstructorArgs = Omit<CastHashParams, 'messageType'>;
+export type CastHashConstructorArgs = Omit<CastHashParams, 'messageType'>;
 
 export class CastHash {
   public static spec = CastHashSpec;
@@ -164,5 +144,34 @@ export class CastId {
       userId: this.userId.toJSON(),
       castHash: this.castHash.toJSON(),
     };
+  }
+}
+
+export class CastURL extends FarcasterURL {
+  public readonly castId: CastId;
+
+  public static parse(url: string): Result<CastURL, string> {
+    const schemePrefix = this.SCHEME + '://';
+
+    if (!url.startsWith(schemePrefix)) {
+      return err(`URL missing 'farcaster' scheme`);
+    }
+
+    const remainder = url.substring(url.indexOf(schemePrefix) + schemePrefix.length);
+
+    const maybeCastIdParams = CastId.parse(remainder);
+    return maybeCastIdParams.map((castIdParams) => {
+      const castId = new CastId(castIdParams);
+      return new CastURL(castId);
+    });
+  }
+
+  public constructor(castId: CastId) {
+    super();
+    this.castId = castId;
+  }
+
+  public toString(): string {
+    return FarcasterURL.SCHEME + '://' + this.castId.toString();
   }
 }

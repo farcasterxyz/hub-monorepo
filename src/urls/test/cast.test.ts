@@ -1,4 +1,5 @@
-import { FarcasterURL, parseUrl, CastURL } from '~/urls';
+import { parseUrl, CastURL } from '~/urls';
+import { FarcasterURL } from '~/urls/baseUrl';
 
 const farcasterURLPrefix = FarcasterURL.SCHEME + '://';
 
