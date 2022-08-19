@@ -2,7 +2,6 @@ import Faker from 'faker';
 import { Factories } from '~/factories';
 import ReactionSet from '~/sets/reactionSet';
 import { Reaction, URI } from '~/types';
-import { hashCompare } from '~/utils';
 
 const set = new ReactionSet();
 
