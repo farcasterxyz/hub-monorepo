@@ -13,6 +13,7 @@ import {
   HashAlgorithm,
   IDRegistryEvent,
   Follow,
+  URI,
 } from '~/types';
 import { hashMessage, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
@@ -64,18 +65,6 @@ class Engine {
     return castSet ? castSet.get(hash) : undefined;
   }
 
-  /** Get hashes of unremoved cast messages for an fid */
-  getCastHashes(fid: number): string[] {
-    const castSet = this._casts.get(fid);
-    return castSet ? castSet.getHashes() : [];
-  }
-
-  /** Get hashes of all cast messages for an fid */
-  getAllCastHashes(fid: number): string[] {
-    const castSet = this._casts.get(fid);
-    return castSet ? castSet.getAllHashes() : [];
-  }
-
   /** Merge a cast into the set */
   async mergeCast(cast: Cast): Promise<Result<void, string>> {
     try {
@@ -103,22 +92,10 @@ class Engine {
    * Reaction Methods
    */
 
-  /** Get a reaction for an fid by hash */
-  getReaction(fid: number, hash: string): Reaction | undefined {
+  /** Get a reaction for an fid by target URI */
+  getReaction(fid: number, targetURI: URI): Reaction | undefined {
     const reactionSet = this._reactions.get(fid);
-    return reactionSet ? reactionSet.get(hash) : undefined;
-  }
-
-  /** Get hashes of all known reactions for an fid */
-  getReactionHashes(fid: number): string[] {
-    const reactionSet = this._reactions.get(fid);
-    return reactionSet ? reactionSet.getHashes() : [];
-  }
-
-  /** Get hashes of all known reactions for an fid */
-  getAllReactionHashes(fid: number): string[] {
-    const reactionSet = this._reactions.get(fid);
-    return reactionSet ? reactionSet.getAllHashes() : [];
+    return reactionSet ? reactionSet.get(targetURI) : undefined;
   }
 
   /** Merge a reaction into the set  */
@@ -149,22 +126,10 @@ class Engine {
    * Follow Methods
    */
 
-  /** Get a follow for an fid by hash */
-  getFollow(fid: number, hash: string): Follow | undefined {
+  /** Get a follow for an fid by target URI */
+  getFollow(fid: number, targetURI: string): Follow | undefined {
     const followSet = this._follows.get(fid);
-    return followSet ? followSet.get(hash) : undefined;
-  }
-
-  /** Get hashes of all known follows for an fid */
-  getFollowHashes(fid: number): string[] {
-    const followSet = this._follows.get(fid);
-    return followSet ? followSet.getHashes() : [];
-  }
-
-  /** Get hashes of all known follows for an fid */
-  getAllFollowHashes(fid: number): string[] {
-    const followSet = this._follows.get(fid);
-    return followSet ? followSet.getAllHashes() : [];
+    return followSet ? followSet.get(targetURI) : undefined;
   }
 
   /** Merge a follow into the set  */
@@ -200,18 +165,6 @@ class Engine {
   getVerification(fid: number, claimHash: string): Verification | undefined {
     const verificationSet = this._verifications.get(fid);
     return verificationSet ? verificationSet.get(claimHash) : undefined;
-  }
-
-  /** Get claimHashes of known active verifications for an fid */
-  getVerificationClaimHashes(fid: number): string[] {
-    const verificationSet = this._verifications.get(fid);
-    return verificationSet ? verificationSet.getClaimHashes() : [];
-  }
-
-  /** Get claimHashes of all known verifications for an fid */
-  getAllVerificationClaimHashes(fid: number): string[] {
-    const verificationSet = this._verifications.get(fid);
-    return verificationSet ? verificationSet.getAllHashes() : [];
   }
 
   /** Merge verification message into the set */
@@ -293,7 +246,7 @@ class Engine {
 
     // A signer message must be signed by a custody address. All other messages have to be signed by delegates.
     const isValidSigner =
-      (isSignerMessage(message) && signerSet.lookupCustody(message.signer)) || signerSet.lookupSigner(message.signer);
+      (isSignerMessage(message) && signerSet.getCustody(message.signer)) || signerSet.getSigner(message.signer);
     if (!isValidSigner) return err('validateMessage: invalid signer');
 
     // 2. Check that the hashType and hash are valid

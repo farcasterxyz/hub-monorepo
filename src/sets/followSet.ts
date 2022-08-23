@@ -1,5 +1,5 @@
 import { Result, ok, err } from 'neverthrow';
-import { Follow } from '~/types';
+import { Follow, URI } from '~/types';
 import { isFollow } from '~/types/typeguards';
 import { hashCompare, sanitizeSigner } from '~/utils';
 
@@ -23,22 +23,13 @@ class FollowSet {
     this.targetToHash = new Map();
   }
 
-  /** Get a follow by its hash */
-  get(hash: string): Follow | undefined {
-    return this.hashToFollow.get(hash);
+  /** Get a follow by its target URI */
+  get(targetURI: URI): Follow | undefined {
+    const hash = this.targetToHash.get(targetURI);
+    return hash ? this.hashToFollow.get(hash) : undefined;
   }
 
-  /** Get hashes of active follows. */
-  getHashes(): string[] {
-    return Array.from(this.hashToFollow.values())
-      .filter((follow) => follow.data.body.active)
-      .map((follow) => follow.hash);
-  }
-
-  /** Get hashes of all known follows. */
-  getAllHashes(): string[] {
-    return Array.from(this.hashToFollow.keys());
-  }
+  // TODO: add query API
 
   /** Merge a new follow into the set */
   merge(follow: Follow): Result<void, string> {

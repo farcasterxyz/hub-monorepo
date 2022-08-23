@@ -51,7 +51,7 @@ describe('mergeReaction', () => {
     const invalidCastReaction = cast as unknown as Reaction;
     const result = await engine.mergeReaction(invalidCastReaction);
     expect(result.isOk()).toBe(false);
-    expect(result._unsafeUnwrapErr()).toBe('ReactionSet.merge: invalid reaction');
+    expect(result._unsafeUnwrapErr()).toBe('ReactionSet.merge: invalid message format');
     expect(subject()).toEqual([]);
   });
 
