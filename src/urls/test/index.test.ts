@@ -11,14 +11,14 @@ describe('URLs', () => {
   test('Unrecognized scheme', () => {
     const unrecognizedURLStr = 'mailto:johndoe@example.com';
 
-    let result = parseUrl(unrecognizedURLStr, true /* allowUnrecognized */);
+    let result = parseUrl(unrecognizedURLStr, { allowUnrecognized: true });
     const unrecognizedUrl = result._unsafeUnwrap();
     expectInstanceOf(unrecognizedUrl, UnrecognizedURL);
     expect(unrecognizedUrl.scheme).toEqual('mailto');
     expect(unrecognizedUrl.fullURL).toEqual(unrecognizedURLStr);
     expect(unrecognizedUrl.toString()).toEqual(unrecognizedURLStr);
 
-    result = parseUrl(unrecognizedURLStr, false /* allowUnrecognized */);
+    result = parseUrl(unrecognizedURLStr, { allowUnrecognized: false });
     expect(result._unsafeUnwrapErr()).toContain('Unrecognized scheme');
   });
 });

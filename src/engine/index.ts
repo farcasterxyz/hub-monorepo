@@ -370,7 +370,7 @@ class Engine {
   }
 
   private validateReaction(message: Reaction): Result<void, string> {
-    const parsedURLResult = parseUrl(message.data.body.targetUri, false /* allowUnrecognized */);
+    const parsedURLResult = parseUrl(message.data.body.targetUri, { allowUnrecognized: false });
     return parsedURLResult
       .mapErr(() => 'validateReaction: invalid URL for reaction target')
       .andThen((parsedUrl) => {

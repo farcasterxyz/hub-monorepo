@@ -14,7 +14,10 @@ import { URL } from '~/urls/baseUrl';
 import { Web2URL } from '~/urls/web2Url';
 import { ChainAccountURL } from '~/urls/chainAccountUrl';
 
-export const parseUrl = (url: string, allowUnrecognized = true): Result<URL, string> => {
+export const parseUrl = (
+  url: string,
+  { allowUnrecognized = true }: { allowUnrecognized?: boolean } = {}
+): Result<URL, string> => {
   // extract scheme
   let baseURI: URIComponents;
   try {
