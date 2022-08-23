@@ -11,6 +11,8 @@ import { CastURL } from '~/urls/castUrl';
 import { ChainURL } from '~/urls/chainUrl';
 import { UserURL } from '~/urls/userUrl';
 import { URL } from '~/urls/baseUrl';
+import { Web2URL } from '~/urls/web2Url';
+import { ChainAccountURL } from '~/urls/chainAccountUrl';
 
 export const parseUrl = (url: string, allowUnrecognized = true): Result<URL, string> => {
   // extract scheme
@@ -30,7 +32,11 @@ export const parseUrl = (url: string, allowUnrecognized = true): Result<URL, str
       return UserURL.parse(url).orElse(() => CastURL.parse(url));
 
     case ChainURL.SCHEME:
-      return ChainURL.parse(url);
+      return ChainURL.parse(url).orElse(() => ChainAccountURL.parse(url));
+
+    case Web2URL.HTTP_SCHEME:
+    case Web2URL.HTTPS_SCHEME:
+      return ok(new Web2URL(baseURI.scheme, url));
 
     default:
       if (!allowUnrecognized) {
@@ -43,4 +49,6 @@ export const parseUrl = (url: string, allowUnrecognized = true): Result<URL, str
 export { URL } from '~/urls/baseUrl';
 export { CastURL } from '~/urls/castUrl';
 export { ChainURL } from '~/urls/chainUrl';
+export { ChainAccountURL } from '~/urls/chainAccountUrl';
 export { UserURL } from '~/urls/userUrl';
+export { Web2URL } from '~/urls/web2Url';
