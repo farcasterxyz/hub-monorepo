@@ -36,7 +36,7 @@ import ReactionSet from '~/sets/reactionSet';
 import VerificationSet from '~/sets/verificationSet';
 import SignerSet from '~/sets/signerSet';
 import FollowSet from '~/sets/followSet';
-import IDRegistryProvider from '~/provider';
+import IDRegistryProvider from '~/provider/idRegistryProvider';
 
 /** The Engine receives messages and determines the current state of the Farcaster network */
 class Engine {
