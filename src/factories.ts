@@ -23,6 +23,7 @@ import {
   HashAlgorithm,
   IDRegistryEvent,
   Follow,
+  EthAddressUrlFactoryTransientParams,
 } from '~/types';
 import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
@@ -63,10 +64,18 @@ const addEnvelopeToMessage = async (
   return message;
 };
 
+const farcasterIdFactory = Factory.define<string>(({ sequence }) => `farcaster://fid:${sequence}`);
+const ethereumAddressURLFactory = Factory.define<string, EthAddressUrlFactoryTransientParams>(
+  ({ transientParams }) => `chain://eip155:1:${transientParams.address ?? '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'}`
+);
+
 /**
  * ProtocolFactories are used to construct valid Farcaster Protocol JSON objects.
  */
 export const Factories = {
+  FarcasterId: farcasterIdFactory,
+  EthereumAddressURL: ethereumAddressURLFactory,
+
   /** Generate a valid Cast with randomized properties */
   Cast: Factory.define<CastShort, MessageFactoryTransientParams, CastShort>(({ onCreate, transientParams }) => {
     onCreate(async (props) => {
@@ -126,7 +135,7 @@ export const Factories = {
     return {
       data: {
         body: {
-          targetCastUri: 'farcaster://alice/cast/1', // TODO: Find some way to generate this.
+          targetCastUri: farcasterIdFactory.build(),
           schema: 'farcaster.xyz/schemas/v1/cast-recast',
         },
         signedAt: Faker.time.recent(),
@@ -175,7 +184,7 @@ export const Factories = {
       data: {
         body: {
           active: true,
-          targetUri: Faker.internet.url(),
+          targetUri: farcasterIdFactory.build(),
           schema: 'farcaster.xyz/schemas/v1/follow',
         },
         signedAt: Faker.time.recent(),
@@ -335,7 +344,7 @@ export const Factories = {
       return {
         data: {
           body: {
-            externalUri: ethWallet.address,
+            externalUri: ethereumAddressURLFactory.build(undefined, { transient: { address: ethWallet.address } }),
             claimHash: '',
             blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
             externalSignature: '',

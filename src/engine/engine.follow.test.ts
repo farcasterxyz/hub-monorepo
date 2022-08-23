@@ -127,6 +127,26 @@ describe('mergeFollow', () => {
       expect(res.isOk()).toBe(false);
       expect(res._unsafeUnwrapErr()).toEqual('validateMessage: signedAt more than 10 mins in the future');
     });
+
+    test('fails if targetUri does not match schema', async () => {
+      const invalidTargets: string[] = [
+        'foobar.com', // URL missing scheme
+        'http://foobar.com', // web2 URLs not allowed
+        'chain://eip155:1', // chain URLs not allowed
+        'farcaster://fid:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982', // target must be a user, not a cast
+      ];
+      for (const invalidTarget of invalidTargets) {
+        const invalidTargetUri = await Factories.Follow.create(
+          {
+            data: { body: { targetUri: invalidTarget }, fid: aliceFid },
+          },
+          transientParams
+        );
+        const result = await engine.mergeFollow(invalidTargetUri);
+        expect(result.isOk()).toBe(false);
+        expect(result._unsafeUnwrapErr()).toEqual('validateFollow: targetUri must be valid FarcasterID');
+      }
+    });
   });
 
   test('succeeds with a valid follow', async () => {

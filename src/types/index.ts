@@ -360,3 +360,7 @@ export type EthereumSigner = {
   signerKey: string; // Address
   type: SignatureAlgorithm.EthereumPersonalSign;
 };
+
+export type EthAddressUrlFactoryTransientParams = {
+  address?: string;
+};

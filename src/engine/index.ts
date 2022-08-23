@@ -14,6 +14,7 @@ import {
   IDRegistryEvent,
   Follow,
   URI,
+  CastShort,
 } from '~/types';
 import { hashMessage, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
@@ -37,6 +38,8 @@ import ReactionSet from '~/sets/reactionSet';
 import VerificationSet from '~/sets/verificationSet';
 import SignerSet from '~/sets/signerSet';
 import FollowSet from '~/sets/followSet';
+import { CastURL, ChainAccountURL, ChainURL, parseUrl, UserURL } from '~/urls';
+import { Web2URL } from '~/urls/web2Url';
 
 /** The Engine receives messages and determines the current state of the Farcaster network */
 class Engine {
@@ -46,6 +49,8 @@ class Engine {
   private _verifications: Map<number, VerificationSet>;
   private _signers: Map<number, SignerSet>;
   private _follows: Map<number, FollowSet>;
+
+  private _supportedChainIDs = new Set(['eip155:1']);
 
   constructor() {
     this._casts = new Map();
@@ -297,7 +302,7 @@ class Engine {
     }
 
     if (isReaction(message)) {
-      return this.validateReaction();
+      return this.validateReaction(message);
     }
 
     if (isVerificationAdd(message)) {
@@ -321,7 +326,7 @@ class Engine {
     }
 
     if (isFollow(message)) {
-      return this.validateFollow();
+      return this.validateFollow(message);
     }
 
     // TODO: check that the schema is a valid and known schema
@@ -342,6 +347,11 @@ class Engine {
       if (embed && embed.items.length > 2) {
         return err('validateCast: embeds > 2');
       }
+
+      const validateCastTargetResult = this.validateCastTarget(cast);
+      if (validateCastTargetResult.isErr()) {
+        return validateCastTargetResult;
+      }
     }
 
     // TODO: For remove cast, validate hash length.
@@ -349,9 +359,32 @@ class Engine {
     return ok(undefined);
   }
 
-  private validateReaction(): Result<void, string> {
-    // TODO: validate targetUri, schema
-    return ok(undefined);
+  private validateCastTarget(cast: CastShort): Result<void, string> {
+    if (cast.data.body.targetUri === undefined) {
+      return ok(undefined);
+    }
+    // TODO: support chain-data URLs
+    return CastURL.parse(cast.data.body.targetUri)
+      .map(() => undefined)
+      .mapErr(() => 'validateCastTarget: cast target must be another valid Cast URL');
+  }
+
+  private validateReaction(message: Reaction): Result<void, string> {
+    const parsedURLResult = parseUrl(message.data.body.targetUri, false /* allowUnrecognized */);
+    return parsedURLResult
+      .mapErr(() => 'validateReaction: invalid URL for reaction target')
+      .andThen((parsedUrl) => {
+        switch (true) {
+          case parsedUrl instanceof CastURL:
+          case parsedUrl instanceof Web2URL:
+            return ok(undefined);
+          // TODO: support chain-data URLs
+          default:
+            return err('validateReaction: invalid URL for reaction target');
+        }
+      });
+
+    // TODO: validate schema
   }
 
   private async validateVerificationAdd(message: VerificationAdd): Promise<Result<void, string>> {
@@ -370,9 +403,14 @@ class Engine {
       return err('validateVerificationAdd: invalid claimHash');
     }
 
+    // validate externalUri
+    const chainAccountURLResult = this.validateChainAccountURL(externalUri);
+    if (chainAccountURLResult.isErr()) return chainAccountURLResult.map(() => undefined);
+    const chainAccountURL = chainAccountURLResult._unsafeUnwrap();
+
     try {
       const verifiedExternalAddress = utils.verifyMessage(claimHash, externalSignature);
-      if (verifiedExternalAddress !== externalUri) {
+      if (verifiedExternalAddress.toLowerCase() !== chainAccountURL.address.toLowerCase()) {
         return err('validateVerificationAdd: externalSignature does not match externalUri');
       }
     } catch (e: any) {
@@ -417,6 +455,28 @@ class Engine {
     return ok(undefined);
   }
 
+  private validateChainURL(chainURL: string): Result<void, string> {
+    const result = ChainURL.parse(chainURL);
+    return result.andThen((chainUrlParsed) => {
+      const chainId = chainUrlParsed.chainId.toString();
+      if (!this._supportedChainIDs.has(chainId)) {
+        return err(`validateChainURL: unsupported chainID ${chainId}`);
+      }
+      return ok(undefined);
+    });
+  }
+
+  private validateChainAccountURL(chainAccountURL: string): Result<ChainAccountURL, string> {
+    const result = ChainAccountURL.parse(chainAccountURL);
+    return result.andThen((chainAccountURLParsed) => {
+      const chainId = chainAccountURLParsed.chainId.toString();
+      if (!this._supportedChainIDs.has(chainId)) {
+        return err(`validateChainAccountURL: unsupported chainID ${chainId}`);
+      }
+      return result;
+    });
+  }
+
   private async validateSignerRemove(): Promise<Result<void, string>> {
     // TODO: any SignerRemove custom validations?
     return ok(undefined);
@@ -427,7 +487,14 @@ class Engine {
     return ok(undefined);
   }
 
-  private async validateFollow(): Promise<Result<void, string>> {
+  private async validateFollow(message: Follow): Promise<Result<void, string>> {
+    const result = UserURL.parse(message.data.body.targetUri);
+    return result
+      .map(() => {
+        return undefined;
+      })
+      .mapErr(() => 'validateFollow: targetUri must be valid FarcasterID');
+
     // TODO: any Follow custom validation?
     return ok(undefined);
   }

@@ -12,8 +12,9 @@ import {
   SignatureAlgorithm,
 } from '~/types';
 import Faker from 'faker';
-import { Wallet } from 'ethers';
+import { ethers, Wallet } from 'ethers';
 import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
+import { ChainAccountURL } from '~/urls';
 
 const engine = new Engine();
 const aliceFid = Faker.datatype.number();
@@ -49,7 +50,7 @@ describe('mergeVerification', () => {
 
     const verificationClaim: VerificationClaim = {
       fid: aliceFid,
-      externalUri: aliceEthWallet.address,
+      externalUri: Factories.EthereumAddressURL.build(undefined, { transient: { address: aliceEthWallet.address } }),
       blockHash: aliceBlockHash,
     };
     aliceClaimHash = await hashFCObject(verificationClaim);
@@ -92,6 +93,51 @@ describe('mergeVerification', () => {
     expect(engine._getVerificationAdds(aliceFid)).toEqual([genericVerificationAdd]);
   });
 
+  describe('ethereum addresses', () => {
+    test('works when address is checksummed', async () => {
+      // leverage the fact that the happy path test above covers checksummed ethereum addresses
+      const accountURL = ChainAccountURL.parse(genericVerificationAdd.data.body.externalUri)._unsafeUnwrap();
+      expect(accountURL.address).toEqual(ethers.utils.getAddress(accountURL.address));
+    });
+
+    test('works when address is not checksummed', async () => {
+      // construct verification claim
+      const verificationClaim: VerificationClaim = {
+        fid: aliceFid,
+        externalUri: Factories.EthereumAddressURL.build(undefined, {
+          transient: { address: aliceEthWallet.address.toLowerCase() },
+        }),
+        blockHash: aliceBlockHash,
+      };
+      const aliceClaimHash = await hashFCObject(verificationClaim);
+      const aliceExternalSignature = await aliceEthWallet.signMessage(aliceClaimHash);
+      const verificationAdd = await Factories.VerificationAdd.create(
+        {
+          data: {
+            fid: aliceFid,
+            body: {
+              externalUri: Factories.EthereumAddressURL.build(undefined, {
+                transient: { address: aliceEthWallet.address.toLowerCase() },
+              }),
+              claimHash: aliceClaimHash,
+              blockHash: aliceBlockHash,
+              externalSignature: aliceExternalSignature,
+            },
+          },
+        },
+        transientParams
+      );
+
+      // sanity check that there is no checksum in the address that was signed
+      const accountURL = ChainAccountURL.parse(verificationAdd.data.body.externalUri)._unsafeUnwrap();
+      expect(accountURL.address).not.toEqual(ethers.utils.getAddress(accountURL.address));
+
+      // run the verification through the engine
+      expect((await engine.mergeVerification(verificationAdd)).isOk()).toBe(true);
+      expect(engine._getVerificationAdds(aliceFid)).toEqual([verificationAdd]);
+    });
+  });
+
   test('fails if message signer is not valid', async () => {
     engine._resetSigners();
     expect((await engine.mergeVerification(genericVerificationAdd))._unsafeUnwrapErr()).toBe(
@@ -116,18 +162,22 @@ describe('mergeVerification', () => {
   });
 
   test('fails with externalSignature from unknown address', async () => {
-    const ethWalletAlice = Wallet.createRandom();
+    const randomEthWallet = Wallet.createRandom();
     const verificationAddMessage = await Factories.VerificationAdd.create(
       {
         data: {
           fid: aliceFid,
           body: {
-            externalUri: ethWalletAlice.address,
             externalSignature: aliceExternalSignature,
           },
         },
       },
-      transientParams
+      {
+        transient: {
+          ...transientParams.transient,
+          ethWallet: randomEthWallet,
+        },
+      }
     );
     const res = await engine.mergeVerification(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe('validateVerificationAdd: externalSignature does not match externalUri');
