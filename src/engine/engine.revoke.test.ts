@@ -42,7 +42,7 @@ let aliceFollow: Follow;
 beforeAll(async () => {
   aliceCustody = await generateEthereumSigner();
   aliceCustodyRegister = await Factories.IDRegistryEvent.create({
-    args: { to: aliceCustody.signerKey },
+    args: { to: aliceCustody.signerKey, id: aliceFid },
     name: 'Register',
   });
   aliceCustodyRemove = await Factories.CustodyRemoveAll.create(
@@ -51,7 +51,7 @@ beforeAll(async () => {
   );
   aliceCustody2 = await generateEthereumSigner();
   aliceCustody2Transfer = await Factories.IDRegistryEvent.create({
-    args: { to: aliceCustody2.signerKey },
+    args: { to: aliceCustody2.signerKey, id: aliceFid },
     blockNumber: aliceCustodyRegister.blockNumber + 1,
     name: 'Transfer',
   });
@@ -90,7 +90,7 @@ describe('revokeSignerMessages', () => {
 
   describe('with messages signed by delegate', () => {
     beforeEach(async () => {
-      await engine.mergeIDRegistryEvent(aliceFid, aliceCustodyRegister);
+      await engine.mergeIDRegistryEvent(aliceCustodyRegister);
       await engine.mergeSignerMessage(aliceSignerAdd);
       await engine.mergeCast(aliceCast);
       await engine.mergeReaction(aliceReaction);
@@ -114,7 +114,7 @@ describe('revokeSignerMessages', () => {
     });
 
     test('drops all signed messages when custody address is removed', async () => {
-      await engine.mergeIDRegistryEvent(aliceFid, aliceCustody2Transfer);
+      await engine.mergeIDRegistryEvent(aliceCustody2Transfer);
       const res = await engine.mergeSignerMessage(aliceCustody2Remove);
       expect(res.isOk()).toBe(true);
       expect(aliceAllSigners()).toEqual(new Set([aliceCustody2.signerKey]));
@@ -135,7 +135,7 @@ describe('revokeSignerMessages', () => {
     });
 
     test('does not drop signed messages when signer is added by a new custody address', async () => {
-      await engine.mergeIDRegistryEvent(aliceFid, aliceCustody2Transfer);
+      await engine.mergeIDRegistryEvent(aliceCustody2Transfer);
       await engine.mergeSignerMessage(aliceSignerAdd2);
       const res = await engine.mergeSignerMessage(aliceCustody2Remove);
       expect(res.isOk()).toBe(true);

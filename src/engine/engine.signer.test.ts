@@ -36,7 +36,7 @@ describe('mergeSignerMessage', () => {
   beforeAll(async () => {
     aliceCustodySigner = await generateEthereumSigner();
     aliceCustodyRegister = await Factories.IDRegistryEvent.create({
-      args: { to: aliceCustodySigner.signerKey },
+      args: { to: aliceCustodySigner.signerKey, id: aliceFid },
       name: 'Register',
     });
     aliceCustodyRemoveAll = await Factories.CustodyRemoveAll.create(
@@ -66,7 +66,7 @@ describe('mergeSignerMessage', () => {
 
   describe('with a custody address', () => {
     beforeEach(async () => {
-      engine.mergeIDRegistryEvent(aliceFid, aliceCustodyRegister);
+      engine.mergeIDRegistryEvent(aliceCustodyRegister);
     });
 
     test('fails with invalid message type', async () => {

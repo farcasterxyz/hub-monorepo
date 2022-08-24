@@ -30,7 +30,7 @@ describe('mergeFollow', () => {
   beforeAll(async () => {
     aliceCustody = await generateEthereumSigner();
     aliceCustodyRegister = await Factories.IDRegistryEvent.create({
-      args: { to: aliceCustody.signerKey },
+      args: { to: aliceCustody.signerKey, id: aliceFid },
       name: 'Register',
     });
     aliceSigner = await generateEd25519Signer();
@@ -49,7 +49,7 @@ describe('mergeFollow', () => {
 
   beforeEach(async () => {
     engine._reset();
-    engine.mergeIDRegistryEvent(aliceFid, aliceCustodyRegister);
+    engine.mergeIDRegistryEvent(aliceCustodyRegister);
     await engine.mergeSignerMessage(aliceSignerAdd);
   });
 
