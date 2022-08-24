@@ -37,6 +37,7 @@ import ReactionSet from '~/sets/reactionSet';
 import VerificationSet from '~/sets/verificationSet';
 import SignerSet from '~/sets/signerSet';
 import FollowSet from '~/sets/followSet';
+import IDRegistryProvider from '~/provider/idRegistryProvider';
 
 /** The Engine receives messages and determines the current state of the Farcaster network */
 class Engine {
@@ -46,13 +47,20 @@ class Engine {
   private _verifications: Map<number, VerificationSet>;
   private _signers: Map<number, SignerSet>;
   private _follows: Map<number, FollowSet>;
+  private _IDRegistryProvider?: IDRegistryProvider;
 
-  constructor() {
+  constructor(networkUrl?: string, IDRegistryAddress?: string) {
     this._casts = new Map();
     this._reactions = new Map();
     this._verifications = new Map();
     this._signers = new Map();
     this._follows = new Map();
+
+    /** Optionally, initialize ID Registry provider */
+    if (networkUrl && IDRegistryAddress) {
+      this._IDRegistryProvider = new IDRegistryProvider(networkUrl, IDRegistryAddress);
+      this._IDRegistryProvider.on('confirm', (event: IDRegistryEvent) => this.mergeIDRegistryEvent(event));
+    }
   }
 
   /**
@@ -190,7 +198,8 @@ class Engine {
    * Signer Methods
    */
 
-  mergeIDRegistryEvent(fid: number, event: IDRegistryEvent): Result<void, string> {
+  async mergeIDRegistryEvent(event: IDRegistryEvent): Promise<Result<void, string>> {
+    const fid = event.args.id;
     let signerSet = this._signers.get(fid);
     if (!signerSet) {
       signerSet = new SignerSet();
@@ -200,6 +209,12 @@ class Engine {
 
       this._signers.set(fid, signerSet);
     }
+
+    if (this._IDRegistryProvider) {
+      const isEventValidResult = await this._IDRegistryProvider.validateIDRegistryEvent(event);
+      if (isEventValidResult.isErr()) return isEventValidResult;
+    }
+
     return signerSet.mergeIDRegistryEvent(event);
   }
 
