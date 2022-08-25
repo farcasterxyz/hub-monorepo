@@ -4,39 +4,52 @@ import { IDRegistryEvent, SignerAdd, SignerMessage, SignerRemove } from '~/types
 import { isSignerAdd, isSignerRemove } from '~/types/typeguards';
 import { hashCompare, sanitizeSigner } from '~/utils';
 
-// TODO: update comments
-/*   
-  SignerSet manages the account's associated custody addresses authorized 
-  for Signing and their corresponding delegates.
-
-  Read more about the SignerSet in the protocol docs: https://github.com/farcasterxyz/protocol#45-signer-authorizations
-
-  This implementation uses a modified 2P2P set. There are four sets in total:
-
-  (1) custodyAdds: add set for custody addresses
-  (2) custodyRemoves: remove set for custody addresses
-  (3) signerAdds: add set for delegate signers
-  (4) signerRemoves: remove set for delegate signers
-
-  Each message is signed by a custody address that was added via a particular ID Registry event (Register or Transfer).
-  Conflicts are resolved in this order:
-  - Higher event order (block number + log index + transaction hash) wins
-  - If event order is the same (i.e. the custody addresses are the same because they were added in the same event)
-    - Removes win
-    - If two messages have the same type (i.e. both adds)
-      - Custody address with the higher lexicographical order wins
-      - If custody addresses have the same order (i.e. they are identical)
-        - Message with higher lexicographical hash wins
-*/
+/**
+ * SignerSet manages the custody address and delegate signers for an fid. The custody address
+ * is changed via events from the Farcaster ID Registry contract, and delegate signers are
+ * added and removed via SignerAdd and SignerRemove messages, respectively.
+ *
+ * Read more in the Farcaster protocol docs: https://github.com/farcasterxyz/protocol#45-signer-authorizations
+ *
+ * This implementation stores a modified LWW set of delegate signers for each custody address, even addresses
+ * that the class hasn't seen yet or that have been overwritten. For a given custody address, conflicts
+ * between signer messages are resolved in this order:
+ * 1. Message with a later timestamp wins
+ * 2. If messages have the same timestamp, SignerRemove message wins
+ * 3. If both messages have the same type, message with higher lexicographic hash wins
+ */
 
 export type SignerSetEvents = {
+  /**
+   * changeCustody is emitted when custody address changes by merging a new Register or Transfer event
+   * from the Farcaster ID Registry
+   */
   changeCustody: (custodyAddress: string, event: IDRegistryEvent) => void;
-  // addSigner and removeSigner have optional messages, because when a signer is revoked
-  // there is not a relevant SignerAdd or SignerRemove message to share
-  addSigner: (signerKey: string, message?: SignerAdd) => void;
+
+  /**
+   * addSigner is emitted when a delegate signer becomes valid which can happen in two ways:
+   * 1. A SignerAdd message is merged which adds a new delegate signer for the current custody address
+   * 2. The custody address changes, and a SignerAdd message that was previously merged from the new custody
+   *    address becomes valid
+   *
+   * Note: addSigner is NOT emitted when a SignerAdd message is merged that was signed by any custody
+   * address other than the current one
+   */
+  addSigner: (signerKey: string, message: SignerAdd) => void;
+
+  /**
+   * removesSigner is emitted when a delegate signer becomes invalid which can happen in two ways:
+   * 1. A SignerRemove message is merged which removes a delegate signer for the current custody address
+   * 2. The custody address changes, and a delegate signer has not had a SignerAdd message merged from the
+   *    new custody address, so it is no longer valid
+   *
+   * Note: the message parameter in removeSigner is optional, because in case (2) above we don't have
+   * a relevant SignerRemove message to share
+   */
   removeSigner: (signerKey: string, message?: SignerRemove) => void;
 };
 
+/** CustodySigners represents the structure of each the LWW sets inside signersByCustody */
 type CustodySigners = { adds: Map<string, SignerAdd>; removes: Map<string, SignerRemove> };
 
 class SignerSet extends TypedEmitter<SignerSetEvents> {
@@ -46,14 +59,6 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
   constructor() {
     super();
     this._signersByCustody = new Map();
-  }
-
-  private get _custodyAddress(): string | undefined {
-    return this._custodyEvent ? sanitizeSigner(this._custodyEvent.args.to) : undefined;
-  }
-
-  private get _custodySigners(): CustodySigners | undefined {
-    return this._custodyAddress ? this._signersByCustody.get(this._custodyAddress) : undefined;
   }
 
   getCustodyAddress(): string | undefined {
@@ -130,6 +135,16 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
    * Private Methods
    */
 
+  /** Reurns the derived custody address from the current custody event, if defined */
+  private get _custodyAddress(): string | undefined {
+    return this._custodyEvent ? sanitizeSigner(this._custodyEvent.args.to) : undefined;
+  }
+
+  /** Returns the LWW set of signers for the current custody address, if defined */
+  private get _custodySigners(): CustodySigners | undefined {
+    return this._custodyAddress ? this._signersByCustody.get(this._custodyAddress) : undefined;
+  }
+
   /**
    * eventCompare returns an order (-1, 0, 1) for two ID Registry events (a and b). If a occurs before
    * b, return -1. If a occurs after b, return 1. If a and b are the same event, return 0.
@@ -159,6 +174,11 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     return hashCompare(a.transactionHash, b.transactionHash);
   }
 
+  /**
+   * signerMessageCompare returns an order (-1, 0, 1) for two signer messages (a and b). If a occurs before
+   * b, return -1. If a occurs after b, return 1. If a and b cannot be ordered (i.e. they are the same
+   * message), return 0.
+   */
   private signerMessageCompare(a: SignerMessage, b: SignerMessage): number {
     // If they are the same message, return 0
     if (a.hash === b.hash) return 0;
@@ -182,11 +202,13 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
   }
 
   /**
-   * mergeSignerAdd tries to add a new signer with a SignerAdd message. The method follows this high-level logic:
+   * mergeSignerAdd tries to add a new delegate signer with a SignerAdd message. The method follows this high-level logic:
    * - If the new signer has never been seen, add it
-   * - If the new signer is already in signerAdds, keep the entry that was signed by a custody address with a higher event order
-   * - If the new signer is in signerRemoves, find the custody address that removed it and compare that address with the signer
-   *   (custody address) of the new SignerAdd message. If the signer of the new message was added later, move the signer to signerAdds.
+   * - If the new signer has already been added, keep the add message with a higher order (using signerMessageOrder)
+   * - If the new signer has already been removed, re-add the signer if the add message has a higher order than
+   *   the relevant remove message (using signerMessageOrder)
+   *
+   * Note: Signer messages are only compared against other messages from the same custody address.
    */
   private mergeSignerAdd(message: SignerAdd): Result<void, string> {
     const custodyAddress = sanitizeSigner(message.signer);
@@ -228,11 +250,13 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
   }
 
   /**
-   * mergeSignerRemove tries to remove a signer with a SignerRemove message. The method follows this high-level logic:
-   * - If the new signer has never been seen, add it to signerRemoves as a tombstone
-   * - If the new signer is already in signerRemoves, keep the entry that was signed by a more recent custody address
-   * - If the new signer is in signerAdds, find the custody address that added it and compare that address with the signer (custody
-   *   address) of the new SignerRemove message. If the signer of the new message was added later, move the signer to signerRemoves.
+   * mergeSignerRemove tries to remove a delegate signer with a SignerRemove message. The method follows this high-level logic:
+   * - If the signer has never been seen, add it to removes as a tombstone
+   * - If the signer has already been removed, keep the remove message with a higher order (using signerMessageOrder)
+   * - If the signer has already been added, remove the signer if the remove message has a higher order than
+   *   the relevant add message (using signerMessageOrder)
+   *
+   * Note: Signer messages are only compared against other messages from the same custody address.
    */
   private mergeSignerRemove(message: SignerRemove): Result<void, string> {
     const custodyAddress = sanitizeSigner(message.signer);
@@ -245,13 +269,13 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
       signers = { adds: new Map(), removes: new Map() };
     }
 
-    // Check if the new signer has already been removed
+    // Check if the signer has already been removed
     const existingSignerRemove = signers.removes.get(signerKey);
     if (existingSignerRemove && this.signerMessageCompare(message, existingSignerRemove) <= 0) {
       return ok(undefined);
     }
 
-    // Check if the new signer has already been added
+    // Check if the signer has already been added
     const existingSignerAdd = signers.adds.get(signerKey);
     if (existingSignerAdd) {
       if (this.signerMessageCompare(message, existingSignerAdd) <= 0) {
