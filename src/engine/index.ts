@@ -6,9 +6,7 @@ import {
   VerificationAdd,
   VerificationRemove,
   VerificationClaim,
-  SignerAdd,
   SignatureAlgorithm,
-  SignerEdge,
   SignerMessage,
   HashAlgorithm,
   IDRegistryEvent,
@@ -26,10 +24,7 @@ import {
   isReaction,
   isVerificationAdd,
   isVerificationRemove,
-  isSignerAdd,
-  isSignerRemove,
   isSignerMessage,
-  isCustodyRemoveAll,
   isFollow,
 } from '~/types/typeguards';
 import CastSet from '~/sets/castSet';
@@ -160,7 +155,6 @@ class Engine {
 
       return followSet.merge(follow);
     } catch (e: any) {
-      console.log('error', e);
       return err('mergeFollow: unexpected error');
     }
   }
@@ -199,6 +193,11 @@ class Engine {
    */
 
   async mergeIDRegistryEvent(event: IDRegistryEvent): Promise<Result<void, string>> {
+    if (this._IDRegistryProvider) {
+      const isEventValidResult = await this._IDRegistryProvider.validateIDRegistryEvent(event);
+      if (isEventValidResult.isErr()) return isEventValidResult;
+    }
+
     const fid = event.args.id;
     let signerSet = this._signers.get(fid);
     if (!signerSet) {
@@ -208,11 +207,6 @@ class Engine {
       signerSet.on('removeSigner', (signerKey) => this.revokeSigner(fid, signerKey));
 
       this._signers.set(fid, signerSet);
-    }
-
-    if (this._IDRegistryProvider) {
-      const isEventValidResult = await this._IDRegistryProvider.validateIDRegistryEvent(event);
-      if (isEventValidResult.isErr()) return isEventValidResult;
     }
 
     return signerSet.mergeIDRegistryEvent(event);
@@ -260,8 +254,7 @@ class Engine {
     if (!signerSet) return err('validateMessage: unknown user');
 
     // A signer message must be signed by a custody address. All other messages have to be signed by delegates.
-    const isValidSigner =
-      (isSignerMessage(message) && signerSet.getCustody(message.signer)) || signerSet.getSigner(message.signer);
+    const isValidSigner = isSignerMessage(message) || signerSet.get(message.signer);
     if (!isValidSigner) return err('validateMessage: invalid signer');
 
     // 2. Check that the hashType and hash are valid
@@ -323,16 +316,8 @@ class Engine {
       return this.validateVerificationRemove();
     }
 
-    if (isCustodyRemoveAll(message)) {
-      return this.validateCustodyRemoveAll();
-    }
-
-    if (isSignerAdd(message)) {
-      return this.validateSignerAdd(message);
-    }
-
-    if (isSignerRemove(message)) {
-      return this.validateSignerRemove();
+    if (isSignerMessage(message)) {
+      return this.validateSignerMessage(message);
     }
 
     if (isFollow(message)) {
@@ -403,37 +388,15 @@ class Engine {
     return ok(undefined);
   }
 
-  private async validateSignerAdd(message: SignerAdd): Promise<Result<void, string>> {
-    const { delegateSignatureType, delegateSignature, delegate, edgeHash } = message.data.body;
-
-    /** Validate delegateSignatureType */
-    if (delegateSignatureType !== SignatureAlgorithm.Ed25519)
-      return err('validateSignerAdd: invalid delegateSignatureType');
-
-    /** Validate edgeHash */
-    const signerEdge: SignerEdge = { delegate, custody: message.signer };
-    const reconstructedEdgeHash = await hashFCObject(signerEdge);
-    if (reconstructedEdgeHash !== edgeHash) return err('validateSignerAdd: invalid edgeHash');
-
-    /** Validate delegateSignature */
-    try {
-      const delegateSignatureIsValid = await ed.verify(
-        hexToBytes(delegateSignature),
-        hexToBytes(edgeHash),
-        hexToBytes(delegate)
-      );
-      if (!delegateSignatureIsValid) {
-        return err('validateSignerAdd: delegateSignature does not match delegate');
-      }
-    } catch (e: any) {
-      return err('validateSignerAdd: invalid delegateSignature');
+  private validateSignerMessage(message: SignerMessage): Result<void, string> {
+    if (message.signer.length !== 42) {
+      return err('validateSignerMessage: signer must be a custody address');
     }
 
-    return ok(undefined);
-  }
+    if (message.data.body.delegate.length !== 66) {
+      return err('validateSignerMessage: delegate must be an EdDSA public key');
+    }
 
-  private async validateSignerRemove(): Promise<Result<void, string>> {
-    // TODO: any SignerRemove custom validations?
     return ok(undefined);
   }
 
@@ -504,19 +467,14 @@ class Engine {
     return verificationSet ? verificationSet._getRemoves() : [];
   }
 
-  _getAllSigners(fid: number): Set<string> {
+  _getCustodyAddress(fid: number): string | undefined {
     const signerSet = this._signers.get(fid);
-    return signerSet ? signerSet.getAllSigners() : new Set();
+    return signerSet ? signerSet.getCustodyAddress() : undefined;
   }
 
-  _getCustodyAddresses(fid: number): Set<string> {
+  _getSigners(fid: number): Set<string> {
     const signerSet = this._signers.get(fid);
-    return signerSet ? signerSet.getCustodyAddresses() : new Set();
-  }
-
-  _getDelegateSigners(fid: number): Set<string> {
-    const signerSet = this._signers.get(fid);
-    return signerSet ? signerSet.getDelegateSigners() : new Set();
+    return signerSet ? signerSet.getSigners() : new Set();
   }
 }
 

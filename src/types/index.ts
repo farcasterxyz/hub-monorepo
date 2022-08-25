@@ -39,7 +39,6 @@ export type Body =
   | VerificationRemoveBody
   | SignerAddBody
   | SignerRemoveBody
-  | CustodyRemoveAllBody
   | FollowBody;
 
 // ===========================
@@ -221,7 +220,7 @@ export type VerificationRemoveFactoryTransientParams = MessageFactoryTransientPa
 // Signer Types
 // ===========================
 
-export type SignerMessage = SignerAdd | SignerRemove | CustodyRemoveAll;
+export type SignerMessage = SignerAdd | SignerRemove;
 
 /** SignerAdd message */
 export type SignerAdd = Message<SignerAddBody>;
@@ -230,34 +229,11 @@ export type SignerAdd = Message<SignerAddBody>;
  * A SignerAddBody represents a bi-directional proof between a custody address and a delegate signer
  *
  * @delegate - the delegate public key
- * @edgeHash - the hash of the SignerEdge containing both public keys
- * @delegateSignature - the signature of the edgeHash, signed by delegate
- * @delegateSignatureType - type of delegate signature from set of supported types
  * @schema -
  */
 export type SignerAddBody = {
   delegate: string;
-  edgeHash: string;
-  delegateSignature: string;
-  delegateSignatureType: SignatureAlgorithm.Ed25519;
   schema: 'farcaster.xyz/schemas/v1/signer-add';
-};
-
-/**
- * A SignerAddFactoryTransientParams is passed to the SignerAdd factory
- *
- * @delegateSigner - the Ed25519 signer for signing the edgeHash
- */
-export type SignerAddFactoryTransientParams = MessageFactoryTransientParams & {
-  delegateSigner?: Ed25519Signer;
-};
-
-/**
- * A SignerEdge is an object that contains both the custody address and the delegate signer
- */
-export type SignerEdge = {
-  custody: string;
-  delegate: string;
 };
 
 /** SignerRemove message */
@@ -271,14 +247,10 @@ export type SignerRemoveBody = {
   schema: 'farcaster.xyz/schemas/v1/signer-remove';
 };
 
-/** CustodyRemoveAll message */
-export type CustodyRemoveAll = Message<CustodyRemoveAllBody>;
-
-/**
- * A CustodyRemoveAllBody represents the removal of all custody addresses before a given block
- */
-export type CustodyRemoveAllBody = {
-  schema: 'farcaster.xyz/schemas/v1/custody-remove-all';
+/** SignerMessageFactoryTransientParams is passed to the SignerMessage factories and requires an Ethereum signer */
+export type SignerMessageFactoryTransientParams = MessageFactoryTransientParams & {
+  delegateSigner?: Ed25519Signer;
+  signer: EthereumSigner;
 };
 
 export type IDRegistryEvent = {

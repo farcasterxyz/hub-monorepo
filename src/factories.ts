@@ -13,16 +13,14 @@ import {
   VerificationAddFactoryTransientParams,
   SignerAdd,
   SignerRemove,
-  SignerEdge,
-  SignerAddFactoryTransientParams,
   SignatureAlgorithm,
   Message,
   MessageFactoryTransientParams,
   MessageSigner,
-  CustodyRemoveAll,
   HashAlgorithm,
   IDRegistryEvent,
   Follow,
+  SignerMessageFactoryTransientParams,
 } from '~/types';
 import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
@@ -208,17 +206,21 @@ export const Factories = {
     };
   }),
 
-  /** Generate a valid CustodyRemoveAll with randomized properties */
-  CustodyRemoveAll: Factory.define<CustodyRemoveAll, MessageFactoryTransientParams, CustodyRemoveAll>(
+  /** Generate a valid SignerAdd with randomized properties */
+  SignerAdd: Factory.define<SignerAdd, SignerMessageFactoryTransientParams, SignerAdd>(
     ({ onCreate, transientParams }) => {
       onCreate(async (props) => {
-        return (await addEnvelopeToMessage(props, transientParams)) as CustodyRemoveAll;
+        if (transientParams.delegateSigner && !props.data.body.delegate) {
+          props.data.body.delegate = transientParams.delegateSigner.signerKey;
+        }
+        return (await addEnvelopeToMessage(props, { ...transientParams })) as SignerAdd;
       });
 
       return {
         data: {
           body: {
-            schema: 'farcaster.xyz/schemas/v1/custody-remove-all',
+            delegate: '',
+            schema: 'farcaster.xyz/schemas/v1/signer-add',
           },
           signedAt: Faker.time.recent(),
           fid: Faker.datatype.number(),
@@ -232,60 +234,13 @@ export const Factories = {
     }
   ),
 
-  /** Generate a valid SignerAdd with randomized properties */
-  SignerAdd: Factory.define<SignerAdd, SignerAddFactoryTransientParams, SignerAdd>(({ onCreate, transientParams }) => {
-    onCreate(async (props) => {
-      const signer = await getMessageSigner(props, transientParams);
-      const delegateSigner = transientParams.delegateSigner || (await generateEd25519Signer());
-      const custodyAddress = signer.signerKey;
-      const delegate = delegateSigner.signerKey;
-
-      /** Set delegate if missing */
-      if (!props.data.body.delegate) {
-        props.data.body.delegate = delegate;
-      }
-
-      /** Generate edgeHash if missing */
-      if (!props.data.body.edgeHash) {
-        const edge: SignerEdge = {
-          custody: custodyAddress,
-          delegate: props.data.body.delegate,
-        };
-        props.data.body.edgeHash = await hashFCObject(edge);
-      }
-
-      /** Generate delegateSignature if missing */
-      if (!props.data.body.delegateSignature) {
-        props.data.body.delegateSignature = await signEd25519(props.data.body.edgeHash, delegateSigner.privateKey);
-      }
-
-      return (await addEnvelopeToMessage(props, { ...transientParams, signer })) as SignerAdd;
-    });
-
-    return {
-      data: {
-        body: {
-          delegate: '',
-          edgeHash: '',
-          delegateSignature: '',
-          delegateSignatureType: SignatureAlgorithm.Ed25519,
-          schema: 'farcaster.xyz/schemas/v1/signer-add',
-        },
-        signedAt: Faker.time.recent(),
-        fid: Faker.datatype.number(),
-      },
-      hash: '',
-      hashType: HashAlgorithm.Blake2b,
-      signature: '',
-      signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
-      signer: '',
-    };
-  }),
-
   /** Generate a valid SignerRemove with randomized properties */
-  SignerRemove: Factory.define<SignerRemove, MessageFactoryTransientParams, SignerRemove>(
+  SignerRemove: Factory.define<SignerRemove, SignerMessageFactoryTransientParams, SignerRemove>(
     ({ onCreate, transientParams }) => {
       onCreate(async (props) => {
+        if (transientParams.delegateSigner && !props.data.body.delegate) {
+          props.data.body.delegate = transientParams.delegateSigner.signerKey;
+        }
         return (await addEnvelopeToMessage(props, transientParams)) as SignerRemove;
       });
 
@@ -301,7 +256,7 @@ export const Factories = {
         hash: '',
         hashType: HashAlgorithm.Blake2b,
         signature: '',
-        signatureType: Faker.helpers.randomize([SignatureAlgorithm.Ed25519, SignatureAlgorithm.EthereumPersonalSign]),
+        signatureType: SignatureAlgorithm.EthereumPersonalSign,
         signer: '',
       };
     }
