@@ -1,7 +1,5 @@
-import { hexToBytes } from 'ethereum-cryptography/utils';
 import Client from '~/client';
 import { Factories } from '~/factories';
-import * as ed from '@noble/ed25519';
 import { CastShort, Ed25519Signer, EthereumSigner } from '~/types';
 import {
   isCastRemove,
@@ -14,7 +12,7 @@ import {
   isVerificationRemove,
 } from '~/types/typeguards';
 import Faker from 'faker';
-import { convertToHex, generateEd25519Signer, generateEthereumSigner } from '~/utils';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 import { ethers } from 'ethers';
 
 const fid = Faker.datatype.number();
@@ -39,9 +37,7 @@ describe('when signer is a custody address', () => {
 
   describe('makeSignerAdd', () => {
     test('succeeds', async () => {
-      const edgeHash = await client.makeSignerEdgeHash(custodySigner.signerKey, delegateSigner.signerKey);
-      const delegateSignature = await convertToHex(await ed.sign(hexToBytes(edgeHash), delegateSigner.privateKey));
-      const message = await client.makeSignerAdd(delegateSigner.signerKey, edgeHash, delegateSignature);
+      const message = await client.makeSignerAdd(delegateSigner.signerKey);
       expect(isSignerAdd(message)).toBe(true);
     });
   });

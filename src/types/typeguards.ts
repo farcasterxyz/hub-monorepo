@@ -36,31 +36,18 @@ export const isReaction = (msg: FC.Message): msg is FC.Reaction => {
   );
 };
 
-export const isSignerMessage = (msg: FC.Message) => {
-  return isSignerAdd(msg) || isSignerRemove(msg) || isCustodyRemoveAll(msg);
+export const isSignerMessage = (msg: FC.Message): msg is FC.SignerMessage => {
+  return isSignerAdd(msg) || isSignerRemove(msg);
 };
 
 export const isSignerAdd = (msg: FC.Message): msg is FC.SignerAdd => {
   const body = (msg as FC.SignerAdd).data?.body;
-  return (
-    body &&
-    body.schema === 'farcaster.xyz/schemas/v1/signer-add' &&
-    typeof body.delegate === 'string' &&
-    body.delegateSignatureType === FC.SignatureAlgorithm.Ed25519 &&
-    typeof body.delegateSignature === 'string' &&
-    typeof body.edgeHash === 'string' &&
-    body.edgeHash.length > 0
-  );
+  return body && body.schema === 'farcaster.xyz/schemas/v1/signer-add' && typeof body.delegate === 'string';
 };
 
 export const isSignerRemove = (msg: FC.Message): msg is FC.SignerRemove => {
   const body = (msg as FC.SignerRemove).data?.body;
   return body && body.schema === 'farcaster.xyz/schemas/v1/signer-remove' && typeof body.delegate === 'string';
-};
-
-export const isCustodyRemoveAll = (msg: FC.Message): msg is FC.CustodyRemoveAll => {
-  const body = (msg as FC.CustodyRemoveAll).data?.body;
-  return body && body.schema === 'farcaster.xyz/schemas/v1/custody-remove-all';
 };
 
 export const isVerification = (msg: FC.Message): msg is FC.Verification => {

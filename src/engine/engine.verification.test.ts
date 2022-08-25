@@ -40,8 +40,8 @@ describe('mergeVerification', () => {
     aliceSigner = await generateEd25519Signer();
     transientParams = { transient: { signer: aliceSigner } };
     aliceSignerAdd = await Factories.SignerAdd.create(
-      { data: { fid: aliceFid } },
-      { transient: { signer: aliceCustody, delegateSigner: aliceSigner } }
+      { data: { fid: aliceFid, body: { delegate: aliceSigner.signerKey } } },
+      { transient: { signer: aliceCustody } }
     );
     aliceEthWallet = Wallet.createRandom();
     transientParams = { transient: { signer: aliceSigner, ethWallet: aliceEthWallet } };
@@ -71,10 +71,10 @@ describe('mergeVerification', () => {
     );
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     engine._reset();
-    engine.mergeIDRegistryEvent(aliceCustodyRegister);
-    engine.mergeSignerMessage(aliceSignerAdd);
+    await engine.mergeIDRegistryEvent(aliceCustodyRegister);
+    await engine.mergeSignerMessage(aliceSignerAdd);
   });
 
   test('fails with invalid message type', async () => {
