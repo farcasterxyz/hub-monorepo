@@ -26,7 +26,7 @@
   },
   "homepage": "https://github.com/farcasterxyz/node-playground#readme",
   "devDependencies": {
-    "@types/faker": "6.6.9",
+    "@types/faker": "5.5.9",
     "@types/jest": "^28.1.7",
     "@types/node": "^18.7.6",
     "@typescript-eslint/eslint-plugin": "^5.33.1",
@@ -36,7 +36,7 @@
     "eslint-plugin-prettier": "^4.0.0",
     "fishery": "^2.2.2",
     "husky": "^8.0.1",
-    "jest": "^27.5.1",
+    "jest": "^28.0.8",
     "lint-staged": "^13.0.3",
     "nodemon": "^2.0.19",
     "prettier": "^2.6.0",
@@ -52,7 +52,7 @@
     "colors": "^1.4.0",
     "ethereum-cryptography": "^1.1.2",
     "ethers": "^5.6.1",
-    "faker": "6.6.6",
+    "faker": "5.5.3",
     "log-update": "5.0.1",
     "neverthrow": "^5.0.0",
     "tiny-typed-emitter": "^2.1.0"
