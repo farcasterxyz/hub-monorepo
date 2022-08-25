@@ -678,6 +678,210 @@ describe('merge', () => {
         expect(signersByCustody()).toEqual(new Map());
         expect(events).toEqual([['changeCustody', custody1.signerKey, custody1Register]]);
       });
+
+      describe('when signer was already added by a different custody address', () => {
+        beforeEach(() => {
+          expect(set.mergeIDRegistryEvent(custody2Transfer).isOk()).toBe(true);
+        });
+
+        test('succeeds with later custody address', () => {
+          expect(set.merge(addA).isOk()).toBe(true);
+          expect(set.merge(remA2).isOk()).toBe(true);
+          expect(custodyAddress()).toEqual(custody2.signerKey);
+          expect(signersByCustody()).toEqual(
+            new Map([
+              [custody1.signerKey, { adds: new Map([[a.signerKey, addA]]), removes: new Map() }],
+              [custody2.signerKey, { adds: new Map(), removes: new Map([[a.signerKey, remA2]]) }],
+            ])
+          );
+          expect(events).toEqual([
+            ['changeCustody', custody1.signerKey, custody1Register],
+            ['changeCustody', custody2.signerKey, custody2Transfer],
+            ['removeSigner', a.signerKey, remA2],
+          ]);
+        });
+
+        test('succeeds but does not emit removeSigner event with earlier custody address', () => {
+          expect(set.merge(addA2).isOk()).toBe(true);
+          expect(set.merge(remA).isOk()).toBe(true);
+          expect(custodyAddress()).toEqual(custody2.signerKey);
+          expect(signersByCustody()).toEqual(
+            new Map([
+              [custody1.signerKey, { adds: new Map(), removes: new Map([[a.signerKey, remA]]) }],
+              [custody2.signerKey, { adds: new Map([[a.signerKey, addA2]]), removes: new Map() }],
+            ])
+          );
+          expect(events).toEqual([
+            ['changeCustody', custody1.signerKey, custody1Register],
+            ['changeCustody', custody2.signerKey, custody2Transfer],
+            ['addSigner', a.signerKey, addA2],
+          ]);
+        });
+      });
+
+      describe('when signer was already added by the same custody address', () => {
+        beforeEach(() => {
+          expect(set.merge(addA).isOk()).toBe(true);
+        });
+
+        test('succeeds with later timestamp', () => {
+          expect(set.merge(remA).isOk()).toBe(true);
+          expect(custodyAddress()).toEqual(custody1.signerKey);
+          expect(signersByCustody()).toEqual(
+            new Map([[custody1.signerKey, { adds: new Map(), removes: new Map([[a.signerKey, remA]]) }]])
+          );
+          expect(events).toEqual([
+            ['changeCustody', custody1.signerKey, custody1Register],
+            ['addSigner', a.signerKey, addA],
+            ['removeSigner', a.signerKey, remA],
+          ]);
+        });
+
+        test('succeeds (no-ops) with earlier timestamp', () => {
+          const remAEarlier: SignerRemove = {
+            ...remA,
+            hash: Faker.datatype.hexaDecimal(128),
+            data: { ...remA.data, signedAt: addA.data.signedAt - 1 },
+          };
+          expect(set.merge(remAEarlier).isOk()).toBe(true);
+          expect(custodyAddress()).toEqual(custody1.signerKey);
+          expect(signersByCustody()).toEqual(
+            new Map([[custody1.signerKey, { adds: new Map([[a.signerKey, addA]]), removes: new Map() }]])
+          );
+          expect(events).toEqual([
+            ['changeCustody', custody1.signerKey, custody1Register],
+            ['addSigner', a.signerKey, addA],
+          ]);
+        });
+
+        test('succeeds with the same timestamp', () => {
+          const remASameTimestamp: SignerRemove = {
+            ...remA,
+            hash: Faker.datatype.hexaDecimal(128),
+            data: { ...remA.data, signedAt: addA.data.signedAt },
+          };
+          expect(set.merge(remASameTimestamp).isOk()).toBe(true);
+          expect(custodyAddress()).toEqual(custody1.signerKey);
+          expect(signersByCustody()).toEqual(
+            new Map([[custody1.signerKey, { adds: new Map(), removes: new Map([[a.signerKey, remASameTimestamp]]) }]])
+          );
+          expect(events).toEqual([
+            ['changeCustody', custody1.signerKey, custody1Register],
+            ['addSigner', a.signerKey, addA],
+            ['removeSigner', a.signerKey, remASameTimestamp],
+          ]);
+        });
+      });
+
+      describe('when signer was already removed by a different custody address', () => {
+        beforeEach(() => {
+          expect(set.mergeIDRegistryEvent(custody2Transfer).isOk()).toBe(true);
+        });
+
+        test('succeeds with later custody address', () => {
+          expect(set.merge(remA).isOk()).toBe(true);
+          expect(set.merge(remA2).isOk()).toBe(true);
+          expect(custodyAddress()).toEqual(custody2.signerKey);
+          expect(signersByCustody()).toEqual(
+            new Map([
+              [custody1.signerKey, { adds: new Map(), removes: new Map([[a.signerKey, remA]]) }],
+              [custody2.signerKey, { adds: new Map(), removes: new Map([[a.signerKey, remA2]]) }],
+            ])
+          );
+          expect(events).toEqual([
+            ['changeCustody', custody1.signerKey, custody1Register],
+            ['changeCustody', custody2.signerKey, custody2Transfer],
+            ['removeSigner', a.signerKey, remA2],
+          ]);
+        });
+
+        test('succeeds but does not emit removeSigner event with earlier custody address', () => {
+          expect(set.merge(remA2).isOk()).toBe(true);
+          expect(set.merge(remA).isOk()).toBe(true);
+          expect(custodyAddress()).toEqual(custody2.signerKey);
+          expect(signersByCustody()).toEqual(
+            new Map([
+              [custody2.signerKey, { adds: new Map(), removes: new Map([[a.signerKey, remA2]]) }],
+              [custody1.signerKey, { adds: new Map(), removes: new Map([[a.signerKey, remA]]) }],
+            ])
+          );
+          expect(events).toEqual([
+            ['changeCustody', custody1.signerKey, custody1Register],
+            ['changeCustody', custody2.signerKey, custody2Transfer],
+            ['removeSigner', a.signerKey, remA2],
+          ]);
+        });
+      });
+
+      describe('when signer was already removed by the same custody address', () => {
+        beforeEach(() => {
+          expect(set.merge(remA).isOk()).toBe(true);
+        });
+
+        test('succeeds with later timestamp', () => {
+          const remALater: SignerRemove = {
+            ...remA,
+            hash: Faker.datatype.hexaDecimal(128),
+            data: { ...remA.data, signedAt: remA.data.signedAt + 1 },
+          };
+          expect(set.merge(remALater).isOk()).toBe(true);
+          expect(custodyAddress()).toEqual(custody1.signerKey);
+          expect(signersByCustody()).toEqual(
+            new Map([[custody1.signerKey, { adds: new Map(), removes: new Map([[a.signerKey, remALater]]) }]])
+          );
+          expect(events).toEqual([
+            ['changeCustody', custody1.signerKey, custody1Register],
+            ['removeSigner', a.signerKey, remA],
+            ['removeSigner', a.signerKey, remALater],
+          ]);
+        });
+
+        test('succeeds (no-ops) with earlier timestamp', () => {
+          const remAEarlier: SignerRemove = {
+            ...remA,
+            hash: Faker.datatype.hexaDecimal(128),
+            data: { ...remA.data, signedAt: remA.data.signedAt - 1 },
+          };
+          expect(set.merge(remAEarlier).isOk()).toBe(true);
+          expect(custodyAddress()).toEqual(custody1.signerKey);
+          expect(signersByCustody()).toEqual(
+            new Map([[custody1.signerKey, { adds: new Map(), removes: new Map([[a.signerKey, remA]]) }]])
+          );
+          expect(events).toEqual([
+            ['changeCustody', custody1.signerKey, custody1Register],
+            ['removeSigner', a.signerKey, remA],
+          ]);
+        });
+
+        describe('with the same timestamp', () => {
+          test('succeeds with higher message hash', () => {
+            const remAHigherHash: SignerRemove = { ...remA, hash: remA.hash + 'a' };
+            expect(set.merge(remAHigherHash).isOk()).toBe(true);
+            expect(custodyAddress()).toEqual(custody1.signerKey);
+            expect(signersByCustody()).toEqual(
+              new Map([[custody1.signerKey, { adds: new Map(), removes: new Map([[a.signerKey, remAHigherHash]]) }]])
+            );
+            expect(events).toEqual([
+              ['changeCustody', custody1.signerKey, custody1Register],
+              ['removeSigner', a.signerKey, remA],
+              ['removeSigner', a.signerKey, remAHigherHash],
+            ]);
+          });
+
+          test('succeeds (no-ops) with lower message hash', () => {
+            const remALowerHash: SignerRemove = { ...remA, hash: remA.hash.slice(0, -1) };
+            expect(set.merge(remALowerHash).isOk()).toBe(true);
+            expect(custodyAddress()).toEqual(custody1.signerKey);
+            expect(signersByCustody()).toEqual(
+              new Map([[custody1.signerKey, { adds: new Map(), removes: new Map([[a.signerKey, remA]]) }]])
+            );
+            expect(events).toEqual([
+              ['changeCustody', custody1.signerKey, custody1Register],
+              ['removeSigner', a.signerKey, remA],
+            ]);
+          });
+        });
+      });
     });
   });
 });
