@@ -69,14 +69,17 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     return this._custodyEvent;
   }
 
+  /** getSigners returns the set of valid delegate signers for the current custody address */
   getSigners(): Set<string> {
     return this._custodySigners ? new Set([...this._custodySigners.adds.keys()]) : new Set();
   }
 
+  /** get returns the SignerAdd message for a delegate signer if the signer is valid */
   get(signer: string): SignerAdd | undefined {
     return this._custodySigners ? this._custodySigners.adds.get(sanitizeSigner(signer)) : undefined;
   }
 
+  /** merge tries to merge a SignerAdd or SignerRemove message into the set */
   merge(message: SignerMessage): Result<void, string> {
     if (isSignerRemove(message)) {
       return this.mergeSignerRemove(message);
@@ -89,13 +92,14 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     return err('SignerSet.merge: invalid message format');
   }
 
+  /** mergeIDRegistryEvent tries to update the custody address with an event from the Farcaster ID Registry contract. */
   mergeIDRegistryEvent(event: IDRegistryEvent): Result<void, string> {
     // If new event is a duplicate or occured before the existing custodyEvent, no-op
     if (this._custodyEvent && this.eventCompare(event, this._custodyEvent) <= 0) {
       return ok(undefined);
     }
 
-    // Get custody address and signers about to be removed
+    // Get LWW set of signers about to be removed
     const oldSigners = this._custodySigners;
 
     // Update custodyEvent and emit a changeCustody event
@@ -103,7 +107,8 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     this._custodyEvent = event;
     this.emit('changeCustody', newCustodyAddress, event);
 
-    // Emit removeSigner events for all signers that are no longer valid
+    // Emit removeSigner events for all delegate signers that are no longer valid, meaning the set has not merged
+    // a SignerAdd message for that delegate from the new custody address
     if (oldSigners) {
       for (const signer of oldSigners.adds.keys()) {
         if (!this._custodySigners || !this._custodySigners.adds.has(signer)) {
@@ -112,16 +117,17 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
       }
     }
 
-    // Emit addSigner events for all signers that are now valid, even ones that already existed
+    // Emit addSigner events for all delegate signers that are now valid, even ones that already existed
     // in oldSigners.adds, because we want to make sure an addSigner event has been emitted with the
-    // relevant SignerAdd message
+    // most up-to-date SignerAdd message for each delegate signer
     if (this._custodySigners) {
       for (const [signer, message] of this._custodySigners.adds) {
         this.emit('addSigner', signer, message);
       }
     }
 
-    // Clean up signersByCustody object
+    // Clean up signersByCustody object by deleting all entries that are not for the new custody address
+    // TODO: consider running this cleanup asynchronously on some cadence rather than only when a transfer happens
     for (const custodyAddress of this._signersByCustody.keys()) {
       if (custodyAddress !== newCustodyAddress) {
         this._signersByCustody.delete(custodyAddress);
