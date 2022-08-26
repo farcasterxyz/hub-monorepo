@@ -50,7 +50,7 @@ describe('mergeSignerMessage', () => {
     });
 
     test('fails with invalid message type', async () => {
-      const cast = (await Factories.Cast.create(
+      const cast = (await Factories.CastShort.create(
         { data: { fid: aliceFid } },
         { transient: { signer: aliceCustodySigner } }
       )) as unknown as SignerMessage;

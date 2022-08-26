@@ -10,8 +10,8 @@ let castRemove1: CastRemove;
 let castRemove2: CastRemove;
 
 beforeAll(async () => {
-  castShort1 = await Factories.Cast.create();
-  castShort2 = await Factories.Cast.create();
+  castShort1 = await Factories.CastShort.create();
+  castShort2 = await Factories.CastShort.create();
 
   castRemove1 = await Factories.CastRemove.create({
     data: {
@@ -53,7 +53,7 @@ describe('get', () => {
 
 describe('merge', () => {
   test('fails with invalid message format', async () => {
-    const invalidCast = (await Factories.Follow.create()) as unknown as CastShort;
+    const invalidCast = (await Factories.FollowAdd.create()) as unknown as CastShort;
     const res = set.merge(invalidCast);
     expect(res.isOk()).toBe(false);
     expect(res._unsafeUnwrapErr()).toBe('CastSet.merge: invalid message format');
@@ -64,26 +64,25 @@ describe('merge', () => {
 
     test('succeeds with a valid add message', () => {
       expect(set.merge(castShort1).isOk()).toBe(true);
-      expect(subject()).toEqual([castShort1]);
+      expect(subject()).toEqual(new Set([castShort1]));
     });
 
     test('succeeds with multiple valid add messages', () => {
       expect(set.merge(castShort1).isOk()).toBe(true);
       expect(set.merge(castShort2).isOk()).toBe(true);
-      // compare sets instead of arrays to avoid failures due to ordering by hash
       expect(new Set(subject())).toEqual(new Set([castShort2, castShort1]));
     });
 
     test('succeeds (no-ops) if the add was already removed', () => {
       expect(set.merge(castRemove1).isOk()).toBe(true);
       expect(set.merge(castShort1).isOk()).toBe(true);
-      expect(subject()).toEqual([]);
+      expect(subject()).toEqual(new Set());
     });
 
     test('succeeds (no-ops) if the message is added twice', () => {
       expect(set.merge(castShort1).isOk()).toBe(true);
       expect(set.merge(castShort1).isOk()).toBe(true);
-      expect(subject()).toEqual([castShort1]);
+      expect(subject()).toEqual(new Set([castShort1]));
     });
   });
 
@@ -91,30 +90,30 @@ describe('merge', () => {
     const subject = () => set._getRemoves();
 
     test("succeeds even if the add message doesn't exist", () => {
-      expect(set._getAdds()).toEqual([]);
+      expect(set._getAdds()).toEqual(new Set());
       expect(set.merge(castRemove1).isOk()).toBe(true);
-      expect(subject()).toEqual([castRemove1]);
+      expect(subject()).toEqual(new Set([castRemove1]));
     });
 
     test('succeeds with multiple remove messages', () => {
-      expect(set._getAdds()).toEqual([]);
+      expect(set._getAdds()).toEqual(new Set());
       expect(set.merge(castRemove1).isOk()).toBe(true);
       expect(set.merge(castRemove2).isOk()).toBe(true);
-      expect(subject()).toEqual([castRemove1, castRemove2]);
+      expect(subject()).toEqual(new Set([castRemove1, castRemove2]));
     });
 
     test('succeeds and removes the add message if it exists', () => {
       expect(set.merge(castShort1).isOk()).toBe(true);
       expect(set.merge(castRemove1).isOk()).toBe(true);
-      expect(set._getAdds()).toEqual([]);
-      expect(subject()).toEqual([castRemove1]);
+      expect(set._getAdds()).toEqual(new Set());
+      expect(subject()).toEqual(new Set([castRemove1]));
     });
 
     test('succeeds (no-ops) if the same remove message is added twice', () => {
       expect(set.merge(castRemove1).isOk()).toBe(true);
       expect(set.merge(castRemove1).isOk()).toBe(true);
-      expect(set._getAdds()).toEqual([]);
-      expect(subject()).toEqual([castRemove1]);
+      expect(set._getAdds()).toEqual(new Set());
+      expect(subject()).toEqual(new Set([castRemove1]));
     });
   });
 });
@@ -127,22 +126,22 @@ describe('revokeSigner', () => {
   test('succeeds and drops add messages', () => {
     expect(set.merge(castShort1).isOk()).toBe(true);
     expect(set.revokeSigner(castShort1.signer).isOk()).toBe(true);
-    expect(set._getAdds()).toEqual([]);
-    expect(set._getRemoves()).toEqual([]);
+    expect(set._getAdds()).toEqual(new Set());
+    expect(set._getRemoves()).toEqual(new Set());
   });
 
   test('succeeds and drops remove messages', () => {
     expect(set.merge(castRemove1).isOk()).toBe(true);
     expect(set.revokeSigner(castRemove1.signer).isOk()).toBe(true);
-    expect(set._getAdds()).toEqual([]);
-    expect(set._getRemoves()).toEqual([]);
+    expect(set._getAdds()).toEqual(new Set());
+    expect(set._getRemoves()).toEqual(new Set());
   });
 
   test('suceeds and only removes messages from signer', () => {
     expect(set.merge(castShort1).isOk()).toBe(true);
     expect(set.merge(castShort2).isOk()).toBe(true);
     expect(set.revokeSigner(castShort1.signer).isOk()).toBe(true);
-    expect(set._getAdds()).toEqual([castShort2]);
-    expect(set._getRemoves()).toEqual([]);
+    expect(set._getAdds()).toEqual(new Set([castShort2]));
+    expect(set._getRemoves()).toEqual(new Set());
   });
 });

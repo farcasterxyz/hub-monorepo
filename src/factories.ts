@@ -5,12 +5,10 @@ import {
   CastShort,
   CastRecast,
   CastRemove,
-  Reaction,
-  VerificationAdd,
+  VerificationEthereumAddress,
   VerificationRemove,
-  VerificationClaim,
-  VerificationRemoveFactoryTransientParams,
-  VerificationAddFactoryTransientParams,
+  VerificationEthereumAddressClaim,
+  VerificationEthereumAddressFactoryTransientParams,
   SignerAdd,
   SignerRemove,
   SignatureAlgorithm,
@@ -19,8 +17,13 @@ import {
   MessageSigner,
   HashAlgorithm,
   IDRegistryEvent,
-  Follow,
   SignerMessageFactoryTransientParams,
+  MessageType,
+  FarcasterNetwork,
+  ReactionAdd,
+  ReactionRemove,
+  FollowAdd,
+  FollowRemove,
 } from '~/types';
 import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
@@ -66,7 +69,7 @@ const addEnvelopeToMessage = async (
  */
 export const Factories = {
   /** Generate a valid Cast with randomized properties */
-  Cast: Factory.define<CastShort, MessageFactoryTransientParams, CastShort>(({ onCreate, transientParams }) => {
+  CastShort: Factory.define<CastShort, MessageFactoryTransientParams, CastShort>(({ onCreate, transientParams }) => {
     onCreate(async (props) => {
       return (await addEnvelopeToMessage(props, transientParams)) as CastShort;
     });
@@ -79,10 +82,11 @@ export const Factories = {
         body: {
           embed,
           text,
-          schema: 'farcaster.xyz/schemas/v1/cast-short',
         },
         signedAt: Faker.time.recent(),
         fid: Faker.datatype.number(),
+        type: MessageType.CastShort,
+        network: FarcasterNetwork.Testnet,
       },
       hash: '',
       hashType: HashAlgorithm.Blake2b,
@@ -102,10 +106,11 @@ export const Factories = {
       data: {
         body: {
           targetHash: Faker.datatype.hexaDecimal(40).toLowerCase(),
-          schema: 'farcaster.xyz/schemas/v1/cast-remove',
         },
         signedAt: Faker.time.recent(),
         fid: Faker.datatype.number(),
+        type: MessageType.CastRemove,
+        network: FarcasterNetwork.Testnet,
       },
       hash: '',
       hashType: HashAlgorithm.Blake2b,
@@ -124,11 +129,12 @@ export const Factories = {
     return {
       data: {
         body: {
-          targetCastUri: 'farcaster://alice/cast/1', // TODO: Find some way to generate this.
-          schema: 'farcaster.xyz/schemas/v1/cast-recast',
+          targetCastUri: Faker.internet.url(),
         },
         signedAt: Faker.time.recent(),
         fid: Faker.datatype.number(),
+        type: MessageType.CastRecast,
+        network: FarcasterNetwork.Testnet,
       },
       hash: '',
       hashType: HashAlgorithm.Blake2b,
@@ -138,22 +144,75 @@ export const Factories = {
     };
   }),
 
-  /** Generate a valid Reaction with randomized properties */
-  Reaction: Factory.define<Reaction, MessageFactoryTransientParams, Reaction>(({ onCreate, transientParams }) => {
+  /** Generate a valid ReactionAdd with randomized properties */
+  ReactionAdd: Factory.define<ReactionAdd, MessageFactoryTransientParams, ReactionAdd>(
+    ({ onCreate, transientParams }) => {
+      onCreate(async (props) => {
+        return (await addEnvelopeToMessage(props, transientParams)) as ReactionAdd;
+      });
+
+      return {
+        data: {
+          body: {
+            targetUri: Faker.internet.url(),
+            type: 'like',
+          },
+          signedAt: Faker.time.recent(),
+          fid: Faker.datatype.number(),
+          type: MessageType.ReactionAdd,
+          network: FarcasterNetwork.Testnet,
+        },
+        hash: '',
+        hashType: HashAlgorithm.Blake2b,
+        signature: '',
+        signatureType: SignatureAlgorithm.Ed25519,
+        signer: '',
+      };
+    }
+  ),
+
+  /** Generate a valid ReactionRemove with randomized properties */
+  ReactionRemove: Factory.define<ReactionRemove, MessageFactoryTransientParams, ReactionRemove>(
+    ({ onCreate, transientParams }) => {
+      onCreate(async (props) => {
+        return (await addEnvelopeToMessage(props, transientParams)) as ReactionRemove;
+      });
+
+      return {
+        data: {
+          body: {
+            targetUri: Faker.internet.url(),
+            type: 'like',
+          },
+          signedAt: Faker.time.recent(),
+          fid: Faker.datatype.number(),
+          type: MessageType.ReactionRemove,
+          network: FarcasterNetwork.Testnet,
+        },
+        hash: '',
+        hashType: HashAlgorithm.Blake2b,
+        signature: '',
+        signatureType: SignatureAlgorithm.Ed25519,
+        signer: '',
+      };
+    }
+  ),
+
+  /** Generate a valid FollowAdd with randomized properties */
+  FollowAdd: Factory.define<FollowAdd, MessageFactoryTransientParams, FollowAdd>(({ onCreate, transientParams }) => {
     onCreate(async (props) => {
-      return (await addEnvelopeToMessage(props, transientParams)) as Reaction;
+      return (await addEnvelopeToMessage(props, transientParams)) as FollowAdd;
     });
 
     return {
       data: {
         body: {
-          active: true,
           targetUri: Faker.internet.url(),
-          type: 'like',
-          schema: 'farcaster.xyz/schemas/v1/reaction',
         },
         signedAt: Faker.time.recent(),
         fid: Faker.datatype.number(),
+        type: MessageType.FollowAdd,
+        network: FarcasterNetwork.Testnet,
       },
       hash: '',
       hashType: HashAlgorithm.Blake2b,
@@ -163,29 +222,31 @@ export const Factories = {
     };
   }),
 
-  /** Generate a valid Follow with randomized properties */
-  Follow: Factory.define<Follow, MessageFactoryTransientParams, Follow>(({ onCreate, transientParams }) => {
-    onCreate(async (props) => {
-      return (await addEnvelopeToMessage(props, transientParams)) as Follow;
-    });
+  /** Generate a valid FollowRemove with randomized properties */
+  FollowRemove: Factory.define<FollowRemove, MessageFactoryTransientParams, FollowRemove>(
+    ({ onCreate, transientParams }) => {
+      onCreate(async (props) => {
+        return (await addEnvelopeToMessage(props, transientParams)) as FollowRemove;
+      });
 
-    return {
-      data: {
-        body: {
-          active: true,
-          targetUri: Faker.internet.url(),
-          schema: 'farcaster.xyz/schemas/v1/follow',
+      return {
+        data: {
+          body: {
+            targetUri: Faker.internet.url(),
+          },
+          signedAt: Faker.time.recent(),
+          fid: Faker.datatype.number(),
+          type: MessageType.FollowRemove,
+          network: FarcasterNetwork.Testnet,
         },
-        signedAt: Faker.time.recent(),
-        fid: Faker.datatype.number(),
-      },
-      hash: '',
-      hashType: HashAlgorithm.Blake2b,
-      signature: '',
-      signatureType: SignatureAlgorithm.Ed25519,
-      signer: '',
-    };
-  }),
+        hash: '',
+        hashType: HashAlgorithm.Blake2b,
+        signature: '',
+        signatureType: SignatureAlgorithm.Ed25519,
+        signer: '',
+      };
+    }
+  ),
 
   /** Generate a valid IDRegistryEvent with randomized properties */
   IDRegistryEvent: Factory.define<IDRegistryEvent, any, IDRegistryEvent>(({ onCreate }) => {
@@ -220,10 +281,11 @@ export const Factories = {
         data: {
           body: {
             delegate: '',
-            schema: 'farcaster.xyz/schemas/v1/signer-add',
           },
           signedAt: Faker.time.recent(),
           fid: Faker.datatype.number(),
+          type: MessageType.SignerAdd,
+          network: FarcasterNetwork.Testnet,
         },
         hash: '',
         hashType: HashAlgorithm.Blake2b,
@@ -248,10 +310,11 @@ export const Factories = {
         data: {
           body: {
             delegate: '',
-            schema: 'farcaster.xyz/schemas/v1/signer-remove',
           },
           signedAt: Faker.time.recent(),
           fid: Faker.datatype.number(),
+          type: MessageType.SignerRemove,
+          network: FarcasterNetwork.Testnet,
         },
         hash: '',
         hashType: HashAlgorithm.Blake2b,
@@ -262,70 +325,60 @@ export const Factories = {
     }
   ),
 
-  /** Generate a VerificationAdd message with randomized properties */
-  VerificationAdd: Factory.define<VerificationAdd, VerificationAddFactoryTransientParams, VerificationAdd>(
-    ({ onCreate, transientParams }) => {
-      const { ethWallet = ethers.Wallet.createRandom() } = transientParams;
+  /** Generate a VerificationEthereumAddress message with randomized properties */
+  VerificationEthereumAddress: Factory.define<
+    VerificationEthereumAddress,
+    VerificationEthereumAddressFactoryTransientParams,
+    VerificationEthereumAddress
+  >(({ onCreate, transientParams }) => {
+    const { ethWallet = ethers.Wallet.createRandom() } = transientParams;
 
-      onCreate(async (props) => {
-        /** Generate claimHash if missing */
-        if (!props.data.body.claimHash) {
-          const verificationClaim: VerificationClaim = {
-            fid: props.data.fid,
-            externalUri: props.data.body.externalUri,
-            blockHash: props.data.body.blockHash,
-          };
-          props.data.body.claimHash = await hashFCObject(verificationClaim);
-        }
+    onCreate(async (props) => {
+      /** Generate claimHash if missing */
+      if (!props.data.body.claimHash) {
+        const verificationClaim: VerificationEthereumAddressClaim = {
+          fid: props.data.fid,
+          externalUri: props.data.body.externalUri,
+          blockHash: props.data.body.blockHash,
+        };
+        props.data.body.claimHash = await hashFCObject(verificationClaim);
+      }
 
-        /** Generate externalSignature if missing */
-        if (!props.data.body.externalSignature) {
-          props.data.body.externalSignature = await ethWallet.signMessage(props.data.body.claimHash);
-        }
+      /** Generate externalSignature if missing */
+      if (!props.data.body.externalSignature) {
+        props.data.body.externalSignature = await ethWallet.signMessage(props.data.body.claimHash);
+      }
 
-        /** Complete envelope */
-        return (await addEnvelopeToMessage(props, transientParams)) as VerificationAdd;
-      });
+      /** Complete envelope */
+      return (await addEnvelopeToMessage(props, transientParams)) as VerificationEthereumAddress;
+    });
 
-      return {
-        data: {
-          body: {
-            externalUri: ethWallet.address,
-            claimHash: '',
-            blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-            externalSignature: '',
-            externalSignatureType: SignatureAlgorithm.EthereumPersonalSign,
-            schema: 'farcaster.xyz/schemas/v1/verification-add',
-          },
-          signedAt: Faker.time.recent(),
-          fid: Faker.datatype.number(),
+    return {
+      data: {
+        body: {
+          externalUri: ethWallet.address,
+          claimHash: '',
+          blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+          externalSignature: '',
+          externalSignatureType: SignatureAlgorithm.EthereumPersonalSign,
         },
-        hash: '',
-        hashType: HashAlgorithm.Blake2b,
-        signature: '',
-        signatureType: SignatureAlgorithm.Ed25519,
-        signer: '',
-      };
-    }
-  ),
+        signedAt: Faker.time.recent(),
+        fid: Faker.datatype.number(),
+        type: MessageType.VerificationEthereumAddress,
+        network: FarcasterNetwork.Testnet,
+      },
+      hash: '',
+      hashType: HashAlgorithm.Blake2b,
+      signature: '',
+      signatureType: SignatureAlgorithm.Ed25519,
+      signer: '',
+    };
+  }),
 
   /** Generate a VerificationRemove message with randomized properties */
-  VerificationRemove: Factory.define<VerificationRemove, VerificationRemoveFactoryTransientParams, VerificationRemove>(
+  VerificationRemove: Factory.define<VerificationRemove, MessageFactoryTransientParams, VerificationRemove>(
     ({ onCreate, transientParams }) => {
-      const { externalUri = Faker.datatype.hexaDecimal(40).toLowerCase() } = transientParams;
-
       onCreate(async (props) => {
-        /** Generate claimHash if missing */
-        if (!props.data.body.claimHash) {
-          const verificationClaim: VerificationClaim = {
-            fid: props.data.fid,
-            externalUri,
-            blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-          };
-          props.data.body.claimHash = await hashFCObject(verificationClaim);
-        }
-
-        /** Complete envelope */
         return (await addEnvelopeToMessage(props, transientParams)) as VerificationRemove;
       });
 
@@ -333,10 +386,11 @@ export const Factories = {
         data: {
           body: {
             claimHash: '',
-            schema: 'farcaster.xyz/schemas/v1/verification-remove' as const,
           },
           signedAt: Faker.time.recent(),
           fid: Faker.datatype.number(),
+          type: MessageType.VerificationRemove,
+          network: FarcasterNetwork.Testnet,
         },
         hash: '',
         hashType: HashAlgorithm.Blake2b,

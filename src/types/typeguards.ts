@@ -5,10 +5,10 @@ export function isCast(msg: FC.Message): msg is FC.Cast {
 }
 
 export const isCastShort = (msg: FC.Message): msg is FC.CastShort => {
-  const body = (msg as FC.CastShort).data?.body;
+  const { body, type } = (msg as FC.CastShort).data;
   return (
+    type === FC.MessageType.CastShort &&
     body &&
-    body.schema === 'farcaster.xyz/schemas/v1/cast-short' &&
     typeof body.text === 'string' &&
     !!body.embed &&
     Array.isArray(body.embed.items)
@@ -16,24 +16,27 @@ export const isCastShort = (msg: FC.Message): msg is FC.CastShort => {
 };
 
 export const isCastRemove = (msg: FC.Message): msg is FC.CastRemove => {
-  const body = (msg as FC.CastRemove).data?.body;
-  return body && body.schema === 'farcaster.xyz/schemas/v1/cast-remove' && typeof body.targetHash === 'string';
+  const { body, type } = (msg as FC.CastRemove).data;
+  return type === FC.MessageType.CastRemove && body && typeof body.targetHash === 'string';
 };
 
 export const isCastRecast = (msg: FC.Message): msg is FC.CastRecast => {
-  const body = (msg as FC.CastRecast).data?.body;
-  return body && body.schema === 'farcaster.xyz/schemas/v1/cast-recast' && typeof body.targetCastUri === 'string';
+  const { body, type } = (msg as FC.CastRecast).data;
+  return type === FC.MessageType.CastRecast && body && typeof body.targetCastUri === 'string';
 };
 
 export const isReaction = (msg: FC.Message): msg is FC.Reaction => {
-  const body = (msg as FC.Reaction).data?.body;
-  return (
-    body &&
-    body.schema === 'farcaster.xyz/schemas/v1/reaction' &&
-    typeof body.active === 'boolean' &&
-    typeof body.targetUri === 'string' &&
-    body.type === 'like'
-  );
+  return isReactionAdd(msg) || isReactionRemove(msg);
+};
+
+export const isReactionAdd = (msg: FC.Message): msg is FC.ReactionAdd => {
+  const { body, type } = (msg as FC.ReactionAdd).data;
+  return type === FC.MessageType.ReactionAdd && body && typeof body.targetUri === 'string' && body.type === 'like';
+};
+
+export const isReactionRemove = (msg: FC.Message): msg is FC.ReactionRemove => {
+  const { body, type } = (msg as FC.ReactionRemove).data;
+  return type === FC.MessageType.ReactionRemove && body && typeof body.targetUri === 'string' && body.type === 'like';
 };
 
 export const isSignerMessage = (msg: FC.Message): msg is FC.SignerMessage => {
@@ -41,24 +44,24 @@ export const isSignerMessage = (msg: FC.Message): msg is FC.SignerMessage => {
 };
 
 export const isSignerAdd = (msg: FC.Message): msg is FC.SignerAdd => {
-  const body = (msg as FC.SignerAdd).data?.body;
-  return body && body.schema === 'farcaster.xyz/schemas/v1/signer-add' && typeof body.delegate === 'string';
+  const { body, type } = (msg as FC.SignerAdd).data;
+  return type === FC.MessageType.SignerAdd && body && typeof body.delegate === 'string';
 };
 
 export const isSignerRemove = (msg: FC.Message): msg is FC.SignerRemove => {
-  const body = (msg as FC.SignerRemove).data?.body;
-  return body && body.schema === 'farcaster.xyz/schemas/v1/signer-remove' && typeof body.delegate === 'string';
+  const { body, type } = (msg as FC.SignerRemove).data;
+  return type === FC.MessageType.SignerRemove && body && typeof body.delegate === 'string';
 };
 
 export const isVerification = (msg: FC.Message): msg is FC.Verification => {
-  return isVerificationAdd(msg) || isVerificationRemove(msg);
+  return isVerificationEthereumAddress(msg) || isVerificationRemove(msg);
 };
 
-export const isVerificationAdd = (msg: FC.Message): msg is FC.VerificationAdd => {
-  const body = (msg as FC.VerificationAdd).data?.body;
+export const isVerificationEthereumAddress = (msg: FC.Message): msg is FC.VerificationEthereumAddress => {
+  const { body, type } = (msg as FC.VerificationEthereumAddress).data;
   return (
+    type === FC.MessageType.VerificationEthereumAddress &&
     body &&
-    body.schema === 'farcaster.xyz/schemas/v1/verification-add' &&
     body.externalSignatureType === FC.SignatureAlgorithm.EthereumPersonalSign &&
     typeof body.externalSignature === 'string' &&
     typeof body.externalUri === 'string' &&
@@ -68,21 +71,25 @@ export const isVerificationAdd = (msg: FC.Message): msg is FC.VerificationAdd =>
 };
 
 export const isVerificationRemove = (msg: FC.Message): msg is FC.VerificationRemove => {
-  const body = (msg as FC.VerificationRemove).data?.body;
+  const { body, type } = (msg as FC.VerificationRemove).data;
   return (
+    type === FC.MessageType.VerificationRemove &&
     body &&
-    body.schema === 'farcaster.xyz/schemas/v1/verification-remove' &&
     typeof body.claimHash === 'string' &&
     body.claimHash.length > 0
   );
 };
 
 export const isFollow = (msg: FC.Message): msg is FC.Follow => {
-  const body = (msg as FC.Follow).data?.body;
-  return (
-    body &&
-    body.schema === 'farcaster.xyz/schemas/v1/follow' &&
-    typeof body.active === 'boolean' &&
-    typeof body.targetUri === 'string'
-  );
+  return isFollowAdd(msg) || isFollowRemove(msg);
+};
+
+export const isFollowAdd = (msg: FC.Message): msg is FC.FollowAdd => {
+  const { body, type } = (msg as FC.FollowAdd).data;
+  return type === FC.MessageType.FollowAdd && body && typeof body.targetUri === 'string';
+};
+
+export const isFollowRemove = (msg: FC.Message): msg is FC.FollowRemove => {
+  const { body, type } = (msg as FC.FollowRemove).data;
+  return type === FC.MessageType.FollowRemove && body && typeof body.targetUri === 'string';
 };

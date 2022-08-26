@@ -6,6 +6,8 @@ import {
   Ed25519Signer,
   EthereumSigner,
   Follow,
+  FollowAdd,
+  FollowRemove,
   IDRegistryEvent,
   MessageFactoryTransientParams,
   SignerAdd,
@@ -21,11 +23,11 @@ describe('mergeFollow', () => {
   let aliceSigner: Ed25519Signer;
   let aliceSignerAdd: SignerAdd;
   let cast: Cast;
-  let follow: Follow;
-  let unfollow: Follow;
+  let follow: FollowAdd;
+  let unfollow: FollowRemove;
   let transientParams: { transient: MessageFactoryTransientParams };
 
-  const aliceFollows = () => engine._getActiveFollows(aliceFid);
+  const aliceFollows = () => engine._getFollowAdds(aliceFid);
 
   beforeAll(async () => {
     aliceCustody = await generateEthereumSigner();
@@ -39,10 +41,10 @@ describe('mergeFollow', () => {
       { transient: { signer: aliceCustody, delegateSigner: aliceSigner } }
     );
     transientParams = { transient: { signer: aliceSigner } };
-    cast = await Factories.Cast.create({ data: { fid: aliceFid } }, transientParams);
-    follow = await Factories.Follow.create({ data: { fid: aliceFid, body: { active: true } } }, transientParams);
-    unfollow = await Factories.Follow.create(
-      { data: { fid: aliceFid, body: { targetUri: follow.data.body.targetUri, active: false } } },
+    cast = await Factories.CastShort.create({ data: { fid: aliceFid } }, transientParams);
+    follow = await Factories.FollowAdd.create({ data: { fid: aliceFid } }, transientParams);
+    unfollow = await Factories.FollowRemove.create(
+      { data: { fid: aliceFid, body: { targetUri: follow.data.body.targetUri } } },
       transientParams
     );
   });
@@ -65,16 +67,16 @@ describe('mergeFollow', () => {
     test('fails if there are no known signers', async () => {
       engine._resetSigners();
       const result = await engine.mergeFollow(follow);
-      expect(result._unsafeUnwrapErr()).toBe('mergeFollow: unknown user');
+      expect(result._unsafeUnwrapErr()).toBe('validateMessage: unknown user');
       expect(aliceFollows()).toEqual(new Set());
     });
 
     test('fails if the signer is not valid', async () => {
       // Calling Factory without specifying a signing key makes Faker choose a random one
-      const followNewSigner = await Factories.Follow.create({
+      const followNewSigner = await Factories.FollowAdd.create({
         data: {
           fid: aliceFid,
-          body: { targetUri: follow.data.body.targetUri, active: true },
+          body: { targetUri: follow.data.body.targetUri },
         },
       });
 
@@ -84,20 +86,17 @@ describe('mergeFollow', () => {
     });
 
     test('fails if the signer is valid, but the fid is invalid', async () => {
-      const unknownUser = await Factories.Follow.create(
-        { data: { fid: aliceFid + 1, body: { active: true } } },
-        transientParams
-      );
+      const unknownUser = await Factories.FollowAdd.create({ data: { fid: aliceFid + 1 } }, transientParams);
       const res = await engine.mergeFollow(unknownUser);
       expect(res.isOk()).toBe(false);
-      expect(res._unsafeUnwrapErr()).toBe('mergeFollow: unknown user');
+      expect(res._unsafeUnwrapErr()).toBe('validateMessage: unknown user');
       expect(aliceFollows()).toEqual(new Set());
     });
   });
 
   describe('message validation', () => {
     test('fails if the hash is invalid', async () => {
-      const followInvalidHash: Follow = { ...follow, hash: follow.hash + 'foo' };
+      const followInvalidHash: FollowAdd = { ...follow, hash: follow.hash + 'foo' };
       const res = await engine.mergeFollow(followInvalidHash);
       expect(res.isOk()).toBe(false);
       expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
@@ -114,7 +113,7 @@ describe('mergeFollow', () => {
 
     test('fails if signedAt is > current time + safety margin', async () => {
       const elevenMinutesAhead = Date.now() + 11 * 60 * 1000;
-      const futureFollow = await Factories.Follow.create(
+      const futureFollow = await Factories.FollowAdd.create(
         {
           data: {
             fid: aliceFid,
