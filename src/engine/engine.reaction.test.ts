@@ -33,8 +33,8 @@ describe('mergeReaction', () => {
     });
     aliceSigner = await generateEd25519Signer();
     aliceSignerAdd = await Factories.SignerAdd.create(
-      { data: { fid: aliceFid } },
-      { transient: { signer: aliceCustody, delegateSigner: aliceSigner } }
+      { data: { fid: aliceFid, body: { delegate: aliceSigner.signerKey } } },
+      { transient: { signer: aliceCustody } }
     );
     transient = { transient: { signer: aliceSigner } };
     cast = await Factories.Cast.create({ data: { fid: aliceFid } }, transient);
@@ -43,7 +43,7 @@ describe('mergeReaction', () => {
 
   beforeEach(async () => {
     engine._reset();
-    engine.mergeIDRegistryEvent(aliceCustodyRegister);
+    await engine.mergeIDRegistryEvent(aliceCustodyRegister);
     await engine.mergeSignerMessage(aliceSignerAdd);
   });
 
