@@ -142,10 +142,21 @@ describe('merge', () => {
         expect(reactionAdds()).toEqual(new Set());
         expect(reactionRemoves()).toEqual(new Set([remA]));
       });
+
+      test('succeeds (no-ops) with the same timestamp', () => {
+        const addASameTimestamp: ReactionAdd = {
+          ...addA,
+          hash: Faker.datatype.hexaDecimal(128),
+          data: { ...addA.data, signedAt: remA.data.signedAt },
+        };
+        expect(set.merge(addASameTimestamp).isOk()).toBe(true);
+        expect(reactionAdds()).toEqual(new Set());
+        expect(reactionRemoves()).toEqual(new Set([remA]));
+      });
     });
   });
 
-  describe('inactive', () => {
+  describe('mergeReactionRemove', () => {
     test('succeeds with valid ReactionRemove', () => {
       expect(set.merge(remA).isOk()).toBe(true);
       expect(reactionAdds()).toEqual(new Set());
@@ -209,16 +220,50 @@ describe('merge', () => {
         });
       });
     });
+
+    describe('when reaction has been added', () => {
+      beforeEach(() => {
+        expect(set.merge(addA).isOk()).toBe(true);
+      });
+
+      test('succeeds with a later timestamp', () => {
+        expect(set.merge(remA).isOk()).toBe(true);
+        expect(reactionAdds()).toEqual(new Set());
+        expect(reactionRemoves()).toEqual(new Set([remA]));
+      });
+
+      test('succeeds (no-ops) with an earlier timestamp', () => {
+        const remAEarlier: ReactionRemove = {
+          ...remA,
+          hash: Faker.datatype.hexaDecimal(128),
+          data: { ...remA.data, signedAt: addA.data.signedAt - 1 },
+        };
+        expect(set.merge(remAEarlier).isOk()).toBe(true);
+        expect(reactionAdds()).toEqual(new Set([addA]));
+        expect(reactionRemoves()).toEqual(new Set());
+      });
+
+      test('succeeds with the same timestamp', () => {
+        const remASameTimestamp: ReactionRemove = {
+          ...remA,
+          hash: Faker.datatype.hexaDecimal(128),
+          data: { ...remA.data, signedAt: addA.data.signedAt },
+        };
+        expect(set.merge(remASameTimestamp).isOk()).toBe(true);
+        expect(reactionAdds()).toEqual(new Set());
+        expect(reactionRemoves()).toEqual(new Set([remASameTimestamp]));
+      });
+    });
   });
 });
 
 describe('revokeSigner', () => {
-  let reaction: Reaction;
-  let reaction2: Reaction;
+  let reaction: ReactionAdd;
+  let reaction2: ReactionRemove;
 
   beforeAll(async () => {
     reaction = await Factories.ReactionAdd.create();
-    reaction2 = await Factories.ReactionAdd.create();
+    reaction2 = await Factories.ReactionRemove.create();
   });
 
   test('succeeds without any messages', () => {
