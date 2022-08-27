@@ -1,64 +1,51 @@
 import Client from '~/client';
 import { Factories } from '~/factories';
-import { CastShort, Ed25519Signer, EthereumSigner } from '~/types';
+import { CastShort, Ed25519Signer, FarcasterNetwork } from '~/types';
 import {
+  isCastRecast,
   isCastRemove,
   isCastShort,
-  isFollow,
+  isFollowAdd,
+  isFollowRemove,
   isReaction,
-  isSignerAdd,
-  isSignerRemove,
-  isVerificationAdd,
+  isReactionAdd,
+  isVerificationEthereumAddress,
   isVerificationRemove,
 } from '~/types/typeguards';
 import Faker from 'faker';
-import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
+import { generateEd25519Signer } from '~/utils';
 import { ethers } from 'ethers';
 
 const fid = Faker.datatype.number();
+const network = FarcasterNetwork.Devnet;
 
-let custodySigner: EthereumSigner;
 let delegateSigner: Ed25519Signer;
 let wallet: ethers.Wallet;
 let client: Client;
 let castShort: CastShort;
 
 beforeAll(async () => {
-  custodySigner = await generateEthereumSigner();
   delegateSigner = await generateEd25519Signer();
   wallet = ethers.Wallet.createRandom();
-  castShort = await Factories.Cast.create({ data: { fid } }, { transient: { signer: delegateSigner } });
-});
-
-describe('when signer is a custody address', () => {
-  beforeAll(() => {
-    client = new Client(fid, custodySigner);
-  });
-
-  describe('makeSignerAdd', () => {
-    test('succeeds', async () => {
-      const message = await client.makeSignerAdd(delegateSigner.signerKey);
-      expect(isSignerAdd(message)).toBe(true);
-    });
-  });
-
-  describe('makeSignerRemove', () => {
-    test('succeeds', async () => {
-      const message = await client.makeSignerRemove(delegateSigner.signerKey);
-      expect(isSignerRemove(message)).toBe(true);
-    });
-  });
+  castShort = await Factories.CastShort.create({ data: { fid } }, { transient: { signer: delegateSigner } });
 });
 
 describe('when signer is a delegate signer', () => {
   beforeAll(() => {
-    client = new Client(fid, delegateSigner);
+    client = new Client(fid, delegateSigner, network);
   });
 
   describe('makeCastShort', () => {
     test('succeeds', async () => {
       const message = await client.makeCastShort('foo');
       expect(isCastShort(message)).toBe(true);
+    });
+  });
+
+  describe('makeCastRecast', () => {
+    test('succeeds', async () => {
+      const message = await client.makeCastRecast(castShort);
+      expect(isCastRecast(message)).toBe(true);
     });
   });
 
@@ -69,20 +56,32 @@ describe('when signer is a delegate signer', () => {
     });
   });
 
-  describe('makeReaction', () => {
+  describe('makeReactionAdd', () => {
     test('succeeds', async () => {
-      const message = await client.makeReaction(castShort);
+      const message = await client.makeReactionAdd(castShort);
+      expect(isReactionAdd(message)).toBe(true);
+    });
+  });
+
+  describe('makeReactionRemove', () => {
+    test('succeeds', async () => {
+      const message = await client.makeReactionRemove(castShort);
       expect(isReaction(message)).toBe(true);
     });
   });
 
-  describe('makeVerificationAdd', () => {
+  describe('makeVerificationEthereumAddress', () => {
     test('succeeds', async () => {
       const claimHash = await client.makeVerificationClaimHash(wallet.address);
       const externalSignature = await wallet.signMessage(claimHash);
       const blockHash = Faker.datatype.hexaDecimal(64).toLowerCase();
-      const message = await client.makeVerificationAdd(wallet.address, claimHash, blockHash, externalSignature);
-      expect(isVerificationAdd(message)).toBe(true);
+      const message = await client.makeVerificationEthereumAddress(
+        wallet.address,
+        claimHash,
+        blockHash,
+        externalSignature
+      );
+      expect(isVerificationEthereumAddress(message)).toBe(true);
     });
   });
 
@@ -94,11 +93,19 @@ describe('when signer is a delegate signer', () => {
     });
   });
 
-  describe('makeFollow', () => {
+  describe('makeFollowAdd', () => {
     test('succeeds', async () => {
       const targetUser = Faker.internet.url();
-      const message = await client.makeFollow(targetUser);
-      expect(isFollow(message)).toBe(true);
+      const message = await client.makeFollowAdd(targetUser);
+      expect(isFollowAdd(message)).toBe(true);
+    });
+  });
+
+  describe('makeFollowRemove', () => {
+    test('succeeds', async () => {
+      const targetUser = Faker.internet.url();
+      const message = await client.makeFollowRemove(targetUser);
+      expect(isFollowRemove(message)).toBe(true);
     });
   });
 });

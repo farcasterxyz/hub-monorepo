@@ -268,7 +268,7 @@ describe('mergeIDRegistryEvent', () => {
 
 describe('merge', () => {
   test('fails with invalid message type', async () => {
-    const invalidMessage = (await Factories.Cast.create()) as any as SignerAdd;
+    const invalidMessage = (await Factories.CastShort.create()) as any as SignerAdd;
     const res = set.merge(invalidMessage);
     expect(res.isOk()).toBe(false);
     expect(res._unsafeUnwrapErr()).toBe('SignerSet.merge: invalid message format');

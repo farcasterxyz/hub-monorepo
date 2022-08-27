@@ -3,15 +3,15 @@ import { ethers } from 'ethers';
 /**
  * Message is a generic type that represents any cryptographically signed Message on Farcaster
  *
- * @data - the data that is being signed.
- * @hash - the blake2b hash of the message.
+ * @data - the data that is being signed
+ * @hash - the blake2b hash of the message
  * @hashType - the type of hash algorithm used to calculate the hash
  * @signature - the ecdsa signature of the hash of the message
  * @signatureType - the type of signing algorithm used to sign the message
  * @signer - the ethereum address whose private key was used to create the signature
  */
-export type Message<T = Body> = {
-  data: Data<T>;
+export type Message<T = MessageType, B = Body> = {
+  data: Data<T, B>;
   hash: string;
   hashType: HashAlgorithm;
   signature: string;
@@ -20,25 +20,45 @@ export type Message<T = Body> = {
 };
 
 /**
+ * MessageType is a positive number which indicates the type and version of a message
+ */
+export enum MessageType {
+  CastShort = 1,
+  CastRecast = 2,
+  CastRemove = 3,
+  ReactionAdd = 4,
+  ReactionRemove = 5,
+  FollowAdd = 6,
+  FollowRemove = 7,
+  VerificationEthereumAddress = 8,
+  VerificationRemove = 9,
+  SignerAdd = 10,
+  SignerRemove = 11,
+}
+
+/**
  * Data is a generic type that holds the part of the message that is going to be signed
  *
  * @body - the body of the message which is implemented by the specific type
+ * @type - number representing the message type
  * @signedAt - the utc unix timestamp at which the message was signed
  * @fid - the Farcaster ID owned by the signer at the time of signature
+ * @network - number representing the Farcaster Network ID
  */
-export type Data<T = Body> = {
-  body: T;
+export type Data<T = MessageType, B = Body> = {
+  body: B;
+  type: T;
   signedAt: number;
   fid: number;
+  network: FarcasterNetwork;
 };
 
 export type Body =
   | CastBody
   | ReactionBody
-  | VerificationAddBody
+  | VerificationEthereumAddressBody
   | VerificationRemoveBody
-  | SignerAddBody
-  | SignerRemoveBody
+  | SignerMessageBody
   | FollowBody;
 
 // ===========================
@@ -46,16 +66,16 @@ export type Body =
 // ===========================
 
 /** A Cast Message */
-export type Cast = Message<CastBody>;
+export type Cast = CastShort | CastRecast | CastRemove;
 
 /**A CastShort is a short-text public cast from a user */
-export type CastShort = Message<CastShortBody>;
+export type CastShort = Message<MessageType.CastShort, CastShortBody>;
 
 /** A CastReact is a share of an existing cast-short from any user */
-export type CastRecast = Message<CastRecastBody>;
+export type CastRecast = Message<MessageType.CastRecast, CastRecastBody>;
 
 /** A CastRemove is a remove of an existing cast from the same user */
-export type CastRemove = Message<CastRemoveBody>;
+export type CastRemove = Message<MessageType.CastRemove, CastRemoveBody>;
 
 export type CastBody = CastShortBody | CastRemoveBody | CastRecastBody;
 
@@ -64,12 +84,10 @@ export type CastBody = CastShortBody | CastRemoveBody | CastRecastBody;
  *
  * @text - the text of the Cast
  * @embed -
- * @schema -
  * @targetUri - the object that this Cast is replying to
  */
 export type CastShortBody = {
   embed: Embed;
-  schema: 'farcaster.xyz/schemas/v1/cast-short';
   targetUri?: URI;
   text: string;
 };
@@ -86,7 +104,6 @@ type Embed = {
 export type CastRemoveBody = {
   // TODO: is there any benefit to making this a URI, like a recast?
   targetHash: string;
-  schema: 'farcaster.xyz/schemas/v1/cast-remove';
 };
 
 /**
@@ -96,7 +113,6 @@ export type CastRemoveBody = {
  */
 export type CastRecastBody = {
   targetCastUri: FarcasterURI;
-  schema: 'farcaster.xyz/schemas/v1/cast-recast';
 };
 
 //  ===========================
@@ -104,19 +120,19 @@ export type CastRecastBody = {
 //  ===========================
 
 /** A Reaction Message */
-export type Reaction = Message<ReactionBody>;
+export type Reaction = ReactionAdd | ReactionRemove;
+
+export type ReactionAdd = Message<MessageType.ReactionAdd, ReactionBody>;
+
+export type ReactionRemove = Message<MessageType.ReactionRemove, ReactionBody>;
 
 /**
  * A ReactionBody represents the addition or removal of a reaction on an Object
  *
- * @active - whether the reaction is active or not
  * @targetUri - the object that is being reacted to
  * @type - the type of reaction
- * @schema -
  */
 export type ReactionBody = {
-  active: boolean;
-  schema: 'farcaster.xyz/schemas/v1/reaction';
   targetUri: URI;
   type: ReactionType;
 };
@@ -128,18 +144,18 @@ export type ReactionType = 'like';
 //  ===========================
 
 /** A Follow message */
-export type Follow = Message<FollowBody>;
+export type Follow = FollowAdd | FollowRemove;
+
+export type FollowAdd = Message<MessageType.FollowAdd, FollowBody>;
+
+export type FollowRemove = Message<MessageType.FollowRemove, FollowBody>;
 
 /**
  * A FollowAddBody represents the addition of a follow action on an Farcaster object
  *
- * @active - whether the follow is active or not
  * @targetUri - the object that is being followed
- * @schema -
  */
 export type FollowBody = {
-  active: boolean;
-  schema: 'farcaster.xyz/schemas/v1/follow';
   targetUri: URI;
 };
 
@@ -147,73 +163,62 @@ export type FollowBody = {
 //  Verification Types
 //  ===========================
 
-export type Verification = VerificationAdd | VerificationRemove;
+export type Verification = VerificationEthereumAddress | VerificationRemove;
 
-/** VerificationAdd message */
-export type VerificationAdd = Message<VerificationAddBody>;
+export type VerificationEthereumAddress = Message<
+  MessageType.VerificationEthereumAddress,
+  VerificationEthereumAddressBody
+>;
 
 /**
- * A VerificationAddBody represents a signed claim between a Farcaster account and an external entity (i.e. an Ethereum address)
+ * A VerificationEthereumAddressBody represents a signed claim between a Farcaster account and an external Ethereum address
  *
  * @externalUri - the URI of the external entity
  * @claimHash - the hash of the verification claim
  * @blockHash - the block hash of the current block
  * @externalSignature - the signature of the hash of the verification claim, signed by the external key pair
  * @externalSignatureType - type of signature from set of supported types (see version 0x45 of https://eips.ethereum.org/EIPS/eip-191 for 'eth-personal-sign')
- * @schema -
  */
-export type VerificationAddBody = {
+export type VerificationEthereumAddressBody = {
   externalUri: URI;
   claimHash: string;
   blockHash: string;
   externalSignature: string;
   externalSignatureType: SignatureAlgorithm.EthereumPersonalSign;
-  schema: 'farcaster.xyz/schemas/v1/verification-add';
 };
 
 /**
- * A VerificationAddFactoryTransientParams is passed to the VerificationAdd factory
+ * A VerificationEthereumAddressFactoryTransientParams is passed to the VerificationEthereumAddress factory
  *
  * @ethWallet - the wallet to generate and/or sign the claimHash
  */
-export type VerificationAddFactoryTransientParams = MessageFactoryTransientParams & {
+export type VerificationEthereumAddressFactoryTransientParams = MessageFactoryTransientParams & {
   ethWallet?: ethers.Wallet;
 };
 
 /**
- * A VerificationClaim is an object that includes both the farcaster account and external address
+ * A VerificationClaim is an object that includes both the farcaster account and the Ethereum address URI
  *
  * @fid - the Farcaster ID
- * @externalUri - URI of the external address (i.e. Ethereum address)
+ * @externalUri - URI of the Ethereum address
  * @blockHash - current Ethereum block hash
  */
-export type VerificationClaim = {
+export type VerificationEthereumAddressClaim = {
   fid: number;
   externalUri: URI; // TODO: constrain this farther
   blockHash: string;
 };
 
 /** VerificationRemove message */
-export type VerificationRemove = Message<VerificationRemoveBody>;
+export type VerificationRemove = Message<MessageType.VerificationRemove, VerificationRemoveBody>;
 
 /**
  * A VerificationRemoveBody represents the removal of a verification
  *
  * @claimHash - hash of the verification claim
- * @schema -
  */
 export type VerificationRemoveBody = {
   claimHash: string;
-  schema: 'farcaster.xyz/schemas/v1/verification-remove';
-};
-
-/**
- * A VerificationRemoveFactoryTransientParams is passed to the VerificationRemove factory
- *
- * @externalUri - the external address to generate the claimHash
- */
-export type VerificationRemoveFactoryTransientParams = MessageFactoryTransientParams & {
-  externalUri?: string;
 };
 
 // ===========================
@@ -222,29 +227,17 @@ export type VerificationRemoveFactoryTransientParams = MessageFactoryTransientPa
 
 export type SignerMessage = SignerAdd | SignerRemove;
 
-/** SignerAdd message */
-export type SignerAdd = Message<SignerAddBody>;
+export type SignerAdd = Message<MessageType.SignerAdd, SignerMessageBody>;
+
+export type SignerRemove = Message<MessageType.SignerRemove, SignerMessageBody>;
 
 /**
- * A SignerAddBody represents a bi-directional proof between a custody address and a delegate signer
+ * A SignerMessageBody includes a delegate public key for the custody address to authorize
  *
  * @delegate - the delegate public key
- * @schema -
  */
-export type SignerAddBody = {
-  delegate: string;
-  schema: 'farcaster.xyz/schemas/v1/signer-add';
-};
-
-/** SignerRemove message */
-export type SignerRemove = Message<SignerRemoveBody>;
-
-/**
- * A SignerRemoveBody represents the removal of a delegate signer
- */
-export type SignerRemoveBody = {
-  delegate: string;
-  schema: 'farcaster.xyz/schemas/v1/signer-remove';
+export type SignerMessageBody = {
+  delegate: string; // TODO: constrain to Ed25519 public key
 };
 
 /** SignerMessageFactoryTransientParams is passed to the SignerMessage factories and requires an Ethereum signer */
@@ -332,3 +325,11 @@ export type EthereumSigner = {
   signerKey: string; // Address
   type: SignatureAlgorithm.EthereumPersonalSign;
 };
+
+/** A NetworkId is a positive number representing the Farcaster network a message was intended for */
+export enum FarcasterNetwork {
+  Mainnet = 1, // Ethereum mainnet
+  Testnet = 2, // Gorli
+  Betanet = 3, // Gorli
+  Devnet = 4, // Gorli
+}

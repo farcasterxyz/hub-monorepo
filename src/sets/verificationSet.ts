@@ -1,11 +1,11 @@
 import { Result, ok, err } from 'neverthrow';
-import { Verification, VerificationAdd, VerificationRemove } from '~/types';
-import { isVerificationAdd, isVerificationRemove } from '~/types/typeguards';
+import { Verification, VerificationEthereumAddress, VerificationRemove } from '~/types';
+import { isVerificationEthereumAddress, isVerificationRemove } from '~/types/typeguards';
 import { hashCompare, sanitizeSigner } from '~/utils';
 
 class VerificationSet {
   /** Both maps indexed by claimHash */
-  private _adds: Map<string, VerificationAdd>;
+  private _adds: Map<string, VerificationEthereumAddress>;
   private _removes: Map<string, VerificationRemove>;
 
   constructor() {
@@ -25,7 +25,7 @@ class VerificationSet {
       return this.remove(message);
     }
 
-    if (isVerificationAdd(message)) {
+    if (isVerificationEthereumAddress(message)) {
       return this.add(message);
     }
 
@@ -54,7 +54,7 @@ class VerificationSet {
    * Private Methods
    */
 
-  private add(message: VerificationAdd): Result<void, string> {
+  private add(message: VerificationEthereumAddress): Result<void, string> {
     const { claimHash } = message.data.body;
 
     const existingAdd = this._adds.get(claimHash);
@@ -100,12 +100,12 @@ class VerificationSet {
    * Testing Methods
    */
 
-  _getAdds(): VerificationAdd[] {
-    return Array.from(this._adds.values());
+  _getAdds(): Set<VerificationEthereumAddress> {
+    return new Set([...this._adds.values()]);
   }
 
-  _getRemoves(): VerificationRemove[] {
-    return Array.from(this._removes.values());
+  _getRemoves(): Set<VerificationRemove> {
+    return new Set([...this._removes.values()]);
   }
 
   _reset(): void {

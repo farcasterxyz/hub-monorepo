@@ -82,12 +82,12 @@ class CastSet {
    * Testing Methods
    */
 
-  _getAdds(): (CastShort | CastRecast)[] {
-    return Array.from(this._adds.values());
+  _getAdds(): Set<CastShort | CastRecast> {
+    return new Set([...this._adds.values()]);
   }
 
-  _getRemoves(): CastRemove[] {
-    return Array.from(this._removes.values());
+  _getRemoves(): Set<CastRemove> {
+    return new Set([...this._removes.values()]);
   }
 
   _reset(): void {

@@ -1,80 +1,64 @@
 import { Result, ok, err } from 'neverthrow';
-import { Follow, URI } from '~/types';
-import { isFollow } from '~/types/typeguards';
+import { Follow, FollowAdd, FollowRemove, URI } from '~/types';
+import { isFollowAdd, isFollowRemove } from '~/types/typeguards';
 import { hashCompare, sanitizeSigner } from '~/utils';
 
 /**
  * FollowSet stores and fetches follow actions for a Farcaster ID.
  *
- * The FollowSet is implemented as a modified LWW set. Follow objects are stored in the hashToFollow map,
- * indexed by message hash. Another data structure, targetToHash, stores references from a targetURI (i.e. user URI)
- * to the most recent follow message hash.
+ * The FollowSet is implemented as a modified LWW set. FollowAdd messages are stored in the adds map, and FollowRemove
+ * messages are stored in the removes map. The adds and removes maps are indexed by targetURI, and a given targetURI can
+ * only be in adds or removes at one time.
  *
- * When two follow messages conflict, the one with the later signedAt timestamp wins. If two messages have the same timestamp,
- * the remove (i.e. where active is false) wins. If two messages have the same active value, the message with the higher
- * lexicographical hash wins.
+ * Conflicts between two follow messages are resolved in this order (see followMessageCompare for implementation):
+ * 1. Later timestamp wins
+ * 2. FollowRemove > FollowAdd
+ * 3. Higher message hash lexicographic order wins
  */
 class FollowSet {
-  private hashToFollow: Map<string, Follow>;
-  private targetToHash: Map<string, string>;
+  private _adds: Map<string, FollowAdd>;
+  private _removes: Map<string, FollowRemove>;
 
   constructor() {
-    this.hashToFollow = new Map();
-    this.targetToHash = new Map();
+    this._adds = new Map();
+    this._removes = new Map();
   }
 
-  /** Get a follow by its target URI */
-  get(targetURI: URI): Follow | undefined {
-    const hash = this.targetToHash.get(targetURI);
-    return hash ? this.hashToFollow.get(hash) : undefined;
+  /** Get a follow add by its target URI */
+  get(targetURI: URI): FollowAdd | undefined {
+    return this._adds.get(targetURI);
   }
 
   // TODO: add query API
 
   /** Merge a new follow into the set */
   merge(follow: Follow): Result<void, string> {
-    if (!isFollow(follow)) {
-      return err('FollowSet.merge: invalid message format');
+    if (isFollowAdd(follow)) {
+      return this.mergeFollowAdd(follow);
     }
 
-    const { targetUri } = follow.data.body;
-    const existingFollowHash = this.targetToHash.get(targetUri);
-
-    if (!existingFollowHash) {
-      this.mergeFollow(follow);
-      return ok(undefined);
+    if (isFollowRemove(follow)) {
+      return this.mergeFollowRemove(follow);
     }
 
-    const existingFollow = this.hashToFollow.get(existingFollowHash);
-    if (!existingFollow) return err('FollowSet.merge: unexpected state');
-
-    if (existingFollow.data.signedAt > follow.data.signedAt) return ok(undefined);
-
-    if (existingFollow.data.signedAt === follow.data.signedAt) {
-      if (
-        existingFollow.data.body.active === follow.data.body.active &&
-        hashCompare(existingFollow.hash, follow.hash) >= 0
-      ) {
-        return ok(undefined);
-      }
-
-      if (!existingFollow.data.body.active && follow.data.body.active) {
-        return ok(undefined);
-      }
-    }
-
-    this.addOrUpdateFollow(follow);
-    return ok(undefined);
+    return err('FollowSet.merge: invalid message format');
   }
 
   revokeSigner(signer: string): Result<void, string> {
-    for (const [target, hash] of this.targetToHash) {
-      const follow = this.hashToFollow.get(hash);
-      if (follow && sanitizeSigner(follow.signer) === sanitizeSigner(signer)) {
-        this.hashToFollow.delete(hash);
-        this.targetToHash.delete(target);
+    // Check messages in adds and drop if they match the signer
+    for (const [target, message] of this._adds) {
+      if (sanitizeSigner(message.signer) === sanitizeSigner(signer)) {
+        this._adds.delete(target);
       }
     }
+
+    // Check messages in removes and drop if they match the signer
+    for (const [target, message] of this._removes) {
+      if (sanitizeSigner(message.signer) === sanitizeSigner(signer)) {
+        this._removes.delete(target);
+      }
+    }
+
     return ok(undefined);
   }
 
@@ -82,34 +66,100 @@ class FollowSet {
    * Private Methods
    */
 
-  private addOrUpdateFollow(follow: Follow): void {
-    const prevHash = this.targetToHash.get(follow.data.body.targetUri);
-    if (prevHash) {
-      this.hashToFollow.delete(prevHash);
+  /**
+   * followMessageCompare returns an order (-1, 0, 1) for two follow messages (a and b). If a occurs before
+   * b, return -1. If a occurs after b, return 1. If a and b cannot be ordered (i.e. they are the same
+   * message), return 0.
+   */
+  private followMessageCompare(a: Follow, b: Follow): number {
+    // If they are the same message, return 0
+    if (a.hash === b.hash) return 0;
+
+    // Compare signedAt timestamps
+    if (a.data.signedAt > b.data.signedAt) {
+      return 1;
+    } else if (a.data.signedAt < b.data.signedAt) {
+      return -1;
     }
-    this.mergeFollow(follow);
+
+    // Compare message types (FollowRemove > FollowAdd)
+    if (isFollowRemove(a) && isFollowAdd(b)) {
+      return 1;
+    } else if (isFollowAdd(a) && isFollowRemove(b)) {
+      return -1;
+    }
+
+    // Compare lexicographical order of hash
+    return hashCompare(a.hash, b.hash);
   }
 
-  private mergeFollow(follow: Follow): void {
-    this.targetToHash.set(follow.data.body.targetUri, follow.hash);
-    this.hashToFollow.set(follow.hash, follow);
+  /** mergeFollowAdd tries to add a FollowAdd message to the set */
+  private mergeFollowAdd(message: FollowAdd): Result<void, string> {
+    const { targetUri } = message.data.body;
+
+    // Check if the target has already been followed
+    const existingFollowAdd = this._adds.get(targetUri);
+    if (existingFollowAdd && this.followMessageCompare(message, existingFollowAdd) <= 0) {
+      return ok(undefined);
+    }
+
+    // Check if the target has already been un-followed
+    const existingFollowRemove = this._removes.get(targetUri);
+    if (existingFollowRemove) {
+      if (this.followMessageCompare(message, existingFollowRemove) <= 0) {
+        return ok(undefined);
+      }
+
+      // Drop target from removes set
+      this._removes.delete(targetUri);
+    }
+
+    // Add the message to adds
+    this._adds.set(targetUri, message);
+    return ok(undefined);
+  }
+
+  /** mergeFollowRemove tries to add a FollowRemove message to the set */
+  private mergeFollowRemove(message: FollowRemove): Result<void, string> {
+    const { targetUri } = message.data.body;
+
+    // Check if the target has already been un-followed
+    const existingFollowRemove = this._removes.get(targetUri);
+    if (existingFollowRemove && this.followMessageCompare(message, existingFollowRemove) <= 0) {
+      return ok(undefined);
+    }
+
+    // Check if the target has already been followed
+    const existingFollowAdd = this._adds.get(targetUri);
+    if (existingFollowAdd) {
+      if (this.followMessageCompare(message, existingFollowAdd) <= 0) {
+        return ok(undefined);
+      }
+
+      // Drop target from adds set
+      this._adds.delete(targetUri);
+    }
+
+    // Add the message to removes
+    this._removes.set(targetUri, message);
+    return ok(undefined);
   }
 
   /**
    * Testing Methods
    */
 
-  _getActiveFollows(): Set<Follow> {
-    return new Set(Array.from(this.hashToFollow.values()).filter((follow) => follow.data.body.active));
+  _getAdds(): Set<FollowAdd> {
+    return new Set([...this._adds.values()]);
   }
 
-  _getInactiveFollows(): Set<Follow> {
-    return new Set(Array.from(this.hashToFollow.values()).filter((follow) => !follow.data.body.active));
+  _getRemoves(): Set<FollowRemove> {
+    return new Set([...this._removes.values()]);
   }
 
   _reset(): void {
-    this.hashToFollow = new Map();
-    this.targetToHash = new Map();
+    this._adds = new Map();
+    this._removes = new Map();
   }
 }
 

@@ -6,11 +6,11 @@ import {
   IDRegistryEvent,
   Ed25519Signer,
   EthereumSigner,
-  Reaction,
   SignerAdd,
   SignerRemove,
-  VerificationAdd,
-  Follow,
+  VerificationEthereumAddress,
+  ReactionAdd,
+  FollowAdd,
 } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
@@ -20,9 +20,9 @@ const aliceFid = Faker.datatype.number();
 const aliceCustodyAddress = () => engine._getCustodyAddress(aliceFid);
 const aliceSigners = () => engine._getSigners(aliceFid);
 const aliceCasts = () => engine._getCastAdds(aliceFid);
-const aliceReactions = () => engine._getActiveReactions(aliceFid);
-const aliceVerifications = () => engine._getVerificationAdds(aliceFid);
-const aliceFollows = () => engine._getActiveFollows(aliceFid);
+const aliceReactions = () => engine._getReactionAdds(aliceFid);
+const aliceVerifications = () => engine._getVerificationEthereumAddressAdds(aliceFid);
+const aliceFollows = () => engine._getFollowAdds(aliceFid);
 
 let aliceCustody: EthereumSigner;
 let aliceCustodyRegister: IDRegistryEvent;
@@ -33,9 +33,9 @@ let aliceSignerAdd: SignerAdd;
 let aliceSignerAdd2: SignerAdd;
 let aliceSignerRemove: SignerRemove;
 let aliceCast: CastShort;
-let aliceReaction: Reaction;
-let aliceVerification: VerificationAdd;
-let aliceFollow: Follow;
+let aliceReaction: ReactionAdd;
+let aliceVerification: VerificationEthereumAddress;
+let aliceFollow: FollowAdd;
 
 beforeAll(async () => {
   aliceCustody = await generateEthereumSigner();
@@ -64,13 +64,16 @@ beforeAll(async () => {
     },
     { transient: { signer: aliceCustody } }
   );
-  aliceCast = await Factories.Cast.create({ data: { fid: aliceFid } }, { transient: { signer: aliceSigner } });
-  aliceReaction = await Factories.Reaction.create({ data: { fid: aliceFid } }, { transient: { signer: aliceSigner } });
-  aliceVerification = await Factories.VerificationAdd.create(
+  aliceCast = await Factories.CastShort.create({ data: { fid: aliceFid } }, { transient: { signer: aliceSigner } });
+  aliceReaction = await Factories.ReactionAdd.create(
     { data: { fid: aliceFid } },
     { transient: { signer: aliceSigner } }
   );
-  aliceFollow = await Factories.Follow.create({ data: { fid: aliceFid } }, { transient: { signer: aliceSigner } });
+  aliceVerification = await Factories.VerificationEthereumAddress.create(
+    { data: { fid: aliceFid } },
+    { transient: { signer: aliceSigner } }
+  );
+  aliceFollow = await Factories.FollowAdd.create({ data: { fid: aliceFid } }, { transient: { signer: aliceSigner } });
 });
 
 describe('revokeSignerMessages', () => {
@@ -88,9 +91,9 @@ describe('revokeSignerMessages', () => {
       await engine.mergeFollow(aliceFollow);
       expect(aliceCustodyAddress()).toEqual(aliceCustody.signerKey);
       expect(aliceSigners()).toEqual(new Set([aliceSigner.signerKey]));
-      expect(aliceCasts()).toEqual([aliceCast]);
-      expect(aliceReactions()).toEqual([aliceReaction]);
-      expect(aliceVerifications()).toEqual([aliceVerification]);
+      expect(aliceCasts()).toEqual(new Set([aliceCast]));
+      expect(aliceReactions()).toEqual(new Set([aliceReaction]));
+      expect(aliceVerifications()).toEqual(new Set([aliceVerification]));
       expect(aliceFollows()).toEqual(new Set([aliceFollow]));
     });
 
@@ -99,9 +102,9 @@ describe('revokeSignerMessages', () => {
       expect(res.isOk()).toBe(true);
       expect(aliceCustodyAddress()).toEqual(aliceCustody.signerKey);
       expect(aliceSigners()).toEqual(new Set());
-      expect(aliceCasts()).toEqual([]);
-      expect(aliceReactions()).toEqual([]);
-      expect(aliceVerifications()).toEqual([]);
+      expect(aliceCasts()).toEqual(new Set());
+      expect(aliceReactions()).toEqual(new Set());
+      expect(aliceVerifications()).toEqual(new Set());
       expect(aliceFollows()).toEqual(new Set());
     });
 
@@ -110,9 +113,9 @@ describe('revokeSignerMessages', () => {
       expect(res.isOk()).toBe(true);
       expect(aliceCustodyAddress()).toEqual(aliceCustody2.signerKey);
       expect(aliceSigners()).toEqual(new Set());
-      expect(aliceCasts()).toEqual([]);
-      expect(aliceReactions()).toEqual([]);
-      expect(aliceVerifications()).toEqual([]);
+      expect(aliceCasts()).toEqual(new Set());
+      expect(aliceReactions()).toEqual(new Set());
+      expect(aliceVerifications()).toEqual(new Set());
       expect(aliceFollows()).toEqual(new Set());
     });
 
@@ -122,9 +125,9 @@ describe('revokeSignerMessages', () => {
       expect(res.isOk()).toBe(true);
       expect(aliceCustodyAddress()).toEqual(aliceCustody2.signerKey);
       expect(aliceSigners()).toEqual(new Set([aliceSigner.signerKey]));
-      expect(aliceCasts()).toEqual([aliceCast]);
-      expect(aliceReactions()).toEqual([aliceReaction]);
-      expect(aliceVerifications()).toEqual([aliceVerification]);
+      expect(aliceCasts()).toEqual(new Set([aliceCast]));
+      expect(aliceReactions()).toEqual(new Set([aliceReaction]));
+      expect(aliceVerifications()).toEqual(new Set([aliceVerification]));
       expect(aliceFollows()).toEqual(new Set([aliceFollow]));
     });
   });
