@@ -3,8 +3,8 @@ import { Result, err, ok } from 'neverthrow';
 import { isValidId, getParams, joinParams } from '~/urls/utils';
 import { FarcasterURL } from '~/urls/baseUrl';
 
-export const FarcasterIdSpec: IdentifierSpec = {
-  name: 'farcasterId',
+export const UserIdSpec: IdentifierSpec = {
+  name: 'userId',
   regex: 'fid:[1-9][0-9]{0,77}',
   parameters: {
     delimiter: ':',
@@ -21,39 +21,39 @@ export const FarcasterIdSpec: IdentifierSpec = {
   },
 };
 
-export interface FarcasterIdParams {
+export interface UserIdParams {
   namespace: 'fid';
   value: string;
 }
 
-export type FarcasterIdConstructorArgs = Omit<FarcasterIdParams, 'namespace'>;
+export type UserIdConstructorArgs = Omit<UserIdParams, 'namespace'>;
 
-export class FarcasterId {
-  public static spec = FarcasterIdSpec;
+export class UserId {
+  public static spec = UserIdSpec;
 
-  public static parse(fid: string): Result<FarcasterIdParams, string> {
+  public static parse(fid: string): Result<UserIdParams, string> {
     if (!isValidId(fid, this.spec)) {
       return err(`Invalid ${this.spec.name} provided: ${fid}`);
     }
-    return ok(new FarcasterId(getParams<FarcasterIdParams>(fid, this.spec)).toJSON());
+    return ok(new UserId(getParams<UserIdParams>(fid, this.spec)).toJSON());
   }
 
-  public static format(params: FarcasterIdParams): string {
+  public static format(params: UserIdParams): string {
     return joinParams(params as any, this.spec);
   }
 
-  private readonly namespace: 'fid' = 'fid';
+  private readonly namespace = 'fid' as const;
   public readonly value: string;
 
-  constructor(params: FarcasterIdConstructorArgs | string) {
+  constructor(params: UserIdConstructorArgs | string) {
     if (typeof params === 'string') {
-      const maybeParsed = FarcasterId.parse(params);
+      const maybeParsed = UserId.parse(params);
       if (maybeParsed.isErr()) {
         throw maybeParsed.error;
       }
       params = maybeParsed.value;
     } else {
-      const userIdSpec = FarcasterId.spec.parameters.values[1];
+      const userIdSpec = UserId.spec.parameters.values[1];
       if (!RegExp(userIdSpec.regex).test(params.value)) {
         throw new Error(`Invalid ${userIdSpec.name} provided: ${params.value}`);
       }
@@ -63,10 +63,10 @@ export class FarcasterId {
   }
 
   public toString(): string {
-    return FarcasterId.format(this.toJSON());
+    return UserId.format(this.toJSON());
   }
 
-  public toJSON(): FarcasterIdParams {
+  public toJSON(): UserIdParams {
     return {
       namespace: this.namespace,
       value: this.value,
@@ -75,7 +75,7 @@ export class FarcasterId {
 }
 
 export class UserURL extends FarcasterURL {
-  public readonly farcasterId: FarcasterId;
+  public readonly userId: UserId;
 
   public static parse(url: string): Result<UserURL, string> {
     const schemePrefix = this.SCHEME + '://';
@@ -86,19 +86,19 @@ export class UserURL extends FarcasterURL {
 
     const remainder = url.substring(url.indexOf(schemePrefix) + schemePrefix.length);
 
-    const maybeFarcasterIdParams = FarcasterId.parse(remainder);
-    return maybeFarcasterIdParams.map((userIdParams) => {
-      const userId = new FarcasterId(userIdParams);
+    const maybeUserIdParams = UserId.parse(remainder);
+    return maybeUserIdParams.map((userIdParams) => {
+      const userId = new UserId(userIdParams);
       return new UserURL(userId);
     });
   }
 
-  public constructor(farcasterId: FarcasterId) {
+  public constructor(userId: UserId) {
     super();
-    this.farcasterId = farcasterId;
+    this.userId = userId;
   }
 
   public toString(): string {
-    return FarcasterURL.SCHEME + '://' + this.farcasterId.toString();
+    return FarcasterURL.SCHEME + '://' + this.userId.toString();
   }
 }

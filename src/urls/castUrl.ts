@@ -1,10 +1,11 @@
 import type { IdentifierSpec } from 'caip/dist/types';
 import { Result, err, ok } from 'neverthrow';
-import { FarcasterIdParams, FarcasterIdConstructorArgs, FarcasterId, FarcasterIdSpec } from '~/urls/userUrl';
-import { isValidId, getParams, joinParams } from '~/urls/utils';
-import { FarcasterURL } from '~/urls/baseUrl';
 
-const REGEX_BLAKE2B_HASH = '0x[a-f0-9]{64}';
+import { UserId, UserIdConstructorArgs, UserIdParams, UserIdSpec } from '~/urls/userUrl';
+import { FarcasterURL } from '~/urls/baseUrl';
+import { isValidId, getParams, joinParams } from '~/urls/utils';
+
+const REGEX_BLAKE2B_HASH = '0x[a-f0-9]{128}';
 
 const CastHashSpec: IdentifierSpec = {
   name: 'castHash',
@@ -26,11 +27,11 @@ const CastHashSpec: IdentifierSpec = {
 
 const CastIdSpec: IdentifierSpec = {
   name: 'castId',
-  regex: FarcasterIdSpec.regex + '/' + CastHashSpec.regex,
+  regex: UserIdSpec.regex + '/' + CastHashSpec.regex,
   parameters: {
     delimiter: '/',
     values: {
-      0: FarcasterIdSpec,
+      0: UserIdSpec,
       1: CastHashSpec,
     },
   },
@@ -57,7 +58,7 @@ export class CastHash {
     return joinParams(params as any, this.spec);
   }
 
-  private readonly messageType: 'cast' = 'cast';
+  private readonly messageType = 'cast' as const;
   public readonly value: string;
 
   constructor(params: CastHashConstructorArgs | string) {
@@ -90,12 +91,12 @@ export class CastHash {
 }
 
 export interface CastIdParams {
-  farcasterId: string | FarcasterIdParams;
+  userId: string | UserIdParams;
   castHash: string | CastHashParams;
 }
 
 export type CastIdConstructorArgs = {
-  farcasterId: string | FarcasterIdConstructorArgs;
+  userId: string | UserIdConstructorArgs;
   castHash: string | CastHashConstructorArgs;
 };
 
@@ -117,9 +118,9 @@ export class CastId {
     return joinParams(params as any, this.spec);
   }
 
-  private readonly messageType: 'cast' = 'cast';
+  private readonly messageType = 'cast' as const;
 
-  public readonly userId: FarcasterId;
+  public readonly userId: UserId;
   public readonly castHash: CastHash;
 
   constructor(params: CastIdConstructorArgs | string) {
@@ -131,7 +132,7 @@ export class CastId {
       params = maybeParsed.value;
     }
 
-    this.userId = new FarcasterId(params.farcasterId);
+    this.userId = new UserId(params.userId);
     this.castHash = new CastHash(params.castHash);
   }
 
@@ -141,7 +142,7 @@ export class CastId {
 
   public toJSON(): CastIdParams {
     return {
-      farcasterId: this.userId.toJSON(),
+      userId: this.userId.toJSON(),
       castHash: this.castHash.toJSON(),
     };
   }

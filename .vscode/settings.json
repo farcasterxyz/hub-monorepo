@@ -1,26 +1,23 @@
 {
-    "search.exclude": {
-      ".git": true,
-      ".eslintcache": true,
-      "build": true,
-      "node_modules": true,
-      "yarn.lock": true,
-    },
-    "editor.formatOnSave": true,
-    "[json]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode"
-    },
-    "[typescript]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode"
-    },
-    "[javascript]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode"
-    },
-    "editor.codeActionsOnSave": {
-      "source.fixAll.eslint": true
-    },
-    "cSpell.words": [
-      "farcaster"
-    ]
-  }
-  
+  "search.exclude": {
+    ".git": true,
+    ".eslintcache": true,
+    "build": true,
+    "node_modules": true,
+    "yarn.lock": true
+  },
+  "editor.formatOnSave": true,
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+  "cSpell.words": ["farcaster"]
+}

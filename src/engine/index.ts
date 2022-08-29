@@ -16,6 +16,7 @@ import {
   FollowAdd,
   CastShort,
   CastRecast,
+  CastRemove,
 } from '~/types';
 import { hashMessage, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
@@ -23,13 +24,14 @@ import { hexToBytes } from 'ethereum-cryptography/utils';
 import { ok, err, Result } from 'neverthrow';
 import { ethers, utils } from 'ethers';
 import {
-  isCast,
   isCastShort,
   isReaction,
   isVerificationEthereumAddress,
   isVerificationRemove,
   isSignerMessage,
   isFollow,
+  isCastRecast,
+  isCastRemove,
 } from '~/types/typeguards';
 import CastSet from '~/sets/castSet';
 import ReactionSet from '~/sets/reactionSet';
@@ -39,6 +41,7 @@ import FollowSet from '~/sets/followSet';
 import { CastURL, ChainAccountURL, ChainURL, parseUrl, UserURL } from '~/urls';
 import { Web2URL } from '~/urls/web2Url';
 import IDRegistryProvider from '~/provider/idRegistryProvider';
+import { CastHash } from '~/urls/castUrl';
 
 /** The Engine receives messages and determines the current state of the Farcaster network */
 class Engine {
@@ -290,8 +293,16 @@ class Engine {
       return err('validateMessage: signedAt more than 10 mins in the future');
     }
 
-    if (isCast(message)) {
-      return this.validateCast(message);
+    if (isCastShort(message)) {
+      return this.validateCastShort(message);
+    }
+
+    if (isCastRecast(message)) {
+      return this.validateCastRecast(message);
+    }
+
+    if (isCastRemove(message)) {
+      return this.validateCastRemove(message);
     }
 
     if (isReaction(message)) {
@@ -317,38 +328,47 @@ class Engine {
     return err('validateMessage: unknown message');
   }
 
-  private validateCast(cast: Cast): Result<void, string> {
-    if (isCastShort(cast)) {
-      const text = cast.data.body.text;
-      const embed = cast.data.body.embed;
+  private validateCastShort(cast: CastShort): Result<void, string> {
+    const { text, embed, targetUri } = cast.data.body;
 
-      if (text && text.length > 280) {
-        return err('validateCast: text > 280 chars');
-      }
-
-      if (embed && embed.items.length > 2) {
-        return err('validateCast: embeds > 2');
-      }
-
-      const validateCastTargetResult = this.validateCastTarget(cast);
-      if (validateCastTargetResult.isErr()) {
-        return validateCastTargetResult;
-      }
+    if (text && text.length > 280) {
+      return err('validateCastShort: text > 280 chars');
     }
 
-    // TODO: For remove cast, validate hash length.
+    if (embed && embed.items.length > 2) {
+      return err('validateCastShort: embeds > 2');
+    }
+
+    if (targetUri) {
+      const parseTarget = CastURL.parse(targetUri);
+      if (parseTarget.isErr()) {
+        return err('validateCastShort: targetUri must be a valid Cast URL');
+      }
+    }
 
     return ok(undefined);
   }
 
-  private validateCastTarget(cast: CastShort): Result<void, string> {
-    if (cast.data.body.targetUri === undefined) {
-      return ok(undefined);
+  private validateCastRecast(cast: CastRecast): Result<void, string> {
+    const { targetCastUri } = cast.data.body;
+
+    const parseTarget = CastURL.parse(targetCastUri);
+    if (parseTarget.isErr()) {
+      return err('validateCastRecast: targetCastUri must be a valid Cast URL');
     }
-    // TODO: support chain-data URLs
-    return CastURL.parse(cast.data.body.targetUri)
-      .map(() => undefined)
-      .mapErr(() => 'validateCastTarget: cast target must be another valid Cast URL');
+
+    return ok(undefined);
+  }
+
+  private validateCastRemove(cast: CastRemove): Result<void, string> {
+    const { targetHash } = cast.data.body;
+
+    const parseCastHash = CastHash.parse('cast:' + targetHash);
+    if (parseCastHash.isErr()) {
+      return err('validateCastRemove: targetHash must be a valid Cast hash');
+    }
+
+    return ok(undefined);
   }
 
   private validateReaction(message: Reaction): Result<void, string> {
@@ -379,7 +399,7 @@ class Engine {
 
     const verificationClaim: VerificationEthereumAddressClaim = {
       fid: message.data.fid,
-      externalUri: message.data.body.externalUri,
+      externalUri: message.data.body.externalUri.toLowerCase(),
       blockHash: message.data.body.blockHash,
     };
     const reconstructedClaimHash = await hashFCObject(verificationClaim);
@@ -387,10 +407,9 @@ class Engine {
       return err('validateVerificationEthereumAddress: invalid claimHash');
     }
 
-    // validate externalUri
     const chainAccountURLResult = this.validateChainAccountURL(externalUri);
     if (chainAccountURLResult.isErr()) return chainAccountURLResult.map(() => undefined);
-    const chainAccountURL = chainAccountURLResult._unsafeUnwrap();
+    const chainAccountURL = chainAccountURLResult.value;
 
     try {
       const verifiedExternalAddress = utils.verifyMessage(claimHash, externalSignature);

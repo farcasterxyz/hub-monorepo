@@ -3,7 +3,6 @@
  * Utilities from this file are required, but the original versions are not exported in the built version of the caip-js
  * library.
  */
-
 import { IdentifierSpec, Params } from 'caip/dist/types';
 
 export const splitParams = (id: string, spec: IdentifierSpec): string[] => id.split(spec.parameters.delimiter);

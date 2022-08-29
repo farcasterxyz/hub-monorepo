@@ -1,5 +1,4 @@
-import { parseUrl, CastURL } from '~/urls';
-import { FarcasterURL } from '~/urls/baseUrl';
+import { parseUrl, CastURL, FarcasterURL } from '~/urls';
 
 const farcasterURLPrefix = FarcasterURL.SCHEME + '://';
 
@@ -16,9 +15,12 @@ const testCases = new Array<ParserTestCase>();
 
 const positiveTestCases: Array<PositiveTestCase> = [
   {
-    given: farcasterURLPrefix + 'fid:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+    given:
+      farcasterURLPrefix +
+      'fid:1/cast:0x8f18fe5e070ad4227899fbdb7440b3e7fa4edd7a0fc71c9817c9611c01cc12b3cd65206d73debffb3a4e9722c4f32fb172b5cff20d723b2dcb72c03873cb0bce',
     expectUserId: '1',
-    expectCastId: '0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+    expectCastId:
+      '0x8f18fe5e070ad4227899fbdb7440b3e7fa4edd7a0fc71c9817c9611c01cc12b3cd65206d73debffb3a4e9722c4f32fb172b5cff20d723b2dcb72c03873cb0bce',
   },
 ];
 
@@ -31,46 +33,60 @@ testCases.push(
 
 const negativeTestCases: Array<ParserTestCase> = [
   // missing scheme
-  'fid:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+  'fid:1/cast:0x8f18fe5e070ad4227899fbdb7440b3e7fa4edd7a0fc71c9817c9611c01cc12b3cd65206d73debffb3a4e9722c4f32fb172b5cff20d723b2dcb72c03873cb0bce',
 
   // wrong scheme
-  'http://fid:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+  'http://fid:1/cast:0x8f18fe5e070ad4227899fbdb7440b3e7fa4edd7a0fc71c9817c9611c01cc12b3cd65206d73debffb3a4e9722c4f32fb172b5cff20d723b2dcb72c03873cb0bce',
 
   // missing cast hash
   farcasterURLPrefix + 'fid:1/cast:',
   farcasterURLPrefix + 'fid:1/cast',
 
   // hash is missing leading 0x
-  farcasterURLPrefix + 'fid:1/cast:508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
-  farcasterURLPrefix + 'fid:1/cast:00508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+  farcasterURLPrefix +
+    'fid:1/cast:8f18fe5e070ad4227899fbdb7440b3e7fa4edd7a0fc71c9817c9611c01cc12b3cd65206d73debffb3a4e9722c4f32fb172b5cff20d723b2dcb72c03873cb0bce',
+  farcasterURLPrefix +
+    'fid:1/cast:008f18fe5e070ad4227899fbdb7440b3e7fa4edd7a0fc71c9817c9611c01cc12b3cd65206d73debffb3a4e9722c4f32fb172b5cff20d723b2dcb72c03873cb0bce',
 
   // missing `cast` namespace
-  farcasterURLPrefix + 'fid:1/0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
-  farcasterURLPrefix + 'fid:1/:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+  farcasterURLPrefix +
+    'fid:1/0x8f18fe5e070ad4227899fbdb7440b3e7fa4edd7a0fc71c9817c9611c01cc12b3cd65206d73debffb3a4e9722c4f32fb172b5cff20d723b2dcb72c03873cb0bce',
+  farcasterURLPrefix +
+    'fid:1/:0x8f18fe5e070ad4227899fbdb7440b3e7fa4edd7a0fc71c9817c9611c01cc12b3cd65206d73debffb3a4e9722c4f32fb172b5cff20d723b2dcb72c03873cb0bce',
 
   // missing separator
-  farcasterURLPrefix + 'fid:1cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+  farcasterURLPrefix +
+    'fid:1cast:0x8f18fe5e070ad4227899fbdb7440b3e7fa4edd7a0fc71c9817c9611c01cc12b3cd65206d73debffb3a4e9722c4f32fb172b5cff20d723b2dcb72c03873cb0bce',
 
   // incorrect namespace
-  farcasterURLPrefix + 'fid:1/wrongidentifier:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+  farcasterURLPrefix +
+    'fid:1/wrongidentifier:0x8f18fe5e070ad4227899fbdb7440b3e7fa4edd7a0fc71c9817c9611c01cc12b3cd65206d73debffb3a4e9722c4f32fb172b5cff20d723b2dcb72c03873cb0bce',
 
   // superfluous prefix
-  farcasterURLPrefix + 'fid:1/prefixcast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c866759821',
-  farcasterURLPrefix + 'fid:1/cast:prefix0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c866759821',
+  farcasterURLPrefix +
+    'fid:1/prefixcast:0x8f18fe5e070ad4227899fbdb7440b3e7fa4edd7a0fc71c9817c9611c01cc12b3cd65206d73debffb3a4e9722c4f32fb172b5cff20d723b2dcb72c03873cb0bce',
+  farcasterURLPrefix +
+    'fid:1/cast:prefix0x8f18fe5e070ad4227899fbdb7440b3e7fa4edd7a0fc71c9817c9611c01cc12b3cd65206d73debffb3a4e9722c4f32fb172b5cff20d723b2dcb72c03873cb0bce',
 
   // invalid characters in ID
-  farcasterURLPrefix + 'fid:1/cast:0xxxxxxxxx327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
-  farcasterURLPrefix + 'fid:1/cast:0x5-8c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
-  farcasterURLPrefix + 'fid:1/cast:0x5 8c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982',
+  farcasterURLPrefix +
+    'fid:1/cast:0xxxxxfe5e070ad4227899fbdb7440b3e7fa4edd7a0fc71c9817c9611c01cc12b3cd65206d73debffb3a4e9722c4f32fb172b5cff20d723b2dcb72c03873cb0bce',
+  farcasterURLPrefix +
+    'fid:1/cast:0x8-18fe5e070ad4227899fbdb7440b3e7fa4edd7a0fc71c9817c9611c01cc12b3cd65206d73debffb3a4e9722c4f32fb172b5cff20d723b2dcb72c03873cb0bce',
+  farcasterURLPrefix +
+    'fid:1/cast:0x8 18fe5e070ad4227899fbdb7440b3e7fa4edd7a0fc71c9817c9611c01cc12b3cd65206d73debffb3a4e9722c4f32fb172b5cff20d723b2dcb72c03873cb0bce',
 
   // invalid trailing slash
-  farcasterURLPrefix + 'fid:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982/',
+  farcasterURLPrefix +
+    'fid:1/cast:0x8f18fe5e070ad4227899fbdb7440b3e7fa4edd7a0fc71c9817c9611c01cc12b3cd65206d73debffb3a4e9722c4f32fb172b5cff20d723b2dcb72c03873cb0bce/',
 
   // too long
-  farcasterURLPrefix + 'fid:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c866759820',
+  farcasterURLPrefix +
+    'fid:1/cast:0x8f18fe5e070ad4227899fbdb7440b3e7fa4edd7a0fc71c9817c9611c01cc12b3cd65206d73debffb3a4e9722c4f32fb172b5cff20d723b2dcb72c03873cb0bce0',
 
   // too short
-  farcasterURLPrefix + 'fid:1/cast:0x508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c8667598',
+  farcasterURLPrefix +
+    'fid:1/cast:0x8f18fe5e070ad4227899fbdb7440b3e7fa4edd7a0fc71c9817c9611c01cc12b3cd65206d73debffb3a4e9722c4f32fb172b5cff20d723b2dcb72c03873cb0bc',
 ].map((given) => ({
   given,
   expectParsable: false,
@@ -83,6 +99,7 @@ describe('CastURL', () => {
     const result = CastURL.parse(given);
 
     if (expectParsable) {
+      expect(result.isOk()).toBe(true);
       const castURL = result._unsafeUnwrap();
       expect(castURL.castId.userId.value).toEqual(expectUserId);
       expect(castURL.castId.castHash.value).toEqual(expectCastId);

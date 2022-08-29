@@ -216,7 +216,7 @@ describe('mergeCast', () => {
         );
         const result = await engine.mergeCast(invalidTargetUri);
         expect(result.isOk()).toBe(false);
-        expect(result._unsafeUnwrapErr()).toEqual('validateCastTarget: cast target must be another valid Cast URL');
+        expect(result._unsafeUnwrapErr()).toEqual('validateCastShort: targetUri must be a valid Cast URL');
       }
     });
     // test('fails if the targetUri references itself', async () => {});
@@ -238,7 +238,7 @@ describe('mergeCast', () => {
       const result = await engine.mergeCast(castLongText);
 
       expect(result.isOk()).toBe(false);
-      expect(result._unsafeUnwrapErr()).toBe('validateCast: text > 280 chars');
+      expect(result._unsafeUnwrapErr()).toBe('validateCastShort: text > 280 chars');
       expect(aliceAdds()).toEqual(new Set());
     });
 
@@ -257,7 +257,7 @@ describe('mergeCast', () => {
 
       const result = await engine.mergeCast(castThreeEmbeds);
       expect(result.isOk()).toBe(false);
-      expect(result._unsafeUnwrapErr()).toBe('validateCast: embeds > 2');
+      expect(result._unsafeUnwrapErr()).toBe('validateCastShort: embeds > 2');
       expect(aliceAdds()).toEqual(new Set());
     });
 

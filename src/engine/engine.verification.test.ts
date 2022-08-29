@@ -12,9 +12,8 @@ import {
   SignatureAlgorithm,
 } from '~/types';
 import Faker from 'faker';
-import { ethers, Wallet } from 'ethers';
+import { Wallet } from 'ethers';
 import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
-import { ChainAccountURL } from '~/urls';
 
 const engine = new Engine();
 const aliceFid = Faker.datatype.number();
@@ -50,9 +49,12 @@ describe('mergeVerification', () => {
 
     const verificationClaim: VerificationEthereumAddressClaim = {
       fid: aliceFid,
-      externalUri: Factories.EthereumAddressURL.build(undefined, { transient: { address: aliceEthWallet.address } }),
+      externalUri: Factories.EthereumAddressURL.build(undefined, {
+        transient: { address: aliceEthWallet.address.toLowerCase() },
+      }).toString(),
       blockHash: aliceBlockHash,
     };
+
     aliceClaimHash = await hashFCObject(verificationClaim);
 
     aliceExternalSignature = await aliceEthWallet.signMessage(aliceClaimHash);
@@ -93,49 +95,38 @@ describe('mergeVerification', () => {
     expect(aliceAdds()).toEqual(new Set([genericVerificationAdd]));
   });
 
-  describe('ethereum addresses', () => {
-    test('works when address is checksummed', async () => {
-      // leverage the fact that the happy path test above covers checksummed ethereum addresses
-      const accountURL = ChainAccountURL.parse(genericVerificationAdd.data.body.externalUri)._unsafeUnwrap();
-      expect(accountURL.address).toEqual(ethers.utils.getAddress(accountURL.address));
-    });
-
-    test('works when address is not checksummed', async () => {
-      // construct verification claim
-      const verificationClaim: VerificationEthereumAddressClaim = {
-        fid: aliceFid,
-        externalUri: Factories.EthereumAddressURL.build(undefined, {
-          transient: { address: aliceEthWallet.address.toLowerCase() },
-        }),
-        blockHash: aliceBlockHash,
-      };
-      const aliceClaimHash = await hashFCObject(verificationClaim);
-      const aliceExternalSignature = await aliceEthWallet.signMessage(aliceClaimHash);
-      const verificationAdd = await Factories.VerificationEthereumAddress.create(
-        {
-          data: {
-            fid: aliceFid,
-            body: {
-              externalUri: Factories.EthereumAddressURL.build(undefined, {
-                transient: { address: aliceEthWallet.address.toLowerCase() },
-              }),
-              claimHash: aliceClaimHash,
-              blockHash: aliceBlockHash,
-              externalSignature: aliceExternalSignature,
-            },
+  test('fails if claim is constructed with checksummed address', async () => {
+    const verificationClaim: VerificationEthereumAddressClaim = {
+      fid: aliceFid,
+      externalUri: Factories.EthereumAddressURL.build(undefined, {
+        transient: { address: aliceEthWallet.address },
+      }).toString(),
+      blockHash: aliceBlockHash,
+    };
+    const aliceClaimHash = await hashFCObject(verificationClaim);
+    const aliceExternalSignature = await aliceEthWallet.signMessage(aliceClaimHash);
+    const verificationAdd = await Factories.VerificationEthereumAddress.create(
+      {
+        data: {
+          fid: aliceFid,
+          body: {
+            externalUri: Factories.EthereumAddressURL.build(undefined, {
+              transient: { address: aliceEthWallet.address },
+            }).toString(),
+            claimHash: aliceClaimHash,
+            blockHash: aliceBlockHash,
+            externalSignature: aliceExternalSignature,
           },
         },
-        transientParams
-      );
+      },
+      transientParams
+    );
 
-      // sanity check that there is no checksum in the address that was signed
-      const accountURL = ChainAccountURL.parse(verificationAdd.data.body.externalUri)._unsafeUnwrap();
-      expect(accountURL.address).not.toEqual(ethers.utils.getAddress(accountURL.address));
-
-      // run the verification through the engine
-      expect((await engine.mergeVerification(verificationAdd)).isOk()).toBe(true);
-      expect(engine._getVerificationEthereumAddressAdds(aliceFid)).toEqual(new Set([verificationAdd]));
-    });
+    // run the verification through the engine
+    const res = await engine.mergeVerification(verificationAdd);
+    expect(res.isOk()).toBe(false);
+    expect(res._unsafeUnwrapErr()).toBe('validateVerificationEthereumAddress: invalid claimHash');
+    expect(engine._getVerificationEthereumAddressAdds(aliceFid)).toEqual(new Set());
   });
 
   test('fails if message signer is not valid', async () => {

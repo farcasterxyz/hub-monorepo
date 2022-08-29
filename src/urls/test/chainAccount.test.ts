@@ -1,5 +1,4 @@
-import { ChainURL, parseUrl } from '~/urls';
-import { ChainAccountURL } from '~/urls/chainAccountUrl';
+import { ChainAccountURL, ChainURL, parseUrl } from '~/urls';
 
 const chainURLPrefix = ChainURL.SCHEME + '://';
 

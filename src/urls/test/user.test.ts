@@ -1,5 +1,4 @@
-import { UserURL, parseUrl } from '~/urls';
-import { FarcasterURL } from '~/urls/baseUrl';
+import { FarcasterURL, UserURL, parseUrl } from '~/urls';
 
 const farcasterURLPrefix = FarcasterURL.SCHEME + '://';
 
@@ -42,8 +41,11 @@ const negativeTestCases: Array<ParserTestCase> = [
   farcasterURLPrefix + 'fid:',
   farcasterURLPrefix + 'fid',
 
-  // leading zeroes not permitted
+  // leading zeroes not allowed
   farcasterURLPrefix + 'fid:01',
+
+  // hex not allowed
+  farcasterURLPrefix + 'fid:0x1',
 
   // zero ID not allowed
   farcasterURLPrefix + 'fid:0',
@@ -86,8 +88,9 @@ describe('UserURL', () => {
     const result = UserURL.parse(given);
 
     if (expectParsable) {
+      expect(result.isOk()).toBe(true);
       const userURL = result._unsafeUnwrap();
-      expect(userURL.farcasterId.value).toEqual(expectUserId);
+      expect(userURL.userId.value).toEqual(expectUserId);
 
       // check that it serializes back to the same original string
       expect(userURL.toString()).toEqual(given);
