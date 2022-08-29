@@ -49,9 +49,12 @@ describe('mergeVerification', () => {
 
     const verificationClaim: VerificationEthereumAddressClaim = {
       fid: aliceFid,
-      externalUri: aliceEthWallet.address,
+      externalUri: Factories.EthereumAddressURL.build(undefined, {
+        transient: { address: aliceEthWallet.address.toLowerCase() },
+      }).toString(),
       blockHash: aliceBlockHash,
     };
+
     aliceClaimHash = await hashFCObject(verificationClaim);
 
     aliceExternalSignature = await aliceEthWallet.signMessage(aliceClaimHash);
@@ -92,6 +95,40 @@ describe('mergeVerification', () => {
     expect(aliceAdds()).toEqual(new Set([genericVerificationAdd]));
   });
 
+  test('fails if claim is constructed with checksummed address', async () => {
+    const verificationClaim: VerificationEthereumAddressClaim = {
+      fid: aliceFid,
+      externalUri: Factories.EthereumAddressURL.build(undefined, {
+        transient: { address: aliceEthWallet.address },
+      }).toString(),
+      blockHash: aliceBlockHash,
+    };
+    const aliceClaimHash = await hashFCObject(verificationClaim);
+    const aliceExternalSignature = await aliceEthWallet.signMessage(aliceClaimHash);
+    const verificationAdd = await Factories.VerificationEthereumAddress.create(
+      {
+        data: {
+          fid: aliceFid,
+          body: {
+            externalUri: Factories.EthereumAddressURL.build(undefined, {
+              transient: { address: aliceEthWallet.address },
+            }).toString(),
+            claimHash: aliceClaimHash,
+            blockHash: aliceBlockHash,
+            externalSignature: aliceExternalSignature,
+          },
+        },
+      },
+      transientParams
+    );
+
+    // run the verification through the engine
+    const res = await engine.mergeVerification(verificationAdd);
+    expect(res.isOk()).toBe(false);
+    expect(res._unsafeUnwrapErr()).toBe('validateVerificationEthereumAddress: invalid claimHash');
+    expect(engine._getVerificationEthereumAddressAdds(aliceFid)).toEqual(new Set());
+  });
+
   test('fails if message signer is not valid', async () => {
     engine._resetSigners();
     expect((await engine.mergeVerification(genericVerificationAdd))._unsafeUnwrapErr()).toBe(
@@ -116,18 +153,22 @@ describe('mergeVerification', () => {
   });
 
   test('fails with externalSignature from unknown address', async () => {
-    const ethWalletAlice = Wallet.createRandom();
+    const randomEthWallet = Wallet.createRandom();
     const verificationAddMessage = await Factories.VerificationEthereumAddress.create(
       {
         data: {
           fid: aliceFid,
           body: {
-            externalUri: ethWalletAlice.address,
             externalSignature: aliceExternalSignature,
           },
         },
       },
-      transientParams
+      {
+        transient: {
+          ...transientParams.transient,
+          ethWallet: randomEthWallet,
+        },
+      }
     );
     const res = await engine.mergeVerification(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe(

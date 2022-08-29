@@ -326,6 +326,10 @@ export type EthereumSigner = {
   type: SignatureAlgorithm.EthereumPersonalSign;
 };
 
+export type EthAddressUrlFactoryTransientParams = {
+  address?: string;
+};
+
 /** A NetworkId is a positive number representing the Farcaster network a message was intended for */
 export enum FarcasterNetwork {
   Mainnet = 1, // Ethereum mainnet

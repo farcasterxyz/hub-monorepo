@@ -33,6 +33,7 @@
     "@typescript-eslint/parser": "^5.33.1",
     "eslint": "^8.22.0",
     "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-prefer-arrow-functions": "^3.1.4",
     "eslint-plugin-prettier": "^4.0.0",
     "fishery": "^2.2.2",
     "husky": "^8.0.1",
@@ -47,6 +48,7 @@
   },
   "dependencies": {
     "@noble/ed25519": "^1.6.1",
+    "caip": "^1.1.0",
     "canonicalize": "^1.0.8",
     "cli-table3": "^0.6.1",
     "colors": "^1.4.0",
@@ -55,7 +57,8 @@
     "faker": "5.5.3",
     "log-update": "5.0.1",
     "neverthrow": "^5.0.0",
-    "tiny-typed-emitter": "^2.1.0"
+    "tiny-typed-emitter": "^2.1.0",
+    "uri-js": "^4.4.1"
   },
   "lint-staged": {
     "*.ts": "eslint --cache --fix"

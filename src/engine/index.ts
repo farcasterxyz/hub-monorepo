@@ -16,6 +16,7 @@ import {
   FollowAdd,
   CastShort,
   CastRecast,
+  CastRemove,
 } from '~/types';
 import { hashMessage, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
@@ -23,20 +24,24 @@ import { hexToBytes } from 'ethereum-cryptography/utils';
 import { ok, err, Result } from 'neverthrow';
 import { ethers, utils } from 'ethers';
 import {
-  isCast,
   isCastShort,
   isReaction,
   isVerificationEthereumAddress,
   isVerificationRemove,
   isSignerMessage,
   isFollow,
+  isCastRecast,
+  isCastRemove,
 } from '~/types/typeguards';
 import CastSet from '~/sets/castSet';
 import ReactionSet from '~/sets/reactionSet';
 import VerificationSet from '~/sets/verificationSet';
 import SignerSet from '~/sets/signerSet';
 import FollowSet from '~/sets/followSet';
+import { CastURL, ChainAccountURL, ChainURL, parseUrl, UserURL } from '~/urls';
+import { Web2URL } from '~/urls/web2Url';
 import IDRegistryProvider from '~/provider/idRegistryProvider';
+import { CastHash } from '~/urls/castUrl';
 
 /** The Engine receives messages and determines the current state of the Farcaster network */
 class Engine {
@@ -48,6 +53,8 @@ class Engine {
   private _follows: Map<number, FollowSet>;
 
   private _IDRegistryProvider?: IDRegistryProvider;
+
+  private _supportedChainIDs = new Set(['eip155:1']);
 
   constructor(networkUrl?: string, IDRegistryAddress?: string) {
     this._casts = new Map();
@@ -286,12 +293,20 @@ class Engine {
       return err('validateMessage: signedAt more than 10 mins in the future');
     }
 
-    if (isCast(message)) {
-      return this.validateCast(message);
+    if (isCastShort(message)) {
+      return this.validateCastShort(message);
+    }
+
+    if (isCastRecast(message)) {
+      return this.validateCastRecast(message);
+    }
+
+    if (isCastRemove(message)) {
+      return this.validateCastRemove(message);
     }
 
     if (isReaction(message)) {
-      return this.validateReaction();
+      return this.validateReaction(message);
     }
 
     if (isVerificationEthereumAddress(message)) {
@@ -307,34 +322,71 @@ class Engine {
     }
 
     if (isFollow(message)) {
-      return this.validateFollow();
+      return this.validateFollow(message);
     }
 
     return err('validateMessage: unknown message');
   }
 
-  private validateCast(cast: Cast): Result<void, string> {
-    if (isCastShort(cast)) {
-      const text = cast.data.body.text;
-      const embed = cast.data.body.embed;
+  private validateCastShort(cast: CastShort): Result<void, string> {
+    const { text, embed, targetUri } = cast.data.body;
 
-      if (text && text.length > 280) {
-        return err('validateCast: text > 280 chars');
-      }
-
-      if (embed && embed.items.length > 2) {
-        return err('validateCast: embeds > 2');
-      }
+    if (text && text.length > 280) {
+      return err('validateCastShort: text > 280 chars');
     }
 
-    // TODO: For remove cast, validate hash length.
+    if (embed && embed.items.length > 2) {
+      return err('validateCastShort: embeds > 2');
+    }
+
+    if (targetUri) {
+      const parseTarget = CastURL.parse(targetUri);
+      if (parseTarget.isErr()) {
+        return err('validateCastShort: targetUri must be a valid Cast URL');
+      }
+    }
 
     return ok(undefined);
   }
 
-  private validateReaction(): Result<void, string> {
-    // TODO: validate targetUri, schema
+  private validateCastRecast(cast: CastRecast): Result<void, string> {
+    const { targetCastUri } = cast.data.body;
+
+    const parseTarget = CastURL.parse(targetCastUri);
+    if (parseTarget.isErr()) {
+      return err('validateCastRecast: targetCastUri must be a valid Cast URL');
+    }
+
     return ok(undefined);
+  }
+
+  private validateCastRemove(cast: CastRemove): Result<void, string> {
+    const { targetHash } = cast.data.body;
+
+    const parseCastHash = CastHash.parse('cast:' + targetHash);
+    if (parseCastHash.isErr()) {
+      return err('validateCastRemove: targetHash must be a valid Cast hash');
+    }
+
+    return ok(undefined);
+  }
+
+  private validateReaction(message: Reaction): Result<void, string> {
+    const parsedURLResult = parseUrl(message.data.body.targetUri, { allowUnrecognized: false });
+    return parsedURLResult
+      .mapErr(() => 'validateReaction: invalid URL for reaction target')
+      .andThen((parsedUrl) => {
+        switch (true) {
+          case parsedUrl instanceof CastURL:
+          case parsedUrl instanceof Web2URL:
+            return ok(undefined);
+          // TODO: support chain-data URLs
+          default:
+            return err('validateReaction: invalid URL for reaction target');
+        }
+      });
+
+    // TODO: validate schema
   }
 
   private async validateVerificationEthereumAddress(
@@ -347,7 +399,7 @@ class Engine {
 
     const verificationClaim: VerificationEthereumAddressClaim = {
       fid: message.data.fid,
-      externalUri: message.data.body.externalUri,
+      externalUri: message.data.body.externalUri.toLowerCase(),
       blockHash: message.data.body.blockHash,
     };
     const reconstructedClaimHash = await hashFCObject(verificationClaim);
@@ -355,9 +407,13 @@ class Engine {
       return err('validateVerificationEthereumAddress: invalid claimHash');
     }
 
+    const chainAccountURLResult = this.validateChainAccountURL(externalUri);
+    if (chainAccountURLResult.isErr()) return chainAccountURLResult.map(() => undefined);
+    const chainAccountURL = chainAccountURLResult.value;
+
     try {
       const verifiedExternalAddress = utils.verifyMessage(claimHash, externalSignature);
-      if (verifiedExternalAddress !== externalUri) {
+      if (verifiedExternalAddress.toLowerCase() !== chainAccountURL.address.toLowerCase()) {
         return err('validateVerificationEthereumAddress: externalSignature does not match externalUri');
       }
     } catch (e: any) {
@@ -385,12 +441,36 @@ class Engine {
     return ok(undefined);
   }
 
-  private async validateCustodyRemoveAll(): Promise<Result<void, string>> {
-    // TODO: any CustodyRemoveAll custom validation?
-    return ok(undefined);
+  private validateChainURL(chainURL: string): Result<void, string> {
+    const result = ChainURL.parse(chainURL);
+    return result.andThen((chainUrlParsed) => {
+      const chainId = chainUrlParsed.chainId.toString();
+      if (!this._supportedChainIDs.has(chainId)) {
+        return err(`validateChainURL: unsupported chainID ${chainId}`);
+      }
+      return ok(undefined);
+    });
   }
 
-  private async validateFollow(): Promise<Result<void, string>> {
+  private validateChainAccountURL(chainAccountURL: string): Result<ChainAccountURL, string> {
+    const result = ChainAccountURL.parse(chainAccountURL);
+    return result.andThen((chainAccountURLParsed) => {
+      const chainId = chainAccountURLParsed.chainId.toString();
+      if (!this._supportedChainIDs.has(chainId)) {
+        return err(`validateChainAccountURL: unsupported chainID ${chainId}`);
+      }
+      return result;
+    });
+  }
+
+  private async validateFollow(message: Follow): Promise<Result<void, string>> {
+    const result = UserURL.parse(message.data.body.targetUri);
+    return result
+      .map(() => {
+        return undefined;
+      })
+      .mapErr(() => 'validateFollow: targetUri must be valid FarcasterID');
+
     // TODO: any Follow custom validation?
     return ok(undefined);
   }

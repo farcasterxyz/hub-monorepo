@@ -17,6 +17,7 @@ import {
   MessageSigner,
   HashAlgorithm,
   IDRegistryEvent,
+  EthAddressUrlFactoryTransientParams,
   SignerMessageFactoryTransientParams,
   MessageType,
   FarcasterNetwork,
@@ -24,8 +25,13 @@ import {
   ReactionRemove,
   FollowAdd,
   FollowRemove,
+  Cast,
 } from '~/types';
 import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
+import { CastURL, CastId, ChainAccountURL, UserId, UserURL } from '~/urls';
+// import { ChainAccountURL } from '~/urls/chainAccountUrl';
+// import {  } from '~/urls/castUrl';
+import { AccountId } from 'caip';
 
 /**
  * getMessageSigner gets or generates a signer based on a message and transient params object
@@ -52,22 +58,50 @@ const addEnvelopeToMessage = async (
   message: Message,
   transientParams: MessageFactoryTransientParams
 ): Promise<Message> => {
-  const signer = await getMessageSigner(message, transientParams);
+  /** Generate message hash */
   message.hash = await hashMessage(message);
+
+  /** Get or generate message signer and signatureType */
+  const signer = await getMessageSigner(message, transientParams);
   message.signer = signer.signerKey;
+  message.signatureType = signer.type;
+
+  /** Generate message signature */
   if (signer.type === SignatureAlgorithm.EthereumPersonalSign) {
     message.signature = await signer.wallet.signMessage(message.hash);
   } else if (signer.type === SignatureAlgorithm.Ed25519) {
     message.signature = await signEd25519(message.hash, signer.privateKey);
   }
-  message.signatureType = signer.type;
+
   return message;
 };
+
+const UserURLFactory = Factory.define<UserURL, { fid: number }, UserURL>(({ transientParams, sequence }) => {
+  return new UserURL(new UserId(`fid:${transientParams.fid || sequence}`));
+});
+
+const EthereumAddressURLFactory = Factory.define<ChainAccountURL, EthAddressUrlFactoryTransientParams, ChainAccountURL>(
+  ({ transientParams }) => {
+    const address = transientParams.address || Faker.datatype.hexaDecimal(32).toLowerCase();
+    return new ChainAccountURL(new AccountId(`eip155:1:${address}`));
+  }
+);
+
+const CastURLFactory = Factory.define<CastURL, { cast: Cast }, CastURL>(({ transientParams }) => {
+  const { cast } = transientParams;
+  const fid = cast ? cast.data.fid : Faker.datatype.number();
+  const hash = cast ? cast.hash : Faker.datatype.hexaDecimal(128).toLowerCase();
+  return new CastURL(new CastId(`fid:${fid}/cast:${hash}`));
+});
 
 /**
  * ProtocolFactories are used to construct valid Farcaster Protocol JSON objects.
  */
 export const Factories = {
+  EthereumAddressURL: EthereumAddressURLFactory,
+  CastUrl: CastURLFactory,
+  UserURL: UserURLFactory,
+
   /** Generate a valid Cast with randomized properties */
   CastShort: Factory.define<CastShort, MessageFactoryTransientParams, CastShort>(({ onCreate, transientParams }) => {
     onCreate(async (props) => {
@@ -105,7 +139,7 @@ export const Factories = {
     return {
       data: {
         body: {
-          targetHash: Faker.datatype.hexaDecimal(40).toLowerCase(),
+          targetHash: Faker.datatype.hexaDecimal(128).toLowerCase(),
         },
         signedAt: Faker.time.recent(),
         fid: Faker.datatype.number(),
@@ -129,7 +163,7 @@ export const Factories = {
     return {
       data: {
         body: {
-          targetCastUri: Faker.internet.url(),
+          targetCastUri: CastURLFactory.build().toString(),
         },
         signedAt: Faker.time.recent(),
         fid: Faker.datatype.number(),
@@ -207,7 +241,7 @@ export const Factories = {
     return {
       data: {
         body: {
-          targetUri: Faker.internet.url(),
+          targetUri: UserURLFactory.build().toString(),
         },
         signedAt: Faker.time.recent(),
         fid: Faker.datatype.number(),
@@ -256,12 +290,12 @@ export const Factories = {
 
     return {
       args: {
-        to: Faker.datatype.hexaDecimal(32),
+        to: Faker.datatype.hexaDecimal(32).toLowerCase(),
         id: Faker.datatype.number(),
       },
       blockNumber: Faker.datatype.number(10_000),
-      blockHash: Faker.datatype.hexaDecimal(64),
-      transactionHash: Faker.datatype.hexaDecimal(64),
+      blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+      transactionHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
       logIndex: Faker.datatype.number(),
       name: 'Register',
     };
@@ -338,7 +372,7 @@ export const Factories = {
       if (!props.data.body.claimHash) {
         const verificationClaim: VerificationEthereumAddressClaim = {
           fid: props.data.fid,
-          externalUri: props.data.body.externalUri,
+          externalUri: props.data.body.externalUri.toLowerCase(),
           blockHash: props.data.body.blockHash,
         };
         props.data.body.claimHash = await hashFCObject(verificationClaim);
@@ -356,7 +390,9 @@ export const Factories = {
     return {
       data: {
         body: {
-          externalUri: ethWallet.address,
+          externalUri: EthereumAddressURLFactory.build(undefined, {
+            transient: { address: ethWallet.address },
+          }).toString(),
           claimHash: '',
           blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
           externalSignature: '',

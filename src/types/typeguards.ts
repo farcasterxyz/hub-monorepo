@@ -1,8 +1,6 @@
 import * as FC from '~/types';
 
-export function isCast(msg: FC.Message): msg is FC.Cast {
-  return isCastShort(msg) || isCastRemove(msg) || isCastRecast(msg);
-}
+export const isCast = (msg: FC.Message): msg is FC.Cast => isCastShort(msg) || isCastRemove(msg) || isCastRecast(msg);
 
 export const isCastShort = (msg: FC.Message): msg is FC.CastShort => {
   const { body, type } = (msg as FC.CastShort).data;

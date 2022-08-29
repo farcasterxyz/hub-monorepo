@@ -200,7 +200,25 @@ describe('mergeCast', () => {
 
   describe('cast validation: ', () => {
     // test('fails if the schema is invalid', async () => {});
-    // test('fails if targetUri does not match schema', async () => {});
+    test('fails if targetUri does not match schema', async () => {
+      const invalidTargets: string[] = [
+        'foobar.com', // URL missing scheme
+        'http://foobar.com', // web2 URLs not allowed
+        'chain://eip155:1', // chain URLs not allowed
+        'farcaster://fid:1', // target must be a cast, not a user
+      ];
+      for (const invalidTarget of invalidTargets) {
+        const invalidTargetUri = await Factories.CastShort.create(
+          {
+            data: { body: { targetUri: invalidTarget }, fid: aliceFid },
+          },
+          { transient: { signer: aliceDelegateSigner } }
+        );
+        const result = await engine.mergeCast(invalidTargetUri);
+        expect(result.isOk()).toBe(false);
+        expect(result._unsafeUnwrapErr()).toEqual('validateCastShort: targetUri must be a valid Cast URL');
+      }
+    });
     // test('fails if the targetUri references itself', async () => {});
   });
 
@@ -220,7 +238,7 @@ describe('mergeCast', () => {
       const result = await engine.mergeCast(castLongText);
 
       expect(result.isOk()).toBe(false);
-      expect(result._unsafeUnwrapErr()).toBe('validateCast: text > 280 chars');
+      expect(result._unsafeUnwrapErr()).toBe('validateCastShort: text > 280 chars');
       expect(aliceAdds()).toEqual(new Set());
     });
 
@@ -239,7 +257,7 @@ describe('mergeCast', () => {
 
       const result = await engine.mergeCast(castThreeEmbeds);
       expect(result.isOk()).toBe(false);
-      expect(result._unsafeUnwrapErr()).toBe('validateCast: embeds > 2');
+      expect(result._unsafeUnwrapErr()).toBe('validateCastShort: embeds > 2');
       expect(aliceAdds()).toEqual(new Set());
     });
 

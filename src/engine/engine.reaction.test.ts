@@ -125,7 +125,24 @@ describe('mergeReaction', () => {
   });
 
   // test('fails if the schema is invalid', async () => {});
-  // test('fails if targetUri does not match schema', async () => {});
+  test('fails if targetUri does not match schema', async () => {
+    const invalidTargets: string[] = [
+      'foobar.com', // URL missing scheme
+      'farcaster://fid:1', // cannot react to a user
+      'chain://eip155:1', // chain URLs not allowed (must be a resource on the chain)
+    ];
+    for (const invalidTarget of invalidTargets) {
+      const invalidTargetUri = await Factories.ReactionAdd.create(
+        {
+          data: { body: { targetUri: invalidTarget }, fid: aliceFid },
+        },
+        transient
+      );
+      const result = await engine.mergeReaction(invalidTargetUri);
+      expect(result.isOk()).toBe(false);
+      expect(result._unsafeUnwrapErr()).toEqual('validateReaction: invalid URL for reaction target');
+    }
+  });
   test('fails if the type is invalid', async () => {
     const reactionInvalidType = await Factories.ReactionAdd.create(
       {
