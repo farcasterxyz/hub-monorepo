@@ -5,9 +5,9 @@ import {
   EthereumSigner,
   SignerAdd,
   Verification,
-  VerificationAddFactoryTransientParams,
-  VerificationAdd,
-  VerificationClaim,
+  VerificationEthereumAddressFactoryTransientParams,
+  VerificationEthereumAddress,
+  VerificationEthereumAddressClaim,
   IDRegistryEvent,
   SignatureAlgorithm,
 } from '~/types';
@@ -18,8 +18,8 @@ import { ChainAccountURL } from '~/urls';
 
 const engine = new Engine();
 const aliceFid = Faker.datatype.number();
+const aliceAdds = () => engine._getVerificationEthereumAddressAdds(aliceFid);
 
-// TODO: add test helpers to clean up the setup of these tests
 describe('mergeVerification', () => {
   let aliceCustody: EthereumSigner;
   let aliceCustodyRegister: IDRegistryEvent;
@@ -29,8 +29,8 @@ describe('mergeVerification', () => {
   let aliceEthWallet: Wallet;
   let aliceClaimHash: string;
   let aliceExternalSignature: string;
-  let transientParams: { transient: VerificationAddFactoryTransientParams };
-  let genericVerificationAdd: VerificationAdd;
+  let transientParams: { transient: VerificationEthereumAddressFactoryTransientParams };
+  let genericVerificationAdd: VerificationEthereumAddress;
 
   beforeAll(async () => {
     aliceCustody = await generateEthereumSigner();
@@ -41,14 +41,14 @@ describe('mergeVerification', () => {
     aliceSigner = await generateEd25519Signer();
     transientParams = { transient: { signer: aliceSigner } };
     aliceSignerAdd = await Factories.SignerAdd.create(
-      { data: { fid: aliceFid } },
-      { transient: { signer: aliceCustody, delegateSigner: aliceSigner } }
+      { data: { fid: aliceFid, body: { delegate: aliceSigner.signerKey } } },
+      { transient: { signer: aliceCustody } }
     );
     aliceEthWallet = Wallet.createRandom();
     transientParams = { transient: { signer: aliceSigner, ethWallet: aliceEthWallet } };
     aliceBlockHash = Faker.datatype.hexaDecimal(64).toLowerCase();
 
-    const verificationClaim: VerificationClaim = {
+    const verificationClaim: VerificationEthereumAddressClaim = {
       fid: aliceFid,
       externalUri: Factories.EthereumAddressURL.build(undefined, { transient: { address: aliceEthWallet.address } }),
       blockHash: aliceBlockHash,
@@ -57,7 +57,7 @@ describe('mergeVerification', () => {
 
     aliceExternalSignature = await aliceEthWallet.signMessage(aliceClaimHash);
 
-    genericVerificationAdd = await Factories.VerificationAdd.create(
+    genericVerificationAdd = await Factories.VerificationEthereumAddress.create(
       {
         data: {
           fid: aliceFid,
@@ -72,14 +72,14 @@ describe('mergeVerification', () => {
     );
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     engine._reset();
-    engine.mergeIDRegistryEvent(aliceCustodyRegister);
-    engine.mergeSignerMessage(aliceSignerAdd);
+    await engine.mergeIDRegistryEvent(aliceCustodyRegister);
+    await engine.mergeSignerMessage(aliceSignerAdd);
   });
 
   test('fails with invalid message type', async () => {
-    const cast = (await Factories.Cast.create(
+    const cast = (await Factories.CastShort.create(
       {
         data: { fid: aliceFid },
       },
@@ -90,7 +90,7 @@ describe('mergeVerification', () => {
 
   test('succeeds with a valid VerificationAdd', async () => {
     expect((await engine.mergeVerification(genericVerificationAdd)).isOk()).toBe(true);
-    expect(engine._getVerificationAdds(aliceFid)).toEqual([genericVerificationAdd]);
+    expect(aliceAdds()).toEqual(new Set([genericVerificationAdd]));
   });
 
   describe('ethereum addresses', () => {
@@ -102,7 +102,7 @@ describe('mergeVerification', () => {
 
     test('works when address is not checksummed', async () => {
       // construct verification claim
-      const verificationClaim: VerificationClaim = {
+      const verificationClaim: VerificationEthereumAddressClaim = {
         fid: aliceFid,
         externalUri: Factories.EthereumAddressURL.build(undefined, {
           transient: { address: aliceEthWallet.address.toLowerCase() },
@@ -111,7 +111,7 @@ describe('mergeVerification', () => {
       };
       const aliceClaimHash = await hashFCObject(verificationClaim);
       const aliceExternalSignature = await aliceEthWallet.signMessage(aliceClaimHash);
-      const verificationAdd = await Factories.VerificationAdd.create(
+      const verificationAdd = await Factories.VerificationEthereumAddress.create(
         {
           data: {
             fid: aliceFid,
@@ -134,20 +134,20 @@ describe('mergeVerification', () => {
 
       // run the verification through the engine
       expect((await engine.mergeVerification(verificationAdd)).isOk()).toBe(true);
-      expect(engine._getVerificationAdds(aliceFid)).toEqual([verificationAdd]);
+      expect(engine._getVerificationEthereumAddressAdds(aliceFid)).toEqual(new Set([verificationAdd]));
     });
   });
 
   test('fails if message signer is not valid', async () => {
     engine._resetSigners();
     expect((await engine.mergeVerification(genericVerificationAdd))._unsafeUnwrapErr()).toBe(
-      'mergeVerification: unknown user'
+      'validateMessage: unknown user'
     );
-    expect(engine._getVerificationAdds(aliceFid)).toEqual([]);
+    expect(aliceAdds()).toEqual(new Set());
   });
 
   test('fails with malformed externalSignature', async () => {
-    const verificationAddMessage = await Factories.VerificationAdd.create(
+    const verificationAddMessage = await Factories.VerificationEthereumAddress.create(
       {
         data: {
           fid: aliceFid,
@@ -157,13 +157,13 @@ describe('mergeVerification', () => {
       transientParams
     );
     const res = await engine.mergeVerification(verificationAddMessage);
-    expect(res._unsafeUnwrapErr()).toBe('validateVerificationAdd: invalid externalSignature');
-    expect(engine._getVerificationAdds(aliceFid)).toEqual([]);
+    expect(res._unsafeUnwrapErr()).toBe('validateVerificationEthereumAddress: invalid externalSignature');
+    expect(aliceAdds()).toEqual(new Set());
   });
 
   test('fails with externalSignature from unknown address', async () => {
     const randomEthWallet = Wallet.createRandom();
-    const verificationAddMessage = await Factories.VerificationAdd.create(
+    const verificationAddMessage = await Factories.VerificationEthereumAddress.create(
       {
         data: {
           fid: aliceFid,
@@ -180,12 +180,14 @@ describe('mergeVerification', () => {
       }
     );
     const res = await engine.mergeVerification(verificationAddMessage);
-    expect(res._unsafeUnwrapErr()).toBe('validateVerificationAdd: externalSignature does not match externalUri');
-    expect(engine._getVerificationAdds(aliceFid)).toEqual([]);
+    expect(res._unsafeUnwrapErr()).toBe(
+      'validateVerificationEthereumAddress: externalSignature does not match externalUri'
+    );
+    expect(aliceAdds()).toEqual(new Set());
   });
 
   test('fails with invalid claimHash', async () => {
-    const verificationAddMessage = await Factories.VerificationAdd.create(
+    const verificationAddMessage = await Factories.VerificationEthereumAddress.create(
       {
         data: {
           fid: aliceFid,
@@ -195,12 +197,12 @@ describe('mergeVerification', () => {
       transientParams
     );
     const res = await engine.mergeVerification(verificationAddMessage);
-    expect(res._unsafeUnwrapErr()).toBe('validateVerificationAdd: invalid claimHash');
-    expect(engine._getVerificationAdds(aliceFid)).toEqual([]);
+    expect(res._unsafeUnwrapErr()).toBe('validateVerificationEthereumAddress: invalid claimHash');
+    expect(aliceAdds()).toEqual(new Set());
   });
 
   test('fails with invalid blockHash', async () => {
-    const verificationAddMessage = await Factories.VerificationAdd.create(
+    const verificationAddMessage = await Factories.VerificationEthereumAddress.create(
       {
         data: {
           fid: aliceFid,
@@ -214,12 +216,12 @@ describe('mergeVerification', () => {
       transientParams
     );
     const res = await engine.mergeVerification(verificationAddMessage);
-    expect(res._unsafeUnwrapErr()).toBe('validateVerificationAdd: invalid claimHash');
-    expect(engine._getVerificationAdds(aliceFid)).toEqual([]);
+    expect(res._unsafeUnwrapErr()).toBe('validateVerificationEthereumAddress: invalid claimHash');
+    expect(aliceAdds()).toEqual(new Set());
   });
 
   test('fails with invalid externalSignatureType', async () => {
-    const verificationAddMessage = await Factories.VerificationAdd.create(
+    const verificationAddMessage = await Factories.VerificationEthereumAddress.create(
       {
         data: {
           fid: aliceFid,
@@ -234,32 +236,32 @@ describe('mergeVerification', () => {
     );
     const res = await engine.mergeVerification(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe('validateMessage: unknown message');
-    expect(engine._getVerificationAdds(aliceFid)).toEqual([]);
+    expect(aliceAdds()).toEqual(new Set());
   });
 
   // TODO: share these generic message validation tests between engine tests
 
   test('fails with invalid hash', async () => {
-    const badHashVerification: VerificationAdd = { ...genericVerificationAdd, hash: 'foo' };
+    const badHashVerification: VerificationEthereumAddress = { ...genericVerificationAdd, hash: 'foo' };
     const res = await engine.mergeVerification(badHashVerification);
     expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
-    expect(engine._getVerificationAdds(aliceFid)).toEqual([]);
+    expect(aliceAdds()).toEqual(new Set());
   });
 
   test('fails with invalid signature', async () => {
-    const badMessageSignature: VerificationAdd = {
+    const badMessageSignature: VerificationEthereumAddress = {
       ...genericVerificationAdd,
       signature:
         '0x5b699d494b515b22258c01ad19710d44c3f12235f0c01e91d09a1e4e2cd25d80c77026a7319906da3b8ce62abc18477c19e444a02949a0dde54f8cadef889502',
     };
     const res = await engine.mergeVerification(badMessageSignature);
     expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid signature');
-    expect(engine._getVerificationAdds(aliceFid)).toEqual([]);
+    expect(aliceAdds()).toEqual(new Set());
   });
 
   test('fails if signedAt is > current time + safety margin', async () => {
     const elevenMinutesAhead = Date.now() + 11 * 60 * 1000;
-    const verificationAddMessage = await Factories.VerificationAdd.create(
+    const verificationAddMessage = await Factories.VerificationEthereumAddress.create(
       {
         data: {
           fid: aliceFid,
@@ -274,12 +276,12 @@ describe('mergeVerification', () => {
     );
     const res = await engine.mergeVerification(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe('validateMessage: signedAt more than 10 mins in the future');
-    expect(engine._getVerificationAdds(aliceFid)).toEqual([]);
+    expect(aliceAdds()).toEqual(new Set());
   });
 
   test('succeeds with a valid VerificationRemove', async () => {
     expect((await engine.mergeVerification(genericVerificationAdd)).isOk()).toBe(true);
-    expect(engine._getVerificationAdds(aliceFid)).toEqual([genericVerificationAdd]);
+    expect(aliceAdds()).toEqual(new Set([genericVerificationAdd]));
     const verificationRemoveMessage = await Factories.VerificationRemove.create(
       {
         data: {
@@ -291,8 +293,8 @@ describe('mergeVerification', () => {
       transientParams
     );
     expect((await engine.mergeVerification(verificationRemoveMessage)).isOk()).toBe(true);
-    expect(engine._getVerificationRemoves(aliceFid)).toEqual([verificationRemoveMessage]);
-    expect(engine._getVerificationAdds(aliceFid)).toEqual([]);
+    expect(engine._getVerificationRemoves(aliceFid)).toEqual(new Set([verificationRemoveMessage]));
+    expect(aliceAdds()).toEqual(new Set());
   });
 
   test('succeeds with a valid VerificationRemove before relevant VerificationAdd has been added', async () => {
@@ -307,9 +309,9 @@ describe('mergeVerification', () => {
       transientParams
     );
     expect((await engine.mergeVerification(verificationRemoveMessage)).isOk()).toBe(true);
-    expect(engine._getVerificationRemoves(aliceFid)).toEqual([verificationRemoveMessage]);
-    expect(engine._getVerificationAdds(aliceFid)).toEqual([]);
+    expect(engine._getVerificationRemoves(aliceFid)).toEqual(new Set([verificationRemoveMessage]));
+    expect(aliceAdds()).toEqual(new Set());
     expect((await engine.mergeVerification(genericVerificationAdd)).isOk()).toBe(true);
-    expect(engine._getVerificationAdds(aliceFid)).toEqual([]);
+    expect(aliceAdds()).toEqual(new Set());
   });
 });

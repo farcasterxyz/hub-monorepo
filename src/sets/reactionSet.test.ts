@@ -1,20 +1,26 @@
 import Faker from 'faker';
 import { Factories } from '~/factories';
 import ReactionSet from '~/sets/reactionSet';
-import { Reaction, URI } from '~/types';
+import { Reaction, ReactionAdd, ReactionRemove, URI } from '~/types';
 
 const set = new ReactionSet();
+const reactionAdds = () => set._getAdds();
+const reactionRemoves = () => set._getRemoves();
 
-let targetUri: URI;
-let activeReaction: Reaction;
-let inactiveReaction: Reaction;
+let a: URI;
+let addA: ReactionAdd;
+let remA: ReactionRemove;
+let b: URI;
+let addB: ReactionAdd;
 
 beforeAll(async () => {
-  targetUri = Faker.internet.url();
-  activeReaction = await Factories.Reaction.create({ data: { body: { targetUri } } });
-  inactiveReaction = await Factories.Reaction.create({
-    data: { body: { targetUri, active: false }, signedAt: activeReaction.data.signedAt + 1 },
+  a = Faker.internet.url();
+  addA = await Factories.ReactionAdd.create({ data: { body: { targetUri: a } } });
+  remA = await Factories.ReactionRemove.create({
+    data: { body: { targetUri: a }, signedAt: addA.data.signedAt + 1 },
   });
+  b = Faker.internet.url();
+  addB = await Factories.ReactionAdd.create({ data: { body: { targetUri: b } } });
 });
 
 beforeEach(() => {
@@ -23,210 +29,241 @@ beforeEach(() => {
 
 describe('get', () => {
   test('fails when reaction does not exist', () => {
-    expect(set.get(targetUri)).toBeFalsy();
+    expect(set.get(a)).toBeFalsy();
   });
 
-  test('returns Reaction when active', () => {
-    set.merge(activeReaction);
-    expect(set.get(targetUri)).toEqual(activeReaction);
+  test('returns ReactionAdd when reaction has been added', () => {
+    set.merge(addA);
+    expect(set.get(a)).toEqual(addA);
   });
 
-  test('returns Reaction when inactive', () => {
-    set.merge(inactiveReaction);
-    expect(set.get(targetUri)).toEqual(inactiveReaction);
+  test('fails when reaction has been removed', () => {
+    set.merge(remA);
+    expect(set.get(a)).toBeFalsy();
   });
 
   test('fails when using message hash', () => {
-    set.merge(activeReaction);
-    expect(set.get(activeReaction.hash)).toBeFalsy();
+    set.merge(addA);
+    expect(set.get(addA.hash)).toBeFalsy();
   });
 });
 
 describe('merge', () => {
-  const subject = () => set._getActiveReactions();
-
   test('fails with an incorrect message type', async () => {
-    const invalidReaction = (await Factories.Cast.create()) as unknown as Reaction;
+    const invalidReaction = (await Factories.CastShort.create()) as unknown as Reaction;
     expect(set.merge(invalidReaction)._unsafeUnwrapErr()).toBe('ReactionSet.merge: invalid message format');
-    expect(subject()).toEqual([]);
+    expect(reactionAdds()).toEqual(new Set());
+    expect(reactionRemoves()).toEqual(new Set());
   });
 
-  describe('active', () => {
-    test('succeeds when active is passed in', async () => {
-      expect(set.merge(activeReaction).isOk()).toBe(true);
-      expect(subject()).toEqual([activeReaction]);
+  describe('mergeReactionAdd', () => {
+    test('succeeds with valid ReactionAdd', async () => {
+      expect(set.merge(addA).isOk()).toBe(true);
+      expect(reactionAdds()).toEqual(new Set([addA]));
+      expect(reactionRemoves()).toEqual(new Set());
     });
 
-    test('succeeds (no-ops) when duplicate active is passed in', async () => {
-      expect(set.merge(activeReaction).isOk()).toBe(true);
-      expect(set.merge(activeReaction).isOk()).toBe(true);
-      expect(subject()).toEqual([activeReaction]);
+    test('succeeds (no-ops) with duplicate valid ReactionAdd', async () => {
+      expect(set.merge(addA).isOk()).toBe(true);
+      expect(set.merge(addA).isOk()).toBe(true);
+      expect(reactionAdds()).toEqual(new Set([addA]));
+      expect(reactionRemoves()).toEqual(new Set());
     });
 
     test('succeeds when reactions have different URIs', async () => {
-      expect(set.merge(activeReaction).isOk()).toBe(true);
-      const secondReaction = await Factories.Reaction.create();
-
-      expect(set.merge(secondReaction).isOk()).toBe(true);
-      // compare sets instead of arrays to avoid failures due to ordering by hash
-      expect(new Set(subject())).toEqual(new Set([secondReaction, activeReaction]));
+      expect(set.merge(addA).isOk()).toBe(true);
+      expect(set.merge(addB).isOk()).toBe(true);
+      expect(reactionAdds()).toEqual(new Set([addA, addB]));
+      expect(reactionRemoves()).toEqual(new Set());
     });
 
     describe('with conflicting URIs', () => {
-      let targetUri: string;
-      beforeAll(() => {
-        targetUri = activeReaction.data.body.targetUri;
+      beforeEach(() => {
+        expect(set.merge(addA).isOk()).toBe(true);
       });
 
-      test('replaces existing reaction if this one has a higher timestamp', async () => {
-        expect(set.merge(activeReaction).isOk()).toBe(true);
-        const laterReaction = await Factories.Reaction.create({
-          data: {
-            body: { targetUri },
-            signedAt: activeReaction.data.signedAt + 1,
-          },
-        });
-        expect(set.merge(laterReaction).isOk()).toBe(true);
-        expect(subject()).toEqual([laterReaction]);
+      test('succeeds with a later timestamp', () => {
+        const addALater: ReactionAdd = {
+          ...addA,
+          hash: Faker.datatype.hexaDecimal(128),
+          data: { ...addA.data, signedAt: addA.data.signedAt + 1 },
+        };
+        expect(set.merge(addALater).isOk()).toBe(true);
+        expect(reactionAdds()).toEqual(new Set([addALater]));
+        expect(reactionRemoves()).toEqual(new Set());
       });
 
-      test('succeeds (no-ops) if this one has a lower timestamp', async () => {
-        expect(set.merge(activeReaction).isOk()).toBe(true);
-        const earlierReaction = await Factories.Reaction.create({
-          data: {
-            body: { targetUri },
-            signedAt: activeReaction.data.signedAt - 1,
-          },
-        });
-        expect(set.merge(earlierReaction).isOk()).toBe(true);
-        expect(subject()).toEqual([activeReaction]);
+      test('succeeds (no-ops) with an earlier timestamp', () => {
+        const addAEarlier: ReactionAdd = {
+          ...addA,
+          hash: Faker.datatype.hexaDecimal(128),
+          data: { ...addA.data, signedAt: addA.data.signedAt - 1 },
+        };
+        expect(set.merge(addAEarlier).isOk()).toBe(true);
+        expect(reactionAdds()).toEqual(new Set([addA]));
+        expect(reactionRemoves()).toEqual(new Set());
       });
 
       describe('with conflicting timestamps', () => {
-        let conflictingReaction: Reaction;
-
-        beforeAll(() => {
-          conflictingReaction = { ...activeReaction, hash: activeReaction.hash + 'a' };
-          conflictingReaction.data.signedAt = activeReaction.data.signedAt;
-        });
-
         test('succeeds if message hash has higher lexicographical order', () => {
-          expect(set.merge(activeReaction).isOk()).toBe(true);
-          expect(set.merge(conflictingReaction).isOk()).toBe(true);
-          expect(subject()).toEqual([conflictingReaction]);
+          const addAHigherHash = { ...addA, hash: addA.hash + 'a' };
+          expect(set.merge(addAHigherHash).isOk()).toBe(true);
+          expect(reactionAdds()).toEqual(new Set([addAHigherHash]));
+          expect(reactionRemoves()).toEqual(new Set());
         });
 
         test('succeeds (no-ops) if message hash has lower lexicographical order', () => {
-          expect(set.merge(conflictingReaction).isOk()).toBe(true);
-          expect(set.merge(activeReaction).isOk()).toBe(true);
-          expect(subject()).toEqual([conflictingReaction]);
+          const addALowerHash = { ...addA, hash: addA.hash.slice(-1, 0) };
+          expect(set.merge(addALowerHash).isOk()).toBe(true);
+          expect(reactionAdds()).toEqual(new Set([addA]));
+          expect(reactionRemoves()).toEqual(new Set());
         });
+      });
+    });
+
+    describe('when reaction has been removed', () => {
+      beforeEach(() => {
+        expect(set.merge(remA).isOk()).toBe(true);
+      });
+
+      test('succeeds with a later timestamp', () => {
+        const addALater: ReactionAdd = {
+          ...addA,
+          hash: Faker.datatype.hexaDecimal(128),
+          data: { ...addA.data, signedAt: remA.data.signedAt + 1 },
+        };
+        expect(set.merge(addALater).isOk()).toBe(true);
+        expect(reactionAdds()).toEqual(new Set([addALater]));
+        expect(reactionRemoves()).toEqual(new Set());
+      });
+
+      test('succeeds (no-ops) with an earlier timestamp', () => {
+        expect(set.merge(addA).isOk()).toBe(true);
+        expect(reactionAdds()).toEqual(new Set());
+        expect(reactionRemoves()).toEqual(new Set([remA]));
+      });
+
+      test('succeeds (no-ops) with the same timestamp', () => {
+        const addASameTimestamp: ReactionAdd = {
+          ...addA,
+          hash: Faker.datatype.hexaDecimal(128),
+          data: { ...addA.data, signedAt: remA.data.signedAt },
+        };
+        expect(set.merge(addASameTimestamp).isOk()).toBe(true);
+        expect(reactionAdds()).toEqual(new Set());
+        expect(reactionRemoves()).toEqual(new Set([remA]));
       });
     });
   });
 
-  describe('inactive', () => {
-    test('works when inactive passed in', async () => {
-      expect(set.merge(inactiveReaction).isOk()).toBe(true);
-      expect(subject()).toEqual([]);
-      expect(set._getInactiveReactions()).toEqual([inactiveReaction]);
+  describe('mergeReactionRemove', () => {
+    test('succeeds with valid ReactionRemove', () => {
+      expect(set.merge(remA).isOk()).toBe(true);
+      expect(reactionAdds()).toEqual(new Set());
+      expect(reactionRemoves()).toEqual(new Set([remA]));
     });
 
-    test('works when inactive passed in after active', async () => {
-      expect(set.merge(activeReaction).isOk()).toBe(true);
-      expect(set.merge(inactiveReaction).isOk()).toBe(true);
-      expect(subject()).toEqual([]);
-      expect(set._getInactiveReactions()).toEqual([inactiveReaction]);
+    test('succeeds when target has already been added', async () => {
+      expect(set.merge(addA).isOk()).toBe(true);
+      expect(set.merge(remA).isOk()).toBe(true);
+      expect(reactionAdds()).toEqual(new Set());
+      expect(reactionRemoves()).toEqual(new Set([remA]));
     });
 
-    test('works when active passed in after inactive', async () => {
-      const laterActiveReaction = await Factories.Reaction.create({
-        data: {
-          body: { targetUri, active: true },
-          signedAt: inactiveReaction.data.signedAt + 1,
-        },
-      });
-
-      expect(set.merge(inactiveReaction).isOk()).toBe(true);
-      expect(set.merge(laterActiveReaction).isOk()).toBe(true);
-      expect(subject()).toEqual([laterActiveReaction]);
-      expect(set._getInactiveReactions()).toEqual([]);
-    });
-
-    test('succeeds (no-ops) when duplicate inactive passed in', async () => {
-      expect(set.merge(inactiveReaction).isOk()).toBe(true);
-      expect(set.merge(inactiveReaction).isOk()).toBe(true);
-      expect(subject()).toEqual([]);
-      expect(set._getInactiveReactions()).toEqual([inactiveReaction]);
+    test('succeeds (no-ops) with duplicate ReactionRemove messages', async () => {
+      expect(set.merge(remA).isOk()).toBe(true);
+      expect(set.merge(remA).isOk()).toBe(true);
+      expect(reactionAdds()).toEqual(new Set());
+      expect(reactionRemoves()).toEqual(new Set([remA]));
     });
 
     describe('with conflicting URIs', () => {
-      test('replaces existing inactive if this is newer', async () => {
-        expect(set.merge(inactiveReaction).isOk()).toBe(true);
-
-        const laterDeactivation = await Factories.Reaction.create({
-          data: {
-            body: {
-              targetUri,
-              active: false,
-            },
-            signedAt: inactiveReaction.data.signedAt + 1,
-          },
-        });
-
-        expect(set.merge(laterDeactivation).isOk()).toBe(true);
-        expect(subject()).toEqual([]);
-        expect(set._getInactiveReactions()).toEqual([laterDeactivation]);
+      beforeEach(() => {
+        expect(set.merge(remA).isOk()).toBe(true);
       });
 
-      test('succeeds (no-ops) if this inactive is older', async () => {
-        expect(set.merge(inactiveReaction).isOk()).toBe(true);
+      test('succeeds with a later timestamp', () => {
+        const remALater: ReactionRemove = {
+          ...remA,
+          hash: Faker.datatype.hexaDecimal(128),
+          data: { ...remA.data, signedAt: remA.data.signedAt + 1 },
+        };
+        expect(set.merge(remALater).isOk()).toBe(true);
+        expect(reactionAdds()).toEqual(new Set());
+        expect(reactionRemoves()).toEqual(new Set([remALater]));
+      });
 
-        const earlierDeactivation = await Factories.Reaction.create({
-          data: {
-            body: { targetUri, active: false },
-            signedAt: inactiveReaction.data.signedAt - 1,
-          },
-        });
-
-        expect(set.merge(earlierDeactivation).isOk()).toBe(true);
-        expect(subject()).toEqual([]);
-        expect(set._getInactiveReactions()).toEqual([inactiveReaction]);
+      test('succeeds (no-ops) with an earlier timestamp', () => {
+        const remAEarlier: ReactionRemove = {
+          ...remA,
+          hash: Faker.datatype.hexaDecimal(128),
+          data: { ...remA.data, signedAt: remA.data.signedAt - 1 },
+        };
+        expect(set.merge(remAEarlier).isOk()).toBe(true);
+        expect(reactionAdds()).toEqual(new Set());
+        expect(reactionRemoves()).toEqual(new Set([remA]));
       });
 
       describe('with conflicting timestamps', () => {
-        let conflictingInactiveReaction: Reaction;
-
-        beforeAll(async () => {
-          conflictingInactiveReaction = { ...inactiveReaction, hash: inactiveReaction.hash + 'a' };
-          conflictingInactiveReaction.data.signedAt = inactiveReaction.data.signedAt;
+        test('succeeds if message hash has higher lexicographical order', () => {
+          const remAHigherHash = { ...remA, hash: remA.hash + 'a' };
+          expect(set.merge(remAHigherHash).isOk()).toBe(true);
+          expect(reactionAdds()).toEqual(new Set());
+          expect(reactionRemoves()).toEqual(new Set([remAHigherHash]));
         });
 
-        test('succeeds if message hash has higher lexicographical order', async () => {
-          expect(set.merge(inactiveReaction).isOk()).toBe(true);
-          expect(set.merge(conflictingInactiveReaction).isOk()).toBe(true);
-          expect(subject()).toEqual([]);
-          expect(set._getInactiveReactions()).toEqual([conflictingInactiveReaction]);
+        test('succeeds (no-ops) if message hash has lower lexicographical order', () => {
+          const remALowerHash = { ...remA, hash: remA.hash.slice(-1, 0) };
+          expect(set.merge(remALowerHash).isOk()).toBe(true);
+          expect(reactionAdds()).toEqual(new Set());
+          expect(reactionRemoves()).toEqual(new Set([remA]));
         });
+      });
+    });
 
-        test('succeeds (no-ops) if message hash has lower lexicographical order', async () => {
-          expect(set.merge(conflictingInactiveReaction).isOk()).toBe(true);
-          expect(set.merge(inactiveReaction).isOk()).toBe(true);
-          expect(subject()).toEqual([]);
-          expect(set._getInactiveReactions()).toEqual([conflictingInactiveReaction]);
-        });
+    describe('when reaction has been added', () => {
+      beforeEach(() => {
+        expect(set.merge(addA).isOk()).toBe(true);
+      });
+
+      test('succeeds with a later timestamp', () => {
+        expect(set.merge(remA).isOk()).toBe(true);
+        expect(reactionAdds()).toEqual(new Set());
+        expect(reactionRemoves()).toEqual(new Set([remA]));
+      });
+
+      test('succeeds (no-ops) with an earlier timestamp', () => {
+        const remAEarlier: ReactionRemove = {
+          ...remA,
+          hash: Faker.datatype.hexaDecimal(128),
+          data: { ...remA.data, signedAt: addA.data.signedAt - 1 },
+        };
+        expect(set.merge(remAEarlier).isOk()).toBe(true);
+        expect(reactionAdds()).toEqual(new Set([addA]));
+        expect(reactionRemoves()).toEqual(new Set());
+      });
+
+      test('succeeds with the same timestamp', () => {
+        const remASameTimestamp: ReactionRemove = {
+          ...remA,
+          hash: Faker.datatype.hexaDecimal(128),
+          data: { ...remA.data, signedAt: addA.data.signedAt },
+        };
+        expect(set.merge(remASameTimestamp).isOk()).toBe(true);
+        expect(reactionAdds()).toEqual(new Set());
+        expect(reactionRemoves()).toEqual(new Set([remASameTimestamp]));
       });
     });
   });
 });
 
 describe('revokeSigner', () => {
-  let reaction: Reaction;
-  let reaction2: Reaction;
+  let reaction: ReactionAdd;
+  let reaction2: ReactionRemove;
 
   beforeAll(async () => {
-    reaction = await Factories.Reaction.create();
-    reaction2 = await Factories.Reaction.create();
+    reaction = await Factories.ReactionAdd.create();
+    reaction2 = await Factories.ReactionRemove.create();
   });
 
   test('succeeds without any messages', () => {
@@ -236,15 +273,15 @@ describe('revokeSigner', () => {
   test('succeeds and drops messages', () => {
     expect(set.merge(reaction).isOk()).toBe(true);
     expect(set.revokeSigner(reaction.signer).isOk()).toBe(true);
-    expect(set._getActiveReactions()).toEqual([]);
-    expect(set._getInactiveReactions()).toEqual([]);
+    expect(reactionAdds()).toEqual(new Set());
+    expect(reactionRemoves()).toEqual(new Set());
   });
 
   test('suceeds and only removes messages from signer', () => {
     expect(set.merge(reaction).isOk()).toBe(true);
     expect(set.merge(reaction2).isOk()).toBe(true);
     expect(set.revokeSigner(reaction2.signer).isOk()).toBe(true);
-    expect(set._getActiveReactions()).toEqual([reaction]);
-    expect(set._getInactiveReactions()).toEqual([]);
+    expect(reactionAdds()).toEqual(new Set([reaction]));
+    expect(reactionRemoves()).toEqual(new Set());
   });
 });

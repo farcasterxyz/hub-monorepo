@@ -3,18 +3,19 @@ import {
   Message,
   Reaction,
   Verification,
-  VerificationAdd,
+  VerificationEthereumAddress,
   VerificationRemove,
-  VerificationClaim,
-  SignerAdd,
+  VerificationEthereumAddressClaim,
   SignatureAlgorithm,
-  SignerEdge,
   SignerMessage,
   HashAlgorithm,
   IDRegistryEvent,
   Follow,
   URI,
+  ReactionAdd,
+  FollowAdd,
   CastShort,
+  CastRecast,
 } from '~/types';
 import { hashMessage, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
@@ -25,12 +26,9 @@ import {
   isCast,
   isCastShort,
   isReaction,
-  isVerificationAdd,
+  isVerificationEthereumAddress,
   isVerificationRemove,
-  isSignerAdd,
-  isSignerRemove,
   isSignerMessage,
-  isCustodyRemoveAll,
   isFollow,
 } from '~/types/typeguards';
 import CastSet from '~/sets/castSet';
@@ -50,6 +48,7 @@ class Engine {
   private _verifications: Map<number, VerificationSet>;
   private _signers: Map<number, SignerSet>;
   private _follows: Map<number, FollowSet>;
+
   private _IDRegistryProvider?: IDRegistryProvider;
 
   private _supportedChainIDs = new Set(['eip155:1']);
@@ -81,20 +80,16 @@ class Engine {
   /** Merge a cast into the set */
   async mergeCast(cast: Cast): Promise<Result<void, string>> {
     try {
-      const { fid } = cast.data;
-
-      if (!this._signers.get(fid)) {
-        return err('mergeCast: unknown user');
-      }
-
       const isCastValidResult = await this.validateMessage(cast);
       if (isCastValidResult.isErr()) return isCastValidResult;
 
+      const { fid } = cast.data;
       let castSet = this._casts.get(fid);
       if (!castSet) {
         castSet = new CastSet();
         this._casts.set(fid, castSet);
       }
+
       return castSet.merge(cast);
     } catch (e: any) {
       return err('mergeCast: unexpected error');
@@ -114,15 +109,10 @@ class Engine {
   /** Merge a reaction into the set  */
   async mergeReaction(reaction: Reaction): Promise<Result<void, string>> {
     try {
-      const { fid } = reaction.data;
-
-      if (!this._signers.get(fid)) {
-        return err('mergeReaction: unknown user');
-      }
-
       const isReactionValidResult = await this.validateMessage(reaction);
       if (isReactionValidResult.isErr()) return isReactionValidResult;
 
+      const { fid } = reaction.data;
       let reactionSet = this._reactions.get(fid);
       if (!reactionSet) {
         reactionSet = new ReactionSet();
@@ -148,15 +138,10 @@ class Engine {
   /** Merge a follow into the set  */
   async mergeFollow(follow: Follow): Promise<Result<void, string>> {
     try {
-      const { fid } = follow.data;
-
-      if (!this._signers.get(fid)) {
-        return err('mergeFollow: unknown user');
-      }
-
       const isFollowValidResult = await this.validateMessage(follow);
       if (isFollowValidResult.isErr()) return isFollowValidResult;
 
+      const { fid } = follow.data;
       let followSet = this._follows.get(fid);
       if (!followSet) {
         followSet = new FollowSet();
@@ -165,7 +150,6 @@ class Engine {
 
       return followSet.merge(follow);
     } catch (e: any) {
-      console.log('error', e);
       return err('mergeFollow: unexpected error');
     }
   }
@@ -182,14 +166,10 @@ class Engine {
 
   /** Merge verification message into the set */
   async mergeVerification(verification: Verification): Promise<Result<void, string>> {
-    const { fid } = verification.data;
-    const signerSet = this._signers.get(fid);
-    if (!signerSet) {
-      return err('mergeVerification: unknown user');
-    }
     const isVerificationValidResult = await this.validateMessage(verification);
     if (isVerificationValidResult.isErr()) return isVerificationValidResult;
 
+    const { fid } = verification.data;
     let verificationSet = this._verifications.get(fid);
     if (!verificationSet) {
       verificationSet = new VerificationSet();
@@ -204,6 +184,11 @@ class Engine {
    */
 
   async mergeIDRegistryEvent(event: IDRegistryEvent): Promise<Result<void, string>> {
+    if (this._IDRegistryProvider) {
+      const isEventValidResult = await this._IDRegistryProvider.validateIDRegistryEvent(event);
+      if (isEventValidResult.isErr()) return isEventValidResult;
+    }
+
     const fid = event.args.id;
     let signerSet = this._signers.get(fid);
     if (!signerSet) {
@@ -215,23 +200,17 @@ class Engine {
       this._signers.set(fid, signerSet);
     }
 
-    if (this._IDRegistryProvider) {
-      const isEventValidResult = await this._IDRegistryProvider.validateIDRegistryEvent(event);
-      if (isEventValidResult.isErr()) return isEventValidResult;
-    }
-
     return signerSet.mergeIDRegistryEvent(event);
   }
 
   /** Merge signer message into the set */
   async mergeSignerMessage(message: SignerMessage): Promise<Result<void, string>> {
-    const { fid } = message.data;
-    const signerSet = this._signers.get(fid);
-    if (!signerSet) return err('mergeSignerMessage: unknown user');
-
     const isMessageValidResult = await this.validateMessage(message);
     if (isMessageValidResult.isErr()) return isMessageValidResult;
 
+    const { fid } = message.data;
+    const signerSet = this._signers.get(fid);
+    if (!signerSet) return err('mergeSignerMessage: unknown user');
     return signerSet.merge(message);
   }
 
@@ -260,16 +239,15 @@ class Engine {
   }
 
   private async validateMessage(message: Message): Promise<Result<void, string>> {
-    // 1. Check that the signer is valid for the account
+    // 1. Check that the fid has been registered
     const signerSet = this._signers.get(message.data.fid);
     if (!signerSet) return err('validateMessage: unknown user');
 
-    // A signer message must be signed by a custody address. All other messages have to be signed by delegates.
-    const isValidSigner =
-      (isSignerMessage(message) && signerSet.getCustody(message.signer)) || signerSet.getSigner(message.signer);
+    // 2. Check that the signer is valid
+    const isValidSigner = isSignerMessage(message) || signerSet.get(message.signer);
     if (!isValidSigner) return err('validateMessage: invalid signer');
 
-    // 2. Check that the hashType and hash are valid
+    // 3. Check that the hashType and hash are valid
     if (message.hashType === HashAlgorithm.Blake2b) {
       const computedHash = await hashMessage(message);
       if (message.hash !== computedHash) {
@@ -279,7 +257,7 @@ class Engine {
       return err('validateMessage: invalid hashType');
     }
 
-    // 3. Check that the signatureType and signature are valid.
+    // 4. Check that the signatureType and signature are valid.
     if (message.signatureType === SignatureAlgorithm.EthereumPersonalSign) {
       try {
         const recoveredSigner = ethers.utils.verifyMessage(message.hash, message.signature);
@@ -306,7 +284,7 @@ class Engine {
       return err('validateMessage: invalid signatureType');
     }
 
-    // 4. Verify that the timestamp is not too far in the future.
+    // 5. Verify that the timestamp is not too far in the future.
     const tenMinutes = 10 * 60 * 1000;
     if (message.data.signedAt - Date.now() > tenMinutes) {
       return err('validateMessage: signedAt more than 10 mins in the future');
@@ -320,33 +298,22 @@ class Engine {
       return this.validateReaction(message);
     }
 
-    if (isVerificationAdd(message)) {
-      return this.validateVerificationAdd(message);
+    if (isVerificationEthereumAddress(message)) {
+      return this.validateVerificationEthereumAddress(message);
     }
 
     if (isVerificationRemove(message)) {
       return this.validateVerificationRemove();
     }
 
-    if (isCustodyRemoveAll(message)) {
-      return this.validateCustodyRemoveAll();
-    }
-
-    if (isSignerAdd(message)) {
-      return this.validateSignerAdd(message);
-    }
-
-    if (isSignerRemove(message)) {
-      return this.validateSignerRemove();
+    if (isSignerMessage(message)) {
+      return this.validateSignerMessage(message);
     }
 
     if (isFollow(message)) {
       return this.validateFollow(message);
     }
 
-    // TODO: check that the schema is a valid and known schema
-    // TODO: check that all required properties are present
-    // TODO: check that fid is known to the registry
     return err('validateMessage: unknown message');
   }
 
@@ -402,20 +369,22 @@ class Engine {
     // TODO: validate schema
   }
 
-  private async validateVerificationAdd(message: VerificationAdd): Promise<Result<void, string>> {
+  private async validateVerificationEthereumAddress(
+    message: VerificationEthereumAddress
+  ): Promise<Result<void, string>> {
     const { externalUri, externalSignature, externalSignatureType, claimHash } = message.data.body;
 
     if (externalSignatureType !== SignatureAlgorithm.EthereumPersonalSign)
-      return err('validateVerificationAdd: invalid externalSignatureType');
+      return err('validateVerificationEthereumAddress: invalid externalSignatureType');
 
-    const verificationClaim: VerificationClaim = {
+    const verificationClaim: VerificationEthereumAddressClaim = {
       fid: message.data.fid,
       externalUri: message.data.body.externalUri,
       blockHash: message.data.body.blockHash,
     };
     const reconstructedClaimHash = await hashFCObject(verificationClaim);
     if (reconstructedClaimHash !== claimHash) {
-      return err('validateVerificationAdd: invalid claimHash');
+      return err('validateVerificationEthereumAddress: invalid claimHash');
     }
 
     // validate externalUri
@@ -426,11 +395,11 @@ class Engine {
     try {
       const verifiedExternalAddress = utils.verifyMessage(claimHash, externalSignature);
       if (verifiedExternalAddress.toLowerCase() !== chainAccountURL.address.toLowerCase()) {
-        return err('validateVerificationAdd: externalSignature does not match externalUri');
+        return err('validateVerificationEthereumAddress: externalSignature does not match externalUri');
       }
     } catch (e: any) {
       // TODO: pass through more helpful errors from Ethers
-      return err('validateVerificationAdd: invalid externalSignature');
+      return err('validateVerificationEthereumAddress: invalid externalSignature');
     }
 
     return ok(undefined);
@@ -441,30 +410,13 @@ class Engine {
     return ok(undefined);
   }
 
-  private async validateSignerAdd(message: SignerAdd): Promise<Result<void, string>> {
-    const { delegateSignatureType, delegateSignature, delegate, edgeHash } = message.data.body;
+  private validateSignerMessage(message: SignerMessage): Result<void, string> {
+    if (message.signer.length !== 42) {
+      return err('validateSignerMessage: signer must be a custody address');
+    }
 
-    /** Validate delegateSignatureType */
-    if (delegateSignatureType !== SignatureAlgorithm.Ed25519)
-      return err('validateSignerAdd: invalid delegateSignatureType');
-
-    /** Validate edgeHash */
-    const signerEdge: SignerEdge = { delegate, custody: message.signer };
-    const reconstructedEdgeHash = await hashFCObject(signerEdge);
-    if (reconstructedEdgeHash !== edgeHash) return err('validateSignerAdd: invalid edgeHash');
-
-    /** Validate delegateSignature */
-    try {
-      const delegateSignatureIsValid = await ed.verify(
-        hexToBytes(delegateSignature),
-        hexToBytes(edgeHash),
-        hexToBytes(delegate)
-      );
-      if (!delegateSignatureIsValid) {
-        return err('validateSignerAdd: delegateSignature does not match delegate');
-      }
-    } catch (e: any) {
-      return err('validateSignerAdd: invalid delegateSignature');
+    if (message.data.body.delegate.length !== 66) {
+      return err('validateSignerMessage: delegate must be an EdDSA public key');
     }
 
     return ok(undefined);
@@ -490,16 +442,6 @@ class Engine {
       }
       return result;
     });
-  }
-
-  private async validateSignerRemove(): Promise<Result<void, string>> {
-    // TODO: any SignerRemove custom validations?
-    return ok(undefined);
-  }
-
-  private async validateCustodyRemoveAll(): Promise<Result<void, string>> {
-    // TODO: any CustodyRemoveAll custom validation?
-    return ok(undefined);
   }
 
   private async validateFollow(message: Follow): Promise<Result<void, string>> {
@@ -546,44 +488,39 @@ class Engine {
     this._follows = new Map();
   }
 
-  _getCastAdds(fid: number): Cast[] {
+  _getCastAdds(fid: number): Set<CastShort | CastRecast> {
     const castSet = this._casts.get(fid);
-    return castSet ? castSet._getAdds() : [];
+    return castSet ? castSet._getAdds() : new Set();
   }
 
-  _getActiveReactions(fid: number): Reaction[] {
+  _getReactionAdds(fid: number): Set<ReactionAdd> {
     const reactionSet = this._reactions.get(fid);
-    return reactionSet ? reactionSet._getActiveReactions() : [];
+    return reactionSet ? reactionSet._getAdds() : new Set();
   }
 
-  _getActiveFollows(fid: number): Set<Follow> {
+  _getFollowAdds(fid: number): Set<FollowAdd> {
     const followSet = this._follows.get(fid);
-    return followSet ? followSet._getActiveFollows() : new Set();
+    return followSet ? followSet._getAdds() : new Set();
   }
 
-  _getVerificationAdds(fid: number): VerificationAdd[] {
+  _getVerificationEthereumAddressAdds(fid: number): Set<VerificationEthereumAddress> {
     const verificationSet = this._verifications.get(fid);
-    return verificationSet ? verificationSet._getAdds() : [];
+    return verificationSet ? verificationSet._getAdds() : new Set();
   }
 
-  _getVerificationRemoves(fid: number): VerificationRemove[] {
+  _getVerificationRemoves(fid: number): Set<VerificationRemove> {
     const verificationSet = this._verifications.get(fid);
-    return verificationSet ? verificationSet._getRemoves() : [];
+    return verificationSet ? verificationSet._getRemoves() : new Set();
   }
 
-  _getAllSigners(fid: number): Set<string> {
+  _getCustodyAddress(fid: number): string | undefined {
     const signerSet = this._signers.get(fid);
-    return signerSet ? signerSet.getAllSigners() : new Set();
+    return signerSet ? signerSet.getCustodyAddress() : undefined;
   }
 
-  _getCustodyAddresses(fid: number): Set<string> {
+  _getSigners(fid: number): Set<string> {
     const signerSet = this._signers.get(fid);
-    return signerSet ? signerSet.getCustodyAddresses() : new Set();
-  }
-
-  _getDelegateSigners(fid: number): Set<string> {
-    const signerSet = this._signers.get(fid);
-    return signerSet ? signerSet.getDelegateSigners() : new Set();
+    return signerSet ? signerSet.getSigners() : new Set();
   }
 }
 
