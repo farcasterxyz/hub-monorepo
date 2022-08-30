@@ -372,7 +372,7 @@ export const Factories = {
       if (!props.data.body.claimHash) {
         const verificationClaim: VerificationEthereumAddressClaim = {
           fid: props.data.fid,
-          externalUri: props.data.body.externalUri.toLowerCase(),
+          externalUri: props.data.body.externalUri,
           blockHash: props.data.body.blockHash,
         };
         props.data.body.claimHash = await hashFCObject(verificationClaim);
