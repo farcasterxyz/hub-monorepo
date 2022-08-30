@@ -50,7 +50,7 @@ describe('mergeVerification', () => {
     const verificationClaim: VerificationEthereumAddressClaim = {
       fid: aliceFid,
       externalUri: Factories.EthereumAddressURL.build(undefined, {
-        transient: { address: aliceEthWallet.address.toLowerCase() },
+        transient: { address: aliceEthWallet.address },
       }).toString(),
       blockHash: aliceBlockHash,
     };
@@ -95,7 +95,36 @@ describe('mergeVerification', () => {
     expect(aliceAdds()).toEqual(new Set([genericVerificationAdd]));
   });
 
-  test('fails if claim is constructed with checksummed address', async () => {
+  test('succeeds with lowercased ethereum address', async () => {
+    const lowercaseExternalUri = Factories.EthereumAddressURL.build(undefined, {
+      transient: { address: aliceEthWallet.address.toLowerCase() },
+    }).toString();
+    const verificationClaim: VerificationEthereumAddressClaim = {
+      fid: aliceFid,
+      externalUri: lowercaseExternalUri,
+      blockHash: aliceBlockHash,
+    };
+    const aliceClaimHash = await hashFCObject(verificationClaim);
+    const aliceExternalSignature = await aliceEthWallet.signMessage(aliceClaimHash);
+    const verificationAdd = await Factories.VerificationEthereumAddress.create(
+      {
+        data: {
+          fid: aliceFid,
+          body: {
+            externalUri: lowercaseExternalUri,
+            claimHash: aliceClaimHash,
+            blockHash: aliceBlockHash,
+            externalSignature: aliceExternalSignature,
+          },
+        },
+      },
+      transientParams
+    );
+    expect((await engine.mergeVerification(verificationAdd)).isOk()).toBe(true);
+    expect(engine._getVerificationEthereumAddressAdds(aliceFid)).toEqual(new Set([verificationAdd]));
+  });
+
+  test('fails when claim externalUri is checksummed and message externalUri is lowercased', async () => {
     const verificationClaim: VerificationEthereumAddressClaim = {
       fid: aliceFid,
       externalUri: Factories.EthereumAddressURL.build(undefined, {
@@ -111,7 +140,7 @@ describe('mergeVerification', () => {
           fid: aliceFid,
           body: {
             externalUri: Factories.EthereumAddressURL.build(undefined, {
-              transient: { address: aliceEthWallet.address },
+              transient: { address: aliceEthWallet.address.toLowerCase() },
             }).toString(),
             claimHash: aliceClaimHash,
             blockHash: aliceBlockHash,
@@ -121,8 +150,6 @@ describe('mergeVerification', () => {
       },
       transientParams
     );
-
-    // run the verification through the engine
     const res = await engine.mergeVerification(verificationAdd);
     expect(res.isOk()).toBe(false);
     expect(res._unsafeUnwrapErr()).toBe('validateVerificationEthereumAddress: invalid claimHash');

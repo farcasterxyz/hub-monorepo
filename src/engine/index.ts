@@ -399,7 +399,7 @@ class Engine {
 
     const verificationClaim: VerificationEthereumAddressClaim = {
       fid: message.data.fid,
-      externalUri: message.data.body.externalUri.toLowerCase(),
+      externalUri: message.data.body.externalUri,
       blockHash: message.data.body.blockHash,
     };
     const reconstructedClaimHash = await hashFCObject(verificationClaim);
