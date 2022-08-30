@@ -95,7 +95,7 @@ describe('mergeVerification', () => {
     expect(aliceAdds()).toEqual(new Set([genericVerificationAdd]));
   });
 
-  test('succeeds with lowercased ethereum address', async () => {
+  test('succeeds with lowercased externalUri', async () => {
     const lowercaseExternalUri = Factories.EthereumAddressURL.build(undefined, {
       transient: { address: aliceEthWallet.address.toLowerCase() },
     }).toString();
@@ -112,6 +112,35 @@ describe('mergeVerification', () => {
           fid: aliceFid,
           body: {
             externalUri: lowercaseExternalUri,
+            claimHash: aliceClaimHash,
+            blockHash: aliceBlockHash,
+            externalSignature: aliceExternalSignature,
+          },
+        },
+      },
+      transientParams
+    );
+    expect((await engine.mergeVerification(verificationAdd)).isOk()).toBe(true);
+    expect(engine._getVerificationEthereumAddressAdds(aliceFid)).toEqual(new Set([verificationAdd]));
+  });
+
+  test('succeeds with uppercased externalUri', async () => {
+    const uppercasedExternalUri = Factories.EthereumAddressURL.build(undefined, {
+      transient: { address: '0x' + aliceEthWallet.address.slice(2).toUpperCase() },
+    }).toString();
+    const verificationClaim: VerificationEthereumAddressClaim = {
+      fid: aliceFid,
+      externalUri: uppercasedExternalUri,
+      blockHash: aliceBlockHash,
+    };
+    const aliceClaimHash = await hashFCObject(verificationClaim);
+    const aliceExternalSignature = await aliceEthWallet.signMessage(aliceClaimHash);
+    const verificationAdd = await Factories.VerificationEthereumAddress.create(
+      {
+        data: {
+          fid: aliceFid,
+          body: {
+            externalUri: uppercasedExternalUri,
             claimHash: aliceClaimHash,
             blockHash: aliceBlockHash,
             externalSignature: aliceExternalSignature,
