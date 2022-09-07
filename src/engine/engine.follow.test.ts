@@ -28,6 +28,7 @@ describe('mergeFollow', () => {
   let transientParams: { transient: MessageFactoryTransientParams };
 
   const aliceFollows = () => engine._getFollowAdds(aliceFid);
+  const aliceCastAdds = () => engine._getCastAdds(aliceFid);
 
   beforeAll(async () => {
     aliceCustody = await generateEthereumSigner();
@@ -52,21 +53,21 @@ describe('mergeFollow', () => {
   beforeEach(async () => {
     engine._reset();
     engine.mergeIDRegistryEvent(aliceCustodyRegister);
-    await engine.mergeSignerMessage(aliceSignerAdd);
+    await engine.mergeMessage(aliceSignerAdd);
   });
 
-  test('fails with invalid message type', async () => {
+  test('handles invalid type cast', async () => {
     const invalidFollow = cast as unknown as Follow;
-    const result = await engine.mergeFollow(invalidFollow);
-    expect(result.isOk()).toBe(false);
-    expect(result._unsafeUnwrapErr()).toBe('FollowSet.merge: invalid message format');
+    const result = await engine.mergeMessage(invalidFollow);
+    expect(result.isOk()).toBeTruthy();
     expect(aliceFollows()).toEqual(new Set());
+    expect(aliceCastAdds()).toEqual(new Set([invalidFollow]));
   });
 
   describe('signer validation', () => {
     test('fails if there are no known signers', async () => {
       engine._resetSigners();
-      const result = await engine.mergeFollow(follow);
+      const result = await engine.mergeMessage(follow);
       expect(result._unsafeUnwrapErr()).toBe('validateMessage: unknown user');
       expect(aliceFollows()).toEqual(new Set());
     });
@@ -80,14 +81,14 @@ describe('mergeFollow', () => {
         },
       });
 
-      const result = await engine.mergeFollow(followNewSigner);
+      const result = await engine.mergeMessage(followNewSigner);
       expect(result._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
       expect(aliceFollows()).toEqual(new Set());
     });
 
     test('fails if the signer is valid, but the fid is invalid', async () => {
       const unknownUser = await Factories.FollowAdd.create({ data: { fid: aliceFid + 1 } }, transientParams);
-      const res = await engine.mergeFollow(unknownUser);
+      const res = await engine.mergeMessage(unknownUser);
       expect(res.isOk()).toBe(false);
       expect(res._unsafeUnwrapErr()).toBe('validateMessage: unknown user');
       expect(aliceFollows()).toEqual(new Set());
@@ -97,7 +98,7 @@ describe('mergeFollow', () => {
   describe('message validation', () => {
     test('fails if the hash is invalid', async () => {
       const followInvalidHash: FollowAdd = { ...follow, hash: follow.hash + 'foo' };
-      const res = await engine.mergeFollow(followInvalidHash);
+      const res = await engine.mergeMessage(followInvalidHash);
       expect(res.isOk()).toBe(false);
       expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
       expect(aliceFollows()).toEqual(new Set());
@@ -105,7 +106,7 @@ describe('mergeFollow', () => {
 
     test('fails if the signature is invalid', async () => {
       const followInvalidSignature: Follow = { ...follow, signature: Faker.datatype.hexaDecimal(128) };
-      const res = await engine.mergeFollow(followInvalidSignature);
+      const res = await engine.mergeMessage(followInvalidSignature);
       expect(res.isOk()).toBe(false);
       expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid signature');
       expect(aliceFollows()).toEqual(new Set());
@@ -122,7 +123,7 @@ describe('mergeFollow', () => {
         },
         transientParams
       );
-      const res = await engine.mergeFollow(futureFollow);
+      const res = await engine.mergeMessage(futureFollow);
       expect(res.isOk()).toBe(false);
       expect(res._unsafeUnwrapErr()).toEqual('validateMessage: signedAt more than 10 mins in the future');
     });
@@ -141,7 +142,7 @@ describe('mergeFollow', () => {
           },
           transientParams
         );
-        const result = await engine.mergeFollow(invalidTargetUri);
+        const result = await engine.mergeMessage(invalidTargetUri);
         expect(result.isOk()).toBe(false);
         expect(result._unsafeUnwrapErr()).toEqual('validateFollow: targetUri must be valid FarcasterID');
       }
@@ -149,18 +150,18 @@ describe('mergeFollow', () => {
   });
 
   test('succeeds with a valid follow', async () => {
-    expect((await engine.mergeFollow(follow)).isOk()).toBe(true);
+    expect((await engine.mergeMessage(follow)).isOk()).toBe(true);
     expect(aliceFollows()).toEqual(new Set([follow]));
   });
 
   test('succeeds with a valid unfollow', async () => {
-    expect((await engine.mergeFollow(unfollow)).isOk()).toBe(true);
+    expect((await engine.mergeMessage(unfollow)).isOk()).toBe(true);
     expect(aliceFollows()).toEqual(new Set());
   });
 
   test('succeeds with a valid unfollow and removes follow', async () => {
-    expect((await engine.mergeFollow(follow)).isOk()).toBe(true);
-    expect((await engine.mergeFollow(unfollow)).isOk()).toBe(true);
+    expect((await engine.mergeMessage(follow)).isOk()).toBe(true);
+    expect((await engine.mergeMessage(unfollow)).isOk()).toBe(true);
     expect(aliceFollows()).toEqual(new Set());
   });
 });

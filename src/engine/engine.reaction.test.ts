@@ -15,6 +15,7 @@ import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 const engine = new Engine();
 const aliceFid = Faker.datatype.number();
 const aliceAdds = () => engine._getReactionAdds(aliceFid);
+const aliceCastAdds = () => engine._getCastAdds(aliceFid);
 
 describe('mergeReaction', () => {
   let aliceCustody: EthereumSigner;
@@ -44,22 +45,22 @@ describe('mergeReaction', () => {
   beforeEach(async () => {
     engine._reset();
     await engine.mergeIDRegistryEvent(aliceCustodyRegister);
-    await engine.mergeSignerMessage(aliceSignerAdd);
+    await engine.mergeMessage(aliceSignerAdd);
   });
 
-  test('fails with invalid message type', async () => {
+  test('handles invalid type cast', async () => {
     const invalidCastReaction = cast as unknown as Reaction;
-    const result = await engine.mergeReaction(invalidCastReaction);
-    expect(result.isOk()).toBe(false);
-    expect(result._unsafeUnwrapErr()).toBe('ReactionSet.merge: invalid message format');
+    const result = await engine.mergeMessage(invalidCastReaction);
+    expect(result.isOk()).toBeTruthy();
     expect(aliceAdds()).toEqual(new Set([]));
+    expect(aliceCastAdds()).toEqual(new Set([invalidCastReaction]));
   });
 
   describe('signer validation', () => {
     test('fails if there are no known signers', async () => {
       engine._resetSigners();
 
-      const result = await engine.mergeReaction(reaction);
+      const result = await engine.mergeMessage(reaction);
       expect(result._unsafeUnwrapErr()).toBe('validateMessage: unknown user');
       expect(aliceAdds()).toEqual(new Set([]));
     });
@@ -72,7 +73,7 @@ describe('mergeReaction', () => {
         },
       });
 
-      const result = await engine.mergeReaction(reactionInvalidSigner);
+      const result = await engine.mergeMessage(reactionInvalidSigner);
       expect(result._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
       expect(aliceAdds()).toEqual(new Set([]));
     });
@@ -80,7 +81,7 @@ describe('mergeReaction', () => {
     test('fails if the signer was valid, but the fid was invalid', async () => {
       const unknownUser = await Factories.ReactionAdd.create({ data: { fid: aliceFid + 1 } }, transient);
 
-      expect((await engine.mergeReaction(unknownUser))._unsafeUnwrapErr()).toBe('validateMessage: unknown user');
+      expect((await engine.mergeMessage(unknownUser))._unsafeUnwrapErr()).toBe('validateMessage: unknown user');
       expect(aliceAdds()).toEqual(new Set([]));
     });
   });
@@ -90,7 +91,7 @@ describe('mergeReaction', () => {
       const invalidHash = JSON.parse(JSON.stringify(reaction)) as Reaction;
       invalidHash.hash = '0xd4126acebadb14b41943fc10599c00e2e3627f1e38672c8476277ecf17accb48';
 
-      expect((await engine.mergeReaction(invalidHash))._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
+      expect((await engine.mergeMessage(invalidHash))._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
       expect(aliceAdds()).toEqual(new Set([]));
     });
 
@@ -98,7 +99,7 @@ describe('mergeReaction', () => {
       const invalidSignature = JSON.parse(JSON.stringify(reaction)) as Reaction;
       invalidSignature.signature =
         '0x5b699d494b515b22258c01ad19710d44c3f12235f0c01e91d09a1e4e2cd25d80c77026a7319906da3b8ce62abc18477c19e444a02949a0dde54f8cadef889502';
-      expect((await engine.mergeReaction(invalidSignature))._unsafeUnwrapErr()).toBe(
+      expect((await engine.mergeMessage(invalidSignature))._unsafeUnwrapErr()).toBe(
         'validateMessage: invalid signature'
       );
       expect(aliceAdds()).toEqual(new Set([]));
@@ -118,7 +119,7 @@ describe('mergeReaction', () => {
         transient
       );
 
-      expect((await engine.mergeReaction(futureReaction))._unsafeUnwrapErr()).toEqual(
+      expect((await engine.mergeMessage(futureReaction))._unsafeUnwrapErr()).toEqual(
         'validateMessage: signedAt more than 10 mins in the future'
       );
     });
@@ -138,7 +139,7 @@ describe('mergeReaction', () => {
         },
         transient
       );
-      const result = await engine.mergeReaction(invalidTargetUri);
+      const result = await engine.mergeMessage(invalidTargetUri);
       expect(result.isOk()).toBe(false);
       expect(result._unsafeUnwrapErr()).toEqual('validateReaction: invalid URL for reaction target');
     }
@@ -156,7 +157,7 @@ describe('mergeReaction', () => {
       },
       transient
     );
-    const result = await engine.mergeReaction(reactionInvalidType);
+    const result = await engine.mergeMessage(reactionInvalidType);
 
     expect(result.isOk()).toBe(false);
     expect(result._unsafeUnwrapErr()).toBe('validateMessage: unknown message');
@@ -164,7 +165,7 @@ describe('mergeReaction', () => {
   });
 
   test('succeeds if a valid active reaction is added', async () => {
-    expect((await engine.mergeReaction(reaction)).isOk()).toBe(true);
+    expect((await engine.mergeMessage(reaction)).isOk()).toBe(true);
     expect(aliceAdds()).toEqual(new Set([reaction]));
   });
 });
