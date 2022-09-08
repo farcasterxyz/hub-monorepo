@@ -18,6 +18,7 @@ import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/u
 const engine = new Engine();
 const aliceFid = Faker.datatype.number();
 const aliceAdds = () => engine._getVerificationEthereumAddressAdds(aliceFid);
+const aliceCastAdds = () => engine._getCastAdds(aliceFid);
 
 describe('mergeVerification', () => {
   let aliceCustody: EthereumSigner;
@@ -77,21 +78,23 @@ describe('mergeVerification', () => {
   beforeEach(async () => {
     engine._reset();
     await engine.mergeIDRegistryEvent(aliceCustodyRegister);
-    await engine.mergeSignerMessage(aliceSignerAdd);
+    await engine.mergeMessage(aliceSignerAdd);
   });
 
-  test('fails with invalid message type', async () => {
+  test('handles invalid type cast', async () => {
     const cast = (await Factories.CastShort.create(
       {
         data: { fid: aliceFid },
       },
       transientParams
     )) as unknown as Verification;
-    expect((await engine.mergeVerification(cast)).isOk()).toBe(false);
+    expect((await engine.mergeMessage(cast)).isOk()).toBeTruthy();
+    expect(aliceAdds()).toEqual(new Set([]));
+    expect(aliceCastAdds()).toEqual(new Set([cast]));
   });
 
   test('succeeds with a valid VerificationAdd', async () => {
-    expect((await engine.mergeVerification(genericVerificationAdd)).isOk()).toBe(true);
+    expect((await engine.mergeMessage(genericVerificationAdd)).isOk()).toBe(true);
     expect(aliceAdds()).toEqual(new Set([genericVerificationAdd]));
   });
 
@@ -120,7 +123,7 @@ describe('mergeVerification', () => {
       },
       transientParams
     );
-    expect((await engine.mergeVerification(verificationAdd)).isOk()).toBe(true);
+    expect((await engine.mergeMessage(verificationAdd)).isOk()).toBe(true);
     expect(engine._getVerificationEthereumAddressAdds(aliceFid)).toEqual(new Set([verificationAdd]));
   });
 
@@ -149,7 +152,7 @@ describe('mergeVerification', () => {
       },
       transientParams
     );
-    expect((await engine.mergeVerification(verificationAdd)).isOk()).toBe(true);
+    expect((await engine.mergeMessage(verificationAdd)).isOk()).toBe(true);
     expect(engine._getVerificationEthereumAddressAdds(aliceFid)).toEqual(new Set([verificationAdd]));
   });
 
@@ -179,7 +182,7 @@ describe('mergeVerification', () => {
       },
       transientParams
     );
-    const res = await engine.mergeVerification(verificationAdd);
+    const res = await engine.mergeMessage(verificationAdd);
     expect(res.isOk()).toBe(false);
     expect(res._unsafeUnwrapErr()).toBe('validateVerificationEthereumAddress: invalid claimHash');
     expect(engine._getVerificationEthereumAddressAdds(aliceFid)).toEqual(new Set());
@@ -187,7 +190,7 @@ describe('mergeVerification', () => {
 
   test('fails if message signer is not valid', async () => {
     engine._resetSigners();
-    expect((await engine.mergeVerification(genericVerificationAdd))._unsafeUnwrapErr()).toBe(
+    expect((await engine.mergeMessage(genericVerificationAdd))._unsafeUnwrapErr()).toBe(
       'validateMessage: unknown user'
     );
     expect(aliceAdds()).toEqual(new Set());
@@ -203,7 +206,7 @@ describe('mergeVerification', () => {
       },
       transientParams
     );
-    const res = await engine.mergeVerification(verificationAddMessage);
+    const res = await engine.mergeMessage(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe('validateVerificationEthereumAddress: invalid externalSignature');
     expect(aliceAdds()).toEqual(new Set());
   });
@@ -226,7 +229,7 @@ describe('mergeVerification', () => {
         },
       }
     );
-    const res = await engine.mergeVerification(verificationAddMessage);
+    const res = await engine.mergeMessage(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe(
       'validateVerificationEthereumAddress: externalSignature does not match externalUri'
     );
@@ -243,7 +246,7 @@ describe('mergeVerification', () => {
       },
       transientParams
     );
-    const res = await engine.mergeVerification(verificationAddMessage);
+    const res = await engine.mergeMessage(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe('validateVerificationEthereumAddress: invalid claimHash');
     expect(aliceAdds()).toEqual(new Set());
   });
@@ -262,7 +265,7 @@ describe('mergeVerification', () => {
       },
       transientParams
     );
-    const res = await engine.mergeVerification(verificationAddMessage);
+    const res = await engine.mergeMessage(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe('validateVerificationEthereumAddress: invalid claimHash');
     expect(aliceAdds()).toEqual(new Set());
   });
@@ -281,7 +284,7 @@ describe('mergeVerification', () => {
       },
       transientParams
     );
-    const res = await engine.mergeVerification(verificationAddMessage);
+    const res = await engine.mergeMessage(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe('validateMessage: unknown message');
     expect(aliceAdds()).toEqual(new Set());
   });
@@ -290,7 +293,7 @@ describe('mergeVerification', () => {
 
   test('fails with invalid hash', async () => {
     const badHashVerification: VerificationEthereumAddress = { ...genericVerificationAdd, hash: 'foo' };
-    const res = await engine.mergeVerification(badHashVerification);
+    const res = await engine.mergeMessage(badHashVerification);
     expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
     expect(aliceAdds()).toEqual(new Set());
   });
@@ -301,7 +304,7 @@ describe('mergeVerification', () => {
       signature:
         '0x5b699d494b515b22258c01ad19710d44c3f12235f0c01e91d09a1e4e2cd25d80c77026a7319906da3b8ce62abc18477c19e444a02949a0dde54f8cadef889502',
     };
-    const res = await engine.mergeVerification(badMessageSignature);
+    const res = await engine.mergeMessage(badMessageSignature);
     expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid signature');
     expect(aliceAdds()).toEqual(new Set());
   });
@@ -321,13 +324,13 @@ describe('mergeVerification', () => {
       },
       transientParams
     );
-    const res = await engine.mergeVerification(verificationAddMessage);
+    const res = await engine.mergeMessage(verificationAddMessage);
     expect(res._unsafeUnwrapErr()).toBe('validateMessage: signedAt more than 10 mins in the future');
     expect(aliceAdds()).toEqual(new Set());
   });
 
   test('succeeds with a valid VerificationRemove', async () => {
-    expect((await engine.mergeVerification(genericVerificationAdd)).isOk()).toBe(true);
+    expect((await engine.mergeMessage(genericVerificationAdd)).isOk()).toBe(true);
     expect(aliceAdds()).toEqual(new Set([genericVerificationAdd]));
     const verificationRemoveMessage = await Factories.VerificationRemove.create(
       {
@@ -339,7 +342,7 @@ describe('mergeVerification', () => {
       },
       transientParams
     );
-    expect((await engine.mergeVerification(verificationRemoveMessage)).isOk()).toBe(true);
+    expect((await engine.mergeMessage(verificationRemoveMessage)).isOk()).toBe(true);
     expect(engine._getVerificationRemoves(aliceFid)).toEqual(new Set([verificationRemoveMessage]));
     expect(aliceAdds()).toEqual(new Set());
   });
@@ -355,10 +358,10 @@ describe('mergeVerification', () => {
       },
       transientParams
     );
-    expect((await engine.mergeVerification(verificationRemoveMessage)).isOk()).toBe(true);
+    expect((await engine.mergeMessage(verificationRemoveMessage)).isOk()).toBe(true);
     expect(engine._getVerificationRemoves(aliceFid)).toEqual(new Set([verificationRemoveMessage]));
     expect(aliceAdds()).toEqual(new Set());
-    expect((await engine.mergeVerification(genericVerificationAdd)).isOk()).toBe(true);
+    expect((await engine.mergeMessage(genericVerificationAdd)).isOk()).toBe(true);
     expect(aliceAdds()).toEqual(new Set());
   });
 });

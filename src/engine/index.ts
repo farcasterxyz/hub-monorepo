@@ -32,6 +32,8 @@ import {
   isFollow,
   isCastRecast,
   isCastRemove,
+  isCast,
+  isVerification,
 } from '~/types/typeguards';
 import CastSet from '~/sets/castSet';
 import ReactionSet from '~/sets/reactionSet';
@@ -71,6 +73,34 @@ class Engine {
   }
 
   /**
+   * Message Methods
+   */
+
+  /** Merge a message into the correct set based on its type */
+  async mergeMessage(message: Message): Promise<Result<void, string>> {
+    const isMessageValidresult = await this.validateMessage(message);
+    if (isMessageValidresult.isErr()) return isMessageValidresult;
+
+    if (isCast(message)) {
+      return this.mergeCast(message);
+    }
+    if (isFollow(message)) {
+      return this.mergeFollow(message);
+    }
+    if (isReaction(message)) {
+      return this.mergeReaction(message);
+    }
+    if (isSignerMessage(message)) {
+      return this.mergeSignerMessage(message);
+    }
+    if (isVerification(message)) {
+      return this.mergeVerification(message);
+    }
+
+    return err('mergeMessage: unexpected error');
+  }
+
+  /**
    * Cast Methods
    */
 
@@ -78,25 +108,6 @@ class Engine {
   getCast(fid: number, hash: string): Cast | undefined {
     const castSet = this._casts.get(fid);
     return castSet ? castSet.get(hash) : undefined;
-  }
-
-  /** Merge a cast into the set */
-  async mergeCast(cast: Cast): Promise<Result<void, string>> {
-    try {
-      const isCastValidResult = await this.validateMessage(cast);
-      if (isCastValidResult.isErr()) return isCastValidResult;
-
-      const { fid } = cast.data;
-      let castSet = this._casts.get(fid);
-      if (!castSet) {
-        castSet = new CastSet();
-        this._casts.set(fid, castSet);
-      }
-
-      return castSet.merge(cast);
-    } catch (e: any) {
-      return err('mergeCast: unexpected error');
-    }
   }
 
   /**
@@ -109,25 +120,6 @@ class Engine {
     return reactionSet ? reactionSet.get(targetURI) : undefined;
   }
 
-  /** Merge a reaction into the set  */
-  async mergeReaction(reaction: Reaction): Promise<Result<void, string>> {
-    try {
-      const isReactionValidResult = await this.validateMessage(reaction);
-      if (isReactionValidResult.isErr()) return isReactionValidResult;
-
-      const { fid } = reaction.data;
-      let reactionSet = this._reactions.get(fid);
-      if (!reactionSet) {
-        reactionSet = new ReactionSet();
-        this._reactions.set(fid, reactionSet);
-      }
-
-      return reactionSet.merge(reaction);
-    } catch (e: any) {
-      return err('mergeReaction: unexpected error');
-    }
-  }
-
   /**
    * Follow Methods
    */
@@ -138,25 +130,6 @@ class Engine {
     return followSet ? followSet.get(targetURI) : undefined;
   }
 
-  /** Merge a follow into the set  */
-  async mergeFollow(follow: Follow): Promise<Result<void, string>> {
-    try {
-      const isFollowValidResult = await this.validateMessage(follow);
-      if (isFollowValidResult.isErr()) return isFollowValidResult;
-
-      const { fid } = follow.data;
-      let followSet = this._follows.get(fid);
-      if (!followSet) {
-        followSet = new FollowSet();
-        this._follows.set(fid, followSet);
-      }
-
-      return followSet.merge(follow);
-    } catch (e: any) {
-      return err('mergeFollow: unexpected error');
-    }
-  }
-
   /**
    * Verification methods
    */
@@ -165,21 +138,6 @@ class Engine {
   getVerification(fid: number, claimHash: string): Verification | undefined {
     const verificationSet = this._verifications.get(fid);
     return verificationSet ? verificationSet.get(claimHash) : undefined;
-  }
-
-  /** Merge verification message into the set */
-  async mergeVerification(verification: Verification): Promise<Result<void, string>> {
-    const isVerificationValidResult = await this.validateMessage(verification);
-    if (isVerificationValidResult.isErr()) return isVerificationValidResult;
-
-    const { fid } = verification.data;
-    let verificationSet = this._verifications.get(fid);
-    if (!verificationSet) {
-      verificationSet = new VerificationSet();
-      this._verifications.set(fid, verificationSet);
-    }
-
-    return verificationSet.merge(verification);
   }
 
   /**
@@ -206,20 +164,77 @@ class Engine {
     return signerSet.mergeIDRegistryEvent(event);
   }
 
-  /** Merge signer message into the set */
-  async mergeSignerMessage(message: SignerMessage): Promise<Result<void, string>> {
-    const isMessageValidResult = await this.validateMessage(message);
-    if (isMessageValidResult.isErr()) return isMessageValidResult;
+  /**
+   * Private Methods
+   */
 
+  /** Merge a cast into the set */
+  private async mergeCast(cast: Cast): Promise<Result<void, string>> {
+    try {
+      const { fid } = cast.data;
+      let castSet = this._casts.get(fid);
+      if (!castSet) {
+        castSet = new CastSet();
+        this._casts.set(fid, castSet);
+      }
+
+      return castSet.merge(cast);
+    } catch (e: any) {
+      return err('mergeCast: unexpected error');
+    }
+  }
+
+  /** Merge a reaction into the set  */
+  private async mergeReaction(reaction: Reaction): Promise<Result<void, string>> {
+    try {
+      const { fid } = reaction.data;
+      let reactionSet = this._reactions.get(fid);
+      if (!reactionSet) {
+        reactionSet = new ReactionSet();
+        this._reactions.set(fid, reactionSet);
+      }
+
+      return reactionSet.merge(reaction);
+    } catch (e: any) {
+      return err('mergeReaction: unexpected error');
+    }
+  }
+
+  /** Merge a follow into the set  */
+  private async mergeFollow(follow: Follow): Promise<Result<void, string>> {
+    try {
+      const { fid } = follow.data;
+      let followSet = this._follows.get(fid);
+      if (!followSet) {
+        followSet = new FollowSet();
+        this._follows.set(fid, followSet);
+      }
+
+      return followSet.merge(follow);
+    } catch (e: any) {
+      return err('mergeFollow: unexpected error');
+    }
+  }
+
+  /** Merge verification message into the set */
+  private async mergeVerification(verification: Verification): Promise<Result<void, string>> {
+    const { fid } = verification.data;
+    let verificationSet = this._verifications.get(fid);
+    if (!verificationSet) {
+      verificationSet = new VerificationSet();
+      this._verifications.set(fid, verificationSet);
+    }
+
+    return verificationSet.merge(verification);
+  }
+
+  /** Merge signer message into the set */
+  private async mergeSignerMessage(message: SignerMessage): Promise<Result<void, string>> {
     const { fid } = message.data;
     const signerSet = this._signers.get(fid);
     if (!signerSet) return err('mergeSignerMessage: unknown user');
     return signerSet.merge(message);
   }
-
-  /**
-   * Private Methods
-   */
 
   private revokeSigner(fid: number, signer: string): Result<void, string> {
     // Revoke casts

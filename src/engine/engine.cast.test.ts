@@ -16,6 +16,7 @@ import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 const engine = new Engine();
 const aliceFid = Faker.datatype.number();
 const aliceAdds = () => engine._getCastAdds(aliceFid);
+const aliceReactionAdds = () => engine._getReactionAdds(aliceFid);
 
 describe('mergeCast', () => {
   let aliceCustodySigner: EthereumSigner;
@@ -64,15 +65,15 @@ describe('mergeCast', () => {
   beforeEach(() => {
     engine._reset();
     engine.mergeIDRegistryEvent(aliceCustodyRegister);
-    engine.mergeSignerMessage(addDelegateSigner);
+    engine.mergeMessage(addDelegateSigner);
   });
 
-  test('fails with invalid message type', async () => {
+  test('handles invalid type casts', async () => {
     const invalidReactionCast = reaction as unknown as Cast;
-    expect((await engine.mergeCast(invalidReactionCast))._unsafeUnwrapErr()).toBe(
-      'CastSet.merge: invalid message format'
-    );
+    const result = await engine.mergeMessage(invalidReactionCast);
+    expect(result.isOk()).toBeTruthy();
     expect(aliceAdds()).toEqual(new Set());
+    expect(aliceReactionAdds()).toEqual(new Set([invalidReactionCast]));
   });
 
   describe('signer validation', () => {
@@ -81,7 +82,7 @@ describe('mergeCast', () => {
     });
 
     test('fails if there are no known signers', async () => {
-      const result = await engine.mergeCast(cast);
+      const result = await engine.mergeMessage(cast);
       expect(result.isOk()).toBe(false);
       expect(result._unsafeUnwrapErr()).toBe('validateMessage: unknown user');
       expect(aliceAdds()).toEqual(new Set());
@@ -99,14 +100,14 @@ describe('mergeCast', () => {
           },
           { transient: { signer: aliceCustodySigner } }
         );
-        const result = await engine.mergeCast(custodyCast);
+        const result = await engine.mergeMessage(custodyCast);
         expect(result.isOk()).toBe(false);
         expect(result._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
         expect(aliceAdds()).toEqual(new Set());
       });
 
       test('fails if delegate signer has not been added', async () => {
-        const result = await engine.mergeCast(cast);
+        const result = await engine.mergeMessage(cast);
         expect(result.isOk()).toBe(false);
         expect(result._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
         expect(aliceAdds()).toEqual(new Set());
@@ -114,18 +115,18 @@ describe('mergeCast', () => {
 
       describe('with delegate signer', () => {
         beforeEach(async () => {
-          expect((await engine.mergeSignerMessage(addDelegateSigner)).isOk()).toBe(true);
+          expect((await engine.mergeMessage(addDelegateSigner)).isOk()).toBe(true);
         });
 
         test('succeeds', async () => {
-          const result = await engine.mergeCast(cast);
+          const result = await engine.mergeMessage(cast);
           expect(result.isOk()).toBe(true);
           expect(aliceAdds()).toEqual(new Set([cast]));
         });
 
         test('fails if delegate was removed', async () => {
-          expect((await engine.mergeSignerMessage(removeDelegateSigner)).isOk()).toBe(true);
-          const result = await engine.mergeCast(cast);
+          expect((await engine.mergeMessage(removeDelegateSigner)).isOk()).toBe(true);
+          const result = await engine.mergeMessage(cast);
           expect(result.isOk()).toBe(false);
           expect(result._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
           expect(aliceAdds()).toEqual(new Set());
@@ -136,7 +137,7 @@ describe('mergeCast', () => {
             { data: { fid: aliceFid + 1 } },
             { transient: { signer: aliceDelegateSigner } }
           );
-          const result = await engine.mergeCast(unknownUser);
+          const result = await engine.mergeMessage(unknownUser);
           expect(result.isOk()).toBe(false);
           expect(result._unsafeUnwrapErr()).toBe('validateMessage: unknown user');
           expect(aliceAdds()).toEqual(new Set());
@@ -151,7 +152,7 @@ describe('mergeCast', () => {
           },
         });
 
-        const result = await engine.mergeCast(castInvalidSigner);
+        const result = await engine.mergeMessage(castInvalidSigner);
         expect(result.isOk()).toBe(false);
         expect(result._unsafeUnwrapErr()).toBe('validateMessage: invalid signer');
         expect(aliceAdds()).toEqual(new Set());
@@ -164,7 +165,7 @@ describe('mergeCast', () => {
     test('fails if the hash is invalid', async () => {
       const invalidHash = JSON.parse(JSON.stringify(cast)) as Cast;
       invalidHash.hash = '0xd4126acebadb14b41943fc10599c00e2e3627f1e38672c8476277ecf17accb48';
-      const result = await engine.mergeCast(invalidHash);
+      const result = await engine.mergeMessage(invalidHash);
       expect(result.isOk()).toBe(false);
       expect(result._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
       expect(aliceAdds()).toEqual(new Set());
@@ -174,7 +175,7 @@ describe('mergeCast', () => {
       const invalidSignature = JSON.parse(JSON.stringify(cast)) as Cast;
       invalidSignature.signature =
         '0x5b699d494b515b22258c01ad19710d44c3f12235f0c01e91d09a1e4e2cd25d80c77026a7319906da3b8ce62abc18477c19e444a02949a0dde54f8cadef889502';
-      const result = await engine.mergeCast(invalidSignature);
+      const result = await engine.mergeMessage(invalidSignature);
       expect(result.isOk()).toBe(false);
       expect(result._unsafeUnwrapErr()).toBe('validateMessage: invalid signature');
       expect(aliceAdds()).toEqual(new Set());
@@ -192,7 +193,7 @@ describe('mergeCast', () => {
         { transient: { signer: aliceDelegateSigner } }
       );
 
-      const result = await engine.mergeCast(futureCast);
+      const result = await engine.mergeMessage(futureCast);
       expect(result.isOk()).toBe(false);
       expect(result._unsafeUnwrapErr()).toEqual('validateMessage: signedAt more than 10 mins in the future');
     });
@@ -214,7 +215,7 @@ describe('mergeCast', () => {
           },
           { transient: { signer: aliceDelegateSigner } }
         );
-        const result = await engine.mergeCast(invalidTargetUri);
+        const result = await engine.mergeMessage(invalidTargetUri);
         expect(result.isOk()).toBe(false);
         expect(result._unsafeUnwrapErr()).toEqual('validateCastShort: targetUri must be a valid Cast URL');
       }
@@ -235,7 +236,7 @@ describe('mergeCast', () => {
         },
         { transient: { signer: aliceDelegateSigner } }
       );
-      const result = await engine.mergeCast(castLongText);
+      const result = await engine.mergeMessage(castLongText);
 
       expect(result.isOk()).toBe(false);
       expect(result._unsafeUnwrapErr()).toBe('validateCastShort: text > 280 chars');
@@ -255,7 +256,7 @@ describe('mergeCast', () => {
         { transient: { signer: aliceDelegateSigner } }
       );
 
-      const result = await engine.mergeCast(castThreeEmbeds);
+      const result = await engine.mergeMessage(castThreeEmbeds);
       expect(result.isOk()).toBe(false);
       expect(result._unsafeUnwrapErr()).toBe('validateCastShort: embeds > 2');
       expect(aliceAdds()).toEqual(new Set());
@@ -264,14 +265,14 @@ describe('mergeCast', () => {
     // test('fails if required properties do not exist', async () => {});
 
     test('succeeds if a valid cast-short is added', async () => {
-      expect((await engine.mergeCast(cast)).isOk()).toBe(true);
+      expect((await engine.mergeMessage(cast)).isOk()).toBe(true);
       expect(aliceAdds()).toEqual(new Set([cast]));
     });
   });
 
   describe('cast-remove', () => {
     test('succeeds and removes cast if known', async () => {
-      expect((await engine.mergeCast(cast)).isOk()).toBe(true);
+      expect((await engine.mergeMessage(cast)).isOk()).toBe(true);
 
       const castRemove = await Factories.CastRemove.create(
         {
@@ -285,12 +286,12 @@ describe('mergeCast', () => {
         { transient: { signer: aliceDelegateSigner } }
       );
 
-      expect((await engine.mergeCast(castRemove)).isOk()).toBe(true);
+      expect((await engine.mergeMessage(castRemove)).isOk()).toBe(true);
       expect(aliceAdds()).toEqual(new Set());
     });
 
     test('succeeds and does nothing if cast is unknown', async () => {
-      expect((await engine.mergeCast(cast)).isOk()).toBe(true);
+      expect((await engine.mergeMessage(cast)).isOk()).toBe(true);
 
       const castRemove = await Factories.CastRemove.create(
         {
@@ -301,7 +302,7 @@ describe('mergeCast', () => {
         { transient: { signer: aliceDelegateSigner } }
       );
 
-      expect((await engine.mergeCast(castRemove)).isOk()).toBe(true);
+      expect((await engine.mergeMessage(castRemove)).isOk()).toBe(true);
       expect(aliceAdds()).toEqual(new Set([cast]));
     });
 
@@ -310,7 +311,7 @@ describe('mergeCast', () => {
 
   describe('cast-recast', () => {
     test('succeeds', async () => {
-      expect((await engine.mergeCast(cast)).isOk()).toBe(true);
+      expect((await engine.mergeMessage(cast)).isOk()).toBe(true);
 
       const castRecast = await Factories.CastRecast.create(
         {
@@ -321,7 +322,7 @@ describe('mergeCast', () => {
         { transient: { signer: aliceDelegateSigner } }
       );
 
-      expect((await engine.mergeCast(castRecast)).isOk()).toBe(true);
+      expect((await engine.mergeMessage(castRecast)).isOk()).toBe(true);
       expect(aliceAdds()).toEqual(new Set([cast, castRecast]));
     });
 

@@ -84,11 +84,11 @@ describe('revokeSignerMessages', () => {
   describe('with messages signed by delegate', () => {
     beforeEach(async () => {
       await engine.mergeIDRegistryEvent(aliceCustodyRegister);
-      await engine.mergeSignerMessage(aliceSignerAdd);
-      await engine.mergeCast(aliceCast);
-      await engine.mergeReaction(aliceReaction);
-      await engine.mergeVerification(aliceVerification);
-      await engine.mergeFollow(aliceFollow);
+      await engine.mergeMessage(aliceSignerAdd);
+      await engine.mergeMessage(aliceCast);
+      await engine.mergeMessage(aliceReaction);
+      await engine.mergeMessage(aliceVerification);
+      await engine.mergeMessage(aliceFollow);
       expect(aliceCustodyAddress()).toEqual(aliceCustody.signerKey);
       expect(aliceSigners()).toEqual(new Set([aliceSigner.signerKey]));
       expect(aliceCasts()).toEqual(new Set([aliceCast]));
@@ -98,7 +98,7 @@ describe('revokeSignerMessages', () => {
     });
 
     test('drops all signed messages when the delegate is removed', async () => {
-      const res = await engine.mergeSignerMessage(aliceSignerRemove);
+      const res = await engine.mergeMessage(aliceSignerRemove);
       expect(res.isOk()).toBe(true);
       expect(aliceCustodyAddress()).toEqual(aliceCustody.signerKey);
       expect(aliceSigners()).toEqual(new Set());
@@ -120,7 +120,7 @@ describe('revokeSignerMessages', () => {
     });
 
     test('does not drop signed messages when signer is added by a new custody address', async () => {
-      await engine.mergeSignerMessage(aliceSignerAdd2);
+      await engine.mergeMessage(aliceSignerAdd2);
       const res = await engine.mergeIDRegistryEvent(aliceCustody2Transfer);
       expect(res.isOk()).toBe(true);
       expect(aliceCustodyAddress()).toEqual(aliceCustody2.signerKey);
