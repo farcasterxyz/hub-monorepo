@@ -76,33 +76,30 @@ describe('rpc', () => {
   });
 
   test('simple test for an empty set', async () => {
-    const response = await client.castsForFID(aliceFid);
+    const response = await client.getAllCastsForFid(aliceFid);
     expect(response.isOk()).toBeTruthy();
-    expect(response._unsafeUnwrap()).toEqual(new CastSet());
+    expect(response._unsafeUnwrap()).toEqual(new Set([]));
   });
 
   test('get a cast set with adds and removes in it', async () => {
     await populate(engine);
-    const response = await client.castsForFID(aliceFid);
+    const response = await client.getAllCastsForFid(aliceFid);
     expect(response.isOk()).toBeTruthy();
-    const set = new CastSet();
-    expect(set.merge(cast).isOk()).toBeTruthy();
-    expect(set.merge(remove).isOk()).toBeTruthy();
+    const set = new Set([cast, remove]);
     expect(response._unsafeUnwrap()).toEqual(set);
   });
 
-  test('get all FIDs', async () => {
+  test('get all Fids', async () => {
     await populate(engine);
-    const response = await client.allFIDs();
+    const response = await client.getFids();
     expect(response.isOk()).toBeTruthy();
     expect(response._unsafeUnwrap()).toEqual(new Set([aliceFid]));
   });
 
-  test('get signers for FID', async () => {
-    const response = await client.signersForFID(aliceFid);
+  test('get all signers for FID', async () => {
+    const response = await client.getAllSignerMessagesForFid(aliceFid);
     expect(response.isOk()).toBeTruthy();
-    const aliceSignerSet = response._unsafeUnwrap();
-    expect(aliceSignerSet.getCustodyAddress()).toEqual(engine._getCustodyAddress(aliceFid));
-    expect(aliceSignerSet.getSigners()).toEqual(engine._getSigners(aliceFid));
+    const aliceSignerMessages = response._unsafeUnwrap();
+    expect(aliceSignerMessages).toEqual(new Set([addDelegateSigner]));
   });
 });

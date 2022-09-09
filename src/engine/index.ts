@@ -78,15 +78,8 @@ class Engine implements RPCHandler {
    */
 
   /** Get a Set of all the FIDs known */
-  async allFIDs(): Promise<Set<number>> {
-    const fids = new Set<number>();
-    const maps = [this._casts, this._reactions, this._verifications, this._signers, this._follows];
-    for (const map of maps) {
-      for (const key of map.keys()) {
-        fids.add(key);
-      }
-    }
-    return fids;
+  async getFids(): Promise<Set<number>> {
+    return new Set(Array.from(this._signers.keys()));
   }
 
   /**
@@ -133,12 +126,12 @@ class Engine implements RPCHandler {
   }
 
   /** Get the entire cast set for an fid */
-  async castsForFID(fid: number): Promise<CastSet> {
+  async getAllCastsForFid(fid: number): Promise<Set<Cast>> {
     const casts = this._casts.get(fid);
     if (casts) {
-      return casts as CastSet;
+      return casts.getAllMessages();
     }
-    return new CastSet();
+    return new Set();
   }
 
   /**
@@ -195,10 +188,12 @@ class Engine implements RPCHandler {
     return signerSet.mergeIDRegistryEvent(event);
   }
 
-  async signersForFID(fid: number): Promise<SignerSet> {
+  async getAllSignerMessagesForFid(fid: number): Promise<Set<SignerMessage>> {
     const signerSet = this._signers.get(fid);
-    if (signerSet) return signerSet;
-    return new SignerSet();
+    if (signerSet) {
+      return signerSet.getAllMessages();
+    }
+    return new Set();
   }
 
   /**
