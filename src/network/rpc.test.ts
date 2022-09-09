@@ -3,7 +3,6 @@ import { CastRemove, CastShort, EthereumSigner, IDRegistryEvent, MessageSigner, 
 import { Factories } from '~/factories';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 import { RPCServer, RPCClient } from '~/network/rpc';
-import CastSet from '~/sets/castSet';
 import Engine from '~/engine';
 import Faker from 'faker';
 

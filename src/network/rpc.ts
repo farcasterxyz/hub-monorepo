@@ -1,9 +1,8 @@
 import { AddressInfo } from 'net';
-import { Err, err, Ok, Result } from 'neverthrow';
+import { Err, Ok, Result } from 'neverthrow';
 import { rejects } from 'assert';
 import * as jayson from 'jayson/promise';
 import CastSet from '~/sets/castSet';
-import SignerSet from '~/sets/signerSet';
 import { Cast, Message, SignerMessage } from '~/types';
 
 const VERSION = 0.1;
