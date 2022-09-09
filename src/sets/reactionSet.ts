@@ -62,6 +62,10 @@ class ReactionSet {
     return ok(undefined);
   }
 
+  getAllMessages(): Set<Reaction> {
+    return new Set([Array.from(this._adds.values()), Array.from(this._removes.values())].flat());
+  }
+
   /**
    * Private Methods
    */

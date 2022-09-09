@@ -62,6 +62,10 @@ class FollowSet {
     return ok(undefined);
   }
 
+  getAllMessages(): Set<Follow> {
+    return new Set([Array.from(this._adds.values()), Array.from(this._removes.values())].flat());
+  }
+
   /**
    * Private Methods
    */

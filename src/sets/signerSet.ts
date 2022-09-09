@@ -137,7 +137,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     return ok(undefined);
   }
 
-  /** get all the messages for a given FID */
+  /** get all the messages */
   getAllMessages(): Set<SignerMessage> {
     return new Set(
       Array.from(this._signersByCustody.values()).flatMap((value) => {
