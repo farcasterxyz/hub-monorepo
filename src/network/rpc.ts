@@ -80,7 +80,6 @@ export class RPCServer {
       try {
         // start the tcp server
         this._tcpServer = this._jsonServer.tcp().listen(port, () => {
-          console.log('RPC Server listening : ', this.tcp?.address());
           resolve();
         });
       } catch (err: any) {
