@@ -48,6 +48,28 @@ class CastSet {
     return ok(undefined);
   }
 
+  static replacer(key: any, value: any) {
+    if (value instanceof CastSet) {
+      return {
+        $class: 'CastSet',
+        $props: {
+          _adds: Array.from(value._adds.entries()),
+          _removes: Array.from(value._removes.entries()),
+        },
+      };
+    }
+    return value;
+  }
+
+  static reviver(key: any, value: any) {
+    if (value && value.$class === 'CastSet') {
+      const obj = new CastSet();
+      obj._adds = new Map(value.$props._adds);
+      obj._removes = new Map(value.$props._removes);
+      return obj;
+    }
+  }
+
   /**
    * Private Methods
    */

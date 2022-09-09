@@ -137,6 +137,45 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     return ok(undefined);
   }
 
+  static replacer(key: any, value: any) {
+    if (value instanceof SignerSet) {
+      // create a "unpacked" array from all the items of each nested map
+      const signersByCustody = [];
+      for (const entry of value._signersByCustody.entries()) {
+        signersByCustody.push({
+          custody: entry[0],
+          adds: Array.from(entry[1].adds.entries()),
+          removes: Array.from(entry[1].removes.entries()),
+        });
+      }
+
+      return {
+        $class: 'SignerSet',
+        $props: {
+          _custodyEvent: value._custodyEvent,
+          _signersByCustody: signersByCustody,
+        },
+      };
+    }
+    return value;
+  }
+
+  static reviver(key: any, value: any) {
+    if (value && value.$class === 'SignerSet') {
+      const set = new SignerSet();
+      set._custodyEvent = value.$props._custodyEvent;
+
+      for (const custodyInfo of value.$props._signersByCustody) {
+        const signers: CustodySigners = {
+          adds: new Map(custodyInfo.adds),
+          removes: new Map(custodyInfo.removes),
+        };
+        set._signersByCustody.set(custodyInfo.custody, signers);
+      }
+      return set;
+    }
+  }
+
   /**
    * Private Methods
    */
