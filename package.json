@@ -26,6 +26,9 @@
     "url": "https://github.com/farcasterxyz/node-playground/issues"
   },
   "homepage": "https://github.com/farcasterxyz/node-playground#readme",
+  "engines": {
+    "node": "^16.17.0"
+  },
   "devDependencies": {
     "@types/faker": "5.5.9",
     "@types/jest": "^28.1.7",
