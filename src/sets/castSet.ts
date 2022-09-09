@@ -48,6 +48,10 @@ class CastSet {
     return ok(undefined);
   }
 
+  getAllMessages(): Set<Cast> {
+    return new Set([Array.from(this._adds.values()), Array.from(this._removes.values())].flat());
+  }
+
   /**
    * Private Methods
    */

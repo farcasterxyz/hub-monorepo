@@ -44,9 +44,10 @@ import { CastURL, ChainAccountURL, ChainURL, parseUrl, UserURL } from '~/urls';
 import { Web2URL } from '~/urls/web2Url';
 import IDRegistryProvider from '~/provider/idRegistryProvider';
 import { CastHash } from '~/urls/castUrl';
+import { RPCHandler } from '~/network/rpc';
 
 /** The Engine receives messages and determines the current state of the Farcaster network */
-class Engine {
+class Engine implements RPCHandler {
   /** Maps of sets, indexed by fid */
   private _casts: Map<number, CastSet>;
   private _reactions: Map<number, ReactionSet>;
@@ -70,6 +71,15 @@ class Engine {
       this._IDRegistryProvider = new IDRegistryProvider(networkUrl, IDRegistryAddress);
       this._IDRegistryProvider.on('confirm', (event: IDRegistryEvent) => this.mergeIDRegistryEvent(event));
     }
+  }
+
+  /**
+   * FID Methods
+   */
+
+  /** Get a Set of all the FIDs known */
+  async getFids(): Promise<Set<number>> {
+    return new Set(Array.from(this._signers.keys()));
   }
 
   /**
@@ -108,6 +118,20 @@ class Engine {
   getCast(fid: number, hash: string): Cast | undefined {
     const castSet = this._casts.get(fid);
     return castSet ? castSet.get(hash) : undefined;
+  }
+
+  /** Get all the casts */
+  async allCasts(): Promise<Map<number, CastSet>> {
+    return this._casts;
+  }
+
+  /** Get the entire cast set for an fid */
+  async getAllCastsForFid(fid: number): Promise<Set<Cast>> {
+    const casts = this._casts.get(fid);
+    if (casts) {
+      return casts.getAllMessages();
+    }
+    return new Set();
   }
 
   /**
@@ -162,6 +186,14 @@ class Engine {
     }
 
     return signerSet.mergeIDRegistryEvent(event);
+  }
+
+  async getAllSignerMessagesForFid(fid: number): Promise<Set<SignerMessage>> {
+    const signerSet = this._signers.get(fid);
+    if (signerSet) {
+      return signerSet.getAllMessages();
+    }
+    return new Set();
   }
 
   /**
