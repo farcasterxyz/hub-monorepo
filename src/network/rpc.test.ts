@@ -11,26 +11,21 @@ import {
   ReactionRemove,
   SignerAdd,
   VerificationEthereumAddress,
-  VerificationEthereumAddressClaim,
   VerificationRemove,
 } from '~/types';
 import { Factories } from '~/factories';
-import { generateEd25519Signer, generateEthereumSigner, hashFCObject } from '~/utils';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 import { RPCServer, RPCClient } from '~/network/rpc';
 import Engine from '~/engine';
 import Faker from 'faker';
-import { Wallet } from 'ethers';
 
 const aliceFid = Faker.datatype.number();
+const engine = new Engine();
 
-let engine: Engine;
 let aliceCustodySigner: EthereumSigner;
 let aliceCustodyRegister: IDRegistryEvent;
 let aliceDelegateSigner: MessageSigner;
-let aliceEthWallet: Wallet;
-let aliceBlockHash: string;
-let aliceClaimHash: string;
-let aliceExternalSignature: string;
+
 let cast: CastShort;
 let castRemove: CastRemove;
 let reaction: ReactionAdd;
@@ -63,7 +58,6 @@ const populate = async (engine: Engine) => {
 describe('rpc', () => {
   beforeAll(async () => {
     // setup the rpc server and client
-    engine = new Engine();
     server = new RPCServer(engine);
     await server.start();
     const address = server.address;
@@ -77,18 +71,14 @@ describe('rpc', () => {
       name: 'Register',
     });
     aliceDelegateSigner = await generateEd25519Signer();
-    aliceEthWallet = Wallet.createRandom();
-    aliceBlockHash = Faker.datatype.hexaDecimal(64).toLowerCase();
-    const createParams = {
-      data: { fid: aliceFid },
-    };
-    const createOptions = {
-      transient: { signer: aliceDelegateSigner },
-    };
+
+    const createParams = { data: { fid: aliceFid } };
+    const createOptions = { transient: { signer: aliceDelegateSigner } };
+
     addDelegateSigner = await Factories.SignerAdd.create(createParams, {
       transient: { signer: aliceCustodySigner, delegateSigner: aliceDelegateSigner },
     });
-    const verificationOptions = { transient: { signer: aliceDelegateSigner, ethWallet: aliceEthWallet } };
+
     // The remove messages are intentionally unrelated to their "add" counterparts so that each Set has
     // 1 add and 1 remove
     cast = await Factories.CastShort.create(createParams, createOptions);
@@ -100,42 +90,8 @@ describe('rpc', () => {
       { data: { fid: aliceFid, body: { targetUri: follow.data.body.targetUri + '1' } } },
       createOptions
     );
-
-    const verificationClaim: VerificationEthereumAddressClaim = {
-      fid: aliceFid,
-      externalUri: Factories.EthereumAddressURL.build(undefined, {
-        transient: { address: aliceEthWallet.address },
-      }).toString(),
-      blockHash: aliceBlockHash,
-    };
-    aliceClaimHash = await hashFCObject(verificationClaim);
-    aliceExternalSignature = await aliceEthWallet.signMessage(aliceClaimHash);
-
-    verification = await Factories.VerificationEthereumAddress.create(
-      {
-        data: {
-          fid: aliceFid,
-          body: {
-            claimHash: aliceClaimHash,
-            blockHash: aliceBlockHash,
-            externalSignature: aliceExternalSignature,
-          },
-        },
-      },
-      verificationOptions
-    );
-
-    // intentionally unrelated remove message
-    verificationRemove = await Factories.VerificationRemove.create(
-      {
-        data: {
-          fid: aliceFid,
-          signedAt: verification.data.signedAt + 1,
-          body: { claimHash: verification.data.body.claimHash + 1 },
-        },
-      },
-      verificationOptions
-    );
+    verification = await Factories.VerificationEthereumAddress.create(createParams, createOptions);
+    verificationRemove = await Factories.VerificationRemove.create(createParams, createOptions);
   });
 
   beforeEach(async () => {
@@ -148,7 +104,7 @@ describe('rpc', () => {
     await server.stop();
   });
 
-  test('get all signers for FID', async () => {
+  test('get all signer messages for an fid', async () => {
     const response = await client.getAllSignerMessagesByUser(aliceFid);
     expect(response.isOk()).toBeTruthy();
     const aliceSignerMessages = response._unsafeUnwrap();
@@ -169,14 +125,14 @@ describe('rpc', () => {
     expect(response._unsafeUnwrap()).toEqual(set);
   });
 
-  test('get all Fids', async () => {
+  test('get all users', async () => {
     await populate(engine);
-    const response = await client.getFids();
+    const response = await client.getUsers();
     expect(response.isOk()).toBeTruthy();
     expect(response._unsafeUnwrap()).toEqual(new Set([aliceFid]));
   });
 
-  test('get all reactions for Fid', async () => {
+  test('get all reactions for an fid', async () => {
     await populate(engine);
     const response = await client.getAllReactionsByUser(aliceFid);
     expect(response.isOk()).toBeTruthy();
@@ -184,21 +140,19 @@ describe('rpc', () => {
     expect(aliceReactionMessages).toEqual(new Set([reaction, reactionRemove]));
   });
 
-  test('get all follows for Fid', async () => {
+  test('get all follows for an fid', async () => {
     await populate(engine);
     const response = await client.getAllFollowsByUser(aliceFid);
     expect(response.isOk()).toBeTruthy();
     const aliceFollowMessages = response._unsafeUnwrap();
-    // Only the remove msg is sent back
     expect(aliceFollowMessages).toEqual(new Set([follow, followRemove]));
   });
 
-  test('get all verifications for Fid', async () => {
+  test('get all verifications for an fid', async () => {
     await populate(engine);
     const response = await client.getAllVerificationsByUser(aliceFid);
     expect(response.isOk()).toBeTruthy();
     const aliceVerificationMessages = response._unsafeUnwrap();
-    // Only the remove msg is sent back
     expect(aliceVerificationMessages).toEqual(new Set([verification, verificationRemove]));
   });
 });

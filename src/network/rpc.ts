@@ -9,12 +9,12 @@ const VERSION = 0.1;
 export type Port = number;
 
 export enum RPCRequest {
-  GetUsers,
-  GetAllCastsByUser,
-  GetAllSignerMessagesByUser,
-  GetAllReactionsByUser,
-  GetAllFollowsByUser,
-  GetAllVerificationsByUser,
+  GetUsers = 'getUsers',
+  GetAllCastsByUser = 'getAllCastsByUser',
+  GetAllSignerMessagesByUser = 'getAllSignerMessagesByUser',
+  GetAllReactionsByUser = 'getAllReactionsByUser',
+  GetAllFollowsByUser = 'getAllFollowsByUser',
+  GetAllVerificationsByUser = 'getAllVerificationsByUser',
 }
 
 export interface RPCHandler {
@@ -56,38 +56,38 @@ export class RPCServer {
     this._handler = rpcHandler;
     this._jsonServer = new jayson.Server(
       {
-        [RPCRequest[RPCRequest.GetUsers]]: new jayson.Method({
+        [RPCRequest.GetUsers]: new jayson.Method({
           handler: async function () {
             return await rpcHandler.getUsers();
           },
         }),
 
-        [RPCRequest[RPCRequest.GetAllCastsByUser]]: new jayson.Method({
-          handler: async function (args: any) {
+        [RPCRequest.GetAllCastsByUser]: new jayson.Method({
+          handler: (args: any) => {
             return rpcHandler.getAllCastsByUser(args.fid);
           },
           params: Object,
         }),
 
-        [RPCRequest[RPCRequest.GetAllSignerMessagesByUser]]: new jayson.Method({
+        [RPCRequest.GetAllSignerMessagesByUser]: new jayson.Method({
           handler: async function (args: any) {
             return rpcHandler.getAllSignerMessagesByUser(args.fid);
           },
         }),
 
-        [RPCRequest[RPCRequest.GetAllReactionsByUser]]: new jayson.Method({
+        [RPCRequest.GetAllReactionsByUser]: new jayson.Method({
           handler: async function (args: any) {
             return rpcHandler.getAllReactionsByUser(args.fid);
           },
         }),
 
-        [RPCRequest[RPCRequest.GetAllFollowsByUser]]: new jayson.Method({
+        [RPCRequest.GetAllFollowsByUser]: new jayson.Method({
           handler: async function (args: any) {
             return rpcHandler.getAllFollowsByUser(args.fid);
           },
         }),
 
-        [RPCRequest[RPCRequest.GetAllVerificationsByUser]]: new jayson.Method({
+        [RPCRequest.GetAllVerificationsByUser]: new jayson.Method({
           handler: async function (args: any) {
             return rpcHandler.getAllVerificationsByUser(args.fid);
           },
@@ -148,8 +148,8 @@ export class RPCClient {
     });
   }
 
-  async getFids(): Promise<Result<Set<number>, string>> {
-    const response = await this._tcpClient.request(RPCRequest[RPCRequest.GetUsers], {});
+  async getUsers(): Promise<Result<Set<number>, string>> {
+    const response = await this._tcpClient.request(RPCRequest.GetUsers, {});
     if (response.error) {
       return new Err(response.error);
     }
@@ -157,7 +157,7 @@ export class RPCClient {
   }
 
   async getAllCastsByUser(fid: number): Promise<Result<Set<Cast>, string>> {
-    const response = await this._tcpClient.request(RPCRequest[RPCRequest.GetAllCastsByUser], { fid });
+    const response = await this._tcpClient.request(RPCRequest.GetAllCastsByUser, { fid });
     if (response.error) {
       return new Err(response.error);
     }
@@ -165,7 +165,7 @@ export class RPCClient {
   }
 
   async getAllSignerMessagesByUser(fid: number): Promise<Result<Set<Message>, string>> {
-    const response = await this._tcpClient.request(RPCRequest[RPCRequest.GetAllSignerMessagesByUser], { fid });
+    const response = await this._tcpClient.request(RPCRequest.GetAllSignerMessagesByUser, { fid });
     if (response.error) {
       return new Err(response.error);
     }
@@ -173,21 +173,21 @@ export class RPCClient {
   }
 
   async getAllReactionsByUser(fid: number): Promise<Result<Set<Reaction>, string>> {
-    const response = await this._tcpClient.request(RPCRequest[RPCRequest.GetAllReactionsByUser], { fid });
+    const response = await this._tcpClient.request(RPCRequest.GetAllReactionsByUser, { fid });
     if (response.error) {
       return new Err(response.error);
     }
     return new Ok(response.result);
   }
   async getAllFollowsByUser(fid: number): Promise<Result<Set<Follow>, string>> {
-    const response = await this._tcpClient.request(RPCRequest[RPCRequest.GetAllFollowsByUser], { fid });
+    const response = await this._tcpClient.request(RPCRequest.GetAllFollowsByUser, { fid });
     if (response.error) {
       return new Err(response.error);
     }
     return new Ok(response.result);
   }
   async getAllVerificationsByUser(fid: number): Promise<Result<Set<Verification>, string>> {
-    const response = await this._tcpClient.request(RPCRequest[RPCRequest.GetAllVerificationsByUser], { fid });
+    const response = await this._tcpClient.request(RPCRequest.GetAllVerificationsByUser, { fid });
     if (response.error) {
       return new Err(response.error);
     }

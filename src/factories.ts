@@ -421,7 +421,7 @@ export const Factories = {
       return {
         data: {
           body: {
-            claimHash: '',
+            claimHash: Faker.datatype.hexaDecimal(128).toLowerCase(),
           },
           signedAt: Faker.time.recent(),
           fid: Faker.datatype.number(),
