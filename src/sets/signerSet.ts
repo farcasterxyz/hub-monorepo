@@ -79,6 +79,15 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     return this._custodySigners ? this._custodySigners.adds.get(sanitizeSigner(signer)) : undefined;
   }
 
+  /** get all the messages */
+  getAllMessages(): Set<SignerMessage> {
+    return new Set(
+      [...this._signersByCustody.values()].flatMap((set: CustodySigners) => {
+        return [...set.adds.values(), ...set.removes.values()];
+      })
+    );
+  }
+
   /** merge tries to merge a SignerAdd or SignerRemove message into the set */
   merge(message: SignerMessage): Result<void, string> {
     if (isSignerRemove(message)) {
@@ -135,15 +144,6 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     }
 
     return ok(undefined);
-  }
-
-  /** get all the messages for a given FID */
-  getAllMessages(): Set<SignerMessage> {
-    return new Set(
-      Array.from(this._signersByCustody.values()).flatMap((value) => {
-        return [Array.from(value.adds.values()), Array.from(value.removes.values())].flat();
-      })
-    );
   }
 
   /**

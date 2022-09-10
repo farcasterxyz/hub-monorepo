@@ -17,6 +17,10 @@ class CastSet {
     return this._adds.get(hash) || this._removes.get(hash);
   }
 
+  getAllMessages(): Set<Cast> {
+    return new Set([...this._adds.values(), ...this._removes.values()]);
+  }
+
   // TODO: add query API
 
   merge(cast: Cast): Result<void, string> {
@@ -46,10 +50,6 @@ class CastSet {
     }
 
     return ok(undefined);
-  }
-
-  getAllMessages(): Set<Cast> {
-    return new Set([Array.from(this._adds.values()), Array.from(this._removes.values())].flat());
   }
 
   /**

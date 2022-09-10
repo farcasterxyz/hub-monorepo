@@ -78,7 +78,7 @@ class Engine implements RPCHandler {
    */
 
   /** Get a Set of all the FIDs known */
-  async getFids(): Promise<Set<number>> {
+  async getUsers(): Promise<Set<number>> {
     return new Set(Array.from(this._signers.keys()));
   }
 
@@ -126,7 +126,7 @@ class Engine implements RPCHandler {
   }
 
   /** Get the entire cast set for an fid */
-  async getAllCastsForFid(fid: number): Promise<Set<Cast>> {
+  async getAllCastsByUser(fid: number): Promise<Set<Cast>> {
     const casts = this._casts.get(fid);
     if (casts) {
       return casts.getAllMessages();
@@ -144,6 +144,15 @@ class Engine implements RPCHandler {
     return reactionSet ? reactionSet.get(targetURI) : undefined;
   }
 
+  /** Get te entire reaction set for an fid */
+  async getAllReactionsByUser(fid: number): Promise<Set<Reaction>> {
+    const reactions = this._reactions.get(fid);
+    if (reactions) {
+      return reactions.getAllMessages();
+    }
+    return new Set();
+  }
+
   /**
    * Follow Methods
    */
@@ -154,6 +163,14 @@ class Engine implements RPCHandler {
     return followSet ? followSet.get(targetURI) : undefined;
   }
 
+  async getAllFollowsByUser(fid: number): Promise<Set<Follow>> {
+    const follows = this._follows.get(fid);
+    if (follows) {
+      return follows.getAllMessages();
+    }
+    return new Set();
+  }
+
   /**
    * Verification methods
    */
@@ -162,6 +179,14 @@ class Engine implements RPCHandler {
   getVerification(fid: number, claimHash: string): Verification | undefined {
     const verificationSet = this._verifications.get(fid);
     return verificationSet ? verificationSet.get(claimHash) : undefined;
+  }
+
+  async getAllVerificationsByUser(fid: number): Promise<Set<Verification>> {
+    const verifications = this._verifications.get(fid);
+    if (verifications) {
+      return verifications.getAllMessages();
+    }
+    return new Set();
   }
 
   /**
@@ -188,7 +213,8 @@ class Engine implements RPCHandler {
     return signerSet.mergeIDRegistryEvent(event);
   }
 
-  async getAllSignerMessagesForFid(fid: number): Promise<Set<SignerMessage>> {
+  /** Get the entire set of signers for an Fid */
+  async getAllSignerMessagesByUser(fid: number): Promise<Set<SignerMessage>> {
     const signerSet = this._signers.get(fid);
     if (signerSet) {
       return signerSet.getAllMessages();

@@ -29,6 +29,10 @@ class FollowSet {
     return this._adds.get(targetURI);
   }
 
+  getAllMessages(): Set<Follow> {
+    return new Set([...this._adds.values(), ...this._removes.values()]);
+  }
+
   // TODO: add query API
 
   /** Merge a new follow into the set */

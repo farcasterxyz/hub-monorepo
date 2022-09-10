@@ -2,23 +2,28 @@ import { AddressInfo } from 'net';
 import { Err, Ok, Result } from 'neverthrow';
 import { rejects } from 'assert';
 import * as jayson from 'jayson/promise';
-import CastSet from '~/sets/castSet';
-import { Cast, Message, SignerMessage } from '~/types';
+import { Cast, Follow, Message, Reaction, SignerMessage, Verification } from '~/types';
 
 const VERSION = 0.1;
 
 export type Port = number;
 
 export enum RPCRequest {
-  GetFids,
-  GetAllCastsForFid,
-  GetAllSignerMessagesForFid,
+  GetUsers = 'getUsers',
+  GetAllCastsByUser = 'getAllCastsByUser',
+  GetAllSignerMessagesByUser = 'getAllSignerMessagesByUser',
+  GetAllReactionsByUser = 'getAllReactionsByUser',
+  GetAllFollowsByUser = 'getAllFollowsByUser',
+  GetAllVerificationsByUser = 'getAllVerificationsByUser',
 }
 
 export interface RPCHandler {
-  getFids(): Promise<Set<number>>;
-  getAllCastsForFid(fid: number): Promise<Set<Cast>>;
-  getAllSignerMessagesForFid(fid: number): Promise<Set<SignerMessage>>;
+  getUsers(): Promise<Set<number>>;
+  getAllCastsByUser(fid: number): Promise<Set<Cast>>;
+  getAllSignerMessagesByUser(fid: number): Promise<Set<SignerMessage>>;
+  getAllReactionsByUser(fid: number): Promise<Set<Reaction>>;
+  getAllFollowsByUser(fid: number): Promise<Set<Follow>>;
+  getAllVerificationsByUser(fid: number): Promise<Set<Verification>>;
 }
 
 const replacer = (key: any, value: any) => {
@@ -51,23 +56,40 @@ export class RPCServer {
     this._handler = rpcHandler;
     this._jsonServer = new jayson.Server(
       {
-        [RPCRequest[RPCRequest.GetFids]]: new jayson.Method({
-          handler: async function () {
-            // pass it back as an Array because JSON can serialize that
-            return await rpcHandler.getFids();
+        [RPCRequest.GetUsers]: new jayson.Method({
+          handler: async () => {
+            return await rpcHandler.getUsers();
           },
         }),
 
-        [RPCRequest[RPCRequest.GetAllCastsForFid]]: new jayson.Method({
-          handler: async function (args: any) {
-            return rpcHandler.getAllCastsForFid(args.fid);
+        [RPCRequest.GetAllCastsByUser]: new jayson.Method({
+          handler: (args: any) => {
+            return rpcHandler.getAllCastsByUser(args.fid);
           },
           params: Object,
         }),
 
-        [RPCRequest[RPCRequest.GetAllSignerMessagesForFid]]: new jayson.Method({
-          handler: async function (args: any) {
-            return rpcHandler.getAllSignerMessagesForFid(args.fid);
+        [RPCRequest.GetAllSignerMessagesByUser]: new jayson.Method({
+          handler: async (args: any) => {
+            return rpcHandler.getAllSignerMessagesByUser(args.fid);
+          },
+        }),
+
+        [RPCRequest.GetAllReactionsByUser]: new jayson.Method({
+          handler: async (args: any) => {
+            return rpcHandler.getAllReactionsByUser(args.fid);
+          },
+        }),
+
+        [RPCRequest.GetAllFollowsByUser]: new jayson.Method({
+          handler: async (args: any) => {
+            return rpcHandler.getAllFollowsByUser(args.fid);
+          },
+        }),
+
+        [RPCRequest.GetAllVerificationsByUser]: new jayson.Method({
+          handler: async (args: any) => {
+            return rpcHandler.getAllVerificationsByUser(args.fid);
           },
         }),
       },
@@ -119,31 +141,53 @@ export class RPCClient {
     this._tcpClient = jayson.Client.tcp({
       port: address.port,
       host: address.address,
-      // use the family?
+      // TODO use the family?
       // family: address.family
       replacer,
       reviver,
     });
   }
 
-  async getAllCastsForFid(fid: number): Promise<Result<CastSet, string>> {
-    const response = await this._tcpClient.request(RPCRequest[RPCRequest.GetAllCastsForFid], { fid: fid });
+  async getUsers(): Promise<Result<Set<number>, string>> {
+    const response = await this._tcpClient.request(RPCRequest.GetUsers, {});
     if (response.error) {
       return new Err(response.error);
     }
     return new Ok(response.result);
   }
 
-  async getAllSignerMessagesForFid(fid: number): Promise<Result<Array<Message>, string>> {
-    const response = await this._tcpClient.request(RPCRequest[RPCRequest.GetAllSignerMessagesForFid], { fid: fid });
+  async getAllCastsByUser(fid: number): Promise<Result<Set<Cast>, string>> {
+    const response = await this._tcpClient.request(RPCRequest.GetAllCastsByUser, { fid });
     if (response.error) {
       return new Err(response.error);
     }
     return new Ok(response.result);
   }
 
-  async getFids(): Promise<Result<Set<number>, string>> {
-    const response = await this._tcpClient.request(RPCRequest[RPCRequest.GetFids], {});
+  async getAllSignerMessagesByUser(fid: number): Promise<Result<Set<Message>, string>> {
+    const response = await this._tcpClient.request(RPCRequest.GetAllSignerMessagesByUser, { fid });
+    if (response.error) {
+      return new Err(response.error);
+    }
+    return new Ok(response.result);
+  }
+
+  async getAllReactionsByUser(fid: number): Promise<Result<Set<Reaction>, string>> {
+    const response = await this._tcpClient.request(RPCRequest.GetAllReactionsByUser, { fid });
+    if (response.error) {
+      return new Err(response.error);
+    }
+    return new Ok(response.result);
+  }
+  async getAllFollowsByUser(fid: number): Promise<Result<Set<Follow>, string>> {
+    const response = await this._tcpClient.request(RPCRequest.GetAllFollowsByUser, { fid });
+    if (response.error) {
+      return new Err(response.error);
+    }
+    return new Ok(response.result);
+  }
+  async getAllVerificationsByUser(fid: number): Promise<Result<Set<Verification>, string>> {
+    const response = await this._tcpClient.request(RPCRequest.GetAllVerificationsByUser, { fid });
     if (response.error) {
       return new Err(response.error);
     }

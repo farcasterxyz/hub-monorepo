@@ -12,7 +12,7 @@
     "lint:fix": "npm run lint -- --fix",
     "server": "npm run build",
     "start": "npm run server",
-    "test": "rm -rf ./build && jest src/",
+    "test": "rm -rf ./build && jest",
     "test:ci": "ENVIRONMENT=test jest src/ --ci --runInBand --forceExit --coverage",
     "typecheck": "tsc --noEmit"
   },

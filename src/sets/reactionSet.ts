@@ -29,6 +29,10 @@ class ReactionSet {
     return this._adds.get(targetUri);
   }
 
+  getAllMessages(): Set<Reaction> {
+    return new Set([...this._adds.values(), ...this._removes.values()]);
+  }
+
   // TODO: add query API
 
   /** Merge a new message into the set */

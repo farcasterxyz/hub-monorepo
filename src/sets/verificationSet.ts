@@ -18,6 +18,10 @@ class VerificationSet {
     return this._adds.get(claimHash) || this._removes.get(claimHash);
   }
 
+  getAllMessages(): Set<Verification> {
+    return new Set([...this._adds.values(), ...this._removes.values()]);
+  }
+
   // TODO: add query API
 
   merge(message: Verification): Result<void, string> {
