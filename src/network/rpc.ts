@@ -57,7 +57,7 @@ export class RPCServer {
     this._jsonServer = new jayson.Server(
       {
         [RPCRequest.GetUsers]: new jayson.Method({
-          handler: async function () {
+          handler: async () => {
             return await rpcHandler.getUsers();
           },
         }),
@@ -70,25 +70,25 @@ export class RPCServer {
         }),
 
         [RPCRequest.GetAllSignerMessagesByUser]: new jayson.Method({
-          handler: async function (args: any) {
+          handler: async (args: any) => {
             return rpcHandler.getAllSignerMessagesByUser(args.fid);
           },
         }),
 
         [RPCRequest.GetAllReactionsByUser]: new jayson.Method({
-          handler: async function (args: any) {
+          handler: async (args: any) => {
             return rpcHandler.getAllReactionsByUser(args.fid);
           },
         }),
 
         [RPCRequest.GetAllFollowsByUser]: new jayson.Method({
-          handler: async function (args: any) {
+          handler: async (args: any) => {
             return rpcHandler.getAllFollowsByUser(args.fid);
           },
         }),
 
         [RPCRequest.GetAllVerificationsByUser]: new jayson.Method({
-          handler: async function (args: any) {
+          handler: async (args: any) => {
             return rpcHandler.getAllVerificationsByUser(args.fid);
           },
         }),
