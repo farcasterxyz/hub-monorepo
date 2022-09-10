@@ -4,9 +4,10 @@ export default async (): Promise<Config.InitialOptions> => {
   return {
     preset: 'ts-jest',
     testEnvironment: 'node',
-    // setupFilesAfterEnv: ['jest-extended/all'],
     moduleNameMapper: {
       '^~/(.*)$': '<rootDir>/src/$1',
     },
+    coveragePathIgnorePatterns: ['<rootDir>/build/', '<rootDir>/node_modules/'],
+    testPathIgnorePatterns: ['<rootDir>/build', '<rootDir>/node_modules'],
   };
 };
