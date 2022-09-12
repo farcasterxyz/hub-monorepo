@@ -266,7 +266,7 @@ export const Factories = {
       return {
         data: {
           body: {
-            targetUri: Faker.internet.url(),
+            targetUri: UserURLFactory.build().toString(),
           },
           signedAt: Faker.time.recent(),
           fid: Faker.datatype.number(),
