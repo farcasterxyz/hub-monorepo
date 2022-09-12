@@ -86,6 +86,19 @@ class Engine implements RPCHandler {
    * Message Methods
    */
 
+  /**
+   * Merge a list of messages
+   *
+   * @param messages A list of Messages to merge
+   * @returns An array of Results
+   */
+  mergeMessages(messages: Message[]): Array<Promise<Result<void, string>>> {
+    const results = messages.map((value) => {
+      return this.mergeMessage(value);
+    });
+    return results;
+  }
+
   /** Merge a message into the correct set based on its type */
   async mergeMessage(message: Message): Promise<Result<void, string>> {
     const isMessageValidresult = await this.validateMessage(message);
