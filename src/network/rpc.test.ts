@@ -40,16 +40,18 @@ let server: RPCServer;
 let client: RPCClient;
 
 const populate = async (engine: Engine) => {
-  const results = await Promise.all([
-    engine.mergeMessage(cast),
-    engine.mergeMessage(castRemove),
-    engine.mergeMessage(reaction),
-    engine.mergeMessage(reactionRemove),
-    engine.mergeMessage(follow),
-    engine.mergeMessage(followRemove),
-    engine.mergeMessage(verification),
-    engine.mergeMessage(verificationRemove),
-  ]);
+  const results = await Promise.all(
+    engine.mergeMessages([
+      cast,
+      castRemove,
+      reaction,
+      reactionRemove,
+      follow,
+      followRemove,
+      verification,
+      verificationRemove,
+    ])
+  );
   results.forEach((value) => {
     expect(value.isOk()).toBeTruthy();
   });
