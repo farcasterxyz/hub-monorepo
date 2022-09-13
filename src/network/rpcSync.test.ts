@@ -36,14 +36,14 @@ describe('rpcSync', () => {
       const users = await serverEngine.getUsers();
       expect(users.size).toEqual(NUM_USERS);
 
-      //
-      // TODO this logic needs to live in the "Hub executable" when that exists
-      // Sync logic
-      // Get the list of all users from the server
-      // Get all custody events and signer messages and merge them
-      // Get all the messages from the other sets on the server
-      // Merge all the messages
-      //
+      /**
+       * TODO this logic needs to live in the "Hub executable" when that exists
+       * Sync logic
+       * Get the list of all users from the server
+       * Get all custody events and signer messages and merge them
+       * Get all the messages from the other sets on the server
+       * Merge all the messages
+       */
 
       const result = await client.getUsers();
       expect(result.isOk()).toBeTruthy();
@@ -51,14 +51,13 @@ describe('rpcSync', () => {
 
       for (const user of userIds) {
         // get the signer messages first so we can prepare to ingest the remaining messages later
-        let result: Result<any, string> = await client.getCustodyEventByUser(user);
-        expect(result.isOk()).toBeTruthy();
-        const custodyResult = await clientEngine.mergeIDRegistryEvent(result._unsafeUnwrap());
+        const custodyEventResult: Result<any, string> = await client.getCustodyEventByUser(user);
+        expect(custodyEventResult.isOk()).toBeTruthy();
+        const custodyResult = await clientEngine.mergeIDRegistryEvent(custodyEventResult._unsafeUnwrap());
         expect(custodyResult.isOk()).toBeTruthy();
-        // next, get all the signer messages
-        result = await client.getAllSignerMessagesByUser(user);
-        expect(result.isOk()).toBeTruthy();
-        const signerResults = await Promise.all(clientEngine.mergeMessages([...result._unsafeUnwrap()]));
+        const signerMessagesResult = await client.getAllSignerMessagesByUser(user);
+        expect(signerMessagesResult.isOk()).toBeTruthy();
+        const signerResults = await Promise.all(clientEngine.mergeMessages([...signerMessagesResult._unsafeUnwrap()]));
         signerResults.forEach((result) => {
           expect(result.isOk()).toBeTruthy();
         });
@@ -71,7 +70,8 @@ describe('rpcSync', () => {
           client.getAllVerificationsByUser(user),
         ]);
 
-        const messages = responses.flatMap((response) => {
+        // collect all the messages for each Set into a single list of messages
+        const allMessages = responses.flatMap((response) => {
           expect(response.isOk()).toBeTruthy();
           return response.match(
             (messages) => {
@@ -84,7 +84,7 @@ describe('rpcSync', () => {
         });
 
         // replay all messages into the client Engine
-        const mergeResults = await Promise.all(clientEngine.mergeMessages(messages));
+        const mergeResults = await Promise.all(clientEngine.mergeMessages(allMessages));
         mergeResults.forEach((result) => {
           expect(result.isOk()).toBeTruthy();
         });

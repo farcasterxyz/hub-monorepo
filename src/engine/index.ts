@@ -237,10 +237,7 @@ class Engine implements RPCHandler {
 
   async getCustodyEventByUser(fid: number): Promise<IDRegistryEvent | undefined> {
     const signerSet = this._signers.get(fid);
-    if (signerSet) {
-      return signerSet.getCustodyAddressEvent();
-    }
-    return undefined;
+    return signerSet ? signerSet.getCustodyAddressEvent() : undefined;
   }
 
   /**
