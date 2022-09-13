@@ -1,4 +1,5 @@
-import { Message } from '~/types';
+import { err, ok, Result } from 'neverthrow';
+import { IDRegistryEvent, Message } from '~/types';
 
 /**
  * GossipMessage defines the structure of the basic message type that is published
@@ -12,7 +13,7 @@ export type GossipMessage<T = Content> = {
   topics: string[];
 };
 
-export type Content = UserContent;
+export type Content = IDRegistryContent | UserContent;
 
 /**
  * UserContent defines the structure of the primary message type that is published
@@ -24,6 +25,20 @@ export type Content = UserContent;
  */
 export type UserContent = {
   message: Message;
+  root: string;
+  count: number;
+};
+
+/**
+ * IDRegistryContent defines the structure of the IDRegistry Events that are published
+ * over the gossip network.
+ *
+ * @message - The Farcaster IDRegistryEvent that needs to be sent
+ * @root - The current merkle root of the sender's trie
+ * @count - The number of messages under the root
+ */
+export type IDRegistryContent = {
+  message: IDRegistryEvent;
   root: string;
   count: number;
 };
@@ -47,13 +62,13 @@ export const encodeMessage = (message: GossipMessage): Uint8Array => {
  *
  * @returns - A decoded GossipMessage from the input array
  */
-export const decodeMessage = (data: Uint8Array): GossipMessage => {
+export const decodeMessage = (data: Uint8Array): Result<GossipMessage, string> => {
   const json = new TextDecoder().decode(data);
   const message: GossipMessage = JSON.parse(json);
 
   // Error checking? exception handling?
   if (!message) {
-    throw new TypeError('Failed to decode Gossip message...');
+    return err('Failed to decode Gossip message...');
   }
-  return message;
+  return ok(message);
 };
