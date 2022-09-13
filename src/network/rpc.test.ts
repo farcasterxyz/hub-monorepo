@@ -106,6 +106,20 @@ describe('rpc', () => {
     await server.stop();
   });
 
+  test('returns an error if there is no custody event', async () => {
+    engine._reset();
+    const response = await client.getCustodyEventByuser(aliceFid);
+    expect(response.isOk()).not.toBeTruthy();
+    expect(response._unsafeUnwrapErr()).toBe('Not Found');
+  });
+
+  test('get the custody event for an fid', async () => {
+    const response = await client.getCustodyEventByuser(aliceFid);
+    expect(response.isOk()).toBeTruthy();
+    const custodyEvent = response._unsafeUnwrap();
+    expect(custodyEvent).toEqual(aliceCustodyRegister);
+  });
+
   test('get all signer messages for an fid', async () => {
     const response = await client.getAllSignerMessagesByUser(aliceFid);
     expect(response.isOk()).toBeTruthy();
