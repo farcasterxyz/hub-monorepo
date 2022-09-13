@@ -202,7 +202,7 @@ export class RPCClient {
     return new Ok(response.result);
   }
 
-  async getCustodyEventByuser(fid: number): Promise<Result<IDRegistryEvent, string>> {
+  async getCustodyEventByUser(fid: number): Promise<Result<IDRegistryEvent, string>> {
     const response = await this._tcpClient.request(RPCRequest.GetCustodyEventByuser, { fid });
     if (response.error) {
       return new Err(response.error);

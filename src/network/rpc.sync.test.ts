@@ -51,7 +51,7 @@ describe('rpcSync', () => {
 
       for (const user of userIds) {
         // get the signer messages first so we can prepare to ingest the remaining messages later
-        let result: Result<any, string> = await client.getCustodyEventByuser(user);
+        let result: Result<any, string> = await client.getCustodyEventByUser(user);
         expect(result.isOk()).toBeTruthy();
         const custodyResult = await clientEngine.mergeIDRegistryEvent(result._unsafeUnwrap());
         expect(custodyResult.isOk()).toBeTruthy();

@@ -108,13 +108,13 @@ describe('rpc', () => {
 
   test('returns an error if there is no custody event', async () => {
     engine._reset();
-    const response = await client.getCustodyEventByuser(aliceFid);
+    const response = await client.getCustodyEventByUser(aliceFid);
     expect(response.isOk()).not.toBeTruthy();
     expect(response._unsafeUnwrapErr()).toBe('Not Found');
   });
 
   test('get the custody event for an fid', async () => {
-    const response = await client.getCustodyEventByuser(aliceFid);
+    const response = await client.getCustodyEventByUser(aliceFid);
     expect(response.isOk()).toBeTruthy();
     const custodyEvent = response._unsafeUnwrap();
     expect(custodyEvent).toEqual(aliceCustodyRegister);
