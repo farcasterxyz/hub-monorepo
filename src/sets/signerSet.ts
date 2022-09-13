@@ -70,13 +70,13 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
   }
 
   /** getSigners returns the set of valid delegate signers for the current custody address */
-  getSigners(): Set<string> {
-    return this._custodySigners ? new Set([...this._custodySigners.adds.keys()]) : new Set();
+  getSigners(): Set<SignerAdd> {
+    return this._custodySigners ? new Set([...this._custodySigners.adds.values()]) : new Set();
   }
 
   /** get returns the SignerAdd message for a delegate signer if the signer is valid */
-  get(signer: string): SignerAdd | undefined {
-    return this._custodySigners ? this._custodySigners.adds.get(sanitizeSigner(signer)) : undefined;
+  getSigner(signerKey: string): SignerAdd | undefined {
+    return this._custodySigners ? this._custodySigners.adds.get(sanitizeSigner(signerKey)) : undefined;
   }
 
   /** get all the messages */

@@ -27,24 +27,24 @@ beforeEach(() => {
   set._reset();
 });
 
-describe('get', () => {
+describe('getReaction', () => {
   test('fails when reaction does not exist', () => {
-    expect(set.get(a)).toBeFalsy();
+    expect(set.getReaction(a)).toBeFalsy();
   });
 
   test('returns ReactionAdd when reaction has been added', () => {
     set.merge(addA);
-    expect(set.get(a)).toEqual(addA);
+    expect(set.getReaction(a)).toEqual(addA);
   });
 
   test('fails when reaction has been removed', () => {
     set.merge(remA);
-    expect(set.get(a)).toBeFalsy();
+    expect(set.getReaction(a)).toBeFalsy();
   });
 
   test('fails when using message hash', () => {
     set.merge(addA);
-    expect(set.get(addA.hash)).toBeFalsy();
+    expect(set.getReaction(addA.hash)).toBeFalsy();
   });
 });
 

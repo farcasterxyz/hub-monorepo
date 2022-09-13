@@ -21,3 +21,6 @@ node_modules/
 
 # Code Coverage Reports
 coverage/
+
+# Level db data
+.level/

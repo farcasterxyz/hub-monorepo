@@ -25,8 +25,12 @@ class FollowSet {
   }
 
   /** Get a follow add by its target URI */
-  get(targetURI: URI): FollowAdd | undefined {
+  getFollow(targetURI: URI): FollowAdd | undefined {
     return this._adds.get(targetURI);
+  }
+
+  getFollows(): Set<FollowAdd> {
+    return new Set([...this._adds.values()]);
   }
 
   getAllMessages(): Set<Follow> {

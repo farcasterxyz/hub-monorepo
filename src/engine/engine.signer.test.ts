@@ -1,10 +1,26 @@
 import Faker from 'faker';
+import DB from '~/db';
 import Engine from '~/engine';
 import { Factories } from '~/factories';
 import { Ed25519Signer, EthereumSigner, SignerAdd, SignerMessage, SignerRemove, IDRegistryEvent } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner, hashFCObject } from '~/utils';
 
-const engine = new Engine();
+const testDb = new DB(`engine.signer.test`);
+const engine = new Engine(testDb);
+
+beforeAll(async () => {
+  await testDb.open();
+});
+
+afterEach(async () => {
+  await engine._reset();
+  // await testDb.clear();
+});
+
+afterAll(async () => {
+  await testDb.close();
+});
+
 const aliceFid = Faker.datatype.number();
 const aliceCustodyAddress = () => engine._getCustodyAddress(aliceFid);
 const aliceSigners = () => engine._getSigners(aliceFid);
@@ -31,10 +47,6 @@ describe('mergeSignerMessage', () => {
       { data: { fid: aliceFid, body: { delegate: aliceDelegateSigner.signerKey } } },
       { transient: { signer: aliceCustodySigner } }
     );
-  });
-
-  beforeEach(() => {
-    engine._reset();
   });
 
   test('fails without a custody address', async () => {

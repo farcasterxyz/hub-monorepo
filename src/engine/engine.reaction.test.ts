@@ -1,4 +1,5 @@
 import Faker from 'faker';
+import DB from '~/db';
 import Engine from '~/engine';
 import { Factories } from '~/factories';
 import {
@@ -12,7 +13,21 @@ import {
 } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
-const engine = new Engine();
+const testDb = new DB(`engine.reaction.test`);
+const engine = new Engine(testDb);
+
+beforeAll(async () => {
+  await testDb.open();
+});
+
+afterEach(async () => {
+  await testDb.clear();
+});
+
+afterAll(async () => {
+  await testDb.close();
+});
+
 const aliceFid = Faker.datatype.number();
 const aliceAdds = () => engine._getReactionAdds(aliceFid);
 const aliceCastAdds = () => engine._getCastAdds(aliceFid);
@@ -46,14 +61,6 @@ describe('mergeReaction', () => {
     engine._reset();
     await engine.mergeIDRegistryEvent(aliceCustodyRegister);
     await engine.mergeMessage(aliceSignerAdd);
-  });
-
-  test('handles invalid type cast', async () => {
-    const invalidCastReaction = cast as unknown as Reaction;
-    const result = await engine.mergeMessage(invalidCastReaction);
-    expect(result.isOk()).toBeTruthy();
-    expect(aliceAdds()).toEqual(new Set([]));
-    expect(aliceCastAdds()).toEqual(new Set([invalidCastReaction]));
   });
 
   describe('signer validation', () => {

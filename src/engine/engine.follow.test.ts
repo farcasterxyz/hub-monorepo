@@ -13,8 +13,23 @@ import {
   SignerAdd,
 } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
+import DB from '~/db';
 
-const engine = new Engine();
+const testDb = new DB(`engine.follow.test`);
+const engine = new Engine(testDb);
+
+beforeAll(async () => {
+  await testDb.open();
+});
+
+afterEach(async () => {
+  await testDb.clear();
+});
+
+afterAll(async () => {
+  await testDb.close();
+});
+
 const aliceFid = Faker.datatype.number();
 
 describe('mergeFollow', () => {
@@ -54,14 +69,6 @@ describe('mergeFollow', () => {
     engine._reset();
     engine.mergeIDRegistryEvent(aliceCustodyRegister);
     await engine.mergeMessage(aliceSignerAdd);
-  });
-
-  test('handles invalid type cast', async () => {
-    const invalidFollow = cast as unknown as Follow;
-    const result = await engine.mergeMessage(invalidFollow);
-    expect(result.isOk()).toBeTruthy();
-    expect(aliceFollows()).toEqual(new Set());
-    expect(aliceCastAdds()).toEqual(new Set([invalidFollow]));
   });
 
   describe('signer validation', () => {

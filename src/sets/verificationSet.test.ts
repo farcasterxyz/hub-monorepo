@@ -27,8 +27,11 @@ beforeAll(async () => {
   signer = await generateEd25519Signer();
   ethWallet = ethers.Wallet.createRandom();
   transientParams = { transient: { signer: signer, ethWallet: ethWallet } };
+  const cast = await Factories.CastShort.create({ data: { body: { text: Faker.datatype.string(280) } } });
+  console.log(JSON.stringify(cast));
   add1 = await Factories.VerificationEthereumAddress.create({}, transientParams);
   add2 = await Factories.VerificationEthereumAddress.create({}, transientParams);
+  console.log(JSON.stringify(add1));
   rem1 = await Factories.VerificationRemove.create(
     {
       data: { signedAt: add1.data.signedAt + 1, body: { claimHash: add1.data.body.claimHash } },

@@ -75,38 +75,38 @@ describe('getCustodyAddress', () => {
   });
 });
 
-describe('get', () => {
+describe('getSigner', () => {
   test('fails when custody address does not exist', () => {
-    expect(set.get(custody1.signerKey)).toBeFalsy();
+    expect(set.getSigner(custody1.signerKey)).toBeFalsy();
   });
 
   test('fails when called with a custody address', () => {
     set.mergeIDRegistryEvent(custody1Register);
-    expect(set.get(custody1.signerKey)).toBeFalsy();
+    expect(set.getSigner(custody1.signerKey)).toBeFalsy();
   });
 
   test('fails when delegate signer does not exist', () => {
-    expect(set.get(a.signerKey)).toBeFalsy();
+    expect(set.getSigner(a.signerKey)).toBeFalsy();
   });
 
   test('returns SignerAdd when delegate signer has been added', () => {
     set.mergeIDRegistryEvent(custody1Register);
     set.merge(addA);
-    expect(set.get(a.signerKey)).toEqual(addA);
+    expect(set.getSigner(a.signerKey)).toEqual(addA);
   });
 
   test('fails when delegate signer has been removed', () => {
     set.mergeIDRegistryEvent(custody1Register);
     set.merge(addA);
     set.merge(remA);
-    expect(set.get(a.signerKey)).toBeFalsy();
+    expect(set.getSigner(a.signerKey)).toBeFalsy();
   });
 
   test('fails when custody address has been changed', () => {
     set.mergeIDRegistryEvent(custody1Register);
     set.merge(addA);
     set.mergeIDRegistryEvent(custody2Transfer);
-    expect(set.get(a.signerKey)).toBeFalsy();
+    expect(set.getSigner(a.signerKey)).toBeFalsy();
   });
 });
 

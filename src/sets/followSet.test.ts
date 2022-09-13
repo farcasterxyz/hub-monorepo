@@ -36,25 +36,25 @@ beforeEach(() => {
   set._reset();
 });
 
-describe('get', () => {
+describe('getFollow', () => {
   test('fails when follow does not exist', () => {
-    expect(set.get(a)).toBeFalsy();
+    expect(set.getFollow(a)).toBeFalsy();
   });
 
   test('returns FollowAdd when target has been followed', () => {
     set.merge(followA);
-    expect(set.get(a)).toEqual(followA);
+    expect(set.getFollow(a)).toEqual(followA);
   });
 
   test('fails when target has been unfollowed', () => {
     set.merge(followA);
     set.merge(unfollowA);
-    expect(set.get(a)).toBeFalsy();
+    expect(set.getFollow(a)).toBeFalsy();
   });
 
   test('fails when using message hash', () => {
     set.merge(followA);
-    expect(set.get(followA.hash)).toBeFalsy();
+    expect(set.getFollow(followA.hash)).toBeFalsy();
   });
 });
 

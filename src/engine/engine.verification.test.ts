@@ -14,8 +14,23 @@ import {
 import Faker from 'faker';
 import { Wallet } from 'ethers';
 import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
+import DB from '~/db';
 
-const engine = new Engine();
+const testDb = new DB(`engine.verification.test`);
+const engine = new Engine(testDb);
+
+beforeAll(async () => {
+  await testDb.open();
+});
+
+afterEach(async () => {
+  await testDb.clear();
+});
+
+afterAll(async () => {
+  await testDb.close();
+});
+
 const aliceFid = Faker.datatype.number();
 const aliceAdds = () => engine._getVerificationEthereumAddressAdds(aliceFid);
 const aliceCastAdds = () => engine._getCastAdds(aliceFid);
@@ -90,7 +105,7 @@ describe('mergeVerification', () => {
     )) as unknown as Verification;
     expect((await engine.mergeMessage(cast)).isOk()).toBeTruthy();
     expect(aliceAdds()).toEqual(new Set([]));
-    expect(aliceCastAdds()).toEqual(new Set([cast]));
+    expect(await aliceCastAdds()).toEqual(new Set([cast]));
   });
 
   test('succeeds with a valid VerificationAdd', async () => {

@@ -18,9 +18,11 @@ import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 import { RPCServer, RPCClient } from '~/network/rpc';
 import Engine from '~/engine';
 import Faker from 'faker';
+import DB from '~/db';
 
 const aliceFid = Faker.datatype.number();
-const engine = new Engine();
+const testDb = new DB('rpc.test');
+const engine = new Engine(testDb);
 
 let aliceCustodySigner: EthereumSigner;
 let aliceCustodyRegister: IDRegistryEvent;

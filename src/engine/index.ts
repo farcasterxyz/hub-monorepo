@@ -1,3 +1,4 @@
+import { Level } from 'level';
 import {
   Cast,
   Message,
@@ -17,6 +18,8 @@ import {
   CastShort,
   CastRecast,
   CastRemove,
+  SignerAdd,
+  MessageType,
 } from '~/types';
 import { hashMessage, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
@@ -45,11 +48,14 @@ import { Web2URL } from '~/urls/web2Url';
 import IDRegistryProvider from '~/provider/idRegistryProvider';
 import { CastHash } from '~/urls/castUrl';
 import { RPCHandler } from '~/network/rpc';
+import DB from '~/db';
 
 /** The Engine receives messages and determines the current state of the Farcaster network */
 class Engine implements RPCHandler {
+  private _db: DB;
+  private _castSet: CastSet;
+
   /** Maps of sets, indexed by fid */
-  private _casts: Map<number, CastSet>;
   private _reactions: Map<number, ReactionSet>;
   private _verifications: Map<number, VerificationSet>;
   private _signers: Map<number, SignerSet>;
@@ -59,8 +65,10 @@ class Engine implements RPCHandler {
 
   private _supportedChainIDs = new Set(['eip155:1']);
 
-  constructor(networkUrl?: string, IDRegistryAddress?: string) {
-    this._casts = new Map();
+  constructor(db: DB, networkUrl?: string, IDRegistryAddress?: string) {
+    this._db = db;
+    this._castSet = new CastSet(db);
+
     this._reactions = new Map();
     this._verifications = new Map();
     this._signers = new Map();
@@ -74,12 +82,13 @@ class Engine implements RPCHandler {
   }
 
   /**
-   * FID Methods
+   * User Methods
    */
 
   /** Get a Set of all the FIDs known */
   async getUsers(): Promise<Set<number>> {
-    return new Set(Array.from(this._signers.keys()));
+    console.log('getusers', this._signers.keys());
+    return new Set([...this._signers.keys()]);
   }
 
   /**
@@ -115,23 +124,18 @@ class Engine implements RPCHandler {
    */
 
   /** Get a cast for an fid by its hash */
-  getCast(fid: number, hash: string): Cast | undefined {
-    const castSet = this._casts.get(fid);
-    return castSet ? castSet.get(hash) : undefined;
+  async getCast(fid: number, hash: string): Promise<Result<Cast, string>> {
+    return await this._castSet.getCast(fid, hash);
   }
 
-  /** Get all the casts */
-  async allCasts(): Promise<Map<number, CastSet>> {
-    return this._casts;
+  /** Get added casts (not removed ones) for an fid */
+  async getCastsByUser(fid: number): Promise<Set<CastShort | CastRecast>> {
+    return await this._castSet.getCastsByUser(fid);
   }
 
-  /** Get the entire cast set for an fid */
+  /** Get all casts (added and removed) for an fid */
   async getAllCastsByUser(fid: number): Promise<Set<Cast>> {
-    const casts = this._casts.get(fid);
-    if (casts) {
-      return casts.getAllMessages();
-    }
-    return new Set();
+    return await this._castSet.getAllCastsByUser(fid);
   }
 
   /**
@@ -141,16 +145,18 @@ class Engine implements RPCHandler {
   /** Get a reaction for an fid by target URI */
   getReaction(fid: number, targetURI: URI): Reaction | undefined {
     const reactionSet = this._reactions.get(fid);
-    return reactionSet ? reactionSet.get(targetURI) : undefined;
+    return reactionSet ? reactionSet.getReaction(targetURI) : undefined;
   }
 
-  /** Get te entire reaction set for an fid */
+  async getReactionsByUser(fid: number): Promise<Set<ReactionAdd>> {
+    const reactionSet = this._reactions.get(fid);
+    return reactionSet ? reactionSet.getReactions() : new Set();
+  }
+
+  /** Get all reactions (added and removed) for an fid */
   async getAllReactionsByUser(fid: number): Promise<Set<Reaction>> {
-    const reactions = this._reactions.get(fid);
-    if (reactions) {
-      return reactions.getAllMessages();
-    }
-    return new Set();
+    const reactionSet = this._reactions.get(fid);
+    return reactionSet ? reactionSet.getAllMessages() : new Set();
   }
 
   /**
@@ -158,17 +164,19 @@ class Engine implements RPCHandler {
    */
 
   /** Get a follow for an fid by target URI */
-  getFollow(fid: number, targetURI: string): Follow | undefined {
+  getFollow(fid: number, targetURI: string): FollowAdd | undefined {
     const followSet = this._follows.get(fid);
-    return followSet ? followSet.get(targetURI) : undefined;
+    return followSet ? followSet.getFollow(targetURI) : undefined;
+  }
+
+  async getFollowsByUser(fid: number): Promise<Set<FollowAdd>> {
+    const followSet = this._follows.get(fid);
+    return followSet ? followSet.getFollows() : new Set();
   }
 
   async getAllFollowsByUser(fid: number): Promise<Set<Follow>> {
-    const follows = this._follows.get(fid);
-    if (follows) {
-      return follows.getAllMessages();
-    }
-    return new Set();
+    const followSet = this._follows.get(fid);
+    return followSet ? followSet.getAllMessages() : new Set();
   }
 
   /**
@@ -179,6 +187,11 @@ class Engine implements RPCHandler {
   getVerification(fid: number, claimHash: string): Verification | undefined {
     const verificationSet = this._verifications.get(fid);
     return verificationSet ? verificationSet.get(claimHash) : undefined;
+  }
+
+  async getVerificationsByUser(fid: number): Promise<Set<VerificationEthereumAddress>> {
+    const verificationSet = this._verifications.get(fid);
+    return verificationSet ? verificationSet.getVerifications() : new Set();
   }
 
   async getAllVerificationsByUser(fid: number): Promise<Set<Verification>> {
@@ -205,12 +218,22 @@ class Engine implements RPCHandler {
       signerSet = new SignerSet();
 
       // Subscribe to events in order to revoke messages when signers are removed
-      signerSet.on('removeSigner', (signerKey) => this.revokeSigner(fid, signerKey));
+      signerSet.on('removeSigner', async (signerKey) => await this.revokeSigner(fid, signerKey));
 
       this._signers.set(fid, signerSet);
     }
 
     return signerSet.mergeIDRegistryEvent(event);
+  }
+
+  getSigner(fid: number, signerKey: string): SignerAdd | undefined {
+    const signerSet = this._signers.get(fid);
+    return signerSet ? signerSet.getSigner(signerKey) : undefined;
+  }
+
+  async getSignersbyUser(fid: number): Promise<Set<SignerAdd>> {
+    const signerSet = this._signers.get(fid);
+    return signerSet ? signerSet.getSigners() : new Set();
   }
 
   /** Get the entire set of signers for an Fid */
@@ -228,18 +251,7 @@ class Engine implements RPCHandler {
 
   /** Merge a cast into the set */
   private async mergeCast(cast: Cast): Promise<Result<void, string>> {
-    try {
-      const { fid } = cast.data;
-      let castSet = this._casts.get(fid);
-      if (!castSet) {
-        castSet = new CastSet();
-        this._casts.set(fid, castSet);
-      }
-
-      return castSet.merge(cast);
-    } catch (e: any) {
-      return err('mergeCast: unexpected error');
-    }
+    return await this._castSet.merge(cast);
   }
 
   /** Merge a reaction into the set  */
@@ -294,10 +306,13 @@ class Engine implements RPCHandler {
     return signerSet.merge(message);
   }
 
-  private revokeSigner(fid: number, signer: string): Result<void, string> {
-    // Revoke casts
-    const castSet = this._casts.get(fid);
-    if (castSet) castSet.revokeSigner(signer);
+  private async revokeSigner(fid: number, signer: string): Promise<Result<void, string>> {
+    // Delete cast messages
+    for (const type of [MessageType.CastShort, MessageType.CastRecast, MessageType.CastRemove]) {
+      for await (const messageHash of this._db.messagesBySigner(signer, type).values()) {
+        await this._castSet.deleteCast(messageHash);
+      }
+    }
 
     // Revoke reactions
     const reactionSet = this._reactions.get(fid);
@@ -320,7 +335,7 @@ class Engine implements RPCHandler {
     if (!signerSet) return err('validateMessage: unknown user');
 
     // 2. Check that the signer is valid
-    const isValidSigner = isSignerMessage(message) || signerSet.get(message.signer);
+    const isValidSigner = isSignerMessage(message) || signerSet.getSigner(message.signer);
     if (!isValidSigner) return err('validateMessage: invalid signer');
 
     // 3. Check that the hashType and hash are valid
@@ -552,16 +567,16 @@ class Engine implements RPCHandler {
    * Testing Methods
    */
 
-  _reset(): void {
-    this._resetCasts();
+  async _reset() {
+    await this._db.clear();
     this._resetSigners();
     this._resetReactions();
     this._resetVerifications();
     this._resetFollows();
   }
 
-  _resetCasts(): void {
-    this._casts = new Map();
+  _revokeSigner(fid: number, signer: string) {
+    return this.revokeSigner(fid, signer);
   }
 
   _resetSigners(): void {
@@ -580,9 +595,8 @@ class Engine implements RPCHandler {
     this._follows = new Map();
   }
 
-  _getCastAdds(fid: number): Set<CastShort | CastRecast> {
-    const castSet = this._casts.get(fid);
-    return castSet ? castSet._getAdds() : new Set();
+  async _getCastAdds(fid: number): Promise<Set<CastShort | CastRecast>> {
+    return await this._castSet._getAdds(fid);
   }
 
   _getReactionAdds(fid: number): Set<ReactionAdd> {
@@ -612,7 +626,8 @@ class Engine implements RPCHandler {
 
   _getSigners(fid: number): Set<string> {
     const signerSet = this._signers.get(fid);
-    return signerSet ? signerSet.getSigners() : new Set();
+    const signerAdds: SignerAdd[] = signerSet ? [...signerSet.getSigners()] : [];
+    return new Set(signerAdds.map((msg: SignerAdd) => msg.data.body.delegate));
   }
 }
 

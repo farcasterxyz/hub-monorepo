@@ -14,8 +14,12 @@ class VerificationSet {
   }
 
   /** Get a verification by its claimHash */
-  get(claimHash: string): Verification | undefined {
-    return this._adds.get(claimHash) || this._removes.get(claimHash);
+  get(claimHash: string): VerificationEthereumAddress | undefined {
+    return this._adds.get(claimHash);
+  }
+
+  getVerifications(): Set<VerificationEthereumAddress> {
+    return new Set([...this._adds.values()]);
   }
 
   getAllMessages(): Set<Verification> {

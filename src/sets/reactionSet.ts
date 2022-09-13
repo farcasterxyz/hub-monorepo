@@ -25,8 +25,12 @@ class ReactionSet {
   }
 
   /** Get a reaction by its targetURI */
-  get(targetUri: URI): ReactionAdd | undefined {
+  getReaction(targetUri: URI): ReactionAdd | undefined {
     return this._adds.get(targetUri);
+  }
+
+  getReactions(): Set<ReactionAdd> {
+    return new Set([...this._adds.values()]);
   }
 
   getAllMessages(): Set<Reaction> {
@@ -97,7 +101,7 @@ class ReactionSet {
     return hashCompare(a.hash, b.hash);
   }
 
-  /** mergeReactionAdd tries to add a FollowAdd message to the set */
+  /** mergeReactionAdd tries to add a ReactionAdd message to the set */
   private mergeReactionAdd(message: ReactionAdd): Result<void, string> {
     const { targetUri } = message.data.body;
 
