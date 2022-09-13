@@ -2,7 +2,7 @@ import { AddressInfo } from 'net';
 import { Err, Ok, Result } from 'neverthrow';
 import { rejects } from 'assert';
 import * as jayson from 'jayson/promise';
-import { Cast, Follow, Message, Reaction, SignerMessage, Verification } from '~/types';
+import { Cast, Follow, IDRegistryEvent, Message, Reaction, SignerMessage, Verification } from '~/types';
 
 const VERSION = 0.1;
 
@@ -15,6 +15,7 @@ export enum RPCRequest {
   GetAllReactionsByUser = 'getAllReactionsByUser',
   GetAllFollowsByUser = 'getAllFollowsByUser',
   GetAllVerificationsByUser = 'getAllVerificationsByUser',
+  GetCustodyEventByuser = 'getCustodyEventByUser',
 }
 
 export interface RPCHandler {
@@ -24,6 +25,7 @@ export interface RPCHandler {
   getAllReactionsByUser(fid: number): Promise<Set<Reaction>>;
   getAllFollowsByUser(fid: number): Promise<Set<Follow>>;
   getAllVerificationsByUser(fid: number): Promise<Set<Verification>>;
+  getCustodyEventByUser(fid: number): Promise<IDRegistryEvent | undefined>;
 }
 
 const replacer = (key: any, value: any) => {
@@ -90,6 +92,12 @@ export class RPCServer {
         [RPCRequest.GetAllVerificationsByUser]: new jayson.Method({
           handler: async (args: any) => {
             return rpcHandler.getAllVerificationsByUser(args.fid);
+          },
+        }),
+
+        [RPCRequest.GetCustodyEventByuser]: new jayson.Method({
+          handler: async (args: any) => {
+            return rpcHandler.getCustodyEventByUser(args.fid);
           },
         }),
       },
@@ -190,6 +198,17 @@ export class RPCClient {
     const response = await this._tcpClient.request(RPCRequest.GetAllVerificationsByUser, { fid });
     if (response.error) {
       return new Err(response.error);
+    }
+    return new Ok(response.result);
+  }
+
+  async getCustodyEventByUser(fid: number): Promise<Result<IDRegistryEvent, string>> {
+    const response = await this._tcpClient.request(RPCRequest.GetCustodyEventByuser, { fid });
+    if (response.error) {
+      return new Err(response.error);
+    }
+    if (!response.result) {
+      return new Err('Not Found');
     }
     return new Ok(response.result);
   }
