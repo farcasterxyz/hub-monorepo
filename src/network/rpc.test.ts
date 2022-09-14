@@ -54,16 +54,18 @@ let server: RPCServer;
 let client: RPCClient;
 
 const populate = async (engine: Engine) => {
-  const results = await Promise.all([
-    engine.mergeMessage(cast),
-    engine.mergeMessage(castRemove),
-    engine.mergeMessage(reaction),
-    engine.mergeMessage(reactionRemove),
-    engine.mergeMessage(follow),
-    engine.mergeMessage(followRemove),
-    engine.mergeMessage(verification),
-    engine.mergeMessage(verificationRemove),
-  ]);
+  const results = await Promise.all(
+    engine.mergeMessages([
+      cast,
+      castRemove,
+      reaction,
+      reactionRemove,
+      follow,
+      followRemove,
+      verification,
+      verificationRemove,
+    ])
+  );
   results.forEach((value) => {
     expect(value.isOk()).toBeTruthy();
   });
@@ -116,6 +118,20 @@ describe('rpc', () => {
 
   afterAll(async () => {
     await server.stop();
+  });
+
+  test('returns an error if there is no custody event', async () => {
+    engine._reset();
+    const response = await client.getCustodyEventByUser(aliceFid);
+    expect(response.isOk()).not.toBeTruthy();
+    expect(response._unsafeUnwrapErr()).toBe('Not Found');
+  });
+
+  test('get the custody event for an fid', async () => {
+    const response = await client.getCustodyEventByUser(aliceFid);
+    expect(response.isOk()).toBeTruthy();
+    const custodyEvent = response._unsafeUnwrap();
+    expect(custodyEvent).toEqual(aliceCustodyRegister);
   });
 
   test('get all signer messages for an fid', async () => {
