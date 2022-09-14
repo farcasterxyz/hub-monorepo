@@ -7,7 +7,5 @@ export default async (): Promise<Config.InitialOptions> => {
     moduleNameMapper: {
       '^~/(.*)$': '<rootDir>/src/$1',
     },
-    // Ignore network tests since those require libp2p which ts-jest is unable to handle
-    testPathIgnorePatterns: ['/node_modules/', '<rootDir>/.*/.*network.test.*'],
   };
 };

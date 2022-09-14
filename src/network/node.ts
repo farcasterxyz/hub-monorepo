@@ -1,21 +1,35 @@
+import { Bootstrap } from '@libp2p/bootstrap';
+import { Connection } from '@libp2p/interface-connection';
 import { createLibp2p, Libp2p } from 'libp2p';
-import { exit } from 'process';
-import { Factories } from '~/factories';
+import { decodeMessage, encodeMessage, GossipMessage } from '~/network/protocol';
+import { err, ok, Result } from 'neverthrow';
 import { GossipSub } from '@chainsafe/libp2p-gossipsub';
 import { Mplex } from '@libp2p/mplex';
+import { Multiaddr, NodeAddress } from '@multiformats/multiaddr';
 import { Noise } from '@chainsafe/libp2p-noise';
 import { TCP } from '@libp2p/tcp';
-import { encodeMessage, GossipMessage, UserContent } from '~/network/protocol';
-import { sleep } from '~/utils';
+import { TypedEmitter } from 'tiny-typed-emitter';
 
-// import Bootstrap from 'libp2p-bootstrap';
+const MultiaddrLocalHost = '/ip4/127.0.0.1/tcp/0';
+
+interface NodeEvents {
+  /**
+   * Triggered when a new message. Provides the topic the message was received on
+   * as well as the result of decoding the message
+   */
+  message: (topic: string, message: Result<GossipMessage, string>) => void;
+  /** Triggered when a peer is connected. Provides the Libp2p Connection object. */
+  peer_connect: (connection: Connection) => void;
+  /** Triggered when a peer is disconnected. Provides the Libp2p Connecion object. */
+  peer_disconnect: (connection: Connection) => void;
+}
 
 /**
- * A representation of a Libp2p network entity or node.
+ * A representation of a Libp2p network node.
  *
- * Nodes participate in the p2p gossip network we create using libp2p.
+ * Nodes participate in the p2p GossipSub network we create using Libp2p.
  */
-export class Node {
+export class Node extends TypedEmitter<NodeEvents> {
   private _node?: Libp2p;
 
   /**
@@ -39,29 +53,19 @@ export class Node {
    * Returns a the GossipSub implementation used by the Node
    */
   get gossip() {
-    return this._node?.pubsub as GossipSub;
+    const pubsub = this._node?.pubsub;
+    return pubsub ? (pubsub as GossipSub) : undefined;
   }
 
   /**
-   * Starts the node. Nodes must be started prior to any network configuration or communication.
+   * Creates and Starts the underlying libp2p node. Nodes must be started prior to any network configuration or communication.
    */
   async start() {
     this._node = await createNode();
-  }
+    this.registerListeners();
 
-  /**
-   * Connect with a peer Node
-   *
-   * @param node The peer Node to attempt a connection with
-   */
-  async connect(node: Node) {
-    const multiaddr = node.multiaddrs;
-    if (multiaddr) {
-      // how to select an addr here?
-      await this._node?.dial(multiaddr[0]);
-    } else {
-      console.log('Connection failure: No peerId');
-    }
+    await this._node.start();
+    console.log('LibP2P started...' + this._node.getMultiaddrs());
   }
 
   /**
@@ -69,17 +73,50 @@ export class Node {
    */
   async stop() {
     await this._node?.stop();
-    await this.gossip.stop();
     console.log(this.peerId + ': stopped...');
   }
 
+  /**
+   * Publishes a message to the GossipSub network
+   * @message The GossipMessage to publish to the network
+   */
   async publish(message: GossipMessage) {
     const topics = message.topics;
     console.log(this.peerId?.toString(), ': Publishing message to topics: ', topics);
-    const results = await Promise.all(
-      Array.from(topics, (topic) => this.gossip.publish(topic, encodeMessage(message)))
-    );
+    const results = await Promise.all(topics.map((topic) => this.gossip?.publish(topic, encodeMessage(message))));
     console.log(this.peerId?.toString(), ': Published to ' + results.length + ' peers');
+  }
+
+  /**
+   * Connect with a peer Node
+   *
+   * @param node The peer Node to attempt a connection with
+   */
+  async connect(node: Node): Promise<Result<void, string>> {
+    const multiaddrs = node.multiaddrs;
+    if (multiaddrs) {
+      // how to select an addr here?
+      for (const addr of multiaddrs) {
+        const result = await this._node?.dial(addr);
+        // bail after the first successful connection
+        if (result) return ok(undefined);
+      }
+    } else {
+      return err('Connection failure: No peerId');
+    }
+    return err('Connection failure: Unable to connect to any peer address');
+  }
+
+  registerListeners() {
+    this._node?.connectionManager.addEventListener('peer:connect', (event) => {
+      this.emit('peer_connect', event.detail);
+    });
+    this._node?.connectionManager.addEventListener('peer:disconnect', (event) => {
+      this.emit('peer_disconnect', event.detail);
+    });
+    this.gossip?.addEventListener('message', (event) => {
+      this.emit('message', event.detail.topic, decodeMessage(event.detail.data));
+    });
   }
 
   // move this to a test
@@ -94,10 +131,10 @@ export class Node {
     this._node?.connectionManager.addEventListener('peer:disconnect', (event) => {
       console.log(this.peerId?.toString(), ': Disconnected from to:', event.detail.remotePeer.toString());
     });
-    this._node?.pubsub.addEventListener('message', (event) => {
+    this.gossip?.addEventListener('message', (event) => {
       console.log(this.peerId?.toString(), ': Received message for topic:', event.detail.topic);
     });
-    this._node?.pubsub.addEventListener('subscription-change', (event) => {
+    this.gossip?.addEventListener('subscription-change', (event) => {
       console.log(
         this.peerId?.toString(),
         ': Subscription change:',
@@ -109,12 +146,19 @@ export class Node {
   }
 }
 
-const createNode = async () => {
-  // let bootstrap = new Bootstrap({
-  //     interval: 2000,
-  //     list: []
-  //     // list: ['/ip4/127.0.0.1/tcp/8080']
-  // })
+/**
+ * Creates a Libp2p node with GossipSub
+ *
+ * @bootstrapAddrs: A list of NodeAddresses to use for bootstrapping over tcp
+ */
+const createNode = async (bootstrapAddrs: NodeAddress[] | undefined = undefined) => {
+  let bootstrap;
+  if (bootstrapAddrs) {
+    bootstrap = new Bootstrap({
+      interval: 1000,
+      list: bootstrapAddrs.map((n) => Multiaddr.fromNodeAddress(n, 'tcp')).map((m) => m.toString()),
+    });
+  }
 
   const gossip = new GossipSub({
     emitSelf: false,
@@ -122,78 +166,13 @@ const createNode = async () => {
 
   const node = await createLibp2p({
     addresses: {
-      listen: ['/ip4/0.0.0.0/tcp/0'],
+      listen: [MultiaddrLocalHost],
     },
     transports: [new TCP()],
     streamMuxers: [new Mplex()],
     connectionEncryption: [new Noise()],
-    // peerDiscovery: [bootstrap],
+    peerDiscovery: bootstrap ? [bootstrap] : undefined,
     pubsub: gossip,
   });
-
-  await node.start();
-  await gossip.start();
-  console.log('LibP2P started...' + node.getMultiaddrs());
-  if (!gossip.isStarted()) {
-    console.log('Gossip still not started...');
-  }
-
   return node;
-};
-
-/**
- * A simple test that sets up a network and sends a message.
- *
- * TODO Needs to be moved out of here and converted to an actual test that verfies that messages were indeed received.
- */
-export const simpleConnect = async () => {
-  const NODES = 10;
-
-  const nodes = Array.from(new Array(NODES), (_) => new Node());
-
-  await Promise.all(
-    Array.from(nodes, async (node) => {
-      await node.start();
-      node.registerDebugListeners();
-    })
-  );
-
-  // await Promise.all(Array.from(nodes.map((node, i, nodes) => {
-  //   // connect to the next node
-  //   if (i + 1 < nodes.length) {
-  //     return node.connect(nodes[i + 1])
-  //   }
-  // })))
-
-  // TODO this is more concise but is it better than ^ ?
-  await Promise.all(Array.from(nodes.slice(1), (node) => node.connect(nodes[0])));
-  await Promise.all(Array.from(nodes, (node) => node.gossip?.subscribe('SomeTopic')));
-
-  // Allow a few ticks to establish the network
-  await sleep(5_000);
-  console.log("Node 1's Peers after 5 seconds - " + nodes[0].gossip?.getPeers());
-
-  nodes.map((node) => {
-    if (!node.gossip?.isStarted() || node.gossip?.peers.size == 0) {
-      console.log(node.peerId + ": Doesn't have gossip ready");
-    }
-  });
-
-  // Todo move to factory
-  const message: GossipMessage<UserContent> = {
-    content: {
-      message: await Factories.CastShort.create(),
-      root: '',
-      count: 0,
-    },
-    topics: ['SomeTopic'],
-  };
-
-  await nodes[0].publish(message);
-  await sleep(5_000);
-
-  // TODO test to see that everyone received and decoded the same message
-
-  await Promise.all(Array.from(nodes, (node) => node.stop()));
-  exit(0);
 };

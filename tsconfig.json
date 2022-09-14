@@ -30,13 +30,16 @@
     "skipLibCheck": true,                                
     
     /* Enable all strict type-checking options. */
-    "strict": true,                                      
+    "strict": true,
+
+    /* Allow JS to let Jest run our directly tests */
+    "allowJs": true,
     
      /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
     "target": "es2020",                                 
   },
   "exclude": [
     "node_modules",
-    "jest.config.ts"
+    "jest.config.*",
   ]
 }
