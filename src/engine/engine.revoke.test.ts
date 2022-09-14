@@ -32,7 +32,7 @@ afterAll(async () => {
 const aliceFid = Faker.datatype.number();
 
 const aliceCustodyAddress = () => engine._getCustodyAddress(aliceFid);
-const aliceSigners = () => engine._getSigners(aliceFid);
+const aliceSigners = () => engine.getSignersbyUser(aliceFid);
 const aliceCasts = () => engine._getCastAdds(aliceFid);
 const aliceReactions = () => engine._getReactionAdds(aliceFid);
 const aliceVerifications = () => engine._getVerificationEthereumAddressAdds(aliceFid);
@@ -79,8 +79,8 @@ describe('revokeSigner', () => {
       await engine.mergeMessage(aliceReaction);
       await engine.mergeMessage(aliceVerification);
       await engine.mergeMessage(aliceFollow);
-      expect(aliceCustodyAddress()).toEqual(aliceCustody.signerKey);
-      expect(aliceSigners()).toEqual(new Set([aliceSigner.signerKey]));
+      expect(await aliceCustodyAddress()).toEqual(aliceCustody.signerKey);
+      expect(await aliceSigners()).toEqual(new Set([aliceSignerAdd]));
       expect(await aliceCasts()).toEqual(new Set([aliceCast]));
       expect(aliceReactions()).toEqual(new Set([aliceReaction]));
       expect(aliceVerifications()).toEqual(new Set([aliceVerification]));

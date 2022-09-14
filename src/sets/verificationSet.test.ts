@@ -27,11 +27,8 @@ beforeAll(async () => {
   signer = await generateEd25519Signer();
   ethWallet = ethers.Wallet.createRandom();
   transientParams = { transient: { signer: signer, ethWallet: ethWallet } };
-  const cast = await Factories.CastShort.create({ data: { body: { text: Faker.datatype.string(280) } } });
-  console.log(JSON.stringify(cast));
   add1 = await Factories.VerificationEthereumAddress.create({}, transientParams);
   add2 = await Factories.VerificationEthereumAddress.create({}, transientParams);
-  console.log(JSON.stringify(add1));
   rem1 = await Factories.VerificationRemove.create(
     {
       data: { signedAt: add1.data.signedAt + 1, body: { claimHash: add1.data.body.claimHash } },
@@ -50,24 +47,24 @@ beforeEach(() => {
   set._reset();
 });
 
-describe('get', () => {
+describe('getVerification', () => {
   test('fails when verification does not exist', () => {
-    expect(set.get(add1.data.body.claimHash)).toBeFalsy();
+    expect(set.getVerification(add1.data.body.claimHash)).toBeFalsy();
   });
 
   test('returns VerificationEthereumAddress when added', () => {
     set.merge(add1);
-    expect(set.get(add1.data.body.claimHash)).toEqual(add1);
+    expect(set.getVerification(add1.data.body.claimHash)).toEqual(add1);
   });
 
-  test('returns VerificationRemove when removed', () => {
+  test('fails when removed', () => {
     set.merge(rem1);
-    expect(set.get(add1.data.body.claimHash)).toEqual(rem1);
+    expect(set.getVerification(add1.data.body.claimHash)).toBeFalsy();
   });
 
   test('fails when using message hash', () => {
     set.merge(add1);
-    expect(set.get(add1.hash)).toBeFalsy();
+    expect(set.getVerification(add1.hash)).toBeFalsy();
   });
 });
 

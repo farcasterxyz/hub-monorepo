@@ -1,5 +1,6 @@
 import { Level } from 'level';
-import { Message, MessageType } from '~/types';
+import { err, ok, Result } from 'neverthrow';
+import { IDRegistryEvent, Message, MessageType } from '~/types';
 
 const DB_PREFIX = '.level';
 const DB_NAME_DEFAULT = 'farcaster';
@@ -21,6 +22,65 @@ class DB {
 
   clear() {
     return this._db.clear();
+  }
+
+  async getUsers(): Promise<Set<number>> {
+    const fids = new Set<number>();
+    for await (const fid of this.custodyEvents.keys()) {
+      fids.add(parseInt(fid));
+    }
+    return fids;
+    // return new Set(await this.custodyEvents.keys().all());
+    // const fids = new Set<number>();
+    // for await (const userKey of this._db.keys({ gte: '!fid:', lte: String.fromCharCode('!fid:'.charCodeAt(0) + 1) })) {
+    //   fids.add(parseInt(userKey.replace('!fid:', '')));
+    // }
+    // return fids;
+  }
+
+  async getMessage(hash: string): Promise<Result<Message, string>> {
+    try {
+      const message = await this.messages.get(hash);
+      return ok(message);
+    } catch (e) {
+      return err('message not found');
+    }
+  }
+
+  async getMessages(hashes: string[]): Promise<Message[]> {
+    return await this.messages.getMany(hashes);
+  }
+
+  async putMessage(message: Message): Promise<Result<void, string>> {
+    try {
+      await this.messages.put(message.hash, message);
+
+      // Index by message signer, type
+      await this.messagesBySigner(message.signer, message.data.type).put(message.hash, message.hash);
+
+      return ok(undefined);
+    } catch (e) {
+      return err('unexpected error');
+    }
+  }
+
+  async deleteMessage(hash: string): Promise<Result<void, string>> {
+    try {
+      const message = await this.getMessage(hash);
+
+      // If not present, no-op
+      if (message.isErr()) return ok(undefined);
+
+      // Delete from signer index
+      await this.messagesBySigner(message.value.signer, message.value.data.type).del(hash);
+
+      // Delete message
+      await this.messages.del(hash);
+
+      return ok(undefined);
+    } catch (e) {
+      return err('unexpected error');
+    }
   }
 
   get messages() {
@@ -52,6 +112,24 @@ class DB {
 
   castRecastsByTarget(target: string) {
     return this._db.sublevel<string, string>(`castRecastsByTarget:${target}`, { valueEncoding: 'json' });
+  }
+
+  /** Signer sublevels */
+
+  get custodyEvents() {
+    return this._db.sublevel<string, IDRegistryEvent>('custodyEvents', { valueEncoding: 'json' });
+  }
+
+  signerAdds(fid: number, custodyAddress: string) {
+    return this.user(fid)
+      .sublevel<string, string>(`custody:${custodyAddress}`, { valueEncoding: 'json' })
+      .sublevel<string, string>('signerAdds', { valueEncoding: 'json' });
+  }
+
+  signerRemoves(fid: number, custodyAddress: string) {
+    return this.user(fid)
+      .sublevel<string, string>(`custody:${custodyAddress}`, { valueEncoding: 'json' })
+      .sublevel<string, string>('signerRemoves', { valueEncoding: 'json' });
   }
 }
 

@@ -14,7 +14,6 @@ beforeAll(async () => {
 
 afterEach(async () => {
   await engine._reset();
-  // await testDb.clear();
 });
 
 afterAll(async () => {
@@ -23,7 +22,7 @@ afterAll(async () => {
 
 const aliceFid = Faker.datatype.number();
 const aliceCustodyAddress = () => engine._getCustodyAddress(aliceFid);
-const aliceSigners = () => engine._getSigners(aliceFid);
+const aliceSigners = () => engine.getSignersbyUser(aliceFid);
 
 describe('mergeSignerMessage', () => {
   let aliceCustodySigner: EthereumSigner;
@@ -52,13 +51,13 @@ describe('mergeSignerMessage', () => {
   test('fails without a custody address', async () => {
     const res = await engine.mergeMessage(aliceSignerAddDelegate);
     expect(res.isOk()).toBe(false);
-    expect(aliceCustodyAddress()).toEqual(undefined);
-    expect(aliceSigners()).toEqual(new Set());
+    expect(await aliceCustodyAddress()).toEqual(undefined);
+    expect(await aliceSigners()).toEqual(new Set());
   });
 
   describe('with a custody address', () => {
     beforeEach(async () => {
-      engine.mergeIDRegistryEvent(aliceCustodyRegister);
+      await engine.mergeIDRegistryEvent(aliceCustodyRegister);
     });
 
     test('fails with invalid message type', async () => {
@@ -72,8 +71,8 @@ describe('mergeSignerMessage', () => {
     test('succeeds with a valid SignerAdd', async () => {
       const res = await engine.mergeMessage(aliceSignerAddDelegate);
       expect(res.isOk()).toBe(true);
-      expect(aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
-      expect(aliceSigners()).toEqual(new Set([aliceDelegateSigner.signerKey]));
+      expect(await aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
+      expect(await aliceSigners()).toEqual(new Set([aliceSignerAddDelegate]));
     });
 
     test('fails when delegate is another custody address', async () => {
@@ -85,8 +84,8 @@ describe('mergeSignerMessage', () => {
       const res = await engine.mergeMessage(addEthSigner);
       expect(res.isOk()).toBe(false);
       expect(res._unsafeUnwrapErr()).toBe('validateSignerMessage: delegate must be an EdDSA public key');
-      expect(aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
-      expect(aliceSigners()).toEqual(new Set());
+      expect(await aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
+      expect(await aliceSigners()).toEqual(new Set());
     });
 
     test('fails when signer is a delegate signer', async () => {
@@ -99,8 +98,8 @@ describe('mergeSignerMessage', () => {
       const res = await engine.mergeMessage(addBob);
       expect(res.isOk()).toBe(false);
       expect(res._unsafeUnwrapErr()).toBe('validateSignerMessage: signer must be a custody address');
-      expect(aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
-      expect(aliceSigners()).toEqual(new Set([aliceDelegateSigner.signerKey]));
+      expect(await aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
+      expect(await aliceSigners()).toEqual(new Set([aliceSignerAddDelegate]));
     });
 
     test('fails with invalid hash', async () => {
@@ -109,8 +108,8 @@ describe('mergeSignerMessage', () => {
       const res = await engine.mergeMessage(signerAddClone);
       expect(res.isOk()).toBe(false);
       expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
-      expect(aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
-      expect(aliceSigners()).toEqual(new Set());
+      expect(await aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
+      expect(await aliceSigners()).toEqual(new Set());
     });
 
     test('fails with invalid signature', async () => {
@@ -120,8 +119,8 @@ describe('mergeSignerMessage', () => {
       const res = await engine.mergeMessage(signerAddClone);
       expect(res.isOk()).toBe(false);
       expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid signature');
-      expect(aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
-      expect(aliceSigners()).toEqual(new Set());
+      expect(await aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
+      expect(await aliceSigners()).toEqual(new Set());
     });
 
     test('fails if signedAt is > current time + safety margin', async () => {
@@ -134,22 +133,22 @@ describe('mergeSignerMessage', () => {
       const res = await engine.mergeMessage(badSignerAdd);
       expect(res.isOk()).toBe(false);
       expect(res._unsafeUnwrapErr()).toBe('validateMessage: signedAt more than 10 mins in the future');
-      expect(aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
-      expect(aliceSigners()).toEqual(new Set());
+      expect(await aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
+      expect(await aliceSigners()).toEqual(new Set());
     });
 
     test('succeeds with a valid SignerRemove', async () => {
       expect((await engine.mergeMessage(aliceSignerAddDelegate)).isOk()).toBe(true);
       const res = await engine.mergeMessage(aliceSignerRemoveDelegate);
       expect(res.isOk()).toBe(true);
-      expect(aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
-      expect(aliceSigners()).toEqual(new Set());
+      expect(await aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
+      expect(await aliceSigners()).toEqual(new Set());
     });
 
     test('succeeds with a valid SignerRemove when relevant SignerAdd has not been merged', async () => {
       expect((await engine.mergeMessage(aliceSignerRemoveDelegate)).isOk()).toBe(true);
-      expect(aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
-      expect(aliceSigners()).toEqual(new Set());
+      expect(await aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
+      expect(await aliceSigners()).toEqual(new Set());
     });
   });
 });

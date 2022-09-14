@@ -204,9 +204,9 @@ describe('mergeVerification', () => {
   });
 
   test('fails if message signer is not valid', async () => {
-    engine._resetSigners();
+    await testDb.signerAdds(aliceFid, aliceCustody.signerKey).clear();
     expect((await engine.mergeMessage(genericVerificationAdd))._unsafeUnwrapErr()).toBe(
-      'validateMessage: unknown user'
+      'validateMessage: invalid signer'
     );
     expect(aliceAdds()).toEqual(new Set());
   });

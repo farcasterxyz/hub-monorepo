@@ -1,16 +1,7 @@
 import Faker from 'faker';
 import Engine from '~/engine';
 import { Factories } from '~/factories';
-import {
-  Cast,
-  CastShort,
-  EthereumSigner,
-  IDRegistryEvent,
-  MessageSigner,
-  ReactionAdd,
-  SignerAdd,
-  SignerRemove,
-} from '~/types';
+import { Cast, CastShort, EthereumSigner, IDRegistryEvent, MessageSigner, SignerAdd, SignerRemove } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 import DB from '~/db';
 
@@ -37,7 +28,6 @@ describe('mergeCast', () => {
   let aliceCustodyRegister: IDRegistryEvent;
   let aliceDelegateSigner: MessageSigner;
   let cast: CastShort;
-  let reaction: ReactionAdd;
   let addDelegateSigner: SignerAdd;
   let removeDelegateSigner: SignerRemove;
 
@@ -50,13 +40,6 @@ describe('mergeCast', () => {
     aliceDelegateSigner = await generateEd25519Signer();
 
     cast = await Factories.CastShort.create(
-      {
-        data: { fid: aliceFid },
-      },
-      { transient: { signer: aliceDelegateSigner } }
-    );
-
-    reaction = await Factories.ReactionAdd.create(
       {
         data: { fid: aliceFid },
       },
@@ -76,15 +59,15 @@ describe('mergeCast', () => {
     );
   });
 
-  beforeEach(() => {
-    engine._reset();
-    engine.mergeIDRegistryEvent(aliceCustodyRegister);
-    engine.mergeMessage(addDelegateSigner);
+  beforeEach(async () => {
+    await engine._reset();
+    await engine.mergeIDRegistryEvent(aliceCustodyRegister);
+    await engine.mergeMessage(addDelegateSigner);
   });
 
   describe('signer validation', () => {
-    beforeEach(() => {
-      engine._resetSigners();
+    beforeEach(async () => {
+      await engine._resetSigners(aliceFid, aliceCustodySigner.signerKey);
     });
 
     test('fails if there are no known signers', async () => {
@@ -95,8 +78,8 @@ describe('mergeCast', () => {
     });
 
     describe('with custody address', () => {
-      beforeEach(() => {
-        engine.mergeIDRegistryEvent(aliceCustodyRegister);
+      beforeEach(async () => {
+        await engine.mergeIDRegistryEvent(aliceCustodyRegister);
       });
 
       test('fails if signer is custody address', async () => {

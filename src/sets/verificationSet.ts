@@ -14,7 +14,7 @@ class VerificationSet {
   }
 
   /** Get a verification by its claimHash */
-  get(claimHash: string): VerificationEthereumAddress | undefined {
+  getVerification(claimHash: string): VerificationEthereumAddress | undefined {
     return this._adds.get(claimHash);
   }
 

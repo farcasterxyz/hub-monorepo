@@ -2,7 +2,6 @@ import Engine from '~/engine';
 import Faker from 'faker';
 import { Factories } from '~/factories';
 import {
-  Cast,
   Ed25519Signer,
   EthereumSigner,
   Follow,
@@ -37,13 +36,11 @@ describe('mergeFollow', () => {
   let aliceCustodyRegister: IDRegistryEvent;
   let aliceSigner: Ed25519Signer;
   let aliceSignerAdd: SignerAdd;
-  let cast: Cast;
   let follow: FollowAdd;
   let unfollow: FollowRemove;
   let transientParams: { transient: MessageFactoryTransientParams };
 
   const aliceFollows = () => engine._getFollowAdds(aliceFid);
-  const aliceCastAdds = () => engine._getCastAdds(aliceFid);
 
   beforeAll(async () => {
     aliceCustody = await generateEthereumSigner();
@@ -57,7 +54,6 @@ describe('mergeFollow', () => {
       { transient: { signer: aliceCustody, delegateSigner: aliceSigner } }
     );
     transientParams = { transient: { signer: aliceSigner } };
-    cast = await Factories.CastShort.create({ data: { fid: aliceFid } }, transientParams);
     follow = await Factories.FollowAdd.create({ data: { fid: aliceFid } }, transientParams);
     unfollow = await Factories.FollowRemove.create(
       { data: { fid: aliceFid, body: { targetUri: follow.data.body.targetUri } } },
@@ -66,14 +62,14 @@ describe('mergeFollow', () => {
   });
 
   beforeEach(async () => {
-    engine._reset();
-    engine.mergeIDRegistryEvent(aliceCustodyRegister);
+    await engine._reset();
+    await engine.mergeIDRegistryEvent(aliceCustodyRegister);
     await engine.mergeMessage(aliceSignerAdd);
   });
 
   describe('signer validation', () => {
     test('fails if there are no known signers', async () => {
-      engine._resetSigners();
+      await engine._resetSigners(aliceFid, aliceCustody.signerKey);
       const result = await engine.mergeMessage(follow);
       expect(result._unsafeUnwrapErr()).toBe('validateMessage: unknown user');
       expect(aliceFollows()).toEqual(new Set());

@@ -1,18 +1,19 @@
 import { Result, ok, err } from 'neverthrow';
 import { Cast, CastRemove, CastRecast, CastShort } from '~/types';
 import { isCastRemove, isCastRecast, isCastShort } from '~/types/typeguards';
-import BaseSet from '~/sets/';
 import DB from '~/db';
 
-class CastSet extends BaseSet {
+class CastSet {
+  private _db: DB;
+
   constructor(db: DB) {
-    super(db);
+    this._db = db;
   }
 
   async getCast(fid: number, hash: string): Promise<Result<CastShort | CastRecast, string>> {
     try {
       const messageHash = await this._db.castAdds(fid).get(hash);
-      const messageResult = await this.getMessage(messageHash);
+      const messageResult = await this._db.getMessage(messageHash);
       return messageResult as Result<CastShort | CastRecast, string>;
     } catch (e) {
       return err('cast not found');
@@ -21,7 +22,7 @@ class CastSet extends BaseSet {
 
   async getCastsByUser(fid: number): Promise<Set<CastShort | CastRecast>> {
     const hashes = await this._db.castAdds(fid).values().all();
-    const adds = await this.getMessages(hashes);
+    const adds = await this._db.getMessages(hashes);
     return new Set(adds as (CastShort | CastRecast)[]);
   }
 
@@ -30,7 +31,7 @@ class CastSet extends BaseSet {
       ...(await this._db.castAdds(fid).values().all()),
       ...(await this._db.castRemoves(fid).values().all()),
     ];
-    const messages = await this.getMessages(hashes);
+    const messages = await this._db.getMessages(hashes);
     return new Set(messages as Cast[]);
   }
 
@@ -48,7 +49,7 @@ class CastSet extends BaseSet {
 
   /** Used for revoking signers */
   async deleteCast(hash: string): Promise<Result<void, string>> {
-    const messageResult = await this.getMessage(hash);
+    const messageResult = await this._db.getMessage(hash);
 
     // If message does not exist, no-op
     if (messageResult.isErr()) return ok(undefined);
@@ -69,7 +70,7 @@ class CastSet extends BaseSet {
     await this._db.castAdds(cast.data.fid).del(cast.hash);
 
     // Delete from messages db
-    await this.deleteMessage(cast.hash);
+    await this._db.deleteMessage(cast.hash);
 
     return ok(undefined);
   }
@@ -78,9 +79,7 @@ class CastSet extends BaseSet {
    * Private Methods
    */
 
-  /** User-specific sublevels */
-
-  private async getAdd(fid: number, hash: string): Promise<Result<string, string>> {
+  private async getAddHash(fid: number, hash: string): Promise<Result<string, string>> {
     try {
       const addHash = await this._db.castAdds(fid).get(hash);
       return ok(addHash);
@@ -89,7 +88,7 @@ class CastSet extends BaseSet {
     }
   }
 
-  private async getRemove(fid: number, hash: string): Promise<Result<string, string>> {
+  private async getRemoveHash(fid: number, hash: string): Promise<Result<string, string>> {
     try {
       const removeHash = await this._db.castRemoves(fid).get(hash);
       return ok(removeHash);
@@ -102,19 +101,19 @@ class CastSet extends BaseSet {
     const { fid } = cast.data;
 
     // If cast is duplicate, no-op
-    const message = await this.getMessage(cast.hash);
+    const message = await this._db.getMessage(cast.hash);
     if (message.isOk()) return ok(undefined);
 
     // If cast has already been removed, no-op
-    const removeHash = await this.getRemove(fid, cast.hash);
+    const removeHash = await this.getRemoveHash(fid, cast.hash);
     if (removeHash.isOk()) return ok(undefined);
 
     // If cast has already been added, no-op
-    const addHash = await this.getAdd(fid, cast.hash);
+    const addHash = await this.getAddHash(fid, cast.hash);
     if (addHash.isOk()) return ok(undefined);
 
     // Add cast to messages db
-    await this.putMessage(cast);
+    await this._db.putMessage(cast);
 
     // Add cast to adds db
     await this._db.castAdds(fid).put(cast.hash, cast.hash);
@@ -134,24 +133,24 @@ class CastSet extends BaseSet {
 
   private async mergeRemove(cast: CastRemove): Promise<Result<void, string>> {
     // If cast is duplicate, no-op
-    const message = await this.getMessage(cast.hash);
+    const message = await this._db.getMessage(cast.hash);
     if (message.isOk()) return ok(undefined);
 
     const { fid } = cast.data;
     const { targetHash } = cast.data.body;
 
     // If target has already been removed, no-op
-    const removeHash = await this.getRemove(fid, targetHash);
+    const removeHash = await this.getRemoveHash(fid, targetHash);
     if (removeHash.isOk()) return ok(undefined);
 
     // If message has been added, drop it from adds set
-    const addHash = await this.getAdd(fid, targetHash);
+    const addHash = await this.getAddHash(fid, targetHash);
     if (addHash.isOk()) {
       await this.deleteCast(addHash.value);
     }
 
     // Add cast to messages db
-    await this.putMessage(cast);
+    await this._db.putMessage(cast);
 
     // Add cast to removes db
     await this._db.castRemoves(fid).put(targetHash, cast.hash);

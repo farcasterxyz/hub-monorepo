@@ -24,6 +24,18 @@ const aliceFid = Faker.datatype.number();
 const testDb = new DB('rpc.test');
 const engine = new Engine(testDb);
 
+beforeAll(async () => {
+  await testDb.open();
+});
+
+afterAll(async () => {
+  await testDb.close();
+});
+
+afterEach(async () => {
+  await testDb.clear();
+});
+
 let aliceCustodySigner: EthereumSigner;
 let aliceCustodyRegister: IDRegistryEvent;
 let aliceDelegateSigner: MessageSigner;

@@ -1,4 +1,3 @@
-import { Level } from 'level';
 import {
   Cast,
   Message,
@@ -54,11 +53,12 @@ import DB from '~/db';
 class Engine implements RPCHandler {
   private _db: DB;
   private _castSet: CastSet;
+  private _signerSet: SignerSet;
 
   /** Maps of sets, indexed by fid */
   private _reactions: Map<number, ReactionSet>;
   private _verifications: Map<number, VerificationSet>;
-  private _signers: Map<number, SignerSet>;
+  // private _signers: Map<number, SignerSet>;
   private _follows: Map<number, FollowSet>;
 
   private _IDRegistryProvider?: IDRegistryProvider;
@@ -69,9 +69,16 @@ class Engine implements RPCHandler {
     this._db = db;
     this._castSet = new CastSet(db);
 
+    this._signerSet = new SignerSet(db);
+    // Subscribe to events in order to revoke messages when signers are removed
+    this._signerSet.on(
+      'removeSigner',
+      async (fid: number, signerKey: string) => await this.revokeSigner(fid, signerKey)
+    );
+
     this._reactions = new Map();
     this._verifications = new Map();
-    this._signers = new Map();
+    // this._signers = new Map();
     this._follows = new Map();
 
     /** Optionally, initialize ID Registry provider */
@@ -87,8 +94,7 @@ class Engine implements RPCHandler {
 
   /** Get a Set of all the FIDs known */
   async getUsers(): Promise<Set<number>> {
-    console.log('getusers', this._signers.keys());
-    return new Set([...this._signers.keys()]);
+    return this._db.getUsers();
   }
 
   /**
@@ -186,7 +192,7 @@ class Engine implements RPCHandler {
   /** Get a verification for an fid by claimHash */
   getVerification(fid: number, claimHash: string): Verification | undefined {
     const verificationSet = this._verifications.get(fid);
-    return verificationSet ? verificationSet.get(claimHash) : undefined;
+    return verificationSet ? verificationSet.getVerification(claimHash) : undefined;
   }
 
   async getVerificationsByUser(fid: number): Promise<Set<VerificationEthereumAddress>> {
@@ -212,37 +218,20 @@ class Engine implements RPCHandler {
       if (isEventValidResult.isErr()) return isEventValidResult;
     }
 
-    const fid = event.args.id;
-    let signerSet = this._signers.get(fid);
-    if (!signerSet) {
-      signerSet = new SignerSet();
-
-      // Subscribe to events in order to revoke messages when signers are removed
-      signerSet.on('removeSigner', async (signerKey) => await this.revokeSigner(fid, signerKey));
-
-      this._signers.set(fid, signerSet);
-    }
-
-    return signerSet.mergeIDRegistryEvent(event);
+    return await this._signerSet.mergeIDRegistryEvent(event);
   }
 
-  getSigner(fid: number, signerKey: string): SignerAdd | undefined {
-    const signerSet = this._signers.get(fid);
-    return signerSet ? signerSet.getSigner(signerKey) : undefined;
+  async getSigner(fid: number, signerKey: string): Promise<Result<SignerAdd, string>> {
+    return this._signerSet.getSigner(fid, signerKey);
   }
 
   async getSignersbyUser(fid: number): Promise<Set<SignerAdd>> {
-    const signerSet = this._signers.get(fid);
-    return signerSet ? signerSet.getSigners() : new Set();
+    return this._signerSet.getSigners(fid);
   }
 
   /** Get the entire set of signers for an Fid */
   async getAllSignerMessagesByUser(fid: number): Promise<Set<SignerMessage>> {
-    const signerSet = this._signers.get(fid);
-    if (signerSet) {
-      return signerSet.getAllMessages();
-    }
-    return new Set();
+    return this._signerSet.getAllSignerMessages(fid);
   }
 
   /**
@@ -300,10 +289,7 @@ class Engine implements RPCHandler {
 
   /** Merge signer message into the set */
   private async mergeSignerMessage(message: SignerMessage): Promise<Result<void, string>> {
-    const { fid } = message.data;
-    const signerSet = this._signers.get(fid);
-    if (!signerSet) return err('mergeSignerMessage: unknown user');
-    return signerSet.merge(message);
+    return this._signerSet.merge(message);
   }
 
   private async revokeSigner(fid: number, signer: string): Promise<Result<void, string>> {
@@ -330,13 +316,15 @@ class Engine implements RPCHandler {
   }
 
   private async validateMessage(message: Message): Promise<Result<void, string>> {
-    // 1. Check that the fid has been registered
-    const signerSet = this._signers.get(message.data.fid);
-    if (!signerSet) return err('validateMessage: unknown user');
+    // 1. Check that the user has a custody address
+    const custodyEvent = await this._signerSet.getCustodyAddress(message.data.fid);
+    if (custodyEvent.isErr()) return err('validateMessage: unknown user');
 
-    // 2. Check that the signer is valid
-    const isValidSigner = isSignerMessage(message) || signerSet.getSigner(message.signer);
-    if (!isValidSigner) return err('validateMessage: invalid signer');
+    // 2. Check that the signer is valid if message is not a signer message
+    if (!isSignerMessage(message)) {
+      const isValidSigner = await this._signerSet.getSigner(message.data.fid, message.signer);
+      if (isValidSigner.isErr()) return err('validateMessage: invalid signer');
+    }
 
     // 3. Check that the hashType and hash are valid
     if (message.hashType === HashAlgorithm.Blake2b) {
@@ -569,7 +557,6 @@ class Engine implements RPCHandler {
 
   async _reset() {
     await this._db.clear();
-    this._resetSigners();
     this._resetReactions();
     this._resetVerifications();
     this._resetFollows();
@@ -579,8 +566,9 @@ class Engine implements RPCHandler {
     return this.revokeSigner(fid, signer);
   }
 
-  _resetSigners(): void {
-    this._signers = new Map();
+  async _resetSigners(fid: number, custodyAddress: string) {
+    await this._db.custodyEvents.clear();
+    await this._db.signerAdds(fid, custodyAddress).clear();
   }
 
   _resetReactions(): void {
@@ -619,15 +607,9 @@ class Engine implements RPCHandler {
     return verificationSet ? verificationSet._getRemoves() : new Set();
   }
 
-  _getCustodyAddress(fid: number): string | undefined {
-    const signerSet = this._signers.get(fid);
-    return signerSet ? signerSet.getCustodyAddress() : undefined;
-  }
-
-  _getSigners(fid: number): Set<string> {
-    const signerSet = this._signers.get(fid);
-    const signerAdds: SignerAdd[] = signerSet ? [...signerSet.getSigners()] : [];
-    return new Set(signerAdds.map((msg: SignerAdd) => msg.data.body.delegate));
+  async _getCustodyAddress(fid: number): Promise<string | undefined> {
+    const custodyAddress = await this._signerSet.getCustodyAddress(fid);
+    return custodyAddress.isOk() ? custodyAddress.value : undefined;
   }
 }
 

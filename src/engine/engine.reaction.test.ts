@@ -3,7 +3,6 @@ import DB from '~/db';
 import Engine from '~/engine';
 import { Factories } from '~/factories';
 import {
-  Cast,
   Ed25519Signer,
   EthereumSigner,
   IDRegistryEvent,
@@ -30,14 +29,12 @@ afterAll(async () => {
 
 const aliceFid = Faker.datatype.number();
 const aliceAdds = () => engine._getReactionAdds(aliceFid);
-const aliceCastAdds = () => engine._getCastAdds(aliceFid);
 
 describe('mergeReaction', () => {
   let aliceCustody: EthereumSigner;
   let aliceCustodyRegister: IDRegistryEvent;
   let aliceSigner: Ed25519Signer;
   let aliceSignerAdd: SignerAdd;
-  let cast: Cast;
   let reaction: Reaction;
   let transient: { transient: MessageFactoryTransientParams };
 
@@ -53,7 +50,6 @@ describe('mergeReaction', () => {
       { transient: { signer: aliceCustody } }
     );
     transient = { transient: { signer: aliceSigner } };
-    cast = await Factories.CastShort.create({ data: { fid: aliceFid } }, transient);
     reaction = await Factories.ReactionAdd.create({ data: { fid: aliceFid } }, transient);
   });
 
@@ -65,7 +61,7 @@ describe('mergeReaction', () => {
 
   describe('signer validation', () => {
     test('fails if there are no known signers', async () => {
-      engine._resetSigners();
+      await engine._resetSigners(aliceFid, aliceCustody.signerKey);
 
       const result = await engine.mergeMessage(reaction);
       expect(result._unsafeUnwrapErr()).toBe('validateMessage: unknown user');
