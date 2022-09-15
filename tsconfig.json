@@ -32,10 +32,7 @@
     /* Enable all strict type-checking options. */
     "strict": true,
 
-    /* Allow JS to let Jest run our directly tests */
-    "allowJs": true,
-    
-     /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
+    /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
     "target": "es2020",                                 
   },
   "exclude": [
