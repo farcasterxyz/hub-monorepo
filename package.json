@@ -13,9 +13,9 @@
     "server": "npm run build",
     "start": "npm run server",
     "test": "rm -rf ./build && jest --config jest.config.ts",
-    "testNetwork": "yarn build && node --experimental-vm-modules ./node_modules/.bin/jest --config jest.config.network.ts --testPathPattern='build/.*/.*network.test.*'",
-    "testNetwork:ci": "ENVIRONMENT=test node --experimental-vm-modules ./node_modules/.bin/jest --config jest.config.network.ts --coverage --runInBand --forceExit --testPathPattern='build/.*/.*network.test.*'",
     "test:ci": "ENVIRONMENT=test jest src/ --ci --runInBand --forceExit --coverage --config jest.config.ts",
+    "testNetwork:ci": "ENVIRONMENT=test node --experimental-vm-modules ./node_modules/.bin/jest --config jest.config.network.ts --runInBand --forceExit --testPathPattern='build/.*/.*network.test.*'",
+    "testNetwork": "yarn build && node --experimental-vm-modules ./node_modules/.bin/jest --config jest.config.network.ts --testPathPattern='build/.*/.*network.test.*'",
     "typecheck": "tsc --noEmit"
   },
   "repository": {
