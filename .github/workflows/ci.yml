@@ -35,11 +35,8 @@ jobs:
       - name: Run build
         run: yarn build
 
-      - name: Run unit tests
+      - name: Run tests
         run: yarn test:ci
-
-      - name: Run network tests
-        run: yarn testNetwork:ci
 
       - name: Upload coverage results
         uses: codecov/codecov-action@v2
