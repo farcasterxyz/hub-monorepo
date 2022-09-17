@@ -12,8 +12,8 @@
     "lint:fix": "npm run lint -- --fix",
     "server": "npm run build",
     "start": "npm run server",
-    "test": "npm run build && node --experimental-vm-modules ./node_modules/.bin/jest --testPathPattern='build/.*'",
-    "test:ci": "ENVIRONMENT=test  node --experimental-vm-modules ./node_modules/.bin/jest --ci --runInBand --forceExit --coverage --testPathPattern='build/.*'",
+    "test": "rm -rf ./build && NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest src/ --ci --runInBand --forceExit --coverage",
     "typecheck": "tsc --noEmit"
   },
   "repository": {
