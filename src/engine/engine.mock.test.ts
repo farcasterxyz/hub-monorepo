@@ -4,6 +4,7 @@ import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 import { Message } from '~/types';
 import Engine from '~/engine';
 import Faker from 'faker';
+import DB from '~/db';
 
 type UserInfo = {
   fid: number;
@@ -145,7 +146,16 @@ export const mockEvents = async (engine: Engine, userInfos: UserInfo[], count: n
   }
 };
 
-const engine = new Engine();
+const testDb = new DB('engine.mock.test');
+const engine = new Engine(testDb);
+
+beforeAll(async () => {
+  await testDb.open();
+});
+
+afterAll(async () => {
+  await testDb.close();
+});
 
 describe('PopulateEngine', () => {
   beforeEach(async () => {
