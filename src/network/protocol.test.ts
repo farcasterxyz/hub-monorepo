@@ -37,6 +37,21 @@ describe('gossip protocol', () => {
 });
 
 describe('encode/decode', () => {
+  test('fails to encode/decode an invalid message', () => {
+    const invalid: any = {
+      content: {
+        message: { notARealMessage: 'test data' },
+      },
+    };
+    // since encoding is just JSON stringify, it always succeeds
+    const encoded = encodeMessage(invalid);
+    expect(encoded.isErr()).toBeTruthy();
+    const fake_encoded = JSON.stringify(invalid);
+    // however, decode is strongly typed so it should fail.
+    const decoded = decodeMessage(new TextEncoder().encode(fake_encoded));
+    expect(decoded.isErr()).toBeTruthy();
+  });
+
   test('encode and decode a cast message', () => {
     const message: GossipMessage<UserContent> = {
       content: {
@@ -47,8 +62,9 @@ describe('encode/decode', () => {
       topics: [],
     };
     const encoded = encodeMessage(message);
-    expect(encoded).toBeDefined();
-    const decoded = decodeMessage(encoded);
+    expect(encoded.isOk()).toBeTruthy();
+    expect(encoded._unsafeUnwrap()).toBeDefined();
+    const decoded = decodeMessage(encoded._unsafeUnwrap());
     expect(decoded.isOk()).toBeTruthy();
     expect(decoded._unsafeUnwrap()).toStrictEqual(message);
   });
@@ -63,8 +79,9 @@ describe('encode/decode', () => {
       topics: [],
     };
     const encoded = encodeMessage(message);
-    expect(encoded).toBeDefined();
-    const decoded = decodeMessage(encoded);
+    expect(encoded.isOk()).toBeTruthy();
+    expect(encoded._unsafeUnwrap()).toBeDefined();
+    const decoded = decodeMessage(encoded._unsafeUnwrap());
     expect(decoded.isOk()).toBeTruthy();
     expect(decoded._unsafeUnwrap()).toStrictEqual(message);
   });

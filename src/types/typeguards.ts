@@ -91,3 +91,31 @@ export const isFollowRemove = (msg: FC.Message): msg is FC.FollowRemove => {
   const { body, type } = (msg as FC.FollowRemove).data;
   return type === FC.MessageType.FollowRemove && body && typeof body.targetUri === 'string';
 };
+
+export const isIDRegistryEvent = (msg: FC.IDRegistryEvent): msg is FC.IDRegistryEvent => {
+  try {
+    const { args } = msg;
+    return (
+      typeof args.to === 'string' &&
+      typeof args.id === 'number' &&
+      typeof msg.blockHash === 'string' &&
+      msg.blockHash.length > 0 &&
+      typeof msg.blockNumber === 'number' &&
+      typeof msg.logIndex === 'number' &&
+      typeof msg.transactionHash === 'string' &&
+      msg.transactionHash.length > 0 &&
+      typeof msg.name === 'string' &&
+      (msg.name === 'Register' || msg.name === 'Transfer')
+    );
+  } catch (error: any) {
+    return false;
+  }
+};
+
+export const isMessage = (msg: FC.Message): msg is FC.Message => {
+  try {
+    return isCast(msg) || isFollow(msg) || isReaction(msg) || isSignerMessage(msg) || isVerification(msg);
+  } catch (error: any) {
+    return false;
+  }
+};

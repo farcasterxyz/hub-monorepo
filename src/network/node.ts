@@ -14,7 +14,7 @@ const MultiaddrLocalHost = '/ip4/127.0.0.1/tcp/0';
 
 interface NodeEvents {
   /**
-   * Triggered when a new message. Provides the topic the message was received on
+   * Triggered when a new message is received. Provides the topic the message was received on
    * as well as the result of decoding the message
    */
   message: (topic: string, message: Result<GossipMessage, string>) => void;
@@ -83,8 +83,16 @@ export class Node extends TypedEmitter<NodeEvents> {
   async publish(message: GossipMessage) {
     const topics = message.topics;
     console.log(this.peerId?.toString(), ': Publishing message to topics: ', topics);
-    const results = await Promise.all(topics.map((topic) => this.gossip?.publish(topic, encodeMessage(message))));
-    console.log(this.peerId?.toString(), ': Published to ' + results.length + ' peers');
+    const encodedMessage = encodeMessage(message);
+    encodedMessage.match(
+      async (msg) => {
+        const results = await Promise.all(topics.map((topic) => this.gossip?.publish(topic, msg)));
+        console.log(this.peerId?.toString(), ': Published to ' + results.length + ' peers');
+      },
+      async (err) => {
+        console.log(this.peerId?.toString(), err, '. Failed to publish message.');
+      }
+    );
   }
 
   /**

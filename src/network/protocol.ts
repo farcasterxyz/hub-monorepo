@@ -1,5 +1,6 @@
 import { err, ok, Result } from 'neverthrow';
 import { IDRegistryEvent, Message } from '~/types';
+import { isGossipMessage } from '~/network/typeguards';
 
 /**
  * GossipMessage defines the structure of the basic message type that is published
@@ -50,9 +51,10 @@ export type IDRegistryContent = {
  *
  * @return - A byte array containing the UTF-8 encoded message
  */
-export const encodeMessage = (message: GossipMessage): Uint8Array => {
+export const encodeMessage = (message: GossipMessage): Result<Uint8Array, string> => {
+  if (!isGossipMessage(message)) return err('Invalid Message');
   const json = JSON.stringify(message);
-  return new TextEncoder().encode(json);
+  return ok(new TextEncoder().encode(json));
 };
 
 /**
@@ -63,12 +65,16 @@ export const encodeMessage = (message: GossipMessage): Uint8Array => {
  * @returns - A decoded GossipMessage from the input array
  */
 export const decodeMessage = (data: Uint8Array): Result<GossipMessage, string> => {
-  const json = new TextDecoder().decode(data);
-  const message: GossipMessage = JSON.parse(json);
+  try {
+    const json = new TextDecoder().decode(data);
+    const message: GossipMessage = JSON.parse(json);
 
-  // Error checking? exception handling?
-  if (!message) {
+    // Error checking? exception handling?
+    if (!message || !isGossipMessage(message)) {
+      return err('Failed to decode Gossip message...');
+    }
+    return ok(message);
+  } catch (error: any) {
     return err('Failed to decode Gossip message...');
   }
-  return ok(message);
 };
