@@ -1,7 +1,7 @@
 import { AddressInfo } from 'net';
 import { Err, Ok, Result } from 'neverthrow';
 import { rejects } from 'assert';
-import * as jayson from 'jayson/promise';
+import jayson from 'jayson/promise';
 import { Cast, Follow, IDRegistryEvent, Message, Reaction, SignerMessage, Verification } from '~/types';
 
 const VERSION = 0.1;
