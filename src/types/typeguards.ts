@@ -91,3 +91,27 @@ export const isFollowRemove = (msg: FC.Message): msg is FC.FollowRemove => {
   const { body, type } = (msg as FC.FollowRemove).data;
   return type === FC.MessageType.FollowRemove && body && typeof body.targetUri === 'string';
 };
+
+export const isMessage = (msg: any): msg is FC.Message => {
+  const { data, hash, hashType, signature, signatureType, signer } = msg as FC.Message;
+  return (
+    data &&
+    isData(data) &&
+    typeof hash === 'string' &&
+    typeof hashType === 'string' &&
+    typeof signature === 'string' &&
+    typeof signatureType === 'string' &&
+    typeof signer === 'string'
+  );
+};
+
+export const isData = (data: any): data is FC.Data => {
+  const { body, type, signedAt, fid, network } = data as FC.Data;
+  return (
+    typeof body === 'object' &&
+    typeof type === 'number' &&
+    typeof signedAt === 'number' &&
+    typeof fid === 'number' &&
+    typeof network === 'number'
+  );
+};

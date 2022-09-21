@@ -25,17 +25,17 @@ class DB {
   }
 
   async getUsers(): Promise<Set<number>> {
-    const fids = new Set<number>();
-    for await (const fid of this.custodyEvents.keys()) {
-      fids.add(parseInt(fid));
-    }
-    return fids;
-    // return new Set(await this.custodyEvents.keys().all());
     // const fids = new Set<number>();
-    // for await (const userKey of this._db.keys({ gte: '!fid:', lte: String.fromCharCode('!fid:'.charCodeAt(0) + 1) })) {
-    //   fids.add(parseInt(userKey.replace('!fid:', '')));
+    // for await (const fid of this.custodyEvents.keys()) {
+    //   fids.add(parseInt(fid));
     // }
     // return fids;
+    // return new Set(await this.custodyEvents.keys().all());
+    const fids = new Set<number>();
+    for await (const userKey of this._db.keys({ gte: '!fid:', lte: String.fromCharCode('!fid:'.charCodeAt(0) + 1) })) {
+      fids.add(parseInt(userKey.replace('!fid:', '')));
+    }
+    return fids;
   }
 
   async getMessage(hash: string): Promise<Result<Message, string>> {

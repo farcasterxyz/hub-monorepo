@@ -1,7 +1,7 @@
 import { Result, ok, err } from 'neverthrow';
 import { Cast, CastRemove, CastRecast, CastShort } from '~/types';
 import { isCastRemove, isCastRecast, isCastShort } from '~/types/typeguards';
-import DB from '~/db';
+import DB from '~/db/farcaster';
 
 class CastSet {
   private _db: DB;
@@ -11,16 +11,20 @@ class CastSet {
   }
 
   async getCast(fid: number, hash: string): Promise<Result<CastShort | CastRecast, string>> {
-    try {
-      const messageHash = await this._db.castAdds(fid).get(hash);
-      const messageResult = await this._db.getMessage(messageHash);
-      return messageResult as Result<CastShort | CastRecast, string>;
-    } catch (e) {
-      return err('cast not found');
-    }
+    const messageHash = await this._db.get(`fid!${fid}!castAdds!${hash}`);
+    if (messageHash.isErr()) return err('cast not found');
+    const messageResult = await this._db.getMessage(messageHash.value);
+    return messageResult as Result<CastShort | CastRecast, string>;
   }
 
   async getCastsByUser(fid: number): Promise<Set<CastShort | CastRecast>> {
+    const hashes: string[] = [];
+    for await (const [key] of this._db.iteratorByPrefix(`fid!${fid}!castAdds!`, {
+      keys: true,
+      keyAsBuffer: false,
+    })) {
+      hashes.push(key);
+    }
     const hashes = await this._db.castAdds(fid).values().all();
     const adds = await this._db.getMessages(hashes);
     return new Set(adds as (CastShort | CastRecast)[]);
