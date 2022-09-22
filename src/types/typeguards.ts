@@ -115,3 +115,23 @@ export const isData = (data: any): data is FC.Data => {
     typeof network === 'number'
   );
 };
+
+export const isIDRegistryEvent = (msg: FC.IDRegistryEvent): msg is FC.IDRegistryEvent => {
+  try {
+    const { args } = msg;
+    return (
+      typeof args.to === 'string' &&
+      typeof args.id === 'number' &&
+      typeof msg.blockHash === 'string' &&
+      msg.blockHash.length > 0 &&
+      typeof msg.blockNumber === 'number' &&
+      typeof msg.logIndex === 'number' &&
+      typeof msg.transactionHash === 'string' &&
+      msg.transactionHash.length > 0 &&
+      typeof msg.name === 'string' &&
+      (msg.name === 'Register' || msg.name === 'Transfer')
+    );
+  } catch (error: any) {
+    return false;
+  }
+};

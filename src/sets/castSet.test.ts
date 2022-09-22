@@ -1,13 +1,38 @@
 import Faker from 'faker';
 import { Factories } from '~/factories';
 import CastSet from '~/sets/castSet';
-import { CastRemove, CastShort } from '~/types';
-import DB from '~/db';
+import { CastRemove, CastShort, MessageType } from '~/types';
+import DB from '~/db/farcaster';
 
 const testDb = new DB('castSet.test');
 
 const fid = Faker.datatype.number();
 const set = new CastSet(testDb);
+
+const getCastAdds = async () => {
+  const res = await testDb.getCastAddsByUser(fid);
+  return new Set(res._unsafeUnwrap());
+};
+
+const getCastRemoves = async () => {
+  const res = await testDb.getCastRemovesByUser(fid);
+  return new Set(res._unsafeUnwrap());
+};
+
+const getMessagesBySigner = async (signer: string, type?: MessageType) => {
+  const res = await testDb.getMessagesBySigner(signer, type);
+  return new Set(res._unsafeUnwrap());
+};
+
+const getCastShortsByTarget = async (target: string) => {
+  const res = await testDb.getCastShortsByTarget(target);
+  return new Set(res._unsafeUnwrap());
+};
+
+const getCastRecastsByTarget = async (target: string) => {
+  const res = await testDb.getCastRecastsByTarget(target);
+  return new Set(res._unsafeUnwrap());
+};
 
 let castShort1: CastShort;
 let castShort2: CastShort;
@@ -47,6 +72,7 @@ afterEach(async () => {
 
 afterAll(async () => {
   await testDb.close();
+  await testDb.destroy();
 });
 
 describe('getCast', () => {
@@ -81,14 +107,14 @@ describe('getCast', () => {
 describe('getCastsByUser', () => {
   test('returns empty set without casts', async () => {
     const res = await set.getCastsByUser(fid);
-    expect(res).toEqual(new Set());
+    expect(res._unsafeUnwrap()).toEqual(new Set());
   });
 
   test('returns casts', async () => {
     await set.merge(castShort1);
     await set.merge(castShort2);
     const res = await set.getCastsByUser(fid);
-    expect(res).toEqual(new Set([castShort1, castShort2]));
+    expect(res._unsafeUnwrap()).toEqual(new Set([castShort1, castShort2]));
   });
 
   test('returns only added casts', async () => {
@@ -96,36 +122,7 @@ describe('getCastsByUser', () => {
     await set.merge(castShort2);
     await set.merge(castRemove2);
     const res = await set.getCastsByUser(fid);
-    expect(res).toEqual(new Set([castShort1]));
-  });
-});
-
-describe('getAllCastsByUser', () => {
-  test('returns empty set without casts', async () => {
-    const res = await set.getAllCastsByUser(fid);
-    expect(res).toEqual(new Set());
-  });
-
-  test('returns casts', async () => {
-    await set.merge(castShort1);
-    await set.merge(castShort2);
-    const res = await set.getAllCastsByUser(fid);
-    expect(res).toEqual(new Set([castShort1, castShort2]));
-  });
-
-  test('returns removed casts', async () => {
-    await set.merge(castRemove1);
-    await set.merge(castRemove2);
-    const res = await set.getAllCastsByUser(fid);
-    expect(res).toEqual(new Set([castRemove1, castRemove2]));
-  });
-
-  test('returns most recent added and removed casts', async () => {
-    await set.merge(castShort1);
-    await set.merge(castShort2);
-    await set.merge(castRemove2);
-    const res = await set.getAllCastsByUser(fid);
-    expect(res).toEqual(new Set([castShort1, castRemove2]));
+    expect(res._unsafeUnwrap()).toEqual(new Set([castShort1]));
   });
 });
 
@@ -138,21 +135,17 @@ describe('merge', () => {
   });
 
   describe('add', () => {
-    const subject = () => set._getAdds(fid);
-
     test('succeeds with a valid add message', async () => {
       const res = await set.merge(castShort1);
       expect(res.isOk()).toBe(true);
 
-      expect(await subject()).toEqual(new Set([castShort1]));
+      expect(await getCastAdds()).toEqual(new Set([castShort1]));
     });
 
     test('succeeds and indexes message by signer', async () => {
       const res = await set.merge(castShort1);
       expect(res.isOk()).toBe(true);
-
-      const values = await testDb.messagesBySigner(castShort1.signer).values().all();
-      expect(values).toEqual([castShort1.hash]);
+      expect(await getMessagesBySigner(castShort1.signer)).toEqual(new Set([castShort1]));
     });
 
     test('succeeds and indexes castshort by target', async () => {
@@ -165,14 +158,11 @@ describe('merge', () => {
         expect((await set.merge(msg)).isOk()).toBeTruthy();
       }
 
-      const indexedFoo = await testDb.castShortsByTarget('foo').values().all();
-      expect(new Set(indexedFoo)).toEqual(new Set([cast1.hash, cast2.hash, cast3.hash]));
-
-      const indexedBar = await testDb.castShortsByTarget('bar').values().all();
-      expect(new Set(indexedBar)).toEqual(new Set([cast4.hash]));
+      expect(await getCastShortsByTarget('foo')).toEqual(new Set([cast1, cast2, cast3]));
+      expect(await getCastShortsByTarget('bar')).toEqual(new Set([cast4]));
     });
 
-    test('succeeds and indexed castrecast by target', async () => {
+    test('succeeds and indexes castrecast by target', async () => {
       const recast1 = await Factories.CastRecast.create({ data: { body: { targetCastUri: 'alice' } } });
       const recast2 = await Factories.CastRecast.create({ data: { body: { targetCastUri: 'alice' } } });
       const recast3 = await Factories.CastRecast.create({ data: { body: { targetCastUri: 'bob' } } });
@@ -181,60 +171,55 @@ describe('merge', () => {
         expect((await set.merge(msg)).isOk()).toBeTruthy();
       }
 
-      const indexedAlice = await testDb.castRecastsByTarget('alice').values().all();
-      expect(new Set(indexedAlice)).toEqual(new Set([recast1.hash, recast2.hash]));
-
-      const indexedBob = await testDb.castRecastsByTarget('bob').values().all();
-      expect(new Set(indexedBob)).toEqual(new Set([recast3.hash]));
+      expect(await getCastRecastsByTarget('alice')).toEqual(new Set([recast1, recast2]));
+      expect(await getCastRecastsByTarget('bob')).toEqual(new Set([recast3]));
     });
 
     test('succeeds with multiple valid add messages', async () => {
       expect((await set.merge(castShort1)).isOk()).toBe(true);
       expect((await set.merge(castShort2)).isOk()).toBe(true);
-      expect(await subject()).toEqual(new Set([castShort2, castShort1]));
+      expect(await getCastAdds()).toEqual(new Set([castShort1, castShort2]));
     });
 
     test('succeeds (no-ops) if the add was already removed', async () => {
       expect((await set.merge(castRemove1)).isOk()).toBe(true);
       expect((await set.merge(castShort1)).isOk()).toBe(true);
-      expect(await subject()).toEqual(new Set());
+      expect(await getCastAdds()).toEqual(new Set([]));
     });
 
     test('succeeds (no-ops) if the message is added twice', async () => {
       expect((await set.merge(castShort1)).isOk()).toBe(true);
       expect((await set.merge(castShort1)).isOk()).toBe(true);
-      expect(await subject()).toEqual(new Set([castShort1]));
+      expect(await getCastAdds()).toEqual(new Set([castShort1]));
     });
   });
 
   describe('remove', () => {
-    const subject = () => set._getRemoves(fid);
-
     test("succeeds even if the add message doesn't exist", async () => {
-      expect(await set._getAdds(fid)).toEqual(new Set());
+      expect(await getCastAdds()).toEqual(new Set([]));
       expect((await set.merge(castRemove1)).isOk()).toBe(true);
-      expect(await subject()).toEqual(new Set([castRemove1]));
+      expect(await getCastRemoves()).toEqual(new Set([castRemove1]));
     });
 
     test('succeeds with multiple remove messages', async () => {
-      expect(await set._getAdds(fid)).toEqual(new Set());
+      expect(await getCastAdds()).toEqual(new Set([]));
       expect((await set.merge(castRemove1)).isOk()).toBe(true);
       expect((await set.merge(castRemove2)).isOk()).toBe(true);
-      expect(await subject()).toEqual(new Set([castRemove1, castRemove2]));
+      expect(await getCastRemoves()).toEqual(new Set([castRemove1, castRemove2]));
     });
 
     test('succeeds and removes the add message if it exists', async () => {
       expect((await set.merge(castShort1)).isOk()).toBe(true);
       expect((await set.merge(castRemove1)).isOk()).toBe(true);
-      expect(await set._getAdds(fid)).toEqual(new Set());
-      expect(await subject()).toEqual(new Set([castRemove1]));
+      expect(await getCastAdds()).toEqual(new Set([]));
+      expect(await getCastRemoves()).toEqual(new Set([castRemove1]));
     });
 
     test('succeeds (no-ops) if the same remove message is added twice', async () => {
       expect((await set.merge(castRemove1)).isOk()).toBe(true);
       expect((await set.merge(castRemove1)).isOk()).toBe(true);
-      expect(await set._getAdds(fid)).toEqual(new Set());
-      expect(await subject()).toEqual(new Set([castRemove1]));
+      expect(await getCastAdds()).toEqual(new Set([]));
+      expect(await getCastRemoves()).toEqual(new Set([castRemove1]));
     });
   });
 });

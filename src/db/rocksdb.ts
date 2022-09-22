@@ -1,5 +1,6 @@
 import { err, ok, Result } from 'neverthrow';
 import RocksDB from 'rocksdb';
+import { AbstractBatch } from '~/abstract-leveldown';
 
 const DB_PREFIX = '.rocks';
 
@@ -59,8 +60,21 @@ class DB {
     });
   }
 
+  async batch(operations: AbstractBatch<string, string>[]): Promise<Result<void, string>> {
+    const res = await this.open();
+    if (res.isErr()) return err(res.error);
+
+    return new Promise((resolve) => {
+      this._db.batch(operations, (e?: any) => {
+        resolve(e ? err(e) : ok(undefined));
+      });
+    });
+  }
+
   iteratorByPrefix(prefix: string, options?: RocksDB.IteratorOptions): RocksDB.Iterator {
-    return this._db.iterator({ ...options, gte: prefix, lt: String.fromCharCode(prefix.charCodeAt(0) + 1) });
+    const nextChar = String.fromCharCode(prefix.slice(-1).charCodeAt(0) + 1);
+    const prefixBound = prefix.slice(0, -1) + nextChar;
+    return this._db.iterator({ ...options, gte: prefix, lt: prefixBound });
   }
 
   open(): Promise<Result<void, string>> {
@@ -72,7 +86,7 @@ class DB {
       } else if (this._db.status === 'open') {
         resolve(ok(undefined));
       } else {
-        this._db.open({ createIfMissing: true, errorIfExists: false, infoLogLevel: 'debug' }, (e?: any) => {
+        this._db.open({ createIfMissing: true, errorIfExists: false }, (e?: any) => {
           if (!e) {
             this._hasOpened = true;
           }

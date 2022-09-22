@@ -1,6 +1,7 @@
 import FarcasterDB from '~/db/farcaster';
 import { Factories } from '~/factories';
-import { CastRecast, CastShort, FollowAdd } from '~/types';
+import { CastRecast, CastShort, Ed25519Signer, FollowAdd, MessageType } from '~/types';
+import { generateEd25519Signer } from '~/utils';
 
 const db = new FarcasterDB('farcaster.test');
 
@@ -17,14 +18,16 @@ afterAll(async () => {
 });
 
 /** Create sample data */
+let signer: Ed25519Signer;
 let cast1: CastShort;
 let cast2: CastShort;
 let follow1: FollowAdd;
 
 beforeAll(async () => {
-  cast1 = await Factories.CastShort.create();
+  signer = await generateEd25519Signer();
+  cast1 = await Factories.CastShort.create({}, { transient: { signer } });
   cast2 = await Factories.CastShort.create();
-  follow1 = await Factories.FollowAdd.create();
+  follow1 = await Factories.FollowAdd.create({}, { transient: { signer } });
 });
 
 describe('putMessage', () => {
@@ -85,5 +88,22 @@ describe('deleteMessage', () => {
 
     const newValue = await db.getMessage(cast1.hash);
     expect(newValue.isOk()).toBeFalsy();
+  });
+});
+
+describe('getMessagesBySigner', () => {
+  test('returns array of messages', async () => {
+    await db.putMessage(cast1);
+    await db.putMessage(cast2);
+    await db.putMessage(follow1);
+
+    const allMessages = await db.getMessagesBySigner(signer.signerKey);
+    expect(allMessages._unsafeUnwrap()).toEqual([cast1, follow1]);
+
+    const casts = await db.getMessagesBySigner(signer.signerKey, MessageType.CastShort);
+    expect(casts._unsafeUnwrap()).toEqual([cast1]);
+
+    const follows = await db.getMessagesBySigner(signer.signerKey, MessageType.FollowAdd);
+    expect(follows._unsafeUnwrap()).toEqual([follow1]);
   });
 });

@@ -140,9 +140,33 @@ describe('with db', () => {
     });
   });
 
+  describe('batch', () => {
+    test('does multiple puts', async () => {
+      const res = await db.batch([
+        { type: 'put', key: 'foo', value: 'bar' },
+        { type: 'put', key: 'alice', value: 'bob' },
+      ]);
+      expect(res.isOk()).toBeTruthy();
+      const values = await db.getMany(['foo', 'alice']);
+      expect(values._unsafeUnwrap()).toEqual(['bar', 'bob']);
+    });
+
+    test('does multiple puts and dels', async () => {
+      await db.put('delete', 'me');
+      const res = await db.batch([
+        { type: 'put', key: 'foo', value: 'bar' },
+        { type: 'del', key: 'delete' },
+      ]);
+      expect(res.isOk()).toBeTruthy();
+      expect((await db.get('delete')).isOk()).toBeFalsy();
+      expect((await db.get('foo'))._unsafeUnwrap()).toEqual('bar');
+    });
+  });
+
   describe('iteratorByPrefix', () => {
     test('succeeds', async () => {
       await db.put('aliceprefix!b', 'foo');
+      await db.put('allison', 'oops');
       await db.put('aliceprefix!a', 'bar');
       await db.put('bobprefix!a', 'bar');
       await db.put('prefix!a', 'bar');
