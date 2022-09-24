@@ -3,6 +3,7 @@
 // Definitions by: Meirion Hughes <https://github.com/MeirionHughes>
 //                 Daniel Byrne <https://github.com/danwbyrne>
 //                 Steffen Park <https://github.com/istherepie>
+//                 Paul Fletcher-Hill <https://github.com/pfletcherhill>
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
 // TypeScript Version: 2.3
 
@@ -56,9 +57,7 @@ export interface AbstractLevelDOWN<K = any, V = any> extends AbstractOptions {
 }
 
 export interface AbstractLevelDOWNConstructor {
-  // tslint:disable-next-line no-unnecessary-generics
   new <K = any, V = any>(location: string): AbstractLevelDOWN<K, V>;
-  // tslint:disable-next-line no-unnecessary-generics
   <K = any, V = any>(location: string): AbstractLevelDOWN<K, V>;
 }
 
@@ -94,12 +93,11 @@ export interface AbstractChainedBatch<K = any, V = any> extends AbstractOptions 
   clear: () => this;
   write(cb: ErrorCallback): any;
   write(options: any, cb: ErrorCallback): any;
+  db: () => AbstractLevelDOWN;
 }
 
 export interface AbstractChainedBatchConstructor {
-  // tslint:disable-next-line no-unnecessary-generics
   new <K = any, V = any>(db: any): AbstractChainedBatch<K, V>;
-  // tslint:disable-next-line no-unnecessary-generics
   <K = any, V = any>(db: any): AbstractChainedBatch<K, V>;
 }
 
@@ -111,9 +109,7 @@ export interface AbstractIterator<K, V> extends AbstractOptions {
 }
 
 export interface AbstractIteratorConstructor {
-  // tslint:disable-next-line no-unnecessary-generics
   new <K = any, V = any>(db: any): AbstractIterator<K, V>;
-  // tslint:disable-next-line no-unnecessary-generics
   <K = any, V = any>(db: any): AbstractIterator<K, V>;
 }
 

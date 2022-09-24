@@ -1,129 +1,139 @@
-import { err, ok, Result } from 'neverthrow';
-import RocksDB from 'rocksdb';
-import { AbstractBatch } from '~/abstract-leveldown';
+import AbstractRocksDB from 'rocksdb';
+import { AbstractBatch, AbstractChainedBatch } from '~/abstract-leveldown';
+import { FarcasterError, NotFoundError, RocksDBError } from '~/errors';
 
 const DB_PREFIX = '.rocks';
+const DB_NAME_DEFAULT = 'farcaster';
 
-class DB {
-  _db: RocksDB;
+export type Transaction = AbstractChainedBatch<string, string>;
+
+const parseError = (e: Error): FarcasterError => {
+  if (/NotFound/i.test(e.message)) {
+    return new NotFoundError(e);
+  }
+  return new RocksDBError(e);
+};
+
+class RocksDB {
+  protected _db: AbstractRocksDB;
+
   private _hasOpened = false;
 
-  constructor(name: string) {
-    this._db = new RocksDB(`${DB_PREFIX}/${name}`);
+  constructor(name?: string) {
+    this._db = new AbstractRocksDB(`${DB_PREFIX}/${name ?? DB_NAME_DEFAULT}`);
   }
 
   get status() {
     return this._db.status;
   }
 
-  async put(key: string, value: any): Promise<Result<void, string>> {
-    const res = await this.open();
-    if (res.isErr()) return err(res.error);
-
-    return new Promise((resolve) => {
-      this._db.put(key, value, (e?: any) => {
-        resolve(e ? err(e) : ok(undefined));
+  async put(key: string, value: any): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this._db.put(key, value, (e?: Error) => {
+        e ? reject(parseError(e)) : resolve(undefined);
       });
     });
   }
 
-  async get(key: string): Promise<Result<string, string>> {
-    const res = await this.open();
-    if (res.isErr()) return err(res.error);
-
-    return new Promise((resolve) => {
-      this._db.get(key, { asBuffer: false }, (e?: any, value?: any) => {
-        resolve(e ? err(e) : ok(value));
+  async get(key: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      this._db.get(key, { asBuffer: false }, (e?: Error, value?: AbstractRocksDB.Bytes) => {
+        e ? reject(parseError(e)) : resolve(value as string);
       });
     });
   }
 
-  async getMany(keys: string[]): Promise<Result<string[], string>> {
-    const res = await this.open();
-    if (res.isErr()) return err(res.error);
-
-    return new Promise((resolve) => {
-      this._db.getMany(keys, { asBuffer: false }, (e?: any, value?: any) => {
-        resolve(e ? err(e) : ok(value));
+  async getMany(keys: string[]): Promise<string[]> {
+    return new Promise((resolve, reject) => {
+      this._db.getMany(keys, { asBuffer: false }, (e?: Error, value?: AbstractRocksDB.Bytes[]) => {
+        e ? reject(parseError(e)) : resolve(value as string[]);
       });
     });
   }
 
-  async del(key: string): Promise<Result<void, string>> {
-    const res = await this.open();
-    if (res.isErr()) return err(res.error);
-
-    return new Promise((resolve) => {
-      this._db.del(key, (e?: any) => {
-        resolve(e ? err(e) : ok(undefined));
+  async del(key: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this._db.del(key, (e?: Error) => {
+        e ? reject(parseError(e)) : resolve(undefined);
       });
     });
   }
 
-  async batch(operations: AbstractBatch<string, string>[]): Promise<Result<void, string>> {
-    const res = await this.open();
-    if (res.isErr()) return err(res.error);
-
-    return new Promise((resolve) => {
-      this._db.batch(operations, (e?: any) => {
-        resolve(e ? err(e) : ok(undefined));
+  async batch(operations: AbstractBatch<string, string>[]): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this._db.batch(operations, (e?: Error) => {
+        e ? reject(parseError(e)) : resolve(undefined);
       });
     });
   }
 
-  iteratorByPrefix(prefix: string, options?: RocksDB.IteratorOptions): RocksDB.Iterator {
+  transaction(): Transaction {
+    return this._db.batch();
+  }
+
+  async commit(tsx: Transaction): Promise<void> {
+    return new Promise((resolve, reject) => {
+      tsx.write((e?: Error) => {
+        e ? reject(parseError(e)) : resolve(undefined);
+      });
+    });
+  }
+
+  iteratorByPrefix(prefix: string, options?: AbstractRocksDB.IteratorOptions): AbstractRocksDB.Iterator {
     const nextChar = String.fromCharCode(prefix.slice(-1).charCodeAt(0) + 1);
     const prefixBound = prefix.slice(0, -1) + nextChar;
     return this._db.iterator({ ...options, gte: prefix, lt: prefixBound });
   }
 
-  open(): Promise<Result<void, string>> {
-    return new Promise((resolve) => {
+  open(): Promise<void> {
+    return new Promise((resolve, reject) => {
       if (this._db.status === 'opening') {
-        resolve(err('db is opening'));
+        reject(new Error('db is opening'));
       } else if (this._db.status === 'closing') {
-        resolve(err('db is closing'));
+        reject(new Error('db is closing'));
       } else if (this._db.status === 'open') {
-        resolve(ok(undefined));
+        resolve(undefined);
       } else {
-        this._db.open({ createIfMissing: true, errorIfExists: false }, (e?: any) => {
+        this._db.open({ createIfMissing: true, errorIfExists: false }, (e?: Error) => {
           if (!e) {
             this._hasOpened = true;
           }
-          resolve(e ? err(e) : ok(undefined));
+          e ? reject(parseError(e)) : resolve(undefined);
         });
       }
     });
   }
 
-  close(): Promise<Result<void, string>> {
-    return new Promise((resolve) => {
-      this._db.close((e?: any) => {
-        resolve(e ? err(e) : ok(undefined));
+  close(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this._db.close((e?: Error) => {
+        e ? reject(parseError(e)) : resolve(undefined);
       });
     });
   }
 
-  clear(): Promise<Result<void, string>> {
-    return new Promise((resolve) => {
-      this._db.clear((e?: any) => {
-        resolve(e ? err(e) : ok(undefined));
+  clear(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this._db.clear((e?: Error) => {
+        e ? reject(parseError(e)) : resolve(undefined);
       });
     });
   }
 
-  async destroy(): Promise<Result<void, string>> {
-    // TODO: call close first if db is not closed
-    return new Promise((resolve) => {
+  async destroy(): Promise<void> {
+    if (this._db.status === 'open') {
+      await this.close();
+    }
+    return new Promise((resolve, reject) => {
       if (!this._hasOpened) {
-        resolve(err('db never opened'));
+        reject(new Error('db never opened'));
       } else {
-        RocksDB.destroy(this._db.location, (e?: any) => {
-          resolve(e ? err(e) : ok(undefined));
+        AbstractRocksDB.destroy(this._db.location, (e?: Error) => {
+          e ? reject(parseError(e)) : resolve(undefined);
         });
       }
     });
   }
 }
 
-export default DB;
+export default RocksDB;

@@ -23,7 +23,7 @@ import {
 import { hashMessage, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
 import { hexToBytes } from 'ethereum-cryptography/utils';
-import { ok, err, Result } from 'neverthrow';
+import { ok, err, Result, ResultAsync, Err } from 'neverthrow';
 import { ethers, utils } from 'ethers';
 import {
   isCastShort,
@@ -47,11 +47,12 @@ import { Web2URL } from '~/urls/web2Url';
 import IDRegistryProvider from '~/provider/idRegistryProvider';
 import { CastHash } from '~/urls/castUrl';
 import { RPCHandler } from '~/network/rpc';
-import DB from '~/db';
+import RocksDB from '~/db/rocksdb';
+import { FarcasterError } from '~/errors';
 
 /** The Engine receives messages and determines the current state of the Farcaster network */
 class Engine implements RPCHandler {
-  private _db: DB;
+  private _db: RocksDB;
   private _castSet: CastSet;
   private _signerSet: SignerSet;
 
@@ -65,11 +66,11 @@ class Engine implements RPCHandler {
 
   private _supportedChainIDs = new Set(['eip155:1']);
 
-  constructor(db: DB, networkUrl?: string, IDRegistryAddress?: string) {
+  constructor(db: RocksDB, networkUrl?: string, IDRegistryAddress?: string) {
     this._db = db;
     this._castSet = new CastSet(db);
-
     this._signerSet = new SignerSet(db);
+
     // Subscribe to events in order to revoke messages when signers are removed
     this._signerSet.on(
       'removeSigner',
@@ -93,8 +94,8 @@ class Engine implements RPCHandler {
    */
 
   /** Get a Set of all the FIDs known */
-  async getUsers(): Promise<Set<number>> {
-    return this._db.getUsers();
+  getUsers(): Promise<Set<number>> {
+    return this._signerSet.getUsers();
   }
 
   /**
@@ -108,6 +109,7 @@ class Engine implements RPCHandler {
    * @returns An array of Results
    */
   mergeMessages(messages: Message[]): Array<Promise<Result<void, string>>> {
+    // TODO: consider returning a single Promise.all instance rather than an array of promises
     const results = messages.map((value) => {
       return this.mergeMessage(value);
     });
@@ -142,19 +144,8 @@ class Engine implements RPCHandler {
    * Cast Methods
    */
 
-  /** Get a cast for an fid by its hash */
-  async getCast(fid: number, hash: string): Promise<Result<Cast, string>> {
-    return await this._castSet.getCast(fid, hash);
-  }
-
-  /** Get added casts (not removed ones) for an fid */
-  async getCastsByUser(fid: number): Promise<Set<CastShort | CastRecast>> {
-    return await this._castSet.getCastsByUser(fid);
-  }
-
-  /** Get all casts (added and removed) for an fid */
   async getAllCastsByUser(fid: number): Promise<Set<Cast>> {
-    return await this._castSet.getAllCastsByUser(fid);
+    return this._castSet.getAllCastMessagesByUser(fid);
   }
 
   /**
@@ -231,25 +222,17 @@ class Engine implements RPCHandler {
       if (isEventValidResult.isErr()) return isEventValidResult;
     }
 
-    return await this._signerSet.mergeIDRegistryEvent(event);
-  }
-
-  async getSigner(fid: number, signerKey: string): Promise<Result<SignerAdd, string>> {
-    return this._signerSet.getSigner(fid, signerKey);
-  }
-
-  async getSignersbyUser(fid: number): Promise<Set<SignerAdd>> {
-    return this._signerSet.getSigners(fid);
+    return ResultAsync.fromPromise(this._signerSet.mergeIDRegistryEvent(event), (e: any) => e);
   }
 
   /** Get the entire set of signers for an Fid */
   async getAllSignerMessagesByUser(fid: number): Promise<Set<SignerMessage>> {
-    return this._signerSet.getAllSignerMessages(fid);
+    return this._signerSet.getAllSignerMessagesByUser(fid);
   }
 
-  async getCustodyEventByUser(fid: number): Promise<IDRegistryEvent | undefined> {
-    const event = await this._signerSet.getCustodyAddressEvent(fid);
-    return event.isOk() ? event.value : undefined;
+  // async getCustodyEventByUser(fid: number): Promise<IDRegistryEvent> {
+  async getCustodyEventByUser(fid: number): Promise<Result<IDRegistryEvent, FarcasterError>> {
+    return ResultAsync.fromPromise(this._signerSet.getCustodyEvent(fid), (e) => e as FarcasterError);
   }
 
   /**
@@ -258,7 +241,7 @@ class Engine implements RPCHandler {
 
   /** Merge a cast into the set */
   private async mergeCast(cast: Cast): Promise<Result<void, string>> {
-    return await this._castSet.merge(cast);
+    return await ResultAsync.fromPromise(this._castSet.merge(cast), (e: any) => e);
   }
 
   /** Merge a reaction into the set  */
@@ -307,40 +290,46 @@ class Engine implements RPCHandler {
 
   /** Merge signer message into the set */
   private async mergeSignerMessage(message: SignerMessage): Promise<Result<void, string>> {
-    return this._signerSet.merge(message);
+    return await ResultAsync.fromPromise(this._signerSet.merge(message), (e: any) => e);
   }
 
   private async revokeSigner(fid: number, signer: string): Promise<Result<void, string>> {
     // Delete cast messages
-    for (const type of [MessageType.CastShort, MessageType.CastRecast, MessageType.CastRemove]) {
-      for await (const messageHash of this._db.messagesBySigner(signer, type).values()) {
-        await this._castSet.deleteCast(messageHash);
-      }
-    }
+    // for (const type of [MessageType.CastShort, MessageType.CastRecast, MessageType.CastRemove]) {
+    //   for await (const messageHash of this._db.messagesBySigner(signer, type).values()) {
+    //     await this._castSet.deleteCast(messageHash);
+    //   }
+    // }
 
-    // Revoke reactions
-    const reactionSet = this._reactions.get(fid);
-    if (reactionSet) reactionSet.revokeSigner(signer);
+    // // Revoke reactions
+    // const reactionSet = this._reactions.get(fid);
+    // if (reactionSet) reactionSet.revokeSigner(signer);
 
-    // Revoke verifications
-    const verificationSet = this._verifications.get(fid);
-    if (verificationSet) verificationSet.revokeSigner(signer);
+    // // Revoke verifications
+    // const verificationSet = this._verifications.get(fid);
+    // if (verificationSet) verificationSet.revokeSigner(signer);
 
-    // Revoke follows
-    const followSet = this._follows.get(fid);
-    if (followSet) followSet.revokeSigner(signer);
+    // // Revoke follows
+    // const followSet = this._follows.get(fid);
+    // if (followSet) followSet.revokeSigner(signer);
 
     return ok(undefined);
   }
 
   private async validateMessage(message: Message): Promise<Result<void, string>> {
     // 1. Check that the user has a custody address
-    const custodyEvent = await this._signerSet.getCustodyAddress(message.data.fid);
+    const custodyEvent = await ResultAsync.fromPromise(
+      this._signerSet.getCustodyAddress(message.data.fid),
+      () => undefined
+    );
     if (custodyEvent.isErr()) return err('validateMessage: unknown user');
 
     // 2. Check that the signer is valid if message is not a signer message
     if (!isSignerMessage(message)) {
-      const isValidSigner = await this._signerSet.getSigner(message.data.fid, message.signer);
+      const isValidSigner = await ResultAsync.fromPromise(
+        this._signerSet.getSigner(message.data.fid, message.signer),
+        () => undefined
+      );
       if (isValidSigner.isErr()) return err('validateMessage: invalid signer');
     }
 
@@ -585,8 +574,8 @@ class Engine implements RPCHandler {
   }
 
   async _resetSigners(fid: number, custodyAddress: string) {
-    await this._db.custodyEvents.clear();
-    await this._db.signerAdds(fid, custodyAddress).clear();
+    // await this._db.custodyEvents.clear();
+    // await this._db.signerAdds(fid, custodyAddress).clear();
   }
 
   _resetReactions(): void {
@@ -599,10 +588,6 @@ class Engine implements RPCHandler {
 
   _resetFollows(): void {
     this._follows = new Map();
-  }
-
-  async _getCastAdds(fid: number): Promise<Set<CastShort | CastRecast>> {
-    return await this._castSet._getAdds(fid);
   }
 
   _getReactionAdds(fid: number): Set<ReactionAdd> {
@@ -623,11 +608,6 @@ class Engine implements RPCHandler {
   _getVerificationRemoves(fid: number): Set<VerificationRemove> {
     const verificationSet = this._verifications.get(fid);
     return verificationSet ? verificationSet._getRemoves() : new Set();
-  }
-
-  async _getCustodyAddress(fid: number): Promise<string | undefined> {
-    const custodyAddress = await this._signerSet.getCustodyAddress(fid);
-    return custodyAddress.isOk() ? custodyAddress.value : undefined;
   }
 }
 

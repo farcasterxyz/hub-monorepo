@@ -1,20 +1,23 @@
-import FarcasterDB from '~/db/farcaster';
+import RocksDB from '~/db/rocksdb';
 import { Factories } from '~/factories';
-import { CastRecast, CastShort, Ed25519Signer, FollowAdd, MessageType } from '~/types';
+import { CastShort, Ed25519Signer, FollowAdd, MessageType } from '~/types';
 import { generateEd25519Signer } from '~/utils';
+import MessageDB from '~/db/message';
 
-const db = new FarcasterDB('farcaster.test');
+const rocks = new RocksDB('db.message.test');
+const db = new MessageDB(rocks);
 
 beforeAll(async () => {
-  await db.open();
+  await rocks.open();
 });
 
 beforeEach(async () => {
-  await db.clear();
+  await rocks.clear();
 });
 
 afterAll(async () => {
-  await db.destroy();
+  await rocks.close();
+  await rocks.destroy();
 });
 
 /** Create sample data */
@@ -31,30 +34,21 @@ beforeAll(async () => {
 });
 
 describe('putMessage', () => {
-  test('succeeds with message', async () => {
-    const res = await db.putMessage(cast1);
-    expect(res.isOk()).toBeTruthy();
-
-    const value = await db.getMessage(cast1.hash);
-    expect(value._unsafeUnwrap()).toEqual(cast1);
-
-    const index = await db.get(`signer!${cast1.signer}!${cast1.data.type}!${cast1.hash}`);
-    expect(index._unsafeUnwrap()).toEqual(cast1.hash);
+  test('stores messages and indexes it by signer', async () => {
+    await expect(db.putMessage(cast1)).resolves.toEqual(undefined);
+    await expect(db.getMessage(cast1.hash)).resolves.toEqual(cast1);
+    await expect(db.getMessagesBySigner(cast1.signer)).resolves.toEqual([cast1]);
   });
 });
 
 describe('getMessage', () => {
   test('succeeds when message exists', async () => {
     await db.putMessage(cast1);
-
-    const res = await db.getMessage(cast1.hash);
-    expect(res.isOk()).toBeTruthy();
-    expect(res._unsafeUnwrap()).toEqual(cast1);
+    await expect(db.getMessage(cast1.hash)).resolves.toEqual(cast1);
   });
 
   test('fails when message not found', async () => {
-    const res = await db.getMessage('foo');
-    expect(res.isOk()).toBeFalsy();
+    await expect(db.getMessage(cast1.hash)).rejects.toThrow();
   });
 });
 
@@ -65,29 +59,23 @@ describe('getMessages', () => {
     await db.putMessage(follow1);
 
     const res = await db.getMessages([cast1.hash, cast2.hash, follow1.hash]);
-    expect(res.isOk()).toBeTruthy();
-    expect(res._unsafeUnwrap()).toEqual([cast1, cast2, follow1]);
+    expect(res).toEqual([cast1, cast2, follow1]);
   });
 
   test('returns empty array when messages not found', async () => {
     const res = await db.getMessages([cast1.hash, cast2.hash, follow1.hash]);
-    expect(res.isOk()).toBeTruthy();
-    expect(res._unsafeUnwrap()).toEqual([]);
+    expect(res).toEqual([]);
   });
 });
 
 describe('deleteMessage', () => {
-  test('succeeds when message exists', async () => {
+  test('deletes message and index', async () => {
     await db.putMessage(cast1);
 
-    const value = await db.getMessage(cast1.hash);
-    expect(value._unsafeUnwrap()).toEqual(cast1);
+    await expect(db.deleteMessage(cast1.hash)).resolves.toEqual(undefined);
 
-    const res = await db.deleteMessage(cast1.hash);
-    expect(res.isOk()).toBeTruthy();
-
-    const newValue = await db.getMessage(cast1.hash);
-    expect(newValue.isOk()).toBeFalsy();
+    await expect(db.getMessage(cast1.hash)).rejects.toThrow();
+    await expect(db.getMessagesBySigner(cast1.signer)).resolves.toEqual([]);
   });
 });
 
@@ -98,12 +86,12 @@ describe('getMessagesBySigner', () => {
     await db.putMessage(follow1);
 
     const allMessages = await db.getMessagesBySigner(signer.signerKey);
-    expect(allMessages._unsafeUnwrap()).toEqual([cast1, follow1]);
+    expect(allMessages).toEqual([cast1, follow1]);
 
     const casts = await db.getMessagesBySigner(signer.signerKey, MessageType.CastShort);
-    expect(casts._unsafeUnwrap()).toEqual([cast1]);
+    expect(casts).toEqual([cast1]);
 
     const follows = await db.getMessagesBySigner(signer.signerKey, MessageType.FollowAdd);
-    expect(follows._unsafeUnwrap()).toEqual([follow1]);
+    expect(follows).toEqual([follow1]);
   });
 });

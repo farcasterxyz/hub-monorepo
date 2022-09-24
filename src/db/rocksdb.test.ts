@@ -1,5 +1,6 @@
 import Faker from 'faker';
 import DB from '~/db/rocksdb';
+import { NotFoundError, RocksDBError } from '~/errors';
 
 const randomDbName = () => `rocksdb.test.${Faker.name.lastName().toLowerCase()}`;
 
@@ -7,17 +8,15 @@ describe('open', () => {
   test('opens db and changes status', async () => {
     const db = new DB(randomDbName());
     expect(db.status).toEqual('new');
-    const res = await db.open();
-    expect(res.isOk()).toBeTruthy();
+    await expect(db.open()).resolves.toEqual(undefined);
     expect(db.status).toEqual('open');
     await db.destroy();
   });
 
   test('succeeds if opening twice', async () => {
     const db = new DB(randomDbName());
-    await db.open();
-    const res = await db.open();
-    expect(res.isOk()).toBeTruthy();
+    await expect(db.open()).resolves.toEqual(undefined);
+    await expect(db.open()).resolves.toEqual(undefined);
     expect(db.status).toEqual('open');
     await db.close();
     await db.destroy();
@@ -28,8 +27,8 @@ describe('close', () => {
   test('succeeds', async () => {
     const db = new DB(randomDbName());
     expect(db.status).toEqual('new');
-    const res = await db.close();
-    expect(res.isOk()).toBeTruthy();
+    await db.open();
+    await expect(db.close()).resolves.toEqual(undefined);
     expect(db.status).toEqual('closed');
     await db.destroy();
   });
@@ -39,41 +38,44 @@ describe('destroy', () => {
   test('fails when db has never been opened', async () => {
     const db = new DB(randomDbName());
     expect(db.status).toEqual('new');
-    const res = await db.destroy();
-    expect(res.isOk()).toBeFalsy();
+    await expect(db.destroy()).rejects.toThrow(new RocksDBError('db never opened'));
+  });
+
+  test('succeeds when db is open', async () => {
+    const db = new DB(randomDbName());
+    await db.open();
+    await expect(db.destroy()).resolves.toEqual(undefined);
   });
 
   test('destroys db', async () => {
     const db = new DB(randomDbName());
     await db.open();
     await db.close();
-    const res = await db.destroy();
-    expect(res.isOk()).toBeTruthy();
+    await expect(db.destroy()).resolves.toEqual(undefined);
   });
 });
 
 describe('clear', () => {
   test('succeeds', async () => {
     const db = new DB(randomDbName());
+    await db.open();
     await db.put('key', 'value');
     const value = await db.get('key');
-    expect(value._unsafeUnwrap()).toEqual('value');
-    const res = await db.clear();
-    expect(res.isOk()).toBeTruthy();
-    const newValue = await db.get('key');
-    expect(newValue.isOk()).toBeFalsy();
+    expect(value).toEqual('value');
+    await expect(db.clear()).resolves.toEqual(undefined);
+    await expect(db.get('key')).rejects.toThrow(NotFoundError);
     await db.destroy();
   });
 });
 
 describe('with db', () => {
-  let db: DB;
+  const db = new DB('rocksdb.test');
 
-  beforeAll(() => {
-    db = new DB('rocksdb.test');
+  beforeAll(async () => {
+    await db.open();
   });
 
-  afterEach(async () => {
+  beforeEach(async () => {
     await db.clear();
   });
 
@@ -84,14 +86,11 @@ describe('with db', () => {
   describe('get', () => {
     test('gets a value by key', async () => {
       await db.put('foo', 'bar');
-      const res = await db.get('foo');
-      expect(res.isOk()).toBeTruthy();
-      expect(res._unsafeUnwrap()).toEqual('bar');
+      await expect(db.get('foo')).resolves.toEqual('bar');
     });
 
     test('fails if not found', async () => {
-      const res = await db.get('foo');
-      expect(res.isOk()).toBeFalsy();
+      await expect(db.get('foo')).rejects.toThrow(NotFoundError);
     });
   });
 
@@ -101,65 +100,57 @@ describe('with db', () => {
       await db.put('alice', 'bob');
       await db.put('exclude', 'this');
       const res = await db.getMany(['foo', 'alice']);
-      expect(res.isOk()).toBeTruthy();
-      expect(res._unsafeUnwrap()).toEqual(['bar', 'bob']);
+      expect(res).toEqual(['bar', 'bob']);
     });
 
     test('succeeds when some keys not found', async () => {
       await db.put('foo', 'bar');
-      const res = await db.getMany(['foo', 'alice']);
-      expect(res.isOk()).toBeTruthy();
-      expect(res._unsafeUnwrap()).toEqual(['bar']);
+      await expect(db.getMany(['foo', 'alice'])).resolves.toEqual(['bar', undefined]);
     });
 
     test('succeeds when no keys found', async () => {
-      const res = await db.getMany(['foo', 'alice']);
-      expect(res.isOk()).toBeTruthy();
-      expect(res._unsafeUnwrap()).toEqual([]);
+      await expect(db.getMany(['foo', 'alice'])).resolves.toEqual([undefined, undefined]);
     });
   });
 
   describe('put', () => {
     test('puts a value by key', async () => {
-      const res = await db.put('foo', 'bar');
-      expect(res.isOk()).toBeTruthy();
-      const value = await db.get('foo');
-      expect(value._unsafeUnwrap()).toEqual('bar');
+      await expect(db.put('foo', 'bar')).resolves.toEqual(undefined);
+      await expect(db.get('foo')).resolves.toEqual('bar');
     });
   });
 
   describe('del', () => {
     test('deletes key', async () => {
       await db.put('foo', 'bar');
-      const value = await db.get('foo');
-      expect(value._unsafeUnwrap()).toEqual('bar');
-      const res = await db.del('foo');
-      expect(res.isOk()).toBeTruthy();
-      const newValue = await db.get('foo');
-      expect(newValue.isOk()).toBeFalsy();
+      await expect(db.get('foo')).resolves.toEqual('bar');
+      await expect(db.del('foo')).resolves.toEqual(undefined);
+      await expect(db.get('foo')).rejects.toThrow(NotFoundError);
     });
   });
 
   describe('batch', () => {
     test('does multiple puts', async () => {
-      const res = await db.batch([
-        { type: 'put', key: 'foo', value: 'bar' },
-        { type: 'put', key: 'alice', value: 'bob' },
-      ]);
-      expect(res.isOk()).toBeTruthy();
+      await expect(
+        db.batch([
+          { type: 'put', key: 'foo', value: 'bar' },
+          { type: 'put', key: 'alice', value: 'bob' },
+        ])
+      ).resolves.toEqual(undefined);
       const values = await db.getMany(['foo', 'alice']);
-      expect(values._unsafeUnwrap()).toEqual(['bar', 'bob']);
+      expect(values).toEqual(['bar', 'bob']);
     });
 
     test('does multiple puts and dels', async () => {
       await db.put('delete', 'me');
-      const res = await db.batch([
-        { type: 'put', key: 'foo', value: 'bar' },
-        { type: 'del', key: 'delete' },
-      ]);
-      expect(res.isOk()).toBeTruthy();
-      expect((await db.get('delete')).isOk()).toBeFalsy();
-      expect((await db.get('foo'))._unsafeUnwrap()).toEqual('bar');
+      await expect(
+        db.batch([
+          { type: 'put', key: 'foo', value: 'bar' },
+          { type: 'del', key: 'delete' },
+        ])
+      ).resolves.toEqual(undefined);
+      await expect(db.get('delete')).rejects.toThrow();
+      await expect(db.get('foo')).resolves.toEqual('bar');
     });
   });
 

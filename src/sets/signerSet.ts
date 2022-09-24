@@ -1,9 +1,10 @@
 import { TypedEmitter } from 'tiny-typed-emitter';
-import { Result, ok, err } from 'neverthrow';
+import { ResultAsync, ok, err, Err } from 'neverthrow';
 import { IDRegistryEvent, SignerAdd, SignerMessage, SignerRemove } from '~/types';
 import { isSignerAdd, isSignerRemove } from '~/types/typeguards';
 import { hashCompare, sanitizeSigner } from '~/utils';
-import DB from '~/db';
+import RocksDB from '~/db/rocksdb';
+import SignerDB from '~/db/signer';
 
 /**
  * SignerSet manages the custody address and delegate signers for an fid. The custody address
@@ -51,63 +52,47 @@ export type SignerSetEvents = {
 };
 
 class SignerSet extends TypedEmitter<SignerSetEvents> {
-  private _db: DB;
+  private _db: SignerDB;
 
-  constructor(db: DB) {
+  constructor(db: RocksDB) {
     super();
-    this._db = db;
+    this._db = new SignerDB(db);
   }
 
-  async getCustodyAddress(fid: number): Promise<Result<string, string>> {
-    const event = await this.getCustodyAddressEvent(fid);
-    if (event.isErr()) return err(event.error);
-    return ok(sanitizeSigner(event.value.args.to));
+  async getUsers(): Promise<Set<number>> {
+    const fids = await this._db.getUsers();
+    return new Set(fids);
   }
 
-  async getCustodyAddressEvent(fid: number): Promise<Result<IDRegistryEvent, string>> {
-    try {
-      const event = await this._db.custodyEvents.get(`${fid}`);
-      return ok(event);
-    } catch (e) {
-      return err('custody event not found');
-    }
+  async getCustodyAddress(fid: number): Promise<string> {
+    const event = await this.getCustodyEvent(fid);
+    return sanitizeSigner(event.args.to);
   }
 
-  async getAllSignerMessages(fid: number): Promise<Set<SignerMessage>> {
-    const hashes = await this._db
-      .user(fid)
-      .values({ gte: '!custody:', lte: String.fromCharCode('!custody:'.charCodeAt(0) + 1) })
-      .all();
-
-    const messages = await this._db.getMessages(hashes);
-    return new Set(messages as SignerMessage[]);
+  async getCustodyEvent(fid: number): Promise<IDRegistryEvent> {
+    return this._db.getCustodyEvent(fid);
   }
 
   /** getSigners returns the set of valid delegate signers for the current custody address */
   async getSigners(fid: number): Promise<Set<SignerAdd>> {
     const custodyAddress = await this.getCustodyAddress(fid);
-    if (custodyAddress.isErr()) return new Set();
-
-    const hashes = await this._db.signerAdds(fid, custodyAddress.value).values().all();
-    const messages = await this._db.getMessages(hashes);
-
-    return new Set(messages as SignerAdd[]);
+    const signerAdds = await this._db.getSignerAddsByUser(fid, custodyAddress);
+    return new Set(signerAdds);
   }
 
-  /** get returns the SignerAdd message for a delegate signer if the signer is valid */
-  async getSigner(fid: number, signerKey: string): Promise<Result<SignerAdd, string>> {
+  /** getSigner returns the SignerAdd message for a delegate signer if the signer is valid */
+  async getSigner(fid: number, signerKey: string): Promise<SignerAdd> {
     const custodyAddress = await this.getCustodyAddress(fid);
-    if (custodyAddress.isErr()) return err(custodyAddress.error);
+    return this._db.getSignerAdd(fid, custodyAddress, sanitizeSigner(signerKey));
+  }
 
-    const hash = await this.getAddHash(fid, custodyAddress.value, sanitizeSigner(signerKey));
-    if (hash.isErr()) return err(hash.error);
-
-    const messageResult = await this._db.getMessage(hash.value);
-    return messageResult as Result<SignerAdd, string>;
+  async getAllSignerMessagesByUser(fid: number): Promise<Set<SignerMessage>> {
+    const messages = await this._db.getAllSignerMessagesByUser(fid);
+    return new Set(messages);
   }
 
   /** merge tries to merge a SignerAdd or SignerRemove message into the set */
-  async merge(message: SignerMessage): Promise<Result<void, string>> {
+  async merge(message: SignerMessage): Promise<void> {
     if (isSignerRemove(message)) {
       return this.mergeSignerRemove(message);
     }
@@ -116,17 +101,17 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
       return this.mergeSignerAdd(message);
     }
 
-    return err('SignerSet.merge: invalid message format');
+    throw new Error('SignerSet.merge: invalid message format');
   }
 
   /** mergeIDRegistryEvent tries to update the custody address with an event from the Farcaster ID Registry contract. */
-  async mergeIDRegistryEvent(event: IDRegistryEvent): Promise<Result<void, string>> {
+  async mergeIDRegistryEvent(event: IDRegistryEvent): Promise<void> {
     const fid = event.args.id;
 
     // If new event is a duplicate or occured before the existing custodyEvent, no-op
-    const custodyEvent = await this.getCustodyAddressEvent(fid);
+    const custodyEvent = await ResultAsync.fromPromise(this.getCustodyEvent(fid), () => undefined);
     if (custodyEvent.isOk() && this.eventCompare(event, custodyEvent.value) <= 0) {
-      return ok(undefined);
+      return undefined;
     }
 
     // Get LWW set of signers about to be removed
@@ -134,17 +119,21 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
 
     // Update custodyEvent and emit a changeCustody event
     const newCustodyAddress = sanitizeSigner(event.args.to);
-    await this._db.custodyEvents.put(`${fid}`, event);
+    await this._db.putCustodyEvent(event);
     this.emit('changeCustody', fid, newCustodyAddress, event);
 
-    const newSignerKeys = await this._db.signerAdds(fid, newCustodyAddress).keys().all();
+    const newSignerAdds = await this._db.getSignerAddsByUser(fid, newCustodyAddress);
+    const newSignerKeys = newSignerAdds.map((signerAdd) => signerAdd.data.body.delegate);
 
     // Emit removeSigner events for all delegate signers that are no longer valid, meaning the set has not merged
     // a SignerAdd message for that delegate from the new custody address
     if (oldCustodyAddress) {
-      for await (const signer of this._db.signerAdds(fid, oldCustodyAddress).keys()) {
-        if (!newSignerKeys.includes(signer)) {
-          this.emit('removeSigner', fid, signer); // No SignerRemove message to include
+      const oldSignerAdds = await this._db.getSignerAddsByUser(fid, oldCustodyAddress);
+      const oldSignerKeys = oldSignerAdds.map((signerAdd) => signerAdd.data.body.delegate);
+
+      for (const oldSignerKey of oldSignerKeys) {
+        if (!newSignerKeys.includes(oldSignerKey)) {
+          this.emit('removeSigner', fid, oldSignerKey); // No SignerRemove message to include
         }
       }
     }
@@ -152,39 +141,18 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     // Emit addSigner events for all delegate signers that are now valid, even ones that already existed
     // in oldSigners.adds, because we want to make sure an addSigner event has been emitted with the
     // most up-to-date SignerAdd message for each delegate signer
-    for await (const [signer, messageHash] of this._db.signerAdds(fid, newCustodyAddress).iterator()) {
-      const message = await this._db.getMessage(messageHash);
-      if (message.isOk()) {
-        this.emit('addSigner', fid, signer, message.value as SignerAdd);
-      }
+    for (const newSignerAdd of newSignerAdds) {
+      this.emit('addSigner', fid, newSignerAdd.data.body.delegate, newSignerAdd);
     }
 
     // TODO: asynchronously run cleanup that deletes all entries that are not for the new custody address
 
-    return ok(undefined);
+    return undefined;
   }
 
   /**
    * Private Methods
    */
-
-  private async getAddHash(fid: number, custodyAddress: string, signerKey: string): Promise<Result<string, string>> {
-    try {
-      const addHash = await this._db.signerAdds(fid, custodyAddress).get(signerKey);
-      return ok(addHash);
-    } catch (e) {
-      return err('signer message not found');
-    }
-  }
-
-  private async getRemoveHash(fid: number, custodyAddress: string, signerKey: string): Promise<Result<string, string>> {
-    try {
-      const removeHash = await this._db.signerRemoves(fid, custodyAddress).get(signerKey);
-      return ok(removeHash);
-    } catch (e) {
-      return err('signer message not found');
-    }
-  }
 
   /**
    * eventCompare returns an order (-1, 0, 1) for two ID Registry events (a and b). If a occurs before
@@ -251,47 +219,45 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
    *
    * Note: Signer messages are only compared against other messages from the same custody address.
    */
-  private async mergeSignerAdd(message: SignerAdd): Promise<Result<void, string>> {
+  private async mergeSignerAdd(message: SignerAdd): Promise<void> {
     const { fid } = message.data;
     const custodyAddress = sanitizeSigner(message.signer);
     const signerKey = sanitizeSigner(message.data.body.delegate);
 
-    if (custodyAddress === signerKey) return err('SignerSet.mergeSignerAdd: signer and delegate must be different');
+    if (custodyAddress === signerKey)
+      throw new Error('SignerSet.mergeSignerAdd: signer and delegate must be different');
 
     // Check if the new signer has already been added
-    const existingSignerAddHash = await this.getAddHash(fid, custodyAddress, signerKey);
-    if (existingSignerAddHash.isOk()) {
-      const existingSignerAdd = await this._db.getMessage(existingSignerAddHash.value);
-      if (existingSignerAdd.isErr()) return err('unexpected state');
-      if (this.signerMessageCompare(message, existingSignerAdd.value as SignerAdd) <= 0) {
-        return ok(undefined);
+    const existingSignerAdd = await ResultAsync.fromPromise(
+      this._db.getSignerAdd(fid, custodyAddress, signerKey),
+      () => undefined
+    );
+    if (existingSignerAdd.isOk()) {
+      if (this.signerMessageCompare(message, existingSignerAdd.value) <= 0) {
+        return undefined;
       }
     }
 
-    const existingSignerRemoveHash = await this.getRemoveHash(fid, custodyAddress, signerKey);
-    if (existingSignerRemoveHash.isOk()) {
-      const existingSignerRemove = await this._db.getMessage(existingSignerRemoveHash.value);
-      if (existingSignerRemove.isErr()) return err('unexpected state');
-      if (this.signerMessageCompare(message, existingSignerRemove.value as SignerRemove) <= 0) {
-        return ok(undefined);
+    const existingSignerRemove = await ResultAsync.fromPromise(
+      this._db.getSignerRemove(fid, custodyAddress, signerKey),
+      () => undefined
+    );
+    if (existingSignerRemove.isOk()) {
+      if (this.signerMessageCompare(message, existingSignerRemove.value) <= 0) {
+        return undefined;
       }
-
-      // Delete existing signer remove message
-      await this._db.signerRemoves(fid, custodyAddress).del(signerKey);
-      await this._db.deleteMessage(existingSignerRemoveHash.value);
     }
 
     // Add the new signer add message
-    await this._db.putMessage(message);
-    await this._db.signerAdds(fid, custodyAddress).put(signerKey, message.hash);
+    await this._db.putSignerAdd(message);
 
     // If the signer of the new message is the current custody address, emit an addSigner event
-    const currentCustodyAddress = await this.getCustodyAddress(fid);
+    const currentCustodyAddress = await ResultAsync.fromPromise(this.getCustodyAddress(fid), () => undefined);
     if (currentCustodyAddress.isOk() && currentCustodyAddress.value === custodyAddress) {
       this.emit('addSigner', fid, signerKey, message);
     }
 
-    return ok(undefined);
+    return undefined;
   }
 
   /**
@@ -303,48 +269,46 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
    *
    * Note: Signer messages are only compared against other messages from the same custody address.
    */
-  private async mergeSignerRemove(message: SignerRemove): Promise<Result<void, string>> {
+  private async mergeSignerRemove(message: SignerRemove): Promise<void> {
     const { fid } = message.data;
     const custodyAddress = sanitizeSigner(message.signer);
     const signerKey = sanitizeSigner(message.data.body.delegate);
 
-    if (custodyAddress === signerKey) return err('SignerSet.mergeSignerRemove: signer and delegate must be different');
+    if (custodyAddress === signerKey)
+      throw new Error('SignerSet.mergeSignerRemove: signer and delegate must be different');
 
     // Check if the signer has already been removed
-    const existingSignerRemoveHash = await this.getRemoveHash(fid, custodyAddress, signerKey);
-    if (existingSignerRemoveHash.isOk()) {
-      const existingSignerRemove = await this._db.getMessage(existingSignerRemoveHash.value);
-      if (existingSignerRemove.isErr()) return err('unexpected state');
-      if (this.signerMessageCompare(message, existingSignerRemove.value as SignerRemove) <= 0) {
-        return ok(undefined);
+    const existingSignerRemove = await ResultAsync.fromPromise(
+      this._db.getSignerRemove(fid, custodyAddress, signerKey),
+      () => undefined
+    );
+    if (existingSignerRemove.isOk()) {
+      if (this.signerMessageCompare(message, existingSignerRemove.value) <= 0) {
+        return undefined;
       }
     }
 
     // Check if the signer has already been added
-    const existingSignerAddHash = await this.getAddHash(fid, custodyAddress, signerKey);
-    if (existingSignerAddHash.isOk()) {
-      const existingSignerAdd = await this._db.getMessage(existingSignerAddHash.value);
-      if (existingSignerAdd.isErr()) return err('unexpected state');
-      if (this.signerMessageCompare(message, existingSignerAdd.value as SignerAdd) <= 0) {
-        return ok(undefined);
+    const existingSignerAdd = await ResultAsync.fromPromise(
+      this._db.getSignerAdd(fid, custodyAddress, signerKey),
+      () => undefined
+    );
+    if (existingSignerAdd.isOk()) {
+      if (this.signerMessageCompare(message, existingSignerAdd.value) <= 0) {
+        return undefined;
       }
-
-      // Delete existing signer add message
-      await this._db.signerAdds(fid, custodyAddress).del(signerKey);
-      await this._db.deleteMessage(existingSignerAddHash.value);
     }
 
     // Add the new signer remove message
-    await this._db.putMessage(message);
-    await this._db.signerRemoves(fid, custodyAddress).put(signerKey, message.hash);
+    await this._db.putSignerRemove(message);
 
     // If the signer of the new message is the current custody address, emit an addSigner event
-    const currentCustodyAddress = await this.getCustodyAddress(fid);
+    const currentCustodyAddress = await ResultAsync.fromPromise(this.getCustodyAddress(fid), () => undefined);
     if (currentCustodyAddress.isOk() && currentCustodyAddress.value === custodyAddress) {
       this.emit('removeSigner', fid, signerKey, message);
     }
 
-    return ok(undefined);
+    return undefined;
   }
 }
 

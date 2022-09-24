@@ -3,25 +3,15 @@ import Engine from '~/engine';
 import { Factories } from '~/factories';
 import { Cast, CastShort, EthereumSigner, IDRegistryEvent, MessageSigner, SignerAdd, SignerRemove } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
-import DB from '~/db';
+import { jestRocksDB } from '~/db/jestUtils';
+import CastDB from '~/db/cast';
 
-const testDb = new DB(`engine.cast.test`);
-const engine = new Engine(testDb);
+const rocksDb = jestRocksDB('engine.cast.test');
+const castDb = new CastDB(rocksDb);
+const engine = new Engine(rocksDb);
 
 const aliceFid = Faker.datatype.number();
-const aliceAdds = () => engine._getCastAdds(aliceFid);
-
-beforeAll(async () => {
-  await testDb.open();
-});
-
-afterEach(async () => {
-  await testDb.clear();
-});
-
-afterAll(async () => {
-  await testDb.close();
-});
+const aliceAdds = async () => new Set(await castDb.getCastAddsByUser(aliceFid));
 
 describe('mergeCast', () => {
   let aliceCustodySigner: EthereumSigner;

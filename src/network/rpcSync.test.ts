@@ -3,8 +3,13 @@ import { populateEngine } from '~/engine/engine.mock.test';
 import { Result } from 'neverthrow';
 import { RPCServer, RPCClient } from '~/network/rpc';
 import Engine from '~/engine';
+import { jestRocksDB } from '~/db/jestUtils';
 
-const serverEngine = new Engine();
+const serverDb = jestRocksDB('rpcSync.test.server');
+const serverEngine = new Engine(serverDb);
+
+const clientDb = jestRocksDB('rpcSync.test.client');
+const clientEngine = new Engine(clientDb);
 
 let server: RPCServer;
 let client: RPCClient;
@@ -16,8 +21,8 @@ describe('rpcSync', () => {
     // setup the rpc server and client
     server = new RPCServer(serverEngine);
     await server.start();
-    const address = server.address;
-    expect(address).not.toBeNull();
+    expect(server.address).not.toBeNull();
+
     client = new RPCClient(server.address as AddressInfo);
 
     await populateEngine(serverEngine, NUM_USERS);
@@ -30,8 +35,6 @@ describe('rpcSync', () => {
   test(
     'sync data from one engine to another ',
     async () => {
-      const clientEngine = new Engine();
-
       // sanity test that the server has something in it
       const users = await serverEngine.getUsers();
       expect(users.size).toEqual(NUM_USERS);

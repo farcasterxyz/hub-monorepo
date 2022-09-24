@@ -3,32 +3,25 @@ import { SignerAdd, SignerRemove, EthereumSigner, Ed25519Signer, IDRegistryEvent
 import SignerSet, { SignerSetEvents } from '~/sets/signerSet';
 import { Factories } from '~/factories';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
-import DB from '~/db';
 
-const testDb = new DB('signerSet.test');
-const set = new SignerSet(testDb);
+import { jestRocksDB } from '~/db/jestUtils';
+import SignerDB from '~/db/signer';
 
-beforeAll(async () => {
-  await testDb.open();
-});
-
-afterAll(async () => {
-  await testDb.close();
-});
-
-afterEach(async () => {
-  await testDb.clear();
-});
+const rocksDb = jestRocksDB('castSet.test');
+const testDb = new SignerDB(rocksDb);
 
 const fid = Faker.datatype.number();
-const custodyAddress = async () => {
-  const custodyResult = await set.getCustodyAddress(fid);
-  return custodyResult.isOk() ? custodyResult._unsafeUnwrap() : undefined;
-};
+const set = new SignerSet(rocksDb);
+
+const custodyAddress = () => set.getCustodyAddress(fid);
+
 const signersByCustody = async (custodyAddress: string) => {
-  const adds = new Map(await testDb.signerAdds(fid, custodyAddress).iterator().all());
-  const removes = new Map(await testDb.signerRemoves(fid, custodyAddress).iterator().all());
-  return { adds, removes };
+  const getAdds = await testDb.getSignerAddsByUser(fid, custodyAddress);
+  const getRemoves = await testDb.getSignerRemovesByUser(fid, custodyAddress);
+  return {
+    adds: new Map(getAdds.map((signerAdd) => [signerAdd.data.body.delegate, signerAdd.hash])),
+    removes: new Map(getRemoves.map((signerRemove) => [signerRemove.data.body.delegate, signerRemove.hash])),
+  };
 };
 
 let events: any[] = [];
@@ -82,85 +75,79 @@ beforeEach(() => {
 
 describe('getCustodyAddress', () => {
   test('fails when custody address does not exist', async () => {
-    const res = await set.getCustodyAddress(fid);
-    expect(res.isOk()).toBeFalsy();
-    expect(res._unsafeUnwrapErr()).toEqual('custody event not found');
+    const res = set.getCustodyAddress(fid);
+    await expect(res).rejects.toThrow();
   });
 
   test('succeeds when custody event has been added', async () => {
     await set.mergeIDRegistryEvent(custody1Register);
-    const res = await set.getCustodyAddress(fid);
-    expect(res._unsafeUnwrap()).toEqual(custody1.signerKey);
+    const res = set.getCustodyAddress(fid);
+    await expect(res).resolves.toEqual(custody1.signerKey);
   });
 
   test('succeeds after custody address has been changed', async () => {
     await set.mergeIDRegistryEvent(custody1Register);
     await set.mergeIDRegistryEvent(custody2Transfer);
-    const res = await set.getCustodyAddress(fid);
-    expect(res._unsafeUnwrap()).toEqual(custody2.signerKey);
+    const res = set.getCustodyAddress(fid);
+    await expect(res).resolves.toEqual(custody2.signerKey);
   });
 });
 
 describe('getSigner', () => {
   test('fails when custody address does not exist', async () => {
-    const res = await set.getSigner(fid, custody1.signerKey);
-    expect(res.isOk()).toBeFalsy();
-    expect(res._unsafeUnwrapErr()).toEqual('custody event not found');
+    const res = set.getSigner(fid, custody1.signerKey);
+    await expect(res).rejects.toThrow();
   });
 
   test('fails when called with a custody address', async () => {
     await set.mergeIDRegistryEvent(custody1Register);
-    const res = await set.getSigner(fid, custody1.signerKey);
-    expect(res.isOk()).toBeFalsy();
-    expect(res._unsafeUnwrapErr()).toEqual('signer message not found');
+    const res = set.getSigner(fid, custody1.signerKey);
+    await expect(res).rejects.toThrow();
   });
 
   test('fails when delegate signer does not exist', async () => {
-    const res = await set.getSigner(fid, a.signerKey);
-    expect(res.isOk()).toBeFalsy();
-    expect(res._unsafeUnwrapErr()).toEqual('custody event not found');
+    const res = set.getSigner(fid, a.signerKey);
+    await expect(res).rejects.toThrow();
   });
 
   test('returns SignerAdd when delegate signer has been added', async () => {
     await set.mergeIDRegistryEvent(custody1Register);
     await set.merge(addA);
-    const res = await set.getSigner(fid, a.signerKey);
-    expect(res._unsafeUnwrap()).toEqual(addA);
+    const res = set.getSigner(fid, a.signerKey);
+    await expect(res).resolves.toEqual(addA);
   });
 
   test('fails when delegate signer has been removed', async () => {
     await set.mergeIDRegistryEvent(custody1Register);
     await set.merge(addA);
     await set.merge(remA);
-    const res = await set.getSigner(fid, a.signerKey);
-    expect(res.isOk()).toBeFalsy();
-    expect(res._unsafeUnwrapErr()).toEqual('signer message not found');
+    const res = set.getSigner(fid, a.signerKey);
+    await expect(res).rejects.toThrow();
   });
 
   test('fails when custody address has been changed', async () => {
     await set.mergeIDRegistryEvent(custody1Register);
     await set.merge(addA);
     await set.mergeIDRegistryEvent(custody2Transfer);
-    const res = await set.getSigner(fid, a.signerKey);
-    expect(res.isOk()).toBeFalsy();
-    expect(res._unsafeUnwrapErr()).toEqual('signer message not found');
+    const res = set.getSigner(fid, a.signerKey);
+    await expect(res).rejects.toThrow();
   });
 });
 
 describe('mergeIDRegistryEvent', () => {
   test('succeeds with new custody address', async () => {
-    expect((await set.mergeIDRegistryEvent(custody1Register)).isOk()).toBe(true);
-    expect(await custodyAddress()).toEqual(custody1.signerKey);
-    expect(await signersByCustody(custody1.signerKey)).toEqual({ adds: new Map(), removes: new Map() });
+    await expect(set.mergeIDRegistryEvent(custody1Register)).resolves.toEqual(undefined);
+    await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+    await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
     expect(events).toEqual([['changeCustody', fid, custody1.signerKey, custody1Register]]);
   });
 
   test('succeeds with multiple new custody addresses', async () => {
-    expect((await set.mergeIDRegistryEvent(custody1Register)).isOk()).toBe(true);
-    expect((await set.mergeIDRegistryEvent(custody2Transfer)).isOk()).toBe(true);
-    expect(await custodyAddress()).toEqual(custody2.signerKey);
-    expect(await signersByCustody(custody1.signerKey)).toEqual({ adds: new Map(), removes: new Map() });
-    expect(await signersByCustody(custody2.signerKey)).toEqual({ adds: new Map(), removes: new Map() });
+    await expect(set.mergeIDRegistryEvent(custody1Register)).resolves.toEqual(undefined);
+    await expect(set.mergeIDRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
+    await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+    await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
+    await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
     expect(events).toEqual([
       ['changeCustody', fid, custody1.signerKey, custody1Register],
       ['changeCustody', fid, custody2.signerKey, custody2Transfer],
@@ -173,9 +160,9 @@ describe('mergeIDRegistryEvent', () => {
     });
 
     test('succeeds (no-ops) with duplicate custody address', async () => {
-      expect((await set.mergeIDRegistryEvent(custody1Register)).isOk()).toBe(true);
-      expect(await custodyAddress()).toEqual(custody1.signerKey);
-      expect(await signersByCustody(custody1.signerKey)).toEqual({ adds: new Map(), removes: new Map() });
+      await expect(set.mergeIDRegistryEvent(custody1Register)).resolves.toEqual(undefined);
+      await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+      await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
       expect(events).toEqual([['changeCustody', fid, custody1.signerKey, custody1Register]]);
     });
 
@@ -185,9 +172,9 @@ describe('mergeIDRegistryEvent', () => {
         blockNumber: custody1Register.blockNumber,
         logIndex: custody1Register.logIndex - 1,
       };
-      expect((await set.mergeIDRegistryEvent(addSameBlockEarlierLog)).isOk()).toBe(true);
-      expect(await custodyAddress()).toEqual(custody1.signerKey);
-      expect(await signersByCustody(custody1.signerKey)).toEqual({ adds: new Map(), removes: new Map() });
+      await expect(set.mergeIDRegistryEvent(addSameBlockEarlierLog)).resolves.toEqual(undefined);
+      await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+      await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
       expect(events).toEqual([['changeCustody', fid, custody1.signerKey, custody1Register]]);
     });
 
@@ -197,9 +184,9 @@ describe('mergeIDRegistryEvent', () => {
         blockNumber: custody1Register.blockNumber,
         logIndex: custody1Register.logIndex + 1,
       };
-      expect((await set.mergeIDRegistryEvent(addSameBlockLaterLog)).isOk()).toBe(true);
-      expect(await custodyAddress()).toEqual(custody2.signerKey);
-      expect(await signersByCustody(custody2.signerKey)).toEqual({ adds: new Map(), removes: new Map() });
+      await expect(set.mergeIDRegistryEvent(addSameBlockLaterLog)).resolves.toEqual(undefined);
+      await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+      await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
       expect(events).toEqual([
         ['changeCustody', fid, custody1.signerKey, custody1Register],
         ['changeCustody', fid, custody2.signerKey, addSameBlockLaterLog],
@@ -207,16 +194,16 @@ describe('mergeIDRegistryEvent', () => {
     });
 
     test('succeeds when custody address is re-added later', async () => {
-      expect((await set.mergeIDRegistryEvent(custody2Transfer)).isOk()).toBe(true);
+      await expect(set.mergeIDRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
       const custody1Transfer: IDRegistryEvent = {
         ...custody1Register,
         name: 'Transfer',
         blockNumber: custody2Transfer.blockNumber + 1,
       };
-      expect((await set.mergeIDRegistryEvent(custody1Transfer)).isOk()).toBe(true);
-      expect(await custodyAddress()).toEqual(custody1.signerKey);
-      expect(await signersByCustody(custody1.signerKey)).toEqual({ adds: new Map(), removes: new Map() });
-      expect(await signersByCustody(custody2.signerKey)).toEqual({ adds: new Map(), removes: new Map() });
+      await expect(set.mergeIDRegistryEvent(custody1Transfer)).resolves.toEqual(undefined);
+      await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+      await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
+      await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
       expect(events).toEqual([
         ['changeCustody', fid, custody1.signerKey, custody1Register],
         ['changeCustody', fid, custody2.signerKey, custody2Transfer],
@@ -230,9 +217,9 @@ describe('mergeIDRegistryEvent', () => {
       });
 
       test('succeeds and emits removeSigner event', async () => {
-        expect((await set.mergeIDRegistryEvent(custody2Transfer)).isOk()).toBe(true);
-        expect(await custodyAddress()).toEqual(custody2.signerKey);
-        expect(await signersByCustody(custody2.signerKey)).toEqual({ adds: new Map(), removes: new Map() });
+        await expect(set.mergeIDRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
+        await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+        await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
         expect(events).toEqual([
           ['changeCustody', fid, custody1.signerKey, custody1Register],
           ['addSigner', fid, a.signerKey, addA],
@@ -242,10 +229,10 @@ describe('mergeIDRegistryEvent', () => {
       });
 
       test('succeeds and does not emit new removeSigner event when signer has been removed', async () => {
-        expect((await set.merge(remA)).isOk()).toBe(true);
-        expect((await set.mergeIDRegistryEvent(custody2Transfer)).isOk()).toBe(true);
-        expect(await custodyAddress()).toEqual(custody2.signerKey);
-        expect(await signersByCustody(custody2.signerKey)).toEqual({ adds: new Map(), removes: new Map() });
+        await expect(set.merge(remA)).resolves.toEqual(undefined);
+        await expect(set.mergeIDRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
+        await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+        await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
         expect(events).toEqual([
           ['changeCustody', fid, custody1.signerKey, custody1Register],
           ['addSigner', fid, a.signerKey, addA],
@@ -261,9 +248,9 @@ describe('mergeIDRegistryEvent', () => {
       });
 
       test('succeeds and emits addSigner event', async () => {
-        expect((await set.mergeIDRegistryEvent(custody2Transfer)).isOk()).toBe(true);
-        expect(await custodyAddress()).toEqual(custody2.signerKey);
-        expect(await signersByCustody(custody2.signerKey)).toEqual({
+        await expect(set.mergeIDRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
+        await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+        await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
           adds: new Map([[a.signerKey, addA2.hash]]),
           removes: new Map(),
         });
@@ -275,10 +262,10 @@ describe('mergeIDRegistryEvent', () => {
       });
 
       test('succeeds and does not emit addSigner event when signer has been removed', async () => {
-        expect((await set.merge(remA2)).isOk()).toBe(true);
-        expect((await set.mergeIDRegistryEvent(custody2Transfer)).isOk()).toBe(true);
-        expect(await custodyAddress()).toEqual(custody2.signerKey);
-        expect(await signersByCustody(custody2.signerKey)).toEqual({
+        await expect(set.merge(remA2)).resolves.toEqual(undefined);
+        await expect(set.mergeIDRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
+        await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+        await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
           adds: new Map(),
           removes: new Map([[a.signerKey, remA2.hash]]),
         });
@@ -290,11 +277,11 @@ describe('mergeIDRegistryEvent', () => {
     });
 
     test('succeeds and emits addSigner event when the same signer was added by both custody addresses', async () => {
-      expect((await set.merge(addA)).isOk()).toBe(true);
-      expect((await set.merge(addA2)).isOk()).toBe(true);
-      expect((await set.mergeIDRegistryEvent(custody2Transfer)).isOk()).toBe(true);
-      expect(await custodyAddress()).toEqual(custody2.signerKey);
-      expect(await signersByCustody(custody2.signerKey)).toEqual({
+      await expect(set.merge(addA)).resolves.toEqual(undefined);
+      await expect(set.merge(addA2)).resolves.toEqual(undefined);
+      await expect(set.mergeIDRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
+      await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+      await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
         adds: new Map([[a.signerKey, addA2.hash]]),
         removes: new Map(),
       });
@@ -311,17 +298,16 @@ describe('mergeIDRegistryEvent', () => {
 describe('merge', () => {
   test('fails with invalid message type', async () => {
     const invalidMessage = (await Factories.CastShort.create()) as any as SignerAdd;
-    const res = await set.merge(invalidMessage);
-    expect(res.isOk()).toBe(false);
-    expect(res._unsafeUnwrapErr()).toBe('SignerSet.merge: invalid message format');
+    const res = set.merge(invalidMessage);
+    await expect(res).rejects.toThrow();
   });
 
   describe('without custody address', () => {
     describe('mergeSignerAdd', () => {
       test('succeeds but does not emit addSigner event', async () => {
-        expect((await set.merge(addA)).isOk()).toBe(true);
-        expect(await custodyAddress()).toEqual(undefined);
-        expect(await signersByCustody(custody1.signerKey)).toEqual({
+        await expect(set.merge(addA)).resolves.toEqual(undefined);
+        await expect(custodyAddress()).rejects.toThrow();
+        await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
           adds: new Map([[a.signerKey, addA.hash]]),
           removes: new Map(),
         });
@@ -331,9 +317,9 @@ describe('merge', () => {
 
     describe('mergeSignerRemove', () => {
       test('succeeds but does not emit removeSigner event', async () => {
-        expect((await set.merge(remA)).isOk()).toBe(true);
-        expect(await custodyAddress()).toEqual(undefined);
-        expect(await signersByCustody(custody1.signerKey)).toEqual({
+        await expect(set.merge(remA)).resolves.toEqual(undefined);
+        await expect(custodyAddress()).rejects.toThrow();
+        await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
           adds: new Map(),
           removes: new Map([[a.signerKey, remA.hash]]),
         });
@@ -349,9 +335,9 @@ describe('merge', () => {
 
     describe('mergeSignerAdd', () => {
       test('succeeds with a valid SignerAdd message', async () => {
-        expect((await set.merge(addA)).isOk()).toEqual(true);
-        expect(await custodyAddress()).toEqual(custody1.signerKey);
-        expect(await signersByCustody(custody1.signerKey)).toEqual({
+        await expect(set.merge(addA)).resolves.toEqual(undefined);
+        await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+        await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
           adds: new Map([[a.signerKey, addA.hash]]),
           removes: new Map(),
         });
@@ -362,10 +348,10 @@ describe('merge', () => {
       });
 
       test('succeeds but does not emit addSigner event with a duplicate valid SignerAdd message', async () => {
-        expect((await set.merge(addA)).isOk()).toBe(true);
-        expect((await set.merge(addA)).isOk()).toBe(true);
-        expect(await custodyAddress()).toEqual(custody1.signerKey);
-        expect(await signersByCustody(custody1.signerKey)).toEqual({
+        await expect(set.merge(addA)).resolves.toEqual(undefined);
+        await expect(set.merge(addA)).resolves.toEqual(undefined);
+        await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+        await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
           adds: new Map([[a.signerKey, addA.hash]]),
           removes: new Map(),
         });
@@ -376,10 +362,10 @@ describe('merge', () => {
       });
 
       test('succeeds with multiple valid SignerAdd messages', async () => {
-        expect((await set.merge(addA)).isOk()).toBe(true);
-        expect((await set.merge(addB)).isOk()).toBe(true);
-        expect(await custodyAddress()).toEqual(custody1.signerKey);
-        expect(await signersByCustody(custody1.signerKey)).toEqual({
+        await expect(set.merge(addA)).resolves.toEqual(undefined);
+        await expect(set.merge(addB)).resolves.toEqual(undefined);
+        await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+        await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
           adds: new Map([
             [a.signerKey, addA.hash],
             [b.signerKey, addB.hash],
@@ -398,11 +384,9 @@ describe('merge', () => {
           { data: { body: { delegate: custody1.signerKey } } },
           { transient: { signer: custody1 } }
         );
-        const res = await set.merge(addSelf);
-        expect(res.isOk()).toBe(false);
-        expect(res._unsafeUnwrapErr()).toBe('SignerSet.mergeSignerAdd: signer and delegate must be different');
-        expect(await custodyAddress()).toEqual(custody1.signerKey);
-        expect(await signersByCustody(custody1.signerKey)).toEqual({ adds: new Map(), removes: new Map() });
+        await expect(set.merge(addSelf)).rejects.toThrow();
+        await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+        await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
         expect(events).toEqual([['changeCustody', fid, custody1.signerKey, custody1Register]]);
       });
 
@@ -412,14 +396,14 @@ describe('merge', () => {
         });
 
         test('succeeds with later custody address', async () => {
-          expect((await set.merge(addA)).isOk()).toBe(true);
-          expect((await set.merge(addA2)).isOk()).toBe(true);
-          expect(await custodyAddress()).toEqual(custody2.signerKey);
-          expect(await signersByCustody(custody1.signerKey)).toEqual({
+          await expect(set.merge(addA)).resolves.toEqual(undefined);
+          await expect(set.merge(addA2)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map([[a.signerKey, addA.hash]]),
             removes: new Map(),
           });
-          expect(await signersByCustody(custody2.signerKey)).toEqual({
+          await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
             adds: new Map([[a.signerKey, addA2.hash]]),
             removes: new Map(),
           });
@@ -431,14 +415,14 @@ describe('merge', () => {
         });
 
         test('succeeds but does not emit addSigner event with earlier custody address', async () => {
-          expect((await set.merge(addA2)).isOk()).toBe(true);
-          expect((await set.merge(addA)).isOk()).toBe(true);
-          expect(await custodyAddress()).toEqual(custody2.signerKey);
-          expect(await signersByCustody(custody1.signerKey)).toEqual({
+          await expect(set.merge(addA2)).resolves.toEqual(undefined);
+          await expect(set.merge(addA)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map([[a.signerKey, addA.hash]]),
             removes: new Map(),
           });
-          expect(await signersByCustody(custody2.signerKey)).toEqual({
+          await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
             adds: new Map([[a.signerKey, addA2.hash]]),
             removes: new Map(),
           });
@@ -461,9 +445,9 @@ describe('merge', () => {
             hash: Faker.datatype.hexaDecimal(128),
             data: { ...addA.data, signedAt: addA.data.signedAt + 1 },
           };
-          expect((await set.merge(addALater)).isOk()).toBe(true);
-          expect(await custodyAddress()).toEqual(custody1.signerKey);
-          expect(await signersByCustody(custody1.signerKey)).toEqual({
+          await expect(set.merge(addALater)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map([[a.signerKey, addALater.hash]]),
             removes: new Map(),
           });
@@ -480,9 +464,9 @@ describe('merge', () => {
             hash: Faker.datatype.hexaDecimal(128),
             data: { ...addA.data, signedAt: addA.data.signedAt - 1 },
           };
-          expect((await set.merge(addAEarlier)).isOk()).toBe(true);
-          expect(await custodyAddress()).toEqual(custody1.signerKey);
-          expect(await signersByCustody(custody1.signerKey)).toEqual({
+          await expect(set.merge(addAEarlier)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map([[a.signerKey, addA.hash]]),
             removes: new Map(),
           });
@@ -495,9 +479,9 @@ describe('merge', () => {
         describe('with the same timestamp', () => {
           test('succeeds with higher message hash', async () => {
             const addAHigherHash: SignerAdd = { ...addA, hash: addA.hash + 'a' };
-            expect((await set.merge(addAHigherHash)).isOk()).toBe(true);
-            expect(await custodyAddress()).toEqual(custody1.signerKey);
-            expect(await signersByCustody(custody1.signerKey)).toEqual({
+            await expect(set.merge(addAHigherHash)).resolves.toEqual(undefined);
+            await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+            await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
               adds: new Map([[a.signerKey, addAHigherHash.hash]]),
               removes: new Map(),
             });
@@ -510,9 +494,9 @@ describe('merge', () => {
 
           test('succeeds (no-ops) with lower message hash', async () => {
             const addALowerHash: SignerAdd = { ...addA, hash: addA.hash.slice(0, -1) };
-            expect((await set.merge(addALowerHash)).isOk()).toBe(true);
-            expect(await custodyAddress()).toEqual(custody1.signerKey);
-            expect(await signersByCustody(custody1.signerKey)).toEqual({
+            await expect(set.merge(addALowerHash)).resolves.toEqual(undefined);
+            await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+            await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
               adds: new Map([[a.signerKey, addA.hash]]),
               removes: new Map(),
             });
@@ -530,14 +514,14 @@ describe('merge', () => {
         });
 
         test('succeeds with later custody address', async () => {
-          expect((await set.merge(remA)).isOk()).toBe(true);
-          expect((await set.merge(addA2)).isOk()).toBe(true);
-          expect(await custodyAddress()).toEqual(custody2.signerKey);
-          expect(await signersByCustody(custody1.signerKey)).toEqual({
+          await expect(set.merge(remA)).resolves.toEqual(undefined);
+          await expect(set.merge(addA2)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map(),
             removes: new Map([[a.signerKey, remA.hash]]),
           });
-          expect(await signersByCustody(custody2.signerKey)).toEqual({
+          await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
             adds: new Map([[a.signerKey, addA2.hash]]),
             removes: new Map(),
           });
@@ -549,14 +533,14 @@ describe('merge', () => {
         });
 
         test('succeeds but does not emit addSigner event with earlier custody address', async () => {
-          expect((await set.merge(remA2)).isOk()).toBe(true);
-          expect((await set.merge(addA)).isOk()).toBe(true);
-          expect(await custodyAddress()).toEqual(custody2.signerKey);
-          expect(await signersByCustody(custody1.signerKey)).toEqual({
+          await expect(set.merge(remA2)).resolves.toEqual(undefined);
+          await expect(set.merge(addA)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map([[a.signerKey, addA.hash]]),
             removes: new Map(),
           });
-          expect(await signersByCustody(custody2.signerKey)).toEqual({
+          await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
             adds: new Map(),
             removes: new Map([[a.signerKey, remA2.hash]]),
           });
@@ -579,9 +563,9 @@ describe('merge', () => {
             hash: Faker.datatype.hexaDecimal(128),
             data: { ...addA.data, signedAt: remA.data.signedAt + 1 },
           };
-          expect((await set.merge(addALater)).isOk()).toBe(true);
-          expect(await custodyAddress()).toEqual(custody1.signerKey);
-          expect(await signersByCustody(custody1.signerKey)).toEqual({
+          await expect(set.merge(addALater)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map([[a.signerKey, addALater.hash]]),
             removes: new Map(),
           });
@@ -598,9 +582,9 @@ describe('merge', () => {
             hash: Faker.datatype.hexaDecimal(128),
             data: { ...addA.data, signedAt: remA.data.signedAt - 1 },
           };
-          expect((await set.merge(addAEarlier)).isOk()).toBe(true);
-          expect(await custodyAddress()).toEqual(custody1.signerKey);
-          expect(await signersByCustody(custody1.signerKey)).toEqual({
+          await expect(set.merge(addAEarlier)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map(),
             removes: new Map([[a.signerKey, remA.hash]]),
           });
@@ -616,9 +600,9 @@ describe('merge', () => {
             hash: Faker.datatype.hexaDecimal(128),
             data: { ...addA.data, signedAt: remA.data.signedAt },
           };
-          expect((await set.merge(addASameTimestamp)).isOk()).toBe(true);
-          expect(await custodyAddress()).toEqual(custody1.signerKey);
-          expect(await signersByCustody(custody1.signerKey)).toEqual({
+          await expect(set.merge(addASameTimestamp)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map(),
             removes: new Map([[a.signerKey, remA.hash]]),
           });
@@ -635,19 +619,19 @@ describe('merge', () => {
         });
 
         afterEach(async () => {
-          expect(await custodyAddress()).toEqual(custody2.signerKey);
-          expect(await signersByCustody(custody1.signerKey)).toEqual({
+          await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map(),
             removes: new Map([[a.signerKey, remA.hash]]),
           });
-          expect(await signersByCustody(custody2.signerKey)).toEqual({
+          await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
             adds: new Map(),
             removes: new Map([[a.signerKey, remA2.hash]]),
           });
         });
         test('succeeds when adds are received first', async () => {
           for (const msg of [addA, addA2, remA, remA2]) {
-            expect((await set.merge(msg)).isOk()).toBe(true);
+            await expect(set.merge(msg)).resolves.toEqual(undefined);
           }
           expect(events).toEqual([
             ['changeCustody', fid, custody1.signerKey, custody1Register],
@@ -659,7 +643,7 @@ describe('merge', () => {
 
         test('succeeds when removes are received first', async () => {
           for (const msg of [remA, remA2, addA, addA2]) {
-            expect((await set.merge(msg)).isOk()).toBe(true);
+            await expect(set.merge(msg)).resolves.toEqual(undefined);
           }
           expect(events).toEqual([
             ['changeCustody', fid, custody1.signerKey, custody1Register],
@@ -670,7 +654,7 @@ describe('merge', () => {
 
         test('succeeds when messages are ordered by custody address', async () => {
           for (const msg of [addA, remA, addA2, remA2]) {
-            expect((await set.merge(msg)).isOk()).toBe(true);
+            await expect(set.merge(msg)).resolves.toEqual(undefined);
           }
           expect(events).toEqual([
             ['changeCustody', fid, custody1.signerKey, custody1Register],
@@ -684,10 +668,10 @@ describe('merge', () => {
 
     describe('mergeSignerRemove', () => {
       test('succeeds with a valid SignerRemove message', async () => {
-        expect((await set.merge(addA)).isOk()).toBe(true);
-        expect((await set.merge(remA)).isOk()).toBe(true);
-        expect(await custodyAddress()).toEqual(custody1.signerKey);
-        expect(await signersByCustody(custody1.signerKey)).toEqual({
+        await expect(set.merge(addA)).resolves.toEqual(undefined);
+        await expect(set.merge(remA)).resolves.toEqual(undefined);
+        await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+        await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
           adds: new Map(),
           removes: new Map([[a.signerKey, remA.hash]]),
         });
@@ -699,9 +683,9 @@ describe('merge', () => {
       });
 
       test('succeeds when signer has not been added', async () => {
-        expect((await set.merge(remA)).isOk()).toBe(true);
-        expect(await custodyAddress()).toEqual(custody1.signerKey);
-        expect(await signersByCustody(custody1.signerKey)).toEqual({
+        await expect(set.merge(remA)).resolves.toEqual(undefined);
+        await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+        await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
           adds: new Map(),
           removes: new Map([[a.signerKey, remA.hash]]),
         });
@@ -712,10 +696,10 @@ describe('merge', () => {
       });
 
       test('succeeds (no-ops) with duplicate signer remove message', async () => {
-        expect((await set.merge(remA)).isOk()).toBe(true);
-        expect((await set.merge(remA)).isOk()).toBe(true);
-        expect(await custodyAddress()).toEqual(custody1.signerKey);
-        expect(await signersByCustody(custody1.signerKey)).toEqual({
+        await expect(set.merge(remA)).resolves.toEqual(undefined);
+        await expect(set.merge(remA)).resolves.toEqual(undefined);
+        await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+        await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
           adds: new Map(),
           removes: new Map([[a.signerKey, remA.hash]]),
         });
@@ -730,11 +714,9 @@ describe('merge', () => {
           { data: { body: { delegate: custody1.signerKey } } },
           { transient: { signer: custody1 } }
         );
-        const res = await set.merge(remSelf);
-        expect(res.isOk()).toBe(false);
-        expect(res._unsafeUnwrapErr()).toBe('SignerSet.mergeSignerRemove: signer and delegate must be different');
-        expect(await custodyAddress()).toEqual(custody1.signerKey);
-        expect(await signersByCustody(custody1.signerKey)).toEqual({ adds: new Map(), removes: new Map() });
+        await expect(set.merge(remSelf)).rejects.toThrow();
+        await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+        await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
         expect(events).toEqual([['changeCustody', fid, custody1.signerKey, custody1Register]]);
       });
 
@@ -744,14 +726,14 @@ describe('merge', () => {
         });
 
         test('succeeds with later custody address', async () => {
-          expect((await set.merge(addA)).isOk()).toBe(true);
-          expect((await set.merge(remA2)).isOk()).toBe(true);
-          expect(await custodyAddress()).toEqual(custody2.signerKey);
-          expect(await signersByCustody(custody1.signerKey)).toEqual({
+          await expect(set.merge(addA)).resolves.toEqual(undefined);
+          await expect(set.merge(remA2)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map([[a.signerKey, addA.hash]]),
             removes: new Map(),
           });
-          expect(await signersByCustody(custody2.signerKey)).toEqual({
+          await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
             adds: new Map(),
             removes: new Map([[a.signerKey, remA2.hash]]),
           });
@@ -763,14 +745,14 @@ describe('merge', () => {
         });
 
         test('succeeds but does not emit removeSigner event with earlier custody address', async () => {
-          expect((await set.merge(addA2)).isOk()).toBe(true);
-          expect((await set.merge(remA)).isOk()).toBe(true);
-          expect(await custodyAddress()).toEqual(custody2.signerKey);
-          expect(await signersByCustody(custody1.signerKey)).toEqual({
+          await expect(set.merge(addA2)).resolves.toEqual(undefined);
+          await expect(set.merge(remA)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map(),
             removes: new Map([[a.signerKey, remA.hash]]),
           });
-          expect(await signersByCustody(custody2.signerKey)).toEqual({
+          await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
             adds: new Map([[a.signerKey, addA2.hash]]),
             removes: new Map(),
           });
@@ -788,9 +770,9 @@ describe('merge', () => {
         });
 
         test('succeeds with later timestamp', async () => {
-          expect((await set.merge(remA)).isOk()).toBe(true);
-          expect(await custodyAddress()).toEqual(custody1.signerKey);
-          expect(await signersByCustody(custody1.signerKey)).toEqual({
+          await expect(set.merge(remA)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map(),
             removes: new Map([[a.signerKey, remA.hash]]),
           });
@@ -807,9 +789,9 @@ describe('merge', () => {
             hash: Faker.datatype.hexaDecimal(128),
             data: { ...remA.data, signedAt: addA.data.signedAt - 1 },
           };
-          expect((await set.merge(remAEarlier)).isOk()).toBe(true);
-          expect(await custodyAddress()).toEqual(custody1.signerKey);
-          expect(await signersByCustody(custody1.signerKey)).toEqual({
+          await expect(set.merge(remAEarlier)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map([[a.signerKey, addA.hash]]),
             removes: new Map(),
           });
@@ -825,9 +807,9 @@ describe('merge', () => {
             hash: Faker.datatype.hexaDecimal(128),
             data: { ...remA.data, signedAt: addA.data.signedAt },
           };
-          expect((await set.merge(remASameTimestamp)).isOk()).toBe(true);
-          expect(await custodyAddress()).toEqual(custody1.signerKey);
-          expect(await signersByCustody(custody1.signerKey)).toEqual({
+          await expect(set.merge(remASameTimestamp)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map(),
             removes: new Map([[a.signerKey, remASameTimestamp.hash]]),
           });
@@ -845,14 +827,14 @@ describe('merge', () => {
         });
 
         test('succeeds with later custody address', async () => {
-          expect((await set.merge(remA)).isOk()).toBe(true);
-          expect((await set.merge(remA2)).isOk()).toBe(true);
-          expect(await custodyAddress()).toEqual(custody2.signerKey);
-          expect(await signersByCustody(custody1.signerKey)).toEqual({
+          await expect(set.merge(remA)).resolves.toEqual(undefined);
+          await expect(set.merge(remA2)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map(),
             removes: new Map([[a.signerKey, remA.hash]]),
           });
-          expect(await signersByCustody(custody2.signerKey)).toEqual({
+          await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
             adds: new Map(),
             removes: new Map([[a.signerKey, remA2.hash]]),
           });
@@ -864,14 +846,14 @@ describe('merge', () => {
         });
 
         test('succeeds but does not emit removeSigner event with earlier custody address', async () => {
-          expect((await set.merge(remA2)).isOk()).toBe(true);
-          expect((await set.merge(remA)).isOk()).toBe(true);
-          expect(await custodyAddress()).toEqual(custody2.signerKey);
-          expect(await signersByCustody(custody1.signerKey)).toEqual({
+          await expect(set.merge(remA2)).resolves.toEqual(undefined);
+          await expect(set.merge(remA)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map(),
             removes: new Map([[a.signerKey, remA.hash]]),
           });
-          expect(await signersByCustody(custody2.signerKey)).toEqual({
+          await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
             adds: new Map(),
             removes: new Map([[a.signerKey, remA2.hash]]),
           });
@@ -894,9 +876,9 @@ describe('merge', () => {
             hash: Faker.datatype.hexaDecimal(128),
             data: { ...remA.data, signedAt: remA.data.signedAt + 1 },
           };
-          expect((await set.merge(remALater)).isOk()).toBe(true);
-          expect(await custodyAddress()).toEqual(custody1.signerKey);
-          expect(await signersByCustody(custody1.signerKey)).toEqual({
+          await expect(set.merge(remALater)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map(),
             removes: new Map([[a.signerKey, remALater.hash]]),
           });
@@ -913,9 +895,9 @@ describe('merge', () => {
             hash: Faker.datatype.hexaDecimal(128),
             data: { ...remA.data, signedAt: remA.data.signedAt - 1 },
           };
-          expect((await set.merge(remAEarlier)).isOk()).toBe(true);
-          expect(await custodyAddress()).toEqual(custody1.signerKey);
-          expect(await signersByCustody(custody1.signerKey)).toEqual({
+          await expect(set.merge(remAEarlier)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map(),
             removes: new Map([[a.signerKey, remA.hash]]),
           });
@@ -928,9 +910,9 @@ describe('merge', () => {
         describe('with the same timestamp', () => {
           test('succeeds with higher message hash', async () => {
             const remAHigherHash: SignerRemove = { ...remA, hash: remA.hash + 'a' };
-            expect((await set.merge(remAHigherHash)).isOk()).toBe(true);
-            expect(await custodyAddress()).toEqual(custody1.signerKey);
-            expect(await signersByCustody(custody1.signerKey)).toEqual({
+            await expect(set.merge(remAHigherHash)).resolves.toEqual(undefined);
+            await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+            await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
               adds: new Map(),
               removes: new Map([[a.signerKey, remAHigherHash.hash]]),
             });
@@ -943,9 +925,9 @@ describe('merge', () => {
 
           test('succeeds (no-ops) with lower message hash', async () => {
             const remALowerHash: SignerRemove = { ...remA, hash: remA.hash.slice(0, -1) };
-            expect((await set.merge(remALowerHash)).isOk()).toBe(true);
-            expect(await custodyAddress()).toEqual(custody1.signerKey);
-            expect(await signersByCustody(custody1.signerKey)).toEqual({
+            await expect(set.merge(remALowerHash)).resolves.toEqual(undefined);
+            await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+            await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
               adds: new Map(),
               removes: new Map([[a.signerKey, remA.hash]]),
             });

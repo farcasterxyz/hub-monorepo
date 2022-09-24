@@ -18,23 +18,11 @@ import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 import { RPCServer, RPCClient } from '~/network/rpc';
 import Engine from '~/engine';
 import Faker from 'faker';
-import DB from '~/db';
+import { jestRocksDB } from '~/db/jestUtils';
 
 const aliceFid = Faker.datatype.number();
-const testDb = new DB('rpc.test');
+const testDb = jestRocksDB('rpc.test');
 const engine = new Engine(testDb);
-
-beforeAll(async () => {
-  await testDb.open();
-});
-
-afterAll(async () => {
-  await testDb.close();
-});
-
-afterEach(async () => {
-  await testDb.clear();
-});
 
 let aliceCustodySigner: EthereumSigner;
 let aliceCustodyRegister: IDRegistryEvent;
@@ -121,14 +109,16 @@ describe('rpc', () => {
   });
 
   test('returns an error if there is no custody event', async () => {
-    engine._reset();
+    await engine._reset();
     const response = await client.getCustodyEventByUser(aliceFid);
-    expect(response.isOk()).not.toBeTruthy();
+    console.log('expecting error', response);
+    expect(response.isOk()).toBeFalsy();
     expect(response._unsafeUnwrapErr()).toBe('Not Found');
   });
 
   test('get the custody event for an fid', async () => {
     const response = await client.getCustodyEventByUser(aliceFid);
+    console.log('expecting ok', response);
     expect(response.isOk()).toBeTruthy();
     const custodyEvent = response._unsafeUnwrap();
     expect(custodyEvent).toEqual(aliceCustodyRegister);
