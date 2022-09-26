@@ -2,10 +2,10 @@ import Faker from 'faker';
 import { Factories } from '~/factories';
 import CastSet from '~/sets/castSet';
 import { CastRecast, CastRemove, CastShort } from '~/types';
-import { setupRocksDB } from '~/db/jestUtils';
+import { jestRocksDB } from '~/db/jestUtils';
 import CastDB from '~/db/cast';
 
-const rocksDb = setupRocksDB('castSet.test');
+const rocksDb = jestRocksDB('castSet.test');
 const testDb = new CastDB(rocksDb);
 
 const fid = Faker.datatype.number();
@@ -36,6 +36,7 @@ beforeAll(async () => {
       body: {
         targetHash: castShort1.hash,
       },
+      signedAt: castShort1.data.signedAt + 1,
     },
   });
 
@@ -45,6 +46,7 @@ beforeAll(async () => {
       body: {
         targetHash: castShort2.hash,
       },
+      signedAt: castShort2.data.signedAt + 1,
     },
   });
 });
@@ -169,13 +171,50 @@ describe('merge', () => {
       await expect(getCastRemoves()).resolves.toEqual(new Set([castRemove1]));
     });
 
-    xdescribe('when another message has removed the same cast', () => {
-      test('succeeds with a higher lexicographical hash', () => {
-        // TODO
+    describe('when another message has removed the same cast', () => {
+      test('succeeds with a later timestamp', async () => {
+        const castRemove1Later = {
+          ...castRemove1,
+          data: { ...castRemove1.data, signedAt: castRemove1.data.signedAt + 1 },
+          hash: Faker.datatype.hexaDecimal(128),
+        };
+        await set.merge(castRemove1);
+        await expect(set.merge(castRemove1Later)).resolves.toEqual(undefined);
+        await expect(getCastRemoves()).resolves.toEqual(new Set([castRemove1Later]));
       });
 
-      test('succeeds (no-ops) with lower lexicographical hash', () => {
-        // TODO
+      test('succeeds (no-ops) with earlier timestamp', async () => {
+        const castRemove1Earlier = {
+          ...castRemove1,
+          data: { ...castRemove1.data, signedAt: castRemove1.data.signedAt - 1 },
+          hash: Faker.datatype.hexaDecimal(128),
+        };
+        await set.merge(castRemove1);
+        await expect(set.merge(castRemove1Earlier)).resolves.toEqual(undefined);
+        await expect(getCastRemoves()).resolves.toEqual(new Set([castRemove1]));
+      });
+
+      describe('with the same timestamp', () => {
+        test('succeeds with higher hash', async () => {
+          const castRemove1HigherHash = {
+            ...castRemove1,
+            hash: castRemove1.hash + 'a',
+          };
+          await set.merge(castRemove1);
+          await expect(set.merge(castRemove1HigherHash)).resolves.toEqual(undefined);
+          await expect(getCastRemoves()).resolves.toEqual(new Set([castRemove1HigherHash]));
+        });
+
+        test('succeeds (no-ops) with lower hash', async () => {
+          const castRemove1LowerHash = {
+            ...castRemove1,
+            hash: castRemove1.hash.slice(0, -1),
+          };
+
+          await set.merge(castRemove1);
+          await expect(set.merge(castRemove1LowerHash)).resolves.toEqual(undefined);
+          await expect(getCastRemoves()).resolves.toEqual(new Set([castRemove1]));
+        });
       });
     });
   });

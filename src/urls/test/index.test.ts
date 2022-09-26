@@ -4,7 +4,7 @@ import { expectInstanceOf } from '~/urls/test/utils';
 describe('URLs', () => {
   test('Missing scheme', () => {
     const result = parseUrl('path/without/scheme');
-    expect(result._unsafeUnwrapErr()).toContain('URL is missing scheme');
+    expect(result._unsafeUnwrapErr().message).toContain('URL is missing scheme');
   });
 
   test('Unrecognized scheme', () => {
@@ -18,6 +18,6 @@ describe('URLs', () => {
     expect(unrecognizedUrl.toString()).toEqual(unrecognizedURLStr);
 
     result = parseUrl(unrecognizedURLStr, { allowUnrecognized: false });
-    expect(result._unsafeUnwrapErr()).toContain('Unrecognized scheme');
+    expect(result._unsafeUnwrapErr().message).toContain('Unrecognized scheme');
   });
 });

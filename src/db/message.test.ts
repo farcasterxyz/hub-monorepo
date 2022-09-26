@@ -1,24 +1,14 @@
-import RocksDB from '~/db/rocksdb';
+import Faker from 'faker';
 import { Factories } from '~/factories';
 import { CastShort, Ed25519Signer, FollowAdd, MessageType } from '~/types';
 import { generateEd25519Signer } from '~/utils';
 import MessageDB from '~/db/message';
+import { jestRocksDB } from '~/db/jestUtils';
 
-const rocks = new RocksDB('db.message.test');
+const rocks = jestRocksDB('db.message.test');
 const db = new MessageDB(rocks);
 
-beforeAll(async () => {
-  await rocks.open();
-});
-
-beforeEach(async () => {
-  await rocks.clear();
-});
-
-afterAll(async () => {
-  await rocks.close();
-  await rocks.destroy();
-});
+const fid = Faker.datatype.number();
 
 /** Create sample data */
 let signer: Ed25519Signer;
@@ -28,16 +18,16 @@ let follow1: FollowAdd;
 
 beforeAll(async () => {
   signer = await generateEd25519Signer();
-  cast1 = await Factories.CastShort.create({}, { transient: { signer } });
-  cast2 = await Factories.CastShort.create();
-  follow1 = await Factories.FollowAdd.create({}, { transient: { signer } });
+  cast1 = await Factories.CastShort.create({ data: { fid } }, { transient: { signer } });
+  cast2 = await Factories.CastShort.create({ data: { fid } });
+  follow1 = await Factories.FollowAdd.create({ data: { fid } }, { transient: { signer } });
 });
 
 describe('putMessage', () => {
   test('stores messages and indexes it by signer', async () => {
     await expect(db.putMessage(cast1)).resolves.toEqual(undefined);
     await expect(db.getMessage(cast1.hash)).resolves.toEqual(cast1);
-    await expect(db.getMessagesBySigner(cast1.signer)).resolves.toEqual([cast1]);
+    await expect(db.getMessagesBySigner(cast1.data.fid, cast1.signer)).resolves.toEqual([cast1]);
   });
 });
 
@@ -75,7 +65,7 @@ describe('deleteMessage', () => {
     await expect(db.deleteMessage(cast1.hash)).resolves.toEqual(undefined);
 
     await expect(db.getMessage(cast1.hash)).rejects.toThrow();
-    await expect(db.getMessagesBySigner(cast1.signer)).resolves.toEqual([]);
+    await expect(db.getMessagesBySigner(cast1.data.fid, cast1.signer)).resolves.toEqual([]);
   });
 });
 
@@ -85,13 +75,16 @@ describe('getMessagesBySigner', () => {
     await db.putMessage(cast2);
     await db.putMessage(follow1);
 
-    const allMessages = await db.getMessagesBySigner(signer.signerKey);
+    const wrongFid = await db.getMessagesBySigner(fid + 1, signer.signerKey);
+    expect(wrongFid).toEqual([]);
+
+    const allMessages = await db.getMessagesBySigner(fid, signer.signerKey);
     expect(allMessages).toEqual([cast1, follow1]);
 
-    const casts = await db.getMessagesBySigner(signer.signerKey, MessageType.CastShort);
+    const casts = await db.getMessagesBySigner(fid, signer.signerKey, MessageType.CastShort);
     expect(casts).toEqual([cast1]);
 
-    const follows = await db.getMessagesBySigner(signer.signerKey, MessageType.FollowAdd);
+    const follows = await db.getMessagesBySigner(fid, signer.signerKey, MessageType.FollowAdd);
     expect(follows).toEqual([follow1]);
   });
 });

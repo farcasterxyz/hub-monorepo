@@ -1,28 +1,29 @@
 import Faker from 'faker';
-import DB from '~/db';
+import { ResultAsync } from 'neverthrow';
+
+import { jestRocksDB } from '~/db/jestUtils';
+import SignerDB from '~/db/signer';
 import Engine from '~/engine';
+import { BadRequestError, NotFoundError } from '~/errors';
 import { Factories } from '~/factories';
 import { Ed25519Signer, EthereumSigner, SignerAdd, SignerMessage, SignerRemove, IDRegistryEvent } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner, hashFCObject } from '~/utils';
 
-const testDb = new DB(`engine.signer.test`);
+const testDb = jestRocksDB(`engine.signer.test`);
 const engine = new Engine(testDb);
-
-beforeAll(async () => {
-  await testDb.open();
-});
-
-afterEach(async () => {
-  await engine._reset();
-});
-
-afterAll(async () => {
-  await testDb.close();
-});
-
 const aliceFid = Faker.datatype.number();
-const aliceCustodyAddress = () => engine._getCustodyAddress(aliceFid);
-const aliceSigners = () => engine.getSignersbyUser(aliceFid);
+
+const signerDb = new SignerDB(testDb);
+const aliceCustodyAddress = async (): Promise<string> => {
+  const event = await signerDb.getCustodyEvent(aliceFid);
+  return event.args.to;
+};
+const aliceSigners = async (): Promise<Set<SignerAdd>> => {
+  const address = await ResultAsync.fromPromise(aliceCustodyAddress(), () => undefined);
+  if (address.isErr()) return new Set();
+  const signerAdds = await signerDb.getSignerAddsByUser(aliceFid, address.value);
+  return new Set(signerAdds);
+};
 
 describe('mergeSignerMessage', () => {
   let aliceCustodySigner: EthereumSigner;
@@ -51,7 +52,7 @@ describe('mergeSignerMessage', () => {
   test('fails without a custody address', async () => {
     const res = await engine.mergeMessage(aliceSignerAddDelegate);
     expect(res.isOk()).toBe(false);
-    expect(await aliceCustodyAddress()).toEqual(undefined);
+    await expect(aliceCustodyAddress()).rejects.toThrow(NotFoundError);
     expect(await aliceSigners()).toEqual(new Set());
   });
 
@@ -83,7 +84,9 @@ describe('mergeSignerMessage', () => {
       );
       const res = await engine.mergeMessage(addEthSigner);
       expect(res.isOk()).toBe(false);
-      expect(res._unsafeUnwrapErr()).toBe('validateSignerMessage: delegate must be an EdDSA public key');
+      expect(res._unsafeUnwrapErr()).toMatchObject(
+        new BadRequestError('validateSignerMessage: delegate must be an EdDSA public key')
+      );
       expect(await aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
       expect(await aliceSigners()).toEqual(new Set());
     });
@@ -97,7 +100,9 @@ describe('mergeSignerMessage', () => {
       );
       const res = await engine.mergeMessage(addBob);
       expect(res.isOk()).toBe(false);
-      expect(res._unsafeUnwrapErr()).toBe('validateSignerMessage: signer must be a custody address');
+      expect(res._unsafeUnwrapErr()).toMatchObject(
+        new BadRequestError('validateSignerMessage: signer must be a custody address')
+      );
       expect(await aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
       expect(await aliceSigners()).toEqual(new Set([aliceSignerAddDelegate]));
     });
@@ -107,7 +112,7 @@ describe('mergeSignerMessage', () => {
       signerAddClone.hash = await hashFCObject({ foo: 'bar' });
       const res = await engine.mergeMessage(signerAddClone);
       expect(res.isOk()).toBe(false);
-      expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid hash');
+      expect(res._unsafeUnwrapErr()).toMatchObject(new BadRequestError('validateMessage: invalid hash'));
       expect(await aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
       expect(await aliceSigners()).toEqual(new Set());
     });
@@ -118,7 +123,7 @@ describe('mergeSignerMessage', () => {
         '0x5b699d494b515b22258c01ad19710d44c3f12235f0c01e91d09a1e4e2cd25d80c77026a7319906da3b8ce62abc18477c19e444a02949a0dde54f8cadef889502';
       const res = await engine.mergeMessage(signerAddClone);
       expect(res.isOk()).toBe(false);
-      expect(res._unsafeUnwrapErr()).toBe('validateMessage: invalid signature');
+      expect(res._unsafeUnwrapErr()).toMatchObject(new BadRequestError('validateMessage: invalid signature'));
       expect(await aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
       expect(await aliceSigners()).toEqual(new Set());
     });
@@ -132,7 +137,9 @@ describe('mergeSignerMessage', () => {
       );
       const res = await engine.mergeMessage(badSignerAdd);
       expect(res.isOk()).toBe(false);
-      expect(res._unsafeUnwrapErr()).toBe('validateMessage: signedAt more than 10 mins in the future');
+      expect(res._unsafeUnwrapErr()).toMatchObject(
+        new BadRequestError('validateMessage: signedAt more than 10 mins in the future')
+      );
       expect(await aliceCustodyAddress()).toEqual(aliceCustodySigner.signerKey);
       expect(await aliceSigners()).toEqual(new Set());
     });

@@ -2,6 +2,7 @@ import { IdentifierSpec } from 'caip/dist/types';
 import { Result, err, ok } from 'neverthrow';
 import { isValidId, getParams, joinParams } from '~/urls/utils';
 import { FarcasterURL } from '~/urls/baseUrl';
+import { BadRequestError, FarcasterError } from '~/errors';
 
 export const UserIdSpec: IdentifierSpec = {
   name: 'userId',
@@ -31,9 +32,9 @@ export type UserIdConstructorArgs = Omit<UserIdParams, 'namespace'>;
 export class UserId {
   public static spec = UserIdSpec;
 
-  public static parse(fid: string): Result<UserIdParams, string> {
+  public static parse(fid: string): Result<UserIdParams, FarcasterError> {
     if (!isValidId(fid, this.spec)) {
-      return err(`Invalid ${this.spec.name} provided: ${fid}`);
+      return err(new BadRequestError(`Invalid ${this.spec.name} provided: ${fid}`));
     }
     return ok(new UserId(getParams<UserIdParams>(fid, this.spec)).toJSON());
   }
@@ -77,11 +78,11 @@ export class UserId {
 export class UserURL extends FarcasterURL {
   public readonly userId: UserId;
 
-  public static parse(url: string): Result<UserURL, string> {
+  public static parse(url: string): Result<UserURL, FarcasterError> {
     const schemePrefix = this.SCHEME + '://';
 
     if (!url.startsWith(schemePrefix)) {
-      return err(`URL missing 'farcaster' scheme`);
+      return err(new BadRequestError(`URL missing 'farcaster' scheme`));
     }
 
     const remainder = url.substring(url.indexOf(schemePrefix) + schemePrefix.length);

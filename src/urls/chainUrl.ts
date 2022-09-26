@@ -1,5 +1,6 @@
 import { ChainId } from 'caip';
 import { Result, err, ok } from 'neverthrow';
+import { BadRequestError, FarcasterError, ServerError } from '~/errors';
 import { URL } from '~/urls/baseUrl';
 
 export abstract class BaseChainURL extends URL {
@@ -10,11 +11,11 @@ export abstract class BaseChainURL extends URL {
 export class ChainURL extends BaseChainURL {
   public readonly chainId: ChainId;
 
-  public static parse(url: string): Result<ChainURL, string> {
+  public static parse(url: string): Result<ChainURL, FarcasterError> {
     const schemePrefix = this.SCHEME + '://';
 
     if (!url.startsWith(schemePrefix)) {
-      return err(`URL missing 'chain' scheme`);
+      return err(new BadRequestError(`URL missing 'chain' scheme`));
     }
 
     const remainder = url.substring(url.indexOf(schemePrefix) + schemePrefix.length);
@@ -26,11 +27,11 @@ export class ChainURL extends BaseChainURL {
       // check for extra invalid data before or after the chain ID
       const referenceRegex = new RegExp('^' + ChainId.spec.parameters.values[1].regex + '$');
       if (!referenceRegex.test(chainId.reference)) {
-        return err(`ChainURL.parse: invalid extra data after ChainId: '${remainder}`);
+        return err(new BadRequestError(`ChainURL.parse: invalid extra data after ChainId: '${remainder}`));
       }
       return ok(new ChainURL(chainId));
     } catch (e) {
-      return err(`ChainURL.parse: unable to parse '${url}`);
+      return err(new ServerError(`ChainURL.parse: unable to parse '${url}`));
     }
   }
 

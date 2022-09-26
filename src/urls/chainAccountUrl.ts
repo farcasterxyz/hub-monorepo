@@ -1,6 +1,7 @@
 import { AccountId } from 'caip';
 import { ethers } from 'ethers';
 import { err, ok, Result } from 'neverthrow';
+import { BadRequestError, FarcasterError, ServerError } from '~/errors';
 import { BaseChainURL, ChainURL } from '~/urls/chainUrl';
 
 /**
@@ -11,11 +12,11 @@ import { BaseChainURL, ChainURL } from '~/urls/chainUrl';
 export class ChainAccountURL extends ChainURL {
   public readonly address: string;
 
-  public static parse(url: string): Result<ChainAccountURL, string> {
+  public static parse(url: string): Result<ChainAccountURL, FarcasterError> {
     const schemePrefix = this.SCHEME + '://';
 
     if (!url.startsWith(schemePrefix)) {
-      return err(`URL missing 'chain' scheme`);
+      return err(new BadRequestError(`URL missing 'chain' scheme`));
     }
 
     const remainder = url.substring(url.indexOf(schemePrefix) + schemePrefix.length);
@@ -33,7 +34,7 @@ export class ChainAccountURL extends ChainURL {
       ].join(AccountId.spec.parameters.delimiter);
       const referenceRegex = new RegExp('^' + regexBody + '$');
       if (!referenceRegex.test(remainder)) {
-        return err(`ChainAccountURL.parse: invalid AccountID`);
+        return err(new BadRequestError(`ChainAccountURL.parse: invalid AccountID`));
       }
 
       // validate address
@@ -41,13 +42,13 @@ export class ChainAccountURL extends ChainURL {
         try {
           ethers.utils.getAddress(accountId.address);
         } catch {
-          return err(`ChainAccountURL.parse: invalid Ethereum address provided`);
+          return err(new BadRequestError(`ChainAccountURL.parse: invalid Ethereum address provided`));
         }
       }
 
       return ok(new ChainAccountURL(accountId));
     } catch (e) {
-      return err(`ChainAccountURL.parse: unable to parse '${url}'`);
+      return err(new ServerError(`ChainAccountURL.parse: unable to parse '${url}'`));
     }
   }
 

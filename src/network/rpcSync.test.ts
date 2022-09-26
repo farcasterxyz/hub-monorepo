@@ -1,9 +1,8 @@
 import { AddressInfo } from 'net';
-import { populateEngine } from '~/engine/engine.mock.test';
-import { Result } from 'neverthrow';
 import { RPCServer, RPCClient } from '~/network/rpc';
 import Engine from '~/engine';
 import { jestRocksDB } from '~/db/jestUtils';
+import { populateEngine } from '~/engine/mock';
 
 const serverDb = jestRocksDB('rpcSync.test.server');
 const serverEngine = new Engine(serverDb);
@@ -26,7 +25,7 @@ describe('rpcSync', () => {
     client = new RPCClient(server.address as AddressInfo);
 
     await populateEngine(serverEngine, NUM_USERS);
-  });
+  }, 20 * 1000);
 
   afterAll(async () => {
     await server.stop();
@@ -54,7 +53,7 @@ describe('rpcSync', () => {
 
       for (const user of userIds) {
         // get the signer messages first so we can prepare to ingest the remaining messages later
-        const custodyEventResult: Result<any, string> = await client.getCustodyEventByUser(user);
+        const custodyEventResult = await client.getCustodyEventByUser(user);
         expect(custodyEventResult.isOk()).toBeTruthy();
         const custodyResult = await clientEngine.mergeIDRegistryEvent(custodyEventResult._unsafeUnwrap());
         expect(custodyResult.isOk()).toBeTruthy();

@@ -1,7 +1,10 @@
-import { Result, ok, err } from 'neverthrow';
+import { ResultAsync } from 'neverthrow';
+import ReactionDB from '~/db/reaction';
+import RocksDB from '~/db/rocksdb';
+import { BadRequestError } from '~/errors';
 import { Reaction, ReactionAdd, ReactionRemove, URI } from '~/types';
 import { isReactionAdd, isReactionRemove } from '~/types/typeguards';
-import { hashCompare, sanitizeSigner } from '~/utils';
+import { hashCompare } from '~/utils';
 
 /**
  * ReactionSet stores and fetches reactions for a Farcaster ID.
@@ -16,31 +19,35 @@ import { hashCompare, sanitizeSigner } from '~/utils';
  * 3. Higher message hash lexicographic order wins
  */
 class ReactionSet {
-  private _adds: Map<string, ReactionAdd>;
-  private _removes: Map<string, ReactionRemove>;
+  private _db: ReactionDB;
 
-  constructor() {
-    this._adds = new Map();
-    this._removes = new Map();
+  constructor(db: RocksDB) {
+    this._db = new ReactionDB(db);
   }
 
   /** Get a reaction by its targetURI */
-  getReaction(targetUri: URI): ReactionAdd | undefined {
-    return this._adds.get(targetUri);
+  getReaction(fid: number, targetUri: URI): Promise<ReactionAdd> {
+    return this._db.getReactionAdd(fid, targetUri);
   }
 
-  getReactions(): Set<ReactionAdd> {
-    return new Set([...this._adds.values()]);
+  async getReactionsByUser(fid: number): Promise<Set<ReactionAdd>> {
+    const reactions = await this._db.getReactionAddsByUser(fid);
+    return new Set(reactions);
   }
 
-  getAllMessages(): Set<Reaction> {
-    return new Set([...this._adds.values(), ...this._removes.values()]);
+  async getAllReactionMessagesByUser(fid: number): Promise<Set<Reaction>> {
+    const messages = await this._db.getAllReactionMessagesByUser(fid);
+    return new Set(messages);
+  }
+
+  async revokeSigner(fid: number, signer: string): Promise<void> {
+    return this._db.deleteAllReactionMessagesBySigner(fid, signer);
   }
 
   // TODO: add query API
 
   /** Merge a new message into the set */
-  merge(message: Reaction): Result<void, string> {
+  async merge(message: Reaction): Promise<void> {
     if (isReactionAdd(message)) {
       return this.mergeReactionAdd(message);
     }
@@ -49,25 +56,7 @@ class ReactionSet {
       return this.mergeReactionRemove(message);
     }
 
-    return err('ReactionSet.merge: invalid message format');
-  }
-
-  revokeSigner(signer: string): Result<void, string> {
-    // Check messages in adds and drop if they match the signer
-    for (const [target, message] of this._adds) {
-      if (sanitizeSigner(message.signer) === sanitizeSigner(signer)) {
-        this._adds.delete(target);
-      }
-    }
-
-    // Check messages in removes and drop if they match the signer
-    for (const [target, message] of this._removes) {
-      if (sanitizeSigner(message.signer) === sanitizeSigner(signer)) {
-        this._removes.delete(target);
-      }
-    }
-
-    return ok(undefined);
+    throw new BadRequestError('ReactionSet.merge: invalid message format');
   }
 
   /**
@@ -102,72 +91,51 @@ class ReactionSet {
   }
 
   /** mergeReactionAdd tries to add a ReactionAdd message to the set */
-  private mergeReactionAdd(message: ReactionAdd): Result<void, string> {
+  private async mergeReactionAdd(message: ReactionAdd): Promise<void> {
     const { targetUri } = message.data.body;
+    const { fid } = message.data;
 
     // Check if the target has already been reacted to
-    const existingReactionAdd = this._adds.get(targetUri);
-    if (existingReactionAdd && this.reactionMessageCompare(message, existingReactionAdd) <= 0) {
-      return ok(undefined);
+    const existingReactionAdd = await ResultAsync.fromPromise(this._db.getReactionAdd(fid, targetUri), () => undefined);
+    if (existingReactionAdd.isOk() && this.reactionMessageCompare(message, existingReactionAdd.value) <= 0) {
+      return undefined;
     }
 
     // Check if the target has already had a reaction removed
-    const existingReactionRemove = this._removes.get(targetUri);
-    if (existingReactionRemove) {
-      if (this.reactionMessageCompare(message, existingReactionRemove) <= 0) {
-        return ok(undefined);
-      }
-
-      // Drop target from removes set
-      this._removes.delete(targetUri);
+    const existingReactionRemove = await ResultAsync.fromPromise(
+      this._db.getReactionRemove(fid, targetUri),
+      () => undefined
+    );
+    if (existingReactionRemove.isOk() && this.reactionMessageCompare(message, existingReactionRemove.value) <= 0) {
+      return undefined;
     }
 
     // Add the message to adds
-    this._adds.set(targetUri, message);
-    return ok(undefined);
+    return this._db.putReactionAdd(message);
   }
 
   /** mergeReactionRemove tries to add a ReactionRemove message to the set */
-  private mergeReactionRemove(message: ReactionRemove): Result<void, string> {
+  private async mergeReactionRemove(message: ReactionRemove): Promise<void> {
     const { targetUri } = message.data.body;
+    const { fid } = message.data;
 
     // Check if the target has already had a reaction removed
-    const existingReactionRemove = this._removes.get(targetUri);
-    if (existingReactionRemove && this.reactionMessageCompare(message, existingReactionRemove) <= 0) {
-      return ok(undefined);
+    const existingReactionRemove = await ResultAsync.fromPromise(
+      this._db.getReactionRemove(fid, targetUri),
+      () => undefined
+    );
+    if (existingReactionRemove.isOk() && this.reactionMessageCompare(message, existingReactionRemove.value) <= 0) {
+      return undefined;
     }
 
     // Check if the target has already been reacted to
-    const existingReactionAdd = this._adds.get(targetUri);
-    if (existingReactionAdd) {
-      if (this.reactionMessageCompare(message, existingReactionAdd) <= 0) {
-        return ok(undefined);
-      }
-
-      // Drop target from adds set
-      this._adds.delete(targetUri);
+    const existingReactionAdd = await ResultAsync.fromPromise(this._db.getReactionAdd(fid, targetUri), () => undefined);
+    if (existingReactionAdd.isOk() && this.reactionMessageCompare(message, existingReactionAdd.value) <= 0) {
+      return undefined;
     }
 
     // Add the message to removes
-    this._removes.set(targetUri, message);
-    return ok(undefined);
-  }
-
-  /**
-   * Testing Methods
-   */
-
-  _getAdds(): Set<ReactionAdd> {
-    return new Set([...this._adds.values()]);
-  }
-
-  _getRemoves(): Set<ReactionRemove> {
-    return new Set([...this._removes.values()]);
-  }
-
-  _reset(): void {
-    this._adds = new Map();
-    this._removes = new Map();
+    return this._db.putReactionRemove(message);
   }
 }
 

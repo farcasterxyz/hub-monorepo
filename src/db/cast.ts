@@ -1,6 +1,6 @@
 import { ResultAsync } from 'neverthrow';
 import { Transaction } from '~/db/rocksdb';
-import { Cast, CastRecast, CastRemove, CastShort } from '~/types';
+import { Cast, CastRecast, CastRemove, CastShort, MessageType } from '~/types';
 import { isCastRecast, isCastShort } from '~/types/typeguards';
 import MessageDB from '~/db/message';
 
@@ -16,22 +16,22 @@ class CastDB extends MessageDB {
   }
 
   async getCastAddsByUser(fid: number): Promise<(CastShort | CastRecast)[]> {
-    const hashes = await this.getMessageHashesByPrefix(this.castAddsKey(fid));
+    const hashes = await this.getMessageHashesByPrefix(this.castAddsPrefix(fid));
     return this.getMessages<CastShort | CastRecast>(hashes);
   }
 
   async getCastRemovesByUser(fid: number): Promise<CastRemove[]> {
-    const hashes = await this.getMessageHashesByPrefix(this.castRemovesKey(fid));
+    const hashes = await this.getMessageHashesByPrefix(this.castRemovesPrefix(fid));
     return this.getMessages<CastRemove>(hashes);
   }
 
   async getCastShortsByTarget(target: string): Promise<CastShort[]> {
-    const hashes = await this.getMessageHashesByPrefix(this.castShortsByTargetKey(target));
+    const hashes = await this.getMessageHashesByPrefix(this.castShortsByTargetPrefix(target));
     return this.getMessages<CastShort>(hashes);
   }
 
   async getCastRecastsByTarget(target: string): Promise<CastRecast[]> {
-    const hashes = await this.getMessageHashesByPrefix(this.castRecastsByTargetKey(target));
+    const hashes = await this.getMessageHashesByPrefix(this.castRecastsByTargetPrefix(target));
     return this.getMessages<CastRecast>(hashes);
   }
 
@@ -39,6 +39,11 @@ class CastDB extends MessageDB {
     const prefix = `fid!${fid}!cast`;
     const hashes = await this.getMessageHashesByPrefix(prefix);
     return this.getMessages<Cast>(hashes);
+  }
+
+  async deleteAllCastMessagesBySigner(fid: number, signer: string): Promise<void> {
+    const tsx = await this._deleteAllCastMessagesBySigner(this._db.transaction(), fid, signer);
+    return this._db.commit(tsx);
   }
 
   async putCastAdd(cast: CastShort | CastRecast): Promise<void> {
@@ -65,20 +70,36 @@ class CastDB extends MessageDB {
 
   /** Private key methods */
 
-  private castAddsKey(fid: number, hash?: string) {
-    return `fid!${fid}!castAdds!${hash ?? ''}`;
+  private castAddsPrefix(fid: number) {
+    return `fid!${fid}!castAdds!`;
   }
 
-  private castRemovesKey(fid: number, hash?: string) {
-    return `fid!${fid}!castRemoves!${hash ?? ''}`;
+  private castAddsKey(fid: number, hash: string) {
+    return this.castAddsPrefix(fid) + hash;
   }
 
-  private castShortsByTargetKey(target: string, hash?: string) {
-    return `castShortsByTarget!${target}!${hash ?? ''}`;
+  private castRemovesPrefix(fid: number) {
+    return `fid!${fid}!castRemoves!`;
   }
 
-  private castRecastsByTargetKey(target: string, hash?: string) {
-    return `castRecastsByTarget!${target}!${hash ?? ''}`;
+  private castRemovesKey(fid: number, hash: string) {
+    return this.castRemovesPrefix(fid) + hash;
+  }
+
+  private castShortsByTargetPrefix(target: string) {
+    return `castShortsByTarget!${target}!`;
+  }
+
+  private castShortsByTargetKey(target: string, hash: string) {
+    return this.castShortsByTargetPrefix(target) + hash;
+  }
+
+  private castRecastsByTargetPrefix(target: string) {
+    return `castRecastsByTarget!${target}!`;
+  }
+
+  private castRecastsByTargetKey(target: string, hash: string) {
+    return this.castRecastsByTargetPrefix(target) + hash;
   }
 
   /** Private transaction methods */
@@ -142,6 +163,19 @@ class CastDB extends MessageDB {
   private _deleteCastRemove(tsx: Transaction, castRemove: CastRemove): Transaction {
     tsx = tsx.del(this.castRemovesKey(castRemove.data.fid, castRemove.data.body.targetHash));
     return this._deleteMessage(tsx, castRemove);
+  }
+
+  private async _deleteAllCastMessagesBySigner(tsx: Transaction, fid: number, signer: string): Promise<Transaction> {
+    const castShorts = await this.getMessagesBySigner<CastShort>(fid, signer, MessageType.CastShort);
+    const castRecasts = await this.getMessagesBySigner<CastRecast>(fid, signer, MessageType.CastRecast);
+    for (const castAdd of [...castShorts, ...castRecasts]) {
+      tsx = this._deleteCastAdd(tsx, castAdd);
+    }
+    const castRemoves = await this.getMessagesBySigner<CastRemove>(fid, signer, MessageType.CastRemove);
+    for (const castRemove of castRemoves) {
+      tsx = this._deleteCastRemove(tsx, castRemove);
+    }
+    return tsx;
   }
 }
 

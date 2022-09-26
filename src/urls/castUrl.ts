@@ -4,6 +4,7 @@ import { Result, err, ok } from 'neverthrow';
 import { UserId, UserIdConstructorArgs, UserIdParams, UserIdSpec } from '~/urls/userUrl';
 import { FarcasterURL } from '~/urls/baseUrl';
 import { isValidId, getParams, joinParams } from '~/urls/utils';
+import { BadRequestError, FarcasterError, ServerError } from '~/errors';
 
 const REGEX_BLAKE2B_HASH = '0x[a-f0-9]{128}';
 
@@ -103,14 +104,14 @@ export type CastIdConstructorArgs = {
 export class CastId {
   public static spec = CastIdSpec;
 
-  public static parse(id: string): Result<CastIdParams, string> {
+  public static parse(id: string): Result<CastIdParams, FarcasterError> {
     if (!isValidId(id, this.spec)) {
-      return err(`Invalid ${this.spec.name} provided: ${id}`);
+      return err(new BadRequestError(`Invalid ${this.spec.name} provided: ${id}`));
     }
     try {
       return ok(new CastId(getParams<CastIdParams>(id, this.spec)).toJSON());
     } catch (e) {
-      return err('' + e);
+      return err(new ServerError('' + e));
     }
   }
 
@@ -151,11 +152,11 @@ export class CastId {
 export class CastURL extends FarcasterURL {
   public readonly castId: CastId;
 
-  public static parse(url: string): Result<CastURL, string> {
+  public static parse(url: string): Result<CastURL, FarcasterError> {
     const schemePrefix = this.SCHEME + '://';
 
     if (!url.startsWith(schemePrefix)) {
-      return err(`URL missing 'farcaster' scheme`);
+      return err(new BadRequestError(`URL missing 'farcaster' scheme`));
     }
 
     const remainder = url.substring(url.indexOf(schemePrefix) + schemePrefix.length);

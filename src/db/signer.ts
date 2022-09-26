@@ -1,4 +1,4 @@
-import { ok, err, Result, ResultAsync } from 'neverthrow';
+import { ResultAsync } from 'neverthrow';
 import { Transaction } from '~/db/rocksdb';
 import { IDRegistryEvent, SignerAdd, SignerMessage, SignerRemove } from '~/types';
 import { isIDRegistryEvent } from '~/types/typeguards';

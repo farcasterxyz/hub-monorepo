@@ -1,4 +1,3 @@
-import { ok, err, Result } from 'neverthrow';
 import RocksDB, { Transaction } from '~/db/rocksdb';
 import { Message, MessageType } from '~/types';
 import { isMessage } from '~/types/typeguards';
@@ -35,20 +34,6 @@ class MessageDB {
     return json;
   }
 
-  // TODO: remove old version that uses Result
-  // async getMessages<T extends Message>(hashes: string[]): Promise<Result<T[], string>> {
-  //   const messageKeys = hashes.map((hash) => this.messagesKey(hash));
-  //   const result = await this._db.getMany(messageKeys);
-
-  //   if (result.isErr()) return err(result.error);
-
-  //   const json = result.value.reduce((acc: T[], value: string) => {
-  //     return value ? [...acc, JSON.parse(value)] : acc;
-  //   }, []);
-
-  //   return ok(json);
-  // }
-
   async putMessage(message: Message): Promise<void> {
     const tsx = this._putMessage(this._db.transaction(), message);
     return this._db.commit(tsx);
@@ -71,20 +56,28 @@ class MessageDB {
     return hashes;
   }
 
-  async getMessagesBySigner(signer: string, type?: MessageType): Promise<Message[]> {
-    const hashes = await this.getMessageHashesByPrefix(this.signersKey(signer, type));
-    return this.getMessages(hashes);
+  async getMessagesBySigner<T extends Message>(fid: number, signer: string, type?: MessageType): Promise<T[]> {
+    const hashes = await this.getMessageHashesByPrefix(this.messagesBySignerPrefix(fid, signer, type));
+    return this.getMessages<T>(hashes);
   }
 
   /** Private key methods */
 
-  private messagesKey(hash?: string) {
-    return `messages!${hash ?? ''}`;
+  private messagesPrefix() {
+    return `messages!`;
   }
 
-  private signersKey(signer: string, type?: MessageType, hash?: string) {
-    // TODO: fix hack by creating separate methods for prefixes and keys
-    return `signer!${signer}!${type ? type + '!' : ''}${hash ?? ''}`;
+  private messagesKey(hash: string) {
+    return this.messagesPrefix() + hash;
+  }
+
+  private messagesBySignerPrefix(fid: number, signer: string, type?: MessageType) {
+    const typePrefix = type ? `type!${type}!` : '';
+    return `fid!${fid}!signer!${signer}!${typePrefix}`;
+  }
+
+  private messagesBySignerKey(fid: number, signer: string, type: MessageType, hash: string) {
+    return this.messagesBySignerPrefix(fid, signer, type) + hash;
   }
 
   /** Private transaction methods */
@@ -92,12 +85,12 @@ class MessageDB {
   protected _putMessage(tsx: Transaction, message: Message): Transaction {
     return tsx
       .put(this.messagesKey(message.hash), JSON.stringify(message))
-      .put(this.signersKey(message.signer, message.data.type, message.hash), message.hash);
+      .put(this.messagesBySignerKey(message.data.fid, message.signer, message.data.type, message.hash), message.hash);
   }
 
   protected _deleteMessage(tsx: Transaction, message: Message): Transaction {
     return tsx
-      .del(this.signersKey(message.signer, message.data.type, message.hash))
+      .del(this.messagesBySignerKey(message.data.fid, message.signer, message.data.type, message.hash))
       .del(this.messagesKey(message.hash));
   }
 }

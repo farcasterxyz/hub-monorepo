@@ -1,23 +1,10 @@
-import RocksDB from '~/db/rocksdb';
 import CastDB from '~/db/cast';
 import { Factories } from '~/factories';
 import { CastShort } from '~/types';
+import { jestRocksDB } from '~/db/jestUtils';
 
-const rocks = new RocksDB('db.cast.test');
+const rocks = jestRocksDB('db.cast.test');
 const db = new CastDB(rocks);
-
-beforeAll(async () => {
-  await rocks.open();
-});
-
-beforeEach(async () => {
-  await rocks.clear();
-});
-
-afterAll(async () => {
-  await rocks.close();
-  await rocks.destroy();
-});
 
 /** Test data */
 let cast1: CastShort;
@@ -71,4 +58,12 @@ describe('getCastAdd', () => {
   test('fails if cast not found', async () => {
     await expect(db.getCastAdd(cast1.data.fid, cast1.hash)).rejects.toThrow();
   });
+});
+
+describe('getAllCastMessagesByUser', () => {
+  // TODO
+});
+
+describe('deleteAllCastMessagesBySigner', () => {
+  // TODO
 });

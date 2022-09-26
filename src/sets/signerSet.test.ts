@@ -7,7 +7,7 @@ import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 import { jestRocksDB } from '~/db/jestUtils';
 import SignerDB from '~/db/signer';
 
-const rocksDb = jestRocksDB('castSet.test');
+const rocksDb = jestRocksDB('signerSet.test');
 const testDb = new SignerDB(rocksDb);
 
 const fid = Faker.datatype.number();
