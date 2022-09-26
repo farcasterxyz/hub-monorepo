@@ -3,6 +3,21 @@ import { Transaction } from '~/db/rocksdb';
 import { MessageType, Verification, VerificationEthereumAddress, VerificationRemove } from '~/types';
 import MessageDB from '~/db/message';
 
+/**
+ * VerificationDB extends MessageDB and provides methods for getting, putting, and deleting reaction messages
+ * from a RocksDB instance.
+ *
+ * Verifications are stored in this schema:
+ * - <extends message schema>
+ * - fid!<fid>!verificationAdds!<claimHash>: <VerificationEthereumAddress hash>
+ * - fid!<fid>!verificationRemoves!<claimHash>: <VerificationRemove hash>
+ *
+ * Note that the VerificationDB implements the constraint that a single claimHash can only exist in either verificationAdds
+ * or verificationRemoves. Therefore, _putVerificationAdd also deletes the VerificationRemove for the same target and
+ * _putVerificationRemove also deletes the VerificationEthereumAddress for the same target. The VerificationDB does not resolve
+ * conflicts between two verification messages with the same claimHash. The VerificationSet should be used to handle conflicts and
+ * decide whether or not to perform a mutation.
+ */
 class VerificationDB extends MessageDB {
   async getVerificationAdd(fid: number, claimHash: string): Promise<VerificationEthereumAddress> {
     const messageHash = await this._db.get(this.verificationAddsKey(fid, claimHash));

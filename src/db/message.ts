@@ -2,6 +2,17 @@ import RocksDB, { Transaction } from '~/db/rocksdb';
 import { Message, MessageType } from '~/types';
 import { isMessage } from '~/types/typeguards';
 
+/**
+ * MessageDB is like a Message model. It can be instantiated with a RocksDB instance and provides methods for
+ * getting, putting, and deleting messages. All other DBs (i.e. CastDB, ReactionDB, etc) extend MessageDB using
+ * the same pattern:
+ *
+ * - Public methods to be used in sets (i.e. getMessage, putMessage, etc)
+ * - Key methods for determining the schema of RocksDB (i.e. messagesPrefix, messagesKey)
+ * - Transaction methods for creating and chaining RocksDB transactions (i.e. _putMessage)
+ *
+ * All public put and delete methods in DB files should each represent a single, atomic RocksDB transaction.
+ */
 class MessageDB {
   protected _db: RocksDB;
 
@@ -12,6 +23,8 @@ class MessageDB {
   static query(db: RocksDB) {
     return this.constructor(db);
   }
+
+  /** Public methods */
 
   async getMessage<T extends Message>(hash: string): Promise<T> {
     const value = await this._db.get(this.messagesKey(hash));

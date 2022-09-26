@@ -3,6 +3,22 @@ import { Transaction } from '~/db/rocksdb';
 import { ReactionAdd, ReactionRemove, MessageType, Reaction } from '~/types';
 import MessageDB from '~/db/message';
 
+/**
+ * ReactionDB extends MessageDB and provides methods for getting, putting, and deleting reaction messages
+ * from a RocksDB instance.
+ *
+ * Reactions are stored in this schema:
+ * - <extends message schema>
+ * - fid!<fid>!reactionAdds!<target>: <ReactionAdd hash>
+ * - fid!<fid>!reactionRemoves!<target>: <ReactionRemove hash>
+ * - reactionAddsByTarget!<target>!<hash>: <ReactionAdd hash>
+ *
+ * Note that the ReactionDB implements the constraint that a single target can only exist in either reactionAdds
+ * or reactionRemoves. Therefore, _putReactionAdd also deletes the ReactionRemove for the same target and _putReactionRemove
+ * also deletes the ReactionAdd for the same target. The ReactionDB does not resolve conflicts between two reaction
+ * messages with the same target. The ReactionSet should be used to handle conflicts and decide whether or not to
+ * perform a mutation.
+ */
 class ReactionDB extends MessageDB {
   async getReactionAdd(fid: number, target: string): Promise<ReactionAdd> {
     const messageHash = await this._db.get(this.reactionAddsKey(fid, target));
@@ -106,7 +122,6 @@ class ReactionDB extends MessageDB {
     }
 
     // Index by target
-
     tsx = tsx.put(this.reactionAddsByTargetKey(reaction.data.body.targetUri, reaction.hash), reaction.hash);
 
     return tsx;

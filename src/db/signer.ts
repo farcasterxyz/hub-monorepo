@@ -5,12 +5,30 @@ import { isIDRegistryEvent } from '~/types/typeguards';
 import { sanitizeSigner } from '~/utils';
 import MessageDB from '~/db/message';
 
+/**
+ * SignerDB extends MessageDB and provides methods for getting, putting, and deleting signer messages
+ * and custody events from a RocksDB instance.
+ *
+ * Signer messages are stored in this schema:
+ * - <extends message schema>
+ * - fid!<fid>!custody!<custody address>!signerAdds!<delegate pub key>: <SignerAdd hash>
+ * - fid!<fid>!custody!<custody address>!signerRemoves!<delegate pub key>: <SignerRemove hash>
+ *
+ * Custody events are stored in this schema:
+ * - custodyEvents!<fid>: <IDRegistryEvent>
+ *
+ * Note that the SignerDB implements the constraint that a single target can only exist in either signerAdds
+ * or signerRemoves for a given custody address. Therefore, _putSignerAdd also deletes the SignerRemove for the same
+ * delegate and _putSignerRemove also deletes the SignerAdd for the same delegate. The SignerDB does not resolve
+ * conflicts between two signer messages with the same delegate. The SignerSet should be used to handle conflicts and
+ * decide whether or not to perform a mutation.
+ */
 class SignerDB extends MessageDB {
   /** Custody event methods */
 
   async getUsers(): Promise<number[]> {
     const fids: number[] = [];
-    const prefix = this.custodyEventKey();
+    const prefix = this.custodyEventPrefix();
     for await (const [key] of this._db.iteratorByPrefix(prefix, {
       values: false,
       keyAsBuffer: false,
@@ -55,12 +73,12 @@ class SignerDB extends MessageDB {
   }
 
   async getSignerAddsByUser(fid: number, custodyAddress: string): Promise<SignerAdd[]> {
-    const hashes = await this.getMessageHashesByPrefix(this.signerAddsKey(fid, custodyAddress));
+    const hashes = await this.getMessageHashesByPrefix(this.signerAddsPrefix(fid, custodyAddress));
     return this.getMessages<SignerAdd>(hashes);
   }
 
   async getSignerRemovesByUser(fid: number, custodyAddress: string): Promise<SignerRemove[]> {
-    const hashes = await this.getMessageHashesByPrefix(this.signerRemovesKey(fid, custodyAddress));
+    const hashes = await this.getMessageHashesByPrefix(this.signerRemovesPrefix(fid, custodyAddress));
     return this.getMessages<SignerRemove>(hashes);
   }
 
@@ -95,16 +113,27 @@ class SignerDB extends MessageDB {
 
   /** Private key methods */
 
-  private custodyEventKey(fid?: number) {
-    return `custodyEvents!${fid ?? ''}`;
+  private custodyEventPrefix() {
+    return `custodyEvents!`;
+  }
+  private custodyEventKey(fid: number) {
+    return this.custodyEventPrefix() + `${fid}`;
   }
 
-  private signerAddsKey(fid: number, custodyAddress: string, signer?: string) {
-    return `fid!${fid}!custody!${sanitizeSigner(custodyAddress)}!signerAdds!${sanitizeSigner(signer ?? '')}`;
+  private signerAddsPrefix(fid: number, custodyAddress: string) {
+    return `fid!${fid}!custody!${sanitizeSigner(custodyAddress)}!signerAdds!`;
   }
 
-  private signerRemovesKey(fid: number, custodyAddress: string, signer?: string) {
-    return `fid!${fid}!custody!${sanitizeSigner(custodyAddress)}!signerRemoves!${sanitizeSigner(signer ?? '')}`;
+  private signerAddsKey(fid: number, custodyAddress: string, signer: string) {
+    return this.signerAddsPrefix(fid, custodyAddress) + sanitizeSigner(signer);
+  }
+
+  private signerRemovesPrefix(fid: number, custodyAddress: string) {
+    return `fid!${fid}!custody!${sanitizeSigner(custodyAddress)}!signerRemoves!`;
+  }
+
+  private signerRemovesKey(fid: number, custodyAddress: string, signer: string) {
+    return this.signerRemovesPrefix(fid, custodyAddress) + sanitizeSigner(signer);
   }
 
   /** Private transaction methods */

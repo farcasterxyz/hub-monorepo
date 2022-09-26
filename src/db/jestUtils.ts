@@ -1,5 +1,9 @@
 import RocksDB from '~/db/rocksdb';
 
+/**
+ * jestRocksDB instantiates a RocksDB instance and inserts callbacks to start and teardown the
+ * instance so that tests don't have to think about doing that.
+ */
 export const jestRocksDB = (name: string) => {
   const rocksDb = new RocksDB(name);
 

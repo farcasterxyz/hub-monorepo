@@ -3,6 +3,22 @@ import { Transaction } from '~/db/rocksdb';
 import { Follow, FollowAdd, FollowRemove, MessageType } from '~/types';
 import MessageDB from '~/db/message';
 
+/**
+ * FollowDB extends MessageDB and provides methods for getting, putting, and deleting follow messages
+ * from a RocksDB instance.
+ *
+ * Follows are stored in this schema:
+ * - <extends message schema>
+ * - fid!<fid>!followAdds!<target>: <FollowAdd hash>
+ * - fid!<fid>!followRemoves!<target>: <FollowRemove hash>
+ * - followAddsByTarget!<target>!<hash>: <FollowAdd hash>
+ *
+ * Note that the FollowDB implements the constraint that a single target can only exist in either followAdds
+ * or followRemoves. Therefore, _putFollowAdd also deletes the FollowRemove for the same target and _putFollowRemove
+ * also deletes the FollowAdd for the same target. The FollowDB does not resolve conflicts between two follow
+ * messages with the same target. The FollowSet should be used to handle conflicts and decide whether or not to
+ * perform a mutation.
+ */
 class FollowDB extends MessageDB {
   async getFollowAdd(fid: number, target: string): Promise<FollowAdd> {
     const messageHash = await this._db.get(this.followAddsKey(fid, target));

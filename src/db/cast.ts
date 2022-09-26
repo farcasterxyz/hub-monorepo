@@ -4,6 +4,23 @@ import { Cast, CastRecast, CastRemove, CastShort, MessageType } from '~/types';
 import { isCastRecast, isCastShort } from '~/types/typeguards';
 import MessageDB from '~/db/message';
 
+/**
+ * CastDB extends MessageDB and provides methods for getting, putting, and deleting cast messages
+ * from a RocksDB instance.
+ *
+ * Casts are stored in this schema:
+ * - <extends message schema>
+ * - fid!<fid>!castAdds!<cast hash>: <CastShort or CastRecast hash>
+ * - fid!<fid>!castRemoves!<cast hash>: <CastRemove hash>
+ * - castShortsByTarget!<cast hash>!<hash>: <CastShort hash>
+ * - castRecastsByTarget!<cast hash>!<hash>: <CastRecast hash>
+ *
+ * Note that the CastDB implements the constraint that a single cast hash can only exist in either castAdds
+ * or castRemoves. Therefore, _putCastAdd also deletes the CastRemove for the same cast hash and _putCastRemove
+ * also deletes the CastShort or CastRecast for the same target. The CastDB does not resolve conflicts between two cast
+ * messages with the same cast hash. The CastSet should be used to handle conflicts and decide whether or not to
+ * perform a mutation.
+ */
 class CastDB extends MessageDB {
   async getCastAdd(fid: number, hash: string): Promise<CastShort | CastRecast> {
     const messageHash = await this._db.get(this.castAddsKey(fid, hash));
