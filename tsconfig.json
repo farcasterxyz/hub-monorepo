@@ -8,8 +8,6 @@
     /* Emit additional JS to ease support for importing CJS modules. This enables `allowSyntheticDefaultImports` for type compatibility. */
     "esModuleInterop": true,
 
-    "downlevelIteration": true,
-
     /* Ensure that casing is correct in imports. */
     "forceConsistentCasingInFileNames": true,
 
