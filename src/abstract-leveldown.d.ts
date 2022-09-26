@@ -53,6 +53,7 @@ export interface AbstractLevelDOWN<K = any, V = any> extends AbstractOptions {
   iterator(options?: AbstractIteratorOptions<K>): AbstractIterator<K, V>;
 
   readonly status: 'new' | 'opening' | 'open' | 'closing' | 'closed';
+  readonly location: string;
   isOperational(): boolean;
 }
 

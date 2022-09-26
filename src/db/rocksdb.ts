@@ -1,3 +1,4 @@
+import { mkdir } from 'fs';
 import AbstractRocksDB from 'rocksdb';
 import { AbstractBatch, AbstractChainedBatch } from '~/abstract-leveldown';
 import { FarcasterError, NotFoundError, RocksDBError } from '~/errors';
@@ -21,6 +22,10 @@ class RocksDB {
 
   constructor(name?: string) {
     this._db = new AbstractRocksDB(`${DB_PREFIX}/${name ?? DB_NAME_DEFAULT}`);
+  }
+
+  get location() {
+    return this._db.location;
   }
 
   get status() {
@@ -94,11 +99,14 @@ class RocksDB {
       } else if (this._db.status === 'open') {
         resolve(undefined);
       } else {
-        this._db.open({ createIfMissing: true, errorIfExists: false }, (e?: Error) => {
-          if (!e) {
-            this._hasOpened = true;
-          }
-          e ? reject(parseError(e)) : resolve(undefined);
+        mkdir(this._db.location, { recursive: true }, (fsErr: Error | null) => {
+          if (fsErr) reject(parseError(fsErr));
+          this._db.open({ createIfMissing: true, errorIfExists: false }, (e?: Error) => {
+            if (!e) {
+              this._hasOpened = true;
+            }
+            e ? reject(parseError(e)) : resolve(undefined);
+          });
         });
       }
     });

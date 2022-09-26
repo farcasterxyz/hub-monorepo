@@ -1,31 +1,45 @@
+import { existsSync, rmdirSync, mkdirSync } from 'fs';
 import Faker from 'faker';
-import DB from '~/db/rocksdb';
 import { NotFoundError, RocksDBError } from '~/errors';
+import RocksDB from '~/db/rocksdb';
+import { jestRocksDB } from '~/db/jestUtils';
 
 const randomDbName = () => `rocksdb.test.${Faker.name.lastName().toLowerCase()}`;
 
 describe('open', () => {
-  test('opens db and changes status', async () => {
-    const db = new DB(randomDbName());
-    expect(db.status).toEqual('new');
-    await expect(db.open()).resolves.toEqual(undefined);
-    expect(db.status).toEqual('open');
-    await db.destroy();
-  });
+  describe('opens db and changes status', () => {
+    let db: RocksDB;
 
-  test('succeeds if opening twice', async () => {
-    const db = new DB(randomDbName());
-    await expect(db.open()).resolves.toEqual(undefined);
-    await expect(db.open()).resolves.toEqual(undefined);
-    expect(db.status).toEqual('open');
-    await db.close();
-    await db.destroy();
+    beforeEach(() => {
+      db = new RocksDB(randomDbName());
+      expect(db.location).toBeTruthy();
+    });
+
+    afterEach(async () => {
+      await expect(db.open()).resolves.toEqual(undefined);
+      expect(db.status).toEqual('open');
+      await db.destroy();
+    });
+
+    test('when directory does not exist', async () => {
+      if (existsSync(db.location)) {
+        rmdirSync(db.location);
+      }
+    });
+
+    test('when directory exists', async () => {
+      mkdirSync(db.location, { recursive: true });
+    });
+
+    test('when opening twice', async () => {
+      await expect(db.open()).resolves.toEqual(undefined);
+    });
   });
 });
 
 describe('close', () => {
   test('succeeds', async () => {
-    const db = new DB(randomDbName());
+    const db = new RocksDB(randomDbName());
     expect(db.status).toEqual('new');
     await db.open();
     await expect(db.close()).resolves.toEqual(undefined);
@@ -36,19 +50,19 @@ describe('close', () => {
 
 describe('destroy', () => {
   test('fails when db has never been opened', async () => {
-    const db = new DB(randomDbName());
+    const db = new RocksDB(randomDbName());
     expect(db.status).toEqual('new');
     await expect(db.destroy()).rejects.toThrow(new RocksDBError('db never opened'));
   });
 
   test('succeeds when db is open', async () => {
-    const db = new DB(randomDbName());
+    const db = new RocksDB(randomDbName());
     await db.open();
     await expect(db.destroy()).resolves.toEqual(undefined);
   });
 
   test('destroys db', async () => {
-    const db = new DB(randomDbName());
+    const db = new RocksDB(randomDbName());
     await db.open();
     await db.close();
     await expect(db.destroy()).resolves.toEqual(undefined);
@@ -57,7 +71,7 @@ describe('destroy', () => {
 
 describe('clear', () => {
   test('succeeds', async () => {
-    const db = new DB(randomDbName());
+    const db = new RocksDB(randomDbName());
     await db.open();
     await db.put('key', 'value');
     const value = await db.get('key');
@@ -69,19 +83,7 @@ describe('clear', () => {
 });
 
 describe('with db', () => {
-  const db = new DB('rocksdb.test');
-
-  beforeAll(async () => {
-    await db.open();
-  });
-
-  beforeEach(async () => {
-    await db.clear();
-  });
-
-  afterAll(async () => {
-    await db.destroy();
-  });
+  const db = jestRocksDB('rocksdb.test');
 
   describe('get', () => {
     test('gets a value by key', async () => {
