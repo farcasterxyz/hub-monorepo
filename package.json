@@ -62,8 +62,6 @@
     "@noble/ed25519": "^1.6.1",
     "caip": "^1.1.0",
     "canonicalize": "^1.0.8",
-    "cli-table3": "^0.6.1",
-    "colors": "^1.4.0",
     "ethereum-cryptography": "^1.1.2",
     "ethers": "^5.6.1",
     "faker": "5.5.3",
@@ -71,8 +69,8 @@
     "libp2p": "^0.38.0",
     "log-update": "5.0.1",
     "neverthrow": "^5.0.0",
-    "rocksdb": "^5.2.1",
     "node-fetch": "^3.2.10",
+    "rocksdb": "^5.2.1",
     "tiny-typed-emitter": "^2.1.0",
     "undici": "^5.10.0",
     "uri-js": "^4.4.1"
