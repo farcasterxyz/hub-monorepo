@@ -6,6 +6,8 @@ import { mockEvents, MockFCEvent, mockFid, populateEngine } from '~/engine/mock'
 const testDb = jestRocksDB('engine.mock.test');
 const engine = new Engine(testDb);
 
+const TEST_TIMEOUT = 2 * 60 * 1000; // 2 min timeout
+
 beforeEach(async () => {
   await engine._reset();
 });
@@ -59,6 +61,6 @@ describe('populateEngine', () => {
         expect(reactions.size).toEqual(4 * 2);
       }
     },
-    15 * 1000
-  ); // Extend timeout to 15s
+    TEST_TIMEOUT
+  );
 });

@@ -14,6 +14,7 @@ let server: RPCServer;
 let client: RPCClient;
 
 const NUM_USERS = 5;
+const TEST_TIMEOUT = 2 * 60 * 1000; // 2 min timeout
 
 describe('rpcSync', () => {
   beforeAll(async () => {
@@ -25,7 +26,7 @@ describe('rpcSync', () => {
     client = new RPCClient(server.address as AddressInfo);
 
     await populateEngine(serverEngine, NUM_USERS);
-  }, 20 * 1000);
+  }, TEST_TIMEOUT);
 
   afterAll(async () => {
     await server.stop();
@@ -105,7 +106,6 @@ describe('rpcSync', () => {
         await expect(clientEngine.getAllVerificationsByUser(user)).resolves.toEqual(verifications);
       }
     },
-    // Set a 2 minute timeout for this test
-    2 * 60 * 1000
+    TEST_TIMEOUT
   );
 });
