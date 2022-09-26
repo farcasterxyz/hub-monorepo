@@ -62,7 +62,6 @@
     "@noble/ed25519": "^1.6.1",
     "caip": "^1.1.0",
     "canonicalize": "^1.0.8",
-    "cli-table3": "^0.6.1",
     "colors": "^1.4.0",
     "ethereum-cryptography": "^1.1.2",
     "ethers": "^5.6.1",
