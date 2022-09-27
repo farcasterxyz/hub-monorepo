@@ -7,11 +7,8 @@ import { isReactionAdd, isReactionRemove } from '~/types/typeguards';
 import { hashCompare } from '~/utils';
 
 /**
- * ReactionSet stores and fetches reactions for a Farcaster ID.
- *
- * The ReactionSet is implemented as a modified LWW set. ReactionAdd messages are stored in the adds map, and ReactionRemove
- * messages are stored in the removes map. The adds and removes maps are indexed by targetURI, and a given targetURI can
- * only be in either adds or removes at one time.
+ * ReactionSet is a modified LWW set that stores and fetches reactions. ReactionAdd and ReactionRemove messages are
+ * stored in the ReactionDB.
  *
  * Conflicts between two reaction messages are resolved in this order (see reactionMessageCompare for implementation):
  * 1. Later timestamp wins

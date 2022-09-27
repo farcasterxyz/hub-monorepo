@@ -4,26 +4,20 @@ import {
   Reaction,
   Verification,
   VerificationEthereumAddress,
-  VerificationRemove,
   VerificationEthereumAddressClaim,
   SignatureAlgorithm,
   SignerMessage,
   HashAlgorithm,
   IDRegistryEvent,
   Follow,
-  URI,
-  ReactionAdd,
-  FollowAdd,
   CastShort,
   CastRecast,
   CastRemove,
-  SignerAdd,
-  MessageType,
 } from '~/types';
 import { hashMessage, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
 import { hexToBytes } from 'ethereum-cryptography/utils';
-import { ok, err, Result, ResultAsync, Err } from 'neverthrow';
+import { ok, err, Result, ResultAsync } from 'neverthrow';
 import { ethers, utils } from 'ethers';
 import {
   isCastShort,

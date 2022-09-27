@@ -1,25 +1,10 @@
 import { TypedEmitter } from 'tiny-typed-emitter';
-import { ResultAsync, ok, err, Err } from 'neverthrow';
+import { ResultAsync } from 'neverthrow';
 import { IDRegistryEvent, SignerAdd, SignerMessage, SignerRemove } from '~/types';
 import { isSignerAdd, isSignerRemove } from '~/types/typeguards';
 import { hashCompare, sanitizeSigner } from '~/utils';
 import RocksDB from '~/db/rocksdb';
 import SignerDB from '~/db/signer';
-
-/**
- * SignerSet manages the custody address and delegate signers for an fid. The custody address
- * is changed via events from the Farcaster ID Registry contract, and delegate signers are
- * added and removed via SignerAdd and SignerRemove messages, respectively.
- *
- * Read more in the Farcaster protocol docs: https://github.com/farcasterxyz/protocol#45-signer-authorizations
- *
- * This implementation stores a modified LWW set of delegate signers for each custody address, even addresses
- * that the class hasn't seen yet or that have been overwritten. For a given custody address, conflicts
- * between signer messages are resolved in this order:
- * 1. Message with a later timestamp wins
- * 2. If messages have the same timestamp, SignerRemove message wins
- * 3. If both messages have the same type, message with higher lexicographic hash wins
- */
 
 export type SignerSetEvents = {
   /**
@@ -51,6 +36,22 @@ export type SignerSetEvents = {
   removeSigner: (fid: number, signerKey: string, message?: SignerRemove) => void;
 };
 
+/**
+ * The SignerSet manages custody addresses and delegate signers. Custody addresses are changed via events from
+ * the Farcaster IDRegistry contract, and delegate signers are added and removed via SignerAdd and SignerRemove
+ * messages respectively, which are signed by custody addresses.
+ *
+ * Read more in the Farcaster protocol docs: https://github.com/farcasterxyz/protocol#45-signer-authorizations
+ *
+ * This implementation is a modified LWW set that stores and fetches delegate signers for each custody address,
+ * even addresses that the IDRegistry contract hasn't seen yet or that have been overwritten. IDRegistryEvent objects
+ * and SignerAdd and SignerRemove messages are stored in the SignerDB.
+ *
+ * For a given custody address, conflicts between signer messages are resolved in this order:
+ * 1. Message with a later timestamp wins
+ * 2. If messages have the same timestamp, SignerRemove message wins
+ * 3. If both messages have the same type, message with higher lexicographic hash wins
+ */
 class SignerSet extends TypedEmitter<SignerSetEvents> {
   private _db: SignerDB;
 

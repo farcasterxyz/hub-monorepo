@@ -83,7 +83,7 @@ export interface PutBatch<K = any, V = any> {
   readonly value: V;
 }
 
-export interface DelBatch<K = any, V = any> {
+export interface DelBatch<K = any> {
   readonly type: 'del';
   readonly key: K;
 }

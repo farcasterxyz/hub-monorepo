@@ -4,8 +4,17 @@ import VerificationDB from '~/db/verification';
 import { BadRequestError } from '~/errors';
 import { Verification, VerificationEthereumAddress, VerificationRemove } from '~/types';
 import { isVerificationEthereumAddress, isVerificationRemove } from '~/types/typeguards';
-import { hashCompare, sanitizeSigner } from '~/utils';
+import { hashCompare } from '~/utils';
 
+/**
+ * VerificationSet is a modified LWW set that stores and fetches verifications. VerificationEthereumAddress and VerificationRemove
+ * messages are stored in the VerificationDB.
+ *
+ * Conflicts between two verification messages are resolved in this order (see verificationMessageCompare for implementation):
+ * 1. Later timestamp wins
+ * 2. VerificationRemove > VerificationEthereumAddress
+ * 3. Higher message hash lexicographic order wins
+ */
 class VerificationSet {
   private _db: VerificationDB;
 
@@ -30,8 +39,6 @@ class VerificationSet {
   async revokeSigner(fid: number, signer: string): Promise<void> {
     return this._db.deleteAllVerificationMessagesBySigner(fid, signer);
   }
-
-  // TODO: add query API
 
   async merge(message: Verification): Promise<void> {
     if (isVerificationRemove(message)) {

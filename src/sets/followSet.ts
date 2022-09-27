@@ -7,11 +7,8 @@ import { isFollowAdd, isFollowRemove } from '~/types/typeguards';
 import { hashCompare } from '~/utils';
 
 /**
- * FollowSet stores and fetches follow actions for a Farcaster ID.
- *
- * The FollowSet is implemented as a modified LWW set. FollowAdd messages are stored in the adds map, and FollowRemove
- * messages are stored in the removes map. The adds and removes maps are indexed by targetURI, and a given targetURI can
- * only be in adds or removes at one time.
+ * FollowSet is a modified LWW set that stores and fetches follow actions. FollowAdd and FollowRemove messages
+ * are stored in the FollowDB.
  *
  * Conflicts between two follow messages are resolved in this order (see followMessageCompare for implementation):
  * 1. Later timestamp wins

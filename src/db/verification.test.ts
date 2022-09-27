@@ -1,6 +1,6 @@
 import { Factories } from '~/factories';
 import { jestRocksDB } from '~/db/jestUtils';
-import { Ed25519Signer, FollowAdd, FollowRemove, VerificationEthereumAddress, VerificationRemove } from '~/types';
+import { Ed25519Signer, VerificationEthereumAddress, VerificationRemove } from '~/types';
 import { NotFoundError } from '~/errors';
 import { generateEd25519Signer } from '~/utils';
 import VerificationDB from '~/db/verification';

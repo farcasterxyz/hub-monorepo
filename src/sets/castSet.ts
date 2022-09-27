@@ -1,11 +1,20 @@
 import { ResultAsync } from 'neverthrow';
 import { Cast, CastRemove, CastRecast, CastShort } from '~/types';
-import { isCastRemove, isCastRecast, isCastShort, isCast } from '~/types/typeguards';
+import { isCastRemove, isCastRecast, isCastShort } from '~/types/typeguards';
 import CastDB from '~/db/cast';
 import RocksDB from '~/db/rocksdb';
 import { BadRequestError } from '~/errors';
 import { hashCompare } from '~/utils';
 
+/**
+ * CastSet is a modified LWW set that stores and fetches casts. CastShort, CastRecast, and CastRemove messages
+ * are stored in the CastDB.
+ *
+ * Conflicts between two cast messages are resolved in this order (see castMessageCompare for implementation):
+ * 1. Later timestamp wins
+ * 2. CastRemove > (CastShort, CastRecast)
+ * 3. Higher message hash lexicographic order wins
+ */
 class CastSet {
   private _db: CastDB;
 
