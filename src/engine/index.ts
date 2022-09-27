@@ -40,12 +40,11 @@ import { CastURL, ChainAccountURL, ChainURL, parseUrl, UserURL } from '~/urls';
 import { Web2URL } from '~/urls/web2Url';
 import IDRegistryProvider from '~/provider/idRegistryProvider';
 import { CastHash } from '~/urls/castUrl';
-import { RPCHandler } from '~/network/rpc';
 import RocksDB from '~/db/rocksdb';
 import { BadRequestError, FarcasterError, ServerError } from '~/errors';
 
 /** The Engine receives messages and determines the current state of the Farcaster network */
-class Engine implements RPCHandler {
+class Engine {
   private _db: RocksDB;
   private _castSet: CastSet;
   private _signerSet: SignerSet;

@@ -1,9 +1,12 @@
 import { Factories } from '~/factories';
 import { Node } from '~/network/node';
+import { GossipMessage, NETWORK_TOPIC_PRIMARY } from '~/network/protocol';
 import { sleep } from '~/utils';
-import { GossipMessage } from '~/network/protocol';
 
 const NUM_NODES = 10;
+
+const TEST_TIMEOUT_LONG = 60 * 1000;
+const TEST_TIMEOUT_SHORT = 10 * 1000;
 
 let nodes: Node[];
 // map peerId -> topics -> Messages per topic
@@ -23,7 +26,7 @@ const connectAll = async (nodes: Node[]) => {
   });
 
   // subscribe every node to the test topic
-  nodes.forEach((n) => n.gossip?.subscribe('testTopic'));
+  nodes.forEach((n) => n.gossip?.subscribe(NETWORK_TOPIC_PRIMARY));
   // sleep 5 heartbeats to let the gossipsub network form
   await sleep(5_000);
 };
@@ -33,6 +36,7 @@ const trackMessages = () => {
     {
       n.addListener('message', (topic, message) => {
         expect(message.isOk()).toBeTruthy();
+
         const peerId = n.peerId?.toString() ?? '';
         let existingTopics = messages.get(peerId);
         if (!existingTopics) existingTopics = new Map();
@@ -69,7 +73,7 @@ describe('gossip network', () => {
       await connectAll(nodes);
       nodes.forEach((n) => expect(n.gossip?.getPeers().length).toBeGreaterThanOrEqual(1));
     },
-    10 * 1000
+    TEST_TIMEOUT_SHORT
   );
 
   test(
@@ -81,7 +85,7 @@ describe('gossip network', () => {
       // create a message and send it to a random node.
       const message = {
         content: { message: await Factories.CastShort.create(), root: '', count: 0 },
-        topics: ['testTopic'],
+        topics: [NETWORK_TOPIC_PRIMARY],
       };
 
       // publish via some random node
@@ -97,13 +101,12 @@ describe('gossip network', () => {
 
         const topics = messages.get(n.peerId?.toString() ?? '');
         expect(topics).toBeDefined();
-        expect(topics?.has('testTopic')).toBeTruthy();
-        const topicMessages = topics?.get('testTopic') ?? [];
+        expect(topics?.has(NETWORK_TOPIC_PRIMARY)).toBeTruthy();
+        const topicMessages = topics?.get(NETWORK_TOPIC_PRIMARY) ?? [];
         expect(topicMessages.length).toBe(1);
         expect(topicMessages[0]).toEqual(message);
       });
     },
-    // 30s timeout for this should be plenty
-    30 * 1000
+    TEST_TIMEOUT_LONG
   );
 });

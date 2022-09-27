@@ -75,8 +75,10 @@ export const mockFid = async (engine: Engine, fid: number) => {
     }
   );
   // register the user
-  await engine.mergeIDRegistryEvent(custodyRegister);
-  await engine.mergeMessage(addDelegateSigner);
+  let result = await engine.mergeIDRegistryEvent(custodyRegister);
+  expect(result.isOk()).toBeTruthy();
+  result = await engine.mergeMessage(addDelegateSigner);
+  expect(result.isOk()).toBeTruthy();
   return userInfo;
 };
 

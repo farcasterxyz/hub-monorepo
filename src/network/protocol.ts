@@ -1,6 +1,16 @@
+import { AddressInfo } from 'net';
 import { err, ok, Result } from 'neverthrow';
-import { IDRegistryEvent, Message } from '~/types';
 import { isGossipMessage } from '~/network/typeguards';
+import { IDRegistryEvent, Message } from '~/types';
+
+// Network topic for all FC protocol messages
+export const NETWORK_TOPIC_PRIMARY = 'f_network_topic_primary';
+// Network topic for node contact info messages
+export const NETWORK_TOPIC_CONTACT = 'f_network_topic_contact';
+// The rate at which nodes republish their contact info
+export const GOSSIP_CONTACT_INTERVAL = 10_000;
+// A list of all gossip topics in use by our protocol
+export const GOSSIP_TOPICS = [NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY];
 
 /**
  * GossipMessage defines the structure of the basic message type that is published
@@ -14,7 +24,7 @@ export type GossipMessage<T = Content> = {
   topics: string[];
 };
 
-export type Content = IDRegistryContent | UserContent;
+export type Content = IDRegistryContent | UserContent | ContactInfo;
 
 /**
  * UserContent defines the structure of the primary message type that is published
@@ -42,6 +52,18 @@ export type IDRegistryContent = {
   message: IDRegistryEvent;
   root: string;
   count: number;
+};
+
+/**
+ * ContactInfo allows gossip nodes to share additional information about each other
+ * over the gossip network.
+ *
+ * @rpcAddress - The address at which this node is serving RPC requests
+ * @peerId - The peerId of the node
+ */
+export type ContactInfo = {
+  peerId: string;
+  rpcAddress: AddressInfo | undefined;
 };
 
 /**
