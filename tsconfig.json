@@ -1,42 +1,38 @@
 {
   "compilerOptions": {
-   
     /* Needed to import CJS modules like Jest */
     "allowSyntheticDefaultImports": true,
 
     "baseUrl": "./src",
 
     /* Emit additional JS to ease support for importing CJS modules. This enables `allowSyntheticDefaultImports` for type compatibility. */
-    "esModuleInterop": true,      
-    
-    /* Ensure that casing is correct in imports. */                       
-    "forceConsistentCasingInFileNames": true,            
+    "esModuleInterop": true,
 
-     /* Use ESM by default instead of CJS*/
-    "module": "ES2020",                                 
-    
+    /* Ensure that casing is correct in imports. */
+    "forceConsistentCasingInFileNames": true,
+
+    /* Use ESM by default instead of CJS*/
+    "module": "ES2020",
+
     "moduleResolution": "Node",
-    
+
     /* Specify an output folder for all emitted files. */
-    "outDir": "build",                                   
-    
+    "outDir": "build",
+
     "paths": {
       "~/*": ["./*"]
     },
-    
+
     "rootDir": "src",
-    
+
     /* Skip type checking all .d.ts files. */
-    "skipLibCheck": true,                                
-    
+    "skipLibCheck": true,
+
     /* Enable all strict type-checking options. */
     "strict": true,
 
     /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
-    "target": "es2020",                                 
+    "target": "es2020"
   },
-  "exclude": [
-    "node_modules",
-    "jest.config.ts",
-  ]
+  "exclude": ["node_modules", "jest.config.ts"]
 }

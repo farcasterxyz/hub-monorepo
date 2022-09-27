@@ -1,4 +1,7 @@
 import Faker from 'faker';
+import CastDB from '~/db/cast';
+import { jestRocksDB } from '~/db/jestUtils';
+import SignerDB from '~/db/signer';
 import Engine from '~/engine';
 import { Factories } from '~/factories';
 import {
@@ -7,31 +10,43 @@ import {
   Ed25519Signer,
   EthereumSigner,
   SignerAdd,
-  SignerRemove,
   VerificationEthereumAddress,
   ReactionAdd,
   FollowAdd,
+  CastRecast,
 } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 
-const engine = new Engine();
+const testDb = jestRocksDB(`engine.revoke.test`);
+const engine = new Engine(testDb);
+
 const aliceFid = Faker.datatype.number();
 
-const aliceCustodyAddress = () => engine._getCustodyAddress(aliceFid);
-const aliceSigners = () => engine._getSigners(aliceFid);
-const aliceCasts = () => engine._getCastAdds(aliceFid);
-const aliceReactions = () => engine._getReactionAdds(aliceFid);
-const aliceVerifications = () => engine._getVerificationEthereumAddressAdds(aliceFid);
-const aliceFollows = () => engine._getFollowAdds(aliceFid);
+const signerDb = new SignerDB(testDb);
+const aliceCustodyAddress = async (): Promise<string> => {
+  const event = await signerDb.getCustodyEvent(aliceFid);
+  return event.args.to;
+};
+const aliceSigners = async (): Promise<Set<SignerAdd>> => {
+  const address = await aliceCustodyAddress();
+  const signerAdds = await signerDb.getSignerAddsByUser(aliceFid, address);
+  return new Set(signerAdds);
+};
+
+const castDb = new CastDB(testDb);
+const aliceCasts = async (): Promise<Set<CastShort | CastRecast>> => {
+  const casts = await castDb.getCastAddsByUser(aliceFid);
+  return new Set(casts);
+};
+
+const aliceReactions = () => engine.getAllReactionsByUser(aliceFid);
+const aliceVerifications = () => engine.getAllVerificationsByUser(aliceFid);
+const aliceFollows = () => engine.getAllFollowsByUser(aliceFid);
 
 let aliceCustody: EthereumSigner;
 let aliceCustodyRegister: IDRegistryEvent;
-let aliceCustody2: EthereumSigner;
-let aliceCustody2Transfer: IDRegistryEvent;
 let aliceSigner: Ed25519Signer;
 let aliceSignerAdd: SignerAdd;
-let aliceSignerAdd2: SignerAdd;
-let aliceSignerRemove: SignerRemove;
 let aliceCast: CastShort;
 let aliceReaction: ReactionAdd;
 let aliceVerification: VerificationEthereumAddress;
@@ -43,26 +58,10 @@ beforeAll(async () => {
     args: { to: aliceCustody.signerKey, id: aliceFid },
     name: 'Register',
   });
-  aliceCustody2 = await generateEthereumSigner();
-  aliceCustody2Transfer = await Factories.IDRegistryEvent.create({
-    args: { to: aliceCustody2.signerKey, id: aliceFid },
-    blockNumber: aliceCustodyRegister.blockNumber + 1,
-    name: 'Transfer',
-  });
   aliceSigner = await generateEd25519Signer();
   aliceSignerAdd = await Factories.SignerAdd.create(
     { data: { fid: aliceFid } },
     { transient: { signer: aliceCustody, delegateSigner: aliceSigner } }
-  );
-  aliceSignerAdd2 = await Factories.SignerAdd.create(
-    { data: { fid: aliceFid } },
-    { transient: { signer: aliceCustody2, delegateSigner: aliceSigner } }
-  );
-  aliceSignerRemove = await Factories.SignerRemove.create(
-    {
-      data: { fid: aliceFid, body: { delegate: aliceSigner.signerKey } },
-    },
-    { transient: { signer: aliceCustody } }
   );
   aliceCast = await Factories.CastShort.create({ data: { fid: aliceFid } }, { transient: { signer: aliceSigner } });
   aliceReaction = await Factories.ReactionAdd.create(
@@ -76,11 +75,7 @@ beforeAll(async () => {
   aliceFollow = await Factories.FollowAdd.create({ data: { fid: aliceFid } }, { transient: { signer: aliceSigner } });
 });
 
-describe('revokeSignerMessages', () => {
-  beforeEach(() => {
-    engine._reset();
-  });
-
+describe('revokeSigner', () => {
   describe('with messages signed by delegate', () => {
     beforeEach(async () => {
       await engine.mergeIDRegistryEvent(aliceCustodyRegister);
@@ -89,46 +84,21 @@ describe('revokeSignerMessages', () => {
       await engine.mergeMessage(aliceReaction);
       await engine.mergeMessage(aliceVerification);
       await engine.mergeMessage(aliceFollow);
-      expect(aliceCustodyAddress()).toEqual(aliceCustody.signerKey);
-      expect(aliceSigners()).toEqual(new Set([aliceSigner.signerKey]));
-      expect(aliceCasts()).toEqual(new Set([aliceCast]));
-      expect(aliceReactions()).toEqual(new Set([aliceReaction]));
-      expect(aliceVerifications()).toEqual(new Set([aliceVerification]));
-      expect(aliceFollows()).toEqual(new Set([aliceFollow]));
+      await expect(aliceCustodyAddress()).resolves.toEqual(aliceCustody.signerKey);
+      await expect(aliceSigners()).resolves.toEqual(new Set([aliceSignerAdd]));
+      await expect(aliceCasts()).resolves.toEqual(new Set([aliceCast]));
+      await expect(aliceReactions()).resolves.toEqual(new Set([aliceReaction]));
+      await expect(aliceVerifications()).resolves.toEqual(new Set([aliceVerification]));
+      await expect(aliceFollows()).resolves.toEqual(new Set([aliceFollow]));
     });
 
-    test('drops all signed messages when the delegate is removed', async () => {
-      const res = await engine.mergeMessage(aliceSignerRemove);
-      expect(res.isOk()).toBe(true);
-      expect(aliceCustodyAddress()).toEqual(aliceCustody.signerKey);
-      expect(aliceSigners()).toEqual(new Set());
-      expect(aliceCasts()).toEqual(new Set());
-      expect(aliceReactions()).toEqual(new Set());
-      expect(aliceVerifications()).toEqual(new Set());
-      expect(aliceFollows()).toEqual(new Set());
-    });
-
-    test('drops all signed messages when custody address is removed', async () => {
-      const res = await engine.mergeIDRegistryEvent(aliceCustody2Transfer);
-      expect(res.isOk()).toBe(true);
-      expect(aliceCustodyAddress()).toEqual(aliceCustody2.signerKey);
-      expect(aliceSigners()).toEqual(new Set());
-      expect(aliceCasts()).toEqual(new Set());
-      expect(aliceReactions()).toEqual(new Set());
-      expect(aliceVerifications()).toEqual(new Set());
-      expect(aliceFollows()).toEqual(new Set());
-    });
-
-    test('does not drop signed messages when signer is added by a new custody address', async () => {
-      await engine.mergeMessage(aliceSignerAdd2);
-      const res = await engine.mergeIDRegistryEvent(aliceCustody2Transfer);
-      expect(res.isOk()).toBe(true);
-      expect(aliceCustodyAddress()).toEqual(aliceCustody2.signerKey);
-      expect(aliceSigners()).toEqual(new Set([aliceSigner.signerKey]));
-      expect(aliceCasts()).toEqual(new Set([aliceCast]));
-      expect(aliceReactions()).toEqual(new Set([aliceReaction]));
-      expect(aliceVerifications()).toEqual(new Set([aliceVerification]));
-      expect(aliceFollows()).toEqual(new Set([aliceFollow]));
+    test('drops all signed messages when signer is revoked', async () => {
+      const res = await engine._revokeSigner(aliceFid, aliceSigner.signerKey);
+      expect(res.isOk()).toBeTruthy();
+      await expect(aliceCasts()).resolves.toEqual(new Set());
+      await expect(aliceReactions()).resolves.toEqual(new Set());
+      await expect(aliceVerifications()).resolves.toEqual(new Set());
+      await expect(aliceFollows()).resolves.toEqual(new Set());
     });
   });
 });

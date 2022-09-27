@@ -1,14 +1,14 @@
-import { Result, ok, err } from 'neverthrow';
+import { ResultAsync } from 'neverthrow';
+import FollowDB from '~/db/follow';
+import RocksDB from '~/db/rocksdb';
+import { BadRequestError } from '~/errors';
 import { Follow, FollowAdd, FollowRemove, URI } from '~/types';
 import { isFollowAdd, isFollowRemove } from '~/types/typeguards';
-import { hashCompare, sanitizeSigner } from '~/utils';
+import { hashCompare } from '~/utils';
 
 /**
- * FollowSet stores and fetches follow actions for a Farcaster ID.
- *
- * The FollowSet is implemented as a modified LWW set. FollowAdd messages are stored in the adds map, and FollowRemove
- * messages are stored in the removes map. The adds and removes maps are indexed by targetURI, and a given targetURI can
- * only be in adds or removes at one time.
+ * FollowSet is a modified LWW set that stores and fetches follow actions. FollowAdd and FollowRemove messages
+ * are stored in the FollowDB.
  *
  * Conflicts between two follow messages are resolved in this order (see followMessageCompare for implementation):
  * 1. Later timestamp wins
@@ -16,27 +16,33 @@ import { hashCompare, sanitizeSigner } from '~/utils';
  * 3. Higher message hash lexicographic order wins
  */
 class FollowSet {
-  private _adds: Map<string, FollowAdd>;
-  private _removes: Map<string, FollowRemove>;
+  private _db: FollowDB;
 
-  constructor() {
-    this._adds = new Map();
-    this._removes = new Map();
+  constructor(db: RocksDB) {
+    this._db = new FollowDB(db);
   }
 
   /** Get a follow add by its target URI */
-  get(targetURI: URI): FollowAdd | undefined {
-    return this._adds.get(targetURI);
+  getFollow(fid: number, target: URI): Promise<FollowAdd> {
+    return this._db.getFollowAdd(fid, target);
   }
 
-  getAllMessages(): Set<Follow> {
-    return new Set([...this._adds.values(), ...this._removes.values()]);
+  async getFollowsByUser(fid: number): Promise<Set<FollowAdd>> {
+    const follows = await this._db.getFollowAddsByUser(fid);
+    return new Set(follows);
   }
 
-  // TODO: add query API
+  async getAllFollowMessagesByUser(fid: number): Promise<Set<Follow>> {
+    const messages = await this._db.getAllFollowMessagesByUser(fid);
+    return new Set(messages);
+  }
+
+  async revokeSigner(fid: number, signer: string): Promise<void> {
+    return this._db.deleteAllFollowMessagesBySigner(fid, signer);
+  }
 
   /** Merge a new follow into the set */
-  merge(follow: Follow): Result<void, string> {
+  async merge(follow: Follow): Promise<void> {
     if (isFollowAdd(follow)) {
       return this.mergeFollowAdd(follow);
     }
@@ -45,25 +51,7 @@ class FollowSet {
       return this.mergeFollowRemove(follow);
     }
 
-    return err('FollowSet.merge: invalid message format');
-  }
-
-  revokeSigner(signer: string): Result<void, string> {
-    // Check messages in adds and drop if they match the signer
-    for (const [target, message] of this._adds) {
-      if (sanitizeSigner(message.signer) === sanitizeSigner(signer)) {
-        this._adds.delete(target);
-      }
-    }
-
-    // Check messages in removes and drop if they match the signer
-    for (const [target, message] of this._removes) {
-      if (sanitizeSigner(message.signer) === sanitizeSigner(signer)) {
-        this._removes.delete(target);
-      }
-    }
-
-    return ok(undefined);
+    throw new BadRequestError('FollowSet.merge: invalid message format');
   }
 
   /**
@@ -98,72 +86,51 @@ class FollowSet {
   }
 
   /** mergeFollowAdd tries to add a FollowAdd message to the set */
-  private mergeFollowAdd(message: FollowAdd): Result<void, string> {
+  private async mergeFollowAdd(message: FollowAdd): Promise<void> {
     const { targetUri } = message.data.body;
+    const { fid } = message.data;
 
     // Check if the target has already been followed
-    const existingFollowAdd = this._adds.get(targetUri);
-    if (existingFollowAdd && this.followMessageCompare(message, existingFollowAdd) <= 0) {
-      return ok(undefined);
+    const existingFollowAdd = await ResultAsync.fromPromise(this._db.getFollowAdd(fid, targetUri), () => undefined);
+    if (existingFollowAdd.isOk() && this.followMessageCompare(message, existingFollowAdd.value) <= 0) {
+      return undefined;
     }
 
     // Check if the target has already been un-followed
-    const existingFollowRemove = this._removes.get(targetUri);
-    if (existingFollowRemove) {
-      if (this.followMessageCompare(message, existingFollowRemove) <= 0) {
-        return ok(undefined);
-      }
-
-      // Drop target from removes set
-      this._removes.delete(targetUri);
+    const existingFollowRemove = await ResultAsync.fromPromise(
+      this._db.getFollowRemove(fid, targetUri),
+      () => undefined
+    );
+    if (existingFollowRemove.isOk() && this.followMessageCompare(message, existingFollowRemove.value) <= 0) {
+      return undefined;
     }
 
-    // Add the message to adds
-    this._adds.set(targetUri, message);
-    return ok(undefined);
+    // Add the message to the db
+    return this._db.putFollowAdd(message);
   }
 
   /** mergeFollowRemove tries to add a FollowRemove message to the set */
-  private mergeFollowRemove(message: FollowRemove): Result<void, string> {
+  private async mergeFollowRemove(message: FollowRemove): Promise<void> {
     const { targetUri } = message.data.body;
+    const { fid } = message.data;
 
     // Check if the target has already been un-followed
-    const existingFollowRemove = this._removes.get(targetUri);
-    if (existingFollowRemove && this.followMessageCompare(message, existingFollowRemove) <= 0) {
-      return ok(undefined);
+    const existingFollowRemove = await ResultAsync.fromPromise(
+      this._db.getFollowRemove(fid, targetUri),
+      () => undefined
+    );
+    if (existingFollowRemove.isOk() && this.followMessageCompare(message, existingFollowRemove.value) <= 0) {
+      return undefined;
     }
 
     // Check if the target has already been followed
-    const existingFollowAdd = this._adds.get(targetUri);
-    if (existingFollowAdd) {
-      if (this.followMessageCompare(message, existingFollowAdd) <= 0) {
-        return ok(undefined);
-      }
-
-      // Drop target from adds set
-      this._adds.delete(targetUri);
+    const existingFollowAdd = await ResultAsync.fromPromise(this._db.getFollowAdd(fid, targetUri), () => undefined);
+    if (existingFollowAdd.isOk() && this.followMessageCompare(message, existingFollowAdd.value) <= 0) {
+      return undefined;
     }
 
-    // Add the message to removes
-    this._removes.set(targetUri, message);
-    return ok(undefined);
-  }
-
-  /**
-   * Testing Methods
-   */
-
-  _getAdds(): Set<FollowAdd> {
-    return new Set([...this._adds.values()]);
-  }
-
-  _getRemoves(): Set<FollowRemove> {
-    return new Set([...this._removes.values()]);
-  }
-
-  _reset(): void {
-    this._adds = new Map();
-    this._removes = new Map();
+    // Add the message to the db
+    return this._db.putFollowRemove(message);
   }
 }
 

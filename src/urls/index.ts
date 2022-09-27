@@ -7,23 +7,24 @@ import { UserURL } from '~/urls/userUrl';
 import { URL } from '~/urls/baseUrl';
 import { Web2URL } from '~/urls/web2Url';
 import { ChainAccountURL } from '~/urls/chainAccountUrl';
+import { BadRequestError, FarcasterError } from '~/errors';
 
 export const parseUrl = (
   url: string,
   { allowUnrecognized = true }: { allowUnrecognized?: boolean } = {}
-): Result<URL, string> => {
+): Result<URL, FarcasterError> => {
   // extract scheme
   let baseURI: URIComponents;
   try {
     baseURI = rawUriParse(url);
   } catch (e) {
-    return err(`parseUrl: invalid URL string`);
+    return err(new BadRequestError(`parseUrl: invalid URL string`));
   }
 
   // try URL subtypes based on the scheme
   switch (baseURI.scheme) {
     case undefined:
-      return err('parseUrl: URL is missing scheme');
+      return err(new BadRequestError('parseUrl: URL is missing scheme'));
 
     case FarcasterURL.SCHEME:
       return UserURL.parse(url).orElse(() => CastURL.parse(url));
@@ -37,7 +38,7 @@ export const parseUrl = (
 
     default:
       if (!allowUnrecognized) {
-        return err(`parseUrl: Unrecognized scheme '${baseURI.scheme}'`);
+        return err(new BadRequestError(`parseUrl: Unrecognized scheme '${baseURI.scheme}'`));
       }
       return ok(new UnrecognizedURL(baseURI.scheme, url));
   }

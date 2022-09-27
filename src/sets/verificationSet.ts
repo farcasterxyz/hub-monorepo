@@ -1,120 +1,121 @@
-import { Result, ok, err } from 'neverthrow';
+import { ResultAsync } from 'neverthrow';
+import RocksDB from '~/db/rocksdb';
+import VerificationDB from '~/db/verification';
+import { BadRequestError } from '~/errors';
 import { Verification, VerificationEthereumAddress, VerificationRemove } from '~/types';
 import { isVerificationEthereumAddress, isVerificationRemove } from '~/types/typeguards';
-import { hashCompare, sanitizeSigner } from '~/utils';
+import { hashCompare } from '~/utils';
 
+/**
+ * VerificationSet is a modified LWW set that stores and fetches verifications. VerificationEthereumAddress and VerificationRemove
+ * messages are stored in the VerificationDB.
+ *
+ * Conflicts between two verification messages are resolved in this order (see verificationMessageCompare for implementation):
+ * 1. Later timestamp wins
+ * 2. VerificationRemove > VerificationEthereumAddress
+ * 3. Higher message hash lexicographic order wins
+ */
 class VerificationSet {
-  /** Both maps indexed by claimHash */
-  private _adds: Map<string, VerificationEthereumAddress>;
-  private _removes: Map<string, VerificationRemove>;
+  private _db: VerificationDB;
 
-  constructor() {
-    this._adds = new Map();
-    this._removes = new Map();
+  constructor(db: RocksDB) {
+    this._db = new VerificationDB(db);
   }
 
-  /** Get a verification by its claimHash */
-  get(claimHash: string): Verification | undefined {
-    return this._adds.get(claimHash) || this._removes.get(claimHash);
+  getVerification(fid: number, claimHash: string): Promise<VerificationEthereumAddress> {
+    return this._db.getVerificationAdd(fid, claimHash);
   }
 
-  getAllMessages(): Set<Verification> {
-    return new Set([...this._adds.values(), ...this._removes.values()]);
+  async getVerificationsByUser(fid: number): Promise<Set<VerificationEthereumAddress>> {
+    const verifications = await this._db.getVerificationAddsByUser(fid);
+    return new Set(verifications);
   }
 
-  // TODO: add query API
+  async getAllVerificationMessagesByUser(fid: number): Promise<Set<Verification>> {
+    const messages = await this._db.getAllVerificationMessagesByUser(fid);
+    return new Set(messages);
+  }
 
-  merge(message: Verification): Result<void, string> {
+  async revokeSigner(fid: number, signer: string): Promise<void> {
+    return this._db.deleteAllVerificationMessagesBySigner(fid, signer);
+  }
+
+  async merge(message: Verification): Promise<void> {
     if (isVerificationRemove(message)) {
-      return this.remove(message);
+      return this.mergeRemove(message);
     }
 
     if (isVerificationEthereumAddress(message)) {
-      return this.add(message);
+      return this.mergeAdd(message);
     }
 
-    return err('VerificationSet.merge: invalid message format');
-  }
-
-  revokeSigner(signer: string): Result<void, string> {
-    // Look through adds
-    for (const [claimHash, verification] of this._adds) {
-      if (sanitizeSigner(verification.signer) === sanitizeSigner(signer)) {
-        this._adds.delete(claimHash);
-      }
-    }
-
-    // Look through removes
-    for (const [claimHash, verification] of this._removes) {
-      if (sanitizeSigner(verification.signer) === sanitizeSigner(signer)) {
-        this._removes.delete(claimHash);
-      }
-    }
-
-    return ok(undefined);
+    throw new BadRequestError('VerificationSet.merge: invalid message format');
   }
 
   /**
    * Private Methods
    */
 
-  private add(message: VerificationEthereumAddress): Result<void, string> {
+  private verificationMessageCompare(a: Verification, b: Verification): number {
+    // If they are the same message, return 0
+    if (a.hash === b.hash) return 0;
+
+    // Compare signedAt timestamps
+    if (a.data.signedAt > b.data.signedAt) {
+      return 1;
+    } else if (a.data.signedAt < b.data.signedAt) {
+      return -1;
+    }
+
+    // Compare message types (remove > add)
+    if (isVerificationRemove(a) && isVerificationEthereumAddress(b)) {
+      return 1;
+    } else if (isVerificationEthereumAddress(a) && isVerificationRemove(b)) {
+      return -1;
+    }
+
+    // Compare lexicographical order of hash
+    return hashCompare(a.hash, b.hash);
+  }
+
+  private async mergeAdd(message: VerificationEthereumAddress): Promise<void> {
     const { claimHash } = message.data.body;
+    const { fid } = message.data;
 
-    const existingAdd = this._adds.get(claimHash);
-    if (existingAdd) {
-      if (existingAdd.data.signedAt > message.data.signedAt) return ok(undefined);
-
-      if (existingAdd.data.signedAt === message.data.signedAt && hashCompare(existingAdd.hash, message.hash) >= 0)
-        return ok(undefined);
+    const existingAdd = await ResultAsync.fromPromise(this._db.getVerificationAdd(fid, claimHash), () => undefined);
+    if (existingAdd.isOk() && this.verificationMessageCompare(message, existingAdd.value) <= 0) {
+      return undefined;
     }
 
-    const existingRemove = this._removes.get(claimHash);
-    if (existingRemove) {
-      if (existingRemove.data.signedAt >= message.data.signedAt) return ok(undefined);
-      this._removes.delete(claimHash);
+    const existingRemove = await ResultAsync.fromPromise(
+      this._db.getVerificationRemove(fid, claimHash),
+      () => undefined
+    );
+    if (existingRemove.isOk() && this.verificationMessageCompare(message, existingRemove.value) <= 0) {
+      return undefined;
     }
 
-    this._adds.set(claimHash, message);
-    return ok(undefined);
+    return this._db.putVerificationAdd(message);
   }
 
-  private remove(message: VerificationRemove): Result<void, string> {
+  private async mergeRemove(message: VerificationRemove): Promise<void> {
     const { claimHash } = message.data.body;
+    const { fid } = message.data;
 
-    const existingRemove = this._removes.get(claimHash);
-    if (existingRemove) {
-      if (existingRemove.data.signedAt > message.data.signedAt) return ok(undefined);
-
-      if (existingRemove.data.signedAt === message.data.signedAt && hashCompare(existingRemove.hash, message.hash) >= 0)
-        return ok(undefined);
+    const existingRemove = await ResultAsync.fromPromise(
+      this._db.getVerificationRemove(fid, claimHash),
+      () => undefined
+    );
+    if (existingRemove.isOk() && this.verificationMessageCompare(message, existingRemove.value) <= 0) {
+      return undefined;
     }
 
-    const existingAdd = this._adds.get(claimHash);
-    if (existingAdd) {
-      if (existingAdd.data.signedAt > message.data.signedAt) return ok(undefined);
-      this._adds.delete(claimHash);
+    const existingAdd = await ResultAsync.fromPromise(this._db.getVerificationAdd(fid, claimHash), () => undefined);
+    if (existingAdd.isOk() && this.verificationMessageCompare(message, existingAdd.value) <= 0) {
+      return undefined;
     }
 
-    this._removes.set(claimHash, message);
-    return ok(undefined);
-  }
-
-  /**
-   * Testing Methods
-   */
-
-  _getAdds(): Set<VerificationEthereumAddress> {
-    return new Set([...this._adds.values()]);
-  }
-
-  _getRemoves(): Set<VerificationRemove> {
-    return new Set([...this._removes.values()]);
-  }
-
-  _reset(): void {
-    this._adds = new Map();
-    this._removes = new Map();
+    return this._db.putVerificationRemove(message);
   }
 }
 

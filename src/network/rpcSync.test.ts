@@ -1,27 +1,32 @@
 import { AddressInfo } from 'net';
-import { populateEngine } from '~/engine/engine.mock.test';
-import { Result } from 'neverthrow';
 import { RPCServer, RPCClient } from '~/network/rpc';
 import Engine from '~/engine';
+import { jestRocksDB } from '~/db/jestUtils';
+import { populateEngine } from '~/engine/mock';
 
-const serverEngine = new Engine();
+const serverDb = jestRocksDB('rpcSync.test.server');
+const serverEngine = new Engine(serverDb);
+
+const clientDb = jestRocksDB('rpcSync.test.client');
+const clientEngine = new Engine(clientDb);
 
 let server: RPCServer;
 let client: RPCClient;
 
 const NUM_USERS = 5;
+const TEST_TIMEOUT = 2 * 60 * 1000; // 2 min timeout
 
 describe('rpcSync', () => {
   beforeAll(async () => {
     // setup the rpc server and client
     server = new RPCServer(serverEngine);
     await server.start();
-    const address = server.address;
-    expect(address).not.toBeNull();
+    expect(server.address).not.toBeNull();
+
     client = new RPCClient(server.address as AddressInfo);
 
     await populateEngine(serverEngine, NUM_USERS);
-  });
+  }, TEST_TIMEOUT);
 
   afterAll(async () => {
     await server.stop();
@@ -30,8 +35,6 @@ describe('rpcSync', () => {
   test(
     'sync data from one engine to another ',
     async () => {
-      const clientEngine = new Engine();
-
       // sanity test that the server has something in it
       const users = await serverEngine.getUsers();
       expect(users.size).toEqual(NUM_USERS);
@@ -51,7 +54,7 @@ describe('rpcSync', () => {
 
       for (const user of userIds) {
         // get the signer messages first so we can prepare to ingest the remaining messages later
-        const custodyEventResult: Result<any, string> = await client.getCustodyEventByUser(user);
+        const custodyEventResult = await client.getCustodyEventByUser(user);
         expect(custodyEventResult.isOk()).toBeTruthy();
         const custodyResult = await clientEngine.mergeIDRegistryEvent(custodyEventResult._unsafeUnwrap());
         expect(custodyResult.isOk()).toBeTruthy();
@@ -103,7 +106,6 @@ describe('rpcSync', () => {
         await expect(clientEngine.getAllVerificationsByUser(user)).resolves.toEqual(verifications);
       }
     },
-    // Set a 2 minute timeout for this test
-    2 * 60 * 1000
+    TEST_TIMEOUT
   );
 });

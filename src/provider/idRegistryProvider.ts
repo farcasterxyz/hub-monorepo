@@ -4,6 +4,7 @@ import { TypedEmitter } from 'tiny-typed-emitter';
 import { IDRegistryEvent } from '~/types';
 import { ok, err, Result } from 'neverthrow';
 import { sanitizeSigner } from '~/utils';
+import { BadRequestError, FarcasterError } from '~/errors';
 
 export type IDRegistryEvents = {
   block: (blockNumber: number) => void;
@@ -53,12 +54,12 @@ class IDRegistryProvider extends TypedEmitter<IDRegistryEvents> {
    * validateIDRegistryEvent tries to confirm that an event was actually emitted from the
    * ID Registry and confirmed, based on block confirmations
    */
-  async validateIDRegistryEvent(event: IDRegistryEvent): Promise<Result<void, string>> {
+  async validateIDRegistryEvent(event: IDRegistryEvent): Promise<Result<void, FarcasterError>> {
     const receipt = await this._jsonRpcProvider.getTransactionReceipt(event.transactionHash);
-    if (!receipt) return err('validateIDRegistryEvent: transaction not found');
+    if (!receipt) return err(new BadRequestError('validateIDRegistryEvent: transaction not found'));
 
     if (receipt.confirmations >= this._numConfirmations)
-      return err('validateIDRegistryEvent: insufficient confirmations');
+      return err(new BadRequestError('validateIDRegistryEvent: insufficient confirmations'));
 
     for (const log of receipt.logs) {
       const parsedLog = this._contract.interface.parseLog(log);
@@ -66,7 +67,7 @@ class IDRegistryProvider extends TypedEmitter<IDRegistryEvents> {
       if (sanitizeSigner(to) === sanitizeSigner(event.args.to) && id.toNumber() === event.args.id) return ok(undefined);
     }
 
-    return err('validateIDRegistryEvent: no matching log found');
+    return err(new BadRequestError('validateIDRegistryEvent: no matching log found'));
   }
 
   /** Private methods */

@@ -7,6 +7,8 @@ export default async (): Promise<Config.InitialOptions> => {
     moduleNameMapper: {
       '^~/(.*)$': '<rootDir>/src/$1',
     },
+    coveragePathIgnorePatterns: ['<rootDir>/build/', '<rootDir>/node_modules/'],
+    testPathIgnorePatterns: ['<rootDir>/build', '<rootDir>/node_modules'],
     // transform ts files with ts-jest and enable ESM
     transform: {
       '^.+\\.tsx?$': [

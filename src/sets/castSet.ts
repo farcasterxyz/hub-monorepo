@@ -1,102 +1,118 @@
-import { Result, ok, err } from 'neverthrow';
+import { ResultAsync } from 'neverthrow';
 import { Cast, CastRemove, CastRecast, CastShort } from '~/types';
 import { isCastRemove, isCastRecast, isCastShort } from '~/types/typeguards';
-import { sanitizeSigner } from '~/utils';
+import CastDB from '~/db/cast';
+import RocksDB from '~/db/rocksdb';
+import { BadRequestError } from '~/errors';
+import { hashCompare } from '~/utils';
 
+/**
+ * CastSet is a modified LWW set that stores and fetches casts. CastShort, CastRecast, and CastRemove messages
+ * are stored in the CastDB.
+ *
+ * Conflicts between two cast messages are resolved in this order (see castMessageCompare for implementation):
+ * 1. Later timestamp wins
+ * 2. CastRemove > (CastShort, CastRecast)
+ * 3. Higher message hash lexicographic order wins
+ */
 class CastSet {
-  private _adds: Map<string, CastShort | CastRecast>;
-  private _removes: Map<string, CastRemove>;
+  private _db: CastDB;
 
-  constructor() {
-    this._adds = new Map();
-    this._removes = new Map();
+  constructor(db: RocksDB) {
+    this._db = new CastDB(db);
   }
 
-  /** Get a cast by its hash */
-  get(hash: string): CastShort | CastRecast | CastRemove | undefined {
-    return this._adds.get(hash) || this._removes.get(hash);
+  getCast(fid: number, hash: string): Promise<CastShort | CastRecast> {
+    return this._db.getCastAdd(fid, hash);
   }
 
-  getAllMessages(): Set<Cast> {
-    return new Set([...this._adds.values(), ...this._removes.values()]);
+  async getCastsByUser(fid: number): Promise<Set<CastShort | CastRecast>> {
+    const casts = await this._db.getCastAddsByUser(fid);
+    return new Set(casts);
   }
 
-  // TODO: add query API
+  async getAllCastMessagesByUser(fid: number): Promise<Set<Cast>> {
+    const casts = await this._db.getAllCastMessagesByUser(fid);
+    return new Set(casts);
+  }
 
-  merge(cast: Cast): Result<void, string> {
+  async revokeSigner(fid: number, signer: string): Promise<void> {
+    return this._db.deleteAllCastMessagesBySigner(fid, signer);
+  }
+
+  async merge(cast: Cast): Promise<void> {
     if (isCastRemove(cast)) {
-      return this.remove(cast);
+      return this.mergeRemove(cast);
     }
 
     if (isCastRecast(cast) || isCastShort(cast)) {
-      return this.add(cast);
-    }
-    return err('CastSet.merge: invalid message format');
-  }
-
-  revokeSigner(signer: string): Result<void, string> {
-    // Look through adds
-    for (const [hash, cast] of this._adds) {
-      if (sanitizeSigner(cast.signer) === signer) {
-        this._adds.delete(hash);
-      }
+      return this.mergeAdd(cast);
     }
 
-    // Look through removes
-    for (const [hash, cast] of this._removes) {
-      if (sanitizeSigner(cast.signer) === signer) {
-        this._removes.delete(hash);
-      }
-    }
-
-    return ok(undefined);
+    throw new BadRequestError('CastSet.merge: invalid message format');
   }
 
   /**
    * Private Methods
    */
 
-  private add(message: CastShort | CastRecast): Result<void, string> {
-    /** If message has already been removed, no-op */
-    if (this._removes.has(message.hash)) return ok(undefined);
+  private castMessageCompare(a: Cast, b: Cast): number {
+    // If they are the same message, return 0
+    if (a.hash === b.hash) return 0;
 
-    /** If message has already been added, no-op */
-    if (this._adds.has(message.hash)) return ok(undefined);
-
-    this._adds.set(message.hash, message);
-    return ok(undefined);
-  }
-
-  private remove(message: CastRemove): Result<void, string> {
-    const { targetHash } = message.data.body;
-
-    /** If message has already been removed, no-op */
-    if (this._removes.has(targetHash)) return ok(undefined);
-
-    /** If message has been added, drop it from adds set */
-    if (this._adds.has(targetHash)) {
-      this._adds.delete(targetHash);
+    // Compare signedAt timestamps
+    if (a.data.signedAt > b.data.signedAt) {
+      return 1;
+    } else if (a.data.signedAt < b.data.signedAt) {
+      return -1;
     }
 
-    this._removes.set(targetHash, message);
-    return ok(undefined);
+    // Compare message types (ReactionRemove > ReactionAdd)
+    if (isCastRemove(a) && (isCastShort(b) || isCastRecast(b))) {
+      return 1;
+    } else if ((isCastShort(a) || isCastRecast(a)) && isCastRemove(b)) {
+      return -1;
+    }
+
+    // Compare lexicographical order of hash
+    return hashCompare(a.hash, b.hash);
   }
 
-  /**
-   * Testing Methods
-   */
+  private async mergeAdd(cast: CastShort | CastRecast): Promise<void> {
+    const { fid } = cast.data;
 
-  _getAdds(): Set<CastShort | CastRecast> {
-    return new Set([...this._adds.values()]);
+    // If cast has already been removed, no-op
+    const existingRemove = await ResultAsync.fromPromise(this._db.getCastRemove(fid, cast.hash), () => undefined);
+    if (existingRemove.isOk() && this.castMessageCompare(cast, existingRemove.value) <= 0) {
+      return undefined;
+    }
+
+    // If cast has already been added, no-op
+    const existingAdd = await ResultAsync.fromPromise(this._db.getCastAdd(fid, cast.hash), () => undefined);
+    if (existingAdd.isOk() && this.castMessageCompare(cast, existingAdd.value) <= 0) {
+      return undefined;
+    }
+
+    return this._db.putCastAdd(cast);
   }
 
-  _getRemoves(): Set<CastRemove> {
-    return new Set([...this._removes.values()]);
-  }
+  private async mergeRemove(cast: CastRemove): Promise<void> {
+    const { fid } = cast.data;
+    const { targetHash } = cast.data.body;
 
-  _reset(): void {
-    this._adds = new Map();
-    this._removes = new Map();
+    // If target has already been removed, no-op
+    const existingRemove = await ResultAsync.fromPromise(this._db.getCastRemove(fid, targetHash), () => undefined);
+    if (existingRemove.isOk() && this.castMessageCompare(cast, existingRemove.value) <= 0) {
+      return undefined;
+    }
+
+    // If target has been added later, no-op
+    const existingAdd = await ResultAsync.fromPromise(this._db.getCastAdd(fid, targetHash), () => undefined);
+    if (existingAdd.isOk() && this.castMessageCompare(cast, existingAdd.value) <= 0) {
+      return undefined;
+    }
+
+    return this._db.putCastRemove(cast);
   }
 }
 

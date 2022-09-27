@@ -92,6 +92,30 @@ export const isFollowRemove = (msg: FC.Message): msg is FC.FollowRemove => {
   return type === FC.MessageType.FollowRemove && body && typeof body.targetUri === 'string';
 };
 
+export const isMessage = (msg: any): msg is FC.Message => {
+  const { data, hash, hashType, signature, signatureType, signer } = msg as FC.Message;
+  return (
+    data &&
+    isData(data) &&
+    typeof hash === 'string' &&
+    typeof hashType === 'string' &&
+    typeof signature === 'string' &&
+    typeof signatureType === 'string' &&
+    typeof signer === 'string'
+  );
+};
+
+export const isData = (data: any): data is FC.Data => {
+  const { body, type, signedAt, fid, network } = data as FC.Data;
+  return (
+    typeof body === 'object' &&
+    typeof type === 'number' &&
+    typeof signedAt === 'number' &&
+    typeof fid === 'number' &&
+    typeof network === 'number'
+  );
+};
+
 export const isIDRegistryEvent = (msg: FC.IDRegistryEvent): msg is FC.IDRegistryEvent => {
   try {
     const { args } = msg;
@@ -107,14 +131,6 @@ export const isIDRegistryEvent = (msg: FC.IDRegistryEvent): msg is FC.IDRegistry
       typeof msg.name === 'string' &&
       (msg.name === 'Register' || msg.name === 'Transfer')
     );
-  } catch (error: any) {
-    return false;
-  }
-};
-
-export const isMessage = (msg: FC.Message): msg is FC.Message => {
-  try {
-    return isCast(msg) || isFollow(msg) || isReaction(msg) || isSignerMessage(msg) || isVerification(msg);
   } catch (error: any) {
     return false;
   }

@@ -1,8 +1,9 @@
 import { AddressInfo } from 'net';
 import { Err, Ok, Result } from 'neverthrow';
 import { rejects } from 'assert';
-import jayson from 'jayson/promise';
+import jayson, { JSONRPCError } from 'jayson/promise';
 import { Cast, Follow, IDRegistryEvent, Message, Reaction, SignerMessage, Verification } from '~/types';
+import { FarcasterError } from '~/errors';
 
 const VERSION = 0.1;
 
@@ -15,7 +16,7 @@ export enum RPCRequest {
   GetAllReactionsByUser = 'getAllReactionsByUser',
   GetAllFollowsByUser = 'getAllFollowsByUser',
   GetAllVerificationsByUser = 'getAllVerificationsByUser',
-  GetCustodyEventByuser = 'getCustodyEventByUser',
+  GetCustodyEventByUser = 'getCustodyEventByUser',
 }
 
 export interface RPCHandler {
@@ -25,7 +26,8 @@ export interface RPCHandler {
   getAllReactionsByUser(fid: number): Promise<Set<Reaction>>;
   getAllFollowsByUser(fid: number): Promise<Set<Follow>>;
   getAllVerificationsByUser(fid: number): Promise<Set<Verification>>;
-  getCustodyEventByUser(fid: number): Promise<IDRegistryEvent | undefined>;
+  getCustodyEventByUser(fid: number): Promise<Result<IDRegistryEvent, FarcasterError>>;
+  // getCustodyEventByUser(fid: number): Promise<IDRegistryEvent>;
 }
 
 const replacer = (key: any, value: any) => {
@@ -47,6 +49,10 @@ const serverOpts = {
   version: VERSION,
   replacer,
   reviver,
+};
+
+export const rpcError = (code: number, message: string): JSONRPCError => {
+  return { code, message };
 };
 
 export class RPCServer {
@@ -95,10 +101,13 @@ export class RPCServer {
           },
         }),
 
-        [RPCRequest.GetCustodyEventByuser]: new jayson.Method({
+        [RPCRequest.GetCustodyEventByUser]: new jayson.Method({
           handler: async (args: any) => {
-            return rpcHandler.getCustodyEventByUser(args.fid);
+            const result = await rpcHandler.getCustodyEventByUser(args.fid);
+            if (result.isErr()) throw rpcError(result.error.statusCode, result.error.message);
+            return result.value;
           },
+          params: Object,
         }),
       },
       serverOpts
@@ -156,7 +165,7 @@ export class RPCClient {
     });
   }
 
-  async getUsers(): Promise<Result<Set<number>, string>> {
+  async getUsers(): Promise<Result<Set<number>, JSONRPCError>> {
     const response = await this._tcpClient.request(RPCRequest.GetUsers, {});
     if (response.error) {
       return new Err(response.error);
@@ -164,7 +173,7 @@ export class RPCClient {
     return new Ok(response.result);
   }
 
-  async getAllCastsByUser(fid: number): Promise<Result<Set<Cast>, string>> {
+  async getAllCastsByUser(fid: number): Promise<Result<Set<Cast>, JSONRPCError>> {
     const response = await this._tcpClient.request(RPCRequest.GetAllCastsByUser, { fid });
     if (response.error) {
       return new Err(response.error);
@@ -172,7 +181,7 @@ export class RPCClient {
     return new Ok(response.result);
   }
 
-  async getAllSignerMessagesByUser(fid: number): Promise<Result<Set<Message>, string>> {
+  async getAllSignerMessagesByUser(fid: number): Promise<Result<Set<Message>, JSONRPCError>> {
     const response = await this._tcpClient.request(RPCRequest.GetAllSignerMessagesByUser, { fid });
     if (response.error) {
       return new Err(response.error);
@@ -180,21 +189,21 @@ export class RPCClient {
     return new Ok(response.result);
   }
 
-  async getAllReactionsByUser(fid: number): Promise<Result<Set<Reaction>, string>> {
+  async getAllReactionsByUser(fid: number): Promise<Result<Set<Reaction>, JSONRPCError>> {
     const response = await this._tcpClient.request(RPCRequest.GetAllReactionsByUser, { fid });
     if (response.error) {
       return new Err(response.error);
     }
     return new Ok(response.result);
   }
-  async getAllFollowsByUser(fid: number): Promise<Result<Set<Follow>, string>> {
+  async getAllFollowsByUser(fid: number): Promise<Result<Set<Follow>, JSONRPCError>> {
     const response = await this._tcpClient.request(RPCRequest.GetAllFollowsByUser, { fid });
     if (response.error) {
       return new Err(response.error);
     }
     return new Ok(response.result);
   }
-  async getAllVerificationsByUser(fid: number): Promise<Result<Set<Verification>, string>> {
+  async getAllVerificationsByUser(fid: number): Promise<Result<Set<Verification>, JSONRPCError>> {
     const response = await this._tcpClient.request(RPCRequest.GetAllVerificationsByUser, { fid });
     if (response.error) {
       return new Err(response.error);
@@ -202,13 +211,10 @@ export class RPCClient {
     return new Ok(response.result);
   }
 
-  async getCustodyEventByUser(fid: number): Promise<Result<IDRegistryEvent, string>> {
-    const response = await this._tcpClient.request(RPCRequest.GetCustodyEventByuser, { fid });
+  async getCustodyEventByUser(fid: number): Promise<Result<IDRegistryEvent, JSONRPCError>> {
+    const response = await this._tcpClient.request(RPCRequest.GetCustodyEventByUser, { fid });
     if (response.error) {
       return new Err(response.error);
-    }
-    if (!response.result) {
-      return new Err('Not Found');
     }
     return new Ok(response.result);
   }

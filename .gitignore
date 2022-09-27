@@ -21,3 +21,7 @@ node_modules/
 
 # Code Coverage Reports
 coverage/
+
+# Databases
+.level/
+.rocks/

@@ -3,10 +3,24 @@ import Faker from 'faker';
 import FollowSet from '~/sets/followSet';
 import { Ed25519Signer, Follow, FollowAdd, FollowRemove, URI } from '~/types';
 import { generateEd25519Signer } from '~/utils';
+import { jestRocksDB } from '~/db/jestUtils';
+import FollowDB from '~/db/follow';
+import { BadRequestError, NotFoundError } from '~/errors';
 
-const set = new FollowSet();
-const follows = () => set._getAdds();
-const unfollows = () => set._getRemoves();
+const testDb = jestRocksDB('followSet.test');
+const followDb = new FollowDB(testDb);
+const set = new FollowSet(testDb);
+
+const fid = Faker.datatype.number();
+
+const follows = async (): Promise<Set<FollowAdd>> => {
+  const followAdds = await followDb.getFollowAddsByUser(fid);
+  return new Set(followAdds);
+};
+const unfollows = async (): Promise<Set<FollowRemove>> => {
+  const followRemoves = await followDb.getFollowRemovesByUser(fid);
+  return new Set(followRemoves);
+};
 
 let signer: Ed25519Signer;
 let a: URI;
@@ -19,286 +33,280 @@ let unfollowB: Follow;
 beforeAll(async () => {
   signer = await generateEd25519Signer();
   a = Faker.internet.url();
-  followA = await Factories.FollowAdd.create({ data: { body: { targetUri: a } } }, { transient: { signer } });
+  followA = await Factories.FollowAdd.create({ data: { fid, body: { targetUri: a } } }, { transient: { signer } });
   unfollowA = await Factories.FollowRemove.create(
-    { data: { body: { targetUri: a }, signedAt: followA.data.signedAt + 1 } },
+    { data: { fid, body: { targetUri: a }, signedAt: followA.data.signedAt + 1 } },
     { transient: { signer } }
   );
   b = Faker.internet.url();
-  followB = await Factories.FollowAdd.create({ data: { body: { targetUri: b } } }, { transient: { signer } });
+  followB = await Factories.FollowAdd.create({ data: { fid, body: { targetUri: b } } }, { transient: { signer } });
   unfollowB = await Factories.FollowRemove.create(
-    { data: { body: { targetUri: b }, signedAt: followB.data.signedAt + 1 } },
+    { data: { fid, body: { targetUri: b }, signedAt: followB.data.signedAt + 1 } },
     { transient: { signer } }
   );
 });
 
-beforeEach(() => {
-  set._reset();
-});
-
-describe('get', () => {
-  test('fails when follow does not exist', () => {
-    expect(set.get(a)).toBeFalsy();
+describe('getFollow', () => {
+  test('fails when follow does not exist', async () => {
+    await expect(set.getFollow(fid, a)).rejects.toThrow(NotFoundError);
   });
 
-  test('returns FollowAdd when target has been followed', () => {
-    set.merge(followA);
-    expect(set.get(a)).toEqual(followA);
+  test('returns FollowAdd when target has been followed', async () => {
+    await set.merge(followA);
+    await expect(set.getFollow(fid, a)).resolves.toEqual(followA);
   });
 
-  test('fails when target has been unfollowed', () => {
-    set.merge(followA);
-    set.merge(unfollowA);
-    expect(set.get(a)).toBeFalsy();
+  test('fails when target has been unfollowed', async () => {
+    await set.merge(followA);
+    await set.merge(unfollowA);
+    await expect(set.getFollow(fid, a)).rejects.toThrow(NotFoundError);
   });
 
-  test('fails when using message hash', () => {
-    set.merge(followA);
-    expect(set.get(followA.hash)).toBeFalsy();
+  test('fails when using message hash', async () => {
+    await set.merge(followA);
+    await expect(set.getFollow(fid, followA.hash)).rejects.toThrow(NotFoundError);
   });
 });
 
 describe('merge', () => {
   test('fails with invalid message format', async () => {
     const invalidFollow = (await Factories.CastShort.create()) as unknown as Follow;
-    const res = set.merge(invalidFollow);
-    expect(res.isOk()).toBe(false);
-    expect(res._unsafeUnwrapErr()).toBe('FollowSet.merge: invalid message format');
-    expect(follows()).toEqual(new Set());
-    expect(unfollows()).toEqual(new Set());
+    await expect(set.merge(invalidFollow)).rejects.toThrow(BadRequestError);
+    await expect(follows()).resolves.toEqual(new Set());
+    await expect(unfollows()).resolves.toEqual(new Set());
   });
 
   describe('mergeFollowAdd', () => {
-    test('succeeds with valid follow', () => {
-      expect(set.merge(followA).isOk()).toBe(true);
-      expect(follows()).toEqual(new Set([followA]));
-      expect(unfollows()).toEqual(new Set());
+    test('succeeds with valid follow', async () => {
+      await expect(set.merge(followA)).resolves.toEqual(undefined);
+      await expect(follows()).resolves.toEqual(new Set([followA]));
+      await expect(unfollows()).resolves.toEqual(new Set());
     });
 
-    test('succeeds (no-op) with duplicate follow', () => {
-      expect(set.merge(followA).isOk()).toBe(true);
-      expect(set.merge(followA).isOk()).toBe(true);
-      expect(follows()).toEqual(new Set([followA]));
-      expect(unfollows()).toEqual(new Set());
+    test('succeeds (no-op) with duplicate follow', async () => {
+      await expect(set.merge(followA)).resolves.toEqual(undefined);
+      await expect(set.merge(followA)).resolves.toEqual(undefined);
+      await expect(follows()).resolves.toEqual(new Set([followA]));
+      await expect(unfollows()).resolves.toEqual(new Set());
     });
 
-    test('succeeds with multiple valid follows', () => {
-      expect(set.merge(followA).isOk()).toBe(true);
-      expect(set.merge(followB).isOk()).toBe(true);
-      expect(follows()).toEqual(new Set([followA, followB]));
-      expect(unfollows()).toEqual(new Set());
+    test('succeeds with multiple valid follows', async () => {
+      await expect(set.merge(followA)).resolves.toEqual(undefined);
+      await expect(set.merge(followB)).resolves.toEqual(undefined);
+      await expect(follows()).resolves.toEqual(new Set([followA, followB]));
+      await expect(unfollows()).resolves.toEqual(new Set());
     });
 
     describe('when the same target is already added', () => {
-      beforeEach(() => {
-        expect(set.merge(followA).isOk()).toBe(true);
+      beforeEach(async () => {
+        await set.merge(followA);
       });
 
-      test('succeeds with later timestamp', () => {
+      test('succeeds with later timestamp', async () => {
         const followALater: FollowAdd = {
           ...followA,
           hash: Faker.datatype.hexaDecimal(128),
           data: { ...followA.data, signedAt: followA.data.signedAt + 1 },
         };
-        expect(set.merge(followALater).isOk()).toBe(true);
-        expect(follows()).toEqual(new Set([followALater]));
-        expect(unfollows()).toEqual(new Set());
+        await expect(set.merge(followALater)).resolves.toEqual(undefined);
+        await expect(follows()).resolves.toEqual(new Set([followALater]));
+        await expect(unfollows()).resolves.toEqual(new Set());
       });
 
-      test('succeeds (no-op) with earlier timestamp', () => {
+      test('succeeds (no-op) with earlier timestamp', async () => {
         const followAEarlier: FollowAdd = {
           ...followA,
           hash: Faker.datatype.hexaDecimal(128),
           data: { ...followA.data, signedAt: followA.data.signedAt - 1 },
         };
-        expect(set.merge(followAEarlier).isOk()).toBe(true);
-        expect(follows()).toEqual(new Set([followA]));
-        expect(unfollows()).toEqual(new Set());
+        await expect(set.merge(followAEarlier)).resolves.toEqual(undefined);
+        await expect(follows()).resolves.toEqual(new Set([followA]));
+        await expect(unfollows()).resolves.toEqual(new Set());
       });
 
       describe('with the same timestamp', () => {
-        test('succeeds with a higher hash order', () => {
+        test('succeeds with a higher hash order', async () => {
           const followAHigherHash: FollowAdd = { ...followA, hash: followA.hash + 'a' };
-          expect(set.merge(followAHigherHash).isOk()).toBe(true);
-          expect(follows()).toEqual(new Set([followAHigherHash]));
-          expect(unfollows()).toEqual(new Set());
+          await expect(set.merge(followAHigherHash)).resolves.toEqual(undefined);
+          await expect(follows()).resolves.toEqual(new Set([followAHigherHash]));
+          await expect(unfollows()).resolves.toEqual(new Set());
         });
 
-        test('succeeds (no-op) with a lower hash order', () => {
-          const followALowerHash: FollowAdd = { ...followA, hash: followA.hash.slice(-1, 0) };
-          expect(set.merge(followALowerHash).isOk()).toBe(true);
-          expect(follows()).toEqual(new Set([followA]));
-          expect(unfollows()).toEqual(new Set());
+        test('succeeds (no-op) with a lower hash order', async () => {
+          const followALowerHash: FollowAdd = { ...followA, hash: followA.hash.slice(0, -1) };
+          await expect(set.merge(followALowerHash)).resolves.toEqual(undefined);
+          await expect(follows()).resolves.toEqual(new Set([followA]));
+          await expect(unfollows()).resolves.toEqual(new Set());
         });
       });
     });
 
     describe('when the same target is already removed', () => {
-      beforeEach(() => {
-        expect(set.merge(unfollowA).isOk()).toBe(true);
+      beforeEach(async () => {
+        await set.merge(unfollowA);
       });
 
-      test('succeeds with later timestamp', () => {
+      test('succeeds with later timestamp', async () => {
         const followALater: FollowAdd = {
           ...followA,
           hash: Faker.datatype.hexaDecimal(128),
           data: { ...followA.data, signedAt: unfollowA.data.signedAt + 1 },
         };
-        expect(set.merge(followALater).isOk()).toBe(true);
-        expect(follows()).toEqual(new Set([followALater]));
-        expect(unfollows()).toEqual(new Set());
+        await expect(set.merge(followALater)).resolves.toEqual(undefined);
+        await expect(follows()).resolves.toEqual(new Set([followALater]));
+        await expect(unfollows()).resolves.toEqual(new Set());
       });
 
-      test('succeeds (no-op) with earlier timestamp', () => {
+      test('succeeds (no-op) with earlier timestamp', async () => {
         const followAEarlier: FollowAdd = {
           ...followA,
           hash: Faker.datatype.hexaDecimal(128),
           data: { ...followA.data, signedAt: unfollowA.data.signedAt - 1 },
         };
-        expect(set.merge(followAEarlier).isOk()).toBe(true);
-        expect(follows()).toEqual(new Set());
-        expect(unfollows()).toEqual(new Set([unfollowA]));
+        await expect(set.merge(followAEarlier)).resolves.toEqual(undefined);
+        await expect(follows()).resolves.toEqual(new Set());
+        await expect(unfollows()).resolves.toEqual(new Set([unfollowA]));
       });
 
-      test('succeeds (no-op) with same timestamp', () => {
+      test('succeeds (no-op) with same timestamp', async () => {
         const followASameTimestamp: FollowAdd = {
           ...followA,
           hash: Faker.datatype.hexaDecimal(128),
           data: { ...followA.data, signedAt: unfollowA.data.signedAt },
         };
-        expect(set.merge(followASameTimestamp).isOk()).toBe(true);
-        expect(follows()).toEqual(new Set());
-        expect(unfollows()).toEqual(new Set([unfollowA]));
+        await expect(set.merge(followASameTimestamp)).resolves.toEqual(undefined);
+        await expect(follows()).resolves.toEqual(new Set());
+        await expect(unfollows()).resolves.toEqual(new Set([unfollowA]));
       });
     });
   });
 
   describe('mergeFollowRemove', () => {
-    test('succeeds with valid FollowRemove', () => {
-      expect(set.merge(unfollowA).isOk()).toBe(true);
-      expect(follows()).toEqual(new Set());
-      expect(unfollows()).toEqual(new Set([unfollowA]));
+    test('succeeds with valid FollowRemove', async () => {
+      await expect(set.merge(unfollowA)).resolves.toEqual(undefined);
+      await expect(follows()).resolves.toEqual(new Set());
+      await expect(unfollows()).resolves.toEqual(new Set([unfollowA]));
     });
 
-    test('succeeds (no-op) with duplicate FollowRemove', () => {
-      expect(set.merge(unfollowA).isOk()).toBe(true);
-      expect(set.merge(unfollowA).isOk()).toBe(true);
-      expect(follows()).toEqual(new Set());
-      expect(unfollows()).toEqual(new Set([unfollowA]));
+    test('succeeds (no-op) with duplicate FollowRemove', async () => {
+      await expect(set.merge(unfollowA)).resolves.toEqual(undefined);
+      await expect(set.merge(unfollowA)).resolves.toEqual(undefined);
+      await expect(follows()).resolves.toEqual(new Set());
+      await expect(unfollows()).resolves.toEqual(new Set([unfollowA]));
     });
 
-    test('succeeds with multiple valid FollowRemove messages', () => {
-      expect(set.merge(unfollowA).isOk()).toBe(true);
-      expect(set.merge(unfollowB).isOk()).toBe(true);
-      expect(follows()).toEqual(new Set());
-      expect(unfollows()).toEqual(new Set([unfollowA, unfollowB]));
+    test('succeeds with multiple valid FollowRemove messages', async () => {
+      await expect(set.merge(unfollowA)).resolves.toEqual(undefined);
+      await expect(set.merge(unfollowB)).resolves.toEqual(undefined);
+      await expect(follows()).resolves.toEqual(new Set());
+      await expect(unfollows()).resolves.toEqual(new Set([unfollowA, unfollowB]));
     });
 
     describe('when the same target has been added', () => {
-      beforeEach(() => {
-        expect(set.merge(followA).isOk()).toBe(true);
+      beforeEach(async () => {
+        await set.merge(followA);
       });
 
-      test('succeeds with later timestamp', () => {
-        expect(set.merge(unfollowA).isOk()).toBe(true);
-        expect(follows()).toEqual(new Set());
-        expect(unfollows()).toEqual(new Set([unfollowA]));
+      test('succeeds with later timestamp', async () => {
+        await expect(set.merge(unfollowA)).resolves.toEqual(undefined);
+        await expect(follows()).resolves.toEqual(new Set());
+        await expect(unfollows()).resolves.toEqual(new Set([unfollowA]));
       });
 
-      test('succeeds (no-op) with earlier timestamp', () => {
+      test('succeeds (no-op) with earlier timestamp', async () => {
         const unfollowAEarlier: FollowRemove = {
           ...unfollowA,
           hash: Faker.datatype.hexaDecimal(128),
           data: { ...unfollowA.data, signedAt: followA.data.signedAt - 1 },
         };
-        expect(set.merge(unfollowAEarlier).isOk()).toBe(true);
-        expect(follows()).toEqual(new Set([followA]));
-        expect(unfollows()).toEqual(new Set());
+        await expect(set.merge(unfollowAEarlier)).resolves.toEqual(undefined);
+        await expect(follows()).resolves.toEqual(new Set([followA]));
+        await expect(unfollows()).resolves.toEqual(new Set());
       });
 
-      test('succeeds with same timestamp', () => {
+      test('succeeds with same timestamp', async () => {
         const unfollowASameTimestamp: FollowRemove = {
           ...unfollowA,
           hash: Faker.datatype.hexaDecimal(128),
           data: { ...unfollowA.data, signedAt: followA.data.signedAt },
         };
-        expect(set.merge(unfollowASameTimestamp).isOk()).toBe(true);
-        expect(follows()).toEqual(new Set());
-        expect(unfollows()).toEqual(new Set([unfollowASameTimestamp]));
+        await expect(set.merge(unfollowASameTimestamp)).resolves.toEqual(undefined);
+        await expect(follows()).resolves.toEqual(new Set());
+        await expect(unfollows()).resolves.toEqual(new Set([unfollowASameTimestamp]));
       });
     });
 
     describe('when the same target is already removed', () => {
-      beforeEach(() => {
-        expect(set.merge(unfollowA).isOk()).toBe(true);
+      beforeEach(async () => {
+        await set.merge(unfollowA);
       });
 
-      test('succeeds with later timestamp', () => {
+      test('succeeds with later timestamp', async () => {
         const unfollowALater: FollowRemove = {
           ...unfollowA,
           hash: Faker.datatype.hexaDecimal(128),
           data: { ...unfollowA.data, signedAt: unfollowA.data.signedAt + 1 },
         };
-        expect(set.merge(unfollowALater).isOk()).toBe(true);
-        expect(follows()).toEqual(new Set());
-        expect(unfollows()).toEqual(new Set([unfollowALater]));
+        await expect(set.merge(unfollowALater)).resolves.toEqual(undefined);
+        await expect(follows()).resolves.toEqual(new Set());
+        await expect(unfollows()).resolves.toEqual(new Set([unfollowALater]));
       });
 
-      test('succeeds (no-op) with earlier timestamp', () => {
+      test('succeeds (no-op) with earlier timestamp', async () => {
         const unfollowAEarlier: FollowRemove = {
           ...unfollowA,
           hash: Faker.datatype.hexaDecimal(128),
           data: { ...unfollowA.data, signedAt: unfollowA.data.signedAt - 1 },
         };
-        expect(set.merge(unfollowAEarlier).isOk()).toBe(true);
-        expect(follows()).toEqual(new Set());
-        expect(unfollows()).toEqual(new Set([unfollowA]));
+        await expect(set.merge(unfollowAEarlier)).resolves.toEqual(undefined);
+        await expect(follows()).resolves.toEqual(new Set());
+        await expect(unfollows()).resolves.toEqual(new Set([unfollowA]));
       });
 
       describe('with the same timestamp', () => {
-        test('succeeds with a higher hash order', () => {
+        test('succeeds with a higher hash order', async () => {
           const unfollowAHigherHash: FollowRemove = { ...unfollowA, hash: unfollowA.hash + 'a' };
-          expect(set.merge(unfollowAHigherHash).isOk()).toBe(true);
-          expect(follows()).toEqual(new Set());
-          expect(unfollows()).toEqual(new Set([unfollowAHigherHash]));
+          await expect(set.merge(unfollowAHigherHash)).resolves.toEqual(undefined);
+          await expect(follows()).resolves.toEqual(new Set());
+          await expect(unfollows()).resolves.toEqual(new Set([unfollowAHigherHash]));
         });
 
-        test('succeeds (no-op) with a lower hash order', () => {
-          const unfollowALowerHash: FollowRemove = { ...unfollowA, hash: unfollowA.hash.slice(-1, 0) };
-          expect(set.merge(unfollowALowerHash).isOk()).toBe(true);
-          expect(follows()).toEqual(new Set());
-          expect(unfollows()).toEqual(new Set([unfollowA]));
+        test('succeeds (no-op) with a lower hash order', async () => {
+          const unfollowALowerHash: FollowRemove = { ...unfollowA, hash: unfollowA.hash.slice(0, -1) };
+          await expect(set.merge(unfollowALowerHash)).resolves.toEqual(undefined);
+          await expect(follows()).resolves.toEqual(new Set());
+          await expect(unfollows()).resolves.toEqual(new Set([unfollowA]));
         });
       });
     });
   });
 });
 
-describe('revokeSigner', () => {
-  test('succeeds without any messages', () => {
-    expect(set.revokeSigner(followA.signer).isOk()).toBe(true);
-  });
+// describe('revokeSigner', () => {
+//   test('succeeds without any messages', () => {
+//     expect(set.revokeSigner(followA.signer)).resolves.toEqual(undefined);
+//   });
 
-  test('succeeds and drops adds', () => {
-    expect(set.merge(followA).isOk()).toBe(true);
-    expect(set.revokeSigner(followA.signer).isOk()).toBe(true);
-    expect(follows()).toEqual(new Set());
-    expect(unfollows()).toEqual(new Set());
-  });
+//   test('succeeds and drops adds', () => {
+//     await expect(set.merge(followA)).resolves.toBe(true);
+//     expect(set.revokeSigner(followA.signer)).resolves.toEqual(undefined);
+//     await expect(follows()).resolves.toEqual(new Set());
+//     await expect(unfollows()).resolves.toEqual(new Set());
+//   });
 
-  test('succeeds and drops removes', () => {
-    expect(set.merge(unfollowA).isOk()).toBe(true);
-    expect(set.revokeSigner(unfollowA.signer).isOk()).toBe(true);
-    expect(follows()).toEqual(new Set());
-    expect(unfollows()).toEqual(new Set());
-  });
+//   test('succeeds and drops removes', () => {
+//     expect(set.merge(unfollowA)).resolves.toEqual(undefined);
+//     expect(set.revokeSigner(unfollowA.signer)).resolves.toEqual(undefined);
+//     await expect(follows()).resolves.toEqual(new Set());
+//     await expect(unfollows()).resolves.toEqual(new Set());
+//   });
 
-  test('suceeds and only removes messages from signer', () => {
-    const followBDifferentSigner: Follow = { ...followB, signer: 'foo' };
-    expect(set.merge(followA).isOk()).toBe(true);
-    expect(set.merge(followBDifferentSigner).isOk()).toBe(true);
-    expect(set.revokeSigner(followA.signer).isOk()).toBe(true);
-    expect(follows()).toEqual(new Set([followBDifferentSigner]));
-    expect(unfollows()).toEqual(new Set());
-  });
-});
+//   test('suceeds and only removes messages from signer', () => {
+//     const followBDifferentSigner: Follow = { ...followB, signer: 'foo' };
+//     await expect(set.merge(followA)).resolves.toBe(true);
+//     expect(set.merge(followBDifferentSigner)).resolves.toEqual(undefined);
+//     expect(set.revokeSigner(followA.signer)).resolves.toEqual(undefined);
+//     await expect(follows()).resolves.toEqual(new Set([followBDifferentSigner]));
+//     await expect(unfollows()).resolves.toEqual(new Set());
+//   });
+// });
