@@ -196,4 +196,15 @@ describe('Hub negative tests', () => {
     await hub.stop();
     await hub.destroyDB();
   });
+
+  test('Starts with clear RocksDB set', async () => {
+    hub = new Hub({ ...opts, resetDB: true });
+    await hub.start();
+    expect(hub.rpcAddress).toBeDefined();
+    expect(() => {
+      hub.identity;
+    }).not.toThrow();
+    await hub.stop();
+    hub.destroyDB();
+  });
 });

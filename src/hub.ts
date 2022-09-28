@@ -35,6 +35,8 @@ export interface HubOpts {
   simpleSync?: boolean;
   // The name of the RocksDB instance to use
   rocksDBName?: string;
+  // Reset the database before starting
+  resetDB?: boolean;
 }
 
 /**
@@ -91,6 +93,10 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   async start() {
     // open rocksDB
     await this.rocksDB.open();
+    if (this.options.resetDB === true) {
+      console.log('Clearing RocksDB...');
+      await this.rocksDB.clear();
+    }
     // start all the networking bits
     await this.gossipNode.start(this.options.bootstrapAddrs ?? []);
     await this.rpcServer.start(this.options.port ? this.options.port : 0);
@@ -332,7 +338,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     // push this message into the engine
     const mergeResult = await this.engine.mergeMessage(message);
     if (mergeResult.isErr()) {
-      console.log(this.identity, mergeResult._unsafeUnwrapErr(), 'Received invalid message...');
+      console.log(this.identity, mergeResult.error, 'Received invalid message...');
       return mergeResult;
     }
 
