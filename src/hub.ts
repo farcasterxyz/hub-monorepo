@@ -148,31 +148,35 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       console.debug(message);
       await message.match(
         async (gossipMessage) => {
-          let result;
-          if (isUserContent(gossipMessage.content as UserContent)) {
-            const message = (gossipMessage.content as UserContent).message;
-            result = await this.engine.mergeMessage(message as Message);
-          } else if (isIDRegistryContent(gossipMessage.content as IDRegistryContent)) {
-            const message = (gossipMessage.content as IDRegistryContent).message;
-            result = await this.engine.mergeIDRegistryEvent(message as IDRegistryEvent);
-          } else if (isContactInfo(gossipMessage.content as ContactInfo)) {
-            // TODO Maybe we need a ContactInfo CRDT?
-            // Check if we need sync and if we do, use this peer do it.
-            console.log(this.identity, 'Received a Contact Info');
-            if (this.syncState == SimpleSyncState.Pending) {
-              await this.simpleSyncFromPeer(gossipMessage.content as ContactInfo);
-            }
-          }
-
-          if (result && result.isErr()) {
-            console.log(this.identity, result, 'Failed to merge message');
-          }
+          await this.handleGossipMessage(gossipMessage);
         },
         async (error) => {
           console.log(this.identity, error, 'Received a message but failed to decode it');
         }
       );
     });
+  }
+
+  private async handleGossipMessage(gossipMessage: GossipMessage) {
+    let result;
+    if (isUserContent(gossipMessage.content as UserContent)) {
+      const message = (gossipMessage.content as UserContent).message;
+      result = await this.engine.mergeMessage(message as Message);
+    } else if (isIDRegistryContent(gossipMessage.content as IDRegistryContent)) {
+      const message = (gossipMessage.content as IDRegistryContent).message;
+      result = await this.engine.mergeIDRegistryEvent(message as IDRegistryEvent);
+    } else if (isContactInfo(gossipMessage.content as ContactInfo)) {
+      // TODO Maybe we need a ContactInfo CRDT?
+      // Check if we need sync and if we do, use this peer do it.
+      if (this.syncState == SimpleSyncState.Pending) {
+        console.log(this.identity, 'Received a Contact Info for Sync');
+        await this.simpleSyncFromPeer(gossipMessage.content as ContactInfo);
+      }
+    }
+
+    if (result && result.isErr()) {
+      console.log(this.identity, result, 'Failed to merge message');
+    }
   }
 
   private async simpleSyncFromPeer(peer: ContactInfo) {
