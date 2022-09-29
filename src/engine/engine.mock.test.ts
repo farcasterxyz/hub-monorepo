@@ -12,7 +12,7 @@ beforeEach(async () => {
   await engine._reset();
 });
 
-describe('mockEvents', () => {
+describe('mock engine events', () => {
   test('generates a pair of mock events of each type', async () => {
     const fid = Faker.datatype.number();
     const user = await mockFid(engine, fid);
@@ -35,9 +35,7 @@ describe('mockEvents', () => {
     const reactions = await engine.getAllReactionsByUser(fid);
     expect(reactions.size).toEqual(2);
   });
-});
 
-describe('populateEngine', () => {
   test(
     'populates an engine with selected config',
     async () => {
