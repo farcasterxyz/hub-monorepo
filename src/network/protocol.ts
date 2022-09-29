@@ -63,7 +63,7 @@ export type IDRegistryContent = {
  */
 export type ContactInfoContent = {
   peerId: string;
-  rpcAddress: AddressInfo | undefined;
+  rpcAddress?: AddressInfo;
 };
 
 /**

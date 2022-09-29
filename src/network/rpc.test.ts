@@ -170,42 +170,60 @@ describe('rpc', () => {
     expect(response._unsafeUnwrap()).toEqual(new Set([]));
   });
 
-  test('get a cast set with adds and removes in it', async () => {
-    await populate(engine);
-    const response = await client.getAllCastsByUser(aliceFid);
-    expect(response.isOk()).toBeTruthy();
-    const set = new Set([cast, castRemove]);
-    expect(response._unsafeUnwrap()).toEqual(set);
-  });
+  describe('test user generated content', () => {
+    beforeEach(async () => {
+      await populate(engine);
+    });
 
-  test('get all users', async () => {
-    await populate(engine);
-    const response = await client.getUsers();
-    expect(response.isOk()).toBeTruthy();
-    expect(response._unsafeUnwrap()).toEqual(new Set([aliceFid]));
-  });
+    test('get a cast set with adds and removes in it', async () => {
+      const response = await client.getAllCastsByUser(aliceFid);
+      expect(response.isOk()).toBeTruthy();
+      const set = new Set([cast, castRemove]);
+      expect(response._unsafeUnwrap()).toEqual(set);
+    });
 
-  test('get all reactions for an fid', async () => {
-    await populate(engine);
-    const response = await client.getAllReactionsByUser(aliceFid);
-    expect(response.isOk()).toBeTruthy();
-    const aliceReactionMessages = response._unsafeUnwrap();
-    expect(aliceReactionMessages).toEqual(new Set([reaction, reactionRemove]));
-  });
+    test('get all users', async () => {
+      const response = await client.getUsers();
+      expect(response.isOk()).toBeTruthy();
+      expect(response._unsafeUnwrap()).toEqual(new Set([aliceFid]));
+    });
 
-  test('get all follows for an fid', async () => {
-    await populate(engine);
-    const response = await client.getAllFollowsByUser(aliceFid);
-    expect(response.isOk()).toBeTruthy();
-    const aliceFollowMessages = response._unsafeUnwrap();
-    expect(aliceFollowMessages).toEqual(new Set([follow, followRemove]));
-  });
+    test('get all reactions for an fid', async () => {
+      const response = await client.getAllReactionsByUser(aliceFid);
+      expect(response.isOk()).toBeTruthy();
+      const aliceReactionMessages = response._unsafeUnwrap();
+      expect(aliceReactionMessages).toEqual(new Set([reaction, reactionRemove]));
+    });
 
-  test('get all verifications for an fid', async () => {
-    await populate(engine);
-    const response = await client.getAllVerificationsByUser(aliceFid);
-    expect(response.isOk()).toBeTruthy();
-    const aliceVerificationMessages = response._unsafeUnwrap();
-    expect(aliceVerificationMessages).toEqual(new Set([verification, verificationRemove]));
+    test('get all follows for an fid', async () => {
+      const response = await client.getAllFollowsByUser(aliceFid);
+      expect(response.isOk()).toBeTruthy();
+      const aliceFollowMessages = response._unsafeUnwrap();
+      expect(aliceFollowMessages).toEqual(new Set([follow, followRemove]));
+    });
+
+    test('get all verifications for an fid', async () => {
+      const response = await client.getAllVerificationsByUser(aliceFid);
+      expect(response.isOk()).toBeTruthy();
+      const aliceVerificationMessages = response._unsafeUnwrap();
+      expect(aliceVerificationMessages).toEqual(new Set([verification, verificationRemove]));
+    });
+
+    test('create a new cast and send it over RPC', async () => {
+      const cast2 = await Factories.CastShort.create(
+        { data: { fid: aliceFid } },
+        { transient: { signer: aliceDelegateSigner } }
+      );
+      const response = await client.submitMessage(cast2);
+      expect(response.isOk()).toBeTruthy();
+      const aliceCasts = await engine.getAllCastsByUser(aliceFid);
+      expect(aliceCasts).toEqual(new Set([cast, cast2, castRemove]));
+    });
+
+    test('rejects an invalid cast', async () => {
+      const castInvalidUser = await Factories.CastShort.create({ data: { fid: aliceFid + 1 } });
+      const response = await client.submitMessage(castInvalidUser);
+      expect(response.isErr()).toBeTruthy();
+    });
   });
 });

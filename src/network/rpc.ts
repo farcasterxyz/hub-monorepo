@@ -75,7 +75,6 @@ export class RPCServer {
           handler: (args: any) => {
             return rpcHandler.getAllCastsByUser(args.fid);
           },
-          params: Object,
         }),
 
         [RPCRequest.GetAllSignerMessagesByUser]: new jayson.Method({
@@ -110,9 +109,12 @@ export class RPCServer {
           },
           params: Object,
         }),
+
         [RPCRequest.SubmitMessage]: new jayson.Method({
           handler: async (args: any) => {
-            return rpcHandler.submitMessage(args.message);
+            const result = await rpcHandler.submitMessage(args.message);
+            if (result.isErr()) throw rpcError(result.error.statusCode, result.error.message);
+            return result.value;
           },
         }),
       },
