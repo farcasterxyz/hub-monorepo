@@ -1,10 +1,12 @@
 import Faker from 'faker';
 import { AddressInfo } from 'net';
-import { mockFid, populateEngine } from '~/engine/mock';
+import { generateUserInfo, getIDRegistryEvent, getSignerAdd, mockFid, populateEngine } from '~/engine/mock';
 import { Factories } from '~/factories';
 import { Hub, HubOpts } from '~/hub';
 import { RPCClient } from '~/network/rpc';
 import { sleep } from '~/utils';
+import { Content, GossipMessage, NETWORK_TOPIC_PRIMARY } from '~/network/protocol';
+import { Message } from '~/types';
 
 const TEST_TIMEOUT = 2 * 60 * 1000;
 const opts: HubOpts = { simpleSync: false };
@@ -40,7 +42,7 @@ describe('Hub tests', () => {
   });
 
   afterEach(async () => {
-    tearDownHub(hub);
+    await tearDownHub(hub);
   });
 
   test('Run a Hub and send it a message', async () => {
@@ -80,7 +82,8 @@ describe('Hub tests', () => {
         await secondHub.start();
         // wait until sync completes
         await new Promise((resolve) => {
-          secondHub.addListener('sync_complete', () => {
+          secondHub.addListener('sync_complete', (success) => {
+            expect(success).toBeTruthy();
             resolve(undefined);
           });
         });
@@ -93,4 +96,59 @@ describe('Hub tests', () => {
     },
     TEST_TIMEOUT
   );
+
+  const testMessage = async (message: Message) => {
+    const gossipMessage: GossipMessage<Content> = {
+      content: {
+        message,
+        root: '',
+        count: 0,
+      },
+      topics: [NETWORK_TOPIC_PRIMARY],
+    };
+    const result = await hub.handleGossipMessage(gossipMessage);
+    expect(result.isOk()).toBeTruthy();
+  };
+
+  test('Hub handles various valid gossip messages', async () => {
+    const aliceFid = Faker.datatype.number();
+    const aliceInfo = await generateUserInfo(aliceFid);
+    const IDRegistryEvent: GossipMessage<Content> = {
+      content: {
+        message: await getIDRegistryEvent(aliceInfo),
+        root: '',
+        count: 0,
+      },
+      topics: [NETWORK_TOPIC_PRIMARY],
+    };
+    const idRegistryResult = await hub.handleGossipMessage(IDRegistryEvent);
+    expect(idRegistryResult.isOk());
+
+    await testMessage(await getSignerAdd(aliceInfo));
+    await testMessage(await getSignerAdd(aliceInfo));
+    await testMessage(
+      await Factories.CastShort.create({ data: { fid: aliceFid } }, { transient: { signer: aliceInfo.delegateSigner } })
+    );
+    await testMessage(
+      await Factories.FollowAdd.create({ data: { fid: aliceFid } }, { transient: { signer: aliceInfo.delegateSigner } })
+    );
+    await testMessage(
+      await Factories.ReactionAdd.create(
+        { data: { fid: aliceFid } },
+        { transient: { signer: aliceInfo.delegateSigner } }
+      )
+    );
+  });
+
+  test('Invalid messages fail', async () => {
+    const badMessage = {
+      content: {
+        not: '',
+        a: 0,
+        message: {},
+      },
+    };
+    const result = await hub.handleGossipMessage(badMessage as any as GossipMessage);
+    expect(result.isErr());
+  });
 });

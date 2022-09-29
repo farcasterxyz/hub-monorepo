@@ -17,8 +17,8 @@ import { isContactInfo, isIDRegistryContent, isUserContent } from '~/network/typ
 import { TypedEmitter } from 'tiny-typed-emitter';
 import RocksDB from '~/db/rocksdb';
 import Faker from 'faker';
-import { Result } from 'neverthrow';
-import { FarcasterError } from '~/errors';
+import { err, ok, Result } from 'neverthrow';
+import { FarcasterError, ServerError } from '~/errors';
 
 export interface HubOpts {
   // ID Registry network URL
@@ -55,7 +55,7 @@ interface HubEvents {
   /**
    * Triggered when a simple sync completes
    */
-  sync_complete: () => void;
+  sync_complete: (success: boolean) => void;
 }
 
 export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
@@ -157,8 +157,8 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     });
   }
 
-  private async handleGossipMessage(gossipMessage: GossipMessage) {
-    let result;
+  async handleGossipMessage(gossipMessage: GossipMessage) {
+    let result: Result<void, FarcasterError> = err(new ServerError('Invalid message type'));
     if (isUserContent(gossipMessage.content as UserContent)) {
       const message = (gossipMessage.content as UserContent).message;
       result = await this.engine.mergeMessage(message as Message);
@@ -171,12 +171,14 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       if (this.syncState == SimpleSyncState.Pending) {
         console.log(this.identity, 'Received a Contact Info for Sync');
         await this.simpleSyncFromPeer(gossipMessage.content as ContactInfo);
+        result = ok(undefined);
       }
     }
 
-    if (result && result.isErr()) {
+    if (result.isErr()) {
       console.log(this.identity, result, 'Failed to merge message');
     }
+    return result;
   }
 
   private async simpleSyncFromPeer(peer: ContactInfo) {
@@ -186,18 +188,23 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
      * Find the peer's addrs from our peer list because we cannot use the address
      * in the contact info directly
      */
-    if (!peer.rpcAddress) return;
+    if (!peer.rpcAddress) {
+      this.emit('sync_complete', false);
+      return;
+    }
     const contactPeers = this.gossipNode.gossip?.getSubscribers(NETWORK_TOPIC_CONTACT);
     const peerId = contactPeers?.find((value) => {
       return peer.peerId === value.toString();
     });
     if (!peerId) {
       console.log(this.identity, 'Failed to find peer matching contact info', peer);
+      this.emit('sync_complete', false);
       return;
     }
     const peerAddress = await this.gossipNode.getPeerAddress(peerId);
     if (!peerAddress) {
       console.log(this.identity, 'Failed to find peer address to request simple sync');
+      this.emit('sync_complete', false);
       return;
     }
     // start requesting for peer's data over rpc
@@ -286,7 +293,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       }
     );
     console.log(this.identity, 'Sync completed');
-    this.emit('sync_complete');
+    this.emit('sync_complete', true);
     this.syncState = SimpleSyncState.Complete;
   }
 
