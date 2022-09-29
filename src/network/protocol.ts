@@ -24,7 +24,7 @@ export type GossipMessage<T = Content> = {
   topics: string[];
 };
 
-export type Content = IDRegistryContent | UserContent | ContactInfo;
+export type Content = IDRegistryContent | UserContent | ContactInfoContent;
 
 /**
  * UserContent defines the structure of the primary message type that is published
@@ -55,13 +55,13 @@ export type IDRegistryContent = {
 };
 
 /**
- * ContactInfo allows gossip nodes to share additional information about each other
+ * ContactInfoContent allows gossip nodes to share additional information about each other
  * over the gossip network.
  *
- * @rpcAddress - The address at which this node is serving RPC requests
  * @peerId - The peerId of the node
+ * @rpcAddress - The address at which this node is serving RPC requests. Unset if RPC is not offered.
  */
-export type ContactInfo = {
+export type ContactInfoContent = {
   peerId: string;
   rpcAddress: AddressInfo | undefined;
 };

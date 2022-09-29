@@ -9,6 +9,7 @@ import { Multiaddr } from '@multiformats/multiaddr';
 import { createLibp2p, Libp2p } from 'libp2p';
 import { err, ok, Result } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
+import { FarcasterError, ServerError } from '~/errors';
 import { decodeMessage, encodeMessage, GossipMessage, GOSSIP_TOPICS } from '~/network/protocol';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1/tcp/0';
@@ -20,9 +21,9 @@ interface NodeEvents {
    */
   message: (topic: string, message: Result<GossipMessage, string>) => void;
   /** Triggered when a peer is connected. Provides the Libp2p Connection object. */
-  peer_connect: (connection: Connection) => void;
+  peerConnect: (connection: Connection) => void;
   /** Triggered when a peer is disconnected. Provides the Libp2p Connecion object. */
-  peer_disconnect: (connection: Connection) => void;
+  peerDisconnect: (connection: Connection) => void;
 }
 
 /**
@@ -65,23 +66,23 @@ export class Node extends TypedEmitter<NodeEvents> {
   /**
    * Creates and Starts the underlying libp2p node. Nodes must be started prior to any network configuration or communication.
    */
-  async start(bootstrapAddrs: Multiaddr[] | undefined = undefined) {
+  async start(bootstrapAddrs: Multiaddr[]) {
     this._node = await createNode();
     this.registerListeners();
 
     await this._node.start();
     console.log(this.identity, 'LibP2P started...');
     console.log('listening on addresses:');
-    this._node?.getMultiaddrs().forEach((addr) => {
+    this._node.getMultiaddrs().forEach((addr) => {
       console.log(addr.toString());
     });
 
     await this.bootstrap(bootstrapAddrs);
   }
 
-  /* Attempts to dail all the addresses in the bootstrap list */
-  private async bootstrap(bootstrapAddrs: Multiaddr[] | undefined = undefined) {
-    if (!bootstrapAddrs) return;
+  /* Attempts to dial all the addresses in the bootstrap list */
+  private async bootstrap(bootstrapAddrs: Multiaddr[]) {
+    if (bootstrapAddrs.length == 0) return;
     const results = await Promise.all(bootstrapAddrs.map((addr) => this.connectAddress(addr)));
     let failures = 0;
     for (const result of results) {
@@ -153,22 +154,22 @@ export class Node extends TypedEmitter<NodeEvents> {
    *
    * @param address The NodeAddress to attempt a connection with
    */
-  async connectAddress(address: Multiaddr): Promise<Result<void, string>> {
+  async connectAddress(address: Multiaddr): Promise<Result<void, FarcasterError>> {
     console.log(this.identity, 'Attempting to connect to address:', address);
     const result = await this._node?.dial(address);
     if (result) {
       console.log(this.identity, 'Connected to peer at address:', address);
       return ok(undefined);
     }
-    return err('Connection failure: Unable to connect to the given peer address');
+    return err(new ServerError('Connection failure: Unable to connect to the given peer address'));
   }
 
   registerListeners() {
     this._node?.connectionManager.addEventListener('peer:connect', (event) => {
-      this.emit('peer_connect', event.detail);
+      this.emit('peerConnect', event.detail);
     });
     this._node?.connectionManager.addEventListener('peer:disconnect', (event) => {
-      this.emit('peer_disconnect', event.detail);
+      this.emit('peerDisconnect', event.detail);
     });
     this.gossip?.addEventListener('message', (event) => {
       // ignore messages that aren't in our list of topics (ignores gossipsub peer discovery messages)

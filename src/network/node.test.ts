@@ -60,7 +60,7 @@ describe('gossip network', () => {
 
   beforeEach(async () => {
     messages.clear();
-    await Promise.all(nodes.map((node) => node.start()));
+    await Promise.all(nodes.map((node) => node.start([])));
   });
 
   afterEach(async () => {

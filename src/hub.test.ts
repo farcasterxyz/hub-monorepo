@@ -82,7 +82,7 @@ describe('Hub tests', () => {
         await secondHub.start();
         // wait until sync completes
         await new Promise((resolve) => {
-          secondHub.addListener('sync_complete', (success) => {
+          secondHub.addListener('syncComplete', (success) => {
             expect(success).toBeTruthy();
             resolve(undefined);
           });

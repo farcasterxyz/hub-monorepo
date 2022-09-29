@@ -4,7 +4,7 @@ import { Node } from '~/network/node';
 import { RPCClient, RPCHandler, RPCServer } from '~/network/rpc';
 import { Cast, SignerMessage, Reaction, Follow, Verification, IDRegistryEvent, Message } from '~/types';
 import {
-  ContactInfo,
+  ContactInfoContent,
   GossipMessage,
   GOSSIP_CONTACT_INTERVAL,
   IDRegistryContent,
@@ -16,7 +16,6 @@ import { AddressInfo } from 'net';
 import { isContactInfo, isIDRegistryContent, isUserContent } from '~/network/typeguards';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import RocksDB from '~/db/rocksdb';
-import Faker from 'faker';
 import { err, ok, Result } from 'neverthrow';
 import { FarcasterError, ServerError } from '~/errors';
 
@@ -38,7 +37,13 @@ export interface HubOpts {
   rocksDBName?: string;
 }
 
-const randomDbName = () => `rocksdb.tmp.${Faker.name.lastName().toLowerCase()}`;
+/**
+ *
+ * @returns a random string of the format `rocksdb.tmp.*`
+ */
+const randomDbName = () => {
+  return `rocksdb.tmp.${(new Date().getUTCDate() * Math.random()).toString(36).substring(2)}`;
+};
 
 enum SimpleSyncState {
   Disabled,
@@ -51,11 +56,11 @@ interface HubEvents {
   /**
    * Triggered when a simple sync starts
    */
-  sync_start: () => void;
+  syncStart: () => void;
   /**
    * Triggered when a simple sync completes
    */
-  sync_complete: (success: boolean) => void;
+  syncComplete: (success: boolean) => void;
 }
 
 export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
@@ -87,14 +92,14 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     // open rocksDB
     await this.rocksDB.open();
     // start all the networking bits
-    await this.gossipNode.start(this.options.bootstrapAddrs);
+    await this.gossipNode.start(this.options.bootstrapAddrs ?? []);
     await this.rpcServer.start(this.options.port ? this.options.port : 0);
     this.registerEventHandlers();
 
     // Publish this Node's information to the gossip network
     this.contactTimer = setInterval(async () => {
       if (this.gossipNode.peerId) {
-        const gossipMesage: GossipMessage<ContactInfo> = {
+        const gossipMesage: GossipMessage<ContactInfoContent> = {
           content: {
             peerId: this.gossipNode.peerId.toString(),
             rpcAddress: this.rpcAddress,
@@ -128,10 +133,10 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
 
   // Returns the Gossip peerId string of this Hub
   get identity(): string {
-    if (!this.gossipNode.isStarted()) {
-      console.error('No identity for node that has not started');
+    if (!this.gossipNode.isStarted() || !this.gossipNode.peerId) {
+      throw new ServerError('Node not started! No identity.');
     }
-    return this.gossipNode.peerId ? this.gossipNode.peerId.toString() + ':' : 'Not Started';
+    return this.gossipNode.peerId.toString();
   }
 
   // Publishes the given message to the gossip network
@@ -159,18 +164,18 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
 
   async handleGossipMessage(gossipMessage: GossipMessage) {
     let result: Result<void, FarcasterError> = err(new ServerError('Invalid message type'));
-    if (isUserContent(gossipMessage.content as UserContent)) {
+    if (isUserContent(gossipMessage.content)) {
       const message = (gossipMessage.content as UserContent).message;
-      result = await this.engine.mergeMessage(message as Message);
-    } else if (isIDRegistryContent(gossipMessage.content as IDRegistryContent)) {
+      result = await this.engine.mergeMessage(message);
+    } else if (isIDRegistryContent(gossipMessage.content)) {
       const message = (gossipMessage.content as IDRegistryContent).message;
-      result = await this.engine.mergeIDRegistryEvent(message as IDRegistryEvent);
-    } else if (isContactInfo(gossipMessage.content as ContactInfo)) {
+      result = await this.engine.mergeIDRegistryEvent(message);
+    } else if (isContactInfo(gossipMessage.content)) {
       // TODO Maybe we need a ContactInfo CRDT?
       // Check if we need sync and if we do, use this peer do it.
       if (this.syncState == SimpleSyncState.Pending) {
         console.log(this.identity, 'Received a Contact Info for Sync');
-        await this.simpleSyncFromPeer(gossipMessage.content as ContactInfo);
+        await this.simpleSyncFromPeer(gossipMessage.content as ContactInfoContent);
         result = ok(undefined);
       }
     }
@@ -181,15 +186,15 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     return result;
   }
 
-  private async simpleSyncFromPeer(peer: ContactInfo) {
-    this.emit('sync_start');
+  private async simpleSyncFromPeer(peer: ContactInfoContent) {
+    this.emit('syncStart');
     console.log(this.identity, 'Attempting to sync from Peer', peer);
     /*
      * Find the peer's addrs from our peer list because we cannot use the address
      * in the contact info directly
      */
     if (!peer.rpcAddress) {
-      this.emit('sync_complete', false);
+      this.emit('syncComplete', false);
       return;
     }
     const contactPeers = this.gossipNode.gossip?.getSubscribers(NETWORK_TOPIC_CONTACT);
@@ -198,13 +203,13 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     });
     if (!peerId) {
       console.log(this.identity, 'Failed to find peer matching contact info', peer);
-      this.emit('sync_complete', false);
+      this.emit('syncComplete', false);
       return;
     }
     const peerAddress = await this.gossipNode.getPeerAddress(peerId);
     if (!peerAddress) {
       console.log(this.identity, 'Failed to find peer address to request simple sync');
-      this.emit('sync_complete', false);
+      this.emit('syncComplete', false);
       return;
     }
     // start requesting for peer's data over rpc
@@ -293,7 +298,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       }
     );
     console.log(this.identity, 'Sync completed');
-    this.emit('sync_complete', true);
+    this.emit('syncComplete', true);
     this.syncState = SimpleSyncState.Complete;
   }
 

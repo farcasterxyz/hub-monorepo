@@ -1,9 +1,8 @@
-import { Ed25519Signer, EthereumSigner, MessageSigner } from '~/types';
+import { Ed25519Signer, EthereumSigner } from '~/types';
 import { Factories } from '~/factories';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 import Engine from '~/engine';
 import Faker from 'faker';
-import { userInfo } from 'os';
 
 type UserInfo = {
   fid: number;
