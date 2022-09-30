@@ -186,7 +186,10 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     return result;
   }
 
-  private async simpleSyncFromPeer(peer: ContactInfoContent) {
+  // attempt to sync data from a peer
+  async simpleSyncFromPeer(peer: ContactInfoContent) {
+    if (this.syncState != SimpleSyncState.Pending) return;
+
     this.emit('syncStart');
     console.log(this.identity, 'Attempting to sync from Peer', peer);
     /*

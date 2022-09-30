@@ -1,3 +1,5 @@
+import { Multiaddr } from '@multiformats/multiaddr/';
+import { ServerError } from '~/errors';
 import { Factories } from '~/factories';
 import { Node } from '~/network/node';
 import { GossipMessage, NETWORK_TOPIC_PRIMARY } from '~/network/protocol';
@@ -51,6 +53,31 @@ const trackMessages = () => {
     }
   });
 };
+
+describe('node unit tests', () => {
+  test('fails to bootstrap to invalid addresses', async () => {
+    const node = new Node();
+    await expect(() => {
+      return node.start([new Multiaddr()]);
+    }).rejects.toThrow(ServerError);
+    // still have to stop it since the underlying libp2p node does start up before bootstrap fails
+    await node.stop();
+  });
+
+  test('fails to connect with a node that has not started', async () => {
+    const node = new Node();
+    await node.start([]);
+
+    let result = await node.connectAddress(new Multiaddr());
+    expect(result.isErr()).toBeTruthy();
+
+    const offlineNode = new Node();
+    result = await node.connect(node);
+    expect(result.isErr()).toBeTruthy();
+
+    await node.stop();
+  });
+});
 
 describe('gossip network', () => {
   beforeAll(async () => {

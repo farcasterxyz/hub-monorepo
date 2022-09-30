@@ -5,8 +5,10 @@ import { Factories } from '~/factories';
 import { Hub, HubOpts } from '~/hub';
 import { RPCClient } from '~/network/rpc';
 import { sleep } from '~/utils';
-import { Content, GossipMessage, NETWORK_TOPIC_PRIMARY } from '~/network/protocol';
+import { ContactInfoContent, Content, GossipMessage, NETWORK_TOPIC_PRIMARY } from '~/network/protocol';
 import { Message } from '~/types';
+import { ServerError } from '~/errors';
+import { jest } from '@jest/globals';
 
 const TEST_TIMEOUT = 2 * 60 * 1000;
 const opts: HubOpts = { simpleSync: false };
@@ -34,7 +36,7 @@ const tearDownHub = async (hub: Hub) => {
   await hub.destroyDB();
 };
 
-describe('Hub tests', () => {
+describe('Hub running tests', () => {
   beforeEach(async () => {
     hub = new Hub(opts);
     await hub.start();
@@ -150,5 +152,48 @@ describe('Hub tests', () => {
     };
     const result = await hub.handleGossipMessage(badMessage as any as GossipMessage);
     expect(result.isErr());
+  });
+
+  test('Fail to submit invalid messages', async () => {
+    // try to send it a message
+    const submitResult = hub.submitMessage(await Factories.CastShort.create());
+    expect((await submitResult).isErr()).toBeTruthy();
+  });
+});
+
+describe('Hub negative tests', () => {
+  test('Poke a hub before starting it', async () => {
+    hub = new Hub(opts);
+
+    expect(hub.rpcAddress).toBeUndefined();
+    expect(hub.gossipAddresses).toEqual([]);
+    expect(() => {
+      hub.identity;
+    }).toThrow(ServerError);
+  });
+
+  test('Fail to sync from invalid peers', async () => {
+    hub = new Hub({});
+    await hub.start();
+
+    const syncHandler = jest.fn((success: boolean) => {
+      expect(success).toBeFalsy();
+    });
+
+    hub.addListener('syncComplete', syncHandler);
+
+    const badPeerInfo: ContactInfoContent = {
+      peerId: '',
+    };
+    // fails because this peerinfo has no RPC to sync from
+    hub.simpleSyncFromPeer(badPeerInfo);
+    badPeerInfo.rpcAddress = { address: '', port: 0, family: 'ip4' };
+    // fails because hub has no peers (despite this peerInfo having an rpc address)
+    hub.simpleSyncFromPeer(badPeerInfo);
+
+    expect(syncHandler).toBeCalledTimes(2);
+
+    await hub.stop();
+    await hub.destroyDB();
   });
 });

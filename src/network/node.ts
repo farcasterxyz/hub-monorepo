@@ -90,7 +90,7 @@ export class Node extends TypedEmitter<NodeEvents> {
       failures++;
     }
     if (failures == bootstrapAddrs.length) {
-      console.error(this.identity, 'Bootstrap Error: Failed to connect to any bootstrap address');
+      throw new ServerError('Failed to connect to any bootstrap address');
     }
   }
 
@@ -134,19 +134,24 @@ export class Node extends TypedEmitter<NodeEvents> {
    *
    * @param node The peer Node to attempt a connection with
    */
-  async connect(node: Node): Promise<Result<void, string>> {
+  async connect(node: Node): Promise<Result<void, FarcasterError>> {
     const multiaddrs = node.multiaddrs;
     if (multiaddrs) {
       // how to select an addr here?
       for (const addr of multiaddrs) {
-        const result = await this._node?.dial(addr);
-        // bail after the first successful connection
-        if (result) return ok(undefined);
+        try {
+          const result = await this._node?.dial(addr);
+          // bail after the first successful connection
+          if (result) return ok(undefined);
+        } catch (error) {
+          console.warn(this.identity, error, 'Failed to connect to addr', addr);
+          continue;
+        }
       }
     } else {
-      return err('Connection failure: No peerId');
+      return err(new ServerError('Connection failure: No peerId'));
     }
-    return err('Connection failure: Unable to connect to any peer address');
+    return err(new ServerError('Connection failure: Unable to connect to any peer address'));
   }
 
   /**
@@ -156,10 +161,14 @@ export class Node extends TypedEmitter<NodeEvents> {
    */
   async connectAddress(address: Multiaddr): Promise<Result<void, FarcasterError>> {
     console.log(this.identity, 'Attempting to connect to address:', address);
-    const result = await this._node?.dial(address);
-    if (result) {
-      console.log(this.identity, 'Connected to peer at address:', address);
-      return ok(undefined);
+    try {
+      const result = await this._node?.dial(address);
+      if (result) {
+        console.log(this.identity, 'Connected to peer at address:', address);
+        return ok(undefined);
+      }
+    } catch (error: any) {
+      return err(new ServerError(error));
     }
     return err(new ServerError('Connection failure: Unable to connect to the given peer address'));
   }
