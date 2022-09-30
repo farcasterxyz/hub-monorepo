@@ -1,14 +1,44 @@
 import { AddressInfo } from 'net';
-import { RPCServer, RPCClient } from '~/network/rpc';
+import { RPCServer, RPCHandler, RPCClient } from '~/network/rpc';
 import Engine from '~/engine';
 import { jestRocksDB } from '~/db/jestUtils';
 import { populateEngine } from '~/engine/mock';
+import { Cast, Follow, IDRegistryEvent, Message, Reaction, SignerMessage, Verification } from '~/types';
+import { Result } from 'neverthrow';
+import { FarcasterError } from '~/errors';
 
 const serverDb = jestRocksDB('rpcSync.test.server');
 const serverEngine = new Engine(serverDb);
 
 const clientDb = jestRocksDB('rpcSync.test.client');
 const clientEngine = new Engine(clientDb);
+
+class mockRPCHandler implements RPCHandler {
+  getUsers(): Promise<Set<number>> {
+    return serverEngine.getUsers();
+  }
+  getAllCastsByUser(fid: number): Promise<Set<Cast>> {
+    return serverEngine.getAllCastsByUser(fid);
+  }
+  getAllSignerMessagesByUser(fid: number): Promise<Set<SignerMessage>> {
+    return serverEngine.getAllSignerMessagesByUser(fid);
+  }
+  getAllReactionsByUser(fid: number): Promise<Set<Reaction>> {
+    return serverEngine.getAllReactionsByUser(fid);
+  }
+  getAllFollowsByUser(fid: number): Promise<Set<Follow>> {
+    return serverEngine.getAllFollowsByUser(fid);
+  }
+  getAllVerificationsByUser(fid: number): Promise<Set<Verification>> {
+    return serverEngine.getAllVerificationsByUser(fid);
+  }
+  getCustodyEventByUser(fid: number): Promise<Result<IDRegistryEvent, FarcasterError>> {
+    return serverEngine.getCustodyEventByUser(fid);
+  }
+  async submitMessage(message: Message): Promise<Result<void, FarcasterError>> {
+    return await serverEngine.mergeMessage(message);
+  }
+}
 
 let server: RPCServer;
 let client: RPCClient;
@@ -19,7 +49,7 @@ const TEST_TIMEOUT = 2 * 60 * 1000; // 2 min timeout
 describe('rpcSync', () => {
   beforeAll(async () => {
     // setup the rpc server and client
-    server = new RPCServer(serverEngine);
+    server = new RPCServer(new mockRPCHandler());
     await server.start();
     expect(server.address).not.toBeNull();
 

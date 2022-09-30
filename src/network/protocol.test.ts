@@ -1,6 +1,14 @@
 import { Factories } from '~/factories';
 import { CastShort, IDRegistryEvent } from '~/types';
-import { decodeMessage, encodeMessage, GossipMessage, IDRegistryContent, UserContent } from '~/network/protocol';
+import {
+  ContactInfoContent,
+  decodeMessage,
+  encodeMessage,
+  GossipMessage,
+  IDRegistryContent,
+  UserContent,
+} from '~/network/protocol';
+import { isGossipMessage } from '~/network/typeguards';
 
 let cast: CastShort;
 let idRegistryEvent: IDRegistryEvent;
@@ -43,6 +51,7 @@ describe('encode/decode', () => {
         message: { notARealMessage: 'test data' },
       },
     };
+    expect(isGossipMessage(invalid)).toBeFalsy();
     // since encoding is just JSON stringify, it always succeeds
     const encoded = encodeMessage(invalid);
     expect(encoded.isErr()).toBeTruthy();
@@ -61,6 +70,7 @@ describe('encode/decode', () => {
       },
       topics: [],
     };
+    expect(isGossipMessage(message)).toBeTruthy();
     const encoded = encodeMessage(message);
     expect(encoded.isOk()).toBeTruthy();
     expect(encoded._unsafeUnwrap()).toBeDefined();
@@ -78,6 +88,23 @@ describe('encode/decode', () => {
       },
       topics: [],
     };
+    expect(isGossipMessage(message)).toBeTruthy();
+    const encoded = encodeMessage(message);
+    expect(encoded.isOk()).toBeTruthy();
+    expect(encoded._unsafeUnwrap()).toBeDefined();
+    const decoded = decodeMessage(encoded._unsafeUnwrap());
+    expect(decoded.isOk()).toBeTruthy();
+    expect(decoded._unsafeUnwrap()).toStrictEqual(message);
+  });
+
+  test('encode and decode a ContactInfo message', () => {
+    const message: GossipMessage<ContactInfoContent> = {
+      content: {
+        peerId: '',
+      },
+      topics: [],
+    };
+    expect(isGossipMessage(message)).toBeTruthy();
     const encoded = encodeMessage(message);
     expect(encoded.isOk()).toBeTruthy();
     expect(encoded._unsafeUnwrap()).toBeDefined();

@@ -1,14 +1,16 @@
-import { Bootstrap } from '@libp2p/bootstrap';
-import { Connection } from '@libp2p/interface-connection';
-import { createLibp2p, Libp2p } from 'libp2p';
-import { decodeMessage, encodeMessage, GossipMessage } from '~/network/protocol';
-import { err, ok, Result } from 'neverthrow';
 import { GossipSub } from '@chainsafe/libp2p-gossipsub';
-import { Mplex } from '@libp2p/mplex';
-import { Multiaddr, NodeAddress } from '@multiformats/multiaddr';
 import { Noise } from '@chainsafe/libp2p-noise';
+import { Connection } from '@libp2p/interface-connection';
+import { PeerId } from '@libp2p/interface-peer-id';
+import { Mplex } from '@libp2p/mplex';
+import { PubSubPeerDiscovery } from '@libp2p/pubsub-peer-discovery';
 import { TCP } from '@libp2p/tcp';
+import { Multiaddr } from '@multiformats/multiaddr';
+import { createLibp2p, Libp2p } from 'libp2p';
+import { err, ok, Result } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
+import { FarcasterError, ServerError } from '~/errors';
+import { decodeMessage, encodeMessage, GossipMessage, GOSSIP_TOPICS } from '~/network/protocol';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1/tcp/0';
 
@@ -19,9 +21,9 @@ interface NodeEvents {
    */
   message: (topic: string, message: Result<GossipMessage, string>) => void;
   /** Triggered when a peer is connected. Provides the Libp2p Connection object. */
-  peer_connect: (connection: Connection) => void;
+  peerConnect: (connection: Connection) => void;
   /** Triggered when a peer is disconnected. Provides the Libp2p Connecion object. */
-  peer_disconnect: (connection: Connection) => void;
+  peerDisconnect: (connection: Connection) => void;
 }
 
 /**
@@ -49,6 +51,10 @@ export class Node extends TypedEmitter<NodeEvents> {
     return this._node?.getMultiaddrs();
   }
 
+  async getPeerAddress(peerId: PeerId) {
+    return await this._node?.peerStore.get(peerId);
+  }
+
   /**
    * Returns a the GossipSub implementation used by the Node
    */
@@ -60,12 +66,36 @@ export class Node extends TypedEmitter<NodeEvents> {
   /**
    * Creates and Starts the underlying libp2p node. Nodes must be started prior to any network configuration or communication.
    */
-  async start() {
+  async start(bootstrapAddrs: Multiaddr[]) {
     this._node = await createNode();
     this.registerListeners();
 
     await this._node.start();
-    console.log('LibP2P started...' + this._node.getMultiaddrs());
+    console.log(this.identity, 'LibP2P started...');
+    console.log('listening on addresses:');
+    this._node.getMultiaddrs().forEach((addr) => {
+      console.log(addr.toString());
+    });
+
+    await this.bootstrap(bootstrapAddrs);
+  }
+
+  /* Attempts to dial all the addresses in the bootstrap list */
+  private async bootstrap(bootstrapAddrs: Multiaddr[]) {
+    if (bootstrapAddrs.length == 0) return;
+    const results = await Promise.all(bootstrapAddrs.map((addr) => this.connectAddress(addr)));
+    let failures = 0;
+    for (const result of results) {
+      if (result.isOk()) continue;
+      failures++;
+    }
+    if (failures == bootstrapAddrs.length) {
+      throw new ServerError('Failed to connect to any bootstrap address');
+    }
+  }
+
+  isStarted() {
+    return this._node?.isStarted();
   }
 
   /**
@@ -73,7 +103,11 @@ export class Node extends TypedEmitter<NodeEvents> {
    */
   async stop() {
     await this._node?.stop();
-    console.log(this.peerId + ': stopped...');
+    console.log(this.identity + ': stopped...');
+  }
+
+  get identity() {
+    return this.peerId?.toString();
   }
 
   /**
@@ -82,15 +116,15 @@ export class Node extends TypedEmitter<NodeEvents> {
    */
   async publish(message: GossipMessage) {
     const topics = message.topics;
-    console.log(this.peerId?.toString(), ': Publishing message to topics: ', topics);
+    console.log(this.identity, ': Publishing message to topics: ', topics);
     const encodedMessage = encodeMessage(message);
     encodedMessage.match(
       async (msg) => {
         const results = await Promise.all(topics.map((topic) => this.gossip?.publish(topic, msg)));
-        console.log(this.peerId?.toString(), ': Published to ' + results.length + ' peers');
+        console.log(this.identity, ': Published to ' + results.length + ' peers');
       },
       async (err) => {
-        console.log(this.peerId?.toString(), err, '. Failed to publish message.');
+        console.log(this.identity, err, '. Failed to publish message.');
       }
     );
   }
@@ -100,51 +134,77 @@ export class Node extends TypedEmitter<NodeEvents> {
    *
    * @param node The peer Node to attempt a connection with
    */
-  async connect(node: Node): Promise<Result<void, string>> {
+  async connect(node: Node): Promise<Result<void, FarcasterError>> {
     const multiaddrs = node.multiaddrs;
     if (multiaddrs) {
       // how to select an addr here?
       for (const addr of multiaddrs) {
-        const result = await this._node?.dial(addr);
-        // bail after the first successful connection
-        if (result) return ok(undefined);
+        try {
+          const result = await this._node?.dial(addr);
+          // bail after the first successful connection
+          if (result) return ok(undefined);
+        } catch (error) {
+          console.warn(this.identity, error, 'Failed to connect to addr', addr);
+          continue;
+        }
       }
     } else {
-      return err('Connection failure: No peerId');
+      return err(new ServerError('Connection failure: No peerId'));
     }
-    return err('Connection failure: Unable to connect to any peer address');
+    return err(new ServerError('Connection failure: Unable to connect to any peer address'));
+  }
+
+  /**
+   * Connect with a peer's NodeAddress
+   *
+   * @param address The NodeAddress to attempt a connection with
+   */
+  async connectAddress(address: Multiaddr): Promise<Result<void, FarcasterError>> {
+    console.log(this.identity, 'Attempting to connect to address:', address);
+    try {
+      const result = await this._node?.dial(address);
+      if (result) {
+        console.log(this.identity, 'Connected to peer at address:', address);
+        return ok(undefined);
+      }
+    } catch (error: any) {
+      return err(new ServerError(error));
+    }
+    return err(new ServerError('Connection failure: Unable to connect to the given peer address'));
   }
 
   registerListeners() {
     this._node?.connectionManager.addEventListener('peer:connect', (event) => {
-      this.emit('peer_connect', event.detail);
+      this.emit('peerConnect', event.detail);
     });
     this._node?.connectionManager.addEventListener('peer:disconnect', (event) => {
-      this.emit('peer_disconnect', event.detail);
+      this.emit('peerDisconnect', event.detail);
     });
     this.gossip?.addEventListener('message', (event) => {
-      this.emit('message', event.detail.topic, decodeMessage(event.detail.data));
+      // ignore messages that aren't in our list of topics (ignores gossipsub peer discovery messages)
+      if (GOSSIP_TOPICS.includes(event.detail.topic)) {
+        this.emit('message', event.detail.topic, decodeMessage(event.detail.data));
+      }
     });
   }
 
-  // move this to a test
   registerDebugListeners() {
     // Debug
     this._node?.addEventListener('peer:discovery', (event) => {
-      console.log(this.peerId?.toString(), ': Found peer: ', event.detail.toString());
+      console.debug(this.identity, ': Found peer: ', event.detail.multiaddrs);
     });
     this._node?.connectionManager.addEventListener('peer:connect', (event) => {
-      console.log(this.peerId?.toString(), ': Connection established to:', event.detail.remotePeer.toString());
+      console.debug(this.identity, ': Connection established to:', event.detail.remotePeer.toString());
     });
     this._node?.connectionManager.addEventListener('peer:disconnect', (event) => {
-      console.log(this.peerId?.toString(), ': Disconnected from to:', event.detail.remotePeer.toString());
+      console.debug(this.identity, ': Disconnected from:', event.detail.remotePeer.toString());
     });
     this.gossip?.addEventListener('message', (event) => {
-      console.log(this.peerId?.toString(), ': Received message for topic:', event.detail.topic);
+      console.debug(this.identity, ': Received message for topic:', event.detail.topic);
     });
     this.gossip?.addEventListener('subscription-change', (event) => {
-      console.log(
-        this.peerId?.toString(),
+      console.debug(
+        this.identity,
         ': Subscription change:',
         event.detail.subscriptions.map((value) => {
           value.topic;
@@ -159,17 +219,10 @@ export class Node extends TypedEmitter<NodeEvents> {
  *
  * @bootstrapAddrs: A list of NodeAddresses to use for bootstrapping over tcp
  */
-const createNode = async (bootstrapAddrs: NodeAddress[] | undefined = undefined) => {
-  let bootstrap;
-  if (bootstrapAddrs) {
-    bootstrap = new Bootstrap({
-      interval: 1000,
-      list: bootstrapAddrs.map((n) => Multiaddr.fromNodeAddress(n, 'tcp')).map((m) => m.toString()),
-    });
-  }
-
+const createNode = async () => {
   const gossip = new GossipSub({
     emitSelf: false,
+    allowPublishToZeroPeers: true,
   });
 
   const node = await createLibp2p({
@@ -179,7 +232,7 @@ const createNode = async (bootstrapAddrs: NodeAddress[] | undefined = undefined)
     transports: [new TCP()],
     streamMuxers: [new Mplex()],
     connectionEncryption: [new Noise()],
-    peerDiscovery: bootstrap ? [bootstrap] : undefined,
+    peerDiscovery: [new PubSubPeerDiscovery()],
     pubsub: gossip,
   });
   return node;

@@ -17,6 +17,7 @@ export enum RPCRequest {
   GetAllFollowsByUser = 'getAllFollowsByUser',
   GetAllVerificationsByUser = 'getAllVerificationsByUser',
   GetCustodyEventByUser = 'getCustodyEventByUser',
+  SubmitMessage = 'submitMessage',
 }
 
 export interface RPCHandler {
@@ -27,7 +28,7 @@ export interface RPCHandler {
   getAllFollowsByUser(fid: number): Promise<Set<Follow>>;
   getAllVerificationsByUser(fid: number): Promise<Set<Verification>>;
   getCustodyEventByUser(fid: number): Promise<Result<IDRegistryEvent, FarcasterError>>;
-  // getCustodyEventByUser(fid: number): Promise<IDRegistryEvent>;
+  submitMessage(message: Message): Promise<Result<void, FarcasterError>>;
 }
 
 const replacer = (key: any, value: any) => {
@@ -74,7 +75,6 @@ export class RPCServer {
           handler: (args: any) => {
             return rpcHandler.getAllCastsByUser(args.fid);
           },
-          params: Object,
         }),
 
         [RPCRequest.GetAllSignerMessagesByUser]: new jayson.Method({
@@ -109,6 +109,14 @@ export class RPCServer {
           },
           params: Object,
         }),
+
+        [RPCRequest.SubmitMessage]: new jayson.Method({
+          handler: async (args: any) => {
+            const result = await rpcHandler.submitMessage(args.message);
+            if (result.isErr()) throw rpcError(result.error.statusCode, result.error.message);
+            return result.value;
+          },
+        }),
       },
       serverOpts
     );
@@ -119,6 +127,7 @@ export class RPCServer {
       try {
         // start the tcp server
         this._tcpServer = this._jsonServer.tcp().listen(port, () => {
+          console.log('RPC server started:', this.tcp?.address());
           resolve();
         });
       } catch (err: any) {
@@ -135,6 +144,7 @@ export class RPCServer {
     return new Promise((resolve, reject) => {
       try {
         this.tcp?.close((err) => {
+          console.log('RPC server stopped');
           if (err) reject(err);
           else resolve();
         });
@@ -145,7 +155,6 @@ export class RPCServer {
   }
 
   // Private methods
-
   private get tcp() {
     return this._tcpServer;
   }
@@ -158,8 +167,7 @@ export class RPCClient {
     this._tcpClient = jayson.Client.tcp({
       port: address.port,
       host: address.address,
-      // TODO use the family?
-      // family: address.family
+      family: address.family === 'ip4' ? 4 : 6,
       replacer,
       reviver,
     });
@@ -217,5 +225,13 @@ export class RPCClient {
       return new Err(response.error);
     }
     return new Ok(response.result);
+  }
+
+  async submitMessage(message: Message): Promise<Result<void, JSONRPCError>> {
+    const response = await this._tcpClient.request(RPCRequest.SubmitMessage, { message });
+    if (response.error) {
+      return new Err(response.error);
+    }
+    return new Ok(undefined);
   }
 }

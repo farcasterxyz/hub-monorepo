@@ -1,4 +1,4 @@
-import { EthereumSigner, MessageSigner } from '~/types';
+import { Ed25519Signer, EthereumSigner } from '~/types';
 import { Factories } from '~/factories';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 import Engine from '~/engine';
@@ -7,7 +7,7 @@ import Faker from 'faker';
 type UserInfo = {
   fid: number;
   ethereumSigner: EthereumSigner;
-  delegateSigner: MessageSigner;
+  delegateSigner: Ed25519Signer;
 };
 
 export enum MockFCEvent {
@@ -57,27 +57,48 @@ export const populateEngine = async (
  * and off-chain delegate message and merging both with the engine
  */
 export const mockFid = async (engine: Engine, fid: number) => {
-  const userInfo = {
+  const userInfo = await generateUserInfo(fid);
+  const custodyRegister = await getIDRegistryEvent(userInfo);
+  const addDelegateSigner = await getSignerAdd(userInfo);
+  // register the user
+  let result = await engine.mergeIDRegistryEvent(custodyRegister);
+  expect(result.isOk()).toBeTruthy();
+  result = await engine.mergeMessage(addDelegateSigner);
+  expect(result.isOk()).toBeTruthy();
+
+  return userInfo;
+};
+
+export const generateUserInfo = async (fid: number): Promise<UserInfo> => {
+  return {
     fid,
     ethereumSigner: await generateEthereumSigner(),
     delegateSigner: await generateEd25519Signer(),
   };
+};
 
+/**
+ * Generate an IDRegistryEvent for the given userInfo
+ */
+export const getIDRegistryEvent = async (userInfo: UserInfo) => {
   const custodyRegister = await Factories.IDRegistryEvent.create({
     args: { to: userInfo.ethereumSigner.signerKey, id: userInfo.fid },
     name: 'Register',
   });
+  return custodyRegister;
+};
 
+/**
+ * Generate a SignerAdd message for this UserInfo's delegate address
+ */
+export const getSignerAdd = async (userInfo: UserInfo) => {
   const addDelegateSigner = await Factories.SignerAdd.create(
     { data: { fid: userInfo.fid } },
     {
       transient: { signer: userInfo.ethereumSigner, delegateSigner: userInfo.delegateSigner },
     }
   );
-  // register the user
-  await engine.mergeIDRegistryEvent(custodyRegister);
-  await engine.mergeMessage(addDelegateSigner);
-  return userInfo;
+  return addDelegateSigner;
 };
 
 /**
