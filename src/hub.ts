@@ -176,8 +176,8 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       if (this.syncState == SimpleSyncState.Pending) {
         console.log(this.identity, 'Received a Contact Info for Sync');
         await this.simpleSyncFromPeer(gossipMessage.content as ContactInfoContent);
-        result = ok(undefined);
       }
+      result = ok(undefined);
     }
 
     if (result.isErr()) {
