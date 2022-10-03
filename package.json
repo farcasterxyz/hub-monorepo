@@ -12,7 +12,7 @@
     "lint:fix": "npm run lint -- --fix",
     "server": "tsx src/server.ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
-    "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --runInBand --forceExit --coverage",
+    "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage",
     "typecheck": "tsc --noEmit"
   },
   "repository": {
