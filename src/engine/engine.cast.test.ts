@@ -206,13 +206,13 @@ describe('mergeCast', () => {
       });
       // test('fails if the targetUri references itself', async () => {});
 
-      test('fails if text is greater than 500 chars', async () => {
+      test('fails if text is greater than 320 chars', async () => {
         const castLongText = await Factories.CastShort.create(
           {
             data: {
               fid: aliceFid,
               body: {
-                text: 'a'.repeat(501),
+                text: 'a'.repeat(321),
               },
             },
           },
@@ -221,7 +221,7 @@ describe('mergeCast', () => {
         const result = await engine.mergeMessage(castLongText);
 
         expect(result.isOk()).toBe(false);
-        expect(result._unsafeUnwrapErr()).toMatchObject(new BadRequestError('validateCastShort: text > 500 chars'));
+        expect(result._unsafeUnwrapErr()).toMatchObject(new BadRequestError('validateCastShort: text > 320 chars'));
         expect(await aliceAdds()).toEqual(new Set());
       });
 
