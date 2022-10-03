@@ -4,7 +4,7 @@ import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 import Engine from '~/engine';
 import Faker from 'faker';
 
-type UserInfo = {
+export type UserInfo = {
   fid: number;
   ethereumSigner: EthereumSigner;
   delegateSigner: Ed25519Signer;

@@ -116,15 +116,15 @@ export class Node extends TypedEmitter<NodeEvents> {
    */
   async publish(message: GossipMessage) {
     const topics = message.topics;
-    console.log(this.identity, ': Publishing message to topics: ', topics);
+    console.debug(this.identity, ': Publishing message to topics: ', topics);
     const encodedMessage = encodeMessage(message);
     encodedMessage.match(
       async (msg) => {
         const results = await Promise.all(topics.map((topic) => this.gossip?.publish(topic, msg)));
-        console.log(this.identity, ': Published to ' + results.length + ' peers');
+        console.debug(this.identity, ': Published to ' + results.length + ' peers');
       },
       async (err) => {
-        console.log(this.identity, err, '. Failed to publish message.');
+        console.error(this.identity, err, '. Failed to publish message.');
       }
     );
   }
@@ -160,7 +160,7 @@ export class Node extends TypedEmitter<NodeEvents> {
    * @param address The NodeAddress to attempt a connection with
    */
   async connectAddress(address: Multiaddr): Promise<Result<void, FarcasterError>> {
-    console.log(this.identity, 'Attempting to connect to address:', address);
+    console.debug(this.identity, 'Attempting to connect to address:', address);
     try {
       const result = await this._node?.dial(address);
       if (result) {

@@ -34,6 +34,7 @@ const options: HubOpts = {
   rocksDBName: cliOptions.dbName,
   resetDB: cliOptions.dbReset,
 };
+console.log(cliOptions, options);
 
 const hub = new Hub(options);
 hub.start();

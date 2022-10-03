@@ -3,7 +3,7 @@ import { Err, Ok, Result } from 'neverthrow';
 import { rejects } from 'assert';
 import jayson, { JSONRPCError } from 'jayson/promise';
 import { Cast, Follow, IDRegistryEvent, Message, Reaction, SignerMessage, Verification } from '~/types';
-import { FarcasterError } from '~/errors';
+import { FarcasterError, ServerError } from '~/errors';
 
 const VERSION = 0.1;
 
@@ -18,6 +18,7 @@ export enum RPCRequest {
   GetAllVerificationsByUser = 'getAllVerificationsByUser',
   GetCustodyEventByUser = 'getCustodyEventByUser',
   SubmitMessage = 'submitMessage',
+  SubmitIDRegistryEvent = 'submitIDRegistryEvent',
 }
 
 export interface RPCHandler {
@@ -29,6 +30,7 @@ export interface RPCHandler {
   getAllVerificationsByUser(fid: number): Promise<Set<Verification>>;
   getCustodyEventByUser(fid: number): Promise<Result<IDRegistryEvent, FarcasterError>>;
   submitMessage(message: Message): Promise<Result<void, FarcasterError>>;
+  submitIDRegistryEvent?(event: IDRegistryEvent): Promise<Result<void, FarcasterError>>;
 }
 
 const replacer = (key: any, value: any) => {
@@ -113,6 +115,19 @@ export class RPCServer {
         [RPCRequest.SubmitMessage]: new jayson.Method({
           handler: async (args: any) => {
             const result = await rpcHandler.submitMessage(args.message);
+            if (result.isErr()) throw rpcError(result.error.statusCode, result.error.message);
+            return result.value;
+          },
+        }),
+
+        [RPCRequest.SubmitIDRegistryEvent]: new jayson.Method({
+          handler: async (args: any) => {
+            if (!rpcHandler.submitIDRegistryEvent) {
+              const fcError = new ServerError('Request not implemented on Server');
+              throw rpcError(fcError.statusCode, fcError.message);
+            }
+
+            const result = await rpcHandler.submitIDRegistryEvent(args.event);
             if (result.isErr()) throw rpcError(result.error.statusCode, result.error.message);
             return result.value;
           },
@@ -229,6 +244,14 @@ export class RPCClient {
 
   async submitMessage(message: Message): Promise<Result<void, JSONRPCError>> {
     const response = await this._tcpClient.request(RPCRequest.SubmitMessage, { message });
+    if (response.error) {
+      return new Err(response.error);
+    }
+    return new Ok(undefined);
+  }
+
+  async submitIDRegistryEvent(event: IDRegistryEvent): Promise<Result<void, JSONRPCError>> {
+    const response = await this._tcpClient.request(RPCRequest.SubmitIDRegistryEvent, { event });
     if (response.error) {
       return new Err(response.error);
     }
