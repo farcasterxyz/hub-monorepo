@@ -72,7 +72,7 @@ describe('node unit tests', () => {
     expect(result.isErr()).toBeTruthy();
 
     const offlineNode = new Node();
-    result = await node.connect(node);
+    result = await node.connect(offlineNode);
     expect(result.isErr()).toBeTruthy();
 
     await node.stop();
