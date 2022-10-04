@@ -13,6 +13,7 @@ import {
   CastShort,
   CastRecast,
   CastRemove,
+  MessageType,
 } from '~/types';
 import { hashMessage, hashFCObject } from '~/utils';
 import * as ed from '@noble/ed25519';
@@ -42,9 +43,17 @@ import IDRegistryProvider from '~/provider/idRegistryProvider';
 import { CastHash } from '~/urls/castUrl';
 import RocksDB from '~/db/rocksdb';
 import { BadRequestError, FarcasterError, ServerError } from '~/errors';
+import { TypedEmitter } from 'tiny-typed-emitter';
+
+export type EngineEvents = {
+  /**
+   * messageMerged is emitted whenever the engine successfully merges a message
+   */
+  messageMerged: (fid: number, type: MessageType, message: Message) => void;
+};
 
 /** The Engine receives messages and determines the current state of the Farcaster network */
-class Engine {
+class Engine extends TypedEmitter<EngineEvents> {
   private _db: RocksDB;
   private _castSet: CastSet;
   private _signerSet: SignerSet;
@@ -57,6 +66,7 @@ class Engine {
   private _supportedChainIDs = new Set(['eip155:1']);
 
   constructor(db: RocksDB, networkUrl?: string, IDRegistryAddress?: string) {
+    super();
     this._db = db;
     this._castSet = new CastSet(db);
     this._signerSet = new SignerSet(db);
@@ -109,23 +119,26 @@ class Engine {
     const isMessageValidresult = await this.validateMessage(message);
     if (isMessageValidresult.isErr()) return err(isMessageValidresult.error);
 
+    let result;
+
     if (isCast(message)) {
-      return this.mergeCast(message);
-    }
-    if (isFollow(message)) {
-      return this.mergeFollow(message);
-    }
-    if (isReaction(message)) {
-      return this.mergeReaction(message);
-    }
-    if (isSignerMessage(message)) {
-      return this.mergeSignerMessage(message);
-    }
-    if (isVerification(message)) {
-      return this.mergeVerification(message);
+      result = this.mergeCast(message);
+    } else if (isFollow(message)) {
+      result = this.mergeFollow(message);
+    } else if (isReaction(message)) {
+      result = this.mergeReaction(message);
+    } else if (isSignerMessage(message)) {
+      result = this.mergeSignerMessage(message);
+    } else if (isVerification(message)) {
+      result = this.mergeVerification(message);
+    } else {
+      return err(new ServerError('mergeMessage: unexpected error'));
     }
 
-    return err(new ServerError('mergeMessage: unexpected error'));
+    return result.then((res) => {
+      this.emit('messageMerged', message.data.fid, message.data.type, message);
+      return res;
+    });
   }
 
   /**

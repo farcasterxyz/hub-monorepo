@@ -51,11 +51,14 @@ class TrieNode {
 
     // TODO: Optimize by using MPT extension nodes for leaves
     if (current_index === ID_LENGTH - 1) {
+      if (this._children.has(char) && this._children.get(char)!.value === value) {
+        return false;
+      }
       this._children.set(char, new TrieNode(value));
       this._children = new Map([...this._children.entries()].sort()); // Keep children sorted
       this._items += 1;
       this._updateHash();
-      return;
+      return true;
     }
 
     if (!this._children.has(char)) {
@@ -63,9 +66,12 @@ class TrieNode {
       this._children = new Map([...this._children.entries()].sort());
     }
 
-    this._children.get(char)!.insert(key, value, current_index + 1);
-    this._items += 1;
-    this._updateHash();
+    const success = this._children.get(char)!.insert(key, value, current_index + 1);
+    if (success) {
+      this._items += 1;
+      this._updateHash();
+      return true;
+    }
   }
 
   private _updateHash() {
@@ -120,7 +126,7 @@ class MerkleTrie {
     return this._root.items;
   }
 
-  public get hash(): string {
+  public get rootHash(): string {
     return this._root.hash;
   }
 }

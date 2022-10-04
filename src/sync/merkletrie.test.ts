@@ -33,12 +33,12 @@ describe('merkle trie', () => {
     const syncId = new SyncId(message);
 
     expect(trie.items).toEqual(0);
-    expect(trie.hash).toEqual('');
+    expect(trie.rootHash).toEqual('');
 
     trie.insert(syncId);
 
     expect(trie.items).toEqual(1);
-    expect(trie.hash).toBeTruthy();
+    expect(trie.rootHash).toBeTruthy();
   });
 
   test('idempotency', async () => {
@@ -56,15 +56,17 @@ describe('merkle trie', () => {
     secondTrie.insert(syncId1);
 
     // Order does not matter
-    expect(firstTrie.hash).toEqual(secondTrie.hash);
+    expect(firstTrie.rootHash).toEqual(secondTrie.rootHash);
     expect(firstTrie.items).toEqual(secondTrie.items);
-    expect(firstTrie.hash).toBeTruthy();
+    expect(firstTrie.rootHash).toBeTruthy();
 
     firstTrie.insert(syncId2);
     secondTrie.insert(syncId1);
 
     // Re-adding same item does not change the hash
-    expect(firstTrie.hash).toEqual(secondTrie.hash);
+    expect(firstTrie.rootHash).toEqual(secondTrie.rootHash);
+    expect(firstTrie.items).toEqual(secondTrie.items);
+    expect(firstTrie.items).toEqual(2);
   });
 
   test('insert multiple items', async () => {
@@ -78,7 +80,9 @@ describe('merkle trie', () => {
     const shuffledIds = syncIds.sort((a, b) => 0.5 - Math.random());
     shuffledIds.forEach((syncId) => secondTrie.insert(syncId));
 
-    expect(firstTrie.hash).toEqual(secondTrie.hash);
-    expect(firstTrie.hash).toBeTruthy();
+    expect(firstTrie.rootHash).toEqual(secondTrie.rootHash);
+    expect(firstTrie.rootHash).toBeTruthy();
+    expect(firstTrie.items).toEqual(secondTrie.items);
+    expect(firstTrie.items).toEqual(25);
   });
 });
