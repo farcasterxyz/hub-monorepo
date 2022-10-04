@@ -10,7 +10,8 @@ import { Message } from '~/types';
 import { ServerError } from '~/errors';
 import { jest } from '@jest/globals';
 
-const TEST_TIMEOUT = 2 * 60 * 1000;
+const TEST_TIMEOUT_SHORT = 10 * 1000;
+const TEST_TIMEOUT_LONG = 2 * 60 * 1000;
 const opts: HubOpts = { simpleSync: false };
 
 let hub: Hub;
@@ -47,7 +48,7 @@ describe('Hub running tests', () => {
     await tearDownHub(hub);
   });
 
-  test('Run a Hub and send it a message', async () => {
+  test('run a Hub and send it a message', async () => {
     expect(hub.rpcAddress).toBeTruthy();
 
     const rpcClient = new RPCClient(hub.rpcAddress as AddressInfo);
@@ -68,7 +69,7 @@ describe('Hub running tests', () => {
   });
 
   test(
-    'Bootstrap one Hub off of another',
+    'bootstrap one Hub off of another',
     async () => {
       // populate Hub1's engine
       await populateEngine(hub.engine, 5);
@@ -96,7 +97,7 @@ describe('Hub running tests', () => {
         if (shouldStop) await secondHub.stop();
       }
     },
-    TEST_TIMEOUT
+    TEST_TIMEOUT_LONG
   );
 
   const testMessage = async (message: Message) => {
@@ -112,7 +113,7 @@ describe('Hub running tests', () => {
     expect(result.isOk()).toBeTruthy();
   };
 
-  test('Hub handles various valid gossip messages', async () => {
+  test('hub handles various valid gossip messages', async () => {
     const aliceFid = Faker.datatype.number();
     const aliceInfo = await generateUserInfo(aliceFid);
     const IDRegistryEvent: GossipMessage<Content> = {
@@ -142,7 +143,7 @@ describe('Hub running tests', () => {
     );
   });
 
-  test('Invalid messages fail', async () => {
+  test('invalid messages fail', async () => {
     const badMessage = {
       content: {
         not: '',
@@ -154,7 +155,7 @@ describe('Hub running tests', () => {
     expect(result.isErr());
   });
 
-  test('Fail to submit invalid messages', async () => {
+  test('fail to submit invalid messages', async () => {
     // try to send it a message
     const submitResult = hub.submitMessage(await Factories.CastShort.create());
     expect((await submitResult).isErr()).toBeTruthy();
@@ -197,14 +198,39 @@ describe('Hub negative tests', () => {
     await hub.destroyDB();
   });
 
-  test('Starts with clear RocksDB set', async () => {
-    hub = new Hub({ ...opts, resetDB: true });
-    await hub.start();
-    expect(hub.rpcAddress).toBeDefined();
-    expect(() => {
-      hub.identity;
-    }).not.toThrow();
-    await hub.stop();
-    hub.destroyDB();
-  });
+  test(
+    'starts with "resetDB" set',
+    async () => {
+      const rocksDBName = 'rocks.clearOnBootTest.testdb';
+      hub = new Hub({ ...opts, resetDB: true, rocksDBName });
+      await hub.start();
+
+      // add some data to the engine and by extension, the DB
+      await populateEngine(hub.engine, 1);
+      const fids = await hub.getUsers();
+      expect(fids.size).toBe(1);
+      await hub.stop();
+
+      // recreate a Hub with the same DB but without resetting and check that the data is still there
+      hub = new Hub({ ...opts, resetDB: false, rocksDBName });
+      await hub.start();
+      // check that the data is preserved
+      await expect(hub.getUsers()).resolves.toEqual(fids);
+      await hub.stop();
+
+      // start the hub again but without reset set
+      hub = new Hub({ ...opts, resetDB: true, rocksDBName });
+      await hub.start();
+      expect(hub.rpcAddress).toBeDefined();
+      expect(() => {
+        hub.identity;
+      }).not.toThrow();
+
+      await expect(hub.getUsers()).resolves.toEqual(new Set([]));
+
+      await hub.stop();
+      hub.destroyDB();
+    },
+    TEST_TIMEOUT_SHORT
+  );
 });
