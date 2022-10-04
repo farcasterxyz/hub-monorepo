@@ -133,7 +133,7 @@ class Engine {
    */
 
   async getAllCastsByUser(fid: number): Promise<Set<Cast>> {
-    return this._castSet.getAllCastMessagesByUser(fid);
+    return this._castSet.getAllCastsByUser(fid);
   }
 
   /**
