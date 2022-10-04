@@ -1,5 +1,5 @@
 {
-  "name": "farcaster-node",
+  "name": "farcaster-hub",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -60,6 +60,7 @@
     "@noble/ed25519": "^1.6.1",
     "caip": "^1.1.0",
     "canonicalize": "^1.0.8",
+    "commander": "^9.4.1",
     "ethereum-cryptography": "^1.1.2",
     "ethers": "^5.6.1",
     "faker": "5.5.3",
