@@ -20,10 +20,14 @@ const getCastRemoves = async () => {
 };
 
 let castShort1: CastShort;
+let castRemove1: CastRemove; // removes castShort1 with a higher timestamp
+let castRemove1Earlier: CastRemove; // removes castShort1 with a lower timestamp
+
 let castShort2: CastShort;
+let castRemove2: CastRemove; // removes castShort2 with a higher timestamp
+
 let castRecast: CastRecast;
-let castRemove1: CastRemove;
-let castRemove2: CastRemove;
+let castRemoveRecast: CastRemove; // removes castRecast with a higher timestamp
 
 beforeAll(async () => {
   castShort1 = await Factories.CastShort.create({ data: { fid } });
@@ -40,6 +44,16 @@ beforeAll(async () => {
     },
   });
 
+  castRemove1Earlier = await Factories.CastRemove.create({
+    data: {
+      fid,
+      body: {
+        targetHash: castShort1.hash,
+      },
+      signedAt: castShort1.data.signedAt - 1,
+    },
+  });
+
   castRemove2 = await Factories.CastRemove.create({
     data: {
       fid,
@@ -47,6 +61,16 @@ beforeAll(async () => {
         targetHash: castShort2.hash,
       },
       signedAt: castShort2.data.signedAt + 1,
+    },
+  });
+
+  castRemoveRecast = await Factories.CastRemove.create({
+    data: {
+      fid,
+      body: {
+        targetHash: castRecast.hash,
+      },
+      signedAt: castRecast.data.signedAt + 1,
     },
   });
 });
@@ -57,24 +81,22 @@ describe('getCast', () => {
     await expect(getCast).rejects.toThrow();
   });
 
-  test('returns CastShort when cast has been added', async () => {
-    await set.merge(castShort1);
-    const getCast = set.getCast(fid, castShort1.hash);
-    await expect(getCast).resolves.toEqual(castShort1);
-  });
-
-  test('returns correct cast when multiple have been added', async () => {
-    await set.merge(castShort1);
-    await set.merge(castShort2);
-    const getCast = set.getCast(fid, castShort2.hash);
-    await expect(getCast).resolves.toEqual(castShort2);
-  });
-
-  test('returns error when cast has been removed', async () => {
+  test('fails when cast has been removed', async () => {
     await set.merge(castShort1);
     await set.merge(castRemove1);
     const getCast = set.getCast(fid, castShort1.hash);
     await expect(getCast).rejects.toThrow();
+  });
+
+  test('returns correct casts when multiple have been added', async () => {
+    await set.merge(castShort1);
+    await set.merge(castRecast);
+
+    const getCastShort1 = set.getCast(fid, castShort1.hash);
+    await expect(getCastShort1).resolves.toEqual(castShort1);
+
+    const getCastRecast = set.getCast(fid, castRecast.hash);
+    await expect(getCastRecast).resolves.toEqual(castRecast);
   });
 });
 
@@ -88,14 +110,30 @@ describe('getCastsByUser', () => {
   test('returns casts', async () => {
     await set.merge(castShort1);
     await set.merge(castShort2);
-    await expect(getCasts()).resolves.toEqual(new Set([castShort1, castShort2]));
+    await set.merge(castRecast);
+    await expect(getCasts()).resolves.toEqual(new Set([castShort1, castShort2, castRecast]));
   });
 
-  test('returns only added casts', async () => {
+  test('returns only casts in the add set', async () => {
     await set.merge(castShort1);
     await set.merge(castShort2);
     await set.merge(castRemove2);
     await expect(getCasts()).resolves.toEqual(new Set([castShort1]));
+  });
+});
+
+describe('getAllCastsByUser', () => {
+  const getAllCasts = () => set.getAllCastsByUser(fid);
+
+  test('returns empty set without casts', async () => {
+    await expect(getAllCasts()).resolves.toEqual(new Set());
+  });
+
+  test('returns casts from the add and remove sets', async () => {
+    await set.merge(castShort1);
+    await set.merge(castShort2);
+    await set.merge(castRemove2);
+    await expect(getAllCasts()).resolves.toEqual(new Set([castShort1, castRemove2]));
   });
 });
 
@@ -106,24 +144,13 @@ describe('merge', () => {
   });
 
   describe('CastShort', () => {
-    test('succeeds with a valid CastShort message', async () => {
+    test('succeeds with multiple valid CastShort messages', async () => {
       await expect(set.merge(castShort1)).resolves.toEqual(undefined);
       await expect(getCastAdds()).resolves.toEqual(new Set([castShort1]));
-      await expect(getCastRemoves()).resolves.toEqual(new Set());
-    });
 
-    test('succeeds with multiple valid add messages', async () => {
-      await expect(set.merge(castShort1)).resolves.toEqual(undefined);
       await expect(set.merge(castShort2)).resolves.toEqual(undefined);
       await expect(getCastAdds()).resolves.toEqual(new Set([castShort1, castShort2]));
       await expect(getCastRemoves()).resolves.toEqual(new Set());
-    });
-
-    test('succeeds (no-ops) if the add was already removed', async () => {
-      await set.merge(castRemove1);
-      await expect(set.merge(castShort1)).resolves.toEqual(undefined);
-      await expect(getCastAdds()).resolves.toEqual(new Set());
-      await expect(getCastRemoves()).resolves.toEqual(new Set([castRemove1]));
     });
 
     test('succeeds (no-ops) if the message is added twice', async () => {
@@ -131,6 +158,22 @@ describe('merge', () => {
       await expect(set.merge(castShort1)).resolves.toEqual(undefined);
       await expect(getCastAdds()).resolves.toEqual(new Set([castShort1]));
       await expect(getCastRemoves()).resolves.toEqual(new Set());
+    });
+
+    describe('succeeds (no-ops) if the add was already removed', () => {
+      test('and if the remove has a later timestamp', async () => {
+        await set.merge(castRemove1);
+        await expect(set.merge(castShort1)).resolves.toEqual(undefined);
+        await expect(getCastAdds()).resolves.toEqual(new Set());
+        await expect(getCastRemoves()).resolves.toEqual(new Set([castRemove1]));
+      });
+
+      test('and if the remove had an earlier timestamp', async () => {
+        await set.merge(castRemove1Earlier);
+        await expect(set.merge(castShort1)).resolves.toEqual(undefined);
+        await expect(getCastAdds()).resolves.toEqual(new Set());
+        await expect(getCastRemoves()).resolves.toEqual(new Set([castRemove1Earlier]));
+      });
     });
   });
 
@@ -140,9 +183,56 @@ describe('merge', () => {
       await expect(getCastAdds()).resolves.toEqual(new Set([castRecast]));
       await expect(getCastRemoves()).resolves.toEqual(new Set());
     });
+
+    test('succeeds (no-ops) if the message is added twice', async () => {
+      await expect(set.merge(castRecast)).resolves.toEqual(undefined);
+      await expect(set.merge(castRecast)).resolves.toEqual(undefined);
+      await expect(getCastAdds()).resolves.toEqual(new Set([castRecast]));
+      await expect(getCastRemoves()).resolves.toEqual(new Set());
+    });
+
+    describe('succeeds (no-ops) if the add was already removed', () => {
+      test('and if the remove has a later timestamp', async () => {
+        await set.merge(castRemoveRecast);
+        await expect(set.merge(castRecast)).resolves.toEqual(undefined);
+        await expect(getCastAdds()).resolves.toEqual(new Set());
+        await expect(getCastRemoves()).resolves.toEqual(new Set([castRemoveRecast]));
+      });
+
+      test('and if the remove had an earlier timestamp', async () => {
+        const castRemoveRecastEarlier = await Factories.CastRemove.create({
+          data: {
+            fid,
+            body: {
+              targetHash: castRecast.hash,
+            },
+            signedAt: castRecast.data.signedAt - 1,
+          },
+        });
+
+        await set.merge(castRemoveRecastEarlier);
+        await expect(set.merge(castRecast)).resolves.toEqual(undefined);
+        await expect(getCastAdds()).resolves.toEqual(new Set());
+        await expect(getCastRemoves()).resolves.toEqual(new Set([castRemoveRecastEarlier]));
+      });
+    });
   });
 
   describe('CastRemove', () => {
+    test('succeeds and removes a CastShort message', async () => {
+      await set.merge(castShort1);
+      await expect(set.merge(castRemove1)).resolves.toEqual(undefined);
+      await expect(getCastAdds()).resolves.toEqual(new Set());
+      await expect(getCastRemoves()).resolves.toEqual(new Set([castRemove1]));
+    });
+
+    test('succeeds and removes a CastRecast message', async () => {
+      await set.merge(castRecast);
+      await expect(set.merge(castRemoveRecast)).resolves.toEqual(undefined);
+      await expect(getCastAdds()).resolves.toEqual(new Set());
+      await expect(getCastRemoves()).resolves.toEqual(new Set([castRemoveRecast]));
+    });
+
     test("succeeds even if the add message doesn't exist", async () => {
       await expect(getCastAdds()).resolves.toEqual(new Set());
       await expect(set.merge(castRemove1)).resolves.toEqual(undefined);
@@ -157,21 +247,21 @@ describe('merge', () => {
       await expect(getCastRemoves()).resolves.toEqual(new Set([castRemove1, castRemove2]));
     });
 
-    test('succeeds and removes the add message', async () => {
-      await set.merge(castShort1);
-      await expect(set.merge(castRemove1)).resolves.toEqual(undefined);
-      await expect(getCastAdds()).resolves.toEqual(new Set());
-      await expect(getCastRemoves()).resolves.toEqual(new Set([castRemove1]));
-    });
-
-    test('succeeds (no-ops) if the same remove message is added twice', async () => {
-      await expect(set.merge(castRemove1)).resolves.toEqual(undefined);
-      await expect(set.merge(castRemove1)).resolves.toEqual(undefined);
-      await expect(getCastAdds()).resolves.toEqual(new Set());
-      await expect(getCastRemoves()).resolves.toEqual(new Set([castRemove1]));
+    test('succeeds and removes the add message even if it has a later timestamp', async () => {
+      await expect(set.merge(castShort1)).resolves.toEqual(undefined);
+      await expect(set.merge(castRemove1Earlier)).resolves.toEqual(undefined);
+      await expect(getCastAdds()).resolves.toEqual(new Set([]));
+      await expect(getCastRemoves()).resolves.toEqual(new Set([castRemove1Earlier]));
     });
 
     describe('when another message has removed the same cast', () => {
+      test('succeeds (no-ops) if messages are identical', async () => {
+        await expect(set.merge(castRemove1)).resolves.toEqual(undefined);
+        await expect(set.merge(castRemove1)).resolves.toEqual(undefined);
+        await expect(getCastAdds()).resolves.toEqual(new Set());
+        await expect(getCastRemoves()).resolves.toEqual(new Set([castRemove1]));
+      });
+
       test('succeeds with a later timestamp', async () => {
         const castRemove1Later = {
           ...castRemove1,
@@ -184,11 +274,6 @@ describe('merge', () => {
       });
 
       test('succeeds (no-ops) with earlier timestamp', async () => {
-        const castRemove1Earlier = {
-          ...castRemove1,
-          data: { ...castRemove1.data, signedAt: castRemove1.data.signedAt - 1 },
-          hash: Faker.datatype.hexaDecimal(128),
-        };
         await set.merge(castRemove1);
         await expect(set.merge(castRemove1Earlier)).resolves.toEqual(undefined);
         await expect(getCastRemoves()).resolves.toEqual(new Set([castRemove1]));
