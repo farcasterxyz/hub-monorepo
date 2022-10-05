@@ -5,6 +5,10 @@ const TIMESTAMP_LENGTH = 10;
 const HASH_LENGTH = 128; // We're using 64 byte blake2b hashes
 const ID_LENGTH = TIMESTAMP_LENGTH + HASH_LENGTH;
 
+/**
+ * SyncId represent the unique id of a message in the sync protocol.
+ * It is a combination of the message's timestamp and hash
+ */
 class SyncId {
   private readonly _timestamp: number;
   private readonly _hash: string;
@@ -29,19 +33,23 @@ class SyncId {
   }
 }
 
+/**
+ * Represents a node in a merkle trie. Automatically updates the hashes when items are added,
+ * and keeps track of the number of items in the subtree.
+ */
 class TrieNode {
   private _hash: string;
   private _items: number;
   private _children: Map<string, TrieNode>;
-  private readonly _value: string | null;
+  private readonly _value: string | undefined;
 
-  constructor(value: string | null = null) {
+  constructor(value: string | undefined = undefined) {
     this._hash = '';
     this._items = 0;
     this._children = new Map();
     this._value = value;
 
-    if (value !== null) {
+    if (value !== undefined) {
       this._updateHash();
     }
   }
@@ -51,7 +59,7 @@ class TrieNode {
 
     // TODO: Optimize by using MPT extension nodes for leaves
     if (current_index === ID_LENGTH - 1) {
-      if (this._children.has(char) && this._children.get(char)!.value === value) {
+      if (this._children.has(char) && this._children.get(char)?.value === value) {
         return false;
       }
       this._children.set(char, new TrieNode(value));
@@ -66,7 +74,7 @@ class TrieNode {
       this._children = new Map([...this._children.entries()].sort());
     }
 
-    const success = this._children.get(char)!.insert(key, value, current_index + 1);
+    const success = this._children.get(char)?.insert(key, value, current_index + 1);
     if (success) {
       this._items += 1;
       this._updateHash();
@@ -74,9 +82,25 @@ class TrieNode {
     }
   }
 
-  private _updateHash() {
+  public get(key: string): string | undefined {
     if (this.isLeaf) {
-      this._hash = createHash('sha256').update(this._value!).digest('hex');
+      return this._value;
+    }
+
+    const char = key[0];
+    if (!this._children.has(char)) {
+      return undefined;
+    }
+
+    return this._children.get(char)?.get(key.slice(1));
+  }
+
+  private _updateHash() {
+    // Optimize by using a faster hash algorithm. Potentially murmurhash v3
+    if (this.isLeaf) {
+      this._hash = createHash('sha256')
+        .update(this._value || '')
+        .digest('hex');
     } else {
       const hash = createHash('sha256');
       this._children.forEach((child) => {
@@ -99,14 +123,17 @@ class TrieNode {
   }
 
   // Only available on leaf nodes
-  public get value(): string | null {
+  public get value(): string | undefined {
     if (this.isLeaf) {
       return this._value;
     }
-    return null;
+    return undefined;
   }
 }
 
+/**
+ * Represents a MerkleTrie. It's exactly like a Merkle tree, except that it's a trie.
+ */
 class MerkleTrie {
   private readonly _root: TrieNode;
 
@@ -116,6 +143,10 @@ class MerkleTrie {
 
   public insert(id: SyncId): void {
     this._root.insert(id.toString(), id.hashString);
+  }
+
+  public get(id: SyncId): string | undefined {
+    return this._root.get(id.toString());
   }
 
   public get root(): TrieNode {

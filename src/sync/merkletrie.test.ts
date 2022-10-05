@@ -1,5 +1,5 @@
 import { Factories } from '~/factories';
-import { MerkleTrie, SyncId, TrieNode } from '~/sync/merkletrie';
+import { MerkleTrie, SyncId } from '~/sync/merkletrie';
 import { Message } from '~/types';
 
 describe('merkle trie', () => {
@@ -16,11 +16,13 @@ describe('merkle trie', () => {
       expect(syncId.timestampString).toEqual(Math.floor(message.data.signedAt / 1000).toString());
       expect(syncId.timestampString.length).toEqual(10);
     });
+
     test('hash is correct', () => {
       expect(syncId.hashString.startsWith('0x')).toBeFalsy();
       expect(message.hash.endsWith(syncId.hashString)).toBeTruthy();
       expect(syncId.hashString.length).toEqual(128);
     });
+
     test('id correct', () => {
       expect(syncId.toString()).toEqual(`${syncId.timestampString}${syncId.hashString}`);
       expect(syncId.toString().length).toEqual(138);
@@ -39,6 +41,18 @@ describe('merkle trie', () => {
 
     expect(trie.items).toEqual(1);
     expect(trie.rootHash).toBeTruthy();
+  });
+
+  test('get single item', async () => {
+    const trie = new MerkleTrie();
+    const message = await Factories.CastShort.create();
+    const syncId = new SyncId(message);
+
+    expect(trie.get(syncId)).toBeFalsy();
+
+    trie.insert(syncId);
+
+    expect(trie.get(syncId)).toEqual(syncId.hashString);
   });
 
   test('idempotency', async () => {

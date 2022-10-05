@@ -2,7 +2,12 @@ import { Message } from '~/types';
 import { MerkleTrie, SyncId } from '~/sync/merkletrie';
 import Engine from '~/engine';
 
-export class MerkleSync {
+/**
+ * MerkleSync handles the logic required to determine where and how two hubs differ
+ * from each other and bring them into sync efficiently. See https://github.com/farcasterxyz/hub/issues/66
+ * for more details on design of the sync algorithm.
+ */
+class MerkleSync {
   private _trie: MerkleTrie;
   private engine: Engine;
 
@@ -23,3 +28,5 @@ export class MerkleSync {
     return this._trie;
   }
 }
+
+export { MerkleSync };
