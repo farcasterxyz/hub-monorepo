@@ -335,8 +335,8 @@ class Engine {
   private validateCastShort(cast: CastShort): Result<void, FarcasterError> {
     const { text, embed, targetUri } = cast.data.body;
 
-    if (text && text.length > 280) {
-      return err(new BadRequestError('validateCastShort: text > 280 chars'));
+    if (text && text.length > 320) {
+      return err(new BadRequestError('validateCastShort: text > 320 chars'));
     }
 
     if (embed && embed.items.length > 2) {
