@@ -66,7 +66,10 @@ const submitInBatches = async (messages: Message[] | IDRegistryEvent[]) => {
 
 const app = new Command();
 
-app.name('farcaster-benchmark-client').description('Farcaster Benchmark').version('0.1.0');
+app
+  .name('farcaster-benchmark-client')
+  .description('Farcaster Benchmark')
+  .version(process.env.npm_package_version ?? '1.0.0');
 
 app
   .requiredOption('-a, --ip-address <address>', 'The IP address of a Hub to submit messages to')
