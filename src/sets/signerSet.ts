@@ -22,8 +22,7 @@ export type SignerSetEvents = {
    * Emitted when a valid delegate signer becomes invalid which happens when:
    *
    * 1. A SignerRemove message is merged, removing a delegate signer for the current custody address
-   * 2. The custody address changes and a currently valid delegate becomes invalid because it was not connected to the
-   *    new custody address with another SignerAdd message
+   * 2. The custody address changes and a previously active delegate signer is deactivated
    *
    * Note: message is an optional param, because in case (2) there is no SignerRemove message that causes the event
    */
@@ -33,13 +32,13 @@ export type SignerSetEvents = {
 /**
  * A CRDT that keeps track of custody addresses and valid delegate signers for an fid.
  *
- * A Delegate Signer is an ECDSA key-pair that is authorized by a custody address to sign Messages on behalf of an fid
- * owned by the custody address. A custody address can issue a SignerAdd to authorize a new key-pair and a SignerRemove
- * to revoke a previously issued key-pair. When revoked, all messages signed by a signer in all other Sets must also be
- * removed permanently from the hubs.
+ * A Delegate Signer is an EdDSA key-pair that is authorized to sign Messages on behalf of an fid by its custody
+ * address. A custody address can submit a SignerAdd to authorize a new key-pair and a SignerRemove to revoke a
+ * key-pair. A Signer should only be revoked when a compromise is suspected, and the Hub will purge all messages
+ * signed by the Signer across all sets.
  *
- * The SignerSet has an add-set and remove-set to track the SignerAdd and SignerRemove messages. Conflicts may arise
- * between messages if they are received in different orders, which are handled with the following rules:
+ * The SignerDB keeps track of SignerAdds and SignerRemoves in two separate sets per custody address. Conflicts
+ * may arise between Signer Messages when received in different orders, which are handled with these rules:
  *
  * 1. Last-Write-Wins - a message with a higher timestamp supersedes one with a lower timestamp
  * 2. Remove-Wins - a remove message always supersedes an add message
@@ -302,7 +301,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
       }
     }
 
-    // Add the SignerRemove to the remove-set
+    // Add the SignerRemove to the remove-set and remove SignerAdd if it exists
     await this._db.putSignerRemove(message);
 
     // Emit a RemoveSigner event if the removed Signer was currently valid

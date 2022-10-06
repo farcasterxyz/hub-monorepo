@@ -38,7 +38,7 @@ let custody2: EthereumSigner;
 let custody1Register: IDRegistryEvent;
 let custody2Transfer: IDRegistryEvent;
 
-// Singers
+// Signers
 let a: Ed25519Signer;
 let b: Ed25519Signer;
 
@@ -116,14 +116,14 @@ describe('getSigners', () => {
       await expect(res).resolves.toEqual(new Set());
     });
 
-    test('succeeds when signer is added and valid', async () => {
+    test('succeeds when signer is added to an active custody', async () => {
       await set.merge(addATo1);
       await expect(set.getSigners(fid)).resolves.toEqual(new Set([addATo1]));
       await set.merge(addBTo1);
       await expect(set.getSigners(fid)).resolves.toEqual(new Set([addATo1, addBTo1]));
     });
 
-    test('succeeds when signer is added and invalid', async () => {
+    test('succeeds when signer is added to an inactive custody', async () => {
       await set.merge(addATo2);
       const res = set.getSigners(fid);
       await expect(res).resolves.toEqual(new Set());
@@ -537,7 +537,7 @@ describe('merge', () => {
           await set.mergeIDRegistryEvent(custody2Transfer);
         });
 
-        test('succeeds if added by causally earlier custody address', async () => {
+        test('succeeds if added by causally later custody address', async () => {
           await expect(set.merge(addATo1)).resolves.toEqual(undefined);
           await expect(set.merge(addATo2)).resolves.toEqual(undefined);
           await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
@@ -556,7 +556,7 @@ describe('merge', () => {
           ]);
         });
 
-        test('succeeds and does not emit if added by causally later custody address', async () => {
+        test('succeeds and does not emit if added by causally earlier custody address', async () => {
           await expect(set.merge(addATo2)).resolves.toEqual(undefined);
           await expect(set.merge(addATo1)).resolves.toEqual(undefined);
           await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
