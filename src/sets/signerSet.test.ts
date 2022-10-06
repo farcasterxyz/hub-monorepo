@@ -100,6 +100,65 @@ describe('getCustodyAddress', () => {
   });
 });
 
+describe('getSigners', () => {
+  test('fails when custody address does not exist', async () => {
+    const res = set.getSigners(fid);
+    await expect(res).rejects.toThrow();
+  });
+
+  describe('when custody address exists', () => {
+    beforeEach(async () => {
+      await set.mergeIDRegistryEvent(custody1Register);
+    });
+
+    test('succeeds ', async () => {
+      const res = set.getSigners(fid);
+      await expect(res).resolves.toEqual(new Set());
+    });
+
+    test('succeeds when signer is added and valid', async () => {
+      await set.merge(addATo1);
+      await expect(set.getSigners(fid)).resolves.toEqual(new Set([addATo1]));
+      await set.merge(addBTo1);
+      await expect(set.getSigners(fid)).resolves.toEqual(new Set([addATo1, addBTo1]));
+    });
+
+    test('succeeds when signer is added and invalid', async () => {
+      await set.merge(addATo2);
+      const res = set.getSigners(fid);
+      await expect(res).resolves.toEqual(new Set());
+    });
+
+    test('succeeds when signer is removed without being added', async () => {
+      await set.merge(remAFrom1);
+      const res = set.getSigners(fid);
+      await expect(res).resolves.toEqual(new Set());
+    });
+
+    test('succeeds when signer is added and removed', async () => {
+      await set.merge(addATo1);
+      await set.merge(remAFrom1);
+      const res = set.getSigners(fid);
+      await expect(res).resolves.toEqual(new Set());
+    });
+
+    test('succeeds when signer is added and custody address is changed', async () => {
+      await set.merge(addATo1);
+      await set.mergeIDRegistryEvent(custody2Transfer);
+      const res = set.getSigners(fid);
+      await expect(res).resolves.toEqual(new Set());
+    });
+
+    test('succeeds when signer is added and custody address is changed and another signer is added', async () => {
+      await set.merge(addATo1);
+      await set.mergeIDRegistryEvent(custody2Transfer);
+      await set.merge(addATo2);
+      const res = set.getSigners(fid);
+      await expect(res).resolves.toEqual(new Set([addATo2]));
+    });
+  });
+});
+
 describe('getSigner', () => {
   test('fails when custody address does not exist', async () => {
     const res = set.getSigner(fid, a.signerKey);
