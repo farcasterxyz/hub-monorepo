@@ -105,11 +105,17 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     throw new Error('SignerSet.merge: invalid message format');
   }
 
-  /** mergeIDRegistryEvent tries to update the custody address with an event from the Farcaster ID Registry contract. */
+  /**
+   * Merge a new event from the Farcaster ID Registry into the SignerSet.
+   *
+   * mergeIDRegistryEvent will update the custody address, validate or invalidate delegate signers and emit events.
+   * The IDRegistryEvent must be accurate otherwise local state will diverge from blockchain state. If IDRegistryEvents
+   * are received out of order, some events may not be emitted.
+   */
   async mergeIDRegistryEvent(event: IDRegistryEvent): Promise<void> {
     const fid = event.args.id;
 
-    // If new event is a duplicate or occured before the existing custodyEvent, no-op
+    // If new event is a duplicate or occurred before the existing custodyEvent, no-op
     const custodyEvent = await ResultAsync.fromPromise(this.getCustodyEvent(fid), () => undefined);
     if (custodyEvent.isOk() && this.eventCompare(event, custodyEvent.value) <= 0) {
       return undefined;
