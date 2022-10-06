@@ -102,7 +102,7 @@ describe('getCustodyAddress', () => {
 
 describe('getSigner', () => {
   test('fails when custody address does not exist', async () => {
-    const res = set.getSigner(fid, custody1.signerKey);
+    const res = set.getSigner(fid, a.signerKey);
     await expect(res).rejects.toThrow();
   });
 
