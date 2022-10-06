@@ -244,6 +244,17 @@ describe('mergeIDRegistryEvent', () => {
       expect(events).toEqual([['changeCustody', fid, custody1.signerKey, custody1Register]]);
     });
 
+    test('succeeds (no-ops) with an event from an earlier block', async () => {
+      const addSameBlockEarlierLog: IDRegistryEvent = {
+        ...custody2Transfer,
+        blockNumber: custody1Register.blockNumber - 1,
+      };
+      await expect(set.mergeIDRegistryEvent(addSameBlockEarlierLog)).resolves.toEqual(undefined);
+      await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+      await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
+      expect(events).toEqual([['changeCustody', fid, custody1.signerKey, custody1Register]]);
+    });
+
     test('succeeds with the same block, later log index', async () => {
       const addSameBlockLaterLog: IDRegistryEvent = {
         ...custody2Transfer,
