@@ -445,7 +445,7 @@ describe('merge', () => {
   });
 
   describe('without custody address', () => {
-    describe('mergeSignerAdd', () => {
+    describe('merge SignerAdd', () => {
       test('succeeds but does not emit addSigner event', async () => {
         await expect(set.merge(addATo1)).resolves.toEqual(undefined);
         await expect(custodyAddress()).rejects.toThrow();
@@ -457,7 +457,7 @@ describe('merge', () => {
       });
     });
 
-    describe('mergeSignerRemove', () => {
+    describe('merge SignerRemove', () => {
       test('succeeds but does not emit removeSigner event', async () => {
         await expect(set.merge(remAFrom1)).resolves.toEqual(undefined);
         await expect(custodyAddress()).rejects.toThrow();
@@ -537,7 +537,7 @@ describe('merge', () => {
           await set.mergeIDRegistryEvent(custody2Transfer);
         });
 
-        test('succeeds with later custody address', async () => {
+        test('succeeds if added by causally earlier custody address', async () => {
           await expect(set.merge(addATo1)).resolves.toEqual(undefined);
           await expect(set.merge(addATo2)).resolves.toEqual(undefined);
           await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
@@ -556,7 +556,7 @@ describe('merge', () => {
           ]);
         });
 
-        test('succeeds but does not emit addSigner event with earlier custody address', async () => {
+        test('succeeds and does not emit if added by causally later custody address', async () => {
           await expect(set.merge(addATo2)).resolves.toEqual(undefined);
           await expect(set.merge(addATo1)).resolves.toEqual(undefined);
           await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
@@ -650,36 +650,102 @@ describe('merge', () => {
         });
       });
 
-      describe('when signer was already removed by a different custody address', () => {
+      describe('when signer was removed by a causally earlier custody address', () => {
         beforeEach(async () => {
           await set.mergeIDRegistryEvent(custody2Transfer);
+          await expect(set.merge(remAFrom1)).resolves.toEqual(undefined);
         });
 
-        test('succeeds with later custody address', async () => {
-          await expect(set.merge(remAFrom1)).resolves.toEqual(undefined);
-          await expect(set.merge(addATo2)).resolves.toEqual(undefined);
+        test('succeeds and emits addSigner if SignerAdd is later than remove', async () => {
+          const addATo2Later: SignerAdd = {
+            ...addATo2,
+            hash: Faker.datatype.hexaDecimal(128),
+            data: { ...addATo2.data, signedAt: remAFrom1.data.signedAt + 1 },
+          };
+
+          await expect(set.merge(addATo2Later)).resolves.toEqual(undefined);
           await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
           await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map(),
             removes: new Map([[a.signerKey, remAFrom1.hash]]),
           });
           await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
-            adds: new Map([[a.signerKey, addATo2.hash]]),
+            adds: new Map([[a.signerKey, addATo2Later.hash]]),
             removes: new Map(),
           });
           expect(events).toEqual([
             ['changeCustody', fid, custody1.signerKey, custody1Register],
             ['changeCustody', fid, custody2.signerKey, custody2Transfer],
-            ['addSigner', fid, a.signerKey, addATo2],
+            ['addSigner', fid, a.signerKey, addATo2Later],
           ]);
         });
 
-        test('succeeds but does not emit addSigner event with earlier custody address', async () => {
-          await expect(set.merge(remAFrom2)).resolves.toEqual(undefined);
-          await expect(set.merge(addATo1)).resolves.toEqual(undefined);
+        test('succeeds and emits addSigner if SingerAdd is earlier than remove', async () => {
+          const addATo2Earlier: SignerAdd = {
+            ...addATo2,
+            hash: Faker.datatype.hexaDecimal(128),
+            data: { ...addATo2.data, signedAt: remAFrom1.data.signedAt - 1 },
+          };
+
+          await expect(set.merge(addATo2Earlier)).resolves.toEqual(undefined);
           await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
           await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
-            adds: new Map([[a.signerKey, addATo1.hash]]),
+            adds: new Map(),
+            removes: new Map([[a.signerKey, remAFrom1.hash]]),
+          });
+          await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
+            adds: new Map([[a.signerKey, addATo2Earlier.hash]]),
+            removes: new Map(),
+          });
+          expect(events).toEqual([
+            ['changeCustody', fid, custody1.signerKey, custody1Register],
+            ['changeCustody', fid, custody2.signerKey, custody2Transfer],
+            ['addSigner', fid, a.signerKey, addATo2Earlier],
+          ]);
+        });
+      });
+
+      describe('when signer was removed by a causally later custody address', () => {
+        beforeEach(async () => {
+          await set.mergeIDRegistryEvent(custody2Transfer);
+          await expect(set.merge(remAFrom2)).resolves.toEqual(undefined);
+        });
+
+        test('succeeds if the signerAdd is earlier (but does not emit addSigner)', async () => {
+          const addATo1Earlier: SignerAdd = {
+            ...addATo1,
+            hash: Faker.datatype.hexaDecimal(128),
+            data: { ...addATo1.data, signedAt: remAFrom2.data.signedAt + 1 },
+          };
+
+          await expect(set.merge(addATo1Earlier)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
+            adds: new Map([[a.signerKey, addATo1Earlier.hash]]),
+            removes: new Map(),
+          });
+          await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
+            adds: new Map(),
+            removes: new Map([[a.signerKey, remAFrom2.hash]]),
+          });
+          expect(events).toEqual([
+            ['changeCustody', fid, custody1.signerKey, custody1Register],
+            ['changeCustody', fid, custody2.signerKey, custody2Transfer],
+            ['removeSigner', fid, a.signerKey, remAFrom2],
+          ]);
+        });
+
+        test('succeeds if the SignerAdd is later (but does not emit addSigner)', async () => {
+          const addATo1Later: SignerAdd = {
+            ...addATo1,
+            hash: Faker.datatype.hexaDecimal(128),
+            data: { ...addATo1.data, signedAt: remAFrom2.data.signedAt + 1 },
+          };
+
+          await expect(set.merge(addATo1Later)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
+            adds: new Map([[a.signerKey, addATo1Later.hash]]),
             removes: new Map(),
           });
           await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
@@ -771,6 +837,7 @@ describe('merge', () => {
             removes: new Map([[a.signerKey, remAFrom2.hash]]),
           });
         });
+
         test('succeeds when adds are received first', async () => {
           for (const msg of [addATo1, addATo2, remAFrom1, remAFrom2]) {
             await expect(set.merge(msg)).resolves.toEqual(undefined);
@@ -809,7 +876,20 @@ describe('merge', () => {
     });
 
     describe('mergeSignerRemove', () => {
-      test('succeeds with a valid SignerRemove message', async () => {
+      test('succeeds with a valid SignerRemove message,', async () => {
+        await expect(set.merge(remAFrom1)).resolves.toEqual(undefined);
+        await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
+        await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
+          adds: new Map(),
+          removes: new Map([[a.signerKey, remAFrom1.hash]]),
+        });
+        expect(events).toEqual([
+          ['changeCustody', fid, custody1.signerKey, custody1Register],
+          ['removeSigner', fid, a.signerKey, remAFrom1],
+        ]);
+      });
+
+      test('succeeds with a valid SignerRemove message, if a SignerAdd was added previously', async () => {
         await expect(set.merge(addATo1)).resolves.toEqual(undefined);
         await expect(set.merge(remAFrom1)).resolves.toEqual(undefined);
         await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
@@ -824,20 +904,7 @@ describe('merge', () => {
         ]);
       });
 
-      test('succeeds when signer has not been added', async () => {
-        await expect(set.merge(remAFrom1)).resolves.toEqual(undefined);
-        await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
-        await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
-          adds: new Map(),
-          removes: new Map([[a.signerKey, remAFrom1.hash]]),
-        });
-        expect(events).toEqual([
-          ['changeCustody', fid, custody1.signerKey, custody1Register],
-          ['removeSigner', fid, a.signerKey, remAFrom1],
-        ]);
-      });
-
-      test('succeeds (no-ops) with duplicate signer remove message', async () => {
+      test('succeeds (no-ops) with duplicate SignerRemove message', async () => {
         await expect(set.merge(remAFrom1)).resolves.toEqual(undefined);
         await expect(set.merge(remAFrom1)).resolves.toEqual(undefined);
         await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
@@ -862,14 +929,20 @@ describe('merge', () => {
         expect(events).toEqual([['changeCustody', fid, custody1.signerKey, custody1Register]]);
       });
 
-      describe('when signer was already added by a different custody address', () => {
+      describe('when signer was already added by a causally earlier custody address', () => {
         beforeEach(async () => {
           await set.mergeIDRegistryEvent(custody2Transfer);
+          await expect(set.merge(addATo1)).resolves.toEqual(undefined);
         });
 
-        test('succeeds with later custody address', async () => {
-          await expect(set.merge(addATo1)).resolves.toEqual(undefined);
-          await expect(set.merge(remAFrom2)).resolves.toEqual(undefined);
+        test('succeeds if the SignerRemove is later', async () => {
+          const remAFrom2Later: SignerRemove = {
+            ...remAFrom2,
+            hash: Faker.datatype.hexaDecimal(128),
+            data: { ...remAFrom2.data, signedAt: addATo1.data.signedAt + 1 },
+          };
+
+          await expect(set.merge(remAFrom2Later)).resolves.toEqual(undefined);
           await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
           await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map([[a.signerKey, addATo1.hash]]),
@@ -877,22 +950,82 @@ describe('merge', () => {
           });
           await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
             adds: new Map(),
-            removes: new Map([[a.signerKey, remAFrom2.hash]]),
+            removes: new Map([[a.signerKey, remAFrom2Later.hash]]),
           });
           expect(events).toEqual([
             ['changeCustody', fid, custody1.signerKey, custody1Register],
             ['changeCustody', fid, custody2.signerKey, custody2Transfer],
-            ['removeSigner', fid, a.signerKey, remAFrom2],
+            ['removeSigner', fid, a.signerKey, remAFrom2Later],
           ]);
         });
 
-        test('succeeds but does not emit removeSigner event with earlier custody address', async () => {
+        test('succeeds if the SignerRemove is earlier', async () => {
+          const remAFrom2Earlier: SignerRemove = {
+            ...remAFrom2,
+            hash: Faker.datatype.hexaDecimal(128),
+            data: { ...remAFrom2.data, signedAt: addATo1.data.signedAt - 1 },
+          };
+
+          await expect(set.merge(remAFrom2Earlier)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
+            adds: new Map([[a.signerKey, addATo1.hash]]),
+            removes: new Map(),
+          });
+          await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
+            adds: new Map(),
+            removes: new Map([[a.signerKey, remAFrom2Earlier.hash]]),
+          });
+          expect(events).toEqual([
+            ['changeCustody', fid, custody1.signerKey, custody1Register],
+            ['changeCustody', fid, custody2.signerKey, custody2Transfer],
+            ['removeSigner', fid, a.signerKey, remAFrom2Earlier],
+          ]);
+        });
+      });
+
+      describe('when signer was already added by a causally later custody address', () => {
+        beforeEach(async () => {
+          await set.mergeIDRegistryEvent(custody2Transfer);
           await expect(set.merge(addATo2)).resolves.toEqual(undefined);
-          await expect(set.merge(remAFrom1)).resolves.toEqual(undefined);
+        });
+
+        test('succeeds but does not emit removeSigner event if the SignerRemove is earlier', async () => {
+          const remAFrom2Earlier: SignerRemove = {
+            ...remAFrom1,
+            hash: Faker.datatype.hexaDecimal(128),
+            data: { ...remAFrom1.data, signedAt: addATo2.data.signedAt - 1 },
+          };
+
+          await expect(set.merge(remAFrom2Earlier)).resolves.toEqual(undefined);
           await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
           await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
             adds: new Map(),
-            removes: new Map([[a.signerKey, remAFrom1.hash]]),
+            removes: new Map([[a.signerKey, remAFrom2Earlier.hash]]),
+          });
+          await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
+            adds: new Map([[a.signerKey, addATo2.hash]]),
+            removes: new Map(),
+          });
+          expect(events).toEqual([
+            ['changeCustody', fid, custody1.signerKey, custody1Register],
+            ['changeCustody', fid, custody2.signerKey, custody2Transfer],
+            ['addSigner', fid, a.signerKey, addATo2],
+          ]);
+        });
+
+        test('succeeds but does not emit removeSigner event if the SignerRemove is later', async () => {
+          const remAFrom2Later: SignerRemove = {
+            ...remAFrom1,
+            hash: Faker.datatype.hexaDecimal(128),
+            data: { ...remAFrom1.data, signedAt: addATo2.data.signedAt + 1 },
+          };
+
+          await expect(set.merge(remAFrom2Later)).resolves.toEqual(undefined);
+          await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
+          await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({
+            adds: new Map(),
+            removes: new Map([[a.signerKey, remAFrom2Later.hash]]),
           });
           await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
             adds: new Map([[a.signerKey, addATo2.hash]]),
@@ -968,7 +1101,7 @@ describe('merge', () => {
           await set.mergeIDRegistryEvent(custody2Transfer);
         });
 
-        test('succeeds with later custody address', async () => {
+        test('succeeds if removed by causally earlier custody address', async () => {
           await expect(set.merge(remAFrom1)).resolves.toEqual(undefined);
           await expect(set.merge(remAFrom2)).resolves.toEqual(undefined);
           await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
@@ -987,7 +1120,7 @@ describe('merge', () => {
           ]);
         });
 
-        test('succeeds but does not emit removeSigner event with earlier custody address', async () => {
+        test('succeeds and does not emit if removed by causally later custody address', async () => {
           await expect(set.merge(remAFrom2)).resolves.toEqual(undefined);
           await expect(set.merge(remAFrom1)).resolves.toEqual(undefined);
           await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
