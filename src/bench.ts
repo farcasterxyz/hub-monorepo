@@ -82,9 +82,9 @@ app
   .version(process.env.npm_package_version ?? '1.0.0');
 
 app
-  .requiredOption('-a, --ip-address <address>', 'The IP address of a Hub to submit messages to')
-  .requiredOption('-r, --rpc-port <port>', 'The RPC port of the Hub')
-  .option('-u, --users <count>', 'The number of users to simulate', parseNumber, 100);
+  .requiredOption('-A, --ip-address <address>', 'The IP address of a Hub to submit messages to')
+  .requiredOption('-R, --rpc-port <port>', 'The RPC port of the Hub')
+  .option('-U, --users <count>', 'The number of users to simulate', parseNumber, 100);
 
 app.parse(process.argv);
 const cliOptions = app.opts();

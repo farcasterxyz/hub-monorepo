@@ -24,7 +24,6 @@ const teardown = async (hub: Hub) => {
 
 app.parse(process.argv);
 const cliOptions = app.opts();
-console.log(cliOptions);
 const options: HubOpts = {
   networkUrl: cliOptions.networkUrl,
   IDRegistryAddress: cliOptions.idRegistryAddress,
@@ -34,7 +33,6 @@ const options: HubOpts = {
   rocksDBName: cliOptions.dbName,
   resetDB: cliOptions.dbReset,
 };
-console.log(cliOptions, options);
 
 const hub = new Hub(options);
 hub.start();
