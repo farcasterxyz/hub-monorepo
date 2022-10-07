@@ -1,34 +1,8 @@
 import { Factories } from '~/factories';
-import { MerkleTrie, SyncId } from '~/sync/merkletrie';
-import { Message } from '~/types';
+import { MerkleTrie } from '~/sync/merkleTrie';
+import { SyncId } from '~/sync/syncId';
 
 describe('merkle trie', () => {
-  describe('syncid', () => {
-    let message: Message;
-    let syncId: SyncId;
-
-    beforeEach(async () => {
-      message = await Factories.CastShort.create();
-      syncId = new SyncId(message);
-    });
-
-    test('timestamp is correct', () => {
-      expect(syncId.timestampString).toEqual(Math.floor(message.data.signedAt / 1000).toString());
-      expect(syncId.timestampString.length).toEqual(10);
-    });
-
-    test('hash is correct', () => {
-      expect(syncId.hashString.startsWith('0x')).toBeFalsy();
-      expect(message.hash.endsWith(syncId.hashString)).toBeTruthy();
-      expect(syncId.hashString.length).toEqual(128);
-    });
-
-    test('id correct', () => {
-      expect(syncId.toString()).toEqual(`${syncId.timestampString}${syncId.hashString}`);
-      expect(syncId.toString().length).toEqual(138);
-    });
-  });
-
   test('insert single item', async () => {
     const trie = new MerkleTrie();
     const message = await Factories.CastShort.create();
@@ -91,7 +65,7 @@ describe('merkle trie', () => {
     const secondTrie = new MerkleTrie();
 
     syncIds.forEach((syncId) => firstTrie.insert(syncId));
-    const shuffledIds = syncIds.sort((a, b) => 0.5 - Math.random());
+    const shuffledIds = syncIds.sort((_a, _b) => 0.5 - Math.random());
     shuffledIds.forEach((syncId) => secondTrie.insert(syncId));
 
     expect(firstTrie.rootHash).toEqual(secondTrie.rootHash);

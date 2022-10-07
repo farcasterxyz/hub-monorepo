@@ -18,7 +18,7 @@ import { TypedEmitter } from 'tiny-typed-emitter';
 import RocksDB from '~/db/rocksdb';
 import { err, ok, Result } from 'neverthrow';
 import { FarcasterError, ServerError } from '~/errors';
-import { MerkleSync } from '~/sync/merklesync';
+import { MerkleSync } from '~/sync/merkleSync';
 
 export interface HubOpts {
   // ID Registry network URL

@@ -1,37 +1,5 @@
-import { Message } from '~/types';
 import { createHash } from 'crypto';
-
-const TIMESTAMP_LENGTH = 10;
-const HASH_LENGTH = 128; // We're using 64 byte blake2b hashes
-const ID_LENGTH = TIMESTAMP_LENGTH + HASH_LENGTH;
-
-/**
- * SyncId represent the unique id of a message in the sync protocol.
- * It is a combination of the message's timestamp and hash
- */
-class SyncId {
-  private readonly _timestamp: number;
-  private readonly _hash: string;
-
-  constructor(message: Message) {
-    this._timestamp = message.data.signedAt;
-    this._hash = message.hash;
-  }
-
-  public toString(): string {
-    return `${this.timestampString}${this.hashString}`;
-  }
-
-  public get timestampString(): string {
-    return Math.floor(this._timestamp / 1000)
-      .toString()
-      .padStart(TIMESTAMP_LENGTH, '0');
-  }
-
-  public get hashString(): string {
-    return this._hash.slice(2);
-  }
-}
+import { ID_LENGTH, SyncId } from '~/sync/syncId';
 
 /**
  * Represents a node in a merkle trie. Automatically updates the hashes when items are added,
@@ -54,32 +22,35 @@ class TrieNode {
     }
   }
 
-  public insert(key: string, value: string, current_index = 0) {
+  public insert(key: string, value: string, current_index = 0): boolean {
     const char = key[current_index];
 
     // TODO: Optimize by using MPT extension nodes for leaves
+    // We've reached the end of the key, add or update the value in a leaf node
     if (current_index === ID_LENGTH - 1) {
+      // Key with the same value already exists, so no need to modify the tree
       if (this._children.has(char) && this._children.get(char)?.value === value) {
         return false;
       }
-      this._children.set(char, new TrieNode(value));
-      this._children = new Map([...this._children.entries()].sort()); // Keep children sorted
+      this._addChild(char, value);
       this._items += 1;
       this._updateHash();
       return true;
     }
 
     if (!this._children.has(char)) {
-      this._children.set(char, new TrieNode());
-      this._children = new Map([...this._children.entries()].sort());
+      this._addChild(char);
     }
 
+    // Recurse into a non-leaf node and instruct it to insert the value
     const success = this._children.get(char)?.insert(key, value, current_index + 1);
     if (success) {
       this._items += 1;
       this._updateHash();
       return true;
     }
+
+    return false;
   }
 
   public get(key: string): string | undefined {
@@ -95,8 +66,15 @@ class TrieNode {
     return this._children.get(char)?.get(key.slice(1));
   }
 
+  private _addChild(char: string, value: string | undefined = undefined) {
+    this._children.set(char, new TrieNode(value));
+    // The hash requires the children to be sorted, and sorting on insert/update is cheaper than
+    // sorting each time we need to update the hash
+    this._children = new Map([...this._children.entries()].sort());
+  }
+
   private _updateHash() {
-    // Optimize by using a faster hash algorithm. Potentially murmurhash v3
+    // TODO: Optimize by using a faster hash algorithm. Potentially murmurhash v3
     if (this.isLeaf) {
       this._hash = createHash('sha256')
         .update(this._value || '')
@@ -162,4 +140,4 @@ class MerkleTrie {
   }
 }
 
-export { MerkleTrie, SyncId, TrieNode };
+export { MerkleTrie, TrieNode };
