@@ -7,7 +7,7 @@ const ID_LENGTH = TIMESTAMP_LENGTH + HASH_LENGTH;
 /**
  * SyncId allows for a stable, time ordered lexicographic sorting of messages across hubs
  * It is a combination of the message's timestamp and hash. This id string is used as the key in
- * the merkle trie.
+ * the MerkleTrie.
  */
 class SyncId {
   private readonly _timestamp: number;
@@ -16,6 +16,13 @@ class SyncId {
   constructor(message: Message) {
     this._timestamp = message.data.signedAt;
     this._hash = message.hash;
+    // Hashlength +2 to account for the 0x
+    if (this._hash.length !== HASH_LENGTH + 2 || !this._hash.startsWith('0x')) {
+      throw new Error(`Invalid hash: ${this._hash}`);
+    }
+    if (this.timestampString.length !== TIMESTAMP_LENGTH) {
+      throw new Error(`Invalid timestamp: ${this.timestampString}`);
+    }
   }
 
   public toString(): string {
@@ -24,8 +31,8 @@ class SyncId {
 
   public get timestampString(): string {
     // SignedAt is in milliseconds. For our MerkleTrie, seconds is a good enough resolution
-    // We also want to normalize the length to 10 characters, so that the bottommost
-    // level of the trie represents seconds even if the timestamp of the message is 0.
+    // We also want to normalize the length to 10 characters, so that the MerkleTrie
+    // will always have the same depth for any timestamp (even 0).
     return Math.floor(this._timestamp / 1000)
       .toString()
       .padStart(TIMESTAMP_LENGTH, '0');

@@ -2,8 +2,8 @@ import { Factories } from '~/factories';
 import { MerkleTrie } from '~/sync/merkleTrie';
 import { SyncId } from '~/sync/syncId';
 
-describe('merkle trie', () => {
-  test('insert single item', async () => {
+describe('MerkleTrie', () => {
+  test('succeeds inserting a single item', async () => {
     const trie = new MerkleTrie();
     const message = await Factories.CastShort.create();
     const syncId = new SyncId(message);
@@ -17,7 +17,7 @@ describe('merkle trie', () => {
     expect(trie.rootHash).toBeTruthy();
   });
 
-  test('get single item', async () => {
+  test('succeeds getting single item', async () => {
     const trie = new MerkleTrie();
     const message = await Factories.CastShort.create();
     const syncId = new SyncId(message);
@@ -27,9 +27,24 @@ describe('merkle trie', () => {
     trie.insert(syncId);
 
     expect(trie.get(syncId)).toEqual(syncId.hashString);
+
+    // Message signed 1 second after
+    message.data.signedAt = message.data.signedAt + 1000;
+    const nonExistingSyncId = new SyncId(message);
+    expect(trie.get(nonExistingSyncId)).toBeFalsy();
   });
 
-  test('idempotency', async () => {
+  test('value is always undefined for non-leaf nodes', async () => {
+    const trie = new MerkleTrie();
+    const message = await Factories.CastShort.create();
+    const syncId = new SyncId(message);
+
+    trie.insert(syncId);
+
+    expect(trie.root.value).toBeFalsy();
+  });
+
+  test('inserts are idempotent', async () => {
     const message1 = await Factories.CastShort.create();
     const syncId1 = new SyncId(message1);
     const message2 = await Factories.CastShort.create();
@@ -57,7 +72,7 @@ describe('merkle trie', () => {
     expect(firstTrie.items).toEqual(2);
   });
 
-  test('insert multiple items', async () => {
+  test('insert multiple items out of orders results in the same root hash', async () => {
     const messages = await Factories.CastShort.createList(25);
     const syncIds = messages.map((message) => new SyncId(message));
 
@@ -65,7 +80,7 @@ describe('merkle trie', () => {
     const secondTrie = new MerkleTrie();
 
     syncIds.forEach((syncId) => firstTrie.insert(syncId));
-    const shuffledIds = syncIds.sort((_a, _b) => 0.5 - Math.random());
+    const shuffledIds = syncIds.sort(() => 0.5 - Math.random());
     shuffledIds.forEach((syncId) => secondTrie.insert(syncId));
 
     expect(firstTrie.rootHash).toEqual(secondTrie.rootHash);

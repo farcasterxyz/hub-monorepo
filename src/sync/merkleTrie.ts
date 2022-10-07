@@ -2,7 +2,7 @@ import { createHash } from 'crypto';
 import { ID_LENGTH, SyncId } from '~/sync/syncId';
 
 /**
- * Represents a node in a merkle trie. Automatically updates the hashes when items are added,
+ * Represents a node in a MerkleTrie. Automatically updates the hashes when items are added,
  * and keeps track of the number of items in the subtree.
  */
 class TrieNode {
@@ -110,7 +110,10 @@ class TrieNode {
 }
 
 /**
- * Represents a MerkleTrie. It's exactly like a Merkle tree, except that it's a trie.
+ * Represents a MerkleTrie. It's conceptually very similar to a Merkle Patricia Tree (see
+ * https://ethereum.org/en/developers/docs/data-structures-and-encoding/patricia-merkle-trie/).
+ * We don't have extension nodes currently, so this is essentially a Merkle Radix Trie as
+ * defined in the link above.
  */
 class MerkleTrie {
   private readonly _root: TrieNode;

@@ -9,7 +9,7 @@ import { SyncId } from '~/sync/syncId';
 const testDb = jestRocksDB(`engine.follow.test`);
 const engine = new Engine(testDb);
 
-describe('merkle sync', () => {
+describe('MerkleSync', () => {
   let merkleSync: MerkleSync;
 
   beforeEach(async () => {
@@ -34,7 +34,7 @@ describe('merkle sync', () => {
     expect(merkleSync.trie.get(new SyncId(cast))).toEqual(new SyncId(cast).hashString);
   });
 
-  test('trie is not updated on failure', async () => {
+  test('trie is not updated on merge failure', async () => {
     expect(merkleSync.trie.items).toEqual(0);
 
     const message = await Factories.CastShort.create();
