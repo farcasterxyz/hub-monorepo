@@ -30,6 +30,13 @@ const compareHubs = async (sourceHub: Hub, compareHub: Hub) => {
     const verifications = await sourceHub.getAllVerificationsByUser(user);
     await expect(compareHub.getAllVerificationsByUser(user)).resolves.toEqual(verifications);
   }
+  const sourceTrie = sourceHub.merkleTrieForTest;
+  const compareTrie = compareHub.merkleTrieForTest;
+  // These don't match exactly yet. But we expect the tries to be populated,
+  // and have approximately the same size
+  expect(sourceTrie.items - compareTrie.items).toBeLessThanOrEqual(10);
+  expect(sourceTrie.rootHash).toBeTruthy();
+  expect(compareTrie.rootHash).toBeTruthy();
 };
 
 const tearDownHub = async (hub: Hub) => {
