@@ -10,6 +10,16 @@ import { sleep } from '~/utils';
 import { JSONRPCError } from 'jayson/promise';
 import { isIDRegistryEvent, isMessage } from '~/types/typeguards';
 
+/**
+ * Farcaster Benchmark Client
+ *
+ * This file provides a mechanism to benchmark and test a network of Farcaster Hubs
+ *
+ * When executed, it submits a series of events to the Hub network and measures the
+ * time taken for each set of requests to be processed.
+ *
+ */
+
 const post = (msg: string, start: number, stop: number) => {
   const delta = Number((stop - start) / 1000);
   const time = delta.toFixed(3);
@@ -64,8 +74,8 @@ const submitInBatches = async (messages: Message[] | IDRegistryEvent[]) => {
   return getCounts(results);
 };
 
+// Main
 const app = new Command();
-
 app
   .name('farcaster-benchmark-client')
   .description('Farcaster Benchmark')
@@ -111,7 +121,6 @@ const accountTime = post(`Generated ${cliOptions.users} users. UserInfo has ${us
 start = performance.now();
 const registryResults = await submitInBatches(idRegistryEvents);
 
-// const registryResults = await Promise.all(idRegistryEvents.map((e) => client.submitIDRegistryEvent(e)));
 stop = performance.now();
 const idRegistryTime = post('IDRegistry Events submitted', start, stop);
 
@@ -122,7 +131,6 @@ await sleep(10_000);
 start = performance.now();
 const signerResults = await submitInBatches(signerAddEvents);
 
-// const signerResults = await Promise.all(signerAddEvents.map((e) => client.submitMessage(e)));
 stop = performance.now();
 const signerAddsTime = post('Signers submitted', start, stop);
 
