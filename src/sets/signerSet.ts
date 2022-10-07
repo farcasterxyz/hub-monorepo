@@ -7,50 +7,46 @@ import RocksDB from '~/db/rocksdb';
 import SignerDB from '~/db/signer';
 
 export type SignerSetEvents = {
-  /**
-   * changeCustody is emitted when custody address changes by merging a new Register or Transfer event
-   * from the Farcaster ID Registry
-   */
+  /** Emitted when a new Register or Transfer event is received from the Farcaster ID Registry */
   changeCustody: (fid: number, custodyAddress: string, event: IDRegistryEvent) => void;
 
   /**
-   * addSigner is emitted when a delegate signer becomes valid which can happen in two ways:
-   * 1. A SignerAdd message is merged which adds a new delegate signer for the current custody address
-   * 2. The custody address changes, and a SignerAdd message that was previously merged from the new custody
-   *    address becomes valid
+   * Emitted when a delegate signer becomes valid which happens when:
    *
-   * Note: addSigner is NOT emitted when a SignerAdd message is merged that was signed by any custody
-   * address other than the current one
+   * 1. A SignerAdd message is merged, adding a valid delegate signer for current custody address
+   * 2. The custody address changes and a previously merged, invalid SignerAdd message becomes valid
    */
   addSigner: (fid: number, signerKey: string, message: SignerAdd) => void;
 
   /**
-   * removesSigner is emitted when a delegate signer becomes invalid which can happen in two ways:
-   * 1. A SignerRemove message is merged which removes a delegate signer for the current custody address
-   * 2. The custody address changes, and a delegate signer has not had a SignerAdd message merged from the
-   *    new custody address, so it is no longer valid
+   * Emitted when a valid delegate signer becomes invalid which happens when:
    *
-   * Note: the message parameter in removeSigner is optional, because in case (2) above we don't have
-   * a relevant SignerRemove message to share
+   * 1. A SignerRemove message is merged, removing a delegate signer for the current custody address
+   * 2. The custody address changes and a previously active delegate signer is deactivated
+   *
+   * Note: message is an optional param, because in case (2) there is no SignerRemove message that causes the event
    */
   removeSigner: (fid: number, signerKey: string, message?: SignerRemove) => void;
 };
 
 /**
- * The SignerSet manages custody addresses and delegate signers. Custody addresses are changed via events from
- * the Farcaster IDRegistry contract, and delegate signers are added and removed via SignerAdd and SignerRemove
- * messages respectively, which are signed by custody addresses.
+ * A CRDT that keeps track of custody addresses and valid delegate signers for an fid.
  *
- * Read more in the Farcaster protocol docs: https://github.com/farcasterxyz/protocol#45-signer-authorizations
+ * A Delegate Signer is an EdDSA key-pair that is authorized to sign Messages on behalf of an fid by its custody
+ * address. A custody address can submit a SignerAdd to authorize a new key-pair and a SignerRemove to revoke a
+ * key-pair. A Signer should only be revoked when a compromise is suspected, and the Hub will purge all messages
+ * signed by the Signer across all sets.
  *
- * This implementation is a modified LWW set that stores and fetches delegate signers for each custody address,
- * even addresses that the IDRegistry contract hasn't seen yet or that have been overwritten. IDRegistryEvent objects
- * and SignerAdd and SignerRemove messages are stored in the SignerDB.
+ * The SignerDB keeps track of SignerAdds and SignerRemoves in two separate sets per custody address. Conflicts
+ * may arise between Signer Messages when received in different orders, which are handled with these rules:
  *
- * For a given custody address, conflicts between signer messages are resolved in this order:
- * 1. Message with a later timestamp wins
- * 2. If messages have the same timestamp, SignerRemove message wins
- * 3. If both messages have the same type, message with higher lexicographic hash wins
+ * 1. Last-Write-Wins - a message with a higher timestamp supersedes one with a lower timestamp
+ * 2. Remove-Wins - a remove message always supersedes an add message
+ * 3. Lexicographical Ordering - a message with a higher hash supersedes one with a lower hash
+ *
+ * The validity of a Delegate Signer depends on the validity of the custody address that signed the SignerAdd message.
+ * A previously valid custody address can become invalid if the `transfer` function is called on the FIR to move the
+ * fid to a new address. When a custody address becomes invalid, the SignerSet must also mark its delegates as invalid.
  */
 class SignerSet extends TypedEmitter<SignerSetEvents> {
   private _db: SignerDB;
@@ -60,11 +56,13 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     this._db = new SignerDB(db);
   }
 
+  /** Return the set of known fids */
   async getUsers(): Promise<Set<number>> {
     const fids = await this._db.getUsers();
     return new Set(fids);
   }
 
+  /** Return the currently valid custody address for an fid */
   async getCustodyAddress(fid: number): Promise<string> {
     const event = await this.getCustodyEvent(fid);
     return sanitizeSigner(event.args.to);
@@ -74,25 +72,26 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     return this._db.getCustodyEvent(fid);
   }
 
-  /** getSigners returns the set of valid delegate signers for the current custody address */
+  /** Return all currently valid Delegate Signers for the fid */
   async getSigners(fid: number): Promise<Set<SignerAdd>> {
     const custodyAddress = await this.getCustodyAddress(fid);
     const signerAdds = await this._db.getSignerAddsByUser(fid, custodyAddress);
     return new Set(signerAdds);
   }
 
-  /** getSigner returns the SignerAdd message for a delegate signer if the signer is valid */
+  /** Return the SignerAdd message for a Delegate Signer, if the Signer is valid */
   async getSigner(fid: number, signerKey: string): Promise<SignerAdd> {
     const custodyAddress = await this.getCustodyAddress(fid);
     return this._db.getSignerAdd(fid, custodyAddress, sanitizeSigner(signerKey));
   }
 
+  /** Returns all known SignerMessages for an fid */
   async getAllSignerMessagesByUser(fid: number): Promise<Set<SignerMessage>> {
     const messages = await this._db.getAllSignerMessagesByUser(fid);
     return new Set(messages);
   }
 
-  /** merge tries to merge a SignerAdd or SignerRemove message into the set */
+  /** Merge a SignerMessage into the SignerSet */
   async merge(message: SignerMessage): Promise<void> {
     if (isSignerRemove(message)) {
       return this.mergeSignerRemove(message);
@@ -105,11 +104,17 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     throw new Error('SignerSet.merge: invalid message format');
   }
 
-  /** mergeIDRegistryEvent tries to update the custody address with an event from the Farcaster ID Registry contract. */
+  /**
+   * Merge a new event from the Farcaster ID Registry into the SignerSet.
+   *
+   * mergeIDRegistryEvent will update the custody address, validate or invalidate delegate signers and emit events.
+   * The IDRegistryEvent must be accurate otherwise local state will diverge from blockchain state. If IDRegistryEvents
+   * are received out of order, some events may not be emitted.
+   */
   async mergeIDRegistryEvent(event: IDRegistryEvent): Promise<void> {
     const fid = event.args.id;
 
-    // If new event is a duplicate or occured before the existing custodyEvent, no-op
+    // If new event is a duplicate or occurred before the existing custodyEvent, no-op
     const custodyEvent = await ResultAsync.fromPromise(this.getCustodyEvent(fid), () => undefined);
     if (custodyEvent.isOk() && this.eventCompare(event, custodyEvent.value) <= 0) {
       return undefined;
@@ -156,15 +161,11 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
    */
 
   /**
-   * eventCompare returns an order (-1, 0, 1) for two ID Registry events (a and b). If a occurs before
-   * b, return -1. If a occurs after b, return 1. If a and b are the same event, return 0.
+   * Return an order (1, 0, -1) by comparing two ID Registry Events a and b.
    *
-   * The method compares these attributes of the events (in order):
-   * 1. blockNumber
-   * 2. logIndex
-   * 3. Lexicographic order of transactionHash
-   *
-   * Two events are identical if their transactionHash, logIndex, and blockNumber are the same
+   * Events are first compared by their block number, then by log index and finally by lexicographic order of
+   * transactionHash. A value of -1 means a occurs before b, 1 means a occurs * after b, and 0 means a and b are the
+   * same with identical block number, log index and transactionHash.
    */
   private eventCompare(a: IDRegistryEvent, b: IDRegistryEvent): number {
     // Compare blockNumber
@@ -185,9 +186,10 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
   }
 
   /**
-   * signerMessageCompare returns an order (-1, 0, 1) for two signer messages (a and b). If a occurs before
-   * b, return -1. If a occurs after b, return 1. If a and b cannot be ordered (i.e. they are the same
-   * message), return 0.
+   * Return an order (-1, 0, 1) by comparing two SignerMessages a and b.
+   *
+   * Messages are first compared by their timestamps, then by types, and finally by lexicographical order of their
+   * hashes. A value of -1 means a occurs before b, 1 means a occurs after b, and 0 means a and b are the same.
    */
   private signerMessageCompare(a: SignerMessage, b: SignerMessage): number {
     // If they are the same message, return 0
@@ -212,13 +214,12 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
   }
 
   /**
-   * mergeSignerAdd tries to add a new delegate signer with a SignerAdd message. The method follows this high-level logic:
-   * - If the new signer has never been seen, add it
-   * - If the new signer has already been added, keep the add message with a higher order (using signerMessageOrder)
-   * - If the new signer has already been removed, re-add the signer if the add message has a higher order than
-   *   the relevant remove message (using signerMessageOrder)
-   *
-   * Note: Signer messages are only compared against other messages from the same custody address.
+   * Merges a SignerAdd Message into the CRDT, updating state and emitting events. The high-level logic is: 
+   
+   * - If the Signer is unknown, place it in the the add-set
+   * - If the Signer is in the add-set, keep the SignerAdd with the highest order (using signerMessageOrder)
+   * - If the Signer is in the remove-set, move it to the add-set if the SignerAdd has the highest order 
+   *   (using signerMessageOrder)
    */
   private async mergeSignerAdd(message: SignerAdd): Promise<void> {
     const { fid } = message.data;
@@ -228,7 +229,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     if (custodyAddress === signerKey)
       throw new Error('SignerSet.mergeSignerAdd: signer and delegate must be different');
 
-    // Check if the new signer has already been added
+    // If the Signer is in the add-set and this SignerAdd does not have the highest order, no-op
     const existingSignerAdd = await ResultAsync.fromPromise(
       this._db.getSignerAdd(fid, custodyAddress, signerKey),
       () => undefined
@@ -239,6 +240,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
       }
     }
 
+    // If the Signer is in the remove-set, and this SignerAdd does not have the highest order, no-op
     const existingSignerRemove = await ResultAsync.fromPromise(
       this._db.getSignerRemove(fid, custodyAddress, signerKey),
       () => undefined
@@ -249,10 +251,10 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
       }
     }
 
-    // Add the new signer add message
+    // Add the Signer to the add-set
     await this._db.putSignerAdd(message);
 
-    // If the signer of the new message is the current custody address, emit an addSigner event
+    // Emit an AddSigner event if the Signer becomes valid when added (because its custody address is also valid)
     const currentCustodyAddress = await ResultAsync.fromPromise(this.getCustodyAddress(fid), () => undefined);
     if (currentCustodyAddress.isOk() && currentCustodyAddress.value === custodyAddress) {
       this.emit('addSigner', fid, signerKey, message);
@@ -262,13 +264,12 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
   }
 
   /**
-   * mergeSignerRemove tries to remove a delegate signer with a SignerRemove message. The method follows this high-level logic:
-   * - If the signer has never been seen, add it to removes as a tombstone
-   * - If the signer has already been removed, keep the remove message with a higher order (using signerMessageOrder)
-   * - If the signer has already been added, remove the signer if the remove message has a higher order than
-   *   the relevant add message (using signerMessageOrder)
+   * Merges a SignerRemove Message into the CRDT, updating state and emitting events. The high-level logic is:
    *
-   * Note: Signer messages are only compared against other messages from the same custody address.
+   * - If the signer is unknown, place it in the remove-set
+   * - If the signer is in the remove-set, keep the SignerRemove higher order (using signerMessageOrder)
+   * - If the signer in the add-set, move it to the remove-set if the SignerRemove has the highest order
+   *   (using signerMessageOrder)
    */
   private async mergeSignerRemove(message: SignerRemove): Promise<void> {
     const { fid } = message.data;
@@ -278,7 +279,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     if (custodyAddress === signerKey)
       throw new Error('SignerSet.mergeSignerRemove: signer and delegate must be different');
 
-    // Check if the signer has already been removed
+    // If the signer is in the remove-set and the SignerRemove has a higher order, do nothing
     const existingSignerRemove = await ResultAsync.fromPromise(
       this._db.getSignerRemove(fid, custodyAddress, signerKey),
       () => undefined
@@ -289,7 +290,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
       }
     }
 
-    // Check if the signer has already been added
+    // If the signer is in the add-set and the SignerAdd has a higher order, do nothing
     const existingSignerAdd = await ResultAsync.fromPromise(
       this._db.getSignerAdd(fid, custodyAddress, signerKey),
       () => undefined
@@ -300,10 +301,10 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
       }
     }
 
-    // Add the new signer remove message
+    // Add the SignerRemove to the remove-set and remove SignerAdd if it exists
     await this._db.putSignerRemove(message);
 
-    // If the signer of the new message is the current custody address, emit an addSigner event
+    // Emit a RemoveSigner event if the removed Signer was currently valid
     const currentCustodyAddress = await ResultAsync.fromPromise(this.getCustodyAddress(fid), () => undefined);
     if (currentCustodyAddress.isOk() && currentCustodyAddress.value === custodyAddress) {
       this.emit('removeSigner', fid, signerKey, message);
