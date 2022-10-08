@@ -116,7 +116,7 @@ export const isData = (data: any): data is FC.Data => {
   );
 };
 
-export const isIDRegistryEvent = (msg: FC.IDRegistryEvent): msg is FC.IDRegistryEvent => {
+export const isIDRegistryEvent = (msg: any): msg is FC.IDRegistryEvent => {
   try {
     const { args } = msg;
     return (

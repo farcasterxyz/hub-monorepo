@@ -24,7 +24,6 @@ const teardown = async (hub: Hub) => {
 
 app.parse(process.argv);
 const cliOptions = app.opts();
-console.log(cliOptions);
 const options: HubOpts = {
   networkUrl: cliOptions.networkUrl,
   IDRegistryAddress: cliOptions.idRegistryAddress,

@@ -11,6 +11,7 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "npm run lint -- --fix",
     "server": "tsx src/server.ts",
+    "bench": "tsx src/bench.ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage",
     "typecheck": "tsc --noEmit"

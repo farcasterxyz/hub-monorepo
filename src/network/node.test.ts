@@ -92,7 +92,7 @@ describe('gossip network', () => {
 
   afterEach(async () => {
     await Promise.all(nodes.map((node) => node.stop()));
-  });
+  }, TEST_TIMEOUT_SHORT);
 
   test(
     'constructs a Gossip network and ensures all nodes are connected',

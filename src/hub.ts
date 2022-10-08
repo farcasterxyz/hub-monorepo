@@ -358,6 +358,27 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     return mergeResult;
   }
 
+  async submitIDRegistryEvent(event: IDRegistryEvent): Promise<Result<void, FarcasterError>> {
+    // push this message into the engine
+    const mergeResult = await this.engine.mergeIDRegistryEvent(event);
+    if (mergeResult.isErr()) {
+      console.log(this.identity, mergeResult.error, 'Received invalid message...');
+      return mergeResult;
+    }
+
+    // push this message onto the gossip network
+    const gossipMesage: GossipMessage<IDRegistryContent> = {
+      content: {
+        message: event,
+        root: '',
+        count: 0,
+      },
+      topics: [NETWORK_TOPIC_PRIMARY],
+    };
+    await this.gossipMessage(gossipMesage);
+    return mergeResult;
+  }
+
   /* Test API */
   async destroyDB() {
     await this.rocksDB.destroy();
