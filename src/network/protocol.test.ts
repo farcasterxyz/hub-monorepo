@@ -8,7 +8,7 @@ import {
   IDRegistryContent,
   UserContent,
 } from '~/network/protocol';
-import { isGossipMessage } from '~/network/typeguards';
+import { isGossipMessage } from '~/types/typeguards';
 
 let cast: CastShort;
 let idRegistryEvent: IDRegistryEvent;

@@ -1,6 +1,6 @@
 import { AddressInfo } from 'net';
 import { err, ok, Result } from 'neverthrow';
-import { isGossipMessage } from '~/network/typeguards';
+import { isGossipMessage } from '~/types/typeguards';
 import { IDRegistryEvent, Message } from '~/types';
 
 // Network topic for all FC protocol messages

@@ -13,7 +13,7 @@ import {
   UserContent,
 } from '~/network/protocol';
 import { AddressInfo } from 'net';
-import { isContactInfo, isIDRegistryContent, isUserContent } from '~/network/typeguards';
+import { isContactInfo, isIDRegistryContent, isUserContent } from '~/types/typeguards';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import RocksDB from '~/storage/db/rocksdb';
 import { err, ok, Result } from 'neverthrow';
