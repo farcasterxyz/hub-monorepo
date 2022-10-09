@@ -1,6 +1,6 @@
 import Faker from 'faker';
 import { AddressInfo } from 'net';
-import { generateUserInfo, getIDRegistryEvent, getSignerAdd, mockFid, populateEngine } from '~/engine/mock';
+import { generateUserInfo, getIDRegistryEvent, getSignerAdd, mockFid, populateEngine } from '~/storage/engine/mock';
 import { Factories } from '~/factories';
 import { Hub, HubOpts } from '~/hub';
 import { RPCClient } from '~/network/rpc';

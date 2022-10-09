@@ -1,5 +1,5 @@
 import { Multiaddr } from '@multiformats/multiaddr';
-import Engine from '~/engine';
+import Engine from '~/storage/engine';
 import { Node } from '~/network/node';
 import { RPCClient, RPCHandler, RPCServer } from '~/network/rpc';
 import { Cast, SignerMessage, Reaction, Follow, Verification, IDRegistryEvent, Message } from '~/types';
@@ -15,7 +15,7 @@ import {
 import { AddressInfo } from 'net';
 import { isContactInfo, isIDRegistryContent, isUserContent } from '~/network/typeguards';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import RocksDB from '~/db/rocksdb';
+import RocksDB from '~/storage/db/rocksdb';
 import { err, ok, Result } from 'neverthrow';
 import { FarcasterError, ServerError } from '~/errors';
 import { SyncEngine } from '~/sync/syncEngine';

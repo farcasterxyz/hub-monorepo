@@ -1,7 +1,7 @@
 import { Message } from '~/types';
 import { MerkleTrie } from '~/sync/merkleTrie';
 import { SyncId } from '~/sync/syncId';
-import Engine from '~/engine';
+import Engine from '~/storage/engine';
 
 /**
  * SyncEngine handles the logic required to determine where and how two hubs differ

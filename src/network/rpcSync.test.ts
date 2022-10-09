@@ -1,8 +1,8 @@
 import { AddressInfo } from 'net';
 import { RPCServer, RPCHandler, RPCClient } from '~/network/rpc';
-import Engine from '~/engine';
-import { jestRocksDB } from '~/db/jestUtils';
-import { populateEngine } from '~/engine/mock';
+import Engine from '~/storage/engine';
+import { jestRocksDB } from '~/storage/db/jestUtils';
+import { populateEngine } from '~/storage/engine/mock';
 import { Cast, Follow, IDRegistryEvent, Message, Reaction, SignerMessage, Verification } from '~/types';
 import { Result } from 'neverthrow';
 import { FarcasterError } from '~/errors';

@@ -1,8 +1,8 @@
 import { Factories } from '~/factories';
-import Engine from '~/engine';
+import Engine from '~/storage/engine';
 import { SyncEngine } from '~/sync/syncEngine';
-import { jestRocksDB } from '~/db/jestUtils';
-import { mockFid } from '~/engine/mock';
+import { jestRocksDB } from '~/storage/db/jestUtils';
+import { mockFid } from '~/storage/engine/mock';
 import Faker from 'faker';
 import { SyncId } from '~/sync/syncId';
 

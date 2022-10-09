@@ -22,9 +22,9 @@ import {
 import { Factories } from '~/factories';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 import { RPCServer, RPCClient, RPCHandler } from '~/network/rpc';
-import Engine from '~/engine';
+import Engine from '~/storage/engine';
 import Faker from 'faker';
-import { jestRocksDB } from '~/db/jestUtils';
+import { jestRocksDB } from '~/storage/db/jestUtils';
 import { FarcasterError } from '~/errors';
 import { Result } from 'neverthrow';
 
