@@ -4,11 +4,11 @@ import { SyncId } from '~/sync/syncId';
 import Engine from '~/engine';
 
 /**
- * MerkleSync handles the logic required to determine where and how two hubs differ
+ * SyncEngine handles the logic required to determine where and how two hubs differ
  * from each other and bring them into sync efficiently. See https://github.com/farcasterxyz/hub/issues/66
  * for more details on design of the sync algorithm.
  */
-class MerkleSync {
+class SyncEngine {
   private _trie: MerkleTrie;
   private engine: Engine;
 
@@ -30,4 +30,4 @@ class MerkleSync {
   }
 }
 
-export { MerkleSync };
+export { SyncEngine };

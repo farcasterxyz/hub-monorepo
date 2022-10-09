@@ -18,7 +18,7 @@ import { TypedEmitter } from 'tiny-typed-emitter';
 import RocksDB from '~/db/rocksdb';
 import { err, ok, Result } from 'neverthrow';
 import { FarcasterError, ServerError } from '~/errors';
-import { MerkleSync } from '~/sync/merkleSync';
+import { SyncEngine } from '~/sync/syncEngine';
 
 export interface HubOpts {
   // ID Registry network URL
@@ -73,7 +73,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   private syncState: SimpleSyncState;
   private contactTimer?: NodeJS.Timer;
   private rocksDB: RocksDB;
-  private merkleSync: MerkleSync;
+  private merkleSync: SyncEngine;
 
   engine: Engine;
 
@@ -85,7 +85,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     this.gossipNode = new Node();
     this.rpcServer = new RPCServer(this);
     this.syncState = SimpleSyncState.Pending;
-    this.merkleSync = new MerkleSync(this.engine);
+    this.merkleSync = new SyncEngine(this.engine);
     if (options.simpleSync !== undefined && !options.simpleSync) {
       // explicitly disabled
       this.syncState = SimpleSyncState.Disabled;

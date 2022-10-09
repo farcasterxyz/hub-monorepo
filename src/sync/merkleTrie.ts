@@ -2,6 +2,40 @@ import { createHash } from 'crypto';
 import { ID_LENGTH, SyncId } from '~/sync/syncId';
 
 /**
+ * Represents a MerkleTrie. It's conceptually very similar to a Merkle Patricia Tree (see
+ * https://ethereum.org/en/developers/docs/data-structures-and-encoding/patricia-merkle-trie/).
+ * We don't have extension nodes currently, so this is essentially a Merkle Radix Trie as
+ * defined in the link above.
+ */
+class MerkleTrie {
+  private readonly _root: TrieNode;
+
+  constructor() {
+    this._root = new TrieNode();
+  }
+
+  public insert(id: SyncId): void {
+    this._root.insert(id.toString(), id.hashString);
+  }
+
+  public get(id: SyncId): string | undefined {
+    return this._root.get(id.toString());
+  }
+
+  public get root(): TrieNode {
+    return this._root;
+  }
+
+  public get items(): number {
+    return this._root.items;
+  }
+
+  public get rootHash(): string {
+    return this._root.hash;
+  }
+}
+
+/**
  * Represents a node in a MerkleTrie. Automatically updates the hashes when items are added,
  * and keeps track of the number of items in the subtree.
  */
@@ -106,40 +140,6 @@ class TrieNode {
       return this._value;
     }
     return undefined;
-  }
-}
-
-/**
- * Represents a MerkleTrie. It's conceptually very similar to a Merkle Patricia Tree (see
- * https://ethereum.org/en/developers/docs/data-structures-and-encoding/patricia-merkle-trie/).
- * We don't have extension nodes currently, so this is essentially a Merkle Radix Trie as
- * defined in the link above.
- */
-class MerkleTrie {
-  private readonly _root: TrieNode;
-
-  constructor() {
-    this._root = new TrieNode();
-  }
-
-  public insert(id: SyncId): void {
-    this._root.insert(id.toString(), id.hashString);
-  }
-
-  public get(id: SyncId): string | undefined {
-    return this._root.get(id.toString());
-  }
-
-  public get root(): TrieNode {
-    return this._root;
-  }
-
-  public get items(): number {
-    return this._root.items;
-  }
-
-  public get rootHash(): string {
-    return this._root.hash;
   }
 }
 
