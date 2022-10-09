@@ -1,5 +1,5 @@
 import FollowDB from '~/storage/db/follow';
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { Ed25519Signer, FollowAdd, FollowRemove } from '~/types';
 import { NotFoundError } from '~/errors';

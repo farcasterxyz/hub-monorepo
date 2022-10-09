@@ -1,5 +1,5 @@
 import Faker from 'faker';
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import { CastShort, Ed25519Signer, FollowAdd, MessageType } from '~/types';
 import { generateEd25519Signer } from '~/utils';
 import MessageDB from '~/storage/db/message';

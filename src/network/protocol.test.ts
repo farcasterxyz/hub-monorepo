@@ -1,4 +1,4 @@
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import { CastShort, IDRegistryEvent } from '~/types';
 import {
   ContactInfoContent,

@@ -1,5 +1,5 @@
 import Faker from 'faker';
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import CastSet from '~/storage/sets/castSet';
 import { CastRecast, CastRemove, CastShort } from '~/types';
 import { jestRocksDB } from '~/storage/db/jestUtils';

@@ -1,6 +1,6 @@
 import Faker from 'faker';
 import Engine from '~/storage/engine';
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import { Cast, CastShort, EthereumSigner, IDRegistryEvent, MessageSigner, SignerAdd, SignerRemove } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 import { jestRocksDB } from '~/storage/db/jestUtils';

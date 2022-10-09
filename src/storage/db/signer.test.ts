@@ -1,6 +1,6 @@
 import RocksDB from '~/storage/db/rocksdb';
 import SignerDB from '~/storage/db/signer';
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import { SignerAdd } from '~/types';
 
 const rocks = new RocksDB('db.signer.test');

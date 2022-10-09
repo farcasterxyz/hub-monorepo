@@ -1,6 +1,6 @@
 import Engine from '~/storage/engine';
 import Faker from 'faker';
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import {
   Ed25519Signer,
   EthereumSigner,

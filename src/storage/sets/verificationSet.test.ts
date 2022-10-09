@@ -1,4 +1,4 @@
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import Faker from 'faker';
 import VerificationSet from '~/storage/sets/verificationSet';
 import {

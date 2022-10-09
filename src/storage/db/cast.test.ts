@@ -1,6 +1,6 @@
 import Faker from 'faker';
 import CastDB from '~/storage/db/cast';
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import { CastRecast, CastRemove, CastShort } from '~/types';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { NotFoundError } from '~/errors';

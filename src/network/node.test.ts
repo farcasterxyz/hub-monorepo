@@ -1,6 +1,6 @@
 import { Multiaddr } from '@multiformats/multiaddr/';
 import { ServerError } from '~/errors';
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import { Node } from '~/network/node';
 import { GossipMessage, NETWORK_TOPIC_PRIMARY } from '~/network/protocol';
 import { sleep } from '~/utils';

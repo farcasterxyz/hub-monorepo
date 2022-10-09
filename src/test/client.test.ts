@@ -1,5 +1,5 @@
-import Client from '~/client';
-import { Factories } from '~/factories';
+import Client from '~/test/client';
+import { Factories } from '~/test/factories';
 import { CastShort, Ed25519Signer, FarcasterNetwork } from '~/types';
 import {
   isCastRecast,

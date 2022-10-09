@@ -3,7 +3,7 @@ import CastDB from '~/storage/db/cast';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import SignerDB from '~/storage/db/signer';
 import Engine from '~/storage/engine';
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import {
   CastShort,
   IDRegistryEvent,

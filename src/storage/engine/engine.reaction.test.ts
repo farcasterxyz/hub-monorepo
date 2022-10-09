@@ -3,7 +3,7 @@ import { jestRocksDB } from '~/storage/db/jestUtils';
 import ReactionDB from '~/storage/db/reaction';
 import Engine from '~/storage/engine';
 import { BadRequestError } from '~/errors';
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import {
   Ed25519Signer,
   EthereumSigner,

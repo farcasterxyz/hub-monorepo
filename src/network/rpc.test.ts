@@ -19,7 +19,7 @@ import {
   VerificationEthereumAddress,
   VerificationRemove,
 } from '~/types';
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 import { RPCServer, RPCClient, RPCHandler } from '~/network/rpc';
 import Engine from '~/storage/engine';

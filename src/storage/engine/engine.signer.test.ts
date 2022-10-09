@@ -5,7 +5,7 @@ import { jestRocksDB } from '~/storage/db/jestUtils';
 import SignerDB from '~/storage/db/signer';
 import Engine from '~/storage/engine';
 import { BadRequestError, NotFoundError } from '~/errors';
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import { Ed25519Signer, EthereumSigner, SignerAdd, SignerMessage, SignerRemove, IDRegistryEvent } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner, hashFCObject } from '~/utils';
 

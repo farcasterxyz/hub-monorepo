@@ -1,4 +1,4 @@
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { Ed25519Signer, VerificationEthereumAddress, VerificationRemove } from '~/types';
 import { NotFoundError } from '~/errors';

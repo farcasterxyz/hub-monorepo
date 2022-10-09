@@ -1,4 +1,4 @@
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import Engine from '~/storage/engine';
 import { SyncEngine } from '~/sync/syncEngine';
 import { jestRocksDB } from '~/storage/db/jestUtils';

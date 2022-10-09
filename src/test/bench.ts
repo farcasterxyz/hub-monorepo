@@ -4,7 +4,7 @@ import { AddressInfo, isIP } from 'net';
 import { generateUserInfo, getIDRegistryEvent, getSignerAdd, UserInfo } from '~/storage/engine/mock';
 import Faker from 'faker';
 import { IDRegistryEvent, Message, SignerAdd } from '~/types';
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import { Result } from 'neverthrow';
 import { sleep } from '~/utils';
 import { JSONRPCError } from 'jayson/promise';

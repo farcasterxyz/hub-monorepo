@@ -1,4 +1,4 @@
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import { MerkleTrie } from '~/sync/merkleTrie';
 import { SyncId } from '~/sync/syncId';
 

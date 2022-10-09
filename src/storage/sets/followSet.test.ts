@@ -1,4 +1,4 @@
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import Faker from 'faker';
 import FollowSet from '~/storage/sets/followSet';
 import { Ed25519Signer, Follow, FollowAdd, FollowRemove, URI } from '~/types';

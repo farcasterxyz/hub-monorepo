@@ -2,7 +2,7 @@ import Faker from 'faker';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import ReactionDB from '~/storage/db/reaction';
 import { BadRequestError, NotFoundError } from '~/errors';
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import ReactionSet from '~/storage/sets/reactionSet';
 import { Reaction, ReactionAdd, ReactionRemove, URI } from '~/types';
 

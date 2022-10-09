@@ -1,5 +1,5 @@
 import { Ed25519Signer, EthereumSigner } from '~/types';
-import { Factories } from '~/factories';
+import { Factories } from '~/test/factories';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
 import Engine from '~/storage/engine';
 import Faker from 'faker';
