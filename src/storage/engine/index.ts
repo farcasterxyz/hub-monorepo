@@ -15,7 +15,7 @@ import {
   CastRemove,
   MessageType,
 } from '~/types';
-import { hashMessage, hashFCObject } from '~/utils';
+import { hashMessage, hashFCObject } from '~/utils/utils';
 import * as ed from '@noble/ed25519';
 import { hexToBytes } from 'ethereum-cryptography/utils';
 import { ok, err, Result, ResultAsync } from 'neverthrow';
@@ -42,7 +42,7 @@ import { Web2URL } from '~/urls/web2Url';
 import IDRegistryProvider from '~/storage/provider/idRegistryProvider';
 import { CastHash } from '~/urls/castUrl';
 import RocksDB from '~/storage/db/rocksdb';
-import { BadRequestError, FarcasterError, ServerError } from '~/errors';
+import { BadRequestError, FarcasterError, ServerError } from '~/utils/errors';
 import { TypedEmitter } from 'tiny-typed-emitter';
 
 export type EngineEvents = {

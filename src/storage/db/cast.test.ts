@@ -3,7 +3,7 @@ import CastDB from '~/storage/db/cast';
 import { Factories } from '~/test/factories';
 import { CastRecast, CastRemove, CastShort } from '~/types';
 import { jestRocksDB } from '~/storage/db/jestUtils';
-import { NotFoundError } from '~/errors';
+import { NotFoundError } from '~/utils/errors';
 
 const rocks = jestRocksDB('db.cast.test');
 const db = new CastDB(rocks);

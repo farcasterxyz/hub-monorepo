@@ -1,9 +1,9 @@
 import { Multiaddr } from '@multiformats/multiaddr/';
-import { ServerError } from '~/errors';
+import { ServerError } from '~/utils/errors';
 import { Factories } from '~/test/factories';
 import { Node } from '~/network/node';
 import { GossipMessage, NETWORK_TOPIC_PRIMARY } from '~/network/protocol';
-import { sleep } from '~/utils';
+import { sleep } from '~/utils/utils';
 
 const NUM_NODES = 10;
 

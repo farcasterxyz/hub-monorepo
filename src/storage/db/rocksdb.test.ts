@@ -1,6 +1,6 @@
 import { existsSync, rmdirSync, mkdirSync } from 'fs';
 import Faker from 'faker';
-import { NotFoundError, RocksDBError } from '~/errors';
+import { NotFoundError, RocksDBError } from '~/utils/errors';
 import RocksDB from '~/storage/db/rocksdb';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 

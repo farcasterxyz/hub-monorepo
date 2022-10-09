@@ -1,7 +1,7 @@
 import { mkdir } from 'fs';
 import AbstractRocksDB from 'rocksdb';
 import { AbstractBatch, AbstractChainedBatch } from 'abstract-leveldown';
-import { FarcasterError, NotFoundError, RocksDBError } from '~/errors';
+import { FarcasterError, NotFoundError, RocksDBError } from '~/utils/errors';
 
 const DB_PREFIX = '.rocks';
 const DB_NAME_DEFAULT = 'farcaster';

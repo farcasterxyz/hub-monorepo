@@ -5,7 +5,7 @@ import { jestRocksDB } from '~/storage/db/jestUtils';
 import { populateEngine } from '~/storage/engine/mock';
 import { Cast, Follow, IDRegistryEvent, Message, Reaction, SignerMessage, Verification } from '~/types';
 import { Result } from 'neverthrow';
-import { FarcasterError } from '~/errors';
+import { FarcasterError } from '~/utils/errors';
 
 const serverDb = jestRocksDB('rpcSync.test.server');
 const serverEngine = new Engine(serverDb);

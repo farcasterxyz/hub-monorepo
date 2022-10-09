@@ -2,10 +2,10 @@ import Faker from 'faker';
 import Engine from '~/storage/engine';
 import { Factories } from '~/test/factories';
 import { Cast, CastShort, EthereumSigner, IDRegistryEvent, MessageSigner, SignerAdd, SignerRemove } from '~/types';
-import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils/utils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import CastDB from '~/storage/db/cast';
-import { BadRequestError } from '~/errors';
+import { BadRequestError } from '~/utils/errors';
 
 const rocksDb = jestRocksDB('engine.cast.test');
 const castDb = new CastDB(rocksDb);

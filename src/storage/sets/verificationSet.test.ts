@@ -9,9 +9,9 @@ import {
   VerificationRemove,
 } from '~/types';
 import { ethers } from 'ethers';
-import { generateEd25519Signer } from '~/utils';
+import { generateEd25519Signer } from '~/utils/utils';
 import VerificationDB from '~/storage/db/verification';
-import { BadRequestError, NotFoundError } from '~/errors';
+import { BadRequestError, NotFoundError } from '~/utils/errors';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 
 const testDb = jestRocksDB('verificationSet.test');

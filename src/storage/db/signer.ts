@@ -2,7 +2,7 @@ import { ResultAsync } from 'neverthrow';
 import { Transaction } from '~/storage/db/rocksdb';
 import { IDRegistryEvent, SignerAdd, SignerMessage, SignerRemove } from '~/types';
 import { isIDRegistryEvent } from '~/types/typeguards';
-import { sanitizeSigner } from '~/utils';
+import { sanitizeSigner } from '~/utils/utils';
 import MessageDB from '~/storage/db/message';
 
 /**

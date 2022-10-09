@@ -3,8 +3,8 @@ import { Cast, CastRemove, CastRecast, CastShort } from '~/types';
 import { isCastRemove, isCastRecast, isCastShort } from '~/types/typeguards';
 import CastDB from '~/storage/db/cast';
 import RocksDB from '~/storage/db/rocksdb';
-import { BadRequestError } from '~/errors';
-import { hashCompare } from '~/utils';
+import { BadRequestError } from '~/utils/errors';
+import { hashCompare } from '~/utils/utils';
 
 type CastAdd = CastShort | CastRecast;
 

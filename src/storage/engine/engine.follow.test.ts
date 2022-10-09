@@ -11,10 +11,10 @@ import {
   MessageFactoryTransientParams,
   SignerAdd,
 } from '~/types';
-import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils/utils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import FollowDB from '~/storage/db/follow';
-import { BadRequestError } from '~/errors';
+import { BadRequestError } from '~/utils/errors';
 
 const testDb = jestRocksDB(`engine.follow.test`);
 const followDb = new FollowDB(testDb);

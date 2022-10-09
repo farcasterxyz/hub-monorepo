@@ -1,10 +1,10 @@
 import { ResultAsync } from 'neverthrow';
 import ReactionDB from '~/storage/db/reaction';
 import RocksDB from '~/storage/db/rocksdb';
-import { BadRequestError } from '~/errors';
+import { BadRequestError } from '~/utils/errors';
 import { Reaction, ReactionAdd, ReactionRemove, URI } from '~/types';
 import { isReactionAdd, isReactionRemove } from '~/types/typeguards';
-import { hashCompare } from '~/utils';
+import { hashCompare } from '~/utils/utils';
 
 /**
  * ReactionSet is a modified LWW set that stores and fetches reactions. ReactionAdd and ReactionRemove messages are

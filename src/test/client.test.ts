@@ -13,7 +13,7 @@ import {
   isVerificationRemove,
 } from '~/types/typeguards';
 import Faker from 'faker';
-import { generateEd25519Signer } from '~/utils';
+import { generateEd25519Signer } from '~/utils/utils';
 import { ethers } from 'ethers';
 
 const fid = Faker.datatype.number();

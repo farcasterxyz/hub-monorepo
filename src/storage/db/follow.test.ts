@@ -2,8 +2,8 @@ import FollowDB from '~/storage/db/follow';
 import { Factories } from '~/test/factories';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { Ed25519Signer, FollowAdd, FollowRemove } from '~/types';
-import { NotFoundError } from '~/errors';
-import { generateEd25519Signer } from '~/utils';
+import { NotFoundError } from '~/utils/errors';
+import { generateEd25519Signer } from '~/utils/utils';
 
 const rocks = jestRocksDB('db.follow.test');
 const db = new FollowDB(rocks);

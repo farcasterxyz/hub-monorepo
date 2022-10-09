@@ -2,10 +2,10 @@ import { Factories } from '~/test/factories';
 import Faker from 'faker';
 import FollowSet from '~/storage/sets/followSet';
 import { Ed25519Signer, Follow, FollowAdd, FollowRemove, URI } from '~/types';
-import { generateEd25519Signer } from '~/utils';
+import { generateEd25519Signer } from '~/utils/utils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import FollowDB from '~/storage/db/follow';
-import { BadRequestError, NotFoundError } from '~/errors';
+import { BadRequestError, NotFoundError } from '~/utils/errors';
 
 const testDb = jestRocksDB('followSet.test');
 const followDb = new FollowDB(testDb);

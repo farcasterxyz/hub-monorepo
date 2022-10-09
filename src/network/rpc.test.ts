@@ -20,12 +20,12 @@ import {
   VerificationRemove,
 } from '~/types';
 import { Factories } from '~/test/factories';
-import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils/utils';
 import { RPCServer, RPCClient, RPCHandler } from '~/network/rpc';
 import Engine from '~/storage/engine';
 import Faker from 'faker';
 import { jestRocksDB } from '~/storage/db/jestUtils';
-import { FarcasterError } from '~/errors';
+import { FarcasterError } from '~/utils/errors';
 import { Result } from 'neverthrow';
 
 const aliceFid = Faker.datatype.number();

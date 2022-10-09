@@ -15,11 +15,11 @@ import {
 } from '~/types';
 import Faker from 'faker';
 import { Wallet } from 'ethers';
-import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils';
+import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils/utils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import CastDB from '~/storage/db/cast';
 import VerificationDB from '~/storage/db/verification';
-import { BadRequestError } from '~/errors';
+import { BadRequestError } from '~/utils/errors';
 import SignerDB from '~/storage/db/signer';
 
 const testDb = jestRocksDB(`engine.verification.test`);

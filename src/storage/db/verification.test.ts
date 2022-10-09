@@ -1,8 +1,8 @@
 import { Factories } from '~/test/factories';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { Ed25519Signer, VerificationEthereumAddress, VerificationRemove } from '~/types';
-import { NotFoundError } from '~/errors';
-import { generateEd25519Signer } from '~/utils';
+import { NotFoundError } from '~/utils/errors';
+import { generateEd25519Signer } from '~/utils/utils';
 import VerificationDB from '~/storage/db/verification';
 
 const rocks = jestRocksDB('db.verification.test');

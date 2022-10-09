@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 import Faker from 'faker';
 import * as ed from '@noble/ed25519';
-import { hashFCObject, hashCompare, generateEthereumSigner, generateEd25519Signer, convertToHex } from '~/utils';
+import { hashFCObject, hashCompare, generateEthereumSigner, generateEd25519Signer, convertToHex } from '~/utils/utils';
 import { Ed25519Signer, EthereumSigner } from '~/types';
 import { hexToBytes, utf8ToBytes } from 'ethereum-cryptography/utils';
 

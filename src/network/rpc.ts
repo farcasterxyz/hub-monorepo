@@ -3,7 +3,7 @@ import { Err, Ok, Result } from 'neverthrow';
 import { rejects } from 'assert';
 import jayson, { JSONRPCError } from 'jayson/promise';
 import { Cast, Follow, IDRegistryEvent, Message, Reaction, SignerMessage, Verification } from '~/types';
-import { FarcasterError, ServerError } from '~/errors';
+import { FarcasterError, ServerError } from '~/utils/errors';
 
 const VERSION = 0.1;
 

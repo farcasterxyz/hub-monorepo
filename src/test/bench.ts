@@ -6,7 +6,7 @@ import Faker from 'faker';
 import { IDRegistryEvent, Message, SignerAdd } from '~/types';
 import { Factories } from '~/test/factories';
 import { Result } from 'neverthrow';
-import { sleep } from '~/utils';
+import { sleep } from '~/utils/utils';
 import { JSONRPCError } from 'jayson/promise';
 import { isIDRegistryEvent, isMessage } from '~/types/typeguards';
 

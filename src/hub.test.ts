@@ -4,10 +4,10 @@ import { generateUserInfo, getIDRegistryEvent, getSignerAdd, mockFid, populateEn
 import { Factories } from '~/test/factories';
 import { Hub, HubOpts } from '~/hub';
 import { RPCClient } from '~/network/rpc';
-import { sleep } from '~/utils';
+import { sleep } from '~/utils/utils';
 import { ContactInfoContent, Content, GossipMessage, NETWORK_TOPIC_PRIMARY } from '~/network/protocol';
 import { Message } from '~/types';
-import { ServerError } from '~/errors';
+import { ServerError } from '~/utils/errors';
 import { jest } from '@jest/globals';
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;

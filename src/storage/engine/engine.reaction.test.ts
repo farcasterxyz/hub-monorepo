@@ -2,7 +2,7 @@ import Faker from 'faker';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import ReactionDB from '~/storage/db/reaction';
 import Engine from '~/storage/engine';
-import { BadRequestError } from '~/errors';
+import { BadRequestError } from '~/utils/errors';
 import { Factories } from '~/test/factories';
 import {
   Ed25519Signer,
@@ -13,7 +13,7 @@ import {
   ReactionRemove,
   SignerAdd,
 } from '~/types';
-import { generateEd25519Signer, generateEthereumSigner } from '~/utils';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils/utils';
 
 const testDb = jestRocksDB(`engine.reaction.test`);
 const engine = new Engine(testDb);

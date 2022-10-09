@@ -9,7 +9,7 @@ import { Multiaddr } from '@multiformats/multiaddr';
 import { createLibp2p, Libp2p } from 'libp2p';
 import { err, ok, Result } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import { FarcasterError, ServerError } from '~/errors';
+import { FarcasterError, ServerError } from '~/utils/errors';
 import { decodeMessage, encodeMessage, GossipMessage, GOSSIP_TOPICS } from '~/network/protocol';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1/tcp/0';

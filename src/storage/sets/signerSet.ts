@@ -2,7 +2,7 @@ import { TypedEmitter } from 'tiny-typed-emitter';
 import { ResultAsync } from 'neverthrow';
 import { IDRegistryEvent, SignerAdd, SignerMessage, SignerRemove } from '~/types';
 import { isSignerAdd, isSignerRemove } from '~/types/typeguards';
-import { hashCompare, sanitizeSigner } from '~/utils';
+import { hashCompare, sanitizeSigner } from '~/utils/utils';
 import RocksDB from '~/storage/db/rocksdb';
 import SignerDB from '~/storage/db/signer';
 
