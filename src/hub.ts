@@ -21,29 +21,34 @@ import { FarcasterError, ServerError } from '~/utils/errors';
 import { SyncEngine } from '~/sync/syncEngine';
 
 export interface HubOpts {
-  // ID Registry network URL
-  networkUrl?: string;
-  // ID Registry address
-  IDRegistryAddress?: string;
-  // Addresses to use to join an existing gossip network
+  /** Addresses to bootstrap the gossip network */
   bootstrapAddrs?: Multiaddr[];
-  // The port to use for RPC, startup will fail if the port is unavailable
+
+  /** Port for the RPC Client */
   port?: number;
+
+  /** Network URL of the IdRegistry Contract */
+  networkUrl?: string;
+
+  /** Address of the IdRegistry contract  */
+  IDRegistryAddress?: string;
+
   /*
-   * Whether simple sync should be used once the network is established
-   * This would typically only be disabled on the first node to join a new network
+   * Enable SimpleSync once network is established.
+   *
+   * @remarks
+   * Usually disabled after the first node joins the network
    */
   simpleSync?: boolean;
-  // The name of the RocksDB instance to use
+
+  /** Name of the RocksDB instance */
   rocksDBName?: string;
-  // Reset the database before starting
+
+  /** Resets the DB on start, if true */
   resetDB?: boolean;
 }
 
-/**
- *
- * @returns a random string of the format `rocksdb.tmp.*`
- */
+/** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
 const randomDbName = () => {
   return `rocksdb.tmp.${(new Date().getUTCDate() * Math.random()).toString(36).substring(2)}`;
 };
@@ -56,13 +61,10 @@ enum SimpleSyncState {
 }
 
 interface HubEvents {
-  /**
-   * Triggered when a simple sync starts
-   */
+  /** Emit an event when SimpleSync starts */
   syncStart: () => void;
-  /**
-   * Triggered when a simple sync completes
-   */
+
+  /** Emit an event when SimpleSync completes */
   syncComplete: (success: boolean) => void;
 }
 
@@ -73,7 +75,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   private syncState: SimpleSyncState;
   private contactTimer?: NodeJS.Timer;
   private rocksDB: RocksDB;
-  private merkleSync: SyncEngine;
+  private syncEngine: SyncEngine;
 
   engine: Engine;
 
@@ -85,59 +87,20 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     this.gossipNode = new Node();
     this.rpcServer = new RPCServer(this);
     this.syncState = SimpleSyncState.Pending;
-    this.merkleSync = new SyncEngine(this.engine);
+    this.syncEngine = new SyncEngine(this.engine);
     if (options.simpleSync !== undefined && !options.simpleSync) {
       // explicitly disabled
       this.syncState = SimpleSyncState.Disabled;
     }
   }
 
-  /* Starts the Hub's networking components */
-  async start() {
-    // open rocksDB
-    await this.rocksDB.open();
-    if (this.options.resetDB === true) {
-      console.log('Clearing RocksDB...');
-      await this.rocksDB.clear();
-    }
-    // start all the networking bits
-    await this.gossipNode.start(this.options.bootstrapAddrs ?? []);
-    await this.rpcServer.start(this.options.port ? this.options.port : 0);
-    this.registerEventHandlers();
-
-    // Publish this Node's information to the gossip network
-    this.contactTimer = setInterval(async () => {
-      if (this.gossipNode.peerId) {
-        const gossipMesage: GossipMessage<ContactInfoContent> = {
-          content: {
-            peerId: this.gossipNode.peerId.toString(),
-            rpcAddress: this.rpcAddress,
-          },
-          topics: [NETWORK_TOPIC_CONTACT],
-        };
-        await this.gossipMessage(gossipMesage);
-      }
-    }, GOSSIP_CONTACT_INTERVAL);
-  }
-
   get rpcAddress() {
-    // We're always configuring RPC on an IP socket so we can cast it safely here.
-    if (this.rpcServer.address) {
-      return this.rpcServer.address as AddressInfo;
-    } else {
-      return undefined;
-    }
+    // Safety: RPC is always configured on an IP socket, so it can be cast safely here
+    return this.rpcServer.address ? (this.rpcServer.address as AddressInfo) : undefined;
   }
 
   get gossipAddresses() {
     return this.gossipNode.multiaddrs ?? [];
-  }
-
-  async stop() {
-    clearInterval(this.contactTimer);
-    await this.gossipNode.stop();
-    await this.rpcServer.stop();
-    await this.rocksDB.close();
   }
 
   // Returns the Gossip peerId string of this Hub
@@ -148,31 +111,49 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     return this.gossipNode.peerId.toString();
   }
 
-  // Publishes the given message to the gossip network
+  /* Start the GossipNode and RPC server  */
+  async start() {
+    await this.rocksDB.open();
+    if (this.options.resetDB === true) {
+      console.log('Clearing RocksDB...');
+      await this.rocksDB.clear();
+    }
+
+    await this.gossipNode.start(this.options.bootstrapAddrs ?? []);
+    await this.rpcServer.start(this.options.port ? this.options.port : 0);
+    this.registerEventHandlers();
+
+    // Publish this Node's information to the gossip network
+    this.contactTimer = setInterval(async () => {
+      if (this.gossipNode.peerId) {
+        const gossipMessage: GossipMessage<ContactInfoContent> = {
+          content: {
+            peerId: this.gossipNode.peerId.toString(),
+            rpcAddress: this.rpcAddress,
+          },
+          topics: [NETWORK_TOPIC_CONTACT],
+        };
+        await this.gossipMessage(gossipMessage);
+      }
+    }, GOSSIP_CONTACT_INTERVAL);
+  }
+
+  /** Stop the GossipNode and RPC Server */
+  async stop() {
+    clearInterval(this.contactTimer);
+    await this.gossipNode.stop();
+    await this.rpcServer.stop();
+    await this.rocksDB.close();
+  }
+
+  /** Publish message to the gossip network */
   async gossipMessage(message: GossipMessage) {
     return this.gossipNode.publish(message);
   }
 
-  private registerEventHandlers() {
-    // subscribe to all interesting topics
-    this.gossipNode.gossip?.subscribe(NETWORK_TOPIC_PRIMARY);
-    this.gossipNode.gossip?.subscribe(NETWORK_TOPIC_CONTACT);
-
-    this.gossipNode.addListener('message', async (_topic, message) => {
-      console.debug(message);
-      await message.match(
-        async (gossipMessage) => {
-          await this.handleGossipMessage(gossipMessage);
-        },
-        async (error) => {
-          console.log(this.identity, error, 'Received a message but failed to decode it');
-        }
-      );
-    });
-  }
-
   async handleGossipMessage(gossipMessage: GossipMessage) {
     let result: Result<void, FarcasterError> = err(new ServerError('Invalid message type'));
+
     if (isUserContent(gossipMessage.content)) {
       const message = (gossipMessage.content as UserContent).message;
       result = await this.engine.mergeMessage(message);
@@ -180,7 +161,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       const message = (gossipMessage.content as IDRegistryContent).message;
       result = await this.engine.mergeIDRegistryEvent(message);
     } else if (isContactInfo(gossipMessage.content)) {
-      // TODO Maybe we need a ContactInfo CRDT?
+      // TODO: Maybe we need a ContactInfo CRDT?
       // Check if we need sync and if we do, use this peer do it.
       if (this.syncState == SimpleSyncState.Pending) {
         console.log(this.identity, 'Received a Contact Info for Sync');
@@ -314,6 +295,24 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     this.syncState = SimpleSyncState.Complete;
   }
 
+  private registerEventHandlers() {
+    // subscribe to all interesting topics
+    this.gossipNode.gossip?.subscribe(NETWORK_TOPIC_PRIMARY);
+    this.gossipNode.gossip?.subscribe(NETWORK_TOPIC_CONTACT);
+
+    this.gossipNode.addListener('message', async (_topic, message) => {
+      console.debug(message);
+      await message.match(
+        async (gossipMessage) => {
+          await this.handleGossipMessage(gossipMessage);
+        },
+        async (error) => {
+          console.log(this.identity, error, 'Received a message but failed to decode it');
+        }
+      );
+    });
+  }
+
   /* RPCHandler API */
   getUsers(): Promise<Set<number>> {
     return this.engine.getUsers();
@@ -346,7 +345,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     }
 
     // push this message onto the gossip network
-    const gossipMesage: GossipMessage<UserContent> = {
+    const gossipMessage: GossipMessage<UserContent> = {
       content: {
         message,
         root: '',
@@ -354,7 +353,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       },
       topics: [NETWORK_TOPIC_PRIMARY],
     };
-    await this.gossipMessage(gossipMesage);
+    await this.gossipMessage(gossipMessage);
     return mergeResult;
   }
 
@@ -367,7 +366,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     }
 
     // push this message onto the gossip network
-    const gossipMesage: GossipMessage<IDRegistryContent> = {
+    const gossipMessage: GossipMessage<IDRegistryContent> = {
       content: {
         message: event,
         root: '',
@@ -375,7 +374,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       },
       topics: [NETWORK_TOPIC_PRIMARY],
     };
-    await this.gossipMessage(gossipMesage);
+    await this.gossipMessage(gossipMessage);
     return mergeResult;
   }
 
@@ -385,6 +384,6 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   }
 
   get merkleTrieForTest() {
-    return this.merkleSync.trie;
+    return this.syncEngine.trie;
   }
 }
