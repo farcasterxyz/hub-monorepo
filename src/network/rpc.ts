@@ -33,7 +33,7 @@ export interface RPCHandler {
   submitIDRegistryEvent?(event: IDRegistryEvent): Promise<Result<void, FarcasterError>>;
 }
 
-const replacer = (key: any, value: any) => {
+const replacer = (_key: any, value: any) => {
   // convert all sets to arrays
   if (value instanceof Set) {
     return { $class: 'Set', $asArray: Array.from(value) };
@@ -41,7 +41,7 @@ const replacer = (key: any, value: any) => {
   return value;
 };
 
-const reviver = (key: any, value: any) => {
+const reviver = (_key: any, value: any) => {
   if (value && value.$class === 'Set') {
     return new Set(value.$asArray);
   }

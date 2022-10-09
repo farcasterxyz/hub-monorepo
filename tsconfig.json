@@ -35,7 +35,7 @@
     // "noPropertyAccessFromIndexSignature": true,
     // "noUncheckedIndexedAccess": true,
     // "noUnusedLocals": true,
-    // "noUnusedParameters": true,
+    "noUnusedParameters": true,
   },
   
   "exclude": ["node_modules", "jest.config.ts"]

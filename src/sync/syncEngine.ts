@@ -16,7 +16,7 @@ class SyncEngine {
     this._trie = new MerkleTrie();
     this.engine = engine;
 
-    this.engine.on('messageMerged', async (fid, type, message) => {
+    this.engine.on('messageMerged', async (_fid, _type, message) => {
       this.addMessage(message);
     });
   }
