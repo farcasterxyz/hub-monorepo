@@ -12,7 +12,7 @@ import { BaseChainURL, ChainURL } from '~/urls/chainUrl';
 export class ChainAccountURL extends ChainURL {
   public readonly address: string;
 
-  public static parse(url: string): Result<ChainAccountURL, FarcasterError> {
+  public static override parse(url: string): Result<ChainAccountURL, FarcasterError> {
     const schemePrefix = this.SCHEME + '://';
 
     if (!url.startsWith(schemePrefix)) {
@@ -57,7 +57,7 @@ export class ChainAccountURL extends ChainURL {
     this.address = accountId.address;
   }
 
-  public toString(): string {
+  public override toString(): string {
     const accountId = new AccountId({ address: this.address, chainId: this.chainId });
     return BaseChainURL.SCHEME + '://' + accountId.toString();
   }

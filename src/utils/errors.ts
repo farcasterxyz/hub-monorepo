@@ -7,17 +7,17 @@ export class FarcasterError extends Error {
 }
 
 export class NotFoundError extends FarcasterError {
-  public readonly statusCode = 404;
+  public override readonly statusCode = 404;
 }
 
 export class BadRequestError extends FarcasterError {
-  public readonly statusCode = 400;
+  public override readonly statusCode = 400;
 }
 
 export class ServerError extends FarcasterError {
-  public readonly statusCode = 500;
+  public override readonly statusCode = 500;
 }
 
 export class RocksDBError extends FarcasterError {
-  public readonly statusCode = 500;
+  public override readonly statusCode = 500;
 }
