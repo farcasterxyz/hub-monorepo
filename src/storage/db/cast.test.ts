@@ -37,10 +37,12 @@ describe('putCastAdd', () => {
     });
 
     test('does not index by target if targetUri is blank', async () => {
+      // Safety: cast to unknown is required to circumvent the exactOptionalPropertyTypes and is acceptable since the
+      // purpose of this check is to test incorrectly typed objects
       const cast1NoTarget: CastShort = {
         ...cast1,
         data: { ...cast1.data, body: { ...cast1.data.body, targetUri: undefined } },
-      };
+      } as unknown as CastShort;
       await expect(db.putCastAdd(cast1NoTarget)).resolves.toEqual(undefined);
       await expect(db.getCastShortsByTarget(target)).resolves.toEqual([]);
     });

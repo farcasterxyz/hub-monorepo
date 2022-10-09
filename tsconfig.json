@@ -28,7 +28,7 @@
     
     "strict": true,
     "allowUnreachableCode": false,
-    // "exactOptionalPropertyTypes": true,
+    "exactOptionalPropertyTypes": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
     "noImplicitReturns": true,

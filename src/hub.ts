@@ -126,11 +126,12 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     // Publish this Node's information to the gossip network
     this.contactTimer = setInterval(async () => {
       if (this.gossipNode.peerId) {
+        const content = this.rpcAddress
+          ? { peerId: this.gossipNode.peerId.toString(), rpcAddress: this.rpcAddress }
+          : { peerId: this.gossipNode.peerId.toString() };
+
         const gossipMessage: GossipMessage<ContactInfoContent> = {
-          content: {
-            peerId: this.gossipNode.peerId.toString(),
-            rpcAddress: this.rpcAddress,
-          },
+          content,
           topics: [NETWORK_TOPIC_CONTACT],
         };
         await this.gossipMessage(gossipMessage);

@@ -37,9 +37,14 @@ export const parseUrl = (
       return ok(new Web2URL(baseURI.scheme, url));
 
     default:
+      if (!baseURI.scheme) {
+        return err(new BadRequestError(`parseUrl: Missing URI scheme'`));
+      }
+
       if (!allowUnrecognized) {
         return err(new BadRequestError(`parseUrl: Unrecognized scheme '${baseURI.scheme}'`));
       }
+
       return ok(new UnrecognizedURL(baseURI.scheme, url));
   }
 };
