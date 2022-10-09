@@ -119,7 +119,8 @@ export class CastId {
     return joinParams(params as any, this.spec);
   }
 
-  private readonly messageType = 'cast' as const;
+  // TODO: Remove this while refactoring URLs
+  // private readonly messageType = 'cast' as const;
 
   public readonly userId: UserId;
   public readonly castHash: CastHash;

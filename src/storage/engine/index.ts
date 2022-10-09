@@ -37,7 +37,7 @@ import ReactionSet from '~/storage/sets/reactionSet';
 import VerificationSet from '~/storage/sets/verificationSet';
 import SignerSet from '~/storage/sets/signerSet';
 import FollowSet from '~/storage/sets/followSet';
-import { CastURL, ChainAccountURL, ChainURL, parseUrl, UserURL } from '~/urls';
+import { CastURL, ChainAccountURL, parseUrl, UserURL } from '~/urls';
 import { Web2URL } from '~/urls/web2Url';
 import IDRegistryProvider from '~/storage/provider/idRegistryProvider';
 import { CastHash } from '~/urls/castUrl';
@@ -460,16 +460,18 @@ class Engine extends TypedEmitter<EngineEvents> {
     return ok(undefined);
   }
 
-  private validateChainURL(chainURL: string): Result<void, FarcasterError> {
-    const result = ChainURL.parse(chainURL);
-    return result.andThen((chainUrlParsed) => {
-      const chainId = chainUrlParsed.chainId.toString();
-      if (!this._supportedChainIDs.has(chainId)) {
-        return err(new BadRequestError(`validateChainURL: unsupported chainID ${chainId}`));
-      }
-      return ok(undefined);
-    });
-  }
+  // TODO: Reconsider when refactoring URLs
+  //
+  // private validateChainURL(chainURL: string): Result<void, FarcasterError> {
+  //   const result = ChainURL.parse(chainURL);
+  //   return result.andThen((chainUrlParsed) => {
+  //     const chainId = chainUrlParsed.chainId.toString();
+  //     if (!this._supportedChainIDs.has(chainId)) {
+  //       return err(new BadRequestError(`validateChainURL: unsupported chainID ${chainId}`));
+  //     }
+  //     return ok(undefined);
+  //   });
+  // }
 
   private validateChainAccountURL(chainAccountURL: string): Result<ChainAccountURL, FarcasterError> {
     const result = ChainAccountURL.parse(chainAccountURL);

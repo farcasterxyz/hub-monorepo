@@ -60,11 +60,9 @@ export const rpcError = (code: number, message: string): JSONRPCError => {
 
 export class RPCServer {
   private _jsonServer!: jayson.Server;
-  private _handler!: RPCHandler;
   private _tcpServer?: jayson.TcpServer;
 
   constructor(rpcHandler: RPCHandler) {
-    this._handler = rpcHandler;
     this._jsonServer = new jayson.Server(
       {
         [RPCRequest.GetUsers]: new jayson.Method({
