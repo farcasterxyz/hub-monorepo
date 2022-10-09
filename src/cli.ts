@@ -1,10 +1,16 @@
+#!/usr/bin/env node
+
 import { Command } from 'commander';
 import { Hub, HubOpts } from '~/hub';
+
+/**
+ * A CLI to accept options from the user and start the Hub
+ */
 
 const app = new Command();
 
 app
-  .name('farcaster-hub')
+  .name('hub')
   .description('Farcaster Hub')
   .version(process.env.npm_package_version ?? '1.0.0');
 
@@ -36,14 +42,17 @@ const options: HubOpts = {
 
 const hub = new Hub(options);
 hub.start();
+
 process.stdin.resume();
 
 process.on('SIGINT', async () => {
   await teardown(hub);
 });
+
 process.on('SIGTERM', async () => {
   await teardown(hub);
 });
+
 process.on('SIGQUIT', async () => {
   await teardown(hub);
 });
