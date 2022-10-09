@@ -27,7 +27,7 @@
     "skipLibCheck": true,
     
     "strict": true,
-    // "allowUnreachableCode": false,
+    "allowUnreachableCode": false,
     // "exactOptionalPropertyTypes": true,
     "noFallthroughCasesInSwitch": true,
     // "noImplicitOverride": true,

@@ -491,7 +491,6 @@ class Engine extends TypedEmitter<EngineEvents> {
       .mapErr(() => new BadRequestError('validateFollow: targetUri must be valid FarcasterID'));
 
     // TODO: any Follow custom validation?
-    return ok(undefined);
   }
 
   /**
