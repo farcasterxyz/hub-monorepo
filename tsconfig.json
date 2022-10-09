@@ -3,36 +3,40 @@
     /* Needed to import CJS modules like Jest */
     "allowSyntheticDefaultImports": true,
 
-    "baseUrl": "./src",
-
     /* Emit additional JS to ease support for importing CJS modules. This enables `allowSyntheticDefaultImports` for type compatibility. */
     "esModuleInterop": true,
-
-    /* Ensure that casing is correct in imports. */
-    "forceConsistentCasingInFileNames": true,
 
     /* Use ESM by default instead of CJS*/
     "module": "ES2022",
 
+    /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
+    "target": "es2022",
+
     "moduleResolution": "Node",
-
-    /* Specify an output folder for all emitted files. */
-    "outDir": "build",
-
+  
     "paths": {
       "~/*": ["./*"]
     },
 
+    "baseUrl": "./src",
+    "outDir": "build",
     "rootDir": "src",
+    "sourceMap": true,
 
-    /* Skip type checking all .d.ts files. */
+    "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-
-    /* Enable all strict type-checking options. */
+    
     "strict": true,
-
-    /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
-    "target": "es2022"
+    // "allowUnreachableCode": false,
+    // "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    // "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    // "noPropertyAccessFromIndexSignature": true,
+    // "noUncheckedIndexedAccess": true,
+    // "noUnusedLocals": true,
+    // "noUnusedParameters": true,
   },
+  
   "exclude": ["node_modules", "jest.config.ts"]
 }
