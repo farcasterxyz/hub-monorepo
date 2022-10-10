@@ -17,7 +17,9 @@ let recast1: CastRecast;
 let remove1: CastRemove;
 
 beforeAll(async () => {
-  cast1 = await Factories.CastShort.create({ data: { fid, body: { parent: target } } });
+  cast1 = await Factories.CastShort.create({
+    data: { fid, body: { parent: target, mentions: [Faker.datatype.number(), Faker.datatype.number()] } },
+  });
   recast1 = await Factories.CastRecast.create({ data: { fid, body: { targetCastUri: target } } });
   remove1 = await Factories.CastRemove.create({ data: { fid, body: { targetHash: cast1.hash } } });
 });
@@ -45,6 +47,13 @@ describe('putCastAdd', () => {
       } as unknown as CastShort;
       await expect(db.putCastAdd(cast1NoParent)).resolves.toEqual(undefined);
       await expect(db.getCastShortsByParent(target)).resolves.toEqual([]);
+    });
+
+    test('indexes cast by mentions if mentions is present', async () => {
+      await expect(db.putCastAdd(cast1)).resolves.toEqual(undefined);
+      for (const mention of cast1.data.body.mentions || []) {
+        await expect(db.getCastShortsByMention(mention)).resolves.toEqual([cast1]);
+      }
     });
 
     test('deletes associated CastRemove if present', async () => {

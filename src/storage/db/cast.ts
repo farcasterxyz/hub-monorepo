@@ -13,6 +13,7 @@ import MessageDB from '~/storage/db/message';
  * - fid!<fid>!castAdds!<cast hash>: <CastShort or CastRecast hash>
  * - fid!<fid>!castRemoves!<cast hash>: <CastRemove hash>
  * - castShortsByParent!<cast hash>!<hash>: <CastShort hash>
+ * - castShortsByMention!<fid>!<hash>: <CastShort hash>
  * - castRecastsByTarget!<cast hash>!<hash>: <CastRecast hash>
  *
  * Note that the CastDB implements the constraint that a single cast hash can only exist in either castAdds
@@ -44,6 +45,11 @@ class CastDB extends MessageDB {
 
   async getCastShortsByParent(parent: string): Promise<CastShort[]> {
     const hashes = await this.getMessageHashesByPrefix(this.castShortsByParentPrefix(parent));
+    return this.getMessages<CastShort>(hashes);
+  }
+
+  async getCastShortsByMention(fid: number): Promise<CastShort[]> {
+    const hashes = await this.getMessageHashesByPrefix(this.castShortsByMentionPrefix(fid));
     return this.getMessages<CastShort>(hashes);
   }
 
@@ -113,6 +119,14 @@ class CastDB extends MessageDB {
     return this.castShortsByParentPrefix(parent) + hash;
   }
 
+  private castShortsByMentionPrefix(fid: number) {
+    return `castShortsByMention!${fid}!`;
+  }
+
+  private castShortsByMentionKey(fid: number, hash: string) {
+    return this.castShortsByMentionPrefix(fid) + hash;
+  }
+
   private castRecastsByTargetPrefix(target: string) {
     return `castRecastsByTarget!${target}!`;
   }
@@ -142,6 +156,13 @@ class CastDB extends MessageDB {
       tsx = tsx.put(this.castShortsByParentKey(cast.data.body.parent, cast.hash), cast.hash);
     }
 
+    // Index CastShort by mentions
+    if (isCastShort(cast) && cast.data.body.mentions) {
+      for (const fid of cast.data.body.mentions) {
+        tsx = tsx.put(this.castShortsByMentionKey(fid, cast.hash), cast.hash);
+      }
+    }
+
     // Index CastRecast by target
     if (isCastRecast(cast)) {
       tsx = tsx.put(this.castRecastsByTargetKey(cast.data.body.targetCastUri, cast.hash), cast.hash);
@@ -156,6 +177,13 @@ class CastDB extends MessageDB {
     // If cast is CastShort, delete from castShortsByParent index
     if (isCastShort(cast) && cast.data.body.parent) {
       tsx = tsx.del(this.castShortsByParentKey(cast.data.body.parent, cast.hash));
+    }
+
+    // If cast is CastShort, delete from castShortsByMention index
+    if (isCastShort(cast) && cast.data.body.mentions) {
+      for (const fid of cast.data.body.mentions) {
+        tsx = tsx.del(this.castShortsByMentionKey(fid, cast.hash));
+      }
     }
 
     // If cast is CastRecast, delete from castRecastAddsByTarget index

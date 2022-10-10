@@ -108,14 +108,12 @@ export const Factories = {
       return (await addEnvelopeToMessage(props, transientParams)) as CastShort;
     });
 
-    const embed = { items: [] };
-    const text = Faker.lorem.sentence(2);
-
     return {
       data: {
         body: {
-          embed,
-          text,
+          embeds: [Faker.internet.url(), Faker.internet.url()],
+          text: Faker.lorem.sentence(2),
+          mentions: [],
         },
         signedAt: Faker.time.recent(),
         fid: Faker.datatype.number(),
