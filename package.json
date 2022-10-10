@@ -17,11 +17,11 @@
   },
   "type": "module",
   "scripts": {
-    "bench": "tsx src/bench.ts",
+    "bench": "tsx src/test/perf/bench.ts",
     "build": "yarn clean && tsc --project ./tsconfig.json",
     "clean": "rm -rf ./build",
     "check:types": "tsc --noEmit",
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch src/cli.ts",
     "prepare": "husky install",
     "lint": "eslint  src/ --color --ext .ts",
     "lint:fix": "yarn run lint -- --fix",
