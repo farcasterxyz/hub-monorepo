@@ -26,6 +26,8 @@ import {
   FollowAdd,
   FollowRemove,
   Cast,
+  ProfileMeta,
+  ProfileMetaType,
 } from '~/types';
 import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 import { CastURL, CastId, ChainAccountURL, UserId, UserURL } from '~/urls';
@@ -424,6 +426,33 @@ export const Factories = {
           signedAt: Faker.time.recent(),
           fid: Faker.datatype.number(),
           type: MessageType.VerificationRemove,
+          network: FarcasterNetwork.Testnet,
+        },
+        hash: '',
+        hashType: HashAlgorithm.Blake2b,
+        signature: '',
+        signatureType: SignatureAlgorithm.Ed25519,
+        signer: '',
+      };
+    }
+  ),
+
+  /** Generate a valid ProfileMeta with randomized properties */
+  ProfileMeta: Factory.define<ProfileMeta, MessageFactoryTransientParams, ProfileMeta>(
+    ({ onCreate, transientParams }) => {
+      onCreate(async (props) => {
+        return (await addEnvelopeToMessage(props, transientParams)) as ProfileMeta;
+      });
+
+      return {
+        data: {
+          body: {
+            type: ProfileMetaType.Display,
+            value: Faker.name.firstName(),
+          },
+          signedAt: Faker.time.recent(),
+          fid: Faker.datatype.number(),
+          type: MessageType.ProfileMeta,
           network: FarcasterNetwork.Testnet,
         },
         hash: '',

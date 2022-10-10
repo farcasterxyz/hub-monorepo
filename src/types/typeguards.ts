@@ -95,6 +95,16 @@ export const isFollowRemove = (msg: FC.Message): msg is FC.FollowRemove => {
   return type === FC.MessageType.FollowRemove && body && typeof body.targetUri === 'string';
 };
 
+export const isProfileMeta = (msg: FC.Message): msg is FC.ProfileMeta => {
+  const { body, type } = (msg as FC.ProfileMeta).data;
+  return (
+    type === FC.MessageType.ProfileMeta &&
+    body &&
+    typeof body.type === 'number' &&
+    (body.value ? typeof body.value === 'string' : true)
+  );
+};
+
 export const isMessage = (msg: any): msg is FC.Message => {
   const { data, hash, hashType, signature, signatureType, signer } = msg as FC.Message;
   return (
