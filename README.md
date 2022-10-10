@@ -8,14 +8,20 @@ Users generate messages and upload them to Hub, which propagates them to other H
 
 First, ensure that the following are installed globally on your machine:
 
-- [Node.js 16+](https://github.com/nvm-sh/nvm)
+- [Node.js 18+](https://github.com/nvm-sh/nvm)
 - [Yarn](https://classic.yarnpkg.com/lang/en/docs/install)
 
-Then, from the project root, run `yarn install` to install NPM dependencies and `yarn test` to run the test suite. Hubs are a work in progress and cannot be run as a standalone service yet.
+Then, run:
+
+- `yarn install` to install dependencies
+- `yarn test` to ensure that the test suite runs correctly
+- `yarn start` to boot up the Hub
+
+This will start an instance of the Hub that you can send messages to. Hubs do not (yet) peer automatically, this will be added closer to the v2 release in Q4 2022.
 
 ## Architecture
 
-A Hub is a single-process daemon that receives data from clients, hubs and farcaster contracts. It has three main components:
+A Hub is a single-process daemon that receives data from clients, other hubs and farcaster contracts. It has three main components:
 
 - [Storage Engine]() - accepts valid messages, merges them into a consistent state, and persists state to disk.
 - [P2P Engine]() - gossips with other hubs to send and receive the latest messages on the network.
