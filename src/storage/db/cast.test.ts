@@ -77,6 +77,31 @@ describe('putCastAdd', () => {
   });
 });
 
+describe('deleteCastAdd', () => {
+  describe('CastShort', () => {
+    beforeEach(async () => {
+      await db.putCastAdd(cast1);
+    });
+
+    test('deletes cast', async () => {
+      await expect(db.deleteCastAdd(fid, cast1.hash)).resolves.toEqual(undefined);
+      await expect(db.getCastAdd(fid, cast1.hash)).rejects.toThrow(NotFoundError);
+    });
+
+    test('deletes cast from castShortsByParent index', async () => {
+      await expect(db.deleteCastAdd(fid, cast1.hash)).resolves.toEqual(undefined);
+      await expect(db.getCastShortsByParent(target)).resolves.toEqual([]);
+    });
+
+    test('deletes from castShortsByMention index', async () => {
+      await expect(db.deleteCastAdd(fid, cast1.hash)).resolves.toEqual(undefined);
+      for (const mention of cast1.data.body.mentions || []) {
+        await expect(db.getCastShortsByMention(mention)).resolves.toEqual([]);
+      }
+    });
+  });
+});
+
 describe('putCastRemove', () => {
   test('stores CastRemove', async () => {
     await expect(db.putCastRemove(remove1)).resolves.toEqual(undefined);
