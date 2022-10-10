@@ -9,8 +9,10 @@ export const isCastShort = (msg: FC.Message): msg is FC.CastShort => {
     type === FC.MessageType.CastShort &&
     body &&
     typeof body.text === 'string' &&
-    !!body.embed &&
-    Array.isArray(body.embed.items)
+    (body.embeds ? Array.isArray(body.embeds) : true) &&
+    (body.mentions ? Array.isArray(body.mentions) : true) &&
+    (body.parent ? typeof body.parent === 'string' : true) &&
+    (body.meta ? typeof body.meta === 'string' : true)
   );
 };
 

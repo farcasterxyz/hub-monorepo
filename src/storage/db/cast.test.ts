@@ -17,7 +17,7 @@ let recast1: CastRecast;
 let remove1: CastRemove;
 
 beforeAll(async () => {
-  cast1 = await Factories.CastShort.create({ data: { fid, body: { targetUri: target } } });
+  cast1 = await Factories.CastShort.create({ data: { fid, body: { parent: target } } });
   recast1 = await Factories.CastRecast.create({ data: { fid, body: { targetCastUri: target } } });
   remove1 = await Factories.CastRemove.create({ data: { fid, body: { targetHash: cast1.hash } } });
 });
@@ -27,24 +27,24 @@ describe('putCastAdd', () => {
     test('stores cast', async () => {
       await expect(db.putCastAdd(cast1)).resolves.toEqual(undefined);
       await expect(db.getCastAdd(cast1.data.fid, cast1.hash)).resolves.toEqual(cast1);
-      await expect(db.getCastShortsByTarget(target)).resolves.toEqual([cast1]);
+      await expect(db.getCastShortsByParent(target)).resolves.toEqual([cast1]);
       await expect(db.getCastRecastsByTarget(target)).resolves.toEqual([]);
     });
 
-    test('indexes cast by target if targetUri is present', async () => {
+    test('indexes cast by parent if parent is present', async () => {
       await expect(db.putCastAdd(cast1)).resolves.toEqual(undefined);
-      await expect(db.getCastShortsByTarget(target)).resolves.toEqual([cast1]);
+      await expect(db.getCastShortsByParent(target)).resolves.toEqual([cast1]);
     });
 
-    test('does not index by target if targetUri is blank', async () => {
+    test('does not index by parent if parent is blank', async () => {
       // Safety: cast to unknown is required to circumvent the exactOptionalPropertyTypes and is acceptable since the
       // purpose of this check is to test incorrectly typed objects
-      const cast1NoTarget: CastShort = {
+      const cast1NoParent: CastShort = {
         ...cast1,
-        data: { ...cast1.data, body: { ...cast1.data.body, targetUri: undefined } },
+        data: { ...cast1.data, body: { ...cast1.data.body, parent: undefined } },
       } as unknown as CastShort;
-      await expect(db.putCastAdd(cast1NoTarget)).resolves.toEqual(undefined);
-      await expect(db.getCastShortsByTarget(target)).resolves.toEqual([]);
+      await expect(db.putCastAdd(cast1NoParent)).resolves.toEqual(undefined);
+      await expect(db.getCastShortsByParent(target)).resolves.toEqual([]);
     });
 
     test('deletes associated CastRemove if present', async () => {

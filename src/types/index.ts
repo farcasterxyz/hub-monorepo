@@ -82,18 +82,18 @@ export type CastBody = CastShortBody | CastRemoveBody | CastRecastBody;
 /**
  * Body of a CastShort Message
  *
- * @text - the text of the Cast
- * @embed -
- * @targetUri - the object that this Cast is replying to
+ * @embeds - array of URIs
+ * @mentions - array of fids
+ * @parent - ID of cast this cast is replying to
+ * @text - text of the cast
+ * @meta - cast metadata field
  */
 export type CastShortBody = {
-  embed: Embed;
-  targetUri?: URI;
+  embeds?: URI[];
+  mentions?: number[];
+  parent?: URI;
   text: string;
-};
-
-type Embed = {
-  items: URI[];
+  meta?: string;
 };
 
 /**
