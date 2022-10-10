@@ -1,6 +1,6 @@
 import { rejects } from 'assert';
 import jayson, { JSONRPCError } from 'jayson/promise';
-import { replacer, reviver, RPCHandler, RPCRequest } from './utils';
+import { replacer, reviver, RPCHandler, RPCRequest } from './interfaces';
 import { ServerError } from '~/utils/errors';
 
 const VERSION = 0.1;

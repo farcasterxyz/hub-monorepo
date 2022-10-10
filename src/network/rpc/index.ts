@@ -2,6 +2,6 @@
 
 import { RPCClient } from './client';
 import { RPCServer } from './server';
-import { RPCHandler } from './utils';
+import { RPCHandler } from './interfaces';
 
 export { RPCClient, RPCServer, RPCHandler };

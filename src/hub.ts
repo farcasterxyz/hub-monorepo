@@ -37,7 +37,7 @@ export interface HubOpts {
    * Enable SimpleSync once network is established.
    *
    * @remarks
-   * Usually disabled after the first node joins the network
+   * Usually disabled for the first node that joins the network
    */
   simpleSync?: boolean;
 
@@ -102,7 +102,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     return this.gossipNode.multiaddrs ?? [];
   }
 
-  // Returns the Gossip peerId string of this Hub
+  /** Returns the Gossip peerId string of this Hub */
   get identity(): string {
     if (!this.gossipNode.isStarted() || !this.gossipNode.peerId) {
       throw new ServerError('Node not started! No identity.');

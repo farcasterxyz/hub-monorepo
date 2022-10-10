@@ -2,7 +2,7 @@ import { AddressInfo } from 'net';
 import { Err, Ok, Result } from 'neverthrow';
 import jayson, { JSONRPCError } from 'jayson/promise';
 import { Cast, Follow, IDRegistryEvent, Message, Reaction, Verification } from '~/types';
-import { replacer, reviver, RPCRequest } from './utils';
+import { replacer, reviver, RPCRequest } from './interfaces';
 
 export class RPCClient {
   private _tcpClient!: jayson.client;
