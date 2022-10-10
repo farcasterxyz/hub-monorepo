@@ -1,6 +1,6 @@
 import { ChainId } from 'caip';
 import { Result, err, ok } from 'neverthrow';
-import { BadRequestError, FarcasterError, ServerError } from '~/errors';
+import { BadRequestError, FarcasterError, ServerError } from '~/utils/errors';
 import { URL } from '~/urls/baseUrl';
 
 export abstract class BaseChainURL extends URL {

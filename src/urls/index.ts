@@ -7,7 +7,7 @@ import { UserURL } from '~/urls/userUrl';
 import { URL } from '~/urls/baseUrl';
 import { Web2URL } from '~/urls/web2Url';
 import { ChainAccountURL } from '~/urls/chainAccountUrl';
-import { BadRequestError, FarcasterError } from '~/errors';
+import { BadRequestError, FarcasterError } from '~/utils/errors';
 
 export const parseUrl = (
   url: string,
@@ -37,9 +37,14 @@ export const parseUrl = (
       return ok(new Web2URL(baseURI.scheme, url));
 
     default:
+      if (!baseURI.scheme) {
+        return err(new BadRequestError(`parseUrl: Missing URI scheme'`));
+      }
+
       if (!allowUnrecognized) {
         return err(new BadRequestError(`parseUrl: Unrecognized scheme '${baseURI.scheme}'`));
       }
+
       return ok(new UnrecognizedURL(baseURI.scheme, url));
   }
 };
