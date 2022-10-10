@@ -34,6 +34,7 @@ export enum MessageType {
   VerificationRemove = 9,
   SignerAdd = 10,
   SignerRemove = 11,
+  ProfileMeta = 12,
 }
 
 /**
@@ -59,7 +60,8 @@ export type Body =
   | VerificationEthereumAddressBody
   | VerificationRemoveBody
   | SignerMessageBody
-  | FollowBody;
+  | FollowBody
+  | ProfileMetaBody;
 
 /* -------------------------------------------------------------------------- */
 /*                                 Cast Types                                 */
@@ -259,6 +261,31 @@ export type IDRegistryArgs = {
   to: string;
   id: number;
 };
+
+/* -------------------------------------------------------------------------- */
+/*                                Profile Types                               */
+/* -------------------------------------------------------------------------- */
+
+export type ProfileMeta = Message<MessageType.ProfileMeta, ProfileMetaBody>;
+
+/**
+ * ProfileMetaBody represents an update to the profile for an fid
+ *
+ * @type - number indicating the part of the profile to update
+ * @value - value for the type, not passing value indicates removal
+ */
+export type ProfileMetaBody = {
+  type: ProfileMetaType;
+  value?: string;
+};
+
+export enum ProfileMetaType {
+  Pfp = 1,
+  Display = 2,
+  Bio = 3,
+  Location = 4,
+  Url = 5,
+}
 
 /* -------------------------------------------------------------------------- */
 /*                                  URI Types                                 */
