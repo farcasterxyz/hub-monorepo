@@ -183,7 +183,7 @@ describe('mergeCast', () => {
 
     describe('CastShort', () => {
       // test('fails if the schema is invalid', async () => {});
-      test('fails if targetUri does not match schema', async () => {
+      test('fails if parent does not match schema', async () => {
         const invalidTargets: string[] = [
           'foobar.com', // URL missing scheme
           'http://foobar.com', // web2 URLs not allowed
@@ -191,20 +191,20 @@ describe('mergeCast', () => {
           'farcaster://fid:1', // target must be a cast, not a user
         ];
         for (const invalidTarget of invalidTargets) {
-          const invalidTargetUri = await Factories.CastShort.create(
+          const invalidCast = await Factories.CastShort.create(
             {
-              data: { body: { targetUri: invalidTarget }, fid: aliceFid },
+              data: { body: { parent: invalidTarget }, fid: aliceFid },
             },
             { transient: { signer: aliceDelegateSigner } }
           );
-          const result = await engine.mergeMessage(invalidTargetUri);
+          const result = await engine.mergeMessage(invalidCast);
           expect(result.isOk()).toBe(false);
           expect(result._unsafeUnwrapErr()).toMatchObject(
-            new BadRequestError('validateCastShort: targetUri must be a valid Cast URL')
+            new BadRequestError('validateCastShort: parent must be a valid Cast URL')
           );
         }
       });
-      // test('fails if the targetUri references itself', async () => {});
+      // test('fails if the parent references itself', async () => {});
 
       test('fails if text is greater than 320 chars', async () => {
         const castLongText = await Factories.CastShort.create(
@@ -231,7 +231,7 @@ describe('mergeCast', () => {
             data: {
               fid: aliceFid,
               body: {
-                embed: { items: ['a', 'b', 'c'] },
+                embeds: ['a', 'b', 'c'],
               },
             },
           },
@@ -241,6 +241,28 @@ describe('mergeCast', () => {
         const result = await engine.mergeMessage(castThreeEmbeds);
         expect(result.isOk()).toBe(false);
         expect(result._unsafeUnwrapErr()).toMatchObject(new BadRequestError('validateCastShort: embeds > 2'));
+        expect(await aliceAdds()).toEqual(new Set());
+      });
+
+      test('fails if there are more than 5 mentions', async () => {
+        const invalidCast = await Factories.CastShort.create(
+          { data: { fid: aliceFid, body: { mentions: [1, 2, 3, 4, 5, 6] } } },
+          { transient: { signer: aliceDelegateSigner } }
+        );
+        const result = await engine.mergeMessage(invalidCast);
+        expect(result.isOk()).toBeFalsy();
+        expect(result._unsafeUnwrapErr()).toMatchObject(new BadRequestError('validateCastShort: mentions > 5'));
+        expect(await aliceAdds()).toEqual(new Set());
+      });
+
+      test('fails if meta is greater than 256 chars', async () => {
+        const invalidCast = await Factories.CastShort.create(
+          { data: { fid: aliceFid, body: { meta: Faker.random.alphaNumeric(257) } } },
+          { transient: { signer: aliceDelegateSigner } }
+        );
+        const result = await engine.mergeMessage(invalidCast);
+        expect(result.isOk()).toBe(false);
+        expect(result._unsafeUnwrapErr()).toMatchObject(new BadRequestError('validateCastShort: meta > 256 chars'));
         expect(await aliceAdds()).toEqual(new Set());
       });
 

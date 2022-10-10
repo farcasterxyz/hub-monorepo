@@ -12,7 +12,8 @@ import MessageDB from '~/storage/db/message';
  * - <extends message schema>
  * - fid!<fid>!castAdds!<cast hash>: <CastShort or CastRecast hash>
  * - fid!<fid>!castRemoves!<cast hash>: <CastRemove hash>
- * - castShortsByTarget!<cast hash>!<hash>: <CastShort hash>
+ * - castShortsByParent!<cast hash>!<hash>: <CastShort hash>
+ * - castShortsByMention!<fid>!<hash>: <CastShort hash>
  * - castRecastsByTarget!<cast hash>!<hash>: <CastRecast hash>
  *
  * Note that the CastDB implements the constraint that a single cast hash can only exist in either castAdds
@@ -42,8 +43,13 @@ class CastDB extends MessageDB {
     return this.getMessages<CastRemove>(hashes);
   }
 
-  async getCastShortsByTarget(target: string): Promise<CastShort[]> {
-    const hashes = await this.getMessageHashesByPrefix(this.castShortsByTargetPrefix(target));
+  async getCastShortsByParent(parent: string): Promise<CastShort[]> {
+    const hashes = await this.getMessageHashesByPrefix(this.castShortsByParentPrefix(parent));
+    return this.getMessages<CastShort>(hashes);
+  }
+
+  async getCastShortsByMention(fid: number): Promise<CastShort[]> {
+    const hashes = await this.getMessageHashesByPrefix(this.castShortsByMentionPrefix(fid));
     return this.getMessages<CastShort>(hashes);
   }
 
@@ -105,12 +111,20 @@ class CastDB extends MessageDB {
     return this.castRemovesPrefix(fid) + hash;
   }
 
-  private castShortsByTargetPrefix(target: string) {
-    return `castShortsByTarget!${target}!`;
+  private castShortsByParentPrefix(parent: string) {
+    return `castShortsByParent!${parent}!`;
   }
 
-  private castShortsByTargetKey(target: string, hash: string) {
-    return this.castShortsByTargetPrefix(target) + hash;
+  private castShortsByParentKey(parent: string, hash: string) {
+    return this.castShortsByParentPrefix(parent) + hash;
+  }
+
+  private castShortsByMentionPrefix(fid: number) {
+    return `castShortsByMention!${fid}!`;
+  }
+
+  private castShortsByMentionKey(fid: number, hash: string) {
+    return this.castShortsByMentionPrefix(fid) + hash;
   }
 
   private castRecastsByTargetPrefix(target: string) {
@@ -137,9 +151,16 @@ class CastDB extends MessageDB {
       tsx = this._deleteCastRemove(tsx, castRemove.value);
     }
 
-    // Index CastShort by target
-    if (isCastShort(cast) && cast.data.body.targetUri) {
-      tsx = tsx.put(this.castShortsByTargetKey(cast.data.body.targetUri, cast.hash), cast.hash);
+    // Index CastShort by parent
+    if (isCastShort(cast) && cast.data.body.parent) {
+      tsx = tsx.put(this.castShortsByParentKey(cast.data.body.parent, cast.hash), cast.hash);
+    }
+
+    // Index CastShort by mentions
+    if (isCastShort(cast) && cast.data.body.mentions) {
+      for (const fid of cast.data.body.mentions) {
+        tsx = tsx.put(this.castShortsByMentionKey(fid, cast.hash), cast.hash);
+      }
     }
 
     // Index CastRecast by target
@@ -153,9 +174,16 @@ class CastDB extends MessageDB {
   private _deleteCastAdd(tsx: Transaction, cast: CastShort | CastRecast): Transaction {
     tsx = tsx.del(this.castAddsKey(cast.data.fid, cast.hash));
 
-    // If cast is CastShort, delete from castShortAddsByTarget index
-    if (isCastShort(cast) && cast.data.body.targetUri) {
-      tsx = tsx.del(this.castShortsByTargetKey(cast.data.body.targetUri, cast.hash));
+    // If cast is CastShort, delete from castShortsByParent index
+    if (isCastShort(cast) && cast.data.body.parent) {
+      tsx = tsx.del(this.castShortsByParentKey(cast.data.body.parent, cast.hash));
+    }
+
+    // If cast is CastShort, delete from castShortsByMention index
+    if (isCastShort(cast) && cast.data.body.mentions) {
+      for (const fid of cast.data.body.mentions) {
+        tsx = tsx.del(this.castShortsByMentionKey(fid, cast.hash));
+      }
     }
 
     // If cast is CastRecast, delete from castRecastAddsByTarget index

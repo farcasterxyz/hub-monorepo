@@ -346,21 +346,29 @@ class Engine extends TypedEmitter<EngineEvents> {
   }
 
   private validateCastShort(cast: CastShort): Result<void, FarcasterError> {
-    const { text, embed, targetUri } = cast.data.body;
+    const { text, embeds, mentions, meta, parent } = cast.data.body;
 
-    if (text && text.length > 320) {
+    if (text.length > 320) {
       return err(new BadRequestError('validateCastShort: text > 320 chars'));
     }
 
-    if (embed && embed.items.length > 2) {
+    if (embeds && embeds.length > 2) {
       return err(new BadRequestError('validateCastShort: embeds > 2'));
     }
 
-    if (targetUri) {
-      const parseTarget = CastURL.parse(targetUri);
+    if (parent) {
+      const parseTarget = CastURL.parse(parent);
       if (parseTarget.isErr()) {
-        return err(new BadRequestError('validateCastShort: targetUri must be a valid Cast URL'));
+        return err(new BadRequestError('validateCastShort: parent must be a valid Cast URL'));
       }
+    }
+
+    if (mentions && mentions.length > 5) {
+      return err(new BadRequestError('validateCastShort: mentions > 5'));
+    }
+
+    if (meta && meta.length > 256) {
+      return err(new BadRequestError('validateCastShort: meta > 256 chars'));
     }
 
     return ok(undefined);
