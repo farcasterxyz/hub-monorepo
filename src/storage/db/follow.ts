@@ -78,7 +78,9 @@ class FollowDB extends MessageDB {
     return this._db.commit(tsx);
   }
 
-  /** Private key methods */
+  /* -------------------------------------------------------------------------- */
+  /*                             Private Key Methods                            */
+  /* -------------------------------------------------------------------------- */
 
   private followAddsPrefix(fid: number) {
     return `fid!${fid}!followAdds!`;
@@ -104,7 +106,9 @@ class FollowDB extends MessageDB {
     return this.followAddsByTargetPrefix(target) + hash;
   }
 
-  /** Private transaction methods */
+  /* -------------------------------------------------------------------------- */
+  /*                         Private Transaction Methods                        */
+  /* -------------------------------------------------------------------------- */
 
   private async _putFollowAdd(tsx: Transaction, follow: FollowAdd): Promise<Transaction> {
     tsx = this._putMessage(tsx, follow);

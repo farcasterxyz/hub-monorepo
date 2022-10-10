@@ -54,9 +54,9 @@ class FollowSet {
     throw new BadRequestError('FollowSet.merge: invalid message format');
   }
 
-  /**
-   * Private Methods
-   */
+  /* -------------------------------------------------------------------------- */
+  /*                               Private Methods                              */
+  /* -------------------------------------------------------------------------- */
 
   /**
    * followMessageCompare returns an order (-1, 0, 1) for two follow messages (a and b). If a occurs before

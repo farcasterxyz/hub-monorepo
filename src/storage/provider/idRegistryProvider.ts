@@ -70,7 +70,9 @@ class IDRegistryProvider extends TypedEmitter<IDRegistryEvents> {
     return err(new BadRequestError('validateIDRegistryEvent: no matching log found'));
   }
 
-  /** Private methods */
+  /* -------------------------------------------------------------------------- */
+  /*                               Private Methods                              */
+  /* -------------------------------------------------------------------------- */
 
   /**
    * handleNewBlock adds a new block number to the eventsByBlock map and then pops the oldest

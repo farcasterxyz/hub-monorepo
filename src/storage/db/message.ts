@@ -24,7 +24,9 @@ class MessageDB {
     return this.constructor(db);
   }
 
-  /** Public methods */
+  /* -------------------------------------------------------------------------- */
+  /*                               Public Methods                               */
+  /* -------------------------------------------------------------------------- */
 
   async getMessage<T extends Message>(hash: string): Promise<T> {
     const value = await this._db.get(this.messagesKey(hash));
@@ -74,7 +76,9 @@ class MessageDB {
     return this.getMessages<T>(hashes);
   }
 
-  /** Private key methods */
+  /* -------------------------------------------------------------------------- */
+  /*                             Private Key Methods                            */
+  /* -------------------------------------------------------------------------- */
 
   private messagesPrefix() {
     return `messages!`;
@@ -93,7 +97,9 @@ class MessageDB {
     return this.messagesBySignerPrefix(fid, signer, type) + hash;
   }
 
-  /** Private transaction methods */
+  /* -------------------------------------------------------------------------- */
+  /*                         Private Transaction Methods                        */
+  /* -------------------------------------------------------------------------- */
 
   protected _putMessage(tsx: Transaction, message: Message): Transaction {
     return tsx

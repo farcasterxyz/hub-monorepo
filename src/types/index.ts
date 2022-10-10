@@ -61,9 +61,9 @@ export type Body =
   | SignerMessageBody
   | FollowBody;
 
-// ===========================
-//  Cast Types
-// ===========================
+/* -------------------------------------------------------------------------- */
+/*                                 Cast Types                                 */
+/* -------------------------------------------------------------------------- */
 
 /** A Cast Message */
 export type Cast = CastShort | CastRecast | CastRemove;
@@ -115,9 +115,9 @@ export type CastRecastBody = {
   targetCastUri: FarcasterURI;
 };
 
-//  ===========================
-//  Reaction Types
-//  ===========================
+/* -------------------------------------------------------------------------- */
+/*                               Reaction Types                               */
+/* -------------------------------------------------------------------------- */
 
 /** A Reaction Message */
 export type Reaction = ReactionAdd | ReactionRemove;
@@ -139,9 +139,9 @@ export type ReactionBody = {
 
 export type ReactionType = 'like';
 
-//  ===========================
-//  Follow Types
-//  ===========================
+/* -------------------------------------------------------------------------- */
+/*                                Follow Types                                */
+/* -------------------------------------------------------------------------- */
 
 /** A Follow message */
 export type Follow = FollowAdd | FollowRemove;
@@ -159,9 +159,9 @@ export type FollowBody = {
   targetUri: URI;
 };
 
-//  ===========================
-//  Verification Types
-//  ===========================
+/* -------------------------------------------------------------------------- */
+/*                             Verification Types                             */
+/* -------------------------------------------------------------------------- */
 
 export type Verification = VerificationEthereumAddress | VerificationRemove;
 
@@ -221,9 +221,9 @@ export type VerificationRemoveBody = {
   claimHash: string;
 };
 
-// ===========================
-// Signer Types
-// ===========================
+/* -------------------------------------------------------------------------- */
+/*                                Signer Types                                */
+/* -------------------------------------------------------------------------- */
 
 export type SignerMessage = SignerAdd | SignerRemove;
 
@@ -260,9 +260,9 @@ export type IDRegistryArgs = {
   id: number;
 };
 
-// ===========================
-//  URI Types
-// ===========================
+/* -------------------------------------------------------------------------- */
+/*                                  URI Types                                 */
+/* -------------------------------------------------------------------------- */
 
 export type URI = FarcasterURI | ChainURI | HTTPURI;
 
@@ -280,9 +280,9 @@ export type ChainURI = string;
 
 export type HTTPURI = string;
 
-// ===========================
-//  Misc Types
-// ===========================
+/* -------------------------------------------------------------------------- */
+/*                                 Misc Types                                 */
+/* -------------------------------------------------------------------------- */
 
 /**
  * A KeyPair that is used in the signing process

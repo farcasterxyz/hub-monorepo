@@ -111,7 +111,9 @@ class SignerDB extends MessageDB {
     return this._db.commit(tsx);
   }
 
-  /** Private key methods */
+  /* -------------------------------------------------------------------------- */
+  /*                             Private Key Methods                            */
+  /* -------------------------------------------------------------------------- */
 
   private custodyEventPrefix() {
     return `custodyEvents!`;
@@ -136,7 +138,9 @@ class SignerDB extends MessageDB {
     return this.signerRemovesPrefix(fid, custodyAddress) + sanitizeSigner(signer);
   }
 
-  /** Private transaction methods */
+  /* -------------------------------------------------------------------------- */
+  /*                         Private Transaction Methods                        */
+  /* -------------------------------------------------------------------------- */
 
   private _putCustodyEvent(tsx: Transaction, event: IDRegistryEvent): Transaction {
     return tsx.put(this.custodyEventKey(event.args.id), JSON.stringify(event));

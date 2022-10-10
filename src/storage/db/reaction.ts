@@ -78,7 +78,9 @@ class ReactionDB extends MessageDB {
     return this._db.commit(tsx);
   }
 
-  /** Private key methods */
+  /* -------------------------------------------------------------------------- */
+  /*                             Private Key Methods                            */
+  /* -------------------------------------------------------------------------- */
 
   private reactionAddsPrefix(fid: number) {
     return `fid!${fid}!reactionAdds!`;
@@ -104,7 +106,9 @@ class ReactionDB extends MessageDB {
     return this.reactionAddsByTargetPrefix(target) + hash;
   }
 
-  /** Private transaction methods */
+  /* -------------------------------------------------------------------------- */
+  /*                         Private Transaction Methods                        */
+  /* -------------------------------------------------------------------------- */
 
   private async _putReactionAdd(tsx: Transaction, reaction: ReactionAdd): Promise<Transaction> {
     tsx = this._putMessage(tsx, reaction);

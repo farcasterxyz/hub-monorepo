@@ -141,34 +141,34 @@ class Engine extends TypedEmitter<EngineEvents> {
     });
   }
 
-  /**
-   * Cast Methods
-   */
+  /* -------------------------------------------------------------------------- */
+  /*                                Cast Methods                                */
+  /* -------------------------------------------------------------------------- */
 
   async getAllCastsByUser(fid: number): Promise<Set<Cast>> {
     return this._castSet.getAllCastsByUser(fid);
   }
 
-  /**
-   * Reaction Methods
-   */
+  /* -------------------------------------------------------------------------- */
+  /*                              Reaction Methods                              */
+  /* -------------------------------------------------------------------------- */
 
   /** Get all reactions (added and removed) for an fid */
   async getAllReactionsByUser(fid: number): Promise<Set<Reaction>> {
     return this._reactionSet.getAllReactionMessagesByUser(fid);
   }
 
-  /**
-   * Follow Methods
-   */
+  /* -------------------------------------------------------------------------- */
+  /*                               Follow Methods                               */
+  /* -------------------------------------------------------------------------- */
 
   async getAllFollowsByUser(fid: number): Promise<Set<Follow>> {
     return this._followSet.getAllFollowMessagesByUser(fid);
   }
 
-  /**
-   * Verification methods
-   */
+  /* -------------------------------------------------------------------------- */
+  /*                            Verification Methods                            */
+  /* -------------------------------------------------------------------------- */
 
   async getVerificationsByUser(fid: number): Promise<Set<VerificationEthereumAddress>> {
     return this._verificationSet.getVerificationsByUser(fid);
@@ -178,9 +178,9 @@ class Engine extends TypedEmitter<EngineEvents> {
     return this._verificationSet.getAllVerificationMessagesByUser(fid);
   }
 
-  /**
-   * Signer Methods
-   */
+  /* -------------------------------------------------------------------------- */
+  /*                               Signer Methods                               */
+  /* -------------------------------------------------------------------------- */
 
   async mergeIDRegistryEvent(event: IDRegistryEvent): Promise<Result<void, FarcasterError>> {
     if (this._IDRegistryProvider) {
@@ -201,9 +201,9 @@ class Engine extends TypedEmitter<EngineEvents> {
     return ResultAsync.fromPromise(this._signerSet.getCustodyEvent(fid), (e) => e as FarcasterError);
   }
 
-  /**
-   * Private Methods
-   */
+  /* -------------------------------------------------------------------------- */
+  /*                               Private Methods                              */
+  /* -------------------------------------------------------------------------- */
 
   /** Merge a cast into the set */
   private async mergeCast(cast: Cast): Promise<Result<void, FarcasterError>> {

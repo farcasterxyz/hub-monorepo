@@ -65,9 +65,9 @@ class CastSet {
     throw new BadRequestError('CastSet.merge: invalid message format');
   }
 
-  /**
-   * Private Methods
-   */
+  /* -------------------------------------------------------------------------- */
+  /*                               Private Methods                              */
+  /* -------------------------------------------------------------------------- */
 
   private castMessageCompare(a: Cast, b: Cast): number {
     // If they are the same message, return 0

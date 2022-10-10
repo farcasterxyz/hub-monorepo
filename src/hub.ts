@@ -89,7 +89,6 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     this.syncState = SimpleSyncState.Pending;
     this.syncEngine = new SyncEngine(this.engine);
     if (options.simpleSync !== undefined && !options.simpleSync) {
-      // explicitly disabled
       this.syncState = SimpleSyncState.Disabled;
     }
   }
@@ -123,7 +122,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     await this.rpcServer.start(this.options.port ? this.options.port : 0);
     this.registerEventHandlers();
 
-    // Publish this Node's information to the gossip network
+    // Publishes this Node's information to the gossip network
     this.contactTimer = setInterval(async () => {
       if (this.gossipNode.peerId) {
         const content = this.rpcAddress
@@ -177,7 +176,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     return result;
   }
 
-  // attempt to sync data from a peer
+  /** Attempt to sync data from a peer */
   async simpleSyncFromPeer(peer: ContactInfoContent) {
     if (this.syncState != SimpleSyncState.Pending) return;
 
@@ -206,17 +205,17 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       this.emit('syncComplete', false);
       return;
     }
-    // start requesting for peer's data over rpc
+
+    // Request and merge peer's data over RPC
     const nodeAddress = peerAddress.addresses[0].multiaddr.nodeAddress();
-    // merge peer data
     const rpcClient = new RPCClient({
       address: nodeAddress.address,
       family: nodeAddress.family == 4 ? 'ip4' : 'ip6',
-      // use the rpc port we got over gossip instead of the port being used by libp2p
+      // Use the gossip rpc port instead of the port used by libp2p
       port: peer.rpcAddress.port,
     });
 
-    // start the sync
+    // Start the Sync
     this.syncState = SimpleSyncState.InProgress;
     const users = await rpcClient.getUsers();
     await users.match(
@@ -268,7 +267,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
             );
           });
 
-          // replay all messages into the our Engine
+          // Replays all messages into the engine
           const mergeResults = await Promise.all(this.engine.mergeMessages(allMessages));
           let success = 0;
           let fail = 0;
@@ -297,7 +296,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   }
 
   private registerEventHandlers() {
-    // subscribe to all interesting topics
+    // Subscribes to all relevant topics
     this.gossipNode.gossip?.subscribe(NETWORK_TOPIC_PRIMARY);
     this.gossipNode.gossip?.subscribe(NETWORK_TOPIC_CONTACT);
 
@@ -313,6 +312,10 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       );
     });
   }
+
+  /* -------------------------------------------------------------------------- */
+  /*                               RPC Handler API                              */
+  /* -------------------------------------------------------------------------- */
 
   /* RPCHandler API */
   getUsers(): Promise<Set<number>> {
@@ -379,7 +382,10 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     return mergeResult;
   }
 
-  /* Test API */
+  /* -------------------------------------------------------------------------- */
+  /*                                  Test API                                  */
+  /* -------------------------------------------------------------------------- */
+
   async destroyDB() {
     await this.rocksDB.destroy();
   }

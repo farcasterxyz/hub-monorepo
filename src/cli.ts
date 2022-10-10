@@ -3,9 +3,7 @@
 import { Command } from 'commander';
 import { Hub, HubOpts } from '~/hub';
 
-/**
- * A CLI to accept options from the user and start the Hub
- */
+/** A CLI to accept options from the user and start the Hub */
 
 const app = new Command();
 

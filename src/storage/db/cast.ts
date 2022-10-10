@@ -85,7 +85,9 @@ class CastDB extends MessageDB {
     return this._db.commit(tsx);
   }
 
-  /** Private key methods */
+  /* -------------------------------------------------------------------------- */
+  /*                             Private Key Methods                            */
+  /* -------------------------------------------------------------------------- */
 
   private castAddsPrefix(fid: number) {
     return `fid!${fid}!castAdds!`;
@@ -119,7 +121,9 @@ class CastDB extends MessageDB {
     return this.castRecastsByTargetPrefix(target) + hash;
   }
 
-  /** Private transaction methods */
+  /* -------------------------------------------------------------------------- */
+  /*                         Private Transaction Methods                        */
+  /* -------------------------------------------------------------------------- */
 
   private async _putCastAdd(tsx: Transaction, cast: CastShort | CastRecast): Promise<Transaction> {
     tsx = this._putMessage(tsx, cast);

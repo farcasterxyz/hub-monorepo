@@ -72,7 +72,9 @@ class VerificationDB extends MessageDB {
     return this._db.commit(tsx);
   }
 
-  /** Private key methods */
+  /* -------------------------------------------------------------------------- */
+  /*                             Private Key Methods                            */
+  /* -------------------------------------------------------------------------- */
 
   private verificationAddsPrefix(fid: number) {
     return `fid!${fid}!verificationAdds!`;
@@ -90,7 +92,9 @@ class VerificationDB extends MessageDB {
     return this.verificationRemovesPrefix(fid) + claimHash;
   }
 
-  /** Private transaction methods */
+  /* -------------------------------------------------------------------------- */
+  /*                         Private Transaction Methods                        */
+  /* -------------------------------------------------------------------------- */
 
   private async _putVerificationAdd(tsx: Transaction, verification: VerificationEthereumAddress): Promise<Transaction> {
     tsx = this._putMessage(tsx, verification);

@@ -52,9 +52,9 @@ class VerificationSet {
     throw new BadRequestError('VerificationSet.merge: invalid message format');
   }
 
-  /**
-   * Private Methods
-   */
+  /* -------------------------------------------------------------------------- */
+  /*                               Private Methods                              */
+  /* -------------------------------------------------------------------------- */
 
   private verificationMessageCompare(a: Verification, b: Verification): number {
     // If they are the same message, return 0

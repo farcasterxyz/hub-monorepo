@@ -129,7 +129,9 @@ class RocksDB {
     });
   }
 
-  /** Custom Farcaster methods */
+  /* -------------------------------------------------------------------------- */
+  /*                          Custom Farcaster Methods                          */
+  /* -------------------------------------------------------------------------- */
 
   transaction(): Transaction {
     return this._db.batch();

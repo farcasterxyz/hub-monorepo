@@ -156,9 +156,9 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     return undefined;
   }
 
-  /**
-   * Private Methods
-   */
+  /* -------------------------------------------------------------------------- */
+  /*                               Private Methods                              */
+  /* -------------------------------------------------------------------------- */
 
   /**
    * Return an order (1, 0, -1) by comparing two ID Registry Events a and b.

@@ -56,9 +56,9 @@ class ReactionSet {
     throw new BadRequestError('ReactionSet.merge: invalid message format');
   }
 
-  /**
-   * Private Methods
-   */
+  /* -------------------------------------------------------------------------- */
+  /*                               Private Methods                              */
+  /* -------------------------------------------------------------------------- */
 
   /**
    * reactionMessageCompare returns an order (-1, 0, 1) for two reaction messages (a and b). If a occurs before
