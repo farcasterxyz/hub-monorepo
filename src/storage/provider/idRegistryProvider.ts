@@ -3,7 +3,7 @@ import { BigNumber, Contract, providers, Event } from 'ethers';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { IDRegistryEvent } from '~/types';
 import { ok, err, Result } from 'neverthrow';
-import { sanitizeSigner } from '~/utils/utils';
+import { sanitizeSigner } from '~/utils/crypto';
 import { BadRequestError, FarcasterError } from '~/utils/errors';
 
 export type IDRegistryEvents = {

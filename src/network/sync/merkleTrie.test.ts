@@ -1,6 +1,6 @@
 import { Factories } from '~/test/factories';
-import { MerkleTrie } from '~/sync/merkleTrie';
-import { SyncId } from '~/sync/syncId';
+import { MerkleTrie } from '~/network/sync/merkleTrie';
+import { SyncId } from '~/network/sync/syncId';
 
 describe('MerkleTrie', () => {
   test('succeeds inserting a single item', async () => {

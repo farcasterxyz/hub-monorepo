@@ -4,7 +4,7 @@ import VerificationDB from '~/storage/db/verification';
 import { BadRequestError } from '~/utils/errors';
 import { Verification, VerificationEthereumAddress, VerificationRemove } from '~/types';
 import { isVerificationEthereumAddress, isVerificationRemove } from '~/types/typeguards';
-import { hashCompare } from '~/utils/utils';
+import { hashCompare } from '~/utils/crypto';
 
 /**
  * VerificationSet is a modified LWW set that stores and fetches verifications. VerificationEthereumAddress and VerificationRemove

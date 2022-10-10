@@ -10,7 +10,7 @@ import { createLibp2p, Libp2p } from 'libp2p';
 import { err, ok, Result } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { FarcasterError, ServerError } from '~/utils/errors';
-import { decodeMessage, encodeMessage, GossipMessage, GOSSIP_TOPICS } from '~/network/protocol';
+import { decodeMessage, encodeMessage, GossipMessage, GOSSIP_TOPICS } from '~/network/p2p/protocol';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1/tcp/0';
 
@@ -27,9 +27,9 @@ interface NodeEvents {
 }
 
 /**
- * A representation of a Libp2p network node.
+ * A representation of a libp2p network node.
  *
- * Nodes participate in the p2p GossipSub network we create using Libp2p.
+ * Nodes participate in the p2p GossipSub network we create using libp2p.
  */
 export class Node extends TypedEmitter<NodeEvents> {
   private _node?: Libp2p;

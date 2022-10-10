@@ -1,5 +1,5 @@
 import * as FC from '~/types';
-import { hashMessage, signEd25519, hashFCObject } from '~/utils/utils';
+import { hashMessage, signEd25519, hashFCObject } from '~/utils/crypto';
 
 class Client {
   signer: FC.Ed25519Signer;

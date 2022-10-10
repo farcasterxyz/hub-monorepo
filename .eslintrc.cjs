@@ -12,7 +12,7 @@ module.exports = {
     '@typescript-eslint/ban-ts-ignore': 'off',
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
-    'no-restricted-imports': ['error', { patterns: ['.*'] }],
+    'no-restricted-imports': ['error', { patterns: ['"*/lib/*"'] }],
     'prettier/prettier': ['error', {}, { usePrettierrc: true }],
     'prefer-arrow-functions/prefer-arrow-functions': 'error',
   },

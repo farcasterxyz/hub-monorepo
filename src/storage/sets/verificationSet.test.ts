@@ -9,7 +9,7 @@ import {
   VerificationRemove,
 } from '~/types';
 import { ethers } from 'ethers';
-import { generateEd25519Signer } from '~/utils/utils';
+import { generateEd25519Signer } from '~/utils/crypto';
 import VerificationDB from '~/storage/db/verification';
 import { BadRequestError, NotFoundError } from '~/utils/errors';
 import { jestRocksDB } from '~/storage/db/jestUtils';

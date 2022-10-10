@@ -1,7 +1,7 @@
 import Faker from 'faker';
 import { Factories } from '~/test/factories';
 import { CastShort, Ed25519Signer, FollowAdd, MessageType } from '~/types';
-import { generateEd25519Signer } from '~/utils/utils';
+import { generateEd25519Signer } from '~/utils/crypto';
 import MessageDB from '~/storage/db/message';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 

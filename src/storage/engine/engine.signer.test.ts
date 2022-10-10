@@ -7,7 +7,7 @@ import Engine from '~/storage/engine';
 import { BadRequestError, NotFoundError } from '~/utils/errors';
 import { Factories } from '~/test/factories';
 import { Ed25519Signer, EthereumSigner, SignerAdd, SignerMessage, SignerRemove, IDRegistryEvent } from '~/types';
-import { generateEd25519Signer, generateEthereumSigner, hashFCObject } from '~/utils/utils';
+import { generateEd25519Signer, generateEthereumSigner, hashFCObject } from '~/utils/crypto';
 
 const testDb = jestRocksDB(`engine.signer.test`);
 const engine = new Engine(testDb);

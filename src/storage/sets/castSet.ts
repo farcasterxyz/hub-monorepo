@@ -4,7 +4,7 @@ import { isCastRemove, isCastRecast, isCastShort } from '~/types/typeguards';
 import CastDB from '~/storage/db/cast';
 import RocksDB from '~/storage/db/rocksdb';
 import { BadRequestError } from '~/utils/errors';
-import { hashCompare } from '~/utils/utils';
+import { hashCompare } from '~/utils/crypto';
 
 type CastAdd = CastShort | CastRecast;
 

@@ -15,7 +15,7 @@ import {
 } from '~/types';
 import Faker from 'faker';
 import { Wallet } from 'ethers';
-import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils/utils';
+import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import CastDB from '~/storage/db/cast';
 import VerificationDB from '~/storage/db/verification';

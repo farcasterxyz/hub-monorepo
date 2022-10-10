@@ -27,7 +27,7 @@ import {
   FollowRemove,
   Cast,
 } from '~/types';
-import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils/utils';
+import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 import { CastURL, CastId, ChainAccountURL, UserId, UserURL } from '~/urls';
 // import { ChainAccountURL } from '~/urls/chainAccountUrl';
 // import {  } from '~/urls/castUrl';

@@ -1,5 +1,5 @@
 import { Message } from '~/types';
-import { SyncId } from '~/sync/syncId';
+import { SyncId } from '~/network/sync/syncId';
 import { Factories } from '~/test/factories';
 
 describe('SyncId', () => {

@@ -7,7 +7,7 @@ import {
   GossipMessage,
   IDRegistryContent,
   UserContent,
-} from '~/network/protocol';
+} from '~/network/p2p/protocol';
 import { isGossipMessage } from '~/types/typeguards';
 
 let cast: CastShort;

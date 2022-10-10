@@ -1,6 +1,6 @@
 import { Multiaddr } from '@multiformats/multiaddr';
 import Engine from '~/storage/engine';
-import { Node } from '~/network/node';
+import { Node } from '~/network/p2p/node';
 import { RPCClient, RPCHandler, RPCServer } from '~/network/rpc';
 import { Cast, SignerMessage, Reaction, Follow, Verification, IDRegistryEvent, Message } from '~/types';
 import {
@@ -11,14 +11,14 @@ import {
   NETWORK_TOPIC_CONTACT,
   NETWORK_TOPIC_PRIMARY,
   UserContent,
-} from '~/network/protocol';
+} from '~/network/p2p/protocol';
 import { AddressInfo } from 'net';
 import { isContactInfo, isIDRegistryContent, isUserContent } from '~/types/typeguards';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import RocksDB from '~/storage/db/rocksdb';
 import { err, ok, Result } from 'neverthrow';
 import { FarcasterError, ServerError } from '~/utils/errors';
-import { SyncEngine } from '~/sync/syncEngine';
+import { SyncEngine } from '~/network/sync/syncEngine';
 
 export interface HubOpts {
   /** Addresses to bootstrap the gossip network */

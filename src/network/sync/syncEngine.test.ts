@@ -1,10 +1,10 @@
 import { Factories } from '~/test/factories';
 import Engine from '~/storage/engine';
-import { SyncEngine } from '~/sync/syncEngine';
+import { SyncEngine } from '~/network/sync/syncEngine';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { mockFid } from '~/storage/engine/mock';
 import Faker from 'faker';
-import { SyncId } from '~/sync/syncId';
+import { SyncId } from '~/network/sync/syncId';
 
 const testDb = jestRocksDB(`engine.follow.test`);
 const engine = new Engine(testDb);

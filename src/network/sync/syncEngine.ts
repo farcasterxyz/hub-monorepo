@@ -1,6 +1,6 @@
 import { Message } from '~/types';
-import { MerkleTrie } from '~/sync/merkleTrie';
-import { SyncId } from '~/sync/syncId';
+import { MerkleTrie } from '~/network/sync/merkleTrie';
+import { SyncId } from '~/network/sync/syncId';
 import Engine from '~/storage/engine';
 
 /**

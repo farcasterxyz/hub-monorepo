@@ -2,7 +2,7 @@ import Faker from 'faker';
 import Engine from '~/storage/engine';
 import { Factories } from '~/test/factories';
 import { Cast, CastShort, EthereumSigner, IDRegistryEvent, MessageSigner, SignerAdd, SignerRemove } from '~/types';
-import { generateEd25519Signer, generateEthereumSigner } from '~/utils/utils';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import CastDB from '~/storage/db/cast';
 import { BadRequestError } from '~/utils/errors';

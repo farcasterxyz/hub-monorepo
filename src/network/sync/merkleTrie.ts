@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { ID_LENGTH, SyncId } from '~/sync/syncId';
+import { ID_LENGTH, SyncId } from '~/network/sync/syncId';
 
 /**
  * Represents a MerkleTrie. It's conceptually very similar to a Merkle Patricia Tree (see

@@ -2,7 +2,7 @@ import Faker from 'faker';
 import { SignerAdd, SignerRemove, EthereumSigner, Ed25519Signer, IDRegistryEvent } from '~/types';
 import SignerSet, { SignerSetEvents } from '~/storage/sets/signerSet';
 import { Factories } from '~/test/factories';
-import { generateEd25519Signer, generateEthereumSigner } from '~/utils/utils';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import SignerDB from '~/storage/db/signer';

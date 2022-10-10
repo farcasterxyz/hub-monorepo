@@ -11,7 +11,7 @@ import {
   MessageFactoryTransientParams,
   SignerAdd,
 } from '~/types';
-import { generateEd25519Signer, generateEthereumSigner } from '~/utils/utils';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import FollowDB from '~/storage/db/follow';
 import { BadRequestError } from '~/utils/errors';

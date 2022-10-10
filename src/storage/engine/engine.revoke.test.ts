@@ -15,7 +15,7 @@ import {
   FollowAdd,
   CastRecast,
 } from '~/types';
-import { generateEd25519Signer, generateEthereumSigner } from '~/utils/utils';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 
 const testDb = jestRocksDB(`engine.revoke.test`);
 const engine = new Engine(testDb);

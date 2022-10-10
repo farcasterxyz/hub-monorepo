@@ -3,7 +3,7 @@ import { Factories } from '~/test/factories';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { Ed25519Signer, FollowAdd, FollowRemove } from '~/types';
 import { NotFoundError } from '~/utils/errors';
-import { generateEd25519Signer } from '~/utils/utils';
+import { generateEd25519Signer } from '~/utils/crypto';
 
 const rocks = jestRocksDB('db.follow.test');
 const db = new FollowDB(rocks);

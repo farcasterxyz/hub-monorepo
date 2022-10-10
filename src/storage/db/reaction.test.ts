@@ -3,7 +3,7 @@ import { Factories } from '~/test/factories';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { Ed25519Signer, ReactionAdd, ReactionRemove } from '~/types';
 import { NotFoundError } from '~/utils/errors';
-import { generateEd25519Signer } from '~/utils/utils';
+import { generateEd25519Signer } from '~/utils/crypto';
 
 const rocks = jestRocksDB('db.reaction.test');
 const db = new ReactionDB(rocks);

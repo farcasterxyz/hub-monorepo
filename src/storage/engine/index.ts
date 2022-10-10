@@ -15,7 +15,7 @@ import {
   CastRemove,
   MessageType,
 } from '~/types';
-import { hashMessage, hashFCObject } from '~/utils/utils';
+import { hashMessage, hashFCObject } from '~/utils/crypto';
 import * as ed from '@noble/ed25519';
 import { hexToBytes } from 'ethereum-cryptography/utils';
 import { ok, err, Result, ResultAsync } from 'neverthrow';

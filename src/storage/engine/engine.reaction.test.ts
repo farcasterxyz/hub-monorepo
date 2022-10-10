@@ -13,7 +13,7 @@ import {
   ReactionRemove,
   SignerAdd,
 } from '~/types';
-import { generateEd25519Signer, generateEthereumSigner } from '~/utils/utils';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 
 const testDb = jestRocksDB(`engine.reaction.test`);
 const engine = new Engine(testDb);
