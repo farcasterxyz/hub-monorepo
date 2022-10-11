@@ -38,9 +38,7 @@ WORKDIR /home/node/app
 # Copy dependency information and install dependencies
 COPY --chown=node:node tsconfig.json package.json yarn.lock ./
 
-# TODO: use --production flag by moving tsx into a production dependency or remove
-# the dependency on tsx entirely
-RUN yarn install --frozen-lockfile
+RUN yarn install --frozen-lockfile --production
 
 # Copy results from previous stage
 COPY --chown=node:node --from=build /home/node/app/build ./build
