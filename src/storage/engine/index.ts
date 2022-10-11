@@ -14,6 +14,8 @@ import {
   CastRecast,
   CastRemove,
   MessageType,
+  ProfileMeta,
+  ProfileMetaType,
 } from '~/types';
 import { hashMessage, hashFCObject } from '~/utils/crypto';
 import * as ed from '@noble/ed25519';
@@ -31,6 +33,7 @@ import {
   isCastRemove,
   isCast,
   isVerification,
+  isProfileMeta,
 } from '~/types/typeguards';
 import CastSet from '~/storage/sets/castSet';
 import ReactionSet from '~/storage/sets/reactionSet';
@@ -44,6 +47,7 @@ import { CastHash } from '~/urls/castUrl';
 import RocksDB from '~/storage/db/rocksdb';
 import { BadRequestError, FarcasterError, ServerError } from '~/utils/errors';
 import { TypedEmitter } from 'tiny-typed-emitter';
+import ProfileSet from '../sets/profileSet';
 
 export type EngineEvents = {
   /**
@@ -60,6 +64,7 @@ class Engine extends TypedEmitter<EngineEvents> {
   private _followSet: FollowSet;
   private _reactionSet: ReactionSet;
   private _verificationSet: VerificationSet;
+  private _profileSet: ProfileSet;
 
   private _IDRegistryProvider?: IDRegistryProvider;
 
@@ -73,6 +78,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     this._followSet = new FollowSet(db);
     this._reactionSet = new ReactionSet(db);
     this._verificationSet = new VerificationSet(db);
+    this._profileSet = new ProfileSet(db);
 
     // Subscribe to events in order to revoke messages when signers are removed
     this._signerSet.on(
@@ -131,6 +137,8 @@ class Engine extends TypedEmitter<EngineEvents> {
       result = this.mergeSignerMessage(message);
     } else if (isVerification(message)) {
       result = this.mergeVerification(message);
+    } else if (isProfileMeta(message)) {
+      result = this.mergeProfileMessage(message);
     } else {
       return err(new ServerError('mergeMessage: unexpected error'));
     }
@@ -179,6 +187,14 @@ class Engine extends TypedEmitter<EngineEvents> {
   }
 
   /* -------------------------------------------------------------------------- */
+  /*                               Profile Methods                              */
+  /* -------------------------------------------------------------------------- */
+
+  async getProfileByUser(fid: number): Promise<Set<ProfileMeta>> {
+    return this._profileSet.getProfileMetaByUser(fid);
+  }
+
+  /* -------------------------------------------------------------------------- */
   /*                               Signer Methods                               */
   /* -------------------------------------------------------------------------- */
 
@@ -223,6 +239,11 @@ class Engine extends TypedEmitter<EngineEvents> {
   /** Merge verification message into the set */
   private async mergeVerification(verification: Verification): Promise<Result<void, FarcasterError>> {
     return await ResultAsync.fromPromise(this._verificationSet.merge(verification), (e) => e as FarcasterError);
+  }
+
+  /** Merge profile message into the set */
+  private async mergeProfileMessage(message: ProfileMeta): Promise<Result<void, FarcasterError>> {
+    return await ResultAsync.fromPromise(this._profileSet.merge(message), (e) => e as FarcasterError);
   }
 
   /** Merge signer message into the set */
@@ -340,6 +361,10 @@ class Engine extends TypedEmitter<EngineEvents> {
 
     if (isFollow(message)) {
       return this.validateFollow(message);
+    }
+
+    if (isProfileMeta(message)) {
+      return this.validateProfileMessage(message);
     }
 
     return err(new BadRequestError('validateMessage: unknown message'));
@@ -501,6 +526,52 @@ class Engine extends TypedEmitter<EngineEvents> {
       .mapErr(() => new BadRequestError('validateFollow: targetUri must be valid FarcasterID'));
 
     // TODO: any Follow custom validation?
+  }
+
+  private validateProfileMessage(message: ProfileMeta): Result<void, FarcasterError> {
+    const { type, value } = message.data.body;
+
+    if (type === ProfileMetaType.Pfp) {
+      if (value && value.length > 256) {
+        return err(new BadRequestError('validateProfileMessage: Pfp value > 256'));
+      }
+
+      return ok(undefined);
+    }
+
+    if (type === ProfileMetaType.Display) {
+      if (value && value.length > 32) {
+        return err(new BadRequestError('validateProfileMessage: Display value > 32'));
+      }
+
+      return ok(undefined);
+    }
+
+    if (type === ProfileMetaType.Bio) {
+      if (value && value.length > 256) {
+        return err(new BadRequestError('validateProfileMessage: Bio value > 256'));
+      }
+
+      return ok(undefined);
+    }
+
+    if (type === ProfileMetaType.Location) {
+      if (value && value.length > 64) {
+        return err(new BadRequestError('validateProfileMessage: Location value > 32'));
+      }
+
+      return ok(undefined);
+    }
+
+    if (type === ProfileMetaType.Url) {
+      if (value && value.length > 256) {
+        return err(new BadRequestError('validateProfileMessage: Url value > 256'));
+      }
+
+      return ok(undefined);
+    }
+
+    return err(new BadRequestError('validateProfileMessage: invalid type'));
   }
 
   /**
