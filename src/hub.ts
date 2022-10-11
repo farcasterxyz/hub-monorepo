@@ -2,6 +2,7 @@ import { Multiaddr } from '@multiformats/multiaddr';
 import Engine from '~/storage/engine';
 import { Node } from '~/network/p2p/node';
 import { RPCClient, RPCHandler, RPCServer } from '~/network/rpc';
+import { PeerId } from '@libp2p/interface-peer-id';
 import { Cast, SignerMessage, Reaction, Follow, Verification, IDRegistryEvent, Message } from '~/types';
 import {
   ContactInfoContent,
@@ -21,6 +22,9 @@ import { FarcasterError, ServerError } from '~/utils/errors';
 import { SyncEngine } from '~/network/sync/syncEngine';
 
 export interface HubOpts {
+  /** The PeerId of this Hub */
+  peerId?: PeerId;
+
   /** Addresses to bootstrap the gossip network */
   bootstrapAddrs?: Multiaddr[];
 
@@ -121,7 +125,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       await this.rocksDB.clear();
     }
 
-    await this.gossipNode.start(this.options.bootstrapAddrs ?? [], this.options.port);
+    await this.gossipNode.start(this.options.bootstrapAddrs ?? [], this.options.peerId, this.options.port);
     await this.rpcServer.start(this.options.rpcPort ? this.options.rpcPort : 0);
     this.registerEventHandlers();
 

@@ -66,8 +66,8 @@ export class Node extends TypedEmitter<NodeEvents> {
   /**
    * Creates and Starts the underlying libp2p node. Nodes must be started prior to any network configuration or communication.
    */
-  async start(bootstrapAddrs: Multiaddr[], port?: number) {
-    this._node = await createNode(port);
+  async start(bootstrapAddrs: Multiaddr[], peerId?: PeerId, port?: number) {
+    this._node = await createNode(peerId, port);
     this.registerListeners();
 
     await this._node.start();
@@ -219,13 +219,16 @@ export class Node extends TypedEmitter<NodeEvents> {
  *
  * @bootstrapAddrs: A list of NodeAddresses to use for bootstrapping over tcp
  */
-const createNode = async (port?: number) => {
+const createNode = async (peerId?: PeerId, port?: number) => {
   const gossip = new GossipSub({
     emitSelf: false,
     allowPublishToZeroPeers: true,
+    globalSignaturePolicy: 'StrictSign',
   });
 
   const node = await createLibp2p({
+    // setting peerId to `undefined` throws an error, only set it if it's defined
+    ...(peerId && { peerId }),
     addresses: {
       listen: [`${MultiaddrLocalHost}/${port ?? 0}`],
     },

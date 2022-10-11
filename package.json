@@ -25,7 +25,8 @@
     "prepare": "husky install",
     "lint": "eslint  src/ --color --ext .ts",
     "lint:fix": "yarn run lint -- --fix",
-    "start": "tsx src/cli.ts --rpc-port 8080",
+    "start": "tsx src/cli.ts start",
+    "identity": "tsx src/cli.ts identity",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"
   },
@@ -55,6 +56,7 @@
     "@libp2p/interface-peer-info": "^1.0.2",
     "@libp2p/interfaces": "^3.0.3",
     "@libp2p/mplex": "^5.1.1",
+    "@libp2p/peer-id-factory": "^1.0.18",
     "@libp2p/pubsub-peer-discovery": "^6.0.2",
     "@libp2p/tcp": "^3.0.6",
     "@multiformats/multiaddr": "^10.4.3",
