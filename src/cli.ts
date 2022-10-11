@@ -16,6 +16,7 @@ app
   .option('-N, --network-url <url>', 'ID Registry network URL')
   .option('-A, --id-registry-address <address>', 'ID Registry address')
   .option('-B, --bootstrap-addresses <addresses...>', 'A list of MultiAddrs to use for bootstrapping')
+  .option('--port <port>', 'The port libp2p should listen on. (default: selects one at random')
   .option('--rpc-port <port>', 'The RPC port to use. (default: selects one at random')
   .option('--simple-sync <enabled>', 'Enable/Disable simple sync', true)
   .option('--db-reset', 'Clear the database before starting', false)
@@ -32,7 +33,8 @@ const options: HubOpts = {
   networkUrl: cliOptions.networkUrl,
   IDRegistryAddress: cliOptions.idRegistryAddress,
   bootstrapAddrs: cliOptions.bootstrapAddresses,
-  port: cliOptions.rpcPort,
+  port: cliOptions.port,
+  rpcPort: cliOptions.rpcPort,
   simpleSync: cliOptions.simpleSync,
   rocksDBName: cliOptions.dbName,
   resetDB: cliOptions.dbReset,

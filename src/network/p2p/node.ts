@@ -12,7 +12,7 @@ import { TypedEmitter } from 'tiny-typed-emitter';
 import { FarcasterError, ServerError } from '~/utils/errors';
 import { decodeMessage, encodeMessage, GossipMessage, GOSSIP_TOPICS } from '~/network/p2p/protocol';
 
-const MultiaddrLocalHost = '/ip4/127.0.0.1/tcp/0';
+const MultiaddrLocalHost = '/ip4/127.0.0.1/tcp';
 
 interface NodeEvents {
   /**
@@ -66,8 +66,8 @@ export class Node extends TypedEmitter<NodeEvents> {
   /**
    * Creates and Starts the underlying libp2p node. Nodes must be started prior to any network configuration or communication.
    */
-  async start(bootstrapAddrs: Multiaddr[]) {
-    this._node = await createNode();
+  async start(bootstrapAddrs: Multiaddr[], port?: number) {
+    this._node = await createNode(port);
     this.registerListeners();
 
     await this._node.start();
@@ -219,7 +219,7 @@ export class Node extends TypedEmitter<NodeEvents> {
  *
  * @bootstrapAddrs: A list of NodeAddresses to use for bootstrapping over tcp
  */
-const createNode = async () => {
+const createNode = async (port?: number) => {
   const gossip = new GossipSub({
     emitSelf: false,
     allowPublishToZeroPeers: true,
@@ -227,7 +227,7 @@ const createNode = async () => {
 
   const node = await createLibp2p({
     addresses: {
-      listen: [MultiaddrLocalHost],
+      listen: [`${MultiaddrLocalHost}/${port ?? 0}`],
     },
     transports: [new TCP()],
     streamMuxers: [new Mplex()],
