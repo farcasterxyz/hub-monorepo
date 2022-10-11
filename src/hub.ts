@@ -24,8 +24,11 @@ export interface HubOpts {
   /** Addresses to bootstrap the gossip network */
   bootstrapAddrs?: Multiaddr[];
 
-  /** Port for the RPC Client */
+  /** Port for libp2p to listen on */
   port?: number;
+
+  /** Port for the RPC Client */
+  rpcPort?: number;
 
   /** Network URL of the IdRegistry Contract */
   networkUrl?: string;
@@ -118,8 +121,8 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       await this.rocksDB.clear();
     }
 
-    await this.gossipNode.start(this.options.bootstrapAddrs ?? []);
-    await this.rpcServer.start(this.options.port ? this.options.port : 0);
+    await this.gossipNode.start(this.options.bootstrapAddrs ?? [], this.options.port);
+    await this.rpcServer.start(this.options.rpcPort ? this.options.rpcPort : 0);
     this.registerEventHandlers();
 
     // Publishes this Node's information to the gossip network

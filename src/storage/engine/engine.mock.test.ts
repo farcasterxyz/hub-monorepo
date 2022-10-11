@@ -6,35 +6,40 @@ import { mockEvents, MockFCEvent, mockFid, populateEngine } from '~/storage/engi
 const testDb = jestRocksDB('engine.mock.test');
 const engine = new Engine(testDb);
 
-const TEST_TIMEOUT = 2 * 60 * 1000; // 2 min timeout
+const TEST_TIMEOUT_SHORT = 10 * 1000; // 10 sec timeout
+const TEST_TIMEOUT_LONG = 2 * 60 * 1000; // 2 min timeout
 
 beforeEach(async () => {
   await engine._reset();
 });
 
 describe('mock engine events', () => {
-  test('generates a pair of mock events of each type', async () => {
-    const fid = Faker.datatype.number();
-    const user = await mockFid(engine, fid);
-    const users = await engine.getUsers();
-    expect(users.size).toEqual(1);
+  test(
+    'generates a pair of mock events of each type',
+    async () => {
+      const fid = Faker.datatype.number();
+      const user = await mockFid(engine, fid);
+      const users = await engine.getUsers();
+      expect(users.size).toEqual(1);
 
-    await mockEvents(engine, [user], 1, MockFCEvent.Cast);
-    const casts = await engine.getAllCastsByUser(fid);
-    expect(casts.size).toEqual(2);
+      await mockEvents(engine, [user], 1, MockFCEvent.Cast);
+      const casts = await engine.getAllCastsByUser(fid);
+      expect(casts.size).toEqual(2);
 
-    await mockEvents(engine, [user], 1, MockFCEvent.Follow);
-    const follows = await engine.getAllFollowsByUser(fid);
-    expect(follows.size).toEqual(2);
+      await mockEvents(engine, [user], 1, MockFCEvent.Follow);
+      const follows = await engine.getAllFollowsByUser(fid);
+      expect(follows.size).toEqual(2);
 
-    await mockEvents(engine, [user], 1, MockFCEvent.Verification);
-    const verifications = await engine.getAllVerificationsByUser(fid);
-    expect(verifications.size).toEqual(2);
+      await mockEvents(engine, [user], 1, MockFCEvent.Verification);
+      const verifications = await engine.getAllVerificationsByUser(fid);
+      expect(verifications.size).toEqual(2);
 
-    await mockEvents(engine, [user], 1, MockFCEvent.Reaction);
-    const reactions = await engine.getAllReactionsByUser(fid);
-    expect(reactions.size).toEqual(2);
-  });
+      await mockEvents(engine, [user], 1, MockFCEvent.Reaction);
+      const reactions = await engine.getAllReactionsByUser(fid);
+      expect(reactions.size).toEqual(2);
+    },
+    TEST_TIMEOUT_SHORT
+  );
 
   test(
     'populates an engine with selected config',
@@ -59,6 +64,6 @@ describe('mock engine events', () => {
         expect(reactions.size).toEqual(4 * 2);
       }
     },
-    TEST_TIMEOUT
+    TEST_TIMEOUT_LONG
   );
 });
