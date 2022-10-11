@@ -33,6 +33,9 @@ RUN apk update && apk add --no-cache g++ make python3 linux-headers
 USER node
 EXPOSE 8080
 
+# Many npm packages use this to trigger production optimized behaviors
+ENV NODE_ENV production
+
 WORKDIR /home/node/app
 
 # Copy dependency information and install dependencies
