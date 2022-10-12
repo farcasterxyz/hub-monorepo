@@ -16,5 +16,6 @@ module.exports = {
     'no-restricted-imports': ['error', { patterns: ['"*/lib/*"'] }],
     'prettier/prettier': ['error', {}, { usePrettierrc: true }],
     'prefer-arrow-functions/prefer-arrow-functions': 'error',
+    'no-console': 'error',
   },
 };
