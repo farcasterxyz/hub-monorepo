@@ -8,6 +8,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { exit } from 'process';
 import { readFile } from 'fs/promises';
+import { logger } from '~/utils/logger';
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -57,15 +58,28 @@ app
     process.stdin.resume();
 
     process.on('SIGINT', async () => {
+      logger.fatal('SIGINT received');
       await teardown(hub);
     });
 
     process.on('SIGTERM', async () => {
+      logger.fatal('SIGTERM received');
       await teardown(hub);
     });
 
     process.on('SIGQUIT', async () => {
+      logger.fatal('SIGQUIT received');
       await teardown(hub);
+    });
+
+    process.on('uncaughtException', (err) => {
+      logger.fatal(err);
+      process.exit(1);
+    });
+
+    process.on('unhandledRejection', (err) => {
+      logger.fatal(err);
+      process.exit(1);
     });
   });
 
@@ -86,7 +100,7 @@ const createIdCommand = new Command('create')
     } catch (err: any) {
       throw new Error(err);
     }
-    console.log(`Successfully Wrote peerId: ${peerId.toString()} to ${filePath}`);
+    logger.info(`Successfully Wrote peerId: ${peerId.toString()} to ${filePath}`);
     exit(0);
   });
 
@@ -95,7 +109,7 @@ const verifyIdCommand = new Command('verify')
   .option('-I, --id <filepath>', 'Path to the PeerId file', DEFAULT_PEER_ID_LOCATION)
   .action(async (options) => {
     const peerId = await readPeerId(options.id);
-    console.log(`Successfully Read peerId: ${peerId.toString()} from ${options.id}`);
+    logger.info(`Successfully Read peerId: ${peerId.toString()} from ${options.id}`);
     exit(0);
   });
 

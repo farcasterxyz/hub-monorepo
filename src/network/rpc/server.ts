@@ -2,6 +2,7 @@ import { rejects } from 'assert';
 import jayson, { JSONRPCError } from 'jayson/promise';
 import { replacer, reviver, RPCHandler, RPCRequest } from './interfaces';
 import { ServerError } from '~/utils/errors';
+import { logger } from '~/utils/logger';
 
 const VERSION = 0.1;
 
@@ -97,7 +98,7 @@ export class RPCServer {
       try {
         // start the tcp server
         this._tcpServer = this._jsonServer.tcp().listen(port, () => {
-          console.log('RPC server started:', this.tcp?.address());
+          logger.info('RPC server started:', this.tcp?.address());
           resolve();
         });
       } catch (err: any) {
@@ -114,7 +115,7 @@ export class RPCServer {
     return new Promise((resolve, reject) => {
       try {
         this.tcp?.close((err) => {
-          console.log('RPC server stopped');
+          logger.info('RPC server stopped');
           if (err) reject(err);
           else resolve();
         });
