@@ -71,7 +71,6 @@
     "libp2p": "^0.38.0",
     "log-update": "5.0.1",
     "neverthrow": "^5.0.0",
-    "node-fetch": "^3.2.10",
     "rocksdb": "^5.2.1",
     "tiny-typed-emitter": "^2.1.0",
     "tsx": "^3.9.0",
