@@ -3,20 +3,24 @@ import { default as Pino } from 'pino';
 /**
  * Logging Guidelines
  *
+ * 1. Structure logs so that they can be queried easily
  *
- * 1. Use the appropriate level with log.<level> (e.g. logger.info)
+ * Good: logger.info({ component: 'P2PEngine', context: {peerId: peerId.toString()} }, 'connected to peers');
+ * Bad: logger.info('Hub connected to peers over P2P with id', peerId.toString());
  *
- * Fatal - when the application crashes
- * Error - when logging an Error object
- * Warn - when logging something unexpected
- * Info - when logging information (most common use case)
- * Debug - when logging something that is temporarily added in for debugging
- * Trace - not currently used
+ * 2. Use the appropriate level with log.<level> (e.g. logger.info):
  *
+ * logger.fatal() - when the application crashes
+ * logger.error() - when logging an Error object
+ * logger.warn() - when logging something unexpected
+ * logger.info() - when logging information (most common use case)
+ * logger.debug() - when logging something that is temporarily added in for debugging
+ * logger.trace() - not currently used
  *
- * 2. Log the entire Error object when logging an error and only add context via the second string parameter
+ * 3. When logging an error, include the error object as the first argument to preserve stack traces
  *
- * log.error(Error, "additional context")
+ * Good: log.error(error, "additional context")
+ * Bad: log.error("additional context", error.message)
  *
  * More info on best practices:
  * https://betterstack.com/community/guides/logging/how-to-install-setup-and-use-pino-to-log-node-js-applications/
