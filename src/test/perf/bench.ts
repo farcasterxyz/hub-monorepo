@@ -9,6 +9,7 @@ import { Result } from 'neverthrow';
 import { sleep } from '~/utils/crypto';
 import { JSONRPCError } from 'jayson/promise';
 import { isIDRegistryEvent, isMessage } from '~/types/typeguards';
+import { logger } from '~/utils/logger';
 
 /**
  * Farcaster Benchmark Client
@@ -23,7 +24,7 @@ import { isIDRegistryEvent, isMessage } from '~/types/typeguards';
 const post = (msg: string, start: number, stop: number) => {
   const delta = Number((stop - start) / 1000);
   const time = delta.toFixed(3);
-  console.log(`Time ${time}s : ${msg}`);
+  logger.info(`Time ${time}s : ${msg}`);
   return delta;
 };
 
@@ -88,7 +89,7 @@ app
 
 app.parse(process.argv);
 const cliOptions = app.opts();
-console.log(cliOptions, [...Array(cliOptions.users)].length, typeof cliOptions.users);
+logger.info({ options: cliOptions, optionsSize: [...Array(cliOptions.users)].length, type: typeof cliOptions.users });
 const family = isIP(cliOptions.ipAddress);
 if (!family) throw new Error('Invalid Hub Address');
 
@@ -97,11 +98,11 @@ const address: AddressInfo = {
   port: cliOptions.rpcPort,
   family: family == 4 ? 'ip4' : 'ip6',
 };
-console.log(`Using RPC server: ${address.address}/${address.port}`);
+logger.info(`Using RPC server: ${address.address}/${address.port}`);
 const client = new RPCClient(address);
 
 // generate users
-console.log(`Generating IDRegistry events for ${cliOptions.users} users.`);
+logger.info(`Generating IDRegistry events for ${cliOptions.users} users.`);
 const firstUser = Faker.datatype.number();
 const idRegistryEvents: IDRegistryEvent[] = [];
 const signerAddEvents: SignerAdd[] = [];
@@ -124,8 +125,8 @@ const registryResults = await submitInBatches(idRegistryEvents);
 stop = performance.now();
 const idRegistryTime = post('IDRegistry Events submitted', start, stop);
 
-console.log(`${registryResults.success} events submitted successfully. ${registryResults.fail} events failed.`);
-console.log('_Waiting a few seconds for the network to synchronize_');
+logger.info(`${registryResults.success} events submitted successfully. ${registryResults.fail} events failed.`);
+logger.info('_Waiting a few seconds for the network to synchronize_');
 await sleep(10_000);
 
 start = performance.now();
@@ -134,13 +135,13 @@ const signerResults = await submitInBatches(signerAddEvents);
 stop = performance.now();
 const signerAddsTime = post('Signers submitted', start, stop);
 
-console.log(`${signerResults.success} signers submitted successfully. ${signerResults.fail} signers failed.`);
+logger.info(`${signerResults.success} signers submitted successfully. ${signerResults.fail} signers failed.`);
 
-console.log('_Waiting a few seconds for the network to synchronize_');
+logger.info('_Waiting a few seconds for the network to synchronize_');
 await sleep(10_000);
 
 // generate random data for each user
-console.log(`Generating Casts for ${cliOptions.users} users`);
+logger.info(`Generating Casts for ${cliOptions.users} users`);
 start = performance.now();
 const casts = await Promise.all(
   userInfos.map((user) => {
@@ -156,13 +157,13 @@ const castResults = await submitInBatches(casts);
 stop = performance.now();
 post('Casts submitted', start, stop);
 
-console.log(`${castResults.success} Casts submitted successfully. ${castResults.fail} Casts failed.`);
+logger.info(`${castResults.success} Casts submitted successfully. ${castResults.fail} Casts failed.`);
 
-console.log('------------------------------------------');
-console.log('Time \t\t\t\t Task');
-console.log('------------------------------------------');
-console.log(`${accountTime.toFixed(3)}s    \t\t\t Account generation time`);
-console.log(`${idRegistryTime.toFixed(3)}s    \t\t\t IDRegistry Events`);
-console.log(`${signerAddsTime.toFixed(3)}s    \t\t\t Signer Add Messages`);
-console.log(`${castTime.toFixed(3)}s    \t\t\t Cast Messages`);
-console.log(`Total: ${(accountTime + idRegistryTime + signerAddsTime + castTime).toFixed(3)}s`);
+logger.info('------------------------------------------');
+logger.info('Time \t\t\t\t Task');
+logger.info('------------------------------------------');
+logger.info(`${accountTime.toFixed(3)}s    \t\t\t Account generation time`);
+logger.info(`${idRegistryTime.toFixed(3)}s    \t\t\t IDRegistry Events`);
+logger.info(`${signerAddsTime.toFixed(3)}s    \t\t\t Signer Add Messages`);
+logger.info(`${castTime.toFixed(3)}s    \t\t\t Cast Messages`);
+logger.info(`Total: ${(accountTime + idRegistryTime + signerAddsTime + castTime).toFixed(3)}s`);
