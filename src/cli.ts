@@ -58,15 +58,28 @@ app
     process.stdin.resume();
 
     process.on('SIGINT', async () => {
+      logger.fatal('SIGINT received');
       await teardown(hub);
     });
 
     process.on('SIGTERM', async () => {
+      logger.fatal('SIGTERM received');
       await teardown(hub);
     });
 
     process.on('SIGQUIT', async () => {
+      logger.fatal('SIGQUIT received');
       await teardown(hub);
+    });
+
+    process.on('uncaughtException', (err) => {
+      logger.fatal(err);
+      process.exit(1);
+    });
+
+    process.on('unhandledRejection', (err) => {
+      logger.fatal(err);
+      process.exit(1);
     });
   });
 
