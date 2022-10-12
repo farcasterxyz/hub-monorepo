@@ -25,6 +25,7 @@ app
   .option('-N, --network-url <url>', 'ID Registry network URL')
   .option('-A, --id-registry-address <address>', 'ID Registry address')
   .option('-B, --bootstrap-addresses <addresses...>', 'A list of MultiAddrs to use for bootstrapping')
+  .option('--allowed-peers <peerIds...>', 'An "allow list" of Peer Ids. Blocks all other connections')
   .option('--port <port>', 'The port libp2p should listen on. (default: selects one at random')
   .option('--rpc-port <port>', 'The RPC port to use. (default: selects one at random')
   .option('--simple-sync <enabled>', 'Enable/Disable simple sync', true)
@@ -42,6 +43,7 @@ app
       networkUrl: cliOptions.networkUrl,
       IDRegistryAddress: cliOptions.idRegistryAddress,
       bootstrapAddrs: cliOptions.bootstrapAddresses,
+      allowedPeers: cliOptions.allowedPeers,
       port: cliOptions.port,
       rpcPort: cliOptions.rpcPort,
       simpleSync: cliOptions.simpleSync,

@@ -1,4 +1,4 @@
-import { Multiaddr } from '@multiformats/multiaddr/';
+import { multiaddr } from '@multiformats/multiaddr/';
 import { ServerError } from '~/utils/errors';
 import { Factories } from '~/test/factories';
 import { Node } from '~/network/p2p/node';
@@ -58,7 +58,7 @@ describe('node unit tests', () => {
   test('fails to bootstrap to invalid addresses', async () => {
     const node = new Node();
     await expect(() => {
-      return node.start([new Multiaddr()]);
+      return node.start([multiaddr()]);
     }).rejects.toThrow(ServerError);
     // still have to stop it since the underlying libp2p node does start up before bootstrap fails
     await node.stop();
@@ -68,7 +68,7 @@ describe('node unit tests', () => {
     const node = new Node();
     await node.start([]);
 
-    let result = await node.connectAddress(new Multiaddr());
+    let result = await node.connectAddress(multiaddr());
     expect(result.isErr()).toBeTruthy();
 
     const offlineNode = new Node();
@@ -77,6 +77,41 @@ describe('node unit tests', () => {
 
     await node.stop();
   });
+
+  test(
+    'can only dial allowed nodes',
+    async () => {
+      const node1 = new Node();
+      await node1.start([]);
+
+      const node2 = new Node();
+      await node2.start([]);
+
+      // node 3 has node 1 in its allow list, but not node 2
+      const node3 = new Node();
+      if (node1.peerId) {
+        await node3.start([], [node1.peerId.toString()]);
+      } else {
+        throw Error('Node1 not started, no peerId found');
+      }
+
+      try {
+        let dialResult = await node1.connect(node3);
+        expect(dialResult.isOk()).toBeTruthy();
+
+        dialResult = await node2.connect(node3);
+        expect(dialResult.isErr()).toBeTruthy();
+
+        dialResult = await node3.connect(node2);
+        expect(dialResult.isErr()).toBeTruthy();
+      } finally {
+        await node1.stop();
+        await node2.stop();
+        await node3.stop();
+      }
+    },
+    TEST_TIMEOUT_SHORT
+  );
 });
 
 describe('gossip network', () => {

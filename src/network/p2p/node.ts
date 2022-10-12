@@ -11,6 +11,7 @@ import { err, ok, Result } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { FarcasterError, ServerError } from '~/utils/errors';
 import { decodeMessage, encodeMessage, GossipMessage, GOSSIP_TOPICS } from '~/network/p2p/protocol';
+import { ConnectionFilter } from './connectionFilter';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1/tcp';
 
@@ -65,9 +66,14 @@ export class Node extends TypedEmitter<NodeEvents> {
 
   /**
    * Creates and Starts the underlying libp2p node. Nodes must be started prior to any network configuration or communication.
+   *
+   * @param bootstrapAddrs  A list of addresses to bootstrap from. Attempts to connect with each peer in the list
+   * @param allowedPeerIds  A list of addresses to peer with. PeersIds outside of this list will not be able to connect to this node
+   * @param peerId          Optional peerId to use. Generates a new ephemeral PeerId if not specified
+   * @param port            Optional port to use. Picks a port at random if not specified
    */
-  async start(bootstrapAddrs: Multiaddr[], peerId?: PeerId, port?: number) {
-    this._node = await createNode(peerId, port);
+  async start(bootstrapAddrs: Multiaddr[], allowedPeerIds?: string[], peerId?: PeerId, port?: number) {
+    this._node = await this.createNode(peerId, port, allowedPeerIds);
     this.registerListeners();
 
     await this._node.start();
@@ -212,31 +218,37 @@ export class Node extends TypedEmitter<NodeEvents> {
       );
     });
   }
+
+  /**
+   * Creates a Libp2p node with GossipSub
+   */
+  private async createNode(peerId?: PeerId, port?: number, allowedPeerIdStrs?: string[]) {
+    const gossip = new GossipSub({
+      emitSelf: false,
+      allowPublishToZeroPeers: true,
+      globalSignaturePolicy: 'StrictSign',
+    });
+
+    let connectionGater: ConnectionFilter | undefined;
+    if (allowedPeerIdStrs) {
+      console.log(`!!! PEER-ID RESTRICTIONS ENABLED !!!\nAllowed Peers: ${allowedPeerIdStrs}`);
+      connectionGater = new ConnectionFilter(allowedPeerIdStrs);
+    }
+    console.log(connectionGater);
+
+    const node = await createLibp2p({
+      // setting these optional fields to `undefined` throws an error, only set them if they're defined
+      ...(peerId && { peerId }),
+      ...(connectionGater && { connectionGater }),
+      addresses: {
+        listen: [`${MultiaddrLocalHost}/${port ?? 0}`],
+      },
+      transports: [new TCP()],
+      streamMuxers: [new Mplex()],
+      connectionEncryption: [new Noise()],
+      peerDiscovery: [new PubSubPeerDiscovery()],
+      pubsub: gossip,
+    });
+    return node;
+  }
 }
-
-/**
- * Creates a Libp2p node with GossipSub
- *
- * @bootstrapAddrs: A list of NodeAddresses to use for bootstrapping over tcp
- */
-const createNode = async (peerId?: PeerId, port?: number) => {
-  const gossip = new GossipSub({
-    emitSelf: false,
-    allowPublishToZeroPeers: true,
-    globalSignaturePolicy: 'StrictSign',
-  });
-
-  const node = await createLibp2p({
-    // setting peerId to `undefined` throws an error, only set it if it's defined
-    ...(peerId && { peerId }),
-    addresses: {
-      listen: [`${MultiaddrLocalHost}/${port ?? 0}`],
-    },
-    transports: [new TCP()],
-    streamMuxers: [new Mplex()],
-    connectionEncryption: [new Noise()],
-    peerDiscovery: [new PubSubPeerDiscovery()],
-    pubsub: gossip,
-  });
-  return node;
-};
