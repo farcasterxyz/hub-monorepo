@@ -191,7 +191,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     }
 
     if (result.isErr()) {
-      log.error(result.error, { context: { identity: this.identity } }, 'Failed to merge message');
+      log.error(result.error.message, { context: { identity: this.identity } }, 'Failed to merge message');
     }
     return result;
   }
@@ -258,7 +258,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
           const custodyEventResult = await rpcClient.getCustodyEventByUser(user);
           if (custodyEventResult.isErr()) {
             log.error(
-              custodyEventResult.error,
+              custodyEventResult.error.message,
               { context: { function: 'simpleSyncFromPeer', identity: this.identity, fid: user, peer: peer } },
               'Failed to get custody events for Fid',
               user,
@@ -270,7 +270,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
           const signerMessagesResult = await rpcClient.getAllSignerMessagesByUser(user);
           if (signerMessagesResult.isErr()) {
             log.error(
-              signerMessagesResult.error,
+              signerMessagesResult.error.message,
               { context: { function: 'simpleSyncFromPeer', identity: this.identity, fid: user, peer: peer } },
               'Failed to get signer messages events for Fid',
               user,
@@ -315,7 +315,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       },
       async (error) => {
         log.error(
-          error,
+          error.message,
           { context: { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer } },
           'Failed to get users, sync failure...'
         );
@@ -379,7 +379,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     const mergeResult = await this.engine.mergeMessage(message);
     if (mergeResult.isErr()) {
       log.error(
-        mergeResult.error,
+        mergeResult.error.message,
         { context: { function: 'submitMessage', identity: this.identity } },
         'Received invalid message...'
       );
@@ -404,7 +404,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     const mergeResult = await this.engine.mergeIDRegistryEvent(event);
     if (mergeResult.isErr()) {
       log.error(
-        mergeResult.error,
+        mergeResult.error.message,
         { context: { function: 'submitIDRegistryEvent', identity: this.identity } },
         'Received invalid message...'
       );

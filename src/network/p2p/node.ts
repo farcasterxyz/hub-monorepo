@@ -155,7 +155,7 @@ export class Node extends TypedEmitter<NodeEvents> {
           const result = await this._node?.dial(addr);
           // bail after the first successful connection
           if (result) return ok(undefined);
-        } catch (error) {
+        } catch (error: any) {
           log.error(error, { context: { identity: this.identity, addr } }, 'Failed to connect to addr');
           continue;
         }
