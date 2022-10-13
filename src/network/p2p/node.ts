@@ -16,6 +16,8 @@ import { logger } from '~/utils/logger';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1/tcp';
 
+const log = logger.child({ component: 'Node' });
+
 interface NodeEvents {
   /**
    * Triggered when a new message is received. Provides the topic the message was received on
@@ -78,10 +80,13 @@ export class Node extends TypedEmitter<NodeEvents> {
     this.registerListeners();
 
     await this._node.start();
-    logger.info(this.identity, 'Starting libp2p');
-    logger.info('listening on addresses:');
+    log.info(
+      { context: { identity: this.identity, addresses: this._node.getMultiaddrs().map((a) => a.toString()) } },
+      'Starting libp2p'
+    );
+    log.info('listening on addresses:');
     this._node.getMultiaddrs().forEach((addr) => {
-      logger.info(addr.toString());
+      log.info(addr.toString());
     });
 
     await this.bootstrap(bootstrapAddrs);
@@ -110,7 +115,7 @@ export class Node extends TypedEmitter<NodeEvents> {
    */
   async stop() {
     await this._node?.stop();
-    logger.info(this.identity + ': stopped...');
+    log.info({ context: { identity: this.identity } }, 'Stopped libp2p...');
   }
 
   get identity() {
@@ -123,15 +128,15 @@ export class Node extends TypedEmitter<NodeEvents> {
    */
   async publish(message: GossipMessage) {
     const topics = message.topics;
-    logger.debug(this.identity, ': Publishing message to topics: ', topics);
+    log.debug({ context: { identity: this.identity } }, 'Publishing message to topics: ', topics);
     const encodedMessage = encodeMessage(message);
     encodedMessage.match(
       async (msg) => {
         const results = await Promise.all(topics.map((topic) => this.gossip?.publish(topic, msg)));
-        logger.debug(this.identity, ': Published to ' + results.length + ' peers');
+        log.debug({ context: { identity: this.identity } }, 'Published to ' + results.length + ' peers');
       },
       async (err) => {
-        logger.error(this.identity, err, '. Failed to publish message.');
+        log.error(err, { context: { identity: this.identity } }, 'Failed to publish message.');
       }
     );
   }
@@ -151,7 +156,7 @@ export class Node extends TypedEmitter<NodeEvents> {
           // bail after the first successful connection
           if (result) return ok(undefined);
         } catch (error) {
-          logger.error({ identity: this.identity, error, addr }, 'Failed to connect to addr');
+          log.error(error, { context: { identity: this.identity, addr } }, 'Failed to connect to addr');
           continue;
         }
       }
@@ -167,14 +172,19 @@ export class Node extends TypedEmitter<NodeEvents> {
    * @param address The NodeAddress to attempt a connection with
    */
   async connectAddress(address: Multiaddr): Promise<Result<void, FarcasterError>> {
-    logger.debug(this.identity, 'Attempting to connect to address:', address);
+    log.debug({ context: { identity: this.identity, address } }, `Attempting to connect to address ${address}`);
     try {
       const result = await this._node?.dial(address);
       if (result) {
-        logger.info(this.identity, 'Connected to peer at address:', address);
+        log.info({ context: { identity: this.identity, address } }, `Connected to peer at address: ${address}`);
         return ok(undefined);
       }
     } catch (error: any) {
+      log.error(
+        error,
+        { context: { identity: this.identity, address } },
+        `Failed to connect to peer at address: ${address}`
+      );
       return err(new ServerError(error));
     }
     return err(new ServerError('Connection failure: Unable to connect to the given peer address'));
@@ -198,24 +208,26 @@ export class Node extends TypedEmitter<NodeEvents> {
   registerDebugListeners() {
     // Debug
     this._node?.addEventListener('peer:discovery', (event) => {
-      logger.debug(this.identity, ': Found peer: ', event.detail.multiaddrs);
+      log.debug({ context: { identity: this.identity } }, ': Found peer: ', event.detail.multiaddrs);
     });
     this._node?.connectionManager.addEventListener('peer:connect', (event) => {
-      logger.debug(this.identity, ': Connection established to:', event.detail.remotePeer.toString());
+      log.debug(
+        { context: { identity: this.identity } },
+        `Connection established to: ${event.detail.remotePeer.toString()}`
+      );
     });
     this._node?.connectionManager.addEventListener('peer:disconnect', (event) => {
-      logger.debug(this.identity, ': Disconnected from:', event.detail.remotePeer.toString());
+      log.debug({ context: { identity: this.identity } }, `Disconnected from: ${event.detail.remotePeer.toString()}`);
     });
     this.gossip?.addEventListener('message', (event) => {
-      logger.debug(this.identity, ': Received message for topic:', event.detail.topic);
+      log.debug({ context: { identity: this.identity } }, `Received message for topic: ${event.detail.topic}`);
     });
     this.gossip?.addEventListener('subscription-change', (event) => {
-      logger.debug(
-        this.identity,
-        ': Subscription change:',
-        event.detail.subscriptions.map((value) => {
+      log.debug(
+        { context: { identity: this.identity } },
+        `Subscription change: ${event.detail.subscriptions.map((value) => {
           value.topic;
-        })
+        })}`
       );
     });
   }
@@ -232,10 +244,12 @@ export class Node extends TypedEmitter<NodeEvents> {
 
     let connectionGater: ConnectionFilter | undefined;
     if (allowedPeerIdStrs) {
-      logger.info(`!!! PEER-ID RESTRICTIONS ENABLED !!!\nAllowed Peers: ${allowedPeerIdStrs}`);
+      log.info(
+        { context: { identity: this.identity, function: 'createNode', allowedPeerIdStrs } },
+        `!!! PEER-ID RESTRICTIONS ENABLED !!!\nAllowed Peers: ${allowedPeerIdStrs}`
+      );
       connectionGater = new ConnectionFilter(allowedPeerIdStrs);
     }
-    logger.info(connectionGater);
 
     const node = await createLibp2p({
       // setting these optional fields to `undefined` throws an error, only set them if they're defined
