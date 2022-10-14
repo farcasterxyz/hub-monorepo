@@ -25,4 +25,7 @@ coverage/
 # Databases
 .level/
 .rocks/
-.hub/
+
+# Config
+.hub/*
+!.hub/start.config.ts
