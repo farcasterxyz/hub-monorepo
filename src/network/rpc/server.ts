@@ -5,6 +5,7 @@ import { ServerError } from '~/utils/errors';
 import { logger } from '~/utils/logger';
 
 const VERSION = 0.1;
+const log = logger.child({ component: 'RPCServer' });
 
 const serverOpts = {
   version: VERSION,
@@ -98,7 +99,7 @@ export class RPCServer {
       try {
         // start the tcp server
         this._tcpServer = this._jsonServer.tcp().listen(port, () => {
-          logger.info('RPC server started:', this.tcp?.address());
+          log.info({ address: this.tcp?.address(), function: 'start' }, 'RPC server started');
           resolve();
         });
       } catch (err: any) {
@@ -115,7 +116,7 @@ export class RPCServer {
     return new Promise((resolve, reject) => {
       try {
         this.tcp?.close((err) => {
-          logger.info('RPC server stopped');
+          log.info({ function: 'stop' }, `RPC server stopped}`);
           if (err) reject(err);
           else resolve();
         });
