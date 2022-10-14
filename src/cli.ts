@@ -3,16 +3,20 @@
 import { Command } from 'commander';
 import { Hub, HubOpts } from '~/hub';
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from '@libp2p/peer-id-factory';
-import { dirname } from 'path';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { exit } from 'process';
 import { readFile } from 'fs/promises';
 import { logger } from '~/utils/logger';
+import { dirname, resolve } from 'path';
+import { PeerId } from '@libp2p/interface-peer-id';
 
 /** A CLI to accept options from the user and start the Hub */
 
-const DEFAULT_PEER_ID_LOCATION = './.hub/id.protobuf';
+const PEER_ID_FILENAME = 'id.protobuf';
+const DEFAULT_PEER_ID_DIR = './.hub';
+const DEFAULT_PEER_ID_FILENAME = `default_${PEER_ID_FILENAME}`;
+const DEFAULT_PEER_ID_LOCATION = `${DEFAULT_PEER_ID_DIR}/${DEFAULT_PEER_ID_FILENAME}`;
 
 const app = new Command();
 app
@@ -83,24 +87,46 @@ app
     });
   });
 
-const createIdCommand = new Command('create')
-  .description('Create a new peerId and write it to a file')
-  .option('-I, --id <filepath>', 'Path to the PeerId file', DEFAULT_PEER_ID_LOCATION)
-  .action(async (options) => {
-    // create a new peerId and output it to a file
-    const peerId = await createEd25519PeerId();
-    const filePath = options.id;
-    const proto = exportToProtobuf(peerId);
-    try {
-      const directory = dirname(filePath);
-      if (!existsSync(directory)) {
-        await mkdir(directory, { recursive: true });
-      }
-      await writeFile(filePath, proto, 'binary');
-    } catch (err: any) {
-      throw new Error(err);
+const parseNumber = (string: string) => {
+  const number = Number(string);
+  if (isNaN(number)) throw new Error('Not a number.');
+  return number;
+};
+
+/** Write a given PeerId to a file */
+const writePeerId = async (peerId: PeerId, filepath: string) => {
+  const directory = dirname(filepath);
+  const proto = exportToProtobuf(peerId);
+  try {
+    if (!existsSync(directory)) {
+      await mkdir(directory, { recursive: true });
     }
-    logger.info(`Successfully Wrote peerId: ${peerId.toString()} to ${filePath}`);
+    await writeFile(filepath, proto, 'binary');
+  } catch (err: any) {
+    throw new Error(err);
+  }
+  logger.info(`Wrote peerId: ${peerId.toString()} to ${filepath}`);
+};
+
+const createIdCommand = new Command('create')
+  .description(
+    'Create a new peerId and write it to a file.\n\nNote: This command will always overwrite the default PeerId file.'
+  )
+  .option('-O, --output <directory>', 'Path to where the generated PeerId/s should be stored', DEFAULT_PEER_ID_DIR)
+  .option('-N, --count <number>', 'Number of PeerIds to generate', parseNumber, 1)
+  .action(async (options) => {
+    for (let i = 0; i < options.count; i++) {
+      const peerId = await createEd25519PeerId();
+
+      if (i == 0) {
+        // Create a copy of the first peerId as the default one to use
+        await writePeerId(peerId, resolve(`${options.output}/${DEFAULT_PEER_ID_FILENAME}`));
+      }
+
+      const path = `${options.output}/${peerId.toString()}_${PEER_ID_FILENAME}`;
+      await writePeerId(peerId, resolve(path));
+    }
+
     exit(0);
   });
 
