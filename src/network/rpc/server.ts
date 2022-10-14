@@ -99,10 +99,7 @@ export class RPCServer {
       try {
         // start the tcp server
         this._tcpServer = this._jsonServer.tcp().listen(port, () => {
-          log.info(
-            { context: { address: this.tcp?.address(), function: 'start' } },
-            `RPC server started: ${this.tcp?.address()}`
-          );
+          log.info({ address: this.tcp?.address(), function: 'start' }, 'RPC server started');
           resolve();
         });
       } catch (err: any) {
@@ -119,7 +116,7 @@ export class RPCServer {
     return new Promise((resolve, reject) => {
       try {
         this.tcp?.close((err) => {
-          log.info({ context: { function: 'stop' } }, `RPC server stopped}`);
+          log.info({ function: 'stop' }, `RPC server stopped}`);
           if (err) reject(err);
           else resolve();
         });

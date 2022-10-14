@@ -3,12 +3,16 @@ import { default as Pino } from 'pino';
 /**
  * Logging Guidelines
  *
- * 1. Structure logs so that they can be queried easily
+ * 1. Use a child instance per module
  *
- * Good: logger.info({ component: 'P2PEngine', context: {peerId: peerId.toString()} }, 'connected to peers');
- * Bad: logger.info('Hub connected to peers over P2P with id', peerId.toString());
+ * const log = logger.child({ component: 'P2PEngine' })
  *
- * 2. Use the appropriate level with log.<level> (e.g. logger.info):
+ * 2. Structure logs so that they can be queried easily
+ *
+ * Good: log.info({ function: 'PerformSync', peerId: peerId.toString() }, 'connected to peers');
+ * Bad: log.info('Hub connected to peers over P2P with id', peerId.toString());
+ *
+ * 3. Use the appropriate level with log.<level> (e.g. logger.info):
  *
  * logger.fatal() - when the application crashes
  * logger.error() - when logging an Error object

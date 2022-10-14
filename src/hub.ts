@@ -184,14 +184,14 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       // TODO: Maybe we need a ContactInfo CRDT?
       // Check if we need sync and if we do, use this peer do it.
       if (this.syncState == SimpleSyncState.Pending) {
-        log.info({ context: { identity: this.identity } }, 'Received a Contact Info for Sync');
+        log.info({ identity: this.identity }, 'Received a Contact Info for Sync');
         await this.simpleSyncFromPeer(gossipMessage.content as ContactInfoContent);
       }
       result = ok(undefined);
     }
 
     if (result.isErr()) {
-      log.error(result.error.message, { context: { identity: this.identity } }, 'Failed to merge message');
+      log.error(result.error, 'Failed to merge message');
     }
     return result;
   }
@@ -202,9 +202,8 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
 
     this.emit('syncStart');
     log.info(
-      { context: { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer } },
-      'Attempting to sync from Peer',
-      peer
+      { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer },
+      `Attempting to sync from Peer: ${peer}`
     );
     /*
      * Find the peer's addrs from our peer list because we cannot use the address
@@ -220,9 +219,8 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     });
     if (!peerId) {
       log.info(
-        { context: { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer } },
-        'Failed to find peer matching contact info',
-        peer
+        { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer },
+        `Failed to find peer matching contact info for Peer: ${peer}`
       );
       this.emit('syncComplete', false);
       return;
@@ -230,9 +228,8 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     const peerAddress = await this.gossipNode.getPeerAddress(peerId);
     if (!peerAddress) {
       log.info(
-        { context: { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer } },
-        'Failed to find peer address to request simple sync',
-        peer
+        { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer },
+        `Failed to find peer address to request simple sync from Peer: ${peer}`
       );
 
       this.emit('syncComplete', false);
@@ -257,24 +254,15 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
           // get the signer messages first so we can prepare to ingest the remaining messages later
           const custodyEventResult = await rpcClient.getCustodyEventByUser(user);
           if (custodyEventResult.isErr()) {
-            log.error(
-              custodyEventResult.error.message,
-              { context: { function: 'simpleSyncFromPeer', identity: this.identity, fid: user, peer: peer } },
-              'Failed to get custody events for Fid',
-              user,
-              'Cannot sync user...'
-            );
+            log.error(custodyEventResult.error, `Failed to get custody events for Fid:${user}. Cannot sync user...`);
             continue;
           }
           await this.engine.mergeIDRegistryEvent(custodyEventResult._unsafeUnwrap());
           const signerMessagesResult = await rpcClient.getAllSignerMessagesByUser(user);
           if (signerMessagesResult.isErr()) {
             log.error(
-              signerMessagesResult.error.message,
-              { context: { function: 'simpleSyncFromPeer', identity: this.identity, fid: user, peer: peer } },
-              'Failed to get signer messages events for Fid',
-              user,
-              'Cannot sync user...'
+              signerMessagesResult.error,
+              `Failed to get signer messages events for Fid:${user}. Cannot sync user...`
             );
             continue;
           }
@@ -308,20 +296,16 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
             result.isErr() ? fail++ : success++;
           });
           log.info(
-            { context: { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer } },
+            { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer },
             `Sync Progress(Fid: ${user}): Merged: ${success} messages and failed ${fail} messages`
           );
         }
       },
       async (error) => {
-        log.error(
-          error.message,
-          { context: { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer } },
-          'Failed to get users, sync failure...'
-        );
+        log.error(error, 'Sync failure: Failed to get users');
       }
     );
-    log.info({ context: { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer } }, 'Sync completed');
+    log.info({ function: 'simpleSyncFromPeer', identity: this.identity, peer: peer }, 'Sync completed');
     this.emit('syncComplete', true);
     this.syncState = SimpleSyncState.Complete;
   }
@@ -337,11 +321,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
           await this.handleGossipMessage(gossipMessage);
         },
         async (error) => {
-          log.error(
-            error,
-            { context: { function: 'onGossipMessage', identity: this.identity } },
-            'Received a message but failed to decode it'
-          );
+          log.error(error, 'Received a message but failed to decode it');
         }
       );
     });
@@ -378,11 +358,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     // push this message into the engine
     const mergeResult = await this.engine.mergeMessage(message);
     if (mergeResult.isErr()) {
-      log.error(
-        mergeResult.error.message,
-        { context: { function: 'submitMessage', identity: this.identity } },
-        'Received invalid message...'
-      );
+      log.error(mergeResult.error, 'Received invalid message...');
       return mergeResult;
     }
 
@@ -403,11 +379,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     // push this message into the engine
     const mergeResult = await this.engine.mergeIDRegistryEvent(event);
     if (mergeResult.isErr()) {
-      log.error(
-        mergeResult.error.message,
-        { context: { function: 'submitIDRegistryEvent', identity: this.identity } },
-        'Received invalid message...'
-      );
+      log.error(mergeResult.error, 'Received invalid message...');
       return mergeResult;
     }
 
