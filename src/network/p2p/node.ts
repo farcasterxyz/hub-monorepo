@@ -5,7 +5,7 @@ import { PeerId } from '@libp2p/interface-peer-id';
 import { Mplex } from '@libp2p/mplex';
 import { PubSubPeerDiscovery } from '@libp2p/pubsub-peer-discovery';
 import { TCP } from '@libp2p/tcp';
-import { Multiaddr } from '@multiformats/multiaddr';
+import { multiaddr, Multiaddr } from '@multiformats/multiaddr';
 import { createLibp2p, Libp2p } from 'libp2p';
 import { err, ok, Result } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
@@ -14,7 +14,7 @@ import { decodeMessage, encodeMessage, GossipMessage, GOSSIP_TOPICS } from '~/ne
 import { ConnectionFilter } from './connectionFilter';
 import { logger } from '~/utils/logger';
 
-const MultiaddrLocalHost = '/ip4/127.0.0.1/tcp';
+const MultiaddrLocalHost = '/ip4/127.0.0.1';
 
 const log = logger.child({ component: 'Node' });
 
@@ -28,6 +28,18 @@ interface NodeEvents {
   peerConnect: (connection: Connection) => void;
   /** Triggered when a peer is disconnected. Provides the Libp2p Connecion object. */
   peerDisconnect: (connection: Connection) => void;
+}
+
+/** Node create options */
+interface StartOptions {
+  /** PeerId to use as the Node's Identity. Generates a new ephemeral PeerId if not specified*/
+  peerId?: PeerId | undefined;
+  /** IP address in MultiAddr format to bind to */
+  IPMultiAddr?: string | undefined;
+  /** Port to bind to. Picks a port at random if not specified. This is combined with the IPMultiAddr */
+  port?: number | undefined;
+  /** A list of addresses to peer with. PeersIds outside of this list will not be able to connect to this node */
+  allowedPeerIdStrs?: string[] | undefined;
 }
 
 /**
@@ -71,12 +83,10 @@ export class Node extends TypedEmitter<NodeEvents> {
    * Creates and Starts the underlying libp2p node. Nodes must be started prior to any network configuration or communication.
    *
    * @param bootstrapAddrs  A list of addresses to bootstrap from. Attempts to connect with each peer in the list
-   * @param allowedPeerIds  A list of addresses to peer with. PeersIds outside of this list will not be able to connect to this node
-   * @param peerId          Optional peerId to use. Generates a new ephemeral PeerId if not specified
-   * @param port            Optional port to use. Picks a port at random if not specified
+   * @param startOptions    Options to configure the node's behavior
    */
-  async start(bootstrapAddrs: Multiaddr[], allowedPeerIds?: string[], peerId?: PeerId, port?: number) {
-    this._node = await this.createNode(peerId, port, allowedPeerIds);
+  async start(bootstrapAddrs: Multiaddr[], startOptions?: StartOptions) {
+    this._node = await this.createNode(startOptions ?? {});
     this.registerListeners();
 
     await this._node.start();
@@ -225,10 +235,60 @@ export class Node extends TypedEmitter<NodeEvents> {
     });
   }
 
+  /** Parses an address to verify it is actually a valid MultiAddr */
+  private parseAddress(multiaddrStr: string): Result<Multiaddr, FarcasterError> {
+    try {
+      return ok(multiaddr(multiaddrStr));
+    } catch (error: any) {
+      return err(new ServerError('Invalid MultiAddr: ' + error.message));
+    }
+  }
+
+  /** Checks that the IP address to bind to is valid and that the combined IP, transport, and port multiaddr is valid  */
+  private checkAddrs(listenIPAddr: string, listenCombinedAddr: string) {
+    // check that the provided IP addr is a valid multiaddr format
+    let parsedAddr = this.parseAddress(listenIPAddr);
+    parsedAddr.match(
+      (addr) => {
+        if (!addr) throw new Error('Invalid IP MultiAddr. Unable to create p2p Node');
+        let options;
+        try {
+          options = addr.toOptions();
+        } catch (error) {
+          return;
+          // intentional no-op since the IP MultiAddr is not expected to have port or transport information
+        }
+        if (options.port !== undefined || options.transport !== undefined)
+          throw new ServerError('Invalid IP MultiAddr: unexpected transport/port information');
+      },
+      (error) => {
+        throw error;
+      }
+    );
+
+    // check that the combined address is actually valid
+    parsedAddr = this.parseAddress(listenCombinedAddr);
+    parsedAddr.match(
+      (addr) => {
+        if (!addr) throw new Error('Invalid Node MultiAddr. Unable to create p2p Node');
+        const options = addr.toOptions();
+        if (options.transport != 'tcp') throw new ServerError('Invalid Node MultiAddr: transport must be tcp');
+      },
+      (error) => {
+        throw error;
+      }
+    );
+  }
+
   /**
    * Creates a Libp2p node with GossipSub
    */
-  private async createNode(peerId?: PeerId, port?: number, allowedPeerIdStrs?: string[]) {
+  private async createNode(options: StartOptions) {
+    const listenIPMultiAddr = options.IPMultiAddr ?? MultiaddrLocalHost;
+    const listenPort = options.port ?? 0;
+    const listenMultiAddrStr = `${listenIPMultiAddr}/tcp/${listenPort}`;
+    this.checkAddrs(listenIPMultiAddr, listenMultiAddrStr);
+
     const gossip = new GossipSub({
       emitSelf: false,
       allowPublishToZeroPeers: true,
@@ -236,20 +296,20 @@ export class Node extends TypedEmitter<NodeEvents> {
     });
 
     let connectionGater: ConnectionFilter | undefined;
-    if (allowedPeerIdStrs) {
+    if (options.allowedPeerIdStrs) {
       log.info(
-        { identity: this.identity, function: 'createNode', allowedPeerIdStrs },
-        `!!! PEER-ID RESTRICTIONS ENABLED !!!\nAllowed Peers: ${allowedPeerIdStrs}`
+        { identity: this.identity, function: 'createNode', allowedPeerIds: options.allowedPeerIdStrs },
+        `!!! PEER-ID RESTRICTIONS ENABLED !!!\nAllowed Peers: ${options.allowedPeerIdStrs}`
       );
-      connectionGater = new ConnectionFilter(allowedPeerIdStrs);
+      connectionGater = new ConnectionFilter(options.allowedPeerIdStrs);
     }
 
     const node = await createLibp2p({
       // setting these optional fields to `undefined` throws an error, only set them if they're defined
-      ...(peerId && { peerId }),
+      ...(options.peerId && { peerId: options.peerId }),
       ...(connectionGater && { connectionGater }),
       addresses: {
-        listen: [`${MultiaddrLocalHost}/${port ?? 0}`],
+        listen: [listenMultiAddrStr],
       },
       transports: [new TCP()],
       streamMuxers: [new Mplex()],

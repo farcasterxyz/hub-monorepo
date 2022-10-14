@@ -22,7 +22,7 @@ import { FarcasterError, ServerError } from '~/utils/errors';
 import { SyncEngine } from '~/network/sync/syncEngine';
 import { logger } from '~/utils/logger';
 
-export interface HubOpts {
+export interface HubOptions {
   /** The PeerId of this Hub */
   peerId?: PeerId;
 
@@ -31,6 +31,9 @@ export interface HubOpts {
 
   /** A list of PeerId strings to allow connections with */
   allowedPeers?: string[];
+
+  /** IP address string in MultiAddr format to bind to */
+  IPMultiAddr?: string;
 
   /** Port for libp2p to listen on */
   port?: number;
@@ -84,7 +87,7 @@ const log = logger.child({
 });
 
 export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
-  private options: HubOpts;
+  private options: HubOptions;
   private gossipNode: Node;
   private rpcServer: RPCServer;
   private syncState: SimpleSyncState;
@@ -94,7 +97,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
 
   engine: Engine;
 
-  constructor(options: HubOpts) {
+  constructor(options: HubOptions) {
     super();
     this.options = options;
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
@@ -133,12 +136,12 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       await this.rocksDB.clear();
     }
 
-    await this.gossipNode.start(
-      this.options.bootstrapAddrs ?? [],
-      this.options.allowedPeers,
-      this.options.peerId,
-      this.options.port
-    );
+    await this.gossipNode.start(this.options.bootstrapAddrs ?? [], {
+      peerId: this.options.peerId,
+      IPMultiAddr: this.options.IPMultiAddr,
+      port: this.options.port,
+      allowedPeerIdStrs: this.options.allowedPeers,
+    });
     await this.rpcServer.start(this.options.rpcPort ? this.options.rpcPort : 0);
     this.registerEventHandlers();
 

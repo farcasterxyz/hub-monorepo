@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { Hub, HubOpts } from '~/hub';
+import { Hub, HubOptions } from '~/hub';
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from '@libp2p/peer-id-factory';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
@@ -31,8 +31,9 @@ app
   .option('-A, --id-registry-address <address>', 'ID Registry address')
   .option('-B, --bootstrap-addresses <addresses...>', 'A list of MultiAddrs to use for bootstrapping')
   .option('--allowed-peers <peerIds...>', 'An "allow list" of Peer Ids. Blocks all other connections')
-  .option('--port <port>', 'The port libp2p should listen on. (default: selects one at random')
-  .option('--rpc-port <port>', 'The RPC port to use. (default: selects one at random')
+  .option('--ip <ip-multiaddr>', 'The IP Multi Address libp2p should listen on. (default: "/ip4/127.0.0.1/")')
+  .option('--port <port>', 'The TCP port libp2p should listen on. (default: selects one at random)')
+  .option('--rpc-port <port>', 'The RPC port to use. (default: selects one at random)')
   .option('--simple-sync <enabled>', 'Enable/Disable simple sync', true)
   .option('--db-reset', 'Clear the database before starting', false)
   .option('--db-name <name>', 'The name of the RocksDB instance', 'rocks.hub._default')
@@ -43,12 +44,13 @@ app
       process.exit();
     };
 
-    const options: HubOpts = {
+    const options: HubOptions = {
       peerId: await readPeerId(cliOptions.id),
       networkUrl: cliOptions.networkUrl,
       IDRegistryAddress: cliOptions.idRegistryAddress,
       bootstrapAddrs: cliOptions.bootstrapAddresses,
       allowedPeers: cliOptions.allowedPeers,
+      IPMultiAddr: cliOptions.ip,
       port: cliOptions.port,
       rpcPort: cliOptions.rpcPort,
       simpleSync: cliOptions.simpleSync,
