@@ -50,4 +50,7 @@ COPY --chown=node:node --from=build /home/node/app/build ./build
 # since we should be able to run with just the compiled javascript in build/
 COPY --chown=node:node --from=build /home/node/app/src ./src
 
-CMD [ "tsx", "src/cli.ts start --rpc-port 8080 --port 9090" ]
+# TODO: load identity from some secure store instead of generating a new one
+RUN yarn identity create
+
+CMD ["yarn", "tsx", "src/cli.ts", "start", "--rpc-port", "8080", "--port", "9090" ]
