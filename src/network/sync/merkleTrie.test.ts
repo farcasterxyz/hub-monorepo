@@ -88,4 +88,62 @@ describe('MerkleTrie', () => {
     expect(firstTrie.items).toEqual(secondTrie.items);
     expect(firstTrie.items).toEqual(25);
   });
+
+  test('snapshots', async () => {
+    const message1 = await Factories.CastShort.create({ data: { signedAt: 1665182332000 } });
+    const syncId1 = new SyncId(message1);
+    // 11 seconds later
+    const message2 = await Factories.CastShort.create({ data: { signedAt: 1665182343000 } });
+    const syncId2 = new SyncId(message2);
+
+    const trie = new MerkleTrie();
+    trie.insert(syncId1);
+    trie.insert(syncId2);
+
+    const snapshot = trie.getSnapshot('1665182343');
+    expect(snapshot.prefix).toEqual('1665182343');
+    expect(snapshot.numMessages).toEqual(1);
+    expect(snapshot.excludedHashes.length).toEqual('1665182343'.length);
+  });
+
+  test('trie compare', async () => {
+    const minDate = new Date(2022, 0, 1);
+    const maxDate = new Date(2022, 0, 1, 0, 10, 0);
+    const messages = await Factories.CastShort.createList(25, undefined, {
+      transient: { minDate: minDate, maxDate: maxDate },
+    });
+    const firstTrie = new MerkleTrie();
+    const secondTrie = new MerkleTrie();
+    messages.forEach((message) => {
+      const id = new SyncId(message);
+      firstTrie.insert(id);
+      secondTrie.insert(id);
+    });
+
+    // 150 seconds before max date
+    const differingMessage = await Factories.CastShort.create({ data: { signedAt: maxDate.getTime() - 1 * 1000 } });
+    firstTrie.insert(new SyncId(differingMessage));
+    const prefix = Math.floor(maxDate.getTime() / 10000).toString();
+    const firstSnapshot = firstTrie.getSnapshot(prefix);
+    const secondSnapshot = secondTrie.getSnapshot(prefix);
+
+    // const divergenceMetadata = firstTrie.getDivergenceMetadata(prefix, secondSnapshot.excludedHashes);
+    // console.log(`Differing id: ${differingMessage.hash}`);
+    // console.log(`divergenceMetadata: ${divergenceMetadata.prefix}`);
+    // console.log(`First trie: ${[...(firstTrie.root.getNode(divergenceMetadata.prefix)?.childHashes || [])]}`);
+    // console.log(`Second trie: ${[...(secondTrie.root.getNode(divergenceMetadata.prefix)?.childHashes || [])]}`);
+
+    // const secondNode = secondTrie.root.getNode(divergenceMetadata.prefix);
+    // const secondHashes = secondNode?.childHashes || new Map();
+    // divergenceMetadata.childHashes.forEach((hash, char) => {
+    //   if (secondHashes.get(char) !== hash) {
+    //     console.log(`Mismatch at ${char}`);
+    //     console.log(`First Node ${firstTrie.root.getNode(divergenceMetadata.prefix + char)?.getAllValues()}`);
+    //     console.log(`Second Node ${secondTrie.root.getNode(divergenceMetadata.prefix + char)?.getAllValues()}`);
+    //   }
+    // });
+    expect(firstSnapshot.prefix).toEqual(secondSnapshot.prefix);
+    expect(firstSnapshot.numMessages).toEqual(secondSnapshot.numMessages + 1);
+    expect(firstSnapshot.excludedHashes).not.toEqual(secondSnapshot.excludedHashes);
+  });
 });

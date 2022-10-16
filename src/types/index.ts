@@ -308,6 +308,8 @@ export enum SignatureAlgorithm {
 
 /** MessageFactoryTransientParams is the generic transient params type for message factories */
 export type MessageFactoryTransientParams = {
+  minDate?: Date;
+  maxDate?: Date;
   signer?: MessageSigner;
 };
 

@@ -1,6 +1,17 @@
 import { createHash } from 'crypto';
 import { ID_LENGTH, SyncId } from '~/network/sync/syncId';
 
+export type TrieSnapshot = {
+  prefix: string;
+  excludedHashes: string[];
+  numMessages: number;
+};
+
+export type DivergenceMetadata = {
+  prefix: string;
+  childHashes: Map<string, string>;
+};
+
 /**
  * Represents a MerkleTrie. It's conceptually very similar to a Merkle Patricia Tree (see
  * https://ethereum.org/en/developers/docs/data-structures-and-encoding/patricia-merkle-trie/).
@@ -20,6 +31,24 @@ class MerkleTrie {
 
   public get(id: SyncId): string | undefined {
     return this._root.get(id.toString());
+  }
+
+  public getSnapshot(prefix: string): TrieSnapshot {
+    return this._root.getSnapshot(prefix);
+  }
+
+  public getDivergenceMetadata(prefix: string, excludedHashes: string[]): DivergenceMetadata {
+    const ourExcludedHashes = this.getSnapshot(prefix).excludedHashes;
+    let divergencePrefix = prefix;
+    for (let i = 0; i < prefix.length; i++) {
+      if (ourExcludedHashes[i] !== excludedHashes[i]) {
+        divergencePrefix = prefix.slice(0, i);
+        break;
+      }
+    }
+    const childHashes = this._root.getNode(divergencePrefix)?.childHashes || new Map();
+
+    return { prefix: divergencePrefix, childHashes: childHashes };
   }
 
   public get root(): TrieNode {
@@ -100,6 +129,39 @@ class TrieNode {
     return this._children.get(char)?.get(key.slice(1));
   }
 
+  public getSnapshot(prefix: string, current_index = 0): TrieSnapshot {
+    const char = prefix[current_index];
+    if (current_index === prefix.length - 1) {
+      const excludedHash = this._excludedHash(char);
+      return {
+        prefix: prefix,
+        excludedHashes: [excludedHash.hash],
+        numMessages: excludedHash.items,
+      };
+    }
+
+    const innerSnapshot = this._children.get(char)?.getSnapshot(prefix, current_index + 1);
+    const excludedHash = this._excludedHash(char);
+    return {
+      prefix: prefix,
+      excludedHashes: [excludedHash.hash, ...(innerSnapshot?.excludedHashes || [])],
+      numMessages: excludedHash.items + (innerSnapshot?.numMessages || 0),
+    };
+  }
+
+  private _excludedHash(char: string): { items: number; hash: string } {
+    // TODO: Cache this for performance
+    const hash = createHash('sha256');
+    let excludedItems = 0;
+    this._children.forEach((child, key) => {
+      if (key !== char) {
+        hash.update(child.hash);
+        excludedItems += child.items;
+      }
+    });
+    return { hash: hash.digest('hex'), items: excludedItems };
+  }
+
   private _addChild(char: string, value: string | undefined = undefined) {
     this._children.set(char, new TrieNode(value));
     // The hash requires the children to be sorted, and sorting on insert/update is cheaper than
@@ -140,6 +202,36 @@ class TrieNode {
       return this._value;
     }
     return undefined;
+  }
+
+  public getNode(prefix: string): TrieNode | undefined {
+    if (prefix.length === 0) {
+      return this;
+    }
+    const char = prefix[0];
+    if (!this._children.has(char)) {
+      return undefined;
+    }
+    return this._children.get(char)?.getNode(prefix.slice(1));
+  }
+
+  public get childHashes(): Map<string, string> {
+    const hashes = new Map();
+    this._children.forEach((child, key) => {
+      hashes.set(key, child.hash);
+    });
+    return hashes;
+  }
+
+  public getAllValues(): string[] {
+    if (this.isLeaf) {
+      return this._value ? [this._value] : [];
+    }
+    const values: string[] = [];
+    this._children.forEach((child) => {
+      values.push(...child.getAllValues());
+    });
+    return values;
   }
 }
 
