@@ -10,6 +10,7 @@ import { readFile } from 'fs/promises';
 import { logger } from '~/utils/logger';
 import { dirname, resolve } from 'path';
 import { PeerId } from '@libp2p/interface-peer-id';
+import { getAddressInfo, ipMultiAddrStrFromAddressInfo } from './utils/p2p';
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -33,8 +34,8 @@ app
   .option('-f, --fir-address <address>', 'The address of the FIR contract')
   .option('-b, --bootstrap <ip-multiaddrs...>', 'A list of peer multiaddrs to bootstrap libp2p')
   .option('-a, --allowed-peers <peerIds...>', 'An allow-list of peer ids permitted to connect to the hub')
-  .option('--multiaddr <ip-multiaddr>', 'The IP multiaddr libp2p should listen on. (default: "/ip4/127.0.0.1/")')
-  .option('-g, --gossip-port <port>', 'The tcp port libp2p should gossip over. (default: selects one at random)')
+  .option('--ip <ip-address>', 'The IP address libp2p should listen on. (default: "127.0.0.1")')
+  .option('-g, --gossip-port <port>', 'The tcp port libp2p should gossip over. (default: random port)')
   .option('-r, --rpc-port <port>', 'The tcp port that the rpc server should listen on.  (default: random port)')
   .option('--simple-sync <enabled>', 'Toggle simple sync')
   .option('--db-name <name>', 'The name of the RocksDB instance')
@@ -56,14 +57,20 @@ app
       peerId = await readPeerId(resolve(hubConfig.id));
     }
 
+    const hubAddressInfo = getAddressInfo(cliOptions.ip ?? hubConfig.ip, cliOptions.gossipPort ?? hubConfig.gossipPort);
+    if (hubAddressInfo.isErr()) {
+      throw hubAddressInfo.error;
+    }
+    const ipMultiAddr = ipMultiAddrStrFromAddressInfo(hubAddressInfo.value);
+
     const options: HubOptions = {
       peerId,
+      ipMultiAddr,
+      gossipPort: hubAddressInfo.value.port,
       networkUrl: cliOptions.networkUrl ?? hubConfig.networkUrl,
       IdRegistryAddress: cliOptions.firAddress ?? hubConfig.firAddress,
       bootstrapAddrs: cliOptions.bootstrap ?? hubConfig.bootstrap,
       allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,
-      IpMultiAddr: cliOptions.multiaddr ?? hubConfig.multiaddr,
-      gossipPort: cliOptions.gossipPort ?? hubConfig.gossipPort,
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort,
       simpleSync: cliOptions.simpleSync ?? hubConfig.simpleSync,
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,

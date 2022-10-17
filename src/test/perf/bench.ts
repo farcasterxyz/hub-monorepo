@@ -10,6 +10,7 @@ import { sleep } from '~/utils/crypto';
 import { JSONRPCError } from 'jayson/promise';
 import { isIdRegistryEvent, isMessage } from '~/types/typeguards';
 import { logger } from '~/utils/logger';
+import { getAddressInfo } from '~/utils/p2p';
 
 /**
  * Farcaster Benchmark Client
@@ -83,23 +84,18 @@ app
   .version(process.env.npm_package_version ?? '1.0.0');
 
 app
-  .requiredOption('-A, --ip-address <address>', 'The IP address of a Hub to submit messages to')
-  .requiredOption('-R, --rpc-port <port>', 'The RPC port of the Hub')
+  .requiredOption('-a, --multiaddr <multiaddr>', 'The IP multiaddr of the Hub to submit messages to')
+  .requiredOption('-r, --rpc-port <port>', 'The RPC port of the Hub')
   .option('-U, --users <count>', 'The number of users to simulate', parseNumber, 100);
 
 app.parse(process.argv);
 const cliOptions = app.opts();
 logger.info({ options: cliOptions, optionsSize: [...Array(cliOptions.users)].length, type: typeof cliOptions.users });
-const family = isIP(cliOptions.ipAddress);
-if (!family) throw new Error('Invalid Hub Address');
+const addressInfo = getAddressInfo(cliOptions.ipAddress, cliOptions.rpcPort);
+if (addressInfo.isErr()) throw addressInfo.error;
 
-const address: AddressInfo = {
-  address: cliOptions.ipAddress,
-  port: cliOptions.rpcPort,
-  family: family == 4 ? 'ip4' : 'ip6',
-};
-logger.info(`Using RPC server: ${address.address}/${address.port}`);
-const client = new RPCClient(address);
+logger.info(`Using RPC server: ${addressInfo.value.address}/${addressInfo.value.port}`);
+const client = new RPCClient(addressInfo.value);
 
 // generate users
 logger.info(`Generating IdRegistry events for ${cliOptions.users} users.`);

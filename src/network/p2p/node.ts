@@ -36,7 +36,7 @@ interface NodeOptions {
   /** PeerId to use as the Node's Identity. Generates a new ephemeral PeerId if not specified*/
   peerId?: PeerId | undefined;
   /** IP address in MultiAddr format to bind to */
-  IpMultiAddr?: string | undefined;
+  ipMultiAddr?: string | undefined;
   /** Port to listen for gossip. Picks a port at random if not specified. This is combined with the IPMultiAddr */
   gossipPort?: number | undefined;
   /** A list of addresses to peer with. PeersIds outside of this list will not be able to connect to this node */
@@ -240,7 +240,7 @@ export class Node extends TypedEmitter<NodeEvents> {
    * Creates a Libp2p node with GossipSub
    */
   private async createNode(options: NodeOptions) {
-    const listenIPMultiAddr = options.IpMultiAddr ?? MultiaddrLocalHost;
+    const listenIPMultiAddr = options.ipMultiAddr ?? MultiaddrLocalHost;
     const listenPort = options.gossipPort ?? 0;
     const listenMultiAddrStr = `${listenIPMultiAddr}/tcp/${listenPort}`;
     checkNodeAddrs(listenIPMultiAddr, listenMultiAddrStr).match(
