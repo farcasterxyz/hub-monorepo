@@ -1,6 +1,6 @@
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { ResultAsync } from 'neverthrow';
-import { IDRegistryEvent, SignerAdd, SignerMessage, SignerRemove } from '~/types';
+import { IdRegistryEvent, SignerAdd, SignerMessage, SignerRemove } from '~/types';
 import { isSignerAdd, isSignerRemove } from '~/types/typeguards';
 import { hashCompare, sanitizeSigner } from '~/utils/crypto';
 import RocksDB from '~/storage/db/rocksdb';
@@ -8,7 +8,7 @@ import SignerDB from '~/storage/db/signer';
 
 export type SignerSetEvents = {
   /** Emitted when a new Register or Transfer event is received from the Farcaster ID Registry */
-  changeCustody: (fid: number, custodyAddress: string, event: IDRegistryEvent) => void;
+  changeCustody: (fid: number, custodyAddress: string, event: IdRegistryEvent) => void;
 
   /**
    * Emitted when a delegate signer becomes valid which happens when:
@@ -68,7 +68,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     return sanitizeSigner(event.args.to);
   }
 
-  async getCustodyEvent(fid: number): Promise<IDRegistryEvent> {
+  async getCustodyEvent(fid: number): Promise<IdRegistryEvent> {
     return this._db.getCustodyEvent(fid);
   }
 
@@ -107,11 +107,11 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
   /**
    * Merge a new event from the Farcaster ID Registry into the SignerSet.
    *
-   * mergeIDRegistryEvent will update the custody address, validate or invalidate delegate signers and emit events.
-   * The IDRegistryEvent must be accurate otherwise local state will diverge from blockchain state. If IDRegistryEvents
+   * mergeIdRegistryEvent will update the custody address, validate or invalidate delegate signers and emit events.
+   * The IdRegistryEvent must be accurate otherwise local state will diverge from blockchain state. If IdRegistryEvents
    * are received out of order, some events may not be emitted.
    */
-  async mergeIDRegistryEvent(event: IDRegistryEvent): Promise<void> {
+  async mergeIdRegistryEvent(event: IdRegistryEvent): Promise<void> {
     const fid = event.args.id;
 
     // If new event is a duplicate or occurred before the existing custodyEvent, no-op
@@ -167,7 +167,7 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
    * transactionHash. A value of -1 means a occurs before b, 1 means a occurs * after b, and 0 means a and b are the
    * same with identical block number, log index and transactionHash.
    */
-  private eventCompare(a: IDRegistryEvent, b: IDRegistryEvent): number {
+  private eventCompare(a: IdRegistryEvent, b: IdRegistryEvent): number {
     // Compare blockNumber
     if (a.blockNumber < b.blockNumber) {
       return -1;

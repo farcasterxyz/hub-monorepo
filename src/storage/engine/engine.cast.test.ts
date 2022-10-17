@@ -1,7 +1,7 @@
 import Faker from 'faker';
 import Engine from '~/storage/engine';
 import { Factories } from '~/test/factories';
-import { Cast, CastShort, EthereumSigner, IDRegistryEvent, MessageSigner, SignerAdd, SignerRemove } from '~/types';
+import { Cast, CastShort, EthereumSigner, IdRegistryEvent, MessageSigner, SignerAdd, SignerRemove } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import CastDB from '~/storage/db/cast';
@@ -16,7 +16,7 @@ const aliceAdds = async () => new Set(await castDb.getCastAddsByUser(aliceFid));
 
 describe('mergeCast', () => {
   let aliceCustodySigner: EthereumSigner;
-  let aliceCustodyRegister: IDRegistryEvent;
+  let aliceCustodyRegister: IdRegistryEvent;
   let aliceDelegateSigner: MessageSigner;
   let cast: CastShort;
   let addDelegateSigner: SignerAdd;
@@ -24,7 +24,7 @@ describe('mergeCast', () => {
 
   beforeAll(async () => {
     aliceCustodySigner = await generateEthereumSigner();
-    aliceCustodyRegister = await Factories.IDRegistryEvent.create({
+    aliceCustodyRegister = await Factories.IdRegistryEvent.create({
       args: { to: aliceCustodySigner.signerKey, id: aliceFid },
       name: 'Register',
     });
@@ -64,7 +64,7 @@ describe('mergeCast', () => {
 
     describe('with custody address', () => {
       beforeEach(async () => {
-        await engine.mergeIDRegistryEvent(aliceCustodyRegister);
+        await engine.mergeIdRegistryEvent(aliceCustodyRegister);
       });
 
       test('fails if signer is custody address', async () => {
@@ -136,7 +136,7 @@ describe('mergeCast', () => {
 
   describe('with signers', () => {
     beforeEach(async () => {
-      await engine.mergeIDRegistryEvent(aliceCustodyRegister);
+      await engine.mergeIdRegistryEvent(aliceCustodyRegister);
       await engine.mergeMessage(addDelegateSigner);
     });
 

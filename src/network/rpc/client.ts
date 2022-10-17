@@ -1,7 +1,7 @@
 import { AddressInfo } from 'net';
 import { Err, Ok, Result } from 'neverthrow';
 import jayson, { JSONRPCError } from 'jayson/promise';
-import { Cast, Follow, IDRegistryEvent, Message, Reaction, Verification } from '~/types';
+import { Cast, Follow, IdRegistryEvent, Message, Reaction, Verification } from '~/types';
 import { replacer, reviver, RPCRequest } from './interfaces';
 
 export class RPCClient {
@@ -63,7 +63,7 @@ export class RPCClient {
     return new Ok(response.result);
   }
 
-  async getCustodyEventByUser(fid: number): Promise<Result<IDRegistryEvent, JSONRPCError>> {
+  async getCustodyEventByUser(fid: number): Promise<Result<IdRegistryEvent, JSONRPCError>> {
     const response = await this._tcpClient.request(RPCRequest.GetCustodyEventByUser, { fid });
     if (response.error) {
       return new Err(response.error);
@@ -79,8 +79,8 @@ export class RPCClient {
     return new Ok(undefined);
   }
 
-  async submitIDRegistryEvent(event: IDRegistryEvent): Promise<Result<void, JSONRPCError>> {
-    const response = await this._tcpClient.request(RPCRequest.SubmitIDRegistryEvent, { event });
+  async submitIdRegistryEvent(event: IdRegistryEvent): Promise<Result<void, JSONRPCError>> {
+    const response = await this._tcpClient.request(RPCRequest.SubmitIdRegistryEvent, { event });
     if (response.error) {
       return new Err(response.error);
     }

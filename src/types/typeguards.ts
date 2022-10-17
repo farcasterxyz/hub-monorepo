@@ -1,5 +1,5 @@
 import * as FC from '~/types';
-import { ContactInfoContent, Content, GossipMessage, IDRegistryContent, UserContent } from '~/network/p2p/protocol';
+import { ContactInfoContent, Content, GossipMessage, IdRegistryContent, UserContent } from '~/network/p2p/protocol';
 
 export const isCast = (msg: FC.Message): msg is FC.Cast => isCastShort(msg) || isCastRemove(msg) || isCastRecast(msg);
 
@@ -119,7 +119,7 @@ export const isData = (data: any): data is FC.Data => {
   );
 };
 
-export const isIDRegistryEvent = (msg: any): msg is FC.IDRegistryEvent => {
+export const isIdRegistryEvent = (msg: any): msg is FC.IdRegistryEvent => {
   try {
     const { args } = msg;
     return (
@@ -142,7 +142,7 @@ export const isIDRegistryEvent = (msg: any): msg is FC.IDRegistryEvent => {
 export const isGossipMessage = (msg: any): msg is GossipMessage => {
   try {
     const { content, topics } = msg;
-    const validType = isUserContent(content) || isIDRegistryContent(content) || isContactInfo(content);
+    const validType = isUserContent(content) || isIdRegistryContent(content) || isContactInfo(content);
 
     return validType && Array.isArray(topics) && topics.every((t) => typeof t === 'string');
   } catch (error) {
@@ -159,10 +159,10 @@ export const isUserContent = (content: Content): content is UserContent => {
   }
 };
 
-export const isIDRegistryContent = (content: Content): content is IDRegistryContent => {
+export const isIdRegistryContent = (content: Content): content is IdRegistryContent => {
   try {
-    const { message, root, count } = content as IDRegistryContent;
-    return isIDRegistryEvent(message) && typeof root === 'string' && typeof count === 'number';
+    const { message, root, count } = content as IdRegistryContent;
+    return isIdRegistryEvent(message) && typeof root === 'string' && typeof count === 'number';
   } catch (error) {
     return false;
   }

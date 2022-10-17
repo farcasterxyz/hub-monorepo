@@ -1,7 +1,7 @@
 import { ResultAsync } from 'neverthrow';
 import { Transaction } from '~/storage/db/rocksdb';
-import { IDRegistryEvent, SignerAdd, SignerMessage, SignerRemove } from '~/types';
-import { isIDRegistryEvent } from '~/types/typeguards';
+import { IdRegistryEvent, SignerAdd, SignerMessage, SignerRemove } from '~/types';
+import { isIdRegistryEvent } from '~/types/typeguards';
 import { sanitizeSigner } from '~/utils/crypto';
 import MessageDB from '~/storage/db/message';
 
@@ -15,7 +15,7 @@ import MessageDB from '~/storage/db/message';
  * - fid!<fid>!custody!<custody address>!signerRemoves!<delegate pub key>: <SignerRemove hash>
  *
  * Custody events are stored in this schema:
- * - custodyEvents!<fid>: <IDRegistryEvent>
+ * - custodyEvents!<fid>: <IdRegistryEvent>
  *
  * Note that the SignerDB implements the constraint that a single target can only exist in either signerAdds
  * or signerRemoves for a given custody address. Therefore, _putSignerAdd also deletes the SignerRemove for the same
@@ -39,17 +39,17 @@ class SignerDB extends MessageDB {
     return fids;
   }
 
-  async getCustodyEvent(fid: number): Promise<IDRegistryEvent> {
+  async getCustodyEvent(fid: number): Promise<IdRegistryEvent> {
     const value = await this._db.get(this.custodyEventKey(fid));
 
     const json = JSON.parse(value);
 
-    if (!isIDRegistryEvent(json)) throw new Error('malformed value');
+    if (!isIdRegistryEvent(json)) throw new Error('malformed value');
 
     return json;
   }
 
-  async putCustodyEvent(event: IDRegistryEvent): Promise<void> {
+  async putCustodyEvent(event: IdRegistryEvent): Promise<void> {
     const tsx = this._putCustodyEvent(this._db.transaction(), event);
     return this._db.commit(tsx);
   }
@@ -142,7 +142,7 @@ class SignerDB extends MessageDB {
   /*                         Private Transaction Methods                        */
   /* -------------------------------------------------------------------------- */
 
-  private _putCustodyEvent(tsx: Transaction, event: IDRegistryEvent): Transaction {
+  private _putCustodyEvent(tsx: Transaction, event: IdRegistryEvent): Transaction {
     return tsx.put(this.custodyEventKey(event.args.id), JSON.stringify(event));
   }
 

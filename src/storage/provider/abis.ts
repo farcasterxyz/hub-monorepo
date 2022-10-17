@@ -1,4 +1,4 @@
-export const IDRegistry = {
+export const IdRegistry = {
   abi: [
     {
       inputs: [

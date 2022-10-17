@@ -8,7 +8,7 @@ import {
   VerificationEthereumAddressFactoryTransientParams,
   VerificationEthereumAddress,
   VerificationEthereumAddressClaim,
-  IDRegistryEvent,
+  IdRegistryEvent,
   SignatureAlgorithm,
   CastShort,
   CastRecast,
@@ -44,7 +44,7 @@ const aliceCastAdds = async (): Promise<Set<CastShort | CastRecast>> => {
 
 describe('mergeVerification', () => {
   let aliceCustody: EthereumSigner;
-  let aliceCustodyRegister: IDRegistryEvent;
+  let aliceCustodyRegister: IdRegistryEvent;
   let aliceSigner: Ed25519Signer;
   let aliceSignerAdd: SignerAdd;
   let aliceBlockHash: string;
@@ -56,7 +56,7 @@ describe('mergeVerification', () => {
 
   beforeAll(async () => {
     aliceCustody = await generateEthereumSigner();
-    aliceCustodyRegister = await Factories.IDRegistryEvent.create({
+    aliceCustodyRegister = await Factories.IdRegistryEvent.create({
       args: { to: aliceCustody.signerKey, id: aliceFid },
       name: 'Register',
     });
@@ -99,7 +99,7 @@ describe('mergeVerification', () => {
 
   beforeEach(async () => {
     engine._reset();
-    await engine.mergeIDRegistryEvent(aliceCustodyRegister);
+    await engine.mergeIdRegistryEvent(aliceCustodyRegister);
     await engine.mergeMessage(aliceSignerAdd);
   });
 

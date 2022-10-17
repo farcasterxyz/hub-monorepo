@@ -7,7 +7,7 @@ import {
   Follow,
   FollowAdd,
   FollowRemove,
-  IDRegistryEvent,
+  IdRegistryEvent,
   MessageFactoryTransientParams,
   SignerAdd,
 } from '~/types';
@@ -23,7 +23,7 @@ const aliceFid = Faker.datatype.number();
 
 describe('mergeFollow', () => {
   let aliceCustody: EthereumSigner;
-  let aliceCustodyRegister: IDRegistryEvent;
+  let aliceCustodyRegister: IdRegistryEvent;
   let aliceSigner: Ed25519Signer;
   let aliceSignerAdd: SignerAdd;
   let follow: FollowAdd;
@@ -37,7 +37,7 @@ describe('mergeFollow', () => {
 
   beforeAll(async () => {
     aliceCustody = await generateEthereumSigner();
-    aliceCustodyRegister = await Factories.IDRegistryEvent.create({
+    aliceCustodyRegister = await Factories.IdRegistryEvent.create({
       args: { to: aliceCustody.signerKey, id: aliceFid },
       name: 'Register',
     });
@@ -66,7 +66,7 @@ describe('mergeFollow', () => {
 
   describe('with signers', () => {
     beforeEach(async () => {
-      await engine.mergeIDRegistryEvent(aliceCustodyRegister);
+      await engine.mergeIdRegistryEvent(aliceCustodyRegister);
       await engine.mergeMessage(aliceSignerAdd);
     });
 
