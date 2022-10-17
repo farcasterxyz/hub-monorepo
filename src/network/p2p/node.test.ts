@@ -90,7 +90,7 @@ describe('node unit tests', () => {
       // node 3 has node 1 in its allow list, but not node 2
       const node3 = new Node();
       if (node1.peerId) {
-        await node3.start([], [node1.peerId.toString()]);
+        await node3.start([], { allowedPeerIdStrs: [node1.peerId.toString()] });
       } else {
         throw Error('Node1 not started, no peerId found');
       }
@@ -112,6 +112,23 @@ describe('node unit tests', () => {
     },
     TEST_TIMEOUT_SHORT
   );
+
+  test('port and transport addrs in the Ip MultiAddr is not allowed', async () => {
+    const node = new Node();
+    const options = { IpMultiAddr: '/ip4/127.0.0.1/tcp/8080' };
+    await expect(node.start([], options)).rejects.toThrow();
+    expect(node.isStarted()).toBeFalsy();
+    await node.stop();
+  });
+
+  test('invalid multiaddr format is not allowed', async () => {
+    const node = new Node();
+    // an IPv6 being supplied as an IPv4
+    const options = { IpMultiAddr: '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a' };
+    await expect(node.start([], options)).rejects.toThrow();
+    expect(node.isStarted()).toBeFalsy();
+    await node.stop();
+  });
 });
 
 describe('gossip network', () => {

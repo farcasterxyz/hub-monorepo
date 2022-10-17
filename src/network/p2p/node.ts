@@ -13,8 +13,9 @@ import { FarcasterError, ServerError } from '~/utils/errors';
 import { decodeMessage, encodeMessage, GossipMessage, GOSSIP_TOPICS } from '~/network/p2p/protocol';
 import { ConnectionFilter } from './connectionFilter';
 import { logger } from '~/utils/logger';
+import { checkNodeAddrs } from '~/utils/p2p';
 
-const MultiaddrLocalHost = '/ip4/127.0.0.1/tcp';
+const MultiaddrLocalHost = '/ip4/127.0.0.1';
 
 const log = logger.child({ component: 'Node' });
 
@@ -28,6 +29,18 @@ interface NodeEvents {
   peerConnect: (connection: Connection) => void;
   /** Triggered when a peer is disconnected. Provides the Libp2p Connecion object. */
   peerDisconnect: (connection: Connection) => void;
+}
+
+/** Node create options */
+interface NodeOptions {
+  /** PeerId to use as the Node's Identity. Generates a new ephemeral PeerId if not specified*/
+  peerId?: PeerId | undefined;
+  /** IP address in MultiAddr format to bind to */
+  IpMultiAddr?: string | undefined;
+  /** Port to listen for gossip. Picks a port at random if not specified. This is combined with the IPMultiAddr */
+  gossipPort?: number | undefined;
+  /** A list of addresses to peer with. PeersIds outside of this list will not be able to connect to this node */
+  allowedPeerIdStrs?: string[] | undefined;
 }
 
 /**
@@ -71,12 +84,10 @@ export class Node extends TypedEmitter<NodeEvents> {
    * Creates and Starts the underlying libp2p node. Nodes must be started prior to any network configuration or communication.
    *
    * @param bootstrapAddrs  A list of addresses to bootstrap from. Attempts to connect with each peer in the list
-   * @param allowedPeerIds  A list of addresses to peer with. PeersIds outside of this list will not be able to connect to this node
-   * @param peerId          Optional peerId to use. Generates a new ephemeral PeerId if not specified
-   * @param port            Optional port to use. Picks a port at random if not specified
+   * @param startOptions    Options to configure the node's behavior
    */
-  async start(bootstrapAddrs: Multiaddr[], allowedPeerIds?: string[], peerId?: PeerId, port?: number) {
-    this._node = await this.createNode(peerId, port, allowedPeerIds);
+  async start(bootstrapAddrs: Multiaddr[], startOptions?: NodeOptions) {
+    this._node = await this.createNode(startOptions ?? {});
     this.registerListeners();
 
     await this._node.start();
@@ -228,7 +239,19 @@ export class Node extends TypedEmitter<NodeEvents> {
   /**
    * Creates a Libp2p node with GossipSub
    */
-  private async createNode(peerId?: PeerId, port?: number, allowedPeerIdStrs?: string[]) {
+  private async createNode(options: NodeOptions) {
+    const listenIPMultiAddr = options.IpMultiAddr ?? MultiaddrLocalHost;
+    const listenPort = options.gossipPort ?? 0;
+    const listenMultiAddrStr = `${listenIPMultiAddr}/tcp/${listenPort}`;
+    checkNodeAddrs(listenIPMultiAddr, listenMultiAddrStr).match(
+      () => {
+        /** no-op */
+      },
+      (error) => {
+        throw new ServerError(`Failed to start Hub: ${error}`);
+      }
+    );
+
     const gossip = new GossipSub({
       emitSelf: false,
       allowPublishToZeroPeers: true,
@@ -236,20 +259,20 @@ export class Node extends TypedEmitter<NodeEvents> {
     });
 
     let connectionGater: ConnectionFilter | undefined;
-    if (allowedPeerIdStrs) {
+    if (options.allowedPeerIdStrs) {
       log.info(
-        { identity: this.identity, function: 'createNode', allowedPeerIdStrs },
-        `!!! PEER-ID RESTRICTIONS ENABLED !!!\nAllowed Peers: ${allowedPeerIdStrs}`
+        { identity: this.identity, function: 'createNode', allowedPeerIds: options.allowedPeerIdStrs },
+        `!!! PEER-ID RESTRICTIONS ENABLED !!!`
       );
-      connectionGater = new ConnectionFilter(allowedPeerIdStrs);
+      connectionGater = new ConnectionFilter(options.allowedPeerIdStrs);
     }
 
     const node = await createLibp2p({
       // setting these optional fields to `undefined` throws an error, only set them if they're defined
-      ...(peerId && { peerId }),
+      ...(options.peerId && { peerId: options.peerId }),
       ...(connectionGater && { connectionGater }),
       addresses: {
-        listen: [`${MultiaddrLocalHost}/${port ?? 0}`],
+        listen: [listenMultiAddrStr],
       },
       transports: [new TCP()],
       streamMuxers: [new Mplex()],

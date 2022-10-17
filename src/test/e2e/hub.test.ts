@@ -2,7 +2,7 @@ import Faker from 'faker';
 import { AddressInfo } from 'net';
 import { generateUserInfo, getIDRegistryEvent, getSignerAdd, mockFid, populateEngine } from '~/storage/engine/mock';
 import { Factories } from '~/test/factories';
-import { Hub, HubOpts } from '~/hub';
+import { Hub, HubOptions } from '~/hub';
 import { RPCClient } from '~/network/rpc';
 import { sleep } from '~/utils/crypto';
 import { ContactInfoContent, Content, GossipMessage, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
@@ -12,7 +12,7 @@ import { jest } from '@jest/globals';
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const TEST_TIMEOUT_LONG = 2 * 60 * 1000;
-const opts: HubOpts = { simpleSync: false };
+const opts: HubOptions = { simpleSync: false };
 
 let hub: Hub;
 
