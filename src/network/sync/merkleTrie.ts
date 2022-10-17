@@ -7,9 +7,11 @@ export type TrieSnapshot = {
   numMessages: number;
 };
 
-export type DivergenceMetadata = {
+export type NodeMetadata = {
   prefix: string;
-  childHashes: Map<string, string>;
+  numMessages: number;
+  hash: string;
+  children?: Map<string, NodeMetadata>;
 };
 
 /**
@@ -37,18 +39,31 @@ class MerkleTrie {
     return this._root.getSnapshot(prefix);
   }
 
-  public getDivergenceMetadata(prefix: string, excludedHashes: string[]): DivergenceMetadata {
+  public getDivergencePrefix(prefix: string, excludedHashes: string[]): string {
     const ourExcludedHashes = this.getSnapshot(prefix).excludedHashes;
-    let divergencePrefix = prefix;
     for (let i = 0; i < prefix.length; i++) {
       if (ourExcludedHashes[i] !== excludedHashes[i]) {
-        divergencePrefix = prefix.slice(0, i);
-        break;
+        return prefix.slice(0, i);
       }
     }
-    const childHashes = this._root.getNode(divergencePrefix)?.childHashes || new Map();
+    return prefix;
+  }
 
-    return { prefix: divergencePrefix, childHashes: childHashes };
+  public getNodeMetadata(prefix: string): NodeMetadata | undefined {
+    const node = this._root.getNode(prefix);
+    if (node === undefined) {
+      return undefined;
+    }
+    const children = node?.children || new Map();
+    const result = new Map<string, NodeMetadata>();
+    for (const [char, child] of children) {
+      result.set(char, {
+        numMessages: child.items,
+        prefix: prefix + char,
+        hash: child.hash,
+      });
+    }
+    return { prefix, children: result, numMessages: node.items, hash: node.hash };
   }
 
   public get root(): TrieNode {
@@ -215,12 +230,8 @@ class TrieNode {
     return this._children.get(char)?.getNode(prefix.slice(1));
   }
 
-  public get childHashes(): Map<string, string> {
-    const hashes = new Map();
-    this._children.forEach((child, key) => {
-      hashes.set(key, child.hash);
-    });
-    return hashes;
+  public get children(): IterableIterator<[string, TrieNode]> {
+    return this._children.entries();
   }
 
   public getAllValues(): string[] {

@@ -21,6 +21,7 @@ import { err, ok, Result } from 'neverthrow';
 import { FarcasterError, ServerError } from '~/utils/errors';
 import { SyncEngine } from '~/network/sync/syncEngine';
 import { logger } from '~/utils/logger';
+import { NodeMetadata } from '~/network/sync/merkleTrie';
 
 export interface HubOptions {
   /** The PeerId of this Hub */
@@ -152,8 +153,13 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
           ? { peerId: this.gossipNode.peerId.toString(), rpcAddress: this.rpcAddress }
           : { peerId: this.gossipNode.peerId.toString() };
 
+        const currentSnapshot = this.syncEngine.snapshot;
         const gossipMessage: GossipMessage<ContactInfoContent> = {
-          content,
+          content: {
+            ...content,
+            excludedHashes: currentSnapshot.excludedHashes,
+            count: currentSnapshot.numMessages,
+          },
           topics: [NETWORK_TOPIC_CONTACT],
         };
         await this.gossipMessage(gossipMessage);
@@ -187,12 +193,9 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       result = await this.engine.mergeIdRegistryEvent(message);
       if (result.isOk()) log.info({ event: message }, 'merged id registry event');
     } else if (isContactInfo(gossipMessage.content)) {
+      const message = gossipMessage.content as ContactInfoContent;
       // TODO: Maybe we need a ContactInfo CRDT?
-      // Check if we need sync and if we do, use this peer do it.
-      if (this.syncState == SimpleSyncState.Pending) {
-        log.info({ identity: this.identity }, 'received a Contact Info for sync');
-        await this.simpleSyncFromPeer(gossipMessage.content as ContactInfoContent);
-      }
+      await this.handleContactInfo(message);
       result = ok(undefined);
     }
 
@@ -202,54 +205,54 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     return result;
   }
 
+  async handleContactInfo(message: ContactInfoContent) {
+    const rpcClient = await this.getRPCClientForPeer(message);
+    if (this.syncState == SimpleSyncState.Pending) {
+      log.info({ identity: this.identity }, 'received a Contact Info for sync');
+      // TODO: DiffSync currently doesn't handle custody events, so we still need to sync users manually right now
+      await this.simpleSyncFromPeer(message, rpcClient);
+    }
+
+    // Intentionally not awaiting here so sync doesn't block other messages
+    console.log(
+      `Got ${message.excludedHashes.length} excluded hashes (${message.count} messages) from ${message.peerId}`
+    );
+    this.diffSyncIfRequired(message.excludedHashes, message.count, rpcClient);
+  }
+
+  async diffSyncIfRequired(excludedHashes: string[], numMessages: number, rpcClient: RPCClient | undefined) {
+    this.emit('syncStart');
+    if (!rpcClient) {
+      console.log(`No RPC client for peer, skipping sync`);
+      this.emit('syncComplete', false);
+      return;
+    }
+    if (this.syncEngine.isSyncing) {
+      // Don't fire syncComplete
+      return;
+    }
+    if (!this.syncEngine.shouldSync(excludedHashes, numMessages)) {
+      console.log(`shuold sync is false, skipping sync`);
+      this.emit('syncComplete', false);
+      return;
+    }
+    console.log(`Attempting diff sync`);
+    await this.syncEngine.performSync(excludedHashes, rpcClient);
+    console.log(`Sync complete`);
+    this.emit('syncComplete', true);
+  }
+
   /** Attempt to sync data from a peer */
-  async simpleSyncFromPeer(peer: ContactInfoContent) {
+  async simpleSyncFromPeer(peer: ContactInfoContent, rpcClient?: RPCClient) {
     if (this.syncState != SimpleSyncState.Pending) return;
 
-    this.emit('syncStart');
-    log.info(
-      { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer },
-      `syncing from peer: ${peer.peerId}`
-    );
-    /*
-     * Find the peer's addrs from our peer list because we cannot use the address
-     * in the contact info directly
-     */
-    if (!peer.rpcAddress) {
-      this.emit('syncComplete', false);
-      return;
-    }
-    const contactPeers = this.gossipNode.gossip?.getSubscribers(NETWORK_TOPIC_CONTACT);
-    const peerId = contactPeers?.find((value) => {
-      return peer.peerId === value.toString();
-    });
-    if (!peerId) {
-      log.info(
-        { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer },
-        `Failed to find peer's matching contact info`
-      );
-      this.emit('syncComplete', false);
-      return;
-    }
-    const peerAddress = await this.gossipNode.getPeerAddress(peerId);
-    if (!peerAddress) {
-      log.info(
-        { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer },
-        `failed to find peer's address to request simple sync`
-      );
+    // this.emit('syncStart');
+    log.info({ function: 'simpleSyncFromPeer', identity: this.identity, peer: peer }, `syncing from peer: ${peer}`);
 
-      this.emit('syncComplete', false);
+    if (!rpcClient) {
+      // this.emit('syncComplete', false);
       return;
     }
-
-    // Request and merge peer's data over RPC
-    const nodeAddress = peerAddress.addresses[0].multiaddr.nodeAddress();
-    const rpcClient = new RPCClient({
-      address: nodeAddress.address,
-      family: nodeAddress.family == 4 ? 'IPv4' : 'IPv6',
-      // Use the gossip rpc port instead of the port used by libp2p
-      port: peer.rpcAddress.port,
-    });
 
     // Start the Sync
     this.syncState = SimpleSyncState.InProgress;
@@ -271,37 +274,37 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
           }
           await Promise.all(this.engine.mergeMessages([...signerMessagesResult._unsafeUnwrap()]));
 
-          // now collect all the messages from each set
-          const responses = await Promise.all([
-            rpcClient.getAllCastsByUser(user),
-            rpcClient.getAllFollowsByUser(user),
-            rpcClient.getAllReactionsByUser(user),
-            rpcClient.getAllVerificationsByUser(user),
-          ]);
+          // // now collect all the messages from each set
+          // const responses = await Promise.all([
+          //   rpcClient.getAllCastsByUser(user),
+          //   rpcClient.getAllFollowsByUser(user),
+          //   rpcClient.getAllReactionsByUser(user),
+          //   rpcClient.getAllVerificationsByUser(user),
+          // ]);
 
           // collect all the messages for each Set into a single list of messages
-          const allMessages = responses.flatMap((response) => {
-            return response.match(
-              (messages) => {
-                return [...messages];
-              },
-              () => {
-                return [];
-              }
-            );
-          });
+          // const allMessages = responses.flatMap((response) => {
+          //   return response.match(
+          //     (messages) => {
+          //       return [...messages];
+          //     },
+          //     () => {
+          //       return [];
+          //     }
+          //   );
+          // });
 
           // Replays all messages into the engine
-          const mergeResults = await Promise.all(this.engine.mergeMessages(allMessages));
-          let success = 0;
-          let fail = 0;
-          mergeResults.forEach((result) => {
-            result.isErr() ? fail++ : success++;
-          });
-          log.info(
-            { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer },
-            `Sync Progress(Fid: ${user}): Merged: ${success} messages and failed ${fail} messages`
-          );
+          // const mergeResults = await Promise.all(this.engine.mergeMessages(allMessages));
+          // let success = 0;
+          // let fail = 0;
+          // mergeResults.forEach((result) => {
+          //   result.isErr() ? fail++ : success++;
+          // });
+          // log.info(
+          //   { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer },
+          //   `Sync Progress(Fid: ${user}): Merged: ${success} messages and failed ${fail} messages`
+          // );
         }
       },
       async (error) => {
@@ -309,8 +312,50 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       }
     );
     log.info({ function: 'simpleSyncFromPeer', identity: this.identity, peer: peer }, 'sync complete');
-    this.emit('syncComplete', true);
+    // this.emit('syncComplete', true);
     this.syncState = SimpleSyncState.Complete;
+  }
+
+  private async getRPCClientForPeer(peer: ContactInfoContent): Promise<RPCClient | undefined> {
+    /*
+     * Find the peer's addrs from our peer list because we cannot use the address
+     * in the contact info directly
+     */
+    if (!peer.rpcAddress) {
+      return;
+    }
+    const contactPeers = this.gossipNode.gossip?.getSubscribers(NETWORK_TOPIC_CONTACT);
+    const peerId = contactPeers?.find((value) => {
+      return peer.peerId === value.toString();
+    });
+    if (!peerId) {
+      log.info(
+        { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer },
+        `Failed to find peer's matching contact info`
+      );
+      return;
+    }
+    const peerAddress = await this.gossipNode.getPeerAddress(peerId);
+    if (!peerAddress) {
+      log.info(
+        { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer },
+        `failed to find peer's address to request simple sync`
+      );
+
+      return;
+    }
+
+    // Request and merge peer's data over RPC
+    const nodeAddress = peerAddress.addresses[0].multiaddr.nodeAddress();
+    const rpcClient = new RPCClient({
+      address: nodeAddress.address,
+      family: nodeAddress.family == 4 ? 'IPv4' : 'IPv6',
+      // Use the gossip rpc port instead of the port used by libp2p
+      port: peer.rpcAddress.port,
+    });
+    // Validate connection
+    await rpcClient.getUsers();
+    return rpcClient;
   }
 
   private registerEventHandlers() {
@@ -356,6 +401,21 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   getCustodyEventByUser(fid: number): Promise<Result<IdRegistryEvent, FarcasterError>> {
     return this.engine.getCustodyEventByUser(fid);
   }
+  getSyncMetadataByPrefix(prefix: string): Promise<Result<NodeMetadata, FarcasterError>> {
+    const nodeMetadata = this.syncEngine.getNodeMetadata(prefix);
+    if (nodeMetadata) {
+      return Promise.resolve(ok(nodeMetadata));
+    } else {
+      return Promise.resolve(err(new FarcasterError('no metadata found')));
+    }
+  }
+  getSyncIdsByPrefix(prefix: string): Promise<Result<string[], FarcasterError>> {
+    return Promise.resolve(ok(this.syncEngine.getIdsByPrefix(prefix)));
+  }
+
+  getMessagesByHashes(hashes: string[]): Promise<Message[]> {
+    return this.engine.getMessagesByHashes(hashes);
+  }
 
   async submitMessage(message: Message): Promise<Result<void, FarcasterError>> {
     // push this message into the engine
@@ -379,8 +439,6 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     const gossipMessage: GossipMessage<UserContent> = {
       content: {
         message,
-        root: '',
-        count: 0,
       },
       topics: [NETWORK_TOPIC_PRIMARY],
     };
@@ -402,8 +460,6 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     const gossipMessage: GossipMessage<IdRegistryContent> = {
       content: {
         message: event,
-        root: '',
-        count: 0,
       },
       topics: [NETWORK_TOPIC_PRIMARY],
     };

@@ -23,8 +23,6 @@ describe('gossip protocol', () => {
     const message: GossipMessage<UserContent> = {
       content: {
         message: cast,
-        root: '',
-        count: 0,
       },
       topics: [],
     };
@@ -35,8 +33,6 @@ describe('gossip protocol', () => {
     const message: GossipMessage<IdRegistryContent> = {
       content: {
         message: idRegistryEvent,
-        root: '',
-        count: 0,
       },
       topics: [],
     };
@@ -65,8 +61,6 @@ describe('encode/decode', () => {
     const message: GossipMessage<UserContent> = {
       content: {
         message: cast,
-        root: '',
-        count: 0,
       },
       topics: [],
     };
@@ -83,8 +77,6 @@ describe('encode/decode', () => {
     const message: GossipMessage<IdRegistryContent> = {
       content: {
         message: idRegistryEvent,
-        root: '',
-        count: 0,
       },
       topics: [],
     };
@@ -101,6 +93,8 @@ describe('encode/decode', () => {
     const message: GossipMessage<ContactInfoContent> = {
       content: {
         peerId: '',
+        excludedHashes: [],
+        count: 0,
       },
       topics: [],
     };

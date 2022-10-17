@@ -152,8 +152,8 @@ export const isGossipMessage = (msg: any): msg is GossipMessage => {
 
 export const isUserContent = (content: Content): content is UserContent => {
   try {
-    const { message, root, count } = content as UserContent;
-    return isMessage(message) && typeof root === 'string' && typeof count === 'number';
+    const { message } = content as UserContent;
+    return isMessage(message);
   } catch (error) {
     return false;
   }
@@ -161,8 +161,8 @@ export const isUserContent = (content: Content): content is UserContent => {
 
 export const isIdRegistryContent = (content: Content): content is IdRegistryContent => {
   try {
-    const { message, root, count } = content as IdRegistryContent;
-    return isIdRegistryEvent(message) && typeof root === 'string' && typeof count === 'number';
+    const { message } = content as IdRegistryContent;
+    return isIdRegistryEvent(message);
   } catch (error) {
     return false;
   }
@@ -170,7 +170,7 @@ export const isIdRegistryContent = (content: Content): content is IdRegistryCont
 
 export const isContactInfo = (content: Content): content is ContactInfoContent => {
   try {
-    const { peerId, rpcAddress } = content as ContactInfoContent;
+    const { peerId, rpcAddress, excludedHashes, count } = content as ContactInfoContent;
 
     const validAddress = rpcAddress
       ? typeof rpcAddress.address === 'string' &&
@@ -178,7 +178,9 @@ export const isContactInfo = (content: Content): content is ContactInfoContent =
         typeof rpcAddress.port === 'number'
       : true;
 
-    return typeof peerId === 'string' && validAddress;
+    const excludedHashesValid = Array.isArray(excludedHashes) && excludedHashes.every((h) => typeof h === 'string');
+
+    return typeof peerId === 'string' && validAddress && excludedHashesValid && typeof count === 'number';
   } catch (error) {
     return false;
   }
