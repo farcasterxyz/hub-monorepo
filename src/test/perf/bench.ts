@@ -1,14 +1,14 @@
 import { Command } from 'commander';
 import { RPCClient } from '~/network/rpc';
 import { AddressInfo, isIP } from 'net';
-import { generateUserInfo, getIDRegistryEvent, getSignerAdd, UserInfo } from '~/storage/engine/mock';
+import { generateUserInfo, getIdRegistryEvent, getSignerAdd, UserInfo } from '~/storage/engine/mock';
 import Faker from 'faker';
-import { IDRegistryEvent, Message, SignerAdd } from '~/types';
+import { IdRegistryEvent, Message, SignerAdd } from '~/types';
 import { Factories } from '~/test/factories';
 import { Result } from 'neverthrow';
 import { sleep } from '~/utils/crypto';
 import { JSONRPCError } from 'jayson/promise';
-import { isIDRegistryEvent, isMessage } from '~/types/typeguards';
+import { isIdRegistryEvent, isMessage } from '~/types/typeguards';
 import { logger } from '~/utils/logger';
 
 /**
@@ -53,7 +53,7 @@ type SubmitCounts = {
   fail: number;
 };
 
-const submitInBatches = async (messages: Message[] | IDRegistryEvent[]) => {
+const submitInBatches = async (messages: Message[] | IdRegistryEvent[]) => {
   // limits what we try to do in parallel. If this number is too large, we'll run out of sockets to use for tcp
   const BATCH_SIZE = 100;
   let results: Result<void, JSONRPCError>[] = [];
@@ -61,8 +61,8 @@ const submitInBatches = async (messages: Message[] | IDRegistryEvent[]) => {
     const batch = messages.slice(i, i + BATCH_SIZE);
     const innerRes = await Promise.all(
       batch.map((message) => {
-        if (isIDRegistryEvent(message)) {
-          return client.submitIDRegistryEvent(message);
+        if (isIdRegistryEvent(message)) {
+          return client.submitIdRegistryEvent(message);
         }
         if (isMessage(message)) {
           return client.submitMessage(message);
@@ -102,15 +102,15 @@ logger.info(`Using RPC server: ${address.address}/${address.port}`);
 const client = new RPCClient(address);
 
 // generate users
-logger.info(`Generating IDRegistry events for ${cliOptions.users} users.`);
+logger.info(`Generating IdRegistry events for ${cliOptions.users} users.`);
 const firstUser = Faker.datatype.number();
-const idRegistryEvents: IDRegistryEvent[] = [];
+const idRegistryEvents: IdRegistryEvent[] = [];
 const signerAddEvents: SignerAdd[] = [];
 let start = performance.now();
 const userInfos: UserInfo[] = await Promise.all(
   [...Array(cliOptions.users)].map(async (_value, index) => {
     const info = await generateUserInfo(firstUser + index);
-    idRegistryEvents.push(await getIDRegistryEvent(info));
+    idRegistryEvents.push(await getIdRegistryEvent(info));
     signerAddEvents.push(await getSignerAdd(info));
     return info;
   })
@@ -123,7 +123,7 @@ start = performance.now();
 const registryResults = await submitInBatches(idRegistryEvents);
 
 stop = performance.now();
-const idRegistryTime = post('IDRegistry Events submitted', start, stop);
+const idRegistryTime = post('IdRegistry Events submitted', start, stop);
 
 logger.info(`${registryResults.success} events submitted successfully. ${registryResults.fail} events failed.`);
 logger.info('_Waiting a few seconds for the network to synchronize_');
@@ -163,7 +163,7 @@ logger.info('------------------------------------------');
 logger.info('Time \t\t\t\t Task');
 logger.info('------------------------------------------');
 logger.info(`${accountTime.toFixed(3)}s    \t\t\t Account generation time`);
-logger.info(`${idRegistryTime.toFixed(3)}s    \t\t\t IDRegistry Events`);
+logger.info(`${idRegistryTime.toFixed(3)}s    \t\t\t IdRegistry Events`);
 logger.info(`${signerAddsTime.toFixed(3)}s    \t\t\t Signer Add Messages`);
 logger.info(`${castTime.toFixed(3)}s    \t\t\t Cast Messages`);
 logger.info(`Total: ${(accountTime + idRegistryTime + signerAddsTime + castTime).toFixed(3)}s`);

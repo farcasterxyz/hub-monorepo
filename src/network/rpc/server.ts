@@ -77,14 +77,14 @@ export class RPCServer {
           },
         }),
 
-        [RPCRequest.SubmitIDRegistryEvent]: new jayson.Method({
+        [RPCRequest.SubmitIdRegistryEvent]: new jayson.Method({
           handler: async (args: any) => {
-            if (!rpcHandler.submitIDRegistryEvent) {
+            if (!rpcHandler.submitIdRegistryEvent) {
               const fcError = new ServerError('Request not implemented on Server');
               throw rpcError(fcError.statusCode, fcError.message);
             }
 
-            const result = await rpcHandler.submitIDRegistryEvent(args.event);
+            const result = await rpcHandler.submitIdRegistryEvent(args.event);
             if (result.isErr()) throw rpcError(result.error.statusCode, result.error.message);
             return result.value;
           },

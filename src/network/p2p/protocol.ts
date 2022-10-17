@@ -1,7 +1,7 @@
 import { AddressInfo } from 'net';
 import { err, ok, Result } from 'neverthrow';
 import { isGossipMessage } from '~/types/typeguards';
-import { IDRegistryEvent, Message } from '~/types';
+import { IdRegistryEvent, Message } from '~/types';
 
 // Network topic for all FC protocol messages
 export const NETWORK_TOPIC_PRIMARY = 'f_network_topic_primary';
@@ -24,7 +24,7 @@ export type GossipMessage<T = Content> = {
   topics: string[];
 };
 
-export type Content = IDRegistryContent | UserContent | ContactInfoContent;
+export type Content = IdRegistryContent | UserContent | ContactInfoContent;
 
 /**
  * UserContent defines the structure of the primary message type that is published
@@ -41,15 +41,15 @@ export type UserContent = {
 };
 
 /**
- * IDRegistryContent defines the structure of the IDRegistry Events that are published
+ * IdRegistryContent defines the structure of the IdRegistry Events that are published
  * over the gossip network.
  *
- * @message - The Farcaster IDRegistryEvent that needs to be sent
+ * @message - The Farcaster IdRegistryEvent that needs to be sent
  * @root - The current merkle root of the sender's trie
  * @count - The number of messages under the root
  */
-export type IDRegistryContent = {
-  message: IDRegistryEvent;
+export type IdRegistryContent = {
+  message: IdRegistryEvent;
   root: string;
   count: number;
 };

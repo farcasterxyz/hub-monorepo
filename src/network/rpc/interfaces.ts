@@ -1,5 +1,5 @@
 import { Result } from 'neverthrow';
-import { Cast, Follow, IDRegistryEvent, Message, Reaction, SignerMessage, Verification } from '~/types';
+import { Cast, Follow, IdRegistryEvent, Message, Reaction, SignerMessage, Verification } from '~/types';
 import { FarcasterError } from '~/utils/errors';
 
 export type Port = number;
@@ -13,7 +13,7 @@ export enum RPCRequest {
   GetAllVerificationsByUser = 'getAllVerificationsByUser',
   GetCustodyEventByUser = 'getCustodyEventByUser',
   SubmitMessage = 'submitMessage',
-  SubmitIDRegistryEvent = 'submitIDRegistryEvent',
+  SubmitIdRegistryEvent = 'submitIdRegistryEvent',
 }
 
 export interface RPCHandler {
@@ -23,9 +23,9 @@ export interface RPCHandler {
   getAllReactionsByUser(fid: number): Promise<Set<Reaction>>;
   getAllFollowsByUser(fid: number): Promise<Set<Follow>>;
   getAllVerificationsByUser(fid: number): Promise<Set<Verification>>;
-  getCustodyEventByUser(fid: number): Promise<Result<IDRegistryEvent, FarcasterError>>;
+  getCustodyEventByUser(fid: number): Promise<Result<IdRegistryEvent, FarcasterError>>;
   submitMessage(message: Message): Promise<Result<void, FarcasterError>>;
-  submitIDRegistryEvent?(event: IDRegistryEvent): Promise<Result<void, FarcasterError>>;
+  submitIdRegistryEvent?(event: IdRegistryEvent): Promise<Result<void, FarcasterError>>;
 }
 
 export const replacer = (_key: any, value: any) => {

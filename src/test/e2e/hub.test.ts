@@ -1,6 +1,6 @@
 import Faker from 'faker';
 import { AddressInfo } from 'net';
-import { generateUserInfo, getIDRegistryEvent, getSignerAdd, mockFid, populateEngine } from '~/storage/engine/mock';
+import { generateUserInfo, getIdRegistryEvent, getSignerAdd, mockFid, populateEngine } from '~/storage/engine/mock';
 import { Factories } from '~/test/factories';
 import { Hub, HubOptions } from '~/hub';
 import { RPCClient } from '~/network/rpc';
@@ -123,15 +123,15 @@ describe('Hub running tests', () => {
   test('hub handles various valid gossip messages', async () => {
     const aliceFid = Faker.datatype.number();
     const aliceInfo = await generateUserInfo(aliceFid);
-    const IDRegistryEvent: GossipMessage<Content> = {
+    const IdRegistryEvent: GossipMessage<Content> = {
       content: {
-        message: await getIDRegistryEvent(aliceInfo),
+        message: await getIdRegistryEvent(aliceInfo),
         root: '',
         count: 0,
       },
       topics: [NETWORK_TOPIC_PRIMARY],
     };
-    const idRegistryResult = await hub.handleGossipMessage(IDRegistryEvent);
+    const idRegistryResult = await hub.handleGossipMessage(IdRegistryEvent);
     expect(idRegistryResult.isOk());
 
     await testMessage(await getSignerAdd(aliceInfo));

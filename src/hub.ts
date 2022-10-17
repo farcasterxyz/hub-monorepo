@@ -3,18 +3,18 @@ import Engine from '~/storage/engine';
 import { Node } from '~/network/p2p/node';
 import { RPCClient, RPCHandler, RPCServer } from '~/network/rpc';
 import { PeerId } from '@libp2p/interface-peer-id';
-import { Cast, SignerMessage, Reaction, Follow, Verification, IDRegistryEvent, Message } from '~/types';
+import { Cast, SignerMessage, Reaction, Follow, Verification, IdRegistryEvent, Message } from '~/types';
 import {
   ContactInfoContent,
   GossipMessage,
   GOSSIP_CONTACT_INTERVAL,
-  IDRegistryContent,
+  IdRegistryContent,
   NETWORK_TOPIC_CONTACT,
   NETWORK_TOPIC_PRIMARY,
   UserContent,
 } from '~/network/p2p/protocol';
 import { AddressInfo } from 'net';
-import { isContactInfo, isIDRegistryContent, isUserContent } from '~/types/typeguards';
+import { isContactInfo, isIdRegistryContent, isUserContent } from '~/types/typeguards';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import RocksDB from '~/storage/db/rocksdb';
 import { err, ok, Result } from 'neverthrow';
@@ -180,9 +180,9 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     if (isUserContent(gossipMessage.content)) {
       const message = (gossipMessage.content as UserContent).message;
       result = await this.engine.mergeMessage(message);
-    } else if (isIDRegistryContent(gossipMessage.content)) {
-      const message = (gossipMessage.content as IDRegistryContent).message;
-      result = await this.engine.mergeIDRegistryEvent(message);
+    } else if (isIdRegistryContent(gossipMessage.content)) {
+      const message = (gossipMessage.content as IdRegistryContent).message;
+      result = await this.engine.mergeIdRegistryEvent(message);
     } else if (isContactInfo(gossipMessage.content)) {
       // TODO: Maybe we need a ContactInfo CRDT?
       // Check if we need sync and if we do, use this peer do it.
@@ -257,7 +257,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
             log.error(custodyEventResult.error, `sync failure: cannot get custody events for fid:${user}`);
             continue;
           }
-          await this.engine.mergeIDRegistryEvent(custodyEventResult._unsafeUnwrap());
+          await this.engine.mergeIdRegistryEvent(custodyEventResult._unsafeUnwrap());
           const signerMessagesResult = await rpcClient.getAllSignerMessagesByUser(user);
           if (signerMessagesResult.isErr()) {
             log.error(signerMessagesResult.error, `sync failure: cannot get signer message events for fid:${user}`);
@@ -347,7 +347,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   getAllVerificationsByUser(fid: number): Promise<Set<Verification>> {
     return this.engine.getAllVerificationsByUser(fid);
   }
-  getCustodyEventByUser(fid: number): Promise<Result<IDRegistryEvent, FarcasterError>> {
+  getCustodyEventByUser(fid: number): Promise<Result<IdRegistryEvent, FarcasterError>> {
     return this.engine.getCustodyEventByUser(fid);
   }
 
@@ -374,9 +374,9 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     return mergeResult;
   }
 
-  async submitIDRegistryEvent(event: IDRegistryEvent): Promise<Result<void, FarcasterError>> {
+  async submitIdRegistryEvent(event: IdRegistryEvent): Promise<Result<void, FarcasterError>> {
     // push this message into the engine
-    const mergeResult = await this.engine.mergeIDRegistryEvent(event);
+    const mergeResult = await this.engine.mergeIdRegistryEvent(event);
     if (mergeResult.isErr()) {
       log.error(mergeResult.error, 'received invalid message');
       return mergeResult;
@@ -385,7 +385,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     log.info({ event: event }, 'merged id registry event');
 
     // push this message onto the gossip network
-    const gossipMessage: GossipMessage<IDRegistryContent> = {
+    const gossipMessage: GossipMessage<IdRegistryContent> = {
       content: {
         message: event,
         root: '',

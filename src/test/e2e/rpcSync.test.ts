@@ -3,7 +3,7 @@ import { RPCServer, RPCHandler, RPCClient } from '~/network/rpc';
 import Engine from '~/storage/engine';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { populateEngine } from '~/storage/engine/mock';
-import { Cast, Follow, IDRegistryEvent, Message, Reaction, SignerMessage, Verification } from '~/types';
+import { Cast, Follow, IdRegistryEvent, Message, Reaction, SignerMessage, Verification } from '~/types';
 import { Result } from 'neverthrow';
 import { FarcasterError } from '~/utils/errors';
 
@@ -32,7 +32,7 @@ class mockRPCHandler implements RPCHandler {
   getAllVerificationsByUser(fid: number): Promise<Set<Verification>> {
     return serverEngine.getAllVerificationsByUser(fid);
   }
-  getCustodyEventByUser(fid: number): Promise<Result<IDRegistryEvent, FarcasterError>> {
+  getCustodyEventByUser(fid: number): Promise<Result<IdRegistryEvent, FarcasterError>> {
     return serverEngine.getCustodyEventByUser(fid);
   }
   async submitMessage(message: Message): Promise<Result<void, FarcasterError>> {
@@ -86,7 +86,7 @@ describe('rpcSync', () => {
         // get the signer messages first so we can prepare to ingest the remaining messages later
         const custodyEventResult = await client.getCustodyEventByUser(user);
         expect(custodyEventResult.isOk()).toBeTruthy();
-        const custodyResult = await clientEngine.mergeIDRegistryEvent(custodyEventResult._unsafeUnwrap());
+        const custodyResult = await clientEngine.mergeIdRegistryEvent(custodyEventResult._unsafeUnwrap());
         expect(custodyResult.isOk()).toBeTruthy();
         const signerMessagesResult = await client.getAllSignerMessagesByUser(user);
         expect(signerMessagesResult.isOk()).toBeTruthy();

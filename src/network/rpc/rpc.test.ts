@@ -7,7 +7,7 @@ import {
   Follow,
   FollowAdd,
   FollowRemove,
-  IDRegistryEvent,
+  IdRegistryEvent,
   Message,
   MessageSigner,
   Reaction,
@@ -33,7 +33,7 @@ const testDb = jestRocksDB('rpc.test');
 const engine = new Engine(testDb);
 
 let aliceCustodySigner: EthereumSigner;
-let aliceCustodyRegister: IDRegistryEvent;
+let aliceCustodyRegister: IdRegistryEvent;
 let aliceDelegateSigner: MessageSigner;
 
 let cast: CastShort;
@@ -68,7 +68,7 @@ class mockRPCHandler implements RPCHandler {
   getAllVerificationsByUser(fid: number): Promise<Set<Verification>> {
     return engine.getAllVerificationsByUser(fid);
   }
-  getCustodyEventByUser(fid: number): Promise<Result<IDRegistryEvent, FarcasterError>> {
+  getCustodyEventByUser(fid: number): Promise<Result<IdRegistryEvent, FarcasterError>> {
     return engine.getCustodyEventByUser(fid);
   }
   async submitMessage(message: Message): Promise<Result<void, FarcasterError>> {
@@ -105,7 +105,7 @@ describe('rpc', () => {
 
     // setup alices prereqs
     aliceCustodySigner = await generateEthereumSigner();
-    aliceCustodyRegister = await Factories.IDRegistryEvent.create({
+    aliceCustodyRegister = await Factories.IdRegistryEvent.create({
       args: { to: aliceCustodySigner.signerKey, id: aliceFid },
       name: 'Register',
     });
@@ -135,7 +135,7 @@ describe('rpc', () => {
 
   beforeEach(async () => {
     engine._reset();
-    await engine.mergeIDRegistryEvent(aliceCustodyRegister);
+    await engine.mergeIdRegistryEvent(aliceCustodyRegister);
     await engine.mergeMessage(addDelegateSigner);
   });
 
