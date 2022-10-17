@@ -13,6 +13,7 @@ import { PeerId } from '@libp2p/interface-peer-id';
 
 /** A CLI to accept options from the user and start the Hub */
 
+const DEFAULT_CONFIG_FILE = './.config/hub.config.ts';
 const PEER_ID_FILENAME = 'id.protobuf';
 const DEFAULT_PEER_ID_DIR = './.hub';
 const DEFAULT_PEER_ID_FILENAME = `default_${PEER_ID_FILENAME}`;
@@ -27,6 +28,7 @@ app
 app
   .command('start')
   .description('Start a Hub')
+  .option('-c, --config <filepath>', 'Path to a config file with options', DEFAULT_CONFIG_FILE)
   .option('-n --network-url <url>', 'ID Registry network URL')
   .option('-f, --fir-address <address>', 'The address of the FIR contract')
   .option('-b, --bootstrap <ip-multiaddrs...>', 'A list of peer multiaddrs to bootstrap libp2p')
@@ -34,28 +36,38 @@ app
   .option('--multiaddr <ip-multiaddr>', 'The IP multiaddr libp2p should listen on. (default: "/ip4/127.0.0.1/")')
   .option('-g, --gossip-port <port>', 'The tcp port libp2p should gossip over. (default: selects one at random)')
   .option('-r, --rpc-port <port>', 'The tcp port that the rpc server should listen on.  (default: random port)')
-  .option('--simple-sync <enabled>', 'Toggle simple sync', true)
-  .option('--db-name <name>', 'The name of the RocksDB instance', 'rocks.hub._default')
-  .option('--db-reset', 'Clears the database before starting', false)
-  .option('-i, --id <filepath>', 'Path to the PeerId file', DEFAULT_PEER_ID_LOCATION)
+  .option('--simple-sync <enabled>', 'Toggle simple sync')
+  .option('--db-name <name>', 'The name of the RocksDB instance')
+  .option('--db-reset', 'Clears the database before starting')
+  .option('-i, --id <filepath>', 'Path to the PeerId file')
   .action(async (cliOptions) => {
     const teardown = async (hub: Hub) => {
       await hub.stop();
       process.exit();
     };
 
+    // try to load the config file
+    const hubConfig = (await import(resolve(cliOptions.config))).Config;
+
+    let peerId;
+    if (cliOptions.id) {
+      peerId = await readPeerId(resolve(cliOptions.id));
+    } else {
+      peerId = await readPeerId(resolve(hubConfig.id));
+    }
+
     const options: HubOptions = {
-      peerId: await readPeerId(cliOptions.id),
-      networkUrl: cliOptions.networkUrl,
-      IdRegistryAddress: cliOptions.firAddress,
-      bootstrapAddrs: cliOptions.bootstrap,
-      allowedPeers: cliOptions.allowedPeers,
-      IpMultiAddr: cliOptions.multiaddr,
-      gossipPort: cliOptions.gossipPort,
-      rpcPort: cliOptions.rpcPort,
-      simpleSync: cliOptions.simpleSync,
-      rocksDBName: cliOptions.dbName,
-      resetDB: cliOptions.dbReset,
+      peerId,
+      networkUrl: cliOptions.networkUrl ?? hubConfig.networkUrl,
+      IdRegistryAddress: cliOptions.firAddress ?? hubConfig.firAddress,
+      bootstrapAddrs: cliOptions.bootstrap ?? hubConfig.bootstrap,
+      allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,
+      IpMultiAddr: cliOptions.multiaddr ?? hubConfig.multiaddr,
+      gossipPort: cliOptions.gossipPort ?? hubConfig.gossipPort,
+      rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort,
+      simpleSync: cliOptions.simpleSync ?? hubConfig.simpleSync,
+      rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
+      resetDB: cliOptions.dbReset ?? hubConfig.dbReset,
     };
 
     const hub = new Hub(options);
@@ -148,12 +160,8 @@ app
   .addCommand(verifyIdCommand);
 
 const readPeerId = async (filePath: string) => {
-  try {
-    const proto = await readFile(filePath);
-    return createFromProtobuf(proto);
-  } catch (err: any) {
-    throw new Error(err);
-  }
+  const proto = await readFile(filePath);
+  return createFromProtobuf(proto);
 };
 
 app.parse(process.argv);
