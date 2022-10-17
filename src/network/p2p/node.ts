@@ -5,7 +5,7 @@ import { PeerId } from '@libp2p/interface-peer-id';
 import { Mplex } from '@libp2p/mplex';
 import { PubSubPeerDiscovery } from '@libp2p/pubsub-peer-discovery';
 import { TCP } from '@libp2p/tcp';
-import { multiaddr, Multiaddr } from '@multiformats/multiaddr';
+import { Multiaddr } from '@multiformats/multiaddr';
 import { createLibp2p, Libp2p } from 'libp2p';
 import { err, ok, Result } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
@@ -13,6 +13,7 @@ import { FarcasterError, ServerError } from '~/utils/errors';
 import { decodeMessage, encodeMessage, GossipMessage, GOSSIP_TOPICS } from '~/network/p2p/protocol';
 import { ConnectionFilter } from './connectionFilter';
 import { logger } from '~/utils/logger';
+import { checkNodeAddrs } from '~/utils/p2p';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
 
@@ -31,13 +32,13 @@ interface NodeEvents {
 }
 
 /** Node create options */
-interface StartOptions {
+interface NodeOptions {
   /** PeerId to use as the Node's Identity. Generates a new ephemeral PeerId if not specified*/
   peerId?: PeerId | undefined;
   /** IP address in MultiAddr format to bind to */
-  IPMultiAddr?: string | undefined;
-  /** Port to bind to. Picks a port at random if not specified. This is combined with the IPMultiAddr */
-  port?: number | undefined;
+  IpMultiAddr?: string | undefined;
+  /** Port to listen for gossip. Picks a port at random if not specified. This is combined with the IPMultiAddr */
+  gossipPort?: number | undefined;
   /** A list of addresses to peer with. PeersIds outside of this list will not be able to connect to this node */
   allowedPeerIdStrs?: string[] | undefined;
 }
@@ -85,7 +86,7 @@ export class Node extends TypedEmitter<NodeEvents> {
    * @param bootstrapAddrs  A list of addresses to bootstrap from. Attempts to connect with each peer in the list
    * @param startOptions    Options to configure the node's behavior
    */
-  async start(bootstrapAddrs: Multiaddr[], startOptions?: StartOptions) {
+  async start(bootstrapAddrs: Multiaddr[], startOptions?: NodeOptions) {
     this._node = await this.createNode(startOptions ?? {});
     this.registerListeners();
 
@@ -235,59 +236,21 @@ export class Node extends TypedEmitter<NodeEvents> {
     });
   }
 
-  /** Parses an address to verify it is actually a valid MultiAddr */
-  private parseAddress(multiaddrStr: string): Result<Multiaddr, FarcasterError> {
-    try {
-      return ok(multiaddr(multiaddrStr));
-    } catch (error: any) {
-      return err(new ServerError('Invalid MultiAddr: ' + error.message));
-    }
-  }
-
-  /** Checks that the IP address to bind to is valid and that the combined IP, transport, and port multiaddr is valid  */
-  private checkAddrs(listenIPAddr: string, listenCombinedAddr: string) {
-    // check that the provided IP addr is a valid multiaddr format
-    let parsedAddr = this.parseAddress(listenIPAddr);
-    parsedAddr.match(
-      (addr) => {
-        if (!addr) throw new Error('Invalid IP MultiAddr. Unable to create p2p Node');
-        let options;
-        try {
-          options = addr.toOptions();
-        } catch (error) {
-          return;
-          // intentional no-op since the IP MultiAddr is not expected to have port or transport information
-        }
-        if (options.port !== undefined || options.transport !== undefined)
-          throw new ServerError('Invalid IP MultiAddr: unexpected transport/port information');
-      },
-      (error) => {
-        throw error;
-      }
-    );
-
-    // check that the combined address is actually valid
-    parsedAddr = this.parseAddress(listenCombinedAddr);
-    parsedAddr.match(
-      (addr) => {
-        if (!addr) throw new Error('Invalid Node MultiAddr. Unable to create p2p Node');
-        const options = addr.toOptions();
-        if (options.transport != 'tcp') throw new ServerError('Invalid Node MultiAddr: transport must be tcp');
-      },
-      (error) => {
-        throw error;
-      }
-    );
-  }
-
   /**
    * Creates a Libp2p node with GossipSub
    */
-  private async createNode(options: StartOptions) {
-    const listenIPMultiAddr = options.IPMultiAddr ?? MultiaddrLocalHost;
-    const listenPort = options.port ?? 0;
+  private async createNode(options: NodeOptions) {
+    const listenIPMultiAddr = options.IpMultiAddr ?? MultiaddrLocalHost;
+    const listenPort = options.gossipPort ?? 0;
     const listenMultiAddrStr = `${listenIPMultiAddr}/tcp/${listenPort}`;
-    this.checkAddrs(listenIPMultiAddr, listenMultiAddrStr);
+    checkNodeAddrs(listenIPMultiAddr, listenMultiAddrStr).match(
+      () => {
+        /** no-op */
+      },
+      (error) => {
+        throw new ServerError(`Failed to start Hub: ${error}`);
+      }
+    );
 
     const gossip = new GossipSub({
       emitSelf: false,
@@ -299,7 +262,7 @@ export class Node extends TypedEmitter<NodeEvents> {
     if (options.allowedPeerIdStrs) {
       log.info(
         { identity: this.identity, function: 'createNode', allowedPeerIds: options.allowedPeerIdStrs },
-        `!!! PEER-ID RESTRICTIONS ENABLED !!!\nAllowed Peers: ${options.allowedPeerIdStrs}`
+        `!!! PEER-ID RESTRICTIONS ENABLED !!!`
       );
       connectionGater = new ConnectionFilter(options.allowedPeerIdStrs);
     }

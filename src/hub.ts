@@ -33,10 +33,10 @@ export interface HubOptions {
   allowedPeers?: string[];
 
   /** IP address string in MultiAddr format to bind to */
-  IPMultiAddr?: string;
+  IpMultiAddr?: string;
 
-  /** Port for libp2p to listen on */
-  port?: number;
+  /** Port for libp2p to listen for gossip */
+  gossipPort?: number;
 
   /** Port for the RPC Client */
   rpcPort?: number;
@@ -45,7 +45,7 @@ export interface HubOptions {
   networkUrl?: string;
 
   /** Address of the IdRegistry contract  */
-  IDRegistryAddress?: string;
+  IdRegistryAddress?: string;
 
   /*
    * Enable SimpleSync once network is established.
@@ -101,7 +101,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     super();
     this.options = options;
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
-    this.engine = new Engine(this.rocksDB, options.networkUrl, options.IDRegistryAddress);
+    this.engine = new Engine(this.rocksDB, options.networkUrl, options.IdRegistryAddress);
     this.gossipNode = new Node();
     this.rpcServer = new RPCServer(this);
     this.syncState = SimpleSyncState.Pending;
@@ -138,8 +138,8 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
 
     await this.gossipNode.start(this.options.bootstrapAddrs ?? [], {
       peerId: this.options.peerId,
-      IPMultiAddr: this.options.IPMultiAddr,
-      port: this.options.port,
+      IpMultiAddr: this.options.IpMultiAddr,
+      gossipPort: this.options.gossipPort,
       allowedPeerIdStrs: this.options.allowedPeers,
     });
     await this.rpcServer.start(this.options.rpcPort ? this.options.rpcPort : 0);

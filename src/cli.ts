@@ -27,17 +27,17 @@ app
 app
   .command('start')
   .description('Start a Hub')
-  .option('-N, --network-url <url>', 'ID Registry network URL')
-  .option('-A, --id-registry-address <address>', 'ID Registry address')
-  .option('-B, --bootstrap-addresses <addresses...>', 'A list of MultiAddrs to use for bootstrapping')
-  .option('--allowed-peers <peerIds...>', 'An "allow list" of Peer Ids. Blocks all other connections')
-  .option('--ip <ip-multiaddr>', 'The IP Multi Address libp2p should listen on. (default: "/ip4/127.0.0.1/")')
-  .option('--port <port>', 'The TCP port libp2p should listen on. (default: selects one at random)')
-  .option('--rpc-port <port>', 'The RPC port to use. (default: selects one at random)')
-  .option('--simple-sync <enabled>', 'Enable/Disable simple sync', true)
-  .option('--db-reset', 'Clear the database before starting', false)
+  .option('-n --network-url <url>', 'ID Registry network URL')
+  .option('-f, --fir-address <address>', 'The address of the FIR contract')
+  .option('-b, --bootstrap <ip-multiaddrs...>', 'A list of peer multiaddrs to bootstrap libp2p')
+  .option('-a, --allowed-peers <peerIds...>', 'An allow-list of peer ids permitted to connect to the hub')
+  .option('--multiaddr <ip-multiaddr>', 'The IP multiaddr libp2p should listen on. (default: "/ip4/127.0.0.1/")')
+  .option('-g, --gossip-port <port>', 'The tcp port libp2p should gossip over. (default: selects one at random)')
+  .option('-r, --rpc-port <port>', 'The tcp port that the rpc server should listen on.  (default: random port)')
+  .option('--simple-sync <enabled>', 'Toggle simple sync', true)
   .option('--db-name <name>', 'The name of the RocksDB instance', 'rocks.hub._default')
-  .option('-I, --id <filepath>', 'Path to the PeerId file', DEFAULT_PEER_ID_LOCATION)
+  .option('--db-reset', 'Clears the database before starting', false)
+  .option('-i, --id <filepath>', 'Path to the PeerId file', DEFAULT_PEER_ID_LOCATION)
   .action(async (cliOptions) => {
     const teardown = async (hub: Hub) => {
       await hub.stop();
@@ -47,11 +47,11 @@ app
     const options: HubOptions = {
       peerId: await readPeerId(cliOptions.id),
       networkUrl: cliOptions.networkUrl,
-      IDRegistryAddress: cliOptions.idRegistryAddress,
-      bootstrapAddrs: cliOptions.bootstrapAddresses,
+      IdRegistryAddress: cliOptions.firAddress,
+      bootstrapAddrs: cliOptions.bootstrap,
       allowedPeers: cliOptions.allowedPeers,
-      IPMultiAddr: cliOptions.ip,
-      port: cliOptions.port,
+      IpMultiAddr: cliOptions.multiaddr,
+      gossipPort: cliOptions.gossipPort,
       rpcPort: cliOptions.rpcPort,
       simpleSync: cliOptions.simpleSync,
       rocksDBName: cliOptions.dbName,
