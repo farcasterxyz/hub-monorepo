@@ -11,15 +11,15 @@ export const Config = {
   /** Network URL of the IdRegistry Contract */
   // networkUrl: '',
   /** Address of the IdRegistry Contract  */
-  // idRegistryAddress: '',
+  // firAddress: '',
   /** A list of MultiAddrs to use for bootstrapping */
   // bootstrapAddresses: [],
   /** An "allow list" of Peer Ids. Blocks all other connections */
   // allowedPeers: [],
   /** The IP Multi Address libp2p should listen on. */
-  // ip: '/ip4/127.0.0.1/',
+  // multiaddr: '/ip4/127.0.0.1/',
   /** The TCP port libp2p should listen on. */
-  port: 0,
+  gossipPort: 0,
   /** The RPC port to use. */
   rpcPort: 0,
   /** Enable/Disable simple sync */

@@ -13,7 +13,7 @@ import { PeerId } from '@libp2p/interface-peer-id';
 
 /** A CLI to accept options from the user and start the Hub */
 
-const DEFAULT_CONFIG_FILE = './.hub/start.config.ts';
+const DEFAULT_CONFIG_FILE = './.config/hub.config.ts';
 const PEER_ID_FILENAME = 'id.protobuf';
 const DEFAULT_PEER_ID_DIR = './.hub';
 const DEFAULT_PEER_ID_FILENAME = `default_${PEER_ID_FILENAME}`;
@@ -47,26 +47,27 @@ app
     };
 
     // try to load the config file
-    const startConfig = (await import(resolve(cliOptions.config))).Config;
+    const hubConfig = (await import(resolve(cliOptions.config))).Config;
 
     let peerId;
     if (cliOptions.id) {
       peerId = await readPeerId(resolve(cliOptions.id));
     } else {
-      peerId = await readPeerId(resolve(startConfig.id));
+      peerId = await readPeerId(resolve(hubConfig.id));
     }
 
     const options: HubOptions = {
-      networkUrl: cliOptions.networkUrl ?? startConfig.networkUrl,
-      IdRegistryAddress: cliOptions.firAddress ?? startConfig.firAddress,
-      bootstrapAddrs: cliOptions.bootstrap ?? startConfig.bootstrap,
-      allowedPeers: cliOptions.allowedPeers ?? startConfig.allowedPeers,
-      IpMultiAddr: cliOptions.multiaddr ?? cliOptions.multiaddr,
-      gossipPort: cliOptions.gossipPort ?? cliOptions.gossipPort,
-      rpcPort: cliOptions.rpcPort ?? cliOptions.rpcPort,
-      simpleSync: cliOptions.simpleSync ?? cliOptions.simpleSync,
-      rocksDBName: cliOptions.dbName ?? cliOptions.dbName,
-      resetDB: cliOptions.dbReset ?? cliOptions.dbReset,
+      peerId,
+      networkUrl: cliOptions.networkUrl ?? hubConfig.networkUrl,
+      IdRegistryAddress: cliOptions.firAddress ?? hubConfig.firAddress,
+      bootstrapAddrs: cliOptions.bootstrap ?? hubConfig.bootstrap,
+      allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,
+      IpMultiAddr: cliOptions.multiaddr ?? hubConfig.multiaddr,
+      gossipPort: cliOptions.gossipPort ?? hubConfig.gossipPort,
+      rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort,
+      simpleSync: cliOptions.simpleSync ?? hubConfig.simpleSync,
+      rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
+      resetDB: cliOptions.dbReset ?? hubConfig.dbReset,
     };
 
     const hub = new Hub(options);

@@ -27,5 +27,4 @@ coverage/
 .rocks/
 
 # Config
-.hub/*
-!.hub/start.config.ts
+.hub/
