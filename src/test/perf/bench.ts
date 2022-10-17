@@ -1,6 +1,5 @@
 import { Command } from 'commander';
 import { RPCClient } from '~/network/rpc';
-import { AddressInfo, isIP } from 'net';
 import { generateUserInfo, getIdRegistryEvent, getSignerAdd, UserInfo } from '~/storage/engine/mock';
 import Faker from 'faker';
 import { IdRegistryEvent, Message, SignerAdd } from '~/types';
