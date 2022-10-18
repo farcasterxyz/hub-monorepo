@@ -16,8 +16,8 @@ export const Config = {
   // bootstrapAddresses: [],
   /** An "allow list" of Peer Ids. Blocks all other connections */
   // allowedPeers: [],
-  /** The IP Multi Address libp2p should listen on. */
-  // multiaddr: '/ip4/127.0.0.1/',
+  /** The IP address libp2p should listen on. */
+  ip: '127.0.0.1',
   /** The TCP port libp2p should listen on. */
   gossipPort: 0,
   /** The RPC port to use. */

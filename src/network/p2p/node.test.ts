@@ -115,7 +115,7 @@ describe('node unit tests', () => {
 
   test('port and transport addrs in the Ip MultiAddr is not allowed', async () => {
     const node = new Node();
-    const options = { IpMultiAddr: '/ip4/127.0.0.1/tcp/8080' };
+    const options = { ipMultiAddr: '/ip4/127.0.0.1/tcp/8080' };
     await expect(node.start([], options)).rejects.toThrow();
     expect(node.isStarted()).toBeFalsy();
     await node.stop();
@@ -124,7 +124,7 @@ describe('node unit tests', () => {
   test('invalid multiaddr format is not allowed', async () => {
     const node = new Node();
     // an IPv6 being supplied as an IPv4
-    const options = { IpMultiAddr: '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a' };
+    const options = { ipMultiAddr: '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a' };
     await expect(node.start([], options)).rejects.toThrow();
     expect(node.isStarted()).toBeFalsy();
     await node.stop();

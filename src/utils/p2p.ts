@@ -1,4 +1,5 @@
 import { Multiaddr, multiaddr } from '@multiformats/multiaddr';
+import { AddressInfo, isIP } from 'net';
 import { err, ok, Result } from 'neverthrow';
 import { FarcasterError, ServerError } from '~/utils/errors';
 
@@ -50,4 +51,28 @@ export const checkNodeAddrs = (listenIPAddr: string, listenCombinedAddr: string)
   );
 
   return result;
+};
+
+/** Get an AddressInfo object for a given IP and port  */
+export const getAddressInfo = (address: string, port: number) => {
+  const family = isIP(address);
+  if (!family) return err(new ServerError('Not an IP address'));
+
+  const addrInfo: AddressInfo = {
+    address,
+    port,
+    family: family == 4 ? 'ip4' : 'ip6',
+  };
+  return ok(addrInfo);
+};
+
+/**
+ *
+ * Creates an IP-only multiaddr formatted string from an AddressInfo
+ *
+ * Does not preserve port or transport information
+ */
+export const ipMultiAddrStrFromAddressInfo = (addressInfo: AddressInfo) => {
+  const multiaddrStr = `/${addressInfo.family}/${addressInfo.address}`;
+  return multiaddrStr;
 };

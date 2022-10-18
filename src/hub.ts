@@ -33,7 +33,7 @@ export interface HubOptions {
   allowedPeers?: string[];
 
   /** IP address string in MultiAddr format to bind to */
-  IpMultiAddr?: string;
+  ipMultiAddr?: string;
 
   /** Port for libp2p to listen for gossip */
   gossipPort?: number;
@@ -138,7 +138,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
 
     await this.gossipNode.start(this.options.bootstrapAddrs ?? [], {
       peerId: this.options.peerId,
-      IpMultiAddr: this.options.IpMultiAddr,
+      ipMultiAddr: this.options.ipMultiAddr,
       gossipPort: this.options.gossipPort,
       allowedPeerIdStrs: this.options.allowedPeers,
     });
