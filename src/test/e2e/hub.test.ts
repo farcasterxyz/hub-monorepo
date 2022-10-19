@@ -31,9 +31,8 @@ const compareHubs = async (sourceHub: Hub, compareHub: Hub) => {
     await expect(compareHub.getAllCastsByUser(user)).resolves.toEqual(casts);
     const follows = await sourceHub.getAllFollowsByUser(user);
     await expect(compareHub.getAllFollowsByUser(user)).resolves.toEqual(follows);
-    // TODO: Verifications don't match for some reason right now. Figure out why
-    // const reactions = await sourceHub.getAllReactionsByUser(user);
-    // await expect(compareHub.getAllReactionsByUser(user)).resolves.toEqual(reactions);
+    const reactions = await sourceHub.getAllReactionsByUser(user);
+    await expect(compareHub.getAllReactionsByUser(user)).resolves.toEqual(reactions);
     const verifications = await sourceHub.getAllVerificationsByUser(user);
     await expect(compareHub.getAllVerificationsByUser(user)).resolves.toEqual(verifications);
   }

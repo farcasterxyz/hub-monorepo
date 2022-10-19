@@ -3,6 +3,8 @@ import { MerkleTrie, NodeMetadata, TrieSnapshot } from '~/network/sync/merkleTri
 import { SyncId } from '~/network/sync/syncId';
 import Engine from '~/storage/engine';
 import { RPCClient } from '~/network/rpc';
+import { err, Result } from 'neverthrow';
+import { FarcasterError, ServerError } from '~/utils/errors';
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
@@ -137,9 +139,19 @@ class SyncEngine {
     await messages.match(
       async (msgs) => {
         console.log(`Got ${msgs.length} messages`);
-        const results = await Promise.all(this.engine.mergeMessages(msgs));
-        console.log(`Merged ${results.length} messages. Success: ${results.filter((r) => r.isOk()).length}`);
-        results
+        const mergeResults = [];
+        // TODO: we have to merge the messages sequentially, because of a race condition with reactions (https://github.com/farcasterxyz/hub/issues/178)
+        for (const msg of msgs) {
+          const result = await this.engine.mergeMessage(msg);
+          if (result.isErr() && result.error.message.includes('unknown user')) {
+            const result = await this.syncUserAndRetryMessage(msg, rpcClient);
+            mergeResults.push(result);
+          } else {
+            mergeResults.push(result);
+          }
+        }
+        console.log(`Merged ${mergeResults.length} messages. Success: ${mergeResults.filter((r) => r.isOk()).length}`);
+        mergeResults
           .filter((r) => r.isErr())
           .forEach((r) => console.log(`Failed to merge message: ${r._unsafeUnwrapErr().message}`));
       },
@@ -175,6 +187,28 @@ class SyncEngine {
   public get snapshotTimestamp(): number {
     const currentTimeInSeconds = Math.floor(Date.now() / 1000);
     return Math.floor(currentTimeInSeconds / SYNC_THRESHOLD_IN_SECONDS) * SYNC_THRESHOLD_IN_SECONDS;
+  }
+
+  private async syncUserAndRetryMessage(message: Message, rpcClient: RPCClient): Promise<Result<void, FarcasterError>> {
+    const user = message.data.fid;
+    const custodyEventResult = await rpcClient.getCustodyEventByUser(user);
+    if (custodyEventResult.isErr()) {
+      return err(new ServerError('Failed to fetch custody event'));
+    }
+    await this.engine.mergeIdRegistryEvent(custodyEventResult._unsafeUnwrap());
+    // Probably not required to fetch the signer messages, but doing it here means
+    //  sync will complete in one round (prevents messages failing to merge due to missed or out of order signer message)
+    const signerMessagesResult = await rpcClient.getAllSignerMessagesByUser(user);
+    if (signerMessagesResult.isErr()) {
+      return err(new ServerError('Failed to fetch signer messages'));
+    }
+    const results = await Promise.all(this.engine.mergeMessages([...signerMessagesResult._unsafeUnwrap()]));
+    if (results.every((r) => r.isErr())) {
+      return err(new ServerError('Failed to signer messages'));
+    } else {
+      // if at least one signer message was merged, retry the original message
+      return this.engine.mergeMessage(message);
+    }
   }
 }
 

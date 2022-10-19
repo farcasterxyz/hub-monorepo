@@ -207,11 +207,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
 
   async handleContactInfo(message: ContactInfoContent) {
     const rpcClient = await this.getRPCClientForPeer(message);
-    if (this.syncState == SimpleSyncState.Pending) {
-      log.info({ identity: this.identity }, 'received a Contact Info for sync');
-      // TODO: DiffSync currently doesn't handle custody events, so we still need to sync users manually right now
-      await this.simpleSyncFromPeer(message, rpcClient);
-    }
+    log.info({ identity: this.identity }, 'received a Contact Info for sync');
 
     // Intentionally not awaiting here so sync doesn't block other messages
     console.log(
