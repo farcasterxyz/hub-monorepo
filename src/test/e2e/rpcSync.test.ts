@@ -6,6 +6,7 @@ import { populateEngine } from '~/storage/engine/mock';
 import { Cast, Follow, IdRegistryEvent, Message, Reaction, SignerMessage, Verification } from '~/types';
 import { Result } from 'neverthrow';
 import { FarcasterError } from '~/utils/errors';
+import { NodeMetadata } from '~/network/sync/merkleTrie';
 
 const serverDb = jestRocksDB('rpcSync.test.server');
 const serverEngine = new Engine(serverDb);
@@ -34,6 +35,15 @@ class mockRPCHandler implements RPCHandler {
   }
   getCustodyEventByUser(fid: number): Promise<Result<IdRegistryEvent, FarcasterError>> {
     return serverEngine.getCustodyEventByUser(fid);
+  }
+  getSyncMetadataByPrefix(_prefix: string): Promise<Result<NodeMetadata, FarcasterError>> {
+    throw new Error('Method not implemented.');
+  }
+  getSyncIdsByPrefix(_prefix: string): Promise<Result<string[], FarcasterError>> {
+    throw new Error('Method not implemented.');
+  }
+  getMessagesByHashes(hashes: string[]): Promise<Message[]> {
+    return serverEngine.getMessagesByHashes(hashes);
   }
   async submitMessage(message: Message): Promise<Result<void, FarcasterError>> {
     return await serverEngine.mergeMessage(message);

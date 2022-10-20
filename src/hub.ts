@@ -68,13 +68,6 @@ const randomDbName = () => {
   return `rocksdb.tmp.${(new Date().getUTCDate() * Math.random()).toString(36).substring(2)}`;
 };
 
-enum SimpleSyncState {
-  Disabled,
-  Pending,
-  InProgress,
-  Complete,
-}
-
 interface HubEvents {
   /** Emit an event when SimpleSync starts */
   syncStart: () => void;
@@ -91,7 +84,6 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   private options: HubOptions;
   private gossipNode: Node;
   private rpcServer: RPCServer;
-  private syncState: SimpleSyncState;
   private contactTimer?: NodeJS.Timer;
   private rocksDB: RocksDB;
   private syncEngine: SyncEngine;
@@ -105,11 +97,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     this.engine = new Engine(this.rocksDB, options.networkUrl, options.IdRegistryAddress);
     this.gossipNode = new Node();
     this.rpcServer = new RPCServer(this);
-    this.syncState = SimpleSyncState.Pending;
     this.syncEngine = new SyncEngine(this.engine);
-    if (options.simpleSync !== undefined && !options.simpleSync) {
-      this.syncState = SimpleSyncState.Disabled;
-    }
   }
 
   get rpcAddress() {
@@ -207,109 +195,29 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
 
   async handleContactInfo(message: ContactInfoContent) {
     const rpcClient = await this.getRPCClientForPeer(message);
-    log.info({ identity: this.identity }, 'received a Contact Info for sync');
-
-    // Intentionally not awaiting here so sync doesn't block other messages
-    console.log(
-      `Got ${message.excludedHashes.length} excluded hashes (${message.count} messages) from ${message.peerId}`
-    );
-    this.diffSyncIfRequired(message.excludedHashes, message.count, rpcClient);
+    log.info({ identity: this.identity, peer: message.peerId }, 'received a Contact Info for sync');
+    await this.diffSyncIfRequired(message, rpcClient);
   }
 
-  async diffSyncIfRequired(excludedHashes: string[], numMessages: number, rpcClient: RPCClient | undefined) {
+  async diffSyncIfRequired(message: ContactInfoContent, rpcClient: RPCClient | undefined) {
     this.emit('syncStart');
     if (!rpcClient) {
-      console.log(`No RPC client for peer, skipping sync`);
+      log.debug(`No RPC client for peer, skipping sync`);
       this.emit('syncComplete', false);
       return;
     }
     if (this.syncEngine.isSyncing) {
       // Don't fire syncComplete
+      log.debug(`Already syncing, skipping sync`);
       return;
     }
-    if (!this.syncEngine.shouldSync(excludedHashes, numMessages)) {
-      console.log(`shuold sync is false, skipping sync`);
+    if (!this.syncEngine.shouldSync(message.excludedHashes, message.count)) {
+      log.debug(`Upto date with peer, skipping sync`);
       this.emit('syncComplete', false);
       return;
     }
-    console.log(`Attempting diff sync`);
-    await this.syncEngine.performSync(excludedHashes, rpcClient);
-    console.log(`Sync complete`);
+    await this.syncEngine.performSync(message.excludedHashes, rpcClient);
     this.emit('syncComplete', true);
-  }
-
-  /** Attempt to sync data from a peer */
-  async simpleSyncFromPeer(peer: ContactInfoContent, rpcClient?: RPCClient) {
-    if (this.syncState != SimpleSyncState.Pending) return;
-
-    // this.emit('syncStart');
-    log.info({ function: 'simpleSyncFromPeer', identity: this.identity, peer: peer }, `syncing from peer: ${peer}`);
-
-    if (!rpcClient) {
-      // this.emit('syncComplete', false);
-      return;
-    }
-
-    // Start the Sync
-    this.syncState = SimpleSyncState.InProgress;
-    const users = await rpcClient.getUsers();
-    await users.match(
-      async (users) => {
-        for (const user of users) {
-          // get the signer messages first so we can prepare to ingest the remaining messages later
-          const custodyEventResult = await rpcClient.getCustodyEventByUser(user);
-          if (custodyEventResult.isErr()) {
-            log.error(custodyEventResult.error, `sync failure: cannot get custody events for fid:${user}`);
-            continue;
-          }
-          await this.engine.mergeIdRegistryEvent(custodyEventResult._unsafeUnwrap());
-          const signerMessagesResult = await rpcClient.getAllSignerMessagesByUser(user);
-          if (signerMessagesResult.isErr()) {
-            log.error(signerMessagesResult.error, `sync failure: cannot get signer message events for fid:${user}`);
-            continue;
-          }
-          await Promise.all(this.engine.mergeMessages([...signerMessagesResult._unsafeUnwrap()]));
-
-          // // now collect all the messages from each set
-          // const responses = await Promise.all([
-          //   rpcClient.getAllCastsByUser(user),
-          //   rpcClient.getAllFollowsByUser(user),
-          //   rpcClient.getAllReactionsByUser(user),
-          //   rpcClient.getAllVerificationsByUser(user),
-          // ]);
-
-          // collect all the messages for each Set into a single list of messages
-          // const allMessages = responses.flatMap((response) => {
-          //   return response.match(
-          //     (messages) => {
-          //       return [...messages];
-          //     },
-          //     () => {
-          //       return [];
-          //     }
-          //   );
-          // });
-
-          // Replays all messages into the engine
-          // const mergeResults = await Promise.all(this.engine.mergeMessages(allMessages));
-          // let success = 0;
-          // let fail = 0;
-          // mergeResults.forEach((result) => {
-          //   result.isErr() ? fail++ : success++;
-          // });
-          // log.info(
-          //   { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer },
-          //   `Sync Progress(Fid: ${user}): Merged: ${success} messages and failed ${fail} messages`
-          // );
-        }
-      },
-      async (error) => {
-        log.error(error, 'sync failure: failed to get users');
-      }
-    );
-    log.info({ function: 'simpleSyncFromPeer', identity: this.identity, peer: peer }, 'sync complete');
-    // this.emit('syncComplete', true);
-    this.syncState = SimpleSyncState.Complete;
   }
 
   private async getRPCClientForPeer(peer: ContactInfoContent): Promise<RPCClient | undefined> {

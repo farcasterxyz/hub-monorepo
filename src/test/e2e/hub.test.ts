@@ -190,10 +190,10 @@ describe('Hub negative tests', () => {
       count: 0,
     };
     // fails because this peerinfo has no RPC to sync from
-    hub.simpleSyncFromPeer(badPeerInfo);
+    await hub.handleContactInfo(badPeerInfo);
     badPeerInfo.rpcAddress = { address: '', port: 0, family: 'ip4' };
     // fails because hub has no peers (despite this peerInfo having an rpc address)
-    hub.simpleSyncFromPeer(badPeerInfo);
+    await hub.handleContactInfo(badPeerInfo);
 
     expect(syncHandler).toBeCalledTimes(2);
 

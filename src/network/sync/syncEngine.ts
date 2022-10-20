@@ -5,11 +5,16 @@ import Engine from '~/storage/engine';
 import { RPCClient } from '~/network/rpc';
 import { err, Result } from 'neverthrow';
 import { FarcasterError, ServerError } from '~/utils/errors';
+import { logger } from '~/utils/logger';
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
 const SYNC_THRESHOLD_IN_SECONDS = 10;
 const HASHES_PER_FETCH = 50;
+
+const log = logger.child({
+  component: 'SyncEngine',
+});
 
 /**
  * SyncEngine handles the logic required to determine where and how two hubs differ
@@ -36,30 +41,29 @@ class SyncEngine {
 
   public shouldSync(excludedHashes: string[], numMessages: number): boolean {
     if (this._isSyncing) {
-      console.log(`Already syncing, skipping`);
+      log.debug('shouldSync: already syncing');
       return false;
     }
     const ourSnapshot = this.snapshot;
-    console.log(`shouldSync: Our snapshot: ${ourSnapshot.prefix}`);
     const excludedHashesMatch =
       ourSnapshot.excludedHashes.length === excludedHashes.length &&
       ourSnapshot.excludedHashes.every((value, index) => value === excludedHashes[index]);
     if (excludedHashesMatch) {
-      console.log(`Excluded hashes match, skipping`);
       // Excluded hashes match exactly, so we don't need to sync
+      log.debug('shouldSync: excluded hashes match');
       return false;
     }
     if (ourSnapshot.numMessages > numMessages) {
-      console.log(`Excluded hashes match for ${ourSnapshot.prefix}, skipping`);
+      log.debug('shouldSync: we have more messages');
       // We have more messages than the other hub, we don't need to sync
       return false;
     } else if (ourSnapshot.numMessages === numMessages) {
       // We have the same number of messages as the other hub, randomly return true or false to determine if we should sync
       const result = Math.random() < 0.5;
-      console.log(`Random sync result ${result}`);
+      log.debug(`shouldSync: random result: ${result}`);
       return result;
     } else if (ourSnapshot.numMessages < numMessages) {
-      console.log(`message count mismatch, syncing`);
+      log.debug('shouldSync: we have fewer messages');
       // We have fewer messages, so we should sync
       return true;
     }
@@ -71,17 +75,16 @@ class SyncEngine {
       this._isSyncing = true;
       const ourSnapshot = this.snapshot;
       const divergencePrefix = this._trie.getDivergencePrefix(ourSnapshot.prefix, excludedHashes);
-      console.log(`Divergence prefix: ${divergencePrefix}`);
+      log.debug({ divergencePrefix, prefix: ourSnapshot.prefix }, 'Divergence prefix');
       const missingIds = await this.fetchMissingHashes(divergencePrefix, rpcClient);
-      console.log(`Found ${missingIds.length} missing hashes`);
-      await this.fetchAndMergeMessages(missingIds, rpcClient);
-      console.log(`Sync complete`);
+      log.debug({ missingCount: missingIds.length }, 'Fetched missing hashes');
       // TODO: sort missingIds by timestamp and fetch messages in batches
+      await this.fetchAndMergeMessages(missingIds, rpcClient);
+      log.info(`Sync complete`);
     } catch (e) {
-      console.log(`Error performing sync: ${e}`);
+      log.warn(`Error performing sync: ${e}`);
       throw e;
     } finally {
-      console.log(`Finished syncing`);
       this._isSyncing = false;
     }
   }
@@ -93,41 +96,27 @@ class SyncEngine {
     const missingHashes: string[] = [];
     await theirNodeResult.match(
       async (theirNode) => {
-        // console.log(
-        //   `Prefix: ${prefix}. Our node: ${ourNode?.numMessages} in ${
-        //     ourNode?.children?.size || 0
-        //   } children. Their node: ${theirNode.numMessages} in ${theirNode.children?.size || 0} children`
-        // );
         if (theirNode.numMessages <= HASHES_PER_FETCH) {
-          // console.log(`Got ${theirNode.numMessages} hashes, fetching all`);
           const result = await rpcClient.getSyncIdsByPrefix(prefix);
           result.match(
             (ids) => {
               missingHashes.push(...ids);
             },
             (err) => {
-              console.log(
-                `Error fetching ids for prefix: ${prefix} expected: ${theirNode.numMessages} error: ${err.message}`
-              );
+              log.warn({ err }, `Error fetching ids for prefix ${prefix}`);
             }
           );
         } else if (theirNode.children) {
           for (const [theirChildChar, theirChild] of theirNode.children.entries()) {
             // recursively fetch hashes for every node where the hashes don't match
-            // console.log(
-            //   `Their child: ${theirChildChar}, hash: ${theirChild.hash}, our hash: ${
-            //     ourNode?.children?.get(theirChildChar)?.hash
-            //   }`
-            // );
             if (ourNode?.children?.get(theirChildChar)?.hash !== theirChild.hash) {
               missingHashes.push(...(await this.fetchMissingHashes(theirChild.prefix, rpcClient)));
             }
           }
         }
       },
-      async () => {
-        // TODO: handle error
-        console.log(`Error fetching metadata for prefix ${prefix}`);
+      async (err) => {
+        log.warn({ err }, `Error fetching metadata for prefix ${prefix}`);
       }
     );
     return missingHashes;
@@ -138,22 +127,22 @@ class SyncEngine {
     let result = true;
     await messages.match(
       async (msgs) => {
-        console.log(`Got ${msgs.length} messages`);
         const mergeResults = [];
         // TODO: we have to merge the messages sequentially, because of a race condition with reactions (https://github.com/farcasterxyz/hub/issues/178)
         for (const msg of msgs) {
           const result = await this.engine.mergeMessage(msg);
           if (result.isErr() && result.error.message.includes('unknown user')) {
+            log.warn({ fid: msg.data.fid }, 'Unknown user, fetching custody event');
             const result = await this.syncUserAndRetryMessage(msg, rpcClient);
             mergeResults.push(result);
           } else {
             mergeResults.push(result);
           }
         }
-        console.log(`Merged ${mergeResults.length} messages. Success: ${mergeResults.filter((r) => r.isOk()).length}`);
-        mergeResults
-          .filter((r) => r.isErr())
-          .forEach((r) => console.log(`Failed to merge message: ${r._unsafeUnwrapErr().message}`));
+        log.info(
+          { messages: mergeResults.length, success: mergeResults.filter((r) => r.isOk()).length },
+          'Merged messages'
+        );
       },
       async () => {
         result = false;
@@ -204,7 +193,7 @@ class SyncEngine {
     }
     const results = await Promise.all(this.engine.mergeMessages([...signerMessagesResult._unsafeUnwrap()]));
     if (results.every((r) => r.isErr())) {
-      return err(new ServerError('Failed to signer messages'));
+      return err(new ServerError('Failed to merge signer messages'));
     } else {
       // if at least one signer message was merged, retry the original message
       return this.engine.mergeMessage(message);

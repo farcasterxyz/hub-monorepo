@@ -45,4 +45,16 @@ describe('SyncEngine', () => {
     expect(syncEngine.trie.items).toEqual(0);
     expect(syncEngine.trie.get(new SyncId(message))).toBeFalsy();
   });
+
+  test('snapshotTimestamp rounds to nearest multiple of sync threshold', async () => {
+    throw new Error('Not implemented');
+  });
+
+  test('shouldSync', async () => {
+    throw new Error('Not implemented');
+  });
+
+  test('performSync', async () => {
+    throw new Error('Not implemented');
+  });
 });

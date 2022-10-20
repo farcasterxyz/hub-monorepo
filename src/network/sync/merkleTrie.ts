@@ -158,7 +158,7 @@ class TrieNode {
     const innerSnapshot = this._children.get(char)?.getSnapshot(prefix, current_index + 1);
     const excludedHash = this._excludedHash(char);
     return {
-      prefix: prefix,
+      prefix: innerSnapshot?.prefix || prefix.slice(0, current_index + 1),
       excludedHashes: [excludedHash.hash, ...(innerSnapshot?.excludedHashes || [])],
       numMessages: excludedHash.items + (innerSnapshot?.numMessages || 0),
     };
