@@ -3,6 +3,8 @@ import jayson, { JSONRPCError } from 'jayson/promise';
 import { replacer, reviver, RPCHandler, RPCRequest } from './interfaces';
 import { ServerError } from '~/utils/errors';
 import { logger } from '~/utils/logger';
+import { AddressInfo } from 'net';
+import { ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 
 const VERSION = 0.1;
 const log = logger.child({ component: 'RPCServer' });
@@ -99,7 +101,7 @@ export class RPCServer {
       try {
         // start the tcp server
         this._tcpServer = this._jsonServer.tcp().listen(port, () => {
-          log.info({ address: this.tcp?.address(), function: 'start' }, 'RPC server started');
+          log.info({ address: this.multiaddr, function: 'start' }, 'RPC server started');
           resolve();
         });
       } catch (err: any) {
@@ -108,8 +110,18 @@ export class RPCServer {
     });
   }
 
+  /** Returns a multiaddr string representing this RPCServer */
+  get multiaddr() {
+    const addr = this.address;
+    if (!addr) return undefined;
+    return `${ipMultiAddrStrFromAddressInfo(addr)}/tcp/${addr.port}`;
+  }
+
   get address() {
-    return this.tcp?.address();
+    const addr = this.tcp?.address();
+    if (!addr) return undefined;
+    // We always use IP sockets so this is a safe cast
+    return addr as AddressInfo;
   }
 
   async stop(): Promise<void> {

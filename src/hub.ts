@@ -3,7 +3,7 @@ import Engine from '~/storage/engine';
 import { Node } from '~/network/p2p/node';
 import { RPCClient, RPCHandler, RPCServer } from '~/network/rpc';
 import { PeerId } from '@libp2p/interface-peer-id';
-import { Cast, SignerMessage, Reaction, Follow, Verification, IdRegistryEvent, Message } from '~/types';
+import { Cast, SignerMessage, Reaction, Follow, Verification, IdRegistryEvent, Message, MessageType } from '~/types';
 import {
   ContactInfoContent,
   GossipMessage,
@@ -358,8 +358,8 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       log.error(mergeResult.error, 'received invalid message');
       return mergeResult;
     }
-
-    log.info({ hash: message.hash, fid: message.data.fid, type: message.data.type }, 'merged message');
+    // eslint-disable-next-line security/detect-object-injection
+    log.info({ hash: message.hash, fid: message.data.fid, type: MessageType[message.data.type] }, 'merged message');
 
     // push this message onto the gossip network
     const gossipMessage: GossipMessage<UserContent> = {

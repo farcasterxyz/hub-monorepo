@@ -65,6 +65,7 @@ export class Node extends TypedEmitter<NodeEvents> {
    * checked for reachability prior to establishing connections
    */
   get multiaddrs() {
+    this._node?.peerStore;
     return this._node?.getMultiaddrs();
   }
 

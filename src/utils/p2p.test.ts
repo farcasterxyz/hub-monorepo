@@ -1,5 +1,5 @@
 import { multiaddr } from '@multiformats/multiaddr';
-import { parseAddress, checkNodeAddrs, getAddressInfo, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
+import { parseAddress, checkNodeAddrs, addressInfoFromParts, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 
 describe('p2p utils tests', () => {
   test('parse a valid multiaddr', async () => {
@@ -31,29 +31,37 @@ describe('p2p utils tests', () => {
     );
   });
 
-  test('AddressInfo from valid IPv4 inputs', async () => {
-    const result = getAddressInfo('127.0.0.1', 0);
+  test('addressInfo from valid IPv4 inputs', async () => {
+    const result = addressInfoFromParts('127.0.0.1', 0);
     expect(result.isOk()).toBeTruthy();
     const info = result._unsafeUnwrap();
     expect(info.address).toEqual('127.0.0.1');
     expect(info.family).toEqual('ip4');
   });
 
-  test('AddressInfo from valid IPv6 inputs', async () => {
-    const result = getAddressInfo('2600:1700:6cf0:990:2052:a166:fb35:830a', 12345);
+  test('addressInfo from valid IPv4:port formatted inputs', async () => {
+    const result = addressInfoFromParts('127.0.0.1:8080', 0);
+    expect(result.isOk()).toBeTruthy();
+    const info = result._unsafeUnwrap();
+    expect(info.address).toEqual('127.0.0.1');
+    expect(info.family).toEqual('ip4');
+  });
+
+  test('addressInfo from valid IPv6 inputs', async () => {
+    const result = addressInfoFromParts('2600:1700:6cf0:990:2052:a166:fb35:830a', 12345);
     expect(result.isOk()).toBeTruthy();
     const info = result._unsafeUnwrap();
     expect(info.address).toEqual('2600:1700:6cf0:990:2052:a166:fb35:830a');
     expect(info.family).toEqual('ip6');
   });
 
-  test('AddressInfo fails on invalid inputs', async () => {
-    const result = getAddressInfo('clearlyNotAnIP', 12345);
+  test('addressInfo fails on invalid inputs', async () => {
+    const result = addressInfoFromParts('clearlyNotAnIP', 12345);
     expect(result.isErr()).toBeTruthy();
   });
 
   test('valid multiaddr from addressInfo', async () => {
-    const addressInfo = getAddressInfo('127.0.0.1', 0);
+    const addressInfo = addressInfoFromParts('127.0.0.1', 0);
     expect(addressInfo.isOk()).toBeTruthy();
 
     const multiAddrStr = ipMultiAddrStrFromAddressInfo(addressInfo._unsafeUnwrap());
