@@ -251,15 +251,12 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
 
     // Request and merge peer's data over RPC
     const nodeAddress = peerAddress.addresses[0].multiaddr.nodeAddress();
-    const rpcClient = new RPCClient({
+    return new RPCClient({
       address: nodeAddress.address,
       family: nodeAddress.family == 4 ? 'IPv4' : 'IPv6',
       // Use the gossip rpc port instead of the port used by libp2p
       port: peer.rpcAddress.port,
     });
-    // Validate connection
-    await rpcClient.getUsers();
-    return rpcClient;
   }
 
   private registerEventHandlers() {

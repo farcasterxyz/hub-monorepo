@@ -78,7 +78,12 @@ describe('Hub running tests', () => {
     'bootstrap one Hub off of another',
     async () => {
       // populate Hub1's engine
-      await populateEngine(hub.engine, 5);
+      await populateEngine(hub.engine, 5, {
+        Verifications: 1,
+        Casts: 10,
+        Follows: 50,
+        Reactions: 0, // TODO: Ignore reactions until https://github.com/farcasterxyz/hub/issues/178 is fixed
+      });
 
       // bootstrap hub2 off of hub1
       expect(hub.gossipAddresses);

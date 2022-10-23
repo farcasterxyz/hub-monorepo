@@ -93,7 +93,7 @@ describe('encode/decode', () => {
     const message: GossipMessage<ContactInfoContent> = {
       content: {
         peerId: '',
-        excludedHashes: [],
+        excludedHashes: ['asd', 'def'],
         count: 0,
       },
       topics: [],

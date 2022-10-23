@@ -123,12 +123,16 @@ class SyncEngine {
   }
 
   public async fetchAndMergeMessages(hashes: string[], rpcClient: RPCClient): Promise<boolean> {
-    const messages = await rpcClient.getMessagesByHashes(hashes.map((hash) => '0x' + hash));
     let result = true;
+    if (hashes.length === 0) {
+      return false;
+    }
+    const messages = await rpcClient.getMessagesByHashes(hashes.map((hash) => '0x' + hash));
     await messages.match(
       async (msgs) => {
         const mergeResults = [];
-        // TODO: we have to merge the messages sequentially, because of a race condition with reactions (https://github.com/farcasterxyz/hub/issues/178)
+        // Sync messages sequentially, so we can handle missing users. We could optimize by collecting all
+        // failures and retrying them in a batch, but this is simpler for now.
         for (const msg of msgs) {
           const result = await this.engine.mergeMessage(msg);
           if (result.isErr() && result.error.message.includes('unknown user')) {
@@ -164,14 +168,16 @@ class SyncEngine {
   }
 
   public get snapshot(): TrieSnapshot {
-    return this._trie.getSnapshot(this.snapshotTimestamp.toString());
+    // Ignore the least significant digit when fetching the snapshot timestamp because
+    // second resolution is too fine grained, and fall outside sync threshold anyway
+    return this._trie.getSnapshot((this.snapshotTimestamp / 10).toString());
   }
 
   public get isSyncing(): boolean {
     return this._isSyncing;
   }
 
-  // Returns the most recent timestamp that's within the sync threshold
+  // Returns the most recent timestamp in seconds that's within the sync threshold
   // (i.e. highest timestamp that's < current time and timestamp % sync_thershold == 0)
   public get snapshotTimestamp(): number {
     const currentTimeInSeconds = Math.floor(Date.now() / 1000);
