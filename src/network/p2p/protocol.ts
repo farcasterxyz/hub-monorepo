@@ -20,11 +20,16 @@ export const GOSSIP_TOPICS = [NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY];
  * @topics - The topics this message belongs to. Multiple topics can be passed.
  */
 export type GossipMessage<T = Content> = {
+  version: GossipVersion;
   content: T;
   topics: string[];
 };
 
 export type Content = IdRegistryContent | UserContent | ContactInfoContent;
+export enum GossipVersion {
+  V1 = 1,
+}
+export const GOSSIP_MESSAGE_VERSION = GossipVersion.V1; // Current version of the gossip message format
 
 /**
  * UserContent defines the structure of the primary message type that is published

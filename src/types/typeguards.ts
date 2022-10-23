@@ -141,10 +141,12 @@ export const isIdRegistryEvent = (msg: any): msg is FC.IdRegistryEvent => {
 
 export const isGossipMessage = (msg: any): msg is GossipMessage => {
   try {
-    const { content, topics } = msg;
+    const { content, topics, version } = msg;
     const validType = isUserContent(content) || isIdRegistryContent(content) || isContactInfo(content);
 
-    return validType && Array.isArray(topics) && topics.every((t) => typeof t === 'string');
+    return (
+      validType && typeof version === 'number' && Array.isArray(topics) && topics.every((t) => typeof t === 'string')
+    );
   } catch (error) {
     return false;
   }

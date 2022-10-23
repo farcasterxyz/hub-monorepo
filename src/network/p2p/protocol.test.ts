@@ -4,6 +4,7 @@ import {
   ContactInfoContent,
   decodeMessage,
   encodeMessage,
+  GOSSIP_MESSAGE_VERSION,
   GossipMessage,
   IdRegistryContent,
   UserContent,
@@ -25,6 +26,7 @@ describe('gossip protocol', () => {
         message: cast,
       },
       topics: [],
+      version: GOSSIP_MESSAGE_VERSION,
     };
     expect(message).toBeDefined();
   });
@@ -35,6 +37,7 @@ describe('gossip protocol', () => {
         message: idRegistryEvent,
       },
       topics: [],
+      version: GOSSIP_MESSAGE_VERSION,
     };
     expect(message).toBeDefined();
   });
@@ -63,6 +66,7 @@ describe('encode/decode', () => {
         message: cast,
       },
       topics: [],
+      version: GOSSIP_MESSAGE_VERSION,
     };
     expect(isGossipMessage(message)).toBeTruthy();
     const encoded = encodeMessage(message);
@@ -79,6 +83,7 @@ describe('encode/decode', () => {
         message: idRegistryEvent,
       },
       topics: [],
+      version: GOSSIP_MESSAGE_VERSION,
     };
     expect(isGossipMessage(message)).toBeTruthy();
     const encoded = encodeMessage(message);
@@ -97,6 +102,7 @@ describe('encode/decode', () => {
         count: 0,
       },
       topics: [],
+      version: GOSSIP_MESSAGE_VERSION,
     };
     expect(isGossipMessage(message)).toBeTruthy();
     const encoded = encodeMessage(message);

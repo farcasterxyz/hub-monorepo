@@ -5,7 +5,13 @@ import { Factories } from '~/test/factories';
 import { Hub, HubOptions } from '~/hub';
 import { RPCClient } from '~/network/rpc';
 import { sleep } from '~/utils/crypto';
-import { ContactInfoContent, Content, GossipMessage, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
+import {
+  ContactInfoContent,
+  Content,
+  GOSSIP_MESSAGE_VERSION,
+  GossipMessage,
+  NETWORK_TOPIC_PRIMARY,
+} from '~/network/p2p/protocol';
 import { Message } from '~/types';
 import { ServerError } from '~/utils/errors';
 import { jest } from '@jest/globals';
@@ -149,6 +155,7 @@ describe('Hub running tests', () => {
         message,
       },
       topics: [NETWORK_TOPIC_PRIMARY],
+      version: GOSSIP_MESSAGE_VERSION,
     };
     const result = await hub.handleGossipMessage(gossipMessage);
     expect(result.isOk()).toBeTruthy();
@@ -162,6 +169,7 @@ describe('Hub running tests', () => {
         message: await getIdRegistryEvent(aliceInfo),
       },
       topics: [NETWORK_TOPIC_PRIMARY],
+      version: GOSSIP_MESSAGE_VERSION,
     };
     const idRegistryResult = await hub.handleGossipMessage(IdRegistryEvent);
     expect(idRegistryResult.isOk());
