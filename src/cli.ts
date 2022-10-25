@@ -10,7 +10,7 @@ import { readFile } from 'fs/promises';
 import { logger } from '~/utils/logger';
 import { dirname, resolve } from 'path';
 import { PeerId } from '@libp2p/interface-peer-id';
-import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo } from './utils/p2p';
+import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 
 /** A CLI to accept options from the user and start the Hub */
 

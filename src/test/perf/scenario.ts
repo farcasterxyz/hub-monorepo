@@ -34,9 +34,9 @@ export const makeBasicScenario = async (
   rpcClient: RPCClient,
   userInfos: UserInfo[],
   config: ScenarioConfig = {
-    Adds: 2,
+    Adds: 5,
     Removes: 1,
-    RemovesWithoutAdds: 0,
+    RemovesWithoutAdds: 5,
   }
 ): Promise<Scenario> => {
   let messages: Message[] = [];
