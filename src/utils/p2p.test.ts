@@ -36,15 +36,7 @@ describe('p2p utils tests', () => {
     expect(result.isOk()).toBeTruthy();
     const info = result._unsafeUnwrap();
     expect(info.address).toEqual('127.0.0.1');
-    expect(info.family).toEqual('ip4');
-  });
-
-  test('addressInfo from valid IPv4:port formatted inputs', async () => {
-    const result = addressInfoFromParts('127.0.0.1:8080', 0);
-    expect(result.isOk()).toBeTruthy();
-    const info = result._unsafeUnwrap();
-    expect(info.address).toEqual('127.0.0.1');
-    expect(info.family).toEqual('ip4');
+    expect(info.family).toEqual('IPv4');
   });
 
   test('addressInfo from valid IPv6 inputs', async () => {
@@ -52,7 +44,7 @@ describe('p2p utils tests', () => {
     expect(result.isOk()).toBeTruthy();
     const info = result._unsafeUnwrap();
     expect(info.address).toEqual('2600:1700:6cf0:990:2052:a166:fb35:830a');
-    expect(info.family).toEqual('ip6');
+    expect(info.family).toEqual('IPv6');
   });
 
   test('addressInfo fails on invalid inputs', async () => {

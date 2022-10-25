@@ -3,7 +3,8 @@ import { RPCClient } from '~/network/rpc';
 import { SetupMode, setupNetwork } from '~/test/perf/setup';
 import { addressInfoFromNodeAddress } from '~/utils/p2p';
 import { multiaddr } from '@multiformats/multiaddr';
-import { makeBasicScenario, playback, PlaybackOrder } from '~/test/perf/playback';
+import { playback, PlaybackOrder } from '~/test/perf/playback';
+import { makeBasicScenario } from '~/test/perf/scenario';
 import { waitForSync } from '~/test/perf/verify';
 
 /**
@@ -22,7 +23,6 @@ const parseNumber = (string: string) => {
   return number;
 };
 
-// Main
 const app = new Command();
 app
   .name('farcaster-benchmark-client')
@@ -39,18 +39,18 @@ app
 app.parse(process.argv);
 const cliOptions = app.opts();
 
-// make a list of RPCClients for each Hub
+// makes a list of RPCClients for each Hub
 const rpcMultiAddrs: string[] = cliOptions.hubs;
 const rpcClients = rpcMultiAddrs.map((addr) => {
   const address = multiaddr(addr);
   return new RPCClient(addressInfoFromNodeAddress(address.nodeAddress()));
 });
 
-// setup hubs
+// sets up hubs
 const userInfos = await setupNetwork(rpcClients, { users: cliOptions.users, mode: SetupMode.RANDOM_SINGLE });
-// create cast data
-const messages = await makeBasicScenario(userInfos);
-// submit data to the first RPC (should allow random playback);
-await playback(rpcClients[0], messages, { order: PlaybackOrder.RND });
-// verify network sync
+// creates scenario data
+const scenario = await makeBasicScenario(rpcClients[0], userInfos);
+// submits the scenario for playback
+await playback(scenario, { order: PlaybackOrder.SEQ });
+// verifies network sync
 await waitForSync(rpcClients);

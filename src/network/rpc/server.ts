@@ -119,9 +119,8 @@ export class RPCServer {
 
   get address() {
     const addr = this.tcp?.address();
-    if (!addr) return undefined;
     // We always use IP sockets so this is a safe cast
-    return addr as AddressInfo;
+    return addr ? (addr as AddressInfo) : undefined;
   }
 
   async stop(): Promise<void> {

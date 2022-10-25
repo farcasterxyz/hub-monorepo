@@ -7,10 +7,10 @@ import { ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 
 export class RPCClient {
   private _tcpClient!: jayson.client;
-  private _serverMultiAddrStr: string;
+  private _serverMultiAddr: string;
 
   constructor(address: AddressInfo) {
-    if (address.family != 'IPv6' && address.family != 'IPv4') throw Error('Invalid Address Info');
+    if (address.family != 'IPv6' && address.family != 'IPv4') throw `Invalid Address Family: ${address.family}`;
     this._tcpClient = jayson.Client.tcp({
       port: address.port,
       host: address.address,
@@ -18,12 +18,12 @@ export class RPCClient {
       replacer,
       reviver,
     });
-    this._serverMultiAddrStr = `${ipMultiAddrStrFromAddressInfo(address)}/tcp/${address.port}`;
+    this._serverMultiAddr = `${ipMultiAddrStrFromAddressInfo(address)}/tcp/${address.port}`;
   }
 
   /** Returns a multiaddr of the RPC server this client is connected to */
-  getServerMultiaddr() {
-    return this._serverMultiAddrStr;
+  get serverMultiaddr() {
+    return this._serverMultiAddr;
   }
 
   async getUsers(): Promise<Result<Set<number>, JSONRPCError>> {

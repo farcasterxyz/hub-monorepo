@@ -65,7 +65,6 @@ export class Node extends TypedEmitter<NodeEvents> {
    * checked for reachability prior to establishing connections
    */
   get multiaddrs() {
-    this._node?.peerStore;
     return this._node?.getMultiaddrs();
   }
 
@@ -145,7 +144,7 @@ export class Node extends TypedEmitter<NodeEvents> {
     encodedMessage.match(
       async (msg) => {
         const results = await Promise.all(topics.map((topic) => this.gossip?.publish(topic, msg)));
-        log.debug({ identity: this.identity }, 'Published to ' + results.length + ' peers');
+        log.debug({ identity: this.identity, results }, 'Published to gossip peers');
       },
       async (err) => {
         log.error(err, 'Failed to publish message.');
@@ -216,19 +215,19 @@ export class Node extends TypedEmitter<NodeEvents> {
   registerDebugListeners() {
     // Debug
     this._node?.addEventListener('peer:discovery', (event) => {
-      log.debug({ identity: this.identity }, `Found peer: ${event.detail.multiaddrs}`);
+      log.info({ identity: this.identity }, `Found peer: ${event.detail.multiaddrs}`);
     });
     this._node?.connectionManager.addEventListener('peer:connect', (event) => {
-      log.debug({ identity: this.identity }, `Connection established to: ${event.detail.remotePeer.toString()}`);
+      log.info({ identity: this.identity }, `Connection established to: ${event.detail.remotePeer.toString()}`);
     });
     this._node?.connectionManager.addEventListener('peer:disconnect', (event) => {
-      log.debug({ identity: this.identity }, `Disconnected from: ${event.detail.remotePeer.toString()}`);
+      log.info({ identity: this.identity }, `Disconnected from: ${event.detail.remotePeer.toString()}`);
     });
     this.gossip?.addEventListener('message', (event) => {
-      log.debug({ identity: this.identity }, `Received message for topic: ${event.detail.topic}`);
+      log.info({ identity: this.identity }, `Received message for topic: ${event.detail.topic}`);
     });
     this.gossip?.addEventListener('subscription-change', (event) => {
-      log.debug(
+      log.info(
         { identity: this.identity },
         `Subscription change: ${event.detail.subscriptions.map((value) => {
           value.topic;
