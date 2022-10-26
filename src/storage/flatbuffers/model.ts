@@ -9,6 +9,7 @@ import {
   MessageType,
 } from '~/utils/generated/message_generated';
 import RocksDB from '~/storage/db/binaryrocksdb';
+import { RocksDBPrefix } from '~/storage/flatbuffers/types';
 
 export default class MessageModel {
   public message: Message;
@@ -24,8 +25,24 @@ export default class MessageModel {
     return new this(message);
   }
 
+  static userKey(fid: Uint8Array): Buffer {
+    const bytes = new Uint8Array(1 + 256);
+    bytes.set([RocksDBPrefix.User], 0);
+    bytes.set(fid, 1 + 256 - fid.length); // pad fid for alignment
+    return Buffer.from(bytes);
+  }
+
   static primaryKey(fid: Uint8Array, key: Uint8Array): Buffer {
-    return Buffer.concat([Buffer.from('message'), Buffer.from(fid), Buffer.from(key)]);
+    return Buffer.concat([MessageModel.userKey(fid), Buffer.from(key)]);
+  }
+
+  static async getManyByUser(db: RocksDB, fid: Uint8Array): Promise<MessageModel[]> {
+    const prefix = MessageModel.userKey(fid);
+    const messages = [];
+    for await (const [, value] of db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true })) {
+      messages.push(this.from(new Uint8Array(value)));
+    }
+    return messages;
   }
 
   static async get<T extends MessageModel>(db: RocksDB, fid: Uint8Array, key: Uint8Array): Promise<T> {
