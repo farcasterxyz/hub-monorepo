@@ -3,9 +3,9 @@ import CastSet from '~/storage/sets/flatbuffers/castSet';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/model';
 import { BadRequestError, NotFoundError } from '~/utils/errors';
-import { CastAddModel, CastRemoveModel } from '~/storage/flatbuffers/types';
+import { CastAddModel, CastRemoveModel, UserPrefix } from '~/storage/flatbuffers/types';
 
-const db = jestBinaryRocksDB('flatCastSet.test');
+const db = jestBinaryRocksDB('flatbuffers.castSet.test');
 const set = new CastSet(db);
 const fid = Factories.FID.build();
 
@@ -51,6 +51,28 @@ describe('getCastRemove', () => {
   });
 });
 
+describe('getCastAddsByUser', () => {
+  test('returns cast adds for an fid', async () => {
+    await set.merge(castAdd);
+    await expect(set.getCastAddsByUser(fid)).resolves.toEqual([castAdd]);
+  });
+
+  test('returns empty array without messages', async () => {
+    await expect(set.getCastAddsByUser(fid)).resolves.toEqual([]);
+  });
+});
+
+describe('getCastRemovesByUser', () => {
+  test('returns cast removes for an fid', async () => {
+    await set.merge(castRemove);
+    await expect(set.getCastRemovesByUser(fid)).resolves.toEqual([castRemove]);
+  });
+
+  test('returns empty array without messages', async () => {
+    await expect(set.getCastRemovesByUser(fid)).resolves.toEqual([]);
+  });
+});
+
 describe('merge', () => {
   test('fails with invalid message type', async () => {
     const invalidData = await Factories.ReactionAddData.create({ fid: Array.from(fid) });
@@ -66,7 +88,9 @@ describe('merge', () => {
       });
 
       test('saves message', async () => {
-        await expect(MessageModel.get(db, fid, castRemove.timestampHash())).resolves.toEqual(castRemove);
+        await expect(MessageModel.get(db, fid, UserPrefix.CastMessage, castRemove.timestampHash())).resolves.toEqual(
+          castRemove
+        );
       });
 
       test('saves castRemoves index', async () => {
@@ -76,7 +100,9 @@ describe('merge', () => {
       });
 
       test('deletes CastAdd message', async () => {
-        await expect(MessageModel.get(db, fid, castAdd.timestampHash())).rejects.toThrow(NotFoundError);
+        await expect(MessageModel.get(db, fid, UserPrefix.CastMessage, castAdd.timestampHash())).rejects.toThrow(
+          NotFoundError
+        );
       });
 
       test('deletes castAdds index', async () => {
@@ -135,7 +161,9 @@ describe('merge', () => {
       });
 
       test('saves message', async () => {
-        await expect(MessageModel.get(db, fid, castAdd.timestampHash())).resolves.toEqual(castAdd);
+        await expect(MessageModel.get(db, fid, UserPrefix.CastMessage, castAdd.timestampHash())).resolves.toEqual(
+          castAdd
+        );
       });
 
       test('saves castAdds index', async () => {
@@ -146,7 +174,9 @@ describe('merge', () => {
     test('no-ops when CastRemove exists', async () => {
       await set.merge(castRemove);
       await expect(set.merge(castAdd)).resolves.toEqual(undefined);
-      await expect(MessageModel.get(db, fid, castAdd.timestampHash())).rejects.toThrow(NotFoundError);
+      await expect(MessageModel.get(db, fid, UserPrefix.CastMessage, castAdd.timestampHash())).rejects.toThrow(
+        NotFoundError
+      );
       await expect(set.getCastAdd(fid, castAdd.timestampHash())).rejects.toThrow(NotFoundError);
     });
 
@@ -162,7 +192,9 @@ describe('merge', () => {
       const castRemoveEarlier = new MessageModel(castRemoveMessage) as CastRemoveModel;
       await set.merge(castRemoveEarlier);
       await expect(set.merge(castAdd)).resolves.toEqual(undefined);
-      await expect(MessageModel.get(db, fid, castAdd.timestampHash())).rejects.toThrow(NotFoundError);
+      await expect(MessageModel.get(db, fid, UserPrefix.CastMessage, castAdd.timestampHash())).rejects.toThrow(
+        NotFoundError
+      );
       await expect(set.getCastAdd(fid, castAdd.timestampHash())).rejects.toThrow(NotFoundError);
     });
   });

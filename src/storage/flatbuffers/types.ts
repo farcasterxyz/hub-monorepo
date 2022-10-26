@@ -1,13 +1,18 @@
 import MessageModel from '~/storage/flatbuffers/model';
 import { CastAddBody, CastRemoveBody } from '~/utils/generated/message_generated';
 
-export enum RocksDBPrefix {
+export enum RootPrefix {
   User = 1,
-  Message = 2,
-  MessagesBySigner = 3,
-  CastRemoves = 10,
-  CastAdds = 11,
 }
+
+export enum UserPrefix {
+  CastMessage = 1,
+  CastAdds = 2,
+  CastRemoves = 3,
+  BySigner = 4,
+}
+
+export type UserMessagePrefix = UserPrefix.CastMessage;
 
 export interface CastRemoveModel extends MessageModel {
   body(): CastRemoveBody;

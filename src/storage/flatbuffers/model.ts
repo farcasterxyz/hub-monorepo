@@ -9,7 +9,7 @@ import {
   MessageType,
 } from '~/utils/generated/message_generated';
 import RocksDB from '~/storage/db/binaryrocksdb';
-import { RocksDBPrefix } from '~/storage/flatbuffers/types';
+import { RootPrefix, UserMessagePrefix, UserPrefix } from '~/storage/flatbuffers/types';
 
 export default class MessageModel {
   public message: Message;
@@ -27,16 +27,38 @@ export default class MessageModel {
 
   static userKey(fid: Uint8Array): Buffer {
     const bytes = new Uint8Array(1 + 256);
-    bytes.set([RocksDBPrefix.User], 0);
+    bytes.set([RootPrefix.User], 0);
     bytes.set(fid, 1 + 256 - fid.length); // pad fid for alignment
     return Buffer.from(bytes);
   }
 
-  static primaryKey(fid: Uint8Array, key: Uint8Array): Buffer {
-    return Buffer.concat([MessageModel.userKey(fid), Buffer.from(key)]);
+  /** <user prefix byte, fid, set index byte, key> */
+  static primaryKey(fid: Uint8Array, set: UserMessagePrefix, key: Uint8Array): Buffer {
+    return Buffer.concat([this.userKey(fid), Buffer.from([set]), Buffer.from(key)]);
   }
 
-  static async getManyByUser(db: RocksDB, fid: Uint8Array): Promise<MessageModel[]> {
+  // <user prefix byte, fid, signer index byte, signer, type, key>
+  static bySignerKey(fid: Uint8Array, signer: Uint8Array, type: MessageType, key: Uint8Array): Buffer {
+    return Buffer.concat([
+      this.userKey(fid),
+      Buffer.from([UserPrefix.BySigner]),
+      Buffer.from(signer),
+      Buffer.from([type]),
+      Buffer.from(key),
+    ]);
+  }
+
+  static async getManyByUser<T extends MessageModel>(
+    db: RocksDB,
+    fid: Uint8Array,
+    set: UserMessagePrefix,
+    keys: Uint8Array[]
+  ): Promise<T[]> {
+    const values = await db.getMany(keys.map((key) => MessageModel.primaryKey(fid, set, key)));
+    return values.map((value) => MessageModel.from(new Uint8Array(value)) as T);
+  }
+
+  static async getAllByUser(db: RocksDB, fid: Uint8Array): Promise<MessageModel[]> {
     const prefix = MessageModel.userKey(fid);
     const messages = [];
     for await (const [, value] of db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true })) {
@@ -45,17 +67,32 @@ export default class MessageModel {
     return messages;
   }
 
-  static async get<T extends MessageModel>(db: RocksDB, fid: Uint8Array, key: Uint8Array): Promise<T> {
-    const buffer = await db.get(MessageModel.primaryKey(fid, key));
-    return this.from(new Uint8Array(buffer)) as T;
+  static async get<T extends MessageModel>(
+    db: RocksDB,
+    fid: Uint8Array,
+    set: UserMessagePrefix,
+    key: Uint8Array
+  ): Promise<T> {
+    const buffer = await db.get(MessageModel.primaryKey(fid, set, key));
+    return MessageModel.from(new Uint8Array(buffer)) as T;
   }
 
   async commit(db: RocksDB): Promise<void> {
     return db.put(this.primaryKey(), this.toBuffer());
   }
 
+  setPrefix(): UserMessagePrefix {
+    if (this.type() === MessageType.CastAdd || this.type() === MessageType.CastRemove) {
+      return UserPrefix.CastMessage;
+    }
+
+    // TODO: add all message types
+
+    throw new Error('invalid type');
+  }
+
   primaryKey(): Buffer {
-    return MessageModel.primaryKey(this.fid(), this.timestampHash());
+    return MessageModel.primaryKey(this.fid(), this.setPrefix(), this.timestampHash());
   }
 
   toBuffer(): Buffer {
@@ -67,11 +104,13 @@ export default class MessageModel {
   }
 
   timestampHash(): Uint8Array {
-    // TODO: confirm this is the most efficient way of converting number to Uint8Array
-    const b = new ArrayBuffer(4);
-    const view = new DataView(b);
+    const hash = this.hash();
+    const buffer = new ArrayBuffer(4 + hash.length);
+    const view = new DataView(buffer);
     view.setUint32(0, this.data.timestamp());
-    return new Uint8Array([...new Uint8Array(b), ...(this.message.hashArray() ?? new Uint8Array())]);
+    const bytes = new Uint8Array(buffer);
+    bytes.set(hash, 4);
+    return bytes;
   }
 
   timestamp(): number {
@@ -98,6 +137,8 @@ export default class MessageModel {
     } else if (this.data.bodyType() === MessageBody.FollowBody) {
       return this.data.body(new FollowBody()) as FollowBody;
     }
+
+    // TODO: add all body types
 
     throw new Error('invalid bodyType');
   }

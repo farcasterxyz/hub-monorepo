@@ -2,7 +2,7 @@ import RocksDB from '~/storage/db/binaryrocksdb';
 import { BadRequestError } from '~/utils/errors';
 import MessageModel from '~/storage/flatbuffers/model';
 import { ResultAsync } from 'neverthrow';
-import { CastAddModel, CastRemoveModel, RocksDBPrefix } from '~/storage/flatbuffers/types';
+import { CastAddModel, CastRemoveModel, UserPrefix } from '~/storage/flatbuffers/types';
 import { isCastAdd, isCastRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 
@@ -13,45 +13,49 @@ class CastSet {
     this._db = db;
   }
 
-  static castRemovesKey(fid: Uint8Array, hash: Uint8Array): Buffer {
+  static castRemovesKey(fid: Uint8Array, hash?: Uint8Array): Buffer {
     return Buffer.concat([
-      new Uint8Array([RocksDBPrefix.User]),
-      fid,
-      new Uint8Array([RocksDBPrefix.CastRemoves]),
-      hash,
+      MessageModel.userKey(fid),
+      Buffer.from([UserPrefix.CastRemoves]),
+      hash ? Buffer.from(hash) : new Uint8Array(),
     ]);
   }
 
-  static castAddsKey(fid: Uint8Array, hash: Uint8Array): Buffer {
-    return Buffer.concat([new Uint8Array([RocksDBPrefix.User]), fid, new Uint8Array([RocksDBPrefix.CastAdds]), hash]);
+  static castAddsKey(fid: Uint8Array, hash?: Uint8Array): Buffer {
+    return Buffer.concat([
+      MessageModel.userKey(fid),
+      Buffer.from([UserPrefix.CastAdds]),
+      hash ? Buffer.from(hash) : new Uint8Array(),
+    ]);
   }
 
   async getCastAdd(fid: Uint8Array, hash: Uint8Array): Promise<CastAddModel> {
     const messageKey = await this._db.get(CastSet.castAddsKey(fid, hash));
-    return MessageModel.get<CastAddModel>(this._db, fid, messageKey);
+    return MessageModel.get<CastAddModel>(this._db, fid, UserPrefix.CastMessage, messageKey);
   }
 
   async getCastRemove(fid: Uint8Array, hash: Uint8Array): Promise<CastRemoveModel> {
     const messageKey = await this._db.get(CastSet.castRemovesKey(fid, hash));
-    return MessageModel.get<CastRemoveModel>(this._db, fid, messageKey);
+    return MessageModel.get<CastRemoveModel>(this._db, fid, UserPrefix.CastMessage, messageKey);
   }
 
-  // /** Get all Casts in a user's add set */
-  // async getCastsByUser(fid: number): Promise<Set<CastAdd>> {
-  //   const casts = await this._db.getCastAddsByUser(fid);
-  //   return new Set(casts);
-  // }
+  async getCastAddsByUser(fid: Uint8Array): Promise<CastAddModel[]> {
+    const castAddsPrefix = CastSet.castAddsKey(fid);
+    const messageKeys: Buffer[] = [];
+    for await (const [, value] of this._db.iteratorByPrefix(castAddsPrefix, { keys: false, valueAsBuffer: true })) {
+      messageKeys.push(value);
+    }
+    return MessageModel.getManyByUser<CastAddModel>(this._db, fid, UserPrefix.CastMessage, messageKeys);
+  }
 
-  // /* Get all Casts in a user's add and remove sets */
-  // async getAllCastsByUser(fid: number): Promise<Set<Cast>> {
-  //   const casts = await this._db.getAllCastMessagesByUser(fid);
-  //   return new Set(casts);
-  // }
-
-  // /* Delete all Casts created by a Signer */
-  // async revokeSigner(fid: number, signer: string): Promise<void> {
-  //   return this._db.deleteAllCastMessagesBySigner(fid, signer);
-  // }
+  async getCastRemovesByUser(fid: Uint8Array): Promise<CastRemoveModel[]> {
+    const castRemovesPrefix = CastSet.castRemovesKey(fid);
+    const messageKeys: Buffer[] = [];
+    for await (const [, value] of this._db.iteratorByPrefix(castRemovesPrefix, { keys: false, valueAsBuffer: true })) {
+      messageKeys.push(value);
+    }
+    return MessageModel.getManyByUser<CastRemoveModel>(this._db, fid, UserPrefix.CastMessage, messageKeys);
+  }
 
   /* Merge a Cast into the CastSet */
   async merge(message: MessageModel): Promise<void> {
@@ -93,7 +97,10 @@ class CastSet {
     }
 
     // Add to db
-    tsx = tsx.put(MessageModel.primaryKey(message.fid(), message.timestampHash()), message.toBuffer());
+    tsx = tsx.put(
+      MessageModel.primaryKey(message.fid(), UserPrefix.CastMessage, message.timestampHash()),
+      message.toBuffer()
+    );
 
     // Add to cast adds (fid!<fid>!castAdds!<cast ID> : <message timestamp hash>)
     tsx = tsx.put(CastSet.castAddsKey(message.fid(), message.timestampHash()), Buffer.from(message.timestampHash()));
@@ -120,7 +127,7 @@ class CastSet {
         return undefined;
       } else {
         // Otherwise delete the existing remove as part of the tsx
-        tsx = tsx.del(MessageModel.primaryKey(message.fid(), removeMessageOrder.value));
+        tsx = tsx.del(MessageModel.primaryKey(message.fid(), UserPrefix.CastMessage, removeMessageOrder.value));
       }
     }
 
@@ -128,12 +135,15 @@ class CastSet {
     const addsKey = CastSet.castAddsKey(message.fid(), castHash);
     const addMessageOrder = await ResultAsync.fromPromise(this._db.get(addsKey), () => undefined);
     if (addMessageOrder.isOk()) {
-      const messageKey = MessageModel.primaryKey(message.fid(), addMessageOrder.value);
+      const messageKey = MessageModel.primaryKey(message.fid(), UserPrefix.CastMessage, addMessageOrder.value);
       tsx = tsx.del(addsKey).del(messageKey);
     }
 
     // Add to db
-    tsx = tsx.put(MessageModel.primaryKey(message.fid(), message.timestampHash()), message.toBuffer());
+    tsx = tsx.put(
+      MessageModel.primaryKey(message.fid(), UserPrefix.CastMessage, message.timestampHash()),
+      message.toBuffer()
+    );
 
     // Add to cast removes
     tsx = tsx.put(CastSet.castRemovesKey(message.fid(), castHash), Buffer.from(message.timestampHash()));

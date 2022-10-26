@@ -4,6 +4,7 @@ import { generateEd25519KeyPair } from '~/utils/crypto';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import { NotFoundError } from '~/utils/errors';
 import MessageModel from '~/storage/flatbuffers/model';
+import { UserPrefix } from './types';
 
 const db = jestBinaryRocksDB('flatbuffers.model.test');
 
@@ -20,17 +21,27 @@ describe('static methods', () => {
   describe('get', () => {
     test('succeeds when message exists', async () => {
       await model.commit(db);
-      await expect(MessageModel.get(db, model.fid(), model.timestampHash())).resolves.toEqual(model);
+      await expect(MessageModel.get(db, model.fid(), model.setPrefix(), model.timestampHash())).resolves.toEqual(model);
     });
 
     test('fails when message not found', async () => {
-      await expect(MessageModel.get(db, model.fid(), model.timestampHash())).rejects.toThrow(NotFoundError);
+      await expect(MessageModel.get(db, model.fid(), model.setPrefix(), model.timestampHash())).rejects.toThrow(
+        NotFoundError
+      );
     });
 
     test('fails with wrong key', async () => {
       await model.commit(db);
       const badKey = new Uint8Array([...model.timestampHash(), 1]);
-      await expect(MessageModel.get(db, model.fid(), badKey)).rejects.toThrow(NotFoundError);
+      await expect(MessageModel.get(db, model.fid(), model.setPrefix(), badKey)).rejects.toThrow(NotFoundError);
+    });
+  });
+
+  describe('getManyByUser', () => {
+    test('succeeds', async () => {
+      await db.put(model.primaryKey(), model.toBuffer());
+      const getMany = MessageModel.getManyByUser(db, model.fid(), model.setPrefix(), [model.timestampHash()]);
+      await expect(getMany).resolves.toEqual([model]);
     });
   });
 
@@ -38,11 +49,26 @@ describe('static methods', () => {
     test('orders messages by fid and timestamp hash', async () => {
       const tsx = db
         .transaction()
-        .put(MessageModel.primaryKey(new Uint8Array([1]), new Uint8Array([1, 1])), Buffer.from('a'))
-        .put(MessageModel.primaryKey(new Uint8Array([2]), new Uint8Array([2, 1])), Buffer.from('b'))
-        .put(MessageModel.primaryKey(new Uint8Array([2]), new Uint8Array([1, 1])), Buffer.from('c'))
-        .put(MessageModel.primaryKey(new Uint8Array([3]), new Uint8Array([1, 1])), Buffer.from('d'))
-        .put(MessageModel.primaryKey(new Uint8Array([4]), new Uint8Array([1])), Buffer.from('e'));
+        .put(
+          MessageModel.primaryKey(new Uint8Array([1]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          Buffer.from('a')
+        )
+        .put(
+          MessageModel.primaryKey(new Uint8Array([2]), UserPrefix.CastMessage, new Uint8Array([2, 1])),
+          Buffer.from('b')
+        )
+        .put(
+          MessageModel.primaryKey(new Uint8Array([2]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          Buffer.from('c')
+        )
+        .put(
+          MessageModel.primaryKey(new Uint8Array([3]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          Buffer.from('d')
+        )
+        .put(
+          MessageModel.primaryKey(new Uint8Array([4]), UserPrefix.CastMessage, new Uint8Array([1])),
+          Buffer.from('e')
+        );
 
       await db.commit(tsx);
       const order = [];
@@ -55,11 +81,26 @@ describe('static methods', () => {
     test('orders messages with variable length fids', async () => {
       const tsx = db
         .transaction()
-        .put(MessageModel.primaryKey(new Uint8Array([1]), new Uint8Array([1, 1])), Buffer.from('a'))
-        .put(MessageModel.primaryKey(new Uint8Array([1, 1, 1]), new Uint8Array([2, 1])), Buffer.from('b'))
-        .put(MessageModel.primaryKey(new Uint8Array([2]), new Uint8Array([1, 1])), Buffer.from('c'))
-        .put(MessageModel.primaryKey(new Uint8Array([2, 1]), new Uint8Array([1, 1])), Buffer.from('d'))
-        .put(MessageModel.primaryKey(new Uint8Array([4]), new Uint8Array([1])), Buffer.from('e'));
+        .put(
+          MessageModel.primaryKey(new Uint8Array([1]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          Buffer.from('a')
+        )
+        .put(
+          MessageModel.primaryKey(new Uint8Array([1, 1, 1]), UserPrefix.CastMessage, new Uint8Array([2, 1])),
+          Buffer.from('b')
+        )
+        .put(
+          MessageModel.primaryKey(new Uint8Array([2]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          Buffer.from('c')
+        )
+        .put(
+          MessageModel.primaryKey(new Uint8Array([2, 1]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          Buffer.from('d')
+        )
+        .put(
+          MessageModel.primaryKey(new Uint8Array([4]), UserPrefix.CastMessage, new Uint8Array([1])),
+          Buffer.from('e')
+        );
 
       await db.commit(tsx);
       const order = [];
@@ -72,11 +113,26 @@ describe('static methods', () => {
     test('orders messages when fids overlap', async () => {
       const tsx = db
         .transaction()
-        .put(MessageModel.primaryKey(new Uint8Array([1, 1]), new Uint8Array([1, 1])), Buffer.from('a'))
-        .put(MessageModel.primaryKey(new Uint8Array([1, 1, 1]), new Uint8Array([2, 1])), Buffer.from('b'))
-        .put(MessageModel.primaryKey(new Uint8Array([1, 1, 1]), new Uint8Array([1, 2])), Buffer.from('c'))
-        .put(MessageModel.primaryKey(new Uint8Array([1, 1]), new Uint8Array([1, 2])), Buffer.from('d'))
-        .put(MessageModel.primaryKey(new Uint8Array([4]), new Uint8Array([1])), Buffer.from('e'));
+        .put(
+          MessageModel.primaryKey(new Uint8Array([1, 1]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          Buffer.from('a')
+        )
+        .put(
+          MessageModel.primaryKey(new Uint8Array([1, 1, 1]), UserPrefix.CastMessage, new Uint8Array([2, 1])),
+          Buffer.from('b')
+        )
+        .put(
+          MessageModel.primaryKey(new Uint8Array([1, 1, 1]), UserPrefix.CastMessage, new Uint8Array([1, 2])),
+          Buffer.from('c')
+        )
+        .put(
+          MessageModel.primaryKey(new Uint8Array([1, 1]), UserPrefix.CastMessage, new Uint8Array([1, 2])),
+          Buffer.from('d')
+        )
+        .put(
+          MessageModel.primaryKey(new Uint8Array([4]), UserPrefix.CastMessage, new Uint8Array([1])),
+          Buffer.from('e')
+        );
 
       await db.commit(tsx);
 
@@ -102,7 +158,7 @@ describe('instance methods', () => {
   describe('commit', () => {
     test('stores binary message', async () => {
       await expect(model.commit(db)).resolves.toEqual(undefined);
-      const get = MessageModel.get(db, model.fid(), model.timestampHash());
+      const get = MessageModel.get(db, model.fid(), model.setPrefix(), model.timestampHash());
       await expect(get).resolves.toEqual(model);
     });
   });

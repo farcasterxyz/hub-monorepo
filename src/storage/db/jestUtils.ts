@@ -24,7 +24,7 @@ export const jestRocksDB = (name: string) => {
   return rocksDb;
 };
 
-/** Temporary binary */
+/** Temporary binary version */
 export const jestBinaryRocksDB = (name: string) => {
   const db = new BinaryRocksDB(name);
 
