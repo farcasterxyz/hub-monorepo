@@ -1,12 +1,15 @@
 import { createHash } from 'crypto';
 import { ID_LENGTH, SyncId } from '~/network/sync/syncId';
 
+// Represent a snapshot of the trie at a particular timestamp. Used to compare two hubs and determine
+// if they are in sync.
 export type TrieSnapshot = {
   prefix: string;
   excludedHashes: string[];
   numMessages: number;
 };
 
+// Represents a node in the trie and it's immediate children
 export type NodeMetadata = {
   prefix: string;
   numMessages: number;

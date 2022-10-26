@@ -137,14 +137,14 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     // Publishes this Node's information to the gossip network
     this.contactTimer = setInterval(async () => {
       if (this.gossipNode.peerId) {
-        const content = this.rpcAddress
+        const contactInfo = this.rpcAddress
           ? { peerId: this.gossipNode.peerId.toString(), rpcAddress: this.rpcAddress }
           : { peerId: this.gossipNode.peerId.toString() };
 
         const currentSnapshot = this.syncEngine.snapshot;
         const gossipMessage: GossipMessage<ContactInfoContent> = {
           content: {
-            ...content,
+            ...contactInfo,
             excludedHashes: currentSnapshot.excludedHashes,
             count: currentSnapshot.numMessages,
           },
@@ -202,7 +202,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   async diffSyncIfRequired(message: ContactInfoContent, rpcClient: RPCClient | undefined) {
     this.emit('syncStart');
     if (!rpcClient) {
-      log.debug(`No RPC client for peer, skipping sync`);
+      log.warn(`No RPC client for peer, skipping sync`);
       this.emit('syncComplete', false);
       return;
     }

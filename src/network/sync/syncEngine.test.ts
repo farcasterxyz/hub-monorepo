@@ -101,12 +101,9 @@ describe('SyncEngine', () => {
     expect(syncEngine.shouldSync(oldSnapshot.excludedHashes, 1)).toBeFalsy();
     // must sync if we have fewer messages
     expect(syncEngine.shouldSync(oldSnapshot.excludedHashes, 1000)).toBeTruthy();
-
-    // randomly returns true or false if messages are equal
+    // must sync if we have same number of messages
     const ourMessages = syncEngine.snapshot.numMessages;
-    const results = Array.from(Array(10)).map(() => syncEngine.shouldSync(oldSnapshot.excludedHashes, ourMessages));
-    expect(results).toContain(true);
-    expect(results).toContain(false);
+    expect(syncEngine.shouldSync(oldSnapshot.excludedHashes, ourMessages)).toBeTruthy();
   });
 
   test('should not sync if messages were added within the sync threshold', async () => {
@@ -119,10 +116,7 @@ describe('SyncEngine', () => {
     await addMessagesWithTimestamps(user, [snapshotTimestamp + 3]);
     // Ensure messages counts match, run a few times to make sure we didn't accidentally the wrong answer
     // due to randomness
-    const results = Array.from(Array(10)).map(() =>
-      syncEngine.shouldSync(snapshot.excludedHashes, snapshot.numMessages + 1)
-    );
-    expect(results).not.toContain(true);
-    expect(results).toContain(false);
+    const shouldSync = syncEngine.shouldSync(snapshot.excludedHashes, snapshot.numMessages + 1);
+    expect(shouldSync).toBeFalsy();
   });
 });
