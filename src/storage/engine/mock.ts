@@ -58,10 +58,10 @@ export const populateEngine = async (
  */
 export const mockFid = async (engine: Engine, fid: number) => {
   const userInfo = await generateUserInfo(fid);
-  const custodyRegister = await getIDRegistryEvent(userInfo);
+  const custodyRegister = await getIdRegistryEvent(userInfo);
   const addDelegateSigner = await getSignerAdd(userInfo);
   // register the user
-  let result = await engine.mergeIDRegistryEvent(custodyRegister);
+  let result = await engine.mergeIdRegistryEvent(custodyRegister);
   expect(result.isOk()).toBeTruthy();
   result = await engine.mergeMessage(addDelegateSigner);
   expect(result.isOk()).toBeTruthy();
@@ -78,10 +78,10 @@ export const generateUserInfo = async (fid: number): Promise<UserInfo> => {
 };
 
 /**
- * Generate an IDRegistryEvent for the given userInfo
+ * Generate an IdRegistryEvent for the given userInfo
  */
-export const getIDRegistryEvent = async (userInfo: UserInfo) => {
-  const custodyRegister = await Factories.IDRegistryEvent.create({
+export const getIdRegistryEvent = async (userInfo: UserInfo) => {
+  const custodyRegister = await Factories.IdRegistryEvent.create({
     args: { to: userInfo.ethereumSigner.signerKey, id: userInfo.fid },
     name: 'Register',
   });

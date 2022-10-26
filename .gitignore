@@ -25,4 +25,6 @@ coverage/
 # Databases
 .level/
 .rocks/
+
+# Config
 .hub/

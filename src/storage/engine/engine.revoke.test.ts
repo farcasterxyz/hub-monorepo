@@ -6,7 +6,7 @@ import Engine from '~/storage/engine';
 import { Factories } from '~/test/factories';
 import {
   CastShort,
-  IDRegistryEvent,
+  IdRegistryEvent,
   Ed25519Signer,
   EthereumSigner,
   SignerAdd,
@@ -44,7 +44,7 @@ const aliceVerifications = () => engine.getAllVerificationsByUser(aliceFid);
 const aliceFollows = () => engine.getAllFollowsByUser(aliceFid);
 
 let aliceCustody: EthereumSigner;
-let aliceCustodyRegister: IDRegistryEvent;
+let aliceCustodyRegister: IdRegistryEvent;
 let aliceSigner: Ed25519Signer;
 let aliceSignerAdd: SignerAdd;
 let aliceCast: CastShort;
@@ -54,7 +54,7 @@ let aliceFollow: FollowAdd;
 
 beforeAll(async () => {
   aliceCustody = await generateEthereumSigner();
-  aliceCustodyRegister = await Factories.IDRegistryEvent.create({
+  aliceCustodyRegister = await Factories.IdRegistryEvent.create({
     args: { to: aliceCustody.signerKey, id: aliceFid },
     name: 'Register',
   });
@@ -78,7 +78,7 @@ beforeAll(async () => {
 describe('revokeSigner', () => {
   describe('with messages signed by delegate', () => {
     beforeEach(async () => {
-      await engine.mergeIDRegistryEvent(aliceCustodyRegister);
+      await engine.mergeIdRegistryEvent(aliceCustodyRegister);
       await engine.mergeMessage(aliceSignerAdd);
       await engine.mergeMessage(aliceCast);
       await engine.mergeMessage(aliceReaction);

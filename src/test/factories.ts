@@ -16,7 +16,7 @@ import {
   MessageFactoryTransientParams,
   MessageSigner,
   HashAlgorithm,
-  IDRegistryEvent,
+  IdRegistryEvent,
   EthAddressUrlFactoryTransientParams,
   SignerMessageFactoryTransientParams,
   MessageType,
@@ -280,8 +280,8 @@ export const Factories = {
     }
   ),
 
-  /** Generate a valid IDRegistryEvent with randomized properties */
-  IDRegistryEvent: Factory.define<IDRegistryEvent, any, IDRegistryEvent>(({ onCreate }) => {
+  /** Generate a valid IdRegistryEvent with randomized properties */
+  IdRegistryEvent: Factory.define<IdRegistryEvent, any, IdRegistryEvent>(({ onCreate }) => {
     onCreate(async (props) => {
       return props;
     });

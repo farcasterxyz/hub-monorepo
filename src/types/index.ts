@@ -247,8 +247,8 @@ export type SignerMessageFactoryTransientParams = MessageFactoryTransientParams 
   signer: EthereumSigner;
 };
 
-export type IDRegistryEvent = {
-  args: IDRegistryArgs;
+export type IdRegistryEvent = {
+  args: IdRegistryArgs;
   blockNumber: number;
   blockHash: string;
   transactionHash: string;
@@ -256,7 +256,7 @@ export type IDRegistryEvent = {
   name: 'Register' | 'Transfer';
 };
 
-export type IDRegistryArgs = {
+export type IdRegistryArgs = {
   to: string;
   id: number;
 };

@@ -2,8 +2,10 @@ import { rejects } from 'assert';
 import jayson, { JSONRPCError } from 'jayson/promise';
 import { replacer, reviver, RPCHandler, RPCRequest } from './interfaces';
 import { ServerError } from '~/utils/errors';
+import { logger } from '~/utils/logger';
 
 const VERSION = 0.1;
+const log = logger.child({ component: 'RPCServer' });
 
 const serverOpts = {
   version: VERSION,
@@ -75,14 +77,14 @@ export class RPCServer {
           },
         }),
 
-        [RPCRequest.SubmitIDRegistryEvent]: new jayson.Method({
+        [RPCRequest.SubmitIdRegistryEvent]: new jayson.Method({
           handler: async (args: any) => {
-            if (!rpcHandler.submitIDRegistryEvent) {
+            if (!rpcHandler.submitIdRegistryEvent) {
               const fcError = new ServerError('Request not implemented on Server');
               throw rpcError(fcError.statusCode, fcError.message);
             }
 
-            const result = await rpcHandler.submitIDRegistryEvent(args.event);
+            const result = await rpcHandler.submitIdRegistryEvent(args.event);
             if (result.isErr()) throw rpcError(result.error.statusCode, result.error.message);
             return result.value;
           },
@@ -97,7 +99,7 @@ export class RPCServer {
       try {
         // start the tcp server
         this._tcpServer = this._jsonServer.tcp().listen(port, () => {
-          console.log('RPC server started:', this.tcp?.address());
+          log.info({ address: this.tcp?.address(), function: 'start' }, 'RPC server started');
           resolve();
         });
       } catch (err: any) {
@@ -114,7 +116,7 @@ export class RPCServer {
     return new Promise((resolve, reject) => {
       try {
         this.tcp?.close((err) => {
-          console.log('RPC server stopped');
+          log.info({ function: 'stop' }, `RPC server stopped}`);
           if (err) reject(err);
           else resolve();
         });

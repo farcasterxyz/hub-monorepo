@@ -1,23 +1,23 @@
-import { IDRegistry } from '~/storage/provider/abis';
+import { IdRegistry } from '~/storage/provider/abis';
 import { BigNumber, Contract, providers, Event } from 'ethers';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import { IDRegistryEvent } from '~/types';
+import { IdRegistryEvent } from '~/types';
 import { ok, err, Result } from 'neverthrow';
 import { sanitizeSigner } from '~/utils/crypto';
 import { BadRequestError, FarcasterError } from '~/utils/errors';
 
-export type IDRegistryEvents = {
+export type IdRegistryEvents = {
   block: (blockNumber: number) => void;
-  confirm: (event: IDRegistryEvent) => void;
+  confirm: (event: IdRegistryEvent) => void;
 };
 
-class IDRegistryProvider extends TypedEmitter<IDRegistryEvents> {
+class IdRegistryProvider extends TypedEmitter<IdRegistryEvents> {
   private _jsonRpcProvider: providers.BaseProvider;
   private _contract: Contract;
   private _numConfirmations: number;
-  private _eventsByBlock: Map<number, Set<IDRegistryEvent>>;
+  private _eventsByBlock: Map<number, Set<IdRegistryEvent>>;
 
-  constructor(networkUrl: string, IDRegistryAddress: string, numConfirmations = 6) {
+  constructor(networkUrl: string, IdRegistryAddress: string, numConfirmations = 6) {
     super();
 
     // Init variables
@@ -28,13 +28,13 @@ class IDRegistryProvider extends TypedEmitter<IDRegistryEvents> {
     this._jsonRpcProvider = new providers.JsonRpcProvider(networkUrl);
     this._jsonRpcProvider.on('block', (blockNumber: number) => this.handleNewBlock(blockNumber));
 
-    // Setup IDRegistry contract
-    this._contract = new Contract(IDRegistryAddress, IDRegistry.abi, this._jsonRpcProvider);
+    // Setup IdRegistry contract
+    this._contract = new Contract(IdRegistryAddress, IdRegistry.abi, this._jsonRpcProvider);
     this._contract.on('Register', (to: string, id: BigNumber, _, event: Event) => {
-      this.handleIDRegistryEvent(to, id, 'Register', event);
+      this.handleIdRegistryEvent(to, id, 'Register', event);
     });
     this._contract.on('Transfer', (_, to: string, id: BigNumber, event: Event) => {
-      this.handleIDRegistryEvent(to, id, 'Transfer', event);
+      this.handleIdRegistryEvent(to, id, 'Transfer', event);
     });
   }
 
@@ -51,15 +51,15 @@ class IDRegistryProvider extends TypedEmitter<IDRegistryEvents> {
   }
 
   /**
-   * validateIDRegistryEvent tries to confirm that an event was actually emitted from the
+   * validateIdRegistryEvent tries to confirm that an event was actually emitted from the
    * ID Registry and confirmed, based on block confirmations
    */
-  async validateIDRegistryEvent(event: IDRegistryEvent): Promise<Result<void, FarcasterError>> {
+  async validateIdRegistryEvent(event: IdRegistryEvent): Promise<Result<void, FarcasterError>> {
     const receipt = await this._jsonRpcProvider.getTransactionReceipt(event.transactionHash);
-    if (!receipt) return err(new BadRequestError('validateIDRegistryEvent: transaction not found'));
+    if (!receipt) return err(new BadRequestError('validateIdRegistryEvent: transaction not found'));
 
     if (receipt.confirmations >= this._numConfirmations)
-      return err(new BadRequestError('validateIDRegistryEvent: insufficient confirmations'));
+      return err(new BadRequestError('validateIdRegistryEvent: insufficient confirmations'));
 
     for (const log of receipt.logs) {
       const parsedLog = this._contract.interface.parseLog(log);
@@ -67,7 +67,7 @@ class IDRegistryProvider extends TypedEmitter<IDRegistryEvents> {
       if (sanitizeSigner(to) === sanitizeSigner(event.args.to) && id.toNumber() === event.args.id) return ok(undefined);
     }
 
-    return err(new BadRequestError('validateIDRegistryEvent: no matching log found'));
+    return err(new BadRequestError('validateIdRegistryEvent: no matching log found'));
   }
 
   /* -------------------------------------------------------------------------- */
@@ -93,7 +93,7 @@ class IDRegistryProvider extends TypedEmitter<IDRegistryEvents> {
       const confirmedEvents = this._eventsByBlock.get(blockNumber) || new Set();
 
       confirmedEvents.forEach(async (event) => {
-        const eventIsValid = await this.validateIDRegistryEvent(event);
+        const eventIsValid = await this.validateIdRegistryEvent(event);
         if (eventIsValid.isOk()) {
           this.emit('confirm', event);
         }
@@ -105,12 +105,12 @@ class IDRegistryProvider extends TypedEmitter<IDRegistryEvents> {
   }
 
   /**
-   * handleIDRegistryEvent takes a Register or Transfer event from the ID Registry contract, converts
-   * it into an IDRegistryEvent, and adds it to the appropriate block in the eventsByBlock map
+   * handleIdRegistryEvent takes a Register or Transfer event from the ID Registry contract, converts
+   * it into an IdRegistryEvent, and adds it to the appropriate block in the eventsByBlock map
    */
-  private handleIDRegistryEvent(to: string, id: BigNumber, name: 'Register' | 'Transfer', event: Event): void {
+  private handleIdRegistryEvent(to: string, id: BigNumber, name: 'Register' | 'Transfer', event: Event): void {
     const { blockNumber, blockHash, transactionHash, logIndex } = event;
-    const idRegistryEvent: IDRegistryEvent = {
+    const idRegistryEvent: IdRegistryEvent = {
       args: {
         to,
         id: id.toNumber(),
@@ -128,4 +128,4 @@ class IDRegistryProvider extends TypedEmitter<IDRegistryEvents> {
   }
 }
 
-export default IDRegistryProvider;
+export default IdRegistryProvider;

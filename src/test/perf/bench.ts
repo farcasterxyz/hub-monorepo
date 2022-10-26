@@ -1,14 +1,15 @@
 import { Command } from 'commander';
 import { RPCClient } from '~/network/rpc';
-import { AddressInfo, isIP } from 'net';
-import { generateUserInfo, getIDRegistryEvent, getSignerAdd, UserInfo } from '~/storage/engine/mock';
+import { generateUserInfo, getIdRegistryEvent, getSignerAdd, UserInfo } from '~/storage/engine/mock';
 import Faker from 'faker';
-import { IDRegistryEvent, Message, SignerAdd } from '~/types';
+import { IdRegistryEvent, Message, SignerAdd } from '~/types';
 import { Factories } from '~/test/factories';
 import { Result } from 'neverthrow';
 import { sleep } from '~/utils/crypto';
 import { JSONRPCError } from 'jayson/promise';
-import { isIDRegistryEvent, isMessage } from '~/types/typeguards';
+import { isIdRegistryEvent, isMessage } from '~/types/typeguards';
+import { logger } from '~/utils/logger';
+import { getAddressInfo } from '~/utils/p2p';
 
 /**
  * Farcaster Benchmark Client
@@ -23,7 +24,7 @@ import { isIDRegistryEvent, isMessage } from '~/types/typeguards';
 const post = (msg: string, start: number, stop: number) => {
   const delta = Number((stop - start) / 1000);
   const time = delta.toFixed(3);
-  console.log(`Time ${time}s : ${msg}`);
+  logger.info(`Time ${time}s : ${msg}`);
   return delta;
 };
 
@@ -52,7 +53,7 @@ type SubmitCounts = {
   fail: number;
 };
 
-const submitInBatches = async (messages: Message[] | IDRegistryEvent[]) => {
+const submitInBatches = async (messages: Message[] | IdRegistryEvent[]) => {
   // limits what we try to do in parallel. If this number is too large, we'll run out of sockets to use for tcp
   const BATCH_SIZE = 100;
   let results: Result<void, JSONRPCError>[] = [];
@@ -60,8 +61,8 @@ const submitInBatches = async (messages: Message[] | IDRegistryEvent[]) => {
     const batch = messages.slice(i, i + BATCH_SIZE);
     const innerRes = await Promise.all(
       batch.map((message) => {
-        if (isIDRegistryEvent(message)) {
-          return client.submitIDRegistryEvent(message);
+        if (isIdRegistryEvent(message)) {
+          return client.submitIdRegistryEvent(message);
         }
         if (isMessage(message)) {
           return client.submitMessage(message);
@@ -82,34 +83,29 @@ app
   .version(process.env.npm_package_version ?? '1.0.0');
 
 app
-  .requiredOption('-A, --ip-address <address>', 'The IP address of a Hub to submit messages to')
-  .requiredOption('-R, --rpc-port <port>', 'The RPC port of the Hub')
+  .requiredOption('-a, --multiaddr <multiaddr>', 'The IP multiaddr of the Hub to submit messages to')
+  .requiredOption('-r, --rpc-port <port>', 'The RPC port of the Hub')
   .option('-U, --users <count>', 'The number of users to simulate', parseNumber, 100);
 
 app.parse(process.argv);
 const cliOptions = app.opts();
-console.log(cliOptions, [...Array(cliOptions.users)].length, typeof cliOptions.users);
-const family = isIP(cliOptions.ipAddress);
-if (!family) throw new Error('Invalid Hub Address');
+logger.info({ options: cliOptions, optionsSize: [...Array(cliOptions.users)].length, type: typeof cliOptions.users });
+const addressInfo = getAddressInfo(cliOptions.ipAddress, cliOptions.rpcPort);
+if (addressInfo.isErr()) throw addressInfo.error;
 
-const address: AddressInfo = {
-  address: cliOptions.ipAddress,
-  port: cliOptions.rpcPort,
-  family: family == 4 ? 'ip4' : 'ip6',
-};
-console.log(`Using RPC server: ${address.address}/${address.port}`);
-const client = new RPCClient(address);
+logger.info(`Using RPC server: ${addressInfo.value.address}/${addressInfo.value.port}`);
+const client = new RPCClient(addressInfo.value);
 
 // generate users
-console.log(`Generating IDRegistry events for ${cliOptions.users} users.`);
+logger.info(`Generating IdRegistry events for ${cliOptions.users} users.`);
 const firstUser = Faker.datatype.number();
-const idRegistryEvents: IDRegistryEvent[] = [];
+const idRegistryEvents: IdRegistryEvent[] = [];
 const signerAddEvents: SignerAdd[] = [];
 let start = performance.now();
 const userInfos: UserInfo[] = await Promise.all(
   [...Array(cliOptions.users)].map(async (_value, index) => {
     const info = await generateUserInfo(firstUser + index);
-    idRegistryEvents.push(await getIDRegistryEvent(info));
+    idRegistryEvents.push(await getIdRegistryEvent(info));
     signerAddEvents.push(await getSignerAdd(info));
     return info;
   })
@@ -122,10 +118,10 @@ start = performance.now();
 const registryResults = await submitInBatches(idRegistryEvents);
 
 stop = performance.now();
-const idRegistryTime = post('IDRegistry Events submitted', start, stop);
+const idRegistryTime = post('IdRegistry Events submitted', start, stop);
 
-console.log(`${registryResults.success} events submitted successfully. ${registryResults.fail} events failed.`);
-console.log('_Waiting a few seconds for the network to synchronize_');
+logger.info(`${registryResults.success} events submitted successfully. ${registryResults.fail} events failed.`);
+logger.info('_Waiting a few seconds for the network to synchronize_');
 await sleep(10_000);
 
 start = performance.now();
@@ -134,13 +130,13 @@ const signerResults = await submitInBatches(signerAddEvents);
 stop = performance.now();
 const signerAddsTime = post('Signers submitted', start, stop);
 
-console.log(`${signerResults.success} signers submitted successfully. ${signerResults.fail} signers failed.`);
+logger.info(`${signerResults.success} signers submitted successfully. ${signerResults.fail} signers failed.`);
 
-console.log('_Waiting a few seconds for the network to synchronize_');
+logger.info('_Waiting a few seconds for the network to synchronize_');
 await sleep(10_000);
 
 // generate random data for each user
-console.log(`Generating Casts for ${cliOptions.users} users`);
+logger.info(`Generating Casts for ${cliOptions.users} users`);
 start = performance.now();
 const casts = await Promise.all(
   userInfos.map((user) => {
@@ -156,13 +152,13 @@ const castResults = await submitInBatches(casts);
 stop = performance.now();
 post('Casts submitted', start, stop);
 
-console.log(`${castResults.success} Casts submitted successfully. ${castResults.fail} Casts failed.`);
+logger.info(`${castResults.success} Casts submitted successfully. ${castResults.fail} Casts failed.`);
 
-console.log('------------------------------------------');
-console.log('Time \t\t\t\t Task');
-console.log('------------------------------------------');
-console.log(`${accountTime.toFixed(3)}s    \t\t\t Account generation time`);
-console.log(`${idRegistryTime.toFixed(3)}s    \t\t\t IDRegistry Events`);
-console.log(`${signerAddsTime.toFixed(3)}s    \t\t\t Signer Add Messages`);
-console.log(`${castTime.toFixed(3)}s    \t\t\t Cast Messages`);
-console.log(`Total: ${(accountTime + idRegistryTime + signerAddsTime + castTime).toFixed(3)}s`);
+logger.info('------------------------------------------');
+logger.info('Time \t\t\t\t Task');
+logger.info('------------------------------------------');
+logger.info(`${accountTime.toFixed(3)}s    \t\t\t Account generation time`);
+logger.info(`${idRegistryTime.toFixed(3)}s    \t\t\t IdRegistry Events`);
+logger.info(`${signerAddsTime.toFixed(3)}s    \t\t\t Signer Add Messages`);
+logger.info(`${castTime.toFixed(3)}s    \t\t\t Cast Messages`);
+logger.info(`Total: ${(accountTime + idRegistryTime + signerAddsTime + castTime).toFixed(3)}s`);

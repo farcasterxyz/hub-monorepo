@@ -8,7 +8,7 @@ import {
   SignatureAlgorithm,
   SignerMessage,
   HashAlgorithm,
-  IDRegistryEvent,
+  IdRegistryEvent,
   Follow,
   CastShort,
   CastRecast,
@@ -39,7 +39,7 @@ import SignerSet from '~/storage/sets/signerSet';
 import FollowSet from '~/storage/sets/followSet';
 import { CastURL, ChainAccountURL, parseUrl, UserURL } from '~/urls';
 import { Web2URL } from '~/urls/web2Url';
-import IDRegistryProvider from '~/storage/provider/idRegistryProvider';
+import IdRegistryProvider from '~/storage/provider/idRegistryProvider';
 import { CastHash } from '~/urls/castUrl';
 import RocksDB from '~/storage/db/rocksdb';
 import { BadRequestError, FarcasterError, ServerError } from '~/utils/errors';
@@ -61,11 +61,11 @@ class Engine extends TypedEmitter<EngineEvents> {
   private _reactionSet: ReactionSet;
   private _verificationSet: VerificationSet;
 
-  private _IDRegistryProvider?: IDRegistryProvider;
+  private _IdRegistryProvider?: IdRegistryProvider;
 
   private _supportedChainIDs = new Set(['eip155:1']);
 
-  constructor(db: RocksDB, networkUrl?: string, IDRegistryAddress?: string) {
+  constructor(db: RocksDB, networkUrl?: string, IdRegistryAddress?: string) {
     super();
     this._db = db;
     this._castSet = new CastSet(db);
@@ -81,9 +81,9 @@ class Engine extends TypedEmitter<EngineEvents> {
     );
 
     /** Optionally, initialize ID Registry provider */
-    if (networkUrl && IDRegistryAddress) {
-      this._IDRegistryProvider = new IDRegistryProvider(networkUrl, IDRegistryAddress);
-      this._IDRegistryProvider.on('confirm', (event: IDRegistryEvent) => this.mergeIDRegistryEvent(event));
+    if (networkUrl && IdRegistryAddress) {
+      this._IdRegistryProvider = new IdRegistryProvider(networkUrl, IdRegistryAddress);
+      this._IdRegistryProvider.on('confirm', (event: IdRegistryEvent) => this.mergeIdRegistryEvent(event));
     }
   }
 
@@ -182,13 +182,13 @@ class Engine extends TypedEmitter<EngineEvents> {
   /*                               Signer Methods                               */
   /* -------------------------------------------------------------------------- */
 
-  async mergeIDRegistryEvent(event: IDRegistryEvent): Promise<Result<void, FarcasterError>> {
-    if (this._IDRegistryProvider) {
-      const isEventValidResult = await this._IDRegistryProvider.validateIDRegistryEvent(event);
+  async mergeIdRegistryEvent(event: IdRegistryEvent): Promise<Result<void, FarcasterError>> {
+    if (this._IdRegistryProvider) {
+      const isEventValidResult = await this._IdRegistryProvider.validateIdRegistryEvent(event);
       if (isEventValidResult.isErr()) return err(isEventValidResult.error);
     }
 
-    return ResultAsync.fromPromise(this._signerSet.mergeIDRegistryEvent(event), (e) => e as FarcasterError);
+    return ResultAsync.fromPromise(this._signerSet.mergeIdRegistryEvent(event), (e) => e as FarcasterError);
   }
 
   /** Get the entire set of signers for an Fid */
@@ -196,8 +196,8 @@ class Engine extends TypedEmitter<EngineEvents> {
     return this._signerSet.getAllSignerMessagesByUser(fid);
   }
 
-  // async getCustodyEventByUser(fid: number): Promise<IDRegistryEvent> {
-  async getCustodyEventByUser(fid: number): Promise<Result<IDRegistryEvent, FarcasterError>> {
+  // async getCustodyEventByUser(fid: number): Promise<IdRegistryEvent> {
+  async getCustodyEventByUser(fid: number): Promise<Result<IdRegistryEvent, FarcasterError>> {
     return ResultAsync.fromPromise(this._signerSet.getCustodyEvent(fid), (e) => e as FarcasterError);
   }
 

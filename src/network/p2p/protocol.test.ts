@@ -1,21 +1,21 @@
 import { Factories } from '~/test/factories';
-import { CastShort, IDRegistryEvent } from '~/types';
+import { CastShort, IdRegistryEvent } from '~/types';
 import {
   ContactInfoContent,
   decodeMessage,
   encodeMessage,
   GossipMessage,
-  IDRegistryContent,
+  IdRegistryContent,
   UserContent,
 } from '~/network/p2p/protocol';
 import { isGossipMessage } from '~/types/typeguards';
 
 let cast: CastShort;
-let idRegistryEvent: IDRegistryEvent;
+let idRegistryEvent: IdRegistryEvent;
 
 beforeAll(async () => {
   cast = await Factories.CastShort.create();
-  idRegistryEvent = await Factories.IDRegistryEvent.create();
+  idRegistryEvent = await Factories.IdRegistryEvent.create();
 });
 
 describe('gossip protocol', () => {
@@ -31,8 +31,8 @@ describe('gossip protocol', () => {
     expect(message).toBeDefined();
   });
 
-  test('constructs a Gossip Message from an IDRegistryEvent', () => {
-    const message: GossipMessage<IDRegistryContent> = {
+  test('constructs a Gossip Message from an IdRegistryEvent', () => {
+    const message: GossipMessage<IdRegistryContent> = {
       content: {
         message: idRegistryEvent,
         root: '',
@@ -79,8 +79,8 @@ describe('encode/decode', () => {
     expect(decoded._unsafeUnwrap()).toStrictEqual(message);
   });
 
-  test('encode and decode a IDRegistry message', () => {
-    const message: GossipMessage<IDRegistryContent> = {
+  test('encode and decode a IdRegistry message', () => {
+    const message: GossipMessage<IdRegistryContent> = {
       content: {
         message: idRegistryEvent,
         root: '',

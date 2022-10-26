@@ -6,7 +6,7 @@ import SignerDB from '~/storage/db/signer';
 import Engine from '~/storage/engine';
 import { BadRequestError, NotFoundError } from '~/utils/errors';
 import { Factories } from '~/test/factories';
-import { Ed25519Signer, EthereumSigner, SignerAdd, SignerMessage, SignerRemove, IDRegistryEvent } from '~/types';
+import { Ed25519Signer, EthereumSigner, SignerAdd, SignerMessage, SignerRemove, IdRegistryEvent } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner, hashFCObject } from '~/utils/crypto';
 
 const testDb = jestRocksDB(`engine.signer.test`);
@@ -27,14 +27,14 @@ const aliceSigners = async (): Promise<Set<SignerAdd>> => {
 
 describe('mergeSignerMessage', () => {
   let aliceCustodySigner: EthereumSigner;
-  let aliceCustodyRegister: IDRegistryEvent;
+  let aliceCustodyRegister: IdRegistryEvent;
   let aliceDelegateSigner: Ed25519Signer;
   let aliceSignerAddDelegate: SignerAdd;
   let aliceSignerRemoveDelegate: SignerRemove;
 
   beforeAll(async () => {
     aliceCustodySigner = await generateEthereumSigner();
-    aliceCustodyRegister = await Factories.IDRegistryEvent.create({
+    aliceCustodyRegister = await Factories.IdRegistryEvent.create({
       args: { to: aliceCustodySigner.signerKey, id: aliceFid },
       name: 'Register',
     });
@@ -58,7 +58,7 @@ describe('mergeSignerMessage', () => {
 
   describe('with a custody address', () => {
     beforeEach(async () => {
-      await engine.mergeIDRegistryEvent(aliceCustodyRegister);
+      await engine.mergeIdRegistryEvent(aliceCustodyRegister);
     });
 
     test('fails with invalid message type', async () => {

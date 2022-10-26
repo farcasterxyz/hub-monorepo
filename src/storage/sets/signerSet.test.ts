@@ -1,5 +1,5 @@
 import Faker from 'faker';
-import { SignerAdd, SignerRemove, EthereumSigner, Ed25519Signer, IDRegistryEvent } from '~/types';
+import { SignerAdd, SignerRemove, EthereumSigner, Ed25519Signer, IdRegistryEvent } from '~/types';
 import SignerSet, { SignerSetEvents } from '~/storage/sets/signerSet';
 import { Factories } from '~/test/factories';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
@@ -35,8 +35,8 @@ let custody1: EthereumSigner;
 let custody2: EthereumSigner;
 
 // Custody Address Events
-let custody1Register: IDRegistryEvent;
-let custody2Transfer: IDRegistryEvent;
+let custody1Register: IdRegistryEvent;
+let custody2Transfer: IdRegistryEvent;
 
 // Signers
 let a: Ed25519Signer;
@@ -51,9 +51,9 @@ let addBTo1: SignerAdd;
 
 beforeAll(async () => {
   custody1 = await generateEthereumSigner();
-  custody1Register = await Factories.IDRegistryEvent.create({ args: { to: custody1.signerKey, id: fid } }, {});
+  custody1Register = await Factories.IdRegistryEvent.create({ args: { to: custody1.signerKey, id: fid } }, {});
   custody2 = await generateEthereumSigner();
-  custody2Transfer = await Factories.IDRegistryEvent.create({
+  custody2Transfer = await Factories.IdRegistryEvent.create({
     args: { to: custody2.signerKey, id: fid },
     blockNumber: custody1Register.blockNumber + 1,
   });
@@ -87,14 +87,14 @@ describe('getCustodyAddress', () => {
   });
 
   test('succeeds when custody event has been added', async () => {
-    await set.mergeIDRegistryEvent(custody1Register);
+    await set.mergeIdRegistryEvent(custody1Register);
     const res = set.getCustodyAddress(fid);
     await expect(res).resolves.toEqual(custody1.signerKey);
   });
 
   test('succeeds after custody address has been changed', async () => {
-    await set.mergeIDRegistryEvent(custody1Register);
-    await set.mergeIDRegistryEvent(custody2Transfer);
+    await set.mergeIdRegistryEvent(custody1Register);
+    await set.mergeIdRegistryEvent(custody2Transfer);
     const res = set.getCustodyAddress(fid);
     await expect(res).resolves.toEqual(custody2.signerKey);
   });
@@ -108,7 +108,7 @@ describe('getSigners', () => {
 
   describe('when custody address exists', () => {
     beforeEach(async () => {
-      await set.mergeIDRegistryEvent(custody1Register);
+      await set.mergeIdRegistryEvent(custody1Register);
     });
 
     test('succeeds ', async () => {
@@ -144,14 +144,14 @@ describe('getSigners', () => {
 
     test('succeeds when signer is added and custody address is changed', async () => {
       await set.merge(addATo1);
-      await set.mergeIDRegistryEvent(custody2Transfer);
+      await set.mergeIdRegistryEvent(custody2Transfer);
       const res = set.getSigners(fid);
       await expect(res).resolves.toEqual(new Set());
     });
 
     test('succeeds when signer is added and custody address is changed and another signer is added', async () => {
       await set.merge(addATo1);
-      await set.mergeIDRegistryEvent(custody2Transfer);
+      await set.mergeIdRegistryEvent(custody2Transfer);
       await set.merge(addATo2);
       const res = set.getSigners(fid);
       await expect(res).resolves.toEqual(new Set([addATo2]));
@@ -166,7 +166,7 @@ describe('getSigner', () => {
   });
 
   test('fails when called with a custody address', async () => {
-    await set.mergeIDRegistryEvent(custody1Register);
+    await set.mergeIdRegistryEvent(custody1Register);
     const res = set.getSigner(fid, custody1.signerKey);
     await expect(res).rejects.toThrow();
   });
@@ -177,14 +177,14 @@ describe('getSigner', () => {
   });
 
   test('returns SignerAdd when delegate signer has been added', async () => {
-    await set.mergeIDRegistryEvent(custody1Register);
+    await set.mergeIdRegistryEvent(custody1Register);
     await set.merge(addATo1);
     const res = set.getSigner(fid, a.signerKey);
     await expect(res).resolves.toEqual(addATo1);
   });
 
   test('fails when delegate signer has been removed', async () => {
-    await set.mergeIDRegistryEvent(custody1Register);
+    await set.mergeIdRegistryEvent(custody1Register);
     await set.merge(addATo1);
     await set.merge(remAFrom1);
     const res = set.getSigner(fid, a.signerKey);
@@ -192,18 +192,18 @@ describe('getSigner', () => {
   });
 
   test('fails when custody address has been changed', async () => {
-    await set.mergeIDRegistryEvent(custody1Register);
+    await set.mergeIdRegistryEvent(custody1Register);
     await set.merge(addATo1);
-    await set.mergeIDRegistryEvent(custody2Transfer);
+    await set.mergeIdRegistryEvent(custody2Transfer);
     const res = set.getSigner(fid, a.signerKey);
     await expect(res).rejects.toThrow();
   });
 });
 
-describe('mergeIDRegistryEvent', () => {
+describe('mergeIdRegistryEvent', () => {
   describe('when custody is registered', () => {
     beforeEach(async () => {
-      await set.mergeIDRegistryEvent(custody1Register);
+      await set.mergeIdRegistryEvent(custody1Register);
     });
 
     test('succeeds ', async () => {
@@ -214,11 +214,11 @@ describe('mergeIDRegistryEvent', () => {
 
     test('succeeds if a custody is registered to another fid', async () => {
       const fid2 = Faker.datatype.number();
-      const custody2Register = await Factories.IDRegistryEvent.create(
+      const custody2Register = await Factories.IdRegistryEvent.create(
         { args: { to: custody2.signerKey, id: fid2 } },
         {}
       );
-      await expect(set.mergeIDRegistryEvent(custody2Register)).resolves.toEqual(undefined);
+      await expect(set.mergeIdRegistryEvent(custody2Register)).resolves.toEqual(undefined);
 
       await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
       await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
@@ -229,7 +229,7 @@ describe('mergeIDRegistryEvent', () => {
     });
 
     test('succeeds when custody is transferred', async () => {
-      await expect(set.mergeIDRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
+      await expect(set.mergeIdRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
       await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
       await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
       await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
@@ -240,42 +240,42 @@ describe('mergeIDRegistryEvent', () => {
     });
 
     test('succeeds (no-ops) if duplicate registration is provided', async () => {
-      await expect(set.mergeIDRegistryEvent(custody1Register)).resolves.toEqual(undefined);
+      await expect(set.mergeIdRegistryEvent(custody1Register)).resolves.toEqual(undefined);
       await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
       await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
       expect(events).toEqual([['changeCustody', fid, custody1.signerKey, custody1Register]]);
     });
 
     test('succeeds (no-ops) if transferred in same block, earlier log index', async () => {
-      const addSameBlockEarlierLog: IDRegistryEvent = {
+      const addSameBlockEarlierLog: IdRegistryEvent = {
         ...custody2Transfer,
         blockNumber: custody1Register.blockNumber,
         logIndex: custody1Register.logIndex - 1,
       };
-      await expect(set.mergeIDRegistryEvent(addSameBlockEarlierLog)).resolves.toEqual(undefined);
+      await expect(set.mergeIdRegistryEvent(addSameBlockEarlierLog)).resolves.toEqual(undefined);
       await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
       await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
       expect(events).toEqual([['changeCustody', fid, custody1.signerKey, custody1Register]]);
     });
 
     test('succeeds (no-ops) if transferred in an earlier block', async () => {
-      const addSameBlockEarlierLog: IDRegistryEvent = {
+      const addSameBlockEarlierLog: IdRegistryEvent = {
         ...custody2Transfer,
         blockNumber: custody1Register.blockNumber - 1,
       };
-      await expect(set.mergeIDRegistryEvent(addSameBlockEarlierLog)).resolves.toEqual(undefined);
+      await expect(set.mergeIdRegistryEvent(addSameBlockEarlierLog)).resolves.toEqual(undefined);
       await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
       await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
       expect(events).toEqual([['changeCustody', fid, custody1.signerKey, custody1Register]]);
     });
 
     test('succeeds if transferred in the same block, later log index', async () => {
-      const addSameBlockLaterLog: IDRegistryEvent = {
+      const addSameBlockLaterLog: IdRegistryEvent = {
         ...custody2Transfer,
         blockNumber: custody1Register.blockNumber,
         logIndex: custody1Register.logIndex + 1,
       };
-      await expect(set.mergeIDRegistryEvent(addSameBlockLaterLog)).resolves.toEqual(undefined);
+      await expect(set.mergeIdRegistryEvent(addSameBlockLaterLog)).resolves.toEqual(undefined);
       await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
       await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
       expect(events).toEqual([
@@ -285,13 +285,13 @@ describe('mergeIDRegistryEvent', () => {
     });
 
     test('succeeds if transferred twice in successive blocks', async () => {
-      await expect(set.mergeIDRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
-      const custody1Transfer: IDRegistryEvent = {
+      await expect(set.mergeIdRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
+      const custody1Transfer: IdRegistryEvent = {
         ...custody1Register,
         name: 'Transfer',
         blockNumber: custody2Transfer.blockNumber + 1,
       };
-      await expect(set.mergeIDRegistryEvent(custody1Transfer)).resolves.toEqual(undefined);
+      await expect(set.mergeIdRegistryEvent(custody1Transfer)).resolves.toEqual(undefined);
       await expect(custodyAddress()).resolves.toEqual(custody1.signerKey);
       await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
       await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
@@ -308,7 +308,7 @@ describe('mergeIDRegistryEvent', () => {
       });
 
       test('succeeds if transferred and emits removeSigner event', async () => {
-        await expect(set.mergeIDRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
+        await expect(set.mergeIdRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
         await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
         await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
         expect(events).toEqual([
@@ -321,7 +321,7 @@ describe('mergeIDRegistryEvent', () => {
 
       test('succeeds if signer removed before transfer and does not emit new event', async () => {
         await expect(set.merge(remAFrom1)).resolves.toEqual(undefined);
-        await expect(set.mergeIDRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
+        await expect(set.mergeIdRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
         await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
         await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
         expect(events).toEqual([
@@ -339,7 +339,7 @@ describe('mergeIDRegistryEvent', () => {
       });
 
       test('succeeds if transferred and emits addSigner event', async () => {
-        await expect(set.mergeIDRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
+        await expect(set.mergeIdRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
         await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
         await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
           adds: new Map([[a.signerKey, addATo2.hash]]),
@@ -354,7 +354,7 @@ describe('mergeIDRegistryEvent', () => {
 
       test('succeeds and does not emit addSigner event when signer has been removed', async () => {
         await expect(set.merge(remAFrom2)).resolves.toEqual(undefined);
-        await expect(set.mergeIDRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
+        await expect(set.mergeIdRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
         await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
         await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
           adds: new Map(),
@@ -373,7 +373,7 @@ describe('mergeIDRegistryEvent', () => {
       });
 
       test('succeeds if transferred and does not emit any events', async () => {
-        await expect(set.mergeIDRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
+        await expect(set.mergeIdRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
         await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
         await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
           adds: new Map(),
@@ -387,7 +387,7 @@ describe('mergeIDRegistryEvent', () => {
 
       test('succeeds if transferred and signer add is received and does not emit events ', async () => {
         await expect(set.merge(addATo2)).resolves.toEqual(undefined);
-        await expect(set.mergeIDRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
+        await expect(set.mergeIdRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
         await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
         await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
           adds: new Map(),
@@ -403,7 +403,7 @@ describe('mergeIDRegistryEvent', () => {
     test('succeeds and emits addSigner event when the same signer was added by both custody addresses', async () => {
       await expect(set.merge(addATo1)).resolves.toEqual(undefined);
       await expect(set.merge(addATo2)).resolves.toEqual(undefined);
-      await expect(set.mergeIDRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
+      await expect(set.mergeIdRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
       await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
       await expect(signersByCustody(custody2.signerKey)).resolves.toEqual({
         adds: new Map([[a.signerKey, addATo2.hash]]),
@@ -420,15 +420,15 @@ describe('mergeIDRegistryEvent', () => {
 
   describe('when custody is transferred before beng registered', () => {
     test('succeeds ', async () => {
-      await expect(set.mergeIDRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
+      await expect(set.mergeIdRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
       await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
       await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
       expect(events).toEqual([['changeCustody', fid, custody2.signerKey, custody2Transfer]]);
     });
 
     test('succeeds (no-ops) if duplicate transfer is provided', async () => {
-      await expect(set.mergeIDRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
-      await expect(set.mergeIDRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
+      await expect(set.mergeIdRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
+      await expect(set.mergeIdRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
 
       await expect(custodyAddress()).resolves.toEqual(custody2.signerKey);
       await expect(signersByCustody(custody1.signerKey)).resolves.toEqual({ adds: new Map(), removes: new Map() });
@@ -472,7 +472,7 @@ describe('merge', () => {
 
   describe('with custody address', () => {
     beforeEach(async () => {
-      await set.mergeIDRegistryEvent(custody1Register);
+      await set.mergeIdRegistryEvent(custody1Register);
     });
 
     describe('mergeSignerAdd', () => {
@@ -534,7 +534,7 @@ describe('merge', () => {
 
       describe('when signer was already added by a different custody address', () => {
         beforeEach(async () => {
-          await set.mergeIDRegistryEvent(custody2Transfer);
+          await set.mergeIdRegistryEvent(custody2Transfer);
         });
 
         test('succeeds if added by causally later custody address', async () => {
@@ -652,7 +652,7 @@ describe('merge', () => {
 
       describe('when signer was removed by a causally earlier custody address', () => {
         beforeEach(async () => {
-          await set.mergeIDRegistryEvent(custody2Transfer);
+          await set.mergeIdRegistryEvent(custody2Transfer);
           await expect(set.merge(remAFrom1)).resolves.toEqual(undefined);
         });
 
@@ -707,7 +707,7 @@ describe('merge', () => {
 
       describe('when signer was removed by a causally later custody address', () => {
         beforeEach(async () => {
-          await set.mergeIDRegistryEvent(custody2Transfer);
+          await set.mergeIdRegistryEvent(custody2Transfer);
           await expect(set.merge(remAFrom2)).resolves.toEqual(undefined);
         });
 
@@ -823,7 +823,7 @@ describe('merge', () => {
 
       describe('when signer is added and removed by two different custody addresses', () => {
         beforeEach(async () => {
-          await set.mergeIDRegistryEvent(custody2Transfer);
+          await set.mergeIdRegistryEvent(custody2Transfer);
         });
 
         afterEach(async () => {
@@ -931,7 +931,7 @@ describe('merge', () => {
 
       describe('when signer was already added by a causally earlier custody address', () => {
         beforeEach(async () => {
-          await set.mergeIDRegistryEvent(custody2Transfer);
+          await set.mergeIdRegistryEvent(custody2Transfer);
           await expect(set.merge(addATo1)).resolves.toEqual(undefined);
         });
 
@@ -986,7 +986,7 @@ describe('merge', () => {
 
       describe('when signer was already added by a causally later custody address', () => {
         beforeEach(async () => {
-          await set.mergeIDRegistryEvent(custody2Transfer);
+          await set.mergeIdRegistryEvent(custody2Transfer);
           await expect(set.merge(addATo2)).resolves.toEqual(undefined);
         });
 
@@ -1098,7 +1098,7 @@ describe('merge', () => {
 
       describe('when signer was already removed by a different custody address', () => {
         beforeEach(async () => {
-          await set.mergeIDRegistryEvent(custody2Transfer);
+          await set.mergeIdRegistryEvent(custody2Transfer);
         });
 
         test('succeeds if removed by causally earlier custody address', async () => {
