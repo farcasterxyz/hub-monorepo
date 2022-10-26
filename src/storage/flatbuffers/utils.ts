@@ -1,4 +1,12 @@
-export const timestampHashCompare = (a: Uint8Array, b: Uint8Array): number => {
+export const bytesCompare = (a: Uint8Array, b: Uint8Array): number => {
+  if (a[0] === 0) {
+    return bytesCompare(a.slice(1), b);
+  }
+
+  if (b[0] === 0) {
+    return bytesCompare(a, b.slice(1));
+  }
+
   if (a.length > b.length) {
     return 1;
   } else if (a.length < b.length) {
@@ -12,7 +20,7 @@ export const timestampHashCompare = (a: Uint8Array, b: Uint8Array): number => {
   }
 
   if (a.length > 1 && b.length > 1) {
-    return timestampHashCompare(a.slice(1), b.slice(1));
+    return bytesCompare(a.slice(1), b.slice(1));
   } else {
     return 0;
   }

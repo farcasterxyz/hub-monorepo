@@ -4,7 +4,7 @@ import MessageModel from '~/storage/flatbuffers/model';
 import { ResultAsync } from 'neverthrow';
 import { CastAddModel, CastRemoveModel, RocksDBPrefix } from '~/storage/flatbuffers/types';
 import { isCastAdd, isCastRemove } from '~/storage/flatbuffers/typeguards';
-import { timestampHashCompare } from '~/storage/flatbuffers/utils';
+import { bytesCompare } from '~/storage/flatbuffers/utils';
 
 class CastSet {
   private _db: RocksDB;
@@ -115,7 +115,7 @@ class CastSet {
       () => undefined
     );
     if (removeMessageOrder.isOk()) {
-      if (timestampHashCompare(removeMessageOrder.value, message.timestampHash()) > 0) {
+      if (bytesCompare(removeMessageOrder.value, message.timestampHash()) > 0) {
         // No-op if existing remove timestamp hash wins
         return undefined;
       } else {
