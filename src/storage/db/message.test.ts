@@ -29,6 +29,23 @@ describe('putMessage', () => {
     await expect(db.getMessage(cast1.hash)).resolves.toEqual(cast1);
     await expect(db.getMessagesBySigner(cast1.data.fid, cast1.signer)).resolves.toEqual([cast1]);
   });
+
+  test('benchmark', async () => {
+    const num = 100000;
+    const start = new Date().getTime();
+
+    let i = 0;
+    while (i < num) {
+      await db.putMessage(cast1);
+      const message = await db.getMessage<CastShort>(cast1.hash);
+      message.signature;
+      message.data.body.text;
+      i++;
+    }
+
+    const end = new Date().getTime() - start;
+    console.log(end);
+  });
 });
 
 describe('getMessage', () => {
