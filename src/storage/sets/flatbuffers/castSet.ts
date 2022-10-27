@@ -1,4 +1,4 @@
-import RocksDB from '~/storage/db/binaryrocksdb';
+import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { BadRequestError } from '~/utils/errors';
 import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/model';
 import { ResultAsync } from 'neverthrow';
@@ -128,25 +128,80 @@ class CastSet {
     let tsx = this._db.transaction();
 
     // If cast has already been removed, no-op
-    const castRemovesValue = await ResultAsync.fromPromise(
+    const castRemoveTimestampHash = await ResultAsync.fromPromise(
       this._db.get(CastSet.castRemovesKey(message.fid(), message.timestampHash())),
       () => undefined
     );
-    if (castRemovesValue.isOk()) {
+    if (castRemoveTimestampHash.isOk()) {
       return undefined;
     }
 
     // If cast has already been added, no-op
-    const castAddsValue = await ResultAsync.fromPromise(
+    const castAddTimestampHash = await ResultAsync.fromPromise(
       this._db.get(CastSet.castAddsKey(message.fid(), message.timestampHash())),
       () => undefined
     );
-    if (castAddsValue.isOk()) {
+    if (castAddTimestampHash.isOk()) {
       return undefined;
     }
 
+    tsx = this.putCastAddTransaction(tsx, message);
+
+    // return this._db.putCastAdd(cast);
+    return this._db.commit(tsx);
+  }
+
+  private async mergeRemove(message: CastRemoveModel): Promise<void> {
+    // Start rocksdb transaction
+    let tsx = this._db.transaction();
+
+    // Init cast index
+    const castHash = message.body().hashArray() ?? new Uint8Array();
+
+    // Check if cast has already been removed
+    const castRemoveTimestampHash = await ResultAsync.fromPromise(
+      this._db.get(CastSet.castRemovesKey(message.fid(), castHash)),
+      () => undefined
+    );
+    if (castRemoveTimestampHash.isOk()) {
+      if (bytesCompare(castRemoveTimestampHash.value, message.timestampHash()) > 0) {
+        // No-op if existing remove timestamp hash wins
+        return undefined;
+      } else {
+        // Otherwise delete the existing remove as part of the tsx
+        const existingRemove = await MessageModel.get<CastRemoveModel>(
+          this._db,
+          message.fid(),
+          UserPrefix.CastMessage,
+          castRemoveTimestampHash.value
+        );
+        tsx = this.deleteCastRemoveTransaction(tsx, existingRemove);
+      }
+    }
+
+    // If cast has been added, delete it
+    const castAddTimestampHash = await ResultAsync.fromPromise(
+      this._db.get(CastSet.castAddsKey(message.fid(), castHash)),
+      () => undefined
+    );
+    if (castAddTimestampHash.isOk()) {
+      const existingAdd = await MessageModel.get<CastAddModel>(
+        this._db,
+        message.fid(),
+        UserPrefix.CastMessage,
+        castAddTimestampHash.value
+      );
+      tsx = await this.deleteCastAddTransaction(tsx, existingAdd);
+    }
+
+    tsx = this.putCastRemoveTransaction(tsx, message);
+
+    return this._db.commit(tsx);
+  }
+
+  private putCastAddTransaction(tsx: Transaction, message: CastAddModel): Transaction {
     // Put message and index by signer
-    tsx = message.buildPutTransaction(tsx);
+    tsx = MessageModel.putTransaction(tsx, message);
 
     // Put castAdds index
     tsx = tsx.put(CastSet.castAddsKey(message.fid(), message.timestampHash()), Buffer.from(message.timestampHash()));
@@ -155,8 +210,8 @@ class CastSet {
     if (message.body().parent()) {
       tsx = tsx.put(
         CastSet.castsByParentKey(
-          message.body().parent()?.fidArray() || new Uint8Array(),
-          message.body().parent()?.hashArray() || new Uint8Array(),
+          message.body().parent()?.fidArray() ?? new Uint8Array(),
+          message.body().parent()?.hashArray() ?? new Uint8Array(),
           message.fid(),
           message.timestampHash()
         ),
@@ -175,47 +230,58 @@ class CastSet {
       }
     }
 
-    // return this._db.putCastAdd(cast);
-    return this._db.commit(tsx);
+    return tsx;
   }
 
-  private async mergeRemove(message: CastRemoveModel): Promise<void> {
-    // Start rocksdb transaction
-    let tsx = this._db.transaction();
-
-    // Init cast index
-    const castHash = message.body().hashArray() || new Uint8Array();
-
-    // If target has already been removed, no-op
-    const removeMessageOrder = await ResultAsync.fromPromise(
-      this._db.get(CastSet.castRemovesKey(message.fid(), castHash)),
-      () => undefined
-    );
-    if (removeMessageOrder.isOk()) {
-      if (bytesCompare(removeMessageOrder.value, message.timestampHash()) > 0) {
-        // No-op if existing remove timestamp hash wins
-        return undefined;
-      } else {
-        // Otherwise delete the existing remove as part of the tsx
-        tsx = tsx.del(MessageModel.primaryKey(message.fid(), UserPrefix.CastMessage, removeMessageOrder.value));
+  private deleteCastAddTransaction(tsx: Transaction, message: CastAddModel): Transaction {
+    // Delete from mentions index
+    if (message.body().mentionsLength() > 0) {
+      for (let i = 0; i < message.body().mentionsLength(); i++) {
+        const mention = message.body().mentions(i);
+        tsx = tsx.del(
+          CastSet.caststByMentionKey(mention?.fidArray() ?? new Uint8Array(), message.fid(), message.timestampHash())
+        );
       }
     }
 
-    // If target has been added, delete it
-    const addsKey = CastSet.castAddsKey(message.fid(), castHash);
-    const addMessageOrder = await ResultAsync.fromPromise(this._db.get(addsKey), () => undefined);
-    if (addMessageOrder.isOk()) {
-      const messageKey = MessageModel.primaryKey(message.fid(), UserPrefix.CastMessage, addMessageOrder.value);
-      tsx = tsx.del(addsKey).del(messageKey);
+    // Delete from parent index
+    if (message.body().parent()) {
+      tsx = tsx.del(
+        CastSet.castsByParentKey(
+          message.body().parent()?.fidArray() ?? new Uint8Array(),
+          message.body().parent()?.hashArray() ?? new Uint8Array(),
+          message.fid(),
+          message.timestampHash()
+        )
+      );
     }
 
+    // Delete from castAdds
+    tsx = tsx.del(CastSet.castAddsKey(message.fid(), message.timestampHash()));
+
+    // Delete message
+    return MessageModel.deleteTransaction(tsx, message);
+  }
+
+  private putCastRemoveTransaction(tsx: Transaction, message: CastRemoveModel): Transaction {
     // Add to db
-    tsx = message.buildPutTransaction(tsx);
+    tsx = MessageModel.putTransaction(tsx, message);
 
     // Add to cast removes
-    tsx = tsx.put(CastSet.castRemovesKey(message.fid(), castHash), Buffer.from(message.timestampHash()));
+    tsx = tsx.put(
+      CastSet.castRemovesKey(message.fid(), message.body().hashArray() ?? new Uint8Array()),
+      Buffer.from(message.timestampHash())
+    );
 
-    return this._db.commit(tsx);
+    return tsx;
+  }
+
+  private deleteCastRemoveTransaction(tsx: Transaction, message: CastRemoveModel): Transaction {
+    // Delete from cast removes
+    tsx = tsx.del(CastSet.castRemovesKey(message.fid(), message.body().hashArray() ?? new Uint8Array()));
+
+    // Delete message
+    return MessageModel.deleteTransaction(tsx, message);
   }
 }
 

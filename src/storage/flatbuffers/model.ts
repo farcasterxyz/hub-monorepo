@@ -104,14 +104,22 @@ export default class MessageModel {
     return MessageModel.from(new Uint8Array(buffer)) as T;
   }
 
+  static putTransaction(tsx: Transaction, message: MessageModel): Transaction {
+    return tsx.put(message.primaryKey(), message.toBuffer()).put(message.bySignerKey(), TRUE_VALUE);
+  }
+
+  static deleteTransaction(tsx: Transaction, message: MessageModel): Transaction {
+    return tsx.del(message.bySignerKey()).del(message.primaryKey());
+  }
+
   async put(db: RocksDB): Promise<void> {
-    const tsx = this.buildPutTransaction(db.transaction());
+    const tsx = this.putTransaction(db.transaction());
     return db.commit(tsx);
   }
 
   // TODO: potentially rename this method?
-  buildPutTransaction(tsx: Transaction): Transaction {
-    return tsx.put(this.primaryKey(), this.toBuffer()).put(this.bySignerKey(), TRUE_VALUE);
+  putTransaction(tsx: Transaction): Transaction {
+    return MessageModel.putTransaction(tsx, this);
   }
 
   setPrefix(): UserMessagePrefix {

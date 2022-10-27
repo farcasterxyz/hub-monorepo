@@ -98,9 +98,11 @@ describe('getCastsByMention', () => {
   test('returns casts that mention an fid', async () => {
     await set.merge(castAdd);
     await expect(set.getCastsByMention(fid)).resolves.toEqual([]);
-    await expect(set.getCastsByMention(castAdd.body().mentions(0)?.fidArray() ?? new Uint8Array())).resolves.toEqual([
-      castAdd,
-    ]);
+    expect(castAdd.body().mentionsLength()).toBeGreaterThan(0);
+    for (let i = 0; i < castAdd.body().mentionsLength(); i++) {
+      const mentionFid = castAdd.body().mentions(i)?.fidArray() ?? new Uint8Array();
+      await expect(set.getCastsByMention(mentionFid)).resolves.toEqual([castAdd]);
+    }
   });
 });
 
@@ -207,6 +209,14 @@ describe('merge', () => {
           castAdd.body().parent()?.hashArray() ?? new Uint8Array()
         );
         await expect(byParent).resolves.toEqual([castAdd]);
+      });
+
+      test('saves castsByMention index', async () => {
+        for (let i = 0; i < castAdd.body().mentionsLength(); i++) {
+          await expect(
+            set.getCastsByMention(castAdd.body().mentions(i)?.fidArray() ?? new Uint8Array())
+          ).resolves.toEqual([castAdd]);
+        }
       });
     });
 
