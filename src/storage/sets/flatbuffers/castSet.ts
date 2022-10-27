@@ -97,10 +97,7 @@ class CastSet {
     }
 
     // Add to db
-    tsx = tsx.put(
-      MessageModel.primaryKey(message.fid(), UserPrefix.CastMessage, message.timestampHash()),
-      message.toBuffer()
-    );
+    tsx = message.buildPutTransaction(tsx);
 
     // Add to cast adds (fid!<fid>!castAdds!<cast ID> : <message timestamp hash>)
     tsx = tsx.put(CastSet.castAddsKey(message.fid(), message.timestampHash()), Buffer.from(message.timestampHash()));
@@ -140,10 +137,7 @@ class CastSet {
     }
 
     // Add to db
-    tsx = tsx.put(
-      MessageModel.primaryKey(message.fid(), UserPrefix.CastMessage, message.timestampHash()),
-      message.toBuffer()
-    );
+    tsx = message.buildPutTransaction(tsx);
 
     // Add to cast removes
     tsx = tsx.put(CastSet.castRemovesKey(message.fid(), castHash), Buffer.from(message.timestampHash()));

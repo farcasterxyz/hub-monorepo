@@ -65,4 +65,40 @@ describe('iteratorByPrefix', () => {
       [Buffer.from('aliceprefix!b'), Buffer.from('foo')],
     ]);
   });
+
+  test('succeeds with bytes prefix', async () => {
+    const tsx = db
+      .transaction()
+      .put(Buffer.from([1, 255, 1]), Buffer.from('a'))
+      .put(Buffer.from([1, 255, 2]), Buffer.from('b'))
+      .put(Buffer.from([2, 0, 0]), Buffer.from('c'))
+      .put(Buffer.from([1, 0, 0]), Buffer.from('d'))
+      .put(Buffer.from([1, 254, 255]), Buffer.from('e'));
+
+    await db.commit(tsx);
+
+    const values = [];
+    for await (const [, value] of db.iteratorByPrefix(Buffer.from([1, 255]), { keys: false, valueAsBuffer: false })) {
+      values.push(value);
+    }
+    expect(values).toEqual(['a', 'b']);
+  });
+
+  test('succeeds with single byte prefix', async () => {
+    const tsx = db
+      .transaction()
+      .put(Buffer.from([255, 1]), Buffer.from('a'))
+      .put(Buffer.from([255, 2]), Buffer.from('b'))
+      .put(Buffer.from([2, 0]), Buffer.from('c'))
+      .put(Buffer.from([1, 0]), Buffer.from('d'))
+      .put(Buffer.from([254, 255]), Buffer.from('e'));
+
+    await db.commit(tsx);
+
+    const values = [];
+    for await (const [, value] of db.iteratorByPrefix(Buffer.from([255]), { keys: false, valueAsBuffer: false })) {
+      values.push(value);
+    }
+    expect(values).toEqual(['a', 'b']);
+  });
 });

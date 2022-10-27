@@ -2,6 +2,7 @@ import { mkdir } from 'fs';
 import AbstractRocksDB from 'rocksdb';
 import { AbstractBatch, AbstractChainedBatch } from 'abstract-leveldown';
 import { FarcasterError, NotFoundError, RocksDBError } from '~/utils/errors';
+import { bytesIncrement } from '../flatbuffers/utils';
 
 const DB_PREFIX = '.rocks';
 const DB_NAME_DEFAULT = 'farcaster';
@@ -154,11 +155,13 @@ class RocksDB {
    * order, so this iterator will continue serving keys in order until it receives one that has a lexicographic order
    * greater than the prefix.
    */
-  // TODO: can we do this without strings?
-  iteratorByPrefix(prefix: Buffer, options?: AbstractRocksDB.IteratorOptions): AbstractRocksDB.Iterator {
-    const nextChar = String.fromCharCode(prefix.toString().slice(-1).charCodeAt(0) + 1);
-    const prefixBound = prefix.toString().slice(0, -1) + nextChar;
-    return this._db.iterator({ ...options, gte: prefix, lt: Buffer.from(prefixBound) });
+  iteratorByPrefix(prefix: Buffer, options: AbstractRocksDB.IteratorOptions = {}): AbstractRocksDB.Iterator {
+    options.gte = prefix;
+    const nextPrefix = bytesIncrement(new Uint8Array(prefix));
+    if (nextPrefix.length === prefix.length) {
+      options.lt = Buffer.from(nextPrefix);
+    }
+    return this._db.iterator(options);
   }
 }
 

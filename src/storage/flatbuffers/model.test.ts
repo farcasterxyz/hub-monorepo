@@ -3,7 +3,7 @@ import { KeyPair } from '~/types';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import { NotFoundError } from '~/utils/errors';
-import MessageModel from '~/storage/flatbuffers/model';
+import MessageModel, { TRUE_VALUE } from '~/storage/flatbuffers/model';
 import { UserPrefix } from './types';
 
 const db = jestBinaryRocksDB('flatbuffers.model.test');
@@ -20,7 +20,7 @@ beforeAll(async () => {
 describe('static methods', () => {
   describe('get', () => {
     test('succeeds when message exists', async () => {
-      await model.commit(db);
+      await model.put(db);
       await expect(MessageModel.get(db, model.fid(), model.setPrefix(), model.timestampHash())).resolves.toEqual(model);
     });
 
@@ -31,7 +31,7 @@ describe('static methods', () => {
     });
 
     test('fails with wrong key', async () => {
-      await model.commit(db);
+      await model.put(db);
       const badKey = new Uint8Array([...model.timestampHash(), 1]);
       await expect(MessageModel.get(db, model.fid(), model.setPrefix(), badKey)).rejects.toThrow(NotFoundError);
     });
@@ -39,9 +39,17 @@ describe('static methods', () => {
 
   describe('getManyByUser', () => {
     test('succeeds', async () => {
-      await db.put(model.primaryKey(), model.toBuffer());
+      await model.put(db);
       const getMany = MessageModel.getManyByUser(db, model.fid(), model.setPrefix(), [model.timestampHash()]);
       await expect(getMany).resolves.toEqual([model]);
+    });
+  });
+
+  describe('getAllBySigner', () => {
+    test('succeeds', async () => {
+      await model.put(db);
+      const getBySigner = MessageModel.getAllBySigner(db, model.fid(), model.signer());
+      await expect(getBySigner).resolves.toEqual([model]);
     });
   });
 
@@ -155,11 +163,17 @@ describe('static methods', () => {
 });
 
 describe('instance methods', () => {
-  describe('commit', () => {
+  describe('put', () => {
+    beforeEach(async () => {
+      await expect(model.put(db)).resolves.toEqual(undefined);
+    });
     test('stores binary message', async () => {
-      await expect(model.commit(db)).resolves.toEqual(undefined);
       const get = MessageModel.get(db, model.fid(), model.setPrefix(), model.timestampHash());
       await expect(get).resolves.toEqual(model);
+    });
+
+    test('indexes message by signer', async () => {
+      await expect(db.get(model.bySignerKey())).resolves.toEqual(TRUE_VALUE);
     });
   });
 

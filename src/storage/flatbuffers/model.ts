@@ -8,8 +8,11 @@ import {
   MessageData,
   MessageType,
 } from '~/utils/generated/message_generated';
-import RocksDB from '~/storage/db/binaryrocksdb';
+import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { RootPrefix, UserMessagePrefix, UserPrefix } from '~/storage/flatbuffers/types';
+
+/** Used when index keys are sufficiently descriptive */
+export const TRUE_VALUE = Buffer.from([1]);
 
 export default class MessageModel {
   public message: Message;
@@ -25,6 +28,7 @@ export default class MessageModel {
     return new this(message);
   }
 
+  /** <user prefix byte, fid> */
   static userKey(fid: Uint8Array): Buffer {
     const bytes = new Uint8Array(1 + 256);
     bytes.set([RootPrefix.User], 0);
@@ -37,14 +41,14 @@ export default class MessageModel {
     return Buffer.concat([this.userKey(fid), Buffer.from([set]), Buffer.from(key)]);
   }
 
-  // <user prefix byte, fid, signer index byte, signer, type, key>
-  static bySignerKey(fid: Uint8Array, signer: Uint8Array, type: MessageType, key: Uint8Array): Buffer {
+  /** <user prefix byte, fid, signer index byte, signer, type, key> */
+  static bySignerKey(fid: Uint8Array, signer: Uint8Array, type?: MessageType, key?: Uint8Array): Buffer {
     return Buffer.concat([
       this.userKey(fid),
       Buffer.from([UserPrefix.BySigner]),
       Buffer.from(signer),
-      Buffer.from([type]),
-      Buffer.from(key),
+      type ? Buffer.from([type]) : new Uint8Array(),
+      key ? Buffer.from(key) : new Uint8Array(),
     ]);
   }
 
@@ -67,6 +71,21 @@ export default class MessageModel {
     return messages;
   }
 
+  static async getAllBySigner<T extends MessageModel>(
+    db: RocksDB,
+    fid: Uint8Array,
+    signer: Uint8Array,
+    type?: MessageType
+  ): Promise<T[]> {
+    const prefix = MessageModel.bySignerKey(fid, signer, type);
+    const messageKeys: Buffer[] = [];
+    for await (const [key] of db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
+      const messageKeyOffset = prefix.length + (type ? 0 : 1);
+      messageKeys.push(key.slice(messageKeyOffset));
+    }
+    return MessageModel.getManyByUser<T>(db, fid, UserPrefix.CastMessage, messageKeys);
+  }
+
   static async get<T extends MessageModel>(
     db: RocksDB,
     fid: Uint8Array,
@@ -77,8 +96,14 @@ export default class MessageModel {
     return MessageModel.from(new Uint8Array(buffer)) as T;
   }
 
-  async commit(db: RocksDB): Promise<void> {
-    return db.put(this.primaryKey(), this.toBuffer());
+  async put(db: RocksDB): Promise<void> {
+    const tsx = this.buildPutTransaction(db.transaction());
+    return db.commit(tsx);
+  }
+
+  // TODO: potentially rename this method?
+  buildPutTransaction(tsx: Transaction): Transaction {
+    return tsx.put(this.primaryKey(), this.toBuffer()).put(this.bySignerKey(), TRUE_VALUE);
   }
 
   setPrefix(): UserMessagePrefix {
@@ -93,6 +118,10 @@ export default class MessageModel {
 
   primaryKey(): Buffer {
     return MessageModel.primaryKey(this.fid(), this.setPrefix(), this.timestampHash());
+  }
+
+  bySignerKey(): Buffer {
+    return MessageModel.bySignerKey(this.fid(), this.signer(), this.type(), this.timestampHash());
   }
 
   toBuffer(): Buffer {
@@ -122,11 +151,15 @@ export default class MessageModel {
   }
 
   fid(): Uint8Array {
-    return this.data.fidArray() || new Uint8Array();
+    return this.data.fidArray() ?? new Uint8Array();
   }
 
   hash(): Uint8Array {
-    return this.message.hashArray() || new Uint8Array();
+    return this.message.hashArray() ?? new Uint8Array();
+  }
+
+  signer(): Uint8Array {
+    return this.message.signerArray() ?? new Uint8Array();
   }
 
   body(): CastAddBody | CastRemoveBody | FollowBody {
