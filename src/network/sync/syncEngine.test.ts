@@ -6,7 +6,7 @@ import { mockFid } from '~/storage/engine/mock';
 import Faker from 'faker';
 import { SyncId } from '~/network/sync/syncId';
 
-const testDb = jestRocksDB(`engine.follow.test`);
+const testDb = jestRocksDB(`engine.syncEngine.test`);
 const engine = new Engine(testDb);
 
 describe('SyncEngine', () => {

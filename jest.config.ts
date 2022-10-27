@@ -6,8 +6,8 @@ const jestConfig: JestConfigWithTsJest = {
   moduleNameMapper: {
     '^~/(.*)$': '<rootDir>/src/$1',
   },
-  coveragePathIgnorePatterns: ['<rootDir>/build/', '<rootDir>/node_modules/'],
-  testPathIgnorePatterns: ['<rootDir>/build', '<rootDir>/node_modules'],
+  coveragePathIgnorePatterns: ['<rootDir>/build/', '<rootDir>/node_modules/', '<rootDir>/src/utils/generated/'],
+  testPathIgnorePatterns: ['<rootDir>/build', '<rootDir>/node_modules', '<rootDir>/src/utils/generated/'],
   // transform ts files with ts-jest and enable ESM
   transform: {
     '^.+\\.tsx?$': [
