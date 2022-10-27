@@ -34,6 +34,7 @@ export enum MessageType {
   VerificationRemove = 9,
   SignerAdd = 10,
   SignerRemove = 11,
+  ProfileMeta = 12,
 }
 
 /**
@@ -332,8 +333,7 @@ export type EthAddressUrlFactoryTransientParams = {
 
 /** A NetworkId is a positive number representing the Farcaster network a message was intended for */
 export enum FarcasterNetwork {
-  Mainnet = 1, // Ethereum mainnet
-  Testnet = 2, // Gorli
-  Betanet = 3, // Gorli
-  Devnet = 4, // Gorli
+  Mainnet = 1,
+  Testnet = 2,
+  Devnet = 3,
 }

@@ -9,7 +9,7 @@ module.exports = {
     'plugin:security/recommended',
   ],
   plugins: ['prefer-arrow-functions'],
-  ignorePatterns: ['**/.config'],
+  ignorePatterns: ['**/generated/*', '**/.config'],
   rules: {
     '@typescript-eslint/ban-ts-ignore': 'off',
     '@typescript-eslint/explicit-function-return-type': 'off',

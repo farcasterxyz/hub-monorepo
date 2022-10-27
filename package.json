@@ -72,6 +72,7 @@
     "ethereum-cryptography": "^1.1.2",
     "ethers": "^5.6.1",
     "faker": "5.5.3",
+    "flatbuffers": "^2.0.7",
     "jayson": "^4.0.0",
     "libp2p": "^0.39.5",
     "log-update": "5.0.1",

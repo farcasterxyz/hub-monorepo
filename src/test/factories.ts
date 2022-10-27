@@ -113,7 +113,7 @@ export const Factories = {
         body: {
           embeds: [Faker.internet.url(), Faker.internet.url()],
           text: Faker.lorem.sentence(2),
-          mentions: [],
+          mentions: [Faker.datatype.number()],
         },
         signedAt: Faker.time.recent(),
         fid: Faker.datatype.number(),

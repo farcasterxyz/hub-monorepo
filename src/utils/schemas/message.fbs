@@ -1,0 +1,92 @@
+// IDL file for Farcaster Message
+
+namespace Farcaster;
+
+enum MessageType: uint16 {
+  CastAdd = 1,
+  CastRemove = 2,
+  ReactionAdd = 3,
+  ReactionRemove = 4,
+  FollowAdd = 5,
+  FollowRemove = 6,
+  VerificationEthereumAddress = 7,
+  VerificationRemove = 8,
+  SignerAdd = 9,
+  SignerRemove = 10,
+  ProfileMeta = 11
+}
+
+enum SignatureScheme: uint8 {
+  Ed25519 = 1,
+  EthSignTypedData = 2
+}
+
+enum HashScheme: uint8 {
+  Blake2b = 1
+}
+ 
+enum FarcasterNetwork: uint8 {
+  Mainnet = 1,
+  Testnet = 2,
+  Devnet = 3
+}
+
+enum ReactionType: uint16 {
+  Like = 1,
+  Recast = 2
+}
+
+table CastID {
+  fid: [ubyte] (required);
+  hash: [ubyte] (required);
+}
+
+table UserID {
+  fid: [ubyte] (required);
+}
+
+table CastAddBody {
+  embeds: [string];
+  mentions: [UserID];
+  parent: CastID;
+  text: string (required);
+}
+
+table CastRemoveBody {
+  hash: [ubyte] (required);
+}
+
+table ReactionBody {
+  cast: CastID (required);
+  type: ReactionType = 1;
+}
+
+table FollowBody {
+  user: UserID (required);
+}
+
+union MessageBody {
+  CastAddBody,
+  CastRemoveBody,
+  ReactionBody,
+  FollowBody
+}
+
+table MessageData {
+  body: MessageBody (required);
+  type: MessageType = 1;
+  timestamp: uint32;
+  fid: [ubyte] (required);
+  network: FarcasterNetwork = 1;
+}
+
+table Message {
+  data: [ubyte] (nested_flatbuffer: "Farcaster.MessageData", required);
+  hash: [ubyte] (required);
+  hash_scheme: HashScheme = 1;
+  signature: [ubyte] (required);
+  signature_scheme: SignatureScheme = 1;
+  signer: [ubyte] (required);
+}
+
+root_type Message;
