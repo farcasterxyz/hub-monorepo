@@ -1,5 +1,11 @@
-import { multiaddr } from '@multiformats/multiaddr';
-import { parseAddress, checkNodeAddrs, addressInfoFromParts, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
+import { multiaddr, NodeAddress } from '@multiformats/multiaddr';
+import {
+  parseAddress,
+  checkNodeAddrs,
+  addressInfoFromParts,
+  ipMultiAddrStrFromAddressInfo,
+  addressInfoFromNodeAddress,
+} from '~/utils/p2p';
 
 describe('p2p utils tests', () => {
   test('parse a valid multiaddr', async () => {
@@ -61,5 +67,41 @@ describe('p2p utils tests', () => {
 
     const multiAddr = multiaddr(multiAddrStr);
     expect(multiAddr).toBeDefined();
+  });
+
+  test('throws when making multiaddr from invalid addressInfo', () => {
+    const addressInfo = addressInfoFromParts('127.0.0.1', 0);
+    expect(addressInfo.isOk()).toBeTruthy();
+
+    addressInfo._unsafeUnwrap().family = 'ip12';
+    expect(() => {
+      ipMultiAddrStrFromAddressInfo(addressInfo._unsafeUnwrap());
+    }).toThrow();
+  });
+
+  test('converts a valid nodeAddress to an addressInfo', () => {
+    const nodeAddr: NodeAddress = {
+      family: 4,
+      address: '127.0.0.1',
+      port: 0,
+    };
+
+    const addressInfo = addressInfoFromNodeAddress(nodeAddr);
+    expect(addressInfo).toBeTruthy();
+    expect(addressInfo.address).toEqual(nodeAddr.address);
+    expect(addressInfo.port).toEqual(nodeAddr.port);
+    expect(addressInfo.family).toEqual('IPv4');
+  });
+
+  test('throws when converting an invalid nodeAddress to an addressInfo', () => {
+    const nodeAddr: NodeAddress = {
+      family: 21 as 4,
+      address: '127.0.0.1',
+      port: 0,
+    };
+
+    expect(() => {
+      addressInfoFromNodeAddress(nodeAddr);
+    }).toThrow();
   });
 });

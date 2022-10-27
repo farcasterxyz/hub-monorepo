@@ -27,6 +27,7 @@ import Faker from 'faker';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { FarcasterError } from '~/utils/errors';
 import { Result } from 'neverthrow';
+import { multiaddr } from '@multiformats/multiaddr';
 
 const aliceFid = Faker.datatype.number();
 const testDb = jestRocksDB('rpc.test');
@@ -168,6 +169,13 @@ describe('rpc', () => {
     const response = await client.getAllCastsByUser(aliceFid);
     expect(response.isOk()).toBeTruthy();
     expect(response._unsafeUnwrap()).toEqual(new Set([]));
+  });
+
+  test('check which server the client is configured for', async () => {
+    const serverAddr = client.serverMultiaddr;
+    expect(serverAddr).toBeTruthy();
+    const parsedAddr = multiaddr(serverAddr);
+    expect(parsedAddr).toBeTruthy();
   });
 
   describe('test user generated content', () => {

@@ -55,6 +55,9 @@ export const checkNodeAddrs = (listenIPAddr: string, listenCombinedAddr: string)
 
 /** Get an AddressInfo object from a given NodeAddress object */
 export const addressInfoFromNodeAddress = (nodeAddress: NodeAddress): AddressInfo => {
+  if (nodeAddress.family != 4 && nodeAddress.family != 6)
+    throw Error(`${nodeAddress.family}: Invalid NodeAddress Family`);
+
   return {
     address: nodeAddress.address,
     port: nodeAddress.port,
@@ -83,7 +86,7 @@ export const addressInfoFromParts = (address: string, port: number) => {
  */
 export const ipMultiAddrStrFromAddressInfo = (addressInfo: AddressInfo) => {
   if (addressInfo.family != 'IPv6' && addressInfo.family != 'IPv4')
-    throw Error(`${addressInfo.family}: Invalid AdddressInfo`);
+    throw Error(`${addressInfo.family}: Invalid AdddressInfo Family`);
   const family = addressInfo.family === 'IPv6' ? 'ip6' : 'ip4';
   const multiaddrStr = `/${family}/${addressInfo.address}`;
   return multiaddrStr;
