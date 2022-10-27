@@ -74,7 +74,7 @@ describe('getCastRemovesByUser', () => {
 });
 
 describe('getCastsByParent', () => {
-  test('returns casts', async () => {
+  test('returns casts that reply to a parent cast', async () => {
     const sameParentData = await Factories.CastAddData.create({
       body: Factories.CastAddBody.build({ parent: castAdd.body().parent()?.unpack() || null }),
     });
@@ -91,6 +91,16 @@ describe('getCastsByParent', () => {
       castAdd.body().parent()?.hashArray() ?? new Uint8Array()
     );
     expect(new Set(byParent)).toEqual(new Set([castAdd, sameParent]));
+  });
+});
+
+describe('getCastsByMention', () => {
+  test('returns casts that mention an fid', async () => {
+    await set.merge(castAdd);
+    await expect(set.getCastsByMention(fid)).resolves.toEqual([]);
+    await expect(set.getCastsByMention(castAdd.body().mentions(0)?.fidArray() ?? new Uint8Array())).resolves.toEqual([
+      castAdd,
+    ]);
   });
 });
 

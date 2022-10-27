@@ -43,9 +43,17 @@ class CastSet {
     return Buffer.from(bytes);
   }
 
-  static caststByMentionKey(): Buffer {
-    // TODO
-    return Buffer.from('');
+  static caststByMentionKey(mentionFid: Uint8Array, fid?: Uint8Array, hash?: Uint8Array): Buffer {
+    const bytes = new Uint8Array(1 + FID_BYTES + (fid ? FID_BYTES : 0) + (hash ? hash.length : 0));
+    bytes.set([RootPrefix.CastsByMention], 0);
+    bytes.set(mentionFid, 1 + FID_BYTES - mentionFid.length); // pad fid for alignment
+    if (fid) {
+      bytes.set(fid, 1 + FID_BYTES + FID_BYTES - fid.length); // pad fid for alignment
+    }
+    if (hash) {
+      bytes.set(hash, 1 + FID_BYTES + FID_BYTES);
+    }
+    return Buffer.from(bytes);
   }
 
   async getCastAdd(fid: Uint8Array, hash: Uint8Array): Promise<CastAddModel> {
@@ -82,6 +90,17 @@ class CastSet {
     for await (const [key] of this._db.iteratorByPrefix(byParentPrefix, { keyAsBuffer: true, values: false })) {
       const fid = Uint8Array.from(key).subarray(byParentPrefix.length, byParentPrefix.length + FID_BYTES);
       const hash = Uint8Array.from(key).subarray(byParentPrefix.length + FID_BYTES);
+      messageKeys.push(MessageModel.primaryKey(fid, UserPrefix.CastMessage, hash));
+    }
+    return MessageModel.getMany(this._db, messageKeys);
+  }
+
+  async getCastsByMention(fid: Uint8Array): Promise<CastAddModel[]> {
+    const byMentionPrefix = CastSet.caststByMentionKey(fid);
+    const messageKeys: Buffer[] = [];
+    for await (const [key] of this._db.iteratorByPrefix(byMentionPrefix, { keyAsBuffer: true, values: false })) {
+      const fid = Uint8Array.from(key).subarray(byMentionPrefix.length, byMentionPrefix.length + FID_BYTES);
+      const hash = Uint8Array.from(key).subarray(byMentionPrefix.length + FID_BYTES);
       messageKeys.push(MessageModel.primaryKey(fid, UserPrefix.CastMessage, hash));
     }
     return MessageModel.getMany(this._db, messageKeys);
@@ -148,7 +167,11 @@ class CastSet {
     // Index by mentions
     if (message.body().mentionsLength() > 0) {
       for (let i = 0; i < message.body().mentionsLength(); i++) {
-        // TODO
+        const mention = message.body().mentions(i);
+        tsx = tsx.put(
+          CastSet.caststByMentionKey(mention?.fidArray() ?? new Uint8Array(), message.fid(), message.timestampHash()),
+          TRUE_VALUE
+        );
       }
     }
 
