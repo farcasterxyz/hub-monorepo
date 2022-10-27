@@ -142,6 +142,23 @@ describe('merge', () => {
         await expect(set.getCastAdd(fid, castAdd.timestampHash())).rejects.toThrow(NotFoundError);
       });
 
+      test('deletes castsByParent index', async () => {
+        await expect(
+          set.getCastsByParent(
+            castAdd.body().parent()?.fidArray() ?? new Uint8Array(),
+            castAdd.body().parent()?.hashArray() ?? new Uint8Array()
+          )
+        ).resolves.toEqual([]);
+      });
+
+      test('deletes castsByMention index', async () => {
+        for (let i = 0; i < castAdd.body().mentionsLength(); i++) {
+          await expect(
+            set.getCastsByMention(castAdd.body().mentions(i)?.fidArray() ?? new Uint8Array())
+          ).resolves.toEqual([]);
+        }
+      });
+
       test('overwrites earlier CastRemove', async () => {
         // TODO: make it easier to construct conflicting messages
         const castRemoveData = await Factories.CastRemoveData.create({
@@ -153,8 +170,12 @@ describe('merge', () => {
           data: Array.from(castRemoveData.bb?.bytes() ?? []),
         });
         const castRemoveLater = new MessageModel(castRemoveMessage) as CastRemoveModel;
+
         await expect(set.merge(castRemoveLater)).resolves.toEqual(undefined);
         await expect(set.getCastRemove(fid, castAdd.timestampHash())).resolves.toEqual(castRemoveLater);
+        await expect(MessageModel.get(db, fid, UserPrefix.CastMessage, castRemove.timestampHash())).rejects.toThrow(
+          NotFoundError
+        );
       });
 
       test('no-ops when later CastRemove exists', async () => {
