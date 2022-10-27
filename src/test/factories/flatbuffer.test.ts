@@ -31,7 +31,7 @@ describe('MessageFactory', () => {
   });
 
   test('generates hash', async () => {
-    expect(message.hashArray()).toEqual(blake2b(data.bb?.bytes() || new Uint8Array()));
+    expect(message.hashArray()).toEqual(blake2b(data.bb?.bytes() || new Uint8Array(), 4));
   });
 
   test('generates signature', async () => {
