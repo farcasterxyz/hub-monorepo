@@ -1,3 +1,4 @@
+// TODO: decide whether to ignore zero padding or not
 export const bytesCompare = (a: Uint8Array, b: Uint8Array): number => {
   if (a[0] === 0) {
     return bytesCompare(a.slice(1), b);

@@ -3,6 +3,8 @@ import { CastAddBody, CastRemoveBody } from '~/utils/generated/message_generated
 
 export enum RootPrefix {
   User = 1,
+  CastsByParent = 2,
+  CastsByMention = 3,
 }
 
 export enum UserPrefix {

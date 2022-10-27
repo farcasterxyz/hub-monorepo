@@ -1,8 +1,8 @@
 import RocksDB from '~/storage/db/binaryrocksdb';
 import { BadRequestError } from '~/utils/errors';
-import MessageModel from '~/storage/flatbuffers/model';
+import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/model';
 import { ResultAsync } from 'neverthrow';
-import { CastAddModel, CastRemoveModel, UserPrefix } from '~/storage/flatbuffers/types';
+import { CastAddModel, CastRemoveModel, RootPrefix, UserPrefix } from '~/storage/flatbuffers/types';
 import { isCastAdd, isCastRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 
@@ -27,6 +27,25 @@ class CastSet {
       Buffer.from([UserPrefix.CastAdds]),
       hash ? Buffer.from(hash) : new Uint8Array(),
     ]);
+  }
+
+  static castsByParentKey(parentFid: Uint8Array, parentHash: Uint8Array, fid?: Uint8Array, hash?: Uint8Array): Buffer {
+    const bytes = new Uint8Array(1 + FID_BYTES + parentHash.length + (fid ? FID_BYTES : 0) + (hash ? hash.length : 0));
+    bytes.set([RootPrefix.CastsByParent], 0);
+    bytes.set(parentFid, 1 + FID_BYTES - parentFid.length); // pad fid for alignment
+    bytes.set(parentHash, 1 + FID_BYTES);
+    if (fid) {
+      bytes.set(fid, 1 + FID_BYTES + parentHash.length + FID_BYTES - fid.length); // pad fid for alignment
+    }
+    if (hash) {
+      bytes.set(hash, 1 + FID_BYTES + parentHash.length + FID_BYTES);
+    }
+    return Buffer.from(bytes);
+  }
+
+  static caststByMentionKey(): Buffer {
+    // TODO
+    return Buffer.from('');
   }
 
   async getCastAdd(fid: Uint8Array, hash: Uint8Array): Promise<CastAddModel> {
@@ -57,6 +76,17 @@ class CastSet {
     return MessageModel.getManyByUser<CastRemoveModel>(this._db, fid, UserPrefix.CastMessage, messageKeys);
   }
 
+  async getCastsByParent(fid: Uint8Array, hash: Uint8Array): Promise<CastAddModel[]> {
+    const byParentPrefix = CastSet.castsByParentKey(fid, hash);
+    const messageKeys: Buffer[] = [];
+    for await (const [key] of this._db.iteratorByPrefix(byParentPrefix, { keyAsBuffer: true, values: false })) {
+      const fid = Uint8Array.from(key).subarray(byParentPrefix.length, byParentPrefix.length + FID_BYTES);
+      const hash = Uint8Array.from(key).subarray(byParentPrefix.length + FID_BYTES);
+      messageKeys.push(MessageModel.primaryKey(fid, UserPrefix.CastMessage, hash));
+    }
+    return MessageModel.getMany(this._db, messageKeys);
+  }
+
   /* Merge a Cast into the CastSet */
   async merge(message: MessageModel): Promise<void> {
     if (isCastRemove(message)) {
@@ -79,28 +109,48 @@ class CastSet {
     let tsx = this._db.transaction();
 
     // If cast has already been removed, no-op
-    const removeMessageOrder = await ResultAsync.fromPromise(
+    const castRemovesValue = await ResultAsync.fromPromise(
       this._db.get(CastSet.castRemovesKey(message.fid(), message.timestampHash())),
       () => undefined
     );
-    if (removeMessageOrder.isOk()) {
+    if (castRemovesValue.isOk()) {
       return undefined;
     }
 
     // If cast has already been added, no-op
-    const addMessageOrder = await ResultAsync.fromPromise(
+    const castAddsValue = await ResultAsync.fromPromise(
       this._db.get(CastSet.castAddsKey(message.fid(), message.timestampHash())),
       () => undefined
     );
-    if (addMessageOrder.isOk()) {
+    if (castAddsValue.isOk()) {
       return undefined;
     }
 
-    // Add to db
+    // Put message and index by signer
     tsx = message.buildPutTransaction(tsx);
 
-    // Add to cast adds (fid!<fid>!castAdds!<cast ID> : <message timestamp hash>)
+    // Put castAdds index
     tsx = tsx.put(CastSet.castAddsKey(message.fid(), message.timestampHash()), Buffer.from(message.timestampHash()));
+
+    // Index by parent
+    if (message.body().parent()) {
+      tsx = tsx.put(
+        CastSet.castsByParentKey(
+          message.body().parent()?.fidArray() || new Uint8Array(),
+          message.body().parent()?.hashArray() || new Uint8Array(),
+          message.fid(),
+          message.timestampHash()
+        ),
+        TRUE_VALUE
+      );
+    }
+
+    // Index by mentions
+    if (message.body().mentionsLength() > 0) {
+      for (let i = 0; i < message.body().mentionsLength(); i++) {
+        // TODO
+      }
+    }
 
     // return this._db.putCastAdd(cast);
     return this._db.commit(tsx);
@@ -128,7 +178,7 @@ class CastSet {
       }
     }
 
-    // If target has been added later, no-op
+    // If target has been added, delete it
     const addsKey = CastSet.castAddsKey(message.fid(), castHash);
     const addMessageOrder = await ResultAsync.fromPromise(this._db.get(addsKey), () => undefined);
     if (addMessageOrder.isOk()) {

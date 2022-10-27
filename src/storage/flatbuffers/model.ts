@@ -13,6 +13,7 @@ import { RootPrefix, UserMessagePrefix, UserPrefix } from '~/storage/flatbuffers
 
 /** Used when index keys are sufficiently descriptive */
 export const TRUE_VALUE = Buffer.from([1]);
+export const FID_BYTES = 32;
 
 export default class MessageModel {
   public message: Message;
@@ -30,9 +31,9 @@ export default class MessageModel {
 
   /** <user prefix byte, fid> */
   static userKey(fid: Uint8Array): Buffer {
-    const bytes = new Uint8Array(1 + 256);
+    const bytes = new Uint8Array(1 + FID_BYTES);
     bytes.set([RootPrefix.User], 0);
-    bytes.set(fid, 1 + 256 - fid.length); // pad fid for alignment
+    bytes.set(fid, 1 + FID_BYTES - fid.length); // pad fid for alignment
     return Buffer.from(bytes);
   }
 
@@ -52,14 +53,21 @@ export default class MessageModel {
     ]);
   }
 
+  static async getMany<T extends MessageModel>(db: RocksDB, primaryKeys: Buffer[]): Promise<T[]> {
+    const values = await db.getMany(primaryKeys);
+    return values.map((value) => MessageModel.from(new Uint8Array(value)) as T);
+  }
+
   static async getManyByUser<T extends MessageModel>(
     db: RocksDB,
     fid: Uint8Array,
     set: UserMessagePrefix,
     keys: Uint8Array[]
   ): Promise<T[]> {
-    const values = await db.getMany(keys.map((key) => MessageModel.primaryKey(fid, set, key)));
-    return values.map((value) => MessageModel.from(new Uint8Array(value)) as T);
+    return this.getMany<T>(
+      db,
+      keys.map((key) => MessageModel.primaryKey(fid, set, key))
+    );
   }
 
   static async getAllByUser(db: RocksDB, fid: Uint8Array): Promise<MessageModel[]> {

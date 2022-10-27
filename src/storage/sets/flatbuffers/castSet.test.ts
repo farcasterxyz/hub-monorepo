@@ -73,6 +73,27 @@ describe('getCastRemovesByUser', () => {
   });
 });
 
+describe('getCastsByParent', () => {
+  test('returns casts', async () => {
+    const sameParentData = await Factories.CastAddData.create({
+      body: Factories.CastAddBody.build({ parent: castAdd.body().parent()?.unpack() || null }),
+    });
+    const sameParentMessage = await Factories.Message.create({
+      data: Array.from(sameParentData.bb?.bytes() ?? []),
+    });
+    const sameParent = new MessageModel(sameParentMessage) as CastAddModel;
+
+    await set.merge(castAdd);
+    await set.merge(sameParent);
+
+    const byParent = await set.getCastsByParent(
+      castAdd.body().parent()?.fidArray() ?? new Uint8Array(),
+      castAdd.body().parent()?.hashArray() ?? new Uint8Array()
+    );
+    expect(new Set(byParent)).toEqual(new Set([castAdd, sameParent]));
+  });
+});
+
 describe('merge', () => {
   test('fails with invalid message type', async () => {
     const invalidData = await Factories.ReactionAddData.create({ fid: Array.from(fid) });
@@ -168,6 +189,14 @@ describe('merge', () => {
 
       test('saves castAdds index', async () => {
         await expect(set.getCastAdd(fid, castAdd.timestampHash())).resolves.toEqual(castAdd);
+      });
+
+      test('saves castsByParent index', async () => {
+        const byParent = set.getCastsByParent(
+          castAdd.body().parent()?.fidArray() ?? new Uint8Array(),
+          castAdd.body().parent()?.hashArray() ?? new Uint8Array()
+        );
+        await expect(byParent).resolves.toEqual([castAdd]);
       });
     });
 

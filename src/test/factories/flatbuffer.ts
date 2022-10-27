@@ -88,7 +88,7 @@ const CastAddBodyFactory = Factory.define<CastAddBodyT, any, CastAddBody>(({ onC
   return new CastAddBodyT(
     [Faker.internet.url(), Faker.internet.url()],
     [UserIDFactory.build(), UserIDFactory.build(), UserIDFactory.build()],
-    undefined,
+    CastIDFactory.build(),
     Faker.lorem.sentence(4)
   );
 });
@@ -187,6 +187,7 @@ const Factories = {
   FID: FIDFactory,
   TimestampHash: TimestampHashFactory,
   UserID: UserIDFactory,
+  CastID: CastIDFactory,
   ReactionBody: ReactionBodyFactory,
   ReactionAddData: ReactionAddDataFactory,
   ReactionRemoveData: ReactionRemoveDataFactory,
