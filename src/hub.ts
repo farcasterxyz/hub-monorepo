@@ -3,7 +3,7 @@ import Engine from '~/storage/engine';
 import { Node } from '~/network/p2p/node';
 import { RPCClient, RPCHandler, RPCServer } from '~/network/rpc';
 import { PeerId } from '@libp2p/interface-peer-id';
-import { Cast, SignerMessage, Reaction, Follow, Verification, IdRegistryEvent, Message } from '~/types';
+import { Cast, SignerMessage, Reaction, Follow, Verification, IdRegistryEvent, Message, MessageType } from '~/types';
 import {
   ContactInfoContent,
   GossipMessage,
@@ -176,13 +176,16 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
 
   async handleGossipMessage(gossipMessage: GossipMessage) {
     let result: Result<void, FarcasterError> = err(new ServerError('Invalid message type'));
-
     if (isUserContent(gossipMessage.content)) {
       const message = (gossipMessage.content as UserContent).message;
       result = await this.engine.mergeMessage(message);
+      if (result.isOk()) {
+        log.info({ hash: message.hash, fid: message.data.fid, type: MessageType[message.data.type] }, 'merged message');
+      }
     } else if (isIdRegistryContent(gossipMessage.content)) {
       const message = (gossipMessage.content as IdRegistryContent).message;
       result = await this.engine.mergeIdRegistryEvent(message);
+      if (result.isOk()) log.info({ event: message }, 'merged id registry event');
     } else if (isContactInfo(gossipMessage.content)) {
       // TODO: Maybe we need a ContactInfo CRDT?
       // Check if we need sync and if we do, use this peer do it.
@@ -204,7 +207,10 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     if (this.syncState != SimpleSyncState.Pending) return;
 
     this.emit('syncStart');
-    log.info({ function: 'simpleSyncFromPeer', identity: this.identity, peer: peer }, `syncing from peer: ${peer}`);
+    log.info(
+      { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer },
+      `syncing from peer: ${peer.peerId}`
+    );
     /*
      * Find the peer's addrs from our peer list because we cannot use the address
      * in the contact info directly
@@ -240,7 +246,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     const nodeAddress = peerAddress.addresses[0].multiaddr.nodeAddress();
     const rpcClient = new RPCClient({
       address: nodeAddress.address,
-      family: nodeAddress.family == 4 ? 'ip4' : 'ip6',
+      family: nodeAddress.family == 4 ? 'IPv4' : 'IPv6',
       // Use the gossip rpc port instead of the port used by libp2p
       port: peer.rpcAddress.port,
     });
@@ -355,11 +361,19 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     // push this message into the engine
     const mergeResult = await this.engine.mergeMessage(message);
     if (mergeResult.isErr()) {
-      log.error(mergeResult.error, 'received invalid message');
+      // Safe to disable because the type is being checked to be within bounds
+      // eslint-disable-next-line security/detect-object-injection
+      log.error(
+        mergeResult.error,
+        `received invalid message of type: ${
+          message.data.type <= MessageType.SignerRemove ? MessageType[message.data.type] : 'unknown'
+        }`
+      );
       return mergeResult;
     }
-
-    log.info({ hash: message.hash, fid: message.data.fid, type: message.data.type }, 'merged message');
+    // It's safe to convert the message type to its enum string since the message has already been validated.
+    // eslint-disable-next-line security/detect-object-injection
+    log.info({ hash: message.hash, fid: message.data.fid, type: MessageType[message.data.type] }, 'merged message');
 
     // push this message onto the gossip network
     const gossipMessage: GossipMessage<UserContent> = {

@@ -3,18 +3,27 @@ import { Err, Ok, Result } from 'neverthrow';
 import jayson, { JSONRPCError } from 'jayson/promise';
 import { Cast, Follow, IdRegistryEvent, Message, Reaction, Verification } from '~/types';
 import { replacer, reviver, RPCRequest } from './interfaces';
+import { ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 
 export class RPCClient {
   private _tcpClient!: jayson.client;
+  private _serverMultiAddr: string;
 
   constructor(address: AddressInfo) {
+    if (address.family != 'IPv6' && address.family != 'IPv4') throw `Invalid Address Family: ${address.family}`;
     this._tcpClient = jayson.Client.tcp({
       port: address.port,
       host: address.address,
-      family: address.family === 'ip4' ? 4 : 6,
+      family: address.family === 'IPv4' ? 4 : 6,
       replacer,
       reviver,
     });
+    this._serverMultiAddr = `${ipMultiAddrStrFromAddressInfo(address)}/tcp/${address.port}`;
+  }
+
+  /** Returns a multiaddr of the RPC server this client is connected to */
+  get serverMultiaddr() {
+    return this._serverMultiAddr;
   }
 
   async getUsers(): Promise<Result<Set<number>, JSONRPCError>> {

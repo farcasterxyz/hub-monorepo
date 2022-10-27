@@ -10,7 +10,7 @@ import { readFile } from 'fs/promises';
 import { logger } from '~/utils/logger';
 import { dirname, resolve } from 'path';
 import { PeerId } from '@libp2p/interface-peer-id';
-import { getAddressInfo, ipMultiAddrStrFromAddressInfo } from './utils/p2p';
+import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -32,7 +32,7 @@ app
   .option('-c, --config <filepath>', 'Path to a config file with options', DEFAULT_CONFIG_FILE)
   .option('-n --network-url <url>', 'ID Registry network URL')
   .option('-f, --fir-address <address>', 'The address of the FIR contract')
-  .option('-b, --bootstrap <ip-multiaddrs...>', 'A list of peer multiaddrs to bootstrap libp2p')
+  .option('-b, --bootstrap <peer-multiaddrs...>', 'A list of peer multiaddrs to bootstrap libp2p')
   .option('-a, --allowed-peers <peerIds...>', 'An allow-list of peer ids permitted to connect to the hub')
   .option('--ip <ip-address>', 'The IP address libp2p should listen on. (default: "127.0.0.1")')
   .option('-g, --gossip-port <port>', 'The tcp port libp2p should gossip over. (default: random port)')
@@ -57,7 +57,10 @@ app
       peerId = await readPeerId(resolve(hubConfig.id));
     }
 
-    const hubAddressInfo = getAddressInfo(cliOptions.ip ?? hubConfig.ip, cliOptions.gossipPort ?? hubConfig.gossipPort);
+    const hubAddressInfo = addressInfoFromParts(
+      cliOptions.ip ?? hubConfig.ip,
+      cliOptions.gossipPort ?? hubConfig.gossipPort
+    );
     if (hubAddressInfo.isErr()) {
       throw hubAddressInfo.error;
     }

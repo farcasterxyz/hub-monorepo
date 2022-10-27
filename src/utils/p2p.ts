@@ -1,4 +1,4 @@
-import { Multiaddr, multiaddr } from '@multiformats/multiaddr';
+import { Multiaddr, multiaddr, NodeAddress } from '@multiformats/multiaddr';
 import { AddressInfo, isIP } from 'net';
 import { err, ok, Result } from 'neverthrow';
 import { FarcasterError, ServerError } from '~/utils/errors';
@@ -53,15 +53,27 @@ export const checkNodeAddrs = (listenIPAddr: string, listenCombinedAddr: string)
   return result;
 };
 
-/** Get an AddressInfo object for a given IP and port  */
-export const getAddressInfo = (address: string, port: number) => {
+/** Get an AddressInfo object from a given NodeAddress object */
+export const addressInfoFromNodeAddress = (nodeAddress: NodeAddress): AddressInfo => {
+  if (nodeAddress.family != 4 && nodeAddress.family != 6)
+    throw Error(`${nodeAddress.family}: Invalid NodeAddress Family`);
+
+  return {
+    address: nodeAddress.address,
+    port: nodeAddress.port,
+    family: nodeAddress.family == 4 ? 'IPv4' : 'IPv6',
+  };
+};
+
+/** Get an AddressInfo object for a given IP and port */
+export const addressInfoFromParts = (address: string, port: number) => {
   const family = isIP(address);
   if (!family) return err(new ServerError('Not an IP address'));
 
   const addrInfo: AddressInfo = {
     address,
     port,
-    family: family == 4 ? 'ip4' : 'ip6',
+    family: family == 4 ? 'IPv4' : 'IPv6',
   };
   return ok(addrInfo);
 };
@@ -73,6 +85,9 @@ export const getAddressInfo = (address: string, port: number) => {
  * Does not preserve port or transport information
  */
 export const ipMultiAddrStrFromAddressInfo = (addressInfo: AddressInfo) => {
-  const multiaddrStr = `/${addressInfo.family}/${addressInfo.address}`;
+  if (addressInfo.family != 'IPv6' && addressInfo.family != 'IPv4')
+    throw Error(`${addressInfo.family}: Invalid AdddressInfo Family`);
+  const family = addressInfo.family === 'IPv6' ? 'ip6' : 'ip4';
+  const multiaddrStr = `/${family}/${addressInfo.address}`;
   return multiaddrStr;
 };
