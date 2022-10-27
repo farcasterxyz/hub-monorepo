@@ -117,7 +117,6 @@ export default class MessageModel {
     return db.commit(tsx);
   }
 
-  // TODO: potentially rename this method?
   putTransaction(tsx: Transaction): Transaction {
     return MessageModel.putTransaction(tsx, this);
   }

@@ -13,6 +13,7 @@ class CastSet {
     this._db = db;
   }
 
+  /** RocksDB key of the form <user prefix byte, fid, cast removes byte, cast hash> */
   static castRemovesKey(fid: Uint8Array, hash?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
@@ -21,6 +22,7 @@ class CastSet {
     ]);
   }
 
+  /** RocksDB key of the form <user prefix byte, fid, cast adds byte, cast hash> */
   static castAddsKey(fid: Uint8Array, hash?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
@@ -29,6 +31,7 @@ class CastSet {
     ]);
   }
 
+  /** RocksDB key of the form <castsByParent prefix byte, parent fid, parent cast hash, fid, cast hash> */
   static castsByParentKey(parentFid: Uint8Array, parentHash: Uint8Array, fid?: Uint8Array, hash?: Uint8Array): Buffer {
     const bytes = new Uint8Array(1 + FID_BYTES + parentHash.length + (fid ? FID_BYTES : 0) + (hash ? hash.length : 0));
     bytes.set([RootPrefix.CastsByParent], 0);
@@ -43,6 +46,7 @@ class CastSet {
     return Buffer.from(bytes);
   }
 
+  /** RocksDB key of the form <castsByMention prefix byte, mention fid, fid, cast hash> */
   static caststByMentionKey(mentionFid: Uint8Array, fid?: Uint8Array, hash?: Uint8Array): Buffer {
     const bytes = new Uint8Array(1 + FID_BYTES + (fid ? FID_BYTES : 0) + (hash ? hash.length : 0));
     bytes.set([RootPrefix.CastsByMention], 0);
@@ -56,16 +60,19 @@ class CastSet {
     return Buffer.from(bytes);
   }
 
+  /** Look up CastAdd message by cast hash */
   async getCastAdd(fid: Uint8Array, hash: Uint8Array): Promise<CastAddModel> {
-    const messageKey = await this._db.get(CastSet.castAddsKey(fid, hash));
-    return MessageModel.get<CastAddModel>(this._db, fid, UserPrefix.CastMessage, messageKey);
+    const messageTimestampHash = await this._db.get(CastSet.castAddsKey(fid, hash));
+    return MessageModel.get<CastAddModel>(this._db, fid, UserPrefix.CastMessage, messageTimestampHash);
   }
 
+  /** Look up CastRemove message by cast hash */
   async getCastRemove(fid: Uint8Array, hash: Uint8Array): Promise<CastRemoveModel> {
-    const messageKey = await this._db.get(CastSet.castRemovesKey(fid, hash));
-    return MessageModel.get<CastRemoveModel>(this._db, fid, UserPrefix.CastMessage, messageKey);
+    const messageTimestampHash = await this._db.get(CastSet.castRemovesKey(fid, hash));
+    return MessageModel.get<CastRemoveModel>(this._db, fid, UserPrefix.CastMessage, messageTimestampHash);
   }
 
+  /** Get all CastAdd messages for an fid */
   async getCastAddsByUser(fid: Uint8Array): Promise<CastAddModel[]> {
     const castAddsPrefix = CastSet.castAddsKey(fid);
     const messageKeys: Buffer[] = [];
@@ -75,6 +82,7 @@ class CastSet {
     return MessageModel.getManyByUser<CastAddModel>(this._db, fid, UserPrefix.CastMessage, messageKeys);
   }
 
+  /** Get all CastRemove messages for an fid */
   async getCastRemovesByUser(fid: Uint8Array): Promise<CastRemoveModel[]> {
     const castRemovesPrefix = CastSet.castRemovesKey(fid);
     const messageKeys: Buffer[] = [];
@@ -84,6 +92,7 @@ class CastSet {
     return MessageModel.getManyByUser<CastRemoveModel>(this._db, fid, UserPrefix.CastMessage, messageKeys);
   }
 
+  /** Get all CastAdd messages for a parent cast (fid and hash) */
   async getCastsByParent(fid: Uint8Array, hash: Uint8Array): Promise<CastAddModel[]> {
     const byParentPrefix = CastSet.castsByParentKey(fid, hash);
     const messageKeys: Buffer[] = [];
@@ -95,6 +104,7 @@ class CastSet {
     return MessageModel.getMany(this._db, messageKeys);
   }
 
+  /** Get all CastAdd messages for a mention (fid) */
   async getCastsByMention(fid: Uint8Array): Promise<CastAddModel[]> {
     const byMentionPrefix = CastSet.caststByMentionKey(fid);
     const messageKeys: Buffer[] = [];
@@ -106,7 +116,7 @@ class CastSet {
     return MessageModel.getMany(this._db, messageKeys);
   }
 
-  /* Merge a Cast into the CastSet */
+  /** Merge a CastAdd or CastRemove message into the set */
   async merge(message: MessageModel): Promise<void> {
     if (isCastRemove(message)) {
       return this.mergeRemove(message);
@@ -124,51 +134,60 @@ class CastSet {
   /* -------------------------------------------------------------------------- */
 
   private async mergeAdd(message: CastAddModel): Promise<void> {
-    // Start rocksdb transaction
+    // Start RocksDB transaction
     let tsx = this._db.transaction();
 
-    // If cast has already been removed, no-op
+    // Look up the remove timestampHash for this cast
     const castRemoveTimestampHash = await ResultAsync.fromPromise(
       this._db.get(CastSet.castRemovesKey(message.fid(), message.timestampHash())),
       () => undefined
     );
+
+    // If remove timestampHash exists, no-op because this cast has already been removed
     if (castRemoveTimestampHash.isOk()) {
       return undefined;
     }
 
-    // If cast has already been added, no-op
+    // Look up the add timestampHash for this cast
     const castAddTimestampHash = await ResultAsync.fromPromise(
       this._db.get(CastSet.castAddsKey(message.fid(), message.timestampHash())),
       () => undefined
     );
+
+    // If add timestampHash exists, no-op because this cast has already been added
     if (castAddTimestampHash.isOk()) {
       return undefined;
     }
 
+    // Add putCastAdd operations to the RocksDB transaction
     tsx = this.putCastAddTransaction(tsx, message);
 
-    // return this._db.putCastAdd(cast);
+    // Commit the RocksDB transaction
     return this._db.commit(tsx);
   }
 
   private async mergeRemove(message: CastRemoveModel): Promise<void> {
-    // Start rocksdb transaction
+    // Start RocksDB transaction
     let tsx = this._db.transaction();
 
-    // Init cast index
+    // Define cast hash for lookups
     const castHash = message.body().hashArray() ?? new Uint8Array();
 
-    // Check if cast has already been removed
+    // Look up the remove timestampHash for this cast
     const castRemoveTimestampHash = await ResultAsync.fromPromise(
       this._db.get(CastSet.castRemovesKey(message.fid(), castHash)),
       () => undefined
     );
+
     if (castRemoveTimestampHash.isOk()) {
-      if (bytesCompare(castRemoveTimestampHash.value, message.timestampHash()) > 0) {
-        // No-op if existing remove timestamp hash wins
+      if (bytesCompare(castRemoveTimestampHash.value, message.timestampHash()) >= 0) {
+        // If the remove timestampHash exists and has the same or higher order than the new CastRemove
+        // timestampHash, no-op because this cast has been removed by a more recent message
         return undefined;
       } else {
-        // Otherwise delete the existing remove as part of the tsx
+        // If the remove timestampHash exists but with a lower order than the new CastRemove
+        // timestampHash, retrieve the full CastRemove message and delete it as part of the
+        // RocksDB transaction
         const existingRemove = await MessageModel.get<CastRemoveModel>(
           this._db,
           message.fid(),
@@ -179,11 +198,14 @@ class CastSet {
       }
     }
 
-    // If cast has been added, delete it
+    // Look up the add timestampHash for this cast
     const castAddTimestampHash = await ResultAsync.fromPromise(
       this._db.get(CastSet.castAddsKey(message.fid(), castHash)),
       () => undefined
     );
+
+    // If the add timestampHash exists, retrieve the full CastAdd message and delete it as
+    // part of the RocksDB transaction
     if (castAddTimestampHash.isOk()) {
       const existingAdd = await MessageModel.get<CastAddModel>(
         this._db,
@@ -194,8 +216,10 @@ class CastSet {
       tsx = await this.deleteCastAddTransaction(tsx, existingAdd);
     }
 
+    // Add putCastRemove operations to the RocksDB transaction
     tsx = this.putCastRemoveTransaction(tsx, message);
 
+    // Commit the RocksDB transaction
     return this._db.commit(tsx);
   }
 
