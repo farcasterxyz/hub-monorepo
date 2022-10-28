@@ -17,6 +17,7 @@ RUN yarn install --frozen-lockfile
 
 # Copy source code (and all other relevant files)
 COPY --chown=node:node src ./src
+COPY --chown=node:node .config ./.config
 
 # Build code
 RUN yarn build
@@ -45,6 +46,7 @@ RUN yarn install --frozen-lockfile --production
 
 # Copy results from previous stage
 COPY --chown=node:node --from=build /home/node/app/build ./build
+COPY --chown=node:node --from=build /home/node/app/.config ./.config
 
 # TODO: determine if this can be removed while using tsx (or find alternative) 
 # since we should be able to run with just the compiled javascript in build/
@@ -53,4 +55,4 @@ COPY --chown=node:node --from=build /home/node/app/src ./src
 # TODO: load identity from some secure store instead of generating a new one
 RUN yarn identity create
 
-CMD ["yarn", "tsx", "src/cli.ts", "start", "--rpc-port", "8080", "--port", "9090" ]
+CMD ["yarn", "tsx", "src/cli.ts", "start", "--rpc-port", "8080", "--gossip-port", "9090" ]
