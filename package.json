@@ -31,8 +31,8 @@
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"
   },
   "devDependencies": {
+    "@faker-js/faker": "^7.6.0",
     "@libp2p/interface-mocks": "^7.0.1",
-    "@types/faker": "5.5.9",
     "@types/jest": "^29.0.2",
     "@types/node": "^18.7.6",
     "@types/pino": "^7.0.5",
@@ -71,7 +71,6 @@
     "commander": "^9.4.1",
     "ethereum-cryptography": "^1.1.2",
     "ethers": "^5.6.1",
-    "faker": "5.5.3",
     "flatbuffers": "^2.0.7",
     "jayson": "^4.0.0",
     "libp2p": "^0.39.5",

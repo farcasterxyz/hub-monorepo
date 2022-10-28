@@ -1,4 +1,4 @@
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import { SignerAdd, SignerRemove, EthereumSigner, Ed25519Signer, IdRegistryEvent } from '~/types';
 import SignerSet, { SignerSetEvents } from '~/storage/sets/signerSet';
 import { Factories } from '~/test/factories';
@@ -10,7 +10,7 @@ import SignerDB from '~/storage/db/signer';
 const rocksDb = jestRocksDB('signerSet.test');
 const testDb = new SignerDB(rocksDb);
 
-const fid = Faker.datatype.number();
+const fid = faker.datatype.number();
 const set = new SignerSet(rocksDb);
 
 const custodyAddress = () => set.getCustodyAddress(fid);
@@ -60,12 +60,12 @@ beforeAll(async () => {
   a = await generateEd25519Signer();
   addATo1 = await Factories.SignerAdd.create({ data: { fid } }, { transient: { signer: custody1, delegateSigner: a } });
   remAFrom1 = await Factories.SignerRemove.create(
-    { data: { fid, body: { delegate: a.signerKey } } },
+    { data: { fid, body: { delegate: a.signerKey }, signedAt: addATo1.data.signedAt + 1 } },
     { transient: { signer: custody1 } }
   );
   addATo2 = await Factories.SignerAdd.create({ data: { fid } }, { transient: { signer: custody2, delegateSigner: a } });
   remAFrom2 = await Factories.SignerRemove.create(
-    { data: { fid, body: { delegate: a.signerKey } } },
+    { data: { fid, body: { delegate: a.signerKey }, signedAt: addATo2.data.signedAt + 1 } },
     { transient: { signer: custody2 } }
   );
   b = await generateEd25519Signer();
@@ -213,7 +213,7 @@ describe('mergeIdRegistryEvent', () => {
     });
 
     test('succeeds if a custody is registered to another fid', async () => {
-      const fid2 = Faker.datatype.number();
+      const fid2 = faker.datatype.number();
       const custody2Register = await Factories.IdRegistryEvent.create(
         { args: { to: custody2.signerKey, id: fid2 } },
         {}
@@ -584,7 +584,7 @@ describe('merge', () => {
         test('succeeds with later timestamp', async () => {
           const addALater: SignerAdd = {
             ...addATo1,
-            hash: Faker.datatype.hexaDecimal(128),
+            hash: faker.datatype.hexadecimal({ length: 128 }),
             data: { ...addATo1.data, signedAt: addATo1.data.signedAt + 1 },
           };
           await expect(set.merge(addALater)).resolves.toEqual(undefined);
@@ -603,7 +603,7 @@ describe('merge', () => {
         test('succeeds (no-ops) with earlier timestamp', async () => {
           const addAEarlier: SignerAdd = {
             ...addATo1,
-            hash: Faker.datatype.hexaDecimal(128),
+            hash: faker.datatype.hexadecimal({ length: 128 }),
             data: { ...addATo1.data, signedAt: addATo1.data.signedAt - 1 },
           };
           await expect(set.merge(addAEarlier)).resolves.toEqual(undefined);
@@ -659,7 +659,7 @@ describe('merge', () => {
         test('succeeds and emits addSigner if SignerAdd is later than remove', async () => {
           const addATo2Later: SignerAdd = {
             ...addATo2,
-            hash: Faker.datatype.hexaDecimal(128),
+            hash: faker.datatype.hexadecimal({ length: 128 }),
             data: { ...addATo2.data, signedAt: remAFrom1.data.signedAt + 1 },
           };
 
@@ -683,7 +683,7 @@ describe('merge', () => {
         test('succeeds and emits addSigner if SingerAdd is earlier than remove', async () => {
           const addATo2Earlier: SignerAdd = {
             ...addATo2,
-            hash: Faker.datatype.hexaDecimal(128),
+            hash: faker.datatype.hexadecimal({ length: 128 }),
             data: { ...addATo2.data, signedAt: remAFrom1.data.signedAt - 1 },
           };
 
@@ -714,7 +714,7 @@ describe('merge', () => {
         test('succeeds if the signerAdd is earlier (but does not emit addSigner)', async () => {
           const addATo1Earlier: SignerAdd = {
             ...addATo1,
-            hash: Faker.datatype.hexaDecimal(128),
+            hash: faker.datatype.hexadecimal({ length: 128 }),
             data: { ...addATo1.data, signedAt: remAFrom2.data.signedAt + 1 },
           };
 
@@ -738,7 +738,7 @@ describe('merge', () => {
         test('succeeds if the SignerAdd is later (but does not emit addSigner)', async () => {
           const addATo1Later: SignerAdd = {
             ...addATo1,
-            hash: Faker.datatype.hexaDecimal(128),
+            hash: faker.datatype.hexadecimal({ length: 128 }),
             data: { ...addATo1.data, signedAt: remAFrom2.data.signedAt + 1 },
           };
 
@@ -768,7 +768,7 @@ describe('merge', () => {
         test('succeeds with later timestamp', async () => {
           const addALater: SignerAdd = {
             ...addATo1,
-            hash: Faker.datatype.hexaDecimal(128),
+            hash: faker.datatype.hexadecimal({ length: 128 }),
             data: { ...addATo1.data, signedAt: remAFrom1.data.signedAt + 1 },
           };
           await expect(set.merge(addALater)).resolves.toEqual(undefined);
@@ -787,7 +787,7 @@ describe('merge', () => {
         test('succeeds (no-ops) with earlier timestamp', async () => {
           const addAEarlier: SignerAdd = {
             ...addATo1,
-            hash: Faker.datatype.hexaDecimal(128),
+            hash: faker.datatype.hexadecimal({ length: 128 }),
             data: { ...addATo1.data, signedAt: remAFrom1.data.signedAt - 1 },
           };
           await expect(set.merge(addAEarlier)).resolves.toEqual(undefined);
@@ -805,7 +805,7 @@ describe('merge', () => {
         test('succeeds (no-ops) with the same timestamp', async () => {
           const addASameTimestamp: SignerAdd = {
             ...addATo1,
-            hash: Faker.datatype.hexaDecimal(128),
+            hash: faker.datatype.hexadecimal({ length: 128 }),
             data: { ...addATo1.data, signedAt: remAFrom1.data.signedAt },
           };
           await expect(set.merge(addASameTimestamp)).resolves.toEqual(undefined);
@@ -938,7 +938,7 @@ describe('merge', () => {
         test('succeeds if the SignerRemove is later', async () => {
           const remAFrom2Later: SignerRemove = {
             ...remAFrom2,
-            hash: Faker.datatype.hexaDecimal(128),
+            hash: faker.datatype.hexadecimal({ length: 128 }),
             data: { ...remAFrom2.data, signedAt: addATo1.data.signedAt + 1 },
           };
 
@@ -962,7 +962,7 @@ describe('merge', () => {
         test('succeeds if the SignerRemove is earlier', async () => {
           const remAFrom2Earlier: SignerRemove = {
             ...remAFrom2,
-            hash: Faker.datatype.hexaDecimal(128),
+            hash: faker.datatype.hexadecimal({ length: 128 }),
             data: { ...remAFrom2.data, signedAt: addATo1.data.signedAt - 1 },
           };
 
@@ -993,7 +993,7 @@ describe('merge', () => {
         test('succeeds but does not emit removeSigner event if the SignerRemove is earlier', async () => {
           const remAFrom2Earlier: SignerRemove = {
             ...remAFrom1,
-            hash: Faker.datatype.hexaDecimal(128),
+            hash: faker.datatype.hexadecimal({ length: 128 }),
             data: { ...remAFrom1.data, signedAt: addATo2.data.signedAt - 1 },
           };
 
@@ -1017,7 +1017,7 @@ describe('merge', () => {
         test('succeeds but does not emit removeSigner event if the SignerRemove is later', async () => {
           const remAFrom2Later: SignerRemove = {
             ...remAFrom1,
-            hash: Faker.datatype.hexaDecimal(128),
+            hash: faker.datatype.hexadecimal({ length: 128 }),
             data: { ...remAFrom1.data, signedAt: addATo2.data.signedAt + 1 },
           };
 
@@ -1061,7 +1061,7 @@ describe('merge', () => {
         test('succeeds (no-ops) with earlier timestamp', async () => {
           const remAEarlier: SignerRemove = {
             ...remAFrom1,
-            hash: Faker.datatype.hexaDecimal(128),
+            hash: faker.datatype.hexadecimal({ length: 128 }),
             data: { ...remAFrom1.data, signedAt: addATo1.data.signedAt - 1 },
           };
           await expect(set.merge(remAEarlier)).resolves.toEqual(undefined);
@@ -1079,7 +1079,7 @@ describe('merge', () => {
         test('succeeds with the same timestamp', async () => {
           const remASameTimestamp: SignerRemove = {
             ...remAFrom1,
-            hash: Faker.datatype.hexaDecimal(128),
+            hash: faker.datatype.hexadecimal({ length: 128 }),
             data: { ...remAFrom1.data, signedAt: addATo1.data.signedAt },
           };
           await expect(set.merge(remASameTimestamp)).resolves.toEqual(undefined);
@@ -1148,7 +1148,7 @@ describe('merge', () => {
         test('succeeds with later timestamp', async () => {
           const remALater: SignerRemove = {
             ...remAFrom1,
-            hash: Faker.datatype.hexaDecimal(128),
+            hash: faker.datatype.hexadecimal({ length: 128 }),
             data: { ...remAFrom1.data, signedAt: remAFrom1.data.signedAt + 1 },
           };
           await expect(set.merge(remALater)).resolves.toEqual(undefined);
@@ -1167,7 +1167,7 @@ describe('merge', () => {
         test('succeeds (no-ops) with earlier timestamp', async () => {
           const remAEarlier: SignerRemove = {
             ...remAFrom1,
-            hash: Faker.datatype.hexaDecimal(128),
+            hash: faker.datatype.hexadecimal({ length: 128 }),
             data: { ...remAFrom1.data, signedAt: remAFrom1.data.signedAt - 1 },
           };
           await expect(set.merge(remAEarlier)).resolves.toEqual(undefined);

@@ -1,5 +1,5 @@
 import Engine from '~/storage/engine';
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { mockEvents, MockFCEvent, mockFid, populateEngine } from '~/storage/engine/mock';
 
@@ -17,7 +17,7 @@ describe('mock engine events', () => {
   test(
     'generates a pair of mock events of each type',
     async () => {
-      const fid = Faker.datatype.number();
+      const fid = faker.datatype.number();
       const user = await mockFid(engine, fid);
       const users = await engine.getUsers();
       expect(users.size).toEqual(1);

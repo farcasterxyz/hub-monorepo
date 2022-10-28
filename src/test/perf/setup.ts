@@ -1,6 +1,6 @@
 import { RPCClient } from '~/network/rpc';
 import { logger } from '~/utils/logger';
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import { IdRegistryEvent, SignerAdd } from '~/types';
 import { generateUserInfo, getSignerAdd, UserInfo, getIdRegistryEvent } from '~/storage/engine/mock';
 import { submitInBatches, post } from '~/test/perf/utils';
@@ -33,7 +33,7 @@ export const setupNetwork = async (rpcClients: RPCClient[], config: SetupConfig)
 
   // generate users
   logger.info(`Generating IdRegistry events for ${config.users} users.`);
-  const firstUser = Faker.datatype.number();
+  const firstUser = faker.datatype.number();
   const idRegistryEvents: IdRegistryEvent[] = [];
   const signerAddEvents: SignerAdd[] = [];
   let start = performance.now();

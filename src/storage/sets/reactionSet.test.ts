@@ -1,4 +1,4 @@
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import ReactionDB from '~/storage/db/reaction';
 import { BadRequestError, NotFoundError } from '~/utils/errors';
@@ -10,7 +10,7 @@ const testDb = jestRocksDB('reactionSet.test');
 const reactionDb = new ReactionDB(testDb);
 const set = new ReactionSet(testDb);
 
-const fid = Faker.datatype.number();
+const fid = faker.datatype.number();
 
 const reactionAdds = async (): Promise<Set<ReactionAdd>> => {
   const adds = await reactionDb.getReactionAddsByUser(fid);
@@ -28,12 +28,12 @@ let b: URI;
 let addB: ReactionAdd;
 
 beforeAll(async () => {
-  a = Faker.internet.url();
+  a = faker.internet.url();
   addA = await Factories.ReactionAdd.create({ data: { fid, body: { targetUri: a } } });
   remA = await Factories.ReactionRemove.create({
     data: { fid, body: { targetUri: a }, signedAt: addA.data.signedAt + 1 },
   });
-  b = Faker.internet.url();
+  b = faker.internet.url();
   addB = await Factories.ReactionAdd.create({ data: { fid, body: { targetUri: b } } });
 });
 
@@ -95,7 +95,7 @@ describe('merge', () => {
       test('succeeds with a later timestamp', async () => {
         const addALater: ReactionAdd = {
           ...addA,
-          hash: Faker.datatype.hexaDecimal(128),
+          hash: faker.datatype.hexadecimal({ length: 128 }),
           data: { ...addA.data, signedAt: addA.data.signedAt + 1 },
         };
         await expect(set.merge(addALater)).resolves.toEqual(undefined);
@@ -106,7 +106,7 @@ describe('merge', () => {
       test('succeeds (no-ops) with an earlier timestamp', async () => {
         const addAEarlier: ReactionAdd = {
           ...addA,
-          hash: Faker.datatype.hexaDecimal(128),
+          hash: faker.datatype.hexadecimal({ length: 128 }),
           data: { ...addA.data, signedAt: addA.data.signedAt - 1 },
         };
         await expect(set.merge(addAEarlier)).resolves.toEqual(undefined);
@@ -139,7 +139,7 @@ describe('merge', () => {
       test('succeeds with a later timestamp', async () => {
         const addALater: ReactionAdd = {
           ...addA,
-          hash: Faker.datatype.hexaDecimal(128),
+          hash: faker.datatype.hexadecimal({ length: 128 }),
           data: { ...addA.data, signedAt: remA.data.signedAt + 1 },
         };
         await expect(set.merge(addALater)).resolves.toEqual(undefined);
@@ -156,7 +156,7 @@ describe('merge', () => {
       test('succeeds (no-ops) with the same timestamp', async () => {
         const addASameTimestamp: ReactionAdd = {
           ...addA,
-          hash: Faker.datatype.hexaDecimal(128),
+          hash: faker.datatype.hexadecimal({ length: 128 }),
           data: { ...addA.data, signedAt: remA.data.signedAt },
         };
         await expect(set.merge(addASameTimestamp)).resolves.toEqual(undefined);
@@ -195,7 +195,7 @@ describe('merge', () => {
       test('succeeds with a later timestamp', async () => {
         const remALater: ReactionRemove = {
           ...remA,
-          hash: Faker.datatype.hexaDecimal(128),
+          hash: faker.datatype.hexadecimal({ length: 128 }),
           data: { ...remA.data, signedAt: remA.data.signedAt + 1 },
         };
         await expect(set.merge(remALater)).resolves.toEqual(undefined);
@@ -206,7 +206,7 @@ describe('merge', () => {
       test('succeeds (no-ops) with an earlier timestamp', async () => {
         const remAEarlier: ReactionRemove = {
           ...remA,
-          hash: Faker.datatype.hexaDecimal(128),
+          hash: faker.datatype.hexadecimal({ length: 128 }),
           data: { ...remA.data, signedAt: remA.data.signedAt - 1 },
         };
         await expect(set.merge(remAEarlier)).resolves.toEqual(undefined);
@@ -245,7 +245,7 @@ describe('merge', () => {
       test('succeeds (no-ops) with an earlier timestamp', async () => {
         const remAEarlier: ReactionRemove = {
           ...remA,
-          hash: Faker.datatype.hexaDecimal(128),
+          hash: faker.datatype.hexadecimal({ length: 128 }),
           data: { ...remA.data, signedAt: addA.data.signedAt - 1 },
         };
         await expect(set.merge(remAEarlier)).resolves.toEqual(undefined);
@@ -256,7 +256,7 @@ describe('merge', () => {
       test('succeeds with the same timestamp', async () => {
         const remASameTimestamp: ReactionRemove = {
           ...remA,
-          hash: Faker.datatype.hexaDecimal(128),
+          hash: faker.datatype.hexadecimal({ length: 128 }),
           data: { ...remA.data, signedAt: addA.data.signedAt },
         };
         await expect(set.merge(remASameTimestamp)).resolves.toEqual(undefined);

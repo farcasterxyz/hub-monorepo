@@ -1,4 +1,4 @@
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import ReactionDB from '~/storage/db/reaction';
 import Engine from '~/storage/engine';
@@ -17,7 +17,7 @@ import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 
 const testDb = jestRocksDB(`engine.reaction.test`);
 const engine = new Engine(testDb);
-const aliceFid = Faker.datatype.number();
+const aliceFid = faker.datatype.number();
 
 const reactionDb = new ReactionDB(testDb);
 const aliceAdds = async () => {

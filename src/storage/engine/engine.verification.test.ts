@@ -13,7 +13,7 @@ import {
   CastShort,
   CastRecast,
 } from '~/types';
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import { Wallet } from 'ethers';
 import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 import { jestRocksDB } from '~/storage/db/jestUtils';
@@ -25,7 +25,7 @@ import SignerDB from '~/storage/db/signer';
 const testDb = jestRocksDB(`engine.verification.test`);
 const engine = new Engine(testDb);
 
-const aliceFid = Faker.datatype.number();
+const aliceFid = faker.datatype.number();
 
 const verificationDb = new VerificationDB(testDb);
 const aliceAdds = () => engine.getVerificationsByUser(aliceFid);
@@ -68,7 +68,7 @@ describe('mergeVerification', () => {
     );
     aliceEthWallet = Wallet.createRandom();
     transientParams = { transient: { signer: aliceSigner, ethWallet: aliceEthWallet } };
-    aliceBlockHash = Faker.datatype.hexaDecimal(64).toLowerCase();
+    aliceBlockHash = faker.datatype.hexadecimal({ length: 64 }).toLowerCase();
 
     const verificationClaim: VerificationEthereumAddressClaim = {
       fid: aliceFid,
@@ -286,7 +286,7 @@ describe('mergeVerification', () => {
           fid: aliceFid,
           body: {
             claimHash: aliceClaimHash,
-            blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+            blockHash: faker.datatype.hexadecimal({ length: 64 }).toLowerCase(),
             externalSignature: aliceExternalSignature,
           },
         },

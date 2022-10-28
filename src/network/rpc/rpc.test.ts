@@ -23,13 +23,13 @@ import { Factories } from '~/test/factories';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 import { RPCServer, RPCClient, RPCHandler } from '~/network/rpc';
 import Engine from '~/storage/engine';
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { FarcasterError } from '~/utils/errors';
 import { Result } from 'neverthrow';
 import { multiaddr } from '@multiformats/multiaddr';
 
-const aliceFid = Faker.datatype.number();
+const aliceFid = faker.datatype.number();
 const testDb = jestRocksDB('rpc.test');
 const engine = new Engine(testDb);
 
