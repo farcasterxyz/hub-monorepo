@@ -13,7 +13,7 @@ WORKDIR /home/node/app
 # Copy dependency information and install all dependencies
 COPY --chown=node:node tsconfig.json package.json yarn.lock ./
 
-RUN yarn install --frozen-lockfile
+RUN yarn install --frozen-lockfile --network-timeout 1800000
 
 # Copy source code (and all other relevant files)
 COPY --chown=node:node src ./src
@@ -42,7 +42,7 @@ WORKDIR /home/node/app
 # Copy dependency information and install dependencies
 COPY --chown=node:node tsconfig.json package.json yarn.lock ./
 
-RUN yarn install --frozen-lockfile --production
+RUN yarn install --frozen-lockfile --production --network-timeout 1800000
 
 # Copy results from previous stage
 COPY --chown=node:node --from=build /home/node/app/build ./build
