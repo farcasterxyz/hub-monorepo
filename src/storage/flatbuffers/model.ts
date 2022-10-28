@@ -126,6 +126,10 @@ export default class MessageModel {
       return UserPrefix.CastMessage;
     }
 
+    if (this.type() === MessageType.FollowAdd || this.type() === MessageType.FollowRemove) {
+      return UserPrefix.FollowMessage;
+    }
+
     // TODO: add all message types
 
     throw new Error('invalid type');

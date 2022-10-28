@@ -31,6 +31,7 @@ class CastSet {
     ]);
   }
 
+  // TODO: make parentFid and parentHash fixed size
   /** RocksDB key of the form <castsByParent prefix byte, parent fid, parent cast hash, fid, cast hash> */
   static castsByParentKey(parentFid: Uint8Array, parentHash: Uint8Array, fid?: Uint8Array, hash?: Uint8Array): Buffer {
     const bytes = new Uint8Array(1 + FID_BYTES + parentHash.length + (fid ? FID_BYTES : 0) + (hash ? hash.length : 0));
@@ -46,6 +47,7 @@ class CastSet {
     return Buffer.from(bytes);
   }
 
+  // TODO: make parentFid and parentHash fixed size
   /** RocksDB key of the form <castsByMention prefix byte, mention fid, fid, cast hash> */
   static caststByMentionKey(mentionFid: Uint8Array, fid?: Uint8Array, hash?: Uint8Array): Buffer {
     const bytes = new Uint8Array(1 + FID_BYTES + (fid ? FID_BYTES : 0) + (hash ? hash.length : 0));
