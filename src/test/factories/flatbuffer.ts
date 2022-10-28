@@ -9,6 +9,8 @@ import {
   CastRemoveBody,
   CastRemoveBodyT,
   FarcasterNetwork,
+  FollowBody,
+  FollowBodyT,
   HashScheme,
   Message,
   MessageBody,
@@ -127,6 +129,40 @@ const CastRemoveDataFactory = Factory.define<MessageDataT, any, MessageData>(({ 
   });
 });
 
+const FollowBodyFactory = Factory.define<FollowBodyT, any, FollowBody>(({ onCreate }) => {
+  onCreate((params) => {
+    const builder = new Builder();
+    builder.finish(params.pack(builder));
+    return FollowBody.getRootAsFollowBody(new ByteBuffer(builder.asUint8Array()));
+  });
+
+  return new FollowBodyT(UserIDFactory.build());
+});
+
+const FollowAddDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
+  onCreate((params) => {
+    return MessageDataFactory.create(params);
+  });
+
+  return MessageDataFactory.build({
+    bodyType: MessageBody.FollowBody,
+    body: FollowBodyFactory.build(),
+    type: MessageType.FollowAdd,
+  });
+});
+
+const FollowRemoveDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
+  onCreate((params) => {
+    return MessageDataFactory.create(params);
+  });
+
+  return MessageDataFactory.build({
+    bodyType: MessageBody.FollowBody,
+    body: FollowBodyFactory.build(),
+    type: MessageType.FollowRemove,
+  });
+});
+
 const ReactionBodyFactory = Factory.define<ReactionBodyT, any, ReactionBody>(({ onCreate }) => {
   onCreate((params) => {
     const builder = new Builder();
@@ -196,6 +232,9 @@ const Factories = {
   MessageData: MessageDataFactory,
   CastAddData: CastAddDataFactory,
   CastRemoveData: CastRemoveDataFactory,
+  FollowBody: FollowBodyFactory,
+  FollowAddData: FollowAddDataFactory,
+  FollowRemoveData: FollowRemoveDataFactory,
   Message: MessageFactory,
 };
 
