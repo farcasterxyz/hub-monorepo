@@ -1,4 +1,4 @@
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import CastDB from '~/storage/db/cast';
 import { Factories } from '~/test/factories';
 import { CastRecast, CastRemove, CastShort } from '~/types';
@@ -9,8 +9,8 @@ const rocks = jestRocksDB('db.cast.test');
 const db = new CastDB(rocks);
 
 /** Test data */
-const fid = Faker.datatype.number();
-const target = Faker.internet.url();
+const fid = faker.datatype.number();
+const target = faker.internet.url();
 
 let cast1: CastShort;
 let recast1: CastRecast;
@@ -18,7 +18,7 @@ let remove1: CastRemove;
 
 beforeAll(async () => {
   cast1 = await Factories.CastShort.create({
-    data: { fid, body: { parent: target, mentions: [Faker.datatype.number(), Faker.datatype.number()] } },
+    data: { fid, body: { parent: target, mentions: [faker.datatype.number(), faker.datatype.number()] } },
   });
   recast1 = await Factories.CastRecast.create({ data: { fid, body: { targetCastUri: target } } });
   remove1 = await Factories.CastRemove.create({ data: { fid, body: { targetHash: cast1.hash } } });

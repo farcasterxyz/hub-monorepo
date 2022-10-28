@@ -1,5 +1,5 @@
 import Engine from '~/storage/engine';
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import { Factories } from '~/test/factories';
 import {
   Ed25519Signer,
@@ -19,7 +19,7 @@ import { BadRequestError } from '~/utils/errors';
 const testDb = jestRocksDB(`engine.follow.test`);
 const followDb = new FollowDB(testDb);
 const engine = new Engine(testDb);
-const aliceFid = Faker.datatype.number();
+const aliceFid = faker.datatype.number();
 
 describe('mergeFollow', () => {
   let aliceCustody: EthereumSigner;
@@ -49,7 +49,7 @@ describe('mergeFollow', () => {
     transientParams = { transient: { signer: aliceSigner } };
     follow = await Factories.FollowAdd.create({ data: { fid: aliceFid } }, transientParams);
     unfollow = await Factories.FollowRemove.create(
-      { data: { fid: aliceFid, body: { targetUri: follow.data.body.targetUri } } },
+      { data: { fid: aliceFid, body: { targetUri: follow.data.body.targetUri }, signedAt: follow.data.signedAt + 1 } },
       transientParams
     );
   });
@@ -104,7 +104,7 @@ describe('mergeFollow', () => {
       });
 
       test('fails if the signature is invalid', async () => {
-        const followInvalidSignature: Follow = { ...follow, signature: Faker.datatype.hexaDecimal(128) };
+        const followInvalidSignature: Follow = { ...follow, signature: faker.datatype.hexadecimal({ length: 128 }) };
         const res = await engine.mergeMessage(followInvalidSignature);
         expect(res.isOk()).toBe(false);
         expect(res._unsafeUnwrapErr()).toMatchObject(new BadRequestError('validateMessage: invalid signature'));

@@ -1,5 +1,5 @@
 import { Factories } from '~/test/factories';
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import FollowSet from '~/storage/sets/followSet';
 import { Ed25519Signer, Follow, FollowAdd, FollowRemove, URI } from '~/types';
 import { generateEd25519Signer } from '~/utils/crypto';
@@ -11,7 +11,7 @@ const testDb = jestRocksDB('followSet.test');
 const followDb = new FollowDB(testDb);
 const set = new FollowSet(testDb);
 
-const fid = Faker.datatype.number();
+const fid = faker.datatype.number();
 
 const follows = async (): Promise<Set<FollowAdd>> => {
   const followAdds = await followDb.getFollowAddsByUser(fid);
@@ -32,13 +32,13 @@ let unfollowB: Follow;
 
 beforeAll(async () => {
   signer = await generateEd25519Signer();
-  a = Faker.internet.url();
+  a = faker.internet.url();
   followA = await Factories.FollowAdd.create({ data: { fid, body: { targetUri: a } } }, { transient: { signer } });
   unfollowA = await Factories.FollowRemove.create(
     { data: { fid, body: { targetUri: a }, signedAt: followA.data.signedAt + 1 } },
     { transient: { signer } }
   );
-  b = Faker.internet.url();
+  b = faker.internet.url();
   followB = await Factories.FollowAdd.create({ data: { fid, body: { targetUri: b } } }, { transient: { signer } });
   unfollowB = await Factories.FollowRemove.create(
     { data: { fid, body: { targetUri: b }, signedAt: followB.data.signedAt + 1 } },
@@ -105,7 +105,7 @@ describe('merge', () => {
       test('succeeds with later timestamp', async () => {
         const followALater: FollowAdd = {
           ...followA,
-          hash: Faker.datatype.hexaDecimal(128),
+          hash: faker.datatype.hexadecimal({ length: 128 }),
           data: { ...followA.data, signedAt: followA.data.signedAt + 1 },
         };
         await expect(set.merge(followALater)).resolves.toEqual(undefined);
@@ -116,7 +116,7 @@ describe('merge', () => {
       test('succeeds (no-op) with earlier timestamp', async () => {
         const followAEarlier: FollowAdd = {
           ...followA,
-          hash: Faker.datatype.hexaDecimal(128),
+          hash: faker.datatype.hexadecimal({ length: 128 }),
           data: { ...followA.data, signedAt: followA.data.signedAt - 1 },
         };
         await expect(set.merge(followAEarlier)).resolves.toEqual(undefined);
@@ -149,7 +149,7 @@ describe('merge', () => {
       test('succeeds with later timestamp', async () => {
         const followALater: FollowAdd = {
           ...followA,
-          hash: Faker.datatype.hexaDecimal(128),
+          hash: faker.datatype.hexadecimal({ length: 128 }),
           data: { ...followA.data, signedAt: unfollowA.data.signedAt + 1 },
         };
         await expect(set.merge(followALater)).resolves.toEqual(undefined);
@@ -160,7 +160,7 @@ describe('merge', () => {
       test('succeeds (no-op) with earlier timestamp', async () => {
         const followAEarlier: FollowAdd = {
           ...followA,
-          hash: Faker.datatype.hexaDecimal(128),
+          hash: faker.datatype.hexadecimal({ length: 128 }),
           data: { ...followA.data, signedAt: unfollowA.data.signedAt - 1 },
         };
         await expect(set.merge(followAEarlier)).resolves.toEqual(undefined);
@@ -171,7 +171,7 @@ describe('merge', () => {
       test('succeeds (no-op) with same timestamp', async () => {
         const followASameTimestamp: FollowAdd = {
           ...followA,
-          hash: Faker.datatype.hexaDecimal(128),
+          hash: faker.datatype.hexadecimal({ length: 128 }),
           data: { ...followA.data, signedAt: unfollowA.data.signedAt },
         };
         await expect(set.merge(followASameTimestamp)).resolves.toEqual(undefined);
@@ -216,7 +216,7 @@ describe('merge', () => {
       test('succeeds (no-op) with earlier timestamp', async () => {
         const unfollowAEarlier: FollowRemove = {
           ...unfollowA,
-          hash: Faker.datatype.hexaDecimal(128),
+          hash: faker.datatype.hexadecimal({ length: 128 }),
           data: { ...unfollowA.data, signedAt: followA.data.signedAt - 1 },
         };
         await expect(set.merge(unfollowAEarlier)).resolves.toEqual(undefined);
@@ -227,7 +227,7 @@ describe('merge', () => {
       test('succeeds with same timestamp', async () => {
         const unfollowASameTimestamp: FollowRemove = {
           ...unfollowA,
-          hash: Faker.datatype.hexaDecimal(128),
+          hash: faker.datatype.hexadecimal({ length: 128 }),
           data: { ...unfollowA.data, signedAt: followA.data.signedAt },
         };
         await expect(set.merge(unfollowASameTimestamp)).resolves.toEqual(undefined);
@@ -244,7 +244,7 @@ describe('merge', () => {
       test('succeeds with later timestamp', async () => {
         const unfollowALater: FollowRemove = {
           ...unfollowA,
-          hash: Faker.datatype.hexaDecimal(128),
+          hash: faker.datatype.hexadecimal({ length: 128 }),
           data: { ...unfollowA.data, signedAt: unfollowA.data.signedAt + 1 },
         };
         await expect(set.merge(unfollowALater)).resolves.toEqual(undefined);
@@ -255,7 +255,7 @@ describe('merge', () => {
       test('succeeds (no-op) with earlier timestamp', async () => {
         const unfollowAEarlier: FollowRemove = {
           ...unfollowA,
-          hash: Faker.datatype.hexaDecimal(128),
+          hash: faker.datatype.hexadecimal({ length: 128 }),
           data: { ...unfollowA.data, signedAt: unfollowA.data.signedAt - 1 },
         };
         await expect(set.merge(unfollowAEarlier)).resolves.toEqual(undefined);

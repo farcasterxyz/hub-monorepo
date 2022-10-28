@@ -1,5 +1,5 @@
 import { Factory } from 'fishery';
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import { KeyPair } from '~/types';
 import {
   CastAddBody,
@@ -33,13 +33,13 @@ import { arrayify } from 'ethers/lib/utils';
 
 const FIDFactory = Factory.define<Uint8Array>(() => {
   // TODO: generate larger random fid
-  return new Uint8Array([Faker.datatype.number(255)]);
+  return new Uint8Array([faker.datatype.number(255)]);
 });
 
 const TimestampHashFactory = Factory.define<Uint8Array>(() => {
   const builder = new Builder();
-  builder.addInt32(Faker.time.recent());
-  const hash = arrayify(Faker.datatype.hexaDecimal(4).toLowerCase());
+  builder.addInt32(faker.date.recent().getTime());
+  const hash = arrayify(faker.datatype.hexadecimal({ length: 4 }).toLowerCase());
   return new Uint8Array([...builder.asUint8Array(), ...hash]);
 });
 
@@ -74,7 +74,7 @@ const MessageDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onC
     MessageBody.CastAddBody,
     CastAddBodyFactory.build(),
     MessageType.CastAdd,
-    Faker.time.recent(),
+    faker.date.recent().getTime(),
     Array.from(FIDFactory.build()),
     FarcasterNetwork.Testnet
   );
@@ -88,10 +88,10 @@ const CastAddBodyFactory = Factory.define<CastAddBodyT, any, CastAddBody>(({ onC
   });
 
   return new CastAddBodyT(
-    [Faker.internet.url(), Faker.internet.url()],
+    [faker.internet.url(), faker.internet.url()],
     [UserIDFactory.build(), UserIDFactory.build(), UserIDFactory.build()],
     CastIDFactory.build(),
-    Faker.lorem.sentence(4)
+    faker.lorem.sentence(4)
   );
 });
 

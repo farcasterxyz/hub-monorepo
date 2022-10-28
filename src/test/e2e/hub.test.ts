@@ -1,4 +1,4 @@
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import { AddressInfo } from 'net';
 import { generateUserInfo, getIdRegistryEvent, getSignerAdd, mockFid, populateEngine } from '~/storage/engine/mock';
 import { Factories } from '~/test/factories';
@@ -61,7 +61,7 @@ describe('Hub running tests', () => {
     const rpcClient = new RPCClient(hub.rpcAddress as AddressInfo);
 
     // simulate custody events for alice
-    const aliceFid = Faker.datatype.number();
+    const aliceFid = faker.datatype.number();
     const aliceInfo = await mockFid(hub.engine, aliceFid);
     const cast = await Factories.CastShort.create(
       { data: { fid: aliceFid } },
@@ -121,7 +121,7 @@ describe('Hub running tests', () => {
   };
 
   test('hub handles various valid gossip messages', async () => {
-    const aliceFid = Faker.datatype.number();
+    const aliceFid = faker.datatype.number();
     const aliceInfo = await generateUserInfo(aliceFid);
     const IdRegistryEvent: GossipMessage<Content> = {
       content: {

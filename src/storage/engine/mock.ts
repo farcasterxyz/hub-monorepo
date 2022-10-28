@@ -2,7 +2,7 @@ import { Ed25519Signer, EthereumSigner } from '~/types';
 import { Factories } from '~/test/factories';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 import Engine from '~/storage/engine';
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 
 export type UserInfo = {
   fid: number;
@@ -35,7 +35,7 @@ export const populateEngine = async (
   }
 ) => {
   // create a list of users' credentials
-  const startFid = Faker.datatype.number();
+  const startFid = faker.datatype.number();
   const userInfos: UserInfo[] = await Promise.all(
     [...Array(users)].map(async (_value, index) => {
       return mockFid(engine, startFid + index);

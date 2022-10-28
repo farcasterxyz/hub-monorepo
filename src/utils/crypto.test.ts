@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import * as ed from '@noble/ed25519';
 import { hashFCObject, hashCompare, generateEthereumSigner, generateEd25519Signer, convertToHex } from '~/utils/crypto';
 import { Ed25519Signer, EthereumSigner } from '~/types';
@@ -134,14 +134,14 @@ describe('generateEthereumSigner', () => {
   });
 
   test('text can be signed and verified', async () => {
-    const text = Faker.lorem.sentence(2);
+    const text = faker.lorem.sentence(2);
     const signature = await signer.wallet.signMessage(text);
     const recoveredAddress = await ethers.utils.verifyMessage(text, signature);
     expect(recoveredAddress.toLowerCase()).toEqual(signer.signerKey);
   });
 
   test('hex can be signed and verified', async () => {
-    const hex = Faker.datatype.hexaDecimal(40);
+    const hex = faker.datatype.hexadecimal({ length: 40 });
     const signature = await signer.wallet.signMessage(hex);
     const recoveredAddress = await ethers.utils.verifyMessage(hex, signature);
     expect(recoveredAddress.toLowerCase()).toEqual(signer.signerKey);
@@ -162,14 +162,14 @@ describe('generateEd25519Signer', () => {
   });
 
   test('text can be signed and verified', async () => {
-    const text = Faker.lorem.sentence(2);
+    const text = faker.lorem.sentence(2);
     const signature = await ed.sign(utf8ToBytes(text), signer.privateKey);
     const isValid = await ed.verify(signature, utf8ToBytes(text), hexToBytes(signer.signerKey));
     expect(isValid).toBe(true);
   });
 
   test('hex can be signed and verified', async () => {
-    const hex = Faker.datatype.hexaDecimal(40);
+    const hex = faker.datatype.hexadecimal({ length: 40 });
     const signature = await ed.sign(hexToBytes(hex), signer.privateKey);
     const isValid = await ed.verify(signature, hexToBytes(hex), hexToBytes(signer.signerKey));
     expect(isValid).toBe(true);

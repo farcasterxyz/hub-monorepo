@@ -1,5 +1,5 @@
 import { Factory } from 'fishery';
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import { ethers } from 'ethers';
 import {
   CastShort,
@@ -82,15 +82,15 @@ const UserURLFactory = Factory.define<UserURL, { fid: number }, UserURL>(({ tran
 
 const EthereumAddressURLFactory = Factory.define<ChainAccountURL, EthAddressUrlFactoryTransientParams, ChainAccountURL>(
   ({ transientParams }) => {
-    const address = transientParams.address || Faker.datatype.hexaDecimal(32).toLowerCase();
+    const address = transientParams.address || faker.datatype.hexadecimal({ length: 32 }).toLowerCase();
     return new ChainAccountURL(new AccountId(`eip155:1:${address}`));
   }
 );
 
 const CastURLFactory = Factory.define<CastURL, { cast: Cast }, CastURL>(({ transientParams }) => {
   const { cast } = transientParams;
-  const fid = cast ? cast.data.fid : Faker.datatype.number();
-  const hash = cast ? cast.hash : Faker.datatype.hexaDecimal(128).toLowerCase();
+  const fid = cast ? cast.data.fid : faker.datatype.number();
+  const hash = cast ? cast.hash : faker.datatype.hexadecimal({ length: 128 }).toLowerCase();
   return new CastURL(new CastId(`fid:${fid}/cast:${hash}`));
 });
 
@@ -111,12 +111,12 @@ export const Factories = {
     return {
       data: {
         body: {
-          embeds: [Faker.internet.url(), Faker.internet.url()],
-          text: Faker.lorem.sentence(2),
-          mentions: [Faker.datatype.number()],
+          embeds: [faker.internet.url(), faker.internet.url()],
+          text: faker.lorem.sentence(2),
+          mentions: [faker.datatype.number()],
         },
-        signedAt: Faker.time.recent(),
-        fid: Faker.datatype.number(),
+        signedAt: faker.date.recent().getTime(),
+        fid: faker.datatype.number(),
         type: MessageType.CastShort,
         network: FarcasterNetwork.Testnet,
       },
@@ -137,10 +137,10 @@ export const Factories = {
     return {
       data: {
         body: {
-          targetHash: Faker.datatype.hexaDecimal(128).toLowerCase(),
+          targetHash: faker.datatype.hexadecimal({ length: 128 }).toLowerCase(),
         },
-        signedAt: Faker.time.recent(),
-        fid: Faker.datatype.number(),
+        signedAt: faker.date.recent().getTime(),
+        fid: faker.datatype.number(),
         type: MessageType.CastRemove,
         network: FarcasterNetwork.Testnet,
       },
@@ -163,8 +163,8 @@ export const Factories = {
         body: {
           targetCastUri: CastURLFactory.build().toString(),
         },
-        signedAt: Faker.time.recent(),
-        fid: Faker.datatype.number(),
+        signedAt: faker.date.recent().getTime(),
+        fid: faker.datatype.number(),
         type: MessageType.CastRecast,
         network: FarcasterNetwork.Testnet,
       },
@@ -186,11 +186,11 @@ export const Factories = {
       return {
         data: {
           body: {
-            targetUri: Faker.internet.url(),
+            targetUri: faker.internet.url(),
             type: 'like',
           },
-          signedAt: Faker.time.recent(),
-          fid: Faker.datatype.number(),
+          signedAt: faker.date.recent().getTime(),
+          fid: faker.datatype.number(),
           type: MessageType.ReactionAdd,
           network: FarcasterNetwork.Testnet,
         },
@@ -213,11 +213,11 @@ export const Factories = {
       return {
         data: {
           body: {
-            targetUri: Faker.internet.url(),
+            targetUri: faker.internet.url(),
             type: 'like',
           },
-          signedAt: Faker.time.recent(),
-          fid: Faker.datatype.number(),
+          signedAt: faker.date.recent().getTime(),
+          fid: faker.datatype.number(),
           type: MessageType.ReactionRemove,
           network: FarcasterNetwork.Testnet,
         },
@@ -241,8 +241,8 @@ export const Factories = {
         body: {
           targetUri: UserURLFactory.build().toString(),
         },
-        signedAt: Faker.time.recent(),
-        fid: Faker.datatype.number(),
+        signedAt: faker.date.recent().getTime(),
+        fid: faker.datatype.number(),
         type: MessageType.FollowAdd,
         network: FarcasterNetwork.Testnet,
       },
@@ -266,8 +266,8 @@ export const Factories = {
           body: {
             targetUri: UserURLFactory.build().toString(),
           },
-          signedAt: Faker.time.recent(),
-          fid: Faker.datatype.number(),
+          signedAt: faker.date.recent().getTime(),
+          fid: faker.datatype.number(),
           type: MessageType.FollowRemove,
           network: FarcasterNetwork.Testnet,
         },
@@ -288,13 +288,13 @@ export const Factories = {
 
     return {
       args: {
-        to: Faker.datatype.hexaDecimal(32).toLowerCase(),
-        id: Faker.datatype.number(),
+        to: faker.datatype.hexadecimal({ length: 32 }).toLowerCase(),
+        id: faker.datatype.number(),
       },
-      blockNumber: Faker.datatype.number(10_000),
-      blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-      transactionHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
-      logIndex: Faker.datatype.number(),
+      blockNumber: faker.datatype.number(10_000),
+      blockHash: faker.datatype.hexadecimal({ length: 64 }).toLowerCase(),
+      transactionHash: faker.datatype.hexadecimal({ length: 64 }).toLowerCase(),
+      logIndex: faker.datatype.number(),
       name: 'Register',
     };
   }),
@@ -314,8 +314,8 @@ export const Factories = {
           body: {
             delegate: '',
           },
-          signedAt: Faker.time.recent(),
-          fid: Faker.datatype.number(),
+          signedAt: faker.date.recent().getTime(),
+          fid: faker.datatype.number(),
           type: MessageType.SignerAdd,
           network: FarcasterNetwork.Testnet,
         },
@@ -343,8 +343,8 @@ export const Factories = {
           body: {
             delegate: '',
           },
-          signedAt: Faker.time.recent(),
-          fid: Faker.datatype.number(),
+          signedAt: faker.date.recent().getTime(),
+          fid: faker.datatype.number(),
           type: MessageType.SignerRemove,
           network: FarcasterNetwork.Testnet,
         },
@@ -392,12 +392,12 @@ export const Factories = {
             transient: { address: ethWallet.address },
           }).toString(),
           claimHash: '',
-          blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+          blockHash: faker.datatype.hexadecimal({ length: 64 }).toLowerCase(),
           externalSignature: '',
           externalSignatureType: SignatureAlgorithm.EthereumPersonalSign,
         },
-        signedAt: Faker.time.recent(),
-        fid: Faker.datatype.number(),
+        signedAt: faker.date.recent().getTime(),
+        fid: faker.datatype.number(),
         type: MessageType.VerificationEthereumAddress,
         network: FarcasterNetwork.Testnet,
       },
@@ -419,10 +419,10 @@ export const Factories = {
       return {
         data: {
           body: {
-            claimHash: Faker.datatype.hexaDecimal(128).toLowerCase(),
+            claimHash: faker.datatype.hexadecimal({ length: 128 }).toLowerCase(),
           },
-          signedAt: Faker.time.recent(),
-          fid: Faker.datatype.number(),
+          signedAt: faker.date.recent().getTime(),
+          fid: faker.datatype.number(),
           type: MessageType.VerificationRemove,
           network: FarcasterNetwork.Testnet,
         },

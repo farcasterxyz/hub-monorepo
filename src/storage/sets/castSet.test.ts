@@ -1,4 +1,4 @@
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import { Factories } from '~/test/factories';
 import CastSet from '~/storage/sets/castSet';
 import { CastRecast, CastRemove, CastShort } from '~/types';
@@ -8,7 +8,7 @@ import CastDB from '~/storage/db/cast';
 const rocksDb = jestRocksDB('castSet.test');
 const testDb = new CastDB(rocksDb);
 
-const fid = Faker.datatype.number();
+const fid = faker.datatype.number();
 const set = new CastSet(rocksDb);
 
 const getCastAdds = async () => {
@@ -266,7 +266,7 @@ describe('merge', () => {
         const castRemove1Later = {
           ...castRemove1,
           data: { ...castRemove1.data, signedAt: castRemove1.data.signedAt + 1 },
-          hash: Faker.datatype.hexaDecimal(128),
+          hash: faker.datatype.hexadecimal({ length: 128 }),
         };
         await set.merge(castRemove1);
         await expect(set.merge(castRemove1Later)).resolves.toEqual(undefined);

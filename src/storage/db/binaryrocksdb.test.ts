@@ -1,10 +1,10 @@
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import { NotFoundError, RocksDBError } from '~/utils/errors';
 import RocksDB from '~/storage/db/binaryrocksdb';
 import { jestBinaryRocksDB } from './jestUtils';
 import { existsSync, mkdirSync, rmdirSync } from 'fs';
 
-const randomDbName = () => `rocksdb.test.${Faker.name.lastName().toLowerCase()}.${Faker.random.alphaNumeric(8)}`;
+const randomDbName = () => `rocksdb.test.${faker.name.lastName().toLowerCase()}.${faker.random.alphaNumeric(8)}`;
 
 describe('open', () => {
   describe('opens db and changes status', () => {
