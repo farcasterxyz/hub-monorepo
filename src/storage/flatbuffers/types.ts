@@ -1,5 +1,5 @@
 import MessageModel from '~/storage/flatbuffers/model';
-import { CastAddBody, CastRemoveBody, FollowBody } from '~/utils/generated/message_generated';
+import { CastAddBody, CastRemoveBody, FarcasterNetwork, FollowBody } from '~/utils/generated/message_generated';
 
 export enum RootPrefix {
   User = 1,
@@ -35,3 +35,10 @@ export interface FollowAddModel extends MessageModel {
 export interface FollowRemoveModel extends MessageModel {
   body(): FollowBody;
 }
+
+export type VerificationEthAddressClaim = {
+  fid: Uint8Array;
+  address: string;
+  network: FarcasterNetwork;
+  blockHash: string;
+};
