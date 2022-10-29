@@ -260,6 +260,9 @@ describe('rpc', () => {
       expect(response._unsafeUnwrap().prefix).toEqual(syncId.timestampString);
       expect(response._unsafeUnwrap().numMessages).toBeGreaterThanOrEqual(1);
       expect(response._unsafeUnwrap().hash).toBeTruthy();
+
+      const errorResponse = await client.getSyncMetadataByPrefix('non_existent_prefix');
+      expect(errorResponse.isErr()).toBeTruthy();
     });
 
     test('gets all sync ids by prefix', async () => {

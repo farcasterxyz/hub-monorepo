@@ -1,11 +1,12 @@
 import { Message } from '~/types';
-import { MerkleTrie, NodeMetadata, TrieSnapshot } from '~/network/sync/merkleTrie';
+import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId } from '~/network/sync/syncId';
 import Engine from '~/storage/engine';
 import { RPCClient } from '~/network/rpc';
 import { err, Result } from 'neverthrow';
 import { FarcasterError, ServerError } from '~/utils/errors';
 import { logger } from '~/utils/logger';
+import { TrieSnapshot } from '~/network/sync/trieNode';
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
