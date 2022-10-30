@@ -14,3 +14,5 @@ export { ReactionBody, ReactionBodyT } from './farcaster/reaction-body';
 export { ReactionType } from './farcaster/reaction-type';
 export { SignatureScheme } from './farcaster/signature-scheme';
 export { UserID, UserIDT } from './farcaster/user-id';
+export { VerificationAddEthAddressBody, VerificationAddEthAddressBodyT } from './farcaster/verification-add-eth-address-body';
+export { VerificationRemoveBody, VerificationRemoveBodyT } from './farcaster/verification-remove-body';

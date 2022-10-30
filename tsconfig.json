@@ -13,7 +13,7 @@
     "target": "es2022",
 
     "moduleResolution": "Node",
-  
+
     "paths": {
       "~/*": ["./*"]
     },
@@ -25,7 +25,7 @@
 
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    
+
     "strict": true,
     "allowUnreachableCode": false,
     "exactOptionalPropertyTypes": true,
@@ -36,8 +36,8 @@
     // "noPropertyAccessFromIndexSignature": true,
     // "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedParameters": true
   },
-  
+
   "exclude": ["node_modules", "jest.config.ts"]
 }

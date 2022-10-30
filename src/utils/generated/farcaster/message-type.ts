@@ -7,7 +7,7 @@ export enum MessageType {
   ReactionRemove = 4,
   FollowAdd = 5,
   FollowRemove = 6,
-  VerificationEthereumAddress = 7,
+  VerificationAddEthAddress = 7,
   VerificationRemove = 8,
   SignerAdd = 9,
   SignerRemove = 10,

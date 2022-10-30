@@ -9,7 +9,7 @@ enum MessageType: uint16 {
   ReactionRemove = 4,
   FollowAdd = 5,
   FollowRemove = 6,
-  VerificationEthereumAddress = 7,
+  VerificationAddEthAddress = 7,
   VerificationRemove = 8,
   SignerAdd = 9,
   SignerRemove = 10,
@@ -65,11 +65,23 @@ table FollowBody {
   user: UserID (required);
 }
 
+table VerificationAddEthAddressBody {
+  address: [ubyte] (required);
+  eth_signature: [ubyte] (required);
+  block_hash: [ubyte] (required);
+}
+
+table VerificationRemoveBody {
+  address: [ubyte] (required);
+}
+
 union MessageBody {
   CastAddBody,
   CastRemoveBody,
   ReactionBody,
-  FollowBody
+  FollowBody,
+  VerificationAddEthAddressBody,
+  VerificationRemoveBody
 }
 
 table MessageData {

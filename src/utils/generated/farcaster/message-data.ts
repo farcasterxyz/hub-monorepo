@@ -9,6 +9,8 @@ import { FollowBodyT } from '../farcaster/follow-body';
 import { MessageBody, unionToMessageBody } from '../farcaster/message-body';
 import { MessageType } from '../farcaster/message-type';
 import { ReactionBodyT } from '../farcaster/reaction-body';
+import { VerificationAddEthAddressBodyT } from '../farcaster/verification-add-eth-address-body';
+import { VerificationRemoveBodyT } from '../farcaster/verification-remove-body';
 
 export class MessageData {
   bb: flatbuffers.ByteBuffer | null = null;
@@ -176,7 +178,14 @@ export class MessageData {
 export class MessageDataT {
   constructor(
     public bodyType: MessageBody = MessageBody.NONE,
-    public body: CastAddBodyT | CastRemoveBodyT | FollowBodyT | ReactionBodyT | null = null,
+    public body:
+      | CastAddBodyT
+      | CastRemoveBodyT
+      | FollowBodyT
+      | ReactionBodyT
+      | VerificationAddEthAddressBodyT
+      | VerificationRemoveBodyT
+      | null = null,
     public type: MessageType = MessageType.CastAdd,
     public timestamp: number = 0,
     public fid: number[] = [],

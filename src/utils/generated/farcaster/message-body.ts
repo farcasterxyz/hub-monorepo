@@ -4,6 +4,8 @@ import { CastAddBody } from '../farcaster/cast-add-body';
 import { CastRemoveBody } from '../farcaster/cast-remove-body';
 import { FollowBody } from '../farcaster/follow-body';
 import { ReactionBody } from '../farcaster/reaction-body';
+import { VerificationAddEthAddressBody } from '../farcaster/verification-add-eth-address-body';
+import { VerificationRemoveBody } from '../farcaster/verification-remove-body';
 
 export enum MessageBody {
   NONE = 0,
@@ -11,14 +13,36 @@ export enum MessageBody {
   CastRemoveBody = 2,
   ReactionBody = 3,
   FollowBody = 4,
+  VerificationAddEthAddressBody = 5,
+  VerificationRemoveBody = 6,
 }
 
 export function unionToMessageBody(
   type: MessageBody,
   accessor: (
-    obj: CastAddBody | CastRemoveBody | FollowBody | ReactionBody
-  ) => CastAddBody | CastRemoveBody | FollowBody | ReactionBody | null
-): CastAddBody | CastRemoveBody | FollowBody | ReactionBody | null {
+    obj:
+      | CastAddBody
+      | CastRemoveBody
+      | FollowBody
+      | ReactionBody
+      | VerificationAddEthAddressBody
+      | VerificationRemoveBody
+  ) =>
+    | CastAddBody
+    | CastRemoveBody
+    | FollowBody
+    | ReactionBody
+    | VerificationAddEthAddressBody
+    | VerificationRemoveBody
+    | null
+):
+  | CastAddBody
+  | CastRemoveBody
+  | FollowBody
+  | ReactionBody
+  | VerificationAddEthAddressBody
+  | VerificationRemoveBody
+  | null {
   switch (MessageBody[type]) {
     case 'NONE':
       return null;
@@ -30,6 +54,10 @@ export function unionToMessageBody(
       return accessor(new ReactionBody())! as ReactionBody;
     case 'FollowBody':
       return accessor(new FollowBody())! as FollowBody;
+    case 'VerificationAddEthAddressBody':
+      return accessor(new VerificationAddEthAddressBody())! as VerificationAddEthAddressBody;
+    case 'VerificationRemoveBody':
+      return accessor(new VerificationRemoveBody())! as VerificationRemoveBody;
     default:
       return null;
   }
@@ -39,10 +67,30 @@ export function unionListToMessageBody(
   type: MessageBody,
   accessor: (
     index: number,
-    obj: CastAddBody | CastRemoveBody | FollowBody | ReactionBody
-  ) => CastAddBody | CastRemoveBody | FollowBody | ReactionBody | null,
+    obj:
+      | CastAddBody
+      | CastRemoveBody
+      | FollowBody
+      | ReactionBody
+      | VerificationAddEthAddressBody
+      | VerificationRemoveBody
+  ) =>
+    | CastAddBody
+    | CastRemoveBody
+    | FollowBody
+    | ReactionBody
+    | VerificationAddEthAddressBody
+    | VerificationRemoveBody
+    | null,
   index: number
-): CastAddBody | CastRemoveBody | FollowBody | ReactionBody | null {
+):
+  | CastAddBody
+  | CastRemoveBody
+  | FollowBody
+  | ReactionBody
+  | VerificationAddEthAddressBody
+  | VerificationRemoveBody
+  | null {
   switch (MessageBody[type]) {
     case 'NONE':
       return null;
@@ -54,6 +102,10 @@ export function unionListToMessageBody(
       return accessor(index, new ReactionBody())! as ReactionBody;
     case 'FollowBody':
       return accessor(index, new FollowBody())! as FollowBody;
+    case 'VerificationAddEthAddressBody':
+      return accessor(index, new VerificationAddEthAddressBody())! as VerificationAddEthAddressBody;
+    case 'VerificationRemoveBody':
+      return accessor(index, new VerificationRemoveBody())! as VerificationRemoveBody;
     default:
       return null;
   }
