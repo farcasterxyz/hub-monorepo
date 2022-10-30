@@ -27,9 +27,17 @@ import {
 } from '~/utils/generated/message_generated';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { blake2b } from 'ethereum-cryptography/blake2b';
-import { generateEd25519KeyPair } from '~/utils/crypto';
+import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
 import * as ed from '@noble/ed25519';
 import { arrayify } from 'ethers/lib/utils';
+import {
+  VerificationAddEthAddressBody,
+  VerificationAddEthAddressBodyT,
+} from '~/utils/generated/farcaster/verification-add-eth-address-body';
+import { ethers } from 'ethers';
+import { signVerificationEthAddressClaim } from '~/utils/verification';
+import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
+import { VerificationRemoveBody, VerificationRemoveBodyT } from '~/utils/generated/farcaster/verification-remove-body';
 
 const FIDFactory = Factory.define<Uint8Array>(() => {
   // TODO: generate larger random fid
@@ -197,6 +205,74 @@ const ReactionRemoveDataFactory = Factory.define<MessageDataT, any, MessageData>
   });
 });
 
+const VerificationAddEthAddressBodyFactory = Factory.define<
+  VerificationAddEthAddressBodyT,
+  { wallet?: ethers.Wallet; fid?: Uint8Array; network?: FarcasterNetwork },
+  VerificationAddEthAddressBody
+>(({ onCreate, transientParams }) => {
+  onCreate(async (params) => {
+    // Generate address and signature
+    const wallet = transientParams.wallet ?? (await generateEthereumSigner()).wallet;
+    params.address = Array.from(arrayify(wallet.address));
+
+    const fid = transientParams.fid ?? FIDFactory.build();
+    const claim: VerificationEthAddressClaim = {
+      fid,
+      address: wallet.address,
+      network: transientParams.network ?? FarcasterNetwork.Testnet,
+      blockHash: Uint8Array.from(params.blockHash),
+    };
+    const signature = await signVerificationEthAddressClaim(claim, wallet);
+    params.ethSignature = Array.from(arrayify(signature));
+
+    const builder = new Builder();
+    builder.finish(params.pack(builder));
+    return VerificationAddEthAddressBody.getRootAsVerificationAddEthAddressBody(new ByteBuffer(builder.asUint8Array()));
+  });
+
+  return new VerificationAddEthAddressBodyT(
+    Array.from(arrayify(Faker.datatype.hexaDecimal(32))),
+    Array.from(arrayify(Faker.datatype.hexaDecimal(64))),
+    Array.from(arrayify(Faker.datatype.hexaDecimal(64)))
+  );
+});
+
+const VerificationAddEthAddressDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
+  onCreate((params) => {
+    return MessageDataFactory.create(params);
+  });
+
+  return MessageDataFactory.build({
+    bodyType: MessageBody.VerificationAddEthAddressBody,
+    body: VerificationAddEthAddressBodyFactory.build(),
+    type: MessageType.VerificationAddEthAddress,
+  });
+});
+
+const VerificationRemoveBodyFactory = Factory.define<VerificationRemoveBodyT, any, VerificationRemoveBody>(
+  ({ onCreate }) => {
+    onCreate((params) => {
+      const builder = new Builder();
+      builder.finish(params.pack(builder));
+      return VerificationRemoveBody.getRootAsVerificationRemoveBody(new ByteBuffer(builder.asUint8Array()));
+    });
+
+    return new VerificationRemoveBodyT(Array.from(arrayify(Faker.datatype.hexaDecimal(32))));
+  }
+);
+
+const VerificationRemoveDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
+  onCreate((params) => {
+    return MessageDataFactory.create(params);
+  });
+
+  return MessageDataFactory.build({
+    bodyType: MessageBody.VerificationRemoveBody,
+    body: VerificationRemoveBodyFactory.build(),
+    type: MessageType.VerificationRemove,
+  });
+});
+
 const MessageFactory = Factory.define<MessageT, { signer?: KeyPair }, Message>(({ onCreate, transientParams }) => {
   onCreate(async (params) => {
     // Generate hash
@@ -235,6 +311,10 @@ const Factories = {
   FollowBody: FollowBodyFactory,
   FollowAddData: FollowAddDataFactory,
   FollowRemoveData: FollowRemoveDataFactory,
+  VerificationAddEthAddressBody: VerificationAddEthAddressBodyFactory,
+  VerificationAddEthAddressData: VerificationAddEthAddressDataFactory,
+  VerificationRemoveBody: VerificationRemoveBodyFactory,
+  VerificationRemoveData: VerificationRemoveDataFactory,
   Message: MessageFactory,
 };
 

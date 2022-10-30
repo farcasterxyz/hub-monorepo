@@ -1,3 +1,4 @@
+import { arrayify } from 'ethers/lib/utils';
 import Faker from 'faker';
 import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
 import Factories from '~/test/factories/flatbuffer';
@@ -11,7 +12,7 @@ describe('signVerificationEthAddressClaim', () => {
     const claim: VerificationEthAddressClaim = {
       fid: Factories.FID.build(),
       address: signer.signerKey,
-      blockHash: Faker.datatype.hexaDecimal(64).toLowerCase(),
+      blockHash: arrayify(Faker.datatype.hexaDecimal(64).toLowerCase()),
       network: FarcasterNetwork.Testnet,
     };
     const signature = await signVerificationEthAddressClaim(claim, signer.wallet);

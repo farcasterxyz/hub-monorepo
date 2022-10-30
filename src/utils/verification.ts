@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import { arrayify } from 'ethers/lib/utils';
 import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
 
 const EIP_712_DOMAIN = {
@@ -20,7 +21,7 @@ const EIP_712_TYPES = {
     },
     {
       name: 'blockHash',
-      type: 'string',
+      type: 'bytes32',
     },
     {
       name: 'network',
@@ -29,17 +30,16 @@ const EIP_712_TYPES = {
   ],
 };
 
-export const signVerificationEthAddressClaim = (
+export const signVerificationEthAddressClaim = async (
   claim: VerificationEthAddressClaim,
   wallet: ethers.Wallet
-): Promise<string> => {
-  return wallet._signTypedData(EIP_712_DOMAIN, EIP_712_TYPES, claim);
+): Promise<Uint8Array> => {
+  return arrayify(await wallet._signTypedData(EIP_712_DOMAIN, EIP_712_TYPES, claim));
 };
 
 export const verifyVerificationEthAddressClaimSignature = (
   claim: VerificationEthAddressClaim,
-  signature: string
-): string => {
-  const recoveredAddress = ethers.utils.verifyTypedData(EIP_712_DOMAIN, EIP_712_TYPES, claim, signature);
-  return recoveredAddress.toLowerCase();
+  signature: Uint8Array
+): Uint8Array => {
+  return arrayify(ethers.utils.verifyTypedData(EIP_712_DOMAIN, EIP_712_TYPES, claim, signature));
 };

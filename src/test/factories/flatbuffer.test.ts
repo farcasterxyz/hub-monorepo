@@ -1,7 +1,11 @@
 import { blake2b } from 'ethereum-cryptography/blake2b';
 import Factories from '~/test/factories/flatbuffer';
-import { Message, MessageData } from '~/utils/generated/message_generated';
+import { FarcasterNetwork, Message, MessageData } from '~/utils/generated/message_generated';
 import * as ed from '@noble/ed25519';
+import { VerificationAddEthAddressBody } from '~/utils/generated/farcaster/verification-add-eth-address-body';
+import { verifyVerificationEthAddressClaimSignature } from '~/utils/verification';
+import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
+import { hexlify } from 'ethers/lib/utils';
 
 describe('UserIDFactory', () => {
   test('accepts fid', async () => {
@@ -41,5 +45,33 @@ describe('MessageFactory', () => {
       message.signerArray() || new Uint8Array()
     );
     expect(verifySignature).resolves.toEqual(true);
+  });
+});
+
+describe('VerificationAddEthAddressBodyFactory', () => {
+  let fid: Uint8Array;
+  let network: FarcasterNetwork;
+  let body: VerificationAddEthAddressBody;
+
+  beforeAll(async () => {
+    fid = Factories.FID.build();
+    network = FarcasterNetwork.Testnet;
+    body = await Factories.VerificationAddEthAddressBody.create({}, { transient: { fid, network } });
+  });
+
+  test('generates valid ethSignature', async () => {
+    const signature = body.ethSignatureArray();
+    expect(signature).toBeTruthy();
+    const reconstructedClaim: VerificationEthAddressClaim = {
+      fid,
+      address: hexlify(body.addressArray() ?? new Uint8Array()),
+      network,
+      blockHash: body.blockHashArray() ?? new Uint8Array(),
+    };
+    const verifiedAddress = await verifyVerificationEthAddressClaimSignature(
+      reconstructedClaim,
+      signature ?? new Uint8Array()
+    );
+    expect(verifiedAddress).toEqual(body.addressArray());
   });
 });

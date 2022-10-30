@@ -10,6 +10,8 @@ import {
 } from '~/utils/generated/message_generated';
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { RootPrefix, UserMessagePrefix, UserPrefix } from '~/storage/flatbuffers/types';
+import { VerificationAddEthAddressBody } from '~/utils/generated/farcaster/verification-add-eth-address-body';
+import { VerificationRemoveBody } from '~/utils/generated/farcaster/verification-remove-body';
 
 /** Used when index keys are sufficiently descriptive */
 export const TRUE_VALUE = Buffer.from([1]);
@@ -130,6 +132,10 @@ export default class MessageModel {
       return UserPrefix.FollowMessage;
     }
 
+    if (this.type() === MessageType.VerificationAddEthAddress || this.type() === MessageType.VerificationRemove) {
+      return UserPrefix.VerificationMessage;
+    }
+
     // TODO: add all message types
 
     throw new Error('invalid type');
@@ -181,13 +187,17 @@ export default class MessageModel {
     return this.message.signerArray() ?? new Uint8Array();
   }
 
-  body(): CastAddBody | CastRemoveBody | FollowBody {
+  body(): CastAddBody | CastRemoveBody | FollowBody | VerificationAddEthAddressBody | VerificationRemoveBody {
     if (this.data.bodyType() === MessageBody.CastAddBody) {
       return this.data.body(new CastAddBody()) as CastAddBody;
     } else if (this.data.bodyType() === MessageBody.CastRemoveBody) {
       return this.data.body(new CastRemoveBody()) as CastRemoveBody;
     } else if (this.data.bodyType() === MessageBody.FollowBody) {
       return this.data.body(new FollowBody()) as FollowBody;
+    } else if (this.data.bodyType() === MessageBody.VerificationAddEthAddressBody) {
+      return this.data.body(new VerificationAddEthAddressBody()) as VerificationAddEthAddressBody;
+    } else if (this.data.bodyType() === MessageBody.VerificationRemoveBody) {
+      return this.data.body(new VerificationRemoveBody()) as VerificationRemoveBody;
     }
 
     // TODO: add all body types
