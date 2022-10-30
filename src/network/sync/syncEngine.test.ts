@@ -3,7 +3,7 @@ import Engine from '~/storage/engine';
 import { SyncEngine } from '~/network/sync/syncEngine';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { mockFid } from '~/storage/engine/mock';
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import { SyncId } from '~/network/sync/syncId';
 
 const testDb = jestRocksDB(`engine.syncEngine.test`);
@@ -18,7 +18,7 @@ describe('SyncEngine', () => {
   });
 
   test('trie is updated on successful merge', async () => {
-    const fid = Faker.datatype.number();
+    const fid = faker.datatype.number();
     const userInfo = await mockFid(engine, fid);
     const cast = await Factories.CastShort.create(
       { data: { fid: fid } },

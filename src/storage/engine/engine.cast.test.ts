@@ -1,4 +1,4 @@
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import Engine from '~/storage/engine';
 import { Factories } from '~/test/factories';
 import { Cast, CastShort, EthereumSigner, IdRegistryEvent, MessageSigner, SignerAdd, SignerRemove } from '~/types';
@@ -11,7 +11,7 @@ const rocksDb = jestRocksDB('engine.cast.test');
 const castDb = new CastDB(rocksDb);
 const engine = new Engine(rocksDb);
 
-const aliceFid = Faker.datatype.number();
+const aliceFid = faker.datatype.number();
 const aliceAdds = async () => new Set(await castDb.getCastAddsByUser(aliceFid));
 
 describe('mergeCast', () => {
@@ -44,7 +44,11 @@ describe('mergeCast', () => {
 
     removeDelegateSigner = await Factories.SignerRemove.create(
       {
-        data: { fid: aliceFid, body: { delegate: aliceDelegateSigner.signerKey } },
+        data: {
+          fid: aliceFid,
+          body: { delegate: aliceDelegateSigner.signerKey },
+          signedAt: addDelegateSigner.data.signedAt + 1,
+        },
       },
       { transient: { signer: aliceCustodySigner } }
     );
@@ -257,7 +261,7 @@ describe('mergeCast', () => {
 
       test('fails if meta is greater than 256 chars', async () => {
         const invalidCast = await Factories.CastShort.create(
-          { data: { fid: aliceFid, body: { meta: Faker.random.alphaNumeric(257) } } },
+          { data: { fid: aliceFid, body: { meta: faker.random.alphaNumeric(257) } } },
           { transient: { signer: aliceDelegateSigner } }
         );
         const result = await engine.mergeMessage(invalidCast);

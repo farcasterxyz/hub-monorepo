@@ -1,4 +1,4 @@
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import { ResultAsync } from 'neverthrow';
 
 import { jestRocksDB } from '~/storage/db/jestUtils';
@@ -11,7 +11,7 @@ import { generateEd25519Signer, generateEthereumSigner, hashFCObject } from '~/u
 
 const testDb = jestRocksDB(`engine.signer.test`);
 const engine = new Engine(testDb);
-const aliceFid = Faker.datatype.number();
+const aliceFid = faker.datatype.number();
 
 const signerDb = new SignerDB(testDb);
 const aliceCustodyAddress = async (): Promise<string> => {
@@ -44,7 +44,13 @@ describe('mergeSignerMessage', () => {
       { transient: { signer: aliceCustodySigner, delegateSigner: aliceDelegateSigner } }
     );
     aliceSignerRemoveDelegate = await Factories.SignerRemove.create(
-      { data: { fid: aliceFid, body: { delegate: aliceDelegateSigner.signerKey } } },
+      {
+        data: {
+          fid: aliceFid,
+          body: { delegate: aliceDelegateSigner.signerKey },
+          signedAt: aliceSignerAddDelegate.data.signedAt + 1,
+        },
+      },
       { transient: { signer: aliceCustodySigner } }
     );
   });
@@ -77,7 +83,7 @@ describe('mergeSignerMessage', () => {
     });
 
     test('fails when delegate is another custody address', async () => {
-      const ethAddress = Faker.datatype.hexaDecimal(32);
+      const ethAddress = faker.datatype.hexadecimal({ length: 32 });
       const addEthSigner = await Factories.SignerAdd.create(
         { data: { fid: aliceFid, body: { delegate: ethAddress } } },
         { transient: { signer: aliceCustodySigner } }

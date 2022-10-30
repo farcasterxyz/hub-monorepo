@@ -1,5 +1,5 @@
 import { Factories } from '~/test/factories';
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import VerificationSet from '~/storage/sets/verificationSet';
 import {
   Ed25519Signer,
@@ -18,7 +18,7 @@ const testDb = jestRocksDB('verificationSet.test');
 const verificationDb = new VerificationDB(testDb);
 const set = new VerificationSet(testDb);
 
-const fid = Faker.datatype.number();
+const fid = faker.datatype.number();
 
 const adds = async (): Promise<Set<VerificationEthereumAddress>> => {
   const verificationAdds = await verificationDb.getVerificationAddsByUser(fid);

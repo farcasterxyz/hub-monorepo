@@ -1,4 +1,4 @@
-import Faker from 'faker';
+import { faker } from '@faker-js/faker';
 import { Factories } from '~/test/factories';
 import { CastShort, Ed25519Signer, FollowAdd, MessageType } from '~/types';
 import { generateEd25519Signer } from '~/utils/crypto';
@@ -8,7 +8,7 @@ import { jestRocksDB } from '~/storage/db/jestUtils';
 const rocks = jestRocksDB('db.message.test');
 const db = new MessageDB(rocks);
 
-const fid = Faker.datatype.number();
+const fid = faker.datatype.number();
 
 /** Create sample data */
 let signer: Ed25519Signer;
