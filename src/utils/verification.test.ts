@@ -18,6 +18,6 @@ describe('signVerificationEthAddressClaim', () => {
     const signature = await signVerificationEthAddressClaim(claim, signer.wallet);
     expect(signature).toBeTruthy();
     const recoveredAddress = verifyVerificationEthAddressClaimSignature(claim, signature);
-    expect(recoveredAddress).toEqual(signer.signerKey);
+    expect(recoveredAddress).toEqual(arrayify(signer.signerKey));
   });
 });
