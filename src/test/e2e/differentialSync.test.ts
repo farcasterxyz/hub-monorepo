@@ -9,6 +9,7 @@ import { FarcasterError } from '~/utils/errors';
 import { NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncEngine } from '~/network/sync/syncEngine';
 import { Factories } from '~/test/factories';
+import { sleep } from '~/utils/crypto';
 
 const serverDb = jestRocksDB('rpcSync.test.server');
 const hubAStorageEngine = new Engine(serverDb);
@@ -100,6 +101,8 @@ describe('differentialSync', () => {
     // If the root hash of the sync engines match, then all the child nodes should match
     expect(hubASyncEngine.trie.items).toEqual(hubBSyncEngine.trie.items);
     expect(hubASyncEngine.trie.rootHash).toEqual(hubBSyncEngine.trie.rootHash);
+    const snapshot = hubASyncEngine.snapshot;
+    expect(hubBSyncEngine.shouldSync(snapshot.excludedHashes, snapshot.numMessages)).toBeFalsy();
 
     for (const user of userIds) {
       const casts = await hubAStorageEngine.getAllCastsByUser(user);
@@ -124,7 +127,6 @@ describe('differentialSync', () => {
       expect(hubBSyncEngine.shouldSync(snapshot.excludedHashes, snapshot.numMessages)).toBeTruthy();
       await hubBSyncEngine.performSync(snapshot.excludedHashes, hubARPCClient);
       await ensureEnginesEqual();
-      expect(hubBSyncEngine.shouldSync(snapshot.excludedHashes, snapshot.numMessages)).toBeFalsy();
     },
     TEST_TIMEOUT
   );
@@ -181,6 +183,65 @@ describe('differentialSync', () => {
       // but, depending on the location of divergence, it's possible that some existing messages are syncd
       // So just ensure it's below some reasonable threshold
       expect(mergedHashes.length).toBeLessThanOrEqual(100);
+    },
+    TEST_TIMEOUT
+  );
+
+  test(
+    'sync handles removed messages',
+    async () => {
+      await hubBSyncEngine.performSync(hubASyncEngine.snapshot.excludedHashes, hubARPCClient);
+
+      // add new messages to the server and sync again
+      const newMessages = 1;
+      const now = Date.now();
+      const messages = await Factories.SignerRemove.create(
+        { data: { fid: userInfos[0].fid, body: { delegate: userInfos[0].delegateSigner.signerKey } } },
+        {
+          transient: {
+            signer: userInfos[0].ethereumSigner,
+            minDate: new Date(now - 1000 * 100), // Between 100-50 seconds ago
+            maxDate: new Date(now - 1000 * 50),
+          },
+        }
+      );
+      const res = await hubAStorageEngine.mergeMessage(messages);
+      expect(res.isOk()).toBeTruthy();
+
+      const serverSnapshot = hubASyncEngine.snapshot;
+      expect(serverSnapshot.numMessages).toEqual(hubBSyncEngine.snapshot.numMessages + newMessages);
+      expect(hubBSyncEngine.shouldSync(serverSnapshot.excludedHashes, serverSnapshot.numMessages)).toBeTruthy();
+
+      await hubBSyncEngine.performSync(serverSnapshot.excludedHashes, hubARPCClient);
+      // Wait a few seconds for the remove to delete all messages
+      await sleep(5_000);
+
+      await ensureEnginesEqual();
+    },
+    TEST_TIMEOUT
+  );
+
+  test(
+    'syncing with a hub that has removed messages converges',
+    async () => {
+      // add new messages to the server and sync again
+      const now = Date.now();
+      const signerRemove = await Factories.SignerRemove.create(
+        { data: { fid: userInfos[0].fid, body: { delegate: userInfos[0].delegateSigner.signerKey } } },
+        {
+          transient: {
+            signer: userInfos[0].ethereumSigner,
+            minDate: new Date(now - 1000 * 100), // Between 100-50 seconds ago
+            maxDate: new Date(now - 1000 * 50),
+          },
+        }
+      );
+      const res = await hubAStorageEngine.mergeMessage(signerRemove);
+      expect(res.isOk()).toBeTruthy();
+
+      await hubBSyncEngine.performSync(hubASyncEngine.snapshot.excludedHashes, hubARPCClient);
+
+      await ensureEnginesEqual();
     },
     TEST_TIMEOUT
   );

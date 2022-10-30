@@ -3,6 +3,8 @@ import { MerkleTrie } from '~/network/sync/merkleTrie';
 import { SyncId } from '~/network/sync/syncId';
 import { createHash } from 'crypto';
 
+const emptyHash = createHash('sha256').digest('hex');
+
 describe('MerkleTrie', () => {
   const trieWithMessages = async (timestamps: number[]) => {
     const messages = await Promise.all(
@@ -75,6 +77,58 @@ describe('MerkleTrie', () => {
       expect(firstTrie.rootHash).toBeTruthy();
       expect(firstTrie.items).toEqual(secondTrie.items);
       expect(firstTrie.items).toEqual(25);
+    });
+  });
+
+  describe('delete', () => {
+    test('deletes an item', async () => {
+      const message = await Factories.CastShort.create();
+      const syncId = new SyncId(message);
+
+      const trie = new MerkleTrie();
+      trie.insert(syncId);
+      expect(trie.items).toEqual(1);
+      expect(trie.rootHash).toBeTruthy();
+
+      trie.delete(syncId);
+      expect(trie.items).toEqual(0);
+      expect(trie.rootHash).toEqual(emptyHash);
+    });
+
+    test('delete is an exact inverse of insert', async () => {
+      const message1 = await Factories.CastShort.create();
+      const syncId1 = new SyncId(message1);
+      const message2 = await Factories.CastShort.create();
+      const syncId2 = new SyncId(message2);
+
+      const trie = new MerkleTrie();
+      trie.insert(syncId1);
+      const rootHashBeforeDelete = trie.rootHash;
+      trie.insert(syncId2);
+
+      trie.delete(syncId2);
+      expect(trie.rootHash).toEqual(rootHashBeforeDelete);
+    });
+
+    test('trie with a deleted item is the same as a trie with the item never added', async () => {
+      const message1 = await Factories.CastShort.create();
+      const syncId1 = new SyncId(message1);
+      const message2 = await Factories.CastShort.create();
+      const syncId2 = new SyncId(message2);
+
+      const firstTrie = new MerkleTrie();
+      firstTrie.insert(syncId1);
+      firstTrie.insert(syncId2);
+
+      firstTrie.delete(syncId1);
+
+      const secondTrie = new MerkleTrie();
+      secondTrie.insert(syncId2);
+
+      expect(firstTrie.rootHash).toEqual(secondTrie.rootHash);
+      expect(firstTrie.rootHash).toBeTruthy();
+      expect(firstTrie.items).toEqual(secondTrie.items);
+      expect(firstTrie.items).toEqual(1);
     });
   });
 
@@ -161,7 +215,6 @@ describe('MerkleTrie', () => {
 
     test('excluded hashes excludes the prefix char at every level', async () => {
       const trie = await trieWithMessages([1665182332, 1665182343, 1665182345, 1665182351]);
-      const emptyHash = createHash('sha256').digest('hex');
       let snapshot = trie.getSnapshot('1665182351');
       let node = trie.getNodeMetadata('16651823');
       // We expect the excluded hash to be the hash of the 3 and 4 child nodes, and excludes the 5 child node

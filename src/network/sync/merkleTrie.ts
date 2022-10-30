@@ -40,6 +40,10 @@ class MerkleTrie {
     this._root.insert(id.toString(), id.hashString);
   }
 
+  public delete(id: SyncId): void {
+    this._root.delete(id.toString());
+  }
+
   public get(id: SyncId): string | undefined {
     return this._root.get(id.toString());
   }

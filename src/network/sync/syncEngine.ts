@@ -34,6 +34,9 @@ class SyncEngine {
     this.engine.on('messageMerged', async (_fid, _type, message) => {
       this.addMessage(message);
     });
+    this.engine.onDBEvent('messageDeleted', async (message) => {
+      this.removeMessage(message);
+    });
   }
 
   public async initialize() {
@@ -51,6 +54,10 @@ class SyncEngine {
 
   public addMessage(message: Message): void {
     this._trie.insert(new SyncId(message));
+  }
+
+  public removeMessage(message: Message): void {
+    this._trie.delete(new SyncId(message));
   }
 
   public shouldSync(excludedHashes: string[], numMessages: number): boolean {

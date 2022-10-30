@@ -1,4 +1,4 @@
-import { ID_LENGTH } from '~/network/sync/syncId';
+// import { ID_LENGTH } from '~/network/sync/syncId';
 import { createHash } from 'crypto';
 
 /**
@@ -41,7 +41,7 @@ class TrieNode {
 
     // TODO: Optimize by using MPT extension nodes for leaves
     // We've reached the end of the key, add or update the value in a leaf node
-    if (current_index === ID_LENGTH - 1) {
+    if (current_index === key.length - 1) {
       // Key with the same value already exists, so no need to modify the tree
       if (this._children.has(char) && this._children.get(char)?.value === value) {
         return false;
@@ -60,6 +60,29 @@ class TrieNode {
     const success = this._children.get(char)?.insert(key, value, current_index + 1);
     if (success) {
       this._items += 1;
+      this._updateHash();
+      return true;
+    }
+
+    return false;
+  }
+
+  public delete(key: string, current_index = 0): boolean {
+    if (this.isLeaf) {
+      return true;
+    }
+
+    const char = key[current_index];
+    if (!this._children.has(char)) {
+      return false;
+    }
+
+    const success = this._children.get(char)?.delete(key, current_index + 1);
+    if (success) {
+      this._items -= 1;
+      if (this._children.get(char)?.items === 0) {
+        this._children.delete(char);
+      }
       this._updateHash();
       return true;
     }

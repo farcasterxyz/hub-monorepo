@@ -5,6 +5,7 @@ import { BadRequestError } from '~/utils/errors';
 import { Follow, FollowAdd, FollowRemove, URI } from '~/types';
 import { isFollowAdd, isFollowRemove } from '~/types/typeguards';
 import { hashCompare } from '~/utils/crypto';
+import { MessageDBEvents } from '~/storage/db/message';
 
 /**
  * FollowSet is a modified LWW set that stores and fetches follow actions. FollowAdd and FollowRemove messages
@@ -52,6 +53,10 @@ class FollowSet {
     }
 
     throw new BadRequestError('FollowSet.merge: invalid message format');
+  }
+
+  onDBEvent<E extends keyof MessageDBEvents>(event: E, callback: MessageDBEvents[E]) {
+    this._db.on(event, callback);
   }
 
   /* -------------------------------------------------------------------------- */
