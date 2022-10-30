@@ -231,9 +231,9 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
   });
 
   return new VerificationAddEthAddressBodyT(
-    Array.from(arrayify(Faker.datatype.hexaDecimal(32))),
-    Array.from(arrayify(Faker.datatype.hexaDecimal(64))),
-    Array.from(arrayify(Faker.datatype.hexaDecimal(64)))
+    Array.from(arrayify(faker.datatype.hexadecimal({ length: 32 }))),
+    Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
+    Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 })))
   );
 });
 
@@ -257,7 +257,7 @@ const VerificationRemoveBodyFactory = Factory.define<VerificationRemoveBodyT, an
       return VerificationRemoveBody.getRootAsVerificationRemoveBody(new ByteBuffer(builder.asUint8Array()));
     });
 
-    return new VerificationRemoveBodyT(Array.from(arrayify(Faker.datatype.hexaDecimal(32))));
+    return new VerificationRemoveBodyT(Array.from(arrayify(faker.datatype.hexadecimal({ length: 32 }))));
   }
 );
 
