@@ -20,6 +20,12 @@ const compareHubs = async (sourceHub: Hub, compareHub: Hub) => {
   // Check that the hubs have synchronized
   const userIds = await sourceHub.getUsers();
   await expect(compareHub.getUsers()).resolves.toEqual(userIds);
+
+  const sourceTrie = sourceHub.merkleTrieForTest;
+  const compareTrie = compareHub.merkleTrieForTest;
+  expect(sourceTrie.items).toEqual(compareTrie.items);
+  expect(sourceTrie.rootHash).toEqual(compareTrie.rootHash);
+
   for (const user of userIds) {
     const casts = await sourceHub.getAllCastsByUser(user);
     await expect(compareHub.getAllCastsByUser(user)).resolves.toEqual(casts);
@@ -30,13 +36,6 @@ const compareHubs = async (sourceHub: Hub, compareHub: Hub) => {
     const verifications = await sourceHub.getAllVerificationsByUser(user);
     await expect(compareHub.getAllVerificationsByUser(user)).resolves.toEqual(verifications);
   }
-  const sourceTrie = sourceHub.merkleTrieForTest;
-  const compareTrie = compareHub.merkleTrieForTest;
-  // These don't match exactly yet. But we expect the tries to be populated,
-  // and have approximately the same size
-  expect(sourceTrie.items - compareTrie.items).toBeLessThanOrEqual(10);
-  expect(sourceTrie.rootHash).toBeTruthy();
-  expect(compareTrie.rootHash).toBeTruthy();
 };
 
 const tearDownHub = async (hub: Hub) => {
@@ -79,7 +78,12 @@ describe('Hub running tests', () => {
     'bootstrap one Hub off of another',
     async () => {
       // populate Hub1's engine
-      await populateEngine(hub.engine, 5);
+      await populateEngine(hub.engine, 5, {
+        Verifications: 1,
+        Casts: 10,
+        Follows: 50,
+        Reactions: 0, // TODO: Ignore reactions until https://github.com/farcasterxyz/hub/issues/178 is fixed
+      });
 
       // bootstrap hub2 off of hub1
       expect(hub.gossipAddresses);
@@ -92,8 +96,7 @@ describe('Hub running tests', () => {
         await secondHub.start();
         // wait until sync completes
         await new Promise((resolve) => {
-          secondHub.addListener('syncComplete', (success) => {
-            expect(success).toBeTruthy();
+          secondHub.addListener('syncComplete', (_) => {
             resolve(undefined);
           });
         });
@@ -111,8 +114,6 @@ describe('Hub running tests', () => {
     const gossipMessage: GossipMessage<Content> = {
       content: {
         message,
-        root: '',
-        count: 0,
       },
       topics: [NETWORK_TOPIC_PRIMARY],
     };
@@ -126,8 +127,6 @@ describe('Hub running tests', () => {
     const IdRegistryEvent: GossipMessage<Content> = {
       content: {
         message: await getIdRegistryEvent(aliceInfo),
-        root: '',
-        count: 0,
       },
       topics: [NETWORK_TOPIC_PRIMARY],
     };
@@ -192,12 +191,14 @@ describe('Hub negative tests', () => {
 
     const badPeerInfo: ContactInfoContent = {
       peerId: '',
+      excludedHashes: [],
+      count: 0,
     };
     // fails because this peerinfo has no RPC to sync from
-    hub.simpleSyncFromPeer(badPeerInfo);
+    await hub.handleContactInfo(badPeerInfo);
     badPeerInfo.rpcAddress = { address: '', port: 0, family: 'ip4' };
     // fails because hub has no peers (despite this peerInfo having an rpc address)
-    hub.simpleSyncFromPeer(badPeerInfo);
+    await hub.handleContactInfo(badPeerInfo);
 
     expect(syncHandler).toBeCalledTimes(2);
 

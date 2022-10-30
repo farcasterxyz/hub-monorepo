@@ -31,13 +31,9 @@ export type Content = IdRegistryContent | UserContent | ContactInfoContent;
  * over the gossip network.
  *
  * @message - The Farcaster Message that needs to be sent
- * @root - The current merkle root of the sender's trie
- * @count - The number of messages under the root
  */
 export type UserContent = {
   message: Message;
-  root: string;
-  count: number;
 };
 
 /**
@@ -45,25 +41,24 @@ export type UserContent = {
  * over the gossip network.
  *
  * @message - The Farcaster IdRegistryEvent that needs to be sent
- * @root - The current merkle root of the sender's trie
- * @count - The number of messages under the root
  */
 export type IdRegistryContent = {
   message: IdRegistryEvent;
-  root: string;
-  count: number;
 };
 
 /**
  * ContactInfoContent allows gossip nodes to share additional information about each other
  * over the gossip network.
  *
- * @peerId - The peerId of the node
  * @rpcAddress - The address at which this node is serving RPC requests. Unset if RPC is not offered.
+ * @excludedHashes - The excluded hashes of the sender's current trie snapshot
+ * @count - The number of messages under the root
  */
 export type ContactInfoContent = {
   peerId: string;
   rpcAddress?: AddressInfo;
+  excludedHashes: string[];
+  count: number;
 };
 
 /**

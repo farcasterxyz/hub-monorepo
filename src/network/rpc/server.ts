@@ -71,6 +71,31 @@ export class RPCServer {
           params: Object,
         }),
 
+        [RPCRequest.GetSyncMetadataByPrefix]: new jayson.Method({
+          handler: async (args: any) => {
+            const result = await rpcHandler.getSyncMetadataByPrefix(args.prefix);
+            if (result.isErr()) throw rpcError(result.error.statusCode, result.error.message);
+            return result.value;
+          },
+          params: Object,
+        }),
+
+        [RPCRequest.GetSyncIdsByPrefix]: new jayson.Method({
+          handler: async (args: any) => {
+            const result = await rpcHandler.getSyncIdsByPrefix(args.prefix);
+            if (result.isErr()) throw rpcError(result.error.statusCode, result.error.message);
+            return result.value;
+          },
+          params: Object,
+        }),
+
+        [RPCRequest.GetMessagesByHashes]: new jayson.Method({
+          handler: async (args: any) => {
+            return await rpcHandler.getMessagesByHashes(args.hashes);
+          },
+          params: Object,
+        }),
+
         [RPCRequest.SubmitMessage]: new jayson.Method({
           handler: async (args: any) => {
             const result = await rpcHandler.submitMessage(args.message);

@@ -4,6 +4,7 @@ import jayson, { JSONRPCError } from 'jayson/promise';
 import { Cast, Follow, IdRegistryEvent, Message, Reaction, Verification } from '~/types';
 import { replacer, reviver, RPCRequest } from './interfaces';
 import { ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
+import { NodeMetadata } from '~/network/sync/merkleTrie';
 
 export class RPCClient {
   private _tcpClient!: jayson.client;
@@ -94,5 +95,29 @@ export class RPCClient {
       return new Err(response.error);
     }
     return new Ok(undefined);
+  }
+
+  async getSyncMetadataByPrefix(prefix: string): Promise<Result<NodeMetadata, JSONRPCError>> {
+    const response = await this._tcpClient.request(RPCRequest.GetSyncMetadataByPrefix, { prefix });
+    if (response.error) {
+      return new Err(response.error);
+    }
+    return new Ok(response.result);
+  }
+
+  async getSyncIdsByPrefix(prefix: string): Promise<Result<string[], JSONRPCError>> {
+    const response = await this._tcpClient.request(RPCRequest.GetSyncIdsByPrefix, { prefix });
+    if (response.error) {
+      return new Err(response.error);
+    }
+    return new Ok(response.result);
+  }
+
+  async getMessagesByHashes(hashes: string[]): Promise<Result<Message[], JSONRPCError>> {
+    const response = await this._tcpClient.request(RPCRequest.GetMessagesByHashes, { hashes });
+    if (response.error) {
+      return new Err(response.error);
+    }
+    return new Ok(response.result);
   }
 }

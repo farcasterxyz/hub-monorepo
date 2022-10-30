@@ -33,6 +33,15 @@ import { CastURL, CastId, ChainAccountURL, UserId, UserURL } from '~/urls';
 // import {  } from '~/urls/castUrl';
 import { AccountId } from 'caip';
 
+const generateTimestamp = (minDate: Date | undefined, maxDate: Date | undefined): number => {
+  minDate = minDate || new Date(2020, 0, 1);
+  if (minDate && maxDate) {
+    return faker.date.between(minDate, maxDate).getTime();
+  } else {
+    return faker.date.recent().getTime();
+  }
+};
+
 /**
  * getMessageSigner gets or generates a signer based on a message and transient params object
  */
@@ -115,7 +124,7 @@ export const Factories = {
           text: faker.lorem.sentence(2),
           mentions: [faker.datatype.number()],
         },
-        signedAt: faker.date.recent().getTime(),
+        signedAt: generateTimestamp(transientParams.minDate, transientParams.maxDate),
         fid: faker.datatype.number(),
         type: MessageType.CastShort,
         network: FarcasterNetwork.Testnet,
@@ -139,7 +148,7 @@ export const Factories = {
         body: {
           targetHash: faker.datatype.hexadecimal({ length: 128 }).toLowerCase(),
         },
-        signedAt: faker.date.recent().getTime(),
+        signedAt: generateTimestamp(transientParams.minDate, transientParams.maxDate),
         fid: faker.datatype.number(),
         type: MessageType.CastRemove,
         network: FarcasterNetwork.Testnet,
@@ -163,7 +172,7 @@ export const Factories = {
         body: {
           targetCastUri: CastURLFactory.build().toString(),
         },
-        signedAt: faker.date.recent().getTime(),
+        signedAt: generateTimestamp(transientParams.minDate, transientParams.maxDate),
         fid: faker.datatype.number(),
         type: MessageType.CastRecast,
         network: FarcasterNetwork.Testnet,
@@ -189,7 +198,7 @@ export const Factories = {
             targetUri: faker.internet.url(),
             type: 'like',
           },
-          signedAt: faker.date.recent().getTime(),
+          signedAt: generateTimestamp(transientParams.minDate, transientParams.maxDate),
           fid: faker.datatype.number(),
           type: MessageType.ReactionAdd,
           network: FarcasterNetwork.Testnet,
@@ -216,7 +225,7 @@ export const Factories = {
             targetUri: faker.internet.url(),
             type: 'like',
           },
-          signedAt: faker.date.recent().getTime(),
+          signedAt: generateTimestamp(transientParams.minDate, transientParams.maxDate),
           fid: faker.datatype.number(),
           type: MessageType.ReactionRemove,
           network: FarcasterNetwork.Testnet,
@@ -241,7 +250,7 @@ export const Factories = {
         body: {
           targetUri: UserURLFactory.build().toString(),
         },
-        signedAt: faker.date.recent().getTime(),
+        signedAt: generateTimestamp(transientParams.minDate, transientParams.maxDate),
         fid: faker.datatype.number(),
         type: MessageType.FollowAdd,
         network: FarcasterNetwork.Testnet,
@@ -266,7 +275,7 @@ export const Factories = {
           body: {
             targetUri: UserURLFactory.build().toString(),
           },
-          signedAt: faker.date.recent().getTime(),
+          signedAt: generateTimestamp(transientParams.minDate, transientParams.maxDate),
           fid: faker.datatype.number(),
           type: MessageType.FollowRemove,
           network: FarcasterNetwork.Testnet,
@@ -314,7 +323,7 @@ export const Factories = {
           body: {
             delegate: '',
           },
-          signedAt: faker.date.recent().getTime(),
+          signedAt: generateTimestamp(transientParams.minDate, transientParams.maxDate),
           fid: faker.datatype.number(),
           type: MessageType.SignerAdd,
           network: FarcasterNetwork.Testnet,
@@ -343,7 +352,7 @@ export const Factories = {
           body: {
             delegate: '',
           },
-          signedAt: faker.date.recent().getTime(),
+          signedAt: generateTimestamp(transientParams.minDate, transientParams.maxDate),
           fid: faker.datatype.number(),
           type: MessageType.SignerRemove,
           network: FarcasterNetwork.Testnet,
@@ -396,7 +405,7 @@ export const Factories = {
           externalSignature: '',
           externalSignatureType: SignatureAlgorithm.EthereumPersonalSign,
         },
-        signedAt: faker.date.recent().getTime(),
+        signedAt: generateTimestamp(transientParams.minDate, transientParams.maxDate),
         fid: faker.datatype.number(),
         type: MessageType.VerificationEthereumAddress,
         network: FarcasterNetwork.Testnet,
@@ -421,7 +430,7 @@ export const Factories = {
           body: {
             claimHash: faker.datatype.hexadecimal({ length: 128 }).toLowerCase(),
           },
-          signedAt: faker.date.recent().getTime(),
+          signedAt: generateTimestamp(transientParams.minDate, transientParams.maxDate),
           fid: faker.datatype.number(),
           type: MessageType.VerificationRemove,
           network: FarcasterNetwork.Testnet,
