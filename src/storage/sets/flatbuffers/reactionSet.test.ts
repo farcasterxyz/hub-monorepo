@@ -47,17 +47,20 @@ describe('getReactionAdd', () => {
     await expect(set.getReactionAdd(fid, reactionAdd.body().type(), castId)).rejects.toThrow(NotFoundError);
   });
 
-  test('fails if only reactionRemove exists for the target', async () => {
+  test('fails if only ReactionRemove exists for the target', async () => {
     await set.merge(reactionRemove);
     await expect(set.getReactionAdd(fid, reactionAdd.body().type(), castId)).rejects.toThrow(NotFoundError);
+  });
+
+  test('fails if the wrong reaction type is provided', async () => {
+    await set.merge(reactionAdd);
+    await expect(set.getReactionAdd(fid, ReactionType.Recast, castId)).rejects.toThrow(NotFoundError);
   });
 
   test('returns message if it exists for the target', async () => {
     await set.merge(reactionAdd);
     await expect(set.getReactionAdd(fid, reactionAdd.body().type(), castId)).resolves.toEqual(reactionAdd);
   });
-
-  // TEST: works for other types of reactions
 });
 
 describe('getReactionRemove', () => {
@@ -70,12 +73,15 @@ describe('getReactionRemove', () => {
     await expect(set.getReactionRemove(fid, reactionAdd.body().type(), castId)).rejects.toThrow(NotFoundError);
   });
 
+  test('fails if the wrong reaction type is provided', async () => {
+    await set.merge(reactionRemove);
+    await expect(set.getReactionRemove(fid, ReactionType.Recast, castId)).rejects.toThrow(NotFoundError);
+  });
+
   test('returns reactionRemove if it exists for the target', async () => {
     await set.merge(reactionRemove);
     await expect(set.getReactionRemove(fid, reactionRemove.body().type(), castId)).resolves.toEqual(reactionRemove);
   });
-
-  // TEST: works for other types of reactions
 });
 
 describe('getReactionAddsByFid', () => {
@@ -85,28 +91,39 @@ describe('getReactionAddsByFid', () => {
     await expect(set.getReactionAddsByFid(fid)).resolves.toEqual([reactionAdd]);
   });
 
-  test('returns empty array if no reactionAdd exists', async () => {
+  test('returns empty array if no ReactionAdd exists', async () => {
     await expect(set.getReactionAddsByFid(fid)).resolves.toEqual([]);
   });
 
-  // TODO: test that this works even when reactionAdds at the same target exist
+  test('returns empty array if no ReactionAdd exists, even if ReactionRemove exists', async () => {
+    await set.merge(reactionRemove);
+    await expect(set.getReactionAddsByFid(fid)).resolves.toEqual([]);
+  });
 });
 
 describe('getReactionRemovesByFid', () => {
-  test('returns reactionRemoves if they exist', async () => {
+  test('returns ReactionRemove if it exists', async () => {
     // TODO: Add multiple and assert that they are returned in the correct ordering
     await set.merge(reactionRemove);
     await expect(set.getReactionRemovesByFid(fid)).resolves.toEqual([reactionRemove]);
   });
 
-  test('returns empty array if no reactionRemoves exists', async () => {
+  test('returns empty array if no ReactionRemove exists', async () => {
     await expect(set.getReactionRemovesByFid(fid)).resolves.toEqual([]);
   });
 
-  // TODO: test that this works even when reactionAdds at the same target exist
+  test('returns empty array if no ReactionRemove exists, even if ReactionAdds exists', async () => {
+    await set.merge(reactionAdd);
+    await expect(set.getReactionRemovesByFid(fid)).resolves.toEqual([]);
+  });
 });
 
 describe('getReactionsByTarget', () => {
+  test('returns empty array if no reactions exist', async () => {
+    const byCast = await set.getReactionsByTarget(castId);
+    expect(new Set(byCast)).toEqual(new Set([]));
+  });
+
   test('returns reactions for a target', async () => {
     const sameUserData = await Factories.ReactionAddData.create({
       body: reactionAdd.body().unpack() || null,
@@ -123,13 +140,13 @@ describe('getReactionsByTarget', () => {
     expect(new Set(byCast)).toEqual(new Set([reactionAdd, sameUser]));
   });
 
-  // TODO: returns empty array if none exist
+  test('returns empty array if reactions exist, but for a different target', async () => {
+    await set.merge(reactionAdd);
 
-  // TODO: returns empty array if reactions exist but for a different target
-
-  // TODO: what does it return if both an add and a remove exist? This should be implemented after the merge set is done.
-
-  // TODO: what does it return if multiple adds exist?
+    const unknownCastId = await Factories.CastID.create();
+    const byCast = await set.getReactionsByTarget(unknownCastId);
+    expect(new Set(byCast)).toEqual(new Set([]));
+  });
 });
 
 describe('merge', () => {
