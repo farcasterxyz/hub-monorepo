@@ -97,6 +97,22 @@ describe('MerkleTrie', () => {
       expect(trie.get(syncId)).toBeFalsy();
     });
 
+    test('deleting an item that does not exist does not change the trie', async () => {
+      const message = await Factories.CastShort.create();
+      const syncId = new SyncId(message);
+
+      const trie = new MerkleTrie();
+      trie.insert(syncId);
+
+      const rootHashBeforeDelete = trie.rootHash;
+      const message2 = await Factories.CastShort.create();
+      const syncId2 = new SyncId(message2);
+      trie.delete(syncId2);
+
+      expect(trie.rootHash).toEqual(rootHashBeforeDelete);
+      expect(trie.items).toEqual(1);
+    });
+
     test('delete is an exact inverse of insert', async () => {
       const message1 = await Factories.CastShort.create();
       const syncId1 = new SyncId(message1);
