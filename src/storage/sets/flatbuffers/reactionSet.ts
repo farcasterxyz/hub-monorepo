@@ -140,9 +140,6 @@ class ReactionSet {
   /*                              Instance Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  // DISCUSS: ErrorHandling for public methods when making calls to the database. Should we treat
-  // as regular database and force handlers to check Result objects?
-
   /**
    * Finds a ReactionAdd Message by checking the Adds Set index
    *
@@ -231,7 +228,9 @@ class ReactionSet {
   private async mergeAdd(message: ReactionAddModel): Promise<void> {
     const castId = message.body().cast();
 
-    if (castId) {
+    if (!castId) {
+      throw new BadRequestError('castId is missing');
+    } else {
       const targetKey = this.targetKeyForCastId(castId);
 
       let txn = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
