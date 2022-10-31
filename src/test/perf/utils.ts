@@ -1,5 +1,6 @@
 import { JSONRPCError } from 'jayson/promise';
 import { err, ok, Result } from 'neverthrow';
+import ProgressBar from 'progress';
 import { RPCClient } from '~/network/rpc';
 import { IdRegistryEvent, Message } from '~/types';
 import { isIdRegistryEvent, isMessage } from '~/types/typeguards';
@@ -9,6 +10,13 @@ import { logger } from '~/utils/logger';
 export const submitInBatches = async (rpcClient: RPCClient, messages: Message[] | IdRegistryEvent[]) => {
   // limits what we try to do in parallel. If this number is too large, we'll run out of sockets to use for tcp
   const BATCH_SIZE = 100;
+
+  const progress = new ProgressBar('   Submitting [:bar] :elapseds :rate messages/s :percent :etas', {
+    complete: '=',
+    incomplete: ' ',
+    width: 20,
+    total: messages.length,
+  });
   let results: Result<void, JSONRPCError>[] = [];
   for (let i = 0; i < messages.length; i += BATCH_SIZE) {
     const batch = messages.slice(i, i + BATCH_SIZE);
@@ -23,6 +31,7 @@ export const submitInBatches = async (rpcClient: RPCClient, messages: Message[] 
         throw Error('Trying to send invalid message');
       })
     );
+    progress.tick(BATCH_SIZE);
     results = results.concat(innerRes);
   }
   return getCounts(results);

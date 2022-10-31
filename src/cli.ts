@@ -37,7 +37,6 @@ app
   .option('--ip <ip-address>', 'The IP address libp2p should listen on. (default: "127.0.0.1")')
   .option('-g, --gossip-port <port>', 'The tcp port libp2p should gossip over. (default: random port)')
   .option('-r, --rpc-port <port>', 'The tcp port that the rpc server should listen on.  (default: random port)')
-  .option('--simple-sync <enabled>', 'Toggle simple sync')
   .option('--db-name <name>', 'The name of the RocksDB instance')
   .option('--db-reset', 'Clears the database before starting')
   .option('-i, --id <filepath>', 'Path to the PeerId file')
@@ -75,7 +74,6 @@ app
       bootstrapAddrs: cliOptions.bootstrap ?? hubConfig.bootstrap,
       allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort,
-      simpleSync: cliOptions.simpleSync ?? hubConfig.simpleSync,
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
       resetDB: cliOptions.dbReset ?? hubConfig.dbReset,
     };

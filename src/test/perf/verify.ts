@@ -14,7 +14,10 @@ export const waitForSync = async (rpcClients: RPCClient[]) => {
     }, 5 * 60 * 1000);
   }
 
-  if (rpcClients.length <= 1) return;
+  if (rpcClients.length <= 1) {
+    clearInterval(syncTimer);
+    return;
+  }
   logger.info('Waiting for network to synchronize');
 
   const lastClient = [...rpcClients].shift();
