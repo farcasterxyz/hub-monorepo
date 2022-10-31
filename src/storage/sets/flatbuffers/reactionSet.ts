@@ -51,13 +51,15 @@ class ReactionSet {
    * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPrefix>:<targetKey?>:<type?>
    */
   static reactionAddsKey(fid: Uint8Array, type?: ReactionType, targetKey?: Uint8Array): Buffer {
-    // TODO: throw if type is not provided
+    if (targetKey && !type) {
+      throw new BadRequestError('targetKey provided without type');
+    }
 
     return Buffer.concat([
       MessageModel.userKey(fid), // --------------------------- fid prefix, 33 bytes
       Buffer.from([UserPrefix.ReactionAdds]), // -------------- reaction_adds key, 1 byte
-      targetKey ? Buffer.from(targetKey) : new Uint8Array(), //-- target id, variable bytes
       type ? Buffer.from([type]) : new Uint8Array(), //-------- type, 1 byte
+      targetKey ? Buffer.from(targetKey) : new Uint8Array(), //-- target id, variable bytes
     ]);
   }
 
@@ -71,13 +73,15 @@ class ReactionSet {
    * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPrefix>:<targetKey?>:<type?>
    */
   static reactionRemovesKey(fid: Uint8Array, type?: ReactionType, targetKey?: Uint8Array): Buffer {
-    // TODO: throw if type is not provided
+    if (targetKey && !type) {
+      throw new BadRequestError('targetKey provided without type');
+    }
 
     return Buffer.concat([
       MessageModel.userKey(fid), // --------------------------- fid prefix, 33 bytes
       Buffer.from([UserPrefix.ReactionRemoves]), // ----------- reaction_adds key, 1 byte
-      targetKey ? Buffer.from(targetKey) : new Uint8Array(), //-- target id, variable bytes
       type ? Buffer.from([type]) : new Uint8Array(), //-------- type, 1 byte
+      targetKey ? Buffer.from(targetKey) : new Uint8Array(), //-- target id, variable bytes
     ]);
   }
 
