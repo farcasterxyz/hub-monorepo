@@ -1,4 +1,3 @@
-// import { ID_LENGTH } from '~/network/sync/syncId';
 import { createHash } from 'crypto';
 
 /**
@@ -80,6 +79,8 @@ class TrieNode {
     const success = this._children.get(char)?.delete(key, current_index + 1);
     if (success) {
       this._items -= 1;
+      // Delete the child if it's empty. This is required to make sure the hash will be the same
+      // as another trie that doesn't have this node in the first place.
       if (this._children.get(char)?.items === 0) {
         this._children.delete(char);
       }

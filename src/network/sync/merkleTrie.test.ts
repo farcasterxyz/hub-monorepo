@@ -89,10 +89,12 @@ describe('MerkleTrie', () => {
       trie.insert(syncId);
       expect(trie.items).toEqual(1);
       expect(trie.rootHash).toBeTruthy();
+      expect(trie.get(syncId)).toBeTruthy();
 
       trie.delete(syncId);
       expect(trie.items).toEqual(0);
       expect(trie.rootHash).toEqual(emptyHash);
+      expect(trie.get(syncId)).toBeFalsy();
     });
 
     test('delete is an exact inverse of insert', async () => {

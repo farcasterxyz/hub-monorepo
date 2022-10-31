@@ -35,6 +35,9 @@ class SyncEngine {
       this.addMessage(message);
     });
     this.engine.onDBEvent('messageDeleted', async (message) => {
+      // Note: There's no guarantee that the message is actually deleted, because the transaction could fail.
+      // This is fine, because we'll just end up syncing the message again. It's much worse to miss a removal and cause
+      // the trie to diverge in a way that's not recoverable without reconstructing it from the db.
       this.removeMessage(message);
     });
   }
@@ -60,7 +63,7 @@ class SyncEngine {
     this._trie.delete(new SyncId(message));
   }
 
-  public shouldSync(excludedHashes: string[], numMessages: number): boolean {
+  public shouldSync(excludedHashes: string[]): boolean {
     if (this._isSyncing) {
       log.debug('shouldSync: already syncing');
       return false;
@@ -75,16 +78,12 @@ class SyncEngine {
       // Excluded hashes match exactly, so we don't need to sync
       log.debug('shouldSync: excluded hashes match');
       return false;
+    } else {
+      log.debug('shouldSync: excluded hashes mismatch');
+      // Because of message removals, we cannot rely on number of messages to determine which hub is ahead,
+      // so always return true if the hashes don't match.
+      return true;
     }
-    if (ourSnapshot.numMessages > numMessages) {
-      log.debug('shouldSync: we have more messages');
-      // We have more messages than the other hub, we don't need to sync
-      return false;
-    }
-
-    // We have equal fewer messages and the hashes don't match, so must sync
-    log.debug('shouldSync: we have fewer messages');
-    return true;
   }
 
   async performSync(excludedHashes: string[], rpcClient: RPCClient) {

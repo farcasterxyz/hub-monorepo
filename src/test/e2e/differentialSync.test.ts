@@ -102,7 +102,7 @@ describe('differentialSync', () => {
     expect(hubASyncEngine.trie.items).toEqual(hubBSyncEngine.trie.items);
     expect(hubASyncEngine.trie.rootHash).toEqual(hubBSyncEngine.trie.rootHash);
     const snapshot = hubASyncEngine.snapshot;
-    expect(hubBSyncEngine.shouldSync(snapshot.excludedHashes, snapshot.numMessages)).toBeFalsy();
+    expect(hubBSyncEngine.shouldSync(snapshot.excludedHashes)).toBeFalsy();
 
     for (const user of userIds) {
       const casts = await hubAStorageEngine.getAllCastsByUser(user);
@@ -124,7 +124,7 @@ describe('differentialSync', () => {
       expect(await hubBStorageEngine.getUsers()).toEqual(new Set());
 
       const snapshot = hubASyncEngine.snapshot;
-      expect(hubBSyncEngine.shouldSync(snapshot.excludedHashes, snapshot.numMessages)).toBeTruthy();
+      expect(hubBSyncEngine.shouldSync(snapshot.excludedHashes)).toBeTruthy();
       await hubBSyncEngine.performSync(snapshot.excludedHashes, hubARPCClient);
       await ensureEnginesEqual();
     },
@@ -159,7 +159,7 @@ describe('differentialSync', () => {
 
       const serverSnapshot = hubASyncEngine.snapshot;
       expect(serverSnapshot.numMessages).toEqual(hubBSyncEngine.snapshot.numMessages + newMessages);
-      expect(hubBSyncEngine.shouldSync(serverSnapshot.excludedHashes, serverSnapshot.numMessages)).toBeTruthy();
+      expect(hubBSyncEngine.shouldSync(serverSnapshot.excludedHashes)).toBeTruthy();
 
       const divergencePrefix = hubBSyncEngine.trie.getDivergencePrefix(
         hubBSyncEngine.snapshot.prefix,
@@ -192,15 +192,14 @@ describe('differentialSync', () => {
     async () => {
       await hubBSyncEngine.performSync(hubASyncEngine.snapshot.excludedHashes, hubARPCClient);
 
-      // add new messages to the server and sync again
-      const newMessages = 1;
+      // Remove a user's messages
       const now = Date.now();
       const messages = await Factories.SignerRemove.create(
         { data: { fid: userInfos[0].fid, body: { delegate: userInfos[0].delegateSigner.signerKey } } },
         {
           transient: {
             signer: userInfos[0].ethereumSigner,
-            minDate: new Date(now - 1000 * 100), // Between 100-50 seconds ago
+            minDate: new Date(now - 1000 * 100), // Between 100-50 seconds ago (before sync threshold)
             maxDate: new Date(now - 1000 * 50),
           },
         }
@@ -209,8 +208,7 @@ describe('differentialSync', () => {
       expect(res.isOk()).toBeTruthy();
 
       const serverSnapshot = hubASyncEngine.snapshot;
-      expect(serverSnapshot.numMessages).toEqual(hubBSyncEngine.snapshot.numMessages + newMessages);
-      expect(hubBSyncEngine.shouldSync(serverSnapshot.excludedHashes, serverSnapshot.numMessages)).toBeTruthy();
+      expect(hubBSyncEngine.shouldSync(serverSnapshot.excludedHashes)).toBeTruthy();
 
       await hubBSyncEngine.performSync(serverSnapshot.excludedHashes, hubARPCClient);
       // Wait a few seconds for the remove to delete all messages
@@ -222,9 +220,8 @@ describe('differentialSync', () => {
   );
 
   test(
-    'syncing with a hub that has removed messages converges',
+    'syncing an empty client with a hub that has removed messages converges',
     async () => {
-      // add new messages to the server and sync again
       const now = Date.now();
       const signerRemove = await Factories.SignerRemove.create(
         { data: { fid: userInfos[0].fid, body: { delegate: userInfos[0].delegateSigner.signerKey } } },

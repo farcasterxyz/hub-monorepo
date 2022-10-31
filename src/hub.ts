@@ -202,7 +202,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       log.debug(`Already syncing, skipping sync`);
       return;
     }
-    if (!this.syncEngine.shouldSync(message.excludedHashes, message.count)) {
+    if (!this.syncEngine.shouldSync(message.excludedHashes)) {
       log.debug(`Upto date with peer, skipping sync`);
       this.emit('syncComplete', false);
       return;
