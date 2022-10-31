@@ -1,4 +1,5 @@
 import MessageModel from '~/storage/flatbuffers/model';
+// TODO: Import all and apply the types model here to avoid bloated imports
 import {
   CastAddModel,
   CastRemoveModel,
@@ -6,6 +7,8 @@ import {
   FollowRemoveModel,
   SignerAddModel,
   SignerRemoveModel,
+  ReactionAddModel,
+  ReactionRemoveModel,
   VerificationAddEthAddressModel,
   VerificationRemoveModel,
 } from '~/storage/flatbuffers/types';
@@ -25,6 +28,14 @@ export const isFollowRemove = (message: MessageModel): message is FollowRemoveMo
 
 export const isFollowAdd = (message: MessageModel): message is FollowAddModel => {
   return message.type() === MessageType.FollowAdd && message.data.bodyType() === MessageBody.FollowBody;
+};
+
+export const isReactionAdd = (message: MessageModel): message is ReactionAddModel => {
+  return message.type() === MessageType.ReactionAdd && message.data.bodyType() === MessageBody.ReactionBody;
+};
+
+export const isReactionRemove = (message: MessageModel): message is ReactionRemoveModel => {
+  return message.type() === MessageType.ReactionRemove && message.data.bodyType() === MessageBody.ReactionBody;
 };
 
 export const isVerificationRemove = (message: MessageModel): message is VerificationRemoveModel => {

@@ -1,4 +1,6 @@
 import MessageModel from '~/storage/flatbuffers/model';
+import { VerificationAddEthAddressBody } from '~/utils/generated/farcaster/verification-add-eth-address-body';
+import { VerificationRemoveBody } from '~/utils/generated/farcaster/verification-remove-body';
 import {
   CastAddBody,
   CastRemoveBody,
@@ -7,15 +9,20 @@ import {
   SignerBody,
   VerificationAddEthAddressBody,
   VerificationRemoveBody,
+  ReactionBody,
 } from '~/utils/generated/message_generated';
 
+// TODO: Document the purpose of root prefix
+// Used to prefix keys so that we know if they are a message or an index of some sort.
 export enum RootPrefix {
   User = 1,
   CastsByParent = 2,
   CastsByMention = 3,
   FollowsByUser = 4,
+  ReactionsByTarget = 5,
 }
 
+// TODO: Document the purpose of user prefix
 export enum UserPrefix {
   CastMessage = 1,
   CastAdds = 2,
@@ -24,20 +31,25 @@ export enum UserPrefix {
   FollowMessage = 5,
   FollowAdds = 6,
   FollowRemoves = 7,
-  VerificationMessage = 8,
-  VerificationAdds = 9,
-  VerificationRemoves = 10,
-  IDRegistryEvent = 11,
-  SignerMessage = 12,
-  SignerAdds = 13,
-  SignerRemoves = 14,
+
+  ReactionMessage = 8,
+  ReactionAdds = 9,
+  ReactionRemoves = 10,
+  VerificationMessage = 11,
+  VerificationAdds = 12,
+  VerificationRemoves = 13,
+  IDRegistryEvent = 14,
+  SignerMessage = 15,
+  SignerAdds = 16,
+  SignerRemoves = 17,
 }
 
 export type UserMessagePrefix =
   | UserPrefix.CastMessage
   | UserPrefix.FollowMessage
   | UserPrefix.VerificationMessage
-  | UserPrefix.SignerMessage;
+  | UserPrefix.SignerMessage
+  | UserPrefix.ReactionMessage;
 
 export interface CastRemoveModel extends MessageModel {
   body(): CastRemoveBody;
@@ -53,6 +65,14 @@ export interface FollowAddModel extends MessageModel {
 
 export interface FollowRemoveModel extends MessageModel {
   body(): FollowBody;
+}
+
+export interface ReactionAddModel extends MessageModel {
+  body(): ReactionBody;
+}
+
+export interface ReactionRemoveModel extends MessageModel {
+  body(): ReactionBody;
 }
 
 export interface VerificationAddEthAddressModel extends MessageModel {

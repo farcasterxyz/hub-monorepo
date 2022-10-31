@@ -2,6 +2,7 @@ import { ByteBuffer } from 'flatbuffers';
 import {
   CastAddBody,
   CastRemoveBody,
+  ReactionBody,
   FollowBody,
   Message,
   MessageBody,
@@ -17,6 +18,8 @@ import { VerificationRemoveBody } from '~/utils/generated/farcaster/verification
 /** Used when index keys are sufficiently descriptive */
 export const TRUE_VALUE = Buffer.from([1]);
 export const FID_BYTES = 32;
+
+// TODO: Add docs explaining the purpose of this class
 
 export default class MessageModel {
   public message: Message;
@@ -129,6 +132,10 @@ export default class MessageModel {
       return UserPrefix.CastMessage;
     }
 
+    if (this.type() === MessageType.ReactionAdd || this.type() === MessageType.ReactionRemove) {
+      return UserPrefix.ReactionMessage;
+    }
+
     if (this.type() === MessageType.FollowAdd || this.type() === MessageType.FollowRemove) {
       return UserPrefix.FollowMessage;
     }
@@ -198,7 +205,8 @@ export default class MessageModel {
     | FollowBody
     | VerificationAddEthAddressBody
     | VerificationRemoveBody
-    | SignerBody {
+    | SignerBody
+    | ReactionBody {
     if (this.data.bodyType() === MessageBody.CastAddBody) {
       return this.data.body(new CastAddBody()) as CastAddBody;
     } else if (this.data.bodyType() === MessageBody.CastRemoveBody) {
@@ -211,6 +219,8 @@ export default class MessageModel {
       return this.data.body(new VerificationRemoveBody()) as VerificationRemoveBody;
     } else if (this.data.bodyType() === MessageBody.SignerBody) {
       return this.data.body(new SignerBody()) as SignerBody;
+    } else if (this.data.bodyType() === MessageBody.ReactionBody) {
+      return this.data.body(new ReactionBody()) as ReactionBody;
     }
 
     // TODO: add all body types
