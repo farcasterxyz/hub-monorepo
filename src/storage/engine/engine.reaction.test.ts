@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import ReactionDB from '~/storage/db/reaction';
 import Engine from '~/storage/engine';
-import { BadRequestError } from '~/utils/errors';
+import { BadRequestError, UnknownUserError } from '~/utils/errors';
 import { Factories } from '~/test/factories';
 import {
   Ed25519Signer,
@@ -61,7 +61,7 @@ describe('mergeReaction', () => {
 
   test('fails if there are no known signers', async () => {
     const result = await engine.mergeMessage(reaction);
-    expect(result._unsafeUnwrapErr()).toMatchObject(new BadRequestError('validateMessage: unknown user'));
+    expect(result._unsafeUnwrapErr()).toMatchObject(new UnknownUserError('validateMessage: unknown user'));
     await expect(aliceAdds()).resolves.toEqual(new Set([]));
   });
 
@@ -90,7 +90,7 @@ describe('mergeReaction', () => {
         const unknownUser = await Factories.ReactionAdd.create({ data: { fid: aliceFid + 1 } }, transient);
 
         expect((await engine.mergeMessage(unknownUser))._unsafeUnwrapErr()).toMatchObject(
-          new BadRequestError('validateMessage: unknown user')
+          new UnknownUserError('validateMessage: unknown user')
         );
         await expect(aliceAdds()).resolves.toEqual(new Set([]));
       });

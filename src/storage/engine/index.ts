@@ -42,7 +42,7 @@ import { Web2URL } from '~/urls/web2Url';
 import IdRegistryProvider from '~/storage/provider/idRegistryProvider';
 import { CastHash } from '~/urls/castUrl';
 import RocksDB from '~/storage/db/rocksdb';
-import { BadRequestError, FarcasterError, ServerError } from '~/utils/errors';
+import { BadRequestError, FarcasterError, ServerError, UnknownUserError } from '~/utils/errors';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import MessageDB, { MessageDBEvents } from '~/storage/db/message';
 import { logger } from '~/utils/logger';
@@ -300,7 +300,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       this._signerSet.getCustodyAddress(message.data.fid),
       () => undefined
     );
-    if (custodyEvent.isErr()) return err(new BadRequestError('validateMessage: unknown user'));
+    if (custodyEvent.isErr()) return err(new UnknownUserError('validateMessage: unknown user'));
 
     // 2. Check that the signer is valid if message is not a signer message
     if (!isSignerMessage(message)) {

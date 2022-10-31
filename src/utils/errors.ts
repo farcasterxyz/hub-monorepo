@@ -10,6 +10,10 @@ export class NotFoundError extends FarcasterError {
   public override readonly statusCode = 404;
 }
 
+export class UnknownUserError extends FarcasterError {
+  public override readonly statusCode = 412; // Precondition Failed
+}
+
 export class BadRequestError extends FarcasterError {
   public override readonly statusCode = 400;
 }

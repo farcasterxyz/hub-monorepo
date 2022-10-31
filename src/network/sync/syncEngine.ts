@@ -164,7 +164,8 @@ class SyncEngine {
         // TODO: Optimize by collecting all failures and retrying them in a batch
         for (const msg of msgs) {
           const result = await this.engine.mergeMessage(msg, 'SyncEngine');
-          if (result.isErr() && result.error.message.includes('unknown user')) {
+          // Unknown user error
+          if (result.isErr() && result.error.statusCode === 412) {
             log.warn({ fid: msg.data.fid }, 'Unknown user, fetching custody event');
             const result = await this.syncUserAndRetryMessage(msg, rpcClient);
             mergeResults.push(result);
