@@ -194,7 +194,7 @@ describe('differentialSync', () => {
 
       // Remove a user's messages
       const now = Date.now();
-      const messages = await Factories.SignerRemove.create(
+      const message = await Factories.SignerRemove.create(
         { data: { fid: userInfos[0].fid, body: { delegate: userInfos[0].delegateSigner.signerKey } } },
         {
           transient: {
@@ -204,7 +204,7 @@ describe('differentialSync', () => {
           },
         }
       );
-      const res = await hubAStorageEngine.mergeMessage(messages);
+      const res = await hubAStorageEngine.mergeMessage(message);
       expect(res.isOk()).toBeTruthy();
 
       const serverSnapshot = hubASyncEngine.snapshot;
@@ -212,8 +212,34 @@ describe('differentialSync', () => {
 
       await hubBSyncEngine.performSync(serverSnapshot.excludedHashes, hubARPCClient);
       // Wait a few seconds for the remove to delete all messages
-      await sleep(5_000);
+      await sleep(2_000);
 
+      await ensureEnginesEqual();
+    },
+    TEST_TIMEOUT
+  );
+
+  test(
+    'sync converges even if signer removal is not within sync threshold',
+    async () => {
+      await hubBSyncEngine.performSync(hubASyncEngine.snapshot.excludedHashes, hubARPCClient);
+
+      // Merge a signer remove within sync threshold (should not be picked up for sync)
+      const now = Date.now();
+      const message = await Factories.SignerRemove.create(
+        { data: { fid: userInfos[0].fid, body: { delegate: userInfos[0].delegateSigner.signerKey }, signedAt: now } },
+        { transient: { signer: userInfos[0].ethereumSigner } }
+      );
+      const res = await hubAStorageEngine.mergeMessage(message);
+      expect(res.isOk()).toBeTruthy();
+
+      const serverSnapshot = hubASyncEngine.snapshot;
+      expect(hubASyncEngine.snapshotTimestamp).toBeLessThanOrEqual(now / 1000);
+      expect(hubBSyncEngine.shouldSync(serverSnapshot.excludedHashes)).toBeTruthy();
+
+      await hubBSyncEngine.performSync(serverSnapshot.excludedHashes, hubARPCClient);
+      // Wait a few seconds for the remove to delete all messages
+      await sleep(2_000);
       await ensureEnginesEqual();
     },
     TEST_TIMEOUT
