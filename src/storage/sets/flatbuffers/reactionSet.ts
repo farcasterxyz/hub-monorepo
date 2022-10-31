@@ -234,19 +234,16 @@ class ReactionSet {
     if (castId) {
       const targetKey = this.targetKeyForCastId(castId);
 
-      // DISCUSS: tsx is a hard to search for term and transactions are often abbreviated to
-      // tx or txn instead. should we change?
-
-      let tsx = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
+      let txn = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
 
       // No-op if resolveMergeConflicts did not return a transaction
-      if (!tsx) return undefined;
+      if (!txn) return undefined;
 
       // Add ops to store the message by messageKey, index the the messageKey by set and by target
-      tsx = this.putReactionAddTransaction(tsx, message);
+      txn = this.putReactionAddTransaction(txn, message);
 
       // Commit the RocksDB transaction
-      return this._db.commit(tsx);
+      return this._db.commit(txn);
     }
   }
 
@@ -256,16 +253,16 @@ class ReactionSet {
     if (castId) {
       const targetKey = this.targetKeyForCastId(castId);
 
-      let tsx = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
+      let txn = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
 
       // No-op if resolveMergeConflicts did not return a transaction
-      if (!tsx) return undefined;
+      if (!txn) return undefined;
 
       // Add putFollowRemove operations to the RocksDB transaction
-      tsx = this.putReactionRemoveTransaction(tsx, message);
+      txn = this.putReactionRemoveTransaction(txn, message);
 
       // Commit the RocksDB transaction
-      return this._db.commit(tsx);
+      return this._db.commit(txn);
     }
   }
 
@@ -291,7 +288,7 @@ class ReactionSet {
   }
 
   private async resolveMergeConflicts(
-    tsx: Transaction,
+    txn: Transaction,
     targetKey: Uint8Array,
     message: ReactionAddModel | ReactionRemoveModel
   ): Promise<Transaction | undefined> {
@@ -324,7 +321,7 @@ class ReactionSet {
           UserPrefix.ReactionMessage,
           reactionRemoveTimestampHash.value
         );
-        tsx = this.deleteReactionRemoveTransaction(tsx, existingRemove);
+        txn = this.deleteReactionRemoveTransaction(txn, existingRemove);
       }
     }
 
@@ -355,73 +352,73 @@ class ReactionSet {
           UserPrefix.ReactionMessage,
           reactionAddTimestampHash.value
         );
-        tsx = this.deleteReactionAddTransaction(tsx, existingAdd);
+        txn = this.deleteReactionAddTransaction(txn, existingAdd);
       }
     }
 
-    return tsx;
+    return txn;
   }
 
-  private putReactionAddTransaction(tsx: Transaction, message: ReactionAddModel): Transaction {
+  private putReactionAddTransaction(txn: Transaction, message: ReactionAddModel): Transaction {
     const targetKey = this.targetKeyForMessage(message);
 
     // Puts messageKey -> reactionAddMessage to allow lookups of a message with its message key
-    tsx = MessageModel.putTransaction(tsx, message);
+    txn = MessageModel.putTransaction(txn, message);
 
     // Puts reactionAddKey -> messageKey to allow lookups of message keys within a user's ReactionAdd Set.
-    tsx = tsx.put(
+    txn = txn.put(
       ReactionSet.reactionAddsKey(message.fid(), message.body().type(), targetKey),
       Buffer.from(message.timestampHash())
     );
 
     // Puts reactionsByTargetGet -> messageKey to allow lookups of message keys pointing at a specific target
-    tsx = tsx.put(
+    txn = txn.put(
       ReactionSet.reactionsByTargetKey(targetKey, message.body().type(), message.fid(), message.timestampHash()),
       TRUE_VALUE
     );
 
-    return tsx;
+    return txn;
   }
 
-  private deleteReactionAddTransaction(tsx: Transaction, message: ReactionAddModel): Transaction {
+  private deleteReactionAddTransaction(txn: Transaction, message: ReactionAddModel): Transaction {
     const targetKey = this.targetKeyForMessage(message);
 
     // Delete the reactionAdd's key from the user index
-    tsx = tsx.del(
+    txn = txn.del(
       ReactionSet.reactionsByTargetKey(targetKey, message.body().type(), message.fid(), message.timestampHash())
     );
 
     // Delete the reactionAdd's key from reaction adds set index
-    tsx = tsx.del(ReactionSet.reactionAddsKey(message.fid(), message.body().type(), targetKey));
+    txn = txn.del(ReactionSet.reactionAddsKey(message.fid(), message.body().type(), targetKey));
 
     // Delete the reactionAdd message
-    return MessageModel.deleteTransaction(tsx, message);
+    return MessageModel.deleteTransaction(txn, message);
   }
 
-  private putReactionRemoveTransaction(tsx: Transaction, message: ReactionRemoveModel): Transaction {
+  private putReactionRemoveTransaction(txn: Transaction, message: ReactionRemoveModel): Transaction {
     const targetKey = this.targetKeyForMessage(message);
 
     // Put the reactionRemove message into the database
-    tsx = MessageModel.putTransaction(tsx, message);
+    txn = MessageModel.putTransaction(txn, message);
 
     // Put the key into the reactionRemoves Set index
-    tsx = tsx.put(
+    txn = txn.put(
       ReactionSet.reactionRemovesKey(message.fid(), message.body().type(), targetKey),
       Buffer.from(message.timestampHash())
     );
 
-    return tsx;
+    return txn;
   }
 
-  private deleteReactionRemoveTransaction(tsx: Transaction, message: ReactionRemoveModel): Transaction {
+  private deleteReactionRemoveTransaction(txn: Transaction, message: ReactionRemoveModel): Transaction {
     // Delete the reactionRemove key from reactionRemoves Set
     const targetKey = this.targetKeyForMessage(message);
 
     // TODO: Handling the type this way is unwieldy
-    tsx = tsx.del(ReactionSet.reactionRemovesKey(message.fid(), message.body().type(), targetKey));
+    txn = txn.del(ReactionSet.reactionRemovesKey(message.fid(), message.body().type(), targetKey));
 
     // Delete the reactionRemove message
-    return MessageModel.deleteTransaction(tsx, message);
+    return MessageModel.deleteTransaction(txn, message);
   }
 
   /* Computes the target key prefix for RocksDB given a Message */
