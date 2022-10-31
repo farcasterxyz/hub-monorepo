@@ -42,7 +42,7 @@ class mockRPCHandler implements RPCHandler {
     return hubAStorageEngine.getCustodyEventByUser(fid);
   }
   getSyncMetadataByPrefix(prefix: string): Promise<Result<NodeMetadata, FarcasterError>> {
-    const nodeMetadata = hubASyncEngine.getNodeMetadata(prefix);
+    const nodeMetadata = hubASyncEngine.getTrieNodeMetadata(prefix);
     if (nodeMetadata) {
       return Promise.resolve(ok(nodeMetadata));
     } else {
@@ -167,7 +167,7 @@ describe('differentialSync', () => {
       );
       // The point of divergence should be some distance from the root, and must have fewer messages than the root
       expect(divergencePrefix.length).toBeGreaterThanOrEqual(3);
-      const serverDivergedNodeMetadata = hubASyncEngine.trie.getNodeMetadata(divergencePrefix);
+      const serverDivergedNodeMetadata = hubASyncEngine.trie.getTrieNodeMetadata(divergencePrefix);
       expect(serverDivergedNodeMetadata).toBeDefined();
       expect(serverDivergedNodeMetadata?.numMessages).toBeLessThanOrEqual(hubASyncEngine.trie.root.items);
 

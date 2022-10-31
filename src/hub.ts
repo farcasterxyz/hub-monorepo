@@ -294,7 +294,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     return this.engine.getCustodyEventByUser(fid);
   }
   getSyncMetadataByPrefix(prefix: string): Promise<Result<NodeMetadata, FarcasterError>> {
-    const nodeMetadata = this.syncEngine.getNodeMetadata(prefix);
+    const nodeMetadata = this.syncEngine.getTrieNodeMetadata(prefix);
     if (nodeMetadata) {
       return Promise.resolve(ok(nodeMetadata));
     } else {

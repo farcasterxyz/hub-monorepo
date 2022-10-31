@@ -66,7 +66,7 @@ class MerkleTrie {
     return prefix;
   }
 
-  public getNodeMetadata(prefix: string): NodeMetadata | undefined {
+  public getTrieNodeMetadata(prefix: string): NodeMetadata | undefined {
     const node = this._root.getNode(prefix);
     if (node === undefined) {
       return undefined;

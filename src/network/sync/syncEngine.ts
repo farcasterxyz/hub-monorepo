@@ -107,7 +107,7 @@ class SyncEngine {
   }
 
   async fetchMissingHashesByPrefix(prefix: string, rpcClient: RPCClient): Promise<string[]> {
-    const ourNode = this._trie.getNodeMetadata(prefix);
+    const ourNode = this._trie.getTrieNodeMetadata(prefix);
     const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(prefix);
 
     const missingHashes: string[] = [];
@@ -186,8 +186,8 @@ class SyncEngine {
     return result;
   }
 
-  public getNodeMetadata(prefix: string): NodeMetadata | undefined {
-    return this._trie.getNodeMetadata(prefix);
+  public getTrieNodeMetadata(prefix: string): NodeMetadata | undefined {
+    return this._trie.getTrieNodeMetadata(prefix);
   }
 
   public getIdsByPrefix(prefix: string): string[] {

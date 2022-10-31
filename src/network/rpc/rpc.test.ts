@@ -79,7 +79,7 @@ class mockRPCHandler implements RPCHandler {
     return engine.getCustodyEventByUser(fid);
   }
   getSyncMetadataByPrefix(prefix: string): Promise<Result<NodeMetadata, FarcasterError>> {
-    const nodeMetadata = syncEngine.getNodeMetadata(prefix);
+    const nodeMetadata = syncEngine.getTrieNodeMetadata(prefix);
     if (nodeMetadata) {
       return Promise.resolve(ok(nodeMetadata));
     } else {

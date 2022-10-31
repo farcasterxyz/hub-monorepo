@@ -167,7 +167,7 @@ describe('MerkleTrie', () => {
       const trie = new MerkleTrie();
       trie.insert(syncId);
 
-      expect(trie.getNodeMetadata('166518234')).toBeUndefined();
+      expect(trie.getTrieNodeMetadata('166518234')).toBeUndefined();
     });
 
     test('returns the root metadata if the prefix is empty', async () => {
@@ -175,7 +175,7 @@ describe('MerkleTrie', () => {
       const trie = new MerkleTrie();
       trie.insert(syncId);
 
-      const nodeMetadata = trie.getNodeMetadata('');
+      const nodeMetadata = trie.getTrieNodeMetadata('');
       expect(nodeMetadata).toBeDefined();
       expect(nodeMetadata?.numMessages).toEqual(1);
       expect(nodeMetadata?.prefix).toEqual('');
@@ -185,7 +185,7 @@ describe('MerkleTrie', () => {
 
     test('returns the correct metadata if prefix is present', async () => {
       const trie = await trieWithMessages([1665182332, 1665182343]);
-      const nodeMetadata = trie.getNodeMetadata('16651823');
+      const nodeMetadata = trie.getTrieNodeMetadata('16651823');
 
       expect(nodeMetadata).toBeDefined();
       expect(nodeMetadata?.numMessages).toEqual(2);
@@ -218,7 +218,7 @@ describe('MerkleTrie', () => {
     test('excluded hashes excludes the prefix char at every level', async () => {
       const trie = await trieWithMessages([1665182332, 1665182343, 1665182345, 1665182351]);
       let snapshot = trie.getSnapshot('1665182351');
-      let node = trie.getNodeMetadata('16651823');
+      let node = trie.getTrieNodeMetadata('16651823');
       // We expect the excluded hash to be the hash of the 3 and 4 child nodes, and excludes the 5 child node
       const expectedHash = createHash('sha256')
         .update(node?.children?.get('3')?.hash || '')
@@ -238,11 +238,11 @@ describe('MerkleTrie', () => {
       ]);
 
       snapshot = trie.getSnapshot('1665182343');
-      node = trie.getNodeMetadata('166518234');
+      node = trie.getTrieNodeMetadata('166518234');
       const expectedLastHash = createHash('sha256')
         .update(node?.children?.get('5')?.hash || '')
         .digest('hex');
-      node = trie.getNodeMetadata('16651823');
+      node = trie.getTrieNodeMetadata('16651823');
       const expectedPenultimateHash = createHash('sha256')
         .update(node?.children?.get('3')?.hash || '')
         .update(node?.children?.get('5')?.hash || '')
