@@ -28,7 +28,7 @@ class ReactionSet {
   }
 
   async getReactionsByUser(fid: number): Promise<Set<ReactionAdd>> {
-    const reactions = await this._db.getReactionAddsByFid(fid);
+    const reactions = await this._db.getReactionAddsByUser(fid);
     return new Set(reactions);
   }
 
