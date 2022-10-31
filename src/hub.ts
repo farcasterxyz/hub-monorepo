@@ -295,16 +295,16 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   getCustodyEventByUser(fid: number): Promise<Result<IdRegistryEvent, FarcasterError>> {
     return this.engine.getCustodyEventByUser(fid);
   }
-  getSyncMetadataByPrefix(prefix: string): Promise<Result<NodeMetadata, FarcasterError>> {
+  getSyncMetadataByPrefix(prefix: string): Result<NodeMetadata, FarcasterError> {
     const nodeMetadata = this.syncEngine.getNodeMetadata(prefix);
     if (nodeMetadata) {
-      return Promise.resolve(ok(nodeMetadata));
+      return ok(nodeMetadata);
     } else {
-      return Promise.resolve(err(new FarcasterError('no metadata found')));
+      return err(new FarcasterError('no metadata found'));
     }
   }
-  getSyncIdsByPrefix(prefix: string): Promise<Result<string[], FarcasterError>> {
-    return Promise.resolve(ok(this.syncEngine.getIdsByPrefix(prefix)));
+  getSyncIdsByPrefix(prefix: string): Result<string[], FarcasterError> {
+    return ok(this.syncEngine.getIdsByPrefix(prefix));
   }
 
   getMessagesByHashes(hashes: string[]): Promise<Message[]> {

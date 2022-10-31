@@ -78,16 +78,16 @@ class mockRPCHandler implements RPCHandler {
   getCustodyEventByUser(fid: number): Promise<Result<IdRegistryEvent, FarcasterError>> {
     return engine.getCustodyEventByUser(fid);
   }
-  getSyncMetadataByPrefix(prefix: string): Promise<Result<NodeMetadata, FarcasterError>> {
+  getSyncMetadataByPrefix(prefix: string): Result<NodeMetadata, FarcasterError> {
     const nodeMetadata = syncEngine.getNodeMetadata(prefix);
     if (nodeMetadata) {
-      return Promise.resolve(ok(nodeMetadata));
+      return ok(nodeMetadata);
     } else {
-      return Promise.resolve(err(new FarcasterError('no metadata found')));
+      return err(new FarcasterError('no metadata found'));
     }
   }
-  getSyncIdsByPrefix(prefix: string): Promise<Result<string[], FarcasterError>> {
-    return Promise.resolve(ok(syncEngine.getIdsByPrefix(prefix)));
+  getSyncIdsByPrefix(prefix: string): Result<string[], FarcasterError> {
+    return ok(syncEngine.getIdsByPrefix(prefix));
   }
   getMessagesByHashes(hashes: string[]): Promise<Message[]> {
     return engine.getMessagesByHashes(hashes);

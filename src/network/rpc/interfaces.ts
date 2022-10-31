@@ -28,8 +28,8 @@ export interface RPCHandler {
   getAllFollowsByUser(fid: number): Promise<Set<Follow>>;
   getAllVerificationsByUser(fid: number): Promise<Set<Verification>>;
   getCustodyEventByUser(fid: number): Promise<Result<IdRegistryEvent, FarcasterError>>;
-  getSyncMetadataByPrefix(prefix: string): Promise<Result<NodeMetadata, FarcasterError>>;
-  getSyncIdsByPrefix(prefix: string): Promise<Result<string[], FarcasterError>>;
+  getSyncMetadataByPrefix(prefix: string): Result<NodeMetadata, FarcasterError>;
+  getSyncIdsByPrefix(prefix: string): Result<string[], FarcasterError>;
   getMessagesByHashes(hashes: string[]): Promise<Message[]>;
   submitMessage(message: Message): Promise<Result<void, FarcasterError>>;
   submitIdRegistryEvent?(event: IdRegistryEvent): Promise<Result<void, FarcasterError>>;
