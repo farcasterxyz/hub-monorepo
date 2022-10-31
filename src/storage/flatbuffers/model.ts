@@ -18,8 +18,10 @@ import { VerificationRemoveBody } from '~/utils/generated/farcaster/verification
 /** Used when index keys are sufficiently descriptive */
 export const TRUE_VALUE = Buffer.from([1]);
 export const FID_BYTES = 32;
+export const TARGET_KEY_BYTES = 40; // 32-byte fid, 4-byte timestamp, 4-byte hash
 
 // TODO: Add docs explaining the purpose of this class
+// TODO: naming of the class + file name does not match TS conventions
 
 export default class MessageModel {
   public message: Message;

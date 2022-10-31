@@ -1,6 +1,6 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { BadRequestError } from '~/utils/errors';
-import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/model';
+import MessageModel, { FID_BYTES, TARGET_KEY_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/model';
 import { ReactionAddModel, ReactionRemoveModel, RootPrefix, UserPrefix } from '~/storage/flatbuffers/types';
 import { isReactionAdd, isReactionRemove } from '~/storage/flatbuffers/typeguards';
 import { CastID, MessageType, ReactionType } from '~/utils/generated/message_generated';
@@ -42,53 +42,93 @@ class ReactionSet {
   // javascript set, crdt 2p set, Farcaster set
 
   /**
-   * Generates a unique key used to store a ReactionAdd message in the ReactionsAdd Set
+   * Generates a unique key used to store a ReactionAdd message key in the ReactionsAdd Set index
    *
    * @param fid farcaster id of the user who created the reaction
    * @param type type of reaction created
-   * @param targetId id of the object being reacted to
+   * @param targetKey id of the object being reacted to
    *
-   * @returns RocksDB key of the form user_prefix:reaction_type:target_id which is at least 35 bytes
+   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPrefix>:<targetKey?>:<type?>
    */
-  static reactionAddsKey(fid: Uint8Array, type?: ReactionType, targetId?: Uint8Array): Buffer {
+  static reactionAddsKey(fid: Uint8Array, type?: ReactionType, targetKey?: Uint8Array): Buffer {
+    // TODO: throw if type is not provided
+
     return Buffer.concat([
       MessageModel.userKey(fid), // --------------------------- fid prefix, 33 bytes
       Buffer.from([UserPrefix.ReactionAdds]), // -------------- reaction_adds key, 1 byte
-      targetId ? Buffer.from(targetId) : new Uint8Array(), //-- target id, variable bytes
+      targetKey ? Buffer.from(targetKey) : new Uint8Array(), //-- target id, variable bytes
       type ? Buffer.from([type]) : new Uint8Array(), //-------- type, 1 byte
     ]);
   }
 
   /**
-   * Generates a unique key used to store a ReactionAdd message in the ReactionsAdd Set
+   * Generates a unique key used to store a ReactionRemove message key in the ReactionsRemove Set index
    *
    * @param fid farcaster id of the user who created the reaction
    * @param type type of reaction created
-   * @param targetId id of the object being reacted to
+   * @param targetKey id of the object being reacted to
    *
-   * @returns RocksDB key of the form user_prefix:reaction_type:target_id which is at least 35 bytes
+   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPrefix>:<targetKey?>:<type?>
    */
-  static reactionRemovesKey(fid: Uint8Array, type?: ReactionType, targetId?: Uint8Array): Buffer {
+  static reactionRemovesKey(fid: Uint8Array, type?: ReactionType, targetKey?: Uint8Array): Buffer {
+    // TODO: throw if type is not provided
+
     return Buffer.concat([
       MessageModel.userKey(fid), // --------------------------- fid prefix, 33 bytes
       Buffer.from([UserPrefix.ReactionRemoves]), // ----------- reaction_adds key, 1 byte
-      targetId ? Buffer.from(targetId) : new Uint8Array(), //-- target id, variable bytes
+      targetKey ? Buffer.from(targetKey) : new Uint8Array(), //-- target id, variable bytes
       type ? Buffer.from([type]) : new Uint8Array(), //-------- type, 1 byte
     ]);
   }
 
-  // DISCUSS: should reactions index by target key and type
+  // DISCUSS: Timestamp Hash vs. TsHash vs TimestampId vs TID
 
-  static reactionsByTargetKey(targetId: Uint8Array, fid?: Uint8Array, hash?: Uint8Array): Buffer {
-    const bytes = new Uint8Array(1 + FID_BYTES + (fid ? FID_BYTES : 0) + (hash ? hash.length : 0));
+  /**
+   * Generates a unique key used to store a ReactionAdd Message in the ReactionsByTargetAndType index
+   *
+   * @param targetKey the id of the object being reacted to (currently just cast id)
+   * @param type the type of reaction
+   * @param fid the fid of the user who created the reaction
+   * @param tsHash the timestamp hash of the reaction message
+   *
+   * @returns RocksDB index key of the form <RootPrefix>:<target_key>:<type?>:<fid?>:<tsHash?>
+   */
+  static reactionsByTargetKey(
+    targetKey: Uint8Array,
+    type?: ReactionType,
+    fid?: Uint8Array,
+    tsHash?: Uint8Array
+  ): Buffer {
+    if (fid && !type) {
+      throw new BadRequestError('fid provided without type');
+    }
+
+    if (tsHash && (!type || !fid)) {
+      throw new BadRequestError('tsHash provided without type or fid');
+    }
+
+    const bytes = new Uint8Array(
+      1 + TARGET_KEY_BYTES + (type ? 1 : 0) + (fid ? FID_BYTES : 0) + (tsHash ? tsHash.length : 0)
+    );
+
+    // DISCUSS: can enums become larger than a byte?
+
     bytes.set([RootPrefix.ReactionsByTarget], 0);
-    bytes.set(targetId, 1 + FID_BYTES - targetId.length); // pad for alignment
+
+    bytes.set(targetKey, 1 + TARGET_KEY_BYTES - targetKey.length); // pad if targetKey.length < targetKey.max_length
+
+    if (type) {
+      bytes.set(Buffer.from([type]), 1 + TARGET_KEY_BYTES);
+    }
+
     if (fid) {
-      bytes.set(fid, 1 + FID_BYTES + FID_BYTES - fid.length); // pad fid for alignment
+      bytes.set(fid, 1 + TARGET_KEY_BYTES + 1 + FID_BYTES - fid.length); // pad if fid.length < fid.max_length
     }
-    if (hash) {
-      bytes.set(hash, 1 + FID_BYTES + FID_BYTES);
+
+    if (tsHash) {
+      bytes.set(tsHash, 1 + TARGET_KEY_BYTES + 1 + FID_BYTES);
     }
+
     return Buffer.from(bytes);
   }
 
@@ -151,13 +191,17 @@ class ReactionSet {
   }
 
   /** Finds all ReactionAdds that point to a specific target by iterating through the prefixes */
-  async getReactionsByTarget(castId: CastID): Promise<ReactionAddModel[]> {
-    const prefix = ReactionSet.reactionsByTargetKey(this.targetKeyForCastId(castId));
+  async getReactionsByTarget(castId: CastID, type?: ReactionType): Promise<ReactionAddModel[]> {
+    const prefix = ReactionSet.reactionsByTargetKey(this.targetKeyForCastId(castId), type);
+
+    // Calculates the positions in the key where the fid and timestampHash begin
+    const fidOffset = type ? prefix.length : prefix.length + 1; // prefix is 1 byte longer if type was provided
+    const tsHashOffset = fidOffset + FID_BYTES;
 
     const messageKeys: Buffer[] = [];
     for await (const [key] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
-      const fid = Uint8Array.from(key).subarray(prefix.length, prefix.length + FID_BYTES);
-      const timestampHash = Uint8Array.from(key).subarray(prefix.length + FID_BYTES);
+      const fid = Uint8Array.from(key).subarray(prefix.length, tsHashOffset);
+      const timestampHash = Uint8Array.from(key).subarray(tsHashOffset);
       messageKeys.push(MessageModel.primaryKey(fid, UserPrefix.ReactionMessage, timestampHash));
     }
     return MessageModel.getMany(this._db, messageKeys);
@@ -327,7 +371,10 @@ class ReactionSet {
     );
 
     // Puts reactionsByTargetGet -> messageKey to allow lookups of message keys pointing at a specific target
-    tsx = tsx.put(ReactionSet.reactionsByTargetKey(targetKey, message.fid(), message.timestampHash()), TRUE_VALUE);
+    tsx = tsx.put(
+      ReactionSet.reactionsByTargetKey(targetKey, message.body().type(), message.fid(), message.timestampHash()),
+      TRUE_VALUE
+    );
 
     return tsx;
   }
@@ -336,7 +383,9 @@ class ReactionSet {
     const targetKey = this.targetKeyForMessage(message);
 
     // Delete the reactionAdd's key from the user index
-    tsx = tsx.del(ReactionSet.reactionsByTargetKey(targetKey, message.fid(), message.timestampHash()));
+    tsx = tsx.del(
+      ReactionSet.reactionsByTargetKey(targetKey, message.body().type(), message.fid(), message.timestampHash())
+    );
 
     // Delete the reactionAdd's key from reaction adds set index
     tsx = tsx.del(ReactionSet.reactionAddsKey(message.fid(), message.body().type(), targetKey));
