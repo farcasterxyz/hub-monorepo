@@ -49,7 +49,7 @@ class CastSet {
 
   // TODO: make parentFid and parentHash fixed size
   /** RocksDB key of the form <castsByMention prefix byte, mention fid, fid, cast hash> */
-  static caststByMentionKey(mentionFid: Uint8Array, fid?: Uint8Array, hash?: Uint8Array): Buffer {
+  static castsByMentionKey(mentionFid: Uint8Array, fid?: Uint8Array, hash?: Uint8Array): Buffer {
     const bytes = new Uint8Array(1 + FID_BYTES + (fid ? FID_BYTES : 0) + (hash ? hash.length : 0));
     bytes.set([RootPrefix.CastsByMention], 0);
     bytes.set(mentionFid, 1 + FID_BYTES - mentionFid.length); // pad fid for alignment
@@ -108,7 +108,7 @@ class CastSet {
 
   /** Get all CastAdd messages for a mention (fid) */
   async getCastsByMention(fid: Uint8Array): Promise<CastAddModel[]> {
-    const byMentionPrefix = CastSet.caststByMentionKey(fid);
+    const byMentionPrefix = CastSet.castsByMentionKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [key] of this._db.iteratorByPrefix(byMentionPrefix, { keyAsBuffer: true, values: false })) {
       const fid = Uint8Array.from(key).subarray(byMentionPrefix.length, byMentionPrefix.length + FID_BYTES);
@@ -250,7 +250,7 @@ class CastSet {
       for (let i = 0; i < message.body().mentionsLength(); i++) {
         const mention = message.body().mentions(i);
         tsx = tsx.put(
-          CastSet.caststByMentionKey(mention?.fidArray() ?? new Uint8Array(), message.fid(), message.tsHash()),
+          CastSet.castsByMentionKey(mention?.fidArray() ?? new Uint8Array(), message.fid(), message.tsHash()),
           TRUE_VALUE
         );
       }
@@ -265,7 +265,7 @@ class CastSet {
       for (let i = 0; i < message.body().mentionsLength(); i++) {
         const mention = message.body().mentions(i);
         tsx = tsx.del(
-          CastSet.caststByMentionKey(mention?.fidArray() ?? new Uint8Array(), message.fid(), message.tsHash())
+          CastSet.castsByMentionKey(mention?.fidArray() ?? new Uint8Array(), message.fid(), message.tsHash())
         );
       }
     }
