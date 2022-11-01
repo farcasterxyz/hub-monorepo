@@ -84,8 +84,8 @@ class FollowSet {
     const messageKeys: Buffer[] = [];
     for await (const [key] of this._db.iteratorByPrefix(byUserPostfix, { keyAsBuffer: true, values: false })) {
       const fid = Uint8Array.from(key).subarray(byUserPostfix.length, byUserPostfix.length + FID_BYTES);
-      const timestampHash = Uint8Array.from(key).subarray(byUserPostfix.length + FID_BYTES);
-      messageKeys.push(MessageModel.primaryKey(fid, UserPostfix.FollowMessage, timestampHash));
+      const tsHash = Uint8Array.from(key).subarray(byUserPostfix.length + FID_BYTES);
+      messageKeys.push(MessageModel.primaryKey(fid, UserPostfix.FollowMessage, tsHash));
     }
     return MessageModel.getMany(this._db, messageKeys);
   }
@@ -145,9 +145,9 @@ class FollowSet {
     bType: MessageType,
     bTimestampHash: Uint8Array
   ): number {
-    const timestampHashOrder = bytesCompare(aTimestampHash, bTimestampHash);
-    if (timestampHashOrder !== 0) {
-      return timestampHashOrder;
+    const tsHashOrder = bytesCompare(aTimestampHash, bTimestampHash);
+    if (tsHashOrder !== 0) {
+      return tsHashOrder;
     }
 
     if (aType === MessageType.FollowRemove && bType === MessageType.FollowAdd) {
@@ -164,7 +164,7 @@ class FollowSet {
     followId: Uint8Array,
     message: FollowAddModel | FollowRemoveModel
   ): Promise<Transaction | undefined> {
-    // Look up the remove timestampHash for this follow
+    // Look up the remove tsHash for this follow
     const followRemoveTimestampHash = await ResultAsync.fromPromise(
       this._db.get(FollowSet.followRemovesKey(message.fid(), followId)),
       () => undefined
@@ -176,7 +176,7 @@ class FollowSet {
           MessageType.FollowRemove,
           followRemoveTimestampHash.value,
           message.type(),
-          message.timestampHash()
+          message.tsHash()
         ) >= 0
       ) {
         // If the existing remove has the same or higher order than the new message, no-op
@@ -194,7 +194,7 @@ class FollowSet {
       }
     }
 
-    // Look up the add timestampHash for this follow
+    // Look up the add tsHash for this follow
     const followAddTimestampHash = await ResultAsync.fromPromise(
       this._db.get(FollowSet.followAddsKey(message.fid(), followId)),
       () => undefined
@@ -206,7 +206,7 @@ class FollowSet {
           MessageType.FollowAdd,
           followAddTimestampHash.value,
           message.type(),
-          message.timestampHash()
+          message.tsHash()
         ) >= 0
       ) {
         // If the existing add has the same or higher order than the new message, no-op
@@ -234,7 +234,7 @@ class FollowSet {
     // Put followAdds index
     tsx = tsx.put(
       FollowSet.followAddsKey(message.fid(), message.body().user()?.fidArray() ?? new Uint8Array()),
-      Buffer.from(message.timestampHash())
+      Buffer.from(message.tsHash())
     );
 
     // Index by user
@@ -242,7 +242,7 @@ class FollowSet {
       FollowSet.followsByUserKey(
         message.body().user()?.fidArray() ?? new Uint8Array(),
         message.fid(),
-        message.timestampHash()
+        message.tsHash()
       ),
       TRUE_VALUE
     );
@@ -253,11 +253,7 @@ class FollowSet {
   private deleteFollowAddTransaction(tsx: Transaction, message: FollowAddModel): Transaction {
     // Delete from user index
     tsx = tsx.del(
-      FollowSet.followsByUserKey(
-        message.body().user()?.fidArray() ?? new Uint8Array(),
-        message.fid(),
-        message.timestampHash()
-      )
+      FollowSet.followsByUserKey(message.body().user()?.fidArray() ?? new Uint8Array(), message.fid(), message.tsHash())
     );
 
     // Delete from followAdds
@@ -274,7 +270,7 @@ class FollowSet {
     // Add to followRemoves
     tsx = tsx.put(
       FollowSet.followRemovesKey(message.fid(), message.body().user()?.fidArray() ?? new Uint8Array()),
-      Buffer.from(message.timestampHash())
+      Buffer.from(message.tsHash())
     );
 
     return tsx;

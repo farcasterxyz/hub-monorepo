@@ -102,7 +102,7 @@ describe('merge', () => {
 
       test('saves message', async () => {
         await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationRemove.timestampHash())
+          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationRemove.tsHash())
         ).resolves.toEqual(verificationRemove);
       });
 
@@ -112,7 +112,7 @@ describe('merge', () => {
 
       test('deletes VerificationAdd* message', async () => {
         await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationAdd.timestampHash())
+          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationAdd.tsHash())
         ).rejects.toThrow(NotFoundError);
       });
 
@@ -140,7 +140,7 @@ describe('merge', () => {
         await expect(set.merge(verificationRemoveLater)).resolves.toEqual(undefined);
         await expect(set.getVerificationRemove(fid, address)).resolves.toEqual(verificationRemoveLater);
         await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationRemove.timestampHash())
+          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationRemove.tsHash())
         ).rejects.toThrow(NotFoundError);
       });
 
@@ -149,7 +149,7 @@ describe('merge', () => {
         await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
         await expect(set.getVerificationRemove(fid, address)).resolves.toEqual(verificationRemoveLater);
         await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationRemove.timestampHash())
+          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationRemove.tsHash())
         ).rejects.toThrow(NotFoundError);
       });
     });
@@ -170,7 +170,7 @@ describe('merge', () => {
         await expect(set.getVerificationAdd(fid, address)).resolves.toEqual(verificationAddLater);
         await expect(set.getVerificationRemove(fid, address)).rejects.toThrow(NotFoundError);
         await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationRemove.timestampHash())
+          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationRemove.tsHash())
         ).rejects.toThrow(NotFoundError);
       });
 
@@ -180,7 +180,7 @@ describe('merge', () => {
         await expect(set.getVerificationRemove(fid, address)).resolves.toEqual(verificationRemove);
         await expect(set.getVerificationAdd(fid, address)).rejects.toThrow(NotFoundError);
         await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationAdd.timestampHash())
+          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationAdd.tsHash())
         ).rejects.toThrow(NotFoundError);
       });
     });
@@ -200,7 +200,7 @@ describe('merge', () => {
 
       test('saves message', async () => {
         await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationAdd.timestampHash())
+          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationAdd.tsHash())
         ).resolves.toEqual(verificationAdd);
       });
 
@@ -233,7 +233,7 @@ describe('merge', () => {
         await expect(set.merge(verificationAddLater)).resolves.toEqual(undefined);
         await expect(set.getVerificationAdd(fid, address)).resolves.toEqual(verificationAddLater);
         await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationAdd.timestampHash())
+          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationAdd.tsHash())
         ).rejects.toThrow(NotFoundError);
       });
 
@@ -242,7 +242,7 @@ describe('merge', () => {
         await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
         await expect(set.getVerificationAdd(fid, address)).resolves.toEqual(verificationAddLater);
         await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationAdd.timestampHash())
+          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationAdd.tsHash())
         ).rejects.toThrow(NotFoundError);
       });
     });
@@ -263,7 +263,7 @@ describe('merge', () => {
         await expect(set.getVerificationAdd(fid, address)).resolves.toEqual(verificationAdd);
         await expect(set.getVerificationRemove(fid, address)).rejects.toThrow(NotFoundError);
         await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationRemoveEarlier.timestampHash())
+          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationRemoveEarlier.tsHash())
         ).rejects.toThrow(NotFoundError);
       });
 
@@ -273,7 +273,7 @@ describe('merge', () => {
         await expect(set.getVerificationRemove(fid, address)).resolves.toEqual(verificationRemove);
         await expect(set.getVerificationAdd(fid, address)).rejects.toThrow(NotFoundError);
         await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationAdd.timestampHash())
+          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationAdd.tsHash())
         ).rejects.toThrow(NotFoundError);
       });
     });

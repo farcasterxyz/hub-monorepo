@@ -171,9 +171,9 @@ class SignerSet {
     bType: MessageType,
     bTimestampHash: Uint8Array
   ): number {
-    const timestampHashOrder = bytesCompare(aTimestampHash, bTimestampHash);
-    if (timestampHashOrder !== 0) {
-      return timestampHashOrder;
+    const tsHashOrder = bytesCompare(aTimestampHash, bTimestampHash);
+    if (tsHashOrder !== 0) {
+      return tsHashOrder;
     }
 
     if (aType === MessageType.SignerRemove && bType === MessageType.SignerAdd) {
@@ -194,7 +194,7 @@ class SignerSet {
       throw new BadRequestError('signer is required');
     }
 
-    // Look up the remove timestampHash for this custody adddress and signer
+    // Look up the remove tsHash for this custody adddress and signer
     const removeTimestampHash = await ResultAsync.fromPromise(
       this._db.get(SignerSet.signerRemovesKey(message.fid(), message.signer(), signer)),
       () => undefined
@@ -206,7 +206,7 @@ class SignerSet {
           MessageType.SignerRemove,
           removeTimestampHash.value,
           message.type(),
-          message.timestampHash()
+          message.tsHash()
         ) >= 0
       ) {
         // If the existing remove has the same or higher order than the new message, no-op
@@ -224,7 +224,7 @@ class SignerSet {
       }
     }
 
-    // Look up the add timestampHash for this custody address and signer
+    // Look up the add tsHash for this custody address and signer
     const addTimestampHash = await ResultAsync.fromPromise(
       this._db.get(SignerSet.signerAddsKey(message.fid(), message.signer(), signer)),
       () => undefined
@@ -232,12 +232,7 @@ class SignerSet {
 
     if (addTimestampHash.isOk()) {
       if (
-        this.SignerMessageCompare(
-          MessageType.SignerAdd,
-          addTimestampHash.value,
-          message.type(),
-          message.timestampHash()
-        ) >= 0
+        this.SignerMessageCompare(MessageType.SignerAdd, addTimestampHash.value, message.type(), message.tsHash()) >= 0
       ) {
         // If the existing add has the same or higher order than the new message, no-op
         return undefined;
@@ -264,7 +259,7 @@ class SignerSet {
     // Put signerAdds index
     txn = txn.put(
       SignerSet.signerAddsKey(message.fid(), message.signer(), message.body().signerArray() ?? new Uint8Array()),
-      Buffer.from(message.timestampHash())
+      Buffer.from(message.tsHash())
     );
 
     return txn;
@@ -287,7 +282,7 @@ class SignerSet {
     // Put signerRemoves index
     txn = txn.put(
       SignerSet.signerRemovesKey(message.fid(), message.signer(), message.body().signerArray() ?? new Uint8Array()),
-      Buffer.from(message.timestampHash())
+      Buffer.from(message.tsHash())
     );
 
     return txn;

@@ -21,18 +21,16 @@ describe('static methods', () => {
   describe('get', () => {
     test('succeeds when message exists', async () => {
       await model.put(db);
-      await expect(MessageModel.get(db, model.fid(), model.setPrefix(), model.timestampHash())).resolves.toEqual(model);
+      await expect(MessageModel.get(db, model.fid(), model.setPrefix(), model.tsHash())).resolves.toEqual(model);
     });
 
     test('fails when message not found', async () => {
-      await expect(MessageModel.get(db, model.fid(), model.setPrefix(), model.timestampHash())).rejects.toThrow(
-        NotFoundError
-      );
+      await expect(MessageModel.get(db, model.fid(), model.setPrefix(), model.tsHash())).rejects.toThrow(NotFoundError);
     });
 
     test('fails with wrong key', async () => {
       await model.put(db);
-      const badKey = new Uint8Array([...model.timestampHash(), 1]);
+      const badKey = new Uint8Array([...model.tsHash(), 1]);
       await expect(MessageModel.get(db, model.fid(), model.setPrefix(), badKey)).rejects.toThrow(NotFoundError);
     });
   });
@@ -40,7 +38,7 @@ describe('static methods', () => {
   describe('getManyByUser', () => {
     test('succeeds', async () => {
       await model.put(db);
-      const getMany = MessageModel.getManyByUser(db, model.fid(), model.setPrefix(), [model.timestampHash()]);
+      const getMany = MessageModel.getManyByUser(db, model.fid(), model.setPrefix(), [model.tsHash()]);
       await expect(getMany).resolves.toEqual([model]);
     });
   });
@@ -168,7 +166,7 @@ describe('instance methods', () => {
       await expect(model.put(db)).resolves.toEqual(undefined);
     });
     test('stores binary message', async () => {
-      const get = MessageModel.get(db, model.fid(), model.setPrefix(), model.timestampHash());
+      const get = MessageModel.get(db, model.fid(), model.setPrefix(), model.tsHash());
       await expect(get).resolves.toEqual(model);
     });
 
@@ -177,7 +175,7 @@ describe('instance methods', () => {
     });
   });
 
-  describe('timestampHash', () => {
+  describe('tsHash', () => {
     test('orders messages by timestamp and hash', async () => {
       const aData = await Factories.MessageData.create({ timestamp: 1 });
       const a = new MessageModel(
@@ -196,10 +194,10 @@ describe('instance methods', () => {
 
       const tsx = db
         .transaction()
-        .put(Buffer.from(model.timestampHash()), Buffer.from('m'))
-        .put(Buffer.from(a.timestampHash()), Buffer.from('a'))
-        .put(Buffer.from(b.timestampHash()), Buffer.from('b'))
-        .put(Buffer.from(c.timestampHash()), Buffer.from('c'));
+        .put(Buffer.from(model.tsHash()), Buffer.from('m'))
+        .put(Buffer.from(a.tsHash()), Buffer.from('a'))
+        .put(Buffer.from(b.tsHash()), Buffer.from('b'))
+        .put(Buffer.from(c.tsHash()), Buffer.from('c'));
 
       await db.commit(tsx);
 

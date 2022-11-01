@@ -158,11 +158,11 @@ export default class MessageModel {
   }
 
   primaryKey(): Buffer {
-    return MessageModel.primaryKey(this.fid(), this.setPrefix(), this.timestampHash());
+    return MessageModel.primaryKey(this.fid(), this.setPrefix(), this.tsHash());
   }
 
   bySignerKey(): Buffer {
-    return MessageModel.bySignerKey(this.fid(), this.signer(), this.type(), this.timestampHash());
+    return MessageModel.bySignerKey(this.fid(), this.signer(), this.type(), this.tsHash());
   }
 
   toBuffer(): Buffer {
@@ -173,7 +173,7 @@ export default class MessageModel {
     return this.message.bb?.bytes() || new Uint8Array();
   }
 
-  timestampHash(): Uint8Array {
+  tsHash(): Uint8Array {
     const hash = this.hash();
     const buffer = new ArrayBuffer(4 + hash.length);
     const view = new DataView(buffer);

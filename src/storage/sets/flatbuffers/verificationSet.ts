@@ -145,9 +145,9 @@ class VerificationSet {
     bType: MessageType,
     bTimestampHash: Uint8Array
   ): number {
-    const timestampHashOrder = bytesCompare(aTimestampHash, bTimestampHash);
-    if (timestampHashOrder !== 0) {
-      return timestampHashOrder;
+    const tsHashOrder = bytesCompare(aTimestampHash, bTimestampHash);
+    if (tsHashOrder !== 0) {
+      return tsHashOrder;
     }
 
     if (aType === MessageType.VerificationRemove && bType === MessageType.VerificationAddEthAddress) {
@@ -164,7 +164,7 @@ class VerificationSet {
     address: Uint8Array,
     message: VerificationAddEthAddressModel | VerificationRemoveModel
   ): Promise<Transaction | undefined> {
-    // Look up the remove timestampHash for this address
+    // Look up the remove tsHash for this address
     const removeTimestampHash = await ResultAsync.fromPromise(
       this._db.get(VerificationSet.verificationRemovesKey(message.fid(), address)),
       () => undefined
@@ -176,7 +176,7 @@ class VerificationSet {
           MessageType.VerificationRemove,
           removeTimestampHash.value,
           message.type(),
-          message.timestampHash()
+          message.tsHash()
         ) >= 0
       ) {
         // If the existing remove has the same or higher order than the new message, no-op
@@ -194,7 +194,7 @@ class VerificationSet {
       }
     }
 
-    // Look up the add timestampHash for this address
+    // Look up the add tsHash for this address
     const addTimestampHash = await ResultAsync.fromPromise(
       this._db.get(VerificationSet.verificationAddsKey(message.fid(), address)),
       () => undefined
@@ -206,7 +206,7 @@ class VerificationSet {
           MessageType.VerificationAddEthAddress,
           addTimestampHash.value,
           message.type(),
-          message.timestampHash()
+          message.tsHash()
         ) >= 0
       ) {
         // If the existing add has the same or higher order than the new message, no-op
@@ -234,7 +234,7 @@ class VerificationSet {
     // Put verificationAdds index
     tsx = tsx.put(
       VerificationSet.verificationAddsKey(message.fid(), message.body().addressArray() ?? new Uint8Array()),
-      Buffer.from(message.timestampHash())
+      Buffer.from(message.tsHash())
     );
 
     return tsx;
@@ -257,7 +257,7 @@ class VerificationSet {
     // Add to verificationRemoves
     tsx = tsx.put(
       VerificationSet.verificationRemovesKey(message.fid(), message.body().addressArray() ?? new Uint8Array()),
-      Buffer.from(message.timestampHash())
+      Buffer.from(message.tsHash())
     );
 
     return tsx;
