@@ -33,15 +33,15 @@ class FollowSet {
   }
 
   /** RocksDB key of the form <followByUser prefix (1 byte), user id (32 bytes), fid (32 bytes), message timestamp hash (8 bytes)> */
-  static followsByUserKey(user: Uint8Array, fid?: Uint8Array, hash?: Uint8Array): Buffer {
-    const bytes = new Uint8Array(1 + FID_BYTES + (fid ? FID_BYTES : 0) + (hash ? hash.length : 0));
+  static followsByUserKey(user: Uint8Array, fid?: Uint8Array, tsHash?: Uint8Array): Buffer {
+    const bytes = new Uint8Array(1 + FID_BYTES + (fid ? FID_BYTES : 0) + (tsHash ? tsHash.length : 0));
     bytes.set([RootPrefix.FollowsByUser], 0);
     bytes.set(user, 1 + FID_BYTES - user.length); // pad for alignment
     if (fid) {
       bytes.set(fid, 1 + FID_BYTES + FID_BYTES - fid.length); // pad fid for alignment
     }
-    if (hash) {
-      bytes.set(hash, 1 + FID_BYTES + FID_BYTES);
+    if (tsHash) {
+      bytes.set(tsHash, 1 + FID_BYTES + FID_BYTES);
     }
     return Buffer.from(bytes);
   }
