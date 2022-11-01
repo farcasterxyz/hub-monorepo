@@ -1,4 +1,4 @@
-import MessageModel from '~/storage/flatbuffers/model';
+import MessageModel from '~/storage/flatbuffers/messageModel';
 // TODO: Import all and apply the types model here to avoid bloated imports
 import {
   CastAddModel,

@@ -1,6 +1,6 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { BadRequestError } from '~/utils/errors';
-import MessageModel from '~/storage/flatbuffers/model';
+import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync } from 'neverthrow';
 import { UserPrefix, VerificationAddEthAddressModel, VerificationRemoveModel } from '~/storage/flatbuffers/types';
 import { isVerificationAddEthAddress, isVerificationRemove } from '~/storage/flatbuffers/typeguards';

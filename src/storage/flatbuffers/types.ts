@@ -1,4 +1,4 @@
-import MessageModel from '~/storage/flatbuffers/model';
+import MessageModel from '~/storage/flatbuffers/messageModel';
 import { VerificationAddEthAddressBody } from '~/utils/generated/farcaster/verification-add-eth-address-body';
 import { VerificationRemoveBody } from '~/utils/generated/farcaster/verification-remove-body';
 import {
@@ -29,7 +29,6 @@ export enum UserPrefix {
   FollowMessage = 5,
   FollowAdds = 6,
   FollowRemoves = 7,
-
   ReactionMessage = 8,
   ReactionAdds = 9,
   ReactionRemoves = 10,

@@ -2,7 +2,7 @@ import { ByteBuffer } from 'flatbuffers';
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { UserPrefix } from '~/storage/flatbuffers/types';
 import { ContractEvent } from '~/utils/generated/contract_event_generated';
-import MessageModel from './model';
+import MessageModel from './messageModel';
 
 export default class ContractEventModel {
   public event: ContractEvent;

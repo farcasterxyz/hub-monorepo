@@ -1,6 +1,6 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { BadRequestError } from '~/utils/errors';
-import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/model';
+import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
 import { ResultAsync } from 'neverthrow';
 import { CastAddModel, CastRemoveModel, RootPrefix, UserPrefix } from '~/storage/flatbuffers/types';
 import { isCastAdd, isCastRemove } from '~/storage/flatbuffers/typeguards';

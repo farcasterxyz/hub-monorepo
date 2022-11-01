@@ -1,7 +1,7 @@
 import Factories from '~/test/factories/flatbuffer';
 import CastSet from '~/storage/sets/flatbuffers/castSet';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import MessageModel from '~/storage/flatbuffers/model';
+import MessageModel from '~/storage/flatbuffers/messageModel';
 import { BadRequestError, NotFoundError } from '~/utils/errors';
 import { CastAddModel, CastRemoveModel, UserPrefix } from '~/storage/flatbuffers/types';
 

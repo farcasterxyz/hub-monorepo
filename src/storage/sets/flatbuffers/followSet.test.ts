@@ -1,6 +1,6 @@
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import MessageModel from '~/storage/flatbuffers/model';
+import MessageModel from '~/storage/flatbuffers/messageModel';
 import { BadRequestError, NotFoundError } from '~/utils/errors';
 import { FollowAddModel, FollowRemoveModel, UserPrefix } from '~/storage/flatbuffers/types';
 import FollowSet from '~/storage/sets/flatbuffers/followSet';

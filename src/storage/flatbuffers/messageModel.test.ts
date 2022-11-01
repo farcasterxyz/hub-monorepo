@@ -3,7 +3,7 @@ import { KeyPair } from '~/types';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import { NotFoundError } from '~/utils/errors';
-import MessageModel, { TRUE_VALUE } from '~/storage/flatbuffers/model';
+import MessageModel, { TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
 import { UserPrefix } from './types';
 
 const db = jestBinaryRocksDB('flatbuffers.model.test');

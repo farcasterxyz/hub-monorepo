@@ -8,7 +8,7 @@ import { arrayify } from 'ethers/lib/utils';
 import SignerSet from '~/storage/sets/flatbuffers/signerSet';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { SignerAddModel, SignerRemoveModel, UserPrefix } from '~/storage/flatbuffers/types';
-import MessageModel from '~/storage/flatbuffers/model';
+import MessageModel from '~/storage/flatbuffers/messageModel';
 
 const db = jestBinaryRocksDB('flatbuffers.signerSet.test');
 const set = new SignerSet(db);

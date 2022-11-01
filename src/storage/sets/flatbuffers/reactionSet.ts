@@ -1,6 +1,6 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { BadRequestError } from '~/utils/errors';
-import MessageModel, { FID_BYTES, TARGET_KEY_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/model';
+import MessageModel, { FID_BYTES, TARGET_KEY_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
 import { ReactionAddModel, ReactionRemoveModel, RootPrefix, UserPrefix } from '~/storage/flatbuffers/types';
 import { isReactionAdd, isReactionRemove } from '~/storage/flatbuffers/typeguards';
 import { CastID, MessageType, ReactionType } from '~/utils/generated/message_generated';
@@ -114,8 +114,6 @@ class ReactionSet {
     const bytes = new Uint8Array(
       1 + TARGET_KEY_BYTES + (type ? 1 : 0) + (fid ? FID_BYTES : 0) + (tsHash ? tsHash.length : 0)
     );
-
-    // DISCUSS: can enums become larger than a byte?
 
     bytes.set([RootPrefix.ReactionsByTarget], 0);
 
