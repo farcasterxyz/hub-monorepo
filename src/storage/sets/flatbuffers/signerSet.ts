@@ -45,19 +45,31 @@ class SignerSet {
   }
 
   /** Look up SignerAdd message by fid, custody address, and signer */
-  async getSignerAdd(fid: Uint8Array, custodyAddress: Uint8Array, signer: Uint8Array): Promise<SignerAddModel> {
+  async getSignerAdd(fid: Uint8Array, signer: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerAddModel> {
+    if (!custodyAddress) {
+      // Will throw NotFoundError if custody address is missing
+      custodyAddress = await this.getCustodyAddress(fid);
+    }
     const messageTimestampHash = await this._db.get(SignerSet.signerAddsKey(fid, custodyAddress, signer));
     return MessageModel.get<SignerAddModel>(this._db, fid, UserPrefix.SignerMessage, messageTimestampHash);
   }
 
   /** Look up SignerRemove message by fid, custody address, and signer */
-  async getSignerRemove(fid: Uint8Array, custodyAddress: Uint8Array, signer: Uint8Array): Promise<SignerRemoveModel> {
+  async getSignerRemove(fid: Uint8Array, signer: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerRemoveModel> {
+    if (!custodyAddress) {
+      // Will throw NotFoundError if custody address is missing
+      custodyAddress = await this.getCustodyAddress(fid);
+    }
     const messageTimestampHash = await this._db.get(SignerSet.signerRemovesKey(fid, custodyAddress, signer));
     return MessageModel.get<SignerRemoveModel>(this._db, fid, UserPrefix.SignerMessage, messageTimestampHash);
   }
 
   /** Get all SignerAdd messages for an fid and custody address */
-  async getSignerAddsByUser(fid: Uint8Array, custodyAddress: Uint8Array): Promise<SignerAddModel[]> {
+  async getSignerAddsByUser(fid: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerAddModel[]> {
+    if (!custodyAddress) {
+      // Will throw NotFoundError if custody address is missing
+      custodyAddress = await this.getCustodyAddress(fid);
+    }
     const addsPrefix = SignerSet.signerAddsKey(fid, custodyAddress);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(addsPrefix, { keys: false, valueAsBuffer: true })) {
@@ -67,7 +79,11 @@ class SignerSet {
   }
 
   /** Get all Signerremove messages for an fid and custody address */
-  async getSignerRemovesByUser(fid: Uint8Array, custodyAddress: Uint8Array): Promise<SignerRemoveModel[]> {
+  async getSignerRemovesByUser(fid: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerRemoveModel[]> {
+    if (!custodyAddress) {
+      // Will throw NotFoundError if custody address is missing
+      custodyAddress = await this.getCustodyAddress(fid);
+    }
     const removesPrefix = SignerSet.signerRemovesKey(fid, custodyAddress);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(removesPrefix, { keys: false, valueAsBuffer: true })) {
