@@ -99,9 +99,9 @@ class SignerSet {
       return undefined;
     }
 
-    const tsx = this._db.transaction();
-    tsx.put(event.primaryKey(), event.toBuffer());
-    return this._db.commit(tsx);
+    const txn = this._db.transaction();
+    txn.put(event.primaryKey(), event.toBuffer());
+    return this._db.commit(txn);
   }
 
   /** Merge a SignerAdd or SignerRemove message into the set */
@@ -140,29 +140,29 @@ class SignerSet {
   }
 
   private async mergeAdd(message: SignerAddModel): Promise<void> {
-    let tsx = await this.resolveMergeConflicts(this._db.transaction(), message);
+    let txn = await this.resolveMergeConflicts(this._db.transaction(), message);
 
     // No-op if resolveMergeConflicts did not return a transaction
-    if (!tsx) return undefined;
+    if (!txn) return undefined;
 
     // Add putSignerAdd operations to the RocksDB transaction
-    tsx = this.putSignerAddTransaction(tsx, message);
+    txn = this.putSignerAddTransaction(txn, message);
 
     // Commit the RocksDB transaction
-    return this._db.commit(tsx);
+    return this._db.commit(txn);
   }
 
   private async mergeRemove(message: SignerRemoveModel): Promise<void> {
-    let tsx = await this.resolveMergeConflicts(this._db.transaction(), message);
+    let txn = await this.resolveMergeConflicts(this._db.transaction(), message);
 
     // No-op if resolveMergeConflicts did not return a transaction
-    if (!tsx) return undefined;
+    if (!txn) return undefined;
 
     // Add putSignerRemove operations to the RocksDB transaction
-    tsx = this.putSignerRemoveTransaction(tsx, message);
+    txn = this.putSignerRemoveTransaction(txn, message);
 
     // Commit the RocksDB transaction
-    return this._db.commit(tsx);
+    return this._db.commit(txn);
   }
 
   private SignerMessageCompare(
@@ -186,7 +186,7 @@ class SignerSet {
   }
 
   private async resolveMergeConflicts(
-    tsx: Transaction,
+    txn: Transaction,
     message: SignerAddModel | SignerRemoveModel
   ): Promise<Transaction | undefined> {
     const signer = message.body().signerArray();
@@ -220,7 +220,7 @@ class SignerSet {
           UserPrefix.SignerMessage,
           removeTimestampHash.value
         );
-        tsx = this.deleteSignerRemoveTransaction(tsx, existingRemove);
+        txn = this.deleteSignerRemoveTransaction(txn, existingRemove);
       }
     }
 
@@ -250,57 +250,57 @@ class SignerSet {
           UserPrefix.SignerMessage,
           addTimestampHash.value
         );
-        tsx = this.deleteSignerAddTransaction(tsx, existingAdd);
+        txn = this.deleteSignerAddTransaction(txn, existingAdd);
       }
     }
 
-    return tsx;
+    return txn;
   }
 
-  private putSignerAddTransaction(tsx: Transaction, message: SignerAddModel): Transaction {
+  private putSignerAddTransaction(txn: Transaction, message: SignerAddModel): Transaction {
     // Put message and index by signer
-    tsx = MessageModel.putTransaction(tsx, message);
+    txn = MessageModel.putTransaction(txn, message);
 
     // Put signerAdds index
-    tsx = tsx.put(
+    txn = txn.put(
       SignerSet.signerAddsKey(message.fid(), message.signer(), message.body().signerArray() ?? new Uint8Array()),
       Buffer.from(message.timestampHash())
     );
 
-    return tsx;
+    return txn;
   }
 
-  private deleteSignerAddTransaction(tsx: Transaction, message: SignerAddModel): Transaction {
+  private deleteSignerAddTransaction(txn: Transaction, message: SignerAddModel): Transaction {
     // Delete from signerAdds
-    tsx = tsx.del(
+    txn = txn.del(
       SignerSet.signerAddsKey(message.fid(), message.signer(), message.body().signerArray() ?? new Uint8Array())
     );
 
     // Delete message
-    return MessageModel.deleteTransaction(tsx, message);
+    return MessageModel.deleteTransaction(txn, message);
   }
 
-  private putSignerRemoveTransaction(tsx: Transaction, message: SignerRemoveModel): Transaction {
+  private putSignerRemoveTransaction(txn: Transaction, message: SignerRemoveModel): Transaction {
     // Put message and index by signer
-    tsx = MessageModel.putTransaction(tsx, message);
+    txn = MessageModel.putTransaction(txn, message);
 
     // Put signerRemoves index
-    tsx = tsx.put(
+    txn = txn.put(
       SignerSet.signerRemovesKey(message.fid(), message.signer(), message.body().signerArray() ?? new Uint8Array()),
       Buffer.from(message.timestampHash())
     );
 
-    return tsx;
+    return txn;
   }
 
-  private deleteSignerRemoveTransaction(tsx: Transaction, message: SignerRemoveModel): Transaction {
+  private deleteSignerRemoveTransaction(txn: Transaction, message: SignerRemoveModel): Transaction {
     // Delete from signerRemoves
-    tsx = tsx.del(
+    txn = txn.del(
       SignerSet.signerRemovesKey(message.fid(), message.signer(), message.body().signerArray() ?? new Uint8Array())
     );
 
     // Delete message
-    return MessageModel.deleteTransaction(tsx, message);
+    return MessageModel.deleteTransaction(txn, message);
   }
 }
 
