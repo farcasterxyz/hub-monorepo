@@ -7,8 +7,6 @@ import {
   FarcasterNetwork,
   FollowBody,
   SignerBody,
-  VerificationAddEthAddressBody,
-  VerificationRemoveBody,
   ReactionBody,
 } from '~/utils/generated/message_generated';
 
