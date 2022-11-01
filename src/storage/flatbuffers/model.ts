@@ -7,6 +7,7 @@ import {
   MessageBody,
   MessageData,
   MessageType,
+  SignerBody,
 } from '~/utils/generated/message_generated';
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { RootPrefix, UserMessagePrefix, UserPrefix } from '~/storage/flatbuffers/types';
@@ -136,6 +137,10 @@ export default class MessageModel {
       return UserPrefix.VerificationMessage;
     }
 
+    if (this.type() === MessageType.SignerAdd || this.type() === MessageType.SignerRemove) {
+      return UserPrefix.SignerMessage;
+    }
+
     // TODO: add all message types
 
     throw new Error('invalid type');
@@ -187,7 +192,13 @@ export default class MessageModel {
     return this.message.signerArray() ?? new Uint8Array();
   }
 
-  body(): CastAddBody | CastRemoveBody | FollowBody | VerificationAddEthAddressBody | VerificationRemoveBody {
+  body():
+    | CastAddBody
+    | CastRemoveBody
+    | FollowBody
+    | VerificationAddEthAddressBody
+    | VerificationRemoveBody
+    | SignerBody {
     if (this.data.bodyType() === MessageBody.CastAddBody) {
       return this.data.body(new CastAddBody()) as CastAddBody;
     } else if (this.data.bodyType() === MessageBody.CastRemoveBody) {
@@ -198,6 +209,8 @@ export default class MessageModel {
       return this.data.body(new VerificationAddEthAddressBody()) as VerificationAddEthAddressBody;
     } else if (this.data.bodyType() === MessageBody.VerificationRemoveBody) {
       return this.data.body(new VerificationRemoveBody()) as VerificationRemoveBody;
+    } else if (this.data.bodyType() === MessageBody.SignerBody) {
+      return this.data.body(new SignerBody()) as SignerBody;
     }
 
     // TODO: add all body types
