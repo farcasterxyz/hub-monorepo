@@ -13,64 +13,71 @@ class CastSet {
     this._db = db;
   }
 
-  /** RocksDB key of the form <user prefix byte, fid, cast removes byte, cast hash> */
-  static castRemovesKey(fid: Uint8Array, hash?: Uint8Array): Buffer {
+  /** RocksDB key of the form <user prefix byte, fid, cast removes byte, cast tsHash> */
+  static castRemovesKey(fid: Uint8Array, tsHash?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
       Buffer.from([UserPostfix.CastRemoves]),
-      hash ? Buffer.from(hash) : new Uint8Array(),
+      tsHash ? Buffer.from(tsHash) : new Uint8Array(),
     ]);
   }
 
-  /** RocksDB key of the form <user prefix byte, fid, cast adds byte, cast hash> */
-  static castAddsKey(fid: Uint8Array, hash?: Uint8Array): Buffer {
+  /** RocksDB key of the form <user prefix byte, fid, cast adds byte, cast tsHash> */
+  static castAddsKey(fid: Uint8Array, tsHash?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
       Buffer.from([UserPostfix.CastAdds]),
-      hash ? Buffer.from(hash) : new Uint8Array(),
+      tsHash ? Buffer.from(tsHash) : new Uint8Array(),
     ]);
   }
 
   // TODO: make parentFid and parentHash fixed size
-  /** RocksDB key of the form <castsByParent prefix byte, parent fid, parent cast hash, fid, cast hash> */
-  static castsByParentKey(parentFid: Uint8Array, parentHash: Uint8Array, fid?: Uint8Array, hash?: Uint8Array): Buffer {
-    const bytes = new Uint8Array(1 + FID_BYTES + parentHash.length + (fid ? FID_BYTES : 0) + (hash ? hash.length : 0));
+  /** RocksDB key of the form <castsByParent prefix byte, parent fid, parent cast tsHash, fid, cast tsHash> */
+  static castsByParentKey(
+    parentFid: Uint8Array,
+    parentTsHash: Uint8Array,
+    fid?: Uint8Array,
+    hash?: Uint8Array
+  ): Buffer {
+    const bytes = new Uint8Array(
+      1 + FID_BYTES + parentTsHash.length + (fid ? FID_BYTES : 0) + (hash ? hash.length : 0)
+    );
     bytes.set([RootPrefix.CastsByParent], 0);
     bytes.set(parentFid, 1 + FID_BYTES - parentFid.length); // pad fid for alignment
-    bytes.set(parentHash, 1 + FID_BYTES);
+    bytes.set(parentTsHash, 1 + FID_BYTES);
     if (fid) {
-      bytes.set(fid, 1 + FID_BYTES + parentHash.length + FID_BYTES - fid.length); // pad fid for alignment
+      bytes.set(fid, 1 + FID_BYTES + parentTsHash.length + FID_BYTES - fid.length); // pad fid for alignment
     }
     if (hash) {
-      bytes.set(hash, 1 + FID_BYTES + parentHash.length + FID_BYTES);
+      bytes.set(hash, 1 + FID_BYTES + parentTsHash.length + FID_BYTES);
     }
     return Buffer.from(bytes);
   }
 
-  // TODO: make parentFid and parentHash fixed size
-  /** RocksDB key of the form <castsByMention prefix byte, mention fid, fid, cast hash> */
-  static castsByMentionKey(mentionFid: Uint8Array, fid?: Uint8Array, hash?: Uint8Array): Buffer {
-    const bytes = new Uint8Array(1 + FID_BYTES + (fid ? FID_BYTES : 0) + (hash ? hash.length : 0));
+  // TODO: make parentFid and parentTsHash fixed size
+  /** RocksDB key of the form <castsByMention prefix byte, mention fid, fid, cast tsHash> */
+  static castsByMentionKey(mentionFid: Uint8Array, fid?: Uint8Array, tsHash?: Uint8Array): Buffer {
+    const bytes = new Uint8Array(1 + FID_BYTES + (fid ? FID_BYTES : 0) + (tsHash ? tsHash.length : 0));
     bytes.set([RootPrefix.CastsByMention], 0);
     bytes.set(mentionFid, 1 + FID_BYTES - mentionFid.length); // pad fid for alignment
     if (fid) {
       bytes.set(fid, 1 + FID_BYTES + FID_BYTES - fid.length); // pad fid for alignment
     }
-    if (hash) {
-      bytes.set(hash, 1 + FID_BYTES + FID_BYTES);
+    if (tsHash) {
+      bytes.set(tsHash, 1 + FID_BYTES + FID_BYTES);
     }
     return Buffer.from(bytes);
   }
 
-  /** Look up CastAdd message by cast hash */
-  async getCastAdd(fid: Uint8Array, hash: Uint8Array): Promise<CastAddModel> {
-    const messageTsHash = await this._db.get(CastSet.castAddsKey(fid, hash));
+  /** Look up CastAdd message by cast tsHash */
+  async getCastAdd(fid: Uint8Array, tsHash: Uint8Array): Promise<CastAddModel> {
+    const messageTsHash = await this._db.get(CastSet.castAddsKey(fid, tsHash));
     return MessageModel.get<CastAddModel>(this._db, fid, UserPostfix.CastMessage, messageTsHash);
   }
 
-  /** Look up CastRemove message by cast hash */
-  async getCastRemove(fid: Uint8Array, hash: Uint8Array): Promise<CastRemoveModel> {
-    const messageTsHash = await this._db.get(CastSet.castRemovesKey(fid, hash));
+  /** Look up CastRemove message by cast tsHash */
+  async getCastRemove(fid: Uint8Array, tsHash: Uint8Array): Promise<CastRemoveModel> {
+    const messageTsHash = await this._db.get(CastSet.castRemovesKey(fid, tsHash));
     return MessageModel.get<CastRemoveModel>(this._db, fid, UserPostfix.CastMessage, messageTsHash);
   }
 
@@ -94,14 +101,14 @@ class CastSet {
     return MessageModel.getManyByUser<CastRemoveModel>(this._db, fid, UserPostfix.CastMessage, messageKeys);
   }
 
-  /** Get all CastAdd messages for a parent cast (fid and hash) */
-  async getCastsByParent(fid: Uint8Array, hash: Uint8Array): Promise<CastAddModel[]> {
-    const byParentPrefix = CastSet.castsByParentKey(fid, hash);
+  /** Get all CastAdd messages for a parent cast (fid and tsHash) */
+  async getCastsByParent(fid: Uint8Array, tsHash: Uint8Array): Promise<CastAddModel[]> {
+    const byParentPrefix = CastSet.castsByParentKey(fid, tsHash);
     const messageKeys: Buffer[] = [];
     for await (const [key] of this._db.iteratorByPrefix(byParentPrefix, { keyAsBuffer: true, values: false })) {
       const fid = Uint8Array.from(key).subarray(byParentPrefix.length, byParentPrefix.length + FID_BYTES);
-      const hash = Uint8Array.from(key).subarray(byParentPrefix.length + FID_BYTES);
-      messageKeys.push(MessageModel.primaryKey(fid, UserPostfix.CastMessage, hash));
+      const tsHash = Uint8Array.from(key).subarray(byParentPrefix.length + FID_BYTES);
+      messageKeys.push(MessageModel.primaryKey(fid, UserPostfix.CastMessage, tsHash));
     }
     return MessageModel.getMany(this._db, messageKeys);
   }
@@ -112,8 +119,8 @@ class CastSet {
     const messageKeys: Buffer[] = [];
     for await (const [key] of this._db.iteratorByPrefix(byMentionPrefix, { keyAsBuffer: true, values: false })) {
       const fid = Uint8Array.from(key).subarray(byMentionPrefix.length, byMentionPrefix.length + FID_BYTES);
-      const hash = Uint8Array.from(key).subarray(byMentionPrefix.length + FID_BYTES);
-      messageKeys.push(MessageModel.primaryKey(fid, UserPostfix.CastMessage, hash));
+      const tsHash = Uint8Array.from(key).subarray(byMentionPrefix.length + FID_BYTES);
+      messageKeys.push(MessageModel.primaryKey(fid, UserPostfix.CastMessage, tsHash));
     }
     return MessageModel.getMany(this._db, messageKeys);
   }
@@ -173,11 +180,11 @@ class CastSet {
     let tsx = this._db.transaction();
 
     // Define cast hash for lookups
-    const castHash = message.body().hashArray() ?? new Uint8Array();
+    const removeTargetTsHash = message.body().hashArray() ?? new Uint8Array();
 
     // Look up the remove tsHash for this cast
     const castRemoveTsHash = await ResultAsync.fromPromise(
-      this._db.get(CastSet.castRemovesKey(message.fid(), castHash)),
+      this._db.get(CastSet.castRemovesKey(message.fid(), removeTargetTsHash)),
       () => undefined
     );
 
@@ -202,7 +209,7 @@ class CastSet {
 
     // Look up the add tsHash for this cast
     const castAddTsHash = await ResultAsync.fromPromise(
-      this._db.get(CastSet.castAddsKey(message.fid(), castHash)),
+      this._db.get(CastSet.castAddsKey(message.fid(), removeTargetTsHash)),
       () => undefined
     );
 
