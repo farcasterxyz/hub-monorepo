@@ -18,6 +18,9 @@ let custody1: EthereumSigner;
 let custody1Address: Uint8Array;
 let custody1Event: ContractEventModel;
 
+let custody2: EthereumSigner;
+let custody2Address: Uint8Array;
+
 let signer: Uint8Array;
 
 let signerAdd: SignerAddModel;
@@ -31,6 +34,9 @@ beforeAll(async () => {
     to: Array.from(custody1Address),
   });
   custody1Event = new ContractEventModel(idRegistryEvent);
+
+  custody2 = await generateEthereumSigner();
+  custody2Address = arrayify(custody2.signerKey);
 
   signer = (await generateEd25519KeyPair()).publicKey;
 
@@ -82,6 +88,97 @@ describe('mergeIDRegistryEvent', () => {
   test('succeeds', async () => {
     await expect(set.mergeIDRegistryEvent(custody1Event)).resolves.toEqual(undefined);
     await expect(set.getIDRegistryEvent(fid)).resolves.toEqual(custody1Event);
+  });
+
+  test('causes signers to become active', async () => {
+    await set.merge(signerAdd);
+    await expect(set.getSignerAdd(fid, signer)).rejects.toThrow(NotFoundError);
+    await expect(set.mergeIDRegistryEvent(custody1Event)).resolves.toEqual(undefined);
+    await expect(set.getSignerAdd(fid, signer)).resolves.toEqual(signerAdd);
+  });
+
+  describe('overwrites existing event', () => {
+    let newEvent: ContractEventModel;
+
+    beforeEach(async () => {
+      await set.mergeIDRegistryEvent(custody1Event);
+    });
+
+    afterEach(async () => {
+      await expect(set.mergeIDRegistryEvent(newEvent)).resolves.toEqual(undefined);
+      await expect(set.getIDRegistryEvent(fid)).resolves.toEqual(newEvent);
+    });
+
+    test('with a higher block number', async () => {
+      const idRegistryEvent = await Factories.IDRegistryEvent.create({
+        ...custody1Event.event.unpack(),
+        to: Array.from(custody2Address),
+        blockNumber: custody1Event.blockNumber() + 1,
+      });
+      newEvent = new ContractEventModel(idRegistryEvent);
+    });
+
+    test('with the same block number and a higher log index', async () => {
+      const idRegistryEvent = await Factories.IDRegistryEvent.create({
+        ...custody1Event.event.unpack(),
+        to: Array.from(custody2Address),
+        logIndex: custody1Event.logIndex() + 1,
+      });
+      newEvent = new ContractEventModel(idRegistryEvent);
+    });
+
+    test('with the same block number and log index and a higher transaction hash order', async () => {
+      const idRegistryEvent = await Factories.IDRegistryEvent.create({
+        ...custody1Event.event.unpack(),
+        to: Array.from(custody2Address),
+        transactionHash: Array.from([...custody1Event.transactionHash(), 1]),
+      });
+      newEvent = new ContractEventModel(idRegistryEvent);
+    });
+  });
+
+  describe('no-ops', () => {
+    let newEvent: ContractEventModel;
+
+    beforeEach(async () => {
+      await set.mergeIDRegistryEvent(custody1Event);
+    });
+
+    afterEach(async () => {
+      await expect(set.mergeIDRegistryEvent(newEvent)).resolves.toEqual(undefined);
+      await expect(set.getIDRegistryEvent(fid)).resolves.toEqual(custody1Event);
+    });
+
+    test('when existing event has a higher block number', async () => {
+      const idRegistryEvent = await Factories.IDRegistryEvent.create({
+        ...custody1Event.event.unpack(),
+        to: Array.from(custody2Address),
+        blockNumber: custody1Event.blockNumber() - 1,
+      });
+      newEvent = new ContractEventModel(idRegistryEvent);
+    });
+
+    test('when existing event has the same block number and a higher log index', async () => {
+      const idRegistryEvent = await Factories.IDRegistryEvent.create({
+        ...custody1Event.event.unpack(),
+        to: Array.from(custody2Address),
+        logIndex: custody1Event.logIndex() - 1,
+      });
+      newEvent = new ContractEventModel(idRegistryEvent);
+    });
+
+    test('when existing event has the same block number and log index and a higher transaction hash order', async () => {
+      const idRegistryEvent = await Factories.IDRegistryEvent.create({
+        ...custody1Event.event.unpack(),
+        to: Array.from(custody2Address),
+        transactionHash: Array.from([...custody1Event.transactionHash().slice(0, -1)]),
+      });
+      newEvent = new ContractEventModel(idRegistryEvent);
+    });
+
+    test('when event is a duplicate', async () => {
+      newEvent = custody1Event;
+    });
   });
 });
 

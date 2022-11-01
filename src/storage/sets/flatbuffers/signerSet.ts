@@ -92,51 +92,16 @@ class SignerSet {
     return MessageModel.getManyByUser<SignerRemoveModel>(this._db, fid, UserPrefix.SignerMessage, messageKeys);
   }
 
+  // TODO: emit signer change events as a result of ID Registry events
   async mergeIDRegistryEvent(event: ContractEventModel): Promise<void> {
-    // Get current ID Registry event
     const existingEvent = await ResultAsync.fromPromise(this.getIDRegistryEvent(event.fid()), () => undefined);
     if (existingEvent.isOk() && this.eventCompare(existingEvent.value, event) >= 0) {
       return undefined;
     }
 
-    // Get LWW set of signers about to be removed
-    // const oldCustodyAddress = custodyEvent.isOk() ? sanitizeSigner(custodyEvent.value.args.to) : undefined;
-
-    // Update custodyEvent and emit a changeCustody event
-    // const newCustodyAddress = sanitizeSigner(event.args.to);
-
     const tsx = this._db.transaction();
     tsx.put(event.primaryKey(), event.toBuffer());
-    await this._db.commit(tsx);
-
-    // this.emit('changeCustody', fid, newCustodyAddress, event);
-
-    // const newSignerAdds = await this._db.getSignerAddsByUser(fid, newCustodyAddress);
-    // const newSignerKeys = newSignerAdds.map((signerAdd) => signerAdd.data.body.delegate);
-
-    // Emit removeSigner events for all delegate signers that are no longer valid, meaning the set has not merged
-    // a SignerAdd message for that delegate from the new custody address
-    // if (oldCustodyAddress) {
-    //   const oldSignerAdds = await this._db.getSignerAddsByUser(fid, oldCustodyAddress);
-    //   const oldSignerKeys = oldSignerAdds.map((signerAdd) => signerAdd.data.body.delegate);
-
-    //   for (const oldSignerKey of oldSignerKeys) {
-    //     if (!newSignerKeys.includes(oldSignerKey)) {
-    //       this.emit('removeSigner', fid, oldSignerKey); // No SignerRemove message to include
-    //     }
-    //   }
-    // }
-
-    // Emit addSigner events for all delegate signers that are now valid, even ones that already existed
-    // in oldSigners.adds, because we want to make sure an addSigner event has been emitted with the
-    // most up-to-date SignerAdd message for each delegate signer
-    // for (const newSignerAdd of newSignerAdds) {
-    //   this.emit('addSigner', fid, newSignerAdd.data.body.delegate, newSignerAdd);
-    // }
-
-    // TODO: asynchronously run cleanup that deletes all entries that are not for the new custody address
-
-    return undefined;
+    return this._db.commit(tsx);
   }
 
   /** Merge a SignerAdd or SignerRemove message into the set */
@@ -164,9 +129,9 @@ class SignerSet {
       return 1;
     }
     // Compare logIndex
-    if (a.logIndex < b.logIndex) {
+    if (a.logIndex() < b.logIndex()) {
       return -1;
-    } else if (a.logIndex > b.logIndex) {
+    } else if (a.logIndex() > b.logIndex()) {
       return 1;
     }
 
