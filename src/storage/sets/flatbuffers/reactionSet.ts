@@ -18,15 +18,15 @@ import { bytesCompare } from '~/storage/flatbuffers/utils';
  * 2. Highest lexicographic hash wins
  * 3. Remove wins over Adds
  *
- * ReactionMessages are stored ordinally in RocksDB indexed by a unique key `fid:timestampHash`,
+ * ReactionMessages are stored ordinally in RocksDB indexed by a unique key `fid:tsHash`,
  * which makes truncating a user's earliest messages easy. Indices are also build for each phase
  * set (adds, removes) to make lookups easy when checking if a collision exists. An index is also
  * build for the target to make it easy to fetch all reactions for a target. The key-value entries
  * created by the reaction set are:
  *
- * fid:timestampHash -> message
- * fidPrefix:setPrefix:targetCastTimestampHash:reactionType -> fid:timestampHash (Set Index)
- * reactionTargetPrefix:targetCastTimestampHash:reactionType -> fid:timestampHash (Target Index)
+ * fid:tsHash -> message
+ * fidPrefix:setPrefix:targetCastTsHash:reactionType -> fid:tsHash (Set Index)
+ * reactionTargetPrefix:targetCastTsHash:reactionType -> fid:tsHash (Target Index)
  */
 class ReactionSet {
   private _db: RocksDB;
@@ -181,15 +181,15 @@ class ReactionSet {
   async getReactionsByTarget(castId: CastID, type?: ReactionType): Promise<ReactionAddModel[]> {
     const prefix = ReactionSet.reactionsByTargetKey(this.targetKeyForCastId(castId), type);
 
-    // Calculates the positions in the key where the fid and timestampHash begin
+    // Calculates the positions in the key where the fid and tsHash begin
     const fidOffset = type ? prefix.length : prefix.length + 1; // prefix is 1 byte longer if type was provided
     const tsHashOffset = fidOffset + FID_BYTES;
 
     const messageKeys: Buffer[] = [];
     for await (const [key] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
       const fid = Uint8Array.from(key).subarray(fidOffset, tsHashOffset);
-      const timestampHash = Uint8Array.from(key).subarray(tsHashOffset);
-      messageKeys.push(MessageModel.primaryKey(fid, UserPostfix.ReactionMessage, timestampHash));
+      const tsHash = Uint8Array.from(key).subarray(tsHashOffset);
+      messageKeys.push(MessageModel.primaryKey(fid, UserPostfix.ReactionMessage, tsHash));
     }
     return MessageModel.getMany(this._db, messageKeys);
   }
@@ -249,13 +249,13 @@ class ReactionSet {
 
   private reactionMessageCompare(
     aType: MessageType,
-    aTimestampHash: Uint8Array,
+    aTsHash: Uint8Array,
     bType: MessageType,
-    bTimestampHash: Uint8Array
+    bTsHash: Uint8Array
   ): number {
-    const timestampHashOrder = bytesCompare(aTimestampHash, bTimestampHash);
-    if (timestampHashOrder !== 0) {
-      return timestampHashOrder;
+    const tsHashOrder = bytesCompare(aTsHash, bTsHash);
+    if (tsHashOrder !== 0) {
+      return tsHashOrder;
     }
 
     // TODO: Changing these types to FollowRemove and FollowAdd did not break tests
@@ -279,18 +279,18 @@ class ReactionSet {
     message: ReactionAddModel | ReactionRemoveModel
   ): Promise<Transaction | undefined> {
     // Checks if there is a remove timestamp hash for this reaction
-    const reactionRemoveTimestampHash = await ResultAsync.fromPromise(
+    const reactionRemoveTsHash = await ResultAsync.fromPromise(
       this._db.get(ReactionSet.reactionRemovesKey(message.fid(), message.body().type(), targetKey)),
       () => undefined
     );
 
-    if (reactionRemoveTimestampHash.isOk()) {
+    if (reactionRemoveTsHash.isOk()) {
       if (
         this.reactionMessageCompare(
           MessageType.ReactionRemove,
-          reactionRemoveTimestampHash.value,
+          reactionRemoveTsHash.value,
           message.type(),
-          message.timestampHash()
+          message.tsHash()
         ) >= 0
       ) {
         // If the existing remove has the same or higher order than the new message, no-op
@@ -302,26 +302,26 @@ class ReactionSet {
           this._db,
           message.fid(),
           UserPostfix.ReactionMessage,
-          reactionRemoveTimestampHash.value
+          reactionRemoveTsHash.value
         );
         txn = this.deleteReactionRemoveTransaction(txn, existingRemove);
       }
     }
 
     // Checks if there is an add timestamp hash for this reaction
-    const reactionAddTimestampHash = await ResultAsync.fromPromise(
+    const reactionAddTsHash = await ResultAsync.fromPromise(
       this._db.get(ReactionSet.reactionAddsKey(message.fid(), message.body().type(), targetKey)),
       () => undefined
     );
 
-    if (reactionAddTimestampHash.isOk()) {
+    if (reactionAddTsHash.isOk()) {
       if (
         this.reactionMessageCompare(
           // TODO: this was set to FollowAdd and did not break tests
           MessageType.ReactionAdd,
-          reactionAddTimestampHash.value,
+          reactionAddTsHash.value,
           message.type(),
-          message.timestampHash()
+          message.tsHash()
         ) >= 0
       ) {
         // If the existing add has the same or higher order than the new message, no-op
@@ -333,7 +333,7 @@ class ReactionSet {
           this._db,
           message.fid(),
           UserPostfix.ReactionMessage,
-          reactionAddTimestampHash.value
+          reactionAddTsHash.value
         );
         txn = this.deleteReactionAddTransaction(txn, existingAdd);
       }
@@ -352,12 +352,12 @@ class ReactionSet {
     // Puts the message into the ReactionAdds Set index
     txn = txn.put(
       ReactionSet.reactionAddsKey(message.fid(), message.body().type(), targetKey),
-      Buffer.from(message.timestampHash())
+      Buffer.from(message.tsHash())
     );
 
     // Puts message key into the byTarget index
     txn = txn.put(
-      ReactionSet.reactionsByTargetKey(targetKey, message.body().type(), message.fid(), message.timestampHash()),
+      ReactionSet.reactionsByTargetKey(targetKey, message.body().type(), message.fid(), message.tsHash()),
       TRUE_VALUE
     );
 
@@ -369,9 +369,7 @@ class ReactionSet {
     const targetKey = this.targetKeyForMessage(message);
 
     // Delete the message key from byTarget index
-    txn = txn.del(
-      ReactionSet.reactionsByTargetKey(targetKey, message.body().type(), message.fid(), message.timestampHash())
-    );
+    txn = txn.del(ReactionSet.reactionsByTargetKey(targetKey, message.body().type(), message.fid(), message.tsHash()));
 
     // Delete the message key from ReactionAdds Set index
     txn = txn.del(ReactionSet.reactionAddsKey(message.fid(), message.body().type(), targetKey));
@@ -390,7 +388,7 @@ class ReactionSet {
     // Puts message key into the ReactionRemoves Set index
     txn = txn.put(
       ReactionSet.reactionRemovesKey(message.fid(), message.body().type(), targetKey),
-      Buffer.from(message.timestampHash())
+      Buffer.from(message.tsHash())
     );
 
     return txn;

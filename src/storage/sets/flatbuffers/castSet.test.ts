@@ -19,14 +19,14 @@ beforeAll(async () => {
 
   const castRemoveData = await Factories.CastRemoveData.create({
     fid: Array.from(fid),
-    body: Factories.CastRemoveBody.build({ hash: Array.from(castAdd.timestampHash()) }),
+    body: Factories.CastRemoveBody.build({ hash: Array.from(castAdd.tsHash()) }),
   });
   const castRemoveMessage = await Factories.Message.create({ data: Array.from(castRemoveData.bb?.bytes() ?? []) });
   castRemove = new MessageModel(castRemoveMessage) as CastRemoveModel;
 });
 
 describe('getCastAdd', () => {
-  const getCastAdd = () => set.getCastAdd(fid, castAdd.timestampHash());
+  const getCastAdd = () => set.getCastAdd(fid, castAdd.tsHash());
 
   test('fails if missing', async () => {
     await expect(getCastAdd()).rejects.toThrow(NotFoundError);
@@ -39,7 +39,7 @@ describe('getCastAdd', () => {
 });
 
 describe('getCastRemove', () => {
-  const getCastRemove = () => set.getCastRemove(fid, castAdd.timestampHash());
+  const getCastRemove = () => set.getCastRemove(fid, castAdd.tsHash());
 
   test('fails if missing', async () => {
     await expect(getCastRemove()).rejects.toThrow(NotFoundError);
@@ -121,7 +121,7 @@ describe('merge', () => {
       });
 
       test('saves message', async () => {
-        await expect(MessageModel.get(db, fid, UserPostfix.CastMessage, castRemove.timestampHash())).resolves.toEqual(
+        await expect(MessageModel.get(db, fid, UserPostfix.CastMessage, castRemove.tsHash())).resolves.toEqual(
           castRemove
         );
       });
@@ -133,13 +133,13 @@ describe('merge', () => {
       });
 
       test('deletes CastAdd message', async () => {
-        await expect(MessageModel.get(db, fid, UserPostfix.CastMessage, castAdd.timestampHash())).rejects.toThrow(
+        await expect(MessageModel.get(db, fid, UserPostfix.CastMessage, castAdd.tsHash())).rejects.toThrow(
           NotFoundError
         );
       });
 
       test('deletes castAdds index', async () => {
-        await expect(set.getCastAdd(fid, castAdd.timestampHash())).rejects.toThrow(NotFoundError);
+        await expect(set.getCastAdd(fid, castAdd.tsHash())).rejects.toThrow(NotFoundError);
       });
 
       test('deletes castsByParent index', async () => {
@@ -163,7 +163,7 @@ describe('merge', () => {
         // TODO: make it easier to construct conflicting messages
         const castRemoveData = await Factories.CastRemoveData.create({
           fid: Array.from(fid),
-          body: Factories.CastRemoveBody.build({ hash: Array.from(castAdd.timestampHash()) }),
+          body: Factories.CastRemoveBody.build({ hash: Array.from(castAdd.tsHash()) }),
           timestamp: castRemove.timestamp() + 1,
         });
         const castRemoveMessage = await Factories.Message.create({
@@ -172,8 +172,8 @@ describe('merge', () => {
         const castRemoveLater = new MessageModel(castRemoveMessage) as CastRemoveModel;
 
         await expect(set.merge(castRemoveLater)).resolves.toEqual(undefined);
-        await expect(set.getCastRemove(fid, castAdd.timestampHash())).resolves.toEqual(castRemoveLater);
-        await expect(MessageModel.get(db, fid, UserPostfix.CastMessage, castRemove.timestampHash())).rejects.toThrow(
+        await expect(set.getCastRemove(fid, castAdd.tsHash())).resolves.toEqual(castRemoveLater);
+        await expect(MessageModel.get(db, fid, UserPostfix.CastMessage, castRemove.tsHash())).rejects.toThrow(
           NotFoundError
         );
       });
@@ -181,7 +181,7 @@ describe('merge', () => {
       test('no-ops when later CastRemove exists', async () => {
         const castRemoveData = await Factories.CastRemoveData.create({
           fid: Array.from(fid),
-          body: Factories.CastRemoveBody.build({ hash: Array.from(castAdd.timestampHash()) }),
+          body: Factories.CastRemoveBody.build({ hash: Array.from(castAdd.tsHash()) }),
           timestamp: castRemove.timestamp() - 1,
         });
         const castRemoveMessage = await Factories.Message.create({
@@ -189,7 +189,7 @@ describe('merge', () => {
         });
         const castRemoveEarlier = new MessageModel(castRemoveMessage) as CastRemoveModel;
         await expect(set.merge(castRemoveEarlier)).resolves.toEqual(undefined);
-        await expect(set.getCastRemove(fid, castAdd.timestampHash())).resolves.toEqual(castRemove);
+        await expect(set.getCastRemove(fid, castAdd.tsHash())).resolves.toEqual(castRemove);
       });
 
       test('no-ops when merged twice', async () => {
@@ -215,13 +215,11 @@ describe('merge', () => {
       });
 
       test('saves message', async () => {
-        await expect(MessageModel.get(db, fid, UserPostfix.CastMessage, castAdd.timestampHash())).resolves.toEqual(
-          castAdd
-        );
+        await expect(MessageModel.get(db, fid, UserPostfix.CastMessage, castAdd.tsHash())).resolves.toEqual(castAdd);
       });
 
       test('saves castAdds index', async () => {
-        await expect(set.getCastAdd(fid, castAdd.timestampHash())).resolves.toEqual(castAdd);
+        await expect(set.getCastAdd(fid, castAdd.tsHash())).resolves.toEqual(castAdd);
       });
 
       test('saves castsByParent index', async () => {
@@ -244,16 +242,14 @@ describe('merge', () => {
     test('no-ops when CastRemove exists', async () => {
       await set.merge(castRemove);
       await expect(set.merge(castAdd)).resolves.toEqual(undefined);
-      await expect(MessageModel.get(db, fid, UserPostfix.CastMessage, castAdd.timestampHash())).rejects.toThrow(
-        NotFoundError
-      );
-      await expect(set.getCastAdd(fid, castAdd.timestampHash())).rejects.toThrow(NotFoundError);
+      await expect(MessageModel.get(db, fid, UserPostfix.CastMessage, castAdd.tsHash())).rejects.toThrow(NotFoundError);
+      await expect(set.getCastAdd(fid, castAdd.tsHash())).rejects.toThrow(NotFoundError);
     });
 
     test('no-ops when CastRemove exists with an earlier timestamp', async () => {
       const castRemoveData = await Factories.CastRemoveData.create({
         fid: Array.from(fid),
-        body: Factories.CastRemoveBody.build({ hash: Array.from(castAdd.timestampHash()) }),
+        body: Factories.CastRemoveBody.build({ hash: Array.from(castAdd.tsHash()) }),
         timestamp: castAdd.timestamp() - 1,
       });
       const castRemoveMessage = await Factories.Message.create({
@@ -262,10 +258,8 @@ describe('merge', () => {
       const castRemoveEarlier = new MessageModel(castRemoveMessage) as CastRemoveModel;
       await set.merge(castRemoveEarlier);
       await expect(set.merge(castAdd)).resolves.toEqual(undefined);
-      await expect(MessageModel.get(db, fid, UserPostfix.CastMessage, castAdd.timestampHash())).rejects.toThrow(
-        NotFoundError
-      );
-      await expect(set.getCastAdd(fid, castAdd.timestampHash())).rejects.toThrow(NotFoundError);
+      await expect(MessageModel.get(db, fid, UserPostfix.CastMessage, castAdd.tsHash())).rejects.toThrow(NotFoundError);
+      await expect(set.getCastAdd(fid, castAdd.tsHash())).rejects.toThrow(NotFoundError);
     });
   });
 });

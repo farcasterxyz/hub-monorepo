@@ -106,9 +106,9 @@ describe('merge', () => {
       });
 
       test('saves message', async () => {
-        await expect(
-          MessageModel.get(db, fid, UserPostfix.FollowMessage, followRemove.timestampHash())
-        ).resolves.toEqual(followRemove);
+        await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, followRemove.tsHash())).resolves.toEqual(
+          followRemove
+        );
       });
 
       test('saves followRemoves index', async () => {
@@ -116,7 +116,7 @@ describe('merge', () => {
       });
 
       test('deletes FollowAdd message', async () => {
-        await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, followAdd.timestampHash())).rejects.toThrow(
+        await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, followAdd.tsHash())).rejects.toThrow(
           NotFoundError
         );
       });
@@ -141,9 +141,9 @@ describe('merge', () => {
 
         await expect(set.merge(followRemoveLater)).resolves.toEqual(undefined);
         await expect(set.getFollowRemove(fid, userId)).resolves.toEqual(followRemoveLater);
-        await expect(
-          MessageModel.get(db, fid, UserPostfix.FollowMessage, followRemove.timestampHash())
-        ).rejects.toThrow(NotFoundError);
+        await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, followRemove.tsHash())).rejects.toThrow(
+          NotFoundError
+        );
       });
 
       test('no-ops when later FollowRemove exists', async () => {
@@ -179,7 +179,7 @@ describe('merge', () => {
       });
 
       test('saves message', async () => {
-        await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, followAdd.timestampHash())).resolves.toEqual(
+        await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, followAdd.tsHash())).resolves.toEqual(
           followAdd
         );
       });
@@ -216,7 +216,7 @@ describe('merge', () => {
         await set.merge(followAdd);
         await expect(set.merge(followAddLater)).resolves.toEqual(undefined);
         await expect(set.getFollowAdd(fid, userId)).resolves.toEqual(followAddLater);
-        await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, followAdd.timestampHash())).rejects.toThrow(
+        await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, followAdd.tsHash())).rejects.toThrow(
           NotFoundError
         );
       });
@@ -225,7 +225,7 @@ describe('merge', () => {
         await set.merge(followAddLater);
         await expect(set.merge(followAdd)).resolves.toEqual(undefined);
         await expect(set.getFollowAdd(fid, userId)).resolves.toEqual(followAddLater);
-        await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, followAdd.timestampHash())).rejects.toThrow(
+        await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, followAdd.tsHash())).rejects.toThrow(
           NotFoundError
         );
       });
@@ -247,7 +247,7 @@ describe('merge', () => {
         await expect(set.getFollowAdd(fid, userId)).resolves.toEqual(followAdd);
         await expect(set.getFollowRemove(fid, userId)).rejects.toThrow(NotFoundError);
         await expect(
-          MessageModel.get(db, fid, UserPostfix.FollowMessage, followRemoveEarlier.timestampHash())
+          MessageModel.get(db, fid, UserPostfix.FollowMessage, followRemoveEarlier.tsHash())
         ).rejects.toThrow(NotFoundError);
       });
 
@@ -256,7 +256,7 @@ describe('merge', () => {
         await expect(set.merge(followAdd)).resolves.toEqual(undefined);
         await expect(set.getFollowRemove(fid, userId)).resolves.toEqual(followRemove);
         await expect(set.getFollowAdd(fid, userId)).rejects.toThrow(NotFoundError);
-        await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, followAdd.timestampHash())).rejects.toThrow(
+        await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, followAdd.tsHash())).rejects.toThrow(
           NotFoundError
         );
       });

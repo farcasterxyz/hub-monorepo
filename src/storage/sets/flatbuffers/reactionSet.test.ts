@@ -231,13 +231,11 @@ describe('getReactionsByTarget', () => {
 
 describe('merge', () => {
   const assertReactionExists = async (message: ReactionAddModel | ReactionRemoveModel) => {
-    await expect(MessageModel.get(db, fid, UserPostfix.ReactionMessage, message.timestampHash())).resolves.toEqual(
-      message
-    );
+    await expect(MessageModel.get(db, fid, UserPostfix.ReactionMessage, message.tsHash())).resolves.toEqual(message);
   };
 
   const assertReactionDoesNotExist = async (message: ReactionAddModel | ReactionRemoveModel) => {
-    await expect(MessageModel.get(db, fid, UserPostfix.ReactionMessage, message.timestampHash())).rejects.toThrow(
+    await expect(MessageModel.get(db, fid, UserPostfix.ReactionMessage, message.tsHash())).rejects.toThrow(
       NotFoundError
     );
   };

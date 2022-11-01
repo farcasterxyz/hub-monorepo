@@ -47,7 +47,7 @@ const FIDFactory = Factory.define<Uint8Array>(() => {
   return new Uint8Array([faker.datatype.number(255)]);
 });
 
-const TimestampHashFactory = Factory.define<Uint8Array>(() => {
+const TsHashFactory = Factory.define<Uint8Array>(() => {
   const builder = new Builder();
   builder.addInt32(faker.date.recent().getTime());
   const hash = arrayify(faker.datatype.hexadecimal({ length: 4 }).toLowerCase());
@@ -71,7 +71,7 @@ const CastIDFactory = Factory.define<CastIDT, any, CastID>(({ onCreate }) => {
     return CastID.getRootAsCastID(new ByteBuffer(builder.asUint8Array()));
   });
 
-  return new CastIDT(Array.from(FIDFactory.build()), Array.from(TimestampHashFactory.build()));
+  return new CastIDT(Array.from(FIDFactory.build()), Array.from(TsHashFactory.build()));
 });
 
 const MessageDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
@@ -125,7 +125,7 @@ const CastRemoveBodyFactory = Factory.define<CastRemoveBodyT, any, CastRemoveBod
     return CastRemoveBody.getRootAsCastRemoveBody(new ByteBuffer(builder.asUint8Array()));
   });
 
-  return new CastRemoveBodyT(Array.from(TimestampHashFactory.build()));
+  return new CastRemoveBodyT(Array.from(TsHashFactory.build()));
 });
 
 const CastRemoveDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
@@ -366,7 +366,7 @@ const IDRegistryEventFactory = Factory.define<ContractEventT, any, ContractEvent
 
 const Factories = {
   FID: FIDFactory,
-  TimestampHash: TimestampHashFactory,
+  TsHash: TsHashFactory,
   UserID: UserIDFactory,
   CastID: CastIDFactory,
   ReactionBody: ReactionBodyFactory,
