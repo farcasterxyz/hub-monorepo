@@ -3,7 +3,7 @@ import Factories from '~/test/factories/flatbuffer';
 import { FarcasterNetwork, Message, MessageData } from '~/utils/generated/message_generated';
 import * as ed from '@noble/ed25519';
 import { VerificationAddEthAddressBody } from '~/utils/generated/farcaster/verification-add-eth-address-body';
-import { verifyVerificationEthAddressClaimSignature } from '~/utils/verification';
+import { verifyVerificationEthAddressClaimSignature } from '~/utils/eip712';
 import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
 import { hexlify } from 'ethers/lib/utils';
 

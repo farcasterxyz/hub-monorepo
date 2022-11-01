@@ -36,6 +36,7 @@ beforeAll(async () => {
   const removeData = await Factories.VerificationRemoveData.create({
     fid: Array.from(fid),
     body: Factories.VerificationRemoveBody.build({ address: Array.from(addBody.addressArray() || new Uint8Array()) }),
+    timestamp: addData.timestamp() + 1,
   });
   const removeMessage = await Factories.Message.create({ data: Array.from(removeData.bb?.bytes() ?? []) });
   verificationRemove = new MessageModel(removeMessage) as VerificationRemoveModel;

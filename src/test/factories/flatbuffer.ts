@@ -22,6 +22,8 @@ import {
   ReactionBodyT,
   ReactionType,
   SignatureScheme,
+  SignerBody,
+  SignerBodyT,
   UserID,
   UserIDT,
 } from '~/utils/generated/message_generated';
@@ -34,10 +36,11 @@ import {
   VerificationAddEthAddressBody,
   VerificationAddEthAddressBodyT,
 } from '~/utils/generated/farcaster/verification-add-eth-address-body';
-import { ethers } from 'ethers';
-import { signVerificationEthAddressClaim } from '~/utils/verification';
+import { ethers, Wallet } from 'ethers';
+import { signMessageData, signVerificationEthAddressClaim } from '~/utils/eip712';
 import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
 import { VerificationRemoveBody, VerificationRemoveBodyT } from '~/utils/generated/farcaster/verification-remove-body';
+import { ContractEvent, ContractEventT, ContractEventType } from '~/utils/generated/contract_event_generated';
 
 const FIDFactory = Factory.define<Uint8Array>(() => {
   // TODO: generate larger random fid
@@ -231,7 +234,7 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
   });
 
   return new VerificationAddEthAddressBodyT(
-    Array.from(arrayify(faker.datatype.hexadecimal({ length: 32 }))),
+    Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 }))),
     Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
     Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 })))
   );
@@ -257,7 +260,7 @@ const VerificationRemoveBodyFactory = Factory.define<VerificationRemoveBodyT, an
       return VerificationRemoveBody.getRootAsVerificationRemoveBody(new ByteBuffer(builder.asUint8Array()));
     });
 
-    return new VerificationRemoveBodyT(Array.from(arrayify(faker.datatype.hexadecimal({ length: 32 }))));
+    return new VerificationRemoveBodyT(Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 }))));
   }
 );
 
@@ -273,26 +276,90 @@ const VerificationRemoveDataFactory = Factory.define<MessageDataT, any, MessageD
   });
 });
 
-const MessageFactory = Factory.define<MessageT, { signer?: KeyPair }, Message>(({ onCreate, transientParams }) => {
-  onCreate(async (params) => {
-    // Generate hash
-    params.hash = Array.from(blake2b(new Uint8Array(params.data), 4));
-
-    // Generate signature
-    const signer: KeyPair = transientParams.signer ?? (await generateEd25519KeyPair());
-    params.signature = Array.from(await ed.sign(new Uint8Array(params.data), signer.privateKey));
-    params.signer = Array.from(signer.publicKey);
-
+const SignerBodyFactory = Factory.define<SignerBodyT, any, SignerBody>(({ onCreate }) => {
+  onCreate((params) => {
     const builder = new Builder();
     builder.finish(params.pack(builder));
-    return Message.getRootAsMessage(new ByteBuffer(builder.asUint8Array()));
+    return SignerBody.getRootAsSignerBody(new ByteBuffer(builder.asUint8Array()));
   });
 
-  const data = MessageDataFactory.build();
-  const builder = new Builder();
-  builder.finish(data.pack(builder));
+  return new SignerBodyT(Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))));
+});
 
-  return new MessageT(Array.from(builder.asUint8Array()), [], HashScheme.Blake2b, [], SignatureScheme.Ed25519, []);
+const SignerAddDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
+  onCreate((params) => {
+    return MessageDataFactory.create(params);
+  });
+
+  return MessageDataFactory.build({
+    bodyType: MessageBody.SignerBody,
+    body: SignerBodyFactory.build(),
+    type: MessageType.SignerAdd,
+  });
+});
+
+const SignerRemoveDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
+  onCreate((params) => {
+    return MessageDataFactory.create(params);
+  });
+
+  return MessageDataFactory.build({
+    bodyType: MessageBody.SignerBody,
+    body: SignerBodyFactory.build(),
+    type: MessageType.SignerRemove,
+  });
+});
+
+const MessageFactory = Factory.define<MessageT, { signer?: KeyPair; wallet?: Wallet }, Message>(
+  ({ onCreate, transientParams }) => {
+    onCreate(async (params) => {
+      // Generate hash
+      params.hash = Array.from(blake2b(new Uint8Array(params.data), 4));
+
+      // Generate signature
+      if (transientParams.signer) {
+        const signer = transientParams.signer;
+        params.signature = Array.from(await ed.sign(new Uint8Array(params.data), signer.privateKey));
+        params.signer = Array.from(signer.publicKey);
+      } else if (transientParams.wallet) {
+        params.signature = Array.from(await signMessageData(new Uint8Array(params.data), transientParams.wallet));
+        params.signatureScheme = SignatureScheme.EthSignTypedData;
+        params.signer = Array.from(arrayify(transientParams.wallet.address));
+      } else {
+        const signer = await generateEd25519KeyPair();
+        params.signature = Array.from(await ed.sign(new Uint8Array(params.data), signer.privateKey));
+        params.signer = Array.from(signer.publicKey);
+      }
+
+      const builder = new Builder();
+      builder.finish(params.pack(builder));
+      return Message.getRootAsMessage(new ByteBuffer(builder.asUint8Array()));
+    });
+
+    const data = MessageDataFactory.build();
+    const builder = new Builder();
+    builder.finish(data.pack(builder));
+
+    return new MessageT(Array.from(builder.asUint8Array()), [], HashScheme.Blake2b, [], SignatureScheme.Ed25519, []);
+  }
+);
+
+const IDRegistryEventFactory = Factory.define<ContractEventT, any, ContractEvent>(({ onCreate }) => {
+  onCreate((params) => {
+    const builder = new Builder();
+    builder.finish(params.pack(builder));
+    return ContractEvent.getRootAsContractEvent(new ByteBuffer(builder.asUint8Array()));
+  });
+
+  return new ContractEventT(
+    faker.datatype.number({ max: 100000 }),
+    Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
+    Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
+    faker.datatype.number({ max: 1000 }),
+    Array.from(FIDFactory.build()),
+    Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 }))),
+    ContractEventType.IDRegistryRegister
+  );
 });
 
 const Factories = {
@@ -315,7 +382,11 @@ const Factories = {
   VerificationAddEthAddressData: VerificationAddEthAddressDataFactory,
   VerificationRemoveBody: VerificationRemoveBodyFactory,
   VerificationRemoveData: VerificationRemoveDataFactory,
+  SignerBody: SignerBodyFactory,
+  SignerAddData: SignerAddDataFactory,
+  SignerRemoveData: SignerRemoveDataFactory,
   Message: MessageFactory,
+  IDRegistryEvent: IDRegistryEventFactory,
 };
 
 export default Factories;

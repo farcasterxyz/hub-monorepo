@@ -5,267 +5,245 @@ import * as flatbuffers from 'flatbuffers';
 import { HashScheme } from '../farcaster/hash-scheme';
 import { SignatureScheme } from '../farcaster/signature-scheme';
 
+
 export class Message {
-  bb: flatbuffers.ByteBuffer | null = null;
+  bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
-  __init(i: number, bb: flatbuffers.ByteBuffer): Message {
-    this.bb_pos = i;
-    this.bb = bb;
-    return this;
-  }
+  __init(i:number, bb:flatbuffers.ByteBuffer):Message {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+}
 
-  static getRootAsMessage(bb: flatbuffers.ByteBuffer, obj?: Message): Message {
-    return (obj || new Message()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
-  }
+static getRootAsMessage(bb:flatbuffers.ByteBuffer, obj?:Message):Message {
+  return (obj || new Message()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
 
-  static getSizePrefixedRootAsMessage(bb: flatbuffers.ByteBuffer, obj?: Message): Message {
-    bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
-    return (obj || new Message()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
-  }
+static getSizePrefixedRootAsMessage(bb:flatbuffers.ByteBuffer, obj?:Message):Message {
+  bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
+  return (obj || new Message()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
 
-  data(index: number): number | null {
-    const offset = this.bb!.__offset(this.bb_pos, 4);
-    return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
-  }
+data(index: number):number|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
 
-  dataLength(): number {
-    const offset = this.bb!.__offset(this.bb_pos, 4);
-    return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
-  }
+dataLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
 
-  dataArray(): Uint8Array | null {
-    const offset = this.bb!.__offset(this.bb_pos, 4);
-    return offset
-      ? new Uint8Array(
-          this.bb!.bytes().buffer,
-          this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset),
-          this.bb!.__vector_len(this.bb_pos + offset)
-        )
-      : null;
-  }
+dataArray():Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+}
 
-  hash(index: number): number | null {
-    const offset = this.bb!.__offset(this.bb_pos, 6);
-    return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
-  }
+hash(index: number):number|null {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
 
-  hashLength(): number {
-    const offset = this.bb!.__offset(this.bb_pos, 6);
-    return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
-  }
+hashLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
 
-  hashArray(): Uint8Array | null {
-    const offset = this.bb!.__offset(this.bb_pos, 6);
-    return offset
-      ? new Uint8Array(
-          this.bb!.bytes().buffer,
-          this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset),
-          this.bb!.__vector_len(this.bb_pos + offset)
-        )
-      : null;
-  }
+hashArray():Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+}
 
-  hashScheme(): HashScheme {
-    const offset = this.bb!.__offset(this.bb_pos, 8);
-    return offset ? this.bb!.readUint8(this.bb_pos + offset) : HashScheme.Blake2b;
-  }
+hashScheme():HashScheme {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.readUint8(this.bb_pos + offset) : HashScheme.Blake2b;
+}
 
-  signature(index: number): number | null {
-    const offset = this.bb!.__offset(this.bb_pos, 10);
-    return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
-  }
+signature(index: number):number|null {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
 
-  signatureLength(): number {
-    const offset = this.bb!.__offset(this.bb_pos, 10);
-    return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
-  }
+signatureLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
 
-  signatureArray(): Uint8Array | null {
-    const offset = this.bb!.__offset(this.bb_pos, 10);
-    return offset
-      ? new Uint8Array(
-          this.bb!.bytes().buffer,
-          this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset),
-          this.bb!.__vector_len(this.bb_pos + offset)
-        )
-      : null;
-  }
+signatureArray():Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+}
 
-  signatureScheme(): SignatureScheme {
-    const offset = this.bb!.__offset(this.bb_pos, 12);
-    return offset ? this.bb!.readUint8(this.bb_pos + offset) : SignatureScheme.Ed25519;
-  }
+signatureScheme():SignatureScheme {
+  const offset = this.bb!.__offset(this.bb_pos, 12);
+  return offset ? this.bb!.readUint8(this.bb_pos + offset) : SignatureScheme.Ed25519;
+}
 
-  signer(index: number): number | null {
-    const offset = this.bb!.__offset(this.bb_pos, 14);
-    return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
-  }
+signer(index: number):number|null {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
 
-  signerLength(): number {
-    const offset = this.bb!.__offset(this.bb_pos, 14);
-    return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
-  }
+signerLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
 
-  signerArray(): Uint8Array | null {
-    const offset = this.bb!.__offset(this.bb_pos, 14);
-    return offset
-      ? new Uint8Array(
-          this.bb!.bytes().buffer,
-          this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset),
-          this.bb!.__vector_len(this.bb_pos + offset)
-        )
-      : null;
-  }
+signerArray():Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+}
 
-  static startMessage(builder: flatbuffers.Builder) {
-    builder.startObject(6);
-  }
+static startMessage(builder:flatbuffers.Builder) {
+  builder.startObject(6);
+}
 
-  static addData(builder: flatbuffers.Builder, dataOffset: flatbuffers.Offset) {
-    builder.addFieldOffset(0, dataOffset, 0);
-  }
+static addData(builder:flatbuffers.Builder, dataOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, dataOffset, 0);
+}
 
-  static createDataVector(builder: flatbuffers.Builder, data: number[] | Uint8Array): flatbuffers.Offset {
-    builder.startVector(1, data.length, 1);
-    for (let i = data.length - 1; i >= 0; i--) {
-      builder.addInt8(data[i]!);
-    }
-    return builder.endVector();
+static createDataVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
   }
+  return builder.endVector();
+}
 
-  static startDataVector(builder: flatbuffers.Builder, numElems: number) {
-    builder.startVector(1, numElems, 1);
-  }
+static startDataVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
+}
 
-  static addHash(builder: flatbuffers.Builder, hashOffset: flatbuffers.Offset) {
-    builder.addFieldOffset(1, hashOffset, 0);
-  }
+static addHash(builder:flatbuffers.Builder, hashOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, hashOffset, 0);
+}
 
-  static createHashVector(builder: flatbuffers.Builder, data: number[] | Uint8Array): flatbuffers.Offset {
-    builder.startVector(1, data.length, 1);
-    for (let i = data.length - 1; i >= 0; i--) {
-      builder.addInt8(data[i]!);
-    }
-    return builder.endVector();
+static createHashVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
   }
+  return builder.endVector();
+}
 
-  static startHashVector(builder: flatbuffers.Builder, numElems: number) {
-    builder.startVector(1, numElems, 1);
-  }
+static startHashVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
+}
 
-  static addHashScheme(builder: flatbuffers.Builder, hashScheme: HashScheme) {
-    builder.addFieldInt8(2, hashScheme, HashScheme.Blake2b);
-  }
+static addHashScheme(builder:flatbuffers.Builder, hashScheme:HashScheme) {
+  builder.addFieldInt8(2, hashScheme, HashScheme.Blake2b);
+}
 
-  static addSignature(builder: flatbuffers.Builder, signatureOffset: flatbuffers.Offset) {
-    builder.addFieldOffset(3, signatureOffset, 0);
-  }
+static addSignature(builder:flatbuffers.Builder, signatureOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(3, signatureOffset, 0);
+}
 
-  static createSignatureVector(builder: flatbuffers.Builder, data: number[] | Uint8Array): flatbuffers.Offset {
-    builder.startVector(1, data.length, 1);
-    for (let i = data.length - 1; i >= 0; i--) {
-      builder.addInt8(data[i]!);
-    }
-    return builder.endVector();
+static createSignatureVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
   }
+  return builder.endVector();
+}
 
-  static startSignatureVector(builder: flatbuffers.Builder, numElems: number) {
-    builder.startVector(1, numElems, 1);
-  }
+static startSignatureVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
+}
 
-  static addSignatureScheme(builder: flatbuffers.Builder, signatureScheme: SignatureScheme) {
-    builder.addFieldInt8(4, signatureScheme, SignatureScheme.Ed25519);
-  }
+static addSignatureScheme(builder:flatbuffers.Builder, signatureScheme:SignatureScheme) {
+  builder.addFieldInt8(4, signatureScheme, SignatureScheme.Ed25519);
+}
 
-  static addSigner(builder: flatbuffers.Builder, signerOffset: flatbuffers.Offset) {
-    builder.addFieldOffset(5, signerOffset, 0);
-  }
+static addSigner(builder:flatbuffers.Builder, signerOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(5, signerOffset, 0);
+}
 
-  static createSignerVector(builder: flatbuffers.Builder, data: number[] | Uint8Array): flatbuffers.Offset {
-    builder.startVector(1, data.length, 1);
-    for (let i = data.length - 1; i >= 0; i--) {
-      builder.addInt8(data[i]!);
-    }
-    return builder.endVector();
+static createSignerVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
   }
+  return builder.endVector();
+}
 
-  static startSignerVector(builder: flatbuffers.Builder, numElems: number) {
-    builder.startVector(1, numElems, 1);
-  }
+static startSignerVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
+}
 
-  static endMessage(builder: flatbuffers.Builder): flatbuffers.Offset {
-    const offset = builder.endObject();
-    builder.requiredField(offset, 4); // data
-    builder.requiredField(offset, 6); // hash
-    builder.requiredField(offset, 10); // signature
-    builder.requiredField(offset, 14); // signer
-    return offset;
-  }
+static endMessage(builder:flatbuffers.Builder):flatbuffers.Offset {
+  const offset = builder.endObject();
+  builder.requiredField(offset, 4) // data
+  builder.requiredField(offset, 6) // hash
+  builder.requiredField(offset, 10) // signature
+  builder.requiredField(offset, 14) // signer
+  return offset;
+}
 
-  static finishMessageBuffer(builder: flatbuffers.Builder, offset: flatbuffers.Offset) {
-    builder.finish(offset);
-  }
+static finishMessageBuffer(builder:flatbuffers.Builder, offset:flatbuffers.Offset) {
+  builder.finish(offset);
+}
 
-  static finishSizePrefixedMessageBuffer(builder: flatbuffers.Builder, offset: flatbuffers.Offset) {
-    builder.finish(offset, undefined, true);
-  }
+static finishSizePrefixedMessageBuffer(builder:flatbuffers.Builder, offset:flatbuffers.Offset) {
+  builder.finish(offset, undefined, true);
+}
 
-  static createMessage(
-    builder: flatbuffers.Builder,
-    dataOffset: flatbuffers.Offset,
-    hashOffset: flatbuffers.Offset,
-    hashScheme: HashScheme,
-    signatureOffset: flatbuffers.Offset,
-    signatureScheme: SignatureScheme,
-    signerOffset: flatbuffers.Offset
-  ): flatbuffers.Offset {
-    Message.startMessage(builder);
-    Message.addData(builder, dataOffset);
-    Message.addHash(builder, hashOffset);
-    Message.addHashScheme(builder, hashScheme);
-    Message.addSignature(builder, signatureOffset);
-    Message.addSignatureScheme(builder, signatureScheme);
-    Message.addSigner(builder, signerOffset);
-    return Message.endMessage(builder);
-  }
+static createMessage(builder:flatbuffers.Builder, dataOffset:flatbuffers.Offset, hashOffset:flatbuffers.Offset, hashScheme:HashScheme, signatureOffset:flatbuffers.Offset, signatureScheme:SignatureScheme, signerOffset:flatbuffers.Offset):flatbuffers.Offset {
+  Message.startMessage(builder);
+  Message.addData(builder, dataOffset);
+  Message.addHash(builder, hashOffset);
+  Message.addHashScheme(builder, hashScheme);
+  Message.addSignature(builder, signatureOffset);
+  Message.addSignatureScheme(builder, signatureScheme);
+  Message.addSigner(builder, signerOffset);
+  return Message.endMessage(builder);
+}
 
-  unpack(): MessageT {
-    return new MessageT(
-      this.bb!.createScalarList(this.data.bind(this), this.dataLength()),
-      this.bb!.createScalarList(this.hash.bind(this), this.hashLength()),
-      this.hashScheme(),
-      this.bb!.createScalarList(this.signature.bind(this), this.signatureLength()),
-      this.signatureScheme(),
-      this.bb!.createScalarList(this.signer.bind(this), this.signerLength())
-    );
-  }
+unpack(): MessageT {
+  return new MessageT(
+    this.bb!.createScalarList(this.data.bind(this), this.dataLength()),
+    this.bb!.createScalarList(this.hash.bind(this), this.hashLength()),
+    this.hashScheme(),
+    this.bb!.createScalarList(this.signature.bind(this), this.signatureLength()),
+    this.signatureScheme(),
+    this.bb!.createScalarList(this.signer.bind(this), this.signerLength())
+  );
+}
 
-  unpackTo(_o: MessageT): void {
-    _o.data = this.bb!.createScalarList(this.data.bind(this), this.dataLength());
-    _o.hash = this.bb!.createScalarList(this.hash.bind(this), this.hashLength());
-    _o.hashScheme = this.hashScheme();
-    _o.signature = this.bb!.createScalarList(this.signature.bind(this), this.signatureLength());
-    _o.signatureScheme = this.signatureScheme();
-    _o.signer = this.bb!.createScalarList(this.signer.bind(this), this.signerLength());
-  }
+
+unpackTo(_o: MessageT): void {
+  _o.data = this.bb!.createScalarList(this.data.bind(this), this.dataLength());
+  _o.hash = this.bb!.createScalarList(this.hash.bind(this), this.hashLength());
+  _o.hashScheme = this.hashScheme();
+  _o.signature = this.bb!.createScalarList(this.signature.bind(this), this.signatureLength());
+  _o.signatureScheme = this.signatureScheme();
+  _o.signer = this.bb!.createScalarList(this.signer.bind(this), this.signerLength());
+}
 }
 
 export class MessageT {
-  constructor(
-    public data: number[] = [],
-    public hash: number[] = [],
-    public hashScheme: HashScheme = HashScheme.Blake2b,
-    public signature: number[] = [],
-    public signatureScheme: SignatureScheme = SignatureScheme.Ed25519,
-    public signer: number[] = []
-  ) {}
+constructor(
+  public data: (number)[] = [],
+  public hash: (number)[] = [],
+  public hashScheme: HashScheme = HashScheme.Blake2b,
+  public signature: (number)[] = [],
+  public signatureScheme: SignatureScheme = SignatureScheme.Ed25519,
+  public signer: (number)[] = []
+){}
 
-  pack(builder: flatbuffers.Builder): flatbuffers.Offset {
-    const data = Message.createDataVector(builder, this.data);
-    const hash = Message.createHashVector(builder, this.hash);
-    const signature = Message.createSignatureVector(builder, this.signature);
-    const signer = Message.createSignerVector(builder, this.signer);
 
-    return Message.createMessage(builder, data, hash, this.hashScheme, signature, this.signatureScheme, signer);
-  }
+pack(builder:flatbuffers.Builder): flatbuffers.Offset {
+  const data = Message.createDataVector(builder, this.data);
+  const hash = Message.createHashVector(builder, this.hash);
+  const signature = Message.createSignatureVector(builder, this.signature);
+  const signer = Message.createSignerVector(builder, this.signer);
+
+  return Message.createMessage(builder,
+    data,
+    hash,
+    this.hashScheme,
+    signature,
+    this.signatureScheme,
+    signer
+  );
+}
 }

@@ -75,13 +75,18 @@ table VerificationRemoveBody {
   address: [ubyte] (required);
 }
 
+table SignerBody {
+  signer: [ubyte] (required);
+}
+
 union MessageBody {
   CastAddBody,
   CastRemoveBody,
   ReactionBody,
   FollowBody,
   VerificationAddEthAddressBody,
-  VerificationRemoveBody
+  VerificationRemoveBody,
+  SignerBody
 }
 
 table MessageData {

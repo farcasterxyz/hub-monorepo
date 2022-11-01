@@ -1,0 +1,20 @@
+// IDL file for Farcaster ContractEvent
+
+namespace Farcaster;
+
+enum ContractEventType: uint8 {
+  IDRegistryRegister = 1,
+  IDRegistryTransfer = 2,
+}
+
+table ContractEvent {
+  block_number: uint32;
+  block_hash: [ubyte] (required);
+  transaction_hash: [ubyte] (required);
+  log_index: uint16;
+  fid: [ubyte];
+  to: [ubyte];
+  type: ContractEventType = 1;
+}
+
+root_type ContractEvent;
