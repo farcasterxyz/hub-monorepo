@@ -3,8 +3,8 @@ import { KeyPair } from '~/types';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import { NotFoundError } from '~/utils/errors';
-import MessageModel, { TRUE_VALUE } from '~/storage/flatbuffers/model';
-import { UserPrefix } from './types';
+import MessageModel, { TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
+import { UserPostfix } from './types';
 
 const db = jestBinaryRocksDB('flatbuffers.model.test');
 
@@ -58,23 +58,23 @@ describe('static methods', () => {
       const tsx = db
         .transaction()
         .put(
-          MessageModel.primaryKey(new Uint8Array([1]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          MessageModel.primaryKey(new Uint8Array([1]), UserPostfix.CastMessage, new Uint8Array([1, 1])),
           Buffer.from('a')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([2]), UserPrefix.CastMessage, new Uint8Array([2, 1])),
+          MessageModel.primaryKey(new Uint8Array([2]), UserPostfix.CastMessage, new Uint8Array([2, 1])),
           Buffer.from('b')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([2]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          MessageModel.primaryKey(new Uint8Array([2]), UserPostfix.CastMessage, new Uint8Array([1, 1])),
           Buffer.from('c')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([3]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          MessageModel.primaryKey(new Uint8Array([3]), UserPostfix.CastMessage, new Uint8Array([1, 1])),
           Buffer.from('d')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([4]), UserPrefix.CastMessage, new Uint8Array([1])),
+          MessageModel.primaryKey(new Uint8Array([4]), UserPostfix.CastMessage, new Uint8Array([1])),
           Buffer.from('e')
         );
 
@@ -90,23 +90,23 @@ describe('static methods', () => {
       const tsx = db
         .transaction()
         .put(
-          MessageModel.primaryKey(new Uint8Array([1]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          MessageModel.primaryKey(new Uint8Array([1]), UserPostfix.CastMessage, new Uint8Array([1, 1])),
           Buffer.from('a')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([1, 1, 1]), UserPrefix.CastMessage, new Uint8Array([2, 1])),
+          MessageModel.primaryKey(new Uint8Array([1, 1, 1]), UserPostfix.CastMessage, new Uint8Array([2, 1])),
           Buffer.from('b')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([2]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          MessageModel.primaryKey(new Uint8Array([2]), UserPostfix.CastMessage, new Uint8Array([1, 1])),
           Buffer.from('c')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([2, 1]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          MessageModel.primaryKey(new Uint8Array([2, 1]), UserPostfix.CastMessage, new Uint8Array([1, 1])),
           Buffer.from('d')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([4]), UserPrefix.CastMessage, new Uint8Array([1])),
+          MessageModel.primaryKey(new Uint8Array([4]), UserPostfix.CastMessage, new Uint8Array([1])),
           Buffer.from('e')
         );
 
@@ -122,23 +122,23 @@ describe('static methods', () => {
       const tsx = db
         .transaction()
         .put(
-          MessageModel.primaryKey(new Uint8Array([1, 1]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          MessageModel.primaryKey(new Uint8Array([1, 1]), UserPostfix.CastMessage, new Uint8Array([1, 1])),
           Buffer.from('a')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([1, 1, 1]), UserPrefix.CastMessage, new Uint8Array([2, 1])),
+          MessageModel.primaryKey(new Uint8Array([1, 1, 1]), UserPostfix.CastMessage, new Uint8Array([2, 1])),
           Buffer.from('b')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([1, 1, 1]), UserPrefix.CastMessage, new Uint8Array([1, 2])),
+          MessageModel.primaryKey(new Uint8Array([1, 1, 1]), UserPostfix.CastMessage, new Uint8Array([1, 2])),
           Buffer.from('c')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([1, 1]), UserPrefix.CastMessage, new Uint8Array([1, 2])),
+          MessageModel.primaryKey(new Uint8Array([1, 1]), UserPostfix.CastMessage, new Uint8Array([1, 2])),
           Buffer.from('d')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([4]), UserPrefix.CastMessage, new Uint8Array([1])),
+          MessageModel.primaryKey(new Uint8Array([4]), UserPostfix.CastMessage, new Uint8Array([1])),
           Buffer.from('e')
         );
 

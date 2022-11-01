@@ -314,7 +314,9 @@ const MessageFactory = Factory.define<MessageT, { signer?: KeyPair; wallet?: Wal
   ({ onCreate, transientParams }) => {
     onCreate(async (params) => {
       // Generate hash
-      params.hash = Array.from(blake2b(new Uint8Array(params.data), 4));
+      if (params.hash.length == 0) {
+        params.hash = Array.from(blake2b(new Uint8Array(params.data), 4));
+      }
 
       // Generate signature
       if (transientParams.signer) {

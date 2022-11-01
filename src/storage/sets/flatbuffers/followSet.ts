@@ -1,8 +1,8 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { BadRequestError } from '~/utils/errors';
-import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/model';
+import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
 import { ResultAsync } from 'neverthrow';
-import { FollowAddModel, FollowRemoveModel, RootPrefix, UserPrefix } from '~/storage/flatbuffers/types';
+import { FollowAddModel, FollowRemoveModel, RootPrefix, UserPostfix } from '~/storage/flatbuffers/types';
 import { isFollowAdd, isFollowRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
@@ -18,7 +18,7 @@ class FollowSet {
   static followRemovesKey(fid: Uint8Array, user?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
-      Buffer.from([UserPrefix.FollowRemoves]),
+      Buffer.from([UserPostfix.FollowRemoves]),
       user ? Buffer.from(user) : new Uint8Array(),
     ]);
   }
@@ -27,7 +27,7 @@ class FollowSet {
   static followAddsKey(fid: Uint8Array, user?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
-      Buffer.from([UserPrefix.FollowAdds]),
+      Buffer.from([UserPostfix.FollowAdds]),
       user ? Buffer.from(user) : new Uint8Array(),
     ]);
   }
@@ -49,13 +49,13 @@ class FollowSet {
   /** Look up FollowAdd message by user */
   async getFollowAdd(fid: Uint8Array, user: Uint8Array): Promise<FollowAddModel> {
     const messageTimestampHash = await this._db.get(FollowSet.followAddsKey(fid, user));
-    return MessageModel.get<FollowAddModel>(this._db, fid, UserPrefix.FollowMessage, messageTimestampHash);
+    return MessageModel.get<FollowAddModel>(this._db, fid, UserPostfix.FollowMessage, messageTimestampHash);
   }
 
   /** Look up FollowRemove message by user */
   async getFollowRemove(fid: Uint8Array, user: Uint8Array): Promise<FollowRemoveModel> {
     const messageTimestampHash = await this._db.get(FollowSet.followRemovesKey(fid, user));
-    return MessageModel.get<FollowRemoveModel>(this._db, fid, UserPrefix.FollowMessage, messageTimestampHash);
+    return MessageModel.get<FollowRemoveModel>(this._db, fid, UserPostfix.FollowMessage, messageTimestampHash);
   }
 
   /** Get all FollowAdd messages for an fid */
@@ -65,7 +65,7 @@ class FollowSet {
     for await (const [, value] of this._db.iteratorByPrefix(addsPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
     }
-    return MessageModel.getManyByUser<FollowAddModel>(this._db, fid, UserPrefix.FollowMessage, messageKeys);
+    return MessageModel.getManyByUser<FollowAddModel>(this._db, fid, UserPostfix.FollowMessage, messageKeys);
   }
 
   /** Get all FollowRemove messages for an fid */
@@ -75,17 +75,17 @@ class FollowSet {
     for await (const [, value] of this._db.iteratorByPrefix(removesPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
     }
-    return MessageModel.getManyByUser<FollowRemoveModel>(this._db, fid, UserPrefix.FollowMessage, messageKeys);
+    return MessageModel.getManyByUser<FollowRemoveModel>(this._db, fid, UserPostfix.FollowMessage, messageKeys);
   }
 
   /** Get all FollowAdd messages for a user */
   async getFollowsByUser(user: Uint8Array): Promise<FollowAddModel[]> {
-    const byUserPrefix = FollowSet.followsByUserKey(user);
+    const byUserPostfix = FollowSet.followsByUserKey(user);
     const messageKeys: Buffer[] = [];
-    for await (const [key] of this._db.iteratorByPrefix(byUserPrefix, { keyAsBuffer: true, values: false })) {
-      const fid = Uint8Array.from(key).subarray(byUserPrefix.length, byUserPrefix.length + FID_BYTES);
-      const timestampHash = Uint8Array.from(key).subarray(byUserPrefix.length + FID_BYTES);
-      messageKeys.push(MessageModel.primaryKey(fid, UserPrefix.FollowMessage, timestampHash));
+    for await (const [key] of this._db.iteratorByPrefix(byUserPostfix, { keyAsBuffer: true, values: false })) {
+      const fid = Uint8Array.from(key).subarray(byUserPostfix.length, byUserPostfix.length + FID_BYTES);
+      const timestampHash = Uint8Array.from(key).subarray(byUserPostfix.length + FID_BYTES);
+      messageKeys.push(MessageModel.primaryKey(fid, UserPostfix.FollowMessage, timestampHash));
     }
     return MessageModel.getMany(this._db, messageKeys);
   }
@@ -187,7 +187,7 @@ class FollowSet {
         const existingRemove = await MessageModel.get<FollowRemoveModel>(
           this._db,
           message.fid(),
-          UserPrefix.FollowMessage,
+          UserPostfix.FollowMessage,
           followRemoveTimestampHash.value
         );
         tsx = this.deleteFollowRemoveTransaction(tsx, existingRemove);
@@ -217,7 +217,7 @@ class FollowSet {
         const existingAdd = await MessageModel.get<FollowAddModel>(
           this._db,
           message.fid(),
-          UserPrefix.FollowMessage,
+          UserPostfix.FollowMessage,
           followAddTimestampHash.value
         );
         tsx = this.deleteFollowAddTransaction(tsx, existingAdd);

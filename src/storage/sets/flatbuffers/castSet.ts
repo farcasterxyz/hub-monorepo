@@ -1,8 +1,8 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { BadRequestError } from '~/utils/errors';
-import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/model';
+import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
 import { ResultAsync } from 'neverthrow';
-import { CastAddModel, CastRemoveModel, RootPrefix, UserPrefix } from '~/storage/flatbuffers/types';
+import { CastAddModel, CastRemoveModel, RootPrefix, UserPostfix } from '~/storage/flatbuffers/types';
 import { isCastAdd, isCastRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 
@@ -17,7 +17,7 @@ class CastSet {
   static castRemovesKey(fid: Uint8Array, hash?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
-      Buffer.from([UserPrefix.CastRemoves]),
+      Buffer.from([UserPostfix.CastRemoves]),
       hash ? Buffer.from(hash) : new Uint8Array(),
     ]);
   }
@@ -26,7 +26,7 @@ class CastSet {
   static castAddsKey(fid: Uint8Array, hash?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
-      Buffer.from([UserPrefix.CastAdds]),
+      Buffer.from([UserPostfix.CastAdds]),
       hash ? Buffer.from(hash) : new Uint8Array(),
     ]);
   }
@@ -65,13 +65,13 @@ class CastSet {
   /** Look up CastAdd message by cast hash */
   async getCastAdd(fid: Uint8Array, hash: Uint8Array): Promise<CastAddModel> {
     const messageTimestampHash = await this._db.get(CastSet.castAddsKey(fid, hash));
-    return MessageModel.get<CastAddModel>(this._db, fid, UserPrefix.CastMessage, messageTimestampHash);
+    return MessageModel.get<CastAddModel>(this._db, fid, UserPostfix.CastMessage, messageTimestampHash);
   }
 
   /** Look up CastRemove message by cast hash */
   async getCastRemove(fid: Uint8Array, hash: Uint8Array): Promise<CastRemoveModel> {
     const messageTimestampHash = await this._db.get(CastSet.castRemovesKey(fid, hash));
-    return MessageModel.get<CastRemoveModel>(this._db, fid, UserPrefix.CastMessage, messageTimestampHash);
+    return MessageModel.get<CastRemoveModel>(this._db, fid, UserPostfix.CastMessage, messageTimestampHash);
   }
 
   /** Get all CastAdd messages for an fid */
@@ -81,7 +81,7 @@ class CastSet {
     for await (const [, value] of this._db.iteratorByPrefix(castAddsPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
     }
-    return MessageModel.getManyByUser<CastAddModel>(this._db, fid, UserPrefix.CastMessage, messageKeys);
+    return MessageModel.getManyByUser<CastAddModel>(this._db, fid, UserPostfix.CastMessage, messageKeys);
   }
 
   /** Get all CastRemove messages for an fid */
@@ -91,7 +91,7 @@ class CastSet {
     for await (const [, value] of this._db.iteratorByPrefix(castRemovesPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
     }
-    return MessageModel.getManyByUser<CastRemoveModel>(this._db, fid, UserPrefix.CastMessage, messageKeys);
+    return MessageModel.getManyByUser<CastRemoveModel>(this._db, fid, UserPostfix.CastMessage, messageKeys);
   }
 
   /** Get all CastAdd messages for a parent cast (fid and hash) */
@@ -101,7 +101,7 @@ class CastSet {
     for await (const [key] of this._db.iteratorByPrefix(byParentPrefix, { keyAsBuffer: true, values: false })) {
       const fid = Uint8Array.from(key).subarray(byParentPrefix.length, byParentPrefix.length + FID_BYTES);
       const hash = Uint8Array.from(key).subarray(byParentPrefix.length + FID_BYTES);
-      messageKeys.push(MessageModel.primaryKey(fid, UserPrefix.CastMessage, hash));
+      messageKeys.push(MessageModel.primaryKey(fid, UserPostfix.CastMessage, hash));
     }
     return MessageModel.getMany(this._db, messageKeys);
   }
@@ -113,7 +113,7 @@ class CastSet {
     for await (const [key] of this._db.iteratorByPrefix(byMentionPrefix, { keyAsBuffer: true, values: false })) {
       const fid = Uint8Array.from(key).subarray(byMentionPrefix.length, byMentionPrefix.length + FID_BYTES);
       const hash = Uint8Array.from(key).subarray(byMentionPrefix.length + FID_BYTES);
-      messageKeys.push(MessageModel.primaryKey(fid, UserPrefix.CastMessage, hash));
+      messageKeys.push(MessageModel.primaryKey(fid, UserPostfix.CastMessage, hash));
     }
     return MessageModel.getMany(this._db, messageKeys);
   }
@@ -193,7 +193,7 @@ class CastSet {
         const existingRemove = await MessageModel.get<CastRemoveModel>(
           this._db,
           message.fid(),
-          UserPrefix.CastMessage,
+          UserPostfix.CastMessage,
           castRemoveTimestampHash.value
         );
         tsx = this.deleteCastRemoveTransaction(tsx, existingRemove);
@@ -212,7 +212,7 @@ class CastSet {
       const existingAdd = await MessageModel.get<CastAddModel>(
         this._db,
         message.fid(),
-        UserPrefix.CastMessage,
+        UserPostfix.CastMessage,
         castAddTimestampHash.value
       );
       tsx = await this.deleteCastAddTransaction(tsx, existingAdd);

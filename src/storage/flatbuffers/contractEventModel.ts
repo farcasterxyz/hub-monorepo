@@ -1,8 +1,8 @@
 import { ByteBuffer } from 'flatbuffers';
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
-import { UserPrefix } from '~/storage/flatbuffers/types';
+import { UserPostfix } from '~/storage/flatbuffers/types';
 import { ContractEvent } from '~/utils/generated/contract_event_generated';
-import MessageModel from './model';
+import MessageModel from './messageModel';
 
 export default class ContractEventModel {
   public event: ContractEvent;
@@ -18,7 +18,7 @@ export default class ContractEventModel {
 
   /** <user prefix byte, fid, ID Registry event prefix byte> */
   static primaryKey(fid: Uint8Array): Buffer {
-    return Buffer.concat([MessageModel.userKey(fid), Buffer.from([UserPrefix.IDRegistryEvent])]);
+    return Buffer.concat([MessageModel.userKey(fid), Buffer.from([UserPostfix.IDRegistryEvent])]);
   }
 
   static async get<T extends ContractEventModel>(db: RocksDB, fid: Uint8Array): Promise<T> {
