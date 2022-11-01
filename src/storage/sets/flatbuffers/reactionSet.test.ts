@@ -372,7 +372,7 @@ describe('merge', () => {
     });
 
     describe('with conflicting ReactionRemove with identical timestamps', () => {
-      test('succeeds with a later hash', async () => {
+      test('no-ops if remove has a later hash', async () => {
         const reactionRemoveData = await Factories.ReactionRemoveData.create({
           ...reactionRemove.data.unpack(),
           timestamp: reactionAdd.timestamp(),
@@ -396,7 +396,7 @@ describe('merge', () => {
         await assertReactionDoesNotExist(reactionAdd);
       });
 
-      test('no-ops with an earlier hash', async () => {
+      test('succeeds if remove has an earlier hash', async () => {
         const reactionRemoveData = await Factories.ReactionRemoveData.create({
           ...reactionRemove.data.unpack(),
           timestamp: reactionAdd.timestamp(),
@@ -416,8 +416,8 @@ describe('merge', () => {
         await set.merge(reactionRemoveEarlier);
         await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
 
-        await assertReactionDoesNotExist(reactionRemoveEarlier);
-        await assertReactionAddWins(reactionAdd);
+        await assertReactionDoesNotExist(reactionAdd);
+        await assertReactionRemoveWins(reactionRemoveEarlier);
       });
     });
   });
@@ -529,7 +529,7 @@ describe('merge', () => {
     });
 
     describe('with conflicting ReactionAdd with identical timestamps', () => {
-      test('no-ops with an earlier hash', async () => {
+      test('succeeds with an earlier hash', async () => {
         const reactionAddData = await Factories.ReactionAddData.create({
           ...reactionRemove.data.unpack(),
           type: MessageType.ReactionAdd,
@@ -548,8 +548,8 @@ describe('merge', () => {
         await set.merge(reactionAddLater);
         await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
 
-        await assertReactionDoesNotExist(reactionRemove);
-        await assertReactionAddWins(reactionAddLater);
+        await assertReactionDoesNotExist(reactionAddLater);
+        await assertReactionRemoveWins(reactionRemove);
       });
 
       test('succeeds with a later hash', async () => {
