@@ -34,24 +34,19 @@ class VerificationSet {
 
   /** Look up VerificationAdd* message by address */
   async getVerificationAdd(fid: Uint8Array, address: Uint8Array): Promise<VerificationAddEthAddressModel> {
-    const messageTimestampHash = await this._db.get(VerificationSet.verificationAddsKey(fid, address));
+    const messageTsHash = await this._db.get(VerificationSet.verificationAddsKey(fid, address));
     return MessageModel.get<VerificationAddEthAddressModel>(
       this._db,
       fid,
       UserPostfix.VerificationMessage,
-      messageTimestampHash
+      messageTsHash
     );
   }
 
   /** Look up VerificationRemove message by address */
   async getVerificationRemove(fid: Uint8Array, address: Uint8Array): Promise<VerificationRemoveModel> {
-    const messageTimestampHash = await this._db.get(VerificationSet.verificationRemovesKey(fid, address));
-    return MessageModel.get<VerificationRemoveModel>(
-      this._db,
-      fid,
-      UserPostfix.VerificationMessage,
-      messageTimestampHash
-    );
+    const messageTsHash = await this._db.get(VerificationSet.verificationRemovesKey(fid, address));
+    return MessageModel.get<VerificationRemoveModel>(this._db, fid, UserPostfix.VerificationMessage, messageTsHash);
   }
 
   /** Get all VerificationAdd* messages for an fid */
@@ -141,11 +136,11 @@ class VerificationSet {
 
   private verificationMessageCompare(
     aType: MessageType,
-    aTimestampHash: Uint8Array,
+    aTsHash: Uint8Array,
     bType: MessageType,
-    bTimestampHash: Uint8Array
+    bTsHash: Uint8Array
   ): number {
-    const tsHashOrder = bytesCompare(aTimestampHash, bTimestampHash);
+    const tsHashOrder = bytesCompare(aTsHash, bTsHash);
     if (tsHashOrder !== 0) {
       return tsHashOrder;
     }
@@ -165,16 +160,16 @@ class VerificationSet {
     message: VerificationAddEthAddressModel | VerificationRemoveModel
   ): Promise<Transaction | undefined> {
     // Look up the remove tsHash for this address
-    const removeTimestampHash = await ResultAsync.fromPromise(
+    const removeTsHash = await ResultAsync.fromPromise(
       this._db.get(VerificationSet.verificationRemovesKey(message.fid(), address)),
       () => undefined
     );
 
-    if (removeTimestampHash.isOk()) {
+    if (removeTsHash.isOk()) {
       if (
         this.verificationMessageCompare(
           MessageType.VerificationRemove,
-          removeTimestampHash.value,
+          removeTsHash.value,
           message.type(),
           message.tsHash()
         ) >= 0
@@ -188,23 +183,23 @@ class VerificationSet {
           this._db,
           message.fid(),
           UserPostfix.VerificationMessage,
-          removeTimestampHash.value
+          removeTsHash.value
         );
         tsx = this.deleteVerificationRemoveTransaction(tsx, existingRemove);
       }
     }
 
     // Look up the add tsHash for this address
-    const addTimestampHash = await ResultAsync.fromPromise(
+    const addTsHash = await ResultAsync.fromPromise(
       this._db.get(VerificationSet.verificationAddsKey(message.fid(), address)),
       () => undefined
     );
 
-    if (addTimestampHash.isOk()) {
+    if (addTsHash.isOk()) {
       if (
         this.verificationMessageCompare(
           MessageType.VerificationAddEthAddress,
-          addTimestampHash.value,
+          addTsHash.value,
           message.type(),
           message.tsHash()
         ) >= 0
@@ -218,7 +213,7 @@ class VerificationSet {
           this._db,
           message.fid(),
           UserPostfix.VerificationMessage,
-          addTimestampHash.value
+          addTsHash.value
         );
         tsx = this.deleteVerificationAddTransaction(tsx, existingAdd);
       }

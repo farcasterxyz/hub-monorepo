@@ -25,8 +25,8 @@ import { bytesCompare } from '~/storage/flatbuffers/utils';
  * created by the reaction set are:
  *
  * fid:tsHash -> message
- * fidPrefix:setPrefix:targetCastTimestampHash:reactionType -> fid:tsHash (Set Index)
- * reactionTargetPrefix:targetCastTimestampHash:reactionType -> fid:tsHash (Target Index)
+ * fidPrefix:setPrefix:targetCastTsHash:reactionType -> fid:tsHash (Set Index)
+ * reactionTargetPrefix:targetCastTsHash:reactionType -> fid:tsHash (Target Index)
  */
 class ReactionSet {
   private _db: RocksDB;
@@ -249,11 +249,11 @@ class ReactionSet {
 
   private reactionMessageCompare(
     aType: MessageType,
-    aTimestampHash: Uint8Array,
+    aTsHash: Uint8Array,
     bType: MessageType,
-    bTimestampHash: Uint8Array
+    bTsHash: Uint8Array
   ): number {
-    const tsHashOrder = bytesCompare(aTimestampHash, bTimestampHash);
+    const tsHashOrder = bytesCompare(aTsHash, bTsHash);
     if (tsHashOrder !== 0) {
       return tsHashOrder;
     }
@@ -279,16 +279,16 @@ class ReactionSet {
     message: ReactionAddModel | ReactionRemoveModel
   ): Promise<Transaction | undefined> {
     // Checks if there is a remove timestamp hash for this reaction
-    const reactionRemoveTimestampHash = await ResultAsync.fromPromise(
+    const reactionRemoveTsHash = await ResultAsync.fromPromise(
       this._db.get(ReactionSet.reactionRemovesKey(message.fid(), message.body().type(), targetKey)),
       () => undefined
     );
 
-    if (reactionRemoveTimestampHash.isOk()) {
+    if (reactionRemoveTsHash.isOk()) {
       if (
         this.reactionMessageCompare(
           MessageType.ReactionRemove,
-          reactionRemoveTimestampHash.value,
+          reactionRemoveTsHash.value,
           message.type(),
           message.tsHash()
         ) >= 0
@@ -302,24 +302,24 @@ class ReactionSet {
           this._db,
           message.fid(),
           UserPostfix.ReactionMessage,
-          reactionRemoveTimestampHash.value
+          reactionRemoveTsHash.value
         );
         txn = this.deleteReactionRemoveTransaction(txn, existingRemove);
       }
     }
 
     // Checks if there is an add timestamp hash for this reaction
-    const reactionAddTimestampHash = await ResultAsync.fromPromise(
+    const reactionAddTsHash = await ResultAsync.fromPromise(
       this._db.get(ReactionSet.reactionAddsKey(message.fid(), message.body().type(), targetKey)),
       () => undefined
     );
 
-    if (reactionAddTimestampHash.isOk()) {
+    if (reactionAddTsHash.isOk()) {
       if (
         this.reactionMessageCompare(
           // TODO: this was set to FollowAdd and did not break tests
           MessageType.ReactionAdd,
-          reactionAddTimestampHash.value,
+          reactionAddTsHash.value,
           message.type(),
           message.tsHash()
         ) >= 0
@@ -333,7 +333,7 @@ class ReactionSet {
           this._db,
           message.fid(),
           UserPostfix.ReactionMessage,
-          reactionAddTimestampHash.value
+          reactionAddTsHash.value
         );
         txn = this.deleteReactionAddTransaction(txn, existingAdd);
       }

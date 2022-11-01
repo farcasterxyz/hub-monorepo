@@ -64,14 +64,14 @@ class CastSet {
 
   /** Look up CastAdd message by cast hash */
   async getCastAdd(fid: Uint8Array, hash: Uint8Array): Promise<CastAddModel> {
-    const messageTimestampHash = await this._db.get(CastSet.castAddsKey(fid, hash));
-    return MessageModel.get<CastAddModel>(this._db, fid, UserPostfix.CastMessage, messageTimestampHash);
+    const messageTsHash = await this._db.get(CastSet.castAddsKey(fid, hash));
+    return MessageModel.get<CastAddModel>(this._db, fid, UserPostfix.CastMessage, messageTsHash);
   }
 
   /** Look up CastRemove message by cast hash */
   async getCastRemove(fid: Uint8Array, hash: Uint8Array): Promise<CastRemoveModel> {
-    const messageTimestampHash = await this._db.get(CastSet.castRemovesKey(fid, hash));
-    return MessageModel.get<CastRemoveModel>(this._db, fid, UserPostfix.CastMessage, messageTimestampHash);
+    const messageTsHash = await this._db.get(CastSet.castRemovesKey(fid, hash));
+    return MessageModel.get<CastRemoveModel>(this._db, fid, UserPostfix.CastMessage, messageTsHash);
   }
 
   /** Get all CastAdd messages for an fid */
@@ -140,24 +140,24 @@ class CastSet {
     let tsx = this._db.transaction();
 
     // Look up the remove tsHash for this cast
-    const castRemoveTimestampHash = await ResultAsync.fromPromise(
+    const castRemoveTsHash = await ResultAsync.fromPromise(
       this._db.get(CastSet.castRemovesKey(message.fid(), message.tsHash())),
       () => undefined
     );
 
     // If remove tsHash exists, no-op because this cast has already been removed
-    if (castRemoveTimestampHash.isOk()) {
+    if (castRemoveTsHash.isOk()) {
       return undefined;
     }
 
     // Look up the add tsHash for this cast
-    const castAddTimestampHash = await ResultAsync.fromPromise(
+    const castAddTsHash = await ResultAsync.fromPromise(
       this._db.get(CastSet.castAddsKey(message.fid(), message.tsHash())),
       () => undefined
     );
 
     // If add tsHash exists, no-op because this cast has already been added
-    if (castAddTimestampHash.isOk()) {
+    if (castAddTsHash.isOk()) {
       return undefined;
     }
 
@@ -176,13 +176,13 @@ class CastSet {
     const castHash = message.body().hashArray() ?? new Uint8Array();
 
     // Look up the remove tsHash for this cast
-    const castRemoveTimestampHash = await ResultAsync.fromPromise(
+    const castRemoveTsHash = await ResultAsync.fromPromise(
       this._db.get(CastSet.castRemovesKey(message.fid(), castHash)),
       () => undefined
     );
 
-    if (castRemoveTimestampHash.isOk()) {
-      if (bytesCompare(castRemoveTimestampHash.value, message.tsHash()) >= 0) {
+    if (castRemoveTsHash.isOk()) {
+      if (bytesCompare(castRemoveTsHash.value, message.tsHash()) >= 0) {
         // If the remove tsHash exists and has the same or higher order than the new CastRemove
         // tsHash, no-op because this cast has been removed by a more recent message
         return undefined;
@@ -194,26 +194,26 @@ class CastSet {
           this._db,
           message.fid(),
           UserPostfix.CastMessage,
-          castRemoveTimestampHash.value
+          castRemoveTsHash.value
         );
         tsx = this.deleteCastRemoveTransaction(tsx, existingRemove);
       }
     }
 
     // Look up the add tsHash for this cast
-    const castAddTimestampHash = await ResultAsync.fromPromise(
+    const castAddTsHash = await ResultAsync.fromPromise(
       this._db.get(CastSet.castAddsKey(message.fid(), castHash)),
       () => undefined
     );
 
     // If the add tsHash exists, retrieve the full CastAdd message and delete it as
     // part of the RocksDB transaction
-    if (castAddTimestampHash.isOk()) {
+    if (castAddTsHash.isOk()) {
       const existingAdd = await MessageModel.get<CastAddModel>(
         this._db,
         message.fid(),
         UserPostfix.CastMessage,
-        castAddTimestampHash.value
+        castAddTsHash.value
       );
       tsx = await this.deleteCastAddTransaction(tsx, existingAdd);
     }
