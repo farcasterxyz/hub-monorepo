@@ -8,6 +8,7 @@ import {
   MessageData,
   MessageType,
   SignerBody,
+  UserDataBody,
 } from '~/utils/generated/message_generated';
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { RootPrefix, UserMessagePrefix, UserPrefix } from '~/storage/flatbuffers/types';
@@ -141,6 +142,10 @@ export default class MessageModel {
       return UserPrefix.SignerMessage;
     }
 
+    if (this.type() === MessageType.UserDataAdd) {
+      return UserPrefix.UserDataMessage;
+    }
+
     // TODO: add all message types
 
     throw new Error('invalid type');
@@ -198,7 +203,8 @@ export default class MessageModel {
     | FollowBody
     | VerificationAddEthAddressBody
     | VerificationRemoveBody
-    | SignerBody {
+    | SignerBody
+    | UserDataBody {
     if (this.data.bodyType() === MessageBody.CastAddBody) {
       return this.data.body(new CastAddBody()) as CastAddBody;
     } else if (this.data.bodyType() === MessageBody.CastRemoveBody) {
@@ -211,6 +217,8 @@ export default class MessageModel {
       return this.data.body(new VerificationRemoveBody()) as VerificationRemoveBody;
     } else if (this.data.bodyType() === MessageBody.SignerBody) {
       return this.data.body(new SignerBody()) as SignerBody;
+    } else if (this.data.bodyType() === MessageBody.UserDataBody) {
+      return this.data.body(new UserDataBody()) as UserDataBody;
     }
 
     // TODO: add all body types

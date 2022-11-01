@@ -13,7 +13,7 @@ enum MessageType: uint16 {
   VerificationRemove = 8,
   SignerAdd = 9,
   SignerRemove = 10,
-  ProfileMeta = 11
+  UserDataAdd = 11
 }
 
 enum SignatureScheme: uint8 {
@@ -34,6 +34,14 @@ enum FarcasterNetwork: uint8 {
 enum ReactionType: uint16 {
   Like = 1,
   Recast = 2
+}
+
+enum UserDataType: uint16 {
+  Pfp = 1,
+  Display = 2,
+  Bio = 3,
+  Location = 4,
+  Url = 5
 }
 
 table CastID {
@@ -79,6 +87,11 @@ table SignerBody {
   signer: [ubyte] (required);
 }
 
+table UserDataBody {
+  type: UserDataType = 1;
+  value: string;
+}
+
 union MessageBody {
   CastAddBody,
   CastRemoveBody,
@@ -86,7 +99,8 @@ union MessageBody {
   FollowBody,
   VerificationAddEthAddressBody,
   VerificationRemoveBody,
-  SignerBody
+  SignerBody,
+  UserDataBody
 }
 
 table MessageData {

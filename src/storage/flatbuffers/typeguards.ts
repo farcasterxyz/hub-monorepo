@@ -6,6 +6,7 @@ import {
   FollowRemoveModel,
   SignerAddModel,
   SignerRemoveModel,
+  UserDataAddModel,
   VerificationAddEthAddressModel,
   VerificationRemoveModel,
 } from '~/storage/flatbuffers/types';
@@ -46,4 +47,8 @@ export const isSignerRemove = (message: MessageModel): message is SignerRemoveMo
 
 export const isSignerAdd = (message: MessageModel): message is SignerAddModel => {
   return message.type() === MessageType.SignerAdd && message.data.bodyType() === MessageBody.SignerBody;
+};
+
+export const isUserDataAdd = (message: MessageModel): message is UserDataAddModel => {
+  return message.type() === MessageType.UserDataAdd && message.data.bodyType() === MessageBody.UserDataBody;
 };

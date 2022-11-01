@@ -7,6 +7,7 @@ import {
   SignerBody,
   VerificationAddEthAddressBody,
   VerificationRemoveBody,
+  UserDataBody,
 } from '~/utils/generated/message_generated';
 
 export enum RootPrefix {
@@ -31,13 +32,16 @@ export enum UserPrefix {
   SignerMessage = 12,
   SignerAdds = 13,
   SignerRemoves = 14,
+  UserDataAdds = 15,
+  UserDataMessage = 16,
 }
 
 export type UserMessagePrefix =
   | UserPrefix.CastMessage
   | UserPrefix.FollowMessage
   | UserPrefix.VerificationMessage
-  | UserPrefix.SignerMessage;
+  | UserPrefix.SignerMessage
+  | UserPrefix.UserDataMessage;
 
 export interface CastRemoveModel extends MessageModel {
   body(): CastRemoveBody;
@@ -69,6 +73,10 @@ export interface SignerAddModel extends MessageModel {
 
 export interface SignerRemoveModel extends MessageModel {
   body(): SignerBody;
+}
+
+export interface UserDataAddModel extends MessageModel {
+  body(): UserDataBody;
 }
 
 export type VerificationEthAddressClaim = {
