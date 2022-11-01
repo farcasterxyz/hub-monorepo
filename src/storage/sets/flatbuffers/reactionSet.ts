@@ -201,7 +201,7 @@ class ReactionSet {
 
     const messageKeys: Buffer[] = [];
     for await (const [key] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
-      const fid = Uint8Array.from(key).subarray(prefix.length, tsHashOffset);
+      const fid = Uint8Array.from(key).subarray(fidOffset, tsHashOffset);
       const timestampHash = Uint8Array.from(key).subarray(tsHashOffset);
       messageKeys.push(MessageModel.primaryKey(fid, UserPrefix.ReactionMessage, timestampHash));
     }
