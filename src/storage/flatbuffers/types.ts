@@ -10,43 +10,70 @@ import {
   ReactionBody,
 } from '~/utils/generated/message_generated';
 
-// TODO: Document the purpose of root prefix
-// Used to prefix keys so that we know if they are a message or an index of some sort.
+/**
+ * RootPrefix indicates the purpose of the key. It is the 1st byte of every key.
+ */
 export enum RootPrefix {
+  /* Used for multiple purposes, starts with a 32-byte fid */
   User = 1,
+  /* Used to index casts by parent */
   CastsByParent = 2,
+  /* Used to index casts by mention */
   CastsByMention = 3,
+  /* Used to index follows by fid */
   FollowsByUser = 4,
+  /* Used to index reactions by target  */
   ReactionsByTarget = 5,
 }
 
-// TODO: Document the purpose of user prefix
-export enum UserPrefix {
+/**
+ * UserPostfix indicates the purpose of the key when the RootPrefix is User. It is the 34th byte of
+ * every RocksDB key with RootPrefix User.
+ */
+export enum UserPostfix {
+  /* Used to store a cast */
   CastMessage = 1,
+  /* Used to index a cast in the add set */
   CastAdds = 2,
+  /* Used to index a cast in the remove set */
   CastRemoves = 3,
+  /* Used to index a message by its signer */
   BySigner = 4,
+  /* Used to store a follow */
   FollowMessage = 5,
+  /* Used to index a follow in the add set */
   FollowAdds = 6,
+  /* Used to index a follow in the remove set */
   FollowRemoves = 7,
+  /* Used to store a reaction */
   ReactionMessage = 8,
+  /* Used to index a reaction in the add set */
   ReactionAdds = 9,
+  /* Used to index a reaction in the remove set */
   ReactionRemoves = 10,
+  /* Used to store a verification */
   VerificationMessage = 11,
+  /* Used to index a verification in the add set */
   VerificationAdds = 12,
+  /* Used to index a verification in the remove set */
   VerificationRemoves = 13,
+  /* Used to store an id registry event */
   IDRegistryEvent = 14,
+  /* Used to store a signer */
   SignerMessage = 15,
+  /* Used to index a signer in the add set */
   SignerAdds = 16,
+  /* Used to index a signer in the remove set */
   SignerRemoves = 17,
 }
 
-export type UserMessagePrefix =
-  | UserPrefix.CastMessage
-  | UserPrefix.FollowMessage
-  | UserPrefix.VerificationMessage
-  | UserPrefix.SignerMessage
-  | UserPrefix.ReactionMessage;
+/** A union type of UserPostfixes that are used to store messages */
+export type UserMessagePostfix =
+  | UserPostfix.CastMessage
+  | UserPostfix.FollowMessage
+  | UserPostfix.VerificationMessage
+  | UserPostfix.SignerMessage
+  | UserPostfix.ReactionMessage;
 
 export interface CastRemoveModel extends MessageModel {
   body(): CastRemoveBody;

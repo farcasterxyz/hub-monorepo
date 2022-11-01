@@ -2,7 +2,7 @@ import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { BadRequestError } from '~/utils/errors';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync } from 'neverthrow';
-import { UserPrefix, VerificationAddEthAddressModel, VerificationRemoveModel } from '~/storage/flatbuffers/types';
+import { UserPostfix, VerificationAddEthAddressModel, VerificationRemoveModel } from '~/storage/flatbuffers/types';
 import { isVerificationAddEthAddress, isVerificationRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
@@ -18,7 +18,7 @@ class VerificationSet {
   static verificationRemovesKey(fid: Uint8Array, address?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
-      Buffer.from([UserPrefix.VerificationRemoves]),
+      Buffer.from([UserPostfix.VerificationRemoves]),
       address ? Buffer.from(address) : new Uint8Array(),
     ]);
   }
@@ -27,7 +27,7 @@ class VerificationSet {
   static verificationAddsKey(fid: Uint8Array, address?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
-      Buffer.from([UserPrefix.VerificationAdds]),
+      Buffer.from([UserPostfix.VerificationAdds]),
       address ? Buffer.from(address) : new Uint8Array(),
     ]);
   }
@@ -38,7 +38,7 @@ class VerificationSet {
     return MessageModel.get<VerificationAddEthAddressModel>(
       this._db,
       fid,
-      UserPrefix.VerificationMessage,
+      UserPostfix.VerificationMessage,
       messageTimestampHash
     );
   }
@@ -49,7 +49,7 @@ class VerificationSet {
     return MessageModel.get<VerificationRemoveModel>(
       this._db,
       fid,
-      UserPrefix.VerificationMessage,
+      UserPostfix.VerificationMessage,
       messageTimestampHash
     );
   }
@@ -64,7 +64,7 @@ class VerificationSet {
     return MessageModel.getManyByUser<VerificationAddEthAddressModel>(
       this._db,
       fid,
-      UserPrefix.VerificationMessage,
+      UserPostfix.VerificationMessage,
       messageKeys
     );
   }
@@ -79,7 +79,7 @@ class VerificationSet {
     return MessageModel.getManyByUser<VerificationRemoveModel>(
       this._db,
       fid,
-      UserPrefix.VerificationMessage,
+      UserPostfix.VerificationMessage,
       messageKeys
     );
   }
@@ -187,7 +187,7 @@ class VerificationSet {
         const existingRemove = await MessageModel.get<VerificationRemoveModel>(
           this._db,
           message.fid(),
-          UserPrefix.VerificationMessage,
+          UserPostfix.VerificationMessage,
           removeTimestampHash.value
         );
         tsx = this.deleteVerificationRemoveTransaction(tsx, existingRemove);
@@ -217,7 +217,7 @@ class VerificationSet {
         const existingAdd = await MessageModel.get<VerificationAddEthAddressModel>(
           this._db,
           message.fid(),
-          UserPrefix.VerificationMessage,
+          UserPostfix.VerificationMessage,
           addTimestampHash.value
         );
         tsx = this.deleteVerificationAddTransaction(tsx, existingAdd);

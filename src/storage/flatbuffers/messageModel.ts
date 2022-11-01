@@ -11,7 +11,7 @@ import {
   SignerBody,
 } from '~/utils/generated/message_generated';
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
-import { RootPrefix, UserMessagePrefix, UserPrefix } from '~/storage/flatbuffers/types';
+import { RootPrefix, UserMessagePostfix, UserPostfix } from '~/storage/flatbuffers/types';
 import { VerificationAddEthAddressBody } from '~/utils/generated/farcaster/verification-add-eth-address-body';
 import { VerificationRemoveBody } from '~/utils/generated/farcaster/verification-remove-body';
 
@@ -46,7 +46,7 @@ export default class MessageModel {
   }
 
   /** <user prefix byte, fid, set index byte, key> */
-  static primaryKey(fid: Uint8Array, set: UserMessagePrefix, key: Uint8Array): Buffer {
+  static primaryKey(fid: Uint8Array, set: UserMessagePostfix, key: Uint8Array): Buffer {
     return Buffer.concat([this.userKey(fid), Buffer.from([set]), Buffer.from(key)]);
   }
 
@@ -54,7 +54,7 @@ export default class MessageModel {
   static bySignerKey(fid: Uint8Array, signer: Uint8Array, type?: MessageType, key?: Uint8Array): Buffer {
     return Buffer.concat([
       this.userKey(fid),
-      Buffer.from([UserPrefix.BySigner]),
+      Buffer.from([UserPostfix.BySigner]),
       Buffer.from(signer),
       type ? Buffer.from([type]) : new Uint8Array(),
       key ? Buffer.from(key) : new Uint8Array(),
@@ -69,7 +69,7 @@ export default class MessageModel {
   static async getManyByUser<T extends MessageModel>(
     db: RocksDB,
     fid: Uint8Array,
-    set: UserMessagePrefix,
+    set: UserMessagePostfix,
     keys: Uint8Array[]
   ): Promise<T[]> {
     return this.getMany<T>(
@@ -99,13 +99,13 @@ export default class MessageModel {
       const messageKeyOffset = prefix.length + (type ? 0 : 1);
       messageKeys.push(key.slice(messageKeyOffset));
     }
-    return MessageModel.getManyByUser<T>(db, fid, UserPrefix.CastMessage, messageKeys);
+    return MessageModel.getManyByUser<T>(db, fid, UserPostfix.CastMessage, messageKeys);
   }
 
   static async get<T extends MessageModel>(
     db: RocksDB,
     fid: Uint8Array,
-    set: UserMessagePrefix,
+    set: UserMessagePostfix,
     key: Uint8Array
   ): Promise<T> {
     const buffer = await db.get(MessageModel.primaryKey(fid, set, key));
@@ -129,25 +129,25 @@ export default class MessageModel {
     return MessageModel.putTransaction(tsx, this);
   }
 
-  setPrefix(): UserMessagePrefix {
+  setPrefix(): UserMessagePostfix {
     if (this.type() === MessageType.CastAdd || this.type() === MessageType.CastRemove) {
-      return UserPrefix.CastMessage;
+      return UserPostfix.CastMessage;
     }
 
     if (this.type() === MessageType.ReactionAdd || this.type() === MessageType.ReactionRemove) {
-      return UserPrefix.ReactionMessage;
+      return UserPostfix.ReactionMessage;
     }
 
     if (this.type() === MessageType.FollowAdd || this.type() === MessageType.FollowRemove) {
-      return UserPrefix.FollowMessage;
+      return UserPostfix.FollowMessage;
     }
 
     if (this.type() === MessageType.VerificationAddEthAddress || this.type() === MessageType.VerificationRemove) {
-      return UserPrefix.VerificationMessage;
+      return UserPostfix.VerificationMessage;
     }
 
     if (this.type() === MessageType.SignerAdd || this.type() === MessageType.SignerRemove) {
-      return UserPrefix.SignerMessage;
+      return UserPostfix.SignerMessage;
     }
 
     // TODO: add all message types

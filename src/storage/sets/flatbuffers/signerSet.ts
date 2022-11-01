@@ -2,7 +2,7 @@ import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { BadRequestError } from '~/utils/errors';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync } from 'neverthrow';
-import { SignerAddModel, UserPrefix, SignerRemoveModel } from '~/storage/flatbuffers/types';
+import { SignerAddModel, UserPostfix, SignerRemoveModel } from '~/storage/flatbuffers/types';
 import { isSignerAdd, isSignerRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
@@ -19,7 +19,7 @@ class SignerSet {
   static signerRemovesKey(fid: Uint8Array, custodyAddress: Uint8Array, signer?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
-      Buffer.from([UserPrefix.SignerRemoves]),
+      Buffer.from([UserPostfix.SignerRemoves]),
       Buffer.from(custodyAddress),
       signer ? Buffer.from(signer) : new Uint8Array(),
     ]);
@@ -29,7 +29,7 @@ class SignerSet {
   static signerAddsKey(fid: Uint8Array, custodyAddress: Uint8Array, signer?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
-      Buffer.from([UserPrefix.SignerAdds]),
+      Buffer.from([UserPostfix.SignerAdds]),
       Buffer.from(custodyAddress),
       signer ? Buffer.from(signer) : new Uint8Array(),
     ]);
@@ -51,7 +51,7 @@ class SignerSet {
       custodyAddress = await this.getCustodyAddress(fid);
     }
     const messageTimestampHash = await this._db.get(SignerSet.signerAddsKey(fid, custodyAddress, signer));
-    return MessageModel.get<SignerAddModel>(this._db, fid, UserPrefix.SignerMessage, messageTimestampHash);
+    return MessageModel.get<SignerAddModel>(this._db, fid, UserPostfix.SignerMessage, messageTimestampHash);
   }
 
   /** Look up SignerRemove message by fid, custody address, and signer */
@@ -61,7 +61,7 @@ class SignerSet {
       custodyAddress = await this.getCustodyAddress(fid);
     }
     const messageTimestampHash = await this._db.get(SignerSet.signerRemovesKey(fid, custodyAddress, signer));
-    return MessageModel.get<SignerRemoveModel>(this._db, fid, UserPrefix.SignerMessage, messageTimestampHash);
+    return MessageModel.get<SignerRemoveModel>(this._db, fid, UserPostfix.SignerMessage, messageTimestampHash);
   }
 
   /** Get all SignerAdd messages for an fid and custody address */
@@ -75,7 +75,7 @@ class SignerSet {
     for await (const [, value] of this._db.iteratorByPrefix(addsPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
     }
-    return MessageModel.getManyByUser<SignerAddModel>(this._db, fid, UserPrefix.SignerMessage, messageKeys);
+    return MessageModel.getManyByUser<SignerAddModel>(this._db, fid, UserPostfix.SignerMessage, messageKeys);
   }
 
   /** Get all Signerremove messages for an fid and custody address */
@@ -89,7 +89,7 @@ class SignerSet {
     for await (const [, value] of this._db.iteratorByPrefix(removesPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
     }
-    return MessageModel.getManyByUser<SignerRemoveModel>(this._db, fid, UserPrefix.SignerMessage, messageKeys);
+    return MessageModel.getManyByUser<SignerRemoveModel>(this._db, fid, UserPostfix.SignerMessage, messageKeys);
   }
 
   // TODO: emit signer change events as a result of ID Registry events
@@ -217,7 +217,7 @@ class SignerSet {
         const existingRemove = await MessageModel.get<SignerRemoveModel>(
           this._db,
           message.fid(),
-          UserPrefix.SignerMessage,
+          UserPostfix.SignerMessage,
           removeTimestampHash.value
         );
         txn = this.deleteSignerRemoveTransaction(txn, existingRemove);
@@ -247,7 +247,7 @@ class SignerSet {
         const existingAdd = await MessageModel.get<SignerAddModel>(
           this._db,
           message.fid(),
-          UserPrefix.SignerMessage,
+          UserPostfix.SignerMessage,
           addTimestampHash.value
         );
         txn = this.deleteSignerAddTransaction(txn, existingAdd);

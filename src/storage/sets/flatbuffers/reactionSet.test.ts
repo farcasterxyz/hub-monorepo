@@ -2,7 +2,7 @@ import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { BadRequestError, NotFoundError } from '~/utils/errors';
-import { ReactionAddModel, ReactionRemoveModel, UserPrefix } from '~/storage/flatbuffers/types';
+import { ReactionAddModel, ReactionRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
 import ReactionSet from '~/storage/sets/flatbuffers/reactionSet';
 import { MessageType, ReactionType } from '~/utils/generated/message_generated';
 
@@ -231,13 +231,13 @@ describe('getReactionsByTarget', () => {
 
 describe('merge', () => {
   const assertReactionExists = async (message: ReactionAddModel | ReactionRemoveModel) => {
-    await expect(MessageModel.get(db, fid, UserPrefix.ReactionMessage, message.timestampHash())).resolves.toEqual(
+    await expect(MessageModel.get(db, fid, UserPostfix.ReactionMessage, message.timestampHash())).resolves.toEqual(
       message
     );
   };
 
   const assertReactionDoesNotExist = async (message: ReactionAddModel | ReactionRemoveModel) => {
-    await expect(MessageModel.get(db, fid, UserPrefix.ReactionMessage, message.timestampHash())).rejects.toThrow(
+    await expect(MessageModel.get(db, fid, UserPostfix.ReactionMessage, message.timestampHash())).rejects.toThrow(
       NotFoundError
     );
   };

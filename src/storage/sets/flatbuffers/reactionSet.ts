@@ -1,7 +1,7 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { BadRequestError } from '~/utils/errors';
 import MessageModel, { FID_BYTES, TARGET_KEY_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
-import { ReactionAddModel, ReactionRemoveModel, RootPrefix, UserPrefix } from '~/storage/flatbuffers/types';
+import { ReactionAddModel, ReactionRemoveModel, RootPrefix, UserPostfix } from '~/storage/flatbuffers/types';
 import { isReactionAdd, isReactionRemove } from '~/storage/flatbuffers/typeguards';
 import { CastID, MessageType, ReactionType } from '~/utils/generated/message_generated';
 import { ResultAsync } from 'neverthrow';
@@ -35,12 +35,6 @@ class ReactionSet {
     this._db = db;
   }
 
-  // DISCUSS: the terms UserPrefix and RootPrefix.User were confusing for quite a while. What we
-  // are really saying is this is a prefix that ensures that it is a "Message Storing" key.
-
-  // DISCUSS: the name Set is still slightly confusing because it has 3 overloaded meanings
-  // javascript set, crdt 2p set, Farcaster set
-
   /**
    * Generates a unique key used to store a ReactionAdd message key in the ReactionsAdd Set index
    *
@@ -48,7 +42,7 @@ class ReactionSet {
    * @param type type of reaction created
    * @param targetKey id of the object being reacted to
    *
-   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPrefix>:<targetKey?>:<type?>
+   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<targetKey?>:<type?>
    */
   static reactionAddsKey(fid: Uint8Array, type?: ReactionType, targetKey?: Uint8Array): Buffer {
     if (targetKey && !type) {
@@ -57,7 +51,7 @@ class ReactionSet {
 
     return Buffer.concat([
       MessageModel.userKey(fid), // --------------------------- fid prefix, 33 bytes
-      Buffer.from([UserPrefix.ReactionAdds]), // -------------- reaction_adds key, 1 byte
+      Buffer.from([UserPostfix.ReactionAdds]), // -------------- reaction_adds key, 1 byte
       type ? Buffer.from([type]) : new Uint8Array(), //-------- type, 1 byte
       targetKey ? Buffer.from(targetKey) : new Uint8Array(), //-- target id, variable bytes
     ]);
@@ -70,7 +64,7 @@ class ReactionSet {
    * @param type type of reaction created
    * @param targetKey id of the object being reacted to
    *
-   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPrefix>:<targetKey?>:<type?>
+   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<targetKey?>:<type?>
    */
   static reactionRemovesKey(fid: Uint8Array, type?: ReactionType, targetKey?: Uint8Array): Buffer {
     if (targetKey && !type) {
@@ -79,7 +73,7 @@ class ReactionSet {
 
     return Buffer.concat([
       MessageModel.userKey(fid), // --------------------------- fid prefix, 33 bytes
-      Buffer.from([UserPrefix.ReactionRemoves]), // ----------- reaction_adds key, 1 byte
+      Buffer.from([UserPostfix.ReactionRemoves]), // ----------- reaction_adds key, 1 byte
       type ? Buffer.from([type]) : new Uint8Array(), //-------- type, 1 byte
       targetKey ? Buffer.from(targetKey) : new Uint8Array(), //-- target id, variable bytes
     ]);
@@ -151,7 +145,7 @@ class ReactionSet {
     const reactionAddsSetKey = ReactionSet.reactionAddsKey(fid, type, this.targetKeyForCastId(castId));
     const reactionMessageKey = await this._db.get(reactionAddsSetKey);
 
-    return MessageModel.get<ReactionAddModel>(this._db, fid, UserPrefix.ReactionMessage, reactionMessageKey);
+    return MessageModel.get<ReactionAddModel>(this._db, fid, UserPostfix.ReactionMessage, reactionMessageKey);
   }
 
   /**
@@ -166,7 +160,7 @@ class ReactionSet {
     const reactionRemovesKey = ReactionSet.reactionRemovesKey(fid, type, this.targetKeyForCastId(castId));
     const reactionMessageKey = await this._db.get(reactionRemovesKey);
 
-    return MessageModel.get<ReactionRemoveModel>(this._db, fid, UserPrefix.ReactionMessage, reactionMessageKey);
+    return MessageModel.get<ReactionRemoveModel>(this._db, fid, UserPostfix.ReactionMessage, reactionMessageKey);
   }
 
   /** Finds all ReactionAdd Messages by iterating through the prefixes */
@@ -176,7 +170,7 @@ class ReactionSet {
     for await (const [, value] of this._db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true })) {
       msgKeys.push(value);
     }
-    return MessageModel.getManyByUser<ReactionAddModel>(this._db, fid, UserPrefix.ReactionMessage, msgKeys);
+    return MessageModel.getManyByUser<ReactionAddModel>(this._db, fid, UserPostfix.ReactionMessage, msgKeys);
   }
 
   /** Finds all ReactionRemove Messages by iterating through the prefixes */
@@ -186,7 +180,7 @@ class ReactionSet {
     for await (const [, value] of this._db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
     }
-    return MessageModel.getManyByUser<ReactionRemoveModel>(this._db, fid, UserPrefix.ReactionMessage, messageKeys);
+    return MessageModel.getManyByUser<ReactionRemoveModel>(this._db, fid, UserPostfix.ReactionMessage, messageKeys);
   }
 
   /** Finds all ReactionAdds that point to a specific target by iterating through the prefixes */
@@ -201,7 +195,7 @@ class ReactionSet {
     for await (const [key] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
       const fid = Uint8Array.from(key).subarray(fidOffset, tsHashOffset);
       const timestampHash = Uint8Array.from(key).subarray(tsHashOffset);
-      messageKeys.push(MessageModel.primaryKey(fid, UserPrefix.ReactionMessage, timestampHash));
+      messageKeys.push(MessageModel.primaryKey(fid, UserPostfix.ReactionMessage, timestampHash));
     }
     return MessageModel.getMany(this._db, messageKeys);
   }
@@ -296,9 +290,6 @@ class ReactionSet {
       () => undefined
     );
 
-    // DISCUSS: we have changed the ordering of the three rules from LWW-RW-HW to LWW-HW-RW
-    // DISCUSS: is LWW-HW robust enough to be used independently? Does RW even add anything?
-
     if (reactionRemoveTimestampHash.isOk()) {
       if (
         this.reactionMessageCompare(
@@ -316,7 +307,7 @@ class ReactionSet {
         const existingRemove = await MessageModel.get<ReactionRemoveModel>(
           this._db,
           message.fid(),
-          UserPrefix.ReactionMessage,
+          UserPostfix.ReactionMessage,
           reactionRemoveTimestampHash.value
         );
         txn = this.deleteReactionRemoveTransaction(txn, existingRemove);
@@ -347,7 +338,7 @@ class ReactionSet {
         const existingAdd = await MessageModel.get<ReactionAddModel>(
           this._db,
           message.fid(),
-          UserPrefix.ReactionMessage,
+          UserPostfix.ReactionMessage,
           reactionAddTimestampHash.value
         );
         txn = this.deleteReactionAddTransaction(txn, existingAdd);
