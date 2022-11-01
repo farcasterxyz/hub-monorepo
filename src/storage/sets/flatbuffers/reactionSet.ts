@@ -230,16 +230,13 @@ class ReactionSet {
       throw new BadRequestError('castId is missing');
     } else {
       const targetKey = this.targetKeyForCastId(castId);
-
       let txn = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
 
-      // No-op if resolveMergeConflicts did not return a transaction
-      if (!txn) return undefined;
+      if (!txn) return undefined; // Assume no-op if txn was not returned
 
-      // Add ops to store the message by messageKey, index the the messageKey by set and by target
+      // Add ops to store the message by messageKey and index the the messageKey by set and by target
       txn = this.putReactionAddTransaction(txn, message);
 
-      // Commit the RocksDB transaction
       return this._db.commit(txn);
     }
   }
@@ -247,18 +244,17 @@ class ReactionSet {
   private async mergeRemove(message: ReactionRemoveModel): Promise<void> {
     const castId = message.body().cast();
 
-    if (castId) {
+    if (!castId) {
+      throw new BadRequestError('castId is missing');
+    } else {
       const targetKey = this.targetKeyForCastId(castId);
-
       let txn = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
 
-      // No-op if resolveMergeConflicts did not return a transaction
-      if (!txn) return undefined;
+      if (!txn) return undefined; // Assume no-op if txn was not returned
 
-      // Add putFollowRemove operations to the RocksDB transaction
+      // Add ops to store the message by messageKey and index the the messageKey by set
       txn = this.putReactionRemoveTransaction(txn, message);
 
-      // Commit the RocksDB transaction
       return this._db.commit(txn);
     }
   }
@@ -284,6 +280,11 @@ class ReactionSet {
     return 0;
   }
 
+  /**
+   * Determines the RocksDB keys that must be modified to settle merge conflicts as a result of adding a Reaction to the Set.
+   *
+   * @returns a RocksDB transaction if keys must be added or removed, undefined otherwise
+   */
   private async resolveMergeConflicts(
     txn: Transaction,
     targetKey: Uint8Array,
@@ -356,19 +357,20 @@ class ReactionSet {
     return txn;
   }
 
+  /* Builds a RocksDB transaction to insert a ReactionAdd message and construct its indices */
   private putReactionAddTransaction(txn: Transaction, message: ReactionAddModel): Transaction {
     const targetKey = this.targetKeyForMessage(message);
 
-    // Puts messageKey -> reactionAddMessage to allow lookups of a message with its message key
+    // Puts the message into the database
     txn = MessageModel.putTransaction(txn, message);
 
-    // Puts reactionAddKey -> messageKey to allow lookups of message keys within a user's ReactionAdd Set.
+    // Puts the message into the ReactionAdds Set index
     txn = txn.put(
       ReactionSet.reactionAddsKey(message.fid(), message.body().type(), targetKey),
       Buffer.from(message.timestampHash())
     );
 
-    // Puts reactionsByTargetGet -> messageKey to allow lookups of message keys pointing at a specific target
+    // Puts message key into the byTarget index
     txn = txn.put(
       ReactionSet.reactionsByTargetKey(targetKey, message.body().type(), message.fid(), message.timestampHash()),
       TRUE_VALUE
@@ -377,28 +379,30 @@ class ReactionSet {
     return txn;
   }
 
+  /* Builds a RocksDB transaction to remove a ReactionAdd message and delete its indices */
   private deleteReactionAddTransaction(txn: Transaction, message: ReactionAddModel): Transaction {
     const targetKey = this.targetKeyForMessage(message);
 
-    // Delete the reactionAdd's key from the user index
+    // Delete the message key from byTarget index
     txn = txn.del(
       ReactionSet.reactionsByTargetKey(targetKey, message.body().type(), message.fid(), message.timestampHash())
     );
 
-    // Delete the reactionAdd's key from reaction adds set index
+    // Delete the message key from ReactionAdds Set index
     txn = txn.del(ReactionSet.reactionAddsKey(message.fid(), message.body().type(), targetKey));
 
-    // Delete the reactionAdd message
+    // Delete the message
     return MessageModel.deleteTransaction(txn, message);
   }
 
+  /* Builds a RocksDB transaction to insert a ReactionRemove message and construct its indices */
   private putReactionRemoveTransaction(txn: Transaction, message: ReactionRemoveModel): Transaction {
     const targetKey = this.targetKeyForMessage(message);
 
-    // Put the reactionRemove message into the database
+    // Puts the message
     txn = MessageModel.putTransaction(txn, message);
 
-    // Put the key into the reactionRemoves Set index
+    // Puts message key into the ReactionRemoves Set index
     txn = txn.put(
       ReactionSet.reactionRemovesKey(message.fid(), message.body().type(), targetKey),
       Buffer.from(message.timestampHash())
@@ -407,18 +411,18 @@ class ReactionSet {
     return txn;
   }
 
+  /* Builds a RocksDB transaction to remove a ReactionRemove message and delete its indices */
   private deleteReactionRemoveTransaction(txn: Transaction, message: ReactionRemoveModel): Transaction {
-    // Delete the reactionRemove key from reactionRemoves Set
     const targetKey = this.targetKeyForMessage(message);
 
-    // TODO: Handling the type this way is unwieldy
+    // Delete message key from ReactionRemoves Set index
     txn = txn.del(ReactionSet.reactionRemovesKey(message.fid(), message.body().type(), targetKey));
 
-    // Delete the reactionRemove message
+    // Delete the message
     return MessageModel.deleteTransaction(txn, message);
   }
 
-  /* Computes the target key prefix for RocksDB given a Message */
+  /* Computes the key for the byTarget index given a Reaction Reaction */
   private targetKeyForMessage(message: ReactionAddModel | ReactionRemoveModel): Buffer {
     return Buffer.concat([
       message.body().cast()?.fidArray() ?? new Uint8Array(),
@@ -426,7 +430,7 @@ class ReactionSet {
     ]);
   }
 
-  /* Computes the target key prefix for RocksDB given a CastID */
+  /* Computes the key for the byTarget index given a Reaction's CastID */
   private targetKeyForCastId(castId: CastID): Buffer {
     return Buffer.concat([castId.fidArray() || new Uint8Array(), castId.hashArray() || new Uint8Array()]);
   }
