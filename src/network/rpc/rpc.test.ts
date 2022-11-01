@@ -26,8 +26,11 @@ import Engine from '~/storage/engine';
 import { faker } from '@faker-js/faker';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { FarcasterError } from '~/utils/errors';
-import { Result } from 'neverthrow';
+import { err, ok, Result } from 'neverthrow';
 import { multiaddr } from '@multiformats/multiaddr';
+import { NodeMetadata } from '../sync/merkleTrie';
+import { SyncEngine } from '~/network/sync/syncEngine';
+import { SyncId } from '~/network/sync/syncId';
 
 const aliceFid = faker.datatype.number();
 const testDb = jestRocksDB('rpc.test');
@@ -36,6 +39,7 @@ const engine = new Engine(testDb);
 let aliceCustodySigner: EthereumSigner;
 let aliceCustodyRegister: IdRegistryEvent;
 let aliceDelegateSigner: MessageSigner;
+let syncEngine: SyncEngine;
 
 let cast: CastShort;
 let castRemove: CastRemove;
@@ -71,6 +75,20 @@ class mockRPCHandler implements RPCHandler {
   }
   getCustodyEventByUser(fid: number): Promise<Result<IdRegistryEvent, FarcasterError>> {
     return engine.getCustodyEventByUser(fid);
+  }
+  getSyncMetadataByPrefix(prefix: string): Promise<Result<NodeMetadata, FarcasterError>> {
+    const nodeMetadata = syncEngine.getNodeMetadata(prefix);
+    if (nodeMetadata) {
+      return Promise.resolve(ok(nodeMetadata));
+    } else {
+      return Promise.resolve(err(new FarcasterError('no metadata found')));
+    }
+  }
+  getSyncIdsByPrefix(prefix: string): Promise<Result<string[], FarcasterError>> {
+    return Promise.resolve(ok(syncEngine.getIdsByPrefix(prefix)));
+  }
+  getMessagesByHashes(hashes: string[]): Promise<Message[]> {
+    return engine.getMessagesByHashes(hashes);
   }
   async submitMessage(message: Message): Promise<Result<void, FarcasterError>> {
     return await engine.mergeMessage(message);
@@ -136,6 +154,7 @@ describe('rpc', () => {
 
   beforeEach(async () => {
     engine._reset();
+    syncEngine = new SyncEngine(engine);
     await engine.mergeIdRegistryEvent(aliceCustodyRegister);
     await engine.mergeMessage(addDelegateSigner);
   });
@@ -232,6 +251,32 @@ describe('rpc', () => {
       const castInvalidUser = await Factories.CastShort.create({ data: { fid: aliceFid + 1 } });
       const response = await client.submitMessage(castInvalidUser);
       expect(response.isErr()).toBeTruthy();
+    });
+
+    test('gets sync metadata by prefix', async () => {
+      const syncId = new SyncId(cast);
+      const response = await client.getSyncMetadataByPrefix(syncId.timestampString);
+      expect(response.isOk()).toBeTruthy();
+      expect(response._unsafeUnwrap().prefix).toEqual(syncId.timestampString);
+      expect(response._unsafeUnwrap().numMessages).toBeGreaterThanOrEqual(1);
+      expect(response._unsafeUnwrap().hash).toBeTruthy();
+
+      const errorResponse = await client.getSyncMetadataByPrefix('non_existent_prefix');
+      expect(errorResponse.isErr()).toBeTruthy();
+    });
+
+    test('gets all sync ids by prefix', async () => {
+      const response = await client.getSyncIdsByPrefix('1');
+      expect(response.isOk()).toBeTruthy();
+      expect(response._unsafeUnwrap()).toHaveLength(syncEngine.trie.items);
+    });
+
+    test('get messages by hashes', async () => {
+      const response = await client.getMessagesByHashes([cast.hash, follow.hash, 'non-existent-hash']);
+      expect(response.isOk()).toBeTruthy();
+      expect(response._unsafeUnwrap()).toHaveLength(2);
+      expect(response._unsafeUnwrap()).toContainEqual(cast);
+      expect(response._unsafeUnwrap()).toContainEqual(follow);
     });
   });
 });

@@ -33,7 +33,7 @@ export const populateEngine = async (
     Follows: 50,
     Reactions: 100,
   }
-) => {
+): Promise<UserInfo[]> => {
   // create a list of users' credentials
   const startFid = faker.datatype.number();
   const userInfos: UserInfo[] = await Promise.all(
@@ -50,6 +50,8 @@ export const populateEngine = async (
   await mockEvents(engine, userInfos, config.Follows, MockFCEvent.Follow);
   // create reactions
   await mockEvents(engine, userInfos, config.Reactions, MockFCEvent.Reaction);
+
+  return userInfos;
 };
 
 /**
@@ -114,7 +116,11 @@ export const mockEvents = async (
 ): Promise<void> => {
   for (const userInfo of userInfos) {
     const createParams = { data: { fid: userInfo.fid } };
-    const createOptions = { transient: { signer: userInfo.delegateSigner } };
+    const now = Date.now();
+    const maxDate = new Date(now - 100); // 100 seconds ago, to make sure we're not within the SYNC_THRESHOLD
+    // use a relatively tight range for test performance
+    const minDate = new Date(maxDate.getTime() - 1000 * 60 * 60 * 24 * 5); // 5 days ago.
+    const createOptions = { transient: { signer: userInfo.delegateSigner, minDate: minDate, maxDate: maxDate } };
     let result;
 
     if (event === MockFCEvent.Verification) {

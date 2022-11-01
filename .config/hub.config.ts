@@ -22,8 +22,6 @@ export const Config = {
   gossipPort: 0,
   /** The RPC port to use. */
   rpcPort: 0,
-  /** Enable/Disable simple sync */
-  simpleSync: true,
   /** The name of the RocksDB instance */
   dbName: 'rocks.hub._default',
   /** Clear the RocksDB instance before starting */

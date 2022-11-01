@@ -3,6 +3,7 @@ import { Message } from '~/types';
 import { Factories } from '~/test/factories';
 import { RPCClient } from '~/network/rpc';
 import { logger } from '~/utils/logger';
+import ProgressBar from 'progress';
 
 /** Describes a list of tasks */
 export interface Scenario {
@@ -34,9 +35,9 @@ export const makeBasicScenario = async (
   rpcClient: RPCClient,
   userInfos: UserInfo[],
   config: ScenarioConfig = {
-    Adds: 5,
-    Removes: 1,
-    RemovesWithoutAdds: 5,
+    Adds: 10,
+    Removes: 2,
+    RemovesWithoutAdds: 1,
   }
 ): Promise<Scenario> => {
   let messages: Message[] = [];
@@ -46,7 +47,16 @@ export const makeBasicScenario = async (
   messages = messages.concat(follows);
   const reactions = await makeMessages(userInfos, config, MockFCEvent.Reaction);
   messages = messages.concat(reactions);
-  const verifications = await makeMessages(userInfos, config, MockFCEvent.Verification);
+  // Only make 1% as many verification requests since they're very slow
+  const verifications = await makeMessages(
+    userInfos,
+    {
+      Adds: Math.ceil(config.Adds * 0.01),
+      Removes: Math.ceil(config.Removes * 0.01),
+      RemovesWithoutAdds: Math.ceil(config.RemovesWithoutAdds * 0.01),
+    },
+    MockFCEvent.Verification
+  );
   messages = messages.concat(verifications);
   logger.info(`Created ${messages.length} messages for Basic scenario`);
 
@@ -63,9 +73,19 @@ export const makeBasicScenario = async (
 
 const makeMessages = async (userInfos: UserInfo[], config: ScenarioConfig, event: MockFCEvent) => {
   if (event > MockFCEvent.Verification) throw 'Invalid event type for messages';
+
+  const total = config.Adds + config.Removes + config.RemovesWithoutAdds;
   // safe to disable here since `event` is validated above
   // eslint-disable-next-line security/detect-object-injection
-  logger.info(`Generating ${MockFCEvent[event]}s for ${userInfos.length} users`);
+  const progress = new ProgressBar(
+    `Generating ${total} ${MockFCEvent[event]}s [:bar] :elapseds :ratemsgs/s :percent :etas`,
+    {
+      complete: '=',
+      incomplete: ' ',
+      width: 20,
+      total: userInfos.length * total,
+    }
+  );
 
   const messages: Message[] = [];
   for (const userInfo of userInfos) {
@@ -90,7 +110,7 @@ const makeMessages = async (userInfos: UserInfo[], config: ScenarioConfig, event
           reference = add.data.body.targetUri;
           break;
         case MockFCEvent.Verification:
-          // creating these a offset time
+          // creating these at an offset time
           add = await Factories.VerificationEthereumAddress.create(
             { ...createParams, data: { signedAt: Date.now() - 1000 } },
             createOptions
@@ -104,6 +124,7 @@ const makeMessages = async (userInfos: UserInfo[], config: ScenarioConfig, event
         // collect target hashes
         removeReference.push(reference);
       }
+      progress.tick();
       messages.push(add);
     }
     for (let i = 0; i < config.Removes; i++) {
@@ -140,12 +161,11 @@ const makeMessages = async (userInfos: UserInfo[], config: ScenarioConfig, event
         default:
           throw Error('Unknown message type');
       }
+      progress.tick();
       messages.push(remove);
     }
     for (let i = 0; i < config.RemovesWithoutAdds; i++) {
       // unrelated removes
-      messages.push(await Factories.CastRemove.create(createParams, createOptions));
-
       switch (event) {
         case MockFCEvent.Cast:
           messages.push(await Factories.CastRemove.create(createParams, createOptions));
@@ -162,6 +182,7 @@ const makeMessages = async (userInfos: UserInfo[], config: ScenarioConfig, event
         default:
           throw Error('Unknown message type');
       }
+      progress.tick();
     }
   }
 

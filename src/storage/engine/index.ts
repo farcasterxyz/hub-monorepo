@@ -44,6 +44,7 @@ import { CastHash } from '~/urls/castUrl';
 import RocksDB from '~/storage/db/rocksdb';
 import { BadRequestError, FarcasterError, ServerError } from '~/utils/errors';
 import { TypedEmitter } from 'tiny-typed-emitter';
+import MessageDB from '~/storage/db/message';
 
 export type EngineEvents = {
   /**
@@ -55,6 +56,7 @@ export type EngineEvents = {
 /** The Engine receives messages and determines the current state of the Farcaster network */
 class Engine extends TypedEmitter<EngineEvents> {
   private _db: RocksDB;
+  private _messageDB: MessageDB;
   private _castSet: CastSet;
   private _signerSet: SignerSet;
   private _followSet: FollowSet;
@@ -68,6 +70,7 @@ class Engine extends TypedEmitter<EngineEvents> {
   constructor(db: RocksDB, networkUrl?: string, IdRegistryAddress?: string) {
     super();
     this._db = db;
+    this._messageDB = new MessageDB(db);
     this._castSet = new CastSet(db);
     this._signerSet = new SignerSet(db);
     this._followSet = new FollowSet(db);
@@ -139,6 +142,10 @@ class Engine extends TypedEmitter<EngineEvents> {
       this.emit('messageMerged', message.data.fid, message.data.type, message);
       return res;
     });
+  }
+
+  public async getMessagesByHashes(hashes: string[]): Promise<Message[]> {
+    return this._messageDB.getMessages(hashes);
   }
 
   /* -------------------------------------------------------------------------- */

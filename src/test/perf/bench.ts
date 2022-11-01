@@ -51,6 +51,6 @@ const userInfos = await setupNetwork(rpcClients, { users: cliOptions.users, mode
 // creates scenario data
 const scenario = await makeBasicScenario(rpcClients[0], userInfos);
 // submits the scenario for playback
-await playback(scenario, { order: PlaybackOrder.RND });
+await playback(scenario, { order: PlaybackOrder.SEQ });
 // verifies network sync
 await waitForSync(rpcClients);
