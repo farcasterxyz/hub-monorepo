@@ -261,7 +261,6 @@ describe('merge', () => {
     const message = await Factories.Message.create({ data: Array.from(invalidData.bb?.bytes() ?? []) });
 
     await expect(set.merge(new MessageModel(message))).rejects.toThrow(BadRequestError);
-    // TODO: maybe check state and assert that nothing improved
   });
 
   describe('ReactionAdd', () => {

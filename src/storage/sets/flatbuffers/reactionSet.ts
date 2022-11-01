@@ -79,8 +79,6 @@ class ReactionSet {
     ]);
   }
 
-  // DISCUSS: Timestamp Hash vs. TsHash vs TimestampId vs TID
-
   /**
    * Generates a unique key used to store a ReactionAdd Message in the ReactionsByTargetAndType index
    *
@@ -110,17 +108,13 @@ class ReactionSet {
     );
 
     bytes.set([RootPrefix.ReactionsByTarget], 0);
-
     bytes.set(targetKey, 1 + TARGET_KEY_BYTES - targetKey.length); // pad if targetKey.length < targetKey.max_length
-
     if (type) {
       bytes.set(Buffer.from([type]), 1 + TARGET_KEY_BYTES);
     }
-
     if (fid) {
       bytes.set(fid, 1 + TARGET_KEY_BYTES + 1 + FID_BYTES - fid.length); // pad if fid.length < fid.max_length
     }
-
     if (tsHash) {
       bytes.set(tsHash, 1 + TARGET_KEY_BYTES + 1 + FID_BYTES);
     }

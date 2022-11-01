@@ -17,12 +17,14 @@ import { VerificationRemoveBody } from '~/utils/generated/farcaster/verification
 
 /** Used when index keys are sufficiently descriptive */
 export const TRUE_VALUE = Buffer.from([1]);
+
+/** Size in bytes of a Farcaster ID */
 export const FID_BYTES = 32;
-export const TARGET_KEY_BYTES = 40; // 32-byte fid, 4-byte timestamp, 4-byte hash
 
-// TODO: Add docs explaining the purpose of this class
-// TODO: naming of the class + file name does not match TS conventions
+/** Size in bytes of a Reaction's targetKey (32-byte fid, 4-byte timestamp, 4-byte hash) */
+export const TARGET_KEY_BYTES = 40;
 
+/** MessageModel that provides helpers to read and write Flatbuffers Messages from RocksDB */
 export default class MessageModel {
   public message: Message;
   public data: MessageData;
