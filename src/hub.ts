@@ -167,9 +167,6 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     if (isUserContent(gossipMessage.content)) {
       const message = (gossipMessage.content as UserContent).message;
       result = await this.engine.mergeMessage(message);
-      if (result.isOk()) {
-        log.info({ hash: message.hash, fid: message.data.fid, type: MessageType[message.data.type] }, 'merged message');
-      }
     } else if (isIdRegistryContent(gossipMessage.content)) {
       const message = (gossipMessage.content as IdRegistryContent).message;
       result = await this.engine.mergeIdRegistryEvent(message);
@@ -326,9 +323,6 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       );
       return mergeResult;
     }
-    // It's safe to convert the message type to its enum string since the message has already been validated.
-    // eslint-disable-next-line security/detect-object-injection
-    log.info({ hash: message.hash, fid: message.data.fid, type: MessageType[message.data.type] }, 'merged message');
 
     // push this message onto the gossip network
     const gossipMessage: GossipMessage<UserContent> = {

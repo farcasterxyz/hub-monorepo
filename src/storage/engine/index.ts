@@ -45,6 +45,7 @@ import RocksDB from '~/storage/db/rocksdb';
 import { BadRequestError, FarcasterError, ServerError } from '~/utils/errors';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import MessageDB from '~/storage/db/message';
+import { logger } from '~/utils/logger';
 
 export type EngineEvents = {
   /**
@@ -139,7 +140,15 @@ class Engine extends TypedEmitter<EngineEvents> {
     }
 
     return result.then((res) => {
-      this.emit('messageMerged', message.data.fid, message.data.type, message);
+      if (res.isOk()) {
+        // It's safe to convert the message type to its enum string since the message has already been validated.
+        // eslint-disable-next-line security/detect-object-injection
+        logger.info(
+          { component: 'engine', hash: message.hash, fid: message.data.fid, type: MessageType[message.data.type] },
+          'messageMerged'
+        );
+        this.emit('messageMerged', message.data.fid, message.data.type, message);
+      }
       return res;
     });
   }
