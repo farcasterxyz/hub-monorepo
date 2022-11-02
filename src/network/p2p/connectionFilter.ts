@@ -38,9 +38,10 @@ export class ConnectionFilter implements ConnectionGater {
 
   denyInboundConnection = async (_maConn: MultiaddrConnection): Promise<boolean> => {
     /**
-     * A PeerId is not always known on incepeint connections.
-     * Don't filter incepient connections, later filters will catch it.
+     * A PeerId is not always known on incipient connections.
+     * Don't filter incipient connections, later filters will catch it.
      */
+    logger.info(_maConn, `ConnectionFilter denyInboundConnection: denied a connection`);
     return false;
   };
 
