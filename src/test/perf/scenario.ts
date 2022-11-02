@@ -78,7 +78,7 @@ const makeMessages = async (userInfos: UserInfo[], config: ScenarioConfig, event
   // safe to disable here since `event` is validated above
   // eslint-disable-next-line security/detect-object-injection
   const progress = new ProgressBar(
-    `Generating ${total} ${MockFCEvent[event]}s [:bar] :elapseds :ratemsgs/s :percent :etas`,
+    `    Generating ${total} ${MockFCEvent[event]}s [:bar] :elapseds :ratemsgs/s :percent :etas`,
     {
       complete: '=',
       incomplete: ' ',
