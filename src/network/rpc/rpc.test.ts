@@ -54,6 +54,8 @@ let addDelegateSigner: SignerAdd;
 let server: RPCServer;
 let client: RPCClient;
 
+const TEST_TIMEOUT_SHORT = 10_000;
+
 class mockRPCHandler implements RPCHandler {
   getUsers(): Promise<Set<number>> {
     return engine.getUsers();
@@ -92,6 +94,9 @@ class mockRPCHandler implements RPCHandler {
   }
   async submitMessage(message: Message): Promise<Result<void, FarcasterError>> {
     return await engine.mergeMessage(message);
+  }
+  async submitIdRegistryEvent(event: IdRegistryEvent): Promise<Result<void, FarcasterError>> {
+    return await engine.mergeIdRegistryEvent(event);
   }
 }
 
@@ -246,6 +251,39 @@ describe('rpc', () => {
       const aliceCasts = await engine.getAllCastsByUser(aliceFid);
       expect(aliceCasts).toEqual(new Set([cast, cast2, castRemove]));
     });
+
+    test('create a batch of new casts and send them over RPC', async () => {
+      const casts = [];
+      for (let i = 0; i < 5; i++) {
+        casts.push(
+          await Factories.CastShort.create({ data: { fid: aliceFid } }, { transient: { signer: aliceDelegateSigner } })
+        );
+      }
+      const response = await client.submitMessages(casts);
+      expect(response.every((r) => r.isOk())).toBeTruthy();
+      const aliceCasts = await engine.getAllCastsByUser(aliceFid);
+      expect(aliceCasts).toEqual(new Set([cast, ...casts, castRemove]));
+    });
+
+    test(
+      'create a batch of IdRegistryEvents and send them over RPC',
+      async () => {
+        const events = [];
+
+        for (let i = 0; i < 5; i++) {
+          const signer = await generateEthereumSigner();
+          events.push(
+            await Factories.IdRegistryEvent.create({
+              args: { to: signer.signerKey, id: faker.datatype.number() },
+              name: 'Register',
+            })
+          );
+        }
+        const response = await client.submitMessages(events);
+        expect(response.every((r) => r.isOk())).toBeTruthy();
+      },
+      TEST_TIMEOUT_SHORT
+    );
 
     test('rejects an invalid cast', async () => {
       const castInvalidUser = await Factories.CastShort.create({ data: { fid: aliceFid + 1 } });

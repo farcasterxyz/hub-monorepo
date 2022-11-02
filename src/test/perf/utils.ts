@@ -20,16 +20,11 @@ export const submitInBatches = async (rpcClient: RPCClient, messages: Message[] 
   const batches = [];
   for (let i = 0; i < messages.length; i += BATCH_SIZE) {
     const batch = messages.slice(i, i + BATCH_SIZE);
-    batches.push(batch);
+    batches.push(rpcClient.submitMessages(batch));
   }
-  const promises = batches.map(async (b) => {
-    const res = await rpcClient.submitMessages(b);
-    progress.tick(BATCH_SIZE);
-    return res;
-  });
-  // Why is this faster than doing everything in 1 loop above
-  for (const batch of promises) {
+  for (const batch of batches) {
     const innerRes = await batch;
+    progress.tick(BATCH_SIZE);
     results = results.concat(innerRes);
   }
   return getCounts(results);
