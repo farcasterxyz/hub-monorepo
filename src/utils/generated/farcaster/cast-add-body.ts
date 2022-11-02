@@ -2,8 +2,8 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { CastID, CastIDT } from '../farcaster/cast-id';
-import { UserID, UserIDT } from '../farcaster/user-id';
+import { CastId, CastIdT } from '../farcaster/cast-id';
+import { UserId, UserIdT } from '../farcaster/user-id';
 
 
 export class CastAddBody {
@@ -36,9 +36,9 @@ embedsLength():number {
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
-mentions(index: number, obj?:UserID):UserID|null {
+mentions(index: number, obj?:UserId):UserId|null {
   const offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? (obj || new UserID()).__init(this.bb!.__indirect(this.bb!.__vector(this.bb_pos + offset) + index * 4), this.bb!) : null;
+  return offset ? (obj || new UserId()).__init(this.bb!.__indirect(this.bb!.__vector(this.bb_pos + offset) + index * 4), this.bb!) : null;
 }
 
 mentionsLength():number {
@@ -46,9 +46,9 @@ mentionsLength():number {
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
-parent(obj?:CastID):CastID|null {
+parent(obj?:CastId):CastId|null {
   const offset = this.bb!.__offset(this.bb_pos, 8);
-  return offset ? (obj || new CastID()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
+  return offset ? (obj || new CastId()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
 text():string|null
@@ -130,8 +130,8 @@ unpackTo(_o: CastAddBodyT): void {
 export class CastAddBodyT {
 constructor(
   public embeds: (string)[] = [],
-  public mentions: (UserIDT)[] = [],
-  public parent: CastIDT|null = null,
+  public mentions: (UserIdT)[] = [],
+  public parent: CastIdT|null = null,
   public text: string|Uint8Array|null = null
 ){}
 

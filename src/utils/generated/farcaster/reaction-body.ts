@@ -2,7 +2,7 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { CastID, CastIDT } from '../farcaster/cast-id';
+import { CastId, CastIdT } from '../farcaster/cast-id';
 import { ReactionType } from '../farcaster/reaction-type';
 
 
@@ -24,9 +24,9 @@ static getSizePrefixedRootAsReactionBody(bb:flatbuffers.ByteBuffer, obj?:Reactio
   return (obj || new ReactionBody()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-cast(obj?:CastID):CastID|null {
+cast(obj?:CastId):CastId|null {
   const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? (obj || new CastID()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
+  return offset ? (obj || new CastId()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
 type():ReactionType {
@@ -75,7 +75,7 @@ unpackTo(_o: ReactionBodyT): void {
 
 export class ReactionBodyT {
 constructor(
-  public cast: CastIDT|null = null,
+  public cast: CastIdT|null = null,
   public type: ReactionType = ReactionType.Like
 ){}
 

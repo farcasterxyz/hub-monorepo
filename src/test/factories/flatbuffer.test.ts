@@ -7,9 +7,9 @@ import { verifyVerificationEthAddressClaimSignature } from '~/utils/eip712';
 import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
 import { hexlify } from 'ethers/lib/utils';
 
-describe('UserIDFactory', () => {
+describe('UserIdFactory', () => {
   test('accepts fid', async () => {
-    const id = await Factories.UserID.create({ fid: [1] });
+    const id = await Factories.UserId.create({ fid: [1] });
     expect(id.fidArray()).toEqual(new Uint8Array([1]));
   });
 });

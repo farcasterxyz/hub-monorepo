@@ -19,7 +19,7 @@ beforeAll(async () => {
 
   const castRemoveData = await Factories.CastRemoveData.create({
     fid: Array.from(fid),
-    body: Factories.CastRemoveBody.build({ hash: Array.from(castAdd.tsHash()) }),
+    body: Factories.CastRemoveBody.build({ targetTsHash: Array.from(castAdd.tsHash()) }),
   });
   const castRemoveMessage = await Factories.Message.create({ data: Array.from(castRemoveData.bb?.bytes() ?? []) });
   castRemove = new MessageModel(castRemoveMessage) as CastRemoveModel;
@@ -88,7 +88,7 @@ describe('getCastsByParent', () => {
 
     const byParent = await set.getCastsByParent(
       castAdd.body().parent()?.fidArray() ?? new Uint8Array(),
-      castAdd.body().parent()?.hashArray() ?? new Uint8Array()
+      castAdd.body().parent()?.tsHashArray() ?? new Uint8Array()
     );
     expect(new Set(byParent)).toEqual(new Set([castAdd, sameParent]));
   });
@@ -127,9 +127,9 @@ describe('merge', () => {
       });
 
       test('saves castRemoves index', async () => {
-        await expect(set.getCastRemove(fid, castRemove.body().hashArray() ?? new Uint8Array())).resolves.toEqual(
-          castRemove
-        );
+        await expect(
+          set.getCastRemove(fid, castRemove.body().targetTsHashArray() ?? new Uint8Array())
+        ).resolves.toEqual(castRemove);
       });
 
       test('deletes CastAdd message', async () => {
@@ -146,7 +146,7 @@ describe('merge', () => {
         await expect(
           set.getCastsByParent(
             castAdd.body().parent()?.fidArray() ?? new Uint8Array(),
-            castAdd.body().parent()?.hashArray() ?? new Uint8Array()
+            castAdd.body().parent()?.tsHashArray() ?? new Uint8Array()
           )
         ).resolves.toEqual([]);
       });
@@ -163,7 +163,7 @@ describe('merge', () => {
         // TODO: make it easier to construct conflicting messages
         const castRemoveData = await Factories.CastRemoveData.create({
           fid: Array.from(fid),
-          body: Factories.CastRemoveBody.build({ hash: Array.from(castAdd.tsHash()) }),
+          body: Factories.CastRemoveBody.build({ targetTsHash: Array.from(castAdd.tsHash()) }),
           timestamp: castRemove.timestamp() + 1,
         });
         const castRemoveMessage = await Factories.Message.create({
@@ -181,7 +181,7 @@ describe('merge', () => {
       test('no-ops when later CastRemove exists', async () => {
         const castRemoveData = await Factories.CastRemoveData.create({
           fid: Array.from(fid),
-          body: Factories.CastRemoveBody.build({ hash: Array.from(castAdd.tsHash()) }),
+          body: Factories.CastRemoveBody.build({ targetTsHash: Array.from(castAdd.tsHash()) }),
           timestamp: castRemove.timestamp() - 1,
         });
         const castRemoveMessage = await Factories.Message.create({
@@ -194,15 +194,15 @@ describe('merge', () => {
 
       test('no-ops when merged twice', async () => {
         await expect(set.merge(castRemove)).resolves.toEqual(undefined);
-        await expect(set.getCastRemove(fid, castRemove.body().hashArray() ?? new Uint8Array())).resolves.toEqual(
-          castRemove
-        );
+        await expect(
+          set.getCastRemove(fid, castRemove.body().targetTsHashArray() ?? new Uint8Array())
+        ).resolves.toEqual(castRemove);
       });
     });
 
     test('succeeds when CastAdd does not exist', async () => {
       await expect(set.merge(castRemove)).resolves.toEqual(undefined);
-      await expect(set.getCastRemove(fid, castRemove.body().hashArray() ?? new Uint8Array())).resolves.toEqual(
+      await expect(set.getCastRemove(fid, castRemove.body().targetTsHashArray() ?? new Uint8Array())).resolves.toEqual(
         castRemove
       );
     });
@@ -225,7 +225,7 @@ describe('merge', () => {
       test('saves castsByParent index', async () => {
         const byParent = set.getCastsByParent(
           castAdd.body().parent()?.fidArray() ?? new Uint8Array(),
-          castAdd.body().parent()?.hashArray() ?? new Uint8Array()
+          castAdd.body().parent()?.tsHashArray() ?? new Uint8Array()
         );
         await expect(byParent).resolves.toEqual([castAdd]);
       });
@@ -249,7 +249,7 @@ describe('merge', () => {
     test('no-ops when CastRemove exists with an earlier timestamp', async () => {
       const castRemoveData = await Factories.CastRemoveData.create({
         fid: Array.from(fid),
-        body: Factories.CastRemoveBody.build({ hash: Array.from(castAdd.tsHash()) }),
+        body: Factories.CastRemoveBody.build({ targetTsHash: Array.from(castAdd.tsHash()) }),
         timestamp: castAdd.timestamp() - 1,
       });
       const castRemoveMessage = await Factories.Message.create({

@@ -2,7 +2,7 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { UserID, UserIDT } from '../farcaster/user-id';
+import { UserId, UserIdT } from '../farcaster/user-id';
 
 
 export class FollowBody {
@@ -23,9 +23,9 @@ static getSizePrefixedRootAsFollowBody(bb:flatbuffers.ByteBuffer, obj?:FollowBod
   return (obj || new FollowBody()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-user(obj?:UserID):UserID|null {
+user(obj?:UserId):UserId|null {
   const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? (obj || new UserID()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
+  return offset ? (obj || new UserId()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
 static startFollowBody(builder:flatbuffers.Builder) {
@@ -62,7 +62,7 @@ unpackTo(_o: FollowBodyT): void {
 
 export class FollowBodyT {
 constructor(
-  public user: UserIDT|null = null
+  public user: UserIdT|null = null
 ){}
 
 

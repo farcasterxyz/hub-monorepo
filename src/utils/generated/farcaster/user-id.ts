@@ -4,22 +4,22 @@ import * as flatbuffers from 'flatbuffers';
 
 
 
-export class UserID {
+export class UserId {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
-  __init(i:number, bb:flatbuffers.ByteBuffer):UserID {
+  __init(i:number, bb:flatbuffers.ByteBuffer):UserId {
   this.bb_pos = i;
   this.bb = bb;
   return this;
 }
 
-static getRootAsUserID(bb:flatbuffers.ByteBuffer, obj?:UserID):UserID {
-  return (obj || new UserID()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+static getRootAsUserId(bb:flatbuffers.ByteBuffer, obj?:UserId):UserId {
+  return (obj || new UserId()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-static getSizePrefixedRootAsUserID(bb:flatbuffers.ByteBuffer, obj?:UserID):UserID {
+static getSizePrefixedRootAsUserId(bb:flatbuffers.ByteBuffer, obj?:UserId):UserId {
   bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
-  return (obj || new UserID()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  return (obj || new UserId()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
 fid(index: number):number|null {
@@ -37,7 +37,7 @@ fidArray():Uint8Array|null {
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
-static startUserID(builder:flatbuffers.Builder) {
+static startUserId(builder:flatbuffers.Builder) {
   builder.startObject(1);
 }
 
@@ -57,40 +57,40 @@ static startFidVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(1, numElems, 1);
 }
 
-static endUserID(builder:flatbuffers.Builder):flatbuffers.Offset {
+static endUserId(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   builder.requiredField(offset, 4) // fid
   return offset;
 }
 
-static createUserID(builder:flatbuffers.Builder, fidOffset:flatbuffers.Offset):flatbuffers.Offset {
-  UserID.startUserID(builder);
-  UserID.addFid(builder, fidOffset);
-  return UserID.endUserID(builder);
+static createUserId(builder:flatbuffers.Builder, fidOffset:flatbuffers.Offset):flatbuffers.Offset {
+  UserId.startUserId(builder);
+  UserId.addFid(builder, fidOffset);
+  return UserId.endUserId(builder);
 }
 
-unpack(): UserIDT {
-  return new UserIDT(
+unpack(): UserIdT {
+  return new UserIdT(
     this.bb!.createScalarList(this.fid.bind(this), this.fidLength())
   );
 }
 
 
-unpackTo(_o: UserIDT): void {
+unpackTo(_o: UserIdT): void {
   _o.fid = this.bb!.createScalarList(this.fid.bind(this), this.fidLength());
 }
 }
 
-export class UserIDT {
+export class UserIdT {
 constructor(
   public fid: (number)[] = []
 ){}
 
 
 pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = UserID.createFidVector(builder, this.fid);
+  const fid = UserId.createFidVector(builder, this.fid);
 
-  return UserID.createUserID(builder,
+  return UserId.createUserId(builder,
     fid
   );
 }

@@ -4,22 +4,22 @@ import * as flatbuffers from 'flatbuffers';
 
 
 
-export class CastID {
+export class CastId {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
-  __init(i:number, bb:flatbuffers.ByteBuffer):CastID {
+  __init(i:number, bb:flatbuffers.ByteBuffer):CastId {
   this.bb_pos = i;
   this.bb = bb;
   return this;
 }
 
-static getRootAsCastID(bb:flatbuffers.ByteBuffer, obj?:CastID):CastID {
-  return (obj || new CastID()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+static getRootAsCastId(bb:flatbuffers.ByteBuffer, obj?:CastId):CastId {
+  return (obj || new CastId()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-static getSizePrefixedRootAsCastID(bb:flatbuffers.ByteBuffer, obj?:CastID):CastID {
+static getSizePrefixedRootAsCastId(bb:flatbuffers.ByteBuffer, obj?:CastId):CastId {
   bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
-  return (obj || new CastID()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  return (obj || new CastId()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
 fid(index: number):number|null {
@@ -37,22 +37,22 @@ fidArray():Uint8Array|null {
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
-hash(index: number):number|null {
+tsHash(index: number):number|null {
   const offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
 }
 
-hashLength():number {
+tsHashLength():number {
   const offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
-hashArray():Uint8Array|null {
+tsHashArray():Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
-static startCastID(builder:flatbuffers.Builder) {
+static startCastId(builder:flatbuffers.Builder) {
   builder.startObject(2);
 }
 
@@ -72,11 +72,11 @@ static startFidVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(1, numElems, 1);
 }
 
-static addHash(builder:flatbuffers.Builder, hashOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, hashOffset, 0);
+static addTsHash(builder:flatbuffers.Builder, tsHashOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, tsHashOffset, 0);
 }
 
-static createHashVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+static createTsHashVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
   builder.startVector(1, data.length, 1);
   for (let i = data.length - 1; i >= 0; i--) {
     builder.addInt8(data[i]!);
@@ -84,52 +84,52 @@ static createHashVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):f
   return builder.endVector();
 }
 
-static startHashVector(builder:flatbuffers.Builder, numElems:number) {
+static startTsHashVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(1, numElems, 1);
 }
 
-static endCastID(builder:flatbuffers.Builder):flatbuffers.Offset {
+static endCastId(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   builder.requiredField(offset, 4) // fid
-  builder.requiredField(offset, 6) // hash
+  builder.requiredField(offset, 6) // ts_hash
   return offset;
 }
 
-static createCastID(builder:flatbuffers.Builder, fidOffset:flatbuffers.Offset, hashOffset:flatbuffers.Offset):flatbuffers.Offset {
-  CastID.startCastID(builder);
-  CastID.addFid(builder, fidOffset);
-  CastID.addHash(builder, hashOffset);
-  return CastID.endCastID(builder);
+static createCastId(builder:flatbuffers.Builder, fidOffset:flatbuffers.Offset, tsHashOffset:flatbuffers.Offset):flatbuffers.Offset {
+  CastId.startCastId(builder);
+  CastId.addFid(builder, fidOffset);
+  CastId.addTsHash(builder, tsHashOffset);
+  return CastId.endCastId(builder);
 }
 
-unpack(): CastIDT {
-  return new CastIDT(
+unpack(): CastIdT {
+  return new CastIdT(
     this.bb!.createScalarList(this.fid.bind(this), this.fidLength()),
-    this.bb!.createScalarList(this.hash.bind(this), this.hashLength())
+    this.bb!.createScalarList(this.tsHash.bind(this), this.tsHashLength())
   );
 }
 
 
-unpackTo(_o: CastIDT): void {
+unpackTo(_o: CastIdT): void {
   _o.fid = this.bb!.createScalarList(this.fid.bind(this), this.fidLength());
-  _o.hash = this.bb!.createScalarList(this.hash.bind(this), this.hashLength());
+  _o.tsHash = this.bb!.createScalarList(this.tsHash.bind(this), this.tsHashLength());
 }
 }
 
-export class CastIDT {
+export class CastIdT {
 constructor(
   public fid: (number)[] = [],
-  public hash: (number)[] = []
+  public tsHash: (number)[] = []
 ){}
 
 
 pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = CastID.createFidVector(builder, this.fid);
-  const hash = CastID.createHashVector(builder, this.hash);
+  const fid = CastId.createFidVector(builder, this.fid);
+  const tsHash = CastId.createTsHashVector(builder, this.tsHash);
 
-  return CastID.createCastID(builder,
+  return CastId.createCastId(builder,
     fid,
-    hash
+    tsHash
   );
 }
 }
