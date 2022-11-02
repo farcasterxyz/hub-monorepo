@@ -3,11 +3,11 @@ import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { BadRequestError, NotFoundError } from '~/utils/errors';
 import { ReactionAddModel, ReactionRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
-import ReactionSet from '~/storage/sets/flatbuffers/reactionSet';
+import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
 import { MessageType, ReactionType } from '~/utils/generated/message_generated';
 
-const db = jestBinaryRocksDB('flatbuffers.reactionSet.test');
-const set = new ReactionSet(db);
+const db = jestBinaryRocksDB('flatbuffers.reactionStore.test');
+const set = new ReactionStore(db);
 const fid = Factories.FID.build();
 
 const castId = await Factories.CastID.create();
