@@ -3,13 +3,12 @@ import { err, ok, Result } from 'neverthrow';
 import ProgressBar from 'progress';
 import { RPCClient } from '~/network/rpc';
 import { IdRegistryEvent, Message } from '~/types';
-import { isIdRegistryEvent, isMessage } from '~/types/typeguards';
 import { logger } from '~/utils/logger';
 
 /** Submits a list of messages to the given RPC client */
 export const submitInBatches = async (rpcClient: RPCClient, messages: Message[] | IdRegistryEvent[]) => {
-  // limits what we try to do in parallel. If this number is too large, we'll run out of sockets to use for tcp
-  const BATCH_SIZE = 100;
+  // limits how many requests we send at a time. If this number is too large, we'll run out memory while just building the requests
+  const BATCH_SIZE = 5000;
 
   const progress = new ProgressBar('   Submitting [:bar] :elapseds :rate messages/s :percent :etas', {
     complete: '=',
@@ -18,20 +17,19 @@ export const submitInBatches = async (rpcClient: RPCClient, messages: Message[] 
     total: messages.length,
   });
   let results: Result<void, JSONRPCError>[] = [];
+  const batches = [];
   for (let i = 0; i < messages.length; i += BATCH_SIZE) {
     const batch = messages.slice(i, i + BATCH_SIZE);
-    const innerRes = await Promise.all(
-      batch.map((message) => {
-        if (isIdRegistryEvent(message)) {
-          return rpcClient.submitIdRegistryEvent(message);
-        }
-        if (isMessage(message)) {
-          return rpcClient.submitMessage(message);
-        }
-        throw Error('Trying to send invalid message');
-      })
-    );
+    batches.push(batch);
+  }
+  const promises = batches.map(async (b) => {
+    const res = await rpcClient.submitMessages(b);
     progress.tick(BATCH_SIZE);
+    return res;
+  });
+  // Why is this faster than doing everything in 1 loop above
+  for (const batch of promises) {
+    const innerRes = await batch;
     results = results.concat(innerRes);
   }
   return getCounts(results);
@@ -60,7 +58,7 @@ export const shuffleMessages = (messages: Message[]) => {
 export const ComputeSetDifference = (
   left: Result<Set<number | Message>, JSONRPCError>,
   right: Result<Set<number | Message>, JSONRPCError>
-) => {
+): Result<Set<string>, string> => {
   if (left.isErr() || right.isErr()) return err('Failed to compare messages');
 
   // JSON encode set values

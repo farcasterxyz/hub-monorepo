@@ -157,7 +157,7 @@ class SyncEngine {
         // Merge messages sequentially, so we can handle missing users.
         // TODO: Optimize by collecting all failures and retrying them in a batch
         for (const msg of msgs) {
-          const result = await this.engine.mergeMessage(msg);
+          const result = await this.engine.mergeMessage(msg, 'SyncEngine');
           if (result.isErr() && result.error.message.includes('unknown user')) {
             log.warn({ fid: msg.data.fid }, 'Unknown user, fetching custody event');
             const result = await this.syncUserAndRetryMessage(msg, rpcClient);
@@ -215,19 +215,19 @@ class SyncEngine {
     if (custodyEventResult.isErr()) {
       return err(new ServerError('Failed to fetch custody event'));
     }
-    await this.engine.mergeIdRegistryEvent(custodyEventResult.value);
+    await this.engine.mergeIdRegistryEvent(custodyEventResult.value, 'SyncEngine');
     // Probably not required to fetch the signer messages, but doing it here means
     //  sync will complete in one round (prevents messages failing to merge due to missed or out of order signer message)
     const signerMessagesResult = await rpcClient.getAllSignerMessagesByUser(fid);
     if (signerMessagesResult.isErr()) {
       return err(new ServerError('Failed to fetch signer messages'));
     }
-    const results = await Promise.all(this.engine.mergeMessages([...signerMessagesResult.value]));
+    const results = await Promise.all(this.engine.mergeMessages([...signerMessagesResult.value], 'SyncEngine'));
     if (results.every((r) => r.isErr())) {
       return err(new ServerError('Failed to merge signer messages'));
     } else {
       // if at least one signer message was merged, retry the original message
-      return this.engine.mergeMessage(message);
+      return this.engine.mergeMessage(message, 'SyncEngine');
     }
   }
 }

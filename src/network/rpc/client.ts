@@ -5,6 +5,7 @@ import { Cast, Follow, IdRegistryEvent, Message, Reaction, Verification } from '
 import { replacer, reviver, RPCRequest } from './interfaces';
 import { ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 import { NodeMetadata } from '~/network/sync/merkleTrie';
+import { isIdRegistryEvent } from '~/types/typeguards';
 
 export class RPCClient {
   private _tcpClient!: jayson.client;
@@ -95,6 +96,23 @@ export class RPCClient {
       return new Err(response.error);
     }
     return new Ok(undefined);
+  }
+
+  async submitMessages(messages: Message[] | IdRegistryEvent[]): Promise<Result<void, JSONRPCError>[]> {
+    const requests = messages.map((m) => {
+      if (isIdRegistryEvent(m)) {
+        return this._tcpClient.request(RPCRequest.SubmitIdRegistryEvent, { event: m }, undefined, false);
+      }
+      return this._tcpClient.request(RPCRequest.SubmitMessage, { message: m }, undefined, false);
+    });
+    const responses = await this._tcpClient.request(requests);
+    const results = responses.map((response: any) => {
+      if (response.error) {
+        return new Err(response.error);
+      }
+      return new Ok(undefined);
+    });
+    return results;
   }
 
   async getSyncMetadataByPrefix(prefix: string): Promise<Result<NodeMetadata, JSONRPCError>> {

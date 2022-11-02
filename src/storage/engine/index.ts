@@ -45,6 +45,7 @@ import RocksDB from '~/storage/db/rocksdb';
 import { BadRequestError, FarcasterError, ServerError } from '~/utils/errors';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import MessageDB from '~/storage/db/message';
+import { logger } from '~/utils/logger';
 
 export type EngineEvents = {
   /**
@@ -109,16 +110,16 @@ class Engine extends TypedEmitter<EngineEvents> {
    * @param messages A list of Messages to merge
    * @returns An array of Results
    */
-  mergeMessages(messages: Message[]): Array<Promise<Result<void, FarcasterError>>> {
+  mergeMessages(messages: Message[], source = 'unknown'): Array<Promise<Result<void, FarcasterError>>> {
     // TODO: consider returning a single Promise.all instance rather than an array of promises
     const results = messages.map((value) => {
-      return this.mergeMessage(value);
+      return this.mergeMessage(value, source);
     });
     return results;
   }
 
   /** Merge a message into the correct set based on its type */
-  async mergeMessage(message: Message): Promise<Result<void, FarcasterError>> {
+  async mergeMessage(message: Message, source = 'unknown'): Promise<Result<void, FarcasterError>> {
     const isMessageValidresult = await this.validateMessage(message);
     if (isMessageValidresult.isErr()) return err(isMessageValidresult.error);
 
@@ -139,7 +140,21 @@ class Engine extends TypedEmitter<EngineEvents> {
     }
 
     return result.then((res) => {
-      this.emit('messageMerged', message.data.fid, message.data.type, message);
+      if (res.isOk()) {
+        // It's safe to convert the message type to its enum string since the message has already been validated.
+        // eslint-disable-next-line security/detect-object-injection
+        logger.info(
+          {
+            component: 'engine',
+            hash: message.hash,
+            fid: message.data.fid,
+            type: MessageType[message.data.type],
+            source,
+          },
+          'messageMerged'
+        );
+        this.emit('messageMerged', message.data.fid, message.data.type, message);
+      }
       return res;
     });
   }
@@ -193,12 +208,19 @@ class Engine extends TypedEmitter<EngineEvents> {
   /*                               Signer Methods                               */
   /* -------------------------------------------------------------------------- */
 
-  async mergeIdRegistryEvent(event: IdRegistryEvent): Promise<Result<void, FarcasterError>> {
+  async mergeIdRegistryEvent(event: IdRegistryEvent, source = 'unknown'): Promise<Result<void, FarcasterError>> {
     if (this._IdRegistryProvider) {
       const isEventValidResult = await this._IdRegistryProvider.validateIdRegistryEvent(event);
       if (isEventValidResult.isErr()) return err(isEventValidResult.error);
     }
-
+    logger.info(
+      {
+        component: 'engine',
+        event,
+        source,
+      },
+      'idRegistryEventMerged'
+    );
     return ResultAsync.fromPromise(this._signerSet.mergeIdRegistryEvent(event), (e) => e as FarcasterError);
   }
 

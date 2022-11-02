@@ -74,7 +74,7 @@ export const makeBasicScenario = async (
 const makeMessages = async (userInfos: UserInfo[], config: ScenarioConfig, event: MockFCEvent) => {
   if (event > MockFCEvent.Verification) throw 'Invalid event type for messages';
 
-  const total = config.Adds + config.Removes + config.RemovesWithoutAdds;
+  const total = userInfos.length * (config.Adds + config.Removes + config.RemovesWithoutAdds);
   // safe to disable here since `event` is validated above
   // eslint-disable-next-line security/detect-object-injection
   const progress = new ProgressBar(
@@ -83,7 +83,7 @@ const makeMessages = async (userInfos: UserInfo[], config: ScenarioConfig, event
       complete: '=',
       incomplete: ' ',
       width: 20,
-      total: userInfos.length * total,
+      total,
     }
   );
 

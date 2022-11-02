@@ -166,13 +166,10 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     let result: Result<void, FarcasterError> = err(new ServerError('Invalid message type'));
     if (isUserContent(gossipMessage.content)) {
       const message = (gossipMessage.content as UserContent).message;
-      result = await this.engine.mergeMessage(message);
-      if (result.isOk()) {
-        log.info({ hash: message.hash, fid: message.data.fid, type: MessageType[message.data.type] }, 'merged message');
-      }
+      result = await this.engine.mergeMessage(message, 'Gossip');
     } else if (isIdRegistryContent(gossipMessage.content)) {
       const message = (gossipMessage.content as IdRegistryContent).message;
-      result = await this.engine.mergeIdRegistryEvent(message);
+      result = await this.engine.mergeIdRegistryEvent(message, 'Gossip');
       if (result.isOk()) log.info({ event: message }, 'merged id registry event');
     } else if (isContactInfo(gossipMessage.content)) {
       const message = gossipMessage.content as ContactInfoContent;
@@ -314,7 +311,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
 
   async submitMessage(message: Message): Promise<Result<void, FarcasterError>> {
     // push this message into the engine
-    const mergeResult = await this.engine.mergeMessage(message);
+    const mergeResult = await this.engine.mergeMessage(message, 'RPC');
     if (mergeResult.isErr()) {
       // Safe to disable because the type is being checked to be within bounds
       // eslint-disable-next-line security/detect-object-injection
@@ -326,9 +323,6 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       );
       return mergeResult;
     }
-    // It's safe to convert the message type to its enum string since the message has already been validated.
-    // eslint-disable-next-line security/detect-object-injection
-    log.info({ hash: message.hash, fid: message.data.fid, type: MessageType[message.data.type] }, 'merged message');
 
     // push this message onto the gossip network
     const gossipMessage: GossipMessage<UserContent> = {
@@ -343,7 +337,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
 
   async submitIdRegistryEvent(event: IdRegistryEvent): Promise<Result<void, FarcasterError>> {
     // push this message into the engine
-    const mergeResult = await this.engine.mergeIdRegistryEvent(event);
+    const mergeResult = await this.engine.mergeIdRegistryEvent(event, 'RPC');
     if (mergeResult.isErr()) {
       log.error(mergeResult.error, 'received invalid message');
       return mergeResult;
