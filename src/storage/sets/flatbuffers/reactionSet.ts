@@ -15,18 +15,19 @@ import { bytesCompare } from '~/storage/flatbuffers/utils';
  * messages are resolved with Last-Write-Wins + Remove-Wins rules as follows:
  *
  * 1. Highest timestamp wins
- * 2. Highest lexicographic hash wins
- * 3. Remove wins over Adds
+ * 2. Remove wins over Adds
+ * 3. Highest lexicographic hash wins
  *
  * ReactionMessages are stored ordinally in RocksDB indexed by a unique key `fid:tsHash`,
  * which makes truncating a user's earliest messages easy. Indices are also build for each phase
  * set (adds, removes) to make lookups easy when checking if a collision exists. An index is also
- * build for the target to make it easy to fetch all reactions for a target. The key-value entries
- * created by the reaction set are:
+ * build for the target to make it easy to fetch all reactions for a target.
  *
- * fid:tsHash -> message
- * fidPrefix:setPrefix:targetCastTsHash:reactionType -> fid:tsHash (Set Index)
- * reactionTargetPrefix:targetCastTsHash:reactionType -> fid:tsHash (Target Index)
+ * The key-value entries created by the Reaction Set are:
+ *
+ * 1. fid:tsHash -> reaction message
+ * 2. fid:set:targetCastTsHash:reactionType -> fid:tsHash (Set Index)
+ * 3. reactionTarget:reactionType:targetCastTsHash -> fid:tsHash (Target Index)
  */
 class ReactionSet {
   private _db: RocksDB;
@@ -253,19 +254,21 @@ class ReactionSet {
     bType: MessageType,
     bTsHash: Uint8Array
   ): number {
-    const tsHashOrder = bytesCompare(aTsHash, bTsHash);
-    if (tsHashOrder !== 0) {
-      return tsHashOrder;
+    // Compare timestamps (first 4 bytes of tsHash) to enforce Last-Write-Wins
+    const timestampOrder = bytesCompare(aTsHash.subarray(0, 4), bTsHash.subarray(0, 4));
+    if (timestampOrder !== 0) {
+      return timestampOrder;
     }
 
-    // TODO: Changing these types to FollowRemove and FollowAdd did not break tests
+    // Compare message types to enforce that RemoveWins in case of LWW ties.
     if (aType === MessageType.ReactionRemove && bType === MessageType.ReactionAdd) {
       return 1;
     } else if (aType === MessageType.ReactionAdd && bType === MessageType.ReactionRemove) {
       return -1;
     }
 
-    return 0;
+    // Compare hashes (last 4 bytes of tsHash) to break ties between messages of the same type and timestamp
+    return bytesCompare(aTsHash.subarray(4), bTsHash.subarray(4));
   }
 
   /**
