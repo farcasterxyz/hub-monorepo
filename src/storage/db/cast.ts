@@ -19,7 +19,7 @@ import MessageDB from '~/storage/db/message';
  * Note that the CastDB implements the constraint that a single cast hash can only exist in either castAdds
  * or castRemoves. Therefore, _putCastAdd also deletes the CastRemove for the same cast hash and _putCastRemove
  * also deletes the CastShort or CastRecast for the same target. The CastDB does not resolve conflicts between two cast
- * messages with the same cast hash. The CastSet should be used to handle conflicts and decide whether or not to
+ * messages with the same cast hash. The CastStore should be used to handle conflicts and decide whether or not to
  * perform a mutation.
  */
 class CastDB extends MessageDB {

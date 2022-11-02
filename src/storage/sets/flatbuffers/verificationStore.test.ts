@@ -3,14 +3,14 @@ import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { BadRequestError, NotFoundError } from '~/utils/errors';
 import { UserPostfix, VerificationAddEthAddressModel, VerificationRemoveModel } from '~/storage/flatbuffers/types';
-import VerificationSet from '~/storage/sets/flatbuffers/verificationSet';
+import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
 import { EthereumSigner } from '~/types';
 import { generateEthereumSigner } from '~/utils/crypto';
 import { FarcasterNetwork } from '~/utils/generated/message_generated';
 import { arrayify } from 'ethers/lib/utils';
 
 const db = jestBinaryRocksDB('flatbuffers.verificationSet.test');
-const set = new VerificationSet(db);
+const set = new VerificationStore(db);
 const fid = Factories.FID.build();
 
 let ethSigner: EthereumSigner;

@@ -1,12 +1,12 @@
 import Factories from '~/test/factories/flatbuffer';
-import CastSet from '~/storage/sets/flatbuffers/castSet';
+import CastStore from '~/storage/sets/flatbuffers/castStore';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { BadRequestError, NotFoundError } from '~/utils/errors';
 import { CastAddModel, CastRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
 
 const db = jestBinaryRocksDB('flatbuffers.castSet.test');
-const set = new CastSet(db);
+const set = new CastStore(db);
 const fid = Factories.FID.build();
 
 let castAdd: CastAddModel;

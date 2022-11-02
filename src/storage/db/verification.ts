@@ -15,7 +15,7 @@ import MessageDB from '~/storage/db/message';
  * Note that the VerificationDB implements the constraint that a single claimHash can only exist in either verificationAdds
  * or verificationRemoves. Therefore, _putVerificationAdd also deletes the VerificationRemove for the same target and
  * _putVerificationRemove also deletes the VerificationEthereumAddress for the same target. The VerificationDB does not resolve
- * conflicts between two verification messages with the same claimHash. The VerificationSet should be used to handle conflicts and
+ * conflicts between two verification messages with the same claimHash. The VerificationStore should be used to handle conflicts and
  * decide whether or not to perform a mutation.
  */
 class VerificationDB extends MessageDB {

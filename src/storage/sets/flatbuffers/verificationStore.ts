@@ -7,7 +7,7 @@ import { isVerificationAddEthAddress, isVerificationRemove } from '~/storage/fla
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 
-class VerificationSet {
+class VerificationStore {
   private _db: RocksDB;
 
   constructor(db: RocksDB) {
@@ -34,7 +34,7 @@ class VerificationSet {
 
   /** Look up VerificationAdd* message by address */
   async getVerificationAdd(fid: Uint8Array, address: Uint8Array): Promise<VerificationAddEthAddressModel> {
-    const messageTsHash = await this._db.get(VerificationSet.verificationAddsKey(fid, address));
+    const messageTsHash = await this._db.get(VerificationStore.verificationAddsKey(fid, address));
     return MessageModel.get<VerificationAddEthAddressModel>(
       this._db,
       fid,
@@ -45,13 +45,13 @@ class VerificationSet {
 
   /** Look up VerificationRemove message by address */
   async getVerificationRemove(fid: Uint8Array, address: Uint8Array): Promise<VerificationRemoveModel> {
-    const messageTsHash = await this._db.get(VerificationSet.verificationRemovesKey(fid, address));
+    const messageTsHash = await this._db.get(VerificationStore.verificationRemovesKey(fid, address));
     return MessageModel.get<VerificationRemoveModel>(this._db, fid, UserPostfix.VerificationMessage, messageTsHash);
   }
 
   /** Get all VerificationAdd* messages for an fid */
   async getVerificationAddsByUser(fid: Uint8Array): Promise<VerificationAddEthAddressModel[]> {
-    const addsPrefix = VerificationSet.verificationAddsKey(fid);
+    const addsPrefix = VerificationStore.verificationAddsKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(addsPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
@@ -66,7 +66,7 @@ class VerificationSet {
 
   /** Get all VerificationRemove messages for an fid */
   async getVerificationRemovesByUser(fid: Uint8Array): Promise<VerificationRemoveModel[]> {
-    const removesPrefix = VerificationSet.verificationRemovesKey(fid);
+    const removesPrefix = VerificationStore.verificationRemovesKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(removesPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
@@ -161,7 +161,7 @@ class VerificationSet {
   ): Promise<Transaction | undefined> {
     // Look up the remove tsHash for this address
     const removeTsHash = await ResultAsync.fromPromise(
-      this._db.get(VerificationSet.verificationRemovesKey(message.fid(), address)),
+      this._db.get(VerificationStore.verificationRemovesKey(message.fid(), address)),
       () => undefined
     );
 
@@ -191,7 +191,7 @@ class VerificationSet {
 
     // Look up the add tsHash for this address
     const addTsHash = await ResultAsync.fromPromise(
-      this._db.get(VerificationSet.verificationAddsKey(message.fid(), address)),
+      this._db.get(VerificationStore.verificationAddsKey(message.fid(), address)),
       () => undefined
     );
 
@@ -228,7 +228,7 @@ class VerificationSet {
 
     // Put verificationAdds index
     tsx = tsx.put(
-      VerificationSet.verificationAddsKey(message.fid(), message.body().addressArray() ?? new Uint8Array()),
+      VerificationStore.verificationAddsKey(message.fid(), message.body().addressArray() ?? new Uint8Array()),
       Buffer.from(message.tsHash())
     );
 
@@ -238,7 +238,7 @@ class VerificationSet {
   private deleteVerificationAddTransaction(tsx: Transaction, message: VerificationAddEthAddressModel): Transaction {
     // Delete from verificationAdds
     tsx = tsx.del(
-      VerificationSet.verificationAddsKey(message.fid(), message.body().addressArray() ?? new Uint8Array())
+      VerificationStore.verificationAddsKey(message.fid(), message.body().addressArray() ?? new Uint8Array())
     );
 
     // Delete message
@@ -251,7 +251,7 @@ class VerificationSet {
 
     // Add to verificationRemoves
     tsx = tsx.put(
-      VerificationSet.verificationRemovesKey(message.fid(), message.body().addressArray() ?? new Uint8Array()),
+      VerificationStore.verificationRemovesKey(message.fid(), message.body().addressArray() ?? new Uint8Array()),
       Buffer.from(message.tsHash())
     );
 
@@ -261,7 +261,7 @@ class VerificationSet {
   private deleteVerificationRemoveTransaction(tsx: Transaction, message: VerificationRemoveModel): Transaction {
     // Delete from verificationRemoves
     tsx = tsx.del(
-      VerificationSet.verificationRemovesKey(message.fid(), message.body().addressArray() ?? new Uint8Array())
+      VerificationStore.verificationRemovesKey(message.fid(), message.body().addressArray() ?? new Uint8Array())
     );
 
     // Delete message
@@ -269,4 +269,4 @@ class VerificationSet {
   }
 }
 
-export default VerificationSet;
+export default VerificationStore;
