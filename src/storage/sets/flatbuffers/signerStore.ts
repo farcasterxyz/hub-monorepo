@@ -1,14 +1,14 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { BadRequestError } from '~/utils/errors';
-import MessageModel from '~/storage/flatbuffers/model';
+import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync } from 'neverthrow';
-import { SignerAddModel, UserPrefix, SignerRemoveModel } from '~/storage/flatbuffers/types';
+import { SignerAddModel, UserPostfix, SignerRemoveModel } from '~/storage/flatbuffers/types';
 import { isSignerAdd, isSignerRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 
-class SignerSet {
+class SignerStore {
   private _db: RocksDB;
 
   constructor(db: RocksDB) {
@@ -19,7 +19,7 @@ class SignerSet {
   static signerRemovesKey(fid: Uint8Array, custodyAddress: Uint8Array, signer?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
-      Buffer.from([UserPrefix.SignerRemoves]),
+      Buffer.from([UserPostfix.SignerRemoves]),
       Buffer.from(custodyAddress),
       signer ? Buffer.from(signer) : new Uint8Array(),
     ]);
@@ -29,7 +29,7 @@ class SignerSet {
   static signerAddsKey(fid: Uint8Array, custodyAddress: Uint8Array, signer?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
-      Buffer.from([UserPrefix.SignerAdds]),
+      Buffer.from([UserPostfix.SignerAdds]),
       Buffer.from(custodyAddress),
       signer ? Buffer.from(signer) : new Uint8Array(),
     ]);
@@ -50,8 +50,8 @@ class SignerSet {
       // Will throw NotFoundError if custody address is missing
       custodyAddress = await this.getCustodyAddress(fid);
     }
-    const messageTimestampHash = await this._db.get(SignerSet.signerAddsKey(fid, custodyAddress, signer));
-    return MessageModel.get<SignerAddModel>(this._db, fid, UserPrefix.SignerMessage, messageTimestampHash);
+    const messageTsHash = await this._db.get(SignerStore.signerAddsKey(fid, custodyAddress, signer));
+    return MessageModel.get<SignerAddModel>(this._db, fid, UserPostfix.SignerMessage, messageTsHash);
   }
 
   /** Look up SignerRemove message by fid, custody address, and signer */
@@ -60,8 +60,8 @@ class SignerSet {
       // Will throw NotFoundError if custody address is missing
       custodyAddress = await this.getCustodyAddress(fid);
     }
-    const messageTimestampHash = await this._db.get(SignerSet.signerRemovesKey(fid, custodyAddress, signer));
-    return MessageModel.get<SignerRemoveModel>(this._db, fid, UserPrefix.SignerMessage, messageTimestampHash);
+    const messageTsHash = await this._db.get(SignerStore.signerRemovesKey(fid, custodyAddress, signer));
+    return MessageModel.get<SignerRemoveModel>(this._db, fid, UserPostfix.SignerMessage, messageTsHash);
   }
 
   /** Get all SignerAdd messages for an fid and custody address */
@@ -70,12 +70,12 @@ class SignerSet {
       // Will throw NotFoundError if custody address is missing
       custodyAddress = await this.getCustodyAddress(fid);
     }
-    const addsPrefix = SignerSet.signerAddsKey(fid, custodyAddress);
+    const addsPrefix = SignerStore.signerAddsKey(fid, custodyAddress);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(addsPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
     }
-    return MessageModel.getManyByUser<SignerAddModel>(this._db, fid, UserPrefix.SignerMessage, messageKeys);
+    return MessageModel.getManyByUser<SignerAddModel>(this._db, fid, UserPostfix.SignerMessage, messageKeys);
   }
 
   /** Get all Signerremove messages for an fid and custody address */
@@ -84,12 +84,12 @@ class SignerSet {
       // Will throw NotFoundError if custody address is missing
       custodyAddress = await this.getCustodyAddress(fid);
     }
-    const removesPrefix = SignerSet.signerRemovesKey(fid, custodyAddress);
+    const removesPrefix = SignerStore.signerRemovesKey(fid, custodyAddress);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(removesPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
     }
-    return MessageModel.getManyByUser<SignerRemoveModel>(this._db, fid, UserPrefix.SignerMessage, messageKeys);
+    return MessageModel.getManyByUser<SignerRemoveModel>(this._db, fid, UserPostfix.SignerMessage, messageKeys);
   }
 
   // TODO: emit signer change events as a result of ID Registry events
@@ -167,13 +167,13 @@ class SignerSet {
 
   private SignerMessageCompare(
     aType: MessageType,
-    aTimestampHash: Uint8Array,
+    aTsHash: Uint8Array,
     bType: MessageType,
-    bTimestampHash: Uint8Array
+    bTsHash: Uint8Array
   ): number {
-    const timestampHashOrder = bytesCompare(aTimestampHash, bTimestampHash);
-    if (timestampHashOrder !== 0) {
-      return timestampHashOrder;
+    const tsHashOrder = bytesCompare(aTsHash, bTsHash);
+    if (tsHashOrder !== 0) {
+      return tsHashOrder;
     }
 
     if (aType === MessageType.SignerRemove && bType === MessageType.SignerAdd) {
@@ -194,20 +194,15 @@ class SignerSet {
       throw new BadRequestError('signer is required');
     }
 
-    // Look up the remove timestampHash for this custody adddress and signer
-    const removeTimestampHash = await ResultAsync.fromPromise(
-      this._db.get(SignerSet.signerRemovesKey(message.fid(), message.signer(), signer)),
+    // Look up the remove tsHash for this custody adddress and signer
+    const removeTsHash = await ResultAsync.fromPromise(
+      this._db.get(SignerStore.signerRemovesKey(message.fid(), message.signer(), signer)),
       () => undefined
     );
 
-    if (removeTimestampHash.isOk()) {
+    if (removeTsHash.isOk()) {
       if (
-        this.SignerMessageCompare(
-          MessageType.SignerRemove,
-          removeTimestampHash.value,
-          message.type(),
-          message.timestampHash()
-        ) >= 0
+        this.SignerMessageCompare(MessageType.SignerRemove, removeTsHash.value, message.type(), message.tsHash()) >= 0
       ) {
         // If the existing remove has the same or higher order than the new message, no-op
         return undefined;
@@ -217,28 +212,21 @@ class SignerSet {
         const existingRemove = await MessageModel.get<SignerRemoveModel>(
           this._db,
           message.fid(),
-          UserPrefix.SignerMessage,
-          removeTimestampHash.value
+          UserPostfix.SignerMessage,
+          removeTsHash.value
         );
         txn = this.deleteSignerRemoveTransaction(txn, existingRemove);
       }
     }
 
-    // Look up the add timestampHash for this custody address and signer
-    const addTimestampHash = await ResultAsync.fromPromise(
-      this._db.get(SignerSet.signerAddsKey(message.fid(), message.signer(), signer)),
+    // Look up the add tsHash for this custody address and signer
+    const addTsHash = await ResultAsync.fromPromise(
+      this._db.get(SignerStore.signerAddsKey(message.fid(), message.signer(), signer)),
       () => undefined
     );
 
-    if (addTimestampHash.isOk()) {
-      if (
-        this.SignerMessageCompare(
-          MessageType.SignerAdd,
-          addTimestampHash.value,
-          message.type(),
-          message.timestampHash()
-        ) >= 0
-      ) {
+    if (addTsHash.isOk()) {
+      if (this.SignerMessageCompare(MessageType.SignerAdd, addTsHash.value, message.type(), message.tsHash()) >= 0) {
         // If the existing add has the same or higher order than the new message, no-op
         return undefined;
       } else {
@@ -247,8 +235,8 @@ class SignerSet {
         const existingAdd = await MessageModel.get<SignerAddModel>(
           this._db,
           message.fid(),
-          UserPrefix.SignerMessage,
-          addTimestampHash.value
+          UserPostfix.SignerMessage,
+          addTsHash.value
         );
         txn = this.deleteSignerAddTransaction(txn, existingAdd);
       }
@@ -263,8 +251,8 @@ class SignerSet {
 
     // Put signerAdds index
     txn = txn.put(
-      SignerSet.signerAddsKey(message.fid(), message.signer(), message.body().signerArray() ?? new Uint8Array()),
-      Buffer.from(message.timestampHash())
+      SignerStore.signerAddsKey(message.fid(), message.signer(), message.body().signerArray() ?? new Uint8Array()),
+      Buffer.from(message.tsHash())
     );
 
     return txn;
@@ -273,7 +261,7 @@ class SignerSet {
   private deleteSignerAddTransaction(txn: Transaction, message: SignerAddModel): Transaction {
     // Delete from signerAdds
     txn = txn.del(
-      SignerSet.signerAddsKey(message.fid(), message.signer(), message.body().signerArray() ?? new Uint8Array())
+      SignerStore.signerAddsKey(message.fid(), message.signer(), message.body().signerArray() ?? new Uint8Array())
     );
 
     // Delete message
@@ -286,8 +274,8 @@ class SignerSet {
 
     // Put signerRemoves index
     txn = txn.put(
-      SignerSet.signerRemovesKey(message.fid(), message.signer(), message.body().signerArray() ?? new Uint8Array()),
-      Buffer.from(message.timestampHash())
+      SignerStore.signerRemovesKey(message.fid(), message.signer(), message.body().signerArray() ?? new Uint8Array()),
+      Buffer.from(message.tsHash())
     );
 
     return txn;
@@ -296,7 +284,7 @@ class SignerSet {
   private deleteSignerRemoveTransaction(txn: Transaction, message: SignerRemoveModel): Transaction {
     // Delete from signerRemoves
     txn = txn.del(
-      SignerSet.signerRemovesKey(message.fid(), message.signer(), message.body().signerArray() ?? new Uint8Array())
+      SignerStore.signerRemovesKey(message.fid(), message.signer(), message.body().signerArray() ?? new Uint8Array())
     );
 
     // Delete message
@@ -304,4 +292,4 @@ class SignerSet {
   }
 }
 
-export default SignerSet;
+export default SignerStore;

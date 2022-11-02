@@ -16,7 +16,7 @@ import MessageDB from '~/storage/db/message';
  * Note that the FollowDB implements the constraint that a single target can only exist in either followAdds
  * or followRemoves. Therefore, _putFollowAdd also deletes the FollowRemove for the same target and _putFollowRemove
  * also deletes the FollowAdd for the same target. The FollowDB does not resolve conflicts between two follow
- * messages with the same target. The FollowSet should be used to handle conflicts and decide whether or not to
+ * messages with the same target. The FollowStore should be used to handle conflicts and decide whether or not to
  * perform a mutation.
  */
 class FollowDB extends MessageDB {

@@ -1,13 +1,13 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { BadRequestError } from '~/utils/errors';
-import MessageModel from '~/storage/flatbuffers/model';
+import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync } from 'neverthrow';
-import { UserPrefix, VerificationAddEthAddressModel, VerificationRemoveModel } from '~/storage/flatbuffers/types';
+import { UserPostfix, VerificationAddEthAddressModel, VerificationRemoveModel } from '~/storage/flatbuffers/types';
 import { isVerificationAddEthAddress, isVerificationRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 
-class VerificationSet {
+class VerificationStore {
   private _db: RocksDB;
 
   constructor(db: RocksDB) {
@@ -18,7 +18,7 @@ class VerificationSet {
   static verificationRemovesKey(fid: Uint8Array, address?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
-      Buffer.from([UserPrefix.VerificationRemoves]),
+      Buffer.from([UserPostfix.VerificationRemoves]),
       address ? Buffer.from(address) : new Uint8Array(),
     ]);
   }
@@ -27,36 +27,31 @@ class VerificationSet {
   static verificationAddsKey(fid: Uint8Array, address?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
-      Buffer.from([UserPrefix.VerificationAdds]),
+      Buffer.from([UserPostfix.VerificationAdds]),
       address ? Buffer.from(address) : new Uint8Array(),
     ]);
   }
 
   /** Look up VerificationAdd* message by address */
   async getVerificationAdd(fid: Uint8Array, address: Uint8Array): Promise<VerificationAddEthAddressModel> {
-    const messageTimestampHash = await this._db.get(VerificationSet.verificationAddsKey(fid, address));
+    const messageTsHash = await this._db.get(VerificationStore.verificationAddsKey(fid, address));
     return MessageModel.get<VerificationAddEthAddressModel>(
       this._db,
       fid,
-      UserPrefix.VerificationMessage,
-      messageTimestampHash
+      UserPostfix.VerificationMessage,
+      messageTsHash
     );
   }
 
   /** Look up VerificationRemove message by address */
   async getVerificationRemove(fid: Uint8Array, address: Uint8Array): Promise<VerificationRemoveModel> {
-    const messageTimestampHash = await this._db.get(VerificationSet.verificationRemovesKey(fid, address));
-    return MessageModel.get<VerificationRemoveModel>(
-      this._db,
-      fid,
-      UserPrefix.VerificationMessage,
-      messageTimestampHash
-    );
+    const messageTsHash = await this._db.get(VerificationStore.verificationRemovesKey(fid, address));
+    return MessageModel.get<VerificationRemoveModel>(this._db, fid, UserPostfix.VerificationMessage, messageTsHash);
   }
 
   /** Get all VerificationAdd* messages for an fid */
   async getVerificationAddsByUser(fid: Uint8Array): Promise<VerificationAddEthAddressModel[]> {
-    const addsPrefix = VerificationSet.verificationAddsKey(fid);
+    const addsPrefix = VerificationStore.verificationAddsKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(addsPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
@@ -64,14 +59,14 @@ class VerificationSet {
     return MessageModel.getManyByUser<VerificationAddEthAddressModel>(
       this._db,
       fid,
-      UserPrefix.VerificationMessage,
+      UserPostfix.VerificationMessage,
       messageKeys
     );
   }
 
   /** Get all VerificationRemove messages for an fid */
   async getVerificationRemovesByUser(fid: Uint8Array): Promise<VerificationRemoveModel[]> {
-    const removesPrefix = VerificationSet.verificationRemovesKey(fid);
+    const removesPrefix = VerificationStore.verificationRemovesKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(removesPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
@@ -79,7 +74,7 @@ class VerificationSet {
     return MessageModel.getManyByUser<VerificationRemoveModel>(
       this._db,
       fid,
-      UserPrefix.VerificationMessage,
+      UserPostfix.VerificationMessage,
       messageKeys
     );
   }
@@ -141,13 +136,13 @@ class VerificationSet {
 
   private verificationMessageCompare(
     aType: MessageType,
-    aTimestampHash: Uint8Array,
+    aTsHash: Uint8Array,
     bType: MessageType,
-    bTimestampHash: Uint8Array
+    bTsHash: Uint8Array
   ): number {
-    const timestampHashOrder = bytesCompare(aTimestampHash, bTimestampHash);
-    if (timestampHashOrder !== 0) {
-      return timestampHashOrder;
+    const tsHashOrder = bytesCompare(aTsHash, bTsHash);
+    if (tsHashOrder !== 0) {
+      return tsHashOrder;
     }
 
     if (aType === MessageType.VerificationRemove && bType === MessageType.VerificationAddEthAddress) {
@@ -164,19 +159,19 @@ class VerificationSet {
     address: Uint8Array,
     message: VerificationAddEthAddressModel | VerificationRemoveModel
   ): Promise<Transaction | undefined> {
-    // Look up the remove timestampHash for this address
-    const removeTimestampHash = await ResultAsync.fromPromise(
-      this._db.get(VerificationSet.verificationRemovesKey(message.fid(), address)),
+    // Look up the remove tsHash for this address
+    const removeTsHash = await ResultAsync.fromPromise(
+      this._db.get(VerificationStore.verificationRemovesKey(message.fid(), address)),
       () => undefined
     );
 
-    if (removeTimestampHash.isOk()) {
+    if (removeTsHash.isOk()) {
       if (
         this.verificationMessageCompare(
           MessageType.VerificationRemove,
-          removeTimestampHash.value,
+          removeTsHash.value,
           message.type(),
-          message.timestampHash()
+          message.tsHash()
         ) >= 0
       ) {
         // If the existing remove has the same or higher order than the new message, no-op
@@ -187,26 +182,26 @@ class VerificationSet {
         const existingRemove = await MessageModel.get<VerificationRemoveModel>(
           this._db,
           message.fid(),
-          UserPrefix.VerificationMessage,
-          removeTimestampHash.value
+          UserPostfix.VerificationMessage,
+          removeTsHash.value
         );
         tsx = this.deleteVerificationRemoveTransaction(tsx, existingRemove);
       }
     }
 
-    // Look up the add timestampHash for this address
-    const addTimestampHash = await ResultAsync.fromPromise(
-      this._db.get(VerificationSet.verificationAddsKey(message.fid(), address)),
+    // Look up the add tsHash for this address
+    const addTsHash = await ResultAsync.fromPromise(
+      this._db.get(VerificationStore.verificationAddsKey(message.fid(), address)),
       () => undefined
     );
 
-    if (addTimestampHash.isOk()) {
+    if (addTsHash.isOk()) {
       if (
         this.verificationMessageCompare(
           MessageType.VerificationAddEthAddress,
-          addTimestampHash.value,
+          addTsHash.value,
           message.type(),
-          message.timestampHash()
+          message.tsHash()
         ) >= 0
       ) {
         // If the existing add has the same or higher order than the new message, no-op
@@ -217,8 +212,8 @@ class VerificationSet {
         const existingAdd = await MessageModel.get<VerificationAddEthAddressModel>(
           this._db,
           message.fid(),
-          UserPrefix.VerificationMessage,
-          addTimestampHash.value
+          UserPostfix.VerificationMessage,
+          addTsHash.value
         );
         tsx = this.deleteVerificationAddTransaction(tsx, existingAdd);
       }
@@ -233,8 +228,8 @@ class VerificationSet {
 
     // Put verificationAdds index
     tsx = tsx.put(
-      VerificationSet.verificationAddsKey(message.fid(), message.body().addressArray() ?? new Uint8Array()),
-      Buffer.from(message.timestampHash())
+      VerificationStore.verificationAddsKey(message.fid(), message.body().addressArray() ?? new Uint8Array()),
+      Buffer.from(message.tsHash())
     );
 
     return tsx;
@@ -243,7 +238,7 @@ class VerificationSet {
   private deleteVerificationAddTransaction(tsx: Transaction, message: VerificationAddEthAddressModel): Transaction {
     // Delete from verificationAdds
     tsx = tsx.del(
-      VerificationSet.verificationAddsKey(message.fid(), message.body().addressArray() ?? new Uint8Array())
+      VerificationStore.verificationAddsKey(message.fid(), message.body().addressArray() ?? new Uint8Array())
     );
 
     // Delete message
@@ -256,8 +251,8 @@ class VerificationSet {
 
     // Add to verificationRemoves
     tsx = tsx.put(
-      VerificationSet.verificationRemovesKey(message.fid(), message.body().addressArray() ?? new Uint8Array()),
-      Buffer.from(message.timestampHash())
+      VerificationStore.verificationRemovesKey(message.fid(), message.body().addressArray() ?? new Uint8Array()),
+      Buffer.from(message.tsHash())
     );
 
     return tsx;
@@ -266,7 +261,7 @@ class VerificationSet {
   private deleteVerificationRemoveTransaction(tsx: Transaction, message: VerificationRemoveModel): Transaction {
     // Delete from verificationRemoves
     tsx = tsx.del(
-      VerificationSet.verificationRemovesKey(message.fid(), message.body().addressArray() ?? new Uint8Array())
+      VerificationStore.verificationRemovesKey(message.fid(), message.body().addressArray() ?? new Uint8Array())
     );
 
     // Delete message
@@ -274,4 +269,4 @@ class VerificationSet {
   }
 }
 
-export default VerificationSet;
+export default VerificationStore;

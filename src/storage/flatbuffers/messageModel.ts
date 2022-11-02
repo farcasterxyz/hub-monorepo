@@ -2,6 +2,7 @@ import { ByteBuffer } from 'flatbuffers';
 import {
   CastAddBody,
   CastRemoveBody,
+  ReactionBody,
   FollowBody,
   Message,
   MessageBody,
@@ -11,14 +12,20 @@ import {
   UserDataBody,
 } from '~/utils/generated/message_generated';
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
-import { RootPrefix, UserMessagePrefix, UserPrefix } from '~/storage/flatbuffers/types';
+import { RootPrefix, UserMessagePostfix, UserPostfix } from '~/storage/flatbuffers/types';
 import { VerificationAddEthAddressBody } from '~/utils/generated/farcaster/verification-add-eth-address-body';
 import { VerificationRemoveBody } from '~/utils/generated/farcaster/verification-remove-body';
 
 /** Used when index keys are sufficiently descriptive */
 export const TRUE_VALUE = Buffer.from([1]);
+
+/** Size in bytes of a Farcaster ID */
 export const FID_BYTES = 32;
 
+/** Size in bytes of a Reaction's targetKey (32-byte fid, 4-byte timestamp, 4-byte hash) */
+export const TARGET_KEY_BYTES = 40;
+
+/** MessageModel that provides helpers to read and write Flatbuffers Messages from RocksDB */
 export default class MessageModel {
   public message: Message;
   public data: MessageData;
@@ -42,7 +49,7 @@ export default class MessageModel {
   }
 
   /** <user prefix byte, fid, set index byte, key> */
-  static primaryKey(fid: Uint8Array, set: UserMessagePrefix, key: Uint8Array): Buffer {
+  static primaryKey(fid: Uint8Array, set: UserMessagePostfix, key: Uint8Array): Buffer {
     return Buffer.concat([this.userKey(fid), Buffer.from([set]), Buffer.from(key)]);
   }
 
@@ -50,7 +57,7 @@ export default class MessageModel {
   static bySignerKey(fid: Uint8Array, signer: Uint8Array, type?: MessageType, key?: Uint8Array): Buffer {
     return Buffer.concat([
       this.userKey(fid),
-      Buffer.from([UserPrefix.BySigner]),
+      Buffer.from([UserPostfix.BySigner]),
       Buffer.from(signer),
       type ? Buffer.from([type]) : new Uint8Array(),
       key ? Buffer.from(key) : new Uint8Array(),
@@ -65,7 +72,7 @@ export default class MessageModel {
   static async getManyByUser<T extends MessageModel>(
     db: RocksDB,
     fid: Uint8Array,
-    set: UserMessagePrefix,
+    set: UserMessagePostfix,
     keys: Uint8Array[]
   ): Promise<T[]> {
     return this.getMany<T>(
@@ -95,13 +102,13 @@ export default class MessageModel {
       const messageKeyOffset = prefix.length + (type ? 0 : 1);
       messageKeys.push(key.slice(messageKeyOffset));
     }
-    return MessageModel.getManyByUser<T>(db, fid, UserPrefix.CastMessage, messageKeys);
+    return MessageModel.getManyByUser<T>(db, fid, UserPostfix.CastMessage, messageKeys);
   }
 
   static async get<T extends MessageModel>(
     db: RocksDB,
     fid: Uint8Array,
-    set: UserMessagePrefix,
+    set: UserMessagePostfix,
     key: Uint8Array
   ): Promise<T> {
     const buffer = await db.get(MessageModel.primaryKey(fid, set, key));
@@ -125,25 +132,29 @@ export default class MessageModel {
     return MessageModel.putTransaction(tsx, this);
   }
 
-  setPrefix(): UserMessagePrefix {
+  setPrefix(): UserMessagePostfix {
     if (this.type() === MessageType.CastAdd || this.type() === MessageType.CastRemove) {
-      return UserPrefix.CastMessage;
+      return UserPostfix.CastMessage;
+    }
+
+    if (this.type() === MessageType.ReactionAdd || this.type() === MessageType.ReactionRemove) {
+      return UserPostfix.ReactionMessage;
     }
 
     if (this.type() === MessageType.FollowAdd || this.type() === MessageType.FollowRemove) {
-      return UserPrefix.FollowMessage;
+      return UserPostfix.FollowMessage;
     }
 
     if (this.type() === MessageType.VerificationAddEthAddress || this.type() === MessageType.VerificationRemove) {
-      return UserPrefix.VerificationMessage;
+      return UserPostfix.VerificationMessage;
     }
 
     if (this.type() === MessageType.SignerAdd || this.type() === MessageType.SignerRemove) {
-      return UserPrefix.SignerMessage;
+      return UserPostfix.SignerMessage;
     }
 
     if (this.type() === MessageType.UserDataAdd) {
-      return UserPrefix.UserDataMessage;
+      return UserPostfix.UserDataMessage;
     }
 
     // TODO: add all message types
@@ -152,11 +163,11 @@ export default class MessageModel {
   }
 
   primaryKey(): Buffer {
-    return MessageModel.primaryKey(this.fid(), this.setPrefix(), this.timestampHash());
+    return MessageModel.primaryKey(this.fid(), this.setPrefix(), this.tsHash());
   }
 
   bySignerKey(): Buffer {
-    return MessageModel.bySignerKey(this.fid(), this.signer(), this.type(), this.timestampHash());
+    return MessageModel.bySignerKey(this.fid(), this.signer(), this.type(), this.tsHash());
   }
 
   toBuffer(): Buffer {
@@ -167,7 +178,7 @@ export default class MessageModel {
     return this.message.bb?.bytes() || new Uint8Array();
   }
 
-  timestampHash(): Uint8Array {
+  tsHash(): Uint8Array {
     const hash = this.hash();
     const buffer = new ArrayBuffer(4 + hash.length);
     const view = new DataView(buffer);
@@ -204,7 +215,8 @@ export default class MessageModel {
     | VerificationAddEthAddressBody
     | VerificationRemoveBody
     | SignerBody
-    | UserDataBody {
+    | UserDataBody
+    | ReactionBody {
     if (this.data.bodyType() === MessageBody.CastAddBody) {
       return this.data.body(new CastAddBody()) as CastAddBody;
     } else if (this.data.bodyType() === MessageBody.CastRemoveBody) {
@@ -219,9 +231,9 @@ export default class MessageModel {
       return this.data.body(new SignerBody()) as SignerBody;
     } else if (this.data.bodyType() === MessageBody.UserDataBody) {
       return this.data.body(new UserDataBody()) as UserDataBody;
+    } else if (this.data.bodyType() === MessageBody.ReactionBody) {
+      return this.data.body(new ReactionBody()) as ReactionBody;
     }
-
-    // TODO: add all body types
 
     throw new Error('invalid bodyType');
   }

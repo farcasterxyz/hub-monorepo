@@ -20,7 +20,7 @@ import MessageDB from '~/storage/db/message';
  * Note that the SignerDB implements the constraint that a single target can only exist in either signerAdds
  * or signerRemoves for a given custody address. Therefore, _putSignerAdd also deletes the SignerRemove for the same
  * delegate and _putSignerRemove also deletes the SignerAdd for the same delegate. The SignerDB does not resolve
- * conflicts between two signer messages with the same delegate. The SignerSet should be used to handle conflicts and
+ * conflicts between two signer messages with the same delegate. The SignerStore should be used to handle conflicts and
  * decide whether or not to perform a mutation.
  */
 class SignerDB extends MessageDB {

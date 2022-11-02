@@ -1,8 +1,8 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { BadRequestError } from '~/utils/errors';
-import MessageModel from '~/storage/flatbuffers/model';
+import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync } from 'neverthrow';
-import { UserDataAddModel, UserPrefix } from '~/storage/flatbuffers/types';
+import { UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
 import { isUserDataAdd } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { UserDataType } from '~/utils/generated/message_generated';
@@ -18,7 +18,7 @@ class UserDataSet {
   static userDataAddsKey(fid: Uint8Array, dataType?: UserDataType): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
-      Buffer.from([UserPrefix.UserDataAdds]),
+      Buffer.from([UserPostfix.UserDataAdds]),
       dataType ? Buffer.from(new Uint16Array([dataType])) : new Uint8Array(),
     ]);
   }
@@ -26,7 +26,7 @@ class UserDataSet {
   /** Look up UserDataAdd message by fid and type */
   async getUserDataAdd(fid: Uint8Array, dataType: UserDataType): Promise<UserDataAddModel> {
     const messageTimestampHash = await this._db.get(UserDataSet.userDataAddsKey(fid, dataType));
-    return MessageModel.get<UserDataAddModel>(this._db, fid, UserPrefix.UserDataMessage, messageTimestampHash);
+    return MessageModel.get<UserDataAddModel>(this._db, fid, UserPostfix.UserDataMessage, messageTimestampHash);
   }
 
   /** Get all UserDataAdd messages for an fid */
@@ -36,7 +36,7 @@ class UserDataSet {
     for await (const [, value] of this._db.iteratorByPrefix(addsPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
     }
-    return MessageModel.getManyByUser<UserDataAddModel>(this._db, fid, UserPrefix.UserDataMessage, messageKeys);
+    return MessageModel.getManyByUser<UserDataAddModel>(this._db, fid, UserPostfix.UserDataMessage, messageKeys);
   }
 
   /** Merge a UserDataAdd message into the set */
@@ -77,7 +77,7 @@ class UserDataSet {
     );
 
     if (addTimestampHash.isOk()) {
-      if (this.userDataMessageCompare(addTimestampHash.value, message.timestampHash()) >= 0) {
+      if (this.userDataMessageCompare(addTimestampHash.value, message.tsHash()) >= 0) {
         // If the existing add has the same or higher order than the new message, no-op
         return undefined;
       } else {
@@ -86,7 +86,7 @@ class UserDataSet {
         const existingAdd = await MessageModel.get<UserDataAddModel>(
           this._db,
           message.fid(),
-          UserPrefix.UserDataMessage,
+          UserPostfix.UserDataMessage,
           addTimestampHash.value
         );
         tsx = this.deleteUserDataAddTransaction(tsx, existingAdd);
@@ -101,10 +101,7 @@ class UserDataSet {
     tsx = MessageModel.putTransaction(tsx, message);
 
     // Put userDataAdds index
-    tsx = tsx.put(
-      UserDataSet.userDataAddsKey(message.fid(), message.body().type()),
-      Buffer.from(message.timestampHash())
-    );
+    tsx = tsx.put(UserDataSet.userDataAddsKey(message.fid(), message.body().type()), Buffer.from(message.tsHash()));
 
     return tsx;
   }

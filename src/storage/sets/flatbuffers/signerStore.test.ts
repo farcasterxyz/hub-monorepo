@@ -5,13 +5,13 @@ import { BadRequestError, NotFoundError } from '~/utils/errors';
 import { EthereumSigner } from '~/types';
 import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
 import { arrayify } from 'ethers/lib/utils';
-import SignerSet from '~/storage/sets/flatbuffers/signerSet';
+import SignerStore from '~/storage/sets/flatbuffers/signerStore';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
-import { SignerAddModel, SignerRemoveModel, UserPrefix } from '~/storage/flatbuffers/types';
-import MessageModel from '~/storage/flatbuffers/model';
+import { SignerAddModel, SignerRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
+import MessageModel from '~/storage/flatbuffers/messageModel';
 
 const db = jestBinaryRocksDB('flatbuffers.signerSet.test');
-const set = new SignerSet(db);
+const set = new SignerStore(db);
 const fid = Factories.FID.build();
 
 let custody1: EthereumSigner;
@@ -305,9 +305,9 @@ describe('merge', () => {
       });
 
       test('saves message', async () => {
-        await expect(
-          MessageModel.get(db, fid, UserPrefix.SignerMessage, signerRemove.timestampHash())
-        ).resolves.toEqual(signerRemove);
+        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerRemove.tsHash())).resolves.toEqual(
+          signerRemove
+        );
       });
 
       test('saves signerRemoves index', async () => {
@@ -315,7 +315,7 @@ describe('merge', () => {
       });
 
       test('deletes SignerAdd message', async () => {
-        await expect(MessageModel.get(db, fid, UserPrefix.SignerMessage, signerAdd.timestampHash())).rejects.toThrow(
+        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).rejects.toThrow(
           NotFoundError
         );
       });
@@ -346,18 +346,18 @@ describe('merge', () => {
         await set.merge(signerRemove);
         await expect(set.merge(signerRemoveLater)).resolves.toEqual(undefined);
         await expect(set.getSignerRemove(fid, signer, custody1Address)).resolves.toEqual(signerRemoveLater);
-        await expect(
-          MessageModel.get(db, fid, UserPrefix.VerificationMessage, signerRemove.timestampHash())
-        ).rejects.toThrow(NotFoundError);
+        await expect(MessageModel.get(db, fid, UserPostfix.VerificationMessage, signerRemove.tsHash())).rejects.toThrow(
+          NotFoundError
+        );
       });
 
       test('no-ops with an earlier timestamp', async () => {
         await set.merge(signerRemoveLater);
         await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
         await expect(set.getSignerRemove(fid, signer, custody1Address)).resolves.toEqual(signerRemoveLater);
-        await expect(
-          MessageModel.get(db, fid, UserPrefix.VerificationMessage, signerRemove.timestampHash())
-        ).rejects.toThrow(NotFoundError);
+        await expect(MessageModel.get(db, fid, UserPostfix.VerificationMessage, signerRemove.tsHash())).rejects.toThrow(
+          NotFoundError
+        );
       });
 
       // TODO: same signer, different custody address
@@ -385,7 +385,7 @@ describe('merge', () => {
         await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
         await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAddLater);
         await expect(set.getSignerRemove(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
-        await expect(MessageModel.get(db, fid, UserPrefix.SignerMessage, signerRemove.timestampHash())).rejects.toThrow(
+        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerRemove.tsHash())).rejects.toThrow(
           NotFoundError
         );
       });
@@ -395,7 +395,7 @@ describe('merge', () => {
         await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
         await expect(set.getSignerRemove(fid, signer, custody1Address)).resolves.toEqual(signerRemove);
         await expect(set.getSignerAdd(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
-        await expect(MessageModel.get(db, fid, UserPrefix.SignerMessage, signerAdd.timestampHash())).rejects.toThrow(
+        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).rejects.toThrow(
           NotFoundError
         );
       });
@@ -415,7 +415,7 @@ describe('merge', () => {
       });
 
       test('saves message', async () => {
-        await expect(MessageModel.get(db, fid, UserPrefix.SignerMessage, signerAdd.timestampHash())).resolves.toEqual(
+        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).resolves.toEqual(
           signerAdd
         );
       });
@@ -451,7 +451,7 @@ describe('merge', () => {
         await set.merge(signerAdd);
         await expect(set.merge(signerAddLater)).resolves.toEqual(undefined);
         await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAddLater);
-        await expect(MessageModel.get(db, fid, UserPrefix.SignerMessage, signerAdd.timestampHash())).rejects.toThrow(
+        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).rejects.toThrow(
           NotFoundError
         );
       });
@@ -460,7 +460,7 @@ describe('merge', () => {
         await set.merge(signerAddLater);
         await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
         await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAddLater);
-        await expect(MessageModel.get(db, fid, UserPrefix.SignerMessage, signerAdd.timestampHash())).rejects.toThrow(
+        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).rejects.toThrow(
           NotFoundError
         );
       });
@@ -489,7 +489,7 @@ describe('merge', () => {
         await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAdd);
         await expect(set.getSignerRemove(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
         await expect(
-          MessageModel.get(db, fid, UserPrefix.SignerMessage, signerRemoveEarlier.timestampHash())
+          MessageModel.get(db, fid, UserPostfix.SignerMessage, signerRemoveEarlier.tsHash())
         ).rejects.toThrow(NotFoundError);
       });
 
@@ -498,7 +498,7 @@ describe('merge', () => {
         await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
         await expect(set.getSignerRemove(fid, signer, custody1Address)).resolves.toEqual(signerRemove);
         await expect(set.getSignerAdd(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
-        await expect(MessageModel.get(db, fid, UserPrefix.SignerMessage, signerAdd.timestampHash())).rejects.toThrow(
+        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).rejects.toThrow(
           NotFoundError
         );
       });

@@ -1,8 +1,8 @@
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import MessageModel from '~/storage/flatbuffers/model';
+import MessageModel from '~/storage/flatbuffers/messageModel';
 import { BadRequestError, NotFoundError } from '~/utils/errors';
-import { UserDataAddModel, UserPrefix } from '~/storage/flatbuffers/types';
+import { UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
 import { UserDataType } from '~/utils/generated/message_generated';
 import UserDataSet from '~/storage/sets/flatbuffers/userDataSet';
 
@@ -78,9 +78,7 @@ describe('merge', () => {
       });
 
       test('saves message', async () => {
-        await expect(MessageModel.get(db, fid, UserPrefix.UserDataMessage, addPfp.timestampHash())).resolves.toEqual(
-          addPfp
-        );
+        await expect(MessageModel.get(db, fid, UserPostfix.UserDataMessage, addPfp.tsHash())).resolves.toEqual(addPfp);
       });
 
       test('saves userDataAdds index', async () => {
@@ -103,7 +101,7 @@ describe('merge', () => {
         await set.merge(addPfp);
         await expect(set.merge(changePfp)).resolves.toEqual(undefined);
         await expect(set.getUserDataAdd(fid, UserDataType.Pfp)).resolves.toEqual(changePfp);
-        await expect(MessageModel.get(db, fid, UserPrefix.UserDataMessage, addPfp.timestampHash())).rejects.toThrow(
+        await expect(MessageModel.get(db, fid, UserPostfix.UserDataMessage, addPfp.tsHash())).rejects.toThrow(
           NotFoundError
         );
       });
@@ -112,7 +110,7 @@ describe('merge', () => {
         await set.merge(changePfp);
         await expect(set.merge(addPfp)).resolves.toEqual(undefined);
         await expect(set.getUserDataAdd(fid, UserDataType.Pfp)).resolves.toEqual(changePfp);
-        await expect(MessageModel.get(db, fid, UserPrefix.UserDataMessage, addPfp.timestampHash())).rejects.toThrow(
+        await expect(MessageModel.get(db, fid, UserPostfix.UserDataMessage, addPfp.tsHash())).rejects.toThrow(
           NotFoundError
         );
       });

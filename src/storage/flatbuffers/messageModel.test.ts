@@ -3,8 +3,8 @@ import { KeyPair } from '~/types';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import { NotFoundError } from '~/utils/errors';
-import MessageModel, { TRUE_VALUE } from '~/storage/flatbuffers/model';
-import { UserPrefix } from './types';
+import MessageModel, { TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
+import { UserPostfix } from './types';
 
 const db = jestBinaryRocksDB('flatbuffers.model.test');
 
@@ -21,18 +21,16 @@ describe('static methods', () => {
   describe('get', () => {
     test('succeeds when message exists', async () => {
       await model.put(db);
-      await expect(MessageModel.get(db, model.fid(), model.setPrefix(), model.timestampHash())).resolves.toEqual(model);
+      await expect(MessageModel.get(db, model.fid(), model.setPrefix(), model.tsHash())).resolves.toEqual(model);
     });
 
     test('fails when message not found', async () => {
-      await expect(MessageModel.get(db, model.fid(), model.setPrefix(), model.timestampHash())).rejects.toThrow(
-        NotFoundError
-      );
+      await expect(MessageModel.get(db, model.fid(), model.setPrefix(), model.tsHash())).rejects.toThrow(NotFoundError);
     });
 
     test('fails with wrong key', async () => {
       await model.put(db);
-      const badKey = new Uint8Array([...model.timestampHash(), 1]);
+      const badKey = new Uint8Array([...model.tsHash(), 1]);
       await expect(MessageModel.get(db, model.fid(), model.setPrefix(), badKey)).rejects.toThrow(NotFoundError);
     });
   });
@@ -40,7 +38,7 @@ describe('static methods', () => {
   describe('getManyByUser', () => {
     test('succeeds', async () => {
       await model.put(db);
-      const getMany = MessageModel.getManyByUser(db, model.fid(), model.setPrefix(), [model.timestampHash()]);
+      const getMany = MessageModel.getManyByUser(db, model.fid(), model.setPrefix(), [model.tsHash()]);
       await expect(getMany).resolves.toEqual([model]);
     });
   });
@@ -58,23 +56,23 @@ describe('static methods', () => {
       const tsx = db
         .transaction()
         .put(
-          MessageModel.primaryKey(new Uint8Array([1]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          MessageModel.primaryKey(new Uint8Array([1]), UserPostfix.CastMessage, new Uint8Array([1, 1])),
           Buffer.from('a')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([2]), UserPrefix.CastMessage, new Uint8Array([2, 1])),
+          MessageModel.primaryKey(new Uint8Array([2]), UserPostfix.CastMessage, new Uint8Array([2, 1])),
           Buffer.from('b')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([2]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          MessageModel.primaryKey(new Uint8Array([2]), UserPostfix.CastMessage, new Uint8Array([1, 1])),
           Buffer.from('c')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([3]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          MessageModel.primaryKey(new Uint8Array([3]), UserPostfix.CastMessage, new Uint8Array([1, 1])),
           Buffer.from('d')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([4]), UserPrefix.CastMessage, new Uint8Array([1])),
+          MessageModel.primaryKey(new Uint8Array([4]), UserPostfix.CastMessage, new Uint8Array([1])),
           Buffer.from('e')
         );
 
@@ -90,23 +88,23 @@ describe('static methods', () => {
       const tsx = db
         .transaction()
         .put(
-          MessageModel.primaryKey(new Uint8Array([1]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          MessageModel.primaryKey(new Uint8Array([1]), UserPostfix.CastMessage, new Uint8Array([1, 1])),
           Buffer.from('a')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([1, 1, 1]), UserPrefix.CastMessage, new Uint8Array([2, 1])),
+          MessageModel.primaryKey(new Uint8Array([1, 1, 1]), UserPostfix.CastMessage, new Uint8Array([2, 1])),
           Buffer.from('b')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([2]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          MessageModel.primaryKey(new Uint8Array([2]), UserPostfix.CastMessage, new Uint8Array([1, 1])),
           Buffer.from('c')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([2, 1]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          MessageModel.primaryKey(new Uint8Array([2, 1]), UserPostfix.CastMessage, new Uint8Array([1, 1])),
           Buffer.from('d')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([4]), UserPrefix.CastMessage, new Uint8Array([1])),
+          MessageModel.primaryKey(new Uint8Array([4]), UserPostfix.CastMessage, new Uint8Array([1])),
           Buffer.from('e')
         );
 
@@ -122,23 +120,23 @@ describe('static methods', () => {
       const tsx = db
         .transaction()
         .put(
-          MessageModel.primaryKey(new Uint8Array([1, 1]), UserPrefix.CastMessage, new Uint8Array([1, 1])),
+          MessageModel.primaryKey(new Uint8Array([1, 1]), UserPostfix.CastMessage, new Uint8Array([1, 1])),
           Buffer.from('a')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([1, 1, 1]), UserPrefix.CastMessage, new Uint8Array([2, 1])),
+          MessageModel.primaryKey(new Uint8Array([1, 1, 1]), UserPostfix.CastMessage, new Uint8Array([2, 1])),
           Buffer.from('b')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([1, 1, 1]), UserPrefix.CastMessage, new Uint8Array([1, 2])),
+          MessageModel.primaryKey(new Uint8Array([1, 1, 1]), UserPostfix.CastMessage, new Uint8Array([1, 2])),
           Buffer.from('c')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([1, 1]), UserPrefix.CastMessage, new Uint8Array([1, 2])),
+          MessageModel.primaryKey(new Uint8Array([1, 1]), UserPostfix.CastMessage, new Uint8Array([1, 2])),
           Buffer.from('d')
         )
         .put(
-          MessageModel.primaryKey(new Uint8Array([4]), UserPrefix.CastMessage, new Uint8Array([1])),
+          MessageModel.primaryKey(new Uint8Array([4]), UserPostfix.CastMessage, new Uint8Array([1])),
           Buffer.from('e')
         );
 
@@ -168,7 +166,7 @@ describe('instance methods', () => {
       await expect(model.put(db)).resolves.toEqual(undefined);
     });
     test('stores binary message', async () => {
-      const get = MessageModel.get(db, model.fid(), model.setPrefix(), model.timestampHash());
+      const get = MessageModel.get(db, model.fid(), model.setPrefix(), model.tsHash());
       await expect(get).resolves.toEqual(model);
     });
 
@@ -177,7 +175,7 @@ describe('instance methods', () => {
     });
   });
 
-  describe('timestampHash', () => {
+  describe('tsHash', () => {
     test('orders messages by timestamp and hash', async () => {
       const aData = await Factories.MessageData.create({ timestamp: 1 });
       const a = new MessageModel(
@@ -196,10 +194,10 @@ describe('instance methods', () => {
 
       const tsx = db
         .transaction()
-        .put(Buffer.from(model.timestampHash()), Buffer.from('m'))
-        .put(Buffer.from(a.timestampHash()), Buffer.from('a'))
-        .put(Buffer.from(b.timestampHash()), Buffer.from('b'))
-        .put(Buffer.from(c.timestampHash()), Buffer.from('c'));
+        .put(Buffer.from(model.tsHash()), Buffer.from('m'))
+        .put(Buffer.from(a.tsHash()), Buffer.from('a'))
+        .put(Buffer.from(b.tsHash()), Buffer.from('b'))
+        .put(Buffer.from(c.tsHash()), Buffer.from('c'));
 
       await db.commit(tsx);
 
