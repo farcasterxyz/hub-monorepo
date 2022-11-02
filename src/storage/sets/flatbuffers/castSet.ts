@@ -180,7 +180,7 @@ class CastSet {
     let tsx = this._db.transaction();
 
     // Define cast hash for lookups
-    const removeTargetTsHash = message.body().hashArray() ?? new Uint8Array();
+    const removeTargetTsHash = message.body().targetTsHashArray() ?? new Uint8Array();
 
     // Look up the remove tsHash for this cast
     const castRemoveTsHash = await ResultAsync.fromPromise(
@@ -244,7 +244,7 @@ class CastSet {
       tsx = tsx.put(
         CastSet.castsByParentKey(
           message.body().parent()?.fidArray() ?? new Uint8Array(),
-          message.body().parent()?.hashArray() ?? new Uint8Array(),
+          message.body().parent()?.tsHashArray() ?? new Uint8Array(),
           message.fid(),
           message.tsHash()
         ),
@@ -282,7 +282,7 @@ class CastSet {
       tsx = tsx.del(
         CastSet.castsByParentKey(
           message.body().parent()?.fidArray() ?? new Uint8Array(),
-          message.body().parent()?.hashArray() ?? new Uint8Array(),
+          message.body().parent()?.tsHashArray() ?? new Uint8Array(),
           message.fid(),
           message.tsHash()
         )
@@ -302,7 +302,7 @@ class CastSet {
 
     // Add to cast removes
     tsx = tsx.put(
-      CastSet.castRemovesKey(message.fid(), message.body().hashArray() ?? new Uint8Array()),
+      CastSet.castRemovesKey(message.fid(), message.body().targetTsHashArray() ?? new Uint8Array()),
       Buffer.from(message.tsHash())
     );
 
@@ -311,7 +311,7 @@ class CastSet {
 
   private deleteCastRemoveTransaction(tsx: Transaction, message: CastRemoveModel): Transaction {
     // Delete from cast removes
-    tsx = tsx.del(CastSet.castRemovesKey(message.fid(), message.body().hashArray() ?? new Uint8Array()));
+    tsx = tsx.del(CastSet.castRemovesKey(message.fid(), message.body().targetTsHashArray() ?? new Uint8Array()));
 
     // Delete message
     return MessageModel.deleteTransaction(tsx, message);

@@ -36,33 +36,33 @@ enum ReactionType: uint16 {
   Recast = 2
 }
 
-table CastID {
+table CastId {
   fid: [ubyte] (required);
-  hash: [ubyte] (required);
+  ts_hash: [ubyte] (required);
 }
 
-table UserID {
+table UserId {
   fid: [ubyte] (required);
 }
 
 table CastAddBody {
   embeds: [string];
-  mentions: [UserID];
-  parent: CastID;
+  mentions: [UserId];
+  parent: CastId;
   text: string (required);
 }
 
 table CastRemoveBody {
-  hash: [ubyte] (required);
+  target_ts_hash: [ubyte] (required);
 }
 
 table ReactionBody {
-  cast: CastID (required);
+  cast: CastId (required);
   type: ReactionType = 1;
 }
 
 table FollowBody {
-  user: UserID (required);
+  user: UserId (required);
 }
 
 table VerificationAddEthAddressBody {

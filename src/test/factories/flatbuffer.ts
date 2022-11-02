@@ -4,8 +4,8 @@ import { KeyPair } from '~/types';
 import {
   CastAddBody,
   CastAddBodyT,
-  CastID,
-  CastIDT,
+  CastId,
+  CastIdT,
   CastRemoveBody,
   CastRemoveBodyT,
   FarcasterNetwork,
@@ -24,8 +24,8 @@ import {
   SignatureScheme,
   SignerBody,
   SignerBodyT,
-  UserID,
-  UserIDT,
+  UserId,
+  UserIdT,
 } from '~/utils/generated/message_generated';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { blake2b } from 'ethereum-cryptography/blake2b';
@@ -54,24 +54,24 @@ const TsHashFactory = Factory.define<Uint8Array>(() => {
   return new Uint8Array([...builder.asUint8Array(), ...hash]);
 });
 
-const UserIDFactory = Factory.define<UserIDT, any, UserID>(({ onCreate }) => {
+const UserIdFactory = Factory.define<UserIdT, any, UserId>(({ onCreate }) => {
   onCreate((params) => {
     const builder = new Builder();
     builder.finish(params.pack(builder));
-    return UserID.getRootAsUserID(new ByteBuffer(builder.asUint8Array()));
+    return UserId.getRootAsUserId(new ByteBuffer(builder.asUint8Array()));
   });
 
-  return new UserIDT(Array.from(FIDFactory.build()));
+  return new UserIdT(Array.from(FIDFactory.build()));
 });
 
-const CastIDFactory = Factory.define<CastIDT, any, CastID>(({ onCreate }) => {
+const CastIdFactory = Factory.define<CastIdT, any, CastId>(({ onCreate }) => {
   onCreate((params) => {
     const builder = new Builder();
     builder.finish(params.pack(builder));
-    return CastID.getRootAsCastID(new ByteBuffer(builder.asUint8Array()));
+    return CastId.getRootAsCastId(new ByteBuffer(builder.asUint8Array()));
   });
 
-  return new CastIDT(Array.from(FIDFactory.build()), Array.from(TsHashFactory.build()));
+  return new CastIdT(Array.from(FIDFactory.build()), Array.from(TsHashFactory.build()));
 });
 
 const MessageDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
@@ -100,8 +100,8 @@ const CastAddBodyFactory = Factory.define<CastAddBodyT, any, CastAddBody>(({ onC
 
   return new CastAddBodyT(
     [faker.internet.url(), faker.internet.url()],
-    [UserIDFactory.build(), UserIDFactory.build(), UserIDFactory.build()],
-    CastIDFactory.build(),
+    [UserIdFactory.build(), UserIdFactory.build(), UserIdFactory.build()],
+    CastIdFactory.build(),
     faker.lorem.sentence(4)
   );
 });
@@ -147,7 +147,7 @@ const FollowBodyFactory = Factory.define<FollowBodyT, any, FollowBody>(({ onCrea
     return FollowBody.getRootAsFollowBody(new ByteBuffer(builder.asUint8Array()));
   });
 
-  return new FollowBodyT(UserIDFactory.build());
+  return new FollowBodyT(UserIdFactory.build());
 });
 
 const FollowAddDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
@@ -181,7 +181,7 @@ const ReactionBodyFactory = Factory.define<ReactionBodyT, any, ReactionBody>(({ 
     return ReactionBody.getRootAsReactionBody(new ByteBuffer(builder.asUint8Array()));
   });
 
-  return new ReactionBodyT(CastIDFactory.build(), ReactionType.Like);
+  return new ReactionBodyT(CastIdFactory.build(), ReactionType.Like);
 });
 
 const ReactionAddDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
@@ -367,8 +367,8 @@ const IDRegistryEventFactory = Factory.define<ContractEventT, any, ContractEvent
 const Factories = {
   FID: FIDFactory,
   TsHash: TsHashFactory,
-  UserID: UserIDFactory,
-  CastID: CastIDFactory,
+  UserId: UserIdFactory,
+  CastId: CastIdFactory,
   ReactionBody: ReactionBodyFactory,
   ReactionAddData: ReactionAddDataFactory,
   ReactionRemoveData: ReactionRemoveDataFactory,

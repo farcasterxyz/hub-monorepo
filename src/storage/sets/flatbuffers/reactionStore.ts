@@ -3,7 +3,7 @@ import { BadRequestError } from '~/utils/errors';
 import MessageModel, { FID_BYTES, TARGET_KEY_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
 import { ReactionAddModel, ReactionRemoveModel, RootPrefix, UserPostfix } from '~/storage/flatbuffers/types';
 import { isReactionAdd, isReactionRemove } from '~/storage/flatbuffers/typeguards';
-import { CastID, MessageType, ReactionType } from '~/utils/generated/message_generated';
+import { CastId, MessageType, ReactionType } from '~/utils/generated/message_generated';
 import { ResultAsync } from 'neverthrow';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 
@@ -137,7 +137,7 @@ class ReactionStore {
    *
    * @returns the ReactionAdd Model if it exists, undefined otherwise
    */
-  async getReactionAdd(fid: Uint8Array, type: ReactionType, castId: CastID): Promise<ReactionAddModel> {
+  async getReactionAdd(fid: Uint8Array, type: ReactionType, castId: CastId): Promise<ReactionAddModel> {
     const reactionAddsSetKey = ReactionStore.reactionAddsKey(fid, type, this.targetKeyForCastId(castId));
     const reactionMessageKey = await this._db.get(reactionAddsSetKey);
 
@@ -152,7 +152,7 @@ class ReactionStore {
    * @param castId id of the cast being reacted to
    * @returns the ReactionRemove message if it exists, undefined otherwise
    */
-  async getReactionRemove(fid: Uint8Array, type: ReactionType, castId: CastID): Promise<ReactionRemoveModel> {
+  async getReactionRemove(fid: Uint8Array, type: ReactionType, castId: CastId): Promise<ReactionRemoveModel> {
     const reactionRemovesKey = ReactionStore.reactionRemovesKey(fid, type, this.targetKeyForCastId(castId));
     const reactionMessageKey = await this._db.get(reactionRemovesKey);
 
@@ -180,7 +180,7 @@ class ReactionStore {
   }
 
   /** Finds all ReactionAdds that point to a specific target by iterating through the prefixes */
-  async getReactionsByTarget(castId: CastID, type?: ReactionType): Promise<ReactionAddModel[]> {
+  async getReactionsByTarget(castId: CastId, type?: ReactionType): Promise<ReactionAddModel[]> {
     const prefix = ReactionStore.reactionsByTargetKey(this.targetKeyForCastId(castId), type);
 
     // Calculates the positions in the key where the fid and tsHash begin
@@ -415,13 +415,13 @@ class ReactionStore {
   private targetKeyForMessage(message: ReactionAddModel | ReactionRemoveModel): Buffer {
     return Buffer.concat([
       message.body().cast()?.fidArray() ?? new Uint8Array(),
-      message.body().cast()?.hashArray() ?? new Uint8Array(),
+      message.body().cast()?.tsHashArray() ?? new Uint8Array(),
     ]);
   }
 
-  /* Computes the key for the byTarget index given a Reaction's CastID */
-  private targetKeyForCastId(castId: CastID): Buffer {
-    return Buffer.concat([castId.fidArray() || new Uint8Array(), castId.hashArray() || new Uint8Array()]);
+  /* Computes the key for the byTarget index given a Reaction's CastId */
+  private targetKeyForCastId(castId: CastId): Buffer {
+    return Buffer.concat([castId.fidArray() || new Uint8Array(), castId.tsHashArray() || new Uint8Array()]);
   }
 }
 

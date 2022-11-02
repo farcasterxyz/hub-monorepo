@@ -10,7 +10,7 @@ const db = jestBinaryRocksDB('flatbuffers.reactionStore.test');
 const set = new ReactionStore(db);
 const fid = Factories.FID.build();
 
-const castId = await Factories.CastID.create();
+const castId = await Factories.CastId.create();
 
 let reactionAdd: ReactionAddModel;
 let reactionRemove: ReactionRemoveModel;
@@ -21,9 +21,9 @@ beforeAll(async () => {
   // Constructs a ReactionAdd of type Like
   const reactionBody = Factories.ReactionBody.build({
     type: ReactionType.Like,
-    cast: Factories.CastID.build({
+    cast: Factories.CastId.build({
       fid: Array.from(castId.fidArray() || new Uint8Array()),
-      hash: Array.from(castId.hashArray() || new Uint8Array()),
+      tsHash: Array.from(castId.tsHashArray() || new Uint8Array()),
     }),
   });
 
@@ -46,9 +46,9 @@ beforeAll(async () => {
   // Constructs a ReactionAdd of type React
   const reactionRecastBody = Factories.ReactionBody.build({
     type: ReactionType.Recast,
-    cast: Factories.CastID.build({
+    cast: Factories.CastId.build({
       fid: Array.from(castId.fidArray() || new Uint8Array()),
-      hash: Array.from(castId.hashArray() || new Uint8Array()),
+      tsHash: Array.from(castId.tsHashArray() || new Uint8Array()),
     }),
   });
 
@@ -99,7 +99,7 @@ describe('getReactionAdd', () => {
 
   test('fails if the wrong target is provided', async () => {
     await set.merge(reactionAdd);
-    const unknownCastId = await Factories.CastID.create();
+    const unknownCastId = await Factories.CastId.create();
     await expect(set.getReactionAdd(fid, reactionAdd.body().type(), unknownCastId)).rejects.toThrow(NotFoundError);
   });
 
@@ -134,7 +134,7 @@ describe('getReactionRemove', () => {
 
   test('fails if the wrong target is provided', async () => {
     await set.merge(reactionRemove);
-    const unknownCastId = await Factories.CastID.create();
+    const unknownCastId = await Factories.CastId.create();
     await expect(set.getReactionRemove(fid, reactionRemove.body().type(), unknownCastId)).rejects.toThrow(
       NotFoundError
     );
@@ -197,7 +197,7 @@ describe('getReactionsByTarget', () => {
   test('returns empty array if reactions exist for a different target', async () => {
     await set.merge(reactionAdd);
 
-    const unknownCastId = await Factories.CastID.create();
+    const unknownCastId = await Factories.CastId.create();
     const byCast = await set.getReactionsByTarget(unknownCastId);
     expect(byCast).toEqual([]);
   });
@@ -216,7 +216,7 @@ describe('getReactionsByTarget', () => {
 
     test('returns empty array if reactions exist for the type with different target', async () => {
       await set.merge(reactionAdd);
-      const unknownCastId = await Factories.CastID.create();
+      const unknownCastId = await Factories.CastId.create();
       const byCast = await set.getReactionsByTarget(unknownCastId, ReactionType.Like);
       expect(byCast).toEqual([]);
     });

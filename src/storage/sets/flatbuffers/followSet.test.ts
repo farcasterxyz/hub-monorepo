@@ -14,7 +14,7 @@ let followAdd: FollowAddModel;
 let followRemove: FollowRemoveModel;
 
 beforeAll(async () => {
-  const followBody = Factories.FollowBody.build({ user: Factories.UserID.build({ fid: Array.from(userId) }) });
+  const followBody = Factories.FollowBody.build({ user: Factories.UserId.build({ fid: Array.from(userId) }) });
 
   const followAddData = await Factories.FollowAddData.create({ fid: Array.from(fid), body: followBody });
   const followAddMessage = await Factories.Message.create({ data: Array.from(followAddData.bb?.bytes() ?? []) });
