@@ -7,7 +7,7 @@ import { isFollowAdd, isFollowRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 
-class FollowSet {
+class FollowStore {
   private _db: RocksDB;
 
   constructor(db: RocksDB) {
@@ -48,19 +48,19 @@ class FollowSet {
 
   /** Look up FollowAdd message by user */
   async getFollowAdd(fid: Uint8Array, user: Uint8Array): Promise<FollowAddModel> {
-    const messageTsHash = await this._db.get(FollowSet.followAddsKey(fid, user));
+    const messageTsHash = await this._db.get(FollowStore.followAddsKey(fid, user));
     return MessageModel.get<FollowAddModel>(this._db, fid, UserPostfix.FollowMessage, messageTsHash);
   }
 
   /** Look up FollowRemove message by user */
   async getFollowRemove(fid: Uint8Array, user: Uint8Array): Promise<FollowRemoveModel> {
-    const messageTsHash = await this._db.get(FollowSet.followRemovesKey(fid, user));
+    const messageTsHash = await this._db.get(FollowStore.followRemovesKey(fid, user));
     return MessageModel.get<FollowRemoveModel>(this._db, fid, UserPostfix.FollowMessage, messageTsHash);
   }
 
   /** Get all FollowAdd messages for an fid */
   async getFollowAddsByUser(fid: Uint8Array): Promise<FollowAddModel[]> {
-    const addsPrefix = FollowSet.followAddsKey(fid);
+    const addsPrefix = FollowStore.followAddsKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(addsPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
@@ -70,7 +70,7 @@ class FollowSet {
 
   /** Get all FollowRemove messages for an fid */
   async getFollowRemovesByUser(fid: Uint8Array): Promise<FollowRemoveModel[]> {
-    const removesPrefix = FollowSet.followRemovesKey(fid);
+    const removesPrefix = FollowStore.followRemovesKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(removesPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
@@ -80,7 +80,7 @@ class FollowSet {
 
   /** Get all FollowAdd messages for a user */
   async getFollowsByUser(user: Uint8Array): Promise<FollowAddModel[]> {
-    const byUserPostfix = FollowSet.followsByUserKey(user);
+    const byUserPostfix = FollowStore.followsByUserKey(user);
     const messageKeys: Buffer[] = [];
     for await (const [key] of this._db.iteratorByPrefix(byUserPostfix, { keyAsBuffer: true, values: false })) {
       const fid = Uint8Array.from(key).subarray(byUserPostfix.length, byUserPostfix.length + FID_BYTES);
@@ -166,7 +166,7 @@ class FollowSet {
   ): Promise<Transaction | undefined> {
     // Look up the remove tsHash for this follow
     const followRemoveTsHash = await ResultAsync.fromPromise(
-      this._db.get(FollowSet.followRemovesKey(message.fid(), followId)),
+      this._db.get(FollowStore.followRemovesKey(message.fid(), followId)),
       () => undefined
     );
 
@@ -196,7 +196,7 @@ class FollowSet {
 
     // Look up the add tsHash for this follow
     const followAddTsHash = await ResultAsync.fromPromise(
-      this._db.get(FollowSet.followAddsKey(message.fid(), followId)),
+      this._db.get(FollowStore.followAddsKey(message.fid(), followId)),
       () => undefined
     );
 
@@ -228,13 +228,13 @@ class FollowSet {
 
     // Put followAdds index
     tsx = tsx.put(
-      FollowSet.followAddsKey(message.fid(), message.body().user()?.fidArray() ?? new Uint8Array()),
+      FollowStore.followAddsKey(message.fid(), message.body().user()?.fidArray() ?? new Uint8Array()),
       Buffer.from(message.tsHash())
     );
 
     // Index by user
     tsx = tsx.put(
-      FollowSet.followsByUserKey(
+      FollowStore.followsByUserKey(
         message.body().user()?.fidArray() ?? new Uint8Array(),
         message.fid(),
         message.tsHash()
@@ -248,11 +248,15 @@ class FollowSet {
   private deleteFollowAddTransaction(tsx: Transaction, message: FollowAddModel): Transaction {
     // Delete from user index
     tsx = tsx.del(
-      FollowSet.followsByUserKey(message.body().user()?.fidArray() ?? new Uint8Array(), message.fid(), message.tsHash())
+      FollowStore.followsByUserKey(
+        message.body().user()?.fidArray() ?? new Uint8Array(),
+        message.fid(),
+        message.tsHash()
+      )
     );
 
     // Delete from followAdds
-    tsx = tsx.del(FollowSet.followAddsKey(message.fid(), message.body().user()?.fidArray() ?? new Uint8Array()));
+    tsx = tsx.del(FollowStore.followAddsKey(message.fid(), message.body().user()?.fidArray() ?? new Uint8Array()));
 
     // Delete message
     return MessageModel.deleteTransaction(tsx, message);
@@ -264,7 +268,7 @@ class FollowSet {
 
     // Add to followRemoves
     tsx = tsx.put(
-      FollowSet.followRemovesKey(message.fid(), message.body().user()?.fidArray() ?? new Uint8Array()),
+      FollowStore.followRemovesKey(message.fid(), message.body().user()?.fidArray() ?? new Uint8Array()),
       Buffer.from(message.tsHash())
     );
 
@@ -273,11 +277,11 @@ class FollowSet {
 
   private deleteFollowRemoveTransaction(tsx: Transaction, message: FollowRemoveModel): Transaction {
     // Delete from followRemoves
-    tsx = tsx.del(FollowSet.followRemovesKey(message.fid(), message.body().user()?.fidArray() ?? new Uint8Array()));
+    tsx = tsx.del(FollowStore.followRemovesKey(message.fid(), message.body().user()?.fidArray() ?? new Uint8Array()));
 
     // Delete message
     return MessageModel.deleteTransaction(tsx, message);
   }
 }
 
-export default FollowSet;
+export default FollowStore;

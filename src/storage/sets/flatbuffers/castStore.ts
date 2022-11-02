@@ -6,7 +6,7 @@ import { CastAddModel, CastRemoveModel, RootPrefix, UserPostfix } from '~/storag
 import { isCastAdd, isCastRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 
-class CastSet {
+class CastStore {
   private _db: RocksDB;
 
   constructor(db: RocksDB) {
@@ -71,19 +71,19 @@ class CastSet {
 
   /** Look up CastAdd message by cast tsHash */
   async getCastAdd(fid: Uint8Array, tsHash: Uint8Array): Promise<CastAddModel> {
-    const messageTsHash = await this._db.get(CastSet.castAddsKey(fid, tsHash));
+    const messageTsHash = await this._db.get(CastStore.castAddsKey(fid, tsHash));
     return MessageModel.get<CastAddModel>(this._db, fid, UserPostfix.CastMessage, messageTsHash);
   }
 
   /** Look up CastRemove message by cast tsHash */
   async getCastRemove(fid: Uint8Array, tsHash: Uint8Array): Promise<CastRemoveModel> {
-    const messageTsHash = await this._db.get(CastSet.castRemovesKey(fid, tsHash));
+    const messageTsHash = await this._db.get(CastStore.castRemovesKey(fid, tsHash));
     return MessageModel.get<CastRemoveModel>(this._db, fid, UserPostfix.CastMessage, messageTsHash);
   }
 
   /** Get all CastAdd messages for an fid */
   async getCastAddsByUser(fid: Uint8Array): Promise<CastAddModel[]> {
-    const castAddsPrefix = CastSet.castAddsKey(fid);
+    const castAddsPrefix = CastStore.castAddsKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(castAddsPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
@@ -93,7 +93,7 @@ class CastSet {
 
   /** Get all CastRemove messages for an fid */
   async getCastRemovesByUser(fid: Uint8Array): Promise<CastRemoveModel[]> {
-    const castRemovesPrefix = CastSet.castRemovesKey(fid);
+    const castRemovesPrefix = CastStore.castRemovesKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(castRemovesPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
@@ -103,7 +103,7 @@ class CastSet {
 
   /** Get all CastAdd messages for a parent cast (fid and tsHash) */
   async getCastsByParent(fid: Uint8Array, tsHash: Uint8Array): Promise<CastAddModel[]> {
-    const byParentPrefix = CastSet.castsByParentKey(fid, tsHash);
+    const byParentPrefix = CastStore.castsByParentKey(fid, tsHash);
     const messageKeys: Buffer[] = [];
     for await (const [key] of this._db.iteratorByPrefix(byParentPrefix, { keyAsBuffer: true, values: false })) {
       const fid = Uint8Array.from(key).subarray(byParentPrefix.length, byParentPrefix.length + FID_BYTES);
@@ -115,7 +115,7 @@ class CastSet {
 
   /** Get all CastAdd messages for a mention (fid) */
   async getCastsByMention(fid: Uint8Array): Promise<CastAddModel[]> {
-    const byMentionPrefix = CastSet.castsByMentionKey(fid);
+    const byMentionPrefix = CastStore.castsByMentionKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [key] of this._db.iteratorByPrefix(byMentionPrefix, { keyAsBuffer: true, values: false })) {
       const fid = Uint8Array.from(key).subarray(byMentionPrefix.length, byMentionPrefix.length + FID_BYTES);
@@ -148,7 +148,7 @@ class CastSet {
 
     // Look up the remove tsHash for this cast
     const castRemoveTsHash = await ResultAsync.fromPromise(
-      this._db.get(CastSet.castRemovesKey(message.fid(), message.tsHash())),
+      this._db.get(CastStore.castRemovesKey(message.fid(), message.tsHash())),
       () => undefined
     );
 
@@ -159,7 +159,7 @@ class CastSet {
 
     // Look up the add tsHash for this cast
     const castAddTsHash = await ResultAsync.fromPromise(
-      this._db.get(CastSet.castAddsKey(message.fid(), message.tsHash())),
+      this._db.get(CastStore.castAddsKey(message.fid(), message.tsHash())),
       () => undefined
     );
 
@@ -184,7 +184,7 @@ class CastSet {
 
     // Look up the remove tsHash for this cast
     const castRemoveTsHash = await ResultAsync.fromPromise(
-      this._db.get(CastSet.castRemovesKey(message.fid(), removeTargetTsHash)),
+      this._db.get(CastStore.castRemovesKey(message.fid(), removeTargetTsHash)),
       () => undefined
     );
 
@@ -209,7 +209,7 @@ class CastSet {
 
     // Look up the add tsHash for this cast
     const castAddTsHash = await ResultAsync.fromPromise(
-      this._db.get(CastSet.castAddsKey(message.fid(), removeTargetTsHash)),
+      this._db.get(CastStore.castAddsKey(message.fid(), removeTargetTsHash)),
       () => undefined
     );
 
@@ -237,12 +237,12 @@ class CastSet {
     tsx = MessageModel.putTransaction(tsx, message);
 
     // Put castAdds index
-    tsx = tsx.put(CastSet.castAddsKey(message.fid(), message.tsHash()), Buffer.from(message.tsHash()));
+    tsx = tsx.put(CastStore.castAddsKey(message.fid(), message.tsHash()), Buffer.from(message.tsHash()));
 
     // Index by parent
     if (message.body().parent()) {
       tsx = tsx.put(
-        CastSet.castsByParentKey(
+        CastStore.castsByParentKey(
           message.body().parent()?.fidArray() ?? new Uint8Array(),
           message.body().parent()?.tsHashArray() ?? new Uint8Array(),
           message.fid(),
@@ -257,7 +257,7 @@ class CastSet {
       for (let i = 0; i < message.body().mentionsLength(); i++) {
         const mention = message.body().mentions(i);
         tsx = tsx.put(
-          CastSet.castsByMentionKey(mention?.fidArray() ?? new Uint8Array(), message.fid(), message.tsHash()),
+          CastStore.castsByMentionKey(mention?.fidArray() ?? new Uint8Array(), message.fid(), message.tsHash()),
           TRUE_VALUE
         );
       }
@@ -272,7 +272,7 @@ class CastSet {
       for (let i = 0; i < message.body().mentionsLength(); i++) {
         const mention = message.body().mentions(i);
         tsx = tsx.del(
-          CastSet.castsByMentionKey(mention?.fidArray() ?? new Uint8Array(), message.fid(), message.tsHash())
+          CastStore.castsByMentionKey(mention?.fidArray() ?? new Uint8Array(), message.fid(), message.tsHash())
         );
       }
     }
@@ -280,7 +280,7 @@ class CastSet {
     // Delete from parent index
     if (message.body().parent()) {
       tsx = tsx.del(
-        CastSet.castsByParentKey(
+        CastStore.castsByParentKey(
           message.body().parent()?.fidArray() ?? new Uint8Array(),
           message.body().parent()?.tsHashArray() ?? new Uint8Array(),
           message.fid(),
@@ -290,7 +290,7 @@ class CastSet {
     }
 
     // Delete from castAdds
-    tsx = tsx.del(CastSet.castAddsKey(message.fid(), message.tsHash()));
+    tsx = tsx.del(CastStore.castAddsKey(message.fid(), message.tsHash()));
 
     // Delete message
     return MessageModel.deleteTransaction(tsx, message);
@@ -302,7 +302,7 @@ class CastSet {
 
     // Add to cast removes
     tsx = tsx.put(
-      CastSet.castRemovesKey(message.fid(), message.body().targetTsHashArray() ?? new Uint8Array()),
+      CastStore.castRemovesKey(message.fid(), message.body().targetTsHashArray() ?? new Uint8Array()),
       Buffer.from(message.tsHash())
     );
 
@@ -311,11 +311,11 @@ class CastSet {
 
   private deleteCastRemoveTransaction(tsx: Transaction, message: CastRemoveModel): Transaction {
     // Delete from cast removes
-    tsx = tsx.del(CastSet.castRemovesKey(message.fid(), message.body().targetTsHashArray() ?? new Uint8Array()));
+    tsx = tsx.del(CastStore.castRemovesKey(message.fid(), message.body().targetTsHashArray() ?? new Uint8Array()));
 
     // Delete message
     return MessageModel.deleteTransaction(tsx, message);
   }
 }
 
-export default CastSet;
+export default CastStore;

@@ -3,10 +3,10 @@ import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { BadRequestError, NotFoundError } from '~/utils/errors';
 import { FollowAddModel, FollowRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
-import FollowSet from '~/storage/sets/flatbuffers/followSet';
+import FollowStore from '~/storage/sets/flatbuffers/followStore';
 
 const db = jestBinaryRocksDB('flatbuffers.followSet.test');
-const set = new FollowSet(db);
+const set = new FollowStore(db);
 const fid = Factories.FID.build();
 
 const userId = Factories.FID.build();

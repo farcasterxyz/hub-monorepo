@@ -5,13 +5,13 @@ import { BadRequestError, NotFoundError } from '~/utils/errors';
 import { EthereumSigner } from '~/types';
 import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
 import { arrayify } from 'ethers/lib/utils';
-import SignerSet from '~/storage/sets/flatbuffers/signerSet';
+import SignerStore from '~/storage/sets/flatbuffers/signerStore';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { SignerAddModel, SignerRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 
 const db = jestBinaryRocksDB('flatbuffers.signerSet.test');
-const set = new SignerSet(db);
+const set = new SignerStore(db);
 const fid = Factories.FID.build();
 
 let custody1: EthereumSigner;
