@@ -24,6 +24,9 @@ import {
   SignatureScheme,
   SignerBody,
   SignerBodyT,
+  UserDataBody,
+  UserDataBodyT,
+  UserDataType,
   UserId,
   UserIdT,
 } from '~/utils/generated/message_generated';
@@ -310,6 +313,28 @@ const SignerRemoveDataFactory = Factory.define<MessageDataT, any, MessageData>((
   });
 });
 
+const UserDataBodyFactory = Factory.define<UserDataBodyT, any, UserDataBody>(({ onCreate }) => {
+  onCreate((params) => {
+    const builder = new Builder();
+    builder.finish(params.pack(builder));
+    return UserDataBody.getRootAsUserDataBody(new ByteBuffer(builder.asUint8Array()));
+  });
+
+  return new UserDataBodyT(UserDataType.Pfp, faker.internet.url());
+});
+
+const UserDataAddDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
+  onCreate((params) => {
+    return MessageDataFactory.create(params);
+  });
+
+  return MessageDataFactory.build({
+    bodyType: MessageBody.UserDataBody,
+    body: UserDataBodyFactory.build(),
+    type: MessageType.UserDataAdd,
+  });
+});
+
 const MessageFactory = Factory.define<MessageT, { signer?: KeyPair; wallet?: Wallet }, Message>(
   ({ onCreate, transientParams }) => {
     onCreate(async (params) => {
@@ -387,6 +412,8 @@ const Factories = {
   SignerBody: SignerBodyFactory,
   SignerAddData: SignerAddDataFactory,
   SignerRemoveData: SignerRemoveDataFactory,
+  UserDataBody: UserDataBodyFactory,
+  UserDataAddData: UserDataAddDataFactory,
   Message: MessageFactory,
   IDRegistryEvent: IDRegistryEventFactory,
 };

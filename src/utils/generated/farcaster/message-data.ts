@@ -11,6 +11,7 @@ import { MessageBody, unionToMessageBody, unionListToMessageBody } from '../farc
 import { MessageType } from '../farcaster/message-type';
 import { ReactionBody, ReactionBodyT } from '../farcaster/reaction-body';
 import { SignerBody, SignerBodyT } from '../farcaster/signer-body';
+import { UserDataBody, UserDataBodyT } from '../farcaster/user-data-body';
 import {
   VerificationAddEthAddressBody,
   VerificationAddEthAddressBodyT,
@@ -189,6 +190,7 @@ export class MessageDataT {
       | FollowBodyT
       | ReactionBodyT
       | SignerBodyT
+      | UserDataBodyT
       | VerificationAddEthAddressBodyT
       | VerificationRemoveBodyT
       | null = null,

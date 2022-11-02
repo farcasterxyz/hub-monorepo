@@ -1,12 +1,13 @@
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { VerificationAddEthAddressBody } from '~/utils/generated/farcaster/verification-add-eth-address-body';
-import { VerificationRemoveBody } from '~/utils/generated/farcaster/verification-remove-body';
 import {
   CastAddBody,
   CastRemoveBody,
   FarcasterNetwork,
   FollowBody,
   SignerBody,
+  VerificationAddEthAddressBody,
+  VerificationRemoveBody,
+  UserDataBody,
   ReactionBody,
 } from '~/utils/generated/message_generated';
 
@@ -65,6 +66,10 @@ export enum UserPostfix {
   SignerAdds = 16,
   /* Used to index a signer in the remove set */
   SignerRemoves = 17,
+  /* Used to index a user data message in the add set */
+  UserDataAdds = 18,
+  /* Used to store a user data message */
+  UserDataMessage = 19,
 }
 
 /** A union type of UserPostfixes that are used to store messages */
@@ -73,7 +78,8 @@ export type UserMessagePostfix =
   | UserPostfix.FollowMessage
   | UserPostfix.VerificationMessage
   | UserPostfix.SignerMessage
-  | UserPostfix.ReactionMessage;
+  | UserPostfix.ReactionMessage
+  | UserPostfix.UserDataMessage;
 
 export interface CastRemoveModel extends MessageModel {
   body(): CastRemoveBody;
@@ -113,6 +119,10 @@ export interface SignerAddModel extends MessageModel {
 
 export interface SignerRemoveModel extends MessageModel {
   body(): SignerBody;
+}
+
+export interface UserDataAddModel extends MessageModel {
+  body(): UserDataBody;
 }
 
 export type VerificationEthAddressClaim = {

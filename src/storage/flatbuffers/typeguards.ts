@@ -47,3 +47,7 @@ export const isSignerRemove = (message: MessageModel): message is Types.SignerRe
 export const isSignerAdd = (message: MessageModel): message is Types.SignerAddModel => {
   return message.type() === MessageType.SignerAdd && message.data.bodyType() === MessageBody.SignerBody;
 };
+
+export const isUserDataAdd = (message: MessageModel): message is Types.UserDataAddModel => {
+  return message.type() === MessageType.UserDataAdd && message.data.bodyType() === MessageBody.UserDataBody;
+};
