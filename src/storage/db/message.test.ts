@@ -88,3 +88,21 @@ describe('getMessagesBySigner', () => {
     expect(follows).toEqual([follow1]);
   });
 });
+
+describe('forEachMessage', () => {
+  test('iterates over all messages', async () => {
+    await db.putMessage(cast1);
+    await db.putMessage(cast2);
+    await db.putMessage(follow1);
+
+    const messages: any[] = [];
+    await db.forEachMessage((message) => {
+      messages.push(message);
+    });
+
+    expect(messages.length).toEqual(3);
+    expect(messages).toContainEqual(cast1);
+    expect(messages).toContainEqual(cast2);
+    expect(messages).toContainEqual(cast1);
+  });
+});
