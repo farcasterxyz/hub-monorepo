@@ -8,7 +8,8 @@ import { ResultAsync } from 'neverthrow';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 
 /**
- * ReactionSet is a set that keeps track of Reaction Messages using a two phase CRDT set.
+ * ReactionStore persists Reaction Messages in RocksDB using a two-phase CRDT set to guarantee
+ * eventual consistency.
  *
  * A Reaction is performed by an fid and has a target (e.g. cast) and a type (e.g. like). Reactions
  * are added with a ReactionAdd and removed with a ReactionRemove. Conflicts between Reaction
@@ -29,7 +30,7 @@ import { bytesCompare } from '~/storage/flatbuffers/utils';
  * 2. fid:set:targetCastTsHash:reactionType -> fid:tsHash (Set Index)
  * 3. reactionTarget:reactionType:targetCastTsHash -> fid:tsHash (Target Index)
  */
-class ReactionSet {
+class ReactionStore {
   private _db: RocksDB;
 
   constructor(db: RocksDB) {
@@ -137,7 +138,7 @@ class ReactionSet {
    * @returns the ReactionAdd Model if it exists, undefined otherwise
    */
   async getReactionAdd(fid: Uint8Array, type: ReactionType, castId: CastID): Promise<ReactionAddModel> {
-    const reactionAddsSetKey = ReactionSet.reactionAddsKey(fid, type, this.targetKeyForCastId(castId));
+    const reactionAddsSetKey = ReactionStore.reactionAddsKey(fid, type, this.targetKeyForCastId(castId));
     const reactionMessageKey = await this._db.get(reactionAddsSetKey);
 
     return MessageModel.get<ReactionAddModel>(this._db, fid, UserPostfix.ReactionMessage, reactionMessageKey);
@@ -152,7 +153,7 @@ class ReactionSet {
    * @returns the ReactionRemove message if it exists, undefined otherwise
    */
   async getReactionRemove(fid: Uint8Array, type: ReactionType, castId: CastID): Promise<ReactionRemoveModel> {
-    const reactionRemovesKey = ReactionSet.reactionRemovesKey(fid, type, this.targetKeyForCastId(castId));
+    const reactionRemovesKey = ReactionStore.reactionRemovesKey(fid, type, this.targetKeyForCastId(castId));
     const reactionMessageKey = await this._db.get(reactionRemovesKey);
 
     return MessageModel.get<ReactionRemoveModel>(this._db, fid, UserPostfix.ReactionMessage, reactionMessageKey);
@@ -160,7 +161,7 @@ class ReactionSet {
 
   /** Finds all ReactionAdd Messages by iterating through the prefixes */
   async getReactionAddsByFid(fid: Uint8Array): Promise<ReactionAddModel[]> {
-    const prefix = ReactionSet.reactionAddsKey(fid);
+    const prefix = ReactionStore.reactionAddsKey(fid);
     const msgKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true })) {
       msgKeys.push(value);
@@ -170,7 +171,7 @@ class ReactionSet {
 
   /** Finds all ReactionRemove Messages by iterating through the prefixes */
   async getReactionRemovesByFid(fid: Uint8Array): Promise<ReactionRemoveModel[]> {
-    const prefix = ReactionSet.reactionRemovesKey(fid);
+    const prefix = ReactionStore.reactionRemovesKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
@@ -180,7 +181,7 @@ class ReactionSet {
 
   /** Finds all ReactionAdds that point to a specific target by iterating through the prefixes */
   async getReactionsByTarget(castId: CastID, type?: ReactionType): Promise<ReactionAddModel[]> {
-    const prefix = ReactionSet.reactionsByTargetKey(this.targetKeyForCastId(castId), type);
+    const prefix = ReactionStore.reactionsByTargetKey(this.targetKeyForCastId(castId), type);
 
     // Calculates the positions in the key where the fid and tsHash begin
     const fidOffset = type ? prefix.length : prefix.length + 1; // prefix is 1 byte longer if type was provided
@@ -195,7 +196,7 @@ class ReactionSet {
     return MessageModel.getMany(this._db, messageKeys);
   }
 
-  /** Merges a ReactionAdd or ReactionRemove message into the ReactionSet */
+  /** Merges a ReactionAdd or ReactionRemove message into the ReactionStore */
   async merge(message: MessageModel): Promise<void> {
     if (isReactionAdd(message)) {
       return this.mergeAdd(message);
@@ -283,7 +284,7 @@ class ReactionSet {
   ): Promise<Transaction | undefined> {
     // Checks if there is a remove timestamp hash for this reaction
     const reactionRemoveTsHash = await ResultAsync.fromPromise(
-      this._db.get(ReactionSet.reactionRemovesKey(message.fid(), message.body().type(), targetKey)),
+      this._db.get(ReactionStore.reactionRemovesKey(message.fid(), message.body().type(), targetKey)),
       () => undefined
     );
 
@@ -313,7 +314,7 @@ class ReactionSet {
 
     // Checks if there is an add timestamp hash for this reaction
     const reactionAddTsHash = await ResultAsync.fromPromise(
-      this._db.get(ReactionSet.reactionAddsKey(message.fid(), message.body().type(), targetKey)),
+      this._db.get(ReactionStore.reactionAddsKey(message.fid(), message.body().type(), targetKey)),
       () => undefined
     );
 
@@ -354,13 +355,13 @@ class ReactionSet {
 
     // Puts the message into the ReactionAdds Set index
     txn = txn.put(
-      ReactionSet.reactionAddsKey(message.fid(), message.body().type(), targetKey),
+      ReactionStore.reactionAddsKey(message.fid(), message.body().type(), targetKey),
       Buffer.from(message.tsHash())
     );
 
     // Puts message key into the byTarget index
     txn = txn.put(
-      ReactionSet.reactionsByTargetKey(targetKey, message.body().type(), message.fid(), message.tsHash()),
+      ReactionStore.reactionsByTargetKey(targetKey, message.body().type(), message.fid(), message.tsHash()),
       TRUE_VALUE
     );
 
@@ -372,10 +373,12 @@ class ReactionSet {
     const targetKey = this.targetKeyForMessage(message);
 
     // Delete the message key from byTarget index
-    txn = txn.del(ReactionSet.reactionsByTargetKey(targetKey, message.body().type(), message.fid(), message.tsHash()));
+    txn = txn.del(
+      ReactionStore.reactionsByTargetKey(targetKey, message.body().type(), message.fid(), message.tsHash())
+    );
 
     // Delete the message key from ReactionAdds Set index
-    txn = txn.del(ReactionSet.reactionAddsKey(message.fid(), message.body().type(), targetKey));
+    txn = txn.del(ReactionStore.reactionAddsKey(message.fid(), message.body().type(), targetKey));
 
     // Delete the message
     return MessageModel.deleteTransaction(txn, message);
@@ -390,7 +393,7 @@ class ReactionSet {
 
     // Puts message key into the ReactionRemoves Set index
     txn = txn.put(
-      ReactionSet.reactionRemovesKey(message.fid(), message.body().type(), targetKey),
+      ReactionStore.reactionRemovesKey(message.fid(), message.body().type(), targetKey),
       Buffer.from(message.tsHash())
     );
 
@@ -402,7 +405,7 @@ class ReactionSet {
     const targetKey = this.targetKeyForMessage(message);
 
     // Delete message key from ReactionRemoves Set index
-    txn = txn.del(ReactionSet.reactionRemovesKey(message.fid(), message.body().type(), targetKey));
+    txn = txn.del(ReactionStore.reactionRemovesKey(message.fid(), message.body().type(), targetKey));
 
     // Delete the message
     return MessageModel.deleteTransaction(txn, message);
@@ -422,4 +425,4 @@ class ReactionSet {
   }
 }
 
-export default ReactionSet;
+export default ReactionStore;

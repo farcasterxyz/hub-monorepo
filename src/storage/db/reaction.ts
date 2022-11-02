@@ -16,7 +16,7 @@ import MessageDB from '~/storage/db/message';
  * Note that the ReactionDB implements the constraint that a single target can only exist in either reactionAdds
  * or reactionRemoves. Therefore, _putReactionAdd also deletes the ReactionRemove for the same target and _putReactionRemove
  * also deletes the ReactionAdd for the same target. The ReactionDB does not resolve conflicts between two reaction
- * messages with the same target. The ReactionSet should be used to handle conflicts and decide whether or not to
+ * messages with the same target. The ReactionStore should be used to handle conflicts and decide whether or not to
  * perform a mutation.
  */
 class ReactionDB extends MessageDB {
