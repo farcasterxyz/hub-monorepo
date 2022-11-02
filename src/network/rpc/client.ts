@@ -106,7 +106,7 @@ export class RPCClient {
       return this._tcpClient.request(RPCRequest.SubmitMessage, { message: m }, undefined, false);
     });
     const responses = await this._tcpClient.request(requests);
-    const results = responses.map((response) => {
+    const results = responses.map((response: any) => {
       if (response.error) {
         return new Err(response.error);
       }
