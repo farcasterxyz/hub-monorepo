@@ -56,3 +56,5 @@ COPY --chown=node:node --from=build /home/node/app/src ./src
 RUN yarn identity create
 
 CMD ["yarn", "tsx", "src/cli.ts", "start", "--rpc-port", "8080", "--gossip-port", "9090" ]
+
+CMD ["yarn", "tsx", "src/cli.ts", "start", "--rpc-port", "8080", "--gossip-port", "9090" ]
