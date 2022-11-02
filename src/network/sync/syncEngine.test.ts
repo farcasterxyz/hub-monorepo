@@ -119,4 +119,21 @@ describe('SyncEngine', () => {
     const shouldSync = syncEngine.shouldSync(snapshot.excludedHashes, snapshot.numMessages + 1);
     expect(shouldSync).toBeFalsy();
   });
+
+  test('initialize populates the trie with all existing messages', async () => {
+    const user = await mockFid(engine, faker.datatype.number());
+    const messages = await addMessagesWithTimestamps(user, [1665182332, 1665182333, 1665182334]);
+
+    const syncEngine = new SyncEngine(engine);
+    expect(syncEngine.trie.items).toEqual(0);
+
+    await syncEngine.initialize();
+
+    // There might be more messages related to user creation, but it's sufficient to check for casts
+    expect(syncEngine.trie.items).toBeGreaterThanOrEqual(3);
+    expect(syncEngine.trie.rootHash).toBeTruthy();
+    expect(syncEngine.trie.get(new SyncId(messages[0]))).toBeTruthy();
+    expect(syncEngine.trie.get(new SyncId(messages[1]))).toBeTruthy();
+    expect(syncEngine.trie.get(new SyncId(messages[2]))).toBeTruthy();
+  });
 });

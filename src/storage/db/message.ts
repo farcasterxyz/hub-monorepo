@@ -76,6 +76,16 @@ class MessageDB {
     return this.getMessages<T>(hashes);
   }
 
+  async forEachMessage(callback: (message: Message) => void) {
+    for await (const [, value] of this._db.iteratorByPrefix(this.messagesPrefix(), {
+      keys: false,
+      valueAsBuffer: false,
+    })) {
+      const msg = JSON.parse(value);
+      if (isMessage(msg)) callback(msg as Message);
+    }
+  }
+
   /* -------------------------------------------------------------------------- */
   /*                             Private Key Methods                            */
   /* -------------------------------------------------------------------------- */

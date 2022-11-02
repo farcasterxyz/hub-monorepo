@@ -148,6 +148,10 @@ class Engine extends TypedEmitter<EngineEvents> {
     return this._messageDB.getMessages(hashes);
   }
 
+  public async forEachMessage(callback: (message: Message) => void) {
+    await this._messageDB.forEachMessage(callback);
+  }
+
   /* -------------------------------------------------------------------------- */
   /*                                Cast Methods                                */
   /* -------------------------------------------------------------------------- */

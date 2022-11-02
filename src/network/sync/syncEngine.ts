@@ -36,6 +36,19 @@ class SyncEngine {
     });
   }
 
+  public async initialize() {
+    // TODO: cache the trie to disk, and use this only when the cache doesn't exist
+    let processedMessages = 0;
+    await this.engine.forEachMessage((message) => {
+      this.addMessage(message);
+      processedMessages += 1;
+      if (processedMessages % 10_000 === 0) {
+        log.info({ processedMessages }, 'Initializing sync engine');
+      }
+    });
+    log.info({ processedMessages }, 'Sync engine initialized');
+  }
+
   public addMessage(message: Message): void {
     this._trie.insert(new SyncId(message));
   }

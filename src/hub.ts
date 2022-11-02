@@ -48,14 +48,6 @@ export interface HubOptions {
   /** Address of the IdRegistry contract  */
   IdRegistryAddress?: string;
 
-  /*
-   * Enable SimpleSync once network is established.
-   *
-   * @remarks
-   * Usually disabled for the first node that joins the network
-   */
-  simpleSync?: boolean;
-
   /** Name of the RocksDB instance */
   rocksDBName?: string;
 
@@ -69,10 +61,10 @@ const randomDbName = () => {
 };
 
 interface HubEvents {
-  /** Emit an event when SimpleSync starts */
+  /** Emit an event when diff starts */
   syncStart: () => void;
 
-  /** Emit an event when SimpleSync completes */
+  /** Emit an event when diff sync completes */
   syncComplete: (success: boolean) => void;
 }
 
@@ -124,6 +116,8 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       log.info('clearing rocksdb');
       await this.rocksDB.clear();
     }
+
+    await this.syncEngine.initialize();
 
     await this.gossipNode.start(this.options.bootstrapAddrs ?? [], {
       peerId: this.options.peerId,
@@ -234,7 +228,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     });
     if (!peerId) {
       log.info(
-        { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer },
+        { function: 'getRPCClientForPeer', identity: this.identity, peer: peer },
         `Failed to find peer's matching contact info`
       );
       return;
@@ -242,7 +236,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     const peerAddress = await this.gossipNode.getPeerAddress(peerId);
     if (!peerAddress) {
       log.info(
-        { function: 'simpleSyncFromPeer', identity: this.identity, peer: peer },
+        { function: 'getRPCClientForPeer', identity: this.identity, peer: peer },
         `failed to find peer's address to request simple sync`
       );
 

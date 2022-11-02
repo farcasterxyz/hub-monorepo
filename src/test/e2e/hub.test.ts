@@ -12,7 +12,7 @@ import { jest } from '@jest/globals';
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const TEST_TIMEOUT_LONG = 2 * 60 * 1000;
-const opts: HubOptions = { simpleSync: false };
+const opts: HubOptions = {};
 
 let hub: Hub;
 
@@ -108,6 +108,39 @@ describe('Hub running tests', () => {
       }
     },
     TEST_TIMEOUT_LONG
+  );
+
+  test(
+    'hub does not need to sync if engine already has all the messages',
+    async () => {
+      const sharedDBName = 'rocks.syncSharedDb.test';
+      const hub = new Hub({ ...opts, resetDB: false, rocksDBName: sharedDBName });
+      await hub.start();
+      await populateEngine(hub.engine, 2, {
+        Verifications: 1,
+        Casts: 10,
+        Follows: 10,
+        Reactions: 0,
+      });
+      await hub.stop();
+
+      // Boot a second hubs with the same db and check that the tries are the same
+      const secondHub = new Hub({ ...opts, resetDB: false, rocksDBName: sharedDBName });
+
+      let shouldStop = true;
+      try {
+        await secondHub.start();
+
+        expect(hub.merkleTrieForTest.rootHash).toEqual(secondHub.merkleTrieForTest.rootHash);
+
+        await secondHub.stop();
+        shouldStop = false;
+      } finally {
+        if (shouldStop) await secondHub.stop();
+        await hub.destroyDB();
+      }
+    },
+    TEST_TIMEOUT_SHORT
   );
 
   const testMessage = async (message: Message) => {
@@ -237,7 +270,7 @@ describe('Hub negative tests', () => {
       await expect(hub.getUsers()).resolves.toEqual(new Set([]));
 
       await hub.stop();
-      hub.destroyDB();
+      await hub.destroyDB();
     },
     TEST_TIMEOUT_SHORT
   );
