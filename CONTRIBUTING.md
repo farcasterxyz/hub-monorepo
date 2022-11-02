@@ -37,6 +37,7 @@ First, ensure that the following are installed globally on your machine:
 
 - [Node.js 18+](https://github.com/nvm-sh/nvm)
 - [Yarn](https://classic.yarnpkg.com/lang/en/docs/install)
+- [Flatbuffers](https://github.com/google/flatbuffers) (`brew install flatbuffers` on OSX)
 
 Then, run:
 
@@ -116,3 +117,10 @@ fix(signers): validate signatures correctly
 Called Signer.verify with the correct parameter to ensure that older signature
 types would not pass verification in our Signer Sets
 ```
+
+## 4. FAQ
+
+**Updating Flatbuffer Schemas**
+
+If you update the `message.fbs` file you'll also need to generate new TS classes, which can be done by running:
+`flatc --ts --gen-object-api -o src/utils/generated src/utils/schemas/message.fbs`
