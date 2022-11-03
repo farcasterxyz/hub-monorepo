@@ -3,20 +3,64 @@ import { generateEd25519KeyPair } from '~/utils/crypto';
 import { ValidationError } from '~/utils/errors';
 import {
   ALLOWED_CLOCK_SKEW_SECONDS,
+  validateCastAddMessage,
+  validateCastRemoveMessage,
   validateEd25519PublicKey,
   validateEthAddress,
+  validateEthBlockHash,
+  validateFid,
   validateMessage,
+  validateReactionMessage,
+  validateTsHash,
 } from '~/storage/flatbuffers/validations';
 import Factories from '~/test/factories/flatbuffer';
 import MessageModel from './messageModel';
-import { HashScheme, Message, SignatureScheme } from '~/utils/generated/message_generated';
+import {
+  CastAddBodyT,
+  HashScheme,
+  ReactionBodyT,
+  ReactionType,
+  SignatureScheme,
+} from '~/utils/generated/message_generated';
 import { faker } from '@faker-js/faker';
 import { getFarcasterTime } from './utils';
+import { KeyPair } from '~/types';
+import { CastAddModel, CastRemoveModel, ReactionAddModel, ReactionRemoveModel } from '~/storage/flatbuffers/types';
+
+let wallet: Wallet;
+let signer: KeyPair;
+
+beforeAll(async () => {
+  wallet = Wallet.createRandom();
+  signer = await generateEd25519KeyPair();
+});
 
 describe('validateMessage', () => {
-  test('succeeds', async () => {
-    const message = new MessageModel(await Factories.Message.create());
+  test('succeeds with Ed25519 signer', async () => {
+    const message = new MessageModel(await Factories.Message.create({}, { transient: { signer } }));
     await expect(validateMessage(message)).resolves.toEqual(message);
+  });
+
+  test('succeeds with EIP712 signer', async () => {
+    const signerAddData = await Factories.SignerAddData.create();
+    const message = new MessageModel(
+      await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+    );
+    await expect(validateMessage(message)).resolves.toEqual(message);
+  });
+
+  test('fails with EIP712 signer and non-signer message type', async () => {
+    // Default message type is CastAdd
+    const message = new MessageModel(await Factories.Message.create({}, { transient: { wallet } }));
+    await expect(validateMessage(message)).rejects.toThrow(new ValidationError('invalid signatureScheme'));
+  });
+
+  test('fails with Ed25519 signer and signer message type', async () => {
+    const signerAddData = await Factories.SignerAddData.create();
+    const message = new MessageModel(
+      await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { signer } })
+    );
+    await expect(validateMessage(message)).rejects.toThrow(new ValidationError('invalid signatureScheme'));
   });
 
   test('fails with invalid hashScheme', async () => {
@@ -60,13 +104,48 @@ describe('validateMessage', () => {
 });
 
 describe('validateFid', () => {
-  // TODO: above 256 bits
-  // TODO: missing
+  test('succeeds', () => {
+    const fid = Factories.FID.build();
+    expect(validateFid(fid)).toEqual(fid);
+  });
+
+  test('fails with empty array', () => {
+    expect(() => validateFid(new Uint8Array())).toThrow(new ValidationError('fid is missing'));
+  });
+
+  test('fails when greater than 32 bytes', () => {
+    const fid = Factories.Bytes.build({}, { transient: { length: 33 } });
+    expect(() => validateFid(fid)).toThrow(new ValidationError('fid > 32 bytes'));
+  });
+
+  test('fails when undefined', () => {
+    expect(() => validateFid(undefined)).toThrow(new ValidationError('fid is missing'));
+  });
 });
 
 describe('validateTsHash', () => {
-  // TODO: missing
-  // TODO: 8 bytes
+  test('succeeds', () => {
+    const tsHash = Factories.TsHash.build();
+    expect(validateTsHash(tsHash)).toEqual(tsHash);
+  });
+
+  test('fails with empty array', () => {
+    expect(() => validateTsHash(new Uint8Array())).toThrow(new ValidationError('tsHash is missing'));
+  });
+
+  test('fails when greater than 8 bytes', () => {
+    const tsHash = Factories.Bytes.build({}, { transient: { length: 9 } });
+    expect(() => validateTsHash(tsHash)).toThrow(new ValidationError('tsHash must be 8 bytes'));
+  });
+
+  test('fails when less than 8 bytes', () => {
+    const tsHash = Factories.Bytes.build({}, { transient: { length: 7 } });
+    expect(() => validateTsHash(tsHash)).toThrow(new ValidationError('tsHash must be 8 bytes'));
+  });
+
+  test('fails when undefined', () => {
+    expect(() => validateTsHash(undefined)).toThrow(new ValidationError('tsHash is missing'));
+  });
 });
 
 describe('validateEthAddress', () => {
@@ -93,7 +172,24 @@ describe('validateEthAddress', () => {
 });
 
 describe('validateEthBlockHash', () => {
-  // TODO
+  test('succeeds', () => {
+    const blockHash = Factories.Bytes.build({}, { transient: { length: 32 } });
+    expect(validateEthBlockHash(blockHash)).toEqual(blockHash);
+  });
+
+  test('fails when greater than 32 bytes', () => {
+    const blockHash = Factories.Bytes.build({}, { transient: { length: 33 } });
+    expect(() => validateEthBlockHash(blockHash)).toThrow(new ValidationError('block hash must be 32 bytes'));
+  });
+
+  test('fails when less than 32 bytes', () => {
+    const blockHash = Factories.Bytes.build({}, { transient: { length: 31 } });
+    expect(() => validateEthBlockHash(blockHash)).toThrow(new ValidationError('block hash must be 32 bytes'));
+  });
+
+  test('fails when undefined', () => {
+    expect(() => validateEthBlockHash(undefined)).toThrow(new ValidationError('block hash is missing'));
+  });
 });
 
 describe('validateEd25519PublicKey', () => {
@@ -117,4 +213,162 @@ describe('validateEd25519PublicKey', () => {
     const invalidKey = publicKey.slice(0, -1);
     expect(() => validateEd25519PublicKey(invalidKey)).toThrow(ValidationError);
   });
+});
+
+describe('validateCastAddMessage', () => {
+  test('succeeds', async () => {
+    const castAddData = await Factories.CastAddData.create();
+    const castAdd = new MessageModel(
+      await Factories.Message.create({ data: Array.from(castAddData.bb?.bytes() ?? []) }, { transient: { signer } })
+    ) as CastAddModel;
+    expect(validateCastAddMessage(castAdd)).toEqual(castAdd);
+  });
+
+  describe('fails', () => {
+    let body: CastAddBodyT;
+    let validationErrorMessage: string;
+
+    afterEach(async () => {
+      const castAddData = await Factories.CastAddData.create({ body });
+      const castAdd = new MessageModel(
+        await Factories.Message.create({ data: Array.from(castAddData.bb?.bytes() ?? []) }, { transient: { signer } })
+      ) as CastAddModel;
+      expect(() => validateCastAddMessage(castAdd)).toThrow(new ValidationError(validationErrorMessage));
+    });
+
+    test('when text is missing', () => {
+      body = Factories.CastAddBody.build({ text: '' });
+      validationErrorMessage = 'text is missing';
+    });
+
+    test('when text is longer than 320 characters', () => {
+      body = Factories.CastAddBody.build({ text: faker.random.alphaNumeric(321) });
+      validationErrorMessage = 'text > 320 chars';
+    });
+
+    test('with more than 2 embeds', () => {
+      body = Factories.CastAddBody.build({
+        embeds: [faker.internet.url(), faker.internet.url(), faker.internet.url()],
+      });
+      validationErrorMessage = 'embeds > 2';
+    });
+
+    test('when parent fid is missing', () => {
+      body = Factories.CastAddBody.build({
+        parent: Factories.CastId.build({ fid: [] }),
+      });
+      validationErrorMessage = 'fid is missing';
+    });
+
+    test('when parent tsHash is missing', () => {
+      body = Factories.CastAddBody.build({ parent: Factories.CastId.build({ tsHash: [] }) });
+      validationErrorMessage = 'tsHash is missing';
+    });
+
+    test('with more than 5 mentions', () => {
+      body = Factories.CastAddBody.build({
+        mentions: [
+          Factories.UserId.build(),
+          Factories.UserId.build(),
+          Factories.UserId.build(),
+          Factories.UserId.build(),
+          Factories.UserId.build(),
+          Factories.UserId.build(),
+        ],
+      });
+      validationErrorMessage = 'mentions > 5';
+    });
+  });
+});
+
+describe('validateCastRemoveMessage', () => {
+  test('succeeds', async () => {
+    const castRemoveData = await Factories.CastRemoveData.create();
+    const castRemove = new MessageModel(
+      await Factories.Message.create({ data: Array.from(castRemoveData.bb?.bytes() ?? []) }, { transient: { signer } })
+    ) as CastRemoveModel;
+    expect(validateCastRemoveMessage(castRemove)).toEqual(castRemove);
+  });
+
+  test('fails when tsHash is missing', async () => {
+    const castRemoveData = await Factories.CastRemoveData.create({
+      body: Factories.CastRemoveBody.build({ targetTsHash: [] }),
+    });
+    const castRemove = new MessageModel(
+      await Factories.Message.create({ data: Array.from(castRemoveData.bb?.bytes() ?? []) }, { transient: { signer } })
+    ) as CastRemoveModel;
+    expect(() => validateCastRemoveMessage(castRemove)).toThrow(new ValidationError('tsHash is missing'));
+  });
+});
+
+describe('validateReactionMessage', () => {
+  test('succeeds with ReactionAdd', async () => {
+    const reactionAddData = await Factories.ReactionAddData.create();
+    const reactionAdd = new MessageModel(
+      await Factories.Message.create({ data: Array.from(reactionAddData.bb?.bytes() ?? []) }, { transient: { signer } })
+    ) as ReactionAddModel;
+    expect(validateReactionMessage(reactionAdd)).toEqual(reactionAdd);
+  });
+
+  test('succeeds with ReactionRemove', async () => {
+    const reactionRemoveData = await Factories.ReactionRemoveData.create();
+    const reactionRemove = new MessageModel(
+      await Factories.Message.create(
+        { data: Array.from(reactionRemoveData.bb?.bytes() ?? []) },
+        { transient: { signer } }
+      )
+    ) as ReactionRemoveModel;
+    expect(validateReactionMessage(reactionRemove)).toEqual(reactionRemove);
+  });
+
+  describe('fails', () => {
+    let body: ReactionBodyT;
+    let validationErrorMessage: string;
+
+    afterEach(async () => {
+      const reactionAddData = await Factories.ReactionAddData.create({ body });
+      const reactionAdd = new MessageModel(
+        await Factories.Message.create(
+          { data: Array.from(reactionAddData.bb?.bytes() ?? []) },
+          { transient: { signer } }
+        )
+      ) as ReactionAddModel;
+      expect(() => validateReactionMessage(reactionAdd)).toThrow(new ValidationError(validationErrorMessage));
+    });
+
+    test('with invalid reaction type', () => {
+      body = Factories.ReactionBody.build({ type: 100 as unknown as ReactionType });
+      validationErrorMessage = 'invalid reaction type';
+    });
+
+    test('when cast fid is missing', () => {
+      body = Factories.ReactionBody.build({
+        cast: Factories.CastId.build({ fid: [] }),
+      });
+      validationErrorMessage = 'fid is missing';
+    });
+
+    test('when cast tsHash is missing', () => {
+      body = Factories.ReactionBody.build({
+        cast: Factories.CastId.build({ tsHash: [] }),
+      });
+      validationErrorMessage = 'tsHash is missing';
+    });
+  });
+});
+
+describe('validateVerificationAddEthAddressMessage', () => {
+  // TODO
+});
+
+describe('validateVerificationRemoveMessage', () => {
+  // TODO
+});
+
+describe('validateSignerMessage', () => {
+  // TODO
+});
+
+describe('validateFollowMessage', () => {
+  // TODO
 });

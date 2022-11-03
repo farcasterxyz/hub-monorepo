@@ -14,7 +14,7 @@ import {
 } from '~/storage/flatbuffers/types';
 import { verifyMessageDataSignature, verifyVerificationEthAddressClaimSignature } from '~/utils/eip712';
 import { ValidationError } from '~/utils/errors';
-import { HashScheme, ReactionType, SignatureScheme } from '~/utils/generated/message_generated';
+import { HashScheme, MessageType, ReactionType, SignatureScheme } from '~/utils/generated/message_generated';
 import * as ed from '@noble/ed25519';
 import MessageModel, { FID_BYTES } from '~/storage/flatbuffers/messageModel';
 import {
@@ -36,6 +36,9 @@ import { ResultAsync } from 'neverthrow';
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
 
+/** Message types that must be signed by EIP712 signer */
+export const EIP712_MESSAGE_TYPES = [MessageType.SignerAdd, MessageType.SignerRemove];
+
 export const validateMessage = async (message: MessageModel): Promise<MessageModel> => {
   // 1. Check that the hashScheme and hash are valid
   if (message.hashScheme() === HashScheme.Blake2b) {
@@ -49,12 +52,12 @@ export const validateMessage = async (message: MessageModel): Promise<MessageMod
   }
 
   // 2. Check that the signatureScheme and signature are valid
-  if (message.signatureScheme() === SignatureScheme.Eip712) {
+  if (message.signatureScheme() === SignatureScheme.Eip712 && EIP712_MESSAGE_TYPES.includes(message.type())) {
     const verifiedSigner = verifyMessageDataSignature(message.dataBytes(), message.signature());
     if (bytesCompare(verifiedSigner, message.signer()) !== 0) {
       throw new ValidationError('invalid signature');
     }
-  } else if (message.signatureScheme() === SignatureScheme.Ed25519) {
+  } else if (message.signatureScheme() === SignatureScheme.Ed25519 && !EIP712_MESSAGE_TYPES.includes(message.type())) {
     const signatureIsValid = await ResultAsync.fromPromise(
       ed.verify(message.signature(), message.dataBytes(), message.signer()),
       () => undefined
@@ -91,19 +94,19 @@ export const validateMessage = async (message: MessageModel): Promise<MessageMod
 };
 
 export const validateFid = (fid?: Uint8Array | null): Uint8Array => {
-  if (!fid) {
+  if (!fid || fid.byteLength === 0) {
     throw new ValidationError('fid is missing');
   }
 
   if (fid.byteLength > FID_BYTES) {
-    throw new ValidationError('fid > uint256');
+    throw new ValidationError('fid > 32 bytes');
   }
 
   return fid;
 };
 
 export const validateTsHash = (tsHash?: Uint8Array | null): Uint8Array => {
-  if (!tsHash) {
+  if (!tsHash || tsHash.byteLength === 0) {
     throw new ValidationError('tsHash is missing');
   }
 

@@ -46,6 +46,16 @@ import { VerificationRemoveBody, VerificationRemoveBodyT } from '~/utils/generat
 import { ContractEvent, ContractEventT, ContractEventType } from '~/utils/generated/contract_event_generated';
 import { toFarcasterTime } from '~/storage/flatbuffers/utils';
 
+/* eslint-disable security/detect-object-injection */
+const BytesFactory = Factory.define<Uint8Array, { length?: number }>(({ transientParams }) => {
+  const length = transientParams.length ?? 8;
+  const bytes = new Uint8Array(length);
+  for (let i = 0; i < bytes.byteLength; i++) {
+    bytes[i] = faker.datatype.number({ max: 255, min: 0 });
+  }
+  return bytes;
+});
+
 const FIDFactory = Factory.define<Uint8Array>(() => {
   const builder = new Builder(4);
   builder.addInt32(faker.datatype.number({ max: 2 ** 32 - 1 }));
@@ -394,6 +404,7 @@ const IDRegistryEventFactory = Factory.define<ContractEventT, any, ContractEvent
 });
 
 const Factories = {
+  Bytes: BytesFactory,
   FID: FIDFactory,
   TsHash: TsHashFactory,
   UserId: UserIdFactory,
