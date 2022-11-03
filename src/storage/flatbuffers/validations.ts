@@ -118,7 +118,7 @@ export const validateTsHash = (tsHash?: Uint8Array | null): Uint8Array => {
 };
 
 export const validateEthAddress = (address?: Uint8Array | null): Uint8Array => {
-  if (!address) {
+  if (!address || address.byteLength === 0) {
     throw new ValidationError('address is missing');
   }
 
@@ -130,7 +130,7 @@ export const validateEthAddress = (address?: Uint8Array | null): Uint8Array => {
 };
 
 export const validateEthBlockHash = (blockHash?: Uint8Array | null): Uint8Array => {
-  if (!blockHash) {
+  if (!blockHash || blockHash.byteLength === 0) {
     throw new ValidationError('block hash is missing');
   }
 
@@ -212,13 +212,17 @@ export const validateVerificationAddEthAddressMessage = async (
     blockHash: validBlockHash,
   };
 
-  const recoveredAddress = verifyVerificationEthAddressClaimSignature(
-    reconstructedClaim,
-    message.body().ethSignatureArray() ?? new Uint8Array()
-  );
+  try {
+    const recoveredAddress = verifyVerificationEthAddressClaimSignature(
+      reconstructedClaim,
+      message.body().ethSignatureArray() ?? new Uint8Array()
+    );
 
-  if (bytesCompare(recoveredAddress, validAddress) !== 0) {
-    throw new ValidationError('eth signature does not match address');
+    if (bytesCompare(recoveredAddress, validAddress) !== 0) {
+      throw new ValidationError('eth signature does not match address');
+    }
+  } catch (e) {
+    throw new ValidationError('invalid eth signature');
   }
 
   return message;

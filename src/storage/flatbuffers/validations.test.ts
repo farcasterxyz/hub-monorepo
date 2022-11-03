@@ -12,20 +12,36 @@ import {
   validateMessage,
   validateReactionMessage,
   validateTsHash,
+  validateVerificationAddEthAddressMessage,
+  validateVerificationRemoveMessage,
 } from '~/storage/flatbuffers/validations';
 import Factories from '~/test/factories/flatbuffer';
 import MessageModel from './messageModel';
 import {
   CastAddBodyT,
+  FarcasterNetwork,
   HashScheme,
   ReactionBodyT,
   ReactionType,
   SignatureScheme,
+  VerificationAddEthAddressBody,
+  VerificationAddEthAddressBodyT,
+  VerificationRemoveBodyT,
 } from '~/utils/generated/message_generated';
 import { faker } from '@faker-js/faker';
 import { getFarcasterTime } from './utils';
 import { KeyPair } from '~/types';
-import { CastAddModel, CastRemoveModel, ReactionAddModel, ReactionRemoveModel } from '~/storage/flatbuffers/types';
+import {
+  CastAddModel,
+  CastRemoveModel,
+  ReactionAddModel,
+  ReactionRemoveModel,
+  VerificationAddEthAddressModel,
+  VerificationEthAddressClaim,
+  VerificationRemoveModel,
+} from '~/storage/flatbuffers/types';
+import { signVerificationEthAddressClaim } from '~/utils/eip712';
+import { arrayify } from 'ethers/lib/utils';
 
 let wallet: Wallet;
 let signer: KeyPair;
@@ -358,11 +374,129 @@ describe('validateReactionMessage', () => {
 });
 
 describe('validateVerificationAddEthAddressMessage', () => {
-  // TODO
+  test('succeeds', async () => {
+    const fid = Factories.FID.build();
+    const verificationAddBody = await Factories.VerificationAddEthAddressBody.create({}, { transient: { fid } });
+    const verificationAddData = await Factories.VerificationAddEthAddressData.create({
+      body: verificationAddBody.unpack(),
+      fid: Array.from(fid),
+    });
+    const verificationAdd = new MessageModel(
+      await Factories.Message.create(
+        { data: Array.from(verificationAddData.bb?.bytes() ?? []) },
+        { transient: { signer } }
+      )
+    ) as VerificationAddEthAddressModel;
+    await expect(validateVerificationAddEthAddressMessage(verificationAdd)).resolves.toEqual(verificationAdd);
+  });
+
+  describe('fails', () => {
+    const fid = Factories.FID.build();
+
+    let body: VerificationAddEthAddressBodyT;
+    let validationErrorMessage: string;
+
+    afterEach(async () => {
+      const verificationAddData = await Factories.VerificationAddEthAddressData.create({
+        body,
+        fid: Array.from(fid),
+      });
+      const verificationAdd = new MessageModel(
+        await Factories.Message.create(
+          { data: Array.from(verificationAddData.bb?.bytes() ?? []) },
+          { transient: { signer } }
+        )
+      ) as VerificationAddEthAddressModel;
+      await expect(validateVerificationAddEthAddressMessage(verificationAdd)).rejects.toThrow(
+        new ValidationError(validationErrorMessage)
+      );
+    });
+
+    test('with missing eth address', () => {
+      body = Factories.VerificationAddEthAddressBody.build({ address: [] });
+      validationErrorMessage = 'address is missing';
+    });
+
+    test('with invalid eth address', () => {
+      body = Factories.VerificationAddEthAddressBody.build({
+        address: Array.from(Factories.Bytes.build({}, { transient: { length: 10 } })),
+      });
+      validationErrorMessage = 'address must be 20 bytes';
+    });
+
+    test('with missing block hash', () => {
+      body = Factories.VerificationAddEthAddressBody.build({ blockHash: [] });
+      validationErrorMessage = 'block hash is missing';
+    });
+
+    test('with invalid block hash', () => {
+      body = Factories.VerificationAddEthAddressBody.build({
+        blockHash: Array.from(Factories.Bytes.build({}, { transient: { length: 10 } })),
+      });
+      validationErrorMessage = 'block hash must be 32 bytes';
+    });
+
+    test('with invalid eth signature', async () => {
+      const claim: VerificationEthAddressClaim = {
+        fid,
+        address: faker.datatype.hexadecimal({ length: 40, case: 'lower' }), // mismatched address
+        network: FarcasterNetwork.Testnet,
+        blockHash: utils.arrayify(faker.datatype.hexadecimal({ length: 64, case: 'lower' })),
+      };
+      const signature = await signVerificationEthAddressClaim(claim, wallet);
+      body = new VerificationAddEthAddressBodyT(
+        Array.from(arrayify(wallet.address)),
+        Array.from(signature),
+        Array.from(claim.blockHash)
+      );
+      validationErrorMessage = 'invalid eth signature';
+    });
+  });
 });
 
 describe('validateVerificationRemoveMessage', () => {
-  // TODO
+  test('succeeds', async () => {
+    const verificationRemoveData = await Factories.VerificationRemoveData.create();
+    const verificationRemove = new MessageModel(
+      await Factories.Message.create(
+        { data: Array.from(verificationRemoveData.bb?.bytes() ?? []) },
+        { transient: { signer } }
+      )
+    ) as VerificationRemoveModel;
+    expect(validateVerificationRemoveMessage(verificationRemove)).toEqual(verificationRemove);
+  });
+
+  describe('fails', () => {
+    let body: VerificationRemoveBodyT;
+    let validationErrorMessage: string;
+
+    afterEach(async () => {
+      const verificationRemoveData = await Factories.VerificationRemoveData.create({ body });
+      const verificationRemove = new MessageModel(
+        await Factories.Message.create(
+          { data: Array.from(verificationRemoveData.bb?.bytes() ?? []) },
+          { transient: { signer } }
+        )
+      ) as VerificationRemoveModel;
+      expect(() => validateVerificationRemoveMessage(verificationRemove)).toThrow(
+        new ValidationError(validationErrorMessage)
+      );
+    });
+
+    test('when address is missing', () => {
+      body = Factories.VerificationRemoveBody.build({
+        address: [],
+      });
+      validationErrorMessage = 'address is missing';
+    });
+
+    test('with invalid address', () => {
+      body = Factories.VerificationRemoveBody.build({
+        address: Array.from(Factories.Bytes.build({}, { transient: { length: 10 } })),
+      });
+      validationErrorMessage = 'address must be 20 bytes';
+    });
+  });
 });
 
 describe('validateSignerMessage', () => {
