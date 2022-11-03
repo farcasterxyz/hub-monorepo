@@ -4,3 +4,9 @@ coverage:
       default:
         target: 85%
         threshold: 1%
+    patch:
+      default:
+        target: auto
+        threshold: 0%
+        base: auto
+        if_ci_failed: success
