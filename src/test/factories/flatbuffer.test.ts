@@ -14,6 +14,20 @@ describe('UserIdFactory', () => {
   });
 });
 
+describe('FidFactory', () => {
+  test('generates 4 byte value', () => {
+    const fid = Factories.FID.build();
+    expect(fid.byteLength).toBeLessThan(32);
+  });
+});
+
+describe('TsHashFactory', () => {
+  test('generates 8 byte value', () => {
+    const tsHash = Factories.TsHash.build();
+    expect(tsHash.byteLength).toEqual(8);
+  });
+});
+
 describe('CastAddBodyFactory', () => {
   test('accepts text', async () => {
     const body = await Factories.CastAddBody.create({ text: 'foo' });

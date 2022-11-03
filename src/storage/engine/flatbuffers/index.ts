@@ -60,10 +60,6 @@ class Engine {
     }
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                               Signer Methods                               */
-  /* -------------------------------------------------------------------------- */
-
   async mergeIdRegistryEvent(event: ContractEventModel): Promise<void> {
     if (
       event.type() === ContractEventType.IDRegistryRegister ||

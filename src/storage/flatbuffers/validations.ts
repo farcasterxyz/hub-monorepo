@@ -30,6 +30,7 @@ import {
   isVerificationRemove,
 } from '~/storage/flatbuffers/typeguards';
 import { hexlify } from 'ethers/lib/utils';
+import { bytesCompare } from '~/storage/flatbuffers/utils';
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW = 10 * 60 * 1000;
@@ -38,7 +39,8 @@ export const validateMessage = async (message: MessageModel): Promise<MessageMod
   // 1. Check that the hashScheme and hash are valid
   if (message.hashScheme() === HashScheme.Blake2b) {
     const computedHash = await blake2b(message.dataBytes(), 4);
-    if (message.hash() !== computedHash) {
+    // we have to use bytesCompare, because TypedArrays cannot be compared directly
+    if (bytesCompare(message.hash(), computedHash) !== 0) {
       throw new ValidationError('invalid hash');
     }
   } else {
@@ -48,7 +50,7 @@ export const validateMessage = async (message: MessageModel): Promise<MessageMod
   // 2. Check that the signatureScheme and signature are valid
   if (message.signatureScheme() === SignatureScheme.Eip712) {
     const verifiedSigner = verifyMessageDataSignature(message.dataBytes(), message.signature());
-    if (verifiedSigner !== message.signer()) {
+    if (bytesCompare(verifiedSigner, message.signer()) !== 0) {
       throw new ValidationError('invalid signature');
     }
   } else if (message.signatureScheme() === SignatureScheme.Ed25519) {
@@ -208,7 +210,7 @@ export const validateVerificationAddEthAddressMessage = async (
     message.body().ethSignatureArray() ?? new Uint8Array()
   );
 
-  if (recoveredAddress !== validAddress) {
+  if (bytesCompare(recoveredAddress, validAddress) !== 0) {
     throw new ValidationError('eth signature does not match address');
   }
 
