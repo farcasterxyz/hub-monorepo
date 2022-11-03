@@ -2,7 +2,7 @@ import { Wallet, utils } from 'ethers';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import { ValidationError } from '~/utils/errors';
 import {
-  ALLOWED_CLOCK_SKEW,
+  ALLOWED_CLOCK_SKEW_SECONDS,
   validateEd25519PublicKey,
   validateEthAddress,
   validateMessage,
@@ -11,6 +11,7 @@ import Factories from '~/test/factories/flatbuffer';
 import MessageModel from './messageModel';
 import { HashScheme, Message, SignatureScheme } from '~/utils/generated/message_generated';
 import { faker } from '@faker-js/faker';
+import { getFarcasterTime } from './utils';
 
 describe('validateMessage', () => {
   test('succeeds', async () => {
@@ -50,7 +51,7 @@ describe('validateMessage', () => {
   });
 
   test('fails with timestamp more than 10 mins in the future', async () => {
-    const data = await Factories.MessageData.create({ timestamp: faker.date.soon().getTime() + ALLOWED_CLOCK_SKEW });
+    const data = await Factories.MessageData.create({ timestamp: getFarcasterTime() + ALLOWED_CLOCK_SKEW_SECONDS + 1 });
     const message = new MessageModel(await Factories.Message.create({ data: Array.from(data.bb?.bytes() ?? []) }));
     await expect(validateMessage(message)).rejects.toThrow(
       new ValidationError('timestamp more than 10 mins in the future')

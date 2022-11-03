@@ -30,11 +30,11 @@ import {
   isVerificationRemove,
 } from '~/storage/flatbuffers/typeguards';
 import { hexlify } from 'ethers/lib/utils';
-import { bytesCompare } from '~/storage/flatbuffers/utils';
+import { bytesCompare, getFarcasterTime } from '~/storage/flatbuffers/utils';
 import { ResultAsync } from 'neverthrow';
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
-export const ALLOWED_CLOCK_SKEW = 10 * 60 * 1000;
+export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
 
 export const validateMessage = async (message: MessageModel): Promise<MessageModel> => {
   // 1. Check that the hashScheme and hash are valid
@@ -67,7 +67,7 @@ export const validateMessage = async (message: MessageModel): Promise<MessageMod
   }
 
   // 3. Verify that the timestamp is not too far in the future.
-  if (message.timestamp() - Date.now() / 1000 > ALLOWED_CLOCK_SKEW) {
+  if (message.timestamp() - getFarcasterTime() > ALLOWED_CLOCK_SKEW_SECONDS) {
     throw new ValidationError('timestamp more than 10 mins in the future');
   }
 

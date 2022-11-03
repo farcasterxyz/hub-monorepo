@@ -44,6 +44,7 @@ import { signMessageData, signVerificationEthAddressClaim } from '~/utils/eip712
 import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
 import { VerificationRemoveBody, VerificationRemoveBodyT } from '~/utils/generated/farcaster/verification-remove-body';
 import { ContractEvent, ContractEventT, ContractEventType } from '~/utils/generated/contract_event_generated';
+import { toFarcasterTime } from '~/storage/flatbuffers/utils';
 
 const FIDFactory = Factory.define<Uint8Array>(() => {
   const builder = new Builder(4);
@@ -89,7 +90,7 @@ const MessageDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onC
     MessageBody.CastAddBody,
     CastAddBodyFactory.build(),
     MessageType.CastAdd,
-    faker.date.recent().getTime(),
+    toFarcasterTime(faker.date.recent().getTime()),
     Array.from(FIDFactory.build()),
     FarcasterNetwork.Testnet
   );
