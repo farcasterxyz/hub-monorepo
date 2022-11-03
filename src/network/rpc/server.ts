@@ -125,7 +125,7 @@ export class RPCServer {
     return new Promise((resolve, reject) => {
       try {
         // start the tcp server
-        this._tcpServer = this._jsonServer.tcp().listen(port, () => {
+        this._tcpServer = this._jsonServer.tcp().listen(port, '127.0.0.1', () => {
           log.info({ address: this.multiaddr, function: 'start' }, 'RPC server started');
           resolve();
         });
