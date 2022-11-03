@@ -8,13 +8,20 @@ import {
   ReactionRemoveModel,
   SignerAddModel,
   SignerRemoveModel,
+  UserDataAddModel,
   VerificationAddEthAddressModel,
   VerificationEthAddressClaim,
   VerificationRemoveModel,
 } from '~/storage/flatbuffers/types';
 import { verifyMessageDataSignature, verifyVerificationEthAddressClaimSignature } from '~/utils/eip712';
 import { ValidationError } from '~/utils/errors';
-import { HashScheme, MessageType, ReactionType, SignatureScheme } from '~/utils/generated/message_generated';
+import {
+  HashScheme,
+  MessageType,
+  ReactionType,
+  SignatureScheme,
+  UserDataType,
+} from '~/utils/generated/message_generated';
 import * as ed from '@noble/ed25519';
 import MessageModel, { FID_BYTES } from '~/storage/flatbuffers/messageModel';
 import {
@@ -26,6 +33,7 @@ import {
   isReactionRemove,
   isSignerAdd,
   isSignerRemove,
+  isUserDataAdd,
   isVerificationAddEthAddress,
   isVerificationRemove,
 } from '~/storage/flatbuffers/typeguards';
@@ -88,6 +96,8 @@ export const validateMessage = async (message: MessageModel): Promise<MessageMod
     return validateSignerMessage(message) as MessageModel;
   } else if (isFollowAdd(message) || isFollowRemove(message)) {
     return validateFollowMessage(message) as MessageModel;
+  } else if (isUserDataAdd(message)) {
+    return validateUserDataAddMessage(message) as MessageModel;
   } else {
     throw new ValidationError('unknown message type');
   }
@@ -246,6 +256,16 @@ export const validateFollowMessage = (
   message: FollowAddModel | FollowRemoveModel
 ): FollowAddModel | FollowRemoveModel => {
   validateFid(message.body().user()?.fidArray());
+
+  return message;
+};
+
+export const validateUserDataAddMessage = (message: UserDataAddModel): UserDataAddModel => {
+  if (!Object.values(UserDataType).includes(message.body().type())) {
+    throw new ValidationError('invalid user data type');
+  }
+
+  // TODO: value validation
 
   return message;
 };
