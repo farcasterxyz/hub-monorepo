@@ -156,6 +156,14 @@ describe('mergeMessage', () => {
         ).resolves.toEqual(verificationAdd);
       });
     });
+
+    describe('UserDataAdd', () => {
+      test('succeeds', async () => {
+        await expect(engine.mergeMessage(userDataAdd)).resolves.toEqual(undefined);
+
+        await expect(userDataStore.getUserDataAdd(fid, userDataAdd.body().type())).resolves.toEqual(userDataAdd);
+      });
+    });
   });
 
   describe('fails when missing signer', () => {

@@ -142,7 +142,7 @@ export const validateEthBlockHash = (blockHash?: Uint8Array | null): Uint8Array 
 };
 
 export const validateEd25519PublicKey = (publicKey?: Uint8Array | null): Uint8Array => {
-  if (!publicKey) {
+  if (!publicKey || publicKey.byteLength === 0) {
     throw new ValidationError('public key is missing');
   }
 

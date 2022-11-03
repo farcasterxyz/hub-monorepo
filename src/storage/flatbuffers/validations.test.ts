@@ -9,8 +9,10 @@ import {
   validateEthAddress,
   validateEthBlockHash,
   validateFid,
+  validateFollowMessage,
   validateMessage,
   validateReactionMessage,
+  validateSignerMessage,
   validateTsHash,
   validateVerificationAddEthAddressMessage,
   validateVerificationRemoveMessage,
@@ -20,11 +22,13 @@ import MessageModel from './messageModel';
 import {
   CastAddBodyT,
   FarcasterNetwork,
+  FollowBodyT,
   HashScheme,
   ReactionBodyT,
   ReactionType,
   SignatureScheme,
-  VerificationAddEthAddressBody,
+  SignerBodyT,
+  UserIdT,
   VerificationAddEthAddressBodyT,
   VerificationRemoveBodyT,
 } from '~/utils/generated/message_generated';
@@ -34,8 +38,12 @@ import { KeyPair } from '~/types';
 import {
   CastAddModel,
   CastRemoveModel,
+  FollowAddModel,
+  FollowRemoveModel,
   ReactionAddModel,
   ReactionRemoveModel,
+  SignerAddModel,
+  SignerRemoveModel,
   VerificationAddEthAddressModel,
   VerificationEthAddressClaim,
   VerificationRemoveModel,
@@ -500,9 +508,97 @@ describe('validateVerificationRemoveMessage', () => {
 });
 
 describe('validateSignerMessage', () => {
-  // TODO
+  test('succeeds with SignerAdd', async () => {
+    const signerAddData = await Factories.SignerAddData.create();
+    const signerAdd = new MessageModel(
+      await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+    ) as SignerAddModel;
+    expect(validateSignerMessage(signerAdd)).toEqual(signerAdd);
+  });
+
+  test('succeeds with SignerRemove', async () => {
+    const SignerRemoveData = await Factories.SignerRemoveData.create();
+    const signerRemove = new MessageModel(
+      await Factories.Message.create(
+        { data: Array.from(SignerRemoveData.bb?.bytes() ?? []) },
+        { transient: { wallet } }
+      )
+    ) as SignerRemoveModel;
+    expect(validateSignerMessage(signerRemove)).toEqual(signerRemove);
+  });
+
+  describe('fails', () => {
+    let body: SignerBodyT;
+    let validationErrorMessage: string;
+
+    afterEach(async () => {
+      const signerAddData = await Factories.SignerAddData.create({ body });
+      const signerAdd = new MessageModel(
+        await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+      ) as SignerAddModel;
+      expect(() => validateSignerMessage(signerAdd)).toThrow(new ValidationError(validationErrorMessage));
+    });
+
+    test('when signer is missing', () => {
+      body = Factories.SignerBody.build({
+        signer: [],
+      });
+      validationErrorMessage = 'public key is missing';
+    });
+
+    test('with invalid signer', () => {
+      body = Factories.SignerBody.build({
+        signer: Array.from(Factories.Bytes.build({}, { transient: { length: 10 } })),
+      });
+      validationErrorMessage = 'public key must be 32 bytes';
+    });
+  });
 });
 
 describe('validateFollowMessage', () => {
-  // TODO
+  test('succeeds with FollowAdd', async () => {
+    const followAddData = await Factories.FollowAddData.create();
+    const followAdd = new MessageModel(
+      await Factories.Message.create({ data: Array.from(followAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+    ) as FollowAddModel;
+    expect(validateFollowMessage(followAdd)).toEqual(followAdd);
+  });
+
+  test('succeeds with FollowRemove', async () => {
+    const followRemoveData = await Factories.FollowRemoveData.create();
+    const followRemove = new MessageModel(
+      await Factories.Message.create(
+        { data: Array.from(followRemoveData.bb?.bytes() ?? []) },
+        { transient: { wallet } }
+      )
+    ) as FollowRemoveModel;
+    expect(validateFollowMessage(followRemove)).toEqual(followRemove);
+  });
+
+  describe('fails', () => {
+    let body: FollowBodyT;
+    let validationErrorMessage: string;
+
+    afterEach(async () => {
+      const followAddData = await Factories.FollowAddData.create({ body });
+      const followAdd = new MessageModel(
+        await Factories.Message.create({ data: Array.from(followAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+      ) as FollowAddModel;
+      expect(() => validateFollowMessage(followAdd)).toThrow(new ValidationError(validationErrorMessage));
+    });
+
+    test('when user fid is missing', () => {
+      body = Factories.FollowBody.build({
+        user: new UserIdT([]),
+      });
+      validationErrorMessage = 'fid is missing';
+    });
+
+    test('with invalid user fid', () => {
+      body = Factories.FollowBody.build({
+        user: new UserIdT(Array.from(Factories.Bytes.build({}, { transient: { length: 33 } }))),
+      });
+      validationErrorMessage = 'fid > 32 bytes';
+    });
+  });
 });
