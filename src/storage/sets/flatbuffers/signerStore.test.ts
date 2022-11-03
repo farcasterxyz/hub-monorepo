@@ -64,7 +64,7 @@ beforeAll(async () => {
 
 describe('getIDRegistryEvent', () => {
   test('returns contract event', async () => {
-    await set.mergeIDRegistryEvent(custody1Event);
+    await set.mergeIdRegistryEvent(custody1Event);
     await expect(set.getIDRegistryEvent(fid)).resolves.toEqual(custody1Event);
   });
 
@@ -75,7 +75,7 @@ describe('getIDRegistryEvent', () => {
 
 describe('getCustodyAddress', () => {
   test('returns to from current IDRegistry event', async () => {
-    await set.mergeIDRegistryEvent(custody1Event);
+    await set.mergeIdRegistryEvent(custody1Event);
     await expect(set.getCustodyAddress(fid)).resolves.toEqual(custody1Address);
   });
 
@@ -84,16 +84,16 @@ describe('getCustodyAddress', () => {
   });
 });
 
-describe('mergeIDRegistryEvent', () => {
+describe('mergeIdRegistryEvent', () => {
   test('succeeds', async () => {
-    await expect(set.mergeIDRegistryEvent(custody1Event)).resolves.toEqual(undefined);
+    await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toEqual(undefined);
     await expect(set.getIDRegistryEvent(fid)).resolves.toEqual(custody1Event);
   });
 
   test('causes signers to become active', async () => {
     await set.merge(signerAdd);
     await expect(set.getSignerAdd(fid, signer)).rejects.toThrow(NotFoundError);
-    await expect(set.mergeIDRegistryEvent(custody1Event)).resolves.toEqual(undefined);
+    await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toEqual(undefined);
     await expect(set.getSignerAdd(fid, signer)).resolves.toEqual(signerAdd);
   });
 
@@ -101,11 +101,11 @@ describe('mergeIDRegistryEvent', () => {
     let newEvent: ContractEventModel;
 
     beforeEach(async () => {
-      await set.mergeIDRegistryEvent(custody1Event);
+      await set.mergeIdRegistryEvent(custody1Event);
     });
 
     afterEach(async () => {
-      await expect(set.mergeIDRegistryEvent(newEvent)).resolves.toEqual(undefined);
+      await expect(set.mergeIdRegistryEvent(newEvent)).resolves.toEqual(undefined);
       await expect(set.getIDRegistryEvent(fid)).resolves.toEqual(newEvent);
     });
 
@@ -141,11 +141,11 @@ describe('mergeIDRegistryEvent', () => {
     let newEvent: ContractEventModel;
 
     beforeEach(async () => {
-      await set.mergeIDRegistryEvent(custody1Event);
+      await set.mergeIdRegistryEvent(custody1Event);
     });
 
     afterEach(async () => {
-      await expect(set.mergeIDRegistryEvent(newEvent)).resolves.toEqual(undefined);
+      await expect(set.mergeIdRegistryEvent(newEvent)).resolves.toEqual(undefined);
       await expect(set.getIDRegistryEvent(fid)).resolves.toEqual(custody1Event);
     });
 
@@ -194,7 +194,7 @@ describe('getSignerAdd', () => {
 
   describe('without passing custodyAddress', () => {
     test('defaults to current custodyAddress', async () => {
-      await set.mergeIDRegistryEvent(custody1Event);
+      await set.mergeIdRegistryEvent(custody1Event);
       await set.merge(signerAdd);
       await expect(set.getSignerAdd(fid, signer)).resolves.toEqual(signerAdd);
     });
@@ -218,7 +218,7 @@ describe('getSignerRemove', () => {
 
   describe('without passing custodyAddress', () => {
     test('defaults to current custodyAddress', async () => {
-      await set.mergeIDRegistryEvent(custody1Event);
+      await set.mergeIdRegistryEvent(custody1Event);
       await set.merge(signerRemove);
       await expect(set.getSignerRemove(fid, signer)).resolves.toEqual(signerRemove);
     });
@@ -248,7 +248,7 @@ describe('getSignerAddsByUser', () => {
 
   describe('without passing custodyAddress', () => {
     test('defaults to current custodyAddress', async () => {
-      await set.mergeIDRegistryEvent(custody1Event);
+      await set.mergeIdRegistryEvent(custody1Event);
       await set.merge(signerAdd);
       await expect(set.getSignerAddsByUser(fid)).resolves.toEqual([signerAdd]);
     });
@@ -278,7 +278,7 @@ describe('getSignerRemovesByUser', () => {
 
   describe('without passing custodyAddress', () => {
     test('defaults to current custodyAddress', async () => {
-      await set.mergeIDRegistryEvent(custody1Event);
+      await set.mergeIdRegistryEvent(custody1Event);
       await set.merge(signerRemove);
       await expect(set.getSignerRemovesByUser(fid)).resolves.toEqual([signerRemove]);
     });

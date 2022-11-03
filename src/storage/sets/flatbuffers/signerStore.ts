@@ -15,17 +15,15 @@ class SignerStore {
     this._db = db;
   }
 
-  /** RocksDB key of the form <user prefix (1 byte), fid (32 bytes), signer removes key (1 byte), custody address, signer (variable bytes)> */
-  static signerRemovesKey(fid: Uint8Array, custodyAddress: Uint8Array, signer?: Uint8Array): Buffer {
-    return Buffer.concat([
-      MessageModel.userKey(fid),
-      Buffer.from([UserPostfix.SignerRemoves]),
-      Buffer.from(custodyAddress),
-      signer ? Buffer.from(signer) : new Uint8Array(),
-    ]);
-  }
-
-  /** RocksDB key of the form <user prefix (1 byte), fid (32 bytes), signer adds key (1 byte), custody address, signer (variable bytes)> */
+  /**
+   * Generates a unique key used to store a SignerAdd message key in the SignerAdds Set index
+   *
+   * @param fid farcaster id of the user who created the Signer
+   * @param custodyAddress the Ethereum address of the secp256k1 key-pair that signed the message
+   * @param signer (TODO)
+   *
+   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<custodyAddress?>:<signer?>
+   */
   static signerAddsKey(fid: Uint8Array, custodyAddress: Uint8Array, signer?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
@@ -35,39 +33,80 @@ class SignerStore {
     ]);
   }
 
+  /**
+   * Generates a unique key used to store a SignerRemove message key in the SignerRemoves Set index
+   *
+   * @param fid farcaster id of the user who created the Signer
+   * @param custodyAddress the Ethereum address of the secp256k1 key-pair that signed the message
+   * @param signer
+   *
+   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<custodyAddress?>:<signer?>
+   */
+  static signerRemovesKey(fid: Uint8Array, custodyAddress: Uint8Array, signer?: Uint8Array): Buffer {
+    return Buffer.concat([
+      MessageModel.userKey(fid),
+      Buffer.from([UserPostfix.SignerRemoves]),
+      Buffer.from(custodyAddress),
+      signer ? Buffer.from(signer) : new Uint8Array(),
+    ]);
+  }
+
+  /** Returns the __________ */
   async getIDRegistryEvent(fid: Uint8Array): Promise<ContractEventModel> {
     return ContractEventModel.get(this._db, fid);
   }
 
+  /** Returns the current custody address that holds a Farcaster ID */
   async getCustodyAddress(fid: Uint8Array): Promise<Uint8Array> {
     const idRegistryEvent = await this.getIDRegistryEvent(fid);
     return idRegistryEvent.to();
   }
 
-  /** Look up SignerAdd message by fid, custody address, and signer */
+  /**
+   * Finds a SignerAdd Message by checking the Adds Set index
+   *
+   * @param fid fid of the user who created the reaction add
+   * @param signer type of reaction that was added
+   * @param custodyAddress the Ethereum address that currently owns the Farcaster ID
+   * @returns the ReactionAdd Model if it exists, throws NotFoundError otherwise
+   */
   async getSignerAdd(fid: Uint8Array, signer: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerAddModel> {
     if (!custodyAddress) {
-      // Will throw NotFoundError if custody address is missing
       custodyAddress = await this.getCustodyAddress(fid);
     }
+
+    // DISCUSS: will this throw an exception if the path below fails or just return null?
+    // (this is an example of where explicit Results would make readability better)
+
     const messageTsHash = await this._db.get(SignerStore.signerAddsKey(fid, custodyAddress, signer));
     return MessageModel.get<SignerAddModel>(this._db, fid, UserPostfix.SignerMessage, messageTsHash);
   }
 
-  /** Look up SignerRemove message by fid, custody address, and signer */
+  /**
+   * Finds a SignerRemove Message by checking the Remove Set index
+   *
+   * @param fid fid of the user who created the reaction remove
+   * @param signer type of reaction that was added
+   * @param custodyAddress the Ethereum address that currently owns the Farcaster ID
+   * @returns the SignerRemove message if it exists, throws NotFoundError otherwise
+   */
   async getSignerRemove(fid: Uint8Array, signer: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerRemoveModel> {
     if (!custodyAddress) {
-      // Will throw NotFoundError if custody address is missing
       custodyAddress = await this.getCustodyAddress(fid);
     }
     const messageTsHash = await this._db.get(SignerStore.signerRemovesKey(fid, custodyAddress, signer));
     return MessageModel.get<SignerRemoveModel>(this._db, fid, UserPostfix.SignerMessage, messageTsHash);
   }
 
-  /** Get all SignerAdd messages for an fid and custody address */
+  /**
+   * Finds all SignerAdd messages for a user
+   *
+   * @param fid fid of the user who created the reaction remove
+   * @param custodyAddress the Ethereum address that currently owns the Farcaster ID
+   * @returns the SignerRemove message if it exists, throws NotFoundError otherwise
+   */
   async getSignerAddsByUser(fid: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerAddModel[]> {
     if (!custodyAddress) {
-      // Will throw NotFoundError if custody address is missing
       custodyAddress = await this.getCustodyAddress(fid);
     }
     const addsPrefix = SignerStore.signerAddsKey(fid, custodyAddress);
@@ -78,10 +117,15 @@ class SignerStore {
     return MessageModel.getManyByUser<SignerAddModel>(this._db, fid, UserPostfix.SignerMessage, messageKeys);
   }
 
-  /** Get all Signerremove messages for an fid and custody address */
+  /**
+   * Finds all SignerRemove Messages for a user
+   *
+   * @param fid fid of the user who created the reaction remove
+   * @param custodyAddress the Ethereum address that currently owns the Farcaster ID
+   * @returns the SignerRemove message if it exists, throws NotFoundError otherwise
+   */
   async getSignerRemovesByUser(fid: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerRemoveModel[]> {
     if (!custodyAddress) {
-      // Will throw NotFoundError if custody address is missing
       custodyAddress = await this.getCustodyAddress(fid);
     }
     const removesPrefix = SignerStore.signerRemovesKey(fid, custodyAddress);
@@ -92,8 +136,13 @@ class SignerStore {
     return MessageModel.getManyByUser<SignerRemoveModel>(this._db, fid, UserPostfix.SignerMessage, messageKeys);
   }
 
-  // TODO: emit signer change events as a result of ID Registry events
-  async mergeIDRegistryEvent(event: ContractEventModel): Promise<void> {
+  /**
+   * Merges a Contract Event from the IdRegistry into the SignerStore
+   *
+   * @param event the ContractEventModel to merge
+   */
+  async mergeIdRegistryEvent(event: ContractEventModel): Promise<void> {
+    // TODO: emit signer change events as a result of ID Registry events
     const existingEvent = await ResultAsync.fromPromise(this.getIDRegistryEvent(event.fid()), () => undefined);
     if (existingEvent.isOk() && this.eventCompare(existingEvent.value, event) >= 0) {
       return undefined;
@@ -104,7 +153,7 @@ class SignerStore {
     return this._db.commit(txn);
   }
 
-  /** Merge a SignerAdd or SignerRemove message into the set */
+  /** Merge a SignerAdd or SignerRemove message into the SignerStore */
   async merge(message: MessageModel): Promise<void> {
     if (isSignerRemove(message)) {
       return this.mergeRemove(message);
@@ -128,6 +177,7 @@ class SignerStore {
     } else if (a.blockNumber > b.blockNumber) {
       return 1;
     }
+
     // Compare logIndex
     if (a.logIndex() < b.logIndex()) {
       return -1;
@@ -185,6 +235,11 @@ class SignerStore {
     return 0;
   }
 
+  /**
+   * Determines the RocksDB keys that must be modified to settle merge conflicts as a result of adding a Signer to the Store.
+   *
+   * @returns a RocksDB transaction if keys must be added or removed, undefined otherwise
+   */
   private async resolveMergeConflicts(
     txn: Transaction,
     message: SignerAddModel | SignerRemoveModel
@@ -194,7 +249,7 @@ class SignerStore {
       throw new BadRequestError('signer is required');
     }
 
-    // Look up the remove tsHash for this custody adddress and signer
+    // Look up the remove tsHash for this custody address and signer
     const removeTsHash = await ResultAsync.fromPromise(
       this._db.get(SignerStore.signerRemovesKey(message.fid(), message.signer(), signer)),
       () => undefined
@@ -245,6 +300,7 @@ class SignerStore {
     return txn;
   }
 
+  /* Builds a RocksDB transaction to insert a SignerAdd message and construct its indices */
   private putSignerAddTransaction(txn: Transaction, message: SignerAddModel): Transaction {
     // Put message and index by signer
     txn = MessageModel.putTransaction(txn, message);
@@ -258,6 +314,7 @@ class SignerStore {
     return txn;
   }
 
+  /* Builds a RocksDB transaction to remove a SignerAdd message and delete its indices */
   private deleteSignerAddTransaction(txn: Transaction, message: SignerAddModel): Transaction {
     // Delete from signerAdds
     txn = txn.del(
@@ -268,6 +325,7 @@ class SignerStore {
     return MessageModel.deleteTransaction(txn, message);
   }
 
+  /* Builds a RocksDB transaction to insert a SignerRemove message and construct its indices */
   private putSignerRemoveTransaction(txn: Transaction, message: SignerRemoveModel): Transaction {
     // Put message and index by signer
     txn = MessageModel.putTransaction(txn, message);
@@ -281,6 +339,7 @@ class SignerStore {
     return txn;
   }
 
+  /* Builds a RocksDB transaction to remove a SignerRemove message and delete its indices */
   private deleteSignerRemoveTransaction(txn: Transaction, message: SignerRemoveModel): Transaction {
     // Delete from signerRemoves
     txn = txn.del(

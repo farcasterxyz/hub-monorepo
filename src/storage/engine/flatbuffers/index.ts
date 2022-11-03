@@ -65,7 +65,7 @@ class Engine {
       event.type() === ContractEventType.IDRegistryRegister ||
       event.type() === ContractEventType.IDRegistryTransfer
     ) {
-      return this._signerStore.mergeIDRegistryEvent(event);
+      return this._signerStore.mergeIdRegistryEvent(event);
     } else {
       throw new BadRequestError('invalid event type');
     }
