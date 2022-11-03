@@ -31,6 +31,7 @@ import {
 } from '~/storage/flatbuffers/typeguards';
 import { hexlify } from 'ethers/lib/utils';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
+import { ResultAsync } from 'neverthrow';
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW = 10 * 60 * 1000;
@@ -54,16 +55,19 @@ export const validateMessage = async (message: MessageModel): Promise<MessageMod
       throw new ValidationError('invalid signature');
     }
   } else if (message.signatureScheme() === SignatureScheme.Ed25519) {
-    const signatureIsValid = await ed.verify(message.signature(), message.dataBytes(), message.signer());
-    if (!signatureIsValid) {
+    const signatureIsValid = await ResultAsync.fromPromise(
+      ed.verify(message.signature(), message.dataBytes(), message.signer()),
+      () => undefined
+    );
+    if (signatureIsValid.isErr() || (signatureIsValid.isOk() && !signatureIsValid.value)) {
       throw new ValidationError('invalid signature');
     }
   } else {
-    throw new ValidationError('invalid signatureType');
+    throw new ValidationError('invalid signatureScheme');
   }
 
   // 3. Verify that the timestamp is not too far in the future.
-  if (message.timestamp() - Date.now() > ALLOWED_CLOCK_SKEW) {
+  if (message.timestamp() - Date.now() / 1000 > ALLOWED_CLOCK_SKEW) {
     throw new ValidationError('timestamp more than 10 mins in the future');
   }
 

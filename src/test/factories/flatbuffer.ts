@@ -340,23 +340,25 @@ const MessageFactory = Factory.define<MessageT, { signer?: KeyPair; wallet?: Wal
   ({ onCreate, transientParams }) => {
     onCreate(async (params) => {
       // Generate hash
-      if (params.hash.length == 0) {
+      if (params.hash.length === 0) {
         params.hash = Array.from(blake2b(new Uint8Array(params.data), 4));
       }
 
       // Generate signature
-      if (transientParams.signer) {
-        const signer = transientParams.signer;
-        params.signature = Array.from(await ed.sign(new Uint8Array(params.data), signer.privateKey));
-        params.signer = Array.from(signer.publicKey);
-      } else if (transientParams.wallet) {
-        params.signature = Array.from(await signMessageData(new Uint8Array(params.data), transientParams.wallet));
-        params.signatureScheme = SignatureScheme.Eip712;
-        params.signer = Array.from(arrayify(transientParams.wallet.address));
-      } else {
-        const signer = await generateEd25519KeyPair();
-        params.signature = Array.from(await ed.sign(new Uint8Array(params.data), signer.privateKey));
-        params.signer = Array.from(signer.publicKey);
+      if (params.signature.length === 0) {
+        if (transientParams.signer) {
+          const signer = transientParams.signer;
+          params.signature = Array.from(await ed.sign(new Uint8Array(params.data), signer.privateKey));
+          params.signer = Array.from(signer.publicKey);
+        } else if (transientParams.wallet) {
+          params.signature = Array.from(await signMessageData(new Uint8Array(params.data), transientParams.wallet));
+          params.signatureScheme = SignatureScheme.Eip712;
+          params.signer = Array.from(arrayify(transientParams.wallet.address));
+        } else {
+          const signer = await generateEd25519KeyPair();
+          params.signature = Array.from(await ed.sign(new Uint8Array(params.data), signer.privateKey));
+          params.signer = Array.from(signer.publicKey);
+        }
       }
 
       const builder = new Builder(1);
