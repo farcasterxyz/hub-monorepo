@@ -32,7 +32,7 @@ import {
 } from '~/utils/generated/message_generated';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { blake2b } from 'ethereum-cryptography/blake2b';
-import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
+import { generateEd25519KeyPair } from '~/utils/crypto';
 import * as ed from '@noble/ed25519';
 import { arrayify } from 'ethers/lib/utils';
 import {
@@ -44,22 +44,34 @@ import { signMessageData, signVerificationEthAddressClaim } from '~/utils/eip712
 import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
 import { VerificationRemoveBody, VerificationRemoveBodyT } from '~/utils/generated/farcaster/verification-remove-body';
 import { ContractEvent, ContractEventT, ContractEventType } from '~/utils/generated/contract_event_generated';
+import { toFarcasterTime } from '~/storage/flatbuffers/utils';
+
+/* eslint-disable security/detect-object-injection */
+const BytesFactory = Factory.define<Uint8Array, { length?: number }>(({ transientParams }) => {
+  const length = transientParams.length ?? 8;
+  const bytes = new Uint8Array(length);
+  for (let i = 0; i < bytes.byteLength; i++) {
+    bytes[i] = faker.datatype.number({ max: 255, min: 0 });
+  }
+  return bytes;
+});
 
 const FIDFactory = Factory.define<Uint8Array>(() => {
-  // TODO: generate larger random fid
-  return new Uint8Array([faker.datatype.number(255)]);
+  const builder = new Builder(4);
+  builder.addInt32(faker.datatype.number({ max: 2 ** 32 - 1 }));
+  return builder.asUint8Array();
 });
 
 const TsHashFactory = Factory.define<Uint8Array>(() => {
-  const builder = new Builder();
+  const builder = new Builder(8);
   builder.addInt32(faker.date.recent().getTime());
-  const hash = arrayify(faker.datatype.hexadecimal({ length: 4 }).toLowerCase());
-  return new Uint8Array([...builder.asUint8Array(), ...hash]);
+  builder.addInt32(faker.datatype.number({ max: 2 ** 32 - 1 }));
+  return builder.asUint8Array();
 });
 
 const UserIdFactory = Factory.define<UserIdT, any, UserId>(({ onCreate }) => {
   onCreate((params) => {
-    const builder = new Builder();
+    const builder = new Builder(1);
     builder.finish(params.pack(builder));
     return UserId.getRootAsUserId(new ByteBuffer(builder.asUint8Array()));
   });
@@ -69,7 +81,7 @@ const UserIdFactory = Factory.define<UserIdT, any, UserId>(({ onCreate }) => {
 
 const CastIdFactory = Factory.define<CastIdT, any, CastId>(({ onCreate }) => {
   onCreate((params) => {
-    const builder = new Builder();
+    const builder = new Builder(1);
     builder.finish(params.pack(builder));
     return CastId.getRootAsCastId(new ByteBuffer(builder.asUint8Array()));
   });
@@ -79,7 +91,7 @@ const CastIdFactory = Factory.define<CastIdT, any, CastId>(({ onCreate }) => {
 
 const MessageDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
   onCreate((params) => {
-    const builder = new Builder();
+    const builder = new Builder(1);
     builder.finish(params.pack(builder));
     return MessageData.getRootAsMessageData(new ByteBuffer(builder.asUint8Array()));
   });
@@ -88,7 +100,7 @@ const MessageDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onC
     MessageBody.CastAddBody,
     CastAddBodyFactory.build(),
     MessageType.CastAdd,
-    faker.date.recent().getTime(),
+    toFarcasterTime(faker.date.recent().getTime()),
     Array.from(FIDFactory.build()),
     FarcasterNetwork.Testnet
   );
@@ -96,7 +108,7 @@ const MessageDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onC
 
 const CastAddBodyFactory = Factory.define<CastAddBodyT, any, CastAddBody>(({ onCreate }) => {
   onCreate((params) => {
-    const builder = new Builder();
+    const builder = new Builder(1);
     builder.finish(params.pack(builder));
     return CastAddBody.getRootAsCastAddBody(new ByteBuffer(builder.asUint8Array()));
   });
@@ -123,7 +135,7 @@ const CastAddDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onC
 
 const CastRemoveBodyFactory = Factory.define<CastRemoveBodyT, any, CastRemoveBody>(({ onCreate }) => {
   onCreate((params) => {
-    const builder = new Builder();
+    const builder = new Builder(1);
     builder.finish(params.pack(builder));
     return CastRemoveBody.getRootAsCastRemoveBody(new ByteBuffer(builder.asUint8Array()));
   });
@@ -145,7 +157,7 @@ const CastRemoveDataFactory = Factory.define<MessageDataT, any, MessageData>(({ 
 
 const FollowBodyFactory = Factory.define<FollowBodyT, any, FollowBody>(({ onCreate }) => {
   onCreate((params) => {
-    const builder = new Builder();
+    const builder = new Builder(1);
     builder.finish(params.pack(builder));
     return FollowBody.getRootAsFollowBody(new ByteBuffer(builder.asUint8Array()));
   });
@@ -179,7 +191,7 @@ const FollowRemoveDataFactory = Factory.define<MessageDataT, any, MessageData>((
 
 const ReactionBodyFactory = Factory.define<ReactionBodyT, any, ReactionBody>(({ onCreate }) => {
   onCreate((params) => {
-    const builder = new Builder();
+    const builder = new Builder(1);
     builder.finish(params.pack(builder));
     return ReactionBody.getRootAsReactionBody(new ByteBuffer(builder.asUint8Array()));
   });
@@ -218,7 +230,7 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
 >(({ onCreate, transientParams }) => {
   onCreate(async (params) => {
     // Generate address and signature
-    const wallet = transientParams.wallet ?? (await generateEthereumSigner()).wallet;
+    const wallet = transientParams.wallet ?? Wallet.createRandom();
     params.address = Array.from(arrayify(wallet.address));
 
     const fid = transientParams.fid ?? FIDFactory.build();
@@ -231,14 +243,14 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
     const signature = await signVerificationEthAddressClaim(claim, wallet);
     params.ethSignature = Array.from(arrayify(signature));
 
-    const builder = new Builder();
+    const builder = new Builder(1);
     builder.finish(params.pack(builder));
     return VerificationAddEthAddressBody.getRootAsVerificationAddEthAddressBody(new ByteBuffer(builder.asUint8Array()));
   });
 
   return new VerificationAddEthAddressBodyT(
     Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 }))),
-    Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
+    Array.from(arrayify(faker.datatype.hexadecimal({ length: 130 }))),
     Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 })))
   );
 });
@@ -258,7 +270,7 @@ const VerificationAddEthAddressDataFactory = Factory.define<MessageDataT, any, M
 const VerificationRemoveBodyFactory = Factory.define<VerificationRemoveBodyT, any, VerificationRemoveBody>(
   ({ onCreate }) => {
     onCreate((params) => {
-      const builder = new Builder();
+      const builder = new Builder(1);
       builder.finish(params.pack(builder));
       return VerificationRemoveBody.getRootAsVerificationRemoveBody(new ByteBuffer(builder.asUint8Array()));
     });
@@ -281,7 +293,7 @@ const VerificationRemoveDataFactory = Factory.define<MessageDataT, any, MessageD
 
 const SignerBodyFactory = Factory.define<SignerBodyT, any, SignerBody>(({ onCreate }) => {
   onCreate((params) => {
-    const builder = new Builder();
+    const builder = new Builder(1);
     builder.finish(params.pack(builder));
     return SignerBody.getRootAsSignerBody(new ByteBuffer(builder.asUint8Array()));
   });
@@ -315,7 +327,7 @@ const SignerRemoveDataFactory = Factory.define<MessageDataT, any, MessageData>((
 
 const UserDataBodyFactory = Factory.define<UserDataBodyT, any, UserDataBody>(({ onCreate }) => {
   onCreate((params) => {
-    const builder = new Builder();
+    const builder = new Builder(1);
     builder.finish(params.pack(builder));
     return UserDataBody.getRootAsUserDataBody(new ByteBuffer(builder.asUint8Array()));
   });
@@ -339,32 +351,34 @@ const MessageFactory = Factory.define<MessageT, { signer?: KeyPair; wallet?: Wal
   ({ onCreate, transientParams }) => {
     onCreate(async (params) => {
       // Generate hash
-      if (params.hash.length == 0) {
+      if (params.hash.length === 0) {
         params.hash = Array.from(blake2b(new Uint8Array(params.data), 4));
       }
 
       // Generate signature
-      if (transientParams.signer) {
-        const signer = transientParams.signer;
-        params.signature = Array.from(await ed.sign(new Uint8Array(params.data), signer.privateKey));
-        params.signer = Array.from(signer.publicKey);
-      } else if (transientParams.wallet) {
-        params.signature = Array.from(await signMessageData(new Uint8Array(params.data), transientParams.wallet));
-        params.signatureScheme = SignatureScheme.EthSignTypedData;
-        params.signer = Array.from(arrayify(transientParams.wallet.address));
-      } else {
-        const signer = await generateEd25519KeyPair();
-        params.signature = Array.from(await ed.sign(new Uint8Array(params.data), signer.privateKey));
-        params.signer = Array.from(signer.publicKey);
+      if (params.signature.length === 0) {
+        if (transientParams.signer) {
+          const signer = transientParams.signer;
+          params.signature = Array.from(await ed.sign(new Uint8Array(params.data), signer.privateKey));
+          params.signer = Array.from(signer.publicKey);
+        } else if (transientParams.wallet) {
+          params.signature = Array.from(await signMessageData(new Uint8Array(params.data), transientParams.wallet));
+          params.signatureScheme = SignatureScheme.Eip712;
+          params.signer = Array.from(arrayify(transientParams.wallet.address));
+        } else {
+          const signer = await generateEd25519KeyPair();
+          params.signature = Array.from(await ed.sign(new Uint8Array(params.data), signer.privateKey));
+          params.signer = Array.from(signer.publicKey);
+        }
       }
 
-      const builder = new Builder();
+      const builder = new Builder(1);
       builder.finish(params.pack(builder));
       return Message.getRootAsMessage(new ByteBuffer(builder.asUint8Array()));
     });
 
     const data = MessageDataFactory.build();
-    const builder = new Builder();
+    const builder = new Builder(1);
     builder.finish(data.pack(builder));
 
     return new MessageT(Array.from(builder.asUint8Array()), [], HashScheme.Blake2b, [], SignatureScheme.Ed25519, []);
@@ -373,7 +387,7 @@ const MessageFactory = Factory.define<MessageT, { signer?: KeyPair; wallet?: Wal
 
 const IDRegistryEventFactory = Factory.define<ContractEventT, any, ContractEvent>(({ onCreate }) => {
   onCreate((params) => {
-    const builder = new Builder();
+    const builder = new Builder(1);
     builder.finish(params.pack(builder));
     return ContractEvent.getRootAsContractEvent(new ByteBuffer(builder.asUint8Array()));
   });
@@ -390,6 +404,7 @@ const IDRegistryEventFactory = Factory.define<ContractEventT, any, ContractEvent
 });
 
 const Factories = {
+  Bytes: BytesFactory,
   FID: FIDFactory,
   TsHash: TsHashFactory,
   UserId: UserIdFactory,

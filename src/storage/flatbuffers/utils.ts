@@ -1,29 +1,23 @@
-// TODO: decide whether to ignore zero padding or not
+import { BadRequestError } from '~/utils/errors';
+
 export const bytesCompare = (a: Uint8Array, b: Uint8Array): number => {
-  if (a[0] === 0) {
-    return bytesCompare(a.slice(1), b);
-  }
+  const aValue = a[0];
+  const bValue = b[0];
 
-  if (b[0] === 0) {
-    return bytesCompare(a, b.slice(1));
-  }
-
-  if (a.length > b.length) {
-    return 1;
-  } else if (a.length < b.length) {
-    return -1;
-  }
-
-  if (a[0] > b[0]) {
-    return 1;
-  } else if (a[0] < b[0]) {
-    return -1;
-  }
-
-  if (a.length > 1 && b.length > 1) {
-    return bytesCompare(a.slice(1), b.slice(1));
-  } else {
+  if (typeof aValue !== 'number' && typeof bValue !== 'number') {
     return 0;
+  } else if (typeof aValue !== 'number') {
+    return -1;
+  } else if (typeof bValue !== 'number') {
+    return 1;
+  }
+
+  if (aValue < bValue) {
+    return -1;
+  } else if (aValue > bValue) {
+    return 1;
+  } else {
+    return bytesCompare(a.subarray(1), b.subarray(1));
   }
 };
 
@@ -40,4 +34,24 @@ export const bytesIncrement = (bytes: Uint8Array): Uint8Array => {
     i = i - 1;
   }
   return new Uint8Array([1, ...bytes]);
+};
+
+export const FARCASTER_EPOCH = 1640995200000; // January 1, 2022 UTC
+export const getFarcasterTime = (): number => {
+  return toFarcasterTime(Date.now());
+};
+
+export const toFarcasterTime = (time: number): number => {
+  if (time < FARCASTER_EPOCH) {
+    throw new BadRequestError('time must be after Farcaster epoch (01/01/2022)');
+  }
+  const secondsSinceEpoch = Math.round((time - FARCASTER_EPOCH) / 1000);
+  if (secondsSinceEpoch > 2 ** 32 - 1) {
+    throw new BadRequestError('time too far in future');
+  }
+  return secondsSinceEpoch;
+};
+
+export const fromFarcasterTime = (time: number): number => {
+  return time * 1000 + FARCASTER_EPOCH;
 };

@@ -4,7 +4,7 @@ import MessageModel from '~/storage/flatbuffers/messageModel';
 import { BadRequestError, NotFoundError } from '~/utils/errors';
 import { UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
 import { UserDataType } from '~/utils/generated/message_generated';
-import UserDataSet from '~/storage/sets/flatbuffers/userDataSet';
+import UserDataSet from '~/storage/sets/flatbuffers/userDataStore';
 
 const db = jestBinaryRocksDB('flatbuffers.userDataSet.test');
 const set = new UserDataSet(db);

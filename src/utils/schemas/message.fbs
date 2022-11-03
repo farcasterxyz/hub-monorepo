@@ -18,7 +18,7 @@ enum MessageType: uint16 {
 
 enum SignatureScheme: uint8 {
   Ed25519 = 1,
-  EthSignTypedData = 2
+  Eip712 = 2
 }
 
 enum HashScheme: uint8 {
