@@ -2,5 +2,5 @@
 
 export enum SignatureScheme {
   Ed25519 = 1,
-  EthSignTypedData = 2
+  Eip712 = 2
 }

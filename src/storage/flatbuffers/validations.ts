@@ -1,0 +1,238 @@
+import { blake2b } from 'ethereum-cryptography/blake2b';
+import {
+  CastAddModel,
+  CastRemoveModel,
+  FollowAddModel,
+  FollowRemoveModel,
+  ReactionAddModel,
+  ReactionRemoveModel,
+  SignerAddModel,
+  SignerRemoveModel,
+  VerificationAddEthAddressModel,
+  VerificationEthAddressClaim,
+  VerificationRemoveModel,
+} from '~/storage/flatbuffers/types';
+import { verifyMessageDataSignature, verifyVerificationEthAddressClaimSignature } from '~/utils/eip712';
+import { ValidationError } from '~/utils/errors';
+import { HashScheme, ReactionType, SignatureScheme } from '~/utils/generated/message_generated';
+import * as ed from '@noble/ed25519';
+import MessageModel, { FID_BYTES } from '~/storage/flatbuffers/messageModel';
+import {
+  isCastAdd,
+  isCastRemove,
+  isFollowAdd,
+  isFollowRemove,
+  isReactionAdd,
+  isReactionRemove,
+  isSignerAdd,
+  isSignerRemove,
+  isVerificationAddEthAddress,
+  isVerificationRemove,
+} from '~/storage/flatbuffers/typeguards';
+import { hexlify } from 'ethers/lib/utils';
+
+/** Number of seconds (10 minutes) that is appropriate for clock skew */
+export const ALLOWED_CLOCK_SKEW = 10 * 60 * 1000;
+
+export const validateMessage = async (message: MessageModel): Promise<MessageModel> => {
+  // 1. Check that the hashScheme and hash are valid
+  if (message.hashScheme() === HashScheme.Blake2b) {
+    const computedHash = await blake2b(message.dataBytes(), 4);
+    if (message.hash() !== computedHash) {
+      throw new ValidationError('invalid hash');
+    }
+  } else {
+    throw new ValidationError('invalid hashScheme');
+  }
+
+  // 2. Check that the signatureScheme and signature are valid
+  if (message.signatureScheme() === SignatureScheme.Eip712) {
+    const verifiedSigner = verifyMessageDataSignature(message.dataBytes(), message.signature());
+    if (verifiedSigner !== message.signer()) {
+      throw new ValidationError('invalid signature');
+    }
+  } else if (message.signatureScheme() === SignatureScheme.Ed25519) {
+    const signatureIsValid = await ed.verify(message.signature(), message.dataBytes(), message.signer());
+    if (!signatureIsValid) {
+      throw new ValidationError('invalid signature');
+    }
+  } else {
+    throw new ValidationError('invalid signatureType');
+  }
+
+  // 3. Verify that the timestamp is not too far in the future.
+  if (message.timestamp() - Date.now() > ALLOWED_CLOCK_SKEW) {
+    throw new ValidationError('timestamp more than 10 mins in the future');
+  }
+
+  if (isCastAdd(message)) {
+    return validateCastAddMessage(message) as MessageModel;
+  } else if (isCastRemove(message)) {
+    return validateCastRemoveMessage(message) as MessageModel;
+  } else if (isReactionAdd(message) || isReactionRemove(message)) {
+    return validateReactionMessage(message) as MessageModel;
+  } else if (isVerificationAddEthAddress(message)) {
+    return (await validateVerificationAddEthAddressMessage(message)) as MessageModel;
+  } else if (isVerificationRemove(message)) {
+    return validateVerificationRemoveMessage(message) as MessageModel;
+  } else if (isSignerAdd(message) || isSignerRemove(message)) {
+    return validateSignerMessage(message) as MessageModel;
+  } else if (isFollowAdd(message) || isFollowRemove(message)) {
+    return validateFollowMessage(message) as MessageModel;
+  } else {
+    throw new ValidationError('unknown message type');
+  }
+};
+
+export const validateFid = (fid?: Uint8Array | null): Uint8Array => {
+  if (!fid) {
+    throw new ValidationError('fid is missing');
+  }
+
+  if (fid.byteLength > FID_BYTES) {
+    throw new ValidationError('fid > uint256');
+  }
+
+  return fid;
+};
+
+export const validateTsHash = (tsHash?: Uint8Array | null): Uint8Array => {
+  if (!tsHash) {
+    throw new ValidationError('tsHash is missing');
+  }
+
+  if (tsHash.byteLength !== 8) {
+    throw new ValidationError('tsHash must be 8 bytes');
+  }
+
+  return tsHash;
+};
+
+export const validateEthAddress = (address?: Uint8Array | null): Uint8Array => {
+  if (!address) {
+    throw new ValidationError('address is missing');
+  }
+
+  if (address.byteLength !== 20) {
+    throw new ValidationError('address must be 20 bytes');
+  }
+
+  return address;
+};
+
+export const validateEthBlockHash = (blockHash?: Uint8Array | null): Uint8Array => {
+  if (!blockHash) {
+    throw new ValidationError('block hash is missing');
+  }
+
+  if (blockHash.byteLength !== 32) {
+    throw new ValidationError('block hash must be 32 bytes');
+  }
+
+  return blockHash;
+};
+
+export const validateEd25519PublicKey = (publicKey?: Uint8Array | null): Uint8Array => {
+  if (!publicKey) {
+    throw new ValidationError('public key is missing');
+  }
+
+  if (publicKey.byteLength !== 32) {
+    throw new ValidationError('public key must be 32 bytes');
+  }
+
+  return publicKey;
+};
+
+export const validateCastAddMessage = (message: CastAddModel): CastAddModel => {
+  const text = message.body().text();
+  if (!text) {
+    throw new ValidationError('text is missing');
+  }
+
+  if (text.length > 320) {
+    throw new ValidationError('text > 320 chars');
+  }
+
+  if (message.body().embedsLength() > 2) {
+    throw new ValidationError('embeds > 2');
+  }
+
+  const parent = message.body().parent();
+  if (parent) {
+    validateFid(parent.fidArray());
+    validateTsHash(parent.tsHashArray());
+  }
+
+  if (message.body().mentionsLength() > 5) {
+    throw new ValidationError('mentions > 5');
+  }
+
+  return message;
+};
+
+export const validateCastRemoveMessage = (message: CastRemoveModel): CastRemoveModel => {
+  validateTsHash(message.body().targetTsHashArray());
+
+  return message;
+};
+
+export const validateReactionMessage = (
+  message: ReactionAddModel | ReactionRemoveModel
+): ReactionAddModel | ReactionRemoveModel => {
+  if (!Object.values(ReactionType).includes(message.body().type())) {
+    throw new ValidationError('invalid reaction type');
+  }
+
+  validateFid(message.body().cast()?.fidArray());
+  validateTsHash(message.body().cast()?.tsHashArray());
+
+  return message;
+};
+
+export const validateVerificationAddEthAddressMessage = async (
+  message: VerificationAddEthAddressModel
+): Promise<VerificationAddEthAddressModel> => {
+  const validAddress = validateEthAddress(message.body().addressArray());
+  const validBlockHash = validateEthBlockHash(message.body().blockHashArray());
+
+  const reconstructedClaim: VerificationEthAddressClaim = {
+    fid: message.fid(),
+    address: hexlify(validAddress),
+    network: message.network(),
+    blockHash: validBlockHash,
+  };
+
+  const recoveredAddress = verifyVerificationEthAddressClaimSignature(
+    reconstructedClaim,
+    message.body().ethSignatureArray() ?? new Uint8Array()
+  );
+
+  if (recoveredAddress !== validAddress) {
+    throw new ValidationError('eth signature does not match address');
+  }
+
+  return message;
+};
+
+export const validateVerificationRemoveMessage = (message: VerificationRemoveModel): VerificationRemoveModel => {
+  validateEthAddress(message.body().addressArray());
+
+  return message;
+};
+
+export const validateSignerMessage = (
+  message: SignerAddModel | SignerRemoveModel
+): SignerAddModel | SignerRemoveModel => {
+  validateEd25519PublicKey(message.body().signerArray());
+
+  return message;
+};
+
+export const validateFollowMessage = (
+  message: FollowAddModel | FollowRemoveModel
+): FollowAddModel | FollowRemoveModel => {
+  validateFid(message.body().user()?.fidArray());
+
+  return message;
+};

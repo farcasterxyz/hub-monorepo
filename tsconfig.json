@@ -36,7 +36,7 @@
     // "noPropertyAccessFromIndexSignature": true,
     // "noUncheckedIndexedAccess": true,
     "noUnusedLocals": false, // causes hard failures when iterating in dev, enforce with eslint instead
-    "noUnusedParameters": true
+    "noUnusedParameters": false
   },
 
   "exclude": ["node_modules", "jest.config.ts"]

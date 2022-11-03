@@ -10,6 +10,9 @@ import {
   MessageType,
   SignerBody,
   UserDataBody,
+  HashScheme,
+  SignatureScheme,
+  FarcasterNetwork,
 } from '~/utils/generated/message_generated';
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { RootPrefix, UserMessagePostfix, UserPostfix } from '~/storage/flatbuffers/types';
@@ -32,7 +35,7 @@ export default class MessageModel {
 
   constructor(message: Message) {
     this.message = message;
-    this.data = MessageData.getRootAsMessageData(new ByteBuffer(message.dataArray() || new Uint8Array()));
+    this.data = MessageData.getRootAsMessageData(new ByteBuffer(message.dataArray() ?? new Uint8Array()));
   }
 
   static from(bytes: Uint8Array) {
@@ -132,7 +135,7 @@ export default class MessageModel {
     return MessageModel.putTransaction(tsx, this);
   }
 
-  setPrefix(): UserMessagePostfix {
+  setPostfix(): UserMessagePostfix {
     if (this.type() === MessageType.CastAdd || this.type() === MessageType.CastRemove) {
       return UserPostfix.CastMessage;
     }
@@ -157,13 +160,15 @@ export default class MessageModel {
       return UserPostfix.UserDataMessage;
     }
 
-    // TODO: add all message types
-
     throw new Error('invalid type');
   }
 
+  dataBytes(): Uint8Array {
+    return this.data.bb?.bytes() ?? new Uint8Array();
+  }
+
   primaryKey(): Buffer {
-    return MessageModel.primaryKey(this.fid(), this.setPrefix(), this.tsHash());
+    return MessageModel.primaryKey(this.fid(), this.setPostfix(), this.tsHash());
   }
 
   bySignerKey(): Buffer {
@@ -175,7 +180,7 @@ export default class MessageModel {
   }
 
   toBytes(): Uint8Array {
-    return this.message.bb?.bytes() || new Uint8Array();
+    return this.message.bb?.bytes() ?? new Uint8Array();
   }
 
   tsHash(): Uint8Array {
@@ -192,6 +197,10 @@ export default class MessageModel {
     return this.data.timestamp();
   }
 
+  network(): FarcasterNetwork {
+    return this.data.network();
+  }
+
   type(): MessageType {
     return this.data.type();
   }
@@ -202,6 +211,18 @@ export default class MessageModel {
 
   hash(): Uint8Array {
     return this.message.hashArray() ?? new Uint8Array();
+  }
+
+  hashScheme(): HashScheme {
+    return this.message.hashScheme();
+  }
+
+  signature(): Uint8Array {
+    return this.message.signatureArray() ?? new Uint8Array();
+  }
+
+  signatureScheme(): SignatureScheme {
+    return this.message.signatureScheme();
   }
 
   signer(): Uint8Array {

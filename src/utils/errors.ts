@@ -21,3 +21,7 @@ export class ServerError extends FarcasterError {
 export class RocksDBError extends FarcasterError {
   public override readonly statusCode = 500;
 }
+
+export class ValidationError extends FarcasterError {
+  public override readonly statusCode = 400;
+}

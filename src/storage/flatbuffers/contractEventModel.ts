@@ -1,7 +1,7 @@
 import { ByteBuffer } from 'flatbuffers';
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { UserPostfix } from '~/storage/flatbuffers/types';
-import { ContractEvent } from '~/utils/generated/contract_event_generated';
+import { ContractEvent, ContractEventType } from '~/utils/generated/contract_event_generated';
 import MessageModel from './messageModel';
 
 export default class ContractEventModel {
@@ -77,5 +77,9 @@ export default class ContractEventModel {
 
   to(): Uint8Array {
     return this.event.toArray() ?? new Uint8Array();
+  }
+
+  type(): ContractEventType {
+    return this.event.type();
   }
 }

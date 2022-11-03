@@ -21,24 +21,26 @@ describe('static methods', () => {
   describe('get', () => {
     test('succeeds when message exists', async () => {
       await model.put(db);
-      await expect(MessageModel.get(db, model.fid(), model.setPrefix(), model.tsHash())).resolves.toEqual(model);
+      await expect(MessageModel.get(db, model.fid(), model.setPostfix(), model.tsHash())).resolves.toEqual(model);
     });
 
     test('fails when message not found', async () => {
-      await expect(MessageModel.get(db, model.fid(), model.setPrefix(), model.tsHash())).rejects.toThrow(NotFoundError);
+      await expect(MessageModel.get(db, model.fid(), model.setPostfix(), model.tsHash())).rejects.toThrow(
+        NotFoundError
+      );
     });
 
     test('fails with wrong key', async () => {
       await model.put(db);
       const badKey = new Uint8Array([...model.tsHash(), 1]);
-      await expect(MessageModel.get(db, model.fid(), model.setPrefix(), badKey)).rejects.toThrow(NotFoundError);
+      await expect(MessageModel.get(db, model.fid(), model.setPostfix(), badKey)).rejects.toThrow(NotFoundError);
     });
   });
 
   describe('getManyByUser', () => {
     test('succeeds', async () => {
       await model.put(db);
-      const getMany = MessageModel.getManyByUser(db, model.fid(), model.setPrefix(), [model.tsHash()]);
+      const getMany = MessageModel.getManyByUser(db, model.fid(), model.setPostfix(), [model.tsHash()]);
       await expect(getMany).resolves.toEqual([model]);
     });
   });
@@ -78,7 +80,7 @@ describe('static methods', () => {
 
       await db.commit(tsx);
       const order = [];
-      for await (const [_, value] of db.iterator({ keys: false, valueAsBuffer: false })) {
+      for await (const [, value] of db.iterator({ keys: false, valueAsBuffer: false })) {
         order.push(value);
       }
       expect(order).toEqual(['a', 'c', 'b', 'd', 'e']);
@@ -166,7 +168,7 @@ describe('instance methods', () => {
       await expect(model.put(db)).resolves.toEqual(undefined);
     });
     test('stores binary message', async () => {
-      const get = MessageModel.get(db, model.fid(), model.setPrefix(), model.tsHash());
+      const get = MessageModel.get(db, model.fid(), model.setPostfix(), model.tsHash());
       await expect(get).resolves.toEqual(model);
     });
 

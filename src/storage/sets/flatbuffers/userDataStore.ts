@@ -7,7 +7,7 @@ import { isUserDataAdd } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { UserDataType } from '~/utils/generated/message_generated';
 
-class UserDataSet {
+class UserDataStore {
   private _db: RocksDB;
 
   constructor(db: RocksDB) {
@@ -25,13 +25,13 @@ class UserDataSet {
 
   /** Look up UserDataAdd message by fid and type */
   async getUserDataAdd(fid: Uint8Array, dataType: UserDataType): Promise<UserDataAddModel> {
-    const messageTimestampHash = await this._db.get(UserDataSet.userDataAddsKey(fid, dataType));
+    const messageTimestampHash = await this._db.get(UserDataStore.userDataAddsKey(fid, dataType));
     return MessageModel.get<UserDataAddModel>(this._db, fid, UserPostfix.UserDataMessage, messageTimestampHash);
   }
 
   /** Get all UserDataAdd messages for an fid */
   async getUserDataAddsByUser(fid: Uint8Array): Promise<UserDataAddModel[]> {
-    const addsPrefix = UserDataSet.userDataAddsKey(fid);
+    const addsPrefix = UserDataStore.userDataAddsKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(addsPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
@@ -72,7 +72,7 @@ class UserDataSet {
   private async resolveMergeConflicts(tsx: Transaction, message: UserDataAddModel): Promise<Transaction | undefined> {
     // Look up the current add timestampHash for this dataType
     const addTimestampHash = await ResultAsync.fromPromise(
-      this._db.get(UserDataSet.userDataAddsKey(message.fid(), message.body().type())),
+      this._db.get(UserDataStore.userDataAddsKey(message.fid(), message.body().type())),
       () => undefined
     );
 
@@ -101,18 +101,18 @@ class UserDataSet {
     tsx = MessageModel.putTransaction(tsx, message);
 
     // Put userDataAdds index
-    tsx = tsx.put(UserDataSet.userDataAddsKey(message.fid(), message.body().type()), Buffer.from(message.tsHash()));
+    tsx = tsx.put(UserDataStore.userDataAddsKey(message.fid(), message.body().type()), Buffer.from(message.tsHash()));
 
     return tsx;
   }
 
   private deleteUserDataAddTransaction(tsx: Transaction, message: UserDataAddModel): Transaction {
     // Delete from userDataAdds
-    tsx = tsx.del(UserDataSet.userDataAddsKey(message.fid(), message.body().type()));
+    tsx = tsx.del(UserDataStore.userDataAddsKey(message.fid(), message.body().type()));
 
     // Delete message
     return MessageModel.deleteTransaction(tsx, message);
   }
 }
 
-export default UserDataSet;
+export default UserDataStore;

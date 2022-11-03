@@ -350,7 +350,7 @@ const MessageFactory = Factory.define<MessageT, { signer?: KeyPair; wallet?: Wal
         params.signer = Array.from(signer.publicKey);
       } else if (transientParams.wallet) {
         params.signature = Array.from(await signMessageData(new Uint8Array(params.data), transientParams.wallet));
-        params.signatureScheme = SignatureScheme.EthSignTypedData;
+        params.signatureScheme = SignatureScheme.Eip712;
         params.signer = Array.from(arrayify(transientParams.wallet.address));
       } else {
         const signer = await generateEd25519KeyPair();
