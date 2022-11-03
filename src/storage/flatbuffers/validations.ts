@@ -261,11 +261,30 @@ export const validateFollowMessage = (
 };
 
 export const validateUserDataAddMessage = (message: UserDataAddModel): UserDataAddModel => {
-  if (!Object.values(UserDataType).includes(message.body().type())) {
+  const value = message.body().value();
+  if (message.body().type() === UserDataType.Pfp) {
+    if (value && value.length > 256) {
+      throw new ValidationError('pfp value > 256');
+    }
+  } else if (message.body().type() === UserDataType.Display) {
+    if (value && value.length > 32) {
+      throw new ValidationError('display value > 32');
+    }
+  } else if (message.body().type() === UserDataType.Bio) {
+    if (value && value.length > 256) {
+      throw new ValidationError('bio value > 256');
+    }
+  } else if (message.body().type() === UserDataType.Location) {
+    if (value && value.length > 32) {
+      throw new ValidationError('location value > 32');
+    }
+  } else if (message.body().type() === UserDataType.Url) {
+    if (value && value.length > 256) {
+      throw new ValidationError('url value > 256');
+    }
+  } else {
     throw new ValidationError('invalid user data type');
   }
-
-  // TODO: value validation
 
   return message;
 };

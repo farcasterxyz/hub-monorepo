@@ -14,6 +14,7 @@ import {
   validateReactionMessage,
   validateSignerMessage,
   validateTsHash,
+  validateUserDataAddMessage,
   validateVerificationAddEthAddressMessage,
   validateVerificationRemoveMessage,
 } from '~/storage/flatbuffers/validations';
@@ -28,6 +29,8 @@ import {
   ReactionType,
   SignatureScheme,
   SignerBodyT,
+  UserDataBodyT,
+  UserDataType,
   UserIdT,
   VerificationAddEthAddressBodyT,
   VerificationRemoveBodyT,
@@ -44,6 +47,7 @@ import {
   ReactionRemoveModel,
   SignerAddModel,
   SignerRemoveModel,
+  UserDataAddModel,
   VerificationAddEthAddressModel,
   VerificationEthAddressClaim,
   VerificationRemoveModel,
@@ -599,6 +603,72 @@ describe('validateFollowMessage', () => {
         user: new UserIdT(Array.from(Factories.Bytes.build({}, { transient: { length: 33 } }))),
       });
       validationErrorMessage = 'fid > 32 bytes';
+    });
+  });
+});
+
+describe('validateUserDataAddMessage', () => {
+  test('succeeds', async () => {
+    const userDataAddData = await Factories.UserDataAddData.create();
+    const userDataAdd = new MessageModel(
+      await Factories.Message.create({ data: Array.from(userDataAddData.bb?.bytes() ?? []) }, { transient: { signer } })
+    ) as UserDataAddModel;
+    expect(validateUserDataAddMessage(userDataAdd)).toEqual(userDataAdd);
+  });
+
+  describe('fails', () => {
+    let body: UserDataBodyT;
+    let validationErrorMessage: string;
+
+    afterEach(async () => {
+      const userDataAddData = await Factories.UserDataAddData.create({ body });
+      const userDataAdd = new MessageModel(
+        await Factories.Message.create(
+          { data: Array.from(userDataAddData.bb?.bytes() ?? []) },
+          { transient: { signer } }
+        )
+      ) as UserDataAddModel;
+      expect(() => validateUserDataAddMessage(userDataAdd)).toThrow(new ValidationError(validationErrorMessage));
+    });
+
+    test('when pfp > 256', () => {
+      body = Factories.UserDataBody.build({
+        type: UserDataType.Pfp,
+        value: faker.random.alphaNumeric(257),
+      });
+      validationErrorMessage = 'pfp value > 256';
+    });
+
+    test('when display > 32', () => {
+      body = Factories.UserDataBody.build({
+        type: UserDataType.Display,
+        value: faker.random.alphaNumeric(33),
+      });
+      validationErrorMessage = 'display value > 32';
+    });
+
+    test('when bio > 256', () => {
+      body = Factories.UserDataBody.build({
+        type: UserDataType.Bio,
+        value: faker.random.alphaNumeric(257),
+      });
+      validationErrorMessage = 'bio value > 256';
+    });
+
+    test('when location > 32', () => {
+      body = Factories.UserDataBody.build({
+        type: UserDataType.Location,
+        value: faker.random.alphaNumeric(33),
+      });
+      validationErrorMessage = 'location value > 32';
+    });
+
+    test('when url > 256', () => {
+      body = Factories.UserDataBody.build({
+        type: UserDataType.Url,
+        value: faker.random.alphaNumeric(257),
+      });
+      validationErrorMessage = 'url value > 256';
     });
   });
 });
