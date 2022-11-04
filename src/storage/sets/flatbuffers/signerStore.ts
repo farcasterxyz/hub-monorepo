@@ -8,8 +8,34 @@ import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 
-// Research: Model out how safe it is to use a 32-bit hash
-
+/**
+ * SignerStore persists Signer Messages in RocksDB using a series of two-phase CRDT sets
+ * to guarantee eventual consistency.
+ *
+ * A Signer is an EdDSA key-pair that is authorized to sign Messages on behalf of a user. They can
+ * be added with a SignerAdd message that is signed by the user's custody address. Signers that are
+ * signed by the custody address that currently holds the fid are considered active. All other
+ * Farcaster Messages must be signed by an active signer.
+ *
+ * Signers can be removed with a SignerREmove message signed by the user's custody address.
+ * Removing a signer also removes all messages signed by it, and should only be invoked if a
+ * compromise is suspected.
+ *
+ * The SignerStore has a two-phase CRDT set for each custody address, which keeps tracks of
+ * signers. It also stores the current custody address as a single key in the database which can be
+ * used to look up the two-phase set that corresponds to the active signers. Conflicts between
+ * Signer messages are resolved with Last-Write-Wins + Remove-Wins rules as follows:
+ *
+ * 1. Highest timestamp wins
+ * 2. Remove wins over Adds
+ * 3. Highest lexicographic hash wins
+ *
+ * The key-value entries created by the Signer Store are:
+ *
+ * 1. fid:tsHash -> signer message
+ * 2. fid:set:custodyAddress:signerAddress -> fid:tsHash (Set Index)
+ * 3. fid:custodyAddress -> fid:tsHash (Custody Address)
+ */
 class SignerStore {
   private _db: RocksDB;
 
@@ -18,42 +44,42 @@ class SignerStore {
   }
 
   /**
-   * Generates a unique key used to store a SignerAdd message key in the SignerAdds Set index
+   * Generates a unique key used to store a SignerAdd message key in the SignerAdds set index
    *
    * @param fid farcaster id of the user who created the Signer
    * @param custodyAddress the Ethereum address of the secp256k1 key-pair that signed the message
-   * @param signer (TODO)
+   * @param signerPubKey the EdDSA public key of the signer
    *
-   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<custodyAddress?>:<signer?>
+   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<custodyAddress?>:<signerPubKey?>
    */
-  static signerAddsKey(fid: Uint8Array, custodyAddress: Uint8Array, signer?: Uint8Array): Buffer {
+  static signerAddsKey(fid: Uint8Array, custodyAddress: Uint8Array, signerPubKey?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
       Buffer.from([UserPostfix.SignerAdds]),
       Buffer.from(custodyAddress),
-      signer ? Buffer.from(signer) : new Uint8Array(),
+      signerPubKey ? Buffer.from(signerPubKey) : new Uint8Array(),
     ]);
   }
 
   /**
-   * Generates a unique key used to store a SignerRemove message key in the SignerRemoves Set index
+   * Generates a unique key used to store a SignerRemove message key in the SignerRemoves set index
    *
    * @param fid farcaster id of the user who created the Signer
    * @param custodyAddress the Ethereum address of the secp256k1 key-pair that signed the message
-   * @param signer
+   * @param signerPubKey the EdDSA public key of the signer
    *
-   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<custodyAddress?>:<signer?>
+   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<custodyAddress?>:<signerPubKey?>
    */
-  static signerRemovesKey(fid: Uint8Array, custodyAddress: Uint8Array, signer?: Uint8Array): Buffer {
+  static signerRemovesKey(fid: Uint8Array, custodyAddress: Uint8Array, signerPubKey?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
       Buffer.from([UserPostfix.SignerRemoves]),
       Buffer.from(custodyAddress),
-      signer ? Buffer.from(signer) : new Uint8Array(),
+      signerPubKey ? Buffer.from(signerPubKey) : new Uint8Array(),
     ]);
   }
 
-  /** Returns the most recent event from the IdRegistry contract that moved an fid  */
+  /** Returns the most recent event from the IdRegistry contract that affected the fid  */
   async getIdRegistryEvent(fid: Uint8Array): Promise<ContractEventModel> {
     return ContractEventModel.get(this._db, fid);
   }
@@ -64,31 +90,32 @@ class SignerStore {
     return idRegistryEvent.to();
   }
 
-  // TODO: consider having a separate get signer add method
+  //TODO: When implementing the Result type consider refactoring these methods into separate ones
+  // for active vs. all signers
 
   /**
-   * Finds a SignerAdd Message by checking the Adds Set index
+   * Finds a SignerAdd Message by checking the adds-set's index for a user's custody address
    *
-   * @param fid fid of the user who created the reaction add
-   * @param signer type of reaction that was added
-   * @param custodyAddress the Ethereum address that currently owns the Farcaster ID
-   * @returns the ReactionAdd Model if it exists, throws NotFoundError otherwise
+   * @param fid fid of the user who created the SignerAdd
+   * @param signerPubKey the EdDSA public key of the signer
+   * @param custodyAddress the Ethereum address that currently owns the Farcaster ID (default: current custody address)
+   * @returns the SignerAdd Model if it exists, throws NotFoundError otherwise
    */
-  async getSignerAdd(fid: Uint8Array, signer: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerAddModel> {
+  async getSignerAdd(fid: Uint8Array, signerPubKey: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerAddModel> {
     if (!custodyAddress) {
       custodyAddress = await this.getCustodyAddress(fid);
     }
 
-    const messageTsHash = await this._db.get(SignerStore.signerAddsKey(fid, custodyAddress, signer));
+    const messageTsHash = await this._db.get(SignerStore.signerAddsKey(fid, custodyAddress, signerPubKey));
     return MessageModel.get<SignerAddModel>(this._db, fid, UserPostfix.SignerMessage, messageTsHash);
   }
 
   /**
-   * Finds a SignerRemove Message by checking the Remove Set index
+   * Finds a SignerRemove Message by checking the remove-set's index for a user's custody address
    *
-   * @param fid fid of the user who created the reaction remove
-   * @param signer type of reaction that was added
-   * @param custodyAddress the Ethereum address that currently owns the Farcaster ID
+   * @param fid fid of the user who created the SignerRemove
+   * @param signer the EdDSA public key of the signer
+   * @param custodyAddress the Ethereum address that currently owns the Farcaster ID (default: current custody address)
    * @returns the SignerRemove message if it exists, throws NotFoundError otherwise
    */
   async getSignerRemove(fid: Uint8Array, signer: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerRemoveModel> {
@@ -99,13 +126,14 @@ class SignerStore {
     return MessageModel.get<SignerRemoveModel>(this._db, fid, UserPostfix.SignerMessage, messageTsHash);
   }
 
-  //TODO: consider having two separate methods, one that requires the param and one that doesnt
+  //TODO: When implementing the Result type consider refactoring these methods into separate ones
+  // for active vs. all signers
 
   /**
    * Finds all SignerAdd messages for a user's custody address
    *
-   * @param fid fid of the user who created the reaction remove
-   * @param custodyAddress the Ethereum address that currently owns the fid, defaults to latest address
+   * @param fid fid of the user who created the signers
+   * @param custodyAddress the Ethereum address that currently owns the fid (default: current custody address)
    * @returns the SignerRemove messages if it exists, throws NotFoundError otherwise
    */
   async getSignerAddsByUser(fid: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerAddModel[]> {
@@ -121,10 +149,10 @@ class SignerStore {
   }
 
   /**
-   * Finds all SignerRemove Messages for a user
+   * Finds all SignerRemove Messages for a user's custody address
    *
-   * @param fid fid of the user who created the reaction remove
-   * @param custodyAddress the Ethereum address that currently owns the fid, defaults to latest address
+   * @param fid fid of the user who created the signers
+   * @param custodyAddress the Ethereum address that currently owns the fid (default: current custody address)
    * @returns the SignerRemove message if it exists, throws NotFoundError otherwise
    */
   async getSignerRemovesByUser(fid: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerRemoveModel[]> {
@@ -142,8 +170,6 @@ class SignerStore {
   /**
    * Merges a ContractEvent into the SignerStore, storing the causally latest event at the key:
    * <RootPrefix:User><fid><UserPostfix:IdRegistryEvent>
-   *
-   * @param event the ContractEventModel to merge
    */
   async mergeIdRegistryEvent(event: ContractEventModel): Promise<void> {
     // TODO: emit signer change events as a result of ID Registry events
@@ -157,7 +183,7 @@ class SignerStore {
     return this._db.commit(txn);
   }
 
-  /** Merge a SignerAdd or SignerRemove message into the SignerStore */
+  /** Merges a SignerAdd or SignerRemove message into the SignerStore */
   async merge(message: MessageModel): Promise<void> {
     if (isSignerRemove(message)) {
       return this.mergeRemove(message);

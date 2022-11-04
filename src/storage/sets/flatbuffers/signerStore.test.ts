@@ -76,9 +76,6 @@ describe('getIdRegistryEvent', () => {
   });
 });
 
-// TODO: test getSignerAdd, particularly exception behavior
-// TODO: test getSignerRemove, particularly exception behavior
-
 describe('getCustodyAddress', () => {
   test('returns to from current IdRegistry event', async () => {
     await set.mergeIdRegistryEvent(custody1Event);
@@ -95,12 +92,17 @@ describe('getSignerAdd', () => {
     await expect(set.getSignerAdd(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
   });
 
+  test('fails if incorrect custody address is passed in', async () => {
+    await set.merge(signerAdd);
+    const arbitraryCustodyAddress = arrayify(faker.datatype.hexadecimal({ length: 40 }));
+
+    await expect(set.getSignerAdd(fid, signer, arbitraryCustodyAddress)).rejects.toThrow(NotFoundError);
+  });
+
   test('returns message', async () => {
     await set.merge(signerAdd);
     await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAdd);
   });
-
-  // TEST: fails if incorrect custody address is passed in
 
   describe('without passing custodyAddress', () => {
     test('defaults to current custodyAddress', async () => {
@@ -118,18 +120,20 @@ describe('getSignerAdd', () => {
 
 describe('getSignerRemove', () => {
   test('fails if missing', async () => {
-    // DOCUMENT: what is the significance of passing in a custody address and not having the IdEvent?
-    // Best understanding -- not passing in an address will return a message even if the relevant custody address has not e,rged
-
     await expect(set.getSignerRemove(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
+  });
+
+  test('fails if incorrect custody address is passed in', async () => {
+    await set.merge(signerRemove);
+    const arbitraryCustodyAddress = arrayify(faker.datatype.hexadecimal({ length: 40 }));
+
+    await expect(set.getSignerAdd(fid, signer, arbitraryCustodyAddress)).rejects.toThrow(NotFoundError);
   });
 
   test('returns message', async () => {
     await set.merge(signerRemove);
     await expect(set.getSignerRemove(fid, signer, custody1Address)).resolves.toEqual(signerRemove);
   });
-
-  // TEST: fails if incorrect custody address is passed in
 
   describe('without passing custodyAddress', () => {
     test('defaults to current custodyAddress', async () => {
@@ -161,8 +165,6 @@ describe('getSignerAddsByUser', () => {
     await expect(set.getSignerAddsByUser(fid, custody1Address)).resolves.toEqual([]);
   });
 
-  // TEST: what is returned when the IdRegistry event is merged
-
   describe('without passing custodyAddress', () => {
     test('defaults to current custodyAddress', async () => {
       await set.mergeIdRegistryEvent(custody1Event);
@@ -193,8 +195,6 @@ describe('getSignerRemovesByUser', () => {
     await expect(set.getSignerRemovesByUser(fid, custody1Address)).resolves.toEqual([]);
   });
 
-  // TEST: what is returned when the IdRegistry event is merged
-
   describe('without passing custodyAddress', () => {
     test('defaults to current custodyAddress', async () => {
       await set.mergeIdRegistryEvent(custody1Event);
@@ -208,6 +208,8 @@ describe('getSignerRemovesByUser', () => {
     });
   });
 });
+
+// TODO: write test cases for cyclical custody event transfers
 
 describe('mergeIdRegistryEvent', () => {
   test('succeeds and activates signers, if present', async () => {
@@ -315,8 +317,6 @@ describe('mergeIdRegistryEvent', () => {
       newEvent = custody1Event;
     });
   });
-
-  // TEST: if 3 custody events are present, and the last one moves it back to the first, what will happen?
 });
 
 describe('merge', () => {
