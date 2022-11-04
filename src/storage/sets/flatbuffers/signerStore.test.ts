@@ -29,7 +29,7 @@ let signerRemove: SignerRemoveModel;
 beforeAll(async () => {
   custody1 = await generateEthereumSigner();
   custody1Address = arrayify(custody1.signerKey);
-  const idRegistryEvent = await Factories.IDRegistryEvent.create({
+  const idRegistryEvent = await Factories.IdRegistryEvent.create({
     fid: Array.from(fid),
     to: Array.from(custody1Address),
   });
@@ -79,7 +79,7 @@ describe('getIdRegistryEvent', () => {
 // TODO: test getSignerRemove, particularly exception behavior
 
 describe('getCustodyAddress', () => {
-  test('returns to from current IDRegistry event', async () => {
+  test('returns to from current IdRegistry event', async () => {
     await set.mergeIdRegistryEvent(custody1Event);
     await expect(set.getCustodyAddress(fid)).resolves.toEqual(custody1Address);
   });
@@ -237,7 +237,7 @@ describe('mergeIdRegistryEvent', () => {
     });
 
     test('when it has a higher block number', async () => {
-      const idRegistryEvent = await Factories.IDRegistryEvent.create({
+      const idRegistryEvent = await Factories.IdRegistryEvent.create({
         ...custody1Event.event.unpack(),
         to: Array.from(custody2Address),
         blockNumber: custody1Event.blockNumber() + 1,
@@ -246,7 +246,7 @@ describe('mergeIdRegistryEvent', () => {
     });
 
     test('when it has the same block number and a higher log index', async () => {
-      const idRegistryEvent = await Factories.IDRegistryEvent.create({
+      const idRegistryEvent = await Factories.IdRegistryEvent.create({
         ...custody1Event.event.unpack(),
         to: Array.from(custody2Address),
         logIndex: custody1Event.logIndex() + 1,
@@ -255,7 +255,7 @@ describe('mergeIdRegistryEvent', () => {
     });
 
     test('when it has the same block number and log index and a higher tx hash order', async () => {
-      const idRegistryEvent = await Factories.IDRegistryEvent.create({
+      const idRegistryEvent = await Factories.IdRegistryEvent.create({
         ...custody1Event.event.unpack(),
         to: Array.from(custody2Address),
         // Discuss: doesn't this result in the hash being larger and technically invalid?
@@ -278,7 +278,7 @@ describe('mergeIdRegistryEvent', () => {
     });
 
     test('when it has a lower block number', async () => {
-      const idRegistryEvent = await Factories.IDRegistryEvent.create({
+      const idRegistryEvent = await Factories.IdRegistryEvent.create({
         ...custody1Event.event.unpack(),
         to: Array.from(custody2Address),
         blockNumber: custody1Event.blockNumber() - 1,
@@ -287,7 +287,7 @@ describe('mergeIdRegistryEvent', () => {
     });
 
     test('when it has the same block number and a lower log index', async () => {
-      const idRegistryEvent = await Factories.IDRegistryEvent.create({
+      const idRegistryEvent = await Factories.IdRegistryEvent.create({
         ...custody1Event.event.unpack(),
         to: Array.from(custody2Address),
         logIndex: custody1Event.logIndex() - 1,
@@ -296,7 +296,7 @@ describe('mergeIdRegistryEvent', () => {
     });
 
     test('when it has the same block number and log index and a lower transaction hash order', async () => {
-      const idRegistryEvent = await Factories.IDRegistryEvent.create({
+      const idRegistryEvent = await Factories.IdRegistryEvent.create({
         ...custody1Event.event.unpack(),
         to: Array.from(custody2Address),
         transactionHash: Array.from([...custody1Event.transactionHash().slice(0, -1)]),

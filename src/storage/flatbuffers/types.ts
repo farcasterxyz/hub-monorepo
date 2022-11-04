@@ -59,7 +59,7 @@ export enum UserPostfix {
   /* Used to index a verification in the remove set */
   VerificationRemoves = 13,
   /* Used to store an id registry event */
-  IDRegistryEvent = 14,
+  IdRegistryEvent = 14,
   /* Used to store a signer */
   SignerMessage = 15,
   /* Used to index a signer in the add set */

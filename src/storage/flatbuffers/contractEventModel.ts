@@ -18,7 +18,7 @@ export default class ContractEventModel {
 
   /** <user prefix byte, fid, ID Registry event prefix byte> */
   static primaryKey(fid: Uint8Array): Buffer {
-    return Buffer.concat([MessageModel.userKey(fid), Buffer.from([UserPostfix.IDRegistryEvent])]);
+    return Buffer.concat([MessageModel.userKey(fid), Buffer.from([UserPostfix.IdRegistryEvent])]);
   }
 
   static async get<T extends ContractEventModel>(db: RocksDB, fid: Uint8Array): Promise<T> {

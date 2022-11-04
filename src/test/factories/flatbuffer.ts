@@ -385,7 +385,7 @@ const MessageFactory = Factory.define<MessageT, { signer?: KeyPair; wallet?: Wal
   }
 );
 
-const IDRegistryEventFactory = Factory.define<ContractEventT, any, ContractEvent>(({ onCreate }) => {
+const IdRegistryEventFactory = Factory.define<ContractEventT, any, ContractEvent>(({ onCreate }) => {
   onCreate((params) => {
     const builder = new Builder(1);
     builder.finish(params.pack(builder));
@@ -399,7 +399,7 @@ const IDRegistryEventFactory = Factory.define<ContractEventT, any, ContractEvent
     faker.datatype.number({ max: 1000 }),
     Array.from(FIDFactory.build()),
     Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 }))),
-    ContractEventType.IDRegistryRegister
+    ContractEventType.IdRegistryRegister
   );
 });
 
@@ -430,7 +430,7 @@ const Factories = {
   UserDataBody: UserDataBodyFactory,
   UserDataAddData: UserDataAddDataFactory,
   Message: MessageFactory,
-  IDRegistryEvent: IDRegistryEventFactory,
+  IdRegistryEvent: IdRegistryEventFactory,
 };
 
 export default Factories;

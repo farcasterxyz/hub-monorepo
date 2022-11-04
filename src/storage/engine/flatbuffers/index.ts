@@ -62,8 +62,8 @@ class Engine {
 
   async mergeIdRegistryEvent(event: ContractEventModel): Promise<void> {
     if (
-      event.type() === ContractEventType.IDRegistryRegister ||
-      event.type() === ContractEventType.IDRegistryTransfer
+      event.type() === ContractEventType.IdRegistryRegister ||
+      event.type() === ContractEventType.IdRegistryTransfer
     ) {
       return this._signerStore.mergeIdRegistryEvent(event);
     } else {
