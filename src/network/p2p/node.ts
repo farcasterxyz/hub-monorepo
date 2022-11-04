@@ -3,7 +3,6 @@ import { Noise } from '@chainsafe/libp2p-noise';
 import { Connection } from '@libp2p/interface-connection';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { Mplex } from '@libp2p/mplex';
-import { PubSubPeerDiscovery } from '@libp2p/pubsub-peer-discovery';
 import { TCP } from '@libp2p/tcp';
 import { Multiaddr } from '@multiformats/multiaddr';
 import { createLibp2p, Libp2p } from 'libp2p';
@@ -14,6 +13,7 @@ import { decodeMessage, encodeMessage, GossipMessage, GOSSIP_TOPICS } from '~/ne
 import { ConnectionFilter } from './connectionFilter';
 import { logger } from '~/utils/logger';
 import { checkNodeAddrs } from '~/utils/p2p';
+import { PubSubPeerDiscovery } from '@libp2p/pubsub-peer-discovery';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
 
@@ -68,7 +68,15 @@ export class Node extends TypedEmitter<NodeEvents> {
     return this._node?.getMultiaddrs();
   }
 
-  async getPeerAddress(peerId: PeerId) {
+  async getPeerInfo(peerId: PeerId) {
+    const existingConnections = this._node?.connectionManager.getConnections(peerId);
+    for (const conn of existingConnections ?? []) {
+      const knownAddrs = await this._node?.peerStore.addressBook.get(peerId);
+      if (knownAddrs && !knownAddrs.find((addr) => addr.multiaddr.equals(conn.remoteAddr))) {
+        // update the peer store
+        await this._node?.peerStore.addressBook.add(peerId, [conn.remoteAddr]);
+      }
+    }
     return await this._node?.peerStore.get(peerId);
   }
 
@@ -95,10 +103,6 @@ export class Node extends TypedEmitter<NodeEvents> {
       { identity: this.identity, addresses: this._node.getMultiaddrs().map((a) => a.toString()) },
       'Starting libp2p'
     );
-    log.info('listening on addresses:');
-    this._node.getMultiaddrs().forEach((addr) => {
-      log.info(addr.toString());
-    });
 
     await this.bootstrap(bootstrapAddrs);
   }
@@ -163,9 +167,9 @@ export class Node extends TypedEmitter<NodeEvents> {
       // how to select an addr here?
       for (const addr of multiaddrs) {
         try {
-          const result = await this._node?.dial(addr);
+          const result = await this.connectAddress(addr);
           // bail after the first successful connection
-          if (result) return ok(undefined);
+          if (result.isOk()) return ok(undefined);
         } catch (error: any) {
           log.error(error, 'Failed to connect to addr');
           continue;
@@ -277,8 +281,8 @@ export class Node extends TypedEmitter<NodeEvents> {
       transports: [new TCP()],
       streamMuxers: [new Mplex()],
       connectionEncryption: [new Noise()],
-      peerDiscovery: [new PubSubPeerDiscovery()],
       pubsub: gossip,
+      peerDiscovery: [new PubSubPeerDiscovery()],
     });
     return node;
   }
