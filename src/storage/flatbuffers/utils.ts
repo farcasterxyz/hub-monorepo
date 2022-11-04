@@ -36,6 +36,21 @@ export const bytesIncrement = (bytes: Uint8Array): Uint8Array => {
   return new Uint8Array([1, ...bytes]);
 };
 
+/* eslint-disable security/detect-object-injection */
+export const bytesDecrement = (bytes: Uint8Array): Uint8Array => {
+  let i = bytes.length - 1;
+  while (i >= 0) {
+    if (bytes[i] > 0) {
+      bytes[i] = bytes[i] - 1;
+      return bytes;
+    } else {
+      bytes[i] = 255;
+    }
+    i = i - 1;
+  }
+  return new Uint8Array([1, ...bytes]);
+};
+
 export const FARCASTER_EPOCH = 1640995200000; // January 1, 2022 UTC
 export const getFarcasterTime = (): number => {
   return toFarcasterTime(Date.now());

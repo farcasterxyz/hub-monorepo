@@ -9,6 +9,8 @@ import SignerStore from '~/storage/sets/flatbuffers/signerStore';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { SignerAddModel, SignerRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
 import MessageModel from '~/storage/flatbuffers/messageModel';
+import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
+import { MessageType } from '~/utils/generated/message_generated';
 
 const db = jestBinaryRocksDB('flatbuffers.signerStore.test');
 const set = new SignerStore(db);
@@ -44,6 +46,7 @@ beforeAll(async () => {
     body: Factories.SignerBody.build({ signer: Array.from(signer) }),
     fid: Array.from(fid),
   });
+
   const addMessage = await Factories.Message.create(
     { data: Array.from(addData.bb?.bytes() ?? []) },
     { transient: { wallet: custody1.wallet } }
@@ -312,24 +315,27 @@ describe('mergeIdRegistryEvent', () => {
   // TEST: if 3 custody events are present, and the last one moves it back to the first, what will happen?
 });
 
-// States
-// Invalid message
-// A Signer Add is observed, with nothing
-// A Signer Add is observed, with a SignerAdd (with older ts)
-// A Signer Add is observed, with a SignerAdd (with newer ts)
-// A Signer Add is observed, with a SignerAdd (with same ts, but newer hash)
-// A Signer Add is observed, with a SignerAdd (with same ts, but older hash)
-
-// A Signer Add is observed, with a SignerRemove (with older ts)
-// A Signer Add is observed, with a SignerRemove (with newer ts)
-// A Signer Add is observed, with a SignerRemove (with same ts, and newer hash)
-// A Signer Add is observed, with a SignerRemove (with same ts, and older hash)
-
-// State Changes
-// Message
-// SetIndex
-
 describe('merge', () => {
+  const assertSignerExists = async (message: SignerAddModel | SignerRemoveModel) => {
+    await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, message.tsHash())).resolves.toEqual(message);
+  };
+
+  const assertSignerDoesNotExist = async (message: SignerAddModel | SignerRemoveModel) => {
+    await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, message.tsHash())).rejects.toThrow(NotFoundError);
+  };
+
+  const assertSignerAddWins = async (message: SignerAddModel) => {
+    await assertSignerExists(message);
+    await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(message);
+    await expect(set.getSignerRemove(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
+  };
+
+  const assertSignerRemoveWins = async (message: SignerRemoveModel) => {
+    await assertSignerExists(message);
+    await expect(set.getSignerRemove(fid, signer, custody1Address)).resolves.toEqual(message);
+    await expect(set.getSignerAdd(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
+  };
+
   test('fails with invalid message type', async () => {
     const invalidData = await Factories.ReactionAddData.create({ fid: Array.from(fid) });
     const message = await Factories.Message.create({ data: Array.from(invalidData.bb?.bytes() ?? []) });
@@ -337,131 +343,189 @@ describe('merge', () => {
   });
 
   describe('SignerAdd', () => {
-    describe('succeeds', () => {
-      beforeEach(async () => {
-        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
-      });
-
-      test('saves message', async () => {
-        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).resolves.toEqual(
-          signerAdd
-        );
-      });
-
-      test('saves signerAdds index', async () => {
-        await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAdd);
-      });
-
-      test('no-ops when merged twice', async () => {
-        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
-        await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAdd);
-      });
+    test('succeeds', async () => {
+      await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+      await assertSignerAddWins(signerAdd);
     });
 
-    describe('with conflicting SignerAdd', () => {
+    test('succeeds once, even if merged twice', async () => {
+      await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+      await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+
+      await assertSignerAddWins(signerAdd);
+    });
+
+    describe('with a conflicting SignerAdd with different timestamps', () => {
       let signerAddLater: SignerAddModel;
 
       beforeAll(async () => {
-        const addData = await Factories.SignerAddData.create({
+        const addData = await Factories.ReactionAddData.create({
           ...signerAdd.data.unpack(),
           timestamp: signerAdd.timestamp() + 1,
         });
+
         const addMessage = await Factories.Message.create(
           {
             data: Array.from(addData.bb?.bytes() ?? []),
           },
           { transient: { wallet: custody1.wallet } }
         );
+
         signerAddLater = new MessageModel(addMessage) as SignerAddModel;
       });
 
       test('succeeds with a later timestamp', async () => {
         await set.merge(signerAdd);
         await expect(set.merge(signerAddLater)).resolves.toEqual(undefined);
-        await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAddLater);
-        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).rejects.toThrow(
-          NotFoundError
-        );
+
+        await assertSignerDoesNotExist(signerAdd);
+        await assertSignerAddWins(signerAddLater);
       });
 
       test('no-ops with an earlier timestamp', async () => {
         await set.merge(signerAddLater);
         await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
-        await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAddLater);
-        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).rejects.toThrow(
-          NotFoundError
-        );
+
+        await assertSignerDoesNotExist(signerAdd);
+        await assertSignerAddWins(signerAddLater);
       });
     });
 
-    describe('with conflicting SignerRemove', () => {
-      let signerRemoveEarlier: SignerRemoveModel;
+    describe('with a conflicting SignerAdd with identical timestamps', () => {
+      let signerAddLater: SignerAddModel;
 
       beforeAll(async () => {
+        const addData = await Factories.ReactionAddData.create({
+          ...signerAdd.data.unpack(),
+        });
+
+        const addMessage = await Factories.Message.create(
+          {
+            data: Array.from(addData.bb?.bytes() ?? []),
+            // Makes a copy of the hash and increments it
+            hash: Array.from(bytesIncrement(signerAdd.hash().slice())),
+          },
+          { transient: { wallet: custody1.wallet } }
+        );
+
+        signerAddLater = new MessageModel(addMessage) as SignerAddModel;
+      });
+
+      test('succeeds with a later hash', async () => {
+        await set.merge(signerAdd);
+        await expect(set.merge(signerAddLater)).resolves.toEqual(undefined);
+
+        await assertSignerDoesNotExist(signerAdd);
+        await assertSignerAddWins(signerAddLater);
+      });
+
+      test('no-ops with an earlier hash', async () => {
+        await set.merge(signerAddLater);
+        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+
+        await assertSignerDoesNotExist(signerAdd);
+        await assertSignerAddWins(signerAddLater);
+      });
+    });
+
+    describe('with conflicting SignerRemove with different timestamps', () => {
+      test('succeeds with a later timestamp', async () => {
         const removeData = await Factories.SignerRemoveData.create({
           ...signerRemove.data.unpack(),
           timestamp: signerAdd.timestamp() - 1,
         });
+
         const removeMessage = await Factories.Message.create(
           {
             data: Array.from(removeData.bb?.bytes() ?? []),
           },
           { transient: { wallet: custody1.wallet } }
         );
-        signerRemoveEarlier = new MessageModel(removeMessage) as SignerRemoveModel;
-      });
 
-      test('succeeds with a later timestamp', async () => {
+        const signerRemoveEarlier = new MessageModel(removeMessage) as SignerRemoveModel;
+
         await set.merge(signerRemoveEarlier);
         await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
-        await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAdd);
-        await expect(set.getSignerRemove(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
-        await expect(
-          MessageModel.get(db, fid, UserPostfix.SignerMessage, signerRemoveEarlier.tsHash())
-        ).rejects.toThrow(NotFoundError);
+
+        await assertSignerAddWins(signerAdd);
+        await assertSignerDoesNotExist(signerRemoveEarlier);
       });
 
       test('no-ops with an earlier timestamp', async () => {
         await set.merge(signerRemove);
         await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
-        await expect(set.getSignerRemove(fid, signer, custody1Address)).resolves.toEqual(signerRemove);
-        await expect(set.getSignerAdd(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
-        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).rejects.toThrow(
-          NotFoundError
+
+        await assertSignerRemoveWins(signerRemove);
+        await assertSignerDoesNotExist(signerAdd);
+      });
+    });
+
+    describe('with conflicting SignerRemove with identical timestamps', () => {
+      test('no-ops if remove has a later hash', async () => {
+        const removeData = await Factories.SignerRemoveData.create({
+          ...signerRemove.data.unpack(),
+          timestamp: signerAdd.timestamp(),
+        });
+
+        const removeMessage = await Factories.Message.create(
+          {
+            data: Array.from(removeData.bb?.bytes() ?? []),
+            // Makes a copy of the hash and increments it
+            hash: Array.from(bytesIncrement(signerAdd.hash().slice())),
+          },
+          { transient: { wallet: custody1.wallet } }
         );
+
+        const signerRemoveLater = new MessageModel(removeMessage) as SignerRemoveModel;
+
+        await set.merge(signerRemoveLater);
+        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+
+        await assertSignerRemoveWins(signerRemoveLater);
+        await assertSignerDoesNotExist(signerAdd);
+      });
+
+      test('succeeds if remove has an earlier hash', async () => {
+        const removeData = await Factories.SignerRemoveData.create({
+          ...signerRemove.data.unpack(),
+          timestamp: signerAdd.timestamp(),
+        });
+
+        const removeMessage = await Factories.Message.create(
+          {
+            data: Array.from(removeData.bb?.bytes() ?? []),
+            // TODO: investigate if this test is correct
+            hash: Array.from(bytesDecrement(signerAdd.hash().slice())),
+          },
+          { transient: { wallet: custody1.wallet } }
+        );
+
+        const signerRemoveEarlier = new MessageModel(removeMessage) as SignerRemoveModel;
+
+        await set.merge(signerRemoveEarlier);
+        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+
+        await assertSignerDoesNotExist(signerAdd);
+        await assertSignerRemoveWins(signerRemoveEarlier);
       });
     });
   });
 
   describe('SignerRemove', () => {
-    describe('succeeds', () => {
-      beforeEach(async () => {
-        await set.merge(signerAdd);
-        await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
-      });
+    test('succeeds', async () => {
+      await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
 
-      test('saves message', async () => {
-        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerRemove.tsHash())).resolves.toEqual(
-          signerRemove
-        );
-      });
-
-      test('saves signerRemoves index', async () => {
-        await expect(set.getSignerRemove(fid, signer, custody1Address)).resolves.toEqual(signerRemove);
-      });
-
-      test('deletes SignerAdd message', async () => {
-        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).rejects.toThrow(
-          NotFoundError
-        );
-      });
-
-      test('deletes signerAdds index', async () => {
-        await expect(set.getSignerAdd(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
-      });
+      await assertSignerRemoveWins(signerRemove);
     });
 
-    describe('with conflicting SignerRemove', () => {
+    test('succeeds once, even if merged twice', async () => {
+      await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+      await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+
+      await assertSignerRemoveWins(signerRemove);
+    });
+
+    describe('with a conflicting SignerRemove with different timestamps', () => {
       let signerRemoveLater: SignerRemoveModel;
 
       beforeAll(async () => {
@@ -481,66 +545,133 @@ describe('merge', () => {
       test('succeeds with a later timestamp', async () => {
         await set.merge(signerRemove);
         await expect(set.merge(signerRemoveLater)).resolves.toEqual(undefined);
-        await expect(set.getSignerRemove(fid, signer, custody1Address)).resolves.toEqual(signerRemoveLater);
-        await expect(MessageModel.get(db, fid, UserPostfix.VerificationMessage, signerRemove.tsHash())).rejects.toThrow(
-          NotFoundError
-        );
+
+        await assertSignerDoesNotExist(signerRemove);
+        await assertSignerRemoveWins(signerRemoveLater);
       });
 
       test('no-ops with an earlier timestamp', async () => {
         await set.merge(signerRemoveLater);
         await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
-        await expect(set.getSignerRemove(fid, signer, custody1Address)).resolves.toEqual(signerRemoveLater);
-        await expect(MessageModel.get(db, fid, UserPostfix.VerificationMessage, signerRemove.tsHash())).rejects.toThrow(
-          NotFoundError
-        );
-      });
 
-      // TODO: same signer, different custody address
+        await assertSignerDoesNotExist(signerRemove);
+        await assertSignerRemoveWins(signerRemoveLater);
+      });
     });
 
-    describe('with conflicting SignerAdd', () => {
-      let signerAddLater: SignerAddModel;
+    describe('with a conflicting SignerRemove with identical timestamps', () => {
+      let signerRemoveLater: SignerRemoveModel;
 
       beforeAll(async () => {
-        const addData = await Factories.SignerAddData.create({
-          ...signerAdd.data.unpack(),
-          timestamp: signerRemove.timestamp() + 1,
+        const removeData = await Factories.SignerRemoveData.create({
+          ...signerRemove.data.unpack(),
         });
-        const addMessage = await Factories.Message.create(
+
+        const removeMessage = await Factories.Message.create(
+          {
+            data: Array.from(removeData.bb?.bytes() ?? []),
+            hash: Array.from(bytesIncrement(signerRemove.hash().slice())),
+          },
+          { transient: { wallet: custody1.wallet } }
+        );
+
+        signerRemoveLater = new MessageModel(removeMessage) as SignerRemoveModel;
+      });
+
+      test('succeeds with a later hash', async () => {
+        await set.merge(signerRemove);
+        await expect(set.merge(signerRemoveLater)).resolves.toEqual(undefined);
+
+        await assertSignerDoesNotExist(signerRemove);
+        await assertSignerRemoveWins(signerRemoveLater);
+      });
+
+      test('no-ops with an earlier hash', async () => {
+        await set.merge(signerRemoveLater);
+        await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+
+        await assertSignerDoesNotExist(signerRemove);
+        await assertSignerRemoveWins(signerRemoveLater);
+      });
+    });
+
+    describe('with conflicting SignerAdd with different timestamps', () => {
+      test('succeeds with a later timestamp', async () => {
+        await set.merge(signerAdd);
+        await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+
+        await assertSignerRemoveWins(signerRemove);
+        await assertSignerDoesNotExist(signerAdd);
+      });
+
+      test('no-ops with an earlier timestamp', async () => {
+        const addData = await Factories.ReactionAddData.create({
+          ...signerRemove.data.unpack(),
+          timestamp: signerRemove.timestamp() + 1,
+          type: MessageType.SignerAdd,
+        });
+
+        const reactionAddMessage = await Factories.Message.create(
           {
             data: Array.from(addData.bb?.bytes() ?? []),
           },
           { transient: { wallet: custody1.wallet } }
         );
-        signerAddLater = new MessageModel(addMessage) as SignerAddModel;
-      });
 
-      test('no-ops with an earlier timestamp', async () => {
-        await set.merge(signerAddLater);
-        await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
-        await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAddLater);
-        await expect(set.getSignerRemove(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
-        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerRemove.tsHash())).rejects.toThrow(
-          NotFoundError
-        );
-      });
+        const reactionAddLater = new MessageModel(reactionAddMessage) as SignerAddModel;
 
-      test('succeeds with a later timestamp', async () => {
-        await set.merge(signerAdd);
+        await set.merge(reactionAddLater);
         await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
-        await expect(set.getSignerRemove(fid, signer, custody1Address)).resolves.toEqual(signerRemove);
-        await expect(set.getSignerAdd(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
-        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).rejects.toThrow(
-          NotFoundError
-        );
+
+        await assertSignerAddWins(reactionAddLater);
+        await assertSignerDoesNotExist(signerRemove);
       });
     });
 
-    test('succeeds when SignerAdd does not exist', async () => {
-      await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
-      await expect(set.getSignerRemove(fid, signer, custody1Address)).resolves.toEqual(signerRemove);
-      await expect(set.getSignerAdd(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
+    describe('with conflicting SignerAdd with identical timestamps', () => {
+      test('succeeds with an earlier hash', async () => {
+        const addData = await Factories.ReactionAddData.create({
+          ...signerRemove.data.unpack(),
+          type: MessageType.SignerAdd,
+        });
+
+        const reactionAddMessage = await Factories.Message.create(
+          {
+            data: Array.from(addData.bb?.bytes() ?? []),
+            hash: Array.from(bytesIncrement(signerRemove.hash().slice())),
+          },
+          { transient: { wallet: custody1.wallet } }
+        );
+        const reactionAddLater = new MessageModel(reactionAddMessage) as SignerAddModel;
+
+        await set.merge(reactionAddLater);
+        await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+
+        await assertSignerDoesNotExist(reactionAddLater);
+        await assertSignerRemoveWins(signerRemove);
+      });
+
+      test('succeeds with a later hash', async () => {
+        const removeData = await Factories.ReactionAddData.create({
+          ...signerRemove.data.unpack(),
+        });
+
+        const removeMessage = await Factories.Message.create(
+          {
+            data: Array.from(removeData.bb?.bytes() ?? []),
+            hash: Array.from(bytesDecrement(signerRemove.hash().slice())),
+          },
+          { transient: { wallet: custody1.wallet } }
+        );
+
+        const signerRemoveEarlier = new MessageModel(removeMessage) as SignerRemoveModel;
+
+        await set.merge(signerRemoveEarlier);
+        await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+
+        await assertSignerDoesNotExist(signerRemoveEarlier);
+        await assertSignerRemoveWins(signerRemove);
+      });
     });
   });
 });

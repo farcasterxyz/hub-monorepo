@@ -221,18 +221,17 @@ class SignerStore {
     return this._db.commit(txn);
   }
 
-  private SignerMessageCompare(
+  private signerMessageCompare(
     aType: MessageType,
     aTsHash: Uint8Array,
     bType: MessageType,
     bTsHash: Uint8Array
   ): number {
-    const tsHashOrder = bytesCompare(aTsHash, bTsHash);
-    if (tsHashOrder !== 0) {
-      return tsHashOrder;
+    // Compare timestamps (first 4 bytes of tsHash) to enforce Last-Write-Wins
+    const timestampOrder = bytesCompare(aTsHash.subarray(0, 4), bTsHash.subarray(0, 4));
+    if (timestampOrder !== 0) {
+      return timestampOrder;
     }
-
-    // TODO: refactor to compare ts, then type, then hash
 
     if (aType === MessageType.SignerRemove && bType === MessageType.SignerAdd) {
       return 1;
@@ -240,7 +239,8 @@ class SignerStore {
       return -1;
     }
 
-    return 0;
+    // Compare hashes (last 4 bytes of tsHash) to break ties between messages of the same type and timestamp
+    return bytesCompare(aTsHash.subarray(4), bTsHash.subarray(4));
   }
 
   /**
@@ -265,7 +265,7 @@ class SignerStore {
 
     if (removeTsHash.isOk()) {
       if (
-        this.SignerMessageCompare(MessageType.SignerRemove, removeTsHash.value, message.type(), message.tsHash()) >= 0
+        this.signerMessageCompare(MessageType.SignerRemove, removeTsHash.value, message.type(), message.tsHash()) >= 0
       ) {
         // If the existing remove has the same or higher order than the new message, no-op
         return undefined;
@@ -289,7 +289,7 @@ class SignerStore {
     );
 
     if (addTsHash.isOk()) {
-      if (this.SignerMessageCompare(MessageType.SignerAdd, addTsHash.value, message.type(), message.tsHash()) >= 0) {
+      if (this.signerMessageCompare(MessageType.SignerAdd, addTsHash.value, message.type(), message.tsHash()) >= 0) {
         // If the existing add has the same or higher order than the new message, no-op
         return undefined;
       } else {
