@@ -186,7 +186,10 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
 
   async handleContactInfo(message: ContactInfoContent) {
     const rpcClient = await this.getRPCClientForPeer(message);
-    log.info({ identity: this.identity, peer: message.peerId }, 'received a Contact Info for sync');
+    log.info(
+      { identity: this.identity, peer: message.peerId, ip: rpcClient?.serverMultiaddr },
+      'received a Contact Info for sync'
+    );
     await this.diffSyncIfRequired(message, rpcClient);
   }
 
@@ -230,7 +233,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       );
       return;
     }
-    const peerAddress = await this.gossipNode.getPeerAddress(peerId);
+    const peerAddress = await this.gossipNode.getPeerInfo(peerId);
     if (!peerAddress) {
       log.info(
         { function: 'getRPCClientForPeer', identity: this.identity, peer: peer },
