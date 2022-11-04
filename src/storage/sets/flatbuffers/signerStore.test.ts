@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import { BadRequestError, NotFoundError } from '~/utils/errors';
+import { BadRequestError, NotFoundError, ValidationError } from '~/utils/errors';
 import { EthereumSigner } from '~/types';
 import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
 import { arrayify } from 'ethers/lib/utils';
@@ -227,6 +227,28 @@ describe('mergeIdRegistryEvent', () => {
     await expect(set.getSignerAdd(fid, signer)).resolves.toEqual(signerAdd);
   });
 
+  test('fails if events have the same blockNumber but different blockHashes', async () => {
+    const idRegistryEvent = await Factories.IdRegistryEvent.create({
+      ...custody1Event.event.unpack(),
+      blockHash: Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
+    });
+
+    const blockHashConflictEvent = new ContractEventModel(idRegistryEvent);
+    await set.mergeIdRegistryEvent(custody1Event);
+    await expect(set.mergeIdRegistryEvent(blockHashConflictEvent)).rejects.toThrow(ValidationError);
+  });
+
+  test('fails if events have the same blockNumber and logIndex but different transactionHashes', async () => {
+    const idRegistryEvent = await Factories.IdRegistryEvent.create({
+      ...custody1Event.event.unpack(),
+      transactionHash: Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
+    });
+
+    const txHashConflictEvent = new ContractEventModel(idRegistryEvent);
+    await set.mergeIdRegistryEvent(custody1Event);
+    await expect(set.mergeIdRegistryEvent(txHashConflictEvent)).rejects.toThrow(ValidationError);
+  });
+
   describe('overwrites existing event', () => {
     let newEvent: ContractEventModel;
 
@@ -242,6 +264,7 @@ describe('mergeIdRegistryEvent', () => {
     test('when it has a higher block number', async () => {
       const idRegistryEvent = await Factories.IdRegistryEvent.create({
         ...custody1Event.event.unpack(),
+        transactionHash: Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
         to: Array.from(custody2Address),
         blockNumber: custody1Event.blockNumber() + 1,
       });
@@ -251,18 +274,9 @@ describe('mergeIdRegistryEvent', () => {
     test('when it has the same block number and a higher log index', async () => {
       const idRegistryEvent = await Factories.IdRegistryEvent.create({
         ...custody1Event.event.unpack(),
+        transactionHash: Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
         to: Array.from(custody2Address),
         logIndex: custody1Event.logIndex() + 1,
-      });
-      newEvent = new ContractEventModel(idRegistryEvent);
-    });
-
-    test('when it has the same block number and log index and a higher tx hash order', async () => {
-      const idRegistryEvent = await Factories.IdRegistryEvent.create({
-        ...custody1Event.event.unpack(),
-        to: Array.from(custody2Address),
-        // Discuss: doesn't this result in the hash being larger and technically invalid?
-        transactionHash: Array.from([...custody1Event.transactionHash(), 1]),
       });
       newEvent = new ContractEventModel(idRegistryEvent);
     });
@@ -283,6 +297,7 @@ describe('mergeIdRegistryEvent', () => {
     test('when it has a lower block number', async () => {
       const idRegistryEvent = await Factories.IdRegistryEvent.create({
         ...custody1Event.event.unpack(),
+        transactionHash: Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
         to: Array.from(custody2Address),
         blockNumber: custody1Event.blockNumber() - 1,
       });
@@ -294,15 +309,6 @@ describe('mergeIdRegistryEvent', () => {
         ...custody1Event.event.unpack(),
         to: Array.from(custody2Address),
         logIndex: custody1Event.logIndex() - 1,
-      });
-      newEvent = new ContractEventModel(idRegistryEvent);
-    });
-
-    test('when it has the same block number and log index and a lower transaction hash order', async () => {
-      const idRegistryEvent = await Factories.IdRegistryEvent.create({
-        ...custody1Event.event.unpack(),
-        to: Array.from(custody2Address),
-        transactionHash: Array.from([...custody1Event.transactionHash().slice(0, -1)]),
       });
       newEvent = new ContractEventModel(idRegistryEvent);
     });
