@@ -8,6 +8,10 @@ import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 
+// Research: Model out how safe it is to use a 32-bit hash
+
+// DOCUMENT: what is the different between a Contract Event and an IDRegistry Event?
+
 class SignerStore {
   private _db: RocksDB;
 
@@ -51,17 +55,18 @@ class SignerStore {
     ]);
   }
 
-  /** Returns the __________ */
-  async getIDRegistryEvent(fid: Uint8Array): Promise<ContractEventModel> {
+  /** Returns the most recent Contract Event associated with an fid  */
+  async getIdRegistryEvent(fid: Uint8Array): Promise<ContractEventModel> {
     return ContractEventModel.get(this._db, fid);
   }
 
-  /** Returns the current custody address that holds a Farcaster ID */
+  /** Returns the custody address that currently holds an fid */
   async getCustodyAddress(fid: Uint8Array): Promise<Uint8Array> {
-    const idRegistryEvent = await this.getIDRegistryEvent(fid);
+    const idRegistryEvent = await this.getIdRegistryEvent(fid);
     return idRegistryEvent.to();
   }
 
+  // TODO: consider having a separate get signer add method
   /**
    * Finds a SignerAdd Message by checking the Adds Set index
    *
@@ -74,9 +79,6 @@ class SignerStore {
     if (!custodyAddress) {
       custodyAddress = await this.getCustodyAddress(fid);
     }
-
-    // DISCUSS: will this throw an exception if the path below fails or just return null?
-    // (this is an example of where explicit Results would make readability better)
 
     const messageTsHash = await this._db.get(SignerStore.signerAddsKey(fid, custodyAddress, signer));
     return MessageModel.get<SignerAddModel>(this._db, fid, UserPostfix.SignerMessage, messageTsHash);
@@ -98,12 +100,14 @@ class SignerStore {
     return MessageModel.get<SignerRemoveModel>(this._db, fid, UserPostfix.SignerMessage, messageTsHash);
   }
 
+  // Having two methods (GetSignerAddsByUser)
+
   /**
-   * Finds all SignerAdd messages for a user
+   * Finds all SignerAdd messages for a user's custody address
    *
    * @param fid fid of the user who created the reaction remove
-   * @param custodyAddress the Ethereum address that currently owns the Farcaster ID
-   * @returns the SignerRemove message if it exists, throws NotFoundError otherwise
+   * @param custodyAddress the Ethereum address that currently owns the fid, defaults to latest address
+   * @returns the SignerRemove messages if it exists, throws NotFoundError otherwise
    */
   async getSignerAddsByUser(fid: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerAddModel[]> {
     if (!custodyAddress) {
@@ -121,7 +125,7 @@ class SignerStore {
    * Finds all SignerRemove Messages for a user
    *
    * @param fid fid of the user who created the reaction remove
-   * @param custodyAddress the Ethereum address that currently owns the Farcaster ID
+   * @param custodyAddress the Ethereum address that currently owns the fid, defaults to latest address
    * @returns the SignerRemove message if it exists, throws NotFoundError otherwise
    */
   async getSignerRemovesByUser(fid: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerRemoveModel[]> {
@@ -143,10 +147,12 @@ class SignerStore {
    */
   async mergeIdRegistryEvent(event: ContractEventModel): Promise<void> {
     // TODO: emit signer change events as a result of ID Registry events
-    const existingEvent = await ResultAsync.fromPromise(this.getIDRegistryEvent(event.fid()), () => undefined);
+    const existingEvent = await ResultAsync.fromPromise(this.getIdRegistryEvent(event.fid()), () => undefined);
     if (existingEvent.isOk() && this.eventCompare(existingEvent.value, event) >= 0) {
       return undefined;
     }
+
+    // DOCUMENT appears that this will overwrite the last one? is that right?
 
     const txn = this._db.transaction();
     txn.put(event.primaryKey(), event.toBuffer());
@@ -178,12 +184,17 @@ class SignerStore {
       return 1;
     }
 
+    // TODO: we must also compare the position of the transaction within the block to guarantee
+    // uniqueness of the event
+
     // Compare logIndex
     if (a.logIndex() < b.logIndex()) {
       return -1;
     } else if (a.logIndex() > b.logIndex()) {
       return 1;
     }
+
+    // TODO: comparing transaction hash is unnecessary as long as transaction position is also compared.
 
     // Compare transactionHash (lexicographical order)
     return bytesCompare(a.transactionHash(), b.transactionHash());
@@ -225,6 +236,9 @@ class SignerStore {
     if (tsHashOrder !== 0) {
       return tsHashOrder;
     }
+
+    // DISCUSS: the "toggle" problem is less prevalent meaning that it is unlikely that signer adds and
+    // removes are constantly regenerated, however it seems easier to align with the other stores
 
     if (aType === MessageType.SignerRemove && bType === MessageType.SignerAdd) {
       return 1;

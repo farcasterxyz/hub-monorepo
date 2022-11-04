@@ -10,7 +10,7 @@ import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { SignerAddModel, SignerRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 
-const db = jestBinaryRocksDB('flatbuffers.signerSet.test');
+const db = jestBinaryRocksDB('flatbuffers.signerStore.test');
 const set = new SignerStore(db);
 const fid = Factories.FID.build();
 
@@ -62,16 +62,21 @@ beforeAll(async () => {
   signerRemove = new MessageModel(removeMessage) as SignerRemoveModel;
 });
 
-describe('getIDRegistryEvent', () => {
-  test('returns contract event', async () => {
+describe('getIdRegistryEvent', () => {
+  test('returns contract event if it exists', async () => {
     await set.mergeIdRegistryEvent(custody1Event);
-    await expect(set.getIDRegistryEvent(fid)).resolves.toEqual(custody1Event);
+    await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
   });
 
+  // TODO: if there multiple events, it should return the latest
+
   test('fails if event is missing', async () => {
-    await expect(set.getIDRegistryEvent(fid)).rejects.toThrow(NotFoundError);
+    await expect(set.getIdRegistryEvent(fid)).rejects.toThrow(NotFoundError);
   });
 });
+
+// TODO: test getSignerAdd, particularly exception behavior
+// TODO: test getSignerRemove, particularly exception behavior
 
 describe('getCustodyAddress', () => {
   test('returns to from current IDRegistry event', async () => {
@@ -79,106 +84,10 @@ describe('getCustodyAddress', () => {
     await expect(set.getCustodyAddress(fid)).resolves.toEqual(custody1Address);
   });
 
+  // TODO: if there are multiple events, it should return the latest
+
   test('fails if event is missing', async () => {
     await expect(set.getCustodyAddress(fid)).rejects.toThrow(NotFoundError);
-  });
-});
-
-describe('mergeIdRegistryEvent', () => {
-  test('succeeds', async () => {
-    await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toEqual(undefined);
-    await expect(set.getIDRegistryEvent(fid)).resolves.toEqual(custody1Event);
-  });
-
-  test('causes signers to become active', async () => {
-    await set.merge(signerAdd);
-    await expect(set.getSignerAdd(fid, signer)).rejects.toThrow(NotFoundError);
-    await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toEqual(undefined);
-    await expect(set.getSignerAdd(fid, signer)).resolves.toEqual(signerAdd);
-  });
-
-  describe('overwrites existing event', () => {
-    let newEvent: ContractEventModel;
-
-    beforeEach(async () => {
-      await set.mergeIdRegistryEvent(custody1Event);
-    });
-
-    afterEach(async () => {
-      await expect(set.mergeIdRegistryEvent(newEvent)).resolves.toEqual(undefined);
-      await expect(set.getIDRegistryEvent(fid)).resolves.toEqual(newEvent);
-    });
-
-    test('with a higher block number', async () => {
-      const idRegistryEvent = await Factories.IDRegistryEvent.create({
-        ...custody1Event.event.unpack(),
-        to: Array.from(custody2Address),
-        blockNumber: custody1Event.blockNumber() + 1,
-      });
-      newEvent = new ContractEventModel(idRegistryEvent);
-    });
-
-    test('with the same block number and a higher log index', async () => {
-      const idRegistryEvent = await Factories.IDRegistryEvent.create({
-        ...custody1Event.event.unpack(),
-        to: Array.from(custody2Address),
-        logIndex: custody1Event.logIndex() + 1,
-      });
-      newEvent = new ContractEventModel(idRegistryEvent);
-    });
-
-    test('with the same block number and log index and a higher transaction hash order', async () => {
-      const idRegistryEvent = await Factories.IDRegistryEvent.create({
-        ...custody1Event.event.unpack(),
-        to: Array.from(custody2Address),
-        transactionHash: Array.from([...custody1Event.transactionHash(), 1]),
-      });
-      newEvent = new ContractEventModel(idRegistryEvent);
-    });
-  });
-
-  describe('no-ops', () => {
-    let newEvent: ContractEventModel;
-
-    beforeEach(async () => {
-      await set.mergeIdRegistryEvent(custody1Event);
-    });
-
-    afterEach(async () => {
-      await expect(set.mergeIdRegistryEvent(newEvent)).resolves.toEqual(undefined);
-      await expect(set.getIDRegistryEvent(fid)).resolves.toEqual(custody1Event);
-    });
-
-    test('when existing event has a higher block number', async () => {
-      const idRegistryEvent = await Factories.IDRegistryEvent.create({
-        ...custody1Event.event.unpack(),
-        to: Array.from(custody2Address),
-        blockNumber: custody1Event.blockNumber() - 1,
-      });
-      newEvent = new ContractEventModel(idRegistryEvent);
-    });
-
-    test('when existing event has the same block number and a higher log index', async () => {
-      const idRegistryEvent = await Factories.IDRegistryEvent.create({
-        ...custody1Event.event.unpack(),
-        to: Array.from(custody2Address),
-        logIndex: custody1Event.logIndex() - 1,
-      });
-      newEvent = new ContractEventModel(idRegistryEvent);
-    });
-
-    test('when existing event has the same block number and log index and a higher transaction hash order', async () => {
-      const idRegistryEvent = await Factories.IDRegistryEvent.create({
-        ...custody1Event.event.unpack(),
-        to: Array.from(custody2Address),
-        transactionHash: Array.from([...custody1Event.transactionHash().slice(0, -1)]),
-      });
-      newEvent = new ContractEventModel(idRegistryEvent);
-    });
-
-    test('when event is a duplicate', async () => {
-      newEvent = custody1Event;
-    });
   });
 });
 
@@ -191,6 +100,8 @@ describe('getSignerAdd', () => {
     await set.merge(signerAdd);
     await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAdd);
   });
+
+  // TEST: fails if incorrect custody address is passed in
 
   describe('without passing custodyAddress', () => {
     test('defaults to current custodyAddress', async () => {
@@ -208,6 +119,9 @@ describe('getSignerAdd', () => {
 
 describe('getSignerRemove', () => {
   test('fails if missing', async () => {
+    // DOCUMENT: what is the significance of passing in a custody address and not having the IdEvent?
+    // Best understanding -- not passing in an address will return a message even if the relevant custody address has not e,rged
+
     await expect(set.getSignerRemove(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
   });
 
@@ -215,6 +129,8 @@ describe('getSignerRemove', () => {
     await set.merge(signerRemove);
     await expect(set.getSignerRemove(fid, signer, custody1Address)).resolves.toEqual(signerRemove);
   });
+
+  // TEST: fails if incorrect custody address is passed in
 
   describe('without passing custodyAddress', () => {
     test('defaults to current custodyAddress', async () => {
@@ -246,6 +162,8 @@ describe('getSignerAddsByUser', () => {
     await expect(set.getSignerAddsByUser(fid, custody1Address)).resolves.toEqual([]);
   });
 
+  // TEST: what is returned when the IdRegistry event is merged
+
   describe('without passing custodyAddress', () => {
     test('defaults to current custodyAddress', async () => {
       await set.mergeIdRegistryEvent(custody1Event);
@@ -276,6 +194,8 @@ describe('getSignerRemovesByUser', () => {
     await expect(set.getSignerRemovesByUser(fid, custody1Address)).resolves.toEqual([]);
   });
 
+  // TEST: what is returned when the IdRegistry event is merged
+
   describe('without passing custodyAddress', () => {
     test('defaults to current custodyAddress', async () => {
       await set.mergeIdRegistryEvent(custody1Event);
@@ -290,11 +210,227 @@ describe('getSignerRemovesByUser', () => {
   });
 });
 
+describe('mergeIdRegistryEvent', () => {
+  test('succeeds', async () => {
+    await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toEqual(undefined);
+    await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
+  });
+
+  test('succeeds and activates signers, if present', async () => {
+    await set.merge(signerAdd);
+    await expect(set.getSignerAdd(fid, signer)).rejects.toThrow(NotFoundError);
+
+    await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toEqual(undefined);
+    await expect(set.getSignerAdd(fid, signer)).resolves.toEqual(signerAdd);
+  });
+
+  describe('overwrites existing event', () => {
+    let newEvent: ContractEventModel;
+
+    beforeEach(async () => {
+      await set.mergeIdRegistryEvent(custody1Event);
+    });
+
+    afterEach(async () => {
+      await expect(set.mergeIdRegistryEvent(newEvent)).resolves.toEqual(undefined);
+      await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(newEvent);
+    });
+
+    test('when it has a higher block number', async () => {
+      const idRegistryEvent = await Factories.IDRegistryEvent.create({
+        ...custody1Event.event.unpack(),
+        to: Array.from(custody2Address),
+        blockNumber: custody1Event.blockNumber() + 1,
+      });
+      newEvent = new ContractEventModel(idRegistryEvent);
+    });
+
+    test('when it has the same block number and a higher log index', async () => {
+      const idRegistryEvent = await Factories.IDRegistryEvent.create({
+        ...custody1Event.event.unpack(),
+        to: Array.from(custody2Address),
+        logIndex: custody1Event.logIndex() + 1,
+      });
+      newEvent = new ContractEventModel(idRegistryEvent);
+    });
+
+    test('when it has the same block number and log index and a higher tx hash order', async () => {
+      const idRegistryEvent = await Factories.IDRegistryEvent.create({
+        ...custody1Event.event.unpack(),
+        to: Array.from(custody2Address),
+        // Discuss: doesn't this result in the hash being larger and technically invalid?
+        transactionHash: Array.from([...custody1Event.transactionHash(), 1]),
+      });
+      newEvent = new ContractEventModel(idRegistryEvent);
+    });
+  });
+
+  describe('does not overwrite existing event', () => {
+    let newEvent: ContractEventModel;
+
+    beforeEach(async () => {
+      await set.mergeIdRegistryEvent(custody1Event);
+    });
+
+    afterEach(async () => {
+      await expect(set.mergeIdRegistryEvent(newEvent)).resolves.toEqual(undefined);
+      await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
+    });
+
+    test('when it has a lower block number', async () => {
+      const idRegistryEvent = await Factories.IDRegistryEvent.create({
+        ...custody1Event.event.unpack(),
+        to: Array.from(custody2Address),
+        blockNumber: custody1Event.blockNumber() - 1,
+      });
+      newEvent = new ContractEventModel(idRegistryEvent);
+    });
+
+    test('when it has the same block number and a lower log index', async () => {
+      const idRegistryEvent = await Factories.IDRegistryEvent.create({
+        ...custody1Event.event.unpack(),
+        to: Array.from(custody2Address),
+        logIndex: custody1Event.logIndex() - 1,
+      });
+      newEvent = new ContractEventModel(idRegistryEvent);
+    });
+
+    test('when it has the same block number and log index and a lower transaction hash order', async () => {
+      const idRegistryEvent = await Factories.IDRegistryEvent.create({
+        ...custody1Event.event.unpack(),
+        to: Array.from(custody2Address),
+        transactionHash: Array.from([...custody1Event.transactionHash().slice(0, -1)]),
+      });
+      newEvent = new ContractEventModel(idRegistryEvent);
+    });
+
+    test('when is a duplicate', async () => {
+      newEvent = custody1Event;
+    });
+  });
+
+  // TEST: if 3 custody events are present, and the last one moves it back to the first, what will happen?
+});
+
+// States
+// Invalid message
+// A Signer Add is observed, with nothing
+// A Signer Add is observed, with a SignerAdd (with older ts)
+// A Signer Add is observed, with a SignerAdd (with newer ts)
+// A Signer Add is observed, with a SignerAdd (with same ts, but newer hash)
+// A Signer Add is observed, with a SignerAdd (with same ts, but older hash)
+
+// A Signer Add is observed, with a SignerRemove (with older ts)
+// A Signer Add is observed, with a SignerRemove (with newer ts)
+// A Signer Add is observed, with a SignerRemove (with same ts, and newer hash)
+// A Signer Add is observed, with a SignerRemove (with same ts, and older hash)
+
+// State Changes
+// Message
+// SetIndex
+
 describe('merge', () => {
   test('fails with invalid message type', async () => {
     const invalidData = await Factories.ReactionAddData.create({ fid: Array.from(fid) });
     const message = await Factories.Message.create({ data: Array.from(invalidData.bb?.bytes() ?? []) });
     await expect(set.merge(new MessageModel(message))).rejects.toThrow(BadRequestError);
+  });
+
+  describe('SignerAdd', () => {
+    describe('succeeds', () => {
+      beforeEach(async () => {
+        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+      });
+
+      test('saves message', async () => {
+        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).resolves.toEqual(
+          signerAdd
+        );
+      });
+
+      test('saves signerAdds index', async () => {
+        await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAdd);
+      });
+
+      test('no-ops when merged twice', async () => {
+        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+        await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAdd);
+      });
+    });
+
+    describe('with conflicting SignerAdd', () => {
+      let signerAddLater: SignerAddModel;
+
+      beforeAll(async () => {
+        const addData = await Factories.SignerAddData.create({
+          ...signerAdd.data.unpack(),
+          timestamp: signerAdd.timestamp() + 1,
+        });
+        const addMessage = await Factories.Message.create(
+          {
+            data: Array.from(addData.bb?.bytes() ?? []),
+          },
+          { transient: { wallet: custody1.wallet } }
+        );
+        signerAddLater = new MessageModel(addMessage) as SignerAddModel;
+      });
+
+      test('succeeds with a later timestamp', async () => {
+        await set.merge(signerAdd);
+        await expect(set.merge(signerAddLater)).resolves.toEqual(undefined);
+        await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAddLater);
+        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).rejects.toThrow(
+          NotFoundError
+        );
+      });
+
+      test('no-ops with an earlier timestamp', async () => {
+        await set.merge(signerAddLater);
+        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+        await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAddLater);
+        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).rejects.toThrow(
+          NotFoundError
+        );
+      });
+    });
+
+    describe('with conflicting SignerRemove', () => {
+      let signerRemoveEarlier: SignerRemoveModel;
+
+      beforeAll(async () => {
+        const removeData = await Factories.SignerRemoveData.create({
+          ...signerRemove.data.unpack(),
+          timestamp: signerAdd.timestamp() - 1,
+        });
+        const removeMessage = await Factories.Message.create(
+          {
+            data: Array.from(removeData.bb?.bytes() ?? []),
+          },
+          { transient: { wallet: custody1.wallet } }
+        );
+        signerRemoveEarlier = new MessageModel(removeMessage) as SignerRemoveModel;
+      });
+
+      test('succeeds with a later timestamp', async () => {
+        await set.merge(signerRemoveEarlier);
+        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+        await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAdd);
+        await expect(set.getSignerRemove(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
+        await expect(
+          MessageModel.get(db, fid, UserPostfix.SignerMessage, signerRemoveEarlier.tsHash())
+        ).rejects.toThrow(NotFoundError);
+      });
+
+      test('no-ops with an earlier timestamp', async () => {
+        await set.merge(signerRemove);
+        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+        await expect(set.getSignerRemove(fid, signer, custody1Address)).resolves.toEqual(signerRemove);
+        await expect(set.getSignerAdd(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
+        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).rejects.toThrow(
+          NotFoundError
+        );
+      });
+    });
   });
 
   describe('SignerRemove', () => {
@@ -405,103 +541,6 @@ describe('merge', () => {
       await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
       await expect(set.getSignerRemove(fid, signer, custody1Address)).resolves.toEqual(signerRemove);
       await expect(set.getSignerAdd(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
-    });
-  });
-
-  describe('SignerAdd', () => {
-    describe('succeeds', () => {
-      beforeEach(async () => {
-        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
-      });
-
-      test('saves message', async () => {
-        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).resolves.toEqual(
-          signerAdd
-        );
-      });
-
-      test('saves signerAdds index', async () => {
-        await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAdd);
-      });
-
-      test('no-ops when merged twice', async () => {
-        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
-        await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAdd);
-      });
-    });
-
-    describe('with conflicting SignerAdd', () => {
-      let signerAddLater: SignerAddModel;
-
-      beforeAll(async () => {
-        const addData = await Factories.SignerAddData.create({
-          ...signerAdd.data.unpack(),
-          timestamp: signerAdd.timestamp() + 1,
-        });
-        const addMessage = await Factories.Message.create(
-          {
-            data: Array.from(addData.bb?.bytes() ?? []),
-          },
-          { transient: { wallet: custody1.wallet } }
-        );
-        signerAddLater = new MessageModel(addMessage) as SignerAddModel;
-      });
-
-      test('succeeds with a later timestamp', async () => {
-        await set.merge(signerAdd);
-        await expect(set.merge(signerAddLater)).resolves.toEqual(undefined);
-        await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAddLater);
-        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).rejects.toThrow(
-          NotFoundError
-        );
-      });
-
-      test('no-ops with an earlier timestamp', async () => {
-        await set.merge(signerAddLater);
-        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
-        await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAddLater);
-        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).rejects.toThrow(
-          NotFoundError
-        );
-      });
-    });
-
-    describe('with conflicting SignerRemove', () => {
-      let signerRemoveEarlier: SignerRemoveModel;
-
-      beforeAll(async () => {
-        const removeData = await Factories.SignerRemoveData.create({
-          ...signerRemove.data.unpack(),
-          timestamp: signerAdd.timestamp() - 1,
-        });
-        const removeMessage = await Factories.Message.create(
-          {
-            data: Array.from(removeData.bb?.bytes() ?? []),
-          },
-          { transient: { wallet: custody1.wallet } }
-        );
-        signerRemoveEarlier = new MessageModel(removeMessage) as SignerRemoveModel;
-      });
-
-      test('succeeds with a later timestamp', async () => {
-        await set.merge(signerRemoveEarlier);
-        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
-        await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAdd);
-        await expect(set.getSignerRemove(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
-        await expect(
-          MessageModel.get(db, fid, UserPostfix.SignerMessage, signerRemoveEarlier.tsHash())
-        ).rejects.toThrow(NotFoundError);
-      });
-
-      test('no-ops with an earlier timestamp', async () => {
-        await set.merge(signerRemove);
-        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
-        await expect(set.getSignerRemove(fid, signer, custody1Address)).resolves.toEqual(signerRemove);
-        await expect(set.getSignerAdd(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
-        await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, signerAdd.tsHash())).rejects.toThrow(
-          NotFoundError
-        );
-      });
     });
   });
 });
