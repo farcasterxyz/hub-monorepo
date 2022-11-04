@@ -10,8 +10,6 @@ import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 
 // Research: Model out how safe it is to use a 32-bit hash
 
-// DOCUMENT: what is the different between a Contract Event and an IDRegistry Event?
-
 class SignerStore {
   private _db: RocksDB;
 
@@ -55,18 +53,19 @@ class SignerStore {
     ]);
   }
 
-  /** Returns the most recent Contract Event associated with an fid  */
+  /** Returns the most recent event from the IdRegistry contract that moved an fid  */
   async getIdRegistryEvent(fid: Uint8Array): Promise<ContractEventModel> {
     return ContractEventModel.get(this._db, fid);
   }
 
-  /** Returns the custody address that currently holds an fid */
+  /** Returns the custody address that currently owns an fid */
   async getCustodyAddress(fid: Uint8Array): Promise<Uint8Array> {
     const idRegistryEvent = await this.getIdRegistryEvent(fid);
     return idRegistryEvent.to();
   }
 
   // TODO: consider having a separate get signer add method
+
   /**
    * Finds a SignerAdd Message by checking the Adds Set index
    *
@@ -100,7 +99,7 @@ class SignerStore {
     return MessageModel.get<SignerRemoveModel>(this._db, fid, UserPostfix.SignerMessage, messageTsHash);
   }
 
-  // Having two methods (GetSignerAddsByUser)
+  //TODO: consider having two separate methods, one that requires the param and one that doesnt
 
   /**
    * Finds all SignerAdd messages for a user's custody address
@@ -141,7 +140,8 @@ class SignerStore {
   }
 
   /**
-   * Merges a Contract Event from the IdRegistry into the SignerStore
+   * Merges a ContractEvent into the SignerStore, storing the causally latest event at the key:
+   * <RootPrefix:User><fid><UserPostfix:IdRegistryEvent>
    *
    * @param event the ContractEventModel to merge
    */
@@ -151,8 +151,6 @@ class SignerStore {
     if (existingEvent.isOk() && this.eventCompare(existingEvent.value, event) >= 0) {
       return undefined;
     }
-
-    // DOCUMENT appears that this will overwrite the last one? is that right?
 
     const txn = this._db.transaction();
     txn.put(event.primaryKey(), event.toBuffer());
@@ -183,9 +181,6 @@ class SignerStore {
     } else if (a.blockNumber > b.blockNumber) {
       return 1;
     }
-
-    // TODO: we must also compare the position of the transaction within the block to guarantee
-    // uniqueness of the event
 
     // Compare logIndex
     if (a.logIndex() < b.logIndex()) {
@@ -237,8 +232,7 @@ class SignerStore {
       return tsHashOrder;
     }
 
-    // DISCUSS: the "toggle" problem is less prevalent meaning that it is unlikely that signer adds and
-    // removes are constantly regenerated, however it seems easier to align with the other stores
+    // TODO: refactor to compare ts, then type, then hash
 
     if (aType === MessageType.SignerRemove && bType === MessageType.SignerAdd) {
       return 1;

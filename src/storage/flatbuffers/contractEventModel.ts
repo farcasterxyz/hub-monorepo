@@ -4,6 +4,7 @@ import { UserPostfix } from '~/storage/flatbuffers/types';
 import { ContractEvent, ContractEventType } from '~/utils/generated/contract_event_generated';
 import MessageModel from './messageModel';
 
+/** ContractEventModel provides helpers to read and write Flatbuffers ContractEvents from RocksDB */
 export default class ContractEventModel {
   public event: ContractEvent;
 

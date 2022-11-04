@@ -7,6 +7,9 @@ enum ContractEventType: uint8 {
   IdRegistryTransfer = 2,
 }
 
+/** 
+ * Contains block, transaction and log data needed to parse events from the IdRegistry contract.  
+ */
 table ContractEvent {
   block_number: uint32;
   block_hash: [ubyte] (required);
