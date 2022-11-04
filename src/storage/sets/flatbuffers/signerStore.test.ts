@@ -71,8 +71,6 @@ describe('getIdRegistryEvent', () => {
     await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
   });
 
-  // TODO: if there multiple events, it should return the latest
-
   test('fails if event is missing', async () => {
     await expect(set.getIdRegistryEvent(fid)).rejects.toThrow(NotFoundError);
   });
@@ -86,8 +84,6 @@ describe('getCustodyAddress', () => {
     await set.mergeIdRegistryEvent(custody1Event);
     await expect(set.getCustodyAddress(fid)).resolves.toEqual(custody1Address);
   });
-
-  // TODO: if there are multiple events, it should return the latest
 
   test('fails if event is missing', async () => {
     await expect(set.getCustodyAddress(fid)).rejects.toThrow(NotFoundError);
@@ -214,16 +210,12 @@ describe('getSignerRemovesByUser', () => {
 });
 
 describe('mergeIdRegistryEvent', () => {
-  test('succeeds', async () => {
-    await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toEqual(undefined);
-    await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
-  });
-
   test('succeeds and activates signers, if present', async () => {
     await set.merge(signerAdd);
     await expect(set.getSignerAdd(fid, signer)).rejects.toThrow(NotFoundError);
 
     await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toEqual(undefined);
+    await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
     await expect(set.getSignerAdd(fid, signer)).resolves.toEqual(signerAdd);
   });
 
@@ -254,11 +246,14 @@ describe('mergeIdRegistryEvent', () => {
 
     beforeEach(async () => {
       await set.mergeIdRegistryEvent(custody1Event);
+      await set.merge(signerAdd);
+      await expect(set.getSignerAdd(fid, signer)).resolves.toEqual(signerAdd);
     });
 
     afterEach(async () => {
       await expect(set.mergeIdRegistryEvent(newEvent)).resolves.toEqual(undefined);
       await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(newEvent);
+      await expect(set.getSignerAdd(fid, signer)).rejects.toThrow(NotFoundError);
     });
 
     test('when it has a higher block number', async () => {
@@ -287,11 +282,14 @@ describe('mergeIdRegistryEvent', () => {
 
     beforeEach(async () => {
       await set.mergeIdRegistryEvent(custody1Event);
+      await set.merge(signerAdd);
+      await expect(set.getSignerAdd(fid, signer)).resolves.toEqual(signerAdd);
     });
 
     afterEach(async () => {
       await expect(set.mergeIdRegistryEvent(newEvent)).resolves.toEqual(undefined);
       await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
+      await expect(set.getSignerAdd(fid, signer)).resolves.toEqual(signerAdd);
     });
 
     test('when it has a lower block number', async () => {
