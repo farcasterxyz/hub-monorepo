@@ -29,5 +29,11 @@ import { default as Pino } from 'pino';
  * More info on best practices:
  * https://betterstack.com/community/guides/logging/how-to-install-setup-and-use-pino-to-log-node-js-applications/
  */
+const defaultOptions: Pino.LoggerOptions = {};
 
-export const logger = Pino();
+// Disable logging in tests and CI to reduce noise
+if (process.env.NODE_ENV === 'test' || process.env.CI) {
+  defaultOptions.level = 'silent';
+}
+
+export const logger = Pino(defaultOptions);
