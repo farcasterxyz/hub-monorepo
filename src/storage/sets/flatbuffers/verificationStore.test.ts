@@ -9,7 +9,7 @@ import { generateEthereumSigner } from '~/utils/crypto';
 import { FarcasterNetwork } from '~/utils/generated/message_generated';
 import { arrayify } from 'ethers/lib/utils';
 
-const db = jestBinaryRocksDB('flatbuffers.verificationSet.test');
+const db = jestBinaryRocksDB('flatbuffers.verificationStore.test');
 const set = new VerificationStore(db);
 const fid = Factories.FID.build();
 

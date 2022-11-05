@@ -14,16 +14,17 @@ class VerificationStore {
     this._db = db;
   }
 
-  /** RocksDB key of the form <user prefix (1 byte), fid (32 bytes), verification removes key (1 byte), address (variable bytes)> */
-  static verificationRemovesKey(fid: Uint8Array, address?: Uint8Array): Buffer {
-    return Buffer.concat([
-      MessageModel.userKey(fid),
-      Buffer.from([UserPostfix.VerificationRemoves]),
-      address ? Buffer.from(address) : new Uint8Array(),
-    ]);
-  }
+  // RESEARCH + DOCUMENT: how can the adds set be extended to other verification types?
 
-  /** RocksDB key of the form <user prefix (1 byte), fid (32 bytes), verification adds key (1 byte), address (variable bytes)> */
+  /**
+   * Generates a unique key used to store a VerificationAdds message key in the VerificationsAdds
+   * set index
+   *
+   * @param fid farcaster id of the user who created the verification
+   * @param address Ethereum address being verified
+   *
+   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<address?>
+   */
   static verificationAddsKey(fid: Uint8Array, address?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
@@ -32,7 +33,31 @@ class VerificationStore {
     ]);
   }
 
-  /** Look up VerificationAdd* message by address */
+  /**
+   * Generates a unique key used to store a VerificationAdd message key in the ReactionsRemove
+   * set index
+   *
+   * @param fid farcaster id of the user who created the reaction
+   * @param address Ethereum address being verified
+   *
+   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<targetKey?>:<type?>
+   */
+  static verificationRemovesKey(fid: Uint8Array, address?: Uint8Array): Buffer {
+    return Buffer.concat([
+      MessageModel.userKey(fid),
+      Buffer.from([UserPostfix.VerificationRemoves]),
+      address ? Buffer.from(address) : new Uint8Array(),
+    ]);
+  }
+
+  /**
+   * Finds a VerificationAdds Message by checking the adds-set's index
+   *
+   * @param fid fid of the user who created the SignerAdd
+   * @param address the address being verified
+   *
+   * @returns the VerificationAddEthAddressModel if it exists, throws NotFoundError otherwise
+   */
   async getVerificationAdd(fid: Uint8Array, address: Uint8Array): Promise<VerificationAddEthAddressModel> {
     const messageTsHash = await this._db.get(VerificationStore.verificationAddsKey(fid, address));
     return MessageModel.get<VerificationAddEthAddressModel>(
@@ -43,13 +68,24 @@ class VerificationStore {
     );
   }
 
-  /** Look up VerificationRemove message by address */
+  /**
+   * Finds a VerificationsRemove Message by checking the remove-set's index
+   *
+   * @param fid fid of the user who created the SignerAdd
+   * @param address the address being verified
+   * @returns the VerificationRemoveEthAddress if it exists, throws NotFoundError otherwise
+   */
   async getVerificationRemove(fid: Uint8Array, address: Uint8Array): Promise<VerificationRemoveModel> {
     const messageTsHash = await this._db.get(VerificationStore.verificationRemovesKey(fid, address));
     return MessageModel.get<VerificationRemoveModel>(this._db, fid, UserPostfix.VerificationMessage, messageTsHash);
   }
 
-  /** Get all VerificationAdd* messages for an fid */
+  /**
+   * Finds all VerificationAdds messages for a user
+   *
+   * @param fid fid of the user who created the signers
+   * @returns the VerificationAddEthAddresses if they exists, throws NotFoundError otherwise
+   */
   async getVerificationAddsByUser(fid: Uint8Array): Promise<VerificationAddEthAddressModel[]> {
     const addsPrefix = VerificationStore.verificationAddsKey(fid);
     const messageKeys: Buffer[] = [];
@@ -64,7 +100,12 @@ class VerificationStore {
     );
   }
 
-  /** Get all VerificationRemove messages for an fid */
+  /**
+   * Finds all VerificationRemoves messages for a user
+   *
+   * @param fid fid of the user who created the signers
+   * @returns the VerificationRemoves messages if it exists, throws NotFoundError otherwise
+   */
   async getVerificationRemovesByUser(fid: Uint8Array): Promise<VerificationRemoveModel[]> {
     const removesPrefix = VerificationStore.verificationRemovesKey(fid);
     const messageKeys: Buffer[] = [];
@@ -79,7 +120,7 @@ class VerificationStore {
     );
   }
 
-  /** Merge a VerificationAdd* or VerificationRemove message into the set */
+  /** Merge a VerificationAdd or VerificationRemove message into the VerificationStore */
   async merge(message: MessageModel): Promise<void> {
     if (isVerificationRemove(message)) {
       return this.mergeRemove(message);
@@ -144,6 +185,8 @@ class VerificationStore {
     if (tsHashOrder !== 0) {
       return tsHashOrder;
     }
+
+    // TODO: change comparison type
 
     if (aType === MessageType.VerificationRemove && bType === MessageType.VerificationAddEthAddress) {
       return 1;
