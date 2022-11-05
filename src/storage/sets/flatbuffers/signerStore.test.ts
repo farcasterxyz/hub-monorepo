@@ -363,7 +363,7 @@ describe('merge', () => {
       let signerAddLater: SignerAddModel;
 
       beforeAll(async () => {
-        const addData = await Factories.ReactionAddData.create({
+        const addData = await Factories.SignerAddData.create({
           ...signerAdd.data.unpack(),
           timestamp: signerAdd.timestamp() + 1,
         });
@@ -399,14 +399,13 @@ describe('merge', () => {
       let signerAddLater: SignerAddModel;
 
       beforeAll(async () => {
-        const addData = await Factories.ReactionAddData.create({
+        const addData = await Factories.SignerAddData.create({
           ...signerAdd.data.unpack(),
         });
 
         const addMessage = await Factories.Message.create(
           {
             data: Array.from(addData.bb?.bytes() ?? []),
-            // Makes a copy of the hash and increments it
             hash: Array.from(bytesIncrement(signerAdd.hash().slice())),
           },
           { transient: { wallet: custody1.wallet } }
@@ -474,7 +473,6 @@ describe('merge', () => {
         const removeMessage = await Factories.Message.create(
           {
             data: Array.from(removeData.bb?.bytes() ?? []),
-            // Makes a copy of the hash and increments it
             hash: Array.from(bytesIncrement(signerAdd.hash().slice())),
           },
           { transient: { wallet: custody1.wallet } }
@@ -489,7 +487,7 @@ describe('merge', () => {
         await assertSignerDoesNotExist(signerAdd);
       });
 
-      test('succeeds if remove has an earlier hash', async () => {
+      test('no-ops even if remove has an earlier hash', async () => {
         const removeData = await Factories.SignerRemoveData.create({
           ...signerRemove.data.unpack(),
           timestamp: signerAdd.timestamp(),
@@ -498,7 +496,6 @@ describe('merge', () => {
         const removeMessage = await Factories.Message.create(
           {
             data: Array.from(removeData.bb?.bytes() ?? []),
-            // TODO: investigate if this test is correct
             hash: Array.from(bytesDecrement(signerAdd.hash().slice())),
           },
           { transient: { wallet: custody1.wallet } }
@@ -609,71 +606,72 @@ describe('merge', () => {
       });
 
       test('no-ops with an earlier timestamp', async () => {
-        const addData = await Factories.ReactionAddData.create({
+        const addData = await Factories.SignerAddData.create({
           ...signerRemove.data.unpack(),
           timestamp: signerRemove.timestamp() + 1,
           type: MessageType.SignerAdd,
         });
 
-        const reactionAddMessage = await Factories.Message.create(
+        const addMessage = await Factories.Message.create(
           {
             data: Array.from(addData.bb?.bytes() ?? []),
           },
           { transient: { wallet: custody1.wallet } }
         );
 
-        const reactionAddLater = new MessageModel(reactionAddMessage) as SignerAddModel;
+        const signerAddLater = new MessageModel(addMessage) as SignerAddModel;
 
-        await set.merge(reactionAddLater);
+        await set.merge(signerAddLater);
         await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
 
-        await assertSignerAddWins(reactionAddLater);
+        await assertSignerAddWins(signerAddLater);
         await assertSignerDoesNotExist(signerRemove);
       });
     });
 
     describe('with conflicting SignerAdd with identical timestamps', () => {
       test('succeeds with an earlier hash', async () => {
-        const addData = await Factories.ReactionAddData.create({
+        const addData = await Factories.SignerAddData.create({
           ...signerRemove.data.unpack(),
           type: MessageType.SignerAdd,
         });
 
-        const reactionAddMessage = await Factories.Message.create(
+        const addMessage = await Factories.Message.create(
           {
             data: Array.from(addData.bb?.bytes() ?? []),
             hash: Array.from(bytesIncrement(signerRemove.hash().slice())),
           },
           { transient: { wallet: custody1.wallet } }
         );
-        const reactionAddLater = new MessageModel(reactionAddMessage) as SignerAddModel;
+        const signerAddLater = new MessageModel(addMessage) as SignerAddModel;
 
-        await set.merge(reactionAddLater);
+        await set.merge(signerAddLater);
         await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
 
-        await assertSignerDoesNotExist(reactionAddLater);
+        await assertSignerDoesNotExist(signerAddLater);
         await assertSignerRemoveWins(signerRemove);
       });
 
       test('succeeds with a later hash', async () => {
-        const removeData = await Factories.ReactionAddData.create({
+        const addData = await Factories.SignerAddData.create({
           ...signerRemove.data.unpack(),
+          type: MessageType.SignerAdd,
         });
 
-        const removeMessage = await Factories.Message.create(
+        const addMessage = await Factories.Message.create(
           {
-            data: Array.from(removeData.bb?.bytes() ?? []),
+            data: Array.from(addData.bb?.bytes() ?? []),
             hash: Array.from(bytesDecrement(signerRemove.hash().slice())),
           },
           { transient: { wallet: custody1.wallet } }
         );
 
-        const signerRemoveEarlier = new MessageModel(removeMessage) as SignerRemoveModel;
+        const signerAddEarlier = new MessageModel(addMessage) as SignerAddModel;
 
-        await set.merge(signerRemoveEarlier);
+        await set.merge(signerAddEarlier);
         await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
 
-        await assertSignerDoesNotExist(signerRemoveEarlier);
+        await assertSignerDoesNotExist(signerAddEarlier);
         await assertSignerRemoveWins(signerRemove);
       });
     });
