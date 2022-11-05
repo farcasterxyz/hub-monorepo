@@ -5,6 +5,7 @@ import { BadRequestError, NotFoundError } from '~/utils/errors';
 import { ReactionAddModel, ReactionRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
 import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
 import { MessageType, ReactionType } from '~/utils/generated/message_generated';
+import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
 
 const db = jestBinaryRocksDB('flatbuffers.reactionStore.test');
 const set = new ReactionStore(db);
@@ -146,37 +147,37 @@ describe('getReactionRemove', () => {
   });
 });
 
-describe('getReactionAddsByFid', () => {
+describe('getReactionAddsByUser', () => {
   test('returns reactionAdds if they exist', async () => {
     await set.merge(reactionAdd);
     await set.merge(reactionAddRecast);
-    await expect(set.getReactionAddsByFid(fid)).resolves.toEqual([reactionAdd, reactionAddRecast]);
+    await expect(set.getReactionAddsByUser(fid)).resolves.toEqual([reactionAdd, reactionAddRecast]);
   });
 
   test('returns empty array if no ReactionAdd exists', async () => {
-    await expect(set.getReactionAddsByFid(fid)).resolves.toEqual([]);
+    await expect(set.getReactionAddsByUser(fid)).resolves.toEqual([]);
   });
 
   test('returns empty array if no ReactionAdd exists, even if ReactionRemove exists', async () => {
     await set.merge(reactionRemove);
-    await expect(set.getReactionAddsByFid(fid)).resolves.toEqual([]);
+    await expect(set.getReactionAddsByUser(fid)).resolves.toEqual([]);
   });
 });
 
-describe('getReactionRemovesByFid', () => {
+describe('getReactionRemovesByUser', () => {
   test('returns ReactionRemove if it exists', async () => {
     await set.merge(reactionRemove);
     await set.merge(reactionRemoveRecast);
-    await expect(set.getReactionRemovesByFid(fid)).resolves.toEqual([reactionRemove, reactionRemoveRecast]);
+    await expect(set.getReactionRemovesByUser(fid)).resolves.toEqual([reactionRemove, reactionRemoveRecast]);
   });
 
   test('returns empty array if no ReactionRemove exists', async () => {
-    await expect(set.getReactionRemovesByFid(fid)).resolves.toEqual([]);
+    await expect(set.getReactionRemovesByUser(fid)).resolves.toEqual([]);
   });
 
   test('returns empty array if no ReactionRemove exists, even if ReactionAdds exists', async () => {
     await set.merge(reactionAdd);
-    await expect(set.getReactionRemovesByFid(fid)).resolves.toEqual([]);
+    await expect(set.getReactionRemovesByUser(fid)).resolves.toEqual([]);
   });
 });
 
@@ -268,7 +269,7 @@ describe('merge', () => {
       await assertReactionAddWins(reactionAdd);
     });
 
-    test('succeeds once, even if  merged twice', async () => {
+    test('succeeds once, even if merged twice', async () => {
       await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
       await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
 
@@ -279,14 +280,14 @@ describe('merge', () => {
       let reactionAddLater: ReactionAddModel;
 
       beforeAll(async () => {
-        const reactionAddData = await Factories.ReactionAddData.create({
+        const addData = await Factories.ReactionAddData.create({
           ...reactionAdd.data.unpack(),
           timestamp: reactionAdd.timestamp() + 1,
         });
-        const reactionAddMessage = await Factories.Message.create({
-          data: Array.from(reactionAddData.bb?.bytes() ?? []),
+        const addMessage = await Factories.Message.create({
+          data: Array.from(addData.bb?.bytes() ?? []),
         });
-        reactionAddLater = new MessageModel(reactionAddMessage) as ReactionAddModel;
+        reactionAddLater = new MessageModel(addMessage) as ReactionAddModel;
       });
 
       test('succeeds with a later timestamp', async () => {
@@ -310,19 +311,16 @@ describe('merge', () => {
       let reactionAddLater: ReactionAddModel;
 
       beforeAll(async () => {
-        const reactionAddData = await Factories.ReactionAddData.create({
+        const addData = await Factories.ReactionAddData.create({
           ...reactionAdd.data.unpack(),
         });
 
-        const laterHash = Array.from(reactionAdd.hash());
-        laterHash[0] = 255;
-
-        const reactionAddMessage = await Factories.Message.create({
-          data: Array.from(reactionAddData.bb?.bytes() ?? []),
-          hash: Array.from(laterHash),
+        const addMessage = await Factories.Message.create({
+          data: Array.from(addData.bb?.bytes() ?? []),
+          hash: Array.from(bytesIncrement(reactionAdd.hash().slice())),
         });
 
-        reactionAddLater = new MessageModel(reactionAddMessage) as ReactionAddModel;
+        reactionAddLater = new MessageModel(addMessage) as ReactionAddModel;
       });
 
       test('succeeds with a later hash', async () => {
@@ -378,13 +376,9 @@ describe('merge', () => {
           timestamp: reactionAdd.timestamp(),
         });
 
-        // Set the first byte of the hash to the max value to ensure it is later
-        const laterHash = Array.from(reactionAdd.hash());
-        laterHash[0] = 255;
-
         const reactionRemoveMessage = await Factories.Message.create({
           data: Array.from(reactionRemoveData.bb?.bytes() ?? []),
-          hash: Array.from(laterHash),
+          hash: Array.from(bytesIncrement(reactionAdd.hash().slice())),
         });
 
         const reactionRemoveLater = new MessageModel(reactionRemoveMessage) as ReactionRemoveModel;
@@ -402,13 +396,9 @@ describe('merge', () => {
           timestamp: reactionAdd.timestamp(),
         });
 
-        // Set the first byte of the hash to the min value to ensure it is earlier
-        const earlierHash = Array.from(reactionAdd.hash());
-        earlierHash[0] = 0;
-
         const reactionRemoveMessage = await Factories.Message.create({
           data: Array.from(reactionRemoveData.bb?.bytes() ?? []),
-          hash: Array.from(earlierHash),
+          hash: Array.from(bytesDecrement(reactionAdd.hash().slice())),
         });
 
         const reactionRemoveEarlier = new MessageModel(reactionRemoveMessage) as ReactionRemoveModel;
@@ -475,15 +465,12 @@ describe('merge', () => {
           ...reactionRemove.data.unpack(),
         });
 
-        const laterHash = Array.from(reactionRemove.hash());
-        laterHash[0] = 255;
-
-        const reactionAddMessage = await Factories.Message.create({
+        const addMessage = await Factories.Message.create({
           data: Array.from(reactionRemoveData.bb?.bytes() ?? []),
-          hash: Array.from(laterHash),
+          hash: Array.from(bytesIncrement(reactionRemove.hash().slice())),
         });
 
-        reactionRemoveLater = new MessageModel(reactionAddMessage) as ReactionRemoveModel;
+        reactionRemoveLater = new MessageModel(addMessage) as ReactionRemoveModel;
       });
 
       test('succeeds with a later hash', async () => {
@@ -512,15 +499,15 @@ describe('merge', () => {
       });
 
       test('no-ops with an earlier timestamp', async () => {
-        const reactionAddData = await Factories.ReactionAddData.create({
+        const addData = await Factories.ReactionAddData.create({
           ...reactionRemove.data.unpack(),
           timestamp: reactionRemove.timestamp() + 1,
           type: MessageType.ReactionAdd,
         });
-        const reactionAddMessage = await Factories.Message.create({
-          data: Array.from(reactionAddData.bb?.bytes() ?? []),
+        const addMessage = await Factories.Message.create({
+          data: Array.from(addData.bb?.bytes() ?? []),
         });
-        const reactionAddLater = new MessageModel(reactionAddMessage) as ReactionAddModel;
+        const reactionAddLater = new MessageModel(addMessage) as ReactionAddModel;
         await set.merge(reactionAddLater);
         await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
         await assertReactionAddWins(reactionAddLater);
@@ -530,20 +517,16 @@ describe('merge', () => {
 
     describe('with conflicting ReactionAdd with identical timestamps', () => {
       test('succeeds with an earlier hash', async () => {
-        const reactionAddData = await Factories.ReactionAddData.create({
+        const addData = await Factories.ReactionAddData.create({
           ...reactionRemove.data.unpack(),
           type: MessageType.ReactionAdd,
         });
 
-        // Set the first byte of the hash to the max value to ensure it is later
-        const laterHash = Array.from(reactionRemove.hash());
-        laterHash[0] = 255;
-
-        const reactionAddMessage = await Factories.Message.create({
-          data: Array.from(reactionAddData.bb?.bytes() ?? []),
-          hash: Array.from(laterHash),
+        const addMessage = await Factories.Message.create({
+          data: Array.from(addData.bb?.bytes() ?? []),
+          hash: Array.from(bytesIncrement(reactionRemove.hash().slice())),
         });
-        const reactionAddLater = new MessageModel(reactionAddMessage) as ReactionAddModel;
+        const reactionAddLater = new MessageModel(addMessage) as ReactionAddModel;
 
         await set.merge(reactionAddLater);
         await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
@@ -553,20 +536,16 @@ describe('merge', () => {
       });
 
       test('succeeds with a later hash', async () => {
-        const reactionAddData = await Factories.ReactionAddData.create({
+        const removeData = await Factories.ReactionAddData.create({
           ...reactionRemove.data.unpack(),
         });
 
-        // Set the first byte of the hash to the min value to ensure it is earlier
-        const earlierHash = Array.from(reactionRemove.hash());
-        earlierHash[0] = 0;
-
-        const reactionRemoveMessage = await Factories.Message.create({
-          data: Array.from(reactionAddData.bb?.bytes() ?? []),
-          hash: Array.from(earlierHash),
+        const removeMessage = await Factories.Message.create({
+          data: Array.from(removeData.bb?.bytes() ?? []),
+          hash: Array.from(bytesDecrement(reactionRemove.hash().slice())),
         });
 
-        const reactionRemoveEarlier = new MessageModel(reactionRemoveMessage) as ReactionRemoveModel;
+        const reactionRemoveEarlier = new MessageModel(removeMessage) as ReactionRemoveModel;
 
         await set.merge(reactionRemoveEarlier);
         await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);

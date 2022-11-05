@@ -4,6 +4,7 @@ import { UserPostfix } from '~/storage/flatbuffers/types';
 import { ContractEvent, ContractEventType } from '~/utils/generated/contract_event_generated';
 import MessageModel from './messageModel';
 
+/** ContractEventModel provides helpers to read and write Flatbuffers ContractEvents from RocksDB */
 export default class ContractEventModel {
   public event: ContractEvent;
 
@@ -18,7 +19,7 @@ export default class ContractEventModel {
 
   /** <user prefix byte, fid, ID Registry event prefix byte> */
   static primaryKey(fid: Uint8Array): Buffer {
-    return Buffer.concat([MessageModel.userKey(fid), Buffer.from([UserPostfix.IDRegistryEvent])]);
+    return Buffer.concat([MessageModel.userKey(fid), Buffer.from([UserPostfix.IdRegistryEvent])]);
   }
 
   static async get<T extends ContractEventModel>(db: RocksDB, fid: Uint8Array): Promise<T> {

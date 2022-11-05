@@ -53,7 +53,7 @@ beforeAll(async () => {
   custodyWallet = Wallet.createRandom();
   custodyAddress = utils.arrayify(custodyWallet.address);
   custodyEvent = new ContractEventModel(
-    await Factories.IDRegistryEvent.create({ fid: Array.from(fid), to: Array.from(custodyAddress) })
+    await Factories.IdRegistryEvent.create({ fid: Array.from(fid), to: Array.from(custodyAddress) })
   );
 
   signer = await generateEd25519KeyPair();
@@ -111,7 +111,7 @@ beforeAll(async () => {
 describe('mergeIdRegistryEvent', () => {
   test('succeeds', async () => {
     await expect(engine.mergeIdRegistryEvent(custodyEvent)).resolves.toEqual(undefined);
-    await expect(signerStore.getIDRegistryEvent(fid)).resolves.toEqual(custodyEvent);
+    await expect(signerStore.getIdRegistryEvent(fid)).resolves.toEqual(custodyEvent);
   });
 });
 
