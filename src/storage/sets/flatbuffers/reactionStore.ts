@@ -24,7 +24,7 @@ import { bytesCompare } from '~/storage/flatbuffers/utils';
  * set (adds, removes) to make lookups easy when checking if a collision exists. An index is also
  * build for the target to make it easy to fetch all reactions for a target.
  *
- * The key-value entries created by the Reaction Set are:
+ * The key-value entries created by the Reaction Store are:
  *
  * 1. fid:tsHash -> reaction message
  * 2. fid:set:targetCastTsHash:reactionType -> fid:tsHash (Set Index)
@@ -160,7 +160,7 @@ class ReactionStore {
   }
 
   /** Finds all ReactionAdd Messages by iterating through the prefixes */
-  async getReactionAddsByFid(fid: Uint8Array): Promise<ReactionAddModel[]> {
+  async getReactionAddsByUser(fid: Uint8Array): Promise<ReactionAddModel[]> {
     const prefix = ReactionStore.reactionAddsKey(fid);
     const msgKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true })) {
@@ -170,7 +170,7 @@ class ReactionStore {
   }
 
   /** Finds all ReactionRemove Messages by iterating through the prefixes */
-  async getReactionRemovesByFid(fid: Uint8Array): Promise<ReactionRemoveModel[]> {
+  async getReactionRemovesByUser(fid: Uint8Array): Promise<ReactionRemoveModel[]> {
     const prefix = ReactionStore.reactionRemovesKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true })) {
@@ -273,7 +273,7 @@ class ReactionStore {
   }
 
   /**
-   * Determines the RocksDB keys that must be modified to settle merge conflicts as a result of adding a Reaction to the Set.
+   * Determines the RocksDB keys that must be modified to settle merge conflicts as a result of adding a Reaction to the Store.
    *
    * @returns a RocksDB transaction if keys must be added or removed, undefined otherwise
    */
