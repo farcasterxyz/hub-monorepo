@@ -7,6 +7,22 @@ import { isVerificationAddEthAddress, isVerificationRemove } from '~/storage/fla
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 
+/**
+ * VerificationStore persists VerificationMessages in RocksDB using a two-phase CRDT set to
+ * guarantee eventual consistency.
+ *
+ * A Verification is performed by an fid on a target (e.g. Ethereum address) and may have an
+ * ordinality. Verifications are added with type specific messages like VerificationAddEthAddress
+ * but are removed with a generic VerificationRemove message that points to the unique id of the
+ * Add. Conflicts are resolved with Last-Write-Wins + Remove-Wins rules as follows:
+ *
+ * 1. Highest timestamp wins
+ * 2. Remove wins over Adds
+ * 3. Highest lexicographic hash wins
+ *
+ * TODO: complete docs once discussion items are sorted out.
+ *
+ */
 class VerificationStore {
   private _db: RocksDB;
 
@@ -14,7 +30,17 @@ class VerificationStore {
     this._db = db;
   }
 
-  // RESEARCH + DOCUMENT: how can the adds set be extended to other verification types?
+  // DISCUSS: A verification type needs a unique key to resolve conflicts correctly. The
+  // VerificationAddEthereumAddress uses the Ethereum address as this identifier. But it is quite
+  // possible that we may add a verification type that has a unique property other than address.
+  // One idea to make this easier to extend is to have a generic "identifier" property on the model
+  // which is always set directly to the key and all methods calling any subtype of Verification
+  // can safely assume it exists. Another option is building a method on top of the model that
+  // can return the field, which allows us to combine por manipulate fields. Either approach offers
+  // more flexibility than the current approach which has methods strictly tied to "Address".
+
+  // DISCUSS: a similar problem to the one above exists for ordinality, where we depend on
+  // "sub properties" like the blockhash to resolve conflicts.
 
   /**
    * Generates a unique key used to store a VerificationAdds message key in the VerificationsAdds
