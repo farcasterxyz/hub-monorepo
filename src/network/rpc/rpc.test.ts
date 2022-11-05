@@ -34,8 +34,8 @@ import { SyncId } from '~/network/sync/syncId';
 
 const aliceFid = faker.datatype.number();
 const testDb = jestRocksDB('rpc.test');
-const engine = new Engine(testDb);
 
+let engine: Engine;
 let aliceCustodySigner: EthereumSigner;
 let aliceCustodyRegister: IdRegistryEvent;
 let aliceDelegateSigner: MessageSigner;
@@ -158,7 +158,8 @@ describe('rpc', () => {
   });
 
   beforeEach(async () => {
-    engine._reset();
+    await testDb.clear();
+    engine = new Engine(testDb);
     syncEngine = new SyncEngine(engine);
     await engine.mergeIdRegistryEvent(aliceCustodyRegister);
     await engine.mergeMessage(addDelegateSigner);

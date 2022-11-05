@@ -12,11 +12,11 @@ import { Factories } from '~/test/factories';
 import { sleep } from '~/utils/crypto';
 
 const serverDb = jestRocksDB('rpcSync.test.server');
-const hubAStorageEngine = new Engine(serverDb);
+let hubAStorageEngine: Engine;
 let hubASyncEngine: SyncEngine;
 
 const clientDb = jestRocksDB('rpcSync.test.client');
-const hubBStorageEngine = new Engine(clientDb);
+let hubBStorageEngine: Engine;
 let hubBSyncEngine: SyncEngine;
 
 class mockRPCHandler implements RPCHandler {
@@ -70,8 +70,10 @@ describe('differentialSync', () => {
   let userInfos: UserInfo[];
 
   beforeEach(async () => {
-    await hubAStorageEngine._reset();
-    await hubBStorageEngine._reset();
+    await serverDb.clear();
+    await clientDb.clear();
+    hubAStorageEngine = new Engine(serverDb);
+    hubBStorageEngine = new Engine(clientDb);
     hubASyncEngine = new SyncEngine(hubAStorageEngine);
     hubBSyncEngine = new SyncEngine(hubBStorageEngine);
     // setup the rpc server and client

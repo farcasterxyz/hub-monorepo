@@ -10,13 +10,14 @@ import { RPCClient } from '~/network/rpc';
 import { ok } from 'neverthrow';
 
 const testDb = jestRocksDB(`engine.syncEngine.test`);
-const engine = new Engine(testDb);
 
 describe('SyncEngine', () => {
   let syncEngine: SyncEngine;
+  let engine: Engine;
 
   beforeEach(async () => {
-    await engine._reset();
+    await testDb.clear();
+    engine = new Engine(testDb);
     syncEngine = new SyncEngine(engine);
   });
 
