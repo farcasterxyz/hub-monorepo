@@ -8,6 +8,7 @@ import { EthereumSigner } from '~/types';
 import { generateEthereumSigner } from '~/utils/crypto';
 import { FarcasterNetwork } from '~/utils/generated/message_generated';
 import { arrayify } from 'ethers/lib/utils';
+import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
 
 const db = jestBinaryRocksDB('flatbuffers.verificationStore.test');
 const set = new VerificationStore(db);
@@ -87,134 +88,49 @@ describe('getVerificationRemovesByUser', () => {
 });
 
 describe('merge', () => {
+  const assertVerificationExists = async (message: VerificationAddEthAddressModel | VerificationRemoveModel) => {
+    await expect(MessageModel.get(db, fid, UserPostfix.VerificationMessage, message.tsHash())).resolves.toEqual(
+      message
+    );
+  };
+
+  const assertVerificationDoesNotExist = async (message: VerificationAddEthAddressModel | VerificationRemoveModel) => {
+    await expect(MessageModel.get(db, fid, UserPostfix.VerificationMessage, message.tsHash())).rejects.toThrow(
+      NotFoundError
+    );
+  };
+
+  const assertVerificationAddWins = async (message: VerificationAddEthAddressModel) => {
+    await assertVerificationExists(message);
+    await expect(set.getVerificationAdd(fid, address)).resolves.toEqual(message);
+    await expect(set.getVerificationRemove(fid, address)).rejects.toThrow(NotFoundError);
+  };
+
+  const assertVerificationRemoveWins = async (message: VerificationRemoveModel) => {
+    await assertVerificationExists(message);
+    await expect(set.getVerificationRemove(fid, address)).resolves.toEqual(message);
+    await expect(set.getVerificationAdd(fid, address)).rejects.toThrow(NotFoundError);
+  };
+
   test('fails with invalid message type', async () => {
     const invalidData = await Factories.ReactionAddData.create({ fid: Array.from(fid) });
     const message = await Factories.Message.create({ data: Array.from(invalidData.bb?.bytes() ?? []) });
     await expect(set.merge(new MessageModel(message))).rejects.toThrow(BadRequestError);
   });
 
-  describe('VerificationRemove', () => {
-    describe('succeeds', () => {
-      beforeEach(async () => {
-        await set.merge(verificationAdd);
-        await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
-      });
-
-      test('saves message', async () => {
-        await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationRemove.tsHash())
-        ).resolves.toEqual(verificationRemove);
-      });
-
-      test('saves verificationRemoves index', async () => {
-        await expect(set.getVerificationRemove(fid, address)).resolves.toEqual(verificationRemove);
-      });
-
-      test('deletes VerificationAdd* message', async () => {
-        await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationAdd.tsHash())
-        ).rejects.toThrow(NotFoundError);
-      });
-
-      test('deletes verificationAdds index', async () => {
-        await expect(set.getVerificationAdd(fid, address)).rejects.toThrow(NotFoundError);
-      });
-    });
-
-    describe('with conflicting VerificationRemove', () => {
-      let verificationRemoveLater: VerificationRemoveModel;
-
-      beforeAll(async () => {
-        const removeData = await Factories.VerificationRemoveData.create({
-          ...verificationRemove.data.unpack(),
-          timestamp: verificationRemove.timestamp() + 1,
-        });
-        const removeMessage = await Factories.Message.create({
-          data: Array.from(removeData.bb?.bytes() ?? []),
-        });
-        verificationRemoveLater = new MessageModel(removeMessage) as VerificationRemoveModel;
-      });
-
-      test('succeeds with a later timestamp', async () => {
-        await set.merge(verificationRemove);
-        await expect(set.merge(verificationRemoveLater)).resolves.toEqual(undefined);
-        await expect(set.getVerificationRemove(fid, address)).resolves.toEqual(verificationRemoveLater);
-        await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationRemove.tsHash())
-        ).rejects.toThrow(NotFoundError);
-      });
-
-      test('no-ops with an earlier timestamp', async () => {
-        await set.merge(verificationRemoveLater);
-        await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
-        await expect(set.getVerificationRemove(fid, address)).resolves.toEqual(verificationRemoveLater);
-        await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationRemove.tsHash())
-        ).rejects.toThrow(NotFoundError);
-      });
-    });
-
-    describe('with conflicting VerificationAddEthAddress', () => {
-      test('no-ops with an earlier timestamp', async () => {
-        const addData = await Factories.VerificationAddEthAddressData.create({
-          ...verificationAdd.data.unpack(),
-          timestamp: verificationRemove.timestamp() + 1,
-        });
-        const addMessage = await Factories.Message.create({
-          data: Array.from(addData.bb?.bytes() ?? []),
-        });
-        const verificationAddLater = new MessageModel(addMessage) as VerificationAddEthAddressModel;
-
-        await set.merge(verificationAddLater);
-        await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
-        await expect(set.getVerificationAdd(fid, address)).resolves.toEqual(verificationAddLater);
-        await expect(set.getVerificationRemove(fid, address)).rejects.toThrow(NotFoundError);
-        await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationRemove.tsHash())
-        ).rejects.toThrow(NotFoundError);
-      });
-
-      test('succeeds with a later timestamp', async () => {
-        await set.merge(verificationAdd);
-        await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
-        await expect(set.getVerificationRemove(fid, address)).resolves.toEqual(verificationRemove);
-        await expect(set.getVerificationAdd(fid, address)).rejects.toThrow(NotFoundError);
-        await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationAdd.tsHash())
-        ).rejects.toThrow(NotFoundError);
-      });
-    });
-
-    test('succeeds when VerificationAdd* does not exist', async () => {
-      await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
-      await expect(set.getVerificationRemove(fid, address)).resolves.toEqual(verificationRemove);
-      await expect(set.getVerificationAdd(fid, address)).rejects.toThrow(NotFoundError);
-    });
-  });
-
   describe('VerificationAddEthAddress', () => {
-    describe('succeeds', () => {
-      beforeEach(async () => {
-        await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
-      });
-
-      test('saves message', async () => {
-        await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationAdd.tsHash())
-        ).resolves.toEqual(verificationAdd);
-      });
-
-      test('saves verificationAdds index', async () => {
-        await expect(set.getVerificationAdd(fid, address)).resolves.toEqual(verificationAdd);
-      });
-
-      test('no-ops when merged twice', async () => {
-        await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
-        await expect(set.getVerificationAdd(fid, address)).resolves.toEqual(verificationAdd);
-      });
+    test('succeeds', async () => {
+      await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
+      await assertVerificationAddWins(verificationAdd);
     });
 
-    describe('with conflicting VerificationAdd', () => {
+    test('succeeds once, even if merged twice', async () => {
+      await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
+      await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
+      await assertVerificationAddWins(verificationAdd);
+    });
+
+    describe('with a conflicting VerificationAddEthAddress with different timestamps', () => {
       let verificationAddLater: VerificationAddEthAddressModel;
 
       beforeAll(async () => {
@@ -231,50 +147,245 @@ describe('merge', () => {
       test('succeeds with a later timestamp', async () => {
         await set.merge(verificationAdd);
         await expect(set.merge(verificationAddLater)).resolves.toEqual(undefined);
-        await expect(set.getVerificationAdd(fid, address)).resolves.toEqual(verificationAddLater);
-        await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationAdd.tsHash())
-        ).rejects.toThrow(NotFoundError);
+        await assertVerificationDoesNotExist(verificationAdd);
+        await assertVerificationAddWins(verificationAddLater);
       });
 
       test('no-ops with an earlier timestamp', async () => {
         await set.merge(verificationAddLater);
         await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
-        await expect(set.getVerificationAdd(fid, address)).resolves.toEqual(verificationAddLater);
-        await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationAdd.tsHash())
-        ).rejects.toThrow(NotFoundError);
+        await assertVerificationDoesNotExist(verificationAdd);
+        await assertVerificationAddWins(verificationAddLater);
       });
     });
 
-    describe('with conflicting VerificationRemove', () => {
+    describe('with a conflicting VerificationAddEthAddress with identical timestamps', () => {
+      let verificationAddLater: VerificationAddEthAddressModel;
+
+      beforeAll(async () => {
+        const addData = await Factories.VerificationAddEthAddressData.create({
+          ...verificationAdd.data.unpack(),
+        });
+
+        const addMessage = await Factories.Message.create({
+          data: Array.from(addData.bb?.bytes() ?? []),
+          hash: Array.from(bytesIncrement(verificationAdd.hash().slice())),
+        });
+
+        verificationAddLater = new MessageModel(addMessage) as VerificationAddEthAddressModel;
+      });
+
+      test('succeeds with a later hash', async () => {
+        await set.merge(verificationAdd);
+        await expect(set.merge(verificationAddLater)).resolves.toEqual(undefined);
+        await assertVerificationDoesNotExist(verificationAdd);
+        await assertVerificationAddWins(verificationAddLater);
+      });
+
+      test('no-ops with an earlier hash', async () => {
+        await set.merge(verificationAddLater);
+        await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
+        await assertVerificationDoesNotExist(verificationAdd);
+        await assertVerificationAddWins(verificationAddLater);
+      });
+    });
+
+    describe('with conflicting VerificationRemove with different timestamps', () => {
       test('succeeds with a later timestamp', async () => {
         const removeData = await Factories.VerificationRemoveData.create({
           ...verificationRemove.data.unpack(),
           timestamp: verificationAdd.timestamp() - 1,
         });
+
         const removeMessage = await Factories.Message.create({
           data: Array.from(removeData.bb?.bytes() ?? []),
         });
-        const verificationRemoveEarlier = new MessageModel(removeMessage) as VerificationRemoveModel;
 
+        const verificationRemoveEarlier = new MessageModel(removeMessage) as VerificationRemoveModel;
         await set.merge(verificationRemoveEarlier);
         await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
-        await expect(set.getVerificationAdd(fid, address)).resolves.toEqual(verificationAdd);
-        await expect(set.getVerificationRemove(fid, address)).rejects.toThrow(NotFoundError);
-        await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationRemoveEarlier.tsHash())
-        ).rejects.toThrow(NotFoundError);
+        await assertVerificationAddWins(verificationAdd);
+        await assertVerificationDoesNotExist(verificationRemoveEarlier);
       });
 
       test('no-ops with an earlier timestamp', async () => {
         await set.merge(verificationRemove);
         await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
-        await expect(set.getVerificationRemove(fid, address)).resolves.toEqual(verificationRemove);
-        await expect(set.getVerificationAdd(fid, address)).rejects.toThrow(NotFoundError);
-        await expect(
-          MessageModel.get(db, fid, UserPostfix.VerificationMessage, verificationAdd.tsHash())
-        ).rejects.toThrow(NotFoundError);
+        await assertVerificationRemoveWins(verificationRemove);
+        await assertVerificationDoesNotExist(verificationAdd);
+      });
+    });
+
+    describe('with conflicting VerificationRemove with identical timestamps', () => {
+      test('no-ops if remove has a later hash', async () => {
+        const removeData = await Factories.VerificationRemoveData.create({
+          ...verificationRemove.data.unpack(),
+          timestamp: verificationAdd.timestamp(),
+        });
+
+        const removeMessage = await Factories.Message.create({
+          data: Array.from(removeData.bb?.bytes() ?? []),
+          hash: Array.from(bytesIncrement(verificationAdd.hash().slice())),
+        });
+
+        const verificationRemoveLater = new MessageModel(removeMessage) as VerificationRemoveModel;
+        await set.merge(verificationRemoveLater);
+        await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
+        await assertVerificationRemoveWins(verificationRemoveLater);
+        await assertVerificationDoesNotExist(verificationAdd);
+      });
+
+      test('no-ops if remove has an earlier hash', async () => {
+        const removeData = await Factories.VerificationRemoveData.create({
+          ...verificationRemove.data.unpack(),
+          timestamp: verificationAdd.timestamp(),
+        });
+
+        const removeMessage = await Factories.Message.create({
+          data: Array.from(removeData.bb?.bytes() ?? []),
+          hash: Array.from(bytesDecrement(verificationAdd.hash().slice())),
+        });
+
+        const verificationRemoveEarlier = new MessageModel(removeMessage) as VerificationRemoveModel;
+        await set.merge(verificationRemoveEarlier);
+        await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
+        await assertVerificationRemoveWins(verificationRemoveEarlier);
+        await assertVerificationDoesNotExist(verificationAdd);
+      });
+    });
+  });
+
+  describe('VerificationRemove', () => {
+    test('succeeds', async () => {
+      await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+      await assertVerificationRemoveWins(verificationRemove);
+    });
+
+    test('succeeds once, even if merged twice', async () => {
+      await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+      await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+      await assertVerificationRemoveWins(verificationRemove);
+    });
+
+    describe('with a conflicting VerificationRemove with different timestamps', () => {
+      let verificationRemoveLater: VerificationRemoveModel;
+
+      beforeAll(async () => {
+        const removeData = await Factories.VerificationRemoveData.create({
+          ...verificationRemove.data.unpack(),
+          timestamp: verificationRemove.timestamp() + 1,
+        });
+        const removeMessage = await Factories.Message.create({
+          data: Array.from(removeData.bb?.bytes() ?? []),
+        });
+        verificationRemoveLater = new MessageModel(removeMessage) as VerificationRemoveModel;
+      });
+
+      test('succeeds with a later timestamp', async () => {
+        await set.merge(verificationRemove);
+        await expect(set.merge(verificationRemoveLater)).resolves.toEqual(undefined);
+        await assertVerificationDoesNotExist(verificationRemove);
+        await assertVerificationRemoveWins(verificationRemoveLater);
+      });
+
+      test('no-ops with an earlier timestamp', async () => {
+        await set.merge(verificationRemoveLater);
+        await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+        await assertVerificationDoesNotExist(verificationRemove);
+        await assertVerificationRemoveWins(verificationRemoveLater);
+      });
+    });
+
+    describe('with a conflicting VerificationRemove with identical timestamps', () => {
+      let verificationRemoveLater: VerificationRemoveModel;
+
+      beforeAll(async () => {
+        const removeData = await Factories.VerificationRemoveData.create({
+          ...verificationRemove.data.unpack(),
+        });
+        const removeMessage = await Factories.Message.create({
+          data: Array.from(removeData.bb?.bytes() ?? []),
+          hash: Array.from(bytesIncrement(verificationRemove.hash().slice())),
+        });
+        verificationRemoveLater = new MessageModel(removeMessage) as VerificationRemoveModel;
+      });
+
+      test('succeeds with a later hash', async () => {
+        await set.merge(verificationRemove);
+        await expect(set.merge(verificationRemoveLater)).resolves.toEqual(undefined);
+        await assertVerificationDoesNotExist(verificationRemove);
+        await assertVerificationRemoveWins(verificationRemoveLater);
+      });
+
+      test('no-ops with an earlier hash', async () => {
+        await set.merge(verificationRemoveLater);
+        await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+        await assertVerificationDoesNotExist(verificationRemove);
+        await assertVerificationRemoveWins(verificationRemoveLater);
+      });
+    });
+
+    describe('with conflicting VerificationAddEthAddress with different timestamps', () => {
+      test('succeeds with a later timestamp', async () => {
+        await set.merge(verificationAdd);
+        await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+        await assertVerificationRemoveWins(verificationRemove);
+        await assertVerificationDoesNotExist(verificationAdd);
+      });
+
+      test('no-ops with an earlier timestamp', async () => {
+        const addData = await Factories.VerificationAddEthAddressData.create({
+          ...verificationAdd.data.unpack(),
+          timestamp: verificationRemove.timestamp() + 1,
+        });
+
+        const addMessage = await Factories.Message.create({
+          data: Array.from(addData.bb?.bytes() ?? []),
+        });
+
+        const verificationAddLater = new MessageModel(addMessage) as VerificationAddEthAddressModel;
+        await set.merge(verificationAddLater);
+        await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+        await assertVerificationAddWins(verificationAddLater);
+        await assertVerificationDoesNotExist(verificationRemove);
+      });
+    });
+
+    describe('with conflicting VerificationAddEthAddress with identical timestamps', () => {
+      test('succeeds with an earlier hash', async () => {
+        const addData = await Factories.VerificationAddEthAddressData.create({
+          ...verificationAdd.data.unpack(),
+          timestamp: verificationRemove.timestamp(),
+        });
+
+        const addMessage = await Factories.Message.create({
+          data: Array.from(addData.bb?.bytes() ?? []),
+          hash: Array.from(bytesIncrement(verificationRemove.hash().slice())),
+        });
+        const verificationAddLater = new MessageModel(addMessage) as VerificationAddEthAddressModel;
+
+        await set.merge(verificationAddLater);
+        await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+        await assertVerificationDoesNotExist(verificationAddLater);
+        await assertVerificationRemoveWins(verificationRemove);
+      });
+
+      test('succeeds with a later hash', async () => {
+        const addData = await Factories.VerificationAddEthAddressData.create({
+          ...verificationAdd.data.unpack(),
+          timestamp: verificationRemove.timestamp(),
+        });
+
+        const addMessage = await Factories.Message.create({
+          data: Array.from(addData.bb?.bytes() ?? []),
+          hash: Array.from(bytesDecrement(verificationRemove.hash().slice())),
+        });
+
+        const verificationRemoveEarlier = new MessageModel(addMessage) as VerificationRemoveModel;
+        await set.merge(verificationRemoveEarlier);
+        await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+        await assertVerificationDoesNotExist(verificationRemoveEarlier);
+        await assertVerificationRemoveWins(verificationRemove);
       });
     });
   });

@@ -181,12 +181,11 @@ class VerificationStore {
     bType: MessageType,
     bTsHash: Uint8Array
   ): number {
-    const tsHashOrder = bytesCompare(aTsHash, bTsHash);
-    if (tsHashOrder !== 0) {
-      return tsHashOrder;
+    // Compare timestamps (first 4 bytes of tsHash) to enforce Last-Write-Wins
+    const timestampOrder = bytesCompare(aTsHash.subarray(0, 4), bTsHash.subarray(0, 4));
+    if (timestampOrder !== 0) {
+      return timestampOrder;
     }
-
-    // TODO: change comparison type
 
     if (aType === MessageType.VerificationRemove && bType === MessageType.VerificationAddEthAddress) {
       return 1;
@@ -194,7 +193,8 @@ class VerificationStore {
       return -1;
     }
 
-    return 0;
+    // Compare hashes (last 4 bytes of tsHash) to break ties between messages of the same type and timestamp
+    return bytesCompare(aTsHash.subarray(4), bTsHash.subarray(4));
   }
 
   private async resolveMergeConflicts(
