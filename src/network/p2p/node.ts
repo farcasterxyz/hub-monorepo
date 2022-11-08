@@ -68,12 +68,16 @@ export class Node extends TypedEmitter<NodeEvents> {
     return this._node?.getMultiaddrs();
   }
 
+  get addressBook() {
+    return this._node?.peerStore.addressBook;
+  }
+
   async getPeerInfo(peerId: PeerId) {
     const existingConnections = this._node?.connectionManager.getConnections(peerId);
     for (const conn of existingConnections ?? []) {
       const knownAddrs = await this._node?.peerStore.addressBook.get(peerId);
       if (knownAddrs && !knownAddrs.find((addr) => addr.multiaddr.equals(conn.remoteAddr))) {
-        // update the peer store
+        // updates the peer store
         await this._node?.peerStore.addressBook.add(peerId, [conn.remoteAddr]);
       }
     }
@@ -262,19 +266,17 @@ export class Node extends TypedEmitter<NodeEvents> {
       globalSignaturePolicy: 'StrictSign',
     });
 
-    let connectionGater: ConnectionFilter | undefined;
     if (options.allowedPeerIdStrs) {
       log.info(
         { identity: this.identity, function: 'createNode', allowedPeerIds: options.allowedPeerIdStrs },
         `!!! PEER-ID RESTRICTIONS ENABLED !!!`
       );
-      connectionGater = new ConnectionFilter(options.allowedPeerIdStrs);
     }
-
+    const connectionGater = new ConnectionFilter(options.allowedPeerIdStrs);
     const node = await createLibp2p({
       // setting these optional fields to `undefined` throws an error, only set them if they're defined
       ...(options.peerId && { peerId: options.peerId }),
-      ...(connectionGater && { connectionGater }),
+      connectionGater,
       addresses: {
         listen: [listenMultiAddrStr],
       },

@@ -1,4 +1,4 @@
-import { Multiaddr } from '@multiformats/multiaddr';
+import { multiaddr, Multiaddr } from '@multiformats/multiaddr';
 import Engine from '~/storage/engine';
 import { Node } from '~/network/p2p/node';
 import { RPCClient, RPCHandler, RPCServer } from '~/network/rpc';
@@ -22,6 +22,9 @@ import { FarcasterError, ServerError } from '~/utils/errors';
 import { SyncEngine } from '~/network/sync/syncEngine';
 import { logger } from '~/utils/logger';
 import { NodeMetadata } from '~/network/sync/merkleTrie';
+import { addressInfoFromParts, getPublicIp, p2pMultiAddrStr } from '~/utils/p2p';
+import { peerIdFromString } from '@libp2p/peer-id';
+import { publicAddressesFirst } from '@libp2p/utils/address-sort';
 
 export interface HubOptions {
   /** The PeerId of this Hub */
@@ -131,14 +134,26 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     // Publishes this Node's information to the gossip network
     this.contactTimer = setInterval(async () => {
       if (this.gossipNode.peerId) {
-        const contactInfo = this.rpcAddress
-          ? { peerId: this.gossipNode.peerId.toString(), rpcAddress: this.rpcAddress }
-          : { peerId: this.gossipNode.peerId.toString() };
+        // creates an AddrInfo for Gossip
+        let gossipInfo = {};
+        const localAddrs = this.gossipAddresses;
+        if (localAddrs.length > 0) {
+          const ipAddr = await getPublicIp();
+          const port = localAddrs[0].nodeAddress().port;
+          addressInfoFromParts(ipAddr, port).map((gossipAddress) => {
+            gossipInfo = { gossipAddress };
+          });
+        }
+
+        // creates an AddrInfo for RPC
+        const rpcInfo = this.rpcAddress ? { rpcAddress: this.rpcAddress } : {};
 
         const currentSnapshot = this.syncEngine.snapshot;
         const gossipMessage: GossipMessage<ContactInfoContent> = {
           content: {
-            ...contactInfo,
+            ...rpcInfo,
+            ...gossipInfo,
+            peerId: this.gossipNode.peerId.toString(),
             excludedHashes: currentSnapshot.excludedHashes,
             count: currentSnapshot.numMessages,
           },
@@ -173,7 +188,6 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       if (result.isOk()) log.info({ event: message }, 'merged id registry event');
     } else if (isContactInfo(gossipMessage.content)) {
       const message = gossipMessage.content as ContactInfoContent;
-      // TODO: Maybe we need a ContactInfo CRDT?
       await this.handleContactInfo(message);
       result = ok(undefined);
     }
@@ -185,6 +199,17 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   }
 
   async handleContactInfo(message: ContactInfoContent) {
+    // Updates the address book for this peer
+    if (message.gossipAddress) {
+      try {
+        const p2pMultiAddr = multiaddr(p2pMultiAddrStr(message.gossipAddress, message.peerId.toString()));
+        const peerId = peerIdFromString(message.peerId);
+        await this.gossipNode.addressBook?.add(peerId, [p2pMultiAddr]);
+      } catch (err) {
+        log.error(err, `Failed to add contact Info to address book. ${message}`);
+      }
+    }
+
     const rpcClient = await this.getRPCClientForPeer(message);
     log.info(
       { identity: this.identity, peer: message.peerId, ip: rpcClient?.serverMultiaddr },
@@ -224,7 +249,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     }
     const contactPeers = this.gossipNode.gossip?.getSubscribers(NETWORK_TOPIC_CONTACT);
     const peerId = contactPeers?.find((value) => {
-      return peer.peerId === value.toString();
+      return peer.peerId.toString() === value.toString();
     });
     if (!peerId) {
       log.info(
@@ -233,8 +258,8 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       );
       return;
     }
-    const peerAddress = await this.gossipNode.getPeerInfo(peerId);
-    if (!peerAddress) {
+    const peerInfo = await this.gossipNode.getPeerInfo(peerId);
+    if (!peerInfo) {
       log.info(
         { function: 'getRPCClientForPeer', identity: this.identity, peer: peer },
         `failed to find peer's address to request simple sync`
@@ -243,8 +268,9 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       return;
     }
 
-    // Request and merge peer's data over RPC
-    const nodeAddress = peerAddress.addresses[0].multiaddr.nodeAddress();
+    // sorts addresses by Public IPs first
+    const addrs = peerInfo.addresses.sort((a, b) => publicAddressesFirst(a, b));
+    const nodeAddress = addrs[0].multiaddr.nodeAddress();
     return new RPCClient({
       address: nodeAddress.address,
       family: nodeAddress.family == 4 ? 'IPv4' : 'IPv6',

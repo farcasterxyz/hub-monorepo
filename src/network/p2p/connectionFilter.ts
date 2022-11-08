@@ -14,9 +14,9 @@ import { logger } from '~/utils/logger';
  * Using arrow functions allows their recursivePartial enumerator to parse the object.
  */
 export class ConnectionFilter implements ConnectionGater {
-  private allowedPeers: string[];
+  private allowedPeers: string[] | undefined;
 
-  constructor(addrs: string[]) {
+  constructor(addrs: string[] | undefined) {
     this.allowedPeers = addrs;
   }
 
@@ -41,7 +41,6 @@ export class ConnectionFilter implements ConnectionGater {
      * A PeerId is not always known on incipient connections.
      * Don't filter incipient connections, later filters will catch it.
      */
-    logger.info(_maConn, `ConnectionFilter denyInboundConnection: denied a connection`);
     return false;
   };
 
@@ -96,6 +95,8 @@ export class ConnectionFilter implements ConnectionGater {
 
   private shouldDeny(peerId: string | null) {
     if (!peerId) return Promise.resolve(true);
+    if (this.allowedPeers === undefined) return Promise.resolve(false);
+
     const found = this.allowedPeers.find((value) => {
       return peerId && value === peerId;
     });
