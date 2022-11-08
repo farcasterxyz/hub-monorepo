@@ -38,6 +38,7 @@ class SyncEngine {
       // Note: There's no guarantee that the message is actually deleted, because the transaction could fail.
       // This is fine, because we'll just end up syncing the message again. It's much worse to miss a removal and cause
       // the trie to diverge in a way that's not recoverable without reconstructing it from the db.
+      // Order of events does not matter. The trie will always converge to the same state.
       this.removeMessage(message);
     });
   }
@@ -74,16 +75,8 @@ class SyncEngine {
       ourSnapshot.excludedHashes.length === excludedHashes.length &&
       ourSnapshot.excludedHashes.every((value, index) => value === excludedHashes[index]);
 
-    if (excludedHashesMatch) {
-      // Excluded hashes match exactly, so we don't need to sync
-      log.debug('shouldSync: excluded hashes match');
-      return false;
-    } else {
-      log.debug('shouldSync: excluded hashes mismatch');
-      // Because of message removals, we cannot rely on number of messages to determine which hub is ahead,
-      // so always return true if the hashes don't match.
-      return true;
-    }
+    log.debug(`shouldSync: excluded hashes check: ${excludedHashes}`);
+    return !excludedHashesMatch;
   }
 
   async performSync(excludedHashes: string[], rpcClient: RPCClient) {

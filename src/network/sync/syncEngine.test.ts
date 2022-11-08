@@ -76,12 +76,13 @@ describe('SyncEngine', () => {
       { transient: { signer: user.delegateSigner } }
     );
     await engine.mergeMessage(reactionRemove);
-    expect(syncEngine.trie.get(new SyncId(reactionRemove))).toBeTruthy();
+    const id = new SyncId(reactionRemove);
+    expect(syncEngine.trie.get(id)).toEqual(id.hashString);
 
     // Merging the reaction add deletes the reaction remove in the db, and it should be reflected in the trie
     await engine.mergeMessage(reactionAdd);
     expect(await engine.getMessagesByHashes([reactionRemove.hash])).toEqual([]);
-    expect(syncEngine.trie.get(new SyncId(reactionRemove))).toBeFalsy();
+    expect(syncEngine.trie.get(id)).toBeFalsy();
   });
 
   test('snapshotTimestampPrefix trims the seconds', async () => {

@@ -35,6 +35,16 @@ class TrieNode {
     }
   }
 
+  /**
+   * Inserts a value into the trie. Returns true if the value was inserted, false if it already existed
+   * @param key - The key to insert
+   * @param value - The value to insert
+   * @param current_index - The index of the current character in the key (only used internally)
+   * @returns true if the value was inserted, false if it already existed
+   *
+   * Recursively traverses the trie by prefix and inserts the value at the end. Updates the hashes for
+   * every node that was traversed.
+   */
   public insert(key: string, value: string, current_index = 0): boolean {
     const char = key[current_index];
 
@@ -66,6 +76,14 @@ class TrieNode {
     return false;
   }
 
+  /**
+   * Deletes a value from the trie by key. Returns true if the value was deleted, false if it didn't exist
+   * @param key - The key to delete
+   * @param current_index - The index of the current character in the key (only used internally)
+   *
+   * Ensures that there are no empty nodes after deletion. This is important to make sure the hashes
+   * will match exactly with another trie that never had the value (e.g. in another hub).
+   */
   public delete(key: string, current_index = 0): boolean {
     if (this.isLeaf) {
       return true;

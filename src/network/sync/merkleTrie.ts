@@ -28,6 +28,10 @@ export type NodeMetadata = {
  *
  * Comparing the state of two tries (represented by the snapshot) for the same prefix allows us to determine
  * whether two hubs are in sync, and the earliest point of divergence if not.
+ *
+ * Note about concurrency: This class and TrieNode are not thread-safe. This is fine because there are no async
+ * methods, which means the operations won't be interrupted. DO NOT add async methods without considering
+ * impact on concurrency-safety.
  */
 class MerkleTrie {
   private readonly _root: TrieNode;
