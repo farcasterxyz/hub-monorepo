@@ -1,14 +1,14 @@
-import { ResultAsync } from 'neverthrow';
+import { Result, ResultAsync } from 'neverthrow';
 import CastStore from '~/storage/sets/flatbuffers/castStore';
 import RocksDB from '~/storage/db/binaryrocksdb';
-import { BadRequestError, ValidationError } from '~/utils/errors';
+import { BadRequestError, FarcasterError, NotFoundError, ValidationError } from '~/utils/errors';
 import SignerStore from '~/storage/sets/flatbuffers/signerStore';
 import FollowStore from '~/storage/sets/flatbuffers/followStore';
 import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
 import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
 import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { UserPostfix } from '~/storage/flatbuffers/types';
+import { CastAddModel, UserPostfix } from '~/storage/flatbuffers/types';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { ContractEventType } from '~/utils/generated/contract_event_generated';
 import { isSignerAdd, isSignerRemove } from '~/storage/flatbuffers/typeguards';
@@ -69,6 +69,15 @@ class Engine {
     } else {
       throw new BadRequestError('invalid event type');
     }
+  }
+
+  /** Cast store methods */
+  async getCastsByUser(fid: Uint8Array): Promise<Result<CastAddModel[], FarcasterError>> {
+    return ResultAsync.fromPromise(this._castStore.getCastAddsByUser(fid), (e) => e as FarcasterError);
+  }
+
+  async getCast(fid: Uint8Array, tsHash: Uint8Array): Promise<Result<CastAddModel, FarcasterError>> {
+    return ResultAsync.fromPromise(this._castStore.getCastAdd(fid, tsHash), (e) => e as FarcasterError);
   }
 
   /* -------------------------------------------------------------------------- */
