@@ -66,6 +66,12 @@ describe('getCast', () => {
     await engine.mergeMessage(castAdd);
     await expect(client.getCast(fid, castAdd.tsHash())).resolves.toEqual(castAdd);
   });
+
+  test('fails if cast is missing', async () => {
+    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeMessage(signerAdd);
+    await expect(client.getCast(fid, castAdd.tsHash())).rejects.toThrow();
+  });
 });
 
 describe('getCastsByUser', () => {
