@@ -71,13 +71,24 @@ class Engine {
     }
   }
 
-  /** Cast store methods */
+  /* -------------------------------------------------------------------------- */
+  /*                             Cast Store Methods                             */
+  /* -------------------------------------------------------------------------- */
+
   async getCastsByUser(fid: Uint8Array): Promise<Result<CastAddModel[], FarcasterError>> {
     return ResultAsync.fromPromise(this._castStore.getCastAddsByUser(fid), (e) => e as FarcasterError);
   }
 
   async getCast(fid: Uint8Array, tsHash: Uint8Array): Promise<Result<CastAddModel, FarcasterError>> {
     return ResultAsync.fromPromise(this._castStore.getCastAdd(fid, tsHash), (e) => e as FarcasterError);
+  }
+
+  async getCastsByParent(fid: Uint8Array, tsHash: Uint8Array): Promise<Result<CastAddModel[], FarcasterError>> {
+    return ResultAsync.fromPromise(this._castStore.getCastsByParent(fid, tsHash), (e) => e as FarcasterError);
+  }
+
+  async getCastsByMention(fid: Uint8Array): Promise<Result<CastAddModel[], FarcasterError>> {
+    return ResultAsync.fromPromise(this._castStore.getCastsByMention(fid), (e) => e as FarcasterError);
   }
 
   /* -------------------------------------------------------------------------- */

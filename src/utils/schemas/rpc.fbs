@@ -11,3 +11,15 @@ table GetCastRequest {
 table GetCastsByUserRequest {
   user: UserId;
 }
+
+table GetCastsByParentRequest {
+  parent: CastId;
+}
+
+table GetCastsByMentionRequest {
+  mention: UserId;
+}
+
+table GetAllCastMessagesByUserRequest {
+  user: UserId;
+}

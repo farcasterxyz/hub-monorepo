@@ -2,14 +2,22 @@ import grpc from '@grpc/grpc-js';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { CastAddModel } from '~/storage/flatbuffers/types';
+import {
+  GetCastsByMentionRequest,
+  GetCastsByMentionRequestT,
+} from '~/utils/generated/farcaster/get-casts-by-mention-request';
+import {
+  GetCastsByParentRequest,
+  GetCastsByParentRequestT,
+} from '~/utils/generated/farcaster/get-casts-by-parent-request';
 import { CastIdT, Message, UserIdT } from '~/utils/generated/message_generated';
-import Server from '~/network/rpc/flatbuffers/server';
 import {
   GetCastRequest,
   GetCastRequestT,
   GetCastsByUserRequest,
   GetCastsByUserRequestT,
 } from '~/utils/generated/rpc_generated';
+import { castServiceAttrs } from './castService';
 
 const promisifyMessageStream = <T extends MessageModel>(stream: grpc.ClientReadableStream<Message>): Promise<T[]> => {
   return new Promise((resolve, reject) => {
@@ -45,8 +53,8 @@ class Client {
 
     const stream = this.client.makeServerStreamRequest(
       '/getCastsByUser',
-      Server.castServiceAttrs().getCastsByUser.requestSerialize,
-      Server.castServiceAttrs().getCastsByUser.responseDeserialize,
+      castServiceAttrs().getCastsByUser.requestSerialize,
+      castServiceAttrs().getCastsByUser.responseDeserialize,
       request
     );
 
@@ -55,17 +63,16 @@ class Client {
 
   async getCast(fid: Uint8Array, tsHash: Uint8Array): Promise<CastAddModel> {
     const builder = new Builder(1);
-    const castIdT = new CastIdT(Array.from(fid), Array.from(tsHash));
-    const requestT = new GetCastRequestT(castIdT);
+    const requestT = new GetCastRequestT(new CastIdT(Array.from(fid), Array.from(tsHash)));
     builder.finish(requestT.pack(builder));
-    const rpcRequest = GetCastRequest.getRootAsGetCastRequest(new ByteBuffer(builder.asUint8Array()));
+    const request = GetCastRequest.getRootAsGetCastRequest(new ByteBuffer(builder.asUint8Array()));
 
     return new Promise((resolve, reject) => {
       this.client.makeUnaryRequest(
         '/getCast',
-        Server.castServiceAttrs().getCast.requestSerialize,
-        Server.castServiceAttrs().getCast.responseDeserialize,
-        rpcRequest,
+        castServiceAttrs().getCast.requestSerialize,
+        castServiceAttrs().getCast.responseDeserialize,
+        request,
         async (err: grpc.ServiceError | null, response?: Message) => {
           if (err) {
             reject(err);
@@ -77,13 +84,36 @@ class Client {
     });
   }
 
-  serializeRequest(bytes: Uint8Array): Buffer {
-    return Buffer.from(bytes);
+  async getCastsByParent(fid: Uint8Array, tsHash: Uint8Array): Promise<CastAddModel[]> {
+    const builder = new Builder(1);
+    const requestT = new GetCastsByParentRequestT(new CastIdT(Array.from(fid), Array.from(tsHash)));
+    builder.finish(requestT.pack(builder));
+    const request = GetCastsByParentRequest.getRootAsGetCastsByParentRequest(new ByteBuffer(builder.asUint8Array()));
+
+    const stream = this.client.makeServerStreamRequest(
+      '/getCastsByParent',
+      castServiceAttrs().getCastsByParent.requestSerialize,
+      castServiceAttrs().getCastsByParent.responseDeserialize,
+      request
+    );
+
+    return promisifyMessageStream<CastAddModel>(stream);
   }
 
-  deserializeResponse(buffer: Buffer): CastAddModel {
-    const message = MessageModel.from(new Uint8Array(buffer));
-    return message as CastAddModel;
+  async getCastsByMention(fid: Uint8Array): Promise<CastAddModel[]> {
+    const builder = new Builder(1);
+    const requestT = new GetCastsByMentionRequestT(new UserIdT(Array.from(fid)));
+    builder.finish(requestT.pack(builder));
+    const request = GetCastsByMentionRequest.getRootAsGetCastsByMentionRequest(new ByteBuffer(builder.asUint8Array()));
+
+    const stream = this.client.makeServerStreamRequest(
+      '/getCastsByMention',
+      castServiceAttrs().getCastsByMention.requestSerialize,
+      castServiceAttrs().getCastsByMention.responseDeserialize,
+      request
+    );
+
+    return promisifyMessageStream<CastAddModel>(stream);
   }
 }
 

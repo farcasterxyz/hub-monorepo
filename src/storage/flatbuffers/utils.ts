@@ -1,3 +1,4 @@
+import { ByteBuffer } from 'flatbuffers';
 import { BadRequestError } from '~/utils/errors';
 
 export const bytesCompare = (a: Uint8Array, b: Uint8Array): number => {
@@ -54,4 +55,8 @@ export const toFarcasterTime = (time: number): number => {
 
 export const fromFarcasterTime = (time: number): number => {
   return time * 1000 + FARCASTER_EPOCH;
+};
+
+export const toByteBuffer = (buffer: Buffer): ByteBuffer => {
+  return new ByteBuffer(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.length / Uint8Array.BYTES_PER_ELEMENT));
 };
