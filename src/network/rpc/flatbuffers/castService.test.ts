@@ -36,7 +36,7 @@ let castAdd: CastAddModel;
 
 beforeAll(async () => {
   custodyEvent = new ContractEventModel(
-    await Factories.IDRegistryEvent.create(
+    await Factories.IdRegistryEvent.create(
       { to: Array.from(utils.arrayify(wallet.address)), fid: Array.from(fid) },
       { transient: { wallet } }
     )
