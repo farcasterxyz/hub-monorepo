@@ -19,5 +19,9 @@
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": true
   },
-  "cSpell.words": ["farcaster"]
+  "cSpell.words": [
+    "farcaster",
+    "flatbuffer",
+    "flatbuffers"
+  ]
 }

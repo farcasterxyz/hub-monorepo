@@ -9,7 +9,7 @@ const fid = Factories.FID.build();
 let model: ContractEventModel;
 
 beforeAll(async () => {
-  const idRegistryEvent = await Factories.IDRegistryEvent.create({ fid: Array.from(fid) });
+  const idRegistryEvent = await Factories.IdRegistryEvent.create({ fid: Array.from(fid) });
   model = new ContractEventModel(idRegistryEvent);
 });
 
