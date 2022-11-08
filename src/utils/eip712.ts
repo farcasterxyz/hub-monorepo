@@ -1,4 +1,4 @@
-import { ethers } from 'ethers';
+import { Wallet, utils } from 'ethers';
 import { arrayify } from 'ethers/lib/utils';
 import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
 
@@ -37,7 +37,7 @@ const EIP_712_FARCASTER_MESSAGE_DATA = [
 
 export const signVerificationEthAddressClaim = async (
   claim: VerificationEthAddressClaim,
-  wallet: ethers.Wallet
+  wallet: Wallet
 ): Promise<Uint8Array> => {
   return arrayify(
     await wallet._signTypedData(
@@ -53,7 +53,7 @@ export const verifyVerificationEthAddressClaimSignature = (
   signature: Uint8Array
 ): Uint8Array => {
   return arrayify(
-    ethers.utils.verifyTypedData(
+    utils.verifyTypedData(
       EIP_712_FARCASTER_DOMAIN,
       { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
       claim,
@@ -62,7 +62,7 @@ export const verifyVerificationEthAddressClaimSignature = (
   );
 };
 
-export const signMessageData = async (data: Uint8Array, wallet: ethers.Wallet): Promise<Uint8Array> => {
+export const signMessageData = async (data: Uint8Array, wallet: Wallet): Promise<Uint8Array> => {
   return arrayify(
     await wallet._signTypedData(EIP_712_FARCASTER_DOMAIN, { MessageData: EIP_712_FARCASTER_MESSAGE_DATA }, { data })
   );
@@ -70,7 +70,7 @@ export const signMessageData = async (data: Uint8Array, wallet: ethers.Wallet): 
 
 export const verifyMessageDataSignature = (data: Uint8Array, signature: Uint8Array): Uint8Array => {
   return arrayify(
-    ethers.utils.verifyTypedData(
+    utils.verifyTypedData(
       EIP_712_FARCASTER_DOMAIN,
       { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
       { data },
