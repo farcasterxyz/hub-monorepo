@@ -17,7 +17,7 @@ import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
  * signed by the custody address that currently holds the fid are considered active. All other
  * Farcaster Messages must be signed by an active signer.
  *
- * Signers can be removed with a SignerREmove message signed by the user's custody address.
+ * Signers can be removed with a SignerRemove message signed by the user's custody address.
  * Removing a signer also removes all messages signed by it, and should only be invoked if a
  * compromise is suspected.
  *

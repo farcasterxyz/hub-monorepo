@@ -7,6 +7,26 @@ import { isVerificationAddEthAddress, isVerificationRemove } from '~/storage/fla
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 
+/**
+ * VerificationStore persists VerificationMessages in RocksDB using a two-phase CRDT set to
+ * guarantee eventual consistency.
+ *
+ * A Verification is performed by an fid on a target (e.g. Ethereum address) and may have an
+ * ordinality. Verifications are added with type specific messages like VerificationAddEthAddress
+ * but are removed with a generic VerificationRemove message that points to the unique id of the
+ * Add. Conflicts are resolved with Last-Write-Wins + Remove-Wins rules as follows:
+ *
+ * 1. Highest timestamp wins
+ * 2. Remove wins over Adds
+ * 3. Highest lexicographic hash wins
+ *
+ * VerificationAddEthAddress is currently the only supported Verification type today. The key-value
+ * entries created by Verification Store are:
+ *
+ * 1. fid:tsHash -> reaction message
+ * 2. fid:set:address -> fid:tsHash (Set Index)
+ */
+
 class VerificationStore {
   private _db: RocksDB;
 
@@ -14,16 +34,15 @@ class VerificationStore {
     this._db = db;
   }
 
-  /** RocksDB key of the form <user prefix (1 byte), fid (32 bytes), verification removes key (1 byte), address (variable bytes)> */
-  static verificationRemovesKey(fid: Uint8Array, address?: Uint8Array): Buffer {
-    return Buffer.concat([
-      MessageModel.userKey(fid),
-      Buffer.from([UserPostfix.VerificationRemoves]),
-      address ? Buffer.from(address) : new Uint8Array(),
-    ]);
-  }
-
-  /** RocksDB key of the form <user prefix (1 byte), fid (32 bytes), verification adds key (1 byte), address (variable bytes)> */
+  /**
+   * Generates a unique key used to store a VerificationAdds message key in the VerificationsAdds
+   * set index
+   *
+   * @param fid farcaster id of the user who created the verification
+   * @param address Ethereum address being verified
+   *
+   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<address?>
+   */
   static verificationAddsKey(fid: Uint8Array, address?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
@@ -32,7 +51,31 @@ class VerificationStore {
     ]);
   }
 
-  /** Look up VerificationAdd* message by address */
+  /**
+   * Generates a unique key used to store a VerificationAdd message key in the ReactionsRemove
+   * set index
+   *
+   * @param fid farcaster id of the user who created the reaction
+   * @param address Ethereum address being verified
+   *
+   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<targetKey?>:<type?>
+   */
+  static verificationRemovesKey(fid: Uint8Array, address?: Uint8Array): Buffer {
+    return Buffer.concat([
+      MessageModel.userKey(fid),
+      Buffer.from([UserPostfix.VerificationRemoves]),
+      address ? Buffer.from(address) : new Uint8Array(),
+    ]);
+  }
+
+  /**
+   * Finds a VerificationAdds Message by checking the adds-set's index
+   *
+   * @param fid fid of the user who created the SignerAdd
+   * @param address the address being verified
+   *
+   * @returns the VerificationAddEthAddressModel if it exists, throws NotFoundError otherwise
+   */
   async getVerificationAdd(fid: Uint8Array, address: Uint8Array): Promise<VerificationAddEthAddressModel> {
     const messageTsHash = await this._db.get(VerificationStore.verificationAddsKey(fid, address));
     return MessageModel.get<VerificationAddEthAddressModel>(
@@ -43,13 +86,24 @@ class VerificationStore {
     );
   }
 
-  /** Look up VerificationRemove message by address */
+  /**
+   * Finds a VerificationsRemove Message by checking the remove-set's index
+   *
+   * @param fid fid of the user who created the SignerAdd
+   * @param address the address being verified
+   * @returns the VerificationRemoveEthAddress if it exists, throws NotFoundError otherwise
+   */
   async getVerificationRemove(fid: Uint8Array, address: Uint8Array): Promise<VerificationRemoveModel> {
     const messageTsHash = await this._db.get(VerificationStore.verificationRemovesKey(fid, address));
     return MessageModel.get<VerificationRemoveModel>(this._db, fid, UserPostfix.VerificationMessage, messageTsHash);
   }
 
-  /** Get all VerificationAdd* messages for an fid */
+  /**
+   * Finds all VerificationAdds messages for a user
+   *
+   * @param fid fid of the user who created the signers
+   * @returns the VerificationAddEthAddresses if they exists, throws NotFoundError otherwise
+   */
   async getVerificationAddsByUser(fid: Uint8Array): Promise<VerificationAddEthAddressModel[]> {
     const addsPrefix = VerificationStore.verificationAddsKey(fid);
     const messageKeys: Buffer[] = [];
@@ -64,7 +118,12 @@ class VerificationStore {
     );
   }
 
-  /** Get all VerificationRemove messages for an fid */
+  /**
+   * Finds all VerificationRemoves messages for a user
+   *
+   * @param fid fid of the user who created the signers
+   * @returns the VerificationRemoves messages if it exists, throws NotFoundError otherwise
+   */
   async getVerificationRemovesByUser(fid: Uint8Array): Promise<VerificationRemoveModel[]> {
     const removesPrefix = VerificationStore.verificationRemovesKey(fid);
     const messageKeys: Buffer[] = [];
@@ -79,7 +138,7 @@ class VerificationStore {
     );
   }
 
-  /** Merge a VerificationAdd* or VerificationRemove message into the set */
+  /** Merge a VerificationAdd or VerificationRemove message into the VerificationStore */
   async merge(message: MessageModel): Promise<void> {
     if (isVerificationRemove(message)) {
       return this.mergeRemove(message);
@@ -140,9 +199,10 @@ class VerificationStore {
     bType: MessageType,
     bTsHash: Uint8Array
   ): number {
-    const tsHashOrder = bytesCompare(aTsHash, bTsHash);
-    if (tsHashOrder !== 0) {
-      return tsHashOrder;
+    // Compare timestamps (first 4 bytes of tsHash) to enforce Last-Write-Wins
+    const timestampOrder = bytesCompare(aTsHash.subarray(0, 4), bTsHash.subarray(0, 4));
+    if (timestampOrder !== 0) {
+      return timestampOrder;
     }
 
     if (aType === MessageType.VerificationRemove && bType === MessageType.VerificationAddEthAddress) {
@@ -151,7 +211,8 @@ class VerificationStore {
       return -1;
     }
 
-    return 0;
+    // Compare hashes (last 4 bytes of tsHash) to break ties between messages of the same type and timestamp
+    return bytesCompare(aTsHash.subarray(4), bTsHash.subarray(4));
   }
 
   private async resolveMergeConflicts(
