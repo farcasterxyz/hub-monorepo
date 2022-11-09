@@ -1,10 +1,13 @@
+import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { multiaddr, NodeAddress } from '@multiformats/multiaddr';
+import { isIP } from 'net';
 import {
   parseAddress,
   checkNodeAddrs,
   addressInfoFromParts,
   ipMultiAddrStrFromAddressInfo,
   addressInfoFromNodeAddress,
+  p2pMultiAddrStr,
 } from '~/utils/p2p';
 
 describe('p2p utils tests', () => {
@@ -35,6 +38,20 @@ describe('p2p utils tests', () => {
       '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a',
       '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a/tcp/8080'
     );
+  });
+
+  test('p2p multiaddr formatted string', async () => {
+    const peerId = await createEd25519PeerId();
+    const ip4Addr = { address: '127.0.0.1', family: 'IPv4', port: 1234 };
+    const ip6Addr = { address: '2600:1700:6cf0:990:2052:a166:fb35:830a', family: 'IPv6', port: 1234 };
+
+    let multiAddrStr = p2pMultiAddrStr(ip4Addr, peerId.toString());
+    const multiAddr = multiaddr(multiAddrStr);
+    expect(multiAddrStr).toBeDefined();
+    expect(multiAddr).toBeDefined();
+    multiAddrStr = p2pMultiAddrStr(ip6Addr, peerId.toString());
+    expect(multiAddrStr).toBeDefined();
+    expect(multiaddr(multiAddrStr)).toBeDefined();
   });
 
   test('addressInfo from valid IPv4 inputs', async () => {

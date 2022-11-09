@@ -9,6 +9,7 @@ import {
   UserContent,
 } from '~/network/p2p/protocol';
 import { isGossipMessage } from '~/types/typeguards';
+import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 
 let cast: CastShort;
 let idRegistryEvent: IdRegistryEvent;
@@ -89,10 +90,11 @@ describe('encode/decode', () => {
     expect(decoded._unsafeUnwrap()).toStrictEqual(message);
   });
 
-  test('encode and decode a ContactInfo message', () => {
+  test('encode and decode a ContactInfo message', async () => {
+    const peerId = await createEd25519PeerId();
     const message: GossipMessage<ContactInfoContent> = {
       content: {
-        peerId: '',
+        peerId: peerId.toString(),
         excludedHashes: ['asd', 'def'],
         count: 0,
       },

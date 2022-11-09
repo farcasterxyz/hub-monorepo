@@ -50,12 +50,15 @@ export type IdRegistryContent = {
  * ContactInfoContent allows gossip nodes to share additional information about each other
  * over the gossip network.
  *
+ * @publicKey - The publicKey of the correspinding peer
+ * @gossipAddress - The address at which this node is listening for Gossip messages. Unset if Gossip is not public.
  * @rpcAddress - The address at which this node is serving RPC requests. Unset if RPC is not offered.
  * @excludedHashes - The excluded hashes of the sender's current trie snapshot
  * @count - The number of messages under the root
  */
 export type ContactInfoContent = {
   peerId: string;
+  gossipAddress?: AddressInfo;
   rpcAddress?: AddressInfo;
   excludedHashes: string[];
   count: number;
@@ -86,7 +89,6 @@ export const decodeMessage = (data: Uint8Array): Result<GossipMessage, string> =
     const json = new TextDecoder().decode(data);
     const message: GossipMessage = JSON.parse(json);
 
-    // Error checking? exception handling?
     if (!message || !isGossipMessage(message)) {
       return err('Failed to decode Gossip message...');
     }

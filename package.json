@@ -67,6 +67,7 @@
     "@libp2p/peer-id-factory": "^1.0.18",
     "@libp2p/pubsub-peer-discovery": "^6.0.2",
     "@libp2p/tcp": "^3.1.1",
+    "@libp2p/utils": "^3.0.2",
     "@multiformats/multiaddr": "^11.0.0",
     "@noble/ed25519": "^1.6.1",
     "caip": "^1.1.0",
