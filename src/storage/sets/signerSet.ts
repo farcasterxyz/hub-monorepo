@@ -5,6 +5,7 @@ import { isSignerAdd, isSignerRemove } from '~/types/typeguards';
 import { hashCompare, sanitizeSigner } from '~/utils/crypto';
 import RocksDB from '~/storage/db/rocksdb';
 import SignerDB from '~/storage/db/signer';
+import { MessageDBEvents } from '~/storage/db/message';
 
 export type SignerSetEvents = {
   /** Emitted when a new Register or Transfer event is received from the Farcaster ID Registry */
@@ -154,6 +155,10 @@ class SignerSet extends TypedEmitter<SignerSetEvents> {
     // TODO: asynchronously run cleanup that deletes all entries that are not for the new custody address
 
     return undefined;
+  }
+
+  onDBEvent<E extends keyof MessageDBEvents>(event: E, callback: MessageDBEvents[E]) {
+    this._db.on(event, callback);
   }
 
   /* -------------------------------------------------------------------------- */

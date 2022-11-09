@@ -34,6 +34,13 @@ class SyncEngine {
     this.engine.on('messageMerged', async (_fid, _type, message) => {
       this.addMessage(message);
     });
+    this.engine.onDBEvent('messageDeleted', async (message) => {
+      // Note: There's no guarantee that the message is actually deleted, because the transaction could fail.
+      // This is fine, because we'll just end up syncing the message again. It's much worse to miss a removal and cause
+      // the trie to diverge in a way that's not recoverable without reconstructing it from the db.
+      // Order of events does not matter. The trie will always converge to the same state.
+      this.removeMessage(message);
+    });
   }
 
   public async initialize() {
@@ -53,7 +60,11 @@ class SyncEngine {
     this._trie.insert(new SyncId(message));
   }
 
-  public shouldSync(excludedHashes: string[], numMessages: number): boolean {
+  public removeMessage(message: Message): void {
+    this._trie.delete(new SyncId(message));
+  }
+
+  public shouldSync(excludedHashes: string[]): boolean {
     if (this._isSyncing) {
       log.debug('shouldSync: already syncing');
       return false;
@@ -64,20 +75,8 @@ class SyncEngine {
       ourSnapshot.excludedHashes.length === excludedHashes.length &&
       ourSnapshot.excludedHashes.every((value, index) => value === excludedHashes[index]);
 
-    if (excludedHashesMatch) {
-      // Excluded hashes match exactly, so we don't need to sync
-      log.debug('shouldSync: excluded hashes match');
-      return false;
-    }
-    if (ourSnapshot.numMessages > numMessages) {
-      log.debug('shouldSync: we have more messages');
-      // We have more messages than the other hub, we don't need to sync
-      return false;
-    }
-
-    // We have equal fewer messages and the hashes don't match, so must sync
-    log.debug('shouldSync: we have fewer messages');
-    return true;
+    log.debug(`shouldSync: excluded hashes check: ${excludedHashes}`);
+    return !excludedHashesMatch;
   }
 
   async performSync(excludedHashes: string[], rpcClient: RPCClient) {
@@ -101,7 +100,7 @@ class SyncEngine {
   }
 
   async fetchMissingHashesByPrefix(prefix: string, rpcClient: RPCClient): Promise<string[]> {
-    const ourNode = this._trie.getNodeMetadata(prefix);
+    const ourNode = this._trie.getTrieNodeMetadata(prefix);
     const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(prefix);
 
     const missingHashes: string[] = [];
@@ -158,7 +157,8 @@ class SyncEngine {
         // TODO: Optimize by collecting all failures and retrying them in a batch
         for (const msg of msgs) {
           const result = await this.engine.mergeMessage(msg, 'SyncEngine');
-          if (result.isErr() && result.error.message.includes('unknown user')) {
+          // Unknown user error
+          if (result.isErr() && result.error.statusCode === 412) {
             log.warn({ fid: msg.data.fid }, 'Unknown user, fetching custody event');
             const result = await this.syncUserAndRetryMessage(msg, rpcClient);
             mergeResults.push(result);
@@ -180,8 +180,8 @@ class SyncEngine {
     return result;
   }
 
-  public getNodeMetadata(prefix: string): NodeMetadata | undefined {
-    return this._trie.getNodeMetadata(prefix);
+  public getTrieNodeMetadata(prefix: string): NodeMetadata | undefined {
+    return this._trie.getTrieNodeMetadata(prefix);
   }
 
   public getIdsByPrefix(prefix: string): string[] {

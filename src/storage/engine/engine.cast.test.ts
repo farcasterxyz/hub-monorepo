@@ -5,7 +5,7 @@ import { Cast, CastShort, EthereumSigner, IdRegistryEvent, MessageSigner, Signer
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import CastDB from '~/storage/db/cast';
-import { BadRequestError } from '~/utils/errors';
+import { BadRequestError, UnknownUserError } from '~/utils/errors';
 
 const rocksDb = jestRocksDB('engine.cast.test');
 const castDb = new CastDB(rocksDb);
@@ -62,7 +62,7 @@ describe('mergeCast', () => {
     test('fails if there are no known signers', async () => {
       const result = await engine.mergeMessage(cast);
       expect(result.isOk()).toBe(false);
-      expect(result._unsafeUnwrapErr()).toMatchObject(new BadRequestError('validateMessage: unknown user'));
+      expect(result._unsafeUnwrapErr()).toMatchObject(new UnknownUserError('validateMessage: unknown user'));
       expect(await aliceAdds()).toEqual(new Set());
     });
 
@@ -117,7 +117,7 @@ describe('mergeCast', () => {
           );
           const result = await engine.mergeMessage(unknownUser);
           expect(result.isOk()).toBe(false);
-          expect(result._unsafeUnwrapErr()).toMatchObject(new BadRequestError('validateMessage: unknown user'));
+          expect(result._unsafeUnwrapErr()).toMatchObject(new UnknownUserError('validateMessage: unknown user'));
           expect(await aliceAdds()).toEqual(new Set());
         });
       });

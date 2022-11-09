@@ -14,7 +14,7 @@ import {
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import FollowDB from '~/storage/db/follow';
-import { BadRequestError } from '~/utils/errors';
+import { BadRequestError, UnknownUserError } from '~/utils/errors';
 
 const testDb = jestRocksDB(`engine.follow.test`);
 const followDb = new FollowDB(testDb);
@@ -60,7 +60,7 @@ describe('mergeFollow', () => {
 
   test('fails if there are no known signers', async () => {
     const result = await engine.mergeMessage(follow);
-    expect(result._unsafeUnwrapErr()).toMatchObject(new BadRequestError('validateMessage: unknown user'));
+    expect(result._unsafeUnwrapErr()).toMatchObject(new UnknownUserError('validateMessage: unknown user'));
     await expect(aliceFollows()).resolves.toEqual(new Set());
   });
 
@@ -89,7 +89,7 @@ describe('mergeFollow', () => {
         const unknownUser = await Factories.FollowAdd.create({ data: { fid: aliceFid + 1 } }, transientParams);
         const res = await engine.mergeMessage(unknownUser);
         expect(res.isOk()).toBe(false);
-        expect(res._unsafeUnwrapErr()).toMatchObject(new BadRequestError('validateMessage: unknown user'));
+        expect(res._unsafeUnwrapErr()).toMatchObject(new UnknownUserError('validateMessage: unknown user'));
         await expect(aliceFollows()).resolves.toEqual(new Set());
       });
     });

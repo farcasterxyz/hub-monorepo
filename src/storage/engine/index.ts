@@ -42,9 +42,9 @@ import { Web2URL } from '~/urls/web2Url';
 import IdRegistryProvider from '~/storage/provider/idRegistryProvider';
 import { CastHash } from '~/urls/castUrl';
 import RocksDB from '~/storage/db/rocksdb';
-import { BadRequestError, FarcasterError, ServerError } from '~/utils/errors';
+import { BadRequestError, FarcasterError, ServerError, UnknownUserError } from '~/utils/errors';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import MessageDB from '~/storage/db/message';
+import MessageDB, { MessageDBEvents } from '~/storage/db/message';
 import { logger } from '~/utils/logger';
 
 export type EngineEvents = {
@@ -234,6 +234,15 @@ class Engine extends TypedEmitter<EngineEvents> {
     return ResultAsync.fromPromise(this._signerSet.getCustodyEvent(fid), (e) => e as FarcasterError);
   }
 
+  onDBEvent<E extends keyof MessageDBEvents>(event: E, callback: MessageDBEvents[E]) {
+    // Proxy the db event subscriptions into all the underlying message dbs.
+    this._castSet.onDBEvent(event, callback);
+    this._followSet.onDBEvent(event, callback);
+    this._reactionSet.onDBEvent(event, callback);
+    this._signerSet.onDBEvent(event, callback);
+    this._verificationSet.onDBEvent(event, callback);
+  }
+
   /* -------------------------------------------------------------------------- */
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
@@ -265,6 +274,8 @@ class Engine extends TypedEmitter<EngineEvents> {
 
   private async revokeSigner(fid: number, signer: string): Promise<Result<void, FarcasterError>> {
     try {
+      // TODO: Pause syncing while revoking because it can lead to a lot of thrashing
+
       // Delete casts
       await this._castSet.revokeSigner(fid, signer);
 
@@ -289,7 +300,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       this._signerSet.getCustodyAddress(message.data.fid),
       () => undefined
     );
-    if (custodyEvent.isErr()) return err(new BadRequestError('validateMessage: unknown user'));
+    if (custodyEvent.isErr()) return err(new UnknownUserError('validateMessage: unknown user'));
 
     // 2. Check that the signer is valid if message is not a signer message
     if (!isSignerMessage(message)) {

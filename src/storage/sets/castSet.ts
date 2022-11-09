@@ -5,6 +5,7 @@ import CastDB from '~/storage/db/cast';
 import RocksDB from '~/storage/db/rocksdb';
 import { BadRequestError } from '~/utils/errors';
 import { hashCompare } from '~/utils/crypto';
+import { MessageDBEvents } from '~/storage/db/message';
 
 type CastAdd = CastShort | CastRecast;
 
@@ -63,6 +64,11 @@ class CastSet {
     }
 
     throw new BadRequestError('CastSet.merge: invalid message format');
+  }
+
+  /* Proxy db events */
+  onDBEvent<E extends keyof MessageDBEvents>(event: E, callback: MessageDBEvents[E]) {
+    this._db.on(event, callback);
   }
 
   /* -------------------------------------------------------------------------- */

@@ -105,6 +105,19 @@ export interface ReactionRemoveModel extends MessageModel {
   body(): ReactionBody;
 }
 
+/**
+ * A Verification that proves ownership of an Ethereum address with a two-way signature.
+ *
+ * The Ethereum address must produce an EIP-712 signature of the fid, address, blockHash, and
+ * Farcaster Network. The signature is stored in the body of the message along with the address
+ * of the Ethereum address which is then signed by one of the user's signers, establishing a
+ * two-way link between the Ethereum address and the user's Farcaster identity. An Ethereum address
+ * can only be verified once per fid, but can be verified to multiple fids.
+ *
+ * body.address - the ethereum address being verified
+ * body.ethSignature - the signature of the message
+ * body.blockHash - user-reported latest ethereum block hash at time of signing
+ */
 export interface VerificationAddEthAddressModel extends MessageModel {
   body(): VerificationAddEthAddressBody;
 }
@@ -126,8 +139,8 @@ export interface UserDataAddModel extends MessageModel {
 }
 
 export type VerificationEthAddressClaim = {
-  fid: Uint8Array;
-  address: string; // Lowercased hex string
+  fid: Uint8Array; // Must be big-endian typed array
+  address: string;
   network: FarcasterNetwork;
   blockHash: Uint8Array;
 };
