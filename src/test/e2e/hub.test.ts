@@ -12,7 +12,7 @@ import { jest } from '@jest/globals';
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const TEST_TIMEOUT_LONG = 2 * 60 * 1000;
-const opts: HubOptions = {};
+const opts: HubOptions = { localIpAddrsOnly: true };
 
 let hub: Hub;
 
@@ -78,17 +78,17 @@ describe('Hub running tests', () => {
     'bootstrap one Hub off of another',
     async () => {
       // populate Hub1's engine
-      await populateEngine(hub.engine, 5, {
+      await populateEngine(hub.engine, 1, {
         Verifications: 1,
         Casts: 10,
-        Follows: 50,
+        Follows: 10,
         Reactions: 0, // TODO: Ignore reactions until https://github.com/farcasterxyz/hub/issues/178 is fixed
       });
 
       // bootstrap hub2 off of hub1
       expect(hub.gossipAddresses);
       // need a better way to pick one of the multiaddrs
-      const secondHub = new Hub({ bootstrapAddrs: [hub.gossipAddresses[0]] });
+      const secondHub = new Hub({ bootstrapAddrs: [hub.gossipAddresses[0]], ...opts });
       expect(secondHub).toBeDefined();
       // Use a flag to help clean up if the test fails at any point
       let shouldStop = true;

@@ -56,6 +56,13 @@ export interface HubOptions {
 
   /** Resets the DB on start, if true */
   resetDB?: boolean;
+
+  /**
+   * Only allows the Hub to connect to and advertise local IP addresses
+   *
+   * Only used by tests
+   */
+  localIpAddrsOnly?: boolean;
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
@@ -137,7 +144,8 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
         // creates an AddrInfo for Gossip
         let gossipInfo = {};
         const localAddrs = this.gossipAddresses;
-        if (localAddrs.length > 0) {
+        // publishes the public IP address of this Hub if public addressing is allowed
+        if (localAddrs.length > 0 && !this.options.localIpAddrsOnly) {
           const ipAddr = await getPublicIp();
           const port = localAddrs[0].nodeAddress().port;
           addressInfoFromParts(ipAddr, port).map((gossipAddress) => {
