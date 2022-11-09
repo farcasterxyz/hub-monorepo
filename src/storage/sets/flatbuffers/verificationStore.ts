@@ -20,27 +20,19 @@ import { MessageType } from '~/utils/generated/message_generated';
  * 2. Remove wins over Adds
  * 3. Highest lexicographic hash wins
  *
- * TODO: complete docs once discussion items are sorted out.
+ * VerificationAddEthAddress is currently the only supported Verification type today. The key-value
+ * entries created by Verification Store are:
  *
+ * 1. fid:tsHash -> reaction message
+ * 2. fid:set:address -> fid:tsHash (Set Index)
  */
+
 class VerificationStore {
   private _db: RocksDB;
 
   constructor(db: RocksDB) {
     this._db = db;
   }
-
-  // DISCUSS: A verification type needs a unique key to resolve conflicts correctly. The
-  // VerificationAddEthereumAddress uses the Ethereum address as this identifier. But it is quite
-  // possible that we may add a verification type that has a unique property other than address.
-  // One idea to make this easier to extend is to have a generic "identifier" property on the model
-  // which is always set directly to the key and all methods calling any subtype of Verification
-  // can safely assume it exists. Another option is building a method on top of the model that
-  // can return the field, which allows us to combine por manipulate fields. Either approach offers
-  // more flexibility than the current approach which has methods strictly tied to "Address".
-
-  // DISCUSS: a similar problem to the one above exists for ordinality, where we depend on
-  // "sub properties" like the blockhash to resolve conflicts.
 
   /**
    * Generates a unique key used to store a VerificationAdds message key in the VerificationsAdds
