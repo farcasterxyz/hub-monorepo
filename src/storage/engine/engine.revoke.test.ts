@@ -14,6 +14,7 @@ import {
   ReactionAdd,
   FollowAdd,
   CastRecast,
+  Message,
 } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 
@@ -99,6 +100,19 @@ describe('revokeSigner', () => {
       await expect(aliceReactions()).resolves.toEqual(new Set());
       await expect(aliceVerifications()).resolves.toEqual(new Set());
       await expect(aliceFollows()).resolves.toEqual(new Set());
+    });
+
+    test('fires events for all the dropped messages', async () => {
+      const removedMessages: Message[] = [];
+      engine.onDBEvent('messageDeleted', (message) => removedMessages.push(message));
+
+      const res = await engine._revokeSigner(aliceFid, aliceSigner.signerKey);
+      expect(res.isOk()).toBeTruthy();
+
+      expect(removedMessages).toContainEqual(aliceCast);
+      expect(removedMessages).toContainEqual(aliceReaction);
+      expect(removedMessages).toContainEqual(aliceVerification);
+      expect(removedMessages).toContainEqual(aliceFollow);
     });
   });
 });

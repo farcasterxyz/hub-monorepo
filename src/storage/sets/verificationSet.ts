@@ -5,6 +5,7 @@ import { BadRequestError } from '~/utils/errors';
 import { Verification, VerificationEthereumAddress, VerificationRemove } from '~/types';
 import { isVerificationEthereumAddress, isVerificationRemove } from '~/types/typeguards';
 import { hashCompare } from '~/utils/crypto';
+import { MessageDBEvents } from '~/storage/db/message';
 
 /**
  * VerificationSet is a modified LWW set that stores and fetches verifications. VerificationEthereumAddress and VerificationRemove
@@ -50,6 +51,10 @@ class VerificationSet {
     }
 
     throw new BadRequestError('VerificationSet.merge: invalid message format');
+  }
+
+  onDBEvent<E extends keyof MessageDBEvents>(event: E, callback: MessageDBEvents[E]) {
+    this._db.on(event, callback);
   }
 
   /* -------------------------------------------------------------------------- */

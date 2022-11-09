@@ -3,6 +3,8 @@ import { MerkleTrie } from '~/network/sync/merkleTrie';
 import { SyncId } from '~/network/sync/syncId';
 import { createHash } from 'crypto';
 
+const emptyHash = createHash('sha256').digest('hex');
+
 describe('MerkleTrie', () => {
   const trieWithMessages = async (timestamps: number[]) => {
     const messages = await Promise.all(
@@ -78,6 +80,76 @@ describe('MerkleTrie', () => {
     });
   });
 
+  describe('delete', () => {
+    test('deletes an item', async () => {
+      const message = await Factories.CastShort.create();
+      const syncId = new SyncId(message);
+
+      const trie = new MerkleTrie();
+      trie.insert(syncId);
+      expect(trie.items).toEqual(1);
+      expect(trie.rootHash).toBeTruthy();
+      expect(trie.get(syncId)).toBeTruthy();
+
+      trie.delete(syncId);
+      expect(trie.items).toEqual(0);
+      expect(trie.rootHash).toEqual(emptyHash);
+      expect(trie.get(syncId)).toBeFalsy();
+    });
+
+    test('deleting an item that does not exist does not change the trie', async () => {
+      const message = await Factories.CastShort.create();
+      const syncId = new SyncId(message);
+
+      const trie = new MerkleTrie();
+      trie.insert(syncId);
+
+      const rootHashBeforeDelete = trie.rootHash;
+      const message2 = await Factories.CastShort.create();
+      const syncId2 = new SyncId(message2);
+      trie.delete(syncId2);
+
+      expect(trie.rootHash).toEqual(rootHashBeforeDelete);
+      expect(trie.items).toEqual(1);
+    });
+
+    test('delete is an exact inverse of insert', async () => {
+      const message1 = await Factories.CastShort.create();
+      const syncId1 = new SyncId(message1);
+      const message2 = await Factories.CastShort.create();
+      const syncId2 = new SyncId(message2);
+
+      const trie = new MerkleTrie();
+      trie.insert(syncId1);
+      const rootHashBeforeDelete = trie.rootHash;
+      trie.insert(syncId2);
+
+      trie.delete(syncId2);
+      expect(trie.rootHash).toEqual(rootHashBeforeDelete);
+    });
+
+    test('trie with a deleted item is the same as a trie with the item never added', async () => {
+      const message1 = await Factories.CastShort.create();
+      const syncId1 = new SyncId(message1);
+      const message2 = await Factories.CastShort.create();
+      const syncId2 = new SyncId(message2);
+
+      const firstTrie = new MerkleTrie();
+      firstTrie.insert(syncId1);
+      firstTrie.insert(syncId2);
+
+      firstTrie.delete(syncId1);
+
+      const secondTrie = new MerkleTrie();
+      secondTrie.insert(syncId2);
+
+      expect(firstTrie.rootHash).toEqual(secondTrie.rootHash);
+      expect(firstTrie.rootHash).toBeTruthy();
+      expect(firstTrie.items).toEqual(secondTrie.items);
+      expect(firstTrie.items).toEqual(1);
+    });
+  });
+
   test('succeeds getting single item', async () => {
     const trie = new MerkleTrie();
     const message = await Factories.CastShort.create();
@@ -111,7 +183,7 @@ describe('MerkleTrie', () => {
       const trie = new MerkleTrie();
       trie.insert(syncId);
 
-      expect(trie.getNodeMetadata('166518234')).toBeUndefined();
+      expect(trie.getTrieNodeMetadata('166518234')).toBeUndefined();
     });
 
     test('returns the root metadata if the prefix is empty', async () => {
@@ -119,7 +191,7 @@ describe('MerkleTrie', () => {
       const trie = new MerkleTrie();
       trie.insert(syncId);
 
-      const nodeMetadata = trie.getNodeMetadata('');
+      const nodeMetadata = trie.getTrieNodeMetadata('');
       expect(nodeMetadata).toBeDefined();
       expect(nodeMetadata?.numMessages).toEqual(1);
       expect(nodeMetadata?.prefix).toEqual('');
@@ -129,7 +201,7 @@ describe('MerkleTrie', () => {
 
     test('returns the correct metadata if prefix is present', async () => {
       const trie = await trieWithMessages([1665182332, 1665182343]);
-      const nodeMetadata = trie.getNodeMetadata('16651823');
+      const nodeMetadata = trie.getTrieNodeMetadata('16651823');
 
       expect(nodeMetadata).toBeDefined();
       expect(nodeMetadata?.numMessages).toEqual(2);
@@ -161,9 +233,8 @@ describe('MerkleTrie', () => {
 
     test('excluded hashes excludes the prefix char at every level', async () => {
       const trie = await trieWithMessages([1665182332, 1665182343, 1665182345, 1665182351]);
-      const emptyHash = createHash('sha256').digest('hex');
       let snapshot = trie.getSnapshot('1665182351');
-      let node = trie.getNodeMetadata('16651823');
+      let node = trie.getTrieNodeMetadata('16651823');
       // We expect the excluded hash to be the hash of the 3 and 4 child nodes, and excludes the 5 child node
       const expectedHash = createHash('sha256')
         .update(node?.children?.get('3')?.hash || '')
@@ -183,11 +254,11 @@ describe('MerkleTrie', () => {
       ]);
 
       snapshot = trie.getSnapshot('1665182343');
-      node = trie.getNodeMetadata('166518234');
+      node = trie.getTrieNodeMetadata('166518234');
       const expectedLastHash = createHash('sha256')
         .update(node?.children?.get('5')?.hash || '')
         .digest('hex');
-      node = trie.getNodeMetadata('16651823');
+      node = trie.getTrieNodeMetadata('16651823');
       const expectedPenultimateHash = createHash('sha256')
         .update(node?.children?.get('3')?.hash || '')
         .update(node?.children?.get('5')?.hash || '')

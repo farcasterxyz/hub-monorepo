@@ -1,6 +1,15 @@
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { Message, MessageType } from '~/types';
 import { isMessage } from '~/types/typeguards';
+import { TypedEmitter } from 'tiny-typed-emitter';
+
+export type MessageDBEvents = {
+  /**
+   * messageDeleted is emitted whenever the DB attempts to delete a message.
+   * It is possible for a transaction to fail after this event is fired.
+   */
+  messageDeleted: (message: Message) => void;
+};
 
 /**
  * MessageDB is like a Message model. It can be instantiated with a RocksDB instance and provides methods for
@@ -13,10 +22,11 @@ import { isMessage } from '~/types/typeguards';
  *
  * All public put and delete methods in DB files should each represent a single, atomic RocksDB transaction.
  */
-class MessageDB {
+class MessageDB extends TypedEmitter<MessageDBEvents> {
   protected _db: RocksDB;
 
   constructor(db: RocksDB) {
+    super();
     this._db = db;
   }
 
@@ -118,6 +128,7 @@ class MessageDB {
   }
 
   protected _deleteMessage(tsx: Transaction, message: Message): Transaction {
+    this.emit('messageDeleted', message);
     return tsx
       .del(this.messagesBySignerKey(message.data.fid, message.signer, message.data.type, message.hash))
       .del(this.messagesKey(message.hash));

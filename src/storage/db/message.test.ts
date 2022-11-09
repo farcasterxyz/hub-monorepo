@@ -67,6 +67,19 @@ describe('deleteMessage', () => {
     await expect(db.getMessage(cast1.hash)).rejects.toThrow();
     await expect(db.getMessagesBySigner(cast1.data.fid, cast1.signer)).resolves.toEqual([]);
   });
+
+  test('fires messageDeleted event', async () => {
+    await db.putMessage(cast1);
+    let called = false;
+    db.on('messageDeleted', (message) => {
+      expect(message).toEqual(cast1);
+      called = true;
+    });
+
+    await db.deleteMessage(cast1.hash);
+
+    expect(called).toBe(true);
+  });
 });
 
 describe('getMessagesBySigner', () => {

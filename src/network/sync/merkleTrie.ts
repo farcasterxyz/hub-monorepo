@@ -28,6 +28,10 @@ export type NodeMetadata = {
  *
  * Comparing the state of two tries (represented by the snapshot) for the same prefix allows us to determine
  * whether two hubs are in sync, and the earliest point of divergence if not.
+ *
+ * Note about concurrency: This class and TrieNode are not thread-safe. This is fine because there are no async
+ * methods, which means the operations won't be interrupted. DO NOT add async methods without considering
+ * impact on concurrency-safety.
  */
 class MerkleTrie {
   private readonly _root: TrieNode;
@@ -38,6 +42,10 @@ class MerkleTrie {
 
   public insert(id: SyncId): void {
     this._root.insert(id.toString(), id.hashString);
+  }
+
+  public delete(id: SyncId): void {
+    this._root.delete(id.toString());
   }
 
   public get(id: SyncId): string | undefined {
@@ -62,7 +70,7 @@ class MerkleTrie {
     return prefix;
   }
 
-  public getNodeMetadata(prefix: string): NodeMetadata | undefined {
+  public getTrieNodeMetadata(prefix: string): NodeMetadata | undefined {
     const node = this._root.getNode(prefix);
     if (node === undefined) {
       return undefined;

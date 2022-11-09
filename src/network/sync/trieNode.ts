@@ -1,4 +1,3 @@
-import { ID_LENGTH } from '~/network/sync/syncId';
 import { createHash } from 'crypto';
 
 /**
@@ -36,12 +35,22 @@ class TrieNode {
     }
   }
 
+  /**
+   * Inserts a value into the trie. Returns true if the value was inserted, false if it already existed
+   * @param key - The key to insert
+   * @param value - The value to insert
+   * @param current_index - The index of the current character in the key (only used internally)
+   * @returns true if the value was inserted, false if it already existed
+   *
+   * Recursively traverses the trie by prefix and inserts the value at the end. Updates the hashes for
+   * every node that was traversed.
+   */
   public insert(key: string, value: string, current_index = 0): boolean {
     const char = key[current_index];
 
     // TODO: Optimize by using MPT extension nodes for leaves
     // We've reached the end of the key, add or update the value in a leaf node
-    if (current_index === ID_LENGTH - 1) {
+    if (current_index === key.length - 1) {
       // Key with the same value already exists, so no need to modify the tree
       if (this._children.has(char) && this._children.get(char)?.value === value) {
         return false;
@@ -60,6 +69,39 @@ class TrieNode {
     const success = this._children.get(char)?.insert(key, value, current_index + 1);
     if (success) {
       this._items += 1;
+      this._updateHash();
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Deletes a value from the trie by key. Returns true if the value was deleted, false if it didn't exist
+   * @param key - The key to delete
+   * @param current_index - The index of the current character in the key (only used internally)
+   *
+   * Ensures that there are no empty nodes after deletion. This is important to make sure the hashes
+   * will match exactly with another trie that never had the value (e.g. in another hub).
+   */
+  public delete(key: string, current_index = 0): boolean {
+    if (this.isLeaf) {
+      return true;
+    }
+
+    const char = key[current_index];
+    if (!this._children.has(char)) {
+      return false;
+    }
+
+    const success = this._children.get(char)?.delete(key, current_index + 1);
+    if (success) {
+      this._items -= 1;
+      // Delete the child if it's empty. This is required to make sure the hash will be the same
+      // as another trie that doesn't have this node in the first place.
+      if (this._children.get(char)?.items === 0) {
+        this._children.delete(char);
+      }
       this._updateHash();
       return true;
     }

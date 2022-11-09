@@ -5,18 +5,19 @@ import { jestRocksDB } from '~/storage/db/jestUtils';
 import { mockFid, UserInfo } from '~/storage/engine/mock';
 import { faker } from '@faker-js/faker';
 import { SyncId } from '~/network/sync/syncId';
-import { mock, instance, when, anyString } from 'ts-mockito';
+import { anyString, instance, mock, when } from 'ts-mockito';
 import { RPCClient } from '~/network/rpc';
 import { ok } from 'neverthrow';
 
 const testDb = jestRocksDB(`engine.syncEngine.test`);
-const engine = new Engine(testDb);
 
 describe('SyncEngine', () => {
   let syncEngine: SyncEngine;
+  let engine: Engine;
 
   beforeEach(async () => {
-    await engine._reset();
+    await testDb.clear();
+    engine = new Engine(testDb);
     syncEngine = new SyncEngine(engine);
   });
 
@@ -63,6 +64,27 @@ describe('SyncEngine', () => {
     expect(syncEngine.trie.get(new SyncId(message))).toBeFalsy();
   });
 
+  test('trie is updated when a message is removed', async () => {
+    const user = await mockFid(engine, faker.datatype.number());
+    const targetUri = faker.internet.url();
+    const reactionRemove = await Factories.ReactionRemove.create(
+      { data: { fid: user.fid, body: { targetUri: targetUri } } },
+      { transient: { signer: user.delegateSigner } }
+    );
+    const reactionAdd = await Factories.ReactionAdd.create(
+      { data: { fid: user.fid, body: { targetUri: targetUri }, signedAt: reactionRemove.data.signedAt + 1 } },
+      { transient: { signer: user.delegateSigner } }
+    );
+    await engine.mergeMessage(reactionRemove);
+    const id = new SyncId(reactionRemove);
+    expect(syncEngine.trie.get(id)).toEqual(id.hashString);
+
+    // Merging the reaction add deletes the reaction remove in the db, and it should be reflected in the trie
+    await engine.mergeMessage(reactionAdd);
+    expect(await engine.getMessagesByHashes([reactionRemove.hash])).toEqual([]);
+    expect(syncEngine.trie.get(id)).toBeFalsy();
+  });
+
   test('snapshotTimestampPrefix trims the seconds', async () => {
     const nowInSeconds = Date.now() / 1000;
     const snapshotTimestamp = syncEngine.snapshotTimestamp;
@@ -75,10 +97,9 @@ describe('SyncEngine', () => {
     const rpcClient = instance(mockRPCClient);
     let called = false;
     when(mockRPCClient.getSyncMetadataByPrefix(anyString())).thenCall(() => {
-      expect(syncEngine.shouldSync([], 0)).toBeFalsy();
-      // Return a high message count, so we don't try to fetch sync ids, and return an empty child map so sync
-      // will finish with a noop
+      expect(syncEngine.shouldSync([])).toBeFalsy();
       called = true;
+      // Return an empty child map so sync will finish with a noop
       return Promise.resolve(ok({ prefix: '', numMessages: 1000, hash: '', children: new Map() }));
     });
     await syncEngine.performSync(['some-divergence'], rpcClient);
@@ -88,22 +109,16 @@ describe('SyncEngine', () => {
   test('shouldSync returns false when excludedHashes match', async () => {
     const user = await mockFid(engine, faker.datatype.number());
     await addMessagesWithTimestamps(user, [1665182332, 1665182333, 1665182334]);
-    expect(syncEngine.shouldSync(syncEngine.snapshot.excludedHashes, 0)).toBeFalsy();
+    expect(syncEngine.shouldSync(syncEngine.snapshot.excludedHashes)).toBeFalsy();
   });
 
-  test('shouldSync return true or false based on number of messages when hashes dont match', async () => {
+  test('shouldSync returns true when hashes dont match', async () => {
     const user = await mockFid(engine, faker.datatype.number());
     await addMessagesWithTimestamps(user, [1665182332, 1665182333, 1665182334]);
     const oldSnapshot = syncEngine.snapshot;
     await addMessagesWithTimestamps(user, [1665182534]);
     expect(oldSnapshot.excludedHashes).not.toEqual(syncEngine.snapshot.excludedHashes);
-    // don't sync we have more messages
-    expect(syncEngine.shouldSync(oldSnapshot.excludedHashes, 1)).toBeFalsy();
-    // must sync if we have fewer messages
-    expect(syncEngine.shouldSync(oldSnapshot.excludedHashes, 1000)).toBeTruthy();
-    // must sync if we have same number of messages
-    const ourMessages = syncEngine.snapshot.numMessages;
-    expect(syncEngine.shouldSync(oldSnapshot.excludedHashes, ourMessages)).toBeTruthy();
+    expect(syncEngine.shouldSync(oldSnapshot.excludedHashes)).toBeTruthy();
   });
 
   test('should not sync if messages were added within the sync threshold', async () => {
@@ -114,10 +129,7 @@ describe('SyncEngine', () => {
     const snapshot = syncEngine.snapshot;
     // Add a message after the snapshot, within the sync threshold
     await addMessagesWithTimestamps(user, [snapshotTimestamp + 3]);
-    // Ensure messages counts match, run a few times to make sure we didn't accidentally the wrong answer
-    // due to randomness
-    const shouldSync = syncEngine.shouldSync(snapshot.excludedHashes, snapshot.numMessages + 1);
-    expect(shouldSync).toBeFalsy();
+    expect(syncEngine.shouldSync(snapshot.excludedHashes)).toBeFalsy();
   });
 
   test('initialize populates the trie with all existing messages', async () => {

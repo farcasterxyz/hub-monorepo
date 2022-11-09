@@ -5,6 +5,7 @@ import { BadRequestError } from '~/utils/errors';
 import { Reaction, ReactionAdd, ReactionRemove, URI } from '~/types';
 import { isReactionAdd, isReactionRemove } from '~/types/typeguards';
 import { hashCompare } from '~/utils/crypto';
+import { MessageDBEvents } from '~/storage/db/message';
 
 /**
  * ReactionSet is a modified LWW set that stores and fetches reactions. ReactionAdd and ReactionRemove messages are
@@ -54,6 +55,10 @@ class ReactionSet {
     }
 
     throw new BadRequestError('ReactionSet.merge: invalid message format');
+  }
+
+  onDBEvent<E extends keyof MessageDBEvents>(event: E, callback: MessageDBEvents[E]) {
+    this._db.on(event, callback);
   }
 
   /* -------------------------------------------------------------------------- */
