@@ -126,8 +126,8 @@ export interface UserDataAddModel extends MessageModel {
 }
 
 export type VerificationEthAddressClaim = {
-  fid: Uint8Array;
-  address: string; // Lowercased hex string
+  fid: Uint8Array; // Must be big-endian typed array
+  address: string;
   network: FarcasterNetwork;
   blockHash: Uint8Array;
 };
