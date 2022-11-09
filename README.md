@@ -15,6 +15,7 @@ Then, run:
 
 - `yarn install` to install dependencies
 - `yarn test` to ensure that the test suite runs correctly
+- `yarn identity create` to create a network identity for your Hub
 - `yarn start` to boot up the Hub
 
 This will start an instance of the Hub that you can send messages to. Hubs do not (yet) peer automatically, this will be added closer to the v2 release in Q4 2022.
