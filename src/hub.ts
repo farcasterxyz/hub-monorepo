@@ -13,7 +13,7 @@ import {
   NETWORK_TOPIC_PRIMARY,
   UserContent,
 } from '~/network/p2p/protocol';
-import { AddressInfo } from 'net';
+import { AddressInfo, isIP } from 'net';
 import { isContactInfo, isIdRegistryContent, isUserContent } from '~/types/typeguards';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import RocksDB from '~/storage/db/rocksdb';
@@ -141,20 +141,30 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     // Publishes this Node's information to the gossip network
     this.contactTimer = setInterval(async () => {
       if (this.gossipNode.peerId) {
-        // creates an AddrInfo for Gossip
         let gossipInfo = {};
+        let rpcInfo = this.rpcAddress ? { rpcAddress: this.rpcAddress } : {};
+
         const localAddrs = this.gossipAddresses;
         // publishes the public IP address of this Hub if public addressing is allowed
         if (localAddrs.length > 0 && !this.options.localIpAddrsOnly) {
           const ipAddr = await getPublicIp();
-          const port = localAddrs[0].nodeAddress().port;
-          addressInfoFromParts(ipAddr, port).map((gossipAddress) => {
-            gossipInfo = { gossipAddress };
-          });
-        }
 
-        // creates an AddrInfo for RPC
-        const rpcInfo = this.rpcAddress ? { rpcAddress: this.rpcAddress } : {};
+          ipAddr.match(
+            (ipAddr) => {
+              const port = localAddrs[0].nodeAddress().port;
+              addressInfoFromParts(ipAddr, port).map((gossipAddress) => {
+                // populates the gossip address
+                gossipInfo = { gossipAddress };
+
+                // populates the RPC address with the public address
+                if (this.rpcAddress) rpcInfo = { rpcAddress: { ...gossipAddress, port: this.rpcAddress.port } };
+              });
+            },
+            (error) => {
+              log.error(error);
+            }
+          );
+        }
 
         const currentSnapshot = this.syncEngine.snapshot;
         const gossipMessage: GossipMessage<ContactInfoContent> = {
@@ -260,12 +270,22 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       return peer.peerId.toString() === value.toString();
     });
     if (!peerId) {
+      // cannot receive information from peer's not on Gossip.
       log.info(
         { function: 'getRPCClientForPeer', identity: this.identity, peer: peer },
-        `Failed to find peer's matching contact info`
+        `peer is not subscribed to gossip`
       );
       return;
     }
+
+    // prefer the advertised address if it's available
+    if (isIP(peer.rpcAddress.address)) {
+      return new RPCClient({
+        ...peer.rpcAddress,
+      });
+    }
+
+    log.info({ peerId: peer.peerId.toString() }, 'falling back to addressbook lookup for peer');
     const peerInfo = await this.gossipNode.getPeerInfo(peerId);
     if (!peerInfo) {
       log.info(

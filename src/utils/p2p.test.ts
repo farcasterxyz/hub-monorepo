@@ -7,7 +7,6 @@ import {
   addressInfoFromParts,
   ipMultiAddrStrFromAddressInfo,
   addressInfoFromNodeAddress,
-  getPublicIp,
   p2pMultiAddrStr,
 } from '~/utils/p2p';
 
@@ -39,12 +38,6 @@ describe('p2p utils tests', () => {
       '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a',
       '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a/tcp/8080'
     );
-  });
-
-  test('get public IP', async () => {
-    const ip = await getPublicIp();
-    expect(ip).toBeDefined();
-    expect(isIP(ip)).toBeTruthy();
   });
 
   test('p2p multiaddr formatted string', async () => {

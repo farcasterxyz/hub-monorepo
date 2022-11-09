@@ -112,13 +112,13 @@ export const p2pMultiAddrStr = (addressInfo: AddressInfo, peerID: string) => {
  * @returns the public IPv4 or IPv6 as a string
  */
 let lastIpFetch = { timestamp: new Date().getTime(), ip: '' };
-export const getPublicIp = async (): Promise<string> => {
+export const getPublicIp = async (): Promise<Result<string, FarcasterError>> => {
   return new Promise((resolve, reject) => {
     const now = new Date().getTime();
     const since = now - lastIpFetch.timestamp;
     if (since <= 10 * 60 * 1000 && lastIpFetch.ip != '') {
       logger.debug({ component: 'utils/p2p', ip: lastIpFetch.ip }, `Cached public IP`);
-      resolve(lastIpFetch.ip);
+      resolve(ok(lastIpFetch.ip));
       return;
     }
     try {
@@ -126,11 +126,11 @@ export const getPublicIp = async (): Promise<string> => {
         resp.on('data', (ip: Buffer) => {
           logger.info({ component: 'utils/p2p', ip: ip.toString() }, `Fetched public IP`);
           lastIpFetch = { timestamp: now, ip: ip.toString() };
-          resolve(ip.toString());
+          resolve(ok(ip.toString()));
         });
       });
     } catch (err: any) {
-      reject(err);
+      reject(new ServerError(err));
     }
   });
 };
