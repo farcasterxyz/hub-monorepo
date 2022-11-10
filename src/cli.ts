@@ -60,14 +60,19 @@ app
       cliOptions.ip ?? hubConfig.ip,
       cliOptions.gossipPort ?? hubConfig.gossipPort
     );
+
     if (hubAddressInfo.isErr()) {
       throw hubAddressInfo.error;
     }
-    const ipMultiAddr = ipMultiAddrStrFromAddressInfo(hubAddressInfo.value);
+
+    const ipMultiAddrResult = ipMultiAddrStrFromAddressInfo(hubAddressInfo.value);
+    if (ipMultiAddrResult.isErr()) {
+      throw ipMultiAddrResult.error;
+    }
 
     const options: HubOptions = {
       peerId,
-      ipMultiAddr,
+      ipMultiAddr: ipMultiAddrResult.value,
       gossipPort: hubAddressInfo.value.port,
       networkUrl: cliOptions.networkUrl ?? hubConfig.networkUrl,
       IdRegistryAddress: cliOptions.firAddress ?? hubConfig.firAddress,

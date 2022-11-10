@@ -19,22 +19,22 @@ export const checkNodeAddrs = (listenIPAddr: string, listenCombinedAddr: string)
   return Result.combine([checkIpAddr(listenIPAddr), checkCombinedAddr(listenCombinedAddr)]).map(() => undefined);
 };
 
-/** Get an AddressInfo object from a given NodeAddress object */
-export const addressInfoFromNodeAddress = (nodeAddress: NodeAddress): AddressInfo => {
+/** Builds an AddressInfo from a NodeAddress */
+export const addressInfoFromNodeAddress = (nodeAddress: NodeAddress): HubResult<AddressInfo> => {
   if (nodeAddress.family != 4 && nodeAddress.family != 6)
-    throw Error(`${nodeAddress.family}: Invalid NodeAddress Family`);
+    return err(new HubError('bad_request', `invalid nodeAddress family: ${nodeAddress.family}`));
 
-  return {
+  return ok({
     address: nodeAddress.address,
     port: nodeAddress.port,
     family: nodeAddress.family == 4 ? 'IPv4' : 'IPv6',
-  };
+  });
 };
 
-/** Get an AddressInfo object for a given IP and port */
-export const addressInfoFromParts = (address: string, port: number) => {
+/** Builds an AddressInfo for a given IP address and port */
+export const addressInfoFromParts = (address: string, port: number): HubResult<AddressInfo> => {
   const family = isIP(address);
-  if (!family) return err(new ServerError('Not an IP address'));
+  if (!family) return err(new HubError('bad_request.parse_failure', 'invalid ip address'));
 
   const addrInfo: AddressInfo = {
     address,
@@ -49,12 +49,13 @@ export const addressInfoFromParts = (address: string, port: number) => {
  *
  * Does not preserve port or transport information
  */
-export const ipMultiAddrStrFromAddressInfo = (addressInfo: AddressInfo) => {
+export const ipMultiAddrStrFromAddressInfo = (addressInfo: AddressInfo): HubResult<string> => {
   if (addressInfo.family != 'IPv6' && addressInfo.family != 'IPv4')
-    throw Error(`${addressInfo.family}: Invalid AdddressInfo Family`);
+    return err(new HubError('bad_request', `invalid AddressInfo family: ${addressInfo.family}`));
+
   const family = addressInfo.family === 'IPv6' ? 'ip6' : 'ip4';
   const multiaddrStr = `/${family}/${addressInfo.address}`;
-  return multiaddrStr;
+  return ok(multiaddrStr);
 };
 
 /**
@@ -62,9 +63,12 @@ export const ipMultiAddrStrFromAddressInfo = (addressInfo: AddressInfo) => {
  *
  * Does not preserve port or transport information
  */
-export const p2pMultiAddrStr = (addressInfo: AddressInfo, peerID: string) => {
-  const ipMultiAddrStr = ipMultiAddrStrFromAddressInfo(addressInfo);
-  return `${ipMultiAddrStr}/tcp/${addressInfo.port}/p2p/${peerID}`;
+export const p2pMultiAddrStr = (addressInfo: AddressInfo, peerID: string): HubResult<string> => {
+  return ipMultiAddrStrFromAddressInfo(addressInfo).map((ipMultiAddrStr) => {
+    return `${ipMultiAddrStr}/tcp/${addressInfo.port}/p2p/${peerID}`;
+  });
+
+  // const ipMultiAddrStr = ipMultiAddrStrFromAddressInfo(addressInfo);
 };
 
 /**
@@ -74,6 +78,7 @@ export const p2pMultiAddrStr = (addressInfo: AddressInfo, peerID: string) => {
  * @returns the public IPv4 or IPv6 as a string
  */
 let lastIpFetch = { timestamp: new Date().getTime(), ip: '' };
+
 export const getPublicIp = async (): Promise<Result<string, FarcasterError>> => {
   return new Promise((resolve, reject) => {
     const now = new Date().getTime();
@@ -128,7 +133,7 @@ const checkCombinedAddr = (ipAddr: string): HubResult<void> => {
     (addr) => {
       // DISCUSS: can toOptions throw here? Should we fail if it does?
       if (addr.toOptions().transport != 'tcp')
-        return err(new HubError('bad_request.parse_failure', 'Invalid Node MultiAddr: transport must be tcp'));
+        return err(new HubError('bad_request', 'multiaddr transport must be tcp'));
       return ok(undefined);
     },
     (error) => err(error)
