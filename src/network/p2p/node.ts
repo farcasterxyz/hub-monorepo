@@ -241,14 +241,13 @@ export class Node extends TypedEmitter<NodeEvents> {
   private async bootstrap(bootstrapAddrs: Multiaddr[]): Promise<HubResult<void>> {
     if (bootstrapAddrs.length == 0) return ok(undefined);
     const results = await Promise.all(bootstrapAddrs.map((addr) => this.connectAddress(addr)));
-    let failures = 0;
-    for (const result of results) {
-      if (result.isOk()) continue;
-      failures++;
-    }
-    if (failures == bootstrapAddrs.length) {
+
+    const finalResults = Result.combineWithAllErrors(results) as Result<void[], HubError[]>;
+    if (finalResults.isErr() && finalResults.error.length == bootstrapAddrs.length) {
+      // only fail if all connections failed
       return err(new HubError('unavailable', 'could not connect to any bootstrap nodes'));
     }
+
     return ok(undefined);
   }
 

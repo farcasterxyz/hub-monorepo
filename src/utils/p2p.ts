@@ -8,6 +8,8 @@ import { HubError, HubResult } from '~/utils/hubErrors';
 
 /** Parses an address to verify it is actually a valid MultiAddr */
 export const parseAddress = (multiaddrStr: string): HubResult<Multiaddr> => {
+  if (multiaddrStr === '') return err(new HubError('bad_request', 'multiaddr must not be empty'));
+
   return Result.fromThrowable(
     () => multiaddr(multiaddrStr),
     (err) => new HubError('bad_request.parse_failure', { cause: err as Error, message: 'invalid multiaddr' })
@@ -110,18 +112,15 @@ const checkIpAddr = (ipAddr: string): HubResult<void> => {
   const parseListenIpAddrResult = parseAddress(ipAddr);
   if (parseListenIpAddrResult.isErr()) return err(parseListenIpAddrResult.error);
 
-  // DISCUSS: we previously had a null check here (which seems impossible), but we have no
-  // empty string check which is possible
-  const parsedListenIPAddr = parseListenIpAddrResult.value;
-
-  const toOptionsResult = Result.fromThrowable(
-    () => parsedListenIPAddr.toOptions(),
+  const optionsResult = Result.fromThrowable(
+    () => parseListenIpAddrResult.value.toOptions(),
     (error) => err(error)
   )();
-  // An IP address should not have options and should throw if well-formed
-  if (toOptionsResult.isErr()) return ok(undefined);
 
-  const options = toOptionsResult.value;
+  // An IP address should not have options and should throw if well-formed
+  if (optionsResult.isErr()) return ok(undefined);
+
+  const options = optionsResult.value;
   if (options.port !== undefined || options.transport !== undefined) {
     return err(new HubError('bad_request', 'unexpected multiaddr transport/port information'));
   }
@@ -129,13 +128,16 @@ const checkIpAddr = (ipAddr: string): HubResult<void> => {
 };
 
 const checkCombinedAddr = (ipAddr: string): HubResult<void> => {
-  return parseAddress(ipAddr).match(
-    (addr) => {
-      // DISCUSS: can toOptions throw here? Should we fail if it does?
-      if (addr.toOptions().transport != 'tcp')
-        return err(new HubError('bad_request', 'multiaddr transport must be tcp'));
-      return ok(undefined);
-    },
-    (error) => err(error)
-  );
+  const parseListenIpAddrResult = parseAddress(ipAddr);
+  if (parseListenIpAddrResult.isErr()) return err(parseListenIpAddrResult.error);
+
+  const optionsResult = Result.fromThrowable(
+    () => parseListenIpAddrResult.value.toOptions(),
+    (error) => new HubError('bad_request.parse_failure', { cause: error as unknown as Error })
+  )();
+
+  return optionsResult.andThen((options) => {
+    if (options.transport != 'tcp') return err(new HubError('bad_request', 'multiaddr transport must be tcp'));
+    return ok(undefined);
+  });
 };

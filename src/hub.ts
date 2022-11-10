@@ -220,41 +220,29 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   async handleContactInfo(message: ContactInfoContent) {
     // Updates the address book for this peer
     if (message.gossipAddress) {
-      const p2pMultiAddrResult = p2pMultiAddrStr(message.gossipAddress, message.peerId.toString()).map((addr) =>
-        multiaddr(addr)
-      );
-
       const peerIdResult = Result.fromThrowable(
         () => peerIdFromString(message.peerId),
         (error) => new HubError('bad_request.parse_failure', { cause: error as unknown as Error })
       )();
 
-      const addressBookResult = await Result.combine([p2pMultiAddrResult, peerIdResult]).match(
-        async ([multiaddr, peerId]) => {
-          if (!this.gossipNode.addressBook) {
-            return err(new HubError('not_found', 'address book missing'));
-          }
-
-          return ResultAsync.fromPromise(this.gossipNode.addressBook.add(peerId, [multiaddr]), (error) => {
-            return new HubError('bad_request', { cause: error as unknown as Error });
-          });
-        },
-        async (error) => err(error)
+      const p2pMultiAddrResult = p2pMultiAddrStr(message.gossipAddress, message.peerId.toString()).map((addr) =>
+        multiaddr(addr)
       );
 
-      // TODO: refactor to move the logging into the determinstic funtion
+      const res = Result.combine([peerIdResult, p2pMultiAddrResult]).map(async ([peerId, multiaddr]) => {
+        if (!this.gossipNode.addressBook) {
+          return err(new HubError('unavailable', 'address book missing for gossipNode'));
+        }
 
-      if (addressBookResult.isErr()) {
-        log.error(err, `Failed to add contact Info to address book. ${message}`);
+        return await ResultAsync.fromPromise(
+          this.gossipNode.addressBook.add(peerId, [multiaddr]),
+          (error) => new HubError('unavailable', { cause: error as unknown as Error })
+        ).map(() => ok(undefined));
+      });
+
+      if (res.isErr()) {
+        log.error({ error: res.error, message }, 'failed to add contact info to address book');
       }
-
-      // const p2pMultiAddr = multiaddr(p2pMultiAddrStr(message.gossipAddress, message.peerId.toString()));
-      // try {
-      //   const peerId = peerIdFromString(message.peerId);
-      //   await this.gossipNode.addressBook?.add(peerId, [p2pMultiAddr]);
-      // } catch (err) {
-      //   log.error(err, `Failed to add contact Info to address book. ${message}`);
-      // }
     }
 
     const rpcClient = await this.getRPCClientForPeer(message);

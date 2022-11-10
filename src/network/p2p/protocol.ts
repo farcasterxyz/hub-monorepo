@@ -94,13 +94,10 @@ export const encodeMessage = (message: GossipMessage): HubResult<Uint8Array> => 
 export const decodeMessage = (data: Uint8Array): HubResult<GossipMessage> => {
   const json = new TextDecoder().decode(data);
 
-  const messageResult: HubResult<string> = safeJsonParse(json);
-  if (messageResult.isErr()) return err(messageResult.error);
-
-  const message = messageResult.value;
-  if (!message || !isGossipMessage(message)) {
-    return err(new HubError('bad_request.parse_failure', 'invalid gossip message'));
-  }
-
-  return ok(message);
+  return safeJsonParse(json).andThen((message) => {
+    if (!message || !isGossipMessage(message)) {
+      return err(new HubError('bad_request.parse_failure', 'invalid gossip message'));
+    }
+    return ok(message);
+  });
 };

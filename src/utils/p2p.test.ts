@@ -21,6 +21,12 @@ describe('p2p utils tests', () => {
     expect(error.message).toEqual('invalid multiaddr');
   });
 
+  test('fail to parse an empty string', async () => {
+    const error = parseAddress('')._unsafeUnwrapErr();
+    expect(error.errCode).toEqual('bad_request');
+    expect(error.message).toEqual('multiaddr must not be empty');
+  });
+
   test('check valid node addresses', async () => {
     const result = checkNodeAddrs('/ip4/127.0.0.1/', '/ip4/127.0.0.1/tcp/8080');
     expect(result.isOk()).toBeTruthy();
