@@ -1,4 +1,5 @@
 import { Message } from '~/types';
+import { HubError } from '~/utils/hubErrors';
 
 const TIMESTAMP_LENGTH = 10;
 const HASH_LENGTH = 128; // We're using 64 byte blake2b hashes
@@ -18,10 +19,10 @@ class SyncId {
     this._hash = message.hash;
     // Hashlength +2 to account for the 0x
     if (this._hash.length !== HASH_LENGTH + 2 || !this._hash.startsWith('0x')) {
-      throw new Error(`Invalid hash: ${this._hash}`);
+      throw new HubError('bad_request.parse_failure', `Invalid hash: ${this._hash}`);
     }
     if (this.timestampString.length !== TIMESTAMP_LENGTH) {
-      throw new Error(`Invalid timestamp: ${this.timestampString}`);
+      throw new HubError('bad_request.parse_failure', `Invalid timestamp: ${this.timestampString}`);
     }
   }
 

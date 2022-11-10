@@ -93,6 +93,9 @@ export class ConnectionFilter implements ConnectionGater {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
+  // DISCUSS: why are we accepting a null and why are we returning a promise?
+  // The function appears to have no async calls
+
   private shouldDeny(peerId: string | null) {
     if (!peerId) return Promise.resolve(true);
     if (this.allowedPeers === undefined) return Promise.resolve(false);
