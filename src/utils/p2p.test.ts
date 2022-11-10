@@ -1,6 +1,5 @@
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { multiaddr, NodeAddress } from '@multiformats/multiaddr';
-import { isIP } from 'net';
 import {
   parseAddress,
   checkNodeAddrs,
@@ -17,8 +16,9 @@ describe('p2p utils tests', () => {
   });
 
   test('fail to parse an invalid multiaddr', async () => {
-    const result = parseAddress('/ip6/127.0.0.1/8080');
-    expect(result.isErr()).toBeTruthy();
+    const error = parseAddress('/ip6/127.0.0.1/8080')._unsafeUnwrapErr();
+    expect(error.errCode).toEqual('bad_request.parse_failure');
+    expect(error.message).toEqual('invalid multiaddr');
   });
 
   test('check valid node addresses', async () => {
@@ -28,16 +28,28 @@ describe('p2p utils tests', () => {
 
   test('check invalid node addresses', async () => {
     // invalid IP multiaddr but valid combined multiaddr
-    let result = checkNodeAddrs('/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a', '/ip4/127.0.0.1/tcp/8080');
-    expect(result.isErr()).toBeTruthy();
+    let error = checkNodeAddrs(
+      '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a',
+      '/ip4/127.0.0.1/tcp/8080'
+    )._unsafeUnwrapErr();
+    expect(error.errCode).toEqual('bad_request.parse_failure');
+    expect(error.message).toEqual('invalid multiaddr');
+
     // valid IP multiaddr but invalid combined multiaddr
-    result = checkNodeAddrs('/ip4/127.0.0.1/', '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a/tcp/8080');
-    expect(result.isErr()).toBeTruthy();
+    error = checkNodeAddrs(
+      '/ip4/127.0.0.1/',
+      '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a/tcp/8080'
+    )._unsafeUnwrapErr();
+    expect(error.errCode).toEqual('bad_request.parse_failure');
+    expect(error.message).toEqual('invalid multiaddr');
+
     // both invalid IP and combined multiaddrs
-    result = checkNodeAddrs(
+    error = checkNodeAddrs(
       '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a',
       '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a/tcp/8080'
-    );
+    )._unsafeUnwrapErr();
+    expect(error.errCode).toEqual('bad_request.parse_failure');
+    expect(error.message).toEqual('invalid multiaddr');
   });
 
   test('p2p multiaddr formatted string', async () => {

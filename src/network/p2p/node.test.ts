@@ -119,7 +119,7 @@ describe('node unit tests', () => {
     const error = (await node.start([], options))._unsafeUnwrapErr();
 
     expect(error.errCode).toEqual('unavailable');
-    expect(error.message).toMatch('unexpected transport/port information');
+    expect(error.message).toMatch('unexpected multiaddr transport/port information');
     expect(node.isStarted()).toBeFalsy();
     await node.stop();
   });
@@ -132,7 +132,7 @@ describe('node unit tests', () => {
     const error = (await node.start([], options))._unsafeUnwrapErr();
 
     expect(error.errCode).toEqual('unavailable');
-    expect(error.message).toMatch('no protocol with code: 108');
+    expect(error.message).toMatch('invalid multiaddr');
     expect(node.isStarted()).toBeFalsy();
     await node.stop();
   });
