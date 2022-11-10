@@ -6,9 +6,10 @@ import { Mplex } from '@libp2p/mplex';
 import { TCP } from '@libp2p/tcp';
 import { Multiaddr } from '@multiformats/multiaddr';
 import { createLibp2p, Libp2p } from 'libp2p';
-import { err, ok, Result } from 'neverthrow';
+import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import { FarcasterError, ServerError } from '~/utils/errors';
+import { ServerError } from '~/utils/errors';
+import { HubError, HubResult } from '~/utils/hubErrors';
 import { decodeMessage, encodeMessage, GossipMessage, GOSSIP_TOPICS } from '~/network/p2p/protocol';
 import { ConnectionFilter } from './connectionFilter';
 import { logger } from '~/utils/logger';
@@ -98,8 +99,11 @@ export class Node extends TypedEmitter<NodeEvents> {
    * @param bootstrapAddrs  A list of addresses to bootstrap from. Attempts to connect with each peer in the list
    * @param startOptions    Options to configure the node's behavior
    */
-  async start(bootstrapAddrs: Multiaddr[], startOptions?: NodeOptions) {
-    this._node = await this.createNode(startOptions ?? {});
+  async start(bootstrapAddrs: Multiaddr[], startOptions?: NodeOptions): Promise<HubResult<void>> {
+    const createResult = await this.createNode(startOptions ?? {});
+    if (createResult.isErr()) return err(createResult.error);
+
+    this._node = createResult.value;
     this.registerListeners();
 
     await this._node.start();
@@ -109,6 +113,8 @@ export class Node extends TypedEmitter<NodeEvents> {
     );
 
     await this.bootstrap(bootstrapAddrs);
+
+    return ok(undefined);
   }
 
   /* Attempts to dial all the addresses in the bootstrap list */
@@ -165,7 +171,7 @@ export class Node extends TypedEmitter<NodeEvents> {
    *
    * @param node The peer Node to attempt a connection with
    */
-  async connect(node: Node): Promise<Result<void, FarcasterError>> {
+  async connect(node: Node): Promise<HubResult<void>> {
     const multiaddrs = node.multiaddrs;
     if (multiaddrs) {
       // how to select an addr here?
@@ -180,9 +186,9 @@ export class Node extends TypedEmitter<NodeEvents> {
         }
       }
     } else {
-      return err(new ServerError('Connection failure: No peerId'));
+      return err(new HubError('unavailable', { message: 'no peer id' }));
     }
-    return err(new ServerError('Connection failure: Unable to connect to any peer address'));
+    return err(new HubError('unavailable', { message: 'cannot connect to any peer' }));
   }
 
   /**
@@ -190,7 +196,7 @@ export class Node extends TypedEmitter<NodeEvents> {
    *
    * @param address The NodeAddress to attempt a connection with
    */
-  async connectAddress(address: Multiaddr): Promise<Result<void, FarcasterError>> {
+  async connectAddress(address: Multiaddr): Promise<HubResult<void>> {
     log.debug({ identity: this.identity, address }, `Attempting to connect to address ${address}`);
     try {
       const result = await this._node?.dial(address);
@@ -200,9 +206,9 @@ export class Node extends TypedEmitter<NodeEvents> {
       }
     } catch (error: any) {
       log.error(error, `Failed to connect to peer at address: ${address}`);
-      return err(new ServerError(error));
+      return err(new HubError('unavailable', { cause: error }));
     }
-    return err(new ServerError('Connection failure: Unable to connect to the given peer address'));
+    return err(new HubError('unavailable', { message: `cannot connect to peer: ${address}` }));
   }
 
   registerListeners() {
@@ -247,18 +253,13 @@ export class Node extends TypedEmitter<NodeEvents> {
   /**
    * Creates a Libp2p node with GossipSub
    */
-  private async createNode(options: NodeOptions) {
+  private async createNode(options: NodeOptions): Promise<HubResult<Libp2p>> {
     const listenIPMultiAddr = options.ipMultiAddr ?? MultiaddrLocalHost;
     const listenPort = options.gossipPort ?? 0;
     const listenMultiAddrStr = `${listenIPMultiAddr}/tcp/${listenPort}`;
-    checkNodeAddrs(listenIPMultiAddr, listenMultiAddrStr).match(
-      () => {
-        /** no-op */
-      },
-      (error) => {
-        throw new ServerError(`Failed to start Hub: ${error}`);
-      }
-    );
+
+    const checkResult = checkNodeAddrs(listenIPMultiAddr, listenMultiAddrStr);
+    if (checkResult.isErr()) return err(new HubError('unavailable', { cause: checkResult.error }));
 
     const gossip = new GossipSub({
       emitSelf: false,
@@ -273,19 +274,22 @@ export class Node extends TypedEmitter<NodeEvents> {
       );
     }
     const connectionGater = new ConnectionFilter(options.allowedPeerIdStrs);
-    const node = await createLibp2p({
-      // setting these optional fields to `undefined` throws an error, only set them if they're defined
-      ...(options.peerId && { peerId: options.peerId }),
-      connectionGater,
-      addresses: {
-        listen: [listenMultiAddrStr],
-      },
-      transports: [new TCP()],
-      streamMuxers: [new Mplex()],
-      connectionEncryption: [new Noise()],
-      pubsub: gossip,
-      peerDiscovery: [new PubSubPeerDiscovery()],
-    });
-    return node;
+
+    return ResultAsync.fromPromise(
+      createLibp2p({
+        // setting these optional fields to `undefined` throws an error, only set them if they're defined
+        ...(options.peerId && { peerId: options.peerId }),
+        connectionGater,
+        addresses: {
+          listen: [listenMultiAddrStr],
+        },
+        transports: [new TCP()],
+        streamMuxers: [new Mplex()],
+        connectionEncryption: [new Noise()],
+        pubsub: gossip,
+        peerDiscovery: [new PubSubPeerDiscovery()],
+      }),
+      (e) => new HubError('unavailable', { message: 'failed to create libp2p node', cause: e as Error })
+    );
   }
 }
