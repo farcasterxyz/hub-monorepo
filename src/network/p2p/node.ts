@@ -8,7 +8,6 @@ import { Multiaddr } from '@multiformats/multiaddr';
 import { createLibp2p, Libp2p } from 'libp2p';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import { ServerError } from '~/utils/errors';
 import { HubError, HubResult } from '~/utils/hubErrors';
 import { decodeMessage, encodeMessage, GossipMessage, GOSSIP_TOPICS } from '~/network/p2p/protocol';
 import { ConnectionFilter } from './connectionFilter';
@@ -112,23 +111,7 @@ export class Node extends TypedEmitter<NodeEvents> {
       'Starting libp2p'
     );
 
-    await this.bootstrap(bootstrapAddrs);
-
-    return ok(undefined);
-  }
-
-  /* Attempts to dial all the addresses in the bootstrap list */
-  private async bootstrap(bootstrapAddrs: Multiaddr[]) {
-    if (bootstrapAddrs.length == 0) return;
-    const results = await Promise.all(bootstrapAddrs.map((addr) => this.connectAddress(addr)));
-    let failures = 0;
-    for (const result of results) {
-      if (result.isOk()) continue;
-      failures++;
-    }
-    if (failures == bootstrapAddrs.length) {
-      throw new ServerError('Failed to connect to any bootstrap address');
-    }
+    return this.bootstrap(bootstrapAddrs);
   }
 
   isStarted() {
@@ -248,6 +231,25 @@ export class Node extends TypedEmitter<NodeEvents> {
         })}`
       );
     });
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                               Private Methods                              */
+  /* -------------------------------------------------------------------------- */
+
+  /* Attempts to dial all the addresses in the bootstrap list */
+  private async bootstrap(bootstrapAddrs: Multiaddr[]): Promise<HubResult<void>> {
+    if (bootstrapAddrs.length == 0) return ok(undefined);
+    const results = await Promise.all(bootstrapAddrs.map((addr) => this.connectAddress(addr)));
+    let failures = 0;
+    for (const result of results) {
+      if (result.isOk()) continue;
+      failures++;
+    }
+    if (failures == bootstrapAddrs.length) {
+      return err(new HubError('unavailable', 'could not connect to any bootstrap nodes'));
+    }
+    return ok(undefined);
   }
 
   /**

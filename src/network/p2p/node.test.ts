@@ -57,10 +57,9 @@ const trackMessages = () => {
 describe('node unit tests', () => {
   test('fails to bootstrap to invalid addresses', async () => {
     const node = new Node();
-    await expect(() => {
-      return node.start([multiaddr()]);
-    }).rejects.toThrow(ServerError);
-    // still have to stop it since the underlying libp2p node does start up before bootstrap fails
+    const error = (await node.start([multiaddr()]))._unsafeUnwrapErr();
+    expect(error.errCode).toEqual('unavailable');
+    expect(error.message).toContain('could not connect to any bootstrap nodes');
     await node.stop();
   });
 
