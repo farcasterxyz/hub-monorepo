@@ -25,7 +25,7 @@ interface NodeEvents {
    * Triggered when a new message is received. Provides the topic the message was received on
    * as well as the result of decoding the message
    */
-  message: (topic: string, message: Result<GossipMessage, string>) => void;
+  message: (topic: string, message: Result<GossipMessage, string> | HubResult<GossipMessage>) => void;
   /** Triggered when a peer is connected. Provides the Libp2p Connection object. */
   peerConnect: (connection: Connection) => void;
   /** Triggered when a peer is disconnected. Provides the Libp2p Connecion object. */

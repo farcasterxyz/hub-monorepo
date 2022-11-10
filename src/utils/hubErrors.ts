@@ -24,13 +24,18 @@ export class HubError extends Error {
   /* Indicates if if error message can be presented to the user */
   public readonly presentable: boolean = false;
 
-  constructor(errCode: HubErrorCode, options: Partial<HubErrorOpts>) {
+  constructor(errCode: HubErrorCode, options: Partial<HubErrorOpts> | string) {
+    if (typeof options === 'string') {
+      options = { message: options };
+    }
+
     if (!options.message) {
       options.message = options.cause?.message || '';
     }
 
     super(options.message, { cause: options.cause });
 
+    this.name = 'HubError';
     this.errCode = errCode;
   }
 }
@@ -51,6 +56,7 @@ type HubErrorCode =
   | 'unauthorized'
   /* The request cannot be completed as constructed, do not retry */
   | 'bad_request'
+  | 'bad_request.parse_failure'
   /* The requested resource could not be found */
   | 'not_found'
   /* TBD */

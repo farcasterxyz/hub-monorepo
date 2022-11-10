@@ -1,7 +1,9 @@
 import { AddressInfo } from 'net';
-import { err, ok, Result } from 'neverthrow';
+import { err, ok } from 'neverthrow';
 import { isGossipMessage } from '~/types/typeguards';
 import { IdRegistryEvent, Message } from '~/types';
+import { HubError, HubResult } from '~/utils/hubErrors';
+import { safeJsonParse, safeJsonStringify } from '~/utils/safe';
 
 // Network topic for all FC protocol messages
 export const NETWORK_TOPIC_PRIMARY = 'f_network_topic_primary';
@@ -50,7 +52,7 @@ export type IdRegistryContent = {
  * ContactInfoContent allows gossip nodes to share additional information about each other
  * over the gossip network.
  *
- * @publicKey - The publicKey of the correspinding peer
+ * @publicKey - The publicKey of the corresponding peer
  * @gossipAddress - The address at which this node is listening for Gossip messages. Unset if Gossip is not public.
  * @rpcAddress - The address at which this node is serving RPC requests. Unset if RPC is not offered.
  * @excludedHashes - The excluded hashes of the sender's current trie snapshot
@@ -71,10 +73,15 @@ export type ContactInfoContent = {
  *
  * @return - A byte array containing the UTF-8 encoded message
  */
-export const encodeMessage = (message: GossipMessage): Result<Uint8Array, string> => {
-  if (!isGossipMessage(message)) return err('Invalid Message');
-  const json = JSON.stringify(message);
-  return ok(new TextEncoder().encode(json));
+export const encodeMessage = (message: GossipMessage): HubResult<Uint8Array> => {
+  if (!isGossipMessage(message)) {
+    return err(new HubError('bad_request.parse_failure', 'invalid gossip message'));
+  }
+
+  const jsonResult = safeJsonStringify(message);
+  if (jsonResult.isErr()) return err(jsonResult.error);
+
+  return ok(new TextEncoder().encode(jsonResult.value));
 };
 
 /**
@@ -84,16 +91,16 @@ export const encodeMessage = (message: GossipMessage): Result<Uint8Array, string
  *
  * @returns - A decoded GossipMessage from the input array
  */
-export const decodeMessage = (data: Uint8Array): Result<GossipMessage, string> => {
-  try {
-    const json = new TextDecoder().decode(data);
-    const message: GossipMessage = JSON.parse(json);
+export const decodeMessage = (data: Uint8Array): HubResult<GossipMessage> => {
+  const json = new TextDecoder().decode(data);
 
-    if (!message || !isGossipMessage(message)) {
-      return err('Failed to decode Gossip message...');
-    }
-    return ok(message);
-  } catch (error: any) {
-    return err('Failed to decode Gossip message...');
+  const messageResult: HubResult<string> = safeJsonParse(json);
+  if (messageResult.isErr()) return err(messageResult.error);
+
+  const message = messageResult.value;
+  if (!message || !isGossipMessage(message)) {
+    return err(new HubError('bad_request.parse_failure', 'invalid gossip message'));
   }
+
+  return ok(message);
 };
