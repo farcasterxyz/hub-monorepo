@@ -131,7 +131,7 @@ const checkCombinedAddr = (combinedAddr: string): HubResult<void> => {
 
   const optionsResult = Result.fromThrowable(
     () => parseListenIpAddrResult.value.toOptions(),
-    (error) => new HubError('bad_request.parse_failure', { cause: error as unknown as Error })
+    (error) => new HubError('bad_request.parse_failure', error as unknown as Error)
   )();
 
   return optionsResult.andThen((options) => {

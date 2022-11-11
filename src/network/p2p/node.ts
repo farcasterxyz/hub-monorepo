@@ -189,7 +189,7 @@ export class Node extends TypedEmitter<NodeEvents> {
       }
     } catch (error: any) {
       log.error(error, `Failed to connect to peer at address: ${address}`);
-      return err(new HubError('unavailable', { cause: error }));
+      return err(new HubError('unavailable', error));
     }
     return err(new HubError('unavailable', { message: `cannot connect to peer: ${address}` }));
   }
@@ -260,7 +260,7 @@ export class Node extends TypedEmitter<NodeEvents> {
     const listenMultiAddrStr = `${listenIPMultiAddr}/tcp/${listenPort}`;
 
     const checkResult = checkNodeAddrs(listenIPMultiAddr, listenMultiAddrStr);
-    if (checkResult.isErr()) return err(new HubError('unavailable', { cause: checkResult.error }));
+    if (checkResult.isErr()) return err(new HubError('unavailable', checkResult.error));
 
     const gossip = new GossipSub({
       emitSelf: false,
