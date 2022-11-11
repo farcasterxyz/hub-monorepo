@@ -1,7 +1,7 @@
 import { Multiaddr, multiaddr, NodeAddress } from '@multiformats/multiaddr';
 import { AddressInfo, isIP } from 'net';
 import { err, ok, Result } from 'neverthrow';
-import { FarcasterError, ServerError } from '~/utils/errors';
+import { FarcasterError } from '~/utils/errors';
 import { get } from 'http';
 import { logger } from '~/utils/logger';
 import { HubError, HubResult } from '~/utils/hubErrors';
@@ -97,7 +97,7 @@ export const getPublicIp = async (): Promise<Result<string, FarcasterError>> => 
         });
       });
     } catch (err: any) {
-      reject(new ServerError(err));
+      reject(new HubError('unavailable.network_failure', err));
     }
   });
 };

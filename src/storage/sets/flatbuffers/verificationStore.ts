@@ -1,11 +1,11 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
-import { BadRequestError } from '~/utils/errors';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync } from 'neverthrow';
 import { UserPostfix, VerificationAddEthAddressModel, VerificationRemoveModel } from '~/storage/flatbuffers/types';
 import { isVerificationAddEthAddress, isVerificationRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
+import { HubError } from '~/utils/hubErrors';
 
 /**
  * VerificationStore persists VerificationMessages in RocksDB using a two-phase CRDT set to
@@ -74,7 +74,7 @@ class VerificationStore {
    * @param fid fid of the user who created the SignerAdd
    * @param address the address being verified
    *
-   * @returns the VerificationAddEthAddressModel if it exists, throws NotFoundError otherwise
+   * @returns the VerificationAddEthAddressModel if it exists, throws HubError otherwise
    */
   async getVerificationAdd(fid: Uint8Array, address: Uint8Array): Promise<VerificationAddEthAddressModel> {
     const messageTsHash = await this._db.get(VerificationStore.verificationAddsKey(fid, address));
@@ -91,7 +91,7 @@ class VerificationStore {
    *
    * @param fid fid of the user who created the SignerAdd
    * @param address the address being verified
-   * @returns the VerificationRemoveEthAddress if it exists, throws NotFoundError otherwise
+   * @returns the VerificationRemoveEthAddress if it exists, throws HubError otherwise
    */
   async getVerificationRemove(fid: Uint8Array, address: Uint8Array): Promise<VerificationRemoveModel> {
     const messageTsHash = await this._db.get(VerificationStore.verificationRemovesKey(fid, address));
@@ -102,7 +102,7 @@ class VerificationStore {
    * Finds all VerificationAdds messages for a user
    *
    * @param fid fid of the user who created the signers
-   * @returns the VerificationAddEthAddresses if they exists, throws NotFoundError otherwise
+   * @returns the VerificationAddEthAddresses if they exists, throws HubError otherwise
    */
   async getVerificationAddsByUser(fid: Uint8Array): Promise<VerificationAddEthAddressModel[]> {
     const addsPrefix = VerificationStore.verificationAddsKey(fid);
@@ -122,7 +122,7 @@ class VerificationStore {
    * Finds all VerificationRemoves messages for a user
    *
    * @param fid fid of the user who created the signers
-   * @returns the VerificationRemoves messages if it exists, throws NotFoundError otherwise
+   * @returns the VerificationRemoves messages if it exists, throws HubError otherwise
    */
   async getVerificationRemovesByUser(fid: Uint8Array): Promise<VerificationRemoveModel[]> {
     const removesPrefix = VerificationStore.verificationRemovesKey(fid);
@@ -148,7 +148,7 @@ class VerificationStore {
       return this.mergeAdd(message);
     }
 
-    throw new BadRequestError('invalid message type');
+    throw new HubError('bad_request.validation_failure', 'invalid message type');
   }
 
   /* -------------------------------------------------------------------------- */
@@ -159,7 +159,7 @@ class VerificationStore {
     // Define address for lookups
     const address = message.body().addressArray();
     if (!address) {
-      throw new BadRequestError('address is required');
+      throw new HubError('bad_request.validation_failure', 'address was missing');
     }
 
     let tsx = await this.resolveMergeConflicts(this._db.transaction(), address, message);
@@ -178,7 +178,7 @@ class VerificationStore {
     // Define address for lookups
     const address = message.body().addressArray();
     if (!address) {
-      throw new BadRequestError('address is required');
+      throw new HubError('bad_request.validation_failure', 'address was missing');
     }
 
     let tsx = await this.resolveMergeConflicts(this._db.transaction(), address, message);

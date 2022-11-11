@@ -326,7 +326,7 @@ describe('validateCastAddMessage', () => {
 
   describe('fails', () => {
     let body: CastAddBodyT;
-    let validationErrorMessage: string;
+    let hubErrorMessage: string;
 
     afterEach(async () => {
       const castAddData = await Factories.CastAddData.create({ body });
@@ -334,37 +334,37 @@ describe('validateCastAddMessage', () => {
         await Factories.Message.create({ data: Array.from(castAddData.bb?.bytes() ?? []) }, { transient: { signer } })
       ) as CastAddModel;
       expect(validateCastAddMessage(castAdd)._unsafeUnwrapErr()).toEqual(
-        new HubError('bad_request.validation_failure', validationErrorMessage)
+        new HubError('bad_request.validation_failure', hubErrorMessage)
       );
     });
 
     test('when text is missing', () => {
       body = Factories.CastAddBody.build({ text: '' });
-      validationErrorMessage = 'text is missing';
+      hubErrorMessage = 'text is missing';
     });
 
     test('when text is longer than 320 characters', () => {
       body = Factories.CastAddBody.build({ text: faker.random.alphaNumeric(321) });
-      validationErrorMessage = 'text > 320 chars';
+      hubErrorMessage = 'text > 320 chars';
     });
 
     test('with more than 2 embeds', () => {
       body = Factories.CastAddBody.build({
         embeds: [faker.internet.url(), faker.internet.url(), faker.internet.url()],
       });
-      validationErrorMessage = 'embeds > 2';
+      hubErrorMessage = 'embeds > 2';
     });
 
     test('when parent fid is missing', () => {
       body = Factories.CastAddBody.build({
         parent: Factories.CastId.build({ fid: [] }),
       });
-      validationErrorMessage = 'fid is missing';
+      hubErrorMessage = 'fid is missing';
     });
 
     test('when parent tsHash is missing', () => {
       body = Factories.CastAddBody.build({ parent: Factories.CastId.build({ tsHash: [] }) });
-      validationErrorMessage = 'tsHash is missing';
+      hubErrorMessage = 'tsHash is missing';
     });
 
     test('with more than 5 mentions', () => {
@@ -378,7 +378,7 @@ describe('validateCastAddMessage', () => {
           Factories.UserId.build(),
         ],
       });
-      validationErrorMessage = 'mentions > 5';
+      hubErrorMessage = 'mentions > 5';
     });
   });
 });
@@ -427,7 +427,7 @@ describe('validateReactionMessage', () => {
 
   describe('fails', () => {
     let body: ReactionBodyT;
-    let validationErrorMessage: string;
+    let hubErrorMessage: string;
 
     afterEach(async () => {
       const reactionAddData = await Factories.ReactionAddData.create({ body });
@@ -438,27 +438,27 @@ describe('validateReactionMessage', () => {
         )
       ) as ReactionAddModel;
       expect(validateReactionMessage(reactionAdd)._unsafeUnwrapErr()).toEqual(
-        new HubError('bad_request.validation_failure', validationErrorMessage)
+        new HubError('bad_request.validation_failure', hubErrorMessage)
       );
     });
 
     test('with invalid reaction type', () => {
       body = Factories.ReactionBody.build({ type: 100 as unknown as ReactionType });
-      validationErrorMessage = 'invalid reaction type';
+      hubErrorMessage = 'invalid reaction type';
     });
 
     test('when cast fid is missing', () => {
       body = Factories.ReactionBody.build({
         cast: Factories.CastId.build({ fid: [] }),
       });
-      validationErrorMessage = 'fid is missing';
+      hubErrorMessage = 'fid is missing';
     });
 
     test('when cast tsHash is missing', () => {
       body = Factories.ReactionBody.build({
         cast: Factories.CastId.build({ tsHash: [] }),
       });
-      validationErrorMessage = 'tsHash is missing';
+      hubErrorMessage = 'tsHash is missing';
     });
   });
 });
@@ -485,7 +485,7 @@ describe('validateVerificationAddEthAddressMessage', () => {
     const fid = Factories.FID.build();
 
     let body: VerificationAddEthAddressBodyT;
-    let validationErrorMessage: string;
+    let hubErrorMessage: string;
 
     afterEach(async () => {
       const verificationAddData = await Factories.VerificationAddEthAddressData.create({
@@ -499,31 +499,31 @@ describe('validateVerificationAddEthAddressMessage', () => {
         )
       ) as VerificationAddEthAddressModel;
       const result = await validateVerificationAddEthAddressMessage(verificationAdd);
-      expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', validationErrorMessage));
+      expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', hubErrorMessage));
     });
 
     test('with missing eth address', () => {
       body = Factories.VerificationAddEthAddressBody.build({ address: [] });
-      validationErrorMessage = 'address is missing';
+      hubErrorMessage = 'address is missing';
     });
 
     test('with invalid eth address', () => {
       body = Factories.VerificationAddEthAddressBody.build({
         address: Array.from(Factories.Bytes.build({}, { transient: { length: 10 } })),
       });
-      validationErrorMessage = 'address must be 20 bytes';
+      hubErrorMessage = 'address must be 20 bytes';
     });
 
     test('with missing block hash', () => {
       body = Factories.VerificationAddEthAddressBody.build({ blockHash: [] });
-      validationErrorMessage = 'blockHash is missing';
+      hubErrorMessage = 'blockHash is missing';
     });
 
     test('with invalid block hash', () => {
       body = Factories.VerificationAddEthAddressBody.build({
         blockHash: Array.from(Factories.Bytes.build({}, { transient: { length: 10 } })),
       });
-      validationErrorMessage = 'blockHash must be 32 bytes';
+      hubErrorMessage = 'blockHash must be 32 bytes';
     });
 
     test('with invalid eth signature', async () => {
@@ -539,7 +539,7 @@ describe('validateVerificationAddEthAddressMessage', () => {
         Array.from(signature),
         Array.from(claim.blockHash)
       );
-      validationErrorMessage = 'ethSignature does not match address';
+      hubErrorMessage = 'ethSignature does not match address';
     });
   });
 });
@@ -558,7 +558,7 @@ describe('validateVerificationRemoveMessage', () => {
 
   describe('fails', () => {
     let body: VerificationRemoveBodyT;
-    let validationErrorMessage: string;
+    let hubErrorMessage: string;
 
     afterEach(async () => {
       const verificationRemoveData = await Factories.VerificationRemoveData.create({ body });
@@ -569,7 +569,7 @@ describe('validateVerificationRemoveMessage', () => {
         )
       ) as VerificationRemoveModel;
       expect(validateVerificationRemoveMessage(verificationRemove)._unsafeUnwrapErr()).toEqual(
-        new HubError('bad_request.validation_failure', validationErrorMessage)
+        new HubError('bad_request.validation_failure', hubErrorMessage)
       );
     });
 
@@ -577,14 +577,14 @@ describe('validateVerificationRemoveMessage', () => {
       body = Factories.VerificationRemoveBody.build({
         address: [],
       });
-      validationErrorMessage = 'address is missing';
+      hubErrorMessage = 'address is missing';
     });
 
     test('with invalid address', () => {
       body = Factories.VerificationRemoveBody.build({
         address: Array.from(Factories.Bytes.build({}, { transient: { length: 10 } })),
       });
-      validationErrorMessage = 'address must be 20 bytes';
+      hubErrorMessage = 'address must be 20 bytes';
     });
   });
 });
@@ -611,7 +611,7 @@ describe('validateSignerMessage', () => {
 
   describe('fails', () => {
     let body: SignerBodyT;
-    let validationErrorMessage: string;
+    let hubErrorMessage: string;
 
     afterEach(async () => {
       const signerAddData = await Factories.SignerAddData.create({ body });
@@ -619,7 +619,7 @@ describe('validateSignerMessage', () => {
         await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
       ) as SignerAddModel;
       expect(validateSignerMessage(signerAdd)._unsafeUnwrapErr()).toEqual(
-        new HubError('bad_request.validation_failure', validationErrorMessage)
+        new HubError('bad_request.validation_failure', hubErrorMessage)
       );
     });
 
@@ -627,14 +627,14 @@ describe('validateSignerMessage', () => {
       body = Factories.SignerBody.build({
         signer: [],
       });
-      validationErrorMessage = 'publicKey is missing';
+      hubErrorMessage = 'publicKey is missing';
     });
 
     test('with invalid signer', () => {
       body = Factories.SignerBody.build({
         signer: Array.from(Factories.Bytes.build({}, { transient: { length: 10 } })),
       });
-      validationErrorMessage = 'publicKey must be 32 bytes';
+      hubErrorMessage = 'publicKey must be 32 bytes';
     });
   });
 });
@@ -661,7 +661,7 @@ describe('validateFollowMessage', () => {
 
   describe('fails', () => {
     let body: FollowBodyT;
-    let validationErrorMessage: string;
+    let hubErrorMessage: string;
 
     afterEach(async () => {
       const followAddData = await Factories.FollowAddData.create({ body });
@@ -669,7 +669,7 @@ describe('validateFollowMessage', () => {
         await Factories.Message.create({ data: Array.from(followAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
       ) as FollowAddModel;
       expect(validateFollowMessage(followAdd)._unsafeUnwrapErr()).toEqual(
-        new HubError('bad_request.validation_failure', validationErrorMessage)
+        new HubError('bad_request.validation_failure', hubErrorMessage)
       );
     });
 
@@ -677,14 +677,14 @@ describe('validateFollowMessage', () => {
       body = Factories.FollowBody.build({
         user: new UserIdT([]),
       });
-      validationErrorMessage = 'fid is missing';
+      hubErrorMessage = 'fid is missing';
     });
 
     test('with invalid user fid', () => {
       body = Factories.FollowBody.build({
         user: new UserIdT(Array.from(Factories.Bytes.build({}, { transient: { length: 33 } }))),
       });
-      validationErrorMessage = 'fid > 32 bytes';
+      hubErrorMessage = 'fid > 32 bytes';
     });
   });
 });
@@ -700,7 +700,7 @@ describe('validateUserDataAddMessage', () => {
 
   describe('fails', () => {
     let body: UserDataBodyT;
-    let validationErrorMessage: string;
+    let hubErrorMessage: string;
 
     afterEach(async () => {
       const userDataAddData = await Factories.UserDataAddData.create({ body });
@@ -711,7 +711,7 @@ describe('validateUserDataAddMessage', () => {
         )
       ) as UserDataAddModel;
       expect(validateUserDataAddMessage(userDataAdd)._unsafeUnwrapErr()).toEqual(
-        new HubError('bad_request.validation_failure', validationErrorMessage)
+        new HubError('bad_request.validation_failure', hubErrorMessage)
       );
     });
 
@@ -720,7 +720,7 @@ describe('validateUserDataAddMessage', () => {
         type: UserDataType.Pfp,
         value: faker.random.alphaNumeric(257),
       });
-      validationErrorMessage = 'pfp value > 256';
+      hubErrorMessage = 'pfp value > 256';
     });
 
     test('when display > 32', () => {
@@ -728,7 +728,7 @@ describe('validateUserDataAddMessage', () => {
         type: UserDataType.Display,
         value: faker.random.alphaNumeric(33),
       });
-      validationErrorMessage = 'display value > 32';
+      hubErrorMessage = 'display value > 32';
     });
 
     test('when bio > 256', () => {
@@ -736,7 +736,7 @@ describe('validateUserDataAddMessage', () => {
         type: UserDataType.Bio,
         value: faker.random.alphaNumeric(257),
       });
-      validationErrorMessage = 'bio value > 256';
+      hubErrorMessage = 'bio value > 256';
     });
 
     test('when location > 32', () => {
@@ -744,7 +744,7 @@ describe('validateUserDataAddMessage', () => {
         type: UserDataType.Location,
         value: faker.random.alphaNumeric(33),
       });
-      validationErrorMessage = 'location value > 32';
+      hubErrorMessage = 'location value > 32';
     });
 
     test('when url > 256', () => {
@@ -752,7 +752,7 @@ describe('validateUserDataAddMessage', () => {
         type: UserDataType.Url,
         value: faker.random.alphaNumeric(257),
       });
-      validationErrorMessage = 'url value > 256';
+      hubErrorMessage = 'url value > 256';
     });
   });
 });

@@ -1,7 +1,7 @@
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import { NotFoundError } from '~/utils/errors';
 import ContractEventModel from './contractEventModel';
+import { HubError } from '~/utils/hubErrors';
 
 const db = jestBinaryRocksDB('flatbuffers.contractEventModel.test');
 const fid = Factories.FID.build();
@@ -21,7 +21,7 @@ describe('static methods', () => {
     });
 
     test('fails when event not found', async () => {
-      await expect(ContractEventModel.get(db, fid)).rejects.toThrow(NotFoundError);
+      await expect(ContractEventModel.get(db, fid)).rejects.toThrow(HubError);
     });
   });
 });

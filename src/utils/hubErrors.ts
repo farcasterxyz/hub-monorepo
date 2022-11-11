@@ -58,9 +58,13 @@ export type HubErrorCode =
   /* The request cannot be completed as constructed, do not retry */
   | 'bad_request'
   | 'bad_request.parse_failure'
+  | 'bad_request.invalid_param'
   | 'bad_request.validation_failure'
   /* The requested resource could not be found */
   | 'not_found'
+  /* The request could not be completed because the operation is not executable */
+  | 'not_implemented'
+  | 'not_implemented.deprecated'
   /* The request could not be completed, it may or may not be safe to retry */
   | 'unavailable'
   | 'unavailable.network_failure'

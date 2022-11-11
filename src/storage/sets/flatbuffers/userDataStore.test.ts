@@ -1,10 +1,10 @@
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { BadRequestError, NotFoundError } from '~/utils/errors';
 import { UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
 import { UserDataType } from '~/utils/generated/message_generated';
 import UserDataSet from '~/storage/sets/flatbuffers/userDataStore';
+import { HubError } from '~/utils/hubErrors';
 
 const db = jestBinaryRocksDB('flatbuffers.userDataSet.test');
 const set = new UserDataSet(db);
@@ -43,7 +43,7 @@ beforeAll(async () => {
 
 describe('getUserDataAdd', () => {
   test('fails if missing', async () => {
-    await expect(set.getUserDataAdd(fid, UserDataType.Pfp)).rejects.toThrow(NotFoundError);
+    await expect(set.getUserDataAdd(fid, UserDataType.Pfp)).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
@@ -68,7 +68,7 @@ describe('merge', () => {
   test('fails with invalid message type', async () => {
     const invalidData = await Factories.ReactionAddData.create({ fid: Array.from(fid) });
     const message = await Factories.Message.create({ data: Array.from(invalidData.bb?.bytes() ?? []) });
-    await expect(set.merge(new MessageModel(message))).rejects.toThrow(BadRequestError);
+    await expect(set.merge(new MessageModel(message))).rejects.toThrow(HubError);
   });
 
   describe('UserDataAdd', () => {
@@ -101,18 +101,14 @@ describe('merge', () => {
         await set.merge(addPfp);
         await expect(set.merge(changePfp)).resolves.toEqual(undefined);
         await expect(set.getUserDataAdd(fid, UserDataType.Pfp)).resolves.toEqual(changePfp);
-        await expect(MessageModel.get(db, fid, UserPostfix.UserDataMessage, addPfp.tsHash())).rejects.toThrow(
-          NotFoundError
-        );
+        await expect(MessageModel.get(db, fid, UserPostfix.UserDataMessage, addPfp.tsHash())).rejects.toThrow(HubError);
       });
 
       test('no-ops with an earlier timestamp', async () => {
         await set.merge(changePfp);
         await expect(set.merge(addPfp)).resolves.toEqual(undefined);
         await expect(set.getUserDataAdd(fid, UserDataType.Pfp)).resolves.toEqual(changePfp);
-        await expect(MessageModel.get(db, fid, UserPostfix.UserDataMessage, addPfp.tsHash())).rejects.toThrow(
-          NotFoundError
-        );
+        await expect(MessageModel.get(db, fid, UserPostfix.UserDataMessage, addPfp.tsHash())).rejects.toThrow(HubError);
       });
     });
   });

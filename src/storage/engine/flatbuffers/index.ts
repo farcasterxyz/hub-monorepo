@@ -1,7 +1,6 @@
 import { err, errAsync, ResultAsync } from 'neverthrow';
 import CastStore from '~/storage/sets/flatbuffers/castStore';
 import RocksDB from '~/storage/db/binaryrocksdb';
-import { BadRequestError } from '~/utils/errors';
 import SignerStore from '~/storage/sets/flatbuffers/signerStore';
 import FollowStore from '~/storage/sets/flatbuffers/followStore';
 import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
@@ -91,7 +90,7 @@ class Engine {
     ) {
       return this._signerStore.mergeIdRegistryEvent(event);
     } else {
-      throw new BadRequestError('invalid event type');
+      throw new HubError('bad_request.validation_failure', 'invalid event type');
     }
   }
 
@@ -180,7 +179,7 @@ class Engine {
       }
     }
 
-    // 3. Check message body and envelope (will throw ValidationError if invalid)
+    // 3. Check message body and envelope (will throw HubError if invalid)
     return validateMessage(message);
   }
 }

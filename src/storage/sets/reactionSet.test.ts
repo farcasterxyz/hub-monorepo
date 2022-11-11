@@ -1,10 +1,11 @@
 import { faker } from '@faker-js/faker';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import ReactionDB from '~/storage/db/reaction';
-import { BadRequestError, NotFoundError } from '~/utils/errors';
+import { BadRequestError } from '~/utils/errors';
 import { Factories } from '~/test/factories';
 import ReactionSet from '~/storage/sets/reactionSet';
 import { Reaction, ReactionAdd, ReactionRemove, URI } from '~/types';
+import { HubError } from '~/utils/hubErrors';
 
 const testDb = jestRocksDB('reactionSet.test');
 const reactionDb = new ReactionDB(testDb);
@@ -39,7 +40,7 @@ beforeAll(async () => {
 
 describe('getReaction', () => {
   test('fails when reaction does not exist', async () => {
-    await expect(set.getReaction(fid, a)).rejects.toThrow(NotFoundError);
+    await expect(set.getReaction(fid, a)).rejects.toThrow(HubError);
   });
 
   test('returns ReactionAdd when reaction has been added', async () => {
@@ -49,12 +50,12 @@ describe('getReaction', () => {
 
   test('fails when reaction has been removed', async () => {
     await set.merge(remA);
-    await expect(set.getReaction(fid, a)).rejects.toThrow(NotFoundError);
+    await expect(set.getReaction(fid, a)).rejects.toThrow(HubError);
   });
 
   test('fails when using message hash', async () => {
     await set.merge(addA);
-    await expect(set.getReaction(fid, addA.hash)).rejects.toThrow(NotFoundError);
+    await expect(set.getReaction(fid, addA.hash)).rejects.toThrow(HubError);
   });
 });
 

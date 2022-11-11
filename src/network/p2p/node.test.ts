@@ -1,5 +1,4 @@
 import { multiaddr } from '@multiformats/multiaddr/';
-import { ServerError } from '~/utils/errors';
 import { Factories } from '~/test/factories';
 import { Node } from '~/network/p2p/node';
 import { GossipMessage, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';

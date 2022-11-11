@@ -2,9 +2,9 @@ import Factories from '~/test/factories/flatbuffer';
 import { KeyPair } from '~/types';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import { NotFoundError } from '~/utils/errors';
 import MessageModel, { TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
 import { UserPostfix } from './types';
+import { HubError } from '~/utils/hubErrors';
 
 const db = jestBinaryRocksDB('flatbuffers.model.test');
 
@@ -25,15 +25,13 @@ describe('static methods', () => {
     });
 
     test('fails when message not found', async () => {
-      await expect(MessageModel.get(db, model.fid(), model.setPostfix(), model.tsHash())).rejects.toThrow(
-        NotFoundError
-      );
+      await expect(MessageModel.get(db, model.fid(), model.setPostfix(), model.tsHash())).rejects.toThrow(HubError);
     });
 
     test('fails with wrong key', async () => {
       await model.put(db);
       const badKey = new Uint8Array([...model.tsHash(), 1]);
-      await expect(MessageModel.get(db, model.fid(), model.setPostfix(), badKey)).rejects.toThrow(NotFoundError);
+      await expect(MessageModel.get(db, model.fid(), model.setPostfix(), badKey)).rejects.toThrow(HubError);
     });
   });
 

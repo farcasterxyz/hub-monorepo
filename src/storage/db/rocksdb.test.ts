@@ -1,8 +1,8 @@
 import { existsSync, rmdirSync, mkdirSync } from 'fs';
 import { faker } from '@faker-js/faker';
-import { NotFoundError, RocksDBError } from '~/utils/errors';
 import RocksDB from '~/storage/db/rocksdb';
 import { jestRocksDB } from '~/storage/db/jestUtils';
+import { HubError } from '~/utils/hubErrors';
 
 const randomDbName = () => `rocksdb.test.${faker.name.lastName().toLowerCase()}`;
 
@@ -52,7 +52,7 @@ describe('destroy', () => {
   test('fails when db has never been opened', async () => {
     const db = new RocksDB(randomDbName());
     expect(db.status).toEqual('new');
-    await expect(db.destroy()).rejects.toThrow(new RocksDBError('db never opened'));
+    await expect(db.destroy()).rejects.toThrow(new Error('db never opened'));
   });
 
   test('succeeds when db is open', async () => {
@@ -77,7 +77,7 @@ describe('clear', () => {
     const value = await db.get('key');
     expect(value).toEqual('value');
     await expect(db.clear()).resolves.toEqual(undefined);
-    await expect(db.get('key')).rejects.toThrow(NotFoundError);
+    await expect(db.get('key')).rejects.toThrow(HubError);
     await db.destroy();
   });
 });
@@ -92,7 +92,7 @@ describe('with db', () => {
     });
 
     test('fails if not found', async () => {
-      await expect(db.get('foo')).rejects.toThrow(NotFoundError);
+      await expect(db.get('foo')).rejects.toThrow(HubError);
     });
   });
 
@@ -127,7 +127,7 @@ describe('with db', () => {
       await db.put('foo', 'bar');
       await expect(db.get('foo')).resolves.toEqual('bar');
       await expect(db.del('foo')).resolves.toEqual(undefined);
-      await expect(db.get('foo')).rejects.toThrow(NotFoundError);
+      await expect(db.get('foo')).rejects.toThrow(HubError);
     });
   });
 

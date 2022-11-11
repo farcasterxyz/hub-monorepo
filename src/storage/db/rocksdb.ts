@@ -1,18 +1,18 @@
 import { mkdir } from 'fs';
 import AbstractRocksDB from 'rocksdb';
 import { AbstractBatch, AbstractChainedBatch } from 'abstract-leveldown';
-import { FarcasterError, NotFoundError, RocksDBError } from '~/utils/errors';
+import { HubError } from '~/utils/hubErrors';
 
 const DB_PREFIX = '.rocks';
 const DB_NAME_DEFAULT = 'farcaster';
 
 export type Transaction = AbstractChainedBatch<string, string>;
 
-const parseError = (e: Error): FarcasterError => {
+const parseError = (e: Error): HubError => {
   if (/NotFound/i.test(e.message)) {
-    return new NotFoundError(e);
+    return new HubError('not_found', e);
   }
-  return new RocksDBError(e);
+  return new HubError('unavailable.storage_failure', e);
 };
 
 /**

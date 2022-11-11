@@ -5,7 +5,8 @@ import { Ed25519Signer, Follow, FollowAdd, FollowRemove, URI } from '~/types';
 import { generateEd25519Signer } from '~/utils/crypto';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import FollowDB from '~/storage/db/follow';
-import { BadRequestError, NotFoundError } from '~/utils/errors';
+import { BadRequestError } from '~/utils/errors';
+import { HubError } from '~/utils/hubErrors';
 
 const testDb = jestRocksDB('followSet.test');
 const followDb = new FollowDB(testDb);
@@ -48,7 +49,7 @@ beforeAll(async () => {
 
 describe('getFollow', () => {
   test('fails when follow does not exist', async () => {
-    await expect(set.getFollow(fid, a)).rejects.toThrow(NotFoundError);
+    await expect(set.getFollow(fid, a)).rejects.toThrow(HubError);
   });
 
   test('returns FollowAdd when target has been followed', async () => {
@@ -59,12 +60,12 @@ describe('getFollow', () => {
   test('fails when target has been unfollowed', async () => {
     await set.merge(followA);
     await set.merge(unfollowA);
-    await expect(set.getFollow(fid, a)).rejects.toThrow(NotFoundError);
+    await expect(set.getFollow(fid, a)).rejects.toThrow(HubError);
   });
 
   test('fails when using message hash', async () => {
     await set.merge(followA);
-    await expect(set.getFollow(fid, followA.hash)).rejects.toThrow(NotFoundError);
+    await expect(set.getFollow(fid, followA.hash)).rejects.toThrow(HubError);
   });
 });
 

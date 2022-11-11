@@ -2,8 +2,8 @@ import ReactionDB from '~/storage/db/reaction';
 import { Factories } from '~/test/factories';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { Ed25519Signer, ReactionAdd, ReactionRemove } from '~/types';
-import { NotFoundError } from '~/utils/errors';
 import { generateEd25519Signer } from '~/utils/crypto';
+import { HubError } from '~/utils/hubErrors';
 
 const rocks = jestRocksDB('db.reaction.test');
 const db = new ReactionDB(rocks);
@@ -50,7 +50,7 @@ describe('putReactionAdd', () => {
     await db.putReactionRemove(reactionRemove3);
     await expect(db.putReactionAdd(reactionAdd1)).resolves.toEqual(undefined);
     await expect(db.getReactionAdd(reactionAdd1.data.fid, target)).resolves.toEqual(reactionAdd1);
-    await expect(db.getReactionRemove(reactionAdd1.data.fid, target)).rejects.toThrow(NotFoundError);
+    await expect(db.getReactionRemove(reactionAdd1.data.fid, target)).rejects.toThrow(HubError);
     await expect(db.getAllReactionMessagesByUser(reactionAdd1.data.fid)).resolves.toEqual([reactionAdd1]);
   });
 });

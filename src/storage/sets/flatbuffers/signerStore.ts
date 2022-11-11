@@ -1,5 +1,4 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
-import { BadRequestError, ValidationError } from '~/utils/errors';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync } from 'neverthrow';
 import { SignerAddModel, UserPostfix, SignerRemoveModel } from '~/storage/flatbuffers/types';
@@ -7,6 +6,7 @@ import { isSignerAdd, isSignerRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
+import { HubError } from '~/utils/hubErrors';
 
 /**
  * SignerStore persists Signer Messages in RocksDB using a series of two-phase CRDT sets
@@ -99,7 +99,7 @@ class SignerStore {
    * @param fid fid of the user who created the SignerAdd
    * @param signerPubKey the EdDSA public key of the signer
    * @param custodyAddress the Ethereum address that currently owns the Farcaster ID (default: current custody address)
-   * @returns the SignerAdd Model if it exists, throws NotFoundError otherwise
+   * @returns the SignerAdd Model if it exists, throws Error otherwise
    */
   async getSignerAdd(fid: Uint8Array, signerPubKey: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerAddModel> {
     if (!custodyAddress) {
@@ -116,7 +116,7 @@ class SignerStore {
    * @param fid fid of the user who created the SignerRemove
    * @param signer the EdDSA public key of the signer
    * @param custodyAddress the Ethereum address that currently owns the Farcaster ID (default: current custody address)
-   * @returns the SignerRemove message if it exists, throws NotFoundError otherwise
+   * @returns the SignerRemove message if it exists, throws HubError otherwise
    */
   async getSignerRemove(fid: Uint8Array, signer: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerRemoveModel> {
     if (!custodyAddress) {
@@ -134,7 +134,7 @@ class SignerStore {
    *
    * @param fid fid of the user who created the signers
    * @param custodyAddress the Ethereum address that currently owns the fid (default: current custody address)
-   * @returns the SignerRemove messages if it exists, throws NotFoundError otherwise
+   * @returns the SignerRemove messages if it exists, throws HubError otherwise
    */
   async getSignerAddsByUser(fid: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerAddModel[]> {
     if (!custodyAddress) {
@@ -153,7 +153,7 @@ class SignerStore {
    *
    * @param fid fid of the user who created the signers
    * @param custodyAddress the Ethereum address that currently owns the fid (default: current custody address)
-   * @returns the SignerRemove message if it exists, throws NotFoundError otherwise
+   * @returns the SignerRemove message if it exists, throws HubError otherwise
    */
   async getSignerRemovesByUser(fid: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerRemoveModel[]> {
     if (!custodyAddress) {
@@ -193,7 +193,7 @@ class SignerStore {
       return this.mergeAdd(message);
     }
 
-    throw new BadRequestError('invalid message type');
+    throw new HubError('bad_request.validation_failure', 'invalid message type');
   }
 
   /* -------------------------------------------------------------------------- */
@@ -210,7 +210,7 @@ class SignerStore {
 
     // Cannot happen unless we do not filter out uncle blocks correctly upstream
     if (bytesCompare(a.blockHash(), b.blockHash()) !== 0) {
-      throw new ValidationError('block hash mismatch');
+      throw new HubError('bad_request.validation_failure', 'block hash mismatch');
     }
 
     // Compare logIndex
@@ -222,7 +222,7 @@ class SignerStore {
 
     // Cannot happen unless we pass in malformed data
     if (bytesCompare(a.transactionHash(), b.transactionHash()) !== 0) {
-      throw new ValidationError('tx hash mismatch');
+      throw new HubError('bad_request.validation_failure', 'tx hash mismatch');
     }
 
     return 0;
@@ -287,7 +287,7 @@ class SignerStore {
   ): Promise<Transaction | undefined> {
     const signer = message.body().signerArray();
     if (!signer) {
-      throw new BadRequestError('signer is required');
+      throw new HubError('bad_request.validation_failure', 'signer was missing');
     }
 
     // Look up the remove tsHash for this custody address and signer

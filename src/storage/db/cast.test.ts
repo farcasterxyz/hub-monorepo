@@ -3,7 +3,7 @@ import CastDB from '~/storage/db/cast';
 import { Factories } from '~/test/factories';
 import { CastRecast, CastRemove, CastShort } from '~/types';
 import { jestRocksDB } from '~/storage/db/jestUtils';
-import { NotFoundError } from '~/utils/errors';
+import { HubError } from '~/utils/hubErrors';
 
 const rocks = jestRocksDB('db.cast.test');
 const db = new CastDB(rocks);
@@ -60,7 +60,7 @@ describe('putCastAdd', () => {
       await db.putCastRemove(remove1);
       await expect(db.getCastRemove(cast1.data.fid, cast1.hash)).resolves.toEqual(remove1);
       await expect(db.putCastAdd(cast1)).resolves.toEqual(undefined);
-      await expect(db.getCastRemove(cast1.data.fid, cast1.hash)).rejects.toThrow(NotFoundError);
+      await expect(db.getCastRemove(cast1.data.fid, cast1.hash)).rejects.toThrow(HubError);
     });
   });
 
@@ -85,7 +85,7 @@ describe('deleteCastAdd', () => {
 
     test('deletes cast', async () => {
       await expect(db.deleteCastAdd(fid, cast1.hash)).resolves.toEqual(undefined);
-      await expect(db.getCastAdd(fid, cast1.hash)).rejects.toThrow(NotFoundError);
+      await expect(db.getCastAdd(fid, cast1.hash)).rejects.toThrow(HubError);
     });
 
     test('deletes cast from castShortsByParent index', async () => {
@@ -112,7 +112,7 @@ describe('putCastRemove', () => {
     await db.putCastAdd(cast1);
     await expect(db.getCastAdd(remove1.data.fid, cast1.hash)).resolves.toEqual(cast1);
     await expect(db.putCastRemove(remove1)).resolves.toEqual(undefined);
-    await expect(db.getCastAdd(remove1.data.fid, cast1.hash)).rejects.toThrow(NotFoundError);
+    await expect(db.getCastAdd(remove1.data.fid, cast1.hash)).rejects.toThrow(HubError);
   });
 });
 

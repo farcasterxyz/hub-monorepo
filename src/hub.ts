@@ -115,7 +115,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   /** Returns the Gossip peerId string of this Hub */
   get identity(): string {
     if (!this.gossipNode.isStarted() || !this.gossipNode.peerId) {
-      throw new ServerError('Node not started! No identity.');
+      throw new HubError('unavailable', 'cannot start gossip node without identity');
     }
     return this.gossipNode.peerId.toString();
   }

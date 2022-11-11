@@ -1,11 +1,11 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
-import { BadRequestError } from '~/utils/errors';
 import MessageModel, { FID_BYTES, TARGET_KEY_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
 import { ReactionAddModel, ReactionRemoveModel, RootPrefix, UserPostfix } from '~/storage/flatbuffers/types';
 import { isReactionAdd, isReactionRemove } from '~/storage/flatbuffers/typeguards';
 import { CastId, MessageType, ReactionType } from '~/utils/generated/message_generated';
 import { ResultAsync } from 'neverthrow';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
+import { HubError } from '~/utils/hubErrors';
 
 /**
  * ReactionStore persists Reaction Messages in RocksDB using a two-phase CRDT set to guarantee
@@ -48,7 +48,7 @@ class ReactionStore {
    */
   static reactionAddsKey(fid: Uint8Array, type?: ReactionType, targetKey?: Uint8Array): Buffer {
     if (targetKey && !type) {
-      throw new BadRequestError('targetKey provided without type');
+      throw new HubError('bad_request.validation_failure', 'targetKey provided without type');
     }
 
     return Buffer.concat([
@@ -70,7 +70,7 @@ class ReactionStore {
    */
   static reactionRemovesKey(fid: Uint8Array, type?: ReactionType, targetKey?: Uint8Array): Buffer {
     if (targetKey && !type) {
-      throw new BadRequestError('targetKey provided without type');
+      throw new HubError('bad_request.validation_failure', 'targetKey provided without type');
     }
 
     return Buffer.concat([
@@ -98,11 +98,11 @@ class ReactionStore {
     tsHash?: Uint8Array
   ): Buffer {
     if (fid && !type) {
-      throw new BadRequestError('fid provided without type');
+      throw new HubError('bad_request.validation_failure', 'fid provided without type');
     }
 
     if (tsHash && (!type || !fid)) {
-      throw new BadRequestError('tsHash provided without type or fid');
+      throw new HubError('bad_request.validation_failure', 'tsHash provided without type or fid');
     }
 
     const bytes = new Uint8Array(
@@ -206,7 +206,7 @@ class ReactionStore {
       return this.mergeRemove(message);
     }
 
-    throw new BadRequestError('invalid message type');
+    throw new HubError('bad_request.validation_failure', 'invalid message type');
   }
 
   /* -------------------------------------------------------------------------- */
@@ -217,7 +217,7 @@ class ReactionStore {
     const castId = message.body().cast();
 
     if (!castId) {
-      throw new BadRequestError('castId is missing');
+      throw new HubError('bad_request.validation_failure', 'castId was missing');
     } else {
       const targetKey = this.targetKeyForCastId(castId);
       let txn = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
@@ -235,7 +235,7 @@ class ReactionStore {
     const castId = message.body().cast();
 
     if (!castId) {
-      throw new BadRequestError('castId is missing');
+      throw new HubError('bad_request.validation_failure', 'castId was missing');
     } else {
       const targetKey = this.targetKeyForCastId(castId);
       let txn = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
