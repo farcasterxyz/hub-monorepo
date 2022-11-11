@@ -14,14 +14,14 @@ import { logger } from '~/utils/logger';
  * Using arrow functions allows their recursivePartial enumerator to parse the object.
  */
 export class ConnectionFilter implements ConnectionGater {
-  private allowedPeers: string[];
+  private allowedPeers: string[] | undefined;
 
-  constructor(addrs: string[]) {
+  constructor(addrs: string[] | undefined) {
     this.allowedPeers = addrs;
   }
 
   denyDialPeer = async (peerId: PeerId): Promise<boolean> => {
-    const deny = await this.shouldDeny(peerId.toString());
+    const deny = this.shouldDeny(peerId.toString());
     if (deny) {
       logger.info(`ConnectionFilter denyDialPeer: denied a connection with ${peerId}`);
     }
@@ -29,7 +29,7 @@ export class ConnectionFilter implements ConnectionGater {
   };
 
   denyDialMultiaddr = async (peerId: PeerId, _multiaddr: Multiaddr): Promise<boolean> => {
-    const deny = await this.shouldDeny(peerId.toString());
+    const deny = this.shouldDeny(peerId.toString());
     if (deny) {
       logger.info(`ConnectionFilter denyDialMultiaddr: denied a connection with ${peerId}`);
     }
@@ -41,12 +41,11 @@ export class ConnectionFilter implements ConnectionGater {
      * A PeerId is not always known on incipient connections.
      * Don't filter incipient connections, later filters will catch it.
      */
-    logger.info(_maConn, `ConnectionFilter denyInboundConnection: denied a connection`);
     return false;
   };
 
   denyOutboundConnection = async (peerId: PeerId, _maConn: MultiaddrConnection): Promise<boolean> => {
-    const deny = await this.shouldDeny(peerId.toString());
+    const deny = this.shouldDeny(peerId.toString());
     if (deny) {
       logger.info(`ConnectionFilter denyOutboundConnection: denied a connection with ${peerId}`);
     }
@@ -54,7 +53,7 @@ export class ConnectionFilter implements ConnectionGater {
   };
 
   denyInboundEncryptedConnection = async (peerId: PeerId, _maConn: MultiaddrConnection): Promise<boolean> => {
-    const deny = await this.shouldDeny(peerId.toString());
+    const deny = this.shouldDeny(peerId.toString());
     if (deny) {
       logger.info(`ConnectionFilter denyInboundEncryptedConnection: denied a connection with ${peerId}`);
     }
@@ -62,7 +61,7 @@ export class ConnectionFilter implements ConnectionGater {
   };
 
   denyOutboundEncryptedConnection = async (peerId: PeerId, _maConn: MultiaddrConnection): Promise<boolean> => {
-    const deny = await this.shouldDeny(peerId.toString());
+    const deny = this.shouldDeny(peerId.toString());
     if (deny) {
       logger.info(`ConnectionFilter denyOutboundEncryptedConnection: denied a connection with ${peerId}`);
     }
@@ -70,7 +69,7 @@ export class ConnectionFilter implements ConnectionGater {
   };
 
   denyInboundUpgradedConnection = async (peerId: PeerId, _maConn: MultiaddrConnection): Promise<boolean> => {
-    const deny = await this.shouldDeny(peerId.toString());
+    const deny = this.shouldDeny(peerId.toString());
     if (deny) {
       logger.info(`ConnectionFilter denyInboundUpgradedConnection: denied a connection with ${peerId}`);
     }
@@ -78,7 +77,7 @@ export class ConnectionFilter implements ConnectionGater {
   };
 
   denyOutboundUpgradedConnection = async (peerId: PeerId, _maConn: MultiaddrConnection): Promise<boolean> => {
-    const deny = await this.shouldDeny(peerId.toString());
+    const deny = this.shouldDeny(peerId.toString());
     if (deny) {
       logger.info(`ConnectionFilter denyOutboundUpgradedConnection: denied a connection with ${peerId}`);
     }
@@ -86,19 +85,20 @@ export class ConnectionFilter implements ConnectionGater {
   };
 
   filterMultiaddrForPeer = async (peer: PeerId): Promise<boolean> => {
-    const deny = await this.shouldDeny(peer.toString());
-    return !deny;
+    return !this.shouldDeny(peer.toString());
   };
 
   /* -------------------------------------------------------------------------- */
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private shouldDeny(peerId: string | null) {
-    if (!peerId) return Promise.resolve(true);
+  private shouldDeny(peerId: string) {
+    if (!peerId) return true;
+    if (this.allowedPeers === undefined) return false;
+
     const found = this.allowedPeers.find((value) => {
       return peerId && value === peerId;
     });
-    return Promise.resolve(found === undefined);
+    return found === undefined;
   }
 }

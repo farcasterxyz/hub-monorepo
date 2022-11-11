@@ -14,7 +14,6 @@ import { waitForSync } from '~/test/perf/verify';
  *
  * When executed, it submits a series of events to the Hub network and measures the
  * time taken for each set of requests to be processed.
- *
  */
 
 const parseNumber = (string: string) => {
@@ -43,7 +42,12 @@ const cliOptions = app.opts();
 const rpcMultiAddrs: string[] = cliOptions.hubs;
 const rpcClients = rpcMultiAddrs.map((addr) => {
   const address = multiaddr(addr);
-  return new RPCClient(addressInfoFromNodeAddress(address.nodeAddress()));
+  const addressInfoResult = addressInfoFromNodeAddress(address.nodeAddress());
+  if (addressInfoResult.isErr()) {
+    throw addressInfoResult.error;
+  }
+
+  return new RPCClient(addressInfoResult.value);
 });
 
 // sets up hubs

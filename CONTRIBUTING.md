@@ -7,7 +7,8 @@
 3. [Proposing Changes](#3-proposing-changes)
    1. [Writing Tests](#31-writing-tests)
    2. [Writing Docs](#32-writing-docs)
-   3. [Creating the PR](#33-creating-the-pr)
+   3. [Handling Errors](#33-handling-errors)
+   4. [Creating the PR](#34-creating-the-pr)
 
 ## 1. How to Contribute
 
@@ -95,7 +96,130 @@ All changes should have supporting documentation that makes reviewing and unders
 - Add a `Safety: ..` comment explaining every use of `as`.
 - Prefer active, present-tense doing form (`Gets the connection`) over other forms (`Connection is obtained`, `Get the connection`, `We get the connection`, `will get a connection`)
 
-### 3.3. Creating the PR
+### 3.4. Handling Errors
+
+Errors are not handled using `throw` and `try / catch` as is common with Javascript programs. This pattern makes it hard for people to reason about whether methods are safe which leads to incomplete test coverage, unexpected errors and less safety. Instead we use a more functional approach to dealing with errors. See [this issue](https://github.com/farcasterxyz/hub/issues/213) for the rationale behind this approach.
+
+All errors must be constructed using the `HubError` class which extends extends Error. It is stricter than error and requires a Hub Error Code (e.g. `unavailable.database_error`) and some additional context. Codes are used a replacement for error subclassing since they can be easily serialized over network calls. Codes also have multiple levels (e.g. `database_error` is a type of `unavailable`) which help with making decisions about error handling.
+
+Functions that can fail should always return `HubResult` which is a type that can either be the desired value or an error. Callers of the function should inspect the value and handle the success and failure case explicitly. The HubResult is an alias over [neverthrow's Result](https://github.com/supermacro/neverthrow). If you have never used a language where this is common (like Rust) you may want to start with the [API docs](https://github.com/supermacro/neverthrow#api-documentation). This pattern ensures that:
+
+1. Readers can immediately tell whether a function is safe or unsafe
+2. Readers know the type of error that may get thrown
+3. Authors can never accidentally ignore an error.
+
+We also enforce the following rules during code reviews:
+
+---
+
+Always return `HubResult<T>` instead of throwing if the function can fail
+
+```ts
+// incorrect usage
+const parseMessage = (message: string): Uint8Array => {
+  if (message == '') throw new HubError(...);
+  return message;
+};
+
+// correct usage
+const parseMessage = (message: string): HubResult<Uint8Array> => {
+  if (message == '') return new HubError(...)
+  return ok(message);
+};
+```
+
+---
+
+Always wrap external calls with `Result.fromThrowable` or `ResultAsync.fromPromise` and wrap external an `Error` into a `HubError`.
+
+```ts
+// incorrect usage
+const parseMessage = (message: string): string => {
+  try {
+    return JSON.parse(message);
+  } catch (err) {
+    return err as Error;
+  }
+};
+
+// correct usage: wrap the external call for safety
+const parseMessage = (message: string): HubResult<string> => {
+  return Result.fromThrowable(
+    () => JSON.parse(message),
+    (err) => new HubError('bad_request.parse_failure', { cause: err as Error })
+  )();
+};
+
+// correct usage: build a convenience method so you can call it easily
+const safeJsonStringify = Result.fromThrowable(
+  JSON.stringify,
+  () => new HubError('bad_request', 'json stringify failure')
+);
+
+const result = safeJsonStringify(json);
+```
+
+---
+
+Prefer `result.match` to handle HubResult since it is explicit about how all branches are handled
+
+```ts
+const result = computationThatMightFail().match(
+  (str) => str.toUpperCase(),
+  (error) => err(error)
+);
+```
+
+---
+
+Only use `isErr()` in cases where you want to short-circuit early on failure and refactoring is unwieldy or not performant
+
+```ts
+public something(): HubResult<number> {
+  const result = computationThatMightFail();
+  if (result.isErr()) return err(new HubError('unavailable', 'down'));
+
+   // do a lot of things that would be unweidly to put in a match
+   // ...
+   // ...
+   return ok(200);
+}
+```
+
+---
+
+Use `_unsafeUnwrap()` and `_unsafeUnwrapErr()` in tests to assert results
+
+```ts
+// when expecting an error
+const error = foo()._unsafeUnwrapErr();
+expect(error.errCode).toEqual('bad_request');
+expect(error.message).toMatch('invalid AddressInfo family');
+```
+
+---
+
+Prefer `combine` and `combineWithAllErrors` when operating on multiple results
+
+```ts
+const results = await Promise.all(things.map((thing) => foo(thing)));
+
+// 1. Only fail if all failed
+const combinedResults = Result.combineWithAllErrors(results) as Result<void[], HubError[]>;
+if (combinedResults.isErr() && combinedResults.error.length == things.length) {
+  return err(new HubError('unavailable', 'could not connect to any bootstrap nodes'));
+}
+
+// 2. Fail if at least one failed
+const combinedResults = Result.combine(results);
+if (combinedResults.isErr()) {
+  return err(new HubError('unavailable', 'could not connect to any bootstrap nodes'));
+}
+```
+
+---
+
+### 3.4. Creating the PR
 
 All submissions must be opened as a Pull Request and reviewed and approved by a project member. The CI build process
 will ensure that all tests pass and that all linters have been run correctly. In addition, you should ensure that:

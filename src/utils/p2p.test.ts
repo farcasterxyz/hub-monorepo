@@ -1,3 +1,4 @@
+import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { multiaddr, NodeAddress } from '@multiformats/multiaddr';
 import {
   parseAddress,
@@ -5,6 +6,7 @@ import {
   addressInfoFromParts,
   ipMultiAddrStrFromAddressInfo,
   addressInfoFromNodeAddress,
+  p2pMultiAddrStr,
 } from '~/utils/p2p';
 
 describe('p2p utils tests', () => {
@@ -14,8 +16,15 @@ describe('p2p utils tests', () => {
   });
 
   test('fail to parse an invalid multiaddr', async () => {
-    const result = parseAddress('/ip6/127.0.0.1/8080');
-    expect(result.isErr()).toBeTruthy();
+    const error = parseAddress('/ip6/127.0.0.1/8080')._unsafeUnwrapErr();
+    expect(error.errCode).toEqual('bad_request.parse_failure');
+    expect(error.message).toEqual('invalid multiaddr');
+  });
+
+  test('fail to parse an empty string', async () => {
+    const error = parseAddress('')._unsafeUnwrapErr();
+    expect(error.errCode).toEqual('bad_request');
+    expect(error.message).toEqual('multiaddr must not be empty');
   });
 
   test('check valid node addresses', async () => {
@@ -25,16 +34,43 @@ describe('p2p utils tests', () => {
 
   test('check invalid node addresses', async () => {
     // invalid IP multiaddr but valid combined multiaddr
-    let result = checkNodeAddrs('/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a', '/ip4/127.0.0.1/tcp/8080');
-    expect(result.isErr()).toBeTruthy();
+    let error = checkNodeAddrs(
+      '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a',
+      '/ip4/127.0.0.1/tcp/8080'
+    )._unsafeUnwrapErr();
+    expect(error.errCode).toEqual('bad_request.parse_failure');
+    expect(error.message).toEqual('invalid multiaddr');
+
     // valid IP multiaddr but invalid combined multiaddr
-    result = checkNodeAddrs('/ip4/127.0.0.1/', '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a/tcp/8080');
-    expect(result.isErr()).toBeTruthy();
+    error = checkNodeAddrs(
+      '/ip4/127.0.0.1/',
+      '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a/tcp/8080'
+    )._unsafeUnwrapErr();
+    expect(error.errCode).toEqual('bad_request.parse_failure');
+    expect(error.message).toEqual('invalid multiaddr');
+
     // both invalid IP and combined multiaddrs
-    result = checkNodeAddrs(
+    error = checkNodeAddrs(
       '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a',
       '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a/tcp/8080'
-    );
+    )._unsafeUnwrapErr();
+    expect(error.errCode).toEqual('bad_request.parse_failure');
+    expect(error.message).toEqual('invalid multiaddr');
+  });
+
+  test('p2p multiaddr formatted string', async () => {
+    const peerId = await createEd25519PeerId();
+    const ip4Addr = { address: '127.0.0.1', family: 'IPv4', port: 1234 };
+    const ip6Addr = { address: '2600:1700:6cf0:990:2052:a166:fb35:830a', family: 'IPv6', port: 1234 };
+
+    let multiAddrStr = p2pMultiAddrStr(ip4Addr, peerId.toString())._unsafeUnwrap();
+    const multiAddr = multiaddr(multiAddrStr);
+    expect(multiAddrStr).toBeDefined();
+    expect(multiAddr).toBeDefined();
+
+    multiAddrStr = p2pMultiAddrStr(ip6Addr, peerId.toString())._unsafeUnwrap();
+    expect(multiAddrStr).toBeDefined();
+    expect(multiaddr(multiAddrStr)).toBeDefined();
   });
 
   test('addressInfo from valid IPv4 inputs', async () => {
@@ -62,7 +98,7 @@ describe('p2p utils tests', () => {
     const addressInfo = addressInfoFromParts('127.0.0.1', 0);
     expect(addressInfo.isOk()).toBeTruthy();
 
-    const multiAddrStr = ipMultiAddrStrFromAddressInfo(addressInfo._unsafeUnwrap());
+    const multiAddrStr = ipMultiAddrStrFromAddressInfo(addressInfo._unsafeUnwrap())._unsafeUnwrap();
     expect(multiAddrStr).toEqual('/ip4/127.0.0.1');
 
     const multiAddr = multiaddr(multiAddrStr);
@@ -74,9 +110,9 @@ describe('p2p utils tests', () => {
     expect(addressInfo.isOk()).toBeTruthy();
 
     addressInfo._unsafeUnwrap().family = 'ip12';
-    expect(() => {
-      ipMultiAddrStrFromAddressInfo(addressInfo._unsafeUnwrap());
-    }).toThrow();
+    const error = ipMultiAddrStrFromAddressInfo(addressInfo._unsafeUnwrap())._unsafeUnwrapErr();
+    expect(error.errCode).toEqual('bad_request');
+    expect(error.message).toMatch('invalid AddressInfo family');
   });
 
   test('converts a valid nodeAddress to an addressInfo', () => {
@@ -86,8 +122,7 @@ describe('p2p utils tests', () => {
       port: 0,
     };
 
-    const addressInfo = addressInfoFromNodeAddress(nodeAddr);
-    expect(addressInfo).toBeTruthy();
+    const addressInfo = addressInfoFromNodeAddress(nodeAddr)._unsafeUnwrap();
     expect(addressInfo.address).toEqual(nodeAddr.address);
     expect(addressInfo.port).toEqual(nodeAddr.port);
     expect(addressInfo.family).toEqual('IPv4');
@@ -100,8 +135,8 @@ describe('p2p utils tests', () => {
       port: 0,
     };
 
-    expect(() => {
-      addressInfoFromNodeAddress(nodeAddr);
-    }).toThrow();
+    const error = addressInfoFromNodeAddress(nodeAddr)._unsafeUnwrapErr();
+    expect(error.errCode).toEqual('bad_request');
+    expect(error.message).toMatch('invalid nodeAddress family');
   });
 });

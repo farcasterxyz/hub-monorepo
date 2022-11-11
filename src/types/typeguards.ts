@@ -170,17 +170,28 @@ export const isIdRegistryContent = (content: Content): content is IdRegistryCont
 
 export const isContactInfo = (content: Content): content is ContactInfoContent => {
   try {
-    const { peerId, rpcAddress, excludedHashes, count } = content as ContactInfoContent;
+    const { peerId, gossipAddress, rpcAddress, excludedHashes, count } = content as ContactInfoContent;
 
-    const validAddress = rpcAddress
+    const validRpcAddress = rpcAddress
       ? typeof rpcAddress.address === 'string' &&
         typeof rpcAddress.family === 'string' &&
         typeof rpcAddress.port === 'number'
       : true;
 
-    const excludedHashesValid = Array.isArray(excludedHashes) && excludedHashes.every((h) => typeof h === 'string');
+    const validGossipAddress = gossipAddress
+      ? typeof gossipAddress.address === 'string' &&
+        typeof gossipAddress.family === 'string' &&
+        typeof gossipAddress.port === 'number'
+      : true;
 
-    return typeof peerId === 'string' && validAddress && excludedHashesValid && typeof count === 'number';
+    const excludedHashesValid = Array.isArray(excludedHashes) && excludedHashes.every((h) => typeof h === 'string');
+    return (
+      typeof peerId === 'string' &&
+      validGossipAddress &&
+      validRpcAddress &&
+      excludedHashesValid &&
+      typeof count === 'number'
+    );
   } catch (error) {
     return false;
   }
