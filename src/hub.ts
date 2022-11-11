@@ -17,7 +17,7 @@ import { AddressInfo, isIP } from 'net';
 import { isContactInfo, isIdRegistryContent, isUserContent } from '~/types/typeguards';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import RocksDB from '~/storage/db/rocksdb';
-import { err, ok, Result } from 'neverthrow';
+import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { FarcasterError, ServerError } from '~/utils/errors';
 import { SyncEngine } from '~/network/sync/syncEngine';
 import { logger } from '~/utils/logger';
@@ -25,6 +25,7 @@ import { NodeMetadata } from '~/network/sync/merkleTrie';
 import { addressInfoFromParts, getPublicIp, p2pMultiAddrStr } from '~/utils/p2p';
 import { peerIdFromString } from '@libp2p/peer-id';
 import { publicAddressesFirst } from '@libp2p/utils/address-sort';
+import { HubError } from '~/utils/hubErrors';
 
 export interface HubOptions {
   /** The PeerId of this Hub */
@@ -219,12 +220,28 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   async handleContactInfo(message: ContactInfoContent) {
     // Updates the address book for this peer
     if (message.gossipAddress) {
-      try {
-        const p2pMultiAddr = multiaddr(p2pMultiAddrStr(message.gossipAddress, message.peerId.toString()));
-        const peerId = peerIdFromString(message.peerId);
-        await this.gossipNode.addressBook?.add(peerId, [p2pMultiAddr]);
-      } catch (err) {
-        log.error(err, `Failed to add contact Info to address book. ${message}`);
+      const peerIdResult = Result.fromThrowable(
+        () => peerIdFromString(message.peerId),
+        (error) => new HubError('bad_request.parse_failure', { cause: error as unknown as Error })
+      )();
+
+      const p2pMultiAddrResult = p2pMultiAddrStr(message.gossipAddress, message.peerId.toString()).map((addr) =>
+        multiaddr(addr)
+      );
+
+      const res = Result.combine([peerIdResult, p2pMultiAddrResult]).map(async ([peerId, multiaddr]) => {
+        if (!this.gossipNode.addressBook) {
+          return err(new HubError('unavailable', 'address book missing for gossipNode'));
+        }
+
+        return await ResultAsync.fromPromise(
+          this.gossipNode.addressBook.add(peerId, [multiaddr]),
+          (error) => new HubError('unavailable', { cause: error as unknown as Error })
+        ).map(() => ok(undefined));
+      });
+
+      if (res.isErr()) {
+        log.error({ error: res.error, message }, 'failed to add contact info to address book');
       }
     }
 

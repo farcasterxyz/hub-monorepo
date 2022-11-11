@@ -20,7 +20,11 @@ export class RPCClient {
       replacer,
       reviver,
     });
-    this._serverMultiAddr = `${ipMultiAddrStrFromAddressInfo(address)}/tcp/${address.port}`;
+    const multiAddrResult = ipMultiAddrStrFromAddressInfo(address);
+
+    // TODO: fix up because constructors ideally do not throw.
+    if (multiAddrResult.isErr()) throw multiAddrResult.error;
+    this._serverMultiAddr = `${multiAddrResult.value}/tcp/${address.port}`;
   }
 
   /** Returns a multiaddr of the RPC server this client is connected to */
