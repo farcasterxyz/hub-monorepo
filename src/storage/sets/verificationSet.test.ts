@@ -11,8 +11,9 @@ import {
 import { ethers } from 'ethers';
 import { generateEd25519Signer } from '~/utils/crypto';
 import VerificationDB from '~/storage/db/verification';
-import { BadRequestError, NotFoundError } from '~/utils/errors';
+import { BadRequestError } from '~/utils/errors';
 import { jestRocksDB } from '~/storage/db/jestUtils';
+import { HubError } from '~/utils/hubErrors';
 
 const testDb = jestRocksDB('verificationSet.test');
 const verificationDb = new VerificationDB(testDb);
@@ -59,7 +60,7 @@ beforeAll(async () => {
 
 describe('getVerification', () => {
   test('fails when verification does not exist', async () => {
-    await expect(set.getVerification(fid, add1.data.body.claimHash)).rejects.toThrow(NotFoundError);
+    await expect(set.getVerification(fid, add1.data.body.claimHash)).rejects.toThrow(HubError);
   });
 
   test('returns VerificationEthereumAddress when added', async () => {
@@ -69,12 +70,12 @@ describe('getVerification', () => {
 
   test('fails when removed', async () => {
     await set.merge(rem1);
-    await expect(set.getVerification(fid, add1.data.body.claimHash)).rejects.toThrow(NotFoundError);
+    await expect(set.getVerification(fid, add1.data.body.claimHash)).rejects.toThrow(HubError);
   });
 
   test('fails when using message hash', async () => {
     await set.merge(add1);
-    await expect(set.getVerification(fid, add1.hash)).rejects.toThrow(NotFoundError);
+    await expect(set.getVerification(fid, add1.hash)).rejects.toThrow(HubError);
   });
 });
 

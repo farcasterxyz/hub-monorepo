@@ -1,7 +1,6 @@
 import { faker } from '@faker-js/faker';
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import { BadRequestError, NotFoundError, ValidationError } from '~/utils/errors';
 import { EthereumSigner } from '~/types';
 import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
 import { arrayify } from 'ethers/lib/utils';
@@ -11,6 +10,7 @@ import { SignerAddModel, SignerRemoveModel, UserPostfix } from '~/storage/flatbu
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
+import { HubError } from '~/utils/hubErrors';
 
 const db = jestBinaryRocksDB('flatbuffers.signerStore.test');
 const set = new SignerStore(db);
@@ -72,7 +72,7 @@ describe('getIdRegistryEvent', () => {
   });
 
   test('fails if event is missing', async () => {
-    await expect(set.getIdRegistryEvent(fid)).rejects.toThrow(NotFoundError);
+    await expect(set.getIdRegistryEvent(fid)).rejects.toThrow(HubError);
   });
 });
 
@@ -83,20 +83,20 @@ describe('getCustodyAddress', () => {
   });
 
   test('fails if event is missing', async () => {
-    await expect(set.getCustodyAddress(fid)).rejects.toThrow(NotFoundError);
+    await expect(set.getCustodyAddress(fid)).rejects.toThrow(HubError);
   });
 });
 
 describe('getSignerAdd', () => {
   test('fails if missing', async () => {
-    await expect(set.getSignerAdd(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
+    await expect(set.getSignerAdd(fid, signer, custody1Address)).rejects.toThrow(HubError);
   });
 
   test('fails if incorrect custody address is passed in', async () => {
     await set.merge(signerAdd);
     const arbitraryCustodyAddress = arrayify(faker.datatype.hexadecimal({ length: 40 }));
 
-    await expect(set.getSignerAdd(fid, signer, arbitraryCustodyAddress)).rejects.toThrow(NotFoundError);
+    await expect(set.getSignerAdd(fid, signer, arbitraryCustodyAddress)).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
@@ -113,21 +113,21 @@ describe('getSignerAdd', () => {
 
     test('fails when custodyAddress is missing', async () => {
       await set.merge(signerAdd);
-      await expect(set.getSignerAdd(fid, signer)).rejects.toThrow(NotFoundError);
+      await expect(set.getSignerAdd(fid, signer)).rejects.toThrow(HubError);
     });
   });
 });
 
 describe('getSignerRemove', () => {
   test('fails if missing', async () => {
-    await expect(set.getSignerRemove(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
+    await expect(set.getSignerRemove(fid, signer, custody1Address)).rejects.toThrow(HubError);
   });
 
   test('fails if incorrect custody address is passed in', async () => {
     await set.merge(signerRemove);
     const arbitraryCustodyAddress = arrayify(faker.datatype.hexadecimal({ length: 40 }));
 
-    await expect(set.getSignerAdd(fid, signer, arbitraryCustodyAddress)).rejects.toThrow(NotFoundError);
+    await expect(set.getSignerAdd(fid, signer, arbitraryCustodyAddress)).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
@@ -144,7 +144,7 @@ describe('getSignerRemove', () => {
 
     test('fails when custodyAddress is missing', async () => {
       await set.merge(signerRemove);
-      await expect(set.getSignerRemove(fid, signer)).rejects.toThrow(NotFoundError);
+      await expect(set.getSignerRemove(fid, signer)).rejects.toThrow(HubError);
     });
   });
 });
@@ -174,7 +174,7 @@ describe('getSignerAddsByUser', () => {
 
     test('fails when custodyAddress is missing', async () => {
       await set.merge(signerAdd);
-      await expect(set.getSignerAddsByUser(fid)).rejects.toThrow(NotFoundError);
+      await expect(set.getSignerAddsByUser(fid)).rejects.toThrow(HubError);
     });
   });
 });
@@ -204,7 +204,7 @@ describe('getSignerRemovesByUser', () => {
 
     test('fails when custodyAddress is missing', async () => {
       await set.merge(signerRemove);
-      await expect(set.getSignerRemovesByUser(fid)).rejects.toThrow(NotFoundError);
+      await expect(set.getSignerRemovesByUser(fid)).rejects.toThrow(HubError);
     });
   });
 });
@@ -214,7 +214,7 @@ describe('getSignerRemovesByUser', () => {
 describe('mergeIdRegistryEvent', () => {
   test('succeeds and activates signers, if present', async () => {
     await set.merge(signerAdd);
-    await expect(set.getSignerAdd(fid, signer)).rejects.toThrow(NotFoundError);
+    await expect(set.getSignerAdd(fid, signer)).rejects.toThrow(HubError);
 
     await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toEqual(undefined);
     await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
@@ -229,7 +229,7 @@ describe('mergeIdRegistryEvent', () => {
 
     const blockHashConflictEvent = new ContractEventModel(idRegistryEvent);
     await set.mergeIdRegistryEvent(custody1Event);
-    await expect(set.mergeIdRegistryEvent(blockHashConflictEvent)).rejects.toThrow(ValidationError);
+    await expect(set.mergeIdRegistryEvent(blockHashConflictEvent)).rejects.toThrow(HubError);
   });
 
   test('fails if events have the same blockNumber and logIndex but different transactionHashes', async () => {
@@ -240,7 +240,7 @@ describe('mergeIdRegistryEvent', () => {
 
     const txHashConflictEvent = new ContractEventModel(idRegistryEvent);
     await set.mergeIdRegistryEvent(custody1Event);
-    await expect(set.mergeIdRegistryEvent(txHashConflictEvent)).rejects.toThrow(ValidationError);
+    await expect(set.mergeIdRegistryEvent(txHashConflictEvent)).rejects.toThrow(HubError);
   });
 
   describe('overwrites existing event', () => {
@@ -255,7 +255,7 @@ describe('mergeIdRegistryEvent', () => {
     afterEach(async () => {
       await expect(set.mergeIdRegistryEvent(newEvent)).resolves.toEqual(undefined);
       await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(newEvent);
-      await expect(set.getSignerAdd(fid, signer)).rejects.toThrow(NotFoundError);
+      await expect(set.getSignerAdd(fid, signer)).rejects.toThrow(HubError);
     });
 
     test('when it has a higher block number', async () => {
@@ -325,25 +325,25 @@ describe('merge', () => {
   };
 
   const assertSignerDoesNotExist = async (message: SignerAddModel | SignerRemoveModel) => {
-    await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, message.tsHash())).rejects.toThrow(NotFoundError);
+    await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, message.tsHash())).rejects.toThrow(HubError);
   };
 
   const assertSignerAddWins = async (message: SignerAddModel) => {
     await assertSignerExists(message);
     await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(message);
-    await expect(set.getSignerRemove(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
+    await expect(set.getSignerRemove(fid, signer, custody1Address)).rejects.toThrow(HubError);
   };
 
   const assertSignerRemoveWins = async (message: SignerRemoveModel) => {
     await assertSignerExists(message);
     await expect(set.getSignerRemove(fid, signer, custody1Address)).resolves.toEqual(message);
-    await expect(set.getSignerAdd(fid, signer, custody1Address)).rejects.toThrow(NotFoundError);
+    await expect(set.getSignerAdd(fid, signer, custody1Address)).rejects.toThrow(HubError);
   };
 
   test('fails with invalid message type', async () => {
     const invalidData = await Factories.ReactionAddData.create({ fid: Array.from(fid) });
     const message = await Factories.Message.create({ data: Array.from(invalidData.bb?.bytes() ?? []) });
-    await expect(set.merge(new MessageModel(message))).rejects.toThrow(BadRequestError);
+    await expect(set.merge(new MessageModel(message))).rejects.toThrow(HubError);
   });
 
   describe('SignerAdd', () => {

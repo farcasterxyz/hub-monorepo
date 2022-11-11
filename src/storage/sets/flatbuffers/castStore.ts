@@ -1,10 +1,10 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
-import { BadRequestError } from '~/utils/errors';
 import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
 import { ResultAsync } from 'neverthrow';
 import { CastAddModel, CastRemoveModel, RootPrefix, UserPostfix } from '~/storage/flatbuffers/types';
 import { isCastAdd, isCastRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
+import { HubError } from '~/utils/hubErrors';
 
 class CastStore {
   private _db: RocksDB;
@@ -135,7 +135,7 @@ class CastStore {
       return this.mergeAdd(message);
     }
 
-    throw new BadRequestError('invalid message type');
+    throw new HubError('bad_request.validation_failure', 'invalid message type');
   }
 
   /* -------------------------------------------------------------------------- */

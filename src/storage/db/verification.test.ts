@@ -1,9 +1,9 @@
 import { Factories } from '~/test/factories';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { Ed25519Signer, VerificationEthereumAddress, VerificationRemove } from '~/types';
-import { NotFoundError } from '~/utils/errors';
 import { generateEd25519Signer } from '~/utils/crypto';
 import VerificationDB from '~/storage/db/verification';
+import { HubError } from '~/utils/hubErrors';
 
 const rocks = jestRocksDB('db.verification.test');
 const db = new VerificationDB(rocks);
@@ -42,7 +42,7 @@ describe('putVerificationAdd', () => {
     await db.putVerificationRemove(verificationRemove1);
     await expect(db.putVerificationAdd(verification1)).resolves.toEqual(undefined);
     await expect(db.getVerificationAdd(fid, claimHash)).resolves.toEqual(verification1);
-    await expect(db.getVerificationRemove(fid, claimHash)).rejects.toThrow(NotFoundError);
+    await expect(db.getVerificationRemove(fid, claimHash)).rejects.toThrow(HubError);
     await expect(db.getAllVerificationMessagesByUser(fid)).resolves.toEqual([verification1]);
   });
 });

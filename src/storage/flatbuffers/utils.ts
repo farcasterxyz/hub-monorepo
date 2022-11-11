@@ -1,4 +1,4 @@
-import { BadRequestError } from '~/utils/errors';
+import { HubError } from '~/utils/hubErrors';
 
 export const bytesCompare = (a: Uint8Array, b: Uint8Array): number => {
   const aValue = a[0];
@@ -44,7 +44,7 @@ export const bytesDecrement = (bytes: Uint8Array): Uint8Array => {
       return bytes;
     } else {
       if (i === 0) {
-        throw new BadRequestError('Cannot decrement zero');
+        throw new HubError('bad_request.invalid_param', 'Cannot decrement zero');
       }
 
       bytes[i] = 255;
@@ -62,11 +62,11 @@ export const getFarcasterTime = (): number => {
 
 export const toFarcasterTime = (time: number): number => {
   if (time < FARCASTER_EPOCH) {
-    throw new BadRequestError('time must be after Farcaster epoch (01/01/2022)');
+    throw new HubError('bad_request.invalid_param', 'time must be after Farcaster epoch (01/01/2022)');
   }
   const secondsSinceEpoch = Math.round((time - FARCASTER_EPOCH) / 1000);
   if (secondsSinceEpoch > 2 ** 32 - 1) {
-    throw new BadRequestError('time too far in future');
+    throw new HubError('bad_request.invalid_param', 'time too far in future');
   }
   return secondsSinceEpoch;
 };

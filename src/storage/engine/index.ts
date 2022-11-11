@@ -211,7 +211,7 @@ class Engine extends TypedEmitter<EngineEvents> {
   async mergeIdRegistryEvent(event: IdRegistryEvent, source = 'unknown'): Promise<Result<void, FarcasterError>> {
     if (this._IdRegistryProvider) {
       const isEventValidResult = await this._IdRegistryProvider.validateIdRegistryEvent(event);
-      if (isEventValidResult.isErr()) return err(isEventValidResult.error);
+      if (isEventValidResult.isErr()) return err(new FarcasterError(isEventValidResult.error));
     }
     logger.info(
       {

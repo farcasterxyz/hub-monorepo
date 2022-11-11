@@ -6,7 +6,7 @@ import {
   fromFarcasterTime,
   toFarcasterTime,
 } from '~/storage/flatbuffers/utils';
-import { BadRequestError } from '~/utils/errors';
+import { HubError } from '~/utils/hubErrors';
 
 describe('bytesCompare', () => {
   const cases: [Uint8Array, Uint8Array, number][] = [
@@ -65,7 +65,7 @@ describe('bytesDecrement', () => {
 
   for (const [input] of failingCases) {
     test(`should when decrementing byte array: ${input}`, () => {
-      expect(() => bytesDecrement(input)).toThrow(BadRequestError);
+      expect(() => bytesDecrement(input)).toThrow(HubError);
     });
   }
 });
@@ -79,11 +79,11 @@ describe('fromFarcasterTime', () => {
   });
 
   test('fails for time before 01/01/2022', () => {
-    expect(() => toFarcasterTime(FARCASTER_EPOCH - 1)).toThrow(BadRequestError);
+    expect(() => toFarcasterTime(FARCASTER_EPOCH - 1)).toThrow(HubError);
   });
 
   test('fails when farcaster time does not fit in uint32', () => {
     const time = (FARCASTER_EPOCH / 1000 + 2 ** 32) * 1000;
-    expect(() => toFarcasterTime(time)).toThrow(BadRequestError);
+    expect(() => toFarcasterTime(time)).toThrow(HubError);
   });
 });

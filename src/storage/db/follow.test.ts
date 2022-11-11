@@ -2,8 +2,8 @@ import FollowDB from '~/storage/db/follow';
 import { Factories } from '~/test/factories';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { Ed25519Signer, FollowAdd, FollowRemove } from '~/types';
-import { NotFoundError } from '~/utils/errors';
 import { generateEd25519Signer } from '~/utils/crypto';
+import { HubError } from '~/utils/hubErrors';
 
 const rocks = jestRocksDB('db.follow.test');
 const db = new FollowDB(rocks);
@@ -43,7 +43,7 @@ describe('putFollowAdd', () => {
     await db.putFollowRemove(followRemove1);
     await expect(db.putFollowAdd(followAdd1)).resolves.toEqual(undefined);
     await expect(db.getFollowAdd(followAdd1.data.fid, target)).resolves.toEqual(followAdd1);
-    await expect(db.getFollowRemove(followAdd1.data.fid, target)).rejects.toThrow(NotFoundError);
+    await expect(db.getFollowRemove(followAdd1.data.fid, target)).rejects.toThrow(HubError);
     await expect(db.getAllFollowMessagesByUser(followAdd1.data.fid)).resolves.toEqual([followAdd1]);
   });
 });

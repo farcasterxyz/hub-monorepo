@@ -1,11 +1,11 @@
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { BadRequestError, NotFoundError } from '~/utils/errors';
 import { ReactionAddModel, ReactionRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
 import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
 import { MessageType, ReactionType } from '~/utils/generated/message_generated';
 import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
+import { HubError } from '~/utils/hubErrors';
 
 const db = jestBinaryRocksDB('flatbuffers.reactionStore.test');
 const set = new ReactionStore(db);
@@ -79,29 +79,29 @@ beforeAll(async () => {
 
 describe('getReactionAdd', () => {
   test('fails if no ReactionAdd is present', async () => {
-    await expect(set.getReactionAdd(fid, reactionAdd.body().type(), castId)).rejects.toThrow(NotFoundError);
+    await expect(set.getReactionAdd(fid, reactionAdd.body().type(), castId)).rejects.toThrow(HubError);
   });
 
   test('fails if only ReactionRemove exists for the target', async () => {
     await set.merge(reactionRemove);
-    await expect(set.getReactionAdd(fid, reactionAdd.body().type(), castId)).rejects.toThrow(NotFoundError);
+    await expect(set.getReactionAdd(fid, reactionAdd.body().type(), castId)).rejects.toThrow(HubError);
   });
 
   test('fails if the wrong fid is provided', async () => {
     const unknownFid = Factories.FID.build();
     await set.merge(reactionAdd);
-    await expect(set.getReactionAdd(unknownFid, reactionAdd.body().type(), castId)).rejects.toThrow(NotFoundError);
+    await expect(set.getReactionAdd(unknownFid, reactionAdd.body().type(), castId)).rejects.toThrow(HubError);
   });
 
   test('fails if the wrong reaction type is provided', async () => {
     await set.merge(reactionAdd);
-    await expect(set.getReactionAdd(fid, ReactionType.Recast, castId)).rejects.toThrow(NotFoundError);
+    await expect(set.getReactionAdd(fid, ReactionType.Recast, castId)).rejects.toThrow(HubError);
   });
 
   test('fails if the wrong target is provided', async () => {
     await set.merge(reactionAdd);
     const unknownCastId = await Factories.CastId.create();
-    await expect(set.getReactionAdd(fid, reactionAdd.body().type(), unknownCastId)).rejects.toThrow(NotFoundError);
+    await expect(set.getReactionAdd(fid, reactionAdd.body().type(), unknownCastId)).rejects.toThrow(HubError);
   });
 
   test('returns message if it exists for the target', async () => {
@@ -112,33 +112,29 @@ describe('getReactionAdd', () => {
 
 describe('getReactionRemove', () => {
   test('fails if no ReactionRemove is present', async () => {
-    await expect(set.getReactionRemove(fid, reactionRemove.body().type(), castId)).rejects.toThrow(NotFoundError);
+    await expect(set.getReactionRemove(fid, reactionRemove.body().type(), castId)).rejects.toThrow(HubError);
   });
 
   test('fails if only ReactionAdd exists for the target', async () => {
     await set.merge(reactionAdd);
-    await expect(set.getReactionRemove(fid, reactionAdd.body().type(), castId)).rejects.toThrow(NotFoundError);
+    await expect(set.getReactionRemove(fid, reactionAdd.body().type(), castId)).rejects.toThrow(HubError);
   });
 
   test('fails if the wrong fid is provided', async () => {
     await set.merge(reactionRemove);
     const unknownFid = Factories.FID.build();
-    await expect(set.getReactionRemove(unknownFid, reactionRemove.body().type(), castId)).rejects.toThrow(
-      NotFoundError
-    );
+    await expect(set.getReactionRemove(unknownFid, reactionRemove.body().type(), castId)).rejects.toThrow(HubError);
   });
 
   test('fails if the wrong reaction type is provided', async () => {
     await set.merge(reactionRemove);
-    await expect(set.getReactionRemove(fid, ReactionType.Recast, castId)).rejects.toThrow(NotFoundError);
+    await expect(set.getReactionRemove(fid, ReactionType.Recast, castId)).rejects.toThrow(HubError);
   });
 
   test('fails if the wrong target is provided', async () => {
     await set.merge(reactionRemove);
     const unknownCastId = await Factories.CastId.create();
-    await expect(set.getReactionRemove(fid, reactionRemove.body().type(), unknownCastId)).rejects.toThrow(
-      NotFoundError
-    );
+    await expect(set.getReactionRemove(fid, reactionRemove.body().type(), unknownCastId)).rejects.toThrow(HubError);
   });
 
   test('returns message if it exists for the target', async () => {
@@ -236,30 +232,28 @@ describe('merge', () => {
   };
 
   const assertReactionDoesNotExist = async (message: ReactionAddModel | ReactionRemoveModel) => {
-    await expect(MessageModel.get(db, fid, UserPostfix.ReactionMessage, message.tsHash())).rejects.toThrow(
-      NotFoundError
-    );
+    await expect(MessageModel.get(db, fid, UserPostfix.ReactionMessage, message.tsHash())).rejects.toThrow(HubError);
   };
 
   const assertReactionAddWins = async (message: ReactionAddModel) => {
     await assertReactionExists(message);
     await expect(set.getReactionAdd(fid, message.body().type(), castId)).resolves.toEqual(message);
     await expect(set.getReactionsByTarget(castId)).resolves.toEqual([message]);
-    await expect(set.getReactionRemove(fid, message.body().type(), castId)).rejects.toThrow(NotFoundError);
+    await expect(set.getReactionRemove(fid, message.body().type(), castId)).rejects.toThrow(HubError);
   };
 
   const assertReactionRemoveWins = async (message: ReactionRemoveModel) => {
     await assertReactionExists(message);
     await expect(set.getReactionRemove(fid, message.body().type(), castId)).resolves.toEqual(message);
     await expect(set.getReactionsByTarget(castId)).resolves.toEqual([]);
-    await expect(set.getReactionAdd(fid, reactionAdd.body().type(), castId)).rejects.toThrow(NotFoundError);
+    await expect(set.getReactionAdd(fid, reactionAdd.body().type(), castId)).rejects.toThrow(HubError);
   };
 
   test('fails with invalid message type', async () => {
     const invalidData = await Factories.FollowAddData.create({ fid: Array.from(fid) });
     const message = await Factories.Message.create({ data: Array.from(invalidData.bb?.bytes() ?? []) });
 
-    await expect(set.merge(new MessageModel(message))).rejects.toThrow(BadRequestError);
+    await expect(set.merge(new MessageModel(message))).rejects.toThrow(HubError);
   });
 
   describe('ReactionAdd', () => {

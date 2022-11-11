@@ -2,9 +2,9 @@ import { IdRegistry } from '~/storage/provider/abis';
 import { BigNumber, Contract, providers, Event } from 'ethers';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { IdRegistryEvent } from '~/types';
-import { ok, err, Result } from 'neverthrow';
+import { ok, err } from 'neverthrow';
 import { sanitizeSigner } from '~/utils/crypto';
-import { BadRequestError, FarcasterError } from '~/utils/errors';
+import { HubError, HubResult } from '~/utils/hubErrors';
 
 export type IdRegistryEvents = {
   block: (blockNumber: number) => void;
@@ -54,12 +54,12 @@ class IdRegistryProvider extends TypedEmitter<IdRegistryEvents> {
    * validateIdRegistryEvent tries to confirm that an event was actually emitted from the
    * ID Registry and confirmed, based on block confirmations
    */
-  async validateIdRegistryEvent(event: IdRegistryEvent): Promise<Result<void, FarcasterError>> {
+  async validateIdRegistryEvent(event: IdRegistryEvent): Promise<HubResult<void>> {
     const receipt = await this._jsonRpcProvider.getTransactionReceipt(event.transactionHash);
-    if (!receipt) return err(new BadRequestError('validateIdRegistryEvent: transaction not found'));
+    if (!receipt) return err(new HubError('unavailable', 'transaction not found'));
 
     if (receipt.confirmations >= this._numConfirmations)
-      return err(new BadRequestError('validateIdRegistryEvent: insufficient confirmations'));
+      return err(new HubError('unavailable', 'insufficient transaction confirmations'));
 
     for (const log of receipt.logs) {
       const parsedLog = this._contract.interface.parseLog(log);
@@ -67,7 +67,7 @@ class IdRegistryProvider extends TypedEmitter<IdRegistryEvents> {
       if (sanitizeSigner(to) === sanitizeSigner(event.args.to) && id.toNumber() === event.args.id) return ok(undefined);
     }
 
-    return err(new BadRequestError('validateIdRegistryEvent: no matching log found'));
+    return err(new HubError('unavailable', 'no matching log found'));
   }
 
   /* -------------------------------------------------------------------------- */

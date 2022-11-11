@@ -4,10 +4,11 @@ import { ResultAsync } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import SignerDB from '~/storage/db/signer';
 import Engine from '~/storage/engine';
-import { BadRequestError, NotFoundError } from '~/utils/errors';
+import { BadRequestError } from '~/utils/errors';
 import { Factories } from '~/test/factories';
 import { Ed25519Signer, EthereumSigner, SignerAdd, SignerMessage, SignerRemove, IdRegistryEvent } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner, hashFCObject } from '~/utils/crypto';
+import { HubError } from '~/utils/hubErrors';
 
 const testDb = jestRocksDB(`engine.signer.test`);
 const engine = new Engine(testDb);
@@ -58,7 +59,7 @@ describe('mergeSignerMessage', () => {
   test('fails without a custody address', async () => {
     const res = await engine.mergeMessage(aliceSignerAddDelegate);
     expect(res.isOk()).toBe(false);
-    await expect(aliceCustodyAddress()).rejects.toThrow(NotFoundError);
+    await expect(aliceCustodyAddress()).rejects.toThrow(HubError);
     expect(await aliceSigners()).toEqual(new Set());
   });
 

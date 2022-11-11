@@ -1,7 +1,6 @@
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { BadRequestError, NotFoundError } from '~/utils/errors';
 import { UserPostfix, VerificationAddEthAddressModel, VerificationRemoveModel } from '~/storage/flatbuffers/types';
 import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
 import { EthereumSigner } from '~/types';
@@ -9,6 +8,7 @@ import { generateEthereumSigner } from '~/utils/crypto';
 import { FarcasterNetwork } from '~/utils/generated/message_generated';
 import { arrayify } from 'ethers/lib/utils';
 import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
+import { HubError } from '~/utils/hubErrors';
 
 const db = jestBinaryRocksDB('flatbuffers.verificationStore.test');
 const set = new VerificationStore(db);
@@ -45,7 +45,7 @@ beforeAll(async () => {
 
 describe('getVerificationAdd', () => {
   test('fails if missing', async () => {
-    await expect(set.getVerificationAdd(fid, address)).rejects.toThrow(NotFoundError);
+    await expect(set.getVerificationAdd(fid, address)).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
@@ -56,7 +56,7 @@ describe('getVerificationAdd', () => {
 
 describe('getVerificationRemove', () => {
   test('fails if missing', async () => {
-    await expect(set.getVerificationRemove(fid, address)).rejects.toThrow(NotFoundError);
+    await expect(set.getVerificationRemove(fid, address)).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
@@ -96,26 +96,26 @@ describe('merge', () => {
 
   const assertVerificationDoesNotExist = async (message: VerificationAddEthAddressModel | VerificationRemoveModel) => {
     await expect(MessageModel.get(db, fid, UserPostfix.VerificationMessage, message.tsHash())).rejects.toThrow(
-      NotFoundError
+      HubError
     );
   };
 
   const assertVerificationAddWins = async (message: VerificationAddEthAddressModel) => {
     await assertVerificationExists(message);
     await expect(set.getVerificationAdd(fid, address)).resolves.toEqual(message);
-    await expect(set.getVerificationRemove(fid, address)).rejects.toThrow(NotFoundError);
+    await expect(set.getVerificationRemove(fid, address)).rejects.toThrow(HubError);
   };
 
   const assertVerificationRemoveWins = async (message: VerificationRemoveModel) => {
     await assertVerificationExists(message);
     await expect(set.getVerificationRemove(fid, address)).resolves.toEqual(message);
-    await expect(set.getVerificationAdd(fid, address)).rejects.toThrow(NotFoundError);
+    await expect(set.getVerificationAdd(fid, address)).rejects.toThrow(HubError);
   };
 
   test('fails with invalid message type', async () => {
     const invalidData = await Factories.ReactionAddData.create({ fid: Array.from(fid) });
     const message = await Factories.Message.create({ data: Array.from(invalidData.bb?.bytes() ?? []) });
-    await expect(set.merge(new MessageModel(message))).rejects.toThrow(BadRequestError);
+    await expect(set.merge(new MessageModel(message))).rejects.toThrow(HubError);
   });
 
   describe('VerificationAddEthAddress', () => {
