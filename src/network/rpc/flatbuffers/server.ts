@@ -11,7 +11,11 @@ type RpcRequest = CastServiceRequest;
 
 export const toServiceError = (err: HubError): grpc.ServiceError => {
   let grpcCode: number;
-  if (
+  if (err.errCode === 'unauthenticated') {
+    grpcCode = grpc.status.UNAUTHENTICATED;
+  } else if (err.errCode === 'unauthorized') {
+    grpcCode = grpc.status.PERMISSION_DENIED;
+  } else if (
     err.errCode === 'bad_request' ||
     err.errCode === 'bad_request.parse_failure' ||
     err.errCode === 'bad_request.validation_failure'
@@ -19,8 +23,12 @@ export const toServiceError = (err: HubError): grpc.ServiceError => {
     grpcCode = grpc.status.INVALID_ARGUMENT;
   } else if (err.errCode === 'not_found') {
     grpcCode = grpc.status.NOT_FOUND;
-  } else if (err.errCode === 'db_error') {
-    grpcCode = grpc.status.INTERNAL;
+  } else if (
+    err.errCode === 'unavailable' ||
+    err.errCode === 'unavailable.network_failure' ||
+    err.errCode === 'unavailable.storage_failure'
+  ) {
+    grpcCode = grpc.status.UNAVAILABLE;
   } else {
     grpcCode = grpc.status.UNKNOWN;
   }
