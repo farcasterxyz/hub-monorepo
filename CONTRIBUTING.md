@@ -146,7 +146,7 @@ const parseMessage = (message: string): string => {
 const parseMessage = (message: string): HubResult<string> => {
   return Result.fromThrowable(
     () => JSON.parse(message),
-    (err) => new HubError('bad_request.parse_failure', { cause: err as Error })
+    (err) => new HubError('bad_request.parse_failure', err as Error)
   )();
 };
 

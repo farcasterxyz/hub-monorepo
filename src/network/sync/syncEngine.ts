@@ -228,7 +228,7 @@ class SyncEngine {
     } else {
       // if at least one signer message was merged, retry the original message
       return (await this.engine.mergeMessage(message, 'SyncEngine')).mapErr((e) => {
-        return new HubError('unavailable.storage_failure', { cause: e });
+        return new HubError('unavailable.storage_failure', e);
       });
     }
   }
