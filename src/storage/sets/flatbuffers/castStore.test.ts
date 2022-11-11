@@ -2,8 +2,9 @@ import Factories from '~/test/factories/flatbuffer';
 import CastStore from '~/storage/sets/flatbuffers/castStore';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { BadRequestError, NotFoundError } from '~/utils/errors';
+import { NotFoundError } from '~/utils/errors';
 import { CastAddModel, CastRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
+import { HubError } from '~/utils/hubErrors';
 
 const db = jestBinaryRocksDB('flatbuffers.castSet.test');
 const set = new CastStore(db);
@@ -110,7 +111,7 @@ describe('merge', () => {
   test('fails with invalid message type', async () => {
     const invalidData = await Factories.ReactionAddData.create({ fid: Array.from(fid) });
     const message = await Factories.Message.create({ data: Array.from(invalidData.bb?.bytes() ?? []) });
-    await expect(set.merge(new MessageModel(message))).rejects.toThrow(BadRequestError);
+    await expect(set.merge(new MessageModel(message))).rejects.toThrow(HubError);
   });
 
   describe('CastRemove', () => {

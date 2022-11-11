@@ -1,7 +1,7 @@
 import { ResultAsync } from 'neverthrow';
 import CastStore from '~/storage/sets/flatbuffers/castStore';
 import RocksDB from '~/storage/db/binaryrocksdb';
-import { BadRequestError, ValidationError } from '~/utils/errors';
+import { ValidationError } from '~/utils/errors';
 import SignerStore from '~/storage/sets/flatbuffers/signerStore';
 import FollowStore from '~/storage/sets/flatbuffers/followStore';
 import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
@@ -13,6 +13,7 @@ import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { ContractEventType } from '~/utils/generated/contract_event_generated';
 import { isSignerAdd, isSignerRemove } from '~/storage/flatbuffers/typeguards';
 import { validateMessage } from '~/storage/flatbuffers/validations';
+import { HubError } from '~/utils/hubErrors';
 
 class Engine {
   private _castStore: CastStore;
@@ -56,7 +57,7 @@ class Engine {
     } else if (message.setPostfix() === UserPostfix.UserDataMessage) {
       return this._userDataStore.merge(message);
     } else {
-      throw new BadRequestError('invalid message type');
+      throw new HubError('bad_request.validation_failure', 'invalid message type');
     }
   }
 
@@ -67,7 +68,7 @@ class Engine {
     ) {
       return this._signerStore.mergeIdRegistryEvent(event);
     } else {
-      throw new BadRequestError('invalid event type');
+      throw new HubError('bad_request.validation_failure', 'invalid event type');
     }
   }
 

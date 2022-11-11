@@ -1,5 +1,5 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
-import { BadRequestError, ValidationError } from '~/utils/errors';
+import { ValidationError } from '~/utils/errors';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync } from 'neverthrow';
 import { SignerAddModel, UserPostfix, SignerRemoveModel } from '~/storage/flatbuffers/types';
@@ -7,6 +7,7 @@ import { isSignerAdd, isSignerRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
+import { HubError } from '~/utils/hubErrors';
 
 /**
  * SignerStore persists Signer Messages in RocksDB using a series of two-phase CRDT sets
@@ -193,7 +194,7 @@ class SignerStore {
       return this.mergeAdd(message);
     }
 
-    throw new BadRequestError('invalid message type');
+    throw new HubError('bad_request.validation_failure', 'invalid message type');
   }
 
   /* -------------------------------------------------------------------------- */
@@ -287,7 +288,7 @@ class SignerStore {
   ): Promise<Transaction | undefined> {
     const signer = message.body().signerArray();
     if (!signer) {
-      throw new BadRequestError('signer is required');
+      throw new HubError('bad_request.validation_failure', 'signer was missing');
     }
 
     // Look up the remove tsHash for this custody address and signer

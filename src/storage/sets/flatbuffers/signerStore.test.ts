@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import { BadRequestError, NotFoundError, ValidationError } from '~/utils/errors';
+import { NotFoundError, ValidationError } from '~/utils/errors';
 import { EthereumSigner } from '~/types';
 import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
 import { arrayify } from 'ethers/lib/utils';
@@ -11,6 +11,7 @@ import { SignerAddModel, SignerRemoveModel, UserPostfix } from '~/storage/flatbu
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
+import { HubError } from '~/utils/hubErrors';
 
 const db = jestBinaryRocksDB('flatbuffers.signerStore.test');
 const set = new SignerStore(db);
@@ -343,7 +344,7 @@ describe('merge', () => {
   test('fails with invalid message type', async () => {
     const invalidData = await Factories.ReactionAddData.create({ fid: Array.from(fid) });
     const message = await Factories.Message.create({ data: Array.from(invalidData.bb?.bytes() ?? []) });
-    await expect(set.merge(new MessageModel(message))).rejects.toThrow(BadRequestError);
+    await expect(set.merge(new MessageModel(message))).rejects.toThrow(HubError);
   });
 
   describe('SignerAdd', () => {

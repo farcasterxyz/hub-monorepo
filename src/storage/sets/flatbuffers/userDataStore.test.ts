@@ -1,10 +1,11 @@
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { BadRequestError, NotFoundError } from '~/utils/errors';
+import { NotFoundError } from '~/utils/errors';
 import { UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
 import { UserDataType } from '~/utils/generated/message_generated';
 import UserDataSet from '~/storage/sets/flatbuffers/userDataStore';
+import { HubError } from '~/utils/hubErrors';
 
 const db = jestBinaryRocksDB('flatbuffers.userDataSet.test');
 const set = new UserDataSet(db);
@@ -68,7 +69,7 @@ describe('merge', () => {
   test('fails with invalid message type', async () => {
     const invalidData = await Factories.ReactionAddData.create({ fid: Array.from(fid) });
     const message = await Factories.Message.create({ data: Array.from(invalidData.bb?.bytes() ?? []) });
-    await expect(set.merge(new MessageModel(message))).rejects.toThrow(BadRequestError);
+    await expect(set.merge(new MessageModel(message))).rejects.toThrow(HubError);
   });
 
   describe('UserDataAdd', () => {

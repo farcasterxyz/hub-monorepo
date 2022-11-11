@@ -58,6 +58,7 @@ type HubErrorCode =
   /* The request cannot be completed as constructed, do not retry */
   | 'bad_request'
   | 'bad_request.parse_failure'
+  | 'bad_request.invalid_param'
   | 'bad_request.validation_failure'
   /* The requested resource could not be found */
   | 'not_found'

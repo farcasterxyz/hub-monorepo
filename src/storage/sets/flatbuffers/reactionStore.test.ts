@@ -1,11 +1,12 @@
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { BadRequestError, NotFoundError } from '~/utils/errors';
+import { NotFoundError } from '~/utils/errors';
 import { ReactionAddModel, ReactionRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
 import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
 import { MessageType, ReactionType } from '~/utils/generated/message_generated';
 import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
+import { HubError } from '~/utils/hubErrors';
 
 const db = jestBinaryRocksDB('flatbuffers.reactionStore.test');
 const set = new ReactionStore(db);
@@ -259,7 +260,7 @@ describe('merge', () => {
     const invalidData = await Factories.FollowAddData.create({ fid: Array.from(fid) });
     const message = await Factories.Message.create({ data: Array.from(invalidData.bb?.bytes() ?? []) });
 
-    await expect(set.merge(new MessageModel(message))).rejects.toThrow(BadRequestError);
+    await expect(set.merge(new MessageModel(message))).rejects.toThrow(HubError);
   });
 
   describe('ReactionAdd', () => {

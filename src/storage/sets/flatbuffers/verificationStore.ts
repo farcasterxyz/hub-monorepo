@@ -1,11 +1,11 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
-import { BadRequestError } from '~/utils/errors';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync } from 'neverthrow';
 import { UserPostfix, VerificationAddEthAddressModel, VerificationRemoveModel } from '~/storage/flatbuffers/types';
 import { isVerificationAddEthAddress, isVerificationRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
+import { HubError } from '~/utils/hubErrors';
 
 /**
  * VerificationStore persists VerificationMessages in RocksDB using a two-phase CRDT set to
@@ -148,7 +148,7 @@ class VerificationStore {
       return this.mergeAdd(message);
     }
 
-    throw new BadRequestError('invalid message type');
+    throw new HubError('bad_request.validation_failure', 'invalid message type');
   }
 
   /* -------------------------------------------------------------------------- */
@@ -159,7 +159,7 @@ class VerificationStore {
     // Define address for lookups
     const address = message.body().addressArray();
     if (!address) {
-      throw new BadRequestError('address is required');
+      throw new HubError('bad_request.validation_failure', 'address was missing');
     }
 
     let tsx = await this.resolveMergeConflicts(this._db.transaction(), address, message);
@@ -178,7 +178,7 @@ class VerificationStore {
     // Define address for lookups
     const address = message.body().addressArray();
     if (!address) {
-      throw new BadRequestError('address is required');
+      throw new HubError('bad_request.validation_failure', 'address was missing');
     }
 
     let tsx = await this.resolveMergeConflicts(this._db.transaction(), address, message);

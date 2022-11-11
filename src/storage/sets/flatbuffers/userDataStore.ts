@@ -1,11 +1,11 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
-import { BadRequestError } from '~/utils/errors';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync } from 'neverthrow';
 import { UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
 import { isUserDataAdd } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { UserDataType } from '~/utils/generated/message_generated';
+import { HubError } from '~/utils/hubErrors';
 
 class UserDataStore {
   private _db: RocksDB;
@@ -45,7 +45,7 @@ class UserDataStore {
       return this.mergeAdd(message);
     }
 
-    throw new BadRequestError('invalid message type');
+    throw new HubError('bad_request.validation_failure', 'invalid message type');
   }
 
   /* -------------------------------------------------------------------------- */
