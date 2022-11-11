@@ -66,11 +66,9 @@ export const ipMultiAddrStrFromAddressInfo = (addressInfo: AddressInfo): HubResu
  * Does not preserve port or transport information
  */
 export const p2pMultiAddrStr = (addressInfo: AddressInfo, peerID: string): HubResult<string> => {
-  return ipMultiAddrStrFromAddressInfo(addressInfo).map((ipMultiAddrStr) => {
-    return `${ipMultiAddrStr}/tcp/${addressInfo.port}/p2p/${peerID}`;
-  });
-
-  // const ipMultiAddrStr = ipMultiAddrStrFromAddressInfo(addressInfo);
+  return ipMultiAddrStrFromAddressInfo(addressInfo).map(
+    (ipMultiAddrStr) => `${ipMultiAddrStr}/tcp/${addressInfo.port}/p2p/${peerID}`
+  );
 };
 
 /**
@@ -127,8 +125,8 @@ const checkIpAddr = (ipAddr: string): HubResult<void> => {
   return ok(undefined);
 };
 
-const checkCombinedAddr = (ipAddr: string): HubResult<void> => {
-  const parseListenIpAddrResult = parseAddress(ipAddr);
+const checkCombinedAddr = (combinedAddr: string): HubResult<void> => {
+  const parseListenIpAddrResult = parseAddress(combinedAddr);
   if (parseListenIpAddrResult.isErr()) return err(parseListenIpAddrResult.error);
 
   const optionsResult = Result.fromThrowable(

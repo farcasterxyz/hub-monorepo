@@ -57,12 +57,15 @@ type HubErrorCode =
   /* The request cannot be completed as constructed, do not retry */
   | 'bad_request'
   | 'bad_request.parse_failure'
+  | 'bad_request.validation_failure'
   /* The requested resource could not be found */
   | 'not_found'
   /* TBD */
   | 'db_error'
   /* The request could not be completed, it may or may not be safe to retry */
   | 'unavailable'
+  | 'unavailable.network_failure'
+  | 'unavailable.storage_failure'
   /* An unknown error was encountered */
   | 'unknown';
 

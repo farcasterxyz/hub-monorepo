@@ -3,10 +3,10 @@ import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId } from '~/network/sync/syncId';
 import Engine from '~/storage/engine';
 import { RPCClient } from '~/network/rpc';
-import { err, Result } from 'neverthrow';
-import { FarcasterError, ServerError } from '~/utils/errors';
+import { err } from 'neverthrow';
 import { logger } from '~/utils/logger';
 import { TrieSnapshot } from '~/network/sync/trieNode';
+import { HubError, HubResult } from '~/utils/hubErrors';
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
@@ -209,25 +209,27 @@ class SyncEngine {
     return Math.floor(currentTimeInSeconds / SYNC_THRESHOLD_IN_SECONDS) * SYNC_THRESHOLD_IN_SECONDS;
   }
 
-  private async syncUserAndRetryMessage(message: Message, rpcClient: RPCClient): Promise<Result<void, FarcasterError>> {
+  private async syncUserAndRetryMessage(message: Message, rpcClient: RPCClient): Promise<HubResult<void>> {
     const fid = message.data.fid;
     const custodyEventResult = await rpcClient.getCustodyEventByUser(fid);
     if (custodyEventResult.isErr()) {
-      return err(new ServerError('Failed to fetch custody event'));
+      return err(new HubError('unavailable.network_failure', 'Failed to fetch custody event'));
     }
     await this.engine.mergeIdRegistryEvent(custodyEventResult.value, 'SyncEngine');
     // Probably not required to fetch the signer messages, but doing it here means
     //  sync will complete in one round (prevents messages failing to merge due to missed or out of order signer message)
     const signerMessagesResult = await rpcClient.getAllSignerMessagesByUser(fid);
     if (signerMessagesResult.isErr()) {
-      return err(new ServerError('Failed to fetch signer messages'));
+      return err(new HubError('unavailable.network_failure', 'Failed to fetch signer messages'));
     }
     const results = await Promise.all(this.engine.mergeMessages([...signerMessagesResult.value], 'SyncEngine'));
     if (results.every((r) => r.isErr())) {
-      return err(new ServerError('Failed to merge signer messages'));
+      return err(new HubError('unavailable.storage_failure', 'Failed to merge signer messages'));
     } else {
       // if at least one signer message was merged, retry the original message
-      return this.engine.mergeMessage(message, 'SyncEngine');
+      return (await this.engine.mergeMessage(message, 'SyncEngine')).mapErr((e) => {
+        return new HubError('unavailable.storage_failure', { cause: e });
+      });
     }
   }
 }
