@@ -4,6 +4,14 @@ include "message.fbs";
 
 namespace Farcaster;
 
+// Responses
+
+table MessagesResponse {
+  messages: [Message];
+}
+
+// Requests
+
 table GetCastRequest {
   cast: CastId;
 }

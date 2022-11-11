@@ -1,38 +1,23 @@
 import grpc from '@grpc/grpc-js';
 import { Builder, ByteBuffer } from 'flatbuffers';
+import { ok, err } from 'neverthrow';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { CastAddModel } from '~/storage/flatbuffers/types';
-import {
-  GetCastsByMentionRequest,
-  GetCastsByMentionRequestT,
-} from '~/utils/generated/farcaster/get-casts-by-mention-request';
-import {
-  GetCastsByParentRequest,
-  GetCastsByParentRequestT,
-} from '~/utils/generated/farcaster/get-casts-by-parent-request';
-import { CastIdT, Message, UserIdT } from '~/utils/generated/message_generated';
+import { CastId, Message, UserId } from '~/utils/generated/message_generated';
 import {
   GetCastRequest,
   GetCastRequestT,
+  GetCastsByMentionRequest,
+  GetCastsByMentionRequestT,
+  GetCastsByParentRequest,
+  GetCastsByParentRequestT,
   GetCastsByUserRequest,
   GetCastsByUserRequestT,
+  MessagesResponse,
 } from '~/utils/generated/rpc_generated';
+import { HubAsyncResult } from '~/utils/hubErrors';
 import { castServiceAttrs } from './castService';
-
-const promisifyMessageStream = <T extends MessageModel>(stream: grpc.ClientReadableStream<Message>): Promise<T[]> => {
-  return new Promise((resolve, reject) => {
-    const messages: T[] = [];
-    stream.on('data', (message: Message) => {
-      messages.push(new MessageModel(message) as T);
-    });
-    stream.on('end', () => {
-      resolve(messages);
-    });
-    stream.on('error', (err) => {
-      reject(err);
-    });
-  });
-};
+import { fromServiceError } from './server';
 
 class Client {
   client: grpc.Client;
@@ -45,75 +30,94 @@ class Client {
     this.client.close();
   }
 
-  async getCastsByUser(fid: Uint8Array): Promise<CastAddModel[]> {
+  /* -------------------------------------------------------------------------- */
+  /*                                 Cast Methods                               */
+  /* -------------------------------------------------------------------------- */
+
+  async getCastsByUser(user: UserId): HubAsyncResult<CastAddModel[]> {
     const builder = new Builder(1);
-    const requestT = new GetCastsByUserRequestT(new UserIdT(Array.from(fid)));
+    const requestT = new GetCastsByUserRequestT(user.unpack());
     builder.finish(requestT.pack(builder));
     const request = GetCastsByUserRequest.getRootAsGetCastsByUserRequest(new ByteBuffer(builder.asUint8Array()));
 
-    const stream = this.client.makeServerStreamRequest(
-      '/getCastsByUser',
-      castServiceAttrs().getCastsByUser.requestSerialize,
-      castServiceAttrs().getCastsByUser.responseDeserialize,
-      request
-    );
-
-    return promisifyMessageStream<CastAddModel>(stream);
+    return this.makeUnaryMessagesRequest(castServiceAttrs().getCastsByUser, request);
   }
 
-  async getCast(fid: Uint8Array, tsHash: Uint8Array): Promise<CastAddModel> {
+  async getCast(cast: CastId): HubAsyncResult<CastAddModel> {
     const builder = new Builder(1);
-    const requestT = new GetCastRequestT(new CastIdT(Array.from(fid), Array.from(tsHash)));
+    const requestT = new GetCastRequestT(cast.unpack());
     builder.finish(requestT.pack(builder));
     const request = GetCastRequest.getRootAsGetCastRequest(new ByteBuffer(builder.asUint8Array()));
 
-    return new Promise((resolve, reject) => {
+    return this.makeUnaryMessageRequest(castServiceAttrs().getCast, request);
+  }
+
+  async getCastsByParent(parent: CastId): HubAsyncResult<CastAddModel[]> {
+    const builder = new Builder(1);
+    const requestT = new GetCastsByParentRequestT(parent.unpack());
+    builder.finish(requestT.pack(builder));
+    const request = GetCastsByParentRequest.getRootAsGetCastsByParentRequest(new ByteBuffer(builder.asUint8Array()));
+
+    return this.makeUnaryMessagesRequest(castServiceAttrs().getCastsByParent, request);
+  }
+
+  async getCastsByMention(mention: UserId): HubAsyncResult<CastAddModel[]> {
+    const builder = new Builder(1);
+    const requestT = new GetCastsByMentionRequestT(mention.unpack());
+    builder.finish(requestT.pack(builder));
+    const request = GetCastsByMentionRequest.getRootAsGetCastsByMentionRequest(new ByteBuffer(builder.asUint8Array()));
+
+    return this.makeUnaryMessagesRequest(castServiceAttrs().getCastsByMention, request);
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                               Private Methods                              */
+  /* -------------------------------------------------------------------------- */
+
+  private makeUnaryMessageRequest<RequestType, ResponseMessageType extends MessageModel>(
+    method: grpc.MethodDefinition<RequestType, Message>,
+    request: RequestType
+  ): HubAsyncResult<ResponseMessageType> {
+    return new Promise((resolve) => {
       this.client.makeUnaryRequest(
-        '/getCast',
-        castServiceAttrs().getCast.requestSerialize,
-        castServiceAttrs().getCast.responseDeserialize,
+        method.path,
+        method.requestSerialize,
+        method.responseDeserialize,
         request,
-        async (err: grpc.ServiceError | null, response?: Message) => {
-          if (err) {
-            reject(err);
+        (e: grpc.ServiceError | null, response?: Message) => {
+          if (e) {
+            resolve(err(fromServiceError(e)));
           } else if (response) {
-            resolve(new MessageModel(response) as CastAddModel);
+            resolve(ok(new MessageModel(response) as ResponseMessageType));
           }
         }
       );
     });
   }
 
-  async getCastsByParent(fid: Uint8Array, tsHash: Uint8Array): Promise<CastAddModel[]> {
-    const builder = new Builder(1);
-    const requestT = new GetCastsByParentRequestT(new CastIdT(Array.from(fid), Array.from(tsHash)));
-    builder.finish(requestT.pack(builder));
-    const request = GetCastsByParentRequest.getRootAsGetCastsByParentRequest(new ByteBuffer(builder.asUint8Array()));
-
-    const stream = this.client.makeServerStreamRequest(
-      '/getCastsByParent',
-      castServiceAttrs().getCastsByParent.requestSerialize,
-      castServiceAttrs().getCastsByParent.responseDeserialize,
-      request
-    );
-
-    return promisifyMessageStream<CastAddModel>(stream);
-  }
-
-  async getCastsByMention(fid: Uint8Array): Promise<CastAddModel[]> {
-    const builder = new Builder(1);
-    const requestT = new GetCastsByMentionRequestT(new UserIdT(Array.from(fid)));
-    builder.finish(requestT.pack(builder));
-    const request = GetCastsByMentionRequest.getRootAsGetCastsByMentionRequest(new ByteBuffer(builder.asUint8Array()));
-
-    const stream = this.client.makeServerStreamRequest(
-      '/getCastsByMention',
-      castServiceAttrs().getCastsByMention.requestSerialize,
-      castServiceAttrs().getCastsByMention.responseDeserialize,
-      request
-    );
-
-    return promisifyMessageStream<CastAddModel>(stream);
+  private makeUnaryMessagesRequest<RequestType, ResponseMessageType extends MessageModel>(
+    method: grpc.MethodDefinition<RequestType, MessagesResponse>,
+    request: RequestType
+  ): HubAsyncResult<ResponseMessageType[]> {
+    return new Promise((resolve) => {
+      this.client.makeUnaryRequest(
+        method.path,
+        method.requestSerialize,
+        method.responseDeserialize,
+        request,
+        (e: grpc.ServiceError | null, response?: MessagesResponse) => {
+          if (e) {
+            resolve(err(fromServiceError(e)));
+          } else if (response) {
+            const messages: ResponseMessageType[] = [];
+            for (let i = 0; i < response.messagesLength(); i++) {
+              messages.push(new MessageModel(response.messages(i) ?? new Message()) as ResponseMessageType);
+            }
+            resolve(ok(messages));
+          }
+        }
+      );
+    });
   }
 }
 

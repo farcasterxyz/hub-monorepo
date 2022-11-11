@@ -9,6 +9,8 @@ import { Wallet, utils } from 'ethers';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { KeyPair } from '~/types';
+import { CastId, UserId } from '~/utils/generated/message_generated';
+import { HubError } from '~/utils/hubErrors';
 
 const db = jestBinaryRocksDB('flatbuffers.rpc.castService.test');
 const engine = new Engine(db);
@@ -33,6 +35,7 @@ let custodyEvent: ContractEventModel;
 let signer: KeyPair;
 let signerAdd: SignerAddModel;
 let castAdd: CastAddModel;
+let castAddId: CastId;
 
 beforeAll(async () => {
   custodyEvent = new ContractEventModel(
@@ -57,6 +60,7 @@ beforeAll(async () => {
   castAdd = new MessageModel(
     await Factories.Message.create({ data: Array.from(castAddData.bb?.bytes() ?? []) }, { transient: { signer } })
   ) as CastAddModel;
+  castAddId = await Factories.CastId.create({ fid: Array.from(fid), tsHash: Array.from(castAdd.tsHash()) });
 });
 
 describe('getCast', () => {
@@ -64,13 +68,29 @@ describe('getCast', () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(castAdd);
-    await expect(client.getCast(fid, castAdd.tsHash())).resolves.toEqual(castAdd);
+    const result = await client.getCast(castAddId);
+    expect(result._unsafeUnwrap()).toEqual(castAdd);
   });
 
   test('fails if cast is missing', async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
-    await expect(client.getCast(fid, castAdd.tsHash())).rejects.toThrow();
+    const result = await client.getCast(castAddId);
+    expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
+  });
+
+  test('fails without fid or tsHash', async () => {
+    const castId = await Factories.CastId.create({ fid: [], tsHash: [] });
+    const result = await client.getCast(castId);
+    expect(result._unsafeUnwrapErr()).toEqual(
+      new HubError('bad_request.validation_failure', 'fid is missing, tsHash is missing')
+    );
+  });
+
+  test('fails without fid', async () => {
+    const castId = await Factories.CastId.create({ fid: [] });
+    const result = await client.getCast(castId);
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is missing'));
   });
 });
 
@@ -79,7 +99,10 @@ describe('getCastsByUser', () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(castAdd);
-    await expect(client.getCastsByUser(fid)).resolves.toEqual([castAdd]);
+    const userId = await Factories.UserId.create({ fid: Array.from(fid) });
+    const casts = await client.getCastsByUser(userId);
+    // The underlying buffers are different, so we can't compare casts to [castAdd] directly
+    expect(casts._unsafeUnwrap().map((cast) => cast.hash())).toEqual([castAdd.hash()]);
   });
 });
 
@@ -88,12 +111,9 @@ describe('getCastsByParent', () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(castAdd);
-    await expect(
-      client.getCastsByParent(
-        castAdd.body().parent()?.fidArray() ?? new Uint8Array(),
-        castAdd.body().parent()?.tsHashArray() ?? new Uint8Array()
-      )
-    ).resolves.toEqual([castAdd]);
+    const casts = await client.getCastsByParent(castAdd.body().parent() ?? new CastId());
+    // The underlying buffers are different, so we can't compare casts to [castAdd] directly
+    expect(casts._unsafeUnwrap().map((cast) => cast.hash())).toEqual([castAdd.hash()]);
   });
 });
 
@@ -103,9 +123,8 @@ describe('getCastsByMention', () => {
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(castAdd);
     for (let i = 0; i < castAdd.body().mentionsLength(); i++) {
-      await expect(
-        client.getCastsByMention(castAdd.body().mentions(i)?.fidArray() ?? new Uint8Array())
-      ).resolves.toEqual([castAdd]);
+      const casts = await client.getCastsByMention(castAdd.body().mentions(i) ?? new UserId());
+      expect(casts._unsafeUnwrap().map((cast) => cast.hash())).toEqual([castAdd.hash()]);
     }
   });
 });

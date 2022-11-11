@@ -6,4 +6,6 @@ export { GetCastRequest, GetCastRequestT } from './farcaster/get-cast-request';
 export { GetCastsByMentionRequest, GetCastsByMentionRequestT } from './farcaster/get-casts-by-mention-request';
 export { GetCastsByParentRequest, GetCastsByParentRequestT } from './farcaster/get-casts-by-parent-request';
 export { GetCastsByUserRequest, GetCastsByUserRequestT } from './farcaster/get-casts-by-user-request';
+export { Message, MessageT } from './farcaster/message';
+export { MessagesResponse, MessagesResponseT } from './farcaster/messages-response';
 export { UserId, UserIdT } from './farcaster/user-id';

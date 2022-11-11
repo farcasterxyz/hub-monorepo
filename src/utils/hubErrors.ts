@@ -49,7 +49,7 @@ export class HubError extends Error {
  *
  * TODO: Sub-divided into fine grained errors like "unauthorized.invalid_signature"
  */
-type HubErrorCode =
+export type HubErrorCode =
   /* The request did not have valid authentication credentials, retry with credentials  */
   | 'unauthenticated'
   /* The authenticated request did not have the authority to perform this action  */
@@ -71,3 +71,4 @@ type HubErrorCode =
 
 // TODO: move elsewhere
 export type HubResult<T> = Result<T, HubError>;
+export type HubAsyncResult<T> = Promise<HubResult<T>>;

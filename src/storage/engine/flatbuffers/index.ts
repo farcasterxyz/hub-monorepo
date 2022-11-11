@@ -1,7 +1,7 @@
-import { Result, ResultAsync } from 'neverthrow';
+import { err, errAsync, Result, ResultAsync } from 'neverthrow';
 import CastStore from '~/storage/sets/flatbuffers/castStore';
 import RocksDB from '~/storage/db/binaryrocksdb';
-import { BadRequestError, FarcasterError, NotFoundError, ValidationError } from '~/utils/errors';
+import { BadRequestError, FarcasterError, ValidationError } from '~/utils/errors';
 import SignerStore from '~/storage/sets/flatbuffers/signerStore';
 import FollowStore from '~/storage/sets/flatbuffers/followStore';
 import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
@@ -12,7 +12,16 @@ import { CastAddModel, UserPostfix } from '~/storage/flatbuffers/types';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { ContractEventType } from '~/utils/generated/contract_event_generated';
 import { isSignerAdd, isSignerRemove } from '~/storage/flatbuffers/typeguards';
-import { validateMessage } from '~/storage/flatbuffers/validations';
+import {
+  validateCastId,
+  ValidatedCastId,
+  ValidatedUserId,
+  validateFid,
+  validateMessage,
+  validateUserId,
+} from '~/storage/flatbuffers/validations';
+import { CastId, UserId } from '~/utils/generated/message_generated';
+import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 
 class Engine {
   private _castStore: CastStore;
@@ -33,30 +42,51 @@ class Engine {
     this._userDataStore = new UserDataStore(db);
   }
 
-  mergeMessages(messages: MessageModel[]): Array<Promise<void>> {
-    const results = messages.map((value) => {
-      return this.mergeMessage(value);
-    });
-    return results;
-  }
+  // mergeMessages(messages: MessageModel[]): Array<Promise<void>> {
+  //   const results = messages.map((value) => {
+  //     return this.mergeMessage(value);
+  //   });
+  //   return results;
+  // }
 
-  async mergeMessage(message: MessageModel): Promise<void> {
-    await this.validateMessage(message);
+  async mergeMessage(message: MessageModel): HubAsyncResult<void> {
+    const validatedMessage = await this.validateMessage(message);
+    if (validatedMessage.isErr()) {
+      return err(validatedMessage.error);
+    }
 
     if (message.setPostfix() === UserPostfix.CastMessage) {
-      return this._castStore.merge(message);
+      return ResultAsync.fromPromise(
+        this._castStore.merge(message),
+        (e) => new HubError('unknown', { cause: e as Error })
+      );
     } else if (message.setPostfix() === UserPostfix.FollowMessage) {
-      return this._followStore.merge(message);
+      return ResultAsync.fromPromise(
+        this._followStore.merge(message),
+        (e) => new HubError('unknown', { cause: e as Error })
+      );
     } else if (message.setPostfix() === UserPostfix.ReactionMessage) {
-      return this._reactionStore.merge(message);
+      return ResultAsync.fromPromise(
+        this._reactionStore.merge(message),
+        (e) => new HubError('unknown', { cause: e as Error })
+      );
     } else if (message.setPostfix() === UserPostfix.SignerMessage) {
-      return this._signerStore.merge(message);
+      return ResultAsync.fromPromise(
+        this._signerStore.merge(message),
+        (e) => new HubError('unknown', { cause: e as Error })
+      );
     } else if (message.setPostfix() === UserPostfix.VerificationMessage) {
-      return this._verificationStore.merge(message);
+      return ResultAsync.fromPromise(
+        this._verificationStore.merge(message),
+        (e) => new HubError('unknown', { cause: e as Error })
+      );
     } else if (message.setPostfix() === UserPostfix.UserDataMessage) {
-      return this._userDataStore.merge(message);
+      return ResultAsync.fromPromise(
+        this._userDataStore.merge(message),
+        (e) => new HubError('unknown', { cause: e as Error })
+      );
     } else {
-      throw new BadRequestError('invalid message type');
+      return err(new HubError('bad_request', 'invalid message type'));
     }
   }
 
@@ -75,34 +105,74 @@ class Engine {
   /*                             Cast Store Methods                             */
   /* -------------------------------------------------------------------------- */
 
-  async getCastsByUser(fid: Uint8Array): Promise<Result<CastAddModel[], FarcasterError>> {
-    return ResultAsync.fromPromise(this._castStore.getCastAddsByUser(fid), (e) => e as FarcasterError);
+  async getCastsByUser(user: UserId): HubAsyncResult<CastAddModel[]> {
+    return validateUserId(user).match(
+      (validatedUserId: ValidatedUserId) => {
+        return ResultAsync.fromPromise(
+          this._castStore.getCastAddsByUser(validatedUserId.fidArray()),
+          (e) => new HubError('unknown', { cause: e as Error })
+        );
+      },
+      (e) => {
+        return errAsync(e);
+      }
+    );
   }
 
-  async getCast(fid: Uint8Array, tsHash: Uint8Array): Promise<Result<CastAddModel, FarcasterError>> {
-    return ResultAsync.fromPromise(this._castStore.getCastAdd(fid, tsHash), (e) => e as FarcasterError);
+  async getCast(cast: CastId): HubAsyncResult<CastAddModel> {
+    return validateCastId(cast).match(
+      (validatedCastId: ValidatedCastId) => {
+        return ResultAsync.fromPromise(
+          this._castStore.getCastAdd(validatedCastId.fidArray(), validatedCastId.tsHashArray()),
+          (e) => new HubError('not_found', { cause: e as Error })
+        );
+      },
+      (e) => {
+        return errAsync(e);
+      }
+    );
   }
 
-  async getCastsByParent(fid: Uint8Array, tsHash: Uint8Array): Promise<Result<CastAddModel[], FarcasterError>> {
-    return ResultAsync.fromPromise(this._castStore.getCastsByParent(fid, tsHash), (e) => e as FarcasterError);
+  async getCastsByParent(parent: CastId): HubAsyncResult<CastAddModel[]> {
+    return validateCastId(parent).match(
+      (validatedParent: ValidatedCastId) => {
+        return ResultAsync.fromPromise(
+          this._castStore.getCastsByParent(validatedParent.fidArray(), validatedParent.tsHashArray()),
+          (e) => new HubError('unknown', { cause: e as Error })
+        );
+      },
+      (e) => {
+        return errAsync(e);
+      }
+    );
   }
 
-  async getCastsByMention(fid: Uint8Array): Promise<Result<CastAddModel[], FarcasterError>> {
-    return ResultAsync.fromPromise(this._castStore.getCastsByMention(fid), (e) => e as FarcasterError);
+  async getCastsByMention(user: UserId): HubAsyncResult<CastAddModel[]> {
+    return validateUserId(user).match(
+      (validatedUserId: ValidatedUserId) => {
+        return ResultAsync.fromPromise(
+          this._castStore.getCastsByMention(validatedUserId.fidArray()),
+          (e) => new HubError('unknown', { cause: e as Error })
+        );
+      },
+      (e) => {
+        return errAsync(e);
+      }
+    );
   }
 
   /* -------------------------------------------------------------------------- */
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async validateMessage(message: MessageModel): Promise<MessageModel> {
+  private async validateMessage(message: MessageModel): HubAsyncResult<MessageModel> {
     // 1. Check that the user has a custody address
     const custodyAddress = await ResultAsync.fromPromise(
       this._signerStore.getCustodyAddress(message.fid()),
       () => undefined
     );
     if (custodyAddress.isErr()) {
-      throw new ValidationError('unknown user');
+      return err(new HubError('bad_request.validation_failure', 'unknown user'));
     }
 
     // 2. Check that the signer is valid if message is not a signer message
@@ -112,7 +182,7 @@ class Engine {
         () => undefined
       );
       if (signerResult.isErr()) {
-        throw new ValidationError('invalid signer');
+        return err(new HubError('bad_request.validation_failure', 'invalid signer'));
       }
     }
 

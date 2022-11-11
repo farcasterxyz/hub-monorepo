@@ -1,22 +1,58 @@
 import grpc from '@grpc/grpc-js';
 import Engine from '~/storage/engine/flatbuffers';
 import { Message } from '~/utils/generated/message_generated';
-import { toByteBuffer } from '~/storage/flatbuffers/utils';
 import { castServiceAttrs, castServiceImpls, CastServiceRequest } from '~/network/rpc/flatbuffers/castService';
+import { MessagesResponse, MessagesResponseT } from '~/utils/generated/rpc_generated';
+import MessageModel from '~/storage/flatbuffers/messageModel';
+import { Builder, ByteBuffer } from 'flatbuffers';
+import { HubError, HubErrorCode } from '~/utils/hubErrors';
 
 type RpcRequest = CastServiceRequest;
+
+export const toServiceError = (err: HubError): grpc.ServiceError => {
+  let grpcCode: number;
+  if (
+    err.errCode === 'bad_request' ||
+    err.errCode === 'bad_request.parse_failure' ||
+    err.errCode === 'bad_request.validation_failure'
+  ) {
+    grpcCode = grpc.status.INVALID_ARGUMENT;
+  } else if (err.errCode === 'not_found') {
+    grpcCode = grpc.status.NOT_FOUND;
+  } else if (err.errCode === 'db_error') {
+    grpcCode = grpc.status.INTERNAL;
+  } else {
+    grpcCode = grpc.status.UNKNOWN;
+  }
+  const metadata = new grpc.Metadata();
+  metadata.set('errCode', err.errCode);
+  return Object.assign(err, {
+    code: grpcCode,
+    details: err.message,
+    metadata,
+  });
+};
+
+export const fromServiceError = (err: grpc.ServiceError): HubError => {
+  return new HubError(err.metadata.get('errCode')[0] as HubErrorCode, err.details);
+};
+
+export const toMessagesResponse = (messages: MessageModel[]): MessagesResponse => {
+  const messagesT = new MessagesResponseT(messages.map((model) => model.message.unpack()));
+  const builder = new Builder(1);
+  builder.finish(messagesT.pack(builder));
+  const response = MessagesResponse.getRootAsMessagesResponse(new ByteBuffer(builder.asUint8Array()));
+  return response;
+};
 
 export const defaultMethodDefinition = {
   requestStream: false,
   responseStream: false,
   requestSerialize: (request: RpcRequest): Buffer => {
-    return Buffer.from(request.bb?.bytes() ?? new Uint8Array().buffer);
+    return Buffer.from(request.bb?.bytes() ?? new Uint8Array());
   },
-  responseSerialize: (response: Message): Buffer => {
-    return Buffer.from((response.bb?.bytes() ?? new Uint8Array()).buffer);
-  },
-  responseDeserialize: (buffer: Buffer): Message => {
-    return Message.getRootAsMessage(toByteBuffer(buffer));
+  responseSerialize: (response: Message | MessagesResponse): Buffer => {
+    return Buffer.from(response.bb?.bytes() ?? new Uint8Array());
   },
 };
 
