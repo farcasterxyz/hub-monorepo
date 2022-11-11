@@ -74,7 +74,7 @@ class VerificationStore {
    * @param fid fid of the user who created the SignerAdd
    * @param address the address being verified
    *
-   * @returns the VerificationAddEthAddressModel if it exists, throws NotFoundError otherwise
+   * @returns the VerificationAddEthAddressModel if it exists, throws HubError otherwise
    */
   async getVerificationAdd(fid: Uint8Array, address: Uint8Array): Promise<VerificationAddEthAddressModel> {
     const messageTsHash = await this._db.get(VerificationStore.verificationAddsKey(fid, address));
@@ -91,7 +91,7 @@ class VerificationStore {
    *
    * @param fid fid of the user who created the SignerAdd
    * @param address the address being verified
-   * @returns the VerificationRemoveEthAddress if it exists, throws NotFoundError otherwise
+   * @returns the VerificationRemoveEthAddress if it exists, throws HubError otherwise
    */
   async getVerificationRemove(fid: Uint8Array, address: Uint8Array): Promise<VerificationRemoveModel> {
     const messageTsHash = await this._db.get(VerificationStore.verificationRemovesKey(fid, address));
@@ -102,7 +102,7 @@ class VerificationStore {
    * Finds all VerificationAdds messages for a user
    *
    * @param fid fid of the user who created the signers
-   * @returns the VerificationAddEthAddresses if they exists, throws NotFoundError otherwise
+   * @returns the VerificationAddEthAddresses if they exists, throws HubError otherwise
    */
   async getVerificationAddsByUser(fid: Uint8Array): Promise<VerificationAddEthAddressModel[]> {
     const addsPrefix = VerificationStore.verificationAddsKey(fid);
@@ -122,7 +122,7 @@ class VerificationStore {
    * Finds all VerificationRemoves messages for a user
    *
    * @param fid fid of the user who created the signers
-   * @returns the VerificationRemoves messages if it exists, throws NotFoundError otherwise
+   * @returns the VerificationRemoves messages if it exists, throws HubError otherwise
    */
   async getVerificationRemovesByUser(fid: Uint8Array): Promise<VerificationRemoveModel[]> {
     const removesPrefix = VerificationStore.verificationRemovesKey(fid);

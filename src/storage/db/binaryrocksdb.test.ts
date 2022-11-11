@@ -1,8 +1,9 @@
 import { faker } from '@faker-js/faker';
-import { NotFoundError, RocksDBError } from '~/utils/errors';
+import { RocksDBError } from '~/utils/errors';
 import RocksDB from '~/storage/db/binaryrocksdb';
 import { jestBinaryRocksDB } from './jestUtils';
 import { existsSync, mkdirSync, rmdirSync } from 'fs';
+import { HubError } from '~/utils/hubErrors';
 
 const randomDbName = () => `rocksdb.test.${faker.name.lastName().toLowerCase()}.${faker.random.alphaNumeric(8)}`;
 
@@ -77,7 +78,7 @@ describe('clear', () => {
     const value = await db.get(Buffer.from('key'));
     expect(value).toEqual(Buffer.from('value'));
     await expect(db.clear()).resolves.toEqual(undefined);
-    await expect(db.get(Buffer.from('key'))).rejects.toThrow(NotFoundError);
+    await expect(db.get(Buffer.from('key'))).rejects.toThrow(HubError);
     await db.destroy();
   });
 });
@@ -104,7 +105,7 @@ describe('with db', () => {
     });
 
     test('fails if not found', async () => {
-      await expect(db.get(Buffer.from('foo'))).rejects.toThrow(NotFoundError);
+      await expect(db.get(Buffer.from('foo'))).rejects.toThrow(HubError);
     });
   });
 
@@ -142,7 +143,7 @@ describe('with db', () => {
       await db.put(Buffer.from('foo'), Buffer.from('bar'));
       await expect(db.get(Buffer.from('foo'))).resolves.toEqual(Buffer.from('bar'));
       await expect(db.del(Buffer.from('foo'))).resolves.toEqual(undefined);
-      await expect(db.get(Buffer.from('foo'))).rejects.toThrow(NotFoundError);
+      await expect(db.get(Buffer.from('foo'))).rejects.toThrow(HubError);
     });
   });
 

@@ -1,7 +1,6 @@
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { NotFoundError } from '~/utils/errors';
 import { UserPostfix, VerificationAddEthAddressModel, VerificationRemoveModel } from '~/storage/flatbuffers/types';
 import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
 import { EthereumSigner } from '~/types';
@@ -46,7 +45,7 @@ beforeAll(async () => {
 
 describe('getVerificationAdd', () => {
   test('fails if missing', async () => {
-    await expect(set.getVerificationAdd(fid, address)).rejects.toThrow(NotFoundError);
+    await expect(set.getVerificationAdd(fid, address)).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
@@ -57,7 +56,7 @@ describe('getVerificationAdd', () => {
 
 describe('getVerificationRemove', () => {
   test('fails if missing', async () => {
-    await expect(set.getVerificationRemove(fid, address)).rejects.toThrow(NotFoundError);
+    await expect(set.getVerificationRemove(fid, address)).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
@@ -97,20 +96,20 @@ describe('merge', () => {
 
   const assertVerificationDoesNotExist = async (message: VerificationAddEthAddressModel | VerificationRemoveModel) => {
     await expect(MessageModel.get(db, fid, UserPostfix.VerificationMessage, message.tsHash())).rejects.toThrow(
-      NotFoundError
+      HubError
     );
   };
 
   const assertVerificationAddWins = async (message: VerificationAddEthAddressModel) => {
     await assertVerificationExists(message);
     await expect(set.getVerificationAdd(fid, address)).resolves.toEqual(message);
-    await expect(set.getVerificationRemove(fid, address)).rejects.toThrow(NotFoundError);
+    await expect(set.getVerificationRemove(fid, address)).rejects.toThrow(HubError);
   };
 
   const assertVerificationRemoveWins = async (message: VerificationRemoveModel) => {
     await assertVerificationExists(message);
     await expect(set.getVerificationRemove(fid, address)).resolves.toEqual(message);
-    await expect(set.getVerificationAdd(fid, address)).rejects.toThrow(NotFoundError);
+    await expect(set.getVerificationAdd(fid, address)).rejects.toThrow(HubError);
   };
 
   test('fails with invalid message type', async () => {

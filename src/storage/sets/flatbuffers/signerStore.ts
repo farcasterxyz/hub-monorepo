@@ -100,7 +100,7 @@ class SignerStore {
    * @param fid fid of the user who created the SignerAdd
    * @param signerPubKey the EdDSA public key of the signer
    * @param custodyAddress the Ethereum address that currently owns the Farcaster ID (default: current custody address)
-   * @returns the SignerAdd Model if it exists, throws NotFoundError otherwise
+   * @returns the SignerAdd Model if it exists, throws Error otherwise
    */
   async getSignerAdd(fid: Uint8Array, signerPubKey: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerAddModel> {
     if (!custodyAddress) {
@@ -117,7 +117,7 @@ class SignerStore {
    * @param fid fid of the user who created the SignerRemove
    * @param signer the EdDSA public key of the signer
    * @param custodyAddress the Ethereum address that currently owns the Farcaster ID (default: current custody address)
-   * @returns the SignerRemove message if it exists, throws NotFoundError otherwise
+   * @returns the SignerRemove message if it exists, throws HubError otherwise
    */
   async getSignerRemove(fid: Uint8Array, signer: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerRemoveModel> {
     if (!custodyAddress) {
@@ -135,7 +135,7 @@ class SignerStore {
    *
    * @param fid fid of the user who created the signers
    * @param custodyAddress the Ethereum address that currently owns the fid (default: current custody address)
-   * @returns the SignerRemove messages if it exists, throws NotFoundError otherwise
+   * @returns the SignerRemove messages if it exists, throws HubError otherwise
    */
   async getSignerAddsByUser(fid: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerAddModel[]> {
     if (!custodyAddress) {
@@ -154,7 +154,7 @@ class SignerStore {
    *
    * @param fid fid of the user who created the signers
    * @param custodyAddress the Ethereum address that currently owns the fid (default: current custody address)
-   * @returns the SignerRemove message if it exists, throws NotFoundError otherwise
+   * @returns the SignerRemove message if it exists, throws HubError otherwise
    */
   async getSignerRemovesByUser(fid: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerRemoveModel[]> {
     if (!custodyAddress) {

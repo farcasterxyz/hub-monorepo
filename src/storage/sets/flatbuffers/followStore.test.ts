@@ -1,7 +1,6 @@
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { NotFoundError } from '~/utils/errors';
 import { FollowAddModel, FollowRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
 import FollowStore from '~/storage/sets/flatbuffers/followStore';
 import { HubError } from '~/utils/hubErrors';
@@ -34,17 +33,17 @@ beforeAll(async () => {
 
 describe('getFollowAdd', () => {
   test('fails if missing', async () => {
-    await expect(store.getFollowAdd(fid, userId)).rejects.toThrow(NotFoundError);
+    await expect(store.getFollowAdd(fid, userId)).rejects.toThrow(HubError);
   });
 
   test('fails if incorrect values are passed in', async () => {
     await store.merge(followAdd);
 
     const invalidFid = Factories.FID.build();
-    await expect(store.getFollowAdd(invalidFid, userId)).rejects.toThrow(NotFoundError);
+    await expect(store.getFollowAdd(invalidFid, userId)).rejects.toThrow(HubError);
 
     const invalidUserId = Factories.FID.build();
-    await expect(store.getFollowAdd(fid, invalidUserId)).rejects.toThrow(NotFoundError);
+    await expect(store.getFollowAdd(fid, invalidUserId)).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
@@ -55,17 +54,17 @@ describe('getFollowAdd', () => {
 
 describe('getFollowRemove', () => {
   test('fails if missing', async () => {
-    await expect(store.getFollowRemove(fid, userId)).rejects.toThrow(NotFoundError);
+    await expect(store.getFollowRemove(fid, userId)).rejects.toThrow(HubError);
   });
 
   test('fails if incorrect values are passed in', async () => {
     await store.merge(followAdd);
 
     const invalidFid = Factories.FID.build();
-    await expect(store.getFollowRemove(invalidFid, userId)).rejects.toThrow(NotFoundError);
+    await expect(store.getFollowRemove(invalidFid, userId)).rejects.toThrow(HubError);
 
     const invalidUserId = Factories.FID.build();
-    await expect(store.getFollowRemove(fid, invalidUserId)).rejects.toThrow(NotFoundError);
+    await expect(store.getFollowRemove(fid, invalidUserId)).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
@@ -144,21 +143,21 @@ describe('merge', () => {
   };
 
   const assertFollowDoesNotExist = async (message: FollowAddModel | FollowRemoveModel) => {
-    await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, message.tsHash())).rejects.toThrow(NotFoundError);
+    await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, message.tsHash())).rejects.toThrow(HubError);
   };
 
   const assertFollowAddWins = async (message: FollowAddModel) => {
     await assertFollowExists(message);
     await expect(store.getFollowAdd(fid, userId)).resolves.toEqual(message);
     await expect(store.getFollowsByTargetUser(userId)).resolves.toEqual([message]);
-    await expect(store.getFollowRemove(fid, userId)).rejects.toThrow(NotFoundError);
+    await expect(store.getFollowRemove(fid, userId)).rejects.toThrow(HubError);
   };
 
   const assertFollowRemoveWins = async (message: FollowRemoveModel) => {
     await assertFollowExists(message);
     await expect(store.getFollowRemove(fid, userId)).resolves.toEqual(message);
     await expect(store.getFollowsByTargetUser(userId)).resolves.toEqual([]);
-    await expect(store.getFollowAdd(fid, userId)).rejects.toThrow(NotFoundError);
+    await expect(store.getFollowAdd(fid, userId)).rejects.toThrow(HubError);
   };
 
   test('fails with invalid message type', async () => {

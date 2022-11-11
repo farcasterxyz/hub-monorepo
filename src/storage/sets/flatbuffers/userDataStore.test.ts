@@ -1,7 +1,6 @@
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { NotFoundError } from '~/utils/errors';
 import { UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
 import { UserDataType } from '~/utils/generated/message_generated';
 import UserDataSet from '~/storage/sets/flatbuffers/userDataStore';
@@ -44,7 +43,7 @@ beforeAll(async () => {
 
 describe('getUserDataAdd', () => {
   test('fails if missing', async () => {
-    await expect(set.getUserDataAdd(fid, UserDataType.Pfp)).rejects.toThrow(NotFoundError);
+    await expect(set.getUserDataAdd(fid, UserDataType.Pfp)).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
@@ -102,18 +101,14 @@ describe('merge', () => {
         await set.merge(addPfp);
         await expect(set.merge(changePfp)).resolves.toEqual(undefined);
         await expect(set.getUserDataAdd(fid, UserDataType.Pfp)).resolves.toEqual(changePfp);
-        await expect(MessageModel.get(db, fid, UserPostfix.UserDataMessage, addPfp.tsHash())).rejects.toThrow(
-          NotFoundError
-        );
+        await expect(MessageModel.get(db, fid, UserPostfix.UserDataMessage, addPfp.tsHash())).rejects.toThrow(HubError);
       });
 
       test('no-ops with an earlier timestamp', async () => {
         await set.merge(changePfp);
         await expect(set.merge(addPfp)).resolves.toEqual(undefined);
         await expect(set.getUserDataAdd(fid, UserDataType.Pfp)).resolves.toEqual(changePfp);
-        await expect(MessageModel.get(db, fid, UserPostfix.UserDataMessage, addPfp.tsHash())).rejects.toThrow(
-          NotFoundError
-        );
+        await expect(MessageModel.get(db, fid, UserPostfix.UserDataMessage, addPfp.tsHash())).rejects.toThrow(HubError);
       });
     });
   });
