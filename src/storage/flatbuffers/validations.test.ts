@@ -1,6 +1,5 @@
 import { Wallet, utils } from 'ethers';
 import { generateEd25519KeyPair } from '~/utils/crypto';
-import { ValidationError } from '~/utils/errors';
 import {
   ALLOWED_CLOCK_SKEW_SECONDS,
   validateCastAddMessage,

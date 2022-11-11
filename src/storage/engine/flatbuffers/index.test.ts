@@ -15,7 +15,6 @@ import { KeyPair } from '~/types';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import { Wallet, utils } from 'ethers';
-import { ValidationError } from '~/utils/errors';
 import SignerStore from '~/storage/sets/flatbuffers/signerStore';
 import FollowStore from '~/storage/sets/flatbuffers/followStore';
 import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';

@@ -1,7 +1,7 @@
-import { err, errAsync, Result, ResultAsync } from 'neverthrow';
+import { err, errAsync, ResultAsync } from 'neverthrow';
 import CastStore from '~/storage/sets/flatbuffers/castStore';
 import RocksDB from '~/storage/db/binaryrocksdb';
-import { BadRequestError, FarcasterError, ValidationError } from '~/utils/errors';
+import { BadRequestError } from '~/utils/errors';
 import SignerStore from '~/storage/sets/flatbuffers/signerStore';
 import FollowStore from '~/storage/sets/flatbuffers/followStore';
 import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
@@ -16,7 +16,6 @@ import {
   validateCastId,
   ValidatedCastId,
   ValidatedUserId,
-  validateFid,
   validateMessage,
   validateUserId,
 } from '~/storage/flatbuffers/validations';
@@ -42,12 +41,7 @@ class Engine {
     this._userDataStore = new UserDataStore(db);
   }
 
-  // mergeMessages(messages: MessageModel[]): Array<Promise<void>> {
-  //   const results = messages.map((value) => {
-  //     return this.mergeMessage(value);
-  //   });
-  //   return results;
-  // }
+  // TODO: add mergeMessages
 
   async mergeMessage(message: MessageModel): HubAsyncResult<void> {
     const validatedMessage = await this.validateMessage(message);
