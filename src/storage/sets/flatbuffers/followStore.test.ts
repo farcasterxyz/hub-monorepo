@@ -1,12 +1,15 @@
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { BadRequestError, NotFoundError } from '~/utils/errors';
+import { NotFoundError } from '~/utils/errors';
 import { FollowAddModel, FollowRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
 import FollowStore from '~/storage/sets/flatbuffers/followStore';
+import { HubError } from '~/utils/hubErrors';
+import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
+import { MessageType } from '~/utils/generated/message_generated';
 
-const db = jestBinaryRocksDB('flatbuffers.followSet.test');
-const set = new FollowStore(db);
+const db = jestBinaryRocksDB('flatbuffers.followStore.test');
+const store = new FollowStore(db);
 const fid = Factories.FID.build();
 
 const userId = Factories.FID.build();
@@ -16,120 +19,324 @@ let followRemove: FollowRemoveModel;
 beforeAll(async () => {
   const followBody = Factories.FollowBody.build({ user: Factories.UserId.build({ fid: Array.from(userId) }) });
 
-  const followAddData = await Factories.FollowAddData.create({ fid: Array.from(fid), body: followBody });
-  const followAddMessage = await Factories.Message.create({ data: Array.from(followAddData.bb?.bytes() ?? []) });
-  followAdd = new MessageModel(followAddMessage) as FollowAddModel;
+  const addData = await Factories.FollowAddData.create({ fid: Array.from(fid), body: followBody });
+  const addMessage = await Factories.Message.create({ data: Array.from(addData.bb?.bytes() ?? []) });
+  followAdd = new MessageModel(addMessage) as FollowAddModel;
 
-  const followRemoveData = await Factories.FollowRemoveData.create({
+  const removeData = await Factories.FollowRemoveData.create({
     fid: Array.from(fid),
     body: followBody,
-    timestamp: followAddData.timestamp() + 1,
+    timestamp: addData.timestamp() + 1,
   });
-  const followRemoveMessage = await Factories.Message.create({ data: Array.from(followRemoveData.bb?.bytes() ?? []) });
-  followRemove = new MessageModel(followRemoveMessage) as FollowRemoveModel;
+  const removeMessage = await Factories.Message.create({ data: Array.from(removeData.bb?.bytes() ?? []) });
+  followRemove = new MessageModel(removeMessage) as FollowRemoveModel;
 });
 
 describe('getFollowAdd', () => {
   test('fails if missing', async () => {
-    await expect(set.getFollowAdd(fid, userId)).rejects.toThrow(NotFoundError);
+    await expect(store.getFollowAdd(fid, userId)).rejects.toThrow(NotFoundError);
+  });
+
+  test('fails if incorrect values are passed in', async () => {
+    await store.merge(followAdd);
+
+    const invalidFid = Factories.FID.build();
+    await expect(store.getFollowAdd(invalidFid, userId)).rejects.toThrow(NotFoundError);
+
+    const invalidUserId = Factories.FID.build();
+    await expect(store.getFollowAdd(fid, invalidUserId)).rejects.toThrow(NotFoundError);
   });
 
   test('returns message', async () => {
-    await set.merge(followAdd);
-    await expect(set.getFollowAdd(fid, userId)).resolves.toEqual(followAdd);
+    await store.merge(followAdd);
+    await expect(store.getFollowAdd(fid, userId)).resolves.toEqual(followAdd);
   });
 });
 
 describe('getFollowRemove', () => {
   test('fails if missing', async () => {
-    await expect(set.getFollowRemove(fid, userId)).rejects.toThrow(NotFoundError);
+    await expect(store.getFollowRemove(fid, userId)).rejects.toThrow(NotFoundError);
+  });
+
+  test('fails if incorrect values are passed in', async () => {
+    await store.merge(followAdd);
+
+    const invalidFid = Factories.FID.build();
+    await expect(store.getFollowRemove(invalidFid, userId)).rejects.toThrow(NotFoundError);
+
+    const invalidUserId = Factories.FID.build();
+    await expect(store.getFollowRemove(fid, invalidUserId)).rejects.toThrow(NotFoundError);
   });
 
   test('returns message', async () => {
-    await set.merge(followRemove);
-    await expect(set.getFollowRemove(fid, userId)).resolves.toEqual(followRemove);
+    await store.merge(followRemove);
+    await expect(store.getFollowRemove(fid, userId)).resolves.toEqual(followRemove);
   });
 });
 
 describe('getFollowAddsByUser', () => {
   test('returns follow adds for an fid', async () => {
-    await set.merge(followAdd);
-    await expect(set.getFollowAddsByUser(fid)).resolves.toEqual([followAdd]);
+    await store.merge(followAdd);
+    await expect(store.getFollowAddsByUser(fid)).resolves.toEqual([followAdd]);
+  });
+
+  test('returns empty array for wrong fid', async () => {
+    await store.merge(followAdd);
+    const invalidFid = Factories.FID.build();
+    await expect(store.getFollowAddsByUser(invalidFid)).resolves.toEqual([]);
   });
 
   test('returns empty array without messages', async () => {
-    await expect(set.getFollowAddsByUser(fid)).resolves.toEqual([]);
+    await expect(store.getFollowAddsByUser(fid)).resolves.toEqual([]);
   });
 });
 
 describe('getFollowRemovesByUser', () => {
   test('returns follow removes for an fid', async () => {
-    await set.merge(followRemove);
-    await expect(set.getFollowRemovesByUser(fid)).resolves.toEqual([followRemove]);
+    await store.merge(followRemove);
+    await expect(store.getFollowRemovesByUser(fid)).resolves.toEqual([followRemove]);
+  });
+
+  test('returns empty array for wrong fid', async () => {
+    await store.merge(followAdd);
+    const invalidFid = Factories.FID.build();
+    await expect(store.getFollowRemovesByUser(invalidFid)).resolves.toEqual([]);
   });
 
   test('returns empty array without messages', async () => {
-    await expect(set.getFollowRemovesByUser(fid)).resolves.toEqual([]);
+    await expect(store.getFollowRemovesByUser(fid)).resolves.toEqual([]);
   });
 });
 
-describe('getFollowsByUser', () => {
-  test('returns follows for a user', async () => {
-    const sameUserData = await Factories.FollowAddData.create({
+describe('getFollowsByTargetUser', () => {
+  test('returns empty array if no follows exist', async () => {
+    const byTargetUser = await store.getFollowsByTargetUser(fid);
+    expect(byTargetUser).toEqual([]);
+  });
+
+  test('returns empty array if follows exist, but for a different user', async () => {
+    await store.merge(followAdd);
+    const invalidFid = Factories.FID.build();
+    const byTargetUser = await store.getFollowsByTargetUser(invalidFid);
+    expect(byTargetUser).toEqual([]);
+  });
+
+  test('returns follows if they exist for the target user', async () => {
+    const addData = await Factories.FollowAddData.create({
       body: followAdd.body().unpack() || null,
     });
-    const sameUserMessage = await Factories.Message.create({
-      data: Array.from(sameUserData.bb?.bytes() ?? []),
+    const addMessage = await Factories.Message.create({
+      data: Array.from(addData.bb?.bytes() ?? []),
     });
-    const sameUser = new MessageModel(sameUserMessage) as FollowAddModel;
+    const followAdd2 = new MessageModel(addMessage) as FollowAddModel;
 
-    await set.merge(followAdd);
-    await set.merge(sameUser);
+    await store.merge(followAdd);
+    await store.merge(followAdd2);
 
-    const byUser = await set.getFollowsByUser(userId);
-    expect(new Set(byUser)).toEqual(new Set([followAdd, sameUser]));
+    const byUser = await store.getFollowsByTargetUser(userId);
+    expect(new Set(byUser)).toEqual(new Set([followAdd, followAdd2]));
   });
 });
 
 describe('merge', () => {
+  const assertFollowExists = async (message: FollowAddModel | FollowRemoveModel) => {
+    await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, message.tsHash())).resolves.toEqual(message);
+  };
+
+  const assertFollowDoesNotExist = async (message: FollowAddModel | FollowRemoveModel) => {
+    await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, message.tsHash())).rejects.toThrow(NotFoundError);
+  };
+
+  const assertFollowAddWins = async (message: FollowAddModel) => {
+    await assertFollowExists(message);
+    await expect(store.getFollowAdd(fid, userId)).resolves.toEqual(message);
+    await expect(store.getFollowsByTargetUser(userId)).resolves.toEqual([message]);
+    await expect(store.getFollowRemove(fid, userId)).rejects.toThrow(NotFoundError);
+  };
+
+  const assertFollowRemoveWins = async (message: FollowRemoveModel) => {
+    await assertFollowExists(message);
+    await expect(store.getFollowRemove(fid, userId)).resolves.toEqual(message);
+    await expect(store.getFollowsByTargetUser(userId)).resolves.toEqual([]);
+    await expect(store.getFollowAdd(fid, userId)).rejects.toThrow(NotFoundError);
+  };
+
   test('fails with invalid message type', async () => {
     const invalidData = await Factories.ReactionAddData.create({ fid: Array.from(fid) });
     const message = await Factories.Message.create({ data: Array.from(invalidData.bb?.bytes() ?? []) });
-    await expect(set.merge(new MessageModel(message))).rejects.toThrow(BadRequestError);
+    await expect(store.merge(new MessageModel(message))).rejects.toThrow(HubError);
+  });
+
+  describe('FollowAdd', () => {
+    test('succeeds', async () => {
+      await expect(store.merge(followAdd)).resolves.toEqual(undefined);
+      await assertFollowAddWins(followAdd);
+    });
+
+    test('succeeds once, even if merged twice', async () => {
+      await expect(store.merge(followAdd)).resolves.toEqual(undefined);
+      await expect(store.merge(followAdd)).resolves.toEqual(undefined);
+
+      await assertFollowAddWins(followAdd);
+    });
+
+    describe('with a conflicting FollowAdd with different timestamps', () => {
+      let followAddLater: FollowAddModel;
+
+      beforeAll(async () => {
+        const addData = await Factories.FollowAddData.create({
+          ...followAdd.data.unpack(),
+          timestamp: followAdd.timestamp() + 1,
+        });
+        const addMessage = await Factories.Message.create({
+          data: Array.from(addData.bb?.bytes() ?? []),
+        });
+        followAddLater = new MessageModel(addMessage) as FollowAddModel;
+      });
+
+      test('succeeds with a later timestamp', async () => {
+        await store.merge(followAdd);
+        await expect(store.merge(followAddLater)).resolves.toEqual(undefined);
+
+        await assertFollowDoesNotExist(followAdd);
+        await assertFollowAddWins(followAddLater);
+      });
+
+      test('no-ops with an earlier timestamp', async () => {
+        await store.merge(followAddLater);
+        await expect(store.merge(followAdd)).resolves.toEqual(undefined);
+
+        await assertFollowDoesNotExist(followAdd);
+        await assertFollowAddWins(followAddLater);
+      });
+    });
+
+    describe('with a conflicting FollowAdd with identical timestamps', () => {
+      let followAddLater: FollowAddModel;
+
+      beforeAll(async () => {
+        const addData = await Factories.FollowAddData.create({
+          ...followAdd.data.unpack(),
+        });
+
+        const addMessage = await Factories.Message.create({
+          data: Array.from(addData.bb?.bytes() ?? []),
+          hash: Array.from(bytesIncrement(followAdd.hash().slice())),
+        });
+
+        followAddLater = new MessageModel(addMessage) as FollowAddModel;
+      });
+
+      test('succeeds with a later hash', async () => {
+        await store.merge(followAdd);
+        await expect(store.merge(followAddLater)).resolves.toEqual(undefined);
+
+        await assertFollowDoesNotExist(followAdd);
+        await assertFollowAddWins(followAddLater);
+      });
+
+      test('no-ops with an earlier hash', async () => {
+        await store.merge(followAddLater);
+        await expect(store.merge(followAdd)).resolves.toEqual(undefined);
+
+        await assertFollowDoesNotExist(followAdd);
+        await assertFollowAddWins(followAddLater);
+      });
+    });
+
+    describe('with conflicting FollowRemove with different timestamps', () => {
+      test('succeeds with a later timestamp', async () => {
+        const removeData = await Factories.FollowRemoveData.create({
+          ...followRemove.data.unpack(),
+          timestamp: followAdd.timestamp() - 1,
+        });
+
+        const removeMessage = await Factories.Message.create({
+          data: Array.from(removeData.bb?.bytes() ?? []),
+        });
+
+        const followRemoveEarlier = new MessageModel(removeMessage) as FollowRemoveModel;
+
+        await store.merge(followRemoveEarlier);
+        await expect(store.merge(followAdd)).resolves.toEqual(undefined);
+
+        await assertFollowAddWins(followAdd);
+        await assertFollowDoesNotExist(followRemoveEarlier);
+      });
+
+      test('no-ops with an earlier timestamp', async () => {
+        await store.merge(followRemove);
+        await expect(store.merge(followAdd)).resolves.toEqual(undefined);
+
+        await assertFollowRemoveWins(followRemove);
+        await assertFollowDoesNotExist(followAdd);
+      });
+    });
+
+    describe('with conflicting FollowRemove with identical timestamps', () => {
+      test('no-ops if remove has a later hash', async () => {
+        const removeData = await Factories.FollowRemoveData.create({
+          ...followRemove.data.unpack(),
+          timestamp: followAdd.timestamp(),
+        });
+
+        const removeMessage = await Factories.Message.create({
+          data: Array.from(removeData.bb?.bytes() ?? []),
+          hash: Array.from(bytesIncrement(followAdd.hash().slice())),
+        });
+
+        const followRemoveLater = new MessageModel(removeMessage) as FollowRemoveModel;
+
+        await store.merge(followRemoveLater);
+        await expect(store.merge(followAdd)).resolves.toEqual(undefined);
+
+        await assertFollowRemoveWins(followRemoveLater);
+        await assertFollowDoesNotExist(followAdd);
+      });
+
+      test('succeeds if remove has an earlier hash', async () => {
+        const removeData = await Factories.FollowRemoveData.create({
+          ...followRemove.data.unpack(),
+          timestamp: followAdd.timestamp(),
+        });
+
+        const removeMessage = await Factories.Message.create({
+          data: Array.from(removeData.bb?.bytes() ?? []),
+
+          // TODO: this slice doesn't seem necessary, and its also in reactions
+          // TODO: rename set to store in reactions, signer and other places
+          hash: Array.from(bytesDecrement(followAdd.hash().slice())),
+        });
+
+        const followRemoveEarlier = new MessageModel(removeMessage) as FollowRemoveModel;
+
+        await store.merge(followRemoveEarlier);
+        await expect(store.merge(followAdd)).resolves.toEqual(undefined);
+
+        await assertFollowDoesNotExist(followAdd);
+        await assertFollowRemoveWins(followRemoveEarlier);
+      });
+    });
   });
 
   describe('FollowRemove', () => {
-    describe('succeeds', () => {
-      beforeEach(async () => {
-        await set.merge(followAdd);
-        await expect(set.merge(followRemove)).resolves.toEqual(undefined);
-      });
+    test('succeeds', async () => {
+      await expect(store.merge(followRemove)).resolves.toEqual(undefined);
 
-      test('saves message', async () => {
-        await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, followRemove.tsHash())).resolves.toEqual(
-          followRemove
-        );
-      });
+      await assertFollowRemoveWins(followRemove);
+    });
 
-      test('saves followRemoves index', async () => {
-        await expect(set.getFollowRemove(fid, userId)).resolves.toEqual(followRemove);
-      });
+    test('succeeds once, even if merged twice', async () => {
+      await expect(store.merge(followRemove)).resolves.toEqual(undefined);
+      await expect(store.merge(followRemove)).resolves.toEqual(undefined);
 
-      test('deletes FollowAdd message', async () => {
-        await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, followAdd.tsHash())).rejects.toThrow(
-          NotFoundError
-        );
-      });
+      await assertFollowRemoveWins(followRemove);
+    });
 
-      test('deletes followAdds index', async () => {
-        await expect(set.getFollowAdd(fid, userId)).rejects.toThrow(NotFoundError);
-      });
+    describe('with a conflicting FollowRemove with different timestamps', () => {
+      let followRemoveLater: FollowRemoveModel;
 
-      test('deletes followsByUser index', async () => {
-        await expect(set.getFollowsByUser(userId)).resolves.toEqual([]);
-      });
-
-      test('overwrites earlier FollowRemove', async () => {
+      beforeAll(async () => {
         const followRemoveData = await Factories.FollowRemoveData.create({
           ...followRemove.data.unpack(),
           timestamp: followRemove.timestamp() + 1,
@@ -137,128 +344,121 @@ describe('merge', () => {
         const followRemoveMessage = await Factories.Message.create({
           data: Array.from(followRemoveData.bb?.bytes() ?? []),
         });
-        const followRemoveLater = new MessageModel(followRemoveMessage) as FollowRemoveModel;
-
-        await expect(set.merge(followRemoveLater)).resolves.toEqual(undefined);
-        await expect(set.getFollowRemove(fid, userId)).resolves.toEqual(followRemoveLater);
-        await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, followRemove.tsHash())).rejects.toThrow(
-          NotFoundError
-        );
+        followRemoveLater = new MessageModel(followRemoveMessage) as FollowRemoveModel;
       });
 
-      test('no-ops when later FollowRemove exists', async () => {
-        const followRemoveData = await Factories.FollowRemoveData.create({
-          ...followRemove.data.unpack(),
-          timestamp: followRemove.timestamp() - 1,
-        });
-        const followRemoveMessage = await Factories.Message.create({
-          data: Array.from(followRemoveData.bb?.bytes() ?? []),
-        });
-        const followRemoveEarlier = new MessageModel(followRemoveMessage) as FollowRemoveModel;
-        await expect(set.merge(followRemoveEarlier)).resolves.toEqual(undefined);
-        await expect(set.getFollowRemove(fid, userId)).resolves.toEqual(followRemove);
+      test('succeeds with a later timestamp', async () => {
+        await store.merge(followRemove);
+        await expect(store.merge(followRemoveLater)).resolves.toEqual(undefined);
+
+        await assertFollowDoesNotExist(followRemove);
+        await assertFollowRemoveWins(followRemoveLater);
       });
 
-      test('no-ops when merged twice', async () => {
-        await expect(set.merge(followRemove)).resolves.toEqual(undefined);
-        await expect(set.getFollowRemove(fid, userId)).resolves.toEqual(followRemove);
+      test('no-ops with an earlier timestamp', async () => {
+        await store.merge(followRemoveLater);
+        await expect(store.merge(followRemove)).resolves.toEqual(undefined);
+
+        await assertFollowDoesNotExist(followRemove);
+        await assertFollowRemoveWins(followRemoveLater);
       });
     });
 
-    test('succeeds when FollowAdd does not exist', async () => {
-      await expect(set.merge(followRemove)).resolves.toEqual(undefined);
-      await expect(set.getFollowRemove(fid, userId)).resolves.toEqual(followRemove);
-      await expect(set.getFollowAdd(fid, userId)).rejects.toThrow(NotFoundError);
-    });
-  });
-
-  describe('FollowAdd', () => {
-    describe('succeeds', () => {
-      beforeEach(async () => {
-        await expect(set.merge(followAdd)).resolves.toEqual(undefined);
-      });
-
-      test('saves message', async () => {
-        await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, followAdd.tsHash())).resolves.toEqual(
-          followAdd
-        );
-      });
-
-      test('saves followAdds index', async () => {
-        await expect(set.getFollowAdd(fid, userId)).resolves.toEqual(followAdd);
-      });
-
-      test('saves followsByUser index', async () => {
-        await expect(set.getFollowsByUser(userId)).resolves.toEqual([followAdd]);
-      });
-
-      test('no-ops when merged twice', async () => {
-        await expect(set.merge(followAdd)).resolves.toEqual(undefined);
-        await expect(set.getFollowAdd(fid, userId)).resolves.toEqual(followAdd);
-      });
-    });
-
-    describe('with conflicting FollowAdd', () => {
-      let followAddLater: FollowAddModel;
+    describe('with a conflicting FollowRemove with identical timestamps', () => {
+      let followRemoveLater: FollowRemoveModel;
 
       beforeAll(async () => {
-        const followAddData = await Factories.FollowAddData.create({
-          ...followAdd.data.unpack(),
-          timestamp: followAdd.timestamp() + 1,
+        const followRemoveData = await Factories.FollowRemoveData.create({
+          ...followRemove.data.unpack(),
         });
-        const followAddMessage = await Factories.Message.create({
-          data: Array.from(followAddData.bb?.bytes() ?? []),
+
+        const addMessage = await Factories.Message.create({
+          data: Array.from(followRemoveData.bb?.bytes() ?? []),
+          hash: Array.from(bytesIncrement(followRemove.hash().slice())),
         });
-        followAddLater = new MessageModel(followAddMessage) as FollowAddModel;
+
+        followRemoveLater = new MessageModel(addMessage) as FollowRemoveModel;
       });
 
-      test('succeeds with a later timestamp', async () => {
-        await set.merge(followAdd);
-        await expect(set.merge(followAddLater)).resolves.toEqual(undefined);
-        await expect(set.getFollowAdd(fid, userId)).resolves.toEqual(followAddLater);
-        await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, followAdd.tsHash())).rejects.toThrow(
-          NotFoundError
-        );
+      test('succeeds with a later hash', async () => {
+        await store.merge(followRemove);
+        await expect(store.merge(followRemoveLater)).resolves.toEqual(undefined);
+
+        await assertFollowDoesNotExist(followRemove);
+        await assertFollowRemoveWins(followRemoveLater);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
-        await set.merge(followAddLater);
-        await expect(set.merge(followAdd)).resolves.toEqual(undefined);
-        await expect(set.getFollowAdd(fid, userId)).resolves.toEqual(followAddLater);
-        await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, followAdd.tsHash())).rejects.toThrow(
-          NotFoundError
-        );
+      test('no-ops with an earlier hash', async () => {
+        await store.merge(followRemoveLater);
+        await expect(store.merge(followRemove)).resolves.toEqual(undefined);
+
+        await assertFollowDoesNotExist(followRemove);
+        await assertFollowRemoveWins(followRemoveLater);
       });
     });
 
-    describe('with conflicting FollowRemove', () => {
+    describe('with conflicting FollowAdd with different timestamps', () => {
       test('succeeds with a later timestamp', async () => {
-        const followRemoveData = await Factories.FollowRemoveData.create({
-          ...followRemove.data.unpack(),
-          timestamp: followAdd.timestamp() - 1,
-        });
-        const followRemoveMessage = await Factories.Message.create({
-          data: Array.from(followRemoveData.bb?.bytes() ?? []),
-        });
-        const followRemoveEarlier = new MessageModel(followRemoveMessage) as FollowRemoveModel;
-
-        await set.merge(followRemoveEarlier);
-        await expect(set.merge(followAdd)).resolves.toEqual(undefined);
-        await expect(set.getFollowAdd(fid, userId)).resolves.toEqual(followAdd);
-        await expect(set.getFollowRemove(fid, userId)).rejects.toThrow(NotFoundError);
-        await expect(
-          MessageModel.get(db, fid, UserPostfix.FollowMessage, followRemoveEarlier.tsHash())
-        ).rejects.toThrow(NotFoundError);
+        await store.merge(followAdd);
+        await expect(store.merge(followRemove)).resolves.toEqual(undefined);
+        await assertFollowRemoveWins(followRemove);
+        await assertFollowDoesNotExist(followAdd);
       });
 
       test('no-ops with an earlier timestamp', async () => {
-        await set.merge(followRemove);
-        await expect(set.merge(followAdd)).resolves.toEqual(undefined);
-        await expect(set.getFollowRemove(fid, userId)).resolves.toEqual(followRemove);
-        await expect(set.getFollowAdd(fid, userId)).rejects.toThrow(NotFoundError);
-        await expect(MessageModel.get(db, fid, UserPostfix.FollowMessage, followAdd.tsHash())).rejects.toThrow(
-          NotFoundError
-        );
+        const addData = await Factories.FollowAddData.create({
+          ...followRemove.data.unpack(),
+          timestamp: followRemove.timestamp() + 1,
+          type: MessageType.FollowAdd,
+        });
+        const addMessage = await Factories.Message.create({
+          data: Array.from(addData.bb?.bytes() ?? []),
+        });
+        const followAddLater = new MessageModel(addMessage) as FollowAddModel;
+        await store.merge(followAddLater);
+        await expect(store.merge(followRemove)).resolves.toEqual(undefined);
+        await assertFollowAddWins(followAddLater);
+        await assertFollowDoesNotExist(followRemove);
+      });
+    });
+
+    describe('with conflicting FollowAdd with identical timestamps', () => {
+      test('succeeds with an earlier hash', async () => {
+        const addData = await Factories.FollowAddData.create({
+          ...followRemove.data.unpack(),
+          type: MessageType.FollowAdd,
+        });
+
+        const addMessage = await Factories.Message.create({
+          data: Array.from(addData.bb?.bytes() ?? []),
+          hash: Array.from(bytesIncrement(followRemove.hash().slice())),
+        });
+        const followAddLater = new MessageModel(addMessage) as FollowAddModel;
+
+        await store.merge(followAddLater);
+        await expect(store.merge(followRemove)).resolves.toEqual(undefined);
+
+        await assertFollowDoesNotExist(followAddLater);
+        await assertFollowRemoveWins(followRemove);
+      });
+
+      test('succeeds with a later hash', async () => {
+        const removeData = await Factories.FollowAddData.create({
+          ...followRemove.data.unpack(),
+        });
+
+        const removeMessage = await Factories.Message.create({
+          data: Array.from(removeData.bb?.bytes() ?? []),
+          hash: Array.from(bytesDecrement(followRemove.hash().slice())),
+        });
+
+        const followRemoveEarlier = new MessageModel(removeMessage) as FollowRemoveModel;
+
+        await store.merge(followRemoveEarlier);
+        await expect(store.merge(followRemove)).resolves.toEqual(undefined);
+
+        await assertFollowDoesNotExist(followRemoveEarlier);
+        await assertFollowRemoveWins(followRemove);
       });
     });
   });

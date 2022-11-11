@@ -222,7 +222,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     if (message.gossipAddress) {
       const peerIdResult = Result.fromThrowable(
         () => peerIdFromString(message.peerId),
-        (error) => new HubError('bad_request.parse_failure', { cause: error as unknown as Error })
+        (error) => new HubError('bad_request.parse_failure', error as unknown as Error)
       )();
 
       const p2pMultiAddrResult = p2pMultiAddrStr(message.gossipAddress, message.peerId.toString()).map((addr) =>
@@ -236,7 +236,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
 
         return await ResultAsync.fromPromise(
           this.gossipNode.addressBook.add(peerId, [multiaddr]),
-          (error) => new HubError('unavailable', { cause: error as unknown as Error })
+          (error) => new HubError('unavailable', error as unknown as Error)
         ).map(() => ok(undefined));
       });
 

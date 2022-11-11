@@ -7,15 +7,12 @@ interface HubErrorOpts {
 }
 
 /**
- * HubError is the only class that should be used to raise exceptions in the Hub.
+ * HubError should be used to construct all types exceptions in the Hub.
  *
- * Error context is provided with an error code and a message which are easily serializable
- * over network calls. Sub-classing should be avoided for this reason. Stack traces are included
- * by default thanks to the Error super class.
- *
- * Errors should never be thrown and must be returned from functions using neverthrow's Return.
- * It ensures that readers can easily determine if functions are safe, and that callers are forced
- * to handle all error cases by the type system leading to fewer unhandled exceptions.
+ * A HubError is instantiated with a HubErrorCode that classifies the error, a context object that
+ * provides additional information about the error. The context object can be a string, an Error,
+ * or both and also accepts additional parameters to classify the HubError. HubErrors should never
+ * be thrown directly and always be returned using neverthrow's Result type.
  */
 export class HubError extends Error {
   /* Hub classification of error types */
@@ -24,16 +21,22 @@ export class HubError extends Error {
   /* Indicates if if error message can be presented to the user */
   public readonly presentable: boolean = false;
 
-  constructor(errCode: HubErrorCode, options: Partial<HubErrorOpts> | string) {
-    if (typeof options === 'string') {
-      options = { message: options };
+  /**
+   * @param errCode - the HubError code for this message
+   * @param context - a message, another Error, or a HubErrorOpts
+   */
+  constructor(errCode: HubErrorCode, context: Partial<HubErrorOpts> | string | Error) {
+    if (typeof context === 'string') {
+      context = { message: context };
+    } else if (context instanceof Error) {
+      context = { cause: context, message: context.message };
     }
 
-    if (!options.message) {
-      options.message = options.cause?.message || '';
+    if (!context.message) {
+      context.message = context.cause?.message || '';
     }
 
-    super(options.message, { cause: options.cause });
+    super(context.message, { cause: context.cause });
 
     this.name = 'HubError';
     this.errCode = errCode;
@@ -46,8 +49,6 @@ export class HubError extends Error {
  * A string union type is chosen over an enumeration since TS enums are unusual types that generate
  * javascript code and may cause downstream issues. See:
  * https://www.executeprogram.com/blog/typescript-features-to-avoid
- *
- * TODO: Sub-divided into fine grained errors like "unauthorized.invalid_signature"
  */
 export type HubErrorCode =
   /* The request did not have valid authentication credentials, retry with credentials  */
@@ -60,8 +61,6 @@ export type HubErrorCode =
   | 'bad_request.validation_failure'
   /* The requested resource could not be found */
   | 'not_found'
-  /* TBD */
-  | 'db_error'
   /* The request could not be completed, it may or may not be safe to retry */
   | 'unavailable'
   | 'unavailable.network_failure'
@@ -69,6 +68,6 @@ export type HubErrorCode =
   /* An unknown error was encountered */
   | 'unknown';
 
-// TODO: move elsewhere
+/** Type alias for shorthand when handling errors */
 export type HubResult<T> = Result<T, HubError>;
 export type HubAsyncResult<T> = Promise<HubResult<T>>;
