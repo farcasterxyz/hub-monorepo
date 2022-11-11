@@ -1,5 +1,4 @@
 import { faker } from '@faker-js/faker';
-import { RocksDBError } from '~/utils/errors';
 import RocksDB from '~/storage/db/binaryrocksdb';
 import { jestBinaryRocksDB } from './jestUtils';
 import { existsSync, mkdirSync, rmdirSync } from 'fs';
@@ -53,7 +52,7 @@ describe('destroy', () => {
   test('fails when db has never been opened', async () => {
     const db = new RocksDB(randomDbName());
     expect(db.status).toEqual('new');
-    await expect(db.destroy()).rejects.toThrow(new RocksDBError('db never opened'));
+    await expect(db.destroy()).rejects.toThrow(new Error('db never opened'));
   });
 
   test('succeeds when db is open', async () => {

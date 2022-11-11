@@ -14,7 +14,6 @@ import {
   VerificationRemoveModel,
 } from '~/storage/flatbuffers/types';
 import { verifyMessageDataSignature, verifyVerificationEthAddressClaimSignature } from '~/utils/eip712';
-import { ValidationError } from '~/utils/errors';
 import {
   HashScheme,
   MessageType,
@@ -40,6 +39,7 @@ import {
 import { hexlify } from 'ethers/lib/utils';
 import { bytesCompare, getFarcasterTime } from '~/storage/flatbuffers/utils';
 import { ResultAsync } from 'neverthrow';
+import { HubError } from '~/utils/hubErrors';
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
@@ -53,17 +53,17 @@ export const validateMessage = async (message: MessageModel): Promise<MessageMod
     const computedHash = await blake2b(message.dataBytes(), 4);
     // we have to use bytesCompare, because TypedArrays cannot be compared directly
     if (bytesCompare(message.hash(), computedHash) !== 0) {
-      throw new ValidationError('invalid hash');
+      throw new HubError('bad_request.validation_failure', 'invalid hash');
     }
   } else {
-    throw new ValidationError('invalid hashScheme');
+    throw new HubError('bad_request.validation_failure', 'invalid hashScheme');
   }
 
   // 2. Check that the signatureScheme and signature are valid
   if (message.signatureScheme() === SignatureScheme.Eip712 && EIP712_MESSAGE_TYPES.includes(message.type())) {
     const verifiedSigner = verifyMessageDataSignature(message.dataBytes(), message.signature());
     if (bytesCompare(verifiedSigner, message.signer()) !== 0) {
-      throw new ValidationError('invalid signature');
+      throw new HubError('bad_request.validation_failure', 'invalid signature');
     }
   } else if (message.signatureScheme() === SignatureScheme.Ed25519 && !EIP712_MESSAGE_TYPES.includes(message.type())) {
     const signatureIsValid = await ResultAsync.fromPromise(
@@ -71,15 +71,15 @@ export const validateMessage = async (message: MessageModel): Promise<MessageMod
       () => undefined
     );
     if (signatureIsValid.isErr() || (signatureIsValid.isOk() && !signatureIsValid.value)) {
-      throw new ValidationError('invalid signature');
+      throw new HubError('bad_request.validation_failure', 'invalid signature');
     }
   } else {
-    throw new ValidationError('invalid signatureScheme');
+    throw new HubError('bad_request.validation_failure', 'invalid signatureScheme');
   }
 
   // 3. Verify that the timestamp is not too far in the future.
   if (message.timestamp() - getFarcasterTime() > ALLOWED_CLOCK_SKEW_SECONDS) {
-    throw new ValidationError('timestamp more than 10 mins in the future');
+    throw new HubError('bad_request.validation_failure', 'timestamp more than 10 mins in the future');
   }
 
   if (isCastAdd(message)) {
@@ -99,17 +99,17 @@ export const validateMessage = async (message: MessageModel): Promise<MessageMod
   } else if (isUserDataAdd(message)) {
     return validateUserDataAddMessage(message) as MessageModel;
   } else {
-    throw new ValidationError('unknown message type');
+    throw new HubError('bad_request.validation_failure', 'unknown message type');
   }
 };
 
 export const validateFid = (fid?: Uint8Array | null): Uint8Array => {
   if (!fid || fid.byteLength === 0) {
-    throw new ValidationError('fid is missing');
+    throw new HubError('bad_request.validation_failure', 'fid is missing');
   }
 
   if (fid.byteLength > FID_BYTES) {
-    throw new ValidationError('fid > 32 bytes');
+    throw new HubError('bad_request.validation_failure', 'fid > 32 bytes');
   }
 
   return fid;
@@ -117,11 +117,11 @@ export const validateFid = (fid?: Uint8Array | null): Uint8Array => {
 
 export const validateTsHash = (tsHash?: Uint8Array | null): Uint8Array => {
   if (!tsHash || tsHash.byteLength === 0) {
-    throw new ValidationError('tsHash is missing');
+    throw new HubError('bad_request.validation_failure', 'tsHash is missing');
   }
 
   if (tsHash.byteLength !== 8) {
-    throw new ValidationError('tsHash must be 8 bytes');
+    throw new HubError('bad_request.validation_failure', 'tsHash must be 8 bytes');
   }
 
   return tsHash;
@@ -129,11 +129,11 @@ export const validateTsHash = (tsHash?: Uint8Array | null): Uint8Array => {
 
 export const validateEthAddress = (address?: Uint8Array | null): Uint8Array => {
   if (!address || address.byteLength === 0) {
-    throw new ValidationError('address is missing');
+    throw new HubError('bad_request.validation_failure', 'address is missing');
   }
 
   if (address.byteLength !== 20) {
-    throw new ValidationError('address must be 20 bytes');
+    throw new HubError('bad_request.validation_failure', 'address must be 20 bytes');
   }
 
   return address;
@@ -141,11 +141,11 @@ export const validateEthAddress = (address?: Uint8Array | null): Uint8Array => {
 
 export const validateEthBlockHash = (blockHash?: Uint8Array | null): Uint8Array => {
   if (!blockHash || blockHash.byteLength === 0) {
-    throw new ValidationError('block hash is missing');
+    throw new HubError('bad_request.validation_failure', 'block hash is missing');
   }
 
   if (blockHash.byteLength !== 32) {
-    throw new ValidationError('block hash must be 32 bytes');
+    throw new HubError('bad_request.validation_failure', 'block hash must be 32 bytes');
   }
 
   return blockHash;
@@ -153,11 +153,11 @@ export const validateEthBlockHash = (blockHash?: Uint8Array | null): Uint8Array 
 
 export const validateEd25519PublicKey = (publicKey?: Uint8Array | null): Uint8Array => {
   if (!publicKey || publicKey.byteLength === 0) {
-    throw new ValidationError('public key is missing');
+    throw new HubError('bad_request.validation_failure', 'public key is missing');
   }
 
   if (publicKey.byteLength !== 32) {
-    throw new ValidationError('public key must be 32 bytes');
+    throw new HubError('bad_request.validation_failure', 'public key must be 32 bytes');
   }
 
   return publicKey;
@@ -166,15 +166,15 @@ export const validateEd25519PublicKey = (publicKey?: Uint8Array | null): Uint8Ar
 export const validateCastAddMessage = (message: CastAddModel): CastAddModel => {
   const text = message.body().text();
   if (!text) {
-    throw new ValidationError('text is missing');
+    throw new HubError('bad_request.validation_failure', 'text is missing');
   }
 
   if (text.length > 320) {
-    throw new ValidationError('text > 320 chars');
+    throw new HubError('bad_request.validation_failure', 'text > 320 chars');
   }
 
   if (message.body().embedsLength() > 2) {
-    throw new ValidationError('embeds > 2');
+    throw new HubError('bad_request.validation_failure', 'embeds > 2');
   }
 
   const parent = message.body().parent();
@@ -184,7 +184,7 @@ export const validateCastAddMessage = (message: CastAddModel): CastAddModel => {
   }
 
   if (message.body().mentionsLength() > 5) {
-    throw new ValidationError('mentions > 5');
+    throw new HubError('bad_request.validation_failure', 'mentions > 5');
   }
 
   return message;
@@ -200,7 +200,7 @@ export const validateReactionMessage = (
   message: ReactionAddModel | ReactionRemoveModel
 ): ReactionAddModel | ReactionRemoveModel => {
   if (!Object.values(ReactionType).includes(message.body().type())) {
-    throw new ValidationError('invalid reaction type');
+    throw new HubError('bad_request.validation_failure', 'invalid reaction type');
   }
 
   validateFid(message.body().cast()?.fidArray());
@@ -229,10 +229,10 @@ export const validateVerificationAddEthAddressMessage = async (
     );
 
     if (bytesCompare(recoveredAddress, validAddress) !== 0) {
-      throw new ValidationError('eth signature does not match address');
+      throw new HubError('bad_request.validation_failure', 'eth signature does not match address');
     }
   } catch (e) {
-    throw new ValidationError('invalid eth signature');
+    throw new HubError('bad_request.validation_failure', 'invalid eth signature');
   }
 
   return message;
@@ -264,26 +264,26 @@ export const validateUserDataAddMessage = (message: UserDataAddModel): UserDataA
   const value = message.body().value();
   if (message.body().type() === UserDataType.Pfp) {
     if (value && value.length > 256) {
-      throw new ValidationError('pfp value > 256');
+      throw new HubError('bad_request.validation_failure', 'pfp value > 256');
     }
   } else if (message.body().type() === UserDataType.Display) {
     if (value && value.length > 32) {
-      throw new ValidationError('display value > 32');
+      throw new HubError('bad_request.validation_failure', 'display value > 32');
     }
   } else if (message.body().type() === UserDataType.Bio) {
     if (value && value.length > 256) {
-      throw new ValidationError('bio value > 256');
+      throw new HubError('bad_request.validation_failure', 'bio value > 256');
     }
   } else if (message.body().type() === UserDataType.Location) {
     if (value && value.length > 32) {
-      throw new ValidationError('location value > 32');
+      throw new HubError('bad_request.validation_failure', 'location value > 32');
     }
   } else if (message.body().type() === UserDataType.Url) {
     if (value && value.length > 256) {
-      throw new ValidationError('url value > 256');
+      throw new HubError('bad_request.validation_failure', 'url value > 256');
     }
   } else {
-    throw new ValidationError('invalid user data type');
+    throw new HubError('bad_request.validation_failure', 'invalid user data type');
   }
 
   return message;

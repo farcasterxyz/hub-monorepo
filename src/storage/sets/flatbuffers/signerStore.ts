@@ -1,5 +1,4 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
-import { ValidationError } from '~/utils/errors';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync } from 'neverthrow';
 import { SignerAddModel, UserPostfix, SignerRemoveModel } from '~/storage/flatbuffers/types';
@@ -211,7 +210,7 @@ class SignerStore {
 
     // Cannot happen unless we do not filter out uncle blocks correctly upstream
     if (bytesCompare(a.blockHash(), b.blockHash()) !== 0) {
-      throw new ValidationError('block hash mismatch');
+      throw new HubError('bad_request.validation_failure', 'block hash mismatch');
     }
 
     // Compare logIndex
@@ -223,7 +222,7 @@ class SignerStore {
 
     // Cannot happen unless we pass in malformed data
     if (bytesCompare(a.transactionHash(), b.transactionHash()) !== 0) {
-      throw new ValidationError('tx hash mismatch');
+      throw new HubError('bad_request.validation_failure', 'tx hash mismatch');
     }
 
     return 0;

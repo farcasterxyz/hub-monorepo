@@ -1,7 +1,6 @@
 import { faker } from '@faker-js/faker';
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import { ValidationError } from '~/utils/errors';
 import { EthereumSigner } from '~/types';
 import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
 import { arrayify } from 'ethers/lib/utils';
@@ -230,7 +229,7 @@ describe('mergeIdRegistryEvent', () => {
 
     const blockHashConflictEvent = new ContractEventModel(idRegistryEvent);
     await set.mergeIdRegistryEvent(custody1Event);
-    await expect(set.mergeIdRegistryEvent(blockHashConflictEvent)).rejects.toThrow(ValidationError);
+    await expect(set.mergeIdRegistryEvent(blockHashConflictEvent)).rejects.toThrow(HubError);
   });
 
   test('fails if events have the same blockNumber and logIndex but different transactionHashes', async () => {
@@ -241,7 +240,7 @@ describe('mergeIdRegistryEvent', () => {
 
     const txHashConflictEvent = new ContractEventModel(idRegistryEvent);
     await set.mergeIdRegistryEvent(custody1Event);
-    await expect(set.mergeIdRegistryEvent(txHashConflictEvent)).rejects.toThrow(ValidationError);
+    await expect(set.mergeIdRegistryEvent(txHashConflictEvent)).rejects.toThrow(HubError);
   });
 
   describe('overwrites existing event', () => {

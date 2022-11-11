@@ -1,3 +1,7 @@
+/**
+ * WARNING: this file is being deprecated do not extend
+ */
+
 export class FarcasterError extends Error {
   public readonly statusCode: number = 500;
 
@@ -16,12 +20,4 @@ export class BadRequestError extends FarcasterError {
 
 export class ServerError extends FarcasterError {
   public override readonly statusCode = 500;
-}
-
-export class RocksDBError extends FarcasterError {
-  public override readonly statusCode = 500;
-}
-
-export class ValidationError extends FarcasterError {
-  public override readonly statusCode = 400;
 }

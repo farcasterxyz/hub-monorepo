@@ -1,7 +1,6 @@
 import { ResultAsync } from 'neverthrow';
 import CastStore from '~/storage/sets/flatbuffers/castStore';
 import RocksDB from '~/storage/db/binaryrocksdb';
-import { ValidationError } from '~/utils/errors';
 import SignerStore from '~/storage/sets/flatbuffers/signerStore';
 import FollowStore from '~/storage/sets/flatbuffers/followStore';
 import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
@@ -83,7 +82,7 @@ class Engine {
       () => undefined
     );
     if (custodyAddress.isErr()) {
-      throw new ValidationError('unknown user');
+      throw new HubError('bad_request.validation_failure', 'unknown user');
     }
 
     // 2. Check that the signer is valid if message is not a signer message
@@ -93,11 +92,11 @@ class Engine {
         () => undefined
       );
       if (signerResult.isErr()) {
-        throw new ValidationError('invalid signer');
+        throw new HubError('bad_request.validation_failure', 'invalid signer');
       }
     }
 
-    // 3. Check message body and envelope (will throw ValidationError if invalid)
+    // 3. Check message body and envelope (will throw HubError if invalid)
     return validateMessage(message);
   }
 }

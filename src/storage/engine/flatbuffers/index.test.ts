@@ -15,13 +15,13 @@ import { KeyPair } from '~/types';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import { Wallet, utils } from 'ethers';
-import { ValidationError } from '~/utils/errors';
 import SignerStore from '~/storage/sets/flatbuffers/signerStore';
 import FollowStore from '~/storage/sets/flatbuffers/followStore';
 import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
 import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
 import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
 import { CastId } from '~/utils/generated/message_generated';
+import { HubError } from '~/utils/hubErrors';
 
 const db = jestBinaryRocksDB('flatbuffers.engine.test');
 const engine = new Engine(db);
@@ -174,7 +174,9 @@ describe('mergeMessage', () => {
     });
 
     afterEach(async () => {
-      await expect(engine.mergeMessage(message)).rejects.toThrow(new ValidationError('invalid signer'));
+      await expect(engine.mergeMessage(message)).rejects.toThrow(
+        new HubError('bad_request.validation_failure', 'invalid signer')
+      );
     });
 
     test('with CastAdd', () => {
@@ -186,7 +188,9 @@ describe('mergeMessage', () => {
     let message: MessageModel;
 
     afterEach(async () => {
-      await expect(engine.mergeMessage(message)).rejects.toThrow(new ValidationError('unknown user'));
+      await expect(engine.mergeMessage(message)).rejects.toThrow(
+        new HubError('bad_request.validation_failure', 'unknown user')
+      );
     });
 
     test('with CastAdd', () => {
