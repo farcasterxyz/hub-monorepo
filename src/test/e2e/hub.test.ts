@@ -7,8 +7,8 @@ import { RPCClient } from '~/network/rpc';
 import { sleep } from '~/utils/crypto';
 import { ContactInfoContent, Content, GossipMessage, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { Message } from '~/types';
-import { ServerError } from '~/utils/errors';
 import { jest } from '@jest/globals';
+import { HubError } from '~/utils/hubErrors';
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const TEST_TIMEOUT_LONG = 2 * 60 * 1000;
@@ -209,7 +209,7 @@ describe('Hub negative tests', () => {
     expect(hub.gossipAddresses).toEqual([]);
     expect(() => {
       hub.identity;
-    }).toThrow(ServerError);
+    }).toThrow(HubError);
   });
 
   test('Fail to sync from invalid peers', async () => {
