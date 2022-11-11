@@ -28,7 +28,7 @@ class FollowSet {
     return this._db.getFollowAdd(fid, target);
   }
 
-  async getFollowsByUser(fid: number): Promise<Set<FollowAdd>> {
+  async getFollowsByTargetUser(fid: number): Promise<Set<FollowAdd>> {
     const follows = await this._db.getFollowAddsByUser(fid);
     return new Set(follows);
   }

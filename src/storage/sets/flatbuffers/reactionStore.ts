@@ -20,7 +20,7 @@ import { bytesCompare } from '~/storage/flatbuffers/utils';
  * 3. Highest lexicographic hash wins
  *
  * ReactionMessages are stored ordinally in RocksDB indexed by a unique key `fid:tsHash`,
- * which makes truncating a user's earliest messages easy. Indices are also build for each phase
+ * which makes truncating a user's earliest messages easy. Indices are also built for each phase
  * set (adds, removes) to make lookups easy when checking if a collision exists. An index is also
  * build for the target to make it easy to fetch all reactions for a target.
  *
@@ -273,7 +273,8 @@ class ReactionStore {
   }
 
   /**
-   * Determines the RocksDB keys that must be modified to settle merge conflicts as a result of adding a Reaction to the Store.
+   * Determines the RocksDB keys that must be modified to settle merge conflicts as a result of
+   * adding a Reaction to the Store.
    *
    * @returns a RocksDB transaction if keys must be added or removed, undefined otherwise
    */
