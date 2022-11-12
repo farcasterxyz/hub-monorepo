@@ -1,4 +1,4 @@
-import { blake2b } from 'ethereum-cryptography/blake2b';
+import { blake3 } from '@noble/hashes/blake3';
 import Factories from '~/test/factories/flatbuffer';
 import { FarcasterNetwork, Message, MessageData } from '~/utils/generated/message_generated';
 import * as ed from '@noble/ed25519';
@@ -6,6 +6,7 @@ import { VerificationAddEthAddressBody } from '~/utils/generated/farcaster/verif
 import { verifyVerificationEthAddressClaimSignature } from '~/utils/eip712';
 import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
 import { hexlify } from 'ethers/lib/utils';
+import { toFarcasterTime } from '~/storage/flatbuffers/utils';
 
 describe('UserIdFactory', () => {
   test('accepts fid', async () => {
@@ -22,9 +23,14 @@ describe('FidFactory', () => {
 });
 
 describe('TsHashFactory', () => {
-  test('generates 8 byte value', () => {
+  test('generates 20 byte value', () => {
     const tsHash = Factories.TsHash.build();
-    expect(tsHash.byteLength).toEqual(8);
+    expect(tsHash.byteLength).toEqual(20);
+  });
+
+  test('accepts timestamp', () => {
+    const tsHash = Factories.TsHash.build({}, { transient: { timestamp: toFarcasterTime(Date.now()) } });
+    expect(tsHash.byteLength).toEqual(20);
   });
 });
 
@@ -49,7 +55,7 @@ describe('MessageFactory', () => {
   });
 
   test('generates hash', async () => {
-    expect(message.hashArray()).toEqual(blake2b(data.bb?.bytes() || new Uint8Array(), 4));
+    expect(message.hashArray()).toEqual(blake3(data.bb?.bytes() || new Uint8Array(), { dkLen: 16 }));
   });
 
   test('generates signature', async () => {

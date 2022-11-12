@@ -22,7 +22,7 @@ enum SignatureScheme: uint8 {
 }
 
 enum HashScheme: uint8 {
-  Blake2b = 1
+  Blake3 = 1
 }
  
 enum FarcasterNetwork: uint8 {

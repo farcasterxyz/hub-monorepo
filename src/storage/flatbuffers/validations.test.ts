@@ -102,7 +102,7 @@ describe('validateMessage', () => {
 
   test('fails with invalid hashScheme', async () => {
     const message = new MessageModel(
-      await Factories.Message.create({ hashScheme: 10 as unknown as HashScheme.Blake2b })
+      await Factories.Message.create({ hashScheme: 10 as unknown as HashScheme.Blake3 })
     );
     const result = await validateMessage(message);
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid hashScheme'));
@@ -185,17 +185,17 @@ describe('validateTsHash', () => {
     );
   });
 
-  test('fails when greater than 8 bytes', () => {
-    const tsHash = Factories.Bytes.build({}, { transient: { length: 9 } });
+  test('fails when greater than 20 bytes', () => {
+    const tsHash = Factories.Bytes.build({}, { transient: { length: 21 } });
     expect(validateTsHash(tsHash)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'tsHash must be 8 bytes')
+      new HubError('bad_request.validation_failure', 'tsHash must be 20 bytes')
     );
   });
 
-  test('fails when less than 8 bytes', () => {
-    const tsHash = Factories.Bytes.build({}, { transient: { length: 7 } });
+  test('fails when less than 20 bytes', () => {
+    const tsHash = Factories.Bytes.build({}, { transient: { length: 19 } });
     expect(validateTsHash(tsHash)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'tsHash must be 8 bytes')
+      new HubError('bad_request.validation_failure', 'tsHash must be 20 bytes')
     );
   });
 

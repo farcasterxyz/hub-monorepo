@@ -1,4 +1,3 @@
-import { blake2b } from 'ethereum-cryptography/blake2b';
 import {
   CastAddModel,
   CastRemoveModel,
@@ -24,6 +23,7 @@ import {
   UserId,
 } from '~/utils/generated/message_generated';
 import * as ed from '@noble/ed25519';
+import { blake3 } from '@noble/hashes/blake3';
 import MessageModel, { FID_BYTES } from '~/storage/flatbuffers/messageModel';
 import {
   isCastAdd,
@@ -51,8 +51,8 @@ export const EIP712_MESSAGE_TYPES = [MessageType.SignerAdd, MessageType.SignerRe
 
 export const validateMessage = async (message: MessageModel): HubAsyncResult<MessageModel> => {
   // 1. Check that the hashScheme and hash are valid
-  if (message.hashScheme() === HashScheme.Blake2b) {
-    const computedHash = await blake2b(message.dataBytes(), 4);
+  if (message.hashScheme() === HashScheme.Blake3) {
+    const computedHash = blake3(message.dataBytes(), { dkLen: 16 });
     // we have to use bytesCompare, because TypedArrays cannot be compared directly
     if (bytesCompare(message.hash(), computedHash) !== 0) {
       return err(new HubError('bad_request.validation_failure', 'invalid hash'));
@@ -149,8 +149,8 @@ export const validateTsHash = (tsHash?: Uint8Array | null): HubResult<Uint8Array
     return err(new HubError('bad_request.validation_failure', 'tsHash is missing'));
   }
 
-  if (tsHash.byteLength !== 8) {
-    return err(new HubError('bad_request.validation_failure', 'tsHash must be 8 bytes'));
+  if (tsHash.byteLength !== 20) {
+    return err(new HubError('bad_request.validation_failure', 'tsHash must be 20 bytes'));
   }
 
   return ok(tsHash);

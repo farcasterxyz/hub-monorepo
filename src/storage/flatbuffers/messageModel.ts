@@ -67,6 +67,16 @@ export default class MessageModel {
     ]);
   }
 
+  /** Generate tsHash from timestamp and hash */
+  static tsHash(timestamp: number, hash: Uint8Array): Uint8Array {
+    const buffer = new ArrayBuffer(4 + hash.length);
+    const view = new DataView(buffer);
+    view.setUint32(0, timestamp, false); // Stores timestamp as big-endian in first 4 bytes
+    const bytes = new Uint8Array(buffer);
+    bytes.set(hash, 4);
+    return bytes;
+  }
+
   static async getMany<T extends MessageModel>(db: RocksDB, primaryKeys: Buffer[]): Promise<T[]> {
     const values = await db.getMany(primaryKeys);
     return values.map((value) => MessageModel.from(new Uint8Array(value)) as T);
@@ -184,13 +194,7 @@ export default class MessageModel {
   }
 
   tsHash(): Uint8Array {
-    const hash = this.hash();
-    const buffer = new ArrayBuffer(4 + hash.length);
-    const view = new DataView(buffer);
-    view.setUint32(0, this.data.timestamp());
-    const bytes = new Uint8Array(buffer);
-    bytes.set(hash, 4);
-    return bytes;
+    return MessageModel.tsHash(this.timestamp(), this.hash());
   }
 
   timestamp(): number {
