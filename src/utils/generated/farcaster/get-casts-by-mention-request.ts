@@ -38,6 +38,7 @@ static addMention(builder:flatbuffers.Builder, mentionOffset:flatbuffers.Offset)
 
 static endGetCastsByMentionRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
+  builder.requiredField(offset, 4) // mention
   return offset;
 }
 

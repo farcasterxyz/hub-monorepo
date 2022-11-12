@@ -1,35 +1,27 @@
 import grpc from '@grpc/grpc-js';
 import Engine from '~/storage/engine/flatbuffers';
-import { GetCastRequest, GetCastsByUserRequest, MessagesResponse } from '~/utils/generated/rpc_generated';
-import { defaultMethodDefinition, toMessagesResponse, toServiceError } from '~/network/rpc/flatbuffers/server';
+import {
+  GetCastRequest,
+  GetCastsByFidRequest,
+  GetCastsByParentRequest,
+  GetCastsByMentionRequest,
+  MessagesResponse,
+  GetCastsByFidRequestT,
+  GetCastRequestT,
+  GetCastsByParentRequestT,
+  GetCastsByMentionRequestT,
+} from '~/utils/generated/rpc_generated';
+import { defaultMethod, toMessagesResponse, toServiceError } from '~/network/rpc/flatbuffers/server';
 import { toByteBuffer } from '~/storage/flatbuffers/utils';
-import { GetCastsByParentRequest } from '~/utils/generated/farcaster/get-casts-by-parent-request';
-import { GetCastsByMentionRequest } from '~/utils/generated/farcaster/get-casts-by-mention-request';
 import { CastId, Message, UserId } from '~/utils/generated/message_generated';
 import { CastAddModel } from '~/storage/flatbuffers/types';
 import { HubError } from '~/utils/hubErrors';
+import { Builder, ByteBuffer } from 'flatbuffers';
 
-export type CastServiceRequest =
-  | GetCastsByUserRequest
-  | GetCastRequest
-  | GetCastsByParentRequest
-  | GetCastsByMentionRequest;
-
-export const castServiceAttrs = () => {
+export const castServiceMethods = () => {
   return {
-    getCastsByUser: {
-      ...defaultMethodDefinition,
-      path: '/getCastsByUser',
-      requestDeserialize: (buffer: Buffer): GetCastsByUserRequest => {
-        return GetCastsByUserRequest.getRootAsGetCastsByUserRequest(toByteBuffer(buffer));
-      },
-      responseDeserialize: (buffer: Buffer): MessagesResponse => {
-        return MessagesResponse.getRootAsMessagesResponse(toByteBuffer(buffer));
-      },
-    },
-
     getCast: {
-      ...defaultMethodDefinition,
+      ...defaultMethod,
       path: '/getCast',
       requestDeserialize: (buffer: Buffer): GetCastRequest => {
         return GetCastRequest.getRootAsGetCastRequest(toByteBuffer(buffer));
@@ -39,8 +31,19 @@ export const castServiceAttrs = () => {
       },
     },
 
+    getCastsByFid: {
+      ...defaultMethod,
+      path: '/getCastsByFid',
+      requestDeserialize: (buffer: Buffer): GetCastsByFidRequest => {
+        return GetCastsByFidRequest.getRootAsGetCastsByFidRequest(toByteBuffer(buffer));
+      },
+      responseDeserialize: (buffer: Buffer): MessagesResponse => {
+        return MessagesResponse.getRootAsMessagesResponse(toByteBuffer(buffer));
+      },
+    },
+
     getCastsByParent: {
-      ...defaultMethodDefinition,
+      ...defaultMethod,
       path: '/getCastsByParent',
       requestDeserialize: (buffer: Buffer): GetCastsByParentRequest => {
         return GetCastsByParentRequest.getRootAsGetCastsByParentRequest(toByteBuffer(buffer));
@@ -51,7 +54,7 @@ export const castServiceAttrs = () => {
     },
 
     getCastsByMention: {
-      ...defaultMethodDefinition,
+      ...defaultMethod,
       path: '/getCastsByMention',
       requestDeserialize: (buffer: Buffer): GetCastsByMentionRequest => {
         return GetCastsByMentionRequest.getRootAsGetCastsByMentionRequest(toByteBuffer(buffer));
@@ -65,14 +68,14 @@ export const castServiceAttrs = () => {
 
 export const castServiceImpls = (engine: Engine) => {
   return {
-    getCastsByUser: async (
-      call: grpc.ServerUnaryCall<GetCastsByUserRequest, MessagesResponse>,
-      callback: grpc.sendUnaryData<MessagesResponse>
-    ) => {
-      const castsResult = await engine.getCastsByUser(call.request.user() ?? new UserId());
-      castsResult.match(
-        (messages: CastAddModel[]) => {
-          callback(null, toMessagesResponse(messages));
+    getCast: async (call: grpc.ServerUnaryCall<GetCastRequest, Message>, callback: grpc.sendUnaryData<Message>) => {
+      const castAddResult = await engine.getCast(
+        call.request.fidArray() ?? new Uint8Array(),
+        call.request.tsHashArray() ?? new Uint8Array()
+      );
+      castAddResult.match(
+        (model: CastAddModel) => {
+          callback(null, model.message);
         },
         (err: HubError) => {
           callback(toServiceError(err));
@@ -80,11 +83,14 @@ export const castServiceImpls = (engine: Engine) => {
       );
     },
 
-    getCast: async (call: grpc.ServerUnaryCall<GetCastRequest, Message>, callback: grpc.sendUnaryData<Message>) => {
-      const castAddResult = await engine.getCast(call.request.cast() ?? new CastId());
-      castAddResult.match(
-        (model: CastAddModel) => {
-          callback(null, model.message);
+    getCastsByFid: async (
+      call: grpc.ServerUnaryCall<GetCastsByFidRequest, MessagesResponse>,
+      callback: grpc.sendUnaryData<MessagesResponse>
+    ) => {
+      const castsResult = await engine.getCastsByFid(call.request.fidArray() ?? new Uint8Array());
+      castsResult.match(
+        (messages: CastAddModel[]) => {
+          callback(null, toMessagesResponse(messages));
         },
         (err: HubError) => {
           callback(toServiceError(err));
@@ -122,4 +128,34 @@ export const castServiceImpls = (engine: Engine) => {
       );
     },
   };
+};
+
+export const castServiceRequests = {
+  getCast: (fid: Uint8Array, tsHash: Uint8Array): GetCastRequest => {
+    const builder = new Builder(1);
+    const requestT = new GetCastRequestT(Array.from(fid), Array.from(tsHash));
+    builder.finish(requestT.pack(builder));
+    return GetCastRequest.getRootAsGetCastRequest(new ByteBuffer(builder.asUint8Array()));
+  },
+
+  getCastsByFid: (fid: Uint8Array): GetCastsByFidRequest => {
+    const builder = new Builder(1);
+    const requestT = new GetCastsByFidRequestT(Array.from(fid));
+    builder.finish(requestT.pack(builder));
+    return GetCastsByFidRequest.getRootAsGetCastsByFidRequest(new ByteBuffer(builder.asUint8Array()));
+  },
+
+  getCastsByParent: (parent: CastId): GetCastsByParentRequest => {
+    const builder = new Builder(1);
+    const requestT = new GetCastsByParentRequestT(parent.unpack());
+    builder.finish(requestT.pack(builder));
+    return GetCastsByParentRequest.getRootAsGetCastsByParentRequest(new ByteBuffer(builder.asUint8Array()));
+  },
+
+  getCastsByMention: (mention: UserId): GetCastsByMentionRequest => {
+    const builder = new Builder(1);
+    const requestT = new GetCastsByMentionRequestT(mention.unpack());
+    builder.finish(requestT.pack(builder));
+    return GetCastsByMentionRequest.getRootAsGetCastsByMentionRequest(new ByteBuffer(builder.asUint8Array()));
+  },
 };

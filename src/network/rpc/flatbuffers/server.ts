@@ -1,13 +1,11 @@
 import grpc from '@grpc/grpc-js';
 import Engine from '~/storage/engine/flatbuffers';
-import { Message } from '~/utils/generated/message_generated';
-import { castServiceAttrs, castServiceImpls, CastServiceRequest } from '~/network/rpc/flatbuffers/castService';
+import { castServiceMethods, castServiceImpls } from '~/network/rpc/flatbuffers/castService';
 import { MessagesResponse, MessagesResponseT } from '~/utils/generated/rpc_generated';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { HubError, HubErrorCode } from '~/utils/hubErrors';
-
-type RpcRequest = CastServiceRequest;
+import { followServiceImpls, followServiceMethods } from './followService';
 
 export const toServiceError = (err: HubError): grpc.ServiceError => {
   let grpcCode: number;
@@ -53,13 +51,17 @@ export const toMessagesResponse = (messages: MessageModel[]): MessagesResponse =
   return response;
 };
 
-export const defaultMethodDefinition = {
+interface GenericFlatbuffer {
+  bb: ByteBuffer | null;
+}
+
+export const defaultMethod = {
   requestStream: false,
   responseStream: false,
-  requestSerialize: (request: RpcRequest): Buffer => {
+  requestSerialize: (request: GenericFlatbuffer): Buffer => {
     return Buffer.from(request.bb?.bytes() ?? new Uint8Array());
   },
-  responseSerialize: (response: Message | MessagesResponse): Buffer => {
+  responseSerialize: (response: GenericFlatbuffer): Buffer => {
     return Buffer.from(response.bb?.bytes() ?? new Uint8Array());
   },
 };
@@ -71,7 +73,8 @@ class Server {
   constructor(engine: Engine) {
     this.engine = engine;
     this.server = new grpc.Server();
-    this.server.addService(castServiceAttrs(), castServiceImpls(engine));
+    this.server.addService(castServiceMethods(), castServiceImpls(engine));
+    this.server.addService(followServiceMethods(), followServiceImpls(engine));
   }
 
   async start(): Promise<number> {

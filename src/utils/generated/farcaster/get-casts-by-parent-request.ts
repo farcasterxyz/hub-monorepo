@@ -38,6 +38,7 @@ static addParent(builder:flatbuffers.Builder, parentOffset:flatbuffers.Offset) {
 
 static endGetCastsByParentRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
+  builder.requiredField(offset, 4) // parent
   return offset;
 }
 

@@ -35,7 +35,6 @@ let custodyEvent: ContractEventModel;
 let signer: KeyPair;
 let signerAdd: SignerAddModel;
 let castAdd: CastAddModel;
-let castAddId: CastId;
 
 beforeAll(async () => {
   custodyEvent = new ContractEventModel(
@@ -60,7 +59,6 @@ beforeAll(async () => {
   castAdd = new MessageModel(
     await Factories.Message.create({ data: Array.from(castAddData.bb?.bytes() ?? []) }, { transient: { signer } })
   ) as CastAddModel;
-  castAddId = await Factories.CastId.create({ fid: Array.from(fid), tsHash: Array.from(castAdd.tsHash()) });
 });
 
 describe('getCast', () => {
@@ -68,63 +66,89 @@ describe('getCast', () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(castAdd);
-    const result = await client.getCast(castAddId);
+    const result = await client.getCast(fid, castAdd.tsHash());
     expect(result._unsafeUnwrap()).toEqual(castAdd);
   });
 
   test('fails if cast is missing', async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
-    const result = await client.getCast(castAddId);
+    const result = await client.getCast(fid, castAdd.tsHash());
     expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
   });
 
   test('fails without fid or tsHash', async () => {
-    const castId = await Factories.CastId.create({ fid: [], tsHash: [] });
-    const result = await client.getCast(castId);
-    expect(result._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'fid is missing, tsHash is missing')
-    );
+    const result = await client.getCast(new Uint8Array(), new Uint8Array());
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is missing'));
+  });
+
+  test('fails without tsHash', async () => {
+    const result = await client.getCast(fid, new Uint8Array());
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'tsHash is missing'));
   });
 
   test('fails without fid', async () => {
-    const castId = await Factories.CastId.create({ fid: [] });
-    const result = await client.getCast(castId);
+    const result = await client.getCast(new Uint8Array(), castAdd.tsHash());
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is missing'));
   });
 });
 
-describe('getCastsByUser', () => {
-  test('succeeds', async () => {
+describe('getCastsByFid', () => {
+  beforeEach(async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
+  });
+
+  test('succeeds', async () => {
     await engine.mergeMessage(castAdd);
-    const userId = await Factories.UserId.create({ fid: Array.from(fid) });
-    const casts = await client.getCastsByUser(userId);
+    const casts = await client.getCastsByFid(fid);
     // The underlying buffers are different, so we can't compare casts to [castAdd] directly
     expect(casts._unsafeUnwrap().map((cast) => cast.hash())).toEqual([castAdd.hash()]);
+  });
+
+  test('returns empty array without casts', async () => {
+    const casts = await client.getCastsByFid(fid);
+    expect(casts._unsafeUnwrap()).toEqual([]);
   });
 });
 
 describe('getCastsByParent', () => {
-  test('succeeds', async () => {
+  beforeEach(async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
+  });
+
+  test('succeeds', async () => {
     await engine.mergeMessage(castAdd);
     const casts = await client.getCastsByParent(castAdd.body().parent() ?? new CastId());
     // The underlying buffers are different, so we can't compare casts to [castAdd] directly
     expect(casts._unsafeUnwrap().map((cast) => cast.hash())).toEqual([castAdd.hash()]);
   });
+
+  test('returns empty array without casts', async () => {
+    const casts = await client.getCastsByParent(castAdd.body().parent() ?? new CastId());
+    expect(casts._unsafeUnwrap()).toEqual([]);
+  });
 });
 
 describe('getCastsByMention', () => {
-  test('succeeds', async () => {
+  beforeEach(async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
+  });
+
+  test('succeeds', async () => {
     await engine.mergeMessage(castAdd);
     for (let i = 0; i < castAdd.body().mentionsLength(); i++) {
       const casts = await client.getCastsByMention(castAdd.body().mentions(i) ?? new UserId());
       expect(casts._unsafeUnwrap().map((cast) => cast.hash())).toEqual([castAdd.hash()]);
+    }
+  });
+
+  test('returns empty array without casts', async () => {
+    for (let i = 0; i < castAdd.body().mentionsLength(); i++) {
+      const casts = await client.getCastsByMention(castAdd.body().mentions(i) ?? new UserId());
+      expect(casts._unsafeUnwrap()).toEqual([]);
     }
   });
 });
