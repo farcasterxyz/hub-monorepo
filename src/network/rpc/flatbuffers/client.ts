@@ -1,23 +1,13 @@
 import grpc from '@grpc/grpc-js';
-import { Builder, ByteBuffer } from 'flatbuffers';
 import { ok, err } from 'neverthrow';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { CastAddModel } from '~/storage/flatbuffers/types';
+import { CastAddModel, FollowAddModel } from '~/storage/flatbuffers/types';
 import { CastId, Message, UserId } from '~/utils/generated/message_generated';
-import {
-  GetCastRequest,
-  GetCastRequestT,
-  GetCastsByMentionRequest,
-  GetCastsByMentionRequestT,
-  GetCastsByParentRequest,
-  GetCastsByParentRequestT,
-  GetCastsByUserRequest,
-  GetCastsByUserRequestT,
-  MessagesResponse,
-} from '~/utils/generated/rpc_generated';
+import { MessagesResponse } from '~/utils/generated/rpc_generated';
 import { HubAsyncResult } from '~/utils/hubErrors';
-import { castServiceAttrs } from './castService';
+import { castServiceRequests, castServiceMethods } from '~/network/rpc/flatbuffers/castService';
 import { fromServiceError } from './server';
+import { followServiceMethods, followServiceRequests } from './followService';
 
 class Client {
   client: grpc.Client;
@@ -34,40 +24,48 @@ class Client {
   /*                                 Cast Methods                               */
   /* -------------------------------------------------------------------------- */
 
-  async getCastsByUser(user: UserId): HubAsyncResult<CastAddModel[]> {
-    const builder = new Builder(1);
-    const requestT = new GetCastsByUserRequestT(user.unpack());
-    builder.finish(requestT.pack(builder));
-    const request = GetCastsByUserRequest.getRootAsGetCastsByUserRequest(new ByteBuffer(builder.asUint8Array()));
-
-    return this.makeUnaryMessagesRequest(castServiceAttrs().getCastsByUser, request);
+  async getCast(fid: Uint8Array, tsHash: Uint8Array): HubAsyncResult<CastAddModel> {
+    return this.makeUnaryMessageRequest(castServiceMethods().getCast, castServiceRequests.getCast(fid, tsHash));
   }
 
-  async getCast(cast: CastId): HubAsyncResult<CastAddModel> {
-    const builder = new Builder(1);
-    const requestT = new GetCastRequestT(cast.unpack());
-    builder.finish(requestT.pack(builder));
-    const request = GetCastRequest.getRootAsGetCastRequest(new ByteBuffer(builder.asUint8Array()));
-
-    return this.makeUnaryMessageRequest(castServiceAttrs().getCast, request);
+  async getCastsByFid(fid: Uint8Array): HubAsyncResult<CastAddModel[]> {
+    return this.makeUnaryMessagesRequest(castServiceMethods().getCastsByFid, castServiceRequests.getCastsByFid(fid));
   }
 
   async getCastsByParent(parent: CastId): HubAsyncResult<CastAddModel[]> {
-    const builder = new Builder(1);
-    const requestT = new GetCastsByParentRequestT(parent.unpack());
-    builder.finish(requestT.pack(builder));
-    const request = GetCastsByParentRequest.getRootAsGetCastsByParentRequest(new ByteBuffer(builder.asUint8Array()));
-
-    return this.makeUnaryMessagesRequest(castServiceAttrs().getCastsByParent, request);
+    return this.makeUnaryMessagesRequest(
+      castServiceMethods().getCastsByParent,
+      castServiceRequests.getCastsByParent(parent)
+    );
   }
 
   async getCastsByMention(mention: UserId): HubAsyncResult<CastAddModel[]> {
-    const builder = new Builder(1);
-    const requestT = new GetCastsByMentionRequestT(mention.unpack());
-    builder.finish(requestT.pack(builder));
-    const request = GetCastsByMentionRequest.getRootAsGetCastsByMentionRequest(new ByteBuffer(builder.asUint8Array()));
+    return this.makeUnaryMessagesRequest(
+      castServiceMethods().getCastsByMention,
+      castServiceRequests.getCastsByMention(mention)
+    );
+  }
 
-    return this.makeUnaryMessagesRequest(castServiceAttrs().getCastsByMention, request);
+  /* -------------------------------------------------------------------------- */
+  /*                                Follow Methods                              */
+  /* -------------------------------------------------------------------------- */
+
+  async getFollow(fid: Uint8Array, user: UserId): HubAsyncResult<FollowAddModel> {
+    return this.makeUnaryMessageRequest(followServiceMethods().getFollow, followServiceRequests.getFollow(fid, user));
+  }
+
+  async getFollowsByFid(fid: Uint8Array): HubAsyncResult<FollowAddModel[]> {
+    return this.makeUnaryMessagesRequest(
+      followServiceMethods().getFollowsByFid,
+      followServiceRequests.getFollowsByFid(fid)
+    );
+  }
+
+  async getFollowsByUser(user: UserId): HubAsyncResult<FollowAddModel[]> {
+    return this.makeUnaryMessagesRequest(
+      followServiceMethods().getFollowsByUser,
+      followServiceRequests.getFollowsByUser(user)
+    );
   }
 
   /* -------------------------------------------------------------------------- */

@@ -10,24 +10,36 @@ table MessagesResponse {
   messages: [Message];
 }
 
-// Requests
+// Cast Requests
 
 table GetCastRequest {
-  cast: CastId;
+  fid: [ubyte] (required);
+  ts_hash: [ubyte] (required);
 }
 
-table GetCastsByUserRequest {
-  user: UserId;
+table GetCastsByFidRequest {
+  fid: [ubyte] (required);
 }
 
 table GetCastsByParentRequest {
-  parent: CastId;
+  parent: CastId (required);
 }
 
 table GetCastsByMentionRequest {
-  mention: UserId;
+  mention: UserId (required);
 }
 
-table GetAllCastMessagesByUserRequest {
-  user: UserId;
+// Follow Requests
+
+table GetFollowRequest {
+  fid: [ubyte] (required);
+  user: UserId (required);
+}
+
+table GetFollowsByFidRequest {
+  fid: [ubyte] (required);
+}
+
+table GetFollowsByUserRequest {
+  user: UserId (required);
 }

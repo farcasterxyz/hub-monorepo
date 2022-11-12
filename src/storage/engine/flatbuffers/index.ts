@@ -7,7 +7,7 @@ import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
 import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
 import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { CastAddModel, UserPostfix } from '~/storage/flatbuffers/types';
+import { CastAddModel, FollowAddModel, UserPostfix } from '~/storage/flatbuffers/types';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { ContractEventType } from '~/utils/generated/contract_event_generated';
 import { isSignerAdd, isSignerRemove } from '~/storage/flatbuffers/typeguards';
@@ -15,7 +15,9 @@ import {
   validateCastId,
   ValidatedCastId,
   ValidatedUserId,
+  validateFid,
   validateMessage,
+  validateTsHash,
   validateUserId,
 } from '~/storage/flatbuffers/validations';
 import { CastId, UserId } from '~/utils/generated/message_generated';
@@ -80,27 +82,24 @@ class Engine {
   /*                             Cast Store Methods                             */
   /* -------------------------------------------------------------------------- */
 
-  async getCastsByUser(user: UserId): HubAsyncResult<CastAddModel[]> {
-    return validateUserId(user).match(
-      (validatedUserId: ValidatedUserId) => {
-        return ResultAsync.fromPromise(
-          this._castStore.getCastAddsByUser(validatedUserId.fidArray()),
-          (e) => e as HubError
-        );
-      },
-      (e) => {
-        return errAsync(e);
-      }
-    );
+  async getCast(fid: Uint8Array, tsHash: Uint8Array): HubAsyncResult<CastAddModel> {
+    const validatedFid = validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    const validatedTsHash = validateTsHash(tsHash);
+    if (validatedTsHash.isErr()) {
+      return err(validatedTsHash.error);
+    }
+
+    return ResultAsync.fromPromise(this._castStore.getCastAdd(fid, tsHash), (e) => e as HubError);
   }
 
-  async getCast(cast: CastId): HubAsyncResult<CastAddModel> {
-    return validateCastId(cast).match(
-      (validatedCastId: ValidatedCastId) => {
-        return ResultAsync.fromPromise(
-          this._castStore.getCastAdd(validatedCastId.fidArray(), validatedCastId.tsHashArray()),
-          (e) => e as HubError
-        );
+  async getCastsByFid(fid: Uint8Array): HubAsyncResult<CastAddModel[]> {
+    return validateFid(fid).match(
+      (validatedFid: Uint8Array) => {
+        return ResultAsync.fromPromise(this._castStore.getCastAddsByUser(validatedFid), (e) => e as HubError);
       },
       (e) => {
         return errAsync(e);
@@ -127,6 +126,52 @@ class Engine {
       (validatedUserId: ValidatedUserId) => {
         return ResultAsync.fromPromise(
           this._castStore.getCastsByMention(validatedUserId.fidArray()),
+          (e) => e as HubError
+        );
+      },
+      (e) => {
+        return errAsync(e);
+      }
+    );
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                             Follow Store Methods                           */
+  /* -------------------------------------------------------------------------- */
+
+  async getFollow(fid: Uint8Array, user: UserId): HubAsyncResult<FollowAddModel> {
+    const validatedFid = validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    const validatedUser = validateUserId(user);
+    if (validatedUser.isErr()) {
+      return err(validatedUser.error);
+    }
+
+    return ResultAsync.fromPromise(
+      this._followStore.getFollowAdd(fid, validatedUser.value.fidArray()),
+      (e) => e as HubError
+    );
+  }
+
+  async getFollowsByFid(fid: Uint8Array): HubAsyncResult<FollowAddModel[]> {
+    return validateFid(fid).match(
+      (validatedFid: Uint8Array) => {
+        return ResultAsync.fromPromise(this._followStore.getFollowAddsByUser(validatedFid), (e) => e as HubError);
+      },
+      (e) => {
+        return errAsync(e);
+      }
+    );
+  }
+
+  async getFollowsByUser(user: UserId): HubAsyncResult<FollowAddModel[]> {
+    return validateUserId(user).match(
+      (validatedUserId: ValidatedUserId) => {
+        return ResultAsync.fromPromise(
+          this._followStore.getFollowsByTargetUser(validatedUserId.fidArray()),
           (e) => e as HubError
         );
       },
