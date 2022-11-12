@@ -20,9 +20,10 @@ import FollowStore from '~/storage/sets/flatbuffers/followStore';
 import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
 import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
 import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
-import { CastId } from '~/utils/generated/message_generated';
+import { CastId, MessageType } from '~/utils/generated/message_generated';
 import { err, ok } from 'neverthrow';
 import { HubError } from '~/utils/hubErrors';
+import { ContractEventType } from '~/utils/generated/contract_event_generated';
 
 const db = jestBinaryRocksDB('flatbuffers.engine.test');
 const engine = new Engine(db);
@@ -111,8 +112,20 @@ beforeAll(async () => {
 
 describe('mergeIdRegistryEvent', () => {
   test('succeeds', async () => {
-    await expect(engine.mergeIdRegistryEvent(custodyEvent)).resolves.toEqual(undefined);
+    await expect(engine.mergeIdRegistryEvent(custodyEvent)).resolves.toEqual(ok(undefined));
     await expect(signerStore.getIdRegistryEvent(fid)).resolves.toEqual(custodyEvent);
+  });
+
+  test('fails with invalid event type', async () => {
+    const invalidEvent = new ContractEventModel(
+      await Factories.IdRegistryEvent.create({
+        type: 3 as ContractEventType,
+        fid: Array.from(fid),
+        to: Array.from(custodyAddress),
+      })
+    );
+    const result = await engine.mergeIdRegistryEvent(invalidEvent);
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid event type'));
   });
 });
 
@@ -121,6 +134,18 @@ describe('mergeMessage', () => {
     beforeEach(async () => {
       await engine.mergeIdRegistryEvent(custodyEvent);
       await engine.mergeMessage(signerAdd);
+    });
+
+    test('fails with invalid message type', async () => {
+      const data = await Factories.MessageData.create({ type: 12 as MessageType, fid: Array.from(fid) });
+      const message = new MessageModel(
+        await Factories.Message.create(
+          { data: Array.from(data.bb?.bytes() ?? new Uint8Array()) },
+          { transient: { signer } }
+        )
+      );
+      const result = await engine.mergeMessage(message);
+      expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request', 'unknown message type'));
     });
 
     describe('CastAdd', () => {

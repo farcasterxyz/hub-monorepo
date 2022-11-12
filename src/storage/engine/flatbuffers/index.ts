@@ -61,18 +61,18 @@ class Engine {
     } else if (message.setPostfix() === UserPostfix.UserDataMessage) {
       return ResultAsync.fromPromise(this._userDataStore.merge(message), (e) => e as HubError);
     } else {
-      return err(new HubError('bad_request', 'invalid message type'));
+      return err(new HubError('bad_request.validation_failure', 'invalid message type'));
     }
   }
 
-  async mergeIdRegistryEvent(event: ContractEventModel): Promise<void> {
+  async mergeIdRegistryEvent(event: ContractEventModel): HubAsyncResult<void> {
     if (
       event.type() === ContractEventType.IdRegistryRegister ||
       event.type() === ContractEventType.IdRegistryTransfer
     ) {
-      return this._signerStore.mergeIdRegistryEvent(event);
+      return ResultAsync.fromPromise(this._signerStore.mergeIdRegistryEvent(event), (e) => e as HubError);
     } else {
-      throw new HubError('bad_request.validation_failure', 'invalid event type');
+      return err(new HubError('bad_request.validation_failure', 'invalid event type'));
     }
   }
 
