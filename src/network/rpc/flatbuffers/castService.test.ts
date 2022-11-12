@@ -59,7 +59,6 @@ beforeAll(async () => {
   castAdd = new MessageModel(
     await Factories.Message.create({ data: Array.from(castAddData.bb?.bytes() ?? []) }, { transient: { signer } })
   ) as CastAddModel;
-  // castAddId = await Factories.CastId.create({ fid: Array.from(fid), tsHash: Array.from(castAdd.tsHash()) });
 });
 
 describe('getCast', () => {
@@ -95,35 +94,61 @@ describe('getCast', () => {
 });
 
 describe('getCastsByFid', () => {
-  test('succeeds', async () => {
+  beforeEach(async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
+  });
+
+  test('succeeds', async () => {
     await engine.mergeMessage(castAdd);
     const casts = await client.getCastsByFid(fid);
     // The underlying buffers are different, so we can't compare casts to [castAdd] directly
     expect(casts._unsafeUnwrap().map((cast) => cast.hash())).toEqual([castAdd.hash()]);
   });
+
+  test('returns empty array without casts', async () => {
+    const casts = await client.getCastsByFid(fid);
+    expect(casts._unsafeUnwrap()).toEqual([]);
+  });
 });
 
 describe('getCastsByParent', () => {
-  test('succeeds', async () => {
+  beforeEach(async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
+  });
+
+  test('succeeds', async () => {
     await engine.mergeMessage(castAdd);
     const casts = await client.getCastsByParent(castAdd.body().parent() ?? new CastId());
     // The underlying buffers are different, so we can't compare casts to [castAdd] directly
     expect(casts._unsafeUnwrap().map((cast) => cast.hash())).toEqual([castAdd.hash()]);
   });
+
+  test('returns empty array without casts', async () => {
+    const casts = await client.getCastsByParent(castAdd.body().parent() ?? new CastId());
+    expect(casts._unsafeUnwrap()).toEqual([]);
+  });
 });
 
 describe('getCastsByMention', () => {
-  test('succeeds', async () => {
+  beforeEach(async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
+  });
+
+  test('succeeds', async () => {
     await engine.mergeMessage(castAdd);
     for (let i = 0; i < castAdd.body().mentionsLength(); i++) {
       const casts = await client.getCastsByMention(castAdd.body().mentions(i) ?? new UserId());
       expect(casts._unsafeUnwrap().map((cast) => cast.hash())).toEqual([castAdd.hash()]);
+    }
+  });
+
+  test('returns empty array without casts', async () => {
+    for (let i = 0; i < castAdd.body().mentionsLength(); i++) {
+      const casts = await client.getCastsByMention(castAdd.body().mentions(i) ?? new UserId());
+      expect(casts._unsafeUnwrap()).toEqual([]);
     }
   });
 });
