@@ -31,7 +31,7 @@ import {
   UserIdT,
 } from '~/utils/generated/message_generated';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import { blake2b } from 'ethereum-cryptography/blake2b';
+import { blake3 } from '@noble/hashes/blake3';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import * as ed from '@noble/ed25519';
 import { arrayify } from 'ethers/lib/utils';
@@ -45,6 +45,7 @@ import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
 import { VerificationRemoveBody, VerificationRemoveBodyT } from '~/utils/generated/farcaster/verification-remove-body';
 import { ContractEvent, ContractEventT, ContractEventType } from '~/utils/generated/contract_event_generated';
 import { toFarcasterTime } from '~/storage/flatbuffers/utils';
+import MessageModel from '~/storage/flatbuffers/messageModel';
 
 /* eslint-disable security/detect-object-injection */
 const BytesFactory = Factory.define<Uint8Array, { length?: number }>(({ transientParams }) => {
@@ -62,11 +63,11 @@ const FIDFactory = Factory.define<Uint8Array>(() => {
   return builder.asUint8Array();
 });
 
-const TsHashFactory = Factory.define<Uint8Array>(() => {
-  const builder = new Builder(8);
-  builder.addInt32(faker.date.recent().getTime());
-  builder.addInt32(faker.datatype.number({ max: 2 ** 32 - 1 }));
-  return builder.asUint8Array();
+const TsHashFactory = Factory.define<Uint8Array, { timestamp?: number; hash?: Uint8Array }>(({ transientParams }) => {
+  return MessageModel.tsHash(
+    transientParams.timestamp ?? faker.date.recent().getTime(),
+    transientParams.hash ?? blake3(faker.random.alphaNumeric(256), { dkLen: 16 })
+  );
 });
 
 const UserIdFactory = Factory.define<UserIdT, any, UserId>(({ onCreate }) => {
@@ -352,7 +353,7 @@ const MessageFactory = Factory.define<MessageT, { signer?: KeyPair; wallet?: Wal
     onCreate(async (params) => {
       // Generate hash
       if (params.hash.length === 0) {
-        params.hash = Array.from(blake2b(new Uint8Array(params.data), 4));
+        params.hash = Array.from(blake3(new Uint8Array(params.data), { dkLen: 16 }));
       }
 
       // Generate signature
@@ -381,7 +382,7 @@ const MessageFactory = Factory.define<MessageT, { signer?: KeyPair; wallet?: Wal
     const builder = new Builder(1);
     builder.finish(data.pack(builder));
 
-    return new MessageT(Array.from(builder.asUint8Array()), [], HashScheme.Blake2b, [], SignatureScheme.Ed25519, []);
+    return new MessageT(Array.from(builder.asUint8Array()), [], HashScheme.Blake3, [], SignatureScheme.Ed25519, []);
   }
 );
 

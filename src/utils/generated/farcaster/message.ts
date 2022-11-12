@@ -56,7 +56,7 @@ hashArray():Uint8Array|null {
 
 hashScheme():HashScheme {
   const offset = this.bb!.__offset(this.bb_pos, 8);
-  return offset ? this.bb!.readUint8(this.bb_pos + offset) : HashScheme.Blake2b;
+  return offset ? this.bb!.readUint8(this.bb_pos + offset) : HashScheme.Blake3;
 }
 
 signature(index: number):number|null {
@@ -131,7 +131,7 @@ static startHashVector(builder:flatbuffers.Builder, numElems:number) {
 }
 
 static addHashScheme(builder:flatbuffers.Builder, hashScheme:HashScheme) {
-  builder.addFieldInt8(2, hashScheme, HashScheme.Blake2b);
+  builder.addFieldInt8(2, hashScheme, HashScheme.Blake3);
 }
 
 static addSignature(builder:flatbuffers.Builder, signatureOffset:flatbuffers.Offset) {
@@ -224,7 +224,7 @@ export class MessageT {
 constructor(
   public data: (number)[] = [],
   public hash: (number)[] = [],
-  public hashScheme: HashScheme = HashScheme.Blake2b,
+  public hashScheme: HashScheme = HashScheme.Blake3,
   public signature: (number)[] = [],
   public signatureScheme: SignatureScheme = SignatureScheme.Ed25519,
   public signer: (number)[] = []
