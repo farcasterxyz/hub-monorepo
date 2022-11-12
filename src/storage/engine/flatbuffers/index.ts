@@ -49,35 +49,17 @@ class Engine {
     }
 
     if (message.setPostfix() === UserPostfix.CastMessage) {
-      return ResultAsync.fromPromise(
-        this._castStore.merge(message),
-        (e) => new HubError('unknown', { cause: e as Error })
-      );
+      return ResultAsync.fromPromise(this._castStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.FollowMessage) {
-      return ResultAsync.fromPromise(
-        this._followStore.merge(message),
-        (e) => new HubError('unknown', { cause: e as Error })
-      );
+      return ResultAsync.fromPromise(this._followStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.ReactionMessage) {
-      return ResultAsync.fromPromise(
-        this._reactionStore.merge(message),
-        (e) => new HubError('unknown', { cause: e as Error })
-      );
+      return ResultAsync.fromPromise(this._reactionStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.SignerMessage) {
-      return ResultAsync.fromPromise(
-        this._signerStore.merge(message),
-        (e) => new HubError('unknown', { cause: e as Error })
-      );
+      return ResultAsync.fromPromise(this._signerStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.VerificationMessage) {
-      return ResultAsync.fromPromise(
-        this._verificationStore.merge(message),
-        (e) => new HubError('unknown', { cause: e as Error })
-      );
+      return ResultAsync.fromPromise(this._verificationStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.UserDataMessage) {
-      return ResultAsync.fromPromise(
-        this._userDataStore.merge(message),
-        (e) => new HubError('unknown', { cause: e as Error })
-      );
+      return ResultAsync.fromPromise(this._userDataStore.merge(message), (e) => e as HubError);
     } else {
       return err(new HubError('bad_request', 'invalid message type'));
     }
@@ -103,7 +85,7 @@ class Engine {
       (validatedUserId: ValidatedUserId) => {
         return ResultAsync.fromPromise(
           this._castStore.getCastAddsByUser(validatedUserId.fidArray()),
-          (e) => new HubError('unknown', { cause: e as Error })
+          (e) => e as HubError
         );
       },
       (e) => {
@@ -117,7 +99,7 @@ class Engine {
       (validatedCastId: ValidatedCastId) => {
         return ResultAsync.fromPromise(
           this._castStore.getCastAdd(validatedCastId.fidArray(), validatedCastId.tsHashArray()),
-          (e) => new HubError('not_found', { cause: e as Error })
+          (e) => e as HubError
         );
       },
       (e) => {
@@ -131,7 +113,7 @@ class Engine {
       (validatedParent: ValidatedCastId) => {
         return ResultAsync.fromPromise(
           this._castStore.getCastsByParent(validatedParent.fidArray(), validatedParent.tsHashArray()),
-          (e) => new HubError('unknown', { cause: e as Error })
+          (e) => e as HubError
         );
       },
       (e) => {
@@ -145,7 +127,7 @@ class Engine {
       (validatedUserId: ValidatedUserId) => {
         return ResultAsync.fromPromise(
           this._castStore.getCastsByMention(validatedUserId.fidArray()),
-          (e) => new HubError('unknown', { cause: e as Error })
+          (e) => e as HubError
         );
       },
       (e) => {
