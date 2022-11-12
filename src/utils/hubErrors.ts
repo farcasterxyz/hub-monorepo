@@ -50,7 +50,7 @@ export class HubError extends Error {
  * javascript code and may cause downstream issues. See:
  * https://www.executeprogram.com/blog/typescript-features-to-avoid
  */
-type HubErrorCode =
+export type HubErrorCode =
   /* The request did not have valid authentication credentials, retry with credentials  */
   | 'unauthenticated'
   /* The authenticated request did not have the authority to perform this action  */
@@ -74,3 +74,4 @@ type HubErrorCode =
 
 /** Type alias for shorthand when handling errors */
 export type HubResult<T> = Result<T, HubError>;
+export type HubAsyncResult<T> = Promise<HubResult<T>>;

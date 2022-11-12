@@ -1,0 +1,33 @@
+include "message.fbs";
+
+// IDL file for Farcaster RPC Requests
+
+namespace Farcaster;
+
+// Responses
+
+table MessagesResponse {
+  messages: [Message];
+}
+
+// Requests
+
+table GetCastRequest {
+  cast: CastId;
+}
+
+table GetCastsByUserRequest {
+  user: UserId;
+}
+
+table GetCastsByParentRequest {
+  parent: CastId;
+}
+
+table GetCastsByMentionRequest {
+  mention: UserId;
+}
+
+table GetAllCastMessagesByUserRequest {
+  user: UserId;
+}

@@ -3,6 +3,7 @@ import { generateEd25519KeyPair } from '~/utils/crypto';
 import {
   ALLOWED_CLOCK_SKEW_SECONDS,
   validateCastAddMessage,
+  validateCastId,
   validateCastRemoveMessage,
   validateEd25519PublicKey,
   validateEthAddress,
@@ -66,7 +67,8 @@ beforeAll(async () => {
 describe('validateMessage', () => {
   test('succeeds with Ed25519 signer', async () => {
     const message = new MessageModel(await Factories.Message.create({}, { transient: { signer } }));
-    await expect(validateMessage(message)).resolves.toEqual(message);
+    const result = await validateMessage(message);
+    expect(result._unsafeUnwrap()).toEqual(message);
   });
 
   test('succeeds with EIP712 signer', async () => {
@@ -74,13 +76,15 @@ describe('validateMessage', () => {
     const message = new MessageModel(
       await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
     );
-    await expect(validateMessage(message)).resolves.toEqual(message);
+    const result = await validateMessage(message);
+    expect(result._unsafeUnwrap()).toEqual(message);
   });
 
   test('fails with EIP712 signer and non-signer message type', async () => {
     // Default message type is CastAdd
     const message = new MessageModel(await Factories.Message.create({}, { transient: { wallet } }));
-    await expect(validateMessage(message)).rejects.toThrow(
+    const result = await validateMessage(message);
+    expect(result._unsafeUnwrapErr()).toEqual(
       new HubError('bad_request.validation_failure', 'invalid signatureScheme')
     );
   });
@@ -90,7 +94,8 @@ describe('validateMessage', () => {
     const message = new MessageModel(
       await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { signer } })
     );
-    await expect(validateMessage(message)).rejects.toThrow(
+    const result = await validateMessage(message);
+    expect(result._unsafeUnwrapErr()).toEqual(
       new HubError('bad_request.validation_failure', 'invalid signatureScheme')
     );
   });
@@ -99,25 +104,24 @@ describe('validateMessage', () => {
     const message = new MessageModel(
       await Factories.Message.create({ hashScheme: 10 as unknown as HashScheme.Blake2b })
     );
-    await expect(validateMessage(message)).rejects.toThrow(
-      new HubError('bad_request.validation_failure', 'invalid hashScheme')
-    );
+    const result = await validateMessage(message);
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid hashScheme'));
   });
 
   test('fails with invalid hash', async () => {
     const message = new MessageModel(
       await Factories.Message.create({ hash: Array.from(utils.arrayify(faker.datatype.hexadecimal({ length: 8 }))) })
     );
-    await expect(validateMessage(message)).rejects.toThrow(
-      new HubError('bad_request.validation_failure', 'invalid hash')
-    );
+    const result = await validateMessage(message);
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid hash'));
   });
 
   test('fails with invalid signatureScheme', async () => {
     const message = new MessageModel(
       await Factories.Message.create({ signatureScheme: 10 as unknown as SignatureScheme.Ed25519 })
     );
-    await expect(validateMessage(message)).rejects.toThrow(
+    const result = await validateMessage(message);
+    expect(result._unsafeUnwrapErr()).toEqual(
       new HubError('bad_request.validation_failure', 'invalid signatureScheme')
     );
   });
@@ -129,15 +133,15 @@ describe('validateMessage', () => {
         signer: Array.from(utils.arrayify(faker.datatype.hexadecimal({ length: 64 }))),
       })
     );
-    await expect(validateMessage(message)).rejects.toThrow(
-      new HubError('bad_request.validation_failure', 'invalid signature')
-    );
+    const result = await validateMessage(message);
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid signature'));
   });
 
   test('fails with timestamp more than 10 mins in the future', async () => {
     const data = await Factories.MessageData.create({ timestamp: getFarcasterTime() + ALLOWED_CLOCK_SKEW_SECONDS + 1 });
     const message = new MessageModel(await Factories.Message.create({ data: Array.from(data.bb?.bytes() ?? []) }));
-    await expect(validateMessage(message)).rejects.toThrow(
+    const result = await validateMessage(message);
+    expect(result._unsafeUnwrapErr()).toEqual(
       new HubError('bad_request.validation_failure', 'timestamp more than 10 mins in the future')
     );
   });
@@ -146,54 +150,86 @@ describe('validateMessage', () => {
 describe('validateFid', () => {
   test('succeeds', () => {
     const fid = Factories.FID.build();
-    expect(validateFid(fid)).toEqual(fid);
+    expect(validateFid(fid)._unsafeUnwrap()).toEqual(fid);
   });
 
   test('fails with empty array', () => {
-    expect(() => validateFid(new Uint8Array())).toThrow(
+    expect(validateFid(new Uint8Array())._unsafeUnwrapErr()).toEqual(
       new HubError('bad_request.validation_failure', 'fid is missing')
     );
   });
 
   test('fails when greater than 32 bytes', () => {
     const fid = Factories.Bytes.build({}, { transient: { length: 33 } });
-    expect(() => validateFid(fid)).toThrow(new HubError('bad_request.validation_failure', 'fid > 32 bytes'));
+    expect(validateFid(fid)._unsafeUnwrapErr()).toEqual(
+      new HubError('bad_request.validation_failure', 'fid > 32 bytes')
+    );
   });
 
   test('fails when undefined', () => {
-    expect(() => validateFid(undefined)).toThrow(new HubError('bad_request.validation_failure', 'fid is missing'));
+    expect(validateFid(undefined)._unsafeUnwrapErr()).toEqual(
+      new HubError('bad_request.validation_failure', 'fid is missing')
+    );
   });
 });
 
 describe('validateTsHash', () => {
   test('succeeds', () => {
     const tsHash = Factories.TsHash.build();
-    expect(validateTsHash(tsHash)).toEqual(tsHash);
+    expect(validateTsHash(tsHash)._unsafeUnwrap()).toEqual(tsHash);
   });
 
   test('fails with empty array', () => {
-    expect(() => validateTsHash(new Uint8Array())).toThrow(
+    expect(validateTsHash(new Uint8Array())._unsafeUnwrapErr()).toEqual(
       new HubError('bad_request.validation_failure', 'tsHash is missing')
     );
   });
 
   test('fails when greater than 8 bytes', () => {
     const tsHash = Factories.Bytes.build({}, { transient: { length: 9 } });
-    expect(() => validateTsHash(tsHash)).toThrow(
+    expect(validateTsHash(tsHash)._unsafeUnwrapErr()).toEqual(
       new HubError('bad_request.validation_failure', 'tsHash must be 8 bytes')
     );
   });
 
   test('fails when less than 8 bytes', () => {
     const tsHash = Factories.Bytes.build({}, { transient: { length: 7 } });
-    expect(() => validateTsHash(tsHash)).toThrow(
+    expect(validateTsHash(tsHash)._unsafeUnwrapErr()).toEqual(
       new HubError('bad_request.validation_failure', 'tsHash must be 8 bytes')
     );
   });
 
   test('fails when undefined', () => {
-    expect(() => validateTsHash(undefined)).toThrow(
+    expect(validateTsHash(undefined)._unsafeUnwrapErr()).toEqual(
       new HubError('bad_request.validation_failure', 'tsHash is missing')
+    );
+  });
+});
+
+describe('validateCastId', () => {
+  test('succeeds', async () => {
+    const castId = await Factories.CastId.create();
+    expect(validateCastId(castId)._unsafeUnwrap()).toEqual(castId);
+  });
+
+  test('fails when fid is invalid', async () => {
+    const castId = await Factories.CastId.create({ fid: [] });
+    expect(validateCastId(castId)._unsafeUnwrapErr()).toEqual(
+      new HubError('bad_request.validation_failure', 'fid is missing')
+    );
+  });
+
+  test('fails when tsHash is invalid', async () => {
+    const castId = await Factories.CastId.create({ tsHash: [] });
+    expect(validateCastId(castId)._unsafeUnwrapErr()).toEqual(
+      new HubError('bad_request.validation_failure', 'tsHash is missing')
+    );
+  });
+
+  test('fails when both fid and tsHash are invalid', async () => {
+    const castId = await Factories.CastId.create({ fid: [], tsHash: [] });
+    expect(validateCastId(castId)._unsafeUnwrapErr()).toEqual(
+      new HubError('bad_request.validation_failure', 'fid is missing, tsHash is missing')
     );
   });
 });
@@ -207,43 +243,47 @@ describe('validateEthAddress', () => {
   });
 
   test('succeeds', () => {
-    expect(validateEthAddress(address)).toEqual(address);
+    expect(validateEthAddress(address)._unsafeUnwrap()).toEqual(address);
   });
 
   test('fails with longer address', () => {
     const invalidAddress = new Uint8Array([...address, 1]);
-    expect(() => validateEthAddress(invalidAddress)).toThrow(HubError);
+    expect(validateEthAddress(invalidAddress)._unsafeUnwrapErr()).toEqual(
+      new HubError('bad_request.validation_failure', 'address must be 20 bytes')
+    );
   });
 
   test('fails with shorter address', () => {
     const invalidAddress = address.slice(0, -1);
-    expect(() => validateEthAddress(invalidAddress)).toThrow(HubError);
+    expect(validateEthAddress(invalidAddress)._unsafeUnwrapErr()).toEqual(
+      new HubError('bad_request.validation_failure', 'address must be 20 bytes')
+    );
   });
 });
 
 describe('validateEthBlockHash', () => {
   test('succeeds', () => {
     const blockHash = Factories.Bytes.build({}, { transient: { length: 32 } });
-    expect(validateEthBlockHash(blockHash)).toEqual(blockHash);
+    expect(validateEthBlockHash(blockHash)._unsafeUnwrap()).toEqual(blockHash);
   });
 
   test('fails when greater than 32 bytes', () => {
     const blockHash = Factories.Bytes.build({}, { transient: { length: 33 } });
-    expect(() => validateEthBlockHash(blockHash)).toThrow(
-      new HubError('bad_request.validation_failure', 'block hash must be 32 bytes')
+    expect(validateEthBlockHash(blockHash)._unsafeUnwrapErr()).toEqual(
+      new HubError('bad_request.validation_failure', 'blockHash must be 32 bytes')
     );
   });
 
   test('fails when less than 32 bytes', () => {
     const blockHash = Factories.Bytes.build({}, { transient: { length: 31 } });
-    expect(() => validateEthBlockHash(blockHash)).toThrow(
-      new HubError('bad_request.validation_failure', 'block hash must be 32 bytes')
+    expect(validateEthBlockHash(blockHash)._unsafeUnwrapErr()).toEqual(
+      new HubError('bad_request.validation_failure', 'blockHash must be 32 bytes')
     );
   });
 
   test('fails when undefined', () => {
-    expect(() => validateEthBlockHash(undefined)).toThrow(
-      new HubError('bad_request.validation_failure', 'block hash is missing')
+    expect(validateEthBlockHash(undefined)._unsafeUnwrapErr()).toEqual(
+      new HubError('bad_request.validation_failure', 'blockHash is missing')
     );
   });
 });
@@ -257,17 +297,21 @@ describe('validateEd25519PublicKey', () => {
   });
 
   test('succeeds', () => {
-    expect(validateEd25519PublicKey(publicKey)).toEqual(publicKey);
+    expect(validateEd25519PublicKey(publicKey)._unsafeUnwrap()).toEqual(publicKey);
   });
 
   test('fails with longer key', () => {
     const invalidKey = new Uint8Array([...publicKey, 1]);
-    expect(() => validateEd25519PublicKey(invalidKey)).toThrow(HubError);
+    expect(validateEd25519PublicKey(invalidKey)._unsafeUnwrapErr()).toEqual(
+      new HubError('bad_request.validation_failure', 'publicKey must be 32 bytes')
+    );
   });
 
   test('fails with shorter key', () => {
     const invalidKey = publicKey.slice(0, -1);
-    expect(() => validateEd25519PublicKey(invalidKey)).toThrow(HubError);
+    expect(validateEd25519PublicKey(invalidKey)._unsafeUnwrapErr()).toEqual(
+      new HubError('bad_request.validation_failure', 'publicKey must be 32 bytes')
+    );
   });
 });
 
@@ -277,7 +321,7 @@ describe('validateCastAddMessage', () => {
     const castAdd = new MessageModel(
       await Factories.Message.create({ data: Array.from(castAddData.bb?.bytes() ?? []) }, { transient: { signer } })
     ) as CastAddModel;
-    expect(validateCastAddMessage(castAdd)).toEqual(castAdd);
+    expect(validateCastAddMessage(castAdd)._unsafeUnwrap()).toEqual(castAdd);
   });
 
   describe('fails', () => {
@@ -289,7 +333,7 @@ describe('validateCastAddMessage', () => {
       const castAdd = new MessageModel(
         await Factories.Message.create({ data: Array.from(castAddData.bb?.bytes() ?? []) }, { transient: { signer } })
       ) as CastAddModel;
-      expect(() => validateCastAddMessage(castAdd)).toThrow(
+      expect(validateCastAddMessage(castAdd)._unsafeUnwrapErr()).toEqual(
         new HubError('bad_request.validation_failure', hubErrorMessage)
       );
     });
@@ -345,7 +389,7 @@ describe('validateCastRemoveMessage', () => {
     const castRemove = new MessageModel(
       await Factories.Message.create({ data: Array.from(castRemoveData.bb?.bytes() ?? []) }, { transient: { signer } })
     ) as CastRemoveModel;
-    expect(validateCastRemoveMessage(castRemove)).toEqual(castRemove);
+    expect(validateCastRemoveMessage(castRemove)._unsafeUnwrap()).toEqual(castRemove);
   });
 
   test('fails when tsHash is missing', async () => {
@@ -355,7 +399,7 @@ describe('validateCastRemoveMessage', () => {
     const castRemove = new MessageModel(
       await Factories.Message.create({ data: Array.from(castRemoveData.bb?.bytes() ?? []) }, { transient: { signer } })
     ) as CastRemoveModel;
-    expect(() => validateCastRemoveMessage(castRemove)).toThrow(
+    expect(validateCastRemoveMessage(castRemove)._unsafeUnwrapErr()).toEqual(
       new HubError('bad_request.validation_failure', 'tsHash is missing')
     );
   });
@@ -367,7 +411,7 @@ describe('validateReactionMessage', () => {
     const reactionAdd = new MessageModel(
       await Factories.Message.create({ data: Array.from(reactionAddData.bb?.bytes() ?? []) }, { transient: { signer } })
     ) as ReactionAddModel;
-    expect(validateReactionMessage(reactionAdd)).toEqual(reactionAdd);
+    expect(validateReactionMessage(reactionAdd)._unsafeUnwrap()).toEqual(reactionAdd);
   });
 
   test('succeeds with ReactionRemove', async () => {
@@ -378,7 +422,7 @@ describe('validateReactionMessage', () => {
         { transient: { signer } }
       )
     ) as ReactionRemoveModel;
-    expect(validateReactionMessage(reactionRemove)).toEqual(reactionRemove);
+    expect(validateReactionMessage(reactionRemove)._unsafeUnwrap()).toEqual(reactionRemove);
   });
 
   describe('fails', () => {
@@ -393,7 +437,7 @@ describe('validateReactionMessage', () => {
           { transient: { signer } }
         )
       ) as ReactionAddModel;
-      expect(() => validateReactionMessage(reactionAdd)).toThrow(
+      expect(validateReactionMessage(reactionAdd)._unsafeUnwrapErr()).toEqual(
         new HubError('bad_request.validation_failure', hubErrorMessage)
       );
     });
@@ -433,7 +477,8 @@ describe('validateVerificationAddEthAddressMessage', () => {
         { transient: { signer } }
       )
     ) as VerificationAddEthAddressModel;
-    await expect(validateVerificationAddEthAddressMessage(verificationAdd)).resolves.toEqual(verificationAdd);
+    const result = await validateVerificationAddEthAddressMessage(verificationAdd);
+    expect(result._unsafeUnwrap()).toEqual(verificationAdd);
   });
 
   describe('fails', () => {
@@ -453,9 +498,8 @@ describe('validateVerificationAddEthAddressMessage', () => {
           { transient: { signer } }
         )
       ) as VerificationAddEthAddressModel;
-      await expect(validateVerificationAddEthAddressMessage(verificationAdd)).rejects.toThrow(
-        new HubError('bad_request.validation_failure', hubErrorMessage)
-      );
+      const result = await validateVerificationAddEthAddressMessage(verificationAdd);
+      expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', hubErrorMessage));
     });
 
     test('with missing eth address', () => {
@@ -472,14 +516,14 @@ describe('validateVerificationAddEthAddressMessage', () => {
 
     test('with missing block hash', () => {
       body = Factories.VerificationAddEthAddressBody.build({ blockHash: [] });
-      hubErrorMessage = 'block hash is missing';
+      hubErrorMessage = 'blockHash is missing';
     });
 
     test('with invalid block hash', () => {
       body = Factories.VerificationAddEthAddressBody.build({
         blockHash: Array.from(Factories.Bytes.build({}, { transient: { length: 10 } })),
       });
-      hubErrorMessage = 'block hash must be 32 bytes';
+      hubErrorMessage = 'blockHash must be 32 bytes';
     });
 
     test('with invalid eth signature', async () => {
@@ -495,7 +539,7 @@ describe('validateVerificationAddEthAddressMessage', () => {
         Array.from(signature),
         Array.from(claim.blockHash)
       );
-      hubErrorMessage = 'invalid eth signature';
+      hubErrorMessage = 'ethSignature does not match address';
     });
   });
 });
@@ -509,7 +553,7 @@ describe('validateVerificationRemoveMessage', () => {
         { transient: { signer } }
       )
     ) as VerificationRemoveModel;
-    expect(validateVerificationRemoveMessage(verificationRemove)).toEqual(verificationRemove);
+    expect(validateVerificationRemoveMessage(verificationRemove)._unsafeUnwrap()).toEqual(verificationRemove);
   });
 
   describe('fails', () => {
@@ -524,7 +568,7 @@ describe('validateVerificationRemoveMessage', () => {
           { transient: { signer } }
         )
       ) as VerificationRemoveModel;
-      expect(() => validateVerificationRemoveMessage(verificationRemove)).toThrow(
+      expect(validateVerificationRemoveMessage(verificationRemove)._unsafeUnwrapErr()).toEqual(
         new HubError('bad_request.validation_failure', hubErrorMessage)
       );
     });
@@ -551,7 +595,7 @@ describe('validateSignerMessage', () => {
     const signerAdd = new MessageModel(
       await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
     ) as SignerAddModel;
-    expect(validateSignerMessage(signerAdd)).toEqual(signerAdd);
+    expect(validateSignerMessage(signerAdd)._unsafeUnwrap()).toEqual(signerAdd);
   });
 
   test('succeeds with SignerRemove', async () => {
@@ -562,7 +606,7 @@ describe('validateSignerMessage', () => {
         { transient: { wallet } }
       )
     ) as SignerRemoveModel;
-    expect(validateSignerMessage(signerRemove)).toEqual(signerRemove);
+    expect(validateSignerMessage(signerRemove)._unsafeUnwrap()).toEqual(signerRemove);
   });
 
   describe('fails', () => {
@@ -574,7 +618,7 @@ describe('validateSignerMessage', () => {
       const signerAdd = new MessageModel(
         await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
       ) as SignerAddModel;
-      expect(() => validateSignerMessage(signerAdd)).toThrow(
+      expect(validateSignerMessage(signerAdd)._unsafeUnwrapErr()).toEqual(
         new HubError('bad_request.validation_failure', hubErrorMessage)
       );
     });
@@ -583,14 +627,14 @@ describe('validateSignerMessage', () => {
       body = Factories.SignerBody.build({
         signer: [],
       });
-      hubErrorMessage = 'public key is missing';
+      hubErrorMessage = 'publicKey is missing';
     });
 
     test('with invalid signer', () => {
       body = Factories.SignerBody.build({
         signer: Array.from(Factories.Bytes.build({}, { transient: { length: 10 } })),
       });
-      hubErrorMessage = 'public key must be 32 bytes';
+      hubErrorMessage = 'publicKey must be 32 bytes';
     });
   });
 });
@@ -601,7 +645,7 @@ describe('validateFollowMessage', () => {
     const followAdd = new MessageModel(
       await Factories.Message.create({ data: Array.from(followAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
     ) as FollowAddModel;
-    expect(validateFollowMessage(followAdd)).toEqual(followAdd);
+    expect(validateFollowMessage(followAdd)._unsafeUnwrap()).toEqual(followAdd);
   });
 
   test('succeeds with FollowRemove', async () => {
@@ -612,7 +656,7 @@ describe('validateFollowMessage', () => {
         { transient: { wallet } }
       )
     ) as FollowRemoveModel;
-    expect(validateFollowMessage(followRemove)).toEqual(followRemove);
+    expect(validateFollowMessage(followRemove)._unsafeUnwrap()).toEqual(followRemove);
   });
 
   describe('fails', () => {
@@ -624,7 +668,7 @@ describe('validateFollowMessage', () => {
       const followAdd = new MessageModel(
         await Factories.Message.create({ data: Array.from(followAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
       ) as FollowAddModel;
-      expect(() => validateFollowMessage(followAdd)).toThrow(
+      expect(validateFollowMessage(followAdd)._unsafeUnwrapErr()).toEqual(
         new HubError('bad_request.validation_failure', hubErrorMessage)
       );
     });
@@ -651,7 +695,7 @@ describe('validateUserDataAddMessage', () => {
     const userDataAdd = new MessageModel(
       await Factories.Message.create({ data: Array.from(userDataAddData.bb?.bytes() ?? []) }, { transient: { signer } })
     ) as UserDataAddModel;
-    expect(validateUserDataAddMessage(userDataAdd)).toEqual(userDataAdd);
+    expect(validateUserDataAddMessage(userDataAdd)._unsafeUnwrap()).toEqual(userDataAdd);
   });
 
   describe('fails', () => {
@@ -666,7 +710,7 @@ describe('validateUserDataAddMessage', () => {
           { transient: { signer } }
         )
       ) as UserDataAddModel;
-      expect(() => validateUserDataAddMessage(userDataAdd)).toThrow(
+      expect(validateUserDataAddMessage(userDataAdd)._unsafeUnwrapErr()).toEqual(
         new HubError('bad_request.validation_failure', hubErrorMessage)
       );
     });

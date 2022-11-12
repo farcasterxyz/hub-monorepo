@@ -20,8 +20,10 @@ import FollowStore from '~/storage/sets/flatbuffers/followStore';
 import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
 import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
 import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
-import { CastId } from '~/utils/generated/message_generated';
+import { CastId, MessageType } from '~/utils/generated/message_generated';
+import { err, ok } from 'neverthrow';
 import { HubError } from '~/utils/hubErrors';
+import { ContractEventType } from '~/utils/generated/contract_event_generated';
 
 const db = jestBinaryRocksDB('flatbuffers.engine.test');
 const engine = new Engine(db);
@@ -110,8 +112,20 @@ beforeAll(async () => {
 
 describe('mergeIdRegistryEvent', () => {
   test('succeeds', async () => {
-    await expect(engine.mergeIdRegistryEvent(custodyEvent)).resolves.toEqual(undefined);
+    await expect(engine.mergeIdRegistryEvent(custodyEvent)).resolves.toEqual(ok(undefined));
     await expect(signerStore.getIdRegistryEvent(fid)).resolves.toEqual(custodyEvent);
+  });
+
+  test('fails with invalid event type', async () => {
+    const invalidEvent = new ContractEventModel(
+      await Factories.IdRegistryEvent.create({
+        type: 3 as ContractEventType,
+        fid: Array.from(fid),
+        to: Array.from(custodyAddress),
+      })
+    );
+    const result = await engine.mergeIdRegistryEvent(invalidEvent);
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid event type'));
   });
 });
 
@@ -122,16 +136,28 @@ describe('mergeMessage', () => {
       await engine.mergeMessage(signerAdd);
     });
 
+    test('fails with invalid message type', async () => {
+      const data = await Factories.MessageData.create({ type: 12 as MessageType, fid: Array.from(fid) });
+      const message = new MessageModel(
+        await Factories.Message.create(
+          { data: Array.from(data.bb?.bytes() ?? new Uint8Array()) },
+          { transient: { signer } }
+        )
+      );
+      const result = await engine.mergeMessage(message);
+      expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request', 'unknown message type'));
+    });
+
     describe('CastAdd', () => {
       test('succeeds', async () => {
-        await expect(engine.mergeMessage(castAdd)).resolves.toEqual(undefined);
+        await expect(engine.mergeMessage(castAdd)).resolves.toEqual(ok(undefined));
         await expect(castStore.getCastAdd(fid, castAdd.tsHash())).resolves.toEqual(castAdd);
       });
     });
 
     describe('FollowAdd', () => {
       test('succeeds', async () => {
-        await expect(engine.mergeMessage(followAdd)).resolves.toEqual(undefined);
+        await expect(engine.mergeMessage(followAdd)).resolves.toEqual(ok(undefined));
         await expect(
           followStore.getFollowAdd(fid, followAdd.body().user()?.fidArray() ?? new Uint8Array())
         ).resolves.toEqual(followAdd);
@@ -140,7 +166,7 @@ describe('mergeMessage', () => {
 
     describe('ReactionAdd', () => {
       test('succeeds', async () => {
-        await expect(engine.mergeMessage(reactionAdd)).resolves.toEqual(undefined);
+        await expect(engine.mergeMessage(reactionAdd)).resolves.toEqual(ok(undefined));
         await expect(
           reactionStore.getReactionAdd(fid, reactionAdd.body().type(), reactionAdd.body().cast() as CastId)
         ).resolves.toEqual(reactionAdd);
@@ -149,8 +175,7 @@ describe('mergeMessage', () => {
 
     describe('VerificationAddEthAddress', () => {
       test('succeeds', async () => {
-        await expect(engine.mergeMessage(verificationAdd)).resolves.toEqual(undefined);
-
+        await expect(engine.mergeMessage(verificationAdd)).resolves.toEqual(ok(undefined));
         await expect(
           verificationStore.getVerificationAdd(fid, verificationAdd.body().addressArray() ?? new Uint8Array())
         ).resolves.toEqual(verificationAdd);
@@ -159,8 +184,7 @@ describe('mergeMessage', () => {
 
     describe('UserDataAdd', () => {
       test('succeeds', async () => {
-        await expect(engine.mergeMessage(userDataAdd)).resolves.toEqual(undefined);
-
+        await expect(engine.mergeMessage(userDataAdd)).resolves.toEqual(ok(undefined));
         await expect(userDataStore.getUserDataAdd(fid, userDataAdd.body().type())).resolves.toEqual(userDataAdd);
       });
     });
@@ -174,8 +198,8 @@ describe('mergeMessage', () => {
     });
 
     afterEach(async () => {
-      await expect(engine.mergeMessage(message)).rejects.toThrow(
-        new HubError('bad_request.validation_failure', 'invalid signer')
+      expect(await engine.mergeMessage(message)).toEqual(
+        err(new HubError('bad_request.validation_failure', 'invalid signer'))
       );
     });
 
@@ -188,8 +212,8 @@ describe('mergeMessage', () => {
     let message: MessageModel;
 
     afterEach(async () => {
-      await expect(engine.mergeMessage(message)).rejects.toThrow(
-        new HubError('bad_request.validation_failure', 'unknown user')
+      expect(await engine.mergeMessage(message)).toEqual(
+        err(new HubError('bad_request.validation_failure', 'unknown user'))
       );
     });
 

@@ -15,11 +15,13 @@ import {
 } from '~/storage/flatbuffers/types';
 import { verifyMessageDataSignature, verifyVerificationEthAddressClaimSignature } from '~/utils/eip712';
 import {
+  CastId,
   HashScheme,
   MessageType,
   ReactionType,
   SignatureScheme,
   UserDataType,
+  UserId,
 } from '~/utils/generated/message_generated';
 import * as ed from '@noble/ed25519';
 import MessageModel, { FID_BYTES } from '~/storage/flatbuffers/messageModel';
@@ -38,8 +40,8 @@ import {
 } from '~/storage/flatbuffers/typeguards';
 import { hexlify } from 'ethers/lib/utils';
 import { bytesCompare, getFarcasterTime } from '~/storage/flatbuffers/utils';
-import { ResultAsync } from 'neverthrow';
-import { HubError } from '~/utils/hubErrors';
+import { err, ok, Result, ResultAsync } from 'neverthrow';
+import { HubAsyncResult, HubError, HubResult } from '~/utils/hubErrors';
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
@@ -47,23 +49,23 @@ export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
 /** Message types that must be signed by EIP712 signer */
 export const EIP712_MESSAGE_TYPES = [MessageType.SignerAdd, MessageType.SignerRemove];
 
-export const validateMessage = async (message: MessageModel): Promise<MessageModel> => {
+export const validateMessage = async (message: MessageModel): HubAsyncResult<MessageModel> => {
   // 1. Check that the hashScheme and hash are valid
   if (message.hashScheme() === HashScheme.Blake2b) {
     const computedHash = await blake2b(message.dataBytes(), 4);
     // we have to use bytesCompare, because TypedArrays cannot be compared directly
     if (bytesCompare(message.hash(), computedHash) !== 0) {
-      throw new HubError('bad_request.validation_failure', 'invalid hash');
+      return err(new HubError('bad_request.validation_failure', 'invalid hash'));
     }
   } else {
-    throw new HubError('bad_request.validation_failure', 'invalid hashScheme');
+    return err(new HubError('bad_request.validation_failure', 'invalid hashScheme'));
   }
 
   // 2. Check that the signatureScheme and signature are valid
   if (message.signatureScheme() === SignatureScheme.Eip712 && EIP712_MESSAGE_TYPES.includes(message.type())) {
     const verifiedSigner = verifyMessageDataSignature(message.dataBytes(), message.signature());
     if (bytesCompare(verifiedSigner, message.signer()) !== 0) {
-      throw new HubError('bad_request.validation_failure', 'invalid signature');
+      return err(new HubError('bad_request.validation_failure', 'signature does not match signer'));
     }
   } else if (message.signatureScheme() === SignatureScheme.Ed25519 && !EIP712_MESSAGE_TYPES.includes(message.type())) {
     const signatureIsValid = await ResultAsync.fromPromise(
@@ -71,220 +73,244 @@ export const validateMessage = async (message: MessageModel): Promise<MessageMod
       () => undefined
     );
     if (signatureIsValid.isErr() || (signatureIsValid.isOk() && !signatureIsValid.value)) {
-      throw new HubError('bad_request.validation_failure', 'invalid signature');
+      return err(new HubError('bad_request.validation_failure', 'invalid signature'));
     }
   } else {
-    throw new HubError('bad_request.validation_failure', 'invalid signatureScheme');
+    return err(new HubError('bad_request.validation_failure', 'invalid signatureScheme'));
   }
 
   // 3. Verify that the timestamp is not too far in the future.
   if (message.timestamp() - getFarcasterTime() > ALLOWED_CLOCK_SKEW_SECONDS) {
-    throw new HubError('bad_request.validation_failure', 'timestamp more than 10 mins in the future');
+    return err(new HubError('bad_request.validation_failure', 'timestamp more than 10 mins in the future'));
   }
 
   if (isCastAdd(message)) {
-    return validateCastAddMessage(message) as MessageModel;
+    return validateCastAddMessage(message);
   } else if (isCastRemove(message)) {
-    return validateCastRemoveMessage(message) as MessageModel;
+    return validateCastRemoveMessage(message);
   } else if (isReactionAdd(message) || isReactionRemove(message)) {
-    return validateReactionMessage(message) as MessageModel;
+    return validateReactionMessage(message);
   } else if (isVerificationAddEthAddress(message)) {
-    return (await validateVerificationAddEthAddressMessage(message)) as MessageModel;
+    return await validateVerificationAddEthAddressMessage(message);
   } else if (isVerificationRemove(message)) {
-    return validateVerificationRemoveMessage(message) as MessageModel;
+    return validateVerificationRemoveMessage(message);
   } else if (isSignerAdd(message) || isSignerRemove(message)) {
-    return validateSignerMessage(message) as MessageModel;
+    return validateSignerMessage(message);
   } else if (isFollowAdd(message) || isFollowRemove(message)) {
-    return validateFollowMessage(message) as MessageModel;
+    return validateFollowMessage(message);
   } else if (isUserDataAdd(message)) {
-    return validateUserDataAddMessage(message) as MessageModel;
+    return validateUserDataAddMessage(message);
   } else {
-    throw new HubError('bad_request.validation_failure', 'unknown message type');
+    return err(new HubError('bad_request.validation_failure', 'unknown message type'));
   }
 };
 
-export const validateFid = (fid?: Uint8Array | null): Uint8Array => {
+export interface ValidatedCastId extends CastId {
+  fidArray(): Uint8Array;
+  tsHashArray(): Uint8Array;
+}
+
+export const validateCastId = (castId?: CastId | null): HubResult<ValidatedCastId> => {
+  if (!castId) {
+    return err(new HubError('bad_request.validation_failure', 'castId is missing'));
+  }
+  return Result.combineWithAllErrors([validateFid(castId.fidArray()), validateTsHash(castId.tsHashArray())])
+    .map(() => castId as ValidatedCastId)
+    .mapErr(
+      (errs: HubError[]) => new HubError('bad_request.validation_failure', errs.map((e) => e.message).join(', '))
+    );
+};
+
+export interface ValidatedUserId extends UserId {
+  fidArray(): Uint8Array;
+}
+
+export const validateUserId = (userId?: UserId | null): HubResult<ValidatedUserId> => {
+  if (!userId) {
+    return err(new HubError('bad_request.validation_failure', 'userId is missing'));
+  }
+  return validateFid(userId.fidArray()).map(() => userId as ValidatedUserId);
+};
+
+export const validateFid = (fid?: Uint8Array | null): HubResult<Uint8Array> => {
   if (!fid || fid.byteLength === 0) {
-    throw new HubError('bad_request.validation_failure', 'fid is missing');
+    return err(new HubError('bad_request.validation_failure', 'fid is missing'));
   }
 
   if (fid.byteLength > FID_BYTES) {
-    throw new HubError('bad_request.validation_failure', 'fid > 32 bytes');
+    return err(new HubError('bad_request.validation_failure', 'fid > 32 bytes'));
   }
 
-  return fid;
+  return ok(fid);
 };
 
-export const validateTsHash = (tsHash?: Uint8Array | null): Uint8Array => {
+export const validateTsHash = (tsHash?: Uint8Array | null): HubResult<Uint8Array> => {
   if (!tsHash || tsHash.byteLength === 0) {
-    throw new HubError('bad_request.validation_failure', 'tsHash is missing');
+    return err(new HubError('bad_request.validation_failure', 'tsHash is missing'));
   }
 
   if (tsHash.byteLength !== 8) {
-    throw new HubError('bad_request.validation_failure', 'tsHash must be 8 bytes');
+    return err(new HubError('bad_request.validation_failure', 'tsHash must be 8 bytes'));
   }
 
-  return tsHash;
+  return ok(tsHash);
 };
 
-export const validateEthAddress = (address?: Uint8Array | null): Uint8Array => {
+export const validateEthAddress = (address?: Uint8Array | null): HubResult<Uint8Array> => {
   if (!address || address.byteLength === 0) {
-    throw new HubError('bad_request.validation_failure', 'address is missing');
+    return err(new HubError('bad_request.validation_failure', 'address is missing'));
   }
 
   if (address.byteLength !== 20) {
-    throw new HubError('bad_request.validation_failure', 'address must be 20 bytes');
+    return err(new HubError('bad_request.validation_failure', 'address must be 20 bytes'));
   }
 
-  return address;
+  return ok(address);
 };
 
-export const validateEthBlockHash = (blockHash?: Uint8Array | null): Uint8Array => {
+export const validateEthBlockHash = (blockHash?: Uint8Array | null): HubResult<Uint8Array> => {
   if (!blockHash || blockHash.byteLength === 0) {
-    throw new HubError('bad_request.validation_failure', 'block hash is missing');
+    return err(new HubError('bad_request.validation_failure', 'blockHash is missing'));
   }
 
   if (blockHash.byteLength !== 32) {
-    throw new HubError('bad_request.validation_failure', 'block hash must be 32 bytes');
+    return err(new HubError('bad_request.validation_failure', 'blockHash must be 32 bytes'));
   }
 
-  return blockHash;
+  return ok(blockHash);
 };
 
-export const validateEd25519PublicKey = (publicKey?: Uint8Array | null): Uint8Array => {
+export const validateEd25519PublicKey = (publicKey?: Uint8Array | null): HubResult<Uint8Array> => {
   if (!publicKey || publicKey.byteLength === 0) {
-    throw new HubError('bad_request.validation_failure', 'public key is missing');
+    return err(new HubError('bad_request.validation_failure', 'publicKey is missing'));
   }
 
   if (publicKey.byteLength !== 32) {
-    throw new HubError('bad_request.validation_failure', 'public key must be 32 bytes');
+    return err(new HubError('bad_request.validation_failure', 'publicKey must be 32 bytes'));
   }
 
-  return publicKey;
+  return ok(publicKey);
 };
 
-export const validateCastAddMessage = (message: CastAddModel): CastAddModel => {
+export const validateCastAddMessage = (message: CastAddModel): HubResult<CastAddModel> => {
   const text = message.body().text();
   if (!text) {
-    throw new HubError('bad_request.validation_failure', 'text is missing');
+    return err(new HubError('bad_request.validation_failure', 'text is missing'));
   }
 
   if (text.length > 320) {
-    throw new HubError('bad_request.validation_failure', 'text > 320 chars');
+    return err(new HubError('bad_request.validation_failure', 'text > 320 chars'));
   }
 
   if (message.body().embedsLength() > 2) {
-    throw new HubError('bad_request.validation_failure', 'embeds > 2');
+    return err(new HubError('bad_request.validation_failure', 'embeds > 2'));
+  }
+
+  if (message.body().mentionsLength() > 5) {
+    return err(new HubError('bad_request.validation_failure', 'mentions > 5'));
   }
 
   const parent = message.body().parent();
   if (parent) {
-    validateFid(parent.fidArray());
-    validateTsHash(parent.tsHashArray());
+    return validateCastId(parent).map(() => message);
   }
 
-  if (message.body().mentionsLength() > 5) {
-    throw new HubError('bad_request.validation_failure', 'mentions > 5');
-  }
-
-  return message;
+  return ok(message);
 };
 
-export const validateCastRemoveMessage = (message: CastRemoveModel): CastRemoveModel => {
-  validateTsHash(message.body().targetTsHashArray());
-
-  return message;
+export const validateCastRemoveMessage = (message: CastRemoveModel): HubResult<CastRemoveModel> => {
+  return validateTsHash(message.body().targetTsHashArray()).map(() => message);
 };
 
 export const validateReactionMessage = (
   message: ReactionAddModel | ReactionRemoveModel
-): ReactionAddModel | ReactionRemoveModel => {
+): HubResult<ReactionAddModel | ReactionRemoveModel> => {
   if (!Object.values(ReactionType).includes(message.body().type())) {
-    throw new HubError('bad_request.validation_failure', 'invalid reaction type');
+    return err(new HubError('bad_request.validation_failure', 'invalid reaction type'));
   }
 
-  validateFid(message.body().cast()?.fidArray());
-  validateTsHash(message.body().cast()?.tsHashArray());
-
-  return message;
+  return validateCastId(message.body().cast()).map(() => message);
 };
 
 export const validateVerificationAddEthAddressMessage = async (
   message: VerificationAddEthAddressModel
-): Promise<VerificationAddEthAddressModel> => {
+): HubAsyncResult<VerificationAddEthAddressModel> => {
   const validAddress = validateEthAddress(message.body().addressArray());
+  if (validAddress.isErr()) {
+    return err(validAddress.error);
+  }
+
   const validBlockHash = validateEthBlockHash(message.body().blockHashArray());
+  if (validBlockHash.isErr()) {
+    return err(validBlockHash.error);
+  }
 
   const reconstructedClaim: VerificationEthAddressClaim = {
     fid: message.fid(),
-    address: hexlify(validAddress),
+    address: hexlify(validAddress.value),
     network: message.network(),
-    blockHash: validBlockHash,
+    blockHash: validBlockHash.value,
   };
 
-  try {
-    const recoveredAddress = verifyVerificationEthAddressClaimSignature(
-      reconstructedClaim,
-      message.body().ethSignatureArray() ?? new Uint8Array()
-    );
+  const recoveredAddress = Result.fromThrowable(verifyVerificationEthAddressClaimSignature)(
+    reconstructedClaim,
+    message.body().ethSignatureArray() ?? new Uint8Array()
+  );
 
-    if (bytesCompare(recoveredAddress, validAddress) !== 0) {
-      throw new HubError('bad_request.validation_failure', 'eth signature does not match address');
-    }
-  } catch (e) {
-    throw new HubError('bad_request.validation_failure', 'invalid eth signature');
+  if (recoveredAddress.isErr()) {
+    return err(new HubError('bad_request.validation_failure', 'invalid ethSignature'));
   }
 
-  return message;
+  if (bytesCompare(recoveredAddress.value, validAddress.value) !== 0) {
+    return err(new HubError('bad_request.validation_failure', 'ethSignature does not match address'));
+  }
+
+  return ok(message);
 };
 
-export const validateVerificationRemoveMessage = (message: VerificationRemoveModel): VerificationRemoveModel => {
-  validateEthAddress(message.body().addressArray());
-
-  return message;
+export const validateVerificationRemoveMessage = (
+  message: VerificationRemoveModel
+): HubResult<VerificationRemoveModel> => {
+  return validateEthAddress(message.body().addressArray()).map(() => message);
 };
 
 export const validateSignerMessage = (
   message: SignerAddModel | SignerRemoveModel
-): SignerAddModel | SignerRemoveModel => {
-  validateEd25519PublicKey(message.body().signerArray());
-
-  return message;
+): HubResult<SignerAddModel | SignerRemoveModel> => {
+  return validateEd25519PublicKey(message.body().signerArray()).map(() => message);
 };
 
 export const validateFollowMessage = (
   message: FollowAddModel | FollowRemoveModel
-): FollowAddModel | FollowRemoveModel => {
-  validateFid(message.body().user()?.fidArray());
-
-  return message;
+): HubResult<FollowAddModel | FollowRemoveModel> => {
+  return validateFid(message.body().user()?.fidArray()).map(() => message);
 };
 
-export const validateUserDataAddMessage = (message: UserDataAddModel): UserDataAddModel => {
+export const validateUserDataAddMessage = (message: UserDataAddModel): HubResult<UserDataAddModel> => {
   const value = message.body().value();
   if (message.body().type() === UserDataType.Pfp) {
     if (value && value.length > 256) {
-      throw new HubError('bad_request.validation_failure', 'pfp value > 256');
+      return err(new HubError('bad_request.validation_failure', 'pfp value > 256'));
     }
   } else if (message.body().type() === UserDataType.Display) {
     if (value && value.length > 32) {
-      throw new HubError('bad_request.validation_failure', 'display value > 32');
+      return err(new HubError('bad_request.validation_failure', 'display value > 32'));
     }
   } else if (message.body().type() === UserDataType.Bio) {
     if (value && value.length > 256) {
-      throw new HubError('bad_request.validation_failure', 'bio value > 256');
+      return err(new HubError('bad_request.validation_failure', 'bio value > 256'));
     }
   } else if (message.body().type() === UserDataType.Location) {
     if (value && value.length > 32) {
-      throw new HubError('bad_request.validation_failure', 'location value > 32');
+      return err(new HubError('bad_request.validation_failure', 'location value > 32'));
     }
   } else if (message.body().type() === UserDataType.Url) {
     if (value && value.length > 256) {
-      throw new HubError('bad_request.validation_failure', 'url value > 256');
+      return err(new HubError('bad_request.validation_failure', 'url value > 256'));
     }
   } else {
-    throw new HubError('bad_request.validation_failure', 'invalid user data type');
+    return err(new HubError('bad_request.validation_failure', 'invalid user data type'));
   }
 
-  return message;
+  return ok(message);
 };

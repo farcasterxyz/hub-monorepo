@@ -1,4 +1,4 @@
-import { ResultAsync } from 'neverthrow';
+import { err, errAsync, ResultAsync } from 'neverthrow';
 import CastStore from '~/storage/sets/flatbuffers/castStore';
 import RocksDB from '~/storage/db/binaryrocksdb';
 import SignerStore from '~/storage/sets/flatbuffers/signerStore';
@@ -7,12 +7,19 @@ import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
 import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
 import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { UserPostfix } from '~/storage/flatbuffers/types';
+import { CastAddModel, UserPostfix } from '~/storage/flatbuffers/types';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { ContractEventType } from '~/utils/generated/contract_event_generated';
 import { isSignerAdd, isSignerRemove } from '~/storage/flatbuffers/typeguards';
-import { validateMessage } from '~/storage/flatbuffers/validations';
-import { HubError } from '~/utils/hubErrors';
+import {
+  validateCastId,
+  ValidatedCastId,
+  ValidatedUserId,
+  validateMessage,
+  validateUserId,
+} from '~/storage/flatbuffers/validations';
+import { CastId, UserId } from '~/utils/generated/message_generated';
+import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 
 class Engine {
   private _castStore: CastStore;
@@ -33,56 +40,114 @@ class Engine {
     this._userDataStore = new UserDataStore(db);
   }
 
-  mergeMessages(messages: MessageModel[]): Array<Promise<void>> {
-    const results = messages.map((value) => {
-      return this.mergeMessage(value);
-    });
-    return results;
-  }
+  // TODO: add mergeMessages
 
-  async mergeMessage(message: MessageModel): Promise<void> {
-    await this.validateMessage(message);
+  async mergeMessage(message: MessageModel): HubAsyncResult<void> {
+    const validatedMessage = await this.validateMessage(message);
+    if (validatedMessage.isErr()) {
+      return err(validatedMessage.error);
+    }
 
     if (message.setPostfix() === UserPostfix.CastMessage) {
-      return this._castStore.merge(message);
+      return ResultAsync.fromPromise(this._castStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.FollowMessage) {
-      return this._followStore.merge(message);
+      return ResultAsync.fromPromise(this._followStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.ReactionMessage) {
-      return this._reactionStore.merge(message);
+      return ResultAsync.fromPromise(this._reactionStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.SignerMessage) {
-      return this._signerStore.merge(message);
+      return ResultAsync.fromPromise(this._signerStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.VerificationMessage) {
-      return this._verificationStore.merge(message);
+      return ResultAsync.fromPromise(this._verificationStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.UserDataMessage) {
-      return this._userDataStore.merge(message);
+      return ResultAsync.fromPromise(this._userDataStore.merge(message), (e) => e as HubError);
     } else {
-      throw new HubError('bad_request.validation_failure', 'invalid message type');
+      return err(new HubError('bad_request.validation_failure', 'invalid message type'));
     }
   }
 
-  async mergeIdRegistryEvent(event: ContractEventModel): Promise<void> {
+  async mergeIdRegistryEvent(event: ContractEventModel): HubAsyncResult<void> {
     if (
       event.type() === ContractEventType.IdRegistryRegister ||
       event.type() === ContractEventType.IdRegistryTransfer
     ) {
-      return this._signerStore.mergeIdRegistryEvent(event);
+      return ResultAsync.fromPromise(this._signerStore.mergeIdRegistryEvent(event), (e) => e as HubError);
     } else {
-      throw new HubError('bad_request.validation_failure', 'invalid event type');
+      return err(new HubError('bad_request.validation_failure', 'invalid event type'));
     }
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                             Cast Store Methods                             */
+  /* -------------------------------------------------------------------------- */
+
+  async getCastsByUser(user: UserId): HubAsyncResult<CastAddModel[]> {
+    return validateUserId(user).match(
+      (validatedUserId: ValidatedUserId) => {
+        return ResultAsync.fromPromise(
+          this._castStore.getCastAddsByUser(validatedUserId.fidArray()),
+          (e) => e as HubError
+        );
+      },
+      (e) => {
+        return errAsync(e);
+      }
+    );
+  }
+
+  async getCast(cast: CastId): HubAsyncResult<CastAddModel> {
+    return validateCastId(cast).match(
+      (validatedCastId: ValidatedCastId) => {
+        return ResultAsync.fromPromise(
+          this._castStore.getCastAdd(validatedCastId.fidArray(), validatedCastId.tsHashArray()),
+          (e) => e as HubError
+        );
+      },
+      (e) => {
+        return errAsync(e);
+      }
+    );
+  }
+
+  async getCastsByParent(parent: CastId): HubAsyncResult<CastAddModel[]> {
+    return validateCastId(parent).match(
+      (validatedParent: ValidatedCastId) => {
+        return ResultAsync.fromPromise(
+          this._castStore.getCastsByParent(validatedParent.fidArray(), validatedParent.tsHashArray()),
+          (e) => e as HubError
+        );
+      },
+      (e) => {
+        return errAsync(e);
+      }
+    );
+  }
+
+  async getCastsByMention(user: UserId): HubAsyncResult<CastAddModel[]> {
+    return validateUserId(user).match(
+      (validatedUserId: ValidatedUserId) => {
+        return ResultAsync.fromPromise(
+          this._castStore.getCastsByMention(validatedUserId.fidArray()),
+          (e) => e as HubError
+        );
+      },
+      (e) => {
+        return errAsync(e);
+      }
+    );
   }
 
   /* -------------------------------------------------------------------------- */
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async validateMessage(message: MessageModel): Promise<MessageModel> {
+  private async validateMessage(message: MessageModel): HubAsyncResult<MessageModel> {
     // 1. Check that the user has a custody address
     const custodyAddress = await ResultAsync.fromPromise(
       this._signerStore.getCustodyAddress(message.fid()),
       () => undefined
     );
     if (custodyAddress.isErr()) {
-      throw new HubError('bad_request.validation_failure', 'unknown user');
+      return err(new HubError('bad_request.validation_failure', 'unknown user'));
     }
 
     // 2. Check that the signer is valid if message is not a signer message
@@ -92,7 +157,7 @@ class Engine {
         () => undefined
       );
       if (signerResult.isErr()) {
-        throw new HubError('bad_request.validation_failure', 'invalid signer');
+        return err(new HubError('bad_request.validation_failure', 'invalid signer'));
       }
     }
 
