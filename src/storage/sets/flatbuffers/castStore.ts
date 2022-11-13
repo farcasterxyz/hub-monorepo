@@ -6,6 +6,34 @@ import { isCastAdd, isCastRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { HubError } from '~/utils/hubErrors';
 
+/**
+ * CastStore persists Cast messages in RocksDB using a two-phase CRDT set to guarantee eventual
+ * consistency.
+ *
+ * A Cast is created by a user and contains 320 characters of text and upto two embedded URLs.
+ * Casts are added to the Store with a CastAdd and removed with a CastRemove. A CastAdd can be
+ * a child to another CastAdd or arbitrary URI.
+ *
+ * Cast Messages collide if their tsHash (for CastAdds) or targetTsHash (for CastRemoves) are the
+ * same for the same fid. Two CastAdds can never collide since any change to message content is
+ * guaranteed to result in a unique hash value. CastRemoves can collide with CastAdds and with
+ * each other, and such cases are handled with Remove-Wins and Last-Write-Wins rules as follows:
+ *
+ * 1. Remove wins over Adds
+ * 2. Highest timestamp wins
+ * 3. Highest lexicographic hash wins
+ *
+ * CastMessages are stored ordinally in RocksDB indexed by a unique key `fid:tsHash` which makes
+ * truncating a user's earliest messages easy. Indices are built to lookup cast adds in the adds
+ * set, cast removes in the removes set, cast adds that are the children of a cast add, and cast
+ * adds that mention a specific user. The key-value entries created are:
+ *
+ * 1. fid:tsHash -> cast message
+ * 2. fid:set:tsHash -> fid:tsHash (Add Set Index)
+ * 3. fid:set:targetTsHash -> fid:tsHash (Remove Set Index)
+ * 4. parentFid:parentTsHash:fid:tsHash -> fid:tsHash (Child Set Index)
+ * 5. mentionFid:fid:tsHash -> fid:tsHash (Mentions Set Index)
+ */
 class CastStore {
   private _db: RocksDB;
 
@@ -13,16 +41,13 @@ class CastStore {
     this._db = db;
   }
 
-  /** RocksDB key of the form <user prefix byte, fid, cast removes byte, cast tsHash> */
-  static castRemovesKey(fid: Uint8Array, tsHash?: Uint8Array): Buffer {
-    return Buffer.concat([
-      MessageModel.userKey(fid),
-      Buffer.from([UserPostfix.CastRemoves]),
-      tsHash ? Buffer.from(tsHash) : new Uint8Array(),
-    ]);
-  }
-
-  /** RocksDB key of the form <user prefix byte, fid, cast adds byte, cast tsHash> */
+  /**
+   * Generates unique keys used to store or fetch CastAdd messages in the adds set index
+   *
+   * @param fid farcaster id of the user who created the cast
+   * @param tsHash timestamp hash of the cast
+   * @returns RocksDB key of the form <root_prefix>:<fid>:<user_postfix>:<tsHash?>
+   */
   static castAddsKey(fid: Uint8Array, tsHash?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
@@ -31,16 +56,40 @@ class CastStore {
     ]);
   }
 
+  /**
+   * Generates unique keys used to store or fetch CastAdd messages in the removes set index
+   *
+   * @param fid farcaster id of the user who created the cast
+   * @param tsHash timestamp hash of the cast
+   * @returns RocksDB key of the form <root_prefix>:<fid>:<user_postfix>:<tsHash?>
+   */
+  static castRemovesKey(fid: Uint8Array, tsHash?: Uint8Array): Buffer {
+    return Buffer.concat([
+      MessageModel.userKey(fid),
+      Buffer.from([UserPostfix.CastRemoves]),
+      tsHash ? Buffer.from(tsHash) : new Uint8Array(),
+    ]);
+  }
+
   // TODO: make parentFid and parentHash fixed size
+  /**
+   * Generates unique keys used to store or fetch CastAdd messages in the byParentKey index
+   *
+   * @param parentFid the fid of the user who created the parent cast
+   * @param parentTsHash the timestamp hash of the parent message
+   * @param fid the fid of the user who created the cast
+   * @param tsHash the timestamp hash of the cast message
+   * @returns RocksDB index key of the form <root_prefix>:<parentFid>:<parentTsHash>:<fid?>:<tsHash?>
+   */
   /** RocksDB key of the form <castsByParent prefix byte, parent fid, parent cast tsHash, fid, cast tsHash> */
   static castsByParentKey(
     parentFid: Uint8Array,
     parentTsHash: Uint8Array,
     fid?: Uint8Array,
-    hash?: Uint8Array
+    tsHash?: Uint8Array
   ): Buffer {
     const bytes = new Uint8Array(
-      1 + FID_BYTES + parentTsHash.length + (fid ? FID_BYTES : 0) + (hash ? hash.length : 0)
+      1 + FID_BYTES + parentTsHash.length + (fid ? FID_BYTES : 0) + (tsHash ? tsHash.length : 0)
     );
     bytes.set([RootPrefix.CastsByParent], 0);
     bytes.set(parentFid, 1 + FID_BYTES - parentFid.length); // pad fid for alignment
@@ -48,14 +97,21 @@ class CastStore {
     if (fid) {
       bytes.set(fid, 1 + FID_BYTES + parentTsHash.length + FID_BYTES - fid.length); // pad fid for alignment
     }
-    if (hash) {
-      bytes.set(hash, 1 + FID_BYTES + parentTsHash.length + FID_BYTES);
+    if (tsHash) {
+      bytes.set(tsHash, 1 + FID_BYTES + parentTsHash.length + FID_BYTES);
     }
     return Buffer.from(bytes);
   }
 
   // TODO: make parentFid and parentTsHash fixed size
-  /** RocksDB key of the form <castsByMention prefix byte, mention fid, fid, cast tsHash> */
+  /**
+   * Generates unique keys used to store or fetch CastAdd messages in the byParentKey index
+   *
+   * @param mentionFid the fid of the user who was mentioned in the cast
+   * @param fid the fid of the user who created the cast
+   * @param tsHash the timestamp hash of the cast message
+   * @returns RocksDB index key of the form <root_prefix>:<mentionFid>::<fid?>:<tsHash?>
+   */
   static castsByMentionKey(mentionFid: Uint8Array, fid?: Uint8Array, tsHash?: Uint8Array): Buffer {
     const bytes = new Uint8Array(1 + FID_BYTES + (fid ? FID_BYTES : 0) + (tsHash ? tsHash.length : 0));
     bytes.set([RootPrefix.CastsByMention], 0);
@@ -69,19 +125,19 @@ class CastStore {
     return Buffer.from(bytes);
   }
 
-  /** Look up CastAdd message by cast tsHash */
+  /** Looks up CastAdd message by cast tsHash */
   async getCastAdd(fid: Uint8Array, tsHash: Uint8Array): Promise<CastAddModel> {
     const messageTsHash = await this._db.get(CastStore.castAddsKey(fid, tsHash));
     return MessageModel.get<CastAddModel>(this._db, fid, UserPostfix.CastMessage, messageTsHash);
   }
 
-  /** Look up CastRemove message by cast tsHash */
+  /** Looks up CastRemove message by cast tsHash */
   async getCastRemove(fid: Uint8Array, tsHash: Uint8Array): Promise<CastRemoveModel> {
     const messageTsHash = await this._db.get(CastStore.castRemovesKey(fid, tsHash));
     return MessageModel.get<CastRemoveModel>(this._db, fid, UserPostfix.CastMessage, messageTsHash);
   }
 
-  /** Get all CastAdd messages for an fid */
+  /** Gets all CastAdd messages for an fid */
   async getCastAddsByUser(fid: Uint8Array): Promise<CastAddModel[]> {
     const castAddsPrefix = CastStore.castAddsKey(fid);
     const messageKeys: Buffer[] = [];
@@ -91,7 +147,7 @@ class CastStore {
     return MessageModel.getManyByUser<CastAddModel>(this._db, fid, UserPostfix.CastMessage, messageKeys);
   }
 
-  /** Get all CastRemove messages for an fid */
+  /** Gets all CastRemove messages for an fid */
   async getCastRemovesByUser(fid: Uint8Array): Promise<CastRemoveModel[]> {
     const castRemovesPrefix = CastStore.castRemovesKey(fid);
     const messageKeys: Buffer[] = [];
@@ -101,9 +157,9 @@ class CastStore {
     return MessageModel.getManyByUser<CastRemoveModel>(this._db, fid, UserPostfix.CastMessage, messageKeys);
   }
 
-  /** Get all CastAdd messages for a parent cast (fid and tsHash) */
-  async getCastsByParent(fid: Uint8Array, tsHash: Uint8Array): Promise<CastAddModel[]> {
-    const byParentPrefix = CastStore.castsByParentKey(fid, tsHash);
+  /** Gets all CastAdd messages for a parent cast (fid and tsHash) */
+  async getCastsByParent(parentFid: Uint8Array, parentTsHash: Uint8Array): Promise<CastAddModel[]> {
+    const byParentPrefix = CastStore.castsByParentKey(parentFid, parentTsHash);
     const messageKeys: Buffer[] = [];
     for await (const [key] of this._db.iteratorByPrefix(byParentPrefix, { keyAsBuffer: true, values: false })) {
       const fid = Uint8Array.from(key).subarray(byParentPrefix.length, byParentPrefix.length + FID_BYTES);
@@ -113,7 +169,7 @@ class CastStore {
     return MessageModel.getMany(this._db, messageKeys);
   }
 
-  /** Get all CastAdd messages for a mention (fid) */
+  /** Gets all CastAdd messages for a mention (fid) */
   async getCastsByMention(fid: Uint8Array): Promise<CastAddModel[]> {
     const byMentionPrefix = CastStore.castsByMentionKey(fid);
     const messageKeys: Buffer[] = [];
@@ -125,7 +181,7 @@ class CastStore {
     return MessageModel.getMany(this._db, messageKeys);
   }
 
-  /** Merge a CastAdd or CastRemove message into the set */
+  /** Merges a CastAdd or CastRemove message into the set */
   async merge(message: MessageModel): Promise<void> {
     if (isCastRemove(message)) {
       return this.mergeRemove(message);
@@ -222,7 +278,7 @@ class CastStore {
         UserPostfix.CastMessage,
         castAddTsHash.value
       );
-      tsx = await this.deleteCastAddTransaction(tsx, existingAdd);
+      tsx = this.deleteCastAddTransaction(tsx, existingAdd);
     }
 
     // Add putCastRemove operations to the RocksDB transaction
@@ -232,14 +288,15 @@ class CastStore {
     return this._db.commit(tsx);
   }
 
+  /* Builds a RocksDB transaction to insert a CastAdd message and construct its indices */
   private putCastAddTransaction(tsx: Transaction, message: CastAddModel): Transaction {
-    // Put message and index by signer
+    // Put message into the database
     tsx = MessageModel.putTransaction(tsx, message);
 
-    // Put castAdds index
+    // Puts the message key into the CastAdd set index
     tsx = tsx.put(CastStore.castAddsKey(message.fid(), message.tsHash()), Buffer.from(message.tsHash()));
 
-    // Index by parent
+    // Puts the message key into the ByParent index
     if (message.body().parent()) {
       tsx = tsx.put(
         CastStore.castsByParentKey(
@@ -252,7 +309,7 @@ class CastStore {
       );
     }
 
-    // Index by mentions
+    // Puts the message key into the ByMentions index
     if (message.body().mentionsLength() > 0) {
       for (let i = 0; i < message.body().mentionsLength(); i++) {
         const mention = message.body().mentions(i);
@@ -266,8 +323,9 @@ class CastStore {
     return tsx;
   }
 
+  /* Builds a RocksDB transaction to remove a CastAdd message and delete its indices */
   private deleteCastAddTransaction(tsx: Transaction, message: CastAddModel): Transaction {
-    // Delete from mentions index
+    // Delete the message key from the ByMentions index
     if (message.body().mentionsLength() > 0) {
       for (let i = 0; i < message.body().mentionsLength(); i++) {
         const mention = message.body().mentions(i);
@@ -277,7 +335,7 @@ class CastStore {
       }
     }
 
-    // Delete from parent index
+    // Delete the message key from the ByParent index
     if (message.body().parent()) {
       tsx = tsx.del(
         CastStore.castsByParentKey(
@@ -289,18 +347,19 @@ class CastStore {
       );
     }
 
-    // Delete from castAdds
+    // Delete the message key from the CastAdd set index
     tsx = tsx.del(CastStore.castAddsKey(message.fid(), message.tsHash()));
 
     // Delete message
     return MessageModel.deleteTransaction(tsx, message);
   }
 
+  /* Builds a RocksDB transaction to insert a CastRemove message and construct its indices */
   private putCastRemoveTransaction(tsx: Transaction, message: CastRemoveModel): Transaction {
-    // Add to db
+    // Puts the message
     tsx = MessageModel.putTransaction(tsx, message);
 
-    // Add to cast removes
+    // Puts the message key into the CastRemoves set index
     tsx = tsx.put(
       CastStore.castRemovesKey(message.fid(), message.body().targetTsHashArray() ?? new Uint8Array()),
       Buffer.from(message.tsHash())
@@ -309,8 +368,9 @@ class CastStore {
     return tsx;
   }
 
+  /* Builds a RocksDB transaction to remove a CastRemove message and delete its indices */
   private deleteCastRemoveTransaction(tsx: Transaction, message: CastRemoveModel): Transaction {
-    // Delete from cast removes
+    // Deletes the messae key from the CastRemoves set index
     tsx = tsx.del(CastStore.castRemovesKey(message.fid(), message.body().targetTsHashArray() ?? new Uint8Array()));
 
     // Delete message
