@@ -56,11 +56,11 @@ export const followServiceMethods = () => {
 export const followServiceImpls = (engine: Engine) => {
   return {
     getFollow: async (call: grpc.ServerUnaryCall<GetFollowRequest, Message>, callback: grpc.sendUnaryData<Message>) => {
-      const castAddResult = await engine.getFollow(
+      const result = await engine.getFollow(
         call.request.fidArray() ?? new Uint8Array(),
         call.request.user() ?? new UserId()
       );
-      castAddResult.match(
+      result.match(
         (model: FollowAddModel) => {
           callback(null, model.message);
         },

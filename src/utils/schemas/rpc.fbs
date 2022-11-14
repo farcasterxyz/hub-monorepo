@@ -61,3 +61,15 @@ table GetReactionsByCastRequest {
   cast: CastId (required);
   type: ReactionType = null;
 }
+
+// Verification Requests
+
+table GetVerificationRequest {
+  fid: [ubyte] (required);
+  address: [ubyte] (required);
+}
+
+table GetVerificationsByFidRequest {
+  fid: [ubyte] (required);
+}
+

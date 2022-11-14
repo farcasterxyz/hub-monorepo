@@ -1,14 +1,20 @@
 import grpc from '@grpc/grpc-js';
 import { ok, err } from 'neverthrow';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { CastAddModel, FollowAddModel, ReactionAddModel } from '~/storage/flatbuffers/types';
+import {
+  CastAddModel,
+  FollowAddModel,
+  ReactionAddModel,
+  VerificationAddEthAddressModel,
+} from '~/storage/flatbuffers/types';
 import { CastId, Message, ReactionType, UserId } from '~/utils/generated/message_generated';
 import { MessagesResponse } from '~/utils/generated/rpc_generated';
 import { HubAsyncResult } from '~/utils/hubErrors';
 import { castServiceRequests, castServiceMethods } from '~/network/rpc/flatbuffers/castService';
 import { fromServiceError } from './server';
 import { followServiceMethods, followServiceRequests } from './followService';
-import { reactionServiceImpls, reactionServiceMethods, reactionServiceRequests } from './reactionService';
+import { reactionServiceMethods, reactionServiceRequests } from './reactionService';
+import { verificationServiceMethods, verificationServiceRequests } from './verificationService';
 
 class Client {
   client: grpc.Client;
@@ -91,6 +97,24 @@ class Client {
     return this.makeUnaryMessagesRequest(
       reactionServiceMethods().getReactionsByCast,
       reactionServiceRequests.getReactionsByCast(cast, type)
+    );
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                             Verification Methods                           */
+  /* -------------------------------------------------------------------------- */
+
+  async getVerification(fid: Uint8Array, address: Uint8Array): HubAsyncResult<VerificationAddEthAddressModel> {
+    return this.makeUnaryMessageRequest(
+      verificationServiceMethods().getVerification,
+      verificationServiceRequests.getVerification(fid, address)
+    );
+  }
+
+  async getVerificationsByFid(fid: Uint8Array): HubAsyncResult<VerificationAddEthAddressModel[]> {
+    return this.makeUnaryMessagesRequest(
+      verificationServiceMethods().getVerificationsByFid,
+      verificationServiceRequests.getVerificationsByFid(fid)
     );
   }
 

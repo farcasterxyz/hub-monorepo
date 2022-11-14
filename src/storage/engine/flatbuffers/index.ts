@@ -7,7 +7,13 @@ import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
 import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
 import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { CastAddModel, FollowAddModel, ReactionAddModel, UserPostfix } from '~/storage/flatbuffers/types';
+import {
+  CastAddModel,
+  FollowAddModel,
+  ReactionAddModel,
+  UserPostfix,
+  VerificationAddEthAddressModel,
+} from '~/storage/flatbuffers/types';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { ContractEventType } from '~/utils/generated/contract_event_generated';
 import { isSignerAdd, isSignerRemove } from '~/storage/flatbuffers/typeguards';
@@ -15,8 +21,10 @@ import {
   validateCastId,
   ValidatedCastId,
   ValidatedUserId,
+  validateEthAddress,
   validateFid,
   validateMessage,
+  validateReactionType,
   validateTsHash,
   validateUserId,
 } from '~/storage/flatbuffers/validations';
@@ -191,7 +199,10 @@ class Engine {
       return err(validatedFid.error);
     }
 
-    // TODO: validate reaction type
+    const validatedReactionType = validateReactionType(type);
+    if (validatedReactionType.isErr()) {
+      return err(validatedReactionType.error);
+    }
 
     const validatedCast = validateCastId(cast);
     if (validatedCast.isErr()) {
@@ -227,6 +238,33 @@ class Engine {
         return errAsync(e);
       }
     );
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                          Verification Store Methods                        */
+  /* -------------------------------------------------------------------------- */
+
+  async getVerification(fid: Uint8Array, address: Uint8Array): HubAsyncResult<VerificationAddEthAddressModel> {
+    const validatedFid = validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    const validatedAddress = validateEthAddress(address);
+    if (validatedAddress.isErr()) {
+      return err(validatedAddress.error);
+    }
+
+    return ResultAsync.fromPromise(this._verificationStore.getVerificationAdd(fid, address), (e) => e as HubError);
+  }
+
+  async getVerificationsByFid(fid: Uint8Array): HubAsyncResult<VerificationAddEthAddressModel[]> {
+    const validatedFid = validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    return ResultAsync.fromPromise(this._verificationStore.getVerificationAddsByUser(fid), (e) => e as HubError);
   }
 
   /* -------------------------------------------------------------------------- */

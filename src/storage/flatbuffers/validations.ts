@@ -222,11 +222,20 @@ export const validateCastRemoveMessage = (message: CastRemoveModel): HubResult<C
   return validateTsHash(message.body().targetTsHashArray()).map(() => message);
 };
 
+export const validateReactionType = (type: number): HubResult<ReactionType> => {
+  if (!Object.values(ReactionType).includes(type)) {
+    return err(new HubError('bad_request.validation_failure', 'invalid reaction type'));
+  }
+
+  return ok(type);
+};
+
 export const validateReactionMessage = (
   message: ReactionAddModel | ReactionRemoveModel
 ): HubResult<ReactionAddModel | ReactionRemoveModel> => {
-  if (!Object.values(ReactionType).includes(message.body().type())) {
-    return err(new HubError('bad_request.validation_failure', 'invalid reaction type'));
+  const validatedType = validateReactionType(message.body().type());
+  if (validatedType.isErr()) {
+    return err(validatedType.error);
   }
 
   return validateCastId(message.body().cast()).map(() => message);

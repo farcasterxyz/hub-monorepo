@@ -100,8 +100,8 @@ describe('getFollowsByFid', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(followAdd);
     const follows = await client.getFollowsByFid(fid);
-    // The underlying buffers are different, so we can't compare follows to [castAdd] directly
-    expect(follows._unsafeUnwrap().map((cast) => cast.hash())).toEqual([followAdd.hash()]);
+    // The underlying buffers are different, so we can't compare full messages directly
+    expect(follows._unsafeUnwrap().map((msg) => msg.hash())).toEqual([followAdd.hash()]);
   });
 
   test('returns empty array without messages', async () => {
@@ -119,8 +119,8 @@ describe('getFollowsByUser', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(followAdd);
     const follows = await client.getFollowsByUser(followAdd.body().user() ?? new UserId());
-    // The underlying buffers are different, so we can't compare follows to [castAdd] directly
-    expect(follows._unsafeUnwrap().map((cast) => cast.hash())).toEqual([followAdd.hash()]);
+    // The underlying buffers are different, so we can't compare full messages directly
+    expect(follows._unsafeUnwrap().map((msg) => msg.hash())).toEqual([followAdd.hash()]);
   });
 
   test('returns empty array without messages', async () => {
