@@ -177,9 +177,9 @@ describe('getReactionRemovesByUser', () => {
   });
 });
 
-describe('getReactionsByTarget', () => {
+describe('getReactionsByTargetCast', () => {
   test('returns empty array if no reactions exist', async () => {
-    const byCast = await set.getReactionsByTarget(castId);
+    const byCast = await set.getReactionsByTargetCast(castId);
     expect(byCast).toEqual([]);
   });
 
@@ -187,7 +187,7 @@ describe('getReactionsByTarget', () => {
     await set.merge(reactionAdd);
     await set.merge(reactionAddRecast);
 
-    const byCast = await set.getReactionsByTarget(castId);
+    const byCast = await set.getReactionsByTargetCast(castId);
     expect(byCast).toEqual([reactionAdd, reactionAddRecast]);
   });
 
@@ -195,32 +195,32 @@ describe('getReactionsByTarget', () => {
     await set.merge(reactionAdd);
 
     const unknownCastId = await Factories.CastId.create();
-    const byCast = await set.getReactionsByTarget(unknownCastId);
+    const byCast = await set.getReactionsByTargetCast(unknownCastId);
     expect(byCast).toEqual([]);
   });
 
   describe('AndType', () => {
     test('returns empty array if no reactions exist', async () => {
-      const byCast = await set.getReactionsByTarget(castId, ReactionType.Like);
+      const byCast = await set.getReactionsByTargetCast(castId, ReactionType.Like);
       expect(byCast).toEqual([]);
     });
 
     test('returns empty array if reactions exist for the target with different type', async () => {
       await set.merge(reactionAddRecast);
-      const byCast = await set.getReactionsByTarget(castId, ReactionType.Like);
+      const byCast = await set.getReactionsByTargetCast(castId, ReactionType.Like);
       expect(byCast).toEqual([]);
     });
 
     test('returns empty array if reactions exist for the type with different target', async () => {
       await set.merge(reactionAdd);
       const unknownCastId = await Factories.CastId.create();
-      const byCast = await set.getReactionsByTarget(unknownCastId, ReactionType.Like);
+      const byCast = await set.getReactionsByTargetCast(unknownCastId, ReactionType.Like);
       expect(byCast).toEqual([]);
     });
 
     test('returns reactions if they exist for the target and type', async () => {
       await set.merge(reactionAdd);
-      const byCast = await set.getReactionsByTarget(castId, ReactionType.Like);
+      const byCast = await set.getReactionsByTargetCast(castId, ReactionType.Like);
       expect(byCast).toEqual([reactionAdd]);
     });
   });
@@ -238,14 +238,14 @@ describe('merge', () => {
   const assertReactionAddWins = async (message: ReactionAddModel) => {
     await assertReactionExists(message);
     await expect(set.getReactionAdd(fid, message.body().type(), castId)).resolves.toEqual(message);
-    await expect(set.getReactionsByTarget(castId)).resolves.toEqual([message]);
+    await expect(set.getReactionsByTargetCast(castId)).resolves.toEqual([message]);
     await expect(set.getReactionRemove(fid, message.body().type(), castId)).rejects.toThrow(HubError);
   };
 
   const assertReactionRemoveWins = async (message: ReactionRemoveModel) => {
     await assertReactionExists(message);
     await expect(set.getReactionRemove(fid, message.body().type(), castId)).resolves.toEqual(message);
-    await expect(set.getReactionsByTarget(castId)).resolves.toEqual([]);
+    await expect(set.getReactionsByTargetCast(castId)).resolves.toEqual([]);
     await expect(set.getReactionAdd(fid, reactionAdd.body().type(), castId)).rejects.toThrow(HubError);
   };
 

@@ -1,13 +1,14 @@
 import grpc from '@grpc/grpc-js';
 import { ok, err } from 'neverthrow';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { CastAddModel, FollowAddModel } from '~/storage/flatbuffers/types';
-import { CastId, Message, UserId } from '~/utils/generated/message_generated';
+import { CastAddModel, FollowAddModel, ReactionAddModel } from '~/storage/flatbuffers/types';
+import { CastId, Message, ReactionType, UserId } from '~/utils/generated/message_generated';
 import { MessagesResponse } from '~/utils/generated/rpc_generated';
 import { HubAsyncResult } from '~/utils/hubErrors';
 import { castServiceRequests, castServiceMethods } from '~/network/rpc/flatbuffers/castService';
 import { fromServiceError } from './server';
 import { followServiceMethods, followServiceRequests } from './followService';
+import { reactionServiceImpls, reactionServiceMethods, reactionServiceRequests } from './reactionService';
 
 class Client {
   client: grpc.Client;
@@ -65,6 +66,31 @@ class Client {
     return this.makeUnaryMessagesRequest(
       followServiceMethods().getFollowsByUser,
       followServiceRequests.getFollowsByUser(user)
+    );
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                               Reaction Methods                             */
+  /* -------------------------------------------------------------------------- */
+
+  async getReaction(fid: Uint8Array, type: ReactionType, cast: CastId): HubAsyncResult<ReactionAddModel> {
+    return this.makeUnaryMessageRequest(
+      reactionServiceMethods().getReaction,
+      reactionServiceRequests.getReaction(fid, type, cast)
+    );
+  }
+
+  async getReactionsByFid(fid: Uint8Array, type?: ReactionType): HubAsyncResult<FollowAddModel[]> {
+    return this.makeUnaryMessagesRequest(
+      reactionServiceMethods().getReactionsByFid,
+      reactionServiceRequests.getReactionsByFid(fid, type)
+    );
+  }
+
+  async getReactionsByCast(cast: CastId, type?: ReactionType): HubAsyncResult<FollowAddModel[]> {
+    return this.makeUnaryMessagesRequest(
+      reactionServiceMethods().getReactionsByCast,
+      reactionServiceRequests.getReactionsByCast(cast, type)
     );
   }
 
