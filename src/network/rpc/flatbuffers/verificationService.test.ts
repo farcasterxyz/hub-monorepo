@@ -4,12 +4,11 @@ import Client from '~/network/rpc/flatbuffers/client';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import Factories from '~/test/factories/flatbuffer';
 import Engine from '~/storage/engine/flatbuffers';
-import { ReactionAddModel, SignerAddModel, VerificationAddEthAddressModel } from '~/storage/flatbuffers/types';
+import { SignerAddModel, VerificationAddEthAddressModel } from '~/storage/flatbuffers/types';
 import { Wallet, utils } from 'ethers';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { KeyPair } from '~/types';
-import { CastId, ReactionType } from '~/utils/generated/message_generated';
 import { HubError } from '~/utils/hubErrors';
 
 const db = jestBinaryRocksDB('flatbuffers.rpc.verificationService.test');
