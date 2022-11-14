@@ -110,6 +110,11 @@ describe('getReaction', () => {
     expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
   });
 
+  test('fails with invalid reaction type', async () => {
+    const result = await client.getReaction(fid, 0, castId);
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid reaction type'));
+  });
+
   test('fails without cast', async () => {
     const castId = await Factories.CastId.create({ fid: [], tsHash: [] });
     const result = await client.getReaction(fid, ReactionType.Like, castId);

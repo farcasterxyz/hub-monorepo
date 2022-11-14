@@ -11,6 +11,8 @@ export { GetFollowsByUserRequest, GetFollowsByUserRequestT } from './farcaster/g
 export { GetReactionRequest, GetReactionRequestT } from './farcaster/get-reaction-request';
 export { GetReactionsByCastRequest, GetReactionsByCastRequestT } from './farcaster/get-reactions-by-cast-request';
 export { GetReactionsByFidRequest, GetReactionsByFidRequestT } from './farcaster/get-reactions-by-fid-request';
+export { GetVerificationRequest, GetVerificationRequestT } from './farcaster/get-verification-request';
+export { GetVerificationsByFidRequest, GetVerificationsByFidRequestT } from './farcaster/get-verifications-by-fid-request';
 export { Message, MessageT } from './farcaster/message';
 export { MessagesResponse, MessagesResponseT } from './farcaster/messages-response';
 export { ReactionType } from './farcaster/reaction-type';
