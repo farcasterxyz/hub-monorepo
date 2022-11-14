@@ -15,15 +15,14 @@ import { HubError } from '~/utils/hubErrors';
  * A Signer is an EdDSA key-pair that is authorized to sign Messages on behalf of a user. They can
  * be added with a SignerAdd message that is signed by the user's custody address. Signers that are
  * signed by the custody address that currently holds the fid are considered active. All other
- * Farcaster Messages must be signed by an active signer.
+ * Farcaster Messages must be signed by an active signer. Signers can be removed with a
+ * SignerRemove message signed by the user's custody address. Removing a signer also removes all
+ *  messages signed by it, and should only be invoked if a compromise is suspected.
  *
- * Signers can be removed with a SignerRemove message signed by the user's custody address.
- * Removing a signer also removes all messages signed by it, and should only be invoked if a
- * compromise is suspected.
- *
- * The SignerStore has a two-phase CRDT set for each custody address, which keeps tracks of
- * signers. It also stores the current custody address as a single key in the database which can be
- * used to look up the two-phase set that corresponds to the active signers. Conflicts between
+ * The SignerStore has a two-phase CRDT set for each custody address, which keeps tracks of its
+ * signers. It  stores the current custody address as a single key in the database which can be
+ * used to look up the two-phase set that corresponds to the active signers. SignerMessages can
+ * collide if they have the same user fid, custody address and public key. Collisions between
  * Signer messages are resolved with Last-Write-Wins + Remove-Wins rules as follows:
  *
  * 1. Highest timestamp wins

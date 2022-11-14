@@ -11,9 +11,10 @@ import { HubError } from '~/utils/hubErrors';
  * ReactionStore persists Reaction Messages in RocksDB using a two-phase CRDT set to guarantee
  * eventual consistency.
  *
- * A Reaction is performed by an fid and has a target (e.g. cast) and a type (e.g. like). Reactions
- * are added with a ReactionAdd and removed with a ReactionRemove. Conflicts between Reaction
- * messages are resolved with Last-Write-Wins + Remove-Wins rules as follows:
+ * A Reaction is created by a user and points at a target (e.g. cast) and has a type (e.g. like).
+ * Reactions are added with a ReactionAdd and removed with a ReactionRemove. Reaction messages can
+ * collide if two messages have the same user fid, target, and type. Collisions are handled with
+ * Last-Write-Wins + Remove-Wins rules as follows:
  *
  * 1. Highest timestamp wins
  * 2. Remove wins over Adds
