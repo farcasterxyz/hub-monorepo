@@ -159,8 +159,8 @@ class ReactionStore {
   }
 
   /** Finds all ReactionAdd Messages by iterating through the prefixes */
-  async getReactionAddsByUser(fid: Uint8Array): Promise<ReactionAddModel[]> {
-    const prefix = ReactionStore.reactionAddsKey(fid);
+  async getReactionAddsByUser(fid: Uint8Array, type?: ReactionType): Promise<ReactionAddModel[]> {
+    const prefix = ReactionStore.reactionAddsKey(fid, type);
     const msgKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true })) {
       msgKeys.push(value);
@@ -179,7 +179,7 @@ class ReactionStore {
   }
 
   /** Finds all ReactionAdds that point to a specific target by iterating through the prefixes */
-  async getReactionsByTarget(castId: CastId, type?: ReactionType): Promise<ReactionAddModel[]> {
+  async getReactionsByTargetCast(castId: CastId, type?: ReactionType): Promise<ReactionAddModel[]> {
     const prefix = ReactionStore.reactionsByTargetKey(this.targetKeyForCastId(castId), type);
 
     // Calculates the positions in the key where the fid and tsHash begin

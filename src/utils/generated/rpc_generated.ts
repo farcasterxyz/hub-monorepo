@@ -8,6 +8,10 @@ export { GetCastsByParentRequest, GetCastsByParentRequestT } from './farcaster/g
 export { GetFollowRequest, GetFollowRequestT } from './farcaster/get-follow-request';
 export { GetFollowsByFidRequest, GetFollowsByFidRequestT } from './farcaster/get-follows-by-fid-request';
 export { GetFollowsByUserRequest, GetFollowsByUserRequestT } from './farcaster/get-follows-by-user-request';
+export { GetReactionRequest, GetReactionRequestT } from './farcaster/get-reaction-request';
+export { GetReactionsByCastRequest, GetReactionsByCastRequestT } from './farcaster/get-reactions-by-cast-request';
+export { GetReactionsByFidRequest, GetReactionsByFidRequestT } from './farcaster/get-reactions-by-fid-request';
 export { Message, MessageT } from './farcaster/message';
 export { MessagesResponse, MessagesResponseT } from './farcaster/messages-response';
+export { ReactionType } from './farcaster/reaction-type';
 export { UserId, UserIdT } from './farcaster/user-id';

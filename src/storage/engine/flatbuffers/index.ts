@@ -7,7 +7,7 @@ import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
 import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
 import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { CastAddModel, FollowAddModel, UserPostfix } from '~/storage/flatbuffers/types';
+import { CastAddModel, FollowAddModel, ReactionAddModel, UserPostfix } from '~/storage/flatbuffers/types';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { ContractEventType } from '~/utils/generated/contract_event_generated';
 import { isSignerAdd, isSignerRemove } from '~/storage/flatbuffers/typeguards';
@@ -20,7 +20,7 @@ import {
   validateTsHash,
   validateUserId,
 } from '~/storage/flatbuffers/validations';
-import { CastId, UserId } from '~/utils/generated/message_generated';
+import { CastId, ReactionType, UserId } from '~/utils/generated/message_generated';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 
 class Engine {
@@ -172,6 +172,54 @@ class Engine {
       (validatedUserId: ValidatedUserId) => {
         return ResultAsync.fromPromise(
           this._followStore.getFollowsByTargetUser(validatedUserId.fidArray()),
+          (e) => e as HubError
+        );
+      },
+      (e) => {
+        return errAsync(e);
+      }
+    );
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                            Reaction Store Methods                          */
+  /* -------------------------------------------------------------------------- */
+
+  async getReaction(fid: Uint8Array, type: ReactionType, cast: CastId): HubAsyncResult<ReactionAddModel> {
+    const validatedFid = validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    // TODO: validate reaction type
+
+    const validatedCast = validateCastId(cast);
+    if (validatedCast.isErr()) {
+      return err(validatedCast.error);
+    }
+
+    return ResultAsync.fromPromise(this._reactionStore.getReactionAdd(fid, type, cast), (e) => e as HubError);
+  }
+
+  async getReactionsByFid(fid: Uint8Array, type?: ReactionType): HubAsyncResult<ReactionAddModel[]> {
+    return validateFid(fid).match(
+      (validatedFid: Uint8Array) => {
+        return ResultAsync.fromPromise(
+          this._reactionStore.getReactionAddsByUser(validatedFid, type),
+          (e) => e as HubError
+        );
+      },
+      (e) => {
+        return errAsync(e);
+      }
+    );
+  }
+
+  async getReactionsByCast(cast: CastId, type?: ReactionType): HubAsyncResult<ReactionAddModel[]> {
+    return validateCastId(cast).match(
+      (validatedCastId: ValidatedCastId) => {
+        return ResultAsync.fromPromise(
+          this._reactionStore.getReactionsByTargetCast(validatedCastId, type),
           (e) => e as HubError
         );
       },

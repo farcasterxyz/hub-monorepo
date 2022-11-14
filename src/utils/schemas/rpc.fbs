@@ -43,3 +43,21 @@ table GetFollowsByFidRequest {
 table GetFollowsByUserRequest {
   user: UserId (required);
 }
+
+// Reaction Requests
+
+table GetReactionRequest {
+  fid: [ubyte] (required);
+  type: ReactionType = 1;
+  cast: CastId (required);
+}
+
+table GetReactionsByFidRequest {
+  fid: [ubyte] (required);
+  type: ReactionType = null;
+}
+
+table GetReactionsByCastRequest {
+  cast: CastId (required);
+  type: ReactionType = null;
+}

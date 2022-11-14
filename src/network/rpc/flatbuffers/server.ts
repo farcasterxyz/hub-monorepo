@@ -6,6 +6,7 @@ import MessageModel from '~/storage/flatbuffers/messageModel';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { HubError, HubErrorCode } from '~/utils/hubErrors';
 import { followServiceImpls, followServiceMethods } from './followService';
+import { reactionServiceImpls, reactionServiceMethods } from './reactionService';
 
 export const toServiceError = (err: HubError): grpc.ServiceError => {
   let grpcCode: number;
@@ -75,6 +76,7 @@ class Server {
     this.server = new grpc.Server();
     this.server.addService(castServiceMethods(), castServiceImpls(engine));
     this.server.addService(followServiceMethods(), followServiceImpls(engine));
+    this.server.addService(reactionServiceMethods(), reactionServiceImpls(engine));
   }
 
   async start(): Promise<number> {
