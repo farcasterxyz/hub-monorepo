@@ -81,9 +81,9 @@ class Server {
     this.server.addService(verificationServiceMethods(), verificationServiceImpls(engine));
   }
 
-  async start(): Promise<number> {
+  async start(port = 0): Promise<number> {
     return new Promise((resolve, reject) => {
-      this.server.bindAsync('localhost:0', grpc.ServerCredentials.createInsecure(), (err, port) => {
+      this.server.bindAsync(`localhost:${port}`, grpc.ServerCredentials.createInsecure(), (err, port) => {
         if (err) {
           reject(err);
         } else {
