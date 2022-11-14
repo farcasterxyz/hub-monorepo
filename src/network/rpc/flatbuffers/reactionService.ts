@@ -92,7 +92,7 @@ export const reactionServiceImpls = (engine: Engine) => {
       );
     },
 
-    getReactionsByUser: async (
+    getReactionsByCast: async (
       call: grpc.ServerUnaryCall<GetReactionsByCastRequest, MessagesResponse>,
       callback: grpc.sendUnaryData<MessagesResponse>
     ) => {

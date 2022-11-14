@@ -34,6 +34,8 @@ const wallet = Wallet.createRandom();
 let custodyEvent: ContractEventModel;
 let signer: KeyPair;
 let signerAdd: SignerAddModel;
+
+let castId: CastId;
 let reactionAddLike: ReactionAddModel;
 let reactionAddRecast: ReactionAddModel;
 
@@ -54,9 +56,11 @@ beforeAll(async () => {
     await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
   ) as SignerAddModel;
 
+  castId = await Factories.CastId.create();
+
   const likeData = await Factories.ReactionAddData.create({
     fid: Array.from(fid),
-    body: Factories.ReactionBody.build({ type: ReactionType.Like }),
+    body: Factories.ReactionBody.build({ type: ReactionType.Like, cast: castId.unpack() }),
   });
   reactionAddLike = new MessageModel(
     await Factories.Message.create({ data: Array.from(likeData.bb?.bytes() ?? []) }, { transient: { signer } })
@@ -64,7 +68,7 @@ beforeAll(async () => {
 
   const recastData = await Factories.ReactionAddData.create({
     fid: Array.from(fid),
-    body: Factories.ReactionBody.build({ type: ReactionType.Recast }),
+    body: Factories.ReactionBody.build({ type: ReactionType.Recast, cast: castId.unpack() }),
   });
   reactionAddRecast = new MessageModel(
     await Factories.Message.create({ data: Array.from(recastData.bb?.bytes() ?? []) }, { transient: { signer } })
@@ -165,21 +169,42 @@ describe('getReactionsByFid', () => {
   });
 });
 
-// describe('getFollowsByUser', () => {
-//   beforeEach(async () => {
-//     await engine.mergeIdRegistryEvent(custodyEvent);
-//     await engine.mergeMessage(signerAdd);
-//   });
+describe('getReactionsByCast', () => {
+  beforeEach(async () => {
+    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeMessage(signerAdd);
+  });
 
-//   test('succeeds', async () => {
-//     await engine.mergeMessage(followAdd);
-//     const follows = await client.getFollowsByUser(followAdd.body().user() ?? new UserId());
-//     // The underlying buffers are different, so we can't compare follows to [castAdd] directly
-//     expect(follows._unsafeUnwrap().map((cast) => cast.hash())).toEqual([followAdd.hash()]);
-//   });
+  describe('with messages', () => {
+    beforeEach(async () => {
+      await engine.mergeMessage(reactionAddLike);
+      await engine.mergeMessage(reactionAddRecast);
+    });
 
-//   test('returns empty array without messages', async () => {
-//     const follows = await client.getFollowsByUser(followAdd.body().user() ?? new UserId());
-//     expect(follows._unsafeUnwrap()).toEqual([]);
-//   });
-// });
+    test('succeeds without type', async () => {
+      const reactions = await client.getReactionsByCast(castId);
+      // The underlying buffers are different, so we can't compare full objects
+      expect(reactions._unsafeUnwrap().map((reaction) => reaction.hash())).toEqual([
+        reactionAddLike.hash(),
+        reactionAddRecast.hash(),
+      ]);
+    });
+
+    test('succeeds with type Like', async () => {
+      const reactions = await client.getReactionsByCast(castId, ReactionType.Like);
+      // The underlying buffers are different, so we can't compare full objects
+      expect(reactions._unsafeUnwrap().map((reaction) => reaction.hash())).toEqual([reactionAddLike.hash()]);
+    });
+
+    test('succeeds with type Recast', async () => {
+      const reactions = await client.getReactionsByCast(castId, ReactionType.Recast);
+      // The underlying buffers are different, so we can't compare full objects
+      expect(reactions._unsafeUnwrap().map((reaction) => reaction.hash())).toEqual([reactionAddRecast.hash()]);
+    });
+  });
+
+  test('returns empty array without messages', async () => {
+    const reactions = await client.getReactionsByCast(castId);
+    expect(reactions._unsafeUnwrap()).toEqual([]);
+  });
+});
