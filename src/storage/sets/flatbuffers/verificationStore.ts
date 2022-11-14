@@ -14,7 +14,10 @@ import { HubError } from '~/utils/hubErrors';
  * A Verification is performed by an fid on a target (e.g. Ethereum address) and may have an
  * ordinality. Verifications are added with type specific messages like VerificationAddEthAddress
  * but are removed with a generic VerificationRemove message that points to the unique id of the
- * Add. Conflicts are resolved with Last-Write-Wins + Remove-Wins rules as follows:
+ * Add.
+ *
+ * Verification messages can collide if two messages have the same user fid and address. Collisions
+ *are resolved with Last-Write-Wins + Remove-Wins rules as follows:
  *
  * 1. Highest timestamp wins
  * 2. Remove wins over Adds

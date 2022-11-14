@@ -12,7 +12,8 @@ import { HubError } from '~/utils/hubErrors';
  * eventual consistency.
  *
  * A Follow is performed by user and has a target user. It is added with a FollowAdd and removed
- * with a FollowRemove. Conflicts between follow messages are resolved with the following rules:
+ * with a FollowRemove. Follow messages can collide if two messages have the same user fid and
+ * target user fid. Collisions between messages are resolved with the following rules:
  *
  * 1. Highest timestamp wins
  * 2. Remove wins over Adds
@@ -20,9 +21,7 @@ import { HubError } from '~/utils/hubErrors';
  *
  * FollowMessages are stored ordinally in RocksDB indexed by a unique key `fid:tsHash` which makes
  * truncating a user's earliest messages easy. Indices are built for the two phase sets
- * (adds, removes) as well as byTargetUser.
- *
- * The key-value entries created by the Follow Store are:
+ * (adds, removes) as well as byTargetUser. The key-value entries created by the Follow Store are:
  *
  * 1. fid:tsHash -> follow message
  * 2. fid:set:targetUserFid -> fid:tsHash (Set Index)
