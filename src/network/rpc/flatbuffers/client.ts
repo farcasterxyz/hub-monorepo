@@ -15,6 +15,9 @@ import { fromServiceError } from './server';
 import { followServiceMethods, followServiceRequests } from './followService';
 import { reactionServiceMethods, reactionServiceRequests } from './reactionService';
 import { verificationServiceMethods, verificationServiceRequests } from './verificationService';
+import { submitServiceMethods } from './submitService';
+import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
+import { ContractEvent } from '~/utils/generated/contract_event_generated';
 
 class Client {
   client: grpc.Client;
@@ -25,6 +28,33 @@ class Client {
 
   close() {
     this.client.close();
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                                Submit Methods                              */
+  /* -------------------------------------------------------------------------- */
+
+  async submitMessage(message: MessageModel): HubAsyncResult<MessageModel> {
+    return this.makeUnaryMessageRequest(submitServiceMethods().submitMessage, message.message);
+  }
+
+  async submitContractEvent(event: ContractEventModel): HubAsyncResult<ContractEventModel> {
+    const method = submitServiceMethods().submitContractEvent;
+    return new Promise((resolve) => {
+      this.client.makeUnaryRequest(
+        method.path,
+        method.requestSerialize,
+        method.responseDeserialize,
+        event.event,
+        (e: grpc.ServiceError | null, response?: ContractEvent) => {
+          if (e) {
+            resolve(err(fromServiceError(e)));
+          } else if (response) {
+            resolve(ok(new ContractEventModel(response)));
+          }
+        }
+      );
+    });
   }
 
   /* -------------------------------------------------------------------------- */

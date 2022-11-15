@@ -8,6 +8,7 @@ import { HubError, HubErrorCode } from '~/utils/hubErrors';
 import { followServiceImpls, followServiceMethods } from './followService';
 import { reactionServiceImpls, reactionServiceMethods } from './reactionService';
 import { verificationServiceImpls, verificationServiceMethods } from './verificationService';
+import { submitServiceImpls, submitServiceMethods } from './submitService';
 
 export const toServiceError = (err: HubError): grpc.ServiceError => {
   let grpcCode: number;
@@ -75,10 +76,12 @@ class Server {
   constructor(engine: Engine) {
     this.engine = engine;
     this.server = new grpc.Server();
+    this.server.addService(submitServiceMethods(), submitServiceImpls(engine));
     this.server.addService(castServiceMethods(), castServiceImpls(engine));
     this.server.addService(followServiceMethods(), followServiceImpls(engine));
     this.server.addService(reactionServiceMethods(), reactionServiceImpls(engine));
     this.server.addService(verificationServiceMethods(), verificationServiceImpls(engine));
+    // TODO: add signers, user data, and sync services
   }
 
   async start(port = 0): Promise<number> {
