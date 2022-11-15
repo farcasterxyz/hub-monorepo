@@ -7,6 +7,10 @@ import { verifyVerificationEthAddressClaimSignature } from '~/utils/eip712';
 import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
 import { hexlify } from 'ethers/lib/utils';
 import { toFarcasterTime } from '~/storage/flatbuffers/utils';
+import { GossipAddressInfoT, GossipContent, GossipMessage } from '~/utils/generated/gossip_generated';
+import { peerIdFromBytes } from '@libp2p/peer-id';
+import { isPeerId } from '@libp2p/interface-peer-id';
+import { GOSSIP_PROTOCOL_VERSION } from '~/network/p2p/protocol';
 
 describe('UserIdFactory', () => {
   test('accepts fid', async () => {
@@ -93,5 +97,66 @@ describe('VerificationAddEthAddressBodyFactory', () => {
       signature ?? new Uint8Array()
     );
     expect(verifiedAddress).toEqual(body.addressArray());
+  });
+});
+
+describe('GossipMessageFactory', () => {
+  let content: Message;
+  let message: GossipMessage;
+
+  beforeAll(async () => {
+    content = await Factories.Message.create();
+    message = await Factories.GossipMessage.create({
+      contentType: GossipContent.Message,
+      content: content.unpack(),
+    });
+  });
+
+  test('creates with arguments', () => {
+    const other = Factories.GossipMessage.build();
+    expect(message.unpack().content).toEqual(content.unpack());
+  });
+
+  test('creates a FC Message by default', async () => {
+    const other = await Factories.GossipMessage.create();
+    expect(other).toBeDefined();
+    expect(other.contentType()).toEqual(GossipContent.Message);
+    expect(other.unpack().content).not.toEqual(content.unpack());
+  });
+
+  test('defaults to the right version', async () => {
+    expect(message.version()).toEqual(GOSSIP_PROTOCOL_VERSION);
+  });
+});
+
+describe('AddressInfoFactory', () => {
+  test('creates with arguments', async () => {
+    const gossipAddress = await Factories.GossipAddressInfo.create({ address: '127.0.0.1', port: 1234, family: 4 });
+    expect(gossipAddress.address()).toEqual('127.0.0.1');
+    expect(gossipAddress.port()).toEqual(1234);
+    expect(gossipAddress.family()).toEqual(4);
+  });
+});
+
+describe('ContactInfoFactory', () => {
+  let gossipAddress: GossipAddressInfoT;
+  let rpcAddress: GossipAddressInfoT;
+
+  beforeAll(() => {
+    gossipAddress = Factories.GossipAddressInfo.build();
+    rpcAddress = Factories.GossipAddressInfo.build();
+  });
+
+  test('creates with arguments', async () => {
+    const contactInfo = await Factories.GossipContactInfoContent.create({ gossipAddress, rpcAddress });
+    expect(contactInfo.rpcAddress()?.unpack()).toEqual(rpcAddress);
+    expect(contactInfo.gossipAddress()?.unpack()).toEqual(gossipAddress);
+  });
+
+  test('generates a valid peerId', async () => {
+    const contactInfo = await Factories.GossipContactInfoContent.create();
+    const peerId = peerIdFromBytes(contactInfo.peerIdArray() || new Uint8Array());
+    expect(peerId).toBeDefined();
+    expect(isPeerId(peerId)).toBeTruthy();
   });
 });

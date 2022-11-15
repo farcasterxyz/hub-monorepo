@@ -4,6 +4,7 @@ import { isGossipMessage } from '~/types/typeguards';
 import { IdRegistryEvent, Message } from '~/types';
 import { HubError, HubResult } from '~/utils/hubErrors';
 import { safeJsonParse, safeJsonStringify } from '~/utils/safe';
+import { GossipVersion } from '~/utils/generated/gossip_generated';
 
 // Network topic for all FC protocol messages
 export const NETWORK_TOPIC_PRIMARY = 'f_network_topic_primary';
@@ -13,6 +14,8 @@ export const NETWORK_TOPIC_CONTACT = 'f_network_topic_contact';
 export const GOSSIP_CONTACT_INTERVAL = 10_000;
 // A list of all gossip topics in use by our protocol
 export const GOSSIP_TOPICS = [NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY];
+// The current gossip protocol version
+export const GOSSIP_PROTOCOL_VERSION = GossipVersion.V1;
 
 /**
  * GossipMessage defines the structure of the basic message type that is published

@@ -46,6 +46,18 @@ import { VerificationRemoveBody, VerificationRemoveBodyT } from '~/utils/generat
 import { ContractEvent, ContractEventT, ContractEventType } from '~/utils/generated/contract_event_generated';
 import { toFarcasterTime } from '~/storage/flatbuffers/utils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
+import {
+  ContactInfoContentT,
+  ContactInfoContent,
+  GossipContent,
+  GossipMessage,
+  GossipMessageT,
+  GossipAddressInfoT,
+  GossipAddressInfo,
+} from '~/utils/generated/gossip_generated';
+import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
+import { createEd25519PeerId } from '@libp2p/peer-id-factory';
+import { PeerId } from '@libp2p/interface-peer-id';
 
 /* eslint-disable security/detect-object-injection */
 const BytesFactory = Factory.define<Uint8Array, { length?: number }>(({ transientParams }) => {
@@ -404,6 +416,44 @@ const IdRegistryEventFactory = Factory.define<ContractEventT, any, ContractEvent
   );
 });
 
+const GossipAddressInfoFactory = Factory.define<GossipAddressInfoT, any, GossipAddressInfo>(({ onCreate }) => {
+  onCreate((params) => {
+    const builder = new Builder(1);
+    builder.finish(params.pack(builder));
+    return GossipAddressInfo.getRootAsGossipAddressInfo(new ByteBuffer(builder.asUint8Array()));
+  });
+
+  return new GossipAddressInfoT('0.0.0.0', 4, 0);
+});
+
+const ContactInfoContentFactory = Factory.define<ContactInfoContentT, { peerId?: PeerId }, ContactInfoContent>(
+  ({ onCreate, transientParams }) => {
+    onCreate(async (params) => {
+      if (params.peerId.length == 0) {
+        params.peerId = transientParams.peerId
+          ? Array.from(transientParams.peerId.toBytes())
+          : Array.from((await createEd25519PeerId()).toBytes());
+      }
+
+      const builder = new Builder(1);
+      builder.finish(params.pack(builder));
+      return ContactInfoContent.getRootAsContactInfoContent(new ByteBuffer(builder.asUint8Array()));
+    });
+
+    return new ContactInfoContentT();
+  }
+);
+
+const GossipMessageFactory = Factory.define<GossipMessageT, any, GossipMessage>(({ onCreate }) => {
+  onCreate((params) => {
+    const builder = new Builder(1);
+    builder.finish(params.pack(builder));
+    return GossipMessage.getRootAsGossipMessage(new ByteBuffer(builder.asUint8Array()));
+  });
+
+  return new GossipMessageT(GossipContent.Message, MessageFactory.build(), [NETWORK_TOPIC_PRIMARY]);
+});
+
 const Factories = {
   Bytes: BytesFactory,
   FID: FIDFactory,
@@ -432,6 +482,9 @@ const Factories = {
   UserDataAddData: UserDataAddDataFactory,
   Message: MessageFactory,
   IdRegistryEvent: IdRegistryEventFactory,
+  GossipMessage: GossipMessageFactory,
+  GossipContactInfoContent: ContactInfoContentFactory,
+  GossipAddressInfo: GossipAddressInfoFactory,
 };
 
 export default Factories;
