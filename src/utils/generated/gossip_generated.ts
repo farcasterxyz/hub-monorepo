@@ -2,10 +2,8 @@
 
 export { ContactInfoContent, ContactInfoContentT } from './farcaster/contact-info-content';
 export { ContractEvent, ContractEventT } from './farcaster/contract-event';
-export { ContractEventContent, ContractEventContentT } from './farcaster/contract-event-content';
 export { GossipAddressInfo, GossipAddressInfoT } from './farcaster/gossip-address-info';
 export { GossipContent, unionToGossipContent, unionListToGossipContent } from './farcaster/gossip-content';
 export { GossipMessage, GossipMessageT } from './farcaster/gossip-message';
 export { GossipVersion } from './farcaster/gossip-version';
 export { Message, MessageT } from './farcaster/message';
-export { UserContent, UserContentT } from './farcaster/user-content';

@@ -7,13 +7,7 @@ import { verifyVerificationEthAddressClaimSignature } from '~/utils/eip712';
 import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
 import { hexlify } from 'ethers/lib/utils';
 import { toFarcasterTime } from '~/storage/flatbuffers/utils';
-import {
-  ContractEvent,
-  GossipAddressInfoT,
-  GossipContent,
-  GossipMessage,
-  UserContent,
-} from '~/utils/generated/gossip_generated';
+import { GossipAddressInfoT, GossipContent, GossipMessage } from '~/utils/generated/gossip_generated';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import { isPeerId } from '@libp2p/interface-peer-id';
 import { GOSSIP_PROTOCOL_VERSION } from '~/network/p2p/protocol';
@@ -107,13 +101,13 @@ describe('VerificationAddEthAddressBodyFactory', () => {
 });
 
 describe('GossipMessageFactory', () => {
-  let content: UserContent;
+  let content: Message;
   let message: GossipMessage;
 
   beforeAll(async () => {
-    content = await Factories.GossipUserContent.create();
+    content = await Factories.Message.create();
     message = await Factories.GossipMessage.create({
-      contentType: GossipContent.UserContent,
+      contentType: GossipContent.Message,
       content: content.unpack(),
     });
   });
@@ -123,10 +117,10 @@ describe('GossipMessageFactory', () => {
     expect(message.unpack().content).toEqual(content.unpack());
   });
 
-  test('creates UserContent by default', async () => {
+  test('creates a FC Message by default', async () => {
     const other = await Factories.GossipMessage.create();
     expect(other).toBeDefined();
-    expect(other.contentType()).toEqual(GossipContent.UserContent);
+    expect(other.contentType()).toEqual(GossipContent.Message);
     expect(other.unpack().content).not.toEqual(content.unpack());
   });
 
@@ -164,18 +158,5 @@ describe('ContactInfoFactory', () => {
     const peerId = peerIdFromBytes(contactInfo.peerIdArray() || new Uint8Array());
     expect(peerId).toBeDefined();
     expect(isPeerId(peerId)).toBeTruthy();
-  });
-});
-
-describe('GossipContractEventFactory', () => {
-  let event: ContractEvent;
-
-  beforeAll(async () => {
-    event = await Factories.IdRegistryEvent.create();
-  });
-
-  test('creates with arguments', async () => {
-    const contractEvent = await Factories.GossipContractEventContent.create({ message: event.unpack() });
-    expect(contractEvent.message()?.unpack()).toEqual(event.unpack());
   });
 });

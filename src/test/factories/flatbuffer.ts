@@ -52,10 +52,6 @@ import {
   GossipContent,
   GossipMessage,
   GossipMessageT,
-  UserContentT,
-  UserContent,
-  ContractEventContent,
-  ContractEventContentT,
   GossipAddressInfoT,
   GossipAddressInfo,
 } from '~/utils/generated/gossip_generated';
@@ -448,26 +444,6 @@ const ContactInfoContentFactory = Factory.define<ContactInfoContentT, { peerId?:
   }
 );
 
-const UserContentFactory = Factory.define<UserContentT, any, UserContent>(({ onCreate }) => {
-  onCreate((params) => {
-    const builder = new Builder(1);
-    builder.finish(params.pack(builder));
-    return UserContent.getRootAsUserContent(new ByteBuffer(builder.asUint8Array()));
-  });
-
-  return new UserContentT(MessageFactory.build());
-});
-
-const ContractEventContentFactory = Factory.define<ContractEventContentT, any, ContractEventContent>(({ onCreate }) => {
-  onCreate((params) => {
-    const builder = new Builder(1);
-    builder.finish(params.pack(builder));
-    return ContractEventContent.getRootAsContractEventContent(new ByteBuffer(builder.asUint8Array()));
-  });
-
-  return new ContractEventContentT(IdRegistryEventFactory.build());
-});
-
 const GossipMessageFactory = Factory.define<GossipMessageT, any, GossipMessage>(({ onCreate }) => {
   onCreate((params) => {
     const builder = new Builder(1);
@@ -475,7 +451,7 @@ const GossipMessageFactory = Factory.define<GossipMessageT, any, GossipMessage>(
     return GossipMessage.getRootAsGossipMessage(new ByteBuffer(builder.asUint8Array()));
   });
 
-  return new GossipMessageT(GossipContent.UserContent, UserContentFactory.build(), [NETWORK_TOPIC_PRIMARY]);
+  return new GossipMessageT(GossipContent.Message, MessageFactory.build(), [NETWORK_TOPIC_PRIMARY]);
 });
 
 const Factories = {
@@ -507,8 +483,6 @@ const Factories = {
   Message: MessageFactory,
   IdRegistryEvent: IdRegistryEventFactory,
   GossipMessage: GossipMessageFactory,
-  GossipUserContent: UserContentFactory,
-  GossipContractEventContent: ContractEventContentFactory,
   GossipContactInfoContent: ContactInfoContentFactory,
   GossipAddressInfo: GossipAddressInfoFactory,
 };

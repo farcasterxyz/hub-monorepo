@@ -16,26 +16,6 @@ enum GossipVersion: uint16 {
 }
 
 /**
- * UserContent defines the structure of the primary message type that is published
- * over the gossip network.
- *
- * @message - The Farcaster Message that needs to be sent
- */
-table UserContent {
-  message: Farcaster.Message (required);
-}
-
-/**
- * ContractEventContent defines the structure of the Contract Events that are published
- * over the gossip network.
- *
- * @message - The Farcaster ContractEvent that needs to be sent
- */
-table ContractEventContent {
-  message: Farcaster.ContractEvent (required);
-}
-
-/**
  * ContactInfoContent allows gossip nodes to share additional information about each other
  * over the gossip network.
  *
@@ -54,8 +34,8 @@ table ContactInfoContent {
 }
 
 union GossipContent {
-  UserContent,
-  ContractEventContent,
+  Message,
+  ContractEvent,
   ContactInfoContent,
 }
 

@@ -3,10 +3,10 @@
 import * as flatbuffers from 'flatbuffers';
 
 import { ContactInfoContent, ContactInfoContentT } from '../farcaster/contact-info-content';
-import { ContractEventContent, ContractEventContentT } from '../farcaster/contract-event-content';
+import { ContractEvent, ContractEventT } from '../farcaster/contract-event';
 import { GossipContent, unionToGossipContent, unionListToGossipContent } from '../farcaster/gossip-content';
 import { GossipVersion } from '../farcaster/gossip-version';
-import { UserContent, UserContentT } from '../farcaster/user-content';
+import { Message, MessageT } from '../farcaster/message';
 
 
 export class GossipMessage {
@@ -139,7 +139,7 @@ unpackTo(_o: GossipMessageT): void {
 export class GossipMessageT {
 constructor(
   public contentType: GossipContent = GossipContent.NONE,
-  public content: ContactInfoContentT|ContractEventContentT|UserContentT|null = null,
+  public content: ContactInfoContentT|ContractEventT|MessageT|null = null,
   public topics: (string)[] = [],
   public version: GossipVersion = GossipVersion.V1
 ){}
