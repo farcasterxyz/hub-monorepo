@@ -5,6 +5,7 @@ import * as flatbuffers from 'flatbuffers';
 import { ContactInfoContent, ContactInfoContentT } from '../farcaster/contact-info-content';
 import { ContractEventContent, ContractEventContentT } from '../farcaster/contract-event-content';
 import { GossipContent, unionToGossipContent, unionListToGossipContent } from '../farcaster/gossip-content';
+import { GossipVersion } from '../farcaster/gossip-version';
 import { UserContent, UserContentT } from '../farcaster/user-content';
 
 
@@ -48,8 +49,13 @@ topicsLength():number {
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
+version():GossipVersion {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.readUint16(this.bb_pos + offset) : GossipVersion.V1;
+}
+
 static startGossipMessage(builder:flatbuffers.Builder) {
-  builder.startObject(3);
+  builder.startObject(4);
 }
 
 static addContentType(builder:flatbuffers.Builder, contentType:GossipContent) {
@@ -76,6 +82,10 @@ static startTopicsVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(4, numElems, 4);
 }
 
+static addVersion(builder:flatbuffers.Builder, version:GossipVersion) {
+  builder.addFieldInt16(3, version, GossipVersion.V1);
+}
+
 static endGossipMessage(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   builder.requiredField(offset, 6) // content
@@ -91,11 +101,12 @@ static finishSizePrefixedGossipMessageBuffer(builder:flatbuffers.Builder, offset
   builder.finish(offset, undefined, true);
 }
 
-static createGossipMessage(builder:flatbuffers.Builder, contentType:GossipContent, contentOffset:flatbuffers.Offset, topicsOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createGossipMessage(builder:flatbuffers.Builder, contentType:GossipContent, contentOffset:flatbuffers.Offset, topicsOffset:flatbuffers.Offset, version:GossipVersion):flatbuffers.Offset {
   GossipMessage.startGossipMessage(builder);
   GossipMessage.addContentType(builder, contentType);
   GossipMessage.addContent(builder, contentOffset);
   GossipMessage.addTopics(builder, topicsOffset);
+  GossipMessage.addVersion(builder, version);
   return GossipMessage.endGossipMessage(builder);
 }
 
@@ -107,7 +118,8 @@ unpack(): GossipMessageT {
       if(temp === null) { return null; }
       return temp.unpack()
   })(),
-    this.bb!.createScalarList(this.topics.bind(this), this.topicsLength())
+    this.bb!.createScalarList(this.topics.bind(this), this.topicsLength()),
+    this.version()
   );
 }
 
@@ -120,6 +132,7 @@ unpackTo(_o: GossipMessageT): void {
       return temp.unpack()
   })();
   _o.topics = this.bb!.createScalarList(this.topics.bind(this), this.topicsLength());
+  _o.version = this.version();
 }
 }
 
@@ -127,7 +140,8 @@ export class GossipMessageT {
 constructor(
   public contentType: GossipContent = GossipContent.NONE,
   public content: ContactInfoContentT|ContractEventContentT|UserContentT|null = null,
-  public topics: (string)[] = []
+  public topics: (string)[] = [],
+  public version: GossipVersion = GossipVersion.V1
 ){}
 
 
@@ -138,7 +152,8 @@ pack(builder:flatbuffers.Builder): flatbuffers.Offset {
   return GossipMessage.createGossipMessage(builder,
     this.contentType,
     content,
-    topics
+    topics,
+    this.version
   );
 }
 }

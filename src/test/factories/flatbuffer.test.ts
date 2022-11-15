@@ -16,6 +16,7 @@ import {
 } from '~/utils/generated/gossip_generated';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import { isPeerId } from '@libp2p/interface-peer-id';
+import { GOSSIP_PROTOCOL_VERSION } from '~/network/p2p/protocol';
 
 describe('UserIdFactory', () => {
   test('accepts fid', async () => {
@@ -127,6 +128,10 @@ describe('GossipMessageFactory', () => {
     expect(other).toBeDefined();
     expect(other.contentType()).toEqual(GossipContent.UserContent);
     expect(other.unpack().content).not.toEqual(content.unpack());
+  });
+
+  test('defaults to the right version', async () => {
+    expect(message.version()).toEqual(GOSSIP_PROTOCOL_VERSION);
   });
 });
 

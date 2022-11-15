@@ -11,6 +11,10 @@ table GossipAddressInfo {
   port: uint16;
 }
 
+enum GossipVersion: uint16 {
+  V1 = 1,
+}
+
 /**
  * UserContent defines the structure of the primary message type that is published
  * over the gossip network.
@@ -65,6 +69,7 @@ union GossipContent {
 table GossipMessage {
   content: GossipContent (required);
   topics: [string] (required);
+  version: GossipVersion = 1;
 }
 
 root_type GossipMessage;
