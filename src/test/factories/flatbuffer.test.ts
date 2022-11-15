@@ -9,14 +9,11 @@ import { hexlify } from 'ethers/lib/utils';
 import { toFarcasterTime } from '~/storage/flatbuffers/utils';
 import {
   ContractEvent,
-  GossipAddressInfo,
   GossipAddressInfoT,
   GossipContent,
   GossipMessage,
-  unionToGossipContent,
   UserContent,
 } from '~/utils/generated/gossip_generated';
-import { GossipType } from '~/utils/generated/farcaster/gossip-type';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import { isPeerId } from '@libp2p/interface-peer-id';
 
