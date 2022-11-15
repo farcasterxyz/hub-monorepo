@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
 
 /**
  * A snapshot of the trie at a particular timestamp which can be used to determine if two
@@ -22,17 +23,15 @@ class TrieNode {
   private _hash: string;
   private _items: number;
   private _children: Map<string, TrieNode>;
-  private readonly _value: string | undefined;
+  private _key: string | undefined;
+  private _value: string | undefined;
 
-  constructor(value: string | undefined = undefined) {
+  constructor() {
     this._hash = '';
     this._items = 0;
     this._children = new Map();
-    this._value = value;
-
-    if (value !== undefined) {
-      this._updateHash();
-    }
+    this._key = undefined;
+    this._value = undefined;
   }
 
   /**
@@ -48,17 +47,19 @@ class TrieNode {
   public insert(key: string, value: string, current_index = 0): boolean {
     const char = key[current_index];
 
-    // TODO: Optimize by using MPT extension nodes for leaves
-    // We've reached the end of the key, add or update the value in a leaf node
-    if (current_index === key.length - 1) {
-      // Key with the same value already exists, so no need to modify the tree
-      if (this._children.has(char) && this._children.get(char)?.value === value) {
+    // Do not compact the timestamp portion of the trie, since it's used to compare snapshots
+    if (current_index >= TIMESTAMP_LENGTH && this.isLeaf && !this._value) {
+      // insert the item
+      this._setKeyValue(key, value);
+      this._items += 1;
+      return true;
+    }
+
+    if (current_index >= TIMESTAMP_LENGTH && this.isLeaf) {
+      if (this._value === value) {
         return false;
       }
-      this._addChild(char, value);
-      this._items += 1;
-      this._updateHash();
-      return true;
+      this._splitLeafNode(current_index);
     }
 
     if (!this._children.has(char)) {
@@ -86,6 +87,7 @@ class TrieNode {
    */
   public delete(key: string, current_index = 0): boolean {
     if (this.isLeaf) {
+      this._items -= 1;
       return true;
     }
 
@@ -102,6 +104,16 @@ class TrieNode {
       if (this._children.get(char)?.items === 0) {
         this._children.delete(char);
       }
+
+      const children = Array.from(this._children);
+      if (children.length === 1 && current_index >= TIMESTAMP_LENGTH) {
+        // Compact the node if it has only one child
+        const [char, child] = children[0];
+        this._key = child._key;
+        this._value = child._value;
+        this._children.delete(char);
+      }
+
       this._updateHash();
       return true;
     }
@@ -204,11 +216,30 @@ class TrieNode {
     return { hash: hash.digest('hex'), items: excludedItems };
   }
 
-  private _addChild(char: string, value: string | undefined = undefined) {
-    this._children.set(char, new TrieNode(value));
+  private _addChild(char: string) {
+    this._children.set(char, new TrieNode());
     // The hash requires the children to be sorted, and sorting on insert/update is cheaper than
     // sorting each time we need to update the hash
     this._children = new Map([...this._children.entries()].sort());
+  }
+
+  private _setKeyValue(key: string, value: string) {
+    this._key = key;
+    this._value = value;
+    this._updateHash();
+  }
+
+  private _splitLeafNode(current_index: number) {
+    if (!this._key || !this._value) {
+      // This should never happen, check is here for type safety
+      throw new Error('Cannot split a leaf node without a key and value');
+    }
+    const newChildChar = this._key[current_index];
+    this._addChild(newChildChar);
+    this._children.get(newChildChar)?.insert(this._key, this._value, current_index + 1);
+    this._key = undefined;
+    this._value = undefined;
+    this._updateHash();
   }
 
   private _updateHash() {
