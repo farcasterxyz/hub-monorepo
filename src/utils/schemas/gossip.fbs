@@ -1,0 +1,70 @@
+include "message.fbs";
+include "contract_event.fbs";
+
+// IDL file for Farcaster Gossip Messages
+
+namespace Farcaster;
+
+table GossipAddressInfo {
+  address: string (required);
+  family: uint8;
+  port: uint16;
+}
+
+/**
+ * UserContent defines the structure of the primary message type that is published
+ * over the gossip network.
+ *
+ * @message - The Farcaster Message that needs to be sent
+ */
+table UserContent {
+  message: Farcaster.Message (required);
+}
+
+/**
+ * ContractEventContent defines the structure of the Contract Events that are published
+ * over the gossip network.
+ *
+ * @message - The Farcaster ContractEvent that needs to be sent
+ */
+table ContractEventContent {
+  message: Farcaster.ContractEvent (required);
+}
+
+/**
+ * ContactInfoContent allows gossip nodes to share additional information about each other
+ * over the gossip network.
+ *
+ * @peerId - The libp2p peerId of the corresponding peer
+ * @gossipAddress - The address at which this node is listening for Gossip messages. Unset if Gossip is not public.
+ * @rpcAddress - The address at which this node is serving RPC requests. Unset if RPC is not offered.
+ * @excludedHashes - The excluded hashes of the sender's current trie snapshot
+ * @count - The number of messages under the root
+ */
+table ContactInfoContent {
+  peer_id: [ubyte] (required);
+  gossip_address: GossipAddressInfo;
+  rpc_address: GossipAddressInfo;
+  excluded_hashes: [string];
+  count: uint64;
+}
+
+union GossipContent {
+  UserContent,
+  ContractEventContent,
+  ContactInfoContent,
+}
+
+/**
+ * GossipMessage defines the structure of the basic message type that is published
+ * over the gossip network
+ *
+ * @content - The message content to be broadcasted
+ * @topics - The topics this message belongs to. Multiple topics can be passed.
+ */
+table GossipMessage {
+  content: GossipContent (required);
+  topics: [string] (required);
+}
+
+root_type GossipMessage;
