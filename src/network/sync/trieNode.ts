@@ -1,5 +1,6 @@
 import { createHash } from 'crypto';
 import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
+import { HubError } from '~/utils/hubErrors';
 
 /**
  * A snapshot of the trie at a particular timestamp which can be used to determine if two
@@ -49,7 +50,7 @@ class TrieNode {
 
     // Do not compact the timestamp portion of the trie, since it's used to compare snapshots
     if (current_index >= TIMESTAMP_LENGTH && this.isLeaf && !this._value) {
-      // insert the item
+      // Reached a leaf node with no value, insert it
       this._setKeyValue(key, value);
       this._items += 1;
       return true;
@@ -235,17 +236,17 @@ class TrieNode {
     this._updateHash();
   }
 
+  // Splits a leaf node into a non-leaf node by clearing its key/value and adding a child for
+  // the next char in its key
   private _splitLeafNode(current_index: number) {
     if (!this._key || !this._value) {
       // This should never happen, check is here for type safety
-      throw new Error('Cannot split a leaf node without a key and value');
+      throw new HubError('bad_request', 'Cannot split a leaf node without a key and value');
     }
     const newChildChar = this._key[current_index];
     this._addChild(newChildChar);
     this._children.get(newChildChar)?.insert(this._key, this._value, current_index + 1);
-    this._key = undefined;
-    this._value = undefined;
-    this._updateHash();
+    this._setKeyValue(undefined, undefined);
   }
 
   private _updateHash() {

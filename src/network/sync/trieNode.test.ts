@@ -4,6 +4,11 @@ import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
 import { createHash } from 'crypto';
 
 const emptyHash = createHash('sha256').digest('hex');
+const sharedDate = new Date(1665182332000);
+const sharedPrefixHashA =
+  '0x09bc3dad4e7f2a77bbb2cccbecb06febfc3f0cbe7ea6a774d2dc043fd45c2c9912f130bf502c88fdedf7bbc4cd20b47aab2079e2d5cbd0a35afd2deec86a4321';
+const sharedPrefixHashB =
+  '0x09bc3dad4e7f2a77bbb2cccbecb06febfc3f0cbe7ea6a774d2dc043fd45c2c9912f130bf502c88fdedf7bbc4cd20b47aab2079e2d5cbd0a35afd2deec86b1234';
 
 describe('TrieNode', () => {
   // Traverse the node until we find a leaf or path splits into multiple choices
@@ -81,13 +86,8 @@ describe('TrieNode', () => {
     test('inserting another key with a common prefix splits the node', async () => {
       // Generate two ids with the same timestamp and the same hash prefix. The trie should split the node
       // where they diverge
-      const date = new Date(1665182332000);
-      const hash1 =
-        '0x09bc3dad4e7f2a77bbb2cccbecb06febfc3f0cbe7ea6a774d2dc043fd45c2c9912f130bf502c88fdedf7bbc4cd20b47aab2079e2d5cbd0a35afd2deec86a4321';
-      const hash2 =
-        '0x09bc3dad4e7f2a77bbb2cccbecb06febfc3f0cbe7ea6a774d2dc043fd45c2c9912f130bf502c88fdedf7bbc4cd20b47aab2079e2d5cbd0a35afd2deec86b1234';
-      const id1 = Factories.SyncId.build(undefined, { transient: { date, hash: hash1 } });
-      const id2 = Factories.SyncId.build(undefined, { transient: { date, hash: hash2 } });
+      const id1 = Factories.SyncId.build(undefined, { transient: { date: sharedDate, hash: sharedPrefixHashA } });
+      const id2 = Factories.SyncId.build(undefined, { transient: { date: sharedDate, hash: sharedPrefixHashB } });
 
       const root = new TrieNode();
       root.insert(id1.toString(), id1.hashString);
@@ -123,18 +123,8 @@ describe('TrieNode', () => {
 
     test('deleting a single item from a node with multiple items removes the item', async () => {
       const root = new TrieNode();
-      const id1 = Factories.SyncId.build(undefined, {
-        transient: {
-          date: new Date(1668521739000),
-          hash: '0x329682c47215ce27323ef13e884b001057274a1896b19c3afeaf167081f79e34ec799d02f42c3dbdaefe45f1ed10e3934bda3c24018b442142e3eb561a5ad317',
-        },
-      });
-      const id2 = Factories.SyncId.build(undefined, {
-        transient: {
-          date: new Date(1668521739000),
-          hash: '0xbaa1463bc7f7bfe358098ae3ec69d1951699b3cce97f2dbdd91116323ff4449b04b040bf70320e1800f50cd2aa036f9dab4154f3965fe535792e7b521409798c',
-        },
-      });
+      const id1 = Factories.SyncId.build(undefined, { transient: { date: sharedDate } });
+      const id2 = Factories.SyncId.build(undefined, { transient: { date: sharedDate } });
 
       root.insert(id1.toString(), id1.hashString);
       const previousHash = root.hash;
@@ -148,13 +138,8 @@ describe('TrieNode', () => {
     });
 
     test('deleting a single item from a split node should preserve previous hash', async () => {
-      const date = new Date(1665182332000);
-      const hash1 =
-        '0x09bc3dad4e7f2a77bbb2cccbecb06febfc3f0cbe7ea6a774d2dc043fd45c2c9912f130bf502c88fdedf7bbc4cd20b47aab2079e2d5cbd0a35afd2deec86a4321';
-      const hash2 =
-        '0x09bc3dad4e7f2a77bbb2cccbecb06febfc3f0cbe7ea6a774d2dc043fd45c2c9912f130bf502c88fdedf7bbc4cd20b47aab2079e2d5cbd0a35afd2deec86b1234';
-      const id1 = Factories.SyncId.build(undefined, { transient: { date, hash: hash1 } });
-      const id2 = Factories.SyncId.build(undefined, { transient: { date, hash: hash2 } });
+      const id1 = Factories.SyncId.build(undefined, { transient: { date: sharedDate, hash: sharedPrefixHashA } });
+      const id2 = Factories.SyncId.build(undefined, { transient: { date: sharedDate, hash: sharedPrefixHashB } });
 
       const root = new TrieNode();
       root.insert(id1.toString(), id1.hashString);
@@ -197,13 +182,8 @@ describe('TrieNode', () => {
     });
 
     test('getting an non-existent item that share the same prefix with an existing item returns undefined', async () => {
-      const date = new Date(1665182332000);
-      const hash1 =
-        '0x09bc3dad4e7f2a77bbb2cccbecb06febfc3f0cbe7ea6a774d2dc043fd45c2c9912f130bf502c88fdedf7bbc4cd20b47aab2079e2d5cbd0a35afd2deec86a4321';
-      const hash2 =
-        '0x09bc3dad4e7f2a77bbb2cccbecb06febfc3f0cbe7ea6a774d2dc043fd45c2c9912f130bf502c88fdedf7bbc4cd20b47aab2079e2d5cbd0a35afd2deec86b1234';
-      const id1 = Factories.SyncId.build(undefined, { transient: { date, hash: hash1 } });
-      const id2 = Factories.SyncId.build(undefined, { transient: { date, hash: hash2 } });
+      const id1 = Factories.SyncId.build(undefined, { transient: { date: sharedDate, hash: sharedPrefixHashA } });
+      const id2 = Factories.SyncId.build(undefined, { transient: { date: sharedDate, hash: sharedPrefixHashB } });
 
       const root = new TrieNode();
       root.insert(id1.toString(), id1.hashString);

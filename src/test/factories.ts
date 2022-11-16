@@ -105,31 +105,24 @@ const CastURLFactory = Factory.define<CastURL, { cast: Cast }, CastURL>(({ trans
   return new CastURL(new CastId(`fid:${fid}/cast:${hash}`));
 });
 
-const SyncIdFactory = Factory.define<SyncId, { date: Date; hash: string; str: string }, SyncId>(
-  ({ transientParams }) => {
-    let { date, hash } = transientParams;
-    const { str } = transientParams;
-    if (str) {
-      date = new Date(parseInt(str.slice(0, TIMESTAMP_LENGTH), 10) * 1000);
-      hash = str.slice(TIMESTAMP_LENGTH);
-    }
-    const dummyMessage: Message<MessageType.CastShort, CastShortBody> = {
-      data: {
-        signedAt: (date || faker.date.recent()).getTime(),
-        body: { text: '' },
-        fid: 1,
-        type: MessageType.CastShort,
-        network: FarcasterNetwork.Mainnet,
-      },
-      hash: hash || faker.datatype.hexadecimal({ length: HASH_LENGTH }).toLowerCase(),
-      hashType: HashAlgorithm.Blake2b,
-      signature: '',
-      signatureType: SignatureAlgorithm.Ed25519,
-      signer: '',
-    };
-    return new SyncId(dummyMessage);
-  }
-);
+const SyncIdFactory = Factory.define<SyncId, { date: Date; hash: string }, SyncId>(({ transientParams }) => {
+  const { date, hash } = transientParams;
+  const dummyMessage: Message<MessageType.CastShort, CastShortBody> = {
+    data: {
+      signedAt: (date || faker.date.recent()).getTime(),
+      body: { text: '' },
+      fid: 1,
+      type: MessageType.CastShort,
+      network: FarcasterNetwork.Mainnet,
+    },
+    hash: hash || faker.datatype.hexadecimal({ length: HASH_LENGTH }).toLowerCase(),
+    hashType: HashAlgorithm.Blake2b,
+    signature: '',
+    signatureType: SignatureAlgorithm.Ed25519,
+    signer: '',
+  };
+  return new SyncId(dummyMessage);
+});
 
 /**
  * ProtocolFactories are used to construct valid Farcaster Protocol JSON objects.
