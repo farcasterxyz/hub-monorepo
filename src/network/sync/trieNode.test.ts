@@ -32,6 +32,35 @@ describe('TrieNode', () => {
       expect(root.hash).toBeTruthy();
     });
 
+    test('inserting the same item twice is idempotent', async () => {
+      const root = new TrieNode();
+      const id = Factories.SyncId.build();
+
+      root.insert(id.toString(), id.hashString);
+      expect(root.items).toEqual(1);
+      const previousHash = root.hash;
+      root.insert(id.toString(), id.hashString);
+
+      expect(root.hash).toEqual(previousHash);
+      expect(root.items).toEqual(1);
+    });
+
+    test('inserting the same key with a different value does nothing', async () => {
+      const root = new TrieNode();
+      const id = Factories.SyncId.build();
+      const id2 = Factories.SyncId.build();
+
+      root.insert(id.toString(), id.hashString);
+      expect(root.items).toEqual(1);
+      expect(root.get(id.toString())).toEqual(id.hashString);
+      const previousHash = root.hash;
+      root.insert(id.toString(), id2.hashString);
+
+      expect(root.hash).toEqual(previousHash);
+      expect(root.items).toEqual(1);
+      expect(root.get(id.toString())).toEqual(id.hashString);
+    });
+
     test('insert compacts hashstring component of syncid to single node for efficiency', async () => {
       const root = new TrieNode();
       const id = Factories.SyncId.build();
@@ -92,6 +121,32 @@ describe('TrieNode', () => {
       expect(root.hash).toEqual(emptyHash);
     });
 
+    test('deleting a single item from a node with multiple items removes the item', async () => {
+      const root = new TrieNode();
+      const id1 = Factories.SyncId.build(undefined, {
+        transient: {
+          date: new Date(1668521739000),
+          hash: '0x329682c47215ce27323ef13e884b001057274a1896b19c3afeaf167081f79e34ec799d02f42c3dbdaefe45f1ed10e3934bda3c24018b442142e3eb561a5ad317',
+        },
+      });
+      const id2 = Factories.SyncId.build(undefined, {
+        transient: {
+          date: new Date(1668521739000),
+          hash: '0xbaa1463bc7f7bfe358098ae3ec69d1951699b3cce97f2dbdd91116323ff4449b04b040bf70320e1800f50cd2aa036f9dab4154f3965fe535792e7b521409798c',
+        },
+      });
+
+      root.insert(id1.toString(), id1.hashString);
+      const previousHash = root.hash;
+      root.insert(id2.toString(), id2.hashString);
+      expect(root.items).toEqual(2);
+
+      root.delete(id2.toString());
+      expect(root.items).toEqual(1);
+      expect(root.get(id2.toString())).toBeUndefined();
+      expect(root.hash).toEqual(previousHash);
+    });
+
     test('deleting a single item from a split node should preserve previous hash', async () => {
       const date = new Date(1665182332000);
       const hash1 =
@@ -117,5 +172,44 @@ describe('TrieNode', () => {
     });
   });
 
-  // describe('get', () => {});
+  describe('get', () => {
+    test('getting a single item returns the value', async () => {
+      const root = new TrieNode();
+      const id = Factories.SyncId.build();
+
+      root.insert(id.toString(), id.hashString);
+      expect(root.items).toEqual(1);
+
+      const value = root.get(id.toString());
+      expect(value).toEqual(id.hashString);
+    });
+
+    test('getting an item after deleting it returns undefined', async () => {
+      const root = new TrieNode();
+      const id = Factories.SyncId.build();
+
+      root.insert(id.toString(), id.hashString);
+      expect(root.items).toEqual(1);
+
+      root.delete(id.toString());
+      expect(root.get(id.toString())).toBeUndefined();
+      expect(root.items).toEqual(0);
+    });
+
+    test('getting an non-existent item that share the same prefix with an existing item returns undefined', async () => {
+      const date = new Date(1665182332000);
+      const hash1 =
+        '0x09bc3dad4e7f2a77bbb2cccbecb06febfc3f0cbe7ea6a774d2dc043fd45c2c9912f130bf502c88fdedf7bbc4cd20b47aab2079e2d5cbd0a35afd2deec86a4321';
+      const hash2 =
+        '0x09bc3dad4e7f2a77bbb2cccbecb06febfc3f0cbe7ea6a774d2dc043fd45c2c9912f130bf502c88fdedf7bbc4cd20b47aab2079e2d5cbd0a35afd2deec86b1234';
+      const id1 = Factories.SyncId.build(undefined, { transient: { date, hash: hash1 } });
+      const id2 = Factories.SyncId.build(undefined, { transient: { date, hash: hash2 } });
+
+      const root = new TrieNode();
+      root.insert(id1.toString(), id1.hashString);
+
+      // id2 shares the same prefix, but doesn't exist, so it should return undefined
+      expect(root.get(id2.toString())).toBeUndefined();
+    });
+  });
 });

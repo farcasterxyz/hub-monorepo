@@ -56,9 +56,11 @@ class TrieNode {
     }
 
     if (current_index >= TIMESTAMP_LENGTH && this.isLeaf) {
-      if (this._value === value) {
+      if (this._key == key) {
+        // If the same key exists, do nothing
         return false;
       }
+      // If the key is different, and a value exists, then split the node
       this._splitLeafNode(current_index);
     }
 
@@ -88,6 +90,7 @@ class TrieNode {
   public delete(key: string, current_index = 0): boolean {
     if (this.isLeaf) {
       this._items -= 1;
+      this._setKeyValue(undefined, undefined);
       return true;
     }
 
@@ -105,12 +108,10 @@ class TrieNode {
         this._children.delete(char);
       }
 
-      const children = Array.from(this._children);
-      if (children.length === 1 && current_index >= TIMESTAMP_LENGTH) {
+      if (this._children.size === 1 && current_index >= TIMESTAMP_LENGTH) {
         // Compact the node if it has only one child
-        const [char, child] = children[0];
-        this._key = child._key;
-        this._value = child._value;
+        const [char, child] = this._children.entries().next().value;
+        this._setKeyValue(child._key, child._value);
         this._children.delete(char);
       }
 
@@ -121,17 +122,22 @@ class TrieNode {
     return false;
   }
 
-  public get(key: string): string | undefined {
-    if (this.isLeaf) {
+  /**
+   * Gets a value from the trie by key. Returns the value if it exists, undefined otherwise
+   * @param key - The key to delete
+   * @param current_index - The index of the current character in the key (only used internally)
+   */
+  public get(key: string, current_index = 0): string | undefined {
+    if (this.isLeaf && this._key === key) {
       return this._value;
     }
 
-    const char = key[0];
+    const char = key[current_index];
     if (!this._children.has(char)) {
       return undefined;
     }
 
-    return this._children.get(char)?.get(key.slice(1));
+    return this._children.get(char)?.get(key, current_index + 1);
   }
 
   // Generates a snapshot for the current node and below. current_index is the index of the prefix the method is operating on
@@ -223,7 +229,7 @@ class TrieNode {
     this._children = new Map([...this._children.entries()].sort());
   }
 
-  private _setKeyValue(key: string, value: string) {
+  private _setKeyValue(key: string | undefined, value: string | undefined) {
     this._key = key;
     this._value = value;
     this._updateHash();
