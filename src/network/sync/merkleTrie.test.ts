@@ -1,19 +1,16 @@
 import { Factories } from '~/test/factories';
 import { MerkleTrie } from '~/network/sync/merkleTrie';
-import { SyncId } from '~/network/sync/syncId';
 import { createHash } from 'crypto';
 
 const emptyHash = createHash('sha256').digest('hex');
 
 describe('MerkleTrie', () => {
-  const trieWithMessages = async (timestamps: number[]) => {
-    const messages = await Promise.all(
+  const trieWithIds = async (timestamps: number[]) => {
+    const syncIds = await Promise.all(
       timestamps.map(async (t) => {
-        return await Factories.CastShort.create({ data: { signedAt: t * 1000 } });
+        return Factories.SyncId.build(undefined, { transient: { date: new Date(t * 1000) } });
       })
     );
-    const syncIds = messages.map((m) => new SyncId(m));
-
     const trie = new MerkleTrie();
     syncIds.forEach((id) => trie.insert(id));
     return trie;
@@ -22,8 +19,7 @@ describe('MerkleTrie', () => {
   describe('insert', () => {
     test('succeeds inserting a single item', async () => {
       const trie = new MerkleTrie();
-      const message = await Factories.CastShort.create();
-      const syncId = new SyncId(message);
+      const syncId = Factories.SyncId.build();
 
       expect(trie.items).toEqual(0);
       expect(trie.rootHash).toEqual('');
@@ -35,10 +31,8 @@ describe('MerkleTrie', () => {
     });
 
     test('inserts are idempotent', async () => {
-      const message1 = await Factories.CastShort.create();
-      const syncId1 = new SyncId(message1);
-      const message2 = await Factories.CastShort.create();
-      const syncId2 = new SyncId(message2);
+      const syncId1 = Factories.SyncId.build();
+      const syncId2 = Factories.SyncId.build();
 
       const firstTrie = new MerkleTrie();
       firstTrie.insert(syncId1);
@@ -63,8 +57,7 @@ describe('MerkleTrie', () => {
     });
 
     test('insert multiple items out of order results in the same root hash', async () => {
-      const messages = await Factories.CastShort.createList(25);
-      const syncIds = messages.map((message) => new SyncId(message));
+      const syncIds = await Factories.SyncId.buildList(25);
 
       const firstTrie = new MerkleTrie();
       const secondTrie = new MerkleTrie();
@@ -82,8 +75,7 @@ describe('MerkleTrie', () => {
 
   describe('delete', () => {
     test('deletes an item', async () => {
-      const message = await Factories.CastShort.create();
-      const syncId = new SyncId(message);
+      const syncId = Factories.SyncId.build();
 
       const trie = new MerkleTrie();
       trie.insert(syncId);
@@ -98,15 +90,13 @@ describe('MerkleTrie', () => {
     });
 
     test('deleting an item that does not exist does not change the trie', async () => {
-      const message = await Factories.CastShort.create();
-      const syncId = new SyncId(message);
+      const syncId = Factories.SyncId.build();
 
       const trie = new MerkleTrie();
       trie.insert(syncId);
 
       const rootHashBeforeDelete = trie.rootHash;
-      const message2 = await Factories.CastShort.create();
-      const syncId2 = new SyncId(message2);
+      const syncId2 = Factories.SyncId.build();
       trie.delete(syncId2);
 
       expect(trie.rootHash).toEqual(rootHashBeforeDelete);
@@ -114,10 +104,8 @@ describe('MerkleTrie', () => {
     });
 
     test('delete is an exact inverse of insert', async () => {
-      const message1 = await Factories.CastShort.create();
-      const syncId1 = new SyncId(message1);
-      const message2 = await Factories.CastShort.create();
-      const syncId2 = new SyncId(message2);
+      const syncId1 = Factories.SyncId.build();
+      const syncId2 = Factories.SyncId.build();
 
       const trie = new MerkleTrie();
       trie.insert(syncId1);
@@ -129,10 +117,8 @@ describe('MerkleTrie', () => {
     });
 
     test('trie with a deleted item is the same as a trie with the item never added', async () => {
-      const message1 = await Factories.CastShort.create();
-      const syncId1 = new SyncId(message1);
-      const message2 = await Factories.CastShort.create();
-      const syncId2 = new SyncId(message2);
+      const syncId1 = Factories.SyncId.build();
+      const syncId2 = Factories.SyncId.build();
 
       const firstTrie = new MerkleTrie();
       firstTrie.insert(syncId1);
@@ -152,8 +138,7 @@ describe('MerkleTrie', () => {
 
   test('succeeds getting single item', async () => {
     const trie = new MerkleTrie();
-    const message = await Factories.CastShort.create();
-    const syncId = new SyncId(message);
+    const syncId = Factories.SyncId.build();
 
     expect(trie.get(syncId)).toBeFalsy();
 
@@ -161,16 +146,13 @@ describe('MerkleTrie', () => {
 
     expect(trie.get(syncId)).toEqual(syncId.hashString);
 
-    // Message signed 1 second after
-    message.data.signedAt = message.data.signedAt + 1000;
-    const nonExistingSyncId = new SyncId(message);
+    const nonExistingSyncId = Factories.SyncId.build();
     expect(trie.get(nonExistingSyncId)).toBeFalsy();
   });
 
   test('value is always undefined for non-leaf nodes', async () => {
     const trie = new MerkleTrie();
-    const message = await Factories.CastShort.create();
-    const syncId = new SyncId(message);
+    const syncId = Factories.SyncId.build();
 
     trie.insert(syncId);
 
@@ -179,7 +161,7 @@ describe('MerkleTrie', () => {
 
   describe('getNodeMetadata', () => {
     test('returns undefined if prefix is not present', async () => {
-      const syncId = new SyncId(await Factories.CastShort.create({ data: { signedAt: 1665182332000 } }));
+      const syncId = Factories.SyncId.build(undefined, { transient: { date: new Date(1665182332000) } });
       const trie = new MerkleTrie();
       trie.insert(syncId);
 
@@ -187,7 +169,7 @@ describe('MerkleTrie', () => {
     });
 
     test('returns the root metadata if the prefix is empty', async () => {
-      const syncId = new SyncId(await Factories.CastShort.create({ data: { signedAt: 1665182332000 } }));
+      const syncId = Factories.SyncId.build(undefined, { transient: { date: new Date(1665182332000) } });
       const trie = new MerkleTrie();
       trie.insert(syncId);
 
@@ -200,7 +182,7 @@ describe('MerkleTrie', () => {
     });
 
     test('returns the correct metadata if prefix is present', async () => {
-      const trie = await trieWithMessages([1665182332, 1665182343]);
+      const trie = await trieWithIds([1665182332, 1665182343]);
       const nodeMetadata = trie.getTrieNodeMetadata('16651823');
 
       expect(nodeMetadata).toBeDefined();
@@ -214,7 +196,7 @@ describe('MerkleTrie', () => {
 
   describe('getSnapshot', () => {
     test('returns basic information', async () => {
-      const trie = await trieWithMessages([1665182332, 1665182343]);
+      const trie = await trieWithIds([1665182332, 1665182343]);
 
       const snapshot = trie.getSnapshot('1665182343');
       expect(snapshot.prefix).toEqual('1665182343');
@@ -223,7 +205,7 @@ describe('MerkleTrie', () => {
     });
 
     test('returns early when prefix is only partially present', async () => {
-      const trie = await trieWithMessages([1665182332, 1665182343]);
+      const trie = await trieWithIds([1665182332, 1665182343]);
 
       const snapshot = trie.getSnapshot('1677123');
       expect(snapshot.prefix).toEqual('167');
@@ -232,7 +214,7 @@ describe('MerkleTrie', () => {
     });
 
     test('excluded hashes excludes the prefix char at every level', async () => {
-      const trie = await trieWithMessages([1665182332, 1665182343, 1665182345, 1665182351]);
+      const trie = await trieWithIds([1665182332, 1665182343, 1665182345, 1665182351]);
       let snapshot = trie.getSnapshot('1665182351');
       let node = trie.getTrieNodeMetadata('16651823');
       // We expect the excluded hash to be the hash of the 3 and 4 child nodes, and excludes the 5 child node
@@ -279,7 +261,7 @@ describe('MerkleTrie', () => {
   });
 
   test('getAllValues returns all values for child nodes', async () => {
-    const trie = await trieWithMessages([1665182332, 1665182343, 1665182345]);
+    const trie = await trieWithIds([1665182332, 1665182343, 1665182345]);
 
     let values = trie.root.getNode('16651823')?.getAllValues();
     expect(values?.length).toEqual(3);
@@ -289,10 +271,10 @@ describe('MerkleTrie', () => {
 
   describe('getDivergencePrefix', () => {
     test('returns the prefix with the most common excluded hashes', async () => {
-      const trie = await trieWithMessages([1665182332, 1665182343, 1665182345]);
+      const trie = await trieWithIds([1665182332, 1665182343, 1665182345]);
       const prefixToTest = '1665182343';
       const oldSnapshot = trie.getSnapshot(prefixToTest);
-      trie.insert(new SyncId(await Factories.CastShort.create({ data: { signedAt: 1665182353000 } })));
+      trie.insert(Factories.SyncId.build(undefined, { transient: { date: new Date(1665182353000) } }));
 
       // Since message above was added at 1665182353, the two tries diverged at 16651823 for our prefix
       let divergencePrefix = trie.getDivergencePrefix(prefixToTest, oldSnapshot.excludedHashes);

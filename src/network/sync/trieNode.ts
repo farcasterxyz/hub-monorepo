@@ -1,4 +1,6 @@
 import { createHash } from 'crypto';
+import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
+import { HubError } from '~/utils/hubErrors';
 
 /**
  * A snapshot of the trie at a particular timestamp which can be used to determine if two
@@ -22,17 +24,15 @@ class TrieNode {
   private _hash: string;
   private _items: number;
   private _children: Map<string, TrieNode>;
-  private readonly _value: string | undefined;
+  private _key: string | undefined;
+  private _value: string | undefined;
 
-  constructor(value: string | undefined = undefined) {
+  constructor() {
     this._hash = '';
     this._items = 0;
     this._children = new Map();
-    this._value = value;
-
-    if (value !== undefined) {
-      this._updateHash();
-    }
+    this._key = undefined;
+    this._value = undefined;
   }
 
   /**
@@ -48,17 +48,21 @@ class TrieNode {
   public insert(key: string, value: string, current_index = 0): boolean {
     const char = key[current_index];
 
-    // TODO: Optimize by using MPT extension nodes for leaves
-    // We've reached the end of the key, add or update the value in a leaf node
-    if (current_index === key.length - 1) {
-      // Key with the same value already exists, so no need to modify the tree
-      if (this._children.has(char) && this._children.get(char)?.value === value) {
+    // Do not compact the timestamp portion of the trie, since it's used to compare snapshots
+    if (current_index >= TIMESTAMP_LENGTH && this.isLeaf && !this._value) {
+      // Reached a leaf node with no value, insert it
+      this._setKeyValue(key, value);
+      this._items += 1;
+      return true;
+    }
+
+    if (current_index >= TIMESTAMP_LENGTH && this.isLeaf) {
+      if (this._key == key) {
+        // If the same key exists, do nothing
         return false;
       }
-      this._addChild(char, value);
-      this._items += 1;
-      this._updateHash();
-      return true;
+      // If the key is different, and a value exists, then split the node
+      this._splitLeafNode(current_index);
     }
 
     if (!this._children.has(char)) {
@@ -86,6 +90,8 @@ class TrieNode {
    */
   public delete(key: string, current_index = 0): boolean {
     if (this.isLeaf) {
+      this._items -= 1;
+      this._setKeyValue(undefined, undefined);
       return true;
     }
 
@@ -102,6 +108,14 @@ class TrieNode {
       if (this._children.get(char)?.items === 0) {
         this._children.delete(char);
       }
+
+      if (this._children.size === 1 && current_index >= TIMESTAMP_LENGTH) {
+        // Compact the node if it has only one child
+        const [char, child] = this._children.entries().next().value;
+        this._setKeyValue(child._key, child._value);
+        this._children.delete(char);
+      }
+
       this._updateHash();
       return true;
     }
@@ -109,17 +123,22 @@ class TrieNode {
     return false;
   }
 
-  public get(key: string): string | undefined {
-    if (this.isLeaf) {
+  /**
+   * Gets a value from the trie by key. Returns the value if it exists, undefined otherwise
+   * @param key - The key to delete
+   * @param current_index - The index of the current character in the key (only used internally)
+   */
+  public get(key: string, current_index = 0): string | undefined {
+    if (this.isLeaf && this._key === key) {
       return this._value;
     }
 
-    const char = key[0];
+    const char = key[current_index];
     if (!this._children.has(char)) {
       return undefined;
     }
 
-    return this._children.get(char)?.get(key.slice(1));
+    return this._children.get(char)?.get(key, current_index + 1);
   }
 
   // Generates a snapshot for the current node and below. current_index is the index of the prefix the method is operating on
@@ -204,11 +223,30 @@ class TrieNode {
     return { hash: hash.digest('hex'), items: excludedItems };
   }
 
-  private _addChild(char: string, value: string | undefined = undefined) {
-    this._children.set(char, new TrieNode(value));
+  private _addChild(char: string) {
+    this._children.set(char, new TrieNode());
     // The hash requires the children to be sorted, and sorting on insert/update is cheaper than
     // sorting each time we need to update the hash
     this._children = new Map([...this._children.entries()].sort());
+  }
+
+  private _setKeyValue(key: string | undefined, value: string | undefined) {
+    this._key = key;
+    this._value = value;
+    this._updateHash();
+  }
+
+  // Splits a leaf node into a non-leaf node by clearing its key/value and adding a child for
+  // the next char in its key
+  private _splitLeafNode(current_index: number) {
+    if (!this._key || !this._value) {
+      // This should never happen, check is here for type safety
+      throw new HubError('bad_request', 'Cannot split a leaf node without a key and value');
+    }
+    const newChildChar = this._key[current_index];
+    this._addChild(newChildChar);
+    this._children.get(newChildChar)?.insert(this._key, this._value, current_index + 1);
+    this._setKeyValue(undefined, undefined);
   }
 
   private _updateHash() {
