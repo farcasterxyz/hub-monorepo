@@ -1,6 +1,6 @@
 import { ByteBuffer } from 'flatbuffers';
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
-import { RootPrefix, UserPostfix } from '~/storage/flatbuffers/types';
+import { RootPrefix } from '~/storage/flatbuffers/types';
 import { ContractEvent, ContractEventType } from '~/utils/generated/contract_event_generated';
 
 /** ContractEventModel provides helpers to read and write Flatbuffers ContractEvents from RocksDB */
