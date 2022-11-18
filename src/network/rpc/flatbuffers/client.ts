@@ -5,10 +5,12 @@ import {
   CastAddModel,
   FollowAddModel,
   ReactionAddModel,
+  SignerAddModel,
+  UserDataAddModel,
   VerificationAddEthAddressModel,
 } from '~/storage/flatbuffers/types';
-import { CastId, Message, ReactionType, UserId } from '~/utils/generated/message_generated';
-import { MessagesResponse } from '~/utils/generated/rpc_generated';
+import { CastId, Message, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
+import { GetFidsRequest, MessagesResponse } from '~/utils/generated/rpc_generated';
 import { HubAsyncResult } from '~/utils/hubErrors';
 import { castServiceRequests, castServiceMethods } from '~/network/rpc/flatbuffers/castService';
 import { fromServiceError } from './server';
@@ -18,6 +20,9 @@ import { verificationServiceMethods, verificationServiceRequests } from './verif
 import { submitServiceMethods } from './submitService';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { ContractEvent } from '~/utils/generated/contract_event_generated';
+import { signerServiceMethods, signerServiceRequests } from './signerService';
+import { userDataServiceMethods, userDataServiceRequests } from './userDataService';
+import { FidsResponse } from '~/utils/generated/farcaster/fids-response';
 
 class Client {
   client: grpc.Client;
@@ -39,22 +44,7 @@ class Client {
   }
 
   async submitContractEvent(event: ContractEventModel): HubAsyncResult<ContractEventModel> {
-    const method = submitServiceMethods().submitContractEvent;
-    return new Promise((resolve) => {
-      this.client.makeUnaryRequest(
-        method.path,
-        method.requestSerialize,
-        method.responseDeserialize,
-        event.event,
-        (e: grpc.ServiceError | null, response?: ContractEvent) => {
-          if (e) {
-            resolve(err(fromServiceError(e)));
-          } else if (response) {
-            resolve(ok(new ContractEventModel(response)));
-          }
-        }
-      );
-    });
+    return this.makeUnaryContractEventRequest(submitServiceMethods().submitContractEvent, event.event);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -149,8 +139,95 @@ class Client {
   }
 
   /* -------------------------------------------------------------------------- */
+  /*                                 Signer Methods                             */
+  /* -------------------------------------------------------------------------- */
+
+  async getSigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<SignerAddModel> {
+    return this.makeUnaryMessageRequest(signerServiceMethods().getSigner, signerServiceRequests.getSigner(fid, signer));
+  }
+
+  async getSignersByFid(fid: Uint8Array): HubAsyncResult<SignerAddModel[]> {
+    return this.makeUnaryMessagesRequest(
+      signerServiceMethods().getSignersByFid,
+      signerServiceRequests.getSignersByFid(fid)
+    );
+  }
+
+  async getCustodyEvent(fid: Uint8Array): HubAsyncResult<ContractEventModel> {
+    return this.makeUnaryContractEventRequest(
+      signerServiceMethods().getCustodyEvent,
+      signerServiceRequests.getCustodyEvent(fid)
+    );
+  }
+
+  async getFids(): HubAsyncResult<Uint8Array[]> {
+    const method = signerServiceMethods().getFids;
+    return new Promise((resolve) => {
+      this.client.makeUnaryRequest(
+        method.path,
+        method.requestSerialize,
+        method.responseDeserialize,
+        new GetFidsRequest(),
+        (e: grpc.ServiceError | null, response?: FidsResponse) => {
+          if (e) {
+            resolve(err(fromServiceError(e)));
+          } else if (response) {
+            const fids: Uint8Array[] = [];
+            for (let i = 0; i < response.fidsLength(); i++) {
+              const fid = response.fids(i)?.fidArray();
+              if (fid) {
+                fids.push(fid);
+              }
+            }
+            resolve(ok(fids));
+          }
+        }
+      );
+    });
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                                User Data Methods                           */
+  /* -------------------------------------------------------------------------- */
+
+  async getUserData(fid: Uint8Array, type: UserDataType): HubAsyncResult<UserDataAddModel> {
+    return this.makeUnaryMessageRequest(
+      userDataServiceMethods().getUserData,
+      userDataServiceRequests.getUserData(fid, type)
+    );
+  }
+
+  async getUserDataByFid(fid: Uint8Array): HubAsyncResult<UserDataAddModel[]> {
+    return this.makeUnaryMessagesRequest(
+      userDataServiceMethods().getUserDataByFid,
+      userDataServiceRequests.getUserDataByFid(fid)
+    );
+  }
+
+  /* -------------------------------------------------------------------------- */
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
+
+  private makeUnaryContractEventRequest<RequestType>(
+    method: grpc.MethodDefinition<RequestType, ContractEvent>,
+    request: RequestType
+  ): HubAsyncResult<ContractEventModel> {
+    return new Promise((resolve) => {
+      this.client.makeUnaryRequest(
+        method.path,
+        method.requestSerialize,
+        method.responseDeserialize,
+        request,
+        (e: grpc.ServiceError | null, response?: ContractEvent) => {
+          if (e) {
+            resolve(err(fromServiceError(e)));
+          } else if (response) {
+            resolve(ok(new ContractEventModel(response)));
+          }
+        }
+      );
+    });
+  }
 
   private makeUnaryMessageRequest<RequestType, ResponseMessageType extends MessageModel>(
     method: grpc.MethodDefinition<RequestType, Message>,

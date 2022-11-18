@@ -11,6 +11,8 @@ import {
   CastAddModel,
   FollowAddModel,
   ReactionAddModel,
+  SignerAddModel,
+  UserDataAddModel,
   UserPostfix,
   VerificationAddEthAddressModel,
 } from '~/storage/flatbuffers/types';
@@ -21,6 +23,7 @@ import {
   validateCastId,
   ValidatedCastId,
   ValidatedUserId,
+  validateEd25519PublicKey,
   validateEthAddress,
   validateFid,
   validateMessage,
@@ -28,7 +31,7 @@ import {
   validateTsHash,
   validateUserId,
 } from '~/storage/flatbuffers/validations';
-import { CastId, ReactionType, UserId } from '~/utils/generated/message_generated';
+import { CastId, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 
 class Engine {
@@ -265,6 +268,68 @@ class Engine {
     }
 
     return ResultAsync.fromPromise(this._verificationStore.getVerificationAddsByUser(fid), (e) => e as HubError);
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                              Signer Store Methods                          */
+  /* -------------------------------------------------------------------------- */
+
+  async getSigner(fid: Uint8Array, signerPubKey: Uint8Array): HubAsyncResult<SignerAddModel> {
+    const validatedFid = validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    const validatedPubKey = validateEd25519PublicKey(signerPubKey);
+    if (validatedPubKey.isErr()) {
+      return err(validatedPubKey.error);
+    }
+
+    return ResultAsync.fromPromise(this._signerStore.getSignerAdd(fid, signerPubKey), (e) => e as HubError);
+  }
+
+  async getSignersByFid(fid: Uint8Array): HubAsyncResult<SignerAddModel[]> {
+    const validatedFid = validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    return ResultAsync.fromPromise(this._signerStore.getSignerAddsByUser(fid), (e) => e as HubError);
+  }
+
+  async getCustodyEvent(fid: Uint8Array): HubAsyncResult<ContractEventModel> {
+    const validatedFid = validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    return ResultAsync.fromPromise(this._signerStore.getCustodyEvent(fid), (e) => e as HubError);
+  }
+
+  async getFids(): HubAsyncResult<Uint8Array[]> {
+    return ResultAsync.fromPromise(this._signerStore.getFids(), (e) => e as HubError);
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                           User Data Store Methods                          */
+  /* -------------------------------------------------------------------------- */
+
+  async getUserData(fid: Uint8Array, type: UserDataType): HubAsyncResult<UserDataAddModel> {
+    const validatedFid = validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    return ResultAsync.fromPromise(this._userDataStore.getUserDataAdd(fid, type), (e) => e as HubError);
+  }
+
+  async getUserDataByFid(fid: Uint8Array): HubAsyncResult<UserDataAddModel[]> {
+    const validatedFid = validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    return ResultAsync.fromPromise(this._userDataStore.getUserDataAddsByUser(fid), (e) => e as HubError);
   }
 
   /* -------------------------------------------------------------------------- */

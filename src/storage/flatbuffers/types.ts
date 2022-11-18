@@ -25,6 +25,8 @@ export enum RootPrefix {
   FollowsByUser = 4,
   /* Used to index reactions by target  */
   ReactionsByTarget = 5,
+  /* User to store custody events */
+  CustodyEvent = 6,
 }
 
 /**
@@ -58,18 +60,16 @@ export enum UserPostfix {
   VerificationAdds = 12,
   /* Used to index a verification in the remove set */
   VerificationRemoves = 13,
-  /* Used to store an id registry event */
-  IdRegistryEvent = 14,
   /* Used to store a signer */
-  SignerMessage = 15,
+  SignerMessage = 14,
   /* Used to index a signer in the add set */
-  SignerAdds = 16,
+  SignerAdds = 15,
   /* Used to index a signer in the remove set */
-  SignerRemoves = 17,
+  SignerRemoves = 16,
   /* Used to index a user data message in the add set */
-  UserDataAdds = 18,
+  UserDataAdds = 17,
   /* Used to store a user data message */
-  UserDataMessage = 19,
+  UserDataMessage = 18,
 }
 
 /** A union type of UserPostfixes that are used to store messages */

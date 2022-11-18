@@ -65,14 +65,14 @@ beforeAll(async () => {
   signerRemove = new MessageModel(removeMessage) as SignerRemoveModel;
 });
 
-describe('getIdRegistryEvent', () => {
+describe('getCustodyEvent', () => {
   test('returns contract event if it exists', async () => {
     await set.mergeIdRegistryEvent(custody1Event);
-    await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
+    await expect(set.getCustodyEvent(fid)).resolves.toEqual(custody1Event);
   });
 
   test('fails if event is missing', async () => {
-    await expect(set.getIdRegistryEvent(fid)).rejects.toThrow(HubError);
+    await expect(set.getCustodyEvent(fid)).rejects.toThrow(HubError);
   });
 });
 
@@ -89,136 +89,54 @@ describe('getCustodyAddress', () => {
 
 describe('getSignerAdd', () => {
   test('fails if missing', async () => {
-    await expect(set.getSignerAdd(fid, signer, custody1Address)).rejects.toThrow(HubError);
-  });
-
-  test('fails if incorrect custody address is passed in', async () => {
-    await set.merge(signerAdd);
-    const arbitraryCustodyAddress = arrayify(faker.datatype.hexadecimal({ length: 40 }));
-
-    await expect(set.getSignerAdd(fid, signer, arbitraryCustodyAddress)).rejects.toThrow(HubError);
+    await expect(set.getSignerAdd(fid, signer)).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
     await set.merge(signerAdd);
-    await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(signerAdd);
-  });
-
-  describe('without passing custodyAddress', () => {
-    test('defaults to current custodyAddress', async () => {
-      await set.mergeIdRegistryEvent(custody1Event);
-      await set.merge(signerAdd);
-      await expect(set.getSignerAdd(fid, signer)).resolves.toEqual(signerAdd);
-    });
-
-    test('fails when custodyAddress is missing', async () => {
-      await set.merge(signerAdd);
-      await expect(set.getSignerAdd(fid, signer)).rejects.toThrow(HubError);
-    });
+    await expect(set.getSignerAdd(fid, signer)).resolves.toEqual(signerAdd);
   });
 });
 
 describe('getSignerRemove', () => {
   test('fails if missing', async () => {
-    await expect(set.getSignerRemove(fid, signer, custody1Address)).rejects.toThrow(HubError);
-  });
-
-  test('fails if incorrect custody address is passed in', async () => {
-    await set.merge(signerRemove);
-    const arbitraryCustodyAddress = arrayify(faker.datatype.hexadecimal({ length: 40 }));
-
-    await expect(set.getSignerAdd(fid, signer, arbitraryCustodyAddress)).rejects.toThrow(HubError);
+    await expect(set.getSignerRemove(fid, signer)).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
     await set.merge(signerRemove);
-    await expect(set.getSignerRemove(fid, signer, custody1Address)).resolves.toEqual(signerRemove);
-  });
-
-  describe('without passing custodyAddress', () => {
-    test('defaults to current custodyAddress', async () => {
-      await set.mergeIdRegistryEvent(custody1Event);
-      await set.merge(signerRemove);
-      await expect(set.getSignerRemove(fid, signer)).resolves.toEqual(signerRemove);
-    });
-
-    test('fails when custodyAddress is missing', async () => {
-      await set.merge(signerRemove);
-      await expect(set.getSignerRemove(fid, signer)).rejects.toThrow(HubError);
-    });
+    await expect(set.getSignerRemove(fid, signer)).resolves.toEqual(signerRemove);
   });
 });
 
 describe('getSignerAddsByUser', () => {
-  test('returns signer adds for an fid and custody address', async () => {
+  test('returns signer adds for an fid', async () => {
     await set.merge(signerAdd);
-    await expect(set.getSignerAddsByUser(fid, custody1Address)).resolves.toEqual([signerAdd]);
-  });
-
-  test('returns empty array for wrong custody address', async () => {
-    await set.merge(signerAdd);
-    const custodyAddress = arrayify(faker.datatype.hexadecimal({ length: 40 }));
-    await expect(set.getSignerAddsByUser(fid, custodyAddress)).resolves.toEqual([]);
+    await expect(set.getSignerAddsByUser(fid)).resolves.toEqual([signerAdd]);
   });
 
   test('returns empty array when messages have not been merged', async () => {
-    await expect(set.getSignerAddsByUser(fid, custody1Address)).resolves.toEqual([]);
-  });
-
-  describe('without passing custodyAddress', () => {
-    test('defaults to current custodyAddress', async () => {
-      await set.mergeIdRegistryEvent(custody1Event);
-      await set.merge(signerAdd);
-      await expect(set.getSignerAddsByUser(fid)).resolves.toEqual([signerAdd]);
-    });
-
-    test('fails when custodyAddress is missing', async () => {
-      await set.merge(signerAdd);
-      await expect(set.getSignerAddsByUser(fid)).rejects.toThrow(HubError);
-    });
+    await expect(set.getSignerAddsByUser(fid)).resolves.toEqual([]);
   });
 });
 
 describe('getSignerRemovesByUser', () => {
-  test('returns signer removes for an fid and custody address', async () => {
+  test('returns signer removes for an fid', async () => {
     await set.merge(signerRemove);
-    await expect(set.getSignerRemovesByUser(fid, custody1Address)).resolves.toEqual([signerRemove]);
-  });
-
-  test('returns empty array for wrong custody address', async () => {
-    await set.merge(signerRemove);
-    const custodyAddress = arrayify(faker.datatype.hexadecimal({ length: 40 }));
-    await expect(set.getSignerRemovesByUser(fid, custodyAddress)).resolves.toEqual([]);
+    await expect(set.getSignerRemovesByUser(fid)).resolves.toEqual([signerRemove]);
   });
 
   test('returns empty array when messages have not been merged', async () => {
-    await expect(set.getSignerRemovesByUser(fid, custody1Address)).resolves.toEqual([]);
-  });
-
-  describe('without passing custodyAddress', () => {
-    test('defaults to current custodyAddress', async () => {
-      await set.mergeIdRegistryEvent(custody1Event);
-      await set.merge(signerRemove);
-      await expect(set.getSignerRemovesByUser(fid)).resolves.toEqual([signerRemove]);
-    });
-
-    test('fails when custodyAddress is missing', async () => {
-      await set.merge(signerRemove);
-      await expect(set.getSignerRemovesByUser(fid)).rejects.toThrow(HubError);
-    });
+    await expect(set.getSignerRemovesByUser(fid)).resolves.toEqual([]);
   });
 });
 
 // TODO: write test cases for cyclical custody event transfers
 
 describe('mergeIdRegistryEvent', () => {
-  test('succeeds and activates signers, if present', async () => {
-    await set.merge(signerAdd);
-    await expect(set.getSignerAdd(fid, signer)).rejects.toThrow(HubError);
-
+  test('succeeds', async () => {
     await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toEqual(undefined);
-    await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
-    await expect(set.getSignerAdd(fid, signer)).resolves.toEqual(signerAdd);
+    await expect(set.getCustodyEvent(fid)).resolves.toEqual(custody1Event);
   });
 
   test('fails if events have the same blockNumber but different blockHashes', async () => {
@@ -254,8 +172,9 @@ describe('mergeIdRegistryEvent', () => {
 
     afterEach(async () => {
       await expect(set.mergeIdRegistryEvent(newEvent)).resolves.toEqual(undefined);
-      await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(newEvent);
-      await expect(set.getSignerAdd(fid, signer)).rejects.toThrow(HubError);
+      await expect(set.getCustodyEvent(fid)).resolves.toEqual(newEvent);
+      // SignerAdd should still be valid until messages signed by old custody address are revoked
+      await expect(set.getSignerAdd(fid, signer)).resolves.toEqual(signerAdd);
     });
 
     test('when it has a higher block number', async () => {
@@ -290,7 +209,7 @@ describe('mergeIdRegistryEvent', () => {
 
     afterEach(async () => {
       await expect(set.mergeIdRegistryEvent(newEvent)).resolves.toEqual(undefined);
-      await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
+      await expect(set.getCustodyEvent(fid)).resolves.toEqual(custody1Event);
       await expect(set.getSignerAdd(fid, signer)).resolves.toEqual(signerAdd);
     });
 
@@ -330,14 +249,14 @@ describe('merge', () => {
 
   const assertSignerAddWins = async (message: SignerAddModel) => {
     await assertSignerExists(message);
-    await expect(set.getSignerAdd(fid, signer, custody1Address)).resolves.toEqual(message);
-    await expect(set.getSignerRemove(fid, signer, custody1Address)).rejects.toThrow(HubError);
+    await expect(set.getSignerAdd(fid, signer)).resolves.toEqual(message);
+    await expect(set.getSignerRemove(fid, signer)).rejects.toThrow(HubError);
   };
 
   const assertSignerRemoveWins = async (message: SignerRemoveModel) => {
     await assertSignerExists(message);
-    await expect(set.getSignerRemove(fid, signer, custody1Address)).resolves.toEqual(message);
-    await expect(set.getSignerAdd(fid, signer, custody1Address)).rejects.toThrow(HubError);
+    await expect(set.getSignerRemove(fid, signer)).resolves.toEqual(message);
+    await expect(set.getSignerAdd(fid, signer)).rejects.toThrow(HubError);
   };
 
   test('fails with invalid message type', async () => {
@@ -675,5 +594,24 @@ describe('merge', () => {
         await assertSignerRemoveWins(signerRemove);
       });
     });
+  });
+});
+
+describe('getFids', () => {
+  test('returns fids for merged custody events', async () => {
+    const fid2 = Factories.FID.build();
+    const idRegistryEvent = await Factories.IdRegistryEvent.create({
+      fid: Array.from(fid2),
+      to: Array.from(custody2Address),
+    });
+    const custody2Event = new ContractEventModel(idRegistryEvent);
+    await set.mergeIdRegistryEvent(custody1Event);
+    await set.mergeIdRegistryEvent(custody2Event);
+    const fids = await set.getFids();
+    expect(new Set(fids)).toEqual(new Set([fid, fid2]));
+  });
+
+  test('returns empty array without custody events', async () => {
+    await expect(set.getFids()).resolves.toEqual([]);
   });
 });

@@ -9,6 +9,8 @@ import { followServiceImpls, followServiceMethods } from './followService';
 import { reactionServiceImpls, reactionServiceMethods } from './reactionService';
 import { verificationServiceImpls, verificationServiceMethods } from './verificationService';
 import { submitServiceImpls, submitServiceMethods } from './submitService';
+import { signerServiceImpls, signerServiceMethods } from './signerService';
+import { userDataServiceImpls, userDataServiceMethods } from './userDataService';
 
 export const toServiceError = (err: HubError): grpc.ServiceError => {
   let grpcCode: number;
@@ -81,7 +83,9 @@ class Server {
     this.server.addService(followServiceMethods(), followServiceImpls(engine));
     this.server.addService(reactionServiceMethods(), reactionServiceImpls(engine));
     this.server.addService(verificationServiceMethods(), verificationServiceImpls(engine));
-    // TODO: add signers, user data, and sync services
+    this.server.addService(signerServiceMethods(), signerServiceImpls(engine));
+    this.server.addService(userDataServiceMethods(), userDataServiceImpls(engine));
+    // TODO: add sync services
   }
 
   async start(port = 0): Promise<number> {

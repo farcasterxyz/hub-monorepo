@@ -1,7 +1,7 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync } from 'neverthrow';
-import { SignerAddModel, UserPostfix, SignerRemoveModel } from '~/storage/flatbuffers/types';
+import { SignerAddModel, UserPostfix, SignerRemoveModel, RootPrefix } from '~/storage/flatbuffers/types';
 import { isSignerAdd, isSignerRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
@@ -32,8 +32,7 @@ import { HubError } from '~/utils/hubErrors';
  * The key-value entries created by the Signer Store are:
  *
  * 1. fid:tsHash -> signer message
- * 2. fid:set:custodyAddress:signerAddress -> fid:tsHash (Set Index)
- * 3. fid:custodyAddress -> fid:tsHash (Custody Address)
+ * 2. fid:set:signerAddress -> fid:tsHash (Set Index)
  */
 class SignerStore {
   private _db: RocksDB;
@@ -46,16 +45,14 @@ class SignerStore {
    * Generates a unique key used to store a SignerAdd message key in the SignerAdds set index
    *
    * @param fid farcaster id of the user who created the Signer
-   * @param custodyAddress the Ethereum address of the secp256k1 key-pair that signed the message
    * @param signerPubKey the EdDSA public key of the signer
    *
-   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<custodyAddress?>:<signerPubKey?>
+   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<signerPubKey?>
    */
-  static signerAddsKey(fid: Uint8Array, custodyAddress: Uint8Array, signerPubKey?: Uint8Array): Buffer {
+  static signerAddsKey(fid: Uint8Array, signerPubKey?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
       Buffer.from([UserPostfix.SignerAdds]),
-      Buffer.from(custodyAddress),
       signerPubKey ? Buffer.from(signerPubKey) : new Uint8Array(),
     ]);
   }
@@ -64,28 +61,26 @@ class SignerStore {
    * Generates a unique key used to store a SignerRemove message key in the SignerRemoves set index
    *
    * @param fid farcaster id of the user who created the Signer
-   * @param custodyAddress the Ethereum address of the secp256k1 key-pair that signed the message
    * @param signerPubKey the EdDSA public key of the signer
    *
-   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<custodyAddress?>:<signerPubKey?>
+   * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<signerPubKey?>
    */
-  static signerRemovesKey(fid: Uint8Array, custodyAddress: Uint8Array, signerPubKey?: Uint8Array): Buffer {
+  static signerRemovesKey(fid: Uint8Array, signerPubKey?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
       Buffer.from([UserPostfix.SignerRemoves]),
-      Buffer.from(custodyAddress),
       signerPubKey ? Buffer.from(signerPubKey) : new Uint8Array(),
     ]);
   }
 
   /** Returns the most recent event from the IdRegistry contract that affected the fid  */
-  async getIdRegistryEvent(fid: Uint8Array): Promise<ContractEventModel> {
+  async getCustodyEvent(fid: Uint8Array): Promise<ContractEventModel> {
     return ContractEventModel.get(this._db, fid);
   }
 
   /** Returns the custody address that currently owns an fid */
   async getCustodyAddress(fid: Uint8Array): Promise<Uint8Array> {
-    const idRegistryEvent = await this.getIdRegistryEvent(fid);
+    const idRegistryEvent = await this.getCustodyEvent(fid);
     return idRegistryEvent.to();
   }
 
@@ -97,15 +92,10 @@ class SignerStore {
    *
    * @param fid fid of the user who created the SignerAdd
    * @param signerPubKey the EdDSA public key of the signer
-   * @param custodyAddress the Ethereum address that currently owns the Farcaster ID (default: current custody address)
    * @returns the SignerAdd Model if it exists, throws Error otherwise
    */
-  async getSignerAdd(fid: Uint8Array, signerPubKey: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerAddModel> {
-    if (!custodyAddress) {
-      custodyAddress = await this.getCustodyAddress(fid);
-    }
-
-    const messageTsHash = await this._db.get(SignerStore.signerAddsKey(fid, custodyAddress, signerPubKey));
+  async getSignerAdd(fid: Uint8Array, signerPubKey: Uint8Array): Promise<SignerAddModel> {
+    const messageTsHash = await this._db.get(SignerStore.signerAddsKey(fid, signerPubKey));
     return MessageModel.get<SignerAddModel>(this._db, fid, UserPostfix.SignerMessage, messageTsHash);
   }
 
@@ -114,14 +104,10 @@ class SignerStore {
    *
    * @param fid fid of the user who created the SignerRemove
    * @param signer the EdDSA public key of the signer
-   * @param custodyAddress the Ethereum address that currently owns the Farcaster ID (default: current custody address)
    * @returns the SignerRemove message if it exists, throws HubError otherwise
    */
-  async getSignerRemove(fid: Uint8Array, signer: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerRemoveModel> {
-    if (!custodyAddress) {
-      custodyAddress = await this.getCustodyAddress(fid);
-    }
-    const messageTsHash = await this._db.get(SignerStore.signerRemovesKey(fid, custodyAddress, signer));
+  async getSignerRemove(fid: Uint8Array, signer: Uint8Array): Promise<SignerRemoveModel> {
+    const messageTsHash = await this._db.get(SignerStore.signerRemovesKey(fid, signer));
     return MessageModel.get<SignerRemoveModel>(this._db, fid, UserPostfix.SignerMessage, messageTsHash);
   }
 
@@ -132,14 +118,10 @@ class SignerStore {
    * Finds all SignerAdd messages for a user's custody address
    *
    * @param fid fid of the user who created the signers
-   * @param custodyAddress the Ethereum address that currently owns the fid (default: current custody address)
    * @returns the SignerRemove messages if it exists, throws HubError otherwise
    */
-  async getSignerAddsByUser(fid: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerAddModel[]> {
-    if (!custodyAddress) {
-      custodyAddress = await this.getCustodyAddress(fid);
-    }
-    const addsPrefix = SignerStore.signerAddsKey(fid, custodyAddress);
+  async getSignerAddsByUser(fid: Uint8Array): Promise<SignerAddModel[]> {
+    const addsPrefix = SignerStore.signerAddsKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(addsPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
@@ -151,19 +133,24 @@ class SignerStore {
    * Finds all SignerRemove Messages for a user's custody address
    *
    * @param fid fid of the user who created the signers
-   * @param custodyAddress the Ethereum address that currently owns the fid (default: current custody address)
    * @returns the SignerRemove message if it exists, throws HubError otherwise
    */
-  async getSignerRemovesByUser(fid: Uint8Array, custodyAddress?: Uint8Array): Promise<SignerRemoveModel[]> {
-    if (!custodyAddress) {
-      custodyAddress = await this.getCustodyAddress(fid);
-    }
-    const removesPrefix = SignerStore.signerRemovesKey(fid, custodyAddress);
+  async getSignerRemovesByUser(fid: Uint8Array): Promise<SignerRemoveModel[]> {
+    const removesPrefix = SignerStore.signerRemovesKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(removesPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
     }
     return MessageModel.getManyByUser<SignerRemoveModel>(this._db, fid, UserPostfix.SignerMessage, messageKeys);
+  }
+
+  async getFids(): Promise<Uint8Array[]> {
+    const prefix = Buffer.from([RootPrefix.CustodyEvent]);
+    const fids: Uint8Array[] = [];
+    for await (const [key] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
+      fids.push(new Uint8Array(key.slice(prefix.length)));
+    }
+    return fids;
   }
 
   /**
@@ -172,7 +159,7 @@ class SignerStore {
    */
   async mergeIdRegistryEvent(event: ContractEventModel): Promise<void> {
     // TODO: emit signer change events as a result of ID Registry events
-    const existingEvent = await ResultAsync.fromPromise(this.getIdRegistryEvent(event.fid()), () => undefined);
+    const existingEvent = await ResultAsync.fromPromise(this.getCustodyEvent(event.fid()), () => undefined);
     if (existingEvent.isOk() && this.eventCompare(existingEvent.value, event) >= 0) {
       return undefined;
     }
@@ -291,7 +278,7 @@ class SignerStore {
 
     // Look up the remove tsHash for this custody address and signer
     const removeTsHash = await ResultAsync.fromPromise(
-      this._db.get(SignerStore.signerRemovesKey(message.fid(), message.signer(), signer)),
+      this._db.get(SignerStore.signerRemovesKey(message.fid(), signer)),
       () => undefined
     );
 
@@ -316,7 +303,7 @@ class SignerStore {
 
     // Look up the add tsHash for this custody address and signer
     const addTsHash = await ResultAsync.fromPromise(
-      this._db.get(SignerStore.signerAddsKey(message.fid(), message.signer(), signer)),
+      this._db.get(SignerStore.signerAddsKey(message.fid(), signer)),
       () => undefined
     );
 
@@ -347,7 +334,7 @@ class SignerStore {
 
     // Put signerAdds index
     txn = txn.put(
-      SignerStore.signerAddsKey(message.fid(), message.signer(), message.body().signerArray() ?? new Uint8Array()),
+      SignerStore.signerAddsKey(message.fid(), message.body().signerArray() ?? new Uint8Array()),
       Buffer.from(message.tsHash())
     );
 
@@ -357,9 +344,7 @@ class SignerStore {
   /* Builds a RocksDB transaction to remove a SignerAdd message and delete its indices */
   private deleteSignerAddTransaction(txn: Transaction, message: SignerAddModel): Transaction {
     // Delete from signerAdds
-    txn = txn.del(
-      SignerStore.signerAddsKey(message.fid(), message.signer(), message.body().signerArray() ?? new Uint8Array())
-    );
+    txn = txn.del(SignerStore.signerAddsKey(message.fid(), message.body().signerArray() ?? new Uint8Array()));
 
     // Delete message
     return MessageModel.deleteTransaction(txn, message);
@@ -372,7 +357,7 @@ class SignerStore {
 
     // Put signerRemoves index
     txn = txn.put(
-      SignerStore.signerRemovesKey(message.fid(), message.signer(), message.body().signerArray() ?? new Uint8Array()),
+      SignerStore.signerRemovesKey(message.fid(), message.body().signerArray() ?? new Uint8Array()),
       Buffer.from(message.tsHash())
     );
 
@@ -382,9 +367,7 @@ class SignerStore {
   /* Builds a RocksDB transaction to remove a SignerRemove message and delete its indices */
   private deleteSignerRemoveTransaction(txn: Transaction, message: SignerRemoveModel): Transaction {
     // Delete from signerRemoves
-    txn = txn.del(
-      SignerStore.signerRemovesKey(message.fid(), message.signer(), message.body().signerArray() ?? new Uint8Array())
-    );
+    txn = txn.del(SignerStore.signerRemovesKey(message.fid(), message.body().signerArray() ?? new Uint8Array()));
 
     // Delete message
     return MessageModel.deleteTransaction(txn, message);
