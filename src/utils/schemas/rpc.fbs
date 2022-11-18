@@ -105,3 +105,9 @@ table GetUserDataByFidRequest {
   fid: [ubyte] (required);
 }
 
+// Sync Requests
+
+table GetAllMessagesByFidRequest {
+  fid: [ubyte] (required);
+}
+

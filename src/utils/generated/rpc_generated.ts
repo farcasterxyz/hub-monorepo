@@ -2,6 +2,7 @@
 
 export { CastId, CastIdT } from './farcaster/cast-id';
 export { FidsResponse, FidsResponseT } from './farcaster/fids-response';
+export { GetAllMessagesByFidRequest, GetAllMessagesByFidRequestT } from './farcaster/get-all-messages-by-fid-request';
 export { GetCastRequest, GetCastRequestT } from './farcaster/get-cast-request';
 export { GetCastsByFidRequest, GetCastsByFidRequestT } from './farcaster/get-casts-by-fid-request';
 export { GetCastsByMentionRequest, GetCastsByMentionRequestT } from './farcaster/get-casts-by-mention-request';

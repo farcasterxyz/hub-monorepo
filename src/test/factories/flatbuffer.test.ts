@@ -113,7 +113,6 @@ describe('GossipMessageFactory', () => {
   });
 
   test('creates with arguments', () => {
-    const other = Factories.GossipMessage.build();
     expect(message.unpack().content).toEqual(content.unpack());
   });
 

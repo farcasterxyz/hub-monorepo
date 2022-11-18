@@ -3,11 +3,16 @@ import { ok, err } from 'neverthrow';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import {
   CastAddModel,
+  CastRemoveModel,
   FollowAddModel,
+  FollowRemoveModel,
   ReactionAddModel,
+  ReactionRemoveModel,
   SignerAddModel,
+  SignerRemoveModel,
   UserDataAddModel,
   VerificationAddEthAddressModel,
+  VerificationRemoveModel,
 } from '~/storage/flatbuffers/types';
 import { CastId, Message, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
 import { GetFidsRequest, MessagesResponse } from '~/utils/generated/rpc_generated';
@@ -23,6 +28,7 @@ import { ContractEvent } from '~/utils/generated/contract_event_generated';
 import { signerServiceMethods, signerServiceRequests } from './signerService';
 import { userDataServiceMethods, userDataServiceRequests } from './userDataService';
 import { FidsResponse } from '~/utils/generated/farcaster/fids-response';
+import { createSyncServiceRequest, syncServiceMethods } from './syncService';
 
 class Client {
   client: grpc.Client;
@@ -201,6 +207,45 @@ class Client {
     return this.makeUnaryMessagesRequest(
       userDataServiceMethods().getUserDataByFid,
       userDataServiceRequests.getUserDataByFid(fid)
+    );
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                                   Sync Methods                             */
+  /* -------------------------------------------------------------------------- */
+
+  async getAllCastMessagesByFid(fid: Uint8Array): HubAsyncResult<(CastAddModel | CastRemoveModel)[]> {
+    return this.makeUnaryMessagesRequest(syncServiceMethods().getAllCastMessagesByFid, createSyncServiceRequest(fid));
+  }
+
+  async getAllFollowMessagesByFid(fid: Uint8Array): HubAsyncResult<(FollowAddModel | FollowRemoveModel)[]> {
+    return this.makeUnaryMessagesRequest(syncServiceMethods().getAllFollowMessagesByFid, createSyncServiceRequest(fid));
+  }
+
+  async getAllReactionMessagesByFid(fid: Uint8Array): HubAsyncResult<(ReactionAddModel | ReactionRemoveModel)[]> {
+    return this.makeUnaryMessagesRequest(
+      syncServiceMethods().getAllReactionMessagesByFid,
+      createSyncServiceRequest(fid)
+    );
+  }
+
+  async getAllVerificationMessagesByFid(
+    fid: Uint8Array
+  ): HubAsyncResult<(VerificationAddEthAddressModel | VerificationRemoveModel)[]> {
+    return this.makeUnaryMessagesRequest(
+      syncServiceMethods().getAllVerificationMessagesByFid,
+      createSyncServiceRequest(fid)
+    );
+  }
+
+  async getAllSignerMessagesByFid(fid: Uint8Array): HubAsyncResult<(SignerAddModel | SignerRemoveModel)[]> {
+    return this.makeUnaryMessagesRequest(syncServiceMethods().getAllSignerMessagesByFid, createSyncServiceRequest(fid));
+  }
+
+  async getAllUserDataMessagesByFid(fid: Uint8Array): HubAsyncResult<UserDataAddModel[]> {
+    return this.makeUnaryMessagesRequest(
+      syncServiceMethods().getAllUserDataMessagesByFid,
+      createSyncServiceRequest(fid)
     );
   }
 
