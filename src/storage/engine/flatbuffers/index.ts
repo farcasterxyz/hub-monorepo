@@ -1,4 +1,4 @@
-import { err, errAsync, ResultAsync } from 'neverthrow';
+import { err, errAsync, ok, ResultAsync } from 'neverthrow';
 import CastStore from '~/storage/sets/flatbuffers/castStore';
 import RocksDB from '~/storage/db/binaryrocksdb';
 import SignerStore from '~/storage/sets/flatbuffers/signerStore';
@@ -9,12 +9,17 @@ import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import {
   CastAddModel,
+  CastRemoveModel,
   FollowAddModel,
+  FollowRemoveModel,
   ReactionAddModel,
+  ReactionRemoveModel,
   SignerAddModel,
+  SignerRemoveModel,
   UserDataAddModel,
   UserPostfix,
   VerificationAddEthAddressModel,
+  VerificationRemoveModel,
 } from '~/storage/flatbuffers/types';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { ContractEventType } from '~/utils/generated/contract_event_generated';
@@ -146,6 +151,20 @@ class Engine {
     );
   }
 
+  async getAllCastMessagesByFid(fid: Uint8Array): HubAsyncResult<(CastAddModel | CastRemoveModel)[]> {
+    const adds = await ResultAsync.fromPromise(this._castStore.getCastAddsByUser(fid), (e) => e as HubError);
+    if (adds.isErr()) {
+      return err(adds.error);
+    }
+
+    const removes = await ResultAsync.fromPromise(this._castStore.getCastRemovesByUser(fid), (e) => e as HubError);
+    if (removes.isErr()) {
+      return err(removes.error);
+    }
+
+    return ok([...adds.value, ...removes.value]);
+  }
+
   /* -------------------------------------------------------------------------- */
   /*                             Follow Store Methods                           */
   /* -------------------------------------------------------------------------- */
@@ -190,6 +209,20 @@ class Engine {
         return errAsync(e);
       }
     );
+  }
+
+  async getAllFollowMessagesByFid(fid: Uint8Array): HubAsyncResult<(FollowAddModel | FollowRemoveModel)[]> {
+    const adds = await ResultAsync.fromPromise(this._followStore.getFollowAddsByUser(fid), (e) => e as HubError);
+    if (adds.isErr()) {
+      return err(adds.error);
+    }
+
+    const removes = await ResultAsync.fromPromise(this._followStore.getFollowRemovesByUser(fid), (e) => e as HubError);
+    if (removes.isErr()) {
+      return err(removes.error);
+    }
+
+    return ok([...adds.value, ...removes.value]);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -243,6 +276,23 @@ class Engine {
     );
   }
 
+  async getAllReactionMessagesByFid(fid: Uint8Array): HubAsyncResult<(ReactionAddModel | ReactionRemoveModel)[]> {
+    const adds = await ResultAsync.fromPromise(this._reactionStore.getReactionAddsByUser(fid), (e) => e as HubError);
+    if (adds.isErr()) {
+      return err(adds.error);
+    }
+
+    const removes = await ResultAsync.fromPromise(
+      this._reactionStore.getReactionRemovesByUser(fid),
+      (e) => e as HubError
+    );
+    if (removes.isErr()) {
+      return err(removes.error);
+    }
+
+    return ok([...adds.value, ...removes.value]);
+  }
+
   /* -------------------------------------------------------------------------- */
   /*                          Verification Store Methods                        */
   /* -------------------------------------------------------------------------- */
@@ -268,6 +318,28 @@ class Engine {
     }
 
     return ResultAsync.fromPromise(this._verificationStore.getVerificationAddsByUser(fid), (e) => e as HubError);
+  }
+
+  async getAllVerificationMessagesByFid(
+    fid: Uint8Array
+  ): HubAsyncResult<(VerificationAddEthAddressModel | VerificationRemoveModel)[]> {
+    const adds = await ResultAsync.fromPromise(
+      this._verificationStore.getVerificationAddsByUser(fid),
+      (e) => e as HubError
+    );
+    if (adds.isErr()) {
+      return err(adds.error);
+    }
+
+    const removes = await ResultAsync.fromPromise(
+      this._verificationStore.getVerificationRemovesByUser(fid),
+      (e) => e as HubError
+    );
+    if (removes.isErr()) {
+      return err(removes.error);
+    }
+
+    return ok([...adds.value, ...removes.value]);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -308,6 +380,20 @@ class Engine {
 
   async getFids(): HubAsyncResult<Uint8Array[]> {
     return ResultAsync.fromPromise(this._signerStore.getFids(), (e) => e as HubError);
+  }
+
+  async getAllSignerMessagesByFid(fid: Uint8Array): HubAsyncResult<(SignerAddModel | SignerRemoveModel)[]> {
+    const adds = await ResultAsync.fromPromise(this._signerStore.getSignerAddsByUser(fid), (e) => e as HubError);
+    if (adds.isErr()) {
+      return err(adds.error);
+    }
+
+    const removes = await ResultAsync.fromPromise(this._signerStore.getSignerRemovesByUser(fid), (e) => e as HubError);
+    if (removes.isErr()) {
+      return err(removes.error);
+    }
+
+    return ok([...adds.value, ...removes.value]);
   }
 
   /* -------------------------------------------------------------------------- */

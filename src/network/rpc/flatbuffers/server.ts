@@ -5,12 +5,13 @@ import { MessagesResponse, MessagesResponseT } from '~/utils/generated/rpc_gener
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { HubError, HubErrorCode } from '~/utils/hubErrors';
-import { followServiceImpls, followServiceMethods } from './followService';
-import { reactionServiceImpls, reactionServiceMethods } from './reactionService';
-import { verificationServiceImpls, verificationServiceMethods } from './verificationService';
-import { submitServiceImpls, submitServiceMethods } from './submitService';
-import { signerServiceImpls, signerServiceMethods } from './signerService';
-import { userDataServiceImpls, userDataServiceMethods } from './userDataService';
+import { followServiceImpls, followServiceMethods } from '~/network/rpc/flatbuffers/followService';
+import { reactionServiceImpls, reactionServiceMethods } from '~/network/rpc/flatbuffers/reactionService';
+import { verificationServiceImpls, verificationServiceMethods } from '~/network/rpc/flatbuffers/verificationService';
+import { submitServiceImpls, submitServiceMethods } from '~/network/rpc/flatbuffers/submitService';
+import { signerServiceImpls, signerServiceMethods } from '~/network/rpc/flatbuffers/signerService';
+import { userDataServiceImpls, userDataServiceMethods } from '~/network/rpc/flatbuffers/userDataService';
+import { syncServiceImpls, syncServiceMethods } from '~/network/rpc/flatbuffers/syncService';
 
 export const toServiceError = (err: HubError): grpc.ServiceError => {
   let grpcCode: number;
@@ -85,7 +86,7 @@ class Server {
     this.server.addService(verificationServiceMethods(), verificationServiceImpls(engine));
     this.server.addService(signerServiceMethods(), signerServiceImpls(engine));
     this.server.addService(userDataServiceMethods(), userDataServiceImpls(engine));
-    // TODO: add sync services
+    this.server.addService(syncServiceMethods(), syncServiceImpls(engine));
   }
 
   async start(port = 0): Promise<number> {
