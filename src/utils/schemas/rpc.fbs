@@ -10,6 +10,10 @@ table MessagesResponse {
   messages: [Message];
 }
 
+table FidsResponse {
+  fids: [UserId];
+}
+
 // Cast Requests
 
 table GetCastRequest {
@@ -70,6 +74,34 @@ table GetVerificationRequest {
 }
 
 table GetVerificationsByFidRequest {
+  fid: [ubyte] (required);
+}
+
+// Signer Requests
+
+table GetSignerRequest {
+  fid: [ubyte] (required);
+  signer: [ubyte] (required);
+}
+
+table GetSignersByFidRequest {
+  fid: [ubyte] (required);
+}
+
+table GetCustodyEventRequest {
+  fid: [ubyte] (required);
+}
+
+table GetFidsRequest {}
+
+// User Data Requests
+
+table GetUserDataRequest {
+  fid: [ubyte] (required);
+  type: UserDataType = 1;
+}
+
+table GetUserDataByFidRequest {
   fid: [ubyte] (required);
 }
 

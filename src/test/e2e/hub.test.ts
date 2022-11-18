@@ -96,7 +96,7 @@ describe('Hub running tests', () => {
         await secondHub.start();
         // wait until sync completes
         await new Promise((resolve) => {
-          secondHub.addListener('syncComplete', (_) => {
+          secondHub.addListener('syncComplete', () => {
             resolve(undefined);
           });
         });

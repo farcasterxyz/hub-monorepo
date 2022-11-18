@@ -113,7 +113,7 @@ beforeAll(async () => {
 describe('mergeIdRegistryEvent', () => {
   test('succeeds', async () => {
     await expect(engine.mergeIdRegistryEvent(custodyEvent)).resolves.toEqual(ok(undefined));
-    await expect(signerStore.getIdRegistryEvent(fid)).resolves.toEqual(custodyEvent);
+    await expect(signerStore.getCustodyEvent(fid)).resolves.toEqual(custodyEvent);
   });
 
   test('fails with invalid event type', async () => {
