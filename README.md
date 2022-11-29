@@ -95,7 +95,7 @@ Hub A's Sync Engine sends the recent branch to B and asks for its exclusion set.
 
 ### P2P Engine
 
-The P2P Engine is responsible for gossiping messages to and from other Hubs on the Farcaster network. It uses [LibP2P](https://github.com/libp2p/libp2p)for the networking stack and is bootstrapped with a list of trusted peers.
+The P2P Engine is responsible for gossiping messages to and from other Hubs on the Farcaster network. It uses [LibP2P](https://github.com/libp2p/libp2p) for the networking stack and is bootstrapped with a list of trusted peers.
 
 A Gossip message contains the most recent message discovered by the Hub along with the Hub's state expressed as the root of the merkle trie. The recipient can update its own state with the message and check if the merkle trie's match. If they do not, the Hubs have a different set of messages and will call their sync engines to execute a full sync.
 
