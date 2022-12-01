@@ -38,8 +38,11 @@ import {
 } from '~/storage/flatbuffers/validations';
 import { CastId, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
+import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 class Engine {
+  public eventHandler: StoreEventHandler;
+
   private _castStore: CastStore;
   private _signerStore: SignerStore;
   private _followStore: FollowStore;
@@ -50,12 +53,13 @@ class Engine {
   // TODO: add ID Registry connection
 
   constructor(db: RocksDB) {
-    this._castStore = new CastStore(db);
-    this._signerStore = new SignerStore(db);
-    this._followStore = new FollowStore(db);
-    this._reactionStore = new ReactionStore(db);
-    this._verificationStore = new VerificationStore(db);
-    this._userDataStore = new UserDataStore(db);
+    this.eventHandler = new StoreEventHandler();
+    this._castStore = new CastStore(db, this.eventHandler);
+    this._signerStore = new SignerStore(db, this.eventHandler);
+    this._followStore = new FollowStore(db, this.eventHandler);
+    this._reactionStore = new ReactionStore(db, this.eventHandler);
+    this._verificationStore = new VerificationStore(db, this.eventHandler);
+    this._userDataStore = new UserDataStore(db, this.eventHandler);
   }
 
   // TODO: add mergeMessages

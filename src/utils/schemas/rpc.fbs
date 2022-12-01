@@ -1,8 +1,16 @@
 include "message.fbs";
+include "contract_event.fbs";
 
 // IDL file for Farcaster RPC Requests
 
 namespace Farcaster;
+
+enum EventType: uint8 {
+  MergeMessage = 0,
+  PruneMessage = 1,
+  RevokeMessage = 2,
+  MergeContractEvent = 3
+}
 
 // Responses
 
@@ -12,6 +20,12 @@ table MessagesResponse {
 
 table FidsResponse {
   fids: [UserId];
+}
+
+table EventResponse {
+  type: EventType;
+  message: Message;
+  contract_event: ContractEvent;
 }
 
 // Cast Requests
@@ -110,4 +124,8 @@ table GetUserDataByFidRequest {
 table GetAllMessagesByFidRequest {
   fid: [ubyte] (required);
 }
+
+// Events Requests
+
+table SubscribeRequest {}
 

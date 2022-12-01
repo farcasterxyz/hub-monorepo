@@ -5,6 +5,7 @@ import { CastAddModel, CastRemoveModel, RootPrefix, UserPostfix } from '~/storag
 import { isCastAdd, isCastRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { HubError } from '~/utils/hubErrors';
+import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 /**
  * CastStore persists Cast messages in RocksDB using a two-phase CRDT set to guarantee eventual
@@ -36,9 +37,11 @@ import { HubError } from '~/utils/hubErrors';
  */
 class CastStore {
   private _db: RocksDB;
+  private _eventHandler: StoreEventHandler;
 
-  constructor(db: RocksDB) {
+  constructor(db: RocksDB, eventHandler: StoreEventHandler) {
     this._db = db;
+    this._eventHandler = eventHandler;
   }
 
   /**
@@ -228,7 +231,10 @@ class CastStore {
     tsx = this.putCastAddTransaction(tsx, message);
 
     // Commit the RocksDB transaction
-    return this._db.commit(tsx);
+    await this._db.commit(tsx);
+
+    // Emit store event
+    this._eventHandler.emit('mergeMessage', message);
   }
 
   private async mergeRemove(message: CastRemoveModel): Promise<void> {
@@ -285,7 +291,10 @@ class CastStore {
     tsx = this.putCastRemoveTransaction(tsx, message);
 
     // Commit the RocksDB transaction
-    return this._db.commit(tsx);
+    await this._db.commit(tsx);
+
+    // Emit store event
+    this._eventHandler.emit('mergeMessage', message);
   }
 
   /* Builds a RocksDB transaction to insert a CastAdd message and construct its indices */

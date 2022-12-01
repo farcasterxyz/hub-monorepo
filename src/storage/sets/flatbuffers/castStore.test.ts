@@ -5,9 +5,11 @@ import MessageModel from '~/storage/flatbuffers/messageModel';
 import { CastAddModel, CastRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
 import { HubError } from '~/utils/hubErrors';
 import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
+import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 const db = jestBinaryRocksDB('flatbuffers.castStore.test');
-const store = new CastStore(db);
+const eventHandler = new StoreEventHandler();
+const store = new CastStore(db, eventHandler);
 const fid = Factories.FID.build();
 
 let castAdd: CastAddModel;

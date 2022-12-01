@@ -6,9 +6,11 @@ import FollowStore from '~/storage/sets/flatbuffers/followStore';
 import { HubError } from '~/utils/hubErrors';
 import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
+import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 const db = jestBinaryRocksDB('flatbuffers.followStore.test');
-const store = new FollowStore(db);
+const eventHandler = new StoreEventHandler();
+const store = new FollowStore(db, eventHandler);
 const fid = Factories.FID.build();
 
 const userId = Factories.FID.build();

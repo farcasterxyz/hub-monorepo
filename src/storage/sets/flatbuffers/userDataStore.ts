@@ -6,6 +6,7 @@ import { isUserDataAdd } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { UserDataType } from '~/utils/generated/message_generated';
 import { HubError } from '~/utils/hubErrors';
+import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 /**
  * UserDataStore persists UserData messages in RocksDB using a grow-only CRDT set to guarantee
@@ -28,9 +29,11 @@ import { HubError } from '~/utils/hubErrors';
  */
 class UserDataStore {
   private _db: RocksDB;
+  private _eventHandler: StoreEventHandler;
 
-  constructor(db: RocksDB) {
+  constructor(db: RocksDB, eventHandler: StoreEventHandler) {
     this._db = db;
+    this._eventHandler = eventHandler;
   }
 
   /**
@@ -97,7 +100,10 @@ class UserDataStore {
     tsx = this.putUserDataAddTransaction(tsx, message);
 
     // Commit the RocksDB transaction
-    return this._db.commit(tsx);
+    await this._db.commit(tsx);
+
+    // Emit store event
+    this._eventHandler.emit('mergeMessage', message);
   }
 
   private userDataMessageCompare(aTimestampHash: Uint8Array, bTimestampHash: Uint8Array): number {

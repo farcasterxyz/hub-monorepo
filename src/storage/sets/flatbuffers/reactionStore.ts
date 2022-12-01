@@ -6,6 +6,7 @@ import { CastId, MessageType, ReactionType } from '~/utils/generated/message_gen
 import { ResultAsync } from 'neverthrow';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { HubError } from '~/utils/hubErrors';
+import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 /**
  * ReactionStore persists Reaction Messages in RocksDB using a two-phase CRDT set to guarantee
@@ -31,9 +32,11 @@ import { HubError } from '~/utils/hubErrors';
  */
 class ReactionStore {
   private _db: RocksDB;
+  private _eventHandler: StoreEventHandler;
 
-  constructor(db: RocksDB) {
+  constructor(db: RocksDB, eventHandler: StoreEventHandler) {
     this._db = db;
+    this._eventHandler = eventHandler;
   }
 
   /**
@@ -226,7 +229,10 @@ class ReactionStore {
       // Add ops to store the message by messageKey and index the the messageKey by set and by target
       txn = this.putReactionAddTransaction(txn, message);
 
-      return this._db.commit(txn);
+      await this._db.commit(txn);
+
+      // Emit store event
+      this._eventHandler.emit('mergeMessage', message);
     }
   }
 
@@ -244,7 +250,10 @@ class ReactionStore {
       // Add ops to store the message by messageKey and index the the messageKey by set
       txn = this.putReactionRemoveTransaction(txn, message);
 
-      return this._db.commit(txn);
+      await this._db.commit(txn);
+
+      // Emit store event
+      this._eventHandler.emit('mergeMessage', message);
     }
   }
 
