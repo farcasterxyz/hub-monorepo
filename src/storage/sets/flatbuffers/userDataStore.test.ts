@@ -6,9 +6,11 @@ import { UserDataType } from '~/utils/generated/message_generated';
 import UserDataSet from '~/storage/sets/flatbuffers/userDataStore';
 import { HubError } from '~/utils/hubErrors';
 import { bytesIncrement } from '~/storage/flatbuffers/utils';
+import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 const db = jestBinaryRocksDB('flatbuffers.userDataSet.test');
-const set = new UserDataSet(db);
+const eventHandler = new StoreEventHandler();
+const set = new UserDataSet(db, eventHandler);
 const fid = Factories.FID.build();
 
 let addPfp: UserDataAddModel;

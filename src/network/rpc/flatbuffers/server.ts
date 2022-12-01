@@ -12,6 +12,7 @@ import { submitServiceImpls, submitServiceMethods } from '~/network/rpc/flatbuff
 import { signerServiceImpls, signerServiceMethods } from '~/network/rpc/flatbuffers/signerService';
 import { userDataServiceImpls, userDataServiceMethods } from '~/network/rpc/flatbuffers/userDataService';
 import { syncServiceImpls, syncServiceMethods } from '~/network/rpc/flatbuffers/syncService';
+import { eventServiceImpls, eventServiceMethods } from './eventService';
 
 export const toServiceError = (err: HubError): grpc.ServiceError => {
   let grpcCode: number;
@@ -87,6 +88,7 @@ class Server {
     this.server.addService(signerServiceMethods(), signerServiceImpls(engine));
     this.server.addService(userDataServiceMethods(), userDataServiceImpls(engine));
     this.server.addService(syncServiceMethods(), syncServiceImpls(engine));
+    this.server.addService(eventServiceMethods(), eventServiceImpls(engine));
   }
 
   async start(port = 0): Promise<number> {
@@ -102,15 +104,20 @@ class Server {
     });
   }
 
-  async stop(): Promise<void> {
+  async stop(force = false): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.server.tryShutdown((err) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
+      if (force) {
+        this.server.forceShutdown();
+        resolve();
+      } else {
+        this.server.tryShutdown((err) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve();
+          }
+        });
+      }
     });
   }
 }

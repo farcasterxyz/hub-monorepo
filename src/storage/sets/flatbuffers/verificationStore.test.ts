@@ -9,9 +9,11 @@ import { FarcasterNetwork } from '~/utils/generated/message_generated';
 import { arrayify } from 'ethers/lib/utils';
 import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
 import { HubError } from '~/utils/hubErrors';
+import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 const db = jestBinaryRocksDB('flatbuffers.verificationStore.test');
-const set = new VerificationStore(db);
+const eventHandler = new StoreEventHandler();
+const set = new VerificationStore(db, eventHandler);
 const fid = Factories.FID.build();
 
 let ethSigner: EthereumSigner;

@@ -6,9 +6,11 @@ import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
 import { MessageType, ReactionType } from '~/utils/generated/message_generated';
 import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
 import { HubError } from '~/utils/hubErrors';
+import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 const db = jestBinaryRocksDB('flatbuffers.reactionStore.test');
-const set = new ReactionStore(db);
+const eventHandler = new StoreEventHandler();
+const set = new ReactionStore(db, eventHandler);
 const fid = Factories.FID.build();
 
 const castId = await Factories.CastId.create();

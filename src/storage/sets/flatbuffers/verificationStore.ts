@@ -6,6 +6,7 @@ import { isVerificationAddEthAddress, isVerificationRemove } from '~/storage/fla
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 import { HubError } from '~/utils/hubErrors';
+import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 /**
  * VerificationStore persists VerificationMessages in RocksDB using a two-phase CRDT set to
@@ -32,9 +33,11 @@ import { HubError } from '~/utils/hubErrors';
 
 class VerificationStore {
   private _db: RocksDB;
+  private _eventHandler: StoreEventHandler;
 
-  constructor(db: RocksDB) {
+  constructor(db: RocksDB, eventHandler: StoreEventHandler) {
     this._db = db;
+    this._eventHandler = eventHandler;
   }
 
   /**
@@ -174,7 +177,10 @@ class VerificationStore {
     tsx = this.putVerificationAddTransaction(tsx, message);
 
     // Commit the RocksDB transaction
-    return this._db.commit(tsx);
+    await this._db.commit(tsx);
+
+    // Emit store event
+    this._eventHandler.emit('mergeMessage', message);
   }
 
   private async mergeRemove(message: VerificationRemoveModel): Promise<void> {
@@ -193,7 +199,10 @@ class VerificationStore {
     tsx = this.putVerificationRemoveTransaction(tsx, message);
 
     // Commit the RocksDB transaction
-    return this._db.commit(tsx);
+    await this._db.commit(tsx);
+
+    // Emit store event
+    this._eventHandler.emit('mergeMessage', message);
   }
 
   private verificationMessageCompare(

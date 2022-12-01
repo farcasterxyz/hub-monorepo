@@ -29,12 +29,12 @@ const db = jestBinaryRocksDB('flatbuffers.engine.test');
 const engine = new Engine(db);
 
 // init stores for checking state changes from engine
-const signerStore = new SignerStore(db);
-const castStore = new CastStore(db);
-const followStore = new FollowStore(db);
-const reactionStore = new ReactionStore(db);
-const verificationStore = new VerificationStore(db);
-const userDataStore = new UserDataStore(db);
+const signerStore = new SignerStore(db, engine.eventHandler);
+const castStore = new CastStore(db, engine.eventHandler);
+const followStore = new FollowStore(db, engine.eventHandler);
+const reactionStore = new ReactionStore(db, engine.eventHandler);
+const verificationStore = new VerificationStore(db, engine.eventHandler);
+const userDataStore = new UserDataStore(db, engine.eventHandler);
 
 const fid = Factories.FID.build();
 

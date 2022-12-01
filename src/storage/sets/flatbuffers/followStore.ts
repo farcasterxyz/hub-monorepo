@@ -6,6 +6,7 @@ import { isFollowAdd, isFollowRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 import { HubError } from '~/utils/hubErrors';
+import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 /**
  * Follow Store persists Follow Messages in RocksDB using a two-phase CRDT set to guarantee
@@ -29,9 +30,11 @@ import { HubError } from '~/utils/hubErrors';
  */
 class FollowStore {
   private _db: RocksDB;
+  private _eventHandler: StoreEventHandler;
 
-  constructor(db: RocksDB) {
+  constructor(db: RocksDB, eventHandler: StoreEventHandler) {
     this._db = db;
+    this._eventHandler = eventHandler;
   }
 
   /**
@@ -156,7 +159,10 @@ class FollowStore {
     // Add ops to store the message by messageKey and index the the messageKey by set
     tsx = this.putFollowAddTransaction(tsx, message);
 
-    return this._db.commit(tsx);
+    await this._db.commit(tsx);
+
+    // Emit store event
+    this._eventHandler.emit('mergeMessage', message);
   }
 
   private async mergeRemove(message: FollowRemoveModel): Promise<void> {
@@ -169,7 +175,10 @@ class FollowStore {
     // Add ops to store the message by messageKey and index the the messageKey by set
     tsx = this.putFollowRemoveTransaction(tsx, message);
 
-    return this._db.commit(tsx);
+    await this._db.commit(tsx);
+
+    // Emit store event
+    this._eventHandler.emit('mergeMessage', message);
   }
 
   private followMessageCompare(

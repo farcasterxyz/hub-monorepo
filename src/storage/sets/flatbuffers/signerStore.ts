@@ -7,6 +7,7 @@ import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { HubError } from '~/utils/hubErrors';
+import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 /**
  * SignerStore persists Signer Messages in RocksDB using a series of two-phase CRDT sets
@@ -36,9 +37,11 @@ import { HubError } from '~/utils/hubErrors';
  */
 class SignerStore {
   private _db: RocksDB;
+  private _eventHandler: StoreEventHandler;
 
-  constructor(db: RocksDB) {
+  constructor(db: RocksDB, eventHandler: StoreEventHandler) {
     this._db = db;
+    this._eventHandler = eventHandler;
   }
 
   /**
@@ -166,7 +169,10 @@ class SignerStore {
 
     const txn = this._db.transaction();
     txn.put(event.primaryKey(), event.toBuffer());
-    return this._db.commit(txn);
+    await this._db.commit(txn);
+
+    // Emit store event
+    this._eventHandler.emit('mergeContractEvent', event);
   }
 
   /** Merges a SignerAdd or SignerRemove message into the SignerStore */
@@ -224,7 +230,10 @@ class SignerStore {
     txn = this.putSignerAddTransaction(txn, message);
 
     // Commit the RocksDB transaction
-    return this._db.commit(txn);
+    await this._db.commit(txn);
+
+    // Emit store event
+    this._eventHandler.emit('mergeMessage', message);
   }
 
   private async mergeRemove(message: SignerRemoveModel): Promise<void> {
@@ -237,7 +246,10 @@ class SignerStore {
     txn = this.putSignerRemoveTransaction(txn, message);
 
     // Commit the RocksDB transaction
-    return this._db.commit(txn);
+    await this._db.commit(txn);
+
+    // Emit store event
+    this._eventHandler.emit('mergeMessage', message);
   }
 
   private signerMessageCompare(

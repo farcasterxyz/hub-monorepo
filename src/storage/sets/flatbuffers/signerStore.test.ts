@@ -11,9 +11,11 @@ import MessageModel from '~/storage/flatbuffers/messageModel';
 import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 import { HubError } from '~/utils/hubErrors';
+import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 const db = jestBinaryRocksDB('flatbuffers.signerStore.test');
-const set = new SignerStore(db);
+const eventHandler = new StoreEventHandler();
+const set = new SignerStore(db, eventHandler);
 const fid = Factories.FID.build();
 
 let custody1: EthereumSigner;

@@ -1,4 +1,4 @@
-import grpc from '@grpc/grpc-js';
+import grpc, { ClientReadableStream, Metadata, MetadataValue } from '@grpc/grpc-js';
 import { ok, err } from 'neverthrow';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import {
@@ -15,20 +15,21 @@ import {
   VerificationRemoveModel,
 } from '~/storage/flatbuffers/types';
 import { CastId, Message, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
-import { GetFidsRequest, MessagesResponse } from '~/utils/generated/rpc_generated';
-import { HubAsyncResult } from '~/utils/hubErrors';
+import { EventResponse, GetFidsRequest, MessagesResponse, SubscribeRequest } from '~/utils/generated/rpc_generated';
+import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import { castServiceRequests, castServiceMethods } from '~/network/rpc/flatbuffers/castService';
-import { fromServiceError } from './server';
-import { followServiceMethods, followServiceRequests } from './followService';
-import { reactionServiceMethods, reactionServiceRequests } from './reactionService';
-import { verificationServiceMethods, verificationServiceRequests } from './verificationService';
-import { submitServiceMethods } from './submitService';
+import { fromServiceError } from '~/network/rpc/flatbuffers/server';
+import { followServiceMethods, followServiceRequests } from '~/network/rpc/flatbuffers/followService';
+import { reactionServiceMethods, reactionServiceRequests } from '~/network/rpc/flatbuffers/reactionService';
+import { verificationServiceMethods, verificationServiceRequests } from '~/network/rpc/flatbuffers/verificationService';
+import { submitServiceMethods } from '~/network/rpc/flatbuffers/submitService';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { ContractEvent } from '~/utils/generated/contract_event_generated';
-import { signerServiceMethods, signerServiceRequests } from './signerService';
-import { userDataServiceMethods, userDataServiceRequests } from './userDataService';
+import { signerServiceMethods, signerServiceRequests } from '~/network/rpc/flatbuffers/signerService';
+import { userDataServiceMethods, userDataServiceRequests } from '~/network/rpc/flatbuffers/userDataService';
 import { FidsResponse } from '~/utils/generated/farcaster/fids-response';
-import { createSyncServiceRequest, syncServiceMethods } from './syncService';
+import { createSyncServiceRequest, syncServiceMethods } from '~/network/rpc/flatbuffers/syncService';
+import { eventServiceMethods } from '~/network/rpc/flatbuffers/eventService';
 
 class Client {
   client: grpc.Client;
@@ -247,6 +248,38 @@ class Client {
       syncServiceMethods().getAllUserDataMessagesByFid,
       createSyncServiceRequest(fid)
     );
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                                  Event Methods                             */
+  /* -------------------------------------------------------------------------- */
+
+  async subscribe(): HubAsyncResult<ClientReadableStream<EventResponse>> {
+    const method = eventServiceMethods().subscribe;
+    const request = new SubscribeRequest();
+    const stream = this.client.makeServerStreamRequest(
+      method.path,
+      method.requestSerialize,
+      method.responseDeserialize,
+      request
+    );
+    stream.on('error', (e) => {
+      return e; // Suppress exceptions
+    });
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        stream.cancel(); // Cancel if not connected within timeout
+        reject(err(new HubError('unavailable.network_failure', 'subscribe timed out')));
+      }, 1_000);
+      stream.on('metadata', (metadata: Metadata) => {
+        clearTimeout(timeout);
+        if (metadata.get('status')[0] === ('ready' as MetadataValue)) {
+          resolve(ok(stream));
+        } else {
+          reject(err(new HubError('unavailable.network_failure', 'subscribe failed')));
+        }
+      });
+    });
   }
 
   /* -------------------------------------------------------------------------- */
