@@ -18,18 +18,18 @@ import { CastId, Message, ReactionType, UserDataType, UserId } from '~/utils/gen
 import { EventResponse, GetFidsRequest, MessagesResponse, SubscribeRequest } from '~/utils/generated/rpc_generated';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import { castServiceRequests, castServiceMethods } from '~/network/rpc/flatbuffers/castService';
-import { fromServiceError } from './server';
-import { followServiceMethods, followServiceRequests } from './followService';
-import { reactionServiceMethods, reactionServiceRequests } from './reactionService';
-import { verificationServiceMethods, verificationServiceRequests } from './verificationService';
-import { submitServiceMethods } from './submitService';
+import { fromServiceError } from '~/network/rpc/flatbuffers/server';
+import { followServiceMethods, followServiceRequests } from '~/network/rpc/flatbuffers/followService';
+import { reactionServiceMethods, reactionServiceRequests } from '~/network/rpc/flatbuffers/reactionService';
+import { verificationServiceMethods, verificationServiceRequests } from '~/network/rpc/flatbuffers/verificationService';
+import { submitServiceMethods } from '~/network/rpc/flatbuffers/submitService';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { ContractEvent } from '~/utils/generated/contract_event_generated';
-import { signerServiceMethods, signerServiceRequests } from './signerService';
-import { userDataServiceMethods, userDataServiceRequests } from './userDataService';
+import { signerServiceMethods, signerServiceRequests } from '~/network/rpc/flatbuffers/signerService';
+import { userDataServiceMethods, userDataServiceRequests } from '~/network/rpc/flatbuffers/userDataService';
 import { FidsResponse } from '~/utils/generated/farcaster/fids-response';
-import { createSyncServiceRequest, syncServiceMethods } from './syncService';
-import { eventServiceMethods } from './eventService';
+import { createSyncServiceRequest, syncServiceMethods } from '~/network/rpc/flatbuffers/syncService';
+import { eventServiceMethods } from '~/network/rpc/flatbuffers/eventService';
 
 class Client {
   client: grpc.Client;
