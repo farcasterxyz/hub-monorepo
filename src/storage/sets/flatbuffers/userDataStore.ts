@@ -1,11 +1,11 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { ResultAsync } from 'neverthrow';
+import { ResultAsync, ok } from 'neverthrow';
 import { UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
 import { isUserDataAdd } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
-import { UserDataType } from '~/utils/generated/message_generated';
-import { HubError } from '~/utils/hubErrors';
+import { MessageType, UserDataType } from '~/utils/generated/message_generated';
+import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 /**
@@ -84,6 +84,33 @@ class UserDataStore {
     }
 
     throw new HubError('bad_request.validation_failure', 'invalid message type');
+  }
+
+  async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<void> {
+    // Get all UserDataAdd messages signed by signer
+    const userDataAdds = await MessageModel.getAllBySigner<UserDataAddModel>(
+      this._db,
+      fid,
+      signer,
+      MessageType.UserDataAdd
+    );
+
+    // Create a rocksdb transaction
+    let txn = this._db.transaction();
+
+    // Add a delete operation to the transaction for each UserDataAdd
+    for (const message of userDataAdds) {
+      txn = this.deleteUserDataAddTransaction(txn, message);
+    }
+
+    await this._db.commit(txn);
+
+    // Emit a revokeMessage event for each message
+    for (const message of userDataAdds) {
+      this._eventHandler.emit('revokeMessage', message);
+    }
+
+    return ok(undefined);
   }
 
   /* -------------------------------------------------------------------------- */

@@ -36,7 +36,7 @@ import {
   validateTsHash,
   validateUserId,
 } from '~/storage/flatbuffers/validations';
-import { CastId, MessageType, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
+import { CastId, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
@@ -61,9 +61,6 @@ class Engine {
     this._reactionStore = new ReactionStore(db, this.eventHandler);
     this._verificationStore = new VerificationStore(db, this.eventHandler);
     this._userDataStore = new UserDataStore(db, this.eventHandler);
-
-    this.eventHandler.on('mergeMessage', this.handleMergeMessage);
-    this.eventHandler.on('mergeContractEvent', this.handleMergeContractEvent);
   }
 
   // TODO: add mergeMessages
@@ -100,6 +97,17 @@ class Engine {
     } else {
       return err(new HubError('bad_request.validation_failure', 'invalid event type'));
     }
+  }
+
+  async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<void> {
+    await this._castStore.revokeMessagesBySigner(fid, signer);
+    await this._followStore.revokeMessagesBySigner(fid, signer);
+    await this._reactionStore.revokeMessagesBySigner(fid, signer);
+    await this._verificationStore.revokeMessagesBySigner(fid, signer);
+    await this._userDataStore.revokeMessagesBySigner(fid, signer);
+    await this._signerStore.revokeMessagesBySigner(fid, signer);
+
+    return ok(undefined);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -453,20 +461,6 @@ class Engine {
 
     // 3. Check message body and envelope (will throw HubError if invalid)
     return validateMessage(message);
-  }
-
-  private handleMergeMessage(message: MessageModel): void {
-    // TODO: delay message revocation
-    if (message.type() === MessageType.SignerRemove) {
-      // TODO: revoke cast, follow, reaction, verification, user data messages
-    }
-  }
-
-  private handleMergeContractEvent(event: ContractEventModel): void {
-    // TODO: delay message revocation
-    if (event.type() === ContractEventType.IdRegistryTransfer) {
-      this._signerStore.revokeMessagesBySigner(event.fid(), event.from());
-    }
   }
 }
 

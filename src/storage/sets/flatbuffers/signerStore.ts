@@ -1,12 +1,12 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { ResultAsync } from 'neverthrow';
+import { ResultAsync, ok } from 'neverthrow';
 import { SignerAddModel, UserPostfix, SignerRemoveModel, RootPrefix } from '~/storage/flatbuffers/types';
 import { isSignerAdd, isSignerRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
-import { HubError } from '~/utils/hubErrors';
+import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 /**
@@ -188,7 +188,7 @@ class SignerStore {
     throw new HubError('bad_request.validation_failure', 'invalid message type');
   }
 
-  async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array) {
+  async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<void> {
     // Get all SignerAdd messages signed by signer
     const signerAdds = await MessageModel.getAllBySigner<SignerAddModel>(this._db, fid, signer, MessageType.SignerAdd);
 
@@ -215,15 +215,12 @@ class SignerStore {
 
     await this._db.commit(txn);
 
-    // Emit a revokeMessage event for each SignerAdd message
-    for (const message of signerAdds) {
+    // Emit a revokeMessage event for each message
+    for (const message of [...signerAdds, ...signerRemoves]) {
       this._eventHandler.emit('revokeMessage', message);
     }
 
-    // Emit a revokeMessage event for each SignerRemove message
-    for (const message of signerRemoves) {
-      this._eventHandler.emit('revokeMessage', message);
-    }
+    return ok(undefined);
   }
 
   /* -------------------------------------------------------------------------- */

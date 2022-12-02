@@ -3,9 +3,9 @@ import MessageModel, { FID_BYTES, TARGET_KEY_BYTES, TRUE_VALUE } from '~/storage
 import { ReactionAddModel, ReactionRemoveModel, RootPrefix, UserPostfix } from '~/storage/flatbuffers/types';
 import { isReactionAdd, isReactionRemove } from '~/storage/flatbuffers/typeguards';
 import { CastId, MessageType, ReactionType } from '~/utils/generated/message_generated';
-import { ResultAsync } from 'neverthrow';
+import { ResultAsync, ok } from 'neverthrow';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
-import { HubError } from '~/utils/hubErrors';
+import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 /**
@@ -209,6 +209,46 @@ class ReactionStore {
     }
 
     throw new HubError('bad_request.validation_failure', 'invalid message type');
+  }
+
+  async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<void> {
+    // Get all ReactionAdd messages signed by signer
+    const reactionAdds = await MessageModel.getAllBySigner<ReactionAddModel>(
+      this._db,
+      fid,
+      signer,
+      MessageType.ReactionAdd
+    );
+
+    // Get all ReactionRemove messages signed by signer
+    const reactionRemoves = await MessageModel.getAllBySigner<ReactionRemoveModel>(
+      this._db,
+      fid,
+      signer,
+      MessageType.ReactionRemove
+    );
+
+    // Create a rocksdb transaction
+    let txn = this._db.transaction();
+
+    // Add a delete operation to the transaction for each ReactionAdd
+    for (const message of reactionAdds) {
+      txn = this.deleteReactionAddTransaction(txn, message);
+    }
+
+    // Add a delete operation to the transaction for each SignerRemove
+    for (const message of reactionRemoves) {
+      txn = this.deleteReactionRemoveTransaction(txn, message);
+    }
+
+    await this._db.commit(txn);
+
+    // Emit a revokeMessage event for each message
+    for (const message of [...reactionAdds, ...reactionRemoves]) {
+      this._eventHandler.emit('revokeMessage', message);
+    }
+
+    return ok(undefined);
   }
 
   /* -------------------------------------------------------------------------- */

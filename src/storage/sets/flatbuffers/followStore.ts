@@ -1,11 +1,11 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
-import { ResultAsync } from 'neverthrow';
+import { ResultAsync, ok } from 'neverthrow';
 import { FollowAddModel, FollowRemoveModel, RootPrefix, UserPostfix } from '~/storage/flatbuffers/types';
 import { isFollowAdd, isFollowRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
-import { HubError } from '~/utils/hubErrors';
+import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 /**
@@ -143,6 +143,41 @@ class FollowStore {
     }
 
     throw new HubError('bad_request.validation_failure', 'invalid follow message');
+  }
+
+  async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<void> {
+    // Get all FollowAdd messages signed by signer
+    const followAdds = await MessageModel.getAllBySigner<FollowAddModel>(this._db, fid, signer, MessageType.FollowAdd);
+
+    // Get all CastRemove messages signed by signer
+    const followRemoves = await MessageModel.getAllBySigner<FollowRemoveModel>(
+      this._db,
+      fid,
+      signer,
+      MessageType.FollowRemove
+    );
+
+    // Create a rocksdb transaction
+    let txn = this._db.transaction();
+
+    // Add a delete operation to the transaction for each FollowAdd
+    for (const message of followAdds) {
+      txn = this.deleteFollowAddTransaction(txn, message);
+    }
+
+    // Add a delete operation to the transaction for each FollowRemove
+    for (const message of followRemoves) {
+      txn = this.deleteFollowRemoveTransaction(txn, message);
+    }
+
+    await this._db.commit(txn);
+
+    // Emit a revokeMessage event for each message
+    for (const message of [...followAdds, ...followRemoves]) {
+      this._eventHandler.emit('revokeMessage', message);
+    }
+
+    return ok(undefined);
   }
 
   /* -------------------------------------------------------------------------- */

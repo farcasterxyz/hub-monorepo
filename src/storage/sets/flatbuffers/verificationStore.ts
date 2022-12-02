@@ -1,11 +1,11 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { ResultAsync } from 'neverthrow';
+import { ResultAsync, ok } from 'neverthrow';
 import { UserPostfix, VerificationAddEthAddressModel, VerificationRemoveModel } from '~/storage/flatbuffers/types';
 import { isVerificationAddEthAddress, isVerificationRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
-import { HubError } from '~/utils/hubErrors';
+import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 /**
@@ -155,6 +155,46 @@ class VerificationStore {
     }
 
     throw new HubError('bad_request.validation_failure', 'invalid message type');
+  }
+
+  async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<void> {
+    // Get all VerificationAddEthAddress messages signed by signer
+    const verificationAdds = await MessageModel.getAllBySigner<VerificationAddEthAddressModel>(
+      this._db,
+      fid,
+      signer,
+      MessageType.VerificationAddEthAddress
+    );
+
+    // Get all VerificationRemove messages signed by signer
+    const castRemoves = await MessageModel.getAllBySigner<VerificationRemoveModel>(
+      this._db,
+      fid,
+      signer,
+      MessageType.VerificationRemove
+    );
+
+    // Create a rocksdb transaction
+    let txn = this._db.transaction();
+
+    // Add a delete operation to the transaction for each VerificationAddEthAddress
+    for (const message of verificationAdds) {
+      txn = this.deleteVerificationAddTransaction(txn, message);
+    }
+
+    // Add a delete operation to the transaction for each SignerRemove
+    for (const message of castRemoves) {
+      txn = this.deleteVerificationRemoveTransaction(txn, message);
+    }
+
+    await this._db.commit(txn);
+
+    // Emit a revokeMessage event for each message
+    for (const message of [...verificationAdds, ...castRemoves]) {
+      this._eventHandler.emit('revokeMessage', message);
+    }
+
+    return ok(undefined);
   }
 
   /* -------------------------------------------------------------------------- */
