@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import { EthereumSigner, SignerAdd } from '~/types';
+import { EthereumSigner } from '~/types';
 import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
 import { arrayify } from 'ethers/lib/utils';
 import SignerStore from '~/storage/sets/flatbuffers/signerStore';
@@ -13,7 +13,6 @@ import { MessageType } from '~/utils/generated/message_generated';
 import { HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 import { ContractEventType } from '~/utils/generated/contract_event_generated';
-import { EventResponse } from '~/utils/generated/rpc_generated';
 
 const db = jestBinaryRocksDB('flatbuffers.signerStore.test');
 const eventHandler = new StoreEventHandler();
