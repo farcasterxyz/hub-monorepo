@@ -54,6 +54,7 @@ class Engine {
 
   constructor(db: RocksDB) {
     this.eventHandler = new StoreEventHandler();
+
     this._castStore = new CastStore(db, this.eventHandler);
     this._signerStore = new SignerStore(db, this.eventHandler);
     this._followStore = new FollowStore(db, this.eventHandler);
@@ -96,6 +97,17 @@ class Engine {
     } else {
       return err(new HubError('bad_request.validation_failure', 'invalid event type'));
     }
+  }
+
+  async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<void> {
+    await this._castStore.revokeMessagesBySigner(fid, signer);
+    await this._followStore.revokeMessagesBySigner(fid, signer);
+    await this._reactionStore.revokeMessagesBySigner(fid, signer);
+    await this._verificationStore.revokeMessagesBySigner(fid, signer);
+    await this._userDataStore.revokeMessagesBySigner(fid, signer);
+    await this._signerStore.revokeMessagesBySigner(fid, signer);
+
+    return ok(undefined);
   }
 
   /* -------------------------------------------------------------------------- */

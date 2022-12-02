@@ -412,7 +412,8 @@ const IdRegistryEventFactory = Factory.define<ContractEventT, any, ContractEvent
     faker.datatype.number({ max: 1000 }),
     Array.from(FIDFactory.build()),
     Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 }))),
-    ContractEventType.IdRegistryRegister
+    ContractEventType.IdRegistryRegister,
+    Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 })))
   );
 });
 

@@ -18,6 +18,7 @@ table ContractEvent {
   fid: [ubyte];
   to: [ubyte];
   type: ContractEventType = 1;
+  from: [ubyte];
 }
 
 root_type ContractEvent;

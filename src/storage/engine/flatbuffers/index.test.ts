@@ -4,6 +4,7 @@ import {
   FollowAddModel,
   ReactionAddModel,
   SignerAddModel,
+  SignerRemoveModel,
   UserDataAddModel,
   VerificationAddEthAddressModel,
 } from '~/storage/flatbuffers/types';
@@ -44,6 +45,7 @@ let custodyEvent: ContractEventModel;
 
 let signer: KeyPair;
 let signerAdd: SignerAddModel;
+let signerRemove: SignerRemoveModel;
 
 let castAdd: CastAddModel;
 let followAdd: FollowAddModel;
@@ -69,6 +71,17 @@ beforeAll(async () => {
     { transient: { wallet: custodyWallet } }
   );
   signerAdd = new MessageModel(signerAddMessage) as SignerAddModel;
+
+  const signerRemoveData = await Factories.SignerRemoveData.create({
+    fid: Array.from(fid),
+    body: Factories.SignerBody.build({ signer: Array.from(signer.publicKey) }),
+    timestamp: signerAdd.timestamp() + 1,
+  });
+  const signerRemoveMessage = await Factories.Message.create(
+    { data: Array.from(signerRemoveData.bb?.bytes() ?? []) },
+    { transient: { wallet: custodyWallet } }
+  );
+  signerRemove = new MessageModel(signerRemoveMessage) as SignerRemoveModel;
 
   const castAddData = await Factories.CastAddData.create({ fid: Array.from(fid) });
   const castAddMessage = await Factories.Message.create(
@@ -130,6 +143,23 @@ describe('mergeIdRegistryEvent', () => {
 });
 
 describe('mergeMessage', () => {
+  let mergedMessages: MessageModel[];
+  const handleMergeMessage = (message: MessageModel) => {
+    mergedMessages.push(message);
+  };
+
+  beforeAll(() => {
+    engine.eventHandler.on('mergeMessage', handleMergeMessage);
+  });
+
+  afterAll(() => {
+    engine.eventHandler.off('mergeMessage', handleMergeMessage);
+  });
+
+  beforeEach(() => {
+    mergedMessages = [];
+  });
+
   describe('with valid signer', () => {
     beforeEach(async () => {
       await engine.mergeIdRegistryEvent(custodyEvent);
@@ -146,12 +176,14 @@ describe('mergeMessage', () => {
       );
       const result = await engine.mergeMessage(message);
       expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request', 'unknown message type'));
+      expect(mergedMessages).toEqual([signerAdd]);
     });
 
     describe('CastAdd', () => {
       test('succeeds', async () => {
         await expect(engine.mergeMessage(castAdd)).resolves.toEqual(ok(undefined));
         await expect(castStore.getCastAdd(fid, castAdd.tsHash())).resolves.toEqual(castAdd);
+        expect(mergedMessages).toEqual([signerAdd, castAdd]);
       });
     });
 
@@ -161,6 +193,7 @@ describe('mergeMessage', () => {
         await expect(
           followStore.getFollowAdd(fid, followAdd.body().user()?.fidArray() ?? new Uint8Array())
         ).resolves.toEqual(followAdd);
+        expect(mergedMessages).toEqual([signerAdd, followAdd]);
       });
     });
 
@@ -170,6 +203,7 @@ describe('mergeMessage', () => {
         await expect(
           reactionStore.getReactionAdd(fid, reactionAdd.body().type(), reactionAdd.body().cast() as CastId)
         ).resolves.toEqual(reactionAdd);
+        expect(mergedMessages).toEqual([signerAdd, reactionAdd]);
       });
     });
 
@@ -179,6 +213,7 @@ describe('mergeMessage', () => {
         await expect(
           verificationStore.getVerificationAdd(fid, verificationAdd.body().addressArray() ?? new Uint8Array())
         ).resolves.toEqual(verificationAdd);
+        expect(mergedMessages).toEqual([signerAdd, verificationAdd]);
       });
     });
 
@@ -186,6 +221,15 @@ describe('mergeMessage', () => {
       test('succeeds', async () => {
         await expect(engine.mergeMessage(userDataAdd)).resolves.toEqual(ok(undefined));
         await expect(userDataStore.getUserDataAdd(fid, userDataAdd.body().type())).resolves.toEqual(userDataAdd);
+        expect(mergedMessages).toEqual([signerAdd, userDataAdd]);
+      });
+    });
+
+    describe('SignerRemove', () => {
+      test('succeeds ', async () => {
+        await expect(engine.mergeMessage(signerRemove)).resolves.toEqual(ok(undefined));
+        await expect(signerStore.getSignerRemove(fid, signer.publicKey)).resolves.toEqual(signerRemove);
+        expect(mergedMessages).toEqual([signerAdd, signerRemove]);
       });
     });
   });
@@ -220,5 +264,59 @@ describe('mergeMessage', () => {
     test('with CastAdd', () => {
       message = castAdd;
     });
+  });
+});
+
+describe('revokeMessagesBySigner', () => {
+  let revokedMessages: MessageModel[];
+  const handleRevokedMessage = (message: MessageModel) => {
+    revokedMessages.push(message);
+  };
+
+  beforeAll(() => {
+    engine.eventHandler.on('revokeMessage', handleRevokedMessage);
+  });
+
+  afterAll(() => {
+    engine.eventHandler.off('revokeMessage', handleRevokedMessage);
+  });
+
+  beforeEach(async () => {
+    revokedMessages = [];
+    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeMessage(signerAdd);
+    await engine.mergeMessage(castAdd);
+    await engine.mergeMessage(followAdd);
+    await engine.mergeMessage(reactionAdd);
+    await engine.mergeMessage(verificationAdd);
+    await engine.mergeMessage(userDataAdd);
+  });
+
+  test('revokes messages signed by EIP-712 signer', async () => {
+    const signerMessages = [signerAdd];
+    for (const message of signerMessages) {
+      const getMessage = MessageModel.get(db, message.fid(), message.setPostfix(), message.tsHash());
+      await expect(getMessage).resolves.toEqual(message);
+    }
+    await expect(engine.revokeMessagesBySigner(fid, custodyAddress)).resolves.toEqual(ok(undefined));
+    for (const message of signerMessages) {
+      const getMessage = MessageModel.get(db, message.fid(), message.setPostfix(), message.tsHash());
+      await expect(getMessage).rejects.toThrow();
+    }
+    expect(revokedMessages).toEqual(signerMessages);
+  });
+
+  test('revokes messages signed by Ed25519 signer', async () => {
+    const signerMessages = [castAdd, followAdd, reactionAdd, verificationAdd, userDataAdd];
+    for (const message of signerMessages) {
+      const getMessage = MessageModel.get(db, message.fid(), message.setPostfix(), message.tsHash());
+      await expect(getMessage).resolves.toEqual(message);
+    }
+    await expect(engine.revokeMessagesBySigner(fid, signer.publicKey)).resolves.toEqual(ok(undefined));
+    for (const message of signerMessages) {
+      const getMessage = MessageModel.get(db, message.fid(), message.setPostfix(), message.tsHash());
+      await expect(getMessage).rejects.toThrow();
+    }
+    expect(revokedMessages).toEqual(signerMessages);
   });
 });

@@ -1,11 +1,12 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
-import { ResultAsync } from 'neverthrow';
+import { ResultAsync, ok } from 'neverthrow';
 import { CastAddModel, CastRemoveModel, RootPrefix, UserPostfix } from '~/storage/flatbuffers/types';
 import { isCastAdd, isCastRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
-import { HubError } from '~/utils/hubErrors';
+import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
+import { MessageType } from '~/utils/generated/message_generated';
 
 /**
  * CastStore persists Cast messages in RocksDB using a two-phase CRDT set to guarantee eventual
@@ -195,6 +196,41 @@ class CastStore {
     }
 
     throw new HubError('bad_request.validation_failure', 'invalid message type');
+  }
+
+  async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<void> {
+    // Get all CastAdd messages signed by signer
+    const castAdds = await MessageModel.getAllBySigner<CastAddModel>(this._db, fid, signer, MessageType.CastAdd);
+
+    // Get all CastRemove messages signed by signer
+    const castRemoves = await MessageModel.getAllBySigner<CastRemoveModel>(
+      this._db,
+      fid,
+      signer,
+      MessageType.CastRemove
+    );
+
+    // Create a rocksdb transaction
+    let txn = this._db.transaction();
+
+    // Add a delete operation to the transaction for each CastAdd
+    for (const message of castAdds) {
+      txn = this.deleteCastAddTransaction(txn, message);
+    }
+
+    // Add a delete operation to the transaction for each CastRemove
+    for (const message of castRemoves) {
+      txn = this.deleteCastRemoveTransaction(txn, message);
+    }
+
+    await this._db.commit(txn);
+
+    // Emit a revokeMessage event for each message
+    for (const message of [...castAdds, ...castRemoves]) {
+      this._eventHandler.emit('revokeMessage', message);
+    }
+
+    return ok(undefined);
   }
 
   /* -------------------------------------------------------------------------- */
