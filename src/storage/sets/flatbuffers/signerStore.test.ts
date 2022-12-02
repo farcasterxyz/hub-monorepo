@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import { EthereumSigner } from '~/types';
+import { EthereumSigner, SignerAdd } from '~/types';
 import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
 import { arrayify } from 'ethers/lib/utils';
 import SignerStore from '~/storage/sets/flatbuffers/signerStore';
@@ -12,6 +12,8 @@ import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 import { HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
+import { ContractEventType } from '~/utils/generated/contract_event_generated';
+import { EventResponse } from '~/utils/generated/rpc_generated';
 
 const db = jestBinaryRocksDB('flatbuffers.signerStore.test');
 const eventHandler = new StoreEventHandler();
@@ -615,5 +617,84 @@ describe('getFids', () => {
 
   test('returns empty array without custody events', async () => {
     await expect(set.getFids()).resolves.toEqual([]);
+  });
+});
+
+describe('revokeMessagesBySigner', () => {
+  let custody2Transfer: ContractEventModel;
+  let signerAdd1: SignerAddModel;
+  let signerAdd2: SignerAddModel;
+
+  let revokedMessages: MessageModel[];
+  const handleRevokeMessage = (message: MessageModel) => {
+    revokedMessages.push(message);
+  };
+
+  beforeAll(async () => {
+    const idRegistryTransfer = await Factories.IdRegistryEvent.create({
+      type: ContractEventType.IdRegistryTransfer,
+      from: Array.from(custody1Address),
+      fid: Array.from(fid),
+      to: Array.from(custody2Address),
+    });
+    custody2Transfer = new ContractEventModel(idRegistryTransfer);
+
+    const addData1 = await Factories.SignerAddData.create({
+      fid: Array.from(fid),
+    });
+    const addMessage1 = await Factories.Message.create(
+      { data: Array.from(addData1.bb?.bytes() ?? []) },
+      { transient: { wallet: custody1.wallet } }
+    );
+    signerAdd1 = new MessageModel(addMessage1) as SignerAddModel;
+
+    const addData2 = await Factories.SignerAddData.create({
+      fid: Array.from(fid),
+    });
+    const addMessage2 = await Factories.Message.create(
+      { data: Array.from(addData2.bb?.bytes() ?? []) },
+      { transient: { wallet: custody2.wallet } }
+    );
+    signerAdd2 = new MessageModel(addMessage2) as SignerAddModel;
+
+    eventHandler.on('revokeMessage', handleRevokeMessage);
+  });
+
+  afterAll(() => {
+    eventHandler.off('revokeMessage', handleRevokeMessage);
+  });
+
+  beforeEach(() => {
+    revokedMessages = [];
+  });
+
+  describe('with messages', () => {
+    beforeEach(async () => {
+      await set.mergeIdRegistryEvent(custody1Event);
+      await set.merge(signerAdd1);
+      await set.merge(signerRemove);
+      await set.mergeIdRegistryEvent(custody2Transfer);
+      await set.merge(signerAdd2);
+
+      const custody1Messages = await MessageModel.getAllBySigner(db, fid, custody1Address);
+      expect(new Set(custody1Messages)).toEqual(new Set([signerAdd1, signerRemove]));
+
+      const custody2Messages = await MessageModel.getAllBySigner(db, fid, custody2Address);
+      expect(custody2Messages).toEqual([signerAdd2]);
+    });
+
+    test('deletes messages and emits revokeMessage events for custody1', async () => {
+      await set.revokeMessagesBySigner(fid, custody1Address);
+      const custody1Messages = await MessageModel.getAllBySigner(db, fid, custody1Address);
+      expect(custody1Messages).toEqual([]);
+      expect(revokedMessages).toEqual([signerAdd1, signerRemove]);
+    });
+
+    test('deletes messages and emits revokeMessage events for custody2', async () => {
+      await set.revokeMessagesBySigner(fid, custody2Address);
+      const custody2Messages = await MessageModel.getAllBySigner(db, fid, custody2Address);
+      expect(custody2Messages).toEqual([]);
+      expect(revokedMessages).toEqual([signerAdd2]);
+    });
   });
 });

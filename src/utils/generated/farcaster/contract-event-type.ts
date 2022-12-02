@@ -2,5 +2,5 @@
 
 export enum ContractEventType {
   IdRegistryRegister = 1,
-  IdRegistryTransfer = 2,
+  IdRegistryTransfer = 2
 }

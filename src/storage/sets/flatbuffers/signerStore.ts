@@ -188,6 +188,44 @@ class SignerStore {
     throw new HubError('bad_request.validation_failure', 'invalid message type');
   }
 
+  async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array) {
+    // Get all SignerAdd messages signed by signer
+    const signerAdds = await MessageModel.getAllBySigner<SignerAddModel>(this._db, fid, signer, MessageType.SignerAdd);
+
+    // Get all SignerRemove messages signed by signer
+    const signerRemoves = await MessageModel.getAllBySigner<SignerRemoveModel>(
+      this._db,
+      fid,
+      signer,
+      MessageType.SignerRemove
+    );
+
+    // Create a rocksdb transaction
+    let txn = this._db.transaction();
+
+    // Add a delete operation to the transaction for each SignerAdd
+    for (const message of signerAdds) {
+      txn = this.deleteSignerAddTransaction(txn, message);
+    }
+
+    // Add a delete operation to the transaction for each SignerRemove
+    for (const message of signerRemoves) {
+      txn = this.deleteSignerRemoveTransaction(txn, message);
+    }
+
+    await this._db.commit(txn);
+
+    // Emit a revokeMessage event for each SignerAdd message
+    for (const message of signerAdds) {
+      this._eventHandler.emit('revokeMessage', message);
+    }
+
+    // Emit a revokeMessage event for each SignerRemove message
+    for (const message of signerRemoves) {
+      this._eventHandler.emit('revokeMessage', message);
+    }
+  }
+
   /* -------------------------------------------------------------------------- */
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */

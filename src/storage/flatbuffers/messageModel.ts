@@ -67,6 +67,34 @@ export default class MessageModel {
     ]);
   }
 
+  static typeToSetPostfix(type: MessageType): UserMessagePostfix {
+    if (type === MessageType.CastAdd || type === MessageType.CastRemove) {
+      return UserPostfix.CastMessage;
+    }
+
+    if (type === MessageType.ReactionAdd || type === MessageType.ReactionRemove) {
+      return UserPostfix.ReactionMessage;
+    }
+
+    if (type === MessageType.FollowAdd || type === MessageType.FollowRemove) {
+      return UserPostfix.FollowMessage;
+    }
+
+    if (type === MessageType.VerificationAddEthAddress || type === MessageType.VerificationRemove) {
+      return UserPostfix.VerificationMessage;
+    }
+
+    if (type === MessageType.SignerAdd || type === MessageType.SignerRemove) {
+      return UserPostfix.SignerMessage;
+    }
+
+    if (type === MessageType.UserDataAdd) {
+      return UserPostfix.UserDataMessage;
+    }
+
+    throw new Error('invalid type');
+  }
+
   /** Generate tsHash from timestamp and hash */
   static tsHash(timestamp: number, hash: Uint8Array): Uint8Array {
     const buffer = new ArrayBuffer(4 + hash.length);
@@ -103,19 +131,41 @@ export default class MessageModel {
     return messages;
   }
 
+  /** Get an array of messages for a given fid and signer */
   static async getAllBySigner<T extends MessageModel>(
     db: RocksDB,
     fid: Uint8Array,
     signer: Uint8Array,
     type?: MessageType
   ): Promise<T[]> {
+    // Generate prefix by excluding tsHash from the bySignerKey
+    // Format of bySignerKey: <user prefix byte, fid, by signer index byte, signer, type, tsHash>
     const prefix = MessageModel.bySignerKey(fid, signer, type);
-    const messageKeys: Buffer[] = [];
+
+    // Initialize array of message primary keys
+    const primaryKeys: Buffer[] = [];
+
+    // Loop through all keys that start with the given prefix
     for await (const [key] of db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
-      const messageKeyOffset = prefix.length + (type ? 0 : 1);
-      messageKeys.push(key.slice(messageKeyOffset));
+      // Get the tsHash for the message using its position in the key relative to the prefix
+      // If the prefix did not include type, add an extra byte to the tsHash offset
+      const tsHashOffset = prefix.length + (type ? 0 : 1);
+      const tsHash = new Uint8Array(key.slice(tsHashOffset));
+
+      // Get the type for the message, either from the predefined type variable or by looking at the byte
+      // prior to the tsHash in the key
+      const messageType =
+        type ?? (new Uint8Array(key as Buffer).slice(tsHashOffset - 1, tsHashOffset)[0] as MessageType);
+
+      // Convert the message type to a set postfix
+      const setPostfix = MessageModel.typeToSetPostfix(messageType);
+
+      // Use the fid, setPostfix, and tsHash to generate the primaryKey for the message and store it
+      primaryKeys.push(MessageModel.primaryKey(fid, setPostfix, tsHash));
     }
-    return MessageModel.getManyByUser<T>(db, fid, UserPostfix.CastMessage, messageKeys);
+
+    // Look up many messages using the array of primaryKeys
+    return this.getMany(db, primaryKeys);
   }
 
   static async get<T extends MessageModel>(
@@ -146,31 +196,7 @@ export default class MessageModel {
   }
 
   setPostfix(): UserMessagePostfix {
-    if (this.type() === MessageType.CastAdd || this.type() === MessageType.CastRemove) {
-      return UserPostfix.CastMessage;
-    }
-
-    if (this.type() === MessageType.ReactionAdd || this.type() === MessageType.ReactionRemove) {
-      return UserPostfix.ReactionMessage;
-    }
-
-    if (this.type() === MessageType.FollowAdd || this.type() === MessageType.FollowRemove) {
-      return UserPostfix.FollowMessage;
-    }
-
-    if (this.type() === MessageType.VerificationAddEthAddress || this.type() === MessageType.VerificationRemove) {
-      return UserPostfix.VerificationMessage;
-    }
-
-    if (this.type() === MessageType.SignerAdd || this.type() === MessageType.SignerRemove) {
-      return UserPostfix.SignerMessage;
-    }
-
-    if (this.type() === MessageType.UserDataAdd) {
-      return UserPostfix.UserDataMessage;
-    }
-
-    throw new Error('invalid type');
+    return MessageModel.typeToSetPostfix(this.type());
   }
 
   dataBytes(): Uint8Array {

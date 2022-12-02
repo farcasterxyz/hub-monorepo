@@ -75,6 +75,10 @@ export default class ContractEventModel {
     return this.event.fidArray() ?? new Uint8Array();
   }
 
+  from(): Uint8Array {
+    return this.event.fromArray() ?? new Uint8Array();
+  }
+
   to(): Uint8Array {
     return this.event.toArray() ?? new Uint8Array();
   }

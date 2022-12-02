@@ -36,7 +36,7 @@ import {
   validateTsHash,
   validateUserId,
 } from '~/storage/flatbuffers/validations';
-import { CastId, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
+import { CastId, MessageType, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
@@ -54,12 +54,29 @@ class Engine {
 
   constructor(db: RocksDB) {
     this.eventHandler = new StoreEventHandler();
+
     this._castStore = new CastStore(db, this.eventHandler);
     this._signerStore = new SignerStore(db, this.eventHandler);
     this._followStore = new FollowStore(db, this.eventHandler);
     this._reactionStore = new ReactionStore(db, this.eventHandler);
     this._verificationStore = new VerificationStore(db, this.eventHandler);
     this._userDataStore = new UserDataStore(db, this.eventHandler);
+
+    this.eventHandler.on('mergeMessage', this.handleMergeMessage);
+    this.eventHandler.on('mergeContractEvent', this.handleMergeContractEvent);
+  }
+
+  private handleMergeMessage(message: MessageModel): void {
+    if (message.type() === MessageType.SignerRemove) {
+      // TODO
+    }
+  }
+
+  private handleMergeContractEvent(event: ContractEventModel): void {
+    // TODO: delay revocation
+    if (event.type() === ContractEventType.IdRegistryTransfer) {
+      this._signerStore.revokeMessagesBySigner(event.from());
+    }
   }
 
   // TODO: add mergeMessages
