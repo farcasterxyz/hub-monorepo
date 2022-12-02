@@ -138,9 +138,22 @@ describe('getSignerRemovesByUser', () => {
 // TODO: write test cases for cyclical custody event transfers
 
 describe('mergeIdRegistryEvent', () => {
+  let mergedContractEvents: ContractEventModel[];
+
+  beforeAll(() => {
+    eventHandler.on('mergeContractEvent', (event: ContractEventModel) => {
+      mergedContractEvents.push(event);
+    });
+  });
+
+  beforeEach(() => {
+    mergedContractEvents = [];
+  });
+
   test('succeeds', async () => {
     await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toEqual(undefined);
     await expect(set.getCustodyEvent(fid)).resolves.toEqual(custody1Event);
+    expect(mergedContractEvents).toEqual([custody1Event]);
   });
 
   test('fails if events have the same blockNumber but different blockHashes', async () => {
@@ -152,6 +165,7 @@ describe('mergeIdRegistryEvent', () => {
     const blockHashConflictEvent = new ContractEventModel(idRegistryEvent);
     await set.mergeIdRegistryEvent(custody1Event);
     await expect(set.mergeIdRegistryEvent(blockHashConflictEvent)).rejects.toThrow(HubError);
+    expect(mergedContractEvents).toEqual([custody1Event]);
   });
 
   test('fails if events have the same blockNumber and logIndex but different transactionHashes', async () => {
@@ -163,6 +177,7 @@ describe('mergeIdRegistryEvent', () => {
     const txHashConflictEvent = new ContractEventModel(idRegistryEvent);
     await set.mergeIdRegistryEvent(custody1Event);
     await expect(set.mergeIdRegistryEvent(txHashConflictEvent)).rejects.toThrow(HubError);
+    expect(mergedContractEvents).toEqual([custody1Event]);
   });
 
   describe('overwrites existing event', () => {
@@ -177,6 +192,7 @@ describe('mergeIdRegistryEvent', () => {
     afterEach(async () => {
       await expect(set.mergeIdRegistryEvent(newEvent)).resolves.toEqual(undefined);
       await expect(set.getCustodyEvent(fid)).resolves.toEqual(newEvent);
+      expect(mergedContractEvents).toEqual([custody1Event, newEvent]);
       // SignerAdd should still be valid until messages signed by old custody address are revoked
       await expect(set.getSignerAdd(fid, signer)).resolves.toEqual(signerAdd);
     });
@@ -214,6 +230,7 @@ describe('mergeIdRegistryEvent', () => {
     afterEach(async () => {
       await expect(set.mergeIdRegistryEvent(newEvent)).resolves.toEqual(undefined);
       await expect(set.getCustodyEvent(fid)).resolves.toEqual(custody1Event);
+      expect(mergedContractEvents).toEqual([custody1Event]);
       await expect(set.getSignerAdd(fid, signer)).resolves.toEqual(signerAdd);
     });
 
@@ -243,6 +260,18 @@ describe('mergeIdRegistryEvent', () => {
 });
 
 describe('merge', () => {
+  let mergedMessages: MessageModel[];
+
+  beforeAll(() => {
+    eventHandler.on('mergeMessage', (message: MessageModel) => {
+      mergedMessages.push(message);
+    });
+  });
+
+  beforeEach(() => {
+    mergedMessages = [];
+  });
+
   const assertSignerExists = async (message: SignerAddModel | SignerRemoveModel) => {
     await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, message.tsHash())).resolves.toEqual(message);
   };
@@ -267,12 +296,14 @@ describe('merge', () => {
     const invalidData = await Factories.ReactionAddData.create({ fid: Array.from(fid) });
     const message = await Factories.Message.create({ data: Array.from(invalidData.bb?.bytes() ?? []) });
     await expect(set.merge(new MessageModel(message))).rejects.toThrow(HubError);
+    expect(mergedMessages).toEqual([]);
   });
 
   describe('SignerAdd', () => {
     test('succeeds', async () => {
       await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
       await assertSignerAddWins(signerAdd);
+      expect(mergedMessages).toEqual([signerAdd]);
     });
 
     test('succeeds once, even if merged twice', async () => {
@@ -280,6 +311,7 @@ describe('merge', () => {
       await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
 
       await assertSignerAddWins(signerAdd);
+      expect(mergedMessages).toEqual([signerAdd]);
     });
 
     describe('with a conflicting SignerAdd with different timestamps', () => {
@@ -307,6 +339,7 @@ describe('merge', () => {
 
         await assertSignerDoesNotExist(signerAdd);
         await assertSignerAddWins(signerAddLater);
+        expect(mergedMessages).toEqual([signerAdd, signerAddLater]);
       });
 
       test('no-ops with an earlier timestamp', async () => {
@@ -315,6 +348,7 @@ describe('merge', () => {
 
         await assertSignerDoesNotExist(signerAdd);
         await assertSignerAddWins(signerAddLater);
+        expect(mergedMessages).toEqual([signerAddLater]);
       });
     });
 
@@ -343,6 +377,7 @@ describe('merge', () => {
 
         await assertSignerDoesNotExist(signerAdd);
         await assertSignerAddWins(signerAddLater);
+        expect(mergedMessages).toEqual([signerAdd, signerAddLater]);
       });
 
       test('no-ops with an earlier hash', async () => {
@@ -351,6 +386,7 @@ describe('merge', () => {
 
         await assertSignerDoesNotExist(signerAdd);
         await assertSignerAddWins(signerAddLater);
+        expect(mergedMessages).toEqual([signerAddLater]);
       });
     });
 
@@ -375,6 +411,7 @@ describe('merge', () => {
 
         await assertSignerAddWins(signerAdd);
         await assertSignerDoesNotExist(signerRemoveEarlier);
+        expect(mergedMessages).toEqual([signerRemoveEarlier, signerAdd]);
       });
 
       test('no-ops with an earlier timestamp', async () => {
@@ -383,6 +420,7 @@ describe('merge', () => {
 
         await assertSignerRemoveWins(signerRemove);
         await assertSignerDoesNotExist(signerAdd);
+        expect(mergedMessages).toEqual([signerRemove]);
       });
     });
 
@@ -408,6 +446,7 @@ describe('merge', () => {
 
         await assertSignerRemoveWins(signerRemoveLater);
         await assertSignerDoesNotExist(signerAdd);
+        expect(mergedMessages).toEqual([signerRemoveLater]);
       });
 
       test('no-ops even if remove has an earlier hash', async () => {
@@ -431,6 +470,7 @@ describe('merge', () => {
 
         await assertSignerDoesNotExist(signerAdd);
         await assertSignerRemoveWins(signerRemoveEarlier);
+        expect(mergedMessages).toEqual([signerRemoveEarlier]);
       });
     });
   });
@@ -440,6 +480,7 @@ describe('merge', () => {
       await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
 
       await assertSignerRemoveWins(signerRemove);
+      expect(mergedMessages).toEqual([signerRemove]);
     });
 
     test('succeeds once, even if merged twice', async () => {
@@ -447,6 +488,7 @@ describe('merge', () => {
       await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
 
       await assertSignerRemoveWins(signerRemove);
+      expect(mergedMessages).toEqual([signerRemove]);
     });
 
     describe('with a conflicting SignerRemove with different timestamps', () => {
@@ -472,6 +514,7 @@ describe('merge', () => {
 
         await assertSignerDoesNotExist(signerRemove);
         await assertSignerRemoveWins(signerRemoveLater);
+        expect(mergedMessages).toEqual([signerRemove, signerRemoveLater]);
       });
 
       test('no-ops with an earlier timestamp', async () => {
@@ -480,6 +523,7 @@ describe('merge', () => {
 
         await assertSignerDoesNotExist(signerRemove);
         await assertSignerRemoveWins(signerRemoveLater);
+        expect(mergedMessages).toEqual([signerRemoveLater]);
       });
     });
 
@@ -508,6 +552,7 @@ describe('merge', () => {
 
         await assertSignerDoesNotExist(signerRemove);
         await assertSignerRemoveWins(signerRemoveLater);
+        expect(mergedMessages).toEqual([signerRemove, signerRemoveLater]);
       });
 
       test('no-ops with an earlier hash', async () => {
@@ -516,6 +561,7 @@ describe('merge', () => {
 
         await assertSignerDoesNotExist(signerRemove);
         await assertSignerRemoveWins(signerRemoveLater);
+        expect(mergedMessages).toEqual([signerRemoveLater]);
       });
     });
 
@@ -526,6 +572,7 @@ describe('merge', () => {
 
         await assertSignerRemoveWins(signerRemove);
         await assertSignerDoesNotExist(signerAdd);
+        expect(mergedMessages).toEqual([signerAdd, signerRemove]);
       });
 
       test('no-ops with an earlier timestamp', async () => {
@@ -549,6 +596,7 @@ describe('merge', () => {
 
         await assertSignerAddWins(signerAddLater);
         await assertSignerDoesNotExist(signerRemove);
+        expect(mergedMessages).toEqual([signerAddLater]);
       });
     });
 
@@ -573,6 +621,7 @@ describe('merge', () => {
 
         await assertSignerDoesNotExist(signerAddLater);
         await assertSignerRemoveWins(signerRemove);
+        expect(mergedMessages).toEqual([signerAddLater, signerRemove]);
       });
 
       test('succeeds with a later hash', async () => {
@@ -596,6 +645,7 @@ describe('merge', () => {
 
         await assertSignerDoesNotExist(signerAddEarlier);
         await assertSignerRemoveWins(signerRemove);
+        expect(mergedMessages).toEqual([signerAddEarlier, signerRemove]);
       });
     });
   });
@@ -695,6 +745,19 @@ describe('revokeMessagesBySigner', () => {
       const custody2Messages = await MessageModel.getAllBySigner(db, fid, custody2Address);
       expect(custody2Messages).toEqual([]);
       expect(revokedMessages).toEqual([signerAdd2]);
+    });
+  });
+
+  describe('without messages', () => {
+    beforeEach(async () => {
+      await set.mergeIdRegistryEvent(custody1Event);
+      await set.mergeIdRegistryEvent(custody2Transfer);
+    });
+
+    test('does not emit revokeMessage events', async () => {
+      await set.revokeMessagesBySigner(fid, custody1Address);
+      await set.revokeMessagesBySigner(fid, custody2Address);
+      expect(revokedMessages).toEqual([]);
     });
   });
 });

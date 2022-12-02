@@ -66,19 +66,6 @@ class Engine {
     this.eventHandler.on('mergeContractEvent', this.handleMergeContractEvent);
   }
 
-  private handleMergeMessage(message: MessageModel): void {
-    if (message.type() === MessageType.SignerRemove) {
-      // TODO
-    }
-  }
-
-  private handleMergeContractEvent(event: ContractEventModel): void {
-    // TODO: delay revocation
-    if (event.type() === ContractEventType.IdRegistryTransfer) {
-      this._signerStore.revokeMessagesBySigner(event.from());
-    }
-  }
-
   // TODO: add mergeMessages
 
   async mergeMessage(message: MessageModel): HubAsyncResult<void> {
@@ -466,6 +453,20 @@ class Engine {
 
     // 3. Check message body and envelope (will throw HubError if invalid)
     return validateMessage(message);
+  }
+
+  private handleMergeMessage(message: MessageModel): void {
+    // TODO: delay message revocation
+    if (message.type() === MessageType.SignerRemove) {
+      // TODO: revoke cast, follow, reaction, verification, user data messages
+    }
+  }
+
+  private handleMergeContractEvent(event: ContractEventModel): void {
+    // TODO: delay message revocation
+    if (event.type() === ContractEventType.IdRegistryTransfer) {
+      this._signerStore.revokeMessagesBySigner(event.fid(), event.from());
+    }
   }
 }
 
