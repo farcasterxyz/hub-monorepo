@@ -144,11 +144,16 @@ describe('mergeIdRegistryEvent', () => {
 
 describe('mergeMessage', () => {
   let mergedMessages: MessageModel[];
+  const handleMergeMessage = (message: MessageModel) => {
+    mergedMessages.push(message);
+  };
 
   beforeAll(() => {
-    engine.eventHandler.on('mergeMessage', (message: MessageModel) => {
-      mergedMessages.push(message);
-    });
+    engine.eventHandler.on('mergeMessage', handleMergeMessage);
+  });
+
+  afterAll(() => {
+    engine.eventHandler.off('mergeMessage', handleMergeMessage);
   });
 
   beforeEach(() => {
