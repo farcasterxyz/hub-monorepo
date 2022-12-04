@@ -17,7 +17,7 @@ let messages: Map<string, Map<string, GossipMessage[] | undefined>>;
 const connectAll = async (nodes: Node[]) => {
   const connectionResults = await Promise.all(
     nodes.slice(1).map((n) => {
-      return n.connect(nodes[0]);
+      return n.connect(nodes[0] as Node);
     })
   );
   connectionResults.forEach((r) => {
@@ -173,7 +173,7 @@ describe('gossip network', () => {
       };
 
       // publish via some random node
-      const randomNode = nodes[Math.floor(Math.random() * nodes.length)];
+      const randomNode = nodes[Math.floor(Math.random() * nodes.length)] as Node;
       expect(randomNode.publish(message)).resolves.toBeUndefined();
       // sleep 5 heartbeat ticks
       await sleep(5_000);

@@ -145,14 +145,14 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
         let gossipInfo = {};
         let rpcInfo = this.rpcAddress ? { rpcAddress: this.rpcAddress } : {};
 
-        const localAddrs = this.gossipAddresses;
+        const localAddrs = this.gossipAddresses[0];
         // publishes the public IP address of this Hub if public addressing is allowed
-        if (localAddrs.length > 0 && !this.options.localIpAddrsOnly) {
+        if (localAddrs !== undefined && !this.options.localIpAddrsOnly) {
           const ipAddr = await getPublicIp();
 
           ipAddr.match(
             (ipAddr) => {
-              const port = localAddrs[0].nodeAddress().port;
+              const port = localAddrs.nodeAddress().port;
               addressInfoFromParts(ipAddr, port).map((gossipAddress) => {
                 // populates the gossip address
                 gossipInfo = { gossipAddress };
@@ -314,8 +314,17 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     }
 
     // sorts addresses by Public IPs first
-    const addrs = peerInfo.addresses.sort((a, b) => publicAddressesFirst(a, b));
-    const nodeAddress = addrs[0].multiaddr.nodeAddress();
+    const addr = peerInfo.addresses.sort((a, b) => publicAddressesFirst(a, b))[0];
+    if (addr === undefined) {
+      log.info(
+        { function: 'getRPCClientForPeer', identity: this.identity, peer: peer },
+        `peer found but no address is available to request simple sync`
+      );
+
+      return;
+    }
+
+    const nodeAddress = addr.multiaddr.nodeAddress();
     return new RPCClient({
       address: nodeAddress.address,
       family: nodeAddress.family == 4 ? 'IPv4' : 'IPv6',

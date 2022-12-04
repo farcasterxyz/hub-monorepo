@@ -20,7 +20,7 @@ describe('TrieNode', () => {
     if (children.length > 1) {
       return node;
     }
-    return traverse(children[0][1]);
+    return traverse((children[0] as [string, TrieNode])[1]);
   };
 
   describe('insert', () => {
@@ -75,8 +75,9 @@ describe('TrieNode', () => {
       // Timestamp portion of the key is not collapsed, but the hash portion is
       for (let i = 0; i < TIMESTAMP_LENGTH; i++) {
         const children = Array.from(node.children);
+        const firstChild = children[0] as [string, TrieNode];
         expect(children.length).toEqual(1);
-        node = children[0][1];
+        node = firstChild[1];
       }
 
       expect(node.isLeaf).toEqual(true);
@@ -96,15 +97,17 @@ describe('TrieNode', () => {
       const splitNode = traverse(root);
       expect(splitNode.items).toEqual(2);
       const children = Array.from(splitNode.children);
+      const firstChild = children[0] as [string, TrieNode];
+      const secondChild = children[1] as [string, TrieNode];
       expect(children.length).toEqual(2);
       // hash1 node
-      expect(children[0][0]).toEqual('a');
-      expect(children[0][1].isLeaf).toBeTruthy();
-      expect(children[0][1].value).toEqual(id1.hashString);
+      expect(firstChild[0]).toEqual('a');
+      expect(firstChild[1].isLeaf).toBeTruthy();
+      expect(firstChild[1].value).toEqual(id1.hashString);
       // hash2 node
-      expect(children[1][0]).toEqual('b');
-      expect(children[1][1].isLeaf).toBeTruthy();
-      expect(children[1][1].value).toEqual(id2.hashString);
+      expect(secondChild[0]).toEqual('b');
+      expect(secondChild[1].isLeaf).toBeTruthy();
+      expect(secondChild[1].value).toEqual(id2.hashString);
     });
   });
 

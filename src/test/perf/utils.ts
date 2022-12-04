@@ -2,7 +2,7 @@ import { JSONRPCError } from 'jayson/promise';
 import { err, ok, Result } from 'neverthrow';
 import ProgressBar from 'progress';
 import { RPCClient } from '~/network/rpc';
-import { IdRegistryEvent, Message } from '~/types';
+import { Body, IdRegistryEvent, Message, MessageType } from '~/types';
 import { logger } from '~/utils/logger';
 
 /** Submits a list of messages to the given RPC client */
@@ -43,8 +43,12 @@ export const shuffleMessages = (messages: Message[]) => {
   for (let i = shuffledMessages.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     // safe to disable because inputs are controlled and known
-    // eslint-disable-next-line security/detect-object-injection
-    [shuffledMessages[i], shuffledMessages[j]] = [shuffledMessages[j], shuffledMessages[i]];
+    /* eslint-disable security/detect-object-injection */
+    [shuffledMessages[i], shuffledMessages[j]] = [
+      shuffledMessages[j] as Message<MessageType, Body>,
+      shuffledMessages[i] as Message<MessageType, Body>,
+    ];
+    /* eslint-enable security/detect-object-injection */
   }
   return shuffledMessages;
 };
@@ -67,13 +71,13 @@ const getCounts = (results: Result<any, any>[]): SubmitCounts => {
   const counts = results
     .map((r) => [Number(r.isOk()), Number(r.isErr())])
     .reduce((results, result) => {
-      results[0] += result[0];
-      results[1] += result[1];
+      results[0] += result[0] as number;
+      results[1] += result[1] as number;
       return results;
     });
   return {
-    success: counts[0],
-    fail: counts[1],
+    success: counts[0] as number,
+    fail: counts[1] as number,
   };
 };
 

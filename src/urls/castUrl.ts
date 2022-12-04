@@ -71,6 +71,9 @@ export class CastHash {
       params = maybeParsed.value;
     } else {
       const castHashSpec = CastHash.spec.parameters.values[1];
+      if (castHashSpec === undefined) {
+        throw new Error(`URL missing cast hash`);
+      }
       if (!RegExp(castHashSpec.regex).test(params.value)) {
         throw new Error(`Invalid ${castHashSpec.name} provided: ${params.value}`);
       }

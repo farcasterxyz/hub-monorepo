@@ -27,11 +27,22 @@ export class ChainAccountURL extends ChainURL {
 
       // caip-js alone is not enough to catch invalid URLs
       // e.g. `eip155:1:0xab16a96d359ec26a11e2c2b3d8f8b8942d5bfcdb`
-      const regexBody = [
-        AccountId.spec.parameters.values[0].regex, // namespace (e.g. `eip155`)
-        AccountId.spec.parameters.values[1].regex, // reference (e.g. `1`)
-        AccountId.spec.parameters.values[2].regex, // address (e.g. `0xab16a96d359ec26a11e2c2b3d8f8b8942d5bfcdb`)
-      ].join(AccountId.spec.parameters.delimiter);
+      const namespaceParam = AccountId.spec.parameters.values[0]; // namespace (e.g. `eip155`)
+      if (namespaceParam === undefined) {
+        return err(new BadRequestError(`ChainAccountURL.parse: missing 'namespace' parameter`));
+      }
+      const referenceParam = AccountId.spec.parameters.values[1]; // reference (e.g. `1`)
+      if (referenceParam === undefined) {
+        return err(new BadRequestError(`ChainAccountURL.parse: missing 'reference' parameter`));
+      }
+      const addressParam = AccountId.spec.parameters.values[2]; // address (e.g. `0xab16a96d359ec26a11e2c2b3d8f8b8942d5bfcdb`)
+      if (addressParam === undefined) {
+        return err(new BadRequestError(`ChainAccountURL.parse: missing 'address' parameter`));
+      }
+
+      const regexBody = [namespaceParam.regex, referenceParam.regex, addressParam.regex].join(
+        AccountId.spec.parameters.delimiter
+      );
       const referenceRegex = new RegExp('^' + regexBody + '$');
       if (!referenceRegex.test(remainder)) {
         return err(new BadRequestError(`ChainAccountURL.parse: invalid AccountID`));

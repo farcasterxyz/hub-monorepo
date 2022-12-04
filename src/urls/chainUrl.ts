@@ -24,8 +24,13 @@ export class ChainURL extends BaseChainURL {
       const chainIdParams = ChainId.parse(remainder);
       const chainId = new ChainId(chainIdParams);
 
+      const chainIdParam = ChainId.spec.parameters.values[1];
+      if (chainIdParam === undefined) {
+        return err(new BadRequestError('ChainURL.parse: missing chain ID'));
+      }
+
       // check for extra invalid data before or after the chain ID
-      const referenceRegex = new RegExp('^' + ChainId.spec.parameters.values[1].regex + '$');
+      const referenceRegex = new RegExp('^' + chainIdParam.regex + '$');
       if (!referenceRegex.test(chainId.reference)) {
         return err(new BadRequestError(`ChainURL.parse: invalid extra data after ChainId: '${remainder}`));
       }

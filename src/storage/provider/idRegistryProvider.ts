@@ -47,7 +47,7 @@ class IdRegistryProvider extends TypedEmitter<IdRegistryEvents> {
   }
 
   get minBlockNumber() {
-    return this.blocksQueue[0];
+    return this.blocksQueue[0] as number;
   }
 
   /**

@@ -8,6 +8,7 @@ import { SyncId } from '~/network/sync/syncId';
 import { anyString, instance, mock, when } from 'ts-mockito';
 import { RPCClient } from '~/network/rpc';
 import { ok } from 'neverthrow';
+import { CastShort } from '~/types';
 
 const testDb = jestRocksDB(`engine.syncEngine.test`);
 
@@ -144,8 +145,8 @@ describe('SyncEngine', () => {
     // There might be more messages related to user creation, but it's sufficient to check for casts
     expect(syncEngine.trie.items).toBeGreaterThanOrEqual(3);
     expect(syncEngine.trie.rootHash).toBeTruthy();
-    expect(syncEngine.trie.get(new SyncId(messages[0]))).toBeTruthy();
-    expect(syncEngine.trie.get(new SyncId(messages[1]))).toBeTruthy();
-    expect(syncEngine.trie.get(new SyncId(messages[2]))).toBeTruthy();
+    expect(syncEngine.trie.get(new SyncId(messages[0] as CastShort))).toBeTruthy();
+    expect(syncEngine.trie.get(new SyncId(messages[1] as CastShort))).toBeTruthy();
+    expect(syncEngine.trie.get(new SyncId(messages[2] as CastShort))).toBeTruthy();
   });
 });

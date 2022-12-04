@@ -53,7 +53,7 @@ const rpcClients = rpcMultiAddrs.map((addr) => {
 // sets up hubs
 const userInfos = await setupNetwork(rpcClients, { users: cliOptions['users'], mode: SetupMode.RANDOM_SINGLE });
 // creates scenario data
-const scenario = await makeBasicScenario(rpcClients[0], userInfos);
+const scenario = await makeBasicScenario(rpcClients[0] as RPCClient, userInfos);
 // submits the scenario for playback
 await playback(scenario, { order: PlaybackOrder.SEQ });
 // verifies network sync

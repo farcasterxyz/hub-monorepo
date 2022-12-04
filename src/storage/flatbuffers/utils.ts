@@ -26,8 +26,8 @@ export const bytesCompare = (a: Uint8Array, b: Uint8Array): number => {
 export const bytesIncrement = (bytes: Uint8Array): Uint8Array => {
   let i = bytes.length - 1;
   while (i >= 0) {
-    if (bytes[i] < 255) {
-      bytes[i] = bytes[i] + 1;
+    if ((bytes[i] as number) < 255) {
+      bytes[i] = (bytes[i] as number) + 1;
       return bytes;
     } else {
       bytes[i] = 0;
@@ -40,8 +40,8 @@ export const bytesIncrement = (bytes: Uint8Array): Uint8Array => {
 export const bytesDecrement = (bytes: Uint8Array): Uint8Array => {
   let i = bytes.length - 1;
   while (i >= 0) {
-    if (bytes[i] > 0) {
-      bytes[i] = bytes[i] - 1;
+    if ((bytes[i] as number) > 0) {
+      bytes[i] = (bytes[i] as number) - 1;
       return bytes;
     } else {
       if (i === 0) {
