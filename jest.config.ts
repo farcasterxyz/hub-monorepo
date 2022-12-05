@@ -11,7 +11,7 @@ const jestConfig: JestConfigWithTsJest = {
   testPathIgnorePatterns: ['<rootDir>/build', '<rootDir>/node_modules', '<rootDir>/src/utils/generated/'],
   // transform ts files with ts-jest and enable ESM
   transform: {
-    '^.+\\.[jt]sx?$': [
+    '^.+\\.tsx?$': [
       'ts-jest',
       {
         tsconfig: 'tsconfig.json',
