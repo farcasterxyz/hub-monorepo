@@ -4,11 +4,12 @@ import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
 import Factories from '~/test/factories/flatbuffer';
 import { FarcasterNetwork } from '~/utils/generated/message_generated';
 import {
-  signMessageData,
+  signMessageHash,
   signVerificationEthAddressClaim,
-  verifyMessageDataSignature,
+  verifyMessageHashSignature,
   verifyVerificationEthAddressClaimSignature,
 } from '~/utils/eip712';
+import { blake3 } from '@noble/hashes/blake3';
 
 const wallet = Wallet.createRandom();
 
@@ -60,13 +61,14 @@ describe('signVerificationEthAddressClaim', () => {
   });
 });
 
-describe('signMessageData', () => {
+describe('signMessageHash', () => {
   test('succeeds', async () => {
     const messageData = await Factories.SignerAddData.create();
     const bytes = messageData.bb?.bytes() ?? new Uint8Array();
-    const signature = await signMessageData(bytes, wallet);
+    const hash = blake3(bytes, { dkLen: 16 });
+    const signature = await signMessageHash(hash, wallet);
     expect(signature).toBeTruthy();
-    const recoveredAddress = verifyMessageDataSignature(bytes, signature);
+    const recoveredAddress = verifyMessageHashSignature(hash, signature);
     expect(recoveredAddress).toEqual(utils.arrayify(wallet.address));
   });
 });

@@ -40,7 +40,7 @@ import { generateEd25519KeyPair } from '~/utils/crypto';
 import * as ed from '@noble/ed25519';
 import { arrayify } from 'ethers/lib/utils';
 import { ethers, Wallet } from 'ethers';
-import { signMessageData, signVerificationEthAddressClaim } from '~/utils/eip712';
+import { signMessageHash, signVerificationEthAddressClaim } from '~/utils/eip712';
 import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
 import { ContractEvent, ContractEventT, ContractEventType } from '~/utils/generated/contract_event_generated';
 import { toFarcasterTime } from '~/storage/flatbuffers/utils';
@@ -371,15 +371,15 @@ const MessageFactory = Factory.define<MessageT, { signer?: KeyPair; wallet?: Wal
       if (params.signature.length === 0) {
         if (transientParams.signer) {
           const signer = transientParams.signer;
-          params.signature = Array.from(await ed.sign(new Uint8Array(params.data), signer.privateKey));
+          params.signature = Array.from(await ed.sign(new Uint8Array(params.hash), signer.privateKey));
           params.signer = Array.from(signer.publicKey);
         } else if (transientParams.wallet) {
-          params.signature = Array.from(await signMessageData(new Uint8Array(params.data), transientParams.wallet));
+          params.signature = Array.from(await signMessageHash(new Uint8Array(params.hash), transientParams.wallet));
           params.signatureScheme = SignatureScheme.Eip712;
           params.signer = Array.from(arrayify(transientParams.wallet.address));
         } else {
           const signer = await generateEd25519KeyPair();
-          params.signature = Array.from(await ed.sign(new Uint8Array(params.data), signer.privateKey));
+          params.signature = Array.from(await ed.sign(new Uint8Array(params.hash), signer.privateKey));
           params.signer = Array.from(signer.publicKey);
         }
       }
