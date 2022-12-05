@@ -1,6 +1,10 @@
 import grpc from '@grpc/grpc-js';
 import Engine from '~/storage/engine/flatbuffers';
-import { MessagesResponse } from '~/utils/generated/rpc_generated';
+import {
+  MessagesResponse,
+  GetAllMessagesByFidRequest,
+  GetAllMessagesByFidRequestT,
+} from '~/utils/generated/rpc_generated';
 import { defaultMethod, toMessagesResponse, toServiceError } from '~/network/rpc/flatbuffers/server';
 import { toByteBuffer } from '~/storage/flatbuffers/utils';
 import { HubError } from '~/utils/hubErrors';
@@ -18,10 +22,6 @@ import {
   VerificationAddEthAddressModel,
   VerificationRemoveModel,
 } from '~/storage/flatbuffers/types';
-import {
-  GetAllMessagesByFidRequest,
-  GetAllMessagesByFidRequestT,
-} from '~/utils/generated/farcaster/get-all-messages-by-fid-request';
 
 const defaultSyncMethod = () => {
   return {

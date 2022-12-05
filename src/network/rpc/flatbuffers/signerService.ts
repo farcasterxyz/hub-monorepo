@@ -5,6 +5,12 @@ import {
   GetSignersByFidRequestT,
   GetCustodyEventRequestT,
   GetFidsRequest,
+  GetSignerRequest,
+  GetSignerRequestT,
+  GetSignersByFidRequest,
+  GetCustodyEventRequest,
+  FidsResponse,
+  FidsResponseT,
 } from '~/utils/generated/rpc_generated';
 import { defaultMethod, toMessagesResponse, toServiceError } from '~/network/rpc/flatbuffers/server';
 import { toByteBuffer } from '~/storage/flatbuffers/utils';
@@ -12,12 +18,8 @@ import { Message, UserIdT } from '~/utils/generated/message_generated';
 import { HubError } from '~/utils/hubErrors';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { SignerAddModel } from '~/storage/flatbuffers/types';
-import { GetSignerRequest, GetSignerRequestT } from '~/utils/generated/farcaster/get-signer-request';
-import { GetSignersByFidRequest } from '~/utils/generated/farcaster/get-signers-by-fid-request';
-import { GetCustodyEventRequest } from '~/utils/generated/farcaster/get-custody-event-request';
 import { ContractEvent } from '~/utils/generated/contract_event_generated';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
-import { FidsResponse, FidsResponseT } from '~/utils/generated/farcaster/fids-response';
 
 export const signerServiceMethods = () => {
   return {

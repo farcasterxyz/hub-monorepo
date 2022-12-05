@@ -13,11 +13,11 @@ import {
   HashScheme,
   SignatureScheme,
   FarcasterNetwork,
+  VerificationAddEthAddressBody,
+  VerificationRemoveBody,
 } from '~/utils/generated/message_generated';
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { RootPrefix, UserMessagePostfix, UserPostfix } from '~/storage/flatbuffers/types';
-import { VerificationAddEthAddressBody } from '~/utils/generated/farcaster/verification-add-eth-address-body';
-import { VerificationRemoveBody } from '~/utils/generated/farcaster/verification-remove-body';
 
 /** Used when index keys are sufficiently descriptive */
 export const TRUE_VALUE = Buffer.from([1]);
