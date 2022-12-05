@@ -3358,10 +3358,10 @@ flat-cache@^3.0.4:
     flatted "^3.1.0"
     rimraf "^3.0.2"
 
-flatbuffers@^2.0.7:
-  version "2.0.7"
-  resolved "https://registry.npmjs.org/flatbuffers/-/flatbuffers-2.0.7.tgz#3e8e2c46930820747578158cdf11c8b80f8abf89"
-  integrity sha512-5JulPk3a7zTdb2p2ElkAT8hmw4udmSL8GoRKkDa/y9+qFwKbFrRgAbF4VgSt2oIGTEpBqz9CmsvwCstwJ5D9kg==
+flatbuffers@^22.11.23:
+  version "22.11.23"
+  resolved "https://registry.npmjs.org/flatbuffers/-/flatbuffers-22.11.23.tgz#f80dc67944c718f6de2da6aad7ba34901fe8614b"
+  integrity sha512-aBOu8GjUWP3FaAC0t17lVFvNWYBEVIF/ia25Mx77BJJtJRbiyYmYQZjZV0bFoBvLBLYQ7ivnFO4ZIvgxhX1VKQ==
 
 flatted@^3.1.0:
   version "3.2.7"

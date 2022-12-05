@@ -29,20 +29,19 @@ import {
   UserDataType,
   UserId,
   UserIdT,
+  VerificationAddEthAddressBody,
+  VerificationAddEthAddressBodyT,
+  VerificationRemoveBody,
+  VerificationRemoveBodyT,
 } from '~/utils/generated/message_generated';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { blake3 } from '@noble/hashes/blake3';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import * as ed from '@noble/ed25519';
 import { arrayify } from 'ethers/lib/utils';
-import {
-  VerificationAddEthAddressBody,
-  VerificationAddEthAddressBodyT,
-} from '~/utils/generated/farcaster/verification-add-eth-address-body';
 import { ethers, Wallet } from 'ethers';
 import { signMessageData, signVerificationEthAddressClaim } from '~/utils/eip712';
 import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
-import { VerificationRemoveBody, VerificationRemoveBodyT } from '~/utils/generated/farcaster/verification-remove-body';
 import { ContractEvent, ContractEventT, ContractEventType } from '~/utils/generated/contract_event_generated';
 import { toFarcasterTime } from '~/storage/flatbuffers/utils';
 import MessageModel from '~/storage/flatbuffers/messageModel';

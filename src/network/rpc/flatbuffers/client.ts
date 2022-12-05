@@ -15,7 +15,13 @@ import {
   VerificationRemoveModel,
 } from '~/storage/flatbuffers/types';
 import { CastId, Message, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
-import { EventResponse, GetFidsRequest, MessagesResponse, SubscribeRequest } from '~/utils/generated/rpc_generated';
+import {
+  EventResponse,
+  GetFidsRequest,
+  MessagesResponse,
+  SubscribeRequest,
+  FidsResponse,
+} from '~/utils/generated/rpc_generated';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import { castServiceRequests, castServiceMethods } from '~/network/rpc/flatbuffers/castService';
 import { fromServiceError } from '~/network/rpc/flatbuffers/server';
@@ -27,7 +33,6 @@ import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { ContractEvent } from '~/utils/generated/contract_event_generated';
 import { signerServiceMethods, signerServiceRequests } from '~/network/rpc/flatbuffers/signerService';
 import { userDataServiceMethods, userDataServiceRequests } from '~/network/rpc/flatbuffers/userDataService';
-import { FidsResponse } from '~/utils/generated/farcaster/fids-response';
 import { createSyncServiceRequest, syncServiceMethods } from '~/network/rpc/flatbuffers/syncService';
 import { eventServiceMethods } from '~/network/rpc/flatbuffers/eventService';
 
