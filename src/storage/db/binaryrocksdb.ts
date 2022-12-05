@@ -109,7 +109,7 @@ class RocksDB {
 
   clear(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this._db.clear((e?: Error) => {
+      this._db['clear']((e?: Error) => {
         e ? reject(parseError(e)) : resolve(undefined);
       });
     });
