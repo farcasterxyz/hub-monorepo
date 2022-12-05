@@ -12,7 +12,7 @@ import {
   VerificationEthAddressClaim,
   VerificationRemoveModel,
 } from '~/storage/flatbuffers/types';
-import { verifyMessageDataSignature, verifyVerificationEthAddressClaimSignature } from '~/utils/eip712';
+import { verifyMessageHashSignature, verifyVerificationEthAddressClaimSignature } from '~/utils/eip712';
 import {
   CastId,
   HashScheme,
@@ -63,13 +63,13 @@ export const validateMessage = async (message: MessageModel): HubAsyncResult<Mes
 
   // 2. Check that the signatureScheme and signature are valid
   if (message.signatureScheme() === SignatureScheme.Eip712 && EIP712_MESSAGE_TYPES.includes(message.type())) {
-    const verifiedSigner = verifyMessageDataSignature(message.dataBytes(), message.signature());
+    const verifiedSigner = verifyMessageHashSignature(message.hash(), message.signature());
     if (bytesCompare(verifiedSigner, message.signer()) !== 0) {
       return err(new HubError('bad_request.validation_failure', 'signature does not match signer'));
     }
   } else if (message.signatureScheme() === SignatureScheme.Ed25519 && !EIP712_MESSAGE_TYPES.includes(message.type())) {
     const signatureIsValid = await ResultAsync.fromPromise(
-      ed.verify(message.signature(), message.dataBytes(), message.signer()),
+      ed.verify(message.signature(), message.hash(), message.signer()),
       () => undefined
     );
     if (signatureIsValid.isErr() || (signatureIsValid.isOk() && !signatureIsValid.value)) {

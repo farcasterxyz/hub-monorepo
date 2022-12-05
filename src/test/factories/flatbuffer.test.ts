@@ -69,7 +69,7 @@ describe('MessageFactory', () => {
   test('generates signature', async () => {
     const verifySignature = ed.verify(
       message.signatureArray() || new Uint8Array(),
-      data.bb?.bytes() || new Uint8Array(),
+      message.hashArray() || new Uint8Array(),
       message.signerArray() || new Uint8Array()
     );
     expect(verifySignature).resolves.toEqual(true);
