@@ -1,12 +1,21 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
 import { ResultAsync, ok } from 'neverthrow';
-import { FollowAddModel, FollowRemoveModel, RootPrefix, UserPostfix } from '~/storage/flatbuffers/types';
+import {
+  FollowAddModel,
+  FollowRemoveModel,
+  RootPrefix,
+  StorePruneOptions,
+  UserPostfix,
+} from '~/storage/flatbuffers/types';
 import { isFollowAdd, isFollowRemove } from '~/storage/flatbuffers/typeguards';
-import { bytesCompare } from '~/storage/flatbuffers/utils';
+import { bytesCompare, getFarcasterTime } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
+
+const PRUNE_SIZE_LIMIT_DEFAULT = 5_000;
+const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
 
 /**
  * Follow Store persists Follow Messages in RocksDB using a two-phase CRDT set to guarantee
@@ -31,10 +40,14 @@ import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 class FollowStore {
   private _db: RocksDB;
   private _eventHandler: StoreEventHandler;
+  private _pruneSizeLimit: number;
+  private _pruneTimeLimit: number;
 
-  constructor(db: RocksDB, eventHandler: StoreEventHandler) {
+  constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
     this._db = db;
     this._eventHandler = eventHandler;
+    this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
+    this._pruneTimeLimit = options.pruneTimeLimit ?? PRUNE_TIME_LIMIT_DEFAULT;
   }
 
   /**
@@ -149,7 +162,7 @@ class FollowStore {
     // Get all FollowAdd messages signed by signer
     const followAdds = await MessageModel.getAllBySigner<FollowAddModel>(this._db, fid, signer, MessageType.FollowAdd);
 
-    // Get all CastRemove messages signed by signer
+    // Get all FollowRemove messages signed by signer
     const followRemoves = await MessageModel.getAllBySigner<FollowRemoveModel>(
       this._db,
       fid,
@@ -175,6 +188,67 @@ class FollowStore {
     // Emit a revokeMessage event for each message
     for (const message of [...followAdds, ...followRemoves]) {
       this._eventHandler.emit('revokeMessage', message);
+    }
+
+    return ok(undefined);
+  }
+
+  async pruneMessages(fid: Uint8Array): HubAsyncResult<void> {
+    // Count number of FollowAdd and FollowRemove messages for this fid
+    // TODO: persist this count to avoid having to retrieve it with each call
+    const prefix = MessageModel.primaryKey(fid, UserPostfix.FollowMessage);
+    let count = 0;
+    for await (const [,] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
+      count = count + 1;
+    }
+
+    // Calculate the number of messages that need to be pruned, based on the store's size limit
+    let sizeToPrune = count - this._pruneSizeLimit;
+
+    // Calculate the timestamp cut-off to prune
+    const timestampToPrune = getFarcasterTime() - this._pruneTimeLimit;
+
+    // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
+    const messageToPrune: (FollowAddModel | FollowRemoveModel)[] = [];
+
+    // Create a rocksdb transaction to include all the mutations
+    let pruneTsx = this._db.transaction();
+
+    // Create a rocksdb iterator for all messages with the given prefix
+    const pruneIterator = MessageModel.getPruneIterator(this._db, fid, UserPostfix.FollowMessage);
+
+    const getNextResult = () => ResultAsync.fromPromise(MessageModel.getNextToPrune(pruneIterator), () => undefined);
+
+    // For each message in order, prune it if the store is over the size limit or the message was signed
+    // before the timestamp cut-off
+    let nextMessage = await getNextResult();
+    while (nextMessage.isOk() && (sizeToPrune > 0 || nextMessage.value.timestamp() < timestampToPrune)) {
+      const message = nextMessage.value;
+
+      // Add a delete operation to the transaction depending on the message type
+      if (isFollowAdd(message)) {
+        pruneTsx = this.deleteFollowAddTransaction(pruneTsx, message);
+      } else if (isFollowRemove(message)) {
+        pruneTsx = this.deleteFollowRemoveTransaction(pruneTsx, message);
+      } else {
+        throw new HubError('unknown', 'invalid message type');
+      }
+
+      // Store the message in order to emit the pruneMessage event later, decrement the number of messages
+      // yet to prune, and try to get the next message from the iterator
+      messageToPrune.push(message);
+      sizeToPrune = Math.max(0, sizeToPrune - 1);
+      nextMessage = await getNextResult();
+    }
+
+    if (messageToPrune.length > 0) {
+      // Commit the transaction to rocksdb
+      await this._db.commit(pruneTsx);
+
+      // For each of the pruned messages, emit a pruneMessage event
+      for (const message of messageToPrune) {
+        this._eventHandler.emit('pruneMessage', message);
+      }
     }
 
     return ok(undefined);

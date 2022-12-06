@@ -1,8 +1,7 @@
-import AbstractRocksDB from 'rocksdb';
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
 import { ResultAsync, ok } from 'neverthrow';
-import { CastAddModel, CastRemoveModel, RootPrefix, UserPostfix } from '~/storage/flatbuffers/types';
+import { CastAddModel, CastRemoveModel, RootPrefix, StorePruneOptions, UserPostfix } from '~/storage/flatbuffers/types';
 import { isCastAdd, isCastRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare, getFarcasterTime } from '~/storage/flatbuffers/utils';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
@@ -11,11 +10,6 @@ import { MessageType } from '~/utils/generated/message_generated';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 10_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 365; // 1 year
-
-export type CastStoreOptions = {
-  pruneSizeLimit?: number; // Max number of messages per fid
-  pruneTimeLimit?: number; // Max age (in seconds) of any message in the store
-};
 
 /**
  * CastStore persists Cast messages in RocksDB using a two-phase CRDT set to guarantee eventual
@@ -51,7 +45,7 @@ class CastStore {
   private _pruneSizeLimit: number;
   private _pruneTimeLimit: number;
 
-  constructor(db: RocksDB, eventHandler: StoreEventHandler, options: CastStoreOptions = {}) {
+  constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
     this._db = db;
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;

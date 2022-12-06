@@ -19,6 +19,7 @@ import {
 } from '~/utils/generated/message_generated';
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { RootPrefix, UserMessagePostfix, UserPostfix } from '~/storage/flatbuffers/types';
+import { HubError } from '~/utils/hubErrors';
 
 /** Used when index keys are sufficiently descriptive */
 export const TRUE_VALUE = Buffer.from([1]);
@@ -35,8 +36,12 @@ export default class MessageModel {
   public data: MessageData;
 
   constructor(message: Message) {
+    const data = MessageData.getRootAsMessageData(new ByteBuffer(message.dataArray() ?? new Uint8Array()));
+    if (!data.type()) {
+      throw new HubError('bad_request.invalid_param', 'message type is missing');
+    }
     this.message = message;
-    this.data = MessageData.getRootAsMessageData(new ByteBuffer(message.dataArray() ?? new Uint8Array()));
+    this.data = data;
   }
 
   static from(bytes: Uint8Array) {
@@ -187,7 +192,7 @@ export default class MessageModel {
   static async getNextToPrune(iterator: AbstractRocksDB.Iterator): Promise<MessageModel> {
     return new Promise((resolve, reject) => {
       iterator.next((err: Error | undefined, _: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
-        if (err) {
+        if (err || !value) {
           reject(err);
         } else {
           resolve(MessageModel.from(new Uint8Array(value as Buffer)));
@@ -250,7 +255,7 @@ export default class MessageModel {
   }
 
   type(): MessageType {
-    return this.data.type();
+    return this.data.type() as MessageType;
   }
 
   fid(): Uint8Array {
