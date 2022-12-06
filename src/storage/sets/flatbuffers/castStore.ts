@@ -4,7 +4,7 @@ import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/messa
 import { ResultAsync, ok } from 'neverthrow';
 import { CastAddModel, CastRemoveModel, RootPrefix, UserPostfix } from '~/storage/flatbuffers/types';
 import { isCastAdd, isCastRemove } from '~/storage/flatbuffers/typeguards';
-import { bytesCompare } from '~/storage/flatbuffers/utils';
+import { bytesCompare, getFarcasterTime } from '~/storage/flatbuffers/utils';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 import { MessageType } from '~/utils/generated/message_generated';
@@ -248,7 +248,7 @@ class CastStore {
 
   async pruneMessages(fid: Uint8Array): HubAsyncResult<void> {
     // Count number of CastAdd and CastRemove messages for this fid
-    // TODO: persist this count to avoid having to retrieve it live
+    // TODO: persist this count to avoid having to retrieve it with each call
     const prefix = MessageModel.primaryKey(fid, UserPostfix.CastMessage);
     let count = 0;
     for await (const [,] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
@@ -256,56 +256,52 @@ class CastStore {
     }
 
     // Calculate the number of messages that need to be pruned, based on the store's size limit
-    let toPrune = count - this._pruneSizeLimit;
+    let sizeToPrune = count - this._pruneSizeLimit;
 
-    // If there are no messages that need to be pruned, no-op
-    if (toPrune <= 0) {
-      return ok(undefined);
-    }
-
-    // Create a rocksdb iterator starting at the same prefix used to count the messages
-    // Note: because our primary keys order messages by timestamp and hash, the first message in the iterator is the oldest
-    const pruneIterator = this._db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true });
-
-    // Promisify the rocksdb next method
-    // TODO: refactor this method out of the CastStore when we implement pruneMessages in other stores
-    const getNextMessage = (iterator: AbstractRocksDB.Iterator): Promise<MessageModel> => {
-      return new Promise((resolve, reject) => {
-        iterator.next((err: Error | undefined, _: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(MessageModel.from(new Uint8Array(value as Buffer)));
-          }
-        });
-      });
-    };
+    // Calculate the timestamp cut-off to prune
+    const timestampToPrune = getFarcasterTime() - this._pruneTimeLimit;
 
     // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
-    const pruneMessages: (CastAddModel | CastRemoveModel)[] = [];
+    const messageToPrune: (CastAddModel | CastRemoveModel)[] = [];
 
     // Create a rocksdb transaction to include all the mutations
     let pruneTsx = this._db.transaction();
 
-    // Loop until we do not have to prune any more messages, adding delete operations for the retrieved
-    // messages to the rocksdb transaction
-    for (toPrune; toPrune > 0; toPrune--) {
-      const message = await getNextMessage(pruneIterator);
+    // Create a rocksdb iterator for all messages with the given prefix
+    const pruneIterator = MessageModel.getPruneIterator(this._db, fid, UserPostfix.CastMessage);
+
+    const getNextResult = () => ResultAsync.fromPromise(MessageModel.getNextToPrune(pruneIterator), () => undefined);
+
+    // For each message in order, prune it if the store is over the size limit or the message was signed
+    // before the timestamp cut-off
+    let nextMessage = await getNextResult();
+    while (nextMessage.isOk() && (sizeToPrune > 0 || nextMessage.value.timestamp() < timestampToPrune)) {
+      const message = nextMessage.value;
+
+      // Add a delete operation to the transaction depending on the message type
       if (isCastAdd(message)) {
         pruneTsx = this.deleteCastAddTransaction(pruneTsx, message);
-        pruneMessages.push(message);
       } else if (isCastRemove(message)) {
         pruneTsx = this.deleteCastRemoveTransaction(pruneTsx, message);
-        pruneMessages.push(message);
+      } else {
+        throw new HubError('unknown', 'invalid message type');
       }
+
+      // Store the message in order to emit the pruneMessage event later, decrement the number of messages
+      // yet to prune, and try to get the next message from the iterator
+      messageToPrune.push(message);
+      sizeToPrune = Math.max(0, sizeToPrune - 1);
+      nextMessage = await getNextResult();
     }
 
-    // Commit the transaction to rocksdb
-    await this._db.commit(pruneTsx);
+    if (messageToPrune.length > 0) {
+      // Commit the transaction to rocksdb
+      await this._db.commit(pruneTsx);
 
-    // For each of the pruned messages, emit a pruneMessage event
-    for (const message of pruneMessages) {
-      this._eventHandler.emit('pruneMessage', message);
+      // For each of the pruned messages, emit a pruneMessage event
+      for (const message of messageToPrune) {
+        this._eventHandler.emit('pruneMessage', message);
+      }
     }
 
     return ok(undefined);

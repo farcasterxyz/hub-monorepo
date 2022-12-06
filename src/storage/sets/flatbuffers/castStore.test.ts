@@ -4,7 +4,7 @@ import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { CastAddModel, CastRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
 import { HubError } from '~/utils/hubErrors';
-import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
+import { bytesDecrement, bytesIncrement, getFarcasterTime } from '~/storage/flatbuffers/utils';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 const db = jestBinaryRocksDB('flatbuffers.castStore.test');
@@ -447,7 +447,6 @@ describe('merge', () => {
 
 describe('pruneMessages', () => {
   let prunedMessages: MessageModel[];
-  const prunedStore = new CastStore(db, eventHandler, { pruneSizeLimit: 3 });
   const pruneMessageListener = (message: MessageModel) => {
     prunedMessages.push(message);
   };
@@ -464,16 +463,20 @@ describe('pruneMessages', () => {
     eventHandler.off('pruneMessage', pruneMessageListener);
   });
 
+  let add1: CastAddModel;
   let add2: CastAddModel;
   let add3: CastAddModel;
   let add4: CastAddModel;
   let add5: CastAddModel;
+  let addOld1: CastAddModel;
+  let addOld2: CastAddModel;
 
   let remove1: CastRemoveModel;
   let remove2: CastRemoveModel;
   let remove3: CastRemoveModel;
   let remove4: CastRemoveModel;
   let remove5: CastRemoveModel;
+  let removeOld3: CastRemoveModel;
 
   const generateAddWithTimestamp = async (fid: Uint8Array, timestamp: number): Promise<CastAddModel> => {
     const addData = await Factories.CastAddData.create({ fid: Array.from(fid), timestamp });
@@ -495,73 +498,111 @@ describe('pruneMessages', () => {
   };
 
   beforeAll(async () => {
-    add2 = await generateAddWithTimestamp(fid, castAdd.timestamp() + 1);
-    add3 = await generateAddWithTimestamp(fid, castAdd.timestamp() + 2);
-    add4 = await generateAddWithTimestamp(fid, castAdd.timestamp() + 3);
-    add5 = await generateAddWithTimestamp(fid, castAdd.timestamp() + 4);
+    const time = getFarcasterTime() - 10;
+    add1 = await generateAddWithTimestamp(fid, time + 1);
+    add2 = await generateAddWithTimestamp(fid, time + 2);
+    add3 = await generateAddWithTimestamp(fid, time + 3);
+    add4 = await generateAddWithTimestamp(fid, time + 4);
+    add5 = await generateAddWithTimestamp(fid, time + 5);
+    addOld1 = await generateAddWithTimestamp(fid, time - 60 * 60);
+    addOld2 = await generateAddWithTimestamp(fid, time - 60 * 60 + 1);
 
-    remove1 = await generateRemoveWithTimestamp(fid, castAdd.timestamp(), castAdd);
-    remove2 = await generateRemoveWithTimestamp(fid, castAdd.timestamp() + 1, add2);
-    remove3 = await generateRemoveWithTimestamp(fid, castAdd.timestamp() + 2, add3);
-    remove4 = await generateRemoveWithTimestamp(fid, castAdd.timestamp() + 3, add4);
-    remove5 = await generateRemoveWithTimestamp(fid, castAdd.timestamp() + 4, add5);
+    remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1);
+    remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2);
+    remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3);
+    remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4);
+    remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5);
+    removeOld3 = await generateRemoveWithTimestamp(fid, time - 60 * 60 + 2);
   });
 
-  test('prunes earliest add messages', async () => {
-    const messages = [castAdd, add2, add3, add4, add5];
-    for (const message of messages) {
-      await prunedStore.merge(message);
-    }
+  describe('with size limit', () => {
+    const sizePrunedStore = new CastStore(db, eventHandler, { pruneSizeLimit: 3 });
 
-    const result = await prunedStore.pruneMessages(fid);
-    expect(result._unsafeUnwrap()).toEqual(undefined);
+    test('no-ops when no messages have been merged', async () => {
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(prunedMessages).toEqual([]);
+    });
 
-    expect(prunedMessages).toEqual([castAdd, add2]);
+    test('prunes earliest add messages', async () => {
+      const messages = [add1, add2, add3, add4, add5];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
 
-    for (const message of [castAdd, add2]) {
-      const getAdd = () => prunedStore.getCastAdd(fid, message.tsHash());
-      await expect(getAdd()).rejects.toThrow(HubError);
-    }
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([add1, add2]);
+
+      for (const message of prunedMessages as CastAddModel[]) {
+        const getAdd = () => sizePrunedStore.getCastAdd(fid, message.tsHash());
+        await expect(getAdd()).rejects.toThrow(HubError);
+      }
+    });
+
+    test('prunes earliest remove messages', async () => {
+      const messages = [remove1, remove2, remove3, remove4, remove5];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([remove1, remove2]);
+
+      for (const message of prunedMessages as CastRemoveModel[]) {
+        const getRemove = () =>
+          sizePrunedStore.getCastRemove(fid, message.body().targetTsHashArray() ?? new Uint8Array());
+        await expect(getRemove()).rejects.toThrow(HubError);
+      }
+    });
+
+    test('prunes earliest messages', async () => {
+      const messages = [add1, remove2, add3, remove4, add5];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([add1, remove2]);
+    });
+
+    test('no-ops when adds have been removed', async () => {
+      const messages = [add1, remove1, add2, remove2, add3];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([]);
+    });
   });
 
-  test('prunes earliest remove messages', async () => {
-    const messages = [remove1, remove2, remove3, remove4, remove5];
-    for (const message of messages) {
-      await prunedStore.merge(message);
-    }
+  describe('with time limit', () => {
+    const timePrunedStore = new CastStore(db, eventHandler, { pruneTimeLimit: 60 * 60 - 1 });
 
-    const result = await prunedStore.pruneMessages(fid);
-    expect(result._unsafeUnwrap()).toEqual(undefined);
+    test('prunes earliest messages', async () => {
+      const messages = [add1, remove2, addOld1, addOld2, removeOld3];
+      for (const message of messages) {
+        await timePrunedStore.merge(message);
+      }
 
-    expect(prunedMessages).toEqual([remove1, remove2]);
+      const result = await timePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
 
-    for (const message of [remove1, remove2]) {
-      const getRemove = () => prunedStore.getCastRemove(fid, message.body().targetTsHashArray() ?? new Uint8Array());
-      await expect(getRemove()).rejects.toThrow(HubError);
-    }
-  });
+      expect(prunedMessages).toEqual([addOld1, addOld2, removeOld3]);
 
-  test('prunes earliest messages', async () => {
-    const messages = [castAdd, remove2, add3, remove4, add5];
-    for (const message of messages) {
-      await prunedStore.merge(message);
-    }
-
-    const result = await prunedStore.pruneMessages(fid);
-    expect(result._unsafeUnwrap()).toEqual(undefined);
-
-    expect(prunedMessages).toEqual([castAdd, remove2]);
-  });
-
-  test('does not prune add messages that have been removed', async () => {
-    const messages = [castAdd, remove1, add2, remove2, add3];
-    for (const message of messages) {
-      await prunedStore.merge(message);
-    }
-
-    const result = await prunedStore.pruneMessages(fid);
-    expect(result._unsafeUnwrap()).toEqual(undefined);
-
-    expect(prunedMessages).toEqual([]);
+      await expect(timePrunedStore.getCastAdd(fid, addOld1.tsHash())).rejects.toThrow(HubError);
+      await expect(timePrunedStore.getCastAdd(fid, addOld2.tsHash())).rejects.toThrow(HubError);
+      await expect(
+        timePrunedStore.getCastRemove(fid, removeOld3.body().targetTsHashArray() ?? new Uint8Array())
+      ).rejects.toThrow(HubError);
+    });
   });
 });

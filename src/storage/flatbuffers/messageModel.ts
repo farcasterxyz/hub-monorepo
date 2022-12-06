@@ -1,3 +1,4 @@
+import AbstractRocksDB from 'rocksdb';
 import { ByteBuffer } from 'flatbuffers';
 import {
   CastAddBody,
@@ -176,6 +177,23 @@ export default class MessageModel {
   ): Promise<T> {
     const buffer = await db.get(MessageModel.primaryKey(fid, set, key));
     return MessageModel.from(new Uint8Array(buffer)) as T;
+  }
+
+  static getPruneIterator(db: RocksDB, fid: Uint8Array, setPostfix: UserMessagePostfix): AbstractRocksDB.Iterator {
+    const prefix = MessageModel.primaryKey(fid, setPostfix);
+    return db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true });
+  }
+
+  static async getNextToPrune(iterator: AbstractRocksDB.Iterator): Promise<MessageModel> {
+    return new Promise((resolve, reject) => {
+      iterator.next((err: Error | undefined, _: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(MessageModel.from(new Uint8Array(value as Buffer)));
+        }
+      });
+    });
   }
 
   static putTransaction(tsx: Transaction, message: MessageModel): Transaction {
