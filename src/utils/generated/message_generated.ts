@@ -1173,9 +1173,9 @@ body<T extends flatbuffers.Table>(obj:any):any|null {
   return offset ? this.bb!.__union(obj, this.bb_pos + offset) : null;
 }
 
-type():MessageType {
+type():MessageType|null {
   const offset = this.bb!.__offset(this.bb_pos, 8);
-  return offset ? this.bb!.readUint16(this.bb_pos + offset) : MessageType.CastAdd;
+  return offset ? this.bb!.readUint16(this.bb_pos + offset) : null;
 }
 
 timestamp():number {
@@ -1216,7 +1216,7 @@ static addBody(builder:flatbuffers.Builder, bodyOffset:flatbuffers.Offset) {
 }
 
 static addType(builder:flatbuffers.Builder, type:MessageType) {
-  builder.addFieldInt16(2, type, MessageType.CastAdd);
+  builder.addFieldInt16(2, type, 0);
 }
 
 static addTimestamp(builder:flatbuffers.Builder, timestamp:number) {
@@ -1250,11 +1250,12 @@ static endMessageData(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createMessageData(builder:flatbuffers.Builder, bodyType:MessageBody, bodyOffset:flatbuffers.Offset, type:MessageType, timestamp:number, fidOffset:flatbuffers.Offset, network:FarcasterNetwork):flatbuffers.Offset {
+static createMessageData(builder:flatbuffers.Builder, bodyType:MessageBody, bodyOffset:flatbuffers.Offset, type:MessageType|null, timestamp:number, fidOffset:flatbuffers.Offset, network:FarcasterNetwork):flatbuffers.Offset {
   MessageData.startMessageData(builder);
   MessageData.addBodyType(builder, bodyType);
   MessageData.addBody(builder, bodyOffset);
-  MessageData.addType(builder, type);
+  if (type !== null)
+    MessageData.addType(builder, type);
   MessageData.addTimestamp(builder, timestamp);
   MessageData.addFid(builder, fidOffset);
   MessageData.addNetwork(builder, network);
@@ -1295,7 +1296,7 @@ export class MessageDataT implements flatbuffers.IGeneratedObject {
 constructor(
   public bodyType: MessageBody = MessageBody.NONE,
   public body: CastAddBodyT|CastRemoveBodyT|FollowBodyT|ReactionBodyT|SignerBodyT|UserDataBodyT|VerificationAddEthAddressBodyT|VerificationRemoveBodyT|null = null,
-  public type: MessageType = MessageType.CastAdd,
+  public type: MessageType|null = null,
   public timestamp: number = 0,
   public fid: (number)[] = [],
   public network: FarcasterNetwork = FarcasterNetwork.Mainnet

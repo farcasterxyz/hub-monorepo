@@ -4,8 +4,8 @@ import MessageModel from '~/storage/flatbuffers/messageModel';
 import { FollowAddModel, FollowRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
 import FollowStore from '~/storage/sets/flatbuffers/followStore';
 import { HubError } from '~/utils/hubErrors';
-import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
-import { MessageType } from '~/utils/generated/message_generated';
+import { bytesDecrement, bytesIncrement, getFarcasterTime } from '~/storage/flatbuffers/utils';
+import { MessageType, UserId } from '~/utils/generated/message_generated';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 const db = jestBinaryRocksDB('flatbuffers.followStore.test');
@@ -461,6 +461,170 @@ describe('merge', () => {
         await assertFollowDoesNotExist(followRemoveEarlier);
         await assertFollowRemoveWins(followRemove);
       });
+    });
+  });
+});
+
+describe('pruneMessages', () => {
+  let prunedMessages: MessageModel[];
+  const pruneMessageListener = (message: MessageModel) => {
+    prunedMessages.push(message);
+  };
+
+  beforeAll(() => {
+    eventHandler.on('pruneMessage', pruneMessageListener);
+  });
+
+  beforeEach(() => {
+    prunedMessages = [];
+  });
+
+  afterAll(() => {
+    eventHandler.off('pruneMessage', pruneMessageListener);
+  });
+
+  let add1: FollowAddModel;
+  let add2: FollowAddModel;
+  let add3: FollowAddModel;
+  let add4: FollowAddModel;
+  let add5: FollowAddModel;
+  let addOld1: FollowAddModel;
+  let addOld2: FollowAddModel;
+
+  let remove1: FollowRemoveModel;
+  let remove2: FollowRemoveModel;
+  let remove3: FollowRemoveModel;
+  let remove4: FollowRemoveModel;
+  let remove5: FollowRemoveModel;
+  let removeOld3: FollowRemoveModel;
+
+  const generateAddWithTimestamp = async (fid: Uint8Array, timestamp: number): Promise<FollowAddModel> => {
+    const addData = await Factories.FollowAddData.create({ fid: Array.from(fid), timestamp });
+    const addMessage = await Factories.Message.create({ data: Array.from(addData.bb?.bytes() ?? []) });
+    return new MessageModel(addMessage) as FollowAddModel;
+  };
+
+  const generateRemoveWithTimestamp = async (
+    fid: Uint8Array,
+    timestamp: number,
+    user?: UserId | null
+  ): Promise<FollowRemoveModel> => {
+    const removeBody = await Factories.FollowBody.build(user ? { user: user.unpack() } : {});
+    const removeData = await Factories.FollowRemoveData.create({ fid: Array.from(fid), timestamp, body: removeBody });
+    const removeMessage = await Factories.Message.create({ data: Array.from(removeData.bb?.bytes() ?? []) });
+    return new MessageModel(removeMessage) as FollowRemoveModel;
+  };
+
+  beforeAll(async () => {
+    const time = getFarcasterTime() - 10;
+    add1 = await generateAddWithTimestamp(fid, time + 1);
+    add2 = await generateAddWithTimestamp(fid, time + 2);
+    add3 = await generateAddWithTimestamp(fid, time + 3);
+    add4 = await generateAddWithTimestamp(fid, time + 4);
+    add5 = await generateAddWithTimestamp(fid, time + 5);
+    addOld1 = await generateAddWithTimestamp(fid, time - 60 * 60);
+    addOld2 = await generateAddWithTimestamp(fid, time - 60 * 60 + 1);
+
+    remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1.body().user());
+    remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2.body().user());
+    remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.body().user());
+    remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.body().user());
+    remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.body().user());
+    removeOld3 = await generateRemoveWithTimestamp(fid, time - 60 * 60 + 2);
+  });
+
+  describe('with size limit', () => {
+    const sizePrunedStore = new FollowStore(db, eventHandler, { pruneSizeLimit: 3 });
+
+    test('no-ops when no messages have been merged', async () => {
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(prunedMessages).toEqual([]);
+    });
+
+    test('prunes earliest add messages', async () => {
+      const messages = [add1, add2, add3, add4, add5];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([add1, add2]);
+
+      for (const message of prunedMessages as FollowAddModel[]) {
+        const getAdd = () => sizePrunedStore.getFollowAdd(fid, message.body().user()?.fidArray() ?? new Uint8Array());
+        await expect(getAdd()).rejects.toThrow(HubError);
+      }
+    });
+
+    test('prunes earliest remove messages', async () => {
+      const messages = [remove1, remove2, remove3, remove4, remove5];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([remove1, remove2]);
+
+      for (const message of prunedMessages as FollowRemoveModel[]) {
+        const getRemove = () =>
+          sizePrunedStore.getFollowRemove(fid, message.body().user()?.fidArray() ?? new Uint8Array());
+        await expect(getRemove()).rejects.toThrow(HubError);
+      }
+    });
+
+    test('prunes earliest messages', async () => {
+      const messages = [add1, remove2, add3, remove4, add5];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([add1, remove2]);
+    });
+
+    test('no-ops when adds have been removed', async () => {
+      const messages = [add1, remove1, add2, remove2, add3];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([]);
+    });
+  });
+
+  describe('with time limit', () => {
+    const timePrunedStore = new FollowStore(db, eventHandler, { pruneTimeLimit: 60 * 60 - 1 });
+
+    test('prunes earliest messages', async () => {
+      const messages = [add1, remove2, addOld1, addOld2, removeOld3];
+      for (const message of messages) {
+        await timePrunedStore.merge(message);
+      }
+
+      const result = await timePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([addOld1, addOld2, removeOld3]);
+
+      await expect(
+        timePrunedStore.getFollowAdd(fid, addOld1.body().user()?.fidArray() ?? new Uint8Array())
+      ).rejects.toThrow(HubError);
+      await expect(
+        timePrunedStore.getFollowAdd(fid, addOld2.body().user()?.fidArray() ?? new Uint8Array())
+      ).rejects.toThrow(HubError);
+      await expect(
+        timePrunedStore.getFollowRemove(fid, removeOld3.body().user()?.fidArray() ?? new Uint8Array())
+      ).rejects.toThrow(HubError);
     });
   });
 });

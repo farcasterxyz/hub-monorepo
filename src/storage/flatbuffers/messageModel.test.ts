@@ -19,6 +19,14 @@ beforeAll(async () => {
 });
 
 describe('static methods', () => {
+  describe('from', () => {
+    test('fails with empty byte array', () => {
+      expect(() => MessageModel.from(new Uint8Array())).toThrow(
+        new HubError('bad_request.invalid_param', 'message type is missing')
+      );
+    });
+  });
+
   describe('get', () => {
     test('succeeds when message exists', async () => {
       await model.put(db);
