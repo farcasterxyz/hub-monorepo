@@ -247,4 +247,7 @@ types would not pass verification in our Signer Sets
 **Updating Flatbuffer Schemas**
 
 If you update the `message.fbs` file you'll also need to generate new TS classes, which can be done by running:
-`flatc --ts --gen-object-api -o src/utils/generated src/utils/schemas/message.fbs`
+`flatc --ts --ts-flat-files --gen-object-api -o src/utils/generated src/utils/schemas/message.fbs`
+
+To regerenrate all the TS classes,
+`yarn flatc`
