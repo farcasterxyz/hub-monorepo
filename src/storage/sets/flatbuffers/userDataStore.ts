@@ -8,7 +8,7 @@ import { MessageType, UserDataType } from '~/utils/generated/message_generated';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
-import { eventCompare } from '~/utils/blocks';
+import { eventCompare } from '~/utils/contractEvent';
 import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
 
 /**
@@ -86,8 +86,8 @@ class UserDataStore {
   }
 
   /**
-   * Merges a NameRegistryEvent into the SignerStore, storing the causally latest event at the key:
-   * <RootPrefix:User><UserPostfix:NameRegistryEvent><fname>
+   * Merges a NameRegistryEvent storing the causally latest event at the key:
+   * <name registry root prefix byte, fname>
    */
   async mergeNameRegistryEvent(event: NameRegistryEventModel): Promise<void> {
     const existingEvent = await ResultAsync.fromPromise(this.getNameRegistryEvent(event.fname()), () => undefined);
@@ -98,9 +98,10 @@ class UserDataStore {
     let txn = this._db.transaction();
     txn.put(event.primaryKey(), event.toBuffer());
 
-    // TODO: If this name has been transfered to another user, we should delete the old user's fname data
+    // TODO: When there is a NameRegistryEvent, we need to check if we need to revoke UserDataAdd messages that
+    // reference the fname
     if (event.type() === NameRegistryEventType.NameRegistryTransfer) {
-      txn = await this.revokeNameFromPreviousUser(txn, event);
+      txn = await this.revokeMessagesByNameRegistryEvent(txn, event);
     }
 
     await this._db.commit(txn);
@@ -165,20 +166,18 @@ class UserDataStore {
     this._eventHandler.emit('mergeMessage', message);
   }
 
-  private async revokeNameFromPreviousUser(tsx: Transaction, event: NameRegistryEventModel): Promise<Transaction> {
-    const fname = event.fname() ?? new Uint8Array();
-
-    // We'll revoke the fname only if it is non-empty
-    if (fname.length === 0) {
-      return tsx;
-    }
-    const prevFname = await ResultAsync.fromPromise(NameRegistryEventModel.get(this._db, fname), () => undefined);
+  private async revokeMessagesByNameRegistryEvent(
+    tsx: Transaction,
+    event: NameRegistryEventModel
+  ): Promise<Transaction> {
+    const fname = event.fname();
+    const prevFname = event.from();
 
     // Get the previous owner's UserNameAdd and delete it
-    if (prevFname.isOk()) {
+    {
       // TODO: Find a way to get the fid given the `from` field of the NameRegistryEvent
       // and delete the user's fname data
-      // const prevMsg = await this.getUserDataAdd(prevFname.value.from(), UserDataType.Fname);
+      // const prevMsg = await this.getUserDataAdd(from, UserDataType.Fname);
       // tsx = this.deleteUserDataAddTransaction(tsx, prevMsg);
     }
 

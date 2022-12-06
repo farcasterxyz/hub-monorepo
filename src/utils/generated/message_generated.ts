@@ -14,8 +14,7 @@ export enum MessageType {
   VerificationRemove = 8,
   SignerAdd = 9,
   SignerRemove = 10,
-  UserDataAdd = 11,
-  UserNameAdd = 12
+  UserDataAdd = 11
 }
 
 export enum SignatureScheme {

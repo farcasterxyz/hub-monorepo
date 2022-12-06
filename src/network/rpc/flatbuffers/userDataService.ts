@@ -6,8 +6,6 @@ import {
   GetUserDataByFidRequestT,
   GetUserDataRequest,
   GetUserDataByFidRequest,
-  GetUserNameRequest,
-  GetUserNameRequestT,
 } from '~/utils/generated/rpc_generated';
 import { defaultMethod, toMessagesResponse, toServiceError } from '~/network/rpc/flatbuffers/server';
 import { toByteBuffer } from '~/storage/flatbuffers/utils';

@@ -116,9 +116,19 @@ type():NameRegistryEventType {
   return offset ? this.bb!.readUint8(this.bb_pos + offset) : NameRegistryEventType.NameRegistryTransfer;
 }
 
-expiry():bigint {
+expiry(index: number):number|null {
   const offset = this.bb!.__offset(this.bb_pos, 20);
-  return offset ? this.bb!.readUint64(this.bb_pos + offset) : BigInt('0');
+  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
+
+expiryLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 20);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+expiryArray():Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 20);
+  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
 static startNameRegistryEvent(builder:flatbuffers.Builder) {
@@ -217,8 +227,20 @@ static addType(builder:flatbuffers.Builder, type:NameRegistryEventType) {
   builder.addFieldInt8(7, type, NameRegistryEventType.NameRegistryTransfer);
 }
 
-static addExpiry(builder:flatbuffers.Builder, expiry:bigint) {
-  builder.addFieldInt64(8, expiry, BigInt('0'));
+static addExpiry(builder:flatbuffers.Builder, expiryOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(8, expiryOffset, 0);
+}
+
+static createExpiryVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startExpiryVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
 }
 
 static endNameRegistryEvent(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -236,7 +258,7 @@ static finishSizePrefixedNameRegistryEventBuffer(builder:flatbuffers.Builder, of
   builder.finish(offset, undefined, true);
 }
 
-static createNameRegistryEvent(builder:flatbuffers.Builder, blockNumber:number, blockHashOffset:flatbuffers.Offset, transactionHashOffset:flatbuffers.Offset, logIndex:number, fnameOffset:flatbuffers.Offset, fromOffset:flatbuffers.Offset, toOffset:flatbuffers.Offset, type:NameRegistryEventType, expiry:bigint):flatbuffers.Offset {
+static createNameRegistryEvent(builder:flatbuffers.Builder, blockNumber:number, blockHashOffset:flatbuffers.Offset, transactionHashOffset:flatbuffers.Offset, logIndex:number, fnameOffset:flatbuffers.Offset, fromOffset:flatbuffers.Offset, toOffset:flatbuffers.Offset, type:NameRegistryEventType, expiryOffset:flatbuffers.Offset):flatbuffers.Offset {
   NameRegistryEvent.startNameRegistryEvent(builder);
   NameRegistryEvent.addBlockNumber(builder, blockNumber);
   NameRegistryEvent.addBlockHash(builder, blockHashOffset);
@@ -246,7 +268,7 @@ static createNameRegistryEvent(builder:flatbuffers.Builder, blockNumber:number, 
   NameRegistryEvent.addFrom(builder, fromOffset);
   NameRegistryEvent.addTo(builder, toOffset);
   NameRegistryEvent.addType(builder, type);
-  NameRegistryEvent.addExpiry(builder, expiry);
+  NameRegistryEvent.addExpiry(builder, expiryOffset);
   return NameRegistryEvent.endNameRegistryEvent(builder);
 }
 
@@ -260,7 +282,7 @@ unpack(): NameRegistryEventT {
     this.bb!.createScalarList<number>(this.from.bind(this), this.fromLength()),
     this.bb!.createScalarList<number>(this.to.bind(this), this.toLength()),
     this.type(),
-    this.expiry()
+    this.bb!.createScalarList<number>(this.expiry.bind(this), this.expiryLength())
   );
 }
 
@@ -274,7 +296,7 @@ unpackTo(_o: NameRegistryEventT): void {
   _o.from = this.bb!.createScalarList<number>(this.from.bind(this), this.fromLength());
   _o.to = this.bb!.createScalarList<number>(this.to.bind(this), this.toLength());
   _o.type = this.type();
-  _o.expiry = this.expiry();
+  _o.expiry = this.bb!.createScalarList<number>(this.expiry.bind(this), this.expiryLength());
 }
 }
 
@@ -288,7 +310,7 @@ constructor(
   public from: (number)[] = [],
   public to: (number)[] = [],
   public type: NameRegistryEventType = NameRegistryEventType.NameRegistryTransfer,
-  public expiry: bigint = BigInt('0')
+  public expiry: (number)[] = []
 ){}
 
 
@@ -298,6 +320,7 @@ pack(builder:flatbuffers.Builder): flatbuffers.Offset {
   const fname = NameRegistryEvent.createFnameVector(builder, this.fname);
   const from = NameRegistryEvent.createFromVector(builder, this.from);
   const to = NameRegistryEvent.createToVector(builder, this.to);
+  const expiry = NameRegistryEvent.createExpiryVector(builder, this.expiry);
 
   return NameRegistryEvent.createNameRegistryEvent(builder,
     this.blockNumber,
@@ -308,7 +331,7 @@ pack(builder:flatbuffers.Builder): flatbuffers.Offset {
     from,
     to,
     this.type,
-    this.expiry
+    expiry
   );
 }
 }

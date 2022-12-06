@@ -90,15 +90,24 @@ describe('getUserData', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(pfpAdd);
     await engine.mergeMessage(locationAdd);
+    await engine.mergeMessage(addFname);
+
     const pfp = await client.getUserData(fid, UserDataType.Pfp);
     expect(pfp._unsafeUnwrap()).toEqual(pfpAdd);
+
     const location = await client.getUserData(fid, UserDataType.Location);
     expect(location._unsafeUnwrap()).toEqual(locationAdd);
+
+    const fname = await client.getUserData(fid, UserDataType.Fname);
+    expect(fname._unsafeUnwrap()).toEqual(addFname);
   });
 
   test('fails when user data is missing', async () => {
     const pfp = await client.getUserData(fid, UserDataType.Pfp);
     expect(pfp._unsafeUnwrapErr().errCode).toEqual('not_found');
+
+    const fname = await client.getUserData(fid, UserDataType.Fname);
+    expect(fname._unsafeUnwrapErr().errCode).toEqual('not_found');
   });
 
   test('fails without fid', async () => {
@@ -125,24 +134,5 @@ describe('getUserDataByFid', () => {
   test('returns empty array without messages', async () => {
     const result = await client.getUserDataByFid(fid);
     expect(result._unsafeUnwrap()).toEqual([]);
-  });
-});
-
-describe('getUserName', () => {
-  beforeEach(async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
-  });
-
-  test('succeeds', async () => {
-    await engine.mergeMessage(addFname);
-
-    const result = await client.getUserData(fid, UserDataType.Fname);
-    expect(result._unsafeUnwrap()).toEqual(addFname);
-  });
-
-  test('fails when user data is missing', async () => {
-    const result = await client.getUserData(fid, UserDataType.Fname);
-    expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
   });
 });

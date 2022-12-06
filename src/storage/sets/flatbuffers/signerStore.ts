@@ -8,8 +8,7 @@ import { MessageType } from '~/utils/generated/message_generated';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
-import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
-import { eventCompare } from '~/utils/blocks';
+import { eventCompare } from '~/utils/contractEvent';
 
 /**
  * SignerStore persists Signer Messages in RocksDB using a series of two-phase CRDT sets

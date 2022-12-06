@@ -3,7 +3,6 @@ import { jestBinaryRocksDB } from '../db/jestUtils';
 import NameRegistryEventModel from './nameRegistryEventModel';
 
 const db = jestBinaryRocksDB('flatbuffers.nameRegistryEventModel.test');
-const fid = Factories.FID.build();
 const fname = Factories.Fname.build();
 
 let model: NameRegistryEventModel;

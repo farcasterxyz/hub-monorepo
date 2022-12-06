@@ -16,7 +16,7 @@ export default class NameRegistryEventModel {
     return new this(event);
   }
 
-  /** <root prefix, name registry event, fname> */
+  /** <name registry root prefix byte, fname> */
   static primaryKey(fname: Uint8Array): Buffer {
     return Buffer.concat([Buffer.from([RootPrefix.NameRegistryEvent]), Buffer.from(fname)]);
   }
