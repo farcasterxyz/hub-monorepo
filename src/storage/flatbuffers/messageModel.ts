@@ -52,8 +52,8 @@ export default class MessageModel {
   }
 
   /** <user prefix byte, fid, set index byte, key> */
-  static primaryKey(fid: Uint8Array, set: UserMessagePostfix, key: Uint8Array): Buffer {
-    return Buffer.concat([this.userKey(fid), Buffer.from([set]), Buffer.from(key)]);
+  static primaryKey(fid: Uint8Array, set: UserMessagePostfix, key?: Uint8Array): Buffer {
+    return Buffer.concat([this.userKey(fid), Buffer.from([set]), key ? Buffer.from(key) : new Uint8Array()]);
   }
 
   /** <user prefix byte, fid, signer index byte, signer, type, key> */

@@ -444,3 +444,124 @@ describe('merge', () => {
     });
   });
 });
+
+describe('pruneMessages', () => {
+  let prunedMessages: MessageModel[];
+  const prunedStore = new CastStore(db, eventHandler, { pruneSizeLimit: 3 });
+  const pruneMessageListener = (message: MessageModel) => {
+    prunedMessages.push(message);
+  };
+
+  beforeAll(() => {
+    eventHandler.on('pruneMessage', pruneMessageListener);
+  });
+
+  beforeEach(() => {
+    prunedMessages = [];
+  });
+
+  afterAll(() => {
+    eventHandler.off('pruneMessage', pruneMessageListener);
+  });
+
+  let add2: CastAddModel;
+  let add3: CastAddModel;
+  let add4: CastAddModel;
+  let add5: CastAddModel;
+
+  let remove1: CastRemoveModel;
+  let remove2: CastRemoveModel;
+  let remove3: CastRemoveModel;
+  let remove4: CastRemoveModel;
+  let remove5: CastRemoveModel;
+
+  const generateAddWithTimestamp = async (fid: Uint8Array, timestamp: number): Promise<CastAddModel> => {
+    const addData = await Factories.CastAddData.create({ fid: Array.from(fid), timestamp });
+    const addMessage = await Factories.Message.create({ data: Array.from(addData.bb?.bytes() ?? []) });
+    return new MessageModel(addMessage) as CastAddModel;
+  };
+
+  const generateRemoveWithTimestamp = async (
+    fid: Uint8Array,
+    timestamp: number,
+    target?: CastAddModel
+  ): Promise<CastRemoveModel> => {
+    const removeBody = await Factories.CastRemoveBody.build(
+      target ? { targetTsHash: Array.from(target.tsHash()) } : {}
+    );
+    const removeData = await Factories.CastRemoveData.create({ fid: Array.from(fid), timestamp, body: removeBody });
+    const removeMessage = await Factories.Message.create({ data: Array.from(removeData.bb?.bytes() ?? []) });
+    return new MessageModel(removeMessage) as CastRemoveModel;
+  };
+
+  beforeAll(async () => {
+    add2 = await generateAddWithTimestamp(fid, castAdd.timestamp() + 1);
+    add3 = await generateAddWithTimestamp(fid, castAdd.timestamp() + 2);
+    add4 = await generateAddWithTimestamp(fid, castAdd.timestamp() + 3);
+    add5 = await generateAddWithTimestamp(fid, castAdd.timestamp() + 4);
+
+    remove1 = await generateRemoveWithTimestamp(fid, castAdd.timestamp(), castAdd);
+    remove2 = await generateRemoveWithTimestamp(fid, castAdd.timestamp() + 1, add2);
+    remove3 = await generateRemoveWithTimestamp(fid, castAdd.timestamp() + 2, add3);
+    remove4 = await generateRemoveWithTimestamp(fid, castAdd.timestamp() + 3, add4);
+    remove5 = await generateRemoveWithTimestamp(fid, castAdd.timestamp() + 4, add5);
+  });
+
+  test('prunes earliest add messages', async () => {
+    const messages = [castAdd, add2, add3, add4, add5];
+    for (const message of messages) {
+      await prunedStore.merge(message);
+    }
+
+    const result = await prunedStore.pruneMessages(fid);
+    expect(result._unsafeUnwrap()).toEqual(undefined);
+
+    expect(prunedMessages).toEqual([castAdd, add2]);
+
+    for (const message of [castAdd, add2]) {
+      const getAdd = () => prunedStore.getCastAdd(fid, message.tsHash());
+      await expect(getAdd()).rejects.toThrow(HubError);
+    }
+  });
+
+  test('prunes earliest remove messages', async () => {
+    const messages = [remove1, remove2, remove3, remove4, remove5];
+    for (const message of messages) {
+      await prunedStore.merge(message);
+    }
+
+    const result = await prunedStore.pruneMessages(fid);
+    expect(result._unsafeUnwrap()).toEqual(undefined);
+
+    expect(prunedMessages).toEqual([remove1, remove2]);
+
+    for (const message of [remove1, remove2]) {
+      const getRemove = () => prunedStore.getCastRemove(fid, message.body().targetTsHashArray() ?? new Uint8Array());
+      await expect(getRemove()).rejects.toThrow(HubError);
+    }
+  });
+
+  test('prunes earliest messages', async () => {
+    const messages = [castAdd, remove2, add3, remove4, add5];
+    for (const message of messages) {
+      await prunedStore.merge(message);
+    }
+
+    const result = await prunedStore.pruneMessages(fid);
+    expect(result._unsafeUnwrap()).toEqual(undefined);
+
+    expect(prunedMessages).toEqual([castAdd, remove2]);
+  });
+
+  test('does not prune add messages that have been removed', async () => {
+    const messages = [castAdd, remove1, add2, remove2, add3];
+    for (const message of messages) {
+      await prunedStore.merge(message);
+    }
+
+    const result = await prunedStore.pruneMessages(fid);
+    expect(result._unsafeUnwrap()).toEqual(undefined);
+
+    expect(prunedMessages).toEqual([]);
+  });
+});
