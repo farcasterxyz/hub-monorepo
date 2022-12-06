@@ -9,7 +9,6 @@ import {
   VerificationRemoveBody,
   UserDataBody,
   ReactionBody,
-  UserNameAddBody,
 } from '~/utils/generated/message_generated';
 
 /**
@@ -73,8 +72,6 @@ export enum UserPostfix {
   UserDataAdds = 17,
   /* Used to store a user data message */
   UserDataMessage = 18,
-  /* Used to index a user name message in the add set */
-  UserNameMessage = 19,
 }
 
 /** A union type of UserPostfixes that are used to store messages */
@@ -84,8 +81,7 @@ export type UserMessagePostfix =
   | UserPostfix.VerificationMessage
   | UserPostfix.SignerMessage
   | UserPostfix.ReactionMessage
-  | UserPostfix.UserDataMessage
-  | UserPostfix.UserNameMessage;
+  | UserPostfix.UserDataMessage;
 
 export interface CastRemoveModel extends MessageModel {
   body(): CastRemoveBody;
@@ -142,10 +138,6 @@ export interface SignerRemoveModel extends MessageModel {
 
 export interface UserDataAddModel extends MessageModel {
   body(): UserDataBody;
-}
-
-export interface UserNameAddModel extends MessageModel {
-  body(): UserNameAddBody;
 }
 
 export type VerificationEthAddressClaim = {

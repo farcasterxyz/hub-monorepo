@@ -1,7 +1,7 @@
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { UserDataAddModel, UserNameAddModel, UserPostfix } from '~/storage/flatbuffers/types';
+import { UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
 import { UserDataType } from '~/utils/generated/message_generated';
 import UserDataSet from '~/storage/sets/flatbuffers/userDataStore';
 import { HubError } from '~/utils/hubErrors';
@@ -15,7 +15,7 @@ const fid = Factories.FID.build();
 
 let addPfp: UserDataAddModel;
 let addBio: UserDataAddModel;
-let addFname: UserNameAddModel;
+let addFname: UserDataAddModel;
 
 beforeAll(async () => {
   const addPfpData = await Factories.UserDataAddData.create({
@@ -34,19 +34,19 @@ beforeAll(async () => {
     await Factories.Message.create({ data: Array.from(addBioData.bb?.bytes() ?? []) })
   ) as UserDataAddModel;
 
-  const addNameData = await Factories.UserNameAddData.create({
+  const addNameData = await Factories.UserDataAddData.create({
     fid: Array.from(fid),
-    body: Factories.UserNameBody.build(),
+    body: Factories.UserDataBody.build({ type: UserDataType.Fname }),
   });
   addFname = new MessageModel(
     await Factories.Message.create({ data: Array.from(addNameData.bb?.bytes() ?? []) })
-  ) as UserNameAddModel;
+  ) as UserDataAddModel;
 });
 
 describe('getUserDataAdd', () => {
   test('fails if missing', async () => {
     await expect(set.getUserDataAdd(fid, UserDataType.Pfp)).rejects.toThrow(HubError);
-    await expect(set.getUserNameAdd(fid)).rejects.toThrow(HubError);
+    await expect(set.getUserDataAdd(fid, UserDataType.Fname)).rejects.toThrow(HubError);
   });
 
   test('fails if the wrong fid or datatype is provided', async () => {
@@ -188,17 +188,14 @@ describe('merge', () => {
 });
 
 describe('userfname', () => {
-  const assertUserFnameExists = async (message: UserNameAddModel) => {
-    await expect(MessageModel.get(db, fid, UserPostfix.UserNameMessage, message.tsHash())).resolves.toEqual(message);
+  const assertUserFnameExists = async (message: UserDataAddModel) => {
+    await expect(MessageModel.get(db, fid, UserPostfix.UserDataMessage, message.tsHash())).resolves.toEqual(message);
   };
 
-  const assertUserFnameAddWins = async (message: UserNameAddModel) => {
+  const assertUserFnameAddWins = async (message: UserDataAddModel) => {
     await assertUserFnameExists(message);
 
-    // console.log(`Key2 = ${UserDataStore.userNameAddsKey(message.fid()).toString('hex')}`);
-    // console.log(`Key3 = ${UserDataStore.userNameAddsKey(fid).toString('hex')}`);
-
-    await expect(set.getUserNameAdd(fid)).resolves.toEqual(message);
+    await expect(set.getUserDataAdd(fid, message.body()?.type())).resolves.toEqual(message);
   };
 
   test('succeeds', async () => {
@@ -213,17 +210,17 @@ describe('userfname', () => {
   });
 
   describe('with a conflicting UserNameAdd with different timestamps', () => {
-    let addFnameLater: UserNameAddModel;
+    let addFnameLater: UserDataAddModel;
 
     beforeAll(async () => {
-      const addData = await Factories.UserNameAddData.create({
+      const addData = await Factories.UserDataAddData.create({
         ...addFname.data.unpack(),
         timestamp: addFname.timestamp() + 1,
       });
       const addMessage = await Factories.Message.create({
         data: Array.from(addData.bb?.bytes() ?? []),
       });
-      addFnameLater = new MessageModel(addMessage) as UserNameAddModel;
+      addFnameLater = new MessageModel(addMessage) as UserDataAddModel;
     });
 
     test('successfully merges with a later timestamp', async () => {
@@ -249,10 +246,10 @@ describe('userfname', () => {
     });
 
     describe('with a conflicting UserNameAdd with identical timestamps', () => {
-      let addFnameLater: UserNameAddModel;
+      let addFnameLater: UserDataAddModel;
 
       beforeAll(async () => {
-        const addData = await Factories.UserNameAddData.create({
+        const addData = await Factories.UserDataAddData.create({
           ...addFname.data.unpack(),
         });
 
@@ -261,7 +258,7 @@ describe('userfname', () => {
           hash: Array.from(bytesIncrement(addFname.hash().slice())),
         });
 
-        addFnameLater = new MessageModel(addMessage) as UserNameAddModel;
+        addFnameLater = new MessageModel(addMessage) as UserDataAddModel;
       });
 
       test('succeeds with a later hash', async () => {

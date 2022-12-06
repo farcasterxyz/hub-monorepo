@@ -29,8 +29,6 @@ import {
   UserDataType,
   UserId,
   UserIdT,
-  UserNameAddBody,
-  UserNameAddBodyT,
   VerificationAddEthAddressBody,
   VerificationAddEthAddressBodyT,
   VerificationRemoveBody,
@@ -359,20 +357,6 @@ const UserDataBodyFactory = Factory.define<UserDataBodyT, any, UserDataBody>(({ 
   return new UserDataBodyT(UserDataType.Pfp, faker.internet.url());
 });
 
-const UserNameBodyFactory = Factory.define<UserNameAddBodyT, any, UserNameAddBody>(({ onCreate }) => {
-  onCreate((params) => {
-    const builder = new Builder(1);
-    builder.finish(params.pack(builder));
-    return UserNameAddBody.getRootAsUserNameAddBody(new ByteBuffer(builder.asUint8Array()));
-  });
-
-  // convert string to number[]
-  const name = faker.name.firstName();
-  const nameArray = Array.from(name).map((c) => c.charCodeAt(0));
-
-  return new UserNameAddBodyT(nameArray);
-});
-
 const UserDataAddDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
   onCreate((params) => {
     return MessageDataFactory.create(params);
@@ -382,18 +366,6 @@ const UserDataAddDataFactory = Factory.define<MessageDataT, any, MessageData>(({
     bodyType: MessageBody.UserDataBody,
     body: UserDataBodyFactory.build(),
     type: MessageType.UserDataAdd,
-  });
-});
-
-const UserNameAddDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
-  onCreate((params) => {
-    return MessageDataFactory.create(params);
-  });
-
-  return MessageDataFactory.build({
-    bodyType: MessageBody.UserNameAddBody,
-    body: UserDataAddDataFactory.build(),
-    type: MessageType.UserNameAdd,
   });
 });
 
@@ -454,7 +426,7 @@ const IdRegistryEventFactory = Factory.define<ContractEventT, any, ContractEvent
   );
 });
 
-const IdNameRegistryEventFactory = Factory.define<NameRegistryEventT, any, NameRegistryEvent>(({ onCreate }) => {
+const NameRegistryEventFactory = Factory.define<NameRegistryEventT, any, NameRegistryEvent>(({ onCreate }) => {
   onCreate((params) => {
     const builder = new Builder(1);
     builder.finish(params.pack(builder));
@@ -466,8 +438,8 @@ const IdNameRegistryEventFactory = Factory.define<NameRegistryEventT, any, NameR
     Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
     Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
     faker.datatype.number({ max: 1000 }),
-    Array.from(FIDFactory.build()),
     Array.from(FnameFactory.build()),
+    Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 }))),
     Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 }))),
     NameRegistryEventType.NameRegistryTransfer
   );
@@ -538,11 +510,9 @@ const Factories = {
   SignerRemoveData: SignerRemoveDataFactory,
   UserDataBody: UserDataBodyFactory,
   UserDataAddData: UserDataAddDataFactory,
-  UserNameBody: UserNameBodyFactory,
-  UserNameAddData: UserNameAddDataFactory,
   Message: MessageFactory,
   IdRegistryEvent: IdRegistryEventFactory,
-  IdNameRegistryEvent: IdNameRegistryEventFactory,
+  NameRegistryEvent: NameRegistryEventFactory,
   GossipMessage: GossipMessageFactory,
   GossipContactInfoContent: ContactInfoContentFactory,
   GossipAddressInfo: GossipAddressInfoFactory,

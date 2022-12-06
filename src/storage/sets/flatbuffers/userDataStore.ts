@@ -1,13 +1,15 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync, ok } from 'neverthrow';
-import { UserDataAddModel, UserNameAddModel, UserPostfix } from '~/storage/flatbuffers/types';
-import { isUserDataAdd, isUserNameAdd } from '~/storage/flatbuffers/typeguards';
+import { UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
+import { isUserDataAdd } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType, UserDataType } from '~/utils/generated/message_generated';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
+import { eventCompare } from '~/utils/blocks';
+import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
 
 /**
  * UserDataStore persists UserData messages in RocksDB using a grow-only CRDT set to guarantee
@@ -52,15 +54,6 @@ class UserDataStore {
     ]);
   }
 
-  /**
-   * Generates unique keys used to store or fetch UserNameAdd messages in the UserNameAdd set index
-   * @param fid farcaster id of the user who created the message
-   * @returns RocksDB key of the form <root_prefix>:<fid>:<user_postfix>
-   * */
-  static userNameAddsKey(fid: Uint8Array): Buffer {
-    return Buffer.concat([MessageModel.userKey(fid), Buffer.from([UserPostfix.UserNameMessage])]);
-  }
-
   /* -------------------------------------------------------------------------- */
   /*                              Instance Methods                              */
   /* -------------------------------------------------------------------------- */
@@ -87,37 +80,39 @@ class UserDataStore {
     return MessageModel.getManyByUser<UserDataAddModel>(this._db, fid, UserPostfix.UserDataMessage, messageKeys);
   }
 
-  /** Finds a UserNameAdd Message by checking the adds set index
-   *  @param fid fid of the user who created the user data add
-   *  @returns the UserNameAdd Model if it exists, undefined otherwise
-   */
-  async getUserNameAdd(fid: Uint8Array): Promise<UserNameAddModel> {
-    const messageTimestampHash = await this._db.get(UserDataStore.userNameAddsKey(fid));
-
-    return MessageModel.get<UserNameAddModel>(this._db, fid, UserPostfix.UserNameMessage, messageTimestampHash);
+  /** Returns the most recent event from the NameEventRegistry contract that affected the fid */
+  async getNameRegistryEvent(fname: Uint8Array): Promise<NameRegistryEventModel> {
+    return NameRegistryEventModel.get(this._db, fname);
   }
 
   /**
-   * Finds all the UserNameAdd messages for an fid. This method is not needed, since there can only be 1 UserName active
-   * per fid.
+   * Merges a NameRegistryEvent into the SignerStore, storing the causally latest event at the key:
+   * <RootPrefix:User><UserPostfix:NameRegistryEvent><fname>
    */
-  /*
-  async getUserNameAddsByUser(fid: Uint8Array): Promise<UserNameAddModel[]> {
-    const addsPrefix = UserDataStore.userNameAddsKey(fid);
-    const messageKeys: Buffer[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(addsPrefix, { keys: false, valueAsBuffer: true })) {
-      messageKeys.push(value);
+  async mergeNameRegistryEvent(event: NameRegistryEventModel): Promise<void> {
+    const existingEvent = await ResultAsync.fromPromise(this.getNameRegistryEvent(event.fname()), () => undefined);
+    if (existingEvent.isOk() && eventCompare(existingEvent.value, event) >= 0) {
+      return undefined;
     }
-    return MessageModel.getManyByUser<UserNameAddModel>(this._db, fid, UserPostfix.UserDataMessage, messageKeys);
+
+    let txn = this._db.transaction();
+    txn.put(event.primaryKey(), event.toBuffer());
+
+    // TODO: If this name has been transfered to another user, we should delete the old user's fname data
+    if (event.type() === NameRegistryEventType.NameRegistryTransfer) {
+      txn = await this.revokeNameFromPreviousUser(txn, event);
+    }
+
+    await this._db.commit(txn);
+
+    // Emit store event
+    this._eventHandler.emit('mergeNameRegistryEvent', event);
   }
-  */
 
   /** Merges a UserDataAdd message into the set */
   async merge(message: MessageModel): Promise<void> {
     if (isUserDataAdd(message)) {
       return this.mergeDataAdd(message);
-    } else if (isUserNameAdd(message)) {
-      return this.mergeNameAdd(message);
     }
 
     throw new HubError('bad_request.validation_failure', 'invalid message type');
@@ -170,8 +165,8 @@ class UserDataStore {
     this._eventHandler.emit('mergeMessage', message);
   }
 
-  private async revokeNameFromPreviousUser(tsx: Transaction, message: UserNameAddModel): Promise<Transaction> {
-    const fname = message.body().fnameArray() ?? new Uint8Array();
+  private async revokeNameFromPreviousUser(tsx: Transaction, event: NameRegistryEventModel): Promise<Transaction> {
+    const fname = event.fname() ?? new Uint8Array();
 
     // We'll revoke the fname only if it is non-empty
     if (fname.length === 0) {
@@ -181,32 +176,13 @@ class UserDataStore {
 
     // Get the previous owner's UserNameAdd and delete it
     if (prevFname.isOk()) {
-      const prevMsg = await this.getUserNameAdd(prevFname.value.fid());
-      tsx = this.deleteUserNameAddTransaction(tsx, prevMsg);
+      // TODO: Find a way to get the fid given the `from` field of the NameRegistryEvent
+      // and delete the user's fname data
+      // const prevMsg = await this.getUserDataAdd(prevFname.value.from(), UserDataType.Fname);
+      // tsx = this.deleteUserDataAddTransaction(tsx, prevMsg);
     }
 
     return tsx;
-  }
-
-  private async mergeNameAdd(message: UserNameAddModel): Promise<void> {
-    // TODO: Check that the user sending this message actually owns the fname
-
-    let tsx = await this.resolveUserNameMergeConflicts(this._db.transaction(), message);
-
-    // No-op if resolveMergeConflicts did not return a transaction
-    if (!tsx) return undefined;
-
-    // Revoke the name from the previous user
-    tsx = await this.revokeNameFromPreviousUser(tsx, message);
-
-    // Add putUserNameAdd operations to the RocksDB transaction
-    tsx = this.putUserNameAddTransaction(tsx, message);
-
-    // Commit the RocksDB transaction
-    await this._db.commit(tsx);
-
-    // Emit store event
-    this._eventHandler.emit('mergeMessage', message);
   }
 
   private userDataMessageCompare(aTimestampHash: Uint8Array, bTimestampHash: Uint8Array): number {
@@ -243,36 +219,6 @@ class UserDataStore {
     return tsx;
   }
 
-  private async resolveUserNameMergeConflicts(
-    tsx: Transaction,
-    message: UserNameAddModel
-  ): Promise<Transaction | undefined> {
-    // Look up the current add timestampHash for this dataType
-    const addTimestampHash = await ResultAsync.fromPromise(
-      this._db.get(UserDataStore.userNameAddsKey(message.fid())),
-      () => undefined
-    );
-
-    if (addTimestampHash.isOk()) {
-      if (this.userDataMessageCompare(addTimestampHash.value, message.tsHash()) >= 0) {
-        // If the existing add has the same or higher order than the new message, no-op
-        return undefined;
-      } else {
-        // If the existing add has a lower order than the new message, retrieve the full
-        // UserNameAdd message and delete it as part of the RocksDB transaction
-        const existingAdd = await MessageModel.get<UserNameAddModel>(
-          this._db,
-          message.fid(),
-          UserPostfix.UserNameMessage,
-          addTimestampHash.value
-        );
-        tsx = this.deleteUserNameAddTransaction(tsx, existingAdd);
-      }
-    }
-
-    return tsx;
-  }
-
   /* Builds a RocksDB transaction to insert a UserDataAdd message and construct its indices */
   private putUserDataAddTransaction(tsx: Transaction, message: UserDataAddModel): Transaction {
     // Puts the message into the database
@@ -288,26 +234,6 @@ class UserDataStore {
   private deleteUserDataAddTransaction(tsx: Transaction, message: UserDataAddModel): Transaction {
     // Delete message key from userData adds set index
     tsx = tsx.del(UserDataStore.userDataAddsKey(message.fid(), message.body().type()));
-
-    // Delete the message
-    return MessageModel.deleteTransaction(tsx, message);
-  }
-
-  /* Builds a RocksDB transaction to insert a UserNameAdd message and construct its indices */
-  private putUserNameAddTransaction(tsx: Transaction, message: UserNameAddModel): Transaction {
-    // Puts the message into the database
-    tsx = MessageModel.putTransaction(tsx, message);
-
-    // Puts the message key into the adds set index
-    tsx = tsx.put(UserDataStore.userNameAddsKey(message.fid()), Buffer.from(message.tsHash()));
-
-    return tsx;
-  }
-
-  /* Builds a RocksDB transaction to remove a UserNameAdd message and delete its indices */
-  private deleteUserNameAddTransaction(tsx: Transaction, message: UserNameAddModel): Transaction {
-    // Delete message key from userName adds set index
-    tsx = tsx.del(UserDataStore.userNameAddsKey(message.fid()));
 
     // Delete the message
     return MessageModel.deleteTransaction(tsx, message);

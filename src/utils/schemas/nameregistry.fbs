@@ -12,8 +12,8 @@ table NameRegistryEvent {
     block_hash: [ubyte] (required);
     transaction_hash: [ubyte] (required);
     log_index: uint16;
-    fid: [ubyte];
     fname: [ubyte];
+    from: [ubyte];
     to: [ubyte];
     type: NameRegistryEventType = 1;
     expiry: uint64;

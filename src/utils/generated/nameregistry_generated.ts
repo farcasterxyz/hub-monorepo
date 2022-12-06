@@ -66,32 +66,32 @@ logIndex():number {
   return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
 }
 
-fid(index: number):number|null {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
-  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
-}
-
-fidLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
-  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
-}
-
-fidArray():Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
-  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
-}
-
 fname(index: number):number|null {
-  const offset = this.bb!.__offset(this.bb_pos, 14);
+  const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
 }
 
 fnameLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 14);
+  const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 fnameArray():Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 12);
+  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+}
+
+from(index: number):number|null {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
+
+fromLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+fromArray():Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 14);
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
@@ -165,24 +165,8 @@ static addLogIndex(builder:flatbuffers.Builder, logIndex:number) {
   builder.addFieldInt16(3, logIndex, 0);
 }
 
-static addFid(builder:flatbuffers.Builder, fidOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(4, fidOffset, 0);
-}
-
-static createFidVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
-  builder.startVector(1, data.length, 1);
-  for (let i = data.length - 1; i >= 0; i--) {
-    builder.addInt8(data[i]!);
-  }
-  return builder.endVector();
-}
-
-static startFidVector(builder:flatbuffers.Builder, numElems:number) {
-  builder.startVector(1, numElems, 1);
-}
-
 static addFname(builder:flatbuffers.Builder, fnameOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(5, fnameOffset, 0);
+  builder.addFieldOffset(4, fnameOffset, 0);
 }
 
 static createFnameVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
@@ -194,6 +178,22 @@ static createFnameVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):
 }
 
 static startFnameVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
+}
+
+static addFrom(builder:flatbuffers.Builder, fromOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(5, fromOffset, 0);
+}
+
+static createFromVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startFromVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(1, numElems, 1);
 }
 
@@ -236,14 +236,14 @@ static finishSizePrefixedNameRegistryEventBuffer(builder:flatbuffers.Builder, of
   builder.finish(offset, undefined, true);
 }
 
-static createNameRegistryEvent(builder:flatbuffers.Builder, blockNumber:number, blockHashOffset:flatbuffers.Offset, transactionHashOffset:flatbuffers.Offset, logIndex:number, fidOffset:flatbuffers.Offset, fnameOffset:flatbuffers.Offset, toOffset:flatbuffers.Offset, type:NameRegistryEventType, expiry:bigint):flatbuffers.Offset {
+static createNameRegistryEvent(builder:flatbuffers.Builder, blockNumber:number, blockHashOffset:flatbuffers.Offset, transactionHashOffset:flatbuffers.Offset, logIndex:number, fnameOffset:flatbuffers.Offset, fromOffset:flatbuffers.Offset, toOffset:flatbuffers.Offset, type:NameRegistryEventType, expiry:bigint):flatbuffers.Offset {
   NameRegistryEvent.startNameRegistryEvent(builder);
   NameRegistryEvent.addBlockNumber(builder, blockNumber);
   NameRegistryEvent.addBlockHash(builder, blockHashOffset);
   NameRegistryEvent.addTransactionHash(builder, transactionHashOffset);
   NameRegistryEvent.addLogIndex(builder, logIndex);
-  NameRegistryEvent.addFid(builder, fidOffset);
   NameRegistryEvent.addFname(builder, fnameOffset);
+  NameRegistryEvent.addFrom(builder, fromOffset);
   NameRegistryEvent.addTo(builder, toOffset);
   NameRegistryEvent.addType(builder, type);
   NameRegistryEvent.addExpiry(builder, expiry);
@@ -256,8 +256,8 @@ unpack(): NameRegistryEventT {
     this.bb!.createScalarList<number>(this.blockHash.bind(this), this.blockHashLength()),
     this.bb!.createScalarList<number>(this.transactionHash.bind(this), this.transactionHashLength()),
     this.logIndex(),
-    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength()),
     this.bb!.createScalarList<number>(this.fname.bind(this), this.fnameLength()),
+    this.bb!.createScalarList<number>(this.from.bind(this), this.fromLength()),
     this.bb!.createScalarList<number>(this.to.bind(this), this.toLength()),
     this.type(),
     this.expiry()
@@ -270,8 +270,8 @@ unpackTo(_o: NameRegistryEventT): void {
   _o.blockHash = this.bb!.createScalarList<number>(this.blockHash.bind(this), this.blockHashLength());
   _o.transactionHash = this.bb!.createScalarList<number>(this.transactionHash.bind(this), this.transactionHashLength());
   _o.logIndex = this.logIndex();
-  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
   _o.fname = this.bb!.createScalarList<number>(this.fname.bind(this), this.fnameLength());
+  _o.from = this.bb!.createScalarList<number>(this.from.bind(this), this.fromLength());
   _o.to = this.bb!.createScalarList<number>(this.to.bind(this), this.toLength());
   _o.type = this.type();
   _o.expiry = this.expiry();
@@ -284,8 +284,8 @@ constructor(
   public blockHash: (number)[] = [],
   public transactionHash: (number)[] = [],
   public logIndex: number = 0,
-  public fid: (number)[] = [],
   public fname: (number)[] = [],
+  public from: (number)[] = [],
   public to: (number)[] = [],
   public type: NameRegistryEventType = NameRegistryEventType.NameRegistryTransfer,
   public expiry: bigint = BigInt('0')
@@ -295,8 +295,8 @@ constructor(
 pack(builder:flatbuffers.Builder): flatbuffers.Offset {
   const blockHash = NameRegistryEvent.createBlockHashVector(builder, this.blockHash);
   const transactionHash = NameRegistryEvent.createTransactionHashVector(builder, this.transactionHash);
-  const fid = NameRegistryEvent.createFidVector(builder, this.fid);
   const fname = NameRegistryEvent.createFnameVector(builder, this.fname);
+  const from = NameRegistryEvent.createFromVector(builder, this.from);
   const to = NameRegistryEvent.createToVector(builder, this.to);
 
   return NameRegistryEvent.createNameRegistryEvent(builder,
@@ -304,8 +304,8 @@ pack(builder:flatbuffers.Builder): flatbuffers.Offset {
     blockHash,
     transactionHash,
     this.logIndex,
-    fid,
     fname,
+    from,
     to,
     this.type,
     this.expiry

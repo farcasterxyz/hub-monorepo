@@ -4,7 +4,7 @@ import Client from '~/network/rpc/flatbuffers/client';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import Factories from '~/test/factories/flatbuffer';
 import Engine from '~/storage/engine/flatbuffers';
-import { SignerAddModel, UserDataAddModel, UserNameAddModel } from '~/storage/flatbuffers/types';
+import { SignerAddModel, UserDataAddModel } from '~/storage/flatbuffers/types';
 import { Wallet, utils } from 'ethers';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
@@ -37,8 +37,7 @@ let signerAdd: SignerAddModel;
 
 let pfpAdd: UserDataAddModel;
 let locationAdd: UserDataAddModel;
-
-let addFname: UserNameAddModel;
+let addFname: UserDataAddModel;
 
 beforeAll(async () => {
   custodyEvent = new ContractEventModel(
@@ -73,13 +72,13 @@ beforeAll(async () => {
     await Factories.Message.create({ data: Array.from(locationData.bb?.bytes() ?? []) }, { transient: { signer } })
   ) as UserDataAddModel;
 
-  const addNameData = await Factories.UserNameAddData.create({
+  const addNameData = await Factories.UserDataAddData.create({
     fid: Array.from(fid),
-    body: Factories.UserNameBody.build(),
+    body: Factories.UserDataBody.build({ type: UserDataType.Fname }),
   });
   addFname = new MessageModel(
     await Factories.Message.create({ data: Array.from(addNameData.bb?.bytes() ?? []) }, { transient: { signer } })
-  ) as UserNameAddModel;
+  ) as UserDataAddModel;
 });
 
 describe('getUserData', () => {
@@ -138,12 +137,12 @@ describe('getUserName', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(addFname);
 
-    const result = await client.getUserName(fid);
+    const result = await client.getUserData(fid, UserDataType.Fname);
     expect(result._unsafeUnwrap()).toEqual(addFname);
   });
 
   test('fails when user data is missing', async () => {
-    const result = await client.getUserName(fid);
+    const result = await client.getUserData(fid, UserDataType.Fname);
     expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
   });
 });

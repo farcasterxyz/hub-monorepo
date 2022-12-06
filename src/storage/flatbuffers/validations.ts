@@ -8,7 +8,6 @@ import {
   SignerAddModel,
   SignerRemoveModel,
   UserDataAddModel,
-  UserNameAddModel,
   VerificationAddEthAddressModel,
   VerificationEthAddressClaim,
   VerificationRemoveModel,
@@ -36,7 +35,6 @@ import {
   isSignerAdd,
   isSignerRemove,
   isUserDataAdd,
-  isUserNameAdd,
   isVerificationAddEthAddress,
   isVerificationRemove,
 } from '~/storage/flatbuffers/typeguards';
@@ -102,8 +100,6 @@ export const validateMessage = async (message: MessageModel): HubAsyncResult<Mes
     return validateFollowMessage(message);
   } else if (isUserDataAdd(message)) {
     return validateUserDataAddMessage(message);
-  } else if (isUserNameAdd(message)) {
-    return validateUserNameAddMessage(message);
   } else {
     return err(new HubError('bad_request.validation_failure', 'unknown message type'));
   }
@@ -321,24 +317,14 @@ export const validateUserDataAddMessage = (message: UserDataAddModel): HubResult
     if (value && value.length > 256) {
       return err(new HubError('bad_request.validation_failure', 'url value > 256'));
     }
+  } else if (message.body().type() === UserDataType.Fname) {
+    // TODO: Validate fname characteristics
+    if (value && value.length > 32) {
+      return err(new HubError('bad_request.validation_failure', 'fname value > 32'));
+    }
   } else {
     return err(new HubError('bad_request.validation_failure', 'invalid user data type'));
   }
-
-  return ok(message);
-};
-
-export const validateUserNameAddMessage = (message: UserNameAddModel): HubResult<UserNameAddModel> => {
-  const fname = message.body().fnameArray();
-  if (!fname) {
-    return err(new HubError('bad_request.validation_failure', 'fname is missing'));
-  }
-
-  if (fname.length > 32) {
-    return err(new HubError('bad_request.validation_failure', 'fname is too long > 32'));
-  }
-
-  // TODO: Validate fname characteristics
 
   return ok(message);
 };

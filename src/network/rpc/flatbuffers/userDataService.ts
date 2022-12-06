@@ -14,7 +14,7 @@ import { toByteBuffer } from '~/storage/flatbuffers/utils';
 import { Message, UserDataType } from '~/utils/generated/message_generated';
 import { HubError } from '~/utils/hubErrors';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import { UserDataAddModel, UserNameAddModel } from '~/storage/flatbuffers/types';
+import { UserDataAddModel } from '~/storage/flatbuffers/types';
 
 export const userDataServiceMethods = () => {
   return {
@@ -37,17 +37,6 @@ export const userDataServiceMethods = () => {
       },
       responseDeserialize: (buffer: Buffer): MessagesResponse => {
         return MessagesResponse.getRootAsMessagesResponse(toByteBuffer(buffer));
-      },
-    },
-
-    getUserName: {
-      ...defaultMethod,
-      path: '/getUserFname',
-      requestDeserialize: (buffer: Buffer): GetUserNameRequest => {
-        return GetUserNameRequest.getRootAsGetUserNameRequest(toByteBuffer(buffer));
-      },
-      responseDeserialize: (buffer: Buffer): Message => {
-        return Message.getRootAsMessage(toByteBuffer(buffer));
       },
     },
   };
@@ -84,21 +73,6 @@ export const userDataServiceImpls = (engine: Engine) => {
         }
       );
     },
-
-    getUserName: async (
-      call: grpc.ServerUnaryCall<GetUserNameRequest, Message>,
-      callback: grpc.sendUnaryData<Message>
-    ) => {
-      const result = await engine.getUserFname(call.request.fidArray() ?? new Uint8Array());
-      result.match(
-        (model: UserNameAddModel) => {
-          callback(null, model.message);
-        },
-        (err: HubError) => {
-          callback(toServiceError(err));
-        }
-      );
-    },
   };
 };
 
@@ -115,12 +89,5 @@ export const userDataServiceRequests = {
     const requestT = new GetUserDataByFidRequestT(Array.from(fid));
     builder.finish(requestT.pack(builder));
     return GetUserDataByFidRequest.getRootAsGetUserDataByFidRequest(new ByteBuffer(builder.asUint8Array()));
-  },
-
-  getUserName: (fid: Uint8Array): GetUserNameRequest => {
-    const builder = new Builder(1);
-    const requestT = new GetUserNameRequestT(Array.from(fid));
-    builder.finish(requestT.pack(builder));
-    return GetUserNameRequest.getRootAsGetUserNameRequest(new ByteBuffer(builder.asUint8Array()));
   },
 };

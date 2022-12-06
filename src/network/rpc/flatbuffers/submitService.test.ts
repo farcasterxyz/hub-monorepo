@@ -105,8 +105,8 @@ describe('submitContractEvent', () => {
 describe('submitNameRegistryEvent', () => {
   test('succeeds', async () => {
     const nameRegistryEvent = new NameRegistryEventModel(
-      await Factories.IdNameRegistryEvent.create(
-        { to: Array.from(utils.arrayify(wallet.address)), fid: Array.from(fid) },
+      await Factories.NameRegistryEvent.create(
+        { to: Array.from(utils.arrayify(wallet.address)) },
         { transient: { wallet } }
       )
     );
@@ -116,8 +116,8 @@ describe('submitNameRegistryEvent', () => {
 
   test('fails with invalid event', async () => {
     const invalidEvent = new NameRegistryEventModel(
-      await Factories.IdNameRegistryEvent.create(
-        { to: Array.from(utils.arrayify(wallet.address)), fid: Array.from(fid), type: 0 as NameRegistryEventType },
+      await Factories.NameRegistryEvent.create(
+        { to: Array.from(utils.arrayify(wallet.address)), type: 0 as NameRegistryEventType },
         { transient: { wallet } }
       )
     );

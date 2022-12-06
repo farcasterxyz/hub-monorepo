@@ -71,12 +71,12 @@ export default class NameRegistryEventModel {
     return this.event.logIndex();
   }
 
-  fid(): Uint8Array {
-    return this.event.fidArray() ?? new Uint8Array();
-  }
-
   fname(): Uint8Array {
     return this.event.fnameArray() ?? new Uint8Array();
+  }
+
+  from(): Uint8Array {
+    return this.event.fromArray() ?? new Uint8Array();
   }
 
   to(): Uint8Array {

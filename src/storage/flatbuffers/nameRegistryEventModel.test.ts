@@ -9,8 +9,7 @@ const fname = Factories.Fname.build();
 let model: NameRegistryEventModel;
 
 beforeAll(async () => {
-  const nameRegistryEvent = await Factories.IdNameRegistryEvent.create({
-    fid: Array.from(fid),
+  const nameRegistryEvent = await Factories.NameRegistryEvent.create({
     fname: Array.from(fname),
   });
   model = new NameRegistryEventModel(nameRegistryEvent);

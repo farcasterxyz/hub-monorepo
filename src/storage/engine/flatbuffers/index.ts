@@ -17,7 +17,6 @@ import {
   SignerAddModel,
   SignerRemoveModel,
   UserDataAddModel,
-  UserNameAddModel,
   UserPostfix,
   VerificationAddEthAddressModel,
   VerificationRemoveModel,
@@ -84,10 +83,7 @@ class Engine {
       return ResultAsync.fromPromise(this._signerStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.VerificationMessage) {
       return ResultAsync.fromPromise(this._verificationStore.merge(message), (e) => e as HubError);
-    } else if (
-      message.setPostfix() === UserPostfix.UserDataMessage ||
-      message.setPostfix() === UserPostfix.UserNameMessage
-    ) {
+    } else if (message.setPostfix() === UserPostfix.UserDataMessage) {
       return ResultAsync.fromPromise(this._userDataStore.merge(message), (e) => e as HubError);
     } else {
       return err(new HubError('bad_request.validation_failure', 'invalid message type'));
@@ -110,7 +106,7 @@ class Engine {
       event.type() === NameRegistryEventType.NameRegistryTransfer ||
       event.type() === NameRegistryEventType.NameRegistryRenew
     ) {
-      return ResultAsync.fromPromise(this._signerStore.mergeNameRegistryEvent(event), (e) => e as HubError);
+      return ResultAsync.fromPromise(this._userDataStore.mergeNameRegistryEvent(event), (e) => e as HubError);
     }
 
     return err(new HubError('bad_request.validation_failure', 'invalid event type'));
@@ -449,15 +445,6 @@ class Engine {
     }
 
     return ResultAsync.fromPromise(this._userDataStore.getUserDataAddsByUser(fid), (e) => e as HubError);
-  }
-
-  async getUserFname(fid: Uint8Array): HubAsyncResult<UserNameAddModel> {
-    const validatedFid = validateFid(fid);
-    if (validatedFid.isErr()) {
-      return err(validatedFid.error);
-    }
-
-    return ResultAsync.fromPromise(this._userDataStore.getUserNameAdd(fid), (e) => e as HubError);
   }
 
   /* -------------------------------------------------------------------------- */

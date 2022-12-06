@@ -11,7 +11,6 @@ import {
   SignerAddModel,
   SignerRemoveModel,
   UserDataAddModel,
-  UserNameAddModel,
   VerificationAddEthAddressModel,
   VerificationRemoveModel,
 } from '~/storage/flatbuffers/types';
@@ -223,13 +222,6 @@ class Client {
     );
   }
 
-  async getUserName(fid: Uint8Array): HubAsyncResult<UserNameAddModel> {
-    return this.makeUnaryUserNameRequest(
-      userDataServiceMethods().getUserName,
-      userDataServiceRequests.getUserName(fid)
-    );
-  }
-
   /* -------------------------------------------------------------------------- */
   /*                                   Sync Methods                             */
   /* -------------------------------------------------------------------------- */
@@ -341,27 +333,6 @@ class Client {
             resolve(err(fromServiceError(e)));
           } else if (response) {
             resolve(ok(new NameRegistryEventModel(response)));
-          }
-        }
-      );
-    });
-  }
-
-  private makeUnaryUserNameRequest<RequestType, ResponseMessageType extends MessageModel>(
-    method: grpc.MethodDefinition<RequestType, Message>,
-    request: RequestType
-  ): HubAsyncResult<ResponseMessageType> {
-    return new Promise((resolve) => {
-      this.client.makeUnaryRequest(
-        method.path,
-        method.requestSerialize,
-        method.responseDeserialize,
-        request,
-        (e: grpc.ServiceError | null, response?: Message) => {
-          if (e) {
-            resolve(err(fromServiceError(e)));
-          } else if (response) {
-            resolve(ok(new MessageModel(response) as ResponseMessageType));
           }
         }
       );

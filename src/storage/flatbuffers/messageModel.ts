@@ -16,7 +16,6 @@ import {
   FarcasterNetwork,
   VerificationAddEthAddressBody,
   VerificationRemoveBody,
-  UserNameAddBody,
 } from '~/utils/generated/message_generated';
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { RootPrefix, UserMessagePostfix, UserPostfix } from '~/storage/flatbuffers/types';
@@ -92,10 +91,6 @@ export default class MessageModel {
 
     if (type === MessageType.UserDataAdd) {
       return UserPostfix.UserDataMessage;
-    }
-
-    if (type === MessageType.UserNameAdd) {
-      return UserPostfix.UserNameMessage;
     }
 
     throw new Error('invalid type');
@@ -290,7 +285,6 @@ export default class MessageModel {
     | VerificationRemoveBody
     | SignerBody
     | UserDataBody
-    | UserNameAddBody
     | ReactionBody {
     if (this.data.bodyType() === MessageBody.CastAddBody) {
       return this.data.body(new CastAddBody()) as CastAddBody;
@@ -306,8 +300,6 @@ export default class MessageModel {
       return this.data.body(new SignerBody()) as SignerBody;
     } else if (this.data.bodyType() === MessageBody.UserDataBody) {
       return this.data.body(new UserDataBody()) as UserDataBody;
-    } else if (this.data.bodyType() === MessageBody.UserNameAddBody) {
-      return this.data.body(new UserNameAddBody()) as UserNameAddBody;
     } else if (this.data.bodyType() === MessageBody.ReactionBody) {
       return this.data.body(new ReactionBody()) as ReactionBody;
     }

@@ -51,7 +51,3 @@ export const isSignerAdd = (message: MessageModel): message is Types.SignerAddMo
 export const isUserDataAdd = (message: MessageModel): message is Types.UserDataAddModel => {
   return message.type() === MessageType.UserDataAdd && message.data.bodyType() === MessageBody.UserDataBody;
 };
-
-export const isUserNameAdd = (message: MessageModel): message is Types.UserNameAddModel => {
-  return message.type() === MessageType.UserNameAdd && message.data.bodyType() === MessageBody.UserNameAddBody;
-};
