@@ -6,7 +6,6 @@ import MessageModel, { TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
 import { UserPostfix } from './types';
 import { HubError } from '~/utils/hubErrors';
 import { bytesCompare, toFarcasterTime } from './utils';
-import { Message } from '~/utils/generated/message_generated';
 
 const db = jestBinaryRocksDB('flatbuffers.model.test');
 
