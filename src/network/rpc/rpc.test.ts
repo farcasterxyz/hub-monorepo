@@ -54,7 +54,7 @@ let addDelegateSigner: SignerAdd;
 let server: RPCServer;
 let client: RPCClient;
 
-const TEST_TIMEOUT_SHORT = 10_000;
+const TEST_TIMEOUT_SHORT = 30_000;
 
 class mockRPCHandler implements RPCHandler {
   getUsers(): Promise<Set<number>> {

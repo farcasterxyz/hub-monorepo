@@ -3,6 +3,7 @@ import type { JestConfigWithTsJest } from 'ts-jest';
 const jestConfig: JestConfigWithTsJest = {
   preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
+  testTimeout: 30000,
   moduleNameMapper: {
     '^~/(.*)$': '<rootDir>/src/$1',
     '^(.+)_generated.js$': '$1_generated.ts', // Support flatc generated files

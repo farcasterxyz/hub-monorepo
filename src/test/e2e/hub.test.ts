@@ -10,7 +10,7 @@ import { Message } from '~/types';
 import { jest } from '@jest/globals';
 import { HubError } from '~/utils/hubErrors';
 
-const TEST_TIMEOUT_SHORT = 10 * 1000;
+const TEST_TIMEOUT_SHORT = 30 * 1000;
 const TEST_TIMEOUT_LONG = 2 * 60 * 1000;
 const opts: HubOptions = { localIpAddrsOnly: true };
 

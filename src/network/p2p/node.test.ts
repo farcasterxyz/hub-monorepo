@@ -7,7 +7,7 @@ import { sleep } from '~/utils/crypto';
 const NUM_NODES = 10;
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
-const TEST_TIMEOUT_SHORT = 10 * 1000;
+const TEST_TIMEOUT_SHORT = 30 * 1000;
 
 let nodes: Node[];
 // map peerId -> topics -> Messages per topic

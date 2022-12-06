@@ -6,7 +6,7 @@ import { mockEvents, MockFCEvent, mockFid, populateEngine } from '~/storage/engi
 const testDb = jestRocksDB('engine.mock.test');
 const engine = new Engine(testDb);
 
-const TEST_TIMEOUT_SHORT = 10 * 1000; // 10 sec timeout
+const TEST_TIMEOUT_SHORT = 30 * 1000; // 30 sec timeout
 const TEST_TIMEOUT_LONG = 2 * 60 * 1000; // 2 min timeout
 
 beforeEach(async () => {
