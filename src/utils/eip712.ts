@@ -30,7 +30,7 @@ const EIP_712_FARCASTER_VERIFICATION_CLAIM = [
 
 const EIP_712_FARCASTER_MESSAGE_DATA = [
   {
-    name: 'data',
+    name: 'hash',
     type: 'bytes',
   },
 ];
@@ -62,18 +62,18 @@ export const verifyVerificationEthAddressClaimSignature = (
   );
 };
 
-export const signMessageData = async (data: Uint8Array, wallet: Wallet): Promise<Uint8Array> => {
+export const signMessageHash = async (hash: Uint8Array, wallet: Wallet): Promise<Uint8Array> => {
   return arrayify(
-    await wallet._signTypedData(EIP_712_FARCASTER_DOMAIN, { MessageData: EIP_712_FARCASTER_MESSAGE_DATA }, { data })
+    await wallet._signTypedData(EIP_712_FARCASTER_DOMAIN, { MessageData: EIP_712_FARCASTER_MESSAGE_DATA }, { hash })
   );
 };
 
-export const verifyMessageDataSignature = (data: Uint8Array, signature: Uint8Array): Uint8Array => {
+export const verifyMessageHashSignature = (hash: Uint8Array, signature: Uint8Array): Uint8Array => {
   return arrayify(
     utils.verifyTypedData(
       EIP_712_FARCASTER_DOMAIN,
       { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
-      { data },
+      { hash },
       signature
     )
   );

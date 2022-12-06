@@ -8,6 +8,7 @@ import { MessageType } from '~/utils/generated/message_generated';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
+import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 
 /**
  * SignerStore persists Signer Messages in RocksDB using a series of two-phase CRDT sets
@@ -85,6 +86,11 @@ class SignerStore {
   async getCustodyAddress(fid: Uint8Array): Promise<Uint8Array> {
     const idRegistryEvent = await this.getCustodyEvent(fid);
     return idRegistryEvent.to();
+  }
+
+  /** Returns the most recent event from the NameEventRegistry contract that affected the fid */
+  async getNameRegistryEvent(fid: Uint8Array): Promise<NameRegistryEventModel> {
+    return NameRegistryEventModel.get(this._db, fid);
   }
 
   //TODO: When implementing the Result type consider refactoring these methods into separate ones
@@ -175,6 +181,24 @@ class SignerStore {
     this._eventHandler.emit('mergeContractEvent', event);
   }
 
+  /**
+   * Merges a NameRegistryEvent into the SignerStore, storing the causally latest event at the key:
+   * <RootPrefix:User><UserPostfix:NameRegistryEvent><fname>
+   */
+  async mergeNameRegistryEvent(event: NameRegistryEventModel): Promise<void> {
+    const existingEvent = await ResultAsync.fromPromise(this.getNameRegistryEvent(event.fid()), () => undefined);
+    if (existingEvent.isOk() && this.eventCompare(existingEvent.value, event) >= 0) {
+      return undefined;
+    }
+
+    const txn = this._db.transaction();
+    txn.put(event.primaryKey(), event.toBuffer());
+    await this._db.commit(txn);
+
+    // Emit store event
+    this._eventHandler.emit('mergeNameRegistryEvent', event);
+  }
+
   /** Merges a SignerAdd or SignerRemove message into the SignerStore */
   async merge(message: MessageModel): Promise<void> {
     if (isSignerRemove(message)) {
@@ -227,7 +251,10 @@ class SignerStore {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private eventCompare(a: ContractEventModel, b: ContractEventModel): number {
+  private eventCompare(
+    a: ContractEventModel | NameRegistryEventModel,
+    b: ContractEventModel | NameRegistryEventModel
+  ): number {
     // Compare blockNumber
     if (a.blockNumber() < b.blockNumber()) {
       return -1;

@@ -2,10 +2,8 @@ import grpc, { Metadata } from '@grpc/grpc-js';
 import Engine from '~/storage/engine/flatbuffers';
 import { defaultMethod } from '~/network/rpc/flatbuffers/server';
 import { toByteBuffer } from '~/storage/flatbuffers/utils';
-import { EventType } from '~/utils/generated/rpc_generated';
+import { EventType, SubscribeRequest, EventResponse, EventResponseT } from '~/utils/generated/rpc_generated';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { SubscribeRequest } from '~/utils/generated/farcaster/subscribe-request';
-import { EventResponse, EventResponseT } from '~/utils/generated/farcaster/event-response';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 

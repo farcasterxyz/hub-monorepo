@@ -1,3 +1,4 @@
+import AbstractRocksDB from 'rocksdb';
 import { ByteBuffer } from 'flatbuffers';
 import {
   CastAddBody,
@@ -13,11 +14,12 @@ import {
   HashScheme,
   SignatureScheme,
   FarcasterNetwork,
+  VerificationAddEthAddressBody,
+  VerificationRemoveBody,
+  UserNameAddBody,
 } from '~/utils/generated/message_generated';
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { RootPrefix, UserMessagePostfix, UserPostfix } from '~/storage/flatbuffers/types';
-import { VerificationAddEthAddressBody } from '~/utils/generated/farcaster/verification-add-eth-address-body';
-import { VerificationRemoveBody } from '~/utils/generated/farcaster/verification-remove-body';
 
 /** Used when index keys are sufficiently descriptive */
 export const TRUE_VALUE = Buffer.from([1]);
@@ -52,8 +54,8 @@ export default class MessageModel {
   }
 
   /** <user prefix byte, fid, set index byte, key> */
-  static primaryKey(fid: Uint8Array, set: UserMessagePostfix, key: Uint8Array): Buffer {
-    return Buffer.concat([this.userKey(fid), Buffer.from([set]), Buffer.from(key)]);
+  static primaryKey(fid: Uint8Array, set: UserMessagePostfix, key?: Uint8Array): Buffer {
+    return Buffer.concat([this.userKey(fid), Buffer.from([set]), key ? Buffer.from(key) : new Uint8Array()]);
   }
 
   /** <user prefix byte, fid, signer index byte, signer, type, key> */
@@ -90,6 +92,10 @@ export default class MessageModel {
 
     if (type === MessageType.UserDataAdd) {
       return UserPostfix.UserDataMessage;
+    }
+
+    if (type === MessageType.UserNameAdd) {
+      return UserPostfix.UserNameMessage;
     }
 
     throw new Error('invalid type');
@@ -176,6 +182,23 @@ export default class MessageModel {
   ): Promise<T> {
     const buffer = await db.get(MessageModel.primaryKey(fid, set, key));
     return MessageModel.from(new Uint8Array(buffer)) as T;
+  }
+
+  static getPruneIterator(db: RocksDB, fid: Uint8Array, setPostfix: UserMessagePostfix): AbstractRocksDB.Iterator {
+    const prefix = MessageModel.primaryKey(fid, setPostfix);
+    return db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true });
+  }
+
+  static async getNextToPrune(iterator: AbstractRocksDB.Iterator): Promise<MessageModel> {
+    return new Promise((resolve, reject) => {
+      iterator.next((err: Error | undefined, _: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(MessageModel.from(new Uint8Array(value as Buffer)));
+        }
+      });
+    });
   }
 
   static putTransaction(tsx: Transaction, message: MessageModel): Transaction {
@@ -267,6 +290,7 @@ export default class MessageModel {
     | VerificationRemoveBody
     | SignerBody
     | UserDataBody
+    | UserNameAddBody
     | ReactionBody {
     if (this.data.bodyType() === MessageBody.CastAddBody) {
       return this.data.body(new CastAddBody()) as CastAddBody;
@@ -282,6 +306,8 @@ export default class MessageModel {
       return this.data.body(new SignerBody()) as SignerBody;
     } else if (this.data.bodyType() === MessageBody.UserDataBody) {
       return this.data.body(new UserDataBody()) as UserDataBody;
+    } else if (this.data.bodyType() === MessageBody.UserNameAddBody) {
+      return this.data.body(new UserNameAddBody()) as UserNameAddBody;
     } else if (this.data.bodyType() === MessageBody.ReactionBody) {
       return this.data.body(new ReactionBody()) as ReactionBody;
     }

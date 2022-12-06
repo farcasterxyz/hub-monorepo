@@ -13,7 +13,8 @@ enum MessageType: uint16 {
   VerificationRemove = 8,
   SignerAdd = 9,
   SignerRemove = 10,
-  UserDataAdd = 11
+  UserDataAdd = 11,
+  UserNameAdd = 12,
 }
 
 enum SignatureScheme: uint8 {
@@ -92,6 +93,10 @@ table UserDataBody {
   value: string;
 }
 
+table UserNameAddBody {
+  fname: [ubyte] (required);
+}
+
 union MessageBody {
   CastAddBody,
   CastRemoveBody,
@@ -100,7 +105,8 @@ union MessageBody {
   VerificationAddEthAddressBody,
   VerificationRemoveBody,
   SignerBody,
-  UserDataBody
+  UserDataBody,
+  UserNameAddBody
 }
 
 table MessageData {

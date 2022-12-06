@@ -4,7 +4,7 @@ import Client from '~/network/rpc/flatbuffers/client';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import Factories from '~/test/factories/flatbuffer';
 import Engine from '~/storage/engine/flatbuffers';
-import { SignerAddModel, UserDataAddModel } from '~/storage/flatbuffers/types';
+import { SignerAddModel, UserDataAddModel, UserNameAddModel } from '~/storage/flatbuffers/types';
 import { Wallet, utils } from 'ethers';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
@@ -38,6 +38,8 @@ let signerAdd: SignerAddModel;
 let pfpAdd: UserDataAddModel;
 let locationAdd: UserDataAddModel;
 
+let addFname: UserNameAddModel;
+
 beforeAll(async () => {
   custodyEvent = new ContractEventModel(
     await Factories.IdRegistryEvent.create(
@@ -70,6 +72,14 @@ beforeAll(async () => {
   locationAdd = new MessageModel(
     await Factories.Message.create({ data: Array.from(locationData.bb?.bytes() ?? []) }, { transient: { signer } })
   ) as UserDataAddModel;
+
+  const addNameData = await Factories.UserNameAddData.create({
+    fid: Array.from(fid),
+    body: Factories.UserNameBody.build(),
+  });
+  addFname = new MessageModel(
+    await Factories.Message.create({ data: Array.from(addNameData.bb?.bytes() ?? []) }, { transient: { signer } })
+  ) as UserNameAddModel;
 });
 
 describe('getUserData', () => {
@@ -116,5 +126,24 @@ describe('getUserDataByFid', () => {
   test('returns empty array without messages', async () => {
     const result = await client.getUserDataByFid(fid);
     expect(result._unsafeUnwrap()).toEqual([]);
+  });
+});
+
+describe('getUserName', () => {
+  beforeEach(async () => {
+    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeMessage(signerAdd);
+  });
+
+  test('succeeds', async () => {
+    await engine.mergeMessage(addFname);
+
+    const result = await client.getUserName(fid);
+    expect(result._unsafeUnwrap()).toEqual(addFname);
+  });
+
+  test('fails when user data is missing', async () => {
+    const result = await client.getUserName(fid);
+    expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
   });
 });

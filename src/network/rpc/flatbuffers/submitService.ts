@@ -7,6 +7,8 @@ import { HubError } from '~/utils/hubErrors';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { ContractEvent } from '~/utils/generated/contract_event_generated';
+import { NameRegistryEvent } from '~/utils/generated/nameregistry_generated';
+import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 
 export const submitServiceMethods = () => {
   return {
@@ -29,6 +31,17 @@ export const submitServiceMethods = () => {
       },
       responseDeserialize: (buffer: Buffer): ContractEvent => {
         return ContractEvent.getRootAsContractEvent(toByteBuffer(buffer));
+      },
+    },
+
+    submitNameRegistryEvent: {
+      ...defaultMethod,
+      path: '/submitNameRegistryEvent',
+      requestDeserialize: (buffer: Buffer): NameRegistryEvent => {
+        return NameRegistryEvent.getRootAsNameRegistryEvent(toByteBuffer(buffer));
+      },
+      responseDeserialize: (buffer: Buffer): NameRegistryEvent => {
+        return NameRegistryEvent.getRootAsNameRegistryEvent(toByteBuffer(buffer));
       },
     },
   };
@@ -55,6 +68,22 @@ export const submitServiceImpls = (engine: Engine) => {
     ) => {
       const model = new ContractEventModel(call.request);
       const result = await engine.mergeIdRegistryEvent(model);
+      result.match(
+        () => {
+          callback(null, model.event);
+        },
+        (err: HubError) => {
+          callback(toServiceError(err));
+        }
+      );
+    },
+
+    submitNameRegistryEvent: async (
+      call: grpc.ServerUnaryCall<NameRegistryEvent, NameRegistryEvent>,
+      callback: grpc.sendUnaryData<NameRegistryEvent>
+    ) => {
+      const model = new NameRegistryEventModel(call.request);
+      const result = await engine.mergeNameRegistryEvent(model);
       result.match(
         () => {
           callback(null, model.event);

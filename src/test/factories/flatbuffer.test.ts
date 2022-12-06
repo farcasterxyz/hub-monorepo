@@ -1,8 +1,12 @@
 import { blake3 } from '@noble/hashes/blake3';
 import Factories from '~/test/factories/flatbuffer';
-import { FarcasterNetwork, Message, MessageData } from '~/utils/generated/message_generated';
+import {
+  FarcasterNetwork,
+  Message,
+  MessageData,
+  VerificationAddEthAddressBody,
+} from '~/utils/generated/message_generated';
 import * as ed from '@noble/ed25519';
-import { VerificationAddEthAddressBody } from '~/utils/generated/farcaster/verification-add-eth-address-body';
 import { verifyVerificationEthAddressClaimSignature } from '~/utils/eip712';
 import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
 import { hexlify } from 'ethers/lib/utils';
@@ -65,7 +69,7 @@ describe('MessageFactory', () => {
   test('generates signature', async () => {
     const verifySignature = ed.verify(
       message.signatureArray() || new Uint8Array(),
-      data.bb?.bytes() || new Uint8Array(),
+      message.hashArray() || new Uint8Array(),
       message.signerArray() || new Uint8Array()
     );
     expect(verifySignature).resolves.toEqual(true);

@@ -17,6 +17,7 @@ import {
   SignerAddModel,
   SignerRemoveModel,
   UserDataAddModel,
+  UserNameAddModel,
   UserPostfix,
   VerificationAddEthAddressModel,
   VerificationRemoveModel,
@@ -39,6 +40,8 @@ import {
 import { CastId, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
+import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
+import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 
 class Engine {
   public eventHandler: StoreEventHandler;
@@ -81,7 +84,10 @@ class Engine {
       return ResultAsync.fromPromise(this._signerStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.VerificationMessage) {
       return ResultAsync.fromPromise(this._verificationStore.merge(message), (e) => e as HubError);
-    } else if (message.setPostfix() === UserPostfix.UserDataMessage) {
+    } else if (
+      message.setPostfix() === UserPostfix.UserDataMessage ||
+      message.setPostfix() === UserPostfix.UserNameMessage
+    ) {
       return ResultAsync.fromPromise(this._userDataStore.merge(message), (e) => e as HubError);
     } else {
       return err(new HubError('bad_request.validation_failure', 'invalid message type'));
@@ -97,6 +103,17 @@ class Engine {
     } else {
       return err(new HubError('bad_request.validation_failure', 'invalid event type'));
     }
+  }
+
+  async mergeNameRegistryEvent(event: NameRegistryEventModel): HubAsyncResult<void> {
+    if (
+      event.type() === NameRegistryEventType.NameRegistryTransfer ||
+      event.type() === NameRegistryEventType.NameRegistryRenew
+    ) {
+      return ResultAsync.fromPromise(this._signerStore.mergeNameRegistryEvent(event), (e) => e as HubError);
+    }
+
+    return err(new HubError('bad_request.validation_failure', 'invalid event type'));
   }
 
   async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<void> {
@@ -432,6 +449,15 @@ class Engine {
     }
 
     return ResultAsync.fromPromise(this._userDataStore.getUserDataAddsByUser(fid), (e) => e as HubError);
+  }
+
+  async getUserFname(fid: Uint8Array): HubAsyncResult<UserNameAddModel> {
+    const validatedFid = validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    return ResultAsync.fromPromise(this._userDataStore.getUserNameAdd(fid), (e) => e as HubError);
   }
 
   /* -------------------------------------------------------------------------- */

@@ -11,11 +11,18 @@ import {
   SignerAddModel,
   SignerRemoveModel,
   UserDataAddModel,
+  UserNameAddModel,
   VerificationAddEthAddressModel,
   VerificationRemoveModel,
 } from '~/storage/flatbuffers/types';
 import { CastId, Message, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
-import { EventResponse, GetFidsRequest, MessagesResponse, SubscribeRequest } from '~/utils/generated/rpc_generated';
+import {
+  EventResponse,
+  GetFidsRequest,
+  MessagesResponse,
+  SubscribeRequest,
+  FidsResponse,
+} from '~/utils/generated/rpc_generated';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import { castServiceRequests, castServiceMethods } from '~/network/rpc/flatbuffers/castService';
 import { fromServiceError } from '~/network/rpc/flatbuffers/server';
@@ -27,9 +34,10 @@ import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { ContractEvent } from '~/utils/generated/contract_event_generated';
 import { signerServiceMethods, signerServiceRequests } from '~/network/rpc/flatbuffers/signerService';
 import { userDataServiceMethods, userDataServiceRequests } from '~/network/rpc/flatbuffers/userDataService';
-import { FidsResponse } from '~/utils/generated/farcaster/fids-response';
 import { createSyncServiceRequest, syncServiceMethods } from '~/network/rpc/flatbuffers/syncService';
 import { eventServiceMethods } from '~/network/rpc/flatbuffers/eventService';
+import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
+import { NameRegistryEvent } from '~/utils/generated/nameregistry_generated';
 
 class Client {
   client: grpc.Client;
@@ -52,6 +60,10 @@ class Client {
 
   async submitContractEvent(event: ContractEventModel): HubAsyncResult<ContractEventModel> {
     return this.makeUnaryContractEventRequest(submitServiceMethods().submitContractEvent, event.event);
+  }
+
+  async submitNameRegistryEvent(event: NameRegistryEventModel): HubAsyncResult<NameRegistryEventModel> {
+    return this.makeUnaryNameRegistryEventRequest(submitServiceMethods().submitNameRegistryEvent, event.event);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -211,6 +223,13 @@ class Client {
     );
   }
 
+  async getUserName(fid: Uint8Array): HubAsyncResult<UserNameAddModel> {
+    return this.makeUnaryUserNameRequest(
+      userDataServiceMethods().getUserName,
+      userDataServiceRequests.getUserName(fid)
+    );
+  }
+
   /* -------------------------------------------------------------------------- */
   /*                                   Sync Methods                             */
   /* -------------------------------------------------------------------------- */
@@ -301,6 +320,48 @@ class Client {
             resolve(err(fromServiceError(e)));
           } else if (response) {
             resolve(ok(new ContractEventModel(response)));
+          }
+        }
+      );
+    });
+  }
+
+  private makeUnaryNameRegistryEventRequest<RequestType>(
+    method: grpc.MethodDefinition<RequestType, NameRegistryEvent>,
+    request: RequestType
+  ): HubAsyncResult<NameRegistryEventModel> {
+    return new Promise((resolve) => {
+      this.client.makeUnaryRequest(
+        method.path,
+        method.requestSerialize,
+        method.responseDeserialize,
+        request,
+        (e: grpc.ServiceError | null, response?: NameRegistryEvent) => {
+          if (e) {
+            resolve(err(fromServiceError(e)));
+          } else if (response) {
+            resolve(ok(new NameRegistryEventModel(response)));
+          }
+        }
+      );
+    });
+  }
+
+  private makeUnaryUserNameRequest<RequestType, ResponseMessageType extends MessageModel>(
+    method: grpc.MethodDefinition<RequestType, Message>,
+    request: RequestType
+  ): HubAsyncResult<ResponseMessageType> {
+    return new Promise((resolve) => {
+      this.client.makeUnaryRequest(
+        method.path,
+        method.requestSerialize,
+        method.responseDeserialize,
+        request,
+        (e: grpc.ServiceError | null, response?: Message) => {
+          if (e) {
+            resolve(err(fromServiceError(e)));
+          } else if (response) {
+            resolve(ok(new MessageModel(response) as ResponseMessageType));
           }
         }
       );

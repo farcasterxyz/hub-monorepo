@@ -24,7 +24,7 @@ const app = new Command();
 app
   .name('hub')
   .description('Farcaster Hub')
-  .version(process.env.npm_package_version ?? '1.0.0');
+  .version(process.env['npm_package_version'] ?? '1.0.0');
 
 app
   .command('start')

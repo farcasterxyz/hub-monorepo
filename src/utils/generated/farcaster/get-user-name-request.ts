@@ -4,22 +4,22 @@ import * as flatbuffers from 'flatbuffers';
 
 
 
-export class GetSignersByFidRequest {
+export class GetUserNameRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
-  __init(i:number, bb:flatbuffers.ByteBuffer):GetSignersByFidRequest {
+  __init(i:number, bb:flatbuffers.ByteBuffer):GetUserNameRequest {
   this.bb_pos = i;
   this.bb = bb;
   return this;
 }
 
-static getRootAsGetSignersByFidRequest(bb:flatbuffers.ByteBuffer, obj?:GetSignersByFidRequest):GetSignersByFidRequest {
-  return (obj || new GetSignersByFidRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+static getRootAsGetUserNameRequest(bb:flatbuffers.ByteBuffer, obj?:GetUserNameRequest):GetUserNameRequest {
+  return (obj || new GetUserNameRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-static getSizePrefixedRootAsGetSignersByFidRequest(bb:flatbuffers.ByteBuffer, obj?:GetSignersByFidRequest):GetSignersByFidRequest {
+static getSizePrefixedRootAsGetUserNameRequest(bb:flatbuffers.ByteBuffer, obj?:GetUserNameRequest):GetUserNameRequest {
   bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
-  return (obj || new GetSignersByFidRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  return (obj || new GetUserNameRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
 fid(index: number):number|null {
@@ -37,7 +37,7 @@ fidArray():Uint8Array|null {
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
-static startGetSignersByFidRequest(builder:flatbuffers.Builder) {
+static startGetUserNameRequest(builder:flatbuffers.Builder) {
   builder.startObject(1);
 }
 
@@ -57,40 +57,40 @@ static startFidVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(1, numElems, 1);
 }
 
-static endGetSignersByFidRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
+static endGetUserNameRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   builder.requiredField(offset, 4) // fid
   return offset;
 }
 
-static createGetSignersByFidRequest(builder:flatbuffers.Builder, fidOffset:flatbuffers.Offset):flatbuffers.Offset {
-  GetSignersByFidRequest.startGetSignersByFidRequest(builder);
-  GetSignersByFidRequest.addFid(builder, fidOffset);
-  return GetSignersByFidRequest.endGetSignersByFidRequest(builder);
+static createGetUserNameRequest(builder:flatbuffers.Builder, fidOffset:flatbuffers.Offset):flatbuffers.Offset {
+  GetUserNameRequest.startGetUserNameRequest(builder);
+  GetUserNameRequest.addFid(builder, fidOffset);
+  return GetUserNameRequest.endGetUserNameRequest(builder);
 }
 
-unpack(): GetSignersByFidRequestT {
-  return new GetSignersByFidRequestT(
+unpack(): GetUserNameRequestT {
+  return new GetUserNameRequestT(
     this.bb!.createScalarList(this.fid.bind(this), this.fidLength())
   );
 }
 
 
-unpackTo(_o: GetSignersByFidRequestT): void {
+unpackTo(_o: GetUserNameRequestT): void {
   _o.fid = this.bb!.createScalarList(this.fid.bind(this), this.fidLength());
 }
 }
 
-export class GetSignersByFidRequestT {
+export class GetUserNameRequestT {
 constructor(
   public fid: (number)[] = []
 ){}
 
 
 pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = GetSignersByFidRequest.createFidVector(builder, this.fid);
+  const fid = GetUserNameRequest.createFidVector(builder, this.fid);
 
-  return GetSignersByFidRequest.createGetSignersByFidRequest(builder,
+  return GetUserNameRequest.createGetUserNameRequest(builder,
     fid
   );
 }

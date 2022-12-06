@@ -5,6 +5,7 @@ const jestConfig: JestConfigWithTsJest = {
   testEnvironment: 'node',
   moduleNameMapper: {
     '^~/(.*)$': '<rootDir>/src/$1',
+    '^(.+)_generated.js$': '$1_generated.ts', // Support flatc generated files
   },
   coveragePathIgnorePatterns: ['<rootDir>/build/', '<rootDir>/node_modules/', '<rootDir>/src/utils/generated/'],
   testPathIgnorePatterns: ['<rootDir>/build', '<rootDir>/node_modules', '<rootDir>/src/utils/generated/'],

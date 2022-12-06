@@ -29,20 +29,21 @@ import {
   UserDataType,
   UserId,
   UserIdT,
+  UserNameAddBody,
+  UserNameAddBodyT,
+  VerificationAddEthAddressBody,
+  VerificationAddEthAddressBodyT,
+  VerificationRemoveBody,
+  VerificationRemoveBodyT,
 } from '~/utils/generated/message_generated';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { blake3 } from '@noble/hashes/blake3';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import * as ed from '@noble/ed25519';
 import { arrayify } from 'ethers/lib/utils';
-import {
-  VerificationAddEthAddressBody,
-  VerificationAddEthAddressBodyT,
-} from '~/utils/generated/farcaster/verification-add-eth-address-body';
 import { ethers, Wallet } from 'ethers';
-import { signMessageData, signVerificationEthAddressClaim } from '~/utils/eip712';
+import { signMessageHash, signVerificationEthAddressClaim } from '~/utils/eip712';
 import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
-import { VerificationRemoveBody, VerificationRemoveBodyT } from '~/utils/generated/farcaster/verification-remove-body';
 import { ContractEvent, ContractEventT, ContractEventType } from '~/utils/generated/contract_event_generated';
 import { toFarcasterTime } from '~/storage/flatbuffers/utils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
@@ -58,6 +59,7 @@ import {
 import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { PeerId } from '@libp2p/interface-peer-id';
+import { NameRegistryEvent, NameRegistryEventT, NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
 
 /* eslint-disable security/detect-object-injection */
 const BytesFactory = Factory.define<Uint8Array, { length?: number }>(({ transientParams }) => {
@@ -72,6 +74,15 @@ const BytesFactory = Factory.define<Uint8Array, { length?: number }>(({ transien
 const FIDFactory = Factory.define<Uint8Array>(() => {
   const builder = new Builder(4);
   builder.addInt32(faker.datatype.number({ max: 2 ** 32 - 1 }));
+  return builder.asUint8Array();
+});
+
+const FnameFactory = Factory.define<Uint8Array>(() => {
+  const builder = new Builder(8);
+  // Add 8 random alphabets as the fname
+  for (let i = 0; i < 8; i++) {
+    builder.addInt8(faker.datatype.number({ min: 65, max: 90 }));
+  }
   return builder.asUint8Array();
 });
 
@@ -348,6 +359,20 @@ const UserDataBodyFactory = Factory.define<UserDataBodyT, any, UserDataBody>(({ 
   return new UserDataBodyT(UserDataType.Pfp, faker.internet.url());
 });
 
+const UserNameBodyFactory = Factory.define<UserNameAddBodyT, any, UserNameAddBody>(({ onCreate }) => {
+  onCreate((params) => {
+    const builder = new Builder(1);
+    builder.finish(params.pack(builder));
+    return UserNameAddBody.getRootAsUserNameAddBody(new ByteBuffer(builder.asUint8Array()));
+  });
+
+  // convert string to number[]
+  const name = faker.name.firstName();
+  const nameArray = Array.from(name).map((c) => c.charCodeAt(0));
+
+  return new UserNameAddBodyT(nameArray);
+});
+
 const UserDataAddDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
   onCreate((params) => {
     return MessageDataFactory.create(params);
@@ -357,6 +382,18 @@ const UserDataAddDataFactory = Factory.define<MessageDataT, any, MessageData>(({
     bodyType: MessageBody.UserDataBody,
     body: UserDataBodyFactory.build(),
     type: MessageType.UserDataAdd,
+  });
+});
+
+const UserNameAddDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
+  onCreate((params) => {
+    return MessageDataFactory.create(params);
+  });
+
+  return MessageDataFactory.build({
+    bodyType: MessageBody.UserNameAddBody,
+    body: UserDataAddDataFactory.build(),
+    type: MessageType.UserNameAdd,
   });
 });
 
@@ -372,15 +409,15 @@ const MessageFactory = Factory.define<MessageT, { signer?: KeyPair; wallet?: Wal
       if (params.signature.length === 0) {
         if (transientParams.signer) {
           const signer = transientParams.signer;
-          params.signature = Array.from(await ed.sign(new Uint8Array(params.data), signer.privateKey));
+          params.signature = Array.from(await ed.sign(new Uint8Array(params.hash), signer.privateKey));
           params.signer = Array.from(signer.publicKey);
         } else if (transientParams.wallet) {
-          params.signature = Array.from(await signMessageData(new Uint8Array(params.data), transientParams.wallet));
+          params.signature = Array.from(await signMessageHash(new Uint8Array(params.hash), transientParams.wallet));
           params.signatureScheme = SignatureScheme.Eip712;
           params.signer = Array.from(arrayify(transientParams.wallet.address));
         } else {
           const signer = await generateEd25519KeyPair();
-          params.signature = Array.from(await ed.sign(new Uint8Array(params.data), signer.privateKey));
+          params.signature = Array.from(await ed.sign(new Uint8Array(params.hash), signer.privateKey));
           params.signer = Array.from(signer.publicKey);
         }
       }
@@ -414,6 +451,25 @@ const IdRegistryEventFactory = Factory.define<ContractEventT, any, ContractEvent
     Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 }))),
     ContractEventType.IdRegistryRegister,
     Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 })))
+  );
+});
+
+const IdNameRegistryEventFactory = Factory.define<NameRegistryEventT, any, NameRegistryEvent>(({ onCreate }) => {
+  onCreate((params) => {
+    const builder = new Builder(1);
+    builder.finish(params.pack(builder));
+    return NameRegistryEvent.getRootAsNameRegistryEvent(new ByteBuffer(builder.asUint8Array()));
+  });
+
+  return new NameRegistryEventT(
+    faker.datatype.number({ max: 100000 }),
+    Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
+    Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
+    faker.datatype.number({ max: 1000 }),
+    Array.from(FIDFactory.build()),
+    Array.from(FnameFactory.build()),
+    Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 }))),
+    NameRegistryEventType.NameRegistryTransfer
   );
 });
 
@@ -458,6 +514,7 @@ const GossipMessageFactory = Factory.define<GossipMessageT, any, GossipMessage>(
 const Factories = {
   Bytes: BytesFactory,
   FID: FIDFactory,
+  Fname: FnameFactory,
   TsHash: TsHashFactory,
   UserId: UserIdFactory,
   CastId: CastIdFactory,
@@ -481,8 +538,11 @@ const Factories = {
   SignerRemoveData: SignerRemoveDataFactory,
   UserDataBody: UserDataBodyFactory,
   UserDataAddData: UserDataAddDataFactory,
+  UserNameBody: UserNameBodyFactory,
+  UserNameAddData: UserNameAddDataFactory,
   Message: MessageFactory,
   IdRegistryEvent: IdRegistryEventFactory,
+  IdNameRegistryEvent: IdNameRegistryEventFactory,
   GossipMessage: GossipMessageFactory,
   GossipContactInfoContent: ContactInfoContentFactory,
   GossipAddressInfo: GossipAddressInfoFactory,

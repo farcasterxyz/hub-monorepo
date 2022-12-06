@@ -11,6 +11,8 @@ import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { KeyPair } from '~/types';
 import { HubError } from '~/utils/hubErrors';
 import { ContractEventType } from '~/utils/generated/contract_event_generated';
+import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
+import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
 
 const db = jestBinaryRocksDB('flatbuffers.rpc.submitService.test');
 const engine = new Engine(db);
@@ -96,6 +98,30 @@ describe('submitContractEvent', () => {
       )
     );
     const result = await client.submitContractEvent(invalidEvent);
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid event type'));
+  });
+});
+
+describe('submitNameRegistryEvent', () => {
+  test('succeeds', async () => {
+    const nameRegistryEvent = new NameRegistryEventModel(
+      await Factories.IdNameRegistryEvent.create(
+        { to: Array.from(utils.arrayify(wallet.address)), fid: Array.from(fid) },
+        { transient: { wallet } }
+      )
+    );
+    const result = await client.submitNameRegistryEvent(nameRegistryEvent);
+    expect(result._unsafeUnwrap()).toEqual(nameRegistryEvent);
+  });
+
+  test('fails with invalid event', async () => {
+    const invalidEvent = new NameRegistryEventModel(
+      await Factories.IdNameRegistryEvent.create(
+        { to: Array.from(utils.arrayify(wallet.address)), fid: Array.from(fid), type: 0 as NameRegistryEventType },
+        { transient: { wallet } }
+      )
+    );
+    const result = await client.submitNameRegistryEvent(invalidEvent);
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid event type'));
   });
 });

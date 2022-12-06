@@ -8,11 +8,12 @@ import {
   SignerAddModel,
   SignerRemoveModel,
   UserDataAddModel,
+  UserNameAddModel,
   VerificationAddEthAddressModel,
   VerificationEthAddressClaim,
   VerificationRemoveModel,
 } from '~/storage/flatbuffers/types';
-import { verifyMessageDataSignature, verifyVerificationEthAddressClaimSignature } from '~/utils/eip712';
+import { verifyMessageHashSignature, verifyVerificationEthAddressClaimSignature } from '~/utils/eip712';
 import {
   CastId,
   HashScheme,
@@ -35,6 +36,7 @@ import {
   isSignerAdd,
   isSignerRemove,
   isUserDataAdd,
+  isUserNameAdd,
   isVerificationAddEthAddress,
   isVerificationRemove,
 } from '~/storage/flatbuffers/typeguards';
@@ -63,13 +65,13 @@ export const validateMessage = async (message: MessageModel): HubAsyncResult<Mes
 
   // 2. Check that the signatureScheme and signature are valid
   if (message.signatureScheme() === SignatureScheme.Eip712 && EIP712_MESSAGE_TYPES.includes(message.type())) {
-    const verifiedSigner = verifyMessageDataSignature(message.dataBytes(), message.signature());
+    const verifiedSigner = verifyMessageHashSignature(message.hash(), message.signature());
     if (bytesCompare(verifiedSigner, message.signer()) !== 0) {
       return err(new HubError('bad_request.validation_failure', 'signature does not match signer'));
     }
   } else if (message.signatureScheme() === SignatureScheme.Ed25519 && !EIP712_MESSAGE_TYPES.includes(message.type())) {
     const signatureIsValid = await ResultAsync.fromPromise(
-      ed.verify(message.signature(), message.dataBytes(), message.signer()),
+      ed.verify(message.signature(), message.hash(), message.signer()),
       () => undefined
     );
     if (signatureIsValid.isErr() || (signatureIsValid.isOk() && !signatureIsValid.value)) {
@@ -100,6 +102,8 @@ export const validateMessage = async (message: MessageModel): HubAsyncResult<Mes
     return validateFollowMessage(message);
   } else if (isUserDataAdd(message)) {
     return validateUserDataAddMessage(message);
+  } else if (isUserNameAdd(message)) {
+    return validateUserNameAddMessage(message);
   } else {
     return err(new HubError('bad_request.validation_failure', 'unknown message type'));
   }
@@ -320,6 +324,21 @@ export const validateUserDataAddMessage = (message: UserDataAddModel): HubResult
   } else {
     return err(new HubError('bad_request.validation_failure', 'invalid user data type'));
   }
+
+  return ok(message);
+};
+
+export const validateUserNameAddMessage = (message: UserNameAddModel): HubResult<UserNameAddModel> => {
+  const fname = message.body().fnameArray();
+  if (!fname) {
+    return err(new HubError('bad_request.validation_failure', 'fname is missing'));
+  }
+
+  if (fname.length > 32) {
+    return err(new HubError('bad_request.validation_failure', 'fname is too long > 32'));
+  }
+
+  // TODO: Validate fname characteristics
 
   return ok(message);
 };

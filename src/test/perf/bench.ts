@@ -26,7 +26,7 @@ const app = new Command();
 app
   .name('farcaster-benchmark-client')
   .description('Farcaster Benchmark')
-  .version(process.env.npm_package_version ?? '1.0.0');
+  .version(process.env['npm_package_version'] ?? '1.0.0');
 
 app
   .requiredOption(
@@ -39,7 +39,7 @@ app.parse(process.argv);
 const cliOptions = app.opts();
 
 // makes a list of RPCClients for each Hub
-const rpcMultiAddrs: string[] = cliOptions.hubs;
+const rpcMultiAddrs: string[] = cliOptions['hubs'];
 const rpcClients = rpcMultiAddrs.map((addr) => {
   const address = multiaddr(addr);
   const addressInfoResult = addressInfoFromNodeAddress(address.nodeAddress());
@@ -51,7 +51,7 @@ const rpcClients = rpcMultiAddrs.map((addr) => {
 });
 
 // sets up hubs
-const userInfos = await setupNetwork(rpcClients, { users: cliOptions.users, mode: SetupMode.RANDOM_SINGLE });
+const userInfos = await setupNetwork(rpcClients, { users: cliOptions['users'], mode: SetupMode.RANDOM_SINGLE });
 // creates scenario data
 const scenario = await makeBasicScenario(rpcClients[0], userInfos);
 // submits the scenario for playback
