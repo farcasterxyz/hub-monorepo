@@ -13,7 +13,7 @@ import Engine from '~/storage/engine/flatbuffers';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import CastStore from '~/storage/sets/flatbuffers/castStore';
 import { KeyPair } from '~/types';
-import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import { Wallet, utils } from 'ethers';
 import SignerStore from '~/storage/sets/flatbuffers/signerStore';
@@ -24,7 +24,7 @@ import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
 import { CastId, MessageType } from '~/utils/generated/message_generated';
 import { err, ok } from 'neverthrow';
 import { HubError } from '~/utils/hubErrors';
-import { ContractEventType } from '~/utils/generated/contract_event_generated';
+import { IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
 
 const db = jestBinaryRocksDB('flatbuffers.engine.test');
 const engine = new Engine(db);
@@ -41,7 +41,7 @@ const fid = Factories.FID.build();
 
 let custodyWallet: Wallet;
 let custodyAddress: Uint8Array;
-let custodyEvent: ContractEventModel;
+let custodyEvent: IdRegistryEventModel;
 
 let signer: KeyPair;
 let signerAdd: SignerAddModel;
@@ -56,7 +56,7 @@ let userDataAdd: UserDataAddModel;
 beforeAll(async () => {
   custodyWallet = Wallet.createRandom();
   custodyAddress = utils.arrayify(custodyWallet.address);
-  custodyEvent = new ContractEventModel(
+  custodyEvent = new IdRegistryEventModel(
     await Factories.IdRegistryEvent.create({ fid: Array.from(fid), to: Array.from(custodyAddress) })
   );
 
@@ -130,9 +130,9 @@ describe('mergeIdRegistryEvent', () => {
   });
 
   test('fails with invalid event type', async () => {
-    const invalidEvent = new ContractEventModel(
+    const invalidEvent = new IdRegistryEventModel(
       await Factories.IdRegistryEvent.create({
-        type: 3 as ContractEventType,
+        type: 3 as IdRegistryEventType,
         fid: Array.from(fid),
         to: Array.from(custodyAddress),
       })

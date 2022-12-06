@@ -2,7 +2,7 @@
 
 namespace Farcaster;
 
-enum ContractEventType: uint8 {
+enum IdRegistryEventType: uint8 {
   IdRegistryRegister = 1,
   IdRegistryTransfer = 2,
 }
@@ -10,15 +10,15 @@ enum ContractEventType: uint8 {
 /** 
  * Contains block, transaction and log data needed to parse events from the IdRegistry contract.  
  */
-table ContractEvent {
+table IdRegistryEvent {
   block_number: uint32;
   block_hash: [ubyte] (required);
   transaction_hash: [ubyte] (required);
   log_index: uint16;
   fid: [ubyte];
   to: [ubyte];
-  type: ContractEventType = 1;
+  type: IdRegistryEventType = 1;
   from: [ubyte];
 }
 
-root_type ContractEvent;
+root_type IdRegistryEvent;

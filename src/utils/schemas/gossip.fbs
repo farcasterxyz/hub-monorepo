@@ -1,5 +1,5 @@
 include "message.fbs";
-include "contract_event.fbs";
+include "id_registry_event.fbs";
 
 // IDL file for Farcaster Gossip Messages
 
@@ -35,7 +35,7 @@ table ContactInfoContent {
 
 union GossipContent {
   Message,
-  ContractEvent,
+  IdRegistryEvent,
   ContactInfoContent,
 }
 

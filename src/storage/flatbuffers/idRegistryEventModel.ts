@@ -1,18 +1,19 @@
 import { ByteBuffer } from 'flatbuffers';
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { RootPrefix } from '~/storage/flatbuffers/types';
-import { ContractEvent, ContractEventType } from '~/utils/generated/contract_event_generated';
+import { IdRegistryEvent, IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
+import SignerStore from '../sets/flatbuffers/signerStore';
 
 /** ContractEventModel provides helpers to read and write Flatbuffers ContractEvents from RocksDB */
-export default class ContractEventModel {
-  public event: ContractEvent;
+export default class IdRegistryEventModel {
+  public event: IdRegistryEvent;
 
-  constructor(event: ContractEvent) {
+  constructor(event: IdRegistryEvent) {
     this.event = event;
   }
 
   static from(bytes: Uint8Array) {
-    const event = ContractEvent.getRootAsContractEvent(new ByteBuffer(bytes));
+    const event = IdRegistryEvent.getRootAsIdRegistryEvent(new ByteBuffer(bytes));
     return new this(event);
   }
 
@@ -21,16 +22,24 @@ export default class ContractEventModel {
     return Buffer.concat([Buffer.from([RootPrefix.CustodyEvent]), Buffer.from(fid)]);
   }
 
-  static async get<T extends ContractEventModel>(db: RocksDB, fid: Uint8Array): Promise<T> {
-    const buffer = await db.get(ContractEventModel.primaryKey(fid));
-    return ContractEventModel.from(new Uint8Array(buffer)) as T;
+  static async get<T extends IdRegistryEventModel>(db: RocksDB, fid: Uint8Array): Promise<T> {
+    const buffer = await db.get(IdRegistryEventModel.primaryKey(fid));
+    return IdRegistryEventModel.from(new Uint8Array(buffer)) as T;
   }
 
-  static putTransaction(tsx: Transaction, event: ContractEventModel): Transaction {
+  static async getByCustodyAddress<T extends IdRegistryEventModel>(
+    db: RocksDB,
+    custodyAddress: Uint8Array
+  ): Promise<T> {
+    const buffer = await db.get(SignerStore.custodyEventKey(custodyAddress));
+    return IdRegistryEventModel.from(new Uint8Array(buffer)) as T;
+  }
+
+  static putTransaction(tsx: Transaction, event: IdRegistryEventModel): Transaction {
     return tsx.put(event.primaryKey(), event.toBuffer());
   }
 
-  static deleteTransaction(tsx: Transaction, event: ContractEventModel): Transaction {
+  static deleteTransaction(tsx: Transaction, event: IdRegistryEventModel): Transaction {
     return tsx.del(event.primaryKey());
   }
 
@@ -40,11 +49,11 @@ export default class ContractEventModel {
   }
 
   putTransaction(tsx: Transaction): Transaction {
-    return ContractEventModel.putTransaction(tsx, this);
+    return IdRegistryEventModel.putTransaction(tsx, this);
   }
 
   primaryKey(): Buffer {
-    return ContractEventModel.primaryKey(this.fid());
+    return IdRegistryEventModel.primaryKey(this.fid());
   }
 
   toBuffer(): Buffer {
@@ -83,7 +92,7 @@ export default class ContractEventModel {
     return this.event.toArray() ?? new Uint8Array();
   }
 
-  type(): ContractEventType {
+  type(): IdRegistryEventType {
     return this.event.type();
   }
 }

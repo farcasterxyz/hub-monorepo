@@ -29,8 +29,8 @@ import { followServiceMethods, followServiceRequests } from '~/network/rpc/flatb
 import { reactionServiceMethods, reactionServiceRequests } from '~/network/rpc/flatbuffers/reactionService';
 import { verificationServiceMethods, verificationServiceRequests } from '~/network/rpc/flatbuffers/verificationService';
 import { submitServiceMethods } from '~/network/rpc/flatbuffers/submitService';
-import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
-import { ContractEvent } from '~/utils/generated/contract_event_generated';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
+import { IdRegistryEvent } from '~/utils/generated/id_registry_event_generated';
 import { signerServiceMethods, signerServiceRequests } from '~/network/rpc/flatbuffers/signerService';
 import { userDataServiceMethods, userDataServiceRequests } from '~/network/rpc/flatbuffers/userDataService';
 import { createSyncServiceRequest, syncServiceMethods } from '~/network/rpc/flatbuffers/syncService';
@@ -57,7 +57,7 @@ class Client {
     return this.makeUnaryMessageRequest(submitServiceMethods().submitMessage, message.message);
   }
 
-  async submitContractEvent(event: ContractEventModel): HubAsyncResult<ContractEventModel> {
+  async submitContractEvent(event: IdRegistryEventModel): HubAsyncResult<IdRegistryEventModel> {
     return this.makeUnaryContractEventRequest(submitServiceMethods().submitContractEvent, event.event);
   }
 
@@ -171,7 +171,7 @@ class Client {
     );
   }
 
-  async getCustodyEvent(fid: Uint8Array): HubAsyncResult<ContractEventModel> {
+  async getCustodyEvent(fid: Uint8Array): HubAsyncResult<IdRegistryEventModel> {
     return this.makeUnaryContractEventRequest(
       signerServiceMethods().getCustodyEvent,
       signerServiceRequests.getCustodyEvent(fid)
@@ -298,20 +298,20 @@ class Client {
   /* -------------------------------------------------------------------------- */
 
   private makeUnaryContractEventRequest<RequestType>(
-    method: grpc.MethodDefinition<RequestType, ContractEvent>,
+    method: grpc.MethodDefinition<RequestType, IdRegistryEvent>,
     request: RequestType
-  ): HubAsyncResult<ContractEventModel> {
+  ): HubAsyncResult<IdRegistryEventModel> {
     return new Promise((resolve) => {
       this.client.makeUnaryRequest(
         method.path,
         method.requestSerialize,
         method.responseDeserialize,
         request,
-        (e: grpc.ServiceError | null, response?: ContractEvent) => {
+        (e: grpc.ServiceError | null, response?: IdRegistryEvent) => {
           if (e) {
             resolve(err(fromServiceError(e)));
           } else if (response) {
-            resolve(ok(new ContractEventModel(response)));
+            resolve(ok(new IdRegistryEventModel(response)));
           }
         }
       );

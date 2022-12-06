@@ -42,7 +42,7 @@ import { arrayify } from 'ethers/lib/utils';
 import { ethers, Wallet } from 'ethers';
 import { signMessageHash, signVerificationEthAddressClaim } from '~/utils/eip712';
 import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
-import { ContractEvent, ContractEventT, ContractEventType } from '~/utils/generated/contract_event_generated';
+import { IdRegistryEvent, IdRegistryEventT, IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
 import { toFarcasterTime } from '~/storage/flatbuffers/utils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import {
@@ -407,21 +407,21 @@ const MessageFactory = Factory.define<MessageT, { signer?: KeyPair; wallet?: Wal
   }
 );
 
-const IdRegistryEventFactory = Factory.define<ContractEventT, any, ContractEvent>(({ onCreate }) => {
+const IdRegistryEventFactory = Factory.define<IdRegistryEventT, any, IdRegistryEvent>(({ onCreate }) => {
   onCreate((params) => {
     const builder = new Builder(1);
     builder.finish(params.pack(builder));
-    return ContractEvent.getRootAsContractEvent(new ByteBuffer(builder.asUint8Array()));
+    return IdRegistryEvent.getRootAsIdRegistryEvent(new ByteBuffer(builder.asUint8Array()));
   });
 
-  return new ContractEventT(
+  return new IdRegistryEventT(
     faker.datatype.number({ max: 100000 }),
     Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
     Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
     faker.datatype.number({ max: 1000 }),
     Array.from(FIDFactory.build()),
     Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 }))),
-    ContractEventType.IdRegistryRegister,
+    IdRegistryEventType.IdRegistryRegister,
     Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 })))
   );
 });

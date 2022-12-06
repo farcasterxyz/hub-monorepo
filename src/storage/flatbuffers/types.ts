@@ -72,6 +72,8 @@ export enum UserPostfix {
   UserDataAdds = 17,
   /* Used to store a user data message */
   UserDataMessage = 18,
+  /* Used to index a custody address event in the add set */
+  CustodyAddressAdds = 19,
 }
 
 /** A union type of UserPostfixes that are used to store messages */

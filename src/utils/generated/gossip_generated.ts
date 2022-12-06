@@ -2,7 +2,7 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import {ContractEvent as ContractEvent, ContractEventT as ContractEventT} from './contract_event_generated.js';
+import {IdRegistryEvent as IdRegistryEvent, IdRegistryEventT as IdRegistryEventT} from './id_registry_event_generated.js';
 import {Message as Message, MessageT as MessageT} from './message_generated.js';
 
 export enum GossipVersion {
@@ -12,18 +12,18 @@ export enum GossipVersion {
 export enum GossipContent {
   NONE = 0,
   Message = 1,
-  ContractEvent = 2,
+  IdRegistryEvent = 2,
   ContactInfoContent = 3
 }
 
 export function unionToGossipContent(
   type: GossipContent,
-  accessor: (obj:ContactInfoContent|ContractEvent|Message) => ContactInfoContent|ContractEvent|Message|null
-): ContactInfoContent|ContractEvent|Message|null {
+  accessor: (obj:ContactInfoContent|IdRegistryEvent|Message) => ContactInfoContent|IdRegistryEvent|Message|null
+): ContactInfoContent|IdRegistryEvent|Message|null {
   switch(GossipContent[type]) {
     case 'NONE': return null; 
     case 'Message': return accessor(new Message())! as Message;
-    case 'ContractEvent': return accessor(new ContractEvent())! as ContractEvent;
+    case 'IdRegistryEvent': return accessor(new IdRegistryEvent())! as IdRegistryEvent;
     case 'ContactInfoContent': return accessor(new ContactInfoContent())! as ContactInfoContent;
     default: return null;
   }
@@ -31,13 +31,13 @@ export function unionToGossipContent(
 
 export function unionListToGossipContent(
   type: GossipContent, 
-  accessor: (index: number, obj:ContactInfoContent|ContractEvent|Message) => ContactInfoContent|ContractEvent|Message|null, 
+  accessor: (index: number, obj:ContactInfoContent|IdRegistryEvent|Message) => ContactInfoContent|IdRegistryEvent|Message|null, 
   index: number
-): ContactInfoContent|ContractEvent|Message|null {
+): ContactInfoContent|IdRegistryEvent|Message|null {
   switch(GossipContent[type]) {
     case 'NONE': return null; 
     case 'Message': return accessor(index, new Message())! as Message;
-    case 'ContractEvent': return accessor(index, new ContractEvent())! as ContractEvent;
+    case 'IdRegistryEvent': return accessor(index, new IdRegistryEvent())! as IdRegistryEvent;
     case 'ContactInfoContent': return accessor(index, new ContactInfoContent())! as ContactInfoContent;
     default: return null;
   }
@@ -435,7 +435,7 @@ unpackTo(_o: GossipMessageT): void {
 export class GossipMessageT implements flatbuffers.IGeneratedObject {
 constructor(
   public contentType: GossipContent = GossipContent.NONE,
-  public content: ContactInfoContentT|ContractEventT|MessageT|null = null,
+  public content: ContactInfoContentT|IdRegistryEventT|MessageT|null = null,
   public topics: (string)[] = [],
   public version: GossipVersion = GossipVersion.V1
 ){}
