@@ -75,9 +75,9 @@ const makeMessages = async (userInfos: UserInfo[], config: ScenarioConfig, event
   if (event > MockFCEvent.Verification) throw 'Invalid event type for messages';
 
   const total = userInfos.length * (config.Adds + config.Removes + config.RemovesWithoutAdds);
-  // safe to disable here since `event` is validated above
-  // eslint-disable-next-line security/detect-object-injection
   const progress = new ProgressBar(
+    // NOTE: An attacker cannot control the developer's test environment so it's safe to use `event` as an object key here.
+    // eslint-disable-next-line security/detect-object-injection
     `    Generating ${total} ${MockFCEvent[event]}s [:bar] :elapseds :ratemsgs/s :percent :etas`,
     {
       complete: '=',

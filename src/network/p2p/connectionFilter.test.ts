@@ -1,7 +1,6 @@
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { multiaddr } from '@multiformats/multiaddr';
 import { ConnectionFilter } from '~/network/p2p/connectionFilter';
-import { mockMultiaddrConnPair } from '@libp2p/interface-mocks';
 import { PeerId } from '@libp2p/interface-peer-id';
 
 let allowedPeerId: PeerId;
@@ -23,51 +22,39 @@ describe('connectionFilter tests', () => {
 
   test('denies all connections by default', async () => {
     const filter = new ConnectionFilter([]);
-    const { inbound: _localConnection, outbound: remoteConnection } = mockMultiaddrConnPair({
-      addrs: [multiaddr(localMultiAddrStr), multiaddr(allowedMultiAddrStr)],
-      remotePeer: allowedPeerId,
-    });
     await expect(filter.denyDialPeer(allowedPeerId)).resolves.toBeTruthy();
-    await expect(filter.denyDialMultiaddr(allowedPeerId, multiaddr(allowedMultiAddrStr))).resolves.toBeTruthy();
+    await expect(filter.denyDialMultiaddr(allowedPeerId)).resolves.toBeTruthy();
     // Incepient Inbound Connections are always allowed
-    await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
-    await expect(filter.denyInboundEncryptedConnection(allowedPeerId, remoteConnection)).resolves.toBeTruthy();
-    await expect(filter.denyInboundUpgradedConnection(allowedPeerId, remoteConnection)).resolves.toBeTruthy();
-    await expect(filter.denyOutboundConnection(allowedPeerId, remoteConnection)).resolves.toBeTruthy();
-    await expect(filter.denyOutboundEncryptedConnection(allowedPeerId, remoteConnection)).resolves.toBeTruthy();
-    await expect(filter.denyOutboundUpgradedConnection(allowedPeerId, remoteConnection)).resolves.toBeTruthy();
+    await expect(filter.denyInboundConnection()).resolves.toBeFalsy();
+    await expect(filter.denyInboundEncryptedConnection(allowedPeerId)).resolves.toBeTruthy();
+    await expect(filter.denyInboundUpgradedConnection(allowedPeerId)).resolves.toBeTruthy();
+    await expect(filter.denyOutboundConnection(allowedPeerId)).resolves.toBeTruthy();
+    await expect(filter.denyOutboundEncryptedConnection(allowedPeerId)).resolves.toBeTruthy();
+    await expect(filter.denyOutboundUpgradedConnection(allowedPeerId)).resolves.toBeTruthy();
     await expect(filter.filterMultiaddrForPeer(allowedPeerId)).resolves.toBeFalsy();
   });
 
   test('allows selected peers', async () => {
     const filter = new ConnectionFilter([allowedPeerId.toString()]);
-    const { inbound: _localConnection, outbound: remoteConnection } = mockMultiaddrConnPair({
-      addrs: [multiaddr(localMultiAddrStr), multiaddr(allowedMultiAddrStr)],
-      remotePeer: allowedPeerId,
-    });
     await expect(filter.denyDialPeer(allowedPeerId)).resolves.toBeFalsy();
-    await expect(filter.denyDialMultiaddr(allowedPeerId, multiaddr(allowedMultiAddrStr))).resolves.toBeFalsy();
+    await expect(filter.denyDialMultiaddr(allowedPeerId)).resolves.toBeFalsy();
     // Incepient Inbound Connections are always allowed
-    await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
-    await expect(filter.denyInboundEncryptedConnection(allowedPeerId, remoteConnection)).resolves.toBeFalsy();
-    await expect(filter.denyInboundUpgradedConnection(allowedPeerId, remoteConnection)).resolves.toBeFalsy();
-    await expect(filter.denyOutboundConnection(allowedPeerId, remoteConnection)).resolves.toBeFalsy();
-    await expect(filter.denyOutboundEncryptedConnection(allowedPeerId, remoteConnection)).resolves.toBeFalsy();
-    await expect(filter.denyOutboundUpgradedConnection(allowedPeerId, remoteConnection)).resolves.toBeFalsy();
+    await expect(filter.denyInboundConnection()).resolves.toBeFalsy();
+    await expect(filter.denyInboundEncryptedConnection(allowedPeerId)).resolves.toBeFalsy();
+    await expect(filter.denyInboundUpgradedConnection(allowedPeerId)).resolves.toBeFalsy();
+    await expect(filter.denyOutboundConnection(allowedPeerId)).resolves.toBeFalsy();
+    await expect(filter.denyOutboundEncryptedConnection(allowedPeerId)).resolves.toBeFalsy();
+    await expect(filter.denyOutboundUpgradedConnection(allowedPeerId)).resolves.toBeFalsy();
     await expect(filter.filterMultiaddrForPeer(allowedPeerId)).resolves.toBeTruthy();
   });
 
   test('filters unknown peers', async () => {
     const filter = new ConnectionFilter([allowedPeerId.toString()]);
-    const { inbound: _localConnection, outbound: remoteConnection } = mockMultiaddrConnPair({
-      addrs: [multiaddr(localMultiAddrStr), multiaddr(filteredMultiAddrStr)],
-      remotePeer: blockedPeerId,
-    });
     await expect(filter.denyDialPeer(allowedPeerId)).resolves.toBeFalsy();
     await expect(filter.denyDialPeer(blockedPeerId)).resolves.toBeTruthy();
     // Incepient Inbound Connections are always allowed
-    await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
-    await expect(filter.denyOutboundConnection(blockedPeerId, remoteConnection)).resolves.toBeTruthy();
+    await expect(filter.denyInboundConnection()).resolves.toBeFalsy();
+    await expect(filter.denyOutboundConnection(blockedPeerId)).resolves.toBeTruthy();
     await expect(filter.filterMultiaddrForPeer(blockedPeerId)).resolves.toBeFalsy();
   });
 });

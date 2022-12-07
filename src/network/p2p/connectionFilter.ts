@@ -1,6 +1,5 @@
-import { ConnectionGater, MultiaddrConnection } from '@libp2p/interface-connection';
+import { ConnectionGater } from '@libp2p/interface-connection';
 import { PeerId } from '@libp2p/interface-peer-id';
-import { Multiaddr } from '@multiformats/multiaddr';
 import { logger } from '~/utils/logger';
 
 /**
@@ -28,7 +27,7 @@ export class ConnectionFilter implements ConnectionGater {
     return deny;
   };
 
-  denyDialMultiaddr = async (peerId: PeerId, _multiaddr: Multiaddr): Promise<boolean> => {
+  denyDialMultiaddr = async (peerId: PeerId): Promise<boolean> => {
     const deny = this.shouldDeny(peerId.toString());
     if (deny) {
       logger.info(`ConnectionFilter denyDialMultiaddr: denied a connection with ${peerId}`);
@@ -36,7 +35,7 @@ export class ConnectionFilter implements ConnectionGater {
     return deny;
   };
 
-  denyInboundConnection = async (_maConn: MultiaddrConnection): Promise<boolean> => {
+  denyInboundConnection = async (): Promise<boolean> => {
     /**
      * A PeerId is not always known on incipient connections.
      * Don't filter incipient connections, later filters will catch it.
@@ -44,7 +43,7 @@ export class ConnectionFilter implements ConnectionGater {
     return false;
   };
 
-  denyOutboundConnection = async (peerId: PeerId, _maConn: MultiaddrConnection): Promise<boolean> => {
+  denyOutboundConnection = async (peerId: PeerId): Promise<boolean> => {
     const deny = this.shouldDeny(peerId.toString());
     if (deny) {
       logger.info(`ConnectionFilter denyOutboundConnection: denied a connection with ${peerId}`);
@@ -52,7 +51,7 @@ export class ConnectionFilter implements ConnectionGater {
     return deny;
   };
 
-  denyInboundEncryptedConnection = async (peerId: PeerId, _maConn: MultiaddrConnection): Promise<boolean> => {
+  denyInboundEncryptedConnection = async (peerId: PeerId): Promise<boolean> => {
     const deny = this.shouldDeny(peerId.toString());
     if (deny) {
       logger.info(`ConnectionFilter denyInboundEncryptedConnection: denied a connection with ${peerId}`);
@@ -60,7 +59,7 @@ export class ConnectionFilter implements ConnectionGater {
     return deny;
   };
 
-  denyOutboundEncryptedConnection = async (peerId: PeerId, _maConn: MultiaddrConnection): Promise<boolean> => {
+  denyOutboundEncryptedConnection = async (peerId: PeerId): Promise<boolean> => {
     const deny = this.shouldDeny(peerId.toString());
     if (deny) {
       logger.info(`ConnectionFilter denyOutboundEncryptedConnection: denied a connection with ${peerId}`);
@@ -68,7 +67,7 @@ export class ConnectionFilter implements ConnectionGater {
     return deny;
   };
 
-  denyInboundUpgradedConnection = async (peerId: PeerId, _maConn: MultiaddrConnection): Promise<boolean> => {
+  denyInboundUpgradedConnection = async (peerId: PeerId): Promise<boolean> => {
     const deny = this.shouldDeny(peerId.toString());
     if (deny) {
       logger.info(`ConnectionFilter denyInboundUpgradedConnection: denied a connection with ${peerId}`);
@@ -76,7 +75,7 @@ export class ConnectionFilter implements ConnectionGater {
     return deny;
   };
 
-  denyOutboundUpgradedConnection = async (peerId: PeerId, _maConn: MultiaddrConnection): Promise<boolean> => {
+  denyOutboundUpgradedConnection = async (peerId: PeerId): Promise<boolean> => {
     const deny = this.shouldDeny(peerId.toString());
     if (deny) {
       logger.info(`ConnectionFilter denyOutboundUpgradedConnection: denied a connection with ${peerId}`);

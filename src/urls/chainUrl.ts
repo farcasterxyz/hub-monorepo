@@ -25,6 +25,8 @@ export class ChainURL extends BaseChainURL {
       const chainId = new ChainId(chainIdParams);
 
       // check for extra invalid data before or after the chain ID
+      // NOTE: The inserted regex `ChainID` is imported from the "caip" npm package and is trustworthy.
+      // eslint-disable-next-line security/detect-non-literal-regexp
       const referenceRegex = new RegExp('^' + ChainId.spec.parameters.values[1].regex + '$');
       if (!referenceRegex.test(chainId.reference)) {
         return err(new BadRequestError(`ChainURL.parse: invalid extra data after ChainId: '${remainder}`));

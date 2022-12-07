@@ -73,6 +73,8 @@ class SyncEngine {
     const ourSnapshot = this.snapshot;
     const excludedHashesMatch =
       ourSnapshot.excludedHashes.length === excludedHashes.length &&
+      // NOTE: `index` is controlled by `every` and so not at risk of object injection.
+      // eslint-disable-next-line security/detect-object-injection
       ourSnapshot.excludedHashes.every((value, index) => value === excludedHashes[index]);
 
     log.debug(`shouldSync: excluded hashes check: ${excludedHashes}`);

@@ -33,7 +33,7 @@ import { CastURL, CastId, ChainAccountURL, UserId, UserURL } from '~/urls';
 // import { ChainAccountURL } from '~/urls/chainAccountUrl';
 // import {  } from '~/urls/castUrl';
 import { AccountId } from 'caip';
-import { HASH_LENGTH, SyncId, TIMESTAMP_LENGTH } from '~/network/sync/syncId';
+import { HASH_LENGTH, SyncId } from '~/network/sync/syncId';
 
 const generateTimestamp = (minDate: Date | undefined, maxDate: Date | undefined): number => {
   minDate = minDate || new Date(2020, 0, 1);
