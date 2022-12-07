@@ -7,7 +7,7 @@ import { EthereumSigner } from '~/types';
 import { generateEthereumSigner } from '~/utils/crypto';
 import { FarcasterNetwork } from '~/utils/generated/message_generated';
 import { arrayify } from 'ethers/lib/utils';
-import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
+import { bytesDecrement, bytesIncrement, getFarcasterTime } from '~/storage/flatbuffers/utils';
 import { HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
@@ -389,6 +389,145 @@ describe('merge', () => {
         await assertVerificationDoesNotExist(verificationRemoveEarlier);
         await assertVerificationRemoveWins(verificationRemove);
       });
+    });
+  });
+});
+
+describe('pruneMessages', () => {
+  let prunedMessages: MessageModel[];
+  const pruneMessageListener = (message: MessageModel) => {
+    prunedMessages.push(message);
+  };
+
+  beforeAll(() => {
+    eventHandler.on('pruneMessage', pruneMessageListener);
+  });
+
+  beforeEach(() => {
+    prunedMessages = [];
+  });
+
+  afterAll(() => {
+    eventHandler.off('pruneMessage', pruneMessageListener);
+  });
+
+  let add1: VerificationAddEthAddressModel;
+  let add2: VerificationAddEthAddressModel;
+  let add3: VerificationAddEthAddressModel;
+  let add4: VerificationAddEthAddressModel;
+  let add5: VerificationAddEthAddressModel;
+
+  let remove1: VerificationRemoveModel;
+  let remove2: VerificationRemoveModel;
+  let remove3: VerificationRemoveModel;
+  let remove4: VerificationRemoveModel;
+  let remove5: VerificationRemoveModel;
+
+  const generateAddWithTimestamp = async (
+    fid: Uint8Array,
+    timestamp: number
+  ): Promise<VerificationAddEthAddressModel> => {
+    const addData = await Factories.VerificationAddEthAddressData.create({ fid: Array.from(fid), timestamp });
+    const addMessage = await Factories.Message.create({ data: Array.from(addData.bb?.bytes() ?? []) });
+    return new MessageModel(addMessage) as VerificationAddEthAddressModel;
+  };
+
+  const generateRemoveWithTimestamp = async (
+    fid: Uint8Array,
+    timestamp: number,
+    address?: Uint8Array | null
+  ): Promise<VerificationRemoveModel> => {
+    const removeBody = await Factories.VerificationRemoveBody.build(address ? { address: Array.from(address) } : {});
+    const removeData = await Factories.VerificationRemoveData.create({
+      fid: Array.from(fid),
+      timestamp,
+      body: removeBody,
+    });
+    const removeMessage = await Factories.Message.create({ data: Array.from(removeData.bb?.bytes() ?? []) });
+    return new MessageModel(removeMessage) as VerificationRemoveModel;
+  };
+
+  beforeAll(async () => {
+    const time = getFarcasterTime() - 10;
+    add1 = await generateAddWithTimestamp(fid, time + 1);
+    add2 = await generateAddWithTimestamp(fid, time + 2);
+    add3 = await generateAddWithTimestamp(fid, time + 3);
+    add4 = await generateAddWithTimestamp(fid, time + 4);
+    add5 = await generateAddWithTimestamp(fid, time + 5);
+
+    remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1.body().addressArray());
+    remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2.body().addressArray());
+    remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.body().addressArray());
+    remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.body().addressArray());
+    remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.body().addressArray());
+  });
+
+  describe('with size limit', () => {
+    const sizePrunedStore = new VerificationStore(db, eventHandler, { pruneSizeLimit: 3 });
+
+    test('no-ops when no messages have been merged', async () => {
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(prunedMessages).toEqual([]);
+    });
+
+    test('prunes earliest add messages', async () => {
+      const messages = [add1, add2, add3, add4, add5];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([add1, add2]);
+
+      for (const message of prunedMessages as VerificationAddEthAddressModel[]) {
+        const getAdd = () => sizePrunedStore.getVerificationAdd(fid, message.body().addressArray() ?? new Uint8Array());
+        await expect(getAdd()).rejects.toThrow(HubError);
+      }
+    });
+
+    test('prunes earliest remove messages', async () => {
+      const messages = [remove1, remove2, remove3, remove4, remove5];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([remove1, remove2]);
+
+      for (const message of prunedMessages as VerificationRemoveModel[]) {
+        const getRemove = () =>
+          sizePrunedStore.getVerificationRemove(fid, message.body().addressArray() ?? new Uint8Array());
+        await expect(getRemove()).rejects.toThrow(HubError);
+      }
+    });
+
+    test('prunes earliest messages', async () => {
+      const messages = [add1, remove2, add3, remove4, add5];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([add1, remove2]);
+    });
+
+    test('no-ops when adds have been removed', async () => {
+      const messages = [add1, remove1, add2, remove2, add3];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([]);
     });
   });
 });
