@@ -5,7 +5,7 @@ import { toByteBuffer } from '~/storage/flatbuffers/utils';
 import { EventType, SubscribeRequest, EventResponse, EventResponseT } from '~/utils/generated/rpc_generated';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 
 export const eventServiceMethods = () => {
   return {
@@ -51,7 +51,7 @@ export const eventServiceImpls = (engine: Engine) => {
         packAndWriteEventResponse(unpackedResponse, stream);
       };
 
-      const mergeEventListener = (event: ContractEventModel) => {
+      const mergeEventListener = (event: IdRegistryEventModel) => {
         const unpackedResponse = new EventResponseT(EventType.MergeContractEvent, undefined, event.event.unpack());
         packAndWriteEventResponse(unpackedResponse, stream);
       };
@@ -59,7 +59,7 @@ export const eventServiceImpls = (engine: Engine) => {
       engine.eventHandler.on('mergeMessage', mergeMessageListener);
       engine.eventHandler.on('pruneMessage', pruneMessageListener);
       engine.eventHandler.on('revokeMessage', revokeMessageListener);
-      engine.eventHandler.on('mergeContractEvent', mergeEventListener);
+      engine.eventHandler.on('mergeIdRegistryEvent', mergeEventListener);
 
       stream.on('cancelled', () => {
         stream.destroy();
@@ -69,7 +69,7 @@ export const eventServiceImpls = (engine: Engine) => {
         engine.eventHandler.off('mergeMessage', mergeMessageListener);
         engine.eventHandler.off('pruneMessage', pruneMessageListener);
         engine.eventHandler.off('revokeMessage', revokeMessageListener);
-        engine.eventHandler.off('mergeContractEvent', mergeEventListener);
+        engine.eventHandler.off('mergeIdRegistryEvent', mergeEventListener);
       });
 
       const readyMetadata = new Metadata();

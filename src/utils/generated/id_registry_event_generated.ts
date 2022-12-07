@@ -3,27 +3,27 @@
 import * as flatbuffers from 'flatbuffers';
 
 
-export enum ContractEventType {
+export enum IdRegistryEventType {
   IdRegistryRegister = 1,
   IdRegistryTransfer = 2
 }
 
-export class ContractEvent implements flatbuffers.IUnpackableObject<ContractEventT> {
+export class IdRegistryEvent implements flatbuffers.IUnpackableObject<IdRegistryEventT> {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
-  __init(i:number, bb:flatbuffers.ByteBuffer):ContractEvent {
+  __init(i:number, bb:flatbuffers.ByteBuffer):IdRegistryEvent {
   this.bb_pos = i;
   this.bb = bb;
   return this;
 }
 
-static getRootAsContractEvent(bb:flatbuffers.ByteBuffer, obj?:ContractEvent):ContractEvent {
-  return (obj || new ContractEvent()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+static getRootAsIdRegistryEvent(bb:flatbuffers.ByteBuffer, obj?:IdRegistryEvent):IdRegistryEvent {
+  return (obj || new IdRegistryEvent()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-static getSizePrefixedRootAsContractEvent(bb:flatbuffers.ByteBuffer, obj?:ContractEvent):ContractEvent {
+static getSizePrefixedRootAsIdRegistryEvent(bb:flatbuffers.ByteBuffer, obj?:IdRegistryEvent):IdRegistryEvent {
   bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
-  return (obj || new ContractEvent()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  return (obj || new IdRegistryEvent()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
 blockNumber():number {
@@ -96,9 +96,9 @@ toArray():Uint8Array|null {
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
-type():ContractEventType {
+type():IdRegistryEventType {
   const offset = this.bb!.__offset(this.bb_pos, 16);
-  return offset ? this.bb!.readUint8(this.bb_pos + offset) : ContractEventType.IdRegistryRegister;
+  return offset ? this.bb!.readUint8(this.bb_pos + offset) : IdRegistryEventType.IdRegistryRegister;
 }
 
 from(index: number):number|null {
@@ -116,7 +116,7 @@ fromArray():Uint8Array|null {
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
-static startContractEvent(builder:flatbuffers.Builder) {
+static startIdRegistryEvent(builder:flatbuffers.Builder) {
   builder.startObject(8);
 }
 
@@ -192,8 +192,8 @@ static startToVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(1, numElems, 1);
 }
 
-static addType(builder:flatbuffers.Builder, type:ContractEventType) {
-  builder.addFieldInt8(6, type, ContractEventType.IdRegistryRegister);
+static addType(builder:flatbuffers.Builder, type:IdRegistryEventType) {
+  builder.addFieldInt8(6, type, IdRegistryEventType.IdRegistryRegister);
 }
 
 static addFrom(builder:flatbuffers.Builder, fromOffset:flatbuffers.Offset) {
@@ -212,36 +212,36 @@ static startFromVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(1, numElems, 1);
 }
 
-static endContractEvent(builder:flatbuffers.Builder):flatbuffers.Offset {
+static endIdRegistryEvent(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   builder.requiredField(offset, 6) // block_hash
   builder.requiredField(offset, 8) // transaction_hash
   return offset;
 }
 
-static finishContractEventBuffer(builder:flatbuffers.Builder, offset:flatbuffers.Offset) {
+static finishIdRegistryEventBuffer(builder:flatbuffers.Builder, offset:flatbuffers.Offset) {
   builder.finish(offset);
 }
 
-static finishSizePrefixedContractEventBuffer(builder:flatbuffers.Builder, offset:flatbuffers.Offset) {
+static finishSizePrefixedIdRegistryEventBuffer(builder:flatbuffers.Builder, offset:flatbuffers.Offset) {
   builder.finish(offset, undefined, true);
 }
 
-static createContractEvent(builder:flatbuffers.Builder, blockNumber:number, blockHashOffset:flatbuffers.Offset, transactionHashOffset:flatbuffers.Offset, logIndex:number, fidOffset:flatbuffers.Offset, toOffset:flatbuffers.Offset, type:ContractEventType, fromOffset:flatbuffers.Offset):flatbuffers.Offset {
-  ContractEvent.startContractEvent(builder);
-  ContractEvent.addBlockNumber(builder, blockNumber);
-  ContractEvent.addBlockHash(builder, blockHashOffset);
-  ContractEvent.addTransactionHash(builder, transactionHashOffset);
-  ContractEvent.addLogIndex(builder, logIndex);
-  ContractEvent.addFid(builder, fidOffset);
-  ContractEvent.addTo(builder, toOffset);
-  ContractEvent.addType(builder, type);
-  ContractEvent.addFrom(builder, fromOffset);
-  return ContractEvent.endContractEvent(builder);
+static createIdRegistryEvent(builder:flatbuffers.Builder, blockNumber:number, blockHashOffset:flatbuffers.Offset, transactionHashOffset:flatbuffers.Offset, logIndex:number, fidOffset:flatbuffers.Offset, toOffset:flatbuffers.Offset, type:IdRegistryEventType, fromOffset:flatbuffers.Offset):flatbuffers.Offset {
+  IdRegistryEvent.startIdRegistryEvent(builder);
+  IdRegistryEvent.addBlockNumber(builder, blockNumber);
+  IdRegistryEvent.addBlockHash(builder, blockHashOffset);
+  IdRegistryEvent.addTransactionHash(builder, transactionHashOffset);
+  IdRegistryEvent.addLogIndex(builder, logIndex);
+  IdRegistryEvent.addFid(builder, fidOffset);
+  IdRegistryEvent.addTo(builder, toOffset);
+  IdRegistryEvent.addType(builder, type);
+  IdRegistryEvent.addFrom(builder, fromOffset);
+  return IdRegistryEvent.endIdRegistryEvent(builder);
 }
 
-unpack(): ContractEventT {
-  return new ContractEventT(
+unpack(): IdRegistryEventT {
+  return new IdRegistryEventT(
     this.blockNumber(),
     this.bb!.createScalarList<number>(this.blockHash.bind(this), this.blockHashLength()),
     this.bb!.createScalarList<number>(this.transactionHash.bind(this), this.transactionHashLength()),
@@ -254,7 +254,7 @@ unpack(): ContractEventT {
 }
 
 
-unpackTo(_o: ContractEventT): void {
+unpackTo(_o: IdRegistryEventT): void {
   _o.blockNumber = this.blockNumber();
   _o.blockHash = this.bb!.createScalarList<number>(this.blockHash.bind(this), this.blockHashLength());
   _o.transactionHash = this.bb!.createScalarList<number>(this.transactionHash.bind(this), this.transactionHashLength());
@@ -266,7 +266,7 @@ unpackTo(_o: ContractEventT): void {
 }
 }
 
-export class ContractEventT implements flatbuffers.IGeneratedObject {
+export class IdRegistryEventT implements flatbuffers.IGeneratedObject {
 constructor(
   public blockNumber: number = 0,
   public blockHash: (number)[] = [],
@@ -274,19 +274,19 @@ constructor(
   public logIndex: number = 0,
   public fid: (number)[] = [],
   public to: (number)[] = [],
-  public type: ContractEventType = ContractEventType.IdRegistryRegister,
+  public type: IdRegistryEventType = IdRegistryEventType.IdRegistryRegister,
   public from: (number)[] = []
 ){}
 
 
 pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const blockHash = ContractEvent.createBlockHashVector(builder, this.blockHash);
-  const transactionHash = ContractEvent.createTransactionHashVector(builder, this.transactionHash);
-  const fid = ContractEvent.createFidVector(builder, this.fid);
-  const to = ContractEvent.createToVector(builder, this.to);
-  const from = ContractEvent.createFromVector(builder, this.from);
+  const blockHash = IdRegistryEvent.createBlockHashVector(builder, this.blockHash);
+  const transactionHash = IdRegistryEvent.createTransactionHashVector(builder, this.transactionHash);
+  const fid = IdRegistryEvent.createFidVector(builder, this.fid);
+  const to = IdRegistryEvent.createToVector(builder, this.to);
+  const from = IdRegistryEvent.createFromVector(builder, this.from);
 
-  return ContractEvent.createContractEvent(builder,
+  return IdRegistryEvent.createIdRegistryEvent(builder,
     this.blockNumber,
     blockHash,
     transactionHash,

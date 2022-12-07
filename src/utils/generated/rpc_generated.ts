@@ -2,7 +2,7 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import {ContractEvent as ContractEvent, ContractEventT as ContractEventT} from './contract_event_generated.js';
+import {IdRegistryEvent as IdRegistryEvent, IdRegistryEventT as IdRegistryEventT} from './id_registry_event_generated.js';
 import {CastId as CastId, CastIdT as CastIdT, Message as Message, MessageT as MessageT, ReactionType as ReactionType, UserDataType as UserDataType, UserId as UserId, UserIdT as UserIdT} from './message_generated.js';
 
 export enum EventType {
@@ -212,9 +212,9 @@ message(obj?:Message):Message|null {
   return offset ? (obj || new Message()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
-contractEvent(obj?:ContractEvent):ContractEvent|null {
+contractEvent(obj?:IdRegistryEvent):IdRegistryEvent|null {
   const offset = this.bb!.__offset(this.bb_pos, 8);
-  return offset ? (obj || new ContractEvent()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
+  return offset ? (obj || new IdRegistryEvent()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
 static startEventResponse(builder:flatbuffers.Builder) {
@@ -259,7 +259,7 @@ export class EventResponseT implements flatbuffers.IGeneratedObject {
 constructor(
   public type: EventType = EventType.MergeMessage,
   public message: MessageT|null = null,
-  public contractEvent: ContractEventT|null = null
+  public contractEvent: IdRegistryEventT|null = null
 ){}
 
 

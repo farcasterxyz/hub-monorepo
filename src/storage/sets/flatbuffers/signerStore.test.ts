@@ -5,14 +5,14 @@ import { EthereumSigner } from '~/types';
 import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
 import { arrayify } from 'ethers/lib/utils';
 import SignerStore from '~/storage/sets/flatbuffers/signerStore';
-import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import { SignerAddModel, SignerRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 import { HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
-import { ContractEventType } from '~/utils/generated/contract_event_generated';
+import { IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
 
 const db = jestBinaryRocksDB('flatbuffers.signerStore.test');
 const eventHandler = new StoreEventHandler();
@@ -21,7 +21,7 @@ const fid = Factories.FID.build();
 
 let custody1: EthereumSigner;
 let custody1Address: Uint8Array;
-let custody1Event: ContractEventModel;
+let custody1Event: IdRegistryEventModel;
 
 let custody2: EthereumSigner;
 let custody2Address: Uint8Array;
@@ -38,7 +38,7 @@ beforeAll(async () => {
     fid: Array.from(fid),
     to: Array.from(custody1Address),
   });
-  custody1Event = new ContractEventModel(idRegistryEvent);
+  custody1Event = new IdRegistryEventModel(idRegistryEvent);
 
   custody2 = await generateEthereumSigner();
   custody2Address = arrayify(custody2.signerKey);
@@ -83,10 +83,27 @@ describe('getCustodyAddress', () => {
   test('returns to from current IdRegistry event', async () => {
     await set.mergeIdRegistryEvent(custody1Event);
     await expect(set.getCustodyAddress(fid)).resolves.toEqual(custody1Address);
+    await expect(IdRegistryEventModel.getByCustodyAddress(db, custody1Address)).resolves.toEqual(custody1Event);
   });
 
   test('fails if event is missing', async () => {
     await expect(set.getCustodyAddress(fid)).rejects.toThrow(HubError);
+    await expect(IdRegistryEventModel.getByCustodyAddress(db, custody1Address)).rejects.toThrow(HubError);
+  });
+
+  test('returns to if custody address changes', async () => {
+    await set.mergeIdRegistryEvent(custody1Event);
+    const custody2Event = new IdRegistryEventModel(
+      // New event with a new block number
+      await Factories.IdRegistryEvent.create({
+        fid: Array.from(fid),
+        to: Array.from(custody2Address),
+        blockNumber: custody1Event.blockNumber() + 1,
+      })
+    );
+    await set.mergeIdRegistryEvent(custody2Event);
+    await expect(set.getCustodyAddress(fid)).resolves.toEqual(custody2Address);
+    await expect(IdRegistryEventModel.getByCustodyAddress(db, custody2Address)).resolves.toEqual(custody2Event);
   });
 });
 
@@ -137,10 +154,10 @@ describe('getSignerRemovesByUser', () => {
 // TODO: write test cases for cyclical custody event transfers
 
 describe('mergeIdRegistryEvent', () => {
-  let mergedContractEvents: ContractEventModel[];
+  let mergedContractEvents: IdRegistryEventModel[];
 
   beforeAll(() => {
-    eventHandler.on('mergeContractEvent', (event: ContractEventModel) => {
+    eventHandler.on('mergeIdRegistryEvent', (event: IdRegistryEventModel) => {
       mergedContractEvents.push(event);
     });
   });
@@ -161,7 +178,7 @@ describe('mergeIdRegistryEvent', () => {
       blockHash: Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
     });
 
-    const blockHashConflictEvent = new ContractEventModel(idRegistryEvent);
+    const blockHashConflictEvent = new IdRegistryEventModel(idRegistryEvent);
     await set.mergeIdRegistryEvent(custody1Event);
     await expect(set.mergeIdRegistryEvent(blockHashConflictEvent)).rejects.toThrow(HubError);
     expect(mergedContractEvents).toEqual([custody1Event]);
@@ -173,14 +190,14 @@ describe('mergeIdRegistryEvent', () => {
       transactionHash: Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
     });
 
-    const txHashConflictEvent = new ContractEventModel(idRegistryEvent);
+    const txHashConflictEvent = new IdRegistryEventModel(idRegistryEvent);
     await set.mergeIdRegistryEvent(custody1Event);
     await expect(set.mergeIdRegistryEvent(txHashConflictEvent)).rejects.toThrow(HubError);
     expect(mergedContractEvents).toEqual([custody1Event]);
   });
 
   describe('overwrites existing event', () => {
-    let newEvent: ContractEventModel;
+    let newEvent: IdRegistryEventModel;
 
     beforeEach(async () => {
       await set.mergeIdRegistryEvent(custody1Event);
@@ -203,7 +220,7 @@ describe('mergeIdRegistryEvent', () => {
         to: Array.from(custody2Address),
         blockNumber: custody1Event.blockNumber() + 1,
       });
-      newEvent = new ContractEventModel(idRegistryEvent);
+      newEvent = new IdRegistryEventModel(idRegistryEvent);
     });
 
     test('when it has the same block number and a higher log index', async () => {
@@ -213,12 +230,12 @@ describe('mergeIdRegistryEvent', () => {
         to: Array.from(custody2Address),
         logIndex: custody1Event.logIndex() + 1,
       });
-      newEvent = new ContractEventModel(idRegistryEvent);
+      newEvent = new IdRegistryEventModel(idRegistryEvent);
     });
   });
 
   describe('does not overwrite existing event', () => {
-    let newEvent: ContractEventModel;
+    let newEvent: IdRegistryEventModel;
 
     beforeEach(async () => {
       await set.mergeIdRegistryEvent(custody1Event);
@@ -240,7 +257,7 @@ describe('mergeIdRegistryEvent', () => {
         to: Array.from(custody2Address),
         blockNumber: custody1Event.blockNumber() - 1,
       });
-      newEvent = new ContractEventModel(idRegistryEvent);
+      newEvent = new IdRegistryEventModel(idRegistryEvent);
     });
 
     test('when it has the same block number and a lower log index', async () => {
@@ -249,7 +266,7 @@ describe('mergeIdRegistryEvent', () => {
         to: Array.from(custody2Address),
         logIndex: custody1Event.logIndex() - 1,
       });
-      newEvent = new ContractEventModel(idRegistryEvent);
+      newEvent = new IdRegistryEventModel(idRegistryEvent);
     });
 
     test('when is a duplicate', async () => {
@@ -657,7 +674,7 @@ describe('getFids', () => {
       fid: Array.from(fid2),
       to: Array.from(custody2Address),
     });
-    const custody2Event = new ContractEventModel(idRegistryEvent);
+    const custody2Event = new IdRegistryEventModel(idRegistryEvent);
     await set.mergeIdRegistryEvent(custody1Event);
     await set.mergeIdRegistryEvent(custody2Event);
     const fids = await set.getFids();
@@ -670,7 +687,7 @@ describe('getFids', () => {
 });
 
 describe('revokeMessagesBySigner', () => {
-  let custody2Transfer: ContractEventModel;
+  let custody2Transfer: IdRegistryEventModel;
   let signerAdd1: SignerAddModel;
   let signerAdd2: SignerAddModel;
 
@@ -681,12 +698,12 @@ describe('revokeMessagesBySigner', () => {
 
   beforeAll(async () => {
     const idRegistryTransfer = await Factories.IdRegistryEvent.create({
-      type: ContractEventType.IdRegistryTransfer,
+      type: IdRegistryEventType.IdRegistryTransfer,
       from: Array.from(custody1Address),
       fid: Array.from(fid),
       to: Array.from(custody2Address),
     });
-    custody2Transfer = new ContractEventModel(idRegistryTransfer);
+    custody2Transfer = new IdRegistryEventModel(idRegistryTransfer);
 
     const addData1 = await Factories.SignerAddData.create({
       fid: Array.from(fid),

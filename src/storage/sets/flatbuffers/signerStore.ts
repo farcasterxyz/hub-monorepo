@@ -5,7 +5,7 @@ import { SignerAddModel, UserPostfix, SignerRemoveModel, RootPrefix } from '~/st
 import { isSignerAdd, isSignerRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
-import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 import { eventCompare } from '~/utils/contractEvent';
@@ -78,8 +78,8 @@ class SignerStore {
   }
 
   /** Returns the most recent event from the IdRegistry contract that affected the fid  */
-  async getCustodyEvent(fid: Uint8Array): Promise<ContractEventModel> {
-    return ContractEventModel.get(this._db, fid);
+  async getCustodyEvent(fid: Uint8Array): Promise<IdRegistryEventModel> {
+    return IdRegistryEventModel.get(this._db, fid);
   }
 
   /** Returns the custody address that currently owns an fid */
@@ -149,7 +149,7 @@ class SignerStore {
   }
 
   async getFids(): Promise<Uint8Array[]> {
-    const prefix = Buffer.from([RootPrefix.CustodyEvent]);
+    const prefix = Buffer.from([RootPrefix.IdRegistryEvent]);
     const fids: Uint8Array[] = [];
     for await (const [key] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
       fids.push(new Uint8Array(key.slice(prefix.length)));
@@ -161,7 +161,7 @@ class SignerStore {
    * Merges a ContractEvent into the SignerStore, storing the causally latest event at the key:
    * <RootPrefix:User><fid><UserPostfix:IdRegistryEvent>
    */
-  async mergeIdRegistryEvent(event: ContractEventModel): Promise<void> {
+  async mergeIdRegistryEvent(event: IdRegistryEventModel): Promise<void> {
     // TODO: emit signer change events as a result of ID Registry events
     const existingEvent = await ResultAsync.fromPromise(this.getCustodyEvent(event.fid()), () => undefined);
     if (existingEvent.isOk() && eventCompare(existingEvent.value, event) >= 0) {
@@ -169,11 +169,12 @@ class SignerStore {
     }
 
     const txn = this._db.transaction();
-    txn.put(event.primaryKey(), event.toBuffer());
+    IdRegistryEventModel.putTransaction(txn, event);
+
     await this._db.commit(txn);
 
     // Emit store event
-    this._eventHandler.emit('mergeContractEvent', event);
+    this._eventHandler.emit('mergeIdRegistryEvent', event);
   }
 
   /** Merges a SignerAdd or SignerRemove message into the SignerStore */

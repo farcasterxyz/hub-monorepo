@@ -7,12 +7,12 @@ import Engine from '~/storage/engine/flatbuffers';
 import { CastAddModel, SignerAddModel } from '~/storage/flatbuffers/types';
 import { Wallet, utils } from 'ethers';
 import { generateEd25519KeyPair } from '~/utils/crypto';
-import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import { KeyPair } from '~/types';
 import { HubError } from '~/utils/hubErrors';
-import { ContractEventType } from '~/utils/generated/contract_event_generated';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
+import { IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
 
 const db = jestBinaryRocksDB('flatbuffers.rpc.submitService.test');
 const engine = new Engine(db);
@@ -33,13 +33,13 @@ afterAll(async () => {
 
 const fid = Factories.FID.build();
 const wallet = Wallet.createRandom();
-let custodyEvent: ContractEventModel;
+let custodyEvent: IdRegistryEventModel;
 let signer: KeyPair;
 let signerAdd: SignerAddModel;
 let castAdd: CastAddModel;
 
 beforeAll(async () => {
-  custodyEvent = new ContractEventModel(
+  custodyEvent = new IdRegistryEventModel(
     await Factories.IdRegistryEvent.create(
       { to: Array.from(utils.arrayify(wallet.address)), fid: Array.from(fid) },
       { transient: { wallet } }
@@ -91,9 +91,9 @@ describe('submitContractEvent', () => {
   });
 
   test('fails with invalid event', async () => {
-    const invalidEvent = new ContractEventModel(
+    const invalidEvent = new IdRegistryEventModel(
       await Factories.IdRegistryEvent.create(
-        { to: Array.from(utils.arrayify(wallet.address)), fid: Array.from(fid), type: 0 as ContractEventType },
+        { to: Array.from(utils.arrayify(wallet.address)), fid: Array.from(fid), type: 0 as IdRegistryEventType },
         { transient: { wallet } }
       )
     );

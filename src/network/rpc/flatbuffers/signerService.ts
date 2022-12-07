@@ -18,8 +18,8 @@ import { Message, UserIdT } from '~/utils/generated/message_generated';
 import { HubError } from '~/utils/hubErrors';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { SignerAddModel } from '~/storage/flatbuffers/types';
-import { ContractEvent } from '~/utils/generated/contract_event_generated';
-import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
+import { IdRegistryEvent } from '~/utils/generated/id_registry_event_generated';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 
 export const signerServiceMethods = () => {
   return {
@@ -51,8 +51,8 @@ export const signerServiceMethods = () => {
       requestDeserialize: (buffer: Buffer): GetCustodyEventRequest => {
         return GetCustodyEventRequest.getRootAsGetCustodyEventRequest(toByteBuffer(buffer));
       },
-      responseDeserialize: (buffer: Buffer): ContractEvent => {
-        return ContractEvent.getRootAsContractEvent(toByteBuffer(buffer));
+      responseDeserialize: (buffer: Buffer): IdRegistryEvent => {
+        return IdRegistryEvent.getRootAsIdRegistryEvent(toByteBuffer(buffer));
       },
     },
 
@@ -102,12 +102,12 @@ export const signerServiceImpls = (engine: Engine) => {
     },
 
     getCustodyEvent: async (
-      call: grpc.ServerUnaryCall<GetCustodyEventRequest, ContractEvent>,
-      callback: grpc.sendUnaryData<ContractEvent>
+      call: grpc.ServerUnaryCall<GetCustodyEventRequest, IdRegistryEvent>,
+      callback: grpc.sendUnaryData<IdRegistryEvent>
     ) => {
       const result = await engine.getCustodyEvent(call.request.fidArray() ?? new Uint8Array());
       result.match(
-        (model: ContractEventModel) => {
+        (model: IdRegistryEventModel) => {
           callback(null, model.event);
         },
         (err: HubError) => {

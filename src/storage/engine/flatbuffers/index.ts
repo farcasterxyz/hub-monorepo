@@ -21,8 +21,8 @@ import {
   VerificationAddEthAddressModel,
   VerificationRemoveModel,
 } from '~/storage/flatbuffers/types';
-import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
-import { ContractEventType } from '~/utils/generated/contract_event_generated';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
+import { IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
 import { isSignerAdd, isSignerRemove } from '~/storage/flatbuffers/typeguards';
 import {
   validateCastId,
@@ -90,10 +90,10 @@ class Engine {
     }
   }
 
-  async mergeIdRegistryEvent(event: ContractEventModel): HubAsyncResult<void> {
+  async mergeIdRegistryEvent(event: IdRegistryEventModel): HubAsyncResult<void> {
     if (
-      event.type() === ContractEventType.IdRegistryRegister ||
-      event.type() === ContractEventType.IdRegistryTransfer
+      event.type() === IdRegistryEventType.IdRegistryRegister ||
+      event.type() === IdRegistryEventType.IdRegistryTransfer
     ) {
       return ResultAsync.fromPromise(this._signerStore.mergeIdRegistryEvent(event), (e) => e as HubError);
     } else {
@@ -398,7 +398,7 @@ class Engine {
     return ResultAsync.fromPromise(this._signerStore.getSignerAddsByUser(fid), (e) => e as HubError);
   }
 
-  async getCustodyEvent(fid: Uint8Array): HubAsyncResult<ContractEventModel> {
+  async getCustodyEvent(fid: Uint8Array): HubAsyncResult<IdRegistryEventModel> {
     const validatedFid = validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);

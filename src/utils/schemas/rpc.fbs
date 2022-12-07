@@ -1,5 +1,5 @@
 include "message.fbs";
-include "contract_event.fbs";
+include "id_registry_event.fbs";
 
 // IDL file for Farcaster RPC Requests
 
@@ -25,7 +25,7 @@ table FidsResponse {
 table EventResponse {
   type: EventType;
   message: Message;
-  contract_event: ContractEvent;
+  contract_event: IdRegistryEvent;
 }
 
 // Cast Requests

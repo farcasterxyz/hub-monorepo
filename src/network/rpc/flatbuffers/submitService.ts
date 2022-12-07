@@ -5,10 +5,10 @@ import { toByteBuffer } from '~/storage/flatbuffers/utils';
 import { Message } from '~/utils/generated/message_generated';
 import { HubError } from '~/utils/hubErrors';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
-import { ContractEvent } from '~/utils/generated/contract_event_generated';
 import { NameRegistryEvent } from '~/utils/generated/nameregistry_generated';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
+import { IdRegistryEvent } from '~/utils/generated/id_registry_event_generated';
 
 export const submitServiceMethods = () => {
   return {
@@ -26,11 +26,11 @@ export const submitServiceMethods = () => {
     submitContractEvent: {
       ...defaultMethod,
       path: '/submitContractEvent',
-      requestDeserialize: (buffer: Buffer): ContractEvent => {
-        return ContractEvent.getRootAsContractEvent(toByteBuffer(buffer));
+      requestDeserialize: (buffer: Buffer): IdRegistryEvent => {
+        return IdRegistryEvent.getRootAsIdRegistryEvent(toByteBuffer(buffer));
       },
-      responseDeserialize: (buffer: Buffer): ContractEvent => {
-        return ContractEvent.getRootAsContractEvent(toByteBuffer(buffer));
+      responseDeserialize: (buffer: Buffer): IdRegistryEvent => {
+        return IdRegistryEvent.getRootAsIdRegistryEvent(toByteBuffer(buffer));
       },
     },
 
@@ -63,10 +63,10 @@ export const submitServiceImpls = (engine: Engine) => {
     },
 
     submitContractEvent: async (
-      call: grpc.ServerUnaryCall<ContractEvent, ContractEvent>,
-      callback: grpc.sendUnaryData<ContractEvent>
+      call: grpc.ServerUnaryCall<IdRegistryEvent, IdRegistryEvent>,
+      callback: grpc.sendUnaryData<IdRegistryEvent>
     ) => {
-      const model = new ContractEventModel(call.request);
+      const model = new IdRegistryEventModel(call.request);
       const result = await engine.mergeIdRegistryEvent(model);
       result.match(
         () => {

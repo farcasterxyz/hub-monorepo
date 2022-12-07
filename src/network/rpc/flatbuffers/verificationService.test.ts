@@ -7,7 +7,7 @@ import Engine from '~/storage/engine/flatbuffers';
 import { SignerAddModel, VerificationAddEthAddressModel } from '~/storage/flatbuffers/types';
 import { Wallet, utils } from 'ethers';
 import { generateEd25519KeyPair } from '~/utils/crypto';
-import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import { KeyPair } from '~/types';
 import { HubError } from '~/utils/hubErrors';
 
@@ -30,14 +30,14 @@ afterAll(async () => {
 
 const fid = Factories.FID.build();
 const wallet = Wallet.createRandom();
-let custodyEvent: ContractEventModel;
+let custodyEvent: IdRegistryEventModel;
 let signer: KeyPair;
 let signerAdd: SignerAddModel;
 
 let verificationAdd: VerificationAddEthAddressModel;
 
 beforeAll(async () => {
-  custodyEvent = new ContractEventModel(
+  custodyEvent = new IdRegistryEventModel(
     await Factories.IdRegistryEvent.create(
       { to: Array.from(utils.arrayify(wallet.address)), fid: Array.from(fid) },
       { transient: { wallet } }
