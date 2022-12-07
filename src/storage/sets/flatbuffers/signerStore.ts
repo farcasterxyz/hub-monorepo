@@ -77,17 +77,6 @@ class SignerStore {
     ]);
   }
 
-  /**
-   * Generates a unique key used to store the current custody address of a user -> fid
-   *
-   * @param address the custody address of the user
-   *
-   * @returns RocksDB key of the form <RootPrefix>:<address>:<UserPostfix>
-   */
-  static custodyEventKey(address: Uint8Array): Buffer {
-    return Buffer.concat([Buffer.from(address), Buffer.from([UserPostfix.CustodyAddressAdds])]);
-  }
-
   /** Returns the most recent event from the IdRegistry contract that affected the fid  */
   async getCustodyEvent(fid: Uint8Array): Promise<IdRegistryEventModel> {
     return IdRegistryEventModel.get(this._db, fid);
@@ -180,11 +169,7 @@ class SignerStore {
     }
 
     const txn = this._db.transaction();
-    txn.put(event.primaryKey(), event.toBuffer());
-
-    // This works for both register events and transfer events.
-    // TODO: For Register events, the `to` address is the custody address, right?
-    txn.put(SignerStore.custodyEventKey(event.to()), event.toBuffer());
+    IdRegistryEventModel.putTransaction(txn, event);
 
     await this._db.commit(txn);
 

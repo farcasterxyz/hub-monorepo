@@ -29,6 +29,8 @@ export enum RootPrefix {
   CustodyEvent = 6,
   /* Used to store name registry events */
   NameRegistryEvent = 7,
+  /* Used to store custody events by custody address */
+  CustodyEventByCustodyAddress = 8,
 }
 
 /**
@@ -72,8 +74,6 @@ export enum UserPostfix {
   UserDataAdds = 17,
   /* Used to store a user data message */
   UserDataMessage = 18,
-  /* Used to index a custody address event in the add set */
-  CustodyAddressAdds = 19,
 }
 
 /** A union type of UserPostfixes that are used to store messages */
