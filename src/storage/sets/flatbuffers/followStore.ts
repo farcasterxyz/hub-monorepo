@@ -9,13 +9,12 @@ import {
   UserPostfix,
 } from '~/storage/flatbuffers/types';
 import { isFollowAdd, isFollowRemove } from '~/storage/flatbuffers/typeguards';
-import { bytesCompare, getFarcasterTime } from '~/storage/flatbuffers/utils';
+import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 5_000;
-const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
 
 /**
  * Follow Store persists Follow Messages in RocksDB using a two-phase CRDT set to guarantee
@@ -41,13 +40,11 @@ class FollowStore {
   private _db: RocksDB;
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
-  private _pruneTimeLimit: number;
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
     this._db = db;
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
-    this._pruneTimeLimit = options.pruneTimeLimit ?? PRUNE_TIME_LIMIT_DEFAULT;
   }
 
   /**
@@ -205,9 +202,6 @@ class FollowStore {
     // Calculate the number of messages that need to be pruned, based on the store's size limit
     let sizeToPrune = count - this._pruneSizeLimit;
 
-    // Calculate the timestamp cut-off to prune
-    const timestampToPrune = getFarcasterTime() - this._pruneTimeLimit;
-
     // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
     const messageToPrune: (FollowAddModel | FollowRemoveModel)[] = [];
 
@@ -219,10 +213,9 @@ class FollowStore {
 
     const getNextResult = () => ResultAsync.fromPromise(MessageModel.getNextToPrune(pruneIterator), () => undefined);
 
-    // For each message in order, prune it if the store is over the size limit or the message was signed
-    // before the timestamp cut-off
+    // For each message in order, prune it if the store is over the size limit
     let nextMessage = await getNextResult();
-    while (nextMessage.isOk() && (sizeToPrune > 0 || nextMessage.value.timestamp() < timestampToPrune)) {
+    while (nextMessage.isOk() && sizeToPrune > 0) {
       const message = nextMessage.value;
 
       // Add a delete operation to the transaction depending on the message type

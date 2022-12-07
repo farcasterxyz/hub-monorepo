@@ -3,8 +3,8 @@ import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ReactionAddModel, ReactionRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
 import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
-import { MessageType, ReactionType } from '~/utils/generated/message_generated';
-import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
+import { CastId, MessageType, ReactionType } from '~/utils/generated/message_generated';
+import { bytesDecrement, bytesIncrement, getFarcasterTime } from '~/storage/flatbuffers/utils';
 import { HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
@@ -549,6 +549,171 @@ describe('merge', () => {
         await assertReactionDoesNotExist(reactionRemoveEarlier);
         await assertReactionRemoveWins(reactionRemove);
       });
+    });
+  });
+});
+
+describe('pruneMessages', () => {
+  let prunedMessages: MessageModel[];
+  const pruneMessageListener = (message: MessageModel) => {
+    prunedMessages.push(message);
+  };
+
+  beforeAll(() => {
+    eventHandler.on('pruneMessage', pruneMessageListener);
+  });
+
+  beforeEach(() => {
+    prunedMessages = [];
+  });
+
+  afterAll(() => {
+    eventHandler.off('pruneMessage', pruneMessageListener);
+  });
+
+  let add1: ReactionAddModel;
+  let add2: ReactionAddModel;
+  let add3: ReactionAddModel;
+  let add4: ReactionAddModel;
+  let add5: ReactionAddModel;
+  let addOld1: ReactionAddModel;
+  let addOld2: ReactionAddModel;
+
+  let remove1: ReactionRemoveModel;
+  let remove2: ReactionRemoveModel;
+  let remove3: ReactionRemoveModel;
+  let remove4: ReactionRemoveModel;
+  let remove5: ReactionRemoveModel;
+  let removeOld3: ReactionRemoveModel;
+
+  const generateAddWithTimestamp = async (fid: Uint8Array, timestamp: number): Promise<ReactionAddModel> => {
+    const addData = await Factories.ReactionAddData.create({ fid: Array.from(fid), timestamp });
+    const addMessage = await Factories.Message.create({ data: Array.from(addData.bb?.bytes() ?? []) });
+    return new MessageModel(addMessage) as ReactionAddModel;
+  };
+
+  const generateRemoveWithTimestamp = async (
+    fid: Uint8Array,
+    timestamp: number,
+    cast?: CastId | null
+  ): Promise<ReactionRemoveModel> => {
+    const removeBody = await Factories.ReactionBody.build(cast ? { cast: cast.unpack() } : {});
+    const removeData = await Factories.ReactionRemoveData.create({ fid: Array.from(fid), timestamp, body: removeBody });
+    const removeMessage = await Factories.Message.create({ data: Array.from(removeData.bb?.bytes() ?? []) });
+    return new MessageModel(removeMessage) as ReactionRemoveModel;
+  };
+
+  beforeAll(async () => {
+    const time = getFarcasterTime() - 10;
+    add1 = await generateAddWithTimestamp(fid, time + 1);
+    add2 = await generateAddWithTimestamp(fid, time + 2);
+    add3 = await generateAddWithTimestamp(fid, time + 3);
+    add4 = await generateAddWithTimestamp(fid, time + 4);
+    add5 = await generateAddWithTimestamp(fid, time + 5);
+    addOld1 = await generateAddWithTimestamp(fid, time - 60 * 60);
+    addOld2 = await generateAddWithTimestamp(fid, time - 60 * 60 + 1);
+
+    remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1.body().cast());
+    remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2.body().cast());
+    remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.body().cast());
+    remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.body().cast());
+    remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.body().cast());
+    removeOld3 = await generateRemoveWithTimestamp(fid, time - 60 * 60 + 2);
+  });
+
+  describe('with size limit', () => {
+    const sizePrunedStore = new ReactionStore(db, eventHandler, { pruneSizeLimit: 3 });
+
+    test('no-ops when no messages have been merged', async () => {
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(prunedMessages).toEqual([]);
+    });
+
+    test('prunes earliest add messages', async () => {
+      const messages = [add1, add2, add3, add4, add5];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([add1, add2]);
+
+      for (const message of prunedMessages as ReactionAddModel[]) {
+        const getAdd = () =>
+          sizePrunedStore.getReactionAdd(fid, message.body().type(), message.body().cast() ?? new CastId());
+        await expect(getAdd()).rejects.toThrow(HubError);
+      }
+    });
+
+    test('prunes earliest remove messages', async () => {
+      const messages = [remove1, remove2, remove3, remove4, remove5];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([remove1, remove2]);
+
+      for (const message of prunedMessages as ReactionRemoveModel[]) {
+        const getRemove = () =>
+          sizePrunedStore.getReactionRemove(fid, message.body().type(), message.body().cast() ?? new CastId());
+        await expect(getRemove()).rejects.toThrow(HubError);
+      }
+    });
+
+    test('prunes earliest messages', async () => {
+      const messages = [add1, remove2, add3, remove4, add5];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([add1, remove2]);
+    });
+
+    test('no-ops when adds have been removed', async () => {
+      const messages = [add1, remove1, add2, remove2, add3];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([]);
+    });
+  });
+
+  describe('with time limit', () => {
+    const timePrunedStore = new ReactionStore(db, eventHandler, { pruneTimeLimit: 60 * 60 - 1 });
+
+    test('prunes earliest messages', async () => {
+      const messages = [add1, remove2, addOld1, addOld2, removeOld3];
+      for (const message of messages) {
+        await timePrunedStore.merge(message);
+      }
+
+      const result = await timePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([addOld1, addOld2, removeOld3]);
+
+      await expect(
+        timePrunedStore.getReactionAdd(fid, addOld1.body().type(), addOld1.body().cast() ?? new CastId())
+      ).rejects.toThrow(HubError);
+      await expect(
+        timePrunedStore.getReactionAdd(fid, addOld2.body().type(), addOld2.body().cast() ?? new CastId())
+      ).rejects.toThrow(HubError);
+      await expect(
+        timePrunedStore.getReactionRemove(fid, removeOld3.body().type(), removeOld3.body().cast() ?? new CastId())
+      ).rejects.toThrow(HubError);
     });
   });
 });
