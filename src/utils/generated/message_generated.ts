@@ -42,7 +42,8 @@ export enum UserDataType {
   Display = 2,
   Bio = 3,
   Location = 4,
-  Url = 5
+  Url = 5,
+  Fname = 6
 }
 
 export enum MessageBody {

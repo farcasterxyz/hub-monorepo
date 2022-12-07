@@ -8,6 +8,7 @@ import { MessageType } from '~/utils/generated/message_generated';
 import ContractEventModel from '~/storage/flatbuffers/contractEventModel';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
+import { eventCompare } from '~/utils/contractEvent';
 
 /**
  * SignerStore persists Signer Messages in RocksDB using a series of two-phase CRDT sets
@@ -163,7 +164,7 @@ class SignerStore {
   async mergeIdRegistryEvent(event: ContractEventModel): Promise<void> {
     // TODO: emit signer change events as a result of ID Registry events
     const existingEvent = await ResultAsync.fromPromise(this.getCustodyEvent(event.fid()), () => undefined);
-    if (existingEvent.isOk() && this.eventCompare(existingEvent.value, event) >= 0) {
+    if (existingEvent.isOk() && eventCompare(existingEvent.value, event) >= 0) {
       return undefined;
     }
 
@@ -226,34 +227,6 @@ class SignerStore {
   /* -------------------------------------------------------------------------- */
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
-
-  private eventCompare(a: ContractEventModel, b: ContractEventModel): number {
-    // Compare blockNumber
-    if (a.blockNumber() < b.blockNumber()) {
-      return -1;
-    } else if (a.blockNumber() > b.blockNumber()) {
-      return 1;
-    }
-
-    // Cannot happen unless we do not filter out uncle blocks correctly upstream
-    if (bytesCompare(a.blockHash(), b.blockHash()) !== 0) {
-      throw new HubError('bad_request.validation_failure', 'block hash mismatch');
-    }
-
-    // Compare logIndex
-    if (a.logIndex() < b.logIndex()) {
-      return -1;
-    } else if (a.logIndex() > b.logIndex()) {
-      return 1;
-    }
-
-    // Cannot happen unless we pass in malformed data
-    if (bytesCompare(a.transactionHash(), b.transactionHash()) !== 0) {
-      throw new HubError('bad_request.validation_failure', 'tx hash mismatch');
-    }
-
-    return 0;
-  }
 
   private async mergeAdd(message: SignerAddModel): Promise<void> {
     let txn = await this.resolveMergeConflicts(this._db.transaction(), message);

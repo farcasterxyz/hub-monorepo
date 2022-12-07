@@ -317,6 +317,11 @@ export const validateUserDataAddMessage = (message: UserDataAddModel): HubResult
     if (value && value.length > 256) {
       return err(new HubError('bad_request.validation_failure', 'url value > 256'));
     }
+  } else if (message.body().type() === UserDataType.Fname) {
+    // TODO: Validate fname characteristics
+    if (value && value.length > 32) {
+      return err(new HubError('bad_request.validation_failure', 'fname value > 32'));
+    }
   } else {
     return err(new HubError('bad_request.validation_failure', 'invalid user data type'));
   }

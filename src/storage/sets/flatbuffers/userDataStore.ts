@@ -7,6 +7,9 @@ import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType, UserDataType } from '~/utils/generated/message_generated';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
+import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
+import { eventCompare } from '~/utils/contractEvent';
+import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
 
 /**
  * UserDataStore persists UserData messages in RocksDB using a grow-only CRDT set to guarantee
@@ -67,7 +70,7 @@ class UserDataStore {
     return MessageModel.get<UserDataAddModel>(this._db, fid, UserPostfix.UserDataMessage, messageTimestampHash);
   }
 
-  /** Funds all UserDataAdd messages for an fid */
+  /** Finds all UserDataAdd messages for an fid */
   async getUserDataAddsByUser(fid: Uint8Array): Promise<UserDataAddModel[]> {
     const addsPrefix = UserDataStore.userDataAddsKey(fid);
     const messageKeys: Buffer[] = [];
@@ -77,10 +80,40 @@ class UserDataStore {
     return MessageModel.getManyByUser<UserDataAddModel>(this._db, fid, UserPostfix.UserDataMessage, messageKeys);
   }
 
+  /** Returns the most recent event from the NameEventRegistry contract that affected the fid */
+  async getNameRegistryEvent(fname: Uint8Array): Promise<NameRegistryEventModel> {
+    return NameRegistryEventModel.get(this._db, fname);
+  }
+
+  /**
+   * Merges a NameRegistryEvent storing the causally latest event at the key:
+   * <name registry root prefix byte, fname>
+   */
+  async mergeNameRegistryEvent(event: NameRegistryEventModel): Promise<void> {
+    const existingEvent = await ResultAsync.fromPromise(this.getNameRegistryEvent(event.fname()), () => undefined);
+    if (existingEvent.isOk() && eventCompare(existingEvent.value, event) >= 0) {
+      return undefined;
+    }
+
+    let txn = this._db.transaction();
+    txn.put(event.primaryKey(), event.toBuffer());
+
+    // TODO: When there is a NameRegistryEvent, we need to check if we need to revoke UserDataAdd messages that
+    // reference the fname
+    if (event.type() === NameRegistryEventType.NameRegistryTransfer) {
+      txn = await this.revokeMessagesByNameRegistryEvent(txn, event);
+    }
+
+    await this._db.commit(txn);
+
+    // Emit store event
+    this._eventHandler.emit('mergeNameRegistryEvent', event);
+  }
+
   /** Merges a UserDataAdd message into the set */
   async merge(message: MessageModel): Promise<void> {
     if (isUserDataAdd(message)) {
-      return this.mergeAdd(message);
+      return this.mergeDataAdd(message);
     }
 
     throw new HubError('bad_request.validation_failure', 'invalid message type');
@@ -117,8 +150,8 @@ class UserDataStore {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async mergeAdd(message: UserDataAddModel): Promise<void> {
-    let tsx = await this.resolveMergeConflicts(this._db.transaction(), message);
+  private async mergeDataAdd(message: UserDataAddModel): Promise<void> {
+    let tsx = await this.resolveUserDataMergeConflicts(this._db.transaction(), message);
 
     // No-op if resolveMergeConflicts did not return a transaction
     if (!tsx) return undefined;
@@ -133,11 +166,32 @@ class UserDataStore {
     this._eventHandler.emit('mergeMessage', message);
   }
 
+  private async revokeMessagesByNameRegistryEvent(
+    tsx: Transaction,
+    event: NameRegistryEventModel
+  ): Promise<Transaction> {
+    const fname = event.fname();
+    const prevFname = event.from();
+
+    // Get the previous owner's UserNameAdd and delete it
+    {
+      // TODO: Find a way to get the fid given the `from` field of the NameRegistryEvent
+      // and delete the user's fname data
+      // const prevMsg = await this.getUserDataAdd(from, UserDataType.Fname);
+      // tsx = this.deleteUserDataAddTransaction(tsx, prevMsg);
+    }
+
+    return tsx;
+  }
+
   private userDataMessageCompare(aTimestampHash: Uint8Array, bTimestampHash: Uint8Array): number {
     return bytesCompare(aTimestampHash, bTimestampHash);
   }
 
-  private async resolveMergeConflicts(tsx: Transaction, message: UserDataAddModel): Promise<Transaction | undefined> {
+  private async resolveUserDataMergeConflicts(
+    tsx: Transaction,
+    message: UserDataAddModel
+  ): Promise<Transaction | undefined> {
     // Look up the current add timestampHash for this dataType
     const addTimestampHash = await ResultAsync.fromPromise(
       this._db.get(UserDataStore.userDataAddsKey(message.fid(), message.body().type())),

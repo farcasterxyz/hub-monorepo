@@ -25,8 +25,10 @@ export enum RootPrefix {
   FollowsByUser = 4,
   /* Used to index reactions by target  */
   ReactionsByTarget = 5,
-  /* User to store custody events */
+  /* Used to store custody events */
   CustodyEvent = 6,
+  /* Used to store name registry events */
+  NameRegistryEvent = 7,
 }
 
 /**

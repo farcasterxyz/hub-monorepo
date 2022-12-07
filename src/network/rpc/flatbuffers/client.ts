@@ -35,6 +35,8 @@ import { signerServiceMethods, signerServiceRequests } from '~/network/rpc/flatb
 import { userDataServiceMethods, userDataServiceRequests } from '~/network/rpc/flatbuffers/userDataService';
 import { createSyncServiceRequest, syncServiceMethods } from '~/network/rpc/flatbuffers/syncService';
 import { eventServiceMethods } from '~/network/rpc/flatbuffers/eventService';
+import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
+import { NameRegistryEvent } from '~/utils/generated/nameregistry_generated';
 
 class Client {
   client: grpc.Client;
@@ -57,6 +59,10 @@ class Client {
 
   async submitContractEvent(event: ContractEventModel): HubAsyncResult<ContractEventModel> {
     return this.makeUnaryContractEventRequest(submitServiceMethods().submitContractEvent, event.event);
+  }
+
+  async submitNameRegistryEvent(event: NameRegistryEventModel): HubAsyncResult<NameRegistryEventModel> {
+    return this.makeUnaryNameRegistryEventRequest(submitServiceMethods().submitNameRegistryEvent, event.event);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -306,6 +312,27 @@ class Client {
             resolve(err(fromServiceError(e)));
           } else if (response) {
             resolve(ok(new ContractEventModel(response)));
+          }
+        }
+      );
+    });
+  }
+
+  private makeUnaryNameRegistryEventRequest<RequestType>(
+    method: grpc.MethodDefinition<RequestType, NameRegistryEvent>,
+    request: RequestType
+  ): HubAsyncResult<NameRegistryEventModel> {
+    return new Promise((resolve) => {
+      this.client.makeUnaryRequest(
+        method.path,
+        method.requestSerialize,
+        method.responseDeserialize,
+        request,
+        (e: grpc.ServiceError | null, response?: NameRegistryEvent) => {
+          if (e) {
+            resolve(err(fromServiceError(e)));
+          } else if (response) {
+            resolve(ok(new NameRegistryEventModel(response)));
           }
         }
       );

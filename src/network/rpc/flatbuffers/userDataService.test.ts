@@ -37,6 +37,7 @@ let signerAdd: SignerAddModel;
 
 let pfpAdd: UserDataAddModel;
 let locationAdd: UserDataAddModel;
+let addFname: UserDataAddModel;
 
 beforeAll(async () => {
   custodyEvent = new ContractEventModel(
@@ -70,6 +71,14 @@ beforeAll(async () => {
   locationAdd = new MessageModel(
     await Factories.Message.create({ data: Array.from(locationData.bb?.bytes() ?? []) }, { transient: { signer } })
   ) as UserDataAddModel;
+
+  const addNameData = await Factories.UserDataAddData.create({
+    fid: Array.from(fid),
+    body: Factories.UserDataBody.build({ type: UserDataType.Fname }),
+  });
+  addFname = new MessageModel(
+    await Factories.Message.create({ data: Array.from(addNameData.bb?.bytes() ?? []) }, { transient: { signer } })
+  ) as UserDataAddModel;
 });
 
 describe('getUserData', () => {
@@ -81,15 +90,24 @@ describe('getUserData', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(pfpAdd);
     await engine.mergeMessage(locationAdd);
+    await engine.mergeMessage(addFname);
+
     const pfp = await client.getUserData(fid, UserDataType.Pfp);
     expect(pfp._unsafeUnwrap()).toEqual(pfpAdd);
+
     const location = await client.getUserData(fid, UserDataType.Location);
     expect(location._unsafeUnwrap()).toEqual(locationAdd);
+
+    const fname = await client.getUserData(fid, UserDataType.Fname);
+    expect(fname._unsafeUnwrap()).toEqual(addFname);
   });
 
   test('fails when user data is missing', async () => {
     const pfp = await client.getUserData(fid, UserDataType.Pfp);
     expect(pfp._unsafeUnwrapErr().errCode).toEqual('not_found');
+
+    const fname = await client.getUserData(fid, UserDataType.Fname);
+    expect(fname._unsafeUnwrapErr().errCode).toEqual('not_found');
   });
 
   test('fails without fid', async () => {

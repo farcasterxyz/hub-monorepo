@@ -39,6 +39,8 @@ import {
 import { CastId, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
+import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
+import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 
 class Engine {
   public eventHandler: StoreEventHandler;
@@ -97,6 +99,17 @@ class Engine {
     } else {
       return err(new HubError('bad_request.validation_failure', 'invalid event type'));
     }
+  }
+
+  async mergeNameRegistryEvent(event: NameRegistryEventModel): HubAsyncResult<void> {
+    if (
+      event.type() === NameRegistryEventType.NameRegistryTransfer ||
+      event.type() === NameRegistryEventType.NameRegistryRenew
+    ) {
+      return ResultAsync.fromPromise(this._userDataStore.mergeNameRegistryEvent(event), (e) => e as HubError);
+    }
+
+    return err(new HubError('bad_request.validation_failure', 'invalid event type'));
   }
 
   async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<void> {

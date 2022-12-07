@@ -57,6 +57,7 @@ import {
 import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { PeerId } from '@libp2p/interface-peer-id';
+import { NameRegistryEvent, NameRegistryEventT, NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
 
 /* eslint-disable security/detect-object-injection */
 const BytesFactory = Factory.define<Uint8Array, { length?: number }>(({ transientParams }) => {
@@ -71,6 +72,15 @@ const BytesFactory = Factory.define<Uint8Array, { length?: number }>(({ transien
 const FIDFactory = Factory.define<Uint8Array>(() => {
   const builder = new Builder(4);
   builder.addInt32(faker.datatype.number({ max: 2 ** 32 - 1 }));
+  return builder.asUint8Array();
+});
+
+const FnameFactory = Factory.define<Uint8Array>(() => {
+  const builder = new Builder(8);
+  // Add 8 random alphabets as the fname
+  for (let i = 0; i < 8; i++) {
+    builder.addInt8(faker.datatype.number({ min: 65, max: 90 }));
+  }
   return builder.asUint8Array();
 });
 
@@ -416,6 +426,25 @@ const IdRegistryEventFactory = Factory.define<ContractEventT, any, ContractEvent
   );
 });
 
+const NameRegistryEventFactory = Factory.define<NameRegistryEventT, any, NameRegistryEvent>(({ onCreate }) => {
+  onCreate((params) => {
+    const builder = new Builder(1);
+    builder.finish(params.pack(builder));
+    return NameRegistryEvent.getRootAsNameRegistryEvent(new ByteBuffer(builder.asUint8Array()));
+  });
+
+  return new NameRegistryEventT(
+    faker.datatype.number({ max: 100000 }),
+    Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
+    Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
+    faker.datatype.number({ max: 1000 }),
+    Array.from(FnameFactory.build()),
+    Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 }))),
+    Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 }))),
+    NameRegistryEventType.NameRegistryTransfer
+  );
+});
+
 const GossipAddressInfoFactory = Factory.define<GossipAddressInfoT, any, GossipAddressInfo>(({ onCreate }) => {
   onCreate((params) => {
     const builder = new Builder(1);
@@ -457,6 +486,7 @@ const GossipMessageFactory = Factory.define<GossipMessageT, any, GossipMessage>(
 const Factories = {
   Bytes: BytesFactory,
   FID: FIDFactory,
+  Fname: FnameFactory,
   TsHash: TsHashFactory,
   UserId: UserIdFactory,
   CastId: CastIdFactory,
@@ -482,6 +512,7 @@ const Factories = {
   UserDataAddData: UserDataAddDataFactory,
   Message: MessageFactory,
   IdRegistryEvent: IdRegistryEventFactory,
+  NameRegistryEvent: NameRegistryEventFactory,
   GossipMessage: GossipMessageFactory,
   GossipContactInfoContent: ContactInfoContentFactory,
   GossipAddressInfo: GossipAddressInfoFactory,
