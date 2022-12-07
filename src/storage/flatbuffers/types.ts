@@ -26,11 +26,11 @@ export enum RootPrefix {
   /* Used to index reactions by target  */
   ReactionsByTarget = 5,
   /* Used to store custody events */
-  CustodyEvent = 6,
+  IdRegistryEvent = 6,
   /* Used to store name registry events */
   NameRegistryEvent = 7,
   /* Used to store custody events by custody address */
-  CustodyEventByCustodyAddress = 8,
+  IdRegistryEventByCustodyAddress = 8,
 }
 
 /**

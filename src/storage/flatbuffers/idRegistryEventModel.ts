@@ -4,7 +4,7 @@ import { RootPrefix, UserPostfix } from '~/storage/flatbuffers/types';
 import { IdRegistryEvent, IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
 import SignerStore from '../sets/flatbuffers/signerStore';
 
-/** ContractEventModel provides helpers to read and write Flatbuffers ContractEvents from RocksDB */
+/** IdRegistryEventModel provides helpers to read and write Flatbuffers ContractEvents from RocksDB */
 export default class IdRegistryEventModel {
   public event: IdRegistryEvent;
 
@@ -17,9 +17,9 @@ export default class IdRegistryEventModel {
     return new this(event);
   }
 
-  /** <user prefix byte, fid, ID Registry event prefix byte> */
+  /** <ID Registry root prefix byte, fid> */
   static primaryKey(fid: Uint8Array): Buffer {
-    return Buffer.concat([Buffer.from([RootPrefix.CustodyEvent]), Buffer.from(fid)]);
+    return Buffer.concat([Buffer.from([RootPrefix.IdRegistryEvent]), Buffer.from(fid)]);
   }
 
   /**
@@ -30,7 +30,7 @@ export default class IdRegistryEventModel {
    * @returns RocksDB key of the form <RootPrefix>:<address>
    */
   static byCustodyAddressKey(address: Uint8Array): Buffer {
-    return Buffer.concat([Buffer.from([RootPrefix.CustodyEventByCustodyAddress]), Buffer.from(address)]);
+    return Buffer.concat([Buffer.from([RootPrefix.IdRegistryEventByCustodyAddress]), Buffer.from(address)]);
   }
 
   static async get<T extends IdRegistryEventModel>(db: RocksDB, fid: Uint8Array): Promise<T> {
@@ -47,7 +47,6 @@ export default class IdRegistryEventModel {
     tsx = tsx.put(event.primaryKey(), event.toBuffer());
 
     // This works for both register events and transfer events.
-    // TODO: For Register events, the `to` address is the custody address, right?
     return tsx.put(IdRegistryEventModel.byCustodyAddressKey(event.to()), event.toBuffer());
   }
 

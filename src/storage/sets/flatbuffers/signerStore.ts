@@ -149,7 +149,7 @@ class SignerStore {
   }
 
   async getFids(): Promise<Uint8Array[]> {
-    const prefix = Buffer.from([RootPrefix.CustodyEvent]);
+    const prefix = Buffer.from([RootPrefix.IdRegistryEvent]);
     const fids: Uint8Array[] = [];
     for await (const [key] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
       fids.push(new Uint8Array(key.slice(prefix.length)));
