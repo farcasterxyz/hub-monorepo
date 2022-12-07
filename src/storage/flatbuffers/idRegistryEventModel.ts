@@ -23,7 +23,7 @@ export default class IdRegistryEventModel {
   }
 
   /**
-   * Generates a unique key used to store the current custody address of a user -> fid
+   * Generates a unique key used to store the current custody address of a user -> IdRegistryEvent mapping
    *
    * @param address the custody address of the user
    *

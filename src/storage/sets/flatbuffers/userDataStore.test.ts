@@ -3,14 +3,14 @@ import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
 import { UserDataType } from '~/utils/generated/message_generated';
-import UserDataSet from '~/storage/sets/flatbuffers/userDataStore';
+import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
 import { HubError } from '~/utils/hubErrors';
 import { bytesIncrement } from '~/storage/flatbuffers/utils';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 const db = jestBinaryRocksDB('flatbuffers.userDataSet.test');
 const eventHandler = new StoreEventHandler();
-const set = new UserDataSet(db, eventHandler);
+const set = new UserDataStore(db, eventHandler);
 const fid = Factories.FID.build();
 
 let addPfp: UserDataAddModel;
@@ -244,36 +244,36 @@ describe('userfname', () => {
 
       await assertUserFnameAddWins(addFnameLater);
     });
+  });
 
-    describe('with a conflicting UserNameAdd with identical timestamps', () => {
-      let addFnameLater: UserDataAddModel;
+  describe('with a conflicting UserNameAdd with identical timestamps', () => {
+    let addFnameLater: UserDataAddModel;
 
-      beforeAll(async () => {
-        const addData = await Factories.UserDataAddData.create({
-          ...addFname.data.unpack(),
-        });
-
-        const addMessage = await Factories.Message.create({
-          data: Array.from(addData.bb?.bytes() ?? []),
-          hash: Array.from(bytesIncrement(addFname.hash().slice())),
-        });
-
-        addFnameLater = new MessageModel(addMessage) as UserDataAddModel;
+    beforeAll(async () => {
+      const addData = await Factories.UserDataAddData.create({
+        ...addFname.data.unpack(),
       });
 
-      test('succeeds with a later hash', async () => {
-        await set.merge(addFname);
-        await expect(set.merge(addFnameLater)).resolves.toEqual(undefined);
-
-        await assertUserFnameAddWins(addFnameLater);
+      const addMessage = await Factories.Message.create({
+        data: Array.from(addData.bb?.bytes() ?? []),
+        hash: Array.from(bytesIncrement(addFname.hash().slice())),
       });
 
-      test('no-ops with an earlier hash', async () => {
-        await set.merge(addFnameLater);
-        await expect(set.merge(addFname)).resolves.toEqual(undefined);
+      addFnameLater = new MessageModel(addMessage) as UserDataAddModel;
+    });
 
-        await assertUserFnameAddWins(addFnameLater);
-      });
+    test('succeeds with a later hash', async () => {
+      await set.merge(addFname);
+      await expect(set.merge(addFnameLater)).resolves.toEqual(undefined);
+
+      await assertUserFnameAddWins(addFnameLater);
+    });
+
+    test('no-ops with an earlier hash', async () => {
+      await set.merge(addFnameLater);
+      await expect(set.merge(addFname)).resolves.toEqual(undefined);
+
+      await assertUserFnameAddWins(addFnameLater);
     });
   });
 });

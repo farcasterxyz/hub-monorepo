@@ -10,6 +10,7 @@ import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 import { eventCompare } from '~/utils/contractEvent';
 import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 
 /**
  * UserDataStore persists UserData messages in RocksDB using a grow-only CRDT set to guarantee
@@ -98,8 +99,8 @@ class UserDataStore {
     let txn = this._db.transaction();
     txn.put(event.primaryKey(), event.toBuffer());
 
-    // TODO: When there is a NameRegistryEvent, we need to check if we need to revoke UserDataAdd messages that
-    // reference the fname
+    // When there is a NameRegistryEvent, we need to check if we need to revoke UserDataAdd messages from the
+    // previous owner of the name
     if (event.type() === NameRegistryEventType.NameRegistryTransfer) {
       txn = await this.revokeMessagesByNameRegistryEvent(txn, event);
     }
@@ -171,14 +172,17 @@ class UserDataStore {
     event: NameRegistryEventModel
   ): Promise<Transaction> {
     const fname = event.fname();
-    const prevFname = event.from();
+    const prevFnameOwnerCustodyAddress = event.from();
 
     // Get the previous owner's UserNameAdd and delete it
-    {
-      // TODO: Find a way to get the fid given the `from` field of the NameRegistryEvent
-      // and delete the user's fname data
-      // const prevMsg = await this.getUserDataAdd(from, UserDataType.Fname);
-      // tsx = this.deleteUserDataAddTransaction(tsx, prevMsg);
+    const prevEvent = await ResultAsync.fromPromise(
+      IdRegistryEventModel.getByCustodyAddress(this._db, prevFnameOwnerCustodyAddress),
+      (e) => e
+    );
+    if (prevEvent.isOk()) {
+      const fid = prevEvent.value.fid();
+      const prevMsg = await this.getUserDataAdd(fid, UserDataType.Fname);
+      tsx = this.deleteUserDataAddTransaction(tsx, prevMsg);
     }
 
     return tsx;
