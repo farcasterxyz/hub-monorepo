@@ -10,6 +10,7 @@ import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 import { eventCompare } from '~/utils/contractEvent';
 import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 
@@ -102,16 +103,37 @@ class UserDataStore {
     let txn = this._db.transaction();
     txn.put(event.primaryKey(), event.toBuffer());
 
-    // TODO: When there is a NameRegistryEvent, we need to check if we need to revoke UserDataAdd messages that
-    // reference the fname
+    // Record if we need to emit a revoked message
+    let revokedMessage: UserDataAddModel | undefined;
     if (event.type() === NameRegistryEventType.NameRegistryTransfer) {
-      txn = await this.revokeMessagesByNameRegistryEvent(txn, event);
+      // When there is a NameRegistryEvent, we need to check if we need to revoke UserDataAdd messages from the
+      // previous owner of the name.
+      const prevFnameOwnerCustodyAddress = event.from();
+
+      // Get the previous owner's UserNameAdd and delete it
+      const prevEvent = await ResultAsync.fromPromise(
+        IdRegistryEventModel.getByCustodyAddress(this._db, prevFnameOwnerCustodyAddress),
+        () => undefined
+      );
+      if (prevEvent.isOk()) {
+        const fid = prevEvent.value.fid();
+        const prevMsg = await ResultAsync.fromPromise(this.getUserDataAdd(fid, UserDataType.Fname), () => undefined);
+        if (prevMsg.isOk()) {
+          revokedMessage = prevMsg.value;
+          txn = this.deleteUserDataAddTransaction(txn, revokedMessage);
+        }
+      }
     }
 
     await this._db.commit(txn);
 
     // Emit store event
     this._eventHandler.emit('mergeNameRegistryEvent', event);
+
+    // Emit revoke message if needed
+    if (revokedMessage) {
+      this._eventHandler.emit('revokeMessage', revokedMessage);
+    }
   }
 
   /** Merges a UserDataAdd message into the set */
@@ -223,24 +245,6 @@ class UserDataStore {
 
     // Emit store event
     this._eventHandler.emit('mergeMessage', message);
-  }
-
-  private async revokeMessagesByNameRegistryEvent(
-    tsx: Transaction,
-    event: NameRegistryEventModel
-  ): Promise<Transaction> {
-    const fname = event.fname();
-    const prevFname = event.from();
-
-    // Get the previous owner's UserNameAdd and delete it
-    {
-      // TODO: Find a way to get the fid given the `from` field of the NameRegistryEvent
-      // and delete the user's fname data
-      // const prevMsg = await this.getUserDataAdd(from, UserDataType.Fname);
-      // tsx = this.deleteUserDataAddTransaction(tsx, prevMsg);
-    }
-
-    return tsx;
   }
 
   private userDataMessageCompare(aTimestampHash: Uint8Array, bTimestampHash: Uint8Array): number {
