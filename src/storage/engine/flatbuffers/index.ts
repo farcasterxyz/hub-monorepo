@@ -23,7 +23,7 @@ import {
 } from '~/storage/flatbuffers/types';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import { IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
-import { isSignerAdd, isSignerRemove } from '~/storage/flatbuffers/typeguards';
+import { isSignerAdd, isSignerRemove, isUserDataAdd } from '~/storage/flatbuffers/typeguards';
 import {
   validateCastId,
   ValidatedCastId,
@@ -41,10 +41,12 @@ import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
+import { bytesCompare } from '~/storage/flatbuffers/utils';
 
 class Engine {
   public eventHandler: StoreEventHandler;
 
+  private _db: RocksDB;
   private _castStore: CastStore;
   private _signerStore: SignerStore;
   private _followStore: FollowStore;
@@ -57,6 +59,7 @@ class Engine {
   constructor(db: RocksDB) {
     this.eventHandler = new StoreEventHandler();
 
+    this._db = db;
     this._castStore = new CastStore(db, this.eventHandler);
     this._signerStore = new SignerStore(db, this.eventHandler);
     this._followStore = new FollowStore(db, this.eventHandler);
@@ -472,7 +475,29 @@ class Engine {
       }
     }
 
-    // 3. Check message body and envelope (will throw HubError if invalid)
+    // 3. For fname add UserDataAdd messages, check that the user actually owns the fname
+    if (isUserDataAdd(message) && message.body().type() == UserDataType.Fname) {
+      // For fname messages, check if the user actually owns the fname.
+      const fname = new TextEncoder().encode(message.body().value() ?? '');
+
+      // Users are allowed to set fname = '' to remove their fname, so check to see if fname is set
+      // before validating the custody address
+      if (fname && fname.length > 0) {
+        const fid = message.fid();
+
+        // The custody address of the fid and fname must be the same
+        const fidCustodyAddress = await IdRegistryEventModel.get(this._db, fid).then((event) => event?.to());
+        const fnameCustodyAddress = await NameRegistryEventModel.get(this._db, fname).then((event) => event?.to());
+
+        if (bytesCompare(fidCustodyAddress, fnameCustodyAddress) !== 0) {
+          return err(
+            new HubError('bad_request.validation_failure', 'fname custody address does not match fid custody address')
+          );
+        }
+      }
+    }
+
+    // 4. Check message body and envelope (will throw HubError if invalid)
     return validateMessage(message);
   }
 }
