@@ -113,16 +113,21 @@ class UserDataStore {
       // Get the previous owner's UserNameAdd and delete it
       const prevEvent = await ResultAsync.fromPromise(
         IdRegistryEventModel.getByCustodyAddress(this._db, prevFnameOwnerCustodyAddress),
-        (e) => e
+        () => undefined
       );
       if (prevEvent.isOk()) {
         const fid = prevEvent.value.fid();
-        revokedMessage = await this.getUserDataAdd(fid, UserDataType.Fname);
-        txn = this.deleteUserDataAddTransaction(txn, revokedMessage);
+        const prevMsg = await ResultAsync.fromPromise(this.getUserDataAdd(fid, UserDataType.Fname), () => undefined);
+        if (prevMsg.isOk()) {
+          revokedMessage = prevMsg.value;
+          txn = this.deleteUserDataAddTransaction(txn, revokedMessage);
+        }
       }
     }
 
     await this._db.commit(txn);
+
+    const fnameCustodyAddress = await NameRegistryEventModel.get(this._db, event.fname()).then((event) => event?.to());
 
     // Emit store event
     this._eventHandler.emit('mergeNameRegistryEvent', event);

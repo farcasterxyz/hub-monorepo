@@ -15,6 +15,7 @@ import SignerStore from './signerStore';
 import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
 import Engine from '~/storage/engine/flatbuffers';
 import { Wallet } from 'ethers';
+import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
 
 const db = jestBinaryRocksDB('flatbuffers.userDataSet.test');
 
@@ -274,7 +275,10 @@ describe('userfname', () => {
     // transfer the name to custody2
     const nameRegistryEvent2 = await Factories.NameRegistryEvent.create({
       fname: Array.from(fname),
+      from: Array.from(custody1Address),
       to: Array.from(custody2Address),
+      type: NameRegistryEventType.NameRegistryTransfer,
+      blockNumber: nameRegistryModelEvent.blockNumber() + 1,
     });
     const model = new NameRegistryEventModel(nameRegistryEvent2);
     await engine.mergeNameRegistryEvent(model);
