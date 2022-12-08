@@ -3,10 +3,10 @@ import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
 import { UserDataType } from '~/utils/generated/message_generated';
-import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
 import { HubError } from '~/utils/hubErrors';
 import { bytesIncrement } from '~/storage/flatbuffers/utils';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
+import UserDataStore from './userDataStore';
 
 const db = jestBinaryRocksDB('flatbuffers.userDataSet.test');
 const eventHandler = new StoreEventHandler();
