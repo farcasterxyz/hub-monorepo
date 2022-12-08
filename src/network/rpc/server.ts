@@ -139,7 +139,9 @@ export class RPCServer {
   get multiaddr() {
     const addr = this.address;
     if (!addr) return undefined;
-    return `${ipMultiAddrStrFromAddressInfo(addr)}/tcp/${addr.port}`;
+    const addrInfo = ipMultiAddrStrFromAddressInfo(addr);
+    if (addrInfo.isErr()) return undefined;
+    return `${addrInfo.value}/tcp/${addr.port}`;
   }
 
   get address() {
