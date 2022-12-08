@@ -8,7 +8,7 @@ import SignerStore from '~/storage/sets/flatbuffers/signerStore';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import { SignerAddModel, SignerRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { bytesDecrement, bytesIncrement } from '~/storage/flatbuffers/utils';
+import { bytesDecrement, bytesIncrement, getFarcasterTime } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 import { HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
@@ -774,6 +774,137 @@ describe('revokeMessagesBySigner', () => {
       await set.revokeMessagesBySigner(fid, custody1Address);
       await set.revokeMessagesBySigner(fid, custody2Address);
       expect(revokedMessages).toEqual([]);
+    });
+  });
+});
+
+describe('pruneMessages', () => {
+  let prunedMessages: MessageModel[];
+  const pruneMessageListener = (message: MessageModel) => {
+    prunedMessages.push(message);
+  };
+
+  beforeAll(() => {
+    eventHandler.on('pruneMessage', pruneMessageListener);
+  });
+
+  beforeEach(() => {
+    prunedMessages = [];
+  });
+
+  afterAll(() => {
+    eventHandler.off('pruneMessage', pruneMessageListener);
+  });
+
+  let add1: SignerAddModel;
+  let add2: SignerAddModel;
+  let add3: SignerAddModel;
+  let add4: SignerAddModel;
+  let add5: SignerAddModel;
+
+  let remove1: SignerRemoveModel;
+  let remove2: SignerRemoveModel;
+  let remove3: SignerRemoveModel;
+  let remove4: SignerRemoveModel;
+  let remove5: SignerRemoveModel;
+
+  const generateAddWithTimestamp = async (fid: Uint8Array, timestamp: number): Promise<SignerAddModel> => {
+    const addData = await Factories.SignerAddData.create({ fid: Array.from(fid), timestamp });
+    const addMessage = await Factories.Message.create({ data: Array.from(addData.bb?.bytes() ?? []) });
+    return new MessageModel(addMessage) as SignerAddModel;
+  };
+
+  const generateRemoveWithTimestamp = async (
+    fid: Uint8Array,
+    timestamp: number,
+    signer?: Uint8Array | null
+  ): Promise<SignerRemoveModel> => {
+    const removeBody = await Factories.SignerBody.build(signer ? { signer: Array.from(signer) } : {});
+    const removeData = await Factories.SignerRemoveData.create({ fid: Array.from(fid), timestamp, body: removeBody });
+    const removeMessage = await Factories.Message.create({ data: Array.from(removeData.bb?.bytes() ?? []) });
+    return new MessageModel(removeMessage) as SignerRemoveModel;
+  };
+
+  beforeAll(async () => {
+    const time = getFarcasterTime() - 10;
+    add1 = await generateAddWithTimestamp(fid, time + 1);
+    add2 = await generateAddWithTimestamp(fid, time + 2);
+    add3 = await generateAddWithTimestamp(fid, time + 3);
+    add4 = await generateAddWithTimestamp(fid, time + 4);
+    add5 = await generateAddWithTimestamp(fid, time + 5);
+
+    remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1.body().signerArray());
+    remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2.body().signerArray());
+    remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.body().signerArray());
+    remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.body().signerArray());
+    remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.body().signerArray());
+  });
+
+  describe('with size limit', () => {
+    const sizePrunedStore = new SignerStore(db, eventHandler, { pruneSizeLimit: 3 });
+
+    test('no-ops when no messages have been merged', async () => {
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(prunedMessages).toEqual([]);
+    });
+
+    test('prunes earliest add messages', async () => {
+      const messages = [add1, add2, add3, add4, add5];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([add1, add2]);
+
+      for (const message of prunedMessages as SignerAddModel[]) {
+        const getAdd = () => sizePrunedStore.getSignerAdd(fid, message.body().signerArray() ?? new Uint8Array());
+        await expect(getAdd()).rejects.toThrow(HubError);
+      }
+    });
+
+    test('prunes earliest remove messages', async () => {
+      const messages = [remove1, remove2, remove3, remove4, remove5];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([remove1, remove2]);
+
+      for (const message of prunedMessages as SignerRemoveModel[]) {
+        const getRemove = () => sizePrunedStore.getSignerRemove(fid, message.body().signerArray() ?? new Uint8Array());
+        await expect(getRemove()).rejects.toThrow(HubError);
+      }
+    });
+
+    test('prunes earliest messages', async () => {
+      const messages = [add1, remove2, add3, remove4, add5];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([add1, remove2]);
+    });
+
+    test('no-ops when adds have been removed', async () => {
+      const messages = [add1, remove1, add2, remove2, add3];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([]);
     });
   });
 });
