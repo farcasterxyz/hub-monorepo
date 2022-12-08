@@ -354,7 +354,7 @@ const UserDataBodyFactory = Factory.define<UserDataBodyT, any, UserDataBody>(({ 
     return UserDataBody.getRootAsUserDataBody(new ByteBuffer(builder.asUint8Array()));
   });
 
-  return new UserDataBodyT(UserDataType.Pfp, faker.internet.url());
+  return new UserDataBodyT(UserDataType.Pfp, faker.random.alphaNumeric(32));
 });
 
 const UserDataAddDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {

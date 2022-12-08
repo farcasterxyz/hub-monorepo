@@ -12,6 +12,7 @@ import { KeyPair } from '~/types';
 import { UserDataType } from '~/utils/generated/message_generated';
 import { HubError } from '~/utils/hubErrors';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
+import { ok } from 'neverthrow';
 
 const db = jestBinaryRocksDB('flatbuffers.rpc.userDataService.test');
 const engine = new Engine(db);
@@ -90,8 +91,8 @@ describe('getUserData', () => {
   });
 
   test('succeeds', async () => {
-    await engine.mergeMessage(pfpAdd);
-    await engine.mergeMessage(locationAdd);
+    expect(await engine.mergeMessage(pfpAdd)).toEqual(ok(undefined));
+    expect(await engine.mergeMessage(locationAdd)).toEqual(ok(undefined));
 
     const pfp = await client.getUserData(fid, UserDataType.Pfp);
     expect(pfp._unsafeUnwrap()).toEqual(pfpAdd);
@@ -106,7 +107,7 @@ describe('getUserData', () => {
     const model = new NameRegistryEventModel(nameRegistryEvent);
     await model.put(db);
 
-    await engine.mergeMessage(addFname);
+    expect(await engine.mergeMessage(addFname)).toEqual(ok(undefined));
     const fnameData = await client.getUserData(fid, UserDataType.Fname);
     expect(fnameData._unsafeUnwrap()).toEqual(addFname);
   });

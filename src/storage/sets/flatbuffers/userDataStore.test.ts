@@ -5,7 +5,7 @@ import { UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
 import { UserDataType } from '~/utils/generated/message_generated';
 import UserDataSet from '~/storage/sets/flatbuffers/userDataStore';
 import { HubError } from '~/utils/hubErrors';
-import { bytesIncrement } from '~/storage/flatbuffers/utils';
+import { bytesIncrement, getFarcasterTime } from '~/storage/flatbuffers/utils';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 import { generateEthereumSigner } from '~/utils/crypto';
 import { EthereumSigner } from '~/types';
@@ -13,6 +13,7 @@ import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import { arrayify } from 'ethers/lib/utils';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 import SignerStore from './signerStore';
+import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
 
 const db = jestBinaryRocksDB('flatbuffers.userDataSet.test');
 
@@ -334,6 +335,78 @@ describe('userfname', () => {
       await expect(set.merge(addFname)).resolves.toEqual(undefined);
 
       await assertUserFnameAddWins(addFnameLater);
+    });
+  });
+});
+
+describe('pruneMessages', () => {
+  let prunedMessages: MessageModel[];
+  const pruneMessageListener = (message: MessageModel) => {
+    prunedMessages.push(message);
+  };
+
+  beforeAll(() => {
+    eventHandler.on('pruneMessage', pruneMessageListener);
+  });
+
+  beforeEach(() => {
+    prunedMessages = [];
+  });
+
+  afterAll(() => {
+    eventHandler.off('pruneMessage', pruneMessageListener);
+  });
+
+  let add1: UserDataAddModel;
+  let add2: UserDataAddModel;
+  let add3: UserDataAddModel;
+  let add4: UserDataAddModel;
+  let add5: UserDataAddModel;
+
+  const generateAddWithTimestamp = async (
+    fid: Uint8Array,
+    timestamp: number,
+    type: UserDataType
+  ): Promise<UserDataAddModel> => {
+    const addBody = Factories.UserDataBody.build({ type });
+    const addData = await Factories.UserDataAddData.create({ fid: Array.from(fid), timestamp, body: addBody });
+    const addMessage = await Factories.Message.create({ data: Array.from(addData.bb?.bytes() ?? []) });
+    return new MessageModel(addMessage) as UserDataAddModel;
+  };
+
+  beforeAll(async () => {
+    const time = getFarcasterTime() - 10;
+    add1 = await generateAddWithTimestamp(fid, time + 1, UserDataType.Pfp);
+    add2 = await generateAddWithTimestamp(fid, time + 2, UserDataType.Display);
+    add3 = await generateAddWithTimestamp(fid, time + 3, UserDataType.Bio);
+    add4 = await generateAddWithTimestamp(fid, time + 4, UserDataType.Location);
+    add5 = await generateAddWithTimestamp(fid, time + 5, UserDataType.Url);
+  });
+
+  describe('with size limit', () => {
+    const sizePrunedStore = new UserDataStore(db, eventHandler, { pruneSizeLimit: 3 });
+
+    test('no-ops when no messages have been merged', async () => {
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(prunedMessages).toEqual([]);
+    });
+
+    test('prunes earliest add messages', async () => {
+      const messages = [add1, add2, add3, add4, add5];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual(undefined);
+
+      expect(prunedMessages).toEqual([add1, add2]);
+
+      for (const message of prunedMessages as UserDataAddModel[]) {
+        const getAdd = () => sizePrunedStore.getUserDataAdd(fid, message.body().type());
+        await expect(getAdd()).rejects.toThrow(HubError);
+      }
     });
   });
 });
