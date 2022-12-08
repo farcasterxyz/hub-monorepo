@@ -1,12 +1,19 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync, ok } from 'neverthrow';
-import { UserPostfix, VerificationAddEthAddressModel, VerificationRemoveModel } from '~/storage/flatbuffers/types';
+import {
+  StorePruneOptions,
+  UserPostfix,
+  VerificationAddEthAddressModel,
+  VerificationRemoveModel,
+} from '~/storage/flatbuffers/types';
 import { isVerificationAddEthAddress, isVerificationRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType } from '~/utils/generated/message_generated';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
+
+const PRUNE_SIZE_LIMIT_DEFAULT = 50;
 
 /**
  * VerificationStore persists VerificationMessages in RocksDB using a two-phase CRDT set to
@@ -27,17 +34,19 @@ import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
  * VerificationAddEthAddress is currently the only supported Verification type today. The key-value
  * entries created by Verification Store are:
  *
- * 1. fid:tsHash -> reaction message
+ * 1. fid:tsHash -> verification message
  * 2. fid:set:address -> fid:tsHash (Set Index)
  */
 
 class VerificationStore {
   private _db: RocksDB;
   private _eventHandler: StoreEventHandler;
+  private _pruneSizeLimit: number;
 
-  constructor(db: RocksDB, eventHandler: StoreEventHandler) {
+  constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
     this._db = db;
     this._eventHandler = eventHandler;
+    this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
   }
 
   /**
@@ -58,10 +67,10 @@ class VerificationStore {
   }
 
   /**
-   * Generates a unique key used to store a VerificationAdd message key in the ReactionsRemove
+   * Generates a unique key used to store a VerificationAdd message key in the VerificationRemoves
    * set index
    *
-   * @param fid farcaster id of the user who created the reaction
+   * @param fid farcaster id of the user who created the verification
    * @param address Ethereum address being verified
    *
    * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<targetKey?>:<type?>
@@ -192,6 +201,63 @@ class VerificationStore {
     // Emit a revokeMessage event for each message
     for (const message of [...verificationAdds, ...castRemoves]) {
       this._eventHandler.emit('revokeMessage', message);
+    }
+
+    return ok(undefined);
+  }
+
+  async pruneMessages(fid: Uint8Array): HubAsyncResult<void> {
+    // Count number of verification messages for this fid
+    // TODO: persist this count to avoid having to retrieve it with each call
+    const prefix = MessageModel.primaryKey(fid, UserPostfix.VerificationMessage);
+    let count = 0;
+    for await (const [,] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
+      count = count + 1;
+    }
+
+    // Calculate the number of messages that need to be pruned, based on the store's size limit
+    let sizeToPrune = count - this._pruneSizeLimit;
+
+    // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
+    const messageToPrune: (VerificationAddEthAddressModel | VerificationRemoveModel)[] = [];
+
+    // Create a rocksdb transaction to include all the mutations
+    let pruneTsx = this._db.transaction();
+
+    // Create a rocksdb iterator for all messages with the given prefix
+    const pruneIterator = MessageModel.getPruneIterator(this._db, fid, UserPostfix.VerificationMessage);
+
+    const getNextResult = () => ResultAsync.fromPromise(MessageModel.getNextToPrune(pruneIterator), () => undefined);
+
+    // For each message in order, prune it if the store is over the size limit
+    let nextMessage = await getNextResult();
+    while (nextMessage.isOk() && sizeToPrune > 0) {
+      const message = nextMessage.value;
+
+      // Add a delete operation to the transaction depending on the message type
+      if (isVerificationAddEthAddress(message)) {
+        pruneTsx = this.deleteVerificationAddTransaction(pruneTsx, message);
+      } else if (isVerificationRemove(message)) {
+        pruneTsx = this.deleteVerificationRemoveTransaction(pruneTsx, message);
+      } else {
+        throw new HubError('unknown', 'invalid message type');
+      }
+
+      // Store the message in order to emit the pruneMessage event later, decrement the number of messages
+      // yet to prune, and try to get the next message from the iterator
+      messageToPrune.push(message);
+      sizeToPrune = Math.max(0, sizeToPrune - 1);
+      nextMessage = await getNextResult();
+    }
+
+    if (messageToPrune.length > 0) {
+      // Commit the transaction to rocksdb
+      await this._db.commit(pruneTsx);
+
+      // For each of the pruned messages, emit a pruneMessage event
+      for (const message of messageToPrune) {
+        this._eventHandler.emit('pruneMessage', message);
+      }
     }
 
     return ok(undefined);

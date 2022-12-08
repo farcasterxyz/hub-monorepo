@@ -1,7 +1,7 @@
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync, ok } from 'neverthrow';
-import { UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
+import { StorePruneOptions, UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
 import { isUserDataAdd } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { MessageType, UserDataType } from '~/utils/generated/message_generated';
@@ -11,6 +11,8 @@ import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel
 import { eventCompare } from '~/utils/contractEvent';
 import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
+
+const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 
 /**
  * UserDataStore persists UserData messages in RocksDB using a grow-only CRDT set to guarantee
@@ -34,10 +36,12 @@ import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 class UserDataStore {
   private _db: RocksDB;
   private _eventHandler: StoreEventHandler;
+  private _pruneSizeLimit: number;
 
-  constructor(db: RocksDB, eventHandler: StoreEventHandler) {
+  constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
     this._db = db;
     this._eventHandler = eventHandler;
+    this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
   }
 
   /**
@@ -160,6 +164,61 @@ class UserDataStore {
     // Emit a revokeMessage event for each message
     for (const message of userDataAdds) {
       this._eventHandler.emit('revokeMessage', message);
+    }
+
+    return ok(undefined);
+  }
+
+  async pruneMessages(fid: Uint8Array): HubAsyncResult<void> {
+    // Count number of UserDataAdd messages for this fid
+    // TODO: persist this count to avoid having to retrieve it with each call
+    const prefix = MessageModel.primaryKey(fid, UserPostfix.UserDataMessage);
+    let count = 0;
+    for await (const [,] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
+      count = count + 1;
+    }
+
+    // Calculate the number of messages that need to be pruned, based on the store's size limit
+    let sizeToPrune = count - this._pruneSizeLimit;
+
+    // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
+    const messageToPrune: UserDataAddModel[] = [];
+
+    // Create a rocksdb transaction to include all the mutations
+    let pruneTsx = this._db.transaction();
+
+    // Create a rocksdb iterator for all messages with the given prefix
+    const pruneIterator = MessageModel.getPruneIterator(this._db, fid, UserPostfix.UserDataMessage);
+
+    const getNextResult = () => ResultAsync.fromPromise(MessageModel.getNextToPrune(pruneIterator), () => undefined);
+
+    // For each message in order, prune it if the store is over the size limit
+    let nextMessage = await getNextResult();
+    while (nextMessage.isOk() && sizeToPrune > 0) {
+      const message = nextMessage.value;
+
+      // Add a delete operation to the transaction depending on the message type
+      if (isUserDataAdd(message)) {
+        pruneTsx = this.deleteUserDataAddTransaction(pruneTsx, message);
+      } else {
+        throw new HubError('unknown', 'invalid message type');
+      }
+
+      // Store the message in order to emit the pruneMessage event later, decrement the number of messages
+      // yet to prune, and try to get the next message from the iterator
+      messageToPrune.push(message);
+      sizeToPrune = Math.max(0, sizeToPrune - 1);
+      nextMessage = await getNextResult();
+    }
+
+    if (messageToPrune.length > 0) {
+      // Commit the transaction to rocksdb
+      await this._db.commit(pruneTsx);
+
+      // For each of the pruned messages, emit a pruneMessage event
+      for (const message of messageToPrune) {
+        this._eventHandler.emit('pruneMessage', message);
+      }
     }
 
     return ok(undefined);
