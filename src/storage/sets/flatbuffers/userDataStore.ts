@@ -10,7 +10,6 @@ import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 import { eventCompare } from '~/utils/contractEvent';
 import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
-import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 
@@ -118,27 +117,6 @@ class UserDataStore {
   /** Merges a UserDataAdd message into the set */
   async merge(message: MessageModel): Promise<void> {
     if (isUserDataAdd(message)) {
-      if (message.body().type() == UserDataType.Fname) {
-        // For fname messages, check if the user actually owns the fname.
-        const fname = new TextEncoder().encode(message.body().value() ?? '');
-
-        // Users are allowed to set fname = '' to remove their fname, so check to see if fname is set
-        // before validating the custody address
-        if (fname && fname.length > 0) {
-          const fid = message.fid();
-
-          // The custody address of the fid and fname must be the same
-          const fidCustodyAddress = await IdRegistryEventModel.get(this._db, fid).then((event) => event?.to());
-          const fnameCustodyAddress = await NameRegistryEventModel.get(this._db, fname).then((event) => event?.to());
-
-          if (bytesCompare(fidCustodyAddress, fnameCustodyAddress) !== 0) {
-            throw new HubError(
-              'bad_request.validation_failure',
-              'fname custody address does not match fid custody address'
-            );
-          }
-        }
-      }
       return this.mergeDataAdd(message);
     }
 

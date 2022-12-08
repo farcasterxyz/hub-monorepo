@@ -1,21 +1,25 @@
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
+import { SignerAddModel, UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
 import { UserDataType } from '~/utils/generated/message_generated';
 import UserDataSet from '~/storage/sets/flatbuffers/userDataStore';
 import { HubError } from '~/utils/hubErrors';
 import { bytesIncrement, getFarcasterTime } from '~/storage/flatbuffers/utils';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
-import { generateEthereumSigner } from '~/utils/crypto';
-import { EthereumSigner } from '~/types';
+import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
+import { EthereumSigner, KeyPair } from '~/types';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import { arrayify } from 'ethers/lib/utils';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 import SignerStore from './signerStore';
 import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
+import Engine from '~/storage/engine/flatbuffers';
+import { Wallet } from 'ethers';
 
 const db = jestBinaryRocksDB('flatbuffers.userDataSet.test');
+
+const wallet = Wallet.createRandom();
 
 const eventHandler = new StoreEventHandler();
 const signerSet = new SignerStore(db, eventHandler);
@@ -23,11 +27,36 @@ const set = new UserDataSet(db, eventHandler);
 const fid = Factories.FID.build();
 const fname = Factories.Fname.build();
 
+let custody1Address: Uint8Array;
+let custody1Event: IdRegistryEventModel;
+let signer: KeyPair;
+let signerAdd: SignerAddModel;
+
 let addPfp: UserDataAddModel;
 let addBio: UserDataAddModel;
 let addFname: UserDataAddModel;
 
 beforeAll(async () => {
+  custody1Address = arrayify(wallet.address);
+  custody1Event = new IdRegistryEventModel(
+    await Factories.IdRegistryEvent.create(
+      {
+        fid: Array.from(fid),
+        to: Array.from(custody1Address),
+      },
+      { transient: { wallet } }
+    )
+  );
+
+  signer = await generateEd25519KeyPair();
+  const signerAddData = await Factories.SignerAddData.create({
+    body: Factories.SignerBody.build({ signer: Array.from(signer.publicKey) }),
+    fid: Array.from(fid),
+  });
+  signerAdd = new MessageModel(
+    await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+  ) as SignerAddModel;
+
   const addPfpData = await Factories.UserDataAddData.create({
     fid: Array.from(fid),
     body: Factories.UserDataBody.build({ type: UserDataType.Pfp }),
@@ -49,7 +78,7 @@ beforeAll(async () => {
     body: Factories.UserDataBody.build({ type: UserDataType.Fname, value: new TextDecoder().decode(fname) }),
   });
   addFname = new MessageModel(
-    await Factories.Message.create({ data: Array.from(addNameData.bb?.bytes() ?? []) })
+    await Factories.Message.create({ data: Array.from(addNameData.bb?.bytes() ?? []) }, { transient: { signer } })
   ) as UserDataAddModel;
 });
 
@@ -208,30 +237,17 @@ describe('userfname', () => {
     await expect(set.getUserDataAdd(fid, message.body()?.type())).resolves.toEqual(message);
   };
 
-  let custody1: EthereumSigner;
-  let custody1Address: Uint8Array;
-  let custody1Event: IdRegistryEventModel;
   let nameRegistryModelEvent: NameRegistryEventModel;
 
   beforeAll(async () => {
-    custody1 = await generateEthereumSigner();
-    custody1Address = arrayify(custody1.signerKey);
-    const idRegistryEvent = await Factories.IdRegistryEvent.create({
-      fid: Array.from(fid),
-      to: Array.from(custody1Address),
-    });
-    custody1Event = new IdRegistryEventModel(idRegistryEvent);
-
-    const nameRegistryEvent = await Factories.NameRegistryEvent.create({
-      fname: Array.from(fname),
-      to: Array.from(custody1Address),
-    });
+    const nameRegistryEvent = await Factories.NameRegistryEvent.create(
+      {
+        fname: Array.from(fname),
+        to: Array.from(custody1Address),
+      },
+      { transient: { signer } }
+    );
     nameRegistryModelEvent = new NameRegistryEventModel(nameRegistryEvent);
-  });
-
-  beforeEach(async () => {
-    await signerSet.mergeIdRegistryEvent(custody1Event);
-    await set.mergeNameRegistryEvent(nameRegistryModelEvent);
   });
 
   test('succeeds', async () => {
@@ -246,6 +262,13 @@ describe('userfname', () => {
   });
 
   test('fails with a different custody address', async () => {
+    // Merging it via the engine will fail validation
+    const engine = new Engine(db);
+
+    await engine.mergeIdRegistryEvent(custody1Event);
+    await engine.mergeNameRegistryEvent(nameRegistryModelEvent);
+    await engine.mergeMessage(signerAdd);
+
     const custody2 = await generateEthereumSigner();
     const custody2Address = arrayify(custody2.signerKey);
 
@@ -255,9 +278,12 @@ describe('userfname', () => {
       to: Array.from(custody2Address),
     });
     const model = new NameRegistryEventModel(nameRegistryEvent2);
-    await model.put(db);
+    await engine.mergeNameRegistryEvent(model);
 
-    await expect(set.merge(addFname)).rejects.toThrow('fname custody address does not match fid custody address');
+    const result = await engine.mergeMessage(addFname);
+    expect(result._unsafeUnwrapErr()).toEqual(
+      new HubError('bad_request.validation_failure', 'fname custody address does not match fid custody address')
+    );
   });
 
   describe('with a conflicting UserNameAdd with different timestamps', () => {
@@ -272,11 +298,6 @@ describe('userfname', () => {
         data: Array.from(addData.bb?.bytes() ?? []),
       });
       addFnameLater = new MessageModel(addMessage) as UserDataAddModel;
-    });
-
-    beforeEach(async () => {
-      await signerSet.mergeIdRegistryEvent(custody1Event);
-      await set.mergeNameRegistryEvent(nameRegistryModelEvent);
     });
 
     test('successfully merges with a later timestamp', async () => {
@@ -316,11 +337,6 @@ describe('userfname', () => {
       });
 
       addFnameLater = new MessageModel(addMessage) as UserDataAddModel;
-    });
-
-    beforeEach(async () => {
-      await signerSet.mergeIdRegistryEvent(custody1Event);
-      await set.mergeNameRegistryEvent(nameRegistryModelEvent);
     });
 
     test('succeeds with a later hash', async () => {
