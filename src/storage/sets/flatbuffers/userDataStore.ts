@@ -99,16 +99,34 @@ class UserDataStore {
     let txn = this._db.transaction();
     txn.put(event.primaryKey(), event.toBuffer());
 
-    // When there is a NameRegistryEvent, we need to check if we need to revoke UserDataAdd messages from the
-    // previous owner of the name
+    // Record if we need to emit a revoked message
+    let revokedMessage: UserDataAddModel | undefined;
     if (event.type() === NameRegistryEventType.NameRegistryTransfer) {
-      txn = await this.revokeMessagesByNameRegistryEvent(txn, event);
+      // When there is a NameRegistryEvent, we need to check if we need to revoke UserDataAdd messages from the
+      // previous owner of the name.
+      const prevFnameOwnerCustodyAddress = event.from();
+
+      // Get the previous owner's UserNameAdd and delete it
+      const prevEvent = await ResultAsync.fromPromise(
+        IdRegistryEventModel.getByCustodyAddress(this._db, prevFnameOwnerCustodyAddress),
+        (e) => e
+      );
+      if (prevEvent.isOk()) {
+        const fid = prevEvent.value.fid();
+        revokedMessage = await this.getUserDataAdd(fid, UserDataType.Fname);
+        txn = this.deleteUserDataAddTransaction(txn, revokedMessage);
+      }
     }
 
     await this._db.commit(txn);
 
     // Emit store event
     this._eventHandler.emit('mergeNameRegistryEvent', event);
+
+    // Emit revoke message if needed
+    if (revokedMessage) {
+      this._eventHandler.emit('revokeMessage', revokedMessage);
+    }
   }
 
   /** Merges a UserDataAdd message into the set */
@@ -165,27 +183,6 @@ class UserDataStore {
 
     // Emit store event
     this._eventHandler.emit('mergeMessage', message);
-  }
-
-  private async revokeMessagesByNameRegistryEvent(
-    tsx: Transaction,
-    event: NameRegistryEventModel
-  ): Promise<Transaction> {
-    const fname = event.fname();
-    const prevFnameOwnerCustodyAddress = event.from();
-
-    // Get the previous owner's UserNameAdd and delete it
-    const prevEvent = await ResultAsync.fromPromise(
-      IdRegistryEventModel.getByCustodyAddress(this._db, prevFnameOwnerCustodyAddress),
-      (e) => e
-    );
-    if (prevEvent.isOk()) {
-      const fid = prevEvent.value.fid();
-      const prevMsg = await this.getUserDataAdd(fid, UserDataType.Fname);
-      tsx = this.deleteUserDataAddTransaction(tsx, prevMsg);
-    }
-
-    return tsx;
   }
 
   private userDataMessageCompare(aTimestampHash: Uint8Array, bTimestampHash: Uint8Array): number {
