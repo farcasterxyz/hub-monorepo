@@ -128,7 +128,7 @@ describe('SyncEngine', () => {
 
     const snapshot = syncEngine.snapshot;
     // Add a message after the snapshot, within the sync threshold
-    await addMessagesWithTimestamps(user, [snapshotTimestamp + 3]);
+    await addMessagesWithTimestamps(user, [snapshotTimestamp + 1]);
     expect(syncEngine.shouldSync(snapshot.excludedHashes)).toBeFalsy();
   });
 
