@@ -127,8 +127,6 @@ class UserDataStore {
 
     await this._db.commit(txn);
 
-    const fnameCustodyAddress = await NameRegistryEventModel.get(this._db, event.fname()).then((event) => event?.to());
-
     // Emit store event
     this._eventHandler.emit('mergeNameRegistryEvent', event);
 

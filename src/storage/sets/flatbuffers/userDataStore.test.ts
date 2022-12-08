@@ -269,10 +269,15 @@ describe('userfname', () => {
     await engine.mergeNameRegistryEvent(nameRegistryModelEvent);
     await engine.mergeMessage(signerAdd);
 
+    // First, add the fname to the first address
+    await expect(set.merge(addFname)).resolves.toEqual(undefined);
+    await assertUserFnameAddWins(addFname);
+
+    // Now, generate a new address
     const custody2 = await generateEthereumSigner();
     const custody2Address = arrayify(custody2.signerKey);
 
-    // transfer the name to custody2
+    // transfer the name to custody2address
     const nameRegistryEvent2 = await Factories.NameRegistryEvent.create({
       fname: Array.from(fname),
       from: Array.from(custody1Address),
@@ -283,10 +288,26 @@ describe('userfname', () => {
     const model = new NameRegistryEventModel(nameRegistryEvent2);
     await engine.mergeNameRegistryEvent(model);
 
-    const result = await engine.mergeMessage(addFname);
+    // Now, try to add the fname to the second address
+    const addData = await Factories.UserDataAddData.create({
+      ...addFname.data.unpack(),
+      timestamp: addFname.timestamp() + 1,
+    });
+    const addMessage = await Factories.Message.create(
+      {
+        data: Array.from(addData.bb?.bytes() ?? []),
+      },
+      { transient: { signer } }
+    );
+    const addFname2 = new MessageModel(addMessage) as UserDataAddModel;
+
+    const result = await engine.mergeMessage(addFname2);
     expect(result._unsafeUnwrapErr()).toEqual(
       new HubError('bad_request.validation_failure', 'fname custody address does not match fid custody address')
     );
+
+    // Also make sure the UserDataAdd message got removed
+    await expect(set.getUserDataAdd(fid, UserDataType.Fname)).rejects.toThrow(HubError);
   });
 
   describe('with a conflicting UserNameAdd with different timestamps', () => {
