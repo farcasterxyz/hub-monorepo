@@ -3,7 +3,7 @@
  * Utilities from this file are required, but the original versions are not exported in the built version of the caip-js
  * library.
  */
-import { IdentifierSpec, Params } from 'caip/dist/types';
+import { IdentifierSpec, KeyValue, ParameterSpec, Params } from 'caip/dist/types';
 
 export const splitParams = (id: string, spec: IdentifierSpec): string[] => id.split(spec.parameters.delimiter);
 
@@ -11,7 +11,7 @@ export const getParams = <T>(id: string, spec: IdentifierSpec): T => {
   const arr = splitParams(id, spec);
   const params: any = {};
   arr.forEach((value, index) => {
-    params[spec.parameters.values[index].name] = value;
+    params[(spec.parameters.values[index] as ParameterSpec).name] = value;
   });
   return params as T;
 };
@@ -19,7 +19,7 @@ export const getParams = <T>(id: string, spec: IdentifierSpec): T => {
 export const joinParams = (params: Params, spec: IdentifierSpec): string =>
   Object.values(spec.parameters.values)
     .map((parameter) => {
-      const param = params[parameter.name];
+      const param = params[parameter.name] as KeyValue;
       return typeof param === 'string' ? param : joinParams(param, parameter as IdentifierSpec);
     })
     .join(spec.parameters.delimiter);
@@ -29,7 +29,7 @@ export const isValidId = (id: string, spec: IdentifierSpec): boolean => {
   const params = splitParams(id, spec);
   if (params.length !== Object.keys(spec.parameters.values).length) return false;
   const matches = params
-    .map((param, index) => new RegExp(spec.parameters.values[index].regex).test(param))
+    .map((param, index) => new RegExp((spec.parameters.values[index] as ParameterSpec).regex).test(param))
     .filter((x) => !!x);
   if (matches.length !== params.length) return false;
   return true;

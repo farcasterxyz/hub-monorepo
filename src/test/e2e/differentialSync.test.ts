@@ -68,6 +68,7 @@ const TEST_TIMEOUT = 2 * 60 * 1000; // 2 min timeout
 
 describe('differentialSync', () => {
   let userInfos: UserInfo[];
+  let firstUserInfo: UserInfo;
 
   beforeEach(async () => {
     await serverDb.clear();
@@ -90,6 +91,7 @@ describe('differentialSync', () => {
       Follows: 50,
       Reactions: 0,
     });
+    firstUserInfo = userInfos[0] as UserInfo;
   }, TEST_TIMEOUT);
 
   afterEach(async () => {
@@ -147,10 +149,10 @@ describe('differentialSync', () => {
       const now = Date.now();
       const messages = await Factories.CastShort.createList(
         newMessages,
-        { data: { fid: userInfos[0].fid } },
+        { data: { fid: firstUserInfo.fid } },
         {
           transient: {
-            signer: userInfos[0].delegateSigner,
+            signer: firstUserInfo.delegateSigner,
             minDate: new Date(now - 1000 * 100), // Between 100-50 seconds ago
             maxDate: new Date(now - 1000 * 50),
           },
@@ -197,10 +199,10 @@ describe('differentialSync', () => {
       // Remove a user's messages
       const now = Date.now();
       const message = await Factories.SignerRemove.create(
-        { data: { fid: userInfos[0].fid, body: { delegate: userInfos[0].delegateSigner.signerKey } } },
+        { data: { fid: firstUserInfo.fid, body: { delegate: firstUserInfo.delegateSigner.signerKey } } },
         {
           transient: {
-            signer: userInfos[0].ethereumSigner,
+            signer: firstUserInfo.ethereumSigner,
             minDate: new Date(now - 1000 * 100), // Between 100-50 seconds ago (before sync threshold)
             maxDate: new Date(now - 1000 * 50),
           },
@@ -229,8 +231,8 @@ describe('differentialSync', () => {
       // Merge a signer remove within sync threshold (should not be picked up for sync)
       const now = Date.now();
       const message = await Factories.SignerRemove.create(
-        { data: { fid: userInfos[0].fid, body: { delegate: userInfos[0].delegateSigner.signerKey }, signedAt: now } },
-        { transient: { signer: userInfos[0].ethereumSigner } }
+        { data: { fid: firstUserInfo.fid, body: { delegate: firstUserInfo.delegateSigner.signerKey }, signedAt: now } },
+        { transient: { signer: firstUserInfo.ethereumSigner } }
       );
       const res = await hubAStorageEngine.mergeMessage(message);
       expect(res.isOk()).toBeTruthy();
@@ -252,10 +254,10 @@ describe('differentialSync', () => {
     async () => {
       const now = Date.now();
       const signerRemove = await Factories.SignerRemove.create(
-        { data: { fid: userInfos[0].fid, body: { delegate: userInfos[0].delegateSigner.signerKey } } },
+        { data: { fid: firstUserInfo.fid, body: { delegate: firstUserInfo.delegateSigner.signerKey } } },
         {
           transient: {
-            signer: userInfos[0].ethereumSigner,
+            signer: firstUserInfo.ethereumSigner,
             minDate: new Date(now - 1000 * 100), // Between 100-50 seconds ago
             maxDate: new Date(now - 1000 * 50),
           },

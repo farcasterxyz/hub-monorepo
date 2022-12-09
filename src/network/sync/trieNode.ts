@@ -46,7 +46,7 @@ class TrieNode {
    * every node that was traversed.
    */
   public insert(key: string, value: string, current_index = 0): boolean {
-    const char = key[current_index];
+    const char = key.charAt(current_index);
 
     // Do not compact the timestamp portion of the trie, since it's used to compare snapshots
     if (current_index >= TIMESTAMP_LENGTH && this.isLeaf && !this._value) {
@@ -95,7 +95,7 @@ class TrieNode {
       return true;
     }
 
-    const char = key[current_index];
+    const char = key.charAt(current_index);
     if (!this._children.has(char)) {
       return false;
     }
@@ -133,7 +133,7 @@ class TrieNode {
       return this._value;
     }
 
-    const char = key[current_index];
+    const char = key.charAt(current_index);
     if (!this._children.has(char)) {
       return undefined;
     }
@@ -143,7 +143,7 @@ class TrieNode {
 
   // Generates a snapshot for the current node and below. current_index is the index of the prefix the method is operating on
   public getSnapshot(prefix: string, current_index = 0): TrieSnapshot {
-    const char = prefix[current_index];
+    const char = prefix.charAt(current_index);
     if (current_index === prefix.length - 1) {
       const excludedHash = this._excludedHash(char);
       return {
@@ -186,7 +186,7 @@ class TrieNode {
     if (prefix.length === 0) {
       return this;
     }
-    const char = prefix[0];
+    const char = prefix.charAt(0);
     if (!this._children.has(char)) {
       return undefined;
     }
@@ -243,7 +243,7 @@ class TrieNode {
       // This should never happen, check is here for type safety
       throw new HubError('bad_request', 'Cannot split a leaf node without a key and value');
     }
-    const newChildChar = this._key[current_index];
+    const newChildChar = this._key.charAt(current_index);
     this._addChild(newChildChar);
     this._children.get(newChildChar)?.insert(this._key, this._value, current_index + 1);
     this._setKeyValue(undefined, undefined);

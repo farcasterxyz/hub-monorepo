@@ -55,6 +55,9 @@ export class UserId {
       params = maybeParsed.value;
     } else {
       const userIdSpec = UserId.spec.parameters.values[1];
+      if (!userIdSpec) {
+        throw new Error('URL missing userId');
+      }
       if (!RegExp(userIdSpec.regex).test(params.value)) {
         throw new Error(`Invalid ${userIdSpec.name} provided: ${params.value}`);
       }

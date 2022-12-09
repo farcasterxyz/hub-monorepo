@@ -9,6 +9,7 @@ import { ContactInfoContent, Content, GossipMessage, NETWORK_TOPIC_PRIMARY } fro
 import { Message } from '~/types';
 import { jest } from '@jest/globals';
 import { HubError } from '~/utils/hubErrors';
+import { Multiaddr } from '@multiformats/multiaddr';
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const TEST_TIMEOUT_LONG = 2 * 60 * 1000;
@@ -88,7 +89,7 @@ describe('Hub running tests', () => {
       // bootstrap hub2 off of hub1
       expect(hub.gossipAddresses);
       // need a better way to pick one of the multiaddrs
-      const secondHub = new Hub({ bootstrapAddrs: [hub.gossipAddresses[0]], ...opts });
+      const secondHub = new Hub({ bootstrapAddrs: [hub.gossipAddresses[0] as Multiaddr], ...opts });
       expect(secondHub).toBeDefined();
       // Use a flag to help clean up if the test fails at any point
       let shouldStop = true;

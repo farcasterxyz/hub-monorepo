@@ -49,7 +49,7 @@ export const setupNetwork = async (rpcClients: RPCClient[], config: SetupConfig)
   post(`Generated ${config.users} users. UserInfo has ${userInfos.length} items`, start, stop);
 
   // pick a random RPC node
-  const client = rpcClients[Math.floor(Math.random() * rpcClients.length)];
+  const client = rpcClients[Math.floor(Math.random() * rpcClients.length)] as RPCClient;
 
   // submit users
   start = performance.now();

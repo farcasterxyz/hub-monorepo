@@ -33,8 +33,7 @@
     "noImplicitOverride": true,
     "noImplicitReturns": true,
     "noPropertyAccessFromIndexSignature": true,
-    // TODO: fixing this is tracked here: https://github.com/farcasterxyz/hub/issues/151
-    // "noUncheckedIndexedAccess": true,
+    "noUncheckedIndexedAccess": true,
     "noUnusedLocals": false, // causes hard failures when iterating in dev, enforce with eslint instead
     "noUnusedParameters": false
   },
