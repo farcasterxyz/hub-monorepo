@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { Factories } from '~/test/factories';
 import Engine from '~/storage/engine';
 import { SyncEngine } from '~/network/sync/syncEngine';
@@ -123,13 +124,25 @@ describe('SyncEngine', () => {
 
   test('should not sync if messages were added within the sync threshold', async () => {
     const user = await mockFid(engine, faker.datatype.number());
+
+    /**
+     * When the time elapsed between two messages causes a change in a higher
+     * order digit of the timestamp, a comparison of the snapshots will find a
+     * divergence despite the messages occurring within the sync threshold.
+     *
+     * We work around this by fudging the system time to this avoid scenario.
+     */
+    jest.useFakeTimers();
+    jest.setSystemTime(Math.ceil(Date.now() / 100_000) * 100_000 + 50_000);
     const snapshotTimestamp = syncEngine.snapshotTimestamp;
     await addMessagesWithTimestamps(user, [snapshotTimestamp - 3, snapshotTimestamp - 2, snapshotTimestamp - 1]);
 
     const snapshot = syncEngine.snapshot;
+
     // Add a message after the snapshot, within the sync threshold
     await addMessagesWithTimestamps(user, [snapshotTimestamp + 3]);
     expect(syncEngine.shouldSync(snapshot.excludedHashes)).toBeFalsy();
+    jest.useRealTimers();
   });
 
   test('initialize populates the trie with all existing messages', async () => {
