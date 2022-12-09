@@ -1,5 +1,6 @@
 import { multiaddr, Multiaddr } from '@multiformats/multiaddr';
-import Engine from '~/storage/engine';
+import Engine from '~/storage/engine/';
+import FlatbuffEngine from '~/storage/engine/flatbuffers';
 import { Node } from '~/network/p2p/node';
 import { RPCClient, RPCHandler, RPCServer } from '~/network/rpc';
 import { PeerId } from '@libp2p/interface-peer-id';
@@ -17,6 +18,7 @@ import { AddressInfo, isIP } from 'net';
 import { isContactInfo, isIdRegistryContent, isUserContent } from '~/types/typeguards';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import RocksDB from '~/storage/db/rocksdb';
+import BinaryRocksDB from '~/storage/db/binaryrocksdb';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { FarcasterError, ServerError } from '~/utils/errors';
 import { SyncEngine } from '~/network/sync/syncEngine';
@@ -26,6 +28,7 @@ import { addressInfoFromParts, getPublicIp, p2pMultiAddrStr } from '~/utils/p2p'
 import { peerIdFromString } from '@libp2p/peer-id';
 import { publicAddressesFirst } from '@libp2p/utils/address-sort';
 import { HubError } from '~/utils/hubErrors';
+import { EthEventsProvider } from './storage/engine/flatbuffers/providers/idRegistryProvider';
 
 export interface HubOptions {
   /** The PeerId of this Hub */
@@ -93,6 +96,10 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
 
   engine: Engine;
 
+  private binaryDb: BinaryRocksDB;
+  private flatbuffEngine: FlatbuffEngine;
+  private ethRegistryProvider: EthEventsProvider;
+
   constructor(options: HubOptions) {
     super();
     this.options = options;
@@ -101,6 +108,18 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     this.gossipNode = new Node();
     this.rpcServer = new RPCServer(this);
     this.syncEngine = new SyncEngine(this.engine);
+
+    // TODO: This should be the primary engine
+    this.binaryDb = new BinaryRocksDB(randomDbName());
+
+    this.flatbuffEngine = new FlatbuffEngine(this.binaryDb);
+
+    this.ethRegistryProvider = new EthEventsProvider(
+      this.flatbuffEngine,
+      options.networkUrl ?? '',
+      '0xda107a1caf36d198b12c16c7b6a1d1c795978c42',
+      '0xe3be01d99baa8db9905b33a3ca391238234b79d1'
+    );
   }
 
   get rpcAddress() {
@@ -126,6 +145,12 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     if (this.options.resetDB === true) {
       log.info('clearing rocksdb');
       await this.rocksDB.clear();
+    }
+
+    await this.binaryDb.open();
+    if (this.options.resetDB === true) {
+      log.info('clearing rocksdb');
+      await this.binaryDb.clear();
     }
 
     await this.syncEngine.initialize();
