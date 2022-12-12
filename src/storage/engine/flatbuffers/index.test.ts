@@ -267,6 +267,44 @@ describe('mergeMessage', () => {
   });
 });
 
+describe('mergeMessages', () => {
+  let mergedMessages: MessageModel[];
+  const handleMergeMessage = (message: MessageModel) => {
+    mergedMessages.push(message);
+  };
+
+  beforeAll(() => {
+    engine.eventHandler.on('mergeMessage', handleMergeMessage);
+  });
+
+  afterAll(() => {
+    engine.eventHandler.off('mergeMessage', handleMergeMessage);
+  });
+
+  beforeEach(async () => {
+    mergedMessages = [];
+    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeMessage(signerAdd);
+  });
+
+  describe('MergeMultipleMessages', () => {
+    test('succeeds', async () => {
+      await expect(
+        engine.mergeMessages([castAdd, followAdd, reactionAdd, verificationAdd, userDataAdd, signerRemove])
+      ).resolves.toEqual([ok(undefined), ok(undefined), ok(undefined), ok(undefined), ok(undefined), ok(undefined)]);
+      expect(mergedMessages).toEqual([
+        signerAdd,
+        castAdd,
+        followAdd,
+        reactionAdd,
+        verificationAdd,
+        userDataAdd,
+        signerRemove,
+      ]);
+    });
+  });
+});
+
 describe('revokeMessagesBySigner', () => {
   let revokedMessages: MessageModel[];
   const handleRevokedMessage = (message: MessageModel) => {

@@ -37,7 +37,7 @@ import {
   validateUserId,
 } from '~/storage/flatbuffers/validations';
 import { CastId, MessageType, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
-import { HubAsyncResult, HubError } from '~/utils/hubErrors';
+import { HubAsyncResult, HubResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
@@ -69,11 +69,11 @@ class Engine {
     this._userDataStore = new UserDataStore(db, this.eventHandler);
   }
 
-  mergeMessages(messages: MessageModel[], source = 'unknown'): Array<HubAsyncResult<void>> {
-    // TODO: consider returning a single Promise.all instance rather than an array of promises
-    const results = messages.map((value) => {
-      return this.mergeMessage(value, source);
-    });
+  async mergeMessages(messages: MessageModel[], source = 'unknown'): Promise<Array<HubResult<void>>> {
+    const results: HubResult<void>[] = [];
+    for (const message of messages) {
+      results.push(await this.mergeMessage(message, source));
+    }
     return results;
   }
 
@@ -83,7 +83,7 @@ class Engine {
       return err(validatedMessage.error);
     }
 
-    let result;
+    let result: ResultAsync<void, HubError>;
     if (message.setPostfix() === UserPostfix.CastMessage) {
       result = ResultAsync.fromPromise(this._castStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.FollowMessage) {
