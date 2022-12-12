@@ -43,6 +43,7 @@ export class ChainAccountURL extends ChainURL {
       const regexBody = [namespaceParam.regex, referenceParam.regex, addressParam.regex].join(
         AccountId.spec.parameters.delimiter
       );
+      // eslint-disable-next-line security/detect-non-literal-regexp
       const referenceRegex = new RegExp('^' + regexBody + '$');
       if (!referenceRegex.test(remainder)) {
         return err(new BadRequestError(`ChainAccountURL.parse: invalid AccountID`));

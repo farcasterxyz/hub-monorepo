@@ -1,3 +1,5 @@
+/* eslint-disable security/detect-non-literal-regexp */
+/* eslint-disable security/detect-object-injection */
 /**
  * File pulled from https://github.com/ChainAgnostic/caip-js/blob/b2af86364fc19d2f11deea50858c73567969805a/src/utils.ts
  * Utilities from this file are required, but the original versions are not exported in the built version of the caip-js

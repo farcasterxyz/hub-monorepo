@@ -30,6 +30,7 @@ export class ChainURL extends BaseChainURL {
       }
 
       // check for extra invalid data before or after the chain ID
+      // eslint-disable-next-line security/detect-non-literal-regexp
       const referenceRegex = new RegExp('^' + chainIdParam.regex + '$');
       if (!referenceRegex.test(chainId.reference)) {
         return err(new BadRequestError(`ChainURL.parse: invalid extra data after ChainId: '${remainder}`));

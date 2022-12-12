@@ -63,7 +63,7 @@ class MerkleTrie {
   public getDivergencePrefix(prefix: string, excludedHashes: string[]): string {
     const ourExcludedHashes = this.getSnapshot(prefix).excludedHashes;
     for (let i = 0; i < prefix.length; i++) {
-      if (ourExcludedHashes[i] !== excludedHashes[i]) {
+      if (ourExcludedHashes.at(i) !== excludedHashes.at(i)) {
         return prefix.slice(0, i);
       }
     }

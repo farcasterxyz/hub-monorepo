@@ -77,15 +77,12 @@ const makeMessages = async (userInfos: UserInfo[], config: ScenarioConfig, event
   const total = userInfos.length * (config.Adds + config.Removes + config.RemovesWithoutAdds);
   // safe to disable here since `event` is validated above
   // eslint-disable-next-line security/detect-object-injection
-  const progress = new ProgressBar(
-    `    Generating ${total} ${MockFCEvent[event]}s [:bar] :elapseds :ratemsgs/s :percent :etas`,
-    {
-      complete: '=',
-      incomplete: ' ',
-      width: 20,
-      total,
-    }
-  );
+  const progress = new ProgressBar(`    Generating ${total} ${event}s [:bar] :elapseds :ratemsgs/s :percent :etas`, {
+    complete: '=',
+    incomplete: ' ',
+    width: 20,
+    total,
+  });
 
   const messages: Message[] = [];
   for (const userInfo of userInfos) {

@@ -73,7 +73,7 @@ class SyncEngine {
     const ourSnapshot = this.snapshot;
     const excludedHashesMatch =
       ourSnapshot.excludedHashes.length === excludedHashes.length &&
-      ourSnapshot.excludedHashes.every((value, index) => value === excludedHashes[index]);
+      ourSnapshot.excludedHashes.every((value, index) => value === excludedHashes.at(index));
 
     log.debug(`shouldSync: excluded hashes check: ${excludedHashes}`);
     return !excludedHashesMatch;

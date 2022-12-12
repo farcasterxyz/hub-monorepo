@@ -54,8 +54,10 @@ const removeProps = (obj: Record<string, any>): void => {
   if (typeof obj === 'object' && obj != null) {
     Object.getOwnPropertyNames(obj).forEach((key) => {
       if (key[0] === '_') {
+        // eslint-disable-next-line security/detect-object-injection
         delete obj[key];
       } else {
+        // eslint-disable-next-line security/detect-object-injection
         removeProps(obj[key]);
       }
     });

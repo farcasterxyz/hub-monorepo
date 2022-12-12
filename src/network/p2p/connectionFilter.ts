@@ -4,7 +4,7 @@ import { Multiaddr } from '@multiformats/multiaddr';
 import { logger } from '~/utils/logger';
 
 /**
- * Implementes the libp2p ConnectionGater interface
+ * Implements the libp2p ConnectionGater interface
  *
  * These APIs are called in a particular sequence for each inbound/outbound connection.
  * We just want to intercept at the lowest possible point which is why every API here is implemented.
@@ -28,6 +28,7 @@ export class ConnectionFilter implements ConnectionGater {
     return deny;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   denyDialMultiaddr = async (peerId: PeerId, _multiaddr: Multiaddr): Promise<boolean> => {
     const deny = this.shouldDeny(peerId.toString());
     if (deny) {
@@ -36,6 +37,7 @@ export class ConnectionFilter implements ConnectionGater {
     return deny;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   denyInboundConnection = async (_maConn: MultiaddrConnection): Promise<boolean> => {
     /**
      * A PeerId is not always known on incipient connections.
@@ -44,6 +46,7 @@ export class ConnectionFilter implements ConnectionGater {
     return false;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   denyOutboundConnection = async (peerId: PeerId, _maConn: MultiaddrConnection): Promise<boolean> => {
     const deny = this.shouldDeny(peerId.toString());
     if (deny) {
@@ -52,6 +55,7 @@ export class ConnectionFilter implements ConnectionGater {
     return deny;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   denyInboundEncryptedConnection = async (peerId: PeerId, _maConn: MultiaddrConnection): Promise<boolean> => {
     const deny = this.shouldDeny(peerId.toString());
     if (deny) {
@@ -60,6 +64,7 @@ export class ConnectionFilter implements ConnectionGater {
     return deny;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   denyOutboundEncryptedConnection = async (peerId: PeerId, _maConn: MultiaddrConnection): Promise<boolean> => {
     const deny = this.shouldDeny(peerId.toString());
     if (deny) {
@@ -68,6 +73,7 @@ export class ConnectionFilter implements ConnectionGater {
     return deny;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   denyInboundUpgradedConnection = async (peerId: PeerId, _maConn: MultiaddrConnection): Promise<boolean> => {
     const deny = this.shouldDeny(peerId.toString());
     if (deny) {
@@ -76,6 +82,7 @@ export class ConnectionFilter implements ConnectionGater {
     return deny;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   denyOutboundUpgradedConnection = async (peerId: PeerId, _maConn: MultiaddrConnection): Promise<boolean> => {
     const deny = this.shouldDeny(peerId.toString());
     if (deny) {

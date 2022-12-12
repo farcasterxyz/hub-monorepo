@@ -1,3 +1,4 @@
+/* eslint-disable security/detect-non-literal-fs-filename */
 import { mkdir } from 'fs';
 import AbstractRocksDB from 'rocksdb';
 import { AbstractBatch, AbstractChainedBatch } from 'abstract-leveldown';
