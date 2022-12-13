@@ -31,6 +31,8 @@ export enum RootPrefix {
   NameRegistryEvent = 7,
   /* Used to store custody events by custody address */
   IdRegistryEventByCustodyAddress = 8,
+  /* Used to store the state of the hub */
+  HubState = 9,
 }
 
 /**

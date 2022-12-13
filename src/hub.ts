@@ -28,7 +28,7 @@ import { addressInfoFromParts, getPublicIp, p2pMultiAddrStr } from '~/utils/p2p'
 import { peerIdFromString } from '@libp2p/peer-id';
 import { publicAddressesFirst } from '@libp2p/utils/address-sort';
 import { HubError } from '~/utils/hubErrors';
-import { EthEventsProvider } from './storage/engine/flatbuffers/providers/idRegistryProvider';
+import { EthEventsProvider } from './storage/engine/flatbuffers/providers/ethEventsProvider';
 
 export interface HubOptions {
   /** The PeerId of this Hub */
