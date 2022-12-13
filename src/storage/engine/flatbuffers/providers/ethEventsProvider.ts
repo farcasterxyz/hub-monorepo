@@ -16,6 +16,12 @@ const log = logger.child({
   component: 'EthEventsProvider',
 });
 
+export class GoreliEthConstants {
+  public static IdRegistryAddress = '0xda107a1caf36d198b12c16c7b6a1d1c795978c42';
+  public static NameRegistryAddress = '0xe3be01d99baa8db9905b33a3ca391238234b79d1';
+  public static FirstBlock = 7648795;
+}
+
 /**
  * Class that follows the Ethereum chain to handle on-chain events from the ID Registry and Name Registry contracts.
  */
@@ -28,8 +34,8 @@ export class EthEventsProvider {
 
   private _numConfirmations: number;
 
-  private _idEventsByBlock: Map<number, Set<IdRegistryEventModel>>;
-  private _nameEventsByBlock: Map<number, Set<NameRegistryEventModel>>;
+  private _idEventsByBlock: Map<number, Array<IdRegistryEventModel>>;
+  private _nameEventsByBlock: Map<number, Array<NameRegistryEventModel>>;
 
   constructor(
     engine: Engine,
@@ -93,21 +99,23 @@ export class EthEventsProvider {
     log.info({ latestBlock: latestBlock.number }, 'connected to ethereum node');
 
     // Find how how much we need to sync
-    // TODO: What is the earlist block?
-    let lastSyncedBlock = BigInt(0);
+    // Goreli block 7648795 is when Farcaster contracts were deployed
+    let lastSyncedBlock = BigInt(GoreliEthConstants.FirstBlock);
+    log.info({ lastSyncedBlock }, 'last synced block');
     const hubState = await this._engine.getHubState();
     if (hubState.isOk()) {
       lastSyncedBlock = hubState.value.lastEthBlock();
     }
     const numBlocksToSync = BigInt(latestBlock.number) - lastSyncedBlock;
+    log.info({ numBlocksToSync }, 'number of blocks to sync');
 
     // Sync old Id events
-    this.syncOldIdEvents(IdRegistryEventType.IdRegistryRegister, numBlocksToSync);
-    this.syncOldIdEvents(IdRegistryEventType.IdRegistryTransfer, numBlocksToSync);
+    await this.syncOldIdEvents(IdRegistryEventType.IdRegistryRegister, numBlocksToSync);
+    await this.syncOldIdEvents(IdRegistryEventType.IdRegistryTransfer, numBlocksToSync);
 
     // Sync old Name events
-    this.syncOldNameEvents(NameRegistryEventType.NameRegistryTransfer, numBlocksToSync);
-    this.syncOldNameEvents(NameRegistryEventType.NameRegistryRenew, numBlocksToSync);
+    await this.syncOldNameEvents(NameRegistryEventType.NameRegistryTransfer, numBlocksToSync);
+    await this.syncOldNameEvents(NameRegistryEventType.NameRegistryRenew, numBlocksToSync);
   }
 
   /**
@@ -154,30 +162,28 @@ export class EthEventsProvider {
 
   /** Handle a new block. Processes all events in the cache that have now been confirmed */
   private async handleNewBlock(blockNumber: number) {
-    // Process all events that have been confirmed
-    const confirmedNameBlocks = this._nameEventsByBlock.keys();
-    for (const confirmedNameBlock of confirmedNameBlocks) {
-      if (confirmedNameBlock + this._numConfirmations <= blockNumber) {
-        const nameEvents = this._nameEventsByBlock.get(confirmedNameBlock);
-        this._nameEventsByBlock.delete(confirmedNameBlock);
+    // Get all blocks that have been confirmed into a single array and sort.
+    const confirmedBlocksSet = new Set([...this._nameEventsByBlock.keys(), ...this._idEventsByBlock.keys()]);
+    const confirmedBlocks = Array.from(confirmedBlocksSet);
+    confirmedBlocks.sort();
 
-        if (nameEvents) {
-          for (const nameEvent of nameEvents) {
-            await this.addNameRegistryEvent(nameEvent);
-          }
-        }
-      }
-    }
-
-    const confirmedIdBlocks = this._idEventsByBlock.keys();
-    for (const confirmedIdBlock of confirmedIdBlocks) {
-      if (confirmedIdBlock + this._numConfirmations <= blockNumber) {
-        const idEvents = this._idEventsByBlock.get(confirmedIdBlock);
-        this._idEventsByBlock.delete(confirmedIdBlock);
+    for (const confirmedBlock of confirmedBlocks) {
+      if (confirmedBlock + this._numConfirmations <= blockNumber) {
+        const idEvents = this._idEventsByBlock.get(confirmedBlock);
+        this._idEventsByBlock.delete(confirmedBlock);
 
         if (idEvents) {
           for (const idEvent of idEvents) {
             await this.addIdRegistryEvent(idEvent);
+          }
+        }
+
+        const nameEvents = this._nameEventsByBlock.get(confirmedBlock);
+        this._nameEventsByBlock.delete(confirmedBlock);
+
+        if (nameEvents) {
+          for (const nameEvent of nameEvents) {
+            await this.addNameRegistryEvent(nameEvent);
           }
         }
       }
@@ -228,10 +234,10 @@ export class EthEventsProvider {
     // Add it to the cache
     let idEvents = this._idEventsByBlock.get(blockNumber);
     if (!idEvents) {
-      idEvents = new Set();
+      idEvents = [];
       this._idEventsByBlock.set(blockNumber, idEvents);
     }
-    idEvents.add(idRegistryEventModel);
+    idEvents.push(idRegistryEventModel);
   }
 
   private async addIdRegistryEvent(idRegistryEventModel: IdRegistryEventModel) {
@@ -279,10 +285,10 @@ export class EthEventsProvider {
     // Add it to the cache
     let nameEvents = this._nameEventsByBlock.get(blockNumber);
     if (!nameEvents) {
-      nameEvents = new Set();
+      nameEvents = [];
       this._nameEventsByBlock.set(blockNumber, nameEvents);
     }
-    nameEvents.add(nameRegistryEventModel);
+    nameEvents.push(nameRegistryEventModel);
   }
 
   private async addNameRegistryEvent(nameRegistryEventModel: NameRegistryEventModel) {

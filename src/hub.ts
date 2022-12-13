@@ -28,7 +28,7 @@ import { addressInfoFromParts, getPublicIp, p2pMultiAddrStr } from '~/utils/p2p'
 import { peerIdFromString } from '@libp2p/peer-id';
 import { publicAddressesFirst } from '@libp2p/utils/address-sort';
 import { HubError } from '~/utils/hubErrors';
-import { EthEventsProvider } from './storage/engine/flatbuffers/providers/ethEventsProvider';
+import { EthEventsProvider, GoreliEthConstants } from './storage/engine/flatbuffers/providers/ethEventsProvider';
 
 export interface HubOptions {
   /** The PeerId of this Hub */
@@ -117,8 +117,8 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     this.ethRegistryProvider = new EthEventsProvider(
       this.flatbuffEngine,
       options.networkUrl ?? '',
-      '0xda107a1caf36d198b12c16c7b6a1d1c795978c42',
-      '0xe3be01d99baa8db9905b33a3ca391238234b79d1'
+      GoreliEthConstants.IdRegistryAddress,
+      GoreliEthConstants.NameRegistryAddress
     );
   }
 
