@@ -36,12 +36,13 @@ import {
   validateTsHash,
   validateUserId,
 } from '~/storage/flatbuffers/validations';
-import { CastId, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
-import { HubAsyncResult, HubError } from '~/utils/hubErrors';
+import { CastId, MessageType, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
+import { HubAsyncResult, HubResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
+import { logger } from '~/utils/logger';
 
 class Engine {
   public eventHandler: StoreEventHandler;
@@ -68,47 +69,93 @@ class Engine {
     this._userDataStore = new UserDataStore(db, this.eventHandler);
   }
 
-  // TODO: add mergeMessages
+  async mergeMessages(messages: MessageModel[], source = 'unknown'): Promise<Array<HubResult<void>>> {
+    const results: HubResult<void>[] = [];
+    for (const message of messages) {
+      results.push(await this.mergeMessage(message, source));
+    }
+    return results;
+  }
 
-  async mergeMessage(message: MessageModel): HubAsyncResult<void> {
+  async mergeMessage(message: MessageModel, source = 'unknown'): HubAsyncResult<void> {
     const validatedMessage = await this.validateMessage(message);
     if (validatedMessage.isErr()) {
       return err(validatedMessage.error);
     }
 
+    let result: ResultAsync<void, HubError>;
     if (message.setPostfix() === UserPostfix.CastMessage) {
-      return ResultAsync.fromPromise(this._castStore.merge(message), (e) => e as HubError);
+      result = ResultAsync.fromPromise(this._castStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.FollowMessage) {
-      return ResultAsync.fromPromise(this._followStore.merge(message), (e) => e as HubError);
+      result = ResultAsync.fromPromise(this._followStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.ReactionMessage) {
-      return ResultAsync.fromPromise(this._reactionStore.merge(message), (e) => e as HubError);
+      result = ResultAsync.fromPromise(this._reactionStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.SignerMessage) {
-      return ResultAsync.fromPromise(this._signerStore.merge(message), (e) => e as HubError);
+      result = ResultAsync.fromPromise(this._signerStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.VerificationMessage) {
-      return ResultAsync.fromPromise(this._verificationStore.merge(message), (e) => e as HubError);
+      result = ResultAsync.fromPromise(this._verificationStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.UserDataMessage) {
-      return ResultAsync.fromPromise(this._userDataStore.merge(message), (e) => e as HubError);
+      result = ResultAsync.fromPromise(this._userDataStore.merge(message), (e) => e as HubError);
     } else {
       return err(new HubError('bad_request.validation_failure', 'invalid message type'));
     }
+
+    return result.then((res) => {
+      if (res.isOk()) {
+        const messageType = message.data.type();
+        // It's safe to convert the message type to its enum string since the message has already been validated.
+        // eslint-disable-next-line security/detect-object-injection
+        logger.info(
+          {
+            component: 'engine',
+            hash: message.hash,
+            fid: message.data.fid,
+            type: messageType ? MessageType[messageType] : 'Unknown',
+            source,
+          },
+          'mergeMessage'
+        );
+      }
+      return res;
+    });
   }
 
-  async mergeIdRegistryEvent(event: IdRegistryEventModel): HubAsyncResult<void> {
+  async mergeIdRegistryEvent(event: IdRegistryEventModel, source = 'unknown'): HubAsyncResult<void> {
     if (
       event.type() === IdRegistryEventType.IdRegistryRegister ||
       event.type() === IdRegistryEventType.IdRegistryTransfer
     ) {
+      // It's safe to convert the event type to its enum string as it has already been validated.
+      // eslint-disable-next-line security/detect-object-injection
+      logger.info(
+        {
+          component: 'engine',
+          event: IdRegistryEventType[event.type()],
+          source,
+        },
+        'mergeIdRegistryEvent'
+      );
       return ResultAsync.fromPromise(this._signerStore.mergeIdRegistryEvent(event), (e) => e as HubError);
     } else {
       return err(new HubError('bad_request.validation_failure', 'invalid event type'));
     }
   }
 
-  async mergeNameRegistryEvent(event: NameRegistryEventModel): HubAsyncResult<void> {
+  async mergeNameRegistryEvent(event: NameRegistryEventModel, source = 'unknown'): HubAsyncResult<void> {
     if (
       event.type() === NameRegistryEventType.NameRegistryTransfer ||
       event.type() === NameRegistryEventType.NameRegistryRenew
     ) {
+      // It's safe to convert the event type to its enum string as it has already been validated.
+      // eslint-disable-next-line security/detect-object-injection
+      logger.info(
+        {
+          component: 'engine',
+          event: NameRegistryEventType[event.type()],
+          source,
+        },
+        'mergeNameRegistryEvent'
+      );
       return ResultAsync.fromPromise(this._userDataStore.mergeNameRegistryEvent(event), (e) => e as HubError);
     }
 
