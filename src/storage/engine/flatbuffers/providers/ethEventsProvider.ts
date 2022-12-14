@@ -1,4 +1,4 @@
-import { Contract, providers, Event, BigNumber, ethers } from 'ethers';
+import { Contract, providers, Event, BigNumber } from 'ethers';
 import { IdRegistryEvent, IdRegistryEventT, IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { IdRegistry, NameRegistry } from './abis';
@@ -85,7 +85,7 @@ export class EthEventsProvider {
     // Set up block listener to confirm blocks
     this._jsonRpcProvider.on('block', (blockNumber: number) => this.handleNewBlock(blockNumber));
 
-    // Cal Eth Node to check connection
+    // Call Eth Node to check connection
     this.callEthNode();
   }
 
@@ -244,8 +244,6 @@ export class EthEventsProvider {
       fromArray = Array.from(arrayify(from));
     }
 
-    const fid = Array.from(arrayify(id));
-
     // Construct the flatbuffer event
     const builder = new Builder(1);
     const eventT = new IdRegistryEventT(
@@ -275,7 +273,7 @@ export class EthEventsProvider {
   private async addIdRegistryEvent(idRegistryEventModel: IdRegistryEventModel) {
     const r = await this._engine.mergeIdRegistryEvent(idRegistryEventModel);
     if (r.isErr()) {
-      log.error({ err: r._unsafeUnwrap() }, 'IdRegistryEvent failed to merge');
+      log.error({ err: r.error }, 'IdRegistryEvent failed to merge');
     }
   }
 

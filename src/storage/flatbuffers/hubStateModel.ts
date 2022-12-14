@@ -3,6 +3,7 @@ import { HubState } from '~/utils/generated/hub_state_generated';
 import RocksDB, { Transaction } from '../db/binaryrocksdb';
 import { RootPrefix } from './types';
 
+/** Helpers to read/write flatbuffers for the state of the hub, including the last ETH block synced */
 export default class HubStateModel {
   public state: HubState;
 

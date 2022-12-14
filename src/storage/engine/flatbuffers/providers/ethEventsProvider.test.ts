@@ -6,7 +6,7 @@ import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine/flatbuffers';
 import { IdRegistry, NameRegistry } from './abis';
 import { EthEventsProvider } from './ethEventsProvider';
-import { arrayify, Result } from 'ethers/lib/utils';
+import { Result } from 'ethers/lib/utils';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import Factories from '~/test/factories/flatbuffer';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
@@ -34,6 +34,7 @@ class MockRPCProvider extends BaseProvider {
   }
 }
 
+/** A Mock Event. Note the disabled no-empty-function rule at the top, it is needed to allow no-op functions in the mock. */
 class MockEvent implements Event {
   event?: string;
   eventSignature?: string;
