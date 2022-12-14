@@ -37,26 +37,29 @@ export class EthEventsProvider {
   private _idEventsByBlock: Map<number, Array<IdRegistryEventModel>>;
   private _nameEventsByBlock: Map<number, Array<NameRegistryEventModel>>;
 
+  private _lastBlockNumber: number;
+
   constructor(
     engine: Engine,
-    networkUrl: string,
-    IdRegistryAddress: string,
-    NameRegistryAddress: string,
-    numConfirmations = 6
+    jsonRpcProvider: providers.BaseProvider,
+    idRegistryContract: Contract,
+    nameRegistryContract: Contract,
+    numConfirmations: number
   ) {
     this._engine = engine;
+    this._jsonRpcProvider = jsonRpcProvider;
+    this._idRegistryContract = idRegistryContract;
+    this._nameRegistryContract = nameRegistryContract;
     this._numConfirmations = numConfirmations;
+
+    this._lastBlockNumber = 0;
 
     // Initialize the cache for the ID and Name Registry events. They will be processed after
     // numConfirmations blocks have been mined.
     this._nameEventsByBlock = new Map();
     this._idEventsByBlock = new Map();
 
-    // Setup provider
-    this._jsonRpcProvider = new providers.JsonRpcProvider(networkUrl);
-
     // Setup IdRegistry contract
-    this._idRegistryContract = new Contract(IdRegistryAddress, IdRegistry.abi, this._jsonRpcProvider);
     this._idRegistryContract.on('Register', (to: string, id: BigNumber, _recovery, _url, event: Event) => {
       this.handleIdRegistryEvent('', to, id, IdRegistryEventType.IdRegistryRegister, event);
     });
@@ -65,7 +68,6 @@ export class EthEventsProvider {
     });
 
     // Setup NameRegistry contract
-    this._nameRegistryContract = new Contract(NameRegistryAddress, NameRegistry.abi, this._jsonRpcProvider);
     this._nameRegistryContract.on('Transfer', (from: string, to: string, tokenId: BigNumber, event: Event) => {
       this.handleNameRegistryEvent(
         from,
@@ -85,6 +87,34 @@ export class EthEventsProvider {
 
     // Cal Eth Node to check connection
     this.callEthNode();
+  }
+
+  /**
+   *
+   * Setup a Eth Events Provider with Goreli testnet, which is currently used for Production Farcaster Hubs.
+   */
+  public static makeWithGoreli(
+    engine: Engine,
+    networkUrl: string,
+    IdRegistryAddress: string,
+    NameRegistryAddress: string,
+    numConfirmations = 6
+  ): EthEventsProvider {
+    // Setup provider and the contracts
+    const jsonRpcProvider = new providers.JsonRpcProvider(networkUrl);
+
+    const idRegistryContract = new Contract(IdRegistryAddress, IdRegistry.abi, jsonRpcProvider);
+    const nameRegistryContract = new Contract(NameRegistryAddress, NameRegistry.abi, jsonRpcProvider);
+
+    const provider = new EthEventsProvider(
+      engine,
+      jsonRpcProvider,
+      idRegistryContract,
+      nameRegistryContract,
+      numConfirmations
+    );
+
+    return provider;
   }
 
   /** Connect to Ethereum RPC */
@@ -134,7 +164,7 @@ export class EthEventsProvider {
       const id: BigNumber = BigNumber.from(event.args?.at(idIndex));
       const from: string = type === IdRegistryEventType.IdRegistryRegister ? '' : event.args?.at(0);
 
-      this.handleIdRegistryEvent(from, to, id, type, event);
+      await this.handleIdRegistryEvent(from, to, id, type, event);
     }
   }
 
@@ -156,7 +186,7 @@ export class EthEventsProvider {
       const expiry: BigNumber =
         type === NameRegistryEventType.NameRegistryTransfer ? BigNumber.from(0) : event.args?.at(1);
 
-      this.handleNameRegistryEvent(from, to, tokenId, type, expiry, event);
+      await this.handleNameRegistryEvent(from, to, tokenId, type, expiry, event);
     }
   }
 
@@ -194,7 +224,9 @@ export class EthEventsProvider {
     const hubStateT = new HubStateT(BigInt(blockNumber));
     builder.finish(hubStateT.pack(builder));
     const hubState = HubState.getRootAsHubState(new ByteBuffer(builder.asUint8Array()));
-    this._engine.updateHubState(new HubStateModel(hubState));
+    await this._engine.updateHubState(new HubStateModel(hubState));
+
+    this._lastBlockNumber = blockNumber;
   }
 
   private async handleIdRegistryEvent(
@@ -217,10 +249,10 @@ export class EthEventsProvider {
     // Construct the flatbuffer event
     const builder = new Builder(1);
     const eventT = new IdRegistryEventT(
-      event.blockNumber,
-      Array.from(arrayify(event.blockHash)),
-      Array.from(arrayify(event.transactionHash)),
-      event.logIndex,
+      blockNumber,
+      Array.from(arrayify(blockHash)),
+      Array.from(arrayify(transactionHash)),
+      logIndex,
       Array.from(arrayify(id)),
       Array.from(arrayify(to)),
       type,
@@ -255,7 +287,7 @@ export class EthEventsProvider {
     expiry: BigNumber,
     event: Event
   ) {
-    const { blockNumber, transactionHash } = event;
+    const { blockNumber, blockHash, transactionHash, logIndex } = event;
     const fname = Array.from(arrayify(tokenId.toHexString()));
     log.info({ from, to, tokenId: tokenId.toString(), type, blockNumber, transactionHash }, 'NameRegistryEvent');
 
@@ -267,10 +299,10 @@ export class EthEventsProvider {
     // Construct the flatbuffer event
     const builder = new Builder(1);
     const eventT = new NameRegistryEventT(
-      event.blockNumber,
-      Array.from(arrayify(event.blockHash)),
-      Array.from(arrayify(event.transactionHash)),
-      event.logIndex,
+      blockNumber,
+      Array.from(arrayify(blockHash)),
+      Array.from(arrayify(transactionHash)),
+      logIndex,
       fname,
       fromArray,
       Array.from(arrayify(to)),
@@ -296,5 +328,9 @@ export class EthEventsProvider {
     if (r.isErr()) {
       log.error({ err: r._unsafeUnwrap() }, 'NameRegistryEvent failed to merge');
     }
+  }
+
+  public getLatestBlockNumber(): number {
+    return this._lastBlockNumber;
   }
 }

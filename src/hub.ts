@@ -114,7 +114,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
 
     this.flatbuffEngine = new FlatbuffEngine(this.binaryDb);
 
-    this.ethRegistryProvider = new EthEventsProvider(
+    this.ethRegistryProvider = EthEventsProvider.makeWithGoreli(
       this.flatbuffEngine,
       options.networkUrl ?? '',
       GoreliEthConstants.IdRegistryAddress,
