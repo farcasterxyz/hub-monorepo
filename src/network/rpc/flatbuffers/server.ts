@@ -4,7 +4,7 @@ import { castServiceMethods, castServiceImpls } from '~/network/rpc/flatbuffers/
 import { MessagesResponse, MessagesResponseT } from '~/utils/generated/rpc_generated';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import { HubError, HubErrorCode } from '~/utils/hubErrors';
+import { HubAsyncResult, HubError, HubErrorCode } from '~/utils/hubErrors';
 import { followServiceImpls, followServiceMethods } from '~/network/rpc/flatbuffers/followService';
 import { reactionServiceImpls, reactionServiceMethods } from '~/network/rpc/flatbuffers/reactionService';
 import { verificationServiceImpls, verificationServiceMethods } from '~/network/rpc/flatbuffers/verificationService';
@@ -13,6 +13,20 @@ import { signerServiceImpls, signerServiceMethods } from '~/network/rpc/flatbuff
 import { userDataServiceImpls, userDataServiceMethods } from '~/network/rpc/flatbuffers/userDataService';
 import { syncServiceImpls, syncServiceMethods } from '~/network/rpc/flatbuffers/syncService';
 import { eventServiceImpls, eventServiceMethods } from './eventService';
+import { NodeMetadata } from '~/network/sync/merkleTrie';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
+import { addressInfoFromParts } from '~/utils/p2p';
+import { logger } from '~/utils/logger';
+
+/**
+ * Extendable RPC APIs
+ */
+export interface RPCHandler {
+  submitMessage(message: MessageModel): HubAsyncResult<void>;
+  submitIdRegistryEvent?(event: IdRegistryEventModel): HubAsyncResult<void>;
+  getSyncMetadataByPrefix?(prefix: string): HubAsyncResult<NodeMetadata>;
+  getSyncIdsByPrefix?(prefix: string): HubAsyncResult<string[]>;
+}
 
 export const toServiceError = (err: HubError): grpc.ServiceError => {
   let grpcCode: number;
@@ -74,13 +88,13 @@ export const defaultMethod = {
 };
 
 class Server {
-  engine: Engine;
   server: grpc.Server;
+  port: number;
 
-  constructor(engine: Engine) {
-    this.engine = engine;
+  constructor(engine: Engine, rpcHandler?: RPCHandler) {
+    this.port = 0;
     this.server = new grpc.Server();
-    this.server.addService(submitServiceMethods(), submitServiceImpls(engine));
+    this.server.addService(submitServiceMethods(), submitServiceImpls(engine, rpcHandler));
     this.server.addService(castServiceMethods(), castServiceImpls(engine));
     this.server.addService(followServiceMethods(), followServiceImpls(engine));
     this.server.addService(reactionServiceMethods(), reactionServiceImpls(engine));
@@ -93,11 +107,14 @@ class Server {
 
   async start(port = 0): Promise<number> {
     return new Promise((resolve, reject) => {
-      this.server.bindAsync(`localhost:${port}`, grpc.ServerCredentials.createInsecure(), (err, port) => {
+      this.server.bindAsync(`0.0.0.0:${port}`, grpc.ServerCredentials.createInsecure(), (err, port) => {
         if (err) {
           reject(err);
         } else {
           this.server.start();
+          this.port = port;
+
+          logger.info({ component: 'gRPC Server', address: this.address }, 'Starting gRPC Server');
           resolve(port);
         }
       });
@@ -119,6 +136,11 @@ class Server {
         });
       }
     });
+  }
+
+  get address() {
+    const addr = addressInfoFromParts('0.0.0.0', this.port);
+    return addr;
   }
 }
 
