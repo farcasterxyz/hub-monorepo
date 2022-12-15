@@ -57,7 +57,11 @@ import {
 import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { PeerId } from '@libp2p/interface-peer-id';
-import { NameRegistryEvent, NameRegistryEventT, NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
+import {
+  NameRegistryEvent,
+  NameRegistryEventT,
+  NameRegistryEventType,
+} from '~/utils/generated/name_registry_event_generated';
 
 /* eslint-disable security/detect-object-injection */
 const BytesFactory = Factory.define<Uint8Array, { length?: number }>(({ transientParams }) => {

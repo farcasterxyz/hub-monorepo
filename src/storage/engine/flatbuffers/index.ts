@@ -39,7 +39,7 @@ import {
 import { CastId, MessageType, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
 import { HubAsyncResult, HubResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
-import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
+import { NameRegistryEventType } from '~/utils/generated/name_registry_event_generated';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { logger } from '~/utils/logger';

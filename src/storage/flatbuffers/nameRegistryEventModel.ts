@@ -1,5 +1,5 @@
 import { ByteBuffer } from 'flatbuffers';
-import { NameRegistryEvent, NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
+import { NameRegistryEvent, NameRegistryEventType } from '~/utils/generated/name_registry_event_generated';
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { RootPrefix } from './types';
 

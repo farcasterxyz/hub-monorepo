@@ -6,10 +6,12 @@ import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine/flatbuffers';
 import { IdRegistry, NameRegistry } from './abis';
 import { EthEventsProvider } from './ethEventsProvider';
-import { Result } from 'ethers/lib/utils';
+import { arrayify, Result } from 'ethers/lib/utils';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import Factories from '~/test/factories/flatbuffer';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
+import { IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
+import { NameRegistryEventType } from '~/utils/generated/name_registry_event_generated';
 
 const db = jestBinaryRocksDB('flatbuffers.ethevents.test');
 const engine = new Engine(db);
@@ -25,7 +27,7 @@ let mockNameRegistry: Contract;
 /** A Mock RPC provider */
 class MockRPCProvider extends BaseProvider {
   constructor() {
-    // The Goreli networkID is 5
+    // The Goerli networkID is 5
     super(5);
   }
 
@@ -77,7 +79,7 @@ beforeAll(async () => {
 
 describe('process events', () => {
   beforeEach(() => {
-    ethEventsProvider = new EthEventsProvider(engine, mockRPCProvider, mockIdRegistry, mockNameRegistry, 6);
+    ethEventsProvider = new EthEventsProvider(engine, mockRPCProvider, mockIdRegistry, mockNameRegistry);
     mockRPCProvider.polling = true;
   });
 
@@ -101,19 +103,22 @@ describe('process events', () => {
     return startAt + n;
   };
 
-  test('processes Register events', async () => {
+  test('processes IdRegistry events', async () => {
     let blockNumber = 1;
 
+    const address1 = '0x000001';
+    const address2 = '0x000002';
+
     // Emit a "Register event"
-    const r = mockIdRegistry.emit(
+    const rRegister = mockIdRegistry.emit(
       'Register',
-      '0x000001',
+      address1,
       BigNumber.from(fid),
       '',
       '',
-      new MockEvent(blockNumber++, '0x000001', '0x000001', 0)
+      new MockEvent(blockNumber++, '0xb00001', '0x400001', 0)
     );
-    expect(r).toBeTruthy();
+    expect(rRegister).toBeTruthy();
 
     // The event is not immediately available, since it has to wait for confirmations
     await expect(IdRegistryEventModel.get(db, fid)).rejects.toThrow();
@@ -123,20 +128,40 @@ describe('process events', () => {
 
     // The event is now available
     expect((await IdRegistryEventModel.get(db, fid)).fid()).toEqual(fid);
+
+    // Transfer the ID to another address
+    const rTransfer = mockIdRegistry.emit(
+      'Transfer',
+      address1,
+      address2,
+      BigNumber.from(fid),
+      new MockEvent(blockNumber++, '0xb00002', '0x400002', 0)
+    );
+    // The event is not immediately available, since it has to wait for confirmations. We should still get the Register event
+    expect((await IdRegistryEventModel.get(db, fid)).type()).toEqual(IdRegistryEventType.IdRegistryRegister);
+    expect((await IdRegistryEventModel.get(db, fid)).to()).toEqual(arrayify(address1));
+
+    // Add 6 confirmations
+    blockNumber = await addBlocks(blockNumber, 6);
+
+    // The transfer event is now available
+    expect((await IdRegistryEventModel.get(db, fid)).fid()).toEqual(fid);
+    expect((await IdRegistryEventModel.get(db, fid)).type()).toEqual(IdRegistryEventType.IdRegistryTransfer);
+    expect((await IdRegistryEventModel.get(db, fid)).to()).toEqual(arrayify(address2));
   });
 
   test('processes transfer name', async () => {
     let blockNumber = 1;
 
     // Emit a "Transfer event"
-    const r = mockNameRegistry.emit(
+    const rTransfer = mockNameRegistry.emit(
       'Transfer',
       '0x000001',
       '0x000002',
       BigNumber.from(fname),
-      new MockEvent(blockNumber++, '0x000001', '0x000001', 0)
+      new MockEvent(blockNumber++, '0xb00001', '0x400001', 0)
     );
-    expect(r).toBeTruthy();
+    expect(rTransfer).toBeTruthy();
 
     // The event is not immediately available, since it has to wait for confirmations
     await expect(NameRegistryEventModel.get(db, fname)).rejects.toThrow();
@@ -146,5 +171,22 @@ describe('process events', () => {
 
     // The event is now available
     expect((await NameRegistryEventModel.get(db, fname)).fname()).toEqual(fname);
+
+    // Renew the fname
+    const rRenew = mockNameRegistry.emit(
+      'Renew',
+      BigNumber.from(fname),
+      BigNumber.from(1000),
+      new MockEvent(blockNumber++, '0xb00002', '0x400002', 0)
+    );
+    // The event is not immediately available, since it has to wait for confirmations. We should still get the Transfer event
+    expect((await NameRegistryEventModel.get(db, fname)).type()).toEqual(NameRegistryEventType.NameRegistryTransfer);
+
+    // Add 6 confirmations
+    blockNumber = await addBlocks(blockNumber, 6);
+
+    // The renew event is now available
+    expect((await NameRegistryEventModel.get(db, fname)).fname()).toEqual(fname);
+    expect((await NameRegistryEventModel.get(db, fname)).type()).toEqual(NameRegistryEventType.NameRegistryRenew);
   });
 });

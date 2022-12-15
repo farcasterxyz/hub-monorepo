@@ -36,7 +36,7 @@ import { userDataServiceMethods, userDataServiceRequests } from '~/network/rpc/f
 import { createSyncServiceRequest, syncServiceMethods } from '~/network/rpc/flatbuffers/syncService';
 import { eventServiceMethods } from '~/network/rpc/flatbuffers/eventService';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
-import { NameRegistryEvent } from '~/utils/generated/nameregistry_generated';
+import { NameRegistryEvent } from '~/utils/generated/name_registry_event_generated';
 
 class Client {
   client: grpc.Client;

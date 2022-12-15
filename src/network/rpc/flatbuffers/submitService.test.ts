@@ -11,7 +11,7 @@ import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import { KeyPair } from '~/types';
 import { HubError } from '~/utils/hubErrors';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
-import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
+import { NameRegistryEventType } from '~/utils/generated/name_registry_event_generated';
 import { IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
 
 const db = jestBinaryRocksDB('flatbuffers.rpc.submitService.test');

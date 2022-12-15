@@ -6,9 +6,13 @@ import { arrayify } from 'ethers/lib/utils';
 import Engine from '~/storage/engine/flatbuffers/';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import { logger } from '~/utils/logger';
-import { NameRegistryEvent, NameRegistryEventT, NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
+import {
+  NameRegistryEvent,
+  NameRegistryEventT,
+  NameRegistryEventType,
+} from '~/utils/generated/name_registry_event_generated';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
-import { ResultAsync } from 'neverthrow';
+import { Result, ResultAsync } from 'neverthrow';
 import { HubState, HubStateT } from '~/utils/generated/hub_state_generated';
 import HubStateModel from '~/storage/flatbuffers/hubStateModel';
 
@@ -16,7 +20,7 @@ const log = logger.child({
   component: 'EthEventsProvider',
 });
 
-export class GoreliEthConstants {
+export class GoerliEthConstants {
   public static IdRegistryAddress = '0xda107a1caf36d198b12c16c7b6a1d1c795978c42';
   public static NameRegistryAddress = '0xe3be01d99baa8db9905b33a3ca391238234b79d1';
   public static FirstBlock = 7648795;
@@ -43,14 +47,17 @@ export class EthEventsProvider {
     engine: Engine,
     jsonRpcProvider: providers.BaseProvider,
     idRegistryContract: Contract,
-    nameRegistryContract: Contract,
-    numConfirmations: number
+    nameRegistryContract: Contract
   ) {
     this._engine = engine;
     this._jsonRpcProvider = jsonRpcProvider;
     this._idRegistryContract = idRegistryContract;
     this._nameRegistryContract = nameRegistryContract;
-    this._numConfirmations = numConfirmations;
+
+    // Number of blocks to wait before processing an event.
+    // This is hardcoded to 6 for now, because that's the threshold beyond which blocks are unlikely to reorg anymore.
+    // 6 blocks represents ~72 seconds on Goerli, so the delay is not too long.
+    this._numConfirmations = 6;
 
     this._lastBlockNumber = 0;
 
@@ -61,15 +68,15 @@ export class EthEventsProvider {
 
     // Setup IdRegistry contract
     this._idRegistryContract.on('Register', (to: string, id: BigNumber, _recovery, _url, event: Event) => {
-      this.handleIdRegistryEvent('', to, id, IdRegistryEventType.IdRegistryRegister, event);
+      this.cacheIdRegistryEvent('', to, id, IdRegistryEventType.IdRegistryRegister, event);
     });
     this._idRegistryContract.on('Transfer', (from: string, to: string, id: BigNumber, event: Event) => {
-      this.handleIdRegistryEvent(from, to, id, IdRegistryEventType.IdRegistryTransfer, event);
+      this.cacheIdRegistryEvent(from, to, id, IdRegistryEventType.IdRegistryTransfer, event);
     });
 
     // Setup NameRegistry contract
     this._nameRegistryContract.on('Transfer', (from: string, to: string, tokenId: BigNumber, event: Event) => {
-      this.handleNameRegistryEvent(
+      this.cacheNameRegistryEvent(
         from,
         to,
         tokenId,
@@ -79,26 +86,25 @@ export class EthEventsProvider {
       );
     });
     this._nameRegistryContract.on('Renew', (tokenId: BigNumber, expiry: BigNumber, event: Event) => {
-      this.handleNameRegistryEvent('', '', tokenId, NameRegistryEventType.NameRegistryRenew, expiry, event);
+      this.cacheNameRegistryEvent('', '', tokenId, NameRegistryEventType.NameRegistryRenew, expiry, event);
     });
 
     // Set up block listener to confirm blocks
     this._jsonRpcProvider.on('block', (blockNumber: number) => this.handleNewBlock(blockNumber));
 
     // Call Eth Node to check connection
-    this.callEthNode();
+    this.connectAndSyncHistoricalEvents();
   }
 
   /**
    *
-   * Setup a Eth Events Provider with Goreli testnet, which is currently used for Production Farcaster Hubs.
+   * Setup a Eth Events Provider with Goerli testnet, which is currently used for Production Farcaster Hubs.
    */
-  public static makeWithGoreli(
+  public static makeWithGoerli(
     engine: Engine,
     networkUrl: string,
     IdRegistryAddress: string,
-    NameRegistryAddress: string,
-    numConfirmations = 6
+    NameRegistryAddress: string
   ): EthEventsProvider {
     // Setup provider and the contracts
     const jsonRpcProvider = new providers.JsonRpcProvider(networkUrl);
@@ -106,19 +112,13 @@ export class EthEventsProvider {
     const idRegistryContract = new Contract(IdRegistryAddress, IdRegistry.abi, jsonRpcProvider);
     const nameRegistryContract = new Contract(NameRegistryAddress, NameRegistry.abi, jsonRpcProvider);
 
-    const provider = new EthEventsProvider(
-      engine,
-      jsonRpcProvider,
-      idRegistryContract,
-      nameRegistryContract,
-      numConfirmations
-    );
+    const provider = new EthEventsProvider(engine, jsonRpcProvider, idRegistryContract, nameRegistryContract);
 
     return provider;
   }
 
   /** Connect to Ethereum RPC */
-  private async callEthNode() {
+  private async connectAndSyncHistoricalEvents() {
     const latestBlockResult = await ResultAsync.fromPromise(this._jsonRpcProvider.getBlock('latest'), (err) => err);
     if (latestBlockResult.isErr()) {
       log.error({ err: latestBlockResult.error }, 'failed to connect to ethereum node');
@@ -129,8 +129,7 @@ export class EthEventsProvider {
     log.info({ latestBlock: latestBlock.number }, 'connected to ethereum node');
 
     // Find how how much we need to sync
-    // Goreli block 7648795 is when Farcaster contracts were deployed
-    let lastSyncedBlock = BigInt(GoreliEthConstants.FirstBlock);
+    let lastSyncedBlock = BigInt(GoerliEthConstants.FirstBlock);
     log.info({ lastSyncedBlock }, 'last synced block');
     const hubState = await this._engine.getHubState();
     if (hubState.isOk()) {
@@ -155,16 +154,29 @@ export class EthEventsProvider {
   private async syncOldIdEvents(type: IdRegistryEventType, numBlocksToSync: bigint) {
     const typeString = type === IdRegistryEventType.IdRegistryRegister ? 'Register' : 'Transfer';
 
-    const oldIdEvents = await this._idRegistryContract.queryFilter(typeString, -1 * Number(numBlocksToSync));
-    for (const event of oldIdEvents) {
+    const oldIdEvents = await ResultAsync.fromPromise(
+      this._idRegistryContract.queryFilter(typeString, -1 * Number(numBlocksToSync)),
+      (e) => e
+    );
+    if (oldIdEvents.isErr()) {
+      log.error({ err: oldIdEvents.error }, 'failed to get old Id events');
+      return;
+    }
+
+    for (const event of oldIdEvents.value) {
       const toIndex = type === IdRegistryEventType.IdRegistryRegister ? 0 : 1;
       const idIndex = type === IdRegistryEventType.IdRegistryRegister ? 1 : 2;
 
-      const to: string = event.args?.at(toIndex);
-      const id: BigNumber = BigNumber.from(event.args?.at(idIndex));
-      const from: string = type === IdRegistryEventType.IdRegistryRegister ? '' : event.args?.at(0);
+      // Parsing can throw errors, so we'll just log them and continue
+      try {
+        const to: string = event.args?.at(toIndex);
+        const id: BigNumber = BigNumber.from(event.args?.at(idIndex));
+        const from: string = type === IdRegistryEventType.IdRegistryRegister ? '' : event.args?.at(0);
 
-      await this.handleIdRegistryEvent(from, to, id, type, event);
+        await this.cacheIdRegistryEvent(from, to, id, type, event);
+      } catch (e) {
+        log.error({ event }, 'failed to parse event args');
+      }
     }
   }
 
@@ -186,21 +198,21 @@ export class EthEventsProvider {
       const expiry: BigNumber =
         type === NameRegistryEventType.NameRegistryTransfer ? BigNumber.from(0) : event.args?.at(1);
 
-      await this.handleNameRegistryEvent(from, to, tokenId, type, expiry, event);
+      await this.cacheNameRegistryEvent(from, to, tokenId, type, expiry, event);
     }
   }
 
   /** Handle a new block. Processes all events in the cache that have now been confirmed */
   private async handleNewBlock(blockNumber: number) {
     // Get all blocks that have been confirmed into a single array and sort.
-    const confirmedBlocksSet = new Set([...this._nameEventsByBlock.keys(), ...this._idEventsByBlock.keys()]);
-    const confirmedBlocks = Array.from(confirmedBlocksSet);
-    confirmedBlocks.sort();
+    const cachedBlocksSet = new Set([...this._nameEventsByBlock.keys(), ...this._idEventsByBlock.keys()]);
+    const cachedBlocks = Array.from(cachedBlocksSet);
+    cachedBlocks.sort();
 
-    for (const confirmedBlock of confirmedBlocks) {
-      if (confirmedBlock + this._numConfirmations <= blockNumber) {
-        const idEvents = this._idEventsByBlock.get(confirmedBlock);
-        this._idEventsByBlock.delete(confirmedBlock);
+    for (const cachedBlock of cachedBlocks) {
+      if (cachedBlock + this._numConfirmations <= blockNumber) {
+        const idEvents = this._idEventsByBlock.get(cachedBlock);
+        this._idEventsByBlock.delete(cachedBlock);
 
         if (idEvents) {
           for (const idEvent of idEvents) {
@@ -208,8 +220,8 @@ export class EthEventsProvider {
           }
         }
 
-        const nameEvents = this._nameEventsByBlock.get(confirmedBlock);
-        this._nameEventsByBlock.delete(confirmedBlock);
+        const nameEvents = this._nameEventsByBlock.get(cachedBlock);
+        this._nameEventsByBlock.delete(cachedBlock);
 
         if (nameEvents) {
           for (const nameEvent of nameEvents) {
@@ -229,13 +241,7 @@ export class EthEventsProvider {
     this._lastBlockNumber = blockNumber;
   }
 
-  private async handleIdRegistryEvent(
-    from: string,
-    to: string,
-    id: BigNumber,
-    type: IdRegistryEventType,
-    event: Event
-  ) {
+  private async cacheIdRegistryEvent(from: string, to: string, id: BigNumber, type: IdRegistryEventType, event: Event) {
     const { blockNumber, blockHash, transactionHash, logIndex } = event;
     log.info({ from, to, id: id.toString(), type, blockNumber, transactionHash }, 'IdRegistryEvent');
 
@@ -277,7 +283,7 @@ export class EthEventsProvider {
     }
   }
 
-  private async handleNameRegistryEvent(
+  private async cacheNameRegistryEvent(
     from: string,
     to: string,
     tokenId: BigNumber,
@@ -294,6 +300,11 @@ export class EthEventsProvider {
       fromArray = Array.from(arrayify(from));
     }
 
+    let toArray: number[] = [];
+    if (to && to.length > 0) {
+      toArray = Array.from(arrayify(to));
+    }
+
     // Construct the flatbuffer event
     const builder = new Builder(1);
     const eventT = new NameRegistryEventT(
@@ -303,7 +314,7 @@ export class EthEventsProvider {
       logIndex,
       fname,
       fromArray,
-      Array.from(arrayify(to)),
+      toArray,
       type,
       Array.from(arrayify(expiry.toHexString()))
     );
