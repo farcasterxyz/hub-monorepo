@@ -5,7 +5,7 @@ import { toByteBuffer } from '~/storage/flatbuffers/utils';
 import { Message } from '~/utils/generated/message_generated';
 import { HubError } from '~/utils/hubErrors';
 import MessageModel from '~/storage/flatbuffers/messageModel';
-import { NameRegistryEvent } from '~/utils/generated/nameregistry_generated';
+import { NameRegistryEvent } from '~/utils/generated/name_registry_event_generated';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import { IdRegistryEvent } from '~/utils/generated/id_registry_event_generated';

@@ -6,7 +6,6 @@ import StoreEventHandler from '../sets/flatbuffers/storeEventHandler';
 import NameRegistryEventModel from './nameRegistryEventModel';
 
 const db = jestBinaryRocksDB('flatbuffers.nameRegistryEventModel.test');
-const eventHandler = new StoreEventHandler();
 
 const fname = Factories.Fname.build();
 

@@ -39,10 +39,11 @@ import {
 import { CastId, MessageType, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
 import { HubAsyncResult, HubResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
-import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
+import { NameRegistryEventType } from '~/utils/generated/name_registry_event_generated';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { logger } from '~/utils/logger';
+import HubStateModel from '~/storage/flatbuffers/hubStateModel';
 
 class Engine {
   public eventHandler: StoreEventHandler;
@@ -495,6 +496,19 @@ class Engine {
     }
 
     return ResultAsync.fromPromise(this._userDataStore.getUserDataAddsByUser(fid), (e) => e as HubError);
+  }
+
+  /** ------------------------------------------------------------------------- */
+  /*                                  Hub State Methods                         */
+  /* -------------------------------------------------------------------------- */
+  async getHubState(): HubAsyncResult<HubStateModel> {
+    return ResultAsync.fromPromise(HubStateModel.get(this._db), (e) => e as HubError);
+  }
+
+  async updateHubState(hubState: HubStateModel): HubAsyncResult<void> {
+    const txn = this._db.transaction();
+    HubStateModel.putTransaction(txn, hubState);
+    return await ResultAsync.fromPromise(this._db.commit(txn), (e) => e as HubError);
   }
 
   /* -------------------------------------------------------------------------- */

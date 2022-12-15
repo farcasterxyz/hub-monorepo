@@ -15,7 +15,7 @@ import SignerStore from './signerStore';
 import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
 import Engine from '~/storage/engine/flatbuffers';
 import { Wallet } from 'ethers';
-import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
+import { NameRegistryEventType } from '~/utils/generated/name_registry_event_generated';
 
 const db = jestBinaryRocksDB('flatbuffers.userDataSet.test');
 

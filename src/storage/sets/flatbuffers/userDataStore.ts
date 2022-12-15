@@ -9,7 +9,7 @@ import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 import { eventCompare } from '~/utils/contractEvent';
-import { NameRegistryEventType } from '~/utils/generated/nameregistry_generated';
+import { NameRegistryEventType } from '~/utils/generated/name_registry_event_generated';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
