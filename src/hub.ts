@@ -153,8 +153,13 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       await this.binaryDb.clear();
     }
 
+    // Start the ETh events listener first
+    await this.ethRegistryProvider.start();
+
+    // And then start the sync engine
     await this.syncEngine.initialize();
 
+    // And the gossip node
     await this.gossipNode.start(this.options.bootstrapAddrs ?? [], {
       peerId: this.options.peerId,
       ipMultiAddr: this.options.ipMultiAddr,
