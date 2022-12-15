@@ -135,13 +135,12 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     // push this message into the engine
     const mergeResult = await this.engine.mergeMessage(message, 'RPC');
     if (mergeResult.isErr()) {
+      const type = message.data.type();
       // Safe to disable because the type is being checked to be within bounds
       // eslint-disable-next-line security/detect-object-injection
       log.error(
         mergeResult.error,
-        `received invalid message of type: ${
-          message.data.type <= MessageType.SignerRemove ? MessageType[message.data.type] : 'unknown'
-        }`
+        `received invalid message of type: ${type && type <= MessageType.SignerRemove ? MessageType[type] : 'unknown'}`
       );
       return mergeResult;
     }
