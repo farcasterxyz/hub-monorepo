@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { Hub, HubOptions } from '~/hub';
+import { Hub, HubOptions } from '~/flatbuffers/hub';
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from '@libp2p/peer-id-factory';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
