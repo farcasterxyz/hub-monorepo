@@ -1,18 +1,32 @@
-import { Multiaddr } from '@multiformats/multiaddr';
+import { multiaddr, Multiaddr } from '@multiformats/multiaddr';
 import Engine from '~/storage/engine/flatbuffers';
 import { RPCClient } from '~/network/rpc';
-import { RPCHandler } from '~/network/rpc/flatbuffers/server';
-import Server from '~/network/rpc/flatbuffers/server';
+import Server, { RPCHandler } from '~/network/rpc/flatbuffers/server';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { MessageType } from '~/types';
-import { ContactInfoContent } from '~/network/p2p/protocol';
+import { NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import BinaryRocksDB from '~/storage/db/binaryrocksdb';
 import { logger } from '~/utils/logger';
-import { HubAsyncResult } from '~/utils/hubErrors';
+import { HubAsyncResult, HubError, HubResult } from '~/utils/hubErrors';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import { EthEventsProvider, GoerliEthConstants } from '~/storage/engine/flatbuffers/providers/ethEventsProvider';
+import { Node } from '~/network/p2p/flatbuffers/node';
+import {
+  ContactInfoContent,
+  GossipAddressInfo,
+  GossipContent,
+  GossipMessage,
+} from '~/utils/generated/gossip_generated';
+import { err, ok, Result, ResultAsync } from 'neverthrow';
+import { peerIdFromBytes } from '@libp2p/peer-id';
+import { Message } from '~/utils/generated/message_generated';
+import { IdRegistryEvent } from '~/utils/generated/id_registry_event_generated';
+import { addressInfoFromGossip, ipFamilyToString, p2pMultiAddrStr } from '~/utils/p2p';
+import { isIP } from 'net';
+import Client from '~/network/rpc/flatbuffers/client';
+import { publicAddressesFirst } from '@libp2p/utils/address-sort';
 
 export interface HubOptions {
   /** The PeerId of this Hub */
@@ -72,12 +86,12 @@ const log = logger.child({
 
 export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   private options: HubOptions;
+  private gossipNode: Node;
   private rpcServer: Server;
   private contactTimer?: NodeJS.Timer;
   private rocksDB: BinaryRocksDB;
 
-  //TODO(sagar): Need a Flatbuffers SyncEngine impl
-  //TODO(sagar): Need a Flatbuffers Gossip Node impl
+  //TODO(aditya): Need a Flatbuffers SyncEngine impl
 
   engine: Engine;
   ethRegistryProvider: EthEventsProvider;
@@ -86,6 +100,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     super();
     this.options = options;
     this.rocksDB = new BinaryRocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
+    this.gossipNode = new Node();
     this.engine = new Engine(this.rocksDB);
     this.rpcServer = new Server(this.engine, this);
 
@@ -103,7 +118,15 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   }
 
   get gossipAddresses() {
-    return [];
+    return this.gossipNode.multiaddrs ?? [];
+  }
+
+  /** Returns the Gossip peerId string of this Hub */
+  get identity(): string {
+    if (!this.gossipNode.isStarted() || !this.gossipNode.peerId) {
+      throw new HubError('unavailable', 'cannot start gossip node without identity');
+    }
+    return this.gossipNode.peerId.toString();
   }
 
   /* Start the GossipNode and RPC server  */
@@ -116,9 +139,16 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
 
     // Start the ETH registry provider first
     await this.ethRegistryProvider.start();
+    await this.gossipNode.start(this.options.bootstrapAddrs ?? [], {
+      peerId: this.options.peerId,
+      ipMultiAddr: this.options.ipMultiAddr,
+      gossipPort: this.options.gossipPort,
+      allowedPeerIdStrs: this.options.allowedPeers,
+    });
 
     // Start the RPC server
     await this.rpcServer.start(this.options.rpcPort ? this.options.rpcPort : 0);
+    this.registerEventHandlers();
   }
 
   /** Stop the GossipNode and RPC Server */
@@ -128,7 +158,70 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     await this.rocksDB.close();
   }
 
-  async diffSyncIfRequired(message: ContactInfoContent, rpcClient: RPCClient | undefined) {
+  async handleGossipMessage(gossipMessage: GossipMessage) {
+    let result: HubResult<void> = err(new HubError('bad_request.invalid_param', 'Invalid message type'));
+    const contentType = gossipMessage.contentType();
+    if (contentType === GossipContent.Message) {
+      const message: Message = gossipMessage.content(contentType);
+      result = await this.engine.mergeMessage(new MessageModel(message), 'Gossip');
+    } else if (contentType === GossipContent.IdRegistryEvent) {
+      const message: IdRegistryEvent = gossipMessage.content(contentType);
+      result = await this.engine.mergeIdRegistryEvent(new IdRegistryEventModel(message), 'Gossip');
+    } else if (contentType === GossipContent.ContactInfoContent) {
+      const message: ContactInfoContent = gossipMessage.content(contentType);
+      await this.handleContactInfo(message);
+      result = ok(undefined);
+    }
+
+    if (result.isErr()) {
+      log.error(result.error, 'Failed to merge message');
+    }
+    return result;
+  }
+
+  async handleContactInfo(message: ContactInfoContent) {
+    // Updates the address book for this peer
+    const gossipAddress = message.gossipAddress();
+    if (gossipAddress) {
+      const peerIdResult = Result.fromThrowable(
+        () => peerIdFromBytes(message.peerIdArray() ?? new Uint8Array([])),
+        (error) => new HubError('bad_request.parse_failure', error as unknown as Error)
+      )();
+      const addressInfo = addressInfoFromGossip(gossipAddress);
+      if (addressInfo.isErr()) {
+        log.error(addressInfo.error, 'unable to parse gossip address for peer');
+        return;
+      }
+
+      const p2pMultiAddrResult = p2pMultiAddrStr(addressInfo.value, message.peerId.toString()).map((addr) =>
+        multiaddr(addr)
+      );
+
+      const res = Result.combine([peerIdResult, p2pMultiAddrResult]).map(async ([peerId, multiaddr]) => {
+        if (!this.gossipNode.addressBook) {
+          return err(new HubError('unavailable', 'address book missing for gossipNode'));
+        }
+
+        return await ResultAsync.fromPromise(
+          this.gossipNode.addressBook.add(peerId, [multiaddr]),
+          (error) => new HubError('unavailable', error as unknown as Error)
+        ).map(() => ok(undefined));
+      });
+
+      if (res.isErr()) {
+        log.error({ error: res.error, message }, 'failed to add contact info to address book');
+      }
+    }
+
+    const rpcClient = await this.getRPCClientForPeer(message);
+    log.info(
+      { identity: this.identity, peer: message.peerId, ip: rpcClient?.serverMultiaddr },
+      'received a Contact Info for sync'
+    );
+    await this.diffSyncIfRequired(message, rpcClient);
+  }
+
+  async diffSyncIfRequired(message: ContactInfoContent, rpcClient: Client | undefined) {
     this.emit('syncStart');
     if (!rpcClient) {
       log.warn(`No RPC client for peer, skipping sync`);
@@ -139,6 +232,86 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     log.warn(`Flatbuffers DiffSync is not implemented`);
     this.emit('syncComplete', false);
     return;
+  }
+
+  private async getRPCClientForPeer(peer: ContactInfoContent): Promise<Client | undefined> {
+    /*
+     * Find the peer's addrs from our peer list because we cannot use the address
+     * in the contact info directly
+     */
+    if (!peer.rpcAddress() || !peer.peerIdArray()) {
+      return;
+    }
+    const contactPeers = this.gossipNode.gossip?.getSubscribers(NETWORK_TOPIC_CONTACT);
+    const peerId = contactPeers?.find((value) => {
+      return peer.peerIdArray()?.toString() === value.toString();
+    });
+    if (!peerId) {
+      // cannot receive information from peer's not on Gossip.
+      log.info(
+        { function: 'getRPCClientForPeer', identity: this.identity, peer: peer },
+        `peer is not subscribed to gossip`
+      );
+      return;
+    }
+
+    // prefer the advertised address if it's available
+    const addressInfo = addressInfoFromGossip(peer.rpcAddress() as GossipAddressInfo);
+    if (addressInfo.isErr()) {
+      log.error(addressInfo.error, 'unable to parse gossip address for peer');
+      return;
+    }
+
+    if (isIP(addressInfo.value.address)) {
+      return new Client(addressInfo.value);
+    }
+
+    log.info({ peerId: peer.peerIdArray()?.toString() }, 'falling back to addressbook lookup for peer');
+    const peerInfo = await this.gossipNode.getPeerInfo(peerId);
+    if (!peerInfo) {
+      log.info(
+        { function: 'getRPCClientForPeer', identity: this.identity, peer: peer },
+        `failed to find peer's address to request simple sync`
+      );
+
+      return;
+    }
+
+    // sorts addresses by Public IPs first
+    const addr = peerInfo.addresses.sort((a, b) => publicAddressesFirst(a, b))[0];
+    if (addr === undefined) {
+      log.info(
+        { function: 'getRPCClientForPeer', identity: this.identity, peer: peer },
+        `peer found but no address is available to request simple sync`
+      );
+
+      return;
+    }
+
+    const nodeAddress = addr.multiaddr.nodeAddress();
+    return new Client({
+      address: nodeAddress.address,
+      family: ipFamilyToString(nodeAddress.family),
+      // Use the gossip rpc port instead of the port used by libp2p
+      port: addressInfo.value.port,
+    });
+  }
+
+  private registerEventHandlers() {
+    // Subscribes to all relevant topics
+    this.gossipNode.gossip?.subscribe(NETWORK_TOPIC_PRIMARY);
+    this.gossipNode.gossip?.subscribe(NETWORK_TOPIC_CONTACT);
+
+    this.gossipNode.addListener('message', async (_topic, message) => {
+      await message.match(
+        async (gossipMessage) => {
+          await this.handleGossipMessage(gossipMessage);
+        },
+        async (error) => {
+          log.error(error, 'failed to decode message');
+        }
+      );
+    });
   }
 
   /* -------------------------------------------------------------------------- */

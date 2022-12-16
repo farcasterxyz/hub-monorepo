@@ -24,7 +24,7 @@ import { FarcasterError, ServerError } from '~/utils/errors';
 import { SyncEngine } from '~/network/sync/syncEngine';
 import { logger } from '~/utils/logger';
 import { NodeMetadata } from '~/network/sync/merkleTrie';
-import { addressInfoFromParts, getPublicIp, p2pMultiAddrStr } from '~/utils/p2p';
+import { addressInfoFromParts, getPublicIp, ipFamilyToString, p2pMultiAddrStr } from '~/utils/p2p';
 import { peerIdFromString } from '@libp2p/peer-id';
 import { publicAddressesFirst } from '@libp2p/utils/address-sort';
 import { HubError } from '~/utils/hubErrors';
@@ -357,7 +357,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     const nodeAddress = addr.multiaddr.nodeAddress();
     return new RPCClient({
       address: nodeAddress.address,
-      family: nodeAddress.family == 4 ? 'IPv4' : 'IPv6',
+      family: ipFamilyToString(nodeAddress.family),
       // Use the gossip rpc port instead of the port used by libp2p
       port: peer.rpcAddress.port,
     });

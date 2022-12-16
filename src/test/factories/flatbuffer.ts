@@ -73,9 +73,9 @@ const BytesFactory = Factory.define<Uint8Array, { length?: number }>(({ transien
   return bytes;
 });
 
-const FIDFactory = Factory.define<Uint8Array>(() => {
+const FIDFactory = Factory.define<Uint8Array, { fid: number }>(({ transientParams }) => {
   const builder = new Builder(4);
-  builder.addInt32(faker.datatype.number({ max: 2 ** 32 - 1 }));
+  builder.addInt32(transientParams.fid ?? faker.datatype.number({ max: 2 ** 32 - 1 }));
   return builder.asUint8Array();
 });
 

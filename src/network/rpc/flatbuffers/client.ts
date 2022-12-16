@@ -37,12 +37,27 @@ import { createSyncServiceRequest, syncServiceMethods } from '~/network/rpc/flat
 import { eventServiceMethods } from '~/network/rpc/flatbuffers/eventService';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 import { NameRegistryEvent } from '~/utils/generated/name_registry_event_generated';
+import { AddressInfo } from 'net';
+import { addressInfoToString, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
+import { logger } from '~/utils/logger';
 
 class Client {
-  client: grpc.Client;
+  private client: grpc.Client;
+  private serverAddr: string;
 
-  constructor(port: number) {
-    this.client = new grpc.Client(`localhost:${port}`, grpc.credentials.createInsecure());
+  constructor(addressInfo: AddressInfo) {
+    const multiAddrResult = ipMultiAddrStrFromAddressInfo(addressInfo);
+    if (multiAddrResult.isErr()) {
+      logger.warn({ component: 'gRPC Client', address: addressInfo }, 'Failed to parse address as multiaddr');
+    }
+    this.serverAddr = `${multiAddrResult.unwrapOr('localhost')}/tcp/${addressInfo.port}`;
+
+    const addressString = addressInfoToString(addressInfo);
+    this.client = new grpc.Client(addressString, grpc.credentials.createInsecure());
+  }
+
+  get serverMultiaddr() {
+    return this.serverAddr;
   }
 
   close() {

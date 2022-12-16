@@ -88,8 +88,8 @@ export const defaultMethod = {
 };
 
 class Server {
-  server: grpc.Server;
-  port: number;
+  private server: grpc.Server;
+  private port: number;
 
   constructor(engine: Engine, rpcHandler?: RPCHandler) {
     this.port = 0;

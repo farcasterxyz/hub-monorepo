@@ -10,6 +10,7 @@ import { generateEd25519KeyPair } from '~/utils/crypto';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import { KeyPair } from '~/types';
 import { HubError } from '~/utils/hubErrors';
+import { addressInfoFromParts } from '~/utils/p2p';
 
 const db = jestBinaryRocksDB('flatbuffers.rpc.verificationService.test');
 const engine = new Engine(db);
@@ -20,7 +21,7 @@ let client: Client;
 beforeAll(async () => {
   server = new Server(engine);
   const port = await server.start();
-  client = new Client(port);
+  client = new Client(addressInfoFromParts('127.0.0.1', port)._unsafeUnwrap());
 });
 
 afterAll(async () => {

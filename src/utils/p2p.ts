@@ -5,6 +5,7 @@ import { FarcasterError } from '~/utils/errors';
 import { get } from 'http';
 import { logger } from '~/utils/logger';
 import { HubError, HubResult } from '~/utils/hubErrors';
+import { GossipAddressInfo } from './generated/gossip_generated';
 
 /** Parses an address to verify it is actually a valid MultiAddr */
 export const parseAddress = (multiaddrStr: string): HubResult<Multiaddr> => {
@@ -29,7 +30,7 @@ export const addressInfoFromNodeAddress = (nodeAddress: NodeAddress): HubResult<
   return ok({
     address: nodeAddress.address,
     port: nodeAddress.port,
-    family: nodeAddress.family == 4 ? 'IPv4' : 'IPv6',
+    family: ipFamilyToString(nodeAddress.family),
   });
 };
 
@@ -41,7 +42,7 @@ export const addressInfoFromParts = (address: string, port: number): HubResult<A
   const addrInfo: AddressInfo = {
     address,
     port,
-    family: family == 4 ? 'IPv4' : 'IPv6',
+    family: ipFamilyToString(family),
   };
   return ok(addrInfo);
 };
@@ -69,6 +70,34 @@ export const p2pMultiAddrStr = (addressInfo: AddressInfo, peerID: string): HubRe
   return ipMultiAddrStrFromAddressInfo(addressInfo).map(
     (ipMultiAddrStr) => `${ipMultiAddrStr}/tcp/${addressInfo.port}/p2p/${peerID}`
   );
+};
+
+/**
+ * Converts a GossipAddressInfo to the net AddressInfo object
+ */
+export const addressInfoFromGossip = (addressInfo: GossipAddressInfo): HubResult<AddressInfo> => {
+  const address = addressInfo.address();
+  const port = addressInfo.port();
+  const family = addressInfo.family();
+  if (!address || family === 0) return err(new HubError('bad_request.parse_failure', 'Invalid address'));
+  const addrInfo: AddressInfo = {
+    address,
+    port,
+    family: ipFamilyToString(family),
+  };
+  return ok(addrInfo);
+};
+
+export const ipFamilyToString = (family: number): string => {
+  return family == 4 ? 'IPv4' : 'IPv6';
+};
+
+export const addressInfoToString = (addressInfo: AddressInfo): string => {
+  if (addressInfo.family === 'IPv4') {
+    return `${addressInfo.address}:${addressInfo.port}`;
+  } else {
+    return `[${addressInfo.address}]:${addressInfo.port}`;
+  }
 };
 
 /**
