@@ -30,7 +30,7 @@ app
   .command('start')
   .description('Start a Hub')
   .option('-c, --config <filepath>', 'Path to a config file with options', DEFAULT_CONFIG_FILE)
-  .option('-n --network-url <url>', 'ID Registry network URL')
+  .option('-n --network-url <url>', 'ETH Node RPC URL to connect to')
   .option('-f, --fir-address <address>', 'The address of the FIR contract')
   .option('-b, --bootstrap <peer-multiaddrs...>', 'A list of peer multiaddrs to bootstrap libp2p')
   .option('-a, --allowed-peers <peerIds...>', 'An allow-list of peer ids permitted to connect to the hub')

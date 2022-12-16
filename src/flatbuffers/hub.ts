@@ -12,6 +12,7 @@ import { logger } from '~/utils/logger';
 import { HubAsyncResult } from '~/utils/hubErrors';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
+import { EthEventsProvider, GoerliEthConstants } from '~/storage/engine/flatbuffers/providers/ethEventsProvider';
 
 export interface HubOptions {
   /** The PeerId of this Hub */
@@ -79,6 +80,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   //TODO(sagar): Need a Flatbuffers Gossip Node impl
 
   engine: Engine;
+  ethRegistryProvider: EthEventsProvider;
 
   constructor(options: HubOptions) {
     super();
@@ -86,6 +88,14 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     this.rocksDB = new BinaryRocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
     this.engine = new Engine(this.rocksDB);
     this.rpcServer = new Server(this.engine, this);
+
+    // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
+    this.ethRegistryProvider = EthEventsProvider.makeWithGoerli(
+      this.engine,
+      options.networkUrl ?? '',
+      GoerliEthConstants.IdRegistryAddress,
+      GoerliEthConstants.NameRegistryAddress
+    );
   }
 
   get rpcAddress() {
@@ -104,6 +114,10 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       await this.rocksDB.clear();
     }
 
+    // Start the ETH registry provider first
+    await this.ethRegistryProvider.start();
+
+    // Start the RPC server
     await this.rpcServer.start(this.options.rpcPort ? this.options.rpcPort : 0);
   }
 

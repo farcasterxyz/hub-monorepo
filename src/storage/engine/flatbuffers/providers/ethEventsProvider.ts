@@ -126,7 +126,10 @@ export class EthEventsProvider {
   private async connectAndSyncHistoricalEvents() {
     const latestBlockResult = await ResultAsync.fromPromise(this._jsonRpcProvider.getBlock('latest'), (err) => err);
     if (latestBlockResult.isErr()) {
-      log.error({ err: latestBlockResult.error }, 'failed to connect to ethereum node');
+      log.error(
+        { err: latestBlockResult.error },
+        'failed to connect to ethereum node. Check your network URL (e.g. --network-url)'
+      );
       return;
     }
 
