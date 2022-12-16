@@ -1,14 +1,15 @@
 import grpc from '@grpc/grpc-js';
 import Engine from '~/storage/engine/flatbuffers';
-import { defaultMethod, toServiceError } from '~/network/rpc/flatbuffers/server';
+import { defaultMethod, RPCHandler, toServiceError } from '~/network/rpc/flatbuffers/server';
 import { toByteBuffer } from '~/storage/flatbuffers/utils';
 import { Message } from '~/utils/generated/message_generated';
-import { HubError } from '~/utils/hubErrors';
+import { HubError, HubResult } from '~/utils/hubErrors';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { NameRegistryEvent } from '~/utils/generated/name_registry_event_generated';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import { IdRegistryEvent } from '~/utils/generated/id_registry_event_generated';
+import { err } from 'neverthrow';
 
 export const submitServiceMethods = () => {
   return {
@@ -47,11 +48,16 @@ export const submitServiceMethods = () => {
   };
 };
 
-export const submitServiceImpls = (engine: Engine) => {
+export const submitServiceImpls = (engine: Engine, rpcHandler?: RPCHandler) => {
   return {
     submitMessage: async (call: grpc.ServerUnaryCall<Message, Message>, callback: grpc.sendUnaryData<Message>) => {
       const model = new MessageModel(call.request);
-      const result = await engine.mergeMessage(model);
+      let result: HubResult<void> = err(new HubError('unavailable', 'service unavailable'));
+      if (rpcHandler) {
+        result = await rpcHandler.submitMessage(model);
+      } else {
+        result = await engine.mergeMessage(model);
+      }
       result.match(
         () => {
           callback(null, model.message);
@@ -67,7 +73,12 @@ export const submitServiceImpls = (engine: Engine) => {
       callback: grpc.sendUnaryData<IdRegistryEvent>
     ) => {
       const model = new IdRegistryEventModel(call.request);
-      const result = await engine.mergeIdRegistryEvent(model);
+      let result: HubResult<void> = err(new HubError('unavailable', 'service unavailable'));
+      if (rpcHandler && rpcHandler.submitIdRegistryEvent !== undefined) {
+        result = await rpcHandler.submitIdRegistryEvent(model);
+      } else {
+        result = await engine.mergeIdRegistryEvent(model);
+      }
       result.match(
         () => {
           callback(null, model.event);
