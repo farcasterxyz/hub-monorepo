@@ -12,7 +12,7 @@ import {
   NameRegistryEventType,
 } from '~/utils/generated/name_registry_event_generated';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
-import { Result, ResultAsync } from 'neverthrow';
+import { ResultAsync } from 'neverthrow';
 import { HubState, HubStateT } from '~/utils/generated/hub_state_generated';
 import HubStateModel from '~/storage/flatbuffers/hubStateModel';
 

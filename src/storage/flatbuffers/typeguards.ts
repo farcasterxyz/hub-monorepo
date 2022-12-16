@@ -11,12 +11,12 @@ export const isCastAdd = (message: MessageModel): message is Types.CastAddModel 
   return message.type() === MessageType.CastAdd && message.data.bodyType() === MessageBody.CastAddBody;
 };
 
-export const isFollowRemove = (message: MessageModel): message is Types.FollowRemoveModel => {
-  return message.type() === MessageType.FollowRemove && message.data.bodyType() === MessageBody.FollowBody;
+export const isAmpRemove = (message: MessageModel): message is Types.AmpRemoveModel => {
+  return message.type() === MessageType.AmpRemove && message.data.bodyType() === MessageBody.AmpBody;
 };
 
-export const isFollowAdd = (message: MessageModel): message is Types.FollowAddModel => {
-  return message.type() === MessageType.FollowAdd && message.data.bodyType() === MessageBody.FollowBody;
+export const isAmpAdd = (message: MessageModel): message is Types.AmpAddModel => {
+  return message.type() === MessageType.AmpAdd && message.data.bodyType() === MessageBody.AmpBody;
 };
 
 export const isReactionAdd = (message: MessageModel): message is Types.ReactionAddModel => {

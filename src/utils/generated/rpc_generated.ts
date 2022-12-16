@@ -638,22 +638,22 @@ pack(builder:flatbuffers.Builder): flatbuffers.Offset {
 }
 }
 
-export class GetFollowRequest implements flatbuffers.IUnpackableObject<GetFollowRequestT> {
+export class GetAmpRequest implements flatbuffers.IUnpackableObject<GetAmpRequestT> {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
-  __init(i:number, bb:flatbuffers.ByteBuffer):GetFollowRequest {
+  __init(i:number, bb:flatbuffers.ByteBuffer):GetAmpRequest {
   this.bb_pos = i;
   this.bb = bb;
   return this;
 }
 
-static getRootAsGetFollowRequest(bb:flatbuffers.ByteBuffer, obj?:GetFollowRequest):GetFollowRequest {
-  return (obj || new GetFollowRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+static getRootAsGetAmpRequest(bb:flatbuffers.ByteBuffer, obj?:GetAmpRequest):GetAmpRequest {
+  return (obj || new GetAmpRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-static getSizePrefixedRootAsGetFollowRequest(bb:flatbuffers.ByteBuffer, obj?:GetFollowRequest):GetFollowRequest {
+static getSizePrefixedRootAsGetAmpRequest(bb:flatbuffers.ByteBuffer, obj?:GetAmpRequest):GetAmpRequest {
   bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
-  return (obj || new GetFollowRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  return (obj || new GetAmpRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
 fid(index: number):number|null {
@@ -676,7 +676,7 @@ user(obj?:UserId):UserId|null {
   return offset ? (obj || new UserId()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
-static startGetFollowRequest(builder:flatbuffers.Builder) {
+static startGetAmpRequest(builder:flatbuffers.Builder) {
   builder.startObject(2);
 }
 
@@ -700,7 +700,7 @@ static addUser(builder:flatbuffers.Builder, userOffset:flatbuffers.Offset) {
   builder.addFieldOffset(1, userOffset, 0);
 }
 
-static endGetFollowRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
+static endGetAmpRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   builder.requiredField(offset, 4) // fid
   builder.requiredField(offset, 6) // user
@@ -708,21 +708,21 @@ static endGetFollowRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
 }
 
 
-unpack(): GetFollowRequestT {
-  return new GetFollowRequestT(
+unpack(): GetAmpRequestT {
+  return new GetAmpRequestT(
     this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength()),
     (this.user() !== null ? this.user()!.unpack() : null)
   );
 }
 
 
-unpackTo(_o: GetFollowRequestT): void {
+unpackTo(_o: GetAmpRequestT): void {
   _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
   _o.user = (this.user() !== null ? this.user()!.unpack() : null);
 }
 }
 
-export class GetFollowRequestT implements flatbuffers.IGeneratedObject {
+export class GetAmpRequestT implements flatbuffers.IGeneratedObject {
 constructor(
   public fid: (number)[] = [],
   public user: UserIdT|null = null
@@ -730,33 +730,33 @@ constructor(
 
 
 pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = GetFollowRequest.createFidVector(builder, this.fid);
+  const fid = GetAmpRequest.createFidVector(builder, this.fid);
   const user = (this.user !== null ? this.user!.pack(builder) : 0);
 
-  GetFollowRequest.startGetFollowRequest(builder);
-  GetFollowRequest.addFid(builder, fid);
-  GetFollowRequest.addUser(builder, user);
+  GetAmpRequest.startGetAmpRequest(builder);
+  GetAmpRequest.addFid(builder, fid);
+  GetAmpRequest.addUser(builder, user);
 
-  return GetFollowRequest.endGetFollowRequest(builder);
+  return GetAmpRequest.endGetAmpRequest(builder);
 }
 }
 
-export class GetFollowsByFidRequest implements flatbuffers.IUnpackableObject<GetFollowsByFidRequestT> {
+export class GetAmpsByFidRequest implements flatbuffers.IUnpackableObject<GetAmpsByFidRequestT> {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
-  __init(i:number, bb:flatbuffers.ByteBuffer):GetFollowsByFidRequest {
+  __init(i:number, bb:flatbuffers.ByteBuffer):GetAmpsByFidRequest {
   this.bb_pos = i;
   this.bb = bb;
   return this;
 }
 
-static getRootAsGetFollowsByFidRequest(bb:flatbuffers.ByteBuffer, obj?:GetFollowsByFidRequest):GetFollowsByFidRequest {
-  return (obj || new GetFollowsByFidRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+static getRootAsGetAmpsByFidRequest(bb:flatbuffers.ByteBuffer, obj?:GetAmpsByFidRequest):GetAmpsByFidRequest {
+  return (obj || new GetAmpsByFidRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-static getSizePrefixedRootAsGetFollowsByFidRequest(bb:flatbuffers.ByteBuffer, obj?:GetFollowsByFidRequest):GetFollowsByFidRequest {
+static getSizePrefixedRootAsGetAmpsByFidRequest(bb:flatbuffers.ByteBuffer, obj?:GetAmpsByFidRequest):GetAmpsByFidRequest {
   bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
-  return (obj || new GetFollowsByFidRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  return (obj || new GetAmpsByFidRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
 fid(index: number):number|null {
@@ -774,7 +774,7 @@ fidArray():Uint8Array|null {
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
-static startGetFollowsByFidRequest(builder:flatbuffers.Builder) {
+static startGetAmpsByFidRequest(builder:flatbuffers.Builder) {
   builder.startObject(1);
 }
 
@@ -794,61 +794,61 @@ static startFidVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(1, numElems, 1);
 }
 
-static endGetFollowsByFidRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
+static endGetAmpsByFidRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   builder.requiredField(offset, 4) // fid
   return offset;
 }
 
-static createGetFollowsByFidRequest(builder:flatbuffers.Builder, fidOffset:flatbuffers.Offset):flatbuffers.Offset {
-  GetFollowsByFidRequest.startGetFollowsByFidRequest(builder);
-  GetFollowsByFidRequest.addFid(builder, fidOffset);
-  return GetFollowsByFidRequest.endGetFollowsByFidRequest(builder);
+static createGetAmpsByFidRequest(builder:flatbuffers.Builder, fidOffset:flatbuffers.Offset):flatbuffers.Offset {
+  GetAmpsByFidRequest.startGetAmpsByFidRequest(builder);
+  GetAmpsByFidRequest.addFid(builder, fidOffset);
+  return GetAmpsByFidRequest.endGetAmpsByFidRequest(builder);
 }
 
-unpack(): GetFollowsByFidRequestT {
-  return new GetFollowsByFidRequestT(
+unpack(): GetAmpsByFidRequestT {
+  return new GetAmpsByFidRequestT(
     this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength())
   );
 }
 
 
-unpackTo(_o: GetFollowsByFidRequestT): void {
+unpackTo(_o: GetAmpsByFidRequestT): void {
   _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
 }
 }
 
-export class GetFollowsByFidRequestT implements flatbuffers.IGeneratedObject {
+export class GetAmpsByFidRequestT implements flatbuffers.IGeneratedObject {
 constructor(
   public fid: (number)[] = []
 ){}
 
 
 pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = GetFollowsByFidRequest.createFidVector(builder, this.fid);
+  const fid = GetAmpsByFidRequest.createFidVector(builder, this.fid);
 
-  return GetFollowsByFidRequest.createGetFollowsByFidRequest(builder,
+  return GetAmpsByFidRequest.createGetAmpsByFidRequest(builder,
     fid
   );
 }
 }
 
-export class GetFollowsByUserRequest implements flatbuffers.IUnpackableObject<GetFollowsByUserRequestT> {
+export class GetAmpsByUserRequest implements flatbuffers.IUnpackableObject<GetAmpsByUserRequestT> {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
-  __init(i:number, bb:flatbuffers.ByteBuffer):GetFollowsByUserRequest {
+  __init(i:number, bb:flatbuffers.ByteBuffer):GetAmpsByUserRequest {
   this.bb_pos = i;
   this.bb = bb;
   return this;
 }
 
-static getRootAsGetFollowsByUserRequest(bb:flatbuffers.ByteBuffer, obj?:GetFollowsByUserRequest):GetFollowsByUserRequest {
-  return (obj || new GetFollowsByUserRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+static getRootAsGetAmpsByUserRequest(bb:flatbuffers.ByteBuffer, obj?:GetAmpsByUserRequest):GetAmpsByUserRequest {
+  return (obj || new GetAmpsByUserRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-static getSizePrefixedRootAsGetFollowsByUserRequest(bb:flatbuffers.ByteBuffer, obj?:GetFollowsByUserRequest):GetFollowsByUserRequest {
+static getSizePrefixedRootAsGetAmpsByUserRequest(bb:flatbuffers.ByteBuffer, obj?:GetAmpsByUserRequest):GetAmpsByUserRequest {
   bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
-  return (obj || new GetFollowsByUserRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  return (obj || new GetAmpsByUserRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
 user(obj?:UserId):UserId|null {
@@ -856,7 +856,7 @@ user(obj?:UserId):UserId|null {
   return offset ? (obj || new UserId()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
-static startGetFollowsByUserRequest(builder:flatbuffers.Builder) {
+static startGetAmpsByUserRequest(builder:flatbuffers.Builder) {
   builder.startObject(1);
 }
 
@@ -864,31 +864,31 @@ static addUser(builder:flatbuffers.Builder, userOffset:flatbuffers.Offset) {
   builder.addFieldOffset(0, userOffset, 0);
 }
 
-static endGetFollowsByUserRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
+static endGetAmpsByUserRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   builder.requiredField(offset, 4) // user
   return offset;
 }
 
-static createGetFollowsByUserRequest(builder:flatbuffers.Builder, userOffset:flatbuffers.Offset):flatbuffers.Offset {
-  GetFollowsByUserRequest.startGetFollowsByUserRequest(builder);
-  GetFollowsByUserRequest.addUser(builder, userOffset);
-  return GetFollowsByUserRequest.endGetFollowsByUserRequest(builder);
+static createGetAmpsByUserRequest(builder:flatbuffers.Builder, userOffset:flatbuffers.Offset):flatbuffers.Offset {
+  GetAmpsByUserRequest.startGetAmpsByUserRequest(builder);
+  GetAmpsByUserRequest.addUser(builder, userOffset);
+  return GetAmpsByUserRequest.endGetAmpsByUserRequest(builder);
 }
 
-unpack(): GetFollowsByUserRequestT {
-  return new GetFollowsByUserRequestT(
+unpack(): GetAmpsByUserRequestT {
+  return new GetAmpsByUserRequestT(
     (this.user() !== null ? this.user()!.unpack() : null)
   );
 }
 
 
-unpackTo(_o: GetFollowsByUserRequestT): void {
+unpackTo(_o: GetAmpsByUserRequestT): void {
   _o.user = (this.user() !== null ? this.user()!.unpack() : null);
 }
 }
 
-export class GetFollowsByUserRequestT implements flatbuffers.IGeneratedObject {
+export class GetAmpsByUserRequestT implements flatbuffers.IGeneratedObject {
 constructor(
   public user: UserIdT|null = null
 ){}
@@ -897,7 +897,7 @@ constructor(
 pack(builder:flatbuffers.Builder): flatbuffers.Offset {
   const user = (this.user !== null ? this.user!.pack(builder) : 0);
 
-  return GetFollowsByUserRequest.createGetFollowsByUserRequest(builder,
+  return GetAmpsByUserRequest.createGetAmpsByUserRequest(builder,
     user
   );
 }

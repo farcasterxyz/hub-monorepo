@@ -1,8 +1,8 @@
 import {
   CastAddModel,
   CastRemoveModel,
-  FollowAddModel,
-  FollowRemoveModel,
+  AmpAddModel,
+  AmpRemoveModel,
   ReactionAddModel,
   ReactionRemoveModel,
   SignerAddModel,
@@ -28,8 +28,8 @@ import MessageModel, { FID_BYTES } from '~/storage/flatbuffers/messageModel';
 import {
   isCastAdd,
   isCastRemove,
-  isFollowAdd,
-  isFollowRemove,
+  isAmpAdd,
+  isAmpRemove,
   isReactionAdd,
   isReactionRemove,
   isSignerAdd,
@@ -96,8 +96,8 @@ export const validateMessage = async (message: MessageModel): HubAsyncResult<Mes
     return validateVerificationRemoveMessage(message);
   } else if (isSignerAdd(message) || isSignerRemove(message)) {
     return validateSignerMessage(message);
-  } else if (isFollowAdd(message) || isFollowRemove(message)) {
-    return validateFollowMessage(message);
+  } else if (isAmpAdd(message) || isAmpRemove(message)) {
+    return validateAmpMessage(message);
   } else if (isUserDataAdd(message)) {
     return validateUserDataAddMessage(message);
   } else {
@@ -289,9 +289,7 @@ export const validateSignerMessage = (
   return validateEd25519PublicKey(message.body().signerArray()).map(() => message);
 };
 
-export const validateFollowMessage = (
-  message: FollowAddModel | FollowRemoveModel
-): HubResult<FollowAddModel | FollowRemoveModel> => {
+export const validateAmpMessage = (message: AmpAddModel | AmpRemoveModel): HubResult<AmpAddModel | AmpRemoveModel> => {
   return validateFid(message.body().user()?.fidArray()).map(() => message);
 };
 

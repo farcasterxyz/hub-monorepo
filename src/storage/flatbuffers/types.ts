@@ -3,7 +3,7 @@ import {
   CastAddBody,
   CastRemoveBody,
   FarcasterNetwork,
-  FollowBody,
+  AmpBody,
   SignerBody,
   VerificationAddEthAddressBody,
   VerificationRemoveBody,
@@ -21,8 +21,8 @@ export enum RootPrefix {
   CastsByParent = 2,
   /* Used to index casts by mention */
   CastsByMention = 3,
-  /* Used to index follows by fid */
-  FollowsByUser = 4,
+  /* Used to index amps by fid */
+  AmpsByUser = 4,
   /* Used to index reactions by target  */
   ReactionsByTarget = 5,
   /* Used to store custody events */
@@ -48,12 +48,12 @@ export enum UserPostfix {
   CastRemoves = 3,
   /* Used to index a message by its signer */
   BySigner = 4,
-  /* Used to store a follow */
-  FollowMessage = 5,
-  /* Used to index a follow in the add set */
-  FollowAdds = 6,
-  /* Used to index a follow in the remove set */
-  FollowRemoves = 7,
+  /* Used to store a amp */
+  AmpMessage = 5,
+  /* Used to index a amp in the add set */
+  AmpAdds = 6,
+  /* Used to index a amp in the remove set */
+  AmpRemoves = 7,
   /* Used to store a reaction */
   ReactionMessage = 8,
   /* Used to index a reaction in the add set */
@@ -81,7 +81,7 @@ export enum UserPostfix {
 /** A union type of UserPostfixes that are used to store messages */
 export type UserMessagePostfix =
   | UserPostfix.CastMessage
-  | UserPostfix.FollowMessage
+  | UserPostfix.AmpMessage
   | UserPostfix.VerificationMessage
   | UserPostfix.SignerMessage
   | UserPostfix.ReactionMessage
@@ -95,12 +95,12 @@ export interface CastAddModel extends MessageModel {
   body(): CastAddBody;
 }
 
-export interface FollowAddModel extends MessageModel {
-  body(): FollowBody;
+export interface AmpAddModel extends MessageModel {
+  body(): AmpBody;
 }
 
-export interface FollowRemoveModel extends MessageModel {
-  body(): FollowBody;
+export interface AmpRemoveModel extends MessageModel {
+  body(): AmpBody;
 }
 
 export interface ReactionAddModel extends MessageModel {

@@ -7,8 +7,8 @@ import Engine from '~/storage/engine/flatbuffers';
 import {
   CastAddModel,
   CastRemoveModel,
-  FollowAddModel,
-  FollowRemoveModel,
+  AmpAddModel,
+  AmpRemoveModel,
   ReactionAddModel,
   ReactionRemoveModel,
   SignerAddModel,
@@ -103,24 +103,21 @@ describe('getAllCastMessagesByFid', () => {
   });
 });
 
-describe('getAllFollowMessagesByFid', () => {
-  let followAdd: FollowAddModel;
-  let followRemove: FollowRemoveModel;
+describe('getAllAmpMessagesByFid', () => {
+  let ampAdd: AmpAddModel;
+  let ampRemove: AmpRemoveModel;
 
   beforeAll(async () => {
-    const followAddData = await Factories.FollowAddData.create({
+    const ampAddData = await Factories.AmpAddData.create({
       fid: Array.from(fid),
     });
-    followAdd = new MessageModel(
-      await Factories.Message.create({ data: Array.from(followAddData.bb?.bytes() ?? []) }, { transient: { signer } })
-    ) as FollowAddModel;
-    const followRemoveData = await Factories.FollowRemoveData.create({ fid: Array.from(fid) });
-    followRemove = new MessageModel(
-      await Factories.Message.create(
-        { data: Array.from(followRemoveData.bb?.bytes() ?? []) },
-        { transient: { signer } }
-      )
-    ) as FollowRemoveModel;
+    ampAdd = new MessageModel(
+      await Factories.Message.create({ data: Array.from(ampAddData.bb?.bytes() ?? []) }, { transient: { signer } })
+    ) as AmpAddModel;
+    const ampRemoveData = await Factories.AmpRemoveData.create({ fid: Array.from(fid) });
+    ampRemove = new MessageModel(
+      await Factories.Message.create({ data: Array.from(ampRemoveData.bb?.bytes() ?? []) }, { transient: { signer } })
+    ) as AmpRemoveModel;
   });
 
   beforeEach(async () => {
@@ -129,14 +126,14 @@ describe('getAllFollowMessagesByFid', () => {
   });
 
   test('succeeds', async () => {
-    await engine.mergeMessage(followAdd);
-    await engine.mergeMessage(followRemove);
-    const result = await client.getAllFollowMessagesByFid(fid);
-    assertMessagesMatchResult(result, [followAdd, followRemove]);
+    await engine.mergeMessage(ampAdd);
+    await engine.mergeMessage(ampRemove);
+    const result = await client.getAllAmpMessagesByFid(fid);
+    assertMessagesMatchResult(result, [ampAdd, ampRemove]);
   });
 
   test('returns empty array without messages', async () => {
-    const result = await client.getAllFollowMessagesByFid(fid);
+    const result = await client.getAllAmpMessagesByFid(fid);
     expect(result._unsafeUnwrap()).toEqual([]);
   });
 });
