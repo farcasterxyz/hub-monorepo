@@ -81,6 +81,7 @@ describe('process events', () => {
   beforeEach(() => {
     ethEventsProvider = new EthEventsProvider(engine, mockRPCProvider, mockIdRegistry, mockNameRegistry);
     mockRPCProvider.polling = true;
+    ethEventsProvider.start();
   });
 
   afterEach(() => {

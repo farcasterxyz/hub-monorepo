@@ -43,6 +43,9 @@ export class EthEventsProvider {
 
   private _lastBlockNumber: number;
 
+  // Whether the historical events have been synced. This is used to avoid syncing the events multiple times.
+  private _isHistoricalSyncDone = false;
+
   constructor(
     engine: Engine,
     jsonRpcProvider: providers.BaseProvider,
@@ -91,9 +94,6 @@ export class EthEventsProvider {
 
     // Set up block listener to confirm blocks
     this._jsonRpcProvider.on('block', (blockNumber: number) => this.handleNewBlock(blockNumber));
-
-    // Call Eth Node to check connection
-    this.connectAndSyncHistoricalEvents();
   }
 
   /**
@@ -117,6 +117,11 @@ export class EthEventsProvider {
     return provider;
   }
 
+  public async start() {
+    // Connect to Ethereum RPC
+    await this.connectAndSyncHistoricalEvents();
+  }
+
   /** Connect to Ethereum RPC */
   private async connectAndSyncHistoricalEvents() {
     const latestBlockResult = await ResultAsync.fromPromise(this._jsonRpcProvider.getBlock('latest'), (err) => err);
@@ -130,32 +135,35 @@ export class EthEventsProvider {
 
     // Find how how much we need to sync
     let lastSyncedBlock = BigInt(GoerliEthConstants.FirstBlock);
-    log.info({ lastSyncedBlock }, 'last synced block');
+
     const hubState = await this._engine.getHubState();
     if (hubState.isOk()) {
       lastSyncedBlock = hubState.value.lastEthBlock();
     }
-    const numBlocksToSync = BigInt(latestBlock.number) - lastSyncedBlock;
-    log.info({ numBlocksToSync }, 'number of blocks to sync');
+
+    log.info({ lastSyncedBlock }, 'last synced block');
+    const toBlock = BigInt(latestBlock.number);
 
     // Sync old Id events
-    await this.syncOldIdEvents(IdRegistryEventType.IdRegistryRegister, numBlocksToSync);
-    await this.syncOldIdEvents(IdRegistryEventType.IdRegistryTransfer, numBlocksToSync);
+    await this.syncHistoricalIdEvents(IdRegistryEventType.IdRegistryRegister, lastSyncedBlock, toBlock);
+    await this.syncHistoricalIdEvents(IdRegistryEventType.IdRegistryTransfer, lastSyncedBlock, toBlock);
 
     // Sync old Name events
-    await this.syncOldNameEvents(NameRegistryEventType.NameRegistryTransfer, numBlocksToSync);
-    await this.syncOldNameEvents(NameRegistryEventType.NameRegistryRenew, numBlocksToSync);
+    await this.syncHistoricalNameEvents(NameRegistryEventType.NameRegistryTransfer, lastSyncedBlock, toBlock);
+    await this.syncHistoricalNameEvents(NameRegistryEventType.NameRegistryRenew, lastSyncedBlock, toBlock);
+
+    this._isHistoricalSyncDone = true;
   }
 
   /**
    * Sync old Id events that may have happened before hub was started. We'll put them all
    * in the sync queue to be processed later, to make sure we don't process any unconfirmed events.
    */
-  private async syncOldIdEvents(type: IdRegistryEventType, numBlocksToSync: bigint) {
+  private async syncHistoricalIdEvents(type: IdRegistryEventType, fromBlock: bigint, toBlock: bigint) {
     const typeString = type === IdRegistryEventType.IdRegistryRegister ? 'Register' : 'Transfer';
 
     const oldIdEvents = await ResultAsync.fromPromise(
-      this._idRegistryContract.queryFilter(typeString, -1 * Number(numBlocksToSync)),
+      this._idRegistryContract.queryFilter(typeString, Number(fromBlock), Number(toBlock)),
       (e) => e
     );
     if (oldIdEvents.isErr()) {
@@ -184,26 +192,41 @@ export class EthEventsProvider {
    * Sync old Name events that may have happened before hub was started. We'll put them all
    * in the sync queue to be processed later, to make sure we don't process any unconfirmed events.
    */
-  private async syncOldNameEvents(type: NameRegistryEventType, numBlocksToSync: bigint) {
+  private async syncHistoricalNameEvents(type: NameRegistryEventType, fromBlock: bigint, toBlock: bigint) {
     const typeString = type === NameRegistryEventType.NameRegistryTransfer ? 'Transfer' : 'Renew';
 
-    const oldNameEvents = await this._nameRegistryContract.queryFilter(typeString, -1 * Number(numBlocksToSync));
-    for (const event of oldNameEvents) {
-      const from: string = type === NameRegistryEventType.NameRegistryTransfer ? event.args?.at(0) : '';
-      const to: string = type === NameRegistryEventType.NameRegistryTransfer ? event.args?.at(1) : '';
-      const tokenId: BigNumber =
-        type === NameRegistryEventType.NameRegistryTransfer
-          ? BigNumber.from(event.args?.at(2))
-          : BigNumber.from(event.args?.at(0));
-      const expiry: BigNumber =
-        type === NameRegistryEventType.NameRegistryTransfer ? BigNumber.from(0) : event.args?.at(1);
+    const oldNameEvents = await ResultAsync.fromPromise(
+      this._nameRegistryContract.queryFilter(typeString, Number(fromBlock), Number(toBlock)),
+      (e) => e
+    );
 
-      await this.cacheNameRegistryEvent(from, to, tokenId, type, expiry, event);
+    if (oldNameEvents.isErr()) {
+      log.error({ err: oldNameEvents.error }, 'failed to get old Name events');
+      return;
+    }
+
+    for (const event of oldNameEvents.value) {
+      try {
+        const from: string = type === NameRegistryEventType.NameRegistryTransfer ? event.args?.at(0) : '';
+        const to: string = type === NameRegistryEventType.NameRegistryTransfer ? event.args?.at(1) : '';
+        const tokenId: BigNumber =
+          type === NameRegistryEventType.NameRegistryTransfer
+            ? BigNumber.from(event.args?.at(2))
+            : BigNumber.from(event.args?.at(0));
+        const expiry: BigNumber =
+          type === NameRegistryEventType.NameRegistryTransfer ? BigNumber.from(0) : event.args?.at(1);
+
+        await this.cacheNameRegistryEvent(from, to, tokenId, type, expiry, event);
+      } catch (e) {
+        log.error({ event }, 'failed to parse event args');
+      }
     }
   }
 
   /** Handle a new block. Processes all events in the cache that have now been confirmed */
   private async handleNewBlock(blockNumber: number) {
+    log.info({ blockNumber }, 'new block');
+
     // Get all blocks that have been confirmed into a single array and sort.
     const cachedBlocksSet = new Set([...this._nameEventsByBlock.keys(), ...this._idEventsByBlock.keys()]);
     const cachedBlocks = Array.from(cachedBlocksSet);
@@ -231,12 +254,14 @@ export class EthEventsProvider {
       }
     }
 
-    // Update the last synced block
-    const builder = new Builder(1);
-    const hubStateT = new HubStateT(BigInt(blockNumber));
-    builder.finish(hubStateT.pack(builder));
-    const hubState = HubState.getRootAsHubState(new ByteBuffer(builder.asUint8Array()));
-    await this._engine.updateHubState(new HubStateModel(hubState));
+    // Update the last synced block if all the historical events have been synced
+    if (this._isHistoricalSyncDone) {
+      const builder = new Builder(1);
+      const hubStateT = new HubStateT(BigInt(blockNumber));
+      builder.finish(hubStateT.pack(builder));
+      const hubState = HubState.getRootAsHubState(new ByteBuffer(builder.asUint8Array()));
+      await this._engine.updateHubState(new HubStateModel(hubState));
+    }
 
     this._lastBlockNumber = blockNumber;
   }
