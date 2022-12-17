@@ -392,7 +392,9 @@ export const Factories = {
     VerificationEthereumAddressFactoryTransientParams,
     VerificationEthereumAddress
   >(({ onCreate, transientParams }) => {
-    const { ethWallet = ethers.Wallet.createRandom() } = transientParams;
+    // Safety: using randomBytes instead of Wallet.createRandom() is 700ms faster on an M1,
+    // but should not be used where safety is important since the entropy is less trustworthy
+    const { ethWallet = new ethers.Wallet(ethers.utils.randomBytes(32)) } = transientParams;
 
     onCreate(async (props) => {
       /** Generate claimHash if missing */
