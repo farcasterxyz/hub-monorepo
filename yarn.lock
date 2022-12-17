@@ -4781,10 +4781,10 @@ netmask@^2.0.2:
   resolved "https://registry.npmjs.org/netmask/-/netmask-2.0.2.tgz#8b01a07644065d536383835823bc52004ebac5e7"
   integrity sha512-dBpDMdxv9Irdq66304OLfEmQ9tbNRFnFTuZiLo+bD+r332bBmMJ8GBLXklIXXgxd3+v9+KUnZaUR5PJMa75Gsg==
 
-neverthrow@^5.0.0:
-  version "5.1.0"
-  resolved "https://registry.npmjs.org/neverthrow/-/neverthrow-5.1.0.tgz#709bcb477fa6bcf0c1f6a3f875d8a1a2eee0e46d"
-  integrity sha512-tgoYQZjAG+30dcUM35FL8FSQA52WQ6QPnk9laHUZBZ7CliB2vdR1aU7Svr10kyHJ3gwTzMTAajKT5xbdi0QS+Q==
+neverthrow@^6.0.0:
+  version "6.0.0"
+  resolved "https://registry.npmjs.org/neverthrow/-/neverthrow-6.0.0.tgz#bacd7661cade296ccc5c35760bb3b679214155b6"
+  integrity sha512-kPZKRs4VkdloCGQXPoP84q4sT/1Z+lYM61AXyV8wWa2hnuo5KpPBF2S3crSFnMrOgUISmEBP8Vo/ngGZX60NhA==
 
 node-forge@^1.1.0, node-forge@^1.3.1:
   version "1.3.1"
