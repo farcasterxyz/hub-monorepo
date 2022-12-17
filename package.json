@@ -81,7 +81,7 @@
     "jayson": "^4.0.0",
     "libp2p": "^0.39.5",
     "log-update": "5.0.1",
-    "neverthrow": "^5.0.0",
+    "neverthrow": "^6.0.0",
     "pino": "^8.6.1",
     "rocksdb": "^5.2.1",
     "tiny-typed-emitter": "^2.1.0",
