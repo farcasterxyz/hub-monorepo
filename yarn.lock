@@ -3381,9 +3381,9 @@ flat-cache@^3.0.4:
     rimraf "^3.0.2"
 
 flatbuffers@^22.11.23:
-  version "22.11.23"
-  resolved "https://registry.npmjs.org/flatbuffers/-/flatbuffers-22.11.23.tgz#f80dc67944c718f6de2da6aad7ba34901fe8614b"
-  integrity sha512-aBOu8GjUWP3FaAC0t17lVFvNWYBEVIF/ia25Mx77BJJtJRbiyYmYQZjZV0bFoBvLBLYQ7ivnFO4ZIvgxhX1VKQ==
+  version "22.12.6"
+  resolved "https://registry.npmjs.org/flatbuffers/-/flatbuffers-22.12.6.tgz#1a462160f325a0575067b364af7c7cab090a85b1"
+  integrity sha512-CEwO0TRo6Z2dQ9iIfVAUC+BipwUnP2g8paCNqnrSsTh/axisRgzOwWyqTiPJMh8Si9QwhROjZ/FsFMfoESP33A==
 
 flatted@^3.1.0:
   version "3.2.7"
@@ -5922,9 +5922,9 @@ uint8arrays@^4.0.2:
     multiformats "^10.0.0"
 
 undici@^5.10.0:
-  version "5.12.0"
-  resolved "https://registry.npmjs.org/undici/-/undici-5.12.0.tgz#c758ffa704fbcd40d506e4948860ccaf4099f531"
-  integrity sha512-zMLamCG62PGjd9HHMpo05bSLvvwWOZgGeiWlN/vlqu3+lRo3elxktVGEyLMX+IO7c2eflLjcW74AlkhEZm15mg==
+  version "5.14.0"
+  resolved "https://registry.npmjs.org/undici/-/undici-5.14.0.tgz#1169d0cdee06a4ffdd30810f6228d57998884d00"
+  integrity sha512-yJlHYw6yXPPsuOH0x2Ib1Km61vu4hLiRRQoafs+WUgX1vO64vgnxiCEN9dpIrhZyHFsai3F0AEj4P9zy19enEQ==
   dependencies:
     busboy "^1.6.0"
 
