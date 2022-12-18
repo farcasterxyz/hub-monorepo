@@ -392,7 +392,7 @@ export const Factories = {
     VerificationEthereumAddressFactoryTransientParams,
     VerificationEthereumAddress
   >(({ onCreate, transientParams }) => {
-    const { ethWallet = ethers.Wallet.createRandom() } = transientParams;
+    const { ethWallet = new ethers.Wallet(ethers.utils.randomBytes(32)) } = transientParams;
 
     onCreate(async (props) => {
       /** Generate claimHash if missing */
