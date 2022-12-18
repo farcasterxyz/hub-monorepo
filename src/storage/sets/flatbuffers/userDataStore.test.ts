@@ -14,12 +14,12 @@ import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel
 import SignerStore from './signerStore';
 import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
 import Engine from '~/storage/engine/flatbuffers';
-import { Wallet } from 'ethers';
+import { utils, Wallet } from 'ethers';
 import { NameRegistryEventType } from '~/utils/generated/name_registry_event_generated';
 
 const db = jestBinaryRocksDB('flatbuffers.userDataSet.test');
 
-const wallet = Wallet.createRandom();
+const wallet = new Wallet(utils.randomBytes(32));
 
 const eventHandler = new StoreEventHandler();
 const signerSet = new SignerStore(db, eventHandler);

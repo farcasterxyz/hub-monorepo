@@ -39,7 +39,7 @@ import { blake3 } from '@noble/hashes/blake3';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import * as ed from '@noble/ed25519';
 import { arrayify } from 'ethers/lib/utils';
-import { ethers, Wallet } from 'ethers';
+import { ethers, utils, Wallet } from 'ethers';
 import { signMessageHash, signVerificationEthAddressClaim } from '~/utils/eip712';
 import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
 import { IdRegistryEvent, IdRegistryEventT, IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
@@ -256,7 +256,7 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
 >(({ onCreate, transientParams }) => {
   onCreate(async (params) => {
     // Generate address and signature
-    const wallet = transientParams.wallet ?? Wallet.createRandom();
+    const wallet = transientParams.wallet ?? new Wallet(utils.randomBytes(32));
     params.address = Array.from(arrayify(wallet.address));
 
     const fid = transientParams.fid ?? FIDFactory.build();
