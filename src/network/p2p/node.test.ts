@@ -5,6 +5,7 @@ import { GossipMessage, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { sleep } from '~/utils/crypto';
 
 const NUM_NODES = 10;
+const PROPAGATION_DELAY = 2 * 1000; // between 1 and 2 full heartbeat ticks
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
 const TEST_TIMEOUT_SHORT = 10 * 1000;
@@ -27,8 +28,7 @@ const connectAll = async (nodes: Node[]) => {
 
   // subscribes every node to the test topic
   nodes.forEach((n) => n.gossip?.subscribe(NETWORK_TOPIC_PRIMARY));
-  // sleeps 1 heartbeat to let the network form
-  await sleep(1_000);
+  await sleep(PROPAGATION_DELAY);
 };
 
 const trackMessages = () => {
@@ -166,7 +166,7 @@ describe('gossip network', () => {
 
       const randomNode = nodes[Math.floor(Math.random() * nodes.length)] as Node;
       expect(randomNode.publish(message)).resolves.toBeUndefined();
-      await sleep(1_000); // sleep for at least one heartbeat tick
+      await sleep(PROPAGATION_DELAY);
 
       // check that every node has the message
       nodes.map((n) => {
