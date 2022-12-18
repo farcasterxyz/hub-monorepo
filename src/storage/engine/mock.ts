@@ -1,4 +1,4 @@
-import { Ed25519Signer, EthereumSigner } from '~/types';
+import { Ed25519Signer, EthereumSigner, IdRegistryEvent, SignerAdd } from '~/types';
 import { Factories } from '~/test/factories';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 import Engine from '~/storage/engine';
@@ -24,6 +24,10 @@ export type EventConfig = {
   Reactions: number;
 };
 
+const cacheUserInfos = new Array<UserInfo>();
+const cacheUserRegistryEvents = new Map<number, IdRegistryEvent>();
+const cacheSignerAddEvents = new Map<number, SignerAdd>();
+
 export const populateEngine = async (
   engine: Engine,
   users: number,
@@ -34,24 +38,74 @@ export const populateEngine = async (
     Reactions: 100,
   }
 ): Promise<UserInfo[]> => {
-  // create a list of users' credentials
-  const startFid = faker.datatype.number();
+  let startTime = Date.now();
+
+  // Generates new UserInfos if there aren't enough in the cache
+  const newUsersCount = users - cacheUserInfos.length;
+  const startingFid = cacheUserInfos.slice(-1)[0]?.fid ?? faker.datatype.number();
+
   const userInfos: UserInfo[] = await Promise.all(
-    [...Array(users)].map(async (_value, index) => {
-      return mockFid(engine, startFid + index);
+    [...Array(newUsersCount)].map(async (_value, index) => {
+      return generateUserInfo(startingFid + index + 1);
     })
   );
 
-  // create verifications
-  await mockEvents(engine, userInfos, config.Verifications, MockFCEvent.Verification);
-  // create casts and removes
-  await mockEvents(engine, userInfos, config.Casts, MockFCEvent.Cast);
-  // create follows
-  await mockEvents(engine, userInfos, config.Follows, MockFCEvent.Follow);
-  // create reactions
-  await mockEvents(engine, userInfos, config.Reactions, MockFCEvent.Reaction);
+  cacheUserInfos.push(...userInfos);
 
-  return userInfos;
+  const actualUserInfos = cacheUserInfos.slice(0, users);
+
+  await Promise.all(
+    actualUserInfos.map(async (userInfo) => {
+      const registryEvent = await fetchOrCreateRegistrationEvent(userInfo);
+      const delegateSignerMessage = await fetchOrCreateSignerAdd(userInfo);
+      // TODO: Takes about 500ms each, slowest part of user generation
+      await mergeFidSigners(engine, registryEvent, delegateSignerMessage);
+    })
+  );
+
+  // create users 964ms (180ms per user)
+  console.log(`Populated engine with ${users} users in ${Date.now() - startTime}ms`);
+  startTime = Date.now();
+
+  // create verifications: 912 ms (912ms per verification)
+  await mockEvents(engine, actualUserInfos, config.Verifications, MockFCEvent.Verification);
+  // console.log(`Populated engine with events in ${Date.now() - startTime}ms`);
+  // startTime = Date.now();
+
+  // create casts and removes - 196 ms (19.6 per cast)
+  await mockEvents(engine, actualUserInfos, config.Casts, MockFCEvent.Cast);
+  // console.log(`Populated engine with casts in ${Date.now() - startTime}ms`);
+  // startTime = Date.now();
+
+  // create follows - 946 ms (20ms per follow)
+  await mockEvents(engine, actualUserInfos, config.Follows, MockFCEvent.Follow);
+  // console.log(`Populated engine with follows in ${Date.now() - startTime}ms`);
+  // startTime = Date.now();
+
+  // create reactions
+  await mockEvents(engine, actualUserInfos, config.Reactions, MockFCEvent.Reaction);
+  // console.log(`Populated engine with reactions in ${Date.now() - startTime}ms`);
+  // startTime = Date.now();
+
+  return actualUserInfos;
+};
+
+const fetchOrCreateRegistrationEvent = async (userInfo: UserInfo): Promise<IdRegistryEvent> => {
+  let registryEvent = cacheUserRegistryEvents.get(userInfo.fid);
+  if (!registryEvent) {
+    registryEvent = await getIdRegistryEvent(userInfo);
+    cacheUserRegistryEvents.set(userInfo.fid, registryEvent);
+  }
+  return registryEvent;
+};
+
+const fetchOrCreateSignerAdd = async (userInfo: UserInfo): Promise<SignerAdd> => {
+  let signerAddEvent = cacheSignerAddEvents.get(userInfo.fid);
+  if (!signerAddEvent) {
+    signerAddEvent = await getSignerAdd(userInfo);
+    cacheSignerAddEvents.set(userInfo.fid, signerAddEvent);
+  }
+  return signerAddEvent;
 };
 
 /**
@@ -59,16 +113,17 @@ export const populateEngine = async (
  * and off-chain delegate message and merging both with the engine
  */
 export const mockFid = async (engine: Engine, fid: number) => {
+  // TODO: if the fid is known, we should be able to look it up in the cache and retrieve it from there
   const userInfo = await generateUserInfo(fid);
-  const custodyRegister = await getIdRegistryEvent(userInfo);
-  const addDelegateSigner = await getSignerAdd(userInfo);
-  // register the user
+  await mergeFidSigners(engine, await getIdRegistryEvent(userInfo), await getSignerAdd(userInfo));
+  return userInfo;
+};
+
+const mergeFidSigners = async (engine: Engine, custodyRegister: IdRegistryEvent, signerAdd: SignerAdd) => {
   let result = await engine.mergeIdRegistryEvent(custodyRegister);
   expect(result.isOk()).toBeTruthy();
-  result = await engine.mergeMessage(addDelegateSigner);
+  result = await engine.mergeMessage(signerAdd);
   expect(result.isOk()).toBeTruthy();
-
-  return userInfo;
 };
 
 export const generateUserInfo = async (fid: number): Promise<UserInfo> => {
@@ -126,9 +181,12 @@ export const mockEvents = async (
     if (event === MockFCEvent.Verification) {
       await Promise.all(
         [...Array(count)].map(async () => {
+          // Each Verification takes 180ms, times 5 per user leads to 1s time
+          // const startTime = Date.now();
           result = await engine.mergeMessage(
             await Factories.VerificationEthereumAddress.create(createParams, createOptions)
           );
+          // console.log('creating verification', Date.now() - startTime);
           expect(result.isOk()).toBeTruthy();
           result = await engine.mergeMessage(await Factories.VerificationRemove.create(createParams, createOptions));
           expect(result.isOk()).toBeTruthy();
