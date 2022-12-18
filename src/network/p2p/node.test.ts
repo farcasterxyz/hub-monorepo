@@ -15,21 +15,20 @@ let messages: Map<string, Map<string, GossipMessage[] | undefined>>;
 
 /** Create a sequence of connections between all the nodes */
 const connectAll = async (nodes: Node[]) => {
+  // TODO: isn't this always guaranteed to be a single promise?
   const connectionResults = await Promise.all(
     nodes.slice(1).map((n) => {
       return n.connect(nodes[0] as Node);
     })
   );
   connectionResults.forEach((r) => {
-    if (r) {
-      expect(r.isOk()).toBeTruthy();
-    }
+    expect(r?.isOk()).toBeTruthy();
   });
 
-  // subscribe every node to the test topic
+  // subscribes every node to the test topic
   nodes.forEach((n) => n.gossip?.subscribe(NETWORK_TOPIC_PRIMARY));
-  // sleep 5 heartbeats to let the gossipsub network form
-  await sleep(5_000);
+  // sleeps 1 heartbeat to let the network form
+  await sleep(1_000);
 };
 
 const trackMessages = () => {
@@ -152,34 +151,25 @@ describe('gossip network', () => {
   }, TEST_TIMEOUT_SHORT);
 
   test(
-    'constructs a Gossip network and ensures all nodes are connected',
+    'message should propagate through the network',
     async () => {
       await connectAll(nodes);
-      nodes.forEach((n) => expect(n.gossip?.getPeers().length).toBeGreaterThanOrEqual(1));
-    },
-    TEST_TIMEOUT_SHORT
-  );
+      nodes.map((n) => expect(n.gossip?.getPeers().length).toBeGreaterThanOrEqual(1));
 
-  test(
-    'sends a message to a gossip network',
-    async () => {
-      await connectAll(nodes);
       trackMessages();
 
-      // create a message and send it to a random node.
+      // creates a message and publishes it to a random node
       const message = {
         content: { message: await Factories.CastShort.create(), root: '', count: 0 },
         topics: [NETWORK_TOPIC_PRIMARY],
       };
 
-      // publish via some random node
       const randomNode = nodes[Math.floor(Math.random() * nodes.length)] as Node;
       expect(randomNode.publish(message)).resolves.toBeUndefined();
-      // sleep 5 heartbeat ticks
-      await sleep(5_000);
+      await sleep(1_000); // sleep for at least one heartbeat tick
 
       // check that every node has the message
-      nodes.forEach((n) => {
+      nodes.map((n) => {
         // the sender won't have this message
         if (n.peerId?.toString() === randomNode.peerId?.toString()) return;
 
