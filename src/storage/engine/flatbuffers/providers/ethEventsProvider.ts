@@ -117,10 +117,24 @@ export class EthEventsProvider {
     return provider;
   }
 
+  public getLatestBlockNumber(): number {
+    return this._lastBlockNumber;
+  }
+
   public async start() {
     // Connect to Ethereum RPC
     await this.connectAndSyncHistoricalEvents();
   }
+
+  public async stop() {
+    this._idRegistryContract.removeAllListeners();
+    this._nameRegistryContract.removeAllListeners();
+    this._jsonRpcProvider.removeAllListeners();
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                               Private Methods                              */
+  /* -------------------------------------------------------------------------- */
 
   /** Connect to Ethereum RPC */
   private async connectAndSyncHistoricalEvents() {
@@ -365,9 +379,5 @@ export class EthEventsProvider {
     if (r.isErr()) {
       log.error({ err: r._unsafeUnwrap() }, 'NameRegistryEvent failed to merge');
     }
-  }
-
-  public getLatestBlockNumber(): number {
-    return this._lastBlockNumber;
   }
 }
