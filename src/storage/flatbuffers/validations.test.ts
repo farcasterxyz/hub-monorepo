@@ -60,7 +60,7 @@ let wallet: Wallet;
 let signer: KeyPair;
 
 beforeAll(async () => {
-  wallet = Wallet.createRandom();
+  wallet = new Wallet(utils.randomBytes(32));
   signer = await generateEd25519KeyPair();
 });
 
@@ -238,7 +238,7 @@ describe('validateEthAddress', () => {
   let address: Uint8Array;
 
   beforeAll(async () => {
-    const wallet = Wallet.createRandom();
+    const wallet = new Wallet(utils.randomBytes(32));
     address = utils.arrayify(wallet.address);
   });
 

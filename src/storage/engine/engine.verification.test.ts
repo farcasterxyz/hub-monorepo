@@ -14,7 +14,7 @@ import {
   CastRecast,
 } from '~/types';
 import { faker } from '@faker-js/faker';
-import { Wallet } from 'ethers';
+import { utils, Wallet } from 'ethers';
 import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import CastDB from '~/storage/db/cast';
@@ -66,7 +66,7 @@ describe('mergeVerification', () => {
       { data: { fid: aliceFid, body: { delegate: aliceSigner.signerKey } } },
       { transient: { signer: aliceCustody } }
     );
-    aliceEthWallet = Wallet.createRandom();
+    aliceEthWallet = new Wallet(utils.randomBytes(32));
     transientParams = { transient: { signer: aliceSigner, ethWallet: aliceEthWallet } };
     aliceBlockHash = faker.datatype.hexadecimal({ length: 64 }).toLowerCase();
 
@@ -238,7 +238,7 @@ describe('mergeVerification', () => {
   });
 
   test('fails with externalSignature from unknown address', async () => {
-    const randomEthWallet = Wallet.createRandom();
+    const randomEthWallet = new Wallet(utils.randomBytes(32));
     const verificationAddMessage = await Factories.VerificationEthereumAddress.create(
       {
         data: {
