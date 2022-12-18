@@ -16,7 +16,6 @@ let messages: Map<string, Map<string, GossipMessage[] | undefined>>;
 
 /** Create a sequence of connections between all the nodes */
 const connectAll = async (nodes: Node[]) => {
-  // TODO: isn't this always guaranteed to be a single promise?
   const connectionResults = await Promise.all(
     nodes.slice(1).map((n) => {
       return n.connect(nodes[0] as Node);
