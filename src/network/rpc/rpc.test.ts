@@ -20,7 +20,7 @@ import {
   VerificationRemove,
 } from '~/types';
 import { Factories } from '~/test/factories';
-import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
+import { generateEd25519Signer, generateEthereumSignerUnsafe } from '~/utils/crypto';
 import { RPCServer, RPCClient, RPCHandler } from '~/network/rpc';
 import Engine from '~/storage/engine';
 import { faker } from '@faker-js/faker';
@@ -128,7 +128,7 @@ describe('rpc', () => {
     client = new RPCClient(server.address as AddressInfo);
 
     // setup alices prereqs
-    aliceCustodySigner = await generateEthereumSigner();
+    aliceCustodySigner = await generateEthereumSignerUnsafe();
     aliceCustodyRegister = await Factories.IdRegistryEvent.create({
       args: { to: aliceCustodySigner.signerKey, id: aliceFid },
       name: 'Register',
@@ -274,7 +274,7 @@ describe('rpc', () => {
         const events = [];
 
         for (let i = 0; i < 5; i++) {
-          const signer = await generateEthereumSigner();
+          const signer = await generateEthereumSignerUnsafe();
           events.push(
             await Factories.IdRegistryEvent.create({
               args: { to: signer.signerKey, id: faker.datatype.number() },

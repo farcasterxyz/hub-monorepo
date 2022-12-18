@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import { EthereumSigner } from '~/types';
-import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
+import { generateEd25519KeyPair, generateEthereumSignerUnsafe } from '~/utils/crypto';
 import { arrayify } from 'ethers/lib/utils';
 import SignerStore from '~/storage/sets/flatbuffers/signerStore';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
@@ -32,7 +32,7 @@ let signerAdd: SignerAddModel;
 let signerRemove: SignerRemoveModel;
 
 beforeAll(async () => {
-  custody1 = await generateEthereumSigner();
+  custody1 = await generateEthereumSignerUnsafe();
   custody1Address = arrayify(custody1.signerKey);
   const idRegistryEvent = await Factories.IdRegistryEvent.create({
     fid: Array.from(fid),
@@ -40,7 +40,7 @@ beforeAll(async () => {
   });
   custody1Event = new IdRegistryEventModel(idRegistryEvent);
 
-  custody2 = await generateEthereumSigner();
+  custody2 = await generateEthereumSignerUnsafe();
   custody2Address = arrayify(custody2.signerKey);
 
   signer = (await generateEd25519KeyPair()).publicKey;

@@ -1,7 +1,13 @@
 import { ethers } from 'ethers';
 import { faker } from '@faker-js/faker';
 import * as ed from '@noble/ed25519';
-import { hashFCObject, hashCompare, generateEthereumSigner, generateEd25519Signer, convertToHex } from '~/utils/crypto';
+import {
+  hashFCObject,
+  hashCompare,
+  generateEthereumSignerUnsafe,
+  generateEd25519Signer,
+  convertToHex,
+} from '~/utils/crypto';
 import { Ed25519Signer, EthereumSigner } from '~/types';
 import { hexToBytes, utf8ToBytes } from 'ethereum-cryptography/utils';
 
@@ -117,11 +123,11 @@ describe('hashCompare', () => {
   });
 });
 
-describe('generateEthereumSigner', () => {
+describe('generateEthereumSignerUnsafe', () => {
   let signer: EthereumSigner;
 
   beforeAll(async () => {
-    signer = await generateEthereumSigner();
+    signer = await generateEthereumSignerUnsafe();
   });
 
   test('signerKey is lowercased address', async () => {

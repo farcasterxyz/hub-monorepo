@@ -28,7 +28,13 @@ import {
   Cast,
   CastShortBody,
 } from '~/types';
-import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
+import {
+  hashMessage,
+  signEd25519,
+  hashFCObject,
+  generateEd25519Signer,
+  generateEthereumSignerUnsafe,
+} from '~/utils/crypto';
 import { CastURL, CastId, ChainAccountURL, UserId, UserURL } from '~/urls';
 import { AccountId } from 'caip';
 import { HASH_LENGTH, SyncId } from '~/network/sync/syncId';
@@ -53,7 +59,7 @@ const getMessageSigner = async (
   if (transientParams.signer) return transientParams.signer;
 
   /** Check if message has signatureType set  */
-  if (message.signatureType === SignatureAlgorithm.EthereumPersonalSign) return await generateEthereumSigner();
+  if (message.signatureType === SignatureAlgorithm.EthereumPersonalSign) return await generateEthereumSignerUnsafe();
 
   /** Otherwise generate default signer */
   return await generateEd25519Signer();

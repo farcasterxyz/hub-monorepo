@@ -16,7 +16,7 @@ import {
   CastRecast,
   Message,
 } from '~/types';
-import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
+import { generateEd25519Signer, generateEthereumSignerUnsafe } from '~/utils/crypto';
 
 const testDb = jestRocksDB(`engine.revoke.test`);
 const engine = new Engine(testDb);
@@ -54,7 +54,7 @@ let aliceVerification: VerificationEthereumAddress;
 let aliceFollow: FollowAdd;
 
 beforeAll(async () => {
-  aliceCustody = await generateEthereumSigner();
+  aliceCustody = await generateEthereumSignerUnsafe();
   aliceCustodyRegister = await Factories.IdRegistryEvent.create({
     args: { to: aliceCustody.signerKey, id: aliceFid },
     name: 'Register',

@@ -4,7 +4,7 @@ import MessageModel from '~/storage/flatbuffers/messageModel';
 import { UserPostfix, VerificationAddEthAddressModel, VerificationRemoveModel } from '~/storage/flatbuffers/types';
 import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
 import { EthereumSigner } from '~/types';
-import { generateEthereumSigner } from '~/utils/crypto';
+import { generateEthereumSignerUnsafe } from '~/utils/crypto';
 import { FarcasterNetwork } from '~/utils/generated/message_generated';
 import { arrayify } from 'ethers/lib/utils';
 import { bytesDecrement, bytesIncrement, getFarcasterTime } from '~/storage/flatbuffers/utils';
@@ -22,7 +22,7 @@ let verificationAdd: VerificationAddEthAddressModel;
 let verificationRemove: VerificationRemoveModel;
 
 beforeAll(async () => {
-  ethSigner = await generateEthereumSigner();
+  ethSigner = await generateEthereumSignerUnsafe();
   address = arrayify(ethSigner.signerKey);
 
   const addBody = await Factories.VerificationAddEthAddressBody.create(
