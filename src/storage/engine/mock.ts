@@ -1,6 +1,8 @@
 import {
   Ed25519Signer,
   EthereumSigner,
+  FollowAdd,
+  FollowRemove,
   IdRegistryEvent,
   SignerAdd,
   VerificationEthereumAddress,
@@ -51,13 +53,15 @@ export const populateEngine = async (
   const newUsersCount = users - cacheUserInfos.length;
   const startingFid = cacheUserInfos.slice(-1)[0]?.fid ?? faker.datatype.number();
 
-  const userInfos: UserInfo[] = await Promise.all(
-    [...Array(newUsersCount)].map(async (_value, index) => {
-      return generateUserInfo(startingFid + index + 1);
-    })
-  );
+  if (newUsersCount > 0) {
+    const userInfos: UserInfo[] = await Promise.all(
+      [...Array(newUsersCount)].map(async (_value, index) => {
+        return generateUserInfo(startingFid + index + 1);
+      })
+    );
 
-  cacheUserInfos.push(...userInfos);
+    cacheUserInfos.push(...userInfos);
+  }
 
   const actualUserInfos = cacheUserInfos.slice(0, users);
 
@@ -71,23 +75,23 @@ export const populateEngine = async (
   );
 
   // create users 964ms (192ms per user, down to 112 when cached)
-  console.log(`Populated engine with ${users} users in ${Date.now() - startTime}ms`);
+  // console.log(`Populated engine with ${users} users in ${Date.now() - startTime}ms`);
   startTime = Date.now();
 
   // create verifications: 912 ms (912ms per verification)
   await mockEvents(engine, actualUserInfos, config.Verifications, MockFCEvent.Verification);
-  console.log(`Populated engine with verifications in ${Date.now() - startTime}ms`);
+  // console.log(`Populated engine with verifications in ${Date.now() - startTime}ms`);
   startTime = Date.now();
 
   // create casts and removes - 196 ms (19.6 per cast pair)
   await mockEvents(engine, actualUserInfos, config.Casts, MockFCEvent.Cast);
   // console.log(`Populated engine with casts in ${Date.now() - startTime}ms`);
-  // startTime = Date.now();
+  startTime = Date.now();
 
   // create follows - 946 ms (20ms per follow pair)
   await mockEvents(engine, actualUserInfos, config.Follows, MockFCEvent.Follow);
   // console.log(`Populated engine with follows in ${Date.now() - startTime}ms`);
-  // startTime = Date.now();
+  startTime = Date.now();
 
   // create reactions
   await mockEvents(engine, actualUserInfos, config.Reactions, MockFCEvent.Reaction);
@@ -167,6 +171,44 @@ export const getSignerAdd = async (userInfo: UserInfo) => {
 
 const cacheUserVerifications = new Map<number, [VerificationEthereumAddress, VerificationRemove][]>();
 
+const getVerificationPairs = async (userInfo: UserInfo, count: number, createParams: any, createOptions: any) => {
+  const cachedMessages = cacheUserVerifications.get(userInfo.fid) || [];
+  const newMessages = count - cachedMessages.length;
+
+  if (newMessages > 0) {
+    await Promise.all(
+      [...Array(newMessages)].map(async () => {
+        const addMsg = await Factories.VerificationEthereumAddress.create(createParams, createOptions);
+        const removeMsg = await Factories.VerificationRemove.create(createParams, createOptions);
+        cachedMessages.push([addMsg, removeMsg]);
+      })
+    );
+    cacheUserVerifications.set(userInfo.fid, cachedMessages);
+  }
+
+  return cachedMessages.slice(0, count);
+};
+
+const cacheUserFollows = new Map<number, [FollowAdd, FollowRemove][]>();
+
+const getFollowPairs = async (userInfo: UserInfo, count: number, createParams: any, createOptions: any) => {
+  const cachedMessages = cacheUserFollows.get(userInfo.fid) || [];
+  const newMessages = count - cachedMessages.length;
+
+  if (newMessages > 0) {
+    await Promise.all(
+      [...Array(newMessages)].map(async () => {
+        const addMsg = await Factories.FollowAdd.create(createParams, createOptions);
+        const removeMsg = await Factories.FollowRemove.create(createParams, createOptions);
+        cachedMessages.push([addMsg, removeMsg]);
+      })
+    );
+    cacheUserFollows.set(userInfo.fid, cachedMessages);
+  }
+
+  return cachedMessages.slice(0, count);
+};
+
 /**
  * Creates and merges a number of add/remove pair Events for the given event type
  * Each Remove message is intentionally not tied to the Add message so that each set has values in both
@@ -188,33 +230,10 @@ export const mockEvents = async (
     let result;
 
     if (event === MockFCEvent.Verification) {
-      const cachedVerifications = cacheUserVerifications.get(userInfo.fid) || [];
-      const requiredVerifications = count - cachedVerifications.length;
-
-      if (requiredVerifications > 0) {
-        console.log('cache miss');
-        const newEntries = new Array<[VerificationEthereumAddress, VerificationRemove]>();
-
-        await Promise.all(
-          [...Array(requiredVerifications)].map(async () => {
-            const verificationAdd = await Factories.VerificationEthereumAddress.create(createParams, createOptions);
-            const verificationRemove = await Factories.VerificationRemove.create(createParams, createOptions);
-            newEntries.push([verificationAdd, verificationRemove]);
-          })
-        );
-        cachedVerifications.push(...newEntries);
-        cacheUserVerifications.set(userInfo.fid, cachedVerifications);
-      }
-
-      const actualVerifications = cachedVerifications.slice(0, count);
-
-      // determine the number of verifications relative to the number we have
-      // if greater than zero, generate, add and store, then return the stored verifications
-
+      const messagePairs = await getVerificationPairs(userInfo, count, createParams, createOptions);
       await Promise.all(
-        actualVerifications.flat().map(async (verification) => {
-          result = await engine.mergeMessage(verification);
-          expect(result.isOk()).toBeTruthy();
+        messagePairs.flat().map(async (verification) => {
+          expect((await engine.mergeMessage(verification)).isOk()).toBeTruthy();
         })
       );
     } else if (event === MockFCEvent.Cast) {
@@ -227,12 +246,10 @@ export const mockEvents = async (
         })
       );
     } else if (event === MockFCEvent.Follow) {
+      const messagePairs = await getFollowPairs(userInfo, count, createParams, createOptions);
       await Promise.all(
-        [...Array(count)].map(async () => {
-          result = await engine.mergeMessage(await Factories.FollowAdd.create(createParams, createOptions));
-          expect(result.isOk()).toBeTruthy();
-          result = await engine.mergeMessage(await Factories.FollowRemove.create(createParams, createOptions));
-          expect(result.isOk()).toBeTruthy();
+        messagePairs.flat().map(async (verification) => {
+          expect((await engine.mergeMessage(verification)).isOk()).toBeTruthy();
         })
       );
     } else if (event === MockFCEvent.Reaction) {
