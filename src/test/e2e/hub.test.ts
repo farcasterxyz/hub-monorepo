@@ -236,8 +236,7 @@ describe('Hub negative tests', () => {
 
     expect(syncHandler).toBeCalledTimes(2);
 
-    await hub.stop();
-    await hub.destroyDB();
+    tearDownHub(hub);
   });
 
   test(
