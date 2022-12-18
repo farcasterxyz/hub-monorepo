@@ -1,4 +1,11 @@
-import { Ed25519Signer, EthereumSigner, IdRegistryEvent, SignerAdd } from '~/types';
+import {
+  Ed25519Signer,
+  EthereumSigner,
+  IdRegistryEvent,
+  SignerAdd,
+  VerificationEthereumAddress,
+  VerificationRemove,
+} from '~/types';
 import { Factories } from '~/test/factories';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 import Engine from '~/storage/engine';
@@ -63,21 +70,21 @@ export const populateEngine = async (
     })
   );
 
-  // create users 964ms (180ms per user)
+  // create users 964ms (192ms per user, down to 112 when cached)
   console.log(`Populated engine with ${users} users in ${Date.now() - startTime}ms`);
   startTime = Date.now();
 
   // create verifications: 912 ms (912ms per verification)
   await mockEvents(engine, actualUserInfos, config.Verifications, MockFCEvent.Verification);
-  // console.log(`Populated engine with events in ${Date.now() - startTime}ms`);
-  // startTime = Date.now();
+  console.log(`Populated engine with verifications in ${Date.now() - startTime}ms`);
+  startTime = Date.now();
 
-  // create casts and removes - 196 ms (19.6 per cast)
+  // create casts and removes - 196 ms (19.6 per cast pair)
   await mockEvents(engine, actualUserInfos, config.Casts, MockFCEvent.Cast);
   // console.log(`Populated engine with casts in ${Date.now() - startTime}ms`);
   // startTime = Date.now();
 
-  // create follows - 946 ms (20ms per follow)
+  // create follows - 946 ms (20ms per follow pair)
   await mockEvents(engine, actualUserInfos, config.Follows, MockFCEvent.Follow);
   // console.log(`Populated engine with follows in ${Date.now() - startTime}ms`);
   // startTime = Date.now();
@@ -158,6 +165,8 @@ export const getSignerAdd = async (userInfo: UserInfo) => {
   return addDelegateSigner;
 };
 
+const cacheUserVerifications = new Map<number, [VerificationEthereumAddress, VerificationRemove][]>();
+
 /**
  * Creates and merges a number of add/remove pair Events for the given event type
  * Each Remove message is intentionally not tied to the Add message so that each set has values in both
@@ -179,16 +188,32 @@ export const mockEvents = async (
     let result;
 
     if (event === MockFCEvent.Verification) {
+      const cachedVerifications = cacheUserVerifications.get(userInfo.fid) || [];
+      const requiredVerifications = count - cachedVerifications.length;
+
+      if (requiredVerifications > 0) {
+        console.log('cache miss');
+        const newEntries = new Array<[VerificationEthereumAddress, VerificationRemove]>();
+
+        await Promise.all(
+          [...Array(requiredVerifications)].map(async () => {
+            const verificationAdd = await Factories.VerificationEthereumAddress.create(createParams, createOptions);
+            const verificationRemove = await Factories.VerificationRemove.create(createParams, createOptions);
+            newEntries.push([verificationAdd, verificationRemove]);
+          })
+        );
+        cachedVerifications.push(...newEntries);
+        cacheUserVerifications.set(userInfo.fid, cachedVerifications);
+      }
+
+      const actualVerifications = cachedVerifications.slice(0, count);
+
+      // determine the number of verifications relative to the number we have
+      // if greater than zero, generate, add and store, then return the stored verifications
+
       await Promise.all(
-        [...Array(count)].map(async () => {
-          // Each Verification takes 180ms, times 5 per user leads to 1s time
-          // const startTime = Date.now();
-          result = await engine.mergeMessage(
-            await Factories.VerificationEthereumAddress.create(createParams, createOptions)
-          );
-          // console.log('creating verification', Date.now() - startTime);
-          expect(result.isOk()).toBeTruthy();
-          result = await engine.mergeMessage(await Factories.VerificationRemove.create(createParams, createOptions));
+        actualVerifications.flat().map(async (verification) => {
+          result = await engine.mergeMessage(verification);
           expect(result.isOk()).toBeTruthy();
         })
       );
