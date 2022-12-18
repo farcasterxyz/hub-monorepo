@@ -116,13 +116,10 @@ export const generateEd25519Signer = async (): Promise<Ed25519Signer> => {
 
 /**
  * Creates an EthereumSigner which contains an ethers wallet, lowercased wallet address and
- * signature type.
- *
- * Messages can be signed with wallet.signMessage(), which creates an EIP 191 version 0x45
- * compliant signature, and verified using wallet.verifyMessage(). The method should not be used
- * outside of tests since it uses a fast but less secure entropy source to generate the wallet.
+ * signature type. Messages can be signed with wallet.signMessage(), which creates an EIP 191
+ * version 0x45 compliant signature, and verified using wallet.verifyMessage().
  */
-export const generateEthereumSignerUnsafe = async (): Promise<EthereumSigner> => {
+export const generateEthereumSigner = async (): Promise<EthereumSigner> => {
   const wallet = new ethers.Wallet(ethers.utils.randomBytes(32));
   const signerKey = wallet.address.toLowerCase();
   return { wallet, signerKey, type: SignatureAlgorithm.EthereumPersonalSign };

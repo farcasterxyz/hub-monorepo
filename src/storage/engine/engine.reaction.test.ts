@@ -13,7 +13,7 @@ import {
   ReactionRemove,
   SignerAdd,
 } from '~/types';
-import { generateEd25519Signer, generateEthereumSignerUnsafe } from '~/utils/crypto';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 
 const testDb = jestRocksDB(`engine.reaction.test`);
 const engine = new Engine(testDb);
@@ -39,7 +39,7 @@ describe('mergeReaction', () => {
   let transient: { transient: MessageFactoryTransientParams };
 
   beforeAll(async () => {
-    aliceCustody = await generateEthereumSignerUnsafe();
+    aliceCustody = await generateEthereumSigner();
     aliceCustodyRegister = await Factories.IdRegistryEvent.create({
       args: { to: aliceCustody.signerKey, id: aliceFid },
       name: 'Register',

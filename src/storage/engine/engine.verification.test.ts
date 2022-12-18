@@ -15,7 +15,7 @@ import {
 } from '~/types';
 import { faker } from '@faker-js/faker';
 import { Wallet } from 'ethers';
-import { hashFCObject, generateEd25519Signer, generateEthereumSignerUnsafe } from '~/utils/crypto';
+import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import CastDB from '~/storage/db/cast';
 import VerificationDB from '~/storage/db/verification';
@@ -55,7 +55,7 @@ describe('mergeVerification', () => {
   let genericVerificationAdd: VerificationEthereumAddress;
 
   beforeAll(async () => {
-    aliceCustody = await generateEthereumSignerUnsafe();
+    aliceCustody = await generateEthereumSigner();
     aliceCustodyRegister = await Factories.IdRegistryEvent.create({
       args: { to: aliceCustody.signerKey, id: aliceFid },
       name: 'Register',

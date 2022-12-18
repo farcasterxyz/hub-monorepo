@@ -7,7 +7,7 @@ import Engine from '~/storage/engine';
 import { BadRequestError } from '~/utils/errors';
 import { Factories } from '~/test/factories';
 import { Ed25519Signer, EthereumSigner, SignerAdd, SignerMessage, SignerRemove, IdRegistryEvent } from '~/types';
-import { generateEd25519Signer, generateEthereumSignerUnsafe, hashFCObject } from '~/utils/crypto';
+import { generateEd25519Signer, generateEthereumSigner, hashFCObject } from '~/utils/crypto';
 import { HubError } from '~/utils/hubErrors';
 
 const testDb = jestRocksDB(`engine.signer.test`);
@@ -34,7 +34,7 @@ describe('mergeSignerMessage', () => {
   let aliceSignerRemoveDelegate: SignerRemove;
 
   beforeAll(async () => {
-    aliceCustodySigner = await generateEthereumSignerUnsafe();
+    aliceCustodySigner = await generateEthereumSigner();
     aliceCustodyRegister = await Factories.IdRegistryEvent.create({
       args: { to: aliceCustodySigner.signerKey, id: aliceFid },
       name: 'Register',

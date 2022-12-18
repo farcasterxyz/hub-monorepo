@@ -1,6 +1,6 @@
 import { Ed25519Signer, EthereumSigner } from '~/types';
 import { Factories } from '~/test/factories';
-import { generateEd25519Signer, generateEthereumSignerUnsafe } from '~/utils/crypto';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 import Engine from '~/storage/engine';
 import { faker } from '@faker-js/faker';
 
@@ -74,7 +74,7 @@ export const mockFid = async (engine: Engine, fid: number) => {
 export const generateUserInfo = async (fid: number): Promise<UserInfo> => {
   return {
     fid,
-    ethereumSigner: await generateEthereumSignerUnsafe(),
+    ethereumSigner: await generateEthereumSigner(),
     delegateSigner: await generateEd25519Signer(),
   };
 };

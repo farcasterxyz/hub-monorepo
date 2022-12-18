@@ -6,7 +6,7 @@ import { UserDataType } from '~/utils/generated/message_generated';
 import { HubError } from '~/utils/hubErrors';
 import { bytesIncrement, getFarcasterTime } from '~/storage/flatbuffers/utils';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
-import { generateEd25519KeyPair, generateEthereumSignerUnsafe } from '~/utils/crypto';
+import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
 import { EthereumSigner, KeyPair } from '~/types';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import { arrayify } from 'ethers/lib/utils';
@@ -274,7 +274,7 @@ describe('userfname', () => {
     await assertUserFnameAddWins(addFname);
 
     // Now, generate a new address
-    const custody2 = await generateEthereumSignerUnsafe();
+    const custody2 = await generateEthereumSigner();
     const custody2Address = arrayify(custody2.signerKey);
 
     // transfer the name to custody2address

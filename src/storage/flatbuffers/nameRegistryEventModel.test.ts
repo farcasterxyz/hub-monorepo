@@ -1,6 +1,6 @@
 import { arrayify } from 'ethers/lib/utils';
 import Factories from '~/test/factories/flatbuffer';
-import { generateEthereumSignerUnsafe } from '~/utils/crypto';
+import { generateEthereumSigner } from '~/utils/crypto';
 import { jestBinaryRocksDB } from '../db/jestUtils';
 import StoreEventHandler from '../sets/flatbuffers/storeEventHandler';
 import NameRegistryEventModel from './nameRegistryEventModel';
@@ -14,7 +14,7 @@ let custody1Address: Uint8Array;
 let custody2Address: Uint8Array;
 
 beforeAll(async () => {
-  const custody1 = await generateEthereumSignerUnsafe();
+  const custody1 = await generateEthereumSigner();
   custody1Address = arrayify(custody1.signerKey);
 
   const nameRegistryEvent = await Factories.NameRegistryEvent.create({
@@ -41,7 +41,7 @@ describe('transfer', () => {
   test('succeeds when fname is transfered', async () => {
     await model.put(db);
 
-    const custody2 = await generateEthereumSignerUnsafe();
+    const custody2 = await generateEthereumSigner();
     custody2Address = arrayify(custody2.signerKey);
 
     // Transfer evemt

@@ -28,13 +28,7 @@ import {
   Cast,
   CastShortBody,
 } from '~/types';
-import {
-  hashMessage,
-  signEd25519,
-  hashFCObject,
-  generateEd25519Signer,
-  generateEthereumSignerUnsafe,
-} from '~/utils/crypto';
+import { hashMessage, signEd25519, hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 import { CastURL, CastId, ChainAccountURL, UserId, UserURL } from '~/urls';
 import { AccountId } from 'caip';
 import { HASH_LENGTH, SyncId } from '~/network/sync/syncId';
@@ -59,7 +53,7 @@ const getMessageSigner = async (
   if (transientParams.signer) return transientParams.signer;
 
   /** Check if message has signatureType set  */
-  if (message.signatureType === SignatureAlgorithm.EthereumPersonalSign) return await generateEthereumSignerUnsafe();
+  if (message.signatureType === SignatureAlgorithm.EthereumPersonalSign) return await generateEthereumSigner();
 
   /** Otherwise generate default signer */
   return await generateEd25519Signer();
@@ -398,8 +392,6 @@ export const Factories = {
     VerificationEthereumAddressFactoryTransientParams,
     VerificationEthereumAddress
   >(({ onCreate, transientParams }) => {
-    // Safety: using randomBytes instead of Wallet.createRandom() is 700ms faster on an M1,
-    // but should not be used where safety is important since the entropy is less trustworthy
     const { ethWallet = new ethers.Wallet(ethers.utils.randomBytes(32)) } = transientParams;
 
     onCreate(async (props) => {

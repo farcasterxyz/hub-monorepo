@@ -11,7 +11,7 @@ import {
   MessageFactoryTransientParams,
   SignerAdd,
 } from '~/types';
-import { generateEd25519Signer, generateEthereumSignerUnsafe } from '~/utils/crypto';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import FollowDB from '~/storage/db/follow';
 import { BadRequestError, UnknownUserError } from '~/utils/errors';
@@ -36,7 +36,7 @@ describe('mergeFollow', () => {
   };
 
   beforeAll(async () => {
-    aliceCustody = await generateEthereumSignerUnsafe();
+    aliceCustody = await generateEthereumSigner();
     aliceCustodyRegister = await Factories.IdRegistryEvent.create({
       args: { to: aliceCustody.signerKey, id: aliceFid },
       name: 'Register',
