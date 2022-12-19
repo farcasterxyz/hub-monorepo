@@ -54,7 +54,7 @@ let verificationAdd: VerificationAddEthAddressModel;
 let userDataAdd: UserDataAddModel;
 
 beforeAll(async () => {
-  custodyWallet = Wallet.createRandom();
+  custodyWallet = new Wallet(utils.randomBytes(32));
   custodyAddress = utils.arrayify(custodyWallet.address);
   custodyEvent = new IdRegistryEventModel(
     await Factories.IdRegistryEvent.create({ fid: Array.from(fid), to: Array.from(custodyAddress) })

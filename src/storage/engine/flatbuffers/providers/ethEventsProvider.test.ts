@@ -84,8 +84,9 @@ describe('process events', () => {
     ethEventsProvider.start();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     mockRPCProvider.polling = false;
+    await ethEventsProvider.stop();
   });
 
   const waitForBlock = async (blockNumber: number) => {

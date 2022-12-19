@@ -117,16 +117,42 @@ export class EthEventsProvider {
     return provider;
   }
 
+  public getLatestBlockNumber(): number {
+    return this._lastBlockNumber;
+  }
+
   public async start() {
     // Connect to Ethereum RPC
     await this.connectAndSyncHistoricalEvents();
   }
 
+  public async stop() {
+    this._idRegistryContract.removeAllListeners();
+    this._nameRegistryContract.removeAllListeners();
+    this._jsonRpcProvider.removeAllListeners();
+
+    // Clear all polling, including the bootstrap polling. We need to reach inside the provider to do this,
+    // because the provider does not expose a way to stop the bootstrap polling.
+    // This can happen if the test runs quickly, where the bootstrap polling is still running when the test ends.
+    clearTimeout(this._jsonRpcProvider._bootstrapPoll);
+    this._jsonRpcProvider.polling = false;
+
+    // Wait for all async promises to resolve
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                               Private Methods                              */
+  /* -------------------------------------------------------------------------- */
+
   /** Connect to Ethereum RPC */
   private async connectAndSyncHistoricalEvents() {
     const latestBlockResult = await ResultAsync.fromPromise(this._jsonRpcProvider.getBlock('latest'), (err) => err);
     if (latestBlockResult.isErr()) {
-      log.error({ err: latestBlockResult.error }, 'failed to connect to ethereum node');
+      log.error(
+        { err: latestBlockResult.error },
+        'failed to connect to ethereum node. Check your network URL (e.g. --network-url)'
+      );
       return;
     }
 
@@ -362,9 +388,5 @@ export class EthEventsProvider {
     if (r.isErr()) {
       log.error({ err: r._unsafeUnwrap() }, 'NameRegistryEvent failed to merge');
     }
-  }
-
-  public getLatestBlockNumber(): number {
-    return this._lastBlockNumber;
   }
 }

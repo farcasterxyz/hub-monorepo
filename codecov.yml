@@ -2,7 +2,8 @@ coverage:
   status:
     project:
       default:
-        target: 85%
+        # TODO: make 85% once https://github.com/farcasterxyz/hub/issues/303 is resolved
+        target: 70%
         threshold: 1%
     patch:
       default:

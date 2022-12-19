@@ -211,6 +211,8 @@ describe('Hub negative tests', () => {
     expect(() => {
       hub.identity;
     }).toThrow(HubError);
+
+    tearDownHub(hub);
   });
 
   test('Fail to sync from invalid peers', async () => {
@@ -236,8 +238,7 @@ describe('Hub negative tests', () => {
 
     expect(syncHandler).toBeCalledTimes(2);
 
-    await hub.stop();
-    await hub.destroyDB();
+    tearDownHub(hub);
   });
 
   test(

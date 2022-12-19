@@ -11,7 +11,7 @@ import {
 } from '~/utils/eip712';
 import { blake3 } from '@noble/hashes/blake3';
 
-const wallet = Wallet.createRandom();
+const wallet = new Wallet(utils.randomBytes(32));
 
 describe('signVerificationEthAddressClaim', () => {
   let claim: VerificationEthAddressClaim;

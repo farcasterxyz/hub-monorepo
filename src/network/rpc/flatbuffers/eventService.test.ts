@@ -30,7 +30,7 @@ afterAll(async () => {
 });
 
 const fid = Factories.FID.build();
-const wallet = Wallet.createRandom();
+const wallet = new Wallet(utils.randomBytes(32));
 let custodyEvent: IdRegistryEventModel;
 let signer: KeyPair;
 let signerAdd: SignerAddModel;
