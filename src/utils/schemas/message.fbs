@@ -7,8 +7,8 @@ enum MessageType: uint16 {
   CastRemove = 2,
   ReactionAdd = 3,
   ReactionRemove = 4,
-  FollowAdd = 5,
-  FollowRemove = 6,
+  AmpAdd = 5,
+  AmpRemove = 6,
   VerificationAddEthAddress = 7,
   VerificationRemove = 8,
   SignerAdd = 9,
@@ -70,7 +70,7 @@ table ReactionBody {
   type: ReactionType = 1;
 }
 
-table FollowBody {
+table AmpBody {
   user: UserId (required);
 }
 
@@ -97,7 +97,7 @@ union MessageBody {
   CastAddBody,
   CastRemoveBody,
   ReactionBody,
-  FollowBody,
+  AmpBody,
   VerificationAddEthAddressBody,
   VerificationRemoveBody,
   SignerBody,

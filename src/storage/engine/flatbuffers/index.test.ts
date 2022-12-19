@@ -1,7 +1,7 @@
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import {
   CastAddModel,
-  FollowAddModel,
+  AmpAddModel,
   ReactionAddModel,
   SignerAddModel,
   SignerRemoveModel,
@@ -17,7 +17,7 @@ import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import { Wallet, utils } from 'ethers';
 import SignerStore from '~/storage/sets/flatbuffers/signerStore';
-import FollowStore from '~/storage/sets/flatbuffers/followStore';
+import AmpStore from '~/storage/sets/flatbuffers/ampStore';
 import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
 import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
 import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
@@ -32,7 +32,7 @@ const engine = new Engine(db);
 // init stores for checking state changes from engine
 const signerStore = new SignerStore(db, engine.eventHandler);
 const castStore = new CastStore(db, engine.eventHandler);
-const followStore = new FollowStore(db, engine.eventHandler);
+const ampStore = new AmpStore(db, engine.eventHandler);
 const reactionStore = new ReactionStore(db, engine.eventHandler);
 const verificationStore = new VerificationStore(db, engine.eventHandler);
 const userDataStore = new UserDataStore(db, engine.eventHandler);
@@ -48,7 +48,7 @@ let signerAdd: SignerAddModel;
 let signerRemove: SignerRemoveModel;
 
 let castAdd: CastAddModel;
-let followAdd: FollowAddModel;
+let ampAdd: AmpAddModel;
 let reactionAdd: ReactionAddModel;
 let verificationAdd: VerificationAddEthAddressModel;
 let userDataAdd: UserDataAddModel;
@@ -90,12 +90,12 @@ beforeAll(async () => {
   );
   castAdd = new MessageModel(castAddMessage) as CastAddModel;
 
-  const followAddData = await Factories.FollowAddData.create({ fid: Array.from(fid) });
-  const followAddMessage = await Factories.Message.create(
-    { data: Array.from(followAddData.bb?.bytes() ?? []) },
+  const ampAddData = await Factories.AmpAddData.create({ fid: Array.from(fid) });
+  const ampAddMessage = await Factories.Message.create(
+    { data: Array.from(ampAddData.bb?.bytes() ?? []) },
     { transient: { signer } }
   );
-  followAdd = new MessageModel(followAddMessage) as FollowAddModel;
+  ampAdd = new MessageModel(ampAddMessage) as AmpAddModel;
 
   const reactionAddData = await Factories.ReactionAddData.create({ fid: Array.from(fid) });
   const reactionAddMessage = await Factories.Message.create(
@@ -187,13 +187,13 @@ describe('mergeMessage', () => {
       });
     });
 
-    describe('FollowAdd', () => {
+    describe('AmpAdd', () => {
       test('succeeds', async () => {
-        await expect(engine.mergeMessage(followAdd)).resolves.toEqual(ok(undefined));
-        await expect(
-          followStore.getFollowAdd(fid, followAdd.body().user()?.fidArray() ?? new Uint8Array())
-        ).resolves.toEqual(followAdd);
-        expect(mergedMessages).toEqual([signerAdd, followAdd]);
+        await expect(engine.mergeMessage(ampAdd)).resolves.toEqual(ok(undefined));
+        await expect(ampStore.getAmpAdd(fid, ampAdd.body().user()?.fidArray() ?? new Uint8Array())).resolves.toEqual(
+          ampAdd
+        );
+        expect(mergedMessages).toEqual([signerAdd, ampAdd]);
       });
     });
 
@@ -290,12 +290,12 @@ describe('mergeMessages', () => {
   describe('MergeMultipleMessages', () => {
     test('succeeds', async () => {
       await expect(
-        engine.mergeMessages([castAdd, followAdd, reactionAdd, verificationAdd, userDataAdd, signerRemove])
+        engine.mergeMessages([castAdd, ampAdd, reactionAdd, verificationAdd, userDataAdd, signerRemove])
       ).resolves.toEqual([ok(undefined), ok(undefined), ok(undefined), ok(undefined), ok(undefined), ok(undefined)]);
       expect(mergedMessages).toEqual([
         signerAdd,
         castAdd,
-        followAdd,
+        ampAdd,
         reactionAdd,
         verificationAdd,
         userDataAdd,
@@ -324,7 +324,7 @@ describe('revokeMessagesBySigner', () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(castAdd);
-    await engine.mergeMessage(followAdd);
+    await engine.mergeMessage(ampAdd);
     await engine.mergeMessage(reactionAdd);
     await engine.mergeMessage(verificationAdd);
     await engine.mergeMessage(userDataAdd);
@@ -345,7 +345,7 @@ describe('revokeMessagesBySigner', () => {
   });
 
   test('revokes messages signed by Ed25519 signer', async () => {
-    const signerMessages = [castAdd, followAdd, reactionAdd, verificationAdd, userDataAdd];
+    const signerMessages = [castAdd, ampAdd, reactionAdd, verificationAdd, userDataAdd];
     for (const message of signerMessages) {
       const getMessage = MessageModel.get(db, message.fid(), message.setPostfix(), message.tsHash());
       await expect(getMessage).resolves.toEqual(message);

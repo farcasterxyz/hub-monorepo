@@ -9,7 +9,7 @@ import {
   validateEthAddress,
   validateEthBlockHash,
   validateFid,
-  validateFollowMessage,
+  validateAmpMessage,
   validateMessage,
   validateReactionMessage,
   validateSignerMessage,
@@ -23,7 +23,7 @@ import MessageModel from './messageModel';
 import {
   CastAddBodyT,
   FarcasterNetwork,
-  FollowBodyT,
+  AmpBodyT,
   HashScheme,
   ReactionBodyT,
   ReactionType,
@@ -41,8 +41,8 @@ import { KeyPair } from '~/types';
 import {
   CastAddModel,
   CastRemoveModel,
-  FollowAddModel,
-  FollowRemoveModel,
+  AmpAddModel,
+  AmpRemoveModel,
   ReactionAddModel,
   ReactionRemoveModel,
   SignerAddModel,
@@ -639,49 +639,46 @@ describe('validateSignerMessage', () => {
   });
 });
 
-describe('validateFollowMessage', () => {
-  test('succeeds with FollowAdd', async () => {
-    const followAddData = await Factories.FollowAddData.create();
-    const followAdd = new MessageModel(
-      await Factories.Message.create({ data: Array.from(followAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
-    ) as FollowAddModel;
-    expect(validateFollowMessage(followAdd)._unsafeUnwrap()).toEqual(followAdd);
+describe('validateAmpMessage', () => {
+  test('succeeds with AmpAdd', async () => {
+    const ampAddData = await Factories.AmpAddData.create();
+    const ampAdd = new MessageModel(
+      await Factories.Message.create({ data: Array.from(ampAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+    ) as AmpAddModel;
+    expect(validateAmpMessage(ampAdd)._unsafeUnwrap()).toEqual(ampAdd);
   });
 
-  test('succeeds with FollowRemove', async () => {
-    const followRemoveData = await Factories.FollowRemoveData.create();
-    const followRemove = new MessageModel(
-      await Factories.Message.create(
-        { data: Array.from(followRemoveData.bb?.bytes() ?? []) },
-        { transient: { wallet } }
-      )
-    ) as FollowRemoveModel;
-    expect(validateFollowMessage(followRemove)._unsafeUnwrap()).toEqual(followRemove);
+  test('succeeds with AmpRemove', async () => {
+    const ampRemoveData = await Factories.AmpRemoveData.create();
+    const ampRemove = new MessageModel(
+      await Factories.Message.create({ data: Array.from(ampRemoveData.bb?.bytes() ?? []) }, { transient: { wallet } })
+    ) as AmpRemoveModel;
+    expect(validateAmpMessage(ampRemove)._unsafeUnwrap()).toEqual(ampRemove);
   });
 
   describe('fails', () => {
-    let body: FollowBodyT;
+    let body: AmpBodyT;
     let hubErrorMessage: string;
 
     afterEach(async () => {
-      const followAddData = await Factories.FollowAddData.create({ body });
-      const followAdd = new MessageModel(
-        await Factories.Message.create({ data: Array.from(followAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
-      ) as FollowAddModel;
-      expect(validateFollowMessage(followAdd)._unsafeUnwrapErr()).toEqual(
+      const ampAddData = await Factories.AmpAddData.create({ body });
+      const ampAdd = new MessageModel(
+        await Factories.Message.create({ data: Array.from(ampAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+      ) as AmpAddModel;
+      expect(validateAmpMessage(ampAdd)._unsafeUnwrapErr()).toEqual(
         new HubError('bad_request.validation_failure', hubErrorMessage)
       );
     });
 
     test('when user fid is missing', () => {
-      body = Factories.FollowBody.build({
+      body = Factories.AmpBody.build({
         user: new UserIdT([]),
       });
       hubErrorMessage = 'fid is missing';
     });
 
     test('with invalid user fid', () => {
-      body = Factories.FollowBody.build({
+      body = Factories.AmpBody.build({
         user: new UserIdT(Array.from(Factories.Bytes.build({}, { transient: { length: 33 } }))),
       });
       hubErrorMessage = 'fid > 32 bytes';

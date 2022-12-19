@@ -9,8 +9,8 @@ import {
   CastRemoveBody,
   CastRemoveBodyT,
   FarcasterNetwork,
-  FollowBody,
-  FollowBodyT,
+  AmpBody,
+  AmpBodyT,
   HashScheme,
   Message,
   MessageBody,
@@ -181,37 +181,37 @@ const CastRemoveDataFactory = Factory.define<MessageDataT, any, MessageData>(({ 
   });
 });
 
-const FollowBodyFactory = Factory.define<FollowBodyT, any, FollowBody>(({ onCreate }) => {
+const AmpBodyFactory = Factory.define<AmpBodyT, any, AmpBody>(({ onCreate }) => {
   onCreate((params) => {
     const builder = new Builder(1);
     builder.finish(params.pack(builder));
-    return FollowBody.getRootAsFollowBody(new ByteBuffer(builder.asUint8Array()));
+    return AmpBody.getRootAsAmpBody(new ByteBuffer(builder.asUint8Array()));
   });
 
-  return new FollowBodyT(UserIdFactory.build());
+  return new AmpBodyT(UserIdFactory.build());
 });
 
-const FollowAddDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
+const AmpAddDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
   onCreate((params) => {
     return MessageDataFactory.create(params);
   });
 
   return MessageDataFactory.build({
-    bodyType: MessageBody.FollowBody,
-    body: FollowBodyFactory.build(),
-    type: MessageType.FollowAdd,
+    bodyType: MessageBody.AmpBody,
+    body: AmpBodyFactory.build(),
+    type: MessageType.AmpAdd,
   });
 });
 
-const FollowRemoveDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
+const AmpRemoveDataFactory = Factory.define<MessageDataT, any, MessageData>(({ onCreate }) => {
   onCreate((params) => {
     return MessageDataFactory.create(params);
   });
 
   return MessageDataFactory.build({
-    bodyType: MessageBody.FollowBody,
-    body: FollowBodyFactory.build(),
-    type: MessageType.FollowRemove,
+    bodyType: MessageBody.AmpBody,
+    body: AmpBodyFactory.build(),
+    type: MessageType.AmpRemove,
   });
 });
 
@@ -502,9 +502,9 @@ const Factories = {
   MessageData: MessageDataFactory,
   CastAddData: CastAddDataFactory,
   CastRemoveData: CastRemoveDataFactory,
-  FollowBody: FollowBodyFactory,
-  FollowAddData: FollowAddDataFactory,
-  FollowRemoveData: FollowRemoveDataFactory,
+  AmpBody: AmpBodyFactory,
+  AmpAddData: AmpAddDataFactory,
+  AmpRemoveData: AmpRemoveDataFactory,
   VerificationAddEthAddressBody: VerificationAddEthAddressBodyFactory,
   VerificationAddEthAddressData: VerificationAddEthAddressDataFactory,
   VerificationRemoveBody: VerificationRemoveBodyFactory,

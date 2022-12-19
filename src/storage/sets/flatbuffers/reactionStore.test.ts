@@ -252,7 +252,7 @@ describe('merge', () => {
   };
 
   test('fails with invalid message type', async () => {
-    const invalidData = await Factories.FollowAddData.create({ fid: Array.from(fid) });
+    const invalidData = await Factories.AmpAddData.create({ fid: Array.from(fid) });
     const message = await Factories.Message.create({ data: Array.from(invalidData.bb?.bytes() ?? []) });
 
     await expect(set.merge(new MessageModel(message))).rejects.toThrow(HubError);

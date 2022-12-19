@@ -8,8 +8,8 @@ export enum MessageType {
   CastRemove = 2,
   ReactionAdd = 3,
   ReactionRemove = 4,
-  FollowAdd = 5,
-  FollowRemove = 6,
+  AmpAdd = 5,
+  AmpRemove = 6,
   VerificationAddEthAddress = 7,
   VerificationRemove = 8,
   SignerAdd = 9,
@@ -51,7 +51,7 @@ export enum MessageBody {
   CastAddBody = 1,
   CastRemoveBody = 2,
   ReactionBody = 3,
-  FollowBody = 4,
+  AmpBody = 4,
   VerificationAddEthAddressBody = 5,
   VerificationRemoveBody = 6,
   SignerBody = 7,
@@ -60,14 +60,14 @@ export enum MessageBody {
 
 export function unionToMessageBody(
   type: MessageBody,
-  accessor: (obj:CastAddBody|CastRemoveBody|FollowBody|ReactionBody|SignerBody|UserDataBody|VerificationAddEthAddressBody|VerificationRemoveBody) => CastAddBody|CastRemoveBody|FollowBody|ReactionBody|SignerBody|UserDataBody|VerificationAddEthAddressBody|VerificationRemoveBody|null
-): CastAddBody|CastRemoveBody|FollowBody|ReactionBody|SignerBody|UserDataBody|VerificationAddEthAddressBody|VerificationRemoveBody|null {
+  accessor: (obj:AmpBody|CastAddBody|CastRemoveBody|ReactionBody|SignerBody|UserDataBody|VerificationAddEthAddressBody|VerificationRemoveBody) => AmpBody|CastAddBody|CastRemoveBody|ReactionBody|SignerBody|UserDataBody|VerificationAddEthAddressBody|VerificationRemoveBody|null
+): AmpBody|CastAddBody|CastRemoveBody|ReactionBody|SignerBody|UserDataBody|VerificationAddEthAddressBody|VerificationRemoveBody|null {
   switch(MessageBody[type]) {
     case 'NONE': return null; 
     case 'CastAddBody': return accessor(new CastAddBody())! as CastAddBody;
     case 'CastRemoveBody': return accessor(new CastRemoveBody())! as CastRemoveBody;
     case 'ReactionBody': return accessor(new ReactionBody())! as ReactionBody;
-    case 'FollowBody': return accessor(new FollowBody())! as FollowBody;
+    case 'AmpBody': return accessor(new AmpBody())! as AmpBody;
     case 'VerificationAddEthAddressBody': return accessor(new VerificationAddEthAddressBody())! as VerificationAddEthAddressBody;
     case 'VerificationRemoveBody': return accessor(new VerificationRemoveBody())! as VerificationRemoveBody;
     case 'SignerBody': return accessor(new SignerBody())! as SignerBody;
@@ -78,15 +78,15 @@ export function unionToMessageBody(
 
 export function unionListToMessageBody(
   type: MessageBody, 
-  accessor: (index: number, obj:CastAddBody|CastRemoveBody|FollowBody|ReactionBody|SignerBody|UserDataBody|VerificationAddEthAddressBody|VerificationRemoveBody) => CastAddBody|CastRemoveBody|FollowBody|ReactionBody|SignerBody|UserDataBody|VerificationAddEthAddressBody|VerificationRemoveBody|null, 
+  accessor: (index: number, obj:AmpBody|CastAddBody|CastRemoveBody|ReactionBody|SignerBody|UserDataBody|VerificationAddEthAddressBody|VerificationRemoveBody) => AmpBody|CastAddBody|CastRemoveBody|ReactionBody|SignerBody|UserDataBody|VerificationAddEthAddressBody|VerificationRemoveBody|null, 
   index: number
-): CastAddBody|CastRemoveBody|FollowBody|ReactionBody|SignerBody|UserDataBody|VerificationAddEthAddressBody|VerificationRemoveBody|null {
+): AmpBody|CastAddBody|CastRemoveBody|ReactionBody|SignerBody|UserDataBody|VerificationAddEthAddressBody|VerificationRemoveBody|null {
   switch(MessageBody[type]) {
     case 'NONE': return null; 
     case 'CastAddBody': return accessor(index, new CastAddBody())! as CastAddBody;
     case 'CastRemoveBody': return accessor(index, new CastRemoveBody())! as CastRemoveBody;
     case 'ReactionBody': return accessor(index, new ReactionBody())! as ReactionBody;
-    case 'FollowBody': return accessor(index, new FollowBody())! as FollowBody;
+    case 'AmpBody': return accessor(index, new AmpBody())! as AmpBody;
     case 'VerificationAddEthAddressBody': return accessor(index, new VerificationAddEthAddressBody())! as VerificationAddEthAddressBody;
     case 'VerificationRemoveBody': return accessor(index, new VerificationRemoveBody())! as VerificationRemoveBody;
     case 'SignerBody': return accessor(index, new SignerBody())! as SignerBody;
@@ -639,22 +639,22 @@ pack(builder:flatbuffers.Builder): flatbuffers.Offset {
 }
 }
 
-export class FollowBody implements flatbuffers.IUnpackableObject<FollowBodyT> {
+export class AmpBody implements flatbuffers.IUnpackableObject<AmpBodyT> {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
-  __init(i:number, bb:flatbuffers.ByteBuffer):FollowBody {
+  __init(i:number, bb:flatbuffers.ByteBuffer):AmpBody {
   this.bb_pos = i;
   this.bb = bb;
   return this;
 }
 
-static getRootAsFollowBody(bb:flatbuffers.ByteBuffer, obj?:FollowBody):FollowBody {
-  return (obj || new FollowBody()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+static getRootAsAmpBody(bb:flatbuffers.ByteBuffer, obj?:AmpBody):AmpBody {
+  return (obj || new AmpBody()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-static getSizePrefixedRootAsFollowBody(bb:flatbuffers.ByteBuffer, obj?:FollowBody):FollowBody {
+static getSizePrefixedRootAsAmpBody(bb:flatbuffers.ByteBuffer, obj?:AmpBody):AmpBody {
   bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
-  return (obj || new FollowBody()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  return (obj || new AmpBody()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
 user(obj?:UserId):UserId|null {
@@ -662,7 +662,7 @@ user(obj?:UserId):UserId|null {
   return offset ? (obj || new UserId()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
-static startFollowBody(builder:flatbuffers.Builder) {
+static startAmpBody(builder:flatbuffers.Builder) {
   builder.startObject(1);
 }
 
@@ -670,31 +670,31 @@ static addUser(builder:flatbuffers.Builder, userOffset:flatbuffers.Offset) {
   builder.addFieldOffset(0, userOffset, 0);
 }
 
-static endFollowBody(builder:flatbuffers.Builder):flatbuffers.Offset {
+static endAmpBody(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   builder.requiredField(offset, 4) // user
   return offset;
 }
 
-static createFollowBody(builder:flatbuffers.Builder, userOffset:flatbuffers.Offset):flatbuffers.Offset {
-  FollowBody.startFollowBody(builder);
-  FollowBody.addUser(builder, userOffset);
-  return FollowBody.endFollowBody(builder);
+static createAmpBody(builder:flatbuffers.Builder, userOffset:flatbuffers.Offset):flatbuffers.Offset {
+  AmpBody.startAmpBody(builder);
+  AmpBody.addUser(builder, userOffset);
+  return AmpBody.endAmpBody(builder);
 }
 
-unpack(): FollowBodyT {
-  return new FollowBodyT(
+unpack(): AmpBodyT {
+  return new AmpBodyT(
     (this.user() !== null ? this.user()!.unpack() : null)
   );
 }
 
 
-unpackTo(_o: FollowBodyT): void {
+unpackTo(_o: AmpBodyT): void {
   _o.user = (this.user() !== null ? this.user()!.unpack() : null);
 }
 }
 
-export class FollowBodyT implements flatbuffers.IGeneratedObject {
+export class AmpBodyT implements flatbuffers.IGeneratedObject {
 constructor(
   public user: UserIdT|null = null
 ){}
@@ -703,7 +703,7 @@ constructor(
 pack(builder:flatbuffers.Builder): flatbuffers.Offset {
   const user = (this.user !== null ? this.user!.pack(builder) : 0);
 
-  return FollowBody.createFollowBody(builder,
+  return AmpBody.createAmpBody(builder,
     user
   );
 }
@@ -1296,7 +1296,7 @@ unpackTo(_o: MessageDataT): void {
 export class MessageDataT implements flatbuffers.IGeneratedObject {
 constructor(
   public bodyType: MessageBody = MessageBody.NONE,
-  public body: CastAddBodyT|CastRemoveBodyT|FollowBodyT|ReactionBodyT|SignerBodyT|UserDataBodyT|VerificationAddEthAddressBodyT|VerificationRemoveBodyT|null = null,
+  public body: AmpBodyT|CastAddBodyT|CastRemoveBodyT|ReactionBodyT|SignerBodyT|UserDataBodyT|VerificationAddEthAddressBodyT|VerificationRemoveBodyT|null = null,
   public type: MessageType|null = null,
   public timestamp: number = 0,
   public fid: (number)[] = [],

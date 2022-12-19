@@ -2,7 +2,7 @@ import { err, errAsync, ok, ResultAsync } from 'neverthrow';
 import CastStore from '~/storage/sets/flatbuffers/castStore';
 import RocksDB from '~/storage/db/binaryrocksdb';
 import SignerStore from '~/storage/sets/flatbuffers/signerStore';
-import FollowStore from '~/storage/sets/flatbuffers/followStore';
+import AmpStore from '~/storage/sets/flatbuffers/ampStore';
 import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
 import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
 import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
@@ -10,8 +10,8 @@ import MessageModel from '~/storage/flatbuffers/messageModel';
 import {
   CastAddModel,
   CastRemoveModel,
-  FollowAddModel,
-  FollowRemoveModel,
+  AmpAddModel,
+  AmpRemoveModel,
   ReactionAddModel,
   ReactionRemoveModel,
   SignerAddModel,
@@ -51,7 +51,7 @@ class Engine {
   private _db: RocksDB;
   private _castStore: CastStore;
   private _signerStore: SignerStore;
-  private _followStore: FollowStore;
+  private _ampStore: AmpStore;
   private _reactionStore: ReactionStore;
   private _verificationStore: VerificationStore;
   private _userDataStore: UserDataStore;
@@ -64,7 +64,7 @@ class Engine {
     this._db = db;
     this._castStore = new CastStore(db, this.eventHandler);
     this._signerStore = new SignerStore(db, this.eventHandler);
-    this._followStore = new FollowStore(db, this.eventHandler);
+    this._ampStore = new AmpStore(db, this.eventHandler);
     this._reactionStore = new ReactionStore(db, this.eventHandler);
     this._verificationStore = new VerificationStore(db, this.eventHandler);
     this._userDataStore = new UserDataStore(db, this.eventHandler);
@@ -87,8 +87,8 @@ class Engine {
     let result: ResultAsync<void, HubError>;
     if (message.setPostfix() === UserPostfix.CastMessage) {
       result = ResultAsync.fromPromise(this._castStore.merge(message), (e) => e as HubError);
-    } else if (message.setPostfix() === UserPostfix.FollowMessage) {
-      result = ResultAsync.fromPromise(this._followStore.merge(message), (e) => e as HubError);
+    } else if (message.setPostfix() === UserPostfix.AmpMessage) {
+      result = ResultAsync.fromPromise(this._ampStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.ReactionMessage) {
       result = ResultAsync.fromPromise(this._reactionStore.merge(message), (e) => e as HubError);
     } else if (message.setPostfix() === UserPostfix.SignerMessage) {
@@ -165,7 +165,7 @@ class Engine {
 
   async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<void> {
     await this._castStore.revokeMessagesBySigner(fid, signer);
-    await this._followStore.revokeMessagesBySigner(fid, signer);
+    await this._ampStore.revokeMessagesBySigner(fid, signer);
     await this._reactionStore.revokeMessagesBySigner(fid, signer);
     await this._verificationStore.revokeMessagesBySigner(fid, signer);
     await this._userDataStore.revokeMessagesBySigner(fid, signer);
@@ -246,10 +246,10 @@ class Engine {
   }
 
   /* -------------------------------------------------------------------------- */
-  /*                             Follow Store Methods                           */
+  /*                             Amp Store Methods                           */
   /* -------------------------------------------------------------------------- */
 
-  async getFollow(fid: Uint8Array, user: UserId): HubAsyncResult<FollowAddModel> {
+  async getAmp(fid: Uint8Array, user: UserId): HubAsyncResult<AmpAddModel> {
     const validatedFid = validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -260,16 +260,13 @@ class Engine {
       return err(validatedUser.error);
     }
 
-    return ResultAsync.fromPromise(
-      this._followStore.getFollowAdd(fid, validatedUser.value.fidArray()),
-      (e) => e as HubError
-    );
+    return ResultAsync.fromPromise(this._ampStore.getAmpAdd(fid, validatedUser.value.fidArray()), (e) => e as HubError);
   }
 
-  async getFollowsByFid(fid: Uint8Array): HubAsyncResult<FollowAddModel[]> {
+  async getAmpsByFid(fid: Uint8Array): HubAsyncResult<AmpAddModel[]> {
     return validateFid(fid).match(
       (validatedFid: Uint8Array) => {
-        return ResultAsync.fromPromise(this._followStore.getFollowAddsByUser(validatedFid), (e) => e as HubError);
+        return ResultAsync.fromPromise(this._ampStore.getAmpAddsByUser(validatedFid), (e) => e as HubError);
       },
       (e) => {
         return errAsync(e);
@@ -277,11 +274,11 @@ class Engine {
     );
   }
 
-  async getFollowsByUser(user: UserId): HubAsyncResult<FollowAddModel[]> {
+  async getAmpsByUser(user: UserId): HubAsyncResult<AmpAddModel[]> {
     return validateUserId(user).match(
       (validatedUserId: ValidatedUserId) => {
         return ResultAsync.fromPromise(
-          this._followStore.getFollowsByTargetUser(validatedUserId.fidArray()),
+          this._ampStore.getAmpsByTargetUser(validatedUserId.fidArray()),
           (e) => e as HubError
         );
       },
@@ -291,13 +288,13 @@ class Engine {
     );
   }
 
-  async getAllFollowMessagesByFid(fid: Uint8Array): HubAsyncResult<(FollowAddModel | FollowRemoveModel)[]> {
-    const adds = await ResultAsync.fromPromise(this._followStore.getFollowAddsByUser(fid), (e) => e as HubError);
+  async getAllAmpMessagesByFid(fid: Uint8Array): HubAsyncResult<(AmpAddModel | AmpRemoveModel)[]> {
+    const adds = await ResultAsync.fromPromise(this._ampStore.getAmpAddsByUser(fid), (e) => e as HubError);
     if (adds.isErr()) {
       return err(adds.error);
     }
 
-    const removes = await ResultAsync.fromPromise(this._followStore.getFollowRemovesByUser(fid), (e) => e as HubError);
+    const removes = await ResultAsync.fromPromise(this._ampStore.getAmpRemovesByUser(fid), (e) => e as HubError);
     if (removes.isErr()) {
       return err(removes.error);
     }

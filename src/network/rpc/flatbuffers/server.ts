@@ -5,7 +5,7 @@ import { MessagesResponse, MessagesResponseT } from '~/utils/generated/rpc_gener
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { HubAsyncResult, HubError, HubErrorCode } from '~/utils/hubErrors';
-import { followServiceImpls, followServiceMethods } from '~/network/rpc/flatbuffers/followService';
+import { ampServiceImpls, ampServiceMethods } from '~/network/rpc/flatbuffers/ampService';
 import { reactionServiceImpls, reactionServiceMethods } from '~/network/rpc/flatbuffers/reactionService';
 import { verificationServiceImpls, verificationServiceMethods } from '~/network/rpc/flatbuffers/verificationService';
 import { submitServiceImpls, submitServiceMethods } from '~/network/rpc/flatbuffers/submitService';
@@ -96,7 +96,7 @@ class Server {
     this.server = new grpc.Server();
     this.server.addService(submitServiceMethods(), submitServiceImpls(engine, rpcHandler));
     this.server.addService(castServiceMethods(), castServiceImpls(engine));
-    this.server.addService(followServiceMethods(), followServiceImpls(engine));
+    this.server.addService(ampServiceMethods(), ampServiceImpls(engine));
     this.server.addService(reactionServiceMethods(), reactionServiceImpls(engine));
     this.server.addService(verificationServiceMethods(), verificationServiceImpls(engine));
     this.server.addService(signerServiceMethods(), signerServiceImpls(engine));

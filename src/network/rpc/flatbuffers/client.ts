@@ -4,8 +4,8 @@ import MessageModel from '~/storage/flatbuffers/messageModel';
 import {
   CastAddModel,
   CastRemoveModel,
-  FollowAddModel,
-  FollowRemoveModel,
+  AmpAddModel,
+  AmpRemoveModel,
   ReactionAddModel,
   ReactionRemoveModel,
   SignerAddModel,
@@ -25,7 +25,7 @@ import {
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import { castServiceRequests, castServiceMethods } from '~/network/rpc/flatbuffers/castService';
 import { fromServiceError } from '~/network/rpc/flatbuffers/server';
-import { followServiceMethods, followServiceRequests } from '~/network/rpc/flatbuffers/followService';
+import { ampServiceMethods, ampServiceRequests } from '~/network/rpc/flatbuffers/ampService';
 import { reactionServiceMethods, reactionServiceRequests } from '~/network/rpc/flatbuffers/reactionService';
 import { verificationServiceMethods, verificationServiceRequests } from '~/network/rpc/flatbuffers/verificationService';
 import { submitServiceMethods } from '~/network/rpc/flatbuffers/submitService';
@@ -92,25 +92,19 @@ class Client {
   }
 
   /* -------------------------------------------------------------------------- */
-  /*                                Follow Methods                              */
+  /*                                Amp Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  async getFollow(fid: Uint8Array, user: UserId): HubAsyncResult<FollowAddModel> {
-    return this.makeUnaryMessageRequest(followServiceMethods().getFollow, followServiceRequests.getFollow(fid, user));
+  async getAmp(fid: Uint8Array, user: UserId): HubAsyncResult<AmpAddModel> {
+    return this.makeUnaryMessageRequest(ampServiceMethods().getAmp, ampServiceRequests.getAmp(fid, user));
   }
 
-  async getFollowsByFid(fid: Uint8Array): HubAsyncResult<FollowAddModel[]> {
-    return this.makeUnaryMessagesRequest(
-      followServiceMethods().getFollowsByFid,
-      followServiceRequests.getFollowsByFid(fid)
-    );
+  async getAmpsByFid(fid: Uint8Array): HubAsyncResult<AmpAddModel[]> {
+    return this.makeUnaryMessagesRequest(ampServiceMethods().getAmpsByFid, ampServiceRequests.getAmpsByFid(fid));
   }
 
-  async getFollowsByUser(user: UserId): HubAsyncResult<FollowAddModel[]> {
-    return this.makeUnaryMessagesRequest(
-      followServiceMethods().getFollowsByUser,
-      followServiceRequests.getFollowsByUser(user)
-    );
+  async getAmpsByUser(user: UserId): HubAsyncResult<AmpAddModel[]> {
+    return this.makeUnaryMessagesRequest(ampServiceMethods().getAmpsByUser, ampServiceRequests.getAmpsByUser(user));
   }
 
   /* -------------------------------------------------------------------------- */
@@ -124,14 +118,14 @@ class Client {
     );
   }
 
-  async getReactionsByFid(fid: Uint8Array, type?: ReactionType): HubAsyncResult<FollowAddModel[]> {
+  async getReactionsByFid(fid: Uint8Array, type?: ReactionType): HubAsyncResult<AmpAddModel[]> {
     return this.makeUnaryMessagesRequest(
       reactionServiceMethods().getReactionsByFid,
       reactionServiceRequests.getReactionsByFid(fid, type)
     );
   }
 
-  async getReactionsByCast(cast: CastId, type?: ReactionType): HubAsyncResult<FollowAddModel[]> {
+  async getReactionsByCast(cast: CastId, type?: ReactionType): HubAsyncResult<AmpAddModel[]> {
     return this.makeUnaryMessagesRequest(
       reactionServiceMethods().getReactionsByCast,
       reactionServiceRequests.getReactionsByCast(cast, type)
@@ -230,8 +224,8 @@ class Client {
     return this.makeUnaryMessagesRequest(syncServiceMethods().getAllCastMessagesByFid, createSyncServiceRequest(fid));
   }
 
-  async getAllFollowMessagesByFid(fid: Uint8Array): HubAsyncResult<(FollowAddModel | FollowRemoveModel)[]> {
-    return this.makeUnaryMessagesRequest(syncServiceMethods().getAllFollowMessagesByFid, createSyncServiceRequest(fid));
+  async getAllAmpMessagesByFid(fid: Uint8Array): HubAsyncResult<(AmpAddModel | AmpRemoveModel)[]> {
+    return this.makeUnaryMessagesRequest(syncServiceMethods().getAllAmpMessagesByFid, createSyncServiceRequest(fid));
   }
 
   async getAllReactionMessagesByFid(fid: Uint8Array): HubAsyncResult<(ReactionAddModel | ReactionRemoveModel)[]> {

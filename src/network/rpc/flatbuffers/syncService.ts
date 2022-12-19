@@ -12,8 +12,8 @@ import { Builder, ByteBuffer } from 'flatbuffers';
 import {
   CastAddModel,
   CastRemoveModel,
-  FollowAddModel,
-  FollowRemoveModel,
+  AmpAddModel,
+  AmpRemoveModel,
   ReactionAddModel,
   ReactionRemoveModel,
   SignerAddModel,
@@ -42,9 +42,9 @@ export const syncServiceMethods = () => {
       path: '/getAllCastMessagesByFid',
     },
 
-    getAllFollowMessagesByFid: {
+    getAllAmpMessagesByFid: {
       ...defaultSyncMethod(),
-      path: '/getAllFollowMessagesByFid',
+      path: '/getAllAmpMessagesByFid',
     },
 
     getAllReactionMessagesByFid: {
@@ -86,13 +86,13 @@ export const syncServiceImpls = (engine: Engine) => {
       );
     },
 
-    getAllFollowMessagesByFid: async (
+    getAllAmpMessagesByFid: async (
       call: grpc.ServerUnaryCall<GetAllMessagesByFidRequest, MessagesResponse>,
       callback: grpc.sendUnaryData<MessagesResponse>
     ) => {
-      const result = await engine.getAllFollowMessagesByFid(call.request.fidArray() ?? new Uint8Array());
+      const result = await engine.getAllAmpMessagesByFid(call.request.fidArray() ?? new Uint8Array());
       result.match(
-        (messages: (FollowAddModel | FollowRemoveModel)[]) => {
+        (messages: (AmpAddModel | AmpRemoveModel)[]) => {
           callback(null, toMessagesResponse(messages));
         },
         (err: HubError) => {

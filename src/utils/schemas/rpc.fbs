@@ -47,18 +47,18 @@ table GetCastsByMentionRequest {
   mention: UserId (required);
 }
 
-// Follow Requests
+// Amp Requests
 
-table GetFollowRequest {
+table GetAmpRequest {
   fid: [ubyte] (required);
   user: UserId (required);
 }
 
-table GetFollowsByFidRequest {
+table GetAmpsByFidRequest {
   fid: [ubyte] (required);
 }
 
-table GetFollowsByUserRequest {
+table GetAmpsByUserRequest {
   user: UserId (required);
 }
 

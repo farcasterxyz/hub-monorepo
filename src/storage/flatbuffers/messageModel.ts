@@ -4,7 +4,7 @@ import {
   CastAddBody,
   CastRemoveBody,
   ReactionBody,
-  FollowBody,
+  AmpBody,
   Message,
   MessageBody,
   MessageData,
@@ -82,8 +82,8 @@ export default class MessageModel {
       return UserPostfix.ReactionMessage;
     }
 
-    if (type === MessageType.FollowAdd || type === MessageType.FollowRemove) {
-      return UserPostfix.FollowMessage;
+    if (type === MessageType.AmpAdd || type === MessageType.AmpRemove) {
+      return UserPostfix.AmpMessage;
     }
 
     if (type === MessageType.VerificationAddEthAddress || type === MessageType.VerificationRemove) {
@@ -285,7 +285,7 @@ export default class MessageModel {
   body():
     | CastAddBody
     | CastRemoveBody
-    | FollowBody
+    | AmpBody
     | VerificationAddEthAddressBody
     | VerificationRemoveBody
     | SignerBody
@@ -295,8 +295,8 @@ export default class MessageModel {
       return this.data.body(new CastAddBody()) as CastAddBody;
     } else if (this.data.bodyType() === MessageBody.CastRemoveBody) {
       return this.data.body(new CastRemoveBody()) as CastRemoveBody;
-    } else if (this.data.bodyType() === MessageBody.FollowBody) {
-      return this.data.body(new FollowBody()) as FollowBody;
+    } else if (this.data.bodyType() === MessageBody.AmpBody) {
+      return this.data.body(new AmpBody()) as AmpBody;
     } else if (this.data.bodyType() === MessageBody.VerificationAddEthAddressBody) {
       return this.data.body(new VerificationAddEthAddressBody()) as VerificationAddEthAddressBody;
     } else if (this.data.bodyType() === MessageBody.VerificationRemoveBody) {
