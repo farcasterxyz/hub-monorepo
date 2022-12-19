@@ -8,7 +8,7 @@ import { Multiaddr } from '@multiformats/multiaddr';
 import { createLibp2p, Libp2p } from 'libp2p';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import { HubAsyncResult, HubError, HubResult } from '~/utils/hubErrors';
+import { HubError, HubResult } from '~/utils/hubErrors';
 import { GOSSIP_TOPICS } from '~/network/p2p/protocol';
 import { ConnectionFilter } from '../connectionFilter';
 import { logger } from '~/utils/logger';
