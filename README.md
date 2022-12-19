@@ -11,14 +11,16 @@ First, ensure that the following are installed globally on your machine:
 - [Node.js 18+](https://github.com/nvm-sh/nvm)
 - [Yarn](https://classic.yarnpkg.com/lang/en/docs/install)
 
+Next ensure that you have a Goerli Ethereum node that can you can connect to over HTTP. You can set one up using [Alchemy](https://www.alchemy.com/) or [Infura](https://www.infura.io/).
+
 Then, run:
 
 - `yarn install` to install dependencies
 - `yarn test` to ensure that the test suite runs correctly
 - `yarn identity create` to create a network identity for your Hub
-- `yarn start` to boot up the Hub
+- `yarn start -n <network-url>` to boot up the Hub, where `network-url` points to the Goerli node's RPC
 
-This will start an instance of the Hub that you can send messages to. Hubs do not (yet) peer automatically, this will be added closer to the v2 release in Q4 2022.
+This will start an instance of the Hub that you can send messages to.
 
 ## Architecture
 
