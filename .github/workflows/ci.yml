@@ -7,10 +7,19 @@ on:
   pull_request:
     branches: [main]
 
+# prevent multiple simultaneous test runs
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
 jobs:
   build_and_test:
     timeout-minutes: 10
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        shard: [1/2, 2/2]
 
     steps:
       - uses: actions/checkout@v2
@@ -39,7 +48,7 @@ jobs:
         run: yarn build
 
       - name: Run tests
-        run: yarn test:ci
+        run: yarn test:ci --shard=${{ matrix.shard }}
 
       - name: Upload coverage results
         uses: codecov/codecov-action@v2

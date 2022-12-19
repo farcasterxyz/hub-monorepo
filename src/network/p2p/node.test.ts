@@ -5,7 +5,7 @@ import { GossipMessage, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { sleep } from '~/utils/crypto';
 
 const NUM_NODES = 10;
-const PROPAGATION_DELAY = 2 * 1000; // between 1 and 2 full heartbeat ticks
+const PROPAGATION_DELAY = 3 * 1000; // between 2 and 3 full heartbeat ticks
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
 const TEST_TIMEOUT_SHORT = 10 * 1000;
