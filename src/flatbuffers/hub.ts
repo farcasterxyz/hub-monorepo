@@ -1,6 +1,5 @@
 import { multiaddr, Multiaddr } from '@multiformats/multiaddr';
 import Engine from '~/storage/engine/flatbuffers';
-import { RPCClient } from '~/network/rpc';
 import Server, { RPCHandler } from '~/network/rpc/flatbuffers/server';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { MessageType } from '~/types';

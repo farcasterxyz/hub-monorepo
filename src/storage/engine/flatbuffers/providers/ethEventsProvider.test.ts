@@ -132,7 +132,7 @@ describe('process events', () => {
     expect((await IdRegistryEventModel.get(db, fid)).fid()).toEqual(fid);
 
     // Transfer the ID to another address
-    const rTransfer = mockIdRegistry.emit(
+    mockIdRegistry.emit(
       'Transfer',
       address1,
       address2,
@@ -175,7 +175,7 @@ describe('process events', () => {
     expect((await NameRegistryEventModel.get(db, fname)).fname()).toEqual(fname);
 
     // Renew the fname
-    const rRenew = mockNameRegistry.emit(
+    mockNameRegistry.emit(
       'Renew',
       BigNumber.from(fname),
       BigNumber.from(1000),
