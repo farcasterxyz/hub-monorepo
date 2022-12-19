@@ -211,6 +211,8 @@ describe('Hub negative tests', () => {
     expect(() => {
       hub.identity;
     }).toThrow(HubError);
+
+    tearDownHub(hub);
   });
 
   test('Fail to sync from invalid peers', async () => {

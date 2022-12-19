@@ -130,6 +130,15 @@ export class EthEventsProvider {
     this._idRegistryContract.removeAllListeners();
     this._nameRegistryContract.removeAllListeners();
     this._jsonRpcProvider.removeAllListeners();
+
+    // Clear all polling, including the bootstrap polling. We need to reach inside the provider to do this,
+    // because the provider does not expose a way to stop the bootstrap polling.
+    // This can happen if the test runs quickly, where the bootstrap polling is still running when the test ends.
+    clearTimeout(this._jsonRpcProvider._bootstrapPoll);
+    this._jsonRpcProvider.polling = false;
+
+    // Wait for all async promises to resolve
+    await new Promise((resolve) => setTimeout(resolve, 0));
   }
 
   /* -------------------------------------------------------------------------- */
