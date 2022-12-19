@@ -28,6 +28,12 @@ describe('FidFactory', () => {
     const fid = Factories.FID.build();
     expect(fid.byteLength).toBeLessThan(32);
   });
+
+  test('accepts number as input', async () => {
+    const fid = Factories.FID.build({}, { transient: { fid: 24 } });
+    expect(fid.byteLength).toBeLessThan(32);
+    expect(Buffer.from(fid).readUIntLE(0, fid.length)).toBe(24);
+  });
 });
 
 describe('TsHashFactory', () => {

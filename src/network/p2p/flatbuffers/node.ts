@@ -8,14 +8,16 @@ import { Multiaddr } from '@multiformats/multiaddr';
 import { createLibp2p, Libp2p } from 'libp2p';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import { HubError, HubResult } from '~/utils/hubErrors';
-import { decodeMessage, encodeMessage, GossipMessage, GOSSIP_TOPICS } from '~/network/p2p/protocol';
-import { ConnectionFilter } from './connectionFilter';
+import { HubAsyncResult, HubError, HubResult } from '~/utils/hubErrors';
+import { GOSSIP_TOPICS } from '~/network/p2p/protocol';
+import { ConnectionFilter } from '../connectionFilter';
 import { logger } from '~/utils/logger';
 import { checkNodeAddrs } from '~/utils/p2p';
 import { PubSubPeerDiscovery } from '@libp2p/pubsub-peer-discovery';
+import { GossipContent, GossipMessage, GossipMessageT } from '~/utils/generated/gossip_generated';
+import { Builder, ByteBuffer } from 'flatbuffers';
 
-const MULTIADDR_LOCALHOST = '/ip4/127.0.0.1';
+const MultiaddrLocalHost = '/ip4/127.0.0.1';
 
 const log = logger.child({ component: 'Node' });
 
@@ -24,7 +26,7 @@ interface NodeEvents {
    * Triggered when a new message is received. Provides the topic the message was received on
    * as well as the result of decoding the message
    */
-  message: (topic: string, message: Result<GossipMessage, string> | HubResult<GossipMessage>) => void;
+  message: (topic: string, message: HubResult<GossipMessage>) => void;
   /** Triggered when a peer is connected. Provides the Libp2p Connection object. */
   peerConnect: (connection: Connection) => void;
   /** Triggered when a peer is disconnected. Provides the Libp2p Connecion object. */
@@ -51,14 +53,18 @@ interface NodeOptions {
 export class Node extends TypedEmitter<NodeEvents> {
   private _node?: Libp2p;
 
-  /* Returns the nodes public key */
+  /**
+   * Returns the PublicKey of the node
+   */
   get peerId() {
     return this._node?.peerId;
   }
 
   /**
-   * Returns an array of the nodes known addresses as Multiaddrs. It includes local addresses which
-   * may not be reachable from other nodes.
+   * Returns all known addresses of the node
+   *
+   * This contains local addresses as well and will need to be
+   * checked for reachability prior to establishing connections
    */
   get multiaddrs() {
     return this._node?.getMultiaddrs();
@@ -80,7 +86,9 @@ export class Node extends TypedEmitter<NodeEvents> {
     return await this._node?.peerStore.get(peerId);
   }
 
-  /* Returns the GossipSub instance */
+  /**
+   * Returns a the GossipSub implementation used by the Node
+   */
   get gossip() {
     const pubsub = this._node?.pubsub;
     return pubsub ? (pubsub as GossipSub) : undefined;
@@ -128,10 +136,10 @@ export class Node extends TypedEmitter<NodeEvents> {
    * Publishes a message to the GossipSub network
    * @message The GossipMessage to publish to the network
    */
-  async publish(message: GossipMessage) {
+  async publish(message: GossipMessageT) {
     const topics = message.topics;
     log.debug({ identity: this.identity }, `Publishing message to topics: ${topics}`);
-    const encodedMessage = encodeMessage(message);
+    const encodedMessage = this.encodeMessage(message);
     encodedMessage.match(
       async (msg) => {
         const results = await Promise.all(topics.map((topic) => this.gossip?.publish(topic, msg)));
@@ -198,7 +206,7 @@ export class Node extends TypedEmitter<NodeEvents> {
     this.gossip?.addEventListener('message', (event) => {
       // ignore messages that aren't in our list of topics (ignores gossipsub peer discovery messages)
       if (GOSSIP_TOPICS.includes(event.detail.topic)) {
-        this.emit('message', event.detail.topic, decodeMessage(event.detail.data));
+        this.emit('message', event.detail.topic, this.decodeMessage(event.detail.data));
       }
     });
   }
@@ -231,6 +239,26 @@ export class Node extends TypedEmitter<NodeEvents> {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
+  //TODO: Needs better typesafety
+  private encodeMessage(message: GossipMessageT): HubResult<Uint8Array> {
+    if (message.contentType === GossipContent.NONE) {
+      return err(new HubError('bad_request.invalid_param', 'Failed to encode message...'));
+    }
+    const builder = new Builder(1);
+    builder.finish(message.pack(builder));
+    return ok(builder.asUint8Array());
+  }
+
+  //TODO: Needs better typesafety
+  private decodeMessage(message: Uint8Array): HubResult<GossipMessage> {
+    const bb = new ByteBuffer(message);
+    const decodedMessage = GossipMessage.getRootAsGossipMessage(bb);
+    if (decodedMessage.contentType() === GossipContent.NONE) {
+      return err(new HubError('bad_request.invalid_param', 'Failed to decode message...'));
+    }
+    return ok(decodedMessage);
+  }
+
   /* Attempts to dial all the addresses in the bootstrap list */
   private async bootstrap(bootstrapAddrs: Multiaddr[]): Promise<HubResult<void>> {
     if (bootstrapAddrs.length == 0) return ok(undefined);
@@ -249,7 +277,7 @@ export class Node extends TypedEmitter<NodeEvents> {
    * Creates a Libp2p node with GossipSub
    */
   private async createNode(options: NodeOptions): Promise<HubResult<Libp2p>> {
-    const listenIPMultiAddr = options.ipMultiAddr ?? MULTIADDR_LOCALHOST;
+    const listenIPMultiAddr = options.ipMultiAddr ?? MultiaddrLocalHost;
     const listenPort = options.gossipPort ?? 0;
     const listenMultiAddrStr = `${listenIPMultiAddr}/tcp/${listenPort}`;
 

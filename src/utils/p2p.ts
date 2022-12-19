@@ -5,6 +5,7 @@ import { FarcasterError } from '~/utils/errors';
 import { get } from 'http';
 import { logger } from '~/utils/logger';
 import { HubError, HubResult } from '~/utils/hubErrors';
+import { GossipAddressInfo } from './generated/gossip_generated';
 
 /** Parses an address to verify it is actually a valid MultiAddr */
 export const parseAddress = (multiaddrStr: string): HubResult<Multiaddr> => {
@@ -29,7 +30,7 @@ export const addressInfoFromNodeAddress = (nodeAddress: NodeAddress): HubResult<
   return ok({
     address: nodeAddress.address,
     port: nodeAddress.port,
-    family: nodeAddress.family == 4 ? 'IPv4' : 'IPv6',
+    family: ipFamilyToString(nodeAddress.family),
   });
 };
 
@@ -41,7 +42,7 @@ export const addressInfoFromParts = (address: string, port: number): HubResult<A
   const addrInfo: AddressInfo = {
     address,
     port,
-    family: family == 4 ? 'IPv4' : 'IPv6',
+    family: ipFamilyToString(family),
   };
   return ok(addrInfo);
 };
@@ -61,9 +62,8 @@ export const ipMultiAddrStrFromAddressInfo = (addressInfo: AddressInfo): HubResu
 };
 
 /**
- * Creates an IP-only multiaddr formatted string from an AddressInfo
- *
- * Does not preserve port or transport information
+ * Returns an IP-only multiaddr formatted string from an AddressInfo without preserving port and
+ * transport information.
  */
 export const p2pMultiAddrStr = (addressInfo: AddressInfo, peerID: string): HubResult<string> => {
   return ipMultiAddrStrFromAddressInfo(addressInfo).map(
@@ -71,11 +71,36 @@ export const p2pMultiAddrStr = (addressInfo: AddressInfo, peerID: string): HubRe
   );
 };
 
+/* Converts GossipAddressInfo to net.AddressInfo */
+export const addressInfoFromGossip = (addressInfo: GossipAddressInfo): HubResult<AddressInfo> => {
+  const address = addressInfo.address();
+  const port = addressInfo.port();
+  const family = addressInfo.family();
+  if (!address || family === 0) return err(new HubError('bad_request.parse_failure', 'Invalid address'));
+  const addrInfo: AddressInfo = {
+    address,
+    port,
+    family: ipFamilyToString(family),
+  };
+  return ok(addrInfo);
+};
+
+/* Converts ipFamily number to string */
+export const ipFamilyToString = (family: number): string => {
+  return family == 4 ? 'IPv4' : 'IPv6';
+};
+
+/* Converts AddressInfo to address string  */
+export const addressInfoToString = (addressInfo: AddressInfo): string => {
+  if (addressInfo.family === 'IPv4') {
+    return `${addressInfo.address}:${addressInfo.port}`;
+  } else {
+    return `[${addressInfo.address}]:${addressInfo.port}`;
+  }
+};
+
 /**
- *
- * Fetches the publicly visible IP address of the running process
- *
- * @returns the public IPv4 or IPv6 as a string
+ * Returns publicly visible IPv4 or IPv6 address of the running process
  */
 let lastIpFetch = { timestamp: new Date().getTime(), ip: '' };
 

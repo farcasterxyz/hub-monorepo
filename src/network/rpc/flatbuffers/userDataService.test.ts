@@ -13,6 +13,7 @@ import { UserDataType } from '~/utils/generated/message_generated';
 import { HubError } from '~/utils/hubErrors';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 import { ok } from 'neverthrow';
+import { addressInfoFromParts } from '~/utils/p2p';
 
 const db = jestBinaryRocksDB('flatbuffers.rpc.userDataService.test');
 const engine = new Engine(db);
@@ -23,7 +24,7 @@ let client: Client;
 beforeAll(async () => {
   server = new Server(engine);
   const port = await server.start();
-  client = new Client(port);
+  client = new Client(addressInfoFromParts('127.0.0.1', port)._unsafeUnwrap());
 });
 
 afterAll(async () => {
