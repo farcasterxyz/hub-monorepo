@@ -22,15 +22,15 @@ jobs:
         shard: [1/2, 2/2]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v3
         with:
           node-version: '18'
 
       - name: Restore cached dependencies for Node modules.
         id: module-cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ${{ github.workspace }}/node_modules
           key: ${{ runner.os }}--node--${{ hashFiles('**/yarn.lock') }}
@@ -51,4 +51,4 @@ jobs:
         run: yarn test:ci --shard=${{ matrix.shard }}
 
       - name: Upload coverage results
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
