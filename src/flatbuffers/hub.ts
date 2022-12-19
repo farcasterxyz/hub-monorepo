@@ -124,6 +124,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   /** Stop the GossipNode and RPC Server */
   async stop() {
     clearInterval(this.contactTimer);
+    await this.ethRegistryProvider.stop();
     await this.rpcServer.stop();
     await this.rocksDB.close();
   }
