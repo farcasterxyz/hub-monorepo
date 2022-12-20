@@ -2,12 +2,16 @@ import { ByteBuffer } from 'flatbuffers';
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { RootPrefix } from '~/storage/flatbuffers/types';
 import { IdRegistryEvent, IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
+import { HubError } from '~/utils/hubErrors';
 
 /** IdRegistryEventModel provides helpers to read and write Flatbuffers ContractEvents from RocksDB */
 export default class IdRegistryEventModel {
-  public event: IdRegistryEvent;
+  public readonly event: IdRegistryEvent;
 
   constructor(event: IdRegistryEvent) {
+    if (!Object.values(IdRegistryEventType).includes(event.type())) {
+      throw new HubError('bad_request.invalid_param', 'type is invalid');
+    }
     this.event = event;
   }
 
@@ -106,5 +110,9 @@ export default class IdRegistryEventModel {
 
   type(): IdRegistryEventType {
     return this.event.type();
+  }
+
+  typeName(): string {
+    return IdRegistryEventType[this.type()] as string;
   }
 }

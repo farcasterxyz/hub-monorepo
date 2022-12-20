@@ -1,6 +1,7 @@
 import { arrayify } from 'ethers/lib/utils';
 import Factories from '~/test/factories/flatbuffer';
 import { generateEthereumSigner } from '~/utils/crypto';
+import { NameRegistryEventT, NameRegistryEventType } from '~/utils/generated/name_registry_event_generated';
 import { jestBinaryRocksDB } from '../db/jestUtils';
 import NameRegistryEventModel from './nameRegistryEventModel';
 
@@ -36,22 +37,38 @@ describe('static methods', () => {
   });
 });
 
-describe('transfer', () => {
-  test('succeeds when fname is transfered', async () => {
-    await model.put(db);
+describe('instance methods', () => {
+  describe('put', () => {
+    test('succeeds when fname is transfered', async () => {
+      await model.put(db);
 
-    const custody2 = await generateEthereumSigner();
-    custody2Address = arrayify(custody2.signerKey);
+      const custody2 = await generateEthereumSigner();
+      custody2Address = arrayify(custody2.signerKey);
 
-    // Transfer evemt
-    const transferNameRegistryEvent = await Factories.NameRegistryEvent.create({
-      fname: Array.from(fname),
-      from: Array.from(custody1Address),
-      to: Array.from(custody2Address),
+      // Transfer evemt
+      const transferNameRegistryEvent = await Factories.NameRegistryEvent.create({
+        fname: Array.from(fname),
+        from: Array.from(custody1Address),
+        to: Array.from(custody2Address),
+      });
+      const model2 = new NameRegistryEventModel(transferNameRegistryEvent);
+      await model2.put(db);
+
+      await expect(NameRegistryEventModel.get(db, fname)).resolves.toEqual(model2);
     });
-    const model2 = new NameRegistryEventModel(transferNameRegistryEvent);
-    await model2.put(db);
+  });
 
-    await expect(NameRegistryEventModel.get(db, fname)).resolves.toEqual(model2);
+  describe('typeName', () => {
+    test('returns string version of type enum', async () => {
+      const transfer = new NameRegistryEventModel(
+        await Factories.NameRegistryEvent.create({ type: NameRegistryEventType.NameRegistryTransfer })
+      );
+      expect(transfer.typeName()).toEqual('NameRegistryTransfer');
+
+      const renew = new NameRegistryEventModel(
+        await Factories.NameRegistryEvent.create({ type: NameRegistryEventType.NameRegistryRenew })
+      );
+      expect(renew.typeName()).toEqual('NameRegistryRenew');
+    });
   });
 });

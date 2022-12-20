@@ -128,18 +128,6 @@ describe('mergeIdRegistryEvent', () => {
     await expect(engine.mergeIdRegistryEvent(custodyEvent)).resolves.toEqual(ok(undefined));
     await expect(signerStore.getCustodyEvent(fid)).resolves.toEqual(custodyEvent);
   });
-
-  test('fails with invalid event type', async () => {
-    const invalidEvent = new IdRegistryEventModel(
-      await Factories.IdRegistryEvent.create({
-        type: 3 as IdRegistryEventType,
-        fid: Array.from(fid),
-        to: Array.from(custodyAddress),
-      })
-    );
-    const result = await engine.mergeIdRegistryEvent(invalidEvent);
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid event type'));
-  });
 });
 
 describe('mergeMessage', () => {
@@ -167,8 +155,13 @@ describe('mergeMessage', () => {
     });
 
     test('fails with invalid message type', async () => {
-      const data = await Factories.MessageData.create({ type: 12 as MessageType, fid: Array.from(fid) });
-      const message = new MessageModel(
+      class MessageModelStub extends MessageModel {
+        override type(): MessageType {
+          return 100 as MessageType; // Invalid message type
+        }
+      }
+      const data = await Factories.MessageData.create({ fid: Array.from(fid) });
+      const message = new MessageModelStub(
         await Factories.Message.create(
           { data: Array.from(data.bb?.bytes() ?? new Uint8Array()) },
           { transient: { signer } }

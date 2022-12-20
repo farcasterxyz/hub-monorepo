@@ -17,13 +17,16 @@ import { NodeMetadata } from '~/network/sync/merkleTrie';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import { addressInfoFromParts } from '~/utils/p2p';
 import { logger } from '~/utils/logger';
+import { HubSubmitSource } from '~/storage/flatbuffers/types';
+import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 
 /**
  * Extendable RPC APIs
  */
 export interface RPCHandler {
-  submitMessage(message: MessageModel): HubAsyncResult<void>;
-  submitIdRegistryEvent?(event: IdRegistryEventModel): HubAsyncResult<void>;
+  submitMessage(message: MessageModel, source?: HubSubmitSource): HubAsyncResult<void>;
+  submitIdRegistryEvent?(event: IdRegistryEventModel, source?: HubSubmitSource): HubAsyncResult<void>;
+  submitNameRegistryEvent?(event: NameRegistryEventModel, source?: HubSubmitSource): HubAsyncResult<void>;
   getSyncMetadataByPrefix?(prefix: string): HubAsyncResult<NodeMetadata>;
   getSyncIdsByPrefix?(prefix: string): HubAsyncResult<string[]>;
 }

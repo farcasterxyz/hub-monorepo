@@ -32,13 +32,17 @@ export const TARGET_KEY_BYTES = 40;
 
 /** MessageModel that provides helpers to read and write Flatbuffers Messages from RocksDB */
 export default class MessageModel {
-  public message: Message;
-  public data: MessageData;
+  public readonly message: Message;
+  public readonly data: MessageData;
 
   constructor(message: Message) {
     const data = MessageData.getRootAsMessageData(new ByteBuffer(message.dataArray() ?? new Uint8Array()));
-    if (!data.type()) {
+    const messageType = data.type();
+    if (!messageType) {
       throw new HubError('bad_request.invalid_param', 'message type is missing');
+    }
+    if (!Object.values(MessageType).includes(messageType)) {
+      throw new HubError('bad_request.invalid_param', 'message type is invalid');
     }
     this.message = message;
     this.data = data;
@@ -256,6 +260,10 @@ export default class MessageModel {
 
   type(): MessageType {
     return this.data.type() as MessageType;
+  }
+
+  typeName(): string {
+    return MessageType[this.type()] as string;
   }
 
   fid(): Uint8Array {

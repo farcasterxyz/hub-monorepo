@@ -1,4 +1,7 @@
 import { default as Pino } from 'pino';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
+import MessageModel from '~/storage/flatbuffers/messageModel';
+import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 
 /**
  * Logging Guidelines
@@ -37,3 +40,31 @@ if (process.env['NODE_ENV'] === 'test' || process.env['CI']) {
 }
 
 export const logger = Pino(defaultOptions);
+
+export const messageToLog = (message: MessageModel) => {
+  return {
+    tsHash: message.tsHash(),
+    fid: message.fid(),
+    type: message.typeName(),
+  };
+};
+
+export const idRegistryEventToLog = (event: IdRegistryEventModel) => {
+  return {
+    blockNumber: event.blockNumber(),
+    transactionHash: event.transactionHash(),
+    fid: event.fid(),
+    to: event.to(),
+    type: event.typeName(),
+  };
+};
+
+export const nameRegistryEventToLog = (event: NameRegistryEventModel) => {
+  return {
+    blockNumber: event.blockNumber(),
+    transactionHash: event.transactionHash(),
+    fname: event.fname(),
+    to: event.to(),
+    type: event.typeName(),
+  };
+};
