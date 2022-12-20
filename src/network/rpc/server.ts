@@ -1,9 +1,9 @@
+import { replacer, reviver, RPCHandler, RPCRequest } from './interfaces';
 import { rejects } from 'assert';
 import jayson, { JSONRPCError } from 'jayson/promise';
-import { replacer, reviver, RPCHandler, RPCRequest } from './interfaces';
+import { AddressInfo } from 'net';
 import { ServerError } from '~/utils/errors';
 import { logger } from '~/utils/logger';
-import { AddressInfo } from 'net';
 import { ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 
 const VERSION = 0.1;

@@ -1,8 +1,8 @@
+import { jestBinaryRocksDB } from '../db/jestUtils';
+import NameRegistryEventModel from './nameRegistryEventModel';
 import { arrayify } from 'ethers/lib/utils';
 import Factories from '~/test/factories/flatbuffer';
 import { generateEthereumSigner } from '~/utils/crypto';
-import { jestBinaryRocksDB } from '../db/jestUtils';
-import NameRegistryEventModel from './nameRegistryEventModel';
 
 const db = jestBinaryRocksDB('flatbuffers.nameRegistryEventModel.test');
 

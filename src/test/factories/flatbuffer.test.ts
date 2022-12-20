@@ -1,20 +1,20 @@
+import { isPeerId } from '@libp2p/interface-peer-id';
+import { peerIdFromBytes } from '@libp2p/peer-id';
+import * as ed from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
+import { hexlify } from 'ethers/lib/utils';
+import { GOSSIP_PROTOCOL_VERSION } from '~/network/p2p/protocol';
+import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
+import { toFarcasterTime } from '~/storage/flatbuffers/utils';
 import Factories from '~/test/factories/flatbuffer';
+import { verifyVerificationEthAddressClaimSignature } from '~/utils/eip712';
+import { GossipAddressInfoT, GossipContent, GossipMessage } from '~/utils/generated/gossip_generated';
 import {
   FarcasterNetwork,
   Message,
   MessageData,
   VerificationAddEthAddressBody,
 } from '~/utils/generated/message_generated';
-import * as ed from '@noble/ed25519';
-import { verifyVerificationEthAddressClaimSignature } from '~/utils/eip712';
-import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
-import { hexlify } from 'ethers/lib/utils';
-import { toFarcasterTime } from '~/storage/flatbuffers/utils';
-import { GossipAddressInfoT, GossipContent, GossipMessage } from '~/utils/generated/gossip_generated';
-import { peerIdFromBytes } from '@libp2p/peer-id';
-import { isPeerId } from '@libp2p/interface-peer-id';
-import { GOSSIP_PROTOCOL_VERSION } from '~/network/p2p/protocol';
 
 describe('UserIdFactory', () => {
   test('accepts fid', async () => {

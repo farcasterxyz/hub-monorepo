@@ -1,18 +1,18 @@
 import { faker } from '@faker-js/faker';
-import Factories from '~/test/factories/flatbuffer';
+import { arrayify } from 'ethers/lib/utils';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
+import MessageModel from '~/storage/flatbuffers/messageModel';
+import { SignerAddModel, SignerRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
+import { bytesDecrement, bytesIncrement, getFarcasterTime } from '~/storage/flatbuffers/utils';
+import SignerStore from '~/storage/sets/flatbuffers/signerStore';
+import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
+import Factories from '~/test/factories/flatbuffer';
 import { EthereumSigner } from '~/types';
 import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
-import { arrayify } from 'ethers/lib/utils';
-import SignerStore from '~/storage/sets/flatbuffers/signerStore';
-import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
-import { SignerAddModel, SignerRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
-import MessageModel from '~/storage/flatbuffers/messageModel';
-import { bytesDecrement, bytesIncrement, getFarcasterTime } from '~/storage/flatbuffers/utils';
+import { IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
 import { MessageType } from '~/utils/generated/message_generated';
 import { HubError } from '~/utils/hubErrors';
-import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
-import { IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
 
 const db = jestBinaryRocksDB('flatbuffers.signerStore.test');
 const eventHandler = new StoreEventHandler();

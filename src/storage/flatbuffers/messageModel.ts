@@ -1,5 +1,7 @@
-import AbstractRocksDB from 'rocksdb';
 import { ByteBuffer } from 'flatbuffers';
+import AbstractRocksDB from 'rocksdb';
+import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
+import { RootPrefix, UserMessagePostfix, UserPostfix } from '~/storage/flatbuffers/types';
 import {
   CastAddBody,
   CastRemoveBody,
@@ -17,8 +19,6 @@ import {
   VerificationAddEthAddressBody,
   VerificationRemoveBody,
 } from '~/utils/generated/message_generated';
-import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
-import { RootPrefix, UserMessagePostfix, UserPostfix } from '~/storage/flatbuffers/types';
 import { HubError } from '~/utils/hubErrors';
 
 /** Used when index keys are sufficiently descriptive */

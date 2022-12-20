@@ -1,5 +1,22 @@
+import MessageModel from './messageModel';
+import { getFarcasterTime } from './utils';
+import { faker } from '@faker-js/faker';
 import { Wallet, utils } from 'ethers';
-import { generateEd25519KeyPair } from '~/utils/crypto';
+import { arrayify } from 'ethers/lib/utils';
+import {
+  CastAddModel,
+  CastRemoveModel,
+  AmpAddModel,
+  AmpRemoveModel,
+  ReactionAddModel,
+  ReactionRemoveModel,
+  SignerAddModel,
+  SignerRemoveModel,
+  UserDataAddModel,
+  VerificationAddEthAddressModel,
+  VerificationEthAddressClaim,
+  VerificationRemoveModel,
+} from '~/storage/flatbuffers/types';
 import {
   ALLOWED_CLOCK_SKEW_SECONDS,
   validateCastAddMessage,
@@ -19,7 +36,9 @@ import {
   validateVerificationRemoveMessage,
 } from '~/storage/flatbuffers/validations';
 import Factories from '~/test/factories/flatbuffer';
-import MessageModel from './messageModel';
+import { KeyPair } from '~/types';
+import { generateEd25519KeyPair } from '~/utils/crypto';
+import { signVerificationEthAddressClaim } from '~/utils/eip712';
 import {
   CastAddBodyT,
   FarcasterNetwork,
@@ -35,25 +54,6 @@ import {
   VerificationAddEthAddressBodyT,
   VerificationRemoveBodyT,
 } from '~/utils/generated/message_generated';
-import { faker } from '@faker-js/faker';
-import { getFarcasterTime } from './utils';
-import { KeyPair } from '~/types';
-import {
-  CastAddModel,
-  CastRemoveModel,
-  AmpAddModel,
-  AmpRemoveModel,
-  ReactionAddModel,
-  ReactionRemoveModel,
-  SignerAddModel,
-  SignerRemoveModel,
-  UserDataAddModel,
-  VerificationAddEthAddressModel,
-  VerificationEthAddressClaim,
-  VerificationRemoveModel,
-} from '~/storage/flatbuffers/types';
-import { signVerificationEthAddressClaim } from '~/utils/eip712';
-import { arrayify } from 'ethers/lib/utils';
 import { HubError } from '~/utils/hubErrors';
 
 let wallet: Wallet;

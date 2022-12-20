@@ -1,31 +1,31 @@
-import { multiaddr, Multiaddr } from '@multiformats/multiaddr';
-import Engine from '~/storage/engine/flatbuffers';
-import Server, { RPCHandler } from '~/network/rpc/flatbuffers/server';
 import { PeerId } from '@libp2p/interface-peer-id';
-import { MessageType } from '~/types';
-import { NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
+import { peerIdFromBytes } from '@libp2p/peer-id';
+import { publicAddressesFirst } from '@libp2p/utils/address-sort';
+import { multiaddr, Multiaddr } from '@multiformats/multiaddr';
+import { isIP } from 'net';
+import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import BinaryRocksDB from '~/storage/db/binaryrocksdb';
-import { logger } from '~/utils/logger';
-import { HubAsyncResult, HubError, HubResult } from '~/utils/hubErrors';
-import MessageModel from '~/storage/flatbuffers/messageModel';
-import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
-import { EthEventsProvider, GoerliEthConstants } from '~/storage/engine/flatbuffers/providers/ethEventsProvider';
 import { Node } from '~/network/p2p/flatbuffers/node';
+import { NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
+import Client from '~/network/rpc/flatbuffers/client';
+import Server, { RPCHandler } from '~/network/rpc/flatbuffers/server';
+import BinaryRocksDB from '~/storage/db/binaryrocksdb';
+import Engine from '~/storage/engine/flatbuffers';
+import { EthEventsProvider, GoerliEthConstants } from '~/storage/engine/flatbuffers/providers/ethEventsProvider';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
+import MessageModel from '~/storage/flatbuffers/messageModel';
+import { MessageType } from '~/types';
 import {
   ContactInfoContent,
   GossipAddressInfo,
   GossipContent,
   GossipMessage,
 } from '~/utils/generated/gossip_generated';
-import { err, ok, Result, ResultAsync } from 'neverthrow';
-import { peerIdFromBytes } from '@libp2p/peer-id';
-import { Message } from '~/utils/generated/message_generated';
 import { IdRegistryEvent } from '~/utils/generated/id_registry_event_generated';
+import { Message } from '~/utils/generated/message_generated';
+import { HubAsyncResult, HubError, HubResult } from '~/utils/hubErrors';
+import { logger } from '~/utils/logger';
 import { addressInfoFromGossip, ipFamilyToString, p2pMultiAddrStr } from '~/utils/p2p';
-import { isIP } from 'net';
-import Client from '~/network/rpc/flatbuffers/client';
-import { publicAddressesFirst } from '@libp2p/utils/address-sort';
 
 export interface HubOptions {
   /** The PeerId of this Hub */

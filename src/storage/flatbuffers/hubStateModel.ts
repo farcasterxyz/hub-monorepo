@@ -1,7 +1,7 @@
-import { ByteBuffer } from 'flatbuffers';
-import { HubState } from '~/utils/generated/hub_state_generated';
 import RocksDB, { Transaction } from '../db/binaryrocksdb';
 import { RootPrefix } from './types';
+import { ByteBuffer } from 'flatbuffers';
+import { HubState } from '~/utils/generated/hub_state_generated';
 
 /** Helpers to read/write flatbuffers for the state of the hub, including the last ETH block synced */
 export default class HubStateModel {

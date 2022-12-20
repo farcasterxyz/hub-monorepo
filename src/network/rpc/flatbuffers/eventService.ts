@@ -1,11 +1,11 @@
 import grpc, { Metadata } from '@grpc/grpc-js';
-import Engine from '~/storage/engine/flatbuffers';
+import { Builder, ByteBuffer } from 'flatbuffers';
 import { defaultMethod } from '~/network/rpc/flatbuffers/server';
+import Engine from '~/storage/engine/flatbuffers';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
+import MessageModel from '~/storage/flatbuffers/messageModel';
 import { toByteBuffer } from '~/storage/flatbuffers/utils';
 import { EventType, SubscribeRequest, EventResponse, EventResponseT } from '~/utils/generated/rpc_generated';
-import MessageModel from '~/storage/flatbuffers/messageModel';
-import { Builder, ByteBuffer } from 'flatbuffers';
-import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 
 export const eventServiceMethods = () => {
   return {

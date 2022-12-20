@@ -1,6 +1,6 @@
+import { AbstractBatch, AbstractChainedBatch } from 'abstract-leveldown';
 import { mkdir } from 'fs';
 import AbstractRocksDB from 'rocksdb';
-import { AbstractBatch, AbstractChainedBatch } from 'abstract-leveldown';
 import { HubError } from '~/utils/hubErrors';
 
 const DB_PREFIX = '.rocks';

@@ -1,6 +1,5 @@
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import * as Types from '~/storage/flatbuffers/types';
-
 import { MessageBody, MessageType } from '~/utils/generated/message_generated';
 
 export const isCastRemove = (message: MessageModel): message is Types.CastRemoveModel => {

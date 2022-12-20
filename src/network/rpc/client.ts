@@ -1,11 +1,11 @@
+import { replacer, reviver, RPCRequest } from './interfaces';
+import jayson, { JSONRPCError } from 'jayson/promise';
 import { AddressInfo } from 'net';
 import { Err, Ok, Result } from 'neverthrow';
-import jayson, { JSONRPCError } from 'jayson/promise';
-import { Cast, Follow, IdRegistryEvent, Message, Reaction, Verification } from '~/types';
-import { replacer, reviver, RPCRequest } from './interfaces';
-import { ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 import { NodeMetadata } from '~/network/sync/merkleTrie';
+import { Cast, Follow, IdRegistryEvent, Message, Reaction, Verification } from '~/types';
 import { isIdRegistryEvent } from '~/types/typeguards';
+import { ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 
 export class RPCClient {
   private _tcpClient!: jayson.client;

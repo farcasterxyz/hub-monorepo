@@ -1,7 +1,7 @@
-import { existsSync, rmdirSync, mkdirSync } from 'fs';
 import { faker } from '@faker-js/faker';
-import RocksDB from '~/storage/db/rocksdb';
+import { existsSync, rmdirSync, mkdirSync } from 'fs';
 import { jestRocksDB } from '~/storage/db/jestUtils';
+import RocksDB from '~/storage/db/rocksdb';
 import { HubError } from '~/utils/hubErrors';
 
 const randomDbName = () => `rocksdb.test.${faker.name.lastName().toLowerCase()}`;

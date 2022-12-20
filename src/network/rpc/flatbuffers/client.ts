@@ -1,6 +1,19 @@
 import grpc, { ClientReadableStream, Metadata, MetadataValue } from '@grpc/grpc-js';
+import { AddressInfo } from 'net';
 import { ok, err } from 'neverthrow';
+import { ampServiceMethods, ampServiceRequests } from '~/network/rpc/flatbuffers/ampService';
+import { castServiceRequests, castServiceMethods } from '~/network/rpc/flatbuffers/castService';
+import { eventServiceMethods } from '~/network/rpc/flatbuffers/eventService';
+import { reactionServiceMethods, reactionServiceRequests } from '~/network/rpc/flatbuffers/reactionService';
+import { fromServiceError } from '~/network/rpc/flatbuffers/server';
+import { signerServiceMethods, signerServiceRequests } from '~/network/rpc/flatbuffers/signerService';
+import { submitServiceMethods } from '~/network/rpc/flatbuffers/submitService';
+import { createSyncServiceRequest, syncServiceMethods } from '~/network/rpc/flatbuffers/syncService';
+import { userDataServiceMethods, userDataServiceRequests } from '~/network/rpc/flatbuffers/userDataService';
+import { verificationServiceMethods, verificationServiceRequests } from '~/network/rpc/flatbuffers/verificationService';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import MessageModel from '~/storage/flatbuffers/messageModel';
+import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
 import {
   CastAddModel,
   CastRemoveModel,
@@ -14,7 +27,9 @@ import {
   VerificationAddEthAddressModel,
   VerificationRemoveModel,
 } from '~/storage/flatbuffers/types';
+import { IdRegistryEvent } from '~/utils/generated/id_registry_event_generated';
 import { CastId, Message, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
+import { NameRegistryEvent } from '~/utils/generated/name_registry_event_generated';
 import {
   EventResponse,
   GetFidsRequest,
@@ -23,23 +38,8 @@ import {
   FidsResponse,
 } from '~/utils/generated/rpc_generated';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
-import { castServiceRequests, castServiceMethods } from '~/network/rpc/flatbuffers/castService';
-import { fromServiceError } from '~/network/rpc/flatbuffers/server';
-import { ampServiceMethods, ampServiceRequests } from '~/network/rpc/flatbuffers/ampService';
-import { reactionServiceMethods, reactionServiceRequests } from '~/network/rpc/flatbuffers/reactionService';
-import { verificationServiceMethods, verificationServiceRequests } from '~/network/rpc/flatbuffers/verificationService';
-import { submitServiceMethods } from '~/network/rpc/flatbuffers/submitService';
-import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
-import { IdRegistryEvent } from '~/utils/generated/id_registry_event_generated';
-import { signerServiceMethods, signerServiceRequests } from '~/network/rpc/flatbuffers/signerService';
-import { userDataServiceMethods, userDataServiceRequests } from '~/network/rpc/flatbuffers/userDataService';
-import { createSyncServiceRequest, syncServiceMethods } from '~/network/rpc/flatbuffers/syncService';
-import { eventServiceMethods } from '~/network/rpc/flatbuffers/eventService';
-import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
-import { NameRegistryEvent } from '~/utils/generated/name_registry_event_generated';
-import { AddressInfo } from 'net';
-import { addressInfoToString, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 import { logger } from '~/utils/logger';
+import { addressInfoToString, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 
 class Client {
   private client: grpc.Client;

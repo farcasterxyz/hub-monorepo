@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
-import { BaseProvider, Block, TransactionReceipt, TransactionResponse } from '@ethersproject/providers';
-import { Event } from '@ethersproject/contracts';
-import { BigNumber, Contract } from 'ethers';
-import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import Engine from '~/storage/engine/flatbuffers';
 import { IdRegistry, NameRegistry } from './abis';
 import { EthEventsProvider } from './ethEventsProvider';
+import { Event } from '@ethersproject/contracts';
+import { BaseProvider, Block, TransactionReceipt, TransactionResponse } from '@ethersproject/providers';
+import { BigNumber, Contract } from 'ethers';
 import { arrayify, Result } from 'ethers/lib/utils';
+import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
+import Engine from '~/storage/engine/flatbuffers';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
-import Factories from '~/test/factories/flatbuffer';
 import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
+import Factories from '~/test/factories/flatbuffer';
 import { IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
 import { NameRegistryEventType } from '~/utils/generated/name_registry_event_generated';
 

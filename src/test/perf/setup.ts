@@ -1,10 +1,10 @@
-import { RPCClient } from '~/network/rpc';
-import { logger } from '~/utils/logger';
 import { faker } from '@faker-js/faker';
-import { IdRegistryEvent, SignerAdd } from '~/types';
+import { RPCClient } from '~/network/rpc';
 import { generateUserInfo, getSignerAdd, UserInfo, getIdRegistryEvent } from '~/storage/engine/mock';
 import { submitInBatches, post } from '~/test/perf/utils';
+import { IdRegistryEvent, SignerAdd } from '~/types';
 import { sleep } from '~/utils/crypto';
+import { logger } from '~/utils/logger';
 
 export enum SetupMode {
   /** Pick a Hub at random and perform setup with it */

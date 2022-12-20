@@ -1,18 +1,18 @@
+import { Wallet, utils } from 'ethers';
+import { ok } from 'neverthrow';
+import Client from '~/network/rpc/flatbuffers/client';
 import Server from '~/network/rpc/flatbuffers/server';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import Client from '~/network/rpc/flatbuffers/client';
-import MessageModel from '~/storage/flatbuffers/messageModel';
-import Factories from '~/test/factories/flatbuffer';
 import Engine from '~/storage/engine/flatbuffers';
-import { SignerAddModel, UserDataAddModel } from '~/storage/flatbuffers/types';
-import { Wallet, utils } from 'ethers';
-import { generateEd25519KeyPair } from '~/utils/crypto';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
+import MessageModel from '~/storage/flatbuffers/messageModel';
+import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
+import { SignerAddModel, UserDataAddModel } from '~/storage/flatbuffers/types';
+import Factories from '~/test/factories/flatbuffer';
 import { KeyPair } from '~/types';
+import { generateEd25519KeyPair } from '~/utils/crypto';
 import { UserDataType } from '~/utils/generated/message_generated';
 import { HubError } from '~/utils/hubErrors';
-import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
-import { ok } from 'neverthrow';
 import { addressInfoFromParts } from '~/utils/p2p';
 
 const db = jestBinaryRocksDB('flatbuffers.rpc.userDataService.test');

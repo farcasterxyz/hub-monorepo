@@ -1,16 +1,16 @@
-import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
-import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync, ok } from 'neverthrow';
-import { StorePruneOptions, UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
-import { isUserDataAdd } from '~/storage/flatbuffers/typeguards';
-import { bytesCompare } from '~/storage/flatbuffers/utils';
-import { MessageType, UserDataType } from '~/utils/generated/message_generated';
-import { HubAsyncResult, HubError } from '~/utils/hubErrors';
-import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
-import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
-import { eventCompare } from '~/utils/contractEvent';
-import { NameRegistryEventType } from '~/utils/generated/name_registry_event_generated';
+import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
+import MessageModel from '~/storage/flatbuffers/messageModel';
+import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
+import { isUserDataAdd } from '~/storage/flatbuffers/typeguards';
+import { StorePruneOptions, UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
+import { bytesCompare } from '~/storage/flatbuffers/utils';
+import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
+import { eventCompare } from '~/utils/contractEvent';
+import { MessageType, UserDataType } from '~/utils/generated/message_generated';
+import { NameRegistryEventType } from '~/utils/generated/name_registry_event_generated';
+import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 

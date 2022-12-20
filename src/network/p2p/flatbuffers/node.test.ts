@@ -1,11 +1,11 @@
 import { multiaddr } from '@multiformats/multiaddr/';
-import Factories from '~/test/factories/flatbuffer';
 import { Node } from '~/network/p2p/flatbuffers/node';
 import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
-import { sleep } from '~/utils/crypto';
-import { GossipContent, GossipMessage, GossipMessageT } from '~/utils/generated/gossip_generated';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { CastAddModel } from '~/storage/flatbuffers/types';
+import Factories from '~/test/factories/flatbuffer';
+import { sleep } from '~/utils/crypto';
+import { GossipContent, GossipMessage, GossipMessageT } from '~/utils/generated/gossip_generated';
 
 const NUM_NODES = 10;
 const PROPAGATION_DELAY = 3 * 1000; // between 2 and 3 full heartbeat ticks

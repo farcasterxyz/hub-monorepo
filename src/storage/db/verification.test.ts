@@ -1,8 +1,8 @@
-import { Factories } from '~/test/factories';
 import { jestRocksDB } from '~/storage/db/jestUtils';
+import VerificationDB from '~/storage/db/verification';
+import { Factories } from '~/test/factories';
 import { Ed25519Signer, VerificationEthereumAddress, VerificationRemove } from '~/types';
 import { generateEd25519Signer } from '~/utils/crypto';
-import VerificationDB from '~/storage/db/verification';
 import { HubError } from '~/utils/hubErrors';
 
 const rocks = jestRocksDB('db.verification.test');

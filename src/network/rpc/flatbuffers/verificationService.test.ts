@@ -1,14 +1,14 @@
+import { Wallet, utils } from 'ethers';
+import Client from '~/network/rpc/flatbuffers/client';
 import Server from '~/network/rpc/flatbuffers/server';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import Client from '~/network/rpc/flatbuffers/client';
-import MessageModel from '~/storage/flatbuffers/messageModel';
-import Factories from '~/test/factories/flatbuffer';
 import Engine from '~/storage/engine/flatbuffers';
-import { SignerAddModel, VerificationAddEthAddressModel } from '~/storage/flatbuffers/types';
-import { Wallet, utils } from 'ethers';
-import { generateEd25519KeyPair } from '~/utils/crypto';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
+import MessageModel from '~/storage/flatbuffers/messageModel';
+import { SignerAddModel, VerificationAddEthAddressModel } from '~/storage/flatbuffers/types';
+import Factories from '~/test/factories/flatbuffer';
 import { KeyPair } from '~/types';
+import { generateEd25519KeyPair } from '~/utils/crypto';
 import { HubError } from '~/utils/hubErrors';
 import { addressInfoFromParts } from '~/utils/p2p';
 

@@ -1,11 +1,11 @@
+import { multiaddr } from '@multiformats/multiaddr';
 import { Command } from 'commander';
 import { RPCClient } from '~/network/rpc';
-import { SetupMode, setupNetwork } from '~/test/perf/setup';
-import { addressInfoFromNodeAddress } from '~/utils/p2p';
-import { multiaddr } from '@multiformats/multiaddr';
 import { playback, PlaybackOrder } from '~/test/perf/playback';
 import { makeBasicScenario } from '~/test/perf/scenario';
+import { SetupMode, setupNetwork } from '~/test/perf/setup';
 import { waitForSync } from '~/test/perf/verify';
+import { addressInfoFromNodeAddress } from '~/utils/p2p';
 
 /**
  * Farcaster Benchmark Client

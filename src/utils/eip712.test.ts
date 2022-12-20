@@ -1,15 +1,15 @@
-import { utils, Wallet } from 'ethers';
 import { faker } from '@faker-js/faker';
+import { blake3 } from '@noble/hashes/blake3';
+import { utils, Wallet } from 'ethers';
 import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
 import Factories from '~/test/factories/flatbuffer';
-import { FarcasterNetwork } from '~/utils/generated/message_generated';
 import {
   signMessageHash,
   signVerificationEthAddressClaim,
   verifyMessageHashSignature,
   verifyVerificationEthAddressClaimSignature,
 } from '~/utils/eip712';
-import { blake3 } from '@noble/hashes/blake3';
+import { FarcasterNetwork } from '~/utils/generated/message_generated';
 
 const wallet = new Wallet(utils.randomBytes(32));
 

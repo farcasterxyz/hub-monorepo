@@ -1,13 +1,12 @@
 import { faker } from '@faker-js/faker';
 import { ResultAsync } from 'neverthrow';
-
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import SignerDB from '~/storage/db/signer';
 import Engine from '~/storage/engine';
-import { BadRequestError } from '~/utils/errors';
 import { Factories } from '~/test/factories';
 import { Ed25519Signer, EthereumSigner, SignerAdd, SignerMessage, SignerRemove, IdRegistryEvent } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner, hashFCObject } from '~/utils/crypto';
+import { BadRequestError } from '~/utils/errors';
 import { HubError } from '~/utils/hubErrors';
 
 const testDb = jestRocksDB(`engine.signer.test`);

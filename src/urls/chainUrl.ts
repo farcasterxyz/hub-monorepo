@@ -1,7 +1,7 @@
 import { ChainId } from 'caip';
 import { Result, err, ok } from 'neverthrow';
-import { BadRequestError, FarcasterError, ServerError } from '~/utils/errors';
 import { URL } from '~/urls/baseUrl';
+import { BadRequestError, FarcasterError, ServerError } from '~/utils/errors';
 
 export abstract class BaseChainURL extends URL {
   public static readonly SCHEME = 'chain';

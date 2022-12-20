@@ -1,16 +1,16 @@
+import { ClientReadableStream } from '@grpc/grpc-js';
+import { Wallet, utils } from 'ethers';
+import Client from '~/network/rpc/flatbuffers/client';
 import Server from '~/network/rpc/flatbuffers/server';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import Client from '~/network/rpc/flatbuffers/client';
-import MessageModel from '~/storage/flatbuffers/messageModel';
-import Factories from '~/test/factories/flatbuffer';
 import Engine from '~/storage/engine/flatbuffers';
-import { CastAddModel, SignerAddModel } from '~/storage/flatbuffers/types';
-import { Wallet, utils } from 'ethers';
-import { generateEd25519KeyPair, sleep } from '~/utils/crypto';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
+import MessageModel from '~/storage/flatbuffers/messageModel';
+import { CastAddModel, SignerAddModel } from '~/storage/flatbuffers/types';
+import Factories from '~/test/factories/flatbuffer';
 import { KeyPair } from '~/types';
+import { generateEd25519KeyPair, sleep } from '~/utils/crypto';
 import { EventResponse, EventType } from '~/utils/generated/rpc_generated';
-import { ClientReadableStream } from '@grpc/grpc-js';
 import { addressInfoFromParts } from '~/utils/p2p';
 
 const db = jestBinaryRocksDB('flatbuffers.rpc.eventService.test');

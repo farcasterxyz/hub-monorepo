@@ -1,6 +1,8 @@
-import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
-import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync, ok } from 'neverthrow';
+import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
+import MessageModel from '~/storage/flatbuffers/messageModel';
+import { isSignerAdd, isSignerRemove } from '~/storage/flatbuffers/typeguards';
 import {
   SignerAddModel,
   UserPostfix,
@@ -8,13 +10,11 @@ import {
   RootPrefix,
   StorePruneOptions,
 } from '~/storage/flatbuffers/types';
-import { isSignerAdd, isSignerRemove } from '~/storage/flatbuffers/typeguards';
 import { bytesCompare } from '~/storage/flatbuffers/utils';
-import { MessageType } from '~/utils/generated/message_generated';
-import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
-import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 import { eventCompare } from '~/utils/contractEvent';
+import { MessageType } from '~/utils/generated/message_generated';
+import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 

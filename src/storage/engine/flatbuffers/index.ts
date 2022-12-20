@@ -1,12 +1,10 @@
 import { err, errAsync, ok, ResultAsync } from 'neverthrow';
-import CastStore from '~/storage/sets/flatbuffers/castStore';
 import RocksDB from '~/storage/db/binaryrocksdb';
-import SignerStore from '~/storage/sets/flatbuffers/signerStore';
-import AmpStore from '~/storage/sets/flatbuffers/ampStore';
-import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
-import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
-import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
+import HubStateModel from '~/storage/flatbuffers/hubStateModel';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
 import MessageModel from '~/storage/flatbuffers/messageModel';
+import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
+import { isSignerAdd, isSignerRemove, isUserDataAdd } from '~/storage/flatbuffers/typeguards';
 import {
   CastAddModel,
   CastRemoveModel,
@@ -21,9 +19,7 @@ import {
   VerificationAddEthAddressModel,
   VerificationRemoveModel,
 } from '~/storage/flatbuffers/types';
-import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
-import { IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
-import { isSignerAdd, isSignerRemove, isUserDataAdd } from '~/storage/flatbuffers/typeguards';
+import { bytesCompare } from '~/storage/flatbuffers/utils';
 import {
   validateCastId,
   ValidatedCastId,
@@ -36,14 +32,18 @@ import {
   validateTsHash,
   validateUserId,
 } from '~/storage/flatbuffers/validations';
-import { CastId, MessageType, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
-import { HubAsyncResult, HubResult, HubError } from '~/utils/hubErrors';
+import AmpStore from '~/storage/sets/flatbuffers/ampStore';
+import CastStore from '~/storage/sets/flatbuffers/castStore';
+import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
+import SignerStore from '~/storage/sets/flatbuffers/signerStore';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
+import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
+import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
+import { IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
+import { CastId, MessageType, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
 import { NameRegistryEventType } from '~/utils/generated/name_registry_event_generated';
-import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
-import { bytesCompare } from '~/storage/flatbuffers/utils';
+import { HubAsyncResult, HubResult, HubError } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
-import HubStateModel from '~/storage/flatbuffers/hubStateModel';
 
 class Engine {
   public eventHandler: StoreEventHandler;

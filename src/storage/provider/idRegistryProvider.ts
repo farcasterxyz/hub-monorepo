@@ -1,8 +1,8 @@
-import { IdRegistry } from '~/storage/provider/abis';
 import { BigNumber, Contract, providers, Event } from 'ethers';
-import { TypedEmitter } from 'tiny-typed-emitter';
-import { IdRegistryEvent } from '~/types';
 import { ok, err } from 'neverthrow';
+import { TypedEmitter } from 'tiny-typed-emitter';
+import { IdRegistry } from '~/storage/provider/abis';
+import { IdRegistryEvent } from '~/types';
 import { sanitizeSigner } from '~/utils/crypto';
 import { HubError, HubResult } from '~/utils/hubErrors';
 

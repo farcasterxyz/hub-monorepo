@@ -1,15 +1,15 @@
 import grpc from '@grpc/grpc-js';
-import Engine from '~/storage/engine/flatbuffers';
-import { defaultMethod, RPCHandler, toServiceError } from '~/network/rpc/flatbuffers/server';
-import { toByteBuffer } from '~/storage/flatbuffers/utils';
-import { Message } from '~/utils/generated/message_generated';
-import { HubError, HubResult } from '~/utils/hubErrors';
-import MessageModel from '~/storage/flatbuffers/messageModel';
-import { NameRegistryEvent } from '~/utils/generated/name_registry_event_generated';
-import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
-import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
-import { IdRegistryEvent } from '~/utils/generated/id_registry_event_generated';
 import { err } from 'neverthrow';
+import { defaultMethod, RPCHandler, toServiceError } from '~/network/rpc/flatbuffers/server';
+import Engine from '~/storage/engine/flatbuffers';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
+import MessageModel from '~/storage/flatbuffers/messageModel';
+import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
+import { toByteBuffer } from '~/storage/flatbuffers/utils';
+import { IdRegistryEvent } from '~/utils/generated/id_registry_event_generated';
+import { Message } from '~/utils/generated/message_generated';
+import { NameRegistryEvent } from '~/utils/generated/name_registry_event_generated';
+import { HubError, HubResult } from '~/utils/hubErrors';
 
 export const submitServiceMethods = () => {
   return {

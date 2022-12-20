@@ -1,6 +1,6 @@
 import { Scenario } from '~/test/perf/scenario';
-import { logger } from '~/utils/logger';
 import { post, shuffleMessages, submitInBatches } from '~/test/perf/utils';
+import { logger } from '~/utils/logger';
 
 export enum PlaybackOrder {
   /** Playback messages in order */

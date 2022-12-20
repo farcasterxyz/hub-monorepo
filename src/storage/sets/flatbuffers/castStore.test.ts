@@ -1,11 +1,11 @@
-import Factories from '~/test/factories/flatbuffer';
-import CastStore from '~/storage/sets/flatbuffers/castStore';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { CastAddModel, CastRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
-import { HubError } from '~/utils/hubErrors';
 import { bytesDecrement, bytesIncrement, getFarcasterTime } from '~/storage/flatbuffers/utils';
+import CastStore from '~/storage/sets/flatbuffers/castStore';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
+import Factories from '~/test/factories/flatbuffer';
+import { HubError } from '~/utils/hubErrors';
 
 const db = jestBinaryRocksDB('flatbuffers.castStore.test');
 const eventHandler = new StoreEventHandler();

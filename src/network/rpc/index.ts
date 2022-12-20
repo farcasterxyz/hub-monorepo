@@ -1,5 +1,4 @@
 /* eslint-disable no-restricted-imports */
-
 import { RPCClient } from './client';
 import { RPCServer } from './server';
 

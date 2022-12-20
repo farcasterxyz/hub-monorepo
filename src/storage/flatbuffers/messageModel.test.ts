@@ -1,11 +1,11 @@
+import { UserPostfix } from './types';
+import { bytesCompare, toFarcasterTime } from './utils';
+import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
+import MessageModel, { TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
 import Factories from '~/test/factories/flatbuffer';
 import { KeyPair } from '~/types';
 import { generateEd25519KeyPair } from '~/utils/crypto';
-import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import MessageModel, { TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
-import { UserPostfix } from './types';
 import { HubError } from '~/utils/hubErrors';
-import { bytesCompare, toFarcasterTime } from './utils';
 
 const db = jestBinaryRocksDB('flatbuffers.model.test');
 

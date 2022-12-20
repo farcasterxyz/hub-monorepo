@@ -34,6 +34,7 @@
   "devDependencies": {
     "@faker-js/faker": "^7.6.0",
     "@libp2p/interface-mocks": "^7.0.1",
+    "@trivago/prettier-plugin-sort-imports": "^4.0.0",
     "@types/jest": "^29.0.2",
     "@types/node": "^18.7.6",
     "@types/pino": "^7.0.5",

@@ -1,6 +1,6 @@
-import Factories from '~/test/factories/flatbuffer';
-import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import IdRegistryEventModel from './idRegistryEventModel';
+import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
+import Factories from '~/test/factories/flatbuffer';
 import { HubError } from '~/utils/hubErrors';
 
 const db = jestBinaryRocksDB('flatbuffers.contractEventModel.test');

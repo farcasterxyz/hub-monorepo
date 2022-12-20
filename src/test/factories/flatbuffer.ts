@@ -1,6 +1,29 @@
-import { Factory } from 'fishery';
 import { faker } from '@faker-js/faker';
+import { PeerId } from '@libp2p/interface-peer-id';
+import { createEd25519PeerId } from '@libp2p/peer-id-factory';
+import * as ed from '@noble/ed25519';
+import { blake3 } from '@noble/hashes/blake3';
+import { ethers, utils, Wallet } from 'ethers';
+import { arrayify } from 'ethers/lib/utils';
+import { Factory } from 'fishery';
+import { Builder, ByteBuffer } from 'flatbuffers';
+import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
+import MessageModel from '~/storage/flatbuffers/messageModel';
+import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
+import { toFarcasterTime } from '~/storage/flatbuffers/utils';
 import { KeyPair } from '~/types';
+import { generateEd25519KeyPair } from '~/utils/crypto';
+import { signMessageHash, signVerificationEthAddressClaim } from '~/utils/eip712';
+import {
+  ContactInfoContentT,
+  ContactInfoContent,
+  GossipContent,
+  GossipMessage,
+  GossipMessageT,
+  GossipAddressInfoT,
+  GossipAddressInfo,
+} from '~/utils/generated/gossip_generated';
+import { IdRegistryEvent, IdRegistryEventT, IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
 import {
   CastAddBody,
   CastAddBodyT,
@@ -34,29 +57,6 @@ import {
   VerificationRemoveBody,
   VerificationRemoveBodyT,
 } from '~/utils/generated/message_generated';
-import { Builder, ByteBuffer } from 'flatbuffers';
-import { blake3 } from '@noble/hashes/blake3';
-import { generateEd25519KeyPair } from '~/utils/crypto';
-import * as ed from '@noble/ed25519';
-import { arrayify } from 'ethers/lib/utils';
-import { ethers, utils, Wallet } from 'ethers';
-import { signMessageHash, signVerificationEthAddressClaim } from '~/utils/eip712';
-import { VerificationEthAddressClaim } from '~/storage/flatbuffers/types';
-import { IdRegistryEvent, IdRegistryEventT, IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
-import { toFarcasterTime } from '~/storage/flatbuffers/utils';
-import MessageModel from '~/storage/flatbuffers/messageModel';
-import {
-  ContactInfoContentT,
-  ContactInfoContent,
-  GossipContent,
-  GossipMessage,
-  GossipMessageT,
-  GossipAddressInfoT,
-  GossipAddressInfo,
-} from '~/utils/generated/gossip_generated';
-import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
-import { createEd25519PeerId } from '@libp2p/peer-id-factory';
-import { PeerId } from '@libp2p/interface-peer-id';
 import {
   NameRegistryEvent,
   NameRegistryEventT,

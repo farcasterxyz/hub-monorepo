@@ -1,29 +1,7 @@
-import {
-  CastAddModel,
-  CastRemoveModel,
-  AmpAddModel,
-  AmpRemoveModel,
-  ReactionAddModel,
-  ReactionRemoveModel,
-  SignerAddModel,
-  SignerRemoveModel,
-  UserDataAddModel,
-  VerificationAddEthAddressModel,
-  VerificationEthAddressClaim,
-  VerificationRemoveModel,
-} from '~/storage/flatbuffers/types';
-import { verifyMessageHashSignature, verifyVerificationEthAddressClaimSignature } from '~/utils/eip712';
-import {
-  CastId,
-  HashScheme,
-  MessageType,
-  ReactionType,
-  SignatureScheme,
-  UserDataType,
-  UserId,
-} from '~/utils/generated/message_generated';
 import * as ed from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
+import { hexlify } from 'ethers/lib/utils';
+import { err, ok, Result, ResultAsync } from 'neverthrow';
 import MessageModel, { FID_BYTES } from '~/storage/flatbuffers/messageModel';
 import {
   isCastAdd,
@@ -38,9 +16,31 @@ import {
   isVerificationAddEthAddress,
   isVerificationRemove,
 } from '~/storage/flatbuffers/typeguards';
-import { hexlify } from 'ethers/lib/utils';
+import {
+  CastAddModel,
+  CastRemoveModel,
+  AmpAddModel,
+  AmpRemoveModel,
+  ReactionAddModel,
+  ReactionRemoveModel,
+  SignerAddModel,
+  SignerRemoveModel,
+  UserDataAddModel,
+  VerificationAddEthAddressModel,
+  VerificationEthAddressClaim,
+  VerificationRemoveModel,
+} from '~/storage/flatbuffers/types';
 import { bytesCompare, getFarcasterTime } from '~/storage/flatbuffers/utils';
-import { err, ok, Result, ResultAsync } from 'neverthrow';
+import { verifyMessageHashSignature, verifyVerificationEthAddressClaimSignature } from '~/utils/eip712';
+import {
+  CastId,
+  HashScheme,
+  MessageType,
+  ReactionType,
+  SignatureScheme,
+  UserDataType,
+  UserId,
+} from '~/utils/generated/message_generated';
 import { HubAsyncResult, HubError, HubResult } from '~/utils/hubErrors';
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */

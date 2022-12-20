@@ -1,9 +1,9 @@
-import { ethers } from 'ethers';
 import { faker } from '@faker-js/faker';
 import * as ed from '@noble/ed25519';
-import { hashFCObject, hashCompare, generateEthereumSigner, generateEd25519Signer, convertToHex } from '~/utils/crypto';
-import { Ed25519Signer, EthereumSigner } from '~/types';
 import { hexToBytes, utf8ToBytes } from 'ethereum-cryptography/utils';
+import { ethers } from 'ethers';
+import { Ed25519Signer, EthereumSigner } from '~/types';
+import { hashFCObject, hashCompare, generateEthereumSigner, generateEd25519Signer, convertToHex } from '~/utils/crypto';
 
 describe('hashFCObject', () => {
   const blake2bEmptyObject =

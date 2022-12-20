@@ -1,11 +1,11 @@
+import { GossipAddressInfo } from './generated/gossip_generated';
 import { Multiaddr, multiaddr, NodeAddress } from '@multiformats/multiaddr';
+import { get } from 'http';
 import { AddressInfo, isIP } from 'net';
 import { err, ok, Result } from 'neverthrow';
 import { FarcasterError } from '~/utils/errors';
-import { get } from 'http';
-import { logger } from '~/utils/logger';
 import { HubError, HubResult } from '~/utils/hubErrors';
-import { GossipAddressInfo } from './generated/gossip_generated';
+import { logger } from '~/utils/logger';
 
 /** Parses an address to verify it is actually a valid MultiAddr */
 export const parseAddress = (multiaddrStr: string): HubResult<Multiaddr> => {

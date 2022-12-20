@@ -1,15 +1,15 @@
-import Factories from '~/test/factories/flatbuffer';
+import { arrayify } from 'ethers/lib/utils';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import { UserPostfix, VerificationAddEthAddressModel, VerificationRemoveModel } from '~/storage/flatbuffers/types';
+import { bytesDecrement, bytesIncrement, getFarcasterTime } from '~/storage/flatbuffers/utils';
+import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
+import Factories from '~/test/factories/flatbuffer';
 import { EthereumSigner } from '~/types';
 import { generateEthereumSigner } from '~/utils/crypto';
 import { FarcasterNetwork } from '~/utils/generated/message_generated';
-import { arrayify } from 'ethers/lib/utils';
-import { bytesDecrement, bytesIncrement, getFarcasterTime } from '~/storage/flatbuffers/utils';
 import { HubError } from '~/utils/hubErrors';
-import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 
 const db = jestBinaryRocksDB('flatbuffers.verificationStore.test');
 const eventHandler = new StoreEventHandler();

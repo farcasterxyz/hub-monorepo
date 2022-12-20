@@ -1,3 +1,9 @@
+import { faker } from '@faker-js/faker';
+import { utils, Wallet } from 'ethers';
+import CastDB from '~/storage/db/cast';
+import { jestRocksDB } from '~/storage/db/jestUtils';
+import SignerDB from '~/storage/db/signer';
+import VerificationDB from '~/storage/db/verification';
 import Engine from '~/storage/engine';
 import { Factories } from '~/test/factories';
 import {
@@ -13,14 +19,8 @@ import {
   CastShort,
   CastRecast,
 } from '~/types';
-import { faker } from '@faker-js/faker';
-import { utils, Wallet } from 'ethers';
 import { hashFCObject, generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import CastDB from '~/storage/db/cast';
-import VerificationDB from '~/storage/db/verification';
 import { BadRequestError } from '~/utils/errors';
-import SignerDB from '~/storage/db/signer';
 
 const testDb = jestRocksDB(`engine.verification.test`);
 const engine = new Engine(testDb);
