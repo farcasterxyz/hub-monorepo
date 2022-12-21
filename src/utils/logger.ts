@@ -1,10 +1,10 @@
 import { BigNumber } from 'ethers';
 import { hexlify } from 'ethers/lib/utils';
 import { default as Pino } from 'pino';
-import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
-import MessageModel from '~/storage/flatbuffers/messageModel';
-import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
-import { fromFarcasterTime } from '~/storage/flatbuffers/utils';
+import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
+import MessageModel from '~/flatbuffers/models/messageModel';
+import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
+import { fromFarcasterTime } from '~/flatbuffers/utils/time';
 
 /**
  * Logging Guidelines

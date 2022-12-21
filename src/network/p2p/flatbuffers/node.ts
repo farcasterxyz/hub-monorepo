@@ -1,21 +1,21 @@
+import { ConnectionFilter } from '../connectionFilter';
 import { GossipSub } from '@chainsafe/libp2p-gossipsub';
 import { Noise } from '@chainsafe/libp2p-noise';
 import { Connection } from '@libp2p/interface-connection';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { Mplex } from '@libp2p/mplex';
+import { PubSubPeerDiscovery } from '@libp2p/pubsub-peer-discovery';
 import { TCP } from '@libp2p/tcp';
 import { Multiaddr } from '@multiformats/multiaddr';
+import { Builder, ByteBuffer } from 'flatbuffers';
 import { createLibp2p, Libp2p } from 'libp2p';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import { HubError, HubResult } from '~/utils/hubErrors';
+import { GossipContent, GossipMessage, GossipMessageT } from '~/flatbuffers/generated/gossip_generated';
 import { GOSSIP_TOPICS } from '~/network/p2p/protocol';
-import { ConnectionFilter } from '../connectionFilter';
+import { HubError, HubResult } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
 import { checkNodeAddrs } from '~/utils/p2p';
-import { PubSubPeerDiscovery } from '@libp2p/pubsub-peer-discovery';
-import { GossipContent, GossipMessage, GossipMessageT } from '~/utils/generated/gossip_generated';
-import { Builder, ByteBuffer } from 'flatbuffers';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
 

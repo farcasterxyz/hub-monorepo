@@ -1,12 +1,13 @@
-import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
-import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
 import { ResultAsync, ok } from 'neverthrow';
-import { CastAddModel, CastRemoveModel, RootPrefix, StorePruneOptions, UserPostfix } from '~/storage/flatbuffers/types';
-import { isCastAdd, isCastRemove } from '~/storage/flatbuffers/typeguards';
-import { bytesCompare, getFarcasterTime } from '~/storage/flatbuffers/utils';
-import { HubAsyncResult, HubError } from '~/utils/hubErrors';
+import { MessageType } from '~/flatbuffers/generated/message_generated';
+import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/flatbuffers/models/messageModel';
+import { isCastAdd, isCastRemove } from '~/flatbuffers/models/typeguards';
+import { CastAddModel, CastRemoveModel, RootPrefix, StorePruneOptions, UserPostfix } from '~/flatbuffers/models/types';
+import { bytesCompare } from '~/flatbuffers/utils/bytes';
+import { getFarcasterTime } from '~/flatbuffers/utils/time';
+import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
-import { MessageType } from '~/utils/generated/message_generated';
+import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 10_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 365; // 1 year

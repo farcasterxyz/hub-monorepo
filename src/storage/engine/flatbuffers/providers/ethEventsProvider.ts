@@ -1,20 +1,24 @@
-import { Contract, providers, Event, BigNumber } from 'ethers';
-import { IdRegistryEvent, IdRegistryEventT, IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
-import { Builder, ByteBuffer } from 'flatbuffers';
 import { IdRegistry, NameRegistry } from './abis';
+import { Contract, providers, Event, BigNumber } from 'ethers';
 import { arrayify } from 'ethers/lib/utils';
-import Engine from '~/storage/engine/flatbuffers/';
-import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
-import { logger } from '~/utils/logger';
+import { Builder, ByteBuffer } from 'flatbuffers';
+import { ResultAsync } from 'neverthrow';
+import { HubState, HubStateT } from '~/flatbuffers/generated/hub_state_generated';
+import {
+  IdRegistryEvent,
+  IdRegistryEventT,
+  IdRegistryEventType,
+} from '~/flatbuffers/generated/id_registry_event_generated';
 import {
   NameRegistryEvent,
   NameRegistryEventT,
   NameRegistryEventType,
-} from '~/utils/generated/name_registry_event_generated';
-import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
-import { ResultAsync } from 'neverthrow';
-import { HubState, HubStateT } from '~/utils/generated/hub_state_generated';
-import HubStateModel from '~/storage/flatbuffers/hubStateModel';
+} from '~/flatbuffers/generated/name_registry_event_generated';
+import HubStateModel from '~/flatbuffers/models/hubStateModel';
+import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
+import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
+import Engine from '~/storage/engine/flatbuffers/';
+import { logger } from '~/utils/logger';
 
 const log = logger.child({
   component: 'EthEventsProvider',

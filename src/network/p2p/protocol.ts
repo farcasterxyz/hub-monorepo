@@ -1,10 +1,10 @@
 import { AddressInfo } from 'net';
 import { err, ok } from 'neverthrow';
-import { isGossipMessage } from '~/types/typeguards';
+import { GossipVersion } from '~/flatbuffers/generated/gossip_generated';
 import { IdRegistryEvent, Message } from '~/types';
+import { isGossipMessage } from '~/types/typeguards';
 import { HubError, HubResult } from '~/utils/hubErrors';
 import { safeJsonParse, safeJsonStringify } from '~/utils/safe';
-import { GossipVersion } from '~/utils/generated/gossip_generated';
 
 // Network topic for all FC protocol messages
 export const NETWORK_TOPIC_PRIMARY = 'f_network_topic_primary';

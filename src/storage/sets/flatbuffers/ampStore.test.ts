@@ -1,12 +1,13 @@
-import Factories from '~/test/factories/flatbuffer';
+import Factories from '~/flatbuffers/factories/flatbuffer';
+import { MessageType, UserId } from '~/flatbuffers/generated/message_generated';
+import MessageModel from '~/flatbuffers/models/messageModel';
+import { AmpAddModel, AmpRemoveModel, UserPostfix } from '~/flatbuffers/models/types';
+import { bytesDecrement, bytesIncrement } from '~/flatbuffers/utils/bytes';
+import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import MessageModel from '~/storage/flatbuffers/messageModel';
-import { AmpAddModel, AmpRemoveModel, UserPostfix } from '~/storage/flatbuffers/types';
 import AmpStore from '~/storage/sets/flatbuffers/ampStore';
-import { HubError } from '~/utils/hubErrors';
-import { bytesDecrement, bytesIncrement, getFarcasterTime } from '~/storage/flatbuffers/utils';
-import { MessageType, UserId } from '~/utils/generated/message_generated';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
+import { HubError } from '~/utils/hubErrors';
 
 const db = jestBinaryRocksDB('flatbuffers.ampStore.test');
 const eventHandler = new StoreEventHandler();

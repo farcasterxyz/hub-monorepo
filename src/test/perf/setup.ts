@@ -1,4 +1,4 @@
-import { RPCClient } from '~/network/rpc';
+import { RPCClient } from '~/network/rpc/json';
 import { logger } from '~/utils/logger';
 import { faker } from '@faker-js/faker';
 import { IdRegistryEvent, SignerAdd } from '~/types';

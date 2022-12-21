@@ -1,4 +1,4 @@
-import { RPCClient } from '~/network/rpc';
+import { RPCClient } from '~/network/rpc/json';
 import { sleep } from '~/utils/crypto';
 import { logger } from '~/utils/logger';
 import { ComputeSetDifference } from '~/test/perf/utils';

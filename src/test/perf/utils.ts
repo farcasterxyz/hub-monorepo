@@ -1,7 +1,7 @@
 import { JSONRPCError } from 'jayson/promise';
 import { err, ok, Result } from 'neverthrow';
 import ProgressBar from 'progress';
-import { RPCClient } from '~/network/rpc';
+import { RPCClient } from '~/network/rpc/json';
 import { Body, IdRegistryEvent, Message, MessageType } from '~/types';
 import { logger } from '~/utils/logger';
 

@@ -6,7 +6,7 @@ import { mockFid, UserInfo } from '~/storage/engine/mock';
 import { faker } from '@faker-js/faker';
 import { SyncId } from '~/network/sync/syncId';
 import { anyString, instance, mock, when } from 'ts-mockito';
-import { RPCClient } from '~/network/rpc';
+import { RPCClient } from '~/network/rpc/json';
 import { ok } from 'neverthrow';
 import { CastShort } from '~/types';
 

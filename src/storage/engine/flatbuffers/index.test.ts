@@ -1,32 +1,24 @@
-import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import {
-  CastAddModel,
-  AmpAddModel,
-  ReactionAddModel,
-  SignerAddModel,
-  SignerRemoveModel,
-  UserDataAddModel,
-  VerificationAddEthAddressModel,
-} from '~/storage/flatbuffers/types';
-import Factories from '~/test/factories/flatbuffer';
-import Engine from '~/storage/engine/flatbuffers';
-import MessageModel from '~/storage/flatbuffers/messageModel';
-import CastStore from '~/storage/sets/flatbuffers/castStore';
-import { KeyPair } from '~/types';
-import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
-import { generateEd25519KeyPair } from '~/utils/crypto';
 import { Wallet, utils } from 'ethers';
-import SignerStore from '~/storage/sets/flatbuffers/signerStore';
-import AmpStore from '~/storage/sets/flatbuffers/ampStore';
-import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
-import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
-import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
-import { CastId, MessageType } from '~/utils/generated/message_generated';
 import { err, ok } from 'neverthrow';
+import Factories from '~/flatbuffers/factories/flatbuffer';
+import { IdRegistryEventType } from '~/flatbuffers/generated/id_registry_event_generated';
+import { CastId, MessageType } from '~/flatbuffers/generated/message_generated';
+import { NameRegistryEventType } from '~/flatbuffers/generated/name_registry_event_generated';
+import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
+import MessageModel from '~/flatbuffers/models/messageModel';
+import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
+import * as types from '~/flatbuffers/models/types';
+import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
+import Engine from '~/storage/engine/flatbuffers';
+import AmpStore from '~/storage/sets/flatbuffers/ampStore';
+import CastStore from '~/storage/sets/flatbuffers/castStore';
+import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
+import SignerStore from '~/storage/sets/flatbuffers/signerStore';
+import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
+import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
+import { KeyPair } from '~/types';
+import { generateEd25519KeyPair } from '~/utils/crypto';
 import { HubError } from '~/utils/hubErrors';
-import { IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
-import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
-import { NameRegistryEventType } from '~/utils/generated/name_registry_event_generated';
 
 const db = jestBinaryRocksDB('flatbuffers.engine.test');
 const engine = new Engine(db);
@@ -49,14 +41,14 @@ const fname = Factories.Fname.build();
 let fnameTransfer: NameRegistryEventModel;
 
 let signer: KeyPair;
-let signerAdd: SignerAddModel;
-let signerRemove: SignerRemoveModel;
+let signerAdd: types.SignerAddModel;
+let signerRemove: types.SignerRemoveModel;
 
-let castAdd: CastAddModel;
-let ampAdd: AmpAddModel;
-let reactionAdd: ReactionAddModel;
-let verificationAdd: VerificationAddEthAddressModel;
-let userDataAdd: UserDataAddModel;
+let castAdd: types.CastAddModel;
+let ampAdd: types.AmpAddModel;
+let reactionAdd: types.ReactionAddModel;
+let verificationAdd: types.VerificationAddEthAddressModel;
+let userDataAdd: types.UserDataAddModel;
 
 beforeAll(async () => {
   custodyWallet = new Wallet(utils.randomBytes(32));
@@ -79,7 +71,7 @@ beforeAll(async () => {
     { data: Array.from(signerAddData.bb?.bytes() ?? []) },
     { transient: { wallet: custodyWallet } }
   );
-  signerAdd = new MessageModel(signerAddMessage) as SignerAddModel;
+  signerAdd = new MessageModel(signerAddMessage) as types.SignerAddModel;
 
   const signerRemoveData = await Factories.SignerRemoveData.create({
     fid: Array.from(fid),
@@ -90,28 +82,28 @@ beforeAll(async () => {
     { data: Array.from(signerRemoveData.bb?.bytes() ?? []) },
     { transient: { wallet: custodyWallet } }
   );
-  signerRemove = new MessageModel(signerRemoveMessage) as SignerRemoveModel;
+  signerRemove = new MessageModel(signerRemoveMessage) as types.SignerRemoveModel;
 
   const castAddData = await Factories.CastAddData.create({ fid: Array.from(fid) });
   const castAddMessage = await Factories.Message.create(
     { data: Array.from(castAddData.bb?.bytes() ?? []) },
     { transient: { signer } }
   );
-  castAdd = new MessageModel(castAddMessage) as CastAddModel;
+  castAdd = new MessageModel(castAddMessage) as types.CastAddModel;
 
   const ampAddData = await Factories.AmpAddData.create({ fid: Array.from(fid) });
   const ampAddMessage = await Factories.Message.create(
     { data: Array.from(ampAddData.bb?.bytes() ?? []) },
     { transient: { signer } }
   );
-  ampAdd = new MessageModel(ampAddMessage) as AmpAddModel;
+  ampAdd = new MessageModel(ampAddMessage) as types.AmpAddModel;
 
   const reactionAddData = await Factories.ReactionAddData.create({ fid: Array.from(fid) });
   const reactionAddMessage = await Factories.Message.create(
     { data: Array.from(reactionAddData.bb?.bytes() ?? []) },
     { transient: { signer } }
   );
-  reactionAdd = new MessageModel(reactionAddMessage) as ReactionAddModel;
+  reactionAdd = new MessageModel(reactionAddMessage) as types.ReactionAddModel;
 
   const verificationAddBody = await Factories.VerificationAddEthAddressBody.create({}, { transient: { fid } });
   const verificationAddData = await Factories.VerificationAddEthAddressData.create({
@@ -122,14 +114,14 @@ beforeAll(async () => {
     { data: Array.from(verificationAddData.bb?.bytes() ?? []) },
     { transient: { signer } }
   );
-  verificationAdd = new MessageModel(verificationAddMessage) as VerificationAddEthAddressModel;
+  verificationAdd = new MessageModel(verificationAddMessage) as types.VerificationAddEthAddressModel;
 
   const userDataAddData = await Factories.UserDataAddData.create({ fid: Array.from(fid) });
   const userDataAddMessage = await Factories.Message.create(
     { data: Array.from(userDataAddData.bb?.bytes() ?? []) },
     { transient: { signer } }
   );
-  userDataAdd = new MessageModel(userDataAddMessage) as UserDataAddModel;
+  userDataAdd = new MessageModel(userDataAddMessage) as types.UserDataAddModel;
 });
 
 describe('mergeIdRegistryEvent', () => {

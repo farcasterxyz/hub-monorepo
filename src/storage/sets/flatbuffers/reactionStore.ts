@@ -1,18 +1,13 @@
-import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
-import MessageModel, { FID_BYTES, TARGET_KEY_BYTES, TRUE_VALUE } from '~/storage/flatbuffers/messageModel';
-import {
-  ReactionAddModel,
-  ReactionRemoveModel,
-  RootPrefix,
-  StorePruneOptions,
-  UserPostfix,
-} from '~/storage/flatbuffers/types';
-import { isReactionAdd, isReactionRemove } from '~/storage/flatbuffers/typeguards';
-import { CastId, MessageType, ReactionType } from '~/utils/generated/message_generated';
 import { ResultAsync, ok } from 'neverthrow';
-import { bytesCompare, getFarcasterTime } from '~/storage/flatbuffers/utils';
-import { HubAsyncResult, HubError } from '~/utils/hubErrors';
+import { CastId, MessageType, ReactionType } from '~/flatbuffers/generated/message_generated';
+import MessageModel, { FID_BYTES, TARGET_KEY_BYTES, TRUE_VALUE } from '~/flatbuffers/models/messageModel';
+import { isReactionAdd, isReactionRemove } from '~/flatbuffers/models/typeguards';
+import * as types from '~/flatbuffers/models/types';
+import { bytesCompare } from '~/flatbuffers/utils/bytes';
+import { getFarcasterTime } from '~/flatbuffers/utils/time';
+import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
+import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 5_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
@@ -45,7 +40,7 @@ class ReactionStore {
   private _pruneSizeLimit: number;
   private _pruneTimeLimit: number;
 
-  constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
+  constructor(db: RocksDB, eventHandler: StoreEventHandler, options: types.StorePruneOptions = {}) {
     this._db = db;
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
@@ -68,7 +63,7 @@ class ReactionStore {
 
     return Buffer.concat([
       MessageModel.userKey(fid), // --------------------------- fid prefix, 33 bytes
-      Buffer.from([UserPostfix.ReactionAdds]), // -------------- reaction_adds key, 1 byte
+      Buffer.from([types.UserPostfix.ReactionAdds]), // -------------- reaction_adds key, 1 byte
       type ? Buffer.from([type]) : new Uint8Array(), //-------- type, 1 byte
       targetKey ? Buffer.from(targetKey) : new Uint8Array(), //-- target id, variable bytes
     ]);
@@ -90,7 +85,7 @@ class ReactionStore {
 
     return Buffer.concat([
       MessageModel.userKey(fid), // --------------------------- fid prefix, 33 bytes
-      Buffer.from([UserPostfix.ReactionRemoves]), // ----------- reaction_adds key, 1 byte
+      Buffer.from([types.UserPostfix.ReactionRemoves]), // ----------- reaction_adds key, 1 byte
       type ? Buffer.from([type]) : new Uint8Array(), //-------- type, 1 byte
       targetKey ? Buffer.from(targetKey) : new Uint8Array(), //-- target id, variable bytes
     ]);
@@ -124,7 +119,7 @@ class ReactionStore {
       1 + TARGET_KEY_BYTES + (type ? 1 : 0) + (fid ? FID_BYTES : 0) + (tsHash ? tsHash.length : 0)
     );
 
-    bytes.set([RootPrefix.ReactionsByTarget], 0);
+    bytes.set([types.RootPrefix.ReactionsByTarget], 0);
     bytes.set(targetKey, 1 + TARGET_KEY_BYTES - targetKey.length); // pad if targetKey.length < targetKey.max_length
     if (type) {
       bytes.set(Buffer.from([type]), 1 + TARGET_KEY_BYTES);
@@ -152,11 +147,16 @@ class ReactionStore {
    *
    * @returns the ReactionAdd Model if it exists, undefined otherwise
    */
-  async getReactionAdd(fid: Uint8Array, type: ReactionType, castId: CastId): Promise<ReactionAddModel> {
+  async getReactionAdd(fid: Uint8Array, type: ReactionType, castId: CastId): Promise<types.ReactionAddModel> {
     const reactionAddsSetKey = ReactionStore.reactionAddsKey(fid, type, this.targetKeyForCastId(castId));
     const reactionMessageKey = await this._db.get(reactionAddsSetKey);
 
-    return MessageModel.get<ReactionAddModel>(this._db, fid, UserPostfix.ReactionMessage, reactionMessageKey);
+    return MessageModel.get<types.ReactionAddModel>(
+      this._db,
+      fid,
+      types.UserPostfix.ReactionMessage,
+      reactionMessageKey
+    );
   }
 
   /**
@@ -167,35 +167,50 @@ class ReactionStore {
    * @param castId id of the cast being reacted to
    * @returns the ReactionRemove message if it exists, undefined otherwise
    */
-  async getReactionRemove(fid: Uint8Array, type: ReactionType, castId: CastId): Promise<ReactionRemoveModel> {
+  async getReactionRemove(fid: Uint8Array, type: ReactionType, castId: CastId): Promise<types.ReactionRemoveModel> {
     const reactionRemovesKey = ReactionStore.reactionRemovesKey(fid, type, this.targetKeyForCastId(castId));
     const reactionMessageKey = await this._db.get(reactionRemovesKey);
 
-    return MessageModel.get<ReactionRemoveModel>(this._db, fid, UserPostfix.ReactionMessage, reactionMessageKey);
+    return MessageModel.get<types.ReactionRemoveModel>(
+      this._db,
+      fid,
+      types.UserPostfix.ReactionMessage,
+      reactionMessageKey
+    );
   }
 
   /** Finds all ReactionAdd Messages by iterating through the prefixes */
-  async getReactionAddsByUser(fid: Uint8Array, type?: ReactionType): Promise<ReactionAddModel[]> {
+  async getReactionAddsByUser(fid: Uint8Array, type?: ReactionType): Promise<types.ReactionAddModel[]> {
     const prefix = ReactionStore.reactionAddsKey(fid, type);
     const msgKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true })) {
       msgKeys.push(value);
     }
-    return MessageModel.getManyByUser<ReactionAddModel>(this._db, fid, UserPostfix.ReactionMessage, msgKeys);
+    return MessageModel.getManyByUser<types.ReactionAddModel>(
+      this._db,
+      fid,
+      types.UserPostfix.ReactionMessage,
+      msgKeys
+    );
   }
 
   /** Finds all ReactionRemove Messages by iterating through the prefixes */
-  async getReactionRemovesByUser(fid: Uint8Array): Promise<ReactionRemoveModel[]> {
+  async getReactionRemovesByUser(fid: Uint8Array): Promise<types.ReactionRemoveModel[]> {
     const prefix = ReactionStore.reactionRemovesKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
     }
-    return MessageModel.getManyByUser<ReactionRemoveModel>(this._db, fid, UserPostfix.ReactionMessage, messageKeys);
+    return MessageModel.getManyByUser<types.ReactionRemoveModel>(
+      this._db,
+      fid,
+      types.UserPostfix.ReactionMessage,
+      messageKeys
+    );
   }
 
   /** Finds all ReactionAdds that point to a specific target by iterating through the prefixes */
-  async getReactionsByTargetCast(castId: CastId, type?: ReactionType): Promise<ReactionAddModel[]> {
+  async getReactionsByTargetCast(castId: CastId, type?: ReactionType): Promise<types.ReactionAddModel[]> {
     const prefix = ReactionStore.reactionsByTargetKey(this.targetKeyForCastId(castId), type);
 
     // Calculates the positions in the key where the fid and tsHash begin
@@ -206,7 +221,7 @@ class ReactionStore {
     for await (const [key] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
       const fid = Uint8Array.from(key).subarray(fidOffset, tsHashOffset);
       const tsHash = Uint8Array.from(key).subarray(tsHashOffset);
-      messageKeys.push(MessageModel.primaryKey(fid, UserPostfix.ReactionMessage, tsHash));
+      messageKeys.push(MessageModel.primaryKey(fid, types.UserPostfix.ReactionMessage, tsHash));
     }
     return MessageModel.getMany(this._db, messageKeys);
   }
@@ -226,7 +241,7 @@ class ReactionStore {
 
   async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<void> {
     // Get all ReactionAdd messages signed by signer
-    const reactionAdds = await MessageModel.getAllBySigner<ReactionAddModel>(
+    const reactionAdds = await MessageModel.getAllBySigner<types.ReactionAddModel>(
       this._db,
       fid,
       signer,
@@ -234,7 +249,7 @@ class ReactionStore {
     );
 
     // Get all ReactionRemove messages signed by signer
-    const reactionRemoves = await MessageModel.getAllBySigner<ReactionRemoveModel>(
+    const reactionRemoves = await MessageModel.getAllBySigner<types.ReactionRemoveModel>(
       this._db,
       fid,
       signer,
@@ -267,7 +282,7 @@ class ReactionStore {
   async pruneMessages(fid: Uint8Array): HubAsyncResult<void> {
     // Count number of ReactionAdd and ReactionRemove messages for this fid
     // TODO: persist this count to avoid having to retrieve it with each call
-    const prefix = MessageModel.primaryKey(fid, UserPostfix.ReactionMessage);
+    const prefix = MessageModel.primaryKey(fid, types.UserPostfix.ReactionMessage);
     let count = 0;
     for await (const [,] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
       count = count + 1;
@@ -280,13 +295,13 @@ class ReactionStore {
     const timestampToPrune = getFarcasterTime() - this._pruneTimeLimit;
 
     // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
-    const messageToPrune: (ReactionAddModel | ReactionRemoveModel)[] = [];
+    const messageToPrune: (types.ReactionAddModel | types.ReactionRemoveModel)[] = [];
 
     // Create a rocksdb transaction to include all the mutations
     let pruneTsx = this._db.transaction();
 
     // Create a rocksdb iterator for all messages with the given prefix
-    const pruneIterator = MessageModel.getPruneIterator(this._db, fid, UserPostfix.ReactionMessage);
+    const pruneIterator = MessageModel.getPruneIterator(this._db, fid, types.UserPostfix.ReactionMessage);
 
     const getNextResult = () => ResultAsync.fromPromise(MessageModel.getNextToPrune(pruneIterator), () => undefined);
 
@@ -329,7 +344,7 @@ class ReactionStore {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async mergeAdd(message: ReactionAddModel): Promise<void> {
+  private async mergeAdd(message: types.ReactionAddModel): Promise<void> {
     const castId = message.body().cast();
 
     if (!castId) {
@@ -350,7 +365,7 @@ class ReactionStore {
     }
   }
 
-  private async mergeRemove(message: ReactionRemoveModel): Promise<void> {
+  private async mergeRemove(message: types.ReactionRemoveModel): Promise<void> {
     const castId = message.body().cast();
 
     if (!castId) {
@@ -403,7 +418,7 @@ class ReactionStore {
   private async resolveMergeConflicts(
     txn: Transaction,
     targetKey: Uint8Array,
-    message: ReactionAddModel | ReactionRemoveModel
+    message: types.ReactionAddModel | types.ReactionRemoveModel
   ): Promise<Transaction | undefined> {
     // Checks if there is a remove timestamp hash for this reaction
     const reactionRemoveTsHash = await ResultAsync.fromPromise(
@@ -425,10 +440,10 @@ class ReactionStore {
       } else {
         // If the existing remove has a lower order than the new message, retrieve the full
         // ReactionRemove message and delete it as part of the RocksDB transaction
-        const existingRemove = await MessageModel.get<ReactionRemoveModel>(
+        const existingRemove = await MessageModel.get<types.ReactionRemoveModel>(
           this._db,
           message.fid(),
-          UserPostfix.ReactionMessage,
+          types.UserPostfix.ReactionMessage,
           reactionRemoveTsHash.value
         );
         txn = this.deleteReactionRemoveTransaction(txn, existingRemove);
@@ -456,10 +471,10 @@ class ReactionStore {
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // ReactionAdd message and delete it as part of the RocksDB transaction
-        const existingAdd = await MessageModel.get<ReactionAddModel>(
+        const existingAdd = await MessageModel.get<types.ReactionAddModel>(
           this._db,
           message.fid(),
-          UserPostfix.ReactionMessage,
+          types.UserPostfix.ReactionMessage,
           reactionAddTsHash.value
         );
         txn = this.deleteReactionAddTransaction(txn, existingAdd);
@@ -470,7 +485,7 @@ class ReactionStore {
   }
 
   /* Builds a RocksDB transaction to insert a ReactionAdd message and construct its indices */
-  private putReactionAddTransaction(txn: Transaction, message: ReactionAddModel): Transaction {
+  private putReactionAddTransaction(txn: Transaction, message: types.ReactionAddModel): Transaction {
     const targetKey = this.targetKeyForMessage(message);
 
     // Puts the message into the database
@@ -492,7 +507,7 @@ class ReactionStore {
   }
 
   /* Builds a RocksDB transaction to remove a ReactionAdd message and delete its indices */
-  private deleteReactionAddTransaction(txn: Transaction, message: ReactionAddModel): Transaction {
+  private deleteReactionAddTransaction(txn: Transaction, message: types.ReactionAddModel): Transaction {
     const targetKey = this.targetKeyForMessage(message);
 
     // Delete the message key from byTarget index
@@ -508,7 +523,7 @@ class ReactionStore {
   }
 
   /* Builds a RocksDB transaction to insert a ReactionRemove message and construct its indices */
-  private putReactionRemoveTransaction(txn: Transaction, message: ReactionRemoveModel): Transaction {
+  private putReactionRemoveTransaction(txn: Transaction, message: types.ReactionRemoveModel): Transaction {
     const targetKey = this.targetKeyForMessage(message);
 
     // Puts the message
@@ -524,7 +539,7 @@ class ReactionStore {
   }
 
   /* Builds a RocksDB transaction to remove a ReactionRemove message and delete its indices */
-  private deleteReactionRemoveTransaction(txn: Transaction, message: ReactionRemoveModel): Transaction {
+  private deleteReactionRemoveTransaction(txn: Transaction, message: types.ReactionRemoveModel): Transaction {
     const targetKey = this.targetKeyForMessage(message);
 
     // Delete message key from ReactionRemoves Set index
@@ -535,7 +550,7 @@ class ReactionStore {
   }
 
   /* Computes the key for the byTarget index given a Reaction Reaction */
-  private targetKeyForMessage(message: ReactionAddModel | ReactionRemoveModel): Buffer {
+  private targetKeyForMessage(message: types.ReactionAddModel | types.ReactionRemoveModel): Buffer {
     return Buffer.concat([
       message.body().cast()?.fidArray() ?? new Uint8Array(),
       message.body().cast()?.tsHashArray() ?? new Uint8Array(),

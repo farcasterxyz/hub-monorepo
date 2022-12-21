@@ -3,7 +3,7 @@ import { AddressInfo } from 'net';
 import { generateUserInfo, getIdRegistryEvent, getSignerAdd, mockFid, populateEngine } from '~/storage/engine/mock';
 import { Factories } from '~/test/factories';
 import { Hub, HubOptions } from '~/hub';
-import { RPCClient } from '~/network/rpc';
+import { RPCClient } from '~/network/rpc/json';
 import { sleep } from '~/utils/crypto';
 import { ContactInfoContent, Content, GossipMessage, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { Message } from '~/types';

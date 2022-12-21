@@ -1,20 +1,14 @@
-import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
-import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync, ok } from 'neverthrow';
-import {
-  SignerAddModel,
-  UserPostfix,
-  SignerRemoveModel,
-  RootPrefix,
-  StorePruneOptions,
-} from '~/storage/flatbuffers/types';
-import { isSignerAdd, isSignerRemove } from '~/storage/flatbuffers/typeguards';
-import { bytesCompare } from '~/storage/flatbuffers/utils';
-import { MessageType } from '~/utils/generated/message_generated';
-import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
-import { HubAsyncResult, HubError } from '~/utils/hubErrors';
+import { MessageType } from '~/flatbuffers/generated/message_generated';
+import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
+import MessageModel from '~/flatbuffers/models/messageModel';
+import { isSignerAdd, isSignerRemove } from '~/flatbuffers/models/typeguards';
+import * as types from '~/flatbuffers/models/types';
+import { bytesCompare } from '~/flatbuffers/utils/bytes';
+import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 import { eventCompare } from '~/utils/contractEvent';
+import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 
@@ -49,7 +43,7 @@ class SignerStore {
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
 
-  constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
+  constructor(db: RocksDB, eventHandler: StoreEventHandler, options: types.StorePruneOptions = {}) {
     this._db = db;
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
@@ -66,7 +60,7 @@ class SignerStore {
   static signerAddsKey(fid: Uint8Array, signerPubKey?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
-      Buffer.from([UserPostfix.SignerAdds]),
+      Buffer.from([types.UserPostfix.SignerAdds]),
       signerPubKey ? Buffer.from(signerPubKey) : new Uint8Array(),
     ]);
   }
@@ -82,7 +76,7 @@ class SignerStore {
   static signerRemovesKey(fid: Uint8Array, signerPubKey?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
-      Buffer.from([UserPostfix.SignerRemoves]),
+      Buffer.from([types.UserPostfix.SignerRemoves]),
       signerPubKey ? Buffer.from(signerPubKey) : new Uint8Array(),
     ]);
   }
@@ -108,9 +102,9 @@ class SignerStore {
    * @param signerPubKey the EdDSA public key of the signer
    * @returns the SignerAdd Model if it exists, throws Error otherwise
    */
-  async getSignerAdd(fid: Uint8Array, signerPubKey: Uint8Array): Promise<SignerAddModel> {
+  async getSignerAdd(fid: Uint8Array, signerPubKey: Uint8Array): Promise<types.SignerAddModel> {
     const messageTsHash = await this._db.get(SignerStore.signerAddsKey(fid, signerPubKey));
-    return MessageModel.get<SignerAddModel>(this._db, fid, UserPostfix.SignerMessage, messageTsHash);
+    return MessageModel.get<types.SignerAddModel>(this._db, fid, types.UserPostfix.SignerMessage, messageTsHash);
   }
 
   /**
@@ -120,9 +114,9 @@ class SignerStore {
    * @param signer the EdDSA public key of the signer
    * @returns the SignerRemove message if it exists, throws HubError otherwise
    */
-  async getSignerRemove(fid: Uint8Array, signer: Uint8Array): Promise<SignerRemoveModel> {
+  async getSignerRemove(fid: Uint8Array, signer: Uint8Array): Promise<types.SignerRemoveModel> {
     const messageTsHash = await this._db.get(SignerStore.signerRemovesKey(fid, signer));
-    return MessageModel.get<SignerRemoveModel>(this._db, fid, UserPostfix.SignerMessage, messageTsHash);
+    return MessageModel.get<types.SignerRemoveModel>(this._db, fid, types.UserPostfix.SignerMessage, messageTsHash);
   }
 
   //TODO: When implementing the Result type consider refactoring these methods into separate ones
@@ -134,13 +128,18 @@ class SignerStore {
    * @param fid fid of the user who created the signers
    * @returns the SignerRemove messages if it exists, throws HubError otherwise
    */
-  async getSignerAddsByUser(fid: Uint8Array): Promise<SignerAddModel[]> {
+  async getSignerAddsByUser(fid: Uint8Array): Promise<types.SignerAddModel[]> {
     const addsPrefix = SignerStore.signerAddsKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(addsPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
     }
-    return MessageModel.getManyByUser<SignerAddModel>(this._db, fid, UserPostfix.SignerMessage, messageKeys);
+    return MessageModel.getManyByUser<types.SignerAddModel>(
+      this._db,
+      fid,
+      types.UserPostfix.SignerMessage,
+      messageKeys
+    );
   }
 
   /**
@@ -149,17 +148,22 @@ class SignerStore {
    * @param fid fid of the user who created the signers
    * @returns the SignerRemove message if it exists, throws HubError otherwise
    */
-  async getSignerRemovesByUser(fid: Uint8Array): Promise<SignerRemoveModel[]> {
+  async getSignerRemovesByUser(fid: Uint8Array): Promise<types.SignerRemoveModel[]> {
     const removesPrefix = SignerStore.signerRemovesKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(removesPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
     }
-    return MessageModel.getManyByUser<SignerRemoveModel>(this._db, fid, UserPostfix.SignerMessage, messageKeys);
+    return MessageModel.getManyByUser<types.SignerRemoveModel>(
+      this._db,
+      fid,
+      types.UserPostfix.SignerMessage,
+      messageKeys
+    );
   }
 
   async getFids(): Promise<Uint8Array[]> {
-    const prefix = Buffer.from([RootPrefix.IdRegistryEvent]);
+    const prefix = Buffer.from([types.RootPrefix.IdRegistryEvent]);
     const fids: Uint8Array[] = [];
     for await (const [key] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
       fids.push(new Uint8Array(key.slice(prefix.length)));
@@ -202,10 +206,15 @@ class SignerStore {
 
   async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<void> {
     // Get all SignerAdd messages signed by signer
-    const signerAdds = await MessageModel.getAllBySigner<SignerAddModel>(this._db, fid, signer, MessageType.SignerAdd);
+    const signerAdds = await MessageModel.getAllBySigner<types.SignerAddModel>(
+      this._db,
+      fid,
+      signer,
+      MessageType.SignerAdd
+    );
 
     // Get all SignerRemove messages signed by signer
-    const signerRemoves = await MessageModel.getAllBySigner<SignerRemoveModel>(
+    const signerRemoves = await MessageModel.getAllBySigner<types.SignerRemoveModel>(
       this._db,
       fid,
       signer,
@@ -238,7 +247,7 @@ class SignerStore {
   async pruneMessages(fid: Uint8Array): HubAsyncResult<void> {
     // Count number of SignerAdd and SignerRemove messages for this fid
     // TODO: persist this count to avoid having to retrieve it with each call
-    const prefix = MessageModel.primaryKey(fid, UserPostfix.SignerMessage);
+    const prefix = MessageModel.primaryKey(fid, types.UserPostfix.SignerMessage);
     let count = 0;
     for await (const [,] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
       count = count + 1;
@@ -248,13 +257,13 @@ class SignerStore {
     let sizeToPrune = count - this._pruneSizeLimit;
 
     // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
-    const messageToPrune: (SignerAddModel | SignerRemoveModel)[] = [];
+    const messageToPrune: (types.SignerAddModel | types.SignerRemoveModel)[] = [];
 
     // Create a rocksdb transaction to include all the mutations
     let pruneTsx = this._db.transaction();
 
     // Create a rocksdb iterator for all messages with the given prefix
-    const pruneIterator = MessageModel.getPruneIterator(this._db, fid, UserPostfix.SignerMessage);
+    const pruneIterator = MessageModel.getPruneIterator(this._db, fid, types.UserPostfix.SignerMessage);
 
     const getNextResult = () => ResultAsync.fromPromise(MessageModel.getNextToPrune(pruneIterator), () => undefined);
 
@@ -296,7 +305,7 @@ class SignerStore {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async mergeAdd(message: SignerAddModel): Promise<void> {
+  private async mergeAdd(message: types.SignerAddModel): Promise<void> {
     let txn = await this.resolveMergeConflicts(this._db.transaction(), message);
 
     // No-op if resolveMergeConflicts did not return a transaction
@@ -312,7 +321,7 @@ class SignerStore {
     this._eventHandler.emit('mergeMessage', message);
   }
 
-  private async mergeRemove(message: SignerRemoveModel): Promise<void> {
+  private async mergeRemove(message: types.SignerRemoveModel): Promise<void> {
     let txn = await this.resolveMergeConflicts(this._db.transaction(), message);
 
     // No-op if resolveMergeConflicts did not return a transaction
@@ -357,7 +366,7 @@ class SignerStore {
    */
   private async resolveMergeConflicts(
     txn: Transaction,
-    message: SignerAddModel | SignerRemoveModel
+    message: types.SignerAddModel | types.SignerRemoveModel
   ): Promise<Transaction | undefined> {
     const signer = message.body().signerArray();
     if (!signer) {
@@ -379,10 +388,10 @@ class SignerStore {
       } else {
         // If the existing remove has a lower order than the new message, retrieve the full
         // SignerRemove message and delete it as part of the RocksDB transaction
-        const existingRemove = await MessageModel.get<SignerRemoveModel>(
+        const existingRemove = await MessageModel.get<types.SignerRemoveModel>(
           this._db,
           message.fid(),
-          UserPostfix.SignerMessage,
+          types.UserPostfix.SignerMessage,
           removeTsHash.value
         );
         txn = this.deleteSignerRemoveTransaction(txn, existingRemove);
@@ -402,10 +411,10 @@ class SignerStore {
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // SignerAdd message and delete it as part of the RocksDB transaction
-        const existingAdd = await MessageModel.get<SignerAddModel>(
+        const existingAdd = await MessageModel.get<types.SignerAddModel>(
           this._db,
           message.fid(),
-          UserPostfix.SignerMessage,
+          types.UserPostfix.SignerMessage,
           addTsHash.value
         );
         txn = this.deleteSignerAddTransaction(txn, existingAdd);
@@ -416,7 +425,7 @@ class SignerStore {
   }
 
   /* Builds a RocksDB transaction to insert a SignerAdd message and construct its indices */
-  private putSignerAddTransaction(txn: Transaction, message: SignerAddModel): Transaction {
+  private putSignerAddTransaction(txn: Transaction, message: types.SignerAddModel): Transaction {
     // Put message and index by signer
     txn = MessageModel.putTransaction(txn, message);
 
@@ -430,7 +439,7 @@ class SignerStore {
   }
 
   /* Builds a RocksDB transaction to remove a SignerAdd message and delete its indices */
-  private deleteSignerAddTransaction(txn: Transaction, message: SignerAddModel): Transaction {
+  private deleteSignerAddTransaction(txn: Transaction, message: types.SignerAddModel): Transaction {
     // Delete from signerAdds
     txn = txn.del(SignerStore.signerAddsKey(message.fid(), message.body().signerArray() ?? new Uint8Array()));
 
@@ -439,7 +448,7 @@ class SignerStore {
   }
 
   /* Builds a RocksDB transaction to insert a SignerRemove message and construct its indices */
-  private putSignerRemoveTransaction(txn: Transaction, message: SignerRemoveModel): Transaction {
+  private putSignerRemoveTransaction(txn: Transaction, message: types.SignerRemoveModel): Transaction {
     // Put message and index by signer
     txn = MessageModel.putTransaction(txn, message);
 
@@ -453,7 +462,7 @@ class SignerStore {
   }
 
   /* Builds a RocksDB transaction to remove a SignerRemove message and delete its indices */
-  private deleteSignerRemoveTransaction(txn: Transaction, message: SignerRemoveModel): Transaction {
+  private deleteSignerRemoveTransaction(txn: Transaction, message: types.SignerRemoveModel): Transaction {
     // Delete from signerRemoves
     txn = txn.del(SignerStore.signerRemovesKey(message.fid(), message.body().signerArray() ?? new Uint8Array()));
 
