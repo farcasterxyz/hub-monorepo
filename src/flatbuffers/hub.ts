@@ -165,10 +165,10 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     const contentType = gossipMessage.contentType();
     if (contentType === GossipContent.Message) {
       const message: Message = gossipMessage.content(contentType);
-      return this.submitMessage(new MessageModel(message));
+      return this.submitMessage(new MessageModel(message), 'gossip');
     } else if (contentType === GossipContent.IdRegistryEvent) {
       const event = new IdRegistryEventModel(gossipMessage.content(contentType) as IdRegistryEvent);
-      return this.submitIdRegistryEvent(event);
+      return this.submitIdRegistryEvent(event, 'gossip');
     } else if (contentType === GossipContent.ContactInfoContent) {
       const message: ContactInfoContent = gossipMessage.content(contentType);
       await this.handleContactInfo(message);
