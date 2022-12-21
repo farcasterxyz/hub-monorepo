@@ -19,6 +19,28 @@ beforeAll(async () => {
 });
 
 describe('static methods', () => {
+  describe('constructor', () => {
+    test('fails with missing message type', async () => {
+      const missingTypeData = await Factories.MessageData.create({ type: null });
+      const missingTypeMessage = await Factories.Message.create({
+        data: Array.from(missingTypeData.bb?.bytes() ?? new Uint8Array()),
+      });
+      expect(() => new MessageModel(missingTypeMessage)).toThrow(
+        new HubError('bad_request.invalid_param', 'message type is missing')
+      );
+    });
+
+    test('fails with invalid message type', async () => {
+      const invalidTypeData = await Factories.MessageData.create({ type: 100 });
+      const invalidTypeMessage = await Factories.Message.create({
+        data: Array.from(invalidTypeData.bb?.bytes() ?? new Uint8Array()),
+      });
+      expect(() => new MessageModel(invalidTypeMessage)).toThrow(
+        new HubError('bad_request.invalid_param', 'message type is invalid')
+      );
+    });
+  });
+
   describe('from', () => {
     test('fails with empty byte array', () => {
       expect(() => MessageModel.from(new Uint8Array())).toThrow(
@@ -229,6 +251,26 @@ describe('instance methods', () => {
 
     test('indexes message by signer', async () => {
       await expect(db.get(model.bySignerKey())).resolves.toEqual(TRUE_VALUE);
+    });
+  });
+
+  describe('typeName', () => {
+    test('returns string version of type enum', async () => {
+      const reactionAddData = await Factories.ReactionAddData.create();
+      const reactionAdd = new MessageModel(
+        await Factories.Message.create({
+          data: Array.from(reactionAddData.bb?.bytes() ?? new Uint8Array()),
+        })
+      );
+      expect(reactionAdd.typeName()).toEqual('ReactionAdd');
+
+      const signerAddData = await Factories.SignerAddData.create();
+      const signerAdd = new MessageModel(
+        await Factories.Message.create({
+          data: Array.from(signerAddData.bb?.bytes() ?? new Uint8Array()),
+        })
+      );
+      expect(signerAdd.typeName()).toEqual('SignerAdd');
     });
   });
 });

@@ -2,6 +2,7 @@ import Factories from '~/test/factories/flatbuffer';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import IdRegistryEventModel from './idRegistryEventModel';
 import { HubError } from '~/utils/hubErrors';
+import { IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
 
 const db = jestBinaryRocksDB('flatbuffers.contractEventModel.test');
 const fid = Factories.FID.build();
@@ -22,6 +23,29 @@ describe('static methods', () => {
 
     test('fails when event not found', async () => {
       await expect(IdRegistryEventModel.get(db, fid)).rejects.toThrow(HubError);
+    });
+  });
+
+  describe('constructor', () => {
+    test('fails with invalid type', async () => {
+      const invalidTypeEvent = await Factories.IdRegistryEvent.create({ type: 0 });
+      expect(() => new IdRegistryEventModel(invalidTypeEvent)).toThrow();
+    });
+  });
+});
+
+describe('instance methods', () => {
+  describe('typeName', () => {
+    test('returns string version of type enum', async () => {
+      const register = new IdRegistryEventModel(
+        await Factories.IdRegistryEvent.create({ type: IdRegistryEventType.IdRegistryRegister })
+      );
+      expect(register.typeName()).toEqual('IdRegistryRegister');
+
+      const transfer = new IdRegistryEventModel(
+        await Factories.IdRegistryEvent.create({ type: IdRegistryEventType.IdRegistryTransfer })
+      );
+      expect(transfer.typeName()).toEqual('IdRegistryTransfer');
     });
   });
 });

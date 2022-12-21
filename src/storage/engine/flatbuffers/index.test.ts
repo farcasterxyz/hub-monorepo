@@ -25,6 +25,8 @@ import { CastId, MessageType } from '~/utils/generated/message_generated';
 import { err, ok } from 'neverthrow';
 import { HubError } from '~/utils/hubErrors';
 import { IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
+import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
+import { NameRegistryEventType } from '~/utils/generated/name_registry_event_generated';
 
 const db = jestBinaryRocksDB('flatbuffers.engine.test');
 const engine = new Engine(db);
@@ -43,6 +45,9 @@ let custodyWallet: Wallet;
 let custodyAddress: Uint8Array;
 let custodyEvent: IdRegistryEventModel;
 
+const fname = Factories.Fname.build();
+let fnameTransfer: NameRegistryEventModel;
+
 let signer: KeyPair;
 let signerAdd: SignerAddModel;
 let signerRemove: SignerRemoveModel;
@@ -58,6 +63,10 @@ beforeAll(async () => {
   custodyAddress = utils.arrayify(custodyWallet.address);
   custodyEvent = new IdRegistryEventModel(
     await Factories.IdRegistryEvent.create({ fid: Array.from(fid), to: Array.from(custodyAddress) })
+  );
+
+  fnameTransfer = new NameRegistryEventModel(
+    await Factories.NameRegistryEvent.create({ fname: Array.from(fname), to: Array.from(custodyAddress) })
   );
 
   signer = await generateEd25519KeyPair();
@@ -130,14 +139,33 @@ describe('mergeIdRegistryEvent', () => {
   });
 
   test('fails with invalid event type', async () => {
-    const invalidEvent = new IdRegistryEventModel(
-      await Factories.IdRegistryEvent.create({
-        type: 3 as IdRegistryEventType,
-        fid: Array.from(fid),
-        to: Array.from(custodyAddress),
-      })
-    );
+    class IdRegistryEventModelStub extends IdRegistryEventModel {
+      override type(): IdRegistryEventType {
+        return 100 as IdRegistryEventType; // Invalid event type
+      }
+    }
+
+    const invalidEvent = new IdRegistryEventModelStub(custodyEvent.event);
     const result = await engine.mergeIdRegistryEvent(invalidEvent);
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid event type'));
+  });
+});
+
+describe('mergeNameRegistryEvent', () => {
+  test('succeeds', async () => {
+    await expect(engine.mergeNameRegistryEvent(fnameTransfer)).resolves.toEqual(ok(undefined));
+    await expect(userDataStore.getNameRegistryEvent(fname)).resolves.toEqual(fnameTransfer);
+  });
+
+  test('fails with invalid event type', async () => {
+    class NameRegistryEventModelStub extends NameRegistryEventModel {
+      override type(): NameRegistryEventType {
+        return 100 as NameRegistryEventType; // Invalid event type
+      }
+    }
+
+    const invalidEvent = new NameRegistryEventModelStub(fnameTransfer.event);
+    const result = await engine.mergeNameRegistryEvent(invalidEvent);
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid event type'));
   });
 });
@@ -167,14 +195,13 @@ describe('mergeMessage', () => {
     });
 
     test('fails with invalid message type', async () => {
-      const data = await Factories.MessageData.create({ type: 12 as MessageType, fid: Array.from(fid) });
-      const message = new MessageModel(
-        await Factories.Message.create(
-          { data: Array.from(data.bb?.bytes() ?? new Uint8Array()) },
-          { transient: { signer } }
-        )
-      );
-      const result = await engine.mergeMessage(message);
+      class MessageModelStub extends MessageModel {
+        override type(): MessageType {
+          return 100 as MessageType; // Invalid message type
+        }
+      }
+      const invalidMessage = new MessageModelStub(castAdd.message);
+      const result = await engine.mergeMessage(invalidMessage);
       expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request', 'unknown message type'));
       expect(mergedMessages).toEqual([signerAdd]);
     });

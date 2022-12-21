@@ -2,12 +2,17 @@ import { ByteBuffer } from 'flatbuffers';
 import { NameRegistryEvent, NameRegistryEventType } from '~/utils/generated/name_registry_event_generated';
 import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import { RootPrefix } from './types';
+import { HubError } from '~/utils/hubErrors';
 
 /** NameRegistryEventModel provides helpers to read and write Flatbuffers NameRegistryEvents from RocksDB */
 export default class NameRegistryEventModel {
-  public event: NameRegistryEvent;
+  public readonly event: NameRegistryEvent;
 
   constructor(event: NameRegistryEvent) {
+    if (!Object.values(NameRegistryEventType).includes(event.type())) {
+      throw new HubError('bad_request.invalid_param', 'type is invalid');
+    }
+
     this.event = event;
   }
 
@@ -85,5 +90,9 @@ export default class NameRegistryEventModel {
 
   type(): NameRegistryEventType {
     return this.event.type();
+  }
+
+  typeName(): string {
+    return NameRegistryEventType[this.type()] as string;
   }
 }

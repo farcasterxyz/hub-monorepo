@@ -2,11 +2,10 @@ import { multiaddr, Multiaddr } from '@multiformats/multiaddr';
 import Engine from '~/storage/engine/flatbuffers';
 import Server, { RPCHandler } from '~/network/rpc/flatbuffers/server';
 import { PeerId } from '@libp2p/interface-peer-id';
-import { MessageType } from '~/types';
 import { NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import BinaryRocksDB from '~/storage/db/binaryrocksdb';
-import { logger } from '~/utils/logger';
+import { idRegistryEventToLog, logger, messageToLog, nameRegistryEventToLog } from '~/utils/logger';
 import { HubAsyncResult, HubError, HubResult } from '~/utils/hubErrors';
 import MessageModel from '~/storage/flatbuffers/messageModel';
 import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
@@ -26,6 +25,8 @@ import { addressInfoFromGossip, ipFamilyToString, p2pMultiAddrStr } from '~/util
 import { isIP } from 'net';
 import Client from '~/network/rpc/flatbuffers/client';
 import { publicAddressesFirst } from '@libp2p/utils/address-sort';
+import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
+import { HubSubmitSource } from '~/storage/flatbuffers/types';
 
 export interface HubOptions {
   /** The PeerId of this Hub */
@@ -131,6 +132,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   /* Start the GossipNode and RPC server  */
   async start() {
     await this.rocksDB.open();
+
     if (this.options.resetDB === true) {
       log.info('clearing rocksdb');
       await this.rocksDB.clear();
@@ -138,6 +140,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
 
     // Start the ETH registry provider first
     await this.ethRegistryProvider.start();
+
     await this.gossipNode.start(this.options.bootstrapAddrs ?? [], {
       peerId: this.options.peerId,
       ipMultiAddr: this.options.ipMultiAddr,
@@ -158,25 +161,21 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     await this.rocksDB.close();
   }
 
-  async handleGossipMessage(gossipMessage: GossipMessage) {
-    let result: HubResult<void> = err(new HubError('bad_request.invalid_param', 'Invalid message type'));
+  async handleGossipMessage(gossipMessage: GossipMessage): HubAsyncResult<void> {
     const contentType = gossipMessage.contentType();
     if (contentType === GossipContent.Message) {
       const message: Message = gossipMessage.content(contentType);
-      result = await this.engine.mergeMessage(new MessageModel(message), 'Gossip');
+      return this.submitMessage(new MessageModel(message), 'gossip');
     } else if (contentType === GossipContent.IdRegistryEvent) {
-      const message: IdRegistryEvent = gossipMessage.content(contentType);
-      result = await this.engine.mergeIdRegistryEvent(new IdRegistryEventModel(message), 'Gossip');
+      const event = new IdRegistryEventModel(gossipMessage.content(contentType) as IdRegistryEvent);
+      return this.submitIdRegistryEvent(event, 'gossip');
     } else if (contentType === GossipContent.ContactInfoContent) {
       const message: ContactInfoContent = gossipMessage.content(contentType);
       await this.handleContactInfo(message);
-      result = ok(undefined);
+      return ok(undefined);
+    } else {
+      return err(new HubError('bad_request.invalid_param', 'invalid message type'));
     }
-
-    if (result.isErr()) {
-      log.error(result.error, 'Failed to merge message');
-    }
-    return result;
   }
 
   async handleContactInfo(message: ContactInfoContent) {
@@ -298,11 +297,26 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   }
 
   private registerEventHandlers() {
+    // Subscribe to store events
+    this.engine.eventHandler.on('mergeMessage', (message: MessageModel) => {
+      log.info(messageToLog(message), 'mergeMessage');
+
+      // TODO: gossip merged message
+    });
+
+    this.engine.eventHandler.on('mergeIdRegistryEvent', (event: IdRegistryEventModel) => {
+      log.info(idRegistryEventToLog(event), 'mergeIdRegistryEvent');
+    });
+
+    this.engine.eventHandler.on('mergeNameRegistryEvent', (event: NameRegistryEventModel) => {
+      log.info(nameRegistryEventToLog(event), 'mergeNameRegistryEvent');
+    });
+
     // Subscribes to all relevant topics
     this.gossipNode.gossip?.subscribe(NETWORK_TOPIC_PRIMARY);
     this.gossipNode.gossip?.subscribe(NETWORK_TOPIC_CONTACT);
 
-    this.gossipNode.addListener('message', async (_topic, message) => {
+    this.gossipNode.on('message', async (_topic, message) => {
       await message.match(
         async (gossipMessage) => {
           await this.handleGossipMessage(gossipMessage);
@@ -318,35 +332,42 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   /*                               RPC Handler API                              */
   /* -------------------------------------------------------------------------- */
 
-  async submitMessage(message: MessageModel): HubAsyncResult<void> {
-    // push this message into the engine
-    const mergeResult = await this.engine.mergeMessage(message, 'RPC');
+  async submitMessage(message: MessageModel, source?: HubSubmitSource): HubAsyncResult<void> {
+    log.info({ ...messageToLog(message), source }, 'submitMessage');
+
+    // push this message into the storage engine
+    const mergeResult = await this.engine.mergeMessage(message);
     if (mergeResult.isErr()) {
-      const type = message.data.type();
-      // Safe to disable because the type is being checked to be within bounds
-      // eslint-disable-next-line security/detect-object-injection
-      log.error(
-        mergeResult.error,
-        `received invalid message of type: ${type && type <= MessageType.SignerRemove ? MessageType[type] : 'unknown'}`
-      );
+      log.error(mergeResult.error);
       return mergeResult;
     }
 
-    //TODO(sagar): push this message onto the gossip network
     return mergeResult;
   }
 
-  async submitIdRegistryEvent(event: IdRegistryEventModel): HubAsyncResult<void> {
-    // push this message into the engine
-    const mergeResult = await this.engine.mergeIdRegistryEvent(event, 'RPC');
+  async submitIdRegistryEvent(event: IdRegistryEventModel, source?: HubSubmitSource): HubAsyncResult<void> {
+    log.info({ ...idRegistryEventToLog(event), source }, 'submitIdRegistryEvent');
+
+    // push this message into the storage engine
+    const mergeResult = await this.engine.mergeIdRegistryEvent(event);
     if (mergeResult.isErr()) {
-      log.error(mergeResult.error, 'received invalid message');
+      log.error(mergeResult.error);
       return mergeResult;
     }
 
-    log.info({ event: event }, 'merged id registry event');
+    return mergeResult;
+  }
 
-    //TODO(sagar): push this message onto the gossip network
+  async submitNameRegistryEvent(event: NameRegistryEventModel, source?: HubSubmitSource): HubAsyncResult<void> {
+    log.info({ ...nameRegistryEventToLog(event), source }, 'submitNameRegistryEvent');
+
+    // push this message into the storage engine
+    const mergeResult = await this.engine.mergeNameRegistryEvent(event);
+    if (mergeResult.isErr()) {
+      log.error(mergeResult.error);
+      return mergeResult;
+    }
+
     return mergeResult;
   }
 

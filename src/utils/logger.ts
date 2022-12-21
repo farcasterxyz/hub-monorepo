@@ -1,4 +1,10 @@
+import { BigNumber } from 'ethers';
+import { hexlify } from 'ethers/lib/utils';
 import { default as Pino } from 'pino';
+import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
+import MessageModel from '~/storage/flatbuffers/messageModel';
+import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
+import { fromFarcasterTime } from '~/storage/flatbuffers/utils';
 
 /**
  * Logging Guidelines
@@ -37,3 +43,32 @@ if (process.env['NODE_ENV'] === 'test' || process.env['CI']) {
 }
 
 export const logger = Pino(defaultOptions);
+
+export const messageToLog = (message: MessageModel) => {
+  return {
+    timestamp: fromFarcasterTime(message.timestamp()),
+    hash: hexlify(message.hash()),
+    fid: BigNumber.from(message.fid()).toNumber(),
+    type: message.typeName(),
+  };
+};
+
+export const idRegistryEventToLog = (event: IdRegistryEventModel) => {
+  return {
+    blockNumber: event.blockNumber(),
+    transactionHash: hexlify(event.transactionHash()),
+    fid: BigNumber.from(event.fid()).toNumber(),
+    to: hexlify(event.to()),
+    type: event.typeName(),
+  };
+};
+
+export const nameRegistryEventToLog = (event: NameRegistryEventModel) => {
+  return {
+    blockNumber: event.blockNumber(),
+    transactionHash: hexlify(event.transactionHash()),
+    fname: Buffer.from(event.fname()).toString('utf-8').replace(/\0/g, ''),
+    to: hexlify(event.to()),
+    type: event.typeName(),
+  };
+};
