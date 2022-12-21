@@ -2,7 +2,7 @@ import { multiaddr, Multiaddr } from '@multiformats/multiaddr';
 import Engine from '~/storage/engine/';
 import FlatbuffEngine from '~/storage/engine/flatbuffers';
 import { Node } from '~/network/p2p/node';
-import { RPCClient, RPCHandler, RPCServer } from '~/network/rpc';
+import { RPCClient, RPCHandler, RPCServer } from '~/network/rpc/json';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { Cast, SignerMessage, Reaction, Follow, Verification, IdRegistryEvent, Message, MessageType } from '~/types';
 import {

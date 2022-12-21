@@ -1,7 +1,7 @@
 import { MockFCEvent, UserInfo } from '~/storage/engine/mock';
 import { Message } from '~/types';
 import { Factories } from '~/test/factories';
-import { RPCClient } from '~/network/rpc';
+import { RPCClient } from '~/network/rpc/json';
 import { logger } from '~/utils/logger';
 import ProgressBar from 'progress';
 

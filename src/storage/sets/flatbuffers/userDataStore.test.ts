@@ -1,20 +1,21 @@
-import Factories from '~/test/factories/flatbuffer';
-import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import MessageModel from '~/storage/flatbuffers/messageModel';
-import { SignerAddModel, UserDataAddModel, UserPostfix } from '~/storage/flatbuffers/types';
-import { UserDataType } from '~/utils/generated/message_generated';
-import { HubError } from '~/utils/hubErrors';
-import { bytesIncrement, getFarcasterTime } from '~/storage/flatbuffers/utils';
-import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
-import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
-import { KeyPair } from '~/types';
-import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
-import { arrayify } from 'ethers/lib/utils';
-import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
-import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
-import Engine from '~/storage/engine/flatbuffers';
 import { utils, Wallet } from 'ethers';
-import { NameRegistryEventType } from '~/utils/generated/name_registry_event_generated';
+import { arrayify } from 'ethers/lib/utils';
+import Factories from '~/flatbuffers/factories/flatbuffer';
+import { UserDataType } from '~/flatbuffers/generated/message_generated';
+import { NameRegistryEventType } from '~/flatbuffers/generated/name_registry_event_generated';
+import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
+import MessageModel from '~/flatbuffers/models/messageModel';
+import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
+import { SignerAddModel, UserDataAddModel, UserPostfix } from '~/flatbuffers/models/types';
+import { bytesIncrement } from '~/flatbuffers/utils/bytes';
+import { getFarcasterTime } from '~/flatbuffers/utils/time';
+import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
+import Engine from '~/storage/engine/flatbuffers';
+import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
+import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
+import { KeyPair } from '~/types';
+import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
+import { HubError } from '~/utils/hubErrors';
 
 const db = jestBinaryRocksDB('flatbuffers.userDataSet.test');
 

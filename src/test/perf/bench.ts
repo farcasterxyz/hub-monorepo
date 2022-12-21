@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { RPCClient } from '~/network/rpc';
+import { RPCClient } from '~/network/rpc/json';
 import { SetupMode, setupNetwork } from '~/test/perf/setup';
 import { addressInfoFromNodeAddress } from '~/utils/p2p';
 import { multiaddr } from '@multiformats/multiaddr';

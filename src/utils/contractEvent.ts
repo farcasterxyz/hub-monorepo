@@ -1,7 +1,7 @@
-import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
-import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
-import { bytesCompare } from '~/storage/flatbuffers/utils';
 import { HubError } from './hubErrors';
+import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
+import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
+import { bytesCompare } from '~/flatbuffers/utils/bytes';
 
 /** Compares two events that happened on the blockchain based on block number/hash, log index */
 export const eventCompare = (

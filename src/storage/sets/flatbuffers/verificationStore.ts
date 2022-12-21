@@ -1,17 +1,12 @@
-import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
-import MessageModel from '~/storage/flatbuffers/messageModel';
 import { ResultAsync, ok } from 'neverthrow';
-import {
-  StorePruneOptions,
-  UserPostfix,
-  VerificationAddEthAddressModel,
-  VerificationRemoveModel,
-} from '~/storage/flatbuffers/types';
-import { isVerificationAddEthAddress, isVerificationRemove } from '~/storage/flatbuffers/typeguards';
-import { bytesCompare } from '~/storage/flatbuffers/utils';
-import { MessageType } from '~/utils/generated/message_generated';
-import { HubAsyncResult, HubError } from '~/utils/hubErrors';
+import { MessageType } from '~/flatbuffers/generated/message_generated';
+import MessageModel from '~/flatbuffers/models/messageModel';
+import { isVerificationAddEthAddress, isVerificationRemove } from '~/flatbuffers/models/typeguards';
+import * as types from '~/flatbuffers/models/types';
+import { bytesCompare } from '~/flatbuffers/utils/bytes';
+import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
+import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 50;
 
@@ -43,7 +38,7 @@ class VerificationStore {
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
 
-  constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
+  constructor(db: RocksDB, eventHandler: StoreEventHandler, options: types.StorePruneOptions = {}) {
     this._db = db;
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
@@ -61,7 +56,7 @@ class VerificationStore {
   static verificationAddsKey(fid: Uint8Array, address?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
-      Buffer.from([UserPostfix.VerificationAdds]),
+      Buffer.from([types.UserPostfix.VerificationAdds]),
       address ? Buffer.from(address) : new Uint8Array(),
     ]);
   }
@@ -78,7 +73,7 @@ class VerificationStore {
   static verificationRemovesKey(fid: Uint8Array, address?: Uint8Array): Buffer {
     return Buffer.concat([
       MessageModel.userKey(fid),
-      Buffer.from([UserPostfix.VerificationRemoves]),
+      Buffer.from([types.UserPostfix.VerificationRemoves]),
       address ? Buffer.from(address) : new Uint8Array(),
     ]);
   }
@@ -91,12 +86,12 @@ class VerificationStore {
    *
    * @returns the VerificationAddEthAddressModel if it exists, throws HubError otherwise
    */
-  async getVerificationAdd(fid: Uint8Array, address: Uint8Array): Promise<VerificationAddEthAddressModel> {
+  async getVerificationAdd(fid: Uint8Array, address: Uint8Array): Promise<types.VerificationAddEthAddressModel> {
     const messageTsHash = await this._db.get(VerificationStore.verificationAddsKey(fid, address));
-    return MessageModel.get<VerificationAddEthAddressModel>(
+    return MessageModel.get<types.VerificationAddEthAddressModel>(
       this._db,
       fid,
-      UserPostfix.VerificationMessage,
+      types.UserPostfix.VerificationMessage,
       messageTsHash
     );
   }
@@ -108,9 +103,14 @@ class VerificationStore {
    * @param address the address being verified
    * @returns the VerificationRemoveEthAddress if it exists, throws HubError otherwise
    */
-  async getVerificationRemove(fid: Uint8Array, address: Uint8Array): Promise<VerificationRemoveModel> {
+  async getVerificationRemove(fid: Uint8Array, address: Uint8Array): Promise<types.VerificationRemoveModel> {
     const messageTsHash = await this._db.get(VerificationStore.verificationRemovesKey(fid, address));
-    return MessageModel.get<VerificationRemoveModel>(this._db, fid, UserPostfix.VerificationMessage, messageTsHash);
+    return MessageModel.get<types.VerificationRemoveModel>(
+      this._db,
+      fid,
+      types.UserPostfix.VerificationMessage,
+      messageTsHash
+    );
   }
 
   /**
@@ -119,16 +119,16 @@ class VerificationStore {
    * @param fid fid of the user who created the signers
    * @returns the VerificationAddEthAddresses if they exists, throws HubError otherwise
    */
-  async getVerificationAddsByUser(fid: Uint8Array): Promise<VerificationAddEthAddressModel[]> {
+  async getVerificationAddsByUser(fid: Uint8Array): Promise<types.VerificationAddEthAddressModel[]> {
     const addsPrefix = VerificationStore.verificationAddsKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(addsPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
     }
-    return MessageModel.getManyByUser<VerificationAddEthAddressModel>(
+    return MessageModel.getManyByUser<types.VerificationAddEthAddressModel>(
       this._db,
       fid,
-      UserPostfix.VerificationMessage,
+      types.UserPostfix.VerificationMessage,
       messageKeys
     );
   }
@@ -139,16 +139,16 @@ class VerificationStore {
    * @param fid fid of the user who created the signers
    * @returns the VerificationRemoves messages if it exists, throws HubError otherwise
    */
-  async getVerificationRemovesByUser(fid: Uint8Array): Promise<VerificationRemoveModel[]> {
+  async getVerificationRemovesByUser(fid: Uint8Array): Promise<types.VerificationRemoveModel[]> {
     const removesPrefix = VerificationStore.verificationRemovesKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(removesPrefix, { keys: false, valueAsBuffer: true })) {
       messageKeys.push(value);
     }
-    return MessageModel.getManyByUser<VerificationRemoveModel>(
+    return MessageModel.getManyByUser<types.VerificationRemoveModel>(
       this._db,
       fid,
-      UserPostfix.VerificationMessage,
+      types.UserPostfix.VerificationMessage,
       messageKeys
     );
   }
@@ -168,7 +168,7 @@ class VerificationStore {
 
   async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<void> {
     // Get all VerificationAddEthAddress messages signed by signer
-    const verificationAdds = await MessageModel.getAllBySigner<VerificationAddEthAddressModel>(
+    const verificationAdds = await MessageModel.getAllBySigner<types.VerificationAddEthAddressModel>(
       this._db,
       fid,
       signer,
@@ -176,7 +176,7 @@ class VerificationStore {
     );
 
     // Get all VerificationRemove messages signed by signer
-    const castRemoves = await MessageModel.getAllBySigner<VerificationRemoveModel>(
+    const castRemoves = await MessageModel.getAllBySigner<types.VerificationRemoveModel>(
       this._db,
       fid,
       signer,
@@ -209,7 +209,7 @@ class VerificationStore {
   async pruneMessages(fid: Uint8Array): HubAsyncResult<void> {
     // Count number of verification messages for this fid
     // TODO: persist this count to avoid having to retrieve it with each call
-    const prefix = MessageModel.primaryKey(fid, UserPostfix.VerificationMessage);
+    const prefix = MessageModel.primaryKey(fid, types.UserPostfix.VerificationMessage);
     let count = 0;
     for await (const [,] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
       count = count + 1;
@@ -219,13 +219,13 @@ class VerificationStore {
     let sizeToPrune = count - this._pruneSizeLimit;
 
     // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
-    const messageToPrune: (VerificationAddEthAddressModel | VerificationRemoveModel)[] = [];
+    const messageToPrune: (types.VerificationAddEthAddressModel | types.VerificationRemoveModel)[] = [];
 
     // Create a rocksdb transaction to include all the mutations
     let pruneTsx = this._db.transaction();
 
     // Create a rocksdb iterator for all messages with the given prefix
-    const pruneIterator = MessageModel.getPruneIterator(this._db, fid, UserPostfix.VerificationMessage);
+    const pruneIterator = MessageModel.getPruneIterator(this._db, fid, types.UserPostfix.VerificationMessage);
 
     const getNextResult = () => ResultAsync.fromPromise(MessageModel.getNextToPrune(pruneIterator), () => undefined);
 
@@ -267,7 +267,7 @@ class VerificationStore {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async mergeAdd(message: VerificationAddEthAddressModel): Promise<void> {
+  private async mergeAdd(message: types.VerificationAddEthAddressModel): Promise<void> {
     // Define address for lookups
     const address = message.body().addressArray();
     if (!address) {
@@ -289,7 +289,7 @@ class VerificationStore {
     this._eventHandler.emit('mergeMessage', message);
   }
 
-  private async mergeRemove(message: VerificationRemoveModel): Promise<void> {
+  private async mergeRemove(message: types.VerificationRemoveModel): Promise<void> {
     // Define address for lookups
     const address = message.body().addressArray();
     if (!address) {
@@ -336,7 +336,7 @@ class VerificationStore {
   private async resolveMergeConflicts(
     tsx: Transaction,
     address: Uint8Array,
-    message: VerificationAddEthAddressModel | VerificationRemoveModel
+    message: types.VerificationAddEthAddressModel | types.VerificationRemoveModel
   ): Promise<Transaction | undefined> {
     // Look up the remove tsHash for this address
     const removeTsHash = await ResultAsync.fromPromise(
@@ -358,10 +358,10 @@ class VerificationStore {
       } else {
         // If the existing remove has a lower order than the new message, retrieve the full
         // VerificationRemove message and delete it as part of the RocksDB transaction
-        const existingRemove = await MessageModel.get<VerificationRemoveModel>(
+        const existingRemove = await MessageModel.get<types.VerificationRemoveModel>(
           this._db,
           message.fid(),
-          UserPostfix.VerificationMessage,
+          types.UserPostfix.VerificationMessage,
           removeTsHash.value
         );
         tsx = this.deleteVerificationRemoveTransaction(tsx, existingRemove);
@@ -388,10 +388,10 @@ class VerificationStore {
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // VerificationAdd* message and delete it as part of the RocksDB transaction
-        const existingAdd = await MessageModel.get<VerificationAddEthAddressModel>(
+        const existingAdd = await MessageModel.get<types.VerificationAddEthAddressModel>(
           this._db,
           message.fid(),
-          UserPostfix.VerificationMessage,
+          types.UserPostfix.VerificationMessage,
           addTsHash.value
         );
         tsx = this.deleteVerificationAddTransaction(tsx, existingAdd);
@@ -401,7 +401,7 @@ class VerificationStore {
     return tsx;
   }
 
-  private putVerificationAddTransaction(tsx: Transaction, message: VerificationAddEthAddressModel): Transaction {
+  private putVerificationAddTransaction(tsx: Transaction, message: types.VerificationAddEthAddressModel): Transaction {
     // Put message and index by signer
     tsx = MessageModel.putTransaction(tsx, message);
 
@@ -414,7 +414,10 @@ class VerificationStore {
     return tsx;
   }
 
-  private deleteVerificationAddTransaction(tsx: Transaction, message: VerificationAddEthAddressModel): Transaction {
+  private deleteVerificationAddTransaction(
+    tsx: Transaction,
+    message: types.VerificationAddEthAddressModel
+  ): Transaction {
     // Delete from verificationAdds
     tsx = tsx.del(
       VerificationStore.verificationAddsKey(message.fid(), message.body().addressArray() ?? new Uint8Array())
@@ -424,7 +427,7 @@ class VerificationStore {
     return MessageModel.deleteTransaction(tsx, message);
   }
 
-  private putVerificationRemoveTransaction(tsx: Transaction, message: VerificationRemoveModel): Transaction {
+  private putVerificationRemoveTransaction(tsx: Transaction, message: types.VerificationRemoveModel): Transaction {
     // Add to db
     tsx = MessageModel.putTransaction(tsx, message);
 
@@ -437,7 +440,7 @@ class VerificationStore {
     return tsx;
   }
 
-  private deleteVerificationRemoveTransaction(tsx: Transaction, message: VerificationRemoveModel): Transaction {
+  private deleteVerificationRemoveTransaction(tsx: Transaction, message: types.VerificationRemoveModel): Transaction {
     // Delete from verificationRemoves
     tsx = tsx.del(
       VerificationStore.verificationRemovesKey(message.fid(), message.body().addressArray() ?? new Uint8Array())

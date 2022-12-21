@@ -2,7 +2,7 @@ import { Message } from '~/types';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId } from '~/network/sync/syncId';
 import Engine from '~/storage/engine';
-import { RPCClient } from '~/network/rpc';
+import { RPCClient } from '~/network/rpc/json';
 import { err } from 'neverthrow';
 import { logger } from '~/utils/logger';
 import { TrieSnapshot } from '~/network/sync/trieNode';

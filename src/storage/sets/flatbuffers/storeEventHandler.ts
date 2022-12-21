@@ -1,7 +1,7 @@
 import { TypedEmitter } from 'tiny-typed-emitter';
-import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
-import MessageModel from '~/storage/flatbuffers/messageModel';
-import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
+import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
+import MessageModel from '~/flatbuffers/models/messageModel';
+import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 
 export type StoreEvents = {
   mergeMessage: (message: MessageModel) => void;

@@ -1,15 +1,14 @@
 #!/usr/bin/env node
-
-import { Command } from 'commander';
-import { Hub, HubOptions } from '~/flatbuffers/hub';
-import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from '@libp2p/peer-id-factory';
-import { writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import { exit } from 'process';
-import { readFile } from 'fs/promises';
-import { logger } from '~/utils/logger';
-import { dirname, resolve } from 'path';
 import { PeerId } from '@libp2p/interface-peer-id';
+import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from '@libp2p/peer-id-factory';
+import { Command } from 'commander';
+import { existsSync } from 'fs';
+import { writeFile, mkdir } from 'fs/promises';
+import { readFile } from 'fs/promises';
+import { dirname, resolve } from 'path';
+import { exit } from 'process';
+import { Hub, HubOptions } from '~/flatbufferHub';
+import { logger } from '~/utils/logger';
 import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 
 /** A CLI to accept options from the user and start the Hub */

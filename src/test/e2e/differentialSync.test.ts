@@ -1,5 +1,5 @@
 import { AddressInfo } from 'net';
-import { RPCServer, RPCHandler, RPCClient } from '~/network/rpc';
+import { RPCServer, RPCHandler, RPCClient } from '~/network/rpc/json';
 import Engine from '~/storage/engine';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { populateEngine, UserInfo } from '~/storage/engine/mock';

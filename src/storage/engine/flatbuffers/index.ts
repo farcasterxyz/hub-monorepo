@@ -1,48 +1,24 @@
 import { err, errAsync, ok, ResultAsync } from 'neverthrow';
-import CastStore from '~/storage/sets/flatbuffers/castStore';
+import { IdRegistryEventType } from '~/flatbuffers/generated/id_registry_event_generated';
+import { CastId, ReactionType, UserDataType, UserId } from '~/flatbuffers/generated/message_generated';
+import { NameRegistryEventType } from '~/flatbuffers/generated/name_registry_event_generated';
+import HubStateModel from '~/flatbuffers/models/hubStateModel';
+import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
+import MessageModel from '~/flatbuffers/models/messageModel';
+import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
+import { isSignerAdd, isSignerRemove, isUserDataAdd } from '~/flatbuffers/models/typeguards';
+import * as types from '~/flatbuffers/models/types';
+import * as validations from '~/flatbuffers/models/validations';
+import { bytesCompare } from '~/flatbuffers/utils/bytes';
 import RocksDB from '~/storage/db/binaryrocksdb';
-import SignerStore from '~/storage/sets/flatbuffers/signerStore';
 import AmpStore from '~/storage/sets/flatbuffers/ampStore';
+import CastStore from '~/storage/sets/flatbuffers/castStore';
 import ReactionStore from '~/storage/sets/flatbuffers/reactionStore';
-import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
-import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
-import MessageModel from '~/storage/flatbuffers/messageModel';
-import {
-  CastAddModel,
-  CastRemoveModel,
-  AmpAddModel,
-  AmpRemoveModel,
-  ReactionAddModel,
-  ReactionRemoveModel,
-  SignerAddModel,
-  SignerRemoveModel,
-  UserDataAddModel,
-  UserPostfix,
-  VerificationAddEthAddressModel,
-  VerificationRemoveModel,
-} from '~/storage/flatbuffers/types';
-import IdRegistryEventModel from '~/storage/flatbuffers/idRegistryEventModel';
-import { IdRegistryEventType } from '~/utils/generated/id_registry_event_generated';
-import { isSignerAdd, isSignerRemove, isUserDataAdd } from '~/storage/flatbuffers/typeguards';
-import {
-  validateCastId,
-  ValidatedCastId,
-  ValidatedUserId,
-  validateEd25519PublicKey,
-  validateEthAddress,
-  validateFid,
-  validateMessage,
-  validateReactionType,
-  validateTsHash,
-  validateUserId,
-} from '~/storage/flatbuffers/validations';
-import { CastId, ReactionType, UserDataType, UserId } from '~/utils/generated/message_generated';
-import { HubAsyncResult, HubResult, HubError } from '~/utils/hubErrors';
+import SignerStore from '~/storage/sets/flatbuffers/signerStore';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
-import { NameRegistryEventType } from '~/utils/generated/name_registry_event_generated';
-import NameRegistryEventModel from '~/storage/flatbuffers/nameRegistryEventModel';
-import { bytesCompare } from '~/storage/flatbuffers/utils';
-import HubStateModel from '~/storage/flatbuffers/hubStateModel';
+import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
+import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
+import { HubAsyncResult, HubResult, HubError } from '~/utils/hubErrors';
 
 class Engine {
   public eventHandler: StoreEventHandler;
@@ -81,17 +57,17 @@ class Engine {
       return err(validatedMessage.error);
     }
 
-    if (message.setPostfix() === UserPostfix.CastMessage) {
+    if (message.setPostfix() === types.UserPostfix.CastMessage) {
       return ResultAsync.fromPromise(this._castStore.merge(message), (e) => e as HubError);
-    } else if (message.setPostfix() === UserPostfix.AmpMessage) {
+    } else if (message.setPostfix() === types.UserPostfix.AmpMessage) {
       return ResultAsync.fromPromise(this._ampStore.merge(message), (e) => e as HubError);
-    } else if (message.setPostfix() === UserPostfix.ReactionMessage) {
+    } else if (message.setPostfix() === types.UserPostfix.ReactionMessage) {
       return ResultAsync.fromPromise(this._reactionStore.merge(message), (e) => e as HubError);
-    } else if (message.setPostfix() === UserPostfix.SignerMessage) {
+    } else if (message.setPostfix() === types.UserPostfix.SignerMessage) {
       return ResultAsync.fromPromise(this._signerStore.merge(message), (e) => e as HubError);
-    } else if (message.setPostfix() === UserPostfix.VerificationMessage) {
+    } else if (message.setPostfix() === types.UserPostfix.VerificationMessage) {
       return ResultAsync.fromPromise(this._verificationStore.merge(message), (e) => e as HubError);
-    } else if (message.setPostfix() === UserPostfix.UserDataMessage) {
+    } else if (message.setPostfix() === types.UserPostfix.UserDataMessage) {
       return ResultAsync.fromPromise(this._userDataStore.merge(message), (e) => e as HubError);
     } else {
       return err(new HubError('bad_request.validation_failure', 'invalid message type'));
@@ -135,13 +111,13 @@ class Engine {
   /*                             Cast Store Methods                             */
   /* -------------------------------------------------------------------------- */
 
-  async getCast(fid: Uint8Array, tsHash: Uint8Array): HubAsyncResult<CastAddModel> {
-    const validatedFid = validateFid(fid);
+  async getCast(fid: Uint8Array, tsHash: Uint8Array): HubAsyncResult<types.CastAddModel> {
+    const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    const validatedTsHash = validateTsHash(tsHash);
+    const validatedTsHash = validations.validateTsHash(tsHash);
     if (validatedTsHash.isErr()) {
       return err(validatedTsHash.error);
     }
@@ -149,8 +125,8 @@ class Engine {
     return ResultAsync.fromPromise(this._castStore.getCastAdd(fid, tsHash), (e) => e as HubError);
   }
 
-  async getCastsByFid(fid: Uint8Array): HubAsyncResult<CastAddModel[]> {
-    return validateFid(fid).match(
+  async getCastsByFid(fid: Uint8Array): HubAsyncResult<types.CastAddModel[]> {
+    return validations.validateFid(fid).match(
       (validatedFid: Uint8Array) => {
         return ResultAsync.fromPromise(this._castStore.getCastAddsByUser(validatedFid), (e) => e as HubError);
       },
@@ -160,9 +136,9 @@ class Engine {
     );
   }
 
-  async getCastsByParent(parent: CastId): HubAsyncResult<CastAddModel[]> {
-    return validateCastId(parent).match(
-      (validatedParent: ValidatedCastId) => {
+  async getCastsByParent(parent: CastId): HubAsyncResult<types.CastAddModel[]> {
+    return validations.validateCastId(parent).match(
+      (validatedParent: validations.ValidatedCastId) => {
         return ResultAsync.fromPromise(
           this._castStore.getCastsByParent(validatedParent.fidArray(), validatedParent.tsHashArray()),
           (e) => e as HubError
@@ -174,9 +150,9 @@ class Engine {
     );
   }
 
-  async getCastsByMention(user: UserId): HubAsyncResult<CastAddModel[]> {
-    return validateUserId(user).match(
-      (validatedUserId: ValidatedUserId) => {
+  async getCastsByMention(user: UserId): HubAsyncResult<types.CastAddModel[]> {
+    return validations.validateUserId(user).match(
+      (validatedUserId: validations.ValidatedUserId) => {
         return ResultAsync.fromPromise(
           this._castStore.getCastsByMention(validatedUserId.fidArray()),
           (e) => e as HubError
@@ -188,7 +164,7 @@ class Engine {
     );
   }
 
-  async getAllCastMessagesByFid(fid: Uint8Array): HubAsyncResult<(CastAddModel | CastRemoveModel)[]> {
+  async getAllCastMessagesByFid(fid: Uint8Array): HubAsyncResult<(types.CastAddModel | types.CastRemoveModel)[]> {
     const adds = await ResultAsync.fromPromise(this._castStore.getCastAddsByUser(fid), (e) => e as HubError);
     if (adds.isErr()) {
       return err(adds.error);
@@ -206,13 +182,13 @@ class Engine {
   /*                             Amp Store Methods                           */
   /* -------------------------------------------------------------------------- */
 
-  async getAmp(fid: Uint8Array, user: UserId): HubAsyncResult<AmpAddModel> {
-    const validatedFid = validateFid(fid);
+  async getAmp(fid: Uint8Array, user: UserId): HubAsyncResult<types.AmpAddModel> {
+    const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    const validatedUser = validateUserId(user);
+    const validatedUser = validations.validateUserId(user);
     if (validatedUser.isErr()) {
       return err(validatedUser.error);
     }
@@ -220,8 +196,8 @@ class Engine {
     return ResultAsync.fromPromise(this._ampStore.getAmpAdd(fid, validatedUser.value.fidArray()), (e) => e as HubError);
   }
 
-  async getAmpsByFid(fid: Uint8Array): HubAsyncResult<AmpAddModel[]> {
-    return validateFid(fid).match(
+  async getAmpsByFid(fid: Uint8Array): HubAsyncResult<types.AmpAddModel[]> {
+    return validations.validateFid(fid).match(
       (validatedFid: Uint8Array) => {
         return ResultAsync.fromPromise(this._ampStore.getAmpAddsByUser(validatedFid), (e) => e as HubError);
       },
@@ -231,9 +207,9 @@ class Engine {
     );
   }
 
-  async getAmpsByUser(user: UserId): HubAsyncResult<AmpAddModel[]> {
-    return validateUserId(user).match(
-      (validatedUserId: ValidatedUserId) => {
+  async getAmpsByUser(user: UserId): HubAsyncResult<types.AmpAddModel[]> {
+    return validations.validateUserId(user).match(
+      (validatedUserId: validations.ValidatedUserId) => {
         return ResultAsync.fromPromise(
           this._ampStore.getAmpsByTargetUser(validatedUserId.fidArray()),
           (e) => e as HubError
@@ -245,7 +221,7 @@ class Engine {
     );
   }
 
-  async getAllAmpMessagesByFid(fid: Uint8Array): HubAsyncResult<(AmpAddModel | AmpRemoveModel)[]> {
+  async getAllAmpMessagesByFid(fid: Uint8Array): HubAsyncResult<(types.AmpAddModel | types.AmpRemoveModel)[]> {
     const adds = await ResultAsync.fromPromise(this._ampStore.getAmpAddsByUser(fid), (e) => e as HubError);
     if (adds.isErr()) {
       return err(adds.error);
@@ -263,18 +239,18 @@ class Engine {
   /*                            Reaction Store Methods                          */
   /* -------------------------------------------------------------------------- */
 
-  async getReaction(fid: Uint8Array, type: ReactionType, cast: CastId): HubAsyncResult<ReactionAddModel> {
-    const validatedFid = validateFid(fid);
+  async getReaction(fid: Uint8Array, type: ReactionType, cast: CastId): HubAsyncResult<types.ReactionAddModel> {
+    const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    const validatedReactionType = validateReactionType(type);
+    const validatedReactionType = validations.validateReactionType(type);
     if (validatedReactionType.isErr()) {
       return err(validatedReactionType.error);
     }
 
-    const validatedCast = validateCastId(cast);
+    const validatedCast = validations.validateCastId(cast);
     if (validatedCast.isErr()) {
       return err(validatedCast.error);
     }
@@ -282,8 +258,8 @@ class Engine {
     return ResultAsync.fromPromise(this._reactionStore.getReactionAdd(fid, type, cast), (e) => e as HubError);
   }
 
-  async getReactionsByFid(fid: Uint8Array, type?: ReactionType): HubAsyncResult<ReactionAddModel[]> {
-    return validateFid(fid).match(
+  async getReactionsByFid(fid: Uint8Array, type?: ReactionType): HubAsyncResult<types.ReactionAddModel[]> {
+    return validations.validateFid(fid).match(
       (validatedFid: Uint8Array) => {
         return ResultAsync.fromPromise(
           this._reactionStore.getReactionAddsByUser(validatedFid, type),
@@ -296,9 +272,9 @@ class Engine {
     );
   }
 
-  async getReactionsByCast(cast: CastId, type?: ReactionType): HubAsyncResult<ReactionAddModel[]> {
-    return validateCastId(cast).match(
-      (validatedCastId: ValidatedCastId) => {
+  async getReactionsByCast(cast: CastId, type?: ReactionType): HubAsyncResult<types.ReactionAddModel[]> {
+    return validations.validateCastId(cast).match(
+      (validatedCastId: validations.ValidatedCastId) => {
         return ResultAsync.fromPromise(
           this._reactionStore.getReactionsByTargetCast(validatedCastId, type),
           (e) => e as HubError
@@ -310,7 +286,9 @@ class Engine {
     );
   }
 
-  async getAllReactionMessagesByFid(fid: Uint8Array): HubAsyncResult<(ReactionAddModel | ReactionRemoveModel)[]> {
+  async getAllReactionMessagesByFid(
+    fid: Uint8Array
+  ): HubAsyncResult<(types.ReactionAddModel | types.ReactionRemoveModel)[]> {
     const adds = await ResultAsync.fromPromise(this._reactionStore.getReactionAddsByUser(fid), (e) => e as HubError);
     if (adds.isErr()) {
       return err(adds.error);
@@ -331,13 +309,13 @@ class Engine {
   /*                          Verification Store Methods                        */
   /* -------------------------------------------------------------------------- */
 
-  async getVerification(fid: Uint8Array, address: Uint8Array): HubAsyncResult<VerificationAddEthAddressModel> {
-    const validatedFid = validateFid(fid);
+  async getVerification(fid: Uint8Array, address: Uint8Array): HubAsyncResult<types.VerificationAddEthAddressModel> {
+    const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    const validatedAddress = validateEthAddress(address);
+    const validatedAddress = validations.validateEthAddress(address);
     if (validatedAddress.isErr()) {
       return err(validatedAddress.error);
     }
@@ -345,8 +323,8 @@ class Engine {
     return ResultAsync.fromPromise(this._verificationStore.getVerificationAdd(fid, address), (e) => e as HubError);
   }
 
-  async getVerificationsByFid(fid: Uint8Array): HubAsyncResult<VerificationAddEthAddressModel[]> {
-    const validatedFid = validateFid(fid);
+  async getVerificationsByFid(fid: Uint8Array): HubAsyncResult<types.VerificationAddEthAddressModel[]> {
+    const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
@@ -356,7 +334,7 @@ class Engine {
 
   async getAllVerificationMessagesByFid(
     fid: Uint8Array
-  ): HubAsyncResult<(VerificationAddEthAddressModel | VerificationRemoveModel)[]> {
+  ): HubAsyncResult<(types.VerificationAddEthAddressModel | types.VerificationRemoveModel)[]> {
     const adds = await ResultAsync.fromPromise(
       this._verificationStore.getVerificationAddsByUser(fid),
       (e) => e as HubError
@@ -380,13 +358,13 @@ class Engine {
   /*                              Signer Store Methods                          */
   /* -------------------------------------------------------------------------- */
 
-  async getSigner(fid: Uint8Array, signerPubKey: Uint8Array): HubAsyncResult<SignerAddModel> {
-    const validatedFid = validateFid(fid);
+  async getSigner(fid: Uint8Array, signerPubKey: Uint8Array): HubAsyncResult<types.SignerAddModel> {
+    const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    const validatedPubKey = validateEd25519PublicKey(signerPubKey);
+    const validatedPubKey = validations.validateEd25519PublicKey(signerPubKey);
     if (validatedPubKey.isErr()) {
       return err(validatedPubKey.error);
     }
@@ -394,8 +372,8 @@ class Engine {
     return ResultAsync.fromPromise(this._signerStore.getSignerAdd(fid, signerPubKey), (e) => e as HubError);
   }
 
-  async getSignersByFid(fid: Uint8Array): HubAsyncResult<SignerAddModel[]> {
-    const validatedFid = validateFid(fid);
+  async getSignersByFid(fid: Uint8Array): HubAsyncResult<types.SignerAddModel[]> {
+    const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
@@ -404,7 +382,7 @@ class Engine {
   }
 
   async getCustodyEvent(fid: Uint8Array): HubAsyncResult<IdRegistryEventModel> {
-    const validatedFid = validateFid(fid);
+    const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
@@ -416,7 +394,7 @@ class Engine {
     return ResultAsync.fromPromise(this._signerStore.getFids(), (e) => e as HubError);
   }
 
-  async getAllSignerMessagesByFid(fid: Uint8Array): HubAsyncResult<(SignerAddModel | SignerRemoveModel)[]> {
+  async getAllSignerMessagesByFid(fid: Uint8Array): HubAsyncResult<(types.SignerAddModel | types.SignerRemoveModel)[]> {
     const adds = await ResultAsync.fromPromise(this._signerStore.getSignerAddsByUser(fid), (e) => e as HubError);
     if (adds.isErr()) {
       return err(adds.error);
@@ -434,8 +412,8 @@ class Engine {
   /*                           User Data Store Methods                          */
   /* -------------------------------------------------------------------------- */
 
-  async getUserData(fid: Uint8Array, type: UserDataType): HubAsyncResult<UserDataAddModel> {
-    const validatedFid = validateFid(fid);
+  async getUserData(fid: Uint8Array, type: UserDataType): HubAsyncResult<types.UserDataAddModel> {
+    const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
@@ -443,8 +421,8 @@ class Engine {
     return ResultAsync.fromPromise(this._userDataStore.getUserDataAdd(fid, type), (e) => e as HubError);
   }
 
-  async getUserDataByFid(fid: Uint8Array): HubAsyncResult<UserDataAddModel[]> {
-    const validatedFid = validateFid(fid);
+  async getUserDataByFid(fid: Uint8Array): HubAsyncResult<types.UserDataAddModel[]> {
+    const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
@@ -513,7 +491,7 @@ class Engine {
     }
 
     // 4. Check message body and envelope (will throw HubError if invalid)
-    return validateMessage(message);
+    return validations.validateMessage(message);
   }
 }
 
