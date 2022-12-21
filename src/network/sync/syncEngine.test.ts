@@ -1,13 +1,13 @@
-import { Factories } from '~/test/factories';
-import Engine from '~/storage/engine';
-import { SyncEngine } from '~/network/sync/syncEngine';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import { mockFid, UserInfo } from '~/storage/engine/mock';
 import { faker } from '@faker-js/faker';
-import { SyncId } from '~/network/sync/syncId';
+import { ok } from 'neverthrow';
 import { anyString, instance, mock, when } from 'ts-mockito';
 import { RPCClient } from '~/network/rpc/json';
-import { ok } from 'neverthrow';
+import { SyncEngine } from '~/network/sync/syncEngine';
+import { SyncId } from '~/network/sync/syncId';
+import { jestRocksDB } from '~/storage/db/jestUtils';
+import Engine from '~/storage/engine';
+import { mockFid, UserInfo } from '~/storage/engine/mock';
+import { Factories } from '~/test/factories';
 import { CastShort } from '~/types';
 
 const testDb = jestRocksDB(`engine.syncEngine.test`);

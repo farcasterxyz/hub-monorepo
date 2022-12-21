@@ -1,8 +1,8 @@
 import { ResultAsync } from 'neverthrow';
+import MessageDB from '~/storage/db/message';
 import { Transaction } from '~/storage/db/rocksdb';
 import { Cast, CastRecast, CastRemove, CastShort, MessageType } from '~/types';
 import { isCastRecast, isCastShort } from '~/types/typeguards';
-import MessageDB from '~/storage/db/message';
 
 /**
  * CastDB extends MessageDB and provides methods for getting, putting, and deleting cast messages

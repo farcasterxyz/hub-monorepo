@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
 import CastDB from '~/storage/db/cast';
+import { jestRocksDB } from '~/storage/db/jestUtils';
 import { Factories } from '~/test/factories';
 import { CastRecast, CastRemove, CastShort } from '~/types';
-import { jestRocksDB } from '~/storage/db/jestUtils';
 import { HubError } from '~/utils/hubErrors';
 
 const rocks = jestRocksDB('db.cast.test');

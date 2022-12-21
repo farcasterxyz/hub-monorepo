@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
-import { IdRegistry, NameRegistry } from './abis';
-import { EthEventsProvider } from './ethEventsProvider';
 import { Event } from '@ethersproject/contracts';
 import { BaseProvider, Block, TransactionReceipt, TransactionResponse } from '@ethersproject/providers';
 import { BigNumber, Contract } from 'ethers';
@@ -12,6 +10,8 @@ import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine/flatbuffers';
+import { IdRegistry, NameRegistry } from './abis';
+import { EthEventsProvider } from './ethEventsProvider';
 
 const db = jestBinaryRocksDB('flatbuffers.ethevents.test');
 const engine = new Engine(db);

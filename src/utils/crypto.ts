@@ -1,9 +1,9 @@
-import { Ed25519Signer, EthereumSigner, KeyPair, Message, SignatureAlgorithm } from '~/types';
-import canonicalize from 'canonicalize';
-import { ethers, utils } from 'ethers';
 import * as ed from '@noble/ed25519';
+import canonicalize from 'canonicalize';
 import { blake2b } from 'ethereum-cryptography/blake2b';
 import { hexToBytes, utf8ToBytes } from 'ethereum-cryptography/utils';
+import { ethers, utils } from 'ethers';
+import { Ed25519Signer, EthereumSigner, KeyPair, Message, SignatureAlgorithm } from '~/types';
 
 export const hashMessage = async (item: Message): Promise<string> => {
   return await hashFCObject(item.data);

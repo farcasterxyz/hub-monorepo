@@ -1,5 +1,7 @@
-import Engine from '~/storage/engine';
 import { faker } from '@faker-js/faker';
+import FollowDB from '~/storage/db/follow';
+import { jestRocksDB } from '~/storage/db/jestUtils';
+import Engine from '~/storage/engine';
 import { Factories } from '~/test/factories';
 import {
   Ed25519Signer,
@@ -12,8 +14,6 @@ import {
   SignerAdd,
 } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import FollowDB from '~/storage/db/follow';
 import { BadRequestError, UnknownUserError } from '~/utils/errors';
 
 const testDb = jestRocksDB(`engine.follow.test`);

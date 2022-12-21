@@ -1,5 +1,5 @@
-import * as FC from '~/types';
 import { ContactInfoContent, Content, GossipMessage, IdRegistryContent, UserContent } from '~/network/p2p/protocol';
+import * as FC from '~/types';
 
 export const isCast = (msg: FC.Message): msg is FC.Cast => isCastShort(msg) || isCastRemove(msg) || isCastRecast(msg);
 

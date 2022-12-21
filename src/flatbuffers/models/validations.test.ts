@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { Wallet, utils } from 'ethers';
+import { utils, Wallet } from 'ethers';
 import { arrayify } from 'ethers/lib/utils';
 import Factories from '~/flatbuffers/factories/flatbuffer';
 import * as message_generated from '~/flatbuffers/generated/message_generated';

@@ -1,5 +1,5 @@
-import RocksDB from '~/storage/db/rocksdb';
 import BinaryRocksDB from '~/storage/db/binaryrocksdb';
+import RocksDB from '~/storage/db/rocksdb';
 
 /**
  * jestRocksDB instantiates a RocksDB instance and inserts callbacks to start and teardown the

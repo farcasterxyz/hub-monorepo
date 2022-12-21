@@ -5,16 +5,16 @@ import SignerDB from '~/storage/db/signer';
 import Engine from '~/storage/engine';
 import { Factories } from '~/test/factories';
 import {
+  CastRecast,
   CastShort,
-  IdRegistryEvent,
   Ed25519Signer,
   EthereumSigner,
+  FollowAdd,
+  IdRegistryEvent,
+  Message,
+  ReactionAdd,
   SignerAdd,
   VerificationEthereumAddress,
-  ReactionAdd,
-  FollowAdd,
-  CastRecast,
-  Message,
 } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 

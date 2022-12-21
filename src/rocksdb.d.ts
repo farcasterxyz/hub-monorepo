@@ -9,16 +9,16 @@
 /// <reference types="node" />
 
 import {
-  AbstractLevelDOWN,
-  AbstractIteratorOptions,
-  AbstractIterator,
-  AbstractOpenOptions,
+  AbstractBatch,
+  AbstractChainedBatch,
   AbstractGetOptions,
+  AbstractIterator,
+  AbstractIteratorOptions,
+  AbstractLevelDOWN,
+  AbstractOpenOptions,
+  AbstractOptions,
   ErrorCallback,
   ErrorValueCallback,
-  AbstractChainedBatch,
-  AbstractBatch,
-  AbstractOptions,
 } from 'abstract-leveldown';
 
 interface RocksDB extends AbstractLevelDOWN<RocksDB.Bytes, RocksDB.Bytes> {

@@ -1,7 +1,7 @@
 import { ResultAsync } from 'neverthrow';
+import MessageDB from '~/storage/db/message';
 import { Transaction } from '~/storage/db/rocksdb';
 import { MessageType, Verification, VerificationEthereumAddress, VerificationRemove } from '~/types';
-import MessageDB from '~/storage/db/message';
 
 /**
  * VerificationDB extends MessageDB and provides methods for getting, putting, and deleting reaction messages

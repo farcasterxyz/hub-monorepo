@@ -1,15 +1,15 @@
 import { faker } from '@faker-js/faker';
+import { jest } from '@jest/globals';
+import { Multiaddr } from '@multiformats/multiaddr';
 import { AddressInfo } from 'net';
+import { Hub, HubOptions } from '~/hub';
+import { ContactInfoContent, Content, GossipMessage, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
+import { RPCClient } from '~/network/rpc/json';
 import { generateUserInfo, getIdRegistryEvent, getSignerAdd, mockFid, populateEngine } from '~/storage/engine/mock';
 import { Factories } from '~/test/factories';
-import { Hub, HubOptions } from '~/hub';
-import { RPCClient } from '~/network/rpc/json';
-import { sleep } from '~/utils/crypto';
-import { ContactInfoContent, Content, GossipMessage, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { Message } from '~/types';
-import { jest } from '@jest/globals';
+import { sleep } from '~/utils/crypto';
 import { HubError } from '~/utils/hubErrors';
-import { Multiaddr } from '@multiformats/multiaddr';
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const TEST_TIMEOUT_LONG = 2 * 60 * 1000;

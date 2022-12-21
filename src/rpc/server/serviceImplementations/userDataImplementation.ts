@@ -1,6 +1,6 @@
 import grpc from '@grpc/grpc-js';
 import { Message } from '~/flatbuffers/generated/message_generated';
-import { MessagesResponse, GetUserDataRequest, GetUserDataByFidRequest } from '~/flatbuffers/generated/rpc_generated';
+import { GetUserDataByFidRequest, GetUserDataRequest, MessagesResponse } from '~/flatbuffers/generated/rpc_generated';
 import { UserDataAddModel } from '~/flatbuffers/models/types';
 import { toMessagesResponse, toServiceError } from '~/rpc/server';
 import Engine from '~/storage/engine/flatbuffers';

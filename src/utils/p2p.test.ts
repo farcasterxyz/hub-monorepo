@@ -1,12 +1,12 @@
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { multiaddr, NodeAddress } from '@multiformats/multiaddr';
 import {
-  parseAddress,
-  checkNodeAddrs,
-  addressInfoFromParts,
-  ipMultiAddrStrFromAddressInfo,
   addressInfoFromNodeAddress,
+  addressInfoFromParts,
+  checkNodeAddrs,
+  ipMultiAddrStrFromAddressInfo,
   p2pMultiAddrStr,
+  parseAddress,
 } from '~/utils/p2p';
 
 describe('p2p utils tests', () => {

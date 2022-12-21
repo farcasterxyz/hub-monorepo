@@ -1,7 +1,7 @@
 import { IdentifierSpec } from 'caip/dist/types';
-import { Result, err, ok } from 'neverthrow';
-import { isValidId, getParams, joinParams } from '~/urls/utils';
+import { err, ok, Result } from 'neverthrow';
 import { FarcasterURL } from '~/urls/baseUrl';
+import { getParams, isValidId, joinParams } from '~/urls/utils';
 import { BadRequestError, FarcasterError } from '~/utils/errors';
 
 export const UserIdSpec: IdentifierSpec = {
