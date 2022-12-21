@@ -10,7 +10,6 @@ import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
 import { generateEd25519KeyPair } from '~/utils/crypto';
-import { addressInfoFromParts } from '~/utils/p2p';
 import SyncEngine from './syncEngine';
 import { SyncId } from './syncId';
 
@@ -77,7 +76,7 @@ describe('Multi peer sync engine', () => {
     syncEngine1 = new SyncEngine(engine1);
     server1 = new Server(hub1, engine1, syncEngine1);
     port1 = await server1.start();
-    clientForServer1 = new Client(addressInfoFromParts('127.0.0.1', port1)._unsafeUnwrap());
+    clientForServer1 = new Client(`127.0.0.1:${port1}`);
   });
 
   afterEach(async () => {
@@ -186,7 +185,7 @@ describe('Multi peer sync engine', () => {
     {
       const server2 = new Server(new MockHub(testDb2, engine2), engine2, syncEngine2);
       const port2 = await server2.start();
-      const clientForServer2 = new Client(addressInfoFromParts('127.0.0.1', port2)._unsafeUnwrap());
+      const clientForServer2 = new Client(`127.0.0.1:${port2}`);
       const engine1RootHashBefore = syncEngine1.trie.rootHash;
 
       await syncEngine1.performSync(syncEngine2.snapshot.excludedHashes, clientForServer2);

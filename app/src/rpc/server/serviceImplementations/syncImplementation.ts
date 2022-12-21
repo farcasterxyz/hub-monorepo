@@ -154,23 +154,3 @@ export const createSyncServiceRequest = (fid: Uint8Array): flatbuffers.GetAllMes
     new ByteBuffer(builder.asUint8Array())
   );
 };
-
-export const createByPrefixRequest = (prefix: Uint8Array): flatbuffers.GetTrieNodesByPrefixRequest => {
-  const builder = new Builder(1);
-  const requestT = new flatbuffers.GetTrieNodesByPrefixRequestT(Array.from(prefix));
-  builder.finish(requestT.pack(builder));
-  return flatbuffers.GetTrieNodesByPrefixRequest.getRootAsGetTrieNodesByPrefixRequest(
-    new ByteBuffer(builder.asUint8Array())
-  );
-};
-
-export const createAllMessagesByHashesRequest = (hashes: Uint8Array[]): flatbuffers.GetAllMessagesBySyncIdsRequest => {
-  const hashes_list = hashes.map((hash) => new flatbuffers.SyncIdHashT(Array.from(hash)));
-
-  const builder = new Builder(1);
-  const hashesT = new flatbuffers.GetAllMessagesBySyncIdsRequestT(hashes_list);
-  builder.finish(hashesT.pack(builder));
-  return flatbuffers.GetAllMessagesBySyncIdsRequest.getRootAsGetAllMessagesBySyncIdsRequest(
-    new ByteBuffer(builder.asUint8Array())
-  );
-};

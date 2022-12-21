@@ -12,7 +12,6 @@ import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import { HubError } from '~/utils/hubErrors';
-import { addressInfoFromParts } from '~/utils/p2p';
 
 const db = jestRocksDB('flatbuffers.rpc.ampService.test');
 const engine = new Engine(db);
@@ -24,7 +23,7 @@ let client: Client;
 beforeAll(async () => {
   server = new Server(hub, engine, new SyncEngine(engine));
   const port = await server.start();
-  client = new Client(addressInfoFromParts('127.0.0.1', port)._unsafeUnwrap());
+  client = new Client(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {

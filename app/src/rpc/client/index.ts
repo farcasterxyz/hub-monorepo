@@ -2,7 +2,6 @@ import grpc, { ClientReadableStream, Metadata, MetadataValue } from '@grpc/grpc-
 import * as flatbuffers from '@hub/flatbuffers';
 import { arrayify } from 'ethers/lib/utils';
 import { ByteBuffer } from 'flatbuffers';
-import { AddressInfo } from 'net';
 import { err, ok } from 'neverthrow';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
@@ -12,10 +11,6 @@ import { NodeMetadata } from '~/network/sync/merkleTrie';
 import * as requests from '~/rpc/client/serviceRequests';
 import * as definitions from '~/rpc/serviceDefinitions';
 import { HubAsyncResult, HubError, HubErrorCode } from '~/utils/hubErrors';
-import { logger } from '~/utils/logger';
-import { addressInfoToString, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
-import { fromNodeMetadataResponse, fromSyncIdsByPrefixResponse } from '../server';
-import { createAllMessagesByHashesRequest, createByPrefixRequest } from '../server/serviceImplementations';
 
 const fromServiceError = (err: grpc.ServiceError): HubError => {
   return new HubError(err.metadata.get('errCode')[0] as HubErrorCode, err.details);
@@ -36,23 +31,43 @@ export const defaultMethod = {
   },
 };
 
-class Client {
-  private client: grpc.Client;
-  private serverAddr: string;
+const fromNodeMetadataResponse = (response: flatbuffers.TrieNodeMetadataResponse): NodeMetadata => {
+  const children = new Map<string, NodeMetadata>();
+  for (let i = 0; i < response.childrenLength(); i++) {
+    const child = response.children(i);
 
-  constructor(addressInfo: AddressInfo) {
-    const multiAddrResult = ipMultiAddrStrFromAddressInfo(addressInfo);
-    if (multiAddrResult.isErr()) {
-      logger.warn({ component: 'gRPC Client', address: addressInfo }, 'Failed to parse address as multiaddr');
-    }
-    this.serverAddr = `${multiAddrResult.unwrapOr('localhost')}/tcp/${addressInfo.port}`;
+    const prefix = new TextDecoder().decode(child?.prefixArray() ?? new Uint8Array());
+    // Char is the last char of prefix
+    const char = prefix[prefix.length - 1] ?? '';
 
-    const addressString = addressInfoToString(addressInfo);
-    this.client = new grpc.Client(addressString, grpc.credentials.createInsecure());
+    children.set(char, {
+      numMessages: Number(child?.numMessages()),
+      prefix,
+      hash: new TextDecoder().decode(child?.hashArray() ?? new Uint8Array()),
+    });
   }
 
-  get serverMultiaddr() {
-    return this.serverAddr;
+  return {
+    prefix: new TextDecoder().decode(response.prefixArray() ?? new Uint8Array()),
+    numMessages: Number(response.numMessages()),
+    hash: new TextDecoder().decode(response.hashArray() ?? new Uint8Array()),
+    children,
+  };
+};
+
+const fromSyncIdsByPrefixResponse = (response: flatbuffers.GetAllSyncIdsByPrefixResponse): string[] => {
+  const ids = [];
+  for (let i = 0; i < response.idsLength(); i++) {
+    ids.push(response.ids(i));
+  }
+  return ids;
+};
+
+class Client {
+  private client: grpc.Client;
+
+  constructor(address: string) {
+    this.client = new grpc.Client(address, grpc.credentials.createInsecure());
   }
 
   close() {
@@ -255,14 +270,14 @@ class Client {
   async getAllCastMessagesByFid(fid: Uint8Array): HubAsyncResult<(FBTypes.CastAddModel | FBTypes.CastRemoveModel)[]> {
     return this.makeUnaryMessagesRequest(
       definitions.syncDefinition().getAllCastMessagesByFid,
-      requests.createSyncRequest(fid)
+      requests.syncRequests.createSyncRequest(fid)
     );
   }
 
   async getAllAmpMessagesByFid(fid: Uint8Array): HubAsyncResult<(FBTypes.AmpAddModel | FBTypes.AmpRemoveModel)[]> {
     return this.makeUnaryMessagesRequest(
       definitions.syncDefinition().getAllAmpMessagesByFid,
-      requests.createSyncRequest(fid)
+      requests.syncRequests.createSyncRequest(fid)
     );
   }
 
@@ -271,7 +286,7 @@ class Client {
   ): HubAsyncResult<(FBTypes.ReactionAddModel | FBTypes.ReactionRemoveModel)[]> {
     return this.makeUnaryMessagesRequest(
       definitions.syncDefinition().getAllReactionMessagesByFid,
-      requests.createSyncRequest(fid)
+      requests.syncRequests.createSyncRequest(fid)
     );
   }
 
@@ -280,7 +295,7 @@ class Client {
   ): HubAsyncResult<(FBTypes.VerificationAddEthAddressModel | FBTypes.VerificationRemoveModel)[]> {
     return this.makeUnaryMessagesRequest(
       definitions.syncDefinition().getAllVerificationMessagesByFid,
-      requests.createSyncRequest(fid)
+      requests.syncRequests.createSyncRequest(fid)
     );
   }
 
@@ -289,35 +304,35 @@ class Client {
   ): HubAsyncResult<(FBTypes.SignerAddModel | FBTypes.SignerRemoveModel)[]> {
     return this.makeUnaryMessagesRequest(
       definitions.syncDefinition().getAllSignerMessagesByFid,
-      requests.createSyncRequest(fid)
+      requests.syncRequests.createSyncRequest(fid)
     );
   }
 
   async getAllUserDataMessagesByFid(fid: Uint8Array): HubAsyncResult<FBTypes.UserDataAddModel[]> {
     return this.makeUnaryMessagesRequest(
       definitions.syncDefinition().getAllUserDataMessagesByFid,
-      requests.createSyncRequest(fid)
+      requests.syncRequests.createSyncRequest(fid)
     );
   }
 
   async getSyncMetadataByPrefix(prefix: string): HubAsyncResult<NodeMetadata> {
     return this.makeUnarySyncNodeMetadataRequest(
       definitions.syncDefinition().getSyncMetadataByPrefix,
-      createByPrefixRequest(arrayify(Buffer.from(prefix)))
+      requests.syncRequests.createByPrefixRequest(arrayify(Buffer.from(prefix)))
     );
   }
 
   async getAllMessagesBySyncIds(hashes: Uint8Array[]): HubAsyncResult<MessageModel[]> {
     return this.makeUnaryMessagesRequest(
       definitions.syncDefinition().getAllMessagesBySyncIds,
-      createAllMessagesByHashesRequest(hashes)
+      requests.syncRequests.getAllMessagesByHashesRequest(hashes)
     );
   }
 
   async getSyncIdsByPrefix(prefix: string): HubAsyncResult<string[]> {
     return this.makeUnarySyncIdsByPrefixRequest(
       definitions.syncDefinition().getAllSyncIdsByPrefix,
-      createByPrefixRequest(arrayify(Buffer.from(prefix)))
+      requests.syncRequests.createByPrefixRequest(arrayify(Buffer.from(prefix)))
     );
   }
 

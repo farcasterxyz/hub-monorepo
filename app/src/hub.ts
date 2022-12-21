@@ -21,7 +21,6 @@ import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel'
 import { HubInterface, HubSubmitSource } from '~/flatbuffers/models/types';
 import { Node } from '~/network/p2p/node';
 import { NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
-import Client from '~/rpc/client';
 import Server from '~/rpc/server';
 import BinaryRocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
@@ -29,6 +28,7 @@ import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import { idRegistryEventToLog, logger, messageToLog, nameRegistryEventToLog } from '~/utils/logger';
 import { addressInfoFromGossip, ipFamilyToString, p2pMultiAddrStr } from '~/utils/p2p';
 import { isSignerRemove } from './flatbuffers/models/typeguards';
+import HubRPCClient from './hubRpcClient';
 import SyncEngine from './network/sync/syncEngine';
 import { RevokeSignerJobQueue, RevokeSignerJobScheduler } from './storage/jobs/revokeSignerJob';
 
@@ -255,7 +255,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     await this.diffSyncIfRequired(message, rpcClient);
   }
 
-  private async diffSyncIfRequired(message: ContactInfoContent, rpcClient: Client | undefined) {
+  private async diffSyncIfRequired(message: ContactInfoContent, rpcClient: HubRPCClient | undefined) {
     this.emit('syncStart');
     if (!rpcClient) {
       log.warn(`No RPC client for peer, skipping sync`);
@@ -268,7 +268,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     return;
   }
 
-  private async getRPCClientForPeer(peer: ContactInfoContent): Promise<Client | undefined> {
+  private async getRPCClientForPeer(peer: ContactInfoContent): Promise<HubRPCClient | undefined> {
     /*
      * Find the peer's addrs from our peer list because we cannot use the address
      * in the contact info directly
@@ -297,7 +297,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     }
 
     if (isIP(addressInfo.value.address)) {
-      return new Client(addressInfo.value);
+      return new HubRPCClient(addressInfo.value);
     }
 
     log.info({ peerId: peer.peerIdArray()?.toString() }, 'falling back to addressbook lookup for peer');
@@ -323,7 +323,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     }
 
     const nodeAddress = addr.multiaddr.nodeAddress();
-    return new Client({
+    return new HubRPCClient({
       address: nodeAddress.address,
       family: ipFamilyToString(nodeAddress.family),
       // Use the gossip rpc port instead of the port used by libp2p
