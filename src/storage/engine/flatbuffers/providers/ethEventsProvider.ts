@@ -294,7 +294,7 @@ export class EthEventsProvider {
 
   private async cacheIdRegistryEvent(from: string, to: string, id: BigNumber, type: IdRegistryEventType, event: Event) {
     const { blockNumber, blockHash, transactionHash, logIndex } = event;
-    log.info({ from, to, id: id.toString(), type, blockNumber, transactionHash }, 'IdRegistryEvent');
+    log.info({ from, to, id: id.toString(), type, blockNumber, transactionHash }, 'cacheIdRegistryEvent');
 
     let fromArray: number[] = [];
     if (from && from.length > 0) {
@@ -344,7 +344,7 @@ export class EthEventsProvider {
   ) {
     const { blockNumber, blockHash, transactionHash, logIndex } = event;
     const fname = Array.from(arrayify(tokenId.toHexString()));
-    log.info({ from, to, tokenId: tokenId.toString(), type, blockNumber, transactionHash }, 'NameRegistryEvent');
+    log.info({ from, to, tokenId: tokenId.toString(), type, blockNumber, transactionHash }, 'cacheNameRegistryEvent');
 
     let fromArray: number[] = [];
     if (from && from.length > 0) {
