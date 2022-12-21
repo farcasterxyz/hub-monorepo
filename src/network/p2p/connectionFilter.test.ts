@@ -1,8 +1,8 @@
+import { mockMultiaddrConnPair } from '@libp2p/interface-mocks';
+import { PeerId } from '@libp2p/interface-peer-id';
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { multiaddr } from '@multiformats/multiaddr';
 import { ConnectionFilter } from '~/network/p2p/connectionFilter';
-import { mockMultiaddrConnPair } from '@libp2p/interface-mocks';
-import { PeerId } from '@libp2p/interface-peer-id';
 
 let allowedPeerId: PeerId;
 let blockedPeerId: PeerId;

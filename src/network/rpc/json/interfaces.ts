@@ -1,7 +1,7 @@
 import { Result } from 'neverthrow';
+import { NodeMetadata } from '~/network/sync/merkleTrie';
 import { Cast, Follow, IdRegistryEvent, Message, Reaction, SignerMessage, Verification } from '~/types';
 import { FarcasterError } from '~/utils/errors';
-import { NodeMetadata } from '~/network/sync/merkleTrie';
 
 export type Port = number;
 

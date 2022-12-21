@@ -1,7 +1,7 @@
 import { ResultAsync } from 'neverthrow';
+import MessageDB from '~/storage/db/message';
 import { Transaction } from '~/storage/db/rocksdb';
 import { Follow, FollowAdd, FollowRemove, MessageType } from '~/types';
-import MessageDB from '~/storage/db/message';
 
 /**
  * FollowDB extends MessageDB and provides methods for getting, putting, and deleting follow messages

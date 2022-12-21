@@ -1,5 +1,4 @@
-import { IdRegistry, NameRegistry } from './abis';
-import { Contract, providers, Event, BigNumber } from 'ethers';
+import { BigNumber, Contract, Event, providers } from 'ethers';
 import { arrayify } from 'ethers/lib/utils';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { ResultAsync } from 'neverthrow';
@@ -19,6 +18,7 @@ import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import Engine from '~/storage/engine/flatbuffers/';
 import { logger } from '~/utils/logger';
+import { IdRegistry, NameRegistry } from './abis';
 
 const log = logger.child({
   component: 'EthEventsProvider',

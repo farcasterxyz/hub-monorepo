@@ -1,11 +1,11 @@
-import { TypedEmitter } from 'tiny-typed-emitter';
 import { ResultAsync } from 'neverthrow';
+import { TypedEmitter } from 'tiny-typed-emitter';
+import { MessageDBEvents } from '~/storage/db/message';
+import RocksDB from '~/storage/db/rocksdb';
+import SignerDB from '~/storage/db/signer';
 import { IdRegistryEvent, SignerAdd, SignerMessage, SignerRemove } from '~/types';
 import { isSignerAdd, isSignerRemove } from '~/types/typeguards';
 import { hashCompare, sanitizeSigner } from '~/utils/crypto';
-import RocksDB from '~/storage/db/rocksdb';
-import SignerDB from '~/storage/db/signer';
-import { MessageDBEvents } from '~/storage/db/message';
 
 export type SignerSetEvents = {
   /** Emitted when a new Register or Transfer event is received from the Farcaster ID Registry */

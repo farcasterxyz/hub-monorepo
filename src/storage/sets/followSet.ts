@@ -1,11 +1,11 @@
 import { ResultAsync } from 'neverthrow';
 import FollowDB from '~/storage/db/follow';
+import { MessageDBEvents } from '~/storage/db/message';
 import RocksDB from '~/storage/db/rocksdb';
-import { BadRequestError } from '~/utils/errors';
 import { Follow, FollowAdd, FollowRemove, URI } from '~/types';
 import { isFollowAdd, isFollowRemove } from '~/types/typeguards';
 import { hashCompare } from '~/utils/crypto';
-import { MessageDBEvents } from '~/storage/db/message';
+import { BadRequestError } from '~/utils/errors';
 
 /**
  * FollowSet is a modified LWW set that stores and fetches follow actions. FollowAdd and FollowRemove messages

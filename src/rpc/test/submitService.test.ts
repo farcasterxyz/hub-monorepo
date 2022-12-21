@@ -1,4 +1,4 @@
-import { Wallet, utils } from 'ethers';
+import { utils, Wallet } from 'ethers';
 import Factories from '~/flatbuffers/factories/flatbuffer';
 import { IdRegistryEventType } from '~/flatbuffers/generated/id_registry_event_generated';
 import { NameRegistryEventType } from '~/flatbuffers/generated/name_registry_event_generated';

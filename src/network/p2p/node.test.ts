@@ -1,7 +1,7 @@
 import { multiaddr } from '@multiformats/multiaddr/';
-import { Factories } from '~/test/factories';
 import { Node } from '~/network/p2p/node';
 import { GossipMessage, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
+import { Factories } from '~/test/factories';
 import { sleep } from '~/utils/crypto';
 
 const NUM_NODES = 10;

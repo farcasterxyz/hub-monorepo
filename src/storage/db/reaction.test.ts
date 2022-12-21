@@ -1,6 +1,6 @@
+import { jestRocksDB } from '~/storage/db/jestUtils';
 import ReactionDB from '~/storage/db/reaction';
 import { Factories } from '~/test/factories';
-import { jestRocksDB } from '~/storage/db/jestUtils';
 import { Ed25519Signer, ReactionAdd, ReactionRemove } from '~/types';
 import { generateEd25519Signer } from '~/utils/crypto';
 import { HubError } from '~/utils/hubErrors';

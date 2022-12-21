@@ -1,9 +1,9 @@
 import type { IdentifierSpec } from 'caip/dist/types';
-import { Result, err, ok } from 'neverthrow';
+import { err, ok, Result } from 'neverthrow';
 
-import { UserId, UserIdConstructorArgs, UserIdParams, UserIdSpec } from '~/urls/userUrl';
 import { FarcasterURL } from '~/urls/baseUrl';
-import { isValidId, getParams, joinParams } from '~/urls/utils';
+import { UserId, UserIdConstructorArgs, UserIdParams, UserIdSpec } from '~/urls/userUrl';
+import { getParams, isValidId, joinParams } from '~/urls/utils';
 import { BadRequestError, FarcasterError, ServerError } from '~/utils/errors';
 
 const REGEX_BLAKE2B_HASH = '0x[a-f0-9]{128}';

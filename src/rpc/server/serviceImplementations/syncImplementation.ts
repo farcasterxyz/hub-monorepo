@@ -1,5 +1,5 @@
 import grpc from '@grpc/grpc-js';
-import { MessagesResponse, GetAllMessagesByFidRequest } from '~/flatbuffers/generated/rpc_generated';
+import { GetAllMessagesByFidRequest, MessagesResponse } from '~/flatbuffers/generated/rpc_generated';
 import * as types from '~/flatbuffers/models/types';
 import { toMessagesResponse, toServiceError } from '~/rpc/server';
 import Engine from '~/storage/engine/flatbuffers';

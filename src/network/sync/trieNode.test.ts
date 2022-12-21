@@ -1,7 +1,7 @@
-import { Factories } from '~/test/factories';
-import { TrieNode } from '~/network/sync/trieNode';
-import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
 import { createHash } from 'crypto';
+import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
+import { TrieNode } from '~/network/sync/trieNode';
+import { Factories } from '~/test/factories';
 
 const emptyHash = createHash('sha256').digest('hex');
 const sharedDate = new Date(1665182332000);

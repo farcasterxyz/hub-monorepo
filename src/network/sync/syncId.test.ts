@@ -1,6 +1,6 @@
-import { Message } from '~/types';
 import { SyncId } from '~/network/sync/syncId';
 import { Factories } from '~/test/factories';
+import { Message } from '~/types';
 
 describe('SyncId', () => {
   let message: Message;

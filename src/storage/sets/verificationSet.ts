@@ -1,11 +1,11 @@
 import { ResultAsync } from 'neverthrow';
+import { MessageDBEvents } from '~/storage/db/message';
 import RocksDB from '~/storage/db/rocksdb';
 import VerificationDB from '~/storage/db/verification';
-import { BadRequestError } from '~/utils/errors';
 import { Verification, VerificationEthereumAddress, VerificationRemove } from '~/types';
 import { isVerificationEthereumAddress, isVerificationRemove } from '~/types/typeguards';
 import { hashCompare } from '~/utils/crypto';
-import { MessageDBEvents } from '~/storage/db/message';
+import { BadRequestError } from '~/utils/errors';
 
 /**
  * VerificationSet is a modified LWW set that stores and fetches verifications. VerificationEthereumAddress and VerificationRemove

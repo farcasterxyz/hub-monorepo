@@ -18,7 +18,7 @@ import SignerStore from '~/storage/sets/flatbuffers/signerStore';
 import StoreEventHandler from '~/storage/sets/flatbuffers/storeEventHandler';
 import UserDataStore from '~/storage/sets/flatbuffers/userDataStore';
 import VerificationStore from '~/storage/sets/flatbuffers/verificationStore';
-import { HubAsyncResult, HubResult, HubError } from '~/utils/hubErrors';
+import { HubAsyncResult, HubError, HubResult } from '~/utils/hubErrors';
 
 class Engine {
   public eventHandler: StoreEventHandler;

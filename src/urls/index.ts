@@ -1,12 +1,11 @@
-import { Result, err, ok } from 'neverthrow';
+import { err, ok, Result } from 'neverthrow';
 import { parse as rawUriParse, URIComponents } from 'uri-js';
-import { FarcasterURL, UnrecognizedURL } from '~/urls/baseUrl';
+import { FarcasterURL, UnrecognizedURL, URL } from '~/urls/baseUrl';
 import { CastURL } from '~/urls/castUrl';
+import { ChainAccountURL } from '~/urls/chainAccountUrl';
 import { ChainURL } from '~/urls/chainUrl';
 import { UserURL } from '~/urls/userUrl';
-import { URL } from '~/urls/baseUrl';
 import { Web2URL } from '~/urls/web2Url';
-import { ChainAccountURL } from '~/urls/chainAccountUrl';
 import { BadRequestError, FarcasterError } from '~/utils/errors';
 
 export const parseUrl = (
@@ -51,7 +50,7 @@ export const parseUrl = (
 
 export * from '~/urls/baseUrl';
 export * from '~/urls/castUrl';
-export * from '~/urls/chainUrl';
 export * from '~/urls/chainAccountUrl';
+export * from '~/urls/chainUrl';
 export * from '~/urls/userUrl';
 export * from '~/urls/web2Url';

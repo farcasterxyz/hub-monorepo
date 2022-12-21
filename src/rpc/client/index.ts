@@ -1,6 +1,6 @@
 import grpc, { ClientReadableStream, Metadata, MetadataValue } from '@grpc/grpc-js';
 import { AddressInfo } from 'net';
-import { ok, err } from 'neverthrow';
+import { err, ok } from 'neverthrow';
 import { IdRegistryEvent } from '~/flatbuffers/generated/id_registry_event_generated';
 import { CastId, Message, ReactionType, UserDataType, UserId } from '~/flatbuffers/generated/message_generated';
 import { NameRegistryEvent } from '~/flatbuffers/generated/name_registry_event_generated';

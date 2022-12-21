@@ -1,7 +1,7 @@
 import { RPCClient } from '~/network/rpc/json';
+import { ComputeSetDifference } from '~/test/perf/utils';
 import { sleep } from '~/utils/crypto';
 import { logger } from '~/utils/logger';
-import { ComputeSetDifference } from '~/test/perf/utils';
 
 // A 5 minute network sync timer
 let syncTimer: NodeJS.Timer;
