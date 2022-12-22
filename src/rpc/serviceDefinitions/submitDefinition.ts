@@ -17,9 +17,9 @@ export const submitDefinition = () => {
       },
     },
 
-    submitContractEvent: {
+    submitIdRegistryEvent: {
       ...defaultMethod,
-      path: '/submitContractEvent',
+      path: '/submitIdRegistryEvent',
       requestDeserialize: (buffer: Buffer): IdRegistryEvent => {
         return IdRegistryEvent.getRootAsIdRegistryEvent(toByteBuffer(buffer));
       },

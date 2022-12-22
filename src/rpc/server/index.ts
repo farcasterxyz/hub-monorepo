@@ -10,7 +10,7 @@ import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts } from '~/utils/p2p';
 import * as implementations from '~/rpc/server/serviceImplementations';
-import { HubSubmitSource } from '~/flatbuffers/models/types';
+import { HubInterface, HubSubmitSource } from '~/flatbuffers/models/types';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 
 /**
@@ -83,10 +83,10 @@ class Server {
   private server: grpc.Server;
   private port: number;
 
-  constructor(engine: Engine, rpcHandler?: RPCHandler) {
+  constructor(hub: HubInterface, engine: Engine) {
     this.port = 0;
     this.server = new grpc.Server();
-    this.server.addService(definitions.submitDefinition(), implementations.submitImplementation(engine, rpcHandler));
+    this.server.addService(definitions.submitDefinition(), implementations.submitImplementation(hub));
     this.server.addService(definitions.castDefinition(), implementations.castImplementation(engine));
     this.server.addService(definitions.ampDefinition(), implementations.ampImplementation(engine));
     this.server.addService(definitions.reactionDefinition(), implementations.reactionImplementation(engine));

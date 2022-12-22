@@ -16,17 +16,18 @@ import { Message } from '~/flatbuffers/generated/message_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
-import { HubSubmitSource } from '~/flatbuffers/models/types';
+import { HubInterface, HubSubmitSource } from '~/flatbuffers/models/types';
 import { Node } from '~/network/p2p/flatbuffers/node';
 import { NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import Client from '~/rpc/client';
-import Server, { RPCHandler } from '~/rpc/server';
+import Server from '~/rpc/server';
 import BinaryRocksDB from '~/storage/db/binaryrocksdb';
 import Engine from '~/storage/engine/flatbuffers';
-import { EthEventsProvider, GoerliEthConstants } from '~/storage/engine/flatbuffers/providers/ethEventsProvider';
+import { EthEventsProvider, GoerliEthConstants } from '~/eth/ethEventsProvider';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import { idRegistryEventToLog, logger, messageToLog, nameRegistryEventToLog } from '~/utils/logger';
 import { addressInfoFromGossip, ipFamilyToString, p2pMultiAddrStr } from '~/utils/p2p';
+import HubStateModel from '~/flatbuffers/models/hubStateModel';
 
 export interface HubOptions {
   /** The PeerId of this Hub */
@@ -84,7 +85,7 @@ const log = logger.child({
   component: 'Hub',
 });
 
-export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
+export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   private options: HubOptions;
   private gossipNode: Node;
   private rpcServer: Server;
@@ -102,11 +103,11 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     this.rocksDB = new BinaryRocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
     this.gossipNode = new Node();
     this.engine = new Engine(this.rocksDB);
-    this.rpcServer = new Server(this.engine, this);
+    this.rpcServer = new Server(this, this.engine);
 
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
     this.ethRegistryProvider = EthEventsProvider.makeWithGoerli(
-      this.engine,
+      this,
       options.networkUrl ?? '',
       GoerliEthConstants.IdRegistryAddress,
       GoerliEthConstants.NameRegistryAddress
@@ -161,7 +162,21 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     await this.rocksDB.close();
   }
 
-  async handleGossipMessage(gossipMessage: GossipMessage): HubAsyncResult<void> {
+  async getHubState(): HubAsyncResult<HubStateModel> {
+    return ResultAsync.fromPromise(HubStateModel.get(this.rocksDB), (e) => e as HubError);
+  }
+
+  async putHubState(hubState: HubStateModel): HubAsyncResult<void> {
+    const txn = this.rocksDB.transaction();
+    HubStateModel.putTransaction(txn, hubState);
+    return await ResultAsync.fromPromise(this.rocksDB.commit(txn), (e) => e as HubError);
+  }
+
+  /** ------------------------------------------------------------------------- */
+  /*                                  Private Methods                           */
+  /* -------------------------------------------------------------------------- */
+
+  private async handleGossipMessage(gossipMessage: GossipMessage): HubAsyncResult<void> {
     const contentType = gossipMessage.contentType();
     if (contentType === GossipContent.Message) {
       const message: Message = gossipMessage.content(contentType);
@@ -178,7 +193,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     }
   }
 
-  async handleContactInfo(message: ContactInfoContent) {
+  private async handleContactInfo(message: ContactInfoContent) {
     // Updates the address book for this peer
     const gossipAddress = message.gossipAddress();
     if (gossipAddress) {
@@ -220,7 +235,7 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     await this.diffSyncIfRequired(message, rpcClient);
   }
 
-  async diffSyncIfRequired(message: ContactInfoContent, rpcClient: Client | undefined) {
+  private async diffSyncIfRequired(message: ContactInfoContent, rpcClient: Client | undefined) {
     this.emit('syncStart');
     if (!rpcClient) {
       log.warn(`No RPC client for peer, skipping sync`);

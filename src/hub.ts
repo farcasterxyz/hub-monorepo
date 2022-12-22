@@ -28,7 +28,6 @@ import { addressInfoFromParts, getPublicIp, ipFamilyToString, p2pMultiAddrStr } 
 import { peerIdFromString } from '@libp2p/peer-id';
 import { publicAddressesFirst } from '@libp2p/utils/address-sort';
 import { HubError } from '~/utils/hubErrors';
-import { EthEventsProvider, GoerliEthConstants } from './storage/engine/flatbuffers/providers/ethEventsProvider';
 
 export interface HubOptions {
   /** The PeerId of this Hub */
@@ -98,7 +97,6 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
 
   private binaryDb: BinaryRocksDB;
   private flatbuffEngine: FlatbuffEngine;
-  private ethRegistryProvider: EthEventsProvider;
 
   constructor(options: HubOptions) {
     super();
@@ -113,13 +111,6 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
     this.binaryDb = new BinaryRocksDB(randomDbName());
 
     this.flatbuffEngine = new FlatbuffEngine(this.binaryDb);
-
-    this.ethRegistryProvider = EthEventsProvider.makeWithGoerli(
-      this.flatbuffEngine,
-      options.networkUrl ?? '',
-      GoerliEthConstants.IdRegistryAddress,
-      GoerliEthConstants.NameRegistryAddress
-    );
   }
 
   get rpcAddress() {
@@ -152,9 +143,6 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
       log.info('clearing rocksdb');
       await this.binaryDb.clear();
     }
-
-    // Start the ETh events listener first
-    await this.ethRegistryProvider.start();
 
     // And then start the sync engine
     await this.syncEngine.initialize();
@@ -216,7 +204,6 @@ export class Hub extends TypedEmitter<HubEvents> implements RPCHandler {
   /** Stop the GossipNode and RPC Server */
   async stop() {
     clearInterval(this.contactTimer);
-    await this.ethRegistryProvider.stop();
     await this.gossipNode.stop();
     await this.rpcServer.stop();
     await this.rocksDB.close();

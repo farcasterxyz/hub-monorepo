@@ -17,8 +17,8 @@ import {
 import HubStateModel from '~/flatbuffers/models/hubStateModel';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
-import Engine from '~/storage/engine/flatbuffers/';
 import { logger } from '~/utils/logger';
+import { HubInterface } from '~/flatbuffers/models/types';
 
 const log = logger.child({
   component: 'EthEventsProvider',
@@ -34,7 +34,7 @@ export class GoerliEthConstants {
  * Class that follows the Ethereum chain to handle on-chain events from the ID Registry and Name Registry contracts.
  */
 export class EthEventsProvider {
-  private _engine: Engine;
+  private _hub: HubInterface;
   private _jsonRpcProvider: providers.BaseProvider;
 
   private _idRegistryContract: Contract;
@@ -51,12 +51,12 @@ export class EthEventsProvider {
   private _isHistoricalSyncDone = false;
 
   constructor(
-    engine: Engine,
+    hub: HubInterface,
     jsonRpcProvider: providers.BaseProvider,
     idRegistryContract: Contract,
     nameRegistryContract: Contract
   ) {
-    this._engine = engine;
+    this._hub = hub;
     this._jsonRpcProvider = jsonRpcProvider;
     this._idRegistryContract = idRegistryContract;
     this._nameRegistryContract = nameRegistryContract;
@@ -105,7 +105,7 @@ export class EthEventsProvider {
    * Setup a Eth Events Provider with Goerli testnet, which is currently used for Production Farcaster Hubs.
    */
   public static makeWithGoerli(
-    engine: Engine,
+    hub: HubInterface,
     networkUrl: string,
     IdRegistryAddress: string,
     NameRegistryAddress: string
@@ -116,7 +116,7 @@ export class EthEventsProvider {
     const idRegistryContract = new Contract(IdRegistryAddress, IdRegistry.abi, jsonRpcProvider);
     const nameRegistryContract = new Contract(NameRegistryAddress, NameRegistry.abi, jsonRpcProvider);
 
-    const provider = new EthEventsProvider(engine, jsonRpcProvider, idRegistryContract, nameRegistryContract);
+    const provider = new EthEventsProvider(hub, jsonRpcProvider, idRegistryContract, nameRegistryContract);
 
     return provider;
   }
@@ -166,7 +166,7 @@ export class EthEventsProvider {
     // Find how how much we need to sync
     let lastSyncedBlock = BigInt(GoerliEthConstants.FirstBlock);
 
-    const hubState = await this._engine.getHubState();
+    const hubState = await this._hub.getHubState();
     if (hubState.isOk()) {
       lastSyncedBlock = hubState.value.lastEthBlock();
     }
@@ -269,7 +269,7 @@ export class EthEventsProvider {
 
         if (idEvents) {
           for (const idEvent of idEvents) {
-            await this.addIdRegistryEvent(idEvent);
+            await this._hub.submitIdRegistryEvent(idEvent, 'eth-provider');
           }
         }
 
@@ -278,7 +278,7 @@ export class EthEventsProvider {
 
         if (nameEvents) {
           for (const nameEvent of nameEvents) {
-            await this.addNameRegistryEvent(nameEvent);
+            await this._hub.submitNameRegistryEvent(nameEvent, 'eth-provider');
           }
         }
       }
@@ -290,7 +290,7 @@ export class EthEventsProvider {
       const hubStateT = new HubStateT(BigInt(blockNumber));
       builder.finish(hubStateT.pack(builder));
       const hubState = HubState.getRootAsHubState(new ByteBuffer(builder.asUint8Array()));
-      await this._engine.updateHubState(new HubStateModel(hubState));
+      await this._hub.putHubState(new HubStateModel(hubState));
     }
 
     this._lastBlockNumber = blockNumber;
@@ -329,13 +329,6 @@ export class EthEventsProvider {
       this._idEventsByBlock.set(blockNumber, idEvents);
     }
     idEvents.push(idRegistryEventModel);
-  }
-
-  private async addIdRegistryEvent(idRegistryEventModel: IdRegistryEventModel) {
-    const r = await this._engine.mergeIdRegistryEvent(idRegistryEventModel);
-    if (r.isErr()) {
-      log.error({ err: r.error }, 'IdRegistryEvent failed to merge');
-    }
   }
 
   private async cacheNameRegistryEvent(
@@ -385,12 +378,5 @@ export class EthEventsProvider {
       this._nameEventsByBlock.set(blockNumber, nameEvents);
     }
     nameEvents.push(nameRegistryEventModel);
-  }
-
-  private async addNameRegistryEvent(nameRegistryEventModel: NameRegistryEventModel) {
-    const r = await this._engine.mergeNameRegistryEvent(nameRegistryEventModel);
-    if (r.isErr()) {
-      log.error({ err: r._unsafeUnwrap() }, 'NameRegistryEvent failed to merge');
-    }
   }
 }

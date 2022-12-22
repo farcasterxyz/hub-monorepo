@@ -1,5 +1,9 @@
 import * as message_generated from '~/flatbuffers/generated/message_generated';
 import MessageModel from '~/flatbuffers/models/messageModel';
+import { HubAsyncResult } from '~/utils/hubErrors';
+import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
+import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
+import HubStateModel from '~/flatbuffers/models/hubStateModel';
 
 /**
  * RootPrefix indicates the purpose of the key. It is the 1st byte of every key.
@@ -146,4 +150,12 @@ export type StorePruneOptions = {
   pruneTimeLimit?: number; // Max age (in seconds) of any message in the store
 };
 
-export type HubSubmitSource = 'gossip' | 'rpc';
+export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
+
+export interface HubInterface {
+  submitMessage(message: MessageModel, source?: HubSubmitSource): HubAsyncResult<void>;
+  submitIdRegistryEvent(event: IdRegistryEventModel, source?: HubSubmitSource): HubAsyncResult<void>;
+  submitNameRegistryEvent(event: NameRegistryEventModel, source?: HubSubmitSource): HubAsyncResult<void>;
+  getHubState(): HubAsyncResult<HubStateModel>;
+  putHubState(hubState: HubStateModel): HubAsyncResult<void>;
+}
