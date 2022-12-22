@@ -1,5 +1,4 @@
-import { Factories } from '~/test/factories';
-import { CastShort, IdRegistryEvent } from '~/types';
+import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import {
   ContactInfoContent,
   decodeMessage,
@@ -8,8 +7,9 @@ import {
   IdRegistryContent,
   UserContent,
 } from '~/network/p2p/protocol';
+import { Factories } from '~/test/factories';
+import { CastShort, IdRegistryEvent } from '~/types';
 import { isGossipMessage } from '~/types/typeguards';
-import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 
 let cast: CastShort;
 let idRegistryEvent: IdRegistryEvent;

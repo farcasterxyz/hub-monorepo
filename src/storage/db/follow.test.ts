@@ -1,6 +1,6 @@
 import FollowDB from '~/storage/db/follow';
-import { Factories } from '~/test/factories';
 import { jestRocksDB } from '~/storage/db/jestUtils';
+import { Factories } from '~/test/factories';
 import { Ed25519Signer, FollowAdd, FollowRemove } from '~/types';
 import { generateEd25519Signer } from '~/utils/crypto';
 import { HubError } from '~/utils/hubErrors';

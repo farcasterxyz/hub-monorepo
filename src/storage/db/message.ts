@@ -1,7 +1,7 @@
+import { TypedEmitter } from 'tiny-typed-emitter';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { Message, MessageType } from '~/types';
 import { isMessage } from '~/types/typeguards';
-import { TypedEmitter } from 'tiny-typed-emitter';
 
 export type MessageDBEvents = {
   /**

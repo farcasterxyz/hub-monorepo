@@ -1,4 +1,4 @@
-import { Wallet, utils } from 'ethers';
+import { utils, Wallet } from 'ethers';
 import { ok } from 'neverthrow';
 import Factories from '~/flatbuffers/factories/flatbuffer';
 import { UserDataType } from '~/flatbuffers/generated/message_generated';

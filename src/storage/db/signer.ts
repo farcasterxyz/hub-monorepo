@@ -1,9 +1,9 @@
 import { ResultAsync } from 'neverthrow';
+import MessageDB from '~/storage/db/message';
 import { Transaction } from '~/storage/db/rocksdb';
 import { IdRegistryEvent, SignerAdd, SignerMessage, SignerRemove } from '~/types';
 import { isIdRegistryEvent } from '~/types/typeguards';
 import { sanitizeSigner } from '~/utils/crypto';
-import MessageDB from '~/storage/db/message';
 
 /**
  * SignerDB extends MessageDB and provides methods for getting, putting, and deleting signer messages

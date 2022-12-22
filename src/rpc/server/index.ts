@@ -1,28 +1,14 @@
 import grpc from '@grpc/grpc-js';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { MessagesResponse, MessagesResponseT } from '~/flatbuffers/generated/rpc_generated';
-import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
+import { HubInterface } from '~/flatbuffers/models/types';
+import * as implementations from '~/rpc/server/serviceImplementations';
 import * as definitions from '~/rpc/serviceDefinitions';
-import { NodeMetadata } from '~/network/sync/merkleTrie';
 import Engine from '~/storage/engine/flatbuffers';
-import { HubAsyncResult, HubError } from '~/utils/hubErrors';
+import { HubError } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts } from '~/utils/p2p';
-import * as implementations from '~/rpc/server/serviceImplementations';
-import { HubInterface, HubSubmitSource } from '~/flatbuffers/models/types';
-import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
-
-/**
- * Extendable RPC APIs
- */
-export interface RPCHandler {
-  submitMessage(message: MessageModel, source?: HubSubmitSource): HubAsyncResult<void>;
-  submitIdRegistryEvent?(event: IdRegistryEventModel, source?: HubSubmitSource): HubAsyncResult<void>;
-  submitNameRegistryEvent?(event: NameRegistryEventModel, source?: HubSubmitSource): HubAsyncResult<void>;
-  getSyncMetadataByPrefix?(prefix: string): HubAsyncResult<NodeMetadata>;
-  getSyncIdsByPrefix?(prefix: string): HubAsyncResult<string[]>;
-}
 
 export const toServiceError = (err: HubError): grpc.ServiceError => {
   let grpcCode: number;

@@ -7,5 +7,4 @@ import { RPCServer } from './server';
 // implementing the fix described here: https://github.com/ardatan/graphql-tools/issues/913
 // Requires further investigating, but export * seems like a decent workaround for now
 export * from './interfaces';
-
 export { RPCClient, RPCServer };

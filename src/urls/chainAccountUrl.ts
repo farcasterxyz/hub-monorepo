@@ -1,8 +1,8 @@
 import { AccountId } from 'caip';
 import { ethers } from 'ethers';
 import { err, ok, Result } from 'neverthrow';
-import { BadRequestError, FarcasterError, ServerError } from '~/utils/errors';
 import { BaseChainURL, ChainURL } from '~/urls/chainUrl';
+import { BadRequestError, FarcasterError, ServerError } from '~/utils/errors';
 
 /**
  * ChainAccountURL is a URL with the scheme `chain://` followed by a

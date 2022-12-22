@@ -1,10 +1,10 @@
 import { rejects } from 'assert';
 import jayson, { JSONRPCError } from 'jayson/promise';
-import { replacer, reviver, RPCHandler, RPCRequest } from './interfaces';
+import { AddressInfo } from 'net';
 import { ServerError } from '~/utils/errors';
 import { logger } from '~/utils/logger';
-import { AddressInfo } from 'net';
 import { ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
+import { replacer, reviver, RPCHandler, RPCRequest } from './interfaces';
 
 const VERSION = 0.1;
 const log = logger.child({ component: 'RPCServer' });

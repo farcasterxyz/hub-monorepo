@@ -1,8 +1,8 @@
-import { Ed25519Signer, EthereumSigner } from '~/types';
-import { Factories } from '~/test/factories';
-import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
-import Engine from '~/storage/engine';
 import { faker } from '@faker-js/faker';
+import Engine from '~/storage/engine';
+import { Factories } from '~/test/factories';
+import { Ed25519Signer, EthereumSigner } from '~/types';
+import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 
 export type UserInfo = {
   fid: number;

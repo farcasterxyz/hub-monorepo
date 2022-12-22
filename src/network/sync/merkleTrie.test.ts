@@ -1,6 +1,6 @@
-import { Factories } from '~/test/factories';
-import { MerkleTrie } from '~/network/sync/merkleTrie';
 import { createHash } from 'crypto';
+import { MerkleTrie } from '~/network/sync/merkleTrie';
+import { Factories } from '~/test/factories';
 
 const emptyHash = createHash('sha256').digest('hex');
 

@@ -2,7 +2,6 @@ import { faker } from '@faker-js/faker';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import ReactionDB from '~/storage/db/reaction';
 import Engine from '~/storage/engine';
-import { BadRequestError, UnknownUserError } from '~/utils/errors';
 import { Factories } from '~/test/factories';
 import {
   Ed25519Signer,
@@ -14,6 +13,7 @@ import {
   SignerAdd,
 } from '~/types';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
+import { BadRequestError, UnknownUserError } from '~/utils/errors';
 
 const testDb = jestRocksDB(`engine.reaction.test`);
 const engine = new Engine(testDb);

@@ -1,5 +1,4 @@
-import { IdRegistry, NameRegistry } from './abis';
-import { Contract, providers, Event, BigNumber } from 'ethers';
+import { BigNumber, Contract, Event, providers } from 'ethers';
 import { arrayify } from 'ethers/lib/utils';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { ResultAsync } from 'neverthrow';
@@ -18,6 +17,7 @@ import HubStateModel from '~/flatbuffers/models/hubStateModel';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { logger } from '~/utils/logger';
+import { IdRegistry, NameRegistry } from '~/eth/abis';
 import { HubInterface } from '~/flatbuffers/models/types';
 
 const log = logger.child({

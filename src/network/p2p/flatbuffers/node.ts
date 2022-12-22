@@ -1,4 +1,3 @@
-import { ConnectionFilter } from '../connectionFilter';
 import { GossipSub } from '@chainsafe/libp2p-gossipsub';
 import { Noise } from '@chainsafe/libp2p-noise';
 import { Connection } from '@libp2p/interface-connection';
@@ -16,6 +15,7 @@ import { GOSSIP_TOPICS } from '~/network/p2p/protocol';
 import { HubError, HubResult } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
 import { checkNodeAddrs } from '~/utils/p2p';
+import { ConnectionFilter } from '../connectionFilter';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
 

@@ -1,4 +1,4 @@
-import { ResultAsync, ok } from 'neverthrow';
+import { ok, ResultAsync } from 'neverthrow';
 import { CastId, MessageType, ReactionType } from '~/flatbuffers/generated/message_generated';
 import MessageModel, { FID_BYTES, TARGET_KEY_BYTES, TRUE_VALUE } from '~/flatbuffers/models/messageModel';
 import { isReactionAdd, isReactionRemove } from '~/flatbuffers/models/typeguards';

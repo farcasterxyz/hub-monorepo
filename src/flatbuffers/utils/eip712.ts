@@ -1,4 +1,4 @@
-import { Wallet, utils } from 'ethers';
+import { utils, Wallet } from 'ethers';
 import { arrayify } from 'ethers/lib/utils';
 import { VerificationEthAddressClaim } from '~/flatbuffers/models/types';
 

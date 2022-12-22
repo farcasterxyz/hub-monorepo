@@ -1,9 +1,9 @@
-import { MockFCEvent, UserInfo } from '~/storage/engine/mock';
-import { Message } from '~/types';
-import { Factories } from '~/test/factories';
-import { RPCClient } from '~/network/rpc/json';
-import { logger } from '~/utils/logger';
 import ProgressBar from 'progress';
+import { RPCClient } from '~/network/rpc/json';
+import { MockFCEvent, UserInfo } from '~/storage/engine/mock';
+import { Factories } from '~/test/factories';
+import { Message } from '~/types';
+import { logger } from '~/utils/logger';
 
 /** Describes a list of tasks */
 export interface Scenario {

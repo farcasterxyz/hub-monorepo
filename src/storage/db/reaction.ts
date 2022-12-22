@@ -1,7 +1,7 @@
 import { ResultAsync } from 'neverthrow';
-import { Transaction } from '~/storage/db/rocksdb';
-import { ReactionAdd, ReactionRemove, MessageType, Reaction } from '~/types';
 import MessageDB from '~/storage/db/message';
+import { Transaction } from '~/storage/db/rocksdb';
+import { MessageType, Reaction, ReactionAdd, ReactionRemove } from '~/types';
 
 /**
  * ReactionDB extends MessageDB and provides methods for getting, putting, and deleting reaction messages
