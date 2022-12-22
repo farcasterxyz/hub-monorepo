@@ -5,6 +5,7 @@ import { multiaddr, Multiaddr } from '@multiformats/multiaddr';
 import { isIP } from 'net';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
+import { EthEventsProvider, GoerliEthConstants } from '~/eth/ethEventsProvider';
 import {
   ContactInfoContent,
   GossipAddressInfo,
@@ -13,6 +14,7 @@ import {
 } from '~/flatbuffers/generated/gossip_generated';
 import { IdRegistryEvent } from '~/flatbuffers/generated/id_registry_event_generated';
 import { Message } from '~/flatbuffers/generated/message_generated';
+import HubStateModel from '~/flatbuffers/models/hubStateModel';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
@@ -23,11 +25,9 @@ import Client from '~/rpc/client';
 import Server from '~/rpc/server';
 import BinaryRocksDB from '~/storage/db/binaryrocksdb';
 import Engine from '~/storage/engine/flatbuffers';
-import { EthEventsProvider, GoerliEthConstants } from '~/eth/ethEventsProvider';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import { idRegistryEventToLog, logger, messageToLog, nameRegistryEventToLog } from '~/utils/logger';
 import { addressInfoFromGossip, ipFamilyToString, p2pMultiAddrStr } from '~/utils/p2p';
-import HubStateModel from '~/flatbuffers/models/hubStateModel';
 
 export interface HubOptions {
   /** The PeerId of this Hub */

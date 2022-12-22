@@ -2,6 +2,7 @@ import { BigNumber, Contract, Event, providers } from 'ethers';
 import { arrayify } from 'ethers/lib/utils';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { ResultAsync } from 'neverthrow';
+import { IdRegistry, NameRegistry } from '~/eth/abis';
 import { HubState, HubStateT } from '~/flatbuffers/generated/hub_state_generated';
 import {
   IdRegistryEvent,
@@ -16,9 +17,8 @@ import {
 import HubStateModel from '~/flatbuffers/models/hubStateModel';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
-import { logger } from '~/utils/logger';
-import { IdRegistry, NameRegistry } from '~/eth/abis';
 import { HubInterface } from '~/flatbuffers/models/types';
+import { logger } from '~/utils/logger';
 
 const log = logger.child({
   component: 'EthEventsProvider',

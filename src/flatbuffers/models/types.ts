@@ -1,9 +1,9 @@
 import * as message_generated from '~/flatbuffers/generated/message_generated';
-import MessageModel from '~/flatbuffers/models/messageModel';
-import { HubAsyncResult } from '~/utils/hubErrors';
-import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
-import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import HubStateModel from '~/flatbuffers/models/hubStateModel';
+import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
+import MessageModel from '~/flatbuffers/models/messageModel';
+import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
+import { HubAsyncResult } from '~/utils/hubErrors';
 
 /**
  * RootPrefix indicates the purpose of the key. It is the 1st byte of every key.

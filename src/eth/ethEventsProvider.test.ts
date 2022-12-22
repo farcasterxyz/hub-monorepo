@@ -9,8 +9,8 @@ import { NameRegistryEventType } from '~/flatbuffers/generated/name_registry_eve
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import { MockHub } from '~/test/mocks';
 import Engine from '~/storage/engine/flatbuffers';
+import { MockHub } from '~/test/mocks';
 import { IdRegistry, NameRegistry } from './abis';
 import { EthEventsProvider } from './ethEventsProvider';
 
