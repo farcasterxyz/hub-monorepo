@@ -1,28 +1,14 @@
 import grpc from '@grpc/grpc-js';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { MessagesResponse, MessagesResponseT } from '~/flatbuffers/generated/rpc_generated';
-import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
-import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
-import { HubSubmitSource } from '~/flatbuffers/models/types';
-import { NodeMetadata } from '~/network/sync/merkleTrie';
+import { HubInterface } from '~/flatbuffers/models/types';
 import * as implementations from '~/rpc/server/serviceImplementations';
 import * as definitions from '~/rpc/serviceDefinitions';
 import Engine from '~/storage/engine/flatbuffers';
-import { HubAsyncResult, HubError } from '~/utils/hubErrors';
+import { HubError } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts } from '~/utils/p2p';
-
-/**
- * Extendable RPC APIs
- */
-export interface RPCHandler {
-  submitMessage(message: MessageModel, source?: HubSubmitSource): HubAsyncResult<void>;
-  submitIdRegistryEvent?(event: IdRegistryEventModel, source?: HubSubmitSource): HubAsyncResult<void>;
-  submitNameRegistryEvent?(event: NameRegistryEventModel, source?: HubSubmitSource): HubAsyncResult<void>;
-  getSyncMetadataByPrefix?(prefix: string): HubAsyncResult<NodeMetadata>;
-  getSyncIdsByPrefix?(prefix: string): HubAsyncResult<string[]>;
-}
 
 export const toServiceError = (err: HubError): grpc.ServiceError => {
   let grpcCode: number;
@@ -83,10 +69,10 @@ class Server {
   private server: grpc.Server;
   private port: number;
 
-  constructor(engine: Engine, rpcHandler?: RPCHandler) {
+  constructor(hub: HubInterface, engine: Engine) {
     this.port = 0;
     this.server = new grpc.Server();
-    this.server.addService(definitions.submitDefinition(), implementations.submitImplementation(engine, rpcHandler));
+    this.server.addService(definitions.submitDefinition(), implementations.submitImplementation(hub));
     this.server.addService(definitions.castDefinition(), implementations.castImplementation(engine));
     this.server.addService(definitions.ampDefinition(), implementations.ampImplementation(engine));
     this.server.addService(definitions.reactionDefinition(), implementations.reactionImplementation(engine));

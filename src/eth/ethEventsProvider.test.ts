@@ -10,11 +10,13 @@ import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine/flatbuffers';
+import { MockHub } from '~/test/mocks';
 import { IdRegistry, NameRegistry } from './abis';
 import { EthEventsProvider } from './ethEventsProvider';
 
-const db = jestBinaryRocksDB('flatbuffers.ethevents.test');
+const db = jestBinaryRocksDB('flatbuffers.ethEventsProvider.test');
 const engine = new Engine(db);
+const hub = new MockHub(db, engine);
 
 const fid = Factories.FID.build();
 const fname = Factories.Fname.build();
@@ -78,10 +80,10 @@ beforeAll(async () => {
 });
 
 describe('process events', () => {
-  beforeEach(() => {
-    ethEventsProvider = new EthEventsProvider(engine, mockRPCProvider, mockIdRegistry, mockNameRegistry);
+  beforeEach(async () => {
+    ethEventsProvider = new EthEventsProvider(hub, mockRPCProvider, mockIdRegistry, mockNameRegistry);
     mockRPCProvider.polling = true;
-    ethEventsProvider.start();
+    await ethEventsProvider.start();
   });
 
   afterEach(async () => {

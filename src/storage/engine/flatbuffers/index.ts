@@ -2,7 +2,6 @@ import { err, errAsync, ok, ResultAsync } from 'neverthrow';
 import { IdRegistryEventType } from '~/flatbuffers/generated/id_registry_event_generated';
 import { CastId, ReactionType, UserDataType, UserId } from '~/flatbuffers/generated/message_generated';
 import { NameRegistryEventType } from '~/flatbuffers/generated/name_registry_event_generated';
-import HubStateModel from '~/flatbuffers/models/hubStateModel';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
@@ -428,19 +427,6 @@ class Engine {
     }
 
     return ResultAsync.fromPromise(this._userDataStore.getUserDataAddsByUser(fid), (e) => e as HubError);
-  }
-
-  /** ------------------------------------------------------------------------- */
-  /*                                  Hub State Methods                         */
-  /* -------------------------------------------------------------------------- */
-  async getHubState(): HubAsyncResult<HubStateModel> {
-    return ResultAsync.fromPromise(HubStateModel.get(this._db), (e) => e as HubError);
-  }
-
-  async updateHubState(hubState: HubStateModel): HubAsyncResult<void> {
-    const txn = this._db.transaction();
-    HubStateModel.putTransaction(txn, hubState);
-    return await ResultAsync.fromPromise(this._db.commit(txn), (e) => e as HubError);
   }
 
   /* -------------------------------------------------------------------------- */

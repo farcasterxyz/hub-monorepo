@@ -59,8 +59,8 @@ class Client {
     return this.makeUnaryMessageRequest(definitions.submitDefinition().submitMessage, message.message);
   }
 
-  async submitContractEvent(event: IdRegistryEventModel): HubAsyncResult<IdRegistryEventModel> {
-    return this.makeUnaryContractEventRequest(definitions.submitDefinition().submitContractEvent, event.event);
+  async submitIdRegistryEvent(event: IdRegistryEventModel): HubAsyncResult<IdRegistryEventModel> {
+    return this.makeUnaryContractEventRequest(definitions.submitDefinition().submitIdRegistryEvent, event.event);
   }
 
   async submitNameRegistryEvent(event: NameRegistryEventModel): HubAsyncResult<NameRegistryEventModel> {

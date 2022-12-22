@@ -19,6 +19,7 @@ import Client from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine/flatbuffers';
+import { MockHub } from '~/test/mocks';
 import { KeyPair } from '~/types';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import { HubResult } from '~/utils/hubErrors';
@@ -26,12 +27,13 @@ import { addressInfoFromParts } from '~/utils/p2p';
 
 const db = jestBinaryRocksDB('flatbuffers.rpc.syncService.test');
 const engine = new Engine(db);
+const hub = new MockHub(db, engine);
 
 let server: Server;
 let client: Client;
 
 beforeAll(async () => {
-  server = new Server(engine);
+  server = new Server(hub, engine);
   const port = await server.start();
   client = new Client(addressInfoFromParts('127.0.0.1', port)._unsafeUnwrap());
 });
