@@ -38,5 +38,9 @@
     "noUnusedParameters": false
   },
 
+  "ts-node": {
+    "swc": true
+  },
+
   "exclude": ["node_modules", "jest.config.ts"]
 }
