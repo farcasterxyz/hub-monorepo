@@ -8,7 +8,7 @@ import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel'
 import { isSignerAdd, isSignerRemove, isUserDataAdd } from '~/flatbuffers/models/typeguards';
 import * as types from '~/flatbuffers/models/types';
 import * as validations from '~/flatbuffers/models/validations';
-import { bytesCompare } from '~/flatbuffers/utils/bytes';
+import { bytesCompare, toNumber } from '~/flatbuffers/utils/bytes';
 import RocksDB from '~/storage/db/rocksdb';
 import AmpStore from '~/storage/stores/ampStore';
 import CastStore from '~/storage/stores/castStore';
@@ -440,7 +440,7 @@ class Engine {
       () => undefined
     );
     if (custodyAddress.isErr()) {
-      return err(new HubError('bad_request.validation_failure', 'unknown user'));
+      return err(new HubError('bad_request.validation_failure', `unknown fid ${toNumber(message.fid())}`));
     }
 
     // 2. Check that the signer is valid if message is not a signer message

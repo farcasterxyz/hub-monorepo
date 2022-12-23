@@ -82,7 +82,9 @@ describe('submitMessage', () => {
 
   test('fails without signer', async () => {
     const result = await client.submitMessage(castAdd);
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'unknown user'));
+    const err = result._unsafeUnwrapErr();
+    expect(err.errCode).toEqual('bad_request.validation_failure');
+    expect(err.message).toMatch('unknown fid');
   });
 });
 

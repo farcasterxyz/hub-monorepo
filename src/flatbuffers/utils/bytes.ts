@@ -59,3 +59,7 @@ export const bytesDecrement = (bytes: Uint8Array): Uint8Array => {
 export const toByteBuffer = (buffer: Buffer): ByteBuffer => {
   return new ByteBuffer(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.length / Uint8Array.BYTES_PER_ELEMENT));
 };
+
+export const toNumber = (bytesUint8Array: Uint8Array) => {
+  return Buffer.from(bytesUint8Array).readUIntBE(0, bytesUint8Array.length);
+};
