@@ -4,8 +4,8 @@ import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { HubInterface } from '~/flatbuffers/models/types';
-import RocksDB from '~/storage/db/binaryrocksdb';
-import Engine from '~/storage/engine/flatbuffers';
+import RocksDB from '~/storage/db/rocksdb';
+import Engine from '~/storage/engine';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 
 export class MockHub implements HubInterface {

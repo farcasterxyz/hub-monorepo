@@ -2,8 +2,7 @@ import { Multiaddr, multiaddr, NodeAddress } from '@multiformats/multiaddr';
 import { get } from 'http';
 import { AddressInfo, isIP } from 'net';
 import { err, ok, Result } from 'neverthrow';
-import { FarcasterError } from '~/utils/errors';
-import { HubError, HubResult } from '~/utils/hubErrors';
+import { HubAsyncResult, HubError, HubResult } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
 import { GossipAddressInfo } from '../flatbuffers/generated/gossip_generated';
 
@@ -104,7 +103,7 @@ export const addressInfoToString = (addressInfo: AddressInfo): string => {
  */
 let lastIpFetch = { timestamp: new Date().getTime(), ip: '' };
 
-export const getPublicIp = async (): Promise<Result<string, FarcasterError>> => {
+export const getPublicIp = async (): HubAsyncResult<string> => {
   return new Promise((resolve, reject) => {
     const now = new Date().getTime();
     const since = now - lastIpFetch.timestamp;

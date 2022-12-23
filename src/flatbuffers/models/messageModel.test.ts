@@ -1,14 +1,13 @@
 import Factories from '~/flatbuffers/factories/flatbuffer';
 import MessageModel, { TRUE_VALUE } from '~/flatbuffers/models/messageModel';
-import { UserPostfix } from '~/flatbuffers/models/types';
+import { KeyPair, UserPostfix } from '~/flatbuffers/models/types';
 import { bytesCompare } from '~/flatbuffers/utils/bytes';
 import { toFarcasterTime } from '~/flatbuffers/utils/time';
-import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import { KeyPair } from '~/types';
+import { jestRocksDB } from '~/storage/db/jestUtils';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import { HubError } from '~/utils/hubErrors';
 
-const db = jestBinaryRocksDB('flatbuffers.model.test');
+const db = jestRocksDB('flatbuffers.model.test');
 
 let signer: KeyPair;
 let model: MessageModel;

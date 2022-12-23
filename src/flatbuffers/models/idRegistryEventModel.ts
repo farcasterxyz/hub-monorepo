@@ -1,7 +1,7 @@
 import { ByteBuffer } from 'flatbuffers';
 import { IdRegistryEvent, IdRegistryEventType } from '~/flatbuffers/generated/id_registry_event_generated';
 import { RootPrefix } from '~/flatbuffers/models/types';
-import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
+import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { HubError } from '~/utils/hubErrors';
 
 /** IdRegistryEventModel provides helpers to read and write Flatbuffers ContractEvents from RocksDB */

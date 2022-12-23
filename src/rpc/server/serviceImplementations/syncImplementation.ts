@@ -2,7 +2,7 @@ import grpc from '@grpc/grpc-js';
 import { GetAllMessagesByFidRequest, MessagesResponse } from '~/flatbuffers/generated/rpc_generated';
 import * as types from '~/flatbuffers/models/types';
 import { toMessagesResponse, toServiceError } from '~/rpc/server';
-import Engine from '~/storage/engine/flatbuffers';
+import Engine from '~/storage/engine';
 import { HubError } from '~/utils/hubErrors';
 
 export const syncImplementation = (engine: Engine) => {

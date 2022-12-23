@@ -4,7 +4,7 @@ import { jestRocksDB } from '~/storage/db/jestUtils';
 import RocksDB from '~/storage/db/rocksdb';
 import { HubError } from '~/utils/hubErrors';
 
-const randomDbName = () => `rocksdb.test.${faker.name.lastName().toLowerCase()}`;
+const randomDbName = () => `rocksdb.test.${faker.name.lastName().toLowerCase()}.${faker.random.alphaNumeric(8)}`;
 
 describe('open', () => {
   describe('opens db and changes status', () => {
@@ -73,107 +73,151 @@ describe('clear', () => {
   test('succeeds', async () => {
     const db = new RocksDB(randomDbName());
     await db.open();
-    await db.put('key', 'value');
-    const value = await db.get('key');
-    expect(value).toEqual('value');
+    await db.put(Buffer.from('key'), Buffer.from('value'));
+    const value = await db.get(Buffer.from('key'));
+    expect(value).toEqual(Buffer.from('value'));
     await expect(db.clear()).resolves.toEqual(undefined);
-    await expect(db.get('key')).rejects.toThrow(HubError);
+    await expect(db.get(Buffer.from('key'))).rejects.toThrow(HubError);
     await db.destroy();
   });
 });
 
 describe('with db', () => {
-  const db = jestRocksDB('rocksdb.test');
+  const db = jestRocksDB('binaryrocksdb.test');
+
+  describe('location', () => {
+    test('returns db location', () => {
+      expect(db.location).toContain('.rocks/');
+    });
+  });
+
+  describe('status', () => {
+    test('returns db status', () => {
+      expect(db.status).toEqual('open');
+    });
+  });
 
   describe('get', () => {
     test('gets a value by key', async () => {
-      await db.put('foo', 'bar');
-      await expect(db.get('foo')).resolves.toEqual('bar');
+      await db.put(Buffer.from('foo'), Buffer.from('bar'));
+      await expect(db.get(Buffer.from('foo'))).resolves.toEqual(Buffer.from('bar'));
     });
 
     test('fails if not found', async () => {
-      await expect(db.get('foo')).rejects.toThrow(HubError);
+      await expect(db.get(Buffer.from('foo'))).rejects.toThrow(HubError);
     });
   });
 
   describe('getMany', () => {
     test('gets multiple values', async () => {
-      await db.put('foo', 'bar');
-      await db.put('alice', 'bob');
-      await db.put('exclude', 'this');
-      const res = await db.getMany(['foo', 'alice']);
-      expect(res).toEqual(['bar', 'bob']);
+      await db.put(Buffer.from('foo'), Buffer.from('bar'));
+      await db.put(Buffer.from('alice'), Buffer.from('bob'));
+      await db.put(Buffer.from('exclude'), Buffer.from('this'));
+      const res = await db.getMany([Buffer.from('foo'), Buffer.from('alice')]);
+      expect(res).toEqual([Buffer.from('bar'), Buffer.from('bob')]);
     });
 
     test('succeeds when some keys not found', async () => {
-      await db.put('foo', 'bar');
-      await expect(db.getMany(['foo', 'alice'])).resolves.toEqual(['bar', undefined]);
+      await db.put(Buffer.from('foo'), Buffer.from('bar'));
+      await expect(db.getMany([Buffer.from('foo'), Buffer.from('alice')])).resolves.toEqual([
+        Buffer.from('bar'),
+        undefined,
+      ]);
     });
 
     test('succeeds when no keys found', async () => {
-      await expect(db.getMany(['foo', 'alice'])).resolves.toEqual([undefined, undefined]);
+      await expect(db.getMany([Buffer.from('foo'), Buffer.from('alice')])).resolves.toEqual([undefined, undefined]);
     });
   });
 
   describe('put', () => {
     test('puts a value by key', async () => {
-      await expect(db.put('foo', 'bar')).resolves.toEqual(undefined);
-      await expect(db.get('foo')).resolves.toEqual('bar');
+      await expect(db.put(Buffer.from('foo'), Buffer.from('bar'))).resolves.toEqual(undefined);
+      await expect(db.get(Buffer.from('foo'))).resolves.toEqual(Buffer.from('bar'));
     });
   });
 
   describe('del', () => {
     test('deletes key', async () => {
-      await db.put('foo', 'bar');
-      await expect(db.get('foo')).resolves.toEqual('bar');
-      await expect(db.del('foo')).resolves.toEqual(undefined);
-      await expect(db.get('foo')).rejects.toThrow(HubError);
+      await db.put(Buffer.from('foo'), Buffer.from('bar'));
+      await expect(db.get(Buffer.from('foo'))).resolves.toEqual(Buffer.from('bar'));
+      await expect(db.del(Buffer.from('foo'))).resolves.toEqual(undefined);
+      await expect(db.get(Buffer.from('foo'))).rejects.toThrow(HubError);
     });
   });
 
-  describe('batch', () => {
-    test('does multiple puts', async () => {
-      await expect(
-        db.batch([
-          { type: 'put', key: 'foo', value: 'bar' },
-          { type: 'put', key: 'alice', value: 'bob' },
-        ])
-      ).resolves.toEqual(undefined);
-      const values = await db.getMany(['foo', 'alice']);
-      expect(values).toEqual(['bar', 'bob']);
-    });
+  describe('iterator', () => {
+    test('succeeds', async () => {
+      await db.put(Buffer.from('foo'), Buffer.from('bar'));
+      await db.put(Buffer.from([1, 2]), Buffer.from([255]));
 
-    test('does multiple puts and dels', async () => {
-      await db.put('delete', 'me');
-      await expect(
-        db.batch([
-          { type: 'put', key: 'foo', value: 'bar' },
-          { type: 'del', key: 'delete' },
-        ])
-      ).resolves.toEqual(undefined);
-      await expect(db.get('delete')).rejects.toThrow();
-      await expect(db.get('foo')).resolves.toEqual('bar');
+      const keys = [];
+      const values = [];
+
+      for await (const [key, value] of db.iterator({ keyAsBuffer: true, valueAsBuffer: true })) {
+        keys.push(key);
+        values.push(value);
+      }
+
+      expect(keys).toEqual([Buffer.from([1, 2]), Buffer.from('foo')]);
+      expect(values).toEqual([Buffer.from([255]), Buffer.from('bar')]);
     });
   });
 
   describe('iteratorByPrefix', () => {
     test('succeeds', async () => {
-      await db.put('aliceprefix!b', 'foo');
-      await db.put('allison', 'oops');
-      await db.put('aliceprefix!a', 'bar');
-      await db.put('bobprefix!a', 'bar');
-      await db.put('prefix!a', 'bar');
+      await db.put(Buffer.from('aliceprefix!b'), Buffer.from('foo'));
+      await db.put(Buffer.from('allison'), Buffer.from('oops'));
+      await db.put(Buffer.from('aliceprefix!a'), Buffer.from('bar'));
+      await db.put(Buffer.from('bobprefix!a'), Buffer.from('bar'));
+      await db.put(Buffer.from('prefix!a'), Buffer.from('bar'));
       const output = [];
-      for await (const [key, value] of db.iteratorByPrefix('aliceprefix!', {
-        keyAsBuffer: false,
-        valueAsBuffer: false,
+      for await (const [key, value] of db.iteratorByPrefix(Buffer.from('aliceprefix!'), {
+        keyAsBuffer: true,
+        valueAsBuffer: true,
       })) {
         output.push([key, value]);
       }
       expect(output).toEqual([
-        ['aliceprefix!a', 'bar'],
-        ['aliceprefix!b', 'foo'],
+        [Buffer.from('aliceprefix!a'), Buffer.from('bar')],
+        [Buffer.from('aliceprefix!b'), Buffer.from('foo')],
       ]);
+    });
+
+    test('succeeds with bytes prefix', async () => {
+      const tsx = db
+        .transaction()
+        .put(Buffer.from([1, 255, 1]), Buffer.from('a'))
+        .put(Buffer.from([1, 255, 2]), Buffer.from('b'))
+        .put(Buffer.from([2, 0, 0]), Buffer.from('c'))
+        .put(Buffer.from([1, 0, 0]), Buffer.from('d'))
+        .put(Buffer.from([1, 254, 255]), Buffer.from('e'));
+
+      await db.commit(tsx);
+
+      const values = [];
+      for await (const [, value] of db.iteratorByPrefix(Buffer.from([1, 255]), { keys: false, valueAsBuffer: false })) {
+        values.push(value);
+      }
+      expect(values).toEqual(['a', 'b']);
+    });
+
+    test('succeeds with single byte prefix', async () => {
+      const tsx = db
+        .transaction()
+        .put(Buffer.from([255, 1]), Buffer.from('a'))
+        .put(Buffer.from([255, 2]), Buffer.from('b'))
+        .put(Buffer.from([2, 0]), Buffer.from('c'))
+        .put(Buffer.from([1, 0]), Buffer.from('d'))
+        .put(Buffer.from([254, 255]), Buffer.from('e'));
+
+      await db.commit(tsx);
+
+      const values = [];
+      for await (const [, value] of db.iteratorByPrefix(Buffer.from([255]), { keys: false, valueAsBuffer: false })) {
+        values.push(value);
+      }
+      expect(values).toEqual(['a', 'b']);
     });
   });
 });

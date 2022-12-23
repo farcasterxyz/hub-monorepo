@@ -1,10 +1,10 @@
 import Factories from '~/flatbuffers/factories/flatbuffer';
 import { IdRegistryEventType } from '~/flatbuffers/generated/id_registry_event_generated';
-import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
+import { jestRocksDB } from '~/storage/db/jestUtils';
 import { HubError } from '~/utils/hubErrors';
 import IdRegistryEventModel from './idRegistryEventModel';
 
-const db = jestBinaryRocksDB('flatbuffers.contractEventModel.test');
+const db = jestRocksDB('flatbuffers.contractEventModel.test');
 const fid = Factories.FID.build();
 
 let model: IdRegistryEventModel;

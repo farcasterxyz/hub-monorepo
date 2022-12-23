@@ -2,18 +2,17 @@ import { utils, Wallet } from 'ethers';
 import Factories from '~/flatbuffers/factories/flatbuffer';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
-import { SignerAddModel, VerificationAddEthAddressModel } from '~/flatbuffers/models/types';
+import { KeyPair, SignerAddModel, VerificationAddEthAddressModel } from '~/flatbuffers/models/types';
 import Client from '~/rpc/client';
 import Server from '~/rpc/server';
-import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import Engine from '~/storage/engine/flatbuffers';
+import { jestRocksDB } from '~/storage/db/jestUtils';
+import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
-import { KeyPair } from '~/types';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import { HubError } from '~/utils/hubErrors';
 import { addressInfoFromParts } from '~/utils/p2p';
 
-const db = jestBinaryRocksDB('flatbuffers.rpc.verificationService.test');
+const db = jestRocksDB('flatbuffers.rpc.verificationService.test');
 const engine = new Engine(db);
 const hub = new MockHub(db, engine);
 

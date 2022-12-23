@@ -4,17 +4,16 @@ import Factories from '~/flatbuffers/factories/flatbuffer';
 import { EventResponse, EventType } from '~/flatbuffers/generated/rpc_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
-import { CastAddModel, SignerAddModel } from '~/flatbuffers/models/types';
+import { CastAddModel, KeyPair, SignerAddModel } from '~/flatbuffers/models/types';
 import Client from '~/rpc/client';
 import Server from '~/rpc/server';
-import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import Engine from '~/storage/engine/flatbuffers';
+import { jestRocksDB } from '~/storage/db/jestUtils';
+import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
-import { KeyPair } from '~/types';
 import { generateEd25519KeyPair, sleep } from '~/utils/crypto';
 import { addressInfoFromParts } from '~/utils/p2p';
 
-const db = jestBinaryRocksDB('flatbuffers.rpc.eventService.test');
+const db = jestRocksDB('flatbuffers.rpc.eventService.test');
 const engine = new Engine(db);
 const hub = new MockHub(db, engine);
 

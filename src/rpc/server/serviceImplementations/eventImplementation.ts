@@ -3,7 +3,7 @@ import { Builder, ByteBuffer } from 'flatbuffers';
 import { EventResponse, EventResponseT, EventType, SubscribeRequest } from '~/flatbuffers/generated/rpc_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
-import Engine from '~/storage/engine/flatbuffers';
+import Engine from '~/storage/engine';
 
 const packAndWriteEventResponse = (
   unpackedResponse: EventResponseT,

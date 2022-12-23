@@ -3,7 +3,7 @@ import { CastId, Message, UserId } from '~/flatbuffers/generated/message_generat
 import * as rpc_generated from '~/flatbuffers/generated/rpc_generated';
 import { CastAddModel } from '~/flatbuffers/models/types';
 import { toMessagesResponse, toServiceError } from '~/rpc/server';
-import Engine from '~/storage/engine/flatbuffers';
+import Engine from '~/storage/engine';
 import { HubError } from '~/utils/hubErrors';
 
 export const castImplementation = (engine: Engine) => {

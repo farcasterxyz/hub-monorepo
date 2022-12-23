@@ -8,12 +8,11 @@ import * as types from '~/flatbuffers/models/types';
 import * as validations from '~/flatbuffers/models/validations';
 import { signVerificationEthAddressClaim } from '~/flatbuffers/utils/eip712';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
-import { KeyPair } from '~/types';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import { HubError } from '~/utils/hubErrors';
 
 let wallet: Wallet;
-let signer: KeyPair;
+let signer: types.KeyPair;
 
 beforeAll(async () => {
   wallet = new Wallet(utils.randomBytes(32));
