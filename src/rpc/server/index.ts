@@ -5,7 +5,7 @@ import MessageModel from '~/flatbuffers/models/messageModel';
 import { HubInterface } from '~/flatbuffers/models/types';
 import * as implementations from '~/rpc/server/serviceImplementations';
 import * as definitions from '~/rpc/serviceDefinitions';
-import Engine from '~/storage/engine/flatbuffers';
+import Engine from '~/storage/engine';
 import { HubError } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts } from '~/utils/p2p';

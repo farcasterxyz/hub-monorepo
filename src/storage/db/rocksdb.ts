@@ -1,12 +1,13 @@
 import { AbstractBatch, AbstractChainedBatch } from 'abstract-leveldown';
 import { mkdir } from 'fs';
 import AbstractRocksDB from 'rocksdb';
+import { bytesIncrement } from '~/flatbuffers/utils/bytes';
 import { HubError } from '~/utils/hubErrors';
 
 const DB_PREFIX = '.rocks';
 const DB_NAME_DEFAULT = 'farcaster';
 
-export type Transaction = AbstractChainedBatch<string, string>;
+export type Transaction = AbstractChainedBatch<Buffer, Buffer>;
 
 const parseError = (e: Error): HubError => {
   if (/NotFound/i.test(e.message)) {
@@ -36,7 +37,7 @@ class RocksDB {
     return this._db.status;
   }
 
-  async put(key: string, value: any): Promise<void> {
+  async put(key: Buffer, value: Buffer): Promise<void> {
     return new Promise((resolve, reject) => {
       this._db.put(key, value, (e?: Error) => {
         e ? reject(parseError(e)) : resolve(undefined);
@@ -44,23 +45,23 @@ class RocksDB {
     });
   }
 
-  async get(key: string): Promise<string> {
+  async get(key: Buffer): Promise<Buffer> {
     return new Promise((resolve, reject) => {
-      this._db.get(key, { asBuffer: false }, (e?: Error, value?: AbstractRocksDB.Bytes) => {
-        e ? reject(parseError(e)) : resolve(value as string);
+      this._db.get(key, { asBuffer: true }, (e?: Error, value?: AbstractRocksDB.Bytes) => {
+        e ? reject(parseError(e)) : resolve(value as Buffer);
       });
     });
   }
 
-  async getMany(keys: string[]): Promise<string[]> {
+  async getMany(keys: Buffer[]): Promise<Buffer[]> {
     return new Promise((resolve, reject) => {
-      this._db.getMany(keys, { asBuffer: false }, (e?: Error, value?: AbstractRocksDB.Bytes[]) => {
-        e ? reject(parseError(e)) : resolve(value as string[]);
+      this._db.getMany(keys, { asBuffer: true }, (e?: Error, value?: AbstractRocksDB.Bytes[]) => {
+        e ? reject(parseError(e)) : resolve(value as Buffer[]);
       });
     });
   }
 
-  async del(key: string): Promise<void> {
+  async del(key: Buffer): Promise<void> {
     return new Promise((resolve, reject) => {
       this._db.del(key, (e?: Error) => {
         e ? reject(parseError(e)) : resolve(undefined);
@@ -68,7 +69,7 @@ class RocksDB {
     });
   }
 
-  async batch(operations: AbstractBatch<string, string>[]): Promise<void> {
+  async batch(operations: AbstractBatch<Buffer, Buffer>[]): Promise<void> {
     return new Promise((resolve, reject) => {
       this._db.batch(operations, (e?: Error) => {
         e ? reject(parseError(e)) : resolve(undefined);
@@ -129,6 +130,10 @@ class RocksDB {
     });
   }
 
+  iterator(options?: AbstractRocksDB.IteratorOptions): AbstractRocksDB.Iterator {
+    return this._db.iterator(options);
+  }
+
   /* -------------------------------------------------------------------------- */
   /*                          Custom Farcaster Methods                          */
   /* -------------------------------------------------------------------------- */
@@ -150,10 +155,13 @@ class RocksDB {
    * order, so this iterator will continue serving keys in order until it receives one that has a lexicographic order
    * greater than the prefix.
    */
-  iteratorByPrefix(prefix: string, options?: AbstractRocksDB.IteratorOptions): AbstractRocksDB.Iterator {
-    const nextChar = String.fromCharCode(prefix.slice(-1).charCodeAt(0) + 1);
-    const prefixBound = prefix.slice(0, -1) + nextChar;
-    return this._db.iterator({ ...options, gte: prefix, lt: prefixBound });
+  iteratorByPrefix(prefix: Buffer, options: AbstractRocksDB.IteratorOptions = {}): AbstractRocksDB.Iterator {
+    options.gte = prefix;
+    const nextPrefix = bytesIncrement(new Uint8Array(prefix));
+    if (nextPrefix.length === prefix.length) {
+      options.lt = Buffer.from(nextPrefix);
+    }
+    return this._db.iterator(options);
   }
 }
 

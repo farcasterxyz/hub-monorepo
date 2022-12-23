@@ -6,7 +6,7 @@ import * as rpc_generated from '~/flatbuffers/generated/rpc_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import { SignerAddModel } from '~/flatbuffers/models/types';
 import { toMessagesResponse, toServiceError } from '~/rpc/server';
-import Engine from '~/storage/engine/flatbuffers';
+import Engine from '~/storage/engine';
 import { HubError } from '~/utils/hubErrors';
 
 export const signerImplementation = (engine: Engine) => {

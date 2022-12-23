@@ -12,11 +12,10 @@ import * as id_registry_event_generated from '~/flatbuffers/generated/id_registr
 import * as message_generated from '~/flatbuffers/generated/message_generated';
 import * as name_registry_event_generated from '~/flatbuffers/generated/name_registry_event_generated';
 import MessageModel from '~/flatbuffers/models/messageModel';
-import { VerificationEthAddressClaim } from '~/flatbuffers/models/types';
+import { KeyPair, VerificationEthAddressClaim } from '~/flatbuffers/models/types';
 import { signMessageHash, signVerificationEthAddressClaim } from '~/flatbuffers/utils/eip712';
 import { toFarcasterTime } from '~/flatbuffers/utils/time';
 import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
-import { KeyPair } from '~/types';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 
 /* eslint-disable security/detect-object-injection */

@@ -2,7 +2,7 @@ import { ByteBuffer } from 'flatbuffers';
 import AbstractRocksDB from 'rocksdb';
 import * as message_generated from '~/flatbuffers/generated/message_generated';
 import { RootPrefix, UserMessagePostfix, UserPostfix } from '~/flatbuffers/models/types';
-import RocksDB, { Transaction } from '~/storage/db/binaryrocksdb';
+import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { HubError } from '~/utils/hubErrors';
 
 /** Used when index keys are sufficiently descriptive */

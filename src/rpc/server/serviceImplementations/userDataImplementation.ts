@@ -3,7 +3,7 @@ import { Message } from '~/flatbuffers/generated/message_generated';
 import { GetUserDataByFidRequest, GetUserDataRequest, MessagesResponse } from '~/flatbuffers/generated/rpc_generated';
 import { UserDataAddModel } from '~/flatbuffers/models/types';
 import { toMessagesResponse, toServiceError } from '~/rpc/server';
-import Engine from '~/storage/engine/flatbuffers';
+import Engine from '~/storage/engine';
 import { HubError } from '~/utils/hubErrors';
 
 export const userDataImplementations = (engine: Engine) => {

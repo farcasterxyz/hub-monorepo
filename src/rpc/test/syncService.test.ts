@@ -7,6 +7,7 @@ import {
   AmpRemoveModel,
   CastAddModel,
   CastRemoveModel,
+  KeyPair,
   ReactionAddModel,
   ReactionRemoveModel,
   SignerAddModel,
@@ -17,15 +18,14 @@ import {
 } from '~/flatbuffers/models/types';
 import Client from '~/rpc/client';
 import Server from '~/rpc/server';
-import { jestBinaryRocksDB } from '~/storage/db/jestUtils';
-import Engine from '~/storage/engine/flatbuffers';
+import { jestRocksDB } from '~/storage/db/jestUtils';
+import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
-import { KeyPair } from '~/types';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import { HubResult } from '~/utils/hubErrors';
 import { addressInfoFromParts } from '~/utils/p2p';
 
-const db = jestBinaryRocksDB('flatbuffers.rpc.syncService.test');
+const db = jestRocksDB('flatbuffers.rpc.syncService.test');
 const engine = new Engine(db);
 const hub = new MockHub(db, engine);
 

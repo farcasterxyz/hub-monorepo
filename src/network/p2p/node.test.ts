@@ -1,7 +1,10 @@
 import { multiaddr } from '@multiformats/multiaddr/';
+import Factories from '~/flatbuffers/factories/flatbuffer';
+import { GossipContent, GossipMessage, GossipMessageT } from '~/flatbuffers/generated/gossip_generated';
+import MessageModel from '~/flatbuffers/models/messageModel';
+import { CastAddModel } from '~/flatbuffers/models/types';
 import { Node } from '~/network/p2p/node';
-import { GossipMessage, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
-import { Factories } from '~/test/factories';
+import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { sleep } from '~/utils/crypto';
 
 const NUM_NODES = 10;
@@ -23,8 +26,9 @@ const connectAll = async (nodes: Node[]) => {
   );
   connectionResults.forEach((r) => expect(r?.isOk()).toBeTruthy());
 
-  // subscribes every node to the test topic
+  // subscribe every node to the test topic
   nodes.forEach((n) => n.gossip?.subscribe(NETWORK_TOPIC_PRIMARY));
+  // sleep 5 heartbeats to let the gossipsub network form
   await sleep(PROPAGATION_DELAY);
 };
 
@@ -148,21 +152,29 @@ describe('gossip network', () => {
   }, TEST_TIMEOUT_SHORT);
 
   test(
-    'message should propagate through the network',
+    'sends a message to a gossip network',
     async () => {
       await connectAll(nodes);
       nodes.map((n) => expect(n.gossip?.getPeers().length).toBeGreaterThanOrEqual(1));
 
       trackMessages();
 
-      // creates a message and publishes it to a random node
-      const message = {
-        content: { message: await Factories.CastShort.create(), root: '', count: 0 },
-        topics: [NETWORK_TOPIC_PRIMARY],
-      };
+      // create a message and send it to a random node.
+      const castAddData = await Factories.CastAddData.create({
+        fid: Array.from(Factories.FID.build()),
+      });
+      const castAdd = new MessageModel(
+        await Factories.Message.create({ data: Array.from(castAddData.bb?.bytes() ?? []) })
+      ) as CastAddModel;
 
+      const message: GossipMessageT = new GossipMessageT(GossipContent.Message, castAdd.message.unpack(), [
+        NETWORK_TOPIC_PRIMARY,
+      ]);
+
+      // publish via some random node
       const randomNode = nodes[Math.floor(Math.random() * nodes.length)] as Node;
       expect(randomNode.publish(message)).resolves.toBeUndefined();
+      // sleep 5 heartbeat ticks
       await sleep(PROPAGATION_DELAY);
 
       // check that every node has the message
@@ -175,7 +187,7 @@ describe('gossip network', () => {
         expect(topics?.has(NETWORK_TOPIC_PRIMARY)).toBeTruthy();
         const topicMessages = topics?.get(NETWORK_TOPIC_PRIMARY) ?? [];
         expect(topicMessages.length).toBe(1);
-        expect(topicMessages[0]).toEqual(message);
+        expect(topicMessages[0]?.unpack()).toEqual(message);
       });
     },
     TEST_TIMEOUT_LONG

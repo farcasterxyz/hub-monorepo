@@ -6,7 +6,7 @@ import { existsSync } from 'fs';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { dirname, resolve } from 'path';
 import { exit } from 'process';
-import { Hub, HubOptions } from '~/flatbufferHub';
+import { Hub, HubOptions } from '~/hub';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 
