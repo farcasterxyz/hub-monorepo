@@ -1,4 +1,5 @@
 import grpc, { ClientReadableStream, Metadata, MetadataValue } from '@grpc/grpc-js';
+import { ByteBuffer } from 'flatbuffers';
 import { AddressInfo } from 'net';
 import { err, ok } from 'neverthrow';
 import { IdRegistryEvent } from '~/flatbuffers/generated/id_registry_event_generated';
@@ -15,17 +16,23 @@ import { HubAsyncResult, HubError, HubErrorCode } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
 import { addressInfoToString, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 
-/**
- * "The Right Way"
- *
- * 1. Client constructor must not include multiaddr, that should be done in method or superclass.
- * 2. Factor out HubResult/HubErrors from all shared code or share Result types across backend and Hub
- * 3. Factor out RocksDB specific code from MessageModels, since the backend does not know / care about them
- * 4. Turn rpc and flatbuffs into yarn sub-projects with their own deps so they can be easily imported and refd
- */
-
 const fromServiceError = (err: grpc.ServiceError): HubError => {
   return new HubError(err.metadata.get('errCode')[0] as HubErrorCode, err.details);
+};
+
+interface GenericFlatbuffer {
+  bb: ByteBuffer | null;
+}
+
+export const defaultMethod = {
+  requestStream: false,
+  responseStream: false,
+  requestSerialize: (request: GenericFlatbuffer): Buffer => {
+    return Buffer.from(request.bb?.bytes() ?? new Uint8Array());
+  },
+  responseSerialize: (response: GenericFlatbuffer): Buffer => {
+    return Buffer.from(response.bb?.bytes() ?? new Uint8Array());
+  },
 };
 
 class Client {
@@ -60,7 +67,7 @@ class Client {
   }
 
   async submitIdRegistryEvent(event: IdRegistryEventModel): HubAsyncResult<IdRegistryEventModel> {
-    return this.makeUnaryContractEventRequest(definitions.submitDefinition().submitIdRegistryEvent, event.event);
+    return this.makeUnaryIdRegistryEventRequest(definitions.submitDefinition().submitIdRegistryEvent, event.event);
   }
 
   async submitNameRegistryEvent(event: NameRegistryEventModel): HubAsyncResult<NameRegistryEventModel> {
@@ -183,7 +190,7 @@ class Client {
   }
 
   async getCustodyEvent(fid: Uint8Array): HubAsyncResult<IdRegistryEventModel> {
-    return this.makeUnaryContractEventRequest(
+    return this.makeUnaryIdRegistryEventRequest(
       definitions.signerDefinition().getCustodyEvent,
       requests.signerRequests.getCustodyEvent(fid)
     );
@@ -321,7 +328,7 @@ class Client {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private makeUnaryContractEventRequest<RequestType>(
+  private makeUnaryIdRegistryEventRequest<RequestType>(
     method: grpc.MethodDefinition<RequestType, IdRegistryEvent>,
     request: RequestType
   ): HubAsyncResult<IdRegistryEventModel> {

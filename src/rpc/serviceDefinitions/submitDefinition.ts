@@ -2,7 +2,7 @@ import { IdRegistryEvent } from '~/flatbuffers/generated/id_registry_event_gener
 import { Message } from '~/flatbuffers/generated/message_generated';
 import { NameRegistryEvent } from '~/flatbuffers/generated/name_registry_event_generated';
 import { toByteBuffer } from '~/flatbuffers/utils/bytes';
-import { defaultMethod } from '~/rpc/server';
+import { defaultMethod } from '~/rpc/client';
 
 export const submitDefinition = () => {
   return {

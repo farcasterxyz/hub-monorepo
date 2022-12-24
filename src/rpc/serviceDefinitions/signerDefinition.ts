@@ -2,7 +2,7 @@ import { IdRegistryEvent } from '~/flatbuffers/generated/id_registry_event_gener
 import { Message } from '~/flatbuffers/generated/message_generated';
 import * as rpc_generated from '~/flatbuffers/generated/rpc_generated';
 import { toByteBuffer } from '~/flatbuffers/utils/bytes';
-import { defaultMethod } from '~/rpc/server';
+import { defaultMethod } from '~/rpc/client';
 
 export const signerDefinition = () => {
   return {
