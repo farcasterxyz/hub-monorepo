@@ -1,7 +1,7 @@
 import { Message } from '~/flatbuffers/generated/message_generated';
 import * as rpc_generated from '~/flatbuffers/generated/rpc_generated';
 import { toByteBuffer } from '~/flatbuffers/utils/bytes';
-import { defaultMethod } from '~/rpc/server';
+import { defaultMethod } from '~/rpc/client';
 
 export const ampDefinition = () => {
   return {

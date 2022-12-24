@@ -50,21 +50,6 @@ export const toMessagesResponse = (messages: MessageModel[]): MessagesResponse =
   return response;
 };
 
-interface GenericFlatbuffer {
-  bb: ByteBuffer | null;
-}
-
-export const defaultMethod = {
-  requestStream: false,
-  responseStream: false,
-  requestSerialize: (request: GenericFlatbuffer): Buffer => {
-    return Buffer.from(request.bb?.bytes() ?? new Uint8Array());
-  },
-  responseSerialize: (response: GenericFlatbuffer): Buffer => {
-    return Buffer.from(response.bb?.bytes() ?? new Uint8Array());
-  },
-};
-
 class Server {
   private server: grpc.Server;
   private port: number;

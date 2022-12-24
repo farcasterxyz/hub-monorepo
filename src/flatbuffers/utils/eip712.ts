@@ -2,14 +2,14 @@ import { utils, Wallet } from 'ethers';
 import { arrayify } from 'ethers/lib/utils';
 import { VerificationEthAddressClaim } from '~/flatbuffers/models/types';
 
-const EIP_712_FARCASTER_DOMAIN = {
+export const EIP_712_FARCASTER_DOMAIN = {
   name: 'Farcaster Verify Ethereum Address',
   version: '2.0.0',
   // fixed salt to minimize collisions
   salt: '0xf2d857f4a3edcb9b78b4d503bfe733db1e3f6cdc2b7971ee739626c97e86a558',
 };
 
-const EIP_712_FARCASTER_VERIFICATION_CLAIM = [
+export const EIP_712_FARCASTER_VERIFICATION_CLAIM = [
   {
     name: 'fid',
     type: 'uint256',
@@ -28,7 +28,7 @@ const EIP_712_FARCASTER_VERIFICATION_CLAIM = [
   },
 ];
 
-const EIP_712_FARCASTER_MESSAGE_DATA = [
+export const EIP_712_FARCASTER_MESSAGE_DATA = [
   {
     name: 'hash',
     type: 'bytes',
