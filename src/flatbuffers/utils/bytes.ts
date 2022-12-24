@@ -61,5 +61,5 @@ export const toByteBuffer = (buffer: Buffer): ByteBuffer => {
 };
 
 export const toNumber = (bytesUint8Array: Uint8Array) => {
-  return Buffer.from(bytesUint8Array).readUIntBE(0, bytesUint8Array.length);
+  return Buffer.from(bytesUint8Array).readUintLE(0, bytesUint8Array.length);
 };
