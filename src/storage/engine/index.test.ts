@@ -275,9 +275,10 @@ describe('mergeMessage', () => {
     let message: MessageModel;
 
     afterEach(async () => {
-      expect(await engine.mergeMessage(message)).toEqual(
-        err(new HubError('bad_request.validation_failure', 'unknown user'))
-      );
+      const result = await engine.mergeMessage(message);
+      const err = result._unsafeUnwrapErr();
+      expect(err.errCode).toEqual('bad_request.validation_failure');
+      expect(err.message).toMatch('unknown fid');
     });
 
     test('with CastAdd', () => {
