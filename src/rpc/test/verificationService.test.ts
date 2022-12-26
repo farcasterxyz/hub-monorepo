@@ -1,5 +1,5 @@
 import { utils, Wallet } from 'ethers';
-import Factories from '~/flatbuffers/factories/flatbuffer';
+import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { KeyPair, SignerAddModel, VerificationAddEthAddressModel } from '~/flatbuffers/models/types';

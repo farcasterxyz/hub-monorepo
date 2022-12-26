@@ -1,5 +1,5 @@
 import { arrayify } from 'ethers/lib/utils';
-import Factories from '~/flatbuffers/factories/flatbuffer';
+import Factories from '~/flatbuffers/factories';
 import { NameRegistryEventType } from '~/flatbuffers/generated/name_registry_event_generated';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { generateEthereumSigner } from '~/utils/crypto';

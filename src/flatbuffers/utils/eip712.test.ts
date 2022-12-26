@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { blake3 } from '@noble/hashes/blake3';
 import { utils, Wallet } from 'ethers';
-import Factories from '~/flatbuffers/factories/flatbuffer';
+import Factories from '~/flatbuffers/factories';
 import { FarcasterNetwork } from '~/flatbuffers/generated/message_generated';
 import { VerificationEthAddressClaim } from '~/flatbuffers/models/types';
 import * as eip712 from '~/flatbuffers/utils/eip712';

@@ -1,4 +1,4 @@
-import Factories from '~/flatbuffers/factories/flatbuffer';
+import Factories from '~/flatbuffers/factories';
 import { CastId, MessageType, ReactionType } from '~/flatbuffers/generated/message_generated';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { ReactionAddModel, ReactionRemoveModel, UserPostfix } from '~/flatbuffers/models/types';

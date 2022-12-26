@@ -1,5 +1,5 @@
 import { multiaddr } from '@multiformats/multiaddr/';
-import Factories from '~/flatbuffers/factories/flatbuffer';
+import Factories from '~/flatbuffers/factories';
 import { GossipContent, GossipMessage, GossipMessageT } from '~/flatbuffers/generated/gossip_generated';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastAddModel } from '~/flatbuffers/models/types';

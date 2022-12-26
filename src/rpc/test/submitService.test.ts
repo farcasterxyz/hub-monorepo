@@ -1,5 +1,5 @@
 import { utils, Wallet } from 'ethers';
-import Factories from '~/flatbuffers/factories/flatbuffer';
+import Factories from '~/flatbuffers/factories';
 import { IdRegistryEventType } from '~/flatbuffers/generated/id_registry_event_generated';
 import { NameRegistryEventType } from '~/flatbuffers/generated/name_registry_event_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';

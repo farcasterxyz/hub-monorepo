@@ -1,4 +1,4 @@
-import Factories from '~/flatbuffers/factories/flatbuffer';
+import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastAddModel, CastRemoveModel, UserPostfix } from '~/flatbuffers/models/types';
 import { bytesDecrement, bytesIncrement } from '~/flatbuffers/utils/bytes';
