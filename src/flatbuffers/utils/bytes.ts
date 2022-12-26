@@ -63,3 +63,16 @@ export const toByteBuffer = (buffer: Buffer): ByteBuffer => {
 export const toNumber = (bytesUint8Array: Uint8Array) => {
   return Buffer.from(bytesUint8Array).readUintLE(0, bytesUint8Array.length);
 };
+
+/** Converts number to little endian byte array */
+export const numberToBytes = (value: number) => {
+  if (value <= 0) {
+    throw new HubError('bad_request.invalid_param', 'value must be positive');
+  }
+  const bytes = [];
+  while (value !== 0) {
+    bytes.push(value & 255);
+    value >>= 8;
+  }
+  return new Uint8Array(bytes);
+};
