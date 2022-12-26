@@ -1,4 +1,4 @@
-import Factories from '~/flatbuffers/factories/flatbuffer';
+import Factories from '~/flatbuffers/factories';
 import MessageModel, { TRUE_VALUE } from '~/flatbuffers/models/messageModel';
 import { KeyPair, UserPostfix } from '~/flatbuffers/models/types';
 import { bytesCompare } from '~/flatbuffers/utils/bytes';

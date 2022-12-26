@@ -3,7 +3,7 @@ import { Event } from '@ethersproject/contracts';
 import { BaseProvider, Block, TransactionReceipt, TransactionResponse } from '@ethersproject/providers';
 import { BigNumber, Contract } from 'ethers';
 import { arrayify, Result } from 'ethers/lib/utils';
-import Factories from '~/flatbuffers/factories/flatbuffer';
+import Factories from '~/flatbuffers/factories';
 import { IdRegistryEventType } from '~/flatbuffers/generated/id_registry_event_generated';
 import { NameRegistryEventType } from '~/flatbuffers/generated/name_registry_event_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';

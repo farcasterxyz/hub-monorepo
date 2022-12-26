@@ -3,7 +3,7 @@ import { peerIdFromBytes } from '@libp2p/peer-id';
 import * as ed from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
 import { hexlify } from 'ethers/lib/utils';
-import Factories from '~/flatbuffers/factories/flatbuffer';
+import Factories from '~/flatbuffers/factories';
 import { GossipAddressInfoT, GossipContent, GossipMessage } from '~/flatbuffers/generated/gossip_generated';
 import * as message_generated from '~/flatbuffers/generated/message_generated';
 import { VerificationEthAddressClaim } from '~/flatbuffers/models/types';

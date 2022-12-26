@@ -1,6 +1,6 @@
 import { utils, Wallet } from 'ethers';
 import { ok } from 'neverthrow';
-import Factories from '~/flatbuffers/factories/flatbuffer';
+import Factories from '~/flatbuffers/factories';
 import { UserDataType } from '~/flatbuffers/generated/message_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
