@@ -118,6 +118,10 @@ export const validateFid = (fid?: Uint8Array | null): HubResult<Uint8Array> => {
     return err(new HubError('bad_request.validation_failure', 'fid > 32 bytes'));
   }
 
+  if (fid[fid.byteLength - 1] === 0) {
+    return err(new HubError('bad_request.validation_failure', 'fid is padded'));
+  }
+
   return ok(fid);
 };
 

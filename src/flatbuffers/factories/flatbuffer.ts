@@ -13,6 +13,7 @@ import * as message_generated from '~/flatbuffers/generated/message_generated';
 import * as name_registry_event_generated from '~/flatbuffers/generated/name_registry_event_generated';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { KeyPair, VerificationEthAddressClaim } from '~/flatbuffers/models/types';
+import { numberToBytes } from '~/flatbuffers/utils/bytes';
 import { signMessageHash, signVerificationEthAddressClaim } from '~/flatbuffers/utils/eip712';
 import { toFarcasterTime } from '~/flatbuffers/utils/time';
 import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
@@ -29,10 +30,7 @@ const BytesFactory = Factory.define<Uint8Array, { length?: number }>(({ transien
 });
 
 const FIDFactory = Factory.define<Uint8Array, { fid?: number }>(({ transientParams }) => {
-  const builder = new Builder(4);
-  const fid = transientParams.fid ?? faker.datatype.number({ max: 2 ** 32 - 1 });
-  builder.addInt32(fid);
-  return builder.asUint8Array();
+  return numberToBytes(transientParams.fid ?? faker.datatype.number({ min: 1 }));
 });
 
 const FnameFactory = Factory.define<Uint8Array>(() => {

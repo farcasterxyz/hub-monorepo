@@ -128,6 +128,12 @@ describe('validateFid', () => {
       new HubError('bad_request.validation_failure', 'fid is missing')
     );
   });
+
+  test('fails with padded little endian byte array', () => {
+    expect(validations.validateFid(new Uint8Array([1, 0]))._unsafeUnwrapErr()).toEqual(
+      new HubError('bad_request.validation_failure', 'fid is padded')
+    );
+  });
 });
 
 describe('validateTsHash', () => {
