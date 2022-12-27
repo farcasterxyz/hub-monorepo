@@ -64,6 +64,10 @@ export const toNumber = (bytesUint8Array: Uint8Array) => {
   return Buffer.from(bytesUint8Array).readUintLE(0, bytesUint8Array.length);
 };
 
+export const bigEndianBytesToNumber = (bytes: Uint8Array) => {
+  return Buffer.from(bytes).readUIntBE(0, bytes.length);
+};
+
 /** Converts number to little endian byte array */
 export const numberToBytes = (value: number) => {
   if (value <= 0) {

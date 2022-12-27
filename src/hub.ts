@@ -4,6 +4,7 @@ import { publicAddressesFirst } from '@libp2p/utils/address-sort';
 import { multiaddr, Multiaddr } from '@multiformats/multiaddr';
 import { isIP } from 'net';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
+import cron from 'node-cron';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { EthEventsProvider, GoerliEthConstants } from '~/eth/ethEventsProvider';
 import {
@@ -28,6 +29,8 @@ import Engine from '~/storage/engine';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import { idRegistryEventToLog, logger, messageToLog, nameRegistryEventToLog } from '~/utils/logger';
 import { addressInfoFromGossip, ipFamilyToString, p2pMultiAddrStr } from '~/utils/p2p';
+import { isSignerRemove } from './flatbuffers/models/typeguards';
+import RevokeSignerJob, { DEFAULT_REVOKE_SIGNER_JOB_CRON } from './storage/jobs/revokeSignerJob';
 
 export interface HubOptions {
   /** The PeerId of this Hub */
@@ -66,6 +69,9 @@ export interface HubOptions {
    * Only used by tests
    */
   localIpAddrsOnly?: boolean;
+
+  /** Cron schedule for revoke signer jobs */
+  revokeSignerJobCron?: string;
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
@@ -91,6 +97,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   private rpcServer: Server;
   private contactTimer?: NodeJS.Timer;
   private rocksDB: BinaryRocksDB;
+  private revokeSignerJobTask: cron.ScheduledTask;
 
   //TODO(aditya): Need a Flatbuffers SyncEngine impl
 
@@ -111,6 +118,15 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
       options.networkUrl ?? '',
       GoerliEthConstants.IdRegistryAddress,
       GoerliEthConstants.NameRegistryAddress
+    );
+
+    // Setup cron tasks
+    this.revokeSignerJobTask = cron.schedule(
+      options.revokeSignerJobCron ?? DEFAULT_REVOKE_SIGNER_JOB_CRON,
+      () => {
+        RevokeSignerJob.doJobs(this.rocksDB, this.engine);
+      },
+      { scheduled: false }
     );
   }
 
@@ -152,11 +168,15 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     // Start the RPC server
     await this.rpcServer.start(this.options.rpcPort ? this.options.rpcPort : 0);
     this.registerEventHandlers();
+
+    // Start cron tasks
+    this.revokeSignerJobTask.start();
   }
 
   /** Stop the GossipNode and RPC Server */
   async stop() {
     clearInterval(this.contactTimer);
+    this.revokeSignerJobTask.stop();
     await this.ethRegistryProvider.stop();
     await this.rpcServer.stop();
     await this.rocksDB.close();
@@ -313,14 +333,34 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
 
   private registerEventHandlers() {
     // Subscribe to store events
-    this.engine.eventHandler.on('mergeMessage', (message: MessageModel) => {
+    this.engine.eventHandler.on('mergeMessage', async (message: MessageModel) => {
       log.info(messageToLog(message), 'mergeMessage');
+
+      if (isSignerRemove(message)) {
+        const revokeSignerPayload = RevokeSignerJob.makePayload(
+          message.fid(),
+          message.body().signerArray() ?? new Uint8Array()
+        );
+        if (revokeSignerPayload.isOk()) {
+          // Revoke signer in one hour
+          await RevokeSignerJob.enqueueJob(this.rocksDB, revokeSignerPayload.value);
+        }
+      }
 
       // TODO: gossip merged message
     });
 
-    this.engine.eventHandler.on('mergeIdRegistryEvent', (event: IdRegistryEventModel) => {
+    this.engine.eventHandler.on('mergeIdRegistryEvent', async (event: IdRegistryEventModel) => {
       log.info(idRegistryEventToLog(event), 'mergeIdRegistryEvent');
+
+      const fromAddress = event.from();
+      if (fromAddress && fromAddress.length > 0) {
+        const revokeSignerPayload = RevokeSignerJob.makePayload(event.fid(), fromAddress);
+        if (revokeSignerPayload.isOk()) {
+          // Revoke eth address in one hour
+          await RevokeSignerJob.enqueueJob(this.rocksDB, revokeSignerPayload.value);
+        }
+      }
     });
 
     this.engine.eventHandler.on('mergeNameRegistryEvent', (event: NameRegistryEventModel) => {

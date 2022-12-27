@@ -100,8 +100,8 @@ export default class IdRegistryEventModel {
     return this.event.fidArray() ?? new Uint8Array();
   }
 
-  from(): Uint8Array {
-    return this.event.fromArray() ?? new Uint8Array();
+  from(): Uint8Array | null {
+    return this.event.fromArray();
   }
 
   to(): Uint8Array {

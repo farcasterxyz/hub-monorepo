@@ -221,6 +221,11 @@ class SignerStore {
       MessageType.SignerRemove
     );
 
+    // Return if no messages found
+    if (signerAdds.length === 0 && signerRemoves.length === 0) {
+      return ok(undefined);
+    }
+
     // Create a rocksdb transaction
     let txn = this._db.transaction();
 

@@ -28,6 +28,8 @@ export enum RootPrefix {
   IdRegistryEventByCustodyAddress = 8,
   /* Used to store the state of the hub */
   HubState = 9,
+  /* Revoke signer jobs */
+  JobRevokeSigner = 10,
 }
 
 /**
