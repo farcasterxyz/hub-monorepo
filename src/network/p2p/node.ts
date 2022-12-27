@@ -91,7 +91,8 @@ export class Node extends TypedEmitter<NodeEvents> {
    */
   get gossip() {
     const pubsub = this._node?.pubsub;
-    return pubsub ? (pubsub as GossipSub) : undefined;
+    // TODO: describe why we need to cast here
+    return pubsub ? (pubsub as unknown as GossipSub) : undefined;
   }
 
   /**
