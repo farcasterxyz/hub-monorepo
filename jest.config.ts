@@ -1,7 +1,6 @@
-import type { JestConfigWithTsJest } from 'ts-jest';
+import type { Config } from 'jest';
 
-const jestConfig: JestConfigWithTsJest = {
-  preset: 'ts-jest/presets/default-esm',
+const jestConfig: Config = {
   testEnvironment: 'node',
   moduleNameMapper: {
     '^~/(.*)$': '<rootDir>/src/$1',
@@ -9,15 +8,13 @@ const jestConfig: JestConfigWithTsJest = {
   },
   coveragePathIgnorePatterns: ['<rootDir>/build/', '<rootDir>/node_modules/', '<rootDir>/src/utils/generated/'],
   testPathIgnorePatterns: ['<rootDir>/build', '<rootDir>/node_modules', '<rootDir>/src/utils/generated/'],
-  // transform ts files with ts-jest and enable ESM
+  extensionsToTreatAsEsm: ['.ts'],
+  /**
+   * For high performance with minimal configuration transform with TS with swc.
+   * @see https://github.com/farcasterxyz/hub/issues/314
+   */
   transform: {
-    '^.+\\.tsx?$': [
-      'ts-jest',
-      {
-        tsconfig: 'tsconfig.json',
-        useESM: true,
-      },
-    ],
+    '^.+\\.(t|j)sx?$': '@swc/jest',
   },
 };
 

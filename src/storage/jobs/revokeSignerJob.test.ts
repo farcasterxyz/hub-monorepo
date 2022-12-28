@@ -11,6 +11,7 @@ import { seedSigner } from '../engine/seed';
 
 const db = jestRocksDB('jobs.revokeSignerJob.test');
 const engine = new Engine(db);
+const job = new RevokeSignerJob(db, engine);
 
 // Test payloads
 let payload: RevokeSignerJobPayload;
@@ -64,6 +65,16 @@ beforeEach(async () => {
   await seedSigner(engine, fid, signer.publicKey);
 });
 
+describe('jobKeyToTimestamp', () => {
+  test('extracts doAt timestamp from key', () => {
+    const timestamp = Date.now();
+    const hash = Factories.Bytes.build({}, { transient: { length: 4 } });
+    // const nonce = faker.datatype.number({ min: 1, max: REVOKE_SIGNER_JOB_MAX_NONCE });
+    const jobKey = RevokeSignerJob.makeJobKey(timestamp, hash);
+    expect(RevokeSignerJob.jobKeyToTimestamp(jobKey._unsafeUnwrap())).toEqual(timestamp);
+  });
+});
+
 describe('makePayload', () => {
   test('makes flatbuffer RevokeSignerJobPayload', () => {
     const newPayload = RevokeSignerJob.makePayload(
@@ -87,10 +98,10 @@ describe('makePayload', () => {
 });
 
 describe('enqueueJob', () => {
-  test('saves job in db with timestamp in the future', async () => {
-    const result = await RevokeSignerJob.enqueueJob(db, payload);
-    expect(result._unsafeUnwrap()).toEqual(undefined);
-    const jobs = await RevokeSignerJob.getAllJobs(db);
+  test('saves job in db with doAt timestamp in the future', async () => {
+    const result = await job.enqueueJob(payload);
+    expect(result.isOk()).toBeTruthy();
+    const jobs = await job.getAllJobs();
     expect(jobs._unsafeUnwrap().length).toEqual(1);
     for (const [doAt, jobPayload] of jobs._unsafeUnwrap()) {
       expect(doAt).toBeGreaterThan(Date.now());
@@ -98,20 +109,49 @@ describe('enqueueJob', () => {
     }
   });
 
-  test('saves job in db with specified timestamp', async () => {
+  test('saves job in db with specified doAt timestamp', async () => {
     const timestamp = Date.now() + 1000;
-    const result = await RevokeSignerJob.enqueueJob(db, payload, timestamp);
-    expect(result._unsafeUnwrap()).toEqual(undefined);
-    const jobs = await RevokeSignerJob.getAllJobs(db);
+    const result = await job.enqueueJob(payload, timestamp);
+    expect(result.isOk()).toBeTruthy();
+    const jobs = await job.getAllJobs();
+    expect(jobs._unsafeUnwrap()).toEqual([[timestamp, payload]]);
+  });
+
+  test('appends hash to key for each enqueued job', async () => {
+    const timestamp = Date.now() + 1000;
+
+    await job.enqueueJob(payload, timestamp);
+    await job.enqueueJob(payload2, timestamp);
+    await job.enqueueJob(payload3, timestamp);
+
+    const jobs = await job.getAllJobs();
+
+    // Comparing with a set, because the hash determines actual order
+    expect(new Set(jobs._unsafeUnwrap())).toEqual(
+      new Set([
+        [timestamp, payload],
+        [timestamp, payload2],
+        [timestamp, payload3],
+      ])
+    );
+  });
+
+  test('overwrites jobs with same payload and doAt timestamp', async () => {
+    const timestamp = Date.now() + 1000;
+
+    await job.enqueueJob(payload, timestamp);
+    await job.enqueueJob(payload, timestamp);
+
+    const jobs = await job.getAllJobs();
     expect(jobs._unsafeUnwrap()).toEqual([[timestamp, payload]]);
   });
 
   test('saves jobs in doAt order', async () => {
     const timestamp = Date.now();
-    await RevokeSignerJob.enqueueJob(db, payload2, timestamp + 1);
-    await RevokeSignerJob.enqueueJob(db, payload, timestamp);
+    await job.enqueueJob(payload2, timestamp + 1);
+    await job.enqueueJob(payload, timestamp);
 
-    const jobs = await RevokeSignerJob.getAllJobs(db);
+    const jobs = await job.getAllJobs();
     expect(jobs._unsafeUnwrap()).toEqual([
       [timestamp, payload],
       [timestamp + 1, payload2],
@@ -125,21 +165,21 @@ describe('popNextJob', () => {
 
     beforeEach(async () => {
       timestamp = Date.now() + 1000;
-      await RevokeSignerJob.enqueueJob(db, payload, timestamp);
-      await RevokeSignerJob.enqueueJob(db, payload2, timestamp + 1);
+      await job.enqueueJob(payload, timestamp);
+      await job.enqueueJob(payload2, timestamp + 1);
     });
 
     test('returns next job and removes it from the queue', async () => {
-      const nextJob = await RevokeSignerJob.popNextJob(db);
+      const nextJob = await job.popNextJob();
       expect(nextJob._unsafeUnwrap()).toEqual(payload);
-      const jobs = await RevokeSignerJob.getAllJobs(db);
+      const jobs = await job.getAllJobs();
       expect(jobs._unsafeUnwrap()).toEqual([[timestamp + 1, payload2]]);
     });
 
     test('returns not_found error if no jobs enqueued before given timestamp', async () => {
-      const nextJob = await RevokeSignerJob.popNextJob(db, timestamp);
+      const nextJob = await job.popNextJob(timestamp);
       expect(nextJob._unsafeUnwrapErr()).toEqual(new HubError('not_found', 'record not found'));
-      const jobs = await RevokeSignerJob.getAllJobs(db);
+      const jobs = await job.getAllJobs();
       expect(jobs._unsafeUnwrap()).toEqual([
         [timestamp, payload],
         [timestamp + 1, payload2],
@@ -149,7 +189,7 @@ describe('popNextJob', () => {
 
   describe('without jobs', () => {
     test('returns not_found error', async () => {
-      const nextJob = await RevokeSignerJob.popNextJob(db);
+      const nextJob = await job.popNextJob();
       expect(nextJob._unsafeUnwrapErr()).toEqual(new HubError('not_found', 'record not found'));
     });
   });
@@ -162,16 +202,16 @@ describe('doJobs', () => {
     beforeEach(async () => {
       timestamp = Date.now();
       // Enqueue two jobs in the past
-      await RevokeSignerJob.enqueueJob(db, payload, timestamp - 1000);
-      await RevokeSignerJob.enqueueJob(db, payload2, timestamp - 999);
+      await job.enqueueJob(payload, timestamp - 1000);
+      await job.enqueueJob(payload2, timestamp - 999);
       // Enqueue one job in the future
-      await RevokeSignerJob.enqueueJob(db, payload3, timestamp + 1000);
+      await job.enqueueJob(payload3, timestamp + 1000);
     });
 
     test('processes two jobs whose doAt timestamp has passed', async () => {
-      const result = await RevokeSignerJob.doJobs(db, engine);
+      const result = await job.doJobs();
       expect(result._unsafeUnwrap()).toEqual(undefined);
-      const jobs = await RevokeSignerJob.getAllJobs(db);
+      const jobs = await job.getAllJobs();
       expect(jobs._unsafeUnwrap()).toEqual([[timestamp + 1000, payload3]]);
     });
   });
@@ -179,13 +219,13 @@ describe('doJobs', () => {
   describe('with jobs and messages to revoke', () => {
     beforeEach(async () => {
       await engine.mergeMessages([castAdd, ampAdd, verificationRemove]);
-      await RevokeSignerJob.enqueueJob(db, revokeSignerPayload, Date.now() - DEFAULT_REVOKE_SIGNER_JOB_DELAY - 1000);
+      await job.enqueueJob(revokeSignerPayload, Date.now() - DEFAULT_REVOKE_SIGNER_JOB_DELAY - 1000);
     });
 
     test('processes jobs and deletes messages from signer', async () => {
       const getMessages = () => MessageModel.getAllBySigner(db, fid, signer.publicKey);
       expect(await getMessages()).toEqual([castAdd, ampAdd, verificationRemove]);
-      const result = await RevokeSignerJob.doJobs(db, engine);
+      const result = await job.doJobs();
       expect(result._unsafeUnwrap()).toEqual(undefined);
       expect(await getMessages()).toEqual([]);
     });

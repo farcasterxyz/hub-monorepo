@@ -1,11 +1,11 @@
-import { utils } from 'ethers';
+import { blake3 } from '@noble/hashes/blake3';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { err, ok, ResultAsync } from 'neverthrow';
 import AbstractRocksDB from 'rocksdb';
 import { RevokeSignerJobPayload, RevokeSignerJobPayloadT } from '~/flatbuffers/generated/job_generated';
 import { RootPrefix } from '~/flatbuffers/models/types';
 import { validateEd25519PublicKey, validateEthAddress, validateFid } from '~/flatbuffers/models/validations';
-import { bigEndianBytesToNumber, bytesIncrement } from '~/flatbuffers/utils/bytes';
+import { bigEndianBytesToNumber, bytesIncrement, numberToBigEndianBytes } from '~/flatbuffers/utils/bytes';
 import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
 import { HubAsyncResult, HubError, HubResult } from '~/utils/hubErrors';
@@ -13,21 +13,27 @@ import { logger } from '~/utils/logger';
 
 export const DEFAULT_REVOKE_SIGNER_JOB_DELAY = 1000 * 60 * 60; // 1 hour in ms
 export const DEFAULT_REVOKE_SIGNER_JOB_CRON = '0 * * * *'; // Every hour
+export const REVOKE_SIGNER_JOB_MAX_NONCE = 2 ** (2 * 8) - 1; // 2 bytes
 
 const log = logger.child({
   component: 'RevokeSignerJob',
 });
 
 class RevokeSignerJob {
-  static jobKey(doAt?: number): Buffer {
-    return Buffer.concat([
-      Buffer.from([RootPrefix.JobRevokeSigner]),
-      doAt ? Buffer.from(utils.arrayify(doAt)) : new Uint8Array(), // arrayify uses big endian for ordering
-    ]);
+  private _db: RocksDB;
+  private _engine: Engine;
+
+  constructor(db: RocksDB, engine: Engine) {
+    this._db = db;
+    this._engine = engine;
+  }
+
+  static jobKeyPrefix(): Buffer {
+    return Buffer.from([RootPrefix.JobRevokeSigner]);
   }
 
   static jobKeyToTimestamp(key: Buffer): number {
-    return bigEndianBytesToNumber(new Uint8Array(key).subarray(1));
+    return bigEndianBytesToNumber(new Uint8Array(key).subarray(1, 7));
   }
 
   static validatePayload(payload: RevokeSignerJobPayload): HubResult<RevokeSignerJobPayload> {
@@ -65,27 +71,85 @@ class RevokeSignerJob {
     return ok(payload);
   }
 
-  static async enqueueJob(db: RocksDB, payload: RevokeSignerJobPayload, doAt?: number): HubAsyncResult<void> {
-    /** If doAt timestamp is missing, use default delay to calculate timestamp in future */
-    if (!doAt) {
-      doAt = Date.now() + DEFAULT_REVOKE_SIGNER_JOB_DELAY;
+  /**
+   * makeJobKey constructs buffer for rocksdb key in the format:
+   * - 1 byte for RevokeSignerJob prefix
+   * - 6 bytes for timestamp
+   * - 4 bytes for hash
+   */
+  static makeJobKey(doAt: number, hash?: Uint8Array): HubResult<Buffer> {
+    const buffers: Buffer[] = [];
+
+    // Add 1 byte prefix
+    buffers.push(RevokeSignerJob.jobKeyPrefix());
+
+    // Add 6 byte doAt timestamp
+    const doAtBytes = numberToBigEndianBytes(doAt, 6);
+    if (doAtBytes.isErr()) {
+      return err(doAtBytes.error);
     }
-    const key = RevokeSignerJob.jobKey(doAt);
-    const value = Buffer.from(payload.bb?.bytes() ?? new Uint8Array());
-    return ResultAsync.fromPromise(db.put(key, value), (e) => e as HubError);
+    buffers.push(Buffer.from(doAtBytes.value));
+
+    // Add 4 byte hash (if present)
+    if (hash) {
+      if (hash.length !== 4) {
+        return err(new HubError('bad_request.invalid_param', 'hash must be 4 bytes'));
+      }
+      buffers.push(Buffer.from(hash));
+    }
+
+    // Combine buffers
+    return ok(Buffer.concat(buffers));
   }
 
   /** Return rocksdb iterator for revoke signer jobs. If doBefore timestamp is missing, iterate over all jobs  */
-  static iterator(db: RocksDB, doBefore?: number): AbstractRocksDB.Iterator {
-    const gte = RevokeSignerJob.jobKey();
-    const lt = doBefore ? RevokeSignerJob.jobKey(doBefore) : Buffer.from(bytesIncrement(new Uint8Array(gte)));
-    return db.iterator({ gte, lt });
+  iterator(doBefore?: number): HubResult<AbstractRocksDB.Iterator> {
+    const gte = RevokeSignerJob.jobKeyPrefix();
+    let lt: Buffer;
+    if (doBefore) {
+      const maxJobKey = RevokeSignerJob.makeJobKey(doBefore);
+      if (maxJobKey.isErr()) {
+        return err(maxJobKey.error);
+      }
+      lt = maxJobKey.value;
+    } else {
+      lt = Buffer.from(bytesIncrement(new Uint8Array(gte)));
+    }
+
+    return ok(this._db.iterator({ gte, lt }));
   }
 
-  static popNextJob(db: RocksDB, doBefore?: number): HubAsyncResult<RevokeSignerJobPayload> {
-    const iterator = RevokeSignerJob.iterator(db, doBefore);
+  async enqueueJob(payload: RevokeSignerJobPayload, doAt?: number): HubAsyncResult<Buffer> {
+    // If doAt timestamp is missing, use default delay to calculate timestamp in future
+    if (!doAt) {
+      doAt = Date.now() + DEFAULT_REVOKE_SIGNER_JOB_DELAY;
+    }
+
+    // Create payload hash
+    const hash = blake3(payload.bb?.bytes() ?? new Uint8Array(), { dkLen: 4 });
+
+    // Create job key
+    const key = RevokeSignerJob.makeJobKey(doAt, hash);
+    if (key.isErr()) {
+      return err(key.error);
+    }
+
+    // Create value from payload
+    const value = Buffer.from(payload.bb?.bytes() ?? new Uint8Array());
+
+    // Save to rocksdb
+    return (await ResultAsync.fromPromise(this._db.put(key.value, value), (e) => e as HubError)).asyncMap(
+      async () => key.value
+    );
+  }
+
+  async popNextJob(doBefore?: number): HubAsyncResult<RevokeSignerJobPayload> {
+    const iterator = this.iterator(doBefore);
+    if (iterator.isErr()) {
+      return err(iterator.error);
+    }
     return new Promise((resolve) => {
-      iterator.next(async (e: Error | undefined, key: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
+      iterator.value.next(async (e: Error | undefined, key: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
         if (e) {
           resolve(err(new HubError('unknown', e as Error)));
         } else if (!key && !value) {
@@ -94,39 +158,42 @@ class RevokeSignerJob {
           const payload = RevokeSignerJobPayload.getRootAsRevokeSignerJobPayload(
             new ByteBuffer(new Uint8Array(value as Buffer))
           );
-          /** Delete job from rocksdb to prevent it from being done multiple times */
-          db.del(key as Buffer);
+          // Delete job from rocksdb to prevent it from being done multiple times
+          this._db.del(key as Buffer);
           resolve(ok(payload));
         }
       });
     });
   }
 
-  static async doJobs(db: RocksDB, engine: Engine, doBefore?: number): HubAsyncResult<void> {
-    /** If doBefore timestamp is missing, do all jobs before current timestamp */
+  async doJobs(doBefore?: number): HubAsyncResult<void> {
+    // If doBefore timestamp is missing, do all jobs before current timestamp
     if (!doBefore) {
       doBefore = Date.now();
     }
 
     log.info({ doBefore }, 'starting doJobs');
 
-    let nextJob = await RevokeSignerJob.popNextJob(db, doBefore);
+    let nextJob = await this.popNextJob(doBefore);
     while (nextJob.isOk()) {
       const payload = nextJob.value;
-      await engine.revokeMessagesBySigner(
+      await this._engine.revokeMessagesBySigner(
         payload.fidArray() ?? new Uint8Array(),
         payload.signerArray() ?? new Uint8Array()
       );
-      nextJob = await RevokeSignerJob.popNextJob(db, doBefore);
+      nextJob = await this.popNextJob(doBefore);
     }
 
     return ok(undefined);
   }
 
-  static async getAllJobs(db: RocksDB, doBefore?: number): HubAsyncResult<[number, RevokeSignerJobPayload][]> {
+  async getAllJobs(doBefore?: number): HubAsyncResult<[number, RevokeSignerJobPayload][]> {
     const jobs: [number, RevokeSignerJobPayload][] = [];
-    const iterator = RevokeSignerJob.iterator(db, doBefore);
-    for await (const [key, value] of iterator) {
+    const iterator = this.iterator(doBefore);
+    if (iterator.isErr()) {
+      return err(iterator.error);
+    }
+    for await (const [key, value] of iterator.value) {
       const timestamp = RevokeSignerJob.jobKeyToTimestamp(key as Buffer);
       const payload = RevokeSignerJobPayload.getRootAsRevokeSignerJobPayload(
         new ByteBuffer(new Uint8Array(value as Buffer))
