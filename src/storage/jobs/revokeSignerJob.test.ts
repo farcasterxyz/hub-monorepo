@@ -69,7 +69,6 @@ describe('jobKeyToTimestamp', () => {
   test('extracts doAt timestamp from key', () => {
     const timestamp = Date.now();
     const hash = Factories.Bytes.build({}, { transient: { length: 4 } });
-    // const nonce = faker.datatype.number({ min: 1, max: REVOKE_SIGNER_JOB_MAX_NONCE });
     const jobKey = RevokeSignerJob.makeJobKey(timestamp, hash);
     expect(RevokeSignerJob.jobKeyToTimestamp(jobKey._unsafeUnwrap())).toEqual(timestamp);
   });
