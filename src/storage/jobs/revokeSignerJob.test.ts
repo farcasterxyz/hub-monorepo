@@ -15,14 +15,6 @@ import { HubError } from '~/utils/hubErrors';
 
 const db = jestRocksDB('jobs.revokeSignerJob.test');
 
-beforeAll(async () => {
-  await expect(db.open()).resolves.not.toThrow();
-});
-
-afterAll(async () => {
-  await expect(db.close()).resolves.not.toThrow();
-});
-
 const queue = new RevokeSignerJobQueue(db);
 const engine = new Engine(db);
 const scheduler = new RevokeSignerJobScheduler(queue, engine);

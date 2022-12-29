@@ -208,7 +208,7 @@ export class RevokeSignerJobQueue {
             new ByteBuffer(new Uint8Array(value as Buffer))
           );
           // Delete job from rocksdb to prevent it from being done multiple times
-          this._db.del(key as Buffer);
+          await this._db.del(key as Buffer);
           resolve(ok(payload));
         }
       });
