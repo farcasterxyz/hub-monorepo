@@ -6,8 +6,8 @@ const jestConfig: Config = {
     '^~/(.*)$': '<rootDir>/src/$1',
     '^(.+)_generated.js$': '$1_generated.ts', // Support flatc generated files
   },
-  coveragePathIgnorePatterns: ['<rootDir>/build/', '<rootDir>/node_modules/', '<rootDir>/src/utils/generated/'],
-  testPathIgnorePatterns: ['<rootDir>/build', '<rootDir>/node_modules', '<rootDir>/src/utils/generated/'],
+  coveragePathIgnorePatterns: ['<rootDir>/build/', '<rootDir>/node_modules/', '<rootDir>/src/flatbuffers/generated/'],
+  testPathIgnorePatterns: ['<rootDir>/build', '<rootDir>/node_modules', '<rootDir>/src/flatbuffers/generated/'],
   extensionsToTreatAsEsm: ['.ts'],
   /**
    * For high performance with minimal configuration transform with TS with swc.
