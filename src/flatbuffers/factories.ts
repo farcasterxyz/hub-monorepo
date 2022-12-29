@@ -9,11 +9,12 @@ import { Factory } from 'fishery';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import * as gossip_generated from '~/flatbuffers/generated/gossip_generated';
 import * as id_registry_event_generated from '~/flatbuffers/generated/id_registry_event_generated';
+import * as job_generated from '~/flatbuffers/generated/job_generated';
 import * as message_generated from '~/flatbuffers/generated/message_generated';
 import * as name_registry_event_generated from '~/flatbuffers/generated/name_registry_event_generated';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { KeyPair, VerificationEthAddressClaim } from '~/flatbuffers/models/types';
-import { numberToBytes } from '~/flatbuffers/utils/bytes';
+import { numberToLittleEndianBytes } from '~/flatbuffers/utils/bytes';
 import { signMessageHash, signVerificationEthAddressClaim } from '~/flatbuffers/utils/eip712';
 import { toFarcasterTime } from '~/flatbuffers/utils/time';
 import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
@@ -30,7 +31,7 @@ const BytesFactory = Factory.define<Uint8Array, { length?: number }>(({ transien
 });
 
 const FIDFactory = Factory.define<Uint8Array, { fid?: number }>(({ transientParams }) => {
-  return numberToBytes(transientParams.fid ?? faker.datatype.number({ min: 1 }));
+  return numberToLittleEndianBytes(transientParams.fid ?? faker.datatype.number({ min: 1 }))._unsafeUnwrap();
 });
 
 const FnameFactory = Factory.define<Uint8Array>(() => {
@@ -47,6 +48,10 @@ const TsHashFactory = Factory.define<Uint8Array, { timestamp?: number; hash?: Ui
     transientParams.timestamp ?? faker.date.recent().getTime(),
     transientParams.hash ?? blake3(faker.random.alphaNumeric(256), { dkLen: 16 })
   );
+});
+
+const Ed25519SignerFactory = Factory.define<Uint8Array>(() => {
+  return BytesFactory.build({}, { transient: { length: 32 } });
 });
 
 const UserIdFactory = Factory.define<message_generated.UserIdT, any, message_generated.UserId>(({ onCreate }) => {
@@ -516,6 +521,23 @@ const GossipMessageFactory = Factory.define<gossip_generated.GossipMessageT, any
   }
 );
 
+const RevokeSignerJobPayloadFactory = Factory.define<
+  job_generated.RevokeSignerJobPayloadT,
+  any,
+  job_generated.RevokeSignerJobPayload
+>(({ onCreate }) => {
+  onCreate((params) => {
+    const builder = new Builder(1);
+    builder.finish(params.pack(builder));
+    return job_generated.RevokeSignerJobPayload.getRootAsRevokeSignerJobPayload(new ByteBuffer(builder.asUint8Array()));
+  });
+
+  return new job_generated.RevokeSignerJobPayloadT(
+    Array.from(FIDFactory.build()),
+    Array.from(Ed25519SignerFactory.build())
+  );
+});
+
 const Factories = {
   Bytes: BytesFactory,
   FID: FIDFactory,
@@ -549,6 +571,7 @@ const Factories = {
   GossipMessage: GossipMessageFactory,
   GossipContactInfoContent: ContactInfoContentFactory,
   GossipAddressInfo: GossipAddressInfoFactory,
+  RevokeSignerJobPayload: RevokeSignerJobPayloadFactory,
 };
 
 export default Factories;

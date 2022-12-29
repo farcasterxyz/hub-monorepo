@@ -28,6 +28,8 @@ import Engine from '~/storage/engine';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import { idRegistryEventToLog, logger, messageToLog, nameRegistryEventToLog } from '~/utils/logger';
 import { addressInfoFromGossip, ipFamilyToString, p2pMultiAddrStr } from '~/utils/p2p';
+import { isSignerRemove } from './flatbuffers/models/typeguards';
+import { RevokeSignerJobQueue, RevokeSignerJobScheduler } from './storage/jobs/revokeSignerJob';
 
 export interface HubOptions {
   /** The PeerId of this Hub */
@@ -66,6 +68,9 @@ export interface HubOptions {
    * Only used by tests
    */
   localIpAddrsOnly?: boolean;
+
+  /** Cron schedule for revoke signer jobs */
+  revokeSignerJobCron?: string;
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
@@ -91,6 +96,8 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   private rpcServer: Server;
   private contactTimer?: NodeJS.Timer;
   private rocksDB: BinaryRocksDB;
+  private revokeSignerJobQueue: RevokeSignerJobQueue;
+  private revokeSignerJobScheduler: RevokeSignerJobScheduler;
 
   //TODO(aditya): Need a Flatbuffers SyncEngine impl
 
@@ -112,6 +119,12 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
       GoerliEthConstants.IdRegistryAddress,
       GoerliEthConstants.NameRegistryAddress
     );
+
+    // Setup job queues
+    this.revokeSignerJobQueue = new RevokeSignerJobQueue(this.rocksDB);
+
+    // Setup job schedulers
+    this.revokeSignerJobScheduler = new RevokeSignerJobScheduler(this.revokeSignerJobQueue, this.engine);
   }
 
   get rpcAddress() {
@@ -152,11 +165,15 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     // Start the RPC server
     await this.rpcServer.start(this.options.rpcPort ? this.options.rpcPort : 0);
     this.registerEventHandlers();
+
+    // Start cron tasks
+    this.revokeSignerJobScheduler.start();
   }
 
   /** Stop the GossipNode and RPC Server */
   async stop() {
     clearInterval(this.contactTimer);
+    this.revokeSignerJobScheduler.stop();
     await this.ethRegistryProvider.stop();
     await this.rpcServer.stop();
     await this.rocksDB.close();
@@ -313,14 +330,34 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
 
   private registerEventHandlers() {
     // Subscribe to store events
-    this.engine.eventHandler.on('mergeMessage', (message: MessageModel) => {
+    this.engine.eventHandler.on('mergeMessage', async (message: MessageModel) => {
       log.info(messageToLog(message), 'mergeMessage');
+
+      if (isSignerRemove(message)) {
+        const revokeSignerPayload = RevokeSignerJobQueue.makePayload(
+          message.fid(),
+          message.body().signerArray() ?? new Uint8Array()
+        );
+        if (revokeSignerPayload.isOk()) {
+          // Revoke signer in one hour
+          await this.revokeSignerJobQueue.enqueueJob(revokeSignerPayload.value);
+        }
+      }
 
       // TODO: gossip merged message
     });
 
-    this.engine.eventHandler.on('mergeIdRegistryEvent', (event: IdRegistryEventModel) => {
+    this.engine.eventHandler.on('mergeIdRegistryEvent', async (event: IdRegistryEventModel) => {
       log.info(idRegistryEventToLog(event), 'mergeIdRegistryEvent');
+
+      const fromAddress = event.from();
+      if (fromAddress && fromAddress.length > 0) {
+        const revokeSignerPayload = RevokeSignerJobQueue.makePayload(event.fid(), fromAddress);
+        if (revokeSignerPayload.isOk()) {
+          // Revoke eth address in one hour
+          await this.revokeSignerJobQueue.enqueueJob(revokeSignerPayload.value);
+        }
+      }
     });
 
     this.engine.eventHandler.on('mergeNameRegistryEvent', (event: NameRegistryEventModel) => {

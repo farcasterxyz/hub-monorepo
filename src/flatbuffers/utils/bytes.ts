@@ -1,5 +1,6 @@
 import { ByteBuffer } from 'flatbuffers';
-import { HubError } from '~/utils/hubErrors';
+import { err, ok } from 'neverthrow';
+import { HubError, HubResult } from '~/utils/hubErrors';
 
 export const bytesCompare = (a: Uint8Array, b: Uint8Array): number => {
   const aValue = a[0];
@@ -64,15 +65,61 @@ export const toNumber = (bytesUint8Array: Uint8Array) => {
   return Buffer.from(bytesUint8Array).readUintLE(0, bytesUint8Array.length);
 };
 
+export const bigEndianBytesToNumber = (bytes: Uint8Array) => {
+  return Buffer.from(bytes).readUIntBE(0, bytes.length);
+};
+
 /** Converts number to little endian byte array */
-export const numberToBytes = (value: number) => {
+export const numberToLittleEndianBytes = (value: number, size?: number) => {
   if (value <= 0) {
-    throw new HubError('bad_request.invalid_param', 'value must be positive');
+    return err(new HubError('bad_request.invalid_param', 'value must be positive'));
   }
+
+  if (typeof size === 'number' && size <= 0) {
+    return err(new HubError('bad_request.invalid_param', 'size must be positive'));
+  }
+
   const bytes = [];
-  while (value !== 0) {
-    bytes.push(value & 255);
-    value >>= 8;
+  let bigIntValue = BigInt(value);
+
+  while (bigIntValue !== 0n) {
+    if (size && bytes.length >= size) {
+      return err(new HubError('bad_request.invalid_param', 'value does not fit in size'));
+    }
+    bytes.push(Number(bigIntValue & 255n));
+    bigIntValue >>= 8n;
   }
-  return new Uint8Array(bytes);
+
+  while (size && bytes.length < size) {
+    bytes.push(0);
+  }
+
+  return ok(new Uint8Array(bytes));
+};
+
+export const numberToBigEndianBytes = (value: number, size?: number): HubResult<Uint8Array> => {
+  if (value <= 0) {
+    return err(new HubError('bad_request.invalid_param', 'value must be positive'));
+  }
+
+  if (typeof size === 'number' && size <= 0) {
+    return err(new HubError('bad_request.invalid_param', 'size must be positive'));
+  }
+
+  const bytes = [];
+  let bigIntValue = BigInt(value);
+
+  while (bigIntValue !== 0n) {
+    if (size && bytes.length >= size) {
+      return err(new HubError('bad_request.invalid_param', 'value does not fit in size'));
+    }
+    bytes.unshift(Number(bigIntValue & 255n));
+    bigIntValue >>= 8n;
+  }
+
+  while (size && bytes.length < size) {
+    bytes.unshift(0);
+  }
+
+  return ok(new Uint8Array(bytes));
 };
