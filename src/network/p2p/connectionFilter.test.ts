@@ -23,7 +23,7 @@ describe('connectionFilter tests', () => {
 
   test('denies all connections by default', async () => {
     const filter = new ConnectionFilter([]);
-    const { inbound: _localConnection, outbound: remoteConnection } = mockMultiaddrConnPair({
+    const { outbound: remoteConnection } = mockMultiaddrConnPair({
       addrs: [multiaddr(localMultiAddrStr), multiaddr(allowedMultiAddrStr)],
       remotePeer: allowedPeerId,
     });
@@ -41,7 +41,7 @@ describe('connectionFilter tests', () => {
 
   test('allows selected peers', async () => {
     const filter = new ConnectionFilter([allowedPeerId.toString()]);
-    const { inbound: _localConnection, outbound: remoteConnection } = mockMultiaddrConnPair({
+    const { outbound: remoteConnection } = mockMultiaddrConnPair({
       addrs: [multiaddr(localMultiAddrStr), multiaddr(allowedMultiAddrStr)],
       remotePeer: allowedPeerId,
     });
@@ -59,7 +59,7 @@ describe('connectionFilter tests', () => {
 
   test('filters unknown peers', async () => {
     const filter = new ConnectionFilter([allowedPeerId.toString()]);
-    const { inbound: _localConnection, outbound: remoteConnection } = mockMultiaddrConnPair({
+    const { outbound: remoteConnection } = mockMultiaddrConnPair({
       addrs: [multiaddr(localMultiAddrStr), multiaddr(filteredMultiAddrStr)],
       remotePeer: blockedPeerId,
     });
