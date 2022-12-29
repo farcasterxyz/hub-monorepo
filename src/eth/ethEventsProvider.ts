@@ -312,7 +312,7 @@ export class EthEventsProvider {
       Array.from(arrayify(blockHash)),
       Array.from(arrayify(transactionHash)),
       logIndex,
-      Array.from(arrayify(id).reverse()), // convert fid to little endian
+      Array.from(arrayify(id)),
       Array.from(arrayify(to)),
       type,
       fromArray
