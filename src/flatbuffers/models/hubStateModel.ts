@@ -1,4 +1,4 @@
-import { ByteBuffer } from 'flatbuffers';
+import { Builder, ByteBuffer } from 'flatbuffers';
 import { HubState } from '~/flatbuffers/generated/hub_state_generated';
 import { RootPrefix } from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
@@ -38,7 +38,10 @@ export default class HubStateModel {
   }
 
   toBytes(): Uint8Array {
-    return this.state.bb?.bytes() || new Uint8Array();
+    const builder = new Builder(1);
+    const stateT = this.state.unpack();
+    builder.finish(stateT.pack(builder));
+    return builder.asUint8Array();
   }
 
   lastEthBlock(): bigint {

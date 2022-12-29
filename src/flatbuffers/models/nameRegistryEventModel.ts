@@ -1,4 +1,4 @@
-import { ByteBuffer } from 'flatbuffers';
+import { Builder, ByteBuffer } from 'flatbuffers';
 import { NameRegistryEvent, NameRegistryEventType } from '~/flatbuffers/generated/name_registry_event_generated';
 import { RootPrefix } from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
@@ -57,7 +57,10 @@ export default class NameRegistryEventModel {
   }
 
   toBytes(): Uint8Array {
-    return this.event.bb?.bytes() || new Uint8Array();
+    const builder = new Builder(1);
+    const eventT = this.event.unpack();
+    builder.finish(eventT.pack(builder));
+    return builder.asUint8Array();
   }
 
   blockNumber(): number {

@@ -222,7 +222,10 @@ export default class MessageModel {
   }
 
   dataBytes(): Uint8Array {
-    return this.data.bb?.bytes() ?? new Uint8Array();
+    const builder = new Builder(1);
+    const dataT = this.data.unpack();
+    builder.finish(dataT.pack(builder));
+    return builder.asUint8Array();
   }
 
   primaryKey(): Buffer {
