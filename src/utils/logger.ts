@@ -4,6 +4,7 @@ import { default as Pino } from 'pino';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
+import { toNumber } from '~/flatbuffers/utils/bytes';
 import { fromFarcasterTime } from '~/flatbuffers/utils/time';
 
 /**
@@ -57,7 +58,7 @@ export const idRegistryEventToLog = (event: IdRegistryEventModel) => {
   return {
     blockNumber: event.blockNumber(),
     transactionHash: hexlify(event.transactionHash()),
-    fid: BigNumber.from(event.fid()).toNumber(),
+    fid: toNumber(event.fid()),
     to: hexlify(event.to()),
     type: event.typeName(),
   };

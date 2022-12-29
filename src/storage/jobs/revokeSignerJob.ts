@@ -1,6 +1,7 @@
 import { blake3 } from '@noble/hashes/blake3';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { err, ok, ResultAsync } from 'neverthrow';
+import cron from 'node-cron';
 import AbstractRocksDB from 'rocksdb';
 import { RevokeSignerJobPayload, RevokeSignerJobPayloadT } from '~/flatbuffers/generated/job_generated';
 import { RootPrefix } from '~/flatbuffers/models/types';
@@ -19,13 +20,61 @@ const log = logger.child({
   component: 'RevokeSignerJob',
 });
 
-class RevokeSignerJob {
-  private _db: RocksDB;
-  private _engine: Engine;
+type SchedulerStatus = 'started' | 'stopped';
 
-  constructor(db: RocksDB, engine: Engine) {
-    this._db = db;
+export class RevokeSignerJobScheduler {
+  private _queue: RevokeSignerJobQueue;
+  private _engine: Engine;
+  private _cronTask?: cron.ScheduledTask;
+
+  constructor(queue: RevokeSignerJobQueue, engine: Engine) {
+    this._queue = queue;
     this._engine = engine;
+  }
+
+  start(cronSchedule?: string) {
+    this._cronTask = cron.schedule(cronSchedule ?? DEFAULT_REVOKE_SIGNER_JOB_CRON, () => {
+      this.doJobs();
+    });
+  }
+
+  stop() {
+    if (this._cronTask) {
+      this._cronTask.stop();
+    }
+  }
+
+  status(): SchedulerStatus {
+    return this._cronTask ? 'started' : 'stopped';
+  }
+
+  async doJobs(doBefore?: number): HubAsyncResult<void> {
+    // If doBefore timestamp is missing, do all jobs before current timestamp
+    if (!doBefore) {
+      doBefore = Date.now();
+    }
+
+    log.info({ doBefore }, 'starting doJobs');
+
+    let nextJob = await this._queue.popNextJob(doBefore);
+    while (nextJob.isOk()) {
+      const payload = nextJob.value;
+      await this._engine.revokeMessagesBySigner(
+        payload.fidArray() ?? new Uint8Array(),
+        payload.signerArray() ?? new Uint8Array()
+      );
+      nextJob = await this._queue.popNextJob(doBefore);
+    }
+
+    return ok(undefined);
+  }
+}
+
+export class RevokeSignerJobQueue {
+  private _db: RocksDB;
+
+  constructor(db: RocksDB) {
+    this._db = db;
   }
 
   static jobKeyPrefix(): Buffer {
@@ -81,7 +130,7 @@ class RevokeSignerJob {
     const buffers: Buffer[] = [];
 
     // Add 1 byte prefix
-    buffers.push(RevokeSignerJob.jobKeyPrefix());
+    buffers.push(RevokeSignerJobQueue.jobKeyPrefix());
 
     // Add 6 byte doAt timestamp
     const doAtBytes = numberToBigEndianBytes(doAt, 6);
@@ -104,10 +153,10 @@ class RevokeSignerJob {
 
   /** Return rocksdb iterator for revoke signer jobs. If doBefore timestamp is missing, iterate over all jobs  */
   iterator(doBefore?: number): HubResult<AbstractRocksDB.Iterator> {
-    const gte = RevokeSignerJob.jobKeyPrefix();
+    const gte = RevokeSignerJobQueue.jobKeyPrefix();
     let lt: Buffer;
     if (doBefore) {
-      const maxJobKey = RevokeSignerJob.makeJobKey(doBefore);
+      const maxJobKey = RevokeSignerJobQueue.makeJobKey(doBefore);
       if (maxJobKey.isErr()) {
         return err(maxJobKey.error);
       }
@@ -129,7 +178,7 @@ class RevokeSignerJob {
     const hash = blake3(payload.bb?.bytes() ?? new Uint8Array(), { dkLen: 4 });
 
     // Create job key
-    const key = RevokeSignerJob.makeJobKey(doAt, hash);
+    const key = RevokeSignerJobQueue.makeJobKey(doAt, hash);
     if (key.isErr()) {
       return err(key.error);
     }
@@ -166,27 +215,6 @@ class RevokeSignerJob {
     });
   }
 
-  async doJobs(doBefore?: number): HubAsyncResult<void> {
-    // If doBefore timestamp is missing, do all jobs before current timestamp
-    if (!doBefore) {
-      doBefore = Date.now();
-    }
-
-    log.info({ doBefore }, 'starting doJobs');
-
-    let nextJob = await this.popNextJob(doBefore);
-    while (nextJob.isOk()) {
-      const payload = nextJob.value;
-      await this._engine.revokeMessagesBySigner(
-        payload.fidArray() ?? new Uint8Array(),
-        payload.signerArray() ?? new Uint8Array()
-      );
-      nextJob = await this.popNextJob(doBefore);
-    }
-
-    return ok(undefined);
-  }
-
   async getAllJobs(doBefore?: number): HubAsyncResult<[number, RevokeSignerJobPayload][]> {
     const jobs: [number, RevokeSignerJobPayload][] = [];
     const iterator = this.iterator(doBefore);
@@ -194,7 +222,7 @@ class RevokeSignerJob {
       return err(iterator.error);
     }
     for await (const [key, value] of iterator.value) {
-      const timestamp = RevokeSignerJob.jobKeyToTimestamp(key as Buffer);
+      const timestamp = RevokeSignerJobQueue.jobKeyToTimestamp(key as Buffer);
       const payload = RevokeSignerJobPayload.getRootAsRevokeSignerJobPayload(
         new ByteBuffer(new Uint8Array(value as Buffer))
       );
@@ -203,5 +231,3 @@ class RevokeSignerJob {
     return ok(jobs);
   }
 }
-
-export default RevokeSignerJob;

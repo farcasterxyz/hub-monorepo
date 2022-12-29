@@ -4,7 +4,6 @@ import { publicAddressesFirst } from '@libp2p/utils/address-sort';
 import { multiaddr, Multiaddr } from '@multiformats/multiaddr';
 import { isIP } from 'net';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
-import cron from 'node-cron';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { EthEventsProvider, GoerliEthConstants } from '~/eth/ethEventsProvider';
 import {
@@ -30,7 +29,7 @@ import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import { idRegistryEventToLog, logger, messageToLog, nameRegistryEventToLog } from '~/utils/logger';
 import { addressInfoFromGossip, ipFamilyToString, p2pMultiAddrStr } from '~/utils/p2p';
 import { isSignerRemove } from './flatbuffers/models/typeguards';
-import RevokeSignerJob, { DEFAULT_REVOKE_SIGNER_JOB_CRON } from './storage/jobs/revokeSignerJob';
+import { RevokeSignerJobQueue, RevokeSignerJobScheduler } from './storage/jobs/revokeSignerJob';
 
 export interface HubOptions {
   /** The PeerId of this Hub */
@@ -97,7 +96,8 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   private rpcServer: Server;
   private contactTimer?: NodeJS.Timer;
   private rocksDB: BinaryRocksDB;
-  private revokeSignerJobTask: cron.ScheduledTask;
+  private revokeSignerJobQueue: RevokeSignerJobQueue;
+  private revokeSignerJobScheduler: RevokeSignerJobScheduler;
 
   //TODO(aditya): Need a Flatbuffers SyncEngine impl
 
@@ -120,14 +120,11 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
       GoerliEthConstants.NameRegistryAddress
     );
 
-    // Setup cron tasks
-    this.revokeSignerJobTask = cron.schedule(
-      options.revokeSignerJobCron ?? DEFAULT_REVOKE_SIGNER_JOB_CRON,
-      () => {
-        RevokeSignerJob.doJobs(this.rocksDB, this.engine);
-      },
-      { scheduled: false }
-    );
+    // Setup job queues
+    this.revokeSignerJobQueue = new RevokeSignerJobQueue(this.rocksDB);
+
+    // Setup job schedulers
+    this.revokeSignerJobScheduler = new RevokeSignerJobScheduler(this.revokeSignerJobQueue, this.engine);
   }
 
   get rpcAddress() {
@@ -170,13 +167,13 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     this.registerEventHandlers();
 
     // Start cron tasks
-    this.revokeSignerJobTask.start();
+    this.revokeSignerJobScheduler.start();
   }
 
   /** Stop the GossipNode and RPC Server */
   async stop() {
     clearInterval(this.contactTimer);
-    this.revokeSignerJobTask.stop();
+    this.revokeSignerJobScheduler.stop();
     await this.ethRegistryProvider.stop();
     await this.rpcServer.stop();
     await this.rocksDB.close();
@@ -337,13 +334,13 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
       log.info(messageToLog(message), 'mergeMessage');
 
       if (isSignerRemove(message)) {
-        const revokeSignerPayload = RevokeSignerJob.makePayload(
+        const revokeSignerPayload = RevokeSignerJobQueue.makePayload(
           message.fid(),
           message.body().signerArray() ?? new Uint8Array()
         );
         if (revokeSignerPayload.isOk()) {
           // Revoke signer in one hour
-          await RevokeSignerJob.enqueueJob(this.rocksDB, revokeSignerPayload.value);
+          await this.revokeSignerJobQueue.enqueueJob(revokeSignerPayload.value);
         }
       }
 
@@ -355,10 +352,10 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
 
       const fromAddress = event.from();
       if (fromAddress && fromAddress.length > 0) {
-        const revokeSignerPayload = RevokeSignerJob.makePayload(event.fid(), fromAddress);
+        const revokeSignerPayload = RevokeSignerJobQueue.makePayload(event.fid(), fromAddress);
         if (revokeSignerPayload.isOk()) {
           // Revoke eth address in one hour
-          await RevokeSignerJob.enqueueJob(this.rocksDB, revokeSignerPayload.value);
+          await this.revokeSignerJobQueue.enqueueJob(revokeSignerPayload.value);
         }
       }
     });
