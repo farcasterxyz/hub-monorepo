@@ -7,11 +7,7 @@ import { IdRegistryEvent } from '~/flatbuffers/generated/id_registry_event_gener
 import { CastId, Message, ReactionType, UserDataType, UserId } from '~/flatbuffers/generated/message_generated';
 import { NameRegistryEvent } from '~/flatbuffers/generated/name_registry_event_generated';
 import * as rpc_generated from '~/flatbuffers/generated/rpc_generated';
-import {
-  GetAllSyncIdsByPrefixResponse,
-  MessagesResponse,
-  TrieNodeMetadataResponse,
-} from '~/flatbuffers/generated/rpc_generated';
+import { GetAllSyncIdsByPrefixResponse, TrieNodeMetadataResponse } from '~/flatbuffers/generated/rpc_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
@@ -309,7 +305,7 @@ class Client {
   }
 
   async getAllMessagesBySyncIds(hashes: Uint8Array[]): HubAsyncResult<MessageModel[]> {
-    return this.makeUnaryMessagesByHashesRequest(
+    return this.makeUnaryMessagesRequest(
       definitions.syncDefinition().getAllMessagesBySyncIds,
       createAllMessagesByHashesRequest(hashes)
     );
@@ -463,34 +459,6 @@ class Client {
     });
   }
 
-  private makeUnaryMessagesByHashesRequest<RequestType, ResponseMessageType extends MessageModel>(
-    method: grpc.MethodDefinition<RequestType, MessagesResponse>,
-    request: RequestType
-  ): HubAsyncResult<ResponseMessageType[]> {
-    return new Promise((resolve) => {
-      this.client.makeUnaryRequest(
-        method.path,
-        method.requestSerialize,
-        method.responseDeserialize,
-        request,
-        (e: grpc.ServiceError | null, response?: MessagesResponse) => {
-          if (e) {
-            resolve(err(fromServiceError(e)));
-          } else if (response) {
-            const messages: ResponseMessageType[] = [];
-            for (let i = 0; i < response.messagesLength(); i++) {
-              const mb = Message.getRootAsMessage(
-                new ByteBuffer(response.messages(i)?.messageBytesArray() ?? new Uint8Array())
-              );
-              messages.push(new MessageModel(mb) as ResponseMessageType);
-            }
-            resolve(ok(messages));
-          }
-        }
-      );
-    });
-  }
-
   private makeUnaryMessagesRequest<RequestType, ResponseMessageType extends MessageModel>(
     method: grpc.MethodDefinition<RequestType, rpc_generated.MessagesResponse>,
     request: RequestType
@@ -507,10 +475,9 @@ class Client {
           } else if (response) {
             const messages: ResponseMessageType[] = [];
             for (let i = 0; i < response.messagesLength(); i++) {
-              const mb = Message.getRootAsMessage(
-                new ByteBuffer(response.messages(i)?.messageBytesArray() ?? new Uint8Array())
+              messages.push(
+                MessageModel.from(response.messages(i)?.messageBytesArray() ?? new Uint8Array()) as ResponseMessageType
               );
-              messages.push(new MessageModel(mb) as ResponseMessageType);
             }
             resolve(ok(messages));
           }

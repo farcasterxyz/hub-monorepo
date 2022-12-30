@@ -1,5 +1,4 @@
 include "message.fbs";
-include "id_registry_event.fbs";
 
 // IDL file for Farcaster RPC Requests
 
@@ -9,7 +8,8 @@ enum EventType: uint8 {
   MergeMessage = 0,
   PruneMessage = 1,
   RevokeMessage = 2,
-  MergeContractEvent = 3
+  MergeIdRegistryEvent = 3,
+  MergeNameRegistryEvent = 4
 }
 
 // Responses
@@ -27,8 +27,7 @@ table FidsResponse {
 
 table EventResponse {
   type: EventType;
-  message: Message;
-  contract_event: IdRegistryEvent;
+  bytes: [ubyte];
 }
 
 // A partial trie node response

@@ -103,8 +103,7 @@ describe('getAmpsByFid', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(ampAdd);
     const amps = await client.getAmpsByFid(fid);
-    // The underlying buffers are different, so we can't compare full messages directly
-    expect(amps._unsafeUnwrap().map((msg) => msg.hash())).toEqual([ampAdd.hash()]);
+    expect(amps._unsafeUnwrap()).toEqual([ampAdd]);
   });
 
   test('returns empty array without messages', async () => {
@@ -122,8 +121,7 @@ describe('getAmpsByUser', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(ampAdd);
     const amps = await client.getAmpsByUser(ampAdd.body().user() ?? new UserId());
-    // The underlying buffers are different, so we can't compare full messages directly
-    expect(amps._unsafeUnwrap().map((msg) => msg.hash())).toEqual([ampAdd.hash()]);
+    expect(amps._unsafeUnwrap()).toEqual([ampAdd]);
   });
 
   test('returns empty array without messages', async () => {
