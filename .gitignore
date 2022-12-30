@@ -28,3 +28,6 @@ coverage/
 
 # Config
 .hub/
+
+# Turborepo
+.turbo
