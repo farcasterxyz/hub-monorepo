@@ -139,9 +139,7 @@ describe('getUserDataByFid', () => {
     await engine.mergeMessage(pfpAdd);
     await engine.mergeMessage(locationAdd);
     const result = await client.getUserDataByFid(fid);
-    expect(new Set(result._unsafeUnwrap().map((msg) => msg.hash()))).toEqual(
-      new Set([pfpAdd.hash(), locationAdd.hash()])
-    );
+    expect(new Set(result._unsafeUnwrap())).toEqual(new Set([pfpAdd, locationAdd]));
   });
 
   test('returns empty array without messages', async () => {

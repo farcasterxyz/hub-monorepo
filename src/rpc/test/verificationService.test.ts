@@ -106,8 +106,7 @@ describe('getVerificationsByFid', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(verificationAdd);
     const verifications = await client.getVerificationsByFid(fid);
-    // The underlying buffers are different, so we can't compare full objects
-    expect(verifications._unsafeUnwrap().map((msg) => msg.hash())).toEqual([verificationAdd.hash()]);
+    expect(verifications._unsafeUnwrap()).toEqual([verificationAdd]);
   });
 
   test('returns empty array without messages', async () => {

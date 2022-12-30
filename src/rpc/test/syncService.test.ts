@@ -69,7 +69,7 @@ beforeAll(async () => {
 });
 
 const assertMessagesMatchResult = (result: HubResult<MessageModel[]>, messages: MessageModel[]) => {
-  expect(new Set(result._unsafeUnwrap().map((msg) => msg.hash()))).toEqual(new Set(messages.map((msg) => msg.hash())));
+  expect(new Set(result._unsafeUnwrap())).toEqual(new Set(messages));
 };
 
 describe('getAllCastMessagesByFid', () => {

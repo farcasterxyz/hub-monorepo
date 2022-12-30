@@ -105,8 +105,7 @@ describe('getCastsByFid', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(castAdd);
     const casts = await client.getCastsByFid(fid);
-    // The underlying buffers are different, so we can't compare casts to [castAdd] directly
-    expect(casts._unsafeUnwrap().map((cast) => cast.hash())).toEqual([castAdd.hash()]);
+    expect(casts._unsafeUnwrap()).toEqual([castAdd]);
   });
 
   test('returns empty array without casts', async () => {
@@ -124,8 +123,7 @@ describe('getCastsByParent', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(castAdd);
     const casts = await client.getCastsByParent(castAdd.body().parent() ?? new CastId());
-    // The underlying buffers are different, so we can't compare casts to [castAdd] directly
-    expect(casts._unsafeUnwrap().map((cast) => cast.hash())).toEqual([castAdd.hash()]);
+    expect(casts._unsafeUnwrap()).toEqual([castAdd]);
   });
 
   test('returns empty array without casts', async () => {

@@ -90,7 +90,7 @@ describe('getSignersByFid', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(signerAdd);
     const result = await client.getSignersByFid(fid);
-    expect(result._unsafeUnwrap().map((msg) => msg.hash())).toEqual([signerAdd.hash()]);
+    expect(result._unsafeUnwrap()).toEqual([signerAdd]);
   });
 
   test('returns empty array without messages', async () => {

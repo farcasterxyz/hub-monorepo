@@ -160,14 +160,12 @@ describe('getReactionsByFid', () => {
 
     test('succeeds with type Like', async () => {
       const reactions = await client.getReactionsByFid(fid, ReactionType.Like);
-      // The underlying buffers are different, so we can't compare full objects
-      expect(reactions._unsafeUnwrap().map((reaction) => reaction.hash())).toEqual([reactionAddLike.hash()]);
+      expect(reactions._unsafeUnwrap()).toEqual([reactionAddLike]);
     });
 
     test('succeeds with type Recast', async () => {
       const reactions = await client.getReactionsByFid(fid, ReactionType.Recast);
-      // The underlying buffers are different, so we can't compare full objects
-      expect(reactions._unsafeUnwrap().map((reaction) => reaction.hash())).toEqual([reactionAddRecast.hash()]);
+      expect(reactions._unsafeUnwrap()).toEqual([reactionAddRecast]);
     });
   });
 
@@ -191,23 +189,17 @@ describe('getReactionsByCast', () => {
 
     test('succeeds without type', async () => {
       const reactions = await client.getReactionsByCast(castId);
-      // The underlying buffers are different, so we can't compare full objects
-      expect(reactions._unsafeUnwrap().map((reaction) => reaction.hash())).toEqual([
-        reactionAddLike.hash(),
-        reactionAddRecast.hash(),
-      ]);
+      expect(reactions._unsafeUnwrap()).toEqual([reactionAddLike, reactionAddRecast]);
     });
 
     test('succeeds with type Like', async () => {
       const reactions = await client.getReactionsByCast(castId, ReactionType.Like);
-      // The underlying buffers are different, so we can't compare full objects
-      expect(reactions._unsafeUnwrap().map((reaction) => reaction.hash())).toEqual([reactionAddLike.hash()]);
+      expect(reactions._unsafeUnwrap()).toEqual([reactionAddLike]);
     });
 
     test('succeeds with type Recast', async () => {
       const reactions = await client.getReactionsByCast(castId, ReactionType.Recast);
-      // The underlying buffers are different, so we can't compare full objects
-      expect(reactions._unsafeUnwrap().map((reaction) => reaction.hash())).toEqual([reactionAddRecast.hash()]);
+      expect(reactions._unsafeUnwrap()).toEqual([reactionAddRecast]);
     });
   });
 
