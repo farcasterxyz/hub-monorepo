@@ -459,34 +459,6 @@ class Client {
     });
   }
 
-  // private makeUnaryMessagesByHashesRequest<RequestType, ResponseMessageType extends MessageModel>(
-  //   method: grpc.MethodDefinition<RequestType, MessagesResponse>,
-  //   request: RequestType
-  // ): HubAsyncResult<ResponseMessageType[]> {
-  //   return new Promise((resolve) => {
-  //     this.client.makeUnaryRequest(
-  //       method.path,
-  //       method.requestSerialize,
-  //       method.responseDeserialize,
-  //       request,
-  //       (e: grpc.ServiceError | null, response?: MessagesResponse) => {
-  //         if (e) {
-  //           resolve(err(fromServiceError(e)));
-  //         } else if (response) {
-  //           const messages: ResponseMessageType[] = [];
-  //           for (let i = 0; i < response.messagesLength(); i++) {
-  //             const mb = Message.getRootAsMessage(
-  //               new ByteBuffer(response.messages(i)?.messageBytesArray() ?? new Uint8Array())
-  //             );
-  //             messages.push(new MessageModel(mb) as ResponseMessageType);
-  //           }
-  //           resolve(ok(messages));
-  //         }
-  //       }
-  //     );
-  //   });
-  // }
-
   private makeUnaryMessagesRequest<RequestType, ResponseMessageType extends MessageModel>(
     method: grpc.MethodDefinition<RequestType, rpc_generated.MessagesResponse>,
     request: RequestType
