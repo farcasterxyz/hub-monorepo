@@ -3,12 +3,14 @@ import { IdRegistryEventType } from '~/flatbuffers/generated/id_registry_event_g
 import { CastId, ReactionType, UserDataType, UserId } from '~/flatbuffers/generated/message_generated';
 import { NameRegistryEventType } from '~/flatbuffers/generated/name_registry_event_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
-import MessageModel from '~/flatbuffers/models/messageModel';
+import MessageModel, { FID_BYTES } from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { isSignerAdd, isSignerRemove, isUserDataAdd } from '~/flatbuffers/models/typeguards';
 import * as types from '~/flatbuffers/models/types';
+import { RootPrefix } from '~/flatbuffers/models/types';
 import * as validations from '~/flatbuffers/models/validations';
 import { bytesCompare, toNumber } from '~/flatbuffers/utils/bytes';
+import { SyncId } from '~/network/sync/syncId';
 import RocksDB from '~/storage/db/rocksdb';
 import AmpStore from '~/storage/stores/ampStore';
 import CastStore from '~/storage/stores/castStore';
@@ -161,6 +163,48 @@ class Engine {
         return errAsync(e);
       }
     );
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                             All Messages                                   */
+  /* -------------------------------------------------------------------------- */
+  async forEachMessage(callback: (message: MessageModel) => void): Promise<void> {
+    const allUserPrefix = Buffer.from([RootPrefix.User]);
+
+    for await (const [key, value] of this._db.iteratorByPrefix(allUserPrefix, { keys: true, valueAsBuffer: true })) {
+      if (key.length < 2 + FID_BYTES) {
+        // Not a message key, so we can skip it.
+        continue;
+      }
+
+      // Get the UserMessagePostfix from the key, which is the 1 + 32 bytes from the start
+      const postfix = key.slice(1 + FID_BYTES, 1 + FID_BYTES + 1)[0];
+      if (
+        postfix !== types.UserPostfix.CastMessage &&
+        postfix !== types.UserPostfix.AmpMessage &&
+        postfix !== types.UserPostfix.ReactionMessage &&
+        postfix !== types.UserPostfix.VerificationMessage &&
+        postfix !== types.UserPostfix.SignerMessage &&
+        postfix !== types.UserPostfix.UserDataMessage
+      ) {
+        // Not a message key, so we can skip it.
+        continue;
+      }
+
+      if (!value || value.length <= 20) {
+        // This is a hash and not a message, we need to skip it.
+        continue;
+      }
+
+      callback(MessageModel.from(new Uint8Array(value)));
+    }
+  }
+
+  async getAllMessagesBySyncIds(syncIds: string[]): HubAsyncResult<MessageModel[]> {
+    const hashesBuf = syncIds.map((syncIdHash) => SyncId.pkFromIdString(syncIdHash));
+    const messages = await ResultAsync.fromPromise(MessageModel.getMany(this._db, hashesBuf), (e) => e as HubError);
+
+    return messages;
   }
 
   async getAllCastMessagesByFid(fid: Uint8Array): HubAsyncResult<(types.CastAddModel | types.CastRemoveModel)[]> {
@@ -447,7 +491,7 @@ class Engine {
     if (!isSignerAdd(message) && !isSignerRemove(message)) {
       const signerResult = await ResultAsync.fromPromise(
         this._signerStore.getSignerAdd(message.fid(), message.signer()),
-        () => undefined
+        (e) => e
       );
       if (signerResult.isErr()) {
         return err(new HubError('bad_request.validation_failure', 'invalid signer'));

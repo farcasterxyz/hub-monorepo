@@ -13,11 +13,12 @@ import * as job_generated from '~/flatbuffers/generated/job_generated';
 import * as message_generated from '~/flatbuffers/generated/message_generated';
 import * as name_registry_event_generated from '~/flatbuffers/generated/name_registry_event_generated';
 import MessageModel from '~/flatbuffers/models/messageModel';
-import { KeyPair, VerificationEthAddressClaim } from '~/flatbuffers/models/types';
+import { KeyPair, SignerAddModel, VerificationEthAddressClaim } from '~/flatbuffers/models/types';
 import { numberToLittleEndianBytes } from '~/flatbuffers/utils/bytes';
 import { signMessageHash, signVerificationEthAddressClaim } from '~/flatbuffers/utils/eip712';
 import { toFarcasterTime } from '~/flatbuffers/utils/time';
 import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
+import { HASH_LENGTH, SyncId } from '~/network/sync/syncId';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 
 /* eslint-disable security/detect-object-injection */
@@ -538,6 +539,37 @@ const RevokeSignerJobPayloadFactory = Factory.define<
   );
 });
 
+const SyncIdFactory = Factory.define<undefined, { date: Date; hash: string; fid: Uint8Array }, SyncId>(
+  ({ onCreate, transientParams }) => {
+    onCreate(async () => {
+      const { date, hash, fid } = transientParams;
+
+      const wallet = new Wallet(utils.randomBytes(32));
+      const signer = await generateEd25519KeyPair();
+      const signerAddData = await Factories.SignerAddData.create({
+        body: Factories.SignerBody.build({ signer: Array.from(signer.publicKey) }),
+        fid: Array.from(fid || Factories.FID.build()),
+        timestamp: (date || faker.date.recent()).getTime() / 1000,
+      });
+
+      const hashBytes = Array.from(arrayify(hash || faker.datatype.hexadecimal({ length: HASH_LENGTH })));
+      const signerAdd = new MessageModel(
+        await Factories.Message.create(
+          {
+            hash: hashBytes,
+            data: Array.from(signerAddData.bb?.bytes() ?? []),
+          },
+          { transient: { wallet } }
+        )
+      ) as SignerAddModel;
+
+      return new SyncId(signerAdd);
+    });
+
+    return undefined;
+  }
+);
+
 const Factories = {
   Bytes: BytesFactory,
   FID: FIDFactory,
@@ -571,6 +603,7 @@ const Factories = {
   GossipMessage: GossipMessageFactory,
   GossipContactInfoContent: ContactInfoContentFactory,
   GossipAddressInfo: GossipAddressInfoFactory,
+  SyncId: SyncIdFactory,
   RevokeSignerJobPayload: RevokeSignerJobPayloadFactory,
 };
 

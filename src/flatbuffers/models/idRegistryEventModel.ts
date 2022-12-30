@@ -1,4 +1,4 @@
-import { Builder, ByteBuffer } from 'flatbuffers';
+import { ByteBuffer } from 'flatbuffers';
 import { IdRegistryEvent, IdRegistryEventType } from '~/flatbuffers/generated/id_registry_event_generated';
 import { RootPrefix } from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
@@ -77,10 +77,7 @@ export default class IdRegistryEventModel {
   }
 
   toBytes(): Uint8Array {
-    const builder = new Builder(1);
-    const eventT = this.event.unpack();
-    builder.finish(eventT.pack(builder));
-    return builder.asUint8Array();
+    return this.event.bb?.bytes() || new Uint8Array();
   }
 
   blockNumber(): number {

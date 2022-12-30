@@ -3,6 +3,7 @@ import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { KeyPair, SignerAddModel } from '~/flatbuffers/models/types';
+import SyncEngine from '~/network/sync/syncEngine';
 import Client from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
@@ -20,7 +21,7 @@ let server: Server;
 let client: Client;
 
 beforeAll(async () => {
-  server = new Server(hub, engine);
+  server = new Server(hub, engine, new SyncEngine(engine));
   const port = await server.start();
   client = new Client(addressInfoFromParts('127.0.0.1', port)._unsafeUnwrap());
 });
