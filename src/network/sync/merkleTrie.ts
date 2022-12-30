@@ -41,7 +41,6 @@ class MerkleTrie {
   }
 
   public insert(id: SyncId): boolean {
-    // TODO(aditya): Why should key and value be the same? Just remove the value
     // TODO(aditya): We should insert Uint8Array instead of string
     return this._root.insert(id.toString());
   }
