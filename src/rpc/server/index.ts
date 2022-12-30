@@ -1,8 +1,19 @@
 import grpc from '@grpc/grpc-js';
+import { arrayify } from 'ethers/lib/utils';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import { MessagesResponse, MessagesResponseT } from '~/flatbuffers/generated/rpc_generated';
+import {
+  GetAllSyncIdsByPrefixResponse,
+  GetAllSyncIdsByPrefixResponseT,
+  MessageBytesT,
+  MessagesResponse,
+  MessagesResponseT,
+  TrieNodeMetadataResponse,
+  TrieNodeMetadataResponseT,
+} from '~/flatbuffers/generated/rpc_generated';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { HubInterface } from '~/flatbuffers/models/types';
+import { NodeMetadata } from '~/network/sync/merkleTrie';
+import SyncEngine from '~/network/sync/syncEngine';
 import * as implementations from '~/rpc/server/serviceImplementations';
 import * as definitions from '~/rpc/serviceDefinitions';
 import Engine from '~/storage/engine';
@@ -43,18 +54,103 @@ export const toServiceError = (err: HubError): grpc.ServiceError => {
 };
 
 export const toMessagesResponse = (messages: MessageModel[]): MessagesResponse => {
-  const messagesT = new MessagesResponseT(messages.map((model) => model.message.unpack()));
+  const messagesT = new MessagesResponseT(messages.map((model) => new MessageBytesT(Array.from(model.toBytes()))));
   const builder = new Builder(1);
   builder.finish(messagesT.pack(builder));
   const response = MessagesResponse.getRootAsMessagesResponse(new ByteBuffer(builder.asUint8Array()));
   return response;
 };
 
+export const toSyncIdsResponse = (ids: string[]): GetAllSyncIdsByPrefixResponse => {
+  const idsT = new GetAllSyncIdsByPrefixResponseT(ids);
+  const builder = new Builder(1);
+  builder.finish(idsT.pack(builder));
+  const response = GetAllSyncIdsByPrefixResponse.getRootAsGetAllSyncIdsByPrefixResponse(
+    new ByteBuffer(builder.asUint8Array())
+  );
+  return response;
+};
+
+export const toTrieNodeMetadataResponse = (metadata: NodeMetadata): TrieNodeMetadataResponse => {
+  const childrenTrie = [];
+
+  if (metadata.children) {
+    for (const [, child] of metadata.children) {
+      childrenTrie.push(
+        new TrieNodeMetadataResponseT(
+          Array.from(arrayify(Buffer.from(child.prefix))),
+          BigInt(child.numMessages),
+          Array.from(arrayify(Buffer.from(child.hash))),
+          []
+        )
+      );
+    }
+  }
+
+  const metadataT = new TrieNodeMetadataResponseT(
+    Array.from(arrayify(Buffer.from(metadata.prefix))),
+    BigInt(metadata.numMessages),
+    Array.from(arrayify(Buffer.from(metadata.hash))),
+    childrenTrie
+  );
+  const builder = new Builder(1);
+  builder.finish(metadataT.pack(builder));
+  const response = TrieNodeMetadataResponse.getRootAsTrieNodeMetadataResponse(new ByteBuffer(builder.asUint8Array()));
+  return response;
+};
+
+export const fromNodeMetadataResponse = (response: TrieNodeMetadataResponse): NodeMetadata => {
+  const children = new Map<string, NodeMetadata>();
+  for (let i = 0; i < response.childrenLength(); i++) {
+    const child = response.children(i);
+
+    const prefix = new TextDecoder().decode(child?.prefixArray() ?? new Uint8Array());
+    // Char is the last char of prefix
+    const char = prefix[prefix.length - 1] ?? '';
+
+    children.set(char, {
+      numMessages: Number(child?.numMessages()),
+      prefix,
+      hash: new TextDecoder().decode(child?.hashArray() ?? new Uint8Array()),
+    });
+  }
+
+  return {
+    prefix: new TextDecoder().decode(response.prefixArray() ?? new Uint8Array()),
+    numMessages: Number(response.numMessages()),
+    hash: new TextDecoder().decode(response.hashArray() ?? new Uint8Array()),
+    children,
+  };
+};
+
+export const fromSyncIdsByPrefixResponse = (response: GetAllSyncIdsByPrefixResponse): string[] => {
+  const ids = [];
+  for (let i = 0; i < response.idsLength(); i++) {
+    ids.push(response.ids(i));
+  }
+  return ids;
+};
+
+interface GenericFlatbuffer {
+  bb: ByteBuffer | null;
+}
+
+export const defaultMethod = {
+  requestStream: false,
+  responseStream: false,
+  requestSerialize: (request: GenericFlatbuffer): Buffer => {
+    return Buffer.from(request.bb?.bytes() ?? new Uint8Array());
+  },
+  responseSerialize: (response: GenericFlatbuffer): Buffer => {
+    return Buffer.from(response.bb?.bytes() ?? new Uint8Array());
+  },
+};
+
 class Server {
   private server: grpc.Server;
   private port: number;
 
-  constructor(hub: HubInterface, engine: Engine) {
+  constructor(hub: HubInterface, engine: Engine, syncEngine: SyncEngine) {
     this.port = 0;
     this.server = new grpc.Server();
     this.server.addService(definitions.submitDefinition(), implementations.submitImplementation(hub));
@@ -64,7 +160,7 @@ class Server {
     this.server.addService(definitions.verificationDefinition(), implementations.verificationImplementations(engine));
     this.server.addService(definitions.signerDefinition(), implementations.signerImplementation(engine));
     this.server.addService(definitions.userDataDefinition(), implementations.userDataImplementations(engine));
-    this.server.addService(definitions.syncDefinition(), implementations.syncImplementation(engine));
+    this.server.addService(definitions.syncDefinition(), implementations.syncImplementation(engine, syncEngine));
     this.server.addService(definitions.eventDefinition(), implementations.eventImplementation(engine));
   }
 

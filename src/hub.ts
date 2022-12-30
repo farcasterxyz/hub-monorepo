@@ -29,6 +29,7 @@ import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import { idRegistryEventToLog, logger, messageToLog, nameRegistryEventToLog } from '~/utils/logger';
 import { addressInfoFromGossip, ipFamilyToString, p2pMultiAddrStr } from '~/utils/p2p';
 import { isSignerRemove } from './flatbuffers/models/typeguards';
+import SyncEngine from './network/sync/syncEngine';
 import { RevokeSignerJobQueue, RevokeSignerJobScheduler } from './storage/jobs/revokeSignerJob';
 
 export interface HubOptions {
@@ -96,10 +97,10 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   private rpcServer: Server;
   private contactTimer?: NodeJS.Timer;
   private rocksDB: BinaryRocksDB;
+  private syncEngine: SyncEngine;
+
   private revokeSignerJobQueue: RevokeSignerJobQueue;
   private revokeSignerJobScheduler: RevokeSignerJobScheduler;
-
-  //TODO(aditya): Need a Flatbuffers SyncEngine impl
 
   engine: Engine;
   ethRegistryProvider: EthEventsProvider;
@@ -110,7 +111,9 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     this.rocksDB = new BinaryRocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
     this.gossipNode = new Node();
     this.engine = new Engine(this.rocksDB);
-    this.rpcServer = new Server(this, this.engine);
+    this.syncEngine = new SyncEngine(this.engine);
+
+    this.rpcServer = new Server(this, this.engine, this.syncEngine);
 
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
     this.ethRegistryProvider = EthEventsProvider.makeWithGoerli(

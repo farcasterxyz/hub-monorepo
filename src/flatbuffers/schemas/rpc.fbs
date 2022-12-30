@@ -13,9 +13,12 @@ enum EventType: uint8 {
 }
 
 // Responses
+table MessageBytes {
+  message_bytes: [ubyte] (nested_flatbuffer: "Farcaster.Message", required);
+}
 
 table MessagesResponse {
-  messages: [Message];
+  messages: [MessageBytes];
 }
 
 table FidsResponse {
@@ -26,6 +29,14 @@ table EventResponse {
   type: EventType;
   message: Message;
   contract_event: IdRegistryEvent;
+}
+
+// A partial trie node response
+table TrieNodeMetadataResponse {
+  prefix: [ubyte];
+  num_messages: uint64;
+  hash: [ubyte];
+  children: [TrieNodeMetadataResponse]; 
 }
 
 // Cast Requests
@@ -124,9 +135,24 @@ table GetUserNameRequest {
 }
 
 // Sync Requests
+table SyncIdHash {
+  sync_id_hash: [ubyte] (required);
+}
+
+table GetAllMessagesBySyncIdsRequest {
+  sync_ids: [SyncIdHash] (required);
+}
+
+table GetAllSyncIdsByPrefixResponse {
+  ids: [string] (required);
+}
 
 table GetAllMessagesByFidRequest {
   fid: [ubyte] (required);
+}
+
+table GetTrieNodesByPrefixRequest {
+  prefix: [ubyte] (required);
 }
 
 // Events Requests

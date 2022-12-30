@@ -12,6 +12,98 @@ export enum EventType {
   MergeContractEvent = 3
 }
 
+export class MessageBytes implements flatbuffers.IUnpackableObject<MessageBytesT> {
+  bb: flatbuffers.ByteBuffer|null = null;
+  bb_pos = 0;
+  __init(i:number, bb:flatbuffers.ByteBuffer):MessageBytes {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+}
+
+static getRootAsMessageBytes(bb:flatbuffers.ByteBuffer, obj?:MessageBytes):MessageBytes {
+  return (obj || new MessageBytes()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+static getSizePrefixedRootAsMessageBytes(bb:flatbuffers.ByteBuffer, obj?:MessageBytes):MessageBytes {
+  bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
+  return (obj || new MessageBytes()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+messageBytes(index: number):number|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
+
+messageBytesLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+messageBytesArray():Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+}
+
+static startMessageBytes(builder:flatbuffers.Builder) {
+  builder.startObject(1);
+}
+
+static addMessageBytes(builder:flatbuffers.Builder, messageBytesOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, messageBytesOffset, 0);
+}
+
+static createMessageBytesVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startMessageBytesVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
+}
+
+static endMessageBytes(builder:flatbuffers.Builder):flatbuffers.Offset {
+  const offset = builder.endObject();
+  builder.requiredField(offset, 4) // message_bytes
+  return offset;
+}
+
+static createMessageBytes(builder:flatbuffers.Builder, messageBytesOffset:flatbuffers.Offset):flatbuffers.Offset {
+  MessageBytes.startMessageBytes(builder);
+  MessageBytes.addMessageBytes(builder, messageBytesOffset);
+  return MessageBytes.endMessageBytes(builder);
+}
+
+unpack(): MessageBytesT {
+  return new MessageBytesT(
+    this.bb!.createScalarList<number>(this.messageBytes.bind(this), this.messageBytesLength())
+  );
+}
+
+
+unpackTo(_o: MessageBytesT): void {
+  _o.messageBytes = this.bb!.createScalarList<number>(this.messageBytes.bind(this), this.messageBytesLength());
+}
+}
+
+export class MessageBytesT implements flatbuffers.IGeneratedObject {
+constructor(
+  public messageBytes: (number)[] = []
+){}
+
+
+pack(builder:flatbuffers.Builder): flatbuffers.Offset {
+  const messageBytes = MessageBytes.createMessageBytesVector(builder, this.messageBytes);
+
+  return MessageBytes.createMessageBytes(builder,
+    messageBytes
+  );
+}
+}
+
 export class MessagesResponse implements flatbuffers.IUnpackableObject<MessagesResponseT> {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
@@ -30,9 +122,9 @@ static getSizePrefixedRootAsMessagesResponse(bb:flatbuffers.ByteBuffer, obj?:Mes
   return (obj || new MessagesResponse()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-messages(index: number, obj?:Message):Message|null {
+messages(index: number, obj?:MessageBytes):MessageBytes|null {
   const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? (obj || new Message()).__init(this.bb!.__indirect(this.bb!.__vector(this.bb_pos + offset) + index * 4), this.bb!) : null;
+  return offset ? (obj || new MessageBytes()).__init(this.bb!.__indirect(this.bb!.__vector(this.bb_pos + offset) + index * 4), this.bb!) : null;
 }
 
 messagesLength():number {
@@ -73,19 +165,19 @@ static createMessagesResponse(builder:flatbuffers.Builder, messagesOffset:flatbu
 
 unpack(): MessagesResponseT {
   return new MessagesResponseT(
-    this.bb!.createObjList<Message, MessageT>(this.messages.bind(this), this.messagesLength())
+    this.bb!.createObjList<MessageBytes, MessageBytesT>(this.messages.bind(this), this.messagesLength())
   );
 }
 
 
 unpackTo(_o: MessagesResponseT): void {
-  _o.messages = this.bb!.createObjList<Message, MessageT>(this.messages.bind(this), this.messagesLength());
+  _o.messages = this.bb!.createObjList<MessageBytes, MessageBytesT>(this.messages.bind(this), this.messagesLength());
 }
 }
 
 export class MessagesResponseT implements flatbuffers.IGeneratedObject {
 constructor(
-  public messages: (MessageT)[] = []
+  public messages: (MessageBytesT)[] = []
 ){}
 
 
@@ -273,6 +365,180 @@ pack(builder:flatbuffers.Builder): flatbuffers.Offset {
   EventResponse.addContractEvent(builder, contractEvent);
 
   return EventResponse.endEventResponse(builder);
+}
+}
+
+export class TrieNodeMetadataResponse implements flatbuffers.IUnpackableObject<TrieNodeMetadataResponseT> {
+  bb: flatbuffers.ByteBuffer|null = null;
+  bb_pos = 0;
+  __init(i:number, bb:flatbuffers.ByteBuffer):TrieNodeMetadataResponse {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+}
+
+static getRootAsTrieNodeMetadataResponse(bb:flatbuffers.ByteBuffer, obj?:TrieNodeMetadataResponse):TrieNodeMetadataResponse {
+  return (obj || new TrieNodeMetadataResponse()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+static getSizePrefixedRootAsTrieNodeMetadataResponse(bb:flatbuffers.ByteBuffer, obj?:TrieNodeMetadataResponse):TrieNodeMetadataResponse {
+  bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
+  return (obj || new TrieNodeMetadataResponse()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+prefix(index: number):number|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
+
+prefixLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+prefixArray():Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+}
+
+numMessages():bigint {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.readUint64(this.bb_pos + offset) : BigInt('0');
+}
+
+hash(index: number):number|null {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
+
+hashLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+hashArray():Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+}
+
+children(index: number, obj?:TrieNodeMetadataResponse):TrieNodeMetadataResponse|null {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? (obj || new TrieNodeMetadataResponse()).__init(this.bb!.__indirect(this.bb!.__vector(this.bb_pos + offset) + index * 4), this.bb!) : null;
+}
+
+childrenLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+static startTrieNodeMetadataResponse(builder:flatbuffers.Builder) {
+  builder.startObject(4);
+}
+
+static addPrefix(builder:flatbuffers.Builder, prefixOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, prefixOffset, 0);
+}
+
+static createPrefixVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startPrefixVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
+}
+
+static addNumMessages(builder:flatbuffers.Builder, numMessages:bigint) {
+  builder.addFieldInt64(1, numMessages, BigInt('0'));
+}
+
+static addHash(builder:flatbuffers.Builder, hashOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(2, hashOffset, 0);
+}
+
+static createHashVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startHashVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
+}
+
+static addChildren(builder:flatbuffers.Builder, childrenOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(3, childrenOffset, 0);
+}
+
+static createChildrenVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
+  builder.startVector(4, data.length, 4);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addOffset(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startChildrenVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(4, numElems, 4);
+}
+
+static endTrieNodeMetadataResponse(builder:flatbuffers.Builder):flatbuffers.Offset {
+  const offset = builder.endObject();
+  return offset;
+}
+
+static createTrieNodeMetadataResponse(builder:flatbuffers.Builder, prefixOffset:flatbuffers.Offset, numMessages:bigint, hashOffset:flatbuffers.Offset, childrenOffset:flatbuffers.Offset):flatbuffers.Offset {
+  TrieNodeMetadataResponse.startTrieNodeMetadataResponse(builder);
+  TrieNodeMetadataResponse.addPrefix(builder, prefixOffset);
+  TrieNodeMetadataResponse.addNumMessages(builder, numMessages);
+  TrieNodeMetadataResponse.addHash(builder, hashOffset);
+  TrieNodeMetadataResponse.addChildren(builder, childrenOffset);
+  return TrieNodeMetadataResponse.endTrieNodeMetadataResponse(builder);
+}
+
+unpack(): TrieNodeMetadataResponseT {
+  return new TrieNodeMetadataResponseT(
+    this.bb!.createScalarList<number>(this.prefix.bind(this), this.prefixLength()),
+    this.numMessages(),
+    this.bb!.createScalarList<number>(this.hash.bind(this), this.hashLength()),
+    this.bb!.createObjList<TrieNodeMetadataResponse, TrieNodeMetadataResponseT>(this.children.bind(this), this.childrenLength())
+  );
+}
+
+
+unpackTo(_o: TrieNodeMetadataResponseT): void {
+  _o.prefix = this.bb!.createScalarList<number>(this.prefix.bind(this), this.prefixLength());
+  _o.numMessages = this.numMessages();
+  _o.hash = this.bb!.createScalarList<number>(this.hash.bind(this), this.hashLength());
+  _o.children = this.bb!.createObjList<TrieNodeMetadataResponse, TrieNodeMetadataResponseT>(this.children.bind(this), this.childrenLength());
+}
+}
+
+export class TrieNodeMetadataResponseT implements flatbuffers.IGeneratedObject {
+constructor(
+  public prefix: (number)[] = [],
+  public numMessages: bigint = BigInt('0'),
+  public hash: (number)[] = [],
+  public children: (TrieNodeMetadataResponseT)[] = []
+){}
+
+
+pack(builder:flatbuffers.Builder): flatbuffers.Offset {
+  const prefix = TrieNodeMetadataResponse.createPrefixVector(builder, this.prefix);
+  const hash = TrieNodeMetadataResponse.createHashVector(builder, this.hash);
+  const children = TrieNodeMetadataResponse.createChildrenVector(builder, builder.createObjectOffsetList(this.children));
+
+  return TrieNodeMetadataResponse.createTrieNodeMetadataResponse(builder,
+    prefix,
+    this.numMessages,
+    hash,
+    children
+  );
 }
 }
 
@@ -2086,6 +2352,274 @@ pack(builder:flatbuffers.Builder): flatbuffers.Offset {
 }
 }
 
+export class SyncIdHash implements flatbuffers.IUnpackableObject<SyncIdHashT> {
+  bb: flatbuffers.ByteBuffer|null = null;
+  bb_pos = 0;
+  __init(i:number, bb:flatbuffers.ByteBuffer):SyncIdHash {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+}
+
+static getRootAsSyncIdHash(bb:flatbuffers.ByteBuffer, obj?:SyncIdHash):SyncIdHash {
+  return (obj || new SyncIdHash()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+static getSizePrefixedRootAsSyncIdHash(bb:flatbuffers.ByteBuffer, obj?:SyncIdHash):SyncIdHash {
+  bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
+  return (obj || new SyncIdHash()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+syncIdHash(index: number):number|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
+
+syncIdHashLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+syncIdHashArray():Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+}
+
+static startSyncIdHash(builder:flatbuffers.Builder) {
+  builder.startObject(1);
+}
+
+static addSyncIdHash(builder:flatbuffers.Builder, syncIdHashOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, syncIdHashOffset, 0);
+}
+
+static createSyncIdHashVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startSyncIdHashVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
+}
+
+static endSyncIdHash(builder:flatbuffers.Builder):flatbuffers.Offset {
+  const offset = builder.endObject();
+  builder.requiredField(offset, 4) // sync_id_hash
+  return offset;
+}
+
+static createSyncIdHash(builder:flatbuffers.Builder, syncIdHashOffset:flatbuffers.Offset):flatbuffers.Offset {
+  SyncIdHash.startSyncIdHash(builder);
+  SyncIdHash.addSyncIdHash(builder, syncIdHashOffset);
+  return SyncIdHash.endSyncIdHash(builder);
+}
+
+unpack(): SyncIdHashT {
+  return new SyncIdHashT(
+    this.bb!.createScalarList<number>(this.syncIdHash.bind(this), this.syncIdHashLength())
+  );
+}
+
+
+unpackTo(_o: SyncIdHashT): void {
+  _o.syncIdHash = this.bb!.createScalarList<number>(this.syncIdHash.bind(this), this.syncIdHashLength());
+}
+}
+
+export class SyncIdHashT implements flatbuffers.IGeneratedObject {
+constructor(
+  public syncIdHash: (number)[] = []
+){}
+
+
+pack(builder:flatbuffers.Builder): flatbuffers.Offset {
+  const syncIdHash = SyncIdHash.createSyncIdHashVector(builder, this.syncIdHash);
+
+  return SyncIdHash.createSyncIdHash(builder,
+    syncIdHash
+  );
+}
+}
+
+export class GetAllMessagesBySyncIdsRequest implements flatbuffers.IUnpackableObject<GetAllMessagesBySyncIdsRequestT> {
+  bb: flatbuffers.ByteBuffer|null = null;
+  bb_pos = 0;
+  __init(i:number, bb:flatbuffers.ByteBuffer):GetAllMessagesBySyncIdsRequest {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+}
+
+static getRootAsGetAllMessagesBySyncIdsRequest(bb:flatbuffers.ByteBuffer, obj?:GetAllMessagesBySyncIdsRequest):GetAllMessagesBySyncIdsRequest {
+  return (obj || new GetAllMessagesBySyncIdsRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+static getSizePrefixedRootAsGetAllMessagesBySyncIdsRequest(bb:flatbuffers.ByteBuffer, obj?:GetAllMessagesBySyncIdsRequest):GetAllMessagesBySyncIdsRequest {
+  bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
+  return (obj || new GetAllMessagesBySyncIdsRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+syncIds(index: number, obj?:SyncIdHash):SyncIdHash|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? (obj || new SyncIdHash()).__init(this.bb!.__indirect(this.bb!.__vector(this.bb_pos + offset) + index * 4), this.bb!) : null;
+}
+
+syncIdsLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+static startGetAllMessagesBySyncIdsRequest(builder:flatbuffers.Builder) {
+  builder.startObject(1);
+}
+
+static addSyncIds(builder:flatbuffers.Builder, syncIdsOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, syncIdsOffset, 0);
+}
+
+static createSyncIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
+  builder.startVector(4, data.length, 4);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addOffset(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startSyncIdsVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(4, numElems, 4);
+}
+
+static endGetAllMessagesBySyncIdsRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
+  const offset = builder.endObject();
+  builder.requiredField(offset, 4) // sync_ids
+  return offset;
+}
+
+static createGetAllMessagesBySyncIdsRequest(builder:flatbuffers.Builder, syncIdsOffset:flatbuffers.Offset):flatbuffers.Offset {
+  GetAllMessagesBySyncIdsRequest.startGetAllMessagesBySyncIdsRequest(builder);
+  GetAllMessagesBySyncIdsRequest.addSyncIds(builder, syncIdsOffset);
+  return GetAllMessagesBySyncIdsRequest.endGetAllMessagesBySyncIdsRequest(builder);
+}
+
+unpack(): GetAllMessagesBySyncIdsRequestT {
+  return new GetAllMessagesBySyncIdsRequestT(
+    this.bb!.createObjList<SyncIdHash, SyncIdHashT>(this.syncIds.bind(this), this.syncIdsLength())
+  );
+}
+
+
+unpackTo(_o: GetAllMessagesBySyncIdsRequestT): void {
+  _o.syncIds = this.bb!.createObjList<SyncIdHash, SyncIdHashT>(this.syncIds.bind(this), this.syncIdsLength());
+}
+}
+
+export class GetAllMessagesBySyncIdsRequestT implements flatbuffers.IGeneratedObject {
+constructor(
+  public syncIds: (SyncIdHashT)[] = []
+){}
+
+
+pack(builder:flatbuffers.Builder): flatbuffers.Offset {
+  const syncIds = GetAllMessagesBySyncIdsRequest.createSyncIdsVector(builder, builder.createObjectOffsetList(this.syncIds));
+
+  return GetAllMessagesBySyncIdsRequest.createGetAllMessagesBySyncIdsRequest(builder,
+    syncIds
+  );
+}
+}
+
+export class GetAllSyncIdsByPrefixResponse implements flatbuffers.IUnpackableObject<GetAllSyncIdsByPrefixResponseT> {
+  bb: flatbuffers.ByteBuffer|null = null;
+  bb_pos = 0;
+  __init(i:number, bb:flatbuffers.ByteBuffer):GetAllSyncIdsByPrefixResponse {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+}
+
+static getRootAsGetAllSyncIdsByPrefixResponse(bb:flatbuffers.ByteBuffer, obj?:GetAllSyncIdsByPrefixResponse):GetAllSyncIdsByPrefixResponse {
+  return (obj || new GetAllSyncIdsByPrefixResponse()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+static getSizePrefixedRootAsGetAllSyncIdsByPrefixResponse(bb:flatbuffers.ByteBuffer, obj?:GetAllSyncIdsByPrefixResponse):GetAllSyncIdsByPrefixResponse {
+  bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
+  return (obj || new GetAllSyncIdsByPrefixResponse()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+ids(index: number):string
+ids(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
+ids(index: number,optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
+}
+
+idsLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+static startGetAllSyncIdsByPrefixResponse(builder:flatbuffers.Builder) {
+  builder.startObject(1);
+}
+
+static addIds(builder:flatbuffers.Builder, idsOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, idsOffset, 0);
+}
+
+static createIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
+  builder.startVector(4, data.length, 4);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addOffset(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startIdsVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(4, numElems, 4);
+}
+
+static endGetAllSyncIdsByPrefixResponse(builder:flatbuffers.Builder):flatbuffers.Offset {
+  const offset = builder.endObject();
+  builder.requiredField(offset, 4) // ids
+  return offset;
+}
+
+static createGetAllSyncIdsByPrefixResponse(builder:flatbuffers.Builder, idsOffset:flatbuffers.Offset):flatbuffers.Offset {
+  GetAllSyncIdsByPrefixResponse.startGetAllSyncIdsByPrefixResponse(builder);
+  GetAllSyncIdsByPrefixResponse.addIds(builder, idsOffset);
+  return GetAllSyncIdsByPrefixResponse.endGetAllSyncIdsByPrefixResponse(builder);
+}
+
+unpack(): GetAllSyncIdsByPrefixResponseT {
+  return new GetAllSyncIdsByPrefixResponseT(
+    this.bb!.createScalarList<string>(this.ids.bind(this), this.idsLength())
+  );
+}
+
+
+unpackTo(_o: GetAllSyncIdsByPrefixResponseT): void {
+  _o.ids = this.bb!.createScalarList<string>(this.ids.bind(this), this.idsLength());
+}
+}
+
+export class GetAllSyncIdsByPrefixResponseT implements flatbuffers.IGeneratedObject {
+constructor(
+  public ids: (string)[] = []
+){}
+
+
+pack(builder:flatbuffers.Builder): flatbuffers.Offset {
+  const ids = GetAllSyncIdsByPrefixResponse.createIdsVector(builder, builder.createObjectOffsetList(this.ids));
+
+  return GetAllSyncIdsByPrefixResponse.createGetAllSyncIdsByPrefixResponse(builder,
+    ids
+  );
+}
+}
+
 export class GetAllMessagesByFidRequest implements flatbuffers.IUnpackableObject<GetAllMessagesByFidRequestT> {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
@@ -2174,6 +2708,98 @@ pack(builder:flatbuffers.Builder): flatbuffers.Offset {
 
   return GetAllMessagesByFidRequest.createGetAllMessagesByFidRequest(builder,
     fid
+  );
+}
+}
+
+export class GetTrieNodesByPrefixRequest implements flatbuffers.IUnpackableObject<GetTrieNodesByPrefixRequestT> {
+  bb: flatbuffers.ByteBuffer|null = null;
+  bb_pos = 0;
+  __init(i:number, bb:flatbuffers.ByteBuffer):GetTrieNodesByPrefixRequest {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+}
+
+static getRootAsGetTrieNodesByPrefixRequest(bb:flatbuffers.ByteBuffer, obj?:GetTrieNodesByPrefixRequest):GetTrieNodesByPrefixRequest {
+  return (obj || new GetTrieNodesByPrefixRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+static getSizePrefixedRootAsGetTrieNodesByPrefixRequest(bb:flatbuffers.ByteBuffer, obj?:GetTrieNodesByPrefixRequest):GetTrieNodesByPrefixRequest {
+  bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
+  return (obj || new GetTrieNodesByPrefixRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+prefix(index: number):number|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
+
+prefixLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+prefixArray():Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+}
+
+static startGetTrieNodesByPrefixRequest(builder:flatbuffers.Builder) {
+  builder.startObject(1);
+}
+
+static addPrefix(builder:flatbuffers.Builder, prefixOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, prefixOffset, 0);
+}
+
+static createPrefixVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startPrefixVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
+}
+
+static endGetTrieNodesByPrefixRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
+  const offset = builder.endObject();
+  builder.requiredField(offset, 4) // prefix
+  return offset;
+}
+
+static createGetTrieNodesByPrefixRequest(builder:flatbuffers.Builder, prefixOffset:flatbuffers.Offset):flatbuffers.Offset {
+  GetTrieNodesByPrefixRequest.startGetTrieNodesByPrefixRequest(builder);
+  GetTrieNodesByPrefixRequest.addPrefix(builder, prefixOffset);
+  return GetTrieNodesByPrefixRequest.endGetTrieNodesByPrefixRequest(builder);
+}
+
+unpack(): GetTrieNodesByPrefixRequestT {
+  return new GetTrieNodesByPrefixRequestT(
+    this.bb!.createScalarList<number>(this.prefix.bind(this), this.prefixLength())
+  );
+}
+
+
+unpackTo(_o: GetTrieNodesByPrefixRequestT): void {
+  _o.prefix = this.bb!.createScalarList<number>(this.prefix.bind(this), this.prefixLength());
+}
+}
+
+export class GetTrieNodesByPrefixRequestT implements flatbuffers.IGeneratedObject {
+constructor(
+  public prefix: (number)[] = []
+){}
+
+
+pack(builder:flatbuffers.Builder): flatbuffers.Offset {
+  const prefix = GetTrieNodesByPrefixRequest.createPrefixVector(builder, this.prefix);
+
+  return GetTrieNodesByPrefixRequest.createGetTrieNodesByPrefixRequest(builder,
+    prefix
   );
 }
 }

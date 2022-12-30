@@ -9,6 +9,7 @@ import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { eventCompare } from '~/utils/contractEvent';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
+import { logger } from '~/utils/logger';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 
@@ -103,7 +104,10 @@ class SignerStore {
    * @returns the SignerAdd Model if it exists, throws Error otherwise
    */
   async getSignerAdd(fid: Uint8Array, signerPubKey: Uint8Array): Promise<types.SignerAddModel> {
+    logger.info(`Getting signer add for fid ${fid} and signer ${Buffer.from(signerPubKey).toString('hex')}...`);
     const messageTsHash = await this._db.get(SignerStore.signerAddsKey(fid, signerPubKey));
+    logger.info(`...: ${messageTsHash.toString('hex')}`);
+
     return MessageModel.get<types.SignerAddModel>(this._db, fid, types.UserPostfix.SignerMessage, messageTsHash);
   }
 
@@ -433,6 +437,8 @@ class SignerStore {
   private putSignerAddTransaction(txn: Transaction, message: types.SignerAddModel): Transaction {
     // Put message and index by signer
     txn = MessageModel.putTransaction(txn, message);
+
+    // logger.info(`SignerAdd added message tsHash: ${Buffer.from(message.tsHash()).toString("hex")} for FID: ${message.fid()} and signer: ${Buffer.from(message.body().signerArray() ?? new Uint8Array()).toString("hex")}`);
 
     // Put signerAdds index
     txn = txn.put(

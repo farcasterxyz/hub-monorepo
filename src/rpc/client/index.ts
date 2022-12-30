@@ -1,4 +1,5 @@
 import grpc, { ClientReadableStream, Metadata, MetadataValue } from '@grpc/grpc-js';
+import { arrayify } from 'ethers/lib/utils';
 import { ByteBuffer } from 'flatbuffers';
 import { AddressInfo } from 'net';
 import { err, ok } from 'neverthrow';
@@ -6,15 +7,23 @@ import { IdRegistryEvent } from '~/flatbuffers/generated/id_registry_event_gener
 import { CastId, Message, ReactionType, UserDataType, UserId } from '~/flatbuffers/generated/message_generated';
 import { NameRegistryEvent } from '~/flatbuffers/generated/name_registry_event_generated';
 import * as rpc_generated from '~/flatbuffers/generated/rpc_generated';
+import {
+  GetAllSyncIdsByPrefixResponse,
+  MessagesResponse,
+  TrieNodeMetadataResponse,
+} from '~/flatbuffers/generated/rpc_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import * as FBTypes from '~/flatbuffers/models/types';
+import { NodeMetadata } from '~/network/sync/merkleTrie';
 import * as requests from '~/rpc/client/serviceRequests';
 import * as definitions from '~/rpc/serviceDefinitions';
 import { HubAsyncResult, HubError, HubErrorCode } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
 import { addressInfoToString, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
+import { fromNodeMetadataResponse, fromSyncIdsByPrefixResponse } from '../server';
+import { createAllMessagesByHashesRequest, createByPrefixRequest } from '../server/serviceImplementations';
 
 const fromServiceError = (err: grpc.ServiceError): HubError => {
   return new HubError(err.metadata.get('errCode')[0] as HubErrorCode, err.details);
@@ -292,6 +301,27 @@ class Client {
     );
   }
 
+  async getSyncMetadataByPrefix(prefix: string): HubAsyncResult<NodeMetadata> {
+    return this.makeUnarySyncNodeMetadataRequest(
+      definitions.syncDefinition().getSyncMetadataByPrefix,
+      createByPrefixRequest(arrayify(Buffer.from(prefix)))
+    );
+  }
+
+  async getAllMessagesBySyncIds(hashes: Uint8Array[]): HubAsyncResult<MessageModel[]> {
+    return this.makeUnaryMessagesByHashesRequest(
+      definitions.syncDefinition().getAllMessagesBySyncIds,
+      createAllMessagesByHashesRequest(hashes)
+    );
+  }
+
+  async getSyncIdsByPrefix(prefix: string): HubAsyncResult<string[]> {
+    return this.makeUnarySyncIdsByPrefixRequest(
+      definitions.syncDefinition().getAllSyncIdsByPrefix,
+      createByPrefixRequest(arrayify(Buffer.from(prefix)))
+    );
+  }
+
   /* -------------------------------------------------------------------------- */
   /*                                  Event Methods                             */
   /* -------------------------------------------------------------------------- */
@@ -327,6 +357,48 @@ class Client {
   /* -------------------------------------------------------------------------- */
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
+
+  private makeUnarySyncNodeMetadataRequest<RequestType>(
+    method: grpc.MethodDefinition<RequestType, TrieNodeMetadataResponse>,
+    request: RequestType
+  ): HubAsyncResult<NodeMetadata> {
+    return new Promise((resolve) => {
+      this.client.makeUnaryRequest(
+        method.path,
+        method.requestSerialize,
+        method.responseDeserialize,
+        request,
+        (e: grpc.ServiceError | null, response?: TrieNodeMetadataResponse) => {
+          if (e) {
+            resolve(err(fromServiceError(e)));
+          } else if (response) {
+            resolve(ok(fromNodeMetadataResponse(response)));
+          }
+        }
+      );
+    });
+  }
+
+  private makeUnarySyncIdsByPrefixRequest<RequestType>(
+    method: grpc.MethodDefinition<RequestType, GetAllSyncIdsByPrefixResponse>,
+    request: RequestType
+  ): HubAsyncResult<string[]> {
+    return new Promise((resolve) => {
+      this.client.makeUnaryRequest(
+        method.path,
+        method.requestSerialize,
+        method.responseDeserialize,
+        request,
+        (e: grpc.ServiceError | null, response?: GetAllSyncIdsByPrefixResponse) => {
+          if (e) {
+            resolve(err(fromServiceError(e)));
+          } else if (response) {
+            resolve(ok(fromSyncIdsByPrefixResponse(response)));
+          }
+        }
+      );
+    });
+  }
 
   private makeUnaryIdRegistryEventRequest<RequestType>(
     method: grpc.MethodDefinition<RequestType, IdRegistryEvent>,
@@ -391,6 +463,34 @@ class Client {
     });
   }
 
+  private makeUnaryMessagesByHashesRequest<RequestType, ResponseMessageType extends MessageModel>(
+    method: grpc.MethodDefinition<RequestType, MessagesResponse>,
+    request: RequestType
+  ): HubAsyncResult<ResponseMessageType[]> {
+    return new Promise((resolve) => {
+      this.client.makeUnaryRequest(
+        method.path,
+        method.requestSerialize,
+        method.responseDeserialize,
+        request,
+        (e: grpc.ServiceError | null, response?: MessagesResponse) => {
+          if (e) {
+            resolve(err(fromServiceError(e)));
+          } else if (response) {
+            const messages: ResponseMessageType[] = [];
+            for (let i = 0; i < response.messagesLength(); i++) {
+              const mb = Message.getRootAsMessage(
+                new ByteBuffer(response.messages(i)?.messageBytesArray() ?? new Uint8Array())
+              );
+              messages.push(new MessageModel(mb) as ResponseMessageType);
+            }
+            resolve(ok(messages));
+          }
+        }
+      );
+    });
+  }
+
   private makeUnaryMessagesRequest<RequestType, ResponseMessageType extends MessageModel>(
     method: grpc.MethodDefinition<RequestType, rpc_generated.MessagesResponse>,
     request: RequestType
@@ -407,7 +507,10 @@ class Client {
           } else if (response) {
             const messages: ResponseMessageType[] = [];
             for (let i = 0; i < response.messagesLength(); i++) {
-              messages.push(new MessageModel(response.messages(i) ?? new Message()) as ResponseMessageType);
+              const mb = Message.getRootAsMessage(
+                new ByteBuffer(response.messages(i)?.messageBytesArray() ?? new Uint8Array())
+              );
+              messages.push(new MessageModel(mb) as ResponseMessageType);
             }
             resolve(ok(messages));
           }

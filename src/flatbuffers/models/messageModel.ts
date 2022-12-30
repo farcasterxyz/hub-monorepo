@@ -1,4 +1,4 @@
-import { Builder, ByteBuffer } from 'flatbuffers';
+import { ByteBuffer } from 'flatbuffers';
 import AbstractRocksDB from 'rocksdb';
 import * as message_generated from '~/flatbuffers/generated/message_generated';
 import { RootPrefix, UserMessagePostfix, UserPostfix } from '~/flatbuffers/models/types';
@@ -222,10 +222,7 @@ export default class MessageModel {
   }
 
   dataBytes(): Uint8Array {
-    const builder = new Builder(1);
-    const dataT = this.data.unpack();
-    builder.finish(dataT.pack(builder));
-    return builder.asUint8Array();
+    return this.data.bb?.bytes() ?? new Uint8Array();
   }
 
   primaryKey(): Buffer {
@@ -241,10 +238,7 @@ export default class MessageModel {
   }
 
   toBytes(): Uint8Array {
-    const builder = new Builder(1);
-    const messageT = this.message.unpack();
-    builder.finish(messageT.pack(builder));
-    return builder.asUint8Array();
+    return this.message.bb?.bytes() ?? new Uint8Array();
   }
 
   tsHash(): Uint8Array {
