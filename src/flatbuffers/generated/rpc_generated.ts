@@ -2,14 +2,14 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import {IdRegistryEvent as IdRegistryEvent, IdRegistryEventT as IdRegistryEventT} from './id_registry_event_generated.js';
-import {CastId as CastId, CastIdT as CastIdT, Message as Message, MessageT as MessageT, ReactionType as ReactionType, UserDataType as UserDataType, UserId as UserId, UserIdT as UserIdT} from './message_generated.js';
+import {CastId as CastId, CastIdT as CastIdT, ReactionType as ReactionType, UserDataType as UserDataType, UserId as UserId, UserIdT as UserIdT} from './message_generated.js';
 
 export enum EventType {
   MergeMessage = 0,
   PruneMessage = 1,
   RevokeMessage = 2,
-  MergeContractEvent = 3
+  MergeIdRegistryEvent = 3,
+  MergeNameRegistryEvent = 4
 }
 
 export class MessageBytes implements flatbuffers.IUnpackableObject<MessageBytesT> {
@@ -299,30 +299,43 @@ type():EventType {
   return offset ? this.bb!.readUint8(this.bb_pos + offset) : EventType.MergeMessage;
 }
 
-message(obj?:Message):Message|null {
+bytes(index: number):number|null {
   const offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? (obj || new Message()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
+  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
 }
 
-contractEvent(obj?:IdRegistryEvent):IdRegistryEvent|null {
-  const offset = this.bb!.__offset(this.bb_pos, 8);
-  return offset ? (obj || new IdRegistryEvent()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
+bytesLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+bytesArray():Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
 static startEventResponse(builder:flatbuffers.Builder) {
-  builder.startObject(3);
+  builder.startObject(2);
 }
 
 static addType(builder:flatbuffers.Builder, type:EventType) {
   builder.addFieldInt8(0, type, EventType.MergeMessage);
 }
 
-static addMessage(builder:flatbuffers.Builder, messageOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, messageOffset, 0);
+static addBytes(builder:flatbuffers.Builder, bytesOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, bytesOffset, 0);
 }
 
-static addContractEvent(builder:flatbuffers.Builder, contractEventOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(2, contractEventOffset, 0);
+static createBytesVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startBytesVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
 }
 
 static endEventResponse(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -330,41 +343,41 @@ static endEventResponse(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
+static createEventResponse(builder:flatbuffers.Builder, type:EventType, bytesOffset:flatbuffers.Offset):flatbuffers.Offset {
+  EventResponse.startEventResponse(builder);
+  EventResponse.addType(builder, type);
+  EventResponse.addBytes(builder, bytesOffset);
+  return EventResponse.endEventResponse(builder);
+}
 
 unpack(): EventResponseT {
   return new EventResponseT(
     this.type(),
-    (this.message() !== null ? this.message()!.unpack() : null),
-    (this.contractEvent() !== null ? this.contractEvent()!.unpack() : null)
+    this.bb!.createScalarList<number>(this.bytes.bind(this), this.bytesLength())
   );
 }
 
 
 unpackTo(_o: EventResponseT): void {
   _o.type = this.type();
-  _o.message = (this.message() !== null ? this.message()!.unpack() : null);
-  _o.contractEvent = (this.contractEvent() !== null ? this.contractEvent()!.unpack() : null);
+  _o.bytes = this.bb!.createScalarList<number>(this.bytes.bind(this), this.bytesLength());
 }
 }
 
 export class EventResponseT implements flatbuffers.IGeneratedObject {
 constructor(
   public type: EventType = EventType.MergeMessage,
-  public message: MessageT|null = null,
-  public contractEvent: IdRegistryEventT|null = null
+  public bytes: (number)[] = []
 ){}
 
 
 pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const message = (this.message !== null ? this.message!.pack(builder) : 0);
-  const contractEvent = (this.contractEvent !== null ? this.contractEvent!.pack(builder) : 0);
+  const bytes = EventResponse.createBytesVector(builder, this.bytes);
 
-  EventResponse.startEventResponse(builder);
-  EventResponse.addType(builder, this.type);
-  EventResponse.addMessage(builder, message);
-  EventResponse.addContractEvent(builder, contractEvent);
-
-  return EventResponse.endEventResponse(builder);
+  return EventResponse.createEventResponse(builder,
+    this.type,
+    bytes
+  );
 }
 }
 

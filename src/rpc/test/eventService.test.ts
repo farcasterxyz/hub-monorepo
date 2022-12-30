@@ -4,6 +4,7 @@ import Factories from '~/flatbuffers/factories';
 import { EventResponse, EventType } from '~/flatbuffers/generated/rpc_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
+import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { CastAddModel, KeyPair, SignerAddModel } from '~/flatbuffers/models/types';
 import SyncEngine from '~/network/sync/syncEngine';
 import Client from '~/rpc/client';
@@ -66,13 +67,23 @@ beforeAll(async () => {
 
 describe('subscribe', () => {
   let stream: ClientReadableStream<EventResponse>;
-  let events: EventResponse[];
+  let events: [EventType, MessageModel | IdRegistryEventModel | NameRegistryEventModel][];
 
   beforeEach(async () => {
     stream = (await client.subscribe())._unsafeUnwrap();
     events = [];
     stream.on('data', (response: EventResponse) => {
-      events.push(response);
+      if (
+        response.type() === EventType.MergeMessage ||
+        response.type() === EventType.PruneMessage ||
+        response.type() === EventType.RevokeMessage
+      ) {
+        events.push([response.type(), MessageModel.from(response.bytesArray() ?? new Uint8Array())]);
+      } else if (response.type() === EventType.MergeIdRegistryEvent) {
+        events.push([response.type(), IdRegistryEventModel.from(response.bytesArray() ?? new Uint8Array())]);
+      } else if (response.type() === EventType.MergeNameRegistryEvent) {
+        events.push([response.type(), NameRegistryEventModel.from(response.bytesArray() ?? new Uint8Array())]);
+      }
     });
   });
 
@@ -85,10 +96,10 @@ describe('subscribe', () => {
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(castAdd);
     await sleep(1_000); // Wait for server to send events over stream
-    expect(events.map((e) => e.type())).toEqual([
-      EventType.MergeContractEvent,
-      EventType.MergeMessage,
-      EventType.MergeMessage,
+    expect(events).toEqual([
+      [EventType.MergeIdRegistryEvent, custodyEvent],
+      [EventType.MergeMessage, signerAdd],
+      [EventType.MergeMessage, castAdd],
     ]);
   });
 });
