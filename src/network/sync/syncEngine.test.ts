@@ -2,9 +2,10 @@ import { utils, Wallet } from 'ethers';
 import { ok } from 'neverthrow';
 import { anyString, instance, mock, when } from 'ts-mockito';
 import Factories from '~/flatbuffers/factories';
+import { MessageType } from '~/flatbuffers/generated/message_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
-import { CastAddModel, KeyPair, SignerAddModel } from '~/flatbuffers/models/types';
+import { CastAddModel, CastRemoveModel, KeyPair, SignerAddModel } from '~/flatbuffers/models/types';
 import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';
 import Client from '~/rpc/client';
@@ -84,7 +85,7 @@ describe('SyncEngine', () => {
 
     // Two messages (signerAdd + castAdd) was added to the trie
     expect(syncEngine.trie.items - existingItems).toEqual(2);
-    expect(syncEngine.trie.get(new SyncId(castAdd))).toEqual(new SyncId(castAdd).idString());
+    expect(syncEngine.trie.exists(new SyncId(castAdd))).toBeTruthy();
   });
 
   test('trie is not updated on merge failure', async () => {
@@ -95,36 +96,39 @@ describe('SyncEngine', () => {
 
     expect(result.isErr()).toBeTruthy();
     expect(syncEngine.trie.items).toEqual(0);
-    expect(syncEngine.trie.get(new SyncId(castAdd))).toBeFalsy();
+    expect(syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
   });
 
-  // test('trie is updated when a message is removed', async () => {
-  //   await engine.mergeIdRegistryEvent(custodyEvent);
-  //   await engine.mergeMessage(signerAdd);
-  //   let result = await engine.mergeMessage(castAdd);
-  //   expect(result.isOk()).toBeTruthy();
+  test('trie is updated when a message is removed', async () => {
+    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeMessage(signerAdd);
+    let result = await engine.mergeMessage(castAdd);
+    expect(result.isOk()).toBeTruthy();
 
-  //   // Remove this cast.
-  //   const castRemoveBody = await Factories.CastRemoveBody.create({ targetTsHash: Array.from(castAdd.tsHash()) });
-  //   const castRemoveData = await Factories.CastRemoveData.create({
-  //     fid: Array.from(fid),
-  //     body: castRemoveBody.unpack(),
-  //   });
-  //   const castRemove = new MessageModel(
-  //     await Factories.Message.create({ data: Array.from(castRemoveData.bb?.bytes() ?? []) }, { transient: { signer } })
-  //   ) as CastRemoveModel;
+    // Remove this cast.
+    const castRemoveBody = await Factories.CastRemoveBody.create({ targetTsHash: Array.from(castAdd.tsHash()) });
+    const castRemoveData = await Factories.CastRemoveData.create({
+      fid: Array.from(fid),
+      body: castRemoveBody.unpack(),
+    });
+    const castRemove = new MessageModel(
+      await Factories.Message.create({ data: Array.from(castRemoveData.bb?.bytes() ?? []) }, { transient: { signer } })
+    ) as CastRemoveModel;
 
-  //   // Merging the cast remove deletes the cast add in the db, and it should be reflected in the trie
-  //   result = await engine.mergeMessage(castRemove);
-  //   expect(result.isOk()).toBeTruthy();
+    // Merging the cast remove deletes the cast add in the db, and it should be reflected in the trie
+    result = await engine.mergeMessage(castRemove);
+    expect(result.isOk()).toBeTruthy();
 
-  //   const id = new SyncId(castRemove);
-  //   expect(syncEngine.trie.get(id)).toEqual(id.idString());
+    const id = new SyncId(castRemove);
+    expect(syncEngine.trie.exists(id)).toBeTruthy();
 
-  //   const allMessages = await engine.getAllMessagesBySyncIds([Buffer.from(castRemove.primaryKey()).toString('hex')]);
-  //   expect(allMessages).toEqual([]);
-  //   expect(syncEngine.trie.get(id)).toBeFalsy();
-  // });
+    const allMessages = await engine.getAllMessagesBySyncIds([id.toString()]);
+    expect(allMessages.isOk()).toBeTruthy();
+    expect(allMessages._unsafeUnwrap()[0]?.type()).toEqual(MessageType.CastRemove);
+
+    // The trie should contain the message remove
+    expect(syncEngine.trie.exists(id)).toBeTruthy();
+  });
 
   test('snapshotTimestampPrefix trims the seconds', async () => {
     const nowInSeconds = Date.now() / 1000;
@@ -191,8 +195,8 @@ describe('SyncEngine', () => {
     // There might be more messages related to user creation, but it's sufficient to check for casts
     expect(syncEngine.trie.items).toBeGreaterThanOrEqual(3);
     expect(syncEngine.trie.rootHash).toBeTruthy();
-    expect(syncEngine.trie.get(new SyncId(messages[0] as MessageModel))).toBeTruthy();
-    expect(syncEngine.trie.get(new SyncId(messages[1] as MessageModel))).toBeTruthy();
-    expect(syncEngine.trie.get(new SyncId(messages[2] as MessageModel))).toBeTruthy();
+    expect(syncEngine.trie.exists(new SyncId(messages[0] as MessageModel))).toBeTruthy();
+    expect(syncEngine.trie.exists(new SyncId(messages[1] as MessageModel))).toBeTruthy();
+    expect(syncEngine.trie.exists(new SyncId(messages[2] as MessageModel))).toBeTruthy();
   });
 });

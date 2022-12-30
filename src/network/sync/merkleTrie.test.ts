@@ -81,12 +81,12 @@ describe('MerkleTrie', () => {
       trie.insert(syncId);
       expect(trie.items).toEqual(1);
       expect(trie.rootHash).toBeTruthy();
-      expect(trie.get(syncId)).toBeTruthy();
+      expect(trie.exists(syncId)).toBeTruthy();
 
       trie.delete(syncId);
       expect(trie.items).toEqual(0);
       expect(trie.rootHash).toEqual(emptyHash);
-      expect(trie.get(syncId)).toBeFalsy();
+      expect(trie.exists(syncId)).toBeFalsy();
     });
 
     test('deleting an item that does not exist does not change the trie', async () => {
@@ -136,18 +136,18 @@ describe('MerkleTrie', () => {
     });
   });
 
-  test('succeeds getting single item', async () => {
+  test('succeeds with single item', async () => {
     const trie = new MerkleTrie();
     const syncId = await Factories.SyncId.create();
 
-    expect(trie.get(syncId)).toBeFalsy();
+    expect(trie.exists(syncId)).toBeFalsy();
 
     trie.insert(syncId);
 
-    expect(trie.get(syncId)).toEqual(syncId.idString());
+    expect(trie.exists(syncId)).toBeTruthy();
 
     const nonExistingSyncId = await Factories.SyncId.create();
-    expect(trie.get(nonExistingSyncId)).toBeFalsy();
+    expect(trie.exists(nonExistingSyncId)).toBeFalsy();
   });
 
   test('value is always undefined for non-leaf nodes', async () => {

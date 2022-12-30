@@ -43,15 +43,15 @@ class MerkleTrie {
   public insert(id: SyncId): boolean {
     // TODO(aditya): Why should key and value be the same? Just remove the value
     // TODO(aditya): We should insert Uint8Array instead of string
-    return this._root.insert(id.toString(), id.toString());
+    return this._root.insert(id.toString());
   }
 
   public delete(id: SyncId): boolean {
     return this._root.delete(id.toString());
   }
 
-  public get(id: SyncId): string | undefined {
-    return this._root.get(id.toString());
+  public exists(id: SyncId): boolean {
+    return this._root.exists(id.toString());
   }
 
   // A snapshot captures the state of the trie excluding the nodes
