@@ -32,7 +32,7 @@ describe('TrieNode', () => {
       expect(root.items).toEqual(0);
       expect(root.hash).toEqual('');
 
-      root.insert(id.toString(), id.idString());
+      root.insert(id.toString());
 
       expect(root.items).toEqual(1);
       expect(root.hash).toBeTruthy();
@@ -42,36 +42,20 @@ describe('TrieNode', () => {
       const root = new TrieNode();
       const id = await Factories.SyncId.create();
 
-      root.insert(id.toString(), id.idString());
+      root.insert(id.toString());
       expect(root.items).toEqual(1);
       const previousHash = root.hash;
-      root.insert(id.toString(), id.idString());
+      root.insert(id.toString());
 
       expect(root.hash).toEqual(previousHash);
       expect(root.items).toEqual(1);
-    });
-
-    test('inserting the same key with a different value does nothing', async () => {
-      const root = new TrieNode();
-      const id = await Factories.SyncId.create();
-      const id2 = await Factories.SyncId.create();
-
-      root.insert(id.toString(), id.idString());
-      expect(root.items).toEqual(1);
-      expect(root.get(id.toString())).toEqual(id.idString());
-      const previousHash = root.hash;
-      root.insert(id.toString(), id2.idString());
-
-      expect(root.hash).toEqual(previousHash);
-      expect(root.items).toEqual(1);
-      expect(root.get(id.toString())).toEqual(id.idString());
     });
 
     test('insert compacts hashstring component of syncid to single node for efficiency', async () => {
       const root = new TrieNode();
       const id = await Factories.SyncId.create();
 
-      root.insert(id.toString(), id.idString());
+      root.insert(id.toString());
       let node = root;
       // Timestamp portion of the key is not collapsed, but the hash portion is
       for (let i = 0; i < TIMESTAMP_LENGTH; i++) {
@@ -102,8 +86,8 @@ describe('TrieNode', () => {
       const firstDiffPos = hash1.split('').findIndex((c, i) => c !== hash2[i]);
 
       const root = new TrieNode();
-      root.insert(id1.toString(), id1.idString());
-      root.insert(id2.toString(), id2.idString());
+      root.insert(id1.toString());
+      root.insert(id2.toString());
 
       const splitNode = traverse(root);
       expect(splitNode.items).toEqual(2);
@@ -127,7 +111,7 @@ describe('TrieNode', () => {
       const root = new TrieNode();
       const id = await Factories.SyncId.create();
 
-      root.insert(id.toString(), id.idString());
+      root.insert(id.toString());
       expect(root.items).toEqual(1);
 
       root.delete(id.toString());
@@ -140,14 +124,14 @@ describe('TrieNode', () => {
       const id1 = await Factories.SyncId.create(undefined, { transient: { date: sharedDate } });
       const id2 = await Factories.SyncId.create(undefined, { transient: { date: sharedDate } });
 
-      root.insert(id1.toString(), id1.idString());
+      root.insert(id1.toString());
       const previousHash = root.hash;
-      root.insert(id2.toString(), id2.idString());
+      root.insert(id2.toString());
       expect(root.items).toEqual(2);
 
       root.delete(id2.toString());
       expect(root.items).toEqual(1);
-      expect(root.get(id2.toString())).toBeUndefined();
+      expect(root.exists(id2.toString())).toBeFalsy();
       expect(root.hash).toEqual(previousHash);
     });
 
@@ -160,10 +144,10 @@ describe('TrieNode', () => {
       });
 
       const root = new TrieNode();
-      root.insert(id1.toString(), id1.idString());
+      root.insert(id1.toString());
       const previousRootHash = root.hash;
       const leafNode = traverse(root);
-      root.insert(id2.toString(), id2.idString());
+      root.insert(id2.toString());
 
       expect(root.hash).not.toEqual(previousRootHash);
 
@@ -180,22 +164,21 @@ describe('TrieNode', () => {
       const root = new TrieNode();
       const id = await Factories.SyncId.create();
 
-      root.insert(id.toString(), id.idString());
+      root.insert(id.toString());
       expect(root.items).toEqual(1);
 
-      const value = root.get(id.toString());
-      expect(value).toEqual(id.idString());
+      expect(root.exists(id.toString())).toBeTruthy();
     });
 
     test('getting an item after deleting it returns undefined', async () => {
       const root = new TrieNode();
       const id = await Factories.SyncId.create();
 
-      root.insert(id.toString(), id.idString());
+      root.insert(id.toString());
       expect(root.items).toEqual(1);
 
       root.delete(id.toString());
-      expect(root.get(id.toString())).toBeUndefined();
+      expect(root.exists(id.toString())).toBeFalsy();
       expect(root.items).toEqual(0);
     });
 
@@ -208,10 +191,10 @@ describe('TrieNode', () => {
       });
 
       const root = new TrieNode();
-      root.insert(id1.toString(), id1.idString());
+      root.insert(id1.toString());
 
       // id2 shares the same prefix, but doesn't exist, so it should return undefined
-      expect(root.get(id2.toString())).toBeUndefined();
+      expect(root.exists(id2.toString())).toBeFalsy();
     });
   });
 });
