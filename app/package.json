@@ -18,7 +18,6 @@
     "build": "yarn clean && tsc --project ./tsconfig.json",
     "flatc": "flatc --ts --ts-flat-files --gen-object-api -o src/flatbuffers/generated src/flatbuffers/schemas/*.fbs",
     "clean": "rm -rf ./build",
-    "check:types": "tsc --noEmit",
     "dev": "yarn start | yarn pino-pretty",
     "prepare": "husky install",
     "lint": "eslint  src/ --color --ext .ts",
