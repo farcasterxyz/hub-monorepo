@@ -205,6 +205,12 @@ describe('Multi peer sync engine', () => {
     expect(syncEngine2.trie.exists(castRemoveId)).toBeTruthy();
     expect(syncEngine2.trie.exists(new SyncId(castAdd))).toBeFalsy();
     expect(syncEngine2.trie.rootHash).toEqual(syncEngine1.trie.rootHash);
+
+    // Adding the castAdd to engine2 should not change the root hash,
+    // because it has already been removed, so adding it is a no-op
+    const beforeRootHash = syncEngine2.trie.rootHash;
+    await engine2.mergeMessage(castAdd);
+    expect(syncEngine2.trie.rootHash).toEqual(beforeRootHash);
   });
 
   xtest(

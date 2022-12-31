@@ -125,20 +125,17 @@ const CastAddDataFactory = Factory.define<message_generated.MessageDataT, any, m
   }
 );
 
-const CastRemoveBodyFactory = Factory.define<
-  message_generated.CastRemoveBodyT,
-  { targetTsHash: number[] },
-  message_generated.CastRemoveBody
->(({ onCreate, transientParams }) => {
-  onCreate((params) => {
-    const builder = new Builder(1);
-    builder.finish(params.pack(builder));
-    return message_generated.CastRemoveBody.getRootAsCastRemoveBody(new ByteBuffer(builder.asUint8Array()));
-  });
+const CastRemoveBodyFactory = Factory.define<message_generated.CastRemoveBodyT, any, message_generated.CastRemoveBody>(
+  ({ onCreate }) => {
+    onCreate((params) => {
+      const builder = new Builder(1);
+      builder.finish(params.pack(builder));
+      return message_generated.CastRemoveBody.getRootAsCastRemoveBody(new ByteBuffer(builder.asUint8Array()));
+    });
 
-  const { targetTsHash } = transientParams;
-  return new message_generated.CastRemoveBodyT(targetTsHash || Array.from(TsHashFactory.build()));
-});
+    return new message_generated.CastRemoveBodyT(Array.from(TsHashFactory.build()));
+  }
+);
 
 const CastRemoveDataFactory = Factory.define<message_generated.MessageDataT, any, message_generated.MessageData>(
   ({ onCreate }) => {
