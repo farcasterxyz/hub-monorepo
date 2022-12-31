@@ -2,6 +2,7 @@
   "name": "@hub/flatbuffers",
   "version": "1.0.0",
   "main": "src/index.ts",
+  "types": "src/index.ts",
   "module": "./build/index.js",
   "license": "MIT",
   "scripts": {
@@ -12,6 +13,7 @@
     "lint:fix": "yarn run lint -- --fix"
   },
   "dependencies": {
-    "flatbuffers": "^22.11.23"
+    "flatbuffers": "^22.11.23",
+    "eslint-config-custom": "*"
   }
 }

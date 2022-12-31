@@ -16,7 +16,6 @@
   "scripts": {
     "bench": "tsx src/test/perf/bench.ts",
     "build": "yarn clean && tsc --project ./tsconfig.json",
-    "flatc": "flatc --ts --ts-flat-files --gen-object-api -o src/flatbuffers/generated src/flatbuffers/schemas/*.fbs",
     "clean": "rm -rf ./build",
     "dev": "yarn start | yarn pino-pretty",
     "lint": "eslint  src/ --color --ext .ts",
@@ -31,8 +30,8 @@
     "@libp2p/interface-mocks": "^7.0.1",
     "@types/pino": "^7.0.5",
     "@types/progress": "^2.0.5",
+    "eslint-config-custom": "*",
     "fishery": "^2.2.2",
-    "lint-staged": "^13.0.3",
     "pino-pretty": "^9.1.1",
     "progress": "^2.0.3",
     "ts-mockito": "^2.6.1"
@@ -71,8 +70,5 @@
     "tsx": "^3.9.0",
     "undici": "^5.10.0",
     "uri-js": "^4.4.1"
-  },
-  "lint-staged": {
-    "*.ts": "eslint --cache --fix"
   }
 }
