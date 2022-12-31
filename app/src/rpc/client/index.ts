@@ -1,13 +1,9 @@
 import grpc, { ClientReadableStream, Metadata, MetadataValue } from '@grpc/grpc-js';
+import * as flatbuffers from '@hub/flatbuffers';
 import { arrayify } from 'ethers/lib/utils';
 import { ByteBuffer } from 'flatbuffers';
 import { AddressInfo } from 'net';
 import { err, ok } from 'neverthrow';
-import { IdRegistryEvent } from '~/flatbuffers/generated/id_registry_event_generated';
-import { CastId, Message, ReactionType, UserDataType, UserId } from '~/flatbuffers/generated/message_generated';
-import { NameRegistryEvent } from '~/flatbuffers/generated/name_registry_event_generated';
-import * as rpc_generated from '~/flatbuffers/generated/rpc_generated';
-import { GetAllSyncIdsByPrefixResponse, TrieNodeMetadataResponse } from '~/flatbuffers/generated/rpc_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
@@ -97,14 +93,14 @@ class Client {
     );
   }
 
-  async getCastsByParent(parent: CastId): HubAsyncResult<FBTypes.CastAddModel[]> {
+  async getCastsByParent(parent: flatbuffers.CastId): HubAsyncResult<FBTypes.CastAddModel[]> {
     return this.makeUnaryMessagesRequest(
       definitions.castDefinition().getCastsByParent,
       requests.castRequests.getCastsByParent(parent)
     );
   }
 
-  async getCastsByMention(mention: UserId): HubAsyncResult<FBTypes.CastAddModel[]> {
+  async getCastsByMention(mention: flatbuffers.UserId): HubAsyncResult<FBTypes.CastAddModel[]> {
     return this.makeUnaryMessagesRequest(
       definitions.castDefinition().getCastsByMention,
       requests.castRequests.getCastsByMention(mention)
@@ -115,7 +111,7 @@ class Client {
   /*                                Amp Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  async getAmp(fid: Uint8Array, user: UserId): HubAsyncResult<FBTypes.AmpAddModel> {
+  async getAmp(fid: Uint8Array, user: flatbuffers.UserId): HubAsyncResult<FBTypes.AmpAddModel> {
     return this.makeUnaryMessageRequest(definitions.ampDefinition().getAmp, requests.ampRequests.getAmp(fid, user));
   }
 
@@ -126,7 +122,7 @@ class Client {
     );
   }
 
-  async getAmpsByUser(user: UserId): HubAsyncResult<FBTypes.AmpAddModel[]> {
+  async getAmpsByUser(user: flatbuffers.UserId): HubAsyncResult<FBTypes.AmpAddModel[]> {
     return this.makeUnaryMessagesRequest(
       definitions.ampDefinition().getAmpsByUser,
       requests.ampRequests.getAmpsByUser(user)
@@ -137,21 +133,28 @@ class Client {
   /*                               Reaction Methods                             */
   /* -------------------------------------------------------------------------- */
 
-  async getReaction(fid: Uint8Array, type: ReactionType, cast: CastId): HubAsyncResult<FBTypes.ReactionAddModel> {
+  async getReaction(
+    fid: Uint8Array,
+    type: flatbuffers.ReactionType,
+    cast: flatbuffers.CastId
+  ): HubAsyncResult<FBTypes.ReactionAddModel> {
     return this.makeUnaryMessageRequest(
       definitions.reactionDefinition().getReaction,
       requests.reactionRequests.getReaction(fid, type, cast)
     );
   }
 
-  async getReactionsByFid(fid: Uint8Array, type?: ReactionType): HubAsyncResult<FBTypes.AmpAddModel[]> {
+  async getReactionsByFid(fid: Uint8Array, type?: flatbuffers.ReactionType): HubAsyncResult<FBTypes.AmpAddModel[]> {
     return this.makeUnaryMessagesRequest(
       definitions.reactionDefinition().getReactionsByFid,
       requests.reactionRequests.getReactionsByFid(fid, type)
     );
   }
 
-  async getReactionsByCast(cast: CastId, type?: ReactionType): HubAsyncResult<FBTypes.AmpAddModel[]> {
+  async getReactionsByCast(
+    cast: flatbuffers.CastId,
+    type?: flatbuffers.ReactionType
+  ): HubAsyncResult<FBTypes.AmpAddModel[]> {
     return this.makeUnaryMessagesRequest(
       definitions.reactionDefinition().getReactionsByCast,
       requests.reactionRequests.getReactionsByCast(cast, type)
@@ -208,8 +211,8 @@ class Client {
         method.path,
         method.requestSerialize,
         method.responseDeserialize,
-        new rpc_generated.GetFidsRequest(),
-        (e: grpc.ServiceError | null, response?: rpc_generated.FidsResponse) => {
+        new flatbuffers.GetFidsRequest(),
+        (e: grpc.ServiceError | null, response?: flatbuffers.FidsResponse) => {
           if (e) {
             resolve(err(fromServiceError(e)));
           } else if (response) {
@@ -231,7 +234,7 @@ class Client {
   /*                                User Data Methods                           */
   /* -------------------------------------------------------------------------- */
 
-  async getUserData(fid: Uint8Array, type: UserDataType): HubAsyncResult<FBTypes.UserDataAddModel> {
+  async getUserData(fid: Uint8Array, type: flatbuffers.UserDataType): HubAsyncResult<FBTypes.UserDataAddModel> {
     return this.makeUnaryMessageRequest(
       definitions.userDataDefinition().getUserData,
       requests.userDataRequests.getUserData(fid, type)
@@ -322,9 +325,9 @@ class Client {
   /*                                  Event Methods                             */
   /* -------------------------------------------------------------------------- */
 
-  async subscribe(): HubAsyncResult<ClientReadableStream<rpc_generated.EventResponse>> {
+  async subscribe(): HubAsyncResult<ClientReadableStream<flatbuffers.EventResponse>> {
     const method = definitions.eventDefinition().subscribe;
-    const request = new rpc_generated.SubscribeRequest();
+    const request = new flatbuffers.SubscribeRequest();
     const stream = this.client.makeServerStreamRequest(
       method.path,
       method.requestSerialize,
@@ -355,7 +358,7 @@ class Client {
   /* -------------------------------------------------------------------------- */
 
   private makeUnarySyncNodeMetadataRequest<RequestType>(
-    method: grpc.MethodDefinition<RequestType, TrieNodeMetadataResponse>,
+    method: grpc.MethodDefinition<RequestType, flatbuffers.TrieNodeMetadataResponse>,
     request: RequestType
   ): HubAsyncResult<NodeMetadata> {
     return new Promise((resolve) => {
@@ -364,7 +367,7 @@ class Client {
         method.requestSerialize,
         method.responseDeserialize,
         request,
-        (e: grpc.ServiceError | null, response?: TrieNodeMetadataResponse) => {
+        (e: grpc.ServiceError | null, response?: flatbuffers.TrieNodeMetadataResponse) => {
           if (e) {
             resolve(err(fromServiceError(e)));
           } else if (response) {
@@ -376,7 +379,7 @@ class Client {
   }
 
   private makeUnarySyncIdsByPrefixRequest<RequestType>(
-    method: grpc.MethodDefinition<RequestType, GetAllSyncIdsByPrefixResponse>,
+    method: grpc.MethodDefinition<RequestType, flatbuffers.GetAllSyncIdsByPrefixResponse>,
     request: RequestType
   ): HubAsyncResult<string[]> {
     return new Promise((resolve) => {
@@ -385,7 +388,7 @@ class Client {
         method.requestSerialize,
         method.responseDeserialize,
         request,
-        (e: grpc.ServiceError | null, response?: GetAllSyncIdsByPrefixResponse) => {
+        (e: grpc.ServiceError | null, response?: flatbuffers.GetAllSyncIdsByPrefixResponse) => {
           if (e) {
             resolve(err(fromServiceError(e)));
           } else if (response) {
@@ -397,7 +400,7 @@ class Client {
   }
 
   private makeUnaryIdRegistryEventRequest<RequestType>(
-    method: grpc.MethodDefinition<RequestType, IdRegistryEvent>,
+    method: grpc.MethodDefinition<RequestType, flatbuffers.IdRegistryEvent>,
     request: RequestType
   ): HubAsyncResult<IdRegistryEventModel> {
     return new Promise((resolve) => {
@@ -406,7 +409,7 @@ class Client {
         method.requestSerialize,
         method.responseDeserialize,
         request,
-        (e: grpc.ServiceError | null, response?: IdRegistryEvent) => {
+        (e: grpc.ServiceError | null, response?: flatbuffers.IdRegistryEvent) => {
           if (e) {
             resolve(err(fromServiceError(e)));
           } else if (response) {
@@ -418,7 +421,7 @@ class Client {
   }
 
   private makeUnaryNameRegistryEventRequest<RequestType>(
-    method: grpc.MethodDefinition<RequestType, NameRegistryEvent>,
+    method: grpc.MethodDefinition<RequestType, flatbuffers.NameRegistryEvent>,
     request: RequestType
   ): HubAsyncResult<NameRegistryEventModel> {
     return new Promise((resolve) => {
@@ -427,7 +430,7 @@ class Client {
         method.requestSerialize,
         method.responseDeserialize,
         request,
-        (e: grpc.ServiceError | null, response?: NameRegistryEvent) => {
+        (e: grpc.ServiceError | null, response?: flatbuffers.NameRegistryEvent) => {
           if (e) {
             resolve(err(fromServiceError(e)));
           } else if (response) {
@@ -439,7 +442,7 @@ class Client {
   }
 
   private makeUnaryMessageRequest<RequestType, ResponseMessageType extends MessageModel>(
-    method: grpc.MethodDefinition<RequestType, Message>,
+    method: grpc.MethodDefinition<RequestType, flatbuffers.Message>,
     request: RequestType
   ): HubAsyncResult<ResponseMessageType> {
     return new Promise((resolve) => {
@@ -448,7 +451,7 @@ class Client {
         method.requestSerialize,
         method.responseDeserialize,
         request,
-        (e: grpc.ServiceError | null, response?: Message) => {
+        (e: grpc.ServiceError | null, response?: flatbuffers.Message) => {
           if (e) {
             resolve(err(fromServiceError(e)));
           } else if (response) {
@@ -460,7 +463,7 @@ class Client {
   }
 
   private makeUnaryMessagesRequest<RequestType, ResponseMessageType extends MessageModel>(
-    method: grpc.MethodDefinition<RequestType, rpc_generated.MessagesResponse>,
+    method: grpc.MethodDefinition<RequestType, flatbuffers.MessagesResponse>,
     request: RequestType
   ): HubAsyncResult<ResponseMessageType[]> {
     return new Promise((resolve) => {
@@ -469,7 +472,7 @@ class Client {
         method.requestSerialize,
         method.responseDeserialize,
         request,
-        (e: grpc.ServiceError | null, response?: rpc_generated.MessagesResponse) => {
+        (e: grpc.ServiceError | null, response?: flatbuffers.MessagesResponse) => {
           if (e) {
             resolve(err(fromServiceError(e)));
           } else if (response) {

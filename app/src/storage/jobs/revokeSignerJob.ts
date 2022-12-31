@@ -1,9 +1,9 @@
+import { RevokeSignerJobPayload, RevokeSignerJobPayloadT } from '@hub/flatbuffers';
 import { blake3 } from '@noble/hashes/blake3';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { err, ok, ResultAsync } from 'neverthrow';
 import cron from 'node-cron';
 import AbstractRocksDB from 'rocksdb';
-import { RevokeSignerJobPayload, RevokeSignerJobPayloadT } from '~/flatbuffers/generated/job_generated';
 import { RootPrefix } from '~/flatbuffers/models/types';
 import { validateEd25519PublicKey, validateEthAddress, validateFid } from '~/flatbuffers/models/validations';
 import { bigEndianBytesToNumber, bytesIncrement, numberToBigEndianBytes } from '~/flatbuffers/utils/bytes';

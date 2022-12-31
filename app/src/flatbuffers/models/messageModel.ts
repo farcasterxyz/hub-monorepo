@@ -1,6 +1,6 @@
+import * as message_generated from '@hub/flatbuffers';
 import { ByteBuffer } from 'flatbuffers';
 import AbstractRocksDB from 'rocksdb';
-import * as message_generated from '~/flatbuffers/generated/message_generated';
 import { RootPrefix, UserMessagePostfix, UserPostfix } from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { HubError } from '~/utils/hubErrors';

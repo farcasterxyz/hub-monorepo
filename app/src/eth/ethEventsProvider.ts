@@ -1,19 +1,9 @@
+import * as flatbuffers from '@hub/flatbuffers';
 import { BigNumber, Contract, Event, providers } from 'ethers';
 import { arrayify } from 'ethers/lib/utils';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { ResultAsync } from 'neverthrow';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
-import { HubState, HubStateT } from '~/flatbuffers/generated/hub_state_generated';
-import {
-  IdRegistryEvent,
-  IdRegistryEventT,
-  IdRegistryEventType,
-} from '~/flatbuffers/generated/id_registry_event_generated';
-import {
-  NameRegistryEvent,
-  NameRegistryEventT,
-  NameRegistryEventType,
-} from '~/flatbuffers/generated/name_registry_event_generated';
 import HubStateModel from '~/flatbuffers/models/hubStateModel';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
@@ -75,10 +65,10 @@ export class EthEventsProvider {
 
     // Setup IdRegistry contract
     this._idRegistryContract.on('Register', (to: string, id: BigNumber, _recovery, _url, event: Event) => {
-      this.cacheIdRegistryEvent('', to, id, IdRegistryEventType.IdRegistryRegister, event);
+      this.cacheIdRegistryEvent('', to, id, flatbuffers.IdRegistryEventType.IdRegistryRegister, event);
     });
     this._idRegistryContract.on('Transfer', (from: string, to: string, id: BigNumber, event: Event) => {
-      this.cacheIdRegistryEvent(from, to, id, IdRegistryEventType.IdRegistryTransfer, event);
+      this.cacheIdRegistryEvent(from, to, id, flatbuffers.IdRegistryEventType.IdRegistryTransfer, event);
     });
 
     // Setup NameRegistry contract
@@ -87,13 +77,13 @@ export class EthEventsProvider {
         from,
         to,
         tokenId,
-        NameRegistryEventType.NameRegistryTransfer,
+        flatbuffers.NameRegistryEventType.NameRegistryTransfer,
         BigNumber.from(0),
         event
       );
     });
     this._nameRegistryContract.on('Renew', (tokenId: BigNumber, expiry: BigNumber, event: Event) => {
-      this.cacheNameRegistryEvent('', '', tokenId, NameRegistryEventType.NameRegistryRenew, expiry, event);
+      this.cacheNameRegistryEvent('', '', tokenId, flatbuffers.NameRegistryEventType.NameRegistryRenew, expiry, event);
     });
 
     // Set up block listener to confirm blocks
@@ -175,12 +165,16 @@ export class EthEventsProvider {
     const toBlock = BigInt(latestBlock.number);
 
     // Sync old Id events
-    await this.syncHistoricalIdEvents(IdRegistryEventType.IdRegistryRegister, lastSyncedBlock, toBlock);
-    await this.syncHistoricalIdEvents(IdRegistryEventType.IdRegistryTransfer, lastSyncedBlock, toBlock);
+    await this.syncHistoricalIdEvents(flatbuffers.IdRegistryEventType.IdRegistryRegister, lastSyncedBlock, toBlock);
+    await this.syncHistoricalIdEvents(flatbuffers.IdRegistryEventType.IdRegistryTransfer, lastSyncedBlock, toBlock);
 
     // Sync old Name events
-    await this.syncHistoricalNameEvents(NameRegistryEventType.NameRegistryTransfer, lastSyncedBlock, toBlock);
-    await this.syncHistoricalNameEvents(NameRegistryEventType.NameRegistryRenew, lastSyncedBlock, toBlock);
+    await this.syncHistoricalNameEvents(
+      flatbuffers.NameRegistryEventType.NameRegistryTransfer,
+      lastSyncedBlock,
+      toBlock
+    );
+    await this.syncHistoricalNameEvents(flatbuffers.NameRegistryEventType.NameRegistryRenew, lastSyncedBlock, toBlock);
 
     this._isHistoricalSyncDone = true;
   }
@@ -189,8 +183,8 @@ export class EthEventsProvider {
    * Sync old Id events that may have happened before hub was started. We'll put them all
    * in the sync queue to be processed later, to make sure we don't process any unconfirmed events.
    */
-  private async syncHistoricalIdEvents(type: IdRegistryEventType, fromBlock: bigint, toBlock: bigint) {
-    const typeString = type === IdRegistryEventType.IdRegistryRegister ? 'Register' : 'Transfer';
+  private async syncHistoricalIdEvents(type: flatbuffers.IdRegistryEventType, fromBlock: bigint, toBlock: bigint) {
+    const typeString = type === flatbuffers.IdRegistryEventType.IdRegistryRegister ? 'Register' : 'Transfer';
 
     const oldIdEvents = await ResultAsync.fromPromise(
       this._idRegistryContract.queryFilter(typeString, Number(fromBlock), Number(toBlock)),
@@ -202,14 +196,14 @@ export class EthEventsProvider {
     }
 
     for (const event of oldIdEvents.value) {
-      const toIndex = type === IdRegistryEventType.IdRegistryRegister ? 0 : 1;
-      const idIndex = type === IdRegistryEventType.IdRegistryRegister ? 1 : 2;
+      const toIndex = type === flatbuffers.IdRegistryEventType.IdRegistryRegister ? 0 : 1;
+      const idIndex = type === flatbuffers.IdRegistryEventType.IdRegistryRegister ? 1 : 2;
 
       // Parsing can throw errors, so we'll just log them and continue
       try {
         const to: string = event.args?.at(toIndex);
         const id: BigNumber = BigNumber.from(event.args?.at(idIndex));
-        const from: string = type === IdRegistryEventType.IdRegistryRegister ? '' : event.args?.at(0);
+        const from: string = type === flatbuffers.IdRegistryEventType.IdRegistryRegister ? '' : event.args?.at(0);
 
         await this.cacheIdRegistryEvent(from, to, id, type, event);
       } catch (e) {
@@ -222,8 +216,8 @@ export class EthEventsProvider {
    * Sync old Name events that may have happened before hub was started. We'll put them all
    * in the sync queue to be processed later, to make sure we don't process any unconfirmed events.
    */
-  private async syncHistoricalNameEvents(type: NameRegistryEventType, fromBlock: bigint, toBlock: bigint) {
-    const typeString = type === NameRegistryEventType.NameRegistryTransfer ? 'Transfer' : 'Renew';
+  private async syncHistoricalNameEvents(type: flatbuffers.NameRegistryEventType, fromBlock: bigint, toBlock: bigint) {
+    const typeString = type === flatbuffers.NameRegistryEventType.NameRegistryTransfer ? 'Transfer' : 'Renew';
 
     const oldNameEvents = await ResultAsync.fromPromise(
       this._nameRegistryContract.queryFilter(typeString, Number(fromBlock), Number(toBlock)),
@@ -237,14 +231,14 @@ export class EthEventsProvider {
 
     for (const event of oldNameEvents.value) {
       try {
-        const from: string = type === NameRegistryEventType.NameRegistryTransfer ? event.args?.at(0) : '';
-        const to: string = type === NameRegistryEventType.NameRegistryTransfer ? event.args?.at(1) : '';
+        const from: string = type === flatbuffers.NameRegistryEventType.NameRegistryTransfer ? event.args?.at(0) : '';
+        const to: string = type === flatbuffers.NameRegistryEventType.NameRegistryTransfer ? event.args?.at(1) : '';
         const tokenId: BigNumber =
-          type === NameRegistryEventType.NameRegistryTransfer
+          type === flatbuffers.NameRegistryEventType.NameRegistryTransfer
             ? BigNumber.from(event.args?.at(2))
             : BigNumber.from(event.args?.at(0));
         const expiry: BigNumber =
-          type === NameRegistryEventType.NameRegistryTransfer ? BigNumber.from(0) : event.args?.at(1);
+          type === flatbuffers.NameRegistryEventType.NameRegistryTransfer ? BigNumber.from(0) : event.args?.at(1);
 
         await this.cacheNameRegistryEvent(from, to, tokenId, type, expiry, event);
       } catch (e) {
@@ -287,16 +281,22 @@ export class EthEventsProvider {
     // Update the last synced block if all the historical events have been synced
     if (this._isHistoricalSyncDone) {
       const builder = new Builder(1);
-      const hubStateT = new HubStateT(BigInt(blockNumber));
+      const hubStateT = new flatbuffers.HubStateT(BigInt(blockNumber));
       builder.finish(hubStateT.pack(builder));
-      const hubState = HubState.getRootAsHubState(new ByteBuffer(builder.asUint8Array()));
+      const hubState = flatbuffers.HubState.getRootAsHubState(new ByteBuffer(builder.asUint8Array()));
       await this._hub.putHubState(new HubStateModel(hubState));
     }
 
     this._lastBlockNumber = blockNumber;
   }
 
-  private async cacheIdRegistryEvent(from: string, to: string, id: BigNumber, type: IdRegistryEventType, event: Event) {
+  private async cacheIdRegistryEvent(
+    from: string,
+    to: string,
+    id: BigNumber,
+    type: flatbuffers.IdRegistryEventType,
+    event: Event
+  ) {
     const { blockNumber, blockHash, transactionHash, logIndex } = event;
     log.info({ from, to, id: id.toString(), type, blockNumber, transactionHash }, 'cacheIdRegistryEvent');
 
@@ -307,7 +307,7 @@ export class EthEventsProvider {
 
     // Construct the flatbuffer event
     const builder = new Builder(1);
-    const eventT = new IdRegistryEventT(
+    const eventT = new flatbuffers.IdRegistryEventT(
       blockNumber,
       Array.from(arrayify(blockHash)),
       Array.from(arrayify(transactionHash)),
@@ -319,7 +319,9 @@ export class EthEventsProvider {
     );
     builder.finish(eventT.pack(builder));
 
-    const idRegistryEvent = IdRegistryEvent.getRootAsIdRegistryEvent(new ByteBuffer(builder.asUint8Array()));
+    const idRegistryEvent = flatbuffers.IdRegistryEvent.getRootAsIdRegistryEvent(
+      new ByteBuffer(builder.asUint8Array())
+    );
     const idRegistryEventModel = new IdRegistryEventModel(idRegistryEvent);
 
     // Add it to the cache
@@ -335,7 +337,7 @@ export class EthEventsProvider {
     from: string,
     to: string,
     tokenId: BigNumber,
-    type: NameRegistryEventType,
+    type: flatbuffers.NameRegistryEventType,
     expiry: BigNumber,
     event: Event
   ) {
@@ -355,7 +357,7 @@ export class EthEventsProvider {
 
     // Construct the flatbuffer event
     const builder = new Builder(1);
-    const eventT = new NameRegistryEventT(
+    const eventT = new flatbuffers.NameRegistryEventT(
       blockNumber,
       Array.from(arrayify(blockHash)),
       Array.from(arrayify(transactionHash)),
@@ -368,7 +370,9 @@ export class EthEventsProvider {
     );
     builder.finish(eventT.pack(builder));
 
-    const nameRegistryEvent = NameRegistryEvent.getRootAsNameRegistryEvent(new ByteBuffer(builder.asUint8Array()));
+    const nameRegistryEvent = flatbuffers.NameRegistryEvent.getRootAsNameRegistryEvent(
+      new ByteBuffer(builder.asUint8Array())
+    );
     const nameRegistryEventModel = new NameRegistryEventModel(nameRegistryEvent);
 
     // Add it to the cache

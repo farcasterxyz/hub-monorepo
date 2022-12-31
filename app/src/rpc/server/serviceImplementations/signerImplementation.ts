@@ -1,8 +1,6 @@
 import grpc from '@grpc/grpc-js';
+import * as flatbuffers from '@hub/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import { IdRegistryEvent } from '~/flatbuffers/generated/id_registry_event_generated';
-import { Message, UserIdT } from '~/flatbuffers/generated/message_generated';
-import * as rpc_generated from '~/flatbuffers/generated/rpc_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import { SignerAddModel } from '~/flatbuffers/models/types';
 import { toMessagesResponse, toServiceError } from '~/rpc/server';
@@ -12,8 +10,8 @@ import { HubError } from '~/utils/hubErrors';
 export const signerImplementation = (engine: Engine) => {
   return {
     getSigner: async (
-      call: grpc.ServerUnaryCall<rpc_generated.GetSignerRequest, Message>,
-      callback: grpc.sendUnaryData<Message>
+      call: grpc.ServerUnaryCall<flatbuffers.GetSignerRequest, flatbuffers.Message>,
+      callback: grpc.sendUnaryData<flatbuffers.Message>
     ) => {
       const result = await engine.getSigner(
         call.request.fidArray() ?? new Uint8Array(),
@@ -30,8 +28,8 @@ export const signerImplementation = (engine: Engine) => {
     },
 
     getSignersByFid: async (
-      call: grpc.ServerUnaryCall<rpc_generated.GetSignersByFidRequest, rpc_generated.MessagesResponse>,
-      callback: grpc.sendUnaryData<rpc_generated.MessagesResponse>
+      call: grpc.ServerUnaryCall<flatbuffers.GetSignersByFidRequest, flatbuffers.MessagesResponse>,
+      callback: grpc.sendUnaryData<flatbuffers.MessagesResponse>
     ) => {
       const result = await engine.getSignersByFid(call.request.fidArray() ?? new Uint8Array());
       result.match(
@@ -45,8 +43,8 @@ export const signerImplementation = (engine: Engine) => {
     },
 
     getCustodyEvent: async (
-      call: grpc.ServerUnaryCall<rpc_generated.GetCustodyEventRequest, IdRegistryEvent>,
-      callback: grpc.sendUnaryData<IdRegistryEvent>
+      call: grpc.ServerUnaryCall<flatbuffers.GetCustodyEventRequest, flatbuffers.IdRegistryEvent>,
+      callback: grpc.sendUnaryData<flatbuffers.IdRegistryEvent>
     ) => {
       const result = await engine.getCustodyEvent(call.request.fidArray() ?? new Uint8Array());
       result.match(
@@ -60,16 +58,16 @@ export const signerImplementation = (engine: Engine) => {
     },
 
     getFids: async (
-      call: grpc.ServerUnaryCall<rpc_generated.GetFidsRequest, rpc_generated.FidsResponse>,
-      callback: grpc.sendUnaryData<rpc_generated.FidsResponse>
+      call: grpc.ServerUnaryCall<flatbuffers.GetFidsRequest, flatbuffers.FidsResponse>,
+      callback: grpc.sendUnaryData<flatbuffers.FidsResponse>
     ) => {
       const result = await engine.getFids();
       result.match(
         (fids: Uint8Array[]) => {
-          const responseT = new rpc_generated.FidsResponseT(fids.map((fid) => new UserIdT(Array.from(fid))));
+          const responseT = new flatbuffers.FidsResponseT(fids.map((fid) => new flatbuffers.UserIdT(Array.from(fid))));
           const builder = new Builder(1);
           builder.finish(responseT.pack(builder));
-          const response = rpc_generated.FidsResponse.getRootAsFidsResponse(new ByteBuffer(builder.asUint8Array()));
+          const response = flatbuffers.FidsResponse.getRootAsFidsResponse(new ByteBuffer(builder.asUint8Array()));
           callback(null, response);
         },
         (err: HubError) => {

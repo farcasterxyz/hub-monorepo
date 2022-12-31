@@ -1,5 +1,5 @@
+import { IdRegistryEventType } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
-import { IdRegistryEventType } from '~/flatbuffers/generated/id_registry_event_generated';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { HubError } from '~/utils/hubErrors';
 import IdRegistryEventModel from './idRegistryEventModel';

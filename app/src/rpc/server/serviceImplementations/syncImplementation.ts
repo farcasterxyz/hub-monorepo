@@ -1,17 +1,6 @@
 import grpc from '@grpc/grpc-js';
+import * as flatbuffers from '@hub/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import {
-  GetAllMessagesByFidRequest,
-  GetAllMessagesByFidRequestT,
-  GetAllMessagesBySyncIdsRequest,
-  GetAllMessagesBySyncIdsRequestT,
-  GetAllSyncIdsByPrefixResponse,
-  GetTrieNodesByPrefixRequest,
-  GetTrieNodesByPrefixRequestT,
-  MessagesResponse,
-  SyncIdHashT,
-  TrieNodeMetadataResponse,
-} from '~/flatbuffers/generated/rpc_generated';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import * as types from '~/flatbuffers/models/types';
 import SyncEngine from '~/network/sync/syncEngine';
@@ -22,8 +11,8 @@ import { HubError } from '~/utils/hubErrors';
 export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
   return {
     getAllCastMessagesByFid: async (
-      call: grpc.ServerUnaryCall<GetAllMessagesByFidRequest, MessagesResponse>,
-      callback: grpc.sendUnaryData<MessagesResponse>
+      call: grpc.ServerUnaryCall<flatbuffers.GetAllMessagesByFidRequest, flatbuffers.MessagesResponse>,
+      callback: grpc.sendUnaryData<flatbuffers.MessagesResponse>
     ) => {
       const result = await engine.getAllCastMessagesByFid(call.request.fidArray() ?? new Uint8Array());
       result.match(
@@ -37,8 +26,8 @@ export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
     },
 
     getAllAmpMessagesByFid: async (
-      call: grpc.ServerUnaryCall<GetAllMessagesByFidRequest, MessagesResponse>,
-      callback: grpc.sendUnaryData<MessagesResponse>
+      call: grpc.ServerUnaryCall<flatbuffers.GetAllMessagesByFidRequest, flatbuffers.MessagesResponse>,
+      callback: grpc.sendUnaryData<flatbuffers.MessagesResponse>
     ) => {
       const result = await engine.getAllAmpMessagesByFid(call.request.fidArray() ?? new Uint8Array());
       result.match(
@@ -52,8 +41,8 @@ export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
     },
 
     getAllReactionMessagesByFid: async (
-      call: grpc.ServerUnaryCall<GetAllMessagesByFidRequest, MessagesResponse>,
-      callback: grpc.sendUnaryData<MessagesResponse>
+      call: grpc.ServerUnaryCall<flatbuffers.GetAllMessagesByFidRequest, flatbuffers.MessagesResponse>,
+      callback: grpc.sendUnaryData<flatbuffers.MessagesResponse>
     ) => {
       const result = await engine.getAllReactionMessagesByFid(call.request.fidArray() ?? new Uint8Array());
       result.match(
@@ -67,8 +56,8 @@ export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
     },
 
     getAllVerificationMessagesByFid: async (
-      call: grpc.ServerUnaryCall<GetAllMessagesByFidRequest, MessagesResponse>,
-      callback: grpc.sendUnaryData<MessagesResponse>
+      call: grpc.ServerUnaryCall<flatbuffers.GetAllMessagesByFidRequest, flatbuffers.MessagesResponse>,
+      callback: grpc.sendUnaryData<flatbuffers.MessagesResponse>
     ) => {
       const result = await engine.getAllVerificationMessagesByFid(call.request.fidArray() ?? new Uint8Array());
       result.match(
@@ -82,8 +71,8 @@ export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
     },
 
     getAllSignerMessagesByFid: async (
-      call: grpc.ServerUnaryCall<GetAllMessagesByFidRequest, MessagesResponse>,
-      callback: grpc.sendUnaryData<MessagesResponse>
+      call: grpc.ServerUnaryCall<flatbuffers.GetAllMessagesByFidRequest, flatbuffers.MessagesResponse>,
+      callback: grpc.sendUnaryData<flatbuffers.MessagesResponse>
     ) => {
       const result = await engine.getAllSignerMessagesByFid(call.request.fidArray() ?? new Uint8Array());
       result.match(
@@ -97,8 +86,8 @@ export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
     },
 
     getAllUserDataMessagesByFid: async (
-      call: grpc.ServerUnaryCall<GetAllMessagesByFidRequest, MessagesResponse>,
-      callback: grpc.sendUnaryData<MessagesResponse>
+      call: grpc.ServerUnaryCall<flatbuffers.GetAllMessagesByFidRequest, flatbuffers.MessagesResponse>,
+      callback: grpc.sendUnaryData<flatbuffers.MessagesResponse>
     ) => {
       const result = await engine.getUserDataByFid(call.request.fidArray() ?? new Uint8Array());
       result.match(
@@ -112,8 +101,8 @@ export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
     },
 
     getAllSyncIdsByPrefix: async (
-      call: grpc.ServerUnaryCall<GetTrieNodesByPrefixRequest, GetAllSyncIdsByPrefixResponse>,
-      callback: grpc.sendUnaryData<GetAllSyncIdsByPrefixResponse>
+      call: grpc.ServerUnaryCall<flatbuffers.GetTrieNodesByPrefixRequest, flatbuffers.GetAllSyncIdsByPrefixResponse>,
+      callback: grpc.sendUnaryData<flatbuffers.GetAllSyncIdsByPrefixResponse>
     ) => {
       const result = syncEngine.getIdsByPrefix(
         new TextDecoder().decode(call.request.prefixArray() ?? new Uint8Array())
@@ -122,8 +111,8 @@ export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
     },
 
     getAllMessagesBySyncIds: async (
-      call: grpc.ServerUnaryCall<GetAllMessagesBySyncIdsRequest, MessagesResponse>,
-      callback: grpc.sendUnaryData<MessagesResponse>
+      call: grpc.ServerUnaryCall<flatbuffers.GetAllMessagesBySyncIdsRequest, flatbuffers.MessagesResponse>,
+      callback: grpc.sendUnaryData<flatbuffers.MessagesResponse>
     ) => {
       const syncIdHashes: string[] = [];
       for (let i = 0; i < call.request.syncIdsLength(); i++) {
@@ -142,8 +131,8 @@ export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
     },
 
     getSyncMetadataByPrefix: async (
-      call: grpc.ServerUnaryCall<GetTrieNodesByPrefixRequest, TrieNodeMetadataResponse>,
-      callback: grpc.sendUnaryData<TrieNodeMetadataResponse>
+      call: grpc.ServerUnaryCall<flatbuffers.GetTrieNodesByPrefixRequest, flatbuffers.TrieNodeMetadataResponse>,
+      callback: grpc.sendUnaryData<flatbuffers.TrieNodeMetadataResponse>
     ) => {
       const prefix = new TextDecoder().decode(call.request.prefixArray() ?? new Uint8Array());
       const result = syncEngine.getTrieNodeMetadata(prefix);
@@ -157,25 +146,31 @@ export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
   };
 };
 
-export const createSyncServiceRequest = (fid: Uint8Array): GetAllMessagesByFidRequest => {
+export const createSyncServiceRequest = (fid: Uint8Array): flatbuffers.GetAllMessagesByFidRequest => {
   const builder = new Builder(1);
-  const requestT = new GetAllMessagesByFidRequestT(Array.from(fid));
+  const requestT = new flatbuffers.GetAllMessagesByFidRequestT(Array.from(fid));
   builder.finish(requestT.pack(builder));
-  return GetAllMessagesByFidRequest.getRootAsGetAllMessagesByFidRequest(new ByteBuffer(builder.asUint8Array()));
+  return flatbuffers.GetAllMessagesByFidRequest.getRootAsGetAllMessagesByFidRequest(
+    new ByteBuffer(builder.asUint8Array())
+  );
 };
 
-export const createByPrefixRequest = (prefix: Uint8Array): GetTrieNodesByPrefixRequest => {
+export const createByPrefixRequest = (prefix: Uint8Array): flatbuffers.GetTrieNodesByPrefixRequest => {
   const builder = new Builder(1);
-  const requestT = new GetTrieNodesByPrefixRequestT(Array.from(prefix));
+  const requestT = new flatbuffers.GetTrieNodesByPrefixRequestT(Array.from(prefix));
   builder.finish(requestT.pack(builder));
-  return GetTrieNodesByPrefixRequest.getRootAsGetTrieNodesByPrefixRequest(new ByteBuffer(builder.asUint8Array()));
+  return flatbuffers.GetTrieNodesByPrefixRequest.getRootAsGetTrieNodesByPrefixRequest(
+    new ByteBuffer(builder.asUint8Array())
+  );
 };
 
-export const createAllMessagesByHashesRequest = (hashes: Uint8Array[]): GetAllMessagesBySyncIdsRequest => {
-  const hashes_list = hashes.map((hash) => new SyncIdHashT(Array.from(hash)));
+export const createAllMessagesByHashesRequest = (hashes: Uint8Array[]): flatbuffers.GetAllMessagesBySyncIdsRequest => {
+  const hashes_list = hashes.map((hash) => new flatbuffers.SyncIdHashT(Array.from(hash)));
 
   const builder = new Builder(1);
-  const hashesT = new GetAllMessagesBySyncIdsRequestT(hashes_list);
+  const hashesT = new flatbuffers.GetAllMessagesBySyncIdsRequestT(hashes_list);
   builder.finish(hashesT.pack(builder));
-  return GetAllMessagesBySyncIdsRequest.getRootAsGetAllMessagesBySyncIdsRequest(new ByteBuffer(builder.asUint8Array()));
+  return flatbuffers.GetAllMessagesBySyncIdsRequest.getRootAsGetAllMessagesBySyncIdsRequest(
+    new ByteBuffer(builder.asUint8Array())
+  );
 };

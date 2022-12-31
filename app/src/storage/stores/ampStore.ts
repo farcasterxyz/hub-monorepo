@@ -1,5 +1,5 @@
+import { MessageType } from '@hub/flatbuffers';
 import { ok, ResultAsync } from 'neverthrow';
-import { MessageType } from '~/flatbuffers/generated/message_generated';
 import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/flatbuffers/models/messageModel';
 import { isAmpAdd, isAmpRemove } from '~/flatbuffers/models/typeguards';
 import { AmpAddModel, AmpRemoveModel, RootPrefix, StorePruneOptions, UserPostfix } from '~/flatbuffers/models/types';

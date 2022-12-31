@@ -1,5 +1,5 @@
+import { MessageType } from '@hub/flatbuffers';
 import { ok, ResultAsync } from 'neverthrow';
-import { MessageType } from '~/flatbuffers/generated/message_generated';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { isVerificationAddEthAddress, isVerificationRemove } from '~/flatbuffers/models/typeguards';
 import * as types from '~/flatbuffers/models/types';

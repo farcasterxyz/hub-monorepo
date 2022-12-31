@@ -1,3 +1,11 @@
+import {
+  ContactInfoContent,
+  GossipAddressInfo,
+  GossipContent,
+  GossipMessage,
+  IdRegistryEvent,
+  Message,
+} from '@hub/flatbuffers';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import { publicAddressesFirst } from '@libp2p/utils/address-sort';
@@ -6,14 +14,6 @@ import { isIP } from 'net';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { EthEventsProvider, GoerliEthConstants } from '~/eth/ethEventsProvider';
-import {
-  ContactInfoContent,
-  GossipAddressInfo,
-  GossipContent,
-  GossipMessage,
-} from '~/flatbuffers/generated/gossip_generated';
-import { IdRegistryEvent } from '~/flatbuffers/generated/id_registry_event_generated';
-import { Message } from '~/flatbuffers/generated/message_generated';
 import HubStateModel from '~/flatbuffers/models/hubStateModel';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';

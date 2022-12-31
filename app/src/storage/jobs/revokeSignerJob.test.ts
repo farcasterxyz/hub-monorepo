@@ -1,5 +1,5 @@
+import { RevokeSignerJobPayload } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
-import { RevokeSignerJobPayload } from '~/flatbuffers/generated/job_generated';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { AmpAddModel, CastAddModel, KeyPair, VerificationRemoveModel } from '~/flatbuffers/models/types';
 import { jestRocksDB } from '~/storage/db/jestUtils';

@@ -1,6 +1,6 @@
 import grpc, { Metadata } from '@grpc/grpc-js';
+import { EventResponse, EventResponseT, EventType, SubscribeRequest } from '@hub/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import { EventResponse, EventResponseT, EventType, SubscribeRequest } from '~/flatbuffers/generated/rpc_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';

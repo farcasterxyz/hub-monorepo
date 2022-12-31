@@ -1,5 +1,5 @@
-import { Message } from '~/flatbuffers/generated/message_generated';
-import * as rpc_generated from '~/flatbuffers/generated/rpc_generated';
+import * as rpc_generated from '@hub/flatbuffers';
+import { Message } from '@hub/flatbuffers';
 import { toByteBuffer } from '~/flatbuffers/utils/bytes';
 import { defaultMethod } from '~/rpc/client';
 

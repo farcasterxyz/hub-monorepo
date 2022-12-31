@@ -1,6 +1,5 @@
+import { MessageType, NameRegistryEventType, UserDataType } from '@hub/flatbuffers';
 import { ok, ResultAsync } from 'neverthrow';
-import { MessageType, UserDataType } from '~/flatbuffers/generated/message_generated';
-import { NameRegistryEventType } from '~/flatbuffers/generated/name_registry_event_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';

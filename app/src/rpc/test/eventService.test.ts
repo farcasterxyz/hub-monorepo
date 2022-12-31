@@ -1,7 +1,7 @@
 import { ClientReadableStream } from '@grpc/grpc-js';
+import { EventResponse, EventType } from '@hub/flatbuffers';
 import { utils, Wallet } from 'ethers';
 import Factories from '~/flatbuffers/factories';
-import { EventResponse, EventType } from '~/flatbuffers/generated/rpc_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';

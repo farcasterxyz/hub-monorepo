@@ -1,7 +1,5 @@
+import * as flatbuffers from '@hub/flatbuffers';
 import { err, errAsync, ok, ResultAsync } from 'neverthrow';
-import { IdRegistryEventType } from '~/flatbuffers/generated/id_registry_event_generated';
-import { CastId, ReactionType, UserDataType, UserId } from '~/flatbuffers/generated/message_generated';
-import { NameRegistryEventType } from '~/flatbuffers/generated/name_registry_event_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel, { FID_BYTES } from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
@@ -77,8 +75,8 @@ class Engine {
 
   async mergeIdRegistryEvent(event: IdRegistryEventModel): HubAsyncResult<void> {
     if (
-      event.type() === IdRegistryEventType.IdRegistryRegister ||
-      event.type() === IdRegistryEventType.IdRegistryTransfer
+      event.type() === flatbuffers.IdRegistryEventType.IdRegistryRegister ||
+      event.type() === flatbuffers.IdRegistryEventType.IdRegistryTransfer
     ) {
       return ResultAsync.fromPromise(this._signerStore.mergeIdRegistryEvent(event), (e) => e as HubError);
     } else {
@@ -88,8 +86,8 @@ class Engine {
 
   async mergeNameRegistryEvent(event: NameRegistryEventModel): HubAsyncResult<void> {
     if (
-      event.type() === NameRegistryEventType.NameRegistryTransfer ||
-      event.type() === NameRegistryEventType.NameRegistryRenew
+      event.type() === flatbuffers.NameRegistryEventType.NameRegistryTransfer ||
+      event.type() === flatbuffers.NameRegistryEventType.NameRegistryRenew
     ) {
       return ResultAsync.fromPromise(this._userDataStore.mergeNameRegistryEvent(event), (e) => e as HubError);
     }
@@ -137,7 +135,7 @@ class Engine {
     );
   }
 
-  async getCastsByParent(parent: CastId): HubAsyncResult<types.CastAddModel[]> {
+  async getCastsByParent(parent: flatbuffers.CastId): HubAsyncResult<types.CastAddModel[]> {
     return validations.validateCastId(parent).match(
       (validatedParent: validations.ValidatedCastId) => {
         return ResultAsync.fromPromise(
@@ -151,7 +149,7 @@ class Engine {
     );
   }
 
-  async getCastsByMention(user: UserId): HubAsyncResult<types.CastAddModel[]> {
+  async getCastsByMention(user: flatbuffers.UserId): HubAsyncResult<types.CastAddModel[]> {
     return validations.validateUserId(user).match(
       (validatedUserId: validations.ValidatedUserId) => {
         return ResultAsync.fromPromise(
@@ -225,7 +223,7 @@ class Engine {
   /*                             Amp Store Methods                           */
   /* -------------------------------------------------------------------------- */
 
-  async getAmp(fid: Uint8Array, user: UserId): HubAsyncResult<types.AmpAddModel> {
+  async getAmp(fid: Uint8Array, user: flatbuffers.UserId): HubAsyncResult<types.AmpAddModel> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -250,7 +248,7 @@ class Engine {
     );
   }
 
-  async getAmpsByUser(user: UserId): HubAsyncResult<types.AmpAddModel[]> {
+  async getAmpsByUser(user: flatbuffers.UserId): HubAsyncResult<types.AmpAddModel[]> {
     return validations.validateUserId(user).match(
       (validatedUserId: validations.ValidatedUserId) => {
         return ResultAsync.fromPromise(
@@ -282,7 +280,11 @@ class Engine {
   /*                            Reaction Store Methods                          */
   /* -------------------------------------------------------------------------- */
 
-  async getReaction(fid: Uint8Array, type: ReactionType, cast: CastId): HubAsyncResult<types.ReactionAddModel> {
+  async getReaction(
+    fid: Uint8Array,
+    type: flatbuffers.ReactionType,
+    cast: flatbuffers.CastId
+  ): HubAsyncResult<types.ReactionAddModel> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -301,7 +303,7 @@ class Engine {
     return ResultAsync.fromPromise(this._reactionStore.getReactionAdd(fid, type, cast), (e) => e as HubError);
   }
 
-  async getReactionsByFid(fid: Uint8Array, type?: ReactionType): HubAsyncResult<types.ReactionAddModel[]> {
+  async getReactionsByFid(fid: Uint8Array, type?: flatbuffers.ReactionType): HubAsyncResult<types.ReactionAddModel[]> {
     return validations.validateFid(fid).match(
       (validatedFid: Uint8Array) => {
         return ResultAsync.fromPromise(
@@ -315,7 +317,10 @@ class Engine {
     );
   }
 
-  async getReactionsByCast(cast: CastId, type?: ReactionType): HubAsyncResult<types.ReactionAddModel[]> {
+  async getReactionsByCast(
+    cast: flatbuffers.CastId,
+    type?: flatbuffers.ReactionType
+  ): HubAsyncResult<types.ReactionAddModel[]> {
     return validations.validateCastId(cast).match(
       (validatedCastId: validations.ValidatedCastId) => {
         return ResultAsync.fromPromise(
@@ -455,7 +460,7 @@ class Engine {
   /*                           User Data Store Methods                          */
   /* -------------------------------------------------------------------------- */
 
-  async getUserData(fid: Uint8Array, type: UserDataType): HubAsyncResult<types.UserDataAddModel> {
+  async getUserData(fid: Uint8Array, type: flatbuffers.UserDataType): HubAsyncResult<types.UserDataAddModel> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -499,7 +504,7 @@ class Engine {
     }
 
     // 3. For fname add UserDataAdd messages, check that the user actually owns the fname
-    if (isUserDataAdd(message) && message.body().type() == UserDataType.Fname) {
+    if (isUserDataAdd(message) && message.body().type() == flatbuffers.UserDataType.Fname) {
       // For fname messages, check if the user actually owns the fname.
       const fname = new TextEncoder().encode(message.body().value() ?? '');
 

@@ -1,7 +1,7 @@
+import { SignatureScheme } from '@hub/flatbuffers';
 import * as ed from '@noble/ed25519';
 import { ethers } from 'ethers';
 import { hexlify } from 'ethers/lib/utils';
-import { SignatureScheme } from '~/flatbuffers/generated/message_generated';
 import { Ed25519Signer, EthereumSigner, KeyPair } from '~/flatbuffers/models/types';
 
 export const sleep = (ms: number) => {

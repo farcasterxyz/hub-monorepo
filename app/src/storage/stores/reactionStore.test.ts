@@ -1,5 +1,5 @@
+import { CastId, MessageType, ReactionType } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
-import { CastId, MessageType, ReactionType } from '~/flatbuffers/generated/message_generated';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { ReactionAddModel, ReactionRemoveModel, UserPostfix } from '~/flatbuffers/models/types';
 import { bytesDecrement, bytesIncrement } from '~/flatbuffers/utils/bytes';

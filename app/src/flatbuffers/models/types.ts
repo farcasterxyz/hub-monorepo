@@ -1,5 +1,5 @@
+import * as message_generated from '@hub/flatbuffers';
 import { ethers } from 'ethers';
-import * as message_generated from '~/flatbuffers/generated/message_generated';
 import HubStateModel from '~/flatbuffers/models/hubStateModel';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';

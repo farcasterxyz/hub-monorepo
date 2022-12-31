@@ -1,4 +1,4 @@
-import { GossipVersion } from '~/flatbuffers/generated/gossip_generated';
+import { GossipVersion } from '@hub/flatbuffers';
 
 // Network topic for all FC protocol messages
 export const NETWORK_TOPIC_PRIMARY = 'f_network_topic_primary';

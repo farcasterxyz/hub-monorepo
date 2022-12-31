@@ -1,8 +1,8 @@
+import * as message_generated from '@hub/flatbuffers';
 import * as ed from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
 import { hexlify } from 'ethers/lib/utils';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
-import * as message_generated from '~/flatbuffers/generated/message_generated';
 import MessageModel, { FID_BYTES } from '~/flatbuffers/models/messageModel';
 import * as typeguards from '~/flatbuffers/models/typeguards';
 import * as types from '~/flatbuffers/models/types';

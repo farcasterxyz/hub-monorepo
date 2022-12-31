@@ -1,15 +1,7 @@
 import grpc from '@grpc/grpc-js';
+import * as flatbuffers from '@hub/flatbuffers';
 import { arrayify } from 'ethers/lib/utils';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import {
-  GetAllSyncIdsByPrefixResponse,
-  GetAllSyncIdsByPrefixResponseT,
-  MessageBytesT,
-  MessagesResponse,
-  MessagesResponseT,
-  TrieNodeMetadataResponse,
-  TrieNodeMetadataResponseT,
-} from '~/flatbuffers/generated/rpc_generated';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { HubInterface } from '~/flatbuffers/models/types';
 import { NodeMetadata } from '~/network/sync/merkleTrie';
@@ -53,31 +45,33 @@ export const toServiceError = (err: HubError): grpc.ServiceError => {
   });
 };
 
-export const toMessagesResponse = (messages: MessageModel[]): MessagesResponse => {
-  const messagesT = new MessagesResponseT(messages.map((model) => new MessageBytesT(Array.from(model.toBytes()))));
+export const toMessagesResponse = (messages: MessageModel[]): flatbuffers.MessagesResponse => {
+  const messagesT = new flatbuffers.MessagesResponseT(
+    messages.map((model) => new flatbuffers.MessageBytesT(Array.from(model.toBytes())))
+  );
   const builder = new Builder(1);
   builder.finish(messagesT.pack(builder));
-  const response = MessagesResponse.getRootAsMessagesResponse(new ByteBuffer(builder.asUint8Array()));
+  const response = flatbuffers.MessagesResponse.getRootAsMessagesResponse(new ByteBuffer(builder.asUint8Array()));
   return response;
 };
 
-export const toSyncIdsResponse = (ids: string[]): GetAllSyncIdsByPrefixResponse => {
-  const idsT = new GetAllSyncIdsByPrefixResponseT(ids);
+export const toSyncIdsResponse = (ids: string[]): flatbuffers.GetAllSyncIdsByPrefixResponse => {
+  const idsT = new flatbuffers.GetAllSyncIdsByPrefixResponseT(ids);
   const builder = new Builder(1);
   builder.finish(idsT.pack(builder));
-  const response = GetAllSyncIdsByPrefixResponse.getRootAsGetAllSyncIdsByPrefixResponse(
+  const response = flatbuffers.GetAllSyncIdsByPrefixResponse.getRootAsGetAllSyncIdsByPrefixResponse(
     new ByteBuffer(builder.asUint8Array())
   );
   return response;
 };
 
-export const toTrieNodeMetadataResponse = (metadata: NodeMetadata): TrieNodeMetadataResponse => {
+export const toTrieNodeMetadataResponse = (metadata: NodeMetadata): flatbuffers.TrieNodeMetadataResponse => {
   const childrenTrie = [];
 
   if (metadata.children) {
     for (const [, child] of metadata.children) {
       childrenTrie.push(
-        new TrieNodeMetadataResponseT(
+        new flatbuffers.TrieNodeMetadataResponseT(
           Array.from(arrayify(Buffer.from(child.prefix))),
           BigInt(child.numMessages),
           Array.from(arrayify(Buffer.from(child.hash))),
@@ -87,7 +81,7 @@ export const toTrieNodeMetadataResponse = (metadata: NodeMetadata): TrieNodeMeta
     }
   }
 
-  const metadataT = new TrieNodeMetadataResponseT(
+  const metadataT = new flatbuffers.TrieNodeMetadataResponseT(
     Array.from(arrayify(Buffer.from(metadata.prefix))),
     BigInt(metadata.numMessages),
     Array.from(arrayify(Buffer.from(metadata.hash))),
@@ -95,11 +89,13 @@ export const toTrieNodeMetadataResponse = (metadata: NodeMetadata): TrieNodeMeta
   );
   const builder = new Builder(1);
   builder.finish(metadataT.pack(builder));
-  const response = TrieNodeMetadataResponse.getRootAsTrieNodeMetadataResponse(new ByteBuffer(builder.asUint8Array()));
+  const response = flatbuffers.TrieNodeMetadataResponse.getRootAsTrieNodeMetadataResponse(
+    new ByteBuffer(builder.asUint8Array())
+  );
   return response;
 };
 
-export const fromNodeMetadataResponse = (response: TrieNodeMetadataResponse): NodeMetadata => {
+export const fromNodeMetadataResponse = (response: flatbuffers.TrieNodeMetadataResponse): NodeMetadata => {
   const children = new Map<string, NodeMetadata>();
   for (let i = 0; i < response.childrenLength(); i++) {
     const child = response.children(i);
@@ -123,7 +119,7 @@ export const fromNodeMetadataResponse = (response: TrieNodeMetadataResponse): No
   };
 };
 
-export const fromSyncIdsByPrefixResponse = (response: GetAllSyncIdsByPrefixResponse): string[] => {
+export const fromSyncIdsByPrefixResponse = (response: flatbuffers.GetAllSyncIdsByPrefixResponse): string[] => {
   const ids = [];
   for (let i = 0; i < response.idsLength(); i++) {
     ids.push(response.ids(i));

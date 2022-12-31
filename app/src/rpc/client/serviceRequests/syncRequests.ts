@@ -1,5 +1,5 @@
+import { GetAllMessagesByFidRequest, GetAllMessagesByFidRequestT } from '@hub/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import { GetAllMessagesByFidRequest, GetAllMessagesByFidRequestT } from '~/flatbuffers/generated/rpc_generated';
 
 export const createSyncRequest = (fid: Uint8Array): GetAllMessagesByFidRequest => {
   const builder = new Builder(1);

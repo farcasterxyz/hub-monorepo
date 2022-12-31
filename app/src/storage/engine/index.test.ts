@@ -1,9 +1,7 @@
+import { CastId, IdRegistryEventType, MessageType, NameRegistryEventType } from '@hub/flatbuffers';
 import { utils, Wallet } from 'ethers';
 import { err, ok } from 'neverthrow';
 import Factories from '~/flatbuffers/factories';
-import { IdRegistryEventType } from '~/flatbuffers/generated/id_registry_event_generated';
-import { CastId, MessageType } from '~/flatbuffers/generated/message_generated';
-import { NameRegistryEventType } from '~/flatbuffers/generated/name_registry_event_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';

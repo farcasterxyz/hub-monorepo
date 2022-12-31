@@ -1,5 +1,5 @@
+import { HubState } from '@hub/flatbuffers';
 import { ByteBuffer } from 'flatbuffers';
-import { HubState } from '~/flatbuffers/generated/hub_state_generated';
 import { RootPrefix } from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 

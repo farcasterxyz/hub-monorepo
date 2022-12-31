@@ -1,5 +1,5 @@
+import { NameRegistryEvent, NameRegistryEventType } from '@hub/flatbuffers';
 import { ByteBuffer } from 'flatbuffers';
-import { NameRegistryEvent, NameRegistryEventType } from '~/flatbuffers/generated/name_registry_event_generated';
 import { RootPrefix } from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { HubError } from '~/utils/hubErrors';

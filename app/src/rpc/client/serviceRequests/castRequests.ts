@@ -1,6 +1,6 @@
+import * as rpc_generated from '@hub/flatbuffers';
+import { CastId, UserId } from '@hub/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import { CastId, UserId } from '~/flatbuffers/generated/message_generated';
-import * as rpc_generated from '~/flatbuffers/generated/rpc_generated';
 
 export const castRequests = {
   getCast: (fid: Uint8Array, tsHash: Uint8Array): rpc_generated.GetCastRequest => {

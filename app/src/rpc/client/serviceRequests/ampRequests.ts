@@ -1,6 +1,6 @@
+import * as rpc_generated from '@hub/flatbuffers';
+import { UserId } from '@hub/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import { UserId } from '~/flatbuffers/generated/message_generated';
-import * as rpc_generated from '~/flatbuffers/generated/rpc_generated';
 
 export const ampRequests = {
   getAmp: (fid: Uint8Array, user: UserId): rpc_generated.GetAmpRequest => {

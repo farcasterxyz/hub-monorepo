@@ -1,10 +1,10 @@
+import { GossipAddressInfo } from '@hub/flatbuffers';
 import { Multiaddr, multiaddr, NodeAddress } from '@multiformats/multiaddr';
 import { get } from 'http';
 import { AddressInfo, isIP } from 'net';
 import { err, ok, Result } from 'neverthrow';
 import { HubAsyncResult, HubError, HubResult } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
-import { GossipAddressInfo } from '../flatbuffers/generated/gossip_generated';
 
 /** Parses an address to verify it is actually a valid MultiAddr */
 export const parseAddress = (multiaddrStr: string): HubResult<Multiaddr> => {

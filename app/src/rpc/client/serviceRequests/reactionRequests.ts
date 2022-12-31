@@ -1,6 +1,6 @@
+import * as rpc_generated from '@hub/flatbuffers';
+import { CastId, ReactionType } from '@hub/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import { CastId, ReactionType } from '~/flatbuffers/generated/message_generated';
-import * as rpc_generated from '~/flatbuffers/generated/rpc_generated';
 
 export const reactionRequests = {
   getReaction: (fid: Uint8Array, type: ReactionType, cast: CastId): rpc_generated.GetReactionRequest => {

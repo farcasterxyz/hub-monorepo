@@ -1,5 +1,4 @@
-import { Message } from '~/flatbuffers/generated/message_generated';
-import { GetUserDataByFidRequest, GetUserDataRequest, MessagesResponse } from '~/flatbuffers/generated/rpc_generated';
+import { GetUserDataByFidRequest, GetUserDataRequest, Message, MessagesResponse } from '@hub/flatbuffers';
 import { toByteBuffer } from '~/flatbuffers/utils/bytes';
 import { defaultMethod } from '~/rpc/client';
 

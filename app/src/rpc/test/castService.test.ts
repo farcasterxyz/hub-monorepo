@@ -1,6 +1,6 @@
+import { CastId, UserId } from '@hub/flatbuffers';
 import { utils, Wallet } from 'ethers';
 import Factories from '~/flatbuffers/factories';
-import { CastId, UserId } from '~/flatbuffers/generated/message_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastAddModel, KeyPair, SignerAddModel } from '~/flatbuffers/models/types';

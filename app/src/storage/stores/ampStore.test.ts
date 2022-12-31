@@ -1,5 +1,5 @@
+import { MessageType, UserId } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
-import { MessageType, UserId } from '~/flatbuffers/generated/message_generated';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { AmpAddModel, AmpRemoveModel, UserPostfix } from '~/flatbuffers/models/types';
 import { bytesDecrement, bytesIncrement } from '~/flatbuffers/utils/bytes';

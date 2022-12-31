@@ -1,6 +1,6 @@
 import grpc from '@grpc/grpc-js';
-import { Message } from '~/flatbuffers/generated/message_generated';
-import * as rpc_generated from '~/flatbuffers/generated/rpc_generated';
+import * as rpc_generated from '@hub/flatbuffers';
+import { Message } from '@hub/flatbuffers';
 import { VerificationAddEthAddressModel } from '~/flatbuffers/models/types';
 import { toMessagesResponse, toServiceError } from '~/rpc/server';
 import Engine from '~/storage/engine';

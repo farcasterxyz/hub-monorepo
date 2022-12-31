@@ -1,4 +1,4 @@
-import { EventResponse, SubscribeRequest } from '~/flatbuffers/generated/rpc_generated';
+import { EventResponse, SubscribeRequest } from '@hub/flatbuffers';
 import { toByteBuffer } from '~/flatbuffers/utils/bytes';
 import { defaultMethod } from '~/rpc/client';
 

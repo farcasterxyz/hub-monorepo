@@ -1,5 +1,5 @@
+import * as rpc_generated from '@hub/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import * as rpc_generated from '~/flatbuffers/generated/rpc_generated';
 
 export const signerRequests = {
   getSigner: (fid: Uint8Array, signer: Uint8Array): rpc_generated.GetSignerRequest => {

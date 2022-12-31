@@ -1,6 +1,6 @@
+import { FarcasterNetwork } from '@hub/flatbuffers';
 import { arrayify } from 'ethers/lib/utils';
 import Factories from '~/flatbuffers/factories';
-import { FarcasterNetwork } from '~/flatbuffers/generated/message_generated';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import {
   EthereumSigner,

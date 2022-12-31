@@ -1,6 +1,6 @@
+import * as rpc_generated from '@hub/flatbuffers';
+import { UserDataType } from '@hub/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import { UserDataType } from '~/flatbuffers/generated/message_generated';
-import * as rpc_generated from '~/flatbuffers/generated/rpc_generated';
 
 export const userDataRequests = {
   getUserData: (fid: Uint8Array, type: UserDataType): rpc_generated.GetUserDataRequest => {

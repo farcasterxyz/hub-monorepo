@@ -1,7 +1,5 @@
 import grpc from '@grpc/grpc-js';
-import { IdRegistryEvent } from '~/flatbuffers/generated/id_registry_event_generated';
-import { Message } from '~/flatbuffers/generated/message_generated';
-import { NameRegistryEvent } from '~/flatbuffers/generated/name_registry_event_generated';
+import { IdRegistryEvent, Message, NameRegistryEvent } from '@hub/flatbuffers';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';

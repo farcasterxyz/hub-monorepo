@@ -1,8 +1,8 @@
+import { MessageType } from '@hub/flatbuffers';
 import { utils, Wallet } from 'ethers';
 import { ok } from 'neverthrow';
 import { anyString, instance, mock, when } from 'ts-mockito';
 import Factories from '~/flatbuffers/factories';
-import { MessageType } from '~/flatbuffers/generated/message_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastAddModel, CastRemoveModel, KeyPair, SignerAddModel } from '~/flatbuffers/models/types';

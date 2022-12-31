@@ -1,8 +1,7 @@
 import { faker } from '@faker-js/faker';
+import { IdRegistryEventType, MessageType } from '@hub/flatbuffers';
 import { arrayify } from 'ethers/lib/utils';
 import Factories from '~/flatbuffers/factories';
-import { IdRegistryEventType } from '~/flatbuffers/generated/id_registry_event_generated';
-import { MessageType } from '~/flatbuffers/generated/message_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { EthereumSigner, SignerAddModel, SignerRemoveModel, UserPostfix } from '~/flatbuffers/models/types';

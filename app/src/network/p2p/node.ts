@@ -1,5 +1,6 @@
 import { GossipSub } from '@chainsafe/libp2p-gossipsub';
 import { Noise } from '@chainsafe/libp2p-noise';
+import { GossipContent, GossipMessage, GossipMessageT } from '@hub/flatbuffers';
 import { Connection } from '@libp2p/interface-connection';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { Mplex } from '@libp2p/mplex';
@@ -10,7 +11,6 @@ import { Builder, ByteBuffer } from 'flatbuffers';
 import { createLibp2p, Libp2p } from 'libp2p';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import { GossipContent, GossipMessage, GossipMessageT } from '~/flatbuffers/generated/gossip_generated';
 import { ConnectionFilter } from '~/network/p2p/connectionFilter';
 import { GOSSIP_TOPICS } from '~/network/p2p/protocol';
 import { HubError, HubResult } from '~/utils/hubErrors';

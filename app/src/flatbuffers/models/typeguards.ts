@@ -1,4 +1,4 @@
-import { MessageBody, MessageType } from '~/flatbuffers/generated/message_generated';
+import { MessageBody, MessageType } from '@hub/flatbuffers';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import * as Types from '~/flatbuffers/models/types';
 
