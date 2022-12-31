@@ -382,6 +382,7 @@ class CastStore {
 
     // If the add tsHash exists, retrieve the full CastAdd message and delete it as
     // part of the RocksDB transaction
+    const removedCastAdds: CastAddModel[] = [];
     if (castAddTsHash.isOk()) {
       const existingAdd = await MessageModel.get<CastAddModel>(
         this._db,
@@ -390,6 +391,7 @@ class CastStore {
         castAddTsHash.value
       );
       tsx = this.deleteCastAddTransaction(tsx, existingAdd);
+      removedCastAdds.push(existingAdd);
     }
 
     // Add putCastRemove operations to the RocksDB transaction
@@ -400,6 +402,11 @@ class CastStore {
 
     // Emit store event
     this._eventHandler.emit('mergeMessage', message);
+
+    // Emit revoke events for each of the removed CastAdd messages
+    for (const removedCastAdd of removedCastAdds) {
+      this._eventHandler.emit('revokeMessage', removedCastAdd);
+    }
   }
 
   /* Builds a RocksDB transaction to insert a CastAdd message and construct its indices */
