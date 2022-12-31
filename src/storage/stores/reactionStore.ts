@@ -351,7 +351,8 @@ class ReactionStore {
       throw new HubError('bad_request.validation_failure', 'castId was missing');
     } else {
       const targetKey = this.targetKeyForCastId(castId);
-      let txn = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
+      // eslint-disable-next-line prefer-const
+      let { txn, removedReactionAdds } = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
 
       if (!txn) return undefined; // Assume no-op if txn was not returned
 
@@ -362,6 +363,11 @@ class ReactionStore {
 
       // Emit store event
       this._eventHandler.emit('mergeMessage', message);
+
+      // Emit remove events for any removed ReactionAdd messages
+      for (const removedReactionAdd of removedReactionAdds) {
+        this._eventHandler.emit('revokeMessage', removedReactionAdd);
+      }
     }
   }
 
@@ -372,7 +378,8 @@ class ReactionStore {
       throw new HubError('bad_request.validation_failure', 'castId was missing');
     } else {
       const targetKey = this.targetKeyForCastId(castId);
-      let txn = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
+      // eslint-disable-next-line prefer-const
+      let { txn, removedReactionAdds } = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
 
       if (!txn) return undefined; // Assume no-op if txn was not returned
 
@@ -383,6 +390,11 @@ class ReactionStore {
 
       // Emit store event
       this._eventHandler.emit('mergeMessage', message);
+
+      // Emit remove events for any removed ReactionAdd messages
+      for (const removedReactionAdd of removedReactionAdds) {
+        this._eventHandler.emit('revokeMessage', removedReactionAdd);
+      }
     }
   }
 
@@ -419,7 +431,7 @@ class ReactionStore {
     txn: Transaction,
     targetKey: Uint8Array,
     message: types.ReactionAddModel | types.ReactionRemoveModel
-  ): Promise<Transaction | undefined> {
+  ): Promise<{ txn: Transaction | undefined; removedReactionAdds: types.ReactionAddModel[] }> {
     // Checks if there is a remove timestamp hash for this reaction
     const reactionRemoveTsHash = await ResultAsync.fromPromise(
       this._db.get(ReactionStore.reactionRemovesKey(message.fid(), message.body().type(), targetKey)),
@@ -436,7 +448,7 @@ class ReactionStore {
         ) >= 0
       ) {
         // If the existing remove has the same or higher order than the new message, no-op
-        return undefined;
+        return { txn: undefined, removedReactionAdds: [] };
       } else {
         // If the existing remove has a lower order than the new message, retrieve the full
         // ReactionRemove message and delete it as part of the RocksDB transaction
@@ -456,6 +468,7 @@ class ReactionStore {
       () => undefined
     );
 
+    const removedReactionAdds = [];
     if (reactionAddTsHash.isOk()) {
       if (
         this.reactionMessageCompare(
@@ -467,7 +480,7 @@ class ReactionStore {
         ) >= 0
       ) {
         // If the existing add has the same or higher order than the new message, no-op
-        return undefined;
+        return { txn: undefined, removedReactionAdds: [] };
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // ReactionAdd message and delete it as part of the RocksDB transaction
@@ -477,11 +490,12 @@ class ReactionStore {
           types.UserPostfix.ReactionMessage,
           reactionAddTsHash.value
         );
+        removedReactionAdds.push(existingAdd);
         txn = this.deleteReactionAddTransaction(txn, existingAdd);
       }
     }
 
-    return txn;
+    return { txn, removedReactionAdds };
   }
 
   /* Builds a RocksDB transaction to insert a ReactionAdd message and construct its indices */
