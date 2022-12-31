@@ -6,6 +6,7 @@ import { MessageType } from '~/flatbuffers/generated/message_generated';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastAddModel, CastRemoveModel, KeyPair, SignerAddModel } from '~/flatbuffers/models/types';
+import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';
 import Client from '~/rpc/client';
@@ -128,10 +129,13 @@ describe('SyncEngine', () => {
 
     // The trie should contain the message remove
     expect(syncEngine.trie.exists(id)).toBeTruthy();
+
+    // The trie should not contain the cast add
+    expect(syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
   });
 
   test('snapshotTimestampPrefix trims the seconds', async () => {
-    const nowInSeconds = Date.now() / 1000;
+    const nowInSeconds = getFarcasterTime();
     const snapshotTimestamp = syncEngine.snapshotTimestamp;
     expect(snapshotTimestamp).toBeLessThanOrEqual(nowInSeconds);
     expect(snapshotTimestamp).toEqual(Math.floor(nowInSeconds / 10) * 10);

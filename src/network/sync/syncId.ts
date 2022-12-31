@@ -29,7 +29,7 @@ class SyncId {
     // For our MerkleTrie, seconds is a good enough resolution
     // We also want to normalize the length to 10 characters, so that the MerkleTrie
     // will always have the same depth for any timestamp (even 0).
-    const timestampString = Math.floor(this._timestamp).toString().padStart(TIMESTAMP_LENGTH, '0');
+    const timestampString = timestampToPaddedTimestampPrefix(this._timestamp);
 
     const buf = MessageModel.primaryKey(this._fid, MessageModel.typeToSetPostfix(this._type), this._tsHash);
     return timestampString + buf.toString('hex');
@@ -47,4 +47,8 @@ class SyncId {
   }
 }
 
-export { SyncId, TIMESTAMP_LENGTH, HASH_LENGTH };
+const timestampToPaddedTimestampPrefix = (timestamp: number): string => {
+  return Math.floor(timestamp).toString().padStart(TIMESTAMP_LENGTH, '0');
+};
+
+export { SyncId, timestampToPaddedTimestampPrefix, TIMESTAMP_LENGTH, HASH_LENGTH };

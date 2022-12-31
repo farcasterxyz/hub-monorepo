@@ -1,12 +1,13 @@
 import { arrayify } from 'ethers/lib/utils';
 import { err } from 'neverthrow';
 import MessageModel from '~/flatbuffers/models/messageModel';
+import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import Client from '~/rpc/client';
 import Engine from '~/storage/engine';
 import { HubError, HubResult } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
 import { MerkleTrie, NodeMetadata } from './merkleTrie';
-import { SyncId } from './syncId';
+import { SyncId, timestampToPaddedTimestampPrefix } from './syncId';
 import { TrieSnapshot } from './trieNode';
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
@@ -209,13 +210,13 @@ class SyncEngine {
   public get snapshot(): TrieSnapshot {
     // Ignore the least significant digit when fetching the snapshot timestamp because
     // second resolution is too fine grained, and fall outside sync threshold anyway
-    return this._trie.getSnapshot((this.snapshotTimestamp / 10).toString());
+    return this._trie.getSnapshot(timestampToPaddedTimestampPrefix(this.snapshotTimestamp / 10).toString());
   }
 
   // Returns the most recent timestamp in seconds that's within the sync threshold
   // (i.e. highest timestamp that's < current time and timestamp % sync_threshold == 0)
   public get snapshotTimestamp(): number {
-    const currentTimeInSeconds = Math.floor(Date.now() / 1000);
+    const currentTimeInSeconds = Math.floor(getFarcasterTime());
     return Math.floor(currentTimeInSeconds / SYNC_THRESHOLD_IN_SECONDS) * SYNC_THRESHOLD_IN_SECONDS;
   }
 
