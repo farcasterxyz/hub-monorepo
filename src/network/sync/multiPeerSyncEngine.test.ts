@@ -3,7 +3,7 @@ import { utils, Wallet } from 'ethers';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
-import { SignerAddModel } from '~/flatbuffers/models/types';
+import { CastRemoveModel, SignerAddModel } from '~/flatbuffers/models/types';
 import Client from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
@@ -12,6 +12,7 @@ import { MockHub } from '~/test/mocks';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import { addressInfoFromParts } from '~/utils/p2p';
 import SyncEngine from './syncEngine';
+import { SyncId } from './syncId';
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
 
@@ -116,15 +117,14 @@ describe('Multi peer sync engine', () => {
       const engine2 = new Engine(testDb2);
       const syncEngine2 = new SyncEngine(engine2);
 
-      // Engine 2 should sync with no excluded hashes
-      expect(syncEngine2.shouldSync([])).toBeTruthy();
+      // Engine 2 should sync with engine1
+      expect(syncEngine2.shouldSync(syncEngine1.snapshot.excludedHashes)).toBeTruthy();
 
       // Sync engine 2 with engine 1
-      await syncEngine2.performSync([], clientForServer1);
+      await syncEngine2.performSync(syncEngine1.snapshot.excludedHashes, clientForServer1);
 
-      // Make sure snapshots match
-      expect(syncEngine1.snapshot.excludedHashes).toEqual(syncEngine2.snapshot.excludedHashes);
-      expect(syncEngine1.snapshot.numMessages).toEqual(syncEngine2.snapshot.numMessages);
+      // Make sure root hash matches
+      expect(syncEngine1.trie.rootHash).toEqual(syncEngine2.trie.rootHash);
 
       // Should sync should now be false with the new excluded hashes
       expect(syncEngine2.shouldSync(syncEngine1.snapshot.excludedHashes)).toBeFalsy();
@@ -139,12 +139,73 @@ describe('Multi peer sync engine', () => {
       // Do the sync again
       await syncEngine2.performSync(newSnapshot, clientForServer1);
 
-      // Make sure snapshots match
-      expect(syncEngine1.snapshot.excludedHashes).toEqual(syncEngine2.snapshot.excludedHashes);
-      expect(syncEngine1.snapshot.numMessages).toEqual(syncEngine2.snapshot.numMessages);
+      // Make sure root hash matches
+      expect(syncEngine1.trie.rootHash).toEqual(syncEngine2.trie.rootHash);
     },
     TEST_TIMEOUT_LONG
   );
+
+  test('cast remove should remove from trie', async () => {
+    // Add signer custody event to engine 1
+    await engine1.mergeIdRegistryEvent(custodyEvent);
+    await engine1.mergeMessage(signerAdd);
+
+    // Add a cast to engine1
+    const castAdd = (await addMessagesWithTimestamps(engine1, [30662167]))[0] as MessageModel;
+
+    const engine2 = new Engine(testDb2);
+    const syncEngine2 = new SyncEngine(engine2);
+    // Sync engine 2 with engine 1
+    await syncEngine2.performSync([], clientForServer1);
+
+    // Make sure the castAdd is in the trie
+    expect(syncEngine1.trie.exists(new SyncId(castAdd))).toBeTruthy();
+    expect(syncEngine2.trie.exists(new SyncId(castAdd))).toBeTruthy();
+
+    // Remove the cast
+    const castRemoveBody = await Factories.CastRemoveBody.create({ targetTsHash: Array.from(castAdd.tsHash()) });
+    const castRemoveData = await Factories.CastRemoveData.create({
+      fid: Array.from(fid),
+      body: castRemoveBody.unpack(),
+    });
+    const castRemove = new MessageModel(
+      await Factories.Message.create({ data: Array.from(castRemoveData.bb?.bytes() ?? []) }, { transient: { signer } })
+    ) as CastRemoveModel;
+
+    // Merging the cast remove deletes the cast add in the db, and it should be reflected in the trie
+    const result = await engine1.mergeMessage(castRemove);
+    expect(result.isOk()).toBeTruthy();
+
+    const castRemoveId = new SyncId(castRemove);
+    expect(syncEngine1.trie.exists(castRemoveId)).toBeTruthy();
+    // The trie should not contain the castAdd anymore
+    expect(syncEngine1.trie.exists(new SyncId(castAdd))).toBeFalsy();
+
+    // Syncing engine2 --> engine1 should do nothing, even though engine2 has the castAdd and it has been removed
+    // from engine1.
+    {
+      const server2 = new Server(new MockHub(testDb2, engine2), engine2, syncEngine2);
+      const port2 = await server2.start();
+      const clientForServer2 = new Client(addressInfoFromParts('127.0.0.1', port2)._unsafeUnwrap());
+      const engine1RootHashBefore = syncEngine1.trie.rootHash;
+
+      await syncEngine1.performSync(syncEngine2.snapshot.excludedHashes, clientForServer2);
+      expect(syncEngine1.trie.rootHash).toEqual(engine1RootHashBefore);
+
+      clientForServer2.close();
+      await server2.stop();
+    }
+
+    // castRemove doesn't yet exist in engine2
+    expect(syncEngine2.trie.exists(castRemoveId)).toBeFalsy();
+
+    // Syncing engine2 with engine1 should delete the castAdd from the trie and add the castRemove
+    await syncEngine2.performSync(syncEngine1.snapshot.excludedHashes, clientForServer1);
+
+    expect(syncEngine2.trie.exists(castRemoveId)).toBeTruthy();
+    expect(syncEngine2.trie.exists(new SyncId(castAdd))).toBeFalsy();
+    expect(syncEngine2.trie.rootHash).toEqual(syncEngine1.trie.rootHash);
+  });
 
   xtest(
     'loads of messages',
@@ -170,15 +231,15 @@ describe('Multi peer sync engine', () => {
       const engine2 = new Engine(testDb2);
       const syncEngine2 = new SyncEngine(engine2);
 
-      // Engine 2 should sync with no excluded hashes
-      expect(syncEngine2.shouldSync([])).toBeTruthy();
+      // Engine 2 should sync with engine1
+      expect(syncEngine2.shouldSync(syncEngine1.snapshot.excludedHashes)).toBeTruthy();
 
       await engine2.mergeIdRegistryEvent(custodyEvent);
       await engine2.mergeMessage(signerAdd);
 
       // Sync engine 2 with engine 1, and measure the time taken
       const start = Date.now();
-      await syncEngine2.performSync([], clientForServer1);
+      await syncEngine2.performSync(syncEngine1.snapshot.excludedHashes, clientForServer1);
       const end = Date.now();
 
       const totalTime = (end - start) / 1000;

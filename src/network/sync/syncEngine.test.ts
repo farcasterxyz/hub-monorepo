@@ -130,7 +130,7 @@ describe('SyncEngine', () => {
     // The trie should contain the message remove
     expect(syncEngine.trie.exists(id)).toBeTruthy();
 
-    // The trie should not contain the cast add
+    // The trie should not contain the castAdd anymore
     expect(syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
   });
 

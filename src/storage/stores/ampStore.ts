@@ -251,7 +251,8 @@ class AmpStore {
   private async mergeAdd(message: AmpAddModel): Promise<void> {
     const ampId = message.body().user()?.fidArray() ?? new Uint8Array();
 
-    let tsx = await this.resolveMergeConflicts(this._db.transaction(), ampId, message);
+    // eslint-disable-next-line prefer-const
+    let { tsx, removedAmps } = await this.resolveMergeConflicts(this._db.transaction(), ampId, message);
 
     if (!tsx) return undefined; // Assume no-op if txn was not returned
 
@@ -262,12 +263,18 @@ class AmpStore {
 
     // Emit store event
     this._eventHandler.emit('mergeMessage', message);
+
+    // Emit remove event for each AmpAdd that was removed
+    for (const removedAmpAdd of removedAmps) {
+      this._eventHandler.emit('revokeMessage', removedAmpAdd);
+    }
   }
 
   private async mergeRemove(message: AmpRemoveModel): Promise<void> {
     const ampId = message.body().user()?.fidArray() ?? new Uint8Array();
 
-    let tsx = await this.resolveMergeConflicts(this._db.transaction(), ampId, message);
+    // eslint-disable-next-line prefer-const
+    let { tsx, removedAmps } = await this.resolveMergeConflicts(this._db.transaction(), ampId, message);
 
     if (!tsx) return undefined; // Assume no-op if txn was not returned
 
@@ -278,6 +285,11 @@ class AmpStore {
 
     // Emit store event
     this._eventHandler.emit('mergeMessage', message);
+
+    // Emit remove event for each AmpAdd that was removed
+    for (const removedAmpAdd of removedAmps) {
+      this._eventHandler.emit('revokeMessage', removedAmpAdd);
+    }
   }
 
   private ampMessageCompare(aType: MessageType, aTsHash: Uint8Array, bType: MessageType, bTsHash: Uint8Array): number {
@@ -308,7 +320,7 @@ class AmpStore {
     tsx: Transaction,
     ampId: Uint8Array,
     message: AmpAddModel | AmpRemoveModel
-  ): Promise<Transaction | undefined> {
+  ): Promise<{ tsx: Transaction | undefined; removedAmps: AmpAddModel[] }> {
     // Look up the remove tsHash for this amp
     const ampRemoveTsHash = await ResultAsync.fromPromise(
       this._db.get(AmpStore.ampRemovesKey(message.fid(), ampId)),
@@ -318,7 +330,7 @@ class AmpStore {
     if (ampRemoveTsHash.isOk()) {
       if (this.ampMessageCompare(MessageType.AmpRemove, ampRemoveTsHash.value, message.type(), message.tsHash()) >= 0) {
         // If the existing remove has the same or higher order than the new message, no-op
-        return undefined;
+        return { tsx: undefined, removedAmps: [] };
       } else {
         // If the existing remove has a lower order than the new message, retrieve the full
         // AmpRemove message and delete it as part of the RocksDB transaction
@@ -338,10 +350,11 @@ class AmpStore {
       () => undefined
     );
 
+    const removedAmps: AmpAddModel[] = [];
     if (ampAddTsHash.isOk()) {
       if (this.ampMessageCompare(MessageType.AmpAdd, ampAddTsHash.value, message.type(), message.tsHash()) >= 0) {
         // If the existing add has the same or higher order than the new message, no-op
-        return undefined;
+        return { tsx: undefined, removedAmps: [] };
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // AmpAdd message and delete it as part of the RocksDB transaction
@@ -351,11 +364,12 @@ class AmpStore {
           UserPostfix.AmpMessage,
           ampAddTsHash.value
         );
+        removedAmps.push(existingAdd);
         tsx = this.deleteAmpAddTransaction(tsx, existingAdd);
       }
     }
 
-    return tsx;
+    return { tsx, removedAmps };
   }
 
   /* Builds a RocksDB transaction to insert a AmpAdd message and construct its indices */
