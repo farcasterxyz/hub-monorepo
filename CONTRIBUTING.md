@@ -4,6 +4,7 @@
 2. [Setting up your development environment](#2-setting-up-your-development-environment)
    1. [Installing Dependencies](#21-installing-dependencies)
    2. [Signing Commits](#22-signing-commits)
+   3. [Navigating the Monorepo](#23-navigating-the-monorepo)
 3. [Proposing Changes](#3-proposing-changes)
    1. [Writing Tests](#31-writing-tests)
    2. [Writing Docs](#32-writing-docs)
@@ -40,13 +41,11 @@ First, ensure that the following are installed globally on your machine:
 - [Yarn](https://classic.yarnpkg.com/lang/en/docs/install)
 - [Flatbuffers](https://github.com/google/flatbuffers) (`brew install flatbuffers` on OSX)
 
-Then, run:
+Then, from the root folder run:
 
 - `yarn install` to install dependencies
+- `yarn build` to ensure that the test suite runs correctly
 - `yarn test` to ensure that the test suite runs correctly
-- `yarn start` to boot up the Hub
-
-This will start an instance of the Hub that you can send messages to. Hubs do not (yet) peer automatically, this will be added closer to the v2 release in Q4 2022.
 
 ### 2.2. Signing Commits
 
@@ -69,6 +68,17 @@ max-cache-ttl 100000000
 4. Configure Git to always sign commits by running `git config --global commit.gpgsign true`
 
 5. Commit all changes with your usual git commands and you should see a `Verified` badge near your commits
+
+### 2.3. Navigating the Monorepo
+
+The repository is a monorepo with a primary application in the `/app/` folder that imports several packages `/packages/`. It is composed of yarn workspaces and uses [TurboRepo](https://turbo.build/) as its build system.
+
+You can run commands like `yarn test` and `yarn build` which TurboRepo will automatically parallelize and execute across all workspaces. To execute the application, you'll need to navigate into the app folder and follow the instructions there. The TurboRepo documentation covers other important topics like:
+
+- [Installing Packages](https://turbo.build/repo/docs/handbook/package-installation)
+- [Creating New Packages](https://turbo.build/repo/docs/handbook/sharing-code/internal-packages)
+
+TurboRepo uses a local cache which can be disabled by adding the `--force` option to yarn commmands. Remote caching is not enabled since the performance gains at our scale are not worth the cost of introducing subtle caching bugs.
 
 ## 3. Proposing Changes
 
@@ -146,14 +156,14 @@ const parseMessage = (message: string): string => {
 const parseMessage = (message: string): HubResult<string> => {
   return Result.fromThrowable(
     () => JSON.parse(message),
-    (err) => new HubError('bad_request.parse_failure', err as Error)
+    (err) => new HubError("bad_request.parse_failure", err as Error)
   )();
 };
 
 // correct usage: build a convenience method so you can call it easily
 const safeJsonStringify = Result.fromThrowable(
   JSON.stringify,
-  () => new HubError('bad_request', 'json stringify failure')
+  () => new HubError("bad_request", "json stringify failure")
 );
 
 const result = safeJsonStringify(json);
@@ -193,8 +203,8 @@ Use `_unsafeUnwrap()` and `_unsafeUnwrapErr()` in tests to assert results
 ```ts
 // when expecting an error
 const error = foo()._unsafeUnwrapErr();
-expect(error.errCode).toEqual('bad_request');
-expect(error.message).toMatch('invalid AddressInfo family');
+expect(error.errCode).toEqual("bad_request");
+expect(error.message).toMatch("invalid AddressInfo family");
 ```
 
 ---
@@ -205,15 +215,22 @@ Prefer `combine` and `combineWithAllErrors` when operating on multiple results
 const results = await Promise.all(things.map((thing) => foo(thing)));
 
 // 1. Only fail if all failed
-const combinedResults = Result.combineWithAllErrors(results) as Result<void[], HubError[]>;
+const combinedResults = Result.combineWithAllErrors(results) as Result<
+  void[],
+  HubError[]
+>;
 if (combinedResults.isErr() && combinedResults.error.length == things.length) {
-  return err(new HubError('unavailable', 'could not connect to any bootstrap nodes'));
+  return err(
+    new HubError("unavailable", "could not connect to any bootstrap nodes")
+  );
 }
 
 // 2. Fail if at least one failed
 const combinedResults = Result.combine(results);
 if (combinedResults.isErr()) {
-  return err(new HubError('unavailable', 'could not connect to any bootstrap nodes'));
+  return err(
+    new HubError("unavailable", "could not connect to any bootstrap nodes")
+  );
 }
 ```
 
@@ -241,13 +258,3 @@ fix(signers): validate signatures correctly
 Called Signer.verify with the correct parameter to ensure that older signature
 types would not pass verification in our Signer Sets
 ```
-
-## 4. FAQ
-
-**Updating Flatbuffer Schemas**
-
-If you update the `message.fbs` file you'll also need to generate new TS classes, which can be done by running:
-`flatc --ts --ts-flat-files --gen-object-api -osrc/flatbuffers/generated  src/flatbuffers/schemas/message.fbs`
-
-To regerenrate all the TS classes,
-`yarn flatc`
