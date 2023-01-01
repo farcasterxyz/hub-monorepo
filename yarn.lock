@@ -2192,12 +2192,12 @@
   resolved "https://registry.npmjs.org/@types/node-cron/-/node-cron-3.0.6.tgz#689d9db9a9b4fabd5a0137fe9cb927f81955b1af"
   integrity sha512-Qu9dpjkgj2JmzRmDMVzpt2dFKuJ7wma0mxEvbbgomwkhAdHKT2LpSLYHawzd9OeeP4HsyhmcV9o/xLgJyPNcgw==
 
-"@types/node@*", "@types/node@>=12.12.47", "@types/node@^18.7.6":
+"@types/node@*", "@types/node@>=12.12.47":
   version "18.11.16"
   resolved "https://registry.npmjs.org/@types/node/-/node-18.11.16.tgz#966cae211e970199559cfbd295888fca189e49af"
   integrity sha512-6T7P5bDkRhqRxrQtwj7vru+bWTpelgtcETAZEUSdq0YISKz8WKdoBukQLYQQ6DFHvU9JRsbFq0JH5C51X2ZdnA==
 
-"@types/node@>=13.7.0":
+"@types/node@>=13.7.0", "@types/node@^18.7.14":
   version "18.11.18"
   resolved "https://registry.npmjs.org/@types/node/-/node-18.11.18.tgz#8dfb97f0da23c2293e554c5a50d61ef134d7697f"
   integrity sha512-DHQpWGjyQKSHj3ebjFI/wRKcqQcdR+MoFBygntYOZytCqNfkd2ZC4ARDJ2DQqhjH5p85Nnd3jhUJIXrszFX/JA==
@@ -3218,6 +3218,13 @@ eslint-config-prettier@^8.5.0:
   resolved "https://registry.npmjs.org/eslint-config-prettier/-/eslint-config-prettier-8.5.0.tgz#5a81680ec934beca02c7b1a61cf8ca34b66feab1"
   integrity sha512-obmWKLUNCnhtQRKc+tmnYuQl0pFU1ibYJQ5BGhTVB08bHe9wC8qUeG7c08dj9XX+AuPj1YSGSQIHl1pnDHZR0Q==
 
+eslint-config-turbo@latest:
+  version "0.0.7"
+  resolved "https://registry.npmjs.org/eslint-config-turbo/-/eslint-config-turbo-0.0.7.tgz#1a4ef7b28df40fb168a695e34d58d1d25477aab3"
+  integrity sha512-WbrGlyfs94rOXrhombi1wjIAYGdV2iosgJRndOZtmDQeq5GLTzYmBUCJQZWtLBEBUPCj96RxZ2OL7Cn+xv/Azg==
+  dependencies:
+    eslint-plugin-turbo "0.0.7"
+
 eslint-plugin-prefer-arrow-functions@^3.1.4:
   version "3.1.4"
   resolved "https://registry.npmjs.org/eslint-plugin-prefer-arrow-functions/-/eslint-plugin-prefer-arrow-functions-3.1.4.tgz#a0761c7a0ba71461f6b2136fdf7f7cec1c82d778"
@@ -3236,6 +3243,11 @@ eslint-plugin-security@^1.5.0:
   integrity sha512-hAFVwLZ/UeXrlyVD2TDarv/x00CoFVpaY0IUZhKjPjiFxqkuQVixsK4f2rxngeQOqSxi6OUjzJM/jMwKEVjJ8g==
   dependencies:
     safe-regex "^2.1.1"
+
+eslint-plugin-turbo@0.0.7:
+  version "0.0.7"
+  resolved "https://registry.npmjs.org/eslint-plugin-turbo/-/eslint-plugin-turbo-0.0.7.tgz#b70155dfeddc530f2f3ca383d850145f22e92fa6"
+  integrity sha512-iajOH8eD4jha3duztGVBD1BEmvNrQBaA/y3HFHf91vMDRYRwH7BpHSDFtxydDpk5ghlhRxG299SFxz7D6z4MBQ==
 
 eslint-scope@^5.1.1:
   version "5.1.1"
@@ -6055,6 +6067,48 @@ tsx@^3.9.0:
   optionalDependencies:
     fsevents "~2.3.2"
 
+turbo-darwin-64@1.6.3:
+  version "1.6.3"
+  resolved "https://registry.npmjs.org/turbo-darwin-64/-/turbo-darwin-64-1.6.3.tgz#fad7e078784b0fafc0b1f75ce9378828918595f5"
+  integrity sha512-QmDIX0Yh1wYQl0bUS0gGWwNxpJwrzZU2GIAYt3aOKoirWA2ecnyb3R6ludcS1znfNV2MfunP+l8E3ncxUHwtjA==
+
+turbo-darwin-arm64@1.6.3:
+  version "1.6.3"
+  resolved "https://registry.npmjs.org/turbo-darwin-arm64/-/turbo-darwin-arm64-1.6.3.tgz#f0a32cae39e3fcd3da5e3129a94c18bb2e3ed6aa"
+  integrity sha512-75DXhFpwE7CinBbtxTxH08EcWrxYSPFow3NaeFwsG8aymkWXF+U2aukYHJA6I12n9/dGqf7yRXzkF0S/9UtdyQ==
+
+turbo-linux-64@1.6.3:
+  version "1.6.3"
+  resolved "https://registry.npmjs.org/turbo-linux-64/-/turbo-linux-64-1.6.3.tgz#8ddc6ac55ef84641182fe5ff50647f1b355826b0"
+  integrity sha512-O9uc6J0yoRPWdPg9THRQi69K6E2iZ98cRHNvus05lZbcPzZTxJYkYGb5iagCmCW/pq6fL4T4oLWAd6evg2LGQA==
+
+turbo-linux-arm64@1.6.3:
+  version "1.6.3"
+  resolved "https://registry.npmjs.org/turbo-linux-arm64/-/turbo-linux-arm64-1.6.3.tgz#846c1dc84d8dc741651906613c16acccba30428c"
+  integrity sha512-dCy667qqEtZIhulsRTe8hhWQNCJO0i20uHXv7KjLHuFZGCeMbWxB8rsneRoY+blf8+QNqGuXQJxak7ayjHLxiA==
+
+turbo-windows-64@1.6.3:
+  version "1.6.3"
+  resolved "https://registry.npmjs.org/turbo-windows-64/-/turbo-windows-64-1.6.3.tgz#89ac819fa76ad31d12fbfdeb3045bcebd0d308eb"
+  integrity sha512-lKRqwL3mrVF09b9KySSaOwetehmGknV9EcQTF7d2dxngGYYX1WXoQLjFP9YYH8ZV07oPm+RUOAKSCQuDuMNhiA==
+
+turbo-windows-arm64@1.6.3:
+  version "1.6.3"
+  resolved "https://registry.npmjs.org/turbo-windows-arm64/-/turbo-windows-arm64-1.6.3.tgz#977607c9a51f0b76076c8b158bafce06ce813070"
+  integrity sha512-BXY1sDPEA1DgPwuENvDCD8B7Hb0toscjus941WpL8CVd10hg9pk/MWn9CNgwDO5Q9ks0mw+liDv2EMnleEjeNA==
+
+turbo@^1.6.3:
+  version "1.6.3"
+  resolved "https://registry.npmjs.org/turbo/-/turbo-1.6.3.tgz#ec26cc8907c38a9fd6eb072fb10dad254733543e"
+  integrity sha512-FtfhJLmEEtHveGxW4Ye/QuY85AnZ2ZNVgkTBswoap7UMHB1+oI4diHPNyqrQLG4K1UFtCkjOlVoLsllUh/9QRw==
+  optionalDependencies:
+    turbo-darwin-64 "1.6.3"
+    turbo-darwin-arm64 "1.6.3"
+    turbo-linux-64 "1.6.3"
+    turbo-linux-arm64 "1.6.3"
+    turbo-windows-64 "1.6.3"
+    turbo-windows-arm64 "1.6.3"
+
 type-check@^0.4.0, type-check@~0.4.0:
   version "0.4.0"
   resolved "https://registry.npmjs.org/type-check/-/type-check-0.4.0.tgz#07b8203bfa7056c0657050e3ccd2c37730bab8f1"
@@ -6082,7 +6136,7 @@ type-fest@^1.0.2:
   resolved "https://registry.npmjs.org/type-fest/-/type-fest-1.4.0.tgz#e9fb813fe3bf1744ec359d55d1affefa76f14be1"
   integrity sha512-yGSza74xk0UG8k+pLh5oeoYirvIiWo5t0/o3zHHAO2tRDiZcxWP7fywNlXhqb6/r6sWvwi+RsyQMWhVLe4BVuA==
 
-typescript@^4.6.2:
+typescript@4.9.4:
   version "4.9.4"
   resolved "https://registry.npmjs.org/typescript/-/typescript-4.9.4.tgz#a2a3d2756c079abda241d75f149df9d561091e78"
   integrity sha512-Uz+dTXYzxXXbsFpM86Wh3dKCxrQqUcVMxwU54orwlJjOpO3ao8L7j5lH+dWfTwgCwIuM9GQ2kvVotzYJMXTBZg==
@@ -6286,9 +6340,9 @@ yallist@^4.0.0:
   integrity sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==
 
 yaml@^2.1.3:
-  version "2.1.3"
-  resolved "https://registry.npmjs.org/yaml/-/yaml-2.1.3.tgz#9b3a4c8aff9821b696275c79a8bee8399d945207"
-  integrity sha512-AacA8nRULjKMX2DvWvOAdBZMOfQlypSFkjcOcu9FalllIDJ1kvlREzcdIZmidQUqqeMv7jorHjq2HlLv/+c2lg==
+  version "2.2.1"
+  resolved "https://registry.npmjs.org/yaml/-/yaml-2.2.1.tgz#3014bf0482dcd15147aa8e56109ce8632cd60ce4"
+  integrity sha512-e0WHiYql7+9wr4cWMx3TVQrNwejKaEe7/rHNmQmqRjazfOP5W8PB6Jpebb5o6fIapbz9o9+2ipcaTM2ZwDI6lw==
 
 yargs-parser@^20.2.2:
   version "20.2.9"

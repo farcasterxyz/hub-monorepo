@@ -12,7 +12,7 @@ node_modules/
 # TypeScript cache
 *.tsbuildinfo
 
-# dotenv environment variables file
+# Environment variables
 .env
 
 .eslintcache
@@ -26,5 +26,8 @@ coverage/
 .level/
 .rocks/
 
-# Config
+# Application configuration files
 .hub/
+
+# Turborepo
+.turbo

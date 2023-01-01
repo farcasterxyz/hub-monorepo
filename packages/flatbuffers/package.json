@@ -1,0 +1,20 @@
+{
+  "name": "@hub/flatbuffers",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "module": "./build/index.js",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "yarn clean && tsc --project ./tsconfig.json",
+    "flatc": "flatc --ts --ts-flat-files --gen-object-api -o src/flatbuffers/generated src/flatbuffers/schemas/*.fbs",
+    "clean": "rm -rf ./build",
+    "lint": "eslint  src/ --color --ext .ts",
+    "lint:fix": "yarn run lint -- --fix"
+  },
+  "dependencies": {
+    "eslint-config-custom": "*",
+    "flatbuffers": "^22.11.23"
+  }
+}

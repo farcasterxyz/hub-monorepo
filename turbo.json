@@ -1,0 +1,25 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "pipeline": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["build/**"]
+    },
+    "dev": {
+      "cache": false
+    },
+    "lint": {
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["lint", "build"],
+      "inputs": ["src/**/*.ts"],
+      "outputs": []
+    },
+    "test:ci": {
+      "dependsOn": ["lint", "build"],
+      "outputs": ["coverage/**"]
+    }
+  },
+  "globalDependencies": ["tsconfig.json", ".eslintrc.cjs"]
+}

@@ -13,14 +13,6 @@
     "target": "es2022",
 
     "moduleResolution": "Node",
-
-    "paths": {
-      "~/*": ["./*"]
-    },
-
-    "baseUrl": "./src",
-    "outDir": "build",
-    "rootDir": "src",
     "sourceMap": true,
 
     "forceConsistentCasingInFileNames": true,
@@ -42,5 +34,5 @@
     "swc": true
   },
 
-  "exclude": ["node_modules", "jest.config.ts"]
+  "exclude": ["node_modules"]
 }
