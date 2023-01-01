@@ -31,7 +31,3 @@ coverage/
 
 # Turborepo
 .turbo
-
-# Yalc
-**/.yalc
-**/yalc.lock

@@ -12,11 +12,13 @@
       "outputs": []
     },
     "test": {
-      "dependsOn": ["lint", "build"]
+      "dependsOn": ["lint", "build"],
+      "inputs": ["src/**/*.ts"],
+      "outputs": []
     },
     "test:ci": {
-      "outputs": ["coverage/**"],
-      "dependsOn": ["lint", "build"]
+      "dependsOn": ["lint", "build"],
+      "outputs": ["coverage/**"]
     }
   },
   "globalDependencies": ["tsconfig.json", ".eslintrc.cjs"]
