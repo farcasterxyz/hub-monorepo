@@ -13,7 +13,7 @@
     "lint:fix": "yarn run lint -- --fix"
   },
   "dependencies": {
-    "flatbuffers": "^22.11.23",
-    "eslint-config-custom": "*"
+    "eslint-config-custom": "*",
+    "flatbuffers": "^22.11.23"
   }
 }
