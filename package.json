@@ -14,8 +14,7 @@
     "test": "./node_modules/.bin/turbo run test --parallel",
     "test:ci": "./node_modules/.bin/turbo run test:ci --parallel --",
     "lint": "./node_modules/.bin/turbo run lint --parallel",
-    "prepare": "husky install",
-    "postinstall": "manypkg check"
+    "prepare": "husky install"
   },
   "engines": {
     "npm": ">=8.0.0",
