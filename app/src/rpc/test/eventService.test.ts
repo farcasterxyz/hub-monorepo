@@ -13,7 +13,6 @@ import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
 import { generateEd25519KeyPair, sleep } from '~/utils/crypto';
-import { addressInfoFromParts } from '~/utils/p2p';
 
 const db = jestRocksDB('flatbuffers.rpc.eventService.test');
 const engine = new Engine(db);
@@ -25,7 +24,7 @@ let client: Client;
 beforeAll(async () => {
   server = new Server(hub, engine, new SyncEngine(engine));
   const port = await server.start();
-  client = new Client(addressInfoFromParts('127.0.0.1', port)._unsafeUnwrap());
+  client = new Client(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {

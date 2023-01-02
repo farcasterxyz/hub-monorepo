@@ -95,38 +95,6 @@ export const toTrieNodeMetadataResponse = (metadata: NodeMetadata): flatbuffers.
   return response;
 };
 
-export const fromNodeMetadataResponse = (response: flatbuffers.TrieNodeMetadataResponse): NodeMetadata => {
-  const children = new Map<string, NodeMetadata>();
-  for (let i = 0; i < response.childrenLength(); i++) {
-    const child = response.children(i);
-
-    const prefix = new TextDecoder().decode(child?.prefixArray() ?? new Uint8Array());
-    // Char is the last char of prefix
-    const char = prefix[prefix.length - 1] ?? '';
-
-    children.set(char, {
-      numMessages: Number(child?.numMessages()),
-      prefix,
-      hash: new TextDecoder().decode(child?.hashArray() ?? new Uint8Array()),
-    });
-  }
-
-  return {
-    prefix: new TextDecoder().decode(response.prefixArray() ?? new Uint8Array()),
-    numMessages: Number(response.numMessages()),
-    hash: new TextDecoder().decode(response.hashArray() ?? new Uint8Array()),
-    children,
-  };
-};
-
-export const fromSyncIdsByPrefixResponse = (response: flatbuffers.GetAllSyncIdsByPrefixResponse): string[] => {
-  const ids = [];
-  for (let i = 0; i < response.idsLength(); i++) {
-    ids.push(response.ids(i));
-  }
-  return ids;
-};
-
 interface GenericFlatbuffer {
   bb: ByteBuffer | null;
 }
