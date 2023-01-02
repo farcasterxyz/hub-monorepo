@@ -14,7 +14,6 @@ import { logger } from '~/utils/logger';
 
 export const DEFAULT_REVOKE_SIGNER_JOB_DELAY = 1000 * 60 * 60; // 1 hour in ms
 export const DEFAULT_REVOKE_SIGNER_JOB_CRON = '0 * * * *'; // Every hour
-export const REVOKE_SIGNER_JOB_MAX_NONCE = 2 ** (2 * 8) - 1; // 2 bytes
 
 const log = logger.child({
   component: 'RevokeSignerJob',
