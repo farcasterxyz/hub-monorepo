@@ -1,11 +1,15 @@
 {
   "compilerOptions": {
+    /* Needed to import CJS modules like Jest */
     "allowSyntheticDefaultImports": true,
 
+    /* Emit additional JS to ease support for importing CJS modules. This enables `allowSyntheticDefaultImports` for type compatibility. */
     "esModuleInterop": true,
 
+    /* Use ESM by default instead of CJS*/
     "module": "ES2022",
 
+    /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
     "target": "es2022",
 
     "moduleResolution": "Node",
@@ -22,7 +26,7 @@
     "noImplicitReturns": true,
     "noPropertyAccessFromIndexSignature": true,
     "noUncheckedIndexedAccess": true,
-    "noUnusedLocals": false,
+    "noUnusedLocals": false, // causes hard failures when iterating in dev, enforce with eslint instead
     "noUnusedParameters": false
   },
 
