@@ -1,6 +1,7 @@
 {
-  // "extends": "../../tsconfig.json",
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
+
     "paths": {
       "~/*": ["./*"]
     },
@@ -10,10 +11,8 @@
     "baseUrl": "./src",
     "outDir": "build",
     "rootDir": "src",
-    "isolatedModules": true
+    "isolatedModules": true,
   },
-  //baseUrl is  ./src so..
-  "extends": "./../tsconfig-custom/base.json",
   "include": ["src/index.ts"],
   "exclude": ["build", "node_modules", "jest.config.ts"]
 }
