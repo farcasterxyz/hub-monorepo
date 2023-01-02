@@ -1,9 +1,9 @@
 import { NameRegistryEventType } from '@hub/flatbuffers';
 import { arrayify } from 'ethers/lib/utils';
 import Factories from '~/flatbuffers/factories';
+import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { generateEthereumSigner } from '~/utils/crypto';
-import NameRegistryEventModel from './nameRegistryEventModel';
 
 const db = jestRocksDB('flatbuffers.nameRegistryEventModel.test');
 

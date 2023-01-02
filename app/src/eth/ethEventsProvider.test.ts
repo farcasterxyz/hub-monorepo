@@ -4,14 +4,14 @@ import { BaseProvider, Block, TransactionReceipt, TransactionResponse } from '@e
 import { IdRegistryEventType, NameRegistryEventType } from '@hub/flatbuffers';
 import { BigNumber, Contract } from 'ethers';
 import { arrayify, Result } from 'ethers/lib/utils';
+import { IdRegistry, NameRegistry } from '~/eth/abis';
+import { EthEventsProvider } from '~/eth/ethEventsProvider';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
-import { IdRegistry, NameRegistry } from './abis';
-import { EthEventsProvider } from './ethEventsProvider';
 
 const db = jestRocksDB('flatbuffers.ethEventsProvider.test');
 const engine = new Engine(db);

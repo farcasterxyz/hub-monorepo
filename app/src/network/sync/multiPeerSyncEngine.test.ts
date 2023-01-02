@@ -4,14 +4,14 @@ import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastRemoveModel, SignerAddModel } from '~/flatbuffers/models/types';
+import SyncEngine from '~/network/sync/syncEngine';
+import { SyncId } from '~/network/sync/syncId';
 import Client from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
 import { generateEd25519KeyPair } from '~/utils/crypto';
-import SyncEngine from './syncEngine';
-import { SyncId } from './syncId';
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
 
