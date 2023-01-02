@@ -5,9 +5,5 @@
   "license": "MIT",
   "publishConfig": {
     "access": "public"
-  },
-  "devDependencies": {},
-  "dependencies": {
-    "prettier": "^2.8.1"
   }
 }
