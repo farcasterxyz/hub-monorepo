@@ -12,8 +12,7 @@
     "rootDir": "src",
     "isolatedModules": true
   },
-  //baseUrl is  ./src so..
-  "extends": "./../tsconfig-custom/base.json",
+  "extends": "./../tsconfig-custom/tsconfig.json",
   "include": ["src/index.ts"],
   "exclude": ["build", "node_modules", "jest.config.ts"]
 }

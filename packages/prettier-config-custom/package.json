@@ -1,12 +1,13 @@
 {
   "name": "prettier-config-custom",
   "version": "0.0.0",
-  "main": "index.json",
+  "main": "index.js",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
   },
-  "devDependencies": {
-    "prettier": "2.8.1"
+  "devDependencies": {},
+  "dependencies": {
+    "prettier": "^2.8.1"
   }
 }
