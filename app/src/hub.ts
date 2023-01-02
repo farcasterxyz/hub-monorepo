@@ -18,19 +18,19 @@ import HubStateModel from '~/flatbuffers/models/hubStateModel';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
+import { isSignerRemove } from '~/flatbuffers/models/typeguards';
 import { HubInterface, HubSubmitSource } from '~/flatbuffers/models/types';
+import HubRPCClient from '~/hubRpcClient';
 import { Node } from '~/network/p2p/node';
 import { NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
+import SyncEngine from '~/network/sync/syncEngine';
 import Server from '~/rpc/server';
 import BinaryRocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
+import { RevokeSignerJobQueue, RevokeSignerJobScheduler } from '~/storage/jobs/revokeSignerJob';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import { idRegistryEventToLog, logger, messageToLog, nameRegistryEventToLog } from '~/utils/logger';
 import { addressInfoFromGossip, ipFamilyToString, p2pMultiAddrStr } from '~/utils/p2p';
-import { isSignerRemove } from './flatbuffers/models/typeguards';
-import HubRPCClient from './hubRpcClient';
-import SyncEngine from './network/sync/syncEngine';
-import { RevokeSignerJobQueue, RevokeSignerJobScheduler } from './storage/jobs/revokeSignerJob';
 
 export interface HubOptions {
   /** The PeerId of this Hub */

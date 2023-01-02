@@ -2,13 +2,13 @@ import { arrayify } from 'ethers/lib/utils';
 import { err } from 'neverthrow';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
+import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
+import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
+import { TrieSnapshot } from '~/network/sync/trieNode';
 import Client from '~/rpc/client';
 import Engine from '~/storage/engine';
 import { HubError, HubResult } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
-import { MerkleTrie, NodeMetadata } from './merkleTrie';
-import { SyncId, timestampToPaddedTimestampPrefix } from './syncId';
-import { TrieSnapshot } from './trieNode';
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.

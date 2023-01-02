@@ -1,5 +1,5 @@
 import { SyncId } from '~/network/sync/syncId';
-import { TrieNode, TrieSnapshot } from './trieNode';
+import { TrieNode, TrieSnapshot } from '~/network/sync/trieNode';
 
 /**
  * Represents a node in the trie, and it's immediate children
