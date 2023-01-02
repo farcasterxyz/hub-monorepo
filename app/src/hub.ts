@@ -27,6 +27,7 @@ import SyncEngine from '~/network/sync/syncEngine';
 import Server from '~/rpc/server';
 import BinaryRocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
+import { PruneMessagesJobScheduler } from '~/storage/jobs/pruneMessagesJob';
 import { RevokeSignerJobQueue, RevokeSignerJobScheduler } from '~/storage/jobs/revokeSignerJob';
 import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import { idRegistryEventToLog, logger, messageToLog, nameRegistryEventToLog } from '~/utils/logger';
@@ -72,6 +73,9 @@ export interface HubOptions {
 
   /** Cron schedule for revoke signer jobs */
   revokeSignerJobCron?: string;
+
+  /** Cron schedule for prune messages job */
+  pruneMessagesJobCron?: string;
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
@@ -101,6 +105,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
 
   private revokeSignerJobQueue: RevokeSignerJobQueue;
   private revokeSignerJobScheduler: RevokeSignerJobScheduler;
+  private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
 
   engine: Engine;
   ethRegistryProvider: EthEventsProvider;
@@ -128,6 +133,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
 
     // Setup job schedulers
     this.revokeSignerJobScheduler = new RevokeSignerJobScheduler(this.revokeSignerJobQueue, this.engine);
+    this.pruneMessagesJobScheduler = new PruneMessagesJobScheduler(this.engine);
   }
 
   get rpcAddress() {
@@ -170,13 +176,15 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     this.registerEventHandlers();
 
     // Start cron tasks
-    this.revokeSignerJobScheduler.start();
+    this.revokeSignerJobScheduler.start(this.options.revokeSignerJobCron);
+    this.pruneMessagesJobScheduler.start(this.options.pruneMessagesJobCron);
   }
 
   /** Stop the GossipNode and RPC Server */
   async stop() {
     clearInterval(this.contactTimer);
     this.revokeSignerJobScheduler.stop();
+    this.pruneMessagesJobScheduler.stop();
     await this.ethRegistryProvider.stop();
     await this.rpcServer.stop();
     await this.rocksDB.close();

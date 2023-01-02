@@ -106,6 +106,17 @@ class Engine {
     return ok(undefined);
   }
 
+  async pruneMessages(fid: Uint8Array): HubAsyncResult<void> {
+    await this._castStore.pruneMessages(fid);
+    await this._ampStore.pruneMessages(fid);
+    await this._reactionStore.pruneMessages(fid);
+    await this._verificationStore.pruneMessages(fid);
+    await this._userDataStore.pruneMessages(fid);
+    await this._signerStore.pruneMessages(fid);
+
+    return ok(undefined);
+  }
+
   /* -------------------------------------------------------------------------- */
   /*                             Cast Store Methods                             */
   /* -------------------------------------------------------------------------- */
