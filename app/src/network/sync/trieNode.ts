@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+import { blake3 } from '@noble/hashes/blake3';
 import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
 import { HubError } from '~/utils/hubErrors';
 
@@ -214,7 +214,7 @@ class TrieNode {
 
   private _excludedHash(char: string): { items: number; hash: string } {
     // TODO: Cache this for performance
-    const hash = createHash('sha256');
+    const hash = blake3.create({ dkLen: 16 });
     let excludedItems = 0;
     this._children.forEach((child, key) => {
       if (key !== char) {
@@ -222,7 +222,7 @@ class TrieNode {
         excludedItems += child.items;
       }
     });
-    return { hash: hash.digest('hex'), items: excludedItems };
+    return { hash: Buffer.from(hash.digest()).toString('hex'), items: excludedItems };
   }
 
   private _addChild(char: string) {
@@ -253,15 +253,13 @@ class TrieNode {
   private _updateHash() {
     // TODO: Optimize by using a faster hash algorithm. Potentially murmurhash v3
     if (this.isLeaf) {
-      this._hash = createHash('sha256')
-        .update(this.value || '')
-        .digest('hex');
+      this._hash = Buffer.from(blake3(this.value || '', { dkLen: 16 })).toString('hex');
     } else {
-      const hash = createHash('sha256');
+      const hash = blake3.create({ dkLen: 16 });
       this._children.forEach((child) => {
         hash.update(child.hash);
       });
-      this._hash = hash.digest('hex');
+      this._hash = Buffer.from(hash.digest()).toString('hex');
     }
   }
 }
