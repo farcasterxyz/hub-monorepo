@@ -1,4 +1,11 @@
-import { GetUserDataByFidRequest, GetUserDataRequest, Message, MessagesResponse } from '@hub/flatbuffers';
+import {
+  GetNameRegistryEventRequest,
+  GetUserDataByFidRequest,
+  GetUserDataRequest,
+  Message,
+  MessagesResponse,
+  NameRegistryEvent,
+} from '@hub/flatbuffers';
 import { toByteBuffer } from '~/flatbuffers/utils/bytes';
 import { defaultMethod } from '~/rpc/client';
 
@@ -23,6 +30,17 @@ export const userDataDefinition = () => {
       },
       responseDeserialize: (buffer: Buffer): MessagesResponse => {
         return MessagesResponse.getRootAsMessagesResponse(toByteBuffer(buffer));
+      },
+    },
+
+    getNameRegistryEvent: {
+      ...defaultMethod,
+      path: '/getNameRegistryEvent',
+      requestDeserialize: (buffer: Buffer): GetNameRegistryEventRequest => {
+        return GetNameRegistryEventRequest.getRootAsGetNameRegistryEventRequest(toByteBuffer(buffer));
+      },
+      responseDeserialize: (buffer: Buffer): NameRegistryEvent => {
+        return NameRegistryEvent.getRootAsNameRegistryEvent(toByteBuffer(buffer));
       },
     },
   };

@@ -7,6 +7,7 @@ import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import * as types from '~/flatbuffers/models/types';
 import { KeyPair } from '~/flatbuffers/models/types';
+import { hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import AmpStore from '~/storage/stores/ampStore';
@@ -50,7 +51,7 @@ let userDataAdd: types.UserDataAddModel;
 
 beforeAll(async () => {
   custodyWallet = new Wallet(utils.randomBytes(32));
-  custodyAddress = utils.arrayify(custodyWallet.address);
+  custodyAddress = hexStringToBytes(custodyWallet.address)._unsafeUnwrap();
   custodyEvent = new IdRegistryEventModel(
     await Factories.IdRegistryEvent.create({ fid: Array.from(fid), to: Array.from(custodyAddress) })
   );

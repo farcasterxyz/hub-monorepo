@@ -76,7 +76,8 @@ describe('jobKeyToTimestamp', () => {
     const timestamp = Date.now();
     const hash = Factories.Bytes.build({}, { transient: { length: 4 } });
     const jobKey = RevokeSignerJobQueue.makeJobKey(timestamp, hash);
-    expect(RevokeSignerJobQueue.jobKeyToTimestamp(jobKey._unsafeUnwrap())).toEqual(timestamp);
+    const recoveredTimestamp = RevokeSignerJobQueue.jobKeyToTimestamp(jobKey._unsafeUnwrap());
+    expect(recoveredTimestamp._unsafeUnwrap()).toEqual(timestamp);
   });
 });
 

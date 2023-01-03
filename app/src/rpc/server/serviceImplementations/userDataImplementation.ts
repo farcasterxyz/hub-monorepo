@@ -1,5 +1,13 @@
 import grpc from '@grpc/grpc-js';
-import { GetUserDataByFidRequest, GetUserDataRequest, Message, MessagesResponse } from '@hub/flatbuffers';
+import {
+  GetNameRegistryEventRequest,
+  GetUserDataByFidRequest,
+  GetUserDataRequest,
+  Message,
+  MessagesResponse,
+  NameRegistryEvent,
+} from '@hub/flatbuffers';
+import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { UserDataAddModel } from '~/flatbuffers/models/types';
 import { toMessagesResponse, toServiceError } from '~/rpc/server';
 import Engine from '~/storage/engine';
@@ -30,6 +38,21 @@ export const userDataImplementations = (engine: Engine) => {
       result.match(
         (messages: UserDataAddModel[]) => {
           callback(null, toMessagesResponse(messages));
+        },
+        (err: HubError) => {
+          callback(toServiceError(err));
+        }
+      );
+    },
+
+    getNameRegistryEvent: async (
+      call: grpc.ServerUnaryCall<GetNameRegistryEventRequest, NameRegistryEvent>,
+      callback: grpc.sendUnaryData<NameRegistryEvent>
+    ) => {
+      const result = await engine.getNameRegistryEvent(call.request.fnameArray() ?? new Uint8Array());
+      result.match(
+        (model: NameRegistryEventModel) => {
+          callback(null, model.event);
         },
         (err: HubError) => {
           callback(toServiceError(err));

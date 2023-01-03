@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import * as message_generated from '@hub/flatbuffers';
 import { utils, Wallet } from 'ethers';
-import { arrayify } from 'ethers/lib/utils';
+import { bytesToBigNumber } from '~/eth/utils';
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import * as types from '~/flatbuffers/models/types';
@@ -10,6 +10,7 @@ import { signVerificationEthAddressClaim } from '~/flatbuffers/utils/eip712';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { generateEd25519KeyPair } from '~/utils/crypto';
 import { HubError } from '~/utils/hubErrors';
+import { hexStringToBytes } from '../utils/bytes';
 
 let wallet: Wallet;
 let signer: types.KeyPair;
@@ -65,7 +66,9 @@ describe('validateMessage', () => {
 
   test('fails with invalid hash', async () => {
     const message = new MessageModel(
-      await Factories.Message.create({ hash: Array.from(utils.arrayify(faker.datatype.hexadecimal({ length: 8 }))) })
+      await Factories.Message.create({
+        hash: Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 8 }))._unsafeUnwrap()),
+      })
     );
     const result = await validations.validateMessage(message);
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid hash'));
@@ -84,8 +87,8 @@ describe('validateMessage', () => {
   test('fails with invalid signature', async () => {
     const message = new MessageModel(
       await Factories.Message.create({
-        signature: Array.from(utils.arrayify(faker.datatype.hexadecimal({ length: 128 }))),
-        signer: Array.from(utils.arrayify(faker.datatype.hexadecimal({ length: 64 }))),
+        signature: Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 128 }))._unsafeUnwrap()),
+        signer: Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
       })
     );
     const result = await validations.validateMessage(message);
@@ -202,7 +205,7 @@ describe('validateEthAddress', () => {
 
   beforeAll(async () => {
     const wallet = new Wallet(utils.randomBytes(32));
-    address = utils.arrayify(wallet.address);
+    address = hexStringToBytes(wallet.address)._unsafeUnwrap();
   });
 
   test('succeeds', () => {
@@ -491,16 +494,16 @@ describe('validateVerificationAddEthAddressMessage', () => {
 
     test('with invalid eth signature', async () => {
       const claim: types.VerificationEthAddressClaim = {
-        fid,
+        fid: bytesToBigNumber(fid)._unsafeUnwrap(),
         address: faker.datatype.hexadecimal({ length: 40, case: 'lower' }), // mismatched address
         network: message_generated.FarcasterNetwork.Testnet,
-        blockHash: utils.arrayify(faker.datatype.hexadecimal({ length: 64, case: 'lower' })),
+        blockHash: faker.datatype.hexadecimal({ length: 64, case: 'lower' }),
       };
       const signature = await signVerificationEthAddressClaim(claim, wallet);
       body = new message_generated.VerificationAddEthAddressBodyT(
-        Array.from(arrayify(wallet.address)),
-        Array.from(signature),
-        Array.from(claim.blockHash)
+        Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()),
+        Array.from(signature._unsafeUnwrap()),
+        Array.from(hexStringToBytes(claim.blockHash)._unsafeUnwrap())
       );
       hubErrorMessage = 'ethSignature does not match address';
     });

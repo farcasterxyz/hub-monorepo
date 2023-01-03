@@ -5,6 +5,7 @@ import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { CastAddModel, KeyPair, SignerAddModel } from '~/flatbuffers/models/types';
+import { hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import SyncEngine from '~/network/sync/syncEngine';
 import Client from '~/rpc/client';
 import Server from '~/rpc/server';
@@ -42,7 +43,7 @@ let castAdd: CastAddModel;
 beforeAll(async () => {
   custodyEvent = new IdRegistryEventModel(
     await Factories.IdRegistryEvent.create(
-      { to: Array.from(utils.arrayify(wallet.address)), fid: Array.from(fid) },
+      { to: Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()), fid: Array.from(fid) },
       { transient: { wallet } }
     )
   );
@@ -98,7 +99,11 @@ describe('submitIdRegistryEvent', () => {
   xtest('fails with invalid event', async () => {
     const invalidEvent = new IdRegistryEventModel(
       await Factories.IdRegistryEvent.create(
-        { to: Array.from(utils.arrayify(wallet.address)), fid: Array.from(fid), type: 0 as IdRegistryEventType },
+        {
+          to: Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()),
+          fid: Array.from(fid),
+          type: 0 as IdRegistryEventType,
+        },
         { transient: { wallet } }
       )
     );
@@ -111,7 +116,7 @@ describe('submitNameRegistryEvent', () => {
   test('succeeds', async () => {
     const nameRegistryEvent = new NameRegistryEventModel(
       await Factories.NameRegistryEvent.create(
-        { to: Array.from(utils.arrayify(wallet.address)) },
+        { to: Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()) },
         { transient: { wallet } }
       )
     );
@@ -124,7 +129,7 @@ describe('submitNameRegistryEvent', () => {
   xtest('fails with invalid event', async () => {
     const invalidEvent = new NameRegistryEventModel(
       await Factories.NameRegistryEvent.create(
-        { to: Array.from(utils.arrayify(wallet.address)), type: 0 as NameRegistryEventType },
+        { to: Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()), type: 0 as NameRegistryEventType },
         { transient: { wallet } }
       )
     );

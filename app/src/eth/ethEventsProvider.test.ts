@@ -3,12 +3,13 @@ import { Event } from '@ethersproject/contracts';
 import { BaseProvider, Block, TransactionReceipt, TransactionResponse } from '@ethersproject/providers';
 import { IdRegistryEventType, NameRegistryEventType } from '@hub/flatbuffers';
 import { BigNumber, Contract } from 'ethers';
-import { arrayify, Result } from 'ethers/lib/utils';
+import { Result } from 'ethers/lib/utils';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
 import { EthEventsProvider } from '~/eth/ethEventsProvider';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
+import { bytesToHexString, hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
@@ -116,7 +117,7 @@ describe('process events', () => {
     const rRegister = mockIdRegistry.emit(
       'Register',
       address1,
-      BigNumber.from(fid),
+      BigNumber.from(bytesToHexString(fid)._unsafeUnwrap()),
       '',
       '',
       new MockEvent(blockNumber++, '0xb00001', '0x400001', 0)
@@ -137,12 +138,12 @@ describe('process events', () => {
       'Transfer',
       address1,
       address2,
-      BigNumber.from(fid),
+      BigNumber.from(bytesToHexString(fid)._unsafeUnwrap()),
       new MockEvent(blockNumber++, '0xb00002', '0x400002', 0)
     );
     // The event is not immediately available, since it has to wait for confirmations. We should still get the Register event
     expect((await IdRegistryEventModel.get(db, fid)).type()).toEqual(IdRegistryEventType.IdRegistryRegister);
-    expect((await IdRegistryEventModel.get(db, fid)).to()).toEqual(arrayify(address1));
+    expect((await IdRegistryEventModel.get(db, fid)).to()).toEqual(hexStringToBytes(address1)._unsafeUnwrap());
 
     // Add 6 confirmations
     blockNumber = await addBlocks(blockNumber, 6);
@@ -150,7 +151,7 @@ describe('process events', () => {
     // The transfer event is now available
     expect((await IdRegistryEventModel.get(db, fid)).fid()).toEqual(fid);
     expect((await IdRegistryEventModel.get(db, fid)).type()).toEqual(IdRegistryEventType.IdRegistryTransfer);
-    expect((await IdRegistryEventModel.get(db, fid)).to()).toEqual(arrayify(address2));
+    expect((await IdRegistryEventModel.get(db, fid)).to()).toEqual(hexStringToBytes(address2)._unsafeUnwrap());
   });
 
   test('processes transfer name', async () => {
@@ -161,7 +162,7 @@ describe('process events', () => {
       'Transfer',
       '0x000001',
       '0x000002',
-      BigNumber.from(fname),
+      BigNumber.from(bytesToHexString(fname)._unsafeUnwrap()),
       new MockEvent(blockNumber++, '0xb00001', '0x400001', 0)
     );
     expect(rTransfer).toBeTruthy();
@@ -178,7 +179,7 @@ describe('process events', () => {
     // Renew the fname
     mockNameRegistry.emit(
       'Renew',
-      BigNumber.from(fname),
+      BigNumber.from(bytesToHexString(fname)._unsafeUnwrap()),
       BigNumber.from(1000),
       new MockEvent(blockNumber++, '0xb00002', '0x400002', 0)
     );

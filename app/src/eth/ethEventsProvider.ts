@@ -1,13 +1,16 @@
 import * as flatbuffers from '@hub/flatbuffers';
+
 import { BigNumber, Contract, Event, providers } from 'ethers';
-import { arrayify } from 'ethers/lib/utils';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import { ResultAsync } from 'neverthrow';
+import { err, ok, ResultAsync } from 'neverthrow';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
+import { bigNumberToBytes, bytes32ToBytes } from '~/eth/utils';
 import HubStateModel from '~/flatbuffers/models/hubStateModel';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { HubInterface } from '~/flatbuffers/models/types';
+import { hexStringToBytes } from '~/flatbuffers/utils/bytes';
+import { HubAsyncResult } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
 
 const log = logger.child({
@@ -296,26 +299,47 @@ export class EthEventsProvider {
     id: BigNumber,
     type: flatbuffers.IdRegistryEventType,
     event: Event
-  ) {
+  ): HubAsyncResult<void> {
     const { blockNumber, blockHash, transactionHash, logIndex } = event;
     log.info({ from, to, id: id.toString(), type, blockNumber, transactionHash }, 'cacheIdRegistryEvent');
 
-    let fromArray: number[] = [];
-    if (from && from.length > 0) {
-      fromArray = Array.from(arrayify(from));
+    // Convert id registry datatypes to little endian byte arrays
+    const fromBytes = from.length > 0 ? hexStringToBytes(from) : ok(undefined);
+    if (fromBytes.isErr()) {
+      return err(fromBytes.error);
+    }
+
+    const blockHashBytes = hexStringToBytes(blockHash);
+    if (blockHashBytes.isErr()) {
+      return err(blockHashBytes.error);
+    }
+
+    const transactionHashBytes = hexStringToBytes(transactionHash);
+    if (transactionHashBytes.isErr()) {
+      return err(transactionHashBytes.error);
+    }
+
+    const fidBytes = bigNumberToBytes(id);
+    if (fidBytes.isErr()) {
+      return err(fidBytes.error);
+    }
+
+    const toBytes = hexStringToBytes(to);
+    if (toBytes.isErr()) {
+      return err(toBytes.error);
     }
 
     // Construct the flatbuffer event
     const builder = new Builder(1);
     const eventT = new flatbuffers.IdRegistryEventT(
       blockNumber,
-      Array.from(arrayify(blockHash)),
-      Array.from(arrayify(transactionHash)),
+      Array.from(blockHashBytes.value),
+      Array.from(transactionHashBytes.value),
       logIndex,
-      Array.from(arrayify(id)),
-      Array.from(arrayify(to)),
+      Array.from(fidBytes.value),
+      Array.from(toBytes.value),
       type,
-      fromArray
+      fromBytes.value ? Array.from(fromBytes.value) : undefined
     );
     builder.finish(eventT.pack(builder));
 
@@ -331,6 +355,8 @@ export class EthEventsProvider {
       this._idEventsByBlock.set(blockNumber, idEvents);
     }
     idEvents.push(idRegistryEventModel);
+
+    return ok(undefined);
   }
 
   private async cacheNameRegistryEvent(
@@ -340,33 +366,53 @@ export class EthEventsProvider {
     type: flatbuffers.NameRegistryEventType,
     expiry: BigNumber,
     event: Event
-  ) {
+  ): HubAsyncResult<void> {
     const { blockNumber, blockHash, transactionHash, logIndex } = event;
-    const fname = Array.from(arrayify(tokenId.toHexString()));
     log.info({ from, to, tokenId: tokenId.toString(), type, blockNumber, transactionHash }, 'cacheNameRegistryEvent');
 
-    let fromArray: number[] = [];
-    if (from && from.length > 0) {
-      fromArray = Array.from(arrayify(from));
+    // Convert name registry datatypes to little endian byte arrays
+    const blockHashBytes = hexStringToBytes(blockHash);
+    if (blockHashBytes.isErr()) {
+      return err(blockHashBytes.error);
     }
 
-    let toArray: number[] = [];
-    if (to && to.length > 0) {
-      toArray = Array.from(arrayify(to));
+    const transactionHashBytes = hexStringToBytes(transactionHash);
+    if (transactionHashBytes.isErr()) {
+      return err(transactionHashBytes.error);
+    }
+
+    const fromBytes = from.length > 0 ? hexStringToBytes(from) : ok(undefined);
+    if (fromBytes.isErr()) {
+      return err(fromBytes.error);
+    }
+
+    const toBytes = hexStringToBytes(to);
+    if (toBytes.isErr()) {
+      return err(toBytes.error);
+    }
+
+    const fnameBytes = bytes32ToBytes(tokenId);
+    if (fnameBytes.isErr()) {
+      return err(fnameBytes.error);
+    }
+
+    const expiryBytes = bigNumberToBytes(expiry);
+    if (expiryBytes.isErr()) {
+      return err(expiryBytes.error);
     }
 
     // Construct the flatbuffer event
     const builder = new Builder(1);
     const eventT = new flatbuffers.NameRegistryEventT(
       blockNumber,
-      Array.from(arrayify(blockHash)),
-      Array.from(arrayify(transactionHash)),
+      Array.from(blockHashBytes.value),
+      Array.from(transactionHashBytes.value),
       logIndex,
-      fname,
-      fromArray,
-      toArray,
+      Array.from(fnameBytes.value),
+      fromBytes.value ? Array.from(fromBytes.value) : undefined,
+      Array.from(toBytes.value),
       type,
-      Array.from(arrayify(expiry.toHexString()))
+      Array.from(expiryBytes.value)
     );
     builder.finish(eventT.pack(builder));
 
@@ -382,5 +428,7 @@ export class EthEventsProvider {
       this._nameEventsByBlock.set(blockNumber, nameEvents);
     }
     nameEvents.push(nameRegistryEventModel);
+
+    return ok(undefined);
   }
 }

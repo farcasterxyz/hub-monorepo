@@ -1,9 +1,9 @@
 import { NameRegistryEventType } from '@hub/flatbuffers';
-import { arrayify } from 'ethers/lib/utils';
 import Factories from '~/flatbuffers/factories';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { generateEthereumSigner } from '~/utils/crypto';
+import { hexStringToBytes } from '../utils/bytes';
 
 const db = jestRocksDB('flatbuffers.nameRegistryEventModel.test');
 
@@ -15,7 +15,7 @@ let custody2Address: Uint8Array;
 
 beforeAll(async () => {
   const custody1 = await generateEthereumSigner();
-  custody1Address = arrayify(custody1.signerKey);
+  custody1Address = hexStringToBytes(custody1.signerKey)._unsafeUnwrap();
 
   const nameRegistryEvent = await Factories.NameRegistryEvent.create({
     fname: Array.from(fname),
@@ -43,7 +43,7 @@ describe('instance methods', () => {
       await model.put(db);
 
       const custody2 = await generateEthereumSigner();
-      custody2Address = arrayify(custody2.signerKey);
+      custody2Address = hexStringToBytes(custody2.signerKey)._unsafeUnwrap();
 
       // Transfer evemt
       const transferNameRegistryEvent = await Factories.NameRegistryEvent.create({

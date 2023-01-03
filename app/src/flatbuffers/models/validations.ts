@@ -1,12 +1,12 @@
 import * as message_generated from '@hub/flatbuffers';
 import * as ed from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
-import { hexlify } from 'ethers/lib/utils';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
+import { bytesToBigNumber } from '~/eth/utils';
 import MessageModel, { FID_BYTES } from '~/flatbuffers/models/messageModel';
 import * as typeguards from '~/flatbuffers/models/typeguards';
 import * as types from '~/flatbuffers/models/types';
-import { bytesCompare } from '~/flatbuffers/utils/bytes';
+import { bytesCompare, bytesToHexString } from '~/flatbuffers/utils/bytes';
 import { verifyMessageHashSignature, verifyVerificationEthAddressClaimSignature } from '~/flatbuffers/utils/eip712';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { HubAsyncResult, HubError, HubResult } from '~/utils/hubErrors';
@@ -38,7 +38,10 @@ export const validateMessage = async (message: MessageModel): HubAsyncResult<Mes
     EIP712_MESSAGE_TYPES.includes(message.type())
   ) {
     const verifiedSigner = verifyMessageHashSignature(message.hash(), message.signature());
-    if (bytesCompare(verifiedSigner, message.signer()) !== 0) {
+    if (verifiedSigner.isErr()) {
+      return err(verifiedSigner.error);
+    }
+    if (bytesCompare(verifiedSigner.value, message.signer()) !== 0) {
       return err(new HubError('bad_request.validation_failure', 'signature does not match signer'));
     }
   } else if (
@@ -235,14 +238,29 @@ export const validateVerificationAddEthAddressMessage = async (
     return err(validBlockHash.error);
   }
 
+  const fidBigNumber = bytesToBigNumber(message.fid());
+  if (fidBigNumber.isErr()) {
+    return err(fidBigNumber.error);
+  }
+
+  const addressHex = bytesToHexString(validAddress.value);
+  if (addressHex.isErr()) {
+    return err(addressHex.error);
+  }
+
+  const blockHashHex = bytesToHexString(validBlockHash.value);
+  if (blockHashHex.isErr()) {
+    return err(blockHashHex.error);
+  }
+
   const reconstructedClaim: types.VerificationEthAddressClaim = {
-    fid: message.fid(),
-    address: hexlify(validAddress.value),
+    fid: fidBigNumber.value,
+    address: addressHex.value,
     network: message.network(),
-    blockHash: validBlockHash.value,
+    blockHash: blockHashHex.value,
   };
 
-  const recoveredAddress = Result.fromThrowable(verifyVerificationEthAddressClaimSignature)(
+  const recoveredAddress = verifyVerificationEthAddressClaimSignature(
     reconstructedClaim,
     message.body().ethSignatureArray() ?? new Uint8Array()
   );

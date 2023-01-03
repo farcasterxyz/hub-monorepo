@@ -6,7 +6,7 @@ import cron from 'node-cron';
 import AbstractRocksDB from 'rocksdb';
 import { RootPrefix } from '~/flatbuffers/models/types';
 import { validateEd25519PublicKey, validateEthAddress, validateFid } from '~/flatbuffers/models/validations';
-import { bigEndianBytesToNumber, bytesIncrement, numberToBigEndianBytes } from '~/flatbuffers/utils/bytes';
+import { bytesIncrement, bytesToNumber, numberToBytes } from '~/flatbuffers/utils/bytes';
 import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
 import { HubAsyncResult, HubError, HubResult } from '~/utils/hubErrors';
@@ -80,8 +80,8 @@ export class RevokeSignerJobQueue {
     return Buffer.from([RootPrefix.JobRevokeSigner]);
   }
 
-  static jobKeyToTimestamp(key: Buffer): number {
-    return bigEndianBytesToNumber(new Uint8Array(key).subarray(1, 7));
+  static jobKeyToTimestamp(key: Buffer): HubResult<number> {
+    return bytesToNumber(new Uint8Array(key).subarray(1, 7), { endianness: 'big' });
   }
 
   static validatePayload(payload: RevokeSignerJobPayload): HubResult<RevokeSignerJobPayload> {
@@ -132,7 +132,7 @@ export class RevokeSignerJobQueue {
     buffers.push(RevokeSignerJobQueue.jobKeyPrefix());
 
     // Add 6 byte doAt timestamp
-    const doAtBytes = numberToBigEndianBytes(doAt, 6);
+    const doAtBytes = numberToBytes(doAt, { size: 6, endianness: 'big' });
     if (doAtBytes.isErr()) {
       return err(doAtBytes.error);
     }
@@ -225,7 +225,9 @@ export class RevokeSignerJobQueue {
       const payload = RevokeSignerJobPayload.getRootAsRevokeSignerJobPayload(
         new ByteBuffer(new Uint8Array(value as Buffer))
       );
-      jobs.push([timestamp, payload]);
+      if (timestamp.isOk()) {
+        jobs.push([timestamp.value, payload]);
+      }
     }
     return ok(jobs);
   }
