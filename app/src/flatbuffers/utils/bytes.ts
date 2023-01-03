@@ -78,10 +78,18 @@ export const bytesToUtf8String = (bytes: Uint8Array, options: BytesOptions = {})
   const endianness: Endianness = options.endianness ?? 'little';
   const decoder = new TextDecoder();
   if (endianness === 'little') {
-    return ok(decoder.decode(bytes.reverse()));
+    while (bytes[bytes.length - 1] === 0) {
+      bytes = bytes.subarray(0, bytes.length - 1);
+    }
+
+    bytes = bytes.reverse(); // reverse because TextDecoder takes big endian
   } else {
-    return ok(decoder.decode(bytes));
+    while (bytes[0] === 0) {
+      bytes = bytes.subarray(1);
+    }
   }
+
+  return ok(decoder.decode(bytes));
 };
 
 // TODO: support numbers up to Number.MAX_SAFE_INTEGER

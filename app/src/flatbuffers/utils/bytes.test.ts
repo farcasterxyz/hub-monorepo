@@ -138,7 +138,7 @@ describe('bytesToUtf8String', () => {
   describe('little endian', () => {
     const passingCases: [Uint8Array, string][] = [
       [new Uint8Array([104, 102, 112]), 'pfh'],
-      // [new Uint8Array([104, 102, 112, 0, 0]), 'pfh'],
+      [new Uint8Array([104, 102, 112, 0, 0]), 'pfh'],
     ];
 
     for (const [input, output] of passingCases) {
@@ -149,7 +149,11 @@ describe('bytesToUtf8String', () => {
   });
 
   describe('big endian', () => {
-    const passingCases: [Uint8Array, string][] = [[new Uint8Array([104, 102, 112]), 'hfp']];
+    const passingCases: [Uint8Array, string][] = [
+      [new Uint8Array([104, 102, 112]), 'hfp'],
+      [new Uint8Array([112, 102, 104]), 'pfh'],
+      [new Uint8Array([0, 0, 0, 112, 102, 104]), 'pfh'],
+    ];
 
     for (const [input, output] of passingCases) {
       test(`converts big endian byte array to utf8 string: ${input}`, () => {
