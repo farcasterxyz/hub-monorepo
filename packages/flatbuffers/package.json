@@ -14,6 +14,7 @@
     "lint:fix": "yarn run lint -- --fix"
   },
   "dependencies": {
+    "prettier-config-custom": "*",
     "eslint-config-custom": "*",
     "flatbuffers": "^22.11.23"
   }

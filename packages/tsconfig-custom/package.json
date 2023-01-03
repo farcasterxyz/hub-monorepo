@@ -1,0 +1,9 @@
+{
+  "name": "tsconfig-custom",
+  "version": "0.0.0",
+  "main": "tsconfig.json",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}
