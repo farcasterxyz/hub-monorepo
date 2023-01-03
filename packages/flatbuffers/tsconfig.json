@@ -1,5 +1,5 @@
 {
-  "extends": "../tsconfig-custom/tsconfig.json",
+  "extends": "tsconfig-custom/base.json",
   "compilerOptions": {
     "paths": {
       "~/*": ["./*"]

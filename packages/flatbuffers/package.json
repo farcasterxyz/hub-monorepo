@@ -16,6 +16,7 @@
   "dependencies": {
     "prettier-config-custom": "*",
     "eslint-config-custom": "*",
+    "tsconfig-custom": "*",
     "flatbuffers": "^22.11.23"
   }
 }
