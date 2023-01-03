@@ -142,10 +142,10 @@ export interface UserDataAddModel extends MessageModel {
 }
 
 export type VerificationEthAddressClaim = {
-  fid: Uint8Array; // Must be big-endian typed array
-  address: string;
+  fid: Uint8Array; // Big endian typed array
+  address: string; // Hex string
   network: message_generated.FarcasterNetwork;
-  blockHash: Uint8Array;
+  blockHash: Uint8Array; // Big endian typed array
 };
 
 export type StorePruneOptions = {
