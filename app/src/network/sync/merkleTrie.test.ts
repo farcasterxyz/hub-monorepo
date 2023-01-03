@@ -1,8 +1,8 @@
-import { createHash } from 'crypto';
+import { blake3 } from '@noble/hashes/blake3';
 import Factories from '~/flatbuffers/factories';
 import { MerkleTrie } from '~/network/sync/merkleTrie';
 
-const emptyHash = createHash('sha256').digest('hex');
+const emptyHash = Buffer.from(blake3('', { dkLen: 16 })).toString('hex');
 
 describe('MerkleTrie', () => {
   const trieWithIds = async (timestamps: number[]) => {
@@ -218,10 +218,13 @@ describe('MerkleTrie', () => {
       let snapshot = trie.getSnapshot('1665182351');
       let node = trie.getTrieNodeMetadata('16651823');
       // We expect the excluded hash to be the hash of the 3 and 4 child nodes, and excludes the 5 child node
-      const expectedHash = createHash('sha256')
-        .update(node?.children?.get('3')?.hash || '')
-        .update(node?.children?.get('4')?.hash || '')
-        .digest('hex');
+      const expectedHash = Buffer.from(
+        blake3
+          .create({ dkLen: 16 })
+          .update(node?.children?.get('3')?.hash || '')
+          .update(node?.children?.get('4')?.hash || '')
+          .digest()
+      ).toString('hex');
       expect(snapshot.excludedHashes).toEqual([
         emptyHash, // 1, these are empty because there are no other children at this level
         emptyHash, // 6
@@ -237,14 +240,15 @@ describe('MerkleTrie', () => {
 
       snapshot = trie.getSnapshot('1665182343');
       node = trie.getTrieNodeMetadata('166518234');
-      const expectedLastHash = createHash('sha256')
-        .update(node?.children?.get('5')?.hash || '')
-        .digest('hex');
+      const expectedLastHash = Buffer.from(blake3(node?.children?.get('5')?.hash || '', { dkLen: 16 })).toString('hex');
       node = trie.getTrieNodeMetadata('16651823');
-      const expectedPenultimateHash = createHash('sha256')
-        .update(node?.children?.get('3')?.hash || '')
-        .update(node?.children?.get('5')?.hash || '')
-        .digest('hex');
+      const expectedPenultimateHash = Buffer.from(
+        blake3
+          .create({ dkLen: 16 })
+          .update(node?.children?.get('3')?.hash || '')
+          .update(node?.children?.get('5')?.hash || '')
+          .digest()
+      ).toString('hex');
       expect(snapshot.excludedHashes).toEqual([
         emptyHash, // 1
         emptyHash, // 6
