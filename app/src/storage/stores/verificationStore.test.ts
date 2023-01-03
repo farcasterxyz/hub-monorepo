@@ -1,5 +1,4 @@
 import { FarcasterNetwork } from '@hub/flatbuffers';
-import { arrayify } from 'ethers/lib/utils';
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import {
@@ -8,7 +7,7 @@ import {
   VerificationAddEthAddressModel,
   VerificationRemoveModel,
 } from '~/flatbuffers/models/types';
-import { bytesDecrement, bytesIncrement } from '~/flatbuffers/utils/bytes';
+import { bytesDecrement, bytesIncrement, hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
@@ -28,7 +27,7 @@ let verificationRemove: VerificationRemoveModel;
 
 beforeAll(async () => {
   ethSigner = await generateEthereumSigner();
-  address = arrayify(ethSigner.signerKey);
+  address = hexStringToBytes(ethSigner.signerKey)._unsafeUnwrap();
 
   const addBody = await Factories.VerificationAddEthAddressBody.create(
     {},

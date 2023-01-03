@@ -4,6 +4,7 @@ import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { KeyPair, ReactionAddModel, SignerAddModel } from '~/flatbuffers/models/types';
+import { hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import SyncEngine from '~/network/sync/syncEngine';
 import Client from '~/rpc/client';
 import Server from '~/rpc/server';
@@ -44,7 +45,7 @@ let reactionAddRecast: ReactionAddModel;
 beforeAll(async () => {
   custodyEvent = new IdRegistryEventModel(
     await Factories.IdRegistryEvent.create(
-      { to: Array.from(utils.arrayify(wallet.address)), fid: Array.from(fid) },
+      { to: Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()), fid: Array.from(fid) },
       { transient: { wallet } }
     )
   );

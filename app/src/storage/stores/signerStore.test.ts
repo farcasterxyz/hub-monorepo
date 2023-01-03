@@ -1,11 +1,10 @@
 import { faker } from '@faker-js/faker';
 import { IdRegistryEventType, MessageType } from '@hub/flatbuffers';
-import { arrayify } from 'ethers/lib/utils';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { EthereumSigner, SignerAddModel, SignerRemoveModel, UserPostfix } from '~/flatbuffers/models/types';
-import { bytesDecrement, bytesIncrement } from '~/flatbuffers/utils/bytes';
+import { bytesDecrement, bytesIncrement, hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import SignerStore from '~/storage/stores/signerStore';
@@ -32,7 +31,7 @@ let signerRemove: SignerRemoveModel;
 
 beforeAll(async () => {
   custody1 = await generateEthereumSigner();
-  custody1Address = arrayify(custody1.signerKey);
+  custody1Address = hexStringToBytes(custody1.signerKey)._unsafeUnwrap();
   const idRegistryEvent = await Factories.IdRegistryEvent.create({
     fid: Array.from(fid),
     to: Array.from(custody1Address),
@@ -40,7 +39,7 @@ beforeAll(async () => {
   custody1Event = new IdRegistryEventModel(idRegistryEvent);
 
   custody2 = await generateEthereumSigner();
-  custody2Address = arrayify(custody2.signerKey);
+  custody2Address = hexStringToBytes(custody2.signerKey)._unsafeUnwrap();
 
   signer = (await generateEd25519KeyPair()).publicKey;
 
@@ -174,7 +173,7 @@ describe('mergeIdRegistryEvent', () => {
   test('fails if events have the same blockNumber but different blockHashes', async () => {
     const idRegistryEvent = await Factories.IdRegistryEvent.create({
       ...custody1Event.event.unpack(),
-      blockHash: Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
+      blockHash: Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
     });
 
     const blockHashConflictEvent = new IdRegistryEventModel(idRegistryEvent);
@@ -186,7 +185,7 @@ describe('mergeIdRegistryEvent', () => {
   test('fails if events have the same blockNumber and logIndex but different transactionHashes', async () => {
     const idRegistryEvent = await Factories.IdRegistryEvent.create({
       ...custody1Event.event.unpack(),
-      transactionHash: Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
+      transactionHash: Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
     });
 
     const txHashConflictEvent = new IdRegistryEventModel(idRegistryEvent);
@@ -215,7 +214,7 @@ describe('mergeIdRegistryEvent', () => {
     test('when it has a higher block number', async () => {
       const idRegistryEvent = await Factories.IdRegistryEvent.create({
         ...custody1Event.event.unpack(),
-        transactionHash: Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
+        transactionHash: Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
         to: Array.from(custody2Address),
         blockNumber: custody1Event.blockNumber() + 1,
       });
@@ -225,7 +224,7 @@ describe('mergeIdRegistryEvent', () => {
     test('when it has the same block number and a higher log index', async () => {
       const idRegistryEvent = await Factories.IdRegistryEvent.create({
         ...custody1Event.event.unpack(),
-        transactionHash: Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
+        transactionHash: Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
         to: Array.from(custody2Address),
         logIndex: custody1Event.logIndex() + 1,
       });
@@ -252,7 +251,7 @@ describe('mergeIdRegistryEvent', () => {
     test('when it has a lower block number', async () => {
       const idRegistryEvent = await Factories.IdRegistryEvent.create({
         ...custody1Event.event.unpack(),
-        transactionHash: Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
+        transactionHash: Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
         to: Array.from(custody2Address),
         blockNumber: custody1Event.blockNumber() - 1,
       });

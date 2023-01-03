@@ -5,6 +5,7 @@ import { utils, Wallet } from 'ethers';
 import Factories from '~/flatbuffers/factories';
 import { VerificationEthAddressClaim } from '~/flatbuffers/models/types';
 import * as eip712 from '~/flatbuffers/utils/eip712';
+import { hexStringToBytes } from './bytes';
 
 const wallet = new Wallet(utils.randomBytes(32));
 
@@ -64,6 +65,6 @@ describe('signMessageHash', () => {
     const signature = await eip712.signMessageHash(hash, wallet);
     expect(signature).toBeTruthy();
     const recoveredAddress = eip712.verifyMessageHashSignature(hash, signature);
-    expect(recoveredAddress).toEqual(utils.arrayify(wallet.address));
+    expect(recoveredAddress).toEqual(hexStringToBytes(wallet.address)._unsafeUnwrap());
   });
 });

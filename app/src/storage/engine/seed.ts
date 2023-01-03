@@ -3,6 +3,7 @@ import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { SignerAddModel } from '~/flatbuffers/models/types';
+import { hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import Engine from '~/storage/engine';
 
 /** Util to seed engine with all the data needed to make a signer valid for an fid */
@@ -14,7 +15,7 @@ export const seedSigner = async (engine: Engine, fid: Uint8Array, signer: Uint8A
   const idRegistryEvent = new IdRegistryEventModel(
     await Factories.IdRegistryEvent.create({
       fid: Array.from(fid),
-      to: Array.from(ethers.utils.arrayify(wallet.address)),
+      to: Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()),
     })
   );
 

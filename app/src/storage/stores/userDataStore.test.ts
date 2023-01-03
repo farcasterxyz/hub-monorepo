@@ -1,12 +1,11 @@
 import { NameRegistryEventType, UserDataType } from '@hub/flatbuffers';
 import { utils, Wallet } from 'ethers';
-import { arrayify } from 'ethers/lib/utils';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { KeyPair, SignerAddModel, UserDataAddModel, UserPostfix } from '~/flatbuffers/models/types';
-import { bytesIncrement } from '~/flatbuffers/utils/bytes';
+import { bytesIncrement, hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -34,7 +33,7 @@ let addBio: UserDataAddModel;
 let addFname: UserDataAddModel;
 
 beforeAll(async () => {
-  custody1Address = arrayify(wallet.address);
+  custody1Address = hexStringToBytes(wallet.address)._unsafeUnwrap();
   custody1Event = new IdRegistryEventModel(
     await Factories.IdRegistryEvent.create(
       {
@@ -272,7 +271,7 @@ describe('userfname', () => {
 
     // Now, generate a new address
     const custody2 = await generateEthereumSigner();
-    const custody2Address = arrayify(custody2.signerKey);
+    const custody2Address = hexStringToBytes(custody2.signerKey)._unsafeUnwrap();
 
     // transfer the name to custody2address
     const nameRegistryEvent2 = await Factories.NameRegistryEvent.create({

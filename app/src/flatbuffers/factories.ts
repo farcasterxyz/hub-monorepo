@@ -31,7 +31,9 @@ const BytesFactory = Factory.define<Uint8Array, { length?: number }>(({ transien
 });
 
 const FIDFactory = Factory.define<Uint8Array, { fid?: number }>(({ transientParams }) => {
-  return numberToBytes(transientParams.fid ?? faker.datatype.number({ min: 1 }))._unsafeUnwrap();
+  return numberToBytes(transientParams.fid ?? faker.datatype.number({ min: 1 }), {
+    endianness: 'little',
+  })._unsafeUnwrap();
 });
 
 const FnameFactory = Factory.define<Uint8Array>(() => {
