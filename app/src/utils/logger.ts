@@ -1,10 +1,8 @@
-import { BigNumber } from 'ethers';
-import { hexlify } from 'ethers/lib/utils';
 import { default as Pino } from 'pino';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
-import { toNumber } from '~/flatbuffers/utils/bytes';
+import { bytesToHexString, bytesToNumber } from '~/flatbuffers/utils/bytes';
 import { fromFarcasterTime } from '~/flatbuffers/utils/time';
 
 /**
@@ -48,8 +46,8 @@ export const logger = Pino(defaultOptions);
 export const messageToLog = (message: MessageModel) => {
   return {
     timestamp: fromFarcasterTime(message.timestamp()),
-    hash: hexlify(message.hash()),
-    fid: BigNumber.from(message.fid()).toNumber(),
+    hash: bytesToHexString(message.hash())._unsafeUnwrap(),
+    fid: bytesToNumber(message.fid())._unsafeUnwrap(),
     type: message.typeName(),
   };
 };
@@ -57,9 +55,9 @@ export const messageToLog = (message: MessageModel) => {
 export const idRegistryEventToLog = (event: IdRegistryEventModel) => {
   return {
     blockNumber: event.blockNumber(),
-    transactionHash: hexlify(event.transactionHash()),
-    fid: toNumber(event.fid()),
-    to: hexlify(event.to()),
+    transactionHash: bytesToHexString(event.transactionHash())._unsafeUnwrap(),
+    fid: bytesToNumber(event.fid())._unsafeUnwrap(),
+    to: bytesToHexString(event.to())._unsafeUnwrap(),
     type: event.typeName(),
   };
 };
@@ -67,9 +65,9 @@ export const idRegistryEventToLog = (event: IdRegistryEventModel) => {
 export const nameRegistryEventToLog = (event: NameRegistryEventModel) => {
   return {
     blockNumber: event.blockNumber(),
-    transactionHash: hexlify(event.transactionHash()),
+    transactionHash: bytesToHexString(event.transactionHash())._unsafeUnwrap(),
     fname: Buffer.from(event.fname()).toString('utf-8').replace(/\0/g, ''),
-    to: hexlify(event.to()),
+    to: bytesToHexString(event.to())._unsafeUnwrap(),
     type: event.typeName(),
   };
 };

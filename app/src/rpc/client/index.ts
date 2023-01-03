@@ -263,6 +263,13 @@ class Client {
     );
   }
 
+  async getNameRegistryEvent(fname: Uint8Array): HubAsyncResult<NameRegistryEventModel> {
+    return this.makeUnaryNameRegistryEventRequest(
+      definitions.userDataDefinition().getNameRegistryEvent,
+      requests.userDataRequests.getNameRegistryEvent(fname)
+    );
+  }
+
   /* -------------------------------------------------------------------------- */
   /*                                   Sync Methods                             */
   /* -------------------------------------------------------------------------- */

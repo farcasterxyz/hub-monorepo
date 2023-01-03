@@ -2273,48 +2273,48 @@ pack(builder:flatbuffers.Builder): flatbuffers.Offset {
 }
 }
 
-export class GetUserNameRequest implements flatbuffers.IUnpackableObject<GetUserNameRequestT> {
+export class GetNameRegistryEventRequest implements flatbuffers.IUnpackableObject<GetNameRegistryEventRequestT> {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
-  __init(i:number, bb:flatbuffers.ByteBuffer):GetUserNameRequest {
+  __init(i:number, bb:flatbuffers.ByteBuffer):GetNameRegistryEventRequest {
   this.bb_pos = i;
   this.bb = bb;
   return this;
 }
 
-static getRootAsGetUserNameRequest(bb:flatbuffers.ByteBuffer, obj?:GetUserNameRequest):GetUserNameRequest {
-  return (obj || new GetUserNameRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+static getRootAsGetNameRegistryEventRequest(bb:flatbuffers.ByteBuffer, obj?:GetNameRegistryEventRequest):GetNameRegistryEventRequest {
+  return (obj || new GetNameRegistryEventRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-static getSizePrefixedRootAsGetUserNameRequest(bb:flatbuffers.ByteBuffer, obj?:GetUserNameRequest):GetUserNameRequest {
+static getSizePrefixedRootAsGetNameRegistryEventRequest(bb:flatbuffers.ByteBuffer, obj?:GetNameRegistryEventRequest):GetNameRegistryEventRequest {
   bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
-  return (obj || new GetUserNameRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  return (obj || new GetNameRegistryEventRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-fid(index: number):number|null {
+fname(index: number):number|null {
   const offset = this.bb!.__offset(this.bb_pos, 4);
   return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
 }
 
-fidLength():number {
+fnameLength():number {
   const offset = this.bb!.__offset(this.bb_pos, 4);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
-fidArray():Uint8Array|null {
+fnameArray():Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 4);
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
-static startGetUserNameRequest(builder:flatbuffers.Builder) {
+static startGetNameRegistryEventRequest(builder:flatbuffers.Builder) {
   builder.startObject(1);
 }
 
-static addFid(builder:flatbuffers.Builder, fidOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, fidOffset, 0);
+static addFname(builder:flatbuffers.Builder, fnameOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, fnameOffset, 0);
 }
 
-static createFidVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+static createFnameVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
   builder.startVector(1, data.length, 1);
   for (let i = data.length - 1; i >= 0; i--) {
     builder.addInt8(data[i]!);
@@ -2322,45 +2322,45 @@ static createFidVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):fl
   return builder.endVector();
 }
 
-static startFidVector(builder:flatbuffers.Builder, numElems:number) {
+static startFnameVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(1, numElems, 1);
 }
 
-static endGetUserNameRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
+static endGetNameRegistryEventRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
-  builder.requiredField(offset, 4) // fid
+  builder.requiredField(offset, 4) // fname
   return offset;
 }
 
-static createGetUserNameRequest(builder:flatbuffers.Builder, fidOffset:flatbuffers.Offset):flatbuffers.Offset {
-  GetUserNameRequest.startGetUserNameRequest(builder);
-  GetUserNameRequest.addFid(builder, fidOffset);
-  return GetUserNameRequest.endGetUserNameRequest(builder);
+static createGetNameRegistryEventRequest(builder:flatbuffers.Builder, fnameOffset:flatbuffers.Offset):flatbuffers.Offset {
+  GetNameRegistryEventRequest.startGetNameRegistryEventRequest(builder);
+  GetNameRegistryEventRequest.addFname(builder, fnameOffset);
+  return GetNameRegistryEventRequest.endGetNameRegistryEventRequest(builder);
 }
 
-unpack(): GetUserNameRequestT {
-  return new GetUserNameRequestT(
-    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength())
+unpack(): GetNameRegistryEventRequestT {
+  return new GetNameRegistryEventRequestT(
+    this.bb!.createScalarList<number>(this.fname.bind(this), this.fnameLength())
   );
 }
 
 
-unpackTo(_o: GetUserNameRequestT): void {
-  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
+unpackTo(_o: GetNameRegistryEventRequestT): void {
+  _o.fname = this.bb!.createScalarList<number>(this.fname.bind(this), this.fnameLength());
 }
 }
 
-export class GetUserNameRequestT implements flatbuffers.IGeneratedObject {
+export class GetNameRegistryEventRequestT implements flatbuffers.IGeneratedObject {
 constructor(
-  public fid: (number)[] = []
+  public fname: (number)[] = []
 ){}
 
 
 pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = GetUserNameRequest.createFidVector(builder, this.fid);
+  const fname = GetNameRegistryEventRequest.createFnameVector(builder, this.fname);
 
-  return GetUserNameRequest.createGetUserNameRequest(builder,
-    fid
+  return GetNameRegistryEventRequest.createGetNameRegistryEventRequest(builder,
+    fname
   );
 }
 }

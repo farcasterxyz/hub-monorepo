@@ -7,7 +7,7 @@ import { isSignerAdd, isSignerRemove, isUserDataAdd } from '~/flatbuffers/models
 import * as types from '~/flatbuffers/models/types';
 import { RootPrefix } from '~/flatbuffers/models/types';
 import * as validations from '~/flatbuffers/models/validations';
-import { bytesCompare, toNumber } from '~/flatbuffers/utils/bytes';
+import { bytesCompare, bytesToNumber } from '~/flatbuffers/utils/bytes';
 import { SyncId } from '~/network/sync/syncId';
 import RocksDB from '~/storage/db/rocksdb';
 import AmpStore from '~/storage/stores/ampStore';
@@ -489,6 +489,10 @@ class Engine {
     return ResultAsync.fromPromise(this._userDataStore.getUserDataAddsByUser(fid), (e) => e as HubError);
   }
 
+  async getNameRegistryEvent(fname: Uint8Array): HubAsyncResult<NameRegistryEventModel> {
+    return ResultAsync.fromPromise(this._userDataStore.getNameRegistryEvent(fname), (e) => e as HubError);
+  }
+
   /* -------------------------------------------------------------------------- */
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
@@ -500,7 +504,7 @@ class Engine {
       () => undefined
     );
     if (custodyAddress.isErr()) {
-      return err(new HubError('bad_request.validation_failure', `unknown fid ${toNumber(message.fid())}`));
+      return err(new HubError('bad_request.validation_failure', `unknown fid ${bytesToNumber(message.fid())}`));
     }
 
     // 2. Check that the signer is valid if message is not a signer message

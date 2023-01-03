@@ -18,4 +18,13 @@ export const userDataRequests = {
       new ByteBuffer(builder.asUint8Array())
     );
   },
+
+  getNameRegistryEvent: (fname: Uint8Array): rpc_generated.GetNameRegistryEventRequest => {
+    const builder = new Builder(1);
+    const requestT = new rpc_generated.GetNameRegistryEventRequestT(Array.from(fname));
+    builder.finish(requestT.pack(builder));
+    return rpc_generated.GetNameRegistryEventRequest.getRootAsGetNameRegistryEventRequest(
+      new ByteBuffer(builder.asUint8Array())
+    );
+  },
 };

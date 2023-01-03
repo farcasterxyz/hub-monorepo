@@ -9,12 +9,11 @@ import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import * as ed from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
 import { ethers, utils, Wallet } from 'ethers';
-import { arrayify } from 'ethers/lib/utils';
 import { Factory } from 'fishery';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { KeyPair, SignerAddModel, VerificationEthAddressClaim } from '~/flatbuffers/models/types';
-import { numberToLittleEndianBytes } from '~/flatbuffers/utils/bytes';
+import { hexStringToBytes, numberToBytes } from '~/flatbuffers/utils/bytes';
 import { signMessageHash, signVerificationEthAddressClaim } from '~/flatbuffers/utils/eip712';
 import { toFarcasterTime } from '~/flatbuffers/utils/time';
 import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
@@ -32,7 +31,7 @@ const BytesFactory = Factory.define<Uint8Array, { length?: number }>(({ transien
 });
 
 const FIDFactory = Factory.define<Uint8Array, { fid?: number }>(({ transientParams }) => {
-  return numberToLittleEndianBytes(transientParams.fid ?? faker.datatype.number({ min: 1 }))._unsafeUnwrap();
+  return numberToBytes(transientParams.fid ?? faker.datatype.number({ min: 1 }))._unsafeUnwrap();
 });
 
 const FnameFactory = Factory.define<Uint8Array>(() => {
@@ -237,7 +236,7 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
   onCreate(async (params) => {
     // Generate address and signature
     const wallet = transientParams.wallet ?? new Wallet(utils.randomBytes(32));
-    params.address = Array.from(arrayify(wallet.address));
+    params.address = Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap());
 
     const fid = transientParams.fid ?? FIDFactory.build();
     const claim: VerificationEthAddressClaim = {
@@ -247,7 +246,7 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
       blockHash: Uint8Array.from(params.blockHash),
     };
     const signature = await signVerificationEthAddressClaim(claim, wallet);
-    params.ethSignature = Array.from(arrayify(signature));
+    params.ethSignature = Array.from(signature);
 
     const builder = new Builder(1);
     builder.finish(params.pack(builder));
@@ -257,9 +256,9 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
   });
 
   return new message_generated.VerificationAddEthAddressBodyT(
-    Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 }))),
-    Array.from(arrayify(faker.datatype.hexadecimal({ length: 130 }))),
-    Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 })))
+    Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 40 }))._unsafeUnwrap()),
+    Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 130 }))._unsafeUnwrap()),
+    Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap())
   );
 });
 
@@ -293,7 +292,7 @@ const VerificationRemoveBodyFactory = Factory.define<
   });
 
   return new message_generated.VerificationRemoveBodyT(
-    Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 })))
+    Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 40 }))._unsafeUnwrap())
   );
 });
 
@@ -321,7 +320,9 @@ const SignerBodyFactory = Factory.define<message_generated.SignerBodyT, any, mes
       return message_generated.SignerBody.getRootAsSignerBody(new ByteBuffer(builder.asUint8Array()));
     });
 
-    return new message_generated.SignerBodyT(Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))));
+    return new message_generated.SignerBodyT(
+      Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap())
+    );
   }
 );
 
@@ -399,7 +400,7 @@ const MessageFactory = Factory.define<
       } else if (transientParams.wallet) {
         params.signature = Array.from(await signMessageHash(new Uint8Array(params.hash), transientParams.wallet));
         params.signatureScheme = message_generated.SignatureScheme.Eip712;
-        params.signer = Array.from(arrayify(transientParams.wallet.address));
+        params.signer = Array.from(hexStringToBytes(transientParams.wallet.address)._unsafeUnwrap());
       } else {
         const signer = await generateEd25519KeyPair();
         params.signature = Array.from(await ed.sign(new Uint8Array(params.hash), signer.privateKey));
@@ -439,13 +440,13 @@ const IdRegistryEventFactory = Factory.define<
 
   return new id_registry_event_generated.IdRegistryEventT(
     faker.datatype.number({ max: 100000 }),
-    Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
-    Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
+    Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
+    Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
     faker.datatype.number({ max: 1000 }),
     Array.from(FIDFactory.build()),
-    Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 }))),
+    Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 40 }))._unsafeUnwrap()),
     id_registry_event_generated.IdRegistryEventType.IdRegistryRegister,
-    Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 })))
+    Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 40 }))._unsafeUnwrap())
   );
 });
 
@@ -464,12 +465,12 @@ const NameRegistryEventFactory = Factory.define<
 
   return new name_registry_event_generated.NameRegistryEventT(
     faker.datatype.number({ max: 100000 }),
-    Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
-    Array.from(arrayify(faker.datatype.hexadecimal({ length: 64 }))),
+    Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
+    Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
     faker.datatype.number({ max: 1000 }),
     Array.from(FnameFactory.build()),
-    Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 }))),
-    Array.from(arrayify(faker.datatype.hexadecimal({ length: 40 }))),
+    Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 40 }))._unsafeUnwrap()),
+    Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 40 }))._unsafeUnwrap()),
     name_registry_event_generated.NameRegistryEventType.NameRegistryTransfer
   );
 });
@@ -552,7 +553,9 @@ const SyncIdFactory = Factory.define<undefined, { date: Date; hash: string; fid:
         timestamp: (date || faker.date.recent()).getTime() / 1000,
       });
 
-      const hashBytes = Array.from(arrayify(hash || faker.datatype.hexadecimal({ length: HASH_LENGTH })));
+      const hashBytes = Array.from(
+        hexStringToBytes(hash || faker.datatype.hexadecimal({ length: HASH_LENGTH }))._unsafeUnwrap()
+      );
       const signerAdd = new MessageModel(
         await Factories.Message.create(
           {

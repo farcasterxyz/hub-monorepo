@@ -129,8 +129,8 @@ table GetUserDataByFidRequest {
   fid: [ubyte] (required);
 }
 
-table GetUserNameRequest {
-  fid: [ubyte] (required);
+table GetNameRegistryEventRequest {
+  fname: [ubyte] (required);
 }
 
 // Sync Requests
