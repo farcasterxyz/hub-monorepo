@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
 import * as message_generated from '@hub/flatbuffers';
 import { utils, Wallet } from 'ethers';
+import { bytesToBigNumber } from '~/eth/utils';
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import * as types from '~/flatbuffers/models/types';
@@ -493,16 +494,16 @@ describe('validateVerificationAddEthAddressMessage', () => {
 
     test('with invalid eth signature', async () => {
       const claim: types.VerificationEthAddressClaim = {
-        fid,
+        fid: bytesToBigNumber(fid)._unsafeUnwrap(),
         address: faker.datatype.hexadecimal({ length: 40, case: 'lower' }), // mismatched address
         network: message_generated.FarcasterNetwork.Testnet,
-        blockHash: hexStringToBytes(faker.datatype.hexadecimal({ length: 64, case: 'lower' }))._unsafeUnwrap(),
+        blockHash: faker.datatype.hexadecimal({ length: 64, case: 'lower' }),
       };
       const signature = await signVerificationEthAddressClaim(claim, wallet);
       body = new message_generated.VerificationAddEthAddressBodyT(
         Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()),
-        Array.from(signature),
-        Array.from(claim.blockHash)
+        Array.from(signature._unsafeUnwrap()),
+        Array.from(hexStringToBytes(claim.blockHash)._unsafeUnwrap())
       );
       hubErrorMessage = 'ethSignature does not match address';
     });

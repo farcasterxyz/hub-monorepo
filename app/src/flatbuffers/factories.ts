@@ -11,9 +11,10 @@ import { blake3 } from '@noble/hashes/blake3';
 import { ethers, utils, Wallet } from 'ethers';
 import { Factory } from 'fishery';
 import { Builder, ByteBuffer } from 'flatbuffers';
+import { bytesToBigNumber } from '~/eth/utils';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { KeyPair, SignerAddModel, VerificationEthAddressClaim } from '~/flatbuffers/models/types';
-import { hexStringToBytes, numberToBytes } from '~/flatbuffers/utils/bytes';
+import { bytesToHexString, hexStringToBytes, numberToBytes } from '~/flatbuffers/utils/bytes';
 import { signMessageHash, signVerificationEthAddressClaim } from '~/flatbuffers/utils/eip712';
 import { toFarcasterTime } from '~/flatbuffers/utils/time';
 import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
@@ -242,13 +243,13 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
 
     const fid = transientParams.fid ?? FIDFactory.build();
     const claim: VerificationEthAddressClaim = {
-      fid,
+      fid: bytesToBigNumber(fid)._unsafeUnwrap(),
       address: wallet.address,
       network: transientParams.network ?? message_generated.FarcasterNetwork.Testnet,
-      blockHash: Uint8Array.from(params.blockHash),
+      blockHash: bytesToHexString(Uint8Array.from(params.blockHash))._unsafeUnwrap(),
     };
-    const signature = await signVerificationEthAddressClaim(claim, wallet);
-    params.ethSignature = Array.from(signature);
+    const ethSignature = await signVerificationEthAddressClaim(claim, wallet);
+    params.ethSignature = Array.from(ethSignature._unsafeUnwrap());
 
     const builder = new Builder(1);
     builder.finish(params.pack(builder));
@@ -400,7 +401,8 @@ const MessageFactory = Factory.define<
         params.signature = Array.from(await ed.sign(new Uint8Array(params.hash), signer.privateKey));
         params.signer = Array.from(signer.publicKey);
       } else if (transientParams.wallet) {
-        params.signature = Array.from(await signMessageHash(new Uint8Array(params.hash), transientParams.wallet));
+        const eip712Signature = await signMessageHash(new Uint8Array(params.hash), transientParams.wallet);
+        params.signature = Array.from(eip712Signature._unsafeUnwrap());
         params.signatureScheme = message_generated.SignatureScheme.Eip712;
         params.signer = Array.from(hexStringToBytes(transientParams.wallet.address)._unsafeUnwrap());
       } else {

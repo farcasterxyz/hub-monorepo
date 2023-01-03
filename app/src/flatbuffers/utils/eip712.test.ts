@@ -1,11 +1,11 @@
 import { faker } from '@faker-js/faker';
 import { FarcasterNetwork } from '@hub/flatbuffers';
 import { blake3 } from '@noble/hashes/blake3';
-import { utils, Wallet } from 'ethers';
+import { BigNumber, utils, Wallet } from 'ethers';
 import Factories from '~/flatbuffers/factories';
 import { VerificationEthAddressClaim } from '~/flatbuffers/models/types';
 import * as eip712 from '~/flatbuffers/utils/eip712';
-import { bytesToHexString, hexStringToBytes, numberToBytes } from './bytes';
+import { bytesToHexString, hexStringToBytes } from './bytes';
 
 const wallet = new Wallet(utils.randomBytes(32));
 const fidNumber = faker.datatype.number({ min: 1, max: 1_000_000 });
@@ -16,11 +16,9 @@ describe('signVerificationEthAddressClaim', () => {
 
   beforeAll(async () => {
     claim = {
-      fid: numberToBytes(fidNumber, { endianness: 'big' })._unsafeUnwrap(),
+      fid: BigNumber.from(fidNumber),
       address: wallet.address,
-      blockHash: hexStringToBytes(faker.datatype.hexadecimal({ length: 64, case: 'lower' }), {
-        endianness: 'big',
-      })._unsafeUnwrap(),
+      blockHash: faker.datatype.hexadecimal({ length: 64, case: 'lower' }),
       network: FarcasterNetwork.Testnet,
     };
     signature = (await eip712.signVerificationEthAddressClaim(claim, wallet))._unsafeUnwrap();
@@ -41,27 +39,11 @@ describe('signVerificationEthAddressClaim', () => {
     );
   });
 
-  test('succeeds with big-endian padding', async () => {
-    const paddedFid = new Uint8Array([0, 0, 0, 0, ...claim.fid]);
-    const claim2: VerificationEthAddressClaim = { ...claim, fid: paddedFid };
-    const signature2 = await eip712.signVerificationEthAddressClaim(claim2, wallet);
-    expect(signature2._unsafeUnwrap()).toEqual(signature);
-  });
-
   test('succeeds with lowercased address', async () => {
     const claim2: VerificationEthAddressClaim = { ...claim, address: claim.address.toLowerCase() };
     expect(claim2.address).not.toEqual(claim.address); // sanity check that original address was not lowercased
     const signature2 = await eip712.signVerificationEthAddressClaim(claim2, wallet);
     expect(signature2._unsafeUnwrap()).toEqual(signature);
-  });
-
-  test('fails with little-endian fid', async () => {
-    const claim2: VerificationEthAddressClaim = {
-      ...claim,
-      fid: numberToBytes(fidNumber, { endianness: 'little' })._unsafeUnwrap(),
-    };
-    const signature2 = await eip712.signVerificationEthAddressClaim(claim2, wallet);
-    expect(signature2._unsafeUnwrap()).not.toEqual(signature);
   });
 });
 

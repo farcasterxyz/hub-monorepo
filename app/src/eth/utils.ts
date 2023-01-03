@@ -1,5 +1,5 @@
 import { BigNumber } from 'ethers';
-import { hexStringToBytes, ToBytesOptions } from '~/flatbuffers/utils/bytes';
+import { BytesOptions, bytesToHexString, hexStringToBytes, ToBytesOptions } from '~/flatbuffers/utils/bytes';
 import { HubResult } from '~/utils/hubErrors';
 
 export const bytes32ToBytes = (value: BigNumber, options: ToBytesOptions = {}): HubResult<Uint8Array> => {
@@ -14,4 +14,8 @@ export const bytes32ToBytes = (value: BigNumber, options: ToBytesOptions = {}): 
 
 export const bigNumberToBytes = (value: BigNumber, options: ToBytesOptions = {}): HubResult<Uint8Array> => {
   return hexStringToBytes(value._hex, options);
+};
+
+export const bytesToBigNumber = (bytes: Uint8Array, options: BytesOptions = {}): HubResult<BigNumber> => {
+  return bytesToHexString(bytes, options).map((hexString) => BigNumber.from(hexString));
 };

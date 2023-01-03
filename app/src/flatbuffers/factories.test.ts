@@ -4,12 +4,13 @@ import { isPeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import * as ed from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
-import { hexlify } from 'ethers/lib/utils';
+import { bytesToBigNumber } from '~/eth/utils';
 import Factories from '~/flatbuffers/factories';
 import { VerificationEthAddressClaim } from '~/flatbuffers/models/types';
 import { verifyVerificationEthAddressClaimSignature } from '~/flatbuffers/utils/eip712';
 import { toFarcasterTime } from '~/flatbuffers/utils/time';
 import { GOSSIP_PROTOCOL_VERSION } from '~/network/p2p/protocol';
+import { bytesToHexString } from './utils/bytes';
 
 describe('UserIdFactory', () => {
   test('accepts fid', async () => {
@@ -92,16 +93,16 @@ describe('VerificationAddEthAddressBodyFactory', () => {
     const signature = body.ethSignatureArray();
     expect(signature).toBeTruthy();
     const reconstructedClaim: VerificationEthAddressClaim = {
-      fid,
-      address: hexlify(body.addressArray() ?? new Uint8Array()),
+      fid: bytesToBigNumber(fid)._unsafeUnwrap(),
+      address: bytesToHexString(body.addressArray() ?? new Uint8Array())._unsafeUnwrap(),
       network,
-      blockHash: body.blockHashArray() ?? new Uint8Array(),
+      blockHash: bytesToHexString(body.blockHashArray() ?? new Uint8Array())._unsafeUnwrap(),
     };
     const verifiedAddress = await verifyVerificationEthAddressClaimSignature(
       reconstructedClaim,
       signature ?? new Uint8Array()
     );
-    expect(verifiedAddress).toEqual(body.addressArray());
+    expect(verifiedAddress._unsafeUnwrap()).toEqual(body.addressArray());
   });
 });
 
