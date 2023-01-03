@@ -84,8 +84,8 @@ export const bytesToUtf8String = (bytes: Uint8Array, options: BytesOptions = {})
   }
 };
 
+// TODO: support numbers up to Number.MAX_SAFE_INTEGER
 export const bytesToNumber = (bytes: Uint8Array, options: BytesOptions = {}): HubResult<number> => {
-  // TODO: validate size is not too large (ie less than 48 bits)
   const endianness: Endianness = options.endianness ?? 'little';
   const safeReadUInt = Result.fromThrowable(
     (bytes: Uint8Array) => {
@@ -143,9 +143,6 @@ export const bytesToHexString = (bytes: Uint8Array, options: BytesOptions = {}):
 };
 
 export const hexStringToBytes = (hex: string, options: ToBytesOptions = {}): HubResult<Uint8Array> => {
-  // TODO: validate hex
-  // TODO: validate hex is even length
-
   const endianness: Endianness = options.endianness ?? 'little';
 
   if (hex.substring(0, 2) === '0x') {

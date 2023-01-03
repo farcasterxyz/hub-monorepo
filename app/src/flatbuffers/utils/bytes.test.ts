@@ -3,6 +3,7 @@ import {
   bytesDecrement,
   bytesIncrement,
   bytesToHexString,
+  bytesToNumber,
   bytesToUtf8String,
   hexStringToBytes,
   numberToBytes,
@@ -155,6 +156,21 @@ describe('bytesToUtf8String', () => {
         expect(bytesToUtf8String(input, { endianness: 'big' })._unsafeUnwrap()).toEqual(output);
       });
     }
+  });
+});
+
+describe('bytesToNumber', () => {
+  const passingCases: [Uint8Array, number][] = [[new Uint8Array([148, 113, 145, 1]), 26_309_012]];
+
+  for (const [input, output] of passingCases) {
+    test(`converts little endian byte array to number: ${input}`, () => {
+      expect(bytesToNumber(input, { endianness: 'little' })._unsafeUnwrap()).toEqual(output);
+    });
+  }
+
+  test('fails when number is larger than 48 bits', () => {
+    const maxSafeInt = new Uint8Array([255, 255, 255, 255, 255, 255, 31]);
+    expect(bytesToNumber(maxSafeInt)._unsafeUnwrapErr().errCode).toEqual('bad_request.invalid_param');
   });
 });
 
