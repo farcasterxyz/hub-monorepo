@@ -555,6 +555,142 @@ pack(builder:flatbuffers.Builder): flatbuffers.Offset {
 }
 }
 
+export class TrieNodeSnapshotResponse implements flatbuffers.IUnpackableObject<TrieNodeSnapshotResponseT> {
+  bb: flatbuffers.ByteBuffer|null = null;
+  bb_pos = 0;
+  __init(i:number, bb:flatbuffers.ByteBuffer):TrieNodeSnapshotResponse {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+}
+
+static getRootAsTrieNodeSnapshotResponse(bb:flatbuffers.ByteBuffer, obj?:TrieNodeSnapshotResponse):TrieNodeSnapshotResponse {
+  return (obj || new TrieNodeSnapshotResponse()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+static getSizePrefixedRootAsTrieNodeSnapshotResponse(bb:flatbuffers.ByteBuffer, obj?:TrieNodeSnapshotResponse):TrieNodeSnapshotResponse {
+  bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
+  return (obj || new TrieNodeSnapshotResponse()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+prefix():string|null
+prefix(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+prefix(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+excludedHashes(index: number):string
+excludedHashes(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
+excludedHashes(index: number,optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
+}
+
+excludedHashesLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+numMessages():bigint {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.readUint64(this.bb_pos + offset) : BigInt('0');
+}
+
+rootHash():string|null
+rootHash(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+rootHash(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+static startTrieNodeSnapshotResponse(builder:flatbuffers.Builder) {
+  builder.startObject(4);
+}
+
+static addPrefix(builder:flatbuffers.Builder, prefixOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, prefixOffset, 0);
+}
+
+static addExcludedHashes(builder:flatbuffers.Builder, excludedHashesOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, excludedHashesOffset, 0);
+}
+
+static createExcludedHashesVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
+  builder.startVector(4, data.length, 4);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addOffset(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startExcludedHashesVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(4, numElems, 4);
+}
+
+static addNumMessages(builder:flatbuffers.Builder, numMessages:bigint) {
+  builder.addFieldInt64(2, numMessages, BigInt('0'));
+}
+
+static addRootHash(builder:flatbuffers.Builder, rootHashOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(3, rootHashOffset, 0);
+}
+
+static endTrieNodeSnapshotResponse(builder:flatbuffers.Builder):flatbuffers.Offset {
+  const offset = builder.endObject();
+  return offset;
+}
+
+static createTrieNodeSnapshotResponse(builder:flatbuffers.Builder, prefixOffset:flatbuffers.Offset, excludedHashesOffset:flatbuffers.Offset, numMessages:bigint, rootHashOffset:flatbuffers.Offset):flatbuffers.Offset {
+  TrieNodeSnapshotResponse.startTrieNodeSnapshotResponse(builder);
+  TrieNodeSnapshotResponse.addPrefix(builder, prefixOffset);
+  TrieNodeSnapshotResponse.addExcludedHashes(builder, excludedHashesOffset);
+  TrieNodeSnapshotResponse.addNumMessages(builder, numMessages);
+  TrieNodeSnapshotResponse.addRootHash(builder, rootHashOffset);
+  return TrieNodeSnapshotResponse.endTrieNodeSnapshotResponse(builder);
+}
+
+unpack(): TrieNodeSnapshotResponseT {
+  return new TrieNodeSnapshotResponseT(
+    this.prefix(),
+    this.bb!.createScalarList<string>(this.excludedHashes.bind(this), this.excludedHashesLength()),
+    this.numMessages(),
+    this.rootHash()
+  );
+}
+
+
+unpackTo(_o: TrieNodeSnapshotResponseT): void {
+  _o.prefix = this.prefix();
+  _o.excludedHashes = this.bb!.createScalarList<string>(this.excludedHashes.bind(this), this.excludedHashesLength());
+  _o.numMessages = this.numMessages();
+  _o.rootHash = this.rootHash();
+}
+}
+
+export class TrieNodeSnapshotResponseT implements flatbuffers.IGeneratedObject {
+constructor(
+  public prefix: string|Uint8Array|null = null,
+  public excludedHashes: (string)[] = [],
+  public numMessages: bigint = BigInt('0'),
+  public rootHash: string|Uint8Array|null = null
+){}
+
+
+pack(builder:flatbuffers.Builder): flatbuffers.Offset {
+  const prefix = (this.prefix !== null ? builder.createString(this.prefix!) : 0);
+  const excludedHashes = TrieNodeSnapshotResponse.createExcludedHashesVector(builder, builder.createObjectOffsetList(this.excludedHashes));
+  const rootHash = (this.rootHash !== null ? builder.createString(this.rootHash!) : 0);
+
+  return TrieNodeSnapshotResponse.createTrieNodeSnapshotResponse(builder,
+    prefix,
+    excludedHashes,
+    this.numMessages,
+    rootHash
+  );
+}
+}
+
 export class GetCastRequest implements flatbuffers.IUnpackableObject<GetCastRequestT> {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;

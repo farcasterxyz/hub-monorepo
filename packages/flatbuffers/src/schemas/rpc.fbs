@@ -38,8 +38,14 @@ table TrieNodeMetadataResponse {
   children: [TrieNodeMetadataResponse]; 
 }
 
-// Cast Requests
+table TrieNodeSnapshotResponse {
+  prefix: string;
+  excluded_hashes: [string];
+  num_messages: uint64;
+  root_hash: string;
+}
 
+// Cast Requests
 table GetCastRequest {
   fid: [ubyte] (required);
   ts_hash: [ubyte] (required);
