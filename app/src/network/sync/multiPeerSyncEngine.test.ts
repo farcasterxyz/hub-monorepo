@@ -131,12 +131,22 @@ describe('Multi peer sync engine', () => {
       // Add more messages
       await addMessagesWithTimestamps(engine1, [30663167, 30663169, 30663172]);
 
+      // grab a new snapshot from the RPC for engine1
+      const newSnapshotResult = await clientForServer1.getSyncTrieNodeSnapshotByPrefix('');
+      expect(newSnapshotResult.isOk()).toBeTruthy();
+      const newSnapshot = newSnapshotResult._unsafeUnwrap();
+
+      // Sanity check snapshot
+      const localSnapshot = syncEngine1.snapshot;
+      expect(localSnapshot.excludedHashes).toEqual(newSnapshot.snapshot.excludedHashes);
+      expect(localSnapshot.excludedHashes.length).toEqual(newSnapshot.snapshot.excludedHashes.length);
+      expect(syncEngine1.trie.rootHash).toEqual(newSnapshot.rootHash);
+
       // Should sync should now be true
-      const newSnapshot = syncEngine1.snapshot.excludedHashes;
-      expect(syncEngine2.shouldSync(newSnapshot)).toBeTruthy();
+      expect(syncEngine2.shouldSync(newSnapshot.snapshot.excludedHashes)).toBeTruthy();
 
       // Do the sync again
-      await syncEngine2.performSync(newSnapshot, clientForServer1);
+      await syncEngine2.performSync(newSnapshot.snapshot.excludedHashes, clientForServer1);
 
       // Make sure root hash matches
       expect(syncEngine1.trie.rootHash).toEqual(syncEngine2.trie.rootHash);

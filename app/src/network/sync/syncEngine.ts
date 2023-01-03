@@ -207,6 +207,14 @@ class SyncEngine {
     return this._trie;
   }
 
+  public getSnapshotByPrefix(prefix?: string): TrieSnapshot {
+    if (!prefix || prefix === '') {
+      return this.snapshot;
+    } else {
+      return this._trie.getSnapshot(prefix);
+    }
+  }
+
   public get snapshot(): TrieSnapshot {
     // Ignore the least significant digit when fetching the snapshot timestamp because
     // second resolution is too fine grained, and fall outside sync threshold anyway

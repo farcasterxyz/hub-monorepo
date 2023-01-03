@@ -8,6 +8,7 @@ import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import * as FBTypes from '~/flatbuffers/models/types';
 import { NodeMetadata } from '~/network/sync/merkleTrie';
+import { TrieSnapshot } from '~/network/sync/trieNode';
 import * as requests from '~/rpc/client/serviceRequests';
 import * as definitions from '~/rpc/serviceDefinitions';
 import { HubAsyncResult, HubError, HubErrorCode } from '~/utils/hubErrors';
@@ -53,6 +54,23 @@ const fromNodeMetadataResponse = (response: flatbuffers.TrieNodeMetadataResponse
     hash: new TextDecoder().decode(response.hashArray() ?? new Uint8Array()),
     children,
   };
+};
+
+const fromNodeSnapshotResponse = (
+  response: flatbuffers.TrieNodeSnapshotResponse
+): { snapshot: TrieSnapshot; rootHash: string } => {
+  const excludedHashes: string[] = [];
+  for (let i = 0; i < response.excludedHashesLength(); i++) {
+    excludedHashes.push(response.excludedHashes(i));
+  }
+
+  const snapshot = {
+    numMessages: Number(response.numMessages()),
+    prefix: response.prefix() || '',
+    excludedHashes,
+  };
+
+  return { snapshot, rootHash: response.rootHash() || '' };
 };
 
 const fromSyncIdsByPrefixResponse = (response: flatbuffers.GetAllSyncIdsByPrefixResponse): string[] => {
@@ -322,6 +340,13 @@ class Client {
     );
   }
 
+  async getSyncTrieNodeSnapshotByPrefix(prefix: string): HubAsyncResult<{ snapshot: TrieSnapshot; rootHash: string }> {
+    return this.makeUnarySyncNodeSnapshotRequest(
+      definitions.syncDefinition().getSyncTrieNodeSnapshotByPrefix,
+      requests.syncRequests.createByPrefixRequest(arrayify(Buffer.from(prefix)))
+    );
+  }
+
   async getAllMessagesBySyncIds(hashes: Uint8Array[]): HubAsyncResult<MessageModel[]> {
     return this.makeUnaryMessagesRequest(
       definitions.syncDefinition().getAllMessagesBySyncIds,
@@ -387,6 +412,27 @@ class Client {
             resolve(err(fromServiceError(e)));
           } else if (response) {
             resolve(ok(fromNodeMetadataResponse(response)));
+          }
+        }
+      );
+    });
+  }
+
+  private makeUnarySyncNodeSnapshotRequest<RequestType>(
+    method: grpc.MethodDefinition<RequestType, flatbuffers.TrieNodeSnapshotResponse>,
+    request: RequestType
+  ): HubAsyncResult<{ snapshot: TrieSnapshot; rootHash: string }> {
+    return new Promise((resolve) => {
+      this.client.makeUnaryRequest(
+        method.path,
+        method.requestSerialize,
+        method.responseDeserialize,
+        request,
+        (e: grpc.ServiceError | null, response?: flatbuffers.TrieNodeSnapshotResponse) => {
+          if (e) {
+            resolve(err(fromServiceError(e)));
+          } else if (response) {
+            resolve(ok(fromNodeSnapshotResponse(response)));
           }
         }
       );

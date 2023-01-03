@@ -76,5 +76,16 @@ export const syncDefinition = () => {
       },
       path: '/getSyncMetadataByPrefix',
     },
+    getSyncTrieNodeSnapshotByPrefix: {
+      ...defaultMethod,
+      requestDeserialize: (buffer: Buffer): flatbuffers.GetTrieNodesByPrefixRequest => {
+        return flatbuffers.GetTrieNodesByPrefixRequest.getRootAsGetTrieNodesByPrefixRequest(toByteBuffer(buffer));
+      },
+      responseDeserialize: (buffer: Buffer): flatbuffers.TrieNodeSnapshotResponse => {
+        return flatbuffers.TrieNodeSnapshotResponse.getRootAsTrieNodeSnapshotResponse(toByteBuffer(buffer));
+      },
+
+      path: '/getSyncTrieNodeSnapshotByPrefix',
+    },
   };
 };

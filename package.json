@@ -11,6 +11,7 @@
   "scripts": {
     "build": "./node_modules/.bin/turbo run build",
     "dev": "./node_modules/.bin/turbo run dev --parallel",
+    "flatc": "flatc --ts --ts-flat-files --gen-object-api -o packages/flatbuffers/src/generated packages/flatbuffers/src/schemas/*.fbs",
     "test": "./node_modules/.bin/turbo run test --parallel",
     "test:ci": "./node_modules/.bin/turbo run test:ci --parallel --",
     "lint": "./node_modules/.bin/turbo run lint --parallel",

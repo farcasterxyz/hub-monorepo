@@ -6,6 +6,7 @@ import MessageModel from '~/flatbuffers/models/messageModel';
 import { HubInterface } from '~/flatbuffers/models/types';
 import { NodeMetadata } from '~/network/sync/merkleTrie';
 import SyncEngine from '~/network/sync/syncEngine';
+import { TrieSnapshot } from '~/network/sync/trieNode';
 import * as implementations from '~/rpc/server/serviceImplementations';
 import * as definitions from '~/rpc/serviceDefinitions';
 import Engine from '~/storage/engine';
@@ -90,6 +91,25 @@ export const toTrieNodeMetadataResponse = (metadata: NodeMetadata): flatbuffers.
   const builder = new Builder(1);
   builder.finish(metadataT.pack(builder));
   const response = flatbuffers.TrieNodeMetadataResponse.getRootAsTrieNodeMetadataResponse(
+    new ByteBuffer(builder.asUint8Array())
+  );
+  return response;
+};
+
+export const toTrieNodeSnapshotResponse = (
+  snapshot: TrieSnapshot,
+  rootHash: string
+): flatbuffers.TrieNodeSnapshotResponse => {
+  const snapshotT = new flatbuffers.TrieNodeSnapshotResponseT(
+    snapshot.prefix,
+    snapshot.excludedHashes,
+    BigInt(snapshot.numMessages),
+    rootHash
+  );
+
+  const builder = new Builder(1);
+  builder.finish(snapshotT.pack(builder));
+  const response = flatbuffers.TrieNodeSnapshotResponse.getRootAsTrieNodeSnapshotResponse(
     new ByteBuffer(builder.asUint8Array())
   );
   return response;

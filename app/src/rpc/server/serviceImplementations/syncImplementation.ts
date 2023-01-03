@@ -4,7 +4,13 @@ import { Builder, ByteBuffer } from 'flatbuffers';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import * as types from '~/flatbuffers/models/types';
 import SyncEngine from '~/network/sync/syncEngine';
-import { toMessagesResponse, toServiceError, toSyncIdsResponse, toTrieNodeMetadataResponse } from '~/rpc/server';
+import {
+  toMessagesResponse,
+  toServiceError,
+  toSyncIdsResponse,
+  toTrieNodeMetadataResponse,
+  toTrieNodeSnapshotResponse,
+} from '~/rpc/server';
 import Engine from '~/storage/engine';
 import { HubError } from '~/utils/hubErrors';
 
@@ -140,6 +146,21 @@ export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
         callback(null, toTrieNodeMetadataResponse(result));
       } else {
         const err = new HubError('bad_request', 'Failed to get trie node metadata');
+        callback(toServiceError(err));
+      }
+    },
+
+    getSyncTrieNodeSnapshotByPrefix: async (
+      call: grpc.ServerUnaryCall<flatbuffers.GetTrieNodesByPrefixRequest, flatbuffers.TrieNodeSnapshotResponse>,
+      callback: grpc.sendUnaryData<flatbuffers.TrieNodeSnapshotResponse>
+    ) => {
+      const prefix = new TextDecoder().decode(call.request.prefixArray() ?? new Uint8Array());
+      const result = syncEngine.getSnapshotByPrefix(prefix);
+      const rootHash = syncEngine.trie.rootHash;
+      if (result) {
+        callback(null, toTrieNodeSnapshotResponse(result, rootHash));
+      } else {
+        const err = new HubError('bad_request', 'Failed to get trie node snapshot');
         callback(toServiceError(err));
       }
     },
