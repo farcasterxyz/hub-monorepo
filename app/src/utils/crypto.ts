@@ -1,8 +1,8 @@
 import { SignatureScheme } from '@hub/flatbuffers';
 import * as ed from '@noble/ed25519';
 import { ethers } from 'ethers';
-import { hexlify } from 'ethers/lib/utils';
 import { Ed25519Signer, EthereumSigner, KeyPair } from '~/flatbuffers/models/types';
+import { bytesToHexString } from '~/flatbuffers/utils/bytes';
 
 export const sleep = (ms: number) => {
   return new Promise((resolve) => {
@@ -29,8 +29,11 @@ export const generateEd25519KeyPair = async (): Promise<KeyPair> => {
  */
 export const generateEd25519Signer = async (): Promise<Ed25519Signer> => {
   const { privateKey, publicKey } = await generateEd25519KeyPair();
-  const signerKey = await hexlify(publicKey);
-  return { privateKey, signerKey, type: SignatureScheme.Ed25519 };
+  const signerKeyHex = bytesToHexString(publicKey);
+  if (signerKeyHex.isErr()) {
+    throw signerKeyHex.error;
+  }
+  return { privateKey, signerKey: signerKeyHex.value, type: SignatureScheme.Ed25519 };
 };
 
 /**

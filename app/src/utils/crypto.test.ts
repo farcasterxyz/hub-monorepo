@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
 import * as ed from '@noble/ed25519';
-import { hexToBytes, utf8ToBytes } from 'ethereum-cryptography/utils';
-import { ethers, utils } from 'ethers';
+import { ethers } from 'ethers';
 import { Ed25519Signer, EthereumSigner } from '~/flatbuffers/models/types';
+import { bytesToHexString, hexStringToBytes, utf8StringToBytes } from '~/flatbuffers/utils/bytes';
 import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 
 describe('generateEthereumSigner', () => {
@@ -42,7 +42,7 @@ describe('generateEd25519Signer', () => {
 
   beforeAll(async () => {
     signer = await generateEd25519Signer();
-    pubKey = await utils.hexlify(await ed.getPublicKey(signer.privateKey));
+    pubKey = bytesToHexString(await ed.getPublicKey(signer.privateKey))._unsafeUnwrap();
   });
 
   test('signerKey is public key', () => {
@@ -51,15 +51,23 @@ describe('generateEd25519Signer', () => {
 
   test('text can be signed and verified', async () => {
     const text = faker.lorem.sentence(2);
-    const signature = await ed.sign(utf8ToBytes(text), signer.privateKey);
-    const isValid = await ed.verify(signature, utf8ToBytes(text), hexToBytes(signer.signerKey));
+    const signature = await ed.sign(utf8StringToBytes(text)._unsafeUnwrap(), signer.privateKey);
+    const isValid = await ed.verify(
+      signature,
+      utf8StringToBytes(text)._unsafeUnwrap(),
+      hexStringToBytes(signer.signerKey)._unsafeUnwrap()
+    );
     expect(isValid).toBe(true);
   });
 
   test('hex can be signed and verified', async () => {
     const hex = faker.datatype.hexadecimal({ length: 40 });
-    const signature = await ed.sign(hexToBytes(hex), signer.privateKey);
-    const isValid = await ed.verify(signature, hexToBytes(hex), hexToBytes(signer.signerKey));
+    const signature = await ed.sign(hexStringToBytes(hex)._unsafeUnwrap(), signer.privateKey);
+    const isValid = await ed.verify(
+      signature,
+      hexStringToBytes(hex)._unsafeUnwrap(),
+      hexStringToBytes(signer.signerKey)._unsafeUnwrap()
+    );
     expect(isValid).toBe(true);
   });
 });
