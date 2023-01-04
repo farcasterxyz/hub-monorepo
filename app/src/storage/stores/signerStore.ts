@@ -1,14 +1,14 @@
+import { bytesCompare } from '@hub/bytes';
+import { HubAsyncResult, HubError } from '@hub/errors';
 import { MessageType } from '@hub/flatbuffers';
 import { ok, ResultAsync } from 'neverthrow';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { isSignerAdd, isSignerRemove } from '~/flatbuffers/models/typeguards';
 import * as types from '~/flatbuffers/models/types';
-import { bytesCompare } from '~/flatbuffers/utils/bytes';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { eventCompare } from '~/utils/contractEvent';
-import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;

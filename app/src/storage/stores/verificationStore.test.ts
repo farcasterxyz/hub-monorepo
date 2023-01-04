@@ -1,15 +1,15 @@
+import { bytesDecrement, bytesIncrement } from '@hub/bytes';
+import { HubError } from '@hub/errors';
 import { FarcasterNetwork } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { UserPostfix, VerificationAddEthAddressModel, VerificationRemoveModel } from '~/flatbuffers/models/types';
-import { bytesDecrement, bytesIncrement } from '~/flatbuffers/utils/bytes';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import VerificationStore from '~/storage/stores/verificationStore';
 
 import { Eip712Signer } from '~/signers';
-import { HubError } from '~/utils/hubErrors';
 
 const db = jestRocksDB('flatbuffers.verificationStore.test');
 const eventHandler = new StoreEventHandler();

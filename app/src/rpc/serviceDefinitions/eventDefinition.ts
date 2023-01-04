@@ -1,5 +1,5 @@
+import { toByteBuffer } from '@hub/bytes';
 import { EventResponse, SubscribeRequest } from '@hub/flatbuffers';
-import { toByteBuffer } from '~/flatbuffers/utils/bytes';
 import { defaultMethod } from '~/rpc/client';
 
 export const eventDefinition = () => {

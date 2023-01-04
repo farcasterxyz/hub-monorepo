@@ -1,13 +1,13 @@
+import { bytesCompare } from '@hub/bytes';
+import { HubAsyncResult, HubError } from '@hub/errors';
 import { CastId, MessageType, ReactionType } from '@hub/flatbuffers';
 import { ok, ResultAsync } from 'neverthrow';
 import MessageModel, { FID_BYTES, TARGET_KEY_BYTES, TRUE_VALUE } from '~/flatbuffers/models/messageModel';
 import { isReactionAdd, isReactionRemove } from '~/flatbuffers/models/typeguards';
 import * as types from '~/flatbuffers/models/types';
-import { bytesCompare } from '~/flatbuffers/utils/bytes';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 5_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
@@ -345,7 +345,7 @@ class ReactionStore {
   /* -------------------------------------------------------------------------- */
 
   private async mergeAdd(message: types.ReactionAddModel): Promise<void> {
-    const castId = message.body().cast();
+    const castId = message.body().target(new CastId());
 
     if (!castId) {
       throw new HubError('bad_request.validation_failure', 'castId was missing');
@@ -372,7 +372,7 @@ class ReactionStore {
   }
 
   private async mergeRemove(message: types.ReactionRemoveModel): Promise<void> {
-    const castId = message.body().cast();
+    const castId = message.body().target(new CastId());
 
     if (!castId) {
       throw new HubError('bad_request.validation_failure', 'castId was missing');
@@ -566,8 +566,8 @@ class ReactionStore {
   /* Computes the key for the byTarget index given a Reaction Reaction */
   private targetKeyForMessage(message: types.ReactionAddModel | types.ReactionRemoveModel): Buffer {
     return Buffer.concat([
-      message.body().cast()?.fidArray() ?? new Uint8Array(),
-      message.body().cast()?.tsHashArray() ?? new Uint8Array(),
+      message.body().target(new CastId())?.fidArray() ?? new Uint8Array(),
+      message.body().target(new CastId())?.tsHashArray() ?? new Uint8Array(),
     ]);
   }
 

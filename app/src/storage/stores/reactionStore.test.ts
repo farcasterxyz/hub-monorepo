@@ -1,13 +1,13 @@
+import { bytesDecrement, bytesIncrement } from '@hub/bytes';
+import { HubError } from '@hub/errors';
 import { CastId, MessageType, ReactionType } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { ReactionAddModel, ReactionRemoveModel, UserPostfix } from '~/flatbuffers/models/types';
-import { bytesDecrement, bytesIncrement } from '~/flatbuffers/utils/bytes';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import ReactionStore from '~/storage/stores/reactionStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import { HubError } from '~/utils/hubErrors';
 
 const db = jestRocksDB('flatbuffers.reactionStore.test');
 const eventHandler = new StoreEventHandler();
@@ -25,7 +25,7 @@ beforeAll(async () => {
   // Constructs a ReactionAdd of type Like
   const reactionBody = Factories.ReactionBody.build({
     type: ReactionType.Like,
-    cast: Factories.CastId.build({
+    target: Factories.CastId.build({
       fid: Array.from(castId.fidArray() || new Uint8Array()),
       tsHash: Array.from(castId.tsHashArray() || new Uint8Array()),
     }),
@@ -50,7 +50,7 @@ beforeAll(async () => {
   // Constructs a ReactionAdd of type React
   const reactionRecastBody = Factories.ReactionBody.build({
     type: ReactionType.Recast,
-    cast: Factories.CastId.build({
+    target: Factories.CastId.build({
       fid: Array.from(castId.fidArray() || new Uint8Array()),
       tsHash: Array.from(castId.tsHashArray() || new Uint8Array()),
     }),
@@ -598,7 +598,7 @@ describe('pruneMessages', () => {
     timestamp: number,
     cast?: CastId | null
   ): Promise<ReactionRemoveModel> => {
-    const removeBody = await Factories.ReactionBody.build(cast ? { cast: cast.unpack() } : {});
+    const removeBody = await Factories.ReactionBody.build(cast ? { target: cast.unpack() } : {});
     const removeData = await Factories.ReactionRemoveData.create({ fid: Array.from(fid), timestamp, body: removeBody });
     const removeMessage = await Factories.Message.create({ data: Array.from(removeData.bb?.bytes() ?? []) });
     return new MessageModel(removeMessage) as ReactionRemoveModel;
@@ -614,11 +614,11 @@ describe('pruneMessages', () => {
     addOld1 = await generateAddWithTimestamp(fid, time - 60 * 60);
     addOld2 = await generateAddWithTimestamp(fid, time - 60 * 60 + 1);
 
-    remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1.body().cast());
-    remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2.body().cast());
-    remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.body().cast());
-    remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.body().cast());
-    remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.body().cast());
+    remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1.body().target(new CastId()));
+    remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2.body().target(new CastId()));
+    remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.body().target(new CastId()));
+    remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.body().target(new CastId()));
+    remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.body().target(new CastId()));
     removeOld3 = await generateRemoveWithTimestamp(fid, time - 60 * 60 + 2);
   });
 
@@ -644,7 +644,11 @@ describe('pruneMessages', () => {
 
       for (const message of prunedMessages as ReactionAddModel[]) {
         const getAdd = () =>
-          sizePrunedStore.getReactionAdd(fid, message.body().type(), message.body().cast() ?? new CastId());
+          sizePrunedStore.getReactionAdd(
+            fid,
+            message.body().type(),
+            message.body().target(new CastId()) ?? new CastId()
+          );
         await expect(getAdd()).rejects.toThrow(HubError);
       }
     });
@@ -662,7 +666,11 @@ describe('pruneMessages', () => {
 
       for (const message of prunedMessages as ReactionRemoveModel[]) {
         const getRemove = () =>
-          sizePrunedStore.getReactionRemove(fid, message.body().type(), message.body().cast() ?? new CastId());
+          sizePrunedStore.getReactionRemove(
+            fid,
+            message.body().type(),
+            message.body().target(new CastId()) ?? new CastId()
+          );
         await expect(getRemove()).rejects.toThrow(HubError);
       }
     });
@@ -707,13 +715,17 @@ describe('pruneMessages', () => {
       expect(prunedMessages).toEqual([addOld1, addOld2, removeOld3]);
 
       await expect(
-        timePrunedStore.getReactionAdd(fid, addOld1.body().type(), addOld1.body().cast() ?? new CastId())
+        timePrunedStore.getReactionAdd(fid, addOld1.body().type(), addOld1.body().target(new CastId()) ?? new CastId())
       ).rejects.toThrow(HubError);
       await expect(
-        timePrunedStore.getReactionAdd(fid, addOld2.body().type(), addOld2.body().cast() ?? new CastId())
+        timePrunedStore.getReactionAdd(fid, addOld2.body().type(), addOld2.body().target(new CastId()) ?? new CastId())
       ).rejects.toThrow(HubError);
       await expect(
-        timePrunedStore.getReactionRemove(fid, removeOld3.body().type(), removeOld3.body().cast() ?? new CastId())
+        timePrunedStore.getReactionRemove(
+          fid,
+          removeOld3.body().type(),
+          removeOld3.body().target(new CastId()) ?? new CastId()
+        )
       ).rejects.toThrow(HubError);
     });
   });

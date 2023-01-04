@@ -1,4 +1,6 @@
 import { faker } from '@faker-js/faker';
+import { hexStringToBytes } from '@hub/bytes';
+import { HubError } from '@hub/errors';
 import * as message_generated from '@hub/flatbuffers';
 import { bytesToBigNumber } from '~/eth/utils';
 import Factories from '~/flatbuffers/factories';
@@ -7,8 +9,6 @@ import * as types from '~/flatbuffers/models/types';
 import * as validations from '~/flatbuffers/models/validations';
 import { signVerificationEthAddressClaim } from '~/flatbuffers/utils/eip712';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
-import { HubError } from '~/utils/hubErrors';
-import { hexStringToBytes } from '../utils/bytes';
 
 const ethSigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
@@ -410,14 +410,14 @@ describe('validateReactionMessage', () => {
 
     test('when cast fid is missing', () => {
       body = Factories.ReactionBody.build({
-        cast: Factories.CastId.build({ fid: [] }),
+        target: Factories.CastId.build({ fid: [] }),
       });
       hubErrorMessage = 'fid is missing';
     });
 
     test('when cast tsHash is missing', () => {
       body = Factories.ReactionBody.build({
-        cast: Factories.CastId.build({ tsHash: [] }),
+        target: Factories.CastId.build({ tsHash: [] }),
       });
       hubErrorMessage = 'tsHash is missing';
     });

@@ -1,7 +1,7 @@
+import { HubAsyncResult } from '@hub/errors';
 import { err, ok } from 'neverthrow';
 import cron from 'node-cron';
 import Engine from '~/storage/engine';
-import { HubAsyncResult } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
 
 export const DEFAULT_PRUNE_MESSAGES_JOB_CRON = '0 * * * *'; // Every hour

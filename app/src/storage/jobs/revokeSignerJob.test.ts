@@ -1,3 +1,4 @@
+import { HubError } from '@hub/errors';
 import { RevokeSignerJobPayload } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
@@ -10,7 +11,6 @@ import {
   RevokeSignerJobQueue,
   RevokeSignerJobScheduler,
 } from '~/storage/jobs/revokeSignerJob';
-import { HubError } from '~/utils/hubErrors';
 
 const db = jestRocksDB('jobs.revokeSignerJob.test');
 

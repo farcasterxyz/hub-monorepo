@@ -1,10 +1,10 @@
+import { bytesCompare } from '@hub/bytes';
+import { HubError } from '@hub/errors';
 import Factories from '~/flatbuffers/factories';
 import MessageModel, { TRUE_VALUE } from '~/flatbuffers/models/messageModel';
 import { UserPostfix } from '~/flatbuffers/models/types';
-import { bytesCompare } from '~/flatbuffers/utils/bytes';
 import { toFarcasterTime } from '~/flatbuffers/utils/time';
 import { jestRocksDB } from '~/storage/db/jestUtils';
-import { HubError } from '~/utils/hubErrors';
 
 const db = jestRocksDB('flatbuffers.model.test');
 

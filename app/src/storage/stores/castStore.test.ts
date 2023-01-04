@@ -1,12 +1,13 @@
+import { bytesDecrement, bytesIncrement } from '@hub/bytes';
+import { HubError } from '@hub/errors';
+import { CastId } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastAddModel, CastRemoveModel, UserPostfix } from '~/flatbuffers/models/types';
-import { bytesDecrement, bytesIncrement } from '~/flatbuffers/utils/bytes';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import CastStore from '~/storage/stores/castStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import { HubError } from '~/utils/hubErrors';
 
 const db = jestRocksDB('flatbuffers.castStore.test');
 const eventHandler = new StoreEventHandler();
@@ -23,8 +24,9 @@ beforeAll(async () => {
   const addMessage = await Factories.Message.create({ data: Array.from(addData.bb?.bytes() ?? []) });
   castAdd = new MessageModel(addMessage) as CastAddModel;
 
-  parentFid = castAdd.body().parent()?.fidArray() ?? new Uint8Array();
-  parentTsHash = castAdd.body().parent()?.tsHashArray() ?? new Uint8Array();
+  const parent = castAdd.body().parent(new CastId()) as CastId;
+  parentFid = parent?.fidArray() ?? new Uint8Array();
+  parentTsHash = parent?.tsHashArray() ?? new Uint8Array();
 
   const castRemoveData = await Factories.CastRemoveData.create({
     fid: Array.from(fid),
@@ -130,7 +132,7 @@ describe('getCastsByParent', () => {
 
   test('returns casts that reply to a parent cast', async () => {
     const addData = await Factories.CastAddData.create({
-      body: Factories.CastAddBody.build({ parent: castAdd.body().parent()?.unpack() || null }),
+      body: Factories.CastAddBody.build({ parent: (castAdd.body().parent(new CastId()) as CastId)?.unpack() || null }),
     });
     const addMessage = await Factories.Message.create({
       data: Array.from(addData.bb?.bytes() ?? []),
@@ -186,8 +188,8 @@ describe('merge', () => {
     await expect(store.getCastsByMention(mentionFid)).resolves.toEqual([message]);
     await expect(
       store.getCastsByParent(
-        message.body().parent()?.fidArray() ?? new Uint8Array(),
-        message.body().parent()?.tsHashArray() ?? new Uint8Array()
+        (message.body().parent(new CastId()) as CastId)?.fidArray() ?? new Uint8Array(),
+        (message.body().parent(new CastId()) as CastId)?.tsHashArray() ?? new Uint8Array()
       )
     ).resolves.toEqual([message]);
 

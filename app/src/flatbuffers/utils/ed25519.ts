@@ -1,7 +1,7 @@
+import { HubAsyncResult, HubError } from '@hub/errors';
 import * as ed from '@noble/ed25519';
 import { sha512 } from '@noble/hashes/sha512';
 import { ResultAsync } from 'neverthrow';
-import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 
 /** Setup ed to hash synchronously */
 ed.utils.sha512Sync = (...m) => sha512(ed.utils.concatBytes(...m));

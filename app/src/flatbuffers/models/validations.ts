@@ -1,3 +1,5 @@
+import { bytesCompare, bytesToHexString } from '@hub/bytes';
+import { HubAsyncResult, HubError, HubResult } from '@hub/errors';
 import * as message_generated from '@hub/flatbuffers';
 import * as ed from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
@@ -6,10 +8,8 @@ import { bytesToBigNumber } from '~/eth/utils';
 import MessageModel, { FID_BYTES } from '~/flatbuffers/models/messageModel';
 import * as typeguards from '~/flatbuffers/models/typeguards';
 import * as types from '~/flatbuffers/models/types';
-import { bytesCompare, bytesToHexString } from '~/flatbuffers/utils/bytes';
 import { verifyMessageHashSignature, verifyVerificationEthAddressClaimSignature } from '~/flatbuffers/utils/eip712';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
-import { HubAsyncResult, HubError, HubResult } from '~/utils/hubErrors';
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
@@ -194,8 +194,8 @@ export const validateCastAddMessage = (message: types.CastAddModel): HubResult<t
     return err(new HubError('bad_request.validation_failure', 'mentions > 5'));
   }
 
-  const parent = message.body().parent();
-  if (parent) {
+  if (message.body().parentType() === message_generated.TargetId.CastId) {
+    const parent = message.body().parent(new message_generated.CastId()) as message_generated.CastId;
     return validateCastId(parent).map(() => message);
   }
 
@@ -222,7 +222,7 @@ export const validateReactionMessage = (
     return err(validatedType.error);
   }
 
-  return validateCastId(message.body().cast()).map(() => message);
+  return validateCastId(message.body().target(new message_generated.CastId())).map(() => message);
 };
 
 export const validateVerificationAddEthAddressMessage = async (

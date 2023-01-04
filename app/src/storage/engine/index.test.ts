@@ -1,3 +1,4 @@
+import { HubError } from '@hub/errors';
 import { CastId, IdRegistryEventType, MessageType, NameRegistryEventType } from '@hub/flatbuffers';
 import { err, ok } from 'neverthrow';
 import Factories from '~/flatbuffers/factories';
@@ -13,7 +14,6 @@ import ReactionStore from '~/storage/stores/reactionStore';
 import SignerStore from '~/storage/stores/signerStore';
 import UserDataStore from '~/storage/stores/userDataStore';
 import VerificationStore from '~/storage/stores/verificationStore';
-import { HubError } from '~/utils/hubErrors';
 
 const db = jestRocksDB('flatbuffers.engine.test');
 const engine = new Engine(db);
@@ -213,7 +213,11 @@ describe('mergeMessage', () => {
       test('succeeds', async () => {
         await expect(engine.mergeMessage(reactionAdd)).resolves.toEqual(ok(undefined));
         await expect(
-          reactionStore.getReactionAdd(fid, reactionAdd.body().type(), reactionAdd.body().cast() as CastId)
+          reactionStore.getReactionAdd(
+            fid,
+            reactionAdd.body().type(),
+            reactionAdd.body().target(new CastId()) as CastId
+          )
         ).resolves.toEqual(reactionAdd);
         expect(mergedMessages).toEqual([signerAdd, reactionAdd]);
       });

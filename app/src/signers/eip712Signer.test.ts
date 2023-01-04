@@ -1,7 +1,7 @@
+import { hexStringToBytes } from '@hub/bytes';
 import { blake3 } from '@noble/hashes/blake3';
 import { ethers } from 'ethers';
 import { randomBytes } from 'ethers/lib/utils';
-import { hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import * as eip712 from '~/flatbuffers/utils/eip712';
 import Eip712Signer from './eip712Signer';
 

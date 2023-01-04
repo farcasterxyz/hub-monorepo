@@ -1,3 +1,5 @@
+import { bytesCompare } from '@hub/bytes';
+import { HubAsyncResult, HubError } from '@hub/errors';
 import { MessageType, NameRegistryEventType, UserDataType } from '@hub/flatbuffers';
 import { ok, ResultAsync } from 'neverthrow';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
@@ -5,11 +7,9 @@ import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { isUserDataAdd } from '~/flatbuffers/models/typeguards';
 import { StorePruneOptions, UserDataAddModel, UserPostfix } from '~/flatbuffers/models/types';
-import { bytesCompare } from '~/flatbuffers/utils/bytes';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { eventCompare } from '~/utils/contractEvent';
-import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 

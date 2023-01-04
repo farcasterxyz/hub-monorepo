@@ -1,6 +1,6 @@
+import { BytesOptions, bytesToHexString, hexStringToBytes, ToBytesOptions } from '@hub/bytes';
+import { HubResult } from '@hub/errors';
 import { BigNumber } from 'ethers';
-import { BytesOptions, bytesToHexString, hexStringToBytes, ToBytesOptions } from '~/flatbuffers/utils/bytes';
-import { HubResult } from '~/utils/hubErrors';
 
 export const bytes32ToBytes = (value: BigNumber, options: ToBytesOptions = {}): HubResult<Uint8Array> => {
   // Remove right padding

@@ -1,6 +1,6 @@
+import { bytesToHexString } from '@hub/bytes';
+import { HubAsyncResult } from '@hub/errors';
 import { SignatureScheme } from '@hub/flatbuffers';
-import { bytesToHexString } from '~/flatbuffers/utils/bytes';
-import { HubAsyncResult } from '~/utils/hubErrors';
 
 export abstract class Signer {
   public readonly scheme: SignatureScheme;

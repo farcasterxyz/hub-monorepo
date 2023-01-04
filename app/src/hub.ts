@@ -1,3 +1,4 @@
+import { HubAsyncResult, HubError } from '@hub/errors';
 import {
   ContactInfoContent,
   GossipAddressInfo,
@@ -29,9 +30,11 @@ import BinaryRocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
 import { PruneMessagesJobScheduler } from '~/storage/jobs/pruneMessagesJob';
 import { RevokeSignerJobQueue, RevokeSignerJobScheduler } from '~/storage/jobs/revokeSignerJob';
-import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 import { idRegistryEventToLog, logger, messageToLog, nameRegistryEventToLog } from '~/utils/logger';
 import { addressInfoFromGossip, ipFamilyToString, p2pMultiAddrStr } from '~/utils/p2p';
+
+export const APP_VERSION = process.env['npm_package_version'] ?? '1.0.0';
+export const APP_NICKNAME = 'Farcaster Hub';
 
 export interface HubOptions {
   /** The PeerId of this Hub */

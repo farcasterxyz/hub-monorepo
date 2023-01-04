@@ -1,3 +1,4 @@
+import { HubAsyncResult, HubError } from '@hub/errors';
 import { ResultAsync } from 'neverthrow';
 import HubStateModel from '~/flatbuffers/models/hubStateModel';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
@@ -6,7 +7,6 @@ import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel'
 import { HubInterface } from '~/flatbuffers/models/types';
 import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
-import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 
 export class MockHub implements HubInterface {
   public db: RocksDB;

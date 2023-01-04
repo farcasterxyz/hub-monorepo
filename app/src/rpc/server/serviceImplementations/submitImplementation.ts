@@ -1,11 +1,11 @@
 import grpc from '@grpc/grpc-js';
+import { HubError } from '@hub/errors';
 import { IdRegistryEvent, Message, NameRegistryEvent } from '@hub/flatbuffers';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { HubInterface } from '~/flatbuffers/models/types';
 import { toServiceError } from '~/rpc/server';
-import { HubError } from '~/utils/hubErrors';
 
 export const submitImplementation = (hub: HubInterface) => {
   return {

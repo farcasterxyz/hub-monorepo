@@ -1,8 +1,8 @@
+import { hexStringToBytes } from '@hub/bytes';
+import { HubAsyncResult } from '@hub/errors';
 import { SignatureScheme } from '@hub/flatbuffers';
 import { Wallet } from 'ethers';
-import { hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import { signMessageHash } from '~/flatbuffers/utils/eip712';
-import { HubAsyncResult } from '~/utils/hubErrors';
 import { Signer } from './signer';
 
 class Eip712Signer extends Signer {

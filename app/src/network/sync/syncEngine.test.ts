@@ -1,3 +1,4 @@
+import { hexStringToBytes } from '@hub/bytes';
 import { MessageType } from '@hub/flatbuffers';
 import { ok } from 'neverthrow';
 import { anyString, instance, mock, when } from 'ts-mockito';
@@ -5,7 +6,6 @@ import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastAddModel, CastRemoveModel, SignerAddModel } from '~/flatbuffers/models/types';
-import { hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';
@@ -122,7 +122,7 @@ describe('SyncEngine', () => {
     const id = new SyncId(castRemove);
     expect(syncEngine.trie.exists(id)).toBeTruthy();
 
-    const allMessages = await engine.getAllMessagesBySyncIds([id.toString()]);
+    const allMessages = await engine.getAllMessagesBySyncIds([id.idString()]);
     expect(allMessages.isOk()).toBeTruthy();
     expect(allMessages._unsafeUnwrap()[0]?.type()).toEqual(MessageType.CastRemove);
 

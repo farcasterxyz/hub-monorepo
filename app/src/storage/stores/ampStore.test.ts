@@ -1,13 +1,13 @@
+import { bytesDecrement, bytesIncrement } from '@hub/bytes';
+import { HubError } from '@hub/errors';
 import { MessageType, UserId } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { AmpAddModel, AmpRemoveModel, UserPostfix } from '~/flatbuffers/models/types';
-import { bytesDecrement, bytesIncrement } from '~/flatbuffers/utils/bytes';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import AmpStore from '~/storage/stores/ampStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import { HubError } from '~/utils/hubErrors';
 
 const db = jestRocksDB('flatbuffers.ampStore.test');
 const eventHandler = new StoreEventHandler();

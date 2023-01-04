@@ -1,16 +1,16 @@
 import { faker } from '@faker-js/faker';
+import { bytesDecrement, bytesIncrement, hexStringToBytes } from '@hub/bytes';
+import { HubError } from '@hub/errors';
 import { IdRegistryEventType, MessageType } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { SignerAddModel, SignerRemoveModel, UserPostfix } from '~/flatbuffers/models/types';
-import { bytesDecrement, bytesIncrement, hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { Eip712Signer } from '~/signers';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import { HubError } from '~/utils/hubErrors';
 
 const db = jestRocksDB('flatbuffers.signerStore.test');
 const eventHandler = new StoreEventHandler();

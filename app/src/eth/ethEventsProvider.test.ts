@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import { Event } from '@ethersproject/contracts';
 import { BaseProvider, Block, TransactionReceipt, TransactionResponse } from '@ethersproject/providers';
+import { bytesToHexString, hexStringToBytes } from '@hub/bytes';
 import { IdRegistryEventType, NameRegistryEventType } from '@hub/flatbuffers';
 import { BigNumber, Contract } from 'ethers';
 import { Result } from 'ethers/lib/utils';
@@ -9,7 +10,6 @@ import { EthEventsProvider } from '~/eth/ethEventsProvider';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
-import { bytesToHexString, hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';

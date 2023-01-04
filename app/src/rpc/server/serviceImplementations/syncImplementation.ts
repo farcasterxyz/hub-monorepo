@@ -1,8 +1,11 @@
 import grpc from '@grpc/grpc-js';
+import { bytesToUtf8String } from '@hub/bytes';
+import { HubError } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import * as types from '~/flatbuffers/models/types';
+import { APP_NICKNAME, APP_VERSION } from '~/hub';
 import SyncEngine from '~/network/sync/syncEngine';
 import {
   toMessagesResponse,
@@ -12,10 +15,24 @@ import {
   toTrieNodeSnapshotResponse,
 } from '~/rpc/server';
 import Engine from '~/storage/engine';
-import { HubError } from '~/utils/hubErrors';
 
 export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
   return {
+    getInfo: async (
+      call: grpc.ServerUnaryCall<flatbuffers.Empty, flatbuffers.HubInfoResponse>,
+      callback: grpc.sendUnaryData<flatbuffers.HubInfoResponse>
+    ) => {
+      const infoT = new flatbuffers.HubInfoResponseT(
+        APP_VERSION,
+        syncEngine.isSyncing(),
+        APP_NICKNAME,
+        syncEngine.trie.rootHash
+      );
+      const builder = new Builder(1);
+      builder.finish(infoT.pack(builder));
+      const response = flatbuffers.HubInfoResponse.getRootAsHubInfoResponse(new ByteBuffer(builder.asUint8Array()));
+      callback(null, response);
+    },
     getAllCastMessagesByFid: async (
       call: grpc.ServerUnaryCall<flatbuffers.GetAllMessagesByFidRequest, flatbuffers.MessagesResponse>,
       callback: grpc.sendUnaryData<flatbuffers.MessagesResponse>
@@ -111,7 +128,7 @@ export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
       callback: grpc.sendUnaryData<flatbuffers.GetAllSyncIdsByPrefixResponse>
     ) => {
       const result = syncEngine.getIdsByPrefix(
-        new TextDecoder().decode(call.request.prefixArray() ?? new Uint8Array())
+        bytesToUtf8String(call.request.prefixArray() ?? new Uint8Array())._unsafeUnwrap()
       );
       callback(null, toSyncIdsResponse(result));
     },
@@ -122,7 +139,9 @@ export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
     ) => {
       const syncIdHashes: string[] = [];
       for (let i = 0; i < call.request.syncIdsLength(); i++) {
-        syncIdHashes.push(new TextDecoder().decode(call.request.syncIds(i)?.syncIdHashArray() ?? new Uint8Array()));
+        syncIdHashes.push(
+          bytesToUtf8String(call.request.syncIds(i)?.syncIdHashArray() ?? new Uint8Array())._unsafeUnwrap()
+        );
       }
 
       const result = await engine.getAllMessagesBySyncIds(syncIdHashes);
@@ -140,7 +159,7 @@ export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
       call: grpc.ServerUnaryCall<flatbuffers.GetTrieNodesByPrefixRequest, flatbuffers.TrieNodeMetadataResponse>,
       callback: grpc.sendUnaryData<flatbuffers.TrieNodeMetadataResponse>
     ) => {
-      const prefix = new TextDecoder().decode(call.request.prefixArray() ?? new Uint8Array());
+      const prefix = bytesToUtf8String(call.request.prefixArray() ?? new Uint8Array())._unsafeUnwrap();
       const result = syncEngine.getTrieNodeMetadata(prefix);
       if (result) {
         callback(null, toTrieNodeMetadataResponse(result));
@@ -154,7 +173,7 @@ export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
       call: grpc.ServerUnaryCall<flatbuffers.GetTrieNodesByPrefixRequest, flatbuffers.TrieNodeSnapshotResponse>,
       callback: grpc.sendUnaryData<flatbuffers.TrieNodeSnapshotResponse>
     ) => {
-      const prefix = new TextDecoder().decode(call.request.prefixArray() ?? new Uint8Array());
+      const prefix = bytesToUtf8String(call.request.prefixArray() ?? new Uint8Array())._unsafeUnwrap();
       const result = syncEngine.getSnapshotByPrefix(prefix);
       const rootHash = syncEngine.trie.rootHash;
       if (result) {

@@ -1,6 +1,6 @@
+import { HubError, HubResult } from '@hub/errors';
 import { ByteBuffer } from 'flatbuffers';
 import { err, ok, Result } from 'neverthrow';
-import { HubError, HubResult } from '~/utils/hubErrors';
 
 export const DEFAULT_ENDIANNESS: Endianness = 'little';
 

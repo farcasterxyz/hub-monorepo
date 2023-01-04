@@ -1,8 +1,8 @@
+import { HubError } from '@hub/errors';
 import { IdRegistryEvent, IdRegistryEventType } from '@hub/flatbuffers';
 import { ByteBuffer } from 'flatbuffers';
 import { RootPrefix } from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
-import { HubError } from '~/utils/hubErrors';
 
 /** IdRegistryEventModel provides helpers to read and write Flatbuffers ContractEvents from RocksDB */
 export default class IdRegistryEventModel {

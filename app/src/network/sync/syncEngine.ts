@@ -1,4 +1,5 @@
-import { arrayify } from 'ethers/lib/utils';
+import { utf8StringToBytes } from '@hub/bytes';
+import { HubError, HubResult } from '@hub/errors';
 import { err } from 'neverthrow';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
@@ -7,7 +8,6 @@ import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId'
 import { TrieSnapshot } from '~/network/sync/trieNode';
 import Client from '~/rpc/client';
 import Engine from '~/storage/engine';
-import { HubError, HubResult } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
@@ -57,6 +57,10 @@ class SyncEngine {
     log.info({ processedMessages }, 'Sync engine initialized');
   }
 
+  public isSyncing(): boolean {
+    return this._isSyncing;
+  }
+
   /** ---------------------------------------------------------------------------------- */
   /**                                      Sync Methods                                  */
   /** ---------------------------------------------------------------------------------- */
@@ -86,7 +90,7 @@ class SyncEngine {
       const missingIds = await this.fetchMissingHashesByPrefix(divergencePrefix, rpcClient);
       log.info({ missingCount: missingIds.length }, 'Fetched missing hashes');
 
-      // TODO: sort missingIds by timestamp and fetch messages in batches
+      // TODO: fetch messages in batches
       await this.fetchAndMergeMessages(missingIds, rpcClient);
       log.info(`Sync complete`);
     } catch (e) {
@@ -103,11 +107,14 @@ class SyncEngine {
     }
 
     const messages = await rpcClient.getAllMessagesBySyncIds(
-      syncIDs.map((syncIdhash) => arrayify(Buffer.from(syncIdhash)))
+      syncIDs.map((syncIdhash) => utf8StringToBytes(syncIdhash)._unsafeUnwrap())
     );
     await messages.match(
       async (msgs) => {
         const mergeResults = [];
+        // First, sort the messages by timestamp to reduce thrashing and refetching
+        msgs.sort((a, b) => a.timestamp() - b.timestamp());
+
         // Merge messages sequentially, so we can handle missing users.
         // TODO: Optimize by collecting all failures and retrying them in a batch
         for (const msg of msgs) {
