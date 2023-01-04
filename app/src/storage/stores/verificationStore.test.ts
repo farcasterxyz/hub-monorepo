@@ -1,18 +1,13 @@
 import { FarcasterNetwork } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
-import {
-  EthereumSigner,
-  UserPostfix,
-  VerificationAddEthAddressModel,
-  VerificationRemoveModel,
-} from '~/flatbuffers/models/types';
+import { UserPostfix, VerificationAddEthAddressModel, VerificationRemoveModel } from '~/flatbuffers/models/types';
 import { bytesDecrement, bytesIncrement, hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import VerificationStore from '~/storage/stores/verificationStore';
-import { generateEthereumSigner } from '~/utils/crypto';
+import { EthereumSigner, generateEthereumSigner } from '~/utils/crypto';
 import { HubError } from '~/utils/hubErrors';
 
 const db = jestRocksDB('flatbuffers.verificationStore.test');

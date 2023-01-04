@@ -1,4 +1,4 @@
-import { Ed25519Signer, EthereumSigner } from '~/flatbuffers/models/types';
+import { Ed25519Signer, EthereumSigner } from '~/utils/crypto';
 
 export type UserInfo = {
   fid: number;

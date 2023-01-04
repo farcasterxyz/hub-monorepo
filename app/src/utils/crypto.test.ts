@@ -1,9 +1,8 @@
 import { faker } from '@faker-js/faker';
 import * as ed from '@noble/ed25519';
 import { ethers } from 'ethers';
-import { Ed25519Signer, EthereumSigner } from '~/flatbuffers/models/types';
 import { bytesToHexString, hexStringToBytes, utf8StringToBytes } from '~/flatbuffers/utils/bytes';
-import { generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
+import { Ed25519Signer, EthereumSigner, generateEd25519Signer, generateEthereumSigner } from '~/utils/crypto';
 
 describe('generateEthereumSigner', () => {
   let signer: EthereumSigner;

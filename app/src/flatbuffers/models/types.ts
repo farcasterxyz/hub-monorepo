@@ -172,17 +172,3 @@ export type KeyPair = {
   privateKey: Uint8Array;
   publicKey: Uint8Array;
 };
-
-/** An EthereumSigner is a MessageSigner object with an ethers wallet */
-export type EthereumSigner = {
-  wallet: ethers.Wallet;
-  signerKey: string; // Address
-  type: message_generated.SignatureScheme.Eip712;
-};
-
-/** An Ed25519Signer is a MessageSigner object with a Ed25519 private key */
-export type Ed25519Signer = {
-  privateKey: Uint8Array;
-  signerKey: string; // Public key hex
-  type: message_generated.SignatureScheme.Ed25519;
-};
