@@ -35,10 +35,6 @@ class SyncId {
     return timestampString + buf.toString('hex');
   }
 
-  public toString(): string {
-    return this.idString();
-  }
-
   static pkFromIdString(idString: string): Buffer {
     // The first 10 bytes are the timestamp, so we skip them
     const pk = idString.slice(TIMESTAMP_LENGTH);
