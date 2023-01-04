@@ -1,4 +1,5 @@
 export * from './ampImplementation';
+export * from './bulkImplementation';
 export * from './castImplementation';
 export * from './eventImplementation';
 export * from './reactionImplementation';

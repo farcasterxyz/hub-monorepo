@@ -10,8 +10,8 @@ export const castDefinition = () => {
       requestDeserialize: (buffer: Buffer): flatbuffers.GetCastRequest => {
         return flatbuffers.GetCastRequest.getRootAsGetCastRequest(toByteBuffer(buffer));
       },
-      responseDeserialize: (buffer: Buffer): flatbuffers.CastAddMessage => {
-        return flatbuffers.Message.getRootAsMessage(toByteBuffer(buffer)) as flatbuffers.CastAddMessage;
+      responseDeserialize: (buffer: Buffer): flatbuffers.Message => {
+        return flatbuffers.Message.getRootAsMessage(toByteBuffer(buffer));
       },
     },
 

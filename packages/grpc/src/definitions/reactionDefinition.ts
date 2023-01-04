@@ -10,8 +10,8 @@ export const reactionDefinition = () => {
       requestDeserialize: (buffer: Buffer): flatbuffers.GetReactionRequest => {
         return flatbuffers.GetReactionRequest.getRootAsGetReactionRequest(toByteBuffer(buffer));
       },
-      responseDeserialize: (buffer: Buffer): flatbuffers.ReactionAddMessage => {
-        return flatbuffers.Message.getRootAsMessage(toByteBuffer(buffer)) as flatbuffers.ReactionAddMessage;
+      responseDeserialize: (buffer: Buffer): flatbuffers.Message => {
+        return flatbuffers.Message.getRootAsMessage(toByteBuffer(buffer));
       },
     },
 

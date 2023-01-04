@@ -1,7 +1,6 @@
 import { hexStringToBytes } from '@hub/bytes';
 import { HubError } from '@hub/errors';
 import { IdRegistryEventType, NameRegistryEventType } from '@hub/flatbuffers';
-import Client from '@hub/grpc-client';
 import { utils, Wallet } from 'ethers';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
@@ -9,6 +8,7 @@ import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { CastAddModel, KeyPair, SignerAddModel } from '~/flatbuffers/models/types';
 import SyncEngine from '~/network/sync/syncEngine';
+import HubClient from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -20,12 +20,12 @@ const engine = new Engine(db);
 const hub = new MockHub(db, engine);
 
 let server: Server;
-let client: Client;
+let client: HubClient;
 
 beforeAll(async () => {
   server = new Server(hub, engine, new SyncEngine(engine));
   const port = await server.start();
-  client = new Client(`127.0.0.1:${port}`);
+  client = new HubClient(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {
@@ -74,9 +74,9 @@ describe('submitMessage', () => {
 
     test('succeeds', async () => {
       const result = await client.submitMessage(castAdd.message);
-      expect(result._unsafeUnwrap()).toEqual(castAdd);
+      expect(result._unsafeUnwrap()).toEqual(castAdd.message);
       const getCast = await client.getCast(castAdd.fid(), castAdd.tsHash());
-      expect(getCast._unsafeUnwrap()).toEqual(castAdd);
+      expect(getCast._unsafeUnwrap()).toEqual(castAdd.message);
     });
   });
 
@@ -91,24 +91,21 @@ describe('submitMessage', () => {
 describe('submitIdRegistryEvent', () => {
   test('succeeds', async () => {
     const result = await client.submitIdRegistryEvent(custodyEvent.event);
-    expect(result._unsafeUnwrap()).toEqual(custodyEvent);
+    expect(result._unsafeUnwrap()).toEqual(custodyEvent.event);
   });
 
-  // TODO: test the gRPC server directly without having to use IdRegistryEventModel, because
-  // the constructor will throw an exception with an invalid type
-  xtest('fails with invalid event', async () => {
-    const invalidEvent = new IdRegistryEventModel(
-      await Factories.IdRegistryEvent.create(
-        {
-          to: Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()),
-          fid: Array.from(fid),
-          type: 0 as IdRegistryEventType,
-        },
-        { transient: { wallet } }
-      )
+  test('fails with invalid event', async () => {
+    const invalidEvent = await Factories.IdRegistryEvent.create(
+      {
+        to: Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()),
+        fid: Array.from(fid),
+        type: 0 as IdRegistryEventType,
+      },
+      { transient: { wallet } }
     );
-    const result = await client.submitIdRegistryEvent(invalidEvent.event);
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid event type'));
+
+    const result = await client.submitIdRegistryEvent(invalidEvent);
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'type is invalid'));
   });
 });
 
@@ -121,19 +118,16 @@ describe('submitNameRegistryEvent', () => {
       )
     );
     const result = await client.submitNameRegistryEvent(nameRegistryEvent.event);
-    expect(result._unsafeUnwrap()).toEqual(nameRegistryEvent);
+    expect(result._unsafeUnwrap()).toEqual(nameRegistryEvent.event);
   });
 
-  // TODO: test the gRPC server directly without having to use NameRegistryEventModel, because
-  // the constructor will throw an exception with an invalid type
-  xtest('fails with invalid event', async () => {
-    const invalidEvent = new NameRegistryEventModel(
-      await Factories.NameRegistryEvent.create(
-        { to: Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()), type: 0 as NameRegistryEventType },
-        { transient: { wallet } }
-      )
+  test('fails with invalid event', async () => {
+    const invalidEvent = await Factories.NameRegistryEvent.create(
+      { to: Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()), type: 0 as NameRegistryEventType },
+      { transient: { wallet } }
     );
-    const result = await client.submitNameRegistryEvent(invalidEvent.event);
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid event type'));
+
+    const result = await client.submitNameRegistryEvent(invalidEvent);
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'type is invalid'));
   });
 });

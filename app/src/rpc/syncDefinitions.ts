@@ -1,50 +1,24 @@
 import { toByteBuffer } from '@hub/bytes';
 import * as flatbuffers from '@hub/flatbuffers';
-import { defaultMethodDefinition } from '../utils';
+import { ByteBuffer } from 'flatbuffers';
 
-const defaultSyncMethod = () => {
-  return {
-    ...defaultMethodDefinition,
-    requestDeserialize: (buffer: Buffer): flatbuffers.GetAllMessagesByFidRequest => {
-      return flatbuffers.GetAllMessagesByFidRequest.getRootAsGetAllMessagesByFidRequest(toByteBuffer(buffer));
-    },
-    responseDeserialize: (buffer: Buffer): flatbuffers.MessagesResponse => {
-      return flatbuffers.MessagesResponse.getRootAsMessagesResponse(toByteBuffer(buffer));
-    },
-  };
+interface GenericFlatbuffer {
+  bb: ByteBuffer | null;
+}
+
+const defaultMethodDefinition = {
+  requestStream: false,
+  responseStream: false,
+  requestSerialize: (request: GenericFlatbuffer): Buffer => {
+    return Buffer.from(request.bb?.bytes() ?? new Uint8Array());
+  },
+  responseSerialize: (response: GenericFlatbuffer): Buffer => {
+    return Buffer.from(response.bb?.bytes() ?? new Uint8Array());
+  },
 };
 
 export const syncDefinition = () => {
   return {
-    getAllCastMessagesByFid: {
-      ...defaultSyncMethod(),
-      path: '/getAllCastMessagesByFid',
-    },
-
-    getAllAmpMessagesByFid: {
-      ...defaultSyncMethod(),
-      path: '/getAllAmpMessagesByFid',
-    },
-
-    getAllReactionMessagesByFid: {
-      ...defaultSyncMethod(),
-      path: '/getAllReactionMessagesByFid',
-    },
-
-    getAllVerificationMessagesByFid: {
-      ...defaultSyncMethod(),
-      path: '/getAllVerificationMessagesByFid',
-    },
-
-    getAllSignerMessagesByFid: {
-      ...defaultSyncMethod(),
-      path: '/getAllSigneressagesByFid',
-    },
-
-    getAllUserDataMessagesByFid: {
-      ...defaultSyncMethod(),
-      path: '/getAllUserDataMessagesByFid',
-    },
     getAllSyncIdsByPrefix: {
       ...defaultMethodDefinition,
       requestDeserialize: (buffer: Buffer): flatbuffers.GetTrieNodesByPrefixRequest => {
@@ -84,7 +58,6 @@ export const syncDefinition = () => {
       responseDeserialize: (buffer: Buffer): flatbuffers.TrieNodeSnapshotResponse => {
         return flatbuffers.TrieNodeSnapshotResponse.getRootAsTrieNodeSnapshotResponse(toByteBuffer(buffer));
       },
-
       path: '/getSyncTrieNodeSnapshotByPrefix',
     },
   };

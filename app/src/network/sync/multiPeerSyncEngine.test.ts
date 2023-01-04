@@ -1,5 +1,6 @@
 import { KeyPair } from '@chainsafe/libp2p-noise/dist/src/@types/libp2p';
 import { hexStringToBytes } from '@hub/bytes';
+import { Message } from '@hub/flatbuffers';
 import { utils, Wallet } from 'ethers';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
@@ -7,7 +8,7 @@ import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastRemoveModel, SignerAddModel } from '~/flatbuffers/models/types';
 import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';
-import Client from '~/rpc/client';
+import HubClient from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -68,7 +69,7 @@ describe('Multi peer sync engine', () => {
   let syncEngine1: SyncEngine;
   let server1: Server;
   let port1;
-  let clientForServer1: Client;
+  let clientForServer1: HubClient;
 
   beforeEach(async () => {
     // Engine 1 is where we add events, and see if engine 2 will sync them
@@ -77,7 +78,7 @@ describe('Multi peer sync engine', () => {
     syncEngine1 = new SyncEngine(engine1);
     server1 = new Server(hub1, engine1, syncEngine1);
     port1 = await server1.start();
-    clientForServer1 = new Client(`127.0.0.1:${port1}`);
+    clientForServer1 = new HubClient(`127.0.0.1:${port1}`);
   });
 
   afterEach(async () => {
@@ -95,10 +96,11 @@ describe('Multi peer sync engine', () => {
     const rpcResult = await clientForServer1.getAllSignerMessagesByFid(fid);
     expect(rpcResult.isOk()).toBeTruthy();
     expect(rpcResult._unsafeUnwrap().length).toEqual(1);
-    const rpcSignerAdd = rpcResult._unsafeUnwrap()[0];
+    const rpcSignerAddMessage = rpcResult._unsafeUnwrap()[0];
+    const rpcSignerAdd = new MessageModel(rpcSignerAddMessage as Message);
 
     // Construct the message model from the rpc message bytes.
-    const mm = MessageModel.from(rpcSignerAdd!.toBuffer());
+    const mm = MessageModel.from(rpcSignerAdd.toBuffer());
 
     expect(signerAdd?.toBuffer().toString('hex')).toEqual(rpcSignerAdd?.toBuffer().toString('hex'));
     expect(mm.fid()).toEqual(signerAdd.fid());
@@ -196,7 +198,7 @@ describe('Multi peer sync engine', () => {
     {
       const server2 = new Server(new MockHub(testDb2, engine2), engine2, syncEngine2);
       const port2 = await server2.start();
-      const clientForServer2 = new Client(`127.0.0.1:${port2}`);
+      const clientForServer2 = new HubClient(`127.0.0.1:${port2}`);
       const engine1RootHashBefore = syncEngine1.trie.rootHash;
 
       await syncEngine1.performSync(syncEngine2.snapshot.excludedHashes, clientForServer2);

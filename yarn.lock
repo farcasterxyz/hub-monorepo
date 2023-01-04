@@ -791,14 +791,6 @@
   resolved "https://registry.npmjs.org/@faker-js/faker/-/faker-7.6.0.tgz#9ea331766084288634a9247fcd8b84f16ff4ba07"
   integrity sha512-XK6BTq1NDMo9Xqw/YkYyGjSsg44fbNwYRx7QK2CuoQgyy+f1rrTDHoExVM5PsyXCtfl2vs2vVJ0MN0yN6LppRw==
 
-"@grpc/grpc-js@^1.7.3":
-  version "1.8.0"
-  resolved "https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.8.0.tgz#ebfbeff2b76e2991f2831e46cad27fa573396555"
-  integrity sha512-ySMTXQuMvvswoobvN+0LsaPf7ITO2JVfJmHxQKI4cGehNrrUms+n81BlHEX7Hl/LExji6XE3fnI9U04GSkRruA==
-  dependencies:
-    "@grpc/proto-loader" "^0.7.0"
-    "@types/node" ">=12.12.47"
-
 "@grpc/grpc-js@^1.8.1":
   version "1.8.1"
   resolved "https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.8.1.tgz#71f809c148e52ac9c15da4b8d4a65ecd7063dff7"

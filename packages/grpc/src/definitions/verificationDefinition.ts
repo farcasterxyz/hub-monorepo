@@ -10,10 +10,8 @@ export const verificationDefinition = () => {
       requestDeserialize: (buffer: Buffer): flatbuffers.GetVerificationRequest => {
         return flatbuffers.GetVerificationRequest.getRootAsGetVerificationRequest(toByteBuffer(buffer));
       },
-      responseDeserialize: (buffer: Buffer): flatbuffers.VerificationAddEthAddressMessage => {
-        return flatbuffers.Message.getRootAsMessage(
-          toByteBuffer(buffer)
-        ) as flatbuffers.VerificationAddEthAddressMessage;
+      responseDeserialize: (buffer: Buffer): flatbuffers.Message => {
+        return flatbuffers.Message.getRootAsMessage(toByteBuffer(buffer));
       },
     },
 

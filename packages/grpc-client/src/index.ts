@@ -8,7 +8,7 @@ import * as requests from './requests';
 import { fromServiceError } from './utils';
 
 class Client {
-  private client: grpc.Client;
+  protected client: grpc.Client;
 
   constructor(address: string) {
     this.client = new grpc.Client(address, grpc.credentials.createInsecure());
@@ -38,25 +38,25 @@ class Client {
   /*                                 Cast Methods                               */
   /* -------------------------------------------------------------------------- */
 
-  async getCast(fid: Uint8Array, tsHash: Uint8Array): HubAsyncResult<flatbuffers.CastAddMessage> {
+  async getCast(fid: Uint8Array, tsHash: Uint8Array): HubAsyncResult<flatbuffers.Message> {
     return this.makeUnaryRequest(definitions.castDefinition().getCast, requests.castRequests.getCast(fid, tsHash));
   }
 
-  async getCastsByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.CastAddMessage[]> {
+  async getCastsByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.Message[]> {
     return this.makeUnaryMessagesRequest(
       definitions.castDefinition().getCastsByFid,
       requests.castRequests.getCastsByFid(fid)
     );
   }
 
-  async getCastsByParent(parent: flatbuffers.CastId): HubAsyncResult<flatbuffers.CastAddMessage[]> {
+  async getCastsByParent(parent: flatbuffers.CastId): HubAsyncResult<flatbuffers.Message[]> {
     return this.makeUnaryMessagesRequest(
       definitions.castDefinition().getCastsByParent,
       requests.castRequests.getCastsByParent(parent)
     );
   }
 
-  async getCastsByMention(mention: flatbuffers.UserId): HubAsyncResult<flatbuffers.CastAddMessage[]> {
+  async getCastsByMention(mention: flatbuffers.UserId): HubAsyncResult<flatbuffers.Message[]> {
     return this.makeUnaryMessagesRequest(
       definitions.castDefinition().getCastsByMention,
       requests.castRequests.getCastsByMention(mention)
@@ -67,18 +67,18 @@ class Client {
   /*                                Amp Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  async getAmp(fid: Uint8Array, user: flatbuffers.UserId): HubAsyncResult<flatbuffers.AmpAddMessage> {
+  async getAmp(fid: Uint8Array, user: flatbuffers.UserId): HubAsyncResult<flatbuffers.Message> {
     return this.makeUnaryRequest(definitions.ampDefinition().getAmp, requests.ampRequests.getAmp(fid, user));
   }
 
-  async getAmpsByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.AmpAddMessage[]> {
+  async getAmpsByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.Message[]> {
     return this.makeUnaryMessagesRequest(
       definitions.ampDefinition().getAmpsByFid,
       requests.ampRequests.getAmpsByFid(fid)
     );
   }
 
-  async getAmpsByUser(user: flatbuffers.UserId): HubAsyncResult<flatbuffers.AmpAddMessage[]> {
+  async getAmpsByUser(user: flatbuffers.UserId): HubAsyncResult<flatbuffers.Message[]> {
     return this.makeUnaryMessagesRequest(
       definitions.ampDefinition().getAmpsByUser,
       requests.ampRequests.getAmpsByUser(user)
@@ -93,17 +93,14 @@ class Client {
     fid: Uint8Array,
     type: flatbuffers.ReactionType,
     cast: flatbuffers.CastId
-  ): HubAsyncResult<flatbuffers.ReactionAddMessage> {
+  ): HubAsyncResult<flatbuffers.Message> {
     return this.makeUnaryRequest(
       definitions.reactionDefinition().getReaction,
       requests.reactionRequests.getReaction(fid, type, cast)
     );
   }
 
-  async getReactionsByFid(
-    fid: Uint8Array,
-    type?: flatbuffers.ReactionType
-  ): HubAsyncResult<flatbuffers.ReactionAddMessage[]> {
+  async getReactionsByFid(fid: Uint8Array, type?: flatbuffers.ReactionType): HubAsyncResult<flatbuffers.Message[]> {
     return this.makeUnaryMessagesRequest(
       definitions.reactionDefinition().getReactionsByFid,
       requests.reactionRequests.getReactionsByFid(fid, type)
@@ -113,7 +110,7 @@ class Client {
   async getReactionsByCast(
     cast: flatbuffers.CastId,
     type?: flatbuffers.ReactionType
-  ): HubAsyncResult<flatbuffers.ReactionAddMessage[]> {
+  ): HubAsyncResult<flatbuffers.Message[]> {
     return this.makeUnaryMessagesRequest(
       definitions.reactionDefinition().getReactionsByCast,
       requests.reactionRequests.getReactionsByCast(cast, type)
@@ -124,17 +121,14 @@ class Client {
   /*                             Verification Methods                           */
   /* -------------------------------------------------------------------------- */
 
-  async getVerification(
-    fid: Uint8Array,
-    address: Uint8Array
-  ): HubAsyncResult<flatbuffers.VerificationAddEthAddressMessage> {
+  async getVerification(fid: Uint8Array, address: Uint8Array): HubAsyncResult<flatbuffers.Message> {
     return this.makeUnaryRequest(
       definitions.verificationDefinition().getVerification,
       requests.verificationRequests.getVerification(fid, address)
     );
   }
 
-  async getVerificationsByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.VerificationAddEthAddressMessage[]> {
+  async getVerificationsByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.Message[]> {
     return this.makeUnaryMessagesRequest(
       definitions.verificationDefinition().getVerificationsByFid,
       requests.verificationRequests.getVerificationsByFid(fid)
@@ -145,14 +139,14 @@ class Client {
   /*                                 Signer Methods                             */
   /* -------------------------------------------------------------------------- */
 
-  async getSigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<flatbuffers.SignerAddMessage> {
+  async getSigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<flatbuffers.Message> {
     return this.makeUnaryRequest(
       definitions.signerDefinition().getSigner,
       requests.signerRequests.getSigner(fid, signer)
     );
   }
 
-  async getSignersByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.SignerAddMessage[]> {
+  async getSignersByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.Message[]> {
     return this.makeUnaryMessagesRequest(
       definitions.signerDefinition().getSignersByFid,
       requests.signerRequests.getSignersByFid(fid)
@@ -196,14 +190,14 @@ class Client {
   /*                                User Data Methods                           */
   /* -------------------------------------------------------------------------- */
 
-  async getUserData(fid: Uint8Array, type: flatbuffers.UserDataType): HubAsyncResult<flatbuffers.UserDataAddMessage> {
+  async getUserData(fid: Uint8Array, type: flatbuffers.UserDataType): HubAsyncResult<flatbuffers.Message> {
     return this.makeUnaryRequest(
       definitions.userDataDefinition().getUserData,
       requests.userDataRequests.getUserData(fid, type)
     );
   }
 
-  async getUserDataByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.UserDataAddMessage[]> {
+  async getUserDataByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.Message[]> {
     return this.makeUnaryMessagesRequest(
       definitions.userDataDefinition().getUserDataByFid,
       requests.userDataRequests.getUserDataByFid(fid)
@@ -214,6 +208,52 @@ class Client {
     return this.makeUnaryRequest(
       definitions.userDataDefinition().getNameRegistryEvent,
       requests.userDataRequests.getNameRegistryEvent(fname)
+    );
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                                   Bulk Methods                             */
+  /* -------------------------------------------------------------------------- */
+
+  async getAllCastMessagesByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.Message[]> {
+    return this.makeUnaryMessagesRequest(
+      definitions.bulkDefinition().getAllCastMessagesByFid,
+      requests.bulkRequests.createMessagesByFidRequest(fid)
+    );
+  }
+
+  async getAllAmpMessagesByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.Message[]> {
+    return this.makeUnaryMessagesRequest(
+      definitions.bulkDefinition().getAllAmpMessagesByFid,
+      requests.bulkRequests.createMessagesByFidRequest(fid)
+    );
+  }
+
+  async getAllReactionMessagesByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.Message[]> {
+    return this.makeUnaryMessagesRequest(
+      definitions.bulkDefinition().getAllReactionMessagesByFid,
+      requests.bulkRequests.createMessagesByFidRequest(fid)
+    );
+  }
+
+  async getAllVerificationMessagesByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.Message[]> {
+    return this.makeUnaryMessagesRequest(
+      definitions.bulkDefinition().getAllVerificationMessagesByFid,
+      requests.bulkRequests.createMessagesByFidRequest(fid)
+    );
+  }
+
+  async getAllSignerMessagesByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.Message[]> {
+    return this.makeUnaryMessagesRequest(
+      definitions.bulkDefinition().getAllSignerMessagesByFid,
+      requests.bulkRequests.createMessagesByFidRequest(fid)
+    );
+  }
+
+  async getAllUserDataMessagesByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.Message[]> {
+    return this.makeUnaryMessagesRequest(
+      definitions.bulkDefinition().getAllUserDataMessagesByFid,
+      requests.bulkRequests.createMessagesByFidRequest(fid)
     );
   }
 
@@ -250,10 +290,10 @@ class Client {
   }
 
   /* -------------------------------------------------------------------------- */
-  /*                               Private Methods                              */
+  /*                              Protected Methods                             */
   /* -------------------------------------------------------------------------- */
 
-  private makeUnaryRequest<RequestType, ResponseType>(
+  protected makeUnaryRequest<RequestType, ResponseType>(
     method: grpc.MethodDefinition<RequestType, ResponseType>,
     request: RequestType
   ): HubAsyncResult<ResponseType> {
@@ -274,7 +314,7 @@ class Client {
     });
   }
 
-  private makeUnaryMessagesRequest<RequestType, ResponseMessageType extends flatbuffers.Message>(
+  protected makeUnaryMessagesRequest<RequestType, ResponseMessageType extends flatbuffers.Message>(
     method: grpc.MethodDefinition<RequestType, flatbuffers.MessagesResponse>,
     request: RequestType
   ): HubAsyncResult<ResponseMessageType[]> {
@@ -302,4 +342,5 @@ class Client {
   }
 }
 
+export * from './utils';
 export default Client;

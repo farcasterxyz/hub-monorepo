@@ -9,7 +9,7 @@ import {
 } from '@hub/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
 
-export const syncRequests = {
+const syncRequests = {
   createSyncRequest: (fid: Uint8Array): GetAllMessagesByFidRequest => {
     const builder = new Builder(1);
     const requestT = new GetAllMessagesByFidRequestT(Array.from(fid));
@@ -35,3 +35,5 @@ export const syncRequests = {
     );
   },
 };
+
+export default syncRequests;

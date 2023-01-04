@@ -10,8 +10,8 @@ export const userDataDefinition = () => {
       requestDeserialize: (buffer: Buffer): flatbuffers.GetUserDataRequest => {
         return flatbuffers.GetUserDataRequest.getRootAsGetUserDataRequest(toByteBuffer(buffer));
       },
-      responseDeserialize: (buffer: Buffer): flatbuffers.UserDataAddMessage => {
-        return flatbuffers.Message.getRootAsMessage(toByteBuffer(buffer)) as flatbuffers.UserDataAddMessage;
+      responseDeserialize: (buffer: Buffer): flatbuffers.Message => {
+        return flatbuffers.Message.getRootAsMessage(toByteBuffer(buffer));
       },
     },
 

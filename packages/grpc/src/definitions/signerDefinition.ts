@@ -10,8 +10,8 @@ export const signerDefinition = () => {
       requestDeserialize: (buffer: Buffer): flatbuffers.GetSignerRequest => {
         return flatbuffers.GetSignerRequest.getRootAsGetSignerRequest(toByteBuffer(buffer));
       },
-      responseDeserialize: (buffer: Buffer): flatbuffers.SignerAddMessage => {
-        return flatbuffers.Message.getRootAsMessage(toByteBuffer(buffer)) as flatbuffers.SignerAddMessage;
+      responseDeserialize: (buffer: Buffer): flatbuffers.Message => {
+        return flatbuffers.Message.getRootAsMessage(toByteBuffer(buffer));
       },
     },
 

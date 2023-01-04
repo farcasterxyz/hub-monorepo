@@ -10,8 +10,8 @@ export const ampDefinition = () => {
       requestDeserialize: (buffer: Buffer): flatbuffers.GetAmpRequest => {
         return flatbuffers.GetAmpRequest.getRootAsGetAmpRequest(toByteBuffer(buffer));
       },
-      responseDeserialize: (buffer: Buffer): flatbuffers.AmpAddMessage => {
-        return flatbuffers.Message.getRootAsMessage(toByteBuffer(buffer)) as flatbuffers.AmpAddMessage;
+      responseDeserialize: (buffer: Buffer): flatbuffers.Message => {
+        return flatbuffers.Message.getRootAsMessage(toByteBuffer(buffer));
       },
     },
 

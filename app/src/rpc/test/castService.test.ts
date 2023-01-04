@@ -1,13 +1,13 @@
 import { hexStringToBytes } from '@hub/bytes';
 import { HubError } from '@hub/errors';
 import { CastId, UserId } from '@hub/flatbuffers';
-import Client from '@hub/grpc-client';
 import { utils, Wallet } from 'ethers';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastAddModel, KeyPair, SignerAddModel } from '~/flatbuffers/models/types';
 import SyncEngine from '~/network/sync/syncEngine';
+import HubClient from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -19,12 +19,12 @@ const engine = new Engine(db);
 const hub = new MockHub(db, engine);
 
 let server: Server;
-let client: Client;
+let client: HubClient;
 
 beforeAll(async () => {
   server = new Server(hub, engine, new SyncEngine(engine));
   const port = await server.start();
-  client = new Client(`127.0.0.1:${port}`);
+  client = new HubClient(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {
@@ -70,7 +70,7 @@ describe('getCast', () => {
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(castAdd);
     const result = await client.getCast(fid, castAdd.tsHash());
-    expect(result._unsafeUnwrap()).toEqual(castAdd);
+    expect(result._unsafeUnwrap()).toEqual(castAdd.message);
   });
 
   test('fails if cast is missing', async () => {
@@ -105,7 +105,7 @@ describe('getCastsByFid', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(castAdd);
     const casts = await client.getCastsByFid(fid);
-    expect(casts._unsafeUnwrap()).toEqual([castAdd]);
+    expect(casts._unsafeUnwrap()).toEqual([castAdd.message]);
   });
 
   test('returns empty array without casts', async () => {
@@ -123,7 +123,7 @@ describe('getCastsByParent', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(castAdd);
     const casts = await client.getCastsByParent((castAdd.body().parent(new CastId()) as CastId) ?? new CastId());
-    expect(casts._unsafeUnwrap()).toEqual([castAdd]);
+    expect(casts._unsafeUnwrap()).toEqual([castAdd.message]);
   });
 
   test('returns empty array without casts', async () => {
