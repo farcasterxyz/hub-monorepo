@@ -1,4 +1,4 @@
-import { CastId } from '~/../../packages/flatbuffers/src';
+import { CastId } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastAddModel, CastRemoveModel, UserPostfix } from '~/flatbuffers/models/types';
