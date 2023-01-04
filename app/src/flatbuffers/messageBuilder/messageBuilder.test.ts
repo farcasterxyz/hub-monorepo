@@ -2,41 +2,23 @@ import * as flatbuffers from '@hub/flatbuffers';
 import { blake3 } from '@noble/hashes/blake3';
 import { arrayify, hexlify } from 'ethers/lib/utils';
 import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
-import { Ed25519MessageSigner, EthersMessageSigner, IMessageSigner } from '../messageSigner';
+import { EthersMessageSigner } from '../messageSigner';
 import { EthereumSigner, KeyPair, SignerAddModel } from '../models/types';
 import { numberToLittleEndianBytes } from '../utils/bytes';
 import { verifyMessageHashSignature } from '../utils/eip712';
-import MessageBuilder from './messageBuilder';
+import { SignerMessageBuilder } from './messageBuilder';
 
-describe('MessageBuilder', () => {
-  let builder: MessageBuilder;
-  let keyPair: KeyPair;
+describe('SignerMessageBuilder', () => {
+  let builder: SignerMessageBuilder;
   let ethereumSigner: EthereumSigner;
-  let ethersSigner: EthersMessageSigner;
-  let edDSASigner: IMessageSigner;
+  let signer: EthersMessageSigner;
 
   const fid = 24;
 
   beforeAll(async () => {
-    keyPair = await generateEd25519KeyPair();
     ethereumSigner = await generateEthereumSigner();
-    edDSASigner = new Ed25519MessageSigner(keyPair.privateKey, hexlify(keyPair.publicKey));
-    ethersSigner = new EthersMessageSigner(ethereumSigner.wallet);
-    builder = new MessageBuilder({ fid, eip712Signer: ethersSigner, ed2559Signer: edDSASigner });
-  });
-
-  describe('static methods', () => {
-    describe('constructor', () => {
-      test('fails with invalid fid', async () => {
-        expect(
-          () =>
-            new MessageBuilder({
-              fid: -1,
-              eip712Signer: ethersSigner,
-            })
-        ).toThrow();
-      });
-    });
+    signer = new EthersMessageSigner(ethereumSigner.wallet);
+    builder = new SignerMessageBuilder({ fid, signer });
   });
 
   describe('instance methods', () => {
