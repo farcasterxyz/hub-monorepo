@@ -1,8 +1,7 @@
 import { SignatureScheme } from '@hub/flatbuffers';
-import * as ed from '@noble/ed25519';
-import { ok } from 'neverthrow';
 import { HubAsyncResult } from '~/utils/hubErrors';
 import { hexStringToBytes } from '../utils/bytes';
+import { signMessageHash } from '../utils/ed25519';
 import { IMessageSigner } from './types';
 
 class Ed25519MessageSigner implements IMessageSigner {
@@ -19,8 +18,7 @@ class Ed25519MessageSigner implements IMessageSigner {
 
   /** generates 256-bit signature from an EdDSA key pair */
   public async sign(hash: Uint8Array): HubAsyncResult<Uint8Array> {
-    const signature = await ed.sign(new Uint8Array(hash), this.privateKey);
-    return ok(signature);
+    return signMessageHash(hash, this.privateKey);
   }
 }
 
