@@ -1,5 +1,4 @@
 import { ClientReadableStream } from '@grpc/grpc-js';
-import { hexStringToBytes } from '@hub/bytes';
 import { EventResponse, EventType } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
@@ -34,7 +33,6 @@ afterAll(async () => {
 
 const fid = Factories.FID.build();
 const ethSigner = Factories.Eip712Signer.build();
-const wallet = ethSigner.wallet;
 const signer = Factories.Ed25519Signer.build();
 let custodyEvent: IdRegistryEventModel;
 let signerAdd: SignerAddModel;
@@ -42,10 +40,7 @@ let castAdd: CastAddModel;
 
 beforeAll(async () => {
   custodyEvent = new IdRegistryEventModel(
-    await Factories.IdRegistryEvent.create(
-      { to: Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()), fid: Array.from(fid) },
-      { transient: { wallet } }
-    )
+    await Factories.IdRegistryEvent.create({ to: Array.from(ethSigner.signerKey), fid: Array.from(fid) })
   );
 
   const signerAddData = await Factories.SignerAddData.create({

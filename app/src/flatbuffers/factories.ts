@@ -8,13 +8,12 @@ import * as name_registry_event_generated from '@hub/flatbuffers';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { blake3 } from '@noble/hashes/blake3';
-import { ethers, utils, Wallet } from 'ethers';
+import { ethers } from 'ethers';
 import { Factory } from 'fishery';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { bytesToBigNumber } from '~/eth/utils';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { SignerAddModel, VerificationEthAddressClaim } from '~/flatbuffers/models/types';
-import { signVerificationEthAddressClaim } from '~/flatbuffers/utils/eip712';
 import { toFarcasterTime } from '~/flatbuffers/utils/time';
 import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { HASH_LENGTH, SyncId } from '~/network/sync/syncId';
@@ -233,22 +232,22 @@ const ReactionRemoveDataFactory = Factory.define<message_generated.MessageDataT,
 
 const VerificationAddEthAddressBodyFactory = Factory.define<
   message_generated.VerificationAddEthAddressBodyT,
-  { wallet?: ethers.Wallet; fid?: Uint8Array; network?: message_generated.FarcasterNetwork },
+  { signer?: Eip712Signer; fid?: Uint8Array; network?: message_generated.FarcasterNetwork },
   message_generated.VerificationAddEthAddressBody
 >(({ onCreate, transientParams }) => {
   onCreate(async (params) => {
     // Generate address and signature
-    const wallet = transientParams.wallet ?? new Wallet(utils.randomBytes(32));
-    params.address = Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap());
+    const signer = transientParams.signer ?? Factories.Eip712Signer.build();
+    params.address = Array.from(signer.signerKey);
 
     const fid = transientParams.fid ?? FIDFactory.build();
     const claim: VerificationEthAddressClaim = {
       fid: bytesToBigNumber(fid)._unsafeUnwrap(),
-      address: wallet.address,
+      address: signer.signerKeyHex,
       network: transientParams.network ?? message_generated.FarcasterNetwork.Testnet,
       blockHash: bytesToHexString(Uint8Array.from(params.blockHash))._unsafeUnwrap(),
     };
-    const ethSignature = await signVerificationEthAddressClaim(claim, wallet);
+    const ethSignature = await signer.signVerificationEthAddressClaim(claim);
     params.ethSignature = Array.from(ethSignature._unsafeUnwrap());
 
     const builder = new Builder(1);

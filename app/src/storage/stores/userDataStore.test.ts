@@ -1,4 +1,4 @@
-import { bytesIncrement, hexStringToBytes } from '@hub/bytes';
+import { bytesIncrement } from '@hub/bytes';
 import { HubError } from '@hub/errors';
 import { NameRegistryEventType, UserDataType } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
@@ -16,7 +16,6 @@ import UserDataStore from '~/storage/stores/userDataStore';
 const db = jestRocksDB('flatbuffers.userDataSet.test');
 
 const ethSigner = Factories.Eip712Signer.build();
-const wallet = ethSigner.wallet;
 
 const eventHandler = new StoreEventHandler();
 const set = new UserDataStore(db, eventHandler);
@@ -33,7 +32,7 @@ let addBio: UserDataAddModel;
 let addFname: UserDataAddModel;
 
 beforeAll(async () => {
-  custody1Address = hexStringToBytes(wallet.address)._unsafeUnwrap();
+  custody1Address = ethSigner.signerKey;
   custody1Event = new IdRegistryEventModel(
     await Factories.IdRegistryEvent.create(
       {

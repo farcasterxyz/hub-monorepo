@@ -31,7 +31,6 @@ afterAll(async () => {
 
 const fid = Factories.FID.build();
 const ethSigner = Factories.Eip712Signer.build();
-const wallet = ethSigner.wallet;
 const signer = Factories.Ed25519Signer.build();
 let custodyEvent: IdRegistryEventModel;
 let signerAdd: SignerAddModel;
@@ -42,10 +41,7 @@ let reactionAddRecast: ReactionAddModel;
 
 beforeAll(async () => {
   custodyEvent = new IdRegistryEventModel(
-    await Factories.IdRegistryEvent.create(
-      { to: Array.from(ethSigner.signerKey), fid: Array.from(fid) },
-      { transient: { wallet } }
-    )
+    await Factories.IdRegistryEvent.create({ to: Array.from(ethSigner.signerKey), fid: Array.from(fid) })
   );
 
   const signerAddData = await Factories.SignerAddData.create({

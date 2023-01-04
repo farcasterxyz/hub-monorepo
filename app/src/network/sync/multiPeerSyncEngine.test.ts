@@ -1,4 +1,3 @@
-import { hexStringToBytes } from '@hub/bytes';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
@@ -19,7 +18,6 @@ const testDb2 = jestRocksDB(`engine2.peersyncEngine.test`);
 
 const fid = Factories.FID.build();
 const ethSigner = Factories.Eip712Signer.build();
-const wallet = ethSigner.wallet;
 const signer = Factories.Ed25519Signer.build();
 
 let custodyEvent: IdRegistryEventModel;
@@ -27,10 +25,7 @@ let signerAdd: SignerAddModel;
 
 beforeAll(async () => {
   custodyEvent = new IdRegistryEventModel(
-    await Factories.IdRegistryEvent.create(
-      { to: Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()), fid: Array.from(fid) },
-      { transient: { wallet } }
-    )
+    await Factories.IdRegistryEvent.create({ to: Array.from(ethSigner.signerKey), fid: Array.from(fid) })
   );
 
   const signerAddData = await Factories.SignerAddData.create({

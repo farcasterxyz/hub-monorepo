@@ -1,4 +1,3 @@
-import { hexStringToBytes } from '@hub/bytes';
 import { HubError } from '@hub/errors';
 import { IdRegistryEventType, NameRegistryEventType } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
@@ -33,7 +32,6 @@ afterAll(async () => {
 
 const fid = Factories.FID.build();
 const ethSigner = Factories.Eip712Signer.build();
-const wallet = ethSigner.wallet;
 const signer = Factories.Ed25519Signer.build();
 let custodyEvent: IdRegistryEventModel;
 let signerAdd: SignerAddModel;
@@ -41,10 +39,7 @@ let castAdd: CastAddModel;
 
 beforeAll(async () => {
   custodyEvent = new IdRegistryEventModel(
-    await Factories.IdRegistryEvent.create(
-      { to: Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()), fid: Array.from(fid) },
-      { transient: { wallet } }
-    )
+    await Factories.IdRegistryEvent.create({ to: Array.from(ethSigner.signerKey), fid: Array.from(fid) })
   );
 
   const signerAddData = await Factories.SignerAddData.create({
@@ -96,14 +91,11 @@ describe('submitIdRegistryEvent', () => {
   // the constructor will throw an exception with an invalid type
   xtest('fails with invalid event', async () => {
     const invalidEvent = new IdRegistryEventModel(
-      await Factories.IdRegistryEvent.create(
-        {
-          to: Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()),
-          fid: Array.from(fid),
-          type: 0 as IdRegistryEventType,
-        },
-        { transient: { wallet } }
-      )
+      await Factories.IdRegistryEvent.create({
+        to: Array.from(ethSigner.signerKey),
+        fid: Array.from(fid),
+        type: 0 as IdRegistryEventType,
+      })
     );
     const result = await client.submitIdRegistryEvent(invalidEvent);
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid event type'));
@@ -113,10 +105,7 @@ describe('submitIdRegistryEvent', () => {
 describe('submitNameRegistryEvent', () => {
   test('succeeds', async () => {
     const nameRegistryEvent = new NameRegistryEventModel(
-      await Factories.NameRegistryEvent.create(
-        { to: Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()) },
-        { transient: { wallet } }
-      )
+      await Factories.NameRegistryEvent.create({ to: Array.from(ethSigner.signerKey) })
     );
     const result = await client.submitNameRegistryEvent(nameRegistryEvent);
     expect(result._unsafeUnwrap()).toEqual(nameRegistryEvent);
@@ -126,10 +115,10 @@ describe('submitNameRegistryEvent', () => {
   // the constructor will throw an exception with an invalid type
   xtest('fails with invalid event', async () => {
     const invalidEvent = new NameRegistryEventModel(
-      await Factories.NameRegistryEvent.create(
-        { to: Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()), type: 0 as NameRegistryEventType },
-        { transient: { wallet } }
-      )
+      await Factories.NameRegistryEvent.create({
+        to: Array.from(ethSigner.signerKey),
+        type: 0 as NameRegistryEventType,
+      })
     );
     const result = await client.submitNameRegistryEvent(invalidEvent);
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid event type'));

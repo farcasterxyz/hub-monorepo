@@ -27,7 +27,7 @@ beforeAll(async () => {
 
   const addBody = await Factories.VerificationAddEthAddressBody.create(
     {},
-    { transient: { fid, wallet: ethSigner.wallet, network: FarcasterNetwork.Testnet } }
+    { transient: { fid, signer: ethSigner, network: FarcasterNetwork.Testnet } }
   );
   const addData = await Factories.VerificationAddEthAddressData.create({
     fid: Array.from(fid),

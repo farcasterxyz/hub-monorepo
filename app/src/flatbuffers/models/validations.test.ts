@@ -7,7 +7,6 @@ import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import * as types from '~/flatbuffers/models/types';
 import * as validations from '~/flatbuffers/models/validations';
-import { signVerificationEthAddressClaim } from '~/flatbuffers/utils/eip712';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 
 const ethSigner = Factories.Eip712Signer.build();
@@ -200,8 +199,7 @@ describe('validateEthAddress', () => {
   let address: Uint8Array;
 
   beforeAll(async () => {
-    const wallet = ethSigner.wallet;
-    address = hexStringToBytes(wallet.address)._unsafeUnwrap();
+    address = ethSigner.signerKey;
   });
 
   test('succeeds', () => {
@@ -494,7 +492,7 @@ describe('validateVerificationAddEthAddressMessage', () => {
         network: message_generated.FarcasterNetwork.Testnet,
         blockHash: faker.datatype.hexadecimal({ length: 64, case: 'lower' }),
       };
-      const signature = await signVerificationEthAddressClaim(claim, ethSigner.wallet);
+      const signature = await ethSigner.signVerificationEthAddressClaim(claim);
       body = new message_generated.VerificationAddEthAddressBodyT(
         Array.from(ethSigner.signerKey),
         Array.from(signature._unsafeUnwrap()),
