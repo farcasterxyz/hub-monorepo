@@ -107,6 +107,7 @@ const CastAddBodyFactory = Factory.define<message_generated.CastAddBodyT, any, m
     return new message_generated.CastAddBodyT(
       [faker.internet.url(), faker.internet.url()],
       [UserIdFactory.build(), UserIdFactory.build(), UserIdFactory.build()],
+      message_generated.TargetId.CastId,
       CastIdFactory.build(),
       faker.lorem.sentence(4)
     );
@@ -199,7 +200,11 @@ const ReactionBodyFactory = Factory.define<message_generated.ReactionBodyT, any,
       return message_generated.ReactionBody.getRootAsReactionBody(new ByteBuffer(builder.asUint8Array()));
     });
 
-    return new message_generated.ReactionBodyT(CastIdFactory.build(), message_generated.ReactionType.Like);
+    return new message_generated.ReactionBodyT(
+      message_generated.TargetId.CastId,
+      CastIdFactory.build(),
+      message_generated.ReactionType.Like
+    );
   }
 );
 

@@ -122,12 +122,12 @@ describe('getCastsByParent', () => {
 
   test('succeeds', async () => {
     await engine.mergeMessage(castAdd);
-    const casts = await client.getCastsByParent(castAdd.body().parent() ?? new CastId());
+    const casts = await client.getCastsByParent((castAdd.body().parent(new CastId()) as CastId) ?? new CastId());
     expect(casts._unsafeUnwrap()).toEqual([castAdd]);
   });
 
   test('returns empty array without casts', async () => {
-    const casts = await client.getCastsByParent(castAdd.body().parent() ?? new CastId());
+    const casts = await client.getCastsByParent((castAdd.body().parent(new CastId()) as CastId) ?? new CastId());
     expect(casts._unsafeUnwrap()).toEqual([]);
   });
 });

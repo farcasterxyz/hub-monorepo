@@ -345,7 +345,7 @@ class ReactionStore {
   /* -------------------------------------------------------------------------- */
 
   private async mergeAdd(message: types.ReactionAddModel): Promise<void> {
-    const castId = message.body().cast();
+    const castId = message.body().target(new CastId());
 
     if (!castId) {
       throw new HubError('bad_request.validation_failure', 'castId was missing');
@@ -372,7 +372,7 @@ class ReactionStore {
   }
 
   private async mergeRemove(message: types.ReactionRemoveModel): Promise<void> {
-    const castId = message.body().cast();
+    const castId = message.body().target(new CastId());
 
     if (!castId) {
       throw new HubError('bad_request.validation_failure', 'castId was missing');
@@ -566,8 +566,8 @@ class ReactionStore {
   /* Computes the key for the byTarget index given a Reaction Reaction */
   private targetKeyForMessage(message: types.ReactionAddModel | types.ReactionRemoveModel): Buffer {
     return Buffer.concat([
-      message.body().cast()?.fidArray() ?? new Uint8Array(),
-      message.body().cast()?.tsHashArray() ?? new Uint8Array(),
+      message.body().target(new CastId())?.fidArray() ?? new Uint8Array(),
+      message.body().target(new CastId())?.tsHashArray() ?? new Uint8Array(),
     ]);
   }
 

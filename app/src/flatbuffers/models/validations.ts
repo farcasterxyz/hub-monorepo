@@ -194,8 +194,8 @@ export const validateCastAddMessage = (message: types.CastAddModel): HubResult<t
     return err(new HubError('bad_request.validation_failure', 'mentions > 5'));
   }
 
-  const parent = message.body().parent();
-  if (parent) {
+  if (message.body().parentType() === message_generated.TargetId.CastId) {
+    const parent = message.body().parent(new message_generated.CastId()) as message_generated.CastId;
     return validateCastId(parent).map(() => message);
   }
 
@@ -222,7 +222,7 @@ export const validateReactionMessage = (
     return err(validatedType.error);
   }
 
-  return validateCastId(message.body().cast()).map(() => message);
+  return validateCastId(message.body().target(new message_generated.CastId())).map(() => message);
 };
 
 export const validateVerificationAddEthAddressMessage = async (

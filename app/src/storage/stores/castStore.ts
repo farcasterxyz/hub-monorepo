@@ -1,4 +1,4 @@
-import { MessageType } from '@hub/flatbuffers';
+import { CastId, MessageType } from '@hub/flatbuffers';
 import { ok, ResultAsync } from 'neverthrow';
 import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/flatbuffers/models/messageModel';
 import { isCastAdd, isCastRemove } from '~/flatbuffers/models/typeguards';
@@ -418,11 +418,11 @@ class CastStore {
     tsx = tsx.put(CastStore.castAddsKey(message.fid(), message.tsHash()), Buffer.from(message.tsHash()));
 
     // Puts the message key into the ByParent index
-    if (message.body().parent()) {
+    if (message.body().parent(new CastId()) as CastId) {
       tsx = tsx.put(
         CastStore.castsByParentKey(
-          message.body().parent()?.fidArray() ?? new Uint8Array(),
-          message.body().parent()?.tsHashArray() ?? new Uint8Array(),
+          (message.body().parent(new CastId()) as CastId)?.fidArray() ?? new Uint8Array(),
+          (message.body().parent(new CastId()) as CastId)?.tsHashArray() ?? new Uint8Array(),
           message.fid(),
           message.tsHash()
         ),
@@ -457,11 +457,11 @@ class CastStore {
     }
 
     // Delete the message key from the ByParent index
-    if (message.body().parent()) {
+    if (message.body().parent(new CastId()) as CastId) {
       tsx = tsx.del(
         CastStore.castsByParentKey(
-          message.body().parent()?.fidArray() ?? new Uint8Array(),
-          message.body().parent()?.tsHashArray() ?? new Uint8Array(),
+          (message.body().parent(new CastId()) as CastId)?.fidArray() ?? new Uint8Array(),
+          (message.body().parent(new CastId()) as CastId)?.tsHashArray() ?? new Uint8Array(),
           message.fid(),
           message.tsHash()
         )

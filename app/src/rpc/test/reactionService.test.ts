@@ -63,7 +63,7 @@ beforeAll(async () => {
 
   const likeData = await Factories.ReactionAddData.create({
     fid: Array.from(fid),
-    body: Factories.ReactionBody.build({ type: ReactionType.Like, cast: castId.unpack() }),
+    body: Factories.ReactionBody.build({ type: ReactionType.Like, target: castId.unpack() }),
   });
   reactionAddLike = new MessageModel(
     await Factories.Message.create({ data: Array.from(likeData.bb?.bytes() ?? []) }, { transient: { signer } })
@@ -71,7 +71,7 @@ beforeAll(async () => {
 
   const recastData = await Factories.ReactionAddData.create({
     fid: Array.from(fid),
-    body: Factories.ReactionBody.build({ type: ReactionType.Recast, cast: castId.unpack() }),
+    body: Factories.ReactionBody.build({ type: ReactionType.Recast, target: castId.unpack() }),
   });
   reactionAddRecast = new MessageModel(
     await Factories.Message.create({ data: Array.from(recastData.bb?.bytes() ?? []) }, { transient: { signer } })
@@ -89,7 +89,7 @@ describe('getReaction', () => {
     const result = await client.getReaction(
       fid,
       reactionAddLike.body().type(),
-      reactionAddLike.body().cast() ?? new CastId()
+      (reactionAddLike.body().target(new CastId()) as CastId) ?? new CastId()
     );
     expect(result._unsafeUnwrap()).toEqual(reactionAddLike);
   });
@@ -99,7 +99,7 @@ describe('getReaction', () => {
     const result = await client.getReaction(
       fid,
       reactionAddRecast.body().type(),
-      reactionAddRecast.body().cast() ?? new CastId()
+      (reactionAddRecast.body().target(new CastId()) as CastId) ?? new CastId()
     );
     expect(result._unsafeUnwrap()).toEqual(reactionAddRecast);
   });
@@ -108,7 +108,7 @@ describe('getReaction', () => {
     const result = await client.getReaction(
       fid,
       reactionAddLike.body().type(),
-      reactionAddLike.body().cast() ?? new CastId()
+      (reactionAddLike.body().target(new CastId()) as CastId) ?? new CastId()
     );
     expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
   });
@@ -131,7 +131,7 @@ describe('getReaction', () => {
     const result = await client.getReaction(
       new Uint8Array(),
       reactionAddRecast.body().type(),
-      reactionAddRecast.body().cast() ?? new CastId()
+      (reactionAddRecast.body().target(new CastId()) as CastId) ?? new CastId()
     );
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is missing'));
   });
