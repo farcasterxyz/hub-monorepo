@@ -9,14 +9,14 @@ export type UserInfo = {
 export enum MockFCEvent {
   Cast,
   Reaction,
-  Follow,
+  Amp,
   Verification,
 }
 
 export type EventConfig = {
   Verifications: number;
   Casts: number;
-  Follows: number;
+  Amps: number;
   Reactions: number;
 };
 
