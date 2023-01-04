@@ -3,9 +3,9 @@ import { ethers } from 'ethers';
 import { KeyPair } from '~/flatbuffers/models/types';
 import { bytesToHexString } from '~/flatbuffers/utils/bytes';
 import Ed25519Signer from './signer/ed25519Signer';
-import EthereumSigner from './signer/ethereumSigner';
+import Eip712Signer from './signer/eip712Signer';
 
-export { Ed25519Signer, EthereumSigner };
+export { Ed25519Signer, Eip712Signer as EthereumSigner };
 
 export const sleep = (ms: number) => {
   return new Promise((resolve) => {
@@ -44,7 +44,7 @@ export const generateEd25519Signer = async (): Promise<Ed25519Signer> => {
  * signature type. Messages can be signed with wallet.signMessage(), which creates an EIP 191
  * version 0x45 compliant signature, and verified using wallet.verifyMessage().
  */
-export const generateEthereumSigner = async (): Promise<EthereumSigner> => {
+export const generateEthereumSigner = async (): Promise<Eip712Signer> => {
   const wallet = new ethers.Wallet(ethers.utils.randomBytes(32));
-  return new EthereumSigner(wallet);
+  return new Eip712Signer(wallet);
 };

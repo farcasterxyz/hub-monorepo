@@ -4,7 +4,7 @@ import { signMessageHash } from '~/flatbuffers/utils/eip712';
 import { HubAsyncResult } from '~/utils/hubErrors';
 import { Signer } from './types';
 
-class EthereumSigner implements Signer {
+class Eip712Signer implements Signer {
   /** 20-byte wallet address */
   public signerKey: string;
   public scheme = SignatureScheme.Eip712;
@@ -21,4 +21,4 @@ class EthereumSigner implements Signer {
   }
 }
 
-export default EthereumSigner;
+export default Eip712Signer;
