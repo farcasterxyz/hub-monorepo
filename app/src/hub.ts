@@ -33,6 +33,9 @@ import { RevokeSignerJobQueue, RevokeSignerJobScheduler } from '~/storage/jobs/r
 import { idRegistryEventToLog, logger, messageToLog, nameRegistryEventToLog } from '~/utils/logger';
 import { addressInfoFromGossip, ipFamilyToString, p2pMultiAddrStr } from '~/utils/p2p';
 
+export const APP_VERSION = process.env['npm_package_version'] ?? '1.0.0';
+export const APP_NICKNAME = 'Farcaster Hub';
+
 export interface HubOptions {
   /** The PeerId of this Hub */
   peerId?: PeerId;

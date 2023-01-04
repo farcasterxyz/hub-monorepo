@@ -6,7 +6,7 @@ import { existsSync } from 'fs';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { dirname, resolve } from 'path';
 import { exit } from 'process';
-import { Hub, HubOptions } from '~/hub';
+import { APP_VERSION, Hub, HubOptions } from '~/hub';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 
@@ -19,10 +19,7 @@ const DEFAULT_PEER_ID_FILENAME = `default_${PEER_ID_FILENAME}`;
 const DEFAULT_PEER_ID_LOCATION = `${DEFAULT_PEER_ID_DIR}/${DEFAULT_PEER_ID_FILENAME}`;
 
 const app = new Command();
-app
-  .name('hub')
-  .description('Farcaster Hub')
-  .version(process.env['npm_package_version'] ?? '1.0.0');
+app.name('hub').description('Farcaster Hub').version(APP_VERSION);
 
 app
   .command('start')

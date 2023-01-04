@@ -16,6 +16,16 @@ const defaultSyncMethod = () => {
 
 export const syncDefinition = () => {
   return {
+    getInfo: {
+      ...defaultMethod,
+      requestDeserialize: (buffer: Buffer): flatbuffers.Empty => {
+        return flatbuffers.Empty.getRootAsEmpty(toByteBuffer(buffer));
+      },
+      responseDeserialize: (buffer: Buffer): flatbuffers.HubInfoResponse => {
+        return flatbuffers.HubInfoResponse.getRootAsHubInfoResponse(toByteBuffer(buffer));
+      },
+      path: '/getInfo',
+    },
     getAllCastMessagesByFid: {
       ...defaultSyncMethod(),
       path: '/getAllCastMessagesByFid',

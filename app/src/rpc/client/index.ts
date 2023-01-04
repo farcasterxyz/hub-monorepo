@@ -2,6 +2,7 @@ import grpc, { ClientReadableStream, Metadata, MetadataValue } from '@grpc/grpc-
 import { bytesToUtf8String, utf8StringToBytes } from '@hub/bytes';
 import { HubAsyncResult, HubError, HubErrorCode } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
+import { HubInfoResponse } from '@hub/flatbuffers';
 import { ByteBuffer } from 'flatbuffers';
 import { err, ok } from 'neverthrow';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
@@ -291,6 +292,9 @@ class Client {
   /* -------------------------------------------------------------------------- */
   /*                                   Sync Methods                             */
   /* -------------------------------------------------------------------------- */
+  async getInfo(): HubAsyncResult<HubInfoResponse> {
+    return this.makeUnaryInfoRequest(definitions.syncDefinition().getInfo, requests.syncRequests.getInfoRequest());
+  }
 
   async getAllCastMessagesByFid(fid: Uint8Array): HubAsyncResult<(FBTypes.CastAddModel | FBTypes.CastRemoveModel)[]> {
     return this.makeUnaryMessagesRequest(
@@ -403,6 +407,27 @@ class Client {
   /* -------------------------------------------------------------------------- */
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
+
+  private makeUnaryInfoRequest<RequestType>(
+    method: grpc.MethodDefinition<RequestType, flatbuffers.HubInfoResponse>,
+    request: RequestType
+  ): HubAsyncResult<HubInfoResponse> {
+    return new Promise((resolve) => {
+      this.client.makeUnaryRequest(
+        method.path,
+        method.requestSerialize,
+        method.responseDeserialize,
+        request,
+        (e: grpc.ServiceError | null, response?: flatbuffers.HubInfoResponse) => {
+          if (e) {
+            resolve(err(fromServiceError(e)));
+          } else if (response) {
+            resolve(ok(response));
+          }
+        }
+      );
+    });
+  }
 
   private makeUnarySyncNodeMetadataRequest<RequestType>(
     method: grpc.MethodDefinition<RequestType, flatbuffers.TrieNodeMetadataResponse>,
