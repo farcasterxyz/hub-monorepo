@@ -1,8 +1,8 @@
 import * as flatbuffers from '@hub/flatbuffers';
 import { blake3 } from '@noble/hashes/blake3';
-import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
+import { EthereumSigner, generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
 import { EthersMessageSigner } from '../messageSigner';
-import { EthereumSigner, KeyPair, SignerAddModel } from '../models/types';
+import { KeyPair, SignerAddModel } from '../models/types';
 import { bytesToHexString, hexStringToBytes, numberToBytes } from '../utils/bytes';
 import { verifyMessageHashSignature } from '../utils/eip712';
 import { SignerMessageBuilder } from './messageBuilder';
