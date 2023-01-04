@@ -1,4 +1,6 @@
 import { faker } from '@faker-js/faker';
+import { hexStringToBytes } from '@hub/bytes';
+import { HubError } from '@hub/errors';
 import * as message_generated from '@hub/flatbuffers';
 import { utils, Wallet } from 'ethers';
 import { bytesToBigNumber } from '~/eth/utils';
@@ -9,8 +11,6 @@ import * as validations from '~/flatbuffers/models/validations';
 import { signVerificationEthAddressClaim } from '~/flatbuffers/utils/eip712';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { generateEd25519KeyPair } from '~/utils/crypto';
-import { HubError } from '~/utils/hubErrors';
-import { hexStringToBytes } from '../utils/bytes';
 
 let wallet: Wallet;
 let signer: types.KeyPair;

@@ -1,3 +1,5 @@
+import { hexStringToBytes } from '@hub/bytes';
+import { HubResult } from '@hub/errors';
 import { utils, Wallet } from 'ethers';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
@@ -16,7 +18,6 @@ import {
   VerificationAddEthAddressModel,
   VerificationRemoveModel,
 } from '~/flatbuffers/models/types';
-import { hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import SyncEngine from '~/network/sync/syncEngine';
 import Client from '~/rpc/client';
 import Server from '~/rpc/server';
@@ -24,7 +25,6 @@ import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
 import { generateEd25519KeyPair } from '~/utils/crypto';
-import { HubResult } from '~/utils/hubErrors';
 
 const db = jestRocksDB('flatbuffers.rpc.syncService.test');
 const engine = new Engine(db);

@@ -1,10 +1,10 @@
 import { KeyPair } from '@chainsafe/libp2p-noise/dist/src/@types/libp2p';
+import { hexStringToBytes } from '@hub/bytes';
 import { utils, Wallet } from 'ethers';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastRemoveModel, SignerAddModel } from '~/flatbuffers/models/types';
-import { hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';
 import Client from '~/rpc/client';

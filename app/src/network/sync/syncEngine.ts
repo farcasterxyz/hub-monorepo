@@ -1,13 +1,13 @@
+import { utf8StringToBytes } from '@hub/bytes';
+import { HubError, HubResult } from '@hub/errors';
 import { err } from 'neverthrow';
 import MessageModel from '~/flatbuffers/models/messageModel';
-import { utf8StringToBytes } from '~/flatbuffers/utils/bytes';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
 import { TrieSnapshot } from '~/network/sync/trieNode';
 import Client from '~/rpc/client';
 import Engine from '~/storage/engine';
-import { HubError, HubResult } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only

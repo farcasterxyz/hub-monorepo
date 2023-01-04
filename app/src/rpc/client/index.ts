@@ -1,4 +1,6 @@
 import grpc, { ClientReadableStream, Metadata, MetadataValue } from '@grpc/grpc-js';
+import { bytesToUtf8String, utf8StringToBytes } from '@hub/bytes';
+import { HubAsyncResult, HubError, HubErrorCode } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
 import { ByteBuffer } from 'flatbuffers';
 import { err, ok } from 'neverthrow';
@@ -6,12 +8,10 @@ import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import * as FBTypes from '~/flatbuffers/models/types';
-import { bytesToUtf8String, utf8StringToBytes } from '~/flatbuffers/utils/bytes';
 import { NodeMetadata } from '~/network/sync/merkleTrie';
 import { TrieSnapshot } from '~/network/sync/trieNode';
 import * as requests from '~/rpc/client/serviceRequests';
 import * as definitions from '~/rpc/serviceDefinitions';
-import { HubAsyncResult, HubError, HubErrorCode } from '~/utils/hubErrors';
 
 const fromServiceError = (err: grpc.ServiceError): HubError => {
   return new HubError(err.metadata.get('errCode')[0] as HubErrorCode, err.details);

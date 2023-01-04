@@ -1,12 +1,12 @@
+import { bytesCompare } from '@hub/bytes';
+import { HubAsyncResult, HubError } from '@hub/errors';
 import { MessageType } from '@hub/flatbuffers';
 import { ok, ResultAsync } from 'neverthrow';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { isVerificationAddEthAddress, isVerificationRemove } from '~/flatbuffers/models/typeguards';
 import * as types from '~/flatbuffers/models/types';
-import { bytesCompare } from '~/flatbuffers/utils/bytes';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 50;
 

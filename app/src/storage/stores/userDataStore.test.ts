@@ -1,3 +1,5 @@
+import { bytesIncrement, hexStringToBytes } from '@hub/bytes';
+import { HubError } from '@hub/errors';
 import { NameRegistryEventType, UserDataType } from '@hub/flatbuffers';
 import { utils, Wallet } from 'ethers';
 import Factories from '~/flatbuffers/factories';
@@ -5,14 +7,12 @@ import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { KeyPair, SignerAddModel, UserDataAddModel, UserPostfix } from '~/flatbuffers/models/types';
-import { bytesIncrement, hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import UserDataStore from '~/storage/stores/userDataStore';
 import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
-import { HubError } from '~/utils/hubErrors';
 
 const db = jestRocksDB('flatbuffers.userDataSet.test');
 

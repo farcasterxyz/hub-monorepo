@@ -1,3 +1,4 @@
+import { toByteBuffer } from '@hub/bytes';
 import {
   GetNameRegistryEventRequest,
   GetUserDataByFidRequest,
@@ -6,7 +7,6 @@ import {
   MessagesResponse,
   NameRegistryEvent,
 } from '@hub/flatbuffers';
-import { toByteBuffer } from '~/flatbuffers/utils/bytes';
 import { defaultMethod } from '~/rpc/client';
 
 export const userDataDefinition = () => {

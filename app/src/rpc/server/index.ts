@@ -1,16 +1,16 @@
 import grpc from '@grpc/grpc-js';
+import { utf8StringToBytes } from '@hub/bytes';
+import { HubError } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { HubInterface } from '~/flatbuffers/models/types';
-import { utf8StringToBytes } from '~/flatbuffers/utils/bytes';
 import { NodeMetadata } from '~/network/sync/merkleTrie';
 import SyncEngine from '~/network/sync/syncEngine';
 import { TrieSnapshot } from '~/network/sync/trieNode';
 import * as implementations from '~/rpc/server/serviceImplementations';
 import * as definitions from '~/rpc/serviceDefinitions';
 import Engine from '~/storage/engine';
-import { HubError } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts } from '~/utils/p2p';
 

@@ -1,3 +1,4 @@
+import { hexStringToBytes } from '@hub/bytes';
 import { MessageType } from '@hub/flatbuffers';
 import { utils, Wallet } from 'ethers';
 import { ok } from 'neverthrow';
@@ -6,7 +7,6 @@ import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastAddModel, CastRemoveModel, KeyPair, SignerAddModel } from '~/flatbuffers/models/types';
-import { hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';

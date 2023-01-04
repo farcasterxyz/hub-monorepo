@@ -7,8 +7,8 @@ import {
   bytesToUtf8String,
   hexStringToBytes,
   numberToBytes,
-} from '~/flatbuffers/utils/bytes';
-import { HubError } from '~/utils/hubErrors';
+} from '@hub/bytes';
+import { HubError } from '@hub/errors';
 
 describe('bytesCompare', () => {
   const cases: [Uint8Array, Uint8Array, number][] = [

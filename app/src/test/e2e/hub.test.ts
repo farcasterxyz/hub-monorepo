@@ -9,7 +9,7 @@
 // import { Factories } from '~/test/factories';
 // import { Message } from '~/types';
 // import { sleep } from '~/utils/crypto';
-// import { HubError } from '~/utils/hubErrors';
+// import { HubError } from '@hub/errors';
 
 test('empty test', () => {
   // TODO: re-write file with flatbuffers

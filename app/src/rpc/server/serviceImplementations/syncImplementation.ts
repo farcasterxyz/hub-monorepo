@@ -1,9 +1,10 @@
 import grpc from '@grpc/grpc-js';
+import { bytesToUtf8String } from '@hub/bytes';
+import { HubError } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import * as types from '~/flatbuffers/models/types';
-import { bytesToUtf8String } from '~/flatbuffers/utils/bytes';
 import SyncEngine from '~/network/sync/syncEngine';
 import {
   toMessagesResponse,
@@ -13,7 +14,6 @@ import {
   toTrieNodeSnapshotResponse,
 } from '~/rpc/server';
 import Engine from '~/storage/engine';
-import { HubError } from '~/utils/hubErrors';
 
 export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
   return {

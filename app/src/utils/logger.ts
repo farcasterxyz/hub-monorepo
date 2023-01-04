@@ -1,8 +1,8 @@
+import { bytesToHexString, bytesToNumber } from '@hub/bytes';
 import { default as Pino } from 'pino';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
-import { bytesToHexString, bytesToNumber } from '~/flatbuffers/utils/bytes';
 import { fromFarcasterTime } from '~/flatbuffers/utils/time';
 
 /**

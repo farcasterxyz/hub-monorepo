@@ -1,3 +1,5 @@
+import { bytesIncrement, bytesToNumber, numberToBytes } from '@hub/bytes';
+import { HubAsyncResult, HubError, HubResult } from '@hub/errors';
 import { RevokeSignerJobPayload, RevokeSignerJobPayloadT } from '@hub/flatbuffers';
 import { blake3 } from '@noble/hashes/blake3';
 import { Builder, ByteBuffer } from 'flatbuffers';
@@ -6,10 +8,8 @@ import cron from 'node-cron';
 import AbstractRocksDB from 'rocksdb';
 import { RootPrefix } from '~/flatbuffers/models/types';
 import { validateEd25519PublicKey, validateEthAddress, validateFid } from '~/flatbuffers/models/validations';
-import { bytesIncrement, bytesToNumber, numberToBytes } from '~/flatbuffers/utils/bytes';
 import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
-import { HubAsyncResult, HubError, HubResult } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
 
 export const DEFAULT_REVOKE_SIGNER_JOB_DELAY = 1000 * 60 * 60; // 1 hour in ms

@@ -1,8 +1,8 @@
+import { bytesToHexString } from '@hub/bytes';
 import { SignatureScheme } from '@hub/flatbuffers';
 import * as ed from '@noble/ed25519';
 import { ethers } from 'ethers';
 import { Ed25519Signer, EthereumSigner, KeyPair } from '~/flatbuffers/models/types';
-import { bytesToHexString } from '~/flatbuffers/utils/bytes';
 
 export const sleep = (ms: number) => {
   return new Promise((resolve) => {

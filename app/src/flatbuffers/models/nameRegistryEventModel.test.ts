@@ -1,9 +1,9 @@
+import { hexStringToBytes } from '@hub/bytes';
 import { NameRegistryEventType } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { generateEthereumSigner } from '~/utils/crypto';
-import { hexStringToBytes } from '../utils/bytes';
 
 const db = jestRocksDB('flatbuffers.nameRegistryEventModel.test');
 

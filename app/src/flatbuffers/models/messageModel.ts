@@ -1,9 +1,9 @@
+import { HubError } from '@hub/errors';
 import * as message_generated from '@hub/flatbuffers';
 import { ByteBuffer } from 'flatbuffers';
 import AbstractRocksDB from 'rocksdb';
 import { RootPrefix, UserMessagePostfix, UserPostfix } from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
-import { HubError } from '~/utils/hubErrors';
 
 /** Used when index keys are sufficiently descriptive */
 export const TRUE_VALUE = Buffer.from([1]);

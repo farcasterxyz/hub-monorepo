@@ -1,5 +1,5 @@
+import { HubError } from '@hub/errors';
 import { FARCASTER_EPOCH, fromFarcasterTime, toFarcasterTime } from '~/flatbuffers/utils/time';
-import { HubError } from '~/utils/hubErrors';
 
 describe('fromFarcasterTime', () => {
   test('returns seconds since 01/01/2022', () => {
