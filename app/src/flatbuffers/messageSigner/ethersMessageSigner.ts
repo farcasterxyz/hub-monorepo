@@ -1,6 +1,7 @@
 import { SignatureScheme } from '@hub/flatbuffers';
 import { ethers } from 'ethers';
-import { arrayify } from 'ethers/lib/utils';
+import { HubAsyncResult } from '~/utils/hubErrors';
+import { hexStringToBytes } from '../utils/bytes';
 import { signMessageHash } from '../utils/eip712';
 import { IMessageSigner } from './types';
 
@@ -13,11 +14,11 @@ class EthersMessageSigner implements IMessageSigner {
 
   constructor(wallet: ethers.Wallet) {
     this.wallet = wallet;
-    this.signerKey = arrayify(wallet.address);
+    this.signerKey = hexStringToBytes(wallet.address)._unsafeUnwrap();
   }
 
   /** generates 256-bit signature from an Ethereum address */
-  public async sign(hash: Uint8Array): Promise<Uint8Array> {
+  public sign(hash: Uint8Array): HubAsyncResult<Uint8Array> {
     return signMessageHash(hash, this.wallet);
   }
 }

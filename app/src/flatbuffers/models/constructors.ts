@@ -1,9 +1,9 @@
 import * as flatbuffers from '@hub/flatbuffers';
+import { SignerBodyT } from '@hub/flatbuffers';
 import { blake3 } from '@noble/hashes/blake3';
-import { arrayify } from 'ethers/lib/utils';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { EthersMessageSigner, IMessageSigner } from '../messageSigner';
-import { numberToLittleEndianBytes } from '../utils/bytes';
+import { hexStringToBytes, numberToBytes } from '../utils/bytes';
 import { getFarcasterTime } from '../utils/time';
 import MessageModel from './messageModel';
 import { SignerAddModel, SignerRemoveModel } from './types';
@@ -26,7 +26,7 @@ export const makeSignerAddModel = async ({
   publicKey,
   ...rest
 }: SignerMessageBaseOptions<SignerAddOptions>): Promise<SignerAddModel> => {
-  const body = new flatbuffers.SignerBodyT(Array.from(arrayify(publicKey)));
+  const body = makeSignerBodyT(publicKey);
   const model = await makeMessageModel({
     bodyType: flatbuffers.MessageBody.SignerBody,
     body,
@@ -46,7 +46,7 @@ export const makeSignerRemoveModel = async ({
   publicKey,
   ...rest
 }: SignerMessageBaseOptions<SignerRemoveOptions>): Promise<SignerAddModel> => {
-  const body = new flatbuffers.SignerBodyT(Array.from(arrayify(publicKey)));
+  const body = makeSignerBodyT(publicKey);
   const model = await makeMessageModel({
     bodyType: flatbuffers.MessageBody.SignerBody,
     body,
@@ -67,7 +67,7 @@ type MakeMessageModelOptions = {
 };
 
 const makeMessageModel = async ({ bodyType, body, messageType, signer, fid, network }: MakeMessageModelOptions) => {
-  const fidBytesResult = numberToLittleEndianBytes(fid);
+  const fidBytesResult = numberToBytes(fid);
   // TODO consider how errors should be reported
   if (fidBytesResult.isErr()) {
     throw new Error('invalid fid');
@@ -94,7 +94,7 @@ type MakeMessageOptions = {
 const makeMessage = async ({ data, signer }: MakeMessageOptions): Promise<flatbuffers.Message> => {
   const dataBytes = data.bb?.bytes() ?? new Uint8Array();
   const hash = await blake3(dataBytes, { dkLen: 16 });
-  const signature = await signer.sign(hash);
+  const signature = (await signer.sign(hash))._unsafeUnwrap();
   const message = new flatbuffers.MessageT(
     Array.from(dataBytes),
     Array.from(hash),
@@ -131,4 +131,14 @@ const makeMessageData = ({
   builder.finish(messageData.pack(builder));
 
   return flatbuffers.MessageData.getRootAsMessageData(new ByteBuffer(builder.asUint8Array()));
+};
+
+const makeSignerBodyT = (publicKey: string): SignerBodyT => {
+  const publicKeyBytes = hexStringToBytes(publicKey);
+  if (publicKeyBytes.isErr()) {
+    // TODO refactor to HubResult
+    throw publicKeyBytes.error;
+  }
+
+  return new flatbuffers.SignerBodyT(Array.from(publicKeyBytes.value));
 };

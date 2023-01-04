@@ -1,10 +1,9 @@
 import * as flatbuffers from '@hub/flatbuffers';
 import { blake3 } from '@noble/hashes/blake3';
-import { arrayify, hexlify } from 'ethers/lib/utils';
 import { generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
 import { EthersMessageSigner } from '../messageSigner';
 import { EthereumSigner, KeyPair, SignerAddModel } from '../models/types';
-import { numberToLittleEndianBytes } from '../utils/bytes';
+import { bytesToHexString, hexStringToBytes, numberToBytes } from '../utils/bytes';
 import { verifyMessageHashSignature } from '../utils/eip712';
 import { SignerMessageBuilder } from './messageBuilder';
 
@@ -30,13 +29,13 @@ describe('SignerMessageBuilder', () => {
       beforeAll(async () => {
         newSigner = await generateEd25519KeyPair();
         message = await builder.makeSignerAdd({
-          publicKey: hexlify(newSigner.publicKey),
+          publicKey: bytesToHexString(newSigner.publicKey)._unsafeUnwrap(),
         });
         messageBody = message.body();
       });
 
       test('generates signer', async () => {
-        expect(message.signer()).toEqual(arrayify(ethereumSigner.wallet.address));
+        expect(message.signer()).toEqual(hexStringToBytes(ethereumSigner.wallet.address)._unsafeUnwrap());
       });
 
       test('generates hash', async () => {
@@ -49,7 +48,9 @@ describe('SignerMessageBuilder', () => {
 
       test('generates signature', async () => {
         const recoveredAddress = verifyMessageHashSignature(message.hash(), message.signature());
-        expect(recoveredAddress).toEqual(arrayify(ethereumSigner.wallet.address));
+        expect(recoveredAddress._unsafeUnwrap()).toEqual(
+          hexStringToBytes(ethereumSigner.wallet.address)._unsafeUnwrap()
+        );
       });
 
       test('generates signature scheme', async () => {
@@ -62,7 +63,7 @@ describe('SignerMessageBuilder', () => {
         });
 
         test('generates fid', async () => {
-          expect(message.data.fidArray()).toEqual(numberToLittleEndianBytes(fid)._unsafeUnwrap());
+          expect(message.data.fidArray()).toEqual(numberToBytes(fid)._unsafeUnwrap());
         });
 
         test('generates type', () => {
