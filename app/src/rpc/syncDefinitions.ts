@@ -19,6 +19,16 @@ const defaultMethodDefinition = {
 
 export const syncDefinition = () => {
   return {
+    getInfo: {
+      ...defaultMethodDefinition,
+      requestDeserialize: (buffer: Buffer): flatbuffers.Empty => {
+        return flatbuffers.Empty.getRootAsEmpty(toByteBuffer(buffer));
+      },
+      responseDeserialize: (buffer: Buffer): flatbuffers.HubInfoResponse => {
+        return flatbuffers.HubInfoResponse.getRootAsHubInfoResponse(toByteBuffer(buffer));
+      },
+      path: '/getInfo',
+    },
     getAllSyncIdsByPrefix: {
       ...defaultMethodDefinition,
       requestDeserialize: (buffer: Buffer): flatbuffers.GetTrieNodesByPrefixRequest => {

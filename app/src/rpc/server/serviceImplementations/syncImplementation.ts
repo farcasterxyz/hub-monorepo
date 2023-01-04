@@ -4,6 +4,7 @@ import { HubError } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import MessageModel from '~/flatbuffers/models/messageModel';
+import { APP_NICKNAME, APP_VERSION } from '~/hub';
 import SyncEngine from '~/network/sync/syncEngine';
 import {
   toMessagesResponse,
@@ -16,6 +17,22 @@ import Engine from '~/storage/engine';
 
 export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
   return {
+    getInfo: async (
+      call: grpc.ServerUnaryCall<flatbuffers.Empty, flatbuffers.HubInfoResponse>,
+      callback: grpc.sendUnaryData<flatbuffers.HubInfoResponse>
+    ) => {
+      const infoT = new flatbuffers.HubInfoResponseT(
+        APP_VERSION,
+        syncEngine.isSyncing(),
+        APP_NICKNAME,
+        syncEngine.trie.rootHash
+      );
+      const builder = new Builder(1);
+      builder.finish(infoT.pack(builder));
+      const response = flatbuffers.HubInfoResponse.getRootAsHubInfoResponse(new ByteBuffer(builder.asUint8Array()));
+      callback(null, response);
+    },
+
     getAllSyncIdsByPrefix: async (
       call: grpc.ServerUnaryCall<flatbuffers.GetTrieNodesByPrefixRequest, flatbuffers.GetAllSyncIdsByPrefixResponse>,
       callback: grpc.sendUnaryData<flatbuffers.GetAllSyncIdsByPrefixResponse>

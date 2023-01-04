@@ -2,6 +2,7 @@ import grpc from '@grpc/grpc-js';
 import { bytesToUtf8String, utf8StringToBytes } from '@hub/bytes';
 import { HubAsyncResult, HubError, HubErrorCode } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
+import { HubInfoResponse } from '@hub/flatbuffers';
 import Client from '@hub/grpc-client';
 import { ByteBuffer } from 'flatbuffers';
 import { err, ok } from 'neverthrow';
@@ -83,6 +84,9 @@ class HubClient extends Client {
   /* -------------------------------------------------------------------------- */
   /*                                   Sync Methods                             */
   /* -------------------------------------------------------------------------- */
+  async getInfo(): HubAsyncResult<HubInfoResponse> {
+    return this.makeUnaryInfoRequest(syncDefinition().getInfo, syncRequests.getInfoRequest());
+  }
 
   async getSyncMetadataByPrefix(prefix: string): HubAsyncResult<NodeMetadata> {
     return this.makeUnarySyncNodeMetadataRequest(
@@ -119,6 +123,27 @@ class HubClient extends Client {
   /* -------------------------------------------------------------------------- */
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
+
+  private makeUnaryInfoRequest<RequestType>(
+    method: grpc.MethodDefinition<RequestType, flatbuffers.HubInfoResponse>,
+    request: RequestType
+  ): HubAsyncResult<HubInfoResponse> {
+    return new Promise((resolve) => {
+      this.client.makeUnaryRequest(
+        method.path,
+        method.requestSerialize,
+        method.responseDeserialize,
+        request,
+        (e: grpc.ServiceError | null, response?: flatbuffers.HubInfoResponse) => {
+          if (e) {
+            resolve(err(fromServiceError(e)));
+          } else if (response) {
+            resolve(ok(response));
+          }
+        }
+      );
+    });
+  }
 
   private makeUnarySyncNodeMetadataRequest<RequestType>(
     method: grpc.MethodDefinition<RequestType, flatbuffers.TrieNodeMetadataResponse>,
