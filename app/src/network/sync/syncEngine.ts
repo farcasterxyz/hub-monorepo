@@ -1,6 +1,6 @@
-import { arrayify } from 'ethers/lib/utils';
 import { err } from 'neverthrow';
 import MessageModel from '~/flatbuffers/models/messageModel';
+import { utf8StringToBytes } from '~/flatbuffers/utils/bytes';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
@@ -103,7 +103,7 @@ class SyncEngine {
     }
 
     const messages = await rpcClient.getAllMessagesBySyncIds(
-      syncIDs.map((syncIdhash) => arrayify(Buffer.from(syncIdhash)))
+      syncIDs.map((syncIdhash) => utf8StringToBytes(syncIdhash)._unsafeUnwrap())
     );
     await messages.match(
       async (msgs) => {
