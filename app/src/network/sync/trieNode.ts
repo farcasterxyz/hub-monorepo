@@ -1,6 +1,6 @@
+import { HubError } from '@hub/errors';
 import { blake3 } from '@noble/hashes/blake3';
 import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
-import { HubError } from '~/utils/hubErrors';
 
 /**
  * A snapshot of the trie at a particular timestamp which can be used to determine if two

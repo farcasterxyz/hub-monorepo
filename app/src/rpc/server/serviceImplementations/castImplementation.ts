@@ -1,10 +1,10 @@
 import grpc from '@grpc/grpc-js';
+import { HubError } from '@hub/errors';
 import * as rpc_generated from '@hub/flatbuffers';
 import { CastId, Message, UserId } from '@hub/flatbuffers';
 import { CastAddModel } from '~/flatbuffers/models/types';
 import { toMessagesResponse, toServiceError } from '~/rpc/server';
 import Engine from '~/storage/engine';
-import { HubError } from '~/utils/hubErrors';
 
 export const castImplementation = (engine: Engine) => {
   return {

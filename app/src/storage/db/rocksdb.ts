@@ -1,8 +1,8 @@
+import { bytesIncrement } from '@hub/bytes';
+import { HubError } from '@hub/errors';
 import { AbstractBatch, AbstractChainedBatch } from 'abstract-leveldown';
 import { mkdir } from 'fs';
 import AbstractRocksDB from 'rocksdb';
-import { bytesIncrement } from '~/flatbuffers/utils/bytes';
-import { HubError } from '~/utils/hubErrors';
 
 const DB_PREFIX = '.rocks';
 const DB_NAME_DEFAULT = 'farcaster';

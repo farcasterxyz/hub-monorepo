@@ -1,3 +1,5 @@
+import { bytesCompare, bytesToNumber } from '@hub/bytes';
+import { HubAsyncResult, HubError, HubResult } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
 import { err, errAsync, ok, ResultAsync } from 'neverthrow';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
@@ -7,7 +9,6 @@ import { isSignerAdd, isSignerRemove, isUserDataAdd } from '~/flatbuffers/models
 import * as types from '~/flatbuffers/models/types';
 import { RootPrefix } from '~/flatbuffers/models/types';
 import * as validations from '~/flatbuffers/models/validations';
-import { bytesCompare, bytesToNumber } from '~/flatbuffers/utils/bytes';
 import { SyncId } from '~/network/sync/syncId';
 import RocksDB from '~/storage/db/rocksdb';
 import AmpStore from '~/storage/stores/ampStore';
@@ -17,7 +18,6 @@ import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import UserDataStore from '~/storage/stores/userDataStore';
 import VerificationStore from '~/storage/stores/verificationStore';
-import { HubAsyncResult, HubError, HubResult } from '~/utils/hubErrors';
 
 class Engine {
   public eventHandler: StoreEventHandler;

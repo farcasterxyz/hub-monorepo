@@ -1,11 +1,11 @@
 import grpc from '@grpc/grpc-js';
+import { HubError } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import { SignerAddModel } from '~/flatbuffers/models/types';
 import { toMessagesResponse, toServiceError } from '~/rpc/server';
 import Engine from '~/storage/engine';
-import { HubError } from '~/utils/hubErrors';
 
 export const signerImplementation = (engine: Engine) => {
   return {

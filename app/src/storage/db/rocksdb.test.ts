@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
+import { HubError } from '@hub/errors';
 import { existsSync, mkdirSync, rmdirSync } from 'fs';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import RocksDB from '~/storage/db/rocksdb';
-import { HubError } from '~/utils/hubErrors';
 
 const randomDbName = () => `rocksdb.test.${faker.name.lastName().toLowerCase()}.${faker.random.alphaNumeric(8)}`;
 

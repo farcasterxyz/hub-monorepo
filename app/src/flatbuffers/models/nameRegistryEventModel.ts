@@ -1,8 +1,8 @@
+import { HubError } from '@hub/errors';
 import { NameRegistryEvent, NameRegistryEventType } from '@hub/flatbuffers';
 import { ByteBuffer } from 'flatbuffers';
 import { RootPrefix } from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
-import { HubError } from '~/utils/hubErrors';
 
 /** NameRegistryEventModel provides helpers to read and write Flatbuffers NameRegistryEvents from RocksDB */
 export default class NameRegistryEventModel {

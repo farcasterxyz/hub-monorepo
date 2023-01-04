@@ -1,13 +1,13 @@
+import { bytesDecrement, bytesIncrement } from '@hub/bytes';
+import { HubError } from '@hub/errors';
 import { CastId, MessageType, ReactionType } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { ReactionAddModel, ReactionRemoveModel, UserPostfix } from '~/flatbuffers/models/types';
-import { bytesDecrement, bytesIncrement } from '~/flatbuffers/utils/bytes';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import ReactionStore from '~/storage/stores/reactionStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import { HubError } from '~/utils/hubErrors';
 
 const db = jestRocksDB('flatbuffers.reactionStore.test');
 const eventHandler = new StoreEventHandler();

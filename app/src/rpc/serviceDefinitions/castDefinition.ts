@@ -1,6 +1,6 @@
+import { toByteBuffer } from '@hub/bytes';
 import * as rpc_generated from '@hub/flatbuffers';
 import { Message } from '@hub/flatbuffers';
-import { toByteBuffer } from '~/flatbuffers/utils/bytes';
 import { defaultMethod } from '~/rpc/client';
 
 export const castDefinition = () => {

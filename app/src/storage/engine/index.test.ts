@@ -1,3 +1,5 @@
+import { hexStringToBytes } from '@hub/bytes';
+import { HubError } from '@hub/errors';
 import { CastId, IdRegistryEventType, MessageType, NameRegistryEventType } from '@hub/flatbuffers';
 import { utils, Wallet } from 'ethers';
 import { err, ok } from 'neverthrow';
@@ -7,7 +9,6 @@ import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import * as types from '~/flatbuffers/models/types';
 import { KeyPair } from '~/flatbuffers/models/types';
-import { hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import AmpStore from '~/storage/stores/ampStore';
@@ -17,7 +18,6 @@ import SignerStore from '~/storage/stores/signerStore';
 import UserDataStore from '~/storage/stores/userDataStore';
 import VerificationStore from '~/storage/stores/verificationStore';
 import { generateEd25519KeyPair } from '~/utils/crypto';
-import { HubError } from '~/utils/hubErrors';
 
 const db = jestRocksDB('flatbuffers.engine.test');
 const engine = new Engine(db);

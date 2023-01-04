@@ -3597,7 +3597,7 @@ flat-cache@^3.0.4:
     flatted "^3.1.0"
     rimraf "^3.0.2"
 
-flatbuffers@^22.11.23:
+flatbuffers@^22.11.23, flatbuffers@^22.12.6:
   version "22.12.6"
   resolved "https://registry.npmjs.org/flatbuffers/-/flatbuffers-22.12.6.tgz#1a462160f325a0575067b364af7c7cab090a85b1"
   integrity sha512-CEwO0TRo6Z2dQ9iIfVAUC+BipwUnP2g8paCNqnrSsTh/axisRgzOwWyqTiPJMh8Si9QwhROjZ/FsFMfoESP33A==

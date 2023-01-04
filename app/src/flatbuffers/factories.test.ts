@@ -1,3 +1,4 @@
+import { bytesToHexString } from '@hub/bytes';
 import * as message_generated from '@hub/flatbuffers';
 import { GossipAddressInfoT, GossipContent, GossipMessage } from '@hub/flatbuffers';
 import { isPeerId } from '@libp2p/interface-peer-id';
@@ -10,7 +11,6 @@ import { VerificationEthAddressClaim } from '~/flatbuffers/models/types';
 import { verifyVerificationEthAddressClaimSignature } from '~/flatbuffers/utils/eip712';
 import { toFarcasterTime } from '~/flatbuffers/utils/time';
 import { GOSSIP_PROTOCOL_VERSION } from '~/network/p2p/protocol';
-import { bytesToHexString } from './utils/bytes';
 
 describe('UserIdFactory', () => {
   test('accepts fid', async () => {

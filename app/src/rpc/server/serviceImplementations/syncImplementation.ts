@@ -1,4 +1,5 @@
 import grpc from '@grpc/grpc-js';
+import { HubError } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import MessageModel from '~/flatbuffers/models/messageModel';
@@ -12,7 +13,6 @@ import {
   toTrieNodeSnapshotResponse,
 } from '~/rpc/server';
 import Engine from '~/storage/engine';
-import { HubError } from '~/utils/hubErrors';
 
 export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
   return {

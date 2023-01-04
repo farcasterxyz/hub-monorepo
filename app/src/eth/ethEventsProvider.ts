@@ -1,5 +1,7 @@
 import * as flatbuffers from '@hub/flatbuffers';
 
+import { hexStringToBytes } from '@hub/bytes';
+import { HubAsyncResult } from '@hub/errors';
 import { BigNumber, Contract, Event, providers } from 'ethers';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { err, ok, ResultAsync } from 'neverthrow';
@@ -9,8 +11,6 @@ import HubStateModel from '~/flatbuffers/models/hubStateModel';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { HubInterface } from '~/flatbuffers/models/types';
-import { hexStringToBytes } from '~/flatbuffers/utils/bytes';
-import { HubAsyncResult } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
 
 const log = logger.child({

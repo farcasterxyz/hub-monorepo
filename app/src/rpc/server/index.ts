@@ -1,4 +1,5 @@
 import grpc from '@grpc/grpc-js';
+import { HubError } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
 import { arrayify } from 'ethers/lib/utils';
 import { Builder, ByteBuffer } from 'flatbuffers';
@@ -10,7 +11,6 @@ import { TrieSnapshot } from '~/network/sync/trieNode';
 import * as implementations from '~/rpc/server/serviceImplementations';
 import * as definitions from '~/rpc/serviceDefinitions';
 import Engine from '~/storage/engine';
-import { HubError } from '~/utils/hubErrors';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts } from '~/utils/p2p';
 

@@ -1,4 +1,5 @@
 import grpc, { ClientReadableStream, Metadata, MetadataValue } from '@grpc/grpc-js';
+import { HubAsyncResult, HubError, HubErrorCode } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
 import { arrayify } from 'ethers/lib/utils';
 import { ByteBuffer } from 'flatbuffers';
@@ -11,7 +12,6 @@ import { NodeMetadata } from '~/network/sync/merkleTrie';
 import { TrieSnapshot } from '~/network/sync/trieNode';
 import * as requests from '~/rpc/client/serviceRequests';
 import * as definitions from '~/rpc/serviceDefinitions';
-import { HubAsyncResult, HubError, HubErrorCode } from '~/utils/hubErrors';
 
 const fromServiceError = (err: grpc.ServiceError): HubError => {
   return new HubError(err.metadata.get('errCode')[0] as HubErrorCode, err.details);

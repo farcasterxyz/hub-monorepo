@@ -1,9 +1,9 @@
+import { hexStringToBytes } from '@hub/bytes';
 import { ethers } from 'ethers';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { SignerAddModel } from '~/flatbuffers/models/types';
-import { hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import Engine from '~/storage/engine';
 
 /** Util to seed engine with all the data needed to make a signer valid for an fid */

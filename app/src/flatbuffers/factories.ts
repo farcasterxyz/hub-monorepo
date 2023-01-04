@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker';
+import { bytesToHexString, hexStringToBytes, numberToBytes } from '@hub/bytes';
 import * as gossip_generated from '@hub/flatbuffers';
 import * as id_registry_event_generated from '@hub/flatbuffers';
 import * as job_generated from '@hub/flatbuffers';
@@ -14,7 +15,6 @@ import { Builder, ByteBuffer } from 'flatbuffers';
 import { bytesToBigNumber } from '~/eth/utils';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { KeyPair, SignerAddModel, VerificationEthAddressClaim } from '~/flatbuffers/models/types';
-import { bytesToHexString, hexStringToBytes, numberToBytes } from '~/flatbuffers/utils/bytes';
 import { signMessageHash, signVerificationEthAddressClaim } from '~/flatbuffers/utils/eip712';
 import { toFarcasterTime } from '~/flatbuffers/utils/time';
 import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';

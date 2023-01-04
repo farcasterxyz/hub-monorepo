@@ -1,0 +1,19 @@
+{
+  "name": "@hub/bytes",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "type": "module",
+  "license": "MIT",
+  "dependencies": {
+    "flatbuffers": "^22.12.6",
+    "neverthrow": "^6.0.0"
+  },
+  "scripts": {
+    "build": "yarn clean && tsc --project ./tsconfig.json",
+    "clean": "rm -rf ./build",
+    "lint": "eslint  src/ --color --ext .ts",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"
+  }
+}
