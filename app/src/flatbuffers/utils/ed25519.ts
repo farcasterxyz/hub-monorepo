@@ -5,3 +5,14 @@ import { HubAsyncResult, HubError } from '~/utils/hubErrors';
 export const signMessageHash = async (hash: Uint8Array, privateKey: Uint8Array): HubAsyncResult<Uint8Array> => {
   return ResultAsync.fromPromise(ed.sign(hash, privateKey), (err) => new HubError('bad_request', err as Error));
 };
+
+export const verifyMessageHashSignature = async (
+  signature: Uint8Array,
+  hash: Uint8Array,
+  publicKey: Uint8Array
+): HubAsyncResult<boolean> => {
+  return ResultAsync.fromPromise(
+    ed.verify(signature, hash, publicKey),
+    (err) => new HubError('bad_request', err as Error)
+  );
+};
