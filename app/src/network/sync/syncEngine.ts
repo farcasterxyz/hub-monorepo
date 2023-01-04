@@ -1,5 +1,5 @@
+import { utf8StringToBytes } from '@hub/bytes';
 import { HubError, HubResult } from '@hub/errors';
-import { arrayify } from 'ethers/lib/utils';
 import { err } from 'neverthrow';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
@@ -103,7 +103,7 @@ class SyncEngine {
     }
 
     const messages = await rpcClient.getAllMessagesBySyncIds(
-      syncIDs.map((syncIdhash) => arrayify(Buffer.from(syncIdhash)))
+      syncIDs.map((syncIdhash) => utf8StringToBytes(syncIdhash)._unsafeUnwrap())
     );
     await messages.match(
       async (msgs) => {

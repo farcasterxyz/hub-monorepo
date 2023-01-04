@@ -1,7 +1,7 @@
 import grpc, { ClientReadableStream, Metadata, MetadataValue } from '@grpc/grpc-js';
+import { bytesToUtf8String, utf8StringToBytes } from '@hub/bytes';
 import { HubAsyncResult, HubError, HubErrorCode } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
-import { arrayify } from 'ethers/lib/utils';
 import { ByteBuffer } from 'flatbuffers';
 import { err, ok } from 'neverthrow';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
@@ -37,21 +37,21 @@ const fromNodeMetadataResponse = (response: flatbuffers.TrieNodeMetadataResponse
   for (let i = 0; i < response.childrenLength(); i++) {
     const child = response.children(i);
 
-    const prefix = new TextDecoder().decode(child?.prefixArray() ?? new Uint8Array());
+    const prefix = bytesToUtf8String(child?.prefixArray() ?? new Uint8Array())._unsafeUnwrap();
     // Char is the last char of prefix
     const char = prefix[prefix.length - 1] ?? '';
 
     children.set(char, {
       numMessages: Number(child?.numMessages()),
       prefix,
-      hash: new TextDecoder().decode(child?.hashArray() ?? new Uint8Array()),
+      hash: bytesToUtf8String(child?.hashArray() ?? new Uint8Array())._unsafeUnwrap(),
     });
   }
 
   return {
-    prefix: new TextDecoder().decode(response.prefixArray() ?? new Uint8Array()),
+    prefix: bytesToUtf8String(response.prefixArray() ?? new Uint8Array())._unsafeUnwrap(),
     numMessages: Number(response.numMessages()),
-    hash: new TextDecoder().decode(response.hashArray() ?? new Uint8Array()),
+    hash: bytesToUtf8String(response.hashArray() ?? new Uint8Array())._unsafeUnwrap(),
     children,
   };
 };
@@ -343,14 +343,14 @@ class Client {
   async getSyncMetadataByPrefix(prefix: string): HubAsyncResult<NodeMetadata> {
     return this.makeUnarySyncNodeMetadataRequest(
       definitions.syncDefinition().getSyncMetadataByPrefix,
-      requests.syncRequests.createByPrefixRequest(arrayify(Buffer.from(prefix)))
+      requests.syncRequests.createByPrefixRequest(utf8StringToBytes(prefix)._unsafeUnwrap())
     );
   }
 
   async getSyncTrieNodeSnapshotByPrefix(prefix: string): HubAsyncResult<{ snapshot: TrieSnapshot; rootHash: string }> {
     return this.makeUnarySyncNodeSnapshotRequest(
       definitions.syncDefinition().getSyncTrieNodeSnapshotByPrefix,
-      requests.syncRequests.createByPrefixRequest(arrayify(Buffer.from(prefix)))
+      requests.syncRequests.createByPrefixRequest(utf8StringToBytes(prefix)._unsafeUnwrap())
     );
   }
 
@@ -364,7 +364,7 @@ class Client {
   async getSyncIdsByPrefix(prefix: string): HubAsyncResult<string[]> {
     return this.makeUnarySyncIdsByPrefixRequest(
       definitions.syncDefinition().getAllSyncIdsByPrefix,
-      requests.syncRequests.createByPrefixRequest(arrayify(Buffer.from(prefix)))
+      requests.syncRequests.createByPrefixRequest(utf8StringToBytes(prefix)._unsafeUnwrap())
     );
   }
 

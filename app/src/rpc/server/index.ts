@@ -1,7 +1,7 @@
 import grpc from '@grpc/grpc-js';
+import { utf8StringToBytes } from '@hub/bytes';
 import { HubError } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
-import { arrayify } from 'ethers/lib/utils';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { HubInterface } from '~/flatbuffers/models/types';
@@ -73,9 +73,9 @@ export const toTrieNodeMetadataResponse = (metadata: NodeMetadata): flatbuffers.
     for (const [, child] of metadata.children) {
       childrenTrie.push(
         new flatbuffers.TrieNodeMetadataResponseT(
-          Array.from(arrayify(Buffer.from(child.prefix))),
+          Array.from(utf8StringToBytes(child.prefix)._unsafeUnwrap()),
           BigInt(child.numMessages),
-          Array.from(arrayify(Buffer.from(child.hash))),
+          Array.from(utf8StringToBytes(child.hash)._unsafeUnwrap()),
           []
         )
       );
@@ -83,9 +83,9 @@ export const toTrieNodeMetadataResponse = (metadata: NodeMetadata): flatbuffers.
   }
 
   const metadataT = new flatbuffers.TrieNodeMetadataResponseT(
-    Array.from(arrayify(Buffer.from(metadata.prefix))),
+    Array.from(utf8StringToBytes(metadata.prefix)._unsafeUnwrap()),
     BigInt(metadata.numMessages),
-    Array.from(arrayify(Buffer.from(metadata.hash))),
+    Array.from(utf8StringToBytes(metadata.hash)._unsafeUnwrap()),
     childrenTrie
   );
   const builder = new Builder(1);
