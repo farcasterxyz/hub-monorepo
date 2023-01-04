@@ -219,7 +219,11 @@ describe('mergeMessage', () => {
       test('succeeds', async () => {
         await expect(engine.mergeMessage(reactionAdd)).resolves.toEqual(ok(undefined));
         await expect(
-          reactionStore.getReactionAdd(fid, reactionAdd.body().type(), reactionAdd.body().cast() as CastId)
+          reactionStore.getReactionAdd(
+            fid,
+            reactionAdd.body().type(),
+            reactionAdd.body().target(new CastId()) as CastId
+          )
         ).resolves.toEqual(reactionAdd);
         expect(mergedMessages).toEqual([signerAdd, reactionAdd]);
       });

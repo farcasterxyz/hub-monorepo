@@ -415,14 +415,14 @@ describe('validateReactionMessage', () => {
 
     test('when cast fid is missing', () => {
       body = Factories.ReactionBody.build({
-        cast: Factories.CastId.build({ fid: [] }),
+        target: Factories.CastId.build({ fid: [] }),
       });
       hubErrorMessage = 'fid is missing';
     });
 
     test('when cast tsHash is missing', () => {
       body = Factories.ReactionBody.build({
-        cast: Factories.CastId.build({ tsHash: [] }),
+        target: Factories.CastId.build({ tsHash: [] }),
       });
       hubErrorMessage = 'tsHash is missing';
     });

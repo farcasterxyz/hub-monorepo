@@ -46,6 +46,34 @@ export enum UserDataType {
   Fname = 6
 }
 
+export enum TargetId {
+  NONE = 0,
+  CastId = 1
+}
+
+export function unionToTargetId(
+  type: TargetId,
+  accessor: (obj:CastId) => CastId|null
+): CastId|null {
+  switch(TargetId[type]) {
+    case 'NONE': return null; 
+    case 'CastId': return accessor(new CastId())! as CastId;
+    default: return null;
+  }
+}
+
+export function unionListToTargetId(
+  type: TargetId, 
+  accessor: (index: number, obj:CastId) => CastId|null, 
+  index: number
+): CastId|null {
+  switch(TargetId[type]) {
+    case 'NONE': return null; 
+    case 'CastId': return accessor(index, new CastId())! as CastId;
+    default: return null;
+  }
+}
+
 export enum MessageBody {
   NONE = 0,
   CastAddBody = 1,
@@ -357,20 +385,25 @@ mentionsLength():number {
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
-parent(obj?:CastId):CastId|null {
+parentType():TargetId {
   const offset = this.bb!.__offset(this.bb_pos, 8);
-  return offset ? (obj || new CastId()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
+  return offset ? this.bb!.readUint8(this.bb_pos + offset) : TargetId.NONE;
+}
+
+parent<T extends flatbuffers.Table>(obj:any):any|null {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.__union(obj, this.bb_pos + offset) : null;
 }
 
 text():string|null
 text(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
 text(optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
+  const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
 static startCastAddBody(builder:flatbuffers.Builder) {
-  builder.startObject(4);
+  builder.startObject(5);
 }
 
 static addEmbeds(builder:flatbuffers.Builder, embedsOffset:flatbuffers.Offset) {
@@ -405,26 +438,44 @@ static startMentionsVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(4, numElems, 4);
 }
 
+static addParentType(builder:flatbuffers.Builder, parentType:TargetId) {
+  builder.addFieldInt8(2, parentType, TargetId.NONE);
+}
+
 static addParent(builder:flatbuffers.Builder, parentOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(2, parentOffset, 0);
+  builder.addFieldOffset(3, parentOffset, 0);
 }
 
 static addText(builder:flatbuffers.Builder, textOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(3, textOffset, 0);
+  builder.addFieldOffset(4, textOffset, 0);
 }
 
 static endCastAddBody(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
-  builder.requiredField(offset, 10) // text
+  builder.requiredField(offset, 12) // text
   return offset;
 }
 
+static createCastAddBody(builder:flatbuffers.Builder, embedsOffset:flatbuffers.Offset, mentionsOffset:flatbuffers.Offset, parentType:TargetId, parentOffset:flatbuffers.Offset, textOffset:flatbuffers.Offset):flatbuffers.Offset {
+  CastAddBody.startCastAddBody(builder);
+  CastAddBody.addEmbeds(builder, embedsOffset);
+  CastAddBody.addMentions(builder, mentionsOffset);
+  CastAddBody.addParentType(builder, parentType);
+  CastAddBody.addParent(builder, parentOffset);
+  CastAddBody.addText(builder, textOffset);
+  return CastAddBody.endCastAddBody(builder);
+}
 
 unpack(): CastAddBodyT {
   return new CastAddBodyT(
     this.bb!.createScalarList<string>(this.embeds.bind(this), this.embedsLength()),
     this.bb!.createObjList<UserId, UserIdT>(this.mentions.bind(this), this.mentionsLength()),
-    (this.parent() !== null ? this.parent()!.unpack() : null),
+    this.parentType(),
+    (() => {
+      const temp = unionToTargetId(this.parentType(), this.parent.bind(this));
+      if(temp === null) { return null; }
+      return temp.unpack()
+  })(),
     this.text()
   );
 }
@@ -433,7 +484,12 @@ unpack(): CastAddBodyT {
 unpackTo(_o: CastAddBodyT): void {
   _o.embeds = this.bb!.createScalarList<string>(this.embeds.bind(this), this.embedsLength());
   _o.mentions = this.bb!.createObjList<UserId, UserIdT>(this.mentions.bind(this), this.mentionsLength());
-  _o.parent = (this.parent() !== null ? this.parent()!.unpack() : null);
+  _o.parentType = this.parentType();
+  _o.parent = (() => {
+      const temp = unionToTargetId(this.parentType(), this.parent.bind(this));
+      if(temp === null) { return null; }
+      return temp.unpack()
+  })();
   _o.text = this.text();
 }
 }
@@ -442,6 +498,7 @@ export class CastAddBodyT implements flatbuffers.IGeneratedObject {
 constructor(
   public embeds: (string)[] = [],
   public mentions: (UserIdT)[] = [],
+  public parentType: TargetId = TargetId.NONE,
   public parent: CastIdT|null = null,
   public text: string|Uint8Array|null = null
 ){}
@@ -450,16 +507,16 @@ constructor(
 pack(builder:flatbuffers.Builder): flatbuffers.Offset {
   const embeds = CastAddBody.createEmbedsVector(builder, builder.createObjectOffsetList(this.embeds));
   const mentions = CastAddBody.createMentionsVector(builder, builder.createObjectOffsetList(this.mentions));
-  const parent = (this.parent !== null ? this.parent!.pack(builder) : 0);
+  const parent = builder.createObjectOffset(this.parent);
   const text = (this.text !== null ? builder.createString(this.text!) : 0);
 
-  CastAddBody.startCastAddBody(builder);
-  CastAddBody.addEmbeds(builder, embeds);
-  CastAddBody.addMentions(builder, mentions);
-  CastAddBody.addParent(builder, parent);
-  CastAddBody.addText(builder, text);
-
-  return CastAddBody.endCastAddBody(builder);
+  return CastAddBody.createCastAddBody(builder,
+    embeds,
+    mentions,
+    this.parentType,
+    parent,
+    text
+  );
 }
 }
 
@@ -573,67 +630,89 @@ static getSizePrefixedRootAsReactionBody(bb:flatbuffers.ByteBuffer, obj?:Reactio
   return (obj || new ReactionBody()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-cast(obj?:CastId):CastId|null {
+targetType():TargetId {
   const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? (obj || new CastId()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
+  return offset ? this.bb!.readUint8(this.bb_pos + offset) : TargetId.NONE;
+}
+
+target<T extends flatbuffers.Table>(obj:any):any|null {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__union(obj, this.bb_pos + offset) : null;
 }
 
 type():ReactionType {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
+  const offset = this.bb!.__offset(this.bb_pos, 8);
   return offset ? this.bb!.readUint16(this.bb_pos + offset) : ReactionType.Like;
 }
 
 static startReactionBody(builder:flatbuffers.Builder) {
-  builder.startObject(2);
+  builder.startObject(3);
 }
 
-static addCast(builder:flatbuffers.Builder, castOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, castOffset, 0);
+static addTargetType(builder:flatbuffers.Builder, targetType:TargetId) {
+  builder.addFieldInt8(0, targetType, TargetId.NONE);
+}
+
+static addTarget(builder:flatbuffers.Builder, targetOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, targetOffset, 0);
 }
 
 static addType(builder:flatbuffers.Builder, type:ReactionType) {
-  builder.addFieldInt16(1, type, ReactionType.Like);
+  builder.addFieldInt16(2, type, ReactionType.Like);
 }
 
 static endReactionBody(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
-  builder.requiredField(offset, 4) // cast
+  builder.requiredField(offset, 6) // target
   return offset;
 }
 
-static createReactionBody(builder:flatbuffers.Builder, castOffset:flatbuffers.Offset, type:ReactionType):flatbuffers.Offset {
+static createReactionBody(builder:flatbuffers.Builder, targetType:TargetId, targetOffset:flatbuffers.Offset, type:ReactionType):flatbuffers.Offset {
   ReactionBody.startReactionBody(builder);
-  ReactionBody.addCast(builder, castOffset);
+  ReactionBody.addTargetType(builder, targetType);
+  ReactionBody.addTarget(builder, targetOffset);
   ReactionBody.addType(builder, type);
   return ReactionBody.endReactionBody(builder);
 }
 
 unpack(): ReactionBodyT {
   return new ReactionBodyT(
-    (this.cast() !== null ? this.cast()!.unpack() : null),
+    this.targetType(),
+    (() => {
+      const temp = unionToTargetId(this.targetType(), this.target.bind(this));
+      if(temp === null) { return null; }
+      return temp.unpack()
+  })(),
     this.type()
   );
 }
 
 
 unpackTo(_o: ReactionBodyT): void {
-  _o.cast = (this.cast() !== null ? this.cast()!.unpack() : null);
+  _o.targetType = this.targetType();
+  _o.target = (() => {
+      const temp = unionToTargetId(this.targetType(), this.target.bind(this));
+      if(temp === null) { return null; }
+      return temp.unpack()
+  })();
   _o.type = this.type();
 }
 }
 
 export class ReactionBodyT implements flatbuffers.IGeneratedObject {
 constructor(
-  public cast: CastIdT|null = null,
+  public targetType: TargetId = TargetId.NONE,
+  public target: CastIdT|null = null,
   public type: ReactionType = ReactionType.Like
 ){}
 
 
 pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const cast = (this.cast !== null ? this.cast!.pack(builder) : 0);
+  const target = builder.createObjectOffset(this.target);
 
   return ReactionBody.createReactionBody(builder,
-    cast,
+    this.targetType,
+    target,
     this.type
   );
 }
