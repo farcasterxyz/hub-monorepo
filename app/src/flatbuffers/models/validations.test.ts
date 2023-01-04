@@ -490,7 +490,7 @@ describe('validateVerificationAddEthAddressMessage', () => {
         fid: bytesToBigNumber(fid)._unsafeUnwrap(),
         address: faker.datatype.hexadecimal({ length: 40, case: 'lower' }), // mismatched address
         network: message_generated.FarcasterNetwork.Testnet,
-        blockHash: faker.datatype.hexadecimal({ length: 64, case: 'lower' }),
+        blockHash: Factories.BlockHash.build(),
       };
       const signature = await ethSigner.signVerificationEthAddressClaim(claim);
       body = new message_generated.VerificationAddEthAddressBodyT(

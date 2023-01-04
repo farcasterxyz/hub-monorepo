@@ -51,6 +51,10 @@ const TsHashFactory = Factory.define<Uint8Array, { timestamp?: number; hash?: Ui
   );
 });
 
+const BlockHashFactory = Factory.define<string>(() => {
+  return faker.datatype.hexadecimal({ length: 64, case: 'lower' });
+});
+
 const UserIdFactory = Factory.define<message_generated.UserIdT, any, message_generated.UserId>(({ onCreate }) => {
   onCreate((params) => {
     const builder = new Builder(1);
@@ -594,6 +598,7 @@ const Factories = {
   FID: FIDFactory,
   Fname: FnameFactory,
   TsHash: TsHashFactory,
+  BlockHash: BlockHashFactory,
   UserId: UserIdFactory,
   CastId: CastIdFactory,
   ReactionBody: ReactionBodyFactory,
