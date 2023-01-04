@@ -124,7 +124,7 @@ describe('SyncEngine', () => {
     const id = new SyncId(castRemove);
     expect(syncEngine.trie.exists(id)).toBeTruthy();
 
-    const allMessages = await engine.getAllMessagesBySyncIds([id.toString()]);
+    const allMessages = await engine.getAllMessagesBySyncIds([id.idString()]);
     expect(allMessages.isOk()).toBeTruthy();
     expect(allMessages._unsafeUnwrap()[0]?.type()).toEqual(MessageType.CastRemove);
 

@@ -42,15 +42,15 @@ class MerkleTrie {
 
   public insert(id: SyncId): boolean {
     // TODO(aditya): We should insert Uint8Array instead of string
-    return this._root.insert(id.toString());
+    return this._root.insert(id.idString());
   }
 
   public delete(id: SyncId): boolean {
-    return this._root.delete(id.toString());
+    return this._root.delete(id.idString());
   }
 
   public exists(id: SyncId): boolean {
-    return this._root.exists(id.toString());
+    return this._root.exists(id.idString());
   }
 
   // A snapshot captures the state of the trie excluding the nodes

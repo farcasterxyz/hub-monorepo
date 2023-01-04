@@ -86,7 +86,7 @@ class SyncEngine {
       const missingIds = await this.fetchMissingHashesByPrefix(divergencePrefix, rpcClient);
       log.info({ missingCount: missingIds.length }, 'Fetched missing hashes');
 
-      // TODO: sort missingIds by timestamp and fetch messages in batches
+      // TODO: fetch messages in batches
       await this.fetchAndMergeMessages(missingIds, rpcClient);
       log.info(`Sync complete`);
     } catch (e) {
@@ -108,6 +108,9 @@ class SyncEngine {
     await messages.match(
       async (msgs) => {
         const mergeResults = [];
+        // First, sort the messages by timestamp to reduce thrashing and refetching
+        msgs.sort((a, b) => a.timestamp() - b.timestamp());
+
         // Merge messages sequentially, so we can handle missing users.
         // TODO: Optimize by collecting all failures and retrying them in a batch
         for (const msg of msgs) {
