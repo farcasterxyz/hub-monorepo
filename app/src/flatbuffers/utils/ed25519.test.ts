@@ -7,6 +7,19 @@ import { HubError } from '~/utils/hubErrors';
 import Factories from '../factories';
 import { KeyPair } from '../models/types';
 
+describe('getPublicKey', () => {
+  let keyPair: KeyPair;
+
+  beforeAll(async () => {
+    keyPair = await generateEd25519KeyPair();
+  });
+
+  test('succeeds with valid signature', async () => {
+    const publicKey = await ed25519.getPublicKey(keyPair.privateKey);
+    expect(publicKey._unsafeUnwrap()).toEqual(keyPair.publicKey);
+  });
+});
+
 describe('signMessageHash', () => {
   let keyPair: KeyPair;
 
