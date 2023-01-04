@@ -1,12 +1,12 @@
 import { hexStringToBytes } from '@hub/bytes';
 import { HubError } from '@hub/errors';
+import Client from '@hub/grpc-client';
 import { utils, Wallet } from 'ethers';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { KeyPair, SignerAddModel, VerificationAddEthAddressModel } from '~/flatbuffers/models/types';
 import SyncEngine from '~/network/sync/syncEngine';
-import Client from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';

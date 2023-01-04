@@ -1,6 +1,7 @@
 import { hexStringToBytes } from '@hub/bytes';
 import { HubError } from '@hub/errors';
 import { UserDataType } from '@hub/flatbuffers';
+import Client from '@hub/grpc-client';
 import { utils, Wallet } from 'ethers';
 import { ok } from 'neverthrow';
 import Factories from '~/flatbuffers/factories';
@@ -9,7 +10,6 @@ import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { KeyPair, SignerAddModel, UserDataAddModel } from '~/flatbuffers/models/types';
 import SyncEngine from '~/network/sync/syncEngine';
-import Client from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';

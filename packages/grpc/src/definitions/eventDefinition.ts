@@ -1,11 +1,11 @@
 import { toByteBuffer } from '@hub/bytes';
 import { EventResponse, SubscribeRequest } from '@hub/flatbuffers';
-import { defaultMethod } from '~/rpc/client';
+import { defaultMethodDefinition } from '../utils';
 
 export const eventDefinition = () => {
   return {
     subscribe: {
-      ...defaultMethod,
+      ...defaultMethodDefinition,
       path: '/subscribe',
       responseStream: true,
       requestDeserialize: (buffer: Buffer): SubscribeRequest => {

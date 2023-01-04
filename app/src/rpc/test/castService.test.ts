@@ -1,13 +1,13 @@
 import { hexStringToBytes } from '@hub/bytes';
 import { HubError } from '@hub/errors';
 import { CastId, UserId } from '@hub/flatbuffers';
+import Client from '@hub/grpc-client';
 import { utils, Wallet } from 'ethers';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastAddModel, KeyPair, SignerAddModel } from '~/flatbuffers/models/types';
 import SyncEngine from '~/network/sync/syncEngine';
-import Client from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -142,7 +142,7 @@ describe('getCastsByMention', () => {
     await engine.mergeMessage(castAdd);
     for (let i = 0; i < castAdd.body().mentionsLength(); i++) {
       const casts = await client.getCastsByMention(castAdd.body().mentions(i) ?? new UserId());
-      expect(casts._unsafeUnwrap().map((cast) => cast.hash())).toEqual([castAdd.hash()]);
+      expect(casts._unsafeUnwrap()).toEqual([castAdd.message]);
     }
   });
 

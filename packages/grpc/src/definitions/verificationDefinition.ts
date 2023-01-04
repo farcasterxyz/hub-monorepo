@@ -1,22 +1,24 @@
 import { toByteBuffer } from '@hub/bytes';
 import * as flatbuffers from '@hub/flatbuffers';
-import { defaultMethod } from '~/rpc/client';
+import { defaultMethodDefinition } from '../utils';
 
 export const verificationDefinition = () => {
   return {
     getVerification: {
-      ...defaultMethod,
+      ...defaultMethodDefinition,
       path: '/getVerification',
       requestDeserialize: (buffer: Buffer): flatbuffers.GetVerificationRequest => {
         return flatbuffers.GetVerificationRequest.getRootAsGetVerificationRequest(toByteBuffer(buffer));
       },
-      responseDeserialize: (buffer: Buffer): flatbuffers.Message => {
-        return flatbuffers.Message.getRootAsMessage(toByteBuffer(buffer));
+      responseDeserialize: (buffer: Buffer): flatbuffers.VerificationAddEthAddressMessage => {
+        return flatbuffers.Message.getRootAsMessage(
+          toByteBuffer(buffer)
+        ) as flatbuffers.VerificationAddEthAddressMessage;
       },
     },
 
     getVerificationsByFid: {
-      ...defaultMethod,
+      ...defaultMethodDefinition,
       path: '/getVerificationsByFid',
       requestDeserialize: (buffer: Buffer): flatbuffers.GetVerificationsByFidRequest => {
         return flatbuffers.GetVerificationsByFidRequest.getRootAsGetVerificationsByFidRequest(toByteBuffer(buffer));

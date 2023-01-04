@@ -1,22 +1,22 @@
 import { toByteBuffer } from '@hub/bytes';
 import * as flatbuffers from '@hub/flatbuffers';
-import { defaultMethod } from '~/rpc/client';
+import { defaultMethodDefinition } from '../utils';
 
 export const signerDefinition = () => {
   return {
     getSigner: {
-      ...defaultMethod,
+      ...defaultMethodDefinition,
       path: '/getSigner',
       requestDeserialize: (buffer: Buffer): flatbuffers.GetSignerRequest => {
         return flatbuffers.GetSignerRequest.getRootAsGetSignerRequest(toByteBuffer(buffer));
       },
-      responseDeserialize: (buffer: Buffer): flatbuffers.Message => {
-        return flatbuffers.Message.getRootAsMessage(toByteBuffer(buffer));
+      responseDeserialize: (buffer: Buffer): flatbuffers.SignerAddMessage => {
+        return flatbuffers.Message.getRootAsMessage(toByteBuffer(buffer)) as flatbuffers.SignerAddMessage;
       },
     },
 
     getSignersByFid: {
-      ...defaultMethod,
+      ...defaultMethodDefinition,
       path: '/getSignersByFid',
       requestDeserialize: (buffer: Buffer): flatbuffers.GetSignersByFidRequest => {
         return flatbuffers.GetSignersByFidRequest.getRootAsGetSignersByFidRequest(toByteBuffer(buffer));
@@ -27,7 +27,7 @@ export const signerDefinition = () => {
     },
 
     getCustodyEvent: {
-      ...defaultMethod,
+      ...defaultMethodDefinition,
       path: '/getCustodyEvent',
       requestDeserialize: (buffer: Buffer): flatbuffers.GetCustodyEventRequest => {
         return flatbuffers.GetCustodyEventRequest.getRootAsGetCustodyEventRequest(toByteBuffer(buffer));
@@ -38,7 +38,7 @@ export const signerDefinition = () => {
     },
 
     getFids: {
-      ...defaultMethod,
+      ...defaultMethodDefinition,
       path: '/getFids',
       requestDeserialize: (buffer: Buffer): flatbuffers.GetFidsRequest => {
         return flatbuffers.GetFidsRequest.getRootAsGetFidsRequest(toByteBuffer(buffer));

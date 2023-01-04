@@ -1,10 +1,10 @@
 import { toByteBuffer } from '@hub/bytes';
 import * as flatbuffers from '@hub/flatbuffers';
-import { defaultMethod } from '~/rpc/client';
+import { defaultMethodDefinition } from '../utils';
 
 const defaultSyncMethod = () => {
   return {
-    ...defaultMethod,
+    ...defaultMethodDefinition,
     requestDeserialize: (buffer: Buffer): flatbuffers.GetAllMessagesByFidRequest => {
       return flatbuffers.GetAllMessagesByFidRequest.getRootAsGetAllMessagesByFidRequest(toByteBuffer(buffer));
     },
@@ -46,7 +46,7 @@ export const syncDefinition = () => {
       path: '/getAllUserDataMessagesByFid',
     },
     getAllSyncIdsByPrefix: {
-      ...defaultMethod,
+      ...defaultMethodDefinition,
       requestDeserialize: (buffer: Buffer): flatbuffers.GetTrieNodesByPrefixRequest => {
         return flatbuffers.GetTrieNodesByPrefixRequest.getRootAsGetTrieNodesByPrefixRequest(toByteBuffer(buffer));
       },
@@ -56,7 +56,7 @@ export const syncDefinition = () => {
       path: '/getAllSyncIdsByPrefix',
     },
     getAllMessagesBySyncIds: {
-      ...defaultMethod,
+      ...defaultMethodDefinition,
       requestDeserialize: (buffer: Buffer): flatbuffers.GetAllMessagesBySyncIdsRequest => {
         return flatbuffers.GetAllMessagesBySyncIdsRequest.getRootAsGetAllMessagesBySyncIdsRequest(toByteBuffer(buffer));
       },
@@ -67,7 +67,7 @@ export const syncDefinition = () => {
       path: '/getAllMessagesBySyncIds',
     },
     getSyncMetadataByPrefix: {
-      ...defaultMethod,
+      ...defaultMethodDefinition,
       requestDeserialize: (buffer: Buffer): flatbuffers.GetTrieNodesByPrefixRequest => {
         return flatbuffers.GetTrieNodesByPrefixRequest.getRootAsGetTrieNodesByPrefixRequest(toByteBuffer(buffer));
       },
@@ -77,7 +77,7 @@ export const syncDefinition = () => {
       path: '/getSyncMetadataByPrefix',
     },
     getSyncTrieNodeSnapshotByPrefix: {
-      ...defaultMethod,
+      ...defaultMethodDefinition,
       requestDeserialize: (buffer: Buffer): flatbuffers.GetTrieNodesByPrefixRequest => {
         return flatbuffers.GetTrieNodesByPrefixRequest.getRootAsGetTrieNodesByPrefixRequest(toByteBuffer(buffer));
       },

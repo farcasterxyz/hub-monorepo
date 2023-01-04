@@ -1,11 +1,11 @@
 import { toByteBuffer } from '@hub/bytes';
 import { IdRegistryEvent, Message, NameRegistryEvent } from '@hub/flatbuffers';
-import { defaultMethod } from '~/rpc/client';
+import { defaultMethodDefinition } from '../utils';
 
 export const submitDefinition = () => {
   return {
     submitMessage: {
-      ...defaultMethod,
+      ...defaultMethodDefinition,
       path: '/submitMessage',
       requestDeserialize: (buffer: Buffer): Message => {
         return Message.getRootAsMessage(toByteBuffer(buffer));
@@ -16,7 +16,7 @@ export const submitDefinition = () => {
     },
 
     submitIdRegistryEvent: {
-      ...defaultMethod,
+      ...defaultMethodDefinition,
       path: '/submitIdRegistryEvent',
       requestDeserialize: (buffer: Buffer): IdRegistryEvent => {
         return IdRegistryEvent.getRootAsIdRegistryEvent(toByteBuffer(buffer));
@@ -27,7 +27,7 @@ export const submitDefinition = () => {
     },
 
     submitNameRegistryEvent: {
-      ...defaultMethod,
+      ...defaultMethodDefinition,
       path: '/submitNameRegistryEvent',
       requestDeserialize: (buffer: Buffer): NameRegistryEvent => {
         return NameRegistryEvent.getRootAsNameRegistryEvent(toByteBuffer(buffer));

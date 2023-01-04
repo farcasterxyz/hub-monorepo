@@ -1,6 +1,7 @@
 import { ClientReadableStream } from '@grpc/grpc-js';
 import { hexStringToBytes } from '@hub/bytes';
 import { EventResponse, EventType } from '@hub/flatbuffers';
+import Client from '@hub/grpc-client';
 import { utils, Wallet } from 'ethers';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
@@ -8,7 +9,6 @@ import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { CastAddModel, KeyPair, SignerAddModel } from '~/flatbuffers/models/types';
 import SyncEngine from '~/network/sync/syncEngine';
-import Client from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
