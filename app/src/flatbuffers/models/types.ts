@@ -162,13 +162,3 @@ export interface HubInterface {
   getHubState(): HubAsyncResult<HubStateModel>;
   putHubState(hubState: HubStateModel): HubAsyncResult<void>;
 }
-
-/**
- * A KeyPair that is used in the signing process
- * @privateKey - the private key of the user
- * @publicKey - the public key of the user
- */
-export type KeyPair = {
-  privateKey: Uint8Array;
-  publicKey: Uint8Array;
-};

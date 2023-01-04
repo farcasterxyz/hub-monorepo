@@ -1,5 +1,3 @@
-import { KeyPair } from '@chainsafe/libp2p-noise/dist/src/@types/libp2p';
-import { utils, Wallet } from 'ethers';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
@@ -12,7 +10,6 @@ import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
-import { generateEd25519KeyPair } from '~/utils/crypto';
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
 
@@ -20,10 +17,11 @@ const testDb1 = jestRocksDB(`engine1.peersyncEngine.test`);
 const testDb2 = jestRocksDB(`engine2.peersyncEngine.test`);
 
 const fid = Factories.FID.build();
-const wallet = new Wallet(utils.randomBytes(32));
+const ethSigner = Factories.Eip712Signer.build();
+const wallet = ethSigner.wallet;
+const signer = Factories.Ed25519Signer.build();
 
 let custodyEvent: IdRegistryEventModel;
-let signer: KeyPair;
 let signerAdd: SignerAddModel;
 
 beforeAll(async () => {
@@ -34,13 +32,12 @@ beforeAll(async () => {
     )
   );
 
-  signer = await generateEd25519KeyPair();
   const signerAddData = await Factories.SignerAddData.create({
-    body: Factories.SignerBody.build({ signer: Array.from(signer.publicKey) }),
+    body: Factories.SignerBody.build({ signer: Array.from(signer.signerKey) }),
     fid: Array.from(fid),
   });
   signerAdd = new MessageModel(
-    await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+    await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { ethSigner } })
   ) as SignerAddModel;
 });
 

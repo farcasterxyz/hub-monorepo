@@ -1,8 +1,8 @@
-import { Ed25519Signer, EthereumSigner } from '~/utils/crypto';
+import { Ed25519Signer, Eip712Signer } from '~/signers';
 
 export type UserInfo = {
   fid: number;
-  ethereumSigner: EthereumSigner;
+  ethereumSigner: Eip712Signer;
   delegateSigner: Ed25519Signer;
 };
 
@@ -70,7 +70,7 @@ export type EventConfig = {
 // export const generateUserInfo = async (fid: number): Promise<UserInfo> => {
 //   return {
 //     fid,
-//     ethereumSigner: await generateEthereumSigner(),
+//     ethereumSigner: await generateEip712Signer(),
 //     delegateSigner: await generateEd25519Signer(),
 //   };
 // };

@@ -1,9 +1,8 @@
 import { UserId } from '@hub/flatbuffers';
-import { utils, Wallet } from 'ethers';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
-import { AmpAddModel, KeyPair, SignerAddModel } from '~/flatbuffers/models/types';
+import { AmpAddModel, SignerAddModel } from '~/flatbuffers/models/types';
 import { hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import SyncEngine from '~/network/sync/syncEngine';
 import Client from '~/rpc/client';
@@ -11,7 +10,6 @@ import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
-import { generateEd25519KeyPair } from '~/utils/crypto';
 import { HubError } from '~/utils/hubErrors';
 
 const db = jestRocksDB('flatbuffers.rpc.ampService.test');
@@ -33,9 +31,11 @@ afterAll(async () => {
 });
 
 const fid = Factories.FID.build();
-const wallet = new Wallet(utils.randomBytes(32));
+
+const ethSigner = Factories.Eip712Signer.build();
+const wallet = ethSigner.wallet;
+const signer = Factories.Ed25519Signer.build();
 let custodyEvent: IdRegistryEventModel;
-let signer: KeyPair;
 let signerAdd: SignerAddModel;
 let ampAdd: AmpAddModel;
 
@@ -47,13 +47,12 @@ beforeAll(async () => {
     )
   );
 
-  signer = await generateEd25519KeyPair();
   const signerAddData = await Factories.SignerAddData.create({
-    body: Factories.SignerBody.build({ signer: Array.from(signer.publicKey) }),
+    body: Factories.SignerBody.build({ signer: Array.from(signer.signerKey) }),
     fid: Array.from(fid),
   });
   signerAdd = new MessageModel(
-    await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+    await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { ethSigner } })
   ) as SignerAddModel;
 
   const ampAddData = await Factories.AmpAddData.create({

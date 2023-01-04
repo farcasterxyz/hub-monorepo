@@ -1,13 +1,10 @@
 import { CastId, IdRegistryEventType, MessageType, NameRegistryEventType } from '@hub/flatbuffers';
-import { utils, Wallet } from 'ethers';
 import { err, ok } from 'neverthrow';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import * as types from '~/flatbuffers/models/types';
-import { KeyPair } from '~/flatbuffers/models/types';
-import { hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import AmpStore from '~/storage/stores/ampStore';
@@ -16,7 +13,6 @@ import ReactionStore from '~/storage/stores/reactionStore';
 import SignerStore from '~/storage/stores/signerStore';
 import UserDataStore from '~/storage/stores/userDataStore';
 import VerificationStore from '~/storage/stores/verificationStore';
-import { generateEd25519KeyPair } from '~/utils/crypto';
 import { HubError } from '~/utils/hubErrors';
 
 const db = jestRocksDB('flatbuffers.engine.test');
@@ -32,14 +28,15 @@ const userDataStore = new UserDataStore(db, engine.eventHandler);
 
 const fid = Factories.FID.build();
 
-let custodyWallet: Wallet;
+const custodySigner = Factories.Eip712Signer.build();
+
 let custodyAddress: Uint8Array;
 let custodyEvent: IdRegistryEventModel;
 
 const fname = Factories.Fname.build();
 let fnameTransfer: NameRegistryEventModel;
 
-let signer: KeyPair;
+const signer = Factories.Ed25519Signer.build();
 let signerAdd: types.SignerAddModel;
 let signerRemove: types.SignerRemoveModel;
 
@@ -50,8 +47,7 @@ let verificationAdd: types.VerificationAddEthAddressModel;
 let userDataAdd: types.UserDataAddModel;
 
 beforeAll(async () => {
-  custodyWallet = new Wallet(utils.randomBytes(32));
-  custodyAddress = hexStringToBytes(custodyWallet.address)._unsafeUnwrap();
+  custodyAddress = custodySigner.signerKey;
   custodyEvent = new IdRegistryEventModel(
     await Factories.IdRegistryEvent.create({ fid: Array.from(fid), to: Array.from(custodyAddress) })
   );
@@ -60,26 +56,24 @@ beforeAll(async () => {
     await Factories.NameRegistryEvent.create({ fname: Array.from(fname), to: Array.from(custodyAddress) })
   );
 
-  signer = await generateEd25519KeyPair();
-
   const signerAddData = await Factories.SignerAddData.create({
     fid: Array.from(fid),
-    body: Factories.SignerBody.build({ signer: Array.from(signer.publicKey) }),
+    body: Factories.SignerBody.build({ signer: Array.from(signer.signerKey) }),
   });
   const signerAddMessage = await Factories.Message.create(
     { data: Array.from(signerAddData.bb?.bytes() ?? []) },
-    { transient: { wallet: custodyWallet } }
+    { transient: { ethSigner: custodySigner } }
   );
   signerAdd = new MessageModel(signerAddMessage) as types.SignerAddModel;
 
   const signerRemoveData = await Factories.SignerRemoveData.create({
     fid: Array.from(fid),
-    body: Factories.SignerBody.build({ signer: Array.from(signer.publicKey) }),
+    body: Factories.SignerBody.build({ signer: Array.from(signer.signerKey) }),
     timestamp: signerAdd.timestamp() + 1,
   });
   const signerRemoveMessage = await Factories.Message.create(
     { data: Array.from(signerRemoveData.bb?.bytes() ?? []) },
-    { transient: { wallet: custodyWallet } }
+    { transient: { ethSigner: custodySigner } }
   );
   signerRemove = new MessageModel(signerRemoveMessage) as types.SignerRemoveModel;
 
@@ -246,7 +240,7 @@ describe('mergeMessage', () => {
     describe('SignerRemove', () => {
       test('succeeds ', async () => {
         await expect(engine.mergeMessage(signerRemove)).resolves.toEqual(ok(undefined));
-        await expect(signerStore.getSignerRemove(fid, signer.publicKey)).resolves.toEqual(signerRemove);
+        await expect(signerStore.getSignerRemove(fid, signer.signerKey)).resolves.toEqual(signerRemove);
         expect(mergedMessages).toEqual([signerAdd, signerRemove]);
       });
     });
@@ -369,7 +363,7 @@ describe('revokeMessagesBySigner', () => {
       const getMessage = MessageModel.get(db, message.fid(), message.setPostfix(), message.tsHash());
       await expect(getMessage).resolves.toEqual(message);
     }
-    await expect(engine.revokeMessagesBySigner(fid, signer.publicKey)).resolves.toEqual(ok(undefined));
+    await expect(engine.revokeMessagesBySigner(fid, signer.signerKey)).resolves.toEqual(ok(undefined));
     for (const message of signerMessages) {
       const getMessage = MessageModel.get(db, message.fid(), message.setPostfix(), message.tsHash());
       await expect(getMessage).rejects.toThrow();

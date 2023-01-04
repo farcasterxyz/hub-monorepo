@@ -6,20 +6,19 @@ import * as message_generated from '@hub/flatbuffers';
 import * as name_registry_event_generated from '@hub/flatbuffers';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
-import * as ed from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
 import { ethers, utils, Wallet } from 'ethers';
 import { Factory } from 'fishery';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { bytesToBigNumber } from '~/eth/utils';
 import MessageModel from '~/flatbuffers/models/messageModel';
-import { KeyPair, SignerAddModel, VerificationEthAddressClaim } from '~/flatbuffers/models/types';
+import { SignerAddModel, VerificationEthAddressClaim } from '~/flatbuffers/models/types';
 import { bytesToHexString, hexStringToBytes, numberToBytes } from '~/flatbuffers/utils/bytes';
-import { signMessageHash, signVerificationEthAddressClaim } from '~/flatbuffers/utils/eip712';
+import { signVerificationEthAddressClaim } from '~/flatbuffers/utils/eip712';
 import { toFarcasterTime } from '~/flatbuffers/utils/time';
 import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { HASH_LENGTH, SyncId } from '~/network/sync/syncId';
-import { generateEd25519KeyPair } from '~/utils/crypto';
+import { Ed25519Signer, Eip712Signer } from '~/signers';
 
 /* eslint-disable security/detect-object-injection */
 const BytesFactory = Factory.define<Uint8Array, { length?: number }>(({ transientParams }) => {
@@ -51,10 +50,6 @@ const TsHashFactory = Factory.define<Uint8Array, { timestamp?: number; hash?: Ui
     transientParams.timestamp ?? faker.date.recent().getTime(),
     transientParams.hash ?? blake3(faker.random.alphaNumeric(256), { dkLen: 16 })
   );
-});
-
-const Ed25519SignerFactory = Factory.define<Uint8Array>(() => {
-  return BytesFactory.build({}, { transient: { length: 32 } });
 });
 
 const UserIdFactory = Factory.define<message_generated.UserIdT, any, message_generated.UserId>(({ onCreate }) => {
@@ -385,7 +380,7 @@ const UserDataAddDataFactory = Factory.define<message_generated.MessageDataT, an
 
 const MessageFactory = Factory.define<
   message_generated.MessageT,
-  { signer?: KeyPair; wallet?: Wallet },
+  { signer?: Ed25519Signer; ethSigner?: Eip712Signer },
   message_generated.Message
 >(({ onCreate, transientParams }) => {
   onCreate(async (params) => {
@@ -398,17 +393,17 @@ const MessageFactory = Factory.define<
     if (params.signature.length === 0) {
       if (transientParams.signer) {
         const signer = transientParams.signer;
-        params.signature = Array.from(await ed.sign(new Uint8Array(params.hash), signer.privateKey));
-        params.signer = Array.from(signer.publicKey);
-      } else if (transientParams.wallet) {
-        const eip712Signature = await signMessageHash(new Uint8Array(params.hash), transientParams.wallet);
+        params.signature = Array.from((await signer.signMessageHash(new Uint8Array(params.hash)))._unsafeUnwrap());
+        params.signer = Array.from(signer.signerKey);
+      } else if (transientParams.ethSigner) {
+        const eip712Signature = await transientParams.ethSigner.signMessageHash(new Uint8Array(params.hash));
         params.signature = Array.from(eip712Signature._unsafeUnwrap());
         params.signatureScheme = message_generated.SignatureScheme.Eip712;
-        params.signer = Array.from(hexStringToBytes(transientParams.wallet.address)._unsafeUnwrap());
+        params.signer = Array.from(transientParams.ethSigner.signerKey);
       } else {
-        const signer = await generateEd25519KeyPair();
-        params.signature = Array.from(await ed.sign(new Uint8Array(params.hash), signer.privateKey));
-        params.signer = Array.from(signer.publicKey);
+        const signer = Factories.Ed25519Signer.build();
+        params.signature = Array.from((await signer.signMessageHash(new Uint8Array(params.hash)))._unsafeUnwrap());
+        params.signer = Array.from(signer.signerKey);
       }
     }
 
@@ -540,7 +535,7 @@ const RevokeSignerJobPayloadFactory = Factory.define<
 
   return new job_generated.RevokeSignerJobPayloadT(
     Array.from(FIDFactory.build()),
-    Array.from(Ed25519SignerFactory.build())
+    Array.from(Ed25519PrivateKeyFactory.build())
   );
 });
 
@@ -549,10 +544,10 @@ const SyncIdFactory = Factory.define<undefined, { date: Date; hash: string; fid:
     onCreate(async () => {
       const { date, hash, fid } = transientParams;
 
-      const wallet = new Wallet(utils.randomBytes(32));
-      const signer = await generateEd25519KeyPair();
+      const ethSigner = Factories.Eip712Signer.build();
+      const signer = Factories.Ed25519Signer.build();
       const signerAddData = await Factories.SignerAddData.create({
-        body: Factories.SignerBody.build({ signer: Array.from(signer.publicKey) }),
+        body: Factories.SignerBody.build({ signer: Array.from(signer.signerKey) }),
         fid: Array.from(fid || Factories.FID.build()),
         timestamp: (date || faker.date.recent()).getTime() / 1000,
       });
@@ -566,7 +561,7 @@ const SyncIdFactory = Factory.define<undefined, { date: Date; hash: string; fid:
             hash: hashBytes,
             data: Array.from(signerAddData.bb?.bytes() ?? []),
           },
-          { transient: { wallet } }
+          { transient: { ethSigner } }
         )
       ) as SignerAddModel;
 
@@ -576,6 +571,19 @@ const SyncIdFactory = Factory.define<undefined, { date: Date; hash: string; fid:
     return undefined;
   }
 );
+
+const Ed25519PrivateKeyFactory = Factory.define<Uint8Array>(() => {
+  return BytesFactory.build({}, { transient: { length: 32 } });
+});
+
+const Ed25519SignerFactory = Factory.define<Ed25519Signer>(() => {
+  const privateKey = Ed25519PrivateKeyFactory.build();
+  return new Ed25519Signer(privateKey);
+});
+
+const Eip712SignerFactory = Factory.define<Eip712Signer>(() => {
+  return new Eip712Signer(ethers.utils.randomBytes(32));
+});
 
 const Factories = {
   Bytes: BytesFactory,
@@ -612,6 +620,8 @@ const Factories = {
   GossipAddressInfo: GossipAddressInfoFactory,
   SyncId: SyncIdFactory,
   RevokeSignerJobPayload: RevokeSignerJobPayloadFactory,
+  Ed25519Signer: Ed25519SignerFactory,
+  Eip712Signer: Eip712SignerFactory,
 };
 
 export default Factories;

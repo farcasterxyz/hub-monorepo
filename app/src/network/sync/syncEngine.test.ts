@@ -1,11 +1,10 @@
 import { MessageType } from '@hub/flatbuffers';
-import { utils, Wallet } from 'ethers';
 import { ok } from 'neverthrow';
 import { anyString, instance, mock, when } from 'ts-mockito';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
-import { CastAddModel, CastRemoveModel, KeyPair, SignerAddModel } from '~/flatbuffers/models/types';
+import { CastAddModel, CastRemoveModel, SignerAddModel } from '~/flatbuffers/models/types';
 import { hexStringToBytes } from '~/flatbuffers/utils/bytes';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import SyncEngine from '~/network/sync/syncEngine';
@@ -13,14 +12,14 @@ import { SyncId } from '~/network/sync/syncId';
 import Client from '~/rpc/client';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
-import { generateEd25519KeyPair } from '~/utils/crypto';
 
 const testDb = jestRocksDB(`engine.syncEngine.test`);
 const fid = Factories.FID.build();
-const wallet = new Wallet(utils.randomBytes(32));
+const ethSigner = Factories.Eip712Signer.build();
+const wallet = ethSigner.wallet;
+const signer = Factories.Ed25519Signer.build();
 
 let custodyEvent: IdRegistryEventModel;
-let signer: KeyPair;
 let signerAdd: SignerAddModel;
 let castAdd: CastAddModel;
 
@@ -28,17 +27,16 @@ beforeAll(async () => {
   custodyEvent = new IdRegistryEventModel(
     await Factories.IdRegistryEvent.create(
       { to: Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()), fid: Array.from(fid) },
-      { transient: { wallet } }
+      { transient: { ethSigner } }
     )
   );
 
-  signer = await generateEd25519KeyPair();
   const signerAddData = await Factories.SignerAddData.create({
-    body: Factories.SignerBody.build({ signer: Array.from(signer.publicKey) }),
+    body: Factories.SignerBody.build({ signer: Array.from(signer.signerKey) }),
     fid: Array.from(fid),
   });
   signerAdd = new MessageModel(
-    await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+    await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { ethSigner } })
   ) as SignerAddModel;
 
   const castAddData = await Factories.CastAddData.create({
