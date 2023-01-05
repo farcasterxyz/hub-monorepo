@@ -12,7 +12,18 @@ enum EventType: uint8 {
   MergeNameRegistryEvent = 4
 }
 
+table Empty {
+}
+
 // Responses
+
+table HubInfoResponse {
+  version: string;
+  synced: bool;
+  nickname: string;
+  root_hash: string;
+}
+
 table MessageBytes {
   message_bytes: [ubyte] (nested_flatbuffer: "Farcaster.Message", required);
 }
@@ -46,6 +57,7 @@ table TrieNodeSnapshotResponse {
 }
 
 // Cast Requests
+
 table GetCastRequest {
   fid: [ubyte] (required);
   ts_hash: [ubyte] (required);

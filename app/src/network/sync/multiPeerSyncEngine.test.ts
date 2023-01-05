@@ -5,6 +5,7 @@ import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastRemoveModel, SignerAddModel } from '~/flatbuffers/models/types';
+import { APP_NICKNAME, APP_VERSION } from '~/hub';
 import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';
 import Client from '~/rpc/client';
@@ -62,6 +63,31 @@ describe('Multi peer sync engine', () => {
     );
   };
 
+  const removeMessagesWithTsHashes = async (engine: Engine, addMessages: MessageModel[]) => {
+    return await Promise.all(
+      addMessages.map(async (addMessage) => {
+        const castRemoveBody = await Factories.CastRemoveBody.create({
+          targetTsHash: Array.from(addMessage.tsHash()),
+        });
+        const castRemoveData = await Factories.CastRemoveData.create({
+          fid: Array.from(fid),
+          timestamp: addMessage.timestamp() + 10,
+          body: castRemoveBody.unpack(),
+        });
+        const castRemove = new MessageModel(
+          await Factories.Message.create(
+            { data: Array.from(castRemoveData.bb?.bytes() ?? []) },
+            { transient: { signer } }
+          )
+        );
+
+        const result = await engine.mergeMessage(castRemove);
+        expect(result.isOk()).toBeTruthy();
+        return Promise.resolve(castRemove);
+      })
+    );
+  };
+
   // Engine 1 is where we add events, and see if engine 2 will sync them
   let engine1: Engine;
   let hub1;
@@ -90,6 +116,13 @@ describe('Multi peer sync engine', () => {
     // Add signer custody event to engine 1
     await engine1.mergeIdRegistryEvent(custodyEvent);
     await engine1.mergeMessage(signerAdd);
+
+    // Get info first
+    const info = await clientForServer1.getInfo();
+    expect(info.isOk()).toBeTruthy();
+    const infoResult = info._unsafeUnwrap();
+    expect(infoResult.version()).toEqual(APP_VERSION);
+    expect(infoResult.nickname()).toEqual(APP_NICKNAME);
 
     // Fetch the signerAdd message from engine 1
     const rpcResult = await clientForServer1.getAllSignerMessagesByFid(fid);
@@ -231,17 +264,38 @@ describe('Multi peer sync engine', () => {
       await engine1.mergeMessage(signerAdd);
 
       // Add loads of messages to engine 1
-      let startTime = 30662167;
+      let msgTimestamp = 30662167;
       const batchSize = 100;
       const numBatches = 20;
+
+      // Remove a few messages from the previous batch
+      let castMessagesToRemove: MessageModel[] = [];
+
+      let totalMessages = 0;
+
       for (let i = 0; i < numBatches; i++) {
+        // Remove a few messages from the previous batch
+        const timestampsToRemove = [];
+        for (let j = 0; j < castMessagesToRemove.length; j++) {
+          timestampsToRemove.push(msgTimestamp + j);
+        }
+
+        await removeMessagesWithTsHashes(engine1, castMessagesToRemove);
+
+        msgTimestamp += timestampsToRemove.length;
+        totalMessages += timestampsToRemove.length;
+
+        // Add new timestamped messages
         const timestamps = [];
         for (let j = 0; j < batchSize; j++) {
-          timestamps.push(startTime + i * batchSize + j);
+          timestamps.push(msgTimestamp + j);
         }
         // console.log('adding batch', i, ' of ', numBatches);
-        await addMessagesWithTimestamps(engine1, timestamps);
-        startTime += batchSize;
+        const addedMessages = await addMessagesWithTimestamps(engine1, timestamps);
+        castMessagesToRemove = addedMessages.slice(0, 10);
+
+        msgTimestamp += batchSize;
+        totalMessages += batchSize;
       }
 
       const engine2 = new Engine(testDb2);
@@ -260,7 +314,8 @@ describe('Multi peer sync engine', () => {
 
       const totalTime = (end - start) / 1000;
       expect(totalTime).toBeGreaterThan(0);
-      // console.log('total time', totalTime, 'seconds. Casts per second:', (numBatches * batchSize) / totalTime);
+      expect(totalMessages).toBeGreaterThan(numBatches * batchSize);
+      // console.log('total time', totalTime, 'seconds. Casts per second:', totalMessages / totalTime);
 
       expect(syncEngine1.snapshot.excludedHashes).toEqual(syncEngine2.snapshot.excludedHashes);
       expect(syncEngine1.snapshot.numMessages).toEqual(syncEngine2.snapshot.numMessages);

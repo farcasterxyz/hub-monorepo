@@ -1,4 +1,5 @@
 import {
+  Empty,
   GetAllMessagesByFidRequest,
   GetAllMessagesByFidRequestT,
   GetAllMessagesBySyncIdsRequest,
@@ -10,6 +11,10 @@ import {
 import { Builder, ByteBuffer } from 'flatbuffers';
 
 export const syncRequests = {
+  getInfoRequest: (): Empty => {
+    return new Empty();
+  },
+
   createSyncRequest: (fid: Uint8Array): GetAllMessagesByFidRequest => {
     const builder = new Builder(1);
     const requestT = new GetAllMessagesByFidRequestT(Array.from(fid));

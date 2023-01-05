@@ -57,6 +57,10 @@ class SyncEngine {
     log.info({ processedMessages }, 'Sync engine initialized');
   }
 
+  public isSyncing(): boolean {
+    return this._isSyncing;
+  }
+
   /** ---------------------------------------------------------------------------------- */
   /**                                      Sync Methods                                  */
   /** ---------------------------------------------------------------------------------- */

@@ -12,6 +12,174 @@ export enum EventType {
   MergeNameRegistryEvent = 4
 }
 
+export class Empty implements flatbuffers.IUnpackableObject<EmptyT> {
+  bb: flatbuffers.ByteBuffer|null = null;
+  bb_pos = 0;
+  __init(i:number, bb:flatbuffers.ByteBuffer):Empty {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+}
+
+static getRootAsEmpty(bb:flatbuffers.ByteBuffer, obj?:Empty):Empty {
+  return (obj || new Empty()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+static getSizePrefixedRootAsEmpty(bb:flatbuffers.ByteBuffer, obj?:Empty):Empty {
+  bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
+  return (obj || new Empty()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+static startEmpty(builder:flatbuffers.Builder) {
+  builder.startObject(0);
+}
+
+static endEmpty(builder:flatbuffers.Builder):flatbuffers.Offset {
+  const offset = builder.endObject();
+  return offset;
+}
+
+static createEmpty(builder:flatbuffers.Builder):flatbuffers.Offset {
+  Empty.startEmpty(builder);
+  return Empty.endEmpty(builder);
+}
+
+unpack(): EmptyT {
+  return new EmptyT();
+}
+
+
+unpackTo(_o: EmptyT): void {}
+}
+
+export class EmptyT implements flatbuffers.IGeneratedObject {
+constructor(){}
+
+
+pack(builder:flatbuffers.Builder): flatbuffers.Offset {
+  return Empty.createEmpty(builder);
+}
+}
+
+export class HubInfoResponse implements flatbuffers.IUnpackableObject<HubInfoResponseT> {
+  bb: flatbuffers.ByteBuffer|null = null;
+  bb_pos = 0;
+  __init(i:number, bb:flatbuffers.ByteBuffer):HubInfoResponse {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+}
+
+static getRootAsHubInfoResponse(bb:flatbuffers.ByteBuffer, obj?:HubInfoResponse):HubInfoResponse {
+  return (obj || new HubInfoResponse()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+static getSizePrefixedRootAsHubInfoResponse(bb:flatbuffers.ByteBuffer, obj?:HubInfoResponse):HubInfoResponse {
+  bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
+  return (obj || new HubInfoResponse()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+version():string|null
+version(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+version(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+synced():boolean {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
+}
+
+nickname():string|null
+nickname(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+nickname(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+rootHash():string|null
+rootHash(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+rootHash(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+static startHubInfoResponse(builder:flatbuffers.Builder) {
+  builder.startObject(4);
+}
+
+static addVersion(builder:flatbuffers.Builder, versionOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, versionOffset, 0);
+}
+
+static addSynced(builder:flatbuffers.Builder, synced:boolean) {
+  builder.addFieldInt8(1, +synced, +false);
+}
+
+static addNickname(builder:flatbuffers.Builder, nicknameOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(2, nicknameOffset, 0);
+}
+
+static addRootHash(builder:flatbuffers.Builder, rootHashOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(3, rootHashOffset, 0);
+}
+
+static endHubInfoResponse(builder:flatbuffers.Builder):flatbuffers.Offset {
+  const offset = builder.endObject();
+  return offset;
+}
+
+static createHubInfoResponse(builder:flatbuffers.Builder, versionOffset:flatbuffers.Offset, synced:boolean, nicknameOffset:flatbuffers.Offset, rootHashOffset:flatbuffers.Offset):flatbuffers.Offset {
+  HubInfoResponse.startHubInfoResponse(builder);
+  HubInfoResponse.addVersion(builder, versionOffset);
+  HubInfoResponse.addSynced(builder, synced);
+  HubInfoResponse.addNickname(builder, nicknameOffset);
+  HubInfoResponse.addRootHash(builder, rootHashOffset);
+  return HubInfoResponse.endHubInfoResponse(builder);
+}
+
+unpack(): HubInfoResponseT {
+  return new HubInfoResponseT(
+    this.version(),
+    this.synced(),
+    this.nickname(),
+    this.rootHash()
+  );
+}
+
+
+unpackTo(_o: HubInfoResponseT): void {
+  _o.version = this.version();
+  _o.synced = this.synced();
+  _o.nickname = this.nickname();
+  _o.rootHash = this.rootHash();
+}
+}
+
+export class HubInfoResponseT implements flatbuffers.IGeneratedObject {
+constructor(
+  public version: string|Uint8Array|null = null,
+  public synced: boolean = false,
+  public nickname: string|Uint8Array|null = null,
+  public rootHash: string|Uint8Array|null = null
+){}
+
+
+pack(builder:flatbuffers.Builder): flatbuffers.Offset {
+  const version = (this.version !== null ? builder.createString(this.version!) : 0);
+  const nickname = (this.nickname !== null ? builder.createString(this.nickname!) : 0);
+  const rootHash = (this.rootHash !== null ? builder.createString(this.rootHash!) : 0);
+
+  return HubInfoResponse.createHubInfoResponse(builder,
+    version,
+    this.synced,
+    nickname,
+    rootHash
+  );
+}
+}
+
 export class MessageBytes implements flatbuffers.IUnpackableObject<MessageBytesT> {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
