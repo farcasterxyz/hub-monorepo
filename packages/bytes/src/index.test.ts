@@ -131,6 +131,32 @@ describe('bytesToHexString', () => {
         expect(bytesToHexString(input)._unsafeUnwrap()).toEqual(output);
       });
     }
+
+    describe('with size', () => {
+      const passingCases: [Uint8Array, number, string][] = [
+        [new Uint8Array([232, 3]), 4, '0x03e8'],
+        [new Uint8Array([232, 3, 0]), 6, '0x03e8'],
+        [new Uint8Array([0, 232, 3, 0]), 20, '0x03e800'],
+      ];
+
+      for (const [input, size, output] of passingCases) {
+        test(`converts little endian byte array to fixed size hex string: ${input}`, () => {
+          expect(bytesToHexString(input, { size, endianness: 'little' })._unsafeUnwrap()).toEqual(output);
+        });
+      }
+
+      const failingCases: [Uint8Array, number][] = [
+        [new Uint8Array([232, 3]), 3],
+        [new Uint8Array([232, 3, 0]), 2],
+        [new Uint8Array([232, 3, 0]), 0],
+      ];
+
+      for (const [input, size] of failingCases) {
+        test(`fails with: ${input}`, () => {
+          expect(bytesToHexString(input, { size, endianness: 'little' })._unsafeUnwrapErr()).toBeInstanceOf(HubError);
+        });
+      }
+    });
   });
 });
 

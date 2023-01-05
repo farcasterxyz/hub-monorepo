@@ -8,7 +8,7 @@ export type Endianness = 'little' | 'big';
 export type BytesOptions = {
   endianness?: Endianness; // Endianness of byte array
 };
-export type ToBytesOptions = BytesOptions & {
+export type SizableBytesOptions = BytesOptions & {
   size?: number; // Size of byte array
 };
 
@@ -108,8 +108,18 @@ export const bytesToNumber = (bytes: Uint8Array, options: BytesOptions = {}): Hu
   return safeReadUInt(bytes);
 };
 
-export const bytesToHexString = (bytes: Uint8Array, options: BytesOptions = {}): HubResult<string> => {
+export const bytesToHexString = (bytes: Uint8Array, options: SizableBytesOptions = {}): HubResult<string> => {
   const endianness = options.endianness ?? 'little';
+
+  if (typeof options.size === 'number') {
+    if (options.size <= 0) {
+      return err(new HubError('bad_request.invalid_param', 'size must be positive'));
+    }
+
+    if (options.size % 2) {
+      return err(new HubError('bad_request.invalid_param', 'size must be even'));
+    }
+  }
 
   let hex = '0x';
 
@@ -127,7 +137,13 @@ export const bytesToHexString = (bytes: Uint8Array, options: BytesOptions = {}):
       if (hexChars?.length === 1) {
         hexChars = '0' + hexChars;
       }
+
       hex = hex + hexChars;
+
+      // Check size minus 0x prefix
+      if (typeof options.size === 'number' && hex.length - 2 > options.size) {
+        return err(new HubError('bad_request.invalid_param', 'value does not fit in size'));
+      }
     }
   } else {
     // Start at beginning
@@ -144,13 +160,18 @@ export const bytesToHexString = (bytes: Uint8Array, options: BytesOptions = {}):
         hexChars = '0' + hexChars;
       }
       hex = hex + hexChars;
+
+      // Check size minus 0x prefix
+      if (typeof options.size === 'number' && hex.length - 2 > options.size) {
+        return err(new HubError('bad_request.invalid_param', 'value does not fit in size'));
+      }
     }
   }
 
   return ok(hex);
 };
 
-export const hexStringToBytes = (hex: string, options: ToBytesOptions = {}): HubResult<Uint8Array> => {
+export const hexStringToBytes = (hex: string, options: SizableBytesOptions = {}): HubResult<Uint8Array> => {
   const endianness: Endianness = options.endianness ?? 'little';
 
   if (hex.substring(0, 2) === '0x') {
@@ -183,7 +204,7 @@ export const hexStringToBytes = (hex: string, options: ToBytesOptions = {}): Hub
   return ok(new Uint8Array(bytes));
 };
 
-export const utf8StringToBytes = (utf8: string, options: ToBytesOptions = {}): HubResult<Uint8Array> => {
+export const utf8StringToBytes = (utf8: string, options: SizableBytesOptions = {}): HubResult<Uint8Array> => {
   const endianness: Endianness = options.endianness ?? 'little';
 
   const encoder = new TextEncoder();
@@ -195,11 +216,11 @@ export const utf8StringToBytes = (utf8: string, options: ToBytesOptions = {}): H
   }
 };
 
-export const numberToBytes = (value: number, options: ToBytesOptions = {}): HubResult<Uint8Array> => {
+export const numberToBytes = (value: number, options: SizableBytesOptions = {}): HubResult<Uint8Array> => {
   return bigIntToBytes(BigInt(value), options);
 };
 
-export const bigIntToBytes = (value: bigint, options: ToBytesOptions = {}): HubResult<Uint8Array> => {
+export const bigIntToBytes = (value: bigint, options: SizableBytesOptions = {}): HubResult<Uint8Array> => {
   if (value <= 0n) {
     return err(new HubError('bad_request.invalid_param', 'value must be positive'));
   }

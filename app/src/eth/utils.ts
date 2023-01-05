@@ -1,8 +1,8 @@
-import { BytesOptions, bytesToHexString, hexStringToBytes, ToBytesOptions } from '@hub/bytes';
+import { BytesOptions, bytesToHexString, hexStringToBytes, SizableBytesOptions } from '@hub/bytes';
 import { HubResult } from '@hub/errors';
 import { BigNumber } from 'ethers';
 
-export const bytes32ToBytes = (value: BigNumber, options: ToBytesOptions = {}): HubResult<Uint8Array> => {
+export const bytes32ToBytes = (value: BigNumber, options: SizableBytesOptions = {}): HubResult<Uint8Array> => {
   // Remove right padding
   let hex = value.toHexString();
   while (hex.substring(hex.length - 2) === '00') {
@@ -12,7 +12,7 @@ export const bytes32ToBytes = (value: BigNumber, options: ToBytesOptions = {}): 
   return hexStringToBytes(hex, options);
 };
 
-export const bigNumberToBytes = (value: BigNumber, options: ToBytesOptions = {}): HubResult<Uint8Array> => {
+export const bigNumberToBytes = (value: BigNumber, options: SizableBytesOptions = {}): HubResult<Uint8Array> => {
   return hexStringToBytes(value._hex, options);
 };
 
