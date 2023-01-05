@@ -6,7 +6,7 @@ Users generate messages and upload them to Hub, which propagates them to other H
 
 ## Getting Started
 
-After [setting up your environment](CONTRIBUTING.md#2-setting-up-your-development-environment) navigate to this folder from the root and run the following steps:
+After [setting up your environment](../CONTRIBUTING.md#2-setting-up-your-development-environment) navigate to this folder from the root and run the following steps:
 
 Then, run:
 
