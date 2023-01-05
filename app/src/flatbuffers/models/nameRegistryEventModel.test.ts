@@ -1,25 +1,19 @@
-import { hexStringToBytes } from '@hub/bytes';
 import { NameRegistryEventType } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { jestRocksDB } from '~/storage/db/jestUtils';
-import { generateEthereumSigner } from '~/utils/crypto';
 
 const db = jestRocksDB('flatbuffers.nameRegistryEventModel.test');
 
 const fname = Factories.Fname.build();
+const custody1 = Factories.Eip712Signer.build();
 
 let model: NameRegistryEventModel;
-let custody1Address: Uint8Array;
-let custody2Address: Uint8Array;
 
 beforeAll(async () => {
-  const custody1 = await generateEthereumSigner();
-  custody1Address = hexStringToBytes(custody1.signerKey)._unsafeUnwrap();
-
   const nameRegistryEvent = await Factories.NameRegistryEvent.create({
     fname: Array.from(fname),
-    to: Array.from(custody1Address),
+    to: Array.from(custody1.signerKey),
   });
   model = new NameRegistryEventModel(nameRegistryEvent);
 });
@@ -42,14 +36,13 @@ describe('instance methods', () => {
     test('succeeds when fname is transfered', async () => {
       await model.put(db);
 
-      const custody2 = await generateEthereumSigner();
-      custody2Address = hexStringToBytes(custody2.signerKey)._unsafeUnwrap();
+      const custody2 = Factories.Eip712Signer.build();
 
       // Transfer evemt
       const transferNameRegistryEvent = await Factories.NameRegistryEvent.create({
         fname: Array.from(fname),
-        from: Array.from(custody1Address),
-        to: Array.from(custody2Address),
+        from: Array.from(custody1.signerKey),
+        to: Array.from(custody2.signerKey),
       });
       const model2 = new NameRegistryEventModel(transferNameRegistryEvent);
       await model2.put(db);

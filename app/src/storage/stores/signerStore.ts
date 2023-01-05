@@ -9,7 +9,6 @@ import * as types from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { eventCompare } from '~/utils/contractEvent';
-import { logger } from '~/utils/logger';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 
@@ -104,9 +103,7 @@ class SignerStore {
    * @returns the SignerAdd Model if it exists, throws Error otherwise
    */
   async getSignerAdd(fid: Uint8Array, signerPubKey: Uint8Array): Promise<types.SignerAddModel> {
-    logger.info(`Getting signer add for fid ${fid} and signer ${Buffer.from(signerPubKey).toString('hex')}...`);
     const messageTsHash = await this._db.get(SignerStore.signerAddsKey(fid, signerPubKey));
-    logger.info(`...: ${messageTsHash.toString('hex')}`);
 
     return MessageModel.get<types.SignerAddModel>(this._db, fid, types.UserPostfix.SignerMessage, messageTsHash);
   }

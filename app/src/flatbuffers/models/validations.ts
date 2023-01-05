@@ -1,13 +1,13 @@
 import { bytesCompare, bytesToHexString } from '@hub/bytes';
 import { HubAsyncResult, HubError, HubResult } from '@hub/errors';
 import * as message_generated from '@hub/flatbuffers';
-import * as ed from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
-import { err, ok, Result, ResultAsync } from 'neverthrow';
+import { err, ok, Result } from 'neverthrow';
 import { bytesToBigNumber } from '~/eth/utils';
 import MessageModel, { FID_BYTES } from '~/flatbuffers/models/messageModel';
 import * as typeguards from '~/flatbuffers/models/typeguards';
 import * as types from '~/flatbuffers/models/types';
+import * as ed25519 from '~/flatbuffers/utils/ed25519';
 import { verifyMessageHashSignature, verifyVerificationEthAddressClaimSignature } from '~/flatbuffers/utils/eip712';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 
@@ -48,9 +48,10 @@ export const validateMessage = async (message: MessageModel): HubAsyncResult<Mes
     message.signatureScheme() === message_generated.SignatureScheme.Ed25519 &&
     !EIP712_MESSAGE_TYPES.includes(message.type())
   ) {
-    const signatureIsValid = await ResultAsync.fromPromise(
-      ed.verify(message.signature(), message.hash(), message.signer()),
-      () => undefined
+    const signatureIsValid = await ed25519.verifyMessageHashSignature(
+      message.signature(),
+      message.hash(),
+      message.signer()
     );
     if (signatureIsValid.isErr() || (signatureIsValid.isOk() && !signatureIsValid.value)) {
       return err(new HubError('bad_request.validation_failure', 'invalid signature'));
@@ -145,8 +146,12 @@ export const validateEthAddress = (address?: Uint8Array | null): HubResult<Uint8
     return err(new HubError('bad_request.validation_failure', 'address is missing'));
   }
 
-  if (address.byteLength !== 20) {
-    return err(new HubError('bad_request.validation_failure', 'address must be 20 bytes'));
+  if (address.byteLength > 20) {
+    return err(new HubError('bad_request.validation_failure', 'address > 20 bytes'));
+  }
+
+  if (address[address.byteLength - 1] === 0) {
+    return err(new HubError('bad_request.validation_failure', 'address is padded'));
   }
 
   return ok(address);
@@ -157,8 +162,12 @@ export const validateEthBlockHash = (blockHash?: Uint8Array | null): HubResult<U
     return err(new HubError('bad_request.validation_failure', 'blockHash is missing'));
   }
 
-  if (blockHash.byteLength !== 32) {
-    return err(new HubError('bad_request.validation_failure', 'blockHash must be 32 bytes'));
+  if (blockHash.byteLength > 32) {
+    return err(new HubError('bad_request.validation_failure', 'blockHash > 32 bytes'));
+  }
+
+  if (blockHash[blockHash.byteLength - 1] === 0) {
+    return err(new HubError('bad_request.validation_failure', 'blockHash is padded'));
   }
 
   return ok(blockHash);
@@ -169,8 +178,12 @@ export const validateEd25519PublicKey = (publicKey?: Uint8Array | null): HubResu
     return err(new HubError('bad_request.validation_failure', 'publicKey is missing'));
   }
 
-  if (publicKey.byteLength !== 32) {
-    return err(new HubError('bad_request.validation_failure', 'publicKey must be 32 bytes'));
+  if (publicKey.byteLength > 32) {
+    return err(new HubError('bad_request.validation_failure', 'publicKey > 32 bytes'));
+  }
+
+  if (publicKey[publicKey.byteLength - 1] === 0) {
+    return err(new HubError('bad_request.validation_failure', 'publicKey is padded'));
   }
 
   return ok(publicKey);

@@ -39,8 +39,12 @@
   "dependencies": {
     "@chainsafe/libp2p-gossipsub": "^4.1.1",
     "@chainsafe/libp2p-noise": "^8.0.2",
-    "@grpc/grpc-js": "^1.8.1",
+    "@grpc/grpc-js": "^1.7.3",
+    "@hub/bytes": "1.0.0",
+    "@hub/errors": "1.0.0",
     "@hub/flatbuffers": "1.0.0",
+    "@hub/grpc": "1.0.0",
+    "@hub/grpc-client": "1.0.0",
     "@libp2p/interface-connection": "^3.0.2",
     "@libp2p/interface-peer-id": "^1.0.4",
     "@libp2p/interface-peer-info": "^1.0.3",

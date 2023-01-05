@@ -2,23 +2,15 @@ import { faker } from '@faker-js/faker';
 import { hexStringToBytes } from '@hub/bytes';
 import { HubError } from '@hub/errors';
 import * as message_generated from '@hub/flatbuffers';
-import { utils, Wallet } from 'ethers';
 import { bytesToBigNumber } from '~/eth/utils';
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import * as types from '~/flatbuffers/models/types';
 import * as validations from '~/flatbuffers/models/validations';
-import { signVerificationEthAddressClaim } from '~/flatbuffers/utils/eip712';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
-import { generateEd25519KeyPair } from '~/utils/crypto';
 
-let wallet: Wallet;
-let signer: types.KeyPair;
-
-beforeAll(async () => {
-  wallet = new Wallet(utils.randomBytes(32));
-  signer = await generateEd25519KeyPair();
-});
+const ethSigner = Factories.Eip712Signer.build();
+const signer = Factories.Ed25519Signer.build();
 
 describe('validateMessage', () => {
   test('succeeds with Ed25519 signer', async () => {
@@ -30,7 +22,10 @@ describe('validateMessage', () => {
   test('succeeds with EIP712 signer', async () => {
     const signerAddData = await Factories.SignerAddData.create();
     const message = new MessageModel(
-      await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+      await Factories.Message.create(
+        { data: Array.from(signerAddData.bb?.bytes() ?? []) },
+        { transient: { ethSigner } }
+      )
     );
     const result = await validations.validateMessage(message);
     expect(result._unsafeUnwrap()).toEqual(message);
@@ -38,7 +33,7 @@ describe('validateMessage', () => {
 
   test('fails with EIP712 signer and non-signer message type', async () => {
     // Default message type is CastAdd
-    const message = new MessageModel(await Factories.Message.create({}, { transient: { wallet } }));
+    const message = new MessageModel(await Factories.Message.create({}, { transient: { ethSigner } }));
     const result = await validations.validateMessage(message);
     expect(result._unsafeUnwrapErr()).toEqual(
       new HubError('bad_request.validation_failure', 'invalid signatureScheme')
@@ -201,29 +196,22 @@ describe('validateCastId', () => {
 });
 
 describe('validateEthAddress', () => {
-  let address: Uint8Array;
-
-  beforeAll(async () => {
-    const wallet = new Wallet(utils.randomBytes(32));
-    address = hexStringToBytes(wallet.address)._unsafeUnwrap();
-  });
+  const address = ethSigner.signerKey;
 
   test('succeeds', () => {
     expect(validations.validateEthAddress(address)._unsafeUnwrap()).toEqual(address);
   });
 
   test('fails with longer address', () => {
-    const invalidAddress = new Uint8Array([...address, 1]);
-    expect(validations.validateEthAddress(invalidAddress)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'address must be 20 bytes')
+    const longAddress = Factories.Bytes.build({}, { transient: { length: 21 } });
+    expect(validations.validateEthAddress(longAddress)._unsafeUnwrapErr()).toEqual(
+      new HubError('bad_request.validation_failure', 'address > 20 bytes')
     );
   });
 
-  test('fails with shorter address', () => {
-    const invalidAddress = address.slice(0, -1);
-    expect(validations.validateEthAddress(invalidAddress)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'address must be 20 bytes')
-    );
+  test('succeeds with shorter address', () => {
+    const shortAddress = address.subarray(0, -1);
+    expect(validations.validateEthAddress(shortAddress)._unsafeUnwrap()).toEqual(shortAddress);
   });
 });
 
@@ -236,14 +224,19 @@ describe('validateEthBlockHash', () => {
   test('fails when greater than 32 bytes', () => {
     const blockHash = Factories.Bytes.build({}, { transient: { length: 33 } });
     expect(validations.validateEthBlockHash(blockHash)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'blockHash must be 32 bytes')
+      new HubError('bad_request.validation_failure', 'blockHash > 32 bytes')
     );
   });
 
-  test('fails when less than 32 bytes', () => {
+  test('succeeds when less than 32 bytes', () => {
     const blockHash = Factories.Bytes.build({}, { transient: { length: 31 } });
-    expect(validations.validateEthBlockHash(blockHash)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'blockHash must be 32 bytes')
+    expect(validations.validateEthBlockHash(blockHash)._unsafeUnwrap()).toEqual(blockHash);
+  });
+
+  test('fails when padded', () => {
+    const blockHash = Factories.Bytes.build({}, { transient: { length: 31 } });
+    expect(validations.validateEthBlockHash(new Uint8Array([...blockHash, 0]))._unsafeUnwrapErr()).toEqual(
+      new HubError('bad_request.validation_failure', 'blockHash is padded')
     );
   });
 
@@ -255,29 +248,22 @@ describe('validateEthBlockHash', () => {
 });
 
 describe('validateEd25519PublicKey', () => {
-  let publicKey: Uint8Array;
-
-  beforeAll(async () => {
-    const keyPair = await generateEd25519KeyPair();
-    publicKey = keyPair.publicKey;
-  });
+  const publicKey = signer.signerKey;
 
   test('succeeds', () => {
     expect(validations.validateEd25519PublicKey(publicKey)._unsafeUnwrap()).toEqual(publicKey);
   });
 
   test('fails with longer key', () => {
-    const invalidKey = new Uint8Array([...publicKey, 1]);
-    expect(validations.validateEd25519PublicKey(invalidKey)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'publicKey must be 32 bytes')
+    const longKey = Factories.Bytes.build({}, { transient: { length: 33 } });
+    expect(validations.validateEd25519PublicKey(longKey)._unsafeUnwrapErr()).toEqual(
+      new HubError('bad_request.validation_failure', 'publicKey > 32 bytes')
     );
   });
 
-  test('fails with shorter key', () => {
-    const invalidKey = publicKey.slice(0, -1);
-    expect(validations.validateEd25519PublicKey(invalidKey)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'publicKey must be 32 bytes')
-    );
+  test('succeeds with shorter key', () => {
+    const shortKey = publicKey.subarray(0, -1);
+    expect(validations.validateEd25519PublicKey(shortKey)._unsafeUnwrap()).toEqual(shortKey);
   });
 });
 
@@ -473,11 +459,11 @@ describe('validateVerificationAddEthAddressMessage', () => {
       hubErrorMessage = 'address is missing';
     });
 
-    test('with invalid eth address', () => {
+    test('with eth address larger than 20 bytes', () => {
       body = Factories.VerificationAddEthAddressBody.build({
-        address: Array.from(Factories.Bytes.build({}, { transient: { length: 10 } })),
+        address: Array.from(Factories.Bytes.build({}, { transient: { length: 21 } })),
       });
-      hubErrorMessage = 'address must be 20 bytes';
+      hubErrorMessage = 'address > 20 bytes';
     });
 
     test('with missing block hash', () => {
@@ -485,11 +471,11 @@ describe('validateVerificationAddEthAddressMessage', () => {
       hubErrorMessage = 'blockHash is missing';
     });
 
-    test('with invalid block hash', () => {
+    test('with block hash larger than 32 bytes', () => {
       body = Factories.VerificationAddEthAddressBody.build({
-        blockHash: Array.from(Factories.Bytes.build({}, { transient: { length: 10 } })),
+        blockHash: Array.from(Factories.Bytes.build({}, { transient: { length: 33 } })),
       });
-      hubErrorMessage = 'blockHash must be 32 bytes';
+      hubErrorMessage = 'blockHash > 32 bytes';
     });
 
     test('with invalid eth signature', async () => {
@@ -497,11 +483,11 @@ describe('validateVerificationAddEthAddressMessage', () => {
         fid: bytesToBigNumber(fid)._unsafeUnwrap(),
         address: faker.datatype.hexadecimal({ length: 40, case: 'lower' }), // mismatched address
         network: message_generated.FarcasterNetwork.Testnet,
-        blockHash: faker.datatype.hexadecimal({ length: 64, case: 'lower' }),
+        blockHash: Factories.BlockHash.build(),
       };
-      const signature = await signVerificationEthAddressClaim(claim, wallet);
+      const signature = await ethSigner.signVerificationEthAddressClaim(claim);
       body = new message_generated.VerificationAddEthAddressBodyT(
-        Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()),
+        Array.from(ethSigner.signerKey),
         Array.from(signature._unsafeUnwrap()),
         Array.from(hexStringToBytes(claim.blockHash)._unsafeUnwrap())
       );
@@ -550,9 +536,9 @@ describe('validateVerificationRemoveMessage', () => {
 
     test('with invalid address', () => {
       body = Factories.VerificationRemoveBody.build({
-        address: Array.from(Factories.Bytes.build({}, { transient: { length: 10 } })),
+        address: Array.from(Factories.Bytes.build({}, { transient: { length: 21 } })),
       });
-      hubErrorMessage = 'address must be 20 bytes';
+      hubErrorMessage = 'address > 20 bytes';
     });
   });
 });
@@ -561,7 +547,10 @@ describe('validateSignerMessage', () => {
   test('succeeds with SignerAdd', async () => {
     const signerAddData = await Factories.SignerAddData.create();
     const signerAdd = new MessageModel(
-      await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+      await Factories.Message.create(
+        { data: Array.from(signerAddData.bb?.bytes() ?? []) },
+        { transient: { ethSigner } }
+      )
     ) as types.SignerAddModel;
     expect(validations.validateSignerMessage(signerAdd)._unsafeUnwrap()).toEqual(signerAdd);
   });
@@ -571,7 +560,7 @@ describe('validateSignerMessage', () => {
     const signerRemove = new MessageModel(
       await Factories.Message.create(
         { data: Array.from(SignerRemoveData.bb?.bytes() ?? []) },
-        { transient: { wallet } }
+        { transient: { ethSigner } }
       )
     ) as types.SignerRemoveModel;
     expect(validations.validateSignerMessage(signerRemove)._unsafeUnwrap()).toEqual(signerRemove);
@@ -584,7 +573,10 @@ describe('validateSignerMessage', () => {
     afterEach(async () => {
       const signerAddData = await Factories.SignerAddData.create({ body });
       const signerAdd = new MessageModel(
-        await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+        await Factories.Message.create(
+          { data: Array.from(signerAddData.bb?.bytes() ?? []) },
+          { transient: { ethSigner } }
+        )
       ) as types.SignerAddModel;
       expect(validations.validateSignerMessage(signerAdd)._unsafeUnwrapErr()).toEqual(
         new HubError('bad_request.validation_failure', hubErrorMessage)
@@ -600,9 +592,9 @@ describe('validateSignerMessage', () => {
 
     test('with invalid signer', () => {
       body = Factories.SignerBody.build({
-        signer: Array.from(Factories.Bytes.build({}, { transient: { length: 10 } })),
+        signer: Array.from(Factories.Bytes.build({}, { transient: { length: 33 } })),
       });
-      hubErrorMessage = 'publicKey must be 32 bytes';
+      hubErrorMessage = 'publicKey > 32 bytes';
     });
   });
 });
@@ -611,7 +603,7 @@ describe('validateAmpMessage', () => {
   test('succeeds with AmpAdd', async () => {
     const ampAddData = await Factories.AmpAddData.create();
     const ampAdd = new MessageModel(
-      await Factories.Message.create({ data: Array.from(ampAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+      await Factories.Message.create({ data: Array.from(ampAddData.bb?.bytes() ?? []) }, { transient: { ethSigner } })
     ) as types.AmpAddModel;
     expect(validations.validateAmpMessage(ampAdd)._unsafeUnwrap()).toEqual(ampAdd);
   });
@@ -619,7 +611,10 @@ describe('validateAmpMessage', () => {
   test('succeeds with AmpRemove', async () => {
     const ampRemoveData = await Factories.AmpRemoveData.create();
     const ampRemove = new MessageModel(
-      await Factories.Message.create({ data: Array.from(ampRemoveData.bb?.bytes() ?? []) }, { transient: { wallet } })
+      await Factories.Message.create(
+        { data: Array.from(ampRemoveData.bb?.bytes() ?? []) },
+        { transient: { ethSigner } }
+      )
     ) as types.AmpRemoveModel;
     expect(validations.validateAmpMessage(ampRemove)._unsafeUnwrap()).toEqual(ampRemove);
   });
@@ -631,7 +626,7 @@ describe('validateAmpMessage', () => {
     afterEach(async () => {
       const ampAddData = await Factories.AmpAddData.create({ body });
       const ampAdd = new MessageModel(
-        await Factories.Message.create({ data: Array.from(ampAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+        await Factories.Message.create({ data: Array.from(ampAddData.bb?.bytes() ?? []) }, { transient: { ethSigner } })
       ) as types.AmpAddModel;
       expect(validations.validateAmpMessage(ampAdd)._unsafeUnwrapErr()).toEqual(
         new HubError('bad_request.validation_failure', hubErrorMessage)

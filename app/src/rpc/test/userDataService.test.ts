@@ -1,20 +1,17 @@
-import { hexStringToBytes } from '@hub/bytes';
 import { HubError } from '@hub/errors';
 import { UserDataType } from '@hub/flatbuffers';
-import { utils, Wallet } from 'ethers';
 import { ok } from 'neverthrow';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
-import { KeyPair, SignerAddModel, UserDataAddModel } from '~/flatbuffers/models/types';
+import { SignerAddModel, UserDataAddModel } from '~/flatbuffers/models/types';
 import SyncEngine from '~/network/sync/syncEngine';
 import HubClient from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
-import { generateEd25519KeyPair } from '~/utils/crypto';
 
 const db = jestRocksDB('flatbuffers.rpc.userDataService.test');
 const engine = new Engine(db);
@@ -36,9 +33,9 @@ afterAll(async () => {
 
 const fid = Factories.FID.build();
 const fname = Factories.Fname.build();
-const wallet = new Wallet(utils.randomBytes(32));
+const ethSigner = Factories.Eip712Signer.build();
+const signer = Factories.Ed25519Signer.build();
 let custodyEvent: IdRegistryEventModel;
-let signer: KeyPair;
 let signerAdd: SignerAddModel;
 
 let pfpAdd: UserDataAddModel;
@@ -47,19 +44,15 @@ let addFname: UserDataAddModel;
 
 beforeAll(async () => {
   custodyEvent = new IdRegistryEventModel(
-    await Factories.IdRegistryEvent.create(
-      { to: Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()), fid: Array.from(fid) },
-      { transient: { wallet } }
-    )
+    await Factories.IdRegistryEvent.create({ to: Array.from(ethSigner.signerKey), fid: Array.from(fid) })
   );
 
-  signer = await generateEd25519KeyPair();
   const signerAddData = await Factories.SignerAddData.create({
-    body: Factories.SignerBody.build({ signer: Array.from(signer.publicKey) }),
+    body: Factories.SignerBody.build({ signer: Array.from(signer.signerKey) }),
     fid: Array.from(fid),
   });
   signerAdd = new MessageModel(
-    await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+    await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { ethSigner } })
   ) as SignerAddModel;
 
   const pfpData = await Factories.UserDataAddData.create({
@@ -105,7 +98,7 @@ describe('getUserData', () => {
 
     const nameRegistryEvent = await Factories.NameRegistryEvent.create({
       fname: Array.from(fname),
-      to: Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()),
+      to: Array.from(ethSigner.signerKey),
     });
     const model = new NameRegistryEventModel(nameRegistryEvent);
     await model.put(db);

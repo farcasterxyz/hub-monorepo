@@ -2,6 +2,8 @@ import { HubError } from '@hub/errors';
 import { blake3 } from '@noble/hashes/blake3';
 import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
 
+export const EMPTY_HASH = Buffer.from(blake3('', { dkLen: 16 })).toString('hex');
+
 /**
  * A snapshot of the trie at a particular timestamp which can be used to determine if two
  * hubs are in sync

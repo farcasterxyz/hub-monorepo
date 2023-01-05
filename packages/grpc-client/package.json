@@ -7,6 +7,8 @@
   "license": "MIT",
   "dependencies": {
     "@grpc/grpc-js": "^1.8.1",
+    "@hub/errors": "1.0.0",
+    "@hub/flatbuffers": "1.0.0",
     "flatbuffers": "^22.12.6",
     "neverthrow": "^6.0.0"
   },
