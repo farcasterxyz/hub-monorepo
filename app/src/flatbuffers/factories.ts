@@ -584,14 +584,17 @@ const Ed25519PrivateKeyFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build({}, { transient: { length: 32 } });
 });
 
-const Ed25519SignerFactory = Factory.define<Ed25519Signer>(() => {
-  const privateKey = Ed25519PrivateKeyFactory.build();
-  return new Ed25519Signer(privateKey);
-});
+const Ed25519SignerFactory = Factory.define<Ed25519Signer, { privateKey?: Uint8Array }, Ed25519Signer>(
+  ({ transientParams }) => {
+    return new Ed25519Signer(transientParams.privateKey ?? Ed25519PrivateKeyFactory.build());
+  }
+);
 
-const Eip712SignerFactory = Factory.define<Eip712Signer>(() => {
-  return new Eip712Signer(ethers.utils.randomBytes(32));
-});
+const Eip712SignerFactory = Factory.define<Eip712Signer, { privateKey?: Uint8Array }, Eip712Signer>(
+  ({ transientParams }) => {
+    return new Eip712Signer(transientParams.privateKey ?? ethers.utils.randomBytes(32));
+  }
+);
 
 const Factories = {
   Bytes: BytesFactory,
@@ -629,6 +632,7 @@ const Factories = {
   GossipAddressInfo: GossipAddressInfoFactory,
   SyncId: SyncIdFactory,
   RevokeSignerJobPayload: RevokeSignerJobPayloadFactory,
+  Ed25519PrivateKey: Ed25519PrivateKeyFactory,
   Ed25519Signer: Ed25519SignerFactory,
   Eip712Signer: Eip712SignerFactory,
 };

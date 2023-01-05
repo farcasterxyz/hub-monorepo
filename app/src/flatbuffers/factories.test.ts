@@ -3,11 +3,11 @@ import * as message_generated from '@hub/flatbuffers';
 import { GossipAddressInfoT, GossipContent, GossipMessage } from '@hub/flatbuffers';
 import { isPeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
-import * as ed from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
 import { bytesToBigNumber } from '~/eth/utils';
 import Factories from '~/flatbuffers/factories';
 import { VerificationEthAddressClaim } from '~/flatbuffers/models/types';
+import * as ed25519 from '~/flatbuffers/utils/ed25519';
 import { verifyVerificationEthAddressClaimSignature } from '~/flatbuffers/utils/eip712';
 import { toFarcasterTime } from '~/flatbuffers/utils/time';
 import { GOSSIP_PROTOCOL_VERSION } from '~/network/p2p/protocol';
@@ -69,12 +69,12 @@ describe('MessageFactory', () => {
   });
 
   test('generates signature', async () => {
-    const verifySignature = ed.verify(
+    const verifySignature = await ed25519.verifyMessageHashSignature(
       message.signatureArray() || new Uint8Array(),
       message.hashArray() || new Uint8Array(),
       message.signerArray() || new Uint8Array()
     );
-    expect(verifySignature).resolves.toEqual(true);
+    expect(verifySignature._unsafeUnwrap()).toEqual(true);
   });
 });
 

@@ -7,7 +7,6 @@ import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { SignerAddModel, UserDataAddModel, UserPostfix } from '~/flatbuffers/models/types';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
-import { Ed25519Signer } from '~/signers';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
@@ -15,41 +14,39 @@ import UserDataStore from '~/storage/stores/userDataStore';
 
 const db = jestRocksDB('flatbuffers.userDataSet.test');
 
-const ethSigner = Factories.Eip712Signer.build();
-
 const eventHandler = new StoreEventHandler();
 const set = new UserDataStore(db, eventHandler);
 const fid = Factories.FID.build();
 const fname = Factories.Fname.build();
+const custody1 = Factories.Eip712Signer.build();
+const signer = Factories.Ed25519Signer.build();
 
-let custody1Address: Uint8Array;
 let custody1Event: IdRegistryEventModel;
-let signer: Ed25519Signer;
 let signerAdd: SignerAddModel;
-
 let addPfp: UserDataAddModel;
 let addBio: UserDataAddModel;
 let addFname: UserDataAddModel;
 
 beforeAll(async () => {
-  custody1Address = ethSigner.signerKey;
   custody1Event = new IdRegistryEventModel(
     await Factories.IdRegistryEvent.create(
       {
         fid: Array.from(fid),
-        to: Array.from(custody1Address),
+        to: Array.from(custody1.signerKey),
       },
-      { transient: { ethSigner } }
+      { transient: { ethSigner: custody1 } }
     )
   );
 
-  signer = Factories.Ed25519Signer.build();
   const signerAddData = await Factories.SignerAddData.create({
     body: Factories.SignerBody.build({ signer: Array.from(signer.signerKey) }),
     fid: Array.from(fid),
   });
   signerAdd = new MessageModel(
-    await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { ethSigner } })
+    await Factories.Message.create(
+      { data: Array.from(signerAddData.bb?.bytes() ?? []) },
+      { transient: { ethSigner: custody1 } }
+    )
   ) as SignerAddModel;
 
   const addPfpData = await Factories.UserDataAddData.create({
@@ -238,7 +235,7 @@ describe('userfname', () => {
     const nameRegistryEvent = await Factories.NameRegistryEvent.create(
       {
         fname: Array.from(fname),
-        to: Array.from(custody1Address),
+        to: Array.from(custody1.signerKey),
       },
       { transient: { signer } }
     );
@@ -270,13 +267,12 @@ describe('userfname', () => {
 
     // Now, generate a new address
     const custody2 = Factories.Eip712Signer.build();
-    const custody2Address = custody2.signerKey;
 
     // transfer the name to custody2address
     const nameRegistryEvent2 = await Factories.NameRegistryEvent.create({
       fname: Array.from(fname),
-      from: Array.from(custody1Address),
-      to: Array.from(custody2Address),
+      from: Array.from(custody1.signerKey),
+      to: Array.from(custody2.signerKey),
       type: NameRegistryEventType.NameRegistryTransfer,
       blockNumber: nameRegistryModelEvent.blockNumber() + 1,
     });

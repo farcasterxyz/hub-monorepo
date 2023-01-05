@@ -1,15 +1,14 @@
-import * as ed from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
 import { randomBytes } from 'ethers/lib/utils';
+import Factories from '~/flatbuffers/factories';
 import * as ed25519 from '~/flatbuffers/utils/ed25519';
 import Ed25519Signer from './ed25519Signer';
 
 describe('Ed25519Signer', () => {
   let signer: Ed25519Signer;
-  let privateKey: Uint8Array;
+  const privateKey = Factories.Ed25519PrivateKey.build();
 
   beforeAll(async () => {
-    privateKey = ed.utils.randomPrivateKey();
     signer = new Ed25519Signer(privateKey);
   });
 

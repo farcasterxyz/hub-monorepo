@@ -4,7 +4,7 @@ import { SignatureScheme } from '@hub/flatbuffers';
 import { Wallet } from 'ethers';
 import { VerificationEthAddressClaim } from '~/flatbuffers/models/types';
 import { signMessageHash, signVerificationEthAddressClaim } from '~/flatbuffers/utils/eip712';
-import { Signer } from './signer';
+import Signer from './signer';
 
 class Eip712Signer extends Signer {
   /** 32-byte wallet address */

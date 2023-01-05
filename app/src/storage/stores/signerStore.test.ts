@@ -7,7 +7,6 @@ import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { SignerAddModel, SignerRemoveModel, UserPostfix } from '~/flatbuffers/models/types';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
-import { Eip712Signer } from '~/signers';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
@@ -16,30 +15,22 @@ const db = jestRocksDB('flatbuffers.signerStore.test');
 const eventHandler = new StoreEventHandler();
 const set = new SignerStore(db, eventHandler);
 const fid = Factories.FID.build();
-
-let custody1: Eip712Signer;
-let custody1Address: Uint8Array;
-let custody1Event: IdRegistryEventModel;
-
-let custody2: Eip712Signer;
-let custody2Address: Uint8Array;
-
+const custody1 = Factories.Eip712Signer.build();
+const custody1Address = custody1.signerKey;
+const custody2 = Factories.Eip712Signer.build();
+const custody2Address = custody2.signerKey;
 const signer = Factories.Ed25519Signer.build();
 
+let custody1Event: IdRegistryEventModel;
 let signerAdd: SignerAddModel;
 let signerRemove: SignerRemoveModel;
 
 beforeAll(async () => {
-  custody1 = Factories.Eip712Signer.build();
-  custody1Address = custody1.signerKey;
   const idRegistryEvent = await Factories.IdRegistryEvent.create({
     fid: Array.from(fid),
     to: Array.from(custody1Address),
   });
   custody1Event = new IdRegistryEventModel(idRegistryEvent);
-
-  custody2 = Factories.Eip712Signer.build();
-  custody2Address = custody2.signerKey;
 
   const addData = await Factories.SignerAddData.create({
     body: Factories.SignerBody.build({ signer: Array.from(signer.signerKey) }),
@@ -171,7 +162,7 @@ describe('mergeIdRegistryEvent', () => {
   test('fails if events have the same blockNumber but different blockHashes', async () => {
     const idRegistryEvent = await Factories.IdRegistryEvent.create({
       ...custody1Event.event.unpack(),
-      blockHash: Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
+      blockHash: Array.from(hexStringToBytes(Factories.BlockHash.build())._unsafeUnwrap()),
     });
 
     const blockHashConflictEvent = new IdRegistryEventModel(idRegistryEvent);

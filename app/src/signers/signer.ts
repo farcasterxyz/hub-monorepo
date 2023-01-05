@@ -2,12 +2,11 @@ import { bytesToHexString } from '@hub/bytes';
 import { HubAsyncResult } from '@hub/errors';
 import { SignatureScheme } from '@hub/flatbuffers';
 
-export abstract class Signer {
+abstract class Signer {
   public readonly scheme: SignatureScheme;
   public readonly signerKey: Uint8Array;
   public readonly signerKeyHex: string;
-
-  protected readonly privateKey: Uint8Array;
+  public readonly privateKey: Uint8Array;
 
   constructor(scheme: SignatureScheme, privateKey: Uint8Array, signerKey: Uint8Array) {
     this.scheme = scheme;
@@ -23,3 +22,5 @@ export abstract class Signer {
 
   public abstract signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array>;
 }
+
+export default Signer;

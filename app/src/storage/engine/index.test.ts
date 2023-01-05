@@ -27,19 +27,15 @@ const verificationStore = new VerificationStore(db, engine.eventHandler);
 const userDataStore = new UserDataStore(db, engine.eventHandler);
 
 const fid = Factories.FID.build();
-
-const custodySigner = Factories.Eip712Signer.build();
-
-let custodyAddress: Uint8Array;
-let custodyEvent: IdRegistryEventModel;
-
 const fname = Factories.Fname.build();
-let fnameTransfer: NameRegistryEventModel;
-
+const custodySigner = Factories.Eip712Signer.build();
+const custodyAddress = custodySigner.signerKey;
 const signer = Factories.Ed25519Signer.build();
+
+let custodyEvent: IdRegistryEventModel;
+let fnameTransfer: NameRegistryEventModel;
 let signerAdd: types.SignerAddModel;
 let signerRemove: types.SignerRemoveModel;
-
 let castAdd: types.CastAddModel;
 let ampAdd: types.AmpAddModel;
 let reactionAdd: types.ReactionAddModel;
@@ -47,7 +43,6 @@ let verificationAdd: types.VerificationAddEthAddressModel;
 let userDataAdd: types.UserDataAddModel;
 
 beforeAll(async () => {
-  custodyAddress = custodySigner.signerKey;
   custodyEvent = new IdRegistryEventModel(
     await Factories.IdRegistryEvent.create({ fid: Array.from(fid), to: Array.from(custodyAddress) })
   );

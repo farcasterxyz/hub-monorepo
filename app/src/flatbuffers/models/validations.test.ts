@@ -196,11 +196,7 @@ describe('validateCastId', () => {
 });
 
 describe('validateEthAddress', () => {
-  let address: Uint8Array;
-
-  beforeAll(async () => {
-    address = ethSigner.signerKey;
-  });
+  const address = ethSigner.signerKey;
 
   test('succeeds', () => {
     expect(validations.validateEthAddress(address)._unsafeUnwrap()).toEqual(address);
@@ -249,11 +245,7 @@ describe('validateEthBlockHash', () => {
 });
 
 describe('validateEd25519PublicKey', () => {
-  let publicKey: Uint8Array;
-
-  beforeAll(async () => {
-    publicKey = Factories.Ed25519Signer.build().signerKey;
-  });
+  const publicKey = signer.signerKey;
 
   test('succeeds', () => {
     expect(validations.validateEd25519PublicKey(publicKey)._unsafeUnwrap()).toEqual(publicKey);
