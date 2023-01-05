@@ -1,10 +1,8 @@
-import { blake3 } from '@noble/hashes/blake3';
 import Factories from '~/flatbuffers/factories';
 import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
-import { TrieNode } from '~/network/sync/trieNode';
+import { EMPTY_HASH, TrieNode } from '~/network/sync/trieNode';
 
 const fid = Factories.FID.build();
-const emptyHash = Buffer.from(blake3('', { dkLen: 16 })).toString('hex');
 const sharedDate = new Date(1665182332000);
 const sharedPrefixHashA =
   '0x09bc3dad4e7f2a77bbb2cccbecb06febfc3f0cbe7ea6a774d2dc043fd45c2c9912f130bf502c88fdedf7bbc4cd20b47aab2079e2d5cbd0a35afd2deec86a4321';
@@ -116,7 +114,7 @@ describe('TrieNode', () => {
 
       root.delete(id.idString());
       expect(root.items).toEqual(0);
-      expect(root.hash).toEqual(emptyHash);
+      expect(root.hash).toEqual(EMPTY_HASH);
     });
 
     test('deleting a single item from a node with multiple items removes the item', async () => {

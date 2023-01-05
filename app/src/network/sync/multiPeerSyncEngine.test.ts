@@ -93,6 +93,7 @@ describe('Multi peer sync engine', () => {
     engine1 = new Engine(testDb1);
     hub1 = new MockHub(testDb1, engine1);
     syncEngine1 = new SyncEngine(engine1);
+    syncEngine1.initialize();
     server1 = new Server(hub1, engine1, syncEngine1);
     port1 = await server1.start();
     clientForServer1 = new Client(`127.0.0.1:${port1}`);
@@ -127,6 +128,14 @@ describe('Multi peer sync engine', () => {
 
     expect(signerAdd?.toBuffer().toString('hex')).toEqual(rpcSignerAdd?.toBuffer().toString('hex'));
     expect(mm.fid()).toEqual(signerAdd.fid());
+
+    // Create a new sync engine from the existing engine, and see if all the messages from the engine
+    // are loaded into the sync engine Merkle Trie properly.
+    const reinitSyncEngine = new SyncEngine(engine1);
+    expect(reinitSyncEngine.trie.rootHash).toEqual('');
+    await reinitSyncEngine.initialize();
+
+    expect(reinitSyncEngine.trie.rootHash).toEqual(syncEngine1.trie.rootHash);
   });
 
   test(
@@ -251,6 +260,15 @@ describe('Multi peer sync engine', () => {
   xtest(
     'loads of messages',
     async () => {
+      const timedTest = async (fn: () => Promise<void>): Promise<number> => {
+        const start = Date.now();
+        await fn();
+        const end = Date.now();
+
+        const totalTime = (end - start) / 1000;
+        return totalTime;
+      };
+
       // Add signer custody event to engine 1
       await engine1.mergeIdRegistryEvent(custodyEvent);
       await engine1.mergeMessage(signerAdd);
@@ -292,6 +310,7 @@ describe('Multi peer sync engine', () => {
 
       const engine2 = new Engine(testDb2);
       const syncEngine2 = new SyncEngine(engine2);
+      syncEngine2.initialize();
 
       // Engine 2 should sync with engine1
       expect(syncEngine2.shouldSync(syncEngine1.snapshot.excludedHashes)).toBeTruthy();
@@ -300,17 +319,28 @@ describe('Multi peer sync engine', () => {
       await engine2.mergeMessage(signerAdd);
 
       // Sync engine 2 with engine 1, and measure the time taken
-      const start = Date.now();
-      await syncEngine2.performSync(syncEngine1.snapshot.excludedHashes, clientForServer1);
-      const end = Date.now();
+      let totalTime = await timedTest(async () => {
+        await syncEngine2.performSync(syncEngine1.snapshot.excludedHashes, clientForServer1);
+      });
 
-      const totalTime = (end - start) / 1000;
       expect(totalTime).toBeGreaterThan(0);
       expect(totalMessages).toBeGreaterThan(numBatches * batchSize);
-      // console.log('total time', totalTime, 'seconds. Casts per second:', totalMessages / totalTime);
+      // console.log('Sync total time', totalTime, 'seconds. Messages per second:', totalMessages / totalTime);
 
       expect(syncEngine1.snapshot.excludedHashes).toEqual(syncEngine2.snapshot.excludedHashes);
       expect(syncEngine1.snapshot.numMessages).toEqual(syncEngine2.snapshot.numMessages);
+
+      // Create a new sync engine from the existing engine, and see if all the messages from the engine
+      // are loaded into the sync engine Merkle Trie properly.
+      const reinitSyncEngine = new SyncEngine(engine1);
+      expect(reinitSyncEngine.trie.rootHash).toEqual('');
+
+      totalTime = await timedTest(async () => {
+        await reinitSyncEngine.initialize();
+      });
+      // console.log('MerkleTrie total time', totalTime, 'seconds. Messages per second:', totalMessages / totalTime);
+
+      expect(reinitSyncEngine.trie.rootHash).toEqual(syncEngine1.trie.rootHash);
     },
     TEST_TIMEOUT_LONG
   );

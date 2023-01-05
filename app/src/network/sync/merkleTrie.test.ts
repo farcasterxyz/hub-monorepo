@@ -1,8 +1,7 @@
 import { blake3 } from '@noble/hashes/blake3';
 import Factories from '~/flatbuffers/factories';
 import { MerkleTrie } from '~/network/sync/merkleTrie';
-
-const emptyHash = Buffer.from(blake3('', { dkLen: 16 })).toString('hex');
+import { EMPTY_HASH } from './trieNode';
 
 describe('MerkleTrie', () => {
   const trieWithIds = async (timestamps: number[]) => {
@@ -85,7 +84,7 @@ describe('MerkleTrie', () => {
 
       trie.delete(syncId);
       expect(trie.items).toEqual(0);
-      expect(trie.rootHash).toEqual(emptyHash);
+      expect(trie.rootHash).toEqual(EMPTY_HASH);
       expect(trie.exists(syncId)).toBeFalsy();
     });
 
@@ -226,16 +225,16 @@ describe('MerkleTrie', () => {
           .digest()
       ).toString('hex');
       expect(snapshot.excludedHashes).toEqual([
-        emptyHash, // 1, these are empty because there are no other children at this level
-        emptyHash, // 6
-        emptyHash, // 6
-        emptyHash, // 5
-        emptyHash, // 1
-        emptyHash, // 8
-        emptyHash, // 2
-        emptyHash, // 3
+        EMPTY_HASH, // 1, these are empty because there are no other children at this level
+        EMPTY_HASH, // 6
+        EMPTY_HASH, // 6
+        EMPTY_HASH, // 5
+        EMPTY_HASH, // 1
+        EMPTY_HASH, // 8
+        EMPTY_HASH, // 2
+        EMPTY_HASH, // 3
         expectedHash, // 5 (hash of the 3 and 4 child node hashes)
-        emptyHash, // 1
+        EMPTY_HASH, // 1
       ]);
 
       snapshot = trie.getSnapshot('1665182343');
@@ -250,14 +249,14 @@ describe('MerkleTrie', () => {
           .digest()
       ).toString('hex');
       expect(snapshot.excludedHashes).toEqual([
-        emptyHash, // 1
-        emptyHash, // 6
-        emptyHash, // 6
-        emptyHash, // 5
-        emptyHash, // 1
-        emptyHash, // 8
-        emptyHash, // 2
-        emptyHash, // 3
+        EMPTY_HASH, // 1
+        EMPTY_HASH, // 6
+        EMPTY_HASH, // 6
+        EMPTY_HASH, // 5
+        EMPTY_HASH, // 1
+        EMPTY_HASH, // 8
+        EMPTY_HASH, // 2
+        EMPTY_HASH, // 3
         expectedPenultimateHash, // 4 (hash of the 3 and 5 child node hashes)
         expectedLastHash, // 3 (hash of the 5 child node hash)
       ]);
