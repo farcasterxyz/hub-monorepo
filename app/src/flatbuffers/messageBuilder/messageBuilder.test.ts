@@ -1,41 +1,30 @@
 import * as flatbuffers from '@hub/flatbuffers';
+import { Ed25519Signer, eip712, Factories, numberToBytes } from '@hub/utils';
 import { blake3 } from '@noble/hashes/blake3';
-import { EthereumSigner, generateEd25519KeyPair, generateEthereumSigner } from '~/utils/crypto';
-import { EthersMessageSigner } from '../messageSigner';
-import { KeyPair, SignerAddModel } from '../models/types';
-import { bytesToHexString, hexStringToBytes, numberToBytes } from '../utils/bytes';
-import { verifyMessageHashSignature } from '../utils/eip712';
+import { SignerAddModel } from '../models/types';
 import { SignerMessageBuilder } from './messageBuilder';
 
 describe('SignerMessageBuilder', () => {
-  let builder: SignerMessageBuilder;
-  let ethereumSigner: EthereumSigner;
-  let signer: EthersMessageSigner;
-
   const fid = 24;
-
-  beforeAll(async () => {
-    ethereumSigner = await generateEthereumSigner();
-    signer = new EthersMessageSigner(ethereumSigner.wallet);
-    builder = new SignerMessageBuilder({ fid, signer });
-  });
+  const signer = Factories.Eip712Signer.build();
+  const builder = new SignerMessageBuilder({ fid, signer });
 
   describe('instance methods', () => {
     describe('makeSignerAdd', () => {
-      let newSigner: KeyPair;
+      let newSigner: Ed25519Signer;
       let message: SignerAddModel;
       let messageBody: flatbuffers.SignerBody;
 
       beforeAll(async () => {
-        newSigner = await generateEd25519KeyPair();
+        newSigner = Factories.Ed25519Signer.build();
         message = await builder.makeSignerAdd({
-          publicKey: bytesToHexString(newSigner.publicKey)._unsafeUnwrap(),
+          publicKey: newSigner.signerKeyHex,
         });
         messageBody = message.body();
       });
 
       test('generates signer', async () => {
-        expect(message.signer()).toEqual(hexStringToBytes(ethereumSigner.wallet.address)._unsafeUnwrap());
+        expect(message.signer()).toEqual(signer.signerKey);
       });
 
       test('generates hash', async () => {
@@ -47,10 +36,8 @@ describe('SignerMessageBuilder', () => {
       });
 
       test('generates signature', async () => {
-        const recoveredAddress = verifyMessageHashSignature(message.hash(), message.signature());
-        expect(recoveredAddress._unsafeUnwrap()).toEqual(
-          hexStringToBytes(ethereumSigner.wallet.address)._unsafeUnwrap()
-        );
+        const recoveredAddress = eip712.verifyMessageHashSignature(message.hash(), message.signature());
+        expect(recoveredAddress._unsafeUnwrap()).toEqual(signer.signerKey);
       });
 
       test('generates signature scheme', async () => {
@@ -76,7 +63,7 @@ describe('SignerMessageBuilder', () => {
 
         describe('body', () => {
           test('generates signer', () => {
-            expect(messageBody.signerArray()).toEqual(newSigner.publicKey);
+            expect(messageBody.signerArray()).toEqual(newSigner.signerKey);
           });
         });
       });

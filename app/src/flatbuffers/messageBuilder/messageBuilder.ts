@@ -1,16 +1,16 @@
 import * as flatbuffers from '@hub/flatbuffers';
-import { Ed25519MessageSigner, EthersMessageSigner, IMessageSigner } from '../messageSigner';
+import { Ed25519Signer, Eip712Signer, Signer } from '@hub/utils';
 import * as constructors from '../models/constructors';
 import { SignerAddModel } from '../models/types';
 
-type MessageBuilderOptions<TSigner extends IMessageSigner> = {
+type MessageBuilderOptions<TSigner> = {
   /** integer representation of the message sender */
   fid: number;
   signer: TSigner;
   network?: flatbuffers.FarcasterNetwork;
 };
 
-abstract class BaseMessageBuilder<TSigner extends IMessageSigner> {
+abstract class BaseMessageBuilder<TSigner extends Signer> {
   protected fid: number;
   protected network: flatbuffers.FarcasterNetwork;
   protected signer: TSigner;
@@ -30,7 +30,7 @@ abstract class BaseMessageBuilder<TSigner extends IMessageSigner> {
   }
 }
 
-export class SignerMessageBuilder extends BaseMessageBuilder<EthersMessageSigner> {
+export class SignerMessageBuilder extends BaseMessageBuilder<Eip712Signer> {
   /**
    * Constructs a SignerAdd message.
    */
@@ -52,4 +52,4 @@ export class SignerMessageBuilder extends BaseMessageBuilder<EthersMessageSigner
   }
 }
 
-export class MessageBuilder extends BaseMessageBuilder<Ed25519MessageSigner> {}
+export class MessageBuilder extends BaseMessageBuilder<Ed25519Signer> {}

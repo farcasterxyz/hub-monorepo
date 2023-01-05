@@ -1,21 +1,19 @@
 import * as flatbuffers from '@hub/flatbuffers';
 import { SignerBodyT } from '@hub/flatbuffers';
+import { Eip712Signer, getFarcasterTime, hexStringToBytes, numberToBytes, Signer } from '@hub/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import { EthersMessageSigner, IMessageSigner } from '../messageSigner';
-import { hexStringToBytes, numberToBytes } from '../utils/bytes';
-import { getFarcasterTime } from '../utils/time';
 import MessageModel from './messageModel';
 import { SignerAddModel, SignerRemoveModel } from './types';
 import { validateMessage } from './validations';
 
-type MessageBaseOptions<TExtOpts, TSigner extends IMessageSigner> = {
+type MessageBaseOptions<TExtOpts, TSigner extends Signer> = {
   fid: number;
   signer: TSigner;
   network: flatbuffers.FarcasterNetwork;
 } & TExtOpts;
 
-type SignerMessageBaseOptions<TOpts> = MessageBaseOptions<TOpts, EthersMessageSigner>;
+type SignerMessageBaseOptions<TOpts> = MessageBaseOptions<TOpts, Eip712Signer>;
 
 export type SignerAddOptions = {
   /** Public key of the EdDSA key pair to add as a signer. */
@@ -63,7 +61,7 @@ type MakeMessageModelOptions = {
   fid: number;
   messageType: flatbuffers.MessageType;
   network: flatbuffers.FarcasterNetwork;
-  signer: IMessageSigner;
+  signer: Signer;
 };
 
 const makeMessageModel = async ({ bodyType, body, messageType, signer, fid, network }: MakeMessageModelOptions) => {
@@ -88,13 +86,13 @@ const makeMessageModel = async ({ bodyType, body, messageType, signer, fid, netw
 
 type MakeMessageOptions = {
   data: flatbuffers.MessageData;
-  signer: IMessageSigner;
+  signer: Signer;
 };
 
 const makeMessage = async ({ data, signer }: MakeMessageOptions): Promise<flatbuffers.Message> => {
   const dataBytes = data.bb?.bytes() ?? new Uint8Array();
   const hash = await blake3(dataBytes, { dkLen: 16 });
-  const signature = (await signer.sign(hash))._unsafeUnwrap();
+  const signature = (await signer.signMessageHash(hash))._unsafeUnwrap();
   const message = new flatbuffers.MessageT(
     Array.from(dataBytes),
     Array.from(hash),
