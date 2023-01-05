@@ -1,6 +1,5 @@
 import { bytesToHexString } from '@hub/bytes';
-import * as message_generated from '@hub/flatbuffers';
-import { GossipAddressInfoT, GossipContent, GossipMessage } from '@hub/flatbuffers';
+import * as flatbuffers from '@hub/flatbuffers';
 import { isPeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import { blake3 } from '@noble/hashes/blake3';
@@ -52,8 +51,8 @@ describe('CastAddBodyFactory', () => {
 });
 
 describe('MessageFactory', () => {
-  let data: message_generated.MessageData;
-  let message: message_generated.Message;
+  let data: flatbuffers.MessageData;
+  let message: flatbuffers.Message;
 
   beforeAll(async () => {
     data = await Factories.MessageData.create();
@@ -80,12 +79,12 @@ describe('MessageFactory', () => {
 
 describe('VerificationAddEthAddressBodyFactory', () => {
   let fid: Uint8Array;
-  let network: message_generated.FarcasterNetwork;
-  let body: message_generated.VerificationAddEthAddressBody;
+  let network: flatbuffers.FarcasterNetwork;
+  let body: flatbuffers.VerificationAddEthAddressBody;
 
   beforeAll(async () => {
     fid = Factories.FID.build();
-    network = message_generated.FarcasterNetwork.Testnet;
+    network = flatbuffers.FarcasterNetwork.Testnet;
     body = await Factories.VerificationAddEthAddressBody.create({}, { transient: { fid, network } });
   });
 
@@ -107,13 +106,13 @@ describe('VerificationAddEthAddressBodyFactory', () => {
 });
 
 describe('GossipMessageFactory', () => {
-  let content: message_generated.Message;
-  let message: GossipMessage;
+  let content: flatbuffers.Message;
+  let message: flatbuffers.GossipMessage;
 
   beforeAll(async () => {
     content = await Factories.Message.create();
     message = await Factories.GossipMessage.create({
-      contentType: GossipContent.Message,
+      contentType: flatbuffers.GossipContent.Message,
       content: content.unpack(),
     });
   });
@@ -125,7 +124,7 @@ describe('GossipMessageFactory', () => {
   test('creates a FC Message by default', async () => {
     const other = await Factories.GossipMessage.create();
     expect(other).toBeDefined();
-    expect(other.contentType()).toEqual(GossipContent.Message);
+    expect(other.contentType()).toEqual(flatbuffers.GossipContent.Message);
     expect(other.unpack().content).not.toEqual(content.unpack());
   });
 
@@ -144,8 +143,8 @@ describe('AddressInfoFactory', () => {
 });
 
 describe('ContactInfoFactory', () => {
-  let gossipAddress: GossipAddressInfoT;
-  let rpcAddress: GossipAddressInfoT;
+  let gossipAddress: flatbuffers.GossipAddressInfoT;
+  let rpcAddress: flatbuffers.GossipAddressInfoT;
 
   beforeAll(() => {
     gossipAddress = Factories.GossipAddressInfo.build();

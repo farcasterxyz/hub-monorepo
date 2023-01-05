@@ -1,8 +1,8 @@
 import { bytesToHexString, hexStringToBytes } from '@hub/bytes';
+import { FarcasterNetwork } from '@hub/flatbuffers';
 import { blake3 } from '@noble/hashes/blake3';
 import { BigNumber, ethers } from 'ethers';
 import { randomBytes } from 'ethers/lib/utils';
-import { FarcasterNetwork } from '~/../../packages/flatbuffers/src';
 import Factories from '~/flatbuffers/factories';
 import { VerificationEthAddressClaim } from '~/flatbuffers/models/types';
 import * as eip712 from '~/flatbuffers/utils/eip712';
