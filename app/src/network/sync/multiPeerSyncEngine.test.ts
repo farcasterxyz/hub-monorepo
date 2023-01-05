@@ -6,11 +6,12 @@ import { CastRemoveModel, SignerAddModel } from '~/flatbuffers/models/types';
 import { APP_NICKNAME, APP_VERSION } from '~/hub';
 import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';
-import HubClient from '~/rpc/client';
+import HubRpcClient from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
+import { addressInfoFromParts } from '~/utils/p2p';
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
 
@@ -87,7 +88,7 @@ describe('Multi peer sync engine', () => {
   let syncEngine1: SyncEngine;
   let server1: Server;
   let port1;
-  let clientForServer1: HubClient;
+  let clientForServer1: HubRpcClient;
 
   beforeEach(async () => {
     // Engine 1 is where we add events, and see if engine 2 will sync them
@@ -97,7 +98,7 @@ describe('Multi peer sync engine', () => {
     syncEngine1.initialize();
     server1 = new Server(hub1, engine1, syncEngine1);
     port1 = await server1.start();
-    clientForServer1 = new HubClient(`127.0.0.1:${port1}`);
+    clientForServer1 = new HubRpcClient(addressInfoFromParts('127.0.0.1', port1)._unsafeUnwrap());
   });
 
   afterEach(async () => {
@@ -232,7 +233,7 @@ describe('Multi peer sync engine', () => {
     {
       const server2 = new Server(new MockHub(testDb2, engine2), engine2, syncEngine2);
       const port2 = await server2.start();
-      const clientForServer2 = new HubClient(`127.0.0.1:${port2}`);
+      const clientForServer2 = new HubRpcClient(addressInfoFromParts('127.0.0.1', port2)._unsafeUnwrap());
       const engine1RootHashBefore = syncEngine1.trie.rootHash;
 
       await syncEngine1.performSync(syncEngine2.snapshot.excludedHashes, clientForServer2);
