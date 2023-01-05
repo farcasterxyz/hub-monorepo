@@ -2,6 +2,7 @@ import grpc from '@grpc/grpc-js';
 import { utf8StringToBytes } from '@hub/bytes';
 import { HubError } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
+import * as definitions from '@hub/grpc';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { HubInterface } from '~/flatbuffers/models/types';
@@ -9,10 +10,10 @@ import { NodeMetadata } from '~/network/sync/merkleTrie';
 import SyncEngine from '~/network/sync/syncEngine';
 import { TrieSnapshot } from '~/network/sync/trieNode';
 import * as implementations from '~/rpc/server/serviceImplementations';
-import * as definitions from '~/rpc/serviceDefinitions';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts } from '~/utils/p2p';
+import { syncDefinition } from '../syncDefinitions';
 
 export const toServiceError = (err: HubError): grpc.ServiceError => {
   let grpcCode: number;
@@ -115,21 +116,6 @@ export const toTrieNodeSnapshotResponse = (
   return response;
 };
 
-interface GenericFlatbuffer {
-  bb: ByteBuffer | null;
-}
-
-export const defaultMethod = {
-  requestStream: false,
-  responseStream: false,
-  requestSerialize: (request: GenericFlatbuffer): Buffer => {
-    return Buffer.from(request.bb?.bytes() ?? new Uint8Array());
-  },
-  responseSerialize: (response: GenericFlatbuffer): Buffer => {
-    return Buffer.from(response.bb?.bytes() ?? new Uint8Array());
-  },
-};
-
 class Server {
   private server: grpc.Server;
   private port: number;
@@ -144,8 +130,10 @@ class Server {
     this.server.addService(definitions.verificationDefinition(), implementations.verificationImplementations(engine));
     this.server.addService(definitions.signerDefinition(), implementations.signerImplementation(engine));
     this.server.addService(definitions.userDataDefinition(), implementations.userDataImplementations(engine));
-    this.server.addService(definitions.syncDefinition(), implementations.syncImplementation(engine, syncEngine));
     this.server.addService(definitions.eventDefinition(), implementations.eventImplementation(engine));
+    this.server.addService(definitions.bulkDefinition(), implementations.bulkImplementation(engine));
+
+    this.server.addService(syncDefinition(), implementations.syncImplementation(engine, syncEngine));
   }
 
   async start(port = 0): Promise<number> {

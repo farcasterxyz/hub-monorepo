@@ -5,7 +5,7 @@ import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { AmpAddModel, SignerAddModel } from '~/flatbuffers/models/types';
 import SyncEngine from '~/network/sync/syncEngine';
-import Client from '~/rpc/client';
+import HubClient from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -16,12 +16,12 @@ const engine = new Engine(db);
 const hub = new MockHub(db, engine);
 
 let server: Server;
-let client: Client;
+let client: HubClient;
 
 beforeAll(async () => {
   server = new Server(hub, engine, new SyncEngine(engine));
   const port = await server.start();
-  client = new Client(`127.0.0.1:${port}`);
+  client = new HubClient(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {
@@ -67,7 +67,7 @@ describe('getAmp', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(ampAdd);
     const result = await client.getAmp(fid, ampAdd.body().user() ?? new UserId());
-    expect(result._unsafeUnwrap()).toEqual(ampAdd);
+    expect(result._unsafeUnwrap()).toEqual(ampAdd.message);
   });
 
   test('fails if amp is missing', async () => {
@@ -97,7 +97,7 @@ describe('getAmpsByFid', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(ampAdd);
     const amps = await client.getAmpsByFid(fid);
-    expect(amps._unsafeUnwrap()).toEqual([ampAdd]);
+    expect(amps._unsafeUnwrap()).toEqual([ampAdd.message]);
   });
 
   test('returns empty array without messages', async () => {
@@ -115,7 +115,7 @@ describe('getAmpsByUser', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(ampAdd);
     const amps = await client.getAmpsByUser(ampAdd.body().user() ?? new UserId());
-    expect(amps._unsafeUnwrap()).toEqual([ampAdd]);
+    expect(amps._unsafeUnwrap()).toEqual([ampAdd.message]);
   });
 
   test('returns empty array without messages', async () => {

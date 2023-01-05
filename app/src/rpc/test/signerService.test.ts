@@ -4,7 +4,7 @@ import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { SignerAddModel } from '~/flatbuffers/models/types';
 import SyncEngine from '~/network/sync/syncEngine';
-import Client from '~/rpc/client';
+import HubClient from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -15,12 +15,12 @@ const engine = new Engine(db);
 const hub = new MockHub(db, engine);
 
 let server: Server;
-let client: Client;
+let client: HubClient;
 
 beforeAll(async () => {
   server = new Server(hub, engine, new SyncEngine(engine));
   const port = await server.start();
-  client = new Client(`127.0.0.1:${port}`);
+  client = new HubClient(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {
@@ -56,7 +56,7 @@ describe('getSigner', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(signerAdd);
     const result = await client.getSigner(fid, signer.signerKey);
-    expect(result._unsafeUnwrap()).toEqual(signerAdd);
+    expect(result._unsafeUnwrap()).toEqual(signerAdd.message);
   });
 
   test('fails if signer is missing', async () => {
@@ -83,7 +83,7 @@ describe('getSignersByFid', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(signerAdd);
     const result = await client.getSignersByFid(fid);
-    expect(result._unsafeUnwrap()).toEqual([signerAdd]);
+    expect(result._unsafeUnwrap()).toEqual([signerAdd.message]);
   });
 
   test('returns empty array without messages', async () => {
@@ -92,15 +92,15 @@ describe('getSignersByFid', () => {
   });
 });
 
-describe('getCustodyEvent', () => {
+describe('getIdRegistryEvent', () => {
   test('succeeds', async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
-    const result = await client.getCustodyEvent(fid);
-    expect(result._unsafeUnwrap()).toEqual(custodyEvent);
+    const result = await client.getIdRegistryEvent(fid);
+    expect(result._unsafeUnwrap()).toEqual(custodyEvent.event);
   });
 
   test('fails when event is missing', async () => {
-    const result = await client.getCustodyEvent(fid);
+    const result = await client.getIdRegistryEvent(fid);
     expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
   });
 });

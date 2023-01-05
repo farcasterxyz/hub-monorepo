@@ -1,12 +1,13 @@
 import { utf8StringToBytes } from '@hub/bytes';
 import { HubError, HubResult } from '@hub/errors';
 import { err } from 'neverthrow';
+import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
 import { TrieSnapshot } from '~/network/sync/trieNode';
-import Client from '~/rpc/client';
+import HubClient from '~/rpc/client';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
 
@@ -80,7 +81,7 @@ class SyncEngine {
     return !excludedHashesMatch;
   }
 
-  async performSync(excludedHashes: string[], rpcClient: Client) {
+  async performSync(excludedHashes: string[], rpcClient: HubClient) {
     try {
       this._isSyncing = true;
       const ourSnapshot = this.snapshot;
@@ -100,7 +101,7 @@ class SyncEngine {
     }
   }
 
-  public async fetchAndMergeMessages(syncIDs: string[], rpcClient: Client): Promise<boolean> {
+  public async fetchAndMergeMessages(syncIDs: string[], rpcClient: HubClient): Promise<boolean> {
     let result = true;
     if (syncIDs.length === 0) {
       return false;
@@ -149,7 +150,7 @@ class SyncEngine {
   async fetchMissingHashesByNode(
     theirNode: NodeMetadata,
     ourNode: NodeMetadata | undefined,
-    rpcClient: Client
+    rpcClient: HubClient
   ): Promise<string[]> {
     const missingHashes: string[] = [];
     // If the node has fewer than HASHES_PER_FETCH, just fetch them all in go, otherwise,
@@ -175,7 +176,7 @@ class SyncEngine {
     return missingHashes;
   }
 
-  async fetchMissingHashesByPrefix(prefix: string, rpcClient: Client): Promise<string[]> {
+  async fetchMissingHashesByPrefix(prefix: string, rpcClient: HubClient): Promise<string[]> {
     const ourNode = this._trie.getTrieNodeMetadata(prefix);
     const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(prefix);
 
@@ -235,17 +236,18 @@ class SyncEngine {
     return Math.floor(currentTimeInSeconds / SYNC_THRESHOLD_IN_SECONDS) * SYNC_THRESHOLD_IN_SECONDS;
   }
 
-  private async syncUserAndRetryMessage(message: MessageModel, rpcClient: Client): Promise<HubResult<void>> {
+  private async syncUserAndRetryMessage(message: MessageModel, rpcClient: HubClient): Promise<HubResult<void>> {
     const fid = message.data.fidArray();
     if (!fid) {
       return err(new HubError('bad_request.invalid_param', 'Invalid fid'));
     }
 
-    const custodyEventResult = await rpcClient.getCustodyEvent(fid);
+    const custodyEventResult = await rpcClient.getIdRegistryEvent(fid);
     if (custodyEventResult.isErr()) {
       return err(new HubError('unavailable.network_failure', 'Failed to fetch custody event'));
     }
-    const custodyResult = await this.engine.mergeIdRegistryEvent(custodyEventResult.value);
+    const custodyModel = new IdRegistryEventModel(custodyEventResult.value);
+    const custodyResult = await this.engine.mergeIdRegistryEvent(custodyModel);
     if (custodyResult.isErr()) {
       return err(new HubError('unavailable.storage_failure', 'Failed to merge custody event'));
     }
@@ -256,8 +258,8 @@ class SyncEngine {
     if (signerMessagesResult.isErr()) {
       return err(new HubError('unavailable.network_failure', 'Failed to fetch signer messages'));
     }
-
-    const results = await this.engine.mergeMessages(signerMessagesResult.value);
+    const messageModels = signerMessagesResult.value.map((message) => new MessageModel(message));
+    const results = await this.engine.mergeMessages(messageModels);
     if (results.every((r) => r.isErr())) {
       return err(new HubError('unavailable.storage_failure', 'Failed to merge signer messages'));
     } else {

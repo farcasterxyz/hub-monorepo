@@ -54,7 +54,7 @@ export const verifyVerificationEthAddressClaimSignature = (
   signature: Uint8Array
 ): HubResult<Uint8Array> => {
   // Convert little endian signature to hex
-  const hexSignature = bytesToHexString(signature, { endianness: 'little' });
+  const hexSignature = bytesToHexString(signature, { endianness: 'little', size: 130 });
   if (hexSignature.isErr()) {
     return err(hexSignature.error);
   }
@@ -81,8 +81,8 @@ export const signMessageHash = async (hash: Uint8Array, wallet: Wallet): HubAsyn
 };
 
 export const verifyMessageHashSignature = (hash: Uint8Array, signature: Uint8Array): HubResult<Uint8Array> => {
-  // Convert little endian signature to hex
-  const hexSignature = bytesToHexString(signature, { endianness: 'little' });
+  // Convert little endian signature to fixed size hex string
+  const hexSignature = bytesToHexString(signature, { endianness: 'little', size: 130 });
   if (hexSignature.isErr()) {
     return err(hexSignature.error);
   }

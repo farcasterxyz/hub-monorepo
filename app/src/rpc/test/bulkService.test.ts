@@ -1,4 +1,5 @@
 import { HubResult } from '@hub/errors';
+import { Message } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
@@ -16,7 +17,7 @@ import {
   VerificationRemoveModel,
 } from '~/flatbuffers/models/types';
 import SyncEngine from '~/network/sync/syncEngine';
-import Client from '~/rpc/client';
+import HubClient from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -27,12 +28,12 @@ const engine = new Engine(db);
 const hub = new MockHub(db, engine);
 
 let server: Server;
-let client: Client;
+let client: HubClient;
 
 beforeAll(async () => {
   server = new Server(hub, engine, new SyncEngine(engine));
   const port = await server.start();
-  client = new Client(`127.0.0.1:${port}`);
+  client = new HubClient(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {
@@ -60,8 +61,8 @@ beforeAll(async () => {
   ) as SignerAddModel;
 });
 
-const assertMessagesMatchResult = (result: HubResult<MessageModel[]>, messages: MessageModel[]) => {
-  expect(new Set(result._unsafeUnwrap())).toEqual(new Set(messages));
+const assertMessagesMatchResult = (result: HubResult<Message[]>, messages: MessageModel[]) => {
+  expect(new Set(result._unsafeUnwrap())).toEqual(new Set(messages.map((model) => model.message)));
 };
 
 describe('getAllCastMessagesByFid', () => {

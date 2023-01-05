@@ -4,7 +4,7 @@ import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { SignerAddModel, VerificationAddEthAddressModel } from '~/flatbuffers/models/types';
 import SyncEngine from '~/network/sync/syncEngine';
-import Client from '~/rpc/client';
+import HubClient from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -15,12 +15,12 @@ const engine = new Engine(db);
 const hub = new MockHub(db, engine);
 
 let server: Server;
-let client: Client;
+let client: HubClient;
 
 beforeAll(async () => {
   server = new Server(hub, engine, new SyncEngine(engine));
   const port = await server.start();
-  client = new Client(`127.0.0.1:${port}`);
+  client = new HubClient(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {
@@ -68,7 +68,7 @@ describe('getVerification', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(verificationAdd);
     const result = await client.getVerification(fid, verificationAdd.body().addressArray() ?? new Uint8Array());
-    expect(result._unsafeUnwrap()).toEqual(verificationAdd);
+    expect(result._unsafeUnwrap()).toEqual(verificationAdd.message);
   });
 
   test('fails if verification is missing', async () => {
@@ -99,7 +99,7 @@ describe('getVerificationsByFid', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(verificationAdd);
     const verifications = await client.getVerificationsByFid(fid);
-    expect(verifications._unsafeUnwrap()).toEqual([verificationAdd]);
+    expect(verifications._unsafeUnwrap()).toEqual([verificationAdd.message]);
   });
 
   test('returns empty array without messages', async () => {

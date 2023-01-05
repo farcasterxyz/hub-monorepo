@@ -4,7 +4,6 @@ import { HubError } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import MessageModel from '~/flatbuffers/models/messageModel';
-import * as types from '~/flatbuffers/models/types';
 import { APP_NICKNAME, APP_VERSION } from '~/hub';
 import SyncEngine from '~/network/sync/syncEngine';
 import {
@@ -32,95 +31,6 @@ export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
       builder.finish(infoT.pack(builder));
       const response = flatbuffers.HubInfoResponse.getRootAsHubInfoResponse(new ByteBuffer(builder.asUint8Array()));
       callback(null, response);
-    },
-    getAllCastMessagesByFid: async (
-      call: grpc.ServerUnaryCall<flatbuffers.GetAllMessagesByFidRequest, flatbuffers.MessagesResponse>,
-      callback: grpc.sendUnaryData<flatbuffers.MessagesResponse>
-    ) => {
-      const result = await engine.getAllCastMessagesByFid(call.request.fidArray() ?? new Uint8Array());
-      result.match(
-        (messages: (types.CastAddModel | types.CastRemoveModel)[]) => {
-          callback(null, toMessagesResponse(messages));
-        },
-        (err: HubError) => {
-          callback(toServiceError(err));
-        }
-      );
-    },
-
-    getAllAmpMessagesByFid: async (
-      call: grpc.ServerUnaryCall<flatbuffers.GetAllMessagesByFidRequest, flatbuffers.MessagesResponse>,
-      callback: grpc.sendUnaryData<flatbuffers.MessagesResponse>
-    ) => {
-      const result = await engine.getAllAmpMessagesByFid(call.request.fidArray() ?? new Uint8Array());
-      result.match(
-        (messages: (types.AmpAddModel | types.AmpRemoveModel)[]) => {
-          callback(null, toMessagesResponse(messages));
-        },
-        (err: HubError) => {
-          callback(toServiceError(err));
-        }
-      );
-    },
-
-    getAllReactionMessagesByFid: async (
-      call: grpc.ServerUnaryCall<flatbuffers.GetAllMessagesByFidRequest, flatbuffers.MessagesResponse>,
-      callback: grpc.sendUnaryData<flatbuffers.MessagesResponse>
-    ) => {
-      const result = await engine.getAllReactionMessagesByFid(call.request.fidArray() ?? new Uint8Array());
-      result.match(
-        (messages: (types.ReactionAddModel | types.ReactionRemoveModel)[]) => {
-          callback(null, toMessagesResponse(messages));
-        },
-        (err: HubError) => {
-          callback(toServiceError(err));
-        }
-      );
-    },
-
-    getAllVerificationMessagesByFid: async (
-      call: grpc.ServerUnaryCall<flatbuffers.GetAllMessagesByFidRequest, flatbuffers.MessagesResponse>,
-      callback: grpc.sendUnaryData<flatbuffers.MessagesResponse>
-    ) => {
-      const result = await engine.getAllVerificationMessagesByFid(call.request.fidArray() ?? new Uint8Array());
-      result.match(
-        (messages: (types.VerificationAddEthAddressModel | types.VerificationRemoveModel)[]) => {
-          callback(null, toMessagesResponse(messages));
-        },
-        (err: HubError) => {
-          callback(toServiceError(err));
-        }
-      );
-    },
-
-    getAllSignerMessagesByFid: async (
-      call: grpc.ServerUnaryCall<flatbuffers.GetAllMessagesByFidRequest, flatbuffers.MessagesResponse>,
-      callback: grpc.sendUnaryData<flatbuffers.MessagesResponse>
-    ) => {
-      const result = await engine.getAllSignerMessagesByFid(call.request.fidArray() ?? new Uint8Array());
-      result.match(
-        (messages: (types.SignerAddModel | types.SignerRemoveModel)[]) => {
-          callback(null, toMessagesResponse(messages));
-        },
-        (err: HubError) => {
-          callback(toServiceError(err));
-        }
-      );
-    },
-
-    getAllUserDataMessagesByFid: async (
-      call: grpc.ServerUnaryCall<flatbuffers.GetAllMessagesByFidRequest, flatbuffers.MessagesResponse>,
-      callback: grpc.sendUnaryData<flatbuffers.MessagesResponse>
-    ) => {
-      const result = await engine.getUserDataByFid(call.request.fidArray() ?? new Uint8Array());
-      result.match(
-        (messages: types.UserDataAddModel[]) => {
-          callback(null, toMessagesResponse(messages));
-        },
-        (err: HubError) => {
-          callback(toServiceError(err));
-        }
-      );
     },
 
     getAllSyncIdsByPrefix: async (

@@ -7,7 +7,7 @@ import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { SignerAddModel, UserDataAddModel } from '~/flatbuffers/models/types';
 import SyncEngine from '~/network/sync/syncEngine';
-import Client from '~/rpc/client';
+import HubClient from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -18,12 +18,12 @@ const engine = new Engine(db);
 const hub = new MockHub(db, engine);
 
 let server: Server;
-let client: Client;
+let client: HubClient;
 
 beforeAll(async () => {
   server = new Server(hub, engine, new SyncEngine(engine));
   const port = await server.start();
-  client = new Client(`127.0.0.1:${port}`);
+  client = new HubClient(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {
@@ -91,10 +91,10 @@ describe('getUserData', () => {
     expect(await engine.mergeMessage(locationAdd)).toEqual(ok(undefined));
 
     const pfp = await client.getUserData(fid, UserDataType.Pfp);
-    expect(pfp._unsafeUnwrap()).toEqual(pfpAdd);
+    expect(pfp._unsafeUnwrap()).toEqual(pfpAdd.message);
 
     const location = await client.getUserData(fid, UserDataType.Location);
-    expect(location._unsafeUnwrap()).toEqual(locationAdd);
+    expect(location._unsafeUnwrap()).toEqual(locationAdd.message);
 
     const nameRegistryEvent = await Factories.NameRegistryEvent.create({
       fname: Array.from(fname),
@@ -105,7 +105,7 @@ describe('getUserData', () => {
 
     expect(await engine.mergeMessage(addFname)).toEqual(ok(undefined));
     const fnameData = await client.getUserData(fid, UserDataType.Fname);
-    expect(fnameData._unsafeUnwrap()).toEqual(addFname);
+    expect(fnameData._unsafeUnwrap()).toEqual(addFname.message);
   });
 
   test('fails when user data is missing', async () => {
@@ -132,7 +132,7 @@ describe('getUserDataByFid', () => {
     await engine.mergeMessage(pfpAdd);
     await engine.mergeMessage(locationAdd);
     const result = await client.getUserDataByFid(fid);
-    expect(new Set(result._unsafeUnwrap())).toEqual(new Set([pfpAdd, locationAdd]));
+    expect(new Set(result._unsafeUnwrap())).toEqual(new Set([pfpAdd.message, locationAdd.message]));
   });
 
   test('returns empty array without messages', async () => {

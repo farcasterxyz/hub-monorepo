@@ -146,8 +146,12 @@ export const validateEthAddress = (address?: Uint8Array | null): HubResult<Uint8
     return err(new HubError('bad_request.validation_failure', 'address is missing'));
   }
 
-  if (address.byteLength !== 20) {
-    return err(new HubError('bad_request.validation_failure', 'address must be 20 bytes'));
+  if (address.byteLength > 20) {
+    return err(new HubError('bad_request.validation_failure', 'address > 20 bytes'));
+  }
+
+  if (address[address.byteLength - 1] === 0) {
+    return err(new HubError('bad_request.validation_failure', 'address is padded'));
   }
 
   return ok(address);
@@ -158,8 +162,12 @@ export const validateEthBlockHash = (blockHash?: Uint8Array | null): HubResult<U
     return err(new HubError('bad_request.validation_failure', 'blockHash is missing'));
   }
 
-  if (blockHash.byteLength !== 32) {
-    return err(new HubError('bad_request.validation_failure', 'blockHash must be 32 bytes'));
+  if (blockHash.byteLength > 32) {
+    return err(new HubError('bad_request.validation_failure', 'blockHash > 32 bytes'));
+  }
+
+  if (blockHash[blockHash.byteLength - 1] === 0) {
+    return err(new HubError('bad_request.validation_failure', 'blockHash is padded'));
   }
 
   return ok(blockHash);
@@ -170,8 +178,12 @@ export const validateEd25519PublicKey = (publicKey?: Uint8Array | null): HubResu
     return err(new HubError('bad_request.validation_failure', 'publicKey is missing'));
   }
 
-  if (publicKey.byteLength !== 32) {
-    return err(new HubError('bad_request.validation_failure', 'publicKey must be 32 bytes'));
+  if (publicKey.byteLength > 32) {
+    return err(new HubError('bad_request.validation_failure', 'publicKey > 32 bytes'));
+  }
+
+  if (publicKey[publicKey.byteLength - 1] === 0) {
+    return err(new HubError('bad_request.validation_failure', 'publicKey is padded'));
   }
 
   return ok(publicKey);

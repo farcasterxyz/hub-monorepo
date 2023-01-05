@@ -40,3 +40,5 @@ export const syncRequests = {
     );
   },
 };
+
+export default syncRequests;

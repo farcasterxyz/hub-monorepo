@@ -6,7 +6,7 @@ import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { CastAddModel, SignerAddModel } from '~/flatbuffers/models/types';
 import SyncEngine from '~/network/sync/syncEngine';
-import Client from '~/rpc/client';
+import HubClient from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -17,12 +17,12 @@ const engine = new Engine(db);
 const hub = new MockHub(db, engine);
 
 let server: Server;
-let client: Client;
+let client: HubClient;
 
 beforeAll(async () => {
   server = new Server(hub, engine, new SyncEngine(engine));
   const port = await server.start();
-  client = new Client(`127.0.0.1:${port}`);
+  client = new HubClient(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {
@@ -66,15 +66,15 @@ describe('submitMessage', () => {
     });
 
     test('succeeds', async () => {
-      const result = await client.submitMessage(castAdd);
-      expect(result._unsafeUnwrap()).toEqual(castAdd);
+      const result = await client.submitMessage(castAdd.message);
+      expect(result._unsafeUnwrap()).toEqual(castAdd.message);
       const getCast = await client.getCast(castAdd.fid(), castAdd.tsHash());
-      expect(getCast._unsafeUnwrap()).toEqual(castAdd);
+      expect(getCast._unsafeUnwrap()).toEqual(castAdd.message);
     });
   });
 
   test('fails without signer', async () => {
-    const result = await client.submitMessage(castAdd);
+    const result = await client.submitMessage(castAdd.message);
     const err = result._unsafeUnwrapErr();
     expect(err.errCode).toEqual('bad_request.validation_failure');
     expect(err.message).toMatch('unknown fid');
@@ -83,22 +83,19 @@ describe('submitMessage', () => {
 
 describe('submitIdRegistryEvent', () => {
   test('succeeds', async () => {
-    const result = await client.submitIdRegistryEvent(custodyEvent);
-    expect(result._unsafeUnwrap()).toEqual(custodyEvent);
+    const result = await client.submitIdRegistryEvent(custodyEvent.event);
+    expect(result._unsafeUnwrap()).toEqual(custodyEvent.event);
   });
 
-  // TODO: test the gRPC server directly without having to use IdRegistryEventModel, because
-  // the constructor will throw an exception with an invalid type
-  xtest('fails with invalid event', async () => {
-    const invalidEvent = new IdRegistryEventModel(
-      await Factories.IdRegistryEvent.create({
-        to: Array.from(ethSigner.signerKey),
-        fid: Array.from(fid),
-        type: 0 as IdRegistryEventType,
-      })
-    );
+  test('fails with invalid event', async () => {
+    const invalidEvent = await Factories.IdRegistryEvent.create({
+      to: Array.from(ethSigner.signerKey),
+      fid: Array.from(fid),
+      type: 0 as IdRegistryEventType,
+    });
+
     const result = await client.submitIdRegistryEvent(invalidEvent);
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid event type'));
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'type is invalid'));
   });
 });
 
@@ -107,20 +104,17 @@ describe('submitNameRegistryEvent', () => {
     const nameRegistryEvent = new NameRegistryEventModel(
       await Factories.NameRegistryEvent.create({ to: Array.from(ethSigner.signerKey) })
     );
-    const result = await client.submitNameRegistryEvent(nameRegistryEvent);
-    expect(result._unsafeUnwrap()).toEqual(nameRegistryEvent);
+    const result = await client.submitNameRegistryEvent(nameRegistryEvent.event);
+    expect(result._unsafeUnwrap()).toEqual(nameRegistryEvent.event);
   });
 
-  // TODO: test the gRPC server directly without having to use NameRegistryEventModel, because
-  // the constructor will throw an exception with an invalid type
-  xtest('fails with invalid event', async () => {
-    const invalidEvent = new NameRegistryEventModel(
-      await Factories.NameRegistryEvent.create({
-        to: Array.from(ethSigner.signerKey),
-        type: 0 as NameRegistryEventType,
-      })
-    );
+  test('fails with invalid event', async () => {
+    const invalidEvent = await Factories.NameRegistryEvent.create({
+      to: Array.from(ethSigner.signerKey),
+      type: 0 as NameRegistryEventType,
+    });
+
     const result = await client.submitNameRegistryEvent(invalidEvent);
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid event type'));
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'type is invalid'));
   });
 });
