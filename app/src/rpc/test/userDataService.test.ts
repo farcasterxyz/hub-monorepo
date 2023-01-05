@@ -7,23 +7,24 @@ import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { SignerAddModel, UserDataAddModel } from '~/flatbuffers/models/types';
 import SyncEngine from '~/network/sync/syncEngine';
-import HubClient from '~/rpc/client';
+import HubRpcClient from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
+import { addressInfoFromParts } from '~/utils/p2p';
 
 const db = jestRocksDB('flatbuffers.rpc.userDataService.test');
 const engine = new Engine(db);
 const hub = new MockHub(db, engine);
 
 let server: Server;
-let client: HubClient;
+let client: HubRpcClient;
 
 beforeAll(async () => {
   server = new Server(hub, engine, new SyncEngine(engine));
   const port = await server.start();
-  client = new HubClient(`127.0.0.1:${port}`);
+  client = new HubRpcClient(addressInfoFromParts('127.0.0.1', port)._unsafeUnwrap());
 });
 
 afterAll(async () => {

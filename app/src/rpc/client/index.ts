@@ -3,11 +3,14 @@ import { HubAsyncResult } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
 import { HubInfoResponse } from '@hub/flatbuffers';
 import Client from '@hub/grpc-client';
+import { AddressInfo } from 'net';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { NodeMetadata } from '~/network/sync/merkleTrie';
 import { TrieSnapshot } from '~/network/sync/trieNode';
 import syncRequests from '~/rpc/client/syncRequests';
 import { syncDefinition } from '~/rpc/syncDefinitions';
+import { logger } from '~/utils/logger';
+import { addressInfoToString, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 
 const fromNodeMetadataResponse = (response: flatbuffers.TrieNodeMetadataResponse): NodeMetadata => {
   const children = new Map<string, NodeMetadata>();
@@ -58,7 +61,25 @@ const fromSyncIdsByPrefixResponse = (response: flatbuffers.GetAllSyncIdsByPrefix
   return ids;
 };
 
-class HubClient extends Client {
+class HubRpcClient extends Client {
+  private serverAddr: string;
+
+  constructor(addressInfo: AddressInfo) {
+    const multiAddrResult = ipMultiAddrStrFromAddressInfo(addressInfo);
+    if (multiAddrResult.isErr()) {
+      logger.warn({ component: 'gRPC Client', address: addressInfo }, 'Failed to parse address as multiaddr');
+    }
+
+    const addressString = addressInfoToString(addressInfo);
+    super(addressString);
+
+    this.serverAddr = `${multiAddrResult.unwrapOr('localhost')}/tcp/${addressInfo.port}`;
+  }
+
+  get serverMultiaddr() {
+    return this.serverAddr;
+  }
+
   async getInfo(): HubAsyncResult<HubInfoResponse> {
     return this.makeUnaryRequest(syncDefinition().getInfo, syncRequests.getInfoRequest());
   }
@@ -96,4 +117,4 @@ class HubClient extends Client {
   }
 }
 
-export default HubClient;
+export default HubRpcClient;

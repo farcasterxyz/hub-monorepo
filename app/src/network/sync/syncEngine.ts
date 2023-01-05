@@ -7,7 +7,7 @@ import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
 import { TrieSnapshot } from '~/network/sync/trieNode';
-import HubClient from '~/rpc/client';
+import HubRpcClient from '~/rpc/client';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
 
@@ -81,7 +81,7 @@ class SyncEngine {
     return !excludedHashesMatch;
   }
 
-  async performSync(excludedHashes: string[], rpcClient: HubClient) {
+  async performSync(excludedHashes: string[], rpcClient: HubRpcClient) {
     try {
       this._isSyncing = true;
       const ourSnapshot = this.snapshot;
@@ -101,7 +101,7 @@ class SyncEngine {
     }
   }
 
-  public async fetchAndMergeMessages(syncIDs: string[], rpcClient: HubClient): Promise<boolean> {
+  public async fetchAndMergeMessages(syncIDs: string[], rpcClient: HubRpcClient): Promise<boolean> {
     let result = true;
     if (syncIDs.length === 0) {
       return false;
@@ -150,7 +150,7 @@ class SyncEngine {
   async fetchMissingHashesByNode(
     theirNode: NodeMetadata,
     ourNode: NodeMetadata | undefined,
-    rpcClient: HubClient
+    rpcClient: HubRpcClient
   ): Promise<string[]> {
     const missingHashes: string[] = [];
     // If the node has fewer than HASHES_PER_FETCH, just fetch them all in go, otherwise,
@@ -176,7 +176,7 @@ class SyncEngine {
     return missingHashes;
   }
 
-  async fetchMissingHashesByPrefix(prefix: string, rpcClient: HubClient): Promise<string[]> {
+  async fetchMissingHashesByPrefix(prefix: string, rpcClient: HubRpcClient): Promise<string[]> {
     const ourNode = this._trie.getTrieNodeMetadata(prefix);
     const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(prefix);
 
@@ -236,7 +236,7 @@ class SyncEngine {
     return Math.floor(currentTimeInSeconds / SYNC_THRESHOLD_IN_SECONDS) * SYNC_THRESHOLD_IN_SECONDS;
   }
 
-  private async syncUserAndRetryMessage(message: MessageModel, rpcClient: HubClient): Promise<HubResult<void>> {
+  private async syncUserAndRetryMessage(message: MessageModel, rpcClient: HubRpcClient): Promise<HubResult<void>> {
     const fid = message.data.fidArray();
     if (!fid) {
       return err(new HubError('bad_request.invalid_param', 'Invalid fid'));
