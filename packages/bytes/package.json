@@ -7,7 +7,8 @@
   "license": "MIT",
   "dependencies": {
     "flatbuffers": "^22.12.6",
-    "neverthrow": "^6.0.0"
+    "neverthrow": "^6.0.0",
+    "@hub/errors": "1.0.0"
   },
   "scripts": {
     "build": "yarn clean && tsc --project ./tsconfig.json",

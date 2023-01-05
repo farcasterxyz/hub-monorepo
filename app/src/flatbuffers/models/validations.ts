@@ -1,13 +1,13 @@
 import { bytesCompare, bytesToHexString } from '@hub/bytes';
 import { HubAsyncResult, HubError, HubResult } from '@hub/errors';
 import * as message_generated from '@hub/flatbuffers';
-import * as ed from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
-import { err, ok, Result, ResultAsync } from 'neverthrow';
+import { err, ok, Result } from 'neverthrow';
 import { bytesToBigNumber } from '~/eth/utils';
 import MessageModel, { FID_BYTES } from '~/flatbuffers/models/messageModel';
 import * as typeguards from '~/flatbuffers/models/typeguards';
 import * as types from '~/flatbuffers/models/types';
+import * as ed25519 from '~/flatbuffers/utils/ed25519';
 import { verifyMessageHashSignature, verifyVerificationEthAddressClaimSignature } from '~/flatbuffers/utils/eip712';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 
@@ -48,9 +48,10 @@ export const validateMessage = async (message: MessageModel): HubAsyncResult<Mes
     message.signatureScheme() === message_generated.SignatureScheme.Ed25519 &&
     !EIP712_MESSAGE_TYPES.includes(message.type())
   ) {
-    const signatureIsValid = await ResultAsync.fromPromise(
-      ed.verify(message.signature(), message.hash(), message.signer()),
-      () => undefined
+    const signatureIsValid = await ed25519.verifyMessageHashSignature(
+      message.signature(),
+      message.hash(),
+      message.signer()
     );
     if (signatureIsValid.isErr() || (signatureIsValid.isOk() && !signatureIsValid.value)) {
       return err(new HubError('bad_request.validation_failure', 'invalid signature'));

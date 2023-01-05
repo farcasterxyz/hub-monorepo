@@ -1,10 +1,10 @@
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
-import { AmpAddModel, CastAddModel, KeyPair } from '~/flatbuffers/models/types';
+import { AmpAddModel, CastAddModel } from '~/flatbuffers/models/types';
+import { Ed25519Signer } from '~/signers';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { seedSigner } from '~/storage/engine/seed';
-import { generateEd25519KeyPair } from '~/utils/crypto';
 import { PruneMessagesJobScheduler } from './pruneMessagesJob';
 
 const db = jestRocksDB('jobs.pruneMessagesJob.test');
@@ -13,7 +13,7 @@ const engine = new Engine(db);
 const scheduler = new PruneMessagesJobScheduler(engine);
 
 // Use farcaster timestamp
-const seedMessagesFromTimestamp = async (engine: Engine, fid: Uint8Array, signer: KeyPair, timestamp: number) => {
+const seedMessagesFromTimestamp = async (engine: Engine, fid: Uint8Array, signer: Ed25519Signer, timestamp: number) => {
   const castAddData = await Factories.CastAddData.create({ fid: Array.from(fid), timestamp });
   const castAdd = new MessageModel(
     await Factories.Message.create(
@@ -61,13 +61,15 @@ describe('doJobs', () => {
     const timestampToPrune = 1; // 1 second after farcaster epoch (1/1/22)
 
     const fid1 = Factories.FID.build();
-    const signer1 = await generateEd25519KeyPair();
-    await seedSigner(engine, fid1, signer1.publicKey);
+
+    const signer1 = Factories.Ed25519Signer.build();
+    await seedSigner(engine, fid1, signer1.signerKey);
     await seedMessagesFromTimestamp(engine, fid1, signer1, timestampToPrune);
 
     const fid2 = Factories.FID.build();
-    const signer2 = await generateEd25519KeyPair();
-    await seedSigner(engine, fid2, signer2.publicKey);
+
+    const signer2 = Factories.Ed25519Signer.build();
+    await seedSigner(engine, fid2, signer2.signerKey);
     await seedMessagesFromTimestamp(engine, fid2, signer2, timestampToPrune);
 
     for (const fid of [fid1, fid2]) {

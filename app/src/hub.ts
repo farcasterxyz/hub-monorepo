@@ -238,7 +238,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
         return;
       }
 
-      const p2pMultiAddrResult = p2pMultiAddrStr(addressInfo.value, message.peerId.toString()).map((addr) =>
+      const p2pMultiAddrResult = p2pMultiAddrStr(addressInfo.value, message.peerId.toString()).map((addr: string) =>
         multiaddr(addr)
       );
 
@@ -384,10 +384,10 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
 
     this.gossipNode.on('message', async (_topic, message) => {
       await message.match(
-        async (gossipMessage) => {
+        async (gossipMessage: GossipMessage) => {
           await this.handleGossipMessage(gossipMessage);
         },
-        async (error) => {
+        async (error: HubError) => {
           log.error(error, 'failed to decode message');
         }
       );

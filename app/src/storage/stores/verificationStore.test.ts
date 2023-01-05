@@ -1,37 +1,33 @@
-import { bytesDecrement, bytesIncrement, hexStringToBytes } from '@hub/bytes';
+import { bytesDecrement, bytesIncrement } from '@hub/bytes';
 import { HubError } from '@hub/errors';
 import { FarcasterNetwork } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
-import {
-  EthereumSigner,
-  UserPostfix,
-  VerificationAddEthAddressModel,
-  VerificationRemoveModel,
-} from '~/flatbuffers/models/types';
+import { UserPostfix, VerificationAddEthAddressModel, VerificationRemoveModel } from '~/flatbuffers/models/types';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import VerificationStore from '~/storage/stores/verificationStore';
-import { generateEthereumSigner } from '~/utils/crypto';
+
+import { Eip712Signer } from '~/signers';
 
 const db = jestRocksDB('flatbuffers.verificationStore.test');
 const eventHandler = new StoreEventHandler();
 const set = new VerificationStore(db, eventHandler);
 const fid = Factories.FID.build();
 
-let ethSigner: EthereumSigner;
+let ethSigner: Eip712Signer;
 let address: Uint8Array;
 let verificationAdd: VerificationAddEthAddressModel;
 let verificationRemove: VerificationRemoveModel;
 
 beforeAll(async () => {
-  ethSigner = await generateEthereumSigner();
-  address = hexStringToBytes(ethSigner.signerKey)._unsafeUnwrap();
+  ethSigner = Factories.Eip712Signer.build();
+  address = ethSigner.signerKey;
 
   const addBody = await Factories.VerificationAddEthAddressBody.create(
     {},
-    { transient: { fid, wallet: ethSigner.wallet, network: FarcasterNetwork.Testnet } }
+    { transient: { fid, signer: ethSigner, network: FarcasterNetwork.Testnet } }
   );
   const addData = await Factories.VerificationAddEthAddressData.create({
     fid: Array.from(fid),

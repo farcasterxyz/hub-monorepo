@@ -2,23 +2,15 @@ import { faker } from '@faker-js/faker';
 import { hexStringToBytes } from '@hub/bytes';
 import { HubError } from '@hub/errors';
 import * as message_generated from '@hub/flatbuffers';
-import { utils, Wallet } from 'ethers';
 import { bytesToBigNumber } from '~/eth/utils';
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import * as types from '~/flatbuffers/models/types';
 import * as validations from '~/flatbuffers/models/validations';
-import { signVerificationEthAddressClaim } from '~/flatbuffers/utils/eip712';
 import { getFarcasterTime } from '~/flatbuffers/utils/time';
-import { generateEd25519KeyPair } from '~/utils/crypto';
 
-let wallet: Wallet;
-let signer: types.KeyPair;
-
-beforeAll(async () => {
-  wallet = new Wallet(utils.randomBytes(32));
-  signer = await generateEd25519KeyPair();
-});
+const ethSigner = Factories.Eip712Signer.build();
+const signer = Factories.Ed25519Signer.build();
 
 describe('validateMessage', () => {
   test('succeeds with Ed25519 signer', async () => {
@@ -30,7 +22,10 @@ describe('validateMessage', () => {
   test('succeeds with EIP712 signer', async () => {
     const signerAddData = await Factories.SignerAddData.create();
     const message = new MessageModel(
-      await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+      await Factories.Message.create(
+        { data: Array.from(signerAddData.bb?.bytes() ?? []) },
+        { transient: { ethSigner } }
+      )
     );
     const result = await validations.validateMessage(message);
     expect(result._unsafeUnwrap()).toEqual(message);
@@ -38,7 +33,7 @@ describe('validateMessage', () => {
 
   test('fails with EIP712 signer and non-signer message type', async () => {
     // Default message type is CastAdd
-    const message = new MessageModel(await Factories.Message.create({}, { transient: { wallet } }));
+    const message = new MessageModel(await Factories.Message.create({}, { transient: { ethSigner } }));
     const result = await validations.validateMessage(message);
     expect(result._unsafeUnwrapErr()).toEqual(
       new HubError('bad_request.validation_failure', 'invalid signatureScheme')
@@ -201,12 +196,7 @@ describe('validateCastId', () => {
 });
 
 describe('validateEthAddress', () => {
-  let address: Uint8Array;
-
-  beforeAll(async () => {
-    const wallet = new Wallet(utils.randomBytes(32));
-    address = hexStringToBytes(wallet.address)._unsafeUnwrap();
-  });
+  const address = ethSigner.signerKey;
 
   test('succeeds', () => {
     expect(validations.validateEthAddress(address)._unsafeUnwrap()).toEqual(address);
@@ -255,12 +245,7 @@ describe('validateEthBlockHash', () => {
 });
 
 describe('validateEd25519PublicKey', () => {
-  let publicKey: Uint8Array;
-
-  beforeAll(async () => {
-    const keyPair = await generateEd25519KeyPair();
-    publicKey = keyPair.publicKey;
-  });
+  const publicKey = signer.signerKey;
 
   test('succeeds', () => {
     expect(validations.validateEd25519PublicKey(publicKey)._unsafeUnwrap()).toEqual(publicKey);
@@ -497,11 +482,11 @@ describe('validateVerificationAddEthAddressMessage', () => {
         fid: bytesToBigNumber(fid)._unsafeUnwrap(),
         address: faker.datatype.hexadecimal({ length: 40, case: 'lower' }), // mismatched address
         network: message_generated.FarcasterNetwork.Testnet,
-        blockHash: faker.datatype.hexadecimal({ length: 64, case: 'lower' }),
+        blockHash: Factories.BlockHash.build(),
       };
-      const signature = await signVerificationEthAddressClaim(claim, wallet);
+      const signature = await ethSigner.signVerificationEthAddressClaim(claim);
       body = new message_generated.VerificationAddEthAddressBodyT(
-        Array.from(hexStringToBytes(wallet.address)._unsafeUnwrap()),
+        Array.from(ethSigner.signerKey),
         Array.from(signature._unsafeUnwrap()),
         Array.from(hexStringToBytes(claim.blockHash)._unsafeUnwrap())
       );
@@ -561,7 +546,10 @@ describe('validateSignerMessage', () => {
   test('succeeds with SignerAdd', async () => {
     const signerAddData = await Factories.SignerAddData.create();
     const signerAdd = new MessageModel(
-      await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+      await Factories.Message.create(
+        { data: Array.from(signerAddData.bb?.bytes() ?? []) },
+        { transient: { ethSigner } }
+      )
     ) as types.SignerAddModel;
     expect(validations.validateSignerMessage(signerAdd)._unsafeUnwrap()).toEqual(signerAdd);
   });
@@ -571,7 +559,7 @@ describe('validateSignerMessage', () => {
     const signerRemove = new MessageModel(
       await Factories.Message.create(
         { data: Array.from(SignerRemoveData.bb?.bytes() ?? []) },
-        { transient: { wallet } }
+        { transient: { ethSigner } }
       )
     ) as types.SignerRemoveModel;
     expect(validations.validateSignerMessage(signerRemove)._unsafeUnwrap()).toEqual(signerRemove);
@@ -584,7 +572,10 @@ describe('validateSignerMessage', () => {
     afterEach(async () => {
       const signerAddData = await Factories.SignerAddData.create({ body });
       const signerAdd = new MessageModel(
-        await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+        await Factories.Message.create(
+          { data: Array.from(signerAddData.bb?.bytes() ?? []) },
+          { transient: { ethSigner } }
+        )
       ) as types.SignerAddModel;
       expect(validations.validateSignerMessage(signerAdd)._unsafeUnwrapErr()).toEqual(
         new HubError('bad_request.validation_failure', hubErrorMessage)
@@ -611,7 +602,7 @@ describe('validateAmpMessage', () => {
   test('succeeds with AmpAdd', async () => {
     const ampAddData = await Factories.AmpAddData.create();
     const ampAdd = new MessageModel(
-      await Factories.Message.create({ data: Array.from(ampAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+      await Factories.Message.create({ data: Array.from(ampAddData.bb?.bytes() ?? []) }, { transient: { ethSigner } })
     ) as types.AmpAddModel;
     expect(validations.validateAmpMessage(ampAdd)._unsafeUnwrap()).toEqual(ampAdd);
   });
@@ -619,7 +610,10 @@ describe('validateAmpMessage', () => {
   test('succeeds with AmpRemove', async () => {
     const ampRemoveData = await Factories.AmpRemoveData.create();
     const ampRemove = new MessageModel(
-      await Factories.Message.create({ data: Array.from(ampRemoveData.bb?.bytes() ?? []) }, { transient: { wallet } })
+      await Factories.Message.create(
+        { data: Array.from(ampRemoveData.bb?.bytes() ?? []) },
+        { transient: { ethSigner } }
+      )
     ) as types.AmpRemoveModel;
     expect(validations.validateAmpMessage(ampRemove)._unsafeUnwrap()).toEqual(ampRemove);
   });
@@ -631,7 +625,7 @@ describe('validateAmpMessage', () => {
     afterEach(async () => {
       const ampAddData = await Factories.AmpAddData.create({ body });
       const ampAdd = new MessageModel(
-        await Factories.Message.create({ data: Array.from(ampAddData.bb?.bytes() ?? []) }, { transient: { wallet } })
+        await Factories.Message.create({ data: Array.from(ampAddData.bb?.bytes() ?? []) }, { transient: { ethSigner } })
       ) as types.AmpAddModel;
       expect(validations.validateAmpMessage(ampAdd)._unsafeUnwrapErr()).toEqual(
         new HubError('bad_request.validation_failure', hubErrorMessage)

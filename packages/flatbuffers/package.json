@@ -3,9 +3,8 @@
   "version": "1.0.0",
   "main": "src/index.ts",
   "types": "src/index.ts",
-  "module": "./build/index.js",
-  "license": "MIT",
   "type": "module",
+  "license": "MIT",
   "scripts": {
     "build": "yarn clean && tsc --project ./tsconfig.json",
     "flatc": "flatc --ts --ts-flat-files --gen-object-api -o src/generated src/schemas/*.fbs",

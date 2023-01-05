@@ -2,7 +2,7 @@ import { HubError } from '@hub/errors';
 import { RevokeSignerJobPayload } from '@hub/flatbuffers';
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
-import { AmpAddModel, CastAddModel, KeyPair, VerificationRemoveModel } from '~/flatbuffers/models/types';
+import { AmpAddModel, CastAddModel, VerificationRemoveModel } from '~/flatbuffers/models/types';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { seedSigner } from '~/storage/engine/seed';
@@ -11,7 +11,6 @@ import {
   RevokeSignerJobQueue,
   RevokeSignerJobScheduler,
 } from '~/storage/jobs/revokeSignerJob';
-import { generateEd25519KeyPair } from '~/utils/crypto';
 
 const db = jestRocksDB('jobs.revokeSignerJob.test');
 
@@ -26,7 +25,7 @@ let payload3: RevokeSignerJobPayload;
 
 // Integration test data
 const fid = Factories.FID.build();
-let signer: KeyPair;
+const signer = Factories.Ed25519Signer.build();
 let revokeSignerPayload: RevokeSignerJobPayload;
 let castAdd: CastAddModel;
 let ampAdd: AmpAddModel;
@@ -39,8 +38,7 @@ beforeAll(async () => {
   payload3 = await Factories.RevokeSignerJobPayload.create();
 
   // Integration test data
-  signer = await generateEd25519KeyPair();
-  revokeSignerPayload = RevokeSignerJobQueue.makePayload(fid, signer.publicKey)._unsafeUnwrap();
+  revokeSignerPayload = RevokeSignerJobQueue.makePayload(fid, signer.signerKey)._unsafeUnwrap();
 
   const castAddData = await Factories.CastAddData.create({ fid: Array.from(fid) });
   castAdd = new MessageModel(
@@ -68,7 +66,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await seedSigner(engine, fid, signer.publicKey);
+  await seedSigner(engine, fid, signer.signerKey);
 });
 
 describe('jobKeyToTimestamp', () => {
@@ -229,7 +227,7 @@ describe('doJobs', () => {
     });
 
     test('processes jobs and deletes messages from signer', async () => {
-      const getMessages = () => MessageModel.getAllBySigner(db, fid, signer.publicKey);
+      const getMessages = () => MessageModel.getAllBySigner(db, fid, signer.signerKey);
       expect(await getMessages()).toEqual([castAdd, ampAdd, verificationRemove]);
       const result = await scheduler.doJobs();
       expect(result._unsafeUnwrap()).toEqual(undefined);
