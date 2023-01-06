@@ -1,4 +1,4 @@
-import { HubError } from '@hub/errors';
+import { HubError } from '@hub/utils';
 import { FARCASTER_EPOCH, fromFarcasterTime, toFarcasterTime } from '~/flatbuffers/utils/time';
 
 describe('fromFarcasterTime', () => {

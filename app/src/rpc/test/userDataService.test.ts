@@ -1,5 +1,5 @@
-import { HubError } from '@hub/errors';
 import { UserDataType } from '@hub/flatbuffers';
+import { HubError } from '@hub/utils';
 import { ok } from 'neverthrow';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';

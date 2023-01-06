@@ -1,4 +1,4 @@
-import { bytesToHexString, bytesToNumber } from '@hub/bytes';
+import { bytesToHexString, bytesToNumber } from '@hub/utils';
 import { default as Pino } from 'pino';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';

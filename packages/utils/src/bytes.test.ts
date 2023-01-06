@@ -7,8 +7,8 @@ import {
   bytesToUtf8String,
   hexStringToBytes,
   numberToBytes,
-} from '@hub/bytes';
-import { HubError } from '@hub/errors';
+} from './bytes';
+import { HubError } from './errors';
 
 describe('bytesCompare', () => {
   const cases: [Uint8Array, Uint8Array, number][] = [
@@ -135,8 +135,8 @@ describe('bytesToHexString', () => {
     describe('with size', () => {
       const passingCases: [Uint8Array, number, string][] = [
         [new Uint8Array([232, 3]), 4, '0x03e8'],
-        [new Uint8Array([232, 3, 0]), 6, '0x03e8'],
-        [new Uint8Array([0, 232, 3, 0]), 20, '0x03e800'],
+        [new Uint8Array([232, 3, 0]), 6, '0x0003e8'],
+        [new Uint8Array([0, 232, 3, 0]), 20, '0x0000000000000003e800'],
       ];
 
       for (const [input, size, output] of passingCases) {

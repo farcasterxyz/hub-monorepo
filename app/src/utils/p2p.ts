@@ -1,5 +1,5 @@
-import { HubAsyncResult, HubError, HubResult } from '@hub/errors';
 import { GossipAddressInfo } from '@hub/flatbuffers';
+import { HubAsyncResult, HubError, HubResult } from '@hub/utils';
 import { Multiaddr, multiaddr, NodeAddress } from '@multiformats/multiaddr';
 import { get } from 'http';
 import { AddressInfo, isIP } from 'net';

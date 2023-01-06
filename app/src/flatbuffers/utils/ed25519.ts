@@ -1,4 +1,4 @@
-import { HubAsyncResult, HubError } from '@hub/errors';
+import { HubAsyncResult, HubError } from '@hub/utils';
 import * as ed from '@noble/ed25519';
 import { sha512 } from '@noble/hashes/sha512';
 import { ResultAsync } from 'neverthrow';

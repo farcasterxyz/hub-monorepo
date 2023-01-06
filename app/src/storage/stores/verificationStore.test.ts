@@ -1,6 +1,5 @@
-import { bytesDecrement, bytesIncrement } from '@hub/bytes';
-import { HubError } from '@hub/errors';
 import { FarcasterNetwork } from '@hub/flatbuffers';
+import { bytesDecrement, bytesIncrement, HubError } from '@hub/utils';
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { UserPostfix, VerificationAddEthAddressModel, VerificationRemoveModel } from '~/flatbuffers/models/types';

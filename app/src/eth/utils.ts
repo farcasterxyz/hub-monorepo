@@ -1,5 +1,4 @@
-import { BytesOptions, bytesToHexString, hexStringToBytes, SizableBytesOptions } from '@hub/bytes';
-import { HubResult } from '@hub/errors';
+import { hexStringToBytes, HubResult, SizableBytesOptions } from '@hub/utils';
 import { BigNumber } from 'ethers';
 
 export const bytes32ToBytes = (value: BigNumber, options: SizableBytesOptions = {}): HubResult<Uint8Array> => {
@@ -10,12 +9,4 @@ export const bytes32ToBytes = (value: BigNumber, options: SizableBytesOptions = 
   }
 
   return hexStringToBytes(hex, options);
-};
-
-export const bigNumberToBytes = (value: BigNumber, options: SizableBytesOptions = {}): HubResult<Uint8Array> => {
-  return hexStringToBytes(value._hex, options);
-};
-
-export const bytesToBigNumber = (bytes: Uint8Array, options: BytesOptions = {}): HubResult<BigNumber> => {
-  return bytesToHexString(bytes, options).map((hexString) => BigNumber.from(hexString));
 };

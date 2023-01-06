@@ -1,5 +1,4 @@
-import { bytesCompare } from '@hub/bytes';
-import { HubError } from '@hub/errors';
+import { bytesCompare, HubError } from '@hub/utils';
 import Factories from '~/flatbuffers/factories';
 import MessageModel, { TRUE_VALUE } from '~/flatbuffers/models/messageModel';
 import { UserPostfix } from '~/flatbuffers/models/types';

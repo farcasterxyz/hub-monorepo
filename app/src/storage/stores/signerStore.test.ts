@@ -1,7 +1,6 @@
 import { faker } from '@faker-js/faker';
-import { bytesDecrement, bytesIncrement, hexStringToBytes } from '@hub/bytes';
-import { HubError } from '@hub/errors';
 import { IdRegistryEventType, MessageType } from '@hub/flatbuffers';
+import { bytesDecrement, bytesIncrement, hexStringToBytes, HubError } from '@hub/utils';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';

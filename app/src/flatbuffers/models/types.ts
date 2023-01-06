@@ -1,5 +1,5 @@
-import { HubAsyncResult } from '@hub/errors';
 import * as message_generated from '@hub/flatbuffers';
+import { HubAsyncResult } from '@hub/utils';
 import { ethers } from 'ethers';
 import HubStateModel from '~/flatbuffers/models/hubStateModel';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';

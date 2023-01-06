@@ -1,5 +1,5 @@
-import { HubError } from '@hub/errors';
 import { RevokeSignerJobPayload } from '@hub/flatbuffers';
+import { HubError } from '@hub/utils';
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { AmpAddModel, CastAddModel, VerificationRemoveModel } from '~/flatbuffers/models/types';

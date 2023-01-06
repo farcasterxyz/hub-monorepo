@@ -1,4 +1,4 @@
-import { HubError } from '@hub/errors';
+import { HubError } from './errors';
 
 describe('HubError', () => {
   test('can be instantiated', () => {

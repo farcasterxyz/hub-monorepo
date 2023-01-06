@@ -1,5 +1,4 @@
-import { bytesToHexString, hexStringToBytes } from '@hub/bytes';
-import { HubAsyncResult, HubResult } from '@hub/errors';
+import { bytesToHexString, hexStringToBytes, HubAsyncResult, HubResult } from '@hub/utils';
 import { utils, Wallet } from 'ethers';
 import { err } from 'neverthrow';
 import { VerificationEthAddressClaim } from '~/flatbuffers/models/types';

@@ -1,7 +1,6 @@
 import { faker } from '@faker-js/faker';
-import { hexStringToBytes } from '@hub/bytes';
-import { HubError } from '@hub/errors';
 import * as message_generated from '@hub/flatbuffers';
+import { hexStringToBytes, HubError } from '@hub/utils';
 import { bytesToBigNumber } from '~/eth/utils';
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';

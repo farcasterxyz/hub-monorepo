@@ -1,4 +1,4 @@
-import { HubError } from '@hub/errors';
+import { HubError } from '@hub/utils';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';

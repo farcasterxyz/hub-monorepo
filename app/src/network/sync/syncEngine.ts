@@ -1,5 +1,4 @@
-import { utf8StringToBytes } from '@hub/bytes';
-import { HubError, HubResult } from '@hub/errors';
+import { HubError, HubResult, utf8StringToBytes } from '@hub/utils';
 import { err } from 'neverthrow';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';

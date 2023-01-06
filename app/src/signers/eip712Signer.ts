@@ -1,6 +1,5 @@
-import { hexStringToBytes } from '@hub/bytes';
-import { HubAsyncResult } from '@hub/errors';
 import { SignatureScheme } from '@hub/flatbuffers';
+import { hexStringToBytes, HubAsyncResult } from '@hub/utils';
 import { Wallet } from 'ethers';
 import { VerificationEthAddressClaim } from '~/flatbuffers/models/types';
 import { signMessageHash, signVerificationEthAddressClaim } from '~/flatbuffers/utils/eip712';

@@ -1,6 +1,5 @@
-import { bytesDecrement, bytesIncrement } from '@hub/bytes';
-import { HubError } from '@hub/errors';
 import { CastId } from '@hub/flatbuffers';
+import { bytesDecrement, bytesIncrement, HubError } from '@hub/utils';
 import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastAddModel, CastRemoveModel, UserPostfix } from '~/flatbuffers/models/types';

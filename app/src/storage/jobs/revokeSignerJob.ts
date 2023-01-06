@@ -1,6 +1,5 @@
-import { bytesIncrement, bytesToNumber, numberToBytes } from '@hub/bytes';
-import { HubAsyncResult, HubError, HubResult } from '@hub/errors';
 import { RevokeSignerJobPayload, RevokeSignerJobPayloadT } from '@hub/flatbuffers';
+import { bytesIncrement, bytesToNumber, HubAsyncResult, HubError, HubResult, numberToBytes } from '@hub/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { err, ok, ResultAsync } from 'neverthrow';

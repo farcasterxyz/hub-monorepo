@@ -1,5 +1,5 @@
-import { toByteBuffer } from '@hub/bytes';
 import * as flatbuffers from '@hub/flatbuffers';
+import { toByteBuffer } from '@hub/utils';
 import { ByteBuffer } from 'flatbuffers';
 
 interface GenericFlatbuffer {

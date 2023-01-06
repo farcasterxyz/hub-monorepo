@@ -1,4 +1,4 @@
-import { HubAsyncResult, HubError } from '@hub/errors';
+import { HubAsyncResult, HubError } from '@hub/utils';
 import { ResultAsync } from 'neverthrow';
 import HubStateModel from '~/flatbuffers/models/hubStateModel';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';

@@ -1,6 +1,6 @@
 import grpc from '@grpc/grpc-js';
-import { HubError } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
+import { HubError } from '@hub/utils';
 import * as types from '~/flatbuffers/models/types';
 import { toMessagesResponse, toServiceError } from '~/rpc/server';
 import Engine from '~/storage/engine';

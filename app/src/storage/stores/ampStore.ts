@@ -1,6 +1,5 @@
-import { bytesCompare } from '@hub/bytes';
-import { HubAsyncResult, HubError } from '@hub/errors';
 import { MessageType } from '@hub/flatbuffers';
+import { bytesCompare, HubAsyncResult, HubError } from '@hub/utils';
 import { ok, ResultAsync } from 'neverthrow';
 import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/flatbuffers/models/messageModel';
 import { isAmpAdd, isAmpRemove } from '~/flatbuffers/models/typeguards';

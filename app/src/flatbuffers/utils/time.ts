@@ -1,4 +1,4 @@
-import { HubError } from '@hub/errors';
+import { HubError } from '@hub/utils';
 
 export const FARCASTER_EPOCH = 1640995200000; // January 1, 2022 UTC
 export const getFarcasterTime = (): number => {

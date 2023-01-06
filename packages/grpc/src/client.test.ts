@@ -1,4 +1,4 @@
-import Client from '@hub/grpc-client';
+import { Client } from './client';
 
 let client: Client;
 

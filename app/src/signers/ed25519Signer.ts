@@ -1,5 +1,5 @@
-import { HubAsyncResult } from '@hub/errors';
 import { SignatureScheme } from '@hub/flatbuffers';
+import { HubAsyncResult } from '@hub/utils';
 import { getPublicKeySync, signMessageHash } from '~/flatbuffers/utils/ed25519';
 import Signer from './signer';
 

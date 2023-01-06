@@ -1,4 +1,4 @@
-import { HubAsyncResult } from '@hub/errors';
+import { HubAsyncResult } from '@hub/utils';
 import { err, ok } from 'neverthrow';
 import cron from 'node-cron';
 import Engine from '~/storage/engine';

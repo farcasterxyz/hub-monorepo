@@ -1,13 +1,13 @@
 import grpc, { ClientReadableStream, Metadata, MetadataValue } from '@grpc/grpc-js';
-import { HubAsyncResult, HubError } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
 import * as definitions from '@hub/grpc';
+import { HubAsyncResult, HubError } from '@hub/utils';
 import { ByteBuffer } from 'flatbuffers';
 import { err, ok } from 'neverthrow';
 import * as requests from './requests';
 import { fromServiceError } from './utils';
 
-class Client {
+export class Client {
   protected client: grpc.Client;
 
   constructor(address: string) {
@@ -341,6 +341,3 @@ class Client {
     });
   }
 }
-
-export * from './utils';
-export default Client;

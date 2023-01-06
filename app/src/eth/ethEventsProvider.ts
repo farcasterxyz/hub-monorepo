@@ -1,7 +1,6 @@
 import * as flatbuffers from '@hub/flatbuffers';
 
-import { hexStringToBytes } from '@hub/bytes';
-import { HubAsyncResult } from '@hub/errors';
+import { hexStringToBytes, HubAsyncResult } from '@hub/utils';
 import { BigNumber, Contract, Event, providers } from 'ethers';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { err, ok, ResultAsync } from 'neverthrow';

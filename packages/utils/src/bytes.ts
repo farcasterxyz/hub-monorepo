@@ -1,6 +1,7 @@
-import { HubError, HubResult } from '@hub/errors';
+import { BigNumber } from 'ethers';
 import { ByteBuffer } from 'flatbuffers';
 import { err, ok, Result } from 'neverthrow';
+import { HubError, HubResult } from './errors';
 
 export const DEFAULT_ENDIANNESS: Endianness = 'little';
 
@@ -121,7 +122,7 @@ export const bytesToHexString = (bytes: Uint8Array, options: SizableBytesOptions
     }
   }
 
-  let hex = '0x';
+  let hex = '';
 
   if (endianness === 'little') {
     // Start at end
@@ -141,7 +142,7 @@ export const bytesToHexString = (bytes: Uint8Array, options: SizableBytesOptions
       hex = hex + hexChars;
 
       // Check size minus 0x prefix
-      if (typeof options.size === 'number' && hex.length - 2 > options.size) {
+      if (typeof options.size === 'number' && hex.length > options.size) {
         return err(new HubError('bad_request.invalid_param', 'value does not fit in size'));
       }
     }
@@ -162,13 +163,20 @@ export const bytesToHexString = (bytes: Uint8Array, options: SizableBytesOptions
       hex = hex + hexChars;
 
       // Check size minus 0x prefix
-      if (typeof options.size === 'number' && hex.length - 2 > options.size) {
+      if (typeof options.size === 'number' && hex.length > options.size) {
         return err(new HubError('bad_request.invalid_param', 'value does not fit in size'));
       }
     }
   }
 
-  return ok(hex);
+  // Add padding
+  if (typeof options.size === 'number') {
+    while (hex.length < options.size) {
+      hex = '00' + hex;
+    }
+  }
+
+  return ok('0x' + hex);
 };
 
 export const hexStringToBytes = (hex: string, options: SizableBytesOptions = {}): HubResult<Uint8Array> => {
@@ -256,4 +264,12 @@ export const bigIntToBytes = (value: bigint, options: SizableBytesOptions = {}):
   }
 
   return ok(new Uint8Array(bytes));
+};
+
+export const bigNumberToBytes = (value: BigNumber, options: SizableBytesOptions = {}): HubResult<Uint8Array> => {
+  return hexStringToBytes(value._hex, options);
+};
+
+export const bytesToBigNumber = (bytes: Uint8Array, options: BytesOptions = {}): HubResult<BigNumber> => {
+  return bytesToHexString(bytes, options).map((hexString) => BigNumber.from(hexString));
 };

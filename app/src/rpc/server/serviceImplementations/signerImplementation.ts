@@ -1,6 +1,6 @@
 import grpc from '@grpc/grpc-js';
-import { HubError } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
+import { HubError } from '@hub/utils';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import { SignerAddModel } from '~/flatbuffers/models/types';

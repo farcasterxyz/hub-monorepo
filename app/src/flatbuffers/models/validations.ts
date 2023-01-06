@@ -1,6 +1,5 @@
-import { bytesCompare, bytesToHexString } from '@hub/bytes';
-import { HubAsyncResult, HubError, HubResult } from '@hub/errors';
 import * as message_generated from '@hub/flatbuffers';
+import { bytesCompare, bytesToHexString, HubAsyncResult, HubError, HubResult } from '@hub/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { err, ok, Result } from 'neverthrow';
 import { bytesToBigNumber } from '~/eth/utils';

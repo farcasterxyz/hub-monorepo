@@ -1,6 +1,5 @@
-import { bytesIncrement } from '@hub/bytes';
-import { HubError } from '@hub/errors';
 import { NameRegistryEventType, UserDataType } from '@hub/flatbuffers';
+import { bytesIncrement, HubError } from '@hub/utils';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';

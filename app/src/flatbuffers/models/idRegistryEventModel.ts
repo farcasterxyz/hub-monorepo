@@ -1,5 +1,5 @@
-import { HubError } from '@hub/errors';
 import { IdRegistryEvent, IdRegistryEventType } from '@hub/flatbuffers';
+import { HubError } from '@hub/utils';
 import { ByteBuffer } from 'flatbuffers';
 import { RootPrefix } from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';

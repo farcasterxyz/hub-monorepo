@@ -1,5 +1,5 @@
-import { HubError } from '@hub/errors';
 import * as message_generated from '@hub/flatbuffers';
+import { HubError } from '@hub/utils';
 import { ByteBuffer } from 'flatbuffers';
 import AbstractRocksDB from 'rocksdb';
 import { RootPrefix, UserMessagePostfix, UserPostfix } from '~/flatbuffers/models/types';

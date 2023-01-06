@@ -1,4 +1,4 @@
-import { HubError } from '@hub/errors';
+import { HubError } from '@hub/utils';
 import { Result } from 'neverthrow';
 
 export const safeJsonStringify = Result.fromThrowable(

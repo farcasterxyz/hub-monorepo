@@ -1,5 +1,5 @@
-import { bytesToHexString, hexStringToBytes } from '@hub/bytes';
 import { FarcasterNetwork } from '@hub/flatbuffers';
+import { bytesToHexString, hexStringToBytes } from '@hub/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { BigNumber, ethers } from 'ethers';
 import { randomBytes } from 'ethers/lib/utils';

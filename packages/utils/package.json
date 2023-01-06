@@ -1,15 +1,14 @@
 {
-  "name": "@hub/grpc-client",
+  "name": "@hub/utils",
   "version": "1.0.0",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "type": "module",
   "license": "MIT",
   "dependencies": {
-    "@grpc/grpc-js": "^1.8.1",
-    "@hub/errors": "1.0.0",
-    "@hub/flatbuffers": "1.0.0",
-    "flatbuffers": "^22.12.6",
+    "@faker-js/faker": "^7.6.0",
+    "ethers": "^5.7.2",
+    "flatbuffers": "^22.11.23",
     "neverthrow": "^6.0.0"
   },
   "scripts": {

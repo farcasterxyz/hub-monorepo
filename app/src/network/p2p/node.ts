@@ -1,7 +1,7 @@
 import { GossipSub } from '@chainsafe/libp2p-gossipsub';
 import { Noise } from '@chainsafe/libp2p-noise';
-import { HubError, HubResult } from '@hub/errors';
 import { GossipContent, GossipMessage, GossipMessageT } from '@hub/flatbuffers';
+import { HubError, HubResult } from '@hub/utils';
 import { Connection } from '@libp2p/interface-connection';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { Mplex } from '@libp2p/mplex';

@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import { Event } from '@ethersproject/contracts';
 import { BaseProvider, Block, TransactionReceipt, TransactionResponse } from '@ethersproject/providers';
-import { bytesToHexString, hexStringToBytes } from '@hub/bytes';
 import { IdRegistryEventType, NameRegistryEventType } from '@hub/flatbuffers';
+import { bytesToHexString, hexStringToBytes } from '@hub/utils';
 import { BigNumber, Contract } from 'ethers';
 import { Result } from 'ethers/lib/utils';
 import { IdRegistry, NameRegistry } from '~/eth/abis';

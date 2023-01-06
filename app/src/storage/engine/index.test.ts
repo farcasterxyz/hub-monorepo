@@ -1,5 +1,5 @@
-import { HubError } from '@hub/errors';
 import { CastId, IdRegistryEventType, MessageType, NameRegistryEventType } from '@hub/flatbuffers';
+import { HubError } from '@hub/utils';
 import { err, ok } from 'neverthrow';
 import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';

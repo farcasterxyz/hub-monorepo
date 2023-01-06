@@ -1,6 +1,5 @@
-import { bytesCompare } from '@hub/bytes';
-import { HubAsyncResult, HubError } from '@hub/errors';
 import { MessageType } from '@hub/flatbuffers';
+import { bytesCompare, HubAsyncResult, HubError } from '@hub/utils';
 import { ok, ResultAsync } from 'neverthrow';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';

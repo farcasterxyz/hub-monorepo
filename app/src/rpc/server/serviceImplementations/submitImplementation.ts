@@ -1,6 +1,6 @@
 import grpc from '@grpc/grpc-js';
-import { HubError } from '@hub/errors';
 import { IdRegistryEvent, Message, NameRegistryEvent } from '@hub/flatbuffers';
+import { HubError } from '@hub/utils';
 import { Result } from 'neverthrow';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
