@@ -1,7 +1,6 @@
 import * as flatbuffers from '@hub/flatbuffers';
-import { bytesToHexString } from '@hub/utils';
 import { blake3 } from '@noble/hashes/blake3';
-import { bytesToBigNumber } from './bytes';
+import { bytesToBigNumber, bytesToHexString } from './bytes';
 import * as ed25519 from './crypto/ed25519';
 import { verifyVerificationEthAddressClaimSignature } from './crypto/eip712';
 import { Factories } from './factories';
@@ -88,11 +87,13 @@ describe('VerificationAddEthAddressBodyFactory', () => {
   test('generates valid ethSignature', async () => {
     const signature = body.ethSignatureArray();
     expect(signature).toBeTruthy();
+    const addressHex = bytesToHexString(body.addressArray() ?? new Uint8Array(), { size: 40 })._unsafeUnwrap();
+    const blockHashHex = bytesToHexString(body.blockHashArray() ?? new Uint8Array(), { size: 64 })._unsafeUnwrap();
     const reconstructedClaim: VerificationEthAddressClaim = {
       fid: bytesToBigNumber(fid)._unsafeUnwrap(),
-      address: bytesToHexString(body.addressArray() ?? new Uint8Array())._unsafeUnwrap(),
+      address: addressHex,
       network,
-      blockHash: bytesToHexString(body.blockHashArray() ?? new Uint8Array())._unsafeUnwrap(),
+      blockHash: blockHashHex,
     };
     const verifiedAddress = await verifyVerificationEthAddressClaimSignature(
       reconstructedClaim,

@@ -1,7 +1,8 @@
 import { SignatureScheme } from '@hub/flatbuffers';
-import { hexStringToBytes, HubAsyncResult } from '@hub/utils';
 import { Wallet } from 'ethers';
+import { hexStringToBytes } from '../bytes';
 import { eip712 } from '../crypto';
+import { HubAsyncResult } from '../errors';
 import { VerificationEthAddressClaim } from '../types';
 import { Signer } from './signer';
 

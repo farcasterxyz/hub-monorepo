@@ -5,6 +5,9 @@
   "types": "src/index.ts",
   "type": "module",
   "license": "MIT",
+  "devDependencies": {
+    "eslint-config-custom": "*"
+  },
   "dependencies": {
     "@grpc/grpc-js": "^1.8.1",
     "@hub/utils": "1.0.0",

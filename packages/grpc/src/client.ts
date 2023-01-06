@@ -1,9 +1,9 @@
 import grpc, { ClientReadableStream, Metadata, MetadataValue } from '@grpc/grpc-js';
 import * as flatbuffers from '@hub/flatbuffers';
-import * as definitions from '@hub/grpc';
 import { HubAsyncResult, HubError } from '@hub/utils';
 import { ByteBuffer } from 'flatbuffers';
 import { err, ok } from 'neverthrow';
+import * as definitions from './definitions';
 import * as requests from './requests';
 import { fromServiceError } from './utils';
 

@@ -232,7 +232,11 @@ export default class MessageModel {
   }
 
   tsHash(): Uint8Array {
-    return toTsHash(this.timestamp(), this.hash());
+    const tsHash = toTsHash(this.timestamp(), this.hash());
+    if (tsHash.isErr()) {
+      throw tsHash.error;
+    }
+    return tsHash.value;
   }
 
   timestamp(): number {

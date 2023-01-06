@@ -1,6 +1,6 @@
 import { SignatureScheme } from '@hub/flatbuffers';
-import { HubAsyncResult } from '@hub/utils';
 import { ed25519 } from '../crypto';
+import { HubAsyncResult } from '../errors';
 import { Signer } from './signer';
 
 export class Ed25519Signer extends Signer {

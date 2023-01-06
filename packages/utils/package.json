@@ -7,6 +7,9 @@
   "license": "MIT",
   "dependencies": {
     "@faker-js/faker": "^7.6.0",
+    "@hub/flatbuffers": "1.0.0",
+    "@noble/ed25519": "^1.7.1",
+    "@noble/hashes": "^1.1.5",
     "ethers": "^5.7.2",
     "flatbuffers": "^22.11.23",
     "neverthrow": "^6.0.0"
@@ -17,5 +20,9 @@
     "lint": "eslint  src/ --color --ext .ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"
+  },
+  "devDependencies": {
+    "fishery": "^2.2.2",
+    "eslint-config-custom": "*"
   }
 }
