@@ -13,8 +13,11 @@ class Eip712Signer extends Signer {
 
   constructor(privateKey: Uint8Array) {
     const wallet = new Wallet(privateKey);
-    const signerKey = hexStringToBytes(wallet.address.toLowerCase())._unsafeUnwrap();
-    super(SignatureScheme.Eip712, privateKey, signerKey);
+    const signerKey = hexStringToBytes(wallet.address.toLowerCase());
+    if (signerKey.isErr()) {
+      throw signerKey.error;
+    }
+    super(SignatureScheme.Eip712, privateKey, signerKey.value);
     this.wallet = wallet;
   }
 
