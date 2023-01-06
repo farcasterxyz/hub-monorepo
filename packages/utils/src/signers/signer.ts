@@ -1,5 +1,4 @@
 import { SignatureScheme } from '@hub/flatbuffers';
-import { bytesToHexString } from '../bytes';
 import { HubAsyncResult } from '../errors';
 
 export abstract class Signer {
@@ -8,16 +7,11 @@ export abstract class Signer {
   public readonly signerKeyHex: string;
   public readonly privateKey: Uint8Array;
 
-  constructor(scheme: SignatureScheme, privateKey: Uint8Array, signerKey: Uint8Array) {
+  constructor(scheme: SignatureScheme, privateKey: Uint8Array, signerKey: Uint8Array, signerKeyHex: string) {
     this.scheme = scheme;
     this.privateKey = privateKey;
     this.signerKey = signerKey;
-
-    const signerKeyHex = bytesToHexString(signerKey);
-    if (signerKeyHex.isErr()) {
-      throw signerKeyHex.error;
-    }
-    this.signerKeyHex = signerKeyHex.value;
+    this.signerKeyHex = signerKeyHex;
   }
 
   public abstract signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array>;
