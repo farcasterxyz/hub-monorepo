@@ -71,6 +71,12 @@ export const validateMessage = async (message: MessageModel): HubAsyncResult<Mes
     return err(new HubError('bad_request.validation_failure', 'timestamp more than 10 mins in the future'));
   }
 
+  // 4. Verify fid
+  const validatedFid = validateFid(message.fid());
+  if (validatedFid.isErr()) {
+    return err(validatedFid.error);
+  }
+
   if (typeguards.isCastAdd(message)) {
     return validateCastAddMessage(message);
   } else if (typeguards.isCastRemove(message)) {

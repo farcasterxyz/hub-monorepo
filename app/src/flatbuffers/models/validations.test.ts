@@ -103,6 +103,14 @@ describe('validateMessage', () => {
       new HubError('bad_request.validation_failure', 'timestamp more than 10 mins in the future')
     );
   });
+
+  test('fails with padded fid', async () => {
+    const paddedFid = new Uint8Array([...Factories.FID.build(), 0]);
+    const data = await Factories.MessageData.create({ fid: Array.from(paddedFid) });
+    const message = new MessageModel(await Factories.Message.create({ data: Array.from(data.bb?.bytes() ?? []) }));
+    const result = await validations.validateMessage(message);
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is padded'));
+  });
 });
 
 describe('validateFid', () => {
