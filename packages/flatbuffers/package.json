@@ -12,8 +12,10 @@
     "lint": "eslint  src/ --color --ext .ts",
     "lint:fix": "yarn run lint -- --fix"
   },
+  "devDependencies": {
+    "eslint-config-custom": "*"
+  },
   "dependencies": {
-    "eslint-config-custom": "*",
     "flatbuffers": "^22.11.23"
   }
 }

@@ -1,8 +1,7 @@
 import grpc from '@grpc/grpc-js';
-import { utf8StringToBytes } from '@hub/bytes';
-import { HubError } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
 import * as definitions from '@hub/grpc';
+import { HubError, utf8StringToBytes } from '@hub/utils';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { HubInterface } from '~/flatbuffers/models/types';

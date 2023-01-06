@@ -1,6 +1,5 @@
-import { bytesCompare, bytesToNumber } from '@hub/bytes';
-import { HubAsyncResult, HubError, HubResult } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
+import { bytesCompare, bytesToNumber, HubAsyncResult, HubError, HubResult } from '@hub/utils';
 import { err, errAsync, ok, ResultAsync } from 'neverthrow';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel, { FID_BYTES } from '~/flatbuffers/models/messageModel';

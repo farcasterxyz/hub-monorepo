@@ -1,7 +1,7 @@
 import grpc from '@grpc/grpc-js';
-import { HubError } from '@hub/errors';
 import * as rpc_generated from '@hub/flatbuffers';
 import { CastId, Message } from '@hub/flatbuffers';
+import { HubError } from '@hub/utils';
 import { ReactionAddModel } from '~/flatbuffers/models/types';
 import { toMessagesResponse, toServiceError } from '~/rpc/server';
 import Engine from '~/storage/engine';

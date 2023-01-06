@@ -1,5 +1,4 @@
-import { bytesCompare } from '@hub/bytes';
-import { HubError } from '@hub/errors';
+import { bytesCompare, HubError } from '@hub/utils';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 

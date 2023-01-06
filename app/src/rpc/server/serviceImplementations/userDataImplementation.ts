@@ -1,5 +1,4 @@
 import grpc from '@grpc/grpc-js';
-import { HubError } from '@hub/errors';
 import {
   GetNameRegistryEventRequest,
   GetUserDataByFidRequest,
@@ -8,6 +7,7 @@ import {
   MessagesResponse,
   NameRegistryEvent,
 } from '@hub/flatbuffers';
+import { HubError } from '@hub/utils';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { UserDataAddModel } from '~/flatbuffers/models/types';
 import { toMessagesResponse, toServiceError } from '~/rpc/server';

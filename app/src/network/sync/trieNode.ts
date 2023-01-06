@@ -1,4 +1,4 @@
-import { HubError } from '@hub/errors';
+import { HubError } from '@hub/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
 

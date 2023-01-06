@@ -1,6 +1,7 @@
-import Factories from '~/flatbuffers/factories';
+import { Factories } from '@hub/utils';
 import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
 import { EMPTY_HASH, TrieNode } from '~/network/sync/trieNode';
+import { NetworkFactories } from '~/network/utils/factories';
 
 const fid = Factories.FID.build();
 const sharedDate = new Date(1665182332000);
@@ -25,7 +26,7 @@ describe('TrieNode', () => {
   describe('insert', () => {
     test('succeeds inserting a single item', async () => {
       const root = new TrieNode();
-      const id = await Factories.SyncId.create();
+      const id = await NetworkFactories.SyncId.create();
 
       expect(root.items).toEqual(0);
       expect(root.hash).toEqual('');
@@ -38,7 +39,7 @@ describe('TrieNode', () => {
 
     test('inserting the same item twice is idempotent', async () => {
       const root = new TrieNode();
-      const id = await Factories.SyncId.create();
+      const id = await NetworkFactories.SyncId.create();
 
       root.insert(id.idString());
       expect(root.items).toEqual(1);
@@ -51,7 +52,7 @@ describe('TrieNode', () => {
 
     test('insert compacts hashstring component of syncid to single node for efficiency', async () => {
       const root = new TrieNode();
-      const id = await Factories.SyncId.create();
+      const id = await NetworkFactories.SyncId.create();
 
       root.insert(id.idString());
       let node = root;
@@ -70,12 +71,12 @@ describe('TrieNode', () => {
     test('inserting another key with a common prefix splits the node', async () => {
       // Generate two ids with the same timestamp and the same hash prefix. The trie should split the node
       // where they diverge
-      const id1 = await Factories.SyncId.create(undefined, {
+      const id1 = await NetworkFactories.SyncId.create(undefined, {
         transient: { date: sharedDate, hash: sharedPrefixHashA, fid },
       });
       const hash1 = id1.idString();
 
-      const id2 = await Factories.SyncId.create(undefined, {
+      const id2 = await NetworkFactories.SyncId.create(undefined, {
         transient: { date: sharedDate, hash: sharedPrefixHashB, fid },
       });
       const hash2 = id2.idString();
@@ -107,7 +108,7 @@ describe('TrieNode', () => {
   describe('delete', () => {
     test('deleting a single item removes the node', async () => {
       const root = new TrieNode();
-      const id = await Factories.SyncId.create();
+      const id = await NetworkFactories.SyncId.create();
 
       root.insert(id.idString());
       expect(root.items).toEqual(1);
@@ -119,8 +120,8 @@ describe('TrieNode', () => {
 
     test('deleting a single item from a node with multiple items removes the item', async () => {
       const root = new TrieNode();
-      const id1 = await Factories.SyncId.create(undefined, { transient: { date: sharedDate } });
-      const id2 = await Factories.SyncId.create(undefined, { transient: { date: sharedDate } });
+      const id1 = await NetworkFactories.SyncId.create(undefined, { transient: { date: sharedDate } });
+      const id2 = await NetworkFactories.SyncId.create(undefined, { transient: { date: sharedDate } });
 
       root.insert(id1.idString());
       const previousHash = root.hash;
@@ -134,10 +135,10 @@ describe('TrieNode', () => {
     });
 
     test('deleting a single item from a split node should preserve previous hash', async () => {
-      const id1 = await Factories.SyncId.create(undefined, {
+      const id1 = await NetworkFactories.SyncId.create(undefined, {
         transient: { date: sharedDate, hash: sharedPrefixHashA },
       });
-      const id2 = await Factories.SyncId.create(undefined, {
+      const id2 = await NetworkFactories.SyncId.create(undefined, {
         transient: { date: sharedDate, hash: sharedPrefixHashB },
       });
 
@@ -160,7 +161,7 @@ describe('TrieNode', () => {
   describe('get', () => {
     test('getting a single item returns the value', async () => {
       const root = new TrieNode();
-      const id = await Factories.SyncId.create();
+      const id = await NetworkFactories.SyncId.create();
 
       root.insert(id.idString());
       expect(root.items).toEqual(1);
@@ -170,7 +171,7 @@ describe('TrieNode', () => {
 
     test('getting an item after deleting it returns undefined', async () => {
       const root = new TrieNode();
-      const id = await Factories.SyncId.create();
+      const id = await NetworkFactories.SyncId.create();
 
       root.insert(id.idString());
       expect(root.items).toEqual(1);
@@ -181,10 +182,10 @@ describe('TrieNode', () => {
     });
 
     test('getting an non-existent item that share the same prefix with an existing item returns undefined', async () => {
-      const id1 = await Factories.SyncId.create(undefined, {
+      const id1 = await NetworkFactories.SyncId.create(undefined, {
         transient: { date: sharedDate, hash: sharedPrefixHashA },
       });
-      const id2 = await Factories.SyncId.create(undefined, {
+      const id2 = await NetworkFactories.SyncId.create(undefined, {
         transient: { date: sharedDate, hash: sharedPrefixHashB },
       });
 

@@ -1,8 +1,7 @@
-import { bytesToUtf8String, utf8StringToBytes } from '@hub/bytes';
-import { HubAsyncResult } from '@hub/errors';
 import * as flatbuffers from '@hub/flatbuffers';
 import { HubInfoResponse } from '@hub/flatbuffers';
-import Client from '@hub/grpc-client';
+import { Client } from '@hub/grpc';
+import { bytesToUtf8String, HubAsyncResult, utf8StringToBytes } from '@hub/utils';
 import { AddressInfo } from 'net';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { NodeMetadata } from '~/network/sync/merkleTrie';

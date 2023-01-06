@@ -1,9 +1,6 @@
-import { bytesCompare } from '@hub/bytes';
-import { HubError } from '@hub/errors';
-import Factories from '~/flatbuffers/factories';
+import { Factories, HubError } from '@hub/utils';
 import MessageModel, { TRUE_VALUE } from '~/flatbuffers/models/messageModel';
 import { UserPostfix } from '~/flatbuffers/models/types';
-import { toFarcasterTime } from '~/flatbuffers/utils/time';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 
 const db = jestRocksDB('flatbuffers.model.test');
@@ -187,6 +184,22 @@ describe('static methods', () => {
       expect(totalOrder).toEqual(['e', 'a', 'd', 'c', 'b']);
     });
   });
+});
+
+describe('instance methods', () => {
+  describe('put', () => {
+    beforeEach(async () => {
+      await expect(model.put(db)).resolves.toEqual(undefined);
+    });
+    test('stores binary message', async () => {
+      const get = MessageModel.get(db, model.fid(), model.setPostfix(), model.tsHash());
+      await expect(get).resolves.toEqual(model);
+    });
+
+    test('indexes message by signer', async () => {
+      await expect(db.get(model.bySignerKey())).resolves.toEqual(TRUE_VALUE);
+    });
+  });
 
   describe('tsHash', () => {
     test('orders messages by timestamp and hash', async () => {
@@ -219,36 +232,6 @@ describe('static methods', () => {
         order.push(value);
       }
       expect(order).toEqual(['a', 'c', 'm', 'b']);
-    });
-
-    test('stores timestamp in big-endian order', () => {
-      const time = toFarcasterTime(Date.now());
-      const hash = Factories.Bytes.build({}, { transient: { length: 16 } });
-      const a = MessageModel.tsHash(time, hash);
-      const b = MessageModel.tsHash(time + 1, hash);
-      expect(bytesCompare(a, b)).toEqual(-1);
-    });
-
-    test('is fixed size, even with small timestamp', () => {
-      const hash = Factories.Bytes.build({}, { transient: { length: 16 } });
-      const tsHash = MessageModel.tsHash(1, hash);
-      expect(tsHash.length).toEqual(20);
-    });
-  });
-});
-
-describe('instance methods', () => {
-  describe('put', () => {
-    beforeEach(async () => {
-      await expect(model.put(db)).resolves.toEqual(undefined);
-    });
-    test('stores binary message', async () => {
-      const get = MessageModel.get(db, model.fid(), model.setPostfix(), model.tsHash());
-      await expect(get).resolves.toEqual(model);
-    });
-
-    test('indexes message by signer', async () => {
-      await expect(db.get(model.bySignerKey())).resolves.toEqual(TRUE_VALUE);
     });
   });
 

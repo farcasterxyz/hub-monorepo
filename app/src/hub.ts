@@ -1,4 +1,3 @@
-import { HubAsyncResult, HubError } from '@hub/errors';
 import {
   ContactInfoContent,
   GossipAddressInfo,
@@ -7,6 +6,7 @@ import {
   IdRegistryEvent,
   Message,
 } from '@hub/flatbuffers';
+import { HubAsyncResult, HubError } from '@hub/utils';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import { publicAddressesFirst } from '@libp2p/utils/address-sort';

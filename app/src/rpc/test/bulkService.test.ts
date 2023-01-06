@@ -1,6 +1,5 @@
-import { HubResult } from '@hub/errors';
 import { Message } from '@hub/flatbuffers';
-import Factories from '~/flatbuffers/factories';
+import { Factories, HubResult } from '@hub/utils';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import {

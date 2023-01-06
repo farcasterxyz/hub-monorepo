@@ -1,6 +1,5 @@
-import { HubAsyncResult } from '@hub/errors';
 import * as message_generated from '@hub/flatbuffers';
-import { ethers } from 'ethers';
+import { HubAsyncResult } from '@hub/utils';
 import HubStateModel from '~/flatbuffers/models/hubStateModel';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
@@ -140,13 +139,6 @@ export interface SignerRemoveModel extends MessageModel {
 export interface UserDataAddModel extends MessageModel {
   body(): message_generated.UserDataBody;
 }
-
-export type VerificationEthAddressClaim = {
-  fid: ethers.BigNumber;
-  address: string; // Hex string
-  network: message_generated.FarcasterNetwork;
-  blockHash: string; // Hex string
-};
 
 export type StorePruneOptions = {
   pruneSizeLimit?: number; // Max number of messages per fid

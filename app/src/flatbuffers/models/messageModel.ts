@@ -1,5 +1,5 @@
-import { HubError } from '@hub/errors';
 import * as message_generated from '@hub/flatbuffers';
+import { HubError, toTsHash } from '@hub/utils';
 import { ByteBuffer } from 'flatbuffers';
 import AbstractRocksDB from 'rocksdb';
 import { RootPrefix, UserMessagePostfix, UserPostfix } from '~/flatbuffers/models/types';
@@ -97,16 +97,6 @@ export default class MessageModel {
     }
 
     throw new Error('invalid type');
-  }
-
-  /** Generate tsHash from timestamp and hash */
-  static tsHash(timestamp: number, hash: Uint8Array): Uint8Array {
-    const buffer = new ArrayBuffer(4 + hash.length);
-    const view = new DataView(buffer);
-    view.setUint32(0, timestamp, false); // Stores timestamp as big-endian in first 4 bytes
-    const bytes = new Uint8Array(buffer);
-    bytes.set(hash, 4);
-    return bytes;
   }
 
   static async getMany<T extends MessageModel>(db: RocksDB, primaryKeys: Buffer[]): Promise<T[]> {
@@ -242,7 +232,11 @@ export default class MessageModel {
   }
 
   tsHash(): Uint8Array {
-    return MessageModel.tsHash(this.timestamp(), this.hash());
+    const tsHash = toTsHash(this.timestamp(), this.hash());
+    if (tsHash.isErr()) {
+      throw tsHash.error;
+    }
+    return tsHash.value;
   }
 
   timestamp(): number {

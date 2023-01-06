@@ -1,15 +1,21 @@
-import { bytesCompare, bytesToHexString } from '@hub/bytes';
-import { HubAsyncResult, HubError, HubResult } from '@hub/errors';
 import * as message_generated from '@hub/flatbuffers';
+import {
+  bytesCompare,
+  bytesToBigNumber,
+  bytesToHexString,
+  ed25519,
+  eip712,
+  getFarcasterTime,
+  HubAsyncResult,
+  HubError,
+  HubResult,
+  VerificationEthAddressClaim,
+} from '@hub/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { err, ok, Result } from 'neverthrow';
-import { bytesToBigNumber } from '~/eth/utils';
 import MessageModel, { FID_BYTES } from '~/flatbuffers/models/messageModel';
 import * as typeguards from '~/flatbuffers/models/typeguards';
 import * as types from '~/flatbuffers/models/types';
-import * as ed25519 from '~/flatbuffers/utils/ed25519';
-import { verifyMessageHashSignature, verifyVerificationEthAddressClaimSignature } from '~/flatbuffers/utils/eip712';
-import { getFarcasterTime } from '~/flatbuffers/utils/time';
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
@@ -37,7 +43,7 @@ export const validateMessage = async (message: MessageModel): HubAsyncResult<Mes
     message.signatureScheme() === message_generated.SignatureScheme.Eip712 &&
     EIP712_MESSAGE_TYPES.includes(message.type())
   ) {
-    const verifiedSigner = verifyMessageHashSignature(message.hash(), message.signature());
+    const verifiedSigner = eip712.verifyMessageHashSignature(message.hash(), message.signature());
     if (verifiedSigner.isErr()) {
       return err(verifiedSigner.error);
     }
@@ -266,14 +272,14 @@ export const validateVerificationAddEthAddressMessage = async (
     return err(blockHashHex.error);
   }
 
-  const reconstructedClaim: types.VerificationEthAddressClaim = {
+  const reconstructedClaim: VerificationEthAddressClaim = {
     fid: fidBigNumber.value,
     address: addressHex.value,
     network: message.network(),
     blockHash: blockHashHex.value,
   };
 
-  const recoveredAddress = verifyVerificationEthAddressClaimSignature(
+  const recoveredAddress = eip712.verifyVerificationEthAddressClaimSignature(
     reconstructedClaim,
     message.body().ethSignatureArray() ?? new Uint8Array()
   );

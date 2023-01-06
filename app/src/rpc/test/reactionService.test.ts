@@ -1,6 +1,5 @@
-import { HubError } from '@hub/errors';
 import { CastId, ReactionType } from '@hub/flatbuffers';
-import Factories from '~/flatbuffers/factories';
+import { Factories, HubError } from '@hub/utils';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { ReactionAddModel, SignerAddModel } from '~/flatbuffers/models/types';

@@ -1,5 +1,4 @@
-import { bytesIncrement } from '@hub/bytes';
-import { HubError } from '@hub/errors';
+import { bytesIncrement, HubError } from '@hub/utils';
 import { AbstractBatch, AbstractChainedBatch } from 'abstract-leveldown';
 import { mkdir } from 'fs';
 import AbstractRocksDB from 'rocksdb';

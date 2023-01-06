@@ -1,5 +1,5 @@
 import { NameRegistryEventType } from '@hub/flatbuffers';
-import Factories from '~/flatbuffers/factories';
+import { Factories } from '@hub/utils';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 

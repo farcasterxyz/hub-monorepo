@@ -1,6 +1,5 @@
-import { bytesCompare } from '@hub/bytes';
-import { HubAsyncResult, HubError } from '@hub/errors';
 import { MessageType } from '@hub/flatbuffers';
+import { bytesCompare, HubAsyncResult, HubError } from '@hub/utils';
 import { ok, ResultAsync } from 'neverthrow';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { isVerificationAddEthAddress, isVerificationRemove } from '~/flatbuffers/models/typeguards';

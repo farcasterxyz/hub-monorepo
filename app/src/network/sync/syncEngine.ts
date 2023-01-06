@@ -1,9 +1,7 @@
-import { utf8StringToBytes } from '@hub/bytes';
-import { HubError, HubResult } from '@hub/errors';
+import { getFarcasterTime, HubError, HubResult, utf8StringToBytes } from '@hub/utils';
 import { err } from 'neverthrow';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
-import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
 import { TrieSnapshot } from '~/network/sync/trieNode';

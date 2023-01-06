@@ -5,8 +5,12 @@
   "types": "src/index.ts",
   "type": "module",
   "license": "MIT",
+  "devDependencies": {
+    "eslint-config-custom": "*"
+  },
   "dependencies": {
-    "@hub/bytes": "1.0.0",
+    "@grpc/grpc-js": "^1.8.1",
+    "@hub/utils": "1.0.0",
     "@hub/flatbuffers": "1.0.0",
     "flatbuffers": "^22.12.6",
     "neverthrow": "^6.0.0"
@@ -15,6 +19,7 @@
     "build": "yarn clean && tsc --project ./tsconfig.json",
     "clean": "rm -rf ./build",
     "lint": "eslint  src/ --color --ext .ts",
-    "lint:fix": "yarn run lint -- --fix"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"
   }
 }

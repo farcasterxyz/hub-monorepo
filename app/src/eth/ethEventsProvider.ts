@@ -1,12 +1,11 @@
 import * as flatbuffers from '@hub/flatbuffers';
 
-import { hexStringToBytes } from '@hub/bytes';
-import { HubAsyncResult } from '@hub/errors';
+import { bigNumberToBytes, hexStringToBytes, HubAsyncResult } from '@hub/utils';
 import { BigNumber, Contract, Event, providers } from 'ethers';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { err, ok, ResultAsync } from 'neverthrow';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
-import { bigNumberToBytes, bytes32ToBytes } from '~/eth/utils';
+import { bytes32ToBytes } from '~/eth/utils';
 import HubStateModel from '~/flatbuffers/models/hubStateModel';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';

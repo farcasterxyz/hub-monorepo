@@ -1,13 +1,16 @@
 import { faker } from '@faker-js/faker';
-import { hexStringToBytes } from '@hub/bytes';
-import { HubError } from '@hub/errors';
 import * as message_generated from '@hub/flatbuffers';
-import { bytesToBigNumber } from '~/eth/utils';
-import Factories from '~/flatbuffers/factories';
+import {
+  bytesToBigNumber,
+  Factories,
+  getFarcasterTime,
+  hexStringToBytes,
+  HubError,
+  VerificationEthAddressClaim,
+} from '@hub/utils';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import * as types from '~/flatbuffers/models/types';
 import * as validations from '~/flatbuffers/models/validations';
-import { getFarcasterTime } from '~/flatbuffers/utils/time';
 
 const ethSigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
@@ -479,7 +482,7 @@ describe('validateVerificationAddEthAddressMessage', () => {
     });
 
     test('with invalid eth signature', async () => {
-      const claim: types.VerificationEthAddressClaim = {
+      const claim: VerificationEthAddressClaim = {
         fid: bytesToBigNumber(fid)._unsafeUnwrap(),
         address: faker.datatype.hexadecimal({ length: 40, case: 'lower' }), // mismatched address
         network: message_generated.FarcasterNetwork.Testnet,

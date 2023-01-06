@@ -1,5 +1,5 @@
-import { toByteBuffer } from '@hub/bytes';
 import { EventResponse, SubscribeRequest } from '@hub/flatbuffers';
+import { toByteBuffer } from '@hub/utils';
 import { defaultMethodDefinition } from '../utils';
 
 export const eventDefinition = () => {
