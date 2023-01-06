@@ -192,7 +192,7 @@ class SignerStore {
   }
 
   /** Merges a SignerAdd or SignerRemove message into the SignerStore */
-  async merge(message: MessageModel): Promise<void> {
+  async merge(message: MessageModel): Promise<boolean> {
     if (isSignerRemove(message)) {
       return this.mergeRemove(message);
     }
@@ -310,11 +310,11 @@ class SignerStore {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async mergeAdd(message: types.SignerAddModel): Promise<void> {
+  private async mergeAdd(message: types.SignerAddModel): Promise<boolean> {
     let txn = await this.resolveMergeConflicts(this._db.transaction(), message);
 
     // No-op if resolveMergeConflicts did not return a transaction
-    if (!txn) return undefined;
+    if (!txn) return false;
 
     // Add putSignerAdd operations to the RocksDB transaction
     txn = this.putSignerAddTransaction(txn, message);
@@ -324,13 +324,15 @@ class SignerStore {
 
     // Emit store event
     this._eventHandler.emit('mergeMessage', message);
+
+    return true;
   }
 
-  private async mergeRemove(message: types.SignerRemoveModel): Promise<void> {
+  private async mergeRemove(message: types.SignerRemoveModel): Promise<boolean> {
     let txn = await this.resolveMergeConflicts(this._db.transaction(), message);
 
     // No-op if resolveMergeConflicts did not return a transaction
-    if (!txn) return undefined;
+    if (!txn) return false;
 
     // Add putSignerRemove operations to the RocksDB transaction
     txn = this.putSignerRemoveTransaction(txn, message);
@@ -340,6 +342,8 @@ class SignerStore {
 
     // Emit store event
     this._eventHandler.emit('mergeMessage', message);
+
+    return true;
   }
 
   private signerMessageCompare(

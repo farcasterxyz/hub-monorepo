@@ -168,13 +168,14 @@ describe('merge', () => {
 
   describe('AmpAdd', () => {
     test('succeeds', async () => {
-      await expect(store.merge(ampAdd)).resolves.toEqual(undefined);
+      await expect(store.merge(ampAdd)).resolves.toBeTruthy();
       await assertAmpAddWins(ampAdd);
     });
 
     test('succeeds once, even if merged twice', async () => {
-      await expect(store.merge(ampAdd)).resolves.toEqual(undefined);
-      await expect(store.merge(ampAdd)).resolves.toEqual(undefined);
+      await expect(store.merge(ampAdd)).resolves.toBeTruthy();
+      // It succeeds again, but doesn't change anything, so it returns false.
+      await expect(store.merge(ampAdd)).resolves.toBeFalsy();
 
       await assertAmpAddWins(ampAdd);
     });
@@ -195,7 +196,7 @@ describe('merge', () => {
 
       test('succeeds with a later timestamp', async () => {
         await store.merge(ampAdd);
-        await expect(store.merge(ampAddLater)).resolves.toEqual(undefined);
+        await expect(store.merge(ampAddLater)).resolves.toBeTruthy();
 
         await assertAmpDoesNotExist(ampAdd);
         await assertAmpAddWins(ampAddLater);
@@ -203,7 +204,8 @@ describe('merge', () => {
 
       test('no-ops with an earlier timestamp', async () => {
         await store.merge(ampAddLater);
-        await expect(store.merge(ampAdd)).resolves.toEqual(undefined);
+        // It succeeds again, but doesn't change anything, so it returns false.
+        await expect(store.merge(ampAdd)).resolves.toBeFalsy();
 
         await assertAmpDoesNotExist(ampAdd);
         await assertAmpAddWins(ampAddLater);
@@ -228,7 +230,7 @@ describe('merge', () => {
 
       test('succeeds with a later hash', async () => {
         await store.merge(ampAdd);
-        await expect(store.merge(ampAddLater)).resolves.toEqual(undefined);
+        await expect(store.merge(ampAddLater)).resolves.toBeTruthy();
 
         await assertAmpDoesNotExist(ampAdd);
         await assertAmpAddWins(ampAddLater);
@@ -236,7 +238,7 @@ describe('merge', () => {
 
       test('no-ops with an earlier hash', async () => {
         await store.merge(ampAddLater);
-        await expect(store.merge(ampAdd)).resolves.toEqual(undefined);
+        await expect(store.merge(ampAdd)).resolves.toBeFalsy();
 
         await assertAmpDoesNotExist(ampAdd);
         await assertAmpAddWins(ampAddLater);
@@ -257,7 +259,7 @@ describe('merge', () => {
         const ampRemoveEarlier = new MessageModel(removeMessage) as AmpRemoveModel;
 
         await store.merge(ampRemoveEarlier);
-        await expect(store.merge(ampAdd)).resolves.toEqual(undefined);
+        await expect(store.merge(ampAdd)).resolves.toBeTruthy();
 
         await assertAmpAddWins(ampAdd);
         await assertAmpDoesNotExist(ampRemoveEarlier);
@@ -265,7 +267,7 @@ describe('merge', () => {
 
       test('no-ops with an earlier timestamp', async () => {
         await store.merge(ampRemove);
-        await expect(store.merge(ampAdd)).resolves.toEqual(undefined);
+        await expect(store.merge(ampAdd)).resolves.toBeFalsy();
 
         await assertAmpRemoveWins(ampRemove);
         await assertAmpDoesNotExist(ampAdd);
@@ -287,7 +289,7 @@ describe('merge', () => {
         const ampRemoveLater = new MessageModel(removeMessage) as AmpRemoveModel;
 
         await store.merge(ampRemoveLater);
-        await expect(store.merge(ampAdd)).resolves.toEqual(undefined);
+        await expect(store.merge(ampAdd)).resolves.toBeFalsy();
 
         await assertAmpRemoveWins(ampRemoveLater);
         await assertAmpDoesNotExist(ampAdd);
@@ -310,7 +312,7 @@ describe('merge', () => {
         const ampRemoveEarlier = new MessageModel(removeMessage) as AmpRemoveModel;
 
         await store.merge(ampRemoveEarlier);
-        await expect(store.merge(ampAdd)).resolves.toEqual(undefined);
+        await expect(store.merge(ampAdd)).resolves.toBeFalsy();
 
         await assertAmpDoesNotExist(ampAdd);
         await assertAmpRemoveWins(ampRemoveEarlier);
@@ -320,14 +322,15 @@ describe('merge', () => {
 
   describe('AmpRemove', () => {
     test('succeeds', async () => {
-      await expect(store.merge(ampRemove)).resolves.toEqual(undefined);
+      await expect(store.merge(ampRemove)).resolves.toBeTruthy();
 
       await assertAmpRemoveWins(ampRemove);
     });
 
     test('succeeds once, even if merged twice', async () => {
-      await expect(store.merge(ampRemove)).resolves.toEqual(undefined);
-      await expect(store.merge(ampRemove)).resolves.toEqual(undefined);
+      await expect(store.merge(ampRemove)).resolves.toBeTruthy();
+      // It succeeds again, but doesn't change anything, so it returns false.
+      await expect(store.merge(ampRemove)).resolves.toBeFalsy();
 
       await assertAmpRemoveWins(ampRemove);
     });
@@ -348,7 +351,7 @@ describe('merge', () => {
 
       test('succeeds with a later timestamp', async () => {
         await store.merge(ampRemove);
-        await expect(store.merge(ampRemoveLater)).resolves.toEqual(undefined);
+        await expect(store.merge(ampRemoveLater)).resolves.toBeTruthy();
 
         await assertAmpDoesNotExist(ampRemove);
         await assertAmpRemoveWins(ampRemoveLater);
@@ -356,7 +359,7 @@ describe('merge', () => {
 
       test('no-ops with an earlier timestamp', async () => {
         await store.merge(ampRemoveLater);
-        await expect(store.merge(ampRemove)).resolves.toEqual(undefined);
+        await expect(store.merge(ampRemove)).resolves.toBeFalsy();
 
         await assertAmpDoesNotExist(ampRemove);
         await assertAmpRemoveWins(ampRemoveLater);
@@ -381,7 +384,7 @@ describe('merge', () => {
 
       test('succeeds with a later hash', async () => {
         await store.merge(ampRemove);
-        await expect(store.merge(ampRemoveLater)).resolves.toEqual(undefined);
+        await expect(store.merge(ampRemoveLater)).resolves.toBeTruthy();
 
         await assertAmpDoesNotExist(ampRemove);
         await assertAmpRemoveWins(ampRemoveLater);
@@ -389,7 +392,8 @@ describe('merge', () => {
 
       test('no-ops with an earlier hash', async () => {
         await store.merge(ampRemoveLater);
-        await expect(store.merge(ampRemove)).resolves.toEqual(undefined);
+        // It succeeds again, but doesn't change anything, so it returns false.
+        await expect(store.merge(ampRemove)).resolves.toBeFalsy();
 
         await assertAmpDoesNotExist(ampRemove);
         await assertAmpRemoveWins(ampRemoveLater);
@@ -399,7 +403,7 @@ describe('merge', () => {
     describe('with conflicting AmpAdd with different timestamps', () => {
       test('succeeds with a later timestamp', async () => {
         await store.merge(ampAdd);
-        await expect(store.merge(ampRemove)).resolves.toEqual(undefined);
+        await expect(store.merge(ampRemove)).resolves.toBeTruthy();
         await assertAmpRemoveWins(ampRemove);
         await assertAmpDoesNotExist(ampAdd);
       });
@@ -415,7 +419,7 @@ describe('merge', () => {
         });
         const ampAddLater = new MessageModel(addMessage) as AmpAddModel;
         await store.merge(ampAddLater);
-        await expect(store.merge(ampRemove)).resolves.toEqual(undefined);
+        await expect(store.merge(ampRemove)).resolves.toBeFalsy();
         await assertAmpAddWins(ampAddLater);
         await assertAmpDoesNotExist(ampRemove);
       });
@@ -435,7 +439,7 @@ describe('merge', () => {
         const ampAddLater = new MessageModel(addMessage) as AmpAddModel;
 
         await store.merge(ampAddLater);
-        await expect(store.merge(ampRemove)).resolves.toEqual(undefined);
+        await expect(store.merge(ampRemove)).resolves.toBeTruthy();
 
         await assertAmpDoesNotExist(ampAddLater);
         await assertAmpRemoveWins(ampRemove);
@@ -454,7 +458,7 @@ describe('merge', () => {
         const ampRemoveEarlier = new MessageModel(removeMessage) as AmpRemoveModel;
 
         await store.merge(ampRemoveEarlier);
-        await expect(store.merge(ampRemove)).resolves.toEqual(undefined);
+        await expect(store.merge(ampRemove)).resolves.toBeTruthy();
 
         await assertAmpDoesNotExist(ampRemoveEarlier);
         await assertAmpRemoveWins(ampRemove);

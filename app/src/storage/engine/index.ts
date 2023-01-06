@@ -41,15 +41,15 @@ class Engine {
     this._userDataStore = new UserDataStore(db, this.eventHandler);
   }
 
-  async mergeMessages(messages: MessageModel[]): Promise<Array<HubResult<void>>> {
-    const results: HubResult<void>[] = [];
+  async mergeMessages(messages: MessageModel[]): Promise<Array<HubResult<boolean>>> {
+    const results: HubResult<boolean>[] = [];
     for (const message of messages) {
       results.push(await this.mergeMessage(message));
     }
     return results;
   }
 
-  async mergeMessage(message: MessageModel): HubAsyncResult<void> {
+  async mergeMessage(message: MessageModel): HubAsyncResult<boolean> {
     const validatedMessage = await this.validateMessage(message);
     if (validatedMessage.isErr()) {
       return err(validatedMessage.error);

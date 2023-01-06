@@ -135,7 +135,7 @@ class UserDataStore {
   }
 
   /** Merges a UserDataAdd message into the set */
-  async merge(message: MessageModel): Promise<void> {
+  async merge(message: MessageModel): Promise<boolean> {
     if (isUserDataAdd(message)) {
       return this.mergeDataAdd(message);
     }
@@ -229,11 +229,11 @@ class UserDataStore {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async mergeDataAdd(message: UserDataAddModel): Promise<void> {
+  private async mergeDataAdd(message: UserDataAddModel): Promise<boolean> {
     let tsx = await this.resolveUserDataMergeConflicts(this._db.transaction(), message);
 
     // No-op if resolveMergeConflicts did not return a transaction
-    if (!tsx) return undefined;
+    if (!tsx) return false;
 
     // Add putUserDataAdd operations to the RocksDB transaction
     tsx = this.putUserDataAddTransaction(tsx, message);
@@ -243,6 +243,8 @@ class UserDataStore {
 
     // Emit store event
     this._eventHandler.emit('mergeMessage', message);
+
+    return true;
   }
 
   private userDataMessageCompare(aTimestampHash: Uint8Array, bTimestampHash: Uint8Array): number {

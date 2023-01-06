@@ -153,7 +153,7 @@ class VerificationStore {
   }
 
   /** Merge a VerificationAdd or VerificationRemove message into the VerificationStore */
-  async merge(message: MessageModel): Promise<void> {
+  async merge(message: MessageModel): Promise<boolean> {
     if (isVerificationRemove(message)) {
       return this.mergeRemove(message);
     }
@@ -266,7 +266,7 @@ class VerificationStore {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async mergeAdd(message: types.VerificationAddEthAddressModel): Promise<void> {
+  private async mergeAdd(message: types.VerificationAddEthAddressModel): Promise<boolean> {
     // Define address for lookups
     const address = message.body().addressArray();
     if (!address) {
@@ -276,7 +276,7 @@ class VerificationStore {
     let tsx = await this.resolveMergeConflicts(this._db.transaction(), address, message);
 
     // No-op if resolveMergeConflicts did not return a transaction
-    if (!tsx) return undefined;
+    if (!tsx) return false;
 
     // Add putVerificationAdd operations to the RocksDB transaction
     tsx = this.putVerificationAddTransaction(tsx, message);
@@ -286,9 +286,11 @@ class VerificationStore {
 
     // Emit store event
     this._eventHandler.emit('mergeMessage', message);
+
+    return true;
   }
 
-  private async mergeRemove(message: types.VerificationRemoveModel): Promise<void> {
+  private async mergeRemove(message: types.VerificationRemoveModel): Promise<boolean> {
     // Define address for lookups
     const address = message.body().addressArray();
     if (!address) {
@@ -298,7 +300,7 @@ class VerificationStore {
     let tsx = await this.resolveMergeConflicts(this._db.transaction(), address, message);
 
     // No-op if resolveMergeConflicts did not return a transaction
-    if (!tsx) return undefined;
+    if (!tsx) return false;
 
     // Add putVerificationRemove operations to the RocksDB transaction
     tsx = this.putVerificationRemoveTransaction(tsx, message);
@@ -308,6 +310,8 @@ class VerificationStore {
 
     // Emit store event
     this._eventHandler.emit('mergeMessage', message);
+
+    return true;
   }
 
   private verificationMessageCompare(

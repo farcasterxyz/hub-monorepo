@@ -139,7 +139,7 @@ class AmpStore {
   }
 
   /** Merges a AmpAdd or AmpRemove message into the AmpStore */
-  async merge(message: MessageModel): Promise<void> {
+  async merge(message: MessageModel): Promise<boolean> {
     if (isAmpRemove(message)) {
       return this.mergeRemove(message);
     }
@@ -246,13 +246,13 @@ class AmpStore {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async mergeAdd(message: AmpAddModel): Promise<void> {
+  private async mergeAdd(message: AmpAddModel): Promise<boolean> {
     const ampId = message.body().user()?.fidArray() ?? new Uint8Array();
 
     // eslint-disable-next-line prefer-const
     let { tsx, removedAmps } = await this.resolveMergeConflicts(this._db.transaction(), ampId, message);
 
-    if (!tsx) return undefined; // Assume no-op if txn was not returned
+    if (!tsx) return false; // Assume no-op if txn was not returned
 
     // Add ops to store the message by messageKey and index the the messageKey by set
     tsx = this.putAmpAddTransaction(tsx, message);
@@ -266,15 +266,17 @@ class AmpStore {
     for (const removedAmpAdd of removedAmps) {
       this._eventHandler.emit('revokeMessage', removedAmpAdd);
     }
+
+    return true;
   }
 
-  private async mergeRemove(message: AmpRemoveModel): Promise<void> {
+  private async mergeRemove(message: AmpRemoveModel): Promise<boolean> {
     const ampId = message.body().user()?.fidArray() ?? new Uint8Array();
 
     // eslint-disable-next-line prefer-const
     let { tsx, removedAmps } = await this.resolveMergeConflicts(this._db.transaction(), ampId, message);
 
-    if (!tsx) return undefined; // Assume no-op if txn was not returned
+    if (!tsx) return false; // Assume no-op if txn was not returned
 
     // Add ops to store the message by messageKey and index the the messageKey by set
     tsx = this.putAmpRemoveTransaction(tsx, message);
@@ -288,6 +290,8 @@ class AmpStore {
     for (const removedAmpAdd of removedAmps) {
       this._eventHandler.emit('revokeMessage', removedAmpAdd);
     }
+
+    return true;
   }
 
   private ampMessageCompare(aType: MessageType, aTsHash: Uint8Array, bType: MessageType, bTsHash: Uint8Array): number {

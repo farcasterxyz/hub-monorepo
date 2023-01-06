@@ -301,14 +301,15 @@ describe('merge', () => {
 
   describe('SignerAdd', () => {
     test('succeeds', async () => {
-      await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+      await expect(set.merge(signerAdd)).resolves.toBeTruthy();
       await assertSignerAddWins(signerAdd);
       expect(mergedMessages).toEqual([signerAdd]);
     });
 
     test('succeeds once, even if merged twice', async () => {
-      await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
-      await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+      await expect(set.merge(signerAdd)).resolves.toBeTruthy();
+      // Merge again, but is a no-op, so returns false
+      await expect(set.merge(signerAdd)).resolves.toBeFalsy();
 
       await assertSignerAddWins(signerAdd);
       expect(mergedMessages).toEqual([signerAdd]);
@@ -335,7 +336,7 @@ describe('merge', () => {
 
       test('succeeds with a later timestamp', async () => {
         await set.merge(signerAdd);
-        await expect(set.merge(signerAddLater)).resolves.toEqual(undefined);
+        await expect(set.merge(signerAddLater)).resolves.toBeTruthy();
 
         await assertSignerDoesNotExist(signerAdd);
         await assertSignerAddWins(signerAddLater);
@@ -344,7 +345,8 @@ describe('merge', () => {
 
       test('no-ops with an earlier timestamp', async () => {
         await set.merge(signerAddLater);
-        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+        // Merge again, but is a no-op, so returns false
+        await expect(set.merge(signerAdd)).resolves.toBeFalsy();
 
         await assertSignerDoesNotExist(signerAdd);
         await assertSignerAddWins(signerAddLater);
@@ -373,7 +375,7 @@ describe('merge', () => {
 
       test('succeeds with a later hash', async () => {
         await set.merge(signerAdd);
-        await expect(set.merge(signerAddLater)).resolves.toEqual(undefined);
+        await expect(set.merge(signerAddLater)).resolves.toBeTruthy();
 
         await assertSignerDoesNotExist(signerAdd);
         await assertSignerAddWins(signerAddLater);
@@ -382,7 +384,8 @@ describe('merge', () => {
 
       test('no-ops with an earlier hash', async () => {
         await set.merge(signerAddLater);
-        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+        // Merge again, but is a no-op, so returns false
+        await expect(set.merge(signerAdd)).resolves.toBeFalsy();
 
         await assertSignerDoesNotExist(signerAdd);
         await assertSignerAddWins(signerAddLater);
@@ -407,7 +410,7 @@ describe('merge', () => {
         const signerRemoveEarlier = new MessageModel(removeMessage) as SignerRemoveModel;
 
         await set.merge(signerRemoveEarlier);
-        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(signerAdd)).resolves.toBeTruthy();
 
         await assertSignerAddWins(signerAdd);
         await assertSignerDoesNotExist(signerRemoveEarlier);
@@ -416,7 +419,8 @@ describe('merge', () => {
 
       test('no-ops with an earlier timestamp', async () => {
         await set.merge(signerRemove);
-        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+        // Merge again, but is a no-op, so returns false
+        await expect(set.merge(signerAdd)).resolves.toBeFalsy();
 
         await assertSignerRemoveWins(signerRemove);
         await assertSignerDoesNotExist(signerAdd);
@@ -442,7 +446,8 @@ describe('merge', () => {
         const signerRemoveLater = new MessageModel(removeMessage) as SignerRemoveModel;
 
         await set.merge(signerRemoveLater);
-        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+        // Succeeds, bit it's a no-op, so returns false
+        await expect(set.merge(signerAdd)).resolves.toBeFalsy();
 
         await assertSignerRemoveWins(signerRemoveLater);
         await assertSignerDoesNotExist(signerAdd);
@@ -466,7 +471,8 @@ describe('merge', () => {
         const signerRemoveEarlier = new MessageModel(removeMessage) as SignerRemoveModel;
 
         await set.merge(signerRemoveEarlier);
-        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+        // Succeeds, bit it's a no-op, so returns false
+        await expect(set.merge(signerAdd)).resolves.toBeFalsy();
 
         await assertSignerDoesNotExist(signerAdd);
         await assertSignerRemoveWins(signerRemoveEarlier);
@@ -477,15 +483,16 @@ describe('merge', () => {
 
   describe('SignerRemove', () => {
     test('succeeds', async () => {
-      await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+      await expect(set.merge(signerRemove)).resolves.toBeTruthy();
 
       await assertSignerRemoveWins(signerRemove);
       expect(mergedMessages).toEqual([signerRemove]);
     });
 
     test('succeeds once, even if merged twice', async () => {
-      await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
-      await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+      await expect(set.merge(signerRemove)).resolves.toBeTruthy();
+      // Merge again, but is a no-op, so returns false
+      await expect(set.merge(signerRemove)).resolves.toBeFalsy();
 
       await assertSignerRemoveWins(signerRemove);
       expect(mergedMessages).toEqual([signerRemove]);
@@ -510,7 +517,7 @@ describe('merge', () => {
 
       test('succeeds with a later timestamp', async () => {
         await set.merge(signerRemove);
-        await expect(set.merge(signerRemoveLater)).resolves.toEqual(undefined);
+        await expect(set.merge(signerRemoveLater)).resolves.toBeTruthy();
 
         await assertSignerDoesNotExist(signerRemove);
         await assertSignerRemoveWins(signerRemoveLater);
@@ -519,7 +526,8 @@ describe('merge', () => {
 
       test('no-ops with an earlier timestamp', async () => {
         await set.merge(signerRemoveLater);
-        await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+        // Merge again, but is a no-op, so returns false
+        await expect(set.merge(signerRemove)).resolves.toBeFalsy();
 
         await assertSignerDoesNotExist(signerRemove);
         await assertSignerRemoveWins(signerRemoveLater);
@@ -548,7 +556,7 @@ describe('merge', () => {
 
       test('succeeds with a later hash', async () => {
         await set.merge(signerRemove);
-        await expect(set.merge(signerRemoveLater)).resolves.toEqual(undefined);
+        await expect(set.merge(signerRemoveLater)).resolves.toBeTruthy();
 
         await assertSignerDoesNotExist(signerRemove);
         await assertSignerRemoveWins(signerRemoveLater);
@@ -557,7 +565,8 @@ describe('merge', () => {
 
       test('no-ops with an earlier hash', async () => {
         await set.merge(signerRemoveLater);
-        await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+        // Merge again, but is a no-op, so returns false
+        await expect(set.merge(signerRemove)).resolves.toBeFalsy();
 
         await assertSignerDoesNotExist(signerRemove);
         await assertSignerRemoveWins(signerRemoveLater);
@@ -568,7 +577,7 @@ describe('merge', () => {
     describe('with conflicting SignerAdd with different timestamps', () => {
       test('succeeds with a later timestamp', async () => {
         await set.merge(signerAdd);
-        await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(signerRemove)).resolves.toBeTruthy();
 
         await assertSignerRemoveWins(signerRemove);
         await assertSignerDoesNotExist(signerAdd);
@@ -592,7 +601,8 @@ describe('merge', () => {
         const signerAddLater = new MessageModel(addMessage) as SignerAddModel;
 
         await set.merge(signerAddLater);
-        await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+        // Succeeds, but no-op, so return value is false
+        await expect(set.merge(signerRemove)).resolves.toBeFalsy();
 
         await assertSignerAddWins(signerAddLater);
         await assertSignerDoesNotExist(signerRemove);
@@ -617,7 +627,7 @@ describe('merge', () => {
         const signerAddLater = new MessageModel(addMessage) as SignerAddModel;
 
         await set.merge(signerAddLater);
-        await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(signerRemove)).resolves.toBeTruthy();
 
         await assertSignerDoesNotExist(signerAddLater);
         await assertSignerRemoveWins(signerRemove);
@@ -641,7 +651,7 @@ describe('merge', () => {
         const signerAddEarlier = new MessageModel(addMessage) as SignerAddModel;
 
         await set.merge(signerAddEarlier);
-        await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(signerRemove)).resolves.toBeTruthy();
 
         await assertSignerDoesNotExist(signerAddEarlier);
         await assertSignerRemoveWins(signerRemove);

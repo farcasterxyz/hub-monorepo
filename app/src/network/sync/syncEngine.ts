@@ -234,7 +234,7 @@ class SyncEngine {
     return Math.floor(currentTimeInSeconds / SYNC_THRESHOLD_IN_SECONDS) * SYNC_THRESHOLD_IN_SECONDS;
   }
 
-  private async syncUserAndRetryMessage(message: MessageModel, rpcClient: HubRpcClient): Promise<HubResult<void>> {
+  private async syncUserAndRetryMessage(message: MessageModel, rpcClient: HubRpcClient): Promise<HubResult<boolean>> {
     const fid = message.data.fidArray();
     if (!fid) {
       return err(new HubError('bad_request.invalid_param', 'Invalid fid'));

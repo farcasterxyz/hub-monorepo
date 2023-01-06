@@ -131,13 +131,14 @@ describe('merge', () => {
 
   describe('ReactionAdd', () => {
     test('succeeds', async () => {
-      await expect(set.merge(addPfp)).resolves.toEqual(undefined);
+      await expect(set.merge(addPfp)).resolves.toBeTruthy();
       await assertUserDataAddWins(addPfp);
     });
 
     test('succeeds once, even if merged twice', async () => {
-      await expect(set.merge(addPfp)).resolves.toEqual(undefined);
-      await expect(set.merge(addPfp)).resolves.toEqual(undefined);
+      await expect(set.merge(addPfp)).resolves.toBeTruthy();
+      // Succeeds, but it's a no-op, so returns false
+      await expect(set.merge(addPfp)).resolves.toBeFalsy();
 
       await assertUserDataAddWins(addPfp);
     });
@@ -165,7 +166,7 @@ describe('merge', () => {
 
       test('succeeds with a later timestamp', async () => {
         await set.merge(addPfp);
-        await expect(set.merge(addPfpLater)).resolves.toEqual(undefined);
+        await expect(set.merge(addPfpLater)).resolves.toBeTruthy();
 
         await assertUserDataDoesNotExist(addPfp);
         await assertUserDataAddWins(addPfpLater);
@@ -173,7 +174,8 @@ describe('merge', () => {
 
       test('no-ops with an earlier timestamp', async () => {
         await set.merge(addPfpLater);
-        await expect(set.merge(addPfp)).resolves.toEqual(undefined);
+        // Succeeds, but it's a no-op, so returns false
+        await expect(set.merge(addPfp)).resolves.toBeFalsy();
 
         await assertUserDataDoesNotExist(addPfp);
         await assertUserDataAddWins(addPfpLater);
@@ -198,7 +200,7 @@ describe('merge', () => {
 
       test('succeeds with a later hash', async () => {
         await set.merge(addPfp);
-        await expect(set.merge(addPfpLater)).resolves.toEqual(undefined);
+        await expect(set.merge(addPfpLater)).resolves.toBeTruthy();
 
         await assertUserDataDoesNotExist(addPfp);
         await assertUserDataAddWins(addPfpLater);
@@ -206,7 +208,8 @@ describe('merge', () => {
 
       test('no-ops with an earlier hash', async () => {
         await set.merge(addPfpLater);
-        await expect(set.merge(addPfp)).resolves.toEqual(undefined);
+        // Succeeds, but it's a no-op, so returns false
+        await expect(set.merge(addPfp)).resolves.toBeFalsy();
 
         await assertUserDataDoesNotExist(addPfp);
         await assertUserDataAddWins(addPfpLater);
@@ -240,13 +243,14 @@ describe('userfname', () => {
   });
 
   test('succeeds', async () => {
-    await expect(set.merge(addFname)).resolves.toEqual(undefined);
+    await expect(set.merge(addFname)).resolves.toBeTruthy();
     await assertUserFnameAddWins(addFname);
   });
 
   test('succeeds even if merged twice', async () => {
-    await expect(set.merge(addFname)).resolves.toEqual(undefined);
-    await expect(set.merge(addFname)).resolves.toEqual(undefined);
+    await expect(set.merge(addFname)).resolves.toBeTruthy();
+    // Succeeds, but it's a no-op, so returns false
+    await expect(set.merge(addFname)).resolves.toBeFalsy();
     await assertUserFnameAddWins(addFname);
   });
 
@@ -259,7 +263,7 @@ describe('userfname', () => {
     await engine.mergeMessage(signerAdd);
 
     // First, add the fname to the first address
-    await expect(set.merge(addFname)).resolves.toEqual(undefined);
+    await expect(set.merge(addFname)).resolves.toBeTruthy();
     await assertUserFnameAddWins(addFname);
 
     // Now, generate a new address
@@ -314,22 +318,24 @@ describe('userfname', () => {
 
     test('successfully merges with a later timestamp', async () => {
       await set.merge(addFname);
-      await expect(set.merge(addFnameLater)).resolves.toEqual(undefined);
+      await expect(set.merge(addFnameLater)).resolves.toBeTruthy();
 
       await assertUserFnameAddWins(addFnameLater);
     });
 
     test('no-ops with an earlier timestamp', async () => {
       await set.merge(addFnameLater);
-      await expect(set.merge(addFname)).resolves.toEqual(undefined);
+      // Succeeds, but it's a no-op, so returns false
+      await expect(set.merge(addFname)).resolves.toBeFalsy();
 
       await assertUserFnameAddWins(addFnameLater);
     });
 
     test('no-ops with an earlier timestamp, even if merged twice', async () => {
       await set.merge(addFnameLater);
-      await expect(set.merge(addFname)).resolves.toEqual(undefined);
-      await expect(set.merge(addFname)).resolves.toEqual(undefined);
+      // Succeeds, but it's a no-op, so returns false
+      await expect(set.merge(addFname)).resolves.toBeFalsy();
+      await expect(set.merge(addFname)).resolves.toBeFalsy();
 
       await assertUserFnameAddWins(addFnameLater);
     });
@@ -353,14 +359,15 @@ describe('userfname', () => {
 
     test('succeeds with a later hash', async () => {
       await set.merge(addFname);
-      await expect(set.merge(addFnameLater)).resolves.toEqual(undefined);
+      await expect(set.merge(addFnameLater)).resolves.toBeTruthy();
 
       await assertUserFnameAddWins(addFnameLater);
     });
 
     test('no-ops with an earlier hash', async () => {
       await set.merge(addFnameLater);
-      await expect(set.merge(addFname)).resolves.toEqual(undefined);
+      // Succeeds, but it's a no-op, so returns false
+      await expect(set.merge(addFname)).resolves.toBeFalsy();
 
       await assertUserFnameAddWins(addFnameLater);
     });

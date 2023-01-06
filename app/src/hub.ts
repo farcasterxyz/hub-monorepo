@@ -211,7 +211,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     const contentType = gossipMessage.contentType();
     if (contentType === GossipContent.Message) {
       const message: Message = gossipMessage.content(contentType);
-      return this.submitMessage(new MessageModel(message), 'gossip');
+      return (await this.submitMessage(new MessageModel(message), 'gossip')).map(() => undefined);
     } else if (contentType === GossipContent.IdRegistryEvent) {
       const event = new IdRegistryEventModel(gossipMessage.content(contentType) as IdRegistryEvent);
       return this.submitIdRegistryEvent(event, 'gossip');
@@ -398,7 +398,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   /*                               RPC Handler API                              */
   /* -------------------------------------------------------------------------- */
 
-  async submitMessage(message: MessageModel, source?: HubSubmitSource): HubAsyncResult<void> {
+  async submitMessage(message: MessageModel, source?: HubSubmitSource): HubAsyncResult<boolean> {
     log.info({ ...messageToLog(message), source }, 'submitMessage');
 
     // push this message into the storage engine

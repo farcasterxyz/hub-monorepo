@@ -187,7 +187,7 @@ describe('mergeMessage', () => {
 
     describe('CastAdd', () => {
       test('succeeds', async () => {
-        await expect(engine.mergeMessage(castAdd)).resolves.toEqual(ok(undefined));
+        await expect(engine.mergeMessage(castAdd)).resolves.toEqual(ok(true));
         await expect(castStore.getCastAdd(fid, castAdd.tsHash())).resolves.toEqual(castAdd);
         expect(mergedMessages).toEqual([signerAdd, castAdd]);
       });
@@ -195,7 +195,7 @@ describe('mergeMessage', () => {
 
     describe('AmpAdd', () => {
       test('succeeds', async () => {
-        await expect(engine.mergeMessage(ampAdd)).resolves.toEqual(ok(undefined));
+        await expect(engine.mergeMessage(ampAdd)).resolves.toEqual(ok(true));
         await expect(ampStore.getAmpAdd(fid, ampAdd.body().user()?.fidArray() ?? new Uint8Array())).resolves.toEqual(
           ampAdd
         );
@@ -205,7 +205,7 @@ describe('mergeMessage', () => {
 
     describe('ReactionAdd', () => {
       test('succeeds', async () => {
-        await expect(engine.mergeMessage(reactionAdd)).resolves.toEqual(ok(undefined));
+        await expect(engine.mergeMessage(reactionAdd)).resolves.toEqual(ok(true));
         await expect(
           reactionStore.getReactionAdd(
             fid,
@@ -219,7 +219,7 @@ describe('mergeMessage', () => {
 
     describe('VerificationAddEthAddress', () => {
       test('succeeds', async () => {
-        await expect(engine.mergeMessage(verificationAdd)).resolves.toEqual(ok(undefined));
+        await expect(engine.mergeMessage(verificationAdd)).resolves.toEqual(ok(true));
         await expect(
           verificationStore.getVerificationAdd(fid, verificationAdd.body().addressArray() ?? new Uint8Array())
         ).resolves.toEqual(verificationAdd);
@@ -229,7 +229,7 @@ describe('mergeMessage', () => {
 
     describe('UserDataAdd', () => {
       test('succeeds', async () => {
-        await expect(engine.mergeMessage(userDataAdd)).resolves.toEqual(ok(undefined));
+        await expect(engine.mergeMessage(userDataAdd)).resolves.toEqual(ok(true));
         await expect(userDataStore.getUserDataAdd(fid, userDataAdd.body().type())).resolves.toEqual(userDataAdd);
         expect(mergedMessages).toEqual([signerAdd, userDataAdd]);
       });
@@ -237,7 +237,7 @@ describe('mergeMessage', () => {
 
     describe('SignerRemove', () => {
       test('succeeds ', async () => {
-        await expect(engine.mergeMessage(signerRemove)).resolves.toEqual(ok(undefined));
+        await expect(engine.mergeMessage(signerRemove)).resolves.toEqual(ok(true));
         await expect(signerStore.getSignerRemove(fid, signer.signerKey)).resolves.toEqual(signerRemove);
         expect(mergedMessages).toEqual([signerAdd, signerRemove]);
       });
@@ -302,7 +302,7 @@ describe('mergeMessages', () => {
     test('succeeds', async () => {
       await expect(
         engine.mergeMessages([castAdd, ampAdd, reactionAdd, verificationAdd, userDataAdd, signerRemove])
-      ).resolves.toEqual([ok(undefined), ok(undefined), ok(undefined), ok(undefined), ok(undefined), ok(undefined)]);
+      ).resolves.toEqual([ok(true), ok(true), ok(true), ok(true), ok(true), ok(true)]);
       expect(mergedMessages).toEqual([
         signerAdd,
         castAdd,

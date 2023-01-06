@@ -148,7 +148,7 @@ export type StorePruneOptions = {
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
 
 export interface HubInterface {
-  submitMessage(message: MessageModel, source?: HubSubmitSource): HubAsyncResult<void>;
+  submitMessage(message: MessageModel, source?: HubSubmitSource): HubAsyncResult<boolean>;
   submitIdRegistryEvent(event: IdRegistryEventModel, source?: HubSubmitSource): HubAsyncResult<void>;
   submitNameRegistryEvent(event: NameRegistryEventModel, source?: HubSubmitSource): HubAsyncResult<void>;
   getHubState(): HubAsyncResult<HubStateModel>;

@@ -87,8 +87,8 @@ describe('getUserData', () => {
   });
 
   test('succeeds', async () => {
-    expect(await engine.mergeMessage(pfpAdd)).toEqual(ok(undefined));
-    expect(await engine.mergeMessage(locationAdd)).toEqual(ok(undefined));
+    expect(await engine.mergeMessage(pfpAdd)).toEqual(ok(true));
+    expect(await engine.mergeMessage(locationAdd)).toEqual(ok(true));
 
     const pfp = await client.getUserData(fid, UserDataType.Pfp);
     expect(pfp._unsafeUnwrap()).toEqual(pfpAdd.message);
@@ -103,7 +103,7 @@ describe('getUserData', () => {
     const model = new NameRegistryEventModel(nameRegistryEvent);
     await model.put(db);
 
-    expect(await engine.mergeMessage(addFname)).toEqual(ok(undefined));
+    expect(await engine.mergeMessage(addFname)).toEqual(ok(true));
     const fnameData = await client.getUserData(fid, UserDataType.Fname);
     expect(fnameData._unsafeUnwrap()).toEqual(addFname.message);
   });

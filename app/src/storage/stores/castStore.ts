@@ -192,7 +192,7 @@ class CastStore {
   }
 
   /** Merges a CastAdd or CastRemove message into the set */
-  async merge(message: MessageModel): Promise<void> {
+  async merge(message: MessageModel): Promise<boolean> {
     if (isCastRemove(message)) {
       return this.mergeRemove(message);
     }
@@ -304,7 +304,7 @@ class CastStore {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async mergeAdd(message: CastAddModel): Promise<void> {
+  private async mergeAdd(message: CastAddModel): Promise<boolean> {
     // Start RocksDB transaction
     let tsx = this._db.transaction();
 
@@ -316,7 +316,7 @@ class CastStore {
 
     // If remove tsHash exists, no-op because this cast has already been removed
     if (castRemoveTsHash.isOk()) {
-      return undefined;
+      return false;
     }
 
     // Look up the add tsHash for this cast
@@ -327,7 +327,7 @@ class CastStore {
 
     // If add tsHash exists, no-op because this cast has already been added
     if (castAddTsHash.isOk()) {
-      return undefined;
+      return false;
     }
 
     // Add putCastAdd operations to the RocksDB transaction
@@ -338,9 +338,11 @@ class CastStore {
 
     // Emit store event
     this._eventHandler.emit('mergeMessage', message);
+
+    return true;
   }
 
-  private async mergeRemove(message: CastRemoveModel): Promise<void> {
+  private async mergeRemove(message: CastRemoveModel): Promise<boolean> {
     // Start RocksDB transaction
     let tsx = this._db.transaction();
 
@@ -357,7 +359,7 @@ class CastStore {
       if (bytesCompare(castRemoveTsHash.value, message.tsHash()) >= 0) {
         // If the remove tsHash exists and has the same or higher order than the new CastRemove
         // tsHash, no-op because this cast has been removed by a more recent message
-        return undefined;
+        return false;
       } else {
         // If the remove tsHash exists but with a lower order than the new CastRemove
         // tsHash, retrieve the full CastRemove message and delete it as part of the
@@ -405,6 +407,8 @@ class CastStore {
     for (const removedCastAdd of removedCastAdds) {
       this._eventHandler.emit('revokeMessage', removedCastAdd);
     }
+
+    return true;
   }
 
   /* Builds a RocksDB transaction to insert a CastAdd message and construct its indices */

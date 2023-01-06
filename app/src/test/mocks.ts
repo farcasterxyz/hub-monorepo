@@ -17,7 +17,7 @@ export class MockHub implements HubInterface {
     this.engine = engine ?? new Engine(db);
   }
 
-  async submitMessage(message: MessageModel): HubAsyncResult<void> {
+  async submitMessage(message: MessageModel): HubAsyncResult<boolean> {
     return this.engine.mergeMessage(message);
   }
 

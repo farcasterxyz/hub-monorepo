@@ -214,13 +214,14 @@ describe('merge', () => {
 
   describe('CastAdd', () => {
     test('succeeds', async () => {
-      await expect(store.merge(castAdd)).resolves.toEqual(undefined);
+      await expect(store.merge(castAdd)).resolves.toBeTruthy();
       await assertCastAddWins(castAdd);
     });
 
     test('succeeds once, even if merged twice', async () => {
-      await expect(store.merge(castAdd)).resolves.toEqual(undefined);
-      await expect(store.merge(castAdd)).resolves.toEqual(undefined);
+      await expect(store.merge(castAdd)).resolves.toBeTruthy();
+      // Second merge should be a no-op, so we expect it to return false.
+      await expect(store.merge(castAdd)).resolves.toBeFalsy();
 
       await assertCastAddWins(castAdd);
     });
@@ -239,7 +240,8 @@ describe('merge', () => {
         const castRemoveEarlier = new MessageModel(removeMessage) as CastRemoveModel;
 
         await store.merge(castRemoveEarlier);
-        await expect(store.merge(castAdd)).resolves.toEqual(undefined);
+        // Second merge should be a no-op, so we expect it to return false.
+        await expect(store.merge(castAdd)).resolves.toBeFalsy();
 
         await assertCastRemoveWins(castRemoveEarlier);
         await assertCastDoesNotExist(castAdd);
@@ -247,7 +249,8 @@ describe('merge', () => {
 
       test('no-ops with an earlier timestamp', async () => {
         await store.merge(castRemove);
-        await expect(store.merge(castAdd)).resolves.toEqual(undefined);
+        // Second merge should be a no-op, so we expect it to return false.
+        await expect(store.merge(castAdd)).resolves.toBeFalsy();
 
         await assertCastRemoveWins(castRemove);
         await assertCastDoesNotExist(castAdd);
@@ -269,7 +272,8 @@ describe('merge', () => {
         const castRemoveEarlier = new MessageModel(removeMessage) as CastRemoveModel;
 
         await store.merge(castRemoveEarlier);
-        await expect(store.merge(castAdd)).resolves.toEqual(undefined);
+        // Merge should be a no-op, so we expect it to return false.
+        await expect(store.merge(castAdd)).resolves.toBeFalsy();
 
         await assertCastRemoveWins(castRemoveEarlier);
         await assertCastDoesNotExist(castAdd);
@@ -289,7 +293,8 @@ describe('merge', () => {
         const castRemoveLater = new MessageModel(removeMessage) as CastRemoveModel;
 
         await store.merge(castRemoveLater);
-        await expect(store.merge(castAdd)).resolves.toEqual(undefined);
+        // Merge should be a no-op, so we expect it to return false.
+        await expect(store.merge(castAdd)).resolves.toBeFalsy();
 
         await assertCastRemoveWins(castRemoveLater);
         await assertCastDoesNotExist(castAdd);
@@ -300,15 +305,15 @@ describe('merge', () => {
   describe('CastRemove', () => {
     test('succeeds', async () => {
       await store.merge(castAdd);
-      await expect(store.merge(castRemove)).resolves.toEqual(undefined);
+      await expect(store.merge(castRemove)).resolves.toBeTruthy();
 
       await assertCastRemoveWins(castRemove);
       await assertCastDoesNotExist(castAdd);
     });
 
     test('succeeds once, even if merged twice', async () => {
-      await expect(store.merge(castRemove)).resolves.toEqual(undefined);
-      await expect(store.merge(castRemove)).resolves.toEqual(undefined);
+      await expect(store.merge(castRemove)).resolves.toBeTruthy();
+      await expect(store.merge(castRemove)).resolves.toBeFalsy();
 
       await assertCastRemoveWins(castRemove);
     });
@@ -329,7 +334,7 @@ describe('merge', () => {
 
       test('succeeds with a later timestamp', async () => {
         await store.merge(castRemove);
-        await expect(store.merge(castRemoveLater)).resolves.toEqual(undefined);
+        await expect(store.merge(castRemoveLater)).resolves.toBeTruthy();
 
         await assertCastDoesNotExist(castRemove);
         await assertCastRemoveWins(castRemoveLater);
@@ -337,7 +342,8 @@ describe('merge', () => {
 
       test('no-ops with an earlier timestamp', async () => {
         await store.merge(castRemoveLater);
-        await expect(store.merge(castRemove)).resolves.toEqual(undefined);
+        // Second merge should be a no-op, so we expect it to return false.
+        await expect(store.merge(castRemove)).resolves.toBeFalsy();
 
         await assertCastDoesNotExist(castRemove);
         await assertCastRemoveWins(castRemoveLater);
@@ -362,7 +368,7 @@ describe('merge', () => {
 
       test('succeeds with a later hash', async () => {
         await store.merge(castRemove);
-        await expect(store.merge(castRemoveLater)).resolves.toEqual(undefined);
+        await expect(store.merge(castRemoveLater)).resolves.toBeTruthy();
 
         await assertCastDoesNotExist(castRemove);
         await assertCastRemoveWins(castRemoveLater);
@@ -370,7 +376,8 @@ describe('merge', () => {
 
       test('no-ops with an earlier hash', async () => {
         await store.merge(castRemoveLater);
-        await expect(store.merge(castRemove)).resolves.toEqual(undefined);
+        // Second merge should be a no-op, so we expect it to return false.
+        await expect(store.merge(castRemove)).resolves.toBeFalsy();
 
         await assertCastDoesNotExist(castRemove);
         await assertCastRemoveWins(castRemoveLater);
@@ -380,7 +387,7 @@ describe('merge', () => {
     describe('with conflicting CastAdd with different timestamps', () => {
       test('succeeds with a later timestamp', async () => {
         await store.merge(castAdd);
-        await expect(store.merge(castRemove)).resolves.toEqual(undefined);
+        await expect(store.merge(castRemove)).resolves.toBeTruthy();
         await assertCastRemoveWins(castRemove);
         await assertCastDoesNotExist(castAdd);
       });
@@ -397,7 +404,7 @@ describe('merge', () => {
         const castRemoveEarlier = new MessageModel(removeMessage) as CastRemoveModel;
 
         await store.merge(castAdd);
-        await expect(store.merge(castRemoveEarlier)).resolves.toEqual(undefined);
+        await expect(store.merge(castRemoveEarlier)).resolves.toBeTruthy();
         await assertCastDoesNotExist(castAdd);
         await assertCastRemoveWins(castRemoveEarlier);
       });
@@ -417,7 +424,7 @@ describe('merge', () => {
         const castRemoveEarlier = new MessageModel(removeMessage) as CastRemoveModel;
 
         await store.merge(castAdd);
-        await expect(store.merge(castRemoveEarlier)).resolves.toEqual(undefined);
+        await expect(store.merge(castRemoveEarlier)).resolves.toBeTruthy();
 
         await assertCastDoesNotExist(castAdd);
         await assertCastRemoveWins(castRemoveEarlier);
@@ -436,7 +443,7 @@ describe('merge', () => {
         const castRemoveLater = new MessageModel(removeMessage) as CastRemoveModel;
 
         await store.merge(castAdd);
-        await expect(store.merge(castRemoveLater)).resolves.toEqual(undefined);
+        await expect(store.merge(castRemoveLater)).resolves.toBeTruthy();
 
         await assertCastDoesNotExist(castAdd);
         await assertCastRemoveWins(castRemoveLater);

@@ -258,14 +258,15 @@ describe('merge', () => {
 
   describe('ReactionAdd', () => {
     test('succeeds', async () => {
-      await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+      await expect(set.merge(reactionAdd)).resolves.toBeTruthy();
 
       await assertReactionAddWins(reactionAdd);
     });
 
     test('succeeds once, even if merged twice', async () => {
-      await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
-      await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+      await expect(set.merge(reactionAdd)).resolves.toBeTruthy();
+      // Merge succeeds, but returns false because the message already exists
+      await expect(set.merge(reactionAdd)).resolves.toBeFalsy();
 
       await assertReactionAddWins(reactionAdd);
     });
@@ -286,7 +287,7 @@ describe('merge', () => {
 
       test('succeeds with a later timestamp', async () => {
         await set.merge(reactionAdd);
-        await expect(set.merge(reactionAddLater)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionAddLater)).resolves.toBeTruthy();
 
         await assertReactionDoesNotExist(reactionAdd);
         await assertReactionAddWins(reactionAddLater);
@@ -294,7 +295,8 @@ describe('merge', () => {
 
       test('no-ops with an earlier timestamp', async () => {
         await set.merge(reactionAddLater);
-        await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+        // Merge succeeds, but returns false because the message already exists
+        await expect(set.merge(reactionAdd)).resolves.toBeFalsy();
 
         await assertReactionDoesNotExist(reactionAdd);
         await assertReactionAddWins(reactionAddLater);
@@ -319,7 +321,7 @@ describe('merge', () => {
 
       test('succeeds with a later hash', async () => {
         await set.merge(reactionAdd);
-        await expect(set.merge(reactionAddLater)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionAddLater)).resolves.toBeTruthy();
 
         await assertReactionDoesNotExist(reactionAdd);
         await assertReactionAddWins(reactionAddLater);
@@ -327,7 +329,8 @@ describe('merge', () => {
 
       test('no-ops with an earlier hash', async () => {
         await set.merge(reactionAddLater);
-        await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+        // Merge succeeds, but returns false because the message already exists
+        await expect(set.merge(reactionAdd)).resolves.toBeFalsy();
 
         await assertReactionDoesNotExist(reactionAdd);
         await assertReactionAddWins(reactionAddLater);
@@ -348,7 +351,7 @@ describe('merge', () => {
         const reactionRemoveEarlier = new MessageModel(reactionRemoveMessage) as ReactionRemoveModel;
 
         await set.merge(reactionRemoveEarlier);
-        await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionAdd)).resolves.toBeTruthy();
 
         await assertReactionAddWins(reactionAdd);
         await assertReactionDoesNotExist(reactionRemoveEarlier);
@@ -356,7 +359,8 @@ describe('merge', () => {
 
       test('no-ops with an earlier timestamp', async () => {
         await set.merge(reactionRemove);
-        await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+        // Merge succeeds, but returns false because the message already exists
+        await expect(set.merge(reactionAdd)).resolves.toBeFalsy();
 
         await assertReactionRemoveWins(reactionRemove);
         await assertReactionDoesNotExist(reactionAdd);
@@ -378,7 +382,8 @@ describe('merge', () => {
         const reactionRemoveLater = new MessageModel(reactionRemoveMessage) as ReactionRemoveModel;
 
         await set.merge(reactionRemoveLater);
-        await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+        // Merge succeeds, but returns false because the message already exists
+        await expect(set.merge(reactionAdd)).resolves.toBeFalsy();
 
         await assertReactionRemoveWins(reactionRemoveLater);
         await assertReactionDoesNotExist(reactionAdd);
@@ -398,7 +403,8 @@ describe('merge', () => {
         const reactionRemoveEarlier = new MessageModel(reactionRemoveMessage) as ReactionRemoveModel;
 
         await set.merge(reactionRemoveEarlier);
-        await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+        // Merge succeeds, but returns false because the message already exists
+        await expect(set.merge(reactionAdd)).resolves.toBeFalsy();
 
         await assertReactionDoesNotExist(reactionAdd);
         await assertReactionRemoveWins(reactionRemoveEarlier);
@@ -408,14 +414,15 @@ describe('merge', () => {
 
   describe('ReactionRemove', () => {
     test('succeeds', async () => {
-      await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+      await expect(set.merge(reactionRemove)).resolves.toBeTruthy();
 
       await assertReactionRemoveWins(reactionRemove);
     });
 
     test('succeeds once, even if merged twice', async () => {
-      await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
-      await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+      await expect(set.merge(reactionRemove)).resolves.toBeTruthy();
+      // Merge succeeds, but returns false because the message already exists
+      await expect(set.merge(reactionRemove)).resolves.toBeFalsy();
 
       await assertReactionRemoveWins(reactionRemove);
     });
@@ -436,7 +443,7 @@ describe('merge', () => {
 
       test('succeeds with a later timestamp', async () => {
         await set.merge(reactionRemove);
-        await expect(set.merge(reactionRemoveLater)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionRemoveLater)).resolves.toBeTruthy();
 
         await assertReactionDoesNotExist(reactionRemove);
         await assertReactionRemoveWins(reactionRemoveLater);
@@ -444,7 +451,8 @@ describe('merge', () => {
 
       test('no-ops with an earlier timestamp', async () => {
         await set.merge(reactionRemoveLater);
-        await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+        // Merge succeeds, but returns false because the message already exists
+        await expect(set.merge(reactionRemove)).resolves.toBeFalsy();
 
         await assertReactionDoesNotExist(reactionRemove);
         await assertReactionRemoveWins(reactionRemoveLater);
@@ -469,7 +477,7 @@ describe('merge', () => {
 
       test('succeeds with a later hash', async () => {
         await set.merge(reactionRemove);
-        await expect(set.merge(reactionRemoveLater)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionRemoveLater)).resolves.toBeTruthy();
 
         await assertReactionDoesNotExist(reactionRemove);
         await assertReactionRemoveWins(reactionRemoveLater);
@@ -477,7 +485,8 @@ describe('merge', () => {
 
       test('no-ops with an earlier hash', async () => {
         await set.merge(reactionRemoveLater);
-        await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+        // Merge succeeds, but returns false because the message already exists
+        await expect(set.merge(reactionRemove)).resolves.toBeFalsy();
 
         await assertReactionDoesNotExist(reactionRemove);
         await assertReactionRemoveWins(reactionRemoveLater);
@@ -487,7 +496,7 @@ describe('merge', () => {
     describe('with conflicting ReactionAdd with different timestamps', () => {
       test('succeeds with a later timestamp', async () => {
         await set.merge(reactionAdd);
-        await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionRemove)).resolves.toBeTruthy();
         await assertReactionRemoveWins(reactionRemove);
         await assertReactionDoesNotExist(reactionAdd);
       });
@@ -503,7 +512,8 @@ describe('merge', () => {
         });
         const reactionAddLater = new MessageModel(addMessage) as ReactionAddModel;
         await set.merge(reactionAddLater);
-        await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+        // Merge succeeds, but returns false because the message already exists
+        await expect(set.merge(reactionRemove)).resolves.toBeFalsy();
         await assertReactionAddWins(reactionAddLater);
         await assertReactionDoesNotExist(reactionRemove);
       });
@@ -523,7 +533,7 @@ describe('merge', () => {
         const reactionAddLater = new MessageModel(addMessage) as ReactionAddModel;
 
         await set.merge(reactionAddLater);
-        await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionRemove)).resolves.toBeTruthy();
 
         await assertReactionDoesNotExist(reactionAddLater);
         await assertReactionRemoveWins(reactionRemove);
@@ -542,7 +552,7 @@ describe('merge', () => {
         const reactionRemoveEarlier = new MessageModel(removeMessage) as ReactionRemoveModel;
 
         await set.merge(reactionRemoveEarlier);
-        await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionRemove)).resolves.toBeTruthy();
 
         await assertReactionDoesNotExist(reactionRemoveEarlier);
         await assertReactionRemoveWins(reactionRemove);

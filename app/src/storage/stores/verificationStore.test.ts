@@ -117,13 +117,14 @@ describe('merge', () => {
 
   describe('VerificationAddEthAddress', () => {
     test('succeeds', async () => {
-      await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
+      await expect(set.merge(verificationAdd)).resolves.toBeTruthy();
       await assertVerificationAddWins(verificationAdd);
     });
 
     test('succeeds once, even if merged twice', async () => {
-      await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
-      await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
+      await expect(set.merge(verificationAdd)).resolves.toBeTruthy();
+      // Success, but no change, so returns false
+      await expect(set.merge(verificationAdd)).resolves.toBeFalsy();
       await assertVerificationAddWins(verificationAdd);
     });
 
@@ -143,14 +144,15 @@ describe('merge', () => {
 
       test('succeeds with a later timestamp', async () => {
         await set.merge(verificationAdd);
-        await expect(set.merge(verificationAddLater)).resolves.toEqual(undefined);
+        await expect(set.merge(verificationAddLater)).resolves.toBeTruthy();
         await assertVerificationDoesNotExist(verificationAdd);
         await assertVerificationAddWins(verificationAddLater);
       });
 
       test('no-ops with an earlier timestamp', async () => {
         await set.merge(verificationAddLater);
-        await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
+        // Success, but no change, so returns false
+        await expect(set.merge(verificationAdd)).resolves.toBeFalsy();
         await assertVerificationDoesNotExist(verificationAdd);
         await assertVerificationAddWins(verificationAddLater);
       });
@@ -174,14 +176,15 @@ describe('merge', () => {
 
       test('succeeds with a later hash', async () => {
         await set.merge(verificationAdd);
-        await expect(set.merge(verificationAddLater)).resolves.toEqual(undefined);
+        await expect(set.merge(verificationAddLater)).resolves.toBeTruthy();
         await assertVerificationDoesNotExist(verificationAdd);
         await assertVerificationAddWins(verificationAddLater);
       });
 
       test('no-ops with an earlier hash', async () => {
         await set.merge(verificationAddLater);
-        await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
+        // Success, but no change, so returns false
+        await expect(set.merge(verificationAdd)).resolves.toBeFalsy();
         await assertVerificationDoesNotExist(verificationAdd);
         await assertVerificationAddWins(verificationAddLater);
       });
@@ -200,14 +203,14 @@ describe('merge', () => {
 
         const verificationRemoveEarlier = new MessageModel(removeMessage) as VerificationRemoveModel;
         await set.merge(verificationRemoveEarlier);
-        await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(verificationAdd)).resolves.toBeTruthy();
         await assertVerificationAddWins(verificationAdd);
         await assertVerificationDoesNotExist(verificationRemoveEarlier);
       });
 
       test('no-ops with an earlier timestamp', async () => {
         await set.merge(verificationRemove);
-        await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(verificationAdd)).resolves.toBeFalsy();
         await assertVerificationRemoveWins(verificationRemove);
         await assertVerificationDoesNotExist(verificationAdd);
       });
@@ -227,7 +230,8 @@ describe('merge', () => {
 
         const verificationRemoveLater = new MessageModel(removeMessage) as VerificationRemoveModel;
         await set.merge(verificationRemoveLater);
-        await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
+        // Success, but no change, so returns false
+        await expect(set.merge(verificationAdd)).resolves.toBeFalsy();
         await assertVerificationRemoveWins(verificationRemoveLater);
         await assertVerificationDoesNotExist(verificationAdd);
       });
@@ -245,7 +249,8 @@ describe('merge', () => {
 
         const verificationRemoveEarlier = new MessageModel(removeMessage) as VerificationRemoveModel;
         await set.merge(verificationRemoveEarlier);
-        await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
+        // Success, but no change, so returns false
+        await expect(set.merge(verificationAdd)).resolves.toBeFalsy();
         await assertVerificationRemoveWins(verificationRemoveEarlier);
         await assertVerificationDoesNotExist(verificationAdd);
       });
@@ -254,13 +259,14 @@ describe('merge', () => {
 
   describe('VerificationRemove', () => {
     test('succeeds', async () => {
-      await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+      await expect(set.merge(verificationRemove)).resolves.toBeTruthy();
       await assertVerificationRemoveWins(verificationRemove);
     });
 
     test('succeeds once, even if merged twice', async () => {
-      await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
-      await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+      await expect(set.merge(verificationRemove)).resolves.toBeTruthy();
+      // Success, but no change, so returns false
+      await expect(set.merge(verificationRemove)).resolves.toBeFalsy();
       await assertVerificationRemoveWins(verificationRemove);
     });
 
@@ -280,14 +286,15 @@ describe('merge', () => {
 
       test('succeeds with a later timestamp', async () => {
         await set.merge(verificationRemove);
-        await expect(set.merge(verificationRemoveLater)).resolves.toEqual(undefined);
+        await expect(set.merge(verificationRemoveLater)).resolves.toBeTruthy();
         await assertVerificationDoesNotExist(verificationRemove);
         await assertVerificationRemoveWins(verificationRemoveLater);
       });
 
       test('no-ops with an earlier timestamp', async () => {
         await set.merge(verificationRemoveLater);
-        await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+        // Success, but no change, so returns false
+        await expect(set.merge(verificationRemove)).resolves.toBeFalsy();
         await assertVerificationDoesNotExist(verificationRemove);
         await assertVerificationRemoveWins(verificationRemoveLater);
       });
@@ -309,14 +316,15 @@ describe('merge', () => {
 
       test('succeeds with a later hash', async () => {
         await set.merge(verificationRemove);
-        await expect(set.merge(verificationRemoveLater)).resolves.toEqual(undefined);
+        await expect(set.merge(verificationRemoveLater)).resolves.toBeTruthy();
         await assertVerificationDoesNotExist(verificationRemove);
         await assertVerificationRemoveWins(verificationRemoveLater);
       });
 
       test('no-ops with an earlier hash', async () => {
         await set.merge(verificationRemoveLater);
-        await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+        // Success, but no change, so returns false
+        await expect(set.merge(verificationRemove)).resolves.toBeFalsy();
         await assertVerificationDoesNotExist(verificationRemove);
         await assertVerificationRemoveWins(verificationRemoveLater);
       });
@@ -325,7 +333,7 @@ describe('merge', () => {
     describe('with conflicting VerificationAddEthAddress with different timestamps', () => {
       test('succeeds with a later timestamp', async () => {
         await set.merge(verificationAdd);
-        await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(verificationRemove)).resolves.toBeTruthy();
         await assertVerificationRemoveWins(verificationRemove);
         await assertVerificationDoesNotExist(verificationAdd);
       });
@@ -342,7 +350,8 @@ describe('merge', () => {
 
         const verificationAddLater = new MessageModel(addMessage) as VerificationAddEthAddressModel;
         await set.merge(verificationAddLater);
-        await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+        // Success, but no change, so returns false
+        await expect(set.merge(verificationRemove)).resolves.toBeFalsy();
         await assertVerificationAddWins(verificationAddLater);
         await assertVerificationDoesNotExist(verificationRemove);
       });
@@ -362,7 +371,7 @@ describe('merge', () => {
         const verificationAddLater = new MessageModel(addMessage) as VerificationAddEthAddressModel;
 
         await set.merge(verificationAddLater);
-        await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(verificationRemove)).resolves.toBeTruthy();
         await assertVerificationDoesNotExist(verificationAddLater);
         await assertVerificationRemoveWins(verificationRemove);
       });
@@ -380,7 +389,7 @@ describe('merge', () => {
 
         const verificationRemoveEarlier = new MessageModel(addMessage) as VerificationRemoveModel;
         await set.merge(verificationRemoveEarlier);
-        await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(verificationRemove)).resolves.toBeTruthy();
         await assertVerificationDoesNotExist(verificationRemoveEarlier);
         await assertVerificationRemoveWins(verificationRemove);
       });

@@ -225,7 +225,7 @@ class ReactionStore {
   }
 
   /** Merges a ReactionAdd or ReactionRemove message into the ReactionStore */
-  async merge(message: MessageModel): Promise<void> {
+  async merge(message: MessageModel): Promise<boolean> {
     if (isReactionAdd(message)) {
       return this.mergeAdd(message);
     }
@@ -342,7 +342,7 @@ class ReactionStore {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async mergeAdd(message: types.ReactionAddModel): Promise<void> {
+  private async mergeAdd(message: types.ReactionAddModel): Promise<boolean> {
     const castId = message.body().target(new CastId());
 
     if (!castId) {
@@ -352,7 +352,7 @@ class ReactionStore {
       // eslint-disable-next-line prefer-const
       let { txn, removedReactionAdds } = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
 
-      if (!txn) return undefined; // Assume no-op if txn was not returned
+      if (!txn) return false; // Assume no-op if txn was not returned
 
       // Add ops to store the message by messageKey and index the the messageKey by set and by target
       txn = this.putReactionAddTransaction(txn, message);
@@ -366,10 +366,12 @@ class ReactionStore {
       for (const removedReactionAdd of removedReactionAdds) {
         this._eventHandler.emit('revokeMessage', removedReactionAdd);
       }
+
+      return true;
     }
   }
 
-  private async mergeRemove(message: types.ReactionRemoveModel): Promise<void> {
+  private async mergeRemove(message: types.ReactionRemoveModel): Promise<boolean> {
     const castId = message.body().target(new CastId());
 
     if (!castId) {
@@ -379,7 +381,7 @@ class ReactionStore {
       // eslint-disable-next-line prefer-const
       let { txn, removedReactionAdds } = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
 
-      if (!txn) return undefined; // Assume no-op if txn was not returned
+      if (!txn) return false; // Assume no-op if txn was not returned
 
       // Add ops to store the message by messageKey and index the the messageKey by set
       txn = this.putReactionRemoveTransaction(txn, message);
@@ -393,6 +395,8 @@ class ReactionStore {
       for (const removedReactionAdd of removedReactionAdds) {
         this._eventHandler.emit('revokeMessage', removedReactionAdd);
       }
+
+      return true;
     }
   }
 
