@@ -36,10 +36,9 @@ const FnameFactory = Factory.define<Uint8Array>(() => {
 });
 
 const TsHashFactory = Factory.define<Uint8Array, { timestamp?: number; hash?: Uint8Array }>(({ transientParams }) => {
-  return toTsHash(
-    transientParams.timestamp ?? faker.date.recent().getTime(),
-    transientParams.hash ?? blake3(faker.random.alphaNumeric(256), { dkLen: 16 })
-  );
+  const timestamp = transientParams.timestamp ?? toFarcasterTime(faker.date.recent().getTime());
+  const hash = transientParams.hash ?? blake3(faker.random.alphaNumeric(256), { dkLen: 16 });
+  return toTsHash(timestamp, hash)._unsafeUnwrap();
 });
 
 const BlockHashFactory = Factory.define<string>(() => {
