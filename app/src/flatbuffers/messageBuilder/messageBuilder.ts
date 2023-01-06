@@ -3,19 +3,26 @@ import { Ed25519Signer, Eip712Signer, Signer } from '@hub/utils';
 import * as constructors from '../models/constructors';
 import { SignerAddModel } from '../models/types';
 
-type MessageBuilderOptions<TSigner> = {
+type MessageBuilderOptions = {
   /** integer representation of the message sender */
   fid: number;
-  signer: TSigner;
+  privateKey: Uint8Array;
   network?: flatbuffers.FarcasterNetwork;
 };
 
-abstract class BaseMessageBuilder<TSigner extends Signer> {
-  protected fid: number;
-  protected network: flatbuffers.FarcasterNetwork;
+type AbstractMessageBuilderOptions<TSigner extends Signer> = {
+  /** integer representation of the message sender */
+  fid: number;
+  signer: TSigner;
+  network: flatbuffers.FarcasterNetwork | undefined;
+};
+
+abstract class AbstractMessageBuilder<TSigner extends Signer> {
+  public readonly fid: number;
+  public readonly network: flatbuffers.FarcasterNetwork;
   protected signer: TSigner;
 
-  constructor({ fid, signer, network = flatbuffers.FarcasterNetwork.Mainnet }: MessageBuilderOptions<TSigner>) {
+  constructor({ fid, network = flatbuffers.FarcasterNetwork.Mainnet, signer }: AbstractMessageBuilderOptions<TSigner>) {
     this.fid = fid;
     this.network = network;
     this.signer = signer;
@@ -30,7 +37,12 @@ abstract class BaseMessageBuilder<TSigner extends Signer> {
   }
 }
 
-export class SignerMessageBuilder extends BaseMessageBuilder<Eip712Signer> {
+export class SignerMessageBuilder extends AbstractMessageBuilder<Eip712Signer> {
+  constructor({ fid, network, privateKey }: MessageBuilderOptions) {
+    const signer = new Eip712Signer(privateKey);
+    super({ fid, network, signer });
+  }
+
   /**
    * Constructs a SignerAdd message.
    */
@@ -52,4 +64,4 @@ export class SignerMessageBuilder extends BaseMessageBuilder<Eip712Signer> {
   }
 }
 
-export class MessageBuilder extends BaseMessageBuilder<Ed25519Signer> {}
+export class MessageBuilder extends AbstractMessageBuilder<Ed25519Signer> {}

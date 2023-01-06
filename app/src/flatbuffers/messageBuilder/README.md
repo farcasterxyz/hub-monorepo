@@ -4,24 +4,13 @@ Ergonomic, type-safe message constructor.
 
 ## Usage
 
-Constructing a signer message with an ECDSA signature:
+There are two message builder classes, `SignerMessageBuilder` for constructing signer message with an ECDSA signature and `MessageBuilder`
+for constructing all other messags.
 
 ```typescript
-const ethersSigner = new EthersMessageSigner(signer.wallet);
-const builder = new MessageBuilder({ fid, eip712Signer: ethersMessageSigner });
-const signerAdd = builder.makeSignerAdd({ publicKey: keypair.publicKey, privateKey: keypair.privateKey });
-```
+const signerBuilder = new SignerMessageBuilder({ fid, privateKey }); // privateKey of Ethereum private
+const signerAdd = signerBuilder.makeSignerAdd({ publicKey: ed25519.publicKey, privateKey: ed25519.privateKey });
 
-Since `privateKey` is supplied to `makeSignerAdd`, an EdDSA signer will be setup and used to sign additional messages:
-
-```typescript
-builder.makeCast({ text, embeds, mentions, parent });
-```
-
-If an EdDSA signer has previously been added, signed messages can be constructed as follows:
-
-```typescript
-const ed25519Signer = new Ed25519MessageSigner(privateKey, publicKey);
-const builder = new MessageBuilder({ fid, ed25519Signer });
+const builder = new MessageBuilder({ fid, privateKey: ed25519.privateKey });
 const cast = builder.makeCast({ text, embeds, mentions, parent });
 ```

@@ -7,7 +7,7 @@ import { SignerMessageBuilder } from './messageBuilder';
 describe('SignerMessageBuilder', () => {
   const fid = 24;
   const signer = Factories.Eip712Signer.build();
-  const builder = new SignerMessageBuilder({ fid, signer });
+  const builder = new SignerMessageBuilder({ fid, privateKey: signer.privateKey });
 
   describe('instance methods', () => {
     describe('makeSignerAdd', () => {
