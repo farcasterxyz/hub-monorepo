@@ -1,7 +1,7 @@
 import { SignatureScheme } from '@hub/flatbuffers';
 import { bytesToHexString, HubAsyncResult } from '@hub/utils';
 
-abstract class Signer {
+export abstract class Signer {
   public readonly scheme: SignatureScheme;
   public readonly signerKey: Uint8Array;
   public readonly signerKeyHex: string;
@@ -21,5 +21,3 @@ abstract class Signer {
 
   public abstract signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array>;
 }
-
-export default Signer;

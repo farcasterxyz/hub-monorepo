@@ -1,7 +1,8 @@
-import { bytesToHexString, hexStringToBytes, HubAsyncResult, HubResult } from '@hub/utils';
 import { utils, Wallet } from 'ethers';
 import { err } from 'neverthrow';
-import { VerificationEthAddressClaim } from '~/flatbuffers/models/types';
+import { bytesToHexString, hexStringToBytes } from '../bytes';
+import { HubAsyncResult, HubResult } from '../errors';
+import { VerificationEthAddressClaim } from '../types';
 
 export const EIP_712_FARCASTER_DOMAIN = {
   name: 'Farcaster Verify Ethereum Address',

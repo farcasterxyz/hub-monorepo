@@ -1,11 +1,9 @@
 import { faker } from '@faker-js/faker';
 import { IdRegistryEventType, MessageType } from '@hub/flatbuffers';
-import { bytesDecrement, bytesIncrement, hexStringToBytes, HubError } from '@hub/utils';
-import Factories from '~/flatbuffers/factories';
+import { bytesDecrement, bytesIncrement, Factories, getFarcasterTime, hexStringToBytes, HubError } from '@hub/utils';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { SignerAddModel, SignerRemoveModel, UserPostfix } from '~/flatbuffers/models/types';
-import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';

@@ -1,6 +1,5 @@
 import { RevokeSignerJobPayload } from '@hub/flatbuffers';
-import { HubError } from '@hub/utils';
-import Factories from '~/flatbuffers/factories';
+import { Factories, HubError } from '@hub/utils';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { AmpAddModel, CastAddModel, VerificationRemoveModel } from '~/flatbuffers/models/types';
 import { jestRocksDB } from '~/storage/db/jestUtils';
@@ -11,6 +10,7 @@ import {
   RevokeSignerJobQueue,
   RevokeSignerJobScheduler,
 } from '~/storage/jobs/revokeSignerJob';
+import { JobFactories } from '~/storage/jobs/utils/factories';
 
 const db = jestRocksDB('jobs.revokeSignerJob.test');
 
@@ -33,9 +33,9 @@ let verificationRemove: VerificationRemoveModel;
 
 beforeAll(async () => {
   // Test payloads
-  payload = await Factories.RevokeSignerJobPayload.create();
-  payload2 = await Factories.RevokeSignerJobPayload.create();
-  payload3 = await Factories.RevokeSignerJobPayload.create();
+  payload = await JobFactories.RevokeSignerJobPayload.create();
+  payload2 = await JobFactories.RevokeSignerJobPayload.create();
+  payload3 = await JobFactories.RevokeSignerJobPayload.create();
 
   // Integration test data
   revokeSignerPayload = RevokeSignerJobQueue.makePayload(fid, signer.signerKey)._unsafeUnwrap();

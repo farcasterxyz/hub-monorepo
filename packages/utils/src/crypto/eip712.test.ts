@@ -1,11 +1,11 @@
 import { faker } from '@faker-js/faker';
 import { FarcasterNetwork } from '@hub/flatbuffers';
-import { bytesToHexString, hexStringToBytes } from '@hub/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { BigNumber, utils, Wallet } from 'ethers';
-import Factories from '~/flatbuffers/factories';
-import { VerificationEthAddressClaim } from '~/flatbuffers/models/types';
-import * as eip712 from '~/flatbuffers/utils/eip712';
+import { bytesToHexString, hexStringToBytes } from '../bytes';
+import { Factories } from '../factories';
+import { VerificationEthAddressClaim } from '../types';
+import * as eip712 from './eip712';
 
 const wallet = new Wallet(utils.randomBytes(32));
 const fidNumber = faker.datatype.number({ min: 1, max: 1_000_000 });

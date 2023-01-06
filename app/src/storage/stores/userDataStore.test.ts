@@ -1,11 +1,9 @@
 import { NameRegistryEventType, UserDataType } from '@hub/flatbuffers';
-import { bytesIncrement, HubError } from '@hub/utils';
-import Factories from '~/flatbuffers/factories';
+import { bytesIncrement, Factories, getFarcasterTime, HubError } from '@hub/utils';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { SignerAddModel, UserDataAddModel, UserPostfix } from '~/flatbuffers/models/types';
-import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';

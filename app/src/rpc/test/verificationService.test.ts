@@ -1,5 +1,4 @@
-import { HubError } from '@hub/utils';
-import Factories from '~/flatbuffers/factories';
+import { Factories, HubError } from '@hub/utils';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { SignerAddModel, VerificationAddEthAddressModel } from '~/flatbuffers/models/types';

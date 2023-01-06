@@ -1,7 +1,6 @@
-import Factories from '~/flatbuffers/factories';
+import { Ed25519Signer, Factories } from '@hub/utils';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { AmpAddModel, CastAddModel } from '~/flatbuffers/models/types';
-import { Ed25519Signer } from '~/signers';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { seedSigner } from '~/storage/engine/seed';

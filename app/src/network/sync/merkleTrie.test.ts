@@ -1,13 +1,13 @@
 import { blake3 } from '@noble/hashes/blake3';
-import Factories from '~/flatbuffers/factories';
 import { MerkleTrie } from '~/network/sync/merkleTrie';
+import { NetworkFactories } from '~/network/utils/factories';
 import { EMPTY_HASH } from './trieNode';
 
 describe('MerkleTrie', () => {
   const trieWithIds = async (timestamps: number[]) => {
     const syncIds = await Promise.all(
       timestamps.map(async (t) => {
-        return await Factories.SyncId.create(undefined, { transient: { date: new Date(t * 1000) } });
+        return await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(t * 1000) } });
       })
     );
     const trie = new MerkleTrie();
@@ -18,7 +18,7 @@ describe('MerkleTrie', () => {
   describe('insert', () => {
     test('succeeds inserting a single item', async () => {
       const trie = new MerkleTrie();
-      const syncId = await Factories.SyncId.create();
+      const syncId = await NetworkFactories.SyncId.create();
 
       expect(trie.items).toEqual(0);
       expect(trie.rootHash).toEqual('');
@@ -30,8 +30,8 @@ describe('MerkleTrie', () => {
     });
 
     test('inserts are idempotent', async () => {
-      const syncId1 = await Factories.SyncId.create();
-      const syncId2 = await Factories.SyncId.create();
+      const syncId1 = await NetworkFactories.SyncId.create();
+      const syncId2 = await NetworkFactories.SyncId.create();
 
       const firstTrie = new MerkleTrie();
       firstTrie.insert(syncId1);
@@ -56,7 +56,7 @@ describe('MerkleTrie', () => {
     });
 
     test('insert multiple items out of order results in the same root hash', async () => {
-      const syncIds = await Factories.SyncId.createList(25);
+      const syncIds = await NetworkFactories.SyncId.createList(25);
 
       const firstTrie = new MerkleTrie();
       const secondTrie = new MerkleTrie();
@@ -74,7 +74,7 @@ describe('MerkleTrie', () => {
 
   describe('delete', () => {
     test('deletes an item', async () => {
-      const syncId = await Factories.SyncId.create();
+      const syncId = await NetworkFactories.SyncId.create();
 
       const trie = new MerkleTrie();
       trie.insert(syncId);
@@ -89,12 +89,12 @@ describe('MerkleTrie', () => {
     });
 
     test('deleting an item that does not exist does not change the trie', async () => {
-      const syncId = await Factories.SyncId.create();
+      const syncId = await NetworkFactories.SyncId.create();
       const trie = new MerkleTrie();
       trie.insert(syncId);
 
       const rootHashBeforeDelete = trie.rootHash;
-      const syncId2 = await Factories.SyncId.create();
+      const syncId2 = await NetworkFactories.SyncId.create();
       trie.delete(syncId2);
 
       const rootHashAfterDelete = trie.rootHash;
@@ -103,8 +103,8 @@ describe('MerkleTrie', () => {
     });
 
     test('delete is an exact inverse of insert', async () => {
-      const syncId1 = await Factories.SyncId.create();
-      const syncId2 = await Factories.SyncId.create();
+      const syncId1 = await NetworkFactories.SyncId.create();
+      const syncId2 = await NetworkFactories.SyncId.create();
 
       const trie = new MerkleTrie();
       trie.insert(syncId1);
@@ -116,8 +116,8 @@ describe('MerkleTrie', () => {
     });
 
     test('trie with a deleted item is the same as a trie with the item never added', async () => {
-      const syncId1 = await Factories.SyncId.create();
-      const syncId2 = await Factories.SyncId.create();
+      const syncId1 = await NetworkFactories.SyncId.create();
+      const syncId2 = await NetworkFactories.SyncId.create();
 
       const firstTrie = new MerkleTrie();
       firstTrie.insert(syncId1);
@@ -137,7 +137,7 @@ describe('MerkleTrie', () => {
 
   test('succeeds with single item', async () => {
     const trie = new MerkleTrie();
-    const syncId = await Factories.SyncId.create();
+    const syncId = await NetworkFactories.SyncId.create();
 
     expect(trie.exists(syncId)).toBeFalsy();
 
@@ -145,13 +145,13 @@ describe('MerkleTrie', () => {
 
     expect(trie.exists(syncId)).toBeTruthy();
 
-    const nonExistingSyncId = await Factories.SyncId.create();
+    const nonExistingSyncId = await NetworkFactories.SyncId.create();
     expect(trie.exists(nonExistingSyncId)).toBeFalsy();
   });
 
   test('value is always undefined for non-leaf nodes', async () => {
     const trie = new MerkleTrie();
-    const syncId = await Factories.SyncId.create();
+    const syncId = await NetworkFactories.SyncId.create();
 
     trie.insert(syncId);
 
@@ -160,7 +160,7 @@ describe('MerkleTrie', () => {
 
   describe('getNodeMetadata', () => {
     test('returns undefined if prefix is not present', async () => {
-      const syncId = await Factories.SyncId.create(undefined, { transient: { date: new Date(1665182332000) } });
+      const syncId = await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(1665182332000) } });
       const trie = new MerkleTrie();
       trie.insert(syncId);
 
@@ -168,7 +168,7 @@ describe('MerkleTrie', () => {
     });
 
     test('returns the root metadata if the prefix is empty', async () => {
-      const syncId = await Factories.SyncId.create(undefined, { transient: { date: new Date(1665182332000) } });
+      const syncId = await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(1665182332000) } });
       const trie = new MerkleTrie();
       trie.insert(syncId);
 
@@ -277,7 +277,7 @@ describe('MerkleTrie', () => {
       const trie = await trieWithIds([1665182332, 1665182343, 1665182345]);
       const prefixToTest = '1665182343';
       const oldSnapshot = trie.getSnapshot(prefixToTest);
-      trie.insert(await Factories.SyncId.create(undefined, { transient: { date: new Date(1665182353000) } }));
+      trie.insert(await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(1665182353000) } }));
 
       // Since message above was added at 1665182353, the two tries diverged at 16651823 for our prefix
       let divergencePrefix = trie.getDivergencePrefix(prefixToTest, oldSnapshot.excludedHashes);

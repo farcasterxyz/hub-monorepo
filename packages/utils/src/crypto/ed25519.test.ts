@@ -2,8 +2,8 @@ import { HubError } from '@hub/utils';
 import * as ed from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
 import { randomBytes } from 'ethers/lib/utils';
-import * as ed25519 from '~/flatbuffers/utils/ed25519';
-import Factories from '../factories';
+import { Factories } from '../factories';
+import * as ed25519 from './ed25519';
 
 let publicKey: Uint8Array;
 let privateKey: Uint8Array;

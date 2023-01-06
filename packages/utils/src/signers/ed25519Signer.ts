@@ -1,20 +1,18 @@
 import { SignatureScheme } from '@hub/flatbuffers';
 import { HubAsyncResult } from '@hub/utils';
-import { getPublicKeySync, signMessageHash } from '~/flatbuffers/utils/ed25519';
-import Signer from './signer';
+import { ed25519 } from '../crypto';
+import { Signer } from './signer';
 
-class Ed25519Signer extends Signer {
+export class Ed25519Signer extends Signer {
   /** 20-byte wallet address */
   public declare readonly signerKey: Uint8Array;
 
   constructor(privateKey: Uint8Array) {
-    super(SignatureScheme.Ed25519, privateKey, getPublicKeySync(privateKey));
+    super(SignatureScheme.Ed25519, privateKey, ed25519.getPublicKeySync(privateKey));
   }
 
   /** generates 256-bit signature from an EdDSA key pair */
   public async signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array> {
-    return signMessageHash(hash, this.privateKey);
+    return ed25519.signMessageHash(hash, this.privateKey);
   }
 }
-
-export default Ed25519Signer;

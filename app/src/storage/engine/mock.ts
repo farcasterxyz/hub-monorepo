@@ -1,4 +1,4 @@
-import { Ed25519Signer, Eip712Signer } from '~/signers';
+import { Ed25519Signer, Eip712Signer } from '@hub/utils';
 
 export type UserInfo = {
   fid: number;

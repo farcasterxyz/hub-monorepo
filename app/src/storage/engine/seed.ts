@@ -1,4 +1,4 @@
-import Factories from '~/flatbuffers/factories';
+import { Factories } from '@hub/utils';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { SignerAddModel } from '~/flatbuffers/models/types';

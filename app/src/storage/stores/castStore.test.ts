@@ -1,9 +1,7 @@
 import { CastId } from '@hub/flatbuffers';
-import { bytesDecrement, bytesIncrement, HubError } from '@hub/utils';
-import Factories from '~/flatbuffers/factories';
+import { bytesDecrement, bytesIncrement, Factories, getFarcasterTime, HubError } from '@hub/utils';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastAddModel, CastRemoveModel, UserPostfix } from '~/flatbuffers/models/types';
-import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import CastStore from '~/storage/stores/castStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';

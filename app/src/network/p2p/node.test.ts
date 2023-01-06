@@ -1,6 +1,6 @@
 import { GossipContent, GossipMessage, GossipMessageT } from '@hub/flatbuffers';
+import { Factories } from '@hub/utils';
 import { multiaddr } from '@multiformats/multiaddr/';
-import Factories from '~/flatbuffers/factories';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastAddModel } from '~/flatbuffers/models/types';
 import { Node } from '~/network/p2p/node';

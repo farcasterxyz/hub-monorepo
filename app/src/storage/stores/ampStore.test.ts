@@ -1,9 +1,7 @@
 import { MessageType, UserId } from '@hub/flatbuffers';
-import { bytesDecrement, bytesIncrement, HubError } from '@hub/utils';
-import Factories from '~/flatbuffers/factories';
+import { bytesDecrement, bytesIncrement, Factories, getFarcasterTime, HubError } from '@hub/utils';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { AmpAddModel, AmpRemoveModel, UserPostfix } from '~/flatbuffers/models/types';
-import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import AmpStore from '~/storage/stores/ampStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';

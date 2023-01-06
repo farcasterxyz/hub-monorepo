@@ -1,10 +1,9 @@
 import { CastId, MessageType } from '@hub/flatbuffers';
-import { bytesCompare, HubAsyncResult, HubError } from '@hub/utils';
+import { bytesCompare, getFarcasterTime, HubAsyncResult, HubError } from '@hub/utils';
 import { ok, ResultAsync } from 'neverthrow';
 import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/flatbuffers/models/messageModel';
 import { isCastAdd, isCastRemove } from '~/flatbuffers/models/typeguards';
 import { CastAddModel, CastRemoveModel, RootPrefix, StorePruneOptions, UserPostfix } from '~/flatbuffers/models/types';
-import { getFarcasterTime } from '~/flatbuffers/utils/time';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 

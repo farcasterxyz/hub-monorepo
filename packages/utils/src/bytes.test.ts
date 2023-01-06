@@ -1,4 +1,6 @@
+import { BigNumber } from 'ethers';
 import {
+  bigNumberToBytes,
   bytesCompare,
   bytesDecrement,
   bytesIncrement,
@@ -319,5 +321,20 @@ describe('numberToBytes', () => {
         });
       }
     });
+  });
+});
+
+describe('bigNumberToBytes', () => {
+  describe('little endian', () => {
+    const passingCases: [BigNumber, Uint8Array][] = [
+      [BigNumber.from(1000), new Uint8Array([232, 3])],
+      [BigNumber.from(`${Number.MAX_SAFE_INTEGER}`).add(BigNumber.from(1)), new Uint8Array([0, 0, 0, 0, 0, 0, 32])],
+    ];
+
+    for (const [input, output] of passingCases) {
+      test(`converts BigNumber to little endian byte array: ${input?.toString()}`, () => {
+        expect(bigNumberToBytes(input, { endianness: 'little' })._unsafeUnwrap()).toEqual(output);
+      });
+    }
   });
 });

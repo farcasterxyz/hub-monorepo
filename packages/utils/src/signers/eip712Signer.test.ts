@@ -1,12 +1,12 @@
 import { FarcasterNetwork } from '@hub/flatbuffers';
-import { bytesToHexString, hexStringToBytes } from '@hub/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { BigNumber, ethers } from 'ethers';
 import { randomBytes } from 'ethers/lib/utils';
-import Factories from '~/flatbuffers/factories';
-import { VerificationEthAddressClaim } from '~/flatbuffers/models/types';
-import * as eip712 from '~/flatbuffers/utils/eip712';
-import Eip712Signer from './eip712Signer';
+import { bytesToHexString, hexStringToBytes } from '../bytes';
+import { eip712 } from '../crypto';
+import { Factories } from '../factories';
+import { VerificationEthAddressClaim } from '../types';
+import { Eip712Signer } from './eip712Signer';
 
 describe('Eip712Signer', () => {
   let signer: Eip712Signer;

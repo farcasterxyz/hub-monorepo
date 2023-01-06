@@ -2,12 +2,11 @@
 import { Event } from '@ethersproject/contracts';
 import { BaseProvider, Block, TransactionReceipt, TransactionResponse } from '@ethersproject/providers';
 import { IdRegistryEventType, NameRegistryEventType } from '@hub/flatbuffers';
-import { bytesToHexString, hexStringToBytes } from '@hub/utils';
+import { bytesToHexString, Factories, hexStringToBytes } from '@hub/utils';
 import { BigNumber, Contract } from 'ethers';
 import { Result } from 'ethers/lib/utils';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
 import { EthEventsProvider } from '~/eth/ethEventsProvider';
-import Factories from '~/flatbuffers/factories';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { jestRocksDB } from '~/storage/db/jestUtils';
