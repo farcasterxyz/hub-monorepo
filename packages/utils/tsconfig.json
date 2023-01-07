@@ -7,6 +7,6 @@
     "rootDir": "src",
     "isolatedModules": true
   },
-  "include": ["src/errors.ts"],
+  "include": ["src/index.ts"],
   "exclude": ["build", "node_modules", "jest.config.ts"]
 }

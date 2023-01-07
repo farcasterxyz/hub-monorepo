@@ -9,7 +9,11 @@ import {
 
 export type Message<TData = MessageData> = {
   data: TData;
-  envelope: MessageEnvelope;
+  hash: string; // Hex string
+  hashScheme: HashScheme;
+  signature: string; // Hex string
+  signatureScheme: SignatureScheme;
+  signer: string; // Hex string
 };
 
 export type MessageData<TBody = MessageBody> = {
@@ -18,14 +22,6 @@ export type MessageData<TBody = MessageBody> = {
   timestamp: number;
   fid: number;
   network: FarcasterNetwork;
-};
-
-export type MessageEnvelope = {
-  hash: string; // Hex string
-  hashScheme: HashScheme;
-  signature: string; // Hex string
-  signatureScheme: SignatureScheme;
-  signer: string; // Hex string
 };
 
 export type CastId = {

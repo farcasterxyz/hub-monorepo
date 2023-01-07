@@ -12,6 +12,6 @@
     "rootDir": "src",
     "isolatedModules": true
   },
-  "include": ["src/client.ts"],
+  "include": ["src/index.ts"],
   "exclude": ["build", "node_modules", "jest.config.ts"]
 }

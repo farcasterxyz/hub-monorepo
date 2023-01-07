@@ -2,7 +2,7 @@ import { utils, Wallet } from 'ethers';
 import { err } from 'neverthrow';
 import { bytesToHexString, hexStringToBytes } from '../bytes';
 import { HubAsyncResult, HubResult } from '../errors';
-import { VerificationEthAddressClaim } from '../types';
+import { VerificationEthAddressClaim } from '../verifications';
 
 export const EIP_712_FARCASTER_DOMAIN = {
   name: 'Farcaster Verify Ethereum Address',

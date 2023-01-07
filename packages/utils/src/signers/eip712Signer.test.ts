@@ -5,7 +5,7 @@ import { randomBytes } from 'ethers/lib/utils';
 import { bytesToHexString, hexStringToBytes } from '../bytes';
 import { eip712 } from '../crypto';
 import { Factories } from '../factories';
-import { VerificationEthAddressClaim } from '../types';
+import { VerificationEthAddressClaim } from '../verifications';
 import { Eip712Signer } from './eip712Signer';
 
 describe('Eip712Signer', () => {

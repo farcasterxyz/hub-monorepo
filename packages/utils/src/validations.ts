@@ -1,15 +1,13 @@
 import * as flatbuffers from '@hub/flatbuffers';
-import {
-  bytesCompare,
-  bytesToBigNumber,
-  bytesToHexString,
-  eip712,
-  HubAsyncResult,
-  HubError,
-  HubResult,
-  VerificationEthAddressClaim,
-} from '@hub/utils';
+import { MessageData } from '@hub/flatbuffers';
+import { blake3 } from '@noble/hashes/blake3';
+import { ByteBuffer } from 'flatbuffers';
 import { err, ok, Result } from 'neverthrow';
+import { bytesCompare } from './bytes';
+import { ed25519, eip712 } from './crypto';
+import { HubAsyncResult, HubError, HubResult } from './errors';
+import { getFarcasterTime } from './time';
+import { makeVerificationEthAddressClaim } from './verifications';
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
@@ -120,6 +118,191 @@ export const validateEd25519PublicKey = (publicKey?: Uint8Array | null): HubResu
   return ok(publicKey);
 };
 
+export const validateMessage = async (message: flatbuffers.Message): HubAsyncResult<flatbuffers.Message> => {
+  // 1. Check the message data
+  const dataBytes = message.dataArray();
+  if (!dataBytes) {
+    return err(new HubError('bad_request.validation_failure', 'data is missing'));
+  }
+  const data = MessageData.getRootAsMessageData(new ByteBuffer(dataBytes));
+  const validData = validateMessageData(data);
+  if (validData.isErr()) {
+    return err(validData.error);
+  }
+
+  // 2. Check that the hashScheme and hash are valid
+  const hash = message.hashArray();
+  if (!hash) {
+    return err(new HubError('bad_request.validation_failure', 'hash is missing'));
+  }
+
+  if (message.hashScheme() === flatbuffers.HashScheme.Blake3) {
+    const computedHash = blake3(dataBytes, { dkLen: 16 });
+    // we have to use bytesCompare, because TypedArrays cannot be compared directly
+    if (bytesCompare(hash, computedHash) !== 0) {
+      return err(new HubError('bad_request.validation_failure', 'invalid hash'));
+    }
+  } else {
+    return err(new HubError('bad_request.validation_failure', 'invalid hashScheme'));
+  }
+
+  // 2. Check that the signatureScheme and signature are valid
+  const signature = message.signatureArray();
+  if (!signature) {
+    return err(new HubError('bad_request.validation_failure', 'signature is missing'));
+  }
+
+  const signer = message.signerArray();
+  if (!signer) {
+    return err(new HubError('bad_request.validation_failure', 'signer is missing'));
+  }
+
+  const eip712SignerRequired = EIP712_MESSAGE_TYPES.includes(data.type() as flatbuffers.MessageType);
+  if (message.signatureScheme() === flatbuffers.SignatureScheme.Eip712 && eip712SignerRequired) {
+    const verifiedSigner = eip712.verifyMessageHashSignature(hash, signature);
+    if (verifiedSigner.isErr()) {
+      return err(verifiedSigner.error);
+    }
+    if (bytesCompare(verifiedSigner.value, signer) !== 0) {
+      return err(new HubError('bad_request.validation_failure', 'signature does not match signer'));
+    }
+  } else if (message.signatureScheme() === flatbuffers.SignatureScheme.Ed25519 && !eip712SignerRequired) {
+    const signatureIsValid = await ed25519.verifyMessageHashSignature(signature, hash, signer);
+    if (signatureIsValid.isErr() || (signatureIsValid.isOk() && !signatureIsValid.value)) {
+      return err(new HubError('bad_request.validation_failure', 'invalid signature'));
+    }
+  } else {
+    return err(new HubError('bad_request.validation_failure', 'invalid signatureScheme'));
+  }
+
+  return ok(message);
+};
+
+export const validateMessageData = (data: flatbuffers.MessageData): HubResult<flatbuffers.MessageData> => {
+  // 1. Validate fid
+  const validFid = validateFid(data.fidArray());
+  if (validFid.isErr()) {
+    return err(validFid.error);
+  }
+
+  // 2. Validate timestamp
+  if (data.timestamp() - getFarcasterTime() > ALLOWED_CLOCK_SKEW_SECONDS) {
+    return err(new HubError('bad_request.validation_failure', 'timestamp more than 10 mins in the future'));
+  }
+
+  // 3. Validate network
+  const validNetwork = validateNetwork(data.network() as number);
+  if (validNetwork.isErr()) {
+    return err(validNetwork.error);
+  }
+
+  // 4. Validate type
+  if (!data.type()) {
+    return err(new HubError('bad_request.validation_failure', 'message type is missing'));
+  }
+
+  const validType = validateMessageType(data.type() as number);
+  if (validType.isErr()) {
+    return err(validType.error);
+  }
+
+  // 5. Validate body
+  let bodyResult: HubResult<any>;
+  if (validType.value === flatbuffers.MessageType.CastAdd && data.bodyType() === flatbuffers.MessageBody.CastAddBody) {
+    bodyResult = validateCastAddBody(data.body(new flatbuffers.CastAddBody()));
+  } else if (
+    validType.value === flatbuffers.MessageType.CastRemove &&
+    data.bodyType() === flatbuffers.MessageBody.CastRemoveBody
+  ) {
+    bodyResult = validateCastRemoveBody(data.body(new flatbuffers.CastRemoveBody()));
+  } else if (
+    (validType.value === flatbuffers.MessageType.AmpAdd || validType.value === flatbuffers.MessageType.AmpRemove) &&
+    data.bodyType() === flatbuffers.MessageBody.AmpBody
+  ) {
+    bodyResult = validateAmpBody(data.body(new flatbuffers.AmpBody()));
+  } else if (
+    (validType.value === flatbuffers.MessageType.ReactionAdd ||
+      validType.value === flatbuffers.MessageType.ReactionRemove) &&
+    data.bodyType() === flatbuffers.MessageBody.ReactionBody
+  ) {
+    bodyResult = validateReactionBody(data.body(new flatbuffers.ReactionBody()));
+  } else if (
+    (validType.value === flatbuffers.MessageType.SignerAdd ||
+      validType.value === flatbuffers.MessageType.SignerRemove) &&
+    data.bodyType() === flatbuffers.MessageBody.SignerBody
+  ) {
+    bodyResult = validateSignerBody(data.body(new flatbuffers.SignerBody()));
+  } else if (
+    validType.value === flatbuffers.MessageType.UserDataAdd &&
+    data.bodyType() === flatbuffers.MessageBody.UserDataBody
+  ) {
+    bodyResult = validateUserDataAddBody(data.body(new flatbuffers.UserDataBody()));
+  } else if (
+    validType.value === flatbuffers.MessageType.VerificationAddEthAddress &&
+    data.bodyType() === flatbuffers.MessageBody.VerificationAddEthAddressBody
+  ) {
+    // Special check for verification claim
+    const body = data.body(
+      new flatbuffers.VerificationAddEthAddressBody()
+    ) as flatbuffers.VerificationAddEthAddressBody;
+    bodyResult = validateVerificationAddEthAddressBody(data.body(new flatbuffers.VerificationAddEthAddressBody()));
+    if (bodyResult.isOk()) {
+      const validVerificationSignature = validateVerificationAddEthAddressSignature(
+        body,
+        validFid.value,
+        validNetwork.value
+      );
+      if (validVerificationSignature.isErr()) {
+        return err(validVerificationSignature.error);
+      }
+    }
+  } else if (
+    validType.value === flatbuffers.MessageType.VerificationRemove &&
+    data.bodyType() === flatbuffers.MessageBody.VerificationRemoveBody
+  ) {
+    bodyResult = validateVerificationRemoveBody(data.body(new flatbuffers.VerificationRemoveBody()));
+  } else {
+    return err(new HubError('bad_request.invalid_param', 'bodyType is invalid'));
+  }
+
+  if (bodyResult.isErr()) {
+    return err(bodyResult.error);
+  }
+
+  return ok(data);
+};
+
+export const validateVerificationAddEthAddressSignature = (
+  body: flatbuffers.VerificationAddEthAddressBody,
+  fid: Uint8Array,
+  network: flatbuffers.FarcasterNetwork
+): HubResult<Uint8Array> => {
+  const reconstructedClaim = makeVerificationEthAddressClaim(
+    fid,
+    body.addressArray() ?? new Uint8Array(),
+    network,
+    body.blockHashArray() ?? new Uint8Array()
+  );
+  if (reconstructedClaim.isErr()) {
+    return err(reconstructedClaim.error);
+  }
+
+  const recoveredAddress = eip712.verifyVerificationEthAddressClaimSignature(
+    reconstructedClaim.value,
+    body.ethSignatureArray() ?? new Uint8Array()
+  );
+
+  if (recoveredAddress.isErr()) {
+    return err(new HubError('bad_request.validation_failure', 'invalid ethSignature'));
+  }
+
+  if (bytesCompare(recoveredAddress.value, body.addressArray() ?? new Uint8Array()) !== 0) {
+    return err(new HubError('bad_request.validation_failure', 'ethSignature does not match address'));
+  }
+
+  return ok(body.ethSignatureArray() ?? new Uint8Array());
+};
+
 export const validateCastAddBody = (body: flatbuffers.CastAddBody): HubResult<flatbuffers.CastAddBody> => {
   const text = body.text();
   if (!text) {
@@ -149,8 +332,8 @@ export const validateCastAddBody = (body: flatbuffers.CastAddBody): HubResult<fl
   return ok(body);
 };
 
-export const validateCastRemoveMessage = (message: types.CastRemoveModel): HubResult<types.CastRemoveModel> => {
-  return validateTsHash(message.body().targetTsHashArray()).map(() => message);
+export const validateCastRemoveBody = (body: flatbuffers.CastRemoveBody): HubResult<flatbuffers.CastRemoveBody> => {
+  return validateTsHash(body.targetTsHashArray()).map(() => body);
 };
 
 export const validateReactionType = (type: number): HubResult<flatbuffers.ReactionType> => {
@@ -161,109 +344,86 @@ export const validateReactionType = (type: number): HubResult<flatbuffers.Reacti
   return ok(type);
 };
 
-export const validateReactionMessage = (
-  message: types.ReactionAddModel | types.ReactionRemoveModel
-): HubResult<types.ReactionAddModel | types.ReactionRemoveModel> => {
-  const validatedType = validateReactionType(message.body().type());
+export const validateMessageType = (type: number): HubResult<flatbuffers.MessageType> => {
+  if (!Object.values(flatbuffers.MessageType).includes(type)) {
+    return err(new HubError('bad_request.validation_failure', 'invalid message type'));
+  }
+
+  return ok(type);
+};
+
+export const validateNetwork = (network: number): HubResult<flatbuffers.FarcasterNetwork> => {
+  if (!Object.values(flatbuffers.FarcasterNetwork).includes(network)) {
+    return err(new HubError('bad_request.validation_failure', 'invalid network'));
+  }
+
+  return ok(network);
+};
+
+export const validateReactionBody = (body: flatbuffers.ReactionBody): HubResult<flatbuffers.ReactionBody> => {
+  const validatedType = validateReactionType(body.type());
   if (validatedType.isErr()) {
     return err(validatedType.error);
   }
 
-  return validateCastId(message.body().target(new flatbuffers.CastId())).map(() => message);
+  return validateCastId(body.target(new flatbuffers.CastId())).map(() => body);
 };
 
-export const validateVerificationAddEthAddressMessage = async (
-  message: types.VerificationAddEthAddressModel
-): HubAsyncResult<types.VerificationAddEthAddressModel> => {
-  const validAddress = validateEthAddress(message.body().addressArray());
+export const validateVerificationAddEthAddressBody = (
+  body: flatbuffers.VerificationAddEthAddressBody
+): HubResult<flatbuffers.VerificationAddEthAddressBody> => {
+  const validAddress = validateEthAddress(body.addressArray());
   if (validAddress.isErr()) {
     return err(validAddress.error);
   }
 
-  const validBlockHash = validateEthBlockHash(message.body().blockHashArray());
+  const validBlockHash = validateEthBlockHash(body.blockHashArray());
   if (validBlockHash.isErr()) {
     return err(validBlockHash.error);
   }
 
-  const fidBigNumber = bytesToBigNumber(message.fid());
-  if (fidBigNumber.isErr()) {
-    return err(fidBigNumber.error);
-  }
+  // TODO: validate eth signature
 
-  const addressHex = bytesToHexString(validAddress.value);
-  if (addressHex.isErr()) {
-    return err(addressHex.error);
-  }
-
-  const blockHashHex = bytesToHexString(validBlockHash.value);
-  if (blockHashHex.isErr()) {
-    return err(blockHashHex.error);
-  }
-
-  const reconstructedClaim: VerificationEthAddressClaim = {
-    fid: fidBigNumber.value,
-    address: addressHex.value,
-    network: message.network(),
-    blockHash: blockHashHex.value,
-  };
-
-  const recoveredAddress = eip712.verifyVerificationEthAddressClaimSignature(
-    reconstructedClaim,
-    message.body().ethSignatureArray() ?? new Uint8Array()
-  );
-
-  if (recoveredAddress.isErr()) {
-    return err(new HubError('bad_request.validation_failure', 'invalid ethSignature'));
-  }
-
-  if (bytesCompare(recoveredAddress.value, validAddress.value) !== 0) {
-    return err(new HubError('bad_request.validation_failure', 'ethSignature does not match address'));
-  }
-
-  return ok(message);
+  return ok(body);
 };
 
-export const validateVerificationRemoveMessage = (
-  message: types.VerificationRemoveModel
-): HubResult<types.VerificationRemoveModel> => {
-  return validateEthAddress(message.body().addressArray()).map(() => message);
+export const validateVerificationRemoveBody = (
+  body: flatbuffers.VerificationRemoveBody
+): HubResult<flatbuffers.VerificationRemoveBody> => {
+  return validateEthAddress(body.addressArray()).map(() => body);
 };
 
-export const validateSignerMessage = (
-  message: types.SignerAddModel | types.SignerRemoveModel
-): HubResult<types.SignerAddModel | types.SignerRemoveModel> => {
-  return validateEd25519PublicKey(message.body().signerArray()).map(() => message);
+export const validateSignerBody = (body: flatbuffers.SignerBody): HubResult<flatbuffers.SignerBody> => {
+  return validateEd25519PublicKey(body.signerArray()).map(() => body);
 };
 
-export const validateAmpMessage = (
-  message: types.AmpAddModel | types.AmpRemoveModel
-): HubResult<types.AmpAddModel | types.AmpRemoveModel> => {
-  return validateFid(message.body().user()?.fidArray()).map(() => message);
+export const validateAmpBody = (body: flatbuffers.AmpBody): HubResult<flatbuffers.AmpBody> => {
+  return validateFid(body.user()?.fidArray()).map(() => body);
 };
 
-export const validateUserDataAddMessage = (message: types.UserDataAddModel): HubResult<types.UserDataAddModel> => {
-  const value = message.body().value();
-  if (message.body().type() === flatbuffers.UserDataType.Pfp) {
+export const validateUserDataAddBody = (body: flatbuffers.UserDataBody): HubResult<flatbuffers.UserDataBody> => {
+  const value = body.value();
+  if (body.type() === flatbuffers.UserDataType.Pfp) {
     if (value && value.length > 256) {
       return err(new HubError('bad_request.validation_failure', 'pfp value > 256'));
     }
-  } else if (message.body().type() === flatbuffers.UserDataType.Display) {
+  } else if (body.type() === flatbuffers.UserDataType.Display) {
     if (value && value.length > 32) {
       return err(new HubError('bad_request.validation_failure', 'display value > 32'));
     }
-  } else if (message.body().type() === flatbuffers.UserDataType.Bio) {
+  } else if (body.type() === flatbuffers.UserDataType.Bio) {
     if (value && value.length > 256) {
       return err(new HubError('bad_request.validation_failure', 'bio value > 256'));
     }
-  } else if (message.body().type() === flatbuffers.UserDataType.Location) {
+  } else if (body.type() === flatbuffers.UserDataType.Location) {
     if (value && value.length > 32) {
       return err(new HubError('bad_request.validation_failure', 'location value > 32'));
     }
-  } else if (message.body().type() === flatbuffers.UserDataType.Url) {
+  } else if (body.type() === flatbuffers.UserDataType.Url) {
     if (value && value.length > 256) {
       return err(new HubError('bad_request.validation_failure', 'url value > 256'));
     }
-  } else if (message.body().type() === flatbuffers.UserDataType.Fname) {
+  } else if (body.type() === flatbuffers.UserDataType.Fname) {
     // TODO: Validate fname characteristics
     if (value && value.length > 32) {
       return err(new HubError('bad_request.validation_failure', 'fname value > 32'));
@@ -272,5 +432,5 @@ export const validateUserDataAddMessage = (message: types.UserDataAddModel): Hub
     return err(new HubError('bad_request.validation_failure', 'invalid user data type'));
   }
 
-  return ok(message);
+  return ok(body);
 };

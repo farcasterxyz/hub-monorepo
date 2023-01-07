@@ -1,11 +1,10 @@
 import * as flatbuffers from '@hub/flatbuffers';
 import { blake3 } from '@noble/hashes/blake3';
-import { bytesToBigNumber, bytesToHexString } from './bytes';
 import * as ed25519 from './crypto/ed25519';
 import { verifyVerificationEthAddressClaimSignature } from './crypto/eip712';
 import { Factories } from './factories';
 import { toFarcasterTime } from './time';
-import { VerificationEthAddressClaim } from './types';
+import { makeVerificationEthAddressClaim } from './verifications';
 
 describe('UserIdFactory', () => {
   test('accepts fid', async () => {
@@ -87,16 +86,14 @@ describe('VerificationAddEthAddressBodyFactory', () => {
   test('generates valid ethSignature', async () => {
     const signature = body.ethSignatureArray();
     expect(signature).toBeTruthy();
-    const addressHex = bytesToHexString(body.addressArray() ?? new Uint8Array(), { size: 40 })._unsafeUnwrap();
-    const blockHashHex = bytesToHexString(body.blockHashArray() ?? new Uint8Array(), { size: 64 })._unsafeUnwrap();
-    const reconstructedClaim: VerificationEthAddressClaim = {
-      fid: bytesToBigNumber(fid)._unsafeUnwrap(),
-      address: addressHex,
+    const reconstructedClaim = makeVerificationEthAddressClaim(
+      fid,
+      body.addressArray() ?? new Uint8Array(),
       network,
-      blockHash: blockHashHex,
-    };
+      body.blockHashArray() ?? new Uint8Array()
+    );
     const verifiedAddress = await verifyVerificationEthAddressClaimSignature(
-      reconstructedClaim,
+      reconstructedClaim._unsafeUnwrap(),
       signature ?? new Uint8Array()
     );
     expect(verifiedAddress._unsafeUnwrap()).toEqual(body.addressArray());

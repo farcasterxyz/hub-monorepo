@@ -3,7 +3,7 @@ import { Wallet } from 'ethers';
 import { hexStringToBytes } from '../bytes';
 import { eip712 } from '../crypto';
 import { HubAsyncResult } from '../errors';
-import { VerificationEthAddressClaim } from '../types';
+import { VerificationEthAddressClaim } from '../verifications';
 import { Signer } from './signer';
 
 export class Eip712Signer extends Signer {

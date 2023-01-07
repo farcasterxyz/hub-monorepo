@@ -1,4 +1,4 @@
-import { CastId, IdRegistryEventType, MessageType, NameRegistryEventType } from '@hub/flatbuffers';
+import { CastId, IdRegistryEventType, NameRegistryEventType } from '@hub/flatbuffers';
 import { Factories, HubError } from '@hub/utils';
 import { err, ok } from 'neverthrow';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
@@ -171,18 +171,6 @@ describe('mergeMessage', () => {
     beforeEach(async () => {
       await engine.mergeIdRegistryEvent(custodyEvent);
       await engine.mergeMessage(signerAdd);
-    });
-
-    test('fails with invalid message type', async () => {
-      class MessageModelStub extends MessageModel {
-        override type(): MessageType {
-          return 100 as MessageType; // Invalid message type
-        }
-      }
-      const invalidMessage = new MessageModelStub(castAdd.message);
-      const result = await engine.mergeMessage(invalidMessage);
-      expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request', 'unknown message type'));
-      expect(mergedMessages).toEqual([signerAdd]);
     });
 
     describe('CastAdd', () => {
