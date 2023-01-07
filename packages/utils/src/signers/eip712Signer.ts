@@ -9,6 +9,7 @@ import { Signer } from './signer';
 export class Eip712Signer extends Signer {
   /** 32-byte wallet address */
   public declare readonly signerKey: Uint8Array;
+  public readonly privateKey: Uint8Array;
   private readonly wallet: Wallet;
 
   constructor(privateKey: Uint8Array) {
@@ -18,8 +19,9 @@ export class Eip712Signer extends Signer {
     if (signerKey.isErr()) {
       throw signerKey.error;
     }
-    super(SignatureScheme.Eip712, privateKey, signerKey.value, addressHex);
+    super(SignatureScheme.Eip712, signerKey.value, addressHex);
     this.wallet = wallet;
+    this.privateKey = privateKey;
   }
 
   /** generates 256-bit signature from an Ethereum address */

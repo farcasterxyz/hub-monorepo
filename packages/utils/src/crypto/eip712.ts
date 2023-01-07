@@ -1,8 +1,22 @@
-import { utils, Wallet } from 'ethers';
+import { Signer, TypedDataDomain, TypedDataField, utils } from 'ethers';
 import { err } from 'neverthrow';
 import { bytesToHexString, hexStringToBytes } from '../bytes';
-import { HubAsyncResult, HubResult } from '../errors';
+import { HubAsyncResult, HubError, HubResult } from '../errors';
 import { VerificationEthAddressClaim } from '../types';
+
+/**
+ * _signTypedData is an experimental feature and sub-classes may not implement
+ * the function.
+ *
+ * @see https://docs.ethers.org/v5/single-page/#/v5/api/signer/-%23-Signer-signTypedData
+ */
+type MaybeTypedDataSigner = Signer & {
+  _signTypedData?: (
+    domain: TypedDataDomain,
+    types: Record<string, Array<TypedDataField>>,
+    value: Record<string, any>
+  ) => Promise<string>;
+};
 
 export const EIP_712_FARCASTER_DOMAIN = {
   name: 'Farcaster Verify Ethereum Address',
@@ -39,9 +53,13 @@ export const EIP_712_FARCASTER_MESSAGE_DATA = [
 
 export const signVerificationEthAddressClaim = async (
   claim: VerificationEthAddressClaim,
-  wallet: Wallet
+  signer: MaybeTypedDataSigner
 ): HubAsyncResult<Uint8Array> => {
-  const hexSignature = await wallet._signTypedData(
+  if (signer._signTypedData === undefined) {
+    return err(new HubError('bad_request', 'Provided Signer does not implement _signTypedData'));
+  }
+
+  const hexSignature = await signer._signTypedData(
     EIP_712_FARCASTER_DOMAIN,
     { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
     claim
@@ -71,8 +89,12 @@ export const verifyVerificationEthAddressClaimSignature = (
   return hexStringToBytes(recoveredHexAddress, { endianness: 'little' });
 };
 
-export const signMessageHash = async (hash: Uint8Array, wallet: Wallet): HubAsyncResult<Uint8Array> => {
-  const hexSignature = await wallet._signTypedData(
+export const signMessageHash = async (hash: Uint8Array, signer: MaybeTypedDataSigner): HubAsyncResult<Uint8Array> => {
+  if (signer._signTypedData === undefined) {
+    return err(new HubError('bad_request', 'Provided Signer does not implement _signTypedData'));
+  }
+
+  const hexSignature = await signer._signTypedData(
     EIP_712_FARCASTER_DOMAIN,
     { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
     { hash }

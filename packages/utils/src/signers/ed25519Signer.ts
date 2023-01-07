@@ -7,6 +7,7 @@ import { Signer } from './signer';
 export class Ed25519Signer extends Signer {
   /** 32-byte public key */
   public declare readonly signerKey: Uint8Array;
+  public readonly privateKey: Uint8Array;
 
   constructor(privateKey: Uint8Array) {
     const publicKeyBytes = ed25519.getPublicKeySync(privateKey);
@@ -14,7 +15,8 @@ export class Ed25519Signer extends Signer {
     if (publicKeyHex.isErr()) {
       throw publicKeyHex.error;
     }
-    super(SignatureScheme.Ed25519, privateKey, publicKeyBytes, publicKeyHex.value);
+    super(SignatureScheme.Ed25519, publicKeyBytes, publicKeyHex.value);
+    this.privateKey = privateKey;
   }
 
   /** generates 256-bit signature from an EdDSA key pair */
