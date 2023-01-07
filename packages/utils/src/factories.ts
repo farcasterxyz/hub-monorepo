@@ -444,17 +444,14 @@ const Ed25519PrivateKeyFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build({}, { transient: { length: 32 } });
 });
 
-const Ed25519SignerFactory = Factory.define<Ed25519Signer, { privateKey?: Uint8Array }, Ed25519Signer>(
-  ({ transientParams }) => {
-    return new Ed25519Signer(transientParams.privateKey ?? Ed25519PrivateKeyFactory.build());
-  }
-);
+const Ed25519SignerFactory = Factory.define<Ed25519Signer>(() => {
+  return new Ed25519Signer(Ed25519PrivateKeyFactory.build());
+});
 
-const Eip712SignerFactory = Factory.define<Eip712Signer, { privateKey?: Uint8Array }, Eip712Signer>(
-  ({ transientParams }) => {
-    return new Eip712Signer(transientParams.privateKey ?? ethers.utils.randomBytes(32));
-  }
-);
+const Eip712SignerFactory = Factory.define<Eip712Signer>(() => {
+  const wallet = new ethers.Wallet(ethers.utils.randomBytes(32));
+  return new Eip712Signer(wallet, wallet.address);
+});
 
 export const Factories = {
   Bytes: BytesFactory,

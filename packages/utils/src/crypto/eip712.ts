@@ -1,4 +1,5 @@
-import { utils, Wallet } from 'ethers';
+import { TypedDataSigner } from '@ethersproject/abstract-signer';
+import { utils } from 'ethers';
 import { err } from 'neverthrow';
 import { bytesToHexString, hexStringToBytes } from '../bytes';
 import { HubAsyncResult, HubResult } from '../errors';
@@ -39,9 +40,9 @@ export const EIP_712_FARCASTER_MESSAGE_DATA = [
 
 export const signVerificationEthAddressClaim = async (
   claim: VerificationEthAddressClaim,
-  wallet: Wallet
+  ethersTypedDataSigner: TypedDataSigner
 ): HubAsyncResult<Uint8Array> => {
-  const hexSignature = await wallet._signTypedData(
+  const hexSignature = await ethersTypedDataSigner._signTypedData(
     EIP_712_FARCASTER_DOMAIN,
     { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
     claim
@@ -71,8 +72,11 @@ export const verifyVerificationEthAddressClaimSignature = (
   return hexStringToBytes(recoveredHexAddress, { endianness: 'little' });
 };
 
-export const signMessageHash = async (hash: Uint8Array, wallet: Wallet): HubAsyncResult<Uint8Array> => {
-  const hexSignature = await wallet._signTypedData(
+export const signMessageHash = async (
+  hash: Uint8Array,
+  ethersTypedDataSigner: TypedDataSigner
+): HubAsyncResult<Uint8Array> => {
+  const hexSignature = await ethersTypedDataSigner._signTypedData(
     EIP_712_FARCASTER_DOMAIN,
     { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
     { hash }
