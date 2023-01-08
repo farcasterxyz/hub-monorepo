@@ -1,76 +1,76 @@
 import { bytesToHexString, Factories } from '@hub/utils';
 import {
-  ed25519PublicKeyFromJson,
-  ed25519PublicKeyToJson,
-  ethAddressFromJson,
-  ethAddressToJson,
-  fidFromJson,
-  fidToJson,
-  tsHashFromJson,
-  tsHashToJson,
-} from './json';
+  deserializeEd25519PublicKey,
+  deserializeEthAddress,
+  deserializeFid,
+  deserializeTsHash,
+  serializeEd25519PublicKey,
+  serializeEthAddress,
+  serializeFid,
+  serializeTsHash,
+} from './utils';
 
 const fidPassingCases: [Uint8Array, number][] = [
   [new Uint8Array([1]), 1],
   [new Uint8Array([64, 66, 15]), 1_000_000],
 ];
 
-describe('fidToJson', () => {
+describe('deserializeFid', () => {
   for (const [input, output] of fidPassingCases) {
     test(`succeeds: ${input}`, () => {
-      expect(fidToJson(input)._unsafeUnwrap()).toEqual(output);
+      expect(deserializeFid(input)._unsafeUnwrap()).toEqual(output);
     });
   }
 });
 
-describe('fidFromJson', () => {
+describe('serializeFid', () => {
   for (const [output, input] of fidPassingCases) {
     test(`succeeds: ${input}`, () => {
-      expect(fidFromJson(input)._unsafeUnwrap()).toEqual(output);
+      expect(serializeFid(input)._unsafeUnwrap()).toEqual(output);
     });
   }
 });
 
 const ethWallet = Factories.Eip712Signer.build();
 
-describe('ethAddressToJson', () => {
+describe('deserializeEthAddress', () => {
   test('succeeds', () => {
-    expect(ethAddressToJson(ethWallet.signerKey)._unsafeUnwrap()).toEqual(ethWallet.signerKeyHex);
+    expect(deserializeEthAddress(ethWallet.signerKey)._unsafeUnwrap()).toEqual(ethWallet.signerKeyHex);
   });
 });
 
-describe('ethAddressFromJson', () => {
+describe('serializeEthAddress', () => {
   test('succeeds', () => {
-    expect(ethAddressFromJson(ethWallet.signerKeyHex)._unsafeUnwrap()).toEqual(ethWallet.signerKey);
+    expect(serializeEthAddress(ethWallet.signerKeyHex)._unsafeUnwrap()).toEqual(ethWallet.signerKey);
   });
 });
 
 const ed25519Signer = Factories.Ed25519Signer.build();
 
-describe('ed25519PublicKeyToJson', () => {
+describe('deserializeEd25519PublicKey', () => {
   test('succeeds', () => {
-    expect(ed25519PublicKeyToJson(ed25519Signer.signerKey)._unsafeUnwrap()).toEqual(ed25519Signer.signerKeyHex);
+    expect(deserializeEd25519PublicKey(ed25519Signer.signerKey)._unsafeUnwrap()).toEqual(ed25519Signer.signerKeyHex);
   });
 });
 
-describe('ed25519PublicKeyFromJson', () => {
+describe('serializeEd25519PublicKey', () => {
   test('succeeds', () => {
-    expect(ed25519PublicKeyFromJson(ed25519Signer.signerKeyHex)._unsafeUnwrap()).toEqual(ed25519Signer.signerKey);
+    expect(serializeEd25519PublicKey(ed25519Signer.signerKeyHex)._unsafeUnwrap()).toEqual(ed25519Signer.signerKey);
   });
 });
 
 const tsHash = Factories.TsHash.build();
 const tsHashHex = bytesToHexString(tsHash, { size: 40 })._unsafeUnwrap();
 
-describe('tsHashToJson', () => {
+describe('deserializeTsHash', () => {
   test('succeeds', () => {
-    expect(tsHashToJson(tsHash)._unsafeUnwrap()).toEqual(tsHashHex);
+    expect(deserializeTsHash(tsHash)._unsafeUnwrap()).toEqual(tsHashHex);
   });
 });
 
-describe('tsHashFromJson', () => {
+describe('serializeTsHash', () => {
   test('succeeds', () => {
-    expect(tsHashFromJson(tsHashHex)._unsafeUnwrap()).toEqual(tsHash);
+    expect(serializeTsHash(tsHashHex)._unsafeUnwrap()).toEqual(tsHash);
   });
 });
 
