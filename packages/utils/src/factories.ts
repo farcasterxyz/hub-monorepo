@@ -4,11 +4,11 @@ import { blake3 } from '@noble/hashes/blake3';
 import { ethers } from 'ethers';
 import { Factory } from 'fishery';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import { hexStringToBytes, numberToBytes } from './bytes';
+import { bytesToBigNumber, hexStringToBytes, numberToBytes } from './bytes';
 import { Ed25519Signer, Eip712Signer } from './signers';
 import { toFarcasterTime } from './time';
 import { toTsHash } from './tsHash';
-import { makeVerificationEthAddressClaim } from './verifications';
+import { makeVerificationEthAddressClaim, VerificationEthAddressClaim } from './verifications';
 
 /* eslint-disable security/detect-object-injection */
 const BytesFactory = Factory.define<Uint8Array, { length?: number }>(({ transientParams }) => {
@@ -207,6 +207,19 @@ const ReactionRemoveDataFactory = Factory.define<flatbuffers.MessageDataT, any, 
       body: ReactionBodyFactory.build(),
       type: flatbuffers.MessageType.ReactionRemove,
     });
+  }
+);
+
+const VerificationEthAddressClaimFactory = Factory.define<VerificationEthAddressClaim, { signer?: Eip712Signer }>(
+  ({ transientParams }) => {
+    const signer = transientParams.signer ?? Eip712SignerFactory.build();
+
+    return {
+      fid: bytesToBigNumber(FIDFactory.build())._unsafeUnwrap(),
+      network: flatbuffers.FarcasterNetwork.Testnet,
+      address: signer.signerKeyHex,
+      blockHash: BlockHashFactory.build(),
+    };
   }
 );
 
@@ -453,6 +466,10 @@ const Eip712SignerFactory = Factory.define<Eip712Signer>(() => {
   return new Eip712Signer(wallet, wallet.address);
 });
 
+const ReactionTypeFactory = Factory.define<flatbuffers.ReactionType>(() => {
+  return faker.helpers.arrayElement([flatbuffers.ReactionType.Like, flatbuffers.ReactionType.Recast]);
+});
+
 export const Factories = {
   Bytes: BytesFactory,
   FID: FIDFactory,
@@ -472,6 +489,7 @@ export const Factories = {
   AmpBody: AmpBodyFactory,
   AmpAddData: AmpAddDataFactory,
   AmpRemoveData: AmpRemoveDataFactory,
+  VerificationEthAddressClaim: VerificationEthAddressClaimFactory,
   VerificationAddEthAddressBody: VerificationAddEthAddressBodyFactory,
   VerificationAddEthAddressData: VerificationAddEthAddressDataFactory,
   VerificationRemoveBody: VerificationRemoveBodyFactory,
@@ -487,4 +505,5 @@ export const Factories = {
   Ed25519PrivateKey: Ed25519PrivateKeyFactory,
   Ed25519Signer: Ed25519SignerFactory,
   Eip712Signer: Eip712SignerFactory,
+  ReactionType: ReactionTypeFactory,
 };
