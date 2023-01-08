@@ -24,12 +24,12 @@ const eip712Signer = Factories.Eip712Signer.build();
 
 describe('makeCastAdd', () => {
   test('succeeds', async () => {
-    const castAdd = await makeCastAdd(
+    const body = await makeCastAdd(
       { text: faker.random.alphaNumeric(200) },
       { fid, timestamp, network },
       ed25519Signer
     );
-    const isValid = await validateMessage(castAdd._unsafeUnwrap());
+    const isValid = await validateMessage(body._unsafeUnwrap());
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -39,8 +39,8 @@ describe('makeCastRemove', () => {
   const tsHashHex = bytesToHexString(tsHash)._unsafeUnwrap();
 
   test('succeeds', async () => {
-    const castAdd = await makeCastRemove({ targetTsHash: tsHashHex }, { fid, timestamp, network }, ed25519Signer);
-    const isValid = await validateMessage(castAdd._unsafeUnwrap());
+    const body = await makeCastRemove({ targetTsHash: tsHashHex }, { fid, timestamp, network }, ed25519Signer);
+    const isValid = await validateMessage(body._unsafeUnwrap());
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -51,12 +51,12 @@ describe('makeReactionAdd', () => {
   const reactionType = Factories.ReactionType.build();
 
   test('succeeds', async () => {
-    const castAdd = await makeReactionAdd(
+    const body = await makeReactionAdd(
       { type: reactionType, target: { fid, tsHash: tsHashHex } },
       { fid, timestamp, network },
       ed25519Signer
     );
-    const isValid = await validateMessage(castAdd._unsafeUnwrap());
+    const isValid = await validateMessage(body._unsafeUnwrap());
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -67,12 +67,12 @@ describe('makeReactionRemove', () => {
   const reactionType = Factories.ReactionType.build();
 
   test('succeeds', async () => {
-    const castAdd = await makeReactionRemove(
+    const body = await makeReactionRemove(
       { type: reactionType, target: { fid, tsHash: tsHashHex } },
       { fid, timestamp, network },
       ed25519Signer
     );
-    const isValid = await validateMessage(castAdd._unsafeUnwrap());
+    const isValid = await validateMessage(body._unsafeUnwrap());
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -82,8 +82,8 @@ describe('makeAmpAdd', () => {
   const userNumber = bytesToNumber(user)._unsafeUnwrap();
 
   test('succeeds', async () => {
-    const castAdd = await makeAmpAdd({ user: userNumber }, { fid, timestamp, network }, ed25519Signer);
-    const isValid = await validateMessage(castAdd._unsafeUnwrap());
+    const body = await makeAmpAdd({ user: userNumber }, { fid, timestamp, network }, ed25519Signer);
+    const isValid = await validateMessage(body._unsafeUnwrap());
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -93,8 +93,8 @@ describe('makeAmpRemove', () => {
   const userNumber = bytesToNumber(user)._unsafeUnwrap();
 
   test('succeeds', async () => {
-    const castAdd = await makeAmpRemove({ user: userNumber }, { fid, timestamp, network }, ed25519Signer);
-    const isValid = await validateMessage(castAdd._unsafeUnwrap());
+    const body = await makeAmpRemove({ user: userNumber }, { fid, timestamp, network }, ed25519Signer);
+    const isValid = await validateMessage(body._unsafeUnwrap());
     expect(isValid.isOk()).toBeTruthy();
   });
 });

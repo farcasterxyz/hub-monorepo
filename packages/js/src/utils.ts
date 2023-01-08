@@ -391,5 +391,3 @@ export const serializeReactionBody = (body: types.ReactionBody): HubResult<flatb
     return new flatbuffers.ReactionBodyT(flatbuffers.TargetId.CastId, target, body.type);
   });
 };
-
-// TODO: reactionBodyFromJson
