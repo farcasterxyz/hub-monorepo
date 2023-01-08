@@ -4,11 +4,11 @@ import { blake3 } from '@noble/hashes/blake3';
 import { ethers } from 'ethers';
 import { Factory } from 'fishery';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import { bytesToBigNumber, bytesToHexString, hexStringToBytes, numberToBytes } from './bytes';
+import { hexStringToBytes, numberToBytes } from './bytes';
 import { Ed25519Signer, Eip712Signer } from './signers';
 import { toFarcasterTime } from './time';
 import { toTsHash } from './tsHash';
-import { VerificationEthAddressClaim } from './types';
+import { makeVerificationEthAddressClaim } from './verifications';
 
 /* eslint-disable security/detect-object-injection */
 const BytesFactory = Factory.define<Uint8Array, { length?: number }>(({ transientParams }) => {
@@ -221,12 +221,12 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
     params.address = Array.from(signer.signerKey);
 
     const fid = transientParams.fid ?? FIDFactory.build();
-    const claim: VerificationEthAddressClaim = {
-      fid: bytesToBigNumber(fid)._unsafeUnwrap(),
-      address: signer.signerKeyHex,
-      network: transientParams.network ?? flatbuffers.FarcasterNetwork.Testnet,
-      blockHash: bytesToHexString(Uint8Array.from(params.blockHash))._unsafeUnwrap(),
-    };
+    const claim = makeVerificationEthAddressClaim(
+      fid,
+      signer.signerKey,
+      transientParams.network ?? flatbuffers.FarcasterNetwork.Testnet,
+      Uint8Array.from(params.blockHash)
+    )._unsafeUnwrap();
     const ethSignature = await signer.signVerificationEthAddressClaim(claim);
     params.ethSignature = Array.from(ethSignature._unsafeUnwrap());
 
@@ -444,17 +444,14 @@ const Ed25519PrivateKeyFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build({}, { transient: { length: 32 } });
 });
 
-const Ed25519SignerFactory = Factory.define<Ed25519Signer, { privateKey?: Uint8Array }, Ed25519Signer>(
-  ({ transientParams }) => {
-    return new Ed25519Signer(transientParams.privateKey ?? Ed25519PrivateKeyFactory.build());
-  }
-);
+const Ed25519SignerFactory = Factory.define<Ed25519Signer>(() => {
+  return new Ed25519Signer(Ed25519PrivateKeyFactory.build());
+});
 
-const Eip712SignerFactory = Factory.define<Eip712Signer, { privateKey?: Uint8Array }, Eip712Signer>(
-  ({ transientParams }) => {
-    return new Eip712Signer(transientParams.privateKey ?? ethers.utils.randomBytes(32));
-  }
-);
+const Eip712SignerFactory = Factory.define<Eip712Signer>(() => {
+  const wallet = new ethers.Wallet(ethers.utils.randomBytes(32));
+  return new Eip712Signer(wallet, wallet.address);
+});
 
 export const Factories = {
   Bytes: BytesFactory,

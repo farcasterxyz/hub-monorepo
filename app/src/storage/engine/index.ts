@@ -1,5 +1,5 @@
 import * as flatbuffers from '@hub/flatbuffers';
-import { bytesCompare, bytesToNumber, HubAsyncResult, HubError, HubResult } from '@hub/utils';
+import { bytesCompare, bytesToNumber, HubAsyncResult, HubError, HubResult, validations } from '@hub/utils';
 import { err, errAsync, ok, ResultAsync } from 'neverthrow';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel, { FID_BYTES } from '~/flatbuffers/models/messageModel';
@@ -7,7 +7,6 @@ import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel'
 import { isSignerAdd, isSignerRemove, isUserDataAdd } from '~/flatbuffers/models/typeguards';
 import * as types from '~/flatbuffers/models/types';
 import { RootPrefix } from '~/flatbuffers/models/types';
-import * as validations from '~/flatbuffers/models/validations';
 import { SyncId } from '~/network/sync/syncId';
 import RocksDB from '~/storage/db/rocksdb';
 import AmpStore from '~/storage/stores/ampStore';
@@ -540,7 +539,9 @@ class Engine {
     }
 
     // 4. Check message body and envelope (will throw HubError if invalid)
-    return validations.validateMessage(message);
+    const validMessage = await validations.validateMessage(message.message);
+
+    return validMessage.map(() => message);
   }
 }
 

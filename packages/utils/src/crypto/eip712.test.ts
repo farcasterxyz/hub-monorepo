@@ -4,7 +4,7 @@ import { blake3 } from '@noble/hashes/blake3';
 import { BigNumber, utils, Wallet } from 'ethers';
 import { bytesToHexString, hexStringToBytes } from '../bytes';
 import { Factories } from '../factories';
-import { VerificationEthAddressClaim } from '../types';
+import { VerificationEthAddressClaim } from '../verifications';
 import * as eip712 from './eip712';
 
 const wallet = new Wallet(utils.randomBytes(32));

@@ -5,22 +5,24 @@ import { randomBytes } from 'ethers/lib/utils';
 import { bytesToHexString, hexStringToBytes } from '../bytes';
 import { eip712 } from '../crypto';
 import { Factories } from '../factories';
-import { VerificationEthAddressClaim } from '../types';
-import { Eip712Signer } from './eip712Signer';
+import { VerificationEthAddressClaim } from '../verifications';
+import { Eip712Signer, TypedDataSigner } from './eip712Signer';
 
 describe('Eip712Signer', () => {
   let signer: Eip712Signer;
-  let privateKey: Uint8Array;
+  let typedDataSigner: TypedDataSigner;
+  let ethAddress: string;
 
   beforeAll(async () => {
-    privateKey = randomBytes(32);
-    signer = new Eip712Signer(privateKey);
+    typedDataSigner = new ethers.Wallet(ethers.utils.randomBytes(32));
+    ethAddress = await typedDataSigner.getAddress();
+    signer = new Eip712Signer(typedDataSigner, ethAddress);
   });
 
   describe('static methods', () => {
     describe('constructor', () => {
       test('derives signer key', () => {
-        expect(signer.signerKey).toEqual(hexStringToBytes(ethers.utils.computeAddress(privateKey))._unsafeUnwrap());
+        expect(signer.signerKey).toEqual(hexStringToBytes(ethAddress)._unsafeUnwrap());
       });
     });
   });

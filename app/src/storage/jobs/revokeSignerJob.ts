@@ -1,12 +1,19 @@
 import { RevokeSignerJobPayload, RevokeSignerJobPayloadT } from '@hub/flatbuffers';
-import { bytesIncrement, bytesToNumber, HubAsyncResult, HubError, HubResult, numberToBytes } from '@hub/utils';
+import {
+  bytesIncrement,
+  bytesToNumber,
+  HubAsyncResult,
+  HubError,
+  HubResult,
+  numberToBytes,
+  validations,
+} from '@hub/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { err, ok, ResultAsync } from 'neverthrow';
 import cron from 'node-cron';
 import AbstractRocksDB from 'rocksdb';
 import { RootPrefix } from '~/flatbuffers/models/types';
-import { validateEd25519PublicKey, validateEthAddress, validateFid } from '~/flatbuffers/models/validations';
 import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
@@ -84,13 +91,13 @@ export class RevokeSignerJobQueue {
   }
 
   static validatePayload(payload: RevokeSignerJobPayload): HubResult<RevokeSignerJobPayload> {
-    const fidResult = validateFid(payload.fidArray());
+    const fidResult = validations.validateFid(payload.fidArray());
     if (fidResult.isErr()) {
       return err(fidResult.error);
     }
 
-    const ethSignerResult = validateEthAddress(payload.signerArray());
-    const ed25519SignerResult = validateEd25519PublicKey(payload.signerArray());
+    const ethSignerResult = validations.validateEthAddress(payload.signerArray());
+    const ed25519SignerResult = validations.validateEd25519PublicKey(payload.signerArray());
     if (ethSignerResult.isErr() && ed25519SignerResult.isErr()) {
       return err(new HubError('bad_request.validation_failure', 'signer is not a valid Ed25519 or Eth signer'));
     }
@@ -99,13 +106,13 @@ export class RevokeSignerJobQueue {
   }
 
   static makePayload(fid: Uint8Array, signer: Uint8Array): HubResult<RevokeSignerJobPayload> {
-    const fidResult = validateFid(fid);
+    const fidResult = validations.validateFid(fid);
     if (fidResult.isErr()) {
       return err(fidResult.error);
     }
 
-    const ethSignerResult = validateEthAddress(signer);
-    const ed25519SignerResult = validateEd25519PublicKey(signer);
+    const ethSignerResult = validations.validateEthAddress(signer);
+    const ed25519SignerResult = validations.validateEd25519PublicKey(signer);
     if (ethSignerResult.isErr() && ed25519SignerResult.isErr()) {
       return err(new HubError('bad_request.validation_failure', 'signer is not a valid Ed25519 or Eth signer'));
     }
