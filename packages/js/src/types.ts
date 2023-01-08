@@ -16,9 +16,9 @@ export type Message<TData = MessageData> = {
   signer: string; // Hex string
 };
 
-export type MessageData<TBody = MessageBody> = {
+export type MessageData<TBody = MessageBody, TType = MessageType> = {
   body: TBody;
-  type: MessageType;
+  type: TType;
   timestamp: number;
   fid: number;
   network: FarcasterNetwork;
