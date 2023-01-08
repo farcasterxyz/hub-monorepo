@@ -205,17 +205,7 @@ export const deserializeTarget = (
     return ok(undefined);
   }
 
-  const targetIdScalars = Result.combine([
-    deserializeFid(target.fidArray() ?? new Uint8Array()),
-    deserializeTsHash(target.tsHashArray() ?? new Uint8Array()),
-  ]);
-
-  if (targetIdScalars.isErr()) {
-    return err(targetIdScalars.error);
-  }
-
-  const [fid, tsHash] = targetIdScalars.value;
-  return ok({ fid, tsHash });
+  return deserializeCastId(target);
 };
 
 export const serializeCastAddBody = (body: types.CastAddBody): HubResult<flatbuffers.CastAddBodyT> => {
@@ -270,15 +260,17 @@ export const serializeCastRemoveBody = (body: types.CastRemoveBody): HubResult<f
 };
 
 export const deserializeAmpBody = (fbb: flatbuffers.AmpBody): HubResult<types.AmpBody> => {
-  const fid = deserializeFid(fbb.user()?.fidArray() ?? new Uint8Array());
-  if (fid.isErr()) {
-    return err(fid.error);
-  }
-
-  return ok({ user: fid.value });
+  return deserializeFid(fbb.user()?.fidArray() ?? new Uint8Array()).map((fid) => {
+    return { user: fid };
+  });
 };
 
-// TODO: ampBodyFromJson
+export const serializeAmpBody = (body: types.AmpBody): HubResult<flatbuffers.AmpBodyT> => {
+  return serializeFid(body.user).map((fid) => {
+    const userT = new flatbuffers.UserIdT(Array.from(fid));
+    return new flatbuffers.AmpBodyT(userT);
+  });
+};
 
 export const deserializeVerificationAddEthAddressBody = (
   fbb: flatbuffers.VerificationAddEthAddressBody
@@ -309,22 +301,41 @@ export const deserializeVerificationAddEthAddressBody = (
   });
 };
 
-// TODO: verificationAddEthAddressBodyFromJson
+export const serializeVerificationAddEthAddressBody = (
+  body: types.VerificationAddEthAddressBody
+): HubResult<flatbuffers.VerificationAddEthAddressBodyT> => {
+  return Result.combine([
+    serializeEthAddress(body.address),
+    hexStringToBytes(body.ethSignature),
+    hexStringToBytes(body.blockHash),
+  ]).map((values) => {
+    const [address, ethSignature, blockHash] = values;
+
+    return new flatbuffers.VerificationAddEthAddressBodyT(
+      Array.from(address),
+      Array.from(ethSignature),
+      Array.from(blockHash)
+    );
+  });
+};
 
 export const deserializeVerificationRemoveBody = (
   fbb: flatbuffers.VerificationRemoveBody
 ): HubResult<types.VerificationRemoveBody> => {
-  const addressJson = deserializeEthAddress(fbb.addressArray() ?? new Uint8Array());
-  if (addressJson.isErr()) {
-    return err(addressJson.error);
-  }
-
-  return ok({
-    address: addressJson.value,
+  return deserializeEthAddress(fbb.addressArray() ?? new Uint8Array()).map((address) => {
+    return {
+      address,
+    };
   });
 };
 
-// TODO: verificationRemoveBodyFromJson
+export const serializeVerificationRemoveBody = (
+  body: types.VerificationRemoveBody
+): HubResult<flatbuffers.VerificationRemoveBodyT> => {
+  return serializeEthAddress(body.address).map((address) => {
+    return new flatbuffers.VerificationRemoveBodyT(Array.from(address));
+  });
+};
 
 export const deserializeSignerBody = (fbb: flatbuffers.SignerBody): HubResult<types.SignerBody> => {
   const signerJson = deserializeEd25519PublicKey(fbb.signerArray() ?? new Uint8Array());
@@ -346,8 +357,6 @@ export const serializeSignerBody = (body: types.SignerBody): HubResult<flatbuffe
   return ok(new flatbuffers.SignerBodyT(Array.from(signer.value)));
 };
 
-// TODO: signerBodyFromJson
-
 export const deserializeUserDataBody = (fbb: flatbuffers.UserDataBody): HubResult<types.UserDataBody> => {
   const validUserDataBody = validations.validateUserDataAddBody(fbb);
   if (validUserDataBody.isErr()) {
@@ -360,7 +369,9 @@ export const deserializeUserDataBody = (fbb: flatbuffers.UserDataBody): HubResul
   });
 };
 
-// TODO: userDataBodyFromJson
+export const serializeUserDataBody = (body: types.UserDataBody): HubResult<flatbuffers.UserDataBodyT> => {
+  return ok(new flatbuffers.UserDataBodyT(body.type, body.value));
+};
 
 export const deserializeReactionBody = (fbb: flatbuffers.ReactionBody): HubResult<types.ReactionBody> => {
   // TODO: check targetType
@@ -372,6 +383,12 @@ export const deserializeReactionBody = (fbb: flatbuffers.ReactionBody): HubResul
   return ok({
     target: targetJson.value,
     type: fbb.type(),
+  });
+};
+
+export const serializeReactionBody = (body: types.ReactionBody): HubResult<flatbuffers.ReactionBodyT> => {
+  return serializeCastId(body.target).map((target) => {
+    return new flatbuffers.ReactionBodyT(flatbuffers.TargetId.CastId, target, body.type);
   });
 };
 

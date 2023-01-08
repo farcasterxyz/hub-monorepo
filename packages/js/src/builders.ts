@@ -1,14 +1,5 @@
 import * as flatbuffers from '@hub/flatbuffers';
-import {
-  Ed25519Signer,
-  Eip712Signer,
-  HubAsyncResult,
-  HubError,
-  HubResult,
-  Signer,
-  toFarcasterTime,
-  validations,
-} from '@hub/utils';
+import { HubAsyncResult, HubError, HubResult, MessageSigner, Signer, toFarcasterTime, validations } from '@hub/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { err, ok } from 'neverthrow';
@@ -31,15 +22,19 @@ type MessageBodyT =
   | flatbuffers.VerificationAddEthAddressBodyT
   | flatbuffers.VerificationRemoveBodyT;
 
-const buildMakeMessage = <TBodyJson, TSigner extends Signer, TMessageBodyT extends MessageBodyT = MessageBodyT>(
+const buildMakeMessage = <
+  TMessageType extends flatbuffers.MessageType,
+  TMessageBodyT extends MessageBodyT,
+  TBodyJson extends types.MessageBody
+>(
+  messageType: TMessageType,
   messageBody: flatbuffers.MessageBody,
-  messageType: flatbuffers.MessageType,
   bodyTFromJson: (bodyJson: TBodyJson) => HubResult<TMessageBodyT>
 ) => {
   return async (
     bodyJson: TBodyJson,
     dataOptions: MessageDataOptions,
-    signer: TSigner
+    signer: MessageSigner<TMessageType>
   ): HubAsyncResult<flatbuffers.Message> => {
     const bodyT = bodyTFromJson(bodyJson);
     if (bodyT.isErr()) {
@@ -58,30 +53,80 @@ const buildMakeMessage = <TBodyJson, TSigner extends Signer, TMessageBodyT exten
 
 /** Cast Methods */
 
-export const makeCastAdd = buildMakeMessage<types.CastAddBody, Ed25519Signer>(
-  flatbuffers.MessageBody.CastAddBody,
+export const makeCastAdd = buildMakeMessage(
   flatbuffers.MessageType.CastAdd,
+  flatbuffers.MessageBody.CastAddBody,
   utils.serializeCastAddBody
 );
 
-export const makeCastRemove = buildMakeMessage<types.CastRemoveBody, Ed25519Signer>(
-  flatbuffers.MessageBody.CastAddBody,
-  flatbuffers.MessageType.CastAdd,
+export const makeCastRemove = buildMakeMessage(
+  flatbuffers.MessageType.CastRemove,
+  flatbuffers.MessageBody.CastRemoveBody,
   utils.serializeCastRemoveBody
+);
+
+/** Amp Methods */
+
+export const makeReactionAdd = buildMakeMessage(
+  flatbuffers.MessageType.ReactionAdd,
+  flatbuffers.MessageBody.ReactionBody,
+  utils.serializeReactionBody
+);
+
+export const makeReactionRemove = buildMakeMessage(
+  flatbuffers.MessageType.ReactionRemove,
+  flatbuffers.MessageBody.ReactionBody,
+  utils.serializeReactionBody
+);
+
+/** Amp Methods */
+
+export const makeAmpAdd = buildMakeMessage(
+  flatbuffers.MessageType.AmpAdd,
+  flatbuffers.MessageBody.AmpBody,
+  utils.serializeAmpBody
+);
+
+export const makeAmpRemove = buildMakeMessage(
+  flatbuffers.MessageType.AmpRemove,
+  flatbuffers.MessageBody.AmpBody,
+  utils.serializeAmpBody
+);
+
+/** Verification Methods */
+
+export const makeVerificationAddEthAddress = buildMakeMessage(
+  flatbuffers.MessageType.VerificationAddEthAddress,
+  flatbuffers.MessageBody.VerificationAddEthAddressBody,
+  utils.serializeVerificationAddEthAddressBody
+);
+
+export const makeVerificationRemove = buildMakeMessage(
+  flatbuffers.MessageType.VerificationRemove,
+  flatbuffers.MessageBody.VerificationRemoveBody,
+  utils.serializeVerificationRemoveBody
 );
 
 /** Signer Methods */
 
-export const makeSignerAdd = buildMakeMessage<types.SignerBody, Eip712Signer>(
-  flatbuffers.MessageBody.SignerBody,
+export const makeSignerAdd = buildMakeMessage(
   flatbuffers.MessageType.SignerAdd,
+  flatbuffers.MessageBody.SignerBody,
   utils.serializeSignerBody
 );
 
-export const makeSignerRemove = buildMakeMessage<types.SignerBody, Eip712Signer>(
-  flatbuffers.MessageBody.SignerBody,
+export const makeSignerRemove = buildMakeMessage(
   flatbuffers.MessageType.SignerRemove,
+  flatbuffers.MessageBody.SignerBody,
   utils.serializeSignerBody
+);
+
+/** User Data Methods */
+
+export const makeUserDataAdd = buildMakeMessage(
+  flatbuffers.MessageType.UserDataAdd,
+  flatbuffers.MessageBody.UserDataBody,
+  utils.serializeUserDataBody
 );
 
 /** Internal methods */

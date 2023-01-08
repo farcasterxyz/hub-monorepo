@@ -1,9 +1,16 @@
 import { faker } from '@faker-js/faker';
 import * as flatbuffers from '@hub/flatbuffers';
-import { CastAddBody } from '@hub/flatbuffers';
-import { bytesToHexString, bytesToNumber, Factories } from '@hub/utils';
+import {
+  CastAddBody,
+  ReactionBody,
+  SignerBody,
+  VerificationAddEthAddressBody,
+  VerificationRemoveBody,
+} from '@hub/flatbuffers';
+import { bytesToHexString, bytesToNumber, Factories, hexStringToBytes } from '@hub/utils';
 import * as types from './types';
 import {
+  deserializeAmpBody,
   deserializeCastAddBody,
   deserializeCastId,
   deserializeCastRemoveBody,
@@ -12,15 +19,26 @@ import {
   deserializeEthAddress,
   deserializeFid,
   deserializeMentions,
+  deserializeReactionBody,
+  deserializeSignerBody,
   deserializeTarget,
   deserializeTsHash,
+  deserializeUserDataBody,
+  deserializeVerificationAddEthAddressBody,
+  deserializeVerificationRemoveBody,
+  serializeAmpBody,
   serializeCastAddBody,
   serializeCastId,
   serializeCastRemoveBody,
   serializeEd25519PublicKey,
   serializeEthAddress,
   serializeFid,
+  serializeReactionBody,
+  serializeSignerBody,
   serializeTsHash,
+  serializeUserDataBody,
+  serializeVerificationAddEthAddressBody,
+  serializeVerificationRemoveBody,
 } from './utils';
 
 const fidPassingCases: [Uint8Array, number][] = [
@@ -299,6 +317,35 @@ describe('deserializeCastRemoveBody', () => {
   });
 });
 
+describe('serializeAmpBody', () => {
+  const fid = Factories.FID.build();
+  const fidNumber = bytesToNumber(fid)._unsafeUnwrap();
+  const body = serializeAmpBody({
+    user: fidNumber,
+  })._unsafeUnwrap();
+
+  test('user', () => {
+    expect(body.user?.fid).toEqual(Array.from(fid));
+  });
+});
+
+describe('deserializeAmpBody', () => {
+  let serializedBody: flatbuffers.AmpBody;
+  let body: types.AmpBody;
+  const fid = Factories.FID.build();
+  const fidNumber = bytesToNumber(fid)._unsafeUnwrap();
+  const user = Factories.UserId.build({ fid: Array.from(fid) });
+
+  beforeAll(async () => {
+    serializedBody = await Factories.AmpBody.create({ user });
+    body = deserializeAmpBody(serializedBody)._unsafeUnwrap();
+  });
+
+  test('user', () => {
+    expect(body.user).toBe(fidNumber);
+  });
+});
+
 describe('serializeCastRemoveBody', () => {
   test('succeeds', () => {
     const castRemoveBodyT = serializeCastRemoveBody({ targetTsHash: tsHashHex })._unsafeUnwrap();
@@ -306,20 +353,225 @@ describe('serializeCastRemoveBody', () => {
   });
 });
 
-// TODO: ampBodyToJson
-// TODO: ampBodyFromJson
+describe('deserializeVerificationAddEthAddressBody', () => {
+  let serializedBody: VerificationAddEthAddressBody;
+  let body: types.VerificationAddEthAddressBody;
+  const signer = Factories.Eip712Signer.build();
+  const blockHash = Factories.BlockHash.build();
+  const blockHashBytes = hexStringToBytes(blockHash)._unsafeUnwrap();
 
-// TODO: verificationAddEthAddressBodyToJson
-// TODO: verificationAddEthAddressBodyFromJson
+  beforeAll(async () => {
+    serializedBody = await Factories.VerificationAddEthAddressBody.create(
+      {
+        blockHash: Array.from(blockHashBytes),
+      },
+      { transient: { signer } }
+    );
+    body = deserializeVerificationAddEthAddressBody(serializedBody)._unsafeUnwrap();
+  });
 
-// TODO: verificationRemoveBodyToJson
-// TODO: verificationRemoveBodyFromJson
+  test('address', () => {
+    expect(body.address).toEqual(signer.signerKeyHex);
+  });
 
-// TODO: signerBodyToJson
-// TODO: signerBodyFromJson
+  test('ethSignature', () => {
+    expect(body.ethSignature).toEqual(
+      bytesToHexString(serializedBody.ethSignatureArray() ?? new Uint8Array())._unsafeUnwrap()
+    );
+  });
 
-// TODO: userDataBodyToJson
-// TODO: userDataBodyFromJson
+  test('blockHash', () => {
+    expect(body.blockHash).toEqual(blockHash);
+  });
+});
 
-// TODO: reactionBodyToJson
-// TODO: reactionBodyFromJson
+describe('serializeVerificationAddEthAddressBody', () => {
+  let ethSignature: Uint8Array;
+  let body: flatbuffers.VerificationAddEthAddressBodyT;
+  const signer = Factories.Eip712Signer.build();
+  const blockHash = Factories.BlockHash.build();
+  const blockHashBytes = hexStringToBytes(blockHash)._unsafeUnwrap();
+  const claim = Factories.VerificationEthAddressClaim.build(undefined, { transient: { signer } });
+
+  beforeAll(async () => {
+    ethSignature = (await signer.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
+    body = serializeVerificationAddEthAddressBody({
+      address: signer.signerKeyHex,
+      blockHash,
+      ethSignature: bytesToHexString(ethSignature)._unsafeUnwrap(),
+    })._unsafeUnwrap();
+  });
+
+  test('address', () => {
+    expect(body.address).toEqual(Array.from(signer.signerKey));
+  });
+
+  test('ethSignature', () => {
+    expect(body.ethSignature).toEqual(Array.from(ethSignature));
+  });
+
+  test('blockHash', () => {
+    expect(body.blockHash).toEqual(Array.from(blockHashBytes));
+  });
+});
+
+describe('serializeVerificationRemoveBody', () => {
+  const signer = Factories.Eip712Signer.build();
+  const body = serializeVerificationRemoveBody({
+    address: signer.signerKeyHex,
+  })._unsafeUnwrap();
+
+  test('signer', () => {
+    expect(body.address).toEqual(Array.from(signer.signerKey));
+  });
+});
+
+describe('deserializeVerificationRemoveBody', () => {
+  let serializedBody: VerificationRemoveBody;
+  let body: types.VerificationRemoveBody;
+  const signer = Factories.Eip712Signer.build();
+
+  beforeAll(async () => {
+    serializedBody = await Factories.VerificationRemoveBody.create({
+      address: Array.from(signer.signerKey),
+    });
+    body = deserializeVerificationRemoveBody(serializedBody)._unsafeUnwrap();
+  });
+
+  test('address', () => {
+    expect(body.address).toEqual(signer.signerKeyHex);
+  });
+});
+
+describe('serializeVerificationRemoveBody', () => {
+  const signer = Factories.Eip712Signer.build();
+  const body = serializeVerificationRemoveBody({
+    address: signer.signerKeyHex,
+  })._unsafeUnwrap();
+
+  test('signer', () => {
+    expect(body.address).toEqual(Array.from(signer.signerKey));
+  });
+});
+
+describe('deserializeSignerBody', () => {
+  let serializedSignerBody: SignerBody;
+  let signerBody: types.SignerBody;
+  const signer = Factories.Ed25519Signer.build();
+
+  beforeAll(async () => {
+    serializedSignerBody = await Factories.SignerBody.create({
+      signer: Array.from(signer.signerKey),
+    });
+    signerBody = deserializeSignerBody(serializedSignerBody)._unsafeUnwrap();
+  });
+
+  test('signer', () => {
+    expect(signerBody.signer).toEqual(signer.signerKeyHex);
+  });
+});
+
+describe('serializeSignerBody', () => {
+  const signer = Factories.Ed25519Signer.build();
+  const signerBody = serializeSignerBody({
+    signer: signer.signerKeyHex,
+  })._unsafeUnwrap();
+
+  test('signer', () => {
+    expect(signerBody.signer).toEqual(Array.from(signer.signerKey));
+  });
+});
+
+describe('deserializeUserDataBody', () => {
+  let serializedBody: flatbuffers.UserDataBody;
+  let body: types.UserDataBody;
+  const bodyF = Factories.UserDataBody.build();
+  const type = bodyF.type;
+  const value = bodyF.value;
+
+  beforeAll(async () => {
+    serializedBody = await Factories.UserDataBody.create({
+      type,
+      value,
+    });
+    body = deserializeUserDataBody(serializedBody)._unsafeUnwrap();
+  });
+
+  test('type', () => {
+    expect(body.type).toEqual(type);
+  });
+
+  test('value', () => {
+    expect(body.value).toEqual(value);
+  });
+});
+
+describe('serializeUserDataBody', () => {
+  // TOOD introduce factory for creating user body type?
+  const bodyF = Factories.UserDataBody.build();
+  const type = bodyF.type;
+  const value = faker.lorem.word();
+  const body = serializeUserDataBody({
+    type,
+    value,
+  })._unsafeUnwrap();
+
+  test('type', () => {
+    expect(body.type).toEqual(type);
+  });
+
+  test('value', () => {
+    expect(body.value).toEqual(value);
+  });
+});
+
+describe('deserializeReactionBody', () => {
+  let serializedReactionBody: ReactionBody;
+  let reactionBody: types.ReactionBody;
+  const reactionType = Factories.ReactionType.build();
+  const targetFid = Factories.FID.build();
+  const targetFidNumber = bytesToNumber(targetFid)._unsafeUnwrap();
+  const tsHash = Factories.TsHash.build();
+  const tsHashHex = bytesToHexString(tsHash, { size: 40 })._unsafeUnwrap();
+
+  beforeAll(async () => {
+    serializedReactionBody = await Factories.ReactionBody.create({
+      target: new flatbuffers.CastIdT(Array.from(targetFid), Array.from(tsHash)),
+      type: reactionType,
+    });
+    reactionBody = deserializeReactionBody(serializedReactionBody)._unsafeUnwrap();
+  });
+
+  test('type', () => {
+    expect(reactionBody.type).toEqual(reactionType);
+  });
+
+  test('target', () => {
+    expect(reactionBody.target?.fid).toEqual(targetFidNumber);
+    expect(reactionBody.target?.tsHash).toEqual(tsHashHex);
+  });
+});
+
+describe('serializeReactionBody', () => {
+  const reactionType = Factories.ReactionType.build();
+  const targetFid = Factories.FID.build();
+  const targetFidNumber = bytesToNumber(targetFid)._unsafeUnwrap();
+  const tsHash = Factories.TsHash.build();
+  const tsHashHex = bytesToHexString(tsHash, { size: 40 })._unsafeUnwrap();
+  const reactionBody = serializeReactionBody({
+    target: {
+      fid: targetFidNumber,
+      tsHash: tsHashHex,
+    },
+    type: reactionType,
+  })._unsafeUnwrap();
+
+  test('type', () => {
+    expect(reactionBody.type).toEqual(reactionType);
+  });
+
+  test('target', () => {
+    expect(reactionBody.target?.fid).toEqual(Array.from(targetFid));
+    expect(reactionBody.target?.tsHash).toEqual(Array.from(tsHash));
+  });
+});
