@@ -22,6 +22,18 @@ describe('makeCastAdd', () => {
   });
 });
 
+describe('makeSignerRemove', () => {
+  test('succeeds', async () => {
+    const signerRemove = await makeSignerRemove(
+      { signer: ed25519Signer.signerKeyHex },
+      { fid, timestamp, network },
+      eip712Signer
+    );
+    const isValid = await validateMessage(signerRemove._unsafeUnwrap());
+    expect(isValid.isOk()).toBeTruthy();
+  });
+});
+
 describe('makeSignerAdd', () => {
   test('succeeds', async () => {
     const signerAdd = await makeSignerAdd(

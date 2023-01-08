@@ -1,4 +1,5 @@
 import * as flatbuffers from '@hub/flatbuffers';
+import { unionToTargetId } from '@hub/flatbuffers';
 import {
   bytesToHexString,
   bytesToNumber,
@@ -61,7 +62,14 @@ export const deserializeCastId = (castId: flatbuffers.CastId): HubResult<types.C
   });
 };
 
-// TODO: serializeCastId
+export const serializeCastId = (castId: types.CastId): HubResult<flatbuffers.CastIdT> => {
+  const jsonValues = Result.combine([serializeFid(castId.fid), serializeTsHash(castId.tsHash)]);
+  if (jsonValues.isErr()) {
+    return err(jsonValues.error);
+  }
+  const [fid, tsHash] = jsonValues.value;
+  return ok(new flatbuffers.CastIdT(Array.from(fid), Array.from(tsHash)));
+};
 
 export const deserializeMessageData = (fbb: flatbuffers.MessageData): HubResult<types.MessageData> => {
   const timestamp = fromFarcasterTime(fbb.timestamp());
@@ -122,24 +130,126 @@ export const deserializeCastAddBody = (fbb: flatbuffers.CastAddBody): HubResult<
     return err(validBody.error);
   }
 
-  // TODO: embeds
-  // TODO: mentions
-  // TODO: parent
+  const embeds = deserializeEmbeds(fbb.embedsLength(), fbb.embeds.bind(fbb));
+  if (embeds.isErr()) {
+    return err(embeds.error);
+  }
+
+  const mentions = deserializeMentions(fbb.mentionsLength(), fbb.mentions.bind(fbb));
+  if (mentions.isErr()) {
+    return err(mentions.error);
+  }
+
+  const parent = deserializeTarget(fbb.parentType(), fbb.parent.bind(fbb));
+  if (parent.isErr()) {
+    return err(parent.error);
+  }
 
   return ok({
     text: fbb.text() as string,
+    embeds: embeds.value,
+    mentions: mentions.value,
+    parent: parent.value,
   });
 };
 
-export const serializeCastAddBody = (body: types.CastAddBody): HubResult<flatbuffers.CastAddBodyT> => {
-  // TODO: embeds
-  // TODO: mentions
-  // TODO: parent
+export const deserializeEmbeds = (
+  length: number,
+  accessor: (index: number, obj?: string) => string | null
+): HubResult<string[] | undefined> => {
+  if (length === 0) {
+    return ok(undefined);
+  }
 
-  return ok(new flatbuffers.CastAddBodyT(undefined, undefined, undefined, undefined, body.text));
+  const embeds = [];
+  for (let i = 0; i < length; i++) {
+    const embed = accessor(i);
+    if (embed === null) {
+      embeds.push(err(new HubError('bad_request.invalid_param', 'no data found at index')));
+    } else {
+      embeds.push(ok(embed));
+    }
+  }
+
+  return Result.combine(embeds);
+};
+
+export const deserializeMentions = (
+  length: number,
+  accessor: (index: number, obj?: flatbuffers.UserId) => flatbuffers.UserId | null
+): HubResult<number[] | undefined> => {
+  if (length === 0) {
+    return ok(undefined);
+  }
+
+  const mentions = [];
+  for (let i = 0; i < length; i++) {
+    const mention = accessor(i);
+    if (mention === null) {
+      mentions.push(err(new HubError('bad_request.invalid_param', 'no data found at index')));
+    } else {
+      mentions.push(deserializeFid(mention.fidArray() ?? new Uint8Array()));
+    }
+  }
+
+  return Result.combine(mentions);
+};
+
+export const deserializeTarget = (
+  targetId: flatbuffers.TargetId,
+  accessor: (obj: flatbuffers.CastId) => flatbuffers.CastId | null
+): HubResult<types.CastId | undefined> => {
+  const target = unionToTargetId(targetId, accessor);
+
+  if (target === null) {
+    return ok(undefined);
+  }
+
+  const targetIdScalars = Result.combine([
+    deserializeFid(target.fidArray() ?? new Uint8Array()),
+    deserializeTsHash(target.tsHashArray() ?? new Uint8Array()),
+  ]);
+
+  if (targetIdScalars.isErr()) {
+    return err(targetIdScalars.error);
+  }
+
+  const [fid, tsHash] = targetIdScalars.value;
+  return ok({ fid, tsHash });
+};
+
+export const serializeCastAddBody = (body: types.CastAddBody): HubResult<flatbuffers.CastAddBodyT> => {
+  const mentions = serializeMentions(body.mentions);
+  if (mentions.isErr()) {
+    return err(mentions.error);
+  }
+
+  const parent = body.parent !== undefined ? serializeCastId(body.parent) : ok(undefined);
+  const parentType = body.parent !== undefined ? flatbuffers.TargetId.CastId : flatbuffers.TargetId.NONE;
+
+  if (parent.isErr()) {
+    return err(parent.error);
+  }
+
+  return ok(new flatbuffers.CastAddBodyT(body.embeds, mentions.value, parentType, parent.value, body.text));
+};
+
+const serializeMentions = (mentions: number[] | undefined): HubResult<flatbuffers.UserIdT[] | undefined> => {
+  if (!mentions) {
+    return ok(undefined);
+  }
+
+  return Result.combine(mentions.map((mention) => serializeFid(mention))).map((mentionByteArrays) =>
+    mentionByteArrays.map((mentionBytes) => new flatbuffers.UserIdT(Array.from(mentionBytes)))
+  );
 };
 
 export const deserializeCastRemoveBody = (fbb: flatbuffers.CastRemoveBody): HubResult<types.CastRemoveBody> => {
+  const validBody = validations.validateCastRemoveBody(fbb);
+  if (validBody.isErr()) {
+    return err(validBody.error);
+  }
+
   const targetTsHash = bytesToHexString(fbb.targetTsHashArray() ?? new Uint8Array());
 
   if (targetTsHash.isErr()) {
@@ -149,7 +259,15 @@ export const deserializeCastRemoveBody = (fbb: flatbuffers.CastRemoveBody): HubR
   return ok({ targetTsHash: targetTsHash.value });
 };
 
-// TODO: castRemoveBodyFromJson
+export const serializeCastRemoveBody = (body: types.CastRemoveBody): HubResult<flatbuffers.CastRemoveBodyT> => {
+  const targetTsHash = hexStringToBytes(body.targetTsHash);
+
+  if (targetTsHash.isErr()) {
+    return err(targetTsHash.error);
+  }
+
+  return ok(new flatbuffers.CastRemoveBodyT(Array.from(targetTsHash.value)));
+};
 
 export const deserializeAmpBody = (fbb: flatbuffers.AmpBody): HubResult<types.AmpBody> => {
   const fid = deserializeFid(fbb.user()?.fidArray() ?? new Uint8Array());

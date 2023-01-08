@@ -31,78 +31,58 @@ type MessageBodyT =
   | flatbuffers.VerificationAddEthAddressBodyT
   | flatbuffers.VerificationRemoveBodyT;
 
+const buildMakeMessage = <TBodyJson, TSigner extends Signer, TMessageBodyT extends MessageBodyT = MessageBodyT>(
+  messageBody: flatbuffers.MessageBody,
+  messageType: flatbuffers.MessageType,
+  bodyTFromJson: (bodyJson: TBodyJson) => HubResult<TMessageBodyT>
+) => {
+  return async (
+    bodyJson: TBodyJson,
+    dataOptions: MessageDataOptions,
+    signer: TSigner
+  ): HubAsyncResult<flatbuffers.Message> => {
+    const bodyT = bodyTFromJson(bodyJson);
+    if (bodyT.isErr()) {
+      return err(bodyT.error);
+    }
+
+    const messageData = makeMessageData(messageBody, bodyT.value, messageType, dataOptions);
+
+    if (messageData.isErr()) {
+      return err(messageData.error);
+    }
+
+    return makeMessage(messageData.value, signer);
+  };
+};
+
 /** Cast Methods */
 
-export const makeCastAdd = async (
-  body: types.CastAddBody,
-  dataOptions: MessageDataOptions,
-  signer: Ed25519Signer
-): HubAsyncResult<flatbuffers.Message> => {
-  const bodyT = utils.serializeCastAddBody(body);
-  if (bodyT.isErr()) {
-    return err(bodyT.error);
-  }
+export const makeCastAdd = buildMakeMessage<types.CastAddBody, Ed25519Signer>(
+  flatbuffers.MessageBody.CastAddBody,
+  flatbuffers.MessageType.CastAdd,
+  utils.serializeCastAddBody
+);
 
-  const messageData = makeMessageData(
-    flatbuffers.MessageBody.CastAddBody,
-    bodyT.value,
-    flatbuffers.MessageType.CastAdd,
-    dataOptions
-  );
-  if (messageData.isErr()) {
-    return err(messageData.error);
-  }
-
-  return makeMessage(messageData.value, signer);
-};
+export const makeCastRemove = buildMakeMessage<types.CastRemoveBody, Ed25519Signer>(
+  flatbuffers.MessageBody.CastAddBody,
+  flatbuffers.MessageType.CastAdd,
+  utils.serializeCastRemoveBody
+);
 
 /** Signer Methods */
 
-export const makeSignerAdd = async (
-  body: types.SignerBody,
-  dataOptions: MessageDataOptions,
-  signer: Eip712Signer
-): HubAsyncResult<flatbuffers.Message> => {
-  const bodyT = utils.serializeSignerBody(body);
-  if (bodyT.isErr()) {
-    return err(bodyT.error);
-  }
+export const makeSignerAdd = buildMakeMessage<types.SignerBody, Eip712Signer>(
+  flatbuffers.MessageBody.SignerBody,
+  flatbuffers.MessageType.SignerAdd,
+  utils.serializeSignerBody
+);
 
-  const messageData = makeMessageData(
-    flatbuffers.MessageBody.SignerBody,
-    bodyT.value,
-    flatbuffers.MessageType.SignerAdd,
-    dataOptions
-  );
-  if (messageData.isErr()) {
-    return err(messageData.error);
-  }
-
-  return makeMessage(messageData.value, signer);
-};
-
-export const makeSignerRemove = async (
-  body: types.SignerBody,
-  dataOptions: MessageDataOptions,
-  signer: Eip712Signer
-) => {
-  const bodyT = utils.serializeSignerBody(body);
-  if (bodyT.isErr()) {
-    return err(bodyT.error);
-  }
-
-  const messageData = makeMessageData(
-    flatbuffers.MessageBody.SignerBody,
-    bodyT.value,
-    flatbuffers.MessageType.SignerRemove,
-    dataOptions
-  );
-  if (messageData.isErr()) {
-    return err(messageData.error);
-  }
-
-  return makeMessage(messageData.value, signer);
-};
+export const makeSignerRemove = buildMakeMessage<types.SignerBody, Eip712Signer>(
+  flatbuffers.MessageBody.SignerBody,
+  flatbuffers.MessageType.SignerRemove,
+  utils.serializeSignerBody
+);
 
 /** Internal methods */
 
