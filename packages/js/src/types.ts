@@ -42,9 +42,9 @@ export type MessageBody =
   | UserDataBody;
 
 export type CastAddBody = {
-  embeds?: string[];
-  mentions?: number[];
-  parent?: TargetId;
+  embeds?: string[] | undefined;
+  mentions?: number[] | undefined;
+  parent?: TargetId | undefined;
   text: string;
 };
 
