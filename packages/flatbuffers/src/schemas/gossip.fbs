@@ -25,8 +25,7 @@ enum GossipVersion: uint16 {
  * @excludedHashes - The excluded hashes of the sender's current trie snapshot
  * @count - The number of messages under the root
  */
-table ContactInfoContent {
-  peer_id: [ubyte] (required);
+table ContactInfoContent {  
   gossip_address: GossipAddressInfo;
   rpc_address: GossipAddressInfo;
   excluded_hashes: [string];
@@ -34,7 +33,7 @@ table ContactInfoContent {
 }
 
 union GossipContent {
-  Message,
+  MessageBytes,
   IdRegistryEvent,
   ContactInfoContent,
 }
@@ -49,6 +48,7 @@ union GossipContent {
 table GossipMessage {
   content: GossipContent (required);
   topics: [string] (required);
+  peer_id: [ubyte] (required);
   version: GossipVersion = 1;
 }
 

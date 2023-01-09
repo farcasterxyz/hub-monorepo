@@ -2,6 +2,7 @@ import * as flatbuffers from '@farcaster/flatbuffers';
 import { Factories } from '@farcaster/utils';
 import { isPeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
+import MessageModel from '~/flatbuffers/models/messageModel';
 import { GOSSIP_PROTOCOL_VERSION } from '~/network/p2p/protocol';
 import { NetworkFactories } from '~/network/utils/factories';
 
@@ -12,24 +13,33 @@ describe('GossipMessageFactory', () => {
   beforeAll(async () => {
     content = await Factories.Message.create();
     message = await NetworkFactories.GossipMessage.create({
-      contentType: flatbuffers.GossipContent.Message,
-      content: content.unpack(),
+      contentType: flatbuffers.GossipContent.MessageBytes,
+      content: new flatbuffers.MessageBytesT(Array.from(new MessageModel(content).toBytes())),
     });
   });
 
   test('creates with arguments', () => {
-    expect(message.unpack().content).toEqual(content.unpack());
+    expect(message.unpack().content).toEqual(
+      new flatbuffers.MessageBytesT(Array.from(new MessageModel(content).toBytes()))
+    );
   });
 
   test('creates a FC Message by default', async () => {
     const other = await NetworkFactories.GossipMessage.create();
     expect(other).toBeDefined();
-    expect(other.contentType()).toEqual(flatbuffers.GossipContent.Message);
+    expect(other.contentType()).toEqual(flatbuffers.GossipContent.MessageBytes);
     expect(other.unpack().content).not.toEqual(content.unpack());
   });
 
   test('defaults to the right version', async () => {
     expect(message.version()).toEqual(GOSSIP_PROTOCOL_VERSION);
+  });
+
+  test('generates a valid peerId', async () => {
+    const gossipMsg = await NetworkFactories.GossipMessage.create();
+    const peerId = peerIdFromBytes(gossipMsg.peerIdArray() || new Uint8Array());
+    expect(peerId).toBeDefined();
+    expect(isPeerId(peerId)).toBeTruthy();
   });
 });
 
@@ -59,12 +69,5 @@ describe('ContactInfoFactory', () => {
     const contactInfo = await NetworkFactories.GossipContactInfoContent.create({ gossipAddress, rpcAddress });
     expect(contactInfo.rpcAddress()?.unpack()).toEqual(rpcAddress);
     expect(contactInfo.gossipAddress()?.unpack()).toEqual(gossipAddress);
-  });
-
-  test('generates a valid peerId', async () => {
-    const contactInfo = await NetworkFactories.GossipContactInfoContent.create();
-    const peerId = peerIdFromBytes(contactInfo.peerIdArray() || new Uint8Array());
-    expect(peerId).toBeDefined();
-    expect(isPeerId(peerId)).toBeTruthy();
   });
 });

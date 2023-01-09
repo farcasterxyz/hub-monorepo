@@ -26,14 +26,8 @@ const ContactInfoContentFactory = Factory.define<
   flatbuffers.ContactInfoContentT,
   { peerId?: PeerId },
   flatbuffers.ContactInfoContent
->(({ onCreate, transientParams }) => {
+>(({ onCreate }) => {
   onCreate(async (params) => {
-    if (params.peerId.length == 0) {
-      params.peerId = transientParams.peerId
-        ? Array.from(transientParams.peerId.toBytes())
-        : Array.from((await createEd25519PeerId()).toBytes());
-    }
-
     const builder = new Builder(1);
     builder.finish(params.pack(builder));
     return flatbuffers.ContactInfoContent.getRootAsContactInfoContent(new ByteBuffer(builder.asUint8Array()));
@@ -42,15 +36,26 @@ const ContactInfoContentFactory = Factory.define<
   return new flatbuffers.ContactInfoContentT();
 });
 
-const GossipMessageFactory = Factory.define<flatbuffers.GossipMessageT, any, flatbuffers.GossipMessage>(
-  ({ onCreate }) => {
-    onCreate((params) => {
+const GossipMessageFactory = Factory.define<flatbuffers.GossipMessageT, { peerId?: PeerId }, flatbuffers.GossipMessage>(
+  ({ onCreate, transientParams }) => {
+    onCreate(async (params) => {
+      if (params.peerId.length == 0) {
+        params.peerId = transientParams.peerId
+          ? Array.from(transientParams.peerId.toBytes())
+          : Array.from((await createEd25519PeerId()).toBytes());
+      }
+
       const builder = new Builder(1);
       builder.finish(params.pack(builder));
       return flatbuffers.GossipMessage.getRootAsGossipMessage(new ByteBuffer(builder.asUint8Array()));
     });
 
-    return new flatbuffers.GossipMessageT(flatbuffers.GossipContent.Message, Factories.Message.build(), [
+    const messageT = Factories.Message.build();
+    const builder = new Builder(1);
+    builder.finish(messageT.pack(builder));
+    const messagesBytes = new flatbuffers.MessageBytesT(Array.from(builder.asUint8Array()));
+
+    return new flatbuffers.GossipMessageT(flatbuffers.GossipContent.MessageBytes, messagesBytes, [
       NETWORK_TOPIC_PRIMARY,
     ]);
   }

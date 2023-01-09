@@ -21,7 +21,6 @@
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.26.0",
     "@faker-js/faker": "^7.6.0",
     "eslint-config-custom": "*",
     "fishery": "^2.2.2"

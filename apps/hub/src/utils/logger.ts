@@ -37,6 +37,7 @@ const defaultOptions: Pino.LoggerOptions = {};
 
 // Disable logging in tests and CI to reduce noise
 if (process.env['NODE_ENV'] === 'test' || process.env['CI']) {
+  // defaultOptions.level = 'debug';
   defaultOptions.level = 'silent';
 }
 
