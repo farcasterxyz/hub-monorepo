@@ -1,6 +1,5 @@
 import { faker } from '@faker-js/faker';
 import { Ed25519Signer, Eip712Signer, Factories } from '@hub/utils';
-import { utils } from 'ethers';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { SignerAddModel } from '~/flatbuffers/models/types';
@@ -99,9 +98,11 @@ export const generateUserInfo = async (fid: number): Promise<UserInfo> => {
  * Generate an IdRegistryEvent for the given userInfo
  */
 export const getIdRegistryEvent = async (userInfo: UserInfo) => {
-  const custodyAddress = utils.arrayify(userInfo.ethSigner.signerKey);
   const custodyEvent = new IdRegistryEventModel(
-    await Factories.IdRegistryEvent.create({ fid: Array.from(userInfo.fid), to: Array.from(custodyAddress) })
+    await Factories.IdRegistryEvent.create({
+      fid: Array.from(userInfo.fid),
+      to: Array.from(userInfo.ethSigner.signerKey),
+    })
   );
   return custodyEvent;
 };
