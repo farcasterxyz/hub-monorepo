@@ -1,8 +1,8 @@
 {
   "name": "@farcaster/js",
-  "version": "0.1.0",
-  "main": "build/index.js",
-  "types": "build/index.d.ts",
+  "version": "0.2.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "type": "module",
   "license": "MIT",
   "dependencies": {
@@ -14,16 +14,18 @@
     "neverthrow": "^6.0.0"
   },
   "scripts": {
-    "build": "yarn clean && tsc --project ./tsconfig.json",
+    "build": "yarn clean && tsup",
     "clean": "rm -rf ./build",
     "lint": "eslint  src/ --color --ext .ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.26.0",
     "@faker-js/faker": "^7.6.0",
     "eslint-config-custom": "*",
-    "fishery": "^2.2.2"
+    "fishery": "^2.2.2",
+    "tsup": "^6.5.0"
   },
   "publishConfig": {
     "access": "public"
