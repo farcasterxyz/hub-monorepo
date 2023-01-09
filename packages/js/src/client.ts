@@ -1,11 +1,18 @@
 import * as flatbuffers from '@hub/flatbuffers';
 import { Client as GrpcClient } from '@hub/grpc';
 import { HubAsyncResult, HubResult } from '@hub/utils';
-import { validateReactionType } from '@hub/utils/src/validations';
+import { validateReactionType, validateUserDataType } from '@hub/utils/src/validations';
 import { err, ok, Result } from 'neverthrow';
 import { makeMessageFromFlatbuffer } from './builders';
 import * as types from './types';
-import { serializeCastId, serializeEthAddress, serializeFid, serializeTsHash, serializeUserId } from './utils';
+import {
+  serializeCastId,
+  serializeEd25519PublicKey,
+  serializeEthAddress,
+  serializeFid,
+  serializeTsHash,
+  serializeUserId,
+} from './utils';
 
 const wrapGrpcMessageCall = async <T extends types.Message>(
   call: HubAsyncResult<flatbuffers.Message>
@@ -191,37 +198,49 @@ export class Client {
   /*                                 Signer Methods                             */
   /* -------------------------------------------------------------------------- */
 
-  // async getSigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<flatbuffers.Message> {
-  //   return this.makeUnaryRequest(
-  //     definitions.signerDefinition().getSigner,
-  //     requests.signerRequests.getSigner(fid, signer)
-  //   );
-  // }
+  async getSigner(fid: number, signer: string): HubAsyncResult<types.SignerAddMessage> {
+    const serializedArgs = Result.combine([serializeFid(fid), serializeEd25519PublicKey(signer)]);
 
-  // async getSignersByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.Message[]> {
-  //   return this.makeUnaryMessagesRequest(
-  //     definitions.signerDefinition().getSignersByFid,
-  //     requests.signerRequests.getSignersByFid(fid)
-  //   );
-  // }
+    if (serializedArgs.isErr()) {
+      return err(serializedArgs.error);
+    }
+
+    return wrapGrpcMessageCall(this._grpcClient.getSigner(...serializedArgs.value));
+  }
+
+  async getSignersByFid(fid: number): HubAsyncResult<types.SignerAddMessage[]> {
+    const serializedFid = serializeFid(fid);
+
+    if (serializedFid.isErr()) {
+      return err(serializedFid.error);
+    }
+
+    return wrapGrpcMessagesCall(this._grpcClient.getSignersByFid(serializedFid.value));
+  }
 
   /* -------------------------------------------------------------------------- */
   /*                                User Data Methods                           */
   /* -------------------------------------------------------------------------- */
 
-  // async getUserData(fid: Uint8Array, type: flatbuffers.UserDataType): HubAsyncResult<flatbuffers.Message> {
-  //   return this.makeUnaryRequest(
-  //     definitions.userDataDefinition().getUserData,
-  //     requests.userDataRequests.getUserData(fid, type)
-  //   );
-  // }
+  async getUserData(fid: number, type: types.UserDataType): HubAsyncResult<types.UserDataAddMessage> {
+    const serializedArgs = Result.combine([serializeFid(fid), validateUserDataType(type)]);
 
-  // async getUserDataByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.Message[]> {
-  //   return this.makeUnaryMessagesRequest(
-  //     definitions.userDataDefinition().getUserDataByFid,
-  //     requests.userDataRequests.getUserDataByFid(fid)
-  //   );
-  // }
+    if (serializedArgs.isErr()) {
+      return err(serializedArgs.error);
+    }
+
+    return wrapGrpcMessageCall(this._grpcClient.getUserData(...serializedArgs.value));
+  }
+
+  async getUserDataByFid(fid: number): HubAsyncResult<types.UserDataAddMessage[]> {
+    const serializedFid = serializeFid(fid);
+
+    if (serializedFid.isErr()) {
+      return err(serializedFid.error);
+    }
+
+    return wrapGrpcMessagesCall(this._grpcClient.getUserDataByFid(serializedFid.value));
+  }
 
   /* -------------------------------------------------------------------------- */
   /*                                   Bulk Methods                             */

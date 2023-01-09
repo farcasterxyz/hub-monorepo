@@ -401,6 +401,14 @@ export const validateAmpBody = (body: flatbuffers.AmpBody): HubResult<flatbuffer
   return validateFid(body.user()?.fidArray()).map(() => body);
 };
 
+export const validateUserDataType = (type: number): HubResult<flatbuffers.UserDataType> => {
+  if (!Object.values(flatbuffers.UserDataType).includes(type)) {
+    return err(new HubError('bad_request.validation_failure', 'invalid user data type'));
+  }
+
+  return ok(type);
+};
+
 export const validateUserDataAddBody = (body: flatbuffers.UserDataBody): HubResult<flatbuffers.UserDataBody> => {
   const value = body.value();
   if (body.type() === flatbuffers.UserDataType.Pfp) {
