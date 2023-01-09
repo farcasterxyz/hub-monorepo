@@ -246,47 +246,69 @@ export class Client {
   /*                                   Bulk Methods                             */
   /* -------------------------------------------------------------------------- */
 
-  // async getAllCastMessagesByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.Message[]> {
-  //   return this.makeUnaryMessagesRequest(
-  //     definitions.bulkDefinition().getAllCastMessagesByFid,
-  //     requests.bulkRequests.createMessagesByFidRequest(fid)
-  //   );
-  // }
+  async getAllCastMessagesByFid(fid: number): HubAsyncResult<(types.CastAddMessage | types.CastRemoveMessage)[]> {
+    const serializedFid = serializeFid(fid);
 
-  // async getAllAmpMessagesByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.Message[]> {
-  //   return this.makeUnaryMessagesRequest(
-  //     definitions.bulkDefinition().getAllAmpMessagesByFid,
-  //     requests.bulkRequests.createMessagesByFidRequest(fid)
-  //   );
-  // }
+    if (serializedFid.isErr()) {
+      return err(serializedFid.error);
+    }
 
-  // async getAllReactionMessagesByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.Message[]> {
-  //   return this.makeUnaryMessagesRequest(
-  //     definitions.bulkDefinition().getAllReactionMessagesByFid,
-  //     requests.bulkRequests.createMessagesByFidRequest(fid)
-  //   );
-  // }
+    return wrapGrpcMessagesCall(this._grpcClient.getAllCastMessagesByFid(serializedFid.value));
+  }
 
-  // async getAllVerificationMessagesByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.Message[]> {
-  //   return this.makeUnaryMessagesRequest(
-  //     definitions.bulkDefinition().getAllVerificationMessagesByFid,
-  //     requests.bulkRequests.createMessagesByFidRequest(fid)
-  //   );
-  // }
+  async getAllAmpMessagesByFid(fid: number): HubAsyncResult<(types.AmpAddMessage | types.AmpRemoveMessage)[]> {
+    const serializedFid = serializeFid(fid);
 
-  // async getAllSignerMessagesByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.Message[]> {
-  //   return this.makeUnaryMessagesRequest(
-  //     definitions.bulkDefinition().getAllSignerMessagesByFid,
-  //     requests.bulkRequests.createMessagesByFidRequest(fid)
-  //   );
-  // }
+    if (serializedFid.isErr()) {
+      return err(serializedFid.error);
+    }
 
-  // async getAllUserDataMessagesByFid(fid: Uint8Array): HubAsyncResult<flatbuffers.Message[]> {
-  //   return this.makeUnaryMessagesRequest(
-  //     definitions.bulkDefinition().getAllUserDataMessagesByFid,
-  //     requests.bulkRequests.createMessagesByFidRequest(fid)
-  //   );
-  // }
+    return wrapGrpcMessagesCall(this._grpcClient.getAllAmpMessagesByFid(serializedFid.value));
+  }
+
+  async getAllReactionMessagesByFid(
+    fid: number
+  ): HubAsyncResult<(types.ReactionAddMessage | types.ReactionRemoveMessage)[]> {
+    const serializedFid = serializeFid(fid);
+
+    if (serializedFid.isErr()) {
+      return err(serializedFid.error);
+    }
+
+    return wrapGrpcMessagesCall(this._grpcClient.getAllReactionMessagesByFid(serializedFid.value));
+  }
+
+  async getAllVerificationMessagesByFid(
+    fid: number
+  ): HubAsyncResult<(types.VerificationAddEthAddressMessage | types.VerificationRemoveMessage)[]> {
+    const serializedFid = serializeFid(fid);
+
+    if (serializedFid.isErr()) {
+      return err(serializedFid.error);
+    }
+
+    return wrapGrpcMessagesCall(this._grpcClient.getAllVerificationMessagesByFid(serializedFid.value));
+  }
+
+  async getAllSignerMessagesByFid(fid: number): HubAsyncResult<(types.SignerAddMessage | types.SignerRemoveMessage)[]> {
+    const serializedFid = serializeFid(fid);
+
+    if (serializedFid.isErr()) {
+      return err(serializedFid.error);
+    }
+
+    return wrapGrpcMessagesCall(this._grpcClient.getAllSignerMessagesByFid(serializedFid.value));
+  }
+
+  async getAllUserDataMessagesByFid(fid: number): HubAsyncResult<types.UserDataAddMessage[]> {
+    const serializedFid = serializeFid(fid);
+
+    if (serializedFid.isErr()) {
+      return err(serializedFid.error);
+    }
+
+    return wrapGrpcMessagesCall(this._grpcClient.getAllUserDataMessagesByFid(serializedFid.value));
+  }
 
   /* -------------------------------------------------------------------------- */
   /*                                  Event Methods                             */
