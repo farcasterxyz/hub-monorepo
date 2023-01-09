@@ -1,15 +1,14 @@
 {
-  "name": "@hub/js",
-  "version": "1.0.0",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "name": "@farcaster/js",
+  "version": "0.1.0",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
   "type": "module",
   "license": "MIT",
   "dependencies": {
-    "@faker-js/faker": "^7.6.0",
     "@hub/flatbuffers": "1.0.0",
-    "@hub/utils": "1.0.0",
     "@hub/grpc": "1.0.0",
+    "@hub/utils": "1.0.0",
     "ethers": "^5.7.2",
     "flatbuffers": "^22.11.23",
     "neverthrow": "^6.0.0"
@@ -22,7 +21,11 @@
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"
   },
   "devDependencies": {
-    "fishery": "^2.2.2",
-    "eslint-config-custom": "*"
+    "@faker-js/faker": "^7.6.0",
+    "eslint-config-custom": "*",
+    "fishery": "^2.2.2"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
