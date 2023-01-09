@@ -1640,3 +1640,95 @@ pack(builder:flatbuffers.Builder): flatbuffers.Offset {
 }
 }
 
+export class MessageBytes implements flatbuffers.IUnpackableObject<MessageBytesT> {
+  bb: flatbuffers.ByteBuffer|null = null;
+  bb_pos = 0;
+  __init(i:number, bb:flatbuffers.ByteBuffer):MessageBytes {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+}
+
+static getRootAsMessageBytes(bb:flatbuffers.ByteBuffer, obj?:MessageBytes):MessageBytes {
+  return (obj || new MessageBytes()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+static getSizePrefixedRootAsMessageBytes(bb:flatbuffers.ByteBuffer, obj?:MessageBytes):MessageBytes {
+  bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
+  return (obj || new MessageBytes()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+}
+
+messageBytes(index: number):number|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
+
+messageBytesLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+messageBytesArray():Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+}
+
+static startMessageBytes(builder:flatbuffers.Builder) {
+  builder.startObject(1);
+}
+
+static addMessageBytes(builder:flatbuffers.Builder, messageBytesOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, messageBytesOffset, 0);
+}
+
+static createMessageBytesVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startMessageBytesVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
+}
+
+static endMessageBytes(builder:flatbuffers.Builder):flatbuffers.Offset {
+  const offset = builder.endObject();
+  builder.requiredField(offset, 4) // message_bytes
+  return offset;
+}
+
+static createMessageBytes(builder:flatbuffers.Builder, messageBytesOffset:flatbuffers.Offset):flatbuffers.Offset {
+  MessageBytes.startMessageBytes(builder);
+  MessageBytes.addMessageBytes(builder, messageBytesOffset);
+  return MessageBytes.endMessageBytes(builder);
+}
+
+unpack(): MessageBytesT {
+  return new MessageBytesT(
+    this.bb!.createScalarList<number>(this.messageBytes.bind(this), this.messageBytesLength())
+  );
+}
+
+
+unpackTo(_o: MessageBytesT): void {
+  _o.messageBytes = this.bb!.createScalarList<number>(this.messageBytes.bind(this), this.messageBytesLength());
+}
+}
+
+export class MessageBytesT implements flatbuffers.IGeneratedObject {
+constructor(
+  public messageBytes: (number)[] = []
+){}
+
+
+pack(builder:flatbuffers.Builder): flatbuffers.Offset {
+  const messageBytes = MessageBytes.createMessageBytesVector(builder, this.messageBytes);
+
+  return MessageBytes.createMessageBytes(builder,
+    messageBytes
+  );
+}
+}
+

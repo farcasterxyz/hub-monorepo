@@ -33,7 +33,7 @@ table ContactInfoContent {
 }
 
 union GossipContent {
-  Message,
+  MessageBytes,
   IdRegistryEvent,
   ContactInfoContent,
 }

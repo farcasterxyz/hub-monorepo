@@ -1,7 +1,9 @@
 import * as flatbuffers from '@hub/flatbuffers';
+import { MessageBytesT } from '@hub/flatbuffers';
 import { Factories } from '@hub/utils';
 import { isPeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
+import MessageModel from '~/flatbuffers/models/messageModel';
 import { GOSSIP_PROTOCOL_VERSION } from '~/network/p2p/protocol';
 import { NetworkFactories } from '~/network/utils/factories';
 
@@ -12,19 +14,19 @@ describe('GossipMessageFactory', () => {
   beforeAll(async () => {
     content = await Factories.Message.create();
     message = await NetworkFactories.GossipMessage.create({
-      contentType: flatbuffers.GossipContent.Message,
-      content: content.unpack(),
+      contentType: flatbuffers.GossipContent.MessageBytes,
+      content: new MessageBytesT(Array.from(new MessageModel(content).toBytes())),
     });
   });
 
   test('creates with arguments', () => {
-    expect(message.unpack().content).toEqual(content.unpack());
+    expect(message.unpack().content).toEqual(new MessageBytesT(Array.from(new MessageModel(content).toBytes())));
   });
 
   test('creates a FC Message by default', async () => {
     const other = await NetworkFactories.GossipMessage.create();
     expect(other).toBeDefined();
-    expect(other.contentType()).toEqual(flatbuffers.GossipContent.Message);
+    expect(other.contentType()).toEqual(flatbuffers.GossipContent.MessageBytes);
     expect(other.unpack().content).not.toEqual(content.unpack());
   });
 

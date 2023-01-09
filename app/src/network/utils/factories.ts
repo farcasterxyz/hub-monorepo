@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker';
 import * as flatbuffers from '@hub/flatbuffers';
+import { MessageBytesT } from '@hub/flatbuffers';
 import { Factories, hexStringToBytes } from '@hub/utils';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
@@ -50,7 +51,12 @@ const GossipMessageFactory = Factory.define<flatbuffers.GossipMessageT, { peerId
       return flatbuffers.GossipMessage.getRootAsGossipMessage(new ByteBuffer(builder.asUint8Array()));
     });
 
-    return new flatbuffers.GossipMessageT(flatbuffers.GossipContent.Message, Factories.Message.build(), [
+    const messageT = Factories.Message.build();
+    const builder = new Builder(1);
+    builder.finish(messageT.pack(builder));
+    const messagesBytes = new MessageBytesT(Array.from(builder.asUint8Array()));
+
+    return new flatbuffers.GossipMessageT(flatbuffers.GossipContent.MessageBytes, messagesBytes, [
       NETWORK_TOPIC_PRIMARY,
     ]);
   }
