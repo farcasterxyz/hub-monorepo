@@ -1,5 +1,5 @@
-import * as flatbuffers from '@hub/flatbuffers';
-import { CastIdT, UserIdT } from '@hub/flatbuffers';
+import * as flatbuffers from '@farcaster/flatbuffers';
+import { CastIdT, UserIdT } from '@farcaster/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
 
 export const castRequests = {

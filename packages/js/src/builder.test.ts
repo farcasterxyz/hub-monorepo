@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
-import * as flatbuffers from '@hub/flatbuffers';
-import { bytesToHexString, bytesToNumber, Factories } from '@hub/utils';
-import { validateMessage } from '@hub/utils/src/validations';
+import * as flatbuffers from '@farcaster/flatbuffers';
+import { bytesToHexString, bytesToNumber, Factories } from '@farcaster/utils';
+import { validateMessage } from '@farcaster/utils/src/validations';
 import * as builders from './builders';
 
 const fid = faker.datatype.number({ min: 1 });

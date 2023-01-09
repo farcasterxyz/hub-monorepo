@@ -1,5 +1,5 @@
-import { EventResponse, SubscribeRequest } from '@hub/flatbuffers';
-import { toByteBuffer } from '@hub/utils';
+import { EventResponse, SubscribeRequest } from '@farcaster/flatbuffers';
+import { toByteBuffer } from '@farcaster/utils';
 import { defaultMethodDefinition } from '../utils';
 
 export const eventDefinition = () => {

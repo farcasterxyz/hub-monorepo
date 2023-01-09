@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import * as flatbuffers from '@hub/flatbuffers';
+import * as flatbuffers from '@farcaster/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { hexStringToBytes } from './bytes';
 import { HubError } from './errors';

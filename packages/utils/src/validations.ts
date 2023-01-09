@@ -1,5 +1,5 @@
-import * as flatbuffers from '@hub/flatbuffers';
-import { MessageData } from '@hub/flatbuffers';
+import * as flatbuffers from '@farcaster/flatbuffers';
+import { MessageData } from '@farcaster/flatbuffers';
 import { blake3 } from '@noble/hashes/blake3';
 import { ByteBuffer } from 'flatbuffers';
 import { err, ok, Result } from 'neverthrow';

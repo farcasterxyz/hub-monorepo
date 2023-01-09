@@ -2,7 +2,7 @@ import {
   Signer as EthersAbstractSigner,
   TypedDataSigner as EthersTypedDataSigner,
 } from '@ethersproject/abstract-signer';
-import { SignatureScheme } from '@hub/flatbuffers';
+import { SignatureScheme } from '@farcaster/flatbuffers';
 import { hexStringToBytes } from '../bytes';
 import { eip712 } from '../crypto';
 import { HubAsyncResult } from '../errors';

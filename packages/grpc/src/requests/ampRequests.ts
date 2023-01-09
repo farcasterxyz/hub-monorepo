@@ -1,5 +1,5 @@
-import * as flatbuffers from '@hub/flatbuffers';
-import { UserIdT } from '@hub/flatbuffers';
+import * as flatbuffers from '@farcaster/flatbuffers';
+import { UserIdT } from '@farcaster/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
 
 export const ampRequests = {

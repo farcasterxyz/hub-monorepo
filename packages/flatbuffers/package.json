@@ -1,8 +1,8 @@
 {
-  "name": "@hub/flatbuffers",
-  "version": "1.0.0",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "name": "@farcaster/flatbuffers",
+  "version": "0.1.0",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
   "type": "module",
   "license": "MIT",
   "scripts": {

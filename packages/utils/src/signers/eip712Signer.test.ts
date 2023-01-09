@@ -1,4 +1,4 @@
-import { FarcasterNetwork } from '@hub/flatbuffers';
+import { FarcasterNetwork } from '@farcaster/flatbuffers';
 import { blake3 } from '@noble/hashes/blake3';
 import { BigNumber, ethers } from 'ethers';
 import { randomBytes } from 'ethers/lib/utils';

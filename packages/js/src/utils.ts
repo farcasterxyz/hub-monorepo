@@ -1,5 +1,5 @@
-import * as flatbuffers from '@hub/flatbuffers';
-import { unionToTargetId } from '@hub/flatbuffers';
+import * as flatbuffers from '@farcaster/flatbuffers';
+import { unionToTargetId } from '@farcaster/flatbuffers';
 import {
   bytesToHexString,
   bytesToNumber,
@@ -9,7 +9,7 @@ import {
   HubResult,
   numberToBytes,
   validations,
-} from '@hub/utils';
+} from '@farcaster/utils';
 import { err, ok, Result } from 'neverthrow';
 import * as types from './types';
 

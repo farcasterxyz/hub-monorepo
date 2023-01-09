@@ -1,7 +1,7 @@
-import * as flatbuffers from '@hub/flatbuffers';
-import { Client as GrpcClient } from '@hub/grpc';
-import { HubAsyncResult, HubResult } from '@hub/utils';
-import { validateReactionType, validateUserDataType } from '@hub/utils/src/validations';
+import * as flatbuffers from '@farcaster/flatbuffers';
+import { Client as GrpcClient } from '@farcaster/grpc';
+import { HubAsyncResult, HubResult } from '@farcaster/utils';
+import { validateReactionType, validateUserDataType } from '@farcaster/utils/src/validations';
 import { err, ok, Result } from 'neverthrow';
 import { makeMessageFromFlatbuffer } from './builders';
 import * as types from './types';

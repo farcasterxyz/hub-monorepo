@@ -1,5 +1,5 @@
-import * as flatbuffers from '@hub/flatbuffers';
-import { toByteBuffer } from '@hub/utils';
+import * as flatbuffers from '@farcaster/flatbuffers';
+import { toByteBuffer } from '@farcaster/utils';
 import { defaultMethodDefinition } from '../utils';
 
 const defaultBulkMethod = () => {

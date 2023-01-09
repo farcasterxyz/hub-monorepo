@@ -1,4 +1,4 @@
-import { SignatureScheme } from '@hub/flatbuffers';
+import { SignatureScheme } from '@farcaster/flatbuffers';
 import { bytesToHexString } from '../bytes';
 import { ed25519 } from '../crypto';
 import { HubAsyncResult } from '../errors';

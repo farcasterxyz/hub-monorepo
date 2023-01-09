@@ -1,5 +1,5 @@
-import * as flatbuffers from '@hub/flatbuffers';
-import { CastIdT, ReactionType } from '@hub/flatbuffers';
+import * as flatbuffers from '@farcaster/flatbuffers';
+import { CastIdT, ReactionType } from '@farcaster/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
 
 export const reactionRequests = {

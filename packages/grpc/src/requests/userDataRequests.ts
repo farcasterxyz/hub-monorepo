@@ -1,5 +1,5 @@
-import * as flatbuffers from '@hub/flatbuffers';
-import { UserDataType } from '@hub/flatbuffers';
+import * as flatbuffers from '@farcaster/flatbuffers';
+import { UserDataType } from '@farcaster/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
 
 export const userDataRequests = {

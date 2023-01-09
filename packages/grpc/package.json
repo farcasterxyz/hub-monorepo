@@ -1,8 +1,8 @@
 {
-  "name": "@hub/grpc",
-  "version": "1.0.0",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "name": "@farcaster/grpc",
+  "version": "0.1.0",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
   "type": "module",
   "license": "MIT",
   "devDependencies": {
@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.8.1",
-    "@hub/utils": "1.0.0",
-    "@hub/flatbuffers": "1.0.0",
+    "@farcaster/utils": "0.1.0",
+    "@farcaster/flatbuffers": "0.1.0",
     "flatbuffers": "^22.12.6",
     "neverthrow": "^6.0.0"
   },

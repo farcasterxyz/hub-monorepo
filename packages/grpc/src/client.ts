@@ -1,6 +1,6 @@
+import * as flatbuffers from '@farcaster/flatbuffers';
+import { HubAsyncResult, HubError } from '@farcaster/utils';
 import grpc, { ClientReadableStream, Metadata, MetadataValue } from '@grpc/grpc-js';
-import * as flatbuffers from '@hub/flatbuffers';
-import { HubAsyncResult, HubError } from '@hub/utils';
 import { ByteBuffer } from 'flatbuffers';
 import { err, ok } from 'neverthrow';
 import * as definitions from './definitions';
