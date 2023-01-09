@@ -1,4 +1,4 @@
-import { UserId } from '@hub/flatbuffers';
+import { UserIdT } from '@hub/flatbuffers';
 import { Factories, HubError } from '@hub/utils';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
@@ -66,24 +66,24 @@ describe('getAmp', () => {
 
   test('succeeds', async () => {
     await engine.mergeMessage(ampAdd);
-    const result = await client.getAmp(fid, ampAdd.body().user() ?? new UserId());
+    const result = await client.getAmp(fid, ampAdd.body().user()?.unpack() ?? new UserIdT());
     expect(result._unsafeUnwrap()).toEqual(ampAdd.message);
   });
 
   test('fails if amp is missing', async () => {
-    const result = await client.getAmp(fid, ampAdd.body().user() ?? new UserId());
+    const result = await client.getAmp(fid, ampAdd.body().user()?.unpack() ?? new UserIdT());
     expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
   });
 
   test('fails without user', async () => {
-    const user = await Factories.UserId.create({ fid: [] });
-    const result = await client.getAmp(fid, user);
+    const userId = await Factories.UserId.build({ fid: [] });
+    const result = await client.getAmp(fid, userId);
     // TODO: improve error messages so we know this is user.fid is missing
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is missing'));
   });
 
   test('fails without fid', async () => {
-    const result = await client.getAmp(new Uint8Array(), ampAdd.body().user() ?? new UserId());
+    const result = await client.getAmp(new Uint8Array(), ampAdd.body().user()?.unpack() ?? new UserIdT());
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is missing'));
   });
 });
@@ -114,12 +114,12 @@ describe('getAmpsByUser', () => {
 
   test('succeeds', async () => {
     await engine.mergeMessage(ampAdd);
-    const amps = await client.getAmpsByUser(ampAdd.body().user() ?? new UserId());
+    const amps = await client.getAmpsByUser(ampAdd.body().user()?.unpack() ?? new UserIdT());
     expect(amps._unsafeUnwrap()).toEqual([ampAdd.message]);
   });
 
   test('returns empty array without messages', async () => {
-    const amps = await client.getAmpsByUser(ampAdd.body().user() ?? new UserId());
+    const amps = await client.getAmpsByUser(ampAdd.body().user()?.unpack() ?? new UserIdT());
     expect(amps._unsafeUnwrap()).toEqual([]);
   });
 });

@@ -1,4 +1,4 @@
-import { CastId, UserId } from '@hub/flatbuffers';
+import { CastId, CastIdT, UserIdT } from '@hub/flatbuffers';
 import { Factories, HubError } from '@hub/utils';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
@@ -115,12 +115,16 @@ describe('getCastsByParent', () => {
 
   test('succeeds', async () => {
     await engine.mergeMessage(castAdd);
-    const casts = await client.getCastsByParent((castAdd.body().parent(new CastId()) as CastId) ?? new CastId());
+    const casts = await client.getCastsByParent(
+      (castAdd.body().parent(new CastId()) as CastId).unpack() ?? new CastIdT()
+    );
     expect(casts._unsafeUnwrap()).toEqual([castAdd.message]);
   });
 
   test('returns empty array without casts', async () => {
-    const casts = await client.getCastsByParent((castAdd.body().parent(new CastId()) as CastId) ?? new CastId());
+    const casts = await client.getCastsByParent(
+      (castAdd.body().parent(new CastId()) as CastId).unpack() ?? new CastIdT()
+    );
     expect(casts._unsafeUnwrap()).toEqual([]);
   });
 });
@@ -134,14 +138,14 @@ describe('getCastsByMention', () => {
   test('succeeds', async () => {
     await engine.mergeMessage(castAdd);
     for (let i = 0; i < castAdd.body().mentionsLength(); i++) {
-      const casts = await client.getCastsByMention(castAdd.body().mentions(i) ?? new UserId());
+      const casts = await client.getCastsByMention(castAdd.body().mentions(i)?.unpack() ?? new UserIdT());
       expect(casts._unsafeUnwrap()).toEqual([castAdd.message]);
     }
   });
 
   test('returns empty array without casts', async () => {
     for (let i = 0; i < castAdd.body().mentionsLength(); i++) {
-      const casts = await client.getCastsByMention(castAdd.body().mentions(i) ?? new UserId());
+      const casts = await client.getCastsByMention(castAdd.body().mentions(i)?.unpack() ?? new UserIdT());
       expect(casts._unsafeUnwrap()).toEqual([]);
     }
   });
