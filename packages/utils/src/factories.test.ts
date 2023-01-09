@@ -99,3 +99,12 @@ describe('VerificationAddEthAddressBodyFactory', () => {
     expect(verifiedAddress._unsafeUnwrap()).toEqual(body.addressArray());
   });
 });
+
+describe('BytesFactory', () => {
+  describe('with length', () => {
+    test('succeeds with unpadded little endian', () => {
+      const bytes = Factories.Bytes.build({}, { transient: { length: 32 } });
+      expect(bytes[bytes.length - 1]).not.toEqual(0);
+    });
+  });
+});
