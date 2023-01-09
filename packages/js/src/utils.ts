@@ -71,6 +71,14 @@ export const serializeCastId = (castId: types.CastId): HubResult<flatbuffers.Cas
   return ok(new flatbuffers.CastIdT(Array.from(fid), Array.from(tsHash)));
 };
 
+// TODO: deserializeUserId
+
+export const serializeUserId = (userId: number): HubResult<flatbuffers.UserIdT> => {
+  return serializeFid(userId).map((fid) => {
+    return new flatbuffers.UserIdT(Array.from(fid));
+  });
+};
+
 export const deserializeMessageData = (fbb: flatbuffers.MessageData): HubResult<types.MessageData> => {
   const timestamp = fromFarcasterTime(fbb.timestamp());
 

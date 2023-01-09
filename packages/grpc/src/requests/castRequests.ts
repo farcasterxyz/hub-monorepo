@@ -1,5 +1,5 @@
 import * as flatbuffers from '@hub/flatbuffers';
-import { CastId, UserId } from '@hub/flatbuffers';
+import { CastIdT, UserIdT } from '@hub/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
 
 export const castRequests = {
@@ -17,16 +17,16 @@ export const castRequests = {
     return flatbuffers.GetCastsByFidRequest.getRootAsGetCastsByFidRequest(new ByteBuffer(builder.asUint8Array()));
   },
 
-  getCastsByParent: (parent: CastId): flatbuffers.GetCastsByParentRequest => {
+  getCastsByParent: (parent: CastIdT): flatbuffers.GetCastsByParentRequest => {
     const builder = new Builder(1);
-    const requestT = new flatbuffers.GetCastsByParentRequestT(parent.unpack());
+    const requestT = new flatbuffers.GetCastsByParentRequestT(parent);
     builder.finish(requestT.pack(builder));
     return flatbuffers.GetCastsByParentRequest.getRootAsGetCastsByParentRequest(new ByteBuffer(builder.asUint8Array()));
   },
 
-  getCastsByMention: (mention: UserId): flatbuffers.GetCastsByMentionRequest => {
+  getCastsByMention: (mention: UserIdT): flatbuffers.GetCastsByMentionRequest => {
     const builder = new Builder(1);
-    const requestT = new flatbuffers.GetCastsByMentionRequestT(mention.unpack());
+    const requestT = new flatbuffers.GetCastsByMentionRequestT(mention);
     builder.finish(requestT.pack(builder));
     return flatbuffers.GetCastsByMentionRequest.getRootAsGetCastsByMentionRequest(
       new ByteBuffer(builder.asUint8Array())

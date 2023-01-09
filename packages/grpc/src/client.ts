@@ -49,14 +49,14 @@ export class Client {
     );
   }
 
-  async getCastsByParent(parent: flatbuffers.CastId): HubAsyncResult<flatbuffers.Message[]> {
+  async getCastsByParent(parent: flatbuffers.CastIdT): HubAsyncResult<flatbuffers.Message[]> {
     return this.makeUnaryMessagesRequest(
       definitions.castDefinition().getCastsByParent,
       requests.castRequests.getCastsByParent(parent)
     );
   }
 
-  async getCastsByMention(mention: flatbuffers.UserId): HubAsyncResult<flatbuffers.Message[]> {
+  async getCastsByMention(mention: flatbuffers.UserIdT): HubAsyncResult<flatbuffers.Message[]> {
     return this.makeUnaryMessagesRequest(
       definitions.castDefinition().getCastsByMention,
       requests.castRequests.getCastsByMention(mention)
@@ -67,7 +67,7 @@ export class Client {
   /*                                Amp Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  async getAmp(fid: Uint8Array, user: flatbuffers.UserId): HubAsyncResult<flatbuffers.Message> {
+  async getAmp(fid: Uint8Array, user: flatbuffers.UserIdT): HubAsyncResult<flatbuffers.Message> {
     return this.makeUnaryRequest(definitions.ampDefinition().getAmp, requests.ampRequests.getAmp(fid, user));
   }
 
@@ -78,7 +78,7 @@ export class Client {
     );
   }
 
-  async getAmpsByUser(user: flatbuffers.UserId): HubAsyncResult<flatbuffers.Message[]> {
+  async getAmpsByUser(user: flatbuffers.UserIdT): HubAsyncResult<flatbuffers.Message[]> {
     return this.makeUnaryMessagesRequest(
       definitions.ampDefinition().getAmpsByUser,
       requests.ampRequests.getAmpsByUser(user)
@@ -92,7 +92,7 @@ export class Client {
   async getReaction(
     fid: Uint8Array,
     type: flatbuffers.ReactionType,
-    cast: flatbuffers.CastId
+    cast: flatbuffers.CastIdT
   ): HubAsyncResult<flatbuffers.Message> {
     return this.makeUnaryRequest(
       definitions.reactionDefinition().getReaction,
@@ -108,7 +108,7 @@ export class Client {
   }
 
   async getReactionsByCast(
-    cast: flatbuffers.CastId,
+    cast: flatbuffers.CastIdT,
     type?: flatbuffers.ReactionType
   ): HubAsyncResult<flatbuffers.Message[]> {
     return this.makeUnaryMessagesRequest(

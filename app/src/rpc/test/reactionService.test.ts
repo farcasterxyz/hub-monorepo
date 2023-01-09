@@ -1,4 +1,4 @@
-import { CastId, ReactionType } from '@hub/flatbuffers';
+import { CastId, CastIdT, ReactionType } from '@hub/flatbuffers';
 import { Factories, HubError } from '@hub/utils';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
@@ -35,7 +35,7 @@ const signer = Factories.Ed25519Signer.build();
 let custodyEvent: IdRegistryEventModel;
 let signerAdd: SignerAddModel;
 
-let castId: CastId;
+let castId: CastIdT;
 let reactionAddLike: ReactionAddModel;
 let reactionAddRecast: ReactionAddModel;
 
@@ -52,11 +52,11 @@ beforeAll(async () => {
     await Factories.Message.create({ data: Array.from(signerAddData.bb?.bytes() ?? []) }, { transient: { ethSigner } })
   ) as SignerAddModel;
 
-  castId = await Factories.CastId.create();
+  castId = await Factories.CastId.build();
 
   const likeData = await Factories.ReactionAddData.create({
     fid: Array.from(fid),
-    body: Factories.ReactionBody.build({ type: ReactionType.Like, target: castId.unpack() }),
+    body: Factories.ReactionBody.build({ type: ReactionType.Like, target: castId }),
   });
   reactionAddLike = new MessageModel(
     await Factories.Message.create({ data: Array.from(likeData.bb?.bytes() ?? []) }, { transient: { signer } })
@@ -64,7 +64,7 @@ beforeAll(async () => {
 
   const recastData = await Factories.ReactionAddData.create({
     fid: Array.from(fid),
-    body: Factories.ReactionBody.build({ type: ReactionType.Recast, target: castId.unpack() }),
+    body: Factories.ReactionBody.build({ type: ReactionType.Recast, target: castId }),
   });
   reactionAddRecast = new MessageModel(
     await Factories.Message.create({ data: Array.from(recastData.bb?.bytes() ?? []) }, { transient: { signer } })
@@ -82,7 +82,7 @@ describe('getReaction', () => {
     const result = await client.getReaction(
       fid,
       reactionAddLike.body().type(),
-      (reactionAddLike.body().target(new CastId()) as CastId) ?? new CastId()
+      (reactionAddLike.body().target(new CastId()) as CastId).unpack() ?? new CastIdT()
     );
     expect(result._unsafeUnwrap()).toEqual(reactionAddLike.message);
   });
@@ -92,7 +92,7 @@ describe('getReaction', () => {
     const result = await client.getReaction(
       fid,
       reactionAddRecast.body().type(),
-      (reactionAddRecast.body().target(new CastId()) as CastId) ?? new CastId()
+      (reactionAddRecast.body().target(new CastId()) as CastId).unpack() ?? new CastIdT()
     );
     expect(result._unsafeUnwrap()).toEqual(reactionAddRecast.message);
   });
@@ -101,7 +101,7 @@ describe('getReaction', () => {
     const result = await client.getReaction(
       fid,
       reactionAddLike.body().type(),
-      (reactionAddLike.body().target(new CastId()) as CastId) ?? new CastId()
+      (reactionAddLike.body().target(new CastId()) as CastId).unpack() ?? new CastIdT()
     );
     expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
   });
@@ -112,7 +112,7 @@ describe('getReaction', () => {
   });
 
   test('fails without cast', async () => {
-    const castId = await Factories.CastId.create({ fid: [], tsHash: [] });
+    const castId = await Factories.CastId.build({ fid: [], tsHash: [] });
     const result = await client.getReaction(fid, ReactionType.Like, castId);
     // TODO: improve error messages so we know this is cast.fid is missing
     expect(result._unsafeUnwrapErr()).toEqual(
@@ -124,7 +124,7 @@ describe('getReaction', () => {
     const result = await client.getReaction(
       new Uint8Array(),
       reactionAddRecast.body().type(),
-      (reactionAddRecast.body().target(new CastId()) as CastId) ?? new CastId()
+      (reactionAddRecast.body().target(new CastId()) as CastId).unpack() ?? new CastIdT()
     );
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is missing'));
   });

@@ -1,8 +1,18 @@
 import * as flatbuffers from '@hub/flatbuffers';
-import { HubAsyncResult, HubError, HubResult, MessageSigner, Signer, toFarcasterTime, validations } from '@hub/utils';
+import {
+  bytesToHexString,
+  HubAsyncResult,
+  HubError,
+  HubResult,
+  MessageSigner,
+  Signer,
+  toFarcasterTime,
+  toTsHash,
+  validations,
+} from '@hub/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import { err, ok } from 'neverthrow';
+import { err, ok, Result } from 'neverthrow';
 import * as types from './types';
 import * as utils from './utils';
 
@@ -35,7 +45,7 @@ const buildMakeMessage = <
     bodyJson: TBodyJson,
     dataOptions: MessageDataOptions,
     signer: MessageSigner<TMessageType>
-  ): HubAsyncResult<flatbuffers.Message> => {
+  ): HubAsyncResult<types.Message> => {
     const bodyT = bodyTFromJson(bodyJson);
     if (bodyT.isErr()) {
       return err(bodyT.error);
@@ -49,6 +59,47 @@ const buildMakeMessage = <
 
     return makeMessage(messageData.value, signer);
   };
+};
+
+/** Generic Methods */
+
+export const makeMessageFromFlatbuffer = (flatbuffer: flatbuffers.Message): HubResult<types.Message> => {
+  const messageData = flatbuffers.MessageData.getRootAsMessageData(
+    new ByteBuffer(flatbuffer.dataArray() ?? new Uint8Array())
+  );
+
+  const isEip712Signer = validations.EIP712_MESSAGE_TYPES.includes(messageData.type() ?? 0);
+  const deserialized = Result.combine([
+    utils.deserializeMessageData(messageData),
+    bytesToHexString(flatbuffer.hashArray() ?? new Uint8Array(), { size: 32 }),
+    bytesToHexString(flatbuffer.signatureArray() ?? new Uint8Array(), { size: isEip712Signer ? 130 : 128 }),
+    isEip712Signer
+      ? utils.deserializeEthAddress(flatbuffer.signerArray() ?? new Uint8Array())
+      : utils.deserializeEd25519PublicKey(flatbuffer.signerArray() ?? new Uint8Array()),
+  ]);
+  if (deserialized.isErr()) {
+    return err(deserialized.error);
+  }
+
+  const tsHash = toTsHash(messageData.timestamp(), flatbuffer.hashArray() ?? new Uint8Array()).andThen((tsHashBytes) =>
+    bytesToHexString(tsHashBytes, { size: 40 })
+  );
+  if (tsHash.isErr()) {
+    return err(tsHash.error);
+  }
+
+  const [data, hash, signature, signer] = deserialized.value;
+
+  return ok({
+    flatbuffer,
+    data,
+    hash,
+    hashScheme: flatbuffer.hashScheme(),
+    signature,
+    signatureScheme: flatbuffer.signatureScheme(),
+    signer,
+    tsHash: tsHash.value,
+  });
 };
 
 /** Cast Methods */
@@ -168,10 +219,7 @@ const makeMessageData = (
   return ok(messageData);
 };
 
-const makeMessage = async (
-  messageData: flatbuffers.MessageData,
-  signer: Signer
-): HubAsyncResult<flatbuffers.Message> => {
+const makeMessage = async (messageData: flatbuffers.MessageData, signer: Signer): HubAsyncResult<types.Message> => {
   const dataBytes = messageData.bb?.bytes();
   if (!dataBytes) {
     return err(new HubError('bad_request.invalid_param', 'data is missing'));
@@ -196,5 +244,7 @@ const makeMessage = async (
   const fbb = new Builder(1);
   fbb.finish(messageT.pack(fbb));
 
-  return ok(flatbuffers.Message.getRootAsMessage(new ByteBuffer(fbb.asUint8Array())));
+  const flatbuffer = flatbuffers.Message.getRootAsMessage(new ByteBuffer(fbb.asUint8Array()));
+
+  return makeMessageFromFlatbuffer(flatbuffer);
 };

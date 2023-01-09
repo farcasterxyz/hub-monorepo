@@ -1,11 +1,11 @@
 import * as flatbuffers from '@hub/flatbuffers';
-import { CastId, ReactionType } from '@hub/flatbuffers';
+import { CastIdT, ReactionType } from '@hub/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
 
 export const reactionRequests = {
-  getReaction: (fid: Uint8Array, type: ReactionType, cast: CastId): flatbuffers.GetReactionRequest => {
+  getReaction: (fid: Uint8Array, type: ReactionType, cast: CastIdT): flatbuffers.GetReactionRequest => {
     const builder = new Builder(1);
-    const requestT = new flatbuffers.GetReactionRequestT(Array.from(fid), type, cast.unpack());
+    const requestT = new flatbuffers.GetReactionRequestT(Array.from(fid), type, cast);
     builder.finish(requestT.pack(builder));
     return flatbuffers.GetReactionRequest.getRootAsGetReactionRequest(new ByteBuffer(builder.asUint8Array()));
   },
@@ -19,9 +19,9 @@ export const reactionRequests = {
     );
   },
 
-  getReactionsByCast: (cast: CastId, type?: ReactionType): flatbuffers.GetReactionsByCastRequest => {
+  getReactionsByCast: (cast: CastIdT, type?: ReactionType): flatbuffers.GetReactionsByCastRequest => {
     const builder = new Builder(1);
-    const requestT = new flatbuffers.GetReactionsByCastRequestT(cast.unpack(), type);
+    const requestT = new flatbuffers.GetReactionsByCastRequestT(cast, type);
     builder.finish(requestT.pack(builder));
     return flatbuffers.GetReactionsByCastRequest.getRootAsGetReactionsByCastRequest(
       new ByteBuffer(builder.asUint8Array())

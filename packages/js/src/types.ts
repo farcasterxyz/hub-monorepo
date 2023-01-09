@@ -1,4 +1,6 @@
-import {
+import * as flatbuffers from '@hub/flatbuffers';
+
+export {
   FarcasterNetwork,
   HashScheme,
   MessageType,
@@ -7,21 +9,39 @@ import {
   UserDataType,
 } from '@hub/flatbuffers';
 
-export type Message<TData = MessageData> = {
+export type Message<TData = MessageData> = Readonly<{
+  flatbuffer: flatbuffers.Message;
   data: TData;
   hash: string; // Hex string
-  hashScheme: HashScheme;
+  hashScheme: flatbuffers.HashScheme;
   signature: string; // Hex string
-  signatureScheme: SignatureScheme;
+  signatureScheme: flatbuffers.SignatureScheme;
   signer: string; // Hex string
-};
+  tsHash: string; // Hex string
+}>;
 
-export type MessageData<TBody = MessageBody> = {
+export type CastAddMessage = Message<MessageData<CastAddBody, flatbuffers.MessageType.CastAdd>>;
+export type CastRemoveMessage = Message<MessageData<CastRemoveBody, flatbuffers.MessageType.CastRemove>>;
+export type ReactionAddMessage = Message<MessageData<ReactionBody, flatbuffers.MessageType.ReactionAdd>>;
+export type ReactionRemoveMessage = Message<MessageData<ReactionBody, flatbuffers.MessageType.ReactionRemove>>;
+export type AmpAddMessage = Message<MessageData<AmpBody, flatbuffers.MessageType.AmpAdd>>;
+export type AmpRemoveMessage = Message<MessageData<AmpBody, flatbuffers.MessageType.AmpRemove>>;
+export type VerificationAddEthAddressMessage = Message<
+  MessageData<VerificationAddEthAddressBody, flatbuffers.MessageType.VerificationAddEthAddress>
+>;
+export type VerificationRemoveMessage = Message<
+  MessageData<VerificationRemoveBody, flatbuffers.MessageType.VerificationRemove>
+>;
+export type SignerAddMessage = Message<MessageData<SignerBody, flatbuffers.MessageType.SignerAdd>>;
+export type SignerRemoveMessage = Message<MessageData<SignerBody, flatbuffers.MessageType.SignerRemove>>;
+export type UserDataAddMessage = Message<MessageData<UserDataBody, flatbuffers.MessageType.UserDataAdd>>;
+
+export type MessageData<TBody = MessageBody, TType = flatbuffers.MessageType> = {
   body: TBody;
-  type: MessageType;
+  type: TType;
   timestamp: number;
   fid: number;
-  network: FarcasterNetwork;
+  network: flatbuffers.FarcasterNetwork;
 };
 
 export type CastId = {
@@ -54,7 +74,7 @@ export type CastRemoveBody = {
 
 export type ReactionBody = {
   target: TargetId;
-  type: ReactionType;
+  type: flatbuffers.ReactionType;
 };
 
 export type AmpBody = {
@@ -76,6 +96,6 @@ export type SignerBody = {
 };
 
 export type UserDataBody = {
-  type: UserDataType;
+  type: flatbuffers.UserDataType;
   value: string;
 };
