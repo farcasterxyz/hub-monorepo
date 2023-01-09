@@ -161,78 +161,47 @@ static getSizePrefixedRootAsContactInfoContent(bb:flatbuffers.ByteBuffer, obj?:C
   return (obj || new ContactInfoContent()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-peerId(index: number):number|null {
-  const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
-}
-
-peerIdLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
-}
-
-peerIdArray():Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
-}
-
 gossipAddress(obj?:GossipAddressInfo):GossipAddressInfo|null {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
+  const offset = this.bb!.__offset(this.bb_pos, 4);
   return offset ? (obj || new GossipAddressInfo()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
 rpcAddress(obj?:GossipAddressInfo):GossipAddressInfo|null {
-  const offset = this.bb!.__offset(this.bb_pos, 8);
+  const offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? (obj || new GossipAddressInfo()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
 excludedHashes(index: number):string
 excludedHashes(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
 excludedHashes(index: number,optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
+  const offset = this.bb!.__offset(this.bb_pos, 8);
   return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
 }
 
 excludedHashesLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
+  const offset = this.bb!.__offset(this.bb_pos, 8);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 count():bigint {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
+  const offset = this.bb!.__offset(this.bb_pos, 10);
   return offset ? this.bb!.readUint64(this.bb_pos + offset) : BigInt('0');
 }
 
 static startContactInfoContent(builder:flatbuffers.Builder) {
-  builder.startObject(5);
-}
-
-static addPeerId(builder:flatbuffers.Builder, peerIdOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, peerIdOffset, 0);
-}
-
-static createPeerIdVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
-  builder.startVector(1, data.length, 1);
-  for (let i = data.length - 1; i >= 0; i--) {
-    builder.addInt8(data[i]!);
-  }
-  return builder.endVector();
-}
-
-static startPeerIdVector(builder:flatbuffers.Builder, numElems:number) {
-  builder.startVector(1, numElems, 1);
+  builder.startObject(4);
 }
 
 static addGossipAddress(builder:flatbuffers.Builder, gossipAddressOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, gossipAddressOffset, 0);
+  builder.addFieldOffset(0, gossipAddressOffset, 0);
 }
 
 static addRpcAddress(builder:flatbuffers.Builder, rpcAddressOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(2, rpcAddressOffset, 0);
+  builder.addFieldOffset(1, rpcAddressOffset, 0);
 }
 
 static addExcludedHashes(builder:flatbuffers.Builder, excludedHashesOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(3, excludedHashesOffset, 0);
+  builder.addFieldOffset(2, excludedHashesOffset, 0);
 }
 
 static createExcludedHashesVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
@@ -248,19 +217,17 @@ static startExcludedHashesVector(builder:flatbuffers.Builder, numElems:number) {
 }
 
 static addCount(builder:flatbuffers.Builder, count:bigint) {
-  builder.addFieldInt64(4, count, BigInt('0'));
+  builder.addFieldInt64(3, count, BigInt('0'));
 }
 
 static endContactInfoContent(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
-  builder.requiredField(offset, 4) // peer_id
   return offset;
 }
 
 
 unpack(): ContactInfoContentT {
   return new ContactInfoContentT(
-    this.bb!.createScalarList<number>(this.peerId.bind(this), this.peerIdLength()),
     (this.gossipAddress() !== null ? this.gossipAddress()!.unpack() : null),
     (this.rpcAddress() !== null ? this.rpcAddress()!.unpack() : null),
     this.bb!.createScalarList<string>(this.excludedHashes.bind(this), this.excludedHashesLength()),
@@ -270,7 +237,6 @@ unpack(): ContactInfoContentT {
 
 
 unpackTo(_o: ContactInfoContentT): void {
-  _o.peerId = this.bb!.createScalarList<number>(this.peerId.bind(this), this.peerIdLength());
   _o.gossipAddress = (this.gossipAddress() !== null ? this.gossipAddress()!.unpack() : null);
   _o.rpcAddress = (this.rpcAddress() !== null ? this.rpcAddress()!.unpack() : null);
   _o.excludedHashes = this.bb!.createScalarList<string>(this.excludedHashes.bind(this), this.excludedHashesLength());
@@ -280,7 +246,6 @@ unpackTo(_o: ContactInfoContentT): void {
 
 export class ContactInfoContentT implements flatbuffers.IGeneratedObject {
 constructor(
-  public peerId: (number)[] = [],
   public gossipAddress: GossipAddressInfoT|null = null,
   public rpcAddress: GossipAddressInfoT|null = null,
   public excludedHashes: (string)[] = [],
@@ -289,13 +254,11 @@ constructor(
 
 
 pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const peerId = ContactInfoContent.createPeerIdVector(builder, this.peerId);
   const gossipAddress = (this.gossipAddress !== null ? this.gossipAddress!.pack(builder) : 0);
   const rpcAddress = (this.rpcAddress !== null ? this.rpcAddress!.pack(builder) : 0);
   const excludedHashes = ContactInfoContent.createExcludedHashesVector(builder, builder.createObjectOffsetList(this.excludedHashes));
 
   ContactInfoContent.startContactInfoContent(builder);
-  ContactInfoContent.addPeerId(builder, peerId);
   ContactInfoContent.addGossipAddress(builder, gossipAddress);
   ContactInfoContent.addRpcAddress(builder, rpcAddress);
   ContactInfoContent.addExcludedHashes(builder, excludedHashes);
@@ -345,13 +308,28 @@ topicsLength():number {
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
-version():GossipVersion {
+peerId(index: number):number|null {
   const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
+
+peerIdLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+peerIdArray():Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+}
+
+version():GossipVersion {
+  const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? this.bb!.readUint16(this.bb_pos + offset) : GossipVersion.V1;
 }
 
 static startGossipMessage(builder:flatbuffers.Builder) {
-  builder.startObject(4);
+  builder.startObject(5);
 }
 
 static addContentType(builder:flatbuffers.Builder, contentType:GossipContent) {
@@ -378,14 +356,31 @@ static startTopicsVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(4, numElems, 4);
 }
 
+static addPeerId(builder:flatbuffers.Builder, peerIdOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(3, peerIdOffset, 0);
+}
+
+static createPeerIdVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startPeerIdVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
+}
+
 static addVersion(builder:flatbuffers.Builder, version:GossipVersion) {
-  builder.addFieldInt16(3, version, GossipVersion.V1);
+  builder.addFieldInt16(4, version, GossipVersion.V1);
 }
 
 static endGossipMessage(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   builder.requiredField(offset, 6) // content
   builder.requiredField(offset, 8) // topics
+  builder.requiredField(offset, 10) // peer_id
   return offset;
 }
 
@@ -397,11 +392,12 @@ static finishSizePrefixedGossipMessageBuffer(builder:flatbuffers.Builder, offset
   builder.finish(offset, undefined, true);
 }
 
-static createGossipMessage(builder:flatbuffers.Builder, contentType:GossipContent, contentOffset:flatbuffers.Offset, topicsOffset:flatbuffers.Offset, version:GossipVersion):flatbuffers.Offset {
+static createGossipMessage(builder:flatbuffers.Builder, contentType:GossipContent, contentOffset:flatbuffers.Offset, topicsOffset:flatbuffers.Offset, peerIdOffset:flatbuffers.Offset, version:GossipVersion):flatbuffers.Offset {
   GossipMessage.startGossipMessage(builder);
   GossipMessage.addContentType(builder, contentType);
   GossipMessage.addContent(builder, contentOffset);
   GossipMessage.addTopics(builder, topicsOffset);
+  GossipMessage.addPeerId(builder, peerIdOffset);
   GossipMessage.addVersion(builder, version);
   return GossipMessage.endGossipMessage(builder);
 }
@@ -415,6 +411,7 @@ unpack(): GossipMessageT {
       return temp.unpack()
   })(),
     this.bb!.createScalarList<string>(this.topics.bind(this), this.topicsLength()),
+    this.bb!.createScalarList<number>(this.peerId.bind(this), this.peerIdLength()),
     this.version()
   );
 }
@@ -428,6 +425,7 @@ unpackTo(_o: GossipMessageT): void {
       return temp.unpack()
   })();
   _o.topics = this.bb!.createScalarList<string>(this.topics.bind(this), this.topicsLength());
+  _o.peerId = this.bb!.createScalarList<number>(this.peerId.bind(this), this.peerIdLength());
   _o.version = this.version();
 }
 }
@@ -437,6 +435,7 @@ constructor(
   public contentType: GossipContent = GossipContent.NONE,
   public content: ContactInfoContentT|IdRegistryEventT|MessageT|null = null,
   public topics: (string)[] = [],
+  public peerId: (number)[] = [],
   public version: GossipVersion = GossipVersion.V1
 ){}
 
@@ -444,11 +443,13 @@ constructor(
 pack(builder:flatbuffers.Builder): flatbuffers.Offset {
   const content = builder.createObjectOffset(this.content);
   const topics = GossipMessage.createTopicsVector(builder, builder.createObjectOffsetList(this.topics));
+  const peerId = GossipMessage.createPeerIdVector(builder, this.peerId);
 
   return GossipMessage.createGossipMessage(builder,
     this.contentType,
     content,
     topics,
+    peerId,
     this.version
   );
 }

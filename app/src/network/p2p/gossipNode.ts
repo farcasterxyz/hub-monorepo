@@ -12,8 +12,9 @@ import { Builder, ByteBuffer } from 'flatbuffers';
 import { createLibp2p, Libp2p } from 'libp2p';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
+import MessageModel from '~/flatbuffers/models/messageModel';
 import { ConnectionFilter } from '~/network/p2p/connectionFilter';
-import { GOSSIP_TOPICS } from '~/network/p2p/protocol';
+import { GOSSIP_TOPICS, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { logger } from '~/utils/logger';
 import { checkNodeAddrs } from '~/utils/p2p';
 
@@ -91,8 +92,7 @@ export class Node extends TypedEmitter<NodeEvents> {
    */
   get gossip() {
     const pubsub = this._node?.pubsub;
-    // TODO: describe why we need to cast here
-    return pubsub ? (pubsub as unknown as GossipSub) : undefined;
+    return pubsub ? (pubsub as GossipSub) : undefined;
   }
 
   /**
@@ -150,6 +150,19 @@ export class Node extends TypedEmitter<NodeEvents> {
         log.error(err, 'Failed to publish message.');
       }
     );
+  }
+
+  /**
+   * Gossip out a Message to the network
+   */
+  async gossipMessage(message: MessageModel) {
+    const gossipMessage = new GossipMessageT(
+      GossipContent.Message,
+      message.message.unpack(),
+      [NETWORK_TOPIC_PRIMARY],
+      Array.from(this.peerId?.toBytes() ?? [])
+    );
+    await this.publish(gossipMessage);
   }
 
   /**

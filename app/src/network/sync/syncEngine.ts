@@ -110,31 +110,7 @@ class SyncEngine {
     );
     await messages.match(
       async (msgs) => {
-        const mergeResults = [];
-        // First, sort the messages by timestamp to reduce thrashing and refetching
-        msgs.sort((a, b) => a.timestamp() - b.timestamp());
-
-        // Merge messages sequentially, so we can handle missing users.
-        // TODO: Optimize by collecting all failures and retrying them in a batch
-        for (const msg of msgs) {
-          const result = await this.engine.mergeMessage(msg);
-          // Unknown user error
-          if (
-            result.isErr() &&
-            result.error.errCode === 'bad_request.validation_failure' &&
-            (result.error.message === 'invalid signer' || result.error.message.startsWith('unknown fid'))
-          ) {
-            log.warn({ fid: msg.data.fid }, 'Unknown user, fetching custody event');
-            const result = await this.syncUserAndRetryMessage(msg, rpcClient);
-            mergeResults.push(result);
-          } else {
-            mergeResults.push(result);
-          }
-        }
-        log.info(
-          { messages: mergeResults.length, success: mergeResults.filter((r) => r.isOk()).length },
-          'Merged messages'
-        );
+        await this.mergeMessages(msgs, rpcClient);
       },
       async (err) => {
         // e.g. Node goes down while we're performing the sync. No need to handle it, the next round of sync will retry.
@@ -143,6 +119,37 @@ class SyncEngine {
       }
     );
     return result;
+  }
+
+  public async mergeMessages(messages: MessageModel[], rpcClient: HubRpcClient): Promise<HubResult<void>[]> {
+    const mergeResults: HubResult<void>[] = [];
+    // First, sort the messages by timestamp to reduce thrashing and refetching
+    messages.sort((a, b) => a.timestamp() - b.timestamp());
+
+    // Merge messages sequentially, so we can handle missing users.
+    // TODO: Optimize by collecting all failures and retrying them in a batch
+    for (const msg of messages) {
+      const result = await this.engine.mergeMessage(msg);
+      // Unknown user error
+      if (
+        result.isErr() &&
+        result.error.errCode === 'bad_request.validation_failure' &&
+        (result.error.message === 'invalid signer' || result.error.message.startsWith('unknown fid'))
+      ) {
+        log.warn({ fid: msg.data.fid }, 'Unknown user, fetching custody event');
+        const result = await this.syncUserAndRetryMessage(msg, rpcClient);
+        mergeResults.push(result);
+      } else {
+        mergeResults.push(result);
+      }
+    }
+
+    log.info(
+      { messages: mergeResults.length, success: mergeResults.filter((r) => r.isOk()).length },
+      'Merged messages'
+    );
+
+    return mergeResults;
   }
 
   async fetchMissingHashesByNode(

@@ -3,7 +3,7 @@ import { Factories } from '@hub/utils';
 import { multiaddr } from '@multiformats/multiaddr/';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastAddModel } from '~/flatbuffers/models/types';
-import { Node } from '~/network/p2p/node';
+import { Node } from '~/network/p2p/gossipNode';
 import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { sleep } from '~/utils/crypto';
 

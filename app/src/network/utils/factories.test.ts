@@ -31,6 +31,13 @@ describe('GossipMessageFactory', () => {
   test('defaults to the right version', async () => {
     expect(message.version()).toEqual(GOSSIP_PROTOCOL_VERSION);
   });
+
+  test('generates a valid peerId', async () => {
+    const gossipMsg = await NetworkFactories.GossipMessage.create();
+    const peerId = peerIdFromBytes(gossipMsg.peerIdArray() || new Uint8Array());
+    expect(peerId).toBeDefined();
+    expect(isPeerId(peerId)).toBeTruthy();
+  });
 });
 
 describe('AddressInfoFactory', () => {
@@ -59,12 +66,5 @@ describe('ContactInfoFactory', () => {
     const contactInfo = await NetworkFactories.GossipContactInfoContent.create({ gossipAddress, rpcAddress });
     expect(contactInfo.rpcAddress()?.unpack()).toEqual(rpcAddress);
     expect(contactInfo.gossipAddress()?.unpack()).toEqual(gossipAddress);
-  });
-
-  test('generates a valid peerId', async () => {
-    const contactInfo = await NetworkFactories.GossipContactInfoContent.create();
-    const peerId = peerIdFromBytes(contactInfo.peerIdArray() || new Uint8Array());
-    expect(peerId).toBeDefined();
-    expect(isPeerId(peerId)).toBeTruthy();
   });
 });

@@ -1,8 +1,8 @@
 import { TypedDataSigner } from '@ethersproject/abstract-signer';
 import { utils } from 'ethers';
-import { err } from 'neverthrow';
+import { err, Result } from 'neverthrow';
 import { bytesToHexString, hexStringToBytes } from '../bytes';
-import { HubAsyncResult, HubResult } from '../errors';
+import { HubAsyncResult, HubError, HubResult } from '../errors';
 import { VerificationEthAddressClaim } from '../verifications';
 
 export const EIP_712_FARCASTER_DOMAIN = {
@@ -61,15 +61,22 @@ export const verifyVerificationEthAddressClaimSignature = (
   }
 
   // Recover address from signature
-  const recoveredHexAddress = utils.verifyTypedData(
-    EIP_712_FARCASTER_DOMAIN,
-    { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
-    claim,
-    hexSignature.value
-  );
+  const recoveredHexAddress = Result.fromThrowable(
+    () =>
+      utils.verifyTypedData(
+        EIP_712_FARCASTER_DOMAIN,
+        { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
+        claim,
+        hexSignature.value
+      ),
+    () => new HubError('bad_request.parse_failure', 'Invalid signature')
+  )();
+  if (recoveredHexAddress.isErr()) {
+    return err(recoveredHexAddress.error);
+  }
 
   // Convert hex recovered address to little endian bytes
-  return hexStringToBytes(recoveredHexAddress, { endianness: 'little' });
+  return hexStringToBytes(recoveredHexAddress.value, { endianness: 'little' });
 };
 
 export const signMessageHash = async (

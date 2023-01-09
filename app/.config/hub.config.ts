@@ -17,7 +17,7 @@ export const Config = {
   /** An "allow list" of Peer Ids. Blocks all other connections */
   // allowedPeers: [],
   /** The IP address libp2p should listen on. */
-  ip: '::',
+  ip: '127.0.0.1',
   /** The TCP port libp2p should listen on. */
   gossipPort: 0,
   /** The RPC port to use. */
