@@ -10,13 +10,14 @@ import { toFarcasterTime } from './time';
 import { toTsHash } from './tsHash';
 import { makeVerificationEthAddressClaim, VerificationEthAddressClaim } from './verifications';
 
-/* eslint-disable security/detect-object-injection */
 const BytesFactory = Factory.define<Uint8Array, { length?: number }>(({ transientParams }) => {
-  const length = transientParams.length ?? 8;
+  const length = transientParams.length ?? faker.datatype.number({ max: 64, min: 1 });
   const bytes = new Uint8Array(length);
-  for (let i = 0; i < bytes.byteLength; i++) {
-    bytes[i] = faker.datatype.number({ max: 255, min: 0 });
+  for (let i = 0; i < bytes.length - 1; i++) {
+    bytes.set([faker.datatype.number({ max: 255, min: 0 })], i);
   }
+  // Ensure that the most significant byte is not 0 (i.e. is not padding)
+  bytes.set([faker.datatype.number({ max: 255, min: 1 })], bytes.length - 1);
   return bytes;
 });
 
