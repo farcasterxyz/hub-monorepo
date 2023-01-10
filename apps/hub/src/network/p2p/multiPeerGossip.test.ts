@@ -67,9 +67,14 @@ describe('Multi peer gossip', () => {
     peerId1 = await createEd25519PeerId();
     peerId2 = await createEd25519PeerId();
 
-    const hubOptions1 = {
-      peerId: peerId1,
+    const defaultHubOptions = {
       localIpAddrsOnly: true,
+      fetchIp: false,
+    };
+
+    const hubOptions1 = {
+      ...defaultHubOptions,
+      peerId: peerId1,
     };
 
     hub1 = new Hub(hubOptions1);
@@ -77,8 +82,8 @@ describe('Multi peer gossip', () => {
     clientForServer1 = new HubRpcClient(hub1.rpcAddress._unsafeUnwrap());
 
     const hubOptions2 = {
+      ...defaultHubOptions,
       peerId: peerId2,
-      localIpAddrsOnly: true,
     };
 
     hub2 = new Hub(hubOptions2);

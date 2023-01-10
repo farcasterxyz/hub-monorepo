@@ -16,7 +16,7 @@ import MessageModel from '~/flatbuffers/models/messageModel';
 import { ConnectionFilter } from '~/network/p2p/connectionFilter';
 import { GOSSIP_TOPICS, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { logger } from '~/utils/logger';
-import { checkNodeAddrs } from '~/utils/p2p';
+import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
 
@@ -40,6 +40,8 @@ interface NodeOptions {
   peerId?: PeerId | undefined;
   /** IP address in MultiAddr format to bind to */
   ipMultiAddr?: string | undefined;
+  /** External Ip address to announce */
+  announceIp?: string | undefined;
   /** Port to listen for gossip. Picks a port at random if not specified. This is combined with the IPMultiAddr */
   gossipPort?: number | undefined;
   /** A list of addresses to peer with. PeersIds outside of this list will not be able to connect to this node */
@@ -300,6 +302,16 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     const listenPort = options.gossipPort ?? 0;
     const listenMultiAddrStr = `${listenIPMultiAddr}/tcp/${listenPort}`;
 
+    let announceMultiAddrStrList: string[] = [];
+    if (options.announceIp && options.gossipPort) {
+      const announceMultiAddr = addressInfoFromParts(options.announceIp, options.gossipPort).map((addressInfo) =>
+        ipMultiAddrStrFromAddressInfo(addressInfo)
+      );
+      if (announceMultiAddr.isOk() && announceMultiAddr.value.isOk()) {
+        announceMultiAddrStrList = [`${announceMultiAddr.value.value}/tcp/${options.gossipPort}`];
+      }
+    }
+
     const checkResult = checkNodeAddrs(listenIPMultiAddr, listenMultiAddrStr);
     if (checkResult.isErr()) return err(new HubError('unavailable', checkResult.error));
 
@@ -324,6 +336,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
         connectionGater,
         addresses: {
           listen: [listenMultiAddrStr],
+          announce: announceMultiAddrStrList,
         },
         transports: [new TCP()],
         streamMuxers: [new Mplex()],

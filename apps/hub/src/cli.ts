@@ -30,8 +30,10 @@ app
   .option('-b, --bootstrap <peer-multiaddrs...>', 'A list of peer multiaddrs to bootstrap libp2p')
   .option('-a, --allowed-peers <peerIds...>', 'An allow-list of peer ids permitted to connect to the hub')
   .option('--ip <ip-address>', 'The IP address libp2p should listen on. (default: "127.0.0.1")')
-  .option('-g, --gossip-port <port>', 'The tcp port libp2p should gossip over. (default: random port)')
-  .option('-r, --rpc-port <port>', 'The tcp port that the rpc server should listen on.  (default: random port)')
+  .option('--announce-ip <ip-address>', 'The IP address libp2p should announce to other peers')
+  .option('--no-fetch-ip', 'Do not fetch the IP address from an external service (default: false)')
+  .option('-g, --gossip-port <port>', 'The tcp port libp2p should gossip over. (default: 13111)')
+  .option('-r, --rpc-port <port>', 'The tcp port that the rpc server should listen on.  (default: 13112)')
   .option('--db-name <name>', 'The name of the RocksDB instance')
   .option('--db-reset', 'Clears the database before starting')
   .option('-i, --id <filepath>', 'Path to the PeerId file')
@@ -68,6 +70,8 @@ app
     const options: HubOptions = {
       peerId,
       ipMultiAddr: ipMultiAddrResult.value,
+      announceIp: cliOptions.announceIp ?? hubConfig.announceIp,
+      fetchIp: cliOptions.fetchIp ?? hubConfig.fetchIp,
       gossipPort: hubAddressInfo.value.port,
       networkUrl: cliOptions.networkUrl ?? hubConfig.networkUrl,
       IdRegistryAddress: cliOptions.firAddress ?? hubConfig.firAddress,
