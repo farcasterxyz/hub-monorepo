@@ -31,7 +31,7 @@ import Engine from '~/storage/engine';
 import { PruneMessagesJobScheduler } from '~/storage/jobs/pruneMessagesJob';
 import { RevokeSignerJobQueue, RevokeSignerJobScheduler } from '~/storage/jobs/revokeSignerJob';
 import { idRegistryEventToLog, logger, messageToLog, nameRegistryEventToLog } from '~/utils/logger';
-import { addressInfoFromGossip, ipFamilyToString, p2pMultiAddrStr } from '~/utils/p2p';
+import { addressInfoFromGossip, getPublicIp, ipFamilyToString, p2pMultiAddrStr } from '~/utils/p2p';
 
 export const APP_VERSION = process.env['npm_package_version'] ?? '1.0.0';
 export const APP_NICKNAME = 'Farcaster Hub';
@@ -48,6 +48,12 @@ export interface HubOptions {
 
   /** IP address string in MultiAddr format to bind to */
   ipMultiAddr?: string;
+
+  /** External IP address to announce to peers */
+  announceIp?: string;
+
+  /** Fetch IP from external service if announceIp is not provided? */
+  fetchIp?: boolean;
 
   /** Port for libp2p to listen for gossip */
   gossipPort?: number;
@@ -159,6 +165,15 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
 
   /* Start the GossipNode and RPC server  */
   async start() {
+    // See if we have to fetch the IP address
+    if (!this.options.announceIp && this.options.fetchIp) {
+      const ipResult = await getPublicIp();
+      if (ipResult.isErr()) {
+        log.error('failed to fetch public IP address', { error: ipResult.error });
+      } else {
+        this.options.announceIp = ipResult.value;
+      }
+    }
     await this.rocksDB.open();
 
     if (this.options.resetDB === true) {
@@ -172,6 +187,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     await this.gossipNode.start(this.options.bootstrapAddrs ?? [], {
       peerId: this.options.peerId,
       ipMultiAddr: this.options.ipMultiAddr,
+      announceIp: this.options.announceIp,
       gossipPort: this.options.gossipPort,
       allowedPeerIdStrs: this.options.allowedPeers,
     });

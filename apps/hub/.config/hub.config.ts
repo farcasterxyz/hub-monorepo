@@ -5,6 +5,9 @@
  * Note: CLI options take precedence over the options specified in a config file
  */
 
+const DEFAULT_GOSSIP_PORT = 13111;
+const DEFAULT_RPC_PORT = 13112;
+
 export const Config = {
   /** Path to a PeerId file */
   id: './.hub/default_id.protobuf',
@@ -18,10 +21,14 @@ export const Config = {
   // allowedPeers: [],
   /** The IP address libp2p should listen on. */
   ip: '127.0.0.1',
+  /** The IP address that libp2p should announce to peers */
+  announceIp: '',
+  /** Fetch the IP address from an external service? */
+  fetchIp: false,
   /** The TCP port libp2p should listen on. */
-  gossipPort: 0,
+  gossipPort: DEFAULT_GOSSIP_PORT,
   /** The RPC port to use. */
-  rpcPort: 0,
+  rpcPort: DEFAULT_RPC_PORT,
   /** The name of the RocksDB instance */
   dbName: 'rocks.hub._default',
   /** Clear the RocksDB instance before starting */
