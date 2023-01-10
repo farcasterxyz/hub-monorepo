@@ -37,7 +37,9 @@ export const bytesCompare = (a: Uint8Array, b: Uint8Array): number => {
 
 // TOOD: support both big and little endian
 /* eslint-disable security/detect-object-injection */
-export const bytesIncrement = (bytes: Uint8Array): Uint8Array => {
+export const bytesIncrement = (inputBytes: Uint8Array): Uint8Array => {
+  const bytes = new Uint8Array(inputBytes); // avoid mutating input
+
   let i = bytes.length - 1;
   while (i >= 0) {
     if ((bytes[i] as number) < 255) {
@@ -52,7 +54,8 @@ export const bytesIncrement = (bytes: Uint8Array): Uint8Array => {
 };
 
 // TODO: support both big and little endian
-export const bytesDecrement = (bytes: Uint8Array): Uint8Array => {
+export const bytesDecrement = (inputBytes: Uint8Array): Uint8Array => {
+  const bytes = new Uint8Array(inputBytes); // avoid mutating input
   let i = bytes.length - 1;
   while (i >= 0) {
     if ((bytes[i] as number) > 0) {
@@ -75,7 +78,8 @@ export const toByteBuffer = (buffer: Buffer): ByteBuffer => {
   return new ByteBuffer(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.length / Uint8Array.BYTES_PER_ELEMENT));
 };
 
-export const bytesToUtf8String = (bytes: Uint8Array, options: BytesOptions = {}): HubResult<string> => {
+export const bytesToUtf8String = (inputBytes: Uint8Array, options: BytesOptions = {}): HubResult<string> => {
+  let bytes = new Uint8Array(inputBytes); // avoid mutating input
   const endianness: Endianness = options.endianness ?? 'little';
   const decoder = new TextDecoder();
   if (endianness === 'little') {
