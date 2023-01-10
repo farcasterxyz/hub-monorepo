@@ -47,6 +47,14 @@ describe('bytesIncrement', () => {
       expect(bytesIncrement(input)).toEqual(output);
     });
   }
+
+  test('input byte array is not mutated', () => {
+    const input = new Uint8Array([112, 102, 104]);
+    const inputClone = new Uint8Array([112, 102, 104]);
+
+    bytesIncrement(input);
+    expect(bytesCompare(input, inputClone)).toBe(0);
+  });
 });
 
 describe('bytesDecrement', () => {
@@ -72,6 +80,14 @@ describe('bytesDecrement', () => {
       expect(() => bytesDecrement(input)).toThrow(HubError);
     });
   }
+
+  test('input byte array is not mutated', () => {
+    const input = new Uint8Array([112, 102, 104]);
+    const inputClone = new Uint8Array([112, 102, 104]);
+
+    bytesDecrement(input);
+    expect(bytesCompare(input, inputClone)).toBe(0);
+  });
 });
 
 describe('hexStringToBytes', () => {
@@ -160,6 +176,14 @@ describe('bytesToHexString', () => {
       }
     });
   });
+
+  test('input byte array is not mutated', () => {
+    const input = new Uint8Array([112, 102, 104]);
+    const inputClone = new Uint8Array([112, 102, 104]);
+
+    bytesToHexString(input);
+    expect(bytesCompare(input, inputClone)).toBe(0);
+  });
 });
 
 describe('bytesToUtf8String', () => {
@@ -189,6 +213,14 @@ describe('bytesToUtf8String', () => {
       });
     }
   });
+
+  test('input byte array is not mutated', () => {
+    const input = new Uint8Array([112, 102, 104]);
+    const inputClone = new Uint8Array([112, 102, 104]);
+
+    bytesToUtf8String(input);
+    expect(bytesCompare(input, inputClone)).toBe(0);
+  });
 });
 
 describe('bytesToNumber', () => {
@@ -203,6 +235,14 @@ describe('bytesToNumber', () => {
   test('fails when number is larger than 48 bits', () => {
     const maxSafeInt = new Uint8Array([255, 255, 255, 255, 255, 255, 31]);
     expect(bytesToNumber(maxSafeInt)._unsafeUnwrapErr().errCode).toEqual('bad_request.invalid_param');
+  });
+
+  test('input byte array is not mutated', () => {
+    const input = new Uint8Array([112, 102, 104]);
+    const inputClone = new Uint8Array([112, 102, 104]);
+
+    bytesToNumber(input);
+    expect(bytesCompare(input, inputClone)).toBe(0);
   });
 });
 
