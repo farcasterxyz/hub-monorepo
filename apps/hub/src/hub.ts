@@ -1,6 +1,8 @@
 import {
   ContactInfoContent,
+  ContactInfoContentT,
   GossipAddressInfo,
+  GossipAddressInfoT,
   GossipContent,
   GossipMessage,
   IdRegistryEvent,
@@ -11,6 +13,7 @@ import { PeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import { publicAddressesFirst } from '@libp2p/utils/address-sort';
 import { multiaddr, Multiaddr } from '@multiformats/multiaddr';
+import { Builder, ByteBuffer } from 'flatbuffers';
 import { isIP } from 'net';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
@@ -119,7 +122,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   engine: Engine;
   ethRegistryProvider: EthEventsProvider;
 
-  private currentHubRpcClients: Map<PeerId, HubRpcClient> = new Map();
+  private currentHubRpcClients: Map<string, HubRpcClient> = new Map();
 
   constructor(options: HubOptions) {
     super();
@@ -201,6 +204,29 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     this.pruneMessagesJobScheduler.start(this.options.pruneMessagesJobCron);
   }
 
+  getContactInfoContent(): ContactInfoContent {
+    const nodeMultiAddr = this.gossipAddresses[0];
+    const family = nodeMultiAddr?.nodeAddress().family;
+    const announceIp = this.options.announceIp ?? nodeMultiAddr?.nodeAddress().address;
+    const gossipPort = nodeMultiAddr?.nodeAddress().port;
+    const rpcPort = this.rpcServer.address?.map((addr) => addr.port).unwrapOr(0);
+
+    const gossipAddressContactInfo = new GossipAddressInfoT(announceIp, family, gossipPort);
+    const rpcAddressContactInfo = new GossipAddressInfoT(announceIp, family, rpcPort);
+
+    const snapshot = this.syncEngine.snapshot;
+    const contactInfoT = new ContactInfoContentT(
+      gossipAddressContactInfo,
+      rpcAddressContactInfo,
+      snapshot.excludedHashes,
+      BigInt(snapshot.numMessages)
+    );
+
+    const builder = new Builder(1);
+    builder.finish(contactInfoT.pack(builder));
+    return ContactInfoContent.getRootAsContactInfoContent(new ByteBuffer(builder.asUint8Array()));
+  }
+
   /** Stop the GossipNode and RPC Server */
   async stop() {
     clearInterval(this.contactTimer);
@@ -248,7 +274,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
       const message = MessageModel.from(bytes);
 
       // Get the RPC Client to use to merge this message
-      const rpcClient = this.currentHubRpcClients.get(peerId);
+      const rpcClient = this.currentHubRpcClients.get(peerId.toString());
       if (rpcClient) {
         return this.syncEngine.mergeMessages([message], rpcClient).then((result) => result[0] as HubResult<void>);
       } else {
@@ -308,11 +334,11 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
 
     // Check if we already have this client
     if (rpcClient) {
-      if (this.currentHubRpcClients.has(peerId)) {
+      if (this.currentHubRpcClients.has(peerId.toString())) {
         log.info('Already have this client, skipping sync');
         return;
       } else {
-        this.currentHubRpcClients.set(peerId, rpcClient);
+        this.currentHubRpcClients.set(peerId.toString(), rpcClient);
         await this.diffSyncIfRequired(message, rpcClient);
       }
     }
@@ -450,6 +476,24 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
           log.error(error, 'failed to decode message');
         }
       );
+    });
+
+    this.gossipNode.on('peerConnect', async () => {
+      // When we connect to a new node, gossip out our contact info 1 second later.
+      // The setTimeout is to ensure that we have a chance to receive the peer's info properly.
+      setTimeout(async () => {
+        const contactInfo = this.getContactInfoContent();
+        log.info(
+          { rpcAddress: contactInfo.rpcAddress()?.address(), rpcPort: contactInfo.rpcAddress()?.port },
+          'gossiping contact info'
+        );
+        await this.gossipNode.gossipContactInfo(contactInfo);
+      }, 1 * 1000);
+    });
+
+    this.gossipNode.on('peerDisconnect', async (connection) => {
+      // Remove this peer's connection
+      this.currentHubRpcClients.delete(connection.remotePeer.toString());
     });
   }
 
