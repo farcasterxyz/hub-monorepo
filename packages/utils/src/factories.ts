@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import * as flatbuffers from '@hub/flatbuffers';
+import * as flatbuffers from '@farcaster/flatbuffers';
 import { blake3 } from '@noble/hashes/blake3';
 import { ethers } from 'ethers';
 import { Factory } from 'fishery';

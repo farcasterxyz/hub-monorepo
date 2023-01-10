@@ -1,7 +1,6 @@
 import { faker } from '@faker-js/faker';
-import * as flatbuffers from '@hub/flatbuffers';
-import { bytesToHexString, bytesToNumber, Factories } from '@hub/utils';
-import { validateMessage } from '@hub/utils/src/validations';
+import * as flatbuffers from '@farcaster/flatbuffers';
+import { bytesToHexString, bytesToNumber, Factories, validations } from '@farcaster/utils';
 import * as builders from './builders';
 
 const fid = faker.datatype.number({ min: 1 });
@@ -17,7 +16,7 @@ describe('makeCastAdd', () => {
       { fid, timestamp, network },
       ed25519Signer
     );
-    const isValid = await validateMessage(message._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -32,7 +31,7 @@ describe('makeCastRemove', () => {
       { fid, timestamp, network },
       ed25519Signer
     );
-    const isValid = await validateMessage(message._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -48,7 +47,7 @@ describe('makeReactionAdd', () => {
       { fid, timestamp, network },
       ed25519Signer
     );
-    const isValid = await validateMessage(message._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -64,7 +63,7 @@ describe('makeReactionRemove', () => {
       { fid, timestamp, network },
       ed25519Signer
     );
-    const isValid = await validateMessage(message._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -75,7 +74,7 @@ describe('makeAmpAdd', () => {
 
   test('succeeds', async () => {
     const message = await builders.makeAmpAdd({ user: userNumber }, { fid, timestamp, network }, ed25519Signer);
-    const isValid = await validateMessage(message._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -86,7 +85,7 @@ describe('makeAmpRemove', () => {
 
   test('succeeds', async () => {
     const message = await builders.makeAmpRemove({ user: userNumber }, { fid, timestamp, network }, ed25519Signer);
-    const isValid = await validateMessage(message._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -108,7 +107,7 @@ describe('makeVerificationAddEthAddress', () => {
       { fid, timestamp, network },
       ed25519Signer
     );
-    const isValid = await validateMessage(message._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -122,7 +121,7 @@ describe('makeVerificationRemove', () => {
       { fid, timestamp, network },
       ed25519Signer
     );
-    const isValid = await validateMessage(message._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -134,7 +133,7 @@ describe('makeSignerRemove', () => {
       { fid, timestamp, network },
       eip712Signer
     );
-    const isValid = await validateMessage(message._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -146,7 +145,7 @@ describe('makeSignerAdd', () => {
       { fid, timestamp, network },
       eip712Signer
     );
-    const isValid = await validateMessage(message._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -158,7 +157,7 @@ describe('makeUserDataAdd', () => {
       { fid, timestamp, network },
       ed25519Signer
     );
-    const isValid = await validateMessage(message._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
     expect(isValid.isOk()).toBeTruthy();
   });
 });

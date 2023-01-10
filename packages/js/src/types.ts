@@ -1,4 +1,4 @@
-import * as flatbuffers from '@hub/flatbuffers';
+import * as flatbuffers from '@farcaster/flatbuffers';
 
 export {
   FarcasterNetwork,
@@ -7,7 +7,7 @@ export {
   ReactionType,
   SignatureScheme,
   UserDataType,
-} from '@hub/flatbuffers';
+} from '@farcaster/flatbuffers';
 
 export type Message<TData = MessageData> = Readonly<{
   flatbuffer: flatbuffers.Message;

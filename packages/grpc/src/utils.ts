@@ -1,5 +1,5 @@
+import { HubError, HubErrorCode } from '@farcaster/utils';
 import grpc from '@grpc/grpc-js';
-import { HubError, HubErrorCode } from '@hub/utils';
 import { GenericFlatbuffer } from './types';
 
 export const fromServiceError = (err: grpc.ServiceError): HubError => {

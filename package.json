@@ -5,15 +5,15 @@
   "private": true,
   "packageManager": "yarn@1.22.19",
   "workspaces": [
-    "app",
+    "apps/*",
     "packages/*"
   ],
   "scripts": {
     "build": "./node_modules/.bin/turbo run build",
     "dev": "./node_modules/.bin/turbo run dev --parallel",
     "flatc": "flatc --ts --ts-flat-files --gen-object-api -o packages/flatbuffers/src/generated packages/flatbuffers/src/schemas/*.fbs",
-    "test": "./node_modules/.bin/turbo run test --parallel",
-    "test:ci": "./node_modules/.bin/turbo run test:ci --parallel -- --passWithNoTests",
+    "test": "./node_modules/.bin/turbo run test",
+    "test:ci": "./node_modules/.bin/turbo run test:ci -- --passWithNoTests",
     "lint": "./node_modules/.bin/turbo run lint --parallel",
     "prepare": "husky install"
   },
@@ -21,7 +21,7 @@
     "npm": ">=8.0.0",
     "node": "^18.7.0"
   },
-  "dependencies": {
+  "devDependencies": {
     "@swc/cli": "^0.1.57",
     "@swc/core": "^1.3.24",
     "@swc/jest": "^0.2.24",
@@ -31,6 +31,7 @@
     "jest": "^29.0.3",
     "lint-staged": "^13.0.3",
     "ts-node": "^10.9.1",
+    "tsup": "^6.5.0",
     "turbo": "^1.6.3",
     "typescript": "4.9.4"
   },

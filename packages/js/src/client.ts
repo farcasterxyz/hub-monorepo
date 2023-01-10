@@ -1,7 +1,6 @@
-import * as flatbuffers from '@hub/flatbuffers';
-import { Client as GrpcClient } from '@hub/grpc';
-import { HubAsyncResult, HubResult } from '@hub/utils';
-import { validateReactionType, validateUserDataType } from '@hub/utils/src/validations';
+import * as flatbuffers from '@farcaster/flatbuffers';
+import { Client as GrpcClient } from '@farcaster/grpc';
+import { HubAsyncResult, HubResult, validations } from '@farcaster/utils';
 import { err, ok, Result } from 'neverthrow';
 import { makeMessageFromFlatbuffer } from './builders';
 import * as types from './types';
@@ -133,7 +132,11 @@ export class Client {
     type: types.ReactionType,
     cast: types.CastId
   ): HubAsyncResult<types.ReactionAddMessage> {
-    const serializedArgs = Result.combine([serializeFid(fid), validateReactionType(type), serializeCastId(cast)]);
+    const serializedArgs = Result.combine([
+      serializeFid(fid),
+      validations.validateReactionType(type),
+      serializeCastId(cast),
+    ]);
 
     if (serializedArgs.isErr()) {
       return err(serializedArgs.error);
@@ -143,7 +146,10 @@ export class Client {
   }
 
   async getReactionsByFid(fid: number, type?: types.ReactionType): HubAsyncResult<types.ReactionAddMessage[]> {
-    const serializedArgs = Result.combine([serializeFid(fid), type ? validateReactionType(type) : ok(undefined)]);
+    const serializedArgs = Result.combine([
+      serializeFid(fid),
+      type ? validations.validateReactionType(type) : ok(undefined),
+    ]);
 
     if (serializedArgs.isErr()) {
       return err(serializedArgs.error);
@@ -156,7 +162,10 @@ export class Client {
   }
 
   async getReactionsByCast(cast: types.CastId, type?: types.ReactionType): HubAsyncResult<types.ReactionAddMessage[]> {
-    const serializedArgs = Result.combine([serializeCastId(cast), type ? validateReactionType(type) : ok(undefined)]);
+    const serializedArgs = Result.combine([
+      serializeCastId(cast),
+      type ? validations.validateReactionType(type) : ok(undefined),
+    ]);
 
     if (serializedArgs.isErr()) {
       return err(serializedArgs.error);
@@ -223,7 +232,7 @@ export class Client {
   /* -------------------------------------------------------------------------- */
 
   async getUserData(fid: number, type: types.UserDataType): HubAsyncResult<types.UserDataAddMessage> {
-    const serializedArgs = Result.combine([serializeFid(fid), validateUserDataType(type)]);
+    const serializedArgs = Result.combine([serializeFid(fid), validations.validateUserDataType(type)]);
 
     if (serializedArgs.isErr()) {
       return err(serializedArgs.error);

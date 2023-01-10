@@ -1,13 +1,23 @@
 {
-  "name": "@hub/utils",
-  "version": "1.0.0",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
-  "type": "module",
+  "name": "@farcaster/utils",
+  "version": "0.1.1",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "license": "MIT",
   "dependencies": {
     "@faker-js/faker": "^7.6.0",
-    "@hub/flatbuffers": "1.0.0",
+    "@farcaster/flatbuffers": "0.1.1",
     "@noble/ed25519": "^1.7.1",
     "@noble/hashes": "^1.1.5",
     "ethers": "^5.7.2",
@@ -15,14 +25,13 @@
     "neverthrow": "^6.0.0"
   },
   "scripts": {
-    "build": "yarn clean && tsc --project ./tsconfig.json",
-    "clean": "rm -rf ./build",
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
     "lint": "eslint  src/ --color --ext .ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"
   },
   "devDependencies": {
-    "fishery": "^2.2.2",
-    "eslint-config-custom": "*"
+    "eslint-config-custom": "*",
+    "fishery": "^2.2.2"
   }
 }

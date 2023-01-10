@@ -1,21 +1,31 @@
 {
   "name": "@farcaster/js",
-  "version": "0.1.0",
-  "main": "build/index.js",
-  "types": "build/index.d.ts",
-  "type": "module",
+  "version": "0.1.2",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "license": "MIT",
   "dependencies": {
-    "@hub/flatbuffers": "1.0.0",
-    "@hub/grpc": "1.0.0",
-    "@hub/utils": "1.0.0",
+    "@farcaster/flatbuffers": "0.1.1",
+    "@farcaster/grpc": "0.1.1",
+    "@farcaster/utils": "0.1.1",
     "ethers": "^5.7.2",
     "flatbuffers": "^22.11.23",
     "neverthrow": "^6.0.0"
   },
   "scripts": {
-    "build": "yarn clean && tsc --project ./tsconfig.json",
-    "clean": "rm -rf ./build",
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "clean": "rm -rf ./dist",
     "lint": "eslint  src/ --color --ext .ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"

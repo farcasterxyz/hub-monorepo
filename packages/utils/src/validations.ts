@@ -1,5 +1,4 @@
-import * as flatbuffers from '@hub/flatbuffers';
-import { MessageData } from '@hub/flatbuffers';
+import * as flatbuffers from '@farcaster/flatbuffers';
 import { blake3 } from '@noble/hashes/blake3';
 import { ByteBuffer } from 'flatbuffers';
 import { err, ok, Result } from 'neverthrow';
@@ -124,7 +123,7 @@ export const validateMessage = async (message: flatbuffers.Message): HubAsyncRes
   if (!dataBytes) {
     return err(new HubError('bad_request.validation_failure', 'data is missing'));
   }
-  const data = MessageData.getRootAsMessageData(new ByteBuffer(dataBytes));
+  const data = flatbuffers.MessageData.getRootAsMessageData(new ByteBuffer(dataBytes));
   const validData = validateMessageData(data);
   if (validData.isErr()) {
     return err(validData.error);

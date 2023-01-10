@@ -1,4 +1,4 @@
-import * as flatbuffers from '@hub/flatbuffers';
+import * as flatbuffers from '@farcaster/flatbuffers';
 import {
   bytesToHexString,
   HubAsyncResult,
@@ -9,7 +9,7 @@ import {
   toFarcasterTime,
   toTsHash,
   validations,
-} from '@hub/utils';
+} from '@farcaster/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { err, ok, Result } from 'neverthrow';

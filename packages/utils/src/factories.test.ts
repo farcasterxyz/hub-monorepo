@@ -1,4 +1,4 @@
-import * as flatbuffers from '@hub/flatbuffers';
+import * as flatbuffers from '@farcaster/flatbuffers';
 import { blake3 } from '@noble/hashes/blake3';
 import * as ed25519 from './crypto/ed25519';
 import { verifyVerificationEthAddressClaimSignature } from './crypto/eip712';

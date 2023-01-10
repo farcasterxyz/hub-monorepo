@@ -1,4 +1,4 @@
-import { FarcasterNetwork } from '@hub/flatbuffers';
+import { FarcasterNetwork } from '@farcaster/flatbuffers';
 import { BigNumber } from 'ethers';
 import { err, ok } from 'neverthrow';
 import { bytesToBigNumber, bytesToHexString } from './bytes';

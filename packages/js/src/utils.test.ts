@@ -1,13 +1,13 @@
 import { faker } from '@faker-js/faker';
-import * as flatbuffers from '@hub/flatbuffers';
+import * as flatbuffers from '@farcaster/flatbuffers';
 import {
   CastAddBody,
   ReactionBody,
   SignerBody,
   VerificationAddEthAddressBody,
   VerificationRemoveBody,
-} from '@hub/flatbuffers';
-import { bytesToHexString, bytesToNumber, Factories, hexStringToBytes } from '@hub/utils';
+} from '@farcaster/flatbuffers';
+import { bytesToHexString, bytesToNumber, Factories, hexStringToBytes } from '@farcaster/utils';
 import * as types from './types';
 import * as utils from './utils';
 

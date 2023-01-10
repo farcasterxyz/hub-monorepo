@@ -1,4 +1,4 @@
-import { MessageType } from '@hub/flatbuffers';
+import { MessageType } from '@farcaster/flatbuffers';
 import { Ed25519Signer } from './ed25519Signer';
 import { Eip712Signer } from './eip712Signer';
 
