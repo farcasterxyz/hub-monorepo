@@ -31,7 +31,7 @@ const FnameFactory = Factory.define<Uint8Array>(() => {
   const builder = new Builder(8);
   // Add 8 random alphabets as the fname
   for (let i = 0; i < 8; i++) {
-    builder.addInt8(faker.datatype.number({ min: 65, max: 90 }));
+    builder.addInt8(faker.datatype.number({ min: 97, max: 122 }));
   }
   return builder.asUint8Array();
 });

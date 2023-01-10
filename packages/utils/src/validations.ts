@@ -14,6 +14,8 @@ export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
 /** Message types that must be signed by EIP712 signer */
 export const EIP712_MESSAGE_TYPES = [flatbuffers.MessageType.SignerAdd, flatbuffers.MessageType.SignerRemove];
 
+export const FNAME_REGEX = /^[a-z0-9][a-z0-9-]{0,15}$/;
+
 export interface ValidatedCastId extends flatbuffers.CastId {
   fidArray(): Uint8Array;
   tsHashArray(): Uint8Array;
@@ -431,13 +433,30 @@ export const validateUserDataAddBody = (body: flatbuffers.UserDataBody): HubResu
       return err(new HubError('bad_request.validation_failure', 'url value > 256'));
     }
   } else if (body.type() === flatbuffers.UserDataType.Fname) {
-    // TODO: Validate fname characteristics
-    if (value && value.length > 32) {
-      return err(new HubError('bad_request.validation_failure', 'fname value > 32'));
+    const validatedFname = validateFname(body.value());
+    if (validatedFname.isErr()) {
+      return err(validatedFname.error);
     }
   } else {
     return err(new HubError('bad_request.validation_failure', 'invalid user data type'));
   }
 
   return ok(body);
+};
+
+export const validateFname = (fname?: string | null): HubResult<string> => {
+  if (!fname || fname.length === 0) {
+    return err(new HubError('bad_request.validation_failure', 'fname is missing'));
+  }
+
+  if (fname.length > 32) {
+    return err(new HubError('bad_request.validation_failure', 'fname > 32 characters'));
+  }
+
+  const hasValidChars = FNAME_REGEX.test(fname);
+  if (hasValidChars === false) {
+    return err(new HubError('bad_request.validation_failure', `fname doesn't match ${FNAME_REGEX}`));
+  }
+
+  return ok(fname);
 };

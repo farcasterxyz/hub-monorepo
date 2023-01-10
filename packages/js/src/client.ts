@@ -2,22 +2,47 @@ import * as flatbuffers from '@farcaster/flatbuffers';
 import { Client as GrpcClient } from '@farcaster/grpc';
 import { HubAsyncResult, HubResult, validations } from '@farcaster/utils';
 import { err, ok, Result } from 'neverthrow';
-import { makeMessageFromFlatbuffer } from './builders';
 import * as types from './types';
 import {
+  deserializeIdRegistryEvent,
+  deserializeMessage,
+  deserializeNameRegistryEvent,
   serializeCastId,
   serializeEd25519PublicKey,
   serializeEthAddress,
   serializeFid,
+  serializeFname,
   serializeTsHash,
   serializeUserId,
 } from './utils';
+
+type ClientResult<TJson, TFlatbuffer> = HubAsyncResult<
+  Readonly<
+    TJson & {
+      flatbuffer: TFlatbuffer;
+    }
+  >
+>;
+
+const deserializeCall = async <TJson, TFlatbuffer>(
+  call: HubAsyncResult<TFlatbuffer>,
+  deserialize: (fbb: TFlatbuffer) => HubResult<TJson>
+): ClientResult<TJson, TFlatbuffer> => {
+  const response = await call;
+
+  return response.andThen((flatbuffer) =>
+    deserialize(flatbuffer).map((type) => ({
+      ...type,
+      flatbuffer,
+    }))
+  );
+};
 
 const wrapGrpcMessageCall = async <T extends types.Message>(
   call: HubAsyncResult<flatbuffers.Message>
 ): HubAsyncResult<T> => {
   const response = await call;
-  return response.andThen((flatbuffer) => makeMessageFromFlatbuffer(flatbuffer) as HubResult<T>);
+  return response.andThen((flatbuffer) => deserializeMessage(flatbuffer) as HubResult<T>);
 };
 
 const wrapGrpcMessagesCall = async <T extends types.Message>(
@@ -25,7 +50,7 @@ const wrapGrpcMessagesCall = async <T extends types.Message>(
 ): HubAsyncResult<T[]> => {
   const response = await call;
   return response.andThen((flatbuffers) =>
-    Result.combine(flatbuffers.map((flatbuffer) => makeMessageFromFlatbuffer(flatbuffer) as HubResult<T>))
+    Result.combine(flatbuffers.map((flatbuffer) => deserializeMessage(flatbuffer) as HubResult<T>))
   );
 };
 
@@ -41,8 +66,7 @@ export class Client {
   /* -------------------------------------------------------------------------- */
 
   async submitMessage(message: types.Message): HubAsyncResult<types.Message> {
-    const response = await this._grpcClient.submitMessage(message.flatbuffer);
-    return response.andThen((flatbuffer) => makeMessageFromFlatbuffer(flatbuffer));
+    return wrapGrpcMessageCall(this._grpcClient.submitMessage(message.flatbuffer));
   }
 
   /* -------------------------------------------------------------------------- */
@@ -227,6 +251,16 @@ export class Client {
     return wrapGrpcMessagesCall(this._grpcClient.getSignersByFid(serializedFid.value));
   }
 
+  async getIdRegistryEvent(fid: number): ClientResult<types.IdRegistryEvent, flatbuffers.IdRegistryEvent> {
+    const serializedFid = serializeFid(fid);
+
+    if (serializedFid.isErr()) {
+      return err(serializedFid.error);
+    }
+
+    return deserializeCall(this._grpcClient.getIdRegistryEvent(serializedFid.value), deserializeIdRegistryEvent);
+  }
+
   /* -------------------------------------------------------------------------- */
   /*                                User Data Methods                           */
   /* -------------------------------------------------------------------------- */
@@ -249,6 +283,16 @@ export class Client {
     }
 
     return wrapGrpcMessagesCall(this._grpcClient.getUserDataByFid(serializedFid.value));
+  }
+
+  async getNameRegistryEvent(fname: string): HubAsyncResult<types.NameRegistryEvent> {
+    const serializedFname = serializeFname(fname);
+
+    if (serializedFname.isErr()) {
+      return err(serializedFname.error);
+    }
+
+    return deserializeCall(this._grpcClient.getNameRegistryEvent(serializedFname.value), deserializeNameRegistryEvent);
   }
 
   /* -------------------------------------------------------------------------- */

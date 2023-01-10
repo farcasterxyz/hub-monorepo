@@ -3,15 +3,23 @@ import { unionToTargetId } from '@farcaster/flatbuffers';
 import {
   bytesToHexString,
   bytesToNumber,
+  bytesToUtf8String,
   fromFarcasterTime,
   hexStringToBytes,
   HubError,
   HubResult,
   numberToBytes,
+  toTsHash,
+  utf8StringToBytes,
   validations,
 } from '@farcaster/utils';
+import { ByteBuffer } from 'flatbuffers';
 import { err, ok, Result } from 'neverthrow';
 import * as types from './types';
+
+/* -------------------------------------------------------------------------- */
+/*                               Scalars                                      */
+/* -------------------------------------------------------------------------- */
 
 export const deserializeFid = (fid: Uint8Array): HubResult<number> => {
   return validations.validateFid(fid).andThen((fid) => bytesToNumber(fid));
@@ -19,6 +27,14 @@ export const deserializeFid = (fid: Uint8Array): HubResult<number> => {
 
 export const serializeFid = (fid: number): HubResult<Uint8Array> => {
   return numberToBytes(fid).andThen((fid) => validations.validateFid(fid));
+};
+
+export const deserializeFname = (fname: Uint8Array): HubResult<string> => {
+  return bytesToUtf8String(fname).andThen(validations.validateFname);
+};
+
+export const serializeFname = (fname: string): HubResult<Uint8Array> => {
+  return validations.validateFname(fname).andThen(utf8StringToBytes);
 };
 
 export const deserializeEthAddress = (ethAddress: Uint8Array): HubResult<string> => {
@@ -79,88 +95,6 @@ export const serializeUserId = (userId: number): HubResult<flatbuffers.UserIdT> 
   });
 };
 
-export const deserializeMessageData = (fbb: flatbuffers.MessageData): HubResult<types.MessageData> => {
-  const timestamp = fromFarcasterTime(fbb.timestamp());
-
-  const fid = deserializeFid(fbb.fidArray() ?? new Uint8Array());
-  if (fid.isErr()) {
-    return err(fid.error);
-  }
-
-  const type = fbb.type();
-  if (!type) {
-    return err(new HubError('bad_request.invalid_param', 'type is missing'));
-  }
-
-  if (!Object.values(flatbuffers.MessageType).includes(type)) {
-    return err(new HubError('bad_request.invalid_param', 'type is invalid'));
-  }
-
-  let bodyResult: HubResult<types.MessageBody>;
-  if (fbb.bodyType() === flatbuffers.MessageBody.CastAddBody) {
-    bodyResult = deserializeCastAddBody(fbb.body(new flatbuffers.CastAddBody()));
-  } else if (fbb.bodyType() === flatbuffers.MessageBody.CastRemoveBody) {
-    bodyResult = deserializeCastRemoveBody(fbb.body(new flatbuffers.CastRemoveBody()));
-  } else if (fbb.bodyType() === flatbuffers.MessageBody.AmpBody) {
-    bodyResult = deserializeAmpBody(fbb.body(new flatbuffers.AmpBody()));
-  } else if (fbb.bodyType() === flatbuffers.MessageBody.ReactionBody) {
-    bodyResult = deserializeReactionBody(fbb.body(new flatbuffers.ReactionBody()));
-  } else if (fbb.bodyType() === flatbuffers.MessageBody.SignerBody) {
-    bodyResult = deserializeSignerBody(fbb.body(new flatbuffers.SignerBody()));
-  } else if (fbb.bodyType() === flatbuffers.MessageBody.UserDataBody) {
-    bodyResult = deserializeUserDataBody(fbb.body(new flatbuffers.UserDataBody()));
-  } else if (fbb.bodyType() === flatbuffers.MessageBody.VerificationAddEthAddressBody) {
-    bodyResult = deserializeVerificationAddEthAddressBody(fbb.body(new flatbuffers.VerificationAddEthAddressBody()));
-  } else if (fbb.bodyType() === flatbuffers.MessageBody.VerificationRemoveBody) {
-    bodyResult = deserializeVerificationRemoveBody(fbb.body(new flatbuffers.VerificationRemoveBody()));
-  } else {
-    return err(new HubError('bad_request.invalid_param', 'bodyType is invalid'));
-  }
-
-  if (bodyResult.isErr()) {
-    return err(bodyResult.error);
-  }
-
-  return ok({
-    body: bodyResult.value,
-    type,
-    timestamp,
-    fid: fid.value,
-    network: fbb.network(),
-  });
-};
-
-// TODO: messageDataFromJson
-
-export const deserializeCastAddBody = (fbb: flatbuffers.CastAddBody): HubResult<types.CastAddBody> => {
-  const validBody = validations.validateCastAddBody(fbb);
-  if (validBody.isErr()) {
-    return err(validBody.error);
-  }
-
-  const embeds = deserializeEmbeds(fbb.embedsLength(), fbb.embeds.bind(fbb));
-  if (embeds.isErr()) {
-    return err(embeds.error);
-  }
-
-  const mentions = deserializeMentions(fbb.mentionsLength(), fbb.mentions.bind(fbb));
-  if (mentions.isErr()) {
-    return err(mentions.error);
-  }
-
-  const parent = deserializeTarget(fbb.parentType(), fbb.parent.bind(fbb));
-  if (parent.isErr()) {
-    return err(parent.error);
-  }
-
-  return ok({
-    text: fbb.text() as string,
-    embeds: embeds.value,
-    mentions: mentions.value,
-    parent: parent.value,
-  });
-};
-
 export const deserializeEmbeds = (
   length: number,
   accessor: (index: number, obj?: string) => string | null
@@ -216,6 +150,49 @@ export const deserializeTarget = (
   return deserializeCastId(target);
 };
 
+const serializeMentions = (mentions: number[] | undefined): HubResult<flatbuffers.UserIdT[] | undefined> => {
+  if (!mentions) {
+    return ok(undefined);
+  }
+
+  return Result.combine(mentions.map((mention) => serializeFid(mention))).map((mentionByteArrays) =>
+    mentionByteArrays.map((mentionBytes) => new flatbuffers.UserIdT(Array.from(mentionBytes)))
+  );
+};
+
+/* -------------------------------------------------------------------------- */
+/*                               Message Body                                 */
+/* -------------------------------------------------------------------------- */
+
+export const deserializeCastAddBody = (fbb: flatbuffers.CastAddBody): HubResult<types.CastAddBody> => {
+  const validBody = validations.validateCastAddBody(fbb);
+  if (validBody.isErr()) {
+    return err(validBody.error);
+  }
+
+  const embeds = deserializeEmbeds(fbb.embedsLength(), fbb.embeds.bind(fbb));
+  if (embeds.isErr()) {
+    return err(embeds.error);
+  }
+
+  const mentions = deserializeMentions(fbb.mentionsLength(), fbb.mentions.bind(fbb));
+  if (mentions.isErr()) {
+    return err(mentions.error);
+  }
+
+  const parent = deserializeTarget(fbb.parentType(), fbb.parent.bind(fbb));
+  if (parent.isErr()) {
+    return err(parent.error);
+  }
+
+  return ok({
+    text: fbb.text() as string,
+    embeds: embeds.value,
+    mentions: mentions.value,
+    parent: parent.value,
+  });
+};
+
 export const serializeCastAddBody = (body: types.CastAddBody): HubResult<flatbuffers.CastAddBodyT> => {
   const mentions = serializeMentions(body.mentions);
   if (mentions.isErr()) {
@@ -230,16 +207,6 @@ export const serializeCastAddBody = (body: types.CastAddBody): HubResult<flatbuf
   }
 
   return ok(new flatbuffers.CastAddBodyT(body.embeds, mentions.value, parentType, parent.value, body.text));
-};
-
-const serializeMentions = (mentions: number[] | undefined): HubResult<flatbuffers.UserIdT[] | undefined> => {
-  if (!mentions) {
-    return ok(undefined);
-  }
-
-  return Result.combine(mentions.map((mention) => serializeFid(mention))).map((mentionByteArrays) =>
-    mentionByteArrays.map((mentionBytes) => new flatbuffers.UserIdT(Array.from(mentionBytes)))
-  );
 };
 
 export const deserializeCastRemoveBody = (fbb: flatbuffers.CastRemoveBody): HubResult<types.CastRemoveBody> => {
@@ -265,19 +232,6 @@ export const serializeCastRemoveBody = (body: types.CastRemoveBody): HubResult<f
   }
 
   return ok(new flatbuffers.CastRemoveBodyT(Array.from(targetTsHash.value)));
-};
-
-export const deserializeAmpBody = (fbb: flatbuffers.AmpBody): HubResult<types.AmpBody> => {
-  return deserializeFid(fbb.user()?.fidArray() ?? new Uint8Array()).map((fid) => {
-    return { user: fid };
-  });
-};
-
-export const serializeAmpBody = (body: types.AmpBody): HubResult<flatbuffers.AmpBodyT> => {
-  return serializeFid(body.user).map((fid) => {
-    const userT = new flatbuffers.UserIdT(Array.from(fid));
-    return new flatbuffers.AmpBodyT(userT);
-  });
 };
 
 export const deserializeVerificationAddEthAddressBody = (
@@ -307,6 +261,39 @@ export const deserializeVerificationAddEthAddressBody = (
     ethSignature,
     blockHash,
   });
+};
+
+export const deserializeAmpBody = (fbb: flatbuffers.AmpBody): HubResult<types.AmpBody> => {
+  return deserializeFid(fbb.user()?.fidArray() ?? new Uint8Array()).map((fid) => {
+    return { user: fid };
+  });
+};
+
+export const serializeAmpBody = (body: types.AmpBody): HubResult<flatbuffers.AmpBodyT> => {
+  return serializeFid(body.user).map((fid) => {
+    const userT = new flatbuffers.UserIdT(Array.from(fid));
+    return new flatbuffers.AmpBodyT(userT);
+  });
+};
+
+export const deserializeSignerBody = (fbb: flatbuffers.SignerBody): HubResult<types.SignerBody> => {
+  const signerJson = deserializeEd25519PublicKey(fbb.signerArray() ?? new Uint8Array());
+  if (signerJson.isErr()) {
+    return err(signerJson.error);
+  }
+
+  return ok({
+    signer: signerJson.value,
+  });
+};
+
+export const serializeSignerBody = (body: types.SignerBody): HubResult<flatbuffers.SignerBodyT> => {
+  const signer = serializeEd25519PublicKey(body.signer);
+  if (signer.isErr()) {
+    return err(signer.error);
+  }
+
+  return ok(new flatbuffers.SignerBodyT(Array.from(signer.value)));
 };
 
 export const serializeVerificationAddEthAddressBody = (
@@ -345,26 +332,6 @@ export const serializeVerificationRemoveBody = (
   });
 };
 
-export const deserializeSignerBody = (fbb: flatbuffers.SignerBody): HubResult<types.SignerBody> => {
-  const signerJson = deserializeEd25519PublicKey(fbb.signerArray() ?? new Uint8Array());
-  if (signerJson.isErr()) {
-    return err(signerJson.error);
-  }
-
-  return ok({
-    signer: signerJson.value,
-  });
-};
-
-export const serializeSignerBody = (body: types.SignerBody): HubResult<flatbuffers.SignerBodyT> => {
-  const signer = serializeEd25519PublicKey(body.signer);
-  if (signer.isErr()) {
-    return err(signer.error);
-  }
-
-  return ok(new flatbuffers.SignerBodyT(Array.from(signer.value)));
-};
-
 export const deserializeUserDataBody = (fbb: flatbuffers.UserDataBody): HubResult<types.UserDataBody> => {
   const validUserDataBody = validations.validateUserDataAddBody(fbb);
   if (validUserDataBody.isErr()) {
@@ -397,5 +364,173 @@ export const deserializeReactionBody = (fbb: flatbuffers.ReactionBody): HubResul
 export const serializeReactionBody = (body: types.ReactionBody): HubResult<flatbuffers.ReactionBodyT> => {
   return serializeCastId(body.target).map((target) => {
     return new flatbuffers.ReactionBodyT(flatbuffers.TargetId.CastId, target, body.type);
+  });
+};
+
+/* -------------------------------------------------------------------------- */
+/*                             Registry Events                                */
+/* -------------------------------------------------------------------------- */
+
+export const deserializeNameRegistryEvent = (
+  flatbuffer: flatbuffers.NameRegistryEvent
+): HubResult<types.NameRegistryEvent> => {
+  const deserialized = Result.combine([
+    bytesToHexString(flatbuffer.blockHashArray() ?? new Uint8Array()),
+    bytesToHexString(flatbuffer.transactionHashArray() ?? new Uint8Array()),
+    bytesToHexString(flatbuffer.toArray() ?? new Uint8Array()),
+    bytesToHexString(flatbuffer.fromArray() ?? new Uint8Array()),
+    bytesToNumber(flatbuffer.expiryArray() ?? new Uint8Array()),
+  ]);
+
+  if (deserialized.isErr()) {
+    return err(deserialized.error);
+  }
+
+  const fname = deserializeFname(flatbuffer.fnameArray() ?? new Uint8Array());
+  if (fname.isErr()) {
+    return err(fname.error);
+  }
+
+  const [blockHash, transactionHash, to, from, expiry] = deserialized.value;
+  const blockNumber = flatbuffer.blockNumber();
+  const logIndex = flatbuffer.logIndex();
+  const type = flatbuffer.type();
+
+  return ok({
+    blockHash,
+    blockNumber,
+    fname: fname.value,
+    transactionHash,
+    logIndex,
+    to,
+    type,
+    from,
+    expiry,
+  });
+};
+
+export const deserializeIdRegistryEvent = (
+  flatbuffer: flatbuffers.IdRegistryEvent
+): HubResult<types.IdRegistryEvent> => {
+  const deserialized = Result.combine([
+    bytesToHexString(flatbuffer.blockHashArray() ?? new Uint8Array()),
+    bytesToHexString(flatbuffer.transactionHashArray() ?? new Uint8Array()),
+    deserializeFid(flatbuffer.fidArray() ?? new Uint8Array()),
+    bytesToHexString(flatbuffer.toArray() ?? new Uint8Array()),
+    bytesToHexString(flatbuffer.fromArray() ?? new Uint8Array()),
+  ]);
+
+  if (deserialized.isErr()) {
+    return err(deserialized.error);
+  }
+
+  const blockNumber = flatbuffer.blockNumber();
+  const logIndex = flatbuffer.logIndex();
+  const type = flatbuffer.type();
+  const [blockHash, transactionHash, fid, to, from] = deserialized.value;
+
+  return ok({
+    blockHash,
+    blockNumber,
+    fid,
+    transactionHash,
+    logIndex,
+    to,
+    type,
+    from,
+  });
+};
+
+/* -------------------------------------------------------------------------- */
+/*                                  Message                                   */
+/* -------------------------------------------------------------------------- */
+
+export const deserializeMessageData = (fbb: flatbuffers.MessageData): HubResult<types.MessageData> => {
+  const timestamp = fromFarcasterTime(fbb.timestamp());
+
+  const fid = deserializeFid(fbb.fidArray() ?? new Uint8Array());
+  if (fid.isErr()) {
+    return err(fid.error);
+  }
+
+  const type = fbb.type();
+  if (!type) {
+    return err(new HubError('bad_request.invalid_param', 'type is missing'));
+  }
+
+  if (!Object.values(flatbuffers.MessageType).includes(type)) {
+    return err(new HubError('bad_request.invalid_param', 'type is invalid'));
+  }
+
+  let bodyResult: HubResult<types.MessageBody>;
+  if (fbb.bodyType() === flatbuffers.MessageBody.CastAddBody) {
+    bodyResult = deserializeCastAddBody(fbb.body(new flatbuffers.CastAddBody()));
+  } else if (fbb.bodyType() === flatbuffers.MessageBody.CastRemoveBody) {
+    bodyResult = deserializeCastRemoveBody(fbb.body(new flatbuffers.CastRemoveBody()));
+  } else if (fbb.bodyType() === flatbuffers.MessageBody.AmpBody) {
+    bodyResult = deserializeAmpBody(fbb.body(new flatbuffers.AmpBody()));
+  } else if (fbb.bodyType() === flatbuffers.MessageBody.ReactionBody) {
+    bodyResult = deserializeReactionBody(fbb.body(new flatbuffers.ReactionBody()));
+  } else if (fbb.bodyType() === flatbuffers.MessageBody.SignerBody) {
+    bodyResult = deserializeSignerBody(fbb.body(new flatbuffers.SignerBody()));
+  } else if (fbb.bodyType() === flatbuffers.MessageBody.UserDataBody) {
+    bodyResult = deserializeUserDataBody(fbb.body(new flatbuffers.UserDataBody()));
+  } else if (fbb.bodyType() === flatbuffers.MessageBody.VerificationAddEthAddressBody) {
+    bodyResult = deserializeVerificationAddEthAddressBody(fbb.body(new flatbuffers.VerificationAddEthAddressBody()));
+  } else if (fbb.bodyType() === flatbuffers.MessageBody.VerificationRemoveBody) {
+    bodyResult = deserializeVerificationRemoveBody(fbb.body(new flatbuffers.VerificationRemoveBody()));
+  } else {
+    return err(new HubError('bad_request.invalid_param', 'bodyType is invalid'));
+  }
+
+  if (bodyResult.isErr()) {
+    return err(bodyResult.error);
+  }
+
+  return ok({
+    body: bodyResult.value,
+    type,
+    timestamp,
+    fid: fid.value,
+    network: fbb.network(),
+  });
+};
+
+export const deserializeMessage = (flatbuffer: flatbuffers.Message): HubResult<types.Message> => {
+  const messageData = flatbuffers.MessageData.getRootAsMessageData(
+    new ByteBuffer(flatbuffer.dataArray() ?? new Uint8Array())
+  );
+
+  const isEip712Signer = validations.EIP712_MESSAGE_TYPES.includes(messageData.type() ?? 0);
+  const deserialized = Result.combine([
+    deserializeMessageData(messageData),
+    bytesToHexString(flatbuffer.hashArray() ?? new Uint8Array(), { size: 32 }),
+    bytesToHexString(flatbuffer.signatureArray() ?? new Uint8Array(), { size: isEip712Signer ? 130 : 128 }),
+    isEip712Signer
+      ? deserializeEthAddress(flatbuffer.signerArray() ?? new Uint8Array())
+      : deserializeEd25519PublicKey(flatbuffer.signerArray() ?? new Uint8Array()),
+  ]);
+  if (deserialized.isErr()) {
+    return err(deserialized.error);
+  }
+
+  const tsHash = toTsHash(messageData.timestamp(), flatbuffer.hashArray() ?? new Uint8Array()).andThen((tsHashBytes) =>
+    bytesToHexString(tsHashBytes, { size: 40 })
+  );
+  if (tsHash.isErr()) {
+    return err(tsHash.error);
+  }
+
+  const [data, hash, signature, signer] = deserialized.value;
+
+  return ok({
+    flatbuffer,
+    data,
+    hash,
+    hashScheme: flatbuffer.hashScheme(),
+    signature,
+    signatureScheme: flatbuffer.signatureScheme(),
+    signer,
+    tsHash: tsHash.value,
   });
 };

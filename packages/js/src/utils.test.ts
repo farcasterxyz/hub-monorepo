@@ -7,7 +7,15 @@ import {
   VerificationAddEthAddressBody,
   VerificationRemoveBody,
 } from '@farcaster/flatbuffers';
-import { bytesToHexString, bytesToNumber, Factories, hexStringToBytes } from '@farcaster/utils';
+import {
+  bytesToHexString,
+  bytesToNumber,
+  bytesToUtf8String,
+  Factories,
+  hexStringToBytes,
+  utf8StringToBytes,
+} from '@farcaster/utils';
+import { ok } from 'neverthrow';
 import * as types from './types';
 import * as utils from './utils';
 
@@ -30,6 +38,20 @@ describe('serializeFid', () => {
       expect(utils.serializeFid(input)._unsafeUnwrap()).toEqual(output);
     });
   }
+});
+
+describe('deserializeFname', () => {
+  const fname = Factories.Fname.build();
+  test(`succeeds`, () => {
+    expect(utils.deserializeFname(fname)).toEqual(ok(bytesToUtf8String(fname)._unsafeUnwrap()));
+  });
+});
+
+describe('serializeFname', () => {
+  const fname = faker.random.alpha(5);
+  test(`succeeds`, () => {
+    expect(utils.serializeFname(fname)).toEqual(ok(utf8StringToBytes(fname)._unsafeUnwrap()));
+  });
 });
 
 const ethWallet = Factories.Eip712Signer.build();

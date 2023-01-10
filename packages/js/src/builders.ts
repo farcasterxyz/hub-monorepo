@@ -1,18 +1,16 @@
 import * as flatbuffers from '@farcaster/flatbuffers';
 import {
-  bytesToHexString,
   HubAsyncResult,
   HubError,
   HubResult,
   MessageSigner,
   Signer,
   toFarcasterTime,
-  toTsHash,
   validations,
 } from '@farcaster/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import { err, ok, Result } from 'neverthrow';
+import { err, ok } from 'neverthrow';
 import * as types from './types';
 import * as utils from './utils';
 
@@ -59,47 +57,6 @@ const buildMakeMessage = <
 
     return makeMessage(messageData.value, signer);
   };
-};
-
-/** Generic Methods */
-
-export const makeMessageFromFlatbuffer = (flatbuffer: flatbuffers.Message): HubResult<types.Message> => {
-  const messageData = flatbuffers.MessageData.getRootAsMessageData(
-    new ByteBuffer(flatbuffer.dataArray() ?? new Uint8Array())
-  );
-
-  const isEip712Signer = validations.EIP712_MESSAGE_TYPES.includes(messageData.type() ?? 0);
-  const deserialized = Result.combine([
-    utils.deserializeMessageData(messageData),
-    bytesToHexString(flatbuffer.hashArray() ?? new Uint8Array(), { size: 32 }),
-    bytesToHexString(flatbuffer.signatureArray() ?? new Uint8Array(), { size: isEip712Signer ? 130 : 128 }),
-    isEip712Signer
-      ? utils.deserializeEthAddress(flatbuffer.signerArray() ?? new Uint8Array())
-      : utils.deserializeEd25519PublicKey(flatbuffer.signerArray() ?? new Uint8Array()),
-  ]);
-  if (deserialized.isErr()) {
-    return err(deserialized.error);
-  }
-
-  const tsHash = toTsHash(messageData.timestamp(), flatbuffer.hashArray() ?? new Uint8Array()).andThen((tsHashBytes) =>
-    bytesToHexString(tsHashBytes, { size: 40 })
-  );
-  if (tsHash.isErr()) {
-    return err(tsHash.error);
-  }
-
-  const [data, hash, signature, signer] = deserialized.value;
-
-  return ok({
-    flatbuffer,
-    data,
-    hash,
-    hashScheme: flatbuffer.hashScheme(),
-    signature,
-    signatureScheme: flatbuffer.signatureScheme(),
-    signer,
-    tsHash: tsHash.value,
-  });
 };
 
 /** Cast Methods */
@@ -246,5 +203,5 @@ const makeMessage = async (messageData: flatbuffers.MessageData, signer: Signer)
 
   const flatbuffer = flatbuffers.Message.getRootAsMessage(new ByteBuffer(fbb.asUint8Array()));
 
-  return makeMessageFromFlatbuffer(flatbuffer);
+  return utils.deserializeMessage(flatbuffer);
 };

@@ -99,3 +99,26 @@ export type UserDataBody = {
   type: flatbuffers.UserDataType;
   value: string;
 };
+
+export type IdRegistryEvent = {
+  blockNumber: number;
+  blockHash: string; // Hex string
+  transactionHash: string; // Hex string
+  logIndex: number;
+  fid: number;
+  to: string; // Hex string
+  type: flatbuffers.IdRegistryEventType;
+  from: string; // Hex string
+};
+
+export type NameRegistryEvent = {
+  blockNumber: number;
+  blockHash: string; // Hex string
+  transactionHash: string; // Hex string
+  logIndex: number;
+  fname: string;
+  to: string; // Hex string
+  type: flatbuffers.NameRegistryEventType;
+  from: string; // Hex string
+  expiry: number;
+};
