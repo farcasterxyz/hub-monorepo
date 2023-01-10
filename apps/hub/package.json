@@ -16,7 +16,7 @@
   "scripts": {
     "bench": "tsx src/test/perf/flatbuffers/bench.ts",
     "build": "yarn clean && tsc --project ./tsconfig.json",
-    "clean": "rm -rf ./build",
+    "clean": "rimraf ./build",
     "dev": "yarn start | yarn pino-pretty",
     "lint": "eslint  src/ --color --ext .ts",
     "lint:fix": "yarn run lint -- --fix",
