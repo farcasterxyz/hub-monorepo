@@ -24,10 +24,6 @@ table HubInfoResponse {
   root_hash: string;
 }
 
-table MessageBytes {
-  message_bytes: [ubyte] (nested_flatbuffer: "Farcaster.Message", required);
-}
-
 table MessagesResponse {
   messages: [MessageBytes];
 }

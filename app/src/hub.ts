@@ -4,7 +4,7 @@ import {
   GossipContent,
   GossipMessage,
   IdRegistryEvent,
-  Message,
+  MessageBytes,
 } from '@hub/flatbuffers';
 import { HubAsyncResult, HubError, HubResult } from '@hub/utils';
 import { PeerId } from '@libp2p/interface-peer-id';
@@ -21,7 +21,7 @@ import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 import { isSignerRemove } from '~/flatbuffers/models/typeguards';
 import { HubInterface, HubSubmitSource } from '~/flatbuffers/models/types';
-import { Node } from '~/network/p2p/gossipNode';
+import { GossipNode } from '~/network/p2p/gossipNode';
 import { NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import SyncEngine from '~/network/sync/syncEngine';
 import HubRpcClient from '~/rpc/client';
@@ -100,7 +100,7 @@ const log = logger.child({
 
 export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   private options: HubOptions;
-  private gossipNode: Node;
+  private gossipNode: GossipNode;
   private rpcServer: Server;
   private contactTimer?: NodeJS.Timer;
   private rocksDB: BinaryRocksDB;
@@ -119,7 +119,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     super();
     this.options = options;
     this.rocksDB = new BinaryRocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
-    this.gossipNode = new Node();
+    this.gossipNode = new GossipNode();
     this.engine = new Engine(this.rocksDB);
     this.syncEngine = new SyncEngine(this.engine);
 
@@ -190,8 +190,10 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     clearInterval(this.contactTimer);
     this.revokeSignerJobScheduler.stop();
     this.pruneMessagesJobScheduler.stop();
+
     await this.ethRegistryProvider.stop();
     await this.rpcServer.stop();
+    await this.gossipNode.stop();
     await this.rocksDB.close();
   }
 
@@ -203,6 +205,10 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     const txn = this.rocksDB.transaction();
     HubStateModel.putTransaction(txn, hubState);
     return await ResultAsync.fromPromise(this.rocksDB.commit(txn), (e) => e as HubError);
+  }
+
+  async connectAddress(address: Multiaddr): HubAsyncResult<void> {
+    return this.gossipNode.connectAddress(address);
   }
 
   /** ------------------------------------------------------------------------- */
@@ -220,23 +226,24 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     }
     const peerId = peerIdResult.value;
 
-    if (contentType === GossipContent.Message) {
-      const message: Message = gossipMessage.content(contentType);
+    if (contentType === GossipContent.MessageBytes) {
+      const messageBytes: MessageBytes = gossipMessage.content(new MessageBytes());
+      const bytes = messageBytes.messageBytesArray() ?? new Uint8Array([]);
+      const message = MessageModel.from(bytes);
+
       // Get the RPC Client to use to merge this message
       const rpcClient = this.currentHubRpcClients.get(peerId);
       if (rpcClient) {
-        return this.syncEngine
-          .mergeMessages([new MessageModel(message)], rpcClient)
-          .then((result) => result[0] as HubResult<void>);
+        return this.syncEngine.mergeMessages([message], rpcClient).then((result) => result[0] as HubResult<void>);
       } else {
         log.error('No RPC clients available to merge message, attempting to merge directly into the engine');
-        return this.submitMessage(new MessageModel(message), 'gossip');
+        return this.submitMessage(message, 'gossip');
       }
     } else if (contentType === GossipContent.IdRegistryEvent) {
-      const event = new IdRegistryEventModel(gossipMessage.content(contentType) as IdRegistryEvent);
+      const event = new IdRegistryEventModel(gossipMessage.content(new IdRegistryEvent()) as IdRegistryEvent);
       return this.submitIdRegistryEvent(event, 'gossip');
     } else if (contentType === GossipContent.ContactInfoContent) {
-      const message: ContactInfoContent = gossipMessage.content(contentType);
+      const message: ContactInfoContent = gossipMessage.content(new ContactInfoContent());
 
       if (peerIdResult.isOk()) {
         await this.handleContactInfo(peerIdResult.value, message);
@@ -444,6 +451,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
       return mergeResult;
     }
 
+    log.info({ ...messageToLog(message) }, `submitMessage: ${mergeResult.isOk()}`);
     return mergeResult;
   }
 

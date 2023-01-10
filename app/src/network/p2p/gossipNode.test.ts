@@ -1,9 +1,9 @@
-import { GossipContent, GossipMessage, GossipMessageT } from '@hub/flatbuffers';
+import { GossipContent, GossipMessage, GossipMessageT, MessageBytesT } from '@hub/flatbuffers';
 import { Factories } from '@hub/utils';
 import { multiaddr } from '@multiformats/multiaddr/';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { CastAddModel } from '~/flatbuffers/models/types';
-import { Node } from '~/network/p2p/gossipNode';
+import { GossipNode } from '~/network/p2p/gossipNode';
 import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { sleep } from '~/utils/crypto';
 
@@ -13,15 +13,15 @@ const PROPAGATION_DELAY = 3 * 1000; // between 2 and 3 full heartbeat ticks
 const TEST_TIMEOUT_LONG = 60 * 1000;
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 
-let nodes: Node[];
+let nodes: GossipNode[];
 // map peerId -> topics -> Messages per topic
 let messages: Map<string, Map<string, GossipMessage[] | undefined>>;
 
 /** Create a sequence of connections between all the nodes */
-const connectAll = async (nodes: Node[]) => {
+const connectAll = async (nodes: GossipNode[]) => {
   const connectionResults = await Promise.all(
     nodes.slice(1).map((n) => {
-      return n.connect(nodes[0] as Node);
+      return n.connect(nodes[0] as GossipNode);
     })
   );
   connectionResults.forEach((r) => expect(r?.isOk()).toBeTruthy());
@@ -55,7 +55,7 @@ const trackMessages = () => {
 
 describe('node unit tests', () => {
   test('fails to bootstrap to invalid addresses', async () => {
-    const node = new Node();
+    const node = new GossipNode();
     const error = (await node.start([multiaddr()]))._unsafeUnwrapErr();
     expect(error.errCode).toEqual('unavailable');
     expect(error.message).toContain('could not connect to any bootstrap nodes');
@@ -63,13 +63,13 @@ describe('node unit tests', () => {
   });
 
   test('fails to connect with a node that has not started', async () => {
-    const node = new Node();
+    const node = new GossipNode();
     await node.start([]);
 
     let result = await node.connectAddress(multiaddr());
     expect(result.isErr()).toBeTruthy();
 
-    const offlineNode = new Node();
+    const offlineNode = new GossipNode();
     result = await node.connect(offlineNode);
     expect(result.isErr()).toBeTruthy();
 
@@ -79,14 +79,14 @@ describe('node unit tests', () => {
   test(
     'can only dial allowed nodes',
     async () => {
-      const node1 = new Node();
+      const node1 = new GossipNode();
       await node1.start([]);
 
-      const node2 = new Node();
+      const node2 = new GossipNode();
       await node2.start([]);
 
       // node 3 has node 1 in its allow list, but not node 2
-      const node3 = new Node();
+      const node3 = new GossipNode();
       if (node1.peerId) {
         await node3.start([], { allowedPeerIdStrs: [node1.peerId.toString()] });
       } else {
@@ -112,7 +112,7 @@ describe('node unit tests', () => {
   );
 
   test('port and transport addrs in the Ip MultiAddr is not allowed', async () => {
-    const node = new Node();
+    const node = new GossipNode();
     const options = { ipMultiAddr: '/ip4/127.0.0.1/tcp/8080' };
     const error = (await node.start([], options))._unsafeUnwrapErr();
 
@@ -123,7 +123,7 @@ describe('node unit tests', () => {
   });
 
   test('invalid multiaddr format is not allowed', async () => {
-    const node = new Node();
+    const node = new GossipNode();
     // an IPv6 being supplied as an IPv4
     const options = { ipMultiAddr: '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a' };
     expect((await node.start([], options))._unsafeUnwrapErr().errCode).toEqual('unavailable');
@@ -138,7 +138,7 @@ describe('node unit tests', () => {
 
 describe('gossip network', () => {
   beforeAll(async () => {
-    nodes = [...Array(NUM_NODES)].map(() => new Node());
+    nodes = [...Array(NUM_NODES)].map(() => new GossipNode());
     messages = new Map();
   });
 
@@ -167,12 +167,14 @@ describe('gossip network', () => {
         await Factories.Message.create({ data: Array.from(castAddData.bb?.bytes() ?? []) })
       ) as CastAddModel;
 
-      const message: GossipMessageT = new GossipMessageT(GossipContent.Message, castAdd.message.unpack(), [
-        NETWORK_TOPIC_PRIMARY,
-      ]);
+      const message: GossipMessageT = new GossipMessageT(
+        GossipContent.MessageBytes,
+        new MessageBytesT(Array.from(castAdd.toBytes())),
+        [NETWORK_TOPIC_PRIMARY]
+      );
 
       // publish via some random node
-      const randomNode = nodes[Math.floor(Math.random() * nodes.length)] as Node;
+      const randomNode = nodes[Math.floor(Math.random() * nodes.length)] as GossipNode;
       expect(randomNode.publish(message)).resolves.toBeUndefined();
       // sleep 5 heartbeat ticks
       await sleep(PROPAGATION_DELAY);

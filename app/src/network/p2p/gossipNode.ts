@@ -1,6 +1,6 @@
 import { GossipSub } from '@chainsafe/libp2p-gossipsub';
 import { Noise } from '@chainsafe/libp2p-noise';
-import { GossipContent, GossipMessage, GossipMessageT } from '@hub/flatbuffers';
+import { GossipContent, GossipMessage, GossipMessageT, MessageBytesT } from '@hub/flatbuffers';
 import { HubError, HubResult } from '@hub/utils';
 import { Connection } from '@libp2p/interface-connection';
 import { PeerId } from '@libp2p/interface-peer-id';
@@ -51,7 +51,7 @@ interface NodeOptions {
  *
  * Nodes participate in the p2p GossipSub network we create using libp2p.
  */
-export class Node extends TypedEmitter<NodeEvents> {
+export class GossipNode extends TypedEmitter<NodeEvents> {
   private _node?: Libp2p;
 
   /**
@@ -108,6 +108,8 @@ export class Node extends TypedEmitter<NodeEvents> {
     this._node = createResult.value;
     this.registerListeners();
 
+    this.registerDebugListeners();
+
     await this._node.start();
     log.info(
       { identity: this.identity, addresses: this._node.getMultiaddrs().map((a) => a.toString()) },
@@ -139,8 +141,9 @@ export class Node extends TypedEmitter<NodeEvents> {
    */
   async publish(message: GossipMessageT) {
     const topics = message.topics;
+    const encodedMessage = GossipNode.encodeMessage(message);
+
     log.debug({ identity: this.identity }, `Publishing message to topics: ${topics}`);
-    const encodedMessage = this.encodeMessage(message);
     encodedMessage.match(
       async (msg) => {
         const results = await Promise.all(topics.map((topic) => this.gossip?.publish(topic, msg)));
@@ -156,9 +159,11 @@ export class Node extends TypedEmitter<NodeEvents> {
    * Gossip out a Message to the network
    */
   async gossipMessage(message: MessageModel) {
+    const messageBytesT = new MessageBytesT(Array.from(message.toBytes()));
+
     const gossipMessage = new GossipMessageT(
-      GossipContent.Message,
-      message.message.unpack(),
+      GossipContent.MessageBytes,
+      messageBytesT,
       [NETWORK_TOPIC_PRIMARY],
       Array.from(this.peerId?.toBytes() ?? [])
     );
@@ -170,7 +175,7 @@ export class Node extends TypedEmitter<NodeEvents> {
    *
    * @param node The peer Node to attempt a connection with
    */
-  async connect(node: Node): Promise<HubResult<void>> {
+  async connect(node: GossipNode): Promise<HubResult<void>> {
     const multiaddrs = node.multiaddrs;
     if (multiaddrs) {
       // how to select an addr here?
@@ -220,7 +225,7 @@ export class Node extends TypedEmitter<NodeEvents> {
     this.gossip?.addEventListener('message', (event) => {
       // ignore messages that aren't in our list of topics (ignores gossipsub peer discovery messages)
       if (GOSSIP_TOPICS.includes(event.detail.topic)) {
-        this.emit('message', event.detail.topic, this.decodeMessage(event.detail.data));
+        this.emit('message', event.detail.topic, GossipNode.decodeMessage(event.detail.data));
       }
     });
   }
@@ -228,13 +233,13 @@ export class Node extends TypedEmitter<NodeEvents> {
   registerDebugListeners() {
     // Debug
     this._node?.addEventListener('peer:discovery', (event) => {
-      log.info({ identity: this.identity }, `Found peer: ${event.detail.multiaddrs}`);
+      log.info({ identity: this.identity }, `Found peer: ${event.detail.multiaddrs}  }`);
     });
     this._node?.connectionManager.addEventListener('peer:connect', (event) => {
       log.info({ identity: this.identity }, `Connection established to: ${event.detail.remotePeer.toString()}`);
     });
     this._node?.connectionManager.addEventListener('peer:disconnect', (event) => {
-      log.info({ identity: this.identity }, `Disconnected from: ${event.detail.remotePeer.toString()}`);
+      log.info({ identity: this.identity }, `Disconnected from: ${event.detail.remotePeer.toString()} `);
     });
     this.gossip?.addEventListener('message', (event) => {
       log.info({ identity: this.identity }, `Received message for topic: ${event.detail.topic}`);
@@ -254,7 +259,7 @@ export class Node extends TypedEmitter<NodeEvents> {
   /* -------------------------------------------------------------------------- */
 
   //TODO: Needs better typesafety
-  private encodeMessage(message: GossipMessageT): HubResult<Uint8Array> {
+  static encodeMessage(message: GossipMessageT): HubResult<Uint8Array> {
     if (message.contentType === GossipContent.NONE) {
       return err(new HubError('bad_request.invalid_param', 'Failed to encode message...'));
     }
@@ -264,7 +269,7 @@ export class Node extends TypedEmitter<NodeEvents> {
   }
 
   //TODO: Needs better typesafety
-  private decodeMessage(message: Uint8Array): HubResult<GossipMessage> {
+  static decodeMessage(message: Uint8Array): HubResult<GossipMessage> {
     const bb = new ByteBuffer(message);
     const decodedMessage = GossipMessage.getRootAsGossipMessage(bb);
     if (decodedMessage.contentType() === GossipContent.NONE) {

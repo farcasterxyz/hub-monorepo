@@ -125,4 +125,8 @@ table Message {
   signer: [ubyte] (required);
 }
 
+table MessageBytes {
+  message_bytes: [ubyte] (nested_flatbuffer: "Farcaster.Message", required);
+}
+
 root_type Message;

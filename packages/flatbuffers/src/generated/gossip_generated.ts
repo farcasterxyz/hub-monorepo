@@ -3,7 +3,7 @@
 import * as flatbuffers from 'flatbuffers';
 
 import {IdRegistryEvent as IdRegistryEvent, IdRegistryEventT as IdRegistryEventT} from './id_registry_event_generated.js';
-import {Message as Message, MessageT as MessageT} from './message_generated.js';
+import {MessageBytes as MessageBytes, MessageBytesT as MessageBytesT} from './message_generated.js';
 
 export enum GossipVersion {
   V1 = 1
@@ -11,18 +11,18 @@ export enum GossipVersion {
 
 export enum GossipContent {
   NONE = 0,
-  Message = 1,
+  MessageBytes = 1,
   IdRegistryEvent = 2,
   ContactInfoContent = 3
 }
 
 export function unionToGossipContent(
   type: GossipContent,
-  accessor: (obj:ContactInfoContent|IdRegistryEvent|Message) => ContactInfoContent|IdRegistryEvent|Message|null
-): ContactInfoContent|IdRegistryEvent|Message|null {
+  accessor: (obj:ContactInfoContent|IdRegistryEvent|MessageBytes) => ContactInfoContent|IdRegistryEvent|MessageBytes|null
+): ContactInfoContent|IdRegistryEvent|MessageBytes|null {
   switch(GossipContent[type]) {
     case 'NONE': return null; 
-    case 'Message': return accessor(new Message())! as Message;
+    case 'MessageBytes': return accessor(new MessageBytes())! as MessageBytes;
     case 'IdRegistryEvent': return accessor(new IdRegistryEvent())! as IdRegistryEvent;
     case 'ContactInfoContent': return accessor(new ContactInfoContent())! as ContactInfoContent;
     default: return null;
@@ -31,12 +31,12 @@ export function unionToGossipContent(
 
 export function unionListToGossipContent(
   type: GossipContent, 
-  accessor: (index: number, obj:ContactInfoContent|IdRegistryEvent|Message) => ContactInfoContent|IdRegistryEvent|Message|null, 
+  accessor: (index: number, obj:ContactInfoContent|IdRegistryEvent|MessageBytes) => ContactInfoContent|IdRegistryEvent|MessageBytes|null, 
   index: number
-): ContactInfoContent|IdRegistryEvent|Message|null {
+): ContactInfoContent|IdRegistryEvent|MessageBytes|null {
   switch(GossipContent[type]) {
     case 'NONE': return null; 
-    case 'Message': return accessor(index, new Message())! as Message;
+    case 'MessageBytes': return accessor(index, new MessageBytes())! as MessageBytes;
     case 'IdRegistryEvent': return accessor(index, new IdRegistryEvent())! as IdRegistryEvent;
     case 'ContactInfoContent': return accessor(index, new ContactInfoContent())! as ContactInfoContent;
     default: return null;
@@ -433,7 +433,7 @@ unpackTo(_o: GossipMessageT): void {
 export class GossipMessageT implements flatbuffers.IGeneratedObject {
 constructor(
   public contentType: GossipContent = GossipContent.NONE,
-  public content: ContactInfoContentT|IdRegistryEventT|MessageT|null = null,
+  public content: ContactInfoContentT|IdRegistryEventT|MessageBytesT|null = null,
   public topics: (string)[] = [],
   public peerId: (number)[] = [],
   public version: GossipVersion = GossipVersion.V1
