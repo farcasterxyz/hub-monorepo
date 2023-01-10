@@ -1,6 +1,12 @@
 import { GossipSub } from '@chainsafe/libp2p-gossipsub';
 import { Noise } from '@chainsafe/libp2p-noise';
-import { GossipContent, GossipMessage, GossipMessageT, MessageBytesT } from '@farcaster/flatbuffers';
+import {
+  ContactInfoContent,
+  GossipContent,
+  GossipMessage,
+  GossipMessageT,
+  MessageBytesT,
+} from '@farcaster/flatbuffers';
 import { HubError, HubResult } from '@farcaster/utils';
 import { Connection } from '@libp2p/interface-connection';
 import { PeerId } from '@libp2p/interface-peer-id';
@@ -172,6 +178,17 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     await this.publish(gossipMessage);
   }
 
+  /** Gossip out our contact info to the network */
+  async gossipContactInfo(contactInfo: ContactInfoContent) {
+    const gossipMessage = new GossipMessageT(
+      GossipContent.ContactInfoContent,
+      contactInfo.unpack(),
+      [NETWORK_TOPIC_PRIMARY],
+      Array.from(this.peerId?.toBytes() ?? [])
+    );
+    await this.publish(gossipMessage);
+  }
+
   /**
    * Connect with a peer Node
    *
@@ -308,7 +325,9 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
         ipMultiAddrStrFromAddressInfo(addressInfo)
       );
       if (announceMultiAddr.isOk() && announceMultiAddr.value.isOk()) {
-        announceMultiAddrStrList = [`${announceMultiAddr.value.value}/tcp/${options.gossipPort}`];
+        // If we have a valid announce IP, use it
+        const announceIpMultiaddr = announceMultiAddr.value.value;
+        announceMultiAddrStrList = [`${announceIpMultiaddr}/tcp/${options.gossipPort}`];
       }
     }
 
