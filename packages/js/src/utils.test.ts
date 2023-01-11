@@ -586,3 +586,49 @@ describe('serializeReactionBody', () => {
     expect(reactionBody.target?.tsHash).toEqual(Array.from(tsHash));
   });
 });
+
+describe('deserializeMessage', () => {
+  const ed25519Signer = Factories.Ed25519Signer.build();
+  let messageFb: flatbuffers.Message;
+  let message: types.Message;
+  let messageData: flatbuffers.MessageData;
+
+  beforeAll(async () => {
+    messageData = await Factories.MessageData.create();
+    messageFb = await Factories.Message.create(
+      { data: Array.from(messageData.bb?.bytes() ?? new Uint8Array()) },
+      { transient: { signer: ed25519Signer } }
+    );
+    message = utils.deserializeMessage(messageFb)._unsafeUnwrap();
+  });
+
+  test('flatbuffer', () => {
+    expect(message.flatbuffer).toEqual(messageFb);
+  });
+
+  test('hash', () => {
+    expect(message.hash).toEqual(bytesToHexString(messageFb.hashArray() ?? new Uint8Array())._unsafeUnwrap());
+  });
+
+  test('hashScheme', () => {
+    expect(message.hashScheme).toEqual(messageFb.hashScheme());
+  });
+
+  test('data', () => {
+    expect(message.data).toEqual(utils.deserializeMessageData(messageData)._unsafeUnwrap());
+  });
+
+  test('signature', () => {
+    expect(message.signature).toEqual(
+      bytesToHexString(messageFb.signatureArray() ?? new Uint8Array(), { size: 128 })._unsafeUnwrap()
+    );
+  });
+
+  test('signatureScheme', () => {
+    expect(message.signatureScheme).toEqual(messageFb.signatureScheme());
+  });
+
+  test('signer', () => {
+    expect(message.signer).toEqual(ed25519Signer.signerKeyHex);
+  });
+});
