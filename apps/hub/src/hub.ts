@@ -1,6 +1,7 @@
 import {
   ContactInfoContent,
   ContactInfoContentT,
+  FarcasterNetwork,
   GossipAddressInfo,
   GossipAddressInfoT,
   GossipContent,
@@ -40,6 +41,9 @@ export const APP_VERSION = process.env['npm_package_version'] ?? '1.0.0';
 export const APP_NICKNAME = 'Farcaster Hub';
 
 export interface HubOptions {
+  /** Farcaster network */
+  network: FarcasterNetwork;
+
   /** The PeerId of this Hub */
   peerId?: PeerId;
 
@@ -65,7 +69,7 @@ export interface HubOptions {
   rpcPort?: number;
 
   /** Network URL of the IdRegistry Contract */
-  networkUrl?: string;
+  ethRpcUrl?: string;
 
   /** Address of the IdRegistry contract  */
   IdRegistryAddress?: string;
@@ -129,7 +133,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     this.options = options;
     this.rocksDB = new BinaryRocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
     this.gossipNode = new GossipNode();
-    this.engine = new Engine(this.rocksDB);
+    this.engine = new Engine(this.rocksDB, options.network);
     this.syncEngine = new SyncEngine(this.engine);
 
     this.rpcServer = new Server(this, this.engine, this.syncEngine);
@@ -137,7 +141,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
     this.ethRegistryProvider = EthEventsProvider.makeWithGoerli(
       this,
-      options.networkUrl ?? '',
+      options.ethRpcUrl ?? '',
       GoerliEthConstants.IdRegistryAddress,
       GoerliEthConstants.NameRegistryAddress
     );

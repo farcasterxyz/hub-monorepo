@@ -1,4 +1,4 @@
-import { CastId, IdRegistryEventType, NameRegistryEventType } from '@farcaster/flatbuffers';
+import { CastId, FarcasterNetwork, IdRegistryEventType, NameRegistryEventType } from '@farcaster/flatbuffers';
 import { Factories, HubError } from '@farcaster/utils';
 import { err, ok } from 'neverthrow';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
@@ -15,7 +15,7 @@ import UserDataStore from '~/storage/stores/userDataStore';
 import VerificationStore from '~/storage/stores/verificationStore';
 
 const db = jestRocksDB('flatbuffers.engine.test');
-const engine = new Engine(db);
+const engine = new Engine(db, FarcasterNetwork.Testnet);
 
 // init stores for checking state changes from engine
 const signerStore = new SignerStore(db, engine.eventHandler);
@@ -263,6 +263,12 @@ describe('mergeMessage', () => {
     test('with CastAdd', () => {
       message = castAdd;
     });
+  });
+
+  test('fails with mismatched farcaster network', async () => {
+    const mainnetEngine = new Engine(db, FarcasterNetwork.Mainnet);
+    const result = await mainnetEngine.mergeMessage(castAdd);
+    expect(result).toEqual(err(new HubError('bad_request.validation_failure', 'incorrect network')));
   });
 });
 

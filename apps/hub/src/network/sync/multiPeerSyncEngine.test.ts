@@ -1,4 +1,4 @@
-import { Message } from '@farcaster/flatbuffers';
+import { FarcasterNetwork, Message } from '@farcaster/flatbuffers';
 import { Factories } from '@farcaster/utils';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
@@ -92,7 +92,7 @@ describe('Multi peer sync engine', () => {
 
   beforeEach(async () => {
     // Engine 1 is where we add events, and see if engine 2 will sync them
-    engine1 = new Engine(testDb1);
+    engine1 = new Engine(testDb1, FarcasterNetwork.Testnet);
     hub1 = new MockHub(testDb1, engine1);
     syncEngine1 = new SyncEngine(engine1);
     syncEngine1.initialize();
@@ -151,7 +151,7 @@ describe('Multi peer sync engine', () => {
       // Add messages to engine 1
       await addMessagesWithTimestamps(engine1, [30662167, 30662169, 30662172]);
 
-      const engine2 = new Engine(testDb2);
+      const engine2 = new Engine(testDb2, FarcasterNetwork.Testnet);
       const syncEngine2 = new SyncEngine(engine2);
 
       // Engine 2 should sync with engine1
@@ -200,7 +200,7 @@ describe('Multi peer sync engine', () => {
     // Add a cast to engine1
     const castAdd = (await addMessagesWithTimestamps(engine1, [30662167]))[0] as MessageModel;
 
-    const engine2 = new Engine(testDb2);
+    const engine2 = new Engine(testDb2, FarcasterNetwork.Testnet);
     const syncEngine2 = new SyncEngine(engine2);
     // Sync engine 2 with engine 1
     await syncEngine2.performSync([], clientForServer1);
@@ -311,7 +311,7 @@ describe('Multi peer sync engine', () => {
         totalMessages += batchSize;
       }
 
-      const engine2 = new Engine(testDb2);
+      const engine2 = new Engine(testDb2, FarcasterNetwork.Testnet);
       const syncEngine2 = new SyncEngine(engine2);
       syncEngine2.initialize();
 

@@ -1,3 +1,4 @@
+import { FarcasterNetwork } from '@farcaster/flatbuffers';
 import { HubAsyncResult, HubError } from '@farcaster/utils';
 import { ResultAsync } from 'neverthrow';
 import HubStateModel from '~/flatbuffers/models/hubStateModel';
@@ -14,7 +15,7 @@ export class MockHub implements HubInterface {
 
   constructor(db: RocksDB, engine: Engine) {
     this.db = db;
-    this.engine = engine ?? new Engine(db);
+    this.engine = engine ?? new Engine(db, FarcasterNetwork.Testnet);
   }
 
   async submitMessage(message: MessageModel): HubAsyncResult<void> {

@@ -1,4 +1,4 @@
-import { Message } from '@farcaster/flatbuffers';
+import { FarcasterNetwork, Message } from '@farcaster/flatbuffers';
 import { Factories, HubResult } from '@farcaster/utils';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
@@ -24,7 +24,7 @@ import { MockHub } from '~/test/mocks';
 import { addressInfoFromParts } from '~/utils/p2p';
 
 const db = jestRocksDB('flatbuffers.rpc.syncService.test');
-const engine = new Engine(db);
+const engine = new Engine(db, FarcasterNetwork.Testnet);
 const hub = new MockHub(db, engine);
 
 let server: Server;

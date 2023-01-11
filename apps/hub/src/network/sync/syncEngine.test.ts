@@ -1,4 +1,4 @@
-import { MessageType } from '@farcaster/flatbuffers';
+import { FarcasterNetwork, MessageType } from '@farcaster/flatbuffers';
 import { Factories, getFarcasterTime } from '@farcaster/utils';
 import { ok } from 'neverthrow';
 import { anyString, instance, mock, when } from 'ts-mockito';
@@ -47,7 +47,7 @@ describe('SyncEngine', () => {
 
   beforeEach(async () => {
     await testDb.clear();
-    engine = new Engine(testDb);
+    engine = new Engine(testDb, FarcasterNetwork.Testnet);
     syncEngine = new SyncEngine(engine);
   });
 

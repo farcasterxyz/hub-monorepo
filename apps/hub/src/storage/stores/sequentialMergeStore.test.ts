@@ -6,7 +6,7 @@ import { seedSigner } from '~/storage/engine/seed';
 import Engine from '../engine';
 
 const db = jestRocksDB('stores.sequentialMergeStore.test');
-const engine = new Engine(db);
+const engine = new Engine(db, flatbuffers.FarcasterNetwork.Testnet);
 
 const fid = Factories.FID.build();
 const signer = Factories.Ed25519Signer.build();

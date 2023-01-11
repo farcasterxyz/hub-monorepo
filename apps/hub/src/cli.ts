@@ -24,7 +24,7 @@ app.name('hub').description('Farcaster Hub').version(APP_VERSION);
 app
   .command('start')
   .description('Start a Hub')
-  .requiredOption('-n --network-url <url>', 'RPC URL of a Goerli Ethereum Node')
+  .requiredOption('-e, --eth-rpc-url <url>', 'RPC URL of a Goerli Ethereum Node')
   .option('-c, --config <filepath>', 'Path to a config file with options', DEFAULT_CONFIG_FILE)
   .option('-f, --fir-address <address>', 'The address of the FIR contract')
   .option('-b, --bootstrap <peer-multiaddrs...>', 'A list of peer multiaddrs to bootstrap libp2p')
@@ -37,6 +37,7 @@ app
   .option('--db-name <name>', 'The name of the RocksDB instance')
   .option('--db-reset', 'Clears the database before starting')
   .option('-i, --id <filepath>', 'Path to the PeerId file')
+  .option('-n --network <network>', 'Farcaster network ID')
   .action(async (cliOptions) => {
     const teardown = async (hub: Hub) => {
       await hub.stop();
@@ -73,7 +74,8 @@ app
       announceIp: cliOptions.announceIp ?? hubConfig.announceIp,
       fetchIp: cliOptions.fetchIp ?? hubConfig.fetchIp,
       gossipPort: hubAddressInfo.value.port,
-      networkUrl: cliOptions.networkUrl ?? hubConfig.networkUrl,
+      network: cliOptions.network ?? hubConfig.network,
+      ethRpcUrl: cliOptions.ethRpcUrl ?? hubConfig.ethRpcUrl,
       IdRegistryAddress: cliOptions.firAddress ?? hubConfig.firAddress,
       bootstrapAddrs: cliOptions.bootstrap ?? hubConfig.bootstrap,
       allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,

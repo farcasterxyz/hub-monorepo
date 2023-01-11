@@ -21,6 +21,7 @@ class Engine {
   public eventHandler: StoreEventHandler;
 
   private _db: RocksDB;
+  private _network: flatbuffers.FarcasterNetwork;
   private _castStore: CastStore;
   private _signerStore: SignerStore;
   private _ampStore: AmpStore;
@@ -28,10 +29,11 @@ class Engine {
   private _verificationStore: VerificationStore;
   private _userDataStore: UserDataStore;
 
-  constructor(db: RocksDB) {
+  constructor(db: RocksDB, network: flatbuffers.FarcasterNetwork) {
     this.eventHandler = new StoreEventHandler();
 
     this._db = db;
+    this._network = network;
     this._castStore = new CastStore(db, this.eventHandler);
     this._signerStore = new SignerStore(db, this.eventHandler);
     this._ampStore = new AmpStore(db, this.eventHandler);
@@ -492,7 +494,12 @@ class Engine {
   /* -------------------------------------------------------------------------- */
 
   private async validateMessage(message: MessageModel): HubAsyncResult<MessageModel> {
-    // 1. Check that the user has a custody address
+    // 1. Check the network
+    if (message.network() !== this._network) {
+      return err(new HubError('bad_request.validation_failure', 'incorrect network'));
+    }
+
+    // 2. Check that the user has a custody address
     const custodyAddress = await ResultAsync.fromPromise(
       this._signerStore.getCustodyAddress(message.fid()),
       () => undefined
@@ -501,7 +508,7 @@ class Engine {
       return err(new HubError('bad_request.validation_failure', `unknown fid ${bytesToNumber(message.fid())}`));
     }
 
-    // 2. Check that the signer is valid if message is not a signer message
+    // 3. Check that the signer is valid if message is not a signer message
     if (!isSignerAdd(message) && !isSignerRemove(message)) {
       const signerResult = await ResultAsync.fromPromise(
         this._signerStore.getSignerAdd(message.fid(), message.signer()),
@@ -512,7 +519,7 @@ class Engine {
       }
     }
 
-    // 3. For fname add UserDataAdd messages, check that the user actually owns the fname
+    // 4. For fname add UserDataAdd messages, check that the user actually owns the fname
     if (isUserDataAdd(message) && message.body().type() == flatbuffers.UserDataType.Fname) {
       // For fname messages, check if the user actually owns the fname.
       const fname = new TextEncoder().encode(message.body().value() ?? '');
@@ -534,7 +541,7 @@ class Engine {
       }
     }
 
-    // 4. Check message body and envelope (will throw HubError if invalid)
+    // 5. Check message body and envelope
     const validMessage = await validations.validateMessage(message.message);
 
     return validMessage.map(() => message);

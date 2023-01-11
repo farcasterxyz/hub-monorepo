@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import { Event } from '@ethersproject/contracts';
 import { BaseProvider, Block, TransactionReceipt, TransactionResponse } from '@ethersproject/providers';
-import { IdRegistryEventType, NameRegistryEventType } from '@farcaster/flatbuffers';
+import { FarcasterNetwork, IdRegistryEventType, NameRegistryEventType } from '@farcaster/flatbuffers';
 import { bytesToHexString, Factories, hexStringToBytes } from '@farcaster/utils';
 import { BigNumber, Contract } from 'ethers';
 import { Result } from 'ethers/lib/utils';
@@ -14,7 +14,7 @@ import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
 
 const db = jestRocksDB('flatbuffers.ethEventsProvider.test');
-const engine = new Engine(db);
+const engine = new Engine(db, FarcasterNetwork.Testnet);
 const hub = new MockHub(db, engine);
 
 const fid = Factories.FID.build();

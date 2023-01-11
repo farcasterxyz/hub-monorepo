@@ -7,12 +7,13 @@
 
 const DEFAULT_GOSSIP_PORT = 13111;
 const DEFAULT_RPC_PORT = 13112;
+const DEFAULT_NETWORK = 3; // Farcaster Devnet
 
 export const Config = {
   /** Path to a PeerId file */
   id: './.hub/default_id.protobuf',
   /** Network URL of the IdRegistry Contract */
-  // networkUrl: '',
+  // ethRpcUrl: '',
   /** Address of the IdRegistry Contract  */
   // firAddress: '',
   /** A list of MultiAddrs to use for bootstrapping */
@@ -33,4 +34,6 @@ export const Config = {
   dbName: 'rocks.hub._default',
   /** Clear the RocksDB instance before starting */
   dbReset: false,
+  /** Farcaster network */
+  network: DEFAULT_NETWORK,
 };

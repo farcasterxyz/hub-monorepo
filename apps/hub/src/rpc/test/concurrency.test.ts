@@ -10,7 +10,7 @@ import { MockHub } from '~/test/mocks';
 import { addressInfoFromParts } from '~/utils/p2p';
 
 const db = jestRocksDB('flatbuffers.rpc.concurrency.test');
-const engine = new Engine(db);
+const engine = new Engine(db, flatbuffers.FarcasterNetwork.Testnet);
 const hub = new MockHub(db, engine);
 
 let server: Server;

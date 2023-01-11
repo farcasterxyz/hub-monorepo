@@ -1,4 +1,4 @@
-import { RevokeSignerJobPayload } from '@farcaster/flatbuffers';
+import { FarcasterNetwork, RevokeSignerJobPayload } from '@farcaster/flatbuffers';
 import { Factories, HubError } from '@farcaster/utils';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { AmpAddModel, CastAddModel, VerificationRemoveModel } from '~/flatbuffers/models/types';
@@ -15,7 +15,7 @@ import { JobFactories } from '~/storage/jobs/utils/factories';
 const db = jestRocksDB('jobs.revokeSignerJob.test');
 
 const queue = new RevokeSignerJobQueue(db);
-const engine = new Engine(db);
+const engine = new Engine(db, FarcasterNetwork.Testnet);
 const scheduler = new RevokeSignerJobScheduler(queue, engine);
 
 // Test payloads

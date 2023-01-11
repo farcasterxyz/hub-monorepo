@@ -1,4 +1,4 @@
-import { NameRegistryEventType, UserDataType } from '@farcaster/flatbuffers';
+import { FarcasterNetwork, NameRegistryEventType, UserDataType } from '@farcaster/flatbuffers';
 import { bytesIncrement, Factories, getFarcasterTime, HubError } from '@farcaster/utils';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
@@ -252,7 +252,7 @@ describe('userfname', () => {
 
   test('fails with a different custody address', async () => {
     // Merging it via the engine will fail validation
-    const engine = new Engine(db);
+    const engine = new Engine(db, FarcasterNetwork.Testnet);
 
     await engine.mergeIdRegistryEvent(custody1Event);
     await engine.mergeNameRegistryEvent(nameRegistryModelEvent);
