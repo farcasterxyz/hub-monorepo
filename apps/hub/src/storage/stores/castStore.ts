@@ -6,6 +6,7 @@ import { isCastAdd, isCastRemove } from '~/flatbuffers/models/typeguards';
 import { CastAddModel, CastRemoveModel, RootPrefix, StorePruneOptions, UserPostfix } from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
+import SynchronousStore from './sequentialMergeStore';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 10_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 365; // 1 year
@@ -38,13 +39,15 @@ const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 365; // 1 year
  * 4. parentFid:parentTsHash:fid:tsHash -> fid:tsHash (Child Set Index)
  * 5. mentionFid:fid:tsHash -> fid:tsHash (Mentions Set Index)
  */
-class CastStore {
+class CastStore extends SynchronousStore {
   private _db: RocksDB;
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
   private _pruneTimeLimit: number;
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
+    super();
+
     this._db = db;
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
@@ -193,15 +196,16 @@ class CastStore {
 
   /** Merges a CastAdd or CastRemove message into the set */
   async merge(message: MessageModel): Promise<void> {
-    if (isCastRemove(message)) {
-      return this.mergeRemove(message);
+    if (!isCastAdd(message) && !isCastRemove(message)) {
+      throw new HubError('bad_request.validation_failure', 'invalid message type');
     }
 
-    if (isCastAdd(message)) {
-      return this.mergeAdd(message);
+    const mergeResult = await this.mergeSequential(message);
+    if (mergeResult.isErr()) {
+      throw mergeResult.error;
     }
 
-    throw new HubError('bad_request.validation_failure', 'invalid message type');
+    return mergeResult.value;
   }
 
   async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<void> {
@@ -298,6 +302,16 @@ class CastStore {
     }
 
     return ok(undefined);
+  }
+
+  protected async mergeFromSequentialQueue(message: MessageModel): Promise<void> {
+    if (isCastAdd(message)) {
+      return this.mergeAdd(message);
+    } else if (isCastRemove(message)) {
+      return this.mergeRemove(message);
+    } else {
+      throw new HubError('bad_request.validation_failure', 'invalid message type');
+    }
   }
 
   /* -------------------------------------------------------------------------- */

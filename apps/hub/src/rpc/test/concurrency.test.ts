@@ -91,8 +91,28 @@ describe('submitMessage', () => {
       client3.submitMessage(like1),
       client3.submitMessage(like2),
       client3.submitMessage(removeLike2),
+      client1.submitMessage(like1),
+      client1.submitMessage(like2),
+      client1.submitMessage(removeLike2),
+      client2.submitMessage(like1),
+      client2.submitMessage(like2),
+      client2.submitMessage(removeLike2),
+      client3.submitMessage(like1),
+      client3.submitMessage(like2),
+      client3.submitMessage(removeLike2),
+      client1.submitMessage(like1),
+      client1.submitMessage(like2),
+      client1.submitMessage(removeLike2),
+      client2.submitMessage(like1),
+      client2.submitMessage(like2),
+      client2.submitMessage(removeLike2),
+      client3.submitMessage(like1),
+      client3.submitMessage(like2),
+      client3.submitMessage(removeLike2),
     ]);
+
     expect(results.every((result) => result.isOk())).toBeTruthy();
+    // expect(moreResults.every((result) => result.isOk())).toBeTruthy();
     const messages = await engine.getAllReactionMessagesByFid(fid);
     expect(messages._unsafeUnwrap().length).toEqual(1);
   });
