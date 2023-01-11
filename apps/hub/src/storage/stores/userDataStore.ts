@@ -246,7 +246,8 @@ class UserDataStore extends SequentialMergeStore {
   /* -------------------------------------------------------------------------- */
 
   private async mergeDataAdd(message: UserDataAddModel): Promise<void> {
-    let tsx = await this.resolveUserDataMergeConflicts(this._db.transaction(), message);
+    // eslint-disable-next-line prefer-const
+    let { tsx, removedUserData } = await this.resolveUserDataMergeConflicts(this._db.transaction(), message);
 
     // No-op if resolveMergeConflicts did not return a transaction
     if (!tsx) return undefined;
@@ -259,6 +260,11 @@ class UserDataStore extends SequentialMergeStore {
 
     // Emit store event
     this._eventHandler.emit('mergeMessage', message);
+
+    // Emit revoke message events for any messages that were removed
+    for (const removedMessage of removedUserData) {
+      this._eventHandler.emit('revokeMessage', removedMessage);
+    }
   }
 
   private userDataMessageCompare(aTimestampHash: Uint8Array, bTimestampHash: Uint8Array): number {
@@ -268,7 +274,9 @@ class UserDataStore extends SequentialMergeStore {
   private async resolveUserDataMergeConflicts(
     tsx: Transaction,
     message: UserDataAddModel
-  ): Promise<Transaction | undefined> {
+  ): Promise<{ tsx: Transaction | undefined; removedUserData: UserDataAddModel[] }> {
+    const removedUserData = [];
+
     // Look up the current add timestampHash for this dataType
     const addTimestampHash = await ResultAsync.fromPromise(
       this._db.get(UserDataStore.userDataAddsKey(message.fid(), message.body().type())),
@@ -278,7 +286,7 @@ class UserDataStore extends SequentialMergeStore {
     if (addTimestampHash.isOk()) {
       if (this.userDataMessageCompare(addTimestampHash.value, message.tsHash()) >= 0) {
         // If the existing add has the same or higher order than the new message, no-op
-        return undefined;
+        return { tsx: undefined, removedUserData: [] };
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // UserDataAdd message and delete it as part of the RocksDB transaction
@@ -289,10 +297,11 @@ class UserDataStore extends SequentialMergeStore {
           addTimestampHash.value
         );
         tsx = this.deleteUserDataAddTransaction(tsx, existingAdd);
+        removedUserData.push(existingAdd);
       }
     }
 
-    return tsx;
+    return { tsx, removedUserData };
   }
 
   /* Builds a RocksDB transaction to insert a UserDataAdd message and construct its indices */

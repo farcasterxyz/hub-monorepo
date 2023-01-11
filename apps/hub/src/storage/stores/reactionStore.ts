@@ -374,7 +374,7 @@ class ReactionStore extends SequentialMergeStore {
     } else {
       const targetKey = this.targetKeyForCastId(castId);
       // eslint-disable-next-line prefer-const
-      let { txn, removedReactionAdds } = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
+      let { txn, removedReactions } = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
 
       if (!txn) return undefined; // Assume no-op if txn was not returned
 
@@ -387,8 +387,8 @@ class ReactionStore extends SequentialMergeStore {
       this._eventHandler.emit('mergeMessage', message);
 
       // Emit remove events for any removed ReactionAdd messages
-      for (const removedReactionAdd of removedReactionAdds) {
-        this._eventHandler.emit('revokeMessage', removedReactionAdd);
+      for (const removedReaction of removedReactions) {
+        this._eventHandler.emit('revokeMessage', removedReaction);
       }
     }
   }
@@ -401,7 +401,7 @@ class ReactionStore extends SequentialMergeStore {
     } else {
       const targetKey = this.targetKeyForCastId(castId);
       // eslint-disable-next-line prefer-const
-      let { txn, removedReactionAdds } = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
+      let { txn, removedReactions } = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
 
       if (!txn) return undefined; // Assume no-op if txn was not returned
 
@@ -414,8 +414,8 @@ class ReactionStore extends SequentialMergeStore {
       this._eventHandler.emit('mergeMessage', message);
 
       // Emit remove events for any removed ReactionAdd messages
-      for (const removedReactionAdd of removedReactionAdds) {
-        this._eventHandler.emit('revokeMessage', removedReactionAdd);
+      for (const removedReaction of removedReactions) {
+        this._eventHandler.emit('revokeMessage', removedReaction);
       }
     }
   }
@@ -453,7 +453,9 @@ class ReactionStore extends SequentialMergeStore {
     txn: Transaction,
     targetKey: Uint8Array,
     message: types.ReactionAddModel | types.ReactionRemoveModel
-  ): Promise<{ txn: Transaction | undefined; removedReactionAdds: types.ReactionAddModel[] }> {
+  ): Promise<{ txn: Transaction | undefined; removedReactions: types.ReactionAddModel[] }> {
+    const removedReactions = [];
+
     // Checks if there is a remove timestamp hash for this reaction
     const reactionRemoveTsHash = await ResultAsync.fromPromise(
       this._db.get(ReactionStore.reactionRemovesKey(message.fid(), message.body().type(), targetKey)),
@@ -470,7 +472,7 @@ class ReactionStore extends SequentialMergeStore {
         ) >= 0
       ) {
         // If the existing remove has the same or higher order than the new message, no-op
-        return { txn: undefined, removedReactionAdds: [] };
+        return { txn: undefined, removedReactions: [] };
       } else {
         // If the existing remove has a lower order than the new message, retrieve the full
         // ReactionRemove message and delete it as part of the RocksDB transaction
@@ -481,6 +483,7 @@ class ReactionStore extends SequentialMergeStore {
           reactionRemoveTsHash.value
         );
         txn = this.deleteReactionRemoveTransaction(txn, existingRemove);
+        removedReactions.push(existingRemove);
       }
     }
 
@@ -490,7 +493,6 @@ class ReactionStore extends SequentialMergeStore {
       () => undefined
     );
 
-    const removedReactionAdds = [];
     if (reactionAddTsHash.isOk()) {
       if (
         this.reactionMessageCompare(
@@ -502,7 +504,7 @@ class ReactionStore extends SequentialMergeStore {
         ) >= 0
       ) {
         // If the existing add has the same or higher order than the new message, no-op
-        return { txn: undefined, removedReactionAdds: [] };
+        return { txn: undefined, removedReactions: [] };
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // ReactionAdd message and delete it as part of the RocksDB transaction
@@ -512,12 +514,12 @@ class ReactionStore extends SequentialMergeStore {
           types.UserPostfix.ReactionMessage,
           reactionAddTsHash.value
         );
-        removedReactionAdds.push(existingAdd);
+        removedReactions.push(existingAdd);
         txn = this.deleteReactionAddTransaction(txn, existingAdd);
       }
     }
 
-    return { txn, removedReactionAdds };
+    return { txn, removedReactions };
   }
 
   /* Builds a RocksDB transaction to insert a ReactionAdd message and construct its indices */

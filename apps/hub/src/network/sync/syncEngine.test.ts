@@ -1,4 +1,4 @@
-import { FarcasterNetwork, MessageType } from '@farcaster/flatbuffers';
+import { FarcasterNetwork, MessageType, ReactionBody } from '@farcaster/flatbuffers';
 import { Factories, getFarcasterTime } from '@farcaster/utils';
 import { ok } from 'neverthrow';
 import { anyString, instance, mock, when } from 'ts-mockito';
@@ -12,6 +12,8 @@ import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 
 const testDb = jestRocksDB(`engine.syncEngine.test`);
+const testDb2 = jestRocksDB(`engine2.syncEngine.test`);
+
 const fid = Factories.FID.build();
 const ethSigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
@@ -125,6 +127,63 @@ describe('SyncEngine', () => {
 
     // The trie should not contain the castAdd anymore
     expect(syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
+  });
+
+  test('trie is updated when message with higher order is merged', async () => {
+    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeMessage(signerAdd);
+
+    // Reaction
+    const reaction1 = await Factories.ReactionAddData.create({ fid: Array.from(fid), timestamp: 30662167 });
+    const body1 = reaction1.body(new ReactionBody()) as ReactionBody;
+    const reaction1Message = await Factories.Message.create(
+      {
+        data: Array.from(reaction1.bb?.bytes() ?? []),
+      },
+      { transient: { signer } }
+    );
+    const reaction1Model = new MessageModel(reaction1Message);
+
+    // Same reaction, but with different timestamp
+    const reaction2 = await Factories.ReactionAddData.create({
+      fid: Array.from(reaction1.fidArray() ?? new Uint8Array()),
+      network: reaction1.network(),
+      type: reaction1.type(),
+      body: body1.unpack(),
+      timestamp: reaction1.timestamp() + 1,
+    });
+    const reaction2Message = await Factories.Message.create(
+      {
+        data: Array.from(reaction2.bb?.bytes() ?? []),
+      },
+      { transient: { signer } }
+    );
+    const reaction2Model = new MessageModel(reaction2Message);
+
+    // Merging the first reaction should succeed
+    let result = await engine.mergeMessage(reaction1Model);
+    expect(result.isOk()).toBeTruthy();
+    expect(syncEngine.trie.items).toEqual(2); // signerAdd + reaction1
+
+    // Then merging the second reaction should also succeed and remove reaction1
+    result = await engine.mergeMessage(reaction2Model);
+    expect(result.isOk()).toBeTruthy();
+    expect(syncEngine.trie.items).toEqual(2); // signerAdd + reaction2 (reaction1 is removed)
+
+    // Create a new engine and sync engine
+    testDb2.clear();
+    const engine2 = new Engine(testDb2, FarcasterNetwork.Testnet);
+    const syncEngine2 = new SyncEngine(engine2);
+    await engine2.mergeIdRegistryEvent(custodyEvent);
+    await engine2.mergeMessage(signerAdd);
+
+    // Only merge reaction2
+    result = await engine2.mergeMessage(reaction2Model);
+    expect(result.isOk()).toBeTruthy();
+    expect(syncEngine2.trie.items).toEqual(2); // signerAdd + reaction2
+
+    // Roothashes must match
+    expect(syncEngine2.trie.rootHash).toEqual(syncEngine.trie.rootHash);
   });
 
   test('snapshotTimestampPrefix trims the seconds', async () => {
