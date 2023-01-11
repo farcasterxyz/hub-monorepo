@@ -11,7 +11,7 @@ import { seedSigner } from '~/storage/engine/seed';
 import { MockHub } from '~/test/mocks';
 import { addressInfoFromParts } from '~/utils/p2p';
 
-const db = jestRocksDB('flatbuffers.rpc.reactionService.test');
+const db = jestRocksDB('flatbuffers.rpc.concurrency.test');
 const engine = new Engine(db);
 const hub = new MockHub(db, engine);
 

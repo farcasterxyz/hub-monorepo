@@ -9,6 +9,7 @@ import { StorePruneOptions, UserDataAddModel, UserPostfix } from '~/flatbuffers/
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { eventCompare } from '~/utils/contractEvent';
+import SequentialMergeStore from './sequentialMergeStore';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 
@@ -31,12 +32,14 @@ const PRUNE_SIZE_LIMIT_DEFAULT = 100;
  * 1. fid:tsHash -> cast message
  * 2. fid:set:datatype -> fid:tsHash (adds set index)
  */
-class UserDataStore {
+class UserDataStore extends SequentialMergeStore {
   private _db: RocksDB;
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
+    super();
+
     this._db = db;
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
@@ -136,11 +139,16 @@ class UserDataStore {
 
   /** Merges a UserDataAdd message into the set */
   async merge(message: MessageModel): Promise<void> {
-    if (isUserDataAdd(message)) {
-      return this.mergeDataAdd(message);
+    if (!isUserDataAdd(message)) {
+      throw new HubError('bad_request.validation_failure', 'invalid message type');
     }
 
-    throw new HubError('bad_request.validation_failure', 'invalid message type');
+    const mergeResult = await this.mergeSequential(message);
+    if (mergeResult.isErr()) {
+      throw mergeResult.error;
+    }
+
+    return mergeResult.value;
   }
 
   async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<void> {
@@ -223,6 +231,14 @@ class UserDataStore {
     }
 
     return ok(undefined);
+  }
+
+  protected async mergeFromSequentialQueue(message: MessageModel): Promise<void> {
+    if (isUserDataAdd(message)) {
+      return this.mergeDataAdd(message);
+    } else {
+      throw new HubError('bad_request.validation_failure', 'invalid message type');
+    }
   }
 
   /* -------------------------------------------------------------------------- */
