@@ -28,11 +28,28 @@ const FIDFactory = Factory.define<Uint8Array, { fid?: number }>(({ transientPara
 });
 
 const FnameFactory = Factory.define<Uint8Array>(() => {
-  const builder = new Builder(8);
-  // Add 8 random alphabets as the fname
-  for (let i = 0; i < 8; i++) {
-    builder.addInt8(faker.datatype.number({ min: 97, max: 122 }));
+  const length = faker.datatype.number({ min: 1, max: 16 });
+  const builder = new Builder(length);
+
+  //  The name begins with [a-z 0-9] or the ascii numbers [48-57, 97-122] inclusive
+  builder.addInt8(
+    faker.helpers.arrayElement([
+      faker.datatype.number({ min: 48, max: 57 }),
+      faker.datatype.number({ min: 97, max: 122 }),
+    ])
+  );
+
+  // The name can contain [a-z 0-9 -] or the ascii numbers [45, 48-57, 97-122] inclusive
+  for (let i = 1; i < length; i++) {
+    builder.addInt8(
+      faker.helpers.arrayElement([
+        45,
+        faker.datatype.number({ min: 48, max: 57 }),
+        faker.datatype.number({ min: 97, max: 122 }),
+      ])
+    );
   }
+
   return builder.asUint8Array();
 });
 
