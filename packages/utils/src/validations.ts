@@ -433,9 +433,12 @@ export const validateUserDataAddBody = (body: flatbuffers.UserDataBody): HubResu
       return err(new HubError('bad_request.validation_failure', 'url value > 256'));
     }
   } else if (body.type() === flatbuffers.UserDataType.Fname) {
-    const validatedFname = validateFname(body.value());
-    if (validatedFname.isErr()) {
-      return err(validatedFname.error);
+    // Users are allowed to set fname = '' to remove their fname, otherwise we need a valid fname to add
+    if (value !== '') {
+      const validatedFname = validateFname(value);
+      if (validatedFname.isErr()) {
+        return err(validatedFname.error);
+      }
     }
   } else {
     return err(new HubError('bad_request.validation_failure', 'invalid user data type'));
@@ -445,16 +448,15 @@ export const validateUserDataAddBody = (body: flatbuffers.UserDataBody): HubResu
 };
 
 export const validateFname = (fname?: string | null): HubResult<string> => {
-  if (fname === undefined || fname === null) {
+  if (fname === undefined || fname === null || fname === '') {
     return err(new HubError('bad_request.validation_failure', 'fname is missing'));
   }
 
-  if (fname.length > 15) {
-    return err(new HubError('bad_request.validation_failure', 'fname > 15 characters'));
+  if (fname.length > 16) {
+    return err(new HubError('bad_request.validation_failure', 'fname > 16 characters'));
   }
 
-  // Users are allowed to set fname = '' to remove their fname
-  const hasValidChars = fname === '' || FNAME_REGEX.test(fname);
+  const hasValidChars = FNAME_REGEX.test(fname);
   if (hasValidChars === false) {
     return err(new HubError('bad_request.validation_failure', `fname doesn't match ${FNAME_REGEX}`));
   }
