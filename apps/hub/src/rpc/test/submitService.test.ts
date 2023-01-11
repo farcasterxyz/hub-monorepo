@@ -1,4 +1,4 @@
-import { IdRegistryEventType, NameRegistryEventType } from '@farcaster/flatbuffers';
+import { FarcasterNetwork, IdRegistryEventType, NameRegistryEventType } from '@farcaster/flatbuffers';
 import { Factories, HubError } from '@farcaster/utils';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
@@ -13,7 +13,7 @@ import { MockHub } from '~/test/mocks';
 import { addressInfoFromParts } from '~/utils/p2p';
 
 const db = jestRocksDB('flatbuffers.rpc.submitService.test');
-const engine = new Engine(db);
+const engine = new Engine(db, FarcasterNetwork.Testnet);
 const hub = new MockHub(db, engine);
 
 let server: Server;

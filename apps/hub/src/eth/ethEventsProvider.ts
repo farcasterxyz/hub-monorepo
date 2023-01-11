@@ -98,12 +98,12 @@ export class EthEventsProvider {
    */
   public static makeWithGoerli(
     hub: HubInterface,
-    networkUrl: string,
+    ethRpcUrl: string,
     IdRegistryAddress: string,
     NameRegistryAddress: string
   ): EthEventsProvider {
     // Setup provider and the contracts
-    const jsonRpcProvider = new providers.JsonRpcProvider(networkUrl);
+    const jsonRpcProvider = new providers.JsonRpcProvider(ethRpcUrl);
 
     const idRegistryContract = new Contract(IdRegistryAddress, IdRegistry.abi, jsonRpcProvider);
     const nameRegistryContract = new Contract(NameRegistryAddress, NameRegistry.abi, jsonRpcProvider);
@@ -147,7 +147,7 @@ export class EthEventsProvider {
     if (latestBlockResult.isErr()) {
       log.error(
         { err: latestBlockResult.error },
-        'failed to connect to ethereum node. Check your network URL (e.g. --network-url)'
+        'failed to connect to ethereum node. Check your eth RPC URL (e.g. --eth-rpc-url)'
       );
       return;
     }

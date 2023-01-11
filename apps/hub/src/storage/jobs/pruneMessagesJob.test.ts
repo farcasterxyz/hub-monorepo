@@ -1,3 +1,4 @@
+import { FarcasterNetwork } from '@farcaster/flatbuffers';
 import { Ed25519Signer, Factories } from '@farcaster/utils';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { AmpAddModel, CastAddModel } from '~/flatbuffers/models/types';
@@ -8,7 +9,7 @@ import { PruneMessagesJobScheduler } from './pruneMessagesJob';
 
 const db = jestRocksDB('jobs.pruneMessagesJob.test');
 
-const engine = new Engine(db);
+const engine = new Engine(db, FarcasterNetwork.Testnet);
 const scheduler = new PruneMessagesJobScheduler(engine);
 
 // Use farcaster timestamp

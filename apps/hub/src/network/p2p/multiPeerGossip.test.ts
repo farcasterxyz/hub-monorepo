@@ -1,3 +1,4 @@
+import { FarcasterNetwork } from '@farcaster/flatbuffers';
 import { Factories } from '@farcaster/utils';
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { Multiaddr } from '@multiformats/multiaddr';
@@ -70,6 +71,7 @@ describe('Multi peer gossip', () => {
     const defaultHubOptions = {
       localIpAddrsOnly: true,
       fetchIp: false,
+      network: FarcasterNetwork.Testnet,
     };
 
     const hubOptions1 = {

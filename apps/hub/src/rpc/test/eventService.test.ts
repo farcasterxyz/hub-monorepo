@@ -1,4 +1,4 @@
-import { EventResponse, EventType } from '@farcaster/flatbuffers';
+import { EventResponse, EventType, FarcasterNetwork } from '@farcaster/flatbuffers';
 import { Factories } from '@farcaster/utils';
 import { ClientReadableStream } from '@grpc/grpc-js';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
@@ -15,7 +15,7 @@ import { sleep } from '~/utils/crypto';
 import { addressInfoFromParts } from '~/utils/p2p';
 
 const db = jestRocksDB('flatbuffers.rpc.eventService.test');
-const engine = new Engine(db);
+const engine = new Engine(db, FarcasterNetwork.Testnet);
 const hub = new MockHub(db, engine);
 
 let server: Server;
