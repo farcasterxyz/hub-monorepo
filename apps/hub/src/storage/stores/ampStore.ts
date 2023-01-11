@@ -5,6 +5,7 @@ import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/flatbuffers/models/messag
 import { isAmpAdd, isAmpRemove } from '~/flatbuffers/models/typeguards';
 import { AmpAddModel, AmpRemoveModel, RootPrefix, StorePruneOptions, UserPostfix } from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
+import SequentialMergeStore from '~/storage/stores/sequentialMergeStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 250;
@@ -30,13 +31,15 @@ const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
  * 2. fid:set:targetUserFid -> fid:tsHash (Set Index)
  * 3. fid:set:targetUserFid:tsHash -> fid:tsHash (Target User Index)
  */
-class AmpStore {
+class AmpStore extends SequentialMergeStore {
   private _db: RocksDB;
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
   private _pruneTimeLimit: number;
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
+    super();
+
     this._db = db;
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
@@ -140,15 +143,16 @@ class AmpStore {
 
   /** Merges a AmpAdd or AmpRemove message into the AmpStore */
   async merge(message: MessageModel): Promise<void> {
-    if (isAmpRemove(message)) {
-      return this.mergeRemove(message);
+    if (!isAmpRemove(message) && !isAmpAdd(message)) {
+      throw new HubError('bad_request.validation_failure', 'invalid amp message');
     }
 
-    if (isAmpAdd(message)) {
-      return this.mergeAdd(message);
+    const mergeResult = await this.mergeSequential(message);
+    if (mergeResult.isErr()) {
+      throw mergeResult.error;
     }
 
-    throw new HubError('bad_request.validation_failure', 'invalid amp message');
+    return mergeResult.value;
   }
 
   async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<void> {
@@ -240,6 +244,16 @@ class AmpStore {
     }
 
     return ok(undefined);
+  }
+
+  protected async mergeFromSequentialQueue(message: MessageModel): Promise<void> {
+    if (isAmpAdd(message)) {
+      return this.mergeAdd(message);
+    } else if (isAmpRemove(message)) {
+      return this.mergeRemove(message);
+    } else {
+      throw new HubError('bad_request.validation_failure', 'invalid message type');
+    }
   }
 
   /* -------------------------------------------------------------------------- */

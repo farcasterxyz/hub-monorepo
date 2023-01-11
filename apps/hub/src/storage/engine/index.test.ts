@@ -286,21 +286,13 @@ describe('mergeMessages', () => {
     await engine.mergeMessage(signerAdd);
   });
 
-  describe('MergeMultipleMessages', () => {
-    test('succeeds', async () => {
-      await expect(
-        engine.mergeMessages([castAdd, ampAdd, reactionAdd, verificationAdd, userDataAdd, signerRemove])
-      ).resolves.toEqual([ok(undefined), ok(undefined), ok(undefined), ok(undefined), ok(undefined), ok(undefined)]);
-      expect(mergedMessages).toEqual([
-        signerAdd,
-        castAdd,
-        ampAdd,
-        reactionAdd,
-        verificationAdd,
-        userDataAdd,
-        signerRemove,
-      ]);
-    });
+  test('succeeds and merges messages in parallel', async () => {
+    await expect(
+      engine.mergeMessages([castAdd, ampAdd, reactionAdd, verificationAdd, userDataAdd, signerRemove])
+    ).resolves.toEqual([ok(undefined), ok(undefined), ok(undefined), ok(undefined), ok(undefined), ok(undefined)]);
+    expect(new Set(mergedMessages)).toEqual(
+      new Set([signerAdd, castAdd, ampAdd, reactionAdd, verificationAdd, userDataAdd, signerRemove])
+    );
   });
 });
 

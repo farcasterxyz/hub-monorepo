@@ -5,6 +5,7 @@ import MessageModel, { FID_BYTES, TARGET_KEY_BYTES, TRUE_VALUE } from '~/flatbuf
 import { isReactionAdd, isReactionRemove } from '~/flatbuffers/models/typeguards';
 import * as types from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
+import SequentialMergeStore from '~/storage/stores/sequentialMergeStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 5_000;
@@ -32,17 +33,25 @@ const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
  * 2. fid:set:targetCastTsHash:reactionType -> fid:tsHash (Set Index)
  * 3. reactionTarget:reactionType:targetCastTsHash -> fid:tsHash (Target Index)
  */
-class ReactionStore {
+class ReactionStore extends SequentialMergeStore {
   private _db: RocksDB;
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
   private _pruneTimeLimit: number;
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: types.StorePruneOptions = {}) {
+    super();
+
     this._db = db;
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
     this._pruneTimeLimit = options.pruneTimeLimit ?? PRUNE_TIME_LIMIT_DEFAULT;
+
+    this._mergeLastTimestamp = Date.now();
+    this._mergeLastNonce = 1;
+    this._mergeIdsQueue = [];
+    this._mergeIdsStore = new Map();
+    this._mergeIsProcessing = false;
   }
 
   /**
@@ -226,15 +235,16 @@ class ReactionStore {
 
   /** Merges a ReactionAdd or ReactionRemove message into the ReactionStore */
   async merge(message: MessageModel): Promise<void> {
-    if (isReactionAdd(message)) {
-      return this.mergeAdd(message);
+    if (!isReactionAdd(message) && !isReactionRemove(message)) {
+      throw new HubError('bad_request.validation_failure', 'invalid message type');
     }
 
-    if (isReactionRemove(message)) {
-      return this.mergeRemove(message);
+    const mergeResult = await this.mergeSequential(message);
+    if (mergeResult.isErr()) {
+      throw mergeResult.error;
     }
 
-    throw new HubError('bad_request.validation_failure', 'invalid message type');
+    return mergeResult.value;
   }
 
   async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<void> {
@@ -336,6 +346,20 @@ class ReactionStore {
     }
 
     return ok(undefined);
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                              Abstract Methods                              */
+  /* -------------------------------------------------------------------------- */
+
+  protected async mergeFromSequentialQueue(message: MessageModel): Promise<void> {
+    if (isReactionAdd(message)) {
+      return this.mergeAdd(message);
+    } else if (isReactionRemove(message)) {
+      return this.mergeRemove(message);
+    } else {
+      throw new HubError('bad_request.validation_failure', 'invalid message type');
+    }
   }
 
   /* -------------------------------------------------------------------------- */

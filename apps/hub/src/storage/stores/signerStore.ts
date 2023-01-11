@@ -6,6 +6,7 @@ import MessageModel from '~/flatbuffers/models/messageModel';
 import { isSignerAdd, isSignerRemove } from '~/flatbuffers/models/typeguards';
 import * as types from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
+import SequentialMergeStore from '~/storage/stores/sequentialMergeStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { eventCompare } from '~/utils/contractEvent';
 
@@ -37,12 +38,14 @@ const PRUNE_SIZE_LIMIT_DEFAULT = 100;
  * 1. fid:tsHash -> signer message
  * 2. fid:set:signerAddress -> fid:tsHash (Set Index)
  */
-class SignerStore {
+class SignerStore extends SequentialMergeStore {
   private _db: RocksDB;
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: types.StorePruneOptions = {}) {
+    super();
+
     this._db = db;
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
@@ -193,15 +196,16 @@ class SignerStore {
 
   /** Merges a SignerAdd or SignerRemove message into the SignerStore */
   async merge(message: MessageModel): Promise<void> {
-    if (isSignerRemove(message)) {
-      return this.mergeRemove(message);
+    if (!isSignerAdd(message) && !isSignerRemove(message)) {
+      throw new HubError('bad_request.validation_failure', 'invalid message type');
     }
 
-    if (isSignerAdd(message)) {
-      return this.mergeAdd(message);
+    const mergeResult = await this.mergeSequential(message);
+    if (mergeResult.isErr()) {
+      throw mergeResult.error;
     }
 
-    throw new HubError('bad_request.validation_failure', 'invalid message type');
+    return mergeResult.value;
   }
 
   async revokeMessagesBySigner(fid: Uint8Array, signer: Uint8Array): HubAsyncResult<void> {
@@ -304,6 +308,16 @@ class SignerStore {
     }
 
     return ok(undefined);
+  }
+
+  protected async mergeFromSequentialQueue(message: MessageModel): Promise<void> {
+    if (isSignerAdd(message)) {
+      return this.mergeAdd(message);
+    } else if (isSignerRemove(message)) {
+      return this.mergeRemove(message);
+    } else {
+      throw new HubError('bad_request.validation_failure', 'invalid message type');
+    }
   }
 
   /* -------------------------------------------------------------------------- */
