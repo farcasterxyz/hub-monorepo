@@ -41,11 +41,7 @@ class Engine {
   }
 
   async mergeMessages(messages: MessageModel[]): Promise<Array<HubResult<void>>> {
-    const results: HubResult<void>[] = [];
-    for (const message of messages) {
-      results.push(await this.mergeMessage(message));
-    }
-    return results;
+    return Promise.all(messages.map((message) => this.mergeMessage(message)));
   }
 
   async mergeMessage(message: MessageModel): HubAsyncResult<void> {
