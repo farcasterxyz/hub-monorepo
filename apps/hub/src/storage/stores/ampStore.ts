@@ -5,8 +5,8 @@ import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/flatbuffers/models/messag
 import { isAmpAdd, isAmpRemove } from '~/flatbuffers/models/typeguards';
 import { AmpAddModel, AmpRemoveModel, RootPrefix, StorePruneOptions, UserPostfix } from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
+import SequentialMergeStore from '~/storage/stores/sequentialMergeStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import SequentialMergeStore from './sequentialMergeStore';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 250;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days

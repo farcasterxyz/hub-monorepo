@@ -5,8 +5,8 @@ import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/flatbuffers/models/messag
 import { isCastAdd, isCastRemove } from '~/flatbuffers/models/typeguards';
 import { CastAddModel, CastRemoveModel, RootPrefix, StorePruneOptions, UserPostfix } from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
+import SequentialMergeStore from '~/storage/stores/sequentialMergeStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import SynchronousStore from './sequentialMergeStore';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 10_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 365; // 1 year
@@ -39,7 +39,7 @@ const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 365; // 1 year
  * 4. parentFid:parentTsHash:fid:tsHash -> fid:tsHash (Child Set Index)
  * 5. mentionFid:fid:tsHash -> fid:tsHash (Mentions Set Index)
  */
-class CastStore extends SynchronousStore {
+class CastStore extends SequentialMergeStore {
   private _db: RocksDB;
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;

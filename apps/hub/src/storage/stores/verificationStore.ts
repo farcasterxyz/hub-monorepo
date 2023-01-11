@@ -5,8 +5,8 @@ import MessageModel from '~/flatbuffers/models/messageModel';
 import { isVerificationAddEthAddress, isVerificationRemove } from '~/flatbuffers/models/typeguards';
 import * as types from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
+import SequentialMergeStore from '~/storage/stores/sequentialMergeStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import SequentialMergeStore from './sequentialMergeStore';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 50;
 

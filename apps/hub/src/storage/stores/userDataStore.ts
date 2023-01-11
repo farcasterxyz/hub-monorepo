@@ -7,9 +7,9 @@ import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel'
 import { isUserDataAdd } from '~/flatbuffers/models/typeguards';
 import { StorePruneOptions, UserDataAddModel, UserPostfix } from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
+import SequentialMergeStore from '~/storage/stores/sequentialMergeStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { eventCompare } from '~/utils/contractEvent';
-import SequentialMergeStore from './sequentialMergeStore';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 

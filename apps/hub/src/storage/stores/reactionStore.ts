@@ -5,8 +5,8 @@ import MessageModel, { FID_BYTES, TARGET_KEY_BYTES, TRUE_VALUE } from '~/flatbuf
 import { isReactionAdd, isReactionRemove } from '~/flatbuffers/models/typeguards';
 import * as types from '~/flatbuffers/models/types';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
+import SequentialMergeStore from '~/storage/stores/sequentialMergeStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import SynchronousStore from './sequentialMergeStore';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 5_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
@@ -33,7 +33,7 @@ const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
  * 2. fid:set:targetCastTsHash:reactionType -> fid:tsHash (Set Index)
  * 3. reactionTarget:reactionType:targetCastTsHash -> fid:tsHash (Target Index)
  */
-class ReactionStore extends SynchronousStore {
+class ReactionStore extends SequentialMergeStore {
   private _db: RocksDB;
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
