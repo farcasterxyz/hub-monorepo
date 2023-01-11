@@ -490,6 +490,7 @@ export const deserializeMessageData = (fbb: flatbuffers.MessageData): HubResult<
   }
 
   return ok({
+    flatbuffer: fbb,
     body: bodyResult.value,
     type,
     timestamp,

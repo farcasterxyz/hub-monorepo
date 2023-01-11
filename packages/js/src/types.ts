@@ -37,6 +37,7 @@ export type SignerRemoveMessage = Message<MessageData<SignerBody, flatbuffers.Me
 export type UserDataAddMessage = Message<MessageData<UserDataBody, flatbuffers.MessageType.UserDataAdd>>;
 
 export type MessageData<TBody = MessageBody, TType = flatbuffers.MessageType> = {
+  flatbuffer: flatbuffers.MessageData;
   body: TBody;
   type: TType;
   timestamp: number;
