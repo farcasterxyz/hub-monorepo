@@ -333,6 +333,8 @@ class AmpStore extends SequentialMergeStore {
     ampId: Uint8Array,
     message: AmpAddModel | AmpRemoveModel
   ): Promise<{ tsx: Transaction | undefined; removedAmps: AmpAddModel[] }> {
+    const removedAmps: AmpAddModel[] = [];
+
     // Look up the remove tsHash for this amp
     const ampRemoveTsHash = await ResultAsync.fromPromise(
       this._db.get(AmpStore.ampRemovesKey(message.fid(), ampId)),
@@ -353,6 +355,7 @@ class AmpStore extends SequentialMergeStore {
           ampRemoveTsHash.value
         );
         tsx = this.deleteAmpRemoveTransaction(tsx, existingRemove);
+        removedAmps.push(existingRemove);
       }
     }
 
@@ -362,7 +365,6 @@ class AmpStore extends SequentialMergeStore {
       () => undefined
     );
 
-    const removedAmps: AmpAddModel[] = [];
     if (ampAddTsHash.isOk()) {
       if (this.ampMessageCompare(MessageType.AmpAdd, ampAddTsHash.value, message.type(), message.tsHash()) >= 0) {
         // If the existing add has the same or higher order than the new message, no-op

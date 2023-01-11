@@ -355,6 +355,9 @@ class CastStore extends SequentialMergeStore {
   }
 
   private async mergeRemove(message: CastRemoveModel): Promise<void> {
+    // Keep track of all removed casts, so we can emit a revokeMessage event for each one
+    const removedCasts: MessageModel[] = [];
+
     // Start RocksDB transaction
     let tsx = this._db.transaction();
 
@@ -383,6 +386,7 @@ class CastStore extends SequentialMergeStore {
           castRemoveTsHash.value
         );
         tsx = this.deleteCastRemoveTransaction(tsx, existingRemove);
+        removedCasts.push(existingRemove);
       }
     }
 
@@ -394,7 +398,6 @@ class CastStore extends SequentialMergeStore {
 
     // If the add tsHash exists, retrieve the full CastAdd message and delete it as
     // part of the RocksDB transaction
-    const removedCastAdds: CastAddModel[] = [];
     if (castAddTsHash.isOk()) {
       const existingAdd = await MessageModel.get<CastAddModel>(
         this._db,
@@ -403,7 +406,7 @@ class CastStore extends SequentialMergeStore {
         castAddTsHash.value
       );
       tsx = this.deleteCastAddTransaction(tsx, existingAdd);
-      removedCastAdds.push(existingAdd);
+      removedCasts.push(existingAdd);
     }
 
     // Add putCastRemove operations to the RocksDB transaction
@@ -416,8 +419,8 @@ class CastStore extends SequentialMergeStore {
     this._eventHandler.emit('mergeMessage', message);
 
     // Emit revoke events for each of the removed CastAdd messages
-    for (const removedCastAdd of removedCastAdds) {
-      this._eventHandler.emit('revokeMessage', removedCastAdd);
+    for (const removedCast of removedCasts) {
+      this._eventHandler.emit('revokeMessage', removedCast);
     }
   }
 

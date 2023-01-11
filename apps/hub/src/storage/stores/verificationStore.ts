@@ -287,7 +287,8 @@ class VerificationStore extends SequentialMergeStore {
       throw new HubError('bad_request.validation_failure', 'address was missing');
     }
 
-    let tsx = await this.resolveMergeConflicts(this._db.transaction(), address, message);
+    // eslint-disable-next-line prefer-const
+    let { tsx, removedVerifications } = await this.resolveMergeConflicts(this._db.transaction(), address, message);
 
     // No-op if resolveMergeConflicts did not return a transaction
     if (!tsx) return undefined;
@@ -300,6 +301,11 @@ class VerificationStore extends SequentialMergeStore {
 
     // Emit store event
     this._eventHandler.emit('mergeMessage', message);
+
+    // Emit revokeMessage events for each VerificationRemove message that was removed
+    for (const removedVerification of removedVerifications) {
+      this._eventHandler.emit('revokeMessage', removedVerification);
+    }
   }
 
   private async mergeRemove(message: types.VerificationRemoveModel): Promise<void> {
@@ -309,7 +315,8 @@ class VerificationStore extends SequentialMergeStore {
       throw new HubError('bad_request.validation_failure', 'address was missing');
     }
 
-    let tsx = await this.resolveMergeConflicts(this._db.transaction(), address, message);
+    // eslint-disable-next-line prefer-const
+    let { tsx, removedVerifications } = await this.resolveMergeConflicts(this._db.transaction(), address, message);
 
     // No-op if resolveMergeConflicts did not return a transaction
     if (!tsx) return undefined;
@@ -322,6 +329,11 @@ class VerificationStore extends SequentialMergeStore {
 
     // Emit store event
     this._eventHandler.emit('mergeMessage', message);
+
+    // Emit revokeMessage events for each verification that was removed
+    for (const removedVerification of removedVerifications) {
+      this._eventHandler.emit('revokeMessage', removedVerification);
+    }
   }
 
   private verificationMessageCompare(
@@ -350,7 +362,9 @@ class VerificationStore extends SequentialMergeStore {
     tsx: Transaction,
     address: Uint8Array,
     message: types.VerificationAddEthAddressModel | types.VerificationRemoveModel
-  ): Promise<Transaction | undefined> {
+  ): Promise<{ tsx: Transaction | undefined; removedVerifications: MessageModel[] }> {
+    const removedVerifications = [];
+
     // Look up the remove tsHash for this address
     const removeTsHash = await ResultAsync.fromPromise(
       this._db.get(VerificationStore.verificationRemovesKey(message.fid(), address)),
@@ -367,7 +381,7 @@ class VerificationStore extends SequentialMergeStore {
         ) >= 0
       ) {
         // If the existing remove has the same or higher order than the new message, no-op
-        return undefined;
+        return { tsx: undefined, removedVerifications: [] };
       } else {
         // If the existing remove has a lower order than the new message, retrieve the full
         // VerificationRemove message and delete it as part of the RocksDB transaction
@@ -378,6 +392,7 @@ class VerificationStore extends SequentialMergeStore {
           removeTsHash.value
         );
         tsx = this.deleteVerificationRemoveTransaction(tsx, existingRemove);
+        removedVerifications.push(existingRemove);
       }
     }
 
@@ -397,7 +412,7 @@ class VerificationStore extends SequentialMergeStore {
         ) >= 0
       ) {
         // If the existing add has the same or higher order than the new message, no-op
-        return undefined;
+        return { tsx: undefined, removedVerifications: [] };
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // VerificationAdd* message and delete it as part of the RocksDB transaction
@@ -408,10 +423,11 @@ class VerificationStore extends SequentialMergeStore {
           addTsHash.value
         );
         tsx = this.deleteVerificationAddTransaction(tsx, existingAdd);
+        removedVerifications.push(existingAdd);
       }
     }
 
-    return tsx;
+    return { tsx, removedVerifications };
   }
 
   private putVerificationAddTransaction(tsx: Transaction, message: types.VerificationAddEthAddressModel): Transaction {
