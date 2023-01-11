@@ -50,16 +50,15 @@ describe('validateFname', () => {
     expect(validations.validateFname(fname)).toEqual(ok(fname));
   });
 
-  test('fails with empty array', () => {
-    expect(validations.validateFname('')).toEqual(
-      err(new HubError('bad_request.validation_failure', 'fname is missing'))
-    );
+  test('succeeds with an empty string', () => {
+    const fname = '';
+    expect(validations.validateFname(fname)).toEqual(ok(fname));
   });
 
-  test('fails when greater than 32 characters', () => {
-    const fname = faker.random.alpha(33);
+  test('fails when greater than 15 characters', () => {
+    const fname = faker.random.alpha(16);
     expect(validations.validateFname(fname)).toEqual(
-      err(new HubError('bad_request.validation_failure', 'fname > 32 characters'))
+      err(new HubError('bad_request.validation_failure', 'fname > 15 characters'))
     );
   });
 

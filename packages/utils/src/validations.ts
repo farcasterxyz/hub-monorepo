@@ -445,15 +445,16 @@ export const validateUserDataAddBody = (body: flatbuffers.UserDataBody): HubResu
 };
 
 export const validateFname = (fname?: string | null): HubResult<string> => {
-  if (!fname || fname.length === 0) {
+  if (fname === undefined || fname === null) {
     return err(new HubError('bad_request.validation_failure', 'fname is missing'));
   }
 
-  if (fname.length > 32) {
-    return err(new HubError('bad_request.validation_failure', 'fname > 32 characters'));
+  if (fname.length > 15) {
+    return err(new HubError('bad_request.validation_failure', 'fname > 15 characters'));
   }
 
-  const hasValidChars = FNAME_REGEX.test(fname);
+  // Users are allowed to set fname = '' to remove their fname
+  const hasValidChars = fname === '' || FNAME_REGEX.test(fname);
   if (hasValidChars === false) {
     return err(new HubError('bad_request.validation_failure', `fname doesn't match ${FNAME_REGEX}`));
   }
