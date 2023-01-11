@@ -1,13 +1,20 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "composite": true,
     "paths": {
-      "~/*": ["./*"]
+      "~/*": ["./*"],
+      "@farcaster/*": ["../../../packages/*/src"]
     },
 
     "baseUrl": "./src",
     "outDir": "build",
     "rootDir": "src"
   },
-  "exclude": ["node_modules", "jest.config.ts"]
+  "exclude": ["node_modules", "jest.config.ts"],
+  "references": [
+    { "path": "../../packages/flatbuffers" },
+    { "path": "../../packages/grpc" },
+    { "path": "../../packages/utils" }
+  ]
 }

@@ -10,6 +10,7 @@ import {
 import { HubError, HubResult } from '@farcaster/utils';
 import { Connection } from '@libp2p/interface-connection';
 import { PeerId } from '@libp2p/interface-peer-id';
+import type { AddressBook, Peer } from '@libp2p/interface-peer-store/src/src/index';
 import { Mplex } from '@libp2p/mplex';
 import { PubSubPeerDiscovery } from '@libp2p/pubsub-peer-discovery';
 import { TCP } from '@libp2p/tcp';
@@ -79,11 +80,11 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this._node?.getMultiaddrs();
   }
 
-  get addressBook() {
+  get addressBook(): AddressBook | undefined {
     return this._node?.peerStore.addressBook;
   }
 
-  async getPeerInfo(peerId: PeerId) {
+  async getPeerInfo(peerId: PeerId): Promise<Peer | undefined> {
     const existingConnections = this._node?.connectionManager.getConnections(peerId);
     for (const conn of existingConnections ?? []) {
       const knownAddrs = await this._node?.peerStore.addressBook.get(peerId);
