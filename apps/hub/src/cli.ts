@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { FarcasterNetwork } from '@farcaster/flatbuffers';
+import { HubError, validations } from '@farcaster/utils';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from '@libp2p/peer-id-factory';
 import { Command } from 'commander';
@@ -17,6 +19,16 @@ const PEER_ID_FILENAME = 'id.protobuf';
 const DEFAULT_PEER_ID_DIR = './.hub';
 const DEFAULT_PEER_ID_FILENAME = `default_${PEER_ID_FILENAME}`;
 const DEFAULT_PEER_ID_LOCATION = `${DEFAULT_PEER_ID_DIR}/${DEFAULT_PEER_ID_FILENAME}`;
+
+const parseNetwork = (network: string): FarcasterNetwork => {
+  const networkId = Number(network);
+  if (isNaN(networkId)) throw new HubError('bad_request.invalid_param', 'network must be a number');
+  const isValidNetwork = validations.validateNetwork(networkId);
+  if (isValidNetwork.isErr()) {
+    throw isValidNetwork.error;
+  }
+  return isValidNetwork.value;
+};
 
 const app = new Command();
 app.name('hub').description('Farcaster Hub').version(APP_VERSION);
@@ -37,7 +49,7 @@ app
   .option('--db-name <name>', 'The name of the RocksDB instance')
   .option('--db-reset', 'Clears the database before starting')
   .option('-i, --id <filepath>', 'Path to the PeerId file')
-  .option('-n --network <network>', 'Farcaster network ID')
+  .option('-n --network <network>', 'Farcaster network ID', parseNetwork)
   .action(async (cliOptions) => {
     const teardown = async (hub: Hub) => {
       await hub.stop();
