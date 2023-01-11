@@ -397,6 +397,7 @@ export const deserializeNameRegistryEvent = (
   const type = flatbuffer.type();
 
   return ok({
+    flatbuffer,
     blockHash,
     blockNumber,
     fname: fname.value,
@@ -430,6 +431,7 @@ export const deserializeIdRegistryEvent = (
   const [blockHash, transactionHash, fid, to, from] = deserialized.value;
 
   return ok({
+    flatbuffer,
     blockHash,
     blockNumber,
     fid,

@@ -16,26 +16,12 @@ import {
   serializeUserId,
 } from './utils';
 
-type ClientResult<TJson, TFlatbuffer> = HubAsyncResult<
-  Readonly<
-    TJson & {
-      flatbuffer: TFlatbuffer;
-    }
-  >
->;
-
-const deserializeCall = async <TJson, TFlatbuffer>(
+const deserializeCall = async <TDeserialized, TFlatbuffer>(
   call: HubAsyncResult<TFlatbuffer>,
-  deserialize: (fbb: TFlatbuffer) => HubResult<TJson>
-): ClientResult<TJson, TFlatbuffer> => {
+  deserialize: (fbb: TFlatbuffer) => HubResult<TDeserialized>
+): HubAsyncResult<TDeserialized> => {
   const response = await call;
-
-  return response.andThen((flatbuffer) =>
-    deserialize(flatbuffer).map((type) => ({
-      ...type,
-      flatbuffer,
-    }))
-  );
+  return response.andThen((flatbuffer) => deserialize(flatbuffer));
 };
 
 const wrapGrpcMessageCall = async <T extends types.Message>(
@@ -251,7 +237,7 @@ export class Client {
     return wrapGrpcMessagesCall(this._grpcClient.getSignersByFid(serializedFid.value));
   }
 
-  async getIdRegistryEvent(fid: number): ClientResult<types.IdRegistryEvent, flatbuffers.IdRegistryEvent> {
+  async getIdRegistryEvent(fid: number): HubAsyncResult<types.IdRegistryEvent> {
     const serializedFid = serializeFid(fid);
 
     if (serializedFid.isErr()) {

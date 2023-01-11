@@ -100,7 +100,8 @@ export type UserDataBody = {
   value: string;
 };
 
-export type IdRegistryEvent = {
+export type IdRegistryEvent = Readonly<{
+  flatbuffer: flatbuffers.IdRegistryEvent;
   blockNumber: number;
   blockHash: string; // Hex string
   transactionHash: string; // Hex string
@@ -109,9 +110,10 @@ export type IdRegistryEvent = {
   to: string; // Hex string
   type: flatbuffers.IdRegistryEventType;
   from: string; // Hex string
-};
+}>;
 
-export type NameRegistryEvent = {
+export type NameRegistryEvent = Readonly<{
+  flatbuffer: flatbuffers.NameRegistryEvent;
   blockNumber: number;
   blockHash: string; // Hex string
   transactionHash: string; // Hex string
@@ -121,4 +123,4 @@ export type NameRegistryEvent = {
   type: flatbuffers.NameRegistryEventType;
   from: string; // Hex string
   expiry: number;
-};
+}>;
