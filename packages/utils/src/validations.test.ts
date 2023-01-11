@@ -45,7 +45,12 @@ describe('validateFid', () => {
 });
 
 describe('validateFname', () => {
-  test('succeeds', () => {
+  test('succeeds with valid byte array input', () => {
+    const fname = Factories.Fname.build();
+    expect(validations.validateFname(fname)).toEqual(ok(fname));
+  });
+
+  test('succeeds with valid string inpt', () => {
     const fname = bytesToUtf8String(Factories.Fname.build())._unsafeUnwrap();
     expect(validations.validateFname(fname)).toEqual(ok(fname));
   });

@@ -2,7 +2,7 @@ import * as flatbuffers from '@farcaster/flatbuffers';
 import { blake3 } from '@noble/hashes/blake3';
 import { ByteBuffer } from 'flatbuffers';
 import { err, ok, Result } from 'neverthrow';
-import { bytesCompare } from './bytes';
+import { bytesCompare, bytesToUtf8String } from './bytes';
 import { ed25519, eip712 } from './crypto';
 import { HubAsyncResult, HubError, HubResult } from './errors';
 import { getFarcasterTime } from './time';
@@ -447,7 +447,22 @@ export const validateUserDataAddBody = (body: flatbuffers.UserDataBody): HubResu
   return ok(body);
 };
 
-export const validateFname = (fname?: string | null): HubResult<string> => {
+export const validateFname = <T extends string | Uint8Array>(fnameP?: T | null): HubResult<T> => {
+  if (fnameP === undefined || fnameP === null || fnameP === '') {
+    return err(new HubError('bad_request.validation_failure', 'fname is missing'));
+  }
+
+  let fname;
+  if (fnameP instanceof Uint8Array) {
+    const fromBytes = bytesToUtf8String(fnameP);
+    if (fromBytes.isErr()) {
+      return err(fromBytes.error);
+    }
+    fname = fromBytes.value;
+  } else {
+    fname = fnameP;
+  }
+
   if (fname === undefined || fname === null || fname === '') {
     return err(new HubError('bad_request.validation_failure', 'fname is missing'));
   }
@@ -461,5 +476,5 @@ export const validateFname = (fname?: string | null): HubResult<string> => {
     return err(new HubError('bad_request.validation_failure', `fname doesn't match ${FNAME_REGEX}`));
   }
 
-  return ok(fname);
+  return ok(fnameP);
 };
