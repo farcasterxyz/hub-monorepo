@@ -1,7 +1,6 @@
-import { HubAsyncResult, HubResult } from '@farcaster/utils';
+import { HubAsyncResult, HubError, HubResult } from '@farcaster/utils';
 import { err, ok, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import { HubError } from '~/../../../packages/utils/dist';
 import MessageModel from '~/flatbuffers/models/messageModel';
 
 const MIN_NONCE = 1;
