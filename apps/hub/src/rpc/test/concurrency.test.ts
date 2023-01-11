@@ -1,7 +1,5 @@
 import * as flatbuffers from '@farcaster/flatbuffers';
-import { makeMessageFromFlatbuffer, types } from '@farcaster/js';
 import { Factories, toTsHash } from '@farcaster/utils';
-import MessageModel from '~/flatbuffers/models/messageModel';
 import SyncEngine from '~/network/sync/syncEngine';
 import HubRpcClient from '~/rpc/client';
 import Server from '~/rpc/server';
@@ -40,23 +38,7 @@ const signer1 = Factories.Ed25519Signer.build();
 const signer2 = Factories.Ed25519Signer.build();
 
 describe('submitMessage', () => {
-  let mergedMessages: [number, types.Message][];
-
-  const mergeListener = (message: MessageModel) => {
-    const json = makeMessageFromFlatbuffer(message.message)._unsafeUnwrap();
-    mergedMessages.push([Date.now(), json]);
-  };
-
-  beforeAll(() => {
-    engine.eventHandler.on('mergeMessage', mergeListener);
-  });
-
-  afterAll(() => {
-    engine.eventHandler.off('mergeMessage', mergeListener);
-  });
-
   beforeEach(async () => {
-    mergedMessages = [];
     await seedSigner(engine, fid, signer1.signerKey);
     await seedSigner(engine, fid, signer2.signerKey);
   });
@@ -112,7 +94,6 @@ describe('submitMessage', () => {
     ]);
 
     expect(results.every((result) => result.isOk())).toBeTruthy();
-    // expect(moreResults.every((result) => result.isOk())).toBeTruthy();
     const messages = await engine.getAllReactionMessagesByFid(fid);
     expect(messages._unsafeUnwrap().length).toEqual(1);
   });
