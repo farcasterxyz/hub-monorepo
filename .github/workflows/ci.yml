@@ -44,6 +44,9 @@ jobs:
       - name: Run linter
         run: yarn lint
 
+      - name: Run typecheck
+        run: yarn typecheck
+
       - name: Run build
         run: yarn build
 
