@@ -28,7 +28,8 @@
     "clean": "rimraf ./dist",
     "lint": "eslint  src/ --color --ext .ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
-    "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"
+    "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage",
+    "typecheck": "yarn tsc --project tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@faker-js/faker": "^7.6.0",

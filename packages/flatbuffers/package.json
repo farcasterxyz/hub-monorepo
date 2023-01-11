@@ -20,7 +20,8 @@
     "clean": "rimraf ./dist",
     "flatc": "flatc --ts --ts-flat-files --gen-object-api -o src/generated src/schemas/*.fbs",
     "lint": "eslint  src/ --color --ext .ts",
-    "lint:fix": "yarn run lint -- --fix"
+    "lint:fix": "yarn run lint -- --fix",
+    "typecheck": "yarn tsc --project tsconfig.json --noEmit"
   },
   "devDependencies": {
     "eslint-config-custom": "*"

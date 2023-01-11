@@ -2,7 +2,7 @@
   "$schema": "https://turbo.build/schema.json",
   "pipeline": {
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "typecheck"],
       "outputs": ["build/**", "dist/**"]
     },
     "clean": {
@@ -22,7 +22,8 @@
     "test:ci": {
       "dependsOn": ["lint", "build"],
       "outputs": ["coverage/**"]
-    }
+    },
+    "typecheck": {}
   },
   "globalDependencies": ["tsconfig.json", ".eslintrc.cjs"]
 }
