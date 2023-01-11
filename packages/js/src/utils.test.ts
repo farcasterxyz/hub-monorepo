@@ -7,7 +7,15 @@ import {
   VerificationAddEthAddressBody,
   VerificationRemoveBody,
 } from '@farcaster/flatbuffers';
-import { bytesToHexString, bytesToNumber, Factories, hexStringToBytes } from '@farcaster/utils';
+import {
+  bytesToHexString,
+  bytesToNumber,
+  bytesToUtf8String,
+  Factories,
+  hexStringToBytes,
+  utf8StringToBytes,
+} from '@farcaster/utils';
+import { ok } from 'neverthrow';
 import * as types from './types';
 import * as utils from './utils';
 
@@ -30,6 +38,20 @@ describe('serializeFid', () => {
       expect(utils.serializeFid(input)._unsafeUnwrap()).toEqual(output);
     });
   }
+});
+
+describe('deserializeFname', () => {
+  const fname = Factories.Fname.build();
+  test(`succeeds`, () => {
+    expect(utils.deserializeFname(fname)).toEqual(ok(bytesToUtf8String(fname)._unsafeUnwrap()));
+  });
+});
+
+describe('serializeFname', () => {
+  const fname = faker.random.alpha(5);
+  test(`succeeds`, () => {
+    expect(utils.serializeFname(fname)).toEqual(ok(utf8StringToBytes(fname)._unsafeUnwrap()));
+  });
 });
 
 const ethWallet = Factories.Eip712Signer.build();
@@ -562,5 +584,51 @@ describe('serializeReactionBody', () => {
   test('target', () => {
     expect(reactionBody.target?.fid).toEqual(Array.from(targetFid));
     expect(reactionBody.target?.tsHash).toEqual(Array.from(tsHash));
+  });
+});
+
+describe('deserializeMessage', () => {
+  const ed25519Signer = Factories.Ed25519Signer.build();
+  let messageFb: flatbuffers.Message;
+  let message: types.Message;
+  let messageData: flatbuffers.MessageData;
+
+  beforeAll(async () => {
+    messageData = await Factories.MessageData.create();
+    messageFb = await Factories.Message.create(
+      { data: Array.from(messageData.bb?.bytes() ?? new Uint8Array()) },
+      { transient: { signer: ed25519Signer } }
+    );
+    message = utils.deserializeMessage(messageFb)._unsafeUnwrap();
+  });
+
+  test('flatbuffer', () => {
+    expect(message.flatbuffer).toEqual(messageFb);
+  });
+
+  test('hash', () => {
+    expect(message.hash).toEqual(bytesToHexString(messageFb.hashArray() ?? new Uint8Array())._unsafeUnwrap());
+  });
+
+  test('hashScheme', () => {
+    expect(message.hashScheme).toEqual(messageFb.hashScheme());
+  });
+
+  test('data', () => {
+    expect(message.data).toEqual(utils.deserializeMessageData(messageData)._unsafeUnwrap());
+  });
+
+  test('signature', () => {
+    expect(message.signature).toEqual(
+      bytesToHexString(messageFb.signatureArray() ?? new Uint8Array(), { size: 128 })._unsafeUnwrap()
+    );
+  });
+
+  test('signatureScheme', () => {
+    expect(message.signatureScheme).toEqual(messageFb.signatureScheme());
+  });
+
+  test('signer', () => {
+    expect(message.signer).toEqual(ed25519Signer.signerKeyHex);
   });
 });

@@ -37,6 +37,7 @@ export type SignerRemoveMessage = Message<MessageData<SignerBody, flatbuffers.Me
 export type UserDataAddMessage = Message<MessageData<UserDataBody, flatbuffers.MessageType.UserDataAdd>>;
 
 export type MessageData<TBody = MessageBody, TType = flatbuffers.MessageType> = {
+  flatbuffer: flatbuffers.MessageData;
   body: TBody;
   type: TType;
   timestamp: number;
@@ -99,3 +100,28 @@ export type UserDataBody = {
   type: flatbuffers.UserDataType;
   value: string;
 };
+
+export type IdRegistryEvent = Readonly<{
+  flatbuffer: flatbuffers.IdRegistryEvent;
+  blockNumber: number;
+  blockHash: string; // Hex string
+  transactionHash: string; // Hex string
+  logIndex: number;
+  fid: number;
+  to: string; // Hex string
+  type: flatbuffers.IdRegistryEventType;
+  from: string; // Hex string
+}>;
+
+export type NameRegistryEvent = Readonly<{
+  flatbuffer: flatbuffers.NameRegistryEvent;
+  blockNumber: number;
+  blockHash: string; // Hex string
+  transactionHash: string; // Hex string
+  logIndex: number;
+  fname: string;
+  to: string; // Hex string
+  type: flatbuffers.NameRegistryEventType;
+  from: string; // Hex string
+  expiry: number;
+}>;

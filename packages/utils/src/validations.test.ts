@@ -1,7 +1,8 @@
 import { faker } from '@faker-js/faker';
 import * as flatbuffers from '@farcaster/flatbuffers';
 import { Builder, ByteBuffer } from 'flatbuffers';
-import { hexStringToBytes } from './bytes';
+import { err, ok } from 'neverthrow';
+import { bytesToUtf8String, hexStringToBytes } from './bytes';
 import { HubError } from './errors';
 import { Factories } from './factories';
 import { getFarcasterTime } from './time';
@@ -39,6 +40,45 @@ describe('validateFid', () => {
   test('fails with padded little endian byte array', () => {
     expect(validations.validateFid(new Uint8Array([1, 0]))._unsafeUnwrapErr()).toEqual(
       new HubError('bad_request.validation_failure', 'fid is padded')
+    );
+  });
+});
+
+describe('validateFname', () => {
+  test('succeeds with valid byte array input', () => {
+    const fname = Factories.Fname.build();
+    expect(validations.validateFname(fname)).toEqual(ok(fname));
+  });
+
+  test('succeeds with valid string inpt', () => {
+    const fname = bytesToUtf8String(Factories.Fname.build())._unsafeUnwrap();
+    expect(validations.validateFname(fname)).toEqual(ok(fname));
+  });
+
+  test('fails when greater than 16 characters', () => {
+    const fname = faker.random.alpha(17);
+    expect(validations.validateFname(fname)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'fname > 16 characters'))
+    );
+  });
+
+  test('fails with an empty string', () => {
+    const fname = '';
+    expect(validations.validateFname(fname)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'fname is missing'))
+    );
+  });
+
+  test('fails when undefined', () => {
+    expect(validations.validateFname(undefined)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'fname is missing'))
+    );
+  });
+
+  test('fails with invalid characters', () => {
+    const fname = '@fname';
+    expect(validations.validateFname(fname)).toEqual(
+      err(new HubError('bad_request.validation_failure', `fname doesn't match ${validations.FNAME_REGEX}`))
     );
   });
 });
