@@ -31,6 +31,6 @@
     "lint": "eslint  src/ --color --ext .ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage",
-    "typecheck": "yarn tsc --project tsconfig.json --noEmit"
+    "typecheck": "yarn tsc -b"
   }
 }
