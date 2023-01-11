@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "build": "./node_modules/.bin/turbo run build",
+    "clean": "./node_modules/.bin/turbo run clean",
     "dev": "./node_modules/.bin/turbo run dev --parallel",
     "flatc": "flatc --ts --ts-flat-files --gen-object-api -o packages/flatbuffers/src/generated packages/flatbuffers/src/schemas/*.fbs",
     "test": "./node_modules/.bin/turbo run test",
@@ -30,6 +31,7 @@
     "husky": "^8.0.1",
     "jest": "^29.0.3",
     "lint-staged": "^13.0.3",
+    "rimraf": "^3.0.2",
     "ts-node": "^10.9.1",
     "tsup": "^6.5.0",
     "turbo": "^1.6.3",
