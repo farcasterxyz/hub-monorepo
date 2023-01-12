@@ -81,6 +81,7 @@ describe('SyncEngine', () => {
 
     // Two messages (signerAdd + castAdd) was added to the trie
     expect(syncEngine.trie.items - existingItems).toEqual(2);
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(syncEngine.trie.exists(new SyncId(castAdd))).toBeTruthy();
   });
 
@@ -92,6 +93,7 @@ describe('SyncEngine', () => {
 
     expect(result.isErr()).toBeTruthy();
     expect(syncEngine.trie.items).toEqual(0);
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
   });
 
@@ -116,6 +118,7 @@ describe('SyncEngine', () => {
     expect(result.isOk()).toBeTruthy();
 
     const id = new SyncId(castRemove);
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(syncEngine.trie.exists(id)).toBeTruthy();
 
     const allMessages = await engine.getAllMessagesBySyncIds([id.idString()]);
@@ -123,9 +126,11 @@ describe('SyncEngine', () => {
     expect(allMessages._unsafeUnwrap()[0]?.type()).toEqual(MessageType.CastRemove);
 
     // The trie should contain the message remove
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(syncEngine.trie.exists(id)).toBeTruthy();
 
     // The trie should not contain the castAdd anymore
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
   });
 
@@ -251,8 +256,11 @@ describe('SyncEngine', () => {
     // There might be more messages related to user creation, but it's sufficient to check for casts
     expect(syncEngine.trie.items).toBeGreaterThanOrEqual(3);
     expect(syncEngine.trie.rootHash).toBeTruthy();
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(syncEngine.trie.exists(new SyncId(messages[0] as MessageModel))).toBeTruthy();
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(syncEngine.trie.exists(new SyncId(messages[1] as MessageModel))).toBeTruthy();
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(syncEngine.trie.exists(new SyncId(messages[2] as MessageModel))).toBeTruthy();
   });
 });

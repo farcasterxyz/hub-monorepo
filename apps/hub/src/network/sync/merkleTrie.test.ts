@@ -80,11 +80,13 @@ describe('MerkleTrie', () => {
       trie.insert(syncId);
       expect(trie.items).toEqual(1);
       expect(trie.rootHash).toBeTruthy();
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       expect(trie.exists(syncId)).toBeTruthy();
 
       trie.delete(syncId);
       expect(trie.items).toEqual(0);
       expect(trie.rootHash).toEqual(EMPTY_HASH);
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       expect(trie.exists(syncId)).toBeFalsy();
     });
 
@@ -139,13 +141,16 @@ describe('MerkleTrie', () => {
     const trie = new MerkleTrie();
     const syncId = await NetworkFactories.SyncId.create();
 
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(trie.exists(syncId)).toBeFalsy();
 
     trie.insert(syncId);
 
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(trie.exists(syncId)).toBeTruthy();
 
     const nonExistingSyncId = await NetworkFactories.SyncId.create();
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(trie.exists(nonExistingSyncId)).toBeFalsy();
   });
 

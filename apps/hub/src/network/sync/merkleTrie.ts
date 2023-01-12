@@ -50,6 +50,8 @@ class MerkleTrie {
   }
 
   public exists(id: SyncId): boolean {
+    // NOTE: eslint falsely identifies as `fs.exists`.
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     return this._root.exists(id.idString());
   }
 
