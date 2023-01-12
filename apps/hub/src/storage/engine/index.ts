@@ -1,5 +1,13 @@
 import * as flatbuffers from '@farcaster/flatbuffers';
-import { bytesCompare, bytesToNumber, HubAsyncResult, HubError, HubResult, validations } from '@farcaster/utils';
+import {
+  bytesCompare,
+  bytesToNumber,
+  HubAsyncResult,
+  HubError,
+  HubResult,
+  utf8StringToBytes,
+  validations,
+} from '@farcaster/utils';
 import { err, errAsync, ok, ResultAsync } from 'neverthrow';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel, { FID_BYTES } from '~/flatbuffers/models/messageModel';
@@ -522,7 +530,7 @@ class Engine {
     // 4. For fname add UserDataAdd messages, check that the user actually owns the fname
     if (isUserDataAdd(message) && message.body().type() == flatbuffers.UserDataType.Fname) {
       // For fname messages, check if the user actually owns the fname.
-      const fname = new TextEncoder().encode(message.body().value() ?? '');
+      const fname = utf8StringToBytes(message.body().value() ?? '')._unsafeUnwrap();
 
       // Users are allowed to set fname = '' to remove their fname, so check to see if fname is set
       // before validating the custody address

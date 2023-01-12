@@ -1,5 +1,5 @@
 import { FarcasterNetwork, NameRegistryEventType, UserDataType } from '@farcaster/flatbuffers';
-import { bytesIncrement, Factories, getFarcasterTime, HubError } from '@farcaster/utils';
+import { bytesIncrement, bytesToUtf8String, Factories, getFarcasterTime, HubError } from '@farcaster/utils';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
@@ -64,7 +64,7 @@ beforeAll(async () => {
 
   const addNameData = await Factories.UserDataAddData.create({
     fid: Array.from(fid),
-    body: Factories.UserDataBody.build({ type: UserDataType.Fname, value: new TextDecoder().decode(fname) }),
+    body: Factories.UserDataBody.build({ type: UserDataType.Fname, value: bytesToUtf8String(fname)._unsafeUnwrap() }),
   });
   addFname = new MessageModel(
     await Factories.Message.create({ data: Array.from(addNameData.bb?.bytes() ?? []) }, { transient: { signer } })
