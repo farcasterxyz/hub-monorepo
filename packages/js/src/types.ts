@@ -20,22 +20,6 @@ export type Message<TData = MessageData> = Readonly<{
   tsHash: string; // Hex string
 }>;
 
-export type CastAddMessage = Message<MessageData<CastAddBody, flatbuffers.MessageType.CastAdd>>;
-export type CastRemoveMessage = Message<MessageData<CastRemoveBody, flatbuffers.MessageType.CastRemove>>;
-export type ReactionAddMessage = Message<MessageData<ReactionBody, flatbuffers.MessageType.ReactionAdd>>;
-export type ReactionRemoveMessage = Message<MessageData<ReactionBody, flatbuffers.MessageType.ReactionRemove>>;
-export type AmpAddMessage = Message<MessageData<AmpBody, flatbuffers.MessageType.AmpAdd>>;
-export type AmpRemoveMessage = Message<MessageData<AmpBody, flatbuffers.MessageType.AmpRemove>>;
-export type VerificationAddEthAddressMessage = Message<
-  MessageData<VerificationAddEthAddressBody, flatbuffers.MessageType.VerificationAddEthAddress>
->;
-export type VerificationRemoveMessage = Message<
-  MessageData<VerificationRemoveBody, flatbuffers.MessageType.VerificationRemove>
->;
-export type SignerAddMessage = Message<MessageData<SignerBody, flatbuffers.MessageType.SignerAdd>>;
-export type SignerRemoveMessage = Message<MessageData<SignerBody, flatbuffers.MessageType.SignerRemove>>;
-export type UserDataAddMessage = Message<MessageData<UserDataBody, flatbuffers.MessageType.UserDataAdd>>;
-
 export type MessageData<TBody = MessageBody, TType = flatbuffers.MessageType> = {
   flatbuffer: flatbuffers.MessageData;
   body: TBody;
@@ -44,6 +28,33 @@ export type MessageData<TBody = MessageBody, TType = flatbuffers.MessageType> = 
   fid: number;
   network: flatbuffers.FarcasterNetwork;
 };
+
+export type CastAddData = MessageData<CastAddBody, flatbuffers.MessageType.CastAdd>;
+export type CastRemoveData = MessageData<CastRemoveBody, flatbuffers.MessageType.CastRemove>;
+export type ReactionAddData = MessageData<ReactionBody, flatbuffers.MessageType.ReactionAdd>;
+export type ReactionRemoveData = MessageData<ReactionBody, flatbuffers.MessageType.ReactionRemove>;
+export type AmpAddData = MessageData<AmpBody, flatbuffers.MessageType.AmpAdd>;
+export type AmpRemoveData = MessageData<AmpBody, flatbuffers.MessageType.AmpRemove>;
+export type VerificationAddEthAddressData = MessageData<
+  VerificationAddEthAddressBody,
+  flatbuffers.MessageType.VerificationAddEthAddress
+>;
+export type VerificationRemoveData = MessageData<VerificationRemoveBody, flatbuffers.MessageType.VerificationRemove>;
+export type SignerAddData = MessageData<SignerBody, flatbuffers.MessageType.SignerAdd>;
+export type SignerRemoveData = MessageData<SignerBody, flatbuffers.MessageType.SignerRemove>;
+export type UserDataAddData = MessageData<UserDataBody, flatbuffers.MessageType.UserDataAdd>;
+
+export type CastAddMessage = Message<CastAddData>;
+export type CastRemoveMessage = Message<CastRemoveData>;
+export type ReactionAddMessage = Message<ReactionAddData>;
+export type ReactionRemoveMessage = Message<ReactionRemoveData>;
+export type AmpAddMessage = Message<AmpAddData>;
+export type AmpRemoveMessage = Message<AmpRemoveData>;
+export type VerificationAddEthAddressMessage = Message<VerificationAddEthAddressData>;
+export type VerificationRemoveMessage = Message<VerificationRemoveData>;
+export type SignerAddMessage = Message<SignerAddData>;
+export type SignerRemoveMessage = Message<SignerRemoveData>;
+export type UserDataAddMessage = Message<UserDataAddData>;
 
 export type CastId = {
   fid: number;
