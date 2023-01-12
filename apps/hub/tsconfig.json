@@ -11,7 +11,7 @@
     "outDir": "build",
     "rootDir": "src"
   },
-  "exclude": ["node_modules", "jest.config.ts"],
+  "exclude": ["build", "node_modules", "jest.config.ts"],
   "references": [
     { "path": "../../packages/flatbuffers" },
     { "path": "../../packages/grpc" },

@@ -23,7 +23,9 @@
       "dependsOn": ["lint", "build"],
       "outputs": ["coverage/**"]
     },
-    "typecheck": {}
+    "typecheck": {
+      "cache": false
+    }
   },
   "globalDependencies": ["tsconfig.json", ".eslintrc.cjs"]
 }
