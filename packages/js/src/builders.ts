@@ -206,7 +206,9 @@ export const makeMessageWithSignature = async (
 
   const flatbuffer = flatbuffers.Message.getRootAsMessage(new ByteBuffer(fbb.asUint8Array()));
 
-  return utils.deserializeMessage(flatbuffer);
+  const isValid = await validations.validateMessage(flatbuffer);
+
+  return isValid.andThen((validFlatbuffer) => utils.deserializeMessage(validFlatbuffer));
 };
 
 /** Cast Methods */
