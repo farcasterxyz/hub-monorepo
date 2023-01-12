@@ -1,7 +1,9 @@
 import { faker } from '@faker-js/faker';
 import * as flatbuffers from '@farcaster/flatbuffers';
 import { bytesToHexString, bytesToNumber, Factories, validations } from '@farcaster/utils';
+import { ethers } from 'ethers';
 import * as builders from './builders';
+import { Eip712Signer } from './signers';
 
 const fid = faker.datatype.number({ min: 1 });
 const timestamp = Date.now();
@@ -157,6 +159,27 @@ describe('makeUserDataAdd', () => {
       { fid, timestamp, network },
       ed25519Signer
     );
+    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
+    expect(isValid.isOk()).toBeTruthy();
+  });
+});
+
+describe('makeMessageWithSignature', () => {
+  test('succeeds', async () => {
+    const ed25519Signer = Factories.Ed25519Signer.build();
+    const signerAddData = builders.makeSignerAddData({ signer: ed25519Signer.signerKeyHex }, { fid, network });
+    const hash = await builders.makeMessageHash(signerAddData._unsafeUnwrap());
+
+    const wallet = new ethers.Wallet(ethers.utils.randomBytes(32));
+    const eip712Signer = new Eip712Signer(wallet, wallet.address);
+
+    const signature = await eip712Signer.signMessageHashHex(hash._unsafeUnwrap());
+    const message = await builders.makeMessageWithSignature(
+      signerAddData._unsafeUnwrap(),
+      eip712Signer,
+      signature._unsafeUnwrap()
+    );
+
     const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
     expect(isValid.isOk()).toBeTruthy();
   });
