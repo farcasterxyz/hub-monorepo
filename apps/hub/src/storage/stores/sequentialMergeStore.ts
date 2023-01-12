@@ -64,7 +64,7 @@ abstract class SequentialMergeStore extends TypedEmitter<MergeProcessingEvents> 
     });
   }
 
-  protected async processMerges(): HubAsyncResult<void> {
+  private async processMerges(): HubAsyncResult<void> {
     this._mergeIsProcessing = true;
 
     while (this._mergeIdsQueue.length > 0) {
@@ -82,7 +82,7 @@ abstract class SequentialMergeStore extends TypedEmitter<MergeProcessingEvents> 
     return ok(undefined);
   }
 
-  protected async processMergeId(nextMergeId?: string): HubAsyncResult<void> {
+  private async processMergeId(nextMergeId?: string): HubAsyncResult<void> {
     // If mergeId is missing, return not found
     if (!nextMergeId) {
       return err(new HubError('not_found', 'next mergeId not found'));
@@ -91,13 +91,13 @@ abstract class SequentialMergeStore extends TypedEmitter<MergeProcessingEvents> 
     // Get message for next mergeId
     const nextMessage = this._mergeIdsStore.get(nextMergeId);
 
-    // Delete processed merge from store immediately, so it doesn't leak memory if the merge is cancelled
-    this._mergeIdsStore.delete(nextMergeId);
-
     // If message is missing, it means the merge was cancelled, so no-op
     if (!nextMessage) {
       return ok(undefined);
     }
+
+    // Delete processed merge from store immediately, so it doesn't leak memory if the merge is cancelled
+    this._mergeIdsStore.delete(nextMergeId);
 
     // Process merge and emit event with result
     const mergeResult = await ResultAsync.fromPromise(this.mergeFromSequentialQueue(nextMessage), (e) => e as HubError);
