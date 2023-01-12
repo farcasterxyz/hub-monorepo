@@ -58,7 +58,7 @@ describe('validateFname', () => {
   test('fails when greater than 16 characters', () => {
     const fname = faker.random.alpha(17);
     expect(validations.validateFname(fname)).toEqual(
-      err(new HubError('bad_request.validation_failure', 'fname > 16 characters'))
+      err(new HubError('bad_request.validation_failure', `fname "${fname}" > 16 characters`))
     );
   });
 
@@ -78,7 +78,7 @@ describe('validateFname', () => {
   test('fails with invalid characters', () => {
     const fname = '@fname';
     expect(validations.validateFname(fname)).toEqual(
-      err(new HubError('bad_request.validation_failure', `fname doesn't match ${validations.FNAME_REGEX}`))
+      err(new HubError('bad_request.validation_failure', `fname "${fname}" doesn't match ${validations.FNAME_REGEX}`))
     );
   });
 });

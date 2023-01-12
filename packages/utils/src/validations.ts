@@ -468,12 +468,12 @@ export const validateFname = <T extends string | Uint8Array>(fnameP?: T | null):
   }
 
   if (fname.length > 16) {
-    return err(new HubError('bad_request.validation_failure', 'fname > 16 characters'));
+    return err(new HubError('bad_request.validation_failure', `fname "${fname}" > 16 characters`));
   }
 
   const hasValidChars = FNAME_REGEX.test(fname);
   if (hasValidChars === false) {
-    return err(new HubError('bad_request.validation_failure', `fname doesn't match ${FNAME_REGEX}`));
+    return err(new HubError('bad_request.validation_failure', `fname "${fname}" doesn't match ${FNAME_REGEX}`));
   }
 
   return ok(fnameP);
