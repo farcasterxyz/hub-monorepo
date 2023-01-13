@@ -513,6 +513,7 @@ export const Factories = {
   Fname: FnameFactory,
   TsHash: TsHashFactory,
   BlockHash: BlockHashFactory,
+  TransactionHash: TransactionHashFactory,
   UserId: UserIdFactory,
   CastId: CastIdFactory,
   ReactionBody: ReactionBodyFactory,

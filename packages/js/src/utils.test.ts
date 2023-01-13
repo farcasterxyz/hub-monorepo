@@ -40,6 +40,60 @@ describe('serializeFid', () => {
   }
 });
 
+describe('deserializeBlockHash', () => {
+  const blockHash = Factories.BlockHash.build();
+  const blockHashBytes = hexStringToBytes(blockHash)._unsafeUnwrap();
+
+  test(`succeeds`, () => {
+    expect(utils.deserializeBlockHash(blockHashBytes)).toEqual(ok(blockHash));
+  });
+});
+
+describe('serializeBlockHash', () => {
+  const blockHash = Factories.BlockHash.build();
+  const blockHashBytes = hexStringToBytes(blockHash)._unsafeUnwrap();
+
+  test(`succeeds`, () => {
+    expect(utils.serializeBlockHash(blockHash)).toEqual(ok(blockHashBytes));
+  });
+});
+
+describe('deserializeTransactionHash', () => {
+  const transactionHash = Factories.TransactionHash.build();
+  const transactionHashBytes = hexStringToBytes(transactionHash)._unsafeUnwrap();
+
+  test(`succeeds`, () => {
+    expect(utils.deserializeTransactionHash(transactionHashBytes)).toEqual(ok(transactionHash));
+  });
+});
+
+describe('serializeEip712Signature', () => {
+  const signatureBytes = Factories.Bytes.build(undefined, { transient: { length: 65 } });
+  const signature = bytesToHexString(signatureBytes)._unsafeUnwrap();
+
+  test(`succeeds`, () => {
+    expect(utils.serializeEip712Signature(signature)).toEqual(ok(signatureBytes));
+  });
+});
+
+describe('serializeEip712Signature', () => {
+  const signatureBytes = Factories.Bytes.build(undefined, { transient: { length: 65 } });
+  const signature = bytesToHexString(signatureBytes)._unsafeUnwrap();
+
+  test(`succeeds`, () => {
+    expect(utils.deserializeEip712Signature(signatureBytes)).toEqual(ok(signature));
+  });
+});
+
+describe('deserializeEd25519Signature', () => {
+  const signatureBytes = Factories.Bytes.build(undefined, { transient: { length: 64 } });
+  const signature = bytesToHexString(signatureBytes)._unsafeUnwrap();
+
+  test(`succeeds`, () => {
+    expect(utils.deserializeEd25519Signature(signatureBytes)).toEqual(ok(signature));
+  });
+});
+
 describe('deserializeFname', () => {
   const fname = Factories.Fname.build();
   test(`succeeds`, () => {
@@ -87,7 +141,7 @@ describe('serializeEd25519PublicKey', () => {
 });
 
 const tsHash = Factories.TsHash.build();
-const tsHashHex = bytesToHexString(tsHash, { size: 40 })._unsafeUnwrap();
+const tsHashHex = utils.deserializeTsHash(tsHash)._unsafeUnwrap();
 
 describe('deserializeTsHash', () => {
   test('succeeds', () => {
@@ -145,12 +199,12 @@ describe('deserializeCastAddBody', () => {
   const embed2 = faker.internet.url();
   const mentionfid1 = Factories.FID.build();
   const mentionFid2 = Factories.FID.build();
-  const mentionFid1Number = bytesToNumber(mentionfid1)._unsafeUnwrap();
-  const mentionFid2Number = bytesToNumber(mentionFid2)._unsafeUnwrap();
+  const mentionFid1Number = utils.deserializeFid(mentionfid1)._unsafeUnwrap();
+  const mentionFid2Number = utils.deserializeFid(mentionFid2)._unsafeUnwrap();
   const parentFid = Factories.FID.build();
-  const parentFidNumber = bytesToNumber(parentFid)._unsafeUnwrap();
+  const parentFidNumber = utils.deserializeFid(parentFid)._unsafeUnwrap();
   const tsHash = Factories.TsHash.build();
-  const tsHashHex = bytesToHexString(tsHash, { size: 40 })._unsafeUnwrap();
+  const tsHashHex = utils.deserializeTsHash(tsHash)._unsafeUnwrap();
 
   beforeAll(async () => {
     serializedCastAddBody = await Factories.CastAddBody.create({
@@ -212,8 +266,8 @@ describe('deserializeMentions', () => {
   let castAddBody: CastAddBody;
   const fid1 = Factories.FID.build();
   const fid2 = Factories.FID.build();
-  const fid1Number = bytesToNumber(fid1)._unsafeUnwrap();
-  const fid2Number = bytesToNumber(fid2)._unsafeUnwrap();
+  const fid1Number = utils.deserializeFid(fid1)._unsafeUnwrap();
+  const fid2Number = utils.deserializeFid(fid2)._unsafeUnwrap();
 
   beforeAll(async () => {
     castAddBody = await Factories.CastAddBody.create({
@@ -234,9 +288,9 @@ describe('deserializeMentions', () => {
 describe('deserializeTarget', () => {
   let castAddBody: CastAddBody;
   const fid = Factories.FID.build();
-  const fidNumber = bytesToNumber(fid)._unsafeUnwrap();
+  const fidNumber = utils.deserializeFid(fid)._unsafeUnwrap();
   const tsHash = Factories.TsHash.build();
-  const tsHashHex = bytesToHexString(tsHash, { size: 40 })._unsafeUnwrap();
+  const tsHashHex = utils.deserializeTsHash(tsHash)._unsafeUnwrap();
 
   beforeAll(async () => {
     castAddBody = await Factories.CastAddBody.create({
@@ -260,12 +314,12 @@ describe('serializeCastBodyAdd', () => {
   const embed2 = faker.internet.url();
   const mentionFid1 = Factories.FID.build();
   const mentionFid2 = Factories.FID.build();
-  const mentionFid1Number = bytesToNumber(mentionFid1)._unsafeUnwrap();
-  const mentionFid2Number = bytesToNumber(mentionFid2)._unsafeUnwrap();
+  const mentionFid1Number = utils.deserializeFid(mentionFid1)._unsafeUnwrap();
+  const mentionFid2Number = utils.deserializeFid(mentionFid2)._unsafeUnwrap();
   const parentFid = Factories.FID.build();
-  const parentFidNumber = bytesToNumber(parentFid)._unsafeUnwrap();
+  const parentFidNumber = utils.deserializeFid(parentFid)._unsafeUnwrap();
   const tsHash = Factories.TsHash.build();
-  const tsHashHex = bytesToHexString(tsHash, { size: 40 })._unsafeUnwrap();
+  const tsHashHex = utils.deserializeTsHash(tsHash)._unsafeUnwrap();
   const castAddBody = utils
     .serializeCastAddBody({
       text,
@@ -303,7 +357,7 @@ describe('serializeCastBodyAdd', () => {
 describe('deserializeCastRemoveBody', () => {
   let castRemoveBody: flatbuffers.CastRemoveBody;
   const tsHash = Factories.TsHash.build();
-  const tsHashHex = bytesToHexString(tsHash, { size: 40 })._unsafeUnwrap();
+  const tsHashHex = utils.deserializeTsHash(tsHash)._unsafeUnwrap();
 
   beforeAll(async () => {
     castRemoveBody = await Factories.CastRemoveBody.create({ targetTsHash: Array.from(tsHash) });
@@ -316,7 +370,7 @@ describe('deserializeCastRemoveBody', () => {
 
 describe('serializeAmpBody', () => {
   const fid = Factories.FID.build();
-  const fidNumber = bytesToNumber(fid)._unsafeUnwrap();
+  const fidNumber = utils.deserializeFid(fid)._unsafeUnwrap();
   const body = utils
     .serializeAmpBody({
       user: fidNumber,
@@ -332,7 +386,7 @@ describe('deserializeAmpBody', () => {
   let serializedBody: flatbuffers.AmpBody;
   let body: types.AmpBody;
   const fid = Factories.FID.build();
-  const fidNumber = bytesToNumber(fid)._unsafeUnwrap();
+  const fidNumber = utils.deserializeFid(fid)._unsafeUnwrap();
   const user = Factories.UserId.build({ fid: Array.from(fid) });
 
   beforeAll(async () => {
@@ -357,7 +411,7 @@ describe('deserializeVerificationAddEthAddressBody', () => {
   let body: types.VerificationAddEthAddressBody;
   const signer = Factories.Eip712Signer.build();
   const blockHash = Factories.BlockHash.build();
-  const blockHashBytes = hexStringToBytes(blockHash)._unsafeUnwrap();
+  const blockHashBytes = utils.serializeBlockHash(blockHash)._unsafeUnwrap();
 
   beforeAll(async () => {
     serializedBody = await Factories.VerificationAddEthAddressBody.create(
@@ -375,7 +429,7 @@ describe('deserializeVerificationAddEthAddressBody', () => {
 
   test('ethSignature', () => {
     expect(body.ethSignature).toEqual(
-      bytesToHexString(serializedBody.ethSignatureArray() ?? new Uint8Array())._unsafeUnwrap()
+      utils.deserializeEip712Signature(serializedBody.ethSignatureArray() ?? new Uint8Array())._unsafeUnwrap()
     );
   });
 
@@ -398,7 +452,7 @@ describe('serializeVerificationAddEthAddressBody', () => {
       .serializeVerificationAddEthAddressBody({
         address: signer.signerKeyHex,
         blockHash,
-        ethSignature: bytesToHexString(ethSignature)._unsafeUnwrap(),
+        ethSignature: utils.deserializeEip712Signature(ethSignature)._unsafeUnwrap(),
       })
       ._unsafeUnwrap();
   });
@@ -539,9 +593,9 @@ describe('deserializeReactionBody', () => {
   let reactionBody: types.ReactionBody;
   const reactionType = Factories.ReactionType.build();
   const targetFid = Factories.FID.build();
-  const targetFidNumber = bytesToNumber(targetFid)._unsafeUnwrap();
+  const targetFidNumber = utils.deserializeFid(targetFid)._unsafeUnwrap();
   const tsHash = Factories.TsHash.build();
-  const tsHashHex = bytesToHexString(tsHash, { size: 40 })._unsafeUnwrap();
+  const tsHashHex = utils.deserializeTsHash(tsHash)._unsafeUnwrap();
 
   beforeAll(async () => {
     serializedReactionBody = await Factories.ReactionBody.create({
@@ -564,9 +618,9 @@ describe('deserializeReactionBody', () => {
 describe('serializeReactionBody', () => {
   const reactionType = Factories.ReactionType.build();
   const targetFid = Factories.FID.build();
-  const targetFidNumber = bytesToNumber(targetFid)._unsafeUnwrap();
+  const targetFidNumber = utils.deserializeFid(targetFid)._unsafeUnwrap();
   const tsHash = Factories.TsHash.build();
-  const tsHashHex = bytesToHexString(tsHash, { size: 40 })._unsafeUnwrap();
+  const tsHashHex = utils.deserializeTsHash(tsHash)._unsafeUnwrap();
   const reactionBody = utils
     .serializeReactionBody({
       target: {
@@ -607,7 +661,9 @@ describe('deserializeMessage', () => {
   });
 
   test('hash', () => {
-    expect(message.hash).toEqual(bytesToHexString(messageFb.hashArray() ?? new Uint8Array())._unsafeUnwrap());
+    expect(message.hash).toEqual(
+      utils.deserializeMessageHash(messageFb.hashArray() ?? new Uint8Array())._unsafeUnwrap()
+    );
   });
 
   test('hashScheme', () => {
@@ -620,7 +676,7 @@ describe('deserializeMessage', () => {
 
   test('signature', () => {
     expect(message.signature).toEqual(
-      bytesToHexString(messageFb.signatureArray() ?? new Uint8Array(), { size: 128 })._unsafeUnwrap()
+      utils.deserializeEd25519Signature(messageFb.signatureArray() ?? new Uint8Array())._unsafeUnwrap()
     );
   });
 
@@ -652,13 +708,13 @@ describe('deserializeNameRegistryEvent', () => {
 
   test('blockHash', () => {
     expect(nameRegistryEvent.blockHash).toEqual(
-      bytesToHexString(nameRegistryEventFbb.blockHashArray() ?? new Uint8Array())._unsafeUnwrap()
+      utils.deserializeBlockHash(nameRegistryEventFbb.blockHashArray() ?? new Uint8Array())._unsafeUnwrap()
     );
   });
 
   test('transactionHash', () => {
     expect(nameRegistryEvent.transactionHash).toEqual(
-      bytesToHexString(nameRegistryEventFbb.transactionHashArray() ?? new Uint8Array())._unsafeUnwrap()
+      utils.deserializeTransactionHash(nameRegistryEventFbb.transactionHashArray() ?? new Uint8Array())._unsafeUnwrap()
     );
   });
 
@@ -674,13 +730,13 @@ describe('deserializeNameRegistryEvent', () => {
 
   test('to', () => {
     expect(nameRegistryEvent.to).toEqual(
-      bytesToHexString(nameRegistryEventFbb.toArray() ?? new Uint8Array())._unsafeUnwrap()
+      utils.deserializeEthAddress(nameRegistryEventFbb.toArray() ?? new Uint8Array())._unsafeUnwrap()
     );
   });
 
   test('from', () => {
     expect(nameRegistryEvent.from).toEqual(
-      bytesToHexString(nameRegistryEventFbb.fromArray() ?? new Uint8Array())._unsafeUnwrap()
+      utils.deserializeEthAddress(nameRegistryEventFbb.fromArray() ?? new Uint8Array())._unsafeUnwrap()
     );
   });
 
@@ -714,13 +770,13 @@ describe('deserializeIdRegistryEvent', () => {
 
   test('blockHash', () => {
     expect(idRegistryEvent.blockHash).toEqual(
-      bytesToHexString(idRegistryEventFbb.blockHashArray() ?? new Uint8Array())._unsafeUnwrap()
+      utils.deserializeBlockHash(idRegistryEventFbb.blockHashArray() ?? new Uint8Array())._unsafeUnwrap()
     );
   });
 
   test('transactionHash', () => {
     expect(idRegistryEvent.transactionHash).toEqual(
-      bytesToHexString(idRegistryEventFbb.transactionHashArray() ?? new Uint8Array())._unsafeUnwrap()
+      utils.deserializeTransactionHash(idRegistryEventFbb.transactionHashArray() ?? new Uint8Array())._unsafeUnwrap()
     );
   });
 
@@ -736,13 +792,13 @@ describe('deserializeIdRegistryEvent', () => {
 
   test('to', () => {
     expect(idRegistryEvent.to).toEqual(
-      bytesToHexString(idRegistryEventFbb.toArray() ?? new Uint8Array())._unsafeUnwrap()
+      utils.deserializeEthAddress(idRegistryEventFbb.toArray() ?? new Uint8Array())._unsafeUnwrap()
     );
   });
 
   test('from', () => {
     expect(idRegistryEvent.from).toEqual(
-      bytesToHexString(idRegistryEventFbb.fromArray() ?? new Uint8Array())._unsafeUnwrap()
+      utils.deserializeEthAddress(idRegistryEventFbb.fromArray() ?? new Uint8Array())._unsafeUnwrap()
     );
   });
 
