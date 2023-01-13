@@ -63,6 +63,10 @@ const BlockHashFactory = Factory.define<string>(() => {
   return faker.datatype.hexadecimal({ length: 64, case: 'lower' });
 });
 
+const TransactionHashFactory = Factory.define<string>(() => {
+  return faker.datatype.hexadecimal({ length: 64, case: 'lower' });
+});
+
 const UserIdFactory = Factory.define<flatbuffers.UserIdT, any, flatbuffers.UserId>(({ onCreate }) => {
   onCreate((params) => {
     const builder = new Builder(1);
@@ -429,6 +433,13 @@ const MessageFactory = Factory.define<
   );
 });
 
+const IdRegistryEventTypeFactory = Factory.define<flatbuffers.IdRegistryEventType>(() => {
+  return faker.helpers.arrayElement([
+    flatbuffers.IdRegistryEventType.IdRegistryRegister,
+    flatbuffers.IdRegistryEventType.IdRegistryTransfer,
+  ]);
+});
+
 const IdRegistryEventFactory = Factory.define<flatbuffers.IdRegistryEventT, any, flatbuffers.IdRegistryEvent>(
   ({ onCreate }) => {
     onCreate((params) => {
@@ -439,16 +450,23 @@ const IdRegistryEventFactory = Factory.define<flatbuffers.IdRegistryEventT, any,
 
     return new flatbuffers.IdRegistryEventT(
       faker.datatype.number({ max: 100000 }),
-      Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
-      Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
+      Array.from(hexStringToBytes(BlockHashFactory.build())._unsafeUnwrap()),
+      Array.from(hexStringToBytes(TransactionHashFactory.build())._unsafeUnwrap()),
       faker.datatype.number({ max: 1000 }),
       Array.from(FIDFactory.build()),
       Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 40 }))._unsafeUnwrap()),
-      flatbuffers.IdRegistryEventType.IdRegistryRegister,
+      IdRegistryEventTypeFactory.build(),
       Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 40 }))._unsafeUnwrap())
     );
   }
 );
+
+const NameRegistryEventTypeFactory = Factory.define<flatbuffers.NameRegistryEventType>(() => {
+  return faker.helpers.arrayElement([
+    flatbuffers.NameRegistryEventType.NameRegistryRenew,
+    flatbuffers.NameRegistryEventType.NameRegistryTransfer,
+  ]);
+});
 
 const NameRegistryEventFactory = Factory.define<flatbuffers.NameRegistryEventT, any, flatbuffers.NameRegistryEvent>(
   ({ onCreate }) => {
@@ -460,13 +478,14 @@ const NameRegistryEventFactory = Factory.define<flatbuffers.NameRegistryEventT, 
 
     return new flatbuffers.NameRegistryEventT(
       faker.datatype.number({ max: 100000 }),
-      Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
-      Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
+      Array.from(hexStringToBytes(BlockHashFactory.build())._unsafeUnwrap()),
+      Array.from(hexStringToBytes(TransactionHashFactory.build())._unsafeUnwrap()),
       faker.datatype.number({ max: 1000 }),
       Array.from(FnameFactory.build()),
       Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 40 }))._unsafeUnwrap()),
       Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 40 }))._unsafeUnwrap()),
-      flatbuffers.NameRegistryEventType.NameRegistryTransfer
+      NameRegistryEventTypeFactory.build(),
+      Array.from(numberToBytes(faker.datatype.number())._unsafeUnwrap())
     );
   }
 );
@@ -518,7 +537,9 @@ export const Factories = {
   UserDataBody: UserDataBodyFactory,
   UserDataAddData: UserDataAddDataFactory,
   Message: MessageFactory,
+  IdRegistryEventType: IdRegistryEventTypeFactory,
   IdRegistryEvent: IdRegistryEventFactory,
+  NameRegistryEventType: NameRegistryEventTypeFactory,
   NameRegistryEvent: NameRegistryEventFactory,
   Ed25519PrivateKey: Ed25519PrivateKeyFactory,
   Ed25519Signer: Ed25519SignerFactory,

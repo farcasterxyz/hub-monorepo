@@ -632,3 +632,121 @@ describe('deserializeMessage', () => {
     expect(message.signer).toEqual(ed25519Signer.signerKeyHex);
   });
 });
+
+describe('deserializeNameRegistryEvent', () => {
+  let nameRegistryEventFbb: flatbuffers.NameRegistryEvent;
+  let nameRegistryEvent: types.NameRegistryEvent;
+
+  beforeAll(async () => {
+    nameRegistryEventFbb = await Factories.NameRegistryEvent.create();
+    nameRegistryEvent = utils.deserializeNameRegistryEvent(nameRegistryEventFbb)._unsafeUnwrap();
+  });
+
+  test('flatbuffer', () => {
+    expect(nameRegistryEvent.flatbuffer).toEqual(nameRegistryEventFbb);
+  });
+
+  test('blockNumber', () => {
+    expect(nameRegistryEvent.blockNumber).toEqual(nameRegistryEventFbb.blockNumber());
+  });
+
+  test('blockHash', () => {
+    expect(nameRegistryEvent.blockHash).toEqual(
+      bytesToHexString(nameRegistryEventFbb.blockHashArray() ?? new Uint8Array())._unsafeUnwrap()
+    );
+  });
+
+  test('transactionHash', () => {
+    expect(nameRegistryEvent.transactionHash).toEqual(
+      bytesToHexString(nameRegistryEventFbb.transactionHashArray() ?? new Uint8Array())._unsafeUnwrap()
+    );
+  });
+
+  test('logIndex', () => {
+    expect(nameRegistryEvent.logIndex).toEqual(nameRegistryEventFbb.logIndex());
+  });
+
+  test('fname', () => {
+    expect(nameRegistryEvent.fname).toEqual(
+      utils.deserializeFname(nameRegistryEventFbb.fnameArray() ?? new Uint8Array())._unsafeUnwrap()
+    );
+  });
+
+  test('to', () => {
+    expect(nameRegistryEvent.to).toEqual(
+      bytesToHexString(nameRegistryEventFbb.toArray() ?? new Uint8Array())._unsafeUnwrap()
+    );
+  });
+
+  test('from', () => {
+    expect(nameRegistryEvent.from).toEqual(
+      bytesToHexString(nameRegistryEventFbb.fromArray() ?? new Uint8Array())._unsafeUnwrap()
+    );
+  });
+
+  test('type', () => {
+    expect(nameRegistryEvent.type).toEqual(nameRegistryEventFbb.type());
+  });
+
+  test('expiry', () => {
+    expect(nameRegistryEvent.expiry).toEqual(
+      bytesToNumber(nameRegistryEventFbb.expiryArray() ?? new Uint8Array())._unsafeUnwrap()
+    );
+  });
+});
+
+describe('deserializeIdRegistryEvent', () => {
+  let idRegistryEventFbb: flatbuffers.IdRegistryEvent;
+  let idRegistryEvent: types.IdRegistryEvent;
+
+  beforeAll(async () => {
+    idRegistryEventFbb = await Factories.IdRegistryEvent.create();
+    idRegistryEvent = utils.deserializeIdRegistryEvent(idRegistryEventFbb)._unsafeUnwrap();
+  });
+
+  test('flatbuffer', () => {
+    expect(idRegistryEvent.flatbuffer).toEqual(idRegistryEventFbb);
+  });
+
+  test('blockNumber', () => {
+    expect(idRegistryEvent.blockNumber).toEqual(idRegistryEventFbb.blockNumber());
+  });
+
+  test('blockHash', () => {
+    expect(idRegistryEvent.blockHash).toEqual(
+      bytesToHexString(idRegistryEventFbb.blockHashArray() ?? new Uint8Array())._unsafeUnwrap()
+    );
+  });
+
+  test('transactionHash', () => {
+    expect(idRegistryEvent.transactionHash).toEqual(
+      bytesToHexString(idRegistryEventFbb.transactionHashArray() ?? new Uint8Array())._unsafeUnwrap()
+    );
+  });
+
+  test('logIndex', () => {
+    expect(idRegistryEvent.logIndex).toEqual(idRegistryEventFbb.logIndex());
+  });
+
+  test('fid', () => {
+    expect(idRegistryEvent.fid).toEqual(
+      utils.deserializeFid(idRegistryEventFbb.fidArray() ?? new Uint8Array())._unsafeUnwrap()
+    );
+  });
+
+  test('to', () => {
+    expect(idRegistryEvent.to).toEqual(
+      bytesToHexString(idRegistryEventFbb.toArray() ?? new Uint8Array())._unsafeUnwrap()
+    );
+  });
+
+  test('from', () => {
+    expect(idRegistryEvent.from).toEqual(
+      bytesToHexString(idRegistryEventFbb.fromArray() ?? new Uint8Array())._unsafeUnwrap()
+    );
+  });
+
+  test('type', () => {
+    expect(idRegistryEvent.type).toEqual(idRegistryEventFbb.type());
+  });
+});
