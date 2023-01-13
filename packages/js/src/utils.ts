@@ -419,8 +419,6 @@ export const serializeCastId = (castId: types.CastId): HubResult<flatbuffers.Cas
   return ok(new flatbuffers.CastIdT(Array.from(fid), Array.from(tsHash)));
 };
 
-// TODO: deserializeUserId
-
 export const serializeUserId = (userId: number): HubResult<flatbuffers.UserIdT> => {
   return serializeFid(userId).map((fid) => {
     return new flatbuffers.UserIdT(Array.from(fid));
@@ -518,13 +516,6 @@ export const deserializeTransactionHash = (bytes: Uint8Array): HubResult<string>
 };
 
 /**
- * Serializes a transaction hash from a hex string to byte array.
- */
-export const serializeTransactionHash = (hash: string): HubResult<Uint8Array> => {
-  return hexStringToBytes(hash);
-};
-
-/**
  * Deserialize an EIP-712 signature from a byte array to hex string.
  */
 export const deserializeEip712Signature = (bytes: Uint8Array): HubResult<string> => {
@@ -546,24 +537,10 @@ export const deserializeEd25519Signature = (bytes: Uint8Array): HubResult<string
 };
 
 /**
- * Serializes an Ed25519 signature from a hex string to byte array.
- */
-export const serializeEd25519Signature = (hash: string): HubResult<Uint8Array> => {
-  return hexStringToBytes(hash);
-};
-
-/**
  * Deserialize a message hash from a byte array to hex string.
  */
 export const deserializeMessageHash = (bytes: Uint8Array): HubResult<string> => {
   return bytesToHexString(bytes, { size: 32 });
-};
-
-/**
- * Serializes a message hash from a hex string to byte array.
- */
-export const serializeMessageHash = (hash: string): HubResult<Uint8Array> => {
-  return hexStringToBytes(hash);
 };
 
 export const deserializeFid = (fid: Uint8Array): HubResult<number> => {
