@@ -25,10 +25,10 @@ export const deserializeNameRegistryEvent = (
   flatbuffer: flatbuffers.NameRegistryEvent
 ): HubResult<types.NameRegistryEvent> => {
   const deserialized = Result.combine([
-    bytesToHexString(flatbuffer.blockHashArray() ?? new Uint8Array()),
-    bytesToHexString(flatbuffer.transactionHashArray() ?? new Uint8Array()),
-    bytesToHexString(flatbuffer.toArray() ?? new Uint8Array()),
-    bytesToHexString(flatbuffer.fromArray() ?? new Uint8Array()),
+    deserializeBlockHash(flatbuffer.blockHashArray() ?? new Uint8Array()),
+    deserializeTransactionHash(flatbuffer.transactionHashArray() ?? new Uint8Array()),
+    deserializeEthAddress(flatbuffer.toArray() ?? new Uint8Array()),
+    deserializeEthAddress(flatbuffer.fromArray() ?? new Uint8Array()),
     bytesToNumber(flatbuffer.expiryArray() ?? new Uint8Array()),
   ]);
 
@@ -64,11 +64,11 @@ export const deserializeIdRegistryEvent = (
   flatbuffer: flatbuffers.IdRegistryEvent
 ): HubResult<types.IdRegistryEvent> => {
   const deserialized = Result.combine([
-    bytesToHexString(flatbuffer.blockHashArray() ?? new Uint8Array()),
-    bytesToHexString(flatbuffer.transactionHashArray() ?? new Uint8Array()),
+    deserializeBlockHash(flatbuffer.blockHashArray() ?? new Uint8Array()),
+    deserializeTransactionHash(flatbuffer.transactionHashArray() ?? new Uint8Array()),
     deserializeFid(flatbuffer.fidArray() ?? new Uint8Array()),
-    bytesToHexString(flatbuffer.toArray() ?? new Uint8Array()),
-    bytesToHexString(flatbuffer.fromArray() ?? new Uint8Array()),
+    deserializeEthAddress(flatbuffer.toArray() ?? new Uint8Array()),
+    deserializeEthAddress(flatbuffer.fromArray() ?? new Uint8Array()),
   ]);
 
   if (deserialized.isErr()) {
@@ -105,8 +105,10 @@ export const deserializeMessage = (flatbuffer: flatbuffers.Message): HubResult<t
   const isEip712Signer = validations.EIP712_MESSAGE_TYPES.includes(messageData.type() ?? 0);
   const deserialized = Result.combine([
     deserializeMessageData(messageData),
-    bytesToHexString(flatbuffer.hashArray() ?? new Uint8Array(), { size: 32 }),
-    bytesToHexString(flatbuffer.signatureArray() ?? new Uint8Array(), { size: isEip712Signer ? 130 : 128 }),
+    deserializeMessageHash(flatbuffer.hashArray() ?? new Uint8Array()),
+    isEip712Signer
+      ? deserializeEip712Signature(flatbuffer.signatureArray() ?? new Uint8Array())
+      : deserializeEd25519Signature(flatbuffer.signatureArray() ?? new Uint8Array()),
     isEip712Signer
       ? deserializeEthAddress(flatbuffer.signerArray() ?? new Uint8Array())
       : deserializeEd25519PublicKey(flatbuffer.signerArray() ?? new Uint8Array()),
@@ -115,8 +117,8 @@ export const deserializeMessage = (flatbuffer: flatbuffers.Message): HubResult<t
     return err(deserialized.error);
   }
 
-  const tsHash = toTsHash(messageData.timestamp(), flatbuffer.hashArray() ?? new Uint8Array()).andThen((tsHashBytes) =>
-    bytesToHexString(tsHashBytes, { size: 40 })
+  const tsHash = toTsHash(messageData.timestamp(), flatbuffer.hashArray() ?? new Uint8Array()).andThen(
+    deserializeTsHash
   );
   if (tsHash.isErr()) {
     return err(tsHash.error);
@@ -243,7 +245,7 @@ export const deserializeCastRemoveBody = (fbb: flatbuffers.CastRemoveBody): HubR
     return err(validBody.error);
   }
 
-  const targetTsHash = bytesToHexString(fbb.targetTsHashArray() ?? new Uint8Array());
+  const targetTsHash = deserializeTsHash(fbb.targetTsHashArray() ?? new Uint8Array());
 
   if (targetTsHash.isErr()) {
     return err(targetTsHash.error);
@@ -253,7 +255,7 @@ export const deserializeCastRemoveBody = (fbb: flatbuffers.CastRemoveBody): HubR
 };
 
 export const serializeCastRemoveBody = (body: types.CastRemoveBody): HubResult<flatbuffers.CastRemoveBodyT> => {
-  const targetTsHash = hexStringToBytes(body.targetTsHash);
+  const targetTsHash = serializeTsHash(body.targetTsHash);
 
   if (targetTsHash.isErr()) {
     return err(targetTsHash.error);
@@ -272,10 +274,8 @@ export const deserializeVerificationAddEthAddressBody = (
 
   const jsonValues = Result.combine([
     deserializeEthAddress(fbb.addressArray() as Uint8Array),
-    bytesToHexString(fbb.ethSignatureArray() ?? new Uint8Array(), {
-      size: 130,
-    }),
-    bytesToHexString(fbb.blockHashArray() ?? new Uint8Array(), { size: 64 }),
+    deserializeEip712Signature(fbb.ethSignatureArray() ?? new Uint8Array()),
+    deserializeBlockHash(fbb.blockHashArray() ?? new Uint8Array()),
   ]);
 
   if (jsonValues.isErr()) {
@@ -329,8 +329,8 @@ export const serializeVerificationAddEthAddressBody = (
 ): HubResult<flatbuffers.VerificationAddEthAddressBodyT> => {
   return Result.combine([
     serializeEthAddress(body.address),
-    hexStringToBytes(body.ethSignature),
-    hexStringToBytes(body.blockHash),
+    serializeEip712Signature(body.ethSignature),
+    serializeBlockHash(body.blockHash),
   ]).map((values) => {
     const [address, ethSignature, blockHash] = values;
 
@@ -393,52 +393,6 @@ export const serializeReactionBody = (body: types.ReactionBody): HubResult<flatb
   return serializeCastId(body.target).map((target) => {
     return new flatbuffers.ReactionBodyT(flatbuffers.TargetId.CastId, target, body.type);
   });
-};
-
-/* -------------------------------------------------------------------------- */
-/* .                               Other                                      */
-/* -------------------------------------------------------------------------- */
-
-export const deserializeFid = (fid: Uint8Array): HubResult<number> => {
-  return validations.validateFid(fid).andThen((fid) => bytesToNumber(fid));
-};
-
-export const serializeFid = (fid: number): HubResult<Uint8Array> => {
-  return numberToBytes(fid).andThen((fid) => validations.validateFid(fid));
-};
-
-export const deserializeFname = (fname: Uint8Array): HubResult<string> => {
-  return bytesToUtf8String(fname).andThen(validations.validateFname);
-};
-
-export const serializeFname = (fname: string): HubResult<Uint8Array> => {
-  return validations.validateFname(fname).andThen(utf8StringToBytes);
-};
-
-export const deserializeEthAddress = (ethAddress: Uint8Array): HubResult<string> => {
-  return validations.validateEthAddress(ethAddress).andThen((ethAddress) => bytesToHexString(ethAddress, { size: 40 }));
-};
-
-export const serializeEthAddress = (ethAddress: string): HubResult<Uint8Array> => {
-  return hexStringToBytes(ethAddress).andThen((ethAddress) => validations.validateEthAddress(ethAddress));
-};
-
-export const deserializeEd25519PublicKey = (publicKey: Uint8Array): HubResult<string> => {
-  return validations
-    .validateEd25519PublicKey(publicKey)
-    .andThen((publicKey) => bytesToHexString(publicKey, { size: 64 }));
-};
-
-export const serializeEd25519PublicKey = (publicKey: string): HubResult<Uint8Array> => {
-  return hexStringToBytes(publicKey).andThen((publicKey) => validations.validateEd25519PublicKey(publicKey));
-};
-
-export const deserializeTsHash = (tsHash: Uint8Array): HubResult<string> => {
-  return validations.validateTsHash(tsHash).andThen((tsHash) => bytesToHexString(tsHash, { size: 40 }));
-};
-
-export const serializeTsHash = (tsHash: string): HubResult<Uint8Array> => {
-  return hexStringToBytes(tsHash).andThen((tsHash) => validations.validateTsHash(tsHash));
 };
 
 export const deserializeCastId = (castId: flatbuffers.CastId): HubResult<types.CastId> => {
@@ -536,4 +490,120 @@ const serializeMentions = (mentions: number[] | undefined): HubResult<flatbuffer
   return Result.combine(mentions.map((mention) => serializeFid(mention))).map((mentionByteArrays) =>
     mentionByteArrays.map((mentionBytes) => new flatbuffers.UserIdT(Array.from(mentionBytes)))
   );
+};
+
+/* -------------------------------------------------------------------------- */
+/* .                               Scalars                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Deserialize a block hash from a byte array to hex string.
+ */
+export const deserializeBlockHash = (bytes: Uint8Array): HubResult<string> => {
+  return bytesToHexString(bytes, { size: 64 });
+};
+
+/**
+ * Serializes a block hash from a hex string to byte array.
+ */
+export const serializeBlockHash = (hash: string): HubResult<Uint8Array> => {
+  return hexStringToBytes(hash);
+};
+
+/**
+ * Deserialize a transaction hash from a byte array to hex string.
+ */
+export const deserializeTransactionHash = (bytes: Uint8Array): HubResult<string> => {
+  return bytesToHexString(bytes, { size: 64 });
+};
+
+/**
+ * Serializes a transaction hash from a hex string to byte array.
+ */
+export const serializeTransactionHash = (hash: string): HubResult<Uint8Array> => {
+  return hexStringToBytes(hash);
+};
+
+/**
+ * Deserialize an EIP-712 signature from a byte array to hex string.
+ */
+export const deserializeEip712Signature = (bytes: Uint8Array): HubResult<string> => {
+  return bytesToHexString(bytes, { size: 130 });
+};
+
+/**
+ * Serializes an EIP-712 from a hex string to byte array.
+ */
+export const serializeEip712Signature = (hash: string): HubResult<Uint8Array> => {
+  return hexStringToBytes(hash);
+};
+
+/**
+ * Deserialize an Ed25519 signature from a byte array to hex string.
+ */
+export const deserializeEd25519Signature = (bytes: Uint8Array): HubResult<string> => {
+  return bytesToHexString(bytes, { size: 128 });
+};
+
+/**
+ * Serializes an Ed25519 signature from a hex string to byte array.
+ */
+export const serializeEd25519Signature = (hash: string): HubResult<Uint8Array> => {
+  return hexStringToBytes(hash);
+};
+
+/**
+ * Deserialize a message hash from a byte array to hex string.
+ */
+export const deserializeMessageHash = (bytes: Uint8Array): HubResult<string> => {
+  return bytesToHexString(bytes, { size: 32 });
+};
+
+/**
+ * Serializes a message hash from a hex string to byte array.
+ */
+export const serializeMessageHash = (hash: string): HubResult<Uint8Array> => {
+  return hexStringToBytes(hash);
+};
+
+export const deserializeFid = (fid: Uint8Array): HubResult<number> => {
+  return validations.validateFid(fid).andThen((fid) => bytesToNumber(fid));
+};
+
+export const serializeFid = (fid: number): HubResult<Uint8Array> => {
+  return numberToBytes(fid).andThen((fid) => validations.validateFid(fid));
+};
+
+export const deserializeFname = (fname: Uint8Array): HubResult<string> => {
+  return bytesToUtf8String(fname).andThen(validations.validateFname);
+};
+
+export const serializeFname = (fname: string): HubResult<Uint8Array> => {
+  return validations.validateFname(fname).andThen(utf8StringToBytes);
+};
+
+export const deserializeEthAddress = (ethAddress: Uint8Array): HubResult<string> => {
+  return validations.validateEthAddress(ethAddress).andThen((ethAddress) => bytesToHexString(ethAddress, { size: 40 }));
+};
+
+export const serializeEthAddress = (ethAddress: string): HubResult<Uint8Array> => {
+  return hexStringToBytes(ethAddress).andThen((ethAddress) => validations.validateEthAddress(ethAddress));
+};
+
+export const deserializeEd25519PublicKey = (publicKey: Uint8Array): HubResult<string> => {
+  return validations
+    .validateEd25519PublicKey(publicKey)
+    .andThen((publicKey) => bytesToHexString(publicKey, { size: 64 }));
+};
+
+export const serializeEd25519PublicKey = (publicKey: string): HubResult<Uint8Array> => {
+  return hexStringToBytes(publicKey).andThen((publicKey) => validations.validateEd25519PublicKey(publicKey));
+};
+
+export const deserializeTsHash = (tsHash: Uint8Array): HubResult<string> => {
+  return validations.validateTsHash(tsHash).andThen((tsHash) => bytesToHexString(tsHash, { size: 40 }));
+};
+
+export const serializeTsHash = (tsHash: string): HubResult<Uint8Array> => {
+  return hexStringToBytes(tsHash).andThen((tsHash) => validations.validateTsHash(tsHash));
 };
