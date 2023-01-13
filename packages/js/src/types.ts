@@ -136,3 +136,23 @@ export type NameRegistryEvent = Readonly<{
   from: string; // Hex string
   expiry: number;
 }>;
+
+export type MessageEventResponse = {
+  flatbuffer: flatbuffers.EventResponse;
+  type: flatbuffers.EventType.MergeMessage | flatbuffers.EventType.PruneMessage | flatbuffers.EventType.RevokeMessage;
+  message: Message;
+};
+
+export type IdRegistryEventResponse = {
+  flatbuffer: flatbuffers.EventResponse;
+  type: flatbuffers.EventType.MergeIdRegistryEvent;
+  idRegistryEvent: IdRegistryEvent;
+};
+
+export type NameRegistryEventResponse = {
+  flatbuffer: flatbuffers.EventResponse;
+  type: flatbuffers.EventType.MergeNameRegistryEvent;
+  nameRegistryEvent: NameRegistryEvent;
+};
+
+export type EventResponse = NameRegistryEventResponse | IdRegistryEventResponse | MessageEventResponse;

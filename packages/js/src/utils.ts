@@ -18,6 +18,54 @@ import { err, ok, Result } from 'neverthrow';
 import * as types from './types';
 
 /* -------------------------------------------------------------------------- */
+/*                           Event Response                                   */
+/* -------------------------------------------------------------------------- */
+
+export const deserializeEventResponse = (fbb: flatbuffers.EventResponse): HubResult<types.EventResponse> => {
+  const type = fbb.type();
+
+  switch (type) {
+    case flatbuffers.EventType.MergeMessage:
+    case flatbuffers.EventType.PruneMessage:
+    case flatbuffers.EventType.RevokeMessage: {
+      return deserializeMessage(
+        flatbuffers.Message.getRootAsMessage(new ByteBuffer(fbb.bytesArray() ?? new Uint8Array()))
+      ).map((message) => {
+        return {
+          flatbuffer: fbb,
+          type,
+          message,
+        };
+      });
+    }
+    case flatbuffers.EventType.MergeIdRegistryEvent: {
+      return deserializeIdRegistryEvent(
+        flatbuffers.IdRegistryEvent.getRootAsIdRegistryEvent(new ByteBuffer(fbb.bytesArray() ?? new Uint8Array()))
+      ).map((idRegistryEvent) => {
+        return {
+          flatbuffer: fbb,
+          type,
+          idRegistryEvent,
+        };
+      });
+    }
+    case flatbuffers.EventType.MergeNameRegistryEvent: {
+      return deserializeNameRegistryEvent(
+        flatbuffers.NameRegistryEvent.getRootAsNameRegistryEvent(new ByteBuffer(fbb.bytesArray() ?? new Uint8Array()))
+      ).map((nameRegistryEvent) => {
+        return {
+          flatbuffer: fbb,
+          type,
+          nameRegistryEvent,
+        };
+      });
+    }
+    default:
+      return err(new HubError('unknown', `unknown EventType '${type}'`));
+  }
+};
+
+/* -------------------------------------------------------------------------- */
 /*                             Registry Events                                */
 /* -------------------------------------------------------------------------- */
 
