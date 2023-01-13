@@ -31,5 +31,6 @@ coverage/
 
 # Turborepo
 .turbo
+out
 
 dist
