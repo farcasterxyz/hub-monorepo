@@ -498,9 +498,17 @@ const Ed25519SignerFactory = Factory.define<Ed25519Signer>(() => {
   return new Ed25519Signer(Ed25519PrivateKeyFactory.build());
 });
 
+const Ed25519SignatureFactory = Factory.define<Uint8Array>(() => {
+  return BytesFactory.build(undefined, { transient: { length: 64 } });
+});
+
 const Eip712SignerFactory = Factory.define<Eip712Signer>(() => {
   const wallet = new ethers.Wallet(ethers.utils.randomBytes(32));
   return new Eip712Signer(wallet, wallet.address);
+});
+
+const Eip712SignatureFactory = Factory.define<Uint8Array>(() => {
+  return BytesFactory.build(undefined, { transient: { length: 65 } });
 });
 
 const ReactionTypeFactory = Factory.define<flatbuffers.ReactionType>(() => {
@@ -544,6 +552,8 @@ export const Factories = {
   NameRegistryEvent: NameRegistryEventFactory,
   Ed25519PrivateKey: Ed25519PrivateKeyFactory,
   Ed25519Signer: Ed25519SignerFactory,
+  Ed25519Signature: Ed25519SignatureFactory,
   Eip712Signer: Eip712SignerFactory,
+  Eip712Signature: Eip712SignatureFactory,
   ReactionType: ReactionTypeFactory,
 };

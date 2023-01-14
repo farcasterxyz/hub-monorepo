@@ -68,7 +68,7 @@ describe('deserializeTransactionHash', () => {
 });
 
 describe('serializeEip712Signature', () => {
-  const signatureBytes = Factories.Bytes.build(undefined, { transient: { length: 65 } });
+  const signatureBytes = Factories.Eip712Signature.build();
   const signature = bytesToHexString(signatureBytes, { size: 130 })._unsafeUnwrap();
 
   test(`succeeds`, () => {
@@ -77,7 +77,7 @@ describe('serializeEip712Signature', () => {
 });
 
 describe('deserializeEip712Signature', () => {
-  const signatureBytes = Factories.Bytes.build(undefined, { transient: { length: 65 } });
+  const signatureBytes = Factories.Eip712Signature.build();
   const signature = bytesToHexString(signatureBytes, { size: 130 })._unsafeUnwrap();
 
   test(`succeeds`, () => {
@@ -86,7 +86,7 @@ describe('deserializeEip712Signature', () => {
 });
 
 describe('deserializeEd25519Signature', () => {
-  const signatureBytes = Factories.Bytes.build(undefined, { transient: { length: 64 } });
+  const signatureBytes = Factories.Ed25519Signature.build();
   const signature = bytesToHexString(signatureBytes, { size: 128 })._unsafeUnwrap();
 
   test(`succeeds`, () => {
