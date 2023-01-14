@@ -12,7 +12,7 @@ The Hub is an implementation of a Farcaster Hub defined in the [protocol specifi
 
 ## Getting Started
 
-To run an instance of the hub, follow the steps to [set up your environment](CONTRIBUTING.md#2-setting-up-your-development-environment) and then follow the instructions in [@hub/app's README](/app/README.md).
+To run an instance of the hub, follow the steps to [set up your environment](CONTRIBUTING.md#2-setting-up-your-development-environment) and then follow the instructions in [@farcaster/hub's README](/apps/hub/README.md).
 
 ## Contributing
 
