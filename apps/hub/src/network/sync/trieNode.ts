@@ -142,6 +142,8 @@ class TrieNode {
       return false;
     }
 
+    // NOTE: eslint falsely identifies as `fs.exists`.
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     return this._children.get(char)?.exists(key, current_index + 1) || false;
   }
 

@@ -206,7 +206,9 @@ describe('Multi peer sync engine', () => {
     await syncEngine2.performSync([], clientForServer1);
 
     // Make sure the castAdd is in the trie
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(syncEngine1.trie.exists(new SyncId(castAdd))).toBeTruthy();
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(syncEngine2.trie.exists(new SyncId(castAdd))).toBeTruthy();
 
     // Remove the cast
@@ -224,8 +226,10 @@ describe('Multi peer sync engine', () => {
     expect(result.isOk()).toBeTruthy();
 
     const castRemoveId = new SyncId(castRemove);
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(syncEngine1.trie.exists(castRemoveId)).toBeTruthy();
     // The trie should not contain the castAdd anymore
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(syncEngine1.trie.exists(new SyncId(castAdd))).toBeFalsy();
 
     // Syncing engine2 --> engine1 should do nothing, even though engine2 has the castAdd and it has been removed
@@ -244,12 +248,15 @@ describe('Multi peer sync engine', () => {
     }
 
     // castRemove doesn't yet exist in engine2
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(syncEngine2.trie.exists(castRemoveId)).toBeFalsy();
 
     // Syncing engine2 with engine1 should delete the castAdd from the trie and add the castRemove
     await syncEngine2.performSync(syncEngine1.snapshot.excludedHashes, clientForServer1);
 
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(syncEngine2.trie.exists(castRemoveId)).toBeTruthy();
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(syncEngine2.trie.exists(new SyncId(castAdd))).toBeFalsy();
     expect(syncEngine2.trie.rootHash).toEqual(syncEngine1.trie.rootHash);
 

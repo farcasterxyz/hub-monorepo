@@ -82,6 +82,7 @@ describe('TrieNode', () => {
       const hash2 = id2.idString();
 
       // The node at which the trie splits should be the first character that differs between the two hashes
+      // eslint-disable-next-line security/detect-object-injection
       const firstDiffPos = hash1.split('').findIndex((c, i) => c !== hash2[i]);
 
       const root = new TrieNode();
@@ -95,10 +96,12 @@ describe('TrieNode', () => {
       const secondChild = children[1] as [string, TrieNode];
       expect(children.length).toEqual(2);
       // hash1 node
+      // eslint-disable-next-line security/detect-object-injection
       expect(firstChild[0]).toEqual(hash1[firstDiffPos]);
       expect(firstChild[1].isLeaf).toBeTruthy();
       expect(firstChild[1].value).toEqual(id1.idString());
       // hash2 node
+      // eslint-disable-next-line security/detect-object-injection
       expect(secondChild[0]).toEqual(hash2[firstDiffPos]);
       expect(secondChild[1].isLeaf).toBeTruthy();
       expect(secondChild[1].value).toEqual(id2.idString());
@@ -130,6 +133,7 @@ describe('TrieNode', () => {
 
       root.delete(id2.idString());
       expect(root.items).toEqual(1);
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       expect(root.exists(id2.idString())).toBeFalsy();
       expect(root.hash).toEqual(previousHash);
     });
@@ -166,6 +170,7 @@ describe('TrieNode', () => {
       root.insert(id.idString());
       expect(root.items).toEqual(1);
 
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       expect(root.exists(id.idString())).toBeTruthy();
     });
 
@@ -177,6 +182,7 @@ describe('TrieNode', () => {
       expect(root.items).toEqual(1);
 
       root.delete(id.idString());
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       expect(root.exists(id.idString())).toBeFalsy();
       expect(root.items).toEqual(0);
     });
@@ -193,6 +199,7 @@ describe('TrieNode', () => {
       root.insert(id1.idString());
 
       // id2 shares the same prefix, but doesn't exist, so it should return undefined
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       expect(root.exists(id2.idString())).toBeFalsy();
     });
   });

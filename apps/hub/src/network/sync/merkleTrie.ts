@@ -50,6 +50,8 @@ class MerkleTrie {
   }
 
   public exists(id: SyncId): boolean {
+    // NOTE: eslint falsely identifies as `fs.exists`.
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     return this._root.exists(id.idString());
   }
 
@@ -64,6 +66,8 @@ class MerkleTrie {
   public getDivergencePrefix(prefix: string, excludedHashes: string[]): string {
     const ourExcludedHashes = this.getSnapshot(prefix).excludedHashes;
     for (let i = 0; i < prefix.length; i++) {
+      // NOTE: `i` is controlled by for loop and hence not at risk of object injection.
+      // eslint-disable-next-line security/detect-object-injection
       if (ourExcludedHashes[i] !== excludedHashes[i]) {
         return prefix.slice(0, i);
       }
