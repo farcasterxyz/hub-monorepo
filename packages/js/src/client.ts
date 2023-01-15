@@ -353,5 +353,10 @@ export class Client {
   /*                                  Event Methods                             */
   /* -------------------------------------------------------------------------- */
 
-  // TODO: subscribe
+  /**
+   * Data from this stream can be parsed using `deserializeEventResponse`.
+   */
+  async subscribe() {
+    return this._grpcClient.subscribe();
+  }
 }
