@@ -11,7 +11,7 @@ After [setting up your environment](../CONTRIBUTING.md#2-setting-up-your-develop
 Then, run:
 
 - `yarn identity create` to create a network identity for your Hub
-- `yarn start -n <network-url>` to boot up the Hub, where `network-url` points to the Goerli node's RPC
+- `yarn start -e <eth-rpc-url>` to boot up the Hub, where `eth-rpc-url` points to the Goerli node's RPC
 
 If you don't have a Goerli node's HTTP RPC URL, you can get one using [Alchemy](https://www.alchemy.com/) or [Infura](https://www.infura.io/).
 
