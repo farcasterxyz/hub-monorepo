@@ -315,7 +315,7 @@ describe('merge', () => {
 
         const addMessage = await Factories.Message.create({
           data: Array.from(addData.bb?.bytes() ?? []),
-          hash: Array.from(bytesIncrement(reactionAdd.hash().slice())),
+          hash: Array.from(bytesIncrement(reactionAdd.hash())),
         });
 
         reactionAddLater = new MessageModel(addMessage) as ReactionAddModel;
@@ -380,7 +380,7 @@ describe('merge', () => {
 
         const reactionRemoveMessage = await Factories.Message.create({
           data: Array.from(reactionRemoveData.bb?.bytes() ?? []),
-          hash: Array.from(bytesIncrement(reactionAdd.hash().slice())),
+          hash: Array.from(bytesIncrement(reactionAdd.hash())),
         });
 
         const reactionRemoveLater = new MessageModel(reactionRemoveMessage) as ReactionRemoveModel;
@@ -402,7 +402,7 @@ describe('merge', () => {
 
         const reactionRemoveMessage = await Factories.Message.create({
           data: Array.from(reactionRemoveData.bb?.bytes() ?? []),
-          hash: Array.from(bytesDecrement(reactionAdd.hash().slice())),
+          hash: Array.from(bytesDecrement(reactionAdd.hash())),
         });
 
         const reactionRemoveEarlier = new MessageModel(reactionRemoveMessage) as ReactionRemoveModel;
@@ -477,7 +477,7 @@ describe('merge', () => {
 
         const addMessage = await Factories.Message.create({
           data: Array.from(reactionRemoveData.bb?.bytes() ?? []),
-          hash: Array.from(bytesIncrement(reactionRemove.hash().slice())),
+          hash: Array.from(bytesIncrement(reactionRemove.hash())),
         });
 
         reactionRemoveLater = new MessageModel(addMessage) as ReactionRemoveModel;
@@ -538,7 +538,7 @@ describe('merge', () => {
 
         const addMessage = await Factories.Message.create({
           data: Array.from(addData.bb?.bytes() ?? []),
-          hash: Array.from(bytesIncrement(reactionRemove.hash().slice())),
+          hash: Array.from(bytesIncrement(reactionRemove.hash())),
         });
         const reactionAddLater = new MessageModel(addMessage) as ReactionAddModel;
 
@@ -556,7 +556,7 @@ describe('merge', () => {
 
         const removeMessage = await Factories.Message.create({
           data: Array.from(removeData.bb?.bytes() ?? []),
-          hash: Array.from(bytesDecrement(reactionRemove.hash().slice())),
+          hash: Array.from(bytesDecrement(reactionRemove.hash())),
         });
 
         const reactionRemoveEarlier = new MessageModel(removeMessage) as ReactionRemoveModel;

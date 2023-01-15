@@ -1,6 +1,6 @@
 import { MessageType } from '@farcaster/flatbuffers';
 import { bytesCompare, getFarcasterTime, HubAsyncResult, HubError } from '@farcaster/utils';
-import { ok, ResultAsync } from 'neverthrow';
+import { err, ok, ResultAsync } from 'neverthrow';
 import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/flatbuffers/models/messageModel';
 import { isAmpAdd, isAmpRemove } from '~/flatbuffers/models/typeguards';
 import { AmpAddModel, AmpRemoveModel, RootPrefix, StorePruneOptions, UserPostfix } from '~/flatbuffers/models/types';
@@ -263,48 +263,49 @@ class AmpStore extends SequentialMergeStore {
   private async mergeAdd(message: AmpAddModel): Promise<void> {
     const ampId = message.body().user()?.fidArray() ?? new Uint8Array();
 
-    // eslint-disable-next-line prefer-const
-    let { tsx, removedAmps } = await this.resolveMergeConflicts(this._db.transaction(), ampId, message);
+    const txnResult = await this.resolveMergeConflicts(this._db.transaction(), ampId, message);
 
-    if (!tsx) return undefined; // Assume no-op if txn was not returned
+    if (txnResult.isErr()) {
+      throw txnResult.error;
+    }
 
     // Add ops to store the message by messageKey and index the the messageKey by set
-    tsx = this.putAmpAddTransaction(tsx, message);
+    const txn = this.putAmpAddTransaction(txnResult.value, message);
 
-    await this._db.commit(tsx);
+    await this._db.commit(txn);
 
     // Emit store event
     this._eventHandler.emit('mergeMessage', message);
 
-    // Emit remove event for each AmpAdd that was removed
-    for (const removedAmpAdd of removedAmps) {
-      this._eventHandler.emit('revokeMessage', removedAmpAdd);
-    }
+    return undefined;
   }
 
   private async mergeRemove(message: AmpRemoveModel): Promise<void> {
     const ampId = message.body().user()?.fidArray() ?? new Uint8Array();
 
-    // eslint-disable-next-line prefer-const
-    let { tsx, removedAmps } = await this.resolveMergeConflicts(this._db.transaction(), ampId, message);
+    const txnResult = await this.resolveMergeConflicts(this._db.transaction(), ampId, message);
 
-    if (!tsx) return undefined; // Assume no-op if txn was not returned
+    if (txnResult.isErr()) {
+      throw txnResult.error;
+    }
 
     // Add ops to store the message by messageKey and index the the messageKey by set
-    tsx = this.putAmpRemoveTransaction(tsx, message);
+    const txn = this.putAmpRemoveTransaction(txnResult.value, message);
 
-    await this._db.commit(tsx);
+    await this._db.commit(txn);
 
     // Emit store event
     this._eventHandler.emit('mergeMessage', message);
 
-    // Emit remove event for each AmpAdd that was removed
-    for (const removedAmpAdd of removedAmps) {
-      this._eventHandler.emit('revokeMessage', removedAmpAdd);
-    }
+    return undefined;
   }
 
-  private ampMessageCompare(aType: MessageType, aTsHash: Uint8Array, bType: MessageType, bTsHash: Uint8Array): number {
+  private ampMessageCompare(
+    aType: MessageType.AmpAdd | MessageType.AmpRemove,
+    aTsHash: Uint8Array,
+    bType: MessageType.AmpAdd | MessageType.AmpRemove,
+    bTsHash: Uint8Array
+  ): number {
     // Compare timestamps (first 4 bytes of tsHash) to enforce Last-Write-Wins
     const timestampOrder = bytesCompare(aTsHash.subarray(0, 4), bTsHash.subarray(0, 4));
     if (timestampOrder !== 0) {
@@ -329,12 +330,10 @@ class AmpStore extends SequentialMergeStore {
    * @returns a RocksDB transaction if keys must be added or removed, undefined otherwise.
    */
   private async resolveMergeConflicts(
-    tsx: Transaction,
+    txn: Transaction,
     ampId: Uint8Array,
     message: AmpAddModel | AmpRemoveModel
-  ): Promise<{ tsx: Transaction | undefined; removedAmps: AmpAddModel[] }> {
-    const removedAmps: AmpAddModel[] = [];
-
+  ): HubAsyncResult<Transaction> {
     // Look up the remove tsHash for this amp
     const ampRemoveTsHash = await ResultAsync.fromPromise(
       this._db.get(AmpStore.ampRemovesKey(message.fid(), ampId)),
@@ -342,9 +341,16 @@ class AmpStore extends SequentialMergeStore {
     );
 
     if (ampRemoveTsHash.isOk()) {
-      if (this.ampMessageCompare(MessageType.AmpRemove, ampRemoveTsHash.value, message.type(), message.tsHash()) >= 0) {
-        // If the existing remove has the same or higher order than the new message, no-op
-        return { tsx: undefined, removedAmps: [] };
+      const removeCompare = this.ampMessageCompare(
+        MessageType.AmpRemove,
+        ampRemoveTsHash.value,
+        message.type(),
+        message.tsHash()
+      );
+      if (removeCompare > 0) {
+        return err(new HubError('bad_request.conflict', 'message conflicts with a more recent AmpRemove'));
+      } else if (removeCompare === 0) {
+        return err(new HubError('bad_request.duplicate', 'message has already been merged'));
       } else {
         // If the existing remove has a lower order than the new message, retrieve the full
         // AmpRemove message and delete it as part of the RocksDB transaction
@@ -354,8 +360,7 @@ class AmpStore extends SequentialMergeStore {
           UserPostfix.AmpMessage,
           ampRemoveTsHash.value
         );
-        tsx = this.deleteAmpRemoveTransaction(tsx, existingRemove);
-        removedAmps.push(existingRemove);
+        txn = this.deleteAmpRemoveTransaction(txn, existingRemove);
       }
     }
 
@@ -366,9 +371,16 @@ class AmpStore extends SequentialMergeStore {
     );
 
     if (ampAddTsHash.isOk()) {
-      if (this.ampMessageCompare(MessageType.AmpAdd, ampAddTsHash.value, message.type(), message.tsHash()) >= 0) {
-        // If the existing add has the same or higher order than the new message, no-op
-        return { tsx: undefined, removedAmps: [] };
+      const addCompare = this.ampMessageCompare(
+        MessageType.AmpAdd,
+        ampAddTsHash.value,
+        message.type(),
+        message.tsHash()
+      );
+      if (addCompare > 0) {
+        return err(new HubError('bad_request.conflict', 'message conflicts with a more recent AmpAdd'));
+      } else if (addCompare === 0) {
+        return err(new HubError('bad_request.duplicate', 'message has already been merged'));
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // AmpAdd message and delete it as part of the RocksDB transaction
@@ -378,27 +390,27 @@ class AmpStore extends SequentialMergeStore {
           UserPostfix.AmpMessage,
           ampAddTsHash.value
         );
-        removedAmps.push(existingAdd);
-        tsx = this.deleteAmpAddTransaction(tsx, existingAdd);
+
+        txn = this.deleteAmpAddTransaction(txn, existingAdd);
       }
     }
 
-    return { tsx, removedAmps };
+    return ok(txn);
   }
 
   /* Builds a RocksDB transaction to insert a AmpAdd message and construct its indices */
-  private putAmpAddTransaction(tsx: Transaction, message: AmpAddModel): Transaction {
+  private putAmpAddTransaction(txn: Transaction, message: AmpAddModel): Transaction {
     // Puts the message into the database
-    tsx = MessageModel.putTransaction(tsx, message);
+    txn = MessageModel.putTransaction(txn, message);
 
     // Puts the message key into the AmpAdds set index
-    tsx = tsx.put(
+    txn = txn.put(
       AmpStore.ampAddsKey(message.fid(), message.body().user()?.fidArray() ?? new Uint8Array()),
       Buffer.from(message.tsHash())
     );
 
     // Puts the message key into the byTargetUser index
-    tsx = tsx.put(
+    txn = txn.put(
       AmpStore.ampsByTargetUserKey(
         message.body().user()?.fidArray() ?? new Uint8Array(),
         message.fid(),
@@ -407,13 +419,13 @@ class AmpStore extends SequentialMergeStore {
       TRUE_VALUE
     );
 
-    return tsx;
+    return txn;
   }
 
   /* Builds a RocksDB transaction to remove a AmpAdd message and delete its indices */
-  private deleteAmpAddTransaction(tsx: Transaction, message: AmpAddModel): Transaction {
+  private deleteAmpAddTransaction(txn: Transaction, message: AmpAddModel): Transaction {
     // Delete the message key from the byTargetUser index
-    tsx = tsx.del(
+    txn = txn.del(
       AmpStore.ampsByTargetUserKey(
         message.body().user()?.fidArray() ?? new Uint8Array(),
         message.fid(),
@@ -422,33 +434,33 @@ class AmpStore extends SequentialMergeStore {
     );
 
     // Delete the message key from the AmpAdds set index
-    tsx = tsx.del(AmpStore.ampAddsKey(message.fid(), message.body().user()?.fidArray() ?? new Uint8Array()));
+    txn = txn.del(AmpStore.ampAddsKey(message.fid(), message.body().user()?.fidArray() ?? new Uint8Array()));
 
     // Delete message
-    return MessageModel.deleteTransaction(tsx, message);
+    return MessageModel.deleteTransaction(txn, message);
   }
 
   /* Builds a RocksDB transaction to insert a AmpRemove message and construct its indices */
-  private putAmpRemoveTransaction(tsx: Transaction, message: AmpRemoveModel): Transaction {
+  private putAmpRemoveTransaction(txn: Transaction, message: AmpRemoveModel): Transaction {
     // Puts the message
-    tsx = MessageModel.putTransaction(tsx, message);
+    txn = MessageModel.putTransaction(txn, message);
 
     // Puts the message key into the AmpRemoves set index
-    tsx = tsx.put(
+    txn = txn.put(
       AmpStore.ampRemovesKey(message.fid(), message.body().user()?.fidArray() ?? new Uint8Array()),
       Buffer.from(message.tsHash())
     );
 
-    return tsx;
+    return txn;
   }
 
   /* Builds a RocksDB transaction to remove a AmpRemove message and delete its indices */
-  private deleteAmpRemoveTransaction(tsx: Transaction, message: AmpRemoveModel): Transaction {
+  private deleteAmpRemoveTransaction(txn: Transaction, message: AmpRemoveModel): Transaction {
     // Delete the message key from the AmpRemoves set index
-    tsx = tsx.del(AmpStore.ampRemovesKey(message.fid(), message.body().user()?.fidArray() ?? new Uint8Array()));
+    txn = txn.del(AmpStore.ampRemovesKey(message.fid(), message.body().user()?.fidArray() ?? new Uint8Array()));
 
     // Delete the message
-    return MessageModel.deleteTransaction(tsx, message);
+    return MessageModel.deleteTransaction(txn, message);
   }
 }
 

@@ -31,22 +31,43 @@ describe('bytesCompare', () => {
 });
 
 describe('bytesIncrement', () => {
-  const cases: [Uint8Array, Uint8Array][] = [
-    [new Uint8Array([1]), new Uint8Array([2])],
-    [new Uint8Array([1, 1]), new Uint8Array([1, 2])],
-    [new Uint8Array([0]), new Uint8Array([1])],
-    [new Uint8Array([255]), new Uint8Array([1, 0])],
-    [new Uint8Array([254]), new Uint8Array([255])],
-    [new Uint8Array([1, 0, 0, 255]), new Uint8Array([1, 0, 1, 0])],
-    [new Uint8Array([255, 255, 255]), new Uint8Array([1, 0, 0, 0])],
-    [new Uint8Array([0, 0, 1]), new Uint8Array([0, 0, 2])],
-  ];
+  describe('big endian', () => {
+    const cases: [Uint8Array, Uint8Array][] = [
+      [new Uint8Array([1]), new Uint8Array([2])],
+      [new Uint8Array([1, 1]), new Uint8Array([1, 2])],
+      [new Uint8Array([0]), new Uint8Array([1])],
+      [new Uint8Array([255]), new Uint8Array([1, 0])],
+      [new Uint8Array([254]), new Uint8Array([255])],
+      [new Uint8Array([1, 0, 0, 255]), new Uint8Array([1, 0, 1, 0])],
+      [new Uint8Array([255, 255, 255]), new Uint8Array([1, 0, 0, 0])],
+      [new Uint8Array([0, 0, 1]), new Uint8Array([0, 0, 2])],
+    ];
 
-  for (const [input, output] of cases) {
-    test(`increments byte array: ${input}`, () => {
-      expect(bytesIncrement(input)).toEqual(output);
-    });
-  }
+    for (const [input, output] of cases) {
+      test(`increments big endian byte array: ${input}`, () => {
+        expect(bytesIncrement(input, { endianness: 'big' })).toEqual(output);
+      });
+    }
+  });
+
+  describe('little endian', () => {
+    const cases: [Uint8Array, Uint8Array][] = [
+      [new Uint8Array([1]), new Uint8Array([2])],
+      [new Uint8Array([1, 1]), new Uint8Array([2, 1])],
+      [new Uint8Array([0]), new Uint8Array([1])],
+      [new Uint8Array([255]), new Uint8Array([0, 1])],
+      [new Uint8Array([254]), new Uint8Array([255])],
+      [new Uint8Array([255, 0, 0, 1]), new Uint8Array([0, 1, 0, 1])],
+      [new Uint8Array([255, 255, 255]), new Uint8Array([0, 0, 0, 1])],
+      [new Uint8Array([1, 0, 0]), new Uint8Array([2, 0, 0])],
+    ];
+
+    for (const [input, output] of cases) {
+      test(`increments little endian byte array: ${input}`, () => {
+        expect(bytesIncrement(input)).toEqual(output);
+      });
+    }
+  });
 
   test('input byte array is not mutated', () => {
     const input = new Uint8Array([112, 102, 104]);
@@ -58,28 +79,55 @@ describe('bytesIncrement', () => {
 });
 
 describe('bytesDecrement', () => {
-  const passingCases: [Uint8Array, Uint8Array][] = [
-    [new Uint8Array([1]), new Uint8Array([0])],
-    [new Uint8Array([1, 2]), new Uint8Array([1, 1])],
-    [new Uint8Array([1, 0]), new Uint8Array([0, 255])],
-    [new Uint8Array([1, 0, 1, 0]), new Uint8Array([1, 0, 0, 255])],
-    [new Uint8Array([0, 0, 2]), new Uint8Array([0, 0, 1])],
-    [new Uint8Array([1, 0, 0, 0]), new Uint8Array([0, 255, 255, 255])],
-  ];
+  describe('big endian', () => {
+    const passingCases: [Uint8Array, Uint8Array][] = [
+      [new Uint8Array([1]), new Uint8Array([0])],
+      [new Uint8Array([1, 2]), new Uint8Array([1, 1])],
+      [new Uint8Array([1, 0]), new Uint8Array([0, 255])],
+      [new Uint8Array([1, 0, 1, 0]), new Uint8Array([1, 0, 0, 255])],
+      [new Uint8Array([0, 0, 2]), new Uint8Array([0, 0, 1])],
+      [new Uint8Array([1, 0, 0, 0]), new Uint8Array([0, 255, 255, 255])],
+    ];
 
-  const failingCases: Uint8Array[] = [new Uint8Array([0]), new Uint8Array([0, 0])];
+    for (const [input, output] of passingCases) {
+      test(`decrements byte array: ${input}`, () => {
+        expect(bytesDecrement(input, { endianness: 'big' })).toEqual(output);
+      });
+    }
 
-  for (const [input, output] of passingCases) {
-    test(`decrements byte array: ${input}`, () => {
-      expect(bytesDecrement(input)).toEqual(output);
-    });
-  }
+    const failingCases: Uint8Array[] = [new Uint8Array([0]), new Uint8Array([0, 0])];
 
-  for (const input of failingCases) {
-    test(`fails when decrementing byte array: ${input}`, () => {
-      expect(() => bytesDecrement(input)).toThrow(HubError);
-    });
-  }
+    for (const input of failingCases) {
+      test(`fails when decrementing byte array: ${input}`, () => {
+        expect(() => bytesDecrement(input, { endianness: 'big' })).toThrow(HubError);
+      });
+    }
+  });
+
+  describe('little endian', () => {
+    const passingCases: [Uint8Array, Uint8Array][] = [
+      [new Uint8Array([1]), new Uint8Array([0])],
+      [new Uint8Array([2, 1]), new Uint8Array([1, 1])],
+      [new Uint8Array([0, 1]), new Uint8Array([255, 0])],
+      [new Uint8Array([0, 1, 0, 1]), new Uint8Array([255, 0, 0, 1])],
+      [new Uint8Array([2, 0, 0]), new Uint8Array([1, 0, 0])],
+      [new Uint8Array([0, 0, 0, 1]), new Uint8Array([255, 255, 255, 0])],
+    ];
+
+    for (const [input, output] of passingCases) {
+      test(`decrements byte array: ${input}`, () => {
+        expect(bytesDecrement(input)).toEqual(output);
+      });
+    }
+
+    const failingCases: Uint8Array[] = [new Uint8Array([0]), new Uint8Array([0, 0])];
+
+    for (const input of failingCases) {
+      test(`fails when decrementing byte array: ${input}`, () => {
+        expect(() => bytesDecrement(input)).toThrow(HubError);
+      });
+    }
+  });
 
   test('input byte array is not mutated', () => {
     const input = new Uint8Array([112, 102, 104]);

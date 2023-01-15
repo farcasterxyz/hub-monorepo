@@ -85,18 +85,22 @@ export type UserMessagePostfix =
 
 export interface CastRemoveModel extends MessageModel {
   body(): flatbuffers.CastRemoveBody;
+  type(): flatbuffers.MessageType.CastRemove;
 }
 
 export interface CastAddModel extends MessageModel {
   body(): flatbuffers.CastAddBody;
+  type(): flatbuffers.MessageType.CastAdd;
 }
 
 export interface AmpAddModel extends MessageModel {
   body(): flatbuffers.AmpBody;
+  type(): flatbuffers.MessageType.AmpAdd;
 }
 
 export interface AmpRemoveModel extends MessageModel {
   body(): flatbuffers.AmpBody;
+  type(): flatbuffers.MessageType.AmpRemove;
 }
 
 export interface ReactionAddModel extends MessageModel {
@@ -124,22 +128,27 @@ export interface ReactionRemoveModel extends MessageModel {
  */
 export interface VerificationAddEthAddressModel extends MessageModel {
   body(): flatbuffers.VerificationAddEthAddressBody;
+  type(): flatbuffers.MessageType.VerificationAddEthAddress;
 }
 
 export interface VerificationRemoveModel extends MessageModel {
   body(): flatbuffers.VerificationRemoveBody;
+  type(): flatbuffers.MessageType.VerificationRemove;
 }
 
 export interface SignerAddModel extends MessageModel {
   body(): flatbuffers.SignerBody;
+  type(): flatbuffers.MessageType.SignerAdd;
 }
 
 export interface SignerRemoveModel extends MessageModel {
   body(): flatbuffers.SignerBody;
+  type(): flatbuffers.MessageType.SignerRemove;
 }
 
 export interface UserDataAddModel extends MessageModel {
   body(): flatbuffers.UserDataBody;
+  type(): flatbuffers.MessageType.UserDataAdd;
 }
 
 export type StorePruneOptions = {

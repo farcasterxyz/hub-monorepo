@@ -172,9 +172,11 @@ describe('merge', () => {
       await assertAmpAddWins(ampAdd);
     });
 
-    test('succeeds once, even if merged twice', async () => {
+    test('fails with duplicate', async () => {
       await expect(store.merge(ampAdd)).resolves.toEqual(undefined);
-      await expect(store.merge(ampAdd)).resolves.toEqual(undefined);
+      await expect(store.merge(ampAdd)).rejects.toEqual(
+        new HubError('bad_request.duplicate', 'message has already been merged')
+      );
 
       await assertAmpAddWins(ampAdd);
     });
@@ -201,9 +203,11 @@ describe('merge', () => {
         await assertAmpAddWins(ampAddLater);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
+      test('fails with an earlier timestamp', async () => {
         await store.merge(ampAddLater);
-        await expect(store.merge(ampAdd)).resolves.toEqual(undefined);
+        await expect(store.merge(ampAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent AmpAdd')
+        );
 
         await assertAmpDoesNotExist(ampAdd);
         await assertAmpAddWins(ampAddLater);
@@ -220,13 +224,13 @@ describe('merge', () => {
 
         const addMessage = await Factories.Message.create({
           data: Array.from(addData.bb?.bytes() ?? []),
-          hash: Array.from(bytesIncrement(ampAdd.hash().slice())),
+          hash: Array.from(bytesIncrement(ampAdd.hash())),
         });
 
         ampAddLater = new MessageModel(addMessage) as AmpAddModel;
       });
 
-      test('succeeds with a later hash', async () => {
+      test('succeeds with a higher hash', async () => {
         await store.merge(ampAdd);
         await expect(store.merge(ampAddLater)).resolves.toEqual(undefined);
 
@@ -234,9 +238,11 @@ describe('merge', () => {
         await assertAmpAddWins(ampAddLater);
       });
 
-      test('no-ops with an earlier hash', async () => {
+      test('fails with a lower hash', async () => {
         await store.merge(ampAddLater);
-        await expect(store.merge(ampAdd)).resolves.toEqual(undefined);
+        await expect(store.merge(ampAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent AmpAdd')
+        );
 
         await assertAmpDoesNotExist(ampAdd);
         await assertAmpAddWins(ampAddLater);
@@ -263,9 +269,11 @@ describe('merge', () => {
         await assertAmpDoesNotExist(ampRemoveEarlier);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
+      test('fails with an earlier timestamp', async () => {
         await store.merge(ampRemove);
-        await expect(store.merge(ampAdd)).resolves.toEqual(undefined);
+        await expect(store.merge(ampAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent AmpRemove')
+        );
 
         await assertAmpRemoveWins(ampRemove);
         await assertAmpDoesNotExist(ampAdd);
@@ -273,7 +281,7 @@ describe('merge', () => {
     });
 
     describe('with conflicting AmpRemove with identical timestamps', () => {
-      test('no-ops if remove has a later hash', async () => {
+      test('fails if remove has a higher hash', async () => {
         const removeData = await Factories.AmpRemoveData.create({
           ...ampRemove.data.unpack(),
           timestamp: ampAdd.timestamp(),
@@ -281,19 +289,21 @@ describe('merge', () => {
 
         const removeMessage = await Factories.Message.create({
           data: Array.from(removeData.bb?.bytes() ?? []),
-          hash: Array.from(bytesIncrement(ampAdd.hash().slice())),
+          hash: Array.from(bytesIncrement(ampAdd.hash())),
         });
 
         const ampRemoveLater = new MessageModel(removeMessage) as AmpRemoveModel;
 
         await store.merge(ampRemoveLater);
-        await expect(store.merge(ampAdd)).resolves.toEqual(undefined);
+        await expect(store.merge(ampAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent AmpRemove')
+        );
 
         await assertAmpRemoveWins(ampRemoveLater);
         await assertAmpDoesNotExist(ampAdd);
       });
 
-      test('succeeds if remove has an earlier hash', async () => {
+      test('fails if remove has a lower hash', async () => {
         const removeData = await Factories.AmpRemoveData.create({
           ...ampRemove.data.unpack(),
           timestamp: ampAdd.timestamp(),
@@ -301,16 +311,15 @@ describe('merge', () => {
 
         const removeMessage = await Factories.Message.create({
           data: Array.from(removeData.bb?.bytes() ?? []),
-
-          // TODO: this slice doesn't seem necessary, and its also in reactions
-          // TODO: rename set to store in reactions, signer and other places
-          hash: Array.from(bytesDecrement(ampAdd.hash().slice())),
+          hash: Array.from(bytesDecrement(ampAdd.hash())),
         });
 
         const ampRemoveEarlier = new MessageModel(removeMessage) as AmpRemoveModel;
 
         await store.merge(ampRemoveEarlier);
-        await expect(store.merge(ampAdd)).resolves.toEqual(undefined);
+        await expect(store.merge(ampAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent AmpRemove')
+        );
 
         await assertAmpDoesNotExist(ampAdd);
         await assertAmpRemoveWins(ampRemoveEarlier);
@@ -325,9 +334,11 @@ describe('merge', () => {
       await assertAmpRemoveWins(ampRemove);
     });
 
-    test('succeeds once, even if merged twice', async () => {
+    test('fails with duplicate', async () => {
       await expect(store.merge(ampRemove)).resolves.toEqual(undefined);
-      await expect(store.merge(ampRemove)).resolves.toEqual(undefined);
+      await expect(store.merge(ampRemove)).rejects.toEqual(
+        new HubError('bad_request.duplicate', 'message has already been merged')
+      );
 
       await assertAmpRemoveWins(ampRemove);
     });
@@ -354,9 +365,11 @@ describe('merge', () => {
         await assertAmpRemoveWins(ampRemoveLater);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
+      test('fails with an earlier timestamp', async () => {
         await store.merge(ampRemoveLater);
-        await expect(store.merge(ampRemove)).resolves.toEqual(undefined);
+        await expect(store.merge(ampRemove)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent AmpRemove')
+        );
 
         await assertAmpDoesNotExist(ampRemove);
         await assertAmpRemoveWins(ampRemoveLater);
@@ -373,13 +386,13 @@ describe('merge', () => {
 
         const addMessage = await Factories.Message.create({
           data: Array.from(ampRemoveData.bb?.bytes() ?? []),
-          hash: Array.from(bytesIncrement(ampRemove.hash().slice())),
+          hash: Array.from(bytesIncrement(ampRemove.hash())),
         });
 
         ampRemoveLater = new MessageModel(addMessage) as AmpRemoveModel;
       });
 
-      test('succeeds with a later hash', async () => {
+      test('succeeds with a higher hash', async () => {
         await store.merge(ampRemove);
         await expect(store.merge(ampRemoveLater)).resolves.toEqual(undefined);
 
@@ -387,9 +400,11 @@ describe('merge', () => {
         await assertAmpRemoveWins(ampRemoveLater);
       });
 
-      test('no-ops with an earlier hash', async () => {
+      test('fails with a lower hash', async () => {
         await store.merge(ampRemoveLater);
-        await expect(store.merge(ampRemove)).resolves.toEqual(undefined);
+        await expect(store.merge(ampRemove)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent AmpRemove')
+        );
 
         await assertAmpDoesNotExist(ampRemove);
         await assertAmpRemoveWins(ampRemoveLater);
@@ -404,7 +419,7 @@ describe('merge', () => {
         await assertAmpDoesNotExist(ampAdd);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
+      test('fails with an earlier timestamp', async () => {
         const addData = await Factories.AmpAddData.create({
           ...ampRemove.data.unpack(),
           timestamp: ampRemove.timestamp() + 1,
@@ -415,14 +430,16 @@ describe('merge', () => {
         });
         const ampAddLater = new MessageModel(addMessage) as AmpAddModel;
         await store.merge(ampAddLater);
-        await expect(store.merge(ampRemove)).resolves.toEqual(undefined);
+        await expect(store.merge(ampRemove)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent AmpAdd')
+        );
         await assertAmpAddWins(ampAddLater);
         await assertAmpDoesNotExist(ampRemove);
       });
     });
 
     describe('with conflicting AmpAdd with identical timestamps', () => {
-      test('succeeds with an earlier hash', async () => {
+      test('succeeds with a lower hash', async () => {
         const addData = await Factories.AmpAddData.create({
           ...ampRemove.data.unpack(),
           type: MessageType.AmpAdd,
@@ -430,7 +447,7 @@ describe('merge', () => {
 
         const addMessage = await Factories.Message.create({
           data: Array.from(addData.bb?.bytes() ?? []),
-          hash: Array.from(bytesIncrement(ampRemove.hash().slice())),
+          hash: Array.from(bytesIncrement(ampRemove.hash())),
         });
         const ampAddLater = new MessageModel(addMessage) as AmpAddModel;
 
@@ -441,14 +458,14 @@ describe('merge', () => {
         await assertAmpRemoveWins(ampRemove);
       });
 
-      test('succeeds with a later hash', async () => {
+      test('succeeds with a higher hash', async () => {
         const removeData = await Factories.AmpAddData.create({
           ...ampRemove.data.unpack(),
         });
 
         const removeMessage = await Factories.Message.create({
           data: Array.from(removeData.bb?.bytes() ?? []),
-          hash: Array.from(bytesDecrement(ampRemove.hash().slice())),
+          hash: Array.from(bytesDecrement(ampRemove.hash())),
         });
 
         const ampRemoveEarlier = new MessageModel(removeMessage) as AmpRemoveModel;

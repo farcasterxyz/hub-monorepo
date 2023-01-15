@@ -27,6 +27,7 @@ abstract class SequentialMergeStore extends TypedEmitter<MergeProcessingEvents> 
     this._mergeIdsQueue = [];
     this._mergeIdsStore = new Map();
     this._mergeIsProcessing = false;
+    this.setMaxListeners(1_000);
   }
 
   /**
@@ -51,6 +52,7 @@ abstract class SequentialMergeStore extends TypedEmitter<MergeProcessingEvents> 
       const listenForMerge = (mergedId: string, mergeResult?: HubResult<void>) => {
         if (mergedId === mergeId) {
           clearTimeout(timeoutId);
+          this.off('processed', listenForMerge);
           resolve(mergeResult ?? ok(undefined));
         }
       };
