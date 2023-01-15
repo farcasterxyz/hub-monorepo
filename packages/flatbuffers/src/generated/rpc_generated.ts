@@ -3047,8 +3047,39 @@ static getSizePrefixedRootAsSubscribeRequest(bb:flatbuffers.ByteBuffer, obj?:Sub
   return (obj || new SubscribeRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
+types(index: number):EventType|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
+
+typesLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+typesArray():Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+}
+
 static startSubscribeRequest(builder:flatbuffers.Builder) {
-  builder.startObject(0);
+  builder.startObject(1);
+}
+
+static addTypes(builder:flatbuffers.Builder, typesOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, typesOffset, 0);
+}
+
+static createTypesVector(builder:flatbuffers.Builder, data:EventType[]):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startTypesVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
 }
 
 static endSubscribeRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -3056,25 +3087,36 @@ static endSubscribeRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createSubscribeRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
+static createSubscribeRequest(builder:flatbuffers.Builder, typesOffset:flatbuffers.Offset):flatbuffers.Offset {
   SubscribeRequest.startSubscribeRequest(builder);
+  SubscribeRequest.addTypes(builder, typesOffset);
   return SubscribeRequest.endSubscribeRequest(builder);
 }
 
 unpack(): SubscribeRequestT {
-  return new SubscribeRequestT();
+  return new SubscribeRequestT(
+    this.bb!.createScalarList<EventType>(this.types.bind(this), this.typesLength())
+  );
 }
 
 
-unpackTo(_o: SubscribeRequestT): void {}
+unpackTo(_o: SubscribeRequestT): void {
+  _o.types = this.bb!.createScalarList<EventType>(this.types.bind(this), this.typesLength());
+}
 }
 
 export class SubscribeRequestT implements flatbuffers.IGeneratedObject {
-constructor(){}
+constructor(
+  public types: (EventType)[] = []
+){}
 
 
 pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  return SubscribeRequest.createSubscribeRequest(builder);
+  const types = SubscribeRequest.createTypesVector(builder, this.types);
+
+  return SubscribeRequest.createSubscribeRequest(builder,
+    types
+  );
 }
 }
 

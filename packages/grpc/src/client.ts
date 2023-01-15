@@ -261,32 +261,11 @@ export class Client {
   /*                                  Event Methods                             */
   /* -------------------------------------------------------------------------- */
 
-  async subscribe(): HubAsyncResult<ClientReadableStream<flatbuffers.EventResponse>> {
-    const method = definitions.eventDefinition().subscribe;
-    const request = new flatbuffers.SubscribeRequest();
-    const stream = this.client.makeServerStreamRequest(
-      method.path,
-      method.requestSerialize,
-      method.responseDeserialize,
-      request
+  async subscribe(types?: flatbuffers.EventType[]): HubAsyncResult<ClientReadableStream<flatbuffers.EventResponse>> {
+    return this.makeServerStreamRequest(
+      definitions.eventDefinition().subscribe,
+      requests.eventRequests.subscribeRequest(types)
     );
-    stream.on('error', (e) => {
-      return e; // Suppress exceptions
-    });
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        stream.cancel(); // Cancel if not connected within timeout
-        reject(err(new HubError('unavailable.network_failure', 'subscribe timed out')));
-      }, 1_000);
-      stream.on('metadata', (metadata: Metadata) => {
-        clearTimeout(timeout);
-        if (metadata.get('status')[0] === ('ready' as MetadataValue)) {
-          resolve(ok(stream));
-        } else {
-          reject(err(new HubError('unavailable.network_failure', 'subscribe failed')));
-        }
-      });
-    });
   }
 
   /* -------------------------------------------------------------------------- */
@@ -338,6 +317,38 @@ export class Client {
           }
         }
       );
+    });
+  }
+
+  async makeServerStreamRequest<RequestType, ResponseType>(
+    method: grpc.MethodDefinition<RequestType, ResponseType>,
+    request: RequestType
+  ): HubAsyncResult<ClientReadableStream<ResponseType>> {
+    const stream = this.client.makeServerStreamRequest(
+      method.path,
+      method.requestSerialize,
+      method.responseDeserialize,
+      request
+    );
+
+    stream.on('error', (e) => {
+      return e; // Suppress exceptions
+    });
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        stream.cancel(); // Cancel if not connected within timeout
+        reject(err(new HubError('unavailable.network_failure', 'subscribe timed out')));
+      }, 1_000);
+
+      stream.on('metadata', (metadata: Metadata) => {
+        clearTimeout(timeout);
+        if (metadata.get('status')[0] === ('ready' as MetadataValue)) {
+          resolve(ok(stream));
+        } else {
+          reject(err(new HubError('unavailable.network_failure', 'subscribe failed')));
+        }
+      });
     });
   }
 }

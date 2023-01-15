@@ -61,40 +61,80 @@ beforeAll(async () => {
 });
 
 describe('subscribe', () => {
-  let stream: ClientReadableStream<EventResponse>;
-  let events: [EventType, MessageModel | IdRegistryEventModel | NameRegistryEventModel][];
+  describe('without type filters', () => {
+    let stream: ClientReadableStream<EventResponse>;
+    let events: [EventType, MessageModel | IdRegistryEventModel | NameRegistryEventModel][];
 
-  beforeEach(async () => {
-    stream = (await client.subscribe())._unsafeUnwrap();
-    events = [];
-    stream.on('data', (response: EventResponse) => {
-      if (
-        response.type() === EventType.MergeMessage ||
-        response.type() === EventType.PruneMessage ||
-        response.type() === EventType.RevokeMessage
-      ) {
-        events.push([response.type(), MessageModel.from(response.bytesArray() ?? new Uint8Array())]);
-      } else if (response.type() === EventType.MergeIdRegistryEvent) {
-        events.push([response.type(), IdRegistryEventModel.from(response.bytesArray() ?? new Uint8Array())]);
-      } else if (response.type() === EventType.MergeNameRegistryEvent) {
-        events.push([response.type(), NameRegistryEventModel.from(response.bytesArray() ?? new Uint8Array())]);
-      }
+    beforeEach(async () => {
+      stream = (await client.subscribe())._unsafeUnwrap();
+      events = [];
+      stream.on('data', (response: EventResponse) => {
+        if (
+          response.type() === EventType.MergeMessage ||
+          response.type() === EventType.PruneMessage ||
+          response.type() === EventType.RevokeMessage
+        ) {
+          events.push([response.type(), MessageModel.from(response.bytesArray() ?? new Uint8Array())]);
+        } else if (response.type() === EventType.MergeIdRegistryEvent) {
+          events.push([response.type(), IdRegistryEventModel.from(response.bytesArray() ?? new Uint8Array())]);
+        } else if (response.type() === EventType.MergeNameRegistryEvent) {
+          events.push([response.type(), NameRegistryEventModel.from(response.bytesArray() ?? new Uint8Array())]);
+        }
+      });
+    });
+
+    afterEach(async () => {
+      await stream.cancel();
+    });
+
+    test('emits event', async () => {
+      await engine.mergeIdRegistryEvent(custodyEvent);
+      await engine.mergeMessage(signerAdd);
+      await engine.mergeMessage(castAdd);
+      await sleep(1_000); // Wait for server to send events over stream
+      expect(events).toEqual([
+        [EventType.MergeIdRegistryEvent, custodyEvent],
+        [EventType.MergeMessage, signerAdd],
+        [EventType.MergeMessage, castAdd],
+      ]);
     });
   });
 
-  afterEach(async () => {
-    await stream.cancel();
-  });
+  describe('with type filters', () => {
+    let stream: ClientReadableStream<EventResponse>;
+    let events: [EventType, MessageModel | IdRegistryEventModel | NameRegistryEventModel][];
 
-  test('emits event', async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
-    await engine.mergeMessage(castAdd);
-    await sleep(1_000); // Wait for server to send events over stream
-    expect(events).toEqual([
-      [EventType.MergeIdRegistryEvent, custodyEvent],
-      [EventType.MergeMessage, signerAdd],
-      [EventType.MergeMessage, castAdd],
-    ]);
+    beforeEach(async () => {
+      stream = (await client.subscribe([EventType.MergeMessage]))._unsafeUnwrap();
+      events = [];
+      stream.on('data', (response: EventResponse) => {
+        if (
+          response.type() === EventType.MergeMessage ||
+          response.type() === EventType.PruneMessage ||
+          response.type() === EventType.RevokeMessage
+        ) {
+          events.push([response.type(), MessageModel.from(response.bytesArray() ?? new Uint8Array())]);
+        } else if (response.type() === EventType.MergeIdRegistryEvent) {
+          events.push([response.type(), IdRegistryEventModel.from(response.bytesArray() ?? new Uint8Array())]);
+        } else if (response.type() === EventType.MergeNameRegistryEvent) {
+          events.push([response.type(), NameRegistryEventModel.from(response.bytesArray() ?? new Uint8Array())]);
+        }
+      });
+    });
+
+    afterEach(async () => {
+      await stream.cancel();
+    });
+
+    test('emits event', async () => {
+      await engine.mergeIdRegistryEvent(custodyEvent);
+      await engine.mergeMessage(signerAdd);
+      await engine.mergeMessage(castAdd);
+      await sleep(1_000); // Wait for server to send events over stream
+      expect(events).toEqual([
+        [EventType.MergeMessage, signerAdd],
+        [EventType.MergeMessage, castAdd],
+      ]);
+    });
   });
 });
