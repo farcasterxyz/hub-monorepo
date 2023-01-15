@@ -263,9 +263,11 @@ describe('merge', () => {
       await assertReactionAddWins(reactionAdd);
     });
 
-    test('succeeds once, even if merged twice', async () => {
+    test('fails if merged twice', async () => {
       await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
-      await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+      await expect(set.merge(reactionAdd)).rejects.toEqual(
+        new HubError('bad_request.duplicate', 'message has already been merged')
+      );
 
       await assertReactionAddWins(reactionAdd);
     });
@@ -292,9 +294,11 @@ describe('merge', () => {
         await assertReactionAddWins(reactionAddLater);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
+      test('fails with an earlier timestamp', async () => {
         await set.merge(reactionAddLater);
-        await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionAdd')
+        );
 
         await assertReactionDoesNotExist(reactionAdd);
         await assertReactionAddWins(reactionAddLater);
@@ -317,7 +321,7 @@ describe('merge', () => {
         reactionAddLater = new MessageModel(addMessage) as ReactionAddModel;
       });
 
-      test('succeeds with a later hash', async () => {
+      test('succeeds with a higher hash', async () => {
         await set.merge(reactionAdd);
         await expect(set.merge(reactionAddLater)).resolves.toEqual(undefined);
 
@@ -325,9 +329,11 @@ describe('merge', () => {
         await assertReactionAddWins(reactionAddLater);
       });
 
-      test('no-ops with an earlier hash', async () => {
+      test('fails with a lower hash', async () => {
         await set.merge(reactionAddLater);
-        await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionAdd')
+        );
 
         await assertReactionDoesNotExist(reactionAdd);
         await assertReactionAddWins(reactionAddLater);
@@ -354,9 +360,11 @@ describe('merge', () => {
         await assertReactionDoesNotExist(reactionRemoveEarlier);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
+      test('fails with an earlier timestamp', async () => {
         await set.merge(reactionRemove);
-        await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionRemove')
+        );
 
         await assertReactionRemoveWins(reactionRemove);
         await assertReactionDoesNotExist(reactionAdd);
@@ -364,7 +372,7 @@ describe('merge', () => {
     });
 
     describe('with conflicting ReactionRemove with identical timestamps', () => {
-      test('no-ops if remove has a later hash', async () => {
+      test('fails if remove has a higher hash', async () => {
         const reactionRemoveData = await Factories.ReactionRemoveData.create({
           ...reactionRemove.data.unpack(),
           timestamp: reactionAdd.timestamp(),
@@ -378,13 +386,15 @@ describe('merge', () => {
         const reactionRemoveLater = new MessageModel(reactionRemoveMessage) as ReactionRemoveModel;
 
         await set.merge(reactionRemoveLater);
-        await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionRemove')
+        );
 
         await assertReactionRemoveWins(reactionRemoveLater);
         await assertReactionDoesNotExist(reactionAdd);
       });
 
-      test('succeeds if remove has an earlier hash', async () => {
+      test('fails if remove has a lower hash', async () => {
         const reactionRemoveData = await Factories.ReactionRemoveData.create({
           ...reactionRemove.data.unpack(),
           timestamp: reactionAdd.timestamp(),
@@ -398,10 +408,12 @@ describe('merge', () => {
         const reactionRemoveEarlier = new MessageModel(reactionRemoveMessage) as ReactionRemoveModel;
 
         await set.merge(reactionRemoveEarlier);
-        await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionRemove')
+        );
 
-        await assertReactionDoesNotExist(reactionAdd);
         await assertReactionRemoveWins(reactionRemoveEarlier);
+        await assertReactionDoesNotExist(reactionAdd);
       });
     });
   });
@@ -413,9 +425,11 @@ describe('merge', () => {
       await assertReactionRemoveWins(reactionRemove);
     });
 
-    test('succeeds once, even if merged twice', async () => {
+    test('fails if merged twice', async () => {
       await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
-      await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+      await expect(set.merge(reactionRemove)).rejects.toEqual(
+        new HubError('bad_request.duplicate', 'message has already been merged')
+      );
 
       await assertReactionRemoveWins(reactionRemove);
     });
@@ -442,9 +456,11 @@ describe('merge', () => {
         await assertReactionRemoveWins(reactionRemoveLater);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
+      test('fails with an earlier timestamp', async () => {
         await set.merge(reactionRemoveLater);
-        await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionRemove)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionRemove')
+        );
 
         await assertReactionDoesNotExist(reactionRemove);
         await assertReactionRemoveWins(reactionRemoveLater);
@@ -467,7 +483,7 @@ describe('merge', () => {
         reactionRemoveLater = new MessageModel(addMessage) as ReactionRemoveModel;
       });
 
-      test('succeeds with a later hash', async () => {
+      test('succeeds with a higher hash', async () => {
         await set.merge(reactionRemove);
         await expect(set.merge(reactionRemoveLater)).resolves.toEqual(undefined);
 
@@ -475,9 +491,11 @@ describe('merge', () => {
         await assertReactionRemoveWins(reactionRemoveLater);
       });
 
-      test('no-ops with an earlier hash', async () => {
+      test('fails with a lower hash', async () => {
         await set.merge(reactionRemoveLater);
-        await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionRemove)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionRemove')
+        );
 
         await assertReactionDoesNotExist(reactionRemove);
         await assertReactionRemoveWins(reactionRemoveLater);
@@ -492,7 +510,7 @@ describe('merge', () => {
         await assertReactionDoesNotExist(reactionAdd);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
+      test('fails with an earlier timestamp', async () => {
         const addData = await Factories.ReactionAddData.create({
           ...reactionRemove.data.unpack(),
           timestamp: reactionRemove.timestamp() + 1,
@@ -503,14 +521,16 @@ describe('merge', () => {
         });
         const reactionAddLater = new MessageModel(addMessage) as ReactionAddModel;
         await set.merge(reactionAddLater);
-        await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionRemove)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionAdd')
+        );
         await assertReactionAddWins(reactionAddLater);
         await assertReactionDoesNotExist(reactionRemove);
       });
     });
 
     describe('with conflicting ReactionAdd with identical timestamps', () => {
-      test('succeeds with an earlier hash', async () => {
+      test('succeeds with a lower hash', async () => {
         const addData = await Factories.ReactionAddData.create({
           ...reactionRemove.data.unpack(),
           type: MessageType.ReactionAdd,
@@ -529,7 +549,7 @@ describe('merge', () => {
         await assertReactionRemoveWins(reactionRemove);
       });
 
-      test('succeeds with a later hash', async () => {
+      test('succeeds with a higher hash', async () => {
         const removeData = await Factories.ReactionAddData.create({
           ...reactionRemove.data.unpack(),
         });

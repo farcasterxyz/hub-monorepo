@@ -8,8 +8,15 @@ export const toTsHash = (timestamp: number, hash: Uint8Array): HubResult<Uint8Ar
   }
   const buffer = new ArrayBuffer(4 + hash.length);
   const view = new DataView(buffer);
-  view.setUint32(0, timestamp, false); // Stores timestamp as big-endian in first 4 bytes
-  const bytes = new Uint8Array(buffer);
-  bytes.set(hash, 4);
-  return ok(bytes);
+
+  // Store timestamp as big-endian in first 4 bytes
+  view.setUint32(0, timestamp, false);
+
+  // Iterate through little-endian hash, storing as big-endian in tsHash
+  for (let i = 0; i < hash.length; i++) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    view.setUint8(4 + i, hash[hash.length - 1 - i]!);
+  }
+
+  return ok(new Uint8Array(buffer));
 };

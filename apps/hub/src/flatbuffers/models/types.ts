@@ -1,4 +1,4 @@
-import * as message_generated from '@farcaster/flatbuffers';
+import * as flatbuffers from '@farcaster/flatbuffers';
 import { HubAsyncResult } from '@farcaster/utils';
 import HubStateModel from '~/flatbuffers/models/hubStateModel';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
@@ -84,27 +84,29 @@ export type UserMessagePostfix =
   | UserPostfix.UserDataMessage;
 
 export interface CastRemoveModel extends MessageModel {
-  body(): message_generated.CastRemoveBody;
+  body(): flatbuffers.CastRemoveBody;
 }
 
 export interface CastAddModel extends MessageModel {
-  body(): message_generated.CastAddBody;
+  body(): flatbuffers.CastAddBody;
 }
 
 export interface AmpAddModel extends MessageModel {
-  body(): message_generated.AmpBody;
+  body(): flatbuffers.AmpBody;
 }
 
 export interface AmpRemoveModel extends MessageModel {
-  body(): message_generated.AmpBody;
+  body(): flatbuffers.AmpBody;
 }
 
 export interface ReactionAddModel extends MessageModel {
-  body(): message_generated.ReactionBody;
+  body(): flatbuffers.ReactionBody;
+  type(): flatbuffers.MessageType.ReactionAdd;
 }
 
 export interface ReactionRemoveModel extends MessageModel {
-  body(): message_generated.ReactionBody;
+  body(): flatbuffers.ReactionBody;
+  type(): flatbuffers.MessageType.ReactionRemove;
 }
 
 /**
@@ -121,23 +123,23 @@ export interface ReactionRemoveModel extends MessageModel {
  * body.blockHash - user-reported latest ethereum block hash at time of signing
  */
 export interface VerificationAddEthAddressModel extends MessageModel {
-  body(): message_generated.VerificationAddEthAddressBody;
+  body(): flatbuffers.VerificationAddEthAddressBody;
 }
 
 export interface VerificationRemoveModel extends MessageModel {
-  body(): message_generated.VerificationRemoveBody;
+  body(): flatbuffers.VerificationRemoveBody;
 }
 
 export interface SignerAddModel extends MessageModel {
-  body(): message_generated.SignerBody;
+  body(): flatbuffers.SignerBody;
 }
 
 export interface SignerRemoveModel extends MessageModel {
-  body(): message_generated.SignerBody;
+  body(): flatbuffers.SignerBody;
 }
 
 export interface UserDataAddModel extends MessageModel {
-  body(): message_generated.UserDataBody;
+  body(): flatbuffers.UserDataBody;
 }
 
 export type StorePruneOptions = {

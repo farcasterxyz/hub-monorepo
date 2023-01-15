@@ -1,6 +1,6 @@
 import { CastId, MessageType, ReactionType } from '@farcaster/flatbuffers';
 import { bytesCompare, getFarcasterTime, HubAsyncResult, HubError } from '@farcaster/utils';
-import { ok, ResultAsync } from 'neverthrow';
+import { err, ok, ResultAsync } from 'neverthrow';
 import MessageModel, { FID_BYTES, TARGET_KEY_BYTES, TRUE_VALUE } from '~/flatbuffers/models/messageModel';
 import { isReactionAdd, isReactionRemove } from '~/flatbuffers/models/typeguards';
 import * as types from '~/flatbuffers/models/types';
@@ -368,62 +368,55 @@ class ReactionStore extends SequentialMergeStore {
 
   private async mergeAdd(message: types.ReactionAddModel): Promise<void> {
     const castId = message.body().target(new CastId());
-
     if (!castId) {
       throw new HubError('bad_request.validation_failure', 'castId was missing');
-    } else {
-      const targetKey = this.targetKeyForCastId(castId);
-      // eslint-disable-next-line prefer-const
-      let { txn, removedReactions } = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
-
-      if (!txn) return undefined; // Assume no-op if txn was not returned
-
-      // Add ops to store the message by messageKey and index the the messageKey by set and by target
-      txn = this.putReactionAddTransaction(txn, message);
-
-      await this._db.commit(txn);
-
-      // Emit store event
-      this._eventHandler.emit('mergeMessage', message);
-
-      // Emit remove events for any removed ReactionAdd messages
-      for (const removedReaction of removedReactions) {
-        this._eventHandler.emit('revokeMessage', removedReaction);
-      }
     }
+
+    const targetKey = this.targetKeyForCastId(castId);
+
+    const txnResult = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
+    if (txnResult.isErr()) {
+      throw txnResult.error;
+    }
+
+    // Add ops to store the message by messageKey and index the the messageKey by set and by target
+    const txn = this.putReactionAddTransaction(txnResult.value, message);
+
+    await this._db.commit(txn);
+
+    // Emit store event
+    this._eventHandler.emit('mergeMessage', message);
+
+    return undefined;
   }
 
   private async mergeRemove(message: types.ReactionRemoveModel): Promise<void> {
     const castId = message.body().target(new CastId());
-
     if (!castId) {
       throw new HubError('bad_request.validation_failure', 'castId was missing');
-    } else {
-      const targetKey = this.targetKeyForCastId(castId);
-      // eslint-disable-next-line prefer-const
-      let { txn, removedReactions } = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
-
-      if (!txn) return undefined; // Assume no-op if txn was not returned
-
-      // Add ops to store the message by messageKey and index the the messageKey by set
-      txn = this.putReactionRemoveTransaction(txn, message);
-
-      await this._db.commit(txn);
-
-      // Emit store event
-      this._eventHandler.emit('mergeMessage', message);
-
-      // Emit remove events for any removed ReactionAdd messages
-      for (const removedReaction of removedReactions) {
-        this._eventHandler.emit('revokeMessage', removedReaction);
-      }
     }
+    const targetKey = this.targetKeyForCastId(castId);
+
+    const txnResult = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
+    if (txnResult.isErr()) {
+      throw txnResult.error;
+    }
+
+    // Add ops to store the message by messageKey and index the the messageKey by set
+    const txn = this.putReactionRemoveTransaction(txnResult.value, message);
+
+    await this._db.commit(txn);
+
+    // Emit store event
+    this._eventHandler.emit('mergeMessage', message);
+
+    return undefined;
   }
 
   private reactionMessageCompare(
-    aType: MessageType,
+    aType: MessageType.ReactionAdd | MessageType.ReactionRemove,
     aTsHash: Uint8Array,
-    bType: MessageType,
+    bType: MessageType.ReactionAdd | MessageType.ReactionRemove,
     bTsHash: Uint8Array
   ): number {
     // Compare timestamps (first 4 bytes of tsHash) to enforce Last-Write-Wins
@@ -453,9 +446,7 @@ class ReactionStore extends SequentialMergeStore {
     txn: Transaction,
     targetKey: Uint8Array,
     message: types.ReactionAddModel | types.ReactionRemoveModel
-  ): Promise<{ txn: Transaction | undefined; removedReactions: types.ReactionAddModel[] }> {
-    const removedReactions = [];
-
+  ): HubAsyncResult<Transaction> {
     // Checks if there is a remove timestamp hash for this reaction
     const reactionRemoveTsHash = await ResultAsync.fromPromise(
       this._db.get(ReactionStore.reactionRemovesKey(message.fid(), message.body().type(), targetKey)),
@@ -463,16 +454,16 @@ class ReactionStore extends SequentialMergeStore {
     );
 
     if (reactionRemoveTsHash.isOk()) {
-      if (
-        this.reactionMessageCompare(
-          MessageType.ReactionRemove,
-          reactionRemoveTsHash.value,
-          message.type(),
-          message.tsHash()
-        ) >= 0
-      ) {
-        // If the existing remove has the same or higher order than the new message, no-op
-        return { txn: undefined, removedReactions: [] };
+      const removeCompare = this.reactionMessageCompare(
+        MessageType.ReactionRemove,
+        new Uint8Array(reactionRemoveTsHash.value),
+        message.type(),
+        message.tsHash()
+      );
+      if (removeCompare > 0) {
+        return err(new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionRemove'));
+      } else if (removeCompare === 0) {
+        return err(new HubError('bad_request.duplicate', 'message has already been merged'));
       } else {
         // If the existing remove has a lower order than the new message, retrieve the full
         // ReactionRemove message and delete it as part of the RocksDB transaction
@@ -483,7 +474,6 @@ class ReactionStore extends SequentialMergeStore {
           reactionRemoveTsHash.value
         );
         txn = this.deleteReactionRemoveTransaction(txn, existingRemove);
-        removedReactions.push(existingRemove);
       }
     }
 
@@ -494,17 +484,16 @@ class ReactionStore extends SequentialMergeStore {
     );
 
     if (reactionAddTsHash.isOk()) {
-      if (
-        this.reactionMessageCompare(
-          // TODO: this was set to FollowAdd and did not break tests
-          MessageType.ReactionAdd,
-          reactionAddTsHash.value,
-          message.type(),
-          message.tsHash()
-        ) >= 0
-      ) {
-        // If the existing add has the same or higher order than the new message, no-op
-        return { txn: undefined, removedReactions: [] };
+      const addCompare = this.reactionMessageCompare(
+        MessageType.ReactionAdd,
+        new Uint8Array(reactionAddTsHash.value),
+        message.type(),
+        message.tsHash()
+      );
+      if (addCompare > 0) {
+        return err(new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionAdd'));
+      } else if (addCompare === 0) {
+        return err(new HubError('bad_request.duplicate', 'message has already been merged'));
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // ReactionAdd message and delete it as part of the RocksDB transaction
@@ -514,12 +503,11 @@ class ReactionStore extends SequentialMergeStore {
           types.UserPostfix.ReactionMessage,
           reactionAddTsHash.value
         );
-        removedReactions.push(existingAdd);
         txn = this.deleteReactionAddTransaction(txn, existingAdd);
       }
     }
 
-    return { txn, removedReactions };
+    return ok(txn);
   }
 
   /* Builds a RocksDB transaction to insert a ReactionAdd message and construct its indices */

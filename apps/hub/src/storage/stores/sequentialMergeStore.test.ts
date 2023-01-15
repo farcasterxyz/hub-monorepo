@@ -1,5 +1,5 @@
 import * as flatbuffers from '@farcaster/flatbuffers';
-import { Factories, toTsHash } from '@farcaster/utils';
+import { Factories, HubResult, toTsHash } from '@farcaster/utils';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { seedSigner } from '~/storage/engine/seed';
@@ -10,6 +10,14 @@ const engine = new Engine(db, flatbuffers.FarcasterNetwork.Testnet);
 
 const fid = Factories.FID.build();
 const signer = Factories.Ed25519Signer.build();
+
+const assertNoTimeouts = (results: HubResult<void>[]) => {
+  expect(
+    results.every(
+      (result) => result.isOk() || (result.isErr() && result.error.errCode !== 'unavailable.storage_failure')
+    )
+  ).toBeTruthy();
+};
 
 describe('mergeSequential', () => {
   beforeEach(async () => {
@@ -44,7 +52,7 @@ describe('mergeSequential', () => {
     const promises = messages.map((message) => engine.mergeMessage(new MessageModel(message)));
 
     const results = await Promise.all(promises);
-    expect(results.every((result) => result.isOk())).toBeTruthy();
+    assertNoTimeouts(results);
 
     const allMessages = await engine.getAllCastMessagesByFid(fid);
     expect(allMessages._unsafeUnwrap().length).toEqual(1);
@@ -76,7 +84,7 @@ describe('mergeSequential', () => {
     const promises = messages.map((message) => engine.mergeMessage(new MessageModel(message)));
 
     const results = await Promise.all(promises);
-    expect(results.every((result) => result.isOk())).toBeTruthy();
+    assertNoTimeouts(results);
 
     const allMessages = await engine.getAllReactionMessagesByFid(fid);
     expect(allMessages._unsafeUnwrap().length).toEqual(1);

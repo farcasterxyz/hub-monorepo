@@ -1,5 +1,5 @@
 import * as flatbuffers from '@farcaster/flatbuffers';
-import { Factories, toTsHash } from '@farcaster/utils';
+import { Factories, HubResult, toTsHash } from '@farcaster/utils';
 import SyncEngine from '~/network/sync/syncEngine';
 import HubRpcClient from '~/rpc/client';
 import Server from '~/rpc/server';
@@ -36,6 +36,14 @@ afterAll(async () => {
 const fid = Factories.FID.build();
 const signer1 = Factories.Ed25519Signer.build();
 const signer2 = Factories.Ed25519Signer.build();
+
+const assertNoTimeouts = (results: HubResult<flatbuffers.Message>[]) => {
+  expect(
+    results.every(
+      (result) => result.isOk() || (result.isErr() && result.error.errCode !== 'unavailable.storage_failure')
+    )
+  ).toBeTruthy();
+};
 
 describe('submitMessage', () => {
   beforeEach(async () => {
@@ -92,8 +100,8 @@ describe('submitMessage', () => {
       client3.submitMessage(like2),
       client3.submitMessage(removeLike2),
     ]);
+    assertNoTimeouts(results);
 
-    expect(results.every((result) => result.isOk())).toBeTruthy();
     const messages = await engine.getAllReactionMessagesByFid(fid);
     expect(messages._unsafeUnwrap().length).toEqual(1);
   });
@@ -130,7 +138,8 @@ describe('submitMessage', () => {
       client3.submitMessage(cast2),
       client3.submitMessage(removeCast1),
     ]);
-    expect(results.every((result) => result.isOk())).toBeTruthy();
+    assertNoTimeouts(results);
+
     const messages = await engine.getAllCastMessagesByFid(fid);
     expect(messages._unsafeUnwrap().length).toEqual(1);
   });

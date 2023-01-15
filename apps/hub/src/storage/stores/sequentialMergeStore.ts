@@ -48,10 +48,10 @@ abstract class SequentialMergeStore extends TypedEmitter<MergeProcessingEvents> 
 
     // Return promise that resolves once the merge is processed
     return new Promise((resolve) => {
-      const listenForMerge = (mergedId: string) => {
+      const listenForMerge = (mergedId: string, mergeResult?: HubResult<void>) => {
         if (mergedId === mergeId) {
           clearTimeout(timeoutId);
-          resolve(ok(undefined));
+          resolve(mergeResult ?? ok(undefined));
         }
       };
       this.on('processed', listenForMerge);
@@ -60,6 +60,7 @@ abstract class SequentialMergeStore extends TypedEmitter<MergeProcessingEvents> 
         // Remove listener and remove message from store, which will prevent it from being processed
         this.off('processed', listenForMerge);
         this._mergeIdsStore.delete(mergeId);
+        resolve(err(new HubError('unavailable.storage_failure', 'mergeSequential timed out')));
       }, MERGE_TIMEOUT);
     });
   }
