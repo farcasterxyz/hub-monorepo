@@ -1,6 +1,6 @@
 import { MessageType } from '@farcaster/flatbuffers';
 import { bytesCompare, HubAsyncResult, HubError } from '@farcaster/utils';
-import { ok, ResultAsync } from 'neverthrow';
+import { err, ok, ResultAsync } from 'neverthrow';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { isSignerAdd, isSignerRemove } from '~/flatbuffers/models/typeguards';
@@ -179,7 +179,6 @@ class SignerStore extends SequentialMergeStore {
    * <RootPrefix:User><fid><UserPostfix:IdRegistryEvent>
    */
   async mergeIdRegistryEvent(event: IdRegistryEventModel): Promise<void> {
-    // TODO: emit signer change events as a result of ID Registry events
     const existingEvent = await ResultAsync.fromPromise(this.getCustodyEvent(event.fid()), () => undefined);
     if (existingEvent.isOk() && eventCompare(existingEvent.value, event) >= 0) {
       return undefined;
@@ -325,10 +324,14 @@ class SignerStore extends SequentialMergeStore {
   /* -------------------------------------------------------------------------- */
 
   private async mergeAdd(message: types.SignerAddModel): Promise<void> {
-    let txn = await this.resolveMergeConflicts(this._db.transaction(), message);
+    const mergeConflicts = await this.getMergeConflicts(message);
 
-    // No-op if resolveMergeConflicts did not return a transaction
-    if (!txn) return undefined;
+    if (mergeConflicts.isErr()) {
+      throw mergeConflicts.error;
+    }
+
+    // Create rocksdb transaction to delete the merge conflicts
+    let txn = this.deleteManyTransaction(this._db.transaction(), mergeConflicts.value);
 
     // Add putSignerAdd operations to the RocksDB transaction
     txn = this.putSignerAddTransaction(txn, message);
@@ -337,14 +340,18 @@ class SignerStore extends SequentialMergeStore {
     await this._db.commit(txn);
 
     // Emit store event
-    this._eventHandler.emit('mergeMessage', message);
+    this._eventHandler.emit('mergeMessage', message, mergeConflicts.value);
   }
 
   private async mergeRemove(message: types.SignerRemoveModel): Promise<void> {
-    let txn = await this.resolveMergeConflicts(this._db.transaction(), message);
+    const mergeConflicts = await this.getMergeConflicts(message);
 
-    // No-op if resolveMergeConflicts did not return a transaction
-    if (!txn) return undefined;
+    if (mergeConflicts.isErr()) {
+      throw mergeConflicts.error;
+    }
+
+    // Create rocksdb transaction to delete the merge conflicts
+    let txn = this.deleteManyTransaction(this._db.transaction(), mergeConflicts.value);
 
     // Add putSignerRemove operations to the RocksDB transaction
     txn = this.putSignerRemoveTransaction(txn, message);
@@ -353,13 +360,13 @@ class SignerStore extends SequentialMergeStore {
     await this._db.commit(txn);
 
     // Emit store event
-    this._eventHandler.emit('mergeMessage', message);
+    this._eventHandler.emit('mergeMessage', message, mergeConflicts.value);
   }
 
   private signerMessageCompare(
-    aType: MessageType,
+    aType: MessageType.SignerAdd | MessageType.SignerRemove,
     aTsHash: Uint8Array,
-    bType: MessageType,
+    bType: MessageType.SignerAdd | MessageType.SignerRemove,
     bTsHash: Uint8Array
   ): number {
     // Compare timestamps (first 4 bytes of tsHash) to enforce Last-Write-Wins
@@ -383,27 +390,33 @@ class SignerStore extends SequentialMergeStore {
    *
    * @returns a RocksDB transaction if keys must be added or removed, undefined otherwise
    */
-  private async resolveMergeConflicts(
-    txn: Transaction,
+  private async getMergeConflicts(
     message: types.SignerAddModel | types.SignerRemoveModel
-  ): Promise<Transaction | undefined> {
+  ): HubAsyncResult<(types.SignerAddModel | types.SignerRemoveModel)[]> {
+    const conflicts: (types.SignerAddModel | types.SignerRemoveModel)[] = [];
+
     const signer = message.body().signerArray();
     if (!signer) {
-      throw new HubError('bad_request.validation_failure', 'signer was missing');
+      return err(new HubError('bad_request.validation_failure', 'signer is missing'));
     }
 
-    // Look up the remove tsHash for this custody address and signer
+    // Look up the remove tsHash for this signer
     const removeTsHash = await ResultAsync.fromPromise(
       this._db.get(SignerStore.signerRemovesKey(message.fid(), signer)),
       () => undefined
     );
 
     if (removeTsHash.isOk()) {
-      if (
-        this.signerMessageCompare(MessageType.SignerRemove, removeTsHash.value, message.type(), message.tsHash()) >= 0
-      ) {
-        // If the existing remove has the same or higher order than the new message, no-op
-        return undefined;
+      const removeCompare = this.signerMessageCompare(
+        MessageType.SignerRemove,
+        removeTsHash.value,
+        message.type(),
+        message.tsHash()
+      );
+      if (removeCompare > 0) {
+        return err(new HubError('bad_request.conflict', 'message conflicts with a more recent SignerRemove'));
+      } else if (removeCompare === 0) {
+        return err(new HubError('bad_request.duplicate', 'message has already been merged'));
       } else {
         // If the existing remove has a lower order than the new message, retrieve the full
         // SignerRemove message and delete it as part of the RocksDB transaction
@@ -413,7 +426,7 @@ class SignerStore extends SequentialMergeStore {
           types.UserPostfix.SignerMessage,
           removeTsHash.value
         );
-        txn = this.deleteSignerRemoveTransaction(txn, existingRemove);
+        conflicts.push(existingRemove);
       }
     }
 
@@ -424,9 +437,16 @@ class SignerStore extends SequentialMergeStore {
     );
 
     if (addTsHash.isOk()) {
-      if (this.signerMessageCompare(MessageType.SignerAdd, addTsHash.value, message.type(), message.tsHash()) >= 0) {
-        // If the existing add has the same or higher order than the new message, no-op
-        return undefined;
+      const addCompare = this.signerMessageCompare(
+        MessageType.SignerAdd,
+        addTsHash.value,
+        message.type(),
+        message.tsHash()
+      );
+      if (addCompare > 0) {
+        return err(new HubError('bad_request.conflict', 'message conflicts with a more recent SignerAdd'));
+      } else if (addCompare === 0) {
+        return err(new HubError('bad_request.duplicate', 'message has already been merged'));
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // SignerAdd message and delete it as part of the RocksDB transaction
@@ -436,10 +456,24 @@ class SignerStore extends SequentialMergeStore {
           types.UserPostfix.SignerMessage,
           addTsHash.value
         );
-        txn = this.deleteSignerAddTransaction(txn, existingAdd);
+        conflicts.push(existingAdd);
       }
     }
 
+    return ok(conflicts);
+  }
+
+  private deleteManyTransaction(
+    txn: Transaction,
+    messages: (types.SignerAddModel | types.SignerRemoveModel)[]
+  ): Transaction {
+    for (const message of messages) {
+      if (isSignerAdd(message)) {
+        txn = this.deleteSignerAddTransaction(txn, message);
+      } else if (isSignerRemove(message)) {
+        txn = this.deleteSignerRemoveTransaction(txn, message);
+      }
+    }
     return txn;
   }
 
