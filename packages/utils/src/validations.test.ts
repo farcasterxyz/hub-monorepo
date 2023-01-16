@@ -663,7 +663,12 @@ describe('validateMessageData', () => {
   });
 });
 
-const testHexValidation = (validateHexFn: (hex: string) => HubResult<string>, validHex: string, length?: number) => {
+const testHexValidation = (
+  validateHexFn: (hex: string) => HubResult<string>,
+  validHex: string,
+  length?: number,
+  label?: string
+) => {
   test('succeeds with valid string', async () => {
     const result = validateHexFn(validHex);
     expect(result).toEqual(ok(validHex));
@@ -673,7 +678,7 @@ const testHexValidation = (validateHexFn: (hex: string) => HubResult<string>, va
     const invalidHex = validHex.substring(0, validHex.length - 1) + 'G';
     const result = validateHexFn(invalidHex);
     expect(result).toEqual(
-      err(new HubError('bad_request.validation_failure', `string "${invalidHex}" is not valid hex`))
+      err(new HubError('bad_request.validation_failure', `${label} "${invalidHex}" is not valid hex`))
     );
   });
 
@@ -681,39 +686,59 @@ const testHexValidation = (validateHexFn: (hex: string) => HubResult<string>, va
     const invalidHex = validHex.substring(0, validHex.length - 1);
     const result = validateHexFn(invalidHex);
     expect(result).toEqual(
-      err(new HubError('bad_request.validation_failure', `hex string "${invalidHex} is not ${length} characters`))
+      err(new HubError('bad_request.validation_failure', `${label} "${invalidHex} is not ${length} characters`))
     );
   });
 };
 
 describe('validateBlockHashHex', () => {
-  testHexValidation(validations.validateBlockHashHex, Factories.BlockHashHex.build(), 64);
+  testHexValidation(validations.validateBlockHashHex, Factories.BlockHashHex.build(), 64, 'block hash');
 });
 
 describe('validateTransactionHashHex', () => {
-  testHexValidation(validations.validateTransactionHashHex, Factories.TransactionHashHex.build(), 64);
+  testHexValidation(
+    validations.validateTransactionHashHex,
+    Factories.TransactionHashHex.build(),
+    64,
+    'transaction hash'
+  );
 });
 
 describe('validateEip712SignatureHex', () => {
-  testHexValidation(validations.validateEip712SignatureHex, Factories.Eip712SignatureHex.build(), 130);
+  testHexValidation(
+    validations.validateEip712SignatureHex,
+    Factories.Eip712SignatureHex.build(),
+    130,
+    'EIP-712 signature'
+  );
 });
 
 describe('validateEd25519SignatureHex', () => {
-  testHexValidation(validations.validateEd25519ignatureHex, Factories.Ed25519SignatureHex.build(), 128);
+  testHexValidation(
+    validations.validateEd25519ignatureHex,
+    Factories.Ed25519SignatureHex.build(),
+    128,
+    'Ed25519 signature'
+  );
 });
 
 describe('validateMessageHashHex', () => {
-  testHexValidation(validations.validateMessageHashHex, Factories.MessageHashHex.build(), 32);
+  testHexValidation(validations.validateMessageHashHex, Factories.MessageHashHex.build(), 32, 'message hash');
 });
 
 describe('validateEthAddressHex', () => {
-  testHexValidation(validations.validateEthAddressHex, Factories.EthAddressHex.build(), 40);
+  testHexValidation(validations.validateEthAddressHex, Factories.EthAddressHex.build(), 40, 'eth address');
 });
 
 describe('validateEd25519PublicKeyHex', () => {
-  testHexValidation(validations.validateEd25519PublicKeyHex, Factories.Ed25519PublicKeyHex.build(), 64);
+  testHexValidation(
+    validations.validateEd25519PublicKeyHex,
+    Factories.Ed25519PublicKeyHex.build(),
+    64,
+    'Ed25519 public key'
+  );
 });
 
 describe('validateTsHashHex', () => {
-  testHexValidation(validations.validateTsHashHex, Factories.TsHashHex.build(), 40);
+  testHexValidation(validations.validateTsHashHex, Factories.TsHashHex.build(), 40, 'ts-hash');
 });

@@ -480,42 +480,42 @@ export const validateFname = <T extends string | Uint8Array>(fnameP?: T | null):
   return ok(fnameP);
 };
 
-const buildValidateHex = (length?: number) => (hex: string) =>
-  validateHexString(hex).andThen(() => {
+const buildValidateHex = (length?: number, label?: string) => (hex: string) =>
+  validateHexString(hex, label).andThen(() => {
     if (length) {
-      return validateHexLength(hex, length);
+      return validateHexLength(hex, length, label);
     } else {
       return ok(hex);
     }
   });
 
-const validateHexString = (hex: string): HubResult<string> => {
+const validateHexString = (hex: string, label = 'hex string'): HubResult<string> => {
   const hasValidChars = HEX_REGEX.test(hex);
   if (hasValidChars === false) {
-    return err(new HubError('bad_request.validation_failure', `string "${hex}" is not valid hex`));
+    return err(new HubError('bad_request.validation_failure', `${label} "${hex}" is not valid hex`));
   }
 
   return ok(hex);
 };
 
-const validateHexLength = (hex: string, length: number): HubResult<string> => {
+const validateHexLength = (hex: string, length: number, label = 'hex string'): HubResult<string> => {
   let value = hex;
   if (value.substring(0, 2) === '0x') {
     value = value.substring(2);
   }
 
   if (value.length !== length) {
-    return err(new HubError('bad_request.validation_failure', `hex string "${hex} is not ${length} characters`));
+    return err(new HubError('bad_request.validation_failure', `${label} "${hex} is not ${length} characters`));
   }
 
   return ok(hex);
 };
 
-export const validateBlockHashHex = buildValidateHex(64);
-export const validateTransactionHashHex = buildValidateHex(64);
-export const validateEip712SignatureHex = buildValidateHex(130);
-export const validateEd25519ignatureHex = buildValidateHex(128);
-export const validateMessageHashHex = buildValidateHex(32);
-export const validateEthAddressHex = buildValidateHex(40);
-export const validateEd25519PublicKeyHex = buildValidateHex(64);
-export const validateTsHashHex = buildValidateHex(40);
+export const validateBlockHashHex = buildValidateHex(64, 'block hash');
+export const validateTransactionHashHex = buildValidateHex(64, 'transaction hash');
+export const validateEip712SignatureHex = buildValidateHex(130, 'EIP-712 signature');
+export const validateEd25519ignatureHex = buildValidateHex(128, 'Ed25519 signature');
+export const validateMessageHashHex = buildValidateHex(32, 'message hash');
+export const validateEthAddressHex = buildValidateHex(40, 'eth address');
+export const validateEd25519PublicKeyHex = buildValidateHex(64, 'Ed25519 public key');
+export const validateTsHashHex = buildValidateHex(40, 'ts-hash');
