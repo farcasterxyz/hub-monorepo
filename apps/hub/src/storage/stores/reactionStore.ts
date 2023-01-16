@@ -374,18 +374,21 @@ class ReactionStore extends SequentialMergeStore {
 
     const targetKey = this.targetKeyForCastId(castId);
 
-    const txnResult = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
-    if (txnResult.isErr()) {
-      throw txnResult.error;
+    const mergeConflicts = await this.getMergeConflicts(targetKey, message);
+    if (mergeConflicts.isErr()) {
+      throw mergeConflicts.error;
     }
 
+    // Create rocksdb transaction to delete the merge conflicts
+    let txn = this.deleteConflictsTransaction(this._db.transaction(), mergeConflicts.value);
+
     // Add ops to store the message by messageKey and index the the messageKey by set and by target
-    const txn = this.putReactionAddTransaction(txnResult.value, message);
+    txn = this.putReactionAddTransaction(txn, message);
 
     await this._db.commit(txn);
 
     // Emit store event
-    this._eventHandler.emit('mergeMessage', message);
+    this._eventHandler.emit('mergeMessage', message, mergeConflicts.value);
 
     return undefined;
   }
@@ -395,20 +398,25 @@ class ReactionStore extends SequentialMergeStore {
     if (!castId) {
       throw new HubError('bad_request.validation_failure', 'castId was missing');
     }
+
     const targetKey = this.targetKeyForCastId(castId);
 
-    const txnResult = await this.resolveMergeConflicts(this._db.transaction(), targetKey, message);
-    if (txnResult.isErr()) {
-      throw txnResult.error;
+    const mergeConflicts = await this.getMergeConflicts(targetKey, message);
+
+    if (mergeConflicts.isErr()) {
+      throw mergeConflicts.error;
     }
 
+    // Create rocksdb transaction to delete the merge conflicts
+    let txn = this.deleteConflictsTransaction(this._db.transaction(), mergeConflicts.value);
+
     // Add ops to store the message by messageKey and index the the messageKey by set
-    const txn = this.putReactionRemoveTransaction(txnResult.value, message);
+    txn = this.putReactionRemoveTransaction(txn, message);
 
     await this._db.commit(txn);
 
     // Emit store event
-    this._eventHandler.emit('mergeMessage', message);
+    this._eventHandler.emit('mergeMessage', message, mergeConflicts.value);
 
     return undefined;
   }
@@ -442,11 +450,12 @@ class ReactionStore extends SequentialMergeStore {
    *
    * @returns a RocksDB transaction if keys must be added or removed, undefined otherwise
    */
-  private async resolveMergeConflicts(
-    txn: Transaction,
+  private async getMergeConflicts(
     targetKey: Uint8Array,
     message: types.ReactionAddModel | types.ReactionRemoveModel
-  ): HubAsyncResult<Transaction> {
+  ): HubAsyncResult<(types.ReactionAddModel | types.ReactionRemoveModel)[]> {
+    const conflicts: (types.ReactionAddModel | types.ReactionRemoveModel)[] = [];
+
     // Checks if there is a remove timestamp hash for this reaction
     const reactionRemoveTsHash = await ResultAsync.fromPromise(
       this._db.get(ReactionStore.reactionRemovesKey(message.fid(), message.body().type(), targetKey)),
@@ -473,7 +482,7 @@ class ReactionStore extends SequentialMergeStore {
           types.UserPostfix.ReactionMessage,
           reactionRemoveTsHash.value
         );
-        txn = this.deleteReactionRemoveTransaction(txn, existingRemove);
+        conflicts.push(existingRemove);
       }
     }
 
@@ -503,11 +512,25 @@ class ReactionStore extends SequentialMergeStore {
           types.UserPostfix.ReactionMessage,
           reactionAddTsHash.value
         );
-        txn = this.deleteReactionAddTransaction(txn, existingAdd);
+        conflicts.push(existingAdd);
       }
     }
 
-    return ok(txn);
+    return ok(conflicts);
+  }
+
+  private deleteConflictsTransaction(
+    txn: Transaction,
+    conflicts: (types.ReactionAddModel | types.ReactionRemoveModel)[]
+  ): Transaction {
+    for (const message of conflicts) {
+      if (isReactionAdd(message)) {
+        txn = this.deleteReactionAddTransaction(txn, message);
+      } else if (isReactionRemove(message)) {
+        txn = this.deleteReactionRemoveTransaction(txn, message);
+      }
+    }
+    return txn;
   }
 
   /* Builds a RocksDB transaction to insert a ReactionAdd message and construct its indices */

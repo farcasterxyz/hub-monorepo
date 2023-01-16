@@ -328,9 +328,9 @@ class CastStore extends SequentialMergeStore {
       () => undefined
     );
 
-    // If remove tsHash exists, no-op because this cast has already been removed
+    // If remove tsHash exists, fail because this cast has already been removed
     if (castRemoveTsHash.isOk()) {
-      return undefined;
+      throw new HubError('bad_request.conflict', 'message conflicts with a CastRemove');
     }
 
     // Look up the add tsHash for this cast
@@ -341,7 +341,7 @@ class CastStore extends SequentialMergeStore {
 
     // If add tsHash exists, no-op because this cast has already been added
     if (castAddTsHash.isOk()) {
-      return undefined;
+      throw new HubError('bad_request.duplicate', 'message has already been merged');
     }
 
     // Add putCastAdd operations to the RocksDB transaction
@@ -352,6 +352,8 @@ class CastStore extends SequentialMergeStore {
 
     // Emit store event
     this._eventHandler.emit('mergeMessage', message);
+
+    return undefined;
   }
 
   private async mergeRemove(message: CastRemoveModel): Promise<void> {
