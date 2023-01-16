@@ -1,7 +1,7 @@
 import { SignatureScheme } from '@farcaster/flatbuffers';
 import { bytesToHexString } from '../bytes';
 import { ed25519 } from '../crypto';
-import { HubAsyncResult } from '../errors';
+import { HubAsyncResult, HubResult } from '../errors';
 import { Signer } from './signer';
 
 export class Ed25519Signer implements Signer {
@@ -13,15 +13,17 @@ export class Ed25519Signer implements Signer {
 
   private readonly _privateKey: Uint8Array;
 
-  constructor(privateKey: Uint8Array) {
-    this._privateKey = privateKey;
-    this.signerKey = ed25519.getPublicKeySync(privateKey);
+  public static fromPrivateKey(privateKey: Uint8Array): HubResult<Ed25519Signer> {
+    const signerKey = ed25519.getPublicKeySync(privateKey);
+    return bytesToHexString(signerKey, { size: 64 }).map((signerKeyHex) => {
+      return new this(privateKey, signerKey, signerKeyHex);
+    });
+  }
 
-    const publicKeyHex = bytesToHexString(this.signerKey, { size: 64 });
-    if (publicKeyHex.isErr()) {
-      throw publicKeyHex.error;
-    }
-    this.signerKeyHex = publicKeyHex.value;
+  constructor(privateKey: Uint8Array, signerKey: Uint8Array, signerKeyHex: string) {
+    this._privateKey = privateKey;
+    this.signerKey = signerKey;
+    this.signerKeyHex = signerKeyHex;
   }
 
   /** generates 256-bit signature from an EdDSA key pair */

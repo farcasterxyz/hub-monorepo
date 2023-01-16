@@ -12,9 +12,9 @@ const timestamp = Date.now();
 const network = flatbuffers.FarcasterNetwork.Testnet;
 const tsHash = bytesToHexString(Factories.TsHash.build())._unsafeUnwrap();
 
-const ed25519Signer = new Ed25519Signer(Factories.Ed25519PrivateKey.build());
+const ed25519Signer = Ed25519Signer.fromPrivateKey(Factories.Ed25519PrivateKey.build())._unsafeUnwrap();
 const wallet = new ethers.Wallet(ethers.utils.randomBytes(32));
-const eip712Signer = new Eip712Signer(wallet, wallet.address);
+const eip712Signer = Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwrap();
 
 describe('makeCastAddData', () => {
   test('succeeds', async () => {

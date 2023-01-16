@@ -61,8 +61,7 @@ export const bytesIncrement = (inputBytes: Uint8Array, options: BytesOptions = {
   }
 };
 
-// TODO: support both big and little endian
-export const bytesDecrement = (inputBytes: Uint8Array, options: BytesOptions = {}): Uint8Array => {
+export const bytesDecrement = (inputBytes: Uint8Array, options: BytesOptions = {}): HubResult<Uint8Array> => {
   const bytes = new Uint8Array(inputBytes); // avoid mutating input
 
   const endianness: Endianness = options.endianness ?? 'little';
@@ -73,10 +72,10 @@ export const bytesDecrement = (inputBytes: Uint8Array, options: BytesOptions = {
     const pos = endianness === 'little' ? bytes.length - 1 - i : i;
     if ((bytes[pos] as number) > 0) {
       bytes[pos] = (bytes[pos] as number) - 1;
-      return bytes;
+      return ok(bytes);
     } else {
       if (i === 0) {
-        throw new HubError('bad_request.invalid_param', 'Cannot decrement zero');
+        return err(new HubError('bad_request.invalid_param', 'Cannot decrement zero'));
       }
 
       bytes[pos] = 255;
@@ -84,7 +83,7 @@ export const bytesDecrement = (inputBytes: Uint8Array, options: BytesOptions = {
     i = i - 1;
   }
 
-  return bytes;
+  return ok(bytes);
 };
 
 export const toByteBuffer = (buffer: Buffer): ByteBuffer => {

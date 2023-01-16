@@ -285,7 +285,7 @@ describe('merge', () => {
 
         const removeMessage = await Factories.Message.create({
           data: Array.from(removeData.bb?.bytes() ?? []),
-          hash: Array.from(bytesDecrement(verificationAdd.hash().slice())),
+          hash: Array.from(bytesDecrement(verificationAdd.hash().slice())._unsafeUnwrap()),
         });
 
         const verificationRemoveEarlier = new MessageModel(removeMessage) as VerificationRemoveModel;
@@ -452,7 +452,7 @@ describe('merge', () => {
 
         const addMessage = await Factories.Message.create({
           data: Array.from(addData.bb?.bytes() ?? []),
-          hash: Array.from(bytesDecrement(verificationRemove.hash().slice())),
+          hash: Array.from(bytesDecrement(verificationRemove.hash().slice())._unsafeUnwrap()),
         });
 
         const verificationAddHigherHash = new MessageModel(addMessage) as VerificationRemoveModel;
@@ -524,7 +524,7 @@ describe('pruneMessages', () => {
   };
 
   beforeAll(async () => {
-    const time = getFarcasterTime() - 10;
+    const time = getFarcasterTime()._unsafeUnwrap() - 10;
     add1 = await generateAddWithTimestamp(fid, time + 1);
     add2 = await generateAddWithTimestamp(fid, time + 2);
     add3 = await generateAddWithTimestamp(fid, time + 3);

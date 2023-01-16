@@ -20,15 +20,15 @@ export class Eip712Signer implements Signer {
 
   private readonly _typedDataSigner: TypedDataSigner;
 
-  constructor(typedDataSigner: TypedDataSigner, address: string) {
+  public static fromSigner(typedDataSigner: TypedDataSigner, address: string) {
+    const signerKeyHex = address.toLowerCase();
+    return hexStringToBytes(signerKeyHex).map((signerKey) => new this(typedDataSigner, address, signerKey));
+  }
+
+  constructor(typedDataSigner: TypedDataSigner, address: string, signerKey: Uint8Array) {
     this._typedDataSigner = typedDataSigner;
     this.signerKeyHex = address.toLowerCase();
-
-    const signerKey = hexStringToBytes(this.signerKeyHex);
-    if (signerKey.isErr()) {
-      throw signerKey.error;
-    }
-    this.signerKey = signerKey.value;
+    this.signerKey = signerKey;
   }
 
   /** generates 256-bit signature from an Ethereum address */

@@ -14,12 +14,12 @@ const client = new Client('<insert hub address and port>');
 // Define default fid and network for created messages
 const dataOptions = { fid: 15, network: types.FarcasterNetwork.Testnet };
 
-// Create EIP-712 signer from ethers wallet (can be ethers.Wallet or ethers.JsonRpcSigner)
+// Create EIP-712 signer from ethers wallet (can be ethers.Wallet or ethers.JsonRpcSigner) (avoid _unsafeWrap in production)
 const custodyWallet = ethers.Wallet.fromMnemonic('<custody address mnemonic>');
-const eip712Signer = new Eip712Signer(custodyWallet, custodyWallet.address);
+const eip712Signer = Eip712Signer.fromSigner(custodyWallet, custodyWallet.address)._unsafeUnwrap();
 
-// Create Ed25519 signer (i.e. a delegate signer)
-const ed25519Signer = new Ed25519Signer('<ed25519 private key>');
+// Create Ed25519 signer (i.e. a delegate signer) (avoid _unsafeWrap in production)
+const ed25519Signer = Ed25519Signer.fromPrivateKey('<ed25519 private key>')._unsafeUnwrap();
 
 // Make SignerAdd message, signed by the EIP-712 signer
 const signerAdd = await makeSignerAdd({ signer: ed25519Signer.signerKeyHex }, dataOptions, eip712Signer);

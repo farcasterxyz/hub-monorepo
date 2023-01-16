@@ -197,8 +197,13 @@ class AmpStore extends SequentialMergeStore {
     // Calculate the number of messages that need to be pruned, based on the store's size limit
     let sizeToPrune = count - this._pruneSizeLimit;
 
+    const farcasterTime = getFarcasterTime();
+    if (farcasterTime.isErr()) {
+      return err(farcasterTime.error);
+    }
+
     // Calculate the timestamp cut-off to prune
-    const timestampToPrune = getFarcasterTime() - this._pruneTimeLimit;
+    const timestampToPrune = farcasterTime.value - this._pruneTimeLimit;
 
     // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
     const messageToPrune: (AmpAddModel | AmpRemoveModel)[] = [];

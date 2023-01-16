@@ -208,7 +208,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     this.pruneMessagesJobScheduler.start(this.options.pruneMessagesJobCron);
   }
 
-  getContactInfoContent(): ContactInfoContent {
+  getContactInfoContent(): HubResult<ContactInfoContent> {
     const nodeMultiAddr = this.gossipAddresses[0];
     const family = nodeMultiAddr?.nodeAddress().family;
     const announceIp = this.options.announceIp ?? nodeMultiAddr?.nodeAddress().address;
@@ -218,17 +218,18 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     const gossipAddressContactInfo = new GossipAddressInfoT(announceIp, family, gossipPort);
     const rpcAddressContactInfo = new GossipAddressInfoT(announceIp, family, rpcPort);
 
-    const snapshot = this.syncEngine.snapshot;
-    const contactInfoT = new ContactInfoContentT(
-      gossipAddressContactInfo,
-      rpcAddressContactInfo,
-      snapshot.excludedHashes,
-      BigInt(snapshot.numMessages)
-    );
+    return this.syncEngine.snapshot.map((snapshot) => {
+      const contactInfoT = new ContactInfoContentT(
+        gossipAddressContactInfo,
+        rpcAddressContactInfo,
+        snapshot.excludedHashes,
+        BigInt(snapshot.numMessages)
+      );
 
-    const builder = new Builder(1);
-    builder.finish(contactInfoT.pack(builder));
-    return ContactInfoContent.getRootAsContactInfoContent(new ByteBuffer(builder.asUint8Array()));
+      const builder = new Builder(1);
+      builder.finish(contactInfoT.pack(builder));
+      return ContactInfoContent.getRootAsContactInfoContent(new ByteBuffer(builder.asUint8Array()));
+    });
   }
 
   /** Stop the GossipNode and RPC Server */
@@ -365,7 +366,14 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     }
 
     const peerState = peerStateResult.value;
-    if (this.syncEngine.shouldSync(peerState.snapshot.excludedHashes)) {
+    const shouldSync = this.syncEngine.shouldSync(peerState.snapshot.excludedHashes);
+    if (shouldSync.isErr()) {
+      log.warn(`Failed to get shouldSync`);
+      this.emit('syncComplete', false);
+      return;
+    }
+
+    if (shouldSync.value === true) {
       log.info(`Syncing with peer`);
       await this.syncEngine.performSync(peerState.snapshot.excludedHashes, rpcClient);
     } else {
@@ -486,12 +494,17 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
       // When we connect to a new node, gossip out our contact info 1 second later.
       // The setTimeout is to ensure that we have a chance to receive the peer's info properly.
       setTimeout(async () => {
-        const contactInfo = this.getContactInfoContent();
-        log.info(
-          { rpcAddress: contactInfo.rpcAddress()?.address(), rpcPort: contactInfo.rpcAddress()?.port },
-          'gossiping contact info'
-        );
-        await this.gossipNode.gossipContactInfo(contactInfo);
+        this.getContactInfoContent()
+          .map(async (contactInfo) => {
+            log.info(
+              { rpcAddress: contactInfo.rpcAddress()?.address(), rpcPort: contactInfo.rpcAddress()?.port },
+              'gossiping contact info'
+            );
+            await this.gossipNode.gossipContactInfo(contactInfo);
+          })
+          .mapErr((error) => {
+            log.warn(error, 'failed get contact info content');
+          });
       }, 1 * 1000);
     });
 

@@ -1,5 +1,5 @@
 import { getFarcasterTime, HubError, HubResult, utf8StringToBytes } from '@farcaster/utils';
-import { err } from 'neverthrow';
+import { err, ok } from 'neverthrow';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
@@ -68,36 +68,41 @@ class SyncEngine {
   /**                                      Sync Methods                                  */
   /** ---------------------------------------------------------------------------------- */
 
-  public shouldSync(excludedHashes: string[]): boolean {
+  public shouldSync(excludedHashes: string[]): HubResult<boolean> {
     if (this._isSyncing) {
       log.debug('shouldSync: already syncing');
-      return false;
+      return ok(false);
     }
 
-    const ourSnapshot = this.snapshot;
-    const excludedHashesMatch =
-      ourSnapshot.excludedHashes.length === excludedHashes.length &&
-      // NOTE: `index` is controlled by `every` and so not at risk of object injection.
-      // eslint-disable-next-line security/detect-object-injection
-      ourSnapshot.excludedHashes.every((value, index) => value === excludedHashes[index]);
+    return this.snapshot.map((ourSnapshot) => {
+      const excludedHashesMatch =
+        ourSnapshot.excludedHashes.length === excludedHashes.length &&
+        // NOTE: `index` is controlled by `every` and so not at risk of object injection.
+        // eslint-disable-next-line security/detect-object-injection
+        ourSnapshot.excludedHashes.every((value, index) => value === excludedHashes[index]);
 
-    log.debug(`shouldSync: excluded hashes check: ${excludedHashes}`);
-    return !excludedHashesMatch;
+      log.debug(`shouldSync: excluded hashes check: ${excludedHashes}`);
+      return !excludedHashesMatch;
+    });
   }
 
   async performSync(excludedHashes: string[], rpcClient: HubRpcClient) {
     try {
       this._isSyncing = true;
-      const ourSnapshot = this.snapshot;
+      await this.snapshot
+        .asyncMap(async (ourSnapshot) => {
+          const divergencePrefix = this._trie.getDivergencePrefix(ourSnapshot.prefix, excludedHashes);
+          log.info({ divergencePrefix, prefix: ourSnapshot.prefix }, 'Divergence prefix');
+          const missingIds = await this.fetchMissingHashesByPrefix(divergencePrefix, rpcClient);
+          log.info({ missingCount: missingIds.length }, 'Fetched missing hashes');
 
-      const divergencePrefix = this._trie.getDivergencePrefix(ourSnapshot.prefix, excludedHashes);
-      log.info({ divergencePrefix, prefix: ourSnapshot.prefix }, 'Divergence prefix');
-      const missingIds = await this.fetchMissingHashesByPrefix(divergencePrefix, rpcClient);
-      log.info({ missingCount: missingIds.length }, 'Fetched missing hashes');
-
-      // TODO: fetch messages in batches
-      await this.fetchAndMergeMessages(missingIds, rpcClient);
-      log.info(`Sync complete`);
+          // TODO: fetch messages in batches
+          await this.fetchAndMergeMessages(missingIds, rpcClient);
+          log.info(`Sync complete`);
+        })
+        .mapErr((error) => {
+          log.warn(error, `Error performing sync`);
+        });
     } catch (e) {
       log.warn(e, `Error performing sync`);
     } finally {
@@ -226,25 +231,29 @@ class SyncEngine {
     return this._trie;
   }
 
-  public getSnapshotByPrefix(prefix?: string): TrieSnapshot {
+  public getSnapshotByPrefix(prefix?: string): HubResult<TrieSnapshot> {
     if (!prefix || prefix === '') {
       return this.snapshot;
     } else {
-      return this._trie.getSnapshot(prefix);
+      return ok(this._trie.getSnapshot(prefix));
     }
   }
 
-  public get snapshot(): TrieSnapshot {
-    // Ignore the least significant digit when fetching the snapshot timestamp because
-    // second resolution is too fine grained, and fall outside sync threshold anyway
-    return this._trie.getSnapshot(timestampToPaddedTimestampPrefix(this.snapshotTimestamp / 10).toString());
+  public get snapshot(): HubResult<TrieSnapshot> {
+    return this.snapshotTimestamp.map((snapshotTimestamp) => {
+      // Ignore the least significant digit when fetching the snapshot timestamp because
+      // second resolution is too fine grained, and fall outside sync threshold anyway
+      return this._trie.getSnapshot(timestampToPaddedTimestampPrefix(snapshotTimestamp / 10).toString());
+    });
   }
 
   // Returns the most recent timestamp in seconds that's within the sync threshold
   // (i.e. highest timestamp that's < current time and timestamp % sync_threshold == 0)
-  public get snapshotTimestamp(): number {
-    const currentTimeInSeconds = Math.floor(getFarcasterTime());
-    return Math.floor(currentTimeInSeconds / SYNC_THRESHOLD_IN_SECONDS) * SYNC_THRESHOLD_IN_SECONDS;
+  public get snapshotTimestamp(): HubResult<number> {
+    return getFarcasterTime().map((farcasterTime) => {
+      const currentTimeInSeconds = Math.floor(farcasterTime);
+      return Math.floor(currentTimeInSeconds / SYNC_THRESHOLD_IN_SECONDS) * SYNC_THRESHOLD_IN_SECONDS;
+    });
   }
 
   private async syncUserAndRetryMessage(message: MessageModel, rpcClient: HubRpcClient): Promise<HubResult<void>> {
