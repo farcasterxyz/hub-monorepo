@@ -41,7 +41,7 @@ describe('serializeFid', () => {
 });
 
 describe('deserializeBlockHash', () => {
-  const blockHash = Factories.BlockHash.build();
+  const blockHash = Factories.BlockHashHex.build();
   const blockHashBytes = hexStringToBytes(blockHash)._unsafeUnwrap();
 
   test(`succeeds`, () => {
@@ -50,16 +50,16 @@ describe('deserializeBlockHash', () => {
 });
 
 describe('serializeBlockHash', () => {
-  const blockHash = Factories.BlockHash.build();
-  const blockHashBytes = hexStringToBytes(blockHash)._unsafeUnwrap();
-
   test(`succeeds`, () => {
+    const blockHash = Factories.BlockHashHex.build();
+    const blockHashBytes = hexStringToBytes(blockHash)._unsafeUnwrap();
+
     expect(utils.serializeBlockHash(blockHash)).toEqual(ok(blockHashBytes));
   });
 });
 
 describe('deserializeTransactionHash', () => {
-  const transactionHash = Factories.TransactionHash.build();
+  const transactionHash = Factories.TransactionHashHex.build();
   const transactionHashBytes = hexStringToBytes(transactionHash)._unsafeUnwrap();
 
   test(`succeeds`, () => {
@@ -410,7 +410,7 @@ describe('deserializeVerificationAddEthAddressBody', () => {
   let serializedBody: VerificationAddEthAddressBody;
   let body: types.VerificationAddEthAddressBody;
   const signer = Factories.Eip712Signer.build();
-  const blockHash = Factories.BlockHash.build();
+  const blockHash = Factories.BlockHashHex.build();
   const blockHashBytes = utils.serializeBlockHash(blockHash)._unsafeUnwrap();
 
   beforeAll(async () => {
@@ -442,7 +442,7 @@ describe('serializeVerificationAddEthAddressBody', () => {
   let ethSignature: Uint8Array;
   let body: flatbuffers.VerificationAddEthAddressBodyT;
   const signer = Factories.Eip712Signer.build();
-  const blockHash = Factories.BlockHash.build();
+  const blockHash = Factories.BlockHashHex.build();
   const blockHashBytes = hexStringToBytes(blockHash)._unsafeUnwrap();
   const claim = Factories.VerificationEthAddressClaim.build(undefined, { transient: { signer } });
 

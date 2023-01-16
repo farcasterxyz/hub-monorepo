@@ -166,7 +166,7 @@ describe('makeVerificationAddEthAddressData', () => {
   let ethSignature: Uint8Array;
   const signer = Factories.Eip712Signer.build();
   const address = signer.signerKeyHex;
-  const blockHash = Factories.BlockHash.build();
+  const blockHash = Factories.BlockHashHex.build();
   const claim = Factories.VerificationEthAddressClaim.build({ blockHash, fid }, { transient: { signer } });
 
   beforeAll(async () => {
@@ -200,7 +200,7 @@ describe('makeVerificationAddEthAddress', () => {
   let ethSignature: Uint8Array;
   const signer = Factories.Eip712Signer.build();
   const address = signer.signerKeyHex;
-  const blockHash = Factories.BlockHash.build();
+  const blockHash = Factories.BlockHashHex.build();
   const claim = Factories.VerificationEthAddressClaim.build({ blockHash, fid }, { transient: { signer } });
 
   beforeAll(async () => {

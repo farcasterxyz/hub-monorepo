@@ -15,6 +15,7 @@ export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
 export const EIP712_MESSAGE_TYPES = [flatbuffers.MessageType.SignerAdd, flatbuffers.MessageType.SignerRemove];
 
 export const FNAME_REGEX = /^[a-z0-9][a-z0-9-]{0,15}$/;
+export const HEX_REGEX = /^(0x)?[0-9A-Fa-f]+$/;
 
 export interface ValidatedCastId extends flatbuffers.CastId {
   fidArray(): Uint8Array;
@@ -478,3 +479,43 @@ export const validateFname = <T extends string | Uint8Array>(fnameP?: T | null):
 
   return ok(fnameP);
 };
+
+const buildValidateHex = (length?: number) => (hex: string) =>
+  validateHexString(hex).andThen(() => {
+    if (length) {
+      return validateHexLength(hex, length);
+    } else {
+      return ok(hex);
+    }
+  });
+
+const validateHexString = (hex: string): HubResult<string> => {
+  const hasValidChars = HEX_REGEX.test(hex);
+  if (hasValidChars === false) {
+    return err(new HubError('bad_request.validation_failure', `string "${hex}" is not valid hex`));
+  }
+
+  return ok(hex);
+};
+
+const validateHexLength = (hex: string, length: number): HubResult<string> => {
+  let value = hex;
+  if (value.substring(0, 2) === '0x') {
+    value = value.substring(2);
+  }
+
+  if (value.length !== length) {
+    return err(new HubError('bad_request.validation_failure', `hex string "${hex} is not ${length} characters`));
+  }
+
+  return ok(hex);
+};
+
+export const validateBlockHashHex = buildValidateHex(64);
+export const validateTransactionHashHex = buildValidateHex(64);
+export const validateEip712SignatureHex = buildValidateHex(130);
+export const validateEd25519ignatureHex = buildValidateHex(128);
+export const validateMessageHashHex = buildValidateHex(32);
+export const validateEthAddressHex = buildValidateHex(40);
+export const validateEd25519PublicKeyHex = buildValidateHex(64);
+export const validateTsHashHex = buildValidateHex(40);

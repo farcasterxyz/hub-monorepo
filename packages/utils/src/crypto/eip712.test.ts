@@ -18,7 +18,7 @@ describe('signVerificationEthAddressClaim', () => {
     claim = {
       fid: BigNumber.from(fidNumber),
       address: wallet.address,
-      blockHash: Factories.BlockHash.build(),
+      blockHash: Factories.BlockHashHex.build(),
       network: FarcasterNetwork.Testnet,
     };
     signature = (await eip712.signVerificationEthAddressClaim(claim, wallet))._unsafeUnwrap();
