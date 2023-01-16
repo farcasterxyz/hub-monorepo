@@ -46,12 +46,6 @@ class ReactionStore extends SequentialMergeStore {
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
     this._pruneTimeLimit = options.pruneTimeLimit ?? PRUNE_TIME_LIMIT_DEFAULT;
-
-    this._mergeLastTimestamp = Date.now();
-    this._mergeLastNonce = 1;
-    this._mergeIdsQueue = [];
-    this._mergeIdsStore = new Map();
-    this._mergeIsProcessing = false;
   }
 
   /**
@@ -380,7 +374,7 @@ class ReactionStore extends SequentialMergeStore {
     }
 
     // Create rocksdb transaction to delete the merge conflicts
-    let txn = this.deleteConflictsTransaction(this._db.transaction(), mergeConflicts.value);
+    let txn = this.deleteManyTransaction(this._db.transaction(), mergeConflicts.value);
 
     // Add ops to store the message by messageKey and index the the messageKey by set and by target
     txn = this.putReactionAddTransaction(txn, message);
@@ -408,7 +402,7 @@ class ReactionStore extends SequentialMergeStore {
     }
 
     // Create rocksdb transaction to delete the merge conflicts
-    let txn = this.deleteConflictsTransaction(this._db.transaction(), mergeConflicts.value);
+    let txn = this.deleteManyTransaction(this._db.transaction(), mergeConflicts.value);
 
     // Add ops to store the message by messageKey and index the the messageKey by set
     txn = this.putReactionRemoveTransaction(txn, message);
@@ -519,11 +513,11 @@ class ReactionStore extends SequentialMergeStore {
     return ok(conflicts);
   }
 
-  private deleteConflictsTransaction(
+  private deleteManyTransaction(
     txn: Transaction,
-    conflicts: (types.ReactionAddModel | types.ReactionRemoveModel)[]
+    messages: (types.ReactionAddModel | types.ReactionRemoveModel)[]
   ): Transaction {
-    for (const message of conflicts) {
+    for (const message of messages) {
       if (isReactionAdd(message)) {
         txn = this.deleteReactionAddTransaction(txn, message);
       } else if (isReactionRemove(message)) {

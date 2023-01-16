@@ -138,6 +138,23 @@ describe('getAmpsByTargetUser', () => {
 });
 
 describe('merge', () => {
+  let mergeEvents: [MessageModel, MessageModel[]][] = [];
+
+  const mergeMessageHandler = (message: MessageModel, deletedMessages?: MessageModel[]) => {
+    mergeEvents.push([message, deletedMessages ?? []]);
+  };
+  beforeAll(() => {
+    eventHandler.on('mergeMessage', mergeMessageHandler);
+  });
+
+  beforeEach(() => {
+    mergeEvents = [];
+  });
+
+  afterAll(() => {
+    eventHandler.off('mergeMessage', mergeMessageHandler);
+  });
+
   const assertAmpExists = async (message: AmpAddModel | AmpRemoveModel) => {
     await expect(MessageModel.get(db, fid, UserPostfix.AmpMessage, message.tsHash())).resolves.toEqual(message);
   };
@@ -170,6 +187,8 @@ describe('merge', () => {
     test('succeeds', async () => {
       await expect(store.merge(ampAdd)).resolves.toEqual(undefined);
       await assertAmpAddWins(ampAdd);
+
+      expect(mergeEvents).toEqual([[ampAdd, []]]);
     });
 
     test('fails with duplicate', async () => {
@@ -179,6 +198,7 @@ describe('merge', () => {
       );
 
       await assertAmpAddWins(ampAdd);
+      expect(mergeEvents).toEqual([[ampAdd, []]]);
     });
 
     describe('with a conflicting AmpAdd with different timestamps', () => {
@@ -201,6 +221,11 @@ describe('merge', () => {
 
         await assertAmpDoesNotExist(ampAdd);
         await assertAmpAddWins(ampAddLater);
+
+        expect(mergeEvents).toEqual([
+          [ampAdd, []],
+          [ampAddLater, [ampAdd]],
+        ]);
       });
 
       test('fails with an earlier timestamp', async () => {
@@ -236,6 +261,11 @@ describe('merge', () => {
 
         await assertAmpDoesNotExist(ampAdd);
         await assertAmpAddWins(ampAddLater);
+
+        expect(mergeEvents).toEqual([
+          [ampAdd, []],
+          [ampAddLater, [ampAdd]],
+        ]);
       });
 
       test('fails with a lower hash', async () => {
@@ -267,6 +297,11 @@ describe('merge', () => {
 
         await assertAmpAddWins(ampAdd);
         await assertAmpDoesNotExist(ampRemoveEarlier);
+
+        expect(mergeEvents).toEqual([
+          [ampRemoveEarlier, []],
+          [ampAdd, [ampRemoveEarlier]],
+        ]);
       });
 
       test('fails with an earlier timestamp', async () => {
@@ -363,6 +398,11 @@ describe('merge', () => {
 
         await assertAmpDoesNotExist(ampRemove);
         await assertAmpRemoveWins(ampRemoveLater);
+
+        expect(mergeEvents).toEqual([
+          [ampRemove, []],
+          [ampRemoveLater, [ampRemove]],
+        ]);
       });
 
       test('fails with an earlier timestamp', async () => {
@@ -398,6 +438,11 @@ describe('merge', () => {
 
         await assertAmpDoesNotExist(ampRemove);
         await assertAmpRemoveWins(ampRemoveLater);
+
+        expect(mergeEvents).toEqual([
+          [ampRemove, []],
+          [ampRemoveLater, [ampRemove]],
+        ]);
       });
 
       test('fails with a lower hash', async () => {
@@ -417,6 +462,11 @@ describe('merge', () => {
         await expect(store.merge(ampRemove)).resolves.toEqual(undefined);
         await assertAmpRemoveWins(ampRemove);
         await assertAmpDoesNotExist(ampAdd);
+
+        expect(mergeEvents).toEqual([
+          [ampAdd, []],
+          [ampRemove, [ampAdd]],
+        ]);
       });
 
       test('fails with an earlier timestamp', async () => {
@@ -456,6 +506,11 @@ describe('merge', () => {
 
         await assertAmpDoesNotExist(ampAddLater);
         await assertAmpRemoveWins(ampRemove);
+
+        expect(mergeEvents).toEqual([
+          [ampAddLater, []],
+          [ampRemove, [ampAddLater]],
+        ]);
       });
 
       test('succeeds with a higher hash', async () => {
@@ -475,6 +530,11 @@ describe('merge', () => {
 
         await assertAmpDoesNotExist(ampRemoveEarlier);
         await assertAmpRemoveWins(ampRemove);
+
+        expect(mergeEvents).toEqual([
+          [ampRemoveEarlier, []],
+          [ampRemove, [ampRemoveEarlier]],
+        ]);
       });
     });
   });

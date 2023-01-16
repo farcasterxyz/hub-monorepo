@@ -261,41 +261,47 @@ class AmpStore extends SequentialMergeStore {
   /* -------------------------------------------------------------------------- */
 
   private async mergeAdd(message: AmpAddModel): Promise<void> {
-    const ampId = message.body().user()?.fidArray() ?? new Uint8Array();
+    const targetUserId = message.body().user()?.fidArray() ?? new Uint8Array();
 
-    const txnResult = await this.resolveMergeConflicts(this._db.transaction(), ampId, message);
+    const mergeConflicts = await this.getMergeConflicts(targetUserId, message);
 
-    if (txnResult.isErr()) {
-      throw txnResult.error;
+    if (mergeConflicts.isErr()) {
+      throw mergeConflicts.error;
     }
 
+    // Create rocksdb transaction to delete the merge conflicts
+    let txn = this.deleteManyTransaction(this._db.transaction(), mergeConflicts.value);
+
     // Add ops to store the message by messageKey and index the the messageKey by set
-    const txn = this.putAmpAddTransaction(txnResult.value, message);
+    txn = this.putAmpAddTransaction(txn, message);
 
     await this._db.commit(txn);
 
     // Emit store event
-    this._eventHandler.emit('mergeMessage', message);
+    this._eventHandler.emit('mergeMessage', message, mergeConflicts.value);
 
     return undefined;
   }
 
   private async mergeRemove(message: AmpRemoveModel): Promise<void> {
-    const ampId = message.body().user()?.fidArray() ?? new Uint8Array();
+    const targetUserId = message.body().user()?.fidArray() ?? new Uint8Array();
 
-    const txnResult = await this.resolveMergeConflicts(this._db.transaction(), ampId, message);
+    const mergeConflicts = await this.getMergeConflicts(targetUserId, message);
 
-    if (txnResult.isErr()) {
-      throw txnResult.error;
+    if (mergeConflicts.isErr()) {
+      throw mergeConflicts.error;
     }
 
+    // Create rocksdb transaction to delete the merge conflicts
+    let txn = this.deleteManyTransaction(this._db.transaction(), mergeConflicts.value);
+
     // Add ops to store the message by messageKey and index the the messageKey by set
-    const txn = this.putAmpRemoveTransaction(txnResult.value, message);
+    txn = this.putAmpRemoveTransaction(txn, message);
 
     await this._db.commit(txn);
 
     // Emit store event
-    this._eventHandler.emit('mergeMessage', message);
+    this._eventHandler.emit('mergeMessage', message, mergeConflicts.value);
 
     return undefined;
   }
@@ -329,14 +335,15 @@ class AmpStore extends SequentialMergeStore {
    *
    * @returns a RocksDB transaction if keys must be added or removed, undefined otherwise.
    */
-  private async resolveMergeConflicts(
-    txn: Transaction,
-    ampId: Uint8Array,
+  private async getMergeConflicts(
+    targetUserId: Uint8Array,
     message: AmpAddModel | AmpRemoveModel
-  ): HubAsyncResult<Transaction> {
+  ): HubAsyncResult<(AmpAddModel | AmpRemoveModel)[]> {
+    const conflicts: (AmpAddModel | AmpRemoveModel)[] = [];
+
     // Look up the remove tsHash for this amp
     const ampRemoveTsHash = await ResultAsync.fromPromise(
-      this._db.get(AmpStore.ampRemovesKey(message.fid(), ampId)),
+      this._db.get(AmpStore.ampRemovesKey(message.fid(), targetUserId)),
       () => undefined
     );
 
@@ -360,13 +367,13 @@ class AmpStore extends SequentialMergeStore {
           UserPostfix.AmpMessage,
           ampRemoveTsHash.value
         );
-        txn = this.deleteAmpRemoveTransaction(txn, existingRemove);
+        conflicts.push(existingRemove);
       }
     }
 
     // Look up the add tsHash for this amp
     const ampAddTsHash = await ResultAsync.fromPromise(
-      this._db.get(AmpStore.ampAddsKey(message.fid(), ampId)),
+      this._db.get(AmpStore.ampAddsKey(message.fid(), targetUserId)),
       () => undefined
     );
 
@@ -391,11 +398,22 @@ class AmpStore extends SequentialMergeStore {
           ampAddTsHash.value
         );
 
-        txn = this.deleteAmpAddTransaction(txn, existingAdd);
+        conflicts.push(existingAdd);
       }
     }
 
-    return ok(txn);
+    return ok(conflicts);
+  }
+
+  private deleteManyTransaction(txn: Transaction, messages: (AmpAddModel | AmpRemoveModel)[]): Transaction {
+    for (const message of messages) {
+      if (isAmpAdd(message)) {
+        txn = this.deleteAmpAddTransaction(txn, message);
+      } else if (isAmpRemove(message)) {
+        txn = this.deleteAmpRemoveTransaction(txn, message);
+      }
+    }
+    return txn;
   }
 
   /* Builds a RocksDB transaction to insert a AmpAdd message and construct its indices */

@@ -227,6 +227,23 @@ describe('getReactionsByTargetCast', () => {
 });
 
 describe('merge', () => {
+  let mergeEvents: [MessageModel, MessageModel[]][] = [];
+
+  const mergeMessageHandler = (message: MessageModel, deletedMessages?: MessageModel[]) => {
+    mergeEvents.push([message, deletedMessages ?? []]);
+  };
+  beforeAll(() => {
+    eventHandler.on('mergeMessage', mergeMessageHandler);
+  });
+
+  beforeEach(() => {
+    mergeEvents = [];
+  });
+
+  afterAll(() => {
+    eventHandler.off('mergeMessage', mergeMessageHandler);
+  });
+
   const assertReactionExists = async (message: ReactionAddModel | ReactionRemoveModel) => {
     await expect(MessageModel.get(db, fid, UserPostfix.ReactionMessage, message.tsHash())).resolves.toEqual(message);
   };
@@ -261,6 +278,8 @@ describe('merge', () => {
       await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
 
       await assertReactionAddWins(reactionAdd);
+
+      expect(mergeEvents).toEqual([[reactionAdd, []]]);
     });
 
     test('fails if merged twice', async () => {
@@ -270,6 +289,8 @@ describe('merge', () => {
       );
 
       await assertReactionAddWins(reactionAdd);
+
+      expect(mergeEvents).toEqual([[reactionAdd, []]]);
     });
 
     describe('with a conflicting ReactionAdd with different timestamps', () => {
@@ -292,6 +313,11 @@ describe('merge', () => {
 
         await assertReactionDoesNotExist(reactionAdd);
         await assertReactionAddWins(reactionAddLater);
+
+        expect(mergeEvents).toEqual([
+          [reactionAdd, []],
+          [reactionAddLater, [reactionAdd]],
+        ]);
       });
 
       test('fails with an earlier timestamp', async () => {
@@ -327,6 +353,11 @@ describe('merge', () => {
 
         await assertReactionDoesNotExist(reactionAdd);
         await assertReactionAddWins(reactionAddLater);
+
+        expect(mergeEvents).toEqual([
+          [reactionAdd, []],
+          [reactionAddLater, [reactionAdd]],
+        ]);
       });
 
       test('fails with a lower hash', async () => {
@@ -358,6 +389,11 @@ describe('merge', () => {
 
         await assertReactionAddWins(reactionAdd);
         await assertReactionDoesNotExist(reactionRemoveEarlier);
+
+        expect(mergeEvents).toEqual([
+          [reactionRemoveEarlier, []],
+          [reactionAdd, [reactionRemoveEarlier]],
+        ]);
       });
 
       test('fails with an earlier timestamp', async () => {
@@ -423,6 +459,8 @@ describe('merge', () => {
       await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
 
       await assertReactionRemoveWins(reactionRemove);
+
+      expect(mergeEvents).toEqual([[reactionRemove, []]]);
     });
 
     test('fails if merged twice', async () => {
@@ -454,6 +492,11 @@ describe('merge', () => {
 
         await assertReactionDoesNotExist(reactionRemove);
         await assertReactionRemoveWins(reactionRemoveLater);
+
+        expect(mergeEvents).toEqual([
+          [reactionRemove, []],
+          [reactionRemoveLater, [reactionRemove]],
+        ]);
       });
 
       test('fails with an earlier timestamp', async () => {
@@ -489,6 +532,11 @@ describe('merge', () => {
 
         await assertReactionDoesNotExist(reactionRemove);
         await assertReactionRemoveWins(reactionRemoveLater);
+
+        expect(mergeEvents).toEqual([
+          [reactionRemove, []],
+          [reactionRemoveLater, [reactionRemove]],
+        ]);
       });
 
       test('fails with a lower hash', async () => {
@@ -508,6 +556,11 @@ describe('merge', () => {
         await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
         await assertReactionRemoveWins(reactionRemove);
         await assertReactionDoesNotExist(reactionAdd);
+
+        expect(mergeEvents).toEqual([
+          [reactionAdd, []],
+          [reactionRemove, [reactionAdd]],
+        ]);
       });
 
       test('fails with an earlier timestamp', async () => {
@@ -547,6 +600,11 @@ describe('merge', () => {
 
         await assertReactionDoesNotExist(reactionAddLater);
         await assertReactionRemoveWins(reactionRemove);
+
+        expect(mergeEvents).toEqual([
+          [reactionAddLater, []],
+          [reactionRemove, [reactionAddLater]],
+        ]);
       });
 
       test('succeeds with a higher hash', async () => {
@@ -566,6 +624,11 @@ describe('merge', () => {
 
         await assertReactionDoesNotExist(reactionRemoveEarlier);
         await assertReactionRemoveWins(reactionRemove);
+
+        expect(mergeEvents).toEqual([
+          [reactionRemoveEarlier, []],
+          [reactionRemove, [reactionRemoveEarlier]],
+        ]);
       });
     });
   });
