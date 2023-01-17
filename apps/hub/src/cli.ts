@@ -11,6 +11,7 @@ import { exit } from 'process';
 import { APP_VERSION, Hub, HubOptions } from '~/hub';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
+import { startConsole } from './console/console';
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -184,6 +185,13 @@ app
   .description('Create or verify a peerID')
   .addCommand(createIdCommand)
   .addCommand(verifyIdCommand);
+
+app
+  .command('console')
+  .description('Start a REPL console')
+  .action(async () => {
+    startConsole();
+  });
 
 const readPeerId = async (filePath: string) => {
   const proto = await readFile(filePath);
