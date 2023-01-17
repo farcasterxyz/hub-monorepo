@@ -231,17 +231,6 @@ describe('SyncEngine', () => {
     expect(syncEngine.shouldSync(oldSnapshot.excludedHashes)).toBeTruthy();
   });
 
-  // xtest('should not sync if messages were added within the sync threshold', async () => {
-  //   const user = await mockFid(engine, faker.datatype.number());
-  //   const snapshotTimestamp = syncEngine.snapshotTimestamp;
-  //   await addMessagesWithTimestamps(user, [snapshotTimestamp - 3, snapshotTimestamp - 2, snapshotTimestamp - 1]);
-
-  //   const snapshot = syncEngine.snapshot;
-  //   // Add a message after the snapshot, within the sync threshold
-  //   await addMessagesWithTimestamps(user, [snapshotTimestamp + 1]);
-  //   expect(syncEngine.shouldSync(snapshot.excludedHashes)).toBeFalsy();
-  // });
-
   test('initialize populates the trie with all existing messages', async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
