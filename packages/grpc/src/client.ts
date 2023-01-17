@@ -261,10 +261,12 @@ export class Client {
   /*                                  Event Methods                             */
   /* -------------------------------------------------------------------------- */
 
-  async subscribe(types?: flatbuffers.EventType[]): HubAsyncResult<ClientReadableStream<flatbuffers.EventResponse>> {
+  async subscribe(
+    eventTypes?: flatbuffers.EventType[]
+  ): HubAsyncResult<ClientReadableStream<flatbuffers.EventResponse>> {
     return this.makeServerStreamRequest(
       definitions.eventDefinition().subscribe,
-      requests.eventRequests.subscribeRequest(types)
+      requests.eventRequests.subscribeRequest(eventTypes)
     );
   }
 

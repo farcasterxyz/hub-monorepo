@@ -171,6 +171,6 @@ table GetTrieNodesByPrefixRequest {
 // Events Requests
 
 table SubscribeRequest {
-  types: [EventType];
+  event_types: [EventType];
 }
 

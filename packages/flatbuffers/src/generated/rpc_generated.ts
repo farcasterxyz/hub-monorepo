@@ -3047,17 +3047,17 @@ static getSizePrefixedRootAsSubscribeRequest(bb:flatbuffers.ByteBuffer, obj?:Sub
   return (obj || new SubscribeRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-types(index: number):EventType|null {
+eventTypes(index: number):EventType|null {
   const offset = this.bb!.__offset(this.bb_pos, 4);
   return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
 }
 
-typesLength():number {
+eventTypesLength():number {
   const offset = this.bb!.__offset(this.bb_pos, 4);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
-typesArray():Uint8Array|null {
+eventTypesArray():Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 4);
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
@@ -3066,11 +3066,11 @@ static startSubscribeRequest(builder:flatbuffers.Builder) {
   builder.startObject(1);
 }
 
-static addTypes(builder:flatbuffers.Builder, typesOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, typesOffset, 0);
+static addEventTypes(builder:flatbuffers.Builder, eventTypesOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, eventTypesOffset, 0);
 }
 
-static createTypesVector(builder:flatbuffers.Builder, data:EventType[]):flatbuffers.Offset {
+static createEventTypesVector(builder:flatbuffers.Builder, data:EventType[]):flatbuffers.Offset {
   builder.startVector(1, data.length, 1);
   for (let i = data.length - 1; i >= 0; i--) {
     builder.addInt8(data[i]!);
@@ -3078,7 +3078,7 @@ static createTypesVector(builder:flatbuffers.Builder, data:EventType[]):flatbuff
   return builder.endVector();
 }
 
-static startTypesVector(builder:flatbuffers.Builder, numElems:number) {
+static startEventTypesVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(1, numElems, 1);
 }
 
@@ -3087,35 +3087,35 @@ static endSubscribeRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createSubscribeRequest(builder:flatbuffers.Builder, typesOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createSubscribeRequest(builder:flatbuffers.Builder, eventTypesOffset:flatbuffers.Offset):flatbuffers.Offset {
   SubscribeRequest.startSubscribeRequest(builder);
-  SubscribeRequest.addTypes(builder, typesOffset);
+  SubscribeRequest.addEventTypes(builder, eventTypesOffset);
   return SubscribeRequest.endSubscribeRequest(builder);
 }
 
 unpack(): SubscribeRequestT {
   return new SubscribeRequestT(
-    this.bb!.createScalarList<EventType>(this.types.bind(this), this.typesLength())
+    this.bb!.createScalarList<EventType>(this.eventTypes.bind(this), this.eventTypesLength())
   );
 }
 
 
 unpackTo(_o: SubscribeRequestT): void {
-  _o.types = this.bb!.createScalarList<EventType>(this.types.bind(this), this.typesLength());
+  _o.eventTypes = this.bb!.createScalarList<EventType>(this.eventTypes.bind(this), this.eventTypesLength());
 }
 }
 
 export class SubscribeRequestT implements flatbuffers.IGeneratedObject {
 constructor(
-  public types: (EventType)[] = []
+  public eventTypes: (EventType)[] = []
 ){}
 
 
 pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const types = SubscribeRequest.createTypesVector(builder, this.types);
+  const eventTypes = SubscribeRequest.createEventTypesVector(builder, this.eventTypes);
 
   return SubscribeRequest.createSubscribeRequest(builder,
-    types
+    eventTypes
   );
 }
 }

@@ -17,7 +17,7 @@ import {
 } from './utils';
 
 export type EventFilters = {
-  types?: flatbuffers.EventType[];
+  eventTypes?: flatbuffers.EventType[];
 };
 
 const deserializeCall = async <TDeserialized, TFlatbuffer>(
@@ -361,6 +361,6 @@ export class Client {
    * Data from this stream can be parsed using `deserializeEventResponse`.
    */
   async subscribe(filters: EventFilters = {}) {
-    return this._grpcClient.subscribe(filters.types);
+    return this._grpcClient.subscribe(filters.eventTypes);
   }
 }

@@ -47,15 +47,15 @@ export const eventImplementation = (engine: Engine) => {
       const { request } = stream;
 
       // if no type filters are provided, subscribe to all event types
-      if (request.typesLength() === 0) {
+      if (request.eventTypesLength() === 0) {
         engine.eventHandler.on('mergeMessage', mergeMessageListener);
         engine.eventHandler.on('pruneMessage', pruneMessageListener);
         engine.eventHandler.on('revokeMessage', revokeMessageListener);
         engine.eventHandler.on('mergeIdRegistryEvent', mergeIdRegistryEventListener);
         engine.eventHandler.on('mergeNameRegistryEvent', mergeNameRegistryEventListener);
       } else {
-        for (let i = 0; i < request.typesLength(); i++) {
-          const type = request.types(i);
+        for (let i = 0; i < request.eventTypesLength(); i++) {
+          const type = request.eventTypes(i);
 
           if (type === EventType.MergeMessage) {
             engine.eventHandler.on('mergeMessage', mergeMessageListener);

@@ -61,7 +61,7 @@ export const deserializeEventResponse = (fbb: flatbuffers.EventResponse): HubRes
       });
     }
     default:
-      return err(new HubError('unknown', `unknown EventType '${type}'`));
+      return err(new HubError('bad_request.invalid_param', `unknown EventType '${type}'`));
   }
 };
 
