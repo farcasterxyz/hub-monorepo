@@ -73,7 +73,7 @@ export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
       if (result) {
         callback(null, toTrieNodeMetadataResponse(result));
       } else {
-        const err = new HubError('bad_request', 'Failed to get trie node metadata');
+        const err = new HubError('bad_request', `Failed to get trie node metadata at ${prefix}`);
         callback(toServiceError(err));
       }
     },
