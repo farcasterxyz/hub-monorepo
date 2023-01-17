@@ -1,4 +1,4 @@
-import { HubError } from '~/../../../packages/utils/dist';
+import { HubError } from '@farcaster/utils';
 import HubRpcClient from '~/rpc/client';
 
 export class InfoCommand {
