@@ -16,6 +16,10 @@ import {
   serializeUserId,
 } from './utils';
 
+export type EventFilters = {
+  eventTypes?: flatbuffers.EventType[];
+};
+
 const deserializeCall = async <TDeserialized, TFlatbuffer>(
   call: HubAsyncResult<TFlatbuffer>,
   deserialize: (fbb: TFlatbuffer) => HubResult<TDeserialized>
@@ -353,5 +357,10 @@ export class Client {
   /*                                  Event Methods                             */
   /* -------------------------------------------------------------------------- */
 
-  // TODO: subscribe
+  /**
+   * Data from this stream can be parsed using `deserializeEventResponse`.
+   */
+  async subscribe(filters: EventFilters = {}) {
+    return this._grpcClient.subscribe(filters.eventTypes);
+  }
 }

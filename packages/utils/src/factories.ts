@@ -547,6 +547,29 @@ const TsHashHexFactory = Factory.define<string>(() => {
   return faker.datatype.hexadecimal({ length: 40, case: 'lower' });
 });
 
+const EventTypeFactory = Factory.define<flatbuffers.EventType>(() => {
+  return faker.helpers.arrayElement([
+    flatbuffers.EventType.MergeIdRegistryEvent,
+    flatbuffers.EventType.MergeNameRegistryEvent,
+    flatbuffers.EventType.MergeMessage,
+    flatbuffers.EventType.RevokeMessage,
+    flatbuffers.EventType.PruneMessage,
+  ]);
+});
+
+const EventResponseFactory = Factory.define<flatbuffers.EventResponseT, unknown, flatbuffers.EventResponse>(
+  ({ onCreate }) => {
+    onCreate((params) => {
+      const builder = new Builder(1);
+      builder.finish(params.pack(builder));
+      return flatbuffers.EventResponse.getRootAsEventResponse(new ByteBuffer(builder.asUint8Array()));
+    });
+
+    const type = EventTypeFactory.build();
+    return new flatbuffers.EventResponseT(type);
+  }
+);
+
 export const Factories = {
   Bytes: BytesFactory,
   FID: FIDFactory,
@@ -596,4 +619,5 @@ export const Factories = {
   EthAddressHex: EthAddressHexFactory,
   Ed25519PublicKeyHex: Ed25519PublicKeyHexFactory,
   TsHashHex: TsHashHexFactory,
+  EventResponse: EventResponseFactory,
 };

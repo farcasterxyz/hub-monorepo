@@ -42,7 +42,7 @@ table TrieNodeMetadataResponse {
   prefix: [ubyte];
   num_messages: uint64;
   hash: [ubyte];
-  children: [TrieNodeMetadataResponse]; 
+  children: [TrieNodeMetadataResponse];
 }
 
 table TrieNodeSnapshotResponse {
@@ -170,5 +170,7 @@ table GetTrieNodesByPrefixRequest {
 
 // Events Requests
 
-table SubscribeRequest {}
+table SubscribeRequest {
+  event_types: [EventType];
+}
 

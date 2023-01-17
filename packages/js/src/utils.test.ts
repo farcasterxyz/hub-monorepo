@@ -806,3 +806,154 @@ describe('deserializeIdRegistryEvent', () => {
     expect(idRegistryEvent.type).toEqual(idRegistryEventFbb.type());
   });
 });
+
+describe('deserializeEventResponse', () => {
+  let eventResponseFbb: flatbuffers.EventResponse;
+
+  describe('MergeIdRegistryEvent event', () => {
+    const type = flatbuffers.EventType.MergeIdRegistryEvent;
+    let idRegistryEventFbb: flatbuffers.IdRegistryEvent;
+    let idRegistryEvent: types.IdRegistryEvent;
+    let eventResponse: types.IdRegistryEventResponse;
+
+    beforeAll(async () => {
+      idRegistryEventFbb = await Factories.IdRegistryEvent.create();
+      idRegistryEvent = await utils.deserializeIdRegistryEvent(idRegistryEventFbb)._unsafeUnwrap();
+      eventResponseFbb = await Factories.EventResponse.create({
+        type,
+        bytes: Array.from(idRegistryEventFbb.bb?.bytes() ?? new Uint8Array()),
+      });
+      eventResponse = utils.deserializeEventResponse(eventResponseFbb)._unsafeUnwrap() as types.IdRegistryEventResponse;
+    });
+
+    test('flatbuffer', () => {
+      expect(eventResponse.flatbuffer).toBe(eventResponseFbb);
+    });
+
+    test('type', () => {
+      expect(eventResponse.type).toBe(type);
+    });
+
+    test('idRegistryEvent', () => {
+      expect(eventResponse.idRegistryEvent).toMatchObject(idRegistryEvent);
+    });
+  });
+
+  describe('MergeNameRegistryEvent event', () => {
+    const type = flatbuffers.EventType.MergeNameRegistryEvent;
+    let nameRegistryEventFbb: flatbuffers.NameRegistryEvent;
+    let nameRegistryEvent: types.NameRegistryEvent;
+    let eventResponse: types.NameRegistryEventResponse;
+
+    beforeAll(async () => {
+      nameRegistryEventFbb = await Factories.NameRegistryEvent.create();
+      nameRegistryEvent = await utils.deserializeNameRegistryEvent(nameRegistryEventFbb)._unsafeUnwrap();
+      eventResponseFbb = await Factories.EventResponse.create({
+        type,
+        bytes: Array.from(nameRegistryEventFbb.bb?.bytes() ?? new Uint8Array()),
+      });
+      eventResponse = utils
+        .deserializeEventResponse(eventResponseFbb)
+        ._unsafeUnwrap() as types.NameRegistryEventResponse;
+    });
+
+    test('flatbuffer', () => {
+      expect(eventResponse.flatbuffer).toBe(eventResponseFbb);
+    });
+
+    test('type', () => {
+      expect(eventResponse.type).toBe(type);
+    });
+
+    test('nameRegistryEvent', () => {
+      expect(eventResponse.nameRegistryEvent).toMatchObject(nameRegistryEvent);
+    });
+  });
+
+  describe('MergeMessage event', () => {
+    const type = flatbuffers.EventType.MergeMessage;
+    let messageFbb: flatbuffers.Message;
+    let message: types.Message;
+    let eventResponse: types.MessageEventResponse;
+
+    beforeAll(async () => {
+      messageFbb = await Factories.Message.create();
+      message = await utils.deserializeMessage(messageFbb)._unsafeUnwrap();
+      eventResponseFbb = await Factories.EventResponse.create({
+        type,
+        bytes: Array.from(messageFbb.bb?.bytes() ?? new Uint8Array()),
+      });
+      eventResponse = utils.deserializeEventResponse(eventResponseFbb)._unsafeUnwrap() as types.MessageEventResponse;
+    });
+
+    test('flatbuffer', () => {
+      expect(eventResponse.flatbuffer).toBe(eventResponseFbb);
+    });
+
+    test('type', () => {
+      expect(eventResponse.type).toBe(type);
+    });
+
+    test('message', () => {
+      expect(eventResponse.message).toMatchObject(message);
+    });
+  });
+
+  describe('PruneMessage event', () => {
+    const type = flatbuffers.EventType.PruneMessage;
+    let messageFbb: flatbuffers.Message;
+    let message: types.Message;
+    let eventResponse: types.MessageEventResponse;
+
+    beforeAll(async () => {
+      messageFbb = await Factories.Message.create();
+      message = await utils.deserializeMessage(messageFbb)._unsafeUnwrap();
+      eventResponseFbb = await Factories.EventResponse.create({
+        type,
+        bytes: Array.from(messageFbb.bb?.bytes() ?? new Uint8Array()),
+      });
+      eventResponse = utils.deserializeEventResponse(eventResponseFbb)._unsafeUnwrap() as types.MessageEventResponse;
+    });
+
+    test('flatbuffer', () => {
+      expect(eventResponse.flatbuffer).toBe(eventResponseFbb);
+    });
+
+    test('type', () => {
+      expect(eventResponse.type).toBe(type);
+    });
+
+    test('message', () => {
+      expect(eventResponse.message).toMatchObject(message);
+    });
+  });
+
+  describe('RevokeMessage event', () => {
+    const type = flatbuffers.EventType.RevokeMessage;
+    let messageFbb: flatbuffers.Message;
+    let message: types.Message;
+    let eventResponse: types.MessageEventResponse;
+
+    beforeAll(async () => {
+      messageFbb = await Factories.Message.create();
+      message = await utils.deserializeMessage(messageFbb)._unsafeUnwrap();
+      eventResponseFbb = await Factories.EventResponse.create({
+        type,
+        bytes: Array.from(messageFbb.bb?.bytes() ?? new Uint8Array()),
+      });
+      eventResponse = utils.deserializeEventResponse(eventResponseFbb)._unsafeUnwrap() as types.MessageEventResponse;
+    });
+
+    test('flatbuffer', () => {
+      expect(eventResponse.flatbuffer).toBe(eventResponseFbb);
+    });
+
+    test('type', () => {
+      expect(eventResponse.type).toBe(type);
+    });
+
+    test('message', () => {
+      expect(eventResponse.message).toMatchObject(message);
+    });
+  });
+});
