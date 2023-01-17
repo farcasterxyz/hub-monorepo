@@ -192,8 +192,8 @@ describe('SyncEngine', () => {
   });
 
   test('snapshotTimestampPrefix trims the seconds', async () => {
-    const nowInSeconds = getFarcasterTime();
-    const snapshotTimestamp = syncEngine.snapshotTimestamp;
+    const nowInSeconds = getFarcasterTime()._unsafeUnwrap();
+    const snapshotTimestamp = syncEngine.snapshotTimestamp._unsafeUnwrap();
     expect(snapshotTimestamp).toBeLessThanOrEqual(nowInSeconds);
     expect(snapshotTimestamp).toEqual(Math.floor(nowInSeconds / 10) * 10);
   });
@@ -203,7 +203,7 @@ describe('SyncEngine', () => {
     const rpcClient = instance(mockRPCClient);
     let called = false;
     when(mockRPCClient.getSyncMetadataByPrefix(anyString())).thenCall(() => {
-      expect(syncEngine.shouldSync([])).toBeFalsy();
+      expect(syncEngine.shouldSync([])._unsafeUnwrap()).toBeFalsy();
       called = true;
       // Return an empty child map so sync will finish with a noop
       return Promise.resolve(ok({ prefix: '', numMessages: 1000, hash: '', children: new Map() }));
@@ -217,7 +217,7 @@ describe('SyncEngine', () => {
     await engine.mergeMessage(signerAdd);
 
     await addMessagesWithTimestamps([30662167, 30662169, 30662172]);
-    expect(syncEngine.shouldSync(syncEngine.snapshot.excludedHashes)).toBeFalsy();
+    expect(syncEngine.shouldSync(syncEngine.snapshot._unsafeUnwrap().excludedHashes)._unsafeUnwrap()).toBeFalsy();
   });
 
   test('shouldSync returns true when hashes dont match', async () => {
@@ -225,10 +225,10 @@ describe('SyncEngine', () => {
     await engine.mergeMessage(signerAdd);
 
     await addMessagesWithTimestamps([30662167, 30662169, 30662172]);
-    const oldSnapshot = syncEngine.snapshot;
+    const oldSnapshot = syncEngine.snapshot._unsafeUnwrap();
     await addMessagesWithTimestamps([30662372]);
-    expect(oldSnapshot.excludedHashes).not.toEqual(syncEngine.snapshot.excludedHashes);
-    expect(syncEngine.shouldSync(oldSnapshot.excludedHashes)).toBeTruthy();
+    expect(oldSnapshot.excludedHashes).not.toEqual(syncEngine.snapshot._unsafeUnwrap().excludedHashes);
+    expect(syncEngine.shouldSync(oldSnapshot.excludedHashes)._unsafeUnwrap()).toBeTruthy();
   });
 
   test('initialize populates the trie with all existing messages', async () => {

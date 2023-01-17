@@ -1,5 +1,5 @@
 import { BigNumber } from 'ethers';
-import { ok } from 'neverthrow';
+import { err, ok } from 'neverthrow';
 import {
   bigNumberToBytes,
   bytesCompare,
@@ -93,7 +93,7 @@ describe('bytesDecrement', () => {
 
     for (const [input, output] of passingCases) {
       test(`decrements byte array: ${input}`, () => {
-        expect(bytesDecrement(input, { endianness: 'big' })).toEqual(output);
+        expect(bytesDecrement(input, { endianness: 'big' })).toEqual(ok(output));
       });
     }
 
@@ -101,7 +101,9 @@ describe('bytesDecrement', () => {
 
     for (const input of failingCases) {
       test(`fails when decrementing byte array: ${input}`, () => {
-        expect(() => bytesDecrement(input, { endianness: 'big' })).toThrow(HubError);
+        expect(bytesDecrement(input, { endianness: 'big' })).toEqual(
+          err(new HubError('bad_request.invalid_param', 'Cannot decrement zero'))
+        );
       });
     }
   });
@@ -118,7 +120,7 @@ describe('bytesDecrement', () => {
 
     for (const [input, output] of passingCases) {
       test(`decrements byte array: ${input}`, () => {
-        expect(bytesDecrement(input)).toEqual(output);
+        expect(bytesDecrement(input)).toEqual(ok(output));
       });
     }
 
@@ -126,7 +128,7 @@ describe('bytesDecrement', () => {
 
     for (const input of failingCases) {
       test(`fails when decrementing byte array: ${input}`, () => {
-        expect(() => bytesDecrement(input)).toThrow(HubError);
+        expect(bytesDecrement(input)).toEqual(err(new HubError('bad_request.invalid_param', 'Cannot decrement zero')));
       });
     }
   });

@@ -438,7 +438,7 @@ describe('merge', () => {
 
         const reactionRemoveMessage = await Factories.Message.create({
           data: Array.from(reactionRemoveData.bb?.bytes() ?? []),
-          hash: Array.from(bytesDecrement(reactionAdd.hash())),
+          hash: Array.from(bytesDecrement(reactionAdd.hash())._unsafeUnwrap()),
         });
 
         const reactionRemoveEarlier = new MessageModel(reactionRemoveMessage) as ReactionRemoveModel;
@@ -614,7 +614,7 @@ describe('merge', () => {
 
         const removeMessage = await Factories.Message.create({
           data: Array.from(removeData.bb?.bytes() ?? []),
-          hash: Array.from(bytesDecrement(reactionRemove.hash())),
+          hash: Array.from(bytesDecrement(reactionRemove.hash())._unsafeUnwrap()),
         });
 
         const reactionRemoveEarlier = new MessageModel(removeMessage) as ReactionRemoveModel;
@@ -685,7 +685,7 @@ describe('pruneMessages', () => {
   };
 
   beforeAll(async () => {
-    const time = getFarcasterTime() - 10;
+    const time = getFarcasterTime()._unsafeUnwrap() - 10;
     add1 = await generateAddWithTimestamp(fid, time + 1);
     add2 = await generateAddWithTimestamp(fid, time + 2);
     add3 = await generateAddWithTimestamp(fid, time + 3);

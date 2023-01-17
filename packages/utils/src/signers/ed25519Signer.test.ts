@@ -9,7 +9,7 @@ describe('Ed25519Signer', () => {
   const privateKey = Factories.Ed25519PrivateKey.build();
 
   beforeAll(async () => {
-    signer = new Ed25519Signer(privateKey);
+    signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
   });
 
   describe('static methods', () => {

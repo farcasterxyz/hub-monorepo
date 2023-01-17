@@ -155,16 +155,16 @@ describe('Multi peer sync engine', () => {
       const syncEngine2 = new SyncEngine(engine2);
 
       // Engine 2 should sync with engine1
-      expect(syncEngine2.shouldSync(syncEngine1.snapshot.excludedHashes)).toBeTruthy();
+      expect(syncEngine2.shouldSync(syncEngine1.snapshot._unsafeUnwrap().excludedHashes)._unsafeUnwrap()).toBeTruthy();
 
       // Sync engine 2 with engine 1
-      await syncEngine2.performSync(syncEngine1.snapshot.excludedHashes, clientForServer1);
+      await syncEngine2.performSync(syncEngine1.snapshot._unsafeUnwrap().excludedHashes, clientForServer1);
 
       // Make sure root hash matches
       expect(syncEngine1.trie.rootHash).toEqual(syncEngine2.trie.rootHash);
 
       // Should sync should now be false with the new excluded hashes
-      expect(syncEngine2.shouldSync(syncEngine1.snapshot.excludedHashes)).toBeFalsy();
+      expect(syncEngine2.shouldSync(syncEngine1.snapshot._unsafeUnwrap().excludedHashes)._unsafeUnwrap()).toBeFalsy();
 
       // Add more messages
       await addMessagesWithTimestamps(engine1, [30663167, 30663169, 30663172]);
@@ -175,13 +175,13 @@ describe('Multi peer sync engine', () => {
       const newSnapshot = newSnapshotResult._unsafeUnwrap();
 
       // Sanity check snapshot
-      const localSnapshot = syncEngine1.snapshot;
+      const localSnapshot = syncEngine1.snapshot._unsafeUnwrap();
       expect(localSnapshot.excludedHashes).toEqual(newSnapshot.snapshot.excludedHashes);
       expect(localSnapshot.excludedHashes.length).toEqual(newSnapshot.snapshot.excludedHashes.length);
       expect(syncEngine1.trie.rootHash).toEqual(newSnapshot.rootHash);
 
       // Should sync should now be true
-      expect(syncEngine2.shouldSync(newSnapshot.snapshot.excludedHashes)).toBeTruthy();
+      expect(syncEngine2.shouldSync(newSnapshot.snapshot.excludedHashes)._unsafeUnwrap()).toBeTruthy();
 
       // Do the sync again
       await syncEngine2.performSync(newSnapshot.snapshot.excludedHashes, clientForServer1);
@@ -240,7 +240,7 @@ describe('Multi peer sync engine', () => {
       const clientForServer2 = new HubRpcClient(addressInfoFromParts('127.0.0.1', port2)._unsafeUnwrap());
       const engine1RootHashBefore = syncEngine1.trie.rootHash;
 
-      await syncEngine1.performSync(syncEngine2.snapshot.excludedHashes, clientForServer2);
+      await syncEngine1.performSync(syncEngine2.snapshot._unsafeUnwrap().excludedHashes, clientForServer2);
       expect(syncEngine1.trie.rootHash).toEqual(engine1RootHashBefore);
 
       clientForServer2.close();
@@ -252,7 +252,7 @@ describe('Multi peer sync engine', () => {
     expect(syncEngine2.trie.exists(castRemoveId)).toBeFalsy();
 
     // Syncing engine2 with engine1 should delete the castAdd from the trie and add the castRemove
-    await syncEngine2.performSync(syncEngine1.snapshot.excludedHashes, clientForServer1);
+    await syncEngine2.performSync(syncEngine1.snapshot._unsafeUnwrap().excludedHashes, clientForServer1);
 
     // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(syncEngine2.trie.exists(castRemoveId)).toBeTruthy();
@@ -323,22 +323,26 @@ describe('Multi peer sync engine', () => {
       syncEngine2.initialize();
 
       // Engine 2 should sync with engine1
-      expect(syncEngine2.shouldSync(syncEngine1.snapshot.excludedHashes)).toBeTruthy();
+      expect(syncEngine2.shouldSync(syncEngine1.snapshot._unsafeUnwrap().excludedHashes)._unsafeUnwrap()).toBeTruthy();
 
       await engine2.mergeIdRegistryEvent(custodyEvent);
       await engine2.mergeMessage(signerAdd);
 
       // Sync engine 2 with engine 1, and measure the time taken
       let totalTime = await timedTest(async () => {
-        await syncEngine2.performSync(syncEngine1.snapshot.excludedHashes, clientForServer1);
+        await syncEngine2.performSync(syncEngine1.snapshot._unsafeUnwrap().excludedHashes, clientForServer1);
       });
 
       expect(totalTime).toBeGreaterThan(0);
       expect(totalMessages).toBeGreaterThan(numBatches * batchSize);
       // console.log('Sync total time', totalTime, 'seconds. Messages per second:', totalMessages / totalTime);
 
-      expect(syncEngine1.snapshot.excludedHashes).toEqual(syncEngine2.snapshot.excludedHashes);
-      expect(syncEngine1.snapshot.numMessages).toEqual(syncEngine2.snapshot.numMessages);
+      expect(syncEngine1.snapshot._unsafeUnwrap().excludedHashes).toEqual(
+        syncEngine2.snapshot._unsafeUnwrap().excludedHashes
+      );
+      expect(syncEngine1.snapshot._unsafeUnwrap().numMessages).toEqual(
+        syncEngine2.snapshot._unsafeUnwrap().numMessages
+      );
 
       // Create a new sync engine from the existing engine, and see if all the messages from the engine
       // are loaded into the sync engine Merkle Trie properly.

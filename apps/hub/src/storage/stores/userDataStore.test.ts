@@ -252,7 +252,7 @@ describe('pruneMessages', () => {
   };
 
   beforeAll(async () => {
-    const time = getFarcasterTime() - 10;
+    const time = getFarcasterTime()._unsafeUnwrap() - 10;
     add1 = await generateAddWithTimestamp(fid, time + 1, UserDataType.Pfp);
     add2 = await generateAddWithTimestamp(fid, time + 2, UserDataType.Display);
     add3 = await generateAddWithTimestamp(fid, time + 3, UserDataType.Bio);

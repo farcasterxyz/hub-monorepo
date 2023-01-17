@@ -108,12 +108,15 @@ const makeMessageData = (
   }
 
   const timestamp = toFarcasterTime(dataOptions.timestamp || Date.now());
+  if (timestamp.isErr()) {
+    return err(timestamp.error);
+  }
 
   const dataT = new flatbuffers.MessageDataT(
     bodyType,
     bodyT,
     messageType,
-    timestamp,
+    timestamp.value,
     Array.from(serializedFid.value),
     dataOptions.network
   );

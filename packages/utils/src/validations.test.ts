@@ -654,7 +654,7 @@ describe('validateMessage', () => {
 describe('validateMessageData', () => {
   test('fails with timestamp more than 10 mins in the future', async () => {
     const data = await Factories.MessageData.create({
-      timestamp: getFarcasterTime() + validations.ALLOWED_CLOCK_SKEW_SECONDS + 1,
+      timestamp: getFarcasterTime()._unsafeUnwrap() + validations.ALLOWED_CLOCK_SKEW_SECONDS + 1,
     });
     const result = await validations.validateMessageData(data);
     expect(result._unsafeUnwrapErr()).toEqual(

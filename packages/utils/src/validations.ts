@@ -187,8 +187,13 @@ export const validateMessageData = (data: flatbuffers.MessageData): HubResult<fl
     return err(validFid.error);
   }
 
+  const farcasterTime = getFarcasterTime();
+  if (farcasterTime.isErr()) {
+    return err(farcasterTime.error);
+  }
+
   // 2. Validate timestamp
-  if (data.timestamp() - getFarcasterTime() > ALLOWED_CLOCK_SKEW_SECONDS) {
+  if (data.timestamp() - farcasterTime.value > ALLOWED_CLOCK_SKEW_SECONDS) {
     return err(new HubError('bad_request.validation_failure', 'timestamp more than 10 mins in the future'));
   }
 
