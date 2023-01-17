@@ -1,5 +1,5 @@
-import { CastIdT, UserIdT } from '~/../../../packages/flatbuffers/dist';
-import { hexStringToBytes, HubError } from '~/../../../packages/utils/dist';
+import { CastIdT, UserIdT } from '@farcaster/flatbuffers';
+import { hexStringToBytes, HubError } from '@farcaster/utils';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import HubRpcClient from '~/rpc/client';
 
