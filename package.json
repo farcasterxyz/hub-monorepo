@@ -39,5 +39,8 @@
   },
   "lint-staged": {
     "*.ts": "eslint --cache --fix"
+  },
+  "dependencies": {
+    "@changesets/cli": "^2.26.0"
   }
 }
