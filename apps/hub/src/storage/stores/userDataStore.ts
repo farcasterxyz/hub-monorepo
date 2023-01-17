@@ -1,6 +1,6 @@
 import { MessageType, NameRegistryEventType, UserDataType } from '@farcaster/flatbuffers';
 import { bytesCompare, HubAsyncResult, HubError } from '@farcaster/utils';
-import { ok, ResultAsync } from 'neverthrow';
+import { err, ok, ResultAsync } from 'neverthrow';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
@@ -246,36 +246,30 @@ class UserDataStore extends SequentialMergeStore {
   /* -------------------------------------------------------------------------- */
 
   private async mergeDataAdd(message: UserDataAddModel): Promise<void> {
-    // eslint-disable-next-line prefer-const
-    let { tsx, removedUserData } = await this.resolveUserDataMergeConflicts(this._db.transaction(), message);
+    const mergeConflicts = await this.getMergeConflicts(message);
+    if (mergeConflicts.isErr()) {
+      throw mergeConflicts.error;
+    }
 
-    // No-op if resolveMergeConflicts did not return a transaction
-    if (!tsx) return undefined;
+    // Create rocksdb transaction to delete the merge conflicts
+    let txn = this.deleteManyTransaction(this._db.transaction(), mergeConflicts.value);
 
     // Add putUserDataAdd operations to the RocksDB transaction
-    tsx = this.putUserDataAddTransaction(tsx, message);
+    txn = this.putUserDataAddTransaction(txn, message);
 
     // Commit the RocksDB transaction
-    await this._db.commit(tsx);
+    await this._db.commit(txn);
 
     // Emit store event
-    this._eventHandler.emit('mergeMessage', message);
-
-    // Emit revoke message events for any messages that were removed
-    for (const removedMessage of removedUserData) {
-      this._eventHandler.emit('revokeMessage', removedMessage);
-    }
+    this._eventHandler.emit('mergeMessage', message, mergeConflicts.value);
   }
 
   private userDataMessageCompare(aTimestampHash: Uint8Array, bTimestampHash: Uint8Array): number {
     return bytesCompare(aTimestampHash, bTimestampHash);
   }
 
-  private async resolveUserDataMergeConflicts(
-    tsx: Transaction,
-    message: UserDataAddModel
-  ): Promise<{ tsx: Transaction | undefined; removedUserData: UserDataAddModel[] }> {
-    const removedUserData = [];
+  private async getMergeConflicts(message: UserDataAddModel): HubAsyncResult<UserDataAddModel[]> {
+    const conflicts: UserDataAddModel[] = [];
 
     // Look up the current add timestampHash for this dataType
     const addTimestampHash = await ResultAsync.fromPromise(
@@ -284,9 +278,11 @@ class UserDataStore extends SequentialMergeStore {
     );
 
     if (addTimestampHash.isOk()) {
-      if (this.userDataMessageCompare(addTimestampHash.value, message.tsHash()) >= 0) {
-        // If the existing add has the same or higher order than the new message, no-op
-        return { tsx: undefined, removedUserData: [] };
+      const addCompare = this.userDataMessageCompare(addTimestampHash.value, message.tsHash());
+      if (addCompare > 0) {
+        return err(new HubError('bad_request.conflict', 'message conflicts with a more recent UserDataAdd'));
+      } else if (addCompare === 0) {
+        return err(new HubError('bad_request.duplicate', 'message has already been merged'));
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // UserDataAdd message and delete it as part of the RocksDB transaction
@@ -296,32 +292,40 @@ class UserDataStore extends SequentialMergeStore {
           UserPostfix.UserDataMessage,
           addTimestampHash.value
         );
-        tsx = this.deleteUserDataAddTransaction(tsx, existingAdd);
-        removedUserData.push(existingAdd);
+        conflicts.push(existingAdd);
       }
     }
 
-    return { tsx, removedUserData };
+    return ok(conflicts);
+  }
+
+  private deleteManyTransaction(txn: Transaction, messages: UserDataAddModel[]): Transaction {
+    for (const message of messages) {
+      if (isUserDataAdd(message)) {
+        txn = this.deleteUserDataAddTransaction(txn, message);
+      }
+    }
+    return txn;
   }
 
   /* Builds a RocksDB transaction to insert a UserDataAdd message and construct its indices */
-  private putUserDataAddTransaction(tsx: Transaction, message: UserDataAddModel): Transaction {
+  private putUserDataAddTransaction(txn: Transaction, message: UserDataAddModel): Transaction {
     // Puts the message into the database
-    tsx = MessageModel.putTransaction(tsx, message);
+    txn = MessageModel.putTransaction(txn, message);
 
     // Puts the message key into the adds set index
-    tsx = tsx.put(UserDataStore.userDataAddsKey(message.fid(), message.body().type()), Buffer.from(message.tsHash()));
+    txn = txn.put(UserDataStore.userDataAddsKey(message.fid(), message.body().type()), Buffer.from(message.tsHash()));
 
-    return tsx;
+    return txn;
   }
 
   /* Builds a RocksDB transaction to remove a UserDataAdd message and delete its indices */
-  private deleteUserDataAddTransaction(tsx: Transaction, message: UserDataAddModel): Transaction {
+  private deleteUserDataAddTransaction(txn: Transaction, message: UserDataAddModel): Transaction {
     // Delete message key from userData adds set index
-    tsx = tsx.del(UserDataStore.userDataAddsKey(message.fid(), message.body().type()));
+    txn = txn.del(UserDataStore.userDataAddsKey(message.fid(), message.body().type()));
 
     // Delete the message
-    return MessageModel.deleteTransaction(tsx, message);
+    return MessageModel.deleteTransaction(txn, message);
   }
 }
 

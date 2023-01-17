@@ -1,11 +1,8 @@
-import { FarcasterNetwork, NameRegistryEventType, UserDataType } from '@farcaster/flatbuffers';
-import { bytesIncrement, bytesToUtf8String, Factories, getFarcasterTime, HubError } from '@farcaster/utils';
-import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
+import { UserDataType } from '@farcaster/flatbuffers';
+import { bytesIncrement, Factories, getFarcasterTime, HubError } from '@farcaster/utils';
 import MessageModel from '~/flatbuffers/models/messageModel';
-import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
-import { SignerAddModel, UserDataAddModel, UserPostfix } from '~/flatbuffers/models/types';
+import { UserDataAddModel, UserPostfix } from '~/flatbuffers/models/types';
 import { jestRocksDB } from '~/storage/db/jestUtils';
-import Engine from '~/storage/engine';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import UserDataStore from '~/storage/stores/userDataStore';
 
@@ -14,38 +11,11 @@ const db = jestRocksDB('flatbuffers.userDataSet.test');
 const eventHandler = new StoreEventHandler();
 const set = new UserDataStore(db, eventHandler);
 const fid = Factories.FID.build();
-const fname = Factories.Fname.build();
-const custody1 = Factories.Eip712Signer.build();
-const signer = Factories.Ed25519Signer.build();
 
-let custody1Event: IdRegistryEventModel;
-let signerAdd: SignerAddModel;
 let addPfp: UserDataAddModel;
 let addBio: UserDataAddModel;
-let addFname: UserDataAddModel;
 
 beforeAll(async () => {
-  custody1Event = new IdRegistryEventModel(
-    await Factories.IdRegistryEvent.create(
-      {
-        fid: Array.from(fid),
-        to: Array.from(custody1.signerKey),
-      },
-      { transient: { ethSigner: custody1 } }
-    )
-  );
-
-  const signerAddData = await Factories.SignerAddData.create({
-    body: Factories.SignerBody.build({ signer: Array.from(signer.signerKey) }),
-    fid: Array.from(fid),
-  });
-  signerAdd = new MessageModel(
-    await Factories.Message.create(
-      { data: Array.from(signerAddData.bb?.bytes() ?? []) },
-      { transient: { ethSigner: custody1 } }
-    )
-  ) as SignerAddModel;
-
   const addPfpData = await Factories.UserDataAddData.create({
     fid: Array.from(fid),
     body: Factories.UserDataBody.build({ type: UserDataType.Pfp }),
@@ -60,14 +30,6 @@ beforeAll(async () => {
   });
   addBio = new MessageModel(
     await Factories.Message.create({ data: Array.from(addBioData.bb?.bytes() ?? []) })
-  ) as UserDataAddModel;
-
-  const addNameData = await Factories.UserDataAddData.create({
-    fid: Array.from(fid),
-    body: Factories.UserDataBody.build({ type: UserDataType.Fname, value: bytesToUtf8String(fname)._unsafeUnwrap() }),
-  });
-  addFname = new MessageModel(
-    await Factories.Message.create({ data: Array.from(addNameData.bb?.bytes() ?? []) }, { transient: { signer } })
   ) as UserDataAddModel;
 });
 
@@ -110,6 +72,23 @@ describe('getUserDataAddsByUser', () => {
 });
 
 describe('merge', () => {
+  let mergeEvents: [MessageModel, MessageModel[]][] = [];
+
+  const mergeMessageHandler = (message: MessageModel, deletedMessages?: MessageModel[]) => {
+    mergeEvents.push([message, deletedMessages ?? []]);
+  };
+  beforeAll(() => {
+    eventHandler.on('mergeMessage', mergeMessageHandler);
+  });
+
+  beforeEach(() => {
+    mergeEvents = [];
+  });
+
+  afterAll(() => {
+    eventHandler.off('mergeMessage', mergeMessageHandler);
+  });
+
   const assertUserDataExists = async (message: UserDataAddModel) => {
     await expect(MessageModel.get(db, fid, UserPostfix.UserDataMessage, message.tsHash())).resolves.toEqual(message);
   };
@@ -129,17 +108,21 @@ describe('merge', () => {
     await expect(set.merge(new MessageModel(message))).rejects.toThrow(HubError);
   });
 
-  describe('ReactionAdd', () => {
+  describe('UserDataAdd', () => {
     test('succeeds', async () => {
       await expect(set.merge(addPfp)).resolves.toEqual(undefined);
       await assertUserDataAddWins(addPfp);
+      expect(mergeEvents).toEqual([[addPfp, []]]);
     });
 
-    test('succeeds once, even if merged twice', async () => {
+    test('fails if merged twice', async () => {
       await expect(set.merge(addPfp)).resolves.toEqual(undefined);
-      await expect(set.merge(addPfp)).resolves.toEqual(undefined);
+      await expect(set.merge(addPfp)).rejects.toEqual(
+        new HubError('bad_request.duplicate', 'message has already been merged')
+      );
 
       await assertUserDataAddWins(addPfp);
+      expect(mergeEvents).toEqual([[addPfp, []]]);
     });
 
     test('does not conflict with UserDataAdd of different type', async () => {
@@ -147,6 +130,10 @@ describe('merge', () => {
       await set.merge(addPfp);
       await assertUserDataAddWins(addPfp);
       await assertUserDataAddWins(addBio);
+      expect(mergeEvents).toEqual([
+        [addBio, []],
+        [addPfp, []],
+      ]);
     });
 
     describe('with a conflicting UserDataAdd with different timestamps', () => {
@@ -169,14 +156,21 @@ describe('merge', () => {
 
         await assertUserDataDoesNotExist(addPfp);
         await assertUserDataAddWins(addPfpLater);
+        expect(mergeEvents).toEqual([
+          [addPfp, []],
+          [addPfpLater, [addPfp]],
+        ]);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
+      test('fails with an earlier timestamp', async () => {
         await set.merge(addPfpLater);
-        await expect(set.merge(addPfp)).resolves.toEqual(undefined);
+        await expect(set.merge(addPfp)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent UserDataAdd')
+        );
 
         await assertUserDataDoesNotExist(addPfp);
         await assertUserDataAddWins(addPfpLater);
+        expect(mergeEvents).toEqual([[addPfpLater, []]]);
       });
     });
 
@@ -196,173 +190,28 @@ describe('merge', () => {
         addPfpLater = new MessageModel(addMessage) as UserDataAddModel;
       });
 
-      test('succeeds with a later hash', async () => {
+      test('succeeds with a higher hash', async () => {
         await set.merge(addPfp);
         await expect(set.merge(addPfpLater)).resolves.toEqual(undefined);
 
         await assertUserDataDoesNotExist(addPfp);
         await assertUserDataAddWins(addPfpLater);
+        expect(mergeEvents).toEqual([
+          [addPfp, []],
+          [addPfpLater, [addPfp]],
+        ]);
       });
 
-      test('no-ops with an earlier hash', async () => {
+      test('fails with a lower hash', async () => {
         await set.merge(addPfpLater);
-        await expect(set.merge(addPfp)).resolves.toEqual(undefined);
+        await expect(set.merge(addPfp)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent UserDataAdd')
+        );
 
         await assertUserDataDoesNotExist(addPfp);
         await assertUserDataAddWins(addPfpLater);
+        expect(mergeEvents).toEqual([[addPfpLater, []]]);
       });
-    });
-  });
-});
-
-describe('userfname', () => {
-  const assertUserFnameExists = async (message: UserDataAddModel) => {
-    await expect(MessageModel.get(db, fid, UserPostfix.UserDataMessage, message.tsHash())).resolves.toEqual(message);
-  };
-
-  const assertUserFnameAddWins = async (message: UserDataAddModel) => {
-    await assertUserFnameExists(message);
-
-    await expect(set.getUserDataAdd(fid, message.body()?.type())).resolves.toEqual(message);
-  };
-
-  let nameRegistryModelEvent: NameRegistryEventModel;
-
-  beforeAll(async () => {
-    const nameRegistryEvent = await Factories.NameRegistryEvent.create(
-      {
-        fname: Array.from(fname),
-        to: Array.from(custody1.signerKey),
-      },
-      { transient: { signer } }
-    );
-    nameRegistryModelEvent = new NameRegistryEventModel(nameRegistryEvent);
-  });
-
-  test('succeeds', async () => {
-    await expect(set.merge(addFname)).resolves.toEqual(undefined);
-    await assertUserFnameAddWins(addFname);
-  });
-
-  test('succeeds even if merged twice', async () => {
-    await expect(set.merge(addFname)).resolves.toEqual(undefined);
-    await expect(set.merge(addFname)).resolves.toEqual(undefined);
-    await assertUserFnameAddWins(addFname);
-  });
-
-  test('fails with a different custody address', async () => {
-    // Merging it via the engine will fail validation
-    const engine = new Engine(db, FarcasterNetwork.Testnet);
-
-    await engine.mergeIdRegistryEvent(custody1Event);
-    await engine.mergeNameRegistryEvent(nameRegistryModelEvent);
-    await engine.mergeMessage(signerAdd);
-
-    // First, add the fname to the first address
-    await expect(set.merge(addFname)).resolves.toEqual(undefined);
-    await assertUserFnameAddWins(addFname);
-
-    // Now, generate a new address
-    const custody2 = Factories.Eip712Signer.build();
-
-    // transfer the name to custody2address
-    const nameRegistryEvent2 = await Factories.NameRegistryEvent.create({
-      fname: Array.from(fname),
-      from: Array.from(custody1.signerKey),
-      to: Array.from(custody2.signerKey),
-      type: NameRegistryEventType.NameRegistryTransfer,
-      blockNumber: nameRegistryModelEvent.blockNumber() + 1,
-    });
-    const model = new NameRegistryEventModel(nameRegistryEvent2);
-    await engine.mergeNameRegistryEvent(model);
-
-    // Now, try to add the fname to the second address
-    const addData = await Factories.UserDataAddData.create({
-      ...addFname.data.unpack(),
-      timestamp: addFname.timestamp() + 1,
-    });
-    const addMessage = await Factories.Message.create(
-      {
-        data: Array.from(addData.bb?.bytes() ?? []),
-      },
-      { transient: { signer } }
-    );
-    const addFname2 = new MessageModel(addMessage) as UserDataAddModel;
-
-    const result = await engine.mergeMessage(addFname2);
-    expect(result._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'fname custody address does not match fid custody address')
-    );
-
-    // Also make sure the UserDataAdd message got removed
-    await expect(set.getUserDataAdd(fid, UserDataType.Fname)).rejects.toThrow(HubError);
-  });
-
-  describe('with a conflicting UserNameAdd with different timestamps', () => {
-    let addFnameLater: UserDataAddModel;
-
-    beforeAll(async () => {
-      const addData = await Factories.UserDataAddData.create({
-        ...addFname.data.unpack(),
-        timestamp: addFname.timestamp() + 1,
-      });
-      const addMessage = await Factories.Message.create({
-        data: Array.from(addData.bb?.bytes() ?? []),
-      });
-      addFnameLater = new MessageModel(addMessage) as UserDataAddModel;
-    });
-
-    test('successfully merges with a later timestamp', async () => {
-      await set.merge(addFname);
-      await expect(set.merge(addFnameLater)).resolves.toEqual(undefined);
-
-      await assertUserFnameAddWins(addFnameLater);
-    });
-
-    test('no-ops with an earlier timestamp', async () => {
-      await set.merge(addFnameLater);
-      await expect(set.merge(addFname)).resolves.toEqual(undefined);
-
-      await assertUserFnameAddWins(addFnameLater);
-    });
-
-    test('no-ops with an earlier timestamp, even if merged twice', async () => {
-      await set.merge(addFnameLater);
-      await expect(set.merge(addFname)).resolves.toEqual(undefined);
-      await expect(set.merge(addFname)).resolves.toEqual(undefined);
-
-      await assertUserFnameAddWins(addFnameLater);
-    });
-  });
-
-  describe('with a conflicting UserNameAdd with identical timestamps', () => {
-    let addFnameLater: UserDataAddModel;
-
-    beforeAll(async () => {
-      const addData = await Factories.UserDataAddData.create({
-        ...addFname.data.unpack(),
-      });
-
-      const addMessage = await Factories.Message.create({
-        data: Array.from(addData.bb?.bytes() ?? []),
-        hash: Array.from(bytesIncrement(addFname.hash().slice())),
-      });
-
-      addFnameLater = new MessageModel(addMessage) as UserDataAddModel;
-    });
-
-    test('succeeds with a later hash', async () => {
-      await set.merge(addFname);
-      await expect(set.merge(addFnameLater)).resolves.toEqual(undefined);
-
-      await assertUserFnameAddWins(addFnameLater);
-    });
-
-    test('no-ops with an earlier hash', async () => {
-      await set.merge(addFnameLater);
-      await expect(set.merge(addFname)).resolves.toEqual(undefined);
-
-      await assertUserFnameAddWins(addFnameLater);
     });
   });
 });

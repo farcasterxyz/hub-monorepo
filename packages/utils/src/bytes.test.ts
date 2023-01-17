@@ -1,4 +1,5 @@
 import { BigNumber } from 'ethers';
+import { ok } from 'neverthrow';
 import {
   bigNumberToBytes,
   bytesCompare,
@@ -9,6 +10,7 @@ import {
   bytesToUtf8String,
   hexStringToBytes,
   numberToBytes,
+  utf8StringToBytes,
 } from './bytes';
 import { HubError } from './errors';
 
@@ -268,6 +270,24 @@ describe('bytesToUtf8String', () => {
 
     bytesToUtf8String(input);
     expect(bytesCompare(input, inputClone)).toBe(0);
+  });
+});
+
+describe('utf8StringToBytes', () => {
+  describe('little endian', () => {
+    const passingCases: [string, Uint8Array][] = [
+      ['pfh', new Uint8Array([104, 102, 112])],
+      ['farcaster', new Uint8Array([114, 101, 116, 115, 97, 99, 114, 97, 102])],
+      ['', new Uint8Array([])],
+      [' ', new Uint8Array([32])],
+      [' a', new Uint8Array([97, 32])],
+    ];
+
+    for (const [input, output] of passingCases) {
+      test(`converts utf8 string to little endian byte array: ${input}`, () => {
+        expect(utf8StringToBytes(input)).toEqual(ok(output));
+      });
+    }
   });
 });
 
