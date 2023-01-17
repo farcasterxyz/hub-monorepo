@@ -166,7 +166,7 @@ describe('mergeIdRegistryEvent', () => {
   test('fails if events have the same blockNumber but different blockHashes', async () => {
     const idRegistryEvent = await Factories.IdRegistryEvent.create({
       ...custody1Event.event.unpack(),
-      blockHash: Array.from(hexStringToBytes(Factories.BlockHash.build())._unsafeUnwrap()),
+      blockHash: Array.from(Factories.BlockHash.build()),
     });
 
     const blockHashConflictEvent = new IdRegistryEventModel(idRegistryEvent);

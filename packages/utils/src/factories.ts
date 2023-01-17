@@ -59,11 +59,19 @@ const TsHashFactory = Factory.define<Uint8Array, { timestamp?: number; hash?: Ui
   return toTsHash(timestamp, hash)._unsafeUnwrap();
 });
 
-const BlockHashFactory = Factory.define<string>(() => {
+const BlockHashFactory = Factory.define<Uint8Array>(() => {
+  return BytesFactory.build(undefined, { transient: { length: 32 } });
+});
+
+const BlockHashHexFactory = Factory.define<string>(() => {
   return faker.datatype.hexadecimal({ length: 64, case: 'lower' });
 });
 
-const TransactionHashFactory = Factory.define<string>(() => {
+const TransactionHashFactory = Factory.define<Uint8Array>(() => {
+  return BytesFactory.build(undefined, { transient: { length: 32 } });
+});
+
+const TransactionHashHexFactory = Factory.define<string>(() => {
   return faker.datatype.hexadecimal({ length: 64, case: 'lower' });
 });
 
@@ -240,7 +248,7 @@ const VerificationEthAddressClaimFactory = Factory.define<VerificationEthAddress
       fid: bytesToBigNumber(FIDFactory.build())._unsafeUnwrap(),
       network: flatbuffers.FarcasterNetwork.Testnet,
       address: signer.signerKeyHex,
-      blockHash: BlockHashFactory.build(),
+      blockHash: BlockHashHexFactory.build(),
     };
   }
 );
@@ -450,8 +458,8 @@ const IdRegistryEventFactory = Factory.define<flatbuffers.IdRegistryEventT, any,
 
     return new flatbuffers.IdRegistryEventT(
       faker.datatype.number({ max: 100000 }),
-      Array.from(hexStringToBytes(BlockHashFactory.build())._unsafeUnwrap()),
-      Array.from(hexStringToBytes(TransactionHashFactory.build())._unsafeUnwrap()),
+      Array.from(hexStringToBytes(BlockHashHexFactory.build())._unsafeUnwrap()),
+      Array.from(hexStringToBytes(TransactionHashHexFactory.build())._unsafeUnwrap()),
       faker.datatype.number({ max: 1000 }),
       Array.from(FIDFactory.build()),
       Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 40 }))._unsafeUnwrap()),
@@ -478,8 +486,8 @@ const NameRegistryEventFactory = Factory.define<flatbuffers.NameRegistryEventT, 
 
     return new flatbuffers.NameRegistryEventT(
       faker.datatype.number({ max: 100000 }),
-      Array.from(hexStringToBytes(BlockHashFactory.build())._unsafeUnwrap()),
-      Array.from(hexStringToBytes(TransactionHashFactory.build())._unsafeUnwrap()),
+      Array.from(hexStringToBytes(BlockHashHexFactory.build())._unsafeUnwrap()),
+      Array.from(hexStringToBytes(TransactionHashHexFactory.build())._unsafeUnwrap()),
       faker.datatype.number({ max: 1000 }),
       Array.from(FnameFactory.build()),
       Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 40 }))._unsafeUnwrap()),
@@ -502,6 +510,10 @@ const Ed25519SignatureFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build(undefined, { transient: { length: 64 } });
 });
 
+const Ed25519SignatureHexFactory = Factory.define<string>(() => {
+  return faker.datatype.hexadecimal({ length: 128, case: 'lower' });
+});
+
 const Eip712SignerFactory = Factory.define<Eip712Signer>(() => {
   const wallet = new ethers.Wallet(ethers.utils.randomBytes(32));
   return new Eip712Signer(wallet, wallet.address);
@@ -511,8 +523,28 @@ const Eip712SignatureFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build(undefined, { transient: { length: 65 } });
 });
 
+const Eip712SignatureHexFactory = Factory.define<string>(() => {
+  return faker.datatype.hexadecimal({ length: 130, case: 'lower' });
+});
+
 const ReactionTypeFactory = Factory.define<flatbuffers.ReactionType>(() => {
   return faker.helpers.arrayElement([flatbuffers.ReactionType.Like, flatbuffers.ReactionType.Recast]);
+});
+
+const MessageHashHexFactory = Factory.define<string>(() => {
+  return faker.datatype.hexadecimal({ length: 32, case: 'lower' });
+});
+
+const EthAddressHexFactory = Factory.define<string>(() => {
+  return faker.datatype.hexadecimal({ length: 40, case: 'lower' });
+});
+
+const Ed25519PublicKeyHexFactory = Factory.define<string>(() => {
+  return faker.datatype.hexadecimal({ length: 64, case: 'lower' });
+});
+
+const TsHashHexFactory = Factory.define<string>(() => {
+  return faker.datatype.hexadecimal({ length: 40, case: 'lower' });
 });
 
 export const Factories = {
@@ -521,7 +553,9 @@ export const Factories = {
   Fname: FnameFactory,
   TsHash: TsHashFactory,
   BlockHash: BlockHashFactory,
+  BlockHashHex: BlockHashHexFactory,
   TransactionHash: TransactionHashFactory,
+  TransactionHashHex: TransactionHashHexFactory,
   UserId: UserIdFactory,
   CastId: CastIdFactory,
   ReactionBody: ReactionBodyFactory,
@@ -553,7 +587,13 @@ export const Factories = {
   Ed25519PrivateKey: Ed25519PrivateKeyFactory,
   Ed25519Signer: Ed25519SignerFactory,
   Ed25519Signature: Ed25519SignatureFactory,
+  Ed25519SignatureHex: Ed25519SignatureHexFactory,
   Eip712Signer: Eip712SignerFactory,
   Eip712Signature: Eip712SignatureFactory,
+  Eip712SignatureHex: Eip712SignatureHexFactory,
   ReactionType: ReactionTypeFactory,
+  MessageHashHex: MessageHashHexFactory,
+  EthAddressHex: EthAddressHexFactory,
+  Ed25519PublicKeyHex: Ed25519PublicKeyHexFactory,
+  TsHashHex: TsHashHexFactory,
 };

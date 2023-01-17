@@ -46,7 +46,7 @@ describe('Eip712Signer', () => {
         claim = {
           fid: BigNumber.from(Factories.FID.build()),
           address: signer.signerKeyHex,
-          blockHash: Factories.BlockHash.build('', { transient: { case: 'mixed' } }),
+          blockHash: Factories.BlockHashHex.build(undefined, { transient: { case: 'mixed' } }),
           network: FarcasterNetwork.Testnet,
         };
         signature = (await signer.signVerificationEthAddressClaim(claim))._unsafeUnwrap();

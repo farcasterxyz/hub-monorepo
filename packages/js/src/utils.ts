@@ -505,7 +505,7 @@ export const deserializeBlockHash = (bytes: Uint8Array): HubResult<string> => {
  * Serializes a block hash from a hex string to byte array.
  */
 export const serializeBlockHash = (hash: string): HubResult<Uint8Array> => {
-  return hexStringToBytes(hash);
+  return validations.validateBlockHashHex(hash).andThen(hexStringToBytes);
 };
 
 /**
@@ -526,14 +526,14 @@ export const deserializeEip712Signature = (bytes: Uint8Array): HubResult<string>
  * Serializes an EIP-712 from a hex string to byte array.
  */
 export const serializeEip712Signature = (hash: string): HubResult<Uint8Array> => {
-  return hexStringToBytes(hash);
+  return validations.validateEip712SignatureHex(hash).andThen(hexStringToBytes);
 };
 
 /**
  * Deserialize an Ed25519 signature from a byte array to hex string.
  */
 export const deserializeEd25519Signature = (bytes: Uint8Array): HubResult<string> => {
-  return bytesToHexString(bytes, { size: 128 });
+  return bytesToHexString(bytes, { size: 128 }).andThen(validations.validateEd25519ignatureHex);
 };
 
 /**
@@ -564,7 +564,10 @@ export const deserializeEthAddress = (ethAddress: Uint8Array): HubResult<string>
 };
 
 export const serializeEthAddress = (ethAddress: string): HubResult<Uint8Array> => {
-  return hexStringToBytes(ethAddress).andThen((ethAddress) => validations.validateEthAddress(ethAddress));
+  return validations
+    .validateEthAddressHex(ethAddress)
+    .andThen(hexStringToBytes)
+    .andThen(validations.validateEthAddress);
 };
 
 export const deserializeEd25519PublicKey = (publicKey: Uint8Array): HubResult<string> => {
@@ -574,7 +577,10 @@ export const deserializeEd25519PublicKey = (publicKey: Uint8Array): HubResult<st
 };
 
 export const serializeEd25519PublicKey = (publicKey: string): HubResult<Uint8Array> => {
-  return hexStringToBytes(publicKey).andThen((publicKey) => validations.validateEd25519PublicKey(publicKey));
+  return validations
+    .validateEd25519PublicKeyHex(publicKey)
+    .andThen(hexStringToBytes)
+    .andThen(validations.validateEd25519PublicKey);
 };
 
 export const deserializeTsHash = (tsHash: Uint8Array): HubResult<string> => {
@@ -582,5 +588,5 @@ export const deserializeTsHash = (tsHash: Uint8Array): HubResult<string> => {
 };
 
 export const serializeTsHash = (tsHash: string): HubResult<Uint8Array> => {
-  return hexStringToBytes(tsHash).andThen((tsHash) => validations.validateTsHash(tsHash));
+  return validations.validateTsHashHex(tsHash).andThen(hexStringToBytes).andThen(validations.validateTsHash);
 };
