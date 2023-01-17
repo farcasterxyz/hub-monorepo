@@ -2,9 +2,24 @@ import { CastIdT, UserIdT } from '@farcaster/flatbuffers';
 import { hexStringToBytes, HubError } from '@farcaster/utils';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import HubRpcClient from '~/rpc/client';
+import { ConsoleCommandInterface } from './console';
 
-export class CastsCommand {
+export class CastsCommand implements ConsoleCommandInterface {
   constructor(private readonly rpcClient: HubRpcClient) {}
+  commandName(): string {
+    return 'casts';
+  }
+  shortHelp(): string {
+    return 'Get the list of casts by fid/tsHash or other parameters';
+  }
+  help(): string {
+    return `Usage: casts <command> <args>
+    Commands:
+      castByFidAndHash <fid> <tsHash> - Get the cast by fid and tsHash
+      castsByFid <fid> - Get the list of casts by fid
+      castsByParent <fid> <tsHash> - Get the list of casts by parent
+      castsByMention <userId> - Get the list of casts by mention`;
+  }
 
   castByFidAndHash = async (fid: string, tsHash: string): Promise<string | MessageModel> => {
     const fidBytes = hexStringToBytes(fid);
