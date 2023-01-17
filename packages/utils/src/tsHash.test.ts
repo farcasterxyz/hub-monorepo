@@ -4,7 +4,7 @@ import { Factories } from './factories';
 import { toFarcasterTime } from './time';
 import { toTsHash } from './tsHash';
 
-const farcasterTimeNow = toFarcasterTime(Date.now());
+const farcasterTimeNow = toFarcasterTime(Date.now())._unsafeUnwrap();
 
 test('stores timestamp in big-endian order', () => {
   const hash = Factories.Bytes.build({}, { transient: { length: 16 } });

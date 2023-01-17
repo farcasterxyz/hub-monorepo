@@ -1,6 +1,6 @@
 import { CastId, MessageType } from '@farcaster/flatbuffers';
 import { bytesCompare, getFarcasterTime, HubAsyncResult, HubError } from '@farcaster/utils';
-import { ok, ResultAsync } from 'neverthrow';
+import { err, ok, ResultAsync } from 'neverthrow';
 import MessageModel, { FID_BYTES, TRUE_VALUE } from '~/flatbuffers/models/messageModel';
 import { isCastAdd, isCastRemove } from '~/flatbuffers/models/typeguards';
 import { CastAddModel, CastRemoveModel, RootPrefix, StorePruneOptions, UserPostfix } from '~/flatbuffers/models/types';
@@ -255,8 +255,13 @@ class CastStore extends SequentialMergeStore {
     // Calculate the number of messages that need to be pruned, based on the store's size limit
     let sizeToPrune = count - this._pruneSizeLimit;
 
+    const farcasterTime = getFarcasterTime();
+    if (farcasterTime.isErr()) {
+      return err(farcasterTime.error);
+    }
+
     // Calculate the timestamp cut-off to prune
-    const timestampToPrune = getFarcasterTime() - this._pruneTimeLimit;
+    const timestampToPrune = farcasterTime.value - this._pruneTimeLimit;
 
     // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
     const messageToPrune: (CastAddModel | CastRemoveModel)[] = [];

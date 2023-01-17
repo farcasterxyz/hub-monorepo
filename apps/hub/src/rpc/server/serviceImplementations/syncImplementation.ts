@@ -83,7 +83,7 @@ export const syncImplementation = (engine: Engine, syncEngine: SyncEngine) => {
       callback: grpc.sendUnaryData<flatbuffers.TrieNodeSnapshotResponse>
     ) => {
       const prefix = bytesToUtf8String(call.request.prefixArray() ?? new Uint8Array())._unsafeUnwrap();
-      const result = syncEngine.getSnapshotByPrefix(prefix);
+      const result = syncEngine.getSnapshotByPrefix(prefix)._unsafeUnwrap();
       const rootHash = syncEngine.trie.rootHash;
       if (result) {
         callback(null, toTrieNodeSnapshotResponse(result, rootHash));

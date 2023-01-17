@@ -54,7 +54,7 @@ const FnameFactory = Factory.define<Uint8Array>(() => {
 });
 
 const TsHashFactory = Factory.define<Uint8Array, { timestamp?: number; hash?: Uint8Array }>(({ transientParams }) => {
-  const timestamp = transientParams.timestamp ?? toFarcasterTime(faker.date.recent().getTime());
+  const timestamp = transientParams.timestamp ?? toFarcasterTime(faker.date.recent().getTime())._unsafeUnwrap();
   const hash = transientParams.hash ?? blake3(faker.random.alphaNumeric(256), { dkLen: 16 });
   return toTsHash(timestamp, hash)._unsafeUnwrap();
 });
@@ -106,7 +106,7 @@ const MessageDataFactory = Factory.define<flatbuffers.MessageDataT, any, flatbuf
     flatbuffers.MessageBody.CastAddBody,
     CastAddBodyFactory.build(),
     flatbuffers.MessageType.CastAdd,
-    toFarcasterTime(faker.date.recent().getTime()),
+    toFarcasterTime(faker.date.recent().getTime())._unsafeUnwrap(),
     Array.from(FIDFactory.build()),
     flatbuffers.FarcasterNetwork.Testnet
   );
@@ -503,7 +503,7 @@ const Ed25519PrivateKeyFactory = Factory.define<Uint8Array>(() => {
 });
 
 const Ed25519SignerFactory = Factory.define<Ed25519Signer>(() => {
-  return new Ed25519Signer(Ed25519PrivateKeyFactory.build());
+  return Ed25519Signer.fromPrivateKey(Ed25519PrivateKeyFactory.build())._unsafeUnwrap();
 });
 
 const Ed25519SignatureFactory = Factory.define<Uint8Array>(() => {
@@ -516,7 +516,7 @@ const Ed25519SignatureHexFactory = Factory.define<string>(() => {
 
 const Eip712SignerFactory = Factory.define<Eip712Signer>(() => {
   const wallet = new ethers.Wallet(ethers.utils.randomBytes(32));
-  return new Eip712Signer(wallet, wallet.address);
+  return Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwrap();
 });
 
 const Eip712SignatureFactory = Factory.define<Uint8Array>(() => {

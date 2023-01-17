@@ -33,7 +33,10 @@ describe('TsHashFactory', () => {
   });
 
   test('accepts timestamp', () => {
-    const tsHash = Factories.TsHash.build({}, { transient: { timestamp: toFarcasterTime(Date.now()) } });
+    const tsHash = Factories.TsHash.build(
+      {},
+      { transient: { timestamp: toFarcasterTime(Date.now())._unsafeUnwrap() } }
+    );
     expect(tsHash.byteLength).toEqual(20);
   });
 });

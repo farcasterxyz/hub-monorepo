@@ -489,7 +489,7 @@ describe('merge', () => {
         const removeMessage = await Factories.Message.create(
           {
             data: Array.from(removeData.bb?.bytes() ?? []),
-            hash: Array.from(bytesDecrement(signerAdd.hash())),
+            hash: Array.from(bytesDecrement(signerAdd.hash().slice())._unsafeUnwrap()),
           },
           { transient: { ethSigner: custody1 } }
         );
@@ -686,7 +686,7 @@ describe('merge', () => {
         const addMessage = await Factories.Message.create(
           {
             data: Array.from(addData.bb?.bytes() ?? []),
-            hash: Array.from(bytesDecrement(signerRemove.hash())),
+            hash: Array.from(bytesDecrement(signerRemove.hash())._unsafeUnwrap()),
           },
           { transient: { ethSigner: custody1 } }
         );
@@ -866,7 +866,7 @@ describe('pruneMessages', () => {
   };
 
   beforeAll(async () => {
-    const time = getFarcasterTime() - 10;
+    const time = getFarcasterTime()._unsafeUnwrap() - 10;
     add1 = await generateAddWithTimestamp(fid, time + 1);
     add2 = await generateAddWithTimestamp(fid, time + 2);
     add3 = await generateAddWithTimestamp(fid, time + 3);

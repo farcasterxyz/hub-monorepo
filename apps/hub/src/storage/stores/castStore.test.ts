@@ -290,7 +290,7 @@ describe('merge', () => {
 
         const removeMessage = await Factories.Message.create({
           data: Array.from(removeData.bb?.bytes() ?? []),
-          hash: Array.from(bytesDecrement(castAdd.hash().slice())),
+          hash: Array.from(bytesDecrement(castAdd.hash().slice())._unsafeUnwrap()),
         });
 
         const castRemoveEarlier = new MessageModel(removeMessage) as CastRemoveModel;
@@ -476,7 +476,7 @@ describe('merge', () => {
         });
         const removeMessage = await Factories.Message.create({
           data: Array.from(removeData.bb?.bytes() ?? []),
-          hash: Array.from(bytesDecrement(castAdd.hash().slice())),
+          hash: Array.from(bytesDecrement(castAdd.hash().slice())._unsafeUnwrap()),
         });
         const castRemoveEarlier = new MessageModel(removeMessage) as CastRemoveModel;
 
@@ -572,7 +572,7 @@ describe('pruneMessages', () => {
   };
 
   beforeAll(async () => {
-    const time = getFarcasterTime() - 10;
+    const time = getFarcasterTime()._unsafeUnwrap() - 10;
     add1 = await generateAddWithTimestamp(fid, time + 1);
     add2 = await generateAddWithTimestamp(fid, time + 2);
     add3 = await generateAddWithTimestamp(fid, time + 3);

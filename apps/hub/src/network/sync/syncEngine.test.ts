@@ -192,8 +192,8 @@ describe('SyncEngine', () => {
   });
 
   test('snapshotTimestampPrefix trims the seconds', async () => {
-    const nowInSeconds = getFarcasterTime();
-    const snapshotTimestamp = syncEngine.snapshotTimestamp;
+    const nowInSeconds = getFarcasterTime()._unsafeUnwrap();
+    const snapshotTimestamp = syncEngine.snapshotTimestamp._unsafeUnwrap();
     expect(snapshotTimestamp).toBeLessThanOrEqual(nowInSeconds);
     expect(snapshotTimestamp).toEqual(Math.floor(nowInSeconds / 10) * 10);
   });
@@ -203,7 +203,7 @@ describe('SyncEngine', () => {
     const rpcClient = instance(mockRPCClient);
     let called = false;
     when(mockRPCClient.getSyncMetadataByPrefix(anyString())).thenCall(() => {
-      expect(syncEngine.shouldSync([])).toBeFalsy();
+      expect(syncEngine.shouldSync([])._unsafeUnwrap()).toBeFalsy();
       called = true;
       // Return an empty child map so sync will finish with a noop
       return Promise.resolve(ok({ prefix: '', numMessages: 1000, hash: '', children: new Map() }));
@@ -217,7 +217,7 @@ describe('SyncEngine', () => {
     await engine.mergeMessage(signerAdd);
 
     await addMessagesWithTimestamps([30662167, 30662169, 30662172]);
-    expect(syncEngine.shouldSync(syncEngine.snapshot.excludedHashes)).toBeFalsy();
+    expect(syncEngine.shouldSync(syncEngine.snapshot._unsafeUnwrap().excludedHashes)._unsafeUnwrap()).toBeFalsy();
   });
 
   test('shouldSync returns true when hashes dont match', async () => {
@@ -225,22 +225,11 @@ describe('SyncEngine', () => {
     await engine.mergeMessage(signerAdd);
 
     await addMessagesWithTimestamps([30662167, 30662169, 30662172]);
-    const oldSnapshot = syncEngine.snapshot;
+    const oldSnapshot = syncEngine.snapshot._unsafeUnwrap();
     await addMessagesWithTimestamps([30662372]);
-    expect(oldSnapshot.excludedHashes).not.toEqual(syncEngine.snapshot.excludedHashes);
-    expect(syncEngine.shouldSync(oldSnapshot.excludedHashes)).toBeTruthy();
+    expect(oldSnapshot.excludedHashes).not.toEqual(syncEngine.snapshot._unsafeUnwrap().excludedHashes);
+    expect(syncEngine.shouldSync(oldSnapshot.excludedHashes)._unsafeUnwrap()).toBeTruthy();
   });
-
-  // xtest('should not sync if messages were added within the sync threshold', async () => {
-  //   const user = await mockFid(engine, faker.datatype.number());
-  //   const snapshotTimestamp = syncEngine.snapshotTimestamp;
-  //   await addMessagesWithTimestamps(user, [snapshotTimestamp - 3, snapshotTimestamp - 2, snapshotTimestamp - 1]);
-
-  //   const snapshot = syncEngine.snapshot;
-  //   // Add a message after the snapshot, within the sync threshold
-  //   await addMessagesWithTimestamps(user, [snapshotTimestamp + 1]);
-  //   expect(syncEngine.shouldSync(snapshot.excludedHashes)).toBeFalsy();
-  // });
 
   test('initialize populates the trie with all existing messages', async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
