@@ -108,3 +108,25 @@ describe('BytesFactory', () => {
     });
   });
 });
+
+describe('EventResponseFactory', () => {
+  describe('build', () => {
+    const eventResponse = Factories.EventResponse.build();
+
+    test('generates an EventResponseT', () => {
+      expect(eventResponse).toBeInstanceOf(flatbuffers.EventResponseT);
+    });
+  });
+
+  describe('create', () => {
+    let eventResponse: flatbuffers.EventResponse;
+
+    beforeAll(async () => {
+      eventResponse = await Factories.EventResponse.create();
+    });
+
+    test('generates an EventResponse', () => {
+      expect(eventResponse).toBeInstanceOf(flatbuffers.EventResponse);
+    });
+  });
+});
