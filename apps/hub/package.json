@@ -1,9 +1,10 @@
 {
   "name": "@farcaster/hub",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Farcaster Hub",
   "author": "",
   "license": "",
+  "private": true,
   "bugs": {
     "url": "https://github.com/farcasterxyz/hub/issues"
   },
@@ -40,9 +41,9 @@
     "@chainsafe/libp2p-gossipsub": "^4.1.1",
     "@chainsafe/libp2p-noise": "^8.0.2",
     "@grpc/grpc-js": "^1.7.3",
-    "@farcaster/utils": "0.1.3",
-    "@farcaster/flatbuffers": "0.1.3",
-    "@farcaster/grpc": "0.1.3",
+    "@farcaster/utils": "0.1.4",
+    "@farcaster/flatbuffers": "0.1.4",
+    "@farcaster/grpc": "0.1.4",
     "@libp2p/interface-connection": "^3.0.2",
     "@libp2p/interface-peer-id": "^1.0.4",
     "@libp2p/interface-peer-info": "^1.0.3",
