@@ -1,4 +1,4 @@
-import * as message_generated from '@farcaster/flatbuffers';
+import * as flatbuffers from '@farcaster/flatbuffers';
 import { HubAsyncResult } from '@farcaster/utils';
 import HubStateModel from '~/flatbuffers/models/hubStateModel';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
@@ -84,27 +84,33 @@ export type UserMessagePostfix =
   | UserPostfix.UserDataMessage;
 
 export interface CastRemoveModel extends MessageModel {
-  body(): message_generated.CastRemoveBody;
+  body(): flatbuffers.CastRemoveBody;
+  type(): flatbuffers.MessageType.CastRemove;
 }
 
 export interface CastAddModel extends MessageModel {
-  body(): message_generated.CastAddBody;
+  body(): flatbuffers.CastAddBody;
+  type(): flatbuffers.MessageType.CastAdd;
 }
 
 export interface AmpAddModel extends MessageModel {
-  body(): message_generated.AmpBody;
+  body(): flatbuffers.AmpBody;
+  type(): flatbuffers.MessageType.AmpAdd;
 }
 
 export interface AmpRemoveModel extends MessageModel {
-  body(): message_generated.AmpBody;
+  body(): flatbuffers.AmpBody;
+  type(): flatbuffers.MessageType.AmpRemove;
 }
 
 export interface ReactionAddModel extends MessageModel {
-  body(): message_generated.ReactionBody;
+  body(): flatbuffers.ReactionBody;
+  type(): flatbuffers.MessageType.ReactionAdd;
 }
 
 export interface ReactionRemoveModel extends MessageModel {
-  body(): message_generated.ReactionBody;
+  body(): flatbuffers.ReactionBody;
+  type(): flatbuffers.MessageType.ReactionRemove;
 }
 
 /**
@@ -121,23 +127,28 @@ export interface ReactionRemoveModel extends MessageModel {
  * body.blockHash - user-reported latest ethereum block hash at time of signing
  */
 export interface VerificationAddEthAddressModel extends MessageModel {
-  body(): message_generated.VerificationAddEthAddressBody;
+  body(): flatbuffers.VerificationAddEthAddressBody;
+  type(): flatbuffers.MessageType.VerificationAddEthAddress;
 }
 
 export interface VerificationRemoveModel extends MessageModel {
-  body(): message_generated.VerificationRemoveBody;
+  body(): flatbuffers.VerificationRemoveBody;
+  type(): flatbuffers.MessageType.VerificationRemove;
 }
 
 export interface SignerAddModel extends MessageModel {
-  body(): message_generated.SignerBody;
+  body(): flatbuffers.SignerBody;
+  type(): flatbuffers.MessageType.SignerAdd;
 }
 
 export interface SignerRemoveModel extends MessageModel {
-  body(): message_generated.SignerBody;
+  body(): flatbuffers.SignerBody;
+  type(): flatbuffers.MessageType.SignerRemove;
 }
 
 export interface UserDataAddModel extends MessageModel {
-  body(): message_generated.UserDataBody;
+  body(): flatbuffers.UserDataBody;
+  type(): flatbuffers.MessageType.UserDataAdd;
 }
 
 export type StorePruneOptions = {

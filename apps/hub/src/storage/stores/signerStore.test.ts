@@ -267,16 +267,21 @@ describe('mergeIdRegistryEvent', () => {
 });
 
 describe('merge', () => {
-  let mergedMessages: MessageModel[];
+  let mergeEvents: [MessageModel, MessageModel[]][] = [];
 
+  const mergeMessageHandler = (message: MessageModel, deletedMessages?: MessageModel[]) => {
+    mergeEvents.push([message, deletedMessages ?? []]);
+  };
   beforeAll(() => {
-    eventHandler.on('mergeMessage', (message: MessageModel) => {
-      mergedMessages.push(message);
-    });
+    eventHandler.on('mergeMessage', mergeMessageHandler);
   });
 
   beforeEach(() => {
-    mergedMessages = [];
+    mergeEvents = [];
+  });
+
+  afterAll(() => {
+    eventHandler.off('mergeMessage', mergeMessageHandler);
   });
 
   const assertSignerExists = async (message: SignerAddModel | SignerRemoveModel) => {
@@ -303,22 +308,24 @@ describe('merge', () => {
     const invalidData = await Factories.ReactionAddData.create({ fid: Array.from(fid) });
     const message = await Factories.Message.create({ data: Array.from(invalidData.bb?.bytes() ?? []) });
     await expect(set.merge(new MessageModel(message))).rejects.toThrow(HubError);
-    expect(mergedMessages).toEqual([]);
+    expect(mergeEvents).toEqual([]);
   });
 
   describe('SignerAdd', () => {
     test('succeeds', async () => {
       await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
       await assertSignerAddWins(signerAdd);
-      expect(mergedMessages).toEqual([signerAdd]);
+      expect(mergeEvents).toEqual([[signerAdd, []]]);
     });
 
-    test('succeeds once, even if merged twice', async () => {
+    test('fails when merged twice', async () => {
       await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
-      await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+      await expect(set.merge(signerAdd)).rejects.toEqual(
+        new HubError('bad_request.duplicate', 'message has already been merged')
+      );
 
       await assertSignerAddWins(signerAdd);
-      expect(mergedMessages).toEqual([signerAdd]);
+      expect(mergeEvents).toEqual([[signerAdd, []]]);
     });
 
     describe('with a conflicting SignerAdd with different timestamps', () => {
@@ -346,16 +353,21 @@ describe('merge', () => {
 
         await assertSignerDoesNotExist(signerAdd);
         await assertSignerAddWins(signerAddLater);
-        expect(mergedMessages).toEqual([signerAdd, signerAddLater]);
+        expect(mergeEvents).toEqual([
+          [signerAdd, []],
+          [signerAddLater, [signerAdd]],
+        ]);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
+      test('fails with an earlier timestamp', async () => {
         await set.merge(signerAddLater);
-        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(signerAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent SignerAdd')
+        );
 
         await assertSignerDoesNotExist(signerAdd);
         await assertSignerAddWins(signerAddLater);
-        expect(mergedMessages).toEqual([signerAddLater]);
+        expect(mergeEvents).toEqual([[signerAddLater, []]]);
       });
     });
 
@@ -370,7 +382,7 @@ describe('merge', () => {
         const addMessage = await Factories.Message.create(
           {
             data: Array.from(addData.bb?.bytes() ?? []),
-            hash: Array.from(bytesIncrement(signerAdd.hash().slice())),
+            hash: Array.from(bytesIncrement(signerAdd.hash())),
           },
           { transient: { ethSigner: custody1 } }
         );
@@ -378,22 +390,27 @@ describe('merge', () => {
         signerAddLater = new MessageModel(addMessage) as SignerAddModel;
       });
 
-      test('succeeds with a later hash', async () => {
+      test('succeeds with a higher hash', async () => {
         await set.merge(signerAdd);
         await expect(set.merge(signerAddLater)).resolves.toEqual(undefined);
 
         await assertSignerDoesNotExist(signerAdd);
         await assertSignerAddWins(signerAddLater);
-        expect(mergedMessages).toEqual([signerAdd, signerAddLater]);
+        expect(mergeEvents).toEqual([
+          [signerAdd, []],
+          [signerAddLater, [signerAdd]],
+        ]);
       });
 
-      test('no-ops with an earlier hash', async () => {
+      test('fails with a lower hash', async () => {
         await set.merge(signerAddLater);
-        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(signerAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent SignerAdd')
+        );
 
         await assertSignerDoesNotExist(signerAdd);
         await assertSignerAddWins(signerAddLater);
-        expect(mergedMessages).toEqual([signerAddLater]);
+        expect(mergeEvents).toEqual([[signerAddLater, []]]);
       });
     });
 
@@ -418,21 +435,26 @@ describe('merge', () => {
 
         await assertSignerAddWins(signerAdd);
         await assertSignerDoesNotExist(signerRemoveEarlier);
-        expect(mergedMessages).toEqual([signerRemoveEarlier, signerAdd]);
+        expect(mergeEvents).toEqual([
+          [signerRemoveEarlier, []],
+          [signerAdd, [signerRemoveEarlier]],
+        ]);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
+      test('fails with an earlier timestamp', async () => {
         await set.merge(signerRemove);
-        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(signerAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent SignerRemove')
+        );
 
         await assertSignerRemoveWins(signerRemove);
         await assertSignerDoesNotExist(signerAdd);
-        expect(mergedMessages).toEqual([signerRemove]);
+        expect(mergeEvents).toEqual([[signerRemove, []]]);
       });
     });
 
     describe('with conflicting SignerRemove with identical timestamps', () => {
-      test('no-ops if remove has a later hash', async () => {
+      test('fails if remove has a higher hash', async () => {
         const removeData = await Factories.SignerRemoveData.create({
           ...signerRemove.data.unpack(),
           timestamp: signerAdd.timestamp(),
@@ -441,7 +463,7 @@ describe('merge', () => {
         const removeMessage = await Factories.Message.create(
           {
             data: Array.from(removeData.bb?.bytes() ?? []),
-            hash: Array.from(bytesIncrement(signerAdd.hash().slice())),
+            hash: Array.from(bytesIncrement(signerAdd.hash())),
           },
           { transient: { ethSigner: custody1 } }
         );
@@ -449,14 +471,16 @@ describe('merge', () => {
         const signerRemoveLater = new MessageModel(removeMessage) as SignerRemoveModel;
 
         await set.merge(signerRemoveLater);
-        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(signerAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent SignerRemove')
+        );
 
         await assertSignerRemoveWins(signerRemoveLater);
         await assertSignerDoesNotExist(signerAdd);
-        expect(mergedMessages).toEqual([signerRemoveLater]);
+        expect(mergeEvents).toEqual([[signerRemoveLater, []]]);
       });
 
-      test('no-ops even if remove has an earlier hash', async () => {
+      test('fails if remove has a lower hash', async () => {
         const removeData = await Factories.SignerRemoveData.create({
           ...signerRemove.data.unpack(),
           timestamp: signerAdd.timestamp(),
@@ -465,7 +489,7 @@ describe('merge', () => {
         const removeMessage = await Factories.Message.create(
           {
             data: Array.from(removeData.bb?.bytes() ?? []),
-            hash: Array.from(bytesDecrement(signerAdd.hash().slice())),
+            hash: Array.from(bytesDecrement(signerAdd.hash())),
           },
           { transient: { ethSigner: custody1 } }
         );
@@ -473,11 +497,13 @@ describe('merge', () => {
         const signerRemoveEarlier = new MessageModel(removeMessage) as SignerRemoveModel;
 
         await set.merge(signerRemoveEarlier);
-        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(signerAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent SignerRemove')
+        );
 
         await assertSignerDoesNotExist(signerAdd);
         await assertSignerRemoveWins(signerRemoveEarlier);
-        expect(mergedMessages).toEqual([signerRemoveEarlier]);
+        expect(mergeEvents).toEqual([[signerRemoveEarlier, []]]);
       });
     });
   });
@@ -487,15 +513,17 @@ describe('merge', () => {
       await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
 
       await assertSignerRemoveWins(signerRemove);
-      expect(mergedMessages).toEqual([signerRemove]);
+      expect(mergeEvents).toEqual([[signerRemove, []]]);
     });
 
-    test('succeeds once, even if merged twice', async () => {
+    test('fails if merged twice', async () => {
       await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
-      await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+      await expect(set.merge(signerRemove)).rejects.toEqual(
+        new HubError('bad_request.duplicate', 'message has already been merged')
+      );
 
       await assertSignerRemoveWins(signerRemove);
-      expect(mergedMessages).toEqual([signerRemove]);
+      expect(mergeEvents).toEqual([[signerRemove, []]]);
     });
 
     describe('with a conflicting SignerRemove with different timestamps', () => {
@@ -521,16 +549,21 @@ describe('merge', () => {
 
         await assertSignerDoesNotExist(signerRemove);
         await assertSignerRemoveWins(signerRemoveLater);
-        expect(mergedMessages).toEqual([signerRemove, signerRemoveLater]);
+        expect(mergeEvents).toEqual([
+          [signerRemove, []],
+          [signerRemoveLater, [signerRemove]],
+        ]);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
+      test('fails with an earlier timestamp', async () => {
         await set.merge(signerRemoveLater);
-        await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(signerRemove)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent SignerRemove')
+        );
 
         await assertSignerDoesNotExist(signerRemove);
         await assertSignerRemoveWins(signerRemoveLater);
-        expect(mergedMessages).toEqual([signerRemoveLater]);
+        expect(mergeEvents).toEqual([[signerRemoveLater, []]]);
       });
     });
 
@@ -545,7 +578,7 @@ describe('merge', () => {
         const removeMessage = await Factories.Message.create(
           {
             data: Array.from(removeData.bb?.bytes() ?? []),
-            hash: Array.from(bytesIncrement(signerRemove.hash().slice())),
+            hash: Array.from(bytesIncrement(signerRemove.hash())),
           },
           { transient: { ethSigner: custody1 } }
         );
@@ -553,22 +586,27 @@ describe('merge', () => {
         signerRemoveLater = new MessageModel(removeMessage) as SignerRemoveModel;
       });
 
-      test('succeeds with a later hash', async () => {
+      test('succeeds with a higher hash', async () => {
         await set.merge(signerRemove);
         await expect(set.merge(signerRemoveLater)).resolves.toEqual(undefined);
 
         await assertSignerDoesNotExist(signerRemove);
         await assertSignerRemoveWins(signerRemoveLater);
-        expect(mergedMessages).toEqual([signerRemove, signerRemoveLater]);
+        expect(mergeEvents).toEqual([
+          [signerRemove, []],
+          [signerRemoveLater, [signerRemove]],
+        ]);
       });
 
-      test('no-ops with an earlier hash', async () => {
+      test('fails with a lower hash', async () => {
         await set.merge(signerRemoveLater);
-        await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(signerRemove)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent SignerRemove')
+        );
 
         await assertSignerDoesNotExist(signerRemove);
         await assertSignerRemoveWins(signerRemoveLater);
-        expect(mergedMessages).toEqual([signerRemoveLater]);
+        expect(mergeEvents).toEqual([[signerRemoveLater, []]]);
       });
     });
 
@@ -579,10 +617,13 @@ describe('merge', () => {
 
         await assertSignerRemoveWins(signerRemove);
         await assertSignerDoesNotExist(signerAdd);
-        expect(mergedMessages).toEqual([signerAdd, signerRemove]);
+        expect(mergeEvents).toEqual([
+          [signerAdd, []],
+          [signerRemove, [signerAdd]],
+        ]);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
+      test('fails with an earlier timestamp', async () => {
         const addData = await Factories.SignerAddData.create({
           ...signerRemove.data.unpack(),
           timestamp: signerRemove.timestamp() + 1,
@@ -599,16 +640,18 @@ describe('merge', () => {
         const signerAddLater = new MessageModel(addMessage) as SignerAddModel;
 
         await set.merge(signerAddLater);
-        await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(signerRemove)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent SignerAdd')
+        );
 
         await assertSignerAddWins(signerAddLater);
         await assertSignerDoesNotExist(signerRemove);
-        expect(mergedMessages).toEqual([signerAddLater]);
+        expect(mergeEvents).toEqual([[signerAddLater, []]]);
       });
     });
 
     describe('with conflicting SignerAdd with identical timestamps', () => {
-      test('succeeds with an earlier hash', async () => {
+      test('succeeds with a lower hash', async () => {
         const addData = await Factories.SignerAddData.create({
           ...signerRemove.data.unpack(),
           type: MessageType.SignerAdd,
@@ -617,7 +660,7 @@ describe('merge', () => {
         const addMessage = await Factories.Message.create(
           {
             data: Array.from(addData.bb?.bytes() ?? []),
-            hash: Array.from(bytesIncrement(signerRemove.hash().slice())),
+            hash: Array.from(bytesIncrement(signerRemove.hash())),
           },
           { transient: { ethSigner: custody1 } }
         );
@@ -628,10 +671,13 @@ describe('merge', () => {
 
         await assertSignerDoesNotExist(signerAddLater);
         await assertSignerRemoveWins(signerRemove);
-        expect(mergedMessages).toEqual([signerAddLater, signerRemove]);
+        expect(mergeEvents).toEqual([
+          [signerAddLater, []],
+          [signerRemove, [signerAddLater]],
+        ]);
       });
 
-      test('succeeds with a later hash', async () => {
+      test('succeeds with a higher hash', async () => {
         const addData = await Factories.SignerAddData.create({
           ...signerRemove.data.unpack(),
           type: MessageType.SignerAdd,
@@ -640,7 +686,7 @@ describe('merge', () => {
         const addMessage = await Factories.Message.create(
           {
             data: Array.from(addData.bb?.bytes() ?? []),
-            hash: Array.from(bytesDecrement(signerRemove.hash().slice())),
+            hash: Array.from(bytesDecrement(signerRemove.hash())),
           },
           { transient: { ethSigner: custody1 } }
         );
@@ -652,7 +698,10 @@ describe('merge', () => {
 
         await assertSignerDoesNotExist(signerAddEarlier);
         await assertSignerRemoveWins(signerRemove);
-        expect(mergedMessages).toEqual([signerAddEarlier, signerRemove]);
+        expect(mergeEvents).toEqual([
+          [signerAddEarlier, []],
+          [signerRemove, [signerAddEarlier]],
+        ]);
       });
     });
   });

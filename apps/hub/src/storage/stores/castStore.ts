@@ -320,7 +320,7 @@ class CastStore extends SequentialMergeStore {
 
   private async mergeAdd(message: CastAddModel): Promise<void> {
     // Start RocksDB transaction
-    let tsx = this._db.transaction();
+    let txn = this._db.transaction();
 
     // Look up the remove tsHash for this cast
     const castRemoveTsHash = await ResultAsync.fromPromise(
@@ -328,9 +328,9 @@ class CastStore extends SequentialMergeStore {
       () => undefined
     );
 
-    // If remove tsHash exists, no-op because this cast has already been removed
+    // If remove tsHash exists, fail because this cast has already been removed
     if (castRemoveTsHash.isOk()) {
-      return undefined;
+      throw new HubError('bad_request.conflict', 'message conflicts with a CastRemove');
     }
 
     // Look up the add tsHash for this cast
@@ -341,28 +341,29 @@ class CastStore extends SequentialMergeStore {
 
     // If add tsHash exists, no-op because this cast has already been added
     if (castAddTsHash.isOk()) {
-      return undefined;
+      throw new HubError('bad_request.duplicate', 'message has already been merged');
     }
 
     // Add putCastAdd operations to the RocksDB transaction
-    tsx = this.putCastAddTransaction(tsx, message);
+    txn = this.putCastAddTransaction(txn, message);
 
     // Commit the RocksDB transaction
-    await this._db.commit(tsx);
+    await this._db.commit(txn);
 
     // Emit store event
     this._eventHandler.emit('mergeMessage', message);
+
+    return undefined;
   }
 
   private async mergeRemove(message: CastRemoveModel): Promise<void> {
-    // Keep track of all removed casts, so we can emit a revokeMessage event for each one
-    const removedCasts: MessageModel[] = [];
-
-    // Start RocksDB transaction
-    let tsx = this._db.transaction();
-
     // Define cast hash for lookups
     const removeTargetTsHash = message.body().targetTsHashArray() ?? new Uint8Array();
+
+    const mergeConflicts: (CastAddModel | CastRemoveModel)[] = [];
+
+    // Start RocksDB transaction
+    let txn = this._db.transaction();
 
     // Look up the remove tsHash for this cast
     const castRemoveTsHash = await ResultAsync.fromPromise(
@@ -371,10 +372,12 @@ class CastStore extends SequentialMergeStore {
     );
 
     if (castRemoveTsHash.isOk()) {
-      if (bytesCompare(castRemoveTsHash.value, message.tsHash()) >= 0) {
-        // If the remove tsHash exists and has the same or higher order than the new CastRemove
-        // tsHash, no-op because this cast has been removed by a more recent message
-        return undefined;
+      const removeCompare = bytesCompare(castRemoveTsHash.value, message.tsHash());
+
+      if (removeCompare > 0) {
+        throw new HubError('bad_request.conflict', 'message conflicts with a more recent CastRemove');
+      } else if (removeCompare === 0) {
+        throw new HubError('bad_request.duplicate', 'message has already been merged');
       } else {
         // If the remove tsHash exists but with a lower order than the new CastRemove
         // tsHash, retrieve the full CastRemove message and delete it as part of the
@@ -385,8 +388,8 @@ class CastStore extends SequentialMergeStore {
           UserPostfix.CastMessage,
           castRemoveTsHash.value
         );
-        tsx = this.deleteCastRemoveTransaction(tsx, existingRemove);
-        removedCasts.push(existingRemove);
+        txn = this.deleteCastRemoveTransaction(txn, existingRemove);
+        mergeConflicts.push(existingRemove);
       }
     }
 
@@ -405,36 +408,31 @@ class CastStore extends SequentialMergeStore {
         UserPostfix.CastMessage,
         castAddTsHash.value
       );
-      tsx = this.deleteCastAddTransaction(tsx, existingAdd);
-      removedCasts.push(existingAdd);
+      txn = this.deleteCastAddTransaction(txn, existingAdd);
+      mergeConflicts.push(existingAdd);
     }
 
     // Add putCastRemove operations to the RocksDB transaction
-    tsx = this.putCastRemoveTransaction(tsx, message);
+    txn = this.putCastRemoveTransaction(txn, message);
 
     // Commit the RocksDB transaction
-    await this._db.commit(tsx);
+    await this._db.commit(txn);
 
     // Emit store event
-    this._eventHandler.emit('mergeMessage', message);
-
-    // Emit revoke events for each of the removed CastAdd messages
-    for (const removedCast of removedCasts) {
-      this._eventHandler.emit('revokeMessage', removedCast);
-    }
+    this._eventHandler.emit('mergeMessage', message, mergeConflicts);
   }
 
   /* Builds a RocksDB transaction to insert a CastAdd message and construct its indices */
-  private putCastAddTransaction(tsx: Transaction, message: CastAddModel): Transaction {
+  private putCastAddTransaction(txn: Transaction, message: CastAddModel): Transaction {
     // Put message into the database
-    tsx = MessageModel.putTransaction(tsx, message);
+    txn = MessageModel.putTransaction(txn, message);
 
     // Puts the message key into the CastAdd set index
-    tsx = tsx.put(CastStore.castAddsKey(message.fid(), message.tsHash()), Buffer.from(message.tsHash()));
+    txn = txn.put(CastStore.castAddsKey(message.fid(), message.tsHash()), Buffer.from(message.tsHash()));
 
     // Puts the message key into the ByParent index
     if (message.body().parent(new CastId()) as CastId) {
-      tsx = tsx.put(
+      txn = txn.put(
         CastStore.castsByParentKey(
           (message.body().parent(new CastId()) as CastId)?.fidArray() ?? new Uint8Array(),
           (message.body().parent(new CastId()) as CastId)?.tsHashArray() ?? new Uint8Array(),
@@ -449,23 +447,23 @@ class CastStore extends SequentialMergeStore {
     if (message.body().mentionsLength() > 0) {
       for (let i = 0; i < message.body().mentionsLength(); i++) {
         const mention = message.body().mentions(i);
-        tsx = tsx.put(
+        txn = txn.put(
           CastStore.castsByMentionKey(mention?.fidArray() ?? new Uint8Array(), message.fid(), message.tsHash()),
           TRUE_VALUE
         );
       }
     }
 
-    return tsx;
+    return txn;
   }
 
   /* Builds a RocksDB transaction to remove a CastAdd message and delete its indices */
-  private deleteCastAddTransaction(tsx: Transaction, message: CastAddModel): Transaction {
+  private deleteCastAddTransaction(txn: Transaction, message: CastAddModel): Transaction {
     // Delete the message key from the ByMentions index
     if (message.body().mentionsLength() > 0) {
       for (let i = 0; i < message.body().mentionsLength(); i++) {
         const mention = message.body().mentions(i);
-        tsx = tsx.del(
+        txn = txn.del(
           CastStore.castsByMentionKey(mention?.fidArray() ?? new Uint8Array(), message.fid(), message.tsHash())
         );
       }
@@ -473,7 +471,7 @@ class CastStore extends SequentialMergeStore {
 
     // Delete the message key from the ByParent index
     if (message.body().parent(new CastId()) as CastId) {
-      tsx = tsx.del(
+      txn = txn.del(
         CastStore.castsByParentKey(
           (message.body().parent(new CastId()) as CastId)?.fidArray() ?? new Uint8Array(),
           (message.body().parent(new CastId()) as CastId)?.tsHashArray() ?? new Uint8Array(),
@@ -484,33 +482,33 @@ class CastStore extends SequentialMergeStore {
     }
 
     // Delete the message key from the CastAdd set index
-    tsx = tsx.del(CastStore.castAddsKey(message.fid(), message.tsHash()));
+    txn = txn.del(CastStore.castAddsKey(message.fid(), message.tsHash()));
 
     // Delete message
-    return MessageModel.deleteTransaction(tsx, message);
+    return MessageModel.deleteTransaction(txn, message);
   }
 
   /* Builds a RocksDB transaction to insert a CastRemove message and construct its indices */
-  private putCastRemoveTransaction(tsx: Transaction, message: CastRemoveModel): Transaction {
+  private putCastRemoveTransaction(txn: Transaction, message: CastRemoveModel): Transaction {
     // Puts the message
-    tsx = MessageModel.putTransaction(tsx, message);
+    txn = MessageModel.putTransaction(txn, message);
 
     // Puts the message key into the CastRemoves set index
-    tsx = tsx.put(
+    txn = txn.put(
       CastStore.castRemovesKey(message.fid(), message.body().targetTsHashArray() ?? new Uint8Array()),
       Buffer.from(message.tsHash())
     );
 
-    return tsx;
+    return txn;
   }
 
   /* Builds a RocksDB transaction to remove a CastRemove message and delete its indices */
-  private deleteCastRemoveTransaction(tsx: Transaction, message: CastRemoveModel): Transaction {
+  private deleteCastRemoveTransaction(txn: Transaction, message: CastRemoveModel): Transaction {
     // Deletes the messae key from the CastRemoves set index
-    tsx = tsx.del(CastStore.castRemovesKey(message.fid(), message.body().targetTsHashArray() ?? new Uint8Array()));
+    txn = txn.del(CastStore.castRemovesKey(message.fid(), message.body().targetTsHashArray() ?? new Uint8Array()));
 
     // Delete message
-    return MessageModel.deleteTransaction(tsx, message);
+    return MessageModel.deleteTransaction(txn, message);
   }
 }
 

@@ -1,6 +1,6 @@
 import { MessageType } from '@farcaster/flatbuffers';
 import { bytesCompare, HubAsyncResult, HubError } from '@farcaster/utils';
-import { ok, ResultAsync } from 'neverthrow';
+import { err, ok, ResultAsync } from 'neverthrow';
 import MessageModel from '~/flatbuffers/models/messageModel';
 import { isVerificationAddEthAddress, isVerificationRemove } from '~/flatbuffers/models/typeguards';
 import * as types from '~/flatbuffers/models/types';
@@ -287,25 +287,22 @@ class VerificationStore extends SequentialMergeStore {
       throw new HubError('bad_request.validation_failure', 'address was missing');
     }
 
-    // eslint-disable-next-line prefer-const
-    let { tsx, removedVerifications } = await this.resolveMergeConflicts(this._db.transaction(), address, message);
+    const mergeConflicts = await this.getMergeConflicts(address, message);
+    if (mergeConflicts.isErr()) {
+      throw mergeConflicts.error;
+    }
 
-    // No-op if resolveMergeConflicts did not return a transaction
-    if (!tsx) return undefined;
+    // Create rocksdb transaction to delete the merge conflicts
+    let txn = this.deleteManyTransaction(this._db.transaction(), mergeConflicts.value);
 
     // Add putVerificationAdd operations to the RocksDB transaction
-    tsx = this.putVerificationAddTransaction(tsx, message);
+    txn = this.putVerificationAddTransaction(txn, message);
 
     // Commit the RocksDB transaction
-    await this._db.commit(tsx);
+    await this._db.commit(txn);
 
     // Emit store event
-    this._eventHandler.emit('mergeMessage', message);
-
-    // Emit revokeMessage events for each VerificationRemove message that was removed
-    for (const removedVerification of removedVerifications) {
-      this._eventHandler.emit('revokeMessage', removedVerification);
-    }
+    this._eventHandler.emit('mergeMessage', message, mergeConflicts.value);
   }
 
   private async mergeRemove(message: types.VerificationRemoveModel): Promise<void> {
@@ -315,25 +312,22 @@ class VerificationStore extends SequentialMergeStore {
       throw new HubError('bad_request.validation_failure', 'address was missing');
     }
 
-    // eslint-disable-next-line prefer-const
-    let { tsx, removedVerifications } = await this.resolveMergeConflicts(this._db.transaction(), address, message);
+    const mergeConflicts = await this.getMergeConflicts(address, message);
+    if (mergeConflicts.isErr()) {
+      throw mergeConflicts.error;
+    }
 
-    // No-op if resolveMergeConflicts did not return a transaction
-    if (!tsx) return undefined;
+    // Create rocksdb transaction to delete the merge conflicts
+    let txn = this.deleteManyTransaction(this._db.transaction(), mergeConflicts.value);
 
     // Add putVerificationRemove operations to the RocksDB transaction
-    tsx = this.putVerificationRemoveTransaction(tsx, message);
+    txn = this.putVerificationRemoveTransaction(txn, message);
 
     // Commit the RocksDB transaction
-    await this._db.commit(tsx);
+    await this._db.commit(txn);
 
     // Emit store event
-    this._eventHandler.emit('mergeMessage', message);
-
-    // Emit revokeMessage events for each verification that was removed
-    for (const removedVerification of removedVerifications) {
-      this._eventHandler.emit('revokeMessage', removedVerification);
-    }
+    this._eventHandler.emit('mergeMessage', message, mergeConflicts.value);
   }
 
   private verificationMessageCompare(
@@ -358,12 +352,11 @@ class VerificationStore extends SequentialMergeStore {
     return bytesCompare(aTsHash.subarray(4), bTsHash.subarray(4));
   }
 
-  private async resolveMergeConflicts(
-    tsx: Transaction,
+  private async getMergeConflicts(
     address: Uint8Array,
     message: types.VerificationAddEthAddressModel | types.VerificationRemoveModel
-  ): Promise<{ tsx: Transaction | undefined; removedVerifications: MessageModel[] }> {
-    const removedVerifications = [];
+  ): HubAsyncResult<(types.VerificationAddEthAddressModel | types.VerificationRemoveModel)[]> {
+    const conflicts: (types.VerificationAddEthAddressModel | types.VerificationRemoveModel)[] = [];
 
     // Look up the remove tsHash for this address
     const removeTsHash = await ResultAsync.fromPromise(
@@ -372,16 +365,16 @@ class VerificationStore extends SequentialMergeStore {
     );
 
     if (removeTsHash.isOk()) {
-      if (
-        this.verificationMessageCompare(
-          MessageType.VerificationRemove,
-          removeTsHash.value,
-          message.type(),
-          message.tsHash()
-        ) >= 0
-      ) {
-        // If the existing remove has the same or higher order than the new message, no-op
-        return { tsx: undefined, removedVerifications: [] };
+      const removeCompare = this.verificationMessageCompare(
+        MessageType.VerificationRemove,
+        removeTsHash.value,
+        message.type(),
+        message.tsHash()
+      );
+      if (removeCompare > 0) {
+        return err(new HubError('bad_request.conflict', 'message conflicts with a more recent VerificationRemove'));
+      } else if (removeCompare === 0) {
+        return err(new HubError('bad_request.duplicate', 'message has already been merged'));
       } else {
         // If the existing remove has a lower order than the new message, retrieve the full
         // VerificationRemove message and delete it as part of the RocksDB transaction
@@ -391,8 +384,7 @@ class VerificationStore extends SequentialMergeStore {
           types.UserPostfix.VerificationMessage,
           removeTsHash.value
         );
-        tsx = this.deleteVerificationRemoveTransaction(tsx, existingRemove);
-        removedVerifications.push(existingRemove);
+        conflicts.push(existingRemove);
       }
     }
 
@@ -403,16 +395,18 @@ class VerificationStore extends SequentialMergeStore {
     );
 
     if (addTsHash.isOk()) {
-      if (
-        this.verificationMessageCompare(
-          MessageType.VerificationAddEthAddress,
-          addTsHash.value,
-          message.type(),
-          message.tsHash()
-        ) >= 0
-      ) {
-        // If the existing add has the same or higher order than the new message, no-op
-        return { tsx: undefined, removedVerifications: [] };
+      const addCompare = this.verificationMessageCompare(
+        MessageType.VerificationAddEthAddress,
+        addTsHash.value,
+        message.type(),
+        message.tsHash()
+      );
+      if (addCompare > 0) {
+        return err(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent VerificationAddEthAddress')
+        );
+      } else if (addCompare === 0) {
+        return err(new HubError('bad_request.duplicate', 'message has already been merged'));
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // VerificationAdd* message and delete it as part of the RocksDB transaction
@@ -422,61 +416,74 @@ class VerificationStore extends SequentialMergeStore {
           types.UserPostfix.VerificationMessage,
           addTsHash.value
         );
-        tsx = this.deleteVerificationAddTransaction(tsx, existingAdd);
-        removedVerifications.push(existingAdd);
+        conflicts.push(existingAdd);
       }
     }
 
-    return { tsx, removedVerifications };
+    return ok(conflicts);
   }
 
-  private putVerificationAddTransaction(tsx: Transaction, message: types.VerificationAddEthAddressModel): Transaction {
+  private deleteManyTransaction(
+    txn: Transaction,
+    messages: (types.VerificationAddEthAddressModel | types.VerificationRemoveModel)[]
+  ): Transaction {
+    for (const message of messages) {
+      if (isVerificationAddEthAddress(message)) {
+        txn = this.deleteVerificationAddTransaction(txn, message);
+      } else if (isVerificationRemove(message)) {
+        txn = this.deleteVerificationRemoveTransaction(txn, message);
+      }
+    }
+    return txn;
+  }
+
+  private putVerificationAddTransaction(txn: Transaction, message: types.VerificationAddEthAddressModel): Transaction {
     // Put message and index by signer
-    tsx = MessageModel.putTransaction(tsx, message);
+    txn = MessageModel.putTransaction(txn, message);
 
     // Put verificationAdds index
-    tsx = tsx.put(
+    txn = txn.put(
       VerificationStore.verificationAddsKey(message.fid(), message.body().addressArray() ?? new Uint8Array()),
       Buffer.from(message.tsHash())
     );
 
-    return tsx;
+    return txn;
   }
 
   private deleteVerificationAddTransaction(
-    tsx: Transaction,
+    txn: Transaction,
     message: types.VerificationAddEthAddressModel
   ): Transaction {
     // Delete from verificationAdds
-    tsx = tsx.del(
+    txn = txn.del(
       VerificationStore.verificationAddsKey(message.fid(), message.body().addressArray() ?? new Uint8Array())
     );
 
     // Delete message
-    return MessageModel.deleteTransaction(tsx, message);
+    return MessageModel.deleteTransaction(txn, message);
   }
 
-  private putVerificationRemoveTransaction(tsx: Transaction, message: types.VerificationRemoveModel): Transaction {
+  private putVerificationRemoveTransaction(txn: Transaction, message: types.VerificationRemoveModel): Transaction {
     // Add to db
-    tsx = MessageModel.putTransaction(tsx, message);
+    txn = MessageModel.putTransaction(txn, message);
 
     // Add to verificationRemoves
-    tsx = tsx.put(
+    txn = txn.put(
       VerificationStore.verificationRemovesKey(message.fid(), message.body().addressArray() ?? new Uint8Array()),
       Buffer.from(message.tsHash())
     );
 
-    return tsx;
+    return txn;
   }
 
-  private deleteVerificationRemoveTransaction(tsx: Transaction, message: types.VerificationRemoveModel): Transaction {
+  private deleteVerificationRemoveTransaction(txn: Transaction, message: types.VerificationRemoveModel): Transaction {
     // Delete from verificationRemoves
-    tsx = tsx.del(
+    txn = txn.del(
       VerificationStore.verificationRemovesKey(message.fid(), message.body().addressArray() ?? new Uint8Array())
     );
 
     // Delete message
-    return MessageModel.deleteTransaction(tsx, message);
+    return MessageModel.deleteTransaction(txn, message);
   }
 }
 

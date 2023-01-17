@@ -530,18 +530,34 @@ class Engine {
     // 4. For fname add UserDataAdd messages, check that the user actually owns the fname
     if (isUserDataAdd(message) && message.body().type() == flatbuffers.UserDataType.Fname) {
       // For fname messages, check if the user actually owns the fname.
-      const fname = utf8StringToBytes(message.body().value() ?? '')._unsafeUnwrap();
+      const fnameBytes = utf8StringToBytes(message.body().value() ?? '');
+      if (fnameBytes.isErr()) {
+        return err(fnameBytes.error);
+      }
 
       // Users are allowed to set fname = '' to remove their fname, so check to see if fname is set
       // before validating the custody address
-      if (fname && fname.length > 0) {
-        const fid = message.fid();
-
+      if (fnameBytes.value.length > 0) {
         // The custody address of the fid and fname must be the same
-        const fidCustodyAddress = await IdRegistryEventModel.get(this._db, fid).then((event) => event?.to());
-        const fnameCustodyAddress = await NameRegistryEventModel.get(this._db, fname).then((event) => event?.to());
+        const fidCustodyAddress = await ResultAsync.fromPromise(
+          IdRegistryEventModel.get(this._db, message.fid()).then((event) => event?.to()),
+          (e) => e as HubError
+        );
+        if (fidCustodyAddress.isErr()) {
+          return err(fidCustodyAddress.error);
+        }
 
-        if (bytesCompare(fidCustodyAddress, fnameCustodyAddress) !== 0) {
+        const fnameCustodyAddress = await ResultAsync.fromPromise(
+          NameRegistryEventModel.get(this._db, fnameBytes.value).then((event) => event?.to()),
+          (e) => e as HubError
+        ).mapErr((e) =>
+          e.errCode === 'not_found' ? new HubError('bad_request.validation_failure', 'fname is not registered') : e
+        );
+        if (fnameCustodyAddress.isErr()) {
+          return err(fnameCustodyAddress.error);
+        }
+
+        if (bytesCompare(fidCustodyAddress.value, fnameCustodyAddress.value) !== 0) {
           return err(
             new HubError('bad_request.validation_failure', 'fname custody address does not match fid custody address')
           );

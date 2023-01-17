@@ -35,43 +35,56 @@ export const bytesCompare = (a: Uint8Array, b: Uint8Array): number => {
   }
 };
 
-// TOOD: support both big and little endian
 /* eslint-disable security/detect-object-injection */
-export const bytesIncrement = (inputBytes: Uint8Array): Uint8Array => {
+export const bytesIncrement = (inputBytes: Uint8Array, options: BytesOptions = {}): Uint8Array => {
   const bytes = new Uint8Array(inputBytes); // avoid mutating input
 
+  const endianness: Endianness = options.endianness ?? 'little';
+
+  // Start from least significant byte
   let i = bytes.length - 1;
   while (i >= 0) {
-    if ((bytes[i] as number) < 255) {
-      bytes[i] = (bytes[i] as number) + 1;
+    const pos = endianness === 'little' ? bytes.length - 1 - i : i;
+    if ((bytes[pos] as number) < 255) {
+      bytes[pos] = (bytes[pos] as number) + 1;
       return bytes;
     } else {
-      bytes[i] = 0;
+      bytes[pos] = 0;
     }
     i = i - 1;
   }
-  return new Uint8Array([1, ...bytes]);
+
+  if (endianness === 'little') {
+    return new Uint8Array([...bytes, 1]);
+  } else {
+    return new Uint8Array([1, ...bytes]);
+  }
 };
 
 // TODO: support both big and little endian
-export const bytesDecrement = (inputBytes: Uint8Array): Uint8Array => {
+export const bytesDecrement = (inputBytes: Uint8Array, options: BytesOptions = {}): Uint8Array => {
   const bytes = new Uint8Array(inputBytes); // avoid mutating input
+
+  const endianness: Endianness = options.endianness ?? 'little';
+
+  // start from least significant byte
   let i = bytes.length - 1;
   while (i >= 0) {
-    if ((bytes[i] as number) > 0) {
-      bytes[i] = (bytes[i] as number) - 1;
+    const pos = endianness === 'little' ? bytes.length - 1 - i : i;
+    if ((bytes[pos] as number) > 0) {
+      bytes[pos] = (bytes[pos] as number) - 1;
       return bytes;
     } else {
       if (i === 0) {
         throw new HubError('bad_request.invalid_param', 'Cannot decrement zero');
       }
 
-      bytes[i] = 255;
+      bytes[pos] = 255;
     }
     i = i - 1;
   }
 
-  return new Uint8Array([...bytes]);
+  return bytes;
 };
 
 export const toByteBuffer = (buffer: Buffer): ByteBuffer => {

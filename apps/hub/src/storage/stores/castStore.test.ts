@@ -169,6 +169,23 @@ describe('getCastsByMention', () => {
 });
 
 describe('merge', () => {
+  let mergeEvents: [MessageModel, MessageModel[]][] = [];
+
+  const mergeMessageHandler = (message: MessageModel, deletedMessages?: MessageModel[]) => {
+    mergeEvents.push([message, deletedMessages ?? []]);
+  };
+  beforeAll(() => {
+    eventHandler.on('mergeMessage', mergeMessageHandler);
+  });
+
+  beforeEach(() => {
+    mergeEvents = [];
+  });
+
+  afterAll(() => {
+    eventHandler.off('mergeMessage', mergeMessageHandler);
+  });
+
   const assertCastExists = async (message: CastAddModel | CastRemoveModel) => {
     await expect(MessageModel.get(db, fid, UserPostfix.CastMessage, message.tsHash())).resolves.toEqual(message);
   };
@@ -216,17 +233,23 @@ describe('merge', () => {
     test('succeeds', async () => {
       await expect(store.merge(castAdd)).resolves.toEqual(undefined);
       await assertCastAddWins(castAdd);
+
+      expect(mergeEvents).toEqual([[castAdd, []]]);
     });
 
-    test('succeeds once, even if merged twice', async () => {
+    test('fails if merged twice', async () => {
       await expect(store.merge(castAdd)).resolves.toEqual(undefined);
-      await expect(store.merge(castAdd)).resolves.toEqual(undefined);
+      await expect(store.merge(castAdd)).rejects.toEqual(
+        new HubError('bad_request.duplicate', 'message has already been merged')
+      );
 
       await assertCastAddWins(castAdd);
+
+      expect(mergeEvents).toEqual([[castAdd, []]]);
     });
 
     describe('with conflicting CastRemove with different timestamps', () => {
-      test('no-ops with a later timestamp', async () => {
+      test('fails with a later timestamp', async () => {
         const removeData = await Factories.CastRemoveData.create({
           ...castRemove.data.unpack(),
           timestamp: castAdd.timestamp() - 1,
@@ -239,15 +262,19 @@ describe('merge', () => {
         const castRemoveEarlier = new MessageModel(removeMessage) as CastRemoveModel;
 
         await store.merge(castRemoveEarlier);
-        await expect(store.merge(castAdd)).resolves.toEqual(undefined);
+        await expect(store.merge(castAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a CastRemove')
+        );
 
         await assertCastRemoveWins(castRemoveEarlier);
         await assertCastDoesNotExist(castAdd);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
+      test('fails with an earlier timestamp', async () => {
         await store.merge(castRemove);
-        await expect(store.merge(castAdd)).resolves.toEqual(undefined);
+        await expect(store.merge(castAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a CastRemove')
+        );
 
         await assertCastRemoveWins(castRemove);
         await assertCastDoesNotExist(castAdd);
@@ -255,7 +282,7 @@ describe('merge', () => {
     });
 
     describe('with conflicting CastRemove with identical timestamps', () => {
-      test('no-ops with a later hash', async () => {
+      test('fails with a later hash', async () => {
         const removeData = await Factories.CastRemoveData.create({
           ...castRemove.data.unpack(),
           timestamp: castAdd.timestamp(),
@@ -269,13 +296,15 @@ describe('merge', () => {
         const castRemoveEarlier = new MessageModel(removeMessage) as CastRemoveModel;
 
         await store.merge(castRemoveEarlier);
-        await expect(store.merge(castAdd)).resolves.toEqual(undefined);
+        await expect(store.merge(castAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a CastRemove')
+        );
 
         await assertCastRemoveWins(castRemoveEarlier);
         await assertCastDoesNotExist(castAdd);
       });
 
-      test('no-ops with an earlier hash', async () => {
+      test('fails with an earlier hash', async () => {
         const removeData = await Factories.CastRemoveData.create({
           ...castRemove.data.unpack(),
           timestamp: castAdd.timestamp(),
@@ -289,7 +318,9 @@ describe('merge', () => {
         const castRemoveLater = new MessageModel(removeMessage) as CastRemoveModel;
 
         await store.merge(castRemoveLater);
-        await expect(store.merge(castAdd)).resolves.toEqual(undefined);
+        await expect(store.merge(castAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a CastRemove')
+        );
 
         await assertCastRemoveWins(castRemoveLater);
         await assertCastDoesNotExist(castAdd);
@@ -304,13 +335,22 @@ describe('merge', () => {
 
       await assertCastRemoveWins(castRemove);
       await assertCastDoesNotExist(castAdd);
+
+      expect(mergeEvents).toEqual([
+        [castAdd, []],
+        [castRemove, [castAdd]],
+      ]);
     });
 
-    test('succeeds once, even if merged twice', async () => {
+    test('fails if merged twice', async () => {
       await expect(store.merge(castRemove)).resolves.toEqual(undefined);
-      await expect(store.merge(castRemove)).resolves.toEqual(undefined);
+      await expect(store.merge(castRemove)).rejects.toEqual(
+        new HubError('bad_request.duplicate', 'message has already been merged')
+      );
 
       await assertCastRemoveWins(castRemove);
+
+      expect(mergeEvents).toEqual([[castRemove, []]]);
     });
 
     describe('with a conflicting CastRemove with different timestamps', () => {
@@ -333,11 +373,18 @@ describe('merge', () => {
 
         await assertCastDoesNotExist(castRemove);
         await assertCastRemoveWins(castRemoveLater);
+
+        expect(mergeEvents).toEqual([
+          [castRemove, []],
+          [castRemoveLater, [castRemove]],
+        ]);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
+      test('fails with an earlier timestamp', async () => {
         await store.merge(castRemoveLater);
-        await expect(store.merge(castRemove)).resolves.toEqual(undefined);
+        await expect(store.merge(castRemove)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent CastRemove')
+        );
 
         await assertCastDoesNotExist(castRemove);
         await assertCastRemoveWins(castRemoveLater);
@@ -366,11 +413,18 @@ describe('merge', () => {
 
         await assertCastDoesNotExist(castRemove);
         await assertCastRemoveWins(castRemoveLater);
+
+        expect(mergeEvents).toEqual([
+          [castRemove, []],
+          [castRemoveLater, [castRemove]],
+        ]);
       });
 
-      test('no-ops with an earlier hash', async () => {
+      test('fails with an earlier hash', async () => {
         await store.merge(castRemoveLater);
-        await expect(store.merge(castRemove)).resolves.toEqual(undefined);
+        await expect(store.merge(castRemove)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent CastRemove')
+        );
 
         await assertCastDoesNotExist(castRemove);
         await assertCastRemoveWins(castRemoveLater);
@@ -383,6 +437,11 @@ describe('merge', () => {
         await expect(store.merge(castRemove)).resolves.toEqual(undefined);
         await assertCastRemoveWins(castRemove);
         await assertCastDoesNotExist(castAdd);
+
+        expect(mergeEvents).toEqual([
+          [castAdd, []],
+          [castRemove, [castAdd]],
+        ]);
       });
 
       test('succeeds with an earlier timestamp', async () => {
@@ -400,6 +459,11 @@ describe('merge', () => {
         await expect(store.merge(castRemoveEarlier)).resolves.toEqual(undefined);
         await assertCastDoesNotExist(castAdd);
         await assertCastRemoveWins(castRemoveEarlier);
+
+        expect(mergeEvents).toEqual([
+          [castAdd, []],
+          [castRemoveEarlier, [castAdd]],
+        ]);
       });
     });
 
@@ -421,6 +485,11 @@ describe('merge', () => {
 
         await assertCastDoesNotExist(castAdd);
         await assertCastRemoveWins(castRemoveEarlier);
+
+        expect(mergeEvents).toEqual([
+          [castAdd, []],
+          [castRemoveEarlier, [castAdd]],
+        ]);
       });
 
       test('succeeds with a later hash', async () => {
@@ -440,6 +509,11 @@ describe('merge', () => {
 
         await assertCastDoesNotExist(castAdd);
         await assertCastRemoveWins(castRemoveLater);
+
+        expect(mergeEvents).toEqual([
+          [castAdd, []],
+          [castRemoveLater, [castAdd]],
+        ]);
       });
     });
   });

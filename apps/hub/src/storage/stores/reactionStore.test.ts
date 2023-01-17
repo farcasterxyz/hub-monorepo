@@ -227,6 +227,23 @@ describe('getReactionsByTargetCast', () => {
 });
 
 describe('merge', () => {
+  let mergeEvents: [MessageModel, MessageModel[]][] = [];
+
+  const mergeMessageHandler = (message: MessageModel, deletedMessages?: MessageModel[]) => {
+    mergeEvents.push([message, deletedMessages ?? []]);
+  };
+  beforeAll(() => {
+    eventHandler.on('mergeMessage', mergeMessageHandler);
+  });
+
+  beforeEach(() => {
+    mergeEvents = [];
+  });
+
+  afterAll(() => {
+    eventHandler.off('mergeMessage', mergeMessageHandler);
+  });
+
   const assertReactionExists = async (message: ReactionAddModel | ReactionRemoveModel) => {
     await expect(MessageModel.get(db, fid, UserPostfix.ReactionMessage, message.tsHash())).resolves.toEqual(message);
   };
@@ -261,13 +278,19 @@ describe('merge', () => {
       await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
 
       await assertReactionAddWins(reactionAdd);
+
+      expect(mergeEvents).toEqual([[reactionAdd, []]]);
     });
 
-    test('succeeds once, even if merged twice', async () => {
+    test('fails if merged twice', async () => {
       await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
-      await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+      await expect(set.merge(reactionAdd)).rejects.toEqual(
+        new HubError('bad_request.duplicate', 'message has already been merged')
+      );
 
       await assertReactionAddWins(reactionAdd);
+
+      expect(mergeEvents).toEqual([[reactionAdd, []]]);
     });
 
     describe('with a conflicting ReactionAdd with different timestamps', () => {
@@ -290,11 +313,18 @@ describe('merge', () => {
 
         await assertReactionDoesNotExist(reactionAdd);
         await assertReactionAddWins(reactionAddLater);
+
+        expect(mergeEvents).toEqual([
+          [reactionAdd, []],
+          [reactionAddLater, [reactionAdd]],
+        ]);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
+      test('fails with an earlier timestamp', async () => {
         await set.merge(reactionAddLater);
-        await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionAdd')
+        );
 
         await assertReactionDoesNotExist(reactionAdd);
         await assertReactionAddWins(reactionAddLater);
@@ -311,23 +341,30 @@ describe('merge', () => {
 
         const addMessage = await Factories.Message.create({
           data: Array.from(addData.bb?.bytes() ?? []),
-          hash: Array.from(bytesIncrement(reactionAdd.hash().slice())),
+          hash: Array.from(bytesIncrement(reactionAdd.hash())),
         });
 
         reactionAddLater = new MessageModel(addMessage) as ReactionAddModel;
       });
 
-      test('succeeds with a later hash', async () => {
+      test('succeeds with a higher hash', async () => {
         await set.merge(reactionAdd);
         await expect(set.merge(reactionAddLater)).resolves.toEqual(undefined);
 
         await assertReactionDoesNotExist(reactionAdd);
         await assertReactionAddWins(reactionAddLater);
+
+        expect(mergeEvents).toEqual([
+          [reactionAdd, []],
+          [reactionAddLater, [reactionAdd]],
+        ]);
       });
 
-      test('no-ops with an earlier hash', async () => {
+      test('fails with a lower hash', async () => {
         await set.merge(reactionAddLater);
-        await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionAdd')
+        );
 
         await assertReactionDoesNotExist(reactionAdd);
         await assertReactionAddWins(reactionAddLater);
@@ -352,11 +389,18 @@ describe('merge', () => {
 
         await assertReactionAddWins(reactionAdd);
         await assertReactionDoesNotExist(reactionRemoveEarlier);
+
+        expect(mergeEvents).toEqual([
+          [reactionRemoveEarlier, []],
+          [reactionAdd, [reactionRemoveEarlier]],
+        ]);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
+      test('fails with an earlier timestamp', async () => {
         await set.merge(reactionRemove);
-        await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionRemove')
+        );
 
         await assertReactionRemoveWins(reactionRemove);
         await assertReactionDoesNotExist(reactionAdd);
@@ -364,7 +408,7 @@ describe('merge', () => {
     });
 
     describe('with conflicting ReactionRemove with identical timestamps', () => {
-      test('no-ops if remove has a later hash', async () => {
+      test('fails if remove has a higher hash', async () => {
         const reactionRemoveData = await Factories.ReactionRemoveData.create({
           ...reactionRemove.data.unpack(),
           timestamp: reactionAdd.timestamp(),
@@ -372,19 +416,21 @@ describe('merge', () => {
 
         const reactionRemoveMessage = await Factories.Message.create({
           data: Array.from(reactionRemoveData.bb?.bytes() ?? []),
-          hash: Array.from(bytesIncrement(reactionAdd.hash().slice())),
+          hash: Array.from(bytesIncrement(reactionAdd.hash())),
         });
 
         const reactionRemoveLater = new MessageModel(reactionRemoveMessage) as ReactionRemoveModel;
 
         await set.merge(reactionRemoveLater);
-        await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionRemove')
+        );
 
         await assertReactionRemoveWins(reactionRemoveLater);
         await assertReactionDoesNotExist(reactionAdd);
       });
 
-      test('succeeds if remove has an earlier hash', async () => {
+      test('fails if remove has a lower hash', async () => {
         const reactionRemoveData = await Factories.ReactionRemoveData.create({
           ...reactionRemove.data.unpack(),
           timestamp: reactionAdd.timestamp(),
@@ -392,16 +438,18 @@ describe('merge', () => {
 
         const reactionRemoveMessage = await Factories.Message.create({
           data: Array.from(reactionRemoveData.bb?.bytes() ?? []),
-          hash: Array.from(bytesDecrement(reactionAdd.hash().slice())),
+          hash: Array.from(bytesDecrement(reactionAdd.hash())),
         });
 
         const reactionRemoveEarlier = new MessageModel(reactionRemoveMessage) as ReactionRemoveModel;
 
         await set.merge(reactionRemoveEarlier);
-        await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionAdd)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionRemove')
+        );
 
-        await assertReactionDoesNotExist(reactionAdd);
         await assertReactionRemoveWins(reactionRemoveEarlier);
+        await assertReactionDoesNotExist(reactionAdd);
       });
     });
   });
@@ -411,11 +459,15 @@ describe('merge', () => {
       await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
 
       await assertReactionRemoveWins(reactionRemove);
+
+      expect(mergeEvents).toEqual([[reactionRemove, []]]);
     });
 
-    test('succeeds once, even if merged twice', async () => {
+    test('fails if merged twice', async () => {
       await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
-      await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+      await expect(set.merge(reactionRemove)).rejects.toEqual(
+        new HubError('bad_request.duplicate', 'message has already been merged')
+      );
 
       await assertReactionRemoveWins(reactionRemove);
     });
@@ -440,11 +492,18 @@ describe('merge', () => {
 
         await assertReactionDoesNotExist(reactionRemove);
         await assertReactionRemoveWins(reactionRemoveLater);
+
+        expect(mergeEvents).toEqual([
+          [reactionRemove, []],
+          [reactionRemoveLater, [reactionRemove]],
+        ]);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
+      test('fails with an earlier timestamp', async () => {
         await set.merge(reactionRemoveLater);
-        await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionRemove)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionRemove')
+        );
 
         await assertReactionDoesNotExist(reactionRemove);
         await assertReactionRemoveWins(reactionRemoveLater);
@@ -461,23 +520,30 @@ describe('merge', () => {
 
         const addMessage = await Factories.Message.create({
           data: Array.from(reactionRemoveData.bb?.bytes() ?? []),
-          hash: Array.from(bytesIncrement(reactionRemove.hash().slice())),
+          hash: Array.from(bytesIncrement(reactionRemove.hash())),
         });
 
         reactionRemoveLater = new MessageModel(addMessage) as ReactionRemoveModel;
       });
 
-      test('succeeds with a later hash', async () => {
+      test('succeeds with a higher hash', async () => {
         await set.merge(reactionRemove);
         await expect(set.merge(reactionRemoveLater)).resolves.toEqual(undefined);
 
         await assertReactionDoesNotExist(reactionRemove);
         await assertReactionRemoveWins(reactionRemoveLater);
+
+        expect(mergeEvents).toEqual([
+          [reactionRemove, []],
+          [reactionRemoveLater, [reactionRemove]],
+        ]);
       });
 
-      test('no-ops with an earlier hash', async () => {
+      test('fails with a lower hash', async () => {
         await set.merge(reactionRemoveLater);
-        await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionRemove)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionRemove')
+        );
 
         await assertReactionDoesNotExist(reactionRemove);
         await assertReactionRemoveWins(reactionRemoveLater);
@@ -490,9 +556,14 @@ describe('merge', () => {
         await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
         await assertReactionRemoveWins(reactionRemove);
         await assertReactionDoesNotExist(reactionAdd);
+
+        expect(mergeEvents).toEqual([
+          [reactionAdd, []],
+          [reactionRemove, [reactionAdd]],
+        ]);
       });
 
-      test('no-ops with an earlier timestamp', async () => {
+      test('fails with an earlier timestamp', async () => {
         const addData = await Factories.ReactionAddData.create({
           ...reactionRemove.data.unpack(),
           timestamp: reactionRemove.timestamp() + 1,
@@ -503,14 +574,16 @@ describe('merge', () => {
         });
         const reactionAddLater = new MessageModel(addMessage) as ReactionAddModel;
         await set.merge(reactionAddLater);
-        await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionRemove)).rejects.toEqual(
+          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionAdd')
+        );
         await assertReactionAddWins(reactionAddLater);
         await assertReactionDoesNotExist(reactionRemove);
       });
     });
 
     describe('with conflicting ReactionAdd with identical timestamps', () => {
-      test('succeeds with an earlier hash', async () => {
+      test('succeeds with a lower hash', async () => {
         const addData = await Factories.ReactionAddData.create({
           ...reactionRemove.data.unpack(),
           type: MessageType.ReactionAdd,
@@ -518,7 +591,7 @@ describe('merge', () => {
 
         const addMessage = await Factories.Message.create({
           data: Array.from(addData.bb?.bytes() ?? []),
-          hash: Array.from(bytesIncrement(reactionRemove.hash().slice())),
+          hash: Array.from(bytesIncrement(reactionRemove.hash())),
         });
         const reactionAddLater = new MessageModel(addMessage) as ReactionAddModel;
 
@@ -527,16 +600,21 @@ describe('merge', () => {
 
         await assertReactionDoesNotExist(reactionAddLater);
         await assertReactionRemoveWins(reactionRemove);
+
+        expect(mergeEvents).toEqual([
+          [reactionAddLater, []],
+          [reactionRemove, [reactionAddLater]],
+        ]);
       });
 
-      test('succeeds with a later hash', async () => {
+      test('succeeds with a higher hash', async () => {
         const removeData = await Factories.ReactionAddData.create({
           ...reactionRemove.data.unpack(),
         });
 
         const removeMessage = await Factories.Message.create({
           data: Array.from(removeData.bb?.bytes() ?? []),
-          hash: Array.from(bytesDecrement(reactionRemove.hash().slice())),
+          hash: Array.from(bytesDecrement(reactionRemove.hash())),
         });
 
         const reactionRemoveEarlier = new MessageModel(removeMessage) as ReactionRemoveModel;
@@ -546,6 +624,11 @@ describe('merge', () => {
 
         await assertReactionDoesNotExist(reactionRemoveEarlier);
         await assertReactionRemoveWins(reactionRemove);
+
+        expect(mergeEvents).toEqual([
+          [reactionRemoveEarlier, []],
+          [reactionRemove, [reactionRemoveEarlier]],
+        ]);
       });
     });
   });

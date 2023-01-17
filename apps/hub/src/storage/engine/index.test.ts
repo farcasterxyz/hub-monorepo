@@ -1,5 +1,12 @@
-import { CastId, FarcasterNetwork, IdRegistryEventType, NameRegistryEventType } from '@farcaster/flatbuffers';
-import { Factories, HubError } from '@farcaster/utils';
+import { faker } from '@faker-js/faker';
+import {
+  CastId,
+  FarcasterNetwork,
+  IdRegistryEventType,
+  NameRegistryEventType,
+  UserDataType,
+} from '@farcaster/flatbuffers';
+import { bytesToUtf8String, Factories, hexStringToBytes, HubError } from '@farcaster/utils';
 import { err, ok } from 'neverthrow';
 import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
 import MessageModel from '~/flatbuffers/models/messageModel';
@@ -220,6 +227,50 @@ describe('mergeMessage', () => {
         await expect(engine.mergeMessage(userDataAdd)).resolves.toEqual(ok(undefined));
         await expect(userDataStore.getUserDataAdd(fid, userDataAdd.body().type())).resolves.toEqual(userDataAdd);
         expect(mergedMessages).toEqual([signerAdd, userDataAdd]);
+      });
+
+      describe('with fname', () => {
+        let fnameAdd: types.UserDataAddModel;
+
+        beforeAll(async () => {
+          const fnameString = bytesToUtf8String(fnameTransfer.fname())._unsafeUnwrap();
+          const fnameAddData = await Factories.UserDataAddData.create({
+            fid: Array.from(fid),
+            body: Factories.UserDataBody.build({ type: UserDataType.Fname, value: fnameString }),
+          });
+          fnameAdd = new MessageModel(
+            await Factories.Message.create(
+              { data: Array.from(fnameAddData.bb?.bytes() ?? []) },
+              { transient: { signer } }
+            )
+          ) as types.UserDataAddModel;
+        });
+
+        test('succeeds when fname owned by custody address', async () => {
+          await expect(engine.mergeNameRegistryEvent(fnameTransfer)).resolves.toEqual(ok(undefined));
+          await expect(engine.mergeMessage(fnameAdd)).resolves.toEqual(ok(undefined));
+        });
+
+        test('fails when fname transfer event is missing', async () => {
+          await expect(engine.mergeMessage(fnameAdd)).resolves.toEqual(
+            err(new HubError('bad_request.validation_failure', 'fname is not registered'))
+          );
+        });
+
+        test('fails when fname is owned by another custody address', async () => {
+          const fnameEvent = new NameRegistryEventModel(
+            await Factories.NameRegistryEvent.create({
+              ...fnameTransfer.event.unpack(),
+              to: Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 40 }))._unsafeUnwrap()),
+            })
+          );
+          await expect(engine.mergeNameRegistryEvent(fnameEvent)).resolves.toEqual(ok(undefined));
+          await expect(engine.mergeMessage(fnameAdd)).resolves.toEqual(
+            err(
+              new HubError('bad_request.validation_failure', 'fname custody address does not match fid custody address')
+            )
+          );
+        });
       });
     });
 

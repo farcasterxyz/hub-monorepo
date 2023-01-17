@@ -4,11 +4,12 @@ import { Factories } from './factories';
 import { toFarcasterTime } from './time';
 import { toTsHash } from './tsHash';
 
+const farcasterTimeNow = toFarcasterTime(Date.now());
+
 test('stores timestamp in big-endian order', () => {
-  const time = toFarcasterTime(Date.now());
   const hash = Factories.Bytes.build({}, { transient: { length: 16 } });
-  const a = toTsHash(time, hash)._unsafeUnwrap();
-  const b = toTsHash(time + 1, hash)._unsafeUnwrap();
+  const a = toTsHash(farcasterTimeNow, hash)._unsafeUnwrap();
+  const b = toTsHash(farcasterTimeNow + 1, hash)._unsafeUnwrap();
   expect(bytesCompare(a, b)).toEqual(-1);
 });
 

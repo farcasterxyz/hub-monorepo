@@ -27,8 +27,12 @@ class SyncEngine {
     this._trie = new MerkleTrie();
     this.engine = engine;
 
-    this.engine.eventHandler.on('mergeMessage', async (message) => {
+    this.engine.eventHandler.on('mergeMessage', async (message: MessageModel, deletedMessages?: MessageModel[]) => {
       this.addMessage(message);
+
+      for (const deletedMessage of deletedMessages ?? []) {
+        this.removeMessage(deletedMessage);
+      }
     });
 
     // Note: There's no guarantee that the message is actually deleted, because the transaction could fail.
