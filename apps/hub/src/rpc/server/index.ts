@@ -23,7 +23,10 @@ export const toServiceError = (err: HubError): grpc.ServiceError => {
   } else if (
     err.errCode === 'bad_request' ||
     err.errCode === 'bad_request.parse_failure' ||
-    err.errCode === 'bad_request.validation_failure'
+    err.errCode === 'bad_request.validation_failure' ||
+    err.errCode === 'bad_request.invalid_param' ||
+    err.errCode === 'bad_request.conflict' ||
+    err.errCode === 'bad_request.duplicate'
   ) {
     grpcCode = grpc.status.INVALID_ARGUMENT;
   } else if (err.errCode === 'not_found') {
