@@ -1,3 +1,4 @@
+import { FarcasterNetwork } from '@farcaster/flatbuffers';
 import { multiaddr } from '@multiformats/multiaddr';
 import { Command } from 'commander';
 import HubRpcClient from '~/rpc/client';
@@ -33,7 +34,7 @@ app
     '-l, --hubs <rpc-multiaddrs...>',
     'A list of RPC multiaddrs of Hubs on the network (example:"/ip4/192.168.1.255/tcp/13112")'
   )
-  .option('-n, --network <network>', 'Farcaster network ID', parseNetwork)
+  .option('-n, --network <network>', 'Farcaster network ID', parseNetwork, FarcasterNetwork.Devnet)
   .option('-u, --users <count>', 'The number of users to simulate', parseNumber, 10);
 
 app.parse(process.argv);
