@@ -95,17 +95,17 @@ describe('validateTsHash', () => {
     );
   });
 
-  test('fails when greater than 20 bytes', () => {
-    const tsHash = Factories.Bytes.build({}, { transient: { length: 21 } });
+  test('fails when greater than 24 bytes', () => {
+    const tsHash = Factories.Bytes.build({}, { transient: { length: 25 } });
     expect(validations.validateTsHash(tsHash)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'tsHash must be 20 bytes')
+      new HubError('bad_request.validation_failure', `tsHash must be 24 bytes, was ${tsHash.byteLength} bytes`)
     );
   });
 
-  test('fails when less than 20 bytes', () => {
-    const tsHash = Factories.Bytes.build({}, { transient: { length: 19 } });
+  test('fails when less than 24 bytes', () => {
+    const tsHash = Factories.Bytes.build({}, { transient: { length: 20 } });
     expect(validations.validateTsHash(tsHash)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'tsHash must be 20 bytes')
+      new HubError('bad_request.validation_failure', `tsHash must be 24 bytes, was ${tsHash.byteLength} bytes`)
     );
   });
 
@@ -740,5 +740,5 @@ describe('validateEd25519PublicKeyHex', () => {
 });
 
 describe('validateTsHashHex', () => {
-  testHexValidation(validations.validateTsHashHex, Factories.TsHashHex.build(), 40, 'ts-hash');
+  testHexValidation(validations.validateTsHashHex, Factories.TsHashHex.build(), 48, 'tsHash');
 });

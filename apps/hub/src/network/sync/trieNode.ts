@@ -2,7 +2,7 @@ import { HubError } from '@farcaster/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
 
-export const EMPTY_HASH = Buffer.from(blake3('', { dkLen: 16 })).toString('hex');
+export const EMPTY_HASH = Buffer.from(blake3('', { dkLen: 20 })).toString('hex');
 
 /**
  * A snapshot of the trie at a particular timestamp which can be used to determine if two
@@ -218,7 +218,7 @@ class TrieNode {
 
   private _excludedHash(char: string): { items: number; hash: string } {
     // TODO: Cache this for performance
-    const hash = blake3.create({ dkLen: 16 });
+    const hash = blake3.create({ dkLen: 20 });
     let excludedItems = 0;
     this._children.forEach((child, key) => {
       if (key !== char) {
@@ -255,11 +255,10 @@ class TrieNode {
   }
 
   private _updateHash() {
-    // TODO: Optimize by using a faster hash algorithm. Potentially murmurhash v3
     if (this.isLeaf) {
-      this._hash = Buffer.from(blake3(this.value || '', { dkLen: 16 })).toString('hex');
+      this._hash = Buffer.from(blake3(this.value || '', { dkLen: 20 })).toString('hex');
     } else {
-      const hash = blake3.create({ dkLen: 16 });
+      const hash = blake3.create({ dkLen: 20 });
       this._children.forEach((child) => {
         hash.update(child.hash);
       });

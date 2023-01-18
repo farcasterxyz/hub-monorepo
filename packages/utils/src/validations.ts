@@ -65,8 +65,10 @@ export const validateTsHash = (tsHash?: Uint8Array | null): HubResult<Uint8Array
     return err(new HubError('bad_request.validation_failure', 'tsHash is missing'));
   }
 
-  if (tsHash.byteLength !== 20) {
-    return err(new HubError('bad_request.validation_failure', 'tsHash must be 20 bytes'));
+  if (tsHash.byteLength !== 24) {
+    return err(
+      new HubError('bad_request.validation_failure', `tsHash must be 24 bytes, was ${tsHash.byteLength} bytes`)
+    );
   }
 
   return ok(tsHash);
@@ -139,7 +141,7 @@ export const validateMessage = async (message: flatbuffers.Message): HubAsyncRes
   }
 
   if (message.hashScheme() === flatbuffers.HashScheme.Blake3) {
-    const computedHash = blake3(dataBytes, { dkLen: 16 });
+    const computedHash = blake3(dataBytes, { dkLen: 20 });
     // we have to use bytesCompare, because TypedArrays cannot be compared directly
     if (bytesCompare(hash, computedHash) !== 0) {
       return err(new HubError('bad_request.validation_failure', 'invalid hash'));
@@ -523,4 +525,4 @@ export const validateEd25519ignatureHex = buildValidateHex(128, 'Ed25519 signatu
 export const validateMessageHashHex = buildValidateHex(32, 'message hash');
 export const validateEthAddressHex = buildValidateHex(40, 'eth address');
 export const validateEd25519PublicKeyHex = buildValidateHex(64, 'Ed25519 public key');
-export const validateTsHashHex = buildValidateHex(40, 'ts-hash');
+export const validateTsHashHex = buildValidateHex(48, 'tsHash');
