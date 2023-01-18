@@ -17,16 +17,17 @@ export class InfoCommand implements ConsoleCommandInterface {
 
   info = async () => {
     const result = await this.rpcClient.getInfo();
-    return result.match(
+    return result.match<any>(
       (info) => {
-        return JSON.stringify(
-          { version: info.version(), synced: info.synced(), nickname: info.nickname(), root_hash: info.rootHash() },
-          null,
-          2
-        );
+        return {
+          version: info.version(),
+          synced: info.synced(),
+          nickname: info.nickname(),
+          root_hash: info.rootHash(),
+        };
       },
       (err: HubError) => {
-        return `${err}`;
+        return err;
       }
     );
   };

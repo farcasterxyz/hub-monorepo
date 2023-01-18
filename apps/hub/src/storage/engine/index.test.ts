@@ -319,7 +319,14 @@ describe('mergeMessage', () => {
   test('fails with mismatched farcaster network', async () => {
     const mainnetEngine = new Engine(db, FarcasterNetwork.Mainnet);
     const result = await mainnetEngine.mergeMessage(castAdd);
-    expect(result).toEqual(err(new HubError('bad_request.validation_failure', 'incorrect network')));
+    expect(result).toEqual(
+      err(
+        new HubError(
+          'bad_request.validation_failure',
+          `incorrect network. Expected ${FarcasterNetwork.Mainnet} got ${FarcasterNetwork.Testnet}`
+        )
+      )
+    );
   });
 });
 
