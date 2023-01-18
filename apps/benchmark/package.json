@@ -1,0 +1,26 @@
+{
+  "name": "@farcaster/benchmark",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "yarn clean && tsc --project ./tsconfig.json",
+    "clean": "rimraf ./build",
+    "dev": "yarn start",
+    "lint": "eslint  src/ --color --ext .ts",
+    "lint:fix": "yarn run lint -- --fix",
+    "start": "tsx src/index.ts"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^7.6.0",
+    "eslint-config-custom": "*",
+    "flatbuffers": "^22.11.23"
+  },
+  "dependencies": {
+    "@farcaster/flatbuffers": "0.1.4",
+    "@farcaster/grpc": "0.1.4",
+    "@farcaster/utils": "0.1.4",
+    "pino": "^8.8.0",
+    "tsx": "^3.9.0"
+  }
+}

@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+enum MessageType {
+  None = 0;
+  CastAdd = 1;
+  CastRemove = 2;
+  ReactionAdd = 3;
+  ReactionRemove = 4;
+  AmpAdd = 5;
+  AmpRemove = 6;
+  VerificationAddEthAddress = 7;
+  VerificationRemove = 8;
+  SignerAdd = 9;
+  SignerRemove = 10;
+  UserDataAdd = 11;
+}
+
+enum SignatureScheme {
+  DefaultSignatureScheme = 0;
+  Ed25519 = 1;
+  Eip712 = 2;
+}
+
+enum HashScheme {
+  DefaultHashScheme = 0;
+  Blake3 = 1;
+}
+
+enum FarcasterNetwork {
+  DefaultFarcasterNetwork = 0;
+  Mainnet = 1;
+  Testnet = 2;
+  Devnet = 3;
+}
+
+message CastId {
+  bytes fid = 1;
+  bytes ts_hash = 2;
+}
+
+message UserId {
+  bytes fid = 1;
+}
+
+message CastAddBody {
+  repeated string embeds = 1;
+  repeated UserId mentions = 2;
+  oneof parent {
+    CastId cast_id = 3;
+  };
+  string text = 4;
+}
+
+message MessageData {
+  oneof body {
+    CastAddBody cast_add_body = 1;
+  }
+  MessageType type = 2;
+  uint32 timestamp = 3;
+  bytes fid = 4;
+  FarcasterNetwork network = 5;
+}
+
+message Message {
+  bytes data = 1;
+  bytes hash = 2;
+  HashScheme hash_scheme = 3;
+  bytes signature = 4;
+  SignatureScheme signature_scheme = 5;
+  bytes signer = 6;
+}
