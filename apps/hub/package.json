@@ -15,7 +15,7 @@
   "homepage": "https://github.com/farcasterxyz/hub#readme",
   "type": "module",
   "scripts": {
-    "bench": "tsx src/test/perf/flatbuffers/bench.ts",
+    "bench": "tsx src/test/perf/bench.ts",
     "build": "yarn clean && tsc --project ./tsconfig.json",
     "clean": "rimraf ./build",
     "dev": "yarn start | yarn pino-pretty",

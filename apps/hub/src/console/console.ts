@@ -1,3 +1,4 @@
+import { AddressInfo } from 'net';
 import path from 'path';
 import * as repl from 'repl';
 import HubRpcClient from '~/rpc/client';
@@ -7,7 +8,14 @@ import { CastsCommand } from './castsCommand';
 import { InfoCommand } from './infoCommand';
 import { SyncTrieCommand } from './syncTrieCommand';
 
-const addressInfo = addressInfoFromParts('127.0.0.1', 13112)._unsafeUnwrap();
+export const DEFAULT_RPC_CONSOLE = addressInfoFromParts('127.0.0.1', 13112)._unsafeUnwrap();
+
+export const parseServerAddress = (server: string): AddressInfo => {
+  const [host, port] = server.split(':');
+  if (!host || !port) throw new Error('Invalid server address');
+
+  return addressInfoFromParts(host, parseInt(port))._unsafeUnwrap();
+};
 
 export interface ConsoleCommandInterface {
   commandName(): string;
@@ -15,7 +23,7 @@ export interface ConsoleCommandInterface {
   help(): string;
 }
 
-export const startConsole = async () => {
+export const startConsole = async (addressInfo: AddressInfo) => {
   const replServer = repl
     .start({
       prompt: 'hub> ',

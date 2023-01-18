@@ -33,36 +33,36 @@ export class SyncTrieCommand implements ConsoleCommandInterface {
 
   snapshot = async (prefix?: string) => {
     const result = await this.rpcClient.getSyncTrieNodeSnapshotByPrefix(prefix ?? '');
-    return result.match(
+    return result.match<any>(
       (snapshot) => {
-        return JSON.stringify(snapshot.snapshot, null, 2);
+        return snapshot.snapshot;
       },
       (err: HubError) => {
-        return `${err}`;
+        return err;
       }
     );
   };
 
   metadata = async (prefix?: string) => {
     const result = await this.rpcClient.getSyncMetadataByPrefix(prefix ?? '');
-    return result.match(
+    return result.match<any>(
       (metadata) => {
-        return JSON.stringify(metadata, null, 2);
+        return metadata;
       },
       (err: HubError) => {
-        return `${err}`;
+        return err;
       }
     );
   };
 
   syncIds = async (prefix?: string) => {
     const result = await this.rpcClient.getSyncIdsByPrefix(prefix ?? '');
-    return result.match(
+    return result.match<any>(
       (syncIds) => {
-        return JSON.stringify(syncIds, null, 2);
+        return syncIds;
       },
       (err: HubError) => {
-        return `${err}`;
+        return err;
       }
     );
   };
