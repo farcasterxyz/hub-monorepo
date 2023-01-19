@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import * as flatbuffers from '@farcaster/flatbuffers';
 import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, Factories, getFarcasterTime } from '@farcaster/utils';
+import { Factories, getFarcasterTime } from '@farcaster/utils';
 import { Builder, ByteBuffer } from 'flatbuffers';
 import { default as Pino } from 'pino';
 
@@ -25,13 +25,37 @@ type CastTestData = {
   signer: Uint8Array;
 };
 
-const testCases = 10000;
 const logger = Pino({});
 
-const generateTestData = async (): Promise<CastTestData[]> => {
+export const sleep = (ms: number) => {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+};
+
+// Log memory usage in MB
+const logMemoryUsage = (type: 'flatbuffer' | 'protobuf', phase: 'encode' | 'decode') => {
+  const memory = process.memoryUsage();
+  const cpu = process.cpuUsage();
+  // Using console.log because it's easier to copy into spreadsheet
+  // eslint-disable-next-line no-console
+  console.log(
+    type,
+    phase,
+    memory.rss / 1_000_000,
+    memory.heapTotal / 1_000_000,
+    memory.heapUsed / 1_000_000,
+    memory.external / 1_000_000,
+    memory.arrayBuffers / 1_000_000,
+    cpu.user / 1_000_000,
+    cpu.system / 1_000_000
+  );
+};
+
+const generateTestData = async (numTestCases: number): Promise<CastTestData[]> => {
   const testData: CastTestData[] = [];
   const start = performance.now();
-  for (let i = 0; i < testCases; i++) {
+  for (let i = 0; i < numTestCases; i++) {
     const body = {
       text: faker.random.alphaNumeric(200),
       embeds: [faker.internet.url(), faker.internet.url()],
@@ -61,154 +85,179 @@ const generateTestData = async (): Promise<CastTestData[]> => {
   return testData;
 };
 
-const testFlatbuffers = async (testData: CastTestData[]) => {
-  const startRss = process.memoryUsage.rss();
-  const messages: Uint8Array[] = [];
-  let totalSize = 0;
-
-  const encodeStart = performance.now();
-
-  for (const testCase of testData) {
-    const bodyT = new flatbuffers.CastAddBodyT(
-      testCase.body.embeds,
-      testCase.body.mentions.map((mention) => new flatbuffers.UserIdT(Array.from(mention.fid))),
-      flatbuffers.TargetId.CastId,
-      new flatbuffers.CastIdT(Array.from(testCase.body.parent.fid), Array.from(testCase.body.parent.tsHash)),
-      testCase.body.text
-    );
-
-    const dataBuilder = new Builder();
-
-    const data = flatbuffers.MessageData.createMessageData(
-      dataBuilder,
-      flatbuffers.MessageBody.CastAddBody,
-      dataBuilder.createObjectOffset(bodyT),
-      testCase.data.type,
-      testCase.data.timestamp,
-      flatbuffers.MessageData.createFidVector(dataBuilder, testCase.data.fid),
-      testCase.data.network
-    );
-
-    dataBuilder.finish(data);
-    const dataBytes = dataBuilder.asUint8Array();
-
-    const builder = new Builder();
-
-    const offset = flatbuffers.Message.createMessage(
-      builder,
-      flatbuffers.Message.createDataVector(builder, dataBytes),
-      flatbuffers.Message.createHashVector(builder, testCase.hash),
-      testCase.hashScheme,
-      flatbuffers.Message.createSignatureVector(builder, testCase.signature),
-      testCase.signatureScheme,
-      flatbuffers.Message.createSignerVector(builder, testCase.signer)
-    );
-
-    builder.finish(offset);
-
-    const bytes = builder.asUint8Array();
-    messages.push(bytes);
-    totalSize += bytes.length;
-  }
-
-  const decodeStart = performance.now();
-
-  for (let i = 0; i < testData.length; i++) {
-    const message = flatbuffers.Message.getRootAsMessage(new ByteBuffer(messages[i] as Uint8Array));
-    const data = flatbuffers.MessageData.getRootAsMessageData(new ByteBuffer(message.dataArray() ?? new Uint8Array()));
-    const testCase = testData[i] as CastTestData;
-    if (
-      bytesCompare(message.hashArray() as Uint8Array, testCase.hash) !== 0 ||
-      bytesCompare(data.fidArray() as Uint8Array, testCase?.data.fid) !== 0 ||
-      data.body(new flatbuffers.CastAddBody()).text() !== testCase?.body.text
-    ) {
-      throw new Error('no match');
-    }
-  }
-
-  logger.info(
-    {
-      encodeTime: decodeStart - encodeStart,
-      decodeTime: performance.now() - decodeStart,
-      avgMessageSize: totalSize / messages.length,
-      avgRss: (process.memoryUsage.rss() - startRss) / messages.length,
-    },
-    'testFlatbuffers'
+const encodeFlatbuffer = (testCase: CastTestData): Uint8Array => {
+  const bodyT = new flatbuffers.CastAddBodyT(
+    testCase.body.embeds,
+    testCase.body.mentions.map((mention) => new flatbuffers.UserIdT(Array.from(mention.fid))),
+    flatbuffers.TargetId.CastId,
+    new flatbuffers.CastIdT(Array.from(testCase.body.parent.fid), Array.from(testCase.body.parent.tsHash)),
+    testCase.body.text
   );
+
+  const dataBuilder = new Builder();
+
+  const messageData = flatbuffers.MessageData.createMessageData(
+    dataBuilder,
+    flatbuffers.MessageBody.CastAddBody,
+    dataBuilder.createObjectOffset(bodyT),
+    testCase.data.type,
+    testCase.data.timestamp,
+    flatbuffers.MessageData.createFidVector(dataBuilder, testCase.data.fid),
+    testCase.data.network
+  );
+
+  dataBuilder.finish(messageData);
+  const dataBytes = dataBuilder.asUint8Array();
+
+  const builder = new Builder();
+
+  const offset = flatbuffers.Message.createMessage(
+    builder,
+    flatbuffers.Message.createDataVector(builder, dataBytes),
+    flatbuffers.Message.createHashVector(builder, testCase.hash),
+    testCase.hashScheme,
+    flatbuffers.Message.createSignatureVector(builder, testCase.signature),
+    testCase.signatureScheme,
+    flatbuffers.Message.createSignerVector(builder, testCase.signer)
+  );
+
+  builder.finish(offset);
+
+  return builder.asUint8Array();
 };
 
-const testProtobufs = async (testData: CastTestData[]) => {
-  const startRss = process.memoryUsage.rss();
-  const messages: Uint8Array[] = [];
-  let totalSize = 0;
+const decodeFlatbuffer = (bytes: Uint8Array): void => {
+  const message = flatbuffers.Message.getRootAsMessage(new ByteBuffer(bytes as Uint8Array));
+  const data = flatbuffers.MessageData.getRootAsMessageData(new ByteBuffer(message.dataArray() ?? new Uint8Array()));
 
-  const encodeStart = performance.now();
+  message.hashArray();
+  data.fidArray();
+  data.body(new flatbuffers.CastAddBody()).text();
+  return undefined;
+};
 
-  for (const testCase of testData) {
-    const dataPayload = {
-      castAddBody: {
-        text: testCase.body.text,
-        embeds: testCase.body.embeds,
-        mentions: testCase.body.mentions,
-        castId: testCase.body.parent,
-      },
-      type: testCase.data.type,
-      timestamp: testCase.data.timestamp,
-      fid: testCase.data.fid,
-      network: testCase.data.network,
-    };
+const encodeProtobuf = (testCase: CastTestData): Uint8Array => {
+  const dataPayload = {
+    castAddBody: {
+      text: testCase.body.text,
+      embeds: testCase.body.embeds,
+      mentions: testCase.body.mentions,
+      castId: testCase.body.parent,
+    },
+    type: testCase.data.type,
+    timestamp: testCase.data.timestamp,
+    fid: testCase.data.fid,
+    network: testCase.data.network,
+  };
 
-    const data = protobufs.MessageData.create(dataPayload);
+  const createdData = protobufs.MessageData.create(dataPayload);
 
-    const dataBuffer = new Uint8Array(protobufs.MessageData.encode(data).finish());
+  const dataBuffer = protobufs.MessageData.encode(createdData).finish();
 
-    const messagePayload = {
-      data: dataBuffer,
-      hash: testCase.hash,
-      hashScheme: testCase.hashScheme,
-      signature: testCase.signature,
-      signatureScheme: testCase.signatureScheme,
-      signer: testCase.signer,
-    };
+  const messagePayload = {
+    data: dataBuffer,
+    hash: testCase.hash,
+    hashScheme: testCase.hashScheme,
+    signature: testCase.signature,
+    signatureScheme: testCase.signatureScheme,
+    signer: testCase.signer,
+  };
 
-    const message = protobufs.Message.create(messagePayload);
+  const createdMessage = protobufs.Message.create(messagePayload);
 
-    const messageBuffer = new Uint8Array(protobufs.Message.encode(message).finish());
+  return new Uint8Array(protobufs.Message.encode(createdMessage).finish());
+};
 
-    totalSize += messageBuffer.length;
-    messages.push(messageBuffer);
+const decodeProtobuf = (bytes: Uint8Array): void => {
+  const message = protobufs.Message.decode(bytes);
+  const data = protobufs.MessageData.decode(message.data);
+
+  message.hash;
+  data.fid;
+  data.castAddBody?.text;
+
+  return undefined;
+};
+
+const runTimedTest = async (
+  testData: CastTestData[],
+  time: number,
+  encode: (testCase: CastTestData) => Uint8Array,
+  decode: (bytes: Uint8Array) => void,
+  type: 'flatbuffer' | 'protobuf'
+) => {
+  const encodeUntil = performance.now() + time / 2;
+  const decodeUntil = encodeUntil + time / 2;
+
+  // const encoded: Uint8Array[] = [];
+  let encodedCount = 0;
+  let lastEncoded: Uint8Array = new Uint8Array();
+  let encodeSize = 0;
+  let decodeCount = 0;
+  let encodeTime = 0;
+  let decodeTime = 0;
+  let lastMemory = 0;
+
+  // Encode
+  while (performance.now() < encodeUntil) {
+    const i = Math.floor(Math.random() * (testData.length - 1));
+
+    if (performance.now() - lastMemory > 50) {
+      logMemoryUsage(type, 'encode');
+      lastMemory = performance.now();
+    }
+
+    const testCase = testData[i] as CastTestData;
+
+    // Encode
+    const encodeStart = performance.now();
+
+    const bytes = encode(testCase);
+
+    encodeSize += bytes.length;
+    // encoded.push(bytes);
+    lastEncoded = bytes;
+    encodedCount += 1;
+    encodeTime += performance.now() - encodeStart;
   }
 
-  const decodeStart = performance.now();
-
-  for (let i = 0; i < testData.length; i++) {
-    const message = protobufs.Message.decode(messages[i] as Uint8Array);
-    const data = protobufs.MessageData.decode(message.data);
-    const testCase = testData[i] as CastTestData;
-    if (
-      bytesCompare(message.hash, testCase.hash) !== 0 ||
-      bytesCompare(data.fid, testCase?.data.fid) !== 0 ||
-      data.castAddBody?.text !== testCase?.body.text
-    ) {
-      throw new Error('no match');
+  // Decode
+  while (performance.now() < decodeUntil) {
+    if (performance.now() - lastMemory > 50) {
+      logMemoryUsage(type, 'decode');
+      lastMemory = performance.now();
     }
+
+    const decodeStart = performance.now();
+    // const i = Math.floor(Math.random() * (encoded.length - 1));
+
+    // decode(encoded[i] as Uint8Array);
+    decode(lastEncoded);
+
+    decodeCount += 1;
+    decodeTime += performance.now() - decodeStart;
   }
 
   logger.info(
     {
-      encodeTime: decodeStart - encodeStart,
-      decodeTime: performance.now() - decodeStart,
-      avgMessageSize: totalSize / messages.length,
-      avgRss: (process.memoryUsage.rss() - startRss) / messages.length,
+      encodedCount: encodedCount,
+      encodeTime: (encodeTime * 1000) / encodedCount,
+      decoded: decodeCount,
+      decodeTime: (decodeTime * 1000) / encodedCount,
+      avgMessageSize: encodeSize / encodedCount,
     },
-    'testProtobufs'
+    type
   );
 };
 
 const runBenchmark = async () => {
-  const testData = await generateTestData();
-  await testProtobufs(testData);
-  await testFlatbuffers(testData);
+  const testData = await generateTestData(100);
+
+  // Run flatbuffer test for 30s
+  runTimedTest(testData, 60_000, encodeFlatbuffer, decodeFlatbuffer, 'flatbuffer');
+
+  // Run protobuf test for 30s
+  runTimedTest(testData, 30_000, encodeProtobuf, decodeProtobuf, 'protobuf');
 };
 
 runBenchmark();
