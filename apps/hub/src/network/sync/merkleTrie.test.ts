@@ -224,7 +224,7 @@ describe('MerkleTrie', () => {
       // We expect the excluded hash to be the hash of the 3 and 4 child nodes, and excludes the 5 child node
       const expectedHash = Buffer.from(
         blake3
-          .create({ dkLen: 16 })
+          .create({ dkLen: 20 })
           .update(node?.children?.get('3')?.hash || '')
           .update(node?.children?.get('4')?.hash || '')
           .digest()
@@ -244,11 +244,11 @@ describe('MerkleTrie', () => {
 
       snapshot = trie.getSnapshot('1665182343');
       node = trie.getTrieNodeMetadata('166518234');
-      const expectedLastHash = Buffer.from(blake3(node?.children?.get('5')?.hash || '', { dkLen: 16 })).toString('hex');
+      const expectedLastHash = Buffer.from(blake3(node?.children?.get('5')?.hash || '', { dkLen: 20 })).toString('hex');
       node = trie.getTrieNodeMetadata('16651823');
       const expectedPenultimateHash = Buffer.from(
         blake3
-          .create({ dkLen: 16 })
+          .create({ dkLen: 20 })
           .update(node?.children?.get('3')?.hash || '')
           .update(node?.children?.get('5')?.hash || '')
           .digest()

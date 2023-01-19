@@ -24,7 +24,7 @@ describe('signMessageHash', () => {
   test('succeeds', async () => {
     const messageData = await Factories.SignerAddData.create();
     const bytes = messageData.bb?.bytes() ?? new Uint8Array();
-    const hash = blake3(bytes, { dkLen: 16 });
+    const hash = blake3(bytes, { dkLen: 20 });
     const signature = await ed25519.signMessageHash(hash, privateKey);
     const isValid = await ed.verify(signature._unsafeUnwrap(), hash, publicKey);
     expect(isValid).toBe(true);
@@ -35,7 +35,7 @@ describe('verifyMessageHashSignature', () => {
   test('succeeds with valid signature', async () => {
     const messageData = await Factories.SignerAddData.create();
     const bytes = messageData.bb?.bytes() ?? new Uint8Array();
-    const hash = blake3(bytes, { dkLen: 16 });
+    const hash = blake3(bytes, { dkLen: 20 });
     const signature = await ed25519.signMessageHash(hash, privateKey);
     const isValid = await ed25519.verifyMessageHashSignature(signature._unsafeUnwrap(), hash, publicKey);
     expect(isValid._unsafeUnwrap()).toBe(true);
@@ -44,7 +44,7 @@ describe('verifyMessageHashSignature', () => {
   test('fails with invalid signature', async () => {
     const messageData = await Factories.SignerAddData.create();
     const bytes = messageData.bb?.bytes() ?? new Uint8Array();
-    const hash = blake3(bytes, { dkLen: 16 });
+    const hash = blake3(bytes, { dkLen: 20 });
     const isValid = await ed25519.verifyMessageHashSignature(randomBytes(32), hash, privateKey);
     expect(isValid._unsafeUnwrapErr()).toBeInstanceOf(HubError);
   });

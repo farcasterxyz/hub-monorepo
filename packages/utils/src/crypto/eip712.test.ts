@@ -51,7 +51,7 @@ describe('signMessageHash', () => {
   test('succeeds', async () => {
     const messageData = await Factories.SignerAddData.create();
     const bytes = messageData.bb?.bytes() ?? new Uint8Array();
-    const hash = blake3(bytes, { dkLen: 16 });
+    const hash = blake3(bytes, { dkLen: 20 });
     const signature = await eip712.signMessageHash(hash, wallet);
     const recoveredAddress = eip712.verifyMessageHashSignature(hash, signature._unsafeUnwrap());
     expect(recoveredAddress._unsafeUnwrap()).toEqual(hexStringToBytes(wallet.address)._unsafeUnwrap());

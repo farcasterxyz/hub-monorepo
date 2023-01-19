@@ -27,9 +27,9 @@ describe('FidFactory', () => {
 });
 
 describe('TsHashFactory', () => {
-  test('generates 20 byte value', () => {
+  test('generates 24 byte value', () => {
     const tsHash = Factories.TsHash.build();
-    expect(tsHash.byteLength).toEqual(20);
+    expect(tsHash.byteLength).toEqual(24);
   });
 
   test('accepts timestamp', () => {
@@ -37,7 +37,7 @@ describe('TsHashFactory', () => {
       {},
       { transient: { timestamp: toFarcasterTime(Date.now())._unsafeUnwrap() } }
     );
-    expect(tsHash.byteLength).toEqual(20);
+    expect(tsHash.byteLength).toEqual(24);
   });
 });
 
@@ -62,7 +62,7 @@ describe('MessageFactory', () => {
   });
 
   test('generates hash', async () => {
-    expect(message.hashArray()).toEqual(blake3(data.bb?.bytes() || new Uint8Array(), { dkLen: 16 }));
+    expect(message.hashArray()).toEqual(blake3(data.bb?.bytes() || new Uint8Array(), { dkLen: 20 }));
   });
 
   test('generates signature', async () => {

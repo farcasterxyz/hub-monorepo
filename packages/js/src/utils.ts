@@ -588,7 +588,7 @@ export const deserializeEd25519Signature = (bytes: Uint8Array): HubResult<string
  * Deserialize a message hash from a byte array to hex string.
  */
 export const deserializeMessageHash = (bytes: Uint8Array): HubResult<string> => {
-  return bytesToHexString(bytes, { size: 32 });
+  return bytesToHexString(bytes, { size: 40 });
 };
 
 export const deserializeFid = (fid: Uint8Array): HubResult<number> => {
@@ -632,7 +632,7 @@ export const serializeEd25519PublicKey = (publicKey: string): HubResult<Uint8Arr
 };
 
 export const deserializeTsHash = (tsHash: Uint8Array): HubResult<string> => {
-  return validations.validateTsHash(tsHash).andThen((tsHash) => bytesToHexString(tsHash, { size: 40 }));
+  return validations.validateTsHash(tsHash).andThen((tsHash) => bytesToHexString(tsHash, { size: 48 }));
 };
 
 export const serializeTsHash = (tsHash: string): HubResult<Uint8Array> => {

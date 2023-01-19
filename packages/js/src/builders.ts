@@ -142,7 +142,7 @@ const makeMessage = async (messageData: flatbuffers.MessageData, signer: Signer)
     return err(new HubError('bad_request.invalid_param', 'data is missing'));
   }
 
-  const hash = await blake3(dataBytes, { dkLen: 16 });
+  const hash = blake3(dataBytes, { dkLen: 20 });
 
   const signature = await signer.signMessageHash(hash);
   if (signature.isErr()) {
@@ -169,8 +169,8 @@ const makeMessage = async (messageData: flatbuffers.MessageData, signer: Signer)
 /** Generic Methods */
 
 export const makeMessageHash = async (messageData: types.MessageData): HubAsyncResult<string> => {
-  const hashBytes = await blake3(messageData.flatbuffer.bb?.bytes() ?? new Uint8Array(), { dkLen: 16 });
-  return bytesToHexString(hashBytes, { size: 32 });
+  const hashBytes = blake3(messageData.flatbuffer.bb?.bytes() ?? new Uint8Array(), { dkLen: 20 });
+  return bytesToHexString(hashBytes, { size: 40 });
 };
 
 export const makeMessageWithSignature = async (
@@ -183,7 +183,7 @@ export const makeMessageWithSignature = async (
     return err(new HubError('bad_request.invalid_param', 'data is missing'));
   }
 
-  const hash = await blake3(dataBytes, { dkLen: 16 });
+  const hash = blake3(dataBytes, { dkLen: 20 });
 
   const signatureBytes = hexStringToBytes(signature);
   if (signatureBytes.isErr()) {
