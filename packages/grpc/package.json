@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/grpc",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -19,8 +19,8 @@
     "eslint-config-custom": "*"
   },
   "dependencies": {
-    "@farcaster/flatbuffers": "0.1.4",
-    "@farcaster/utils": "0.1.4",
+    "@farcaster/flatbuffers": "0.1.5",
+    "@farcaster/utils": "0.1.5",
     "@grpc/grpc-js": "^1.8.1",
     "flatbuffers": "^22.12.6",
     "neverthrow": "^6.0.0"
