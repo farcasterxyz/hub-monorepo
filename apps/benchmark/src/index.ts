@@ -200,6 +200,9 @@ const runTimedTest = async (
 
   // Encode
   while (performance.now() < encodeUntil) {
+    // Encode
+    const encodeStart = performance.now();
+
     const i = Math.floor(Math.random() * (testData.length - 1));
 
     if (performance.now() - lastMemory > 50) {
@@ -208,9 +211,6 @@ const runTimedTest = async (
     }
 
     const testCase = testData[i] as CastTestData;
-
-    // Encode
-    const encodeStart = performance.now();
 
     const bytes = encode(testCase);
 
@@ -223,12 +223,12 @@ const runTimedTest = async (
 
   // Decode
   while (performance.now() < decodeUntil) {
+    const decodeStart = performance.now();
     if (performance.now() - lastMemory > 50) {
       logMemoryUsage(type, 'decode');
       lastMemory = performance.now();
     }
 
-    const decodeStart = performance.now();
     // const i = Math.floor(Math.random() * (encoded.length - 1));
 
     // decode(encoded[i] as Uint8Array);
@@ -241,9 +241,11 @@ const runTimedTest = async (
   logger.info(
     {
       encodedCount: encodedCount,
-      encodeTime: (encodeTime * 1000) / encodedCount,
+      encodeTime,
+      encodeTimePerMessage: encodeTime / encodedCount,
       decoded: decodeCount,
-      decodeTime: (decodeTime * 1000) / encodedCount,
+      decodeTime,
+      decodeTimePerMessage: decodeTime / decodeCount,
       avgMessageSize: encodeSize / encodedCount,
     },
     type
@@ -253,8 +255,10 @@ const runTimedTest = async (
 const runBenchmark = async () => {
   const testData = await generateTestData(100);
 
+  // Note: Comment out one of the runs to make sure they don't interfere with each other
+
   // Run flatbuffer test for 30s
-  runTimedTest(testData, 60_000, encodeFlatbuffer, decodeFlatbuffer, 'flatbuffer');
+  runTimedTest(testData, 30_000, encodeFlatbuffer, decodeFlatbuffer, 'flatbuffer');
 
   // Run protobuf test for 30s
   runTimedTest(testData, 30_000, encodeProtobuf, decodeProtobuf, 'protobuf');
