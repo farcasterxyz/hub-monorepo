@@ -3,7 +3,7 @@
 import * as flatbuffers from 'flatbuffers';
 
 
-export class HubState implements flatbuffers.IUnpackableObject<HubStateT> {
+export class HubState {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):HubState {
@@ -51,30 +51,6 @@ static createHubState(builder:flatbuffers.Builder, lastEthBlock:bigint):flatbuff
   HubState.startHubState(builder);
   HubState.addLastEthBlock(builder, lastEthBlock);
   return HubState.endHubState(builder);
-}
-
-unpack(): HubStateT {
-  return new HubStateT(
-    this.lastEthBlock()
-  );
-}
-
-
-unpackTo(_o: HubStateT): void {
-  _o.lastEthBlock = this.lastEthBlock();
-}
-}
-
-export class HubStateT implements flatbuffers.IGeneratedObject {
-constructor(
-  public lastEthBlock: bigint = BigInt('0')
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  return HubState.createHubState(builder,
-    this.lastEthBlock
-  );
 }
 }
 

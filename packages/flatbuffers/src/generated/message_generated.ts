@@ -123,7 +123,7 @@ export function unionListToMessageBody(
   }
 }
 
-export class CastId implements flatbuffers.IUnpackableObject<CastIdT> {
+export class CastId {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):CastId {
@@ -220,40 +220,9 @@ static createCastId(builder:flatbuffers.Builder, fidOffset:flatbuffers.Offset, t
   CastId.addTsHash(builder, tsHashOffset);
   return CastId.endCastId(builder);
 }
-
-unpack(): CastIdT {
-  return new CastIdT(
-    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength()),
-    this.bb!.createScalarList<number>(this.tsHash.bind(this), this.tsHashLength())
-  );
 }
 
-
-unpackTo(_o: CastIdT): void {
-  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
-  _o.tsHash = this.bb!.createScalarList<number>(this.tsHash.bind(this), this.tsHashLength());
-}
-}
-
-export class CastIdT implements flatbuffers.IGeneratedObject {
-constructor(
-  public fid: (number)[] = [],
-  public tsHash: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = CastId.createFidVector(builder, this.fid);
-  const tsHash = CastId.createTsHashVector(builder, this.tsHash);
-
-  return CastId.createCastId(builder,
-    fid,
-    tsHash
-  );
-}
-}
-
-export class UserId implements flatbuffers.IUnpackableObject<UserIdT> {
+export class UserId {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):UserId {
@@ -317,35 +286,9 @@ static createUserId(builder:flatbuffers.Builder, fidOffset:flatbuffers.Offset):f
   UserId.addFid(builder, fidOffset);
   return UserId.endUserId(builder);
 }
-
-unpack(): UserIdT {
-  return new UserIdT(
-    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength())
-  );
 }
 
-
-unpackTo(_o: UserIdT): void {
-  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
-}
-}
-
-export class UserIdT implements flatbuffers.IGeneratedObject {
-constructor(
-  public fid: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = UserId.createFidVector(builder, this.fid);
-
-  return UserId.createUserId(builder,
-    fid
-  );
-}
-}
-
-export class CastAddBody implements flatbuffers.IUnpackableObject<CastAddBodyT> {
+export class CastAddBody {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):CastAddBody {
@@ -465,62 +408,9 @@ static createCastAddBody(builder:flatbuffers.Builder, embedsOffset:flatbuffers.O
   CastAddBody.addText(builder, textOffset);
   return CastAddBody.endCastAddBody(builder);
 }
-
-unpack(): CastAddBodyT {
-  return new CastAddBodyT(
-    this.bb!.createScalarList<string>(this.embeds.bind(this), this.embedsLength()),
-    this.bb!.createObjList<UserId, UserIdT>(this.mentions.bind(this), this.mentionsLength()),
-    this.parentType(),
-    (() => {
-      const temp = unionToTargetId(this.parentType(), this.parent.bind(this));
-      if(temp === null) { return null; }
-      return temp.unpack()
-  })(),
-    this.text()
-  );
 }
 
-
-unpackTo(_o: CastAddBodyT): void {
-  _o.embeds = this.bb!.createScalarList<string>(this.embeds.bind(this), this.embedsLength());
-  _o.mentions = this.bb!.createObjList<UserId, UserIdT>(this.mentions.bind(this), this.mentionsLength());
-  _o.parentType = this.parentType();
-  _o.parent = (() => {
-      const temp = unionToTargetId(this.parentType(), this.parent.bind(this));
-      if(temp === null) { return null; }
-      return temp.unpack()
-  })();
-  _o.text = this.text();
-}
-}
-
-export class CastAddBodyT implements flatbuffers.IGeneratedObject {
-constructor(
-  public embeds: (string)[] = [],
-  public mentions: (UserIdT)[] = [],
-  public parentType: TargetId = TargetId.NONE,
-  public parent: CastIdT|null = null,
-  public text: string|Uint8Array|null = null
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const embeds = CastAddBody.createEmbedsVector(builder, builder.createObjectOffsetList(this.embeds));
-  const mentions = CastAddBody.createMentionsVector(builder, builder.createObjectOffsetList(this.mentions));
-  const parent = builder.createObjectOffset(this.parent);
-  const text = (this.text !== null ? builder.createString(this.text!) : 0);
-
-  return CastAddBody.createCastAddBody(builder,
-    embeds,
-    mentions,
-    this.parentType,
-    parent,
-    text
-  );
-}
-}
-
-export class CastRemoveBody implements flatbuffers.IUnpackableObject<CastRemoveBodyT> {
+export class CastRemoveBody {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):CastRemoveBody {
@@ -584,35 +474,9 @@ static createCastRemoveBody(builder:flatbuffers.Builder, targetTsHashOffset:flat
   CastRemoveBody.addTargetTsHash(builder, targetTsHashOffset);
   return CastRemoveBody.endCastRemoveBody(builder);
 }
-
-unpack(): CastRemoveBodyT {
-  return new CastRemoveBodyT(
-    this.bb!.createScalarList<number>(this.targetTsHash.bind(this), this.targetTsHashLength())
-  );
 }
 
-
-unpackTo(_o: CastRemoveBodyT): void {
-  _o.targetTsHash = this.bb!.createScalarList<number>(this.targetTsHash.bind(this), this.targetTsHashLength());
-}
-}
-
-export class CastRemoveBodyT implements flatbuffers.IGeneratedObject {
-constructor(
-  public targetTsHash: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const targetTsHash = CastRemoveBody.createTargetTsHashVector(builder, this.targetTsHash);
-
-  return CastRemoveBody.createCastRemoveBody(builder,
-    targetTsHash
-  );
-}
-}
-
-export class ReactionBody implements flatbuffers.IUnpackableObject<ReactionBodyT> {
+export class ReactionBody {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):ReactionBody {
@@ -674,51 +538,9 @@ static createReactionBody(builder:flatbuffers.Builder, targetType:TargetId, targ
   ReactionBody.addType(builder, type);
   return ReactionBody.endReactionBody(builder);
 }
-
-unpack(): ReactionBodyT {
-  return new ReactionBodyT(
-    this.targetType(),
-    (() => {
-      const temp = unionToTargetId(this.targetType(), this.target.bind(this));
-      if(temp === null) { return null; }
-      return temp.unpack()
-  })(),
-    this.type()
-  );
 }
 
-
-unpackTo(_o: ReactionBodyT): void {
-  _o.targetType = this.targetType();
-  _o.target = (() => {
-      const temp = unionToTargetId(this.targetType(), this.target.bind(this));
-      if(temp === null) { return null; }
-      return temp.unpack()
-  })();
-  _o.type = this.type();
-}
-}
-
-export class ReactionBodyT implements flatbuffers.IGeneratedObject {
-constructor(
-  public targetType: TargetId = TargetId.NONE,
-  public target: CastIdT|null = null,
-  public type: ReactionType = ReactionType.Like
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const target = builder.createObjectOffset(this.target);
-
-  return ReactionBody.createReactionBody(builder,
-    this.targetType,
-    target,
-    this.type
-  );
-}
-}
-
-export class AmpBody implements flatbuffers.IUnpackableObject<AmpBodyT> {
+export class AmpBody {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):AmpBody {
@@ -760,35 +582,9 @@ static createAmpBody(builder:flatbuffers.Builder, userOffset:flatbuffers.Offset)
   AmpBody.addUser(builder, userOffset);
   return AmpBody.endAmpBody(builder);
 }
-
-unpack(): AmpBodyT {
-  return new AmpBodyT(
-    (this.user() !== null ? this.user()!.unpack() : null)
-  );
 }
 
-
-unpackTo(_o: AmpBodyT): void {
-  _o.user = (this.user() !== null ? this.user()!.unpack() : null);
-}
-}
-
-export class AmpBodyT implements flatbuffers.IGeneratedObject {
-constructor(
-  public user: UserIdT|null = null
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const user = (this.user !== null ? this.user!.pack(builder) : 0);
-
-  return AmpBody.createAmpBody(builder,
-    user
-  );
-}
-}
-
-export class VerificationAddEthAddressBody implements flatbuffers.IUnpackableObject<VerificationAddEthAddressBodyT> {
+export class VerificationAddEthAddressBody {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):VerificationAddEthAddressBody {
@@ -918,45 +714,9 @@ static createVerificationAddEthAddressBody(builder:flatbuffers.Builder, addressO
   VerificationAddEthAddressBody.addBlockHash(builder, blockHashOffset);
   return VerificationAddEthAddressBody.endVerificationAddEthAddressBody(builder);
 }
-
-unpack(): VerificationAddEthAddressBodyT {
-  return new VerificationAddEthAddressBodyT(
-    this.bb!.createScalarList<number>(this.address.bind(this), this.addressLength()),
-    this.bb!.createScalarList<number>(this.ethSignature.bind(this), this.ethSignatureLength()),
-    this.bb!.createScalarList<number>(this.blockHash.bind(this), this.blockHashLength())
-  );
 }
 
-
-unpackTo(_o: VerificationAddEthAddressBodyT): void {
-  _o.address = this.bb!.createScalarList<number>(this.address.bind(this), this.addressLength());
-  _o.ethSignature = this.bb!.createScalarList<number>(this.ethSignature.bind(this), this.ethSignatureLength());
-  _o.blockHash = this.bb!.createScalarList<number>(this.blockHash.bind(this), this.blockHashLength());
-}
-}
-
-export class VerificationAddEthAddressBodyT implements flatbuffers.IGeneratedObject {
-constructor(
-  public address: (number)[] = [],
-  public ethSignature: (number)[] = [],
-  public blockHash: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const address = VerificationAddEthAddressBody.createAddressVector(builder, this.address);
-  const ethSignature = VerificationAddEthAddressBody.createEthSignatureVector(builder, this.ethSignature);
-  const blockHash = VerificationAddEthAddressBody.createBlockHashVector(builder, this.blockHash);
-
-  return VerificationAddEthAddressBody.createVerificationAddEthAddressBody(builder,
-    address,
-    ethSignature,
-    blockHash
-  );
-}
-}
-
-export class VerificationRemoveBody implements flatbuffers.IUnpackableObject<VerificationRemoveBodyT> {
+export class VerificationRemoveBody {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):VerificationRemoveBody {
@@ -1020,35 +780,9 @@ static createVerificationRemoveBody(builder:flatbuffers.Builder, addressOffset:f
   VerificationRemoveBody.addAddress(builder, addressOffset);
   return VerificationRemoveBody.endVerificationRemoveBody(builder);
 }
-
-unpack(): VerificationRemoveBodyT {
-  return new VerificationRemoveBodyT(
-    this.bb!.createScalarList<number>(this.address.bind(this), this.addressLength())
-  );
 }
 
-
-unpackTo(_o: VerificationRemoveBodyT): void {
-  _o.address = this.bb!.createScalarList<number>(this.address.bind(this), this.addressLength());
-}
-}
-
-export class VerificationRemoveBodyT implements flatbuffers.IGeneratedObject {
-constructor(
-  public address: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const address = VerificationRemoveBody.createAddressVector(builder, this.address);
-
-  return VerificationRemoveBody.createVerificationRemoveBody(builder,
-    address
-  );
-}
-}
-
-export class SignerBody implements flatbuffers.IUnpackableObject<SignerBodyT> {
+export class SignerBody {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):SignerBody {
@@ -1112,35 +846,9 @@ static createSignerBody(builder:flatbuffers.Builder, signerOffset:flatbuffers.Of
   SignerBody.addSigner(builder, signerOffset);
   return SignerBody.endSignerBody(builder);
 }
-
-unpack(): SignerBodyT {
-  return new SignerBodyT(
-    this.bb!.createScalarList<number>(this.signer.bind(this), this.signerLength())
-  );
 }
 
-
-unpackTo(_o: SignerBodyT): void {
-  _o.signer = this.bb!.createScalarList<number>(this.signer.bind(this), this.signerLength());
-}
-}
-
-export class SignerBodyT implements flatbuffers.IGeneratedObject {
-constructor(
-  public signer: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const signer = SignerBody.createSignerVector(builder, this.signer);
-
-  return SignerBody.createSignerBody(builder,
-    signer
-  );
-}
-}
-
-export class UserDataBody implements flatbuffers.IUnpackableObject<UserDataBodyT> {
+export class UserDataBody {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):UserDataBody {
@@ -1193,39 +901,9 @@ static createUserDataBody(builder:flatbuffers.Builder, type:UserDataType, valueO
   UserDataBody.addValue(builder, valueOffset);
   return UserDataBody.endUserDataBody(builder);
 }
-
-unpack(): UserDataBodyT {
-  return new UserDataBodyT(
-    this.type(),
-    this.value()
-  );
 }
 
-
-unpackTo(_o: UserDataBodyT): void {
-  _o.type = this.type();
-  _o.value = this.value();
-}
-}
-
-export class UserDataBodyT implements flatbuffers.IGeneratedObject {
-constructor(
-  public type: UserDataType = UserDataType.Pfp,
-  public value: string|Uint8Array|null = null
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const value = (this.value !== null ? builder.createString(this.value!) : 0);
-
-  return UserDataBody.createUserDataBody(builder,
-    this.type,
-    value
-  );
-}
-}
-
-export class MessageData implements flatbuffers.IUnpackableObject<MessageDataT> {
+export class MessageData {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):MessageData {
@@ -1341,64 +1019,9 @@ static createMessageData(builder:flatbuffers.Builder, bodyType:MessageBody, body
   MessageData.addNetwork(builder, network);
   return MessageData.endMessageData(builder);
 }
-
-unpack(): MessageDataT {
-  return new MessageDataT(
-    this.bodyType(),
-    (() => {
-      const temp = unionToMessageBody(this.bodyType(), this.body.bind(this));
-      if(temp === null) { return null; }
-      return temp.unpack()
-  })(),
-    this.type(),
-    this.timestamp(),
-    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength()),
-    this.network()
-  );
 }
 
-
-unpackTo(_o: MessageDataT): void {
-  _o.bodyType = this.bodyType();
-  _o.body = (() => {
-      const temp = unionToMessageBody(this.bodyType(), this.body.bind(this));
-      if(temp === null) { return null; }
-      return temp.unpack()
-  })();
-  _o.type = this.type();
-  _o.timestamp = this.timestamp();
-  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
-  _o.network = this.network();
-}
-}
-
-export class MessageDataT implements flatbuffers.IGeneratedObject {
-constructor(
-  public bodyType: MessageBody = MessageBody.NONE,
-  public body: AmpBodyT|CastAddBodyT|CastRemoveBodyT|ReactionBodyT|SignerBodyT|UserDataBodyT|VerificationAddEthAddressBodyT|VerificationRemoveBodyT|null = null,
-  public type: MessageType|null = null,
-  public timestamp: number = 0,
-  public fid: (number)[] = [],
-  public network: FarcasterNetwork = FarcasterNetwork.Mainnet
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const body = builder.createObjectOffset(this.body);
-  const fid = MessageData.createFidVector(builder, this.fid);
-
-  return MessageData.createMessageData(builder,
-    this.bodyType,
-    body,
-    this.type,
-    this.timestamp,
-    fid,
-    this.network
-  );
-}
-}
-
-export class Message implements flatbuffers.IUnpackableObject<MessageT> {
+export class Message {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):Message {
@@ -1589,58 +1212,9 @@ static createMessage(builder:flatbuffers.Builder, dataOffset:flatbuffers.Offset,
   Message.addSigner(builder, signerOffset);
   return Message.endMessage(builder);
 }
-
-unpack(): MessageT {
-  return new MessageT(
-    this.bb!.createScalarList<number>(this.data.bind(this), this.dataLength()),
-    this.bb!.createScalarList<number>(this.hash.bind(this), this.hashLength()),
-    this.hashScheme(),
-    this.bb!.createScalarList<number>(this.signature.bind(this), this.signatureLength()),
-    this.signatureScheme(),
-    this.bb!.createScalarList<number>(this.signer.bind(this), this.signerLength())
-  );
 }
 
-
-unpackTo(_o: MessageT): void {
-  _o.data = this.bb!.createScalarList<number>(this.data.bind(this), this.dataLength());
-  _o.hash = this.bb!.createScalarList<number>(this.hash.bind(this), this.hashLength());
-  _o.hashScheme = this.hashScheme();
-  _o.signature = this.bb!.createScalarList<number>(this.signature.bind(this), this.signatureLength());
-  _o.signatureScheme = this.signatureScheme();
-  _o.signer = this.bb!.createScalarList<number>(this.signer.bind(this), this.signerLength());
-}
-}
-
-export class MessageT implements flatbuffers.IGeneratedObject {
-constructor(
-  public data: (number)[] = [],
-  public hash: (number)[] = [],
-  public hashScheme: HashScheme = HashScheme.Blake3,
-  public signature: (number)[] = [],
-  public signatureScheme: SignatureScheme = SignatureScheme.Ed25519,
-  public signer: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const data = Message.createDataVector(builder, this.data);
-  const hash = Message.createHashVector(builder, this.hash);
-  const signature = Message.createSignatureVector(builder, this.signature);
-  const signer = Message.createSignerVector(builder, this.signer);
-
-  return Message.createMessage(builder,
-    data,
-    hash,
-    this.hashScheme,
-    signature,
-    this.signatureScheme,
-    signer
-  );
-}
-}
-
-export class MessageBytes implements flatbuffers.IUnpackableObject<MessageBytesT> {
+export class MessageBytes {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):MessageBytes {
@@ -1703,32 +1277,6 @@ static createMessageBytes(builder:flatbuffers.Builder, messageBytesOffset:flatbu
   MessageBytes.startMessageBytes(builder);
   MessageBytes.addMessageBytes(builder, messageBytesOffset);
   return MessageBytes.endMessageBytes(builder);
-}
-
-unpack(): MessageBytesT {
-  return new MessageBytesT(
-    this.bb!.createScalarList<number>(this.messageBytes.bind(this), this.messageBytesLength())
-  );
-}
-
-
-unpackTo(_o: MessageBytesT): void {
-  _o.messageBytes = this.bb!.createScalarList<number>(this.messageBytes.bind(this), this.messageBytesLength());
-}
-}
-
-export class MessageBytesT implements flatbuffers.IGeneratedObject {
-constructor(
-  public messageBytes: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const messageBytes = MessageBytes.createMessageBytesVector(builder, this.messageBytes);
-
-  return MessageBytes.createMessageBytes(builder,
-    messageBytes
-  );
 }
 }
 

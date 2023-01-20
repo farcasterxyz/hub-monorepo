@@ -318,6 +318,19 @@ describe('bytesToNumber', () => {
 
 describe('numberToBytes', () => {
   describe('little endian', () => {
+    describe('compared to DataView', () => {
+      const passingCases = [1, 256, 1_000_000];
+
+      for (const input of passingCases) {
+        test(`matches DataView little endian byte array: ${input}`, () => {
+          const buffer = new ArrayBuffer(4);
+          const view = new DataView(buffer);
+          view.setUint32(0, input, true);
+          const result = numberToBytes(input, { size: 4, endianness: 'little' })._unsafeUnwrap();
+          expect(result).toEqual(new Uint8Array(buffer));
+        });
+      }
+    });
     describe('without size', () => {
       const passingCases: [number, Uint8Array][] = [
         [1, new Uint8Array([1])],

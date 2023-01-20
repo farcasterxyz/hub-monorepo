@@ -2,7 +2,7 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import {CastId as CastId, CastIdT as CastIdT, MessageBytes as MessageBytes, MessageBytesT as MessageBytesT, ReactionType as ReactionType, UserDataType as UserDataType, UserId as UserId, UserIdT as UserIdT} from './message_generated.js';
+import {CastId as CastId, MessageBytes as MessageBytes, ReactionType as ReactionType, UserDataType as UserDataType, UserId as UserId} from './message_generated.js';
 
 export enum EventType {
   MergeMessage = 0,
@@ -12,7 +12,7 @@ export enum EventType {
   MergeNameRegistryEvent = 4
 }
 
-export class Empty implements flatbuffers.IUnpackableObject<EmptyT> {
+export class Empty {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):Empty {
@@ -43,25 +43,9 @@ static createEmpty(builder:flatbuffers.Builder):flatbuffers.Offset {
   Empty.startEmpty(builder);
   return Empty.endEmpty(builder);
 }
-
-unpack(): EmptyT {
-  return new EmptyT();
 }
 
-
-unpackTo(_o: EmptyT): void {}
-}
-
-export class EmptyT implements flatbuffers.IGeneratedObject {
-constructor(){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  return Empty.createEmpty(builder);
-}
-}
-
-export class HubInfoResponse implements flatbuffers.IUnpackableObject<HubInfoResponseT> {
+export class HubInfoResponse {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):HubInfoResponse {
@@ -138,49 +122,9 @@ static createHubInfoResponse(builder:flatbuffers.Builder, versionOffset:flatbuff
   HubInfoResponse.addRootHash(builder, rootHashOffset);
   return HubInfoResponse.endHubInfoResponse(builder);
 }
-
-unpack(): HubInfoResponseT {
-  return new HubInfoResponseT(
-    this.version(),
-    this.synced(),
-    this.nickname(),
-    this.rootHash()
-  );
 }
 
-
-unpackTo(_o: HubInfoResponseT): void {
-  _o.version = this.version();
-  _o.synced = this.synced();
-  _o.nickname = this.nickname();
-  _o.rootHash = this.rootHash();
-}
-}
-
-export class HubInfoResponseT implements flatbuffers.IGeneratedObject {
-constructor(
-  public version: string|Uint8Array|null = null,
-  public synced: boolean = false,
-  public nickname: string|Uint8Array|null = null,
-  public rootHash: string|Uint8Array|null = null
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const version = (this.version !== null ? builder.createString(this.version!) : 0);
-  const nickname = (this.nickname !== null ? builder.createString(this.nickname!) : 0);
-  const rootHash = (this.rootHash !== null ? builder.createString(this.rootHash!) : 0);
-
-  return HubInfoResponse.createHubInfoResponse(builder,
-    version,
-    this.synced,
-    nickname,
-    rootHash
-  );
-}
-}
-
-export class MessagesResponse implements flatbuffers.IUnpackableObject<MessagesResponseT> {
+export class MessagesResponse {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):MessagesResponse {
@@ -238,35 +182,9 @@ static createMessagesResponse(builder:flatbuffers.Builder, messagesOffset:flatbu
   MessagesResponse.addMessages(builder, messagesOffset);
   return MessagesResponse.endMessagesResponse(builder);
 }
-
-unpack(): MessagesResponseT {
-  return new MessagesResponseT(
-    this.bb!.createObjList<MessageBytes, MessageBytesT>(this.messages.bind(this), this.messagesLength())
-  );
 }
 
-
-unpackTo(_o: MessagesResponseT): void {
-  _o.messages = this.bb!.createObjList<MessageBytes, MessageBytesT>(this.messages.bind(this), this.messagesLength());
-}
-}
-
-export class MessagesResponseT implements flatbuffers.IGeneratedObject {
-constructor(
-  public messages: (MessageBytesT)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const messages = MessagesResponse.createMessagesVector(builder, builder.createObjectOffsetList(this.messages));
-
-  return MessagesResponse.createMessagesResponse(builder,
-    messages
-  );
-}
-}
-
-export class FidsResponse implements flatbuffers.IUnpackableObject<FidsResponseT> {
+export class FidsResponse {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):FidsResponse {
@@ -324,35 +242,9 @@ static createFidsResponse(builder:flatbuffers.Builder, fidsOffset:flatbuffers.Of
   FidsResponse.addFids(builder, fidsOffset);
   return FidsResponse.endFidsResponse(builder);
 }
-
-unpack(): FidsResponseT {
-  return new FidsResponseT(
-    this.bb!.createObjList<UserId, UserIdT>(this.fids.bind(this), this.fidsLength())
-  );
 }
 
-
-unpackTo(_o: FidsResponseT): void {
-  _o.fids = this.bb!.createObjList<UserId, UserIdT>(this.fids.bind(this), this.fidsLength());
-}
-}
-
-export class FidsResponseT implements flatbuffers.IGeneratedObject {
-constructor(
-  public fids: (UserIdT)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fids = FidsResponse.createFidsVector(builder, builder.createObjectOffsetList(this.fids));
-
-  return FidsResponse.createFidsResponse(builder,
-    fids
-  );
-}
-}
-
-export class EventResponse implements flatbuffers.IUnpackableObject<EventResponseT> {
+export class EventResponse {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):EventResponse {
@@ -425,39 +317,9 @@ static createEventResponse(builder:flatbuffers.Builder, type:EventType, bytesOff
   EventResponse.addBytes(builder, bytesOffset);
   return EventResponse.endEventResponse(builder);
 }
-
-unpack(): EventResponseT {
-  return new EventResponseT(
-    this.type(),
-    this.bb!.createScalarList<number>(this.bytes.bind(this), this.bytesLength())
-  );
 }
 
-
-unpackTo(_o: EventResponseT): void {
-  _o.type = this.type();
-  _o.bytes = this.bb!.createScalarList<number>(this.bytes.bind(this), this.bytesLength());
-}
-}
-
-export class EventResponseT implements flatbuffers.IGeneratedObject {
-constructor(
-  public type: EventType = EventType.MergeMessage,
-  public bytes: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const bytes = EventResponse.createBytesVector(builder, this.bytes);
-
-  return EventResponse.createEventResponse(builder,
-    this.type,
-    bytes
-  );
-}
-}
-
-export class TrieNodeMetadataResponse implements flatbuffers.IUnpackableObject<TrieNodeMetadataResponseT> {
+export class TrieNodeMetadataResponse {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):TrieNodeMetadataResponse {
@@ -589,49 +451,9 @@ static createTrieNodeMetadataResponse(builder:flatbuffers.Builder, prefixOffset:
   TrieNodeMetadataResponse.addChildren(builder, childrenOffset);
   return TrieNodeMetadataResponse.endTrieNodeMetadataResponse(builder);
 }
-
-unpack(): TrieNodeMetadataResponseT {
-  return new TrieNodeMetadataResponseT(
-    this.bb!.createScalarList<number>(this.prefix.bind(this), this.prefixLength()),
-    this.numMessages(),
-    this.bb!.createScalarList<number>(this.hash.bind(this), this.hashLength()),
-    this.bb!.createObjList<TrieNodeMetadataResponse, TrieNodeMetadataResponseT>(this.children.bind(this), this.childrenLength())
-  );
 }
 
-
-unpackTo(_o: TrieNodeMetadataResponseT): void {
-  _o.prefix = this.bb!.createScalarList<number>(this.prefix.bind(this), this.prefixLength());
-  _o.numMessages = this.numMessages();
-  _o.hash = this.bb!.createScalarList<number>(this.hash.bind(this), this.hashLength());
-  _o.children = this.bb!.createObjList<TrieNodeMetadataResponse, TrieNodeMetadataResponseT>(this.children.bind(this), this.childrenLength());
-}
-}
-
-export class TrieNodeMetadataResponseT implements flatbuffers.IGeneratedObject {
-constructor(
-  public prefix: (number)[] = [],
-  public numMessages: bigint = BigInt('0'),
-  public hash: (number)[] = [],
-  public children: (TrieNodeMetadataResponseT)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const prefix = TrieNodeMetadataResponse.createPrefixVector(builder, this.prefix);
-  const hash = TrieNodeMetadataResponse.createHashVector(builder, this.hash);
-  const children = TrieNodeMetadataResponse.createChildrenVector(builder, builder.createObjectOffsetList(this.children));
-
-  return TrieNodeMetadataResponse.createTrieNodeMetadataResponse(builder,
-    prefix,
-    this.numMessages,
-    hash,
-    children
-  );
-}
-}
-
-export class TrieNodeSnapshotResponse implements flatbuffers.IUnpackableObject<TrieNodeSnapshotResponseT> {
+export class TrieNodeSnapshotResponse {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):TrieNodeSnapshotResponse {
@@ -725,49 +547,9 @@ static createTrieNodeSnapshotResponse(builder:flatbuffers.Builder, prefixOffset:
   TrieNodeSnapshotResponse.addRootHash(builder, rootHashOffset);
   return TrieNodeSnapshotResponse.endTrieNodeSnapshotResponse(builder);
 }
-
-unpack(): TrieNodeSnapshotResponseT {
-  return new TrieNodeSnapshotResponseT(
-    this.prefix(),
-    this.bb!.createScalarList<string>(this.excludedHashes.bind(this), this.excludedHashesLength()),
-    this.numMessages(),
-    this.rootHash()
-  );
 }
 
-
-unpackTo(_o: TrieNodeSnapshotResponseT): void {
-  _o.prefix = this.prefix();
-  _o.excludedHashes = this.bb!.createScalarList<string>(this.excludedHashes.bind(this), this.excludedHashesLength());
-  _o.numMessages = this.numMessages();
-  _o.rootHash = this.rootHash();
-}
-}
-
-export class TrieNodeSnapshotResponseT implements flatbuffers.IGeneratedObject {
-constructor(
-  public prefix: string|Uint8Array|null = null,
-  public excludedHashes: (string)[] = [],
-  public numMessages: bigint = BigInt('0'),
-  public rootHash: string|Uint8Array|null = null
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const prefix = (this.prefix !== null ? builder.createString(this.prefix!) : 0);
-  const excludedHashes = TrieNodeSnapshotResponse.createExcludedHashesVector(builder, builder.createObjectOffsetList(this.excludedHashes));
-  const rootHash = (this.rootHash !== null ? builder.createString(this.rootHash!) : 0);
-
-  return TrieNodeSnapshotResponse.createTrieNodeSnapshotResponse(builder,
-    prefix,
-    excludedHashes,
-    this.numMessages,
-    rootHash
-  );
-}
-}
-
-export class GetCastRequest implements flatbuffers.IUnpackableObject<GetCastRequestT> {
+export class GetCastRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetCastRequest {
@@ -864,40 +646,9 @@ static createGetCastRequest(builder:flatbuffers.Builder, fidOffset:flatbuffers.O
   GetCastRequest.addTsHash(builder, tsHashOffset);
   return GetCastRequest.endGetCastRequest(builder);
 }
-
-unpack(): GetCastRequestT {
-  return new GetCastRequestT(
-    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength()),
-    this.bb!.createScalarList<number>(this.tsHash.bind(this), this.tsHashLength())
-  );
 }
 
-
-unpackTo(_o: GetCastRequestT): void {
-  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
-  _o.tsHash = this.bb!.createScalarList<number>(this.tsHash.bind(this), this.tsHashLength());
-}
-}
-
-export class GetCastRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public fid: (number)[] = [],
-  public tsHash: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = GetCastRequest.createFidVector(builder, this.fid);
-  const tsHash = GetCastRequest.createTsHashVector(builder, this.tsHash);
-
-  return GetCastRequest.createGetCastRequest(builder,
-    fid,
-    tsHash
-  );
-}
-}
-
-export class GetCastsByFidRequest implements flatbuffers.IUnpackableObject<GetCastsByFidRequestT> {
+export class GetCastsByFidRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetCastsByFidRequest {
@@ -961,35 +712,9 @@ static createGetCastsByFidRequest(builder:flatbuffers.Builder, fidOffset:flatbuf
   GetCastsByFidRequest.addFid(builder, fidOffset);
   return GetCastsByFidRequest.endGetCastsByFidRequest(builder);
 }
-
-unpack(): GetCastsByFidRequestT {
-  return new GetCastsByFidRequestT(
-    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength())
-  );
 }
 
-
-unpackTo(_o: GetCastsByFidRequestT): void {
-  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
-}
-}
-
-export class GetCastsByFidRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public fid: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = GetCastsByFidRequest.createFidVector(builder, this.fid);
-
-  return GetCastsByFidRequest.createGetCastsByFidRequest(builder,
-    fid
-  );
-}
-}
-
-export class GetCastsByParentRequest implements flatbuffers.IUnpackableObject<GetCastsByParentRequestT> {
+export class GetCastsByParentRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetCastsByParentRequest {
@@ -1031,35 +756,9 @@ static createGetCastsByParentRequest(builder:flatbuffers.Builder, parentOffset:f
   GetCastsByParentRequest.addParent(builder, parentOffset);
   return GetCastsByParentRequest.endGetCastsByParentRequest(builder);
 }
-
-unpack(): GetCastsByParentRequestT {
-  return new GetCastsByParentRequestT(
-    (this.parent() !== null ? this.parent()!.unpack() : null)
-  );
 }
 
-
-unpackTo(_o: GetCastsByParentRequestT): void {
-  _o.parent = (this.parent() !== null ? this.parent()!.unpack() : null);
-}
-}
-
-export class GetCastsByParentRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public parent: CastIdT|null = null
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const parent = (this.parent !== null ? this.parent!.pack(builder) : 0);
-
-  return GetCastsByParentRequest.createGetCastsByParentRequest(builder,
-    parent
-  );
-}
-}
-
-export class GetCastsByMentionRequest implements flatbuffers.IUnpackableObject<GetCastsByMentionRequestT> {
+export class GetCastsByMentionRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetCastsByMentionRequest {
@@ -1101,35 +800,9 @@ static createGetCastsByMentionRequest(builder:flatbuffers.Builder, mentionOffset
   GetCastsByMentionRequest.addMention(builder, mentionOffset);
   return GetCastsByMentionRequest.endGetCastsByMentionRequest(builder);
 }
-
-unpack(): GetCastsByMentionRequestT {
-  return new GetCastsByMentionRequestT(
-    (this.mention() !== null ? this.mention()!.unpack() : null)
-  );
 }
 
-
-unpackTo(_o: GetCastsByMentionRequestT): void {
-  _o.mention = (this.mention() !== null ? this.mention()!.unpack() : null);
-}
-}
-
-export class GetCastsByMentionRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public mention: UserIdT|null = null
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const mention = (this.mention !== null ? this.mention!.pack(builder) : 0);
-
-  return GetCastsByMentionRequest.createGetCastsByMentionRequest(builder,
-    mention
-  );
-}
-}
-
-export class GetAmpRequest implements flatbuffers.IUnpackableObject<GetAmpRequestT> {
+export class GetAmpRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetAmpRequest {
@@ -1198,41 +871,9 @@ static endGetAmpRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-
-unpack(): GetAmpRequestT {
-  return new GetAmpRequestT(
-    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength()),
-    (this.user() !== null ? this.user()!.unpack() : null)
-  );
 }
 
-
-unpackTo(_o: GetAmpRequestT): void {
-  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
-  _o.user = (this.user() !== null ? this.user()!.unpack() : null);
-}
-}
-
-export class GetAmpRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public fid: (number)[] = [],
-  public user: UserIdT|null = null
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = GetAmpRequest.createFidVector(builder, this.fid);
-  const user = (this.user !== null ? this.user!.pack(builder) : 0);
-
-  GetAmpRequest.startGetAmpRequest(builder);
-  GetAmpRequest.addFid(builder, fid);
-  GetAmpRequest.addUser(builder, user);
-
-  return GetAmpRequest.endGetAmpRequest(builder);
-}
-}
-
-export class GetAmpsByFidRequest implements flatbuffers.IUnpackableObject<GetAmpsByFidRequestT> {
+export class GetAmpsByFidRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetAmpsByFidRequest {
@@ -1296,35 +937,9 @@ static createGetAmpsByFidRequest(builder:flatbuffers.Builder, fidOffset:flatbuff
   GetAmpsByFidRequest.addFid(builder, fidOffset);
   return GetAmpsByFidRequest.endGetAmpsByFidRequest(builder);
 }
-
-unpack(): GetAmpsByFidRequestT {
-  return new GetAmpsByFidRequestT(
-    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength())
-  );
 }
 
-
-unpackTo(_o: GetAmpsByFidRequestT): void {
-  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
-}
-}
-
-export class GetAmpsByFidRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public fid: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = GetAmpsByFidRequest.createFidVector(builder, this.fid);
-
-  return GetAmpsByFidRequest.createGetAmpsByFidRequest(builder,
-    fid
-  );
-}
-}
-
-export class GetAmpsByUserRequest implements flatbuffers.IUnpackableObject<GetAmpsByUserRequestT> {
+export class GetAmpsByUserRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetAmpsByUserRequest {
@@ -1366,35 +981,9 @@ static createGetAmpsByUserRequest(builder:flatbuffers.Builder, userOffset:flatbu
   GetAmpsByUserRequest.addUser(builder, userOffset);
   return GetAmpsByUserRequest.endGetAmpsByUserRequest(builder);
 }
-
-unpack(): GetAmpsByUserRequestT {
-  return new GetAmpsByUserRequestT(
-    (this.user() !== null ? this.user()!.unpack() : null)
-  );
 }
 
-
-unpackTo(_o: GetAmpsByUserRequestT): void {
-  _o.user = (this.user() !== null ? this.user()!.unpack() : null);
-}
-}
-
-export class GetAmpsByUserRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public user: UserIdT|null = null
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const user = (this.user !== null ? this.user!.pack(builder) : 0);
-
-  return GetAmpsByUserRequest.createGetAmpsByUserRequest(builder,
-    user
-  );
-}
-}
-
-export class GetReactionRequest implements flatbuffers.IUnpackableObject<GetReactionRequestT> {
+export class GetReactionRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetReactionRequest {
@@ -1472,45 +1061,9 @@ static endGetReactionRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-
-unpack(): GetReactionRequestT {
-  return new GetReactionRequestT(
-    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength()),
-    this.type(),
-    (this.cast() !== null ? this.cast()!.unpack() : null)
-  );
 }
 
-
-unpackTo(_o: GetReactionRequestT): void {
-  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
-  _o.type = this.type();
-  _o.cast = (this.cast() !== null ? this.cast()!.unpack() : null);
-}
-}
-
-export class GetReactionRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public fid: (number)[] = [],
-  public type: ReactionType = ReactionType.Like,
-  public cast: CastIdT|null = null
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = GetReactionRequest.createFidVector(builder, this.fid);
-  const cast = (this.cast !== null ? this.cast!.pack(builder) : 0);
-
-  GetReactionRequest.startGetReactionRequest(builder);
-  GetReactionRequest.addFid(builder, fid);
-  GetReactionRequest.addType(builder, this.type);
-  GetReactionRequest.addCast(builder, cast);
-
-  return GetReactionRequest.endGetReactionRequest(builder);
-}
-}
-
-export class GetReactionsByFidRequest implements flatbuffers.IUnpackableObject<GetReactionsByFidRequestT> {
+export class GetReactionsByFidRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetReactionsByFidRequest {
@@ -1585,39 +1138,9 @@ static createGetReactionsByFidRequest(builder:flatbuffers.Builder, fidOffset:fla
     GetReactionsByFidRequest.addType(builder, type);
   return GetReactionsByFidRequest.endGetReactionsByFidRequest(builder);
 }
-
-unpack(): GetReactionsByFidRequestT {
-  return new GetReactionsByFidRequestT(
-    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength()),
-    this.type()
-  );
 }
 
-
-unpackTo(_o: GetReactionsByFidRequestT): void {
-  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
-  _o.type = this.type();
-}
-}
-
-export class GetReactionsByFidRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public fid: (number)[] = [],
-  public type: ReactionType|null = null
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = GetReactionsByFidRequest.createFidVector(builder, this.fid);
-
-  return GetReactionsByFidRequest.createGetReactionsByFidRequest(builder,
-    fid,
-    this.type
-  );
-}
-}
-
-export class GetReactionsByCastRequest implements flatbuffers.IUnpackableObject<GetReactionsByCastRequestT> {
+export class GetReactionsByCastRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetReactionsByCastRequest {
@@ -1670,39 +1193,9 @@ static createGetReactionsByCastRequest(builder:flatbuffers.Builder, castOffset:f
     GetReactionsByCastRequest.addType(builder, type);
   return GetReactionsByCastRequest.endGetReactionsByCastRequest(builder);
 }
-
-unpack(): GetReactionsByCastRequestT {
-  return new GetReactionsByCastRequestT(
-    (this.cast() !== null ? this.cast()!.unpack() : null),
-    this.type()
-  );
 }
 
-
-unpackTo(_o: GetReactionsByCastRequestT): void {
-  _o.cast = (this.cast() !== null ? this.cast()!.unpack() : null);
-  _o.type = this.type();
-}
-}
-
-export class GetReactionsByCastRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public cast: CastIdT|null = null,
-  public type: ReactionType|null = null
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const cast = (this.cast !== null ? this.cast!.pack(builder) : 0);
-
-  return GetReactionsByCastRequest.createGetReactionsByCastRequest(builder,
-    cast,
-    this.type
-  );
-}
-}
-
-export class GetVerificationRequest implements flatbuffers.IUnpackableObject<GetVerificationRequestT> {
+export class GetVerificationRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetVerificationRequest {
@@ -1799,40 +1292,9 @@ static createGetVerificationRequest(builder:flatbuffers.Builder, fidOffset:flatb
   GetVerificationRequest.addAddress(builder, addressOffset);
   return GetVerificationRequest.endGetVerificationRequest(builder);
 }
-
-unpack(): GetVerificationRequestT {
-  return new GetVerificationRequestT(
-    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength()),
-    this.bb!.createScalarList<number>(this.address.bind(this), this.addressLength())
-  );
 }
 
-
-unpackTo(_o: GetVerificationRequestT): void {
-  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
-  _o.address = this.bb!.createScalarList<number>(this.address.bind(this), this.addressLength());
-}
-}
-
-export class GetVerificationRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public fid: (number)[] = [],
-  public address: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = GetVerificationRequest.createFidVector(builder, this.fid);
-  const address = GetVerificationRequest.createAddressVector(builder, this.address);
-
-  return GetVerificationRequest.createGetVerificationRequest(builder,
-    fid,
-    address
-  );
-}
-}
-
-export class GetVerificationsByFidRequest implements flatbuffers.IUnpackableObject<GetVerificationsByFidRequestT> {
+export class GetVerificationsByFidRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetVerificationsByFidRequest {
@@ -1896,35 +1358,9 @@ static createGetVerificationsByFidRequest(builder:flatbuffers.Builder, fidOffset
   GetVerificationsByFidRequest.addFid(builder, fidOffset);
   return GetVerificationsByFidRequest.endGetVerificationsByFidRequest(builder);
 }
-
-unpack(): GetVerificationsByFidRequestT {
-  return new GetVerificationsByFidRequestT(
-    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength())
-  );
 }
 
-
-unpackTo(_o: GetVerificationsByFidRequestT): void {
-  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
-}
-}
-
-export class GetVerificationsByFidRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public fid: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = GetVerificationsByFidRequest.createFidVector(builder, this.fid);
-
-  return GetVerificationsByFidRequest.createGetVerificationsByFidRequest(builder,
-    fid
-  );
-}
-}
-
-export class GetSignerRequest implements flatbuffers.IUnpackableObject<GetSignerRequestT> {
+export class GetSignerRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetSignerRequest {
@@ -2021,40 +1457,9 @@ static createGetSignerRequest(builder:flatbuffers.Builder, fidOffset:flatbuffers
   GetSignerRequest.addSigner(builder, signerOffset);
   return GetSignerRequest.endGetSignerRequest(builder);
 }
-
-unpack(): GetSignerRequestT {
-  return new GetSignerRequestT(
-    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength()),
-    this.bb!.createScalarList<number>(this.signer.bind(this), this.signerLength())
-  );
 }
 
-
-unpackTo(_o: GetSignerRequestT): void {
-  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
-  _o.signer = this.bb!.createScalarList<number>(this.signer.bind(this), this.signerLength());
-}
-}
-
-export class GetSignerRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public fid: (number)[] = [],
-  public signer: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = GetSignerRequest.createFidVector(builder, this.fid);
-  const signer = GetSignerRequest.createSignerVector(builder, this.signer);
-
-  return GetSignerRequest.createGetSignerRequest(builder,
-    fid,
-    signer
-  );
-}
-}
-
-export class GetSignersByFidRequest implements flatbuffers.IUnpackableObject<GetSignersByFidRequestT> {
+export class GetSignersByFidRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetSignersByFidRequest {
@@ -2118,35 +1523,9 @@ static createGetSignersByFidRequest(builder:flatbuffers.Builder, fidOffset:flatb
   GetSignersByFidRequest.addFid(builder, fidOffset);
   return GetSignersByFidRequest.endGetSignersByFidRequest(builder);
 }
-
-unpack(): GetSignersByFidRequestT {
-  return new GetSignersByFidRequestT(
-    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength())
-  );
 }
 
-
-unpackTo(_o: GetSignersByFidRequestT): void {
-  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
-}
-}
-
-export class GetSignersByFidRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public fid: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = GetSignersByFidRequest.createFidVector(builder, this.fid);
-
-  return GetSignersByFidRequest.createGetSignersByFidRequest(builder,
-    fid
-  );
-}
-}
-
-export class GetCustodyEventRequest implements flatbuffers.IUnpackableObject<GetCustodyEventRequestT> {
+export class GetCustodyEventRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetCustodyEventRequest {
@@ -2210,35 +1589,9 @@ static createGetCustodyEventRequest(builder:flatbuffers.Builder, fidOffset:flatb
   GetCustodyEventRequest.addFid(builder, fidOffset);
   return GetCustodyEventRequest.endGetCustodyEventRequest(builder);
 }
-
-unpack(): GetCustodyEventRequestT {
-  return new GetCustodyEventRequestT(
-    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength())
-  );
 }
 
-
-unpackTo(_o: GetCustodyEventRequestT): void {
-  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
-}
-}
-
-export class GetCustodyEventRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public fid: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = GetCustodyEventRequest.createFidVector(builder, this.fid);
-
-  return GetCustodyEventRequest.createGetCustodyEventRequest(builder,
-    fid
-  );
-}
-}
-
-export class GetFidsRequest implements flatbuffers.IUnpackableObject<GetFidsRequestT> {
+export class GetFidsRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetFidsRequest {
@@ -2269,25 +1622,9 @@ static createGetFidsRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
   GetFidsRequest.startGetFidsRequest(builder);
   return GetFidsRequest.endGetFidsRequest(builder);
 }
-
-unpack(): GetFidsRequestT {
-  return new GetFidsRequestT();
 }
 
-
-unpackTo(_o: GetFidsRequestT): void {}
-}
-
-export class GetFidsRequestT implements flatbuffers.IGeneratedObject {
-constructor(){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  return GetFidsRequest.createGetFidsRequest(builder);
-}
-}
-
-export class GetUserDataRequest implements flatbuffers.IUnpackableObject<GetUserDataRequestT> {
+export class GetUserDataRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetUserDataRequest {
@@ -2361,39 +1698,9 @@ static createGetUserDataRequest(builder:flatbuffers.Builder, fidOffset:flatbuffe
   GetUserDataRequest.addType(builder, type);
   return GetUserDataRequest.endGetUserDataRequest(builder);
 }
-
-unpack(): GetUserDataRequestT {
-  return new GetUserDataRequestT(
-    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength()),
-    this.type()
-  );
 }
 
-
-unpackTo(_o: GetUserDataRequestT): void {
-  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
-  _o.type = this.type();
-}
-}
-
-export class GetUserDataRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public fid: (number)[] = [],
-  public type: UserDataType = UserDataType.Pfp
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = GetUserDataRequest.createFidVector(builder, this.fid);
-
-  return GetUserDataRequest.createGetUserDataRequest(builder,
-    fid,
-    this.type
-  );
-}
-}
-
-export class GetUserDataByFidRequest implements flatbuffers.IUnpackableObject<GetUserDataByFidRequestT> {
+export class GetUserDataByFidRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetUserDataByFidRequest {
@@ -2457,35 +1764,9 @@ static createGetUserDataByFidRequest(builder:flatbuffers.Builder, fidOffset:flat
   GetUserDataByFidRequest.addFid(builder, fidOffset);
   return GetUserDataByFidRequest.endGetUserDataByFidRequest(builder);
 }
-
-unpack(): GetUserDataByFidRequestT {
-  return new GetUserDataByFidRequestT(
-    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength())
-  );
 }
 
-
-unpackTo(_o: GetUserDataByFidRequestT): void {
-  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
-}
-}
-
-export class GetUserDataByFidRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public fid: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = GetUserDataByFidRequest.createFidVector(builder, this.fid);
-
-  return GetUserDataByFidRequest.createGetUserDataByFidRequest(builder,
-    fid
-  );
-}
-}
-
-export class GetNameRegistryEventRequest implements flatbuffers.IUnpackableObject<GetNameRegistryEventRequestT> {
+export class GetNameRegistryEventRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetNameRegistryEventRequest {
@@ -2549,35 +1830,9 @@ static createGetNameRegistryEventRequest(builder:flatbuffers.Builder, fnameOffse
   GetNameRegistryEventRequest.addFname(builder, fnameOffset);
   return GetNameRegistryEventRequest.endGetNameRegistryEventRequest(builder);
 }
-
-unpack(): GetNameRegistryEventRequestT {
-  return new GetNameRegistryEventRequestT(
-    this.bb!.createScalarList<number>(this.fname.bind(this), this.fnameLength())
-  );
 }
 
-
-unpackTo(_o: GetNameRegistryEventRequestT): void {
-  _o.fname = this.bb!.createScalarList<number>(this.fname.bind(this), this.fnameLength());
-}
-}
-
-export class GetNameRegistryEventRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public fname: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fname = GetNameRegistryEventRequest.createFnameVector(builder, this.fname);
-
-  return GetNameRegistryEventRequest.createGetNameRegistryEventRequest(builder,
-    fname
-  );
-}
-}
-
-export class SyncIdHash implements flatbuffers.IUnpackableObject<SyncIdHashT> {
+export class SyncIdHash {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):SyncIdHash {
@@ -2641,35 +1896,9 @@ static createSyncIdHash(builder:flatbuffers.Builder, syncIdHashOffset:flatbuffer
   SyncIdHash.addSyncIdHash(builder, syncIdHashOffset);
   return SyncIdHash.endSyncIdHash(builder);
 }
-
-unpack(): SyncIdHashT {
-  return new SyncIdHashT(
-    this.bb!.createScalarList<number>(this.syncIdHash.bind(this), this.syncIdHashLength())
-  );
 }
 
-
-unpackTo(_o: SyncIdHashT): void {
-  _o.syncIdHash = this.bb!.createScalarList<number>(this.syncIdHash.bind(this), this.syncIdHashLength());
-}
-}
-
-export class SyncIdHashT implements flatbuffers.IGeneratedObject {
-constructor(
-  public syncIdHash: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const syncIdHash = SyncIdHash.createSyncIdHashVector(builder, this.syncIdHash);
-
-  return SyncIdHash.createSyncIdHash(builder,
-    syncIdHash
-  );
-}
-}
-
-export class GetAllMessagesBySyncIdsRequest implements flatbuffers.IUnpackableObject<GetAllMessagesBySyncIdsRequestT> {
+export class GetAllMessagesBySyncIdsRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetAllMessagesBySyncIdsRequest {
@@ -2728,35 +1957,9 @@ static createGetAllMessagesBySyncIdsRequest(builder:flatbuffers.Builder, syncIds
   GetAllMessagesBySyncIdsRequest.addSyncIds(builder, syncIdsOffset);
   return GetAllMessagesBySyncIdsRequest.endGetAllMessagesBySyncIdsRequest(builder);
 }
-
-unpack(): GetAllMessagesBySyncIdsRequestT {
-  return new GetAllMessagesBySyncIdsRequestT(
-    this.bb!.createObjList<SyncIdHash, SyncIdHashT>(this.syncIds.bind(this), this.syncIdsLength())
-  );
 }
 
-
-unpackTo(_o: GetAllMessagesBySyncIdsRequestT): void {
-  _o.syncIds = this.bb!.createObjList<SyncIdHash, SyncIdHashT>(this.syncIds.bind(this), this.syncIdsLength());
-}
-}
-
-export class GetAllMessagesBySyncIdsRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public syncIds: (SyncIdHashT)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const syncIds = GetAllMessagesBySyncIdsRequest.createSyncIdsVector(builder, builder.createObjectOffsetList(this.syncIds));
-
-  return GetAllMessagesBySyncIdsRequest.createGetAllMessagesBySyncIdsRequest(builder,
-    syncIds
-  );
-}
-}
-
-export class GetAllSyncIdsByPrefixResponse implements flatbuffers.IUnpackableObject<GetAllSyncIdsByPrefixResponseT> {
+export class GetAllSyncIdsByPrefixResponse {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetAllSyncIdsByPrefixResponse {
@@ -2817,35 +2020,9 @@ static createGetAllSyncIdsByPrefixResponse(builder:flatbuffers.Builder, idsOffse
   GetAllSyncIdsByPrefixResponse.addIds(builder, idsOffset);
   return GetAllSyncIdsByPrefixResponse.endGetAllSyncIdsByPrefixResponse(builder);
 }
-
-unpack(): GetAllSyncIdsByPrefixResponseT {
-  return new GetAllSyncIdsByPrefixResponseT(
-    this.bb!.createScalarList<string>(this.ids.bind(this), this.idsLength())
-  );
 }
 
-
-unpackTo(_o: GetAllSyncIdsByPrefixResponseT): void {
-  _o.ids = this.bb!.createScalarList<string>(this.ids.bind(this), this.idsLength());
-}
-}
-
-export class GetAllSyncIdsByPrefixResponseT implements flatbuffers.IGeneratedObject {
-constructor(
-  public ids: (string)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const ids = GetAllSyncIdsByPrefixResponse.createIdsVector(builder, builder.createObjectOffsetList(this.ids));
-
-  return GetAllSyncIdsByPrefixResponse.createGetAllSyncIdsByPrefixResponse(builder,
-    ids
-  );
-}
-}
-
-export class GetAllMessagesByFidRequest implements flatbuffers.IUnpackableObject<GetAllMessagesByFidRequestT> {
+export class GetAllMessagesByFidRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetAllMessagesByFidRequest {
@@ -2909,35 +2086,9 @@ static createGetAllMessagesByFidRequest(builder:flatbuffers.Builder, fidOffset:f
   GetAllMessagesByFidRequest.addFid(builder, fidOffset);
   return GetAllMessagesByFidRequest.endGetAllMessagesByFidRequest(builder);
 }
-
-unpack(): GetAllMessagesByFidRequestT {
-  return new GetAllMessagesByFidRequestT(
-    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength())
-  );
 }
 
-
-unpackTo(_o: GetAllMessagesByFidRequestT): void {
-  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
-}
-}
-
-export class GetAllMessagesByFidRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public fid: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const fid = GetAllMessagesByFidRequest.createFidVector(builder, this.fid);
-
-  return GetAllMessagesByFidRequest.createGetAllMessagesByFidRequest(builder,
-    fid
-  );
-}
-}
-
-export class GetTrieNodesByPrefixRequest implements flatbuffers.IUnpackableObject<GetTrieNodesByPrefixRequestT> {
+export class GetTrieNodesByPrefixRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GetTrieNodesByPrefixRequest {
@@ -3001,35 +2152,9 @@ static createGetTrieNodesByPrefixRequest(builder:flatbuffers.Builder, prefixOffs
   GetTrieNodesByPrefixRequest.addPrefix(builder, prefixOffset);
   return GetTrieNodesByPrefixRequest.endGetTrieNodesByPrefixRequest(builder);
 }
-
-unpack(): GetTrieNodesByPrefixRequestT {
-  return new GetTrieNodesByPrefixRequestT(
-    this.bb!.createScalarList<number>(this.prefix.bind(this), this.prefixLength())
-  );
 }
 
-
-unpackTo(_o: GetTrieNodesByPrefixRequestT): void {
-  _o.prefix = this.bb!.createScalarList<number>(this.prefix.bind(this), this.prefixLength());
-}
-}
-
-export class GetTrieNodesByPrefixRequestT implements flatbuffers.IGeneratedObject {
-constructor(
-  public prefix: (number)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const prefix = GetTrieNodesByPrefixRequest.createPrefixVector(builder, this.prefix);
-
-  return GetTrieNodesByPrefixRequest.createGetTrieNodesByPrefixRequest(builder,
-    prefix
-  );
-}
-}
-
-export class SubscribeRequest implements flatbuffers.IUnpackableObject<SubscribeRequestT> {
+export class SubscribeRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):SubscribeRequest {
@@ -3059,22 +2184,6 @@ static endSubscribeRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
 static createSubscribeRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
   SubscribeRequest.startSubscribeRequest(builder);
   return SubscribeRequest.endSubscribeRequest(builder);
-}
-
-unpack(): SubscribeRequestT {
-  return new SubscribeRequestT();
-}
-
-
-unpackTo(_o: SubscribeRequestT): void {}
-}
-
-export class SubscribeRequestT implements flatbuffers.IGeneratedObject {
-constructor(){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  return SubscribeRequest.createSubscribeRequest(builder);
 }
 }
 

@@ -86,20 +86,39 @@ const generateTestData = async (numTestCases: number): Promise<CastTestData[]> =
 };
 
 const encodeFlatbuffer = (testCase: CastTestData): Uint8Array => {
-  const bodyT = new flatbuffers.CastAddBodyT(
-    testCase.body.embeds,
-    testCase.body.mentions.map((mention) => new flatbuffers.UserIdT(Array.from(mention.fid))),
-    flatbuffers.TargetId.CastId,
-    new flatbuffers.CastIdT(Array.from(testCase.body.parent.fid), Array.from(testCase.body.parent.tsHash)),
-    testCase.body.text
-  );
+  // const bodyT = new flatbuffers.CastAddBodyT(
+  //   testCase.body.embeds,
+  //   testCase.body.mentions.map((mention) => new flatbuffers.UserIdT(Array.from(mention.fid))),
+  //   flatbuffers.TargetId.CastId,
+  //   new flatbuffers.CastIdT(Array.from(testCase.body.parent.fid), Array.from(testCase.body.parent.tsHash)),
+  //   testCase.body.text
+  // );
 
   const dataBuilder = new Builder();
+
+  const embedsOffsets = testCase.body.embeds.map((embed) => {
+    return dataBuilder.createString(embed);
+  });
+  const embedsOffset = flatbuffers.CastAddBody.createEmbedsVector(dataBuilder, embedsOffsets);
+
+  // const embedsOffset = flatbuffers.CastAddBody.createEmbedsVector(
+  //   dataBuilder,
+  //   dataBuilder.createObjectOffsetList(testCase.body.embeds)
+  // );
+  // const mentionsOffset = flatbuffers.CastAddBody.createMentionsVector(
+  //   dataBuilder,
+  //   dataBuilder.createObjectOffsetList(testCase.body.mentions)
+  // );
+  // const parent = builder.createObjectOffset(this.parent);
+
+  const textOffset = dataBuilder.createString(testCase.body.text);
+
+  const bodyOffset = flatbuffers.CastAddBody.createCastAddBody(dataBuilder, embedsOffset, 0, 0, 0, textOffset);
 
   const messageData = flatbuffers.MessageData.createMessageData(
     dataBuilder,
     flatbuffers.MessageBody.CastAddBody,
-    dataBuilder.createObjectOffset(bodyT),
+    bodyOffset,
     testCase.data.type,
     testCase.data.timestamp,
     flatbuffers.MessageData.createFidVector(dataBuilder, testCase.data.fid),
@@ -141,8 +160,8 @@ const encodeProtobuf = (testCase: CastTestData): Uint8Array => {
     castAddBody: {
       text: testCase.body.text,
       embeds: testCase.body.embeds,
-      mentions: testCase.body.mentions,
-      castId: testCase.body.parent,
+      mentions: testCase.body.mentions.map((mention) => mention.fid),
+      parnetCastId: testCase.body.parent,
     },
     type: testCase.data.type,
     timestamp: testCase.data.timestamp,

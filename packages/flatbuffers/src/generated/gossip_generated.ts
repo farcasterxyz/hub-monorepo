@@ -2,8 +2,8 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import {IdRegistryEvent as IdRegistryEvent, IdRegistryEventT as IdRegistryEventT} from './id_registry_event_generated.js';
-import {MessageBytes as MessageBytes, MessageBytesT as MessageBytesT} from './message_generated.js';
+import {IdRegistryEvent as IdRegistryEvent} from './id_registry_event_generated.js';
+import {MessageBytes as MessageBytes} from './message_generated.js';
 
 export enum GossipVersion {
   V1 = 1
@@ -43,7 +43,7 @@ export function unionListToGossipContent(
   }
 }
 
-export class GossipAddressInfo implements flatbuffers.IUnpackableObject<GossipAddressInfoT> {
+export class GossipAddressInfo {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GossipAddressInfo {
@@ -107,43 +107,9 @@ static createGossipAddressInfo(builder:flatbuffers.Builder, addressOffset:flatbu
   GossipAddressInfo.addPort(builder, port);
   return GossipAddressInfo.endGossipAddressInfo(builder);
 }
-
-unpack(): GossipAddressInfoT {
-  return new GossipAddressInfoT(
-    this.address(),
-    this.family(),
-    this.port()
-  );
 }
 
-
-unpackTo(_o: GossipAddressInfoT): void {
-  _o.address = this.address();
-  _o.family = this.family();
-  _o.port = this.port();
-}
-}
-
-export class GossipAddressInfoT implements flatbuffers.IGeneratedObject {
-constructor(
-  public address: string|Uint8Array|null = null,
-  public family: number = 0,
-  public port: number = 0
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const address = (this.address !== null ? builder.createString(this.address!) : 0);
-
-  return GossipAddressInfo.createGossipAddressInfo(builder,
-    address,
-    this.family,
-    this.port
-  );
-}
-}
-
-export class ContactInfoContent implements flatbuffers.IUnpackableObject<ContactInfoContentT> {
+export class ContactInfoContent {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):ContactInfoContent {
@@ -225,50 +191,9 @@ static endContactInfoContent(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-
-unpack(): ContactInfoContentT {
-  return new ContactInfoContentT(
-    (this.gossipAddress() !== null ? this.gossipAddress()!.unpack() : null),
-    (this.rpcAddress() !== null ? this.rpcAddress()!.unpack() : null),
-    this.bb!.createScalarList<string>(this.excludedHashes.bind(this), this.excludedHashesLength()),
-    this.count()
-  );
 }
 
-
-unpackTo(_o: ContactInfoContentT): void {
-  _o.gossipAddress = (this.gossipAddress() !== null ? this.gossipAddress()!.unpack() : null);
-  _o.rpcAddress = (this.rpcAddress() !== null ? this.rpcAddress()!.unpack() : null);
-  _o.excludedHashes = this.bb!.createScalarList<string>(this.excludedHashes.bind(this), this.excludedHashesLength());
-  _o.count = this.count();
-}
-}
-
-export class ContactInfoContentT implements flatbuffers.IGeneratedObject {
-constructor(
-  public gossipAddress: GossipAddressInfoT|null = null,
-  public rpcAddress: GossipAddressInfoT|null = null,
-  public excludedHashes: (string)[] = [],
-  public count: bigint = BigInt('0')
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const gossipAddress = (this.gossipAddress !== null ? this.gossipAddress!.pack(builder) : 0);
-  const rpcAddress = (this.rpcAddress !== null ? this.rpcAddress!.pack(builder) : 0);
-  const excludedHashes = ContactInfoContent.createExcludedHashesVector(builder, builder.createObjectOffsetList(this.excludedHashes));
-
-  ContactInfoContent.startContactInfoContent(builder);
-  ContactInfoContent.addGossipAddress(builder, gossipAddress);
-  ContactInfoContent.addRpcAddress(builder, rpcAddress);
-  ContactInfoContent.addExcludedHashes(builder, excludedHashes);
-  ContactInfoContent.addCount(builder, this.count);
-
-  return ContactInfoContent.endContactInfoContent(builder);
-}
-}
-
-export class GossipMessage implements flatbuffers.IUnpackableObject<GossipMessageT> {
+export class GossipMessage {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):GossipMessage {
@@ -400,58 +325,6 @@ static createGossipMessage(builder:flatbuffers.Builder, contentType:GossipConten
   GossipMessage.addPeerId(builder, peerIdOffset);
   GossipMessage.addVersion(builder, version);
   return GossipMessage.endGossipMessage(builder);
-}
-
-unpack(): GossipMessageT {
-  return new GossipMessageT(
-    this.contentType(),
-    (() => {
-      const temp = unionToGossipContent(this.contentType(), this.content.bind(this));
-      if(temp === null) { return null; }
-      return temp.unpack()
-  })(),
-    this.bb!.createScalarList<string>(this.topics.bind(this), this.topicsLength()),
-    this.bb!.createScalarList<number>(this.peerId.bind(this), this.peerIdLength()),
-    this.version()
-  );
-}
-
-
-unpackTo(_o: GossipMessageT): void {
-  _o.contentType = this.contentType();
-  _o.content = (() => {
-      const temp = unionToGossipContent(this.contentType(), this.content.bind(this));
-      if(temp === null) { return null; }
-      return temp.unpack()
-  })();
-  _o.topics = this.bb!.createScalarList<string>(this.topics.bind(this), this.topicsLength());
-  _o.peerId = this.bb!.createScalarList<number>(this.peerId.bind(this), this.peerIdLength());
-  _o.version = this.version();
-}
-}
-
-export class GossipMessageT implements flatbuffers.IGeneratedObject {
-constructor(
-  public contentType: GossipContent = GossipContent.NONE,
-  public content: ContactInfoContentT|IdRegistryEventT|MessageBytesT|null = null,
-  public topics: (string)[] = [],
-  public peerId: (number)[] = [],
-  public version: GossipVersion = GossipVersion.V1
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const content = builder.createObjectOffset(this.content);
-  const topics = GossipMessage.createTopicsVector(builder, builder.createObjectOffsetList(this.topics));
-  const peerId = GossipMessage.createPeerIdVector(builder, this.peerId);
-
-  return GossipMessage.createGossipMessage(builder,
-    this.contentType,
-    content,
-    topics,
-    peerId,
-    this.version
-  );
 }
 }
 
