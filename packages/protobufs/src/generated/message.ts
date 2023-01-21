@@ -1,7 +1,6 @@
 /* eslint-disable */
+import Long from "long";
 import _m0 from "protobufjs/minimal";
-
-export const protobufPackage = "";
 
 export enum MessageType {
   MESSAGE_TYPE_NONE = 0,
@@ -316,13 +315,13 @@ export function userDataTypeToJSON(object: UserDataType): string {
 }
 
 export interface CastId {
-  fid: Uint8Array;
+  fid: number;
   hash: Uint8Array;
 }
 
 export interface CastAddBody {
   embeds: string[];
-  mentions: Uint8Array[];
+  mentions: number[];
   parentCastId?: CastId | undefined;
   text: string;
 }
@@ -337,7 +336,7 @@ export interface ReactionBody {
 }
 
 export interface AmpBody {
-  fid: Uint8Array;
+  targetFid: number;
 }
 
 export interface VerificationAddEthAddressBody {
@@ -361,7 +360,7 @@ export interface UserDataBody {
 
 export interface MessageData {
   type: MessageType;
-  fid: Uint8Array;
+  fid: number;
   timestamp: number;
   network: FarcasterNetwork;
   castAddBody?: CastAddBody | undefined;
@@ -384,13 +383,13 @@ export interface Message {
 }
 
 function createBaseCastId(): CastId {
-  return { fid: new Uint8Array(), hash: new Uint8Array() };
+  return { fid: 0, hash: new Uint8Array() };
 }
 
 export const CastId = {
   encode(message: CastId, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.fid.length !== 0) {
-      writer.uint32(10).bytes(message.fid);
+    if (message.fid !== 0) {
+      writer.uint32(8).uint64(message.fid);
     }
     if (message.hash.length !== 0) {
       writer.uint32(18).bytes(message.hash);
@@ -406,7 +405,7 @@ export const CastId = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.fid = reader.bytes();
+          message.fid = longToNumber(reader.uint64() as Long);
           break;
         case 2:
           message.hash = reader.bytes();
@@ -421,15 +420,14 @@ export const CastId = {
 
   fromJSON(object: any): CastId {
     return {
-      fid: isSet(object.fid) ? bytesFromBase64(object.fid) : new Uint8Array(),
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
       hash: isSet(object.hash) ? bytesFromBase64(object.hash) : new Uint8Array(),
     };
   },
 
   toJSON(message: CastId): unknown {
     const obj: any = {};
-    message.fid !== undefined &&
-      (obj.fid = base64FromBytes(message.fid !== undefined ? message.fid : new Uint8Array()));
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
     message.hash !== undefined &&
       (obj.hash = base64FromBytes(message.hash !== undefined ? message.hash : new Uint8Array()));
     return obj;
@@ -441,7 +439,7 @@ export const CastId = {
 
   fromPartial<I extends Exact<DeepPartial<CastId>, I>>(object: I): CastId {
     const message = createBaseCastId();
-    message.fid = object.fid ?? new Uint8Array();
+    message.fid = object.fid ?? 0;
     message.hash = object.hash ?? new Uint8Array();
     return message;
   },
@@ -456,9 +454,11 @@ export const CastAddBody = {
     for (const v of message.embeds) {
       writer.uint32(10).string(v!);
     }
+    writer.uint32(18).fork();
     for (const v of message.mentions) {
-      writer.uint32(18).bytes(v!);
+      writer.uint64(v);
     }
+    writer.ldelim();
     if (message.parentCastId !== undefined) {
       CastId.encode(message.parentCastId, writer.uint32(26).fork()).ldelim();
     }
@@ -479,7 +479,14 @@ export const CastAddBody = {
           message.embeds.push(reader.string());
           break;
         case 2:
-          message.mentions.push(reader.bytes());
+          if ((tag & 7) === 2) {
+            const end2 = reader.uint32() + reader.pos;
+            while (reader.pos < end2) {
+              message.mentions.push(longToNumber(reader.uint64() as Long));
+            }
+          } else {
+            message.mentions.push(longToNumber(reader.uint64() as Long));
+          }
           break;
         case 3:
           message.parentCastId = CastId.decode(reader, reader.uint32());
@@ -498,7 +505,7 @@ export const CastAddBody = {
   fromJSON(object: any): CastAddBody {
     return {
       embeds: Array.isArray(object?.embeds) ? object.embeds.map((e: any) => String(e)) : [],
-      mentions: Array.isArray(object?.mentions) ? object.mentions.map((e: any) => bytesFromBase64(e)) : [],
+      mentions: Array.isArray(object?.mentions) ? object.mentions.map((e: any) => Number(e)) : [],
       parentCastId: isSet(object.parentCastId) ? CastId.fromJSON(object.parentCastId) : undefined,
       text: isSet(object.text) ? String(object.text) : "",
     };
@@ -512,7 +519,7 @@ export const CastAddBody = {
       obj.embeds = [];
     }
     if (message.mentions) {
-      obj.mentions = message.mentions.map((e) => base64FromBytes(e !== undefined ? e : new Uint8Array()));
+      obj.mentions = message.mentions.map((e) => Math.round(e));
     } else {
       obj.mentions = [];
     }
@@ -656,13 +663,13 @@ export const ReactionBody = {
 };
 
 function createBaseAmpBody(): AmpBody {
-  return { fid: new Uint8Array() };
+  return { targetFid: 0 };
 }
 
 export const AmpBody = {
   encode(message: AmpBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.fid.length !== 0) {
-      writer.uint32(10).bytes(message.fid);
+    if (message.targetFid !== 0) {
+      writer.uint32(8).uint64(message.targetFid);
     }
     return writer;
   },
@@ -675,7 +682,7 @@ export const AmpBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.fid = reader.bytes();
+          message.targetFid = longToNumber(reader.uint64() as Long);
           break;
         default:
           reader.skipType(tag & 7);
@@ -686,13 +693,12 @@ export const AmpBody = {
   },
 
   fromJSON(object: any): AmpBody {
-    return { fid: isSet(object.fid) ? bytesFromBase64(object.fid) : new Uint8Array() };
+    return { targetFid: isSet(object.targetFid) ? Number(object.targetFid) : 0 };
   },
 
   toJSON(message: AmpBody): unknown {
     const obj: any = {};
-    message.fid !== undefined &&
-      (obj.fid = base64FromBytes(message.fid !== undefined ? message.fid : new Uint8Array()));
+    message.targetFid !== undefined && (obj.targetFid = Math.round(message.targetFid));
     return obj;
   },
 
@@ -702,7 +708,7 @@ export const AmpBody = {
 
   fromPartial<I extends Exact<DeepPartial<AmpBody>, I>>(object: I): AmpBody {
     const message = createBaseAmpBody();
-    message.fid = object.fid ?? new Uint8Array();
+    message.targetFid = object.targetFid ?? 0;
     return message;
   },
 };
@@ -954,7 +960,7 @@ export const UserDataBody = {
 function createBaseMessageData(): MessageData {
   return {
     type: 0,
-    fid: new Uint8Array(),
+    fid: 0,
     timestamp: 0,
     network: 0,
     castAddBody: undefined,
@@ -973,8 +979,8 @@ export const MessageData = {
     if (message.type !== 0) {
       writer.uint32(8).int32(message.type);
     }
-    if (message.fid.length !== 0) {
-      writer.uint32(18).bytes(message.fid);
+    if (message.fid !== 0) {
+      writer.uint32(16).uint64(message.fid);
     }
     if (message.timestamp !== 0) {
       writer.uint32(24).uint32(message.timestamp);
@@ -1020,7 +1026,7 @@ export const MessageData = {
           message.type = reader.int32() as any;
           break;
         case 2:
-          message.fid = reader.bytes();
+          message.fid = longToNumber(reader.uint64() as Long);
           break;
         case 3:
           message.timestamp = reader.uint32();
@@ -1063,7 +1069,7 @@ export const MessageData = {
   fromJSON(object: any): MessageData {
     return {
       type: isSet(object.type) ? messageTypeFromJSON(object.type) : 0,
-      fid: isSet(object.fid) ? bytesFromBase64(object.fid) : new Uint8Array(),
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
       timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
       network: isSet(object.network) ? farcasterNetworkFromJSON(object.network) : 0,
       castAddBody: isSet(object.castAddBody) ? CastAddBody.fromJSON(object.castAddBody) : undefined,
@@ -1084,8 +1090,7 @@ export const MessageData = {
   toJSON(message: MessageData): unknown {
     const obj: any = {};
     message.type !== undefined && (obj.type = messageTypeToJSON(message.type));
-    message.fid !== undefined &&
-      (obj.fid = base64FromBytes(message.fid !== undefined ? message.fid : new Uint8Array()));
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
     message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
     message.network !== undefined && (obj.network = farcasterNetworkToJSON(message.network));
     message.castAddBody !== undefined &&
@@ -1116,7 +1121,7 @@ export const MessageData = {
   fromPartial<I extends Exact<DeepPartial<MessageData>, I>>(object: I): MessageData {
     const message = createBaseMessageData();
     message.type = object.type ?? 0;
-    message.fid = object.fid ?? new Uint8Array();
+    message.fid = object.fid ?? 0;
     message.timestamp = object.timestamp ?? 0;
     message.network = object.network ?? 0;
     message.castAddBody = (object.castAddBody !== undefined && object.castAddBody !== null)
@@ -1304,14 +1309,26 @@ function base64FromBytes(arr: Uint8Array): string {
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 
-export type DeepPartial<T> = T extends Builtin ? T
+type DeepPartial<T> = T extends Builtin ? T
   : T extends Array<infer U> ? Array<DeepPartial<U>> : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
   : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-export type Exact<P, I extends P> = P extends Builtin ? P
+type Exact<P, I extends P> = P extends Builtin ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+
+function longToNumber(long: Long): number {
+  if (long.gt(Number.MAX_SAFE_INTEGER)) {
+    throw new tsProtoGlobalThis.Error("Value is larger than Number.MAX_SAFE_INTEGER");
+  }
+  return long.toNumber();
+}
+
+if (_m0.util.Long !== Long) {
+  _m0.util.Long = Long as any;
+  _m0.configure();
+}
 
 function isSet(value: any): boolean {
   return value !== null && value !== undefined;

@@ -547,6 +547,10 @@ const TsHashHexFactory = Factory.define<string>(() => {
   return faker.datatype.hexadecimal({ length: 40, case: 'lower' });
 });
 
+const MessageHashFactory = Factory.define<Uint8Array>(() => {
+  return BytesFactory.build({}, { transient: { length: 20 } }); // 160 bits
+});
+
 export const Factories = {
   Bytes: BytesFactory,
   FID: FIDFactory,
@@ -596,4 +600,5 @@ export const Factories = {
   EthAddressHex: EthAddressHexFactory,
   Ed25519PublicKeyHex: Ed25519PublicKeyHexFactory,
   TsHashHex: TsHashHexFactory,
+  MessageHash: MessageHashFactory,
 };

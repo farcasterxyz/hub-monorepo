@@ -8,7 +8,7 @@ export enum IdRegistryEventType {
   IdRegistryTransfer = 2
 }
 
-export class IdRegistryEvent {
+export class IdRegistryEvent implements flatbuffers.IUnpackableObject<IdRegistryEventT> {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):IdRegistryEvent {
@@ -238,6 +238,64 @@ static createIdRegistryEvent(builder:flatbuffers.Builder, blockNumber:number, bl
   IdRegistryEvent.addType(builder, type);
   IdRegistryEvent.addFrom(builder, fromOffset);
   return IdRegistryEvent.endIdRegistryEvent(builder);
+}
+
+unpack(): IdRegistryEventT {
+  return new IdRegistryEventT(
+    this.blockNumber(),
+    this.bb!.createScalarList<number>(this.blockHash.bind(this), this.blockHashLength()),
+    this.bb!.createScalarList<number>(this.transactionHash.bind(this), this.transactionHashLength()),
+    this.logIndex(),
+    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength()),
+    this.bb!.createScalarList<number>(this.to.bind(this), this.toLength()),
+    this.type(),
+    this.bb!.createScalarList<number>(this.from.bind(this), this.fromLength())
+  );
+}
+
+
+unpackTo(_o: IdRegistryEventT): void {
+  _o.blockNumber = this.blockNumber();
+  _o.blockHash = this.bb!.createScalarList<number>(this.blockHash.bind(this), this.blockHashLength());
+  _o.transactionHash = this.bb!.createScalarList<number>(this.transactionHash.bind(this), this.transactionHashLength());
+  _o.logIndex = this.logIndex();
+  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
+  _o.to = this.bb!.createScalarList<number>(this.to.bind(this), this.toLength());
+  _o.type = this.type();
+  _o.from = this.bb!.createScalarList<number>(this.from.bind(this), this.fromLength());
+}
+}
+
+export class IdRegistryEventT implements flatbuffers.IGeneratedObject {
+constructor(
+  public blockNumber: number = 0,
+  public blockHash: (number)[] = [],
+  public transactionHash: (number)[] = [],
+  public logIndex: number = 0,
+  public fid: (number)[] = [],
+  public to: (number)[] = [],
+  public type: IdRegistryEventType = IdRegistryEventType.IdRegistryRegister,
+  public from: (number)[] = []
+){}
+
+
+pack(builder:flatbuffers.Builder): flatbuffers.Offset {
+  const blockHash = IdRegistryEvent.createBlockHashVector(builder, this.blockHash);
+  const transactionHash = IdRegistryEvent.createTransactionHashVector(builder, this.transactionHash);
+  const fid = IdRegistryEvent.createFidVector(builder, this.fid);
+  const to = IdRegistryEvent.createToVector(builder, this.to);
+  const from = IdRegistryEvent.createFromVector(builder, this.from);
+
+  return IdRegistryEvent.createIdRegistryEvent(builder,
+    this.blockNumber,
+    blockHash,
+    transactionHash,
+    this.logIndex,
+    fid,
+    to,
+    this.type,
+    from
+  );
 }
 }
 

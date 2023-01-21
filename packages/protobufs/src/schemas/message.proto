@@ -50,13 +50,13 @@ enum UserDataType {
 }
 
 message CastId {
-  bytes fid = 1;
+  uint64 fid = 1;
   bytes hash = 2;
 }
 
 message CastAddBody {
   repeated string embeds = 1;
-  repeated bytes mentions = 2;
+  repeated uint64 mentions = 2;
   oneof parent {
     CastId parent_cast_id = 3;
   };
@@ -75,7 +75,7 @@ message ReactionBody {
 }
 
 message AmpBody {
-  bytes fid = 1;
+  uint64 target_fid = 1;
 }
 
 message VerificationAddEthAddressBody {
@@ -99,7 +99,7 @@ message UserDataBody {
 
 message MessageData {
   MessageType type = 1;
-  bytes fid = 2;
+  uint64 fid = 2;
   uint32 timestamp = 3;
   FarcasterNetwork network = 4;
   oneof body {

@@ -3,7 +3,7 @@
 import * as flatbuffers from 'flatbuffers';
 
 
-export class RevokeSignerJobPayload {
+export class RevokeSignerJobPayload implements flatbuffers.IUnpackableObject<RevokeSignerJobPayloadT> {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):RevokeSignerJobPayload {
@@ -99,6 +99,37 @@ static createRevokeSignerJobPayload(builder:flatbuffers.Builder, fidOffset:flatb
   RevokeSignerJobPayload.addFid(builder, fidOffset);
   RevokeSignerJobPayload.addSigner(builder, signerOffset);
   return RevokeSignerJobPayload.endRevokeSignerJobPayload(builder);
+}
+
+unpack(): RevokeSignerJobPayloadT {
+  return new RevokeSignerJobPayloadT(
+    this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength()),
+    this.bb!.createScalarList<number>(this.signer.bind(this), this.signerLength())
+  );
+}
+
+
+unpackTo(_o: RevokeSignerJobPayloadT): void {
+  _o.fid = this.bb!.createScalarList<number>(this.fid.bind(this), this.fidLength());
+  _o.signer = this.bb!.createScalarList<number>(this.signer.bind(this), this.signerLength());
+}
+}
+
+export class RevokeSignerJobPayloadT implements flatbuffers.IGeneratedObject {
+constructor(
+  public fid: (number)[] = [],
+  public signer: (number)[] = []
+){}
+
+
+pack(builder:flatbuffers.Builder): flatbuffers.Offset {
+  const fid = RevokeSignerJobPayload.createFidVector(builder, this.fid);
+  const signer = RevokeSignerJobPayload.createSignerVector(builder, this.signer);
+
+  return RevokeSignerJobPayload.createRevokeSignerJobPayload(builder,
+    fid,
+    signer
+  );
 }
 }
 

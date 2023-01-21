@@ -8,7 +8,7 @@ export enum NameRegistryEventType {
   NameRegistryRenew = 2
 }
 
-export class NameRegistryEvent {
+export class NameRegistryEvent implements flatbuffers.IUnpackableObject<NameRegistryEventT> {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):NameRegistryEvent {
@@ -270,6 +270,69 @@ static createNameRegistryEvent(builder:flatbuffers.Builder, blockNumber:number, 
   NameRegistryEvent.addType(builder, type);
   NameRegistryEvent.addExpiry(builder, expiryOffset);
   return NameRegistryEvent.endNameRegistryEvent(builder);
+}
+
+unpack(): NameRegistryEventT {
+  return new NameRegistryEventT(
+    this.blockNumber(),
+    this.bb!.createScalarList<number>(this.blockHash.bind(this), this.blockHashLength()),
+    this.bb!.createScalarList<number>(this.transactionHash.bind(this), this.transactionHashLength()),
+    this.logIndex(),
+    this.bb!.createScalarList<number>(this.fname.bind(this), this.fnameLength()),
+    this.bb!.createScalarList<number>(this.from.bind(this), this.fromLength()),
+    this.bb!.createScalarList<number>(this.to.bind(this), this.toLength()),
+    this.type(),
+    this.bb!.createScalarList<number>(this.expiry.bind(this), this.expiryLength())
+  );
+}
+
+
+unpackTo(_o: NameRegistryEventT): void {
+  _o.blockNumber = this.blockNumber();
+  _o.blockHash = this.bb!.createScalarList<number>(this.blockHash.bind(this), this.blockHashLength());
+  _o.transactionHash = this.bb!.createScalarList<number>(this.transactionHash.bind(this), this.transactionHashLength());
+  _o.logIndex = this.logIndex();
+  _o.fname = this.bb!.createScalarList<number>(this.fname.bind(this), this.fnameLength());
+  _o.from = this.bb!.createScalarList<number>(this.from.bind(this), this.fromLength());
+  _o.to = this.bb!.createScalarList<number>(this.to.bind(this), this.toLength());
+  _o.type = this.type();
+  _o.expiry = this.bb!.createScalarList<number>(this.expiry.bind(this), this.expiryLength());
+}
+}
+
+export class NameRegistryEventT implements flatbuffers.IGeneratedObject {
+constructor(
+  public blockNumber: number = 0,
+  public blockHash: (number)[] = [],
+  public transactionHash: (number)[] = [],
+  public logIndex: number = 0,
+  public fname: (number)[] = [],
+  public from: (number)[] = [],
+  public to: (number)[] = [],
+  public type: NameRegistryEventType = NameRegistryEventType.NameRegistryTransfer,
+  public expiry: (number)[] = []
+){}
+
+
+pack(builder:flatbuffers.Builder): flatbuffers.Offset {
+  const blockHash = NameRegistryEvent.createBlockHashVector(builder, this.blockHash);
+  const transactionHash = NameRegistryEvent.createTransactionHashVector(builder, this.transactionHash);
+  const fname = NameRegistryEvent.createFnameVector(builder, this.fname);
+  const from = NameRegistryEvent.createFromVector(builder, this.from);
+  const to = NameRegistryEvent.createToVector(builder, this.to);
+  const expiry = NameRegistryEvent.createExpiryVector(builder, this.expiry);
+
+  return NameRegistryEvent.createNameRegistryEvent(builder,
+    this.blockNumber,
+    blockHash,
+    transactionHash,
+    this.logIndex,
+    fname,
+    from,
+    to,
+    this.type,
+    expiry
+  );
 }
 }
 

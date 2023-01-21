@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@farcaster/flatbuffers": "0.1.4",
+    "@farcaster/protobufs": "0.1.0",
     "@farcaster/grpc": "0.1.4",
     "@farcaster/utils": "0.1.4",
     "pino": "^8.8.0",
