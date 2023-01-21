@@ -71,7 +71,7 @@ max-cache-ttl 100000000
 
 ### 2.3. Navigating the Monorepo
 
-The repository is a monorepo with a primary application in the `/app/` folder that imports several packages `/packages/`. It is composed of yarn workspaces and uses [TurboRepo](https://turbo.build/) as its build system.
+The repository is a monorepo with a primary application in the `/apps/` folder that imports several packages `/packages/`. It is composed of yarn workspaces and uses [TurboRepo](https://turbo.build/) as its build system.
 
 You can run commands like `yarn test` and `yarn build` which TurboRepo will automatically parallelize and execute across all workspaces. To execute the application, you'll need to navigate into the app folder and follow the instructions there. The TurboRepo documentation covers other important topics like:
 
