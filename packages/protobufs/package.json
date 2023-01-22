@@ -20,9 +20,7 @@
     "clean": "rimraf ./dist",
     "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/generated/ --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false --proto_path=./src/schemas ./src/schemas/*",
     "lint": "eslint  src/ --color --ext .ts",
-    "lint:fix": "yarn run lint -- --fix",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
-    "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"
+    "lint:fix": "yarn run lint -- --fix"
   },
   "devDependencies": {
     "eslint-config-custom": "*",

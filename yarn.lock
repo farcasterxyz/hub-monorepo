@@ -998,6 +998,13 @@
   resolved "https://registry.npmjs.org/@faker-js/faker/-/faker-7.6.0.tgz#9ea331766084288634a9247fcd8b84f16ff4ba07"
   integrity sha512-XK6BTq1NDMo9Xqw/YkYyGjSsg44fbNwYRx7QK2CuoQgyy+f1rrTDHoExVM5PsyXCtfl2vs2vVJ0MN0yN6LppRw==
 
+"@farcaster/fishery@2.2.3":
+  version "2.2.3"
+  resolved "https://registry.npmjs.org/@farcaster/fishery/-/fishery-2.2.3.tgz#7a81f7d06f7d81f5feb644dec2c73c623ef6d9af"
+  integrity sha512-BFiDZQYO6pGaJ6GKlei4AO6xAM6yvi9YUOcc1fVBeuirnkjr81xunj7i5wmvBuxwKsbm8c/g91EAloQg+zCm7g==
+  dependencies:
+    lodash.mergewith "^4.6.2"
+
 "@grpc/grpc-js@^1.7.3", "@grpc/grpc-js@^1.8.1":
   version "1.8.1"
   resolved "https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.8.1.tgz#71f809c148e52ac9c15da4b8d4a65ecd7063dff7"
