@@ -191,6 +191,9 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     // Start the ETH registry provider first
     await this.ethRegistryProvider.start();
 
+    // Start the sync engine
+    await this.syncEngine.initialize();
+
     await this.gossipNode.start(this.options.bootstrapAddrs ?? [], {
       peerId: this.options.peerId,
       ipMultiAddr: this.options.ipMultiAddr,

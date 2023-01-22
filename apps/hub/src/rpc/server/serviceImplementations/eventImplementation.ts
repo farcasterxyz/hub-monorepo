@@ -44,11 +44,32 @@ export const eventImplementation = (engine: Engine) => {
         packAndWriteEventResponse(unpackedResponse, stream);
       };
 
-      engine.eventHandler.on('mergeMessage', mergeMessageListener);
-      engine.eventHandler.on('pruneMessage', pruneMessageListener);
-      engine.eventHandler.on('revokeMessage', revokeMessageListener);
-      engine.eventHandler.on('mergeIdRegistryEvent', mergeIdRegistryEventListener);
-      engine.eventHandler.on('mergeNameRegistryEvent', mergeNameRegistryEventListener);
+      const { request } = stream;
+
+      // if no type filters are provided, subscribe to all event types
+      if (request.eventTypesLength() === 0) {
+        engine.eventHandler.on('mergeMessage', mergeMessageListener);
+        engine.eventHandler.on('pruneMessage', pruneMessageListener);
+        engine.eventHandler.on('revokeMessage', revokeMessageListener);
+        engine.eventHandler.on('mergeIdRegistryEvent', mergeIdRegistryEventListener);
+        engine.eventHandler.on('mergeNameRegistryEvent', mergeNameRegistryEventListener);
+      } else {
+        for (let i = 0; i < request.eventTypesLength(); i++) {
+          const type = request.eventTypes(i);
+
+          if (type === EventType.MergeMessage) {
+            engine.eventHandler.on('mergeMessage', mergeMessageListener);
+          } else if (type === EventType.PruneMessage) {
+            engine.eventHandler.on('pruneMessage', pruneMessageListener);
+          } else if (type === EventType.RevokeMessage) {
+            engine.eventHandler.on('revokeMessage', revokeMessageListener);
+          } else if (type === EventType.MergeIdRegistryEvent) {
+            engine.eventHandler.on('mergeIdRegistryEvent', mergeIdRegistryEventListener);
+          } else if (type === EventType.MergeNameRegistryEvent) {
+            engine.eventHandler.on('mergeNameRegistryEvent', mergeNameRegistryEventListener);
+          }
+        }
+      }
 
       stream.on('cancelled', () => {
         stream.destroy();

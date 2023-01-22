@@ -1,3 +1,4 @@
+import { AddressInfo } from 'net';
 import path from 'path';
 import * as repl from 'repl';
 import HubRpcClient from '~/rpc/client';
@@ -7,9 +8,22 @@ import { CastsCommand } from './castsCommand';
 import { InfoCommand } from './infoCommand';
 import { SyncTrieCommand } from './syncTrieCommand';
 
-const addressInfo = addressInfoFromParts('127.0.0.1', 13112)._unsafeUnwrap();
+export const DEFAULT_RPC_CONSOLE = addressInfoFromParts('127.0.0.1', 13112)._unsafeUnwrap();
 
-export const startConsole = async () => {
+export const parseServerAddress = (server: string): AddressInfo => {
+  const [host, port] = server.split(':');
+  if (!host || !port) throw new Error('Invalid server address');
+
+  return addressInfoFromParts(host, parseInt(port))._unsafeUnwrap();
+};
+
+export interface ConsoleCommandInterface {
+  commandName(): string;
+  shortHelp(): string;
+  help(): string;
+}
+
+export const startConsole = async (addressInfo: AddressInfo) => {
   const replServer = repl
     .start({
       prompt: 'hub> ',
@@ -30,24 +44,30 @@ export const startConsole = async () => {
     }
   });
 
+  const rpcClient = new HubRpcClient(addressInfo);
+  const commands: ConsoleCommandInterface[] = [
+    new SyncTrieCommand(rpcClient),
+    new InfoCommand(rpcClient),
+    new CastsCommand(rpcClient),
+  ];
+
   replServer.defineCommand('help', {
     help: 'Show this help',
     action() {
       this.clearBufferedCommand();
-      this.output.write(`Available commands:
-            syncTrie: Query the sync trie
-            info: Get the hub version info
-            casts: Get the list of casts by fid/tsHash or other parameters
-    `);
+
+      this.output.write(`Available commands:\n`);
+      commands.forEach((command) => {
+        this.output.write(`\t${command.commandName()} - ${command.shortHelp()}\n`);
+      });
+
       this.displayPrompt();
     },
   });
 
-  const rpcClient = new HubRpcClient(addressInfo);
-
-  replServer.context['syncTrie'] = new SyncTrieCommand(rpcClient);
-  replServer.context['info'] = new InfoCommand(rpcClient);
-  replServer.context['casts'] = new CastsCommand(rpcClient);
+  commands.forEach((command) => {
+    replServer.context[command.commandName()] = command;
+  });
 
   replServer.displayPrompt();
 };

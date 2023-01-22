@@ -1,7 +1,7 @@
 import MessageModel from '~/flatbuffers/models/messageModel';
 
 const TIMESTAMP_LENGTH = 10; // 10 bytes for timestamp in decimal
-const HASH_LENGTH = 128; // We're using 64 byte blake2b hashes
+const HASH_LENGTH = 160; // We're using 20 byte blake2b hashes
 
 /**
  * SyncId allows for a stable, time ordered lexicographic sorting of messages across hubs

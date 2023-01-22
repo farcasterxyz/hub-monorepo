@@ -31,7 +31,7 @@ describe('Eip712Signer', () => {
     describe('signMessageHash', () => {
       test('generates valid signature', async () => {
         const bytes = randomBytes(32);
-        const hash = blake3(bytes, { dkLen: 16 });
+        const hash = blake3(bytes, { dkLen: 20 });
         const signature = await signer.signMessageHash(hash);
         const recoveredAddress = await eip712.verifyMessageHashSignature(hash, signature._unsafeUnwrap());
         expect(recoveredAddress._unsafeUnwrap()).toEqual(signer.signerKey);

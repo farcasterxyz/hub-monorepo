@@ -18,6 +18,54 @@ import { err, ok, Result } from 'neverthrow';
 import * as types from './types';
 
 /* -------------------------------------------------------------------------- */
+/*                           Event Response                                   */
+/* -------------------------------------------------------------------------- */
+
+export const deserializeEventResponse = (fbb: flatbuffers.EventResponse): HubResult<types.EventResponse> => {
+  const type = fbb.type();
+
+  switch (type) {
+    case flatbuffers.EventType.MergeMessage:
+    case flatbuffers.EventType.PruneMessage:
+    case flatbuffers.EventType.RevokeMessage: {
+      return deserializeMessage(
+        flatbuffers.Message.getRootAsMessage(new ByteBuffer(fbb.bytesArray() ?? new Uint8Array()))
+      ).map((message) => {
+        return {
+          flatbuffer: fbb,
+          type,
+          message,
+        };
+      });
+    }
+    case flatbuffers.EventType.MergeIdRegistryEvent: {
+      return deserializeIdRegistryEvent(
+        flatbuffers.IdRegistryEvent.getRootAsIdRegistryEvent(new ByteBuffer(fbb.bytesArray() ?? new Uint8Array()))
+      ).map((idRegistryEvent) => {
+        return {
+          flatbuffer: fbb,
+          type,
+          idRegistryEvent,
+        };
+      });
+    }
+    case flatbuffers.EventType.MergeNameRegistryEvent: {
+      return deserializeNameRegistryEvent(
+        flatbuffers.NameRegistryEvent.getRootAsNameRegistryEvent(new ByteBuffer(fbb.bytesArray() ?? new Uint8Array()))
+      ).map((nameRegistryEvent) => {
+        return {
+          flatbuffer: fbb,
+          type,
+          nameRegistryEvent,
+        };
+      });
+    }
+    default:
+      return err(new HubError('bad_request.invalid_param', `unknown EventType '${type}'`));
+  }
+};
+
+/* -------------------------------------------------------------------------- */
 /*                             Registry Events                                */
 /* -------------------------------------------------------------------------- */
 
@@ -540,7 +588,7 @@ export const deserializeEd25519Signature = (bytes: Uint8Array): HubResult<string
  * Deserialize a message hash from a byte array to hex string.
  */
 export const deserializeMessageHash = (bytes: Uint8Array): HubResult<string> => {
-  return bytesToHexString(bytes, { size: 32 });
+  return bytesToHexString(bytes, { size: 40 });
 };
 
 export const deserializeFid = (fid: Uint8Array): HubResult<number> => {
@@ -584,7 +632,7 @@ export const serializeEd25519PublicKey = (publicKey: string): HubResult<Uint8Arr
 };
 
 export const deserializeTsHash = (tsHash: Uint8Array): HubResult<string> => {
-  return validations.validateTsHash(tsHash).andThen((tsHash) => bytesToHexString(tsHash, { size: 40 }));
+  return validations.validateTsHash(tsHash).andThen((tsHash) => bytesToHexString(tsHash, { size: 48 }));
 };
 
 export const serializeTsHash = (tsHash: string): HubResult<Uint8Array> => {

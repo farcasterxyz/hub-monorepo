@@ -27,9 +27,9 @@ describe('FidFactory', () => {
 });
 
 describe('TsHashFactory', () => {
-  test('generates 20 byte value', () => {
+  test('generates 24 byte value', () => {
     const tsHash = Factories.TsHash.build();
-    expect(tsHash.byteLength).toEqual(20);
+    expect(tsHash.byteLength).toEqual(24);
   });
 
   test('accepts timestamp', () => {
@@ -37,7 +37,7 @@ describe('TsHashFactory', () => {
       {},
       { transient: { timestamp: toFarcasterTime(Date.now())._unsafeUnwrap() } }
     );
-    expect(tsHash.byteLength).toEqual(20);
+    expect(tsHash.byteLength).toEqual(24);
   });
 });
 
@@ -62,7 +62,7 @@ describe('MessageFactory', () => {
   });
 
   test('generates hash', async () => {
-    expect(message.hashArray()).toEqual(blake3(data.bb?.bytes() || new Uint8Array(), { dkLen: 16 }));
+    expect(message.hashArray()).toEqual(blake3(data.bb?.bytes() || new Uint8Array(), { dkLen: 20 }));
   });
 
   test('generates signature', async () => {
@@ -108,6 +108,28 @@ describe('BytesFactory', () => {
     test('succeeds with unpadded little endian', () => {
       const bytes = Factories.Bytes.build({}, { transient: { length: 32 } });
       expect(bytes[bytes.length - 1]).not.toEqual(0);
+    });
+  });
+});
+
+describe('EventResponseFactory', () => {
+  describe('build', () => {
+    const eventResponse = Factories.EventResponse.build();
+
+    test('generates an EventResponseT', () => {
+      expect(eventResponse).toBeInstanceOf(flatbuffers.EventResponseT);
+    });
+  });
+
+  describe('create', () => {
+    let eventResponse: flatbuffers.EventResponse;
+
+    beforeAll(async () => {
+      eventResponse = await Factories.EventResponse.create();
+    });
+
+    test('generates an EventResponse', () => {
+      expect(eventResponse).toBeInstanceOf(flatbuffers.EventResponse);
     });
   });
 });

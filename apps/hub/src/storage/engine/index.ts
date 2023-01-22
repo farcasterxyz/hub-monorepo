@@ -504,7 +504,12 @@ class Engine {
   private async validateMessage(message: MessageModel): HubAsyncResult<MessageModel> {
     // 1. Check the network
     if (message.network() !== this._network) {
-      return err(new HubError('bad_request.validation_failure', 'incorrect network'));
+      return err(
+        new HubError(
+          'bad_request.validation_failure',
+          `incorrect network. Expected ${this._network} got ${message.network()}`
+        )
+      );
     }
 
     // 2. Check that the user has a custody address

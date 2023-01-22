@@ -55,7 +55,7 @@ const FnameFactory = Factory.define<Uint8Array>(() => {
 
 const TsHashFactory = Factory.define<Uint8Array, { timestamp?: number; hash?: Uint8Array }>(({ transientParams }) => {
   const timestamp = transientParams.timestamp ?? toFarcasterTime(faker.date.recent().getTime())._unsafeUnwrap();
-  const hash = transientParams.hash ?? blake3(faker.random.alphaNumeric(256), { dkLen: 16 });
+  const hash = transientParams.hash ?? blake3(faker.random.alphaNumeric(256), { dkLen: 20 });
   return toTsHash(timestamp, hash)._unsafeUnwrap();
 });
 
@@ -401,7 +401,7 @@ const MessageFactory = Factory.define<
   onCreate(async (params) => {
     // Generate hash
     if (params.hash.length === 0) {
-      params.hash = Array.from(blake3(new Uint8Array(params.data), { dkLen: 16 }));
+      params.hash = Array.from(blake3(new Uint8Array(params.data), { dkLen: 20 }));
     }
 
     // Generate signature
@@ -544,12 +544,35 @@ const Ed25519PublicKeyHexFactory = Factory.define<string>(() => {
 });
 
 const TsHashHexFactory = Factory.define<string>(() => {
-  return faker.datatype.hexadecimal({ length: 40, case: 'lower' });
+  return faker.datatype.hexadecimal({ length: 48, case: 'lower' });
 });
 
 const MessageHashFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build({}, { transient: { length: 20 } }); // 160 bits
 });
+
+const EventTypeFactory = Factory.define<flatbuffers.EventType>(() => {
+  return faker.helpers.arrayElement([
+    flatbuffers.EventType.MergeIdRegistryEvent,
+    flatbuffers.EventType.MergeNameRegistryEvent,
+    flatbuffers.EventType.MergeMessage,
+    flatbuffers.EventType.RevokeMessage,
+    flatbuffers.EventType.PruneMessage,
+  ]);
+});
+
+const EventResponseFactory = Factory.define<flatbuffers.EventResponseT, unknown, flatbuffers.EventResponse>(
+  ({ onCreate }) => {
+    onCreate((params) => {
+      const builder = new Builder(1);
+      builder.finish(params.pack(builder));
+      return flatbuffers.EventResponse.getRootAsEventResponse(new ByteBuffer(builder.asUint8Array()));
+    });
+
+    const type = EventTypeFactory.build();
+    return new flatbuffers.EventResponseT(type);
+  }
+);
 
 export const Factories = {
   Bytes: BytesFactory,
@@ -601,4 +624,5 @@ export const Factories = {
   Ed25519PublicKeyHex: Ed25519PublicKeyHexFactory,
   TsHashHex: TsHashHexFactory,
   MessageHash: MessageHashFactory,
+  EventResponse: EventResponseFactory,
 };

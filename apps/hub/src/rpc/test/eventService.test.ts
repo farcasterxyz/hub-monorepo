@@ -33,15 +33,20 @@ afterAll(async () => {
 });
 
 const fid = Factories.FID.build();
+const fname = Factories.Fname.build();
 const ethSigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
 let custodyEvent: IdRegistryEventModel;
+let nameRegistryEvent: NameRegistryEventModel;
 let signerAdd: SignerAddModel;
 let castAdd: CastAddModel;
 
 beforeAll(async () => {
   custodyEvent = new IdRegistryEventModel(
     await Factories.IdRegistryEvent.create({ to: Array.from(ethSigner.signerKey), fid: Array.from(fid) })
+  );
+  nameRegistryEvent = new NameRegistryEventModel(
+    await Factories.NameRegistryEvent.create({ to: Array.from(ethSigner.signerKey), fname: Array.from(fname) })
   );
 
   const signerAddData = await Factories.SignerAddData.create({
@@ -61,40 +66,85 @@ beforeAll(async () => {
 });
 
 describe('subscribe', () => {
-  let stream: ClientReadableStream<EventResponse>;
-  let events: [EventType, MessageModel | IdRegistryEventModel | NameRegistryEventModel][];
+  const setupSubscription = (eventTypes?: EventType[]) => {
+    let stream: ClientReadableStream<EventResponse> | undefined;
+    const events: [EventType, MessageModel | IdRegistryEventModel | NameRegistryEventModel][] = [];
 
-  beforeEach(async () => {
-    stream = (await client.subscribe())._unsafeUnwrap();
-    events = [];
-    stream.on('data', (response: EventResponse) => {
-      if (
-        response.type() === EventType.MergeMessage ||
-        response.type() === EventType.PruneMessage ||
-        response.type() === EventType.RevokeMessage
-      ) {
-        events.push([response.type(), MessageModel.from(response.bytesArray() ?? new Uint8Array())]);
-      } else if (response.type() === EventType.MergeIdRegistryEvent) {
-        events.push([response.type(), IdRegistryEventModel.from(response.bytesArray() ?? new Uint8Array())]);
-      } else if (response.type() === EventType.MergeNameRegistryEvent) {
-        events.push([response.type(), NameRegistryEventModel.from(response.bytesArray() ?? new Uint8Array())]);
-      }
+    beforeEach(async () => {
+      stream = (await client.subscribe(eventTypes))._unsafeUnwrap();
+      stream.on('data', (response: EventResponse) => {
+        if (
+          response.type() === EventType.MergeMessage ||
+          response.type() === EventType.PruneMessage ||
+          response.type() === EventType.RevokeMessage
+        ) {
+          events.push([response.type(), MessageModel.from(response.bytesArray() ?? new Uint8Array())]);
+        } else if (response.type() === EventType.MergeIdRegistryEvent) {
+          events.push([response.type(), IdRegistryEventModel.from(response.bytesArray() ?? new Uint8Array())]);
+        } else if (response.type() === EventType.MergeNameRegistryEvent) {
+          events.push([response.type(), NameRegistryEventModel.from(response.bytesArray() ?? new Uint8Array())]);
+        }
+      });
+    });
+
+    afterEach(async () => {
+      await stream?.cancel();
+    });
+
+    return { stream, events };
+  };
+
+  describe('without type filters', () => {
+    const { events } = setupSubscription();
+
+    test('emits event', async () => {
+      await engine.mergeIdRegistryEvent(custodyEvent);
+      await engine.mergeMessage(signerAdd);
+      await engine.mergeMessage(castAdd);
+      await sleep(1_000); // Wait for server to send events over stream
+      expect(events).toEqual([
+        [EventType.MergeIdRegistryEvent, custodyEvent],
+        [EventType.MergeMessage, signerAdd],
+        [EventType.MergeMessage, castAdd],
+      ]);
     });
   });
 
-  afterEach(async () => {
-    await stream.cancel();
+  describe('with one type filter', () => {
+    const { events } = setupSubscription([EventType.MergeMessage]);
+
+    test('emits event', async () => {
+      await engine.mergeIdRegistryEvent(custodyEvent);
+      await engine.mergeNameRegistryEvent(nameRegistryEvent);
+      await engine.mergeMessage(signerAdd);
+      await engine.mergeMessage(castAdd);
+      await sleep(1_000); // Wait for server to send events over stream
+      expect(events).toEqual([
+        [EventType.MergeMessage, signerAdd],
+        [EventType.MergeMessage, castAdd],
+      ]);
+    });
   });
 
-  test('emits event', async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
-    await engine.mergeMessage(castAdd);
-    await sleep(1_000); // Wait for server to send events over stream
-    expect(events).toEqual([
-      [EventType.MergeIdRegistryEvent, custodyEvent],
-      [EventType.MergeMessage, signerAdd],
-      [EventType.MergeMessage, castAdd],
+  describe('with multiple type filters', () => {
+    const { events } = setupSubscription([
+      EventType.MergeMessage,
+      EventType.MergeNameRegistryEvent,
+      EventType.MergeIdRegistryEvent,
     ]);
+
+    test('emits event', async () => {
+      await engine.mergeIdRegistryEvent(custodyEvent);
+      await engine.mergeNameRegistryEvent(nameRegistryEvent);
+      await engine.mergeMessage(signerAdd);
+      await engine.mergeMessage(castAdd);
+      await sleep(1_000); // Wait for server to send events over stream
+      expect(events).toEqual([
+        [EventType.MergeIdRegistryEvent, custodyEvent],
+        [EventType.MergeNameRegistryEvent, nameRegistryEvent],
+        [EventType.MergeMessage, signerAdd],
+        [EventType.MergeMessage, castAdd],
+      ]);
+    });
   });
 });

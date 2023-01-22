@@ -1,77 +1,127 @@
-// import { faker } from '@faker-js/faker';
-// import { RPCClient } from '~/network/rpc/json';
-// import { generateUserInfo, getIdRegistryEvent, getSignerAdd, UserInfo } from '~/storage/engine/mock';
-// import { post, submitInBatches } from '~/test/perf/utils';
-// import { IdRegistryEvent, SignerAdd } from '~/types';
-// import { sleep } from '~/utils/crypto';
-// import { logger } from '~/utils/logger';
+import { faker } from '@faker-js/faker';
+import { FarcasterNetwork } from '@farcaster/flatbuffers';
+import { Ed25519Signer, Eip712Signer, Factories } from '@farcaster/utils';
+import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
+import MessageModel from '~/flatbuffers/models/messageModel';
+import { SignerAddModel } from '~/flatbuffers/models/types';
+import HubRpcClient from '~/rpc/client';
+import { post, submitInBatches } from '~/test/perf/utils';
+import { sleep } from '~/utils/crypto';
+import { logger } from '~/utils/logger';
 
-// export enum SetupMode {
-//   /** Pick a Hub at random and perform setup with it */
-//   RANDOM_SINGLE,
-//   /** Pick a Hub at random for each stage of the setup it */
-//   RANDOM_MULTIPLE,
-//   /** Send all the messages to every Hub manually */
-//   ALL,
-// }
+export enum SetupMode {
+  /** Pick a Hub at random and perform setup with it */
+  RANDOM_SINGLE,
+  /** Pick a Hub at random for each stage of the setup it */
+  RANDOM_MULTIPLE,
+  /** Send all the messages to every Hub manually */
+  ALL,
+}
 
-// export interface SetupConfig {
-//   mode: SetupMode;
-//   users: number;
-// }
+export interface SetupConfig {
+  mode: SetupMode;
+  users: number;
+  network: FarcasterNetwork;
+}
 
-// /**
-//  * Sets up a network of Hubs with user registrations
-//  *
-//  * For each user, setup will post a IdRegistryEvent and a SignerAdd message.
-//  * It waits some seconds at each stage to let the network synchronize.
-//  *
-//  * @Return A list of UserInfos containing an Eth Signer and a Delegate Signer for each fid
-//  */
-// export const setupNetwork = async (rpcClients: RPCClient[], config: SetupConfig) => {
-//   if (config.users === 0) return [];
+export type UserInfo = {
+  fid: Uint8Array;
+  ethSigner: Eip712Signer;
+  signer: Ed25519Signer;
+};
 
-//   // generate users
-//   logger.info(`Generating IdRegistry events for ${config.users} users.`);
-//   const firstUser = faker.datatype.number();
-//   const idRegistryEvents: IdRegistryEvent[] = [];
-//   const signerAddEvents: SignerAdd[] = [];
-//   let start = performance.now();
-//   const userInfos: UserInfo[] = await Promise.all(
-//     [...Array(config.users)].map(async (_value, index) => {
-//       const info = await generateUserInfo(firstUser + index);
-//       idRegistryEvents.push(await getIdRegistryEvent(info));
-//       signerAddEvents.push(await getSignerAdd(info));
-//       return info;
-//     })
-//   );
-//   let stop = performance.now();
-//   post(`Generated ${config.users} users. UserInfo has ${userInfos.length} items`, start, stop);
+/**
+ * Sets up a network of Hubs with user registrations
+ *
+ * For each user, setup will post a IdRegistryEvent and a SignerAdd message.
+ * It waits some seconds at each stage to let the network synchronize.
+ *
+ * @Return A list of UserInfos containing an Eth Signer and a Delegate Signer for each fid
+ */
+export const setupNetwork = async (rpcClients: HubRpcClient[], config: SetupConfig) => {
+  if (config.users === 0) return [];
 
-//   // pick a random RPC node
-//   const client = rpcClients[Math.floor(Math.random() * rpcClients.length)] as RPCClient;
+  // generate users
+  logger.info(`Generating IdRegistry events for ${config.users} users.`);
+  const firstUser = faker.datatype.number();
+  const idRegistryEvents: IdRegistryEventModel[] = [];
+  const signerAddEvents: SignerAddModel[] = [];
+  let start = performance.now();
+  const userInfos: UserInfo[] = await Promise.all(
+    [...Array(config.users)].map(async (_value, index) => {
+      const info = await generateUserInfo(firstUser + index);
+      idRegistryEvents.push(await getIdRegistryEvent(info));
+      signerAddEvents.push(await getSignerAdd(info, config.network));
+      return info;
+    })
+  );
+  let stop = performance.now();
+  post(`Generated ${config.users} users. UserInfo has ${userInfos.length} items`, start, stop);
 
-//   // submit users
-//   start = performance.now();
-//   const registryResults = await submitInBatches(client, idRegistryEvents);
+  // pick a random RPC node
+  const client = rpcClients[Math.floor(Math.random() * rpcClients.length)] as HubRpcClient;
 
-//   stop = performance.now();
-//   post('IdRegistry Events submitted', start, stop);
+  // submit users
+  start = performance.now();
+  const registryResults = await submitInBatches(client, idRegistryEvents);
 
-//   logger.info(`${registryResults.success} events submitted successfully. ${registryResults.fail} events failed.`);
-//   logger.info('_Waiting a few seconds for the network to synchronize_');
-//   await sleep(10_000);
+  stop = performance.now();
+  post('IdRegistry Events submitted', start, stop);
 
-//   start = performance.now();
-//   const signerResults = await submitInBatches(client, signerAddEvents);
+  logger.info(`${registryResults.success} events submitted successfully. ${registryResults.fail} events failed.`);
+  logger.info('_Waiting a few seconds for the network to synchronize_');
+  await sleep(10_000);
 
-//   stop = performance.now();
-//   post('Signers submitted', start, stop);
+  start = performance.now();
+  const signerResults = await submitInBatches(client, signerAddEvents);
 
-//   logger.info(`${signerResults.success} signers submitted successfully. ${signerResults.fail} signers failed.`);
+  stop = performance.now();
+  post('Signers submitted', start, stop);
 
-//   logger.info('_Waiting a few seconds for the network to synchronize_');
-//   await sleep(10_000);
+  logger.info(`${signerResults.success} signers submitted successfully. ${signerResults.fail} signers failed.`);
 
-//   return userInfos;
-// };
+  logger.info('_Waiting a few seconds for the network to synchronize_');
+  await sleep(10_000);
+
+  return userInfos;
+};
+
+export const generateUserInfo = async (fid: number): Promise<UserInfo> => {
+  const fidArray = Factories.FID.build({}, { transient: { fid } });
+
+  return {
+    fid: fidArray,
+    ethSigner: Factories.Eip712Signer.build(),
+    signer: Factories.Ed25519Signer.build(),
+  };
+};
+
+/**
+ * Generate an IdRegistryEvent for the given userInfo
+ */
+export const getIdRegistryEvent = async (userInfo: UserInfo) => {
+  const custodyEvent = new IdRegistryEventModel(
+    await Factories.IdRegistryEvent.create({
+      fid: Array.from(userInfo.fid),
+      to: Array.from(userInfo.ethSigner.signerKey),
+    })
+  );
+  return custodyEvent;
+};
+
+/**
+ * Generate a SignerAdd message for this UserInfo's delegate address
+ */
+export const getSignerAdd = async (userInfo: UserInfo, network: FarcasterNetwork) => {
+  const signerAddData = await Factories.SignerAddData.create({
+    fid: Array.from(userInfo.fid),
+    network,
+    body: Factories.SignerBody.build({ signer: Array.from(userInfo.signer.signerKey) }),
+  });
+  const signerAddMessage = await Factories.Message.create(
+    { data: Array.from(signerAddData.bb?.bytes() ?? []) },
+    { transient: { ethSigner: userInfo.ethSigner } }
+  );
+  const signerAdd = new MessageModel(signerAddMessage) as SignerAddModel;
+  return signerAdd;
+};
