@@ -1,3 +1,3 @@
-# @farcaster/utils
+# @farcaster/protoutils
 
-Shared hub-related method and classes.
+Protobufs version of `@farcaster/utils`
