@@ -374,7 +374,7 @@ export interface MessageData {
 }
 
 export interface Message {
-  data: Uint8Array;
+  data: MessageData | undefined;
   hash: Uint8Array;
   hashScheme: HashScheme;
   signature: Uint8Array;
@@ -1156,7 +1156,7 @@ export const MessageData = {
 
 function createBaseMessage(): Message {
   return {
-    data: new Uint8Array(),
+    data: undefined,
     hash: new Uint8Array(),
     hashScheme: 0,
     signature: new Uint8Array(),
@@ -1167,8 +1167,8 @@ function createBaseMessage(): Message {
 
 export const Message = {
   encode(message: Message, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.data.length !== 0) {
-      writer.uint32(10).bytes(message.data);
+    if (message.data !== undefined) {
+      MessageData.encode(message.data, writer.uint32(10).fork()).ldelim();
     }
     if (message.hash.length !== 0) {
       writer.uint32(18).bytes(message.hash);
@@ -1196,7 +1196,7 @@ export const Message = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.data = reader.bytes();
+          message.data = MessageData.decode(reader, reader.uint32());
           break;
         case 2:
           message.hash = reader.bytes();
@@ -1223,7 +1223,7 @@ export const Message = {
 
   fromJSON(object: any): Message {
     return {
-      data: isSet(object.data) ? bytesFromBase64(object.data) : new Uint8Array(),
+      data: isSet(object.data) ? MessageData.fromJSON(object.data) : undefined,
       hash: isSet(object.hash) ? bytesFromBase64(object.hash) : new Uint8Array(),
       hashScheme: isSet(object.hashScheme) ? hashSchemeFromJSON(object.hashScheme) : 0,
       signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(),
@@ -1234,8 +1234,7 @@ export const Message = {
 
   toJSON(message: Message): unknown {
     const obj: any = {};
-    message.data !== undefined &&
-      (obj.data = base64FromBytes(message.data !== undefined ? message.data : new Uint8Array()));
+    message.data !== undefined && (obj.data = message.data ? MessageData.toJSON(message.data) : undefined);
     message.hash !== undefined &&
       (obj.hash = base64FromBytes(message.hash !== undefined ? message.hash : new Uint8Array()));
     message.hashScheme !== undefined && (obj.hashScheme = hashSchemeToJSON(message.hashScheme));
@@ -1253,7 +1252,9 @@ export const Message = {
 
   fromPartial<I extends Exact<DeepPartial<Message>, I>>(object: I): Message {
     const message = createBaseMessage();
-    message.data = object.data ?? new Uint8Array();
+    message.data = (object.data !== undefined && object.data !== null)
+      ? MessageData.fromPartial(object.data)
+      : undefined;
     message.hash = object.hash ?? new Uint8Array();
     message.hashScheme = object.hashScheme ?? 0;
     message.signature = object.signature ?? new Uint8Array();

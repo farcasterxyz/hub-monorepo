@@ -113,11 +113,10 @@ export const validateEd25519PublicKey = (publicKey?: Uint8Array | null): HubResu
 
 export const validateMessage = async (message: protobufs.Message): HubAsyncResult<protobufs.Message> => {
   // 1. Check the message data
-  const dataBytes = message.data;
-  if (!dataBytes) {
+  const data = message.data;
+  if (!data) {
     return err(new HubError('bad_request.validation_failure', 'data is missing'));
   }
-  const data = protobufs.MessageData.decode(dataBytes);
   const validData = validateMessageData(data);
   if (validData.isErr()) {
     return err(validData.error);
@@ -129,6 +128,7 @@ export const validateMessage = async (message: protobufs.Message): HubAsyncResul
     return err(new HubError('bad_request.validation_failure', 'hash is missing'));
   }
 
+  const dataBytes = protobufs.MessageData.encode(data).finish();
   if (message.hashScheme === protobufs.HashScheme.HASH_SCHEME_BLAKE3) {
     const computedHash = blake3(dataBytes, { dkLen: 16 });
     // we have to use bytesCompare, because TypedArrays cannot be compared directly

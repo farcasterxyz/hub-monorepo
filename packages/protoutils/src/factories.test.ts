@@ -1,58 +1,104 @@
-import * as protobufs from '@farcaster/protobufs';
+import {
+  isAmpAddMessage,
+  isAmpRemoveMessage,
+  isCastAddMessage,
+  isCastRemoveMessage,
+  isReactionAddMessage,
+  isReactionRemoveMessage,
+  isSignerAddMessage,
+  isSignerRemoveMessage,
+  isUserDataAddMessage,
+  isVerificationAddEthAddressMessage,
+  isVerificationRemoveMessage,
+} from '@farcaster/protobufs';
 import { ok } from 'neverthrow';
 import { Factories } from './factories';
 import * as validations from './validations';
 
-describe('MessageFactory', () => {
-  let message: protobufs.Message;
-
-  afterEach(async () => {
-    const isValid = await validations.validateMessage(message);
-    expect(isValid).toEqual(ok(message));
+describe('CastAddMessageFactory', () => {
+  test('generates a valid CastAdd', async () => {
+    const message = await Factories.CastAddMessage.create();
+    expect(isCastAddMessage(message)).toBeTruthy();
+    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
+});
 
-  test('generates valid CastAdd', async () => {
-    message = await Factories.Message.create({}, { transient: { data: Factories.CastAddData.build() } });
+describe('CastRemoveMessageFactory', () => {
+  test('generates a valid CastRemove', async () => {
+    const message = await Factories.CastRemoveMessage.create();
+    expect(isCastRemoveMessage(message)).toBeTruthy();
+    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
+});
 
-  test('generates valid CastRemove', async () => {
-    message = await Factories.Message.create({}, { transient: { data: Factories.CastRemoveData.build() } });
+describe('ReactionAddMessageFactory', () => {
+  test('generates a valid ReactionAdd', async () => {
+    const message = await Factories.ReactionAddMessage.create();
+    expect(isReactionAddMessage(message)).toBeTruthy();
+    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
+});
 
-  test('generates valid ReactionAdd', async () => {
-    message = await Factories.Message.create({}, { transient: { data: Factories.ReactionAddData.build() } });
+describe('ReactionRemoveMessageFactory', () => {
+  test('generates a valid ReactionRemove', async () => {
+    const message = await Factories.ReactionRemoveMessage.create();
+    expect(isReactionRemoveMessage(message)).toBeTruthy();
+    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
+});
 
-  test('generates valid ReactionRemove', async () => {
-    message = await Factories.Message.create({}, { transient: { data: Factories.ReactionRemoveData.build() } });
+describe('AmpAddMessageFactory', () => {
+  test('generates a valid AmpAdd', async () => {
+    const message = await Factories.AmpAddMessage.create();
+    expect(isAmpAddMessage(message)).toBeTruthy();
+    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
+});
 
-  test('generates valid AmpAdd', async () => {
-    message = await Factories.Message.create({}, { transient: { data: Factories.AmpAddData.build() } });
+describe('AmpRemoveMessageFactory', () => {
+  test('generates a valid AmpRemove', async () => {
+    const message = await Factories.AmpRemoveMessage.create();
+    expect(isAmpRemoveMessage(message)).toBeTruthy();
+    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
+});
 
-  test('generates valid AmpRemove', async () => {
-    message = await Factories.Message.create({}, { transient: { data: Factories.AmpRemoveData.build() } });
+describe('VerificationAddEthAddressMessageFactory', () => {
+  test('generates a valid VerificationAddEthAddress', async () => {
+    const message = await Factories.VerificationAddEthAddressMessage.create();
+    expect(isVerificationAddEthAddressMessage(message)).toBeTruthy();
+    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
+});
 
-  test('generates valid VerificationAddEthAddress', async () => {
-    const data = await Factories.VerificationAddEthAddressData.create();
-    message = await Factories.Message.create({}, { transient: { data } });
+describe('VerificationRemoveMessageFactory', () => {
+  test('generates a valid VerificationRemove', async () => {
+    const message = await Factories.VerificationRemoveMessage.create();
+    expect(isVerificationRemoveMessage(message)).toBeTruthy();
+    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
+});
 
-  test('generates valid VerificationRemove', async () => {
-    message = await Factories.Message.create({}, { transient: { data: Factories.VerificationRemoveData.build() } });
+describe('SignerAddMessageFactory', () => {
+  test('generates a valid SignerAdd', async () => {
+    const message = await Factories.SignerAddMessage.create();
+    expect(isSignerAddMessage(message)).toBeTruthy();
+    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
+});
 
-  test('generates valid SignerAdd', async () => {
-    message = await Factories.Message.create({}, { transient: { data: Factories.SignerAddData.build() } });
+describe('SignerRemoveMessageFactory', () => {
+  test('generates a valid SignerRemove', async () => {
+    const message = await Factories.SignerRemoveMessage.create();
+    expect(isSignerRemoveMessage(message)).toBeTruthy();
+    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
+});
 
-  test('generates valid SignerRemove', async () => {
-    message = await Factories.Message.create({}, { transient: { data: Factories.SignerRemoveData.build() } });
-  });
-
-  test('generates valid UserDataAdd', async () => {
-    message = await Factories.Message.create({}, { transient: { data: Factories.UserDataAddData.build() } });
+describe('UserDataAddMessageFactory', () => {
+  test('generates a valid UserDataAdd', async () => {
+    const message = await Factories.UserDataAddMessage.create();
+    expect(isUserDataAddMessage(message)).toBeTruthy();
+    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
 });

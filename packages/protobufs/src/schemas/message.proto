@@ -115,7 +115,7 @@ message MessageData {
 }
 
 message Message {
-  bytes data = 1;
+  MessageData data = 1;
   bytes hash = 2;
   HashScheme hash_scheme = 3;
   bytes signature = 4;

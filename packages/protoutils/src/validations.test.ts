@@ -75,39 +75,6 @@ describe('validateFname', () => {
   });
 });
 
-describe('validateTsHash', () => {
-  test('succeeds', () => {
-    const tsHash = Factories.TsHash.build();
-    expect(validations.validateTsHash(tsHash)._unsafeUnwrap()).toEqual(tsHash);
-  });
-
-  test('fails with empty array', () => {
-    expect(validations.validateTsHash(new Uint8Array())._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'tsHash is missing')
-    );
-  });
-
-  test('fails when greater than 20 bytes', () => {
-    const tsHash = Factories.Bytes.build({}, { transient: { length: 21 } });
-    expect(validations.validateTsHash(tsHash)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'tsHash must be 20 bytes')
-    );
-  });
-
-  test('fails when less than 20 bytes', () => {
-    const tsHash = Factories.Bytes.build({}, { transient: { length: 19 } });
-    expect(validations.validateTsHash(tsHash)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'tsHash must be 20 bytes')
-    );
-  });
-
-  test('fails when undefined', () => {
-    expect(validations.validateTsHash(undefined)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'tsHash is missing')
-    );
-  });
-});
-
 describe('validateCastId', () => {
   test('succeeds', async () => {
     const castId = Factories.CastId.build();
@@ -557,8 +524,8 @@ describe('validateMessage', () => {
 
   test('succeeds with EIP712 signer', async () => {
     const message = await Factories.Message.create(
-      {},
-      { transient: { signer: ethSigner, data: Factories.SignerAddData.build() } }
+      { data: Factories.SignerAddData.build() },
+      { transient: { signer: ethSigner } }
     );
 
     const result = await validations.validateMessage(message);
@@ -574,8 +541,8 @@ describe('validateMessage', () => {
 
   test('fails with Ed25519 signer and signer message type', async () => {
     const message = await Factories.Message.create(
-      {},
-      { transient: { signer, data: Factories.SignerAddData.build() } }
+      { data: Factories.SignerAddData.build() },
+      { transient: { signer } }
     );
 
     const result = await validations.validateMessage(message);
@@ -706,8 +673,4 @@ describe('validateEd25519PublicKeyHex', () => {
     64,
     'Ed25519 public key'
   );
-});
-
-describe('validateTsHashHex', () => {
-  testHexValidation(validations.validateTsHashHex, Factories.TsHashHex.build(), 40, 'ts-hash');
 });
