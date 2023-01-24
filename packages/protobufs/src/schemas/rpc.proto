@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+import "message.proto";
+
+message Empty {}
+
+// Response Types for the Sync RPC Methods
+message HubInfoResponse {
+    string version = 1;
+    bool is_synced = 2;
+    string nickname = 3;
+    bytes root_hash = 4;
+}
+
+message TrieNodeMetadataResponse {
+    bytes prefix = 1;
+    uint64 num_messages = 2;
+    bytes hash = 3;
+    repeated TrieNodeMetadataResponse children = 4;
+}
+
+message TrieNodeSnapshotResponse {
+    bytes prefix = 1;
+    repeated string excluded_hashes = 2;
+    uint64 num_messages = 3;
+    bytes root_hash = 4;
+}
+
+message TrieNodePrefix {
+    bytes prefix = 1;
+}
+
+message SyncIds {
+    repeated string sync_ids = 1;
+}
+
+service SyncService {
+    rpc GetInfo (Empty) returns (HubInfoResponse);
+    rpc GetAllSyncIdsByPrefix (TrieNodePrefix) returns (SyncIds);
+    rpc GetAllMessagesBySyncIds (SyncIds) returns (stream Message);
+    rpc GetSyncMetadataByPrefix (TrieNodePrefix) returns (TrieNodeMetadataResponse);
+    rpc GetSyncSnapshotByPrefix (TrieNodePrefix) returns (TrieNodeSnapshotResponse);
+}
