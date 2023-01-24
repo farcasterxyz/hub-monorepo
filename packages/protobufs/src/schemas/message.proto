@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+enum MessageType {
+  MESSAGE_TYPE_NONE = 0;
+  MESSAGE_TYPE_CAST_ADD = 1;
+  MESSAGE_TYPE_CAST_REMOVE = 2;
+  MESSAGE_TYPE_REACTION_ADD = 3;
+  MESSAGE_TYPE_REACTION_REMOVE = 4;
+  MESSAGE_TYPE_AMP_ADD = 5;
+  MESSAGE_TYPE_AMP_REMOVE = 6;
+  MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS = 7;
+  MESSAGE_TYPE_VERIFICATION_REMOVE = 8;
+  MESSAGE_TYPE_SIGNER_ADD = 9;
+  MESSAGE_TYPE_SIGNER_REMOVE = 10;
+  MESSAGE_TYPE_USER_DATA_ADD = 11;
+}
+
+enum SignatureScheme {
+  SIGNATURE_SCHEME_NONE = 0;
+  SIGNATURE_SCHEME_ED25519 = 1;
+  SIGNATURE_SCHEME_EIP712 = 2;
+}
+
+enum HashScheme {
+  HASH_SCHEME_NONE = 0;
+  HASH_SCHEME_BLAKE3 = 1;
+}
+
+enum FarcasterNetwork {
+  FARCASTER_NETWORK_NONE = 0;
+  FARCASTER_NETWORK_MAINNET = 1;
+  FARCASTER_NETWORK_TESTNET = 2;
+  FARCASTER_NETWORK_DEVNET = 3;
+}
+
+enum ReactionType {
+  REACTION_TYPE_NONE = 0;
+  REACTION_TYPE_LIKE = 1;
+  REACTION_TYPE_RECAST = 2;
+}
+
+enum UserDataType {
+  USER_DATA_TYPE_NONE = 0;
+  USER_DATA_TYPE_PFP = 1;
+  USER_DATA_TYPE_DISPLAY = 2;
+  USER_DATA_TYPE_BIO = 3;
+  USER_DATA_TYPE_LOCATION = 4;
+  USER_DATA_TYPE_URL = 5;
+  USER_DATA_TYPE_FNAME = 6;
+}
+
+message CastId {
+  uint64 fid = 1;
+  bytes hash = 2;
+}
+
+message CastAddBody {
+  repeated string embeds = 1;
+  repeated uint64 mentions = 2;
+  oneof parent {
+    CastId parent_cast_id = 3;
+  };
+  string text = 4;
+}
+
+message CastRemoveBody {
+  bytes target_hash = 1;
+}
+
+message ReactionBody {
+  ReactionType type = 1;
+  oneof target {
+    CastId target_cast_id = 2;
+  }
+}
+
+message AmpBody {
+  uint64 target_fid = 1;
+}
+
+message VerificationAddEthAddressBody {
+  bytes address = 1;
+  bytes eth_signature = 2;
+  bytes block_hash = 3;
+}
+
+message VerificationRemoveBody {
+  bytes address = 1;
+}
+
+message SignerBody {
+  bytes signer = 1;
+}
+
+message UserDataBody {
+  UserDataType type = 1;
+  string value = 2;
+}
+
+message MessageData {
+  MessageType type = 1;
+  uint64 fid = 2;
+  uint32 timestamp = 3;
+  FarcasterNetwork network = 4;
+  oneof body {
+    CastAddBody cast_add_body = 5;
+    CastRemoveBody cast_remove_body = 6;
+    ReactionBody reaction_body = 7;
+    AmpBody amp_body = 8;
+    VerificationAddEthAddressBody verification_add_eth_address_body = 9;
+    VerificationRemoveBody verification_remove_body = 10;
+    SignerBody signer_body = 11;
+    UserDataBody user_data_body = 12;
+  }
+}
+
+message Message {
+  MessageData data = 1;
+  bytes hash = 2;
+  HashScheme hash_scheme = 3;
+  bytes signature = 4;
+  SignatureScheme signature_scheme = 5;
+  bytes signer = 6;
+}
