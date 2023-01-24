@@ -1,0 +1,5 @@
+syntax = "proto3";
+
+message HubState {
+    uint32 last_eth_block = 1;
+}
