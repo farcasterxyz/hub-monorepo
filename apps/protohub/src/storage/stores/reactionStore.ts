@@ -3,7 +3,6 @@ import { bytesCompare, getFarcasterTime, HubAsyncResult, HubError } from '@farca
 import { err, ok, ResultAsync } from 'neverthrow';
 import {
   deleteMessageTransaction,
-  FID_BYTES,
   getAllMessagesBySigner,
   getManyMessages,
   getManyMessagesByFid,
@@ -14,10 +13,9 @@ import {
   makeTsHash,
   makeUserKey,
   putMessageTransaction,
-  TRUE_VALUE,
 } from '~/storage/db/message';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
-import { RootPrefix, UserPostfix } from '~/storage/db/types';
+import { FID_BYTES, RootPrefix, TRUE_VALUE, UserPostfix } from '~/storage/db/types';
 import SequentialMergeStore from '~/storage/stores/sequentialMergeStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { StorePruneOptions } from '~/storage/stores/types';
@@ -212,7 +210,7 @@ class ReactionStore extends SequentialMergeStore {
   }
 
   /** Finds all ReactionAdd Messages by iterating through the prefixes */
-  async getReactionAddsByUser(fid: number, type?: protobufs.ReactionType): Promise<protobufs.ReactionAddMessage[]> {
+  async getReactionAddsByFid(fid: number, type?: protobufs.ReactionType): Promise<protobufs.ReactionAddMessage[]> {
     const prefix = makeReactionAddsKey(fid, type);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true })) {
@@ -222,7 +220,7 @@ class ReactionStore extends SequentialMergeStore {
   }
 
   /** Finds all ReactionRemove Messages by iterating through the prefixes */
-  async getReactionRemovesByUser(fid: number): Promise<protobufs.ReactionRemoveMessage[]> {
+  async getReactionRemovesByFid(fid: number): Promise<protobufs.ReactionRemoveMessage[]> {
     const prefix = makeReactionRemovesKey(fid);
     const messageKeys: Buffer[] = [];
     for await (const [, value] of this._db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true })) {
@@ -559,7 +557,6 @@ class ReactionStore extends SequentialMergeStore {
 
   /* Builds a RocksDB transaction to insert a ReactionAdd message and construct its indices */
   private putReactionAddTransaction(txn: Transaction, message: protobufs.ReactionAddMessage): Transaction {
-    // const targetKey = this.targetKeyForMessage(message);
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;

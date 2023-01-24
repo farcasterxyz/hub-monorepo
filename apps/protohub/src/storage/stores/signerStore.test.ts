@@ -1,100 +1,50 @@
-import { faker } from '@faker-js/faker';
-import { IdRegistryEventType, MessageType } from '@farcaster/flatbuffers';
-import {
-  bytesDecrement,
-  bytesIncrement,
-  Factories,
-  getFarcasterTime,
-  hexStringToBytes,
-  HubError,
-} from '@farcaster/utils';
-import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
-import MessageModel from '~/flatbuffers/models/messageModel';
-import { SignerAddModel, SignerRemoveModel, UserPostfix } from '~/flatbuffers/models/types';
+import * as protobufs from '@farcaster/protobufs';
+import { bytesDecrement, bytesIncrement, Factories, getFarcasterTime, HubError } from '@farcaster/protoutils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
+import { getAllMessagesBySigner, getMessage, makeTsHash } from '../db/message';
+import { UserPostfix } from '../db/types';
 
 const db = jestRocksDB('flatbuffers.signerStore.test');
 const eventHandler = new StoreEventHandler();
 const set = new SignerStore(db, eventHandler);
-const fid = Factories.FID.build();
+const fid = Factories.Fid.build();
 const custody1 = Factories.Eip712Signer.build();
 const custody1Address = custody1.signerKey;
 const custody2 = Factories.Eip712Signer.build();
 const custody2Address = custody2.signerKey;
 const signer = Factories.Ed25519Signer.build();
 
-let custody1Event: IdRegistryEventModel;
-let signerAdd: SignerAddModel;
-let signerRemove: SignerRemoveModel;
+let custody1Event: protobufs.IdRegistryEvent;
+let signerAdd: protobufs.SignerAddMessage;
+let signerRemove: protobufs.SignerRemoveMessage;
 
 beforeAll(async () => {
-  const idRegistryEvent = await Factories.IdRegistryEvent.create({
-    fid: Array.from(fid),
-    to: Array.from(custody1Address),
+  custody1Event = Factories.IdRegistryEvent.build({
+    fid,
+    to: custody1Address,
   });
-  custody1Event = new IdRegistryEventModel(idRegistryEvent);
-
-  const addData = await Factories.SignerAddData.create({
-    body: Factories.SignerBody.build({ signer: Array.from(signer.signerKey) }),
-    fid: Array.from(fid),
-  });
-
-  const addMessage = await Factories.Message.create(
-    { data: Array.from(addData.bb?.bytes() ?? []) },
-    { transient: { ethSigner: custody1 } }
+  signerAdd = await Factories.SignerAddMessage.create(
+    { data: { fid, signerBody: { signer: signer.signerKey } } },
+    { transient: { signer: custody1 } }
   );
-  signerAdd = new MessageModel(addMessage) as SignerAddModel;
-
-  const removeData = await Factories.SignerRemoveData.create({
-    body: Factories.SignerBody.build({ signer: Array.from(signer.signerKey) }),
-    fid: Array.from(fid),
-    timestamp: addData.timestamp() + 1,
-  });
-  const removeMessage = await Factories.Message.create(
-    { data: Array.from(removeData.bb?.bytes() ?? []) },
-    { transient: { ethSigner: custody1 } }
+  signerRemove = await Factories.SignerRemoveMessage.create(
+    {
+      data: { fid, signerBody: { signer: signer.signerKey }, timestamp: signerAdd.data.timestamp + 1 },
+    },
+    { transient: { signer: custody1 } }
   );
-  signerRemove = new MessageModel(removeMessage) as SignerRemoveModel;
 });
 
-describe('getCustodyEvent', () => {
+describe('getIdRegistryEvent', () => {
   test('returns contract event if it exists', async () => {
     await set.mergeIdRegistryEvent(custody1Event);
-    await expect(set.getCustodyEvent(fid)).resolves.toEqual(custody1Event);
+    await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
   });
 
   test('fails if event is missing', async () => {
-    await expect(set.getCustodyEvent(fid)).rejects.toThrow(HubError);
-  });
-});
-
-describe('getCustodyAddress', () => {
-  test('returns to from current IdRegistry event', async () => {
-    await set.mergeIdRegistryEvent(custody1Event);
-    await expect(set.getCustodyAddress(fid)).resolves.toEqual(custody1Address);
-    await expect(IdRegistryEventModel.getByCustodyAddress(db, custody1Address)).resolves.toEqual(custody1Event);
-  });
-
-  test('fails if event is missing', async () => {
-    await expect(set.getCustodyAddress(fid)).rejects.toThrow(HubError);
-    await expect(IdRegistryEventModel.getByCustodyAddress(db, custody1Address)).rejects.toThrow(HubError);
-  });
-
-  test('returns to if custody address changes', async () => {
-    await set.mergeIdRegistryEvent(custody1Event);
-    const custody2Event = new IdRegistryEventModel(
-      // New event with a new block number
-      await Factories.IdRegistryEvent.create({
-        fid: Array.from(fid),
-        to: Array.from(custody2Address),
-        blockNumber: custody1Event.blockNumber() + 1,
-      })
-    );
-    await set.mergeIdRegistryEvent(custody2Event);
-    await expect(set.getCustodyAddress(fid)).resolves.toEqual(custody2Address);
-    await expect(IdRegistryEventModel.getByCustodyAddress(db, custody2Address)).resolves.toEqual(custody2Event);
+    await expect(set.getIdRegistryEvent(fid)).rejects.toThrow(HubError);
   });
 });
 
@@ -120,75 +70,81 @@ describe('getSignerRemove', () => {
   });
 });
 
-describe('getSignerAddsByUser', () => {
+describe('getSignerAddsByFid', () => {
   test('returns signer adds for an fid', async () => {
     await set.merge(signerAdd);
-    await expect(set.getSignerAddsByUser(fid)).resolves.toEqual([signerAdd]);
+    await expect(set.getSignerAddsByFid(fid)).resolves.toEqual([signerAdd]);
   });
 
   test('returns empty array when messages have not been merged', async () => {
-    await expect(set.getSignerAddsByUser(fid)).resolves.toEqual([]);
+    await expect(set.getSignerAddsByFid(fid)).resolves.toEqual([]);
   });
 });
 
-describe('getSignerRemovesByUser', () => {
+describe('getSignerRemovesByFid', () => {
   test('returns signer removes for an fid', async () => {
     await set.merge(signerRemove);
-    await expect(set.getSignerRemovesByUser(fid)).resolves.toEqual([signerRemove]);
+    await expect(set.getSignerRemovesByFid(fid)).resolves.toEqual([signerRemove]);
   });
 
   test('returns empty array when messages have not been merged', async () => {
-    await expect(set.getSignerRemovesByUser(fid)).resolves.toEqual([]);
+    await expect(set.getSignerRemovesByFid(fid)).resolves.toEqual([]);
   });
 });
 
 // TODO: write test cases for cyclical custody event transfers
 
 describe('mergeIdRegistryEvent', () => {
-  let mergedContractEvents: IdRegistryEventModel[];
+  let mergedContractEvents: protobufs.IdRegistryEvent[];
+
+  const handleMergeEvent = (event: protobufs.IdRegistryEvent) => {
+    mergedContractEvents.push(event);
+  };
 
   beforeAll(() => {
-    eventHandler.on('mergeIdRegistryEvent', (event: IdRegistryEventModel) => {
-      mergedContractEvents.push(event);
-    });
+    eventHandler.on('mergeIdRegistryEvent', handleMergeEvent);
   });
 
   beforeEach(() => {
     mergedContractEvents = [];
   });
 
+  afterAll(() => {
+    eventHandler.off('mergeIdRegistryEvent', handleMergeEvent);
+  });
+
   test('succeeds', async () => {
     await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toEqual(undefined);
-    await expect(set.getCustodyEvent(fid)).resolves.toEqual(custody1Event);
+    await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
     expect(mergedContractEvents).toEqual([custody1Event]);
   });
 
   test('fails if events have the same blockNumber but different blockHashes', async () => {
-    const idRegistryEvent = await Factories.IdRegistryEvent.create({
-      ...custody1Event.event.unpack(),
-      blockHash: Array.from(Factories.BlockHash.build()),
+    const blockHashConflictEvent = Factories.IdRegistryEvent.build({
+      ...custody1Event,
+      blockHash: Factories.BlockHash.build(),
     });
 
-    const blockHashConflictEvent = new IdRegistryEventModel(idRegistryEvent);
     await set.mergeIdRegistryEvent(custody1Event);
-    await expect(set.mergeIdRegistryEvent(blockHashConflictEvent)).rejects.toThrow(HubError);
+    await expect(set.mergeIdRegistryEvent(blockHashConflictEvent)).rejects.toThrow(
+      new HubError('bad_request.invalid_param', 'block hash mismatch')
+    );
     expect(mergedContractEvents).toEqual([custody1Event]);
   });
 
   test('fails if events have the same blockNumber and logIndex but different transactionHashes', async () => {
-    const idRegistryEvent = await Factories.IdRegistryEvent.create({
-      ...custody1Event.event.unpack(),
-      transactionHash: Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
+    const txHashConflictEvent = Factories.IdRegistryEvent.build({
+      ...custody1Event,
+      transactionHash: Factories.TransactionHash.build(),
     });
 
-    const txHashConflictEvent = new IdRegistryEventModel(idRegistryEvent);
     await set.mergeIdRegistryEvent(custody1Event);
     await expect(set.mergeIdRegistryEvent(txHashConflictEvent)).rejects.toThrow(HubError);
     expect(mergedContractEvents).toEqual([custody1Event]);
   });
 
   describe('overwrites existing event', () => {
-    let newEvent: IdRegistryEventModel;
+    let newEvent: protobufs.IdRegistryEvent;
 
     beforeEach(async () => {
       await set.mergeIdRegistryEvent(custody1Event);
@@ -198,35 +154,33 @@ describe('mergeIdRegistryEvent', () => {
 
     afterEach(async () => {
       await expect(set.mergeIdRegistryEvent(newEvent)).resolves.toEqual(undefined);
-      await expect(set.getCustodyEvent(fid)).resolves.toEqual(newEvent);
+      await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(newEvent);
       expect(mergedContractEvents).toEqual([custody1Event, newEvent]);
       // SignerAdd should still be valid until messages signed by old custody address are revoked
       await expect(set.getSignerAdd(fid, signer.signerKey)).resolves.toEqual(signerAdd);
     });
 
     test('when it has a higher block number', async () => {
-      const idRegistryEvent = await Factories.IdRegistryEvent.create({
-        ...custody1Event.event.unpack(),
-        transactionHash: Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
-        to: Array.from(custody2Address),
-        blockNumber: custody1Event.blockNumber() + 1,
+      newEvent = Factories.IdRegistryEvent.build({
+        ...custody1Event,
+        transactionHash: Factories.TransactionHash.build(),
+        to: custody2Address,
+        blockNumber: custody1Event.blockNumber + 1,
       });
-      newEvent = new IdRegistryEventModel(idRegistryEvent);
     });
 
     test('when it has the same block number and a higher log index', async () => {
-      const idRegistryEvent = await Factories.IdRegistryEvent.create({
-        ...custody1Event.event.unpack(),
-        transactionHash: Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
-        to: Array.from(custody2Address),
-        logIndex: custody1Event.logIndex() + 1,
+      newEvent = Factories.IdRegistryEvent.build({
+        ...custody1Event,
+        transactionHash: Factories.TransactionHash.build(),
+        to: custody2Address,
+        logIndex: custody1Event.logIndex + 1,
       });
-      newEvent = new IdRegistryEventModel(idRegistryEvent);
     });
   });
 
   describe('does not overwrite existing event', () => {
-    let newEvent: IdRegistryEventModel;
+    let newEvent: protobufs.IdRegistryEvent;
 
     beforeEach(async () => {
       await set.mergeIdRegistryEvent(custody1Event);
@@ -236,28 +190,26 @@ describe('mergeIdRegistryEvent', () => {
 
     afterEach(async () => {
       await expect(set.mergeIdRegistryEvent(newEvent)).resolves.toEqual(undefined);
-      await expect(set.getCustodyEvent(fid)).resolves.toEqual(custody1Event);
+      await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
       expect(mergedContractEvents).toEqual([custody1Event]);
       await expect(set.getSignerAdd(fid, signer.signerKey)).resolves.toEqual(signerAdd);
     });
 
     test('when it has a lower block number', async () => {
-      const idRegistryEvent = await Factories.IdRegistryEvent.create({
-        ...custody1Event.event.unpack(),
-        transactionHash: Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
-        to: Array.from(custody2Address),
-        blockNumber: custody1Event.blockNumber() - 1,
+      newEvent = Factories.IdRegistryEvent.build({
+        ...custody1Event,
+        transactionHash: Factories.TransactionHash.build(),
+        to: custody2Address,
+        blockNumber: custody1Event.blockNumber - 1,
       });
-      newEvent = new IdRegistryEventModel(idRegistryEvent);
     });
 
     test('when it has the same block number and a lower log index', async () => {
-      const idRegistryEvent = await Factories.IdRegistryEvent.create({
-        ...custody1Event.event.unpack(),
-        to: Array.from(custody2Address),
-        logIndex: custody1Event.logIndex() - 1,
+      newEvent = Factories.IdRegistryEvent.build({
+        ...custody1Event,
+        to: custody2Address,
+        logIndex: custody1Event.logIndex - 1,
       });
-      newEvent = new IdRegistryEventModel(idRegistryEvent);
     });
 
     test('when is a duplicate', async () => {
@@ -267,9 +219,9 @@ describe('mergeIdRegistryEvent', () => {
 });
 
 describe('merge', () => {
-  let mergeEvents: [MessageModel, MessageModel[]][] = [];
+  let mergeEvents: [protobufs.Message, protobufs.Message[]][] = [];
 
-  const mergeMessageHandler = (message: MessageModel, deletedMessages?: MessageModel[]) => {
+  const mergeMessageHandler = (message: protobufs.Message, deletedMessages?: protobufs.Message[]) => {
     mergeEvents.push([message, deletedMessages ?? []]);
   };
   beforeAll(() => {
@@ -284,30 +236,31 @@ describe('merge', () => {
     eventHandler.off('mergeMessage', mergeMessageHandler);
   });
 
-  const assertSignerExists = async (message: SignerAddModel | SignerRemoveModel) => {
-    await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, message.tsHash())).resolves.toEqual(message);
+  const assertSignerExists = async (message: protobufs.SignerAddMessage | protobufs.SignerRemoveMessage) => {
+    const tsHash = makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap();
+    await expect(getMessage(db, fid, UserPostfix.SignerMessage, tsHash)).resolves.toEqual(message);
   };
 
-  const assertSignerDoesNotExist = async (message: SignerAddModel | SignerRemoveModel) => {
-    await expect(MessageModel.get(db, fid, UserPostfix.SignerMessage, message.tsHash())).rejects.toThrow(HubError);
+  const assertSignerDoesNotExist = async (message: protobufs.SignerAddMessage | protobufs.SignerRemoveMessage) => {
+    const tsHash = makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap();
+    await expect(getMessage(db, fid, UserPostfix.SignerMessage, tsHash)).rejects.toThrow(HubError);
   };
 
-  const assertSignerAddWins = async (message: SignerAddModel) => {
+  const assertSignerAddWins = async (message: protobufs.SignerAddMessage) => {
     await assertSignerExists(message);
     await expect(set.getSignerAdd(fid, signer.signerKey)).resolves.toEqual(message);
     await expect(set.getSignerRemove(fid, signer.signerKey)).rejects.toThrow(HubError);
   };
 
-  const assertSignerRemoveWins = async (message: SignerRemoveModel) => {
+  const assertSignerRemoveWins = async (message: protobufs.SignerRemoveMessage) => {
     await assertSignerExists(message);
     await expect(set.getSignerRemove(fid, signer.signerKey)).resolves.toEqual(message);
     await expect(set.getSignerAdd(fid, signer.signerKey)).rejects.toThrow(HubError);
   };
 
   test('fails with invalid message type', async () => {
-    const invalidData = await Factories.ReactionAddData.create({ fid: Array.from(fid) });
-    const message = await Factories.Message.create({ data: Array.from(invalidData.bb?.bytes() ?? []) });
-    await expect(set.merge(new MessageModel(message))).rejects.toThrow(HubError);
+    const message = await Factories.CastAddMessage.create();
+    await expect(set.merge(message)).rejects.toThrow(HubError);
     expect(mergeEvents).toEqual([]);
   });
 
@@ -329,22 +282,18 @@ describe('merge', () => {
     });
 
     describe('with a conflicting SignerAdd with different timestamps', () => {
-      let signerAddLater: SignerAddModel;
+      let signerAddLater: protobufs.SignerAddMessage;
 
       beforeAll(async () => {
-        const addData = await Factories.SignerAddData.create({
-          ...signerAdd.data.unpack(),
-          timestamp: signerAdd.timestamp() + 1,
-        });
-
-        const addMessage = await Factories.Message.create(
+        signerAddLater = await Factories.SignerAddMessage.create(
           {
-            data: Array.from(addData.bb?.bytes() ?? []),
+            data: {
+              ...signerAdd.data,
+              timestamp: signerAdd.data.timestamp + 1,
+            },
           },
-          { transient: { ethSigner: custody1 } }
+          { transient: { signer: custody1 } }
         );
-
-        signerAddLater = new MessageModel(addMessage) as SignerAddModel;
       });
 
       test('succeeds with a later timestamp', async () => {
@@ -372,22 +321,16 @@ describe('merge', () => {
     });
 
     describe('with a conflicting SignerAdd with identical timestamps', () => {
-      let signerAddLater: SignerAddModel;
+      let signerAddLater: protobufs.SignerAddMessage;
 
       beforeAll(async () => {
-        const addData = await Factories.SignerAddData.create({
-          ...signerAdd.data.unpack(),
-        });
-
-        const addMessage = await Factories.Message.create(
+        signerAddLater = await Factories.SignerAddMessage.create(
           {
-            data: Array.from(addData.bb?.bytes() ?? []),
-            hash: Array.from(bytesIncrement(signerAdd.hash())),
+            data: { ...signerAdd.data },
+            hash: bytesIncrement(signerAdd.hash),
           },
-          { transient: { ethSigner: custody1 } }
+          { transient: { signer: custody1 } }
         );
-
-        signerAddLater = new MessageModel(addMessage) as SignerAddModel;
       });
 
       test('succeeds with a higher hash', async () => {
@@ -416,19 +359,12 @@ describe('merge', () => {
 
     describe('with conflicting SignerRemove with different timestamps', () => {
       test('succeeds with a later timestamp', async () => {
-        const removeData = await Factories.SignerRemoveData.create({
-          ...signerRemove.data.unpack(),
-          timestamp: signerAdd.timestamp() - 1,
-        });
-
-        const removeMessage = await Factories.Message.create(
+        const signerRemoveEarlier = await Factories.SignerRemoveMessage.create(
           {
-            data: Array.from(removeData.bb?.bytes() ?? []),
+            data: { ...signerRemove.data, timestamp: signerAdd.data.timestamp - 1 },
           },
-          { transient: { ethSigner: custody1 } }
+          { transient: { signer: custody1 } }
         );
-
-        const signerRemoveEarlier = new MessageModel(removeMessage) as SignerRemoveModel;
 
         await set.merge(signerRemoveEarlier);
         await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
@@ -455,20 +391,12 @@ describe('merge', () => {
 
     describe('with conflicting SignerRemove with identical timestamps', () => {
       test('fails if remove has a higher hash', async () => {
-        const removeData = await Factories.SignerRemoveData.create({
-          ...signerRemove.data.unpack(),
-          timestamp: signerAdd.timestamp(),
-        });
-
-        const removeMessage = await Factories.Message.create(
+        const signerRemoveLater = await Factories.SignerRemoveMessage.create(
           {
-            data: Array.from(removeData.bb?.bytes() ?? []),
-            hash: Array.from(bytesIncrement(signerAdd.hash())),
+            data: { ...signerRemove.data, timestamp: signerAdd.data.timestamp },
           },
-          { transient: { ethSigner: custody1 } }
+          { transient: { signer: custody1 } }
         );
-
-        const signerRemoveLater = new MessageModel(removeMessage) as SignerRemoveModel;
 
         await set.merge(signerRemoveLater);
         await expect(set.merge(signerAdd)).rejects.toEqual(
@@ -481,20 +409,10 @@ describe('merge', () => {
       });
 
       test('fails if remove has a lower hash', async () => {
-        const removeData = await Factories.SignerRemoveData.create({
-          ...signerRemove.data.unpack(),
-          timestamp: signerAdd.timestamp(),
+        const signerRemoveEarlier = await Factories.SignerRemoveMessage.create({
+          data: { ...signerRemove.data, timestamp: signerAdd.data.timestamp },
+          hash: bytesDecrement(signerAdd.hash)._unsafeUnwrap(),
         });
-
-        const removeMessage = await Factories.Message.create(
-          {
-            data: Array.from(removeData.bb?.bytes() ?? []),
-            hash: Array.from(bytesDecrement(signerAdd.hash().slice())._unsafeUnwrap()),
-          },
-          { transient: { ethSigner: custody1 } }
-        );
-
-        const signerRemoveEarlier = new MessageModel(removeMessage) as SignerRemoveModel;
 
         await set.merge(signerRemoveEarlier);
         await expect(set.merge(signerAdd)).rejects.toEqual(
@@ -527,20 +445,15 @@ describe('merge', () => {
     });
 
     describe('with a conflicting SignerRemove with different timestamps', () => {
-      let signerRemoveLater: SignerRemoveModel;
+      let signerRemoveLater: protobufs.SignerRemoveMessage;
 
       beforeAll(async () => {
-        const removeData = await Factories.SignerRemoveData.create({
-          ...signerRemove.data.unpack(),
-          timestamp: signerRemove.timestamp() + 1,
-        });
-        const removeMessage = await Factories.Message.create(
+        signerRemoveLater = await Factories.SignerRemoveMessage.create(
           {
-            data: Array.from(removeData.bb?.bytes() ?? []),
+            data: { ...signerRemove.data, timestamp: signerRemove.data.timestamp + 1 },
           },
-          { transient: { ethSigner: custody1 } }
+          { transient: { signer: custody1 } }
         );
-        signerRemoveLater = new MessageModel(removeMessage) as SignerRemoveModel;
       });
 
       test('succeeds with a later timestamp', async () => {
@@ -568,22 +481,16 @@ describe('merge', () => {
     });
 
     describe('with a conflicting SignerRemove with identical timestamps', () => {
-      let signerRemoveLater: SignerRemoveModel;
+      let signerRemoveLater: protobufs.SignerRemoveMessage;
 
       beforeAll(async () => {
-        const removeData = await Factories.SignerRemoveData.create({
-          ...signerRemove.data.unpack(),
-        });
-
-        const removeMessage = await Factories.Message.create(
+        signerRemoveLater = await Factories.SignerRemoveMessage.create(
           {
-            data: Array.from(removeData.bb?.bytes() ?? []),
-            hash: Array.from(bytesIncrement(signerRemove.hash())),
+            data: { ...signerRemove.data },
+            hash: bytesIncrement(signerRemove.hash),
           },
-          { transient: { ethSigner: custody1 } }
+          { transient: { signer: custody1 } }
         );
-
-        signerRemoveLater = new MessageModel(removeMessage) as SignerRemoveModel;
       });
 
       test('succeeds with a higher hash', async () => {
@@ -624,20 +531,12 @@ describe('merge', () => {
       });
 
       test('fails with an earlier timestamp', async () => {
-        const addData = await Factories.SignerAddData.create({
-          ...signerRemove.data.unpack(),
-          timestamp: signerRemove.timestamp() + 1,
-          type: MessageType.SignerAdd,
-        });
-
-        const addMessage = await Factories.Message.create(
+        const signerAddLater = await Factories.SignerAddMessage.create(
           {
-            data: Array.from(addData.bb?.bytes() ?? []),
+            data: { ...signerAdd.data, timestamp: signerRemove.data.timestamp + 1 },
           },
-          { transient: { ethSigner: custody1 } }
+          { transient: { signer: custody1 } }
         );
-
-        const signerAddLater = new MessageModel(addMessage) as SignerAddModel;
 
         await set.merge(signerAddLater);
         await expect(set.merge(signerRemove)).rejects.toEqual(
@@ -652,19 +551,12 @@ describe('merge', () => {
 
     describe('with conflicting SignerAdd with identical timestamps', () => {
       test('succeeds with a lower hash', async () => {
-        const addData = await Factories.SignerAddData.create({
-          ...signerRemove.data.unpack(),
-          type: MessageType.SignerAdd,
-        });
-
-        const addMessage = await Factories.Message.create(
+        const signerAddLater = await Factories.SignerAddMessage.create(
           {
-            data: Array.from(addData.bb?.bytes() ?? []),
-            hash: Array.from(bytesIncrement(signerRemove.hash())),
+            data: { ...signerAdd.data, timestamp: signerRemove.data.timestamp },
           },
-          { transient: { ethSigner: custody1 } }
+          { transient: { signer: custody1 } }
         );
-        const signerAddLater = new MessageModel(addMessage) as SignerAddModel;
 
         await set.merge(signerAddLater);
         await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
@@ -678,20 +570,13 @@ describe('merge', () => {
       });
 
       test('succeeds with a higher hash', async () => {
-        const addData = await Factories.SignerAddData.create({
-          ...signerRemove.data.unpack(),
-          type: MessageType.SignerAdd,
-        });
-
-        const addMessage = await Factories.Message.create(
+        const signerAddEarlier = await Factories.SignerAddMessage.create(
           {
-            data: Array.from(addData.bb?.bytes() ?? []),
-            hash: Array.from(bytesDecrement(signerRemove.hash())._unsafeUnwrap()),
+            data: { ...signerAdd.data, timestamp: signerRemove.data.timestamp },
+            hash: bytesDecrement(signerRemove.hash)._unsafeUnwrap(),
           },
-          { transient: { ethSigner: custody1 } }
+          { transient: { signer: custody1 } }
         );
-
-        const signerAddEarlier = new MessageModel(addMessage) as SignerAddModel;
 
         await set.merge(signerAddEarlier);
         await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
@@ -709,12 +594,11 @@ describe('merge', () => {
 
 describe('getFids', () => {
   test('returns fids for merged custody events', async () => {
-    const fid2 = Factories.FID.build();
-    const idRegistryEvent = await Factories.IdRegistryEvent.create({
-      fid: Array.from(fid2),
-      to: Array.from(custody2Address),
+    const fid2 = Factories.Fid.build();
+    const custody2Event = Factories.IdRegistryEvent.build({
+      fid: fid2,
+      to: custody2Address,
     });
-    const custody2Event = new IdRegistryEventModel(idRegistryEvent);
     await set.mergeIdRegistryEvent(custody1Event);
     await set.mergeIdRegistryEvent(custody2Event);
     const fids = await set.getFids();
@@ -727,41 +611,36 @@ describe('getFids', () => {
 });
 
 describe('revokeMessagesBySigner', () => {
-  let custody2Transfer: IdRegistryEventModel;
-  let signerAdd1: SignerAddModel;
-  let signerAdd2: SignerAddModel;
+  let custody2Transfer: protobufs.IdRegistryEvent;
+  let signerAdd1: protobufs.SignerAddMessage;
+  let signerAdd2: protobufs.SignerAddMessage;
 
-  let revokedMessages: MessageModel[];
-  const handleRevokeMessage = (message: MessageModel) => {
+  let revokedMessages: protobufs.Message[];
+  const handleRevokeMessage = (message: protobufs.Message) => {
     revokedMessages.push(message);
   };
 
   beforeAll(async () => {
-    const idRegistryTransfer = await Factories.IdRegistryEvent.create({
-      type: IdRegistryEventType.IdRegistryTransfer,
-      from: Array.from(custody1Address),
-      fid: Array.from(fid),
-      to: Array.from(custody2Address),
+    custody2Transfer = Factories.IdRegistryEvent.build({
+      type: protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_TRANSFER,
+      from: custody1Address,
+      fid,
+      to: custody2Address,
     });
-    custody2Transfer = new IdRegistryEventModel(idRegistryTransfer);
 
-    const addData1 = await Factories.SignerAddData.create({
-      fid: Array.from(fid),
-    });
-    const addMessage1 = await Factories.Message.create(
-      { data: Array.from(addData1.bb?.bytes() ?? []) },
-      { transient: { ethSigner: custody1 } }
+    signerAdd1 = await Factories.SignerAddMessage.create(
+      {
+        data: { fid },
+      },
+      { transient: { signer: custody1 } }
     );
-    signerAdd1 = new MessageModel(addMessage1) as SignerAddModel;
 
-    const addData2 = await Factories.SignerAddData.create({
-      fid: Array.from(fid),
-    });
-    const addMessage2 = await Factories.Message.create(
-      { data: Array.from(addData2.bb?.bytes() ?? []) },
-      { transient: { ethSigner: custody2 } }
+    signerAdd2 = await Factories.SignerAddMessage.create(
+      {
+        data: { fid, timestamp: signerAdd1.data.timestamp + 1 },
+      },
+      { transient: { signer: custody2 } }
     );
-    signerAdd2 = new MessageModel(addMessage2) as SignerAddModel;
 
     eventHandler.on('revokeMessage', handleRevokeMessage);
   });
@@ -782,23 +661,23 @@ describe('revokeMessagesBySigner', () => {
       await set.mergeIdRegistryEvent(custody2Transfer);
       await set.merge(signerAdd2);
 
-      const custody1Messages = await MessageModel.getAllBySigner(db, fid, custody1Address);
+      const custody1Messages = await getAllMessagesBySigner(db, fid, custody1Address);
       expect(new Set(custody1Messages)).toEqual(new Set([signerAdd1, signerRemove]));
 
-      const custody2Messages = await MessageModel.getAllBySigner(db, fid, custody2Address);
+      const custody2Messages = await getAllMessagesBySigner(db, fid, custody2Address);
       expect(custody2Messages).toEqual([signerAdd2]);
     });
 
     test('deletes messages and emits revokeMessage events for custody1', async () => {
       await set.revokeMessagesBySigner(fid, custody1Address);
-      const custody1Messages = await MessageModel.getAllBySigner(db, fid, custody1Address);
+      const custody1Messages = await getAllMessagesBySigner(db, fid, custody1Address);
       expect(custody1Messages).toEqual([]);
       expect(revokedMessages).toEqual([signerAdd1, signerRemove]);
     });
 
     test('deletes messages and emits revokeMessage events for custody2', async () => {
       await set.revokeMessagesBySigner(fid, custody2Address);
-      const custody2Messages = await MessageModel.getAllBySigner(db, fid, custody2Address);
+      const custody2Messages = await getAllMessagesBySigner(db, fid, custody2Address);
       expect(custody2Messages).toEqual([]);
       expect(revokedMessages).toEqual([signerAdd2]);
     });
@@ -819,8 +698,8 @@ describe('revokeMessagesBySigner', () => {
 });
 
 describe('pruneMessages', () => {
-  let prunedMessages: MessageModel[];
-  const pruneMessageListener = (message: MessageModel) => {
+  let prunedMessages: protobufs.Message[];
+  const pruneMessageListener = (message: protobufs.Message) => {
     prunedMessages.push(message);
   };
 
@@ -836,33 +715,32 @@ describe('pruneMessages', () => {
     eventHandler.off('pruneMessage', pruneMessageListener);
   });
 
-  let add1: SignerAddModel;
-  let add2: SignerAddModel;
-  let add3: SignerAddModel;
-  let add4: SignerAddModel;
-  let add5: SignerAddModel;
+  let add1: protobufs.SignerAddMessage;
+  let add2: protobufs.SignerAddMessage;
+  let add3: protobufs.SignerAddMessage;
+  let add4: protobufs.SignerAddMessage;
+  let add5: protobufs.SignerAddMessage;
 
-  let remove1: SignerRemoveModel;
-  let remove2: SignerRemoveModel;
-  let remove3: SignerRemoveModel;
-  let remove4: SignerRemoveModel;
-  let remove5: SignerRemoveModel;
+  let remove1: protobufs.SignerRemoveMessage;
+  let remove2: protobufs.SignerRemoveMessage;
+  let remove3: protobufs.SignerRemoveMessage;
+  let remove4: protobufs.SignerRemoveMessage;
+  let remove5: protobufs.SignerRemoveMessage;
 
-  const generateAddWithTimestamp = async (fid: Uint8Array, timestamp: number): Promise<SignerAddModel> => {
-    const addData = await Factories.SignerAddData.create({ fid: Array.from(fid), timestamp });
-    const addMessage = await Factories.Message.create({ data: Array.from(addData.bb?.bytes() ?? []) });
-    return new MessageModel(addMessage) as SignerAddModel;
+  const generateAddWithTimestamp = async (fid: number, timestamp: number): Promise<protobufs.SignerAddMessage> => {
+    return Factories.SignerAddMessage.create({
+      data: { fid, timestamp },
+    });
   };
 
   const generateRemoveWithTimestamp = async (
-    fid: Uint8Array,
+    fid: number,
     timestamp: number,
     signer?: Uint8Array | null
-  ): Promise<SignerRemoveModel> => {
-    const removeBody = await Factories.SignerBody.build(signer ? { signer: Array.from(signer) } : {});
-    const removeData = await Factories.SignerRemoveData.create({ fid: Array.from(fid), timestamp, body: removeBody });
-    const removeMessage = await Factories.Message.create({ data: Array.from(removeData.bb?.bytes() ?? []) });
-    return new MessageModel(removeMessage) as SignerRemoveModel;
+  ): Promise<protobufs.SignerRemoveMessage> => {
+    return Factories.SignerRemoveMessage.create({
+      data: { fid, timestamp, signerBody: { signer: signer ?? Factories.Ed25519Signer.build().signerKey } },
+    });
   };
 
   beforeAll(async () => {
@@ -873,11 +751,11 @@ describe('pruneMessages', () => {
     add4 = await generateAddWithTimestamp(fid, time + 4);
     add5 = await generateAddWithTimestamp(fid, time + 5);
 
-    remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1.body().signerArray());
-    remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2.body().signerArray());
-    remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.body().signerArray());
-    remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.body().signerArray());
-    remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.body().signerArray());
+    remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1.data.signerBody.signer);
+    remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2.data.signerBody.signer);
+    remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.data.signerBody.signer);
+    remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.data.signerBody.signer);
+    remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.data.signerBody.signer);
   });
 
   describe('with size limit', () => {
@@ -900,8 +778,8 @@ describe('pruneMessages', () => {
 
       expect(prunedMessages).toEqual([add1, add2]);
 
-      for (const message of prunedMessages as SignerAddModel[]) {
-        const getAdd = () => sizePrunedStore.getSignerAdd(fid, message.body().signerArray() ?? new Uint8Array());
+      for (const message of prunedMessages as protobufs.SignerAddMessage[]) {
+        const getAdd = () => sizePrunedStore.getSignerAdd(fid, message.data.signerBody.signer);
         await expect(getAdd()).rejects.toThrow(HubError);
       }
     });
@@ -917,8 +795,8 @@ describe('pruneMessages', () => {
 
       expect(prunedMessages).toEqual([remove1, remove2]);
 
-      for (const message of prunedMessages as SignerRemoveModel[]) {
-        const getRemove = () => sizePrunedStore.getSignerRemove(fid, message.body().signerArray() ?? new Uint8Array());
+      for (const message of prunedMessages as protobufs.SignerRemoveMessage[]) {
+        const getRemove = () => sizePrunedStore.getSignerRemove(fid, message.data.signerBody.signer);
         await expect(getRemove()).rejects.toThrow(HubError);
       }
     });

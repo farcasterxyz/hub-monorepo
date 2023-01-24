@@ -63,16 +63,6 @@ describe('mergeSequential', () => {
       targetCastId: castId,
     });
 
-    // const generateAdd = async () => {
-    //   const addData = await Factories.ReactionAddData.create({ fid: Array.from(fid), body });
-    //   return Factories.Message.create({ data: Array.from(addData.bb?.bytes() ?? []) }, { transient: { signer } });
-    // };
-
-    // const generateRemove = async () => {
-    //   const removeData = await Factories.ReactionRemoveData.create({ fid: Array.from(fid), body });
-    //   return Factories.Message.create({ data: Array.from(removeData.bb?.bytes() ?? []) }, { transient: { signer } });
-    // };
-
     const messages: protobufs.Message[] = [];
     for (let i = 0; i < 10; i++) {
       if (Math.random() < 0.5) {
