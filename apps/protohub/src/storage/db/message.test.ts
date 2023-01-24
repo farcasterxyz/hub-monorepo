@@ -1,8 +1,7 @@
 import { bytesCompare, Factories, HubError } from '@farcaster/protoutils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
-import { UserPostfix } from '~/storage/db/types';
+import { TRUE_VALUE, UserPostfix } from '~/storage/db/types';
 import {
-  deleteMessage,
   getAllMessagesByFid,
   getAllMessagesBySigner,
   getManyMessages,
@@ -12,7 +11,6 @@ import {
   makeTsHash,
   makeUserKey,
   putMessage,
-  TRUE_VALUE,
   typeToSetPostfix,
 } from './message';
 
@@ -111,7 +109,7 @@ describe('getMessage', () => {
   });
 
   test('fails with wrong key', async () => {
-    await deleteMessage(db, castMessage);
+    await putMessage(db, castMessage);
     const badTsHash = new Uint8Array([...makeTsHash(castMessage.data.timestamp, castMessage.hash)._unsafeUnwrap(), 1]);
     await expect(
       getMessage(db, castMessage.data.fid, typeToSetPostfix(castMessage.data.type), badTsHash)

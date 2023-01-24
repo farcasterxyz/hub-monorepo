@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+enum IdRegistryEventType {
+  ID_REGISTRY_EVENT_TYPE_NONE = 0;
+  ID_REGISTRY_EVENT_TYPE_REGISTER = 1;
+  ID_REGISTRY_EVENT_TYPE_TRANSFER = 2;
+}
+
+message IdRegistryEvent {
+  uint32 block_number = 1;
+  bytes block_hash = 2;
+  bytes transaction_hash = 3;
+  uint32 log_index = 4;
+  uint64 fid = 5;
+  bytes to = 6;
+  IdRegistryEventType type = 7;
+  bytes from = 8;
+}

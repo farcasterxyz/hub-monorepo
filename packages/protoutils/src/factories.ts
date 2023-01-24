@@ -121,7 +121,7 @@ const Eip712SignatureHexFactory = Factory.define<string>(() => {
   return faker.datatype.hexadecimal({ length: 130, case: 'lower' });
 });
 
-/** Protobufs */
+/** Message Protobufs */
 
 const CastIdFactory = Factory.define<protobufs.CastId>(() => {
   return protobufs.CastId.create({
@@ -456,6 +456,28 @@ const UserDataAddMessageFactory = MessageFactory.params({
   signatureScheme: protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519,
 }) as Factory<protobufs.UserDataAddMessage, { signer?: Ed25519Signer }>;
 
+/** Event Protobufs */
+
+const IdRegistryEventTypeFactory = Factory.define<protobufs.IdRegistryEventType>(() => {
+  return faker.helpers.arrayElement([
+    protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER,
+    protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_TRANSFER,
+  ]);
+});
+
+const IdRegistryEventFactory = Factory.define<protobufs.IdRegistryEvent>(() => {
+  return protobufs.IdRegistryEvent.create({
+    blockNumber: faker.datatype.number({ min: 1, max: 100_000 }),
+    blockHash: BlockHashFactory.build(),
+    transactionHash: TransactionHashFactory.build(),
+    logIndex: faker.datatype.number({ min: 0, max: 1_000 }),
+    fid: FidFactory.build(),
+    to: EthAddressFactory.build(),
+    type: IdRegistryEventTypeFactory.build(),
+    from: EthAddressFactory.build(),
+  });
+});
+
 export const Factories = {
   Fid: FidFactory,
   Fname: FnameFactory,
@@ -513,4 +535,6 @@ export const Factories = {
   UserDataBody: UserDataBodyFactory,
   UserDataAddData: UserDataAddDataFactory,
   UserDataAddMessage: UserDataAddMessageFactory,
+  IdRegistryEventType: IdRegistryEventTypeFactory,
+  IdRegistryEvent: IdRegistryEventFactory,
 };
