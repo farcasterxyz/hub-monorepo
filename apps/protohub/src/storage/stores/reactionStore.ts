@@ -4,9 +4,12 @@ import { err, ok, ResultAsync } from 'neverthrow';
 import {
   deleteMessageTransaction,
   FID_BYTES,
+  getAllMessagesBySigner,
   getManyMessages,
   getManyMessagesByFid,
   getMessage,
+  getMessagesPruneIterator,
+  getNextMessageToPrune,
   makeMessagePrimaryKey,
   makeTsHash,
   makeUserKey,
@@ -241,7 +244,7 @@ class ReactionStore extends SequentialMergeStore {
 
     const messageKeys: Buffer[] = [];
     for await (const [key] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
-      const view = new DataView(key);
+      const view = new DataView((key as Buffer).buffer);
       const fid = Number(view.getBigUint64(fidOffset, false));
       const tsHash = Uint8Array.from(key).subarray(tsHashOffset);
       messageKeys.push(makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage, tsHash));
@@ -265,19 +268,19 @@ class ReactionStore extends SequentialMergeStore {
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {
     // Get all ReactionAdd messages signed by signer
-    const reactionAdds = await MessageModel.getAllBySigner<types.ReactionAddModel>(
+    const reactionAdds = await getAllMessagesBySigner<protobufs.ReactionAddMessage>(
       this._db,
       fid,
       signer,
-      MessageType.ReactionAdd
+      protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD
     );
 
     // Get all ReactionRemove messages signed by signer
-    const reactionRemoves = await MessageModel.getAllBySigner<types.ReactionRemoveModel>(
+    const reactionRemoves = await getAllMessagesBySigner<protobufs.ReactionRemoveMessage>(
       this._db,
       fid,
       signer,
-      MessageType.ReactionRemove
+      protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE
     );
 
     // Create a rocksdb transaction
@@ -306,7 +309,7 @@ class ReactionStore extends SequentialMergeStore {
   async pruneMessages(fid: number): HubAsyncResult<void> {
     // Count number of ReactionAdd and ReactionRemove messages for this fid
     // TODO: persist this count to avoid having to retrieve it with each call
-    const prefix = MessageModel.primaryKey(fid, types.UserPostfix.ReactionMessage);
+    const prefix = makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage);
     let count = 0;
     for await (const [,] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
       count = count + 1;
@@ -324,26 +327,29 @@ class ReactionStore extends SequentialMergeStore {
     const timestampToPrune = farcasterTime.value - this._pruneTimeLimit;
 
     // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
-    const messageToPrune: (types.ReactionAddModel | types.ReactionRemoveModel)[] = [];
+    const messageToPrune: (protobufs.ReactionAddMessage | protobufs.ReactionRemoveMessage)[] = [];
 
     // Create a rocksdb transaction to include all the mutations
     let pruneTsx = this._db.transaction();
 
     // Create a rocksdb iterator for all messages with the given prefix
-    const pruneIterator = MessageModel.getPruneIterator(this._db, fid, types.UserPostfix.ReactionMessage);
+    const pruneIterator = getMessagesPruneIterator(this._db, fid, UserPostfix.ReactionMessage);
 
-    const getNextResult = () => ResultAsync.fromPromise(MessageModel.getNextToPrune(pruneIterator), () => undefined);
+    const getNextResult = () => ResultAsync.fromPromise(getNextMessageToPrune(pruneIterator), () => undefined);
 
     // For each message in order, prune it if the store is over the size limit or the message was signed
     // before the timestamp cut-off
     let nextMessage = await getNextResult();
-    while (nextMessage.isOk() && (sizeToPrune > 0 || nextMessage.value.timestamp() < timestampToPrune)) {
+    while (
+      nextMessage.isOk() &&
+      (sizeToPrune > 0 || (nextMessage.value.data && nextMessage.value.data.timestamp < timestampToPrune))
+    ) {
       const message = nextMessage.value;
 
       // Add a delete operation to the transaction depending on the message type
-      if (isReactionAdd(message)) {
+      if (protobufs.isReactionAddMessage(message)) {
         pruneTsx = this.deleteReactionAddTransaction(pruneTsx, message);
-      } else if (isReactionRemove(message)) {
+      } else if (protobufs.isReactionRemoveMessage(message)) {
         pruneTsx = this.deleteReactionRemoveTransaction(pruneTsx, message);
       } else {
         throw new HubError('unknown', 'invalid message type');

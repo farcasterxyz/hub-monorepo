@@ -35,6 +35,7 @@ export const bytesCompare = (a: Uint8Array, b: Uint8Array): number => {
   }
 };
 
+// TODO: should return HubResult
 /* eslint-disable security/detect-object-injection */
 export const bytesIncrement = (inputBytes: Uint8Array, options: BytesOptions = {}): Uint8Array => {
   const bytes = new Uint8Array(inputBytes); // avoid mutating input

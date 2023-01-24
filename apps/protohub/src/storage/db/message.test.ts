@@ -1,5 +1,6 @@
 import { bytesCompare, Factories, HubError } from '@farcaster/protoutils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
+import { UserPostfix } from '~/storage/db/types';
 import {
   deleteMessage,
   getAllMessagesByFid,
@@ -14,7 +15,6 @@ import {
   TRUE_VALUE,
   typeToSetPostfix,
 } from './message';
-import { UserPostfix } from './types';
 
 const db = jestRocksDB('storage.db.message.test');
 

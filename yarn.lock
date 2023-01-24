@@ -1005,6 +1005,13 @@
   dependencies:
     lodash.mergewith "^4.6.2"
 
+"@farcaster/flatbuffers@0.1.4":
+  version "0.1.4"
+  resolved "https://registry.npmjs.org/@farcaster/flatbuffers/-/flatbuffers-0.1.4.tgz#25121035fdfa7c754cef7beaaa40e6508a652722"
+  integrity sha512-G/quJqqoh7Mw4QVYE/hIt78WEecYf/RnACQ4aDmL6QWmi21/GR1AW+1KBNBnD5INZIQCZZGA1C2OiS1UOcaADg==
+  dependencies:
+    flatbuffers "^22.11.23"
+
 "@grpc/grpc-js@^1.7.3", "@grpc/grpc-js@^1.8.1":
   version "1.8.1"
   resolved "https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.8.1.tgz#71f809c148e52ac9c15da4b8d4a65ecd7063dff7"
@@ -6330,7 +6337,7 @@ pino@*:
     sonic-boom "^3.1.0"
     thread-stream "^2.0.0"
 
-pino@^8.6.1, pino@^8.8.0:
+pino@^8.6.1:
   version "8.8.0"
   resolved "https://registry.npmjs.org/pino/-/pino-8.8.0.tgz#1f0d6695a224aa06afc7ad60f2ccc4772d3b9233"
   integrity sha512-cF8iGYeu2ODg2gIwgAHcPrtR63ILJz3f7gkogaHC/TXVVXxZgInmNYiIpDYEwgEkxZti2Se6P2W2DxlBIZe6eQ==

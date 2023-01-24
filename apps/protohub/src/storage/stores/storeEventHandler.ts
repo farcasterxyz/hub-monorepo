@@ -1,7 +1,5 @@
 import { Message } from '@farcaster/protobufs';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
-import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
 
 export type StoreEvents = {
   /**
@@ -28,13 +26,15 @@ export type StoreEvents = {
    * mergeIdRegistryEvent is emitted when an event from the ID Registry contract is
    * merged into the SignerStore.
    */
-  mergeIdRegistryEvent: (event: IdRegistryEventModel) => void;
+  // TODO
+  // mergeIdRegistryEvent: (event: IdRegistryEventModel) => void;
 
   /**
    * mergeNameRegistryEvent is emitted when an event from the Name Registry contract
    * is merged into the UserDataStore.
    */
-  mergeNameRegistryEvent: (event: NameRegistryEventModel) => void;
+  // TODO
+  // mergeNameRegistryEvent: (event: NameRegistryEventModel) => void;
 };
 
 class StoreEventHandler extends TypedEmitter<StoreEvents> {

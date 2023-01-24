@@ -278,7 +278,7 @@ const ReactionRemoveDataFactory = Factory.define<protobufs.ReactionRemoveData>((
 const ReactionRemoveMessageFactory = MessageFactory.params({
   data: ReactionRemoveDataFactory.build(),
   signatureScheme: protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519,
-}) as Factory<protobufs.ReactionAddMessage, { signer?: Ed25519Signer }>;
+}) as Factory<protobufs.ReactionRemoveMessage, { signer?: Ed25519Signer }>;
 
 const AmpBodyFactory = Factory.define<protobufs.AmpBody>(() => {
   return protobufs.AmpBody.create({
