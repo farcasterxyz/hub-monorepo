@@ -1,9 +1,10 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesCompare, HubAsyncResult, HubError, HubResult, validations } from '@farcaster/protoutils';
 import { err, ok, ResultAsync } from 'neverthrow';
-import { typeToSetPostfix } from '~/storage/db/message';
+import { SyncId } from '~/network/sync/syncId';
+import { getManyMessages, typeToSetPostfix } from '~/storage/db/message';
 import RocksDB from '~/storage/db/rocksdb';
-import { UserPostfix } from '~/storage/db/types';
+import { FID_BYTES, RootPrefix, UserPostfix } from '~/storage/db/types';
 import CastStore from '~/storage/stores/castStore';
 import ReactionStore from '~/storage/stores/reactionStore';
 import SignerStore from '~/storage/stores/signerStore';
@@ -97,6 +98,49 @@ class Engine {
     await this._signerStore.pruneMessages(fid);
 
     return ok(undefined);
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                             All Messages                                   */
+  /* -------------------------------------------------------------------------- */
+  async forEachMessage(callback: (message: protobufs.Message) => void): Promise<void> {
+    const allUserPrefix = Buffer.from([RootPrefix.User]);
+
+    for await (const [key, value] of this._db.iteratorByPrefix(allUserPrefix, { keys: true, valueAsBuffer: true })) {
+      if (key.length < 2 + FID_BYTES) {
+        // Not a message key, so we can skip it.
+        continue;
+      }
+
+      // Get the UserMessagePostfix from the key, which is the 1 + 32 bytes from the start
+      const postfix = key.slice(1 + FID_BYTES, 1 + FID_BYTES + 1)[0];
+      if (
+        postfix !== UserPostfix.CastMessage &&
+        postfix !== UserPostfix.AmpMessage &&
+        postfix !== UserPostfix.ReactionMessage &&
+        postfix !== UserPostfix.VerificationMessage &&
+        postfix !== UserPostfix.SignerMessage &&
+        postfix !== UserPostfix.UserDataMessage
+      ) {
+        // Not a message key, so we can skip it.
+        continue;
+      }
+
+      if (!value || value.length <= 20) {
+        // This is a hash and not a message, we need to skip it.
+        continue;
+      }
+
+      const message = protobufs.Message.decode(new Uint8Array(value));
+
+      callback(message);
+    }
+  }
+  async getAllMessagesBySyncIds(syncIds: string[]): HubAsyncResult<protobufs.Message[]> {
+    const hashesBuf = syncIds.map((syncIdHash) => SyncId.pkFromIdString(syncIdHash));
+    const messages = await ResultAsync.fromPromise(getManyMessages(this._db, hashesBuf), (e) => e as HubError);
+
+    return messages;
   }
 
   /* -------------------------------------------------------------------------- */

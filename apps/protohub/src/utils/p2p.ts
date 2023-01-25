@@ -1,5 +1,5 @@
-import { GossipAddressInfo } from '@farcaster/flatbuffers';
-import { HubAsyncResult, HubError, HubResult } from '@farcaster/utils';
+import { GossipAddressInfo } from '@farcaster/protobufs';
+import { HubAsyncResult, HubError, HubResult } from '@farcaster/protoutils';
 import { Multiaddr, multiaddr, NodeAddress } from '@multiformats/multiaddr';
 import { get } from 'http';
 import { AddressInfo, isIP } from 'net';
@@ -72,9 +72,9 @@ export const p2pMultiAddrStr = (addressInfo: AddressInfo, peerID: string): HubRe
 
 /* Converts GossipAddressInfo to net.AddressInfo */
 export const addressInfoFromGossip = (addressInfo: GossipAddressInfo): HubResult<AddressInfo> => {
-  const address = addressInfo.address();
-  const port = addressInfo.port();
-  const family = addressInfo.family();
+  const address = addressInfo.address;
+  const port = addressInfo.port;
+  const family = addressInfo.family;
   if (!address || family === 0) return err(new HubError('bad_request.parse_failure', 'Invalid address'));
   const addrInfo: AddressInfo = {
     address,
