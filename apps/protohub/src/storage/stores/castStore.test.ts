@@ -1,10 +1,10 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesDecrement, bytesIncrement, Factories, getFarcasterTime, HubError } from '@farcaster/protoutils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
+import { getMessage, makeTsHash } from '~/storage/db/message';
+import { UserPostfix } from '~/storage/db/types';
 import CastStore from '~/storage/stores/castStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import { getMessage, makeTsHash } from '../db/message';
-import { UserPostfix } from '../db/types';
 
 const db = jestRocksDB('flatbuffers.castStore.test');
 const eventHandler = new StoreEventHandler();

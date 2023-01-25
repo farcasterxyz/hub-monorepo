@@ -9,6 +9,7 @@ import {
   getMessage,
   getMessagesPruneIterator,
   getNextMessageToPrune,
+  makeCastIdKey,
   makeMessagePrimaryKey,
   makeTsHash,
   makeUserKey,
@@ -23,25 +24,6 @@ import { StorePruneOptions } from '~/storage/stores/types';
 const PRUNE_SIZE_LIMIT_DEFAULT = 5_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
 
-type TargetId = protobufs.CastId;
-
-/**
- * Generates a key for referencing a CastId. Packed as <fid, hash>.
- */
-const makeTargetKeyFromCastId = (castId: protobufs.CastId): Buffer => {
-  const buffer = new ArrayBuffer(FID_BYTES + castId.hash.length);
-  const view = new DataView(buffer);
-
-  view.setBigUint64(0, BigInt(castId.fid), false); // Big endian for ordering
-
-  for (let i = 0; i < castId.hash.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, security/detect-object-injection
-    view.setUint8(FID_BYTES + i, castId.hash[i]!);
-  }
-
-  return Buffer.from(buffer);
-};
-
 /**
  * Generates a unique key used to store a ReactionAdd message key in the ReactionsAdd Set index
  *
@@ -51,7 +33,7 @@ const makeTargetKeyFromCastId = (castId: protobufs.CastId): Buffer => {
  *
  * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<targetKey?>:<type?>
  */
-const makeReactionAddsKey = (fid: number, type?: protobufs.ReactionType, targetId?: TargetId): Buffer => {
+const makeReactionAddsKey = (fid: number, type?: protobufs.ReactionType, targetId?: protobufs.CastId): Buffer => {
   if (targetId && !type) {
     throw new HubError('bad_request.validation_failure', 'targetId provided without type');
   }
@@ -60,7 +42,7 @@ const makeReactionAddsKey = (fid: number, type?: protobufs.ReactionType, targetI
     makeUserKey(fid), // --------------------------- fid prefix, 33 bytes
     Buffer.from([UserPostfix.ReactionAdds]), // -------------- reaction_adds key, 1 byte
     Buffer.from(type ? [type] : ''), //-------- type, 1 byte
-    targetId ? makeTargetKeyFromCastId(targetId) : Buffer.from(''), //-- target id, 28 bytes
+    targetId ? makeCastIdKey(targetId) : Buffer.from(''), //-- target id, 28 bytes
   ]);
 };
 
@@ -73,7 +55,7 @@ const makeReactionAddsKey = (fid: number, type?: protobufs.ReactionType, targetI
  *
  * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<targetKey?>:<type?>
  */
-const makeReactionRemovesKey = (fid: number, type?: protobufs.ReactionType, targetId?: TargetId): Buffer => {
+const makeReactionRemovesKey = (fid: number, type?: protobufs.ReactionType, targetId?: protobufs.CastId): Buffer => {
   if (targetId && !type) {
     throw new HubError('bad_request.validation_failure', 'targetId provided without type');
   }
@@ -82,7 +64,7 @@ const makeReactionRemovesKey = (fid: number, type?: protobufs.ReactionType, targ
     makeUserKey(fid), // --------------------------- fid prefix, 33 bytes
     Buffer.from([UserPostfix.ReactionRemoves]), // ----------- reaction_adds key, 1 byte
     Buffer.from(type ? [type] : ''), //-------- type, 1 byte
-    targetId ? makeTargetKeyFromCastId(targetId) : Buffer.from(''), //-- target id, 28 bytes
+    targetId ? makeCastIdKey(targetId) : Buffer.from(''), //-- target id, 28 bytes
   ]);
 };
 
@@ -97,7 +79,7 @@ const makeReactionRemovesKey = (fid: number, type?: protobufs.ReactionType, targ
  * @returns RocksDB index key of the form <RootPrefix>:<target_key>:<type?>:<fid?>:<tsHash?>
  */
 const makeReactionsByTargetKey = (
-  targetId: TargetId,
+  targetId: protobufs.CastId,
   type?: protobufs.ReactionType,
   fid?: number,
   tsHash?: Uint8Array
@@ -122,7 +104,7 @@ const makeReactionsByTargetKey = (
 
   return Buffer.concat([
     Buffer.from([RootPrefix.ReactionsByTarget]),
-    makeTargetKeyFromCastId(targetId),
+    makeCastIdKey(targetId),
     Buffer.from(type ? [type] : ''),
     fidBuffer,
     Buffer.from(tsHash ?? ''),
