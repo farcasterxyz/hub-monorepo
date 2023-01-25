@@ -12,13 +12,23 @@ import {
   UserPostfix,
 } from '~/storage/db/types';
 
+export const makeFidKey = (fid: number): Buffer => {
+  const buffer = new ArrayBuffer(FID_BYTES);
+  const view = new DataView(buffer);
+  view.setBigUint64(0, BigInt(fid), false); // Big endian for ordering
+  return Buffer.from(buffer);
+};
+
 /** <user prefix byte, fid> */
 export const makeUserKey = (fid: number): Buffer => {
-  const buffer = new ArrayBuffer(1 + FID_BYTES);
-  const view = new DataView(buffer);
-  view.setUint8(0, RootPrefix.User);
-  view.setBigUint64(1, BigInt(fid), false); // Big endian for ordering
-  return Buffer.from(buffer);
+  return Buffer.concat([Buffer.from([RootPrefix.User]), makeFidKey(fid)]);
+};
+
+/**
+ * Generates a key for referencing a CastId. Packed as <fid, hash>.
+ */
+export const makeCastIdKey = (castId: protobufs.CastId): Buffer => {
+  return Buffer.concat([makeFidKey(castId.fid), Buffer.from(castId.hash)]);
 };
 
 /** <user prefix byte, fid, set index byte, tsHash> */

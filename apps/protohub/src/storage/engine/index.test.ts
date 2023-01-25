@@ -3,6 +3,7 @@ import { Factories, HubError } from '@farcaster/protoutils';
 import { err, ok } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
+import CastStore from '~/storage/stores/castStore';
 import SignerStore from '~/storage/stores/signerStore';
 
 const db = jestRocksDB('flatbuffers.engine.test');
@@ -11,7 +12,7 @@ const engine = new Engine(db, network);
 
 // init stores for checking state changes from engine
 const signerStore = new SignerStore(db, engine.eventHandler);
-// const castStore = new CastStore(db, engine.eventHandler);
+const castStore = new CastStore(db, engine.eventHandler);
 // const ampStore = new AmpStore(db, engine.eventHandler);
 // const reactionStore = new ReactionStore(db, engine.eventHandler);
 // const verificationStore = new VerificationStore(db, engine.eventHandler);
@@ -26,7 +27,7 @@ let custodyEvent: protobufs.IdRegistryEvent;
 // let fnameTransfer: NameRegistryEventModel;
 let signerAdd: protobufs.SignerAddMessage;
 let signerRemove: protobufs.SignerRemoveMessage;
-// let castAdd: protobufs.CastAddMessage;
+let castAdd: protobufs.CastAddMessage;
 // let ampAdd: protobufs.AmpAddMessage;
 let reactionAdd: protobufs.ReactionAddMessage;
 // let verificationAdd: protobufs.VerificationAddEthAddressMessage;
@@ -48,6 +49,7 @@ beforeAll(async () => {
     { transient: { signer: custodySigner } }
   );
 
+  castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
   reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 });
 
@@ -107,13 +109,13 @@ describe('mergeMessage', () => {
       await expect(engine.mergeMessage(signerAdd)).resolves.toEqual(ok(undefined));
     });
 
-    // describe('CastAdd', () => {
-    //   test('succeeds', async () => {
-    //     await expect(engine.mergeMessage(castAdd)).resolves.toEqual(ok(undefined));
-    //     await expect(castStore.getCastAdd(fid, castAdd.tsHash())).resolves.toEqual(castAdd);
-    //     expect(mergedMessages).toEqual([signerAdd, castAdd]);
-    //   });
-    // });
+    describe('CastAdd', () => {
+      test('succeeds', async () => {
+        await expect(engine.mergeMessage(castAdd)).resolves.toEqual(ok(undefined));
+        await expect(castStore.getCastAdd(fid, castAdd.hash)).resolves.toEqual(castAdd);
+        expect(mergedMessages).toEqual([signerAdd, castAdd]);
+      });
+    });
 
     // describe('AmpAdd', () => {
     //   test('succeeds', async () => {
@@ -257,35 +259,40 @@ describe('mergeMessage', () => {
   });
 });
 
-// describe('mergeMessages', () => {
-//   let mergedMessages: MessageModel[];
-//   const handleMergeMessage = (message: MessageModel) => {
-//     mergedMessages.push(message);
-//   };
+describe('mergeMessages', () => {
+  let mergedMessages: protobufs.Message[];
+  const handleMergeMessage = (message: protobufs.Message) => {
+    mergedMessages.push(message);
+  };
 
-//   beforeAll(() => {
-//     engine.eventHandler.on('mergeMessage', handleMergeMessage);
-//   });
+  beforeAll(() => {
+    engine.eventHandler.on('mergeMessage', handleMergeMessage);
+  });
 
-//   afterAll(() => {
-//     engine.eventHandler.off('mergeMessage', handleMergeMessage);
-//   });
+  afterAll(() => {
+    engine.eventHandler.off('mergeMessage', handleMergeMessage);
+  });
 
-//   beforeEach(async () => {
-//     mergedMessages = [];
-//     await engine.mergeIdRegistryEvent(custodyEvent);
-//     await engine.mergeMessage(signerAdd);
-//   });
+  beforeEach(async () => {
+    mergedMessages = [];
+    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeMessage(signerAdd);
+  });
 
-//   test('succeeds and merges messages in parallel', async () => {
-//     await expect(
-//       engine.mergeMessages([castAdd, ampAdd, reactionAdd, verificationAdd, userDataAdd, signerRemove])
-//     ).resolves.toEqual([ok(undefined), ok(undefined), ok(undefined), ok(undefined), ok(undefined), ok(undefined)]);
-//     expect(new Set(mergedMessages)).toEqual(
-//       new Set([signerAdd, castAdd, ampAdd, reactionAdd, verificationAdd, userDataAdd, signerRemove])
-//     );
-//   });
-// });
+  test('succeeds and merges messages in parallel', async () => {
+    await expect(
+      engine.mergeMessages([
+        castAdd,
+        reactionAdd,
+        signerRemove,
+        // ampAdd,
+        // verificationAdd,
+        // userDataAdd,
+      ])
+    ).resolves.toEqual([ok(undefined), ok(undefined), ok(undefined)]);
+    expect(new Set(mergedMessages)).toEqual(new Set([signerAdd, castAdd, reactionAdd, signerRemove]));
+  });
+});
 
 // describe('revokeMessagesBySigner', () => {
 //   let revokedMessages: MessageModel[];
