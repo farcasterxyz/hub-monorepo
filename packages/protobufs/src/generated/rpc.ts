@@ -1,8 +1,20 @@
 /* eslint-disable */
+import {
+  CallOptions,
+  ChannelCredentials,
+  Client,
+  ClientOptions,
+  ClientReadableStream,
+  ClientUnaryCall,
+  handleServerStreamingCall,
+  handleUnaryCall,
+  makeGenericClientConstructor,
+  Metadata,
+  ServiceError,
+  UntypedServiceImplementation,
+} from "@grpc/grpc-js";
 import Long from "long";
 import _m0 from "protobufjs/minimal";
-import { Observable } from "rxjs";
-import { map } from "rxjs/operators";
 import { Message } from "./message";
 
 export interface Empty {
@@ -443,63 +455,135 @@ export const SyncIds = {
   },
 };
 
-export interface SyncService {
-  GetInfo(request: Empty): Promise<HubInfoResponse>;
-  GetAllSyncIdsByPrefix(request: TrieNodePrefix): Promise<SyncIds>;
-  GetAllMessagesBySyncIds(request: SyncIds): Observable<Message>;
-  GetSyncMetadataByPrefix(request: TrieNodePrefix): Promise<TrieNodeMetadataResponse>;
-  GetSyncSnapshotByPrefix(request: TrieNodePrefix): Promise<TrieNodeSnapshotResponse>;
+export type SyncServiceService = typeof SyncServiceService;
+export const SyncServiceService = {
+  getInfo: {
+    path: "/SyncService/GetInfo",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => Empty.decode(value),
+    responseSerialize: (value: HubInfoResponse) => Buffer.from(HubInfoResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => HubInfoResponse.decode(value),
+  },
+  getAllSyncIdsByPrefix: {
+    path: "/SyncService/GetAllSyncIdsByPrefix",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: TrieNodePrefix) => Buffer.from(TrieNodePrefix.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => TrieNodePrefix.decode(value),
+    responseSerialize: (value: SyncIds) => Buffer.from(SyncIds.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => SyncIds.decode(value),
+  },
+  getAllMessagesBySyncIds: {
+    path: "/SyncService/GetAllMessagesBySyncIds",
+    requestStream: false,
+    responseStream: true,
+    requestSerialize: (value: SyncIds) => Buffer.from(SyncIds.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => SyncIds.decode(value),
+    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => Message.decode(value),
+  },
+  getSyncMetadataByPrefix: {
+    path: "/SyncService/GetSyncMetadataByPrefix",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: TrieNodePrefix) => Buffer.from(TrieNodePrefix.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => TrieNodePrefix.decode(value),
+    responseSerialize: (value: TrieNodeMetadataResponse) =>
+      Buffer.from(TrieNodeMetadataResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => TrieNodeMetadataResponse.decode(value),
+  },
+  getSyncSnapshotByPrefix: {
+    path: "/SyncService/GetSyncSnapshotByPrefix",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: TrieNodePrefix) => Buffer.from(TrieNodePrefix.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => TrieNodePrefix.decode(value),
+    responseSerialize: (value: TrieNodeSnapshotResponse) =>
+      Buffer.from(TrieNodeSnapshotResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => TrieNodeSnapshotResponse.decode(value),
+  },
+} as const;
+
+export interface SyncServiceServer extends UntypedServiceImplementation {
+  getInfo: handleUnaryCall<Empty, HubInfoResponse>;
+  getAllSyncIdsByPrefix: handleUnaryCall<TrieNodePrefix, SyncIds>;
+  getAllMessagesBySyncIds: handleServerStreamingCall<SyncIds, Message>;
+  getSyncMetadataByPrefix: handleUnaryCall<TrieNodePrefix, TrieNodeMetadataResponse>;
+  getSyncSnapshotByPrefix: handleUnaryCall<TrieNodePrefix, TrieNodeSnapshotResponse>;
 }
 
-export class SyncServiceClientImpl implements SyncService {
-  private readonly rpc: Rpc;
-  private readonly service: string;
-  constructor(rpc: Rpc, opts?: { service?: string }) {
-    this.service = opts?.service || "SyncService";
-    this.rpc = rpc;
-    this.GetInfo = this.GetInfo.bind(this);
-    this.GetAllSyncIdsByPrefix = this.GetAllSyncIdsByPrefix.bind(this);
-    this.GetAllMessagesBySyncIds = this.GetAllMessagesBySyncIds.bind(this);
-    this.GetSyncMetadataByPrefix = this.GetSyncMetadataByPrefix.bind(this);
-    this.GetSyncSnapshotByPrefix = this.GetSyncSnapshotByPrefix.bind(this);
-  }
-  GetInfo(request: Empty): Promise<HubInfoResponse> {
-    const data = Empty.encode(request).finish();
-    const promise = this.rpc.request(this.service, "GetInfo", data);
-    return promise.then((data) => HubInfoResponse.decode(new _m0.Reader(data)));
-  }
-
-  GetAllSyncIdsByPrefix(request: TrieNodePrefix): Promise<SyncIds> {
-    const data = TrieNodePrefix.encode(request).finish();
-    const promise = this.rpc.request(this.service, "GetAllSyncIdsByPrefix", data);
-    return promise.then((data) => SyncIds.decode(new _m0.Reader(data)));
-  }
-
-  GetAllMessagesBySyncIds(request: SyncIds): Observable<Message> {
-    const data = SyncIds.encode(request).finish();
-    const result = this.rpc.serverStreamingRequest(this.service, "GetAllMessagesBySyncIds", data);
-    return result.pipe(map((data) => Message.decode(new _m0.Reader(data))));
-  }
-
-  GetSyncMetadataByPrefix(request: TrieNodePrefix): Promise<TrieNodeMetadataResponse> {
-    const data = TrieNodePrefix.encode(request).finish();
-    const promise = this.rpc.request(this.service, "GetSyncMetadataByPrefix", data);
-    return promise.then((data) => TrieNodeMetadataResponse.decode(new _m0.Reader(data)));
-  }
-
-  GetSyncSnapshotByPrefix(request: TrieNodePrefix): Promise<TrieNodeSnapshotResponse> {
-    const data = TrieNodePrefix.encode(request).finish();
-    const promise = this.rpc.request(this.service, "GetSyncSnapshotByPrefix", data);
-    return promise.then((data) => TrieNodeSnapshotResponse.decode(new _m0.Reader(data)));
-  }
+export interface SyncServiceClient extends Client {
+  getInfo(request: Empty, callback: (error: ServiceError | null, response: HubInfoResponse) => void): ClientUnaryCall;
+  getInfo(
+    request: Empty,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: HubInfoResponse) => void,
+  ): ClientUnaryCall;
+  getInfo(
+    request: Empty,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: HubInfoResponse) => void,
+  ): ClientUnaryCall;
+  getAllSyncIdsByPrefix(
+    request: TrieNodePrefix,
+    callback: (error: ServiceError | null, response: SyncIds) => void,
+  ): ClientUnaryCall;
+  getAllSyncIdsByPrefix(
+    request: TrieNodePrefix,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: SyncIds) => void,
+  ): ClientUnaryCall;
+  getAllSyncIdsByPrefix(
+    request: TrieNodePrefix,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: SyncIds) => void,
+  ): ClientUnaryCall;
+  getAllMessagesBySyncIds(request: SyncIds, options?: Partial<CallOptions>): ClientReadableStream<Message>;
+  getAllMessagesBySyncIds(
+    request: SyncIds,
+    metadata?: Metadata,
+    options?: Partial<CallOptions>,
+  ): ClientReadableStream<Message>;
+  getSyncMetadataByPrefix(
+    request: TrieNodePrefix,
+    callback: (error: ServiceError | null, response: TrieNodeMetadataResponse) => void,
+  ): ClientUnaryCall;
+  getSyncMetadataByPrefix(
+    request: TrieNodePrefix,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: TrieNodeMetadataResponse) => void,
+  ): ClientUnaryCall;
+  getSyncMetadataByPrefix(
+    request: TrieNodePrefix,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: TrieNodeMetadataResponse) => void,
+  ): ClientUnaryCall;
+  getSyncSnapshotByPrefix(
+    request: TrieNodePrefix,
+    callback: (error: ServiceError | null, response: TrieNodeSnapshotResponse) => void,
+  ): ClientUnaryCall;
+  getSyncSnapshotByPrefix(
+    request: TrieNodePrefix,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: TrieNodeSnapshotResponse) => void,
+  ): ClientUnaryCall;
+  getSyncSnapshotByPrefix(
+    request: TrieNodePrefix,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: TrieNodeSnapshotResponse) => void,
+  ): ClientUnaryCall;
 }
 
-interface Rpc {
-  request(service: string, method: string, data: Uint8Array): Promise<Uint8Array>;
-  clientStreamingRequest(service: string, method: string, data: Observable<Uint8Array>): Promise<Uint8Array>;
-  serverStreamingRequest(service: string, method: string, data: Uint8Array): Observable<Uint8Array>;
-  bidirectionalStreamingRequest(service: string, method: string, data: Observable<Uint8Array>): Observable<Uint8Array>;
-}
+export const SyncServiceClient = makeGenericClientConstructor(SyncServiceService, "SyncService") as unknown as {
+  new (address: string, credentials: ChannelCredentials, options?: Partial<ClientOptions>): SyncServiceClient;
+  service: typeof SyncServiceService;
+};
 
 declare var self: any | undefined;
 declare var window: any | undefined;
