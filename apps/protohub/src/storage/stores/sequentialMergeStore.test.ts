@@ -2,9 +2,11 @@ import * as protobufs from '@farcaster/protobufs';
 import { Factories, HubResult } from '@farcaster/protoutils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
+import { seedSigner } from '~/storage/engine/seed';
 
 const db = jestRocksDB('stores.sequentialMergeStore.test');
-const engine = new Engine(db, protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET);
+const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
+const engine = new Engine(db, network);
 
 const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
@@ -19,7 +21,7 @@ const assertNoTimeouts = (results: HubResult<void>[]) => {
 
 describe('mergeSequential', () => {
   beforeEach(async () => {
-    // await seedSigner(engine, fid, signer.signerKey);
+    await seedSigner(engine, fid, signer.signerKey);
   });
 
   // test('succeeds with concurrent, conflicting cast messages', async () => {
@@ -67,11 +69,17 @@ describe('mergeSequential', () => {
     for (let i = 0; i < 10; i++) {
       if (Math.random() < 0.5) {
         messages.push(
-          await Factories.ReactionAddMessage.create({ data: { reactionBody: body, fid } }, { transient: { signer } })
+          await Factories.ReactionAddMessage.create(
+            { data: { reactionBody: body, fid, network } },
+            { transient: { signer } }
+          )
         );
       } else {
         messages.push(
-          await Factories.ReactionRemoveMessage.create({ data: { reactionBody: body, fid } }, { transient: { signer } })
+          await Factories.ReactionRemoveMessage.create(
+            { data: { reactionBody: body, fid, network } },
+            { transient: { signer } }
+          )
         );
       }
     }

@@ -1,5 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesDecrement, bytesIncrement, Factories, getFarcasterTime, HubError } from '@farcaster/protoutils';
+import { ok } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
@@ -635,12 +636,7 @@ describe('revokeMessagesBySigner', () => {
       { transient: { signer: custody1 } }
     );
 
-    signerAdd2 = await Factories.SignerAddMessage.create(
-      {
-        data: { fid, timestamp: signerAdd1.data.timestamp + 1 },
-      },
-      { transient: { signer: custody2 } }
-    );
+    signerAdd2 = await Factories.SignerAddMessage.create({ data: { fid } }, { transient: { signer: custody2 } });
 
     eventHandler.on('revokeMessage', handleRevokeMessage);
   });
@@ -655,11 +651,11 @@ describe('revokeMessagesBySigner', () => {
 
   describe('with messages', () => {
     beforeEach(async () => {
-      await set.mergeIdRegistryEvent(custody1Event);
-      await set.merge(signerAdd1);
-      await set.merge(signerRemove);
-      await set.mergeIdRegistryEvent(custody2Transfer);
-      await set.merge(signerAdd2);
+      await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toEqual(undefined);
+      await expect(set.merge(signerAdd1)).resolves.toEqual(undefined);
+      await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+      await expect(set.mergeIdRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
+      await expect(set.merge(signerAdd2)).resolves.toEqual(undefined);
 
       const custody1Messages = await getAllMessagesBySigner(db, fid, custody1Address);
       expect(new Set(custody1Messages)).toEqual(new Set([signerAdd1, signerRemove]));
@@ -669,7 +665,7 @@ describe('revokeMessagesBySigner', () => {
     });
 
     test('deletes messages and emits revokeMessage events for custody1', async () => {
-      await set.revokeMessagesBySigner(fid, custody1Address);
+      await expect(set.revokeMessagesBySigner(fid, custody1Address)).resolves.toEqual(ok(undefined));
       const custody1Messages = await getAllMessagesBySigner(db, fid, custody1Address);
       expect(custody1Messages).toEqual([]);
       expect(revokedMessages).toEqual([signerAdd1, signerRemove]);

@@ -1,10 +1,11 @@
 import * as protobufs from '@farcaster/protobufs';
-import { HubAsyncResult, HubError, HubResult, validations } from '@farcaster/protoutils';
+import { bytesCompare, HubAsyncResult, HubError, HubResult, validations } from '@farcaster/protoutils';
 import { err, ok, ResultAsync } from 'neverthrow';
 import { typeToSetPostfix } from '~/storage/db/message';
 import RocksDB from '~/storage/db/rocksdb';
 import { UserPostfix } from '~/storage/db/types';
 import ReactionStore from '~/storage/stores/reactionStore';
+import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 
 class Engine {
@@ -14,6 +15,7 @@ class Engine {
   private _network: protobufs.FarcasterNetwork;
 
   private _reactionStore: ReactionStore;
+  private _signerStore: SignerStore;
 
   constructor(db: RocksDB, network: protobufs.FarcasterNetwork) {
     this.eventHandler = new StoreEventHandler();
@@ -22,6 +24,7 @@ class Engine {
     this._network = network;
 
     this._reactionStore = new ReactionStore(db, this.eventHandler);
+    this._signerStore = new SignerStore(db, this.eventHandler);
   }
 
   async mergeMessages(messages: protobufs.Message[]): Promise<Array<HubResult<void>>> {
@@ -39,21 +42,24 @@ class Engine {
 
     if (setPostfix === UserPostfix.ReactionMessage) {
       return ResultAsync.fromPromise(this._reactionStore.merge(message), (e) => e as HubError);
+    } else if (setPostfix === UserPostfix.SignerMessage) {
+      return ResultAsync.fromPromise(this._signerStore.merge(message), (e) => e as HubError);
     } else {
       return err(new HubError('bad_request.validation_failure', 'invalid message type'));
     }
   }
 
-  // async mergeIdRegistryEvent(event: IdRegistryEventModel): HubAsyncResult<void> {
-  //   if (
-  //     event.type() === flatbuffers.IdRegistryEventType.IdRegistryRegister ||
-  //     event.type() === flatbuffers.IdRegistryEventType.IdRegistryTransfer
-  //   ) {
-  //     return ResultAsync.fromPromise(this._signerStore.mergeIdRegistryEvent(event), (e) => e as HubError);
-  //   } else {
-  //     return err(new HubError('bad_request.validation_failure', 'invalid event type'));
-  //   }
-  // }
+  async mergeIdRegistryEvent(event: protobufs.IdRegistryEvent): HubAsyncResult<void> {
+    // TODO: validate event
+    if (
+      event.type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ||
+      event.type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_TRANSFER
+    ) {
+      return ResultAsync.fromPromise(this._signerStore.mergeIdRegistryEvent(event), (e) => e as HubError);
+    } else {
+      return err(new HubError('bad_request.validation_failure', 'invalid event type'));
+    }
+  }
 
   // async mergeNameRegistryEvent(event: NameRegistryEventModel): HubAsyncResult<void> {
   //   if (
@@ -229,7 +235,7 @@ class Engine {
   }
 
   async getReactionsByFid(fid: number, type?: protobufs.ReactionType): HubAsyncResult<protobufs.ReactionAddMessage[]> {
-    return ResultAsync.fromPromise(this._reactionStore.getReactionAddsByUser(fid, type), (e) => e as HubError);
+    return ResultAsync.fromPromise(this._reactionStore.getReactionAddsByFid(fid, type), (e) => e as HubError);
   }
 
   async getReactionsByCast(
@@ -242,13 +248,13 @@ class Engine {
   async getAllReactionMessagesByFid(
     fid: number
   ): HubAsyncResult<(protobufs.ReactionAddMessage | protobufs.ReactionRemoveMessage)[]> {
-    const adds = await ResultAsync.fromPromise(this._reactionStore.getReactionAddsByUser(fid), (e) => e as HubError);
+    const adds = await ResultAsync.fromPromise(this._reactionStore.getReactionAddsByFid(fid), (e) => e as HubError);
     if (adds.isErr()) {
       return err(adds.error);
     }
 
     const removes = await ResultAsync.fromPromise(
-      this._reactionStore.getReactionRemovesByUser(fid),
+      this._reactionStore.getReactionRemovesByFid(fid),
       (e) => e as HubError
     );
     if (removes.isErr()) {
@@ -311,55 +317,37 @@ class Engine {
   /*                              Signer Store Methods                          */
   /* -------------------------------------------------------------------------- */
 
-  // async getSigner(fid: Uint8Array, signerPubKey: Uint8Array): HubAsyncResult<types.SignerAddModel> {
-  //   const validatedFid = validations.validateFid(fid);
-  //   if (validatedFid.isErr()) {
-  //     return err(validatedFid.error);
-  //   }
+  async getSigner(fid: number, signerPubKey: Uint8Array): HubAsyncResult<protobufs.SignerAddMessage> {
+    return ResultAsync.fromPromise(this._signerStore.getSignerAdd(fid, signerPubKey), (e) => e as HubError);
+  }
 
-  //   const validatedPubKey = validations.validateEd25519PublicKey(signerPubKey);
-  //   if (validatedPubKey.isErr()) {
-  //     return err(validatedPubKey.error);
-  //   }
+  async getSignersByFid(fid: number): HubAsyncResult<protobufs.SignerAddMessage[]> {
+    return ResultAsync.fromPromise(this._signerStore.getSignerAddsByFid(fid), (e) => e as HubError);
+  }
 
-  //   return ResultAsync.fromPromise(this._signerStore.getSignerAdd(fid, signerPubKey), (e) => e as HubError);
-  // }
+  async getIdRegistryEvent(fid: number): HubAsyncResult<protobufs.IdRegistryEvent> {
+    return ResultAsync.fromPromise(this._signerStore.getIdRegistryEvent(fid), (e) => e as HubError);
+  }
 
-  // async getSignersByFid(fid: Uint8Array): HubAsyncResult<types.SignerAddModel[]> {
-  //   const validatedFid = validations.validateFid(fid);
-  //   if (validatedFid.isErr()) {
-  //     return err(validatedFid.error);
-  //   }
+  async getFids(): HubAsyncResult<number[]> {
+    return ResultAsync.fromPromise(this._signerStore.getFids(), (e) => e as HubError);
+  }
 
-  //   return ResultAsync.fromPromise(this._signerStore.getSignerAddsByUser(fid), (e) => e as HubError);
-  // }
+  async getAllSignerMessagesByFid(
+    fid: number
+  ): HubAsyncResult<(protobufs.SignerAddMessage | protobufs.SignerRemoveMessage)[]> {
+    const adds = await ResultAsync.fromPromise(this._signerStore.getSignerAddsByFid(fid), (e) => e as HubError);
+    if (adds.isErr()) {
+      return err(adds.error);
+    }
 
-  // async getCustodyEvent(fid: Uint8Array): HubAsyncResult<IdRegistryEventModel> {
-  //   const validatedFid = validations.validateFid(fid);
-  //   if (validatedFid.isErr()) {
-  //     return err(validatedFid.error);
-  //   }
+    const removes = await ResultAsync.fromPromise(this._signerStore.getSignerRemovesByFid(fid), (e) => e as HubError);
+    if (removes.isErr()) {
+      return err(removes.error);
+    }
 
-  //   return ResultAsync.fromPromise(this._signerStore.getCustodyEvent(fid), (e) => e as HubError);
-  // }
-
-  // async getFids(): HubAsyncResult<Uint8Array[]> {
-  //   return ResultAsync.fromPromise(this._signerStore.getFids(), (e) => e as HubError);
-  // }
-
-  // async getAllSignerMessagesByFid(fid: Uint8Array): HubAsyncResult<(types.SignerAddModel | types.SignerRemoveModel)[]> {
-  //   const adds = await ResultAsync.fromPromise(this._signerStore.getSignerAddsByUser(fid), (e) => e as HubError);
-  //   if (adds.isErr()) {
-  //     return err(adds.error);
-  //   }
-
-  //   const removes = await ResultAsync.fromPromise(this._signerStore.getSignerRemovesByUser(fid), (e) => e as HubError);
-  //   if (removes.isErr()) {
-  //     return err(removes.error);
-  //   }
-
-  //   return ok([...adds.value, ...removes.value]);
-  // }
+    return ok([...adds.value, ...removes.value]);
+  }
 
   /* -------------------------------------------------------------------------- */
   /*                           User Data Store Methods                          */
@@ -393,7 +381,7 @@ class Engine {
 
   private async validateMessage(message: protobufs.Message): HubAsyncResult<protobufs.Message> {
     // 1. Ensure message data is present
-    if (!message.data) {
+    if (!message || !message.data) {
       return err(new HubError('bad_request.validation_failure', 'message data is missing'));
     }
 
@@ -408,24 +396,29 @@ class Engine {
     }
 
     // 3. Check that the user has a custody address
-    // const custodyAddress = await ResultAsync.fromPromise(
-    //   this._signerStore.getCustodyAddress(message.fid()),
-    //   () => undefined
-    // );
-    // if (custodyAddress.isErr()) {
-    //   return err(new HubError('bad_request.validation_failure', `unknown fid ${bytesToNumber(message.fid())}`));
-    // }
+    const custodyEvent = await ResultAsync.fromPromise(
+      this._signerStore.getIdRegistryEvent(message.data.fid),
+      () => undefined
+    );
 
-    // 4. Check that the signer is valid if message is not a signer message
-    // if (!isSignerAdd(message) && !isSignerRemove(message)) {
-    //   const signerResult = await ResultAsync.fromPromise(
-    //     this._signerStore.getSignerAdd(message.fid(), message.signer()),
-    //     (e) => e
-    //   );
-    //   if (signerResult.isErr()) {
-    //     return err(new HubError('bad_request.validation_failure', 'invalid signer'));
-    //   }
-    // }
+    if (custodyEvent.isErr()) {
+      return err(new HubError('bad_request.validation_failure', `unknown fid: ${message.data.fid}`));
+    }
+
+    // 4. Check that the signer is valid
+    if (protobufs.isSignerAddMessage(message) || protobufs.isSignerRemoveMessage(message)) {
+      if (bytesCompare(message.signer, custodyEvent.value.to) !== 0) {
+        return err(new HubError('bad_request.validation_failure', 'invalid signer'));
+      }
+    } else {
+      const signerResult = await ResultAsync.fromPromise(
+        this._signerStore.getSignerAdd(message.data.fid, message.signer),
+        (e) => e
+      );
+      if (signerResult.isErr()) {
+        return err(new HubError('bad_request.validation_failure', 'invalid signer'));
+      }
+    }
 
     // 5. For fname add UserDataAdd messages, check that the user actually owns the fname
     // if (isUserDataAdd(message) && message.body().type() == flatbuffers.UserDataType.Fname) {

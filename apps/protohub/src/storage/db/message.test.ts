@@ -1,3 +1,4 @@
+import { MessageType } from '@farcaster/protobufs';
 import { bytesCompare, Factories, HubError } from '@farcaster/protoutils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { TRUE_VALUE, UserPostfix } from '~/storage/db/types';
@@ -147,6 +148,17 @@ describe('getAllMessagesBySigner', () => {
     await putMessage(db, ampMessage);
     await expect(getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer)).resolves.toEqual([castMessage]);
     await expect(getAllMessagesBySigner(db, ampMessage.data.fid, ampMessage.signer)).resolves.toEqual([ampMessage]);
+  });
+
+  test('succeeds with type', async () => {
+    await putMessage(db, castMessage);
+    await putMessage(db, ampMessage);
+    await expect(
+      getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer, MessageType.MESSAGE_TYPE_CAST_ADD)
+    ).resolves.toEqual([castMessage]);
+    await expect(
+      getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer, MessageType.MESSAGE_TYPE_AMP_ADD)
+    ).resolves.toEqual([]);
   });
 
   test('succeeds with no results', async () => {
