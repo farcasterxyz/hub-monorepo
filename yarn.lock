@@ -6505,6 +6505,24 @@ protobufjs@^7.0.0:
     "@types/node" ">=13.7.0"
     long "^5.0.0"
 
+protobufjs@^7.2.0:
+  version "7.2.0"
+  resolved "https://registry.npmjs.org/protobufjs/-/protobufjs-7.2.0.tgz#ca6b1ceb9a9efe21186ba96178089ec563011a5e"
+  integrity sha512-hYCqTDuII4iJ4stZqiuGCSU8xxWl5JeXYpwARGtn/tWcKCAro6h3WQz+xpsNbXW0UYqpmTQFEyFWO0G0Kjt64g==
+  dependencies:
+    "@protobufjs/aspromise" "^1.1.2"
+    "@protobufjs/base64" "^1.1.2"
+    "@protobufjs/codegen" "^2.0.4"
+    "@protobufjs/eventemitter" "^1.1.0"
+    "@protobufjs/fetch" "^1.1.0"
+    "@protobufjs/float" "^1.0.2"
+    "@protobufjs/inquire" "^1.1.0"
+    "@protobufjs/path" "^1.1.2"
+    "@protobufjs/pool" "^1.1.0"
+    "@protobufjs/utf8" "^1.1.0"
+    "@types/node" ">=13.7.0"
+    long "^5.0.0"
+
 protons-runtime@^3.0.1, protons-runtime@^3.1.0:
   version "3.1.0"
   resolved "https://registry.npmjs.org/protons-runtime/-/protons-runtime-3.1.0.tgz#500918da4a2d97aa28007f30c3f2f7021e05c0b2"
