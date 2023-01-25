@@ -3,7 +3,6 @@ import { Factories, HubError } from '@farcaster/protoutils';
 import { err, ok } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
-import CastStore from '~/storage/stores/castStore';
 import SignerStore from '~/storage/stores/signerStore';
 
 const db = jestRocksDB('flatbuffers.engine.test');
@@ -12,8 +11,6 @@ const engine = new Engine(db, network);
 
 // init stores for checking state changes from engine
 const signerStore = new SignerStore(db, engine.eventHandler);
-const castStore = new CastStore(db, engine.eventHandler);
-// const ampStore = new AmpStore(db, engine.eventHandler);
 // const reactionStore = new ReactionStore(db, engine.eventHandler);
 // const verificationStore = new VerificationStore(db, engine.eventHandler);
 // const userDataStore = new UserDataStore(db, engine.eventHandler);
@@ -28,7 +25,7 @@ let custodyEvent: protobufs.IdRegistryEvent;
 let signerAdd: protobufs.SignerAddMessage;
 let signerRemove: protobufs.SignerRemoveMessage;
 let castAdd: protobufs.CastAddMessage;
-// let ampAdd: protobufs.AmpAddMessage;
+let ampAdd: protobufs.AmpAddMessage;
 let reactionAdd: protobufs.ReactionAddMessage;
 // let verificationAdd: protobufs.VerificationAddEthAddressMessage;
 // let userDataAdd: protobufs.UserDataAddMessage;
@@ -50,6 +47,7 @@ beforeAll(async () => {
   );
 
   castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
+  ampAdd = await Factories.AmpAddMessage.create({ data: { fid, network } }, { transient: { signer } });
   reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 });
 
@@ -112,20 +110,18 @@ describe('mergeMessage', () => {
     describe('CastAdd', () => {
       test('succeeds', async () => {
         await expect(engine.mergeMessage(castAdd)).resolves.toEqual(ok(undefined));
-        await expect(castStore.getCastAdd(fid, castAdd.hash)).resolves.toEqual(castAdd);
+        await expect(engine.getCast(fid, castAdd.hash)).resolves.toEqual(ok(castAdd));
         expect(mergedMessages).toEqual([signerAdd, castAdd]);
       });
     });
 
-    // describe('AmpAdd', () => {
-    //   test('succeeds', async () => {
-    //     await expect(engine.mergeMessage(ampAdd)).resolves.toEqual(ok(undefined));
-    //     await expect(ampStore.getAmpAdd(fid, ampAdd.body().user()?.fidArray() ?? new Uint8Array())).resolves.toEqual(
-    //       ampAdd
-    //     );
-    //     expect(mergedMessages).toEqual([signerAdd, ampAdd]);
-    //   });
-    // });
+    describe('AmpAdd', () => {
+      test('succeeds', async () => {
+        await expect(engine.mergeMessage(ampAdd)).resolves.toEqual(ok(undefined));
+        await expect(engine.getAmp(fid, ampAdd.data.ampBody.targetFid)).resolves.toEqual(ok(ampAdd));
+        expect(mergedMessages).toEqual([signerAdd, ampAdd]);
+      });
+    });
 
     describe('ReactionAdd', () => {
       test('succeeds', async () => {
@@ -284,13 +280,13 @@ describe('mergeMessages', () => {
       engine.mergeMessages([
         castAdd,
         reactionAdd,
+        ampAdd,
         signerRemove,
-        // ampAdd,
         // verificationAdd,
         // userDataAdd,
       ])
-    ).resolves.toEqual([ok(undefined), ok(undefined), ok(undefined)]);
-    expect(new Set(mergedMessages)).toEqual(new Set([signerAdd, castAdd, reactionAdd, signerRemove]));
+    ).resolves.toEqual([ok(undefined), ok(undefined), ok(undefined), ok(undefined)]);
+    expect(new Set(mergedMessages)).toEqual(new Set([signerAdd, castAdd, reactionAdd, ampAdd, signerRemove]));
   });
 });
 
