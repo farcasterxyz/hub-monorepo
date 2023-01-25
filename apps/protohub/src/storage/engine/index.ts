@@ -4,6 +4,7 @@ import { err, ok, ResultAsync } from 'neverthrow';
 import { typeToSetPostfix } from '~/storage/db/message';
 import RocksDB from '~/storage/db/rocksdb';
 import { UserPostfix } from '~/storage/db/types';
+import CastStore from '~/storage/stores/castStore';
 import ReactionStore from '~/storage/stores/reactionStore';
 import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
@@ -16,6 +17,7 @@ class Engine {
 
   private _reactionStore: ReactionStore;
   private _signerStore: SignerStore;
+  private _castStore: CastStore;
 
   constructor(db: RocksDB, network: protobufs.FarcasterNetwork) {
     this.eventHandler = new StoreEventHandler();
@@ -25,6 +27,7 @@ class Engine {
 
     this._reactionStore = new ReactionStore(db, this.eventHandler);
     this._signerStore = new SignerStore(db, this.eventHandler);
+    this._castStore = new CastStore(db, this.eventHandler);
   }
 
   async mergeMessages(messages: protobufs.Message[]): Promise<Array<HubResult<void>>> {
@@ -44,6 +47,8 @@ class Engine {
       return ResultAsync.fromPromise(this._reactionStore.merge(message), (e) => e as HubError);
     } else if (setPostfix === UserPostfix.SignerMessage) {
       return ResultAsync.fromPromise(this._signerStore.merge(message), (e) => e as HubError);
+    } else if (setPostfix === UserPostfix.CastMessage) {
+      return ResultAsync.fromPromise(this._castStore.merge(message), (e) => e as HubError);
     } else {
       return err(new HubError('bad_request.validation_failure', 'invalid message type'));
     }
@@ -73,23 +78,23 @@ class Engine {
   // }
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {
-    // await this._castStore.revokeMessagesBySigner(fid, signer);
+    await this._castStore.revokeMessagesBySigner(fid, signer);
     // await this._ampStore.revokeMessagesBySigner(fid, signer);
     await this._reactionStore.revokeMessagesBySigner(fid, signer);
     // await this._verificationStore.revokeMessagesBySigner(fid, signer);
     // await this._userDataStore.revokeMessagesBySigner(fid, signer);
-    // await this._signerStore.revokeMessagesBySigner(fid, signer);
+    await this._signerStore.revokeMessagesBySigner(fid, signer);
 
     return ok(undefined);
   }
 
   async pruneMessages(fid: number): HubAsyncResult<void> {
-    // await this._castStore.pruneMessages(fid);
+    await this._castStore.pruneMessages(fid);
     // await this._ampStore.pruneMessages(fid);
     await this._reactionStore.pruneMessages(fid);
     // await this._verificationStore.pruneMessages(fid);
     // await this._userDataStore.pruneMessages(fid);
-    // await this._signerStore.pruneMessages(fid);
+    await this._signerStore.pruneMessages(fid);
 
     return ok(undefined);
   }
@@ -98,72 +103,37 @@ class Engine {
   /*                             Cast Store Methods                             */
   /* -------------------------------------------------------------------------- */
 
-  // async getCast(fid: Uint8Array, tsHash: Uint8Array): HubAsyncResult<types.CastAddModel> {
-  //   const validatedFid = validations.validateFid(fid);
-  //   if (validatedFid.isErr()) {
-  //     return err(validatedFid.error);
-  //   }
+  async getCast(fid: number, hash: Uint8Array): HubAsyncResult<protobufs.CastAddMessage> {
+    return ResultAsync.fromPromise(this._castStore.getCastAdd(fid, hash), (e) => e as HubError);
+  }
 
-  //   const validatedTsHash = validations.validateTsHash(tsHash);
-  //   if (validatedTsHash.isErr()) {
-  //     return err(validatedTsHash.error);
-  //   }
+  async getCastsByFid(fid: number): HubAsyncResult<protobufs.CastAddMessage[]> {
+    return ResultAsync.fromPromise(this._castStore.getCastAddsByFid(fid), (e) => e as HubError);
+  }
 
-  //   return ResultAsync.fromPromise(this._castStore.getCastAdd(fid, tsHash), (e) => e as HubError);
-  // }
+  async getCastsByParent(parentId: protobufs.CastId): HubAsyncResult<protobufs.CastAddMessage[]> {
+    return ResultAsync.fromPromise(this._castStore.getCastsByParent(parentId), (e) => e as HubError);
+  }
 
-  // async getCastsByFid(fid: Uint8Array): HubAsyncResult<types.CastAddModel[]> {
-  //   return validations.validateFid(fid).match(
-  //     (validatedFid: Uint8Array) => {
-  //       return ResultAsync.fromPromise(this._castStore.getCastAddsByUser(validatedFid), (e) => e as HubError);
-  //     },
-  //     (e) => {
-  //       return errAsync(e);
-  //     }
-  //   );
-  // }
+  async getCastsByMention(mentionFid: number): HubAsyncResult<protobufs.CastAddMessage[]> {
+    return ResultAsync.fromPromise(this._castStore.getCastsByMention(mentionFid), (e) => e as HubError);
+  }
 
-  // async getCastsByParent(parent: flatbuffers.CastId): HubAsyncResult<types.CastAddModel[]> {
-  //   return validations.validateCastId(parent).match(
-  //     (validatedParent: validations.ValidatedCastId) => {
-  //       return ResultAsync.fromPromise(
-  //         this._castStore.getCastsByParent(validatedParent.fidArray(), validatedParent.tsHashArray()),
-  //         (e) => e as HubError
-  //       );
-  //     },
-  //     (e) => {
-  //       return errAsync(e);
-  //     }
-  //   );
-  // }
+  async getAllCastMessagesByFid(
+    fid: number
+  ): HubAsyncResult<(protobufs.CastAddMessage | protobufs.CastRemoveMessage)[]> {
+    const adds = await ResultAsync.fromPromise(this._castStore.getCastAddsByFid(fid), (e) => e as HubError);
+    if (adds.isErr()) {
+      return err(adds.error);
+    }
 
-  // async getCastsByMention(user: flatbuffers.UserId): HubAsyncResult<types.CastAddModel[]> {
-  //   return validations.validateUserId(user).match(
-  //     (validatedUserId: validations.ValidatedUserId) => {
-  //       return ResultAsync.fromPromise(
-  //         this._castStore.getCastsByMention(validatedUserId.fidArray()),
-  //         (e) => e as HubError
-  //       );
-  //     },
-  //     (e) => {
-  //       return errAsync(e);
-  //     }
-  //   );
-  // }
+    const removes = await ResultAsync.fromPromise(this._castStore.getCastRemovesByFid(fid), (e) => e as HubError);
+    if (removes.isErr()) {
+      return err(removes.error);
+    }
 
-  // async getAllCastMessagesByFid(fid: Uint8Array): HubAsyncResult<(types.CastAddModel | types.CastRemoveModel)[]> {
-  //   const adds = await ResultAsync.fromPromise(this._castStore.getCastAddsByUser(fid), (e) => e as HubError);
-  //   if (adds.isErr()) {
-  //     return err(adds.error);
-  //   }
-
-  //   const removes = await ResultAsync.fromPromise(this._castStore.getCastRemovesByUser(fid), (e) => e as HubError);
-  //   if (removes.isErr()) {
-  //     return err(removes.error);
-  //   }
-
-  //   return ok([...adds.value, ...removes.value]);
-  // }
+    return ok([...adds.value, ...removes.value]);
+  }
 
   /* -------------------------------------------------------------------------- */
   /*                             Amp Store Methods                           */
