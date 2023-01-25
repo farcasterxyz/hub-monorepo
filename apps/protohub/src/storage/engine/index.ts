@@ -57,8 +57,8 @@ class Engine {
   async mergeIdRegistryEvent(event: protobufs.IdRegistryEvent): HubAsyncResult<void> {
     // TODO: validate event
     if (
-      event.eventType === protobufs.IdRegistryEventType.REGISTER ||
-      event.eventType === protobufs.IdRegistryEventType.TRANSFER
+      event.type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ||
+      event.type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_TRANSFER
     ) {
       return ResultAsync.fromPromise(this._signerStore.mergeIdRegistryEvent(event), (e) => e as HubError);
     } else {

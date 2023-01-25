@@ -50,7 +50,7 @@ class SyncEngine {
 
   public async initialize() {
     // TODO: cache the trie to disk, and use this only when the cache doesn't exist
-    let processedMessages = 0;
+    const processedMessages = 0;
     // await this.engine.forEachMessage((message) => {
     //   this.addMessage(message);
     //   processedMessages += 1;
@@ -117,11 +117,10 @@ class SyncEngine {
       return false;
     }
 
-    const me = this;
     return new Promise((resolve) => {
       const messagesStream = rpcClient.getAllMessagesBySyncIds(protobufs.SyncIds.create({ syncIds }));
       messagesStream.on('data', async (msg: protobufs.Message) => {
-        await me.mergeMessages([msg], rpcClient);
+        await this.mergeMessages([msg], rpcClient);
       });
       messagesStream.on('error', (err) => {
         log.warn(err, `Error fetching messages for sync`);
@@ -172,7 +171,7 @@ class SyncEngine {
     ourNode: NodeMetadata | undefined,
     rpcClient: protobufs.SyncServiceClient
   ): Promise<string[]> {
-    return new Promise(async (resolve) => {
+    return new Promise((resolve) => {
       const missingHashes: string[] = [];
       // If the node has fewer than HASHES_PER_FETCH, just fetch them all in go, otherwise,
       // iterate through the node's children and fetch them in batches.
@@ -188,22 +187,25 @@ class SyncEngine {
             }
           }
         );
-      } else if (theirNode.children) {
-        for (const [theirChildChar, theirChild] of theirNode.children.entries()) {
-          // recursively fetch hashes for every node where the hashes don't match
-          if (ourNode?.children?.get(theirChildChar)?.hash !== theirChild.hash) {
-            missingHashes.push(...(await this.fetchMissingHashesByPrefix(theirChild.prefix, rpcClient)));
+      } else
+        (async () => {
+          if (theirNode.children) {
+            for (const [theirChildChar, theirChild] of theirNode.children.entries()) {
+              // recursively fetch hashes for every node where the hashes don't match
+              if (ourNode?.children?.get(theirChildChar)?.hash !== theirChild.hash) {
+                missingHashes.push(...(await this.fetchMissingHashesByPrefix(theirChild.prefix, rpcClient)));
+              }
+            }
           }
-        }
-        resolve(missingHashes);
-      }
+          resolve(missingHashes);
+        })();
     });
   }
 
   async fetchMissingHashesByPrefix(prefix: string, rpcClient: protobufs.SyncServiceClient): Promise<string[]> {
     const ourNode = this._trie.getTrieNodeMetadata(prefix);
 
-    return new Promise(async (resolve) => {
+    return new Promise((resolve) => {
       rpcClient.getSyncMetadataByPrefix(
         protobufs.TrieNodePrefix.create({ prefix: hexStringToBytes(prefix)._unsafeUnwrap() }),
         async (err, theirNodeMetadata) => {
@@ -271,7 +273,7 @@ class SyncEngine {
 
   private async syncUserAndRetryMessage(
     message: protobufs.Message,
-    rpcClient: protobufs.SyncServiceClient
+    _rpcClient: protobufs.SyncServiceClient
   ): Promise<HubResult<void>> {
     const fid = message.data?.fid;
     if (!fid) {
