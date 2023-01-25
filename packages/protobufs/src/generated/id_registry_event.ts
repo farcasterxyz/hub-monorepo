@@ -3,19 +3,23 @@ import Long from "long";
 import _m0 from "protobufjs/minimal";
 
 export enum IdRegistryEventType {
-  REGISTER = 0,
-  TRANSFER = 1,
+  ID_REGISTRY_EVENT_TYPE_NONE = 0,
+  ID_REGISTRY_EVENT_TYPE_REGISTER = 1,
+  ID_REGISTRY_EVENT_TYPE_TRANSFER = 2,
   UNRECOGNIZED = -1,
 }
 
 export function idRegistryEventTypeFromJSON(object: any): IdRegistryEventType {
   switch (object) {
     case 0:
-    case "REGISTER":
-      return IdRegistryEventType.REGISTER;
+    case "ID_REGISTRY_EVENT_TYPE_NONE":
+      return IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_NONE;
     case 1:
-    case "TRANSFER":
-      return IdRegistryEventType.TRANSFER;
+    case "ID_REGISTRY_EVENT_TYPE_REGISTER":
+      return IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER;
+    case 2:
+    case "ID_REGISTRY_EVENT_TYPE_TRANSFER":
+      return IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_TRANSFER;
     case -1:
     case "UNRECOGNIZED":
     default:
@@ -25,10 +29,12 @@ export function idRegistryEventTypeFromJSON(object: any): IdRegistryEventType {
 
 export function idRegistryEventTypeToJSON(object: IdRegistryEventType): string {
   switch (object) {
-    case IdRegistryEventType.REGISTER:
-      return "REGISTER";
-    case IdRegistryEventType.TRANSFER:
-      return "TRANSFER";
+    case IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_NONE:
+      return "ID_REGISTRY_EVENT_TYPE_NONE";
+    case IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER:
+      return "ID_REGISTRY_EVENT_TYPE_REGISTER";
+    case IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_TRANSFER:
+      return "ID_REGISTRY_EVENT_TYPE_TRANSFER";
     case IdRegistryEventType.UNRECOGNIZED:
     default:
       return "UNRECOGNIZED";
@@ -42,7 +48,7 @@ export interface IdRegistryEvent {
   logIndex: number;
   fid: number;
   to: Uint8Array;
-  eventType: IdRegistryEventType;
+  type: IdRegistryEventType;
   from: Uint8Array;
 }
 
@@ -54,7 +60,7 @@ function createBaseIdRegistryEvent(): IdRegistryEvent {
     logIndex: 0,
     fid: 0,
     to: new Uint8Array(),
-    eventType: 0,
+    type: 0,
     from: new Uint8Array(),
   };
 }
@@ -79,8 +85,8 @@ export const IdRegistryEvent = {
     if (message.to.length !== 0) {
       writer.uint32(50).bytes(message.to);
     }
-    if (message.eventType !== 0) {
-      writer.uint32(56).int32(message.eventType);
+    if (message.type !== 0) {
+      writer.uint32(56).int32(message.type);
     }
     if (message.from.length !== 0) {
       writer.uint32(66).bytes(message.from);
@@ -114,7 +120,7 @@ export const IdRegistryEvent = {
           message.to = reader.bytes();
           break;
         case 7:
-          message.eventType = reader.int32() as any;
+          message.type = reader.int32() as any;
           break;
         case 8:
           message.from = reader.bytes();
@@ -135,7 +141,7 @@ export const IdRegistryEvent = {
       logIndex: isSet(object.logIndex) ? Number(object.logIndex) : 0,
       fid: isSet(object.fid) ? Number(object.fid) : 0,
       to: isSet(object.to) ? bytesFromBase64(object.to) : new Uint8Array(),
-      eventType: isSet(object.eventType) ? idRegistryEventTypeFromJSON(object.eventType) : 0,
+      type: isSet(object.type) ? idRegistryEventTypeFromJSON(object.type) : 0,
       from: isSet(object.from) ? bytesFromBase64(object.from) : new Uint8Array(),
     };
   },
@@ -152,7 +158,7 @@ export const IdRegistryEvent = {
     message.logIndex !== undefined && (obj.logIndex = Math.round(message.logIndex));
     message.fid !== undefined && (obj.fid = Math.round(message.fid));
     message.to !== undefined && (obj.to = base64FromBytes(message.to !== undefined ? message.to : new Uint8Array()));
-    message.eventType !== undefined && (obj.eventType = idRegistryEventTypeToJSON(message.eventType));
+    message.type !== undefined && (obj.type = idRegistryEventTypeToJSON(message.type));
     message.from !== undefined &&
       (obj.from = base64FromBytes(message.from !== undefined ? message.from : new Uint8Array()));
     return obj;
@@ -170,7 +176,7 @@ export const IdRegistryEvent = {
     message.logIndex = object.logIndex ?? 0;
     message.fid = object.fid ?? 0;
     message.to = object.to ?? new Uint8Array();
-    message.eventType = object.eventType ?? 0;
+    message.type = object.type ?? 0;
     message.from = object.from ?? new Uint8Array();
     return message;
   },

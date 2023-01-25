@@ -1,16 +1,4 @@
-import {
-  isAmpAddMessage,
-  isAmpRemoveMessage,
-  isCastAddMessage,
-  isCastRemoveMessage,
-  isReactionAddMessage,
-  isReactionRemoveMessage,
-  isSignerAddMessage,
-  isSignerRemoveMessage,
-  isUserDataAddMessage,
-  isVerificationAddEthAddressMessage,
-  isVerificationRemoveMessage,
-} from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/protobufs';
 import { ok } from 'neverthrow';
 import { Factories } from './factories';
 import * as validations from './validations';
@@ -18,87 +6,109 @@ import * as validations from './validations';
 describe('CastAddMessageFactory', () => {
   test('generates a valid CastAdd', async () => {
     const message = await Factories.CastAddMessage.create();
-    expect(isCastAddMessage(message)).toBeTruthy();
-    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+    expect(protobufs.isCastAddMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+  });
+
+  test('generates new data each time', async () => {
+    const message1 = await Factories.CastAddMessage.create();
+    const message2 = await Factories.CastAddMessage.create();
+    expect(message1.data.castAddBody.text).not.toEqual(message2.data.castAddBody.text);
+    expect(message1.hash).not.toEqual(message2.hash);
   });
 });
 
 describe('CastRemoveMessageFactory', () => {
   test('generates a valid CastRemove', async () => {
     const message = await Factories.CastRemoveMessage.create();
-    expect(isCastRemoveMessage(message)).toBeTruthy();
-    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+    expect(protobufs.isCastRemoveMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
 });
 
 describe('ReactionAddMessageFactory', () => {
   test('generates a valid ReactionAdd', async () => {
     const message = await Factories.ReactionAddMessage.create();
-    expect(isReactionAddMessage(message)).toBeTruthy();
-    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+    expect(protobufs.isReactionAddMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
 });
 
 describe('ReactionRemoveMessageFactory', () => {
   test('generates a valid ReactionRemove', async () => {
     const message = await Factories.ReactionRemoveMessage.create();
-    expect(isReactionRemoveMessage(message)).toBeTruthy();
-    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+    expect(protobufs.isReactionRemoveMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
 });
 
 describe('AmpAddMessageFactory', () => {
   test('generates a valid AmpAdd', async () => {
     const message = await Factories.AmpAddMessage.create();
-    expect(isAmpAddMessage(message)).toBeTruthy();
-    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+    expect(protobufs.isAmpAddMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
 });
 
 describe('AmpRemoveMessageFactory', () => {
   test('generates a valid AmpRemove', async () => {
     const message = await Factories.AmpRemoveMessage.create();
-    expect(isAmpRemoveMessage(message)).toBeTruthy();
-    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+    expect(protobufs.isAmpRemoveMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
 });
 
 describe('VerificationAddEthAddressMessageFactory', () => {
   test('generates a valid VerificationAddEthAddress', async () => {
     const message = await Factories.VerificationAddEthAddressMessage.create();
-    expect(isVerificationAddEthAddressMessage(message)).toBeTruthy();
-    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+    expect(protobufs.isVerificationAddEthAddressMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
 });
 
 describe('VerificationRemoveMessageFactory', () => {
   test('generates a valid VerificationRemove', async () => {
     const message = await Factories.VerificationRemoveMessage.create();
-    expect(isVerificationRemoveMessage(message)).toBeTruthy();
-    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+    expect(protobufs.isVerificationRemoveMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
 });
 
 describe('SignerAddMessageFactory', () => {
   test('generates a valid SignerAdd', async () => {
     const message = await Factories.SignerAddMessage.create();
-    expect(isSignerAddMessage(message)).toBeTruthy();
-    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+    expect(protobufs.isSignerAddMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+  });
+
+  test('generates new data each time', async () => {
+    const message1 = await Factories.SignerAddMessage.create();
+    const message2 = await Factories.SignerAddMessage.create();
+    expect(message1.hash).not.toEqual(message2.hash);
   });
 });
 
 describe('SignerRemoveMessageFactory', () => {
   test('generates a valid SignerRemove', async () => {
     const message = await Factories.SignerRemoveMessage.create();
-    expect(isSignerRemoveMessage(message)).toBeTruthy();
-    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+    expect(protobufs.isSignerRemoveMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
 });
 
 describe('UserDataAddMessageFactory', () => {
   test('generates a valid UserDataAdd', async () => {
     const message = await Factories.UserDataAddMessage.create();
-    expect(isUserDataAddMessage(message)).toBeTruthy();
-    expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+    expect(protobufs.isUserDataAddMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+  });
+});
+
+describe('IdRegistryEventFactory', () => {
+  test('succeeds', () => {
+    const event = Factories.IdRegistryEvent.build();
+    const encoded = protobufs.IdRegistryEvent.encode(event).finish();
+    const decoded = protobufs.IdRegistryEvent.decode(encoded);
+    expect(decoded).toEqual(event);
   });
 });

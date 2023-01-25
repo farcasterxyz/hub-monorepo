@@ -1,8 +1,8 @@
+import { MessageType } from '@farcaster/protobufs';
 import { bytesCompare, Factories, HubError } from '@farcaster/protoutils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
-import { UserPostfix } from '~/storage/db/types';
+import { TRUE_VALUE, UserPostfix } from '~/storage/db/types';
 import {
-  deleteMessage,
   getAllMessagesByFid,
   getAllMessagesBySigner,
   getManyMessages,
@@ -12,7 +12,6 @@ import {
   makeTsHash,
   makeUserKey,
   putMessage,
-  TRUE_VALUE,
   typeToSetPostfix,
 } from './message';
 
@@ -111,7 +110,7 @@ describe('getMessage', () => {
   });
 
   test('fails with wrong key', async () => {
-    await deleteMessage(db, castMessage);
+    await putMessage(db, castMessage);
     const badTsHash = new Uint8Array([...makeTsHash(castMessage.data.timestamp, castMessage.hash)._unsafeUnwrap(), 1]);
     await expect(
       getMessage(db, castMessage.data.fid, typeToSetPostfix(castMessage.data.type), badTsHash)
@@ -149,6 +148,17 @@ describe('getAllMessagesBySigner', () => {
     await putMessage(db, ampMessage);
     await expect(getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer)).resolves.toEqual([castMessage]);
     await expect(getAllMessagesBySigner(db, ampMessage.data.fid, ampMessage.signer)).resolves.toEqual([ampMessage]);
+  });
+
+  test('succeeds with type', async () => {
+    await putMessage(db, castMessage);
+    await putMessage(db, ampMessage);
+    await expect(
+      getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer, MessageType.MESSAGE_TYPE_CAST_ADD)
+    ).resolves.toEqual([castMessage]);
+    await expect(
+      getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer, MessageType.MESSAGE_TYPE_AMP_ADD)
+    ).resolves.toEqual([]);
   });
 
   test('succeeds with no results', async () => {

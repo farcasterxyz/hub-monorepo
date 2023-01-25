@@ -3,13 +3,14 @@ import { Factories, HubError } from '@farcaster/protoutils';
 import { err, ok } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
+import SignerStore from '~/storage/stores/signerStore';
 
 const db = jestRocksDB('flatbuffers.engine.test');
 const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
 const engine = new Engine(db, network);
 
 // init stores for checking state changes from engine
-// const signerStore = new SignerStore(db, engine.eventHandler);
+const signerStore = new SignerStore(db, engine.eventHandler);
 // const castStore = new CastStore(db, engine.eventHandler);
 // const ampStore = new AmpStore(db, engine.eventHandler);
 // const reactionStore = new ReactionStore(db, engine.eventHandler);
@@ -18,14 +19,13 @@ const engine = new Engine(db, network);
 
 const fid = Factories.Fid.build();
 // const fname = Factories.Fname.build();
-// const custodySigner = Factories.Eip712Signer.build();
-// const custodyAddress = custodySigner.signerKey;
+const custodySigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
 
-// let custodyEvent: IdRegistryEventModel;
+let custodyEvent: protobufs.IdRegistryEvent;
 // let fnameTransfer: NameRegistryEventModel;
-// let signerAdd: protobufs.SignerAddMessage;
-// let signerRemove: protobufs.SignerRemoveMessage;
+let signerAdd: protobufs.SignerAddMessage;
+let signerRemove: protobufs.SignerRemoveMessage;
 // let castAdd: protobufs.CastAddMessage;
 // let ampAdd: protobufs.AmpAddMessage;
 let reactionAdd: protobufs.ReactionAddMessage;
@@ -33,35 +33,36 @@ let reactionAdd: protobufs.ReactionAddMessage;
 // let userDataAdd: protobufs.UserDataAddMessage;
 
 beforeAll(async () => {
-  // custodyEvent = new IdRegistryEventModel(
-  //   await Factories.IdRegistryEvent.create({ fid: Array.from(fid), to: Array.from(custodyAddress) })
-  // );
+  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
 
   // fnameTransfer = new NameRegistryEventModel(
   //   await Factories.NameRegistryEvent.create({ fname: Array.from(fname), to: Array.from(custodyAddress) })
   // );
 
+  signerAdd = await Factories.SignerAddMessage.create(
+    { data: { fid, network, signerBody: { signer: signer.signerKey } } },
+    { transient: { signer: custodySigner } }
+  );
+  signerRemove = await Factories.SignerRemoveMessage.create(
+    { data: { fid, network, timestamp: signerAdd.data.timestamp + 1, signerBody: { signer: signer.signerKey } } },
+    { transient: { signer: custodySigner } }
+  );
+
   reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 });
 
-// describe('mergeIdRegistryEvent', () => {
-//   test('succeeds', async () => {
-//     await expect(engine.mergeIdRegistryEvent(custodyEvent)).resolves.toEqual(ok(undefined));
-//     await expect(signerStore.getCustodyEvent(fid)).resolves.toEqual(custodyEvent);
-//   });
+describe('mergeIdRegistryEvent', () => {
+  test('succeeds', async () => {
+    await expect(engine.mergeIdRegistryEvent(custodyEvent)).resolves.toEqual(ok(undefined));
+    await expect(engine.getIdRegistryEvent(fid)).resolves.toEqual(ok(custodyEvent));
+  });
 
-//   test('fails with invalid event type', async () => {
-//     class IdRegistryEventModelStub extends IdRegistryEventModel {
-//       override type(): IdRegistryEventType {
-//         return 100 as IdRegistryEventType; // Invalid event type
-//       }
-//     }
-
-//     const invalidEvent = new IdRegistryEventModelStub(custodyEvent.event);
-//     const result = await engine.mergeIdRegistryEvent(invalidEvent);
-//     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid event type'));
-//   });
-// });
+  test('fails with invalid event type', async () => {
+    const invalidEvent = Factories.IdRegistryEvent.build({ type: 10 as unknown as protobufs.IdRegistryEventType });
+    const result = await engine.mergeIdRegistryEvent(invalidEvent);
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid event type'));
+  });
+});
 
 // describe('mergeNameRegistryEvent', () => {
 //   test('succeeds', async () => {
@@ -102,8 +103,8 @@ describe('mergeMessage', () => {
 
   describe('with valid signer', () => {
     beforeEach(async () => {
-      // await engine.mergeIdRegistryEvent(custodyEvent);
-      // await engine.mergeMessage(signerAdd);
+      await expect(engine.mergeIdRegistryEvent(custodyEvent)).resolves.toEqual(ok(undefined));
+      await expect(engine.mergeMessage(signerAdd)).resolves.toEqual(ok(undefined));
     });
 
     // describe('CastAdd', () => {
@@ -134,7 +135,7 @@ describe('mergeMessage', () => {
             reactionAdd.data.reactionBody.targetCastId as protobufs.CastId
           )
         ).resolves.toEqual(ok(reactionAdd));
-        expect(mergedMessages).toEqual([reactionAdd]);
+        expect(mergedMessages).toEqual([signerAdd, reactionAdd]);
       });
     });
 
@@ -200,47 +201,47 @@ describe('mergeMessage', () => {
     //   });
     // });
 
-    // describe('SignerRemove', () => {
-    //   test('succeeds ', async () => {
-    //     await expect(engine.mergeMessage(signerRemove)).resolves.toEqual(ok(undefined));
-    //     await expect(signerStore.getSignerRemove(fid, signer.signerKey)).resolves.toEqual(signerRemove);
-    //     expect(mergedMessages).toEqual([signerAdd, signerRemove]);
-    //   });
-    // });
+    describe('SignerRemove', () => {
+      test('succeeds ', async () => {
+        await expect(engine.mergeMessage(signerRemove)).resolves.toEqual(ok(undefined));
+        await expect(signerStore.getSignerRemove(fid, signer.signerKey)).resolves.toEqual(signerRemove);
+        expect(mergedMessages).toEqual([signerAdd, signerRemove]);
+      });
+    });
   });
 
-  // describe('fails when missing signer', () => {
-  //   let message: MessageModel;
+  describe('fails when missing signer', () => {
+    let message: protobufs.Message;
 
-  //   beforeEach(async () => {
-  //     await engine.mergeIdRegistryEvent(custodyEvent);
-  //   });
+    beforeEach(async () => {
+      await engine.mergeIdRegistryEvent(custodyEvent);
+    });
 
-  //   afterEach(async () => {
-  //     expect(await engine.mergeMessage(message)).toEqual(
-  //       err(new HubError('bad_request.validation_failure', 'invalid signer'))
-  //     );
-  //   });
+    afterEach(async () => {
+      expect(await engine.mergeMessage(message)).toEqual(
+        err(new HubError('bad_request.validation_failure', 'invalid signer'))
+      );
+    });
 
-  //   test('with CastAdd', () => {
-  //     message = castAdd;
-  //   });
-  // });
+    test('with ReactionAdd', () => {
+      message = reactionAdd;
+    });
+  });
 
-  // describe('fails when missing both custody address and signer', () => {
-  //   let message: MessageModel;
+  describe('fails when missing both custody address and signer', () => {
+    let message: protobufs.Message;
 
-  //   afterEach(async () => {
-  //     const result = await engine.mergeMessage(message);
-  //     const err = result._unsafeUnwrapErr();
-  //     expect(err.errCode).toEqual('bad_request.validation_failure');
-  //     expect(err.message).toMatch('unknown fid');
-  //   });
+    afterEach(async () => {
+      const result = await engine.mergeMessage(message);
+      const err = result._unsafeUnwrapErr();
+      expect(err.errCode).toEqual('bad_request.validation_failure');
+      expect(err.message).toMatch('unknown fid');
+    });
 
-  //   test('with CastAdd', () => {
-  //     message = castAdd;
-  //   });
-  // });
+    test('with ReactionAdd', () => {
+      message = reactionAdd;
+    });
+  });
 
   test('fails with mismatched farcaster network', async () => {
     const mainnetEngine = new Engine(db, protobufs.FarcasterNetwork.FARCASTER_NETWORK_MAINNET);

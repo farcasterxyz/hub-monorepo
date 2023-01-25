@@ -121,37 +121,37 @@ describe('getReactionRemove', () => {
   });
 });
 
-describe('getReactionAddsByUser', () => {
+describe('getReactionAddsByFid', () => {
   test('returns reactionAdds if they exist', async () => {
     await set.merge(reactionAdd);
     await set.merge(reactionAddRecast);
-    await expect(set.getReactionAddsByUser(fid)).resolves.toEqual([reactionAdd, reactionAddRecast]);
+    await expect(set.getReactionAddsByFid(fid)).resolves.toEqual([reactionAdd, reactionAddRecast]);
   });
 
   test('returns empty array if no ReactionAdd exists', async () => {
-    await expect(set.getReactionAddsByUser(fid)).resolves.toEqual([]);
+    await expect(set.getReactionAddsByFid(fid)).resolves.toEqual([]);
   });
 
   test('returns empty array if no ReactionAdd exists, even if ReactionRemove exists', async () => {
     await set.merge(reactionRemove);
-    await expect(set.getReactionAddsByUser(fid)).resolves.toEqual([]);
+    await expect(set.getReactionAddsByFid(fid)).resolves.toEqual([]);
   });
 });
 
-describe('getReactionRemovesByUser', () => {
+describe('getReactionRemovesByFid', () => {
   test('returns ReactionRemove if it exists', async () => {
     await set.merge(reactionRemove);
     await set.merge(reactionRemoveRecast);
-    await expect(set.getReactionRemovesByUser(fid)).resolves.toEqual([reactionRemove, reactionRemoveRecast]);
+    await expect(set.getReactionRemovesByFid(fid)).resolves.toEqual([reactionRemove, reactionRemoveRecast]);
   });
 
   test('returns empty array if no ReactionRemove exists', async () => {
-    await expect(set.getReactionRemovesByUser(fid)).resolves.toEqual([]);
+    await expect(set.getReactionRemovesByFid(fid)).resolves.toEqual([]);
   });
 
   test('returns empty array if no ReactionRemove exists, even if ReactionAdds exists', async () => {
     await set.merge(reactionAdd);
-    await expect(set.getReactionRemovesByUser(fid)).resolves.toEqual([]);
+    await expect(set.getReactionRemovesByFid(fid)).resolves.toEqual([]);
   });
 });
 
