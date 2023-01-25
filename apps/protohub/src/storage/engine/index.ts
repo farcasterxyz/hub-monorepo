@@ -5,6 +5,7 @@ import { SyncId } from '~/network/sync/syncId';
 import { getManyMessages, typeToSetPostfix } from '~/storage/db/message';
 import RocksDB from '~/storage/db/rocksdb';
 import { FID_BYTES, RootPrefix, UserPostfix } from '~/storage/db/types';
+import AmpStore from '~/storage/stores/ampStore';
 import CastStore from '~/storage/stores/castStore';
 import ReactionStore from '~/storage/stores/reactionStore';
 import SignerStore from '~/storage/stores/signerStore';
@@ -19,6 +20,7 @@ class Engine {
   private _reactionStore: ReactionStore;
   private _signerStore: SignerStore;
   private _castStore: CastStore;
+  private _ampStore: AmpStore;
 
   constructor(db: RocksDB, network: protobufs.FarcasterNetwork) {
     this.eventHandler = new StoreEventHandler();
@@ -29,6 +31,7 @@ class Engine {
     this._reactionStore = new ReactionStore(db, this.eventHandler);
     this._signerStore = new SignerStore(db, this.eventHandler);
     this._castStore = new CastStore(db, this.eventHandler);
+    this._ampStore = new AmpStore(db, this.eventHandler);
   }
 
   async mergeMessages(messages: protobufs.Message[]): Promise<Array<HubResult<void>>> {
@@ -50,6 +53,8 @@ class Engine {
       return ResultAsync.fromPromise(this._signerStore.merge(message), (e) => e as HubError);
     } else if (setPostfix === UserPostfix.CastMessage) {
       return ResultAsync.fromPromise(this._castStore.merge(message), (e) => e as HubError);
+    } else if (setPostfix === UserPostfix.AmpMessage) {
+      return ResultAsync.fromPromise(this._ampStore.merge(message), (e) => e as HubError);
     } else {
       return err(new HubError('bad_request.validation_failure', 'invalid message type'));
     }
@@ -80,7 +85,7 @@ class Engine {
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {
     await this._castStore.revokeMessagesBySigner(fid, signer);
-    // await this._ampStore.revokeMessagesBySigner(fid, signer);
+    await this._ampStore.revokeMessagesBySigner(fid, signer);
     await this._reactionStore.revokeMessagesBySigner(fid, signer);
     // await this._verificationStore.revokeMessagesBySigner(fid, signer);
     // await this._userDataStore.revokeMessagesBySigner(fid, signer);
@@ -91,7 +96,7 @@ class Engine {
 
   async pruneMessages(fid: number): HubAsyncResult<void> {
     await this._castStore.pruneMessages(fid);
-    // await this._ampStore.pruneMessages(fid);
+    await this._ampStore.pruneMessages(fid);
     await this._reactionStore.pruneMessages(fid);
     // await this._verificationStore.pruneMessages(fid);
     // await this._userDataStore.pruneMessages(fid);
@@ -101,8 +106,9 @@ class Engine {
   }
 
   /* -------------------------------------------------------------------------- */
-  /*                             All Messages                                   */
+  /*                             Sync Methods                                   */
   /* -------------------------------------------------------------------------- */
+
   async forEachMessage(callback: (message: protobufs.Message) => void): Promise<void> {
     const allUserPrefix = Buffer.from([RootPrefix.User]);
 
@@ -183,58 +189,31 @@ class Engine {
   /*                             Amp Store Methods                           */
   /* -------------------------------------------------------------------------- */
 
-  // async getAmp(fid: Uint8Array, user: flatbuffers.UserId): HubAsyncResult<types.AmpAddModel> {
-  //   const validatedFid = validations.validateFid(fid);
-  //   if (validatedFid.isErr()) {
-  //     return err(validatedFid.error);
-  //   }
+  async getAmp(fid: number, targetFid: number): HubAsyncResult<protobufs.AmpAddMessage> {
+    return ResultAsync.fromPromise(this._ampStore.getAmpAdd(fid, targetFid), (e) => e as HubError);
+  }
 
-  //   const validatedUser = validations.validateUserId(user);
-  //   if (validatedUser.isErr()) {
-  //     return err(validatedUser.error);
-  //   }
+  async getAmpsByFid(fid: number): HubAsyncResult<protobufs.AmpAddMessage[]> {
+    return ResultAsync.fromPromise(this._ampStore.getAmpAddsByFid(fid), (e) => e as HubError);
+  }
 
-  //   return ResultAsync.fromPromise(this._ampStore.getAmpAdd(fid, validatedUser.value.fidArray()), (e) => e as HubError);
-  // }
+  async getAmpsByTargetFid(targetFid: number): HubAsyncResult<protobufs.AmpAddMessage[]> {
+    return ResultAsync.fromPromise(this._ampStore.getAmpsByTargetFid(targetFid), (e) => e as HubError);
+  }
 
-  // async getAmpsByFid(fid: Uint8Array): HubAsyncResult<types.AmpAddModel[]> {
-  //   return validations.validateFid(fid).match(
-  //     (validatedFid: Uint8Array) => {
-  //       return ResultAsync.fromPromise(this._ampStore.getAmpAddsByUser(validatedFid), (e) => e as HubError);
-  //     },
-  //     (e) => {
-  //       return errAsync(e);
-  //     }
-  //   );
-  // }
+  async getAllAmpMessagesByFid(fid: number): HubAsyncResult<(protobufs.AmpAddMessage | protobufs.AmpRemoveMessage)[]> {
+    const adds = await ResultAsync.fromPromise(this._ampStore.getAmpAddsByFid(fid), (e) => e as HubError);
+    if (adds.isErr()) {
+      return err(adds.error);
+    }
 
-  // async getAmpsByUser(user: flatbuffers.UserId): HubAsyncResult<types.AmpAddModel[]> {
-  //   return validations.validateUserId(user).match(
-  //     (validatedUserId: validations.ValidatedUserId) => {
-  //       return ResultAsync.fromPromise(
-  //         this._ampStore.getAmpsByTargetUser(validatedUserId.fidArray()),
-  //         (e) => e as HubError
-  //       );
-  //     },
-  //     (e) => {
-  //       return errAsync(e);
-  //     }
-  //   );
-  // }
+    const removes = await ResultAsync.fromPromise(this._ampStore.getAmpRemovesByFid(fid), (e) => e as HubError);
+    if (removes.isErr()) {
+      return err(removes.error);
+    }
 
-  // async getAllAmpMessagesByFid(fid: Uint8Array): HubAsyncResult<(types.AmpAddModel | types.AmpRemoveModel)[]> {
-  //   const adds = await ResultAsync.fromPromise(this._ampStore.getAmpAddsByUser(fid), (e) => e as HubError);
-  //   if (adds.isErr()) {
-  //     return err(adds.error);
-  //   }
-
-  //   const removes = await ResultAsync.fromPromise(this._ampStore.getAmpRemovesByUser(fid), (e) => e as HubError);
-  //   if (removes.isErr()) {
-  //     return err(removes.error);
-  //   }
-
-  //   return ok([...adds.value, ...removes.value]);
-  // }
+    return ok([...adds.value, ...removes.value]);
+  }
 
   /* -------------------------------------------------------------------------- */
   /*                            Reaction Store Methods                          */
