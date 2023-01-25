@@ -109,6 +109,6 @@ describe('IdRegistryEventFactory', () => {
     const event = Factories.IdRegistryEvent.build();
     const encoded = protobufs.IdRegistryEvent.encode(event).finish();
     const decoded = protobufs.IdRegistryEvent.decode(encoded);
-    expect(decoded).toEqual(event);
+    expect(protobufs.IdRegistryEvent.toJSON(decoded)).toEqual(protobufs.IdRegistryEvent.toJSON(event));
   });
 });

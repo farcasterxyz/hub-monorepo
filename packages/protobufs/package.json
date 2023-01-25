@@ -16,9 +16,9 @@
   ],
   "license": "MIT",
   "scripts": {
-    "build": "tsup",
+    "build": "tsup --config tsup.config.ts",
     "clean": "rimraf ./dist",
-    "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/generated/ --ts_proto_opt=env=both,esModuleInterop=true,exportCommonSymbols=false,outputServices=grpc-js --proto_path=./src/schemas ./src/schemas/*",
+    "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/generated/ --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputServices=grpc-js --proto_path=./src/schemas ./src/schemas/*",
     "lint": "eslint  src/ --color --ext .ts",
     "lint:fix": "yarn run lint -- --fix"
   },
