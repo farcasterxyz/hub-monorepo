@@ -1,3 +1,9 @@
+/** Used when index keys are sufficiently descriptive */
+export const TRUE_VALUE = Buffer.from([1]);
+
+/** Size in bytes of a Farcaster ID */
+export const FID_BYTES = 8;
+
 /**
  * RootPrefix indicates the purpose of the key. It is the 1st byte of every key.
  */

@@ -3,13 +3,14 @@ import { HubError, HubResult } from '@farcaster/protoutils';
 import { err, ok } from 'neverthrow';
 import AbstractRocksDB from 'rocksdb';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
-import { RootPrefix, UserMessagePostfix, UserMessagePostfixMax, UserPostfix } from '~/storage/db/types';
-
-/** Used when index keys are sufficiently descriptive */
-export const TRUE_VALUE = Buffer.from([1]);
-
-/** Size in bytes of a Farcaster ID */
-export const FID_BYTES = 8;
+import {
+  FID_BYTES,
+  RootPrefix,
+  TRUE_VALUE,
+  UserMessagePostfix,
+  UserMessagePostfixMax,
+  UserPostfix,
+} from '~/storage/db/types';
 
 /** <user prefix byte, fid> */
 export const makeUserKey = (fid: number): Buffer => {
@@ -124,6 +125,11 @@ export const getMessage = async <T extends protobufs.Message>(
   return protobufs.Message.decode(new Uint8Array(buffer)) as T;
 };
 
+export const deleteMessage = (db: RocksDB, message: protobufs.Message): Promise<void> => {
+  const txn = deleteMessageTransaction(db.transaction(), message);
+  return db.commit(txn);
+};
+
 export const getManyMessages = async <T extends protobufs.Message>(
   db: RocksDB,
   primaryKeys: Buffer[]
@@ -230,11 +236,6 @@ export const putMessageTransaction = (txn: Transaction, message: protobufs.Messa
   const messageBuffer = Buffer.from(protobufs.Message.encode(message).finish());
   const bySignerKey = makeMessageBySignerKey(message.data.fid, message.signer, message.data.type, tsHash.value);
   return txn.put(primaryKey, messageBuffer).put(bySignerKey, TRUE_VALUE);
-};
-
-export const deleteMessage = (db: RocksDB, message: protobufs.Message): Promise<void> => {
-  const txn = deleteMessageTransaction(db.transaction(), message);
-  return db.commit(txn);
 };
 
 export const deleteMessageTransaction = (txn: Transaction, message: protobufs.Message): Transaction => {
