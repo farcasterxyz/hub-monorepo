@@ -44,6 +44,10 @@ message FidsResponse {
     repeated uint64 fids = 1;
 }
 
+message MessagesResponse {
+    repeated Message messages = 1;
+}
+
 message ReactionRequest {
     uint64 fid = 1;
     ReactionType reaction_type = 2;
@@ -62,7 +66,7 @@ message ReactionsByCastRequest {
 
 message AmpRequest {
     uint64 fid = 1;
-    UserId user_id = 2;
+    uint64 target_fid = 2;
 }
 
 message UserDataRequest {
@@ -92,47 +96,47 @@ service HubService {
 
     // Casts
     rpc GetCast(CastId) returns (Message);
-    rpc GetCastsByFid(FidRequest) returns (stream Message);
-    rpc GetCastsByParent(CastId) returns (stream Message);
-    rpc GetCastsByMention(FidRequest) returns (stream Message);
+    rpc GetCastsByFid(FidRequest) returns (MessagesResponse);
+    rpc GetCastsByParent(CastId) returns (MessagesResponse);
+    rpc GetCastsByMention(FidRequest) returns (MessagesResponse);
 
     // Reactions
     rpc GetReaction(ReactionRequest) returns (Message);
-    rpc GetReactionsByFid(ReactionsByFidRequest) returns (stream Message);
-    rpc GetReactionsByCast(ReactionsByCastRequest) returns (stream Message);
+    rpc GetReactionsByFid(ReactionsByFidRequest) returns (MessagesResponse);
+    rpc GetReactionsByCast(ReactionsByCastRequest) returns (MessagesResponse);
 
     // Amps
     rpc GetAmp(AmpRequest) returns (Message);
-    rpc GetAmpsByFid(FidRequest) returns (stream Message);
-    rpc GetAmpsByUser(UserId) returns (stream Message);
+    rpc GetAmpsByFid(FidRequest) returns (MessagesResponse);
+    rpc GetAmpsByUser(FidRequest) returns (MessagesResponse);
 
     // User Data
     rpc GetUserData(UserDataRequest) returns (Message);
-    rpc GetUserDataByFid(FidRequest) returns (stream Message);
+    rpc GetUserDataByFid(FidRequest) returns (MessagesResponse);
     rpc GetNameRegistryEvent(NameRegistryEventRequest) returns (NameRegistryEvent);
 
     // Verifications
     rpc GetVerification(VerificationRequest) returns (Message);
-    rpc GetVerificationsByFid(FidRequest) returns (stream Message);
+    rpc GetVerificationsByFid(FidRequest) returns (MessagesResponse);
 
     // Signer
     rpc GetSigner(SignerRequest) returns (Message);
-    rpc GetSignersByFid(FidRequest) returns (stream Message);
+    rpc GetSignersByFid(FidRequest) returns (MessagesResponse);
     rpc GetCustodyEvent(FidRequest) returns (IdRegistryEvent);
     rpc GetFids(Empty) returns (FidsResponse);
 
     // Bulk Methods
-    rpc GetAllCastMessagesByFid(FidRequest) returns (stream Message);
-    rpc GetAllReactionMessagesByFid(FidRequest) returns (stream Message);
-    rpc GetAllAmpMessagesByFid(FidRequest) returns (stream Message);
-    rpc GetAllVerificationMessagesByFid(FidRequest) returns (stream Message);
-    rpc GetAllSignerMessagesByFid(FidRequest) returns (stream Message);
-    rpc GetAllUserDataMessagesByFid(FidRequest) returns (stream Message);
+    rpc GetAllCastMessagesByFid(FidRequest) returns (MessagesResponse);
+    rpc GetAllReactionMessagesByFid(FidRequest) returns (MessagesResponse);
+    rpc GetAllAmpMessagesByFid(FidRequest) returns (MessagesResponse);
+    rpc GetAllVerificationMessagesByFid(FidRequest) returns (MessagesResponse);
+    rpc GetAllSignerMessagesByFid(FidRequest) returns (MessagesResponse);
+    rpc GetAllUserDataMessagesByFid(FidRequest) returns (MessagesResponse);
     
     // Sync Methods
     rpc GetInfo (Empty) returns (HubInfoResponse);
     rpc GetAllSyncIdsByPrefix (TrieNodePrefix) returns (SyncIds);
-    rpc GetAllMessagesBySyncIds (SyncIds) returns (stream Message);
+    rpc GetAllMessagesBySyncIds (SyncIds) returns (MessagesResponse);
     rpc GetSyncMetadataByPrefix (TrieNodePrefix) returns (TrieNodeMetadataResponse);
     rpc GetSyncSnapshotByPrefix (TrieNodePrefix) returns (TrieNodeSnapshotResponse);
 }

@@ -178,7 +178,9 @@ describe('TrieNode', () => {
       root.delete(ids[0] as string);
 
       // Expect the other two ids to be present
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       expect(root.exists(ids[1] as string)).toBeTruthy();
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       expect(root.exists(ids[2] as string)).toBeTruthy();
       expect(root.items).toEqual(2);
     });
