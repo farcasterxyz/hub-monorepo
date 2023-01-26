@@ -4,11 +4,10 @@ import { FID_BYTES, RootPrefix } from '~/storage/db/types';
 
 /** <ID Registry root prefix byte, fid> */
 export const makeIdRegistryEventPrimaryKey = (fid: number): Buffer => {
-  const buffer = new ArrayBuffer(1 + FID_BYTES);
-  const view = new DataView(buffer);
-  view.setUint8(0, RootPrefix.IdRegistryEvent);
-  view.setBigUint64(1, BigInt(fid), false); // Big endian for ordering
-  return Buffer.from(buffer);
+  const buffer = Buffer.alloc(1 + FID_BYTES);
+  buffer.writeUint8(RootPrefix.IdRegistryEvent, 0);
+  buffer.writeBigUint64BE(BigInt(fid), 1); // Big endian for ordering
+  return buffer;
 };
 
 /**

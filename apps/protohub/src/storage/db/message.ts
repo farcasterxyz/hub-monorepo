@@ -13,10 +13,9 @@ import {
 } from '~/storage/db/types';
 
 export const makeFidKey = (fid: number): Buffer => {
-  const buffer = new ArrayBuffer(FID_BYTES);
-  const view = new DataView(buffer);
-  view.setBigUint64(0, BigInt(fid), false); // Big endian for ordering
-  return Buffer.from(buffer);
+  const buffer = Buffer.alloc(FID_BYTES);
+  buffer.writeBigUInt64BE(BigInt(fid), 0);
+  return buffer;
 };
 
 /** <user prefix byte, fid> */
@@ -68,17 +67,11 @@ export const makeTsHash = (timestamp: number, hash: Uint8Array): HubResult<Uint8
   if (timestamp >= 2 ** 32) {
     return err(new HubError('bad_request.invalid_param', 'timestamp > 4 bytes'));
   }
-  const buffer = new ArrayBuffer(4 + hash.length);
-  const view = new DataView(buffer);
+  const buffer = Buffer.alloc(4 + hash.length);
 
   // Store timestamp as big-endian in first 4 bytes
-  view.setUint32(0, timestamp, false);
-
-  // Add hash bytes
-  for (let i = 0; i < hash.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, security/detect-object-injection
-    view.setUint8(4 + i, hash[i]!);
-  }
+  buffer.writeUint32BE(timestamp, 0);
+  buffer.set(hash, 4);
 
   return ok(new Uint8Array(buffer));
 };

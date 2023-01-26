@@ -10,6 +10,7 @@ import {
   getMessagesPruneIterator,
   getNextMessageToPrune,
   makeCastIdKey,
+  makeFidKey,
   makeMessagePrimaryKey,
   makeTsHash,
   makeUserKey,
@@ -92,21 +93,11 @@ const makeReactionsByTargetKey = (
     throw new HubError('bad_request.validation_failure', 'tsHash provided without type or fid');
   }
 
-  let fidBuffer: Buffer;
-  if (fid) {
-    const buffer = new ArrayBuffer(FID_BYTES);
-    const view = new DataView(buffer);
-    view.setBigUint64(0, BigInt(fid), false);
-    fidBuffer = Buffer.from(buffer);
-  } else {
-    fidBuffer = Buffer.from('');
-  }
-
   return Buffer.concat([
     Buffer.from([RootPrefix.ReactionsByTarget]),
     makeCastIdKey(targetId),
     Buffer.from(type ? [type] : ''),
-    fidBuffer,
+    fid ? makeFidKey(fid) : Buffer.from(''),
     Buffer.from(tsHash ?? ''),
   ]);
 };
@@ -224,8 +215,7 @@ class ReactionStore extends SequentialMergeStore {
 
     const messageKeys: Buffer[] = [];
     for await (const [key] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
-      const view = new DataView((key as Buffer).buffer);
-      const fid = Number(view.getBigUint64(fidOffset, false));
+      const fid = Number((key as Buffer).readBigUint64BE(fidOffset));
       const tsHash = Uint8Array.from(key).subarray(tsHashOffset);
       messageKeys.push(makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage, tsHash));
     }
