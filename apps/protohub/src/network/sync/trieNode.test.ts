@@ -160,6 +160,28 @@ describe('TrieNode', () => {
       expect(newLeafNode).toEqual(leafNode);
       expect(root.hash).toEqual(previousRootHash);
     });
+
+    test('deleting item only compacts the branch of the trie with the deleted item', async () => {
+      const ids = [
+        '0'.padStart(TIMESTAMP_LENGTH, '0') + '01068',
+        '0'.padStart(TIMESTAMP_LENGTH, '0') + '010a1',
+        '0'.padStart(TIMESTAMP_LENGTH, '0') + '05d22',
+      ];
+
+      const root = new TrieNode();
+
+      for (let i = 0; i < ids.length; i++) {
+        root.insert(ids[i] as string);
+      }
+
+      // Remove the first id
+      root.delete(ids[0] as string);
+
+      // Expect the other two ids to be present
+      expect(root.exists(ids[1] as string)).toBeTruthy();
+      expect(root.exists(ids[2] as string)).toBeTruthy();
+      expect(root.items).toEqual(2);
+    });
   });
 
   describe('get', () => {
