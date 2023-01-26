@@ -133,7 +133,10 @@ describe('SyncEngine', () => {
       expect(rsigneradd.isOk()).toBeTruthy();
 
       // Reaction
-      const reactionBody = { targetCastId: { fid, hash: castAdd.hash } };
+      const reactionBody = {
+        targetCastId: { fid, hash: castAdd.hash },
+        type: protobufs.ReactionType.REACTION_TYPE_LIKE,
+      };
       const reaction1 = await Factories.ReactionAddMessage.create(
         { data: { fid, network, timestamp: 30662167, reactionBody } },
         { transient: { signer } }
