@@ -1,4 +1,4 @@
-import { IdRegistryEvent, Message } from '@farcaster/protobufs';
+import { IdRegistryEvent, Message, NameRegistryEvent } from '@farcaster/protobufs';
 import { TypedEmitter } from 'tiny-typed-emitter';
 
 export type StoreEvents = {
@@ -32,8 +32,7 @@ export type StoreEvents = {
    * mergeNameRegistryEvent is emitted when an event from the Name Registry contract
    * is merged into the UserDataStore.
    */
-  // TODO
-  // mergeNameRegistryEvent: (event: NameRegistryEventModel) => void;
+  mergeNameRegistryEvent: (event: NameRegistryEvent) => void;
 };
 
 class StoreEventHandler extends TypedEmitter<StoreEvents> {
