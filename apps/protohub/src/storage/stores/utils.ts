@@ -1,9 +1,11 @@
-import { IdRegistryEvent } from '@farcaster/protobufs';
+import { IdRegistryEvent, NameRegistryEvent } from '@farcaster/protobufs';
 import { bytesCompare, HubError } from '@farcaster/protoutils';
+
+type Event = IdRegistryEvent | NameRegistryEvent;
 
 // TODO: add NameRegistryEvent when it's exported from protobufs
 /** Compares two events that happened on the blockchain based on block number/hash, log index */
-export const eventCompare = (a: IdRegistryEvent, b: IdRegistryEvent): number => {
+export const eventCompare = (a: Event, b: Event): number => {
   // Compare blockNumber
   if (a.blockNumber < b.blockNumber) {
     return -1;

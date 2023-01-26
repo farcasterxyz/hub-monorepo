@@ -112,3 +112,12 @@ describe('IdRegistryEventFactory', () => {
     expect(protobufs.IdRegistryEvent.toJSON(decoded)).toEqual(protobufs.IdRegistryEvent.toJSON(event));
   });
 });
+
+describe('NameRegistryEventFactory', () => {
+  test('succeeds', () => {
+    const event = Factories.NameRegistryEvent.build();
+    const encoded = protobufs.NameRegistryEvent.encode(event).finish();
+    const decoded = protobufs.NameRegistryEvent.decode(encoded);
+    expect(protobufs.NameRegistryEvent.toJSON(decoded)).toEqual(protobufs.NameRegistryEvent.toJSON(event));
+  });
+});

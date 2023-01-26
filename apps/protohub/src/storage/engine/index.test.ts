@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Factories, HubError } from '@farcaster/protoutils';
+import { bytesToUtf8String, Factories, HubError } from '@farcaster/protoutils';
 import { err, ok } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -9,33 +9,28 @@ const db = jestRocksDB('flatbuffers.engine.test');
 const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
 const engine = new Engine(db, network);
 
-// init stores for checking state changes from engine
+// init signer store for checking state changes from engine
 const signerStore = new SignerStore(db, engine.eventHandler);
-// const reactionStore = new ReactionStore(db, engine.eventHandler);
-// const verificationStore = new VerificationStore(db, engine.eventHandler);
-// const userDataStore = new UserDataStore(db, engine.eventHandler);
 
 const fid = Factories.Fid.build();
-// const fname = Factories.Fname.build();
+const fname = Factories.Fname.build();
 const custodySigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
 
 let custodyEvent: protobufs.IdRegistryEvent;
-// let fnameTransfer: NameRegistryEventModel;
+let fnameTransfer: protobufs.NameRegistryEvent;
 let signerAdd: protobufs.SignerAddMessage;
 let signerRemove: protobufs.SignerRemoveMessage;
 let castAdd: protobufs.CastAddMessage;
 let ampAdd: protobufs.AmpAddMessage;
 let reactionAdd: protobufs.ReactionAddMessage;
 // let verificationAdd: protobufs.VerificationAddEthAddressMessage;
-// let userDataAdd: protobufs.UserDataAddMessage;
+let userDataAdd: protobufs.UserDataAddMessage;
 
 beforeAll(async () => {
   custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
 
-  // fnameTransfer = new NameRegistryEventModel(
-  //   await Factories.NameRegistryEvent.create({ fname: Array.from(fname), to: Array.from(custodyAddress) })
-  // );
+  fnameTransfer = Factories.NameRegistryEvent.build({ fname, to: custodyEvent.to });
 
   signerAdd = await Factories.SignerAddMessage.create(
     { data: { fid, network, signerBody: { signer: signer.signerKey } } },
@@ -49,6 +44,10 @@ beforeAll(async () => {
   castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
   ampAdd = await Factories.AmpAddMessage.create({ data: { fid, network } }, { transient: { signer } });
   reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid, network } }, { transient: { signer } });
+  userDataAdd = await Factories.UserDataAddMessage.create(
+    { data: { fid, network, userDataBody: { type: protobufs.UserDataType.USER_DATA_TYPE_PFP } } },
+    { transient: { signer } }
+  );
 });
 
 describe('mergeIdRegistryEvent', () => {
@@ -64,24 +63,18 @@ describe('mergeIdRegistryEvent', () => {
   });
 });
 
-// describe('mergeNameRegistryEvent', () => {
-//   test('succeeds', async () => {
-//     await expect(engine.mergeNameRegistryEvent(fnameTransfer)).resolves.toEqual(ok(undefined));
-//     await expect(userDataStore.getNameRegistryEvent(fname)).resolves.toEqual(fnameTransfer);
-//   });
+describe('mergeNameRegistryEvent', () => {
+  test('succeeds', async () => {
+    await expect(engine.mergeNameRegistryEvent(fnameTransfer)).resolves.toEqual(ok(undefined));
+    await expect(engine.getNameRegistryEvent(fname)).resolves.toEqual(ok(fnameTransfer));
+  });
 
-//   test('fails with invalid event type', async () => {
-//     class NameRegistryEventModelStub extends NameRegistryEventModel {
-//       override type(): NameRegistryEventType {
-//         return 100 as NameRegistryEventType; // Invalid event type
-//       }
-//     }
-
-//     const invalidEvent = new NameRegistryEventModelStub(fnameTransfer.event);
-//     const result = await engine.mergeNameRegistryEvent(invalidEvent);
-//     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid event type'));
-//   });
-// });
+  test('fails with invalid event type', async () => {
+    const invalidEvent = Factories.NameRegistryEvent.build({ type: 10 as unknown as protobufs.NameRegistryEventType });
+    const result = await engine.mergeNameRegistryEvent(invalidEvent);
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid event type'));
+  });
+});
 
 describe('mergeMessage', () => {
   let mergedMessages: protobufs.Message[];
@@ -147,57 +140,55 @@ describe('mergeMessage', () => {
     //   });
     // });
 
-    // describe('UserDataAdd', () => {
-    //   test('succeeds', async () => {
-    //     await expect(engine.mergeMessage(userDataAdd)).resolves.toEqual(ok(undefined));
-    //     await expect(userDataStore.getUserDataAdd(fid, userDataAdd.body().type())).resolves.toEqual(userDataAdd);
-    //     expect(mergedMessages).toEqual([signerAdd, userDataAdd]);
-    //   });
+    describe('UserDataAdd', () => {
+      test('succeeds', async () => {
+        await expect(engine.mergeMessage(userDataAdd)).resolves.toEqual(ok(undefined));
+        await expect(engine.getUserData(fid, userDataAdd.data.userDataBody.type)).resolves.toEqual(ok(userDataAdd));
+        expect(mergedMessages).toEqual([signerAdd, userDataAdd]);
+      });
 
-    //   describe('with fname', () => {
-    //     let fnameAdd: types.UserDataAddModel;
+      describe('with fname', () => {
+        let fnameAdd: protobufs.UserDataAddMessage;
 
-    //     beforeAll(async () => {
-    //       const fnameString = bytesToUtf8String(fnameTransfer.fname())._unsafeUnwrap();
-    //       const fnameAddData = await Factories.UserDataAddData.create({
-    //         fid: Array.from(fid),
-    //         body: Factories.UserDataBody.build({ type: UserDataType.Fname, value: fnameString }),
-    //       });
-    //       fnameAdd = new MessageModel(
-    //         await Factories.Message.create(
-    //           { data: Array.from(fnameAddData.bb?.bytes() ?? []) },
-    //           { transient: { signer } }
-    //         )
-    //       ) as types.UserDataAddModel;
-    //     });
+        beforeAll(async () => {
+          const fnameString = bytesToUtf8String(fnameTransfer.fname)._unsafeUnwrap();
+          fnameAdd = await Factories.UserDataAddMessage.create(
+            {
+              data: {
+                fid,
+                network,
+                userDataBody: { type: protobufs.UserDataType.USER_DATA_TYPE_FNAME, value: fnameString },
+              },
+            },
+            { transient: { signer } }
+          );
+        });
 
-    //     test('succeeds when fname owned by custody address', async () => {
-    //       await expect(engine.mergeNameRegistryEvent(fnameTransfer)).resolves.toEqual(ok(undefined));
-    //       await expect(engine.mergeMessage(fnameAdd)).resolves.toEqual(ok(undefined));
-    //     });
+        test('succeeds when fname owned by custody address', async () => {
+          await expect(engine.mergeNameRegistryEvent(fnameTransfer)).resolves.toEqual(ok(undefined));
+          await expect(engine.mergeMessage(fnameAdd)).resolves.toEqual(ok(undefined));
+        });
 
-    //     test('fails when fname transfer event is missing', async () => {
-    //       await expect(engine.mergeMessage(fnameAdd)).resolves.toEqual(
-    //         err(new HubError('bad_request.validation_failure', 'fname is not registered'))
-    //       );
-    //     });
+        test('fails when fname transfer event is missing', async () => {
+          await expect(engine.mergeMessage(fnameAdd)).resolves.toEqual(
+            err(new HubError('bad_request.validation_failure', 'fname is not registered'))
+          );
+        });
 
-    //     test('fails when fname is owned by another custody address', async () => {
-    //       const fnameEvent = new NameRegistryEventModel(
-    //         await Factories.NameRegistryEvent.create({
-    //           ...fnameTransfer.event.unpack(),
-    //           to: Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 40 }))._unsafeUnwrap()),
-    //         })
-    //       );
-    //       await expect(engine.mergeNameRegistryEvent(fnameEvent)).resolves.toEqual(ok(undefined));
-    //       await expect(engine.mergeMessage(fnameAdd)).resolves.toEqual(
-    //         err(
-    //           new HubError('bad_request.validation_failure', 'fname custody address does not match fid custody address')
-    //         )
-    //       );
-    //     });
-    //   });
-    // });
+        test('fails when fname is owned by another custody address', async () => {
+          const fnameEvent = Factories.NameRegistryEvent.build({
+            ...fnameTransfer,
+            to: Factories.EthAddress.build(),
+          });
+          await expect(engine.mergeNameRegistryEvent(fnameEvent)).resolves.toEqual(ok(undefined));
+          await expect(engine.mergeMessage(fnameAdd)).resolves.toEqual(
+            err(
+              new HubError('bad_request.validation_failure', 'fname custody address does not match fid custody address')
+            )
+          );
+        });
+      });
+    });
 
     describe('SignerRemove', () => {
       test('succeeds ', async () => {
@@ -281,12 +272,14 @@ describe('mergeMessages', () => {
         castAdd,
         reactionAdd,
         ampAdd,
+        userDataAdd,
         signerRemove,
         // verificationAdd,
-        // userDataAdd,
       ])
-    ).resolves.toEqual([ok(undefined), ok(undefined), ok(undefined), ok(undefined)]);
-    expect(new Set(mergedMessages)).toEqual(new Set([signerAdd, castAdd, reactionAdd, ampAdd, signerRemove]));
+    ).resolves.toEqual([ok(undefined), ok(undefined), ok(undefined), ok(undefined), ok(undefined)]);
+    expect(new Set(mergedMessages)).toEqual(
+      new Set([signerAdd, castAdd, reactionAdd, ampAdd, userDataAdd, signerRemove])
+    );
   });
 });
 

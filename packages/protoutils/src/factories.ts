@@ -574,6 +574,27 @@ const IdRegistryEventFactory = Factory.define<protobufs.IdRegistryEvent>(() => {
   });
 });
 
+const NameRegistryEventTypeFactory = Factory.define<protobufs.NameRegistryEventType>(() => {
+  return faker.helpers.arrayElement([
+    protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_RENEW,
+    protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER,
+  ]);
+});
+
+const NameRegistryEventFactory = Factory.define<protobufs.NameRegistryEvent>(() => {
+  return protobufs.NameRegistryEvent.create({
+    blockNumber: faker.datatype.number({ min: 1, max: 100_000 }),
+    blockHash: BlockHashFactory.build(),
+    transactionHash: TransactionHashFactory.build(),
+    logIndex: faker.datatype.number({ min: 0, max: 1_000 }),
+    fname: FnameFactory.build(),
+    to: EthAddressFactory.build(),
+    type: NameRegistryEventTypeFactory.build(),
+    from: EthAddressFactory.build(),
+    expiry: getFarcasterTime()._unsafeUnwrap() + 60 * 60 * 24 * 365, // a year
+  });
+});
+
 export const Factories = {
   Fid: FidFactory,
   Fname: FnameFactory,
@@ -633,4 +654,6 @@ export const Factories = {
   UserDataAddMessage: UserDataAddMessageFactory,
   IdRegistryEventType: IdRegistryEventTypeFactory,
   IdRegistryEvent: IdRegistryEventFactory,
+  NameRegistryEventType: NameRegistryEventTypeFactory,
+  NameRegistryEvent: NameRegistryEventFactory,
 };
