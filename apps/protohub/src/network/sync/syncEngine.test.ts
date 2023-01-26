@@ -184,7 +184,7 @@ describe('SyncEngine', () => {
   });
 
   test('shouldSync returns false when already syncing', async () => {
-    const mockRPCClient = mock(protobufs.SyncServiceClient);
+    const mockRPCClient = mock(protobufs.HubServiceClient);
     const rpcClient = instance(mockRPCClient);
     let called = false;
     when(mockRPCClient.getSyncMetadataByPrefix(anything(), anything())).thenCall((_a, callback) => {

@@ -314,6 +314,10 @@ export function userDataTypeToJSON(object: UserDataType): string {
   }
 }
 
+export interface UserId {
+  fid: number;
+}
+
 export interface CastId {
   fid: number;
   hash: Uint8Array;
@@ -381,6 +385,57 @@ export interface Message {
   signatureScheme: SignatureScheme;
   signer: Uint8Array;
 }
+
+function createBaseUserId(): UserId {
+  return { fid: 0 };
+}
+
+export const UserId = {
+  encode(message: UserId, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.fid !== 0) {
+      writer.uint32(8).uint64(message.fid);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): UserId {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseUserId();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.fid = longToNumber(reader.uint64() as Long);
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): UserId {
+    return { fid: isSet(object.fid) ? Number(object.fid) : 0 };
+  },
+
+  toJSON(message: UserId): unknown {
+    const obj: any = {};
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UserId>, I>>(base?: I): UserId {
+    return UserId.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<UserId>, I>>(object: I): UserId {
+    const message = createBaseUserId();
+    message.fid = object.fid ?? 0;
+    return message;
+  },
+};
 
 function createBaseCastId(): CastId {
   return { fid: 0, hash: new Uint8Array() };
