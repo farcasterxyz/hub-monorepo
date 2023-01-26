@@ -49,10 +49,6 @@ enum UserDataType {
   USER_DATA_TYPE_FNAME = 6;
 }
 
-message UserId {
-  uint64 fid = 1;
-}
-
 message CastId {
   uint64 fid = 1;
   bytes hash = 2;

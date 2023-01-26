@@ -4,9 +4,7 @@ import {
   ChannelCredentials,
   Client,
   ClientOptions,
-  ClientReadableStream,
   ClientUnaryCall,
-  handleServerStreamingCall,
   handleUnaryCall,
   makeGenericClientConstructor,
   Metadata,
@@ -25,7 +23,6 @@ import {
   UserDataType,
   userDataTypeFromJSON,
   userDataTypeToJSON,
-  UserId,
 } from "./message";
 import { NameRegistryEvent } from "./name_registry_event";
 
@@ -70,6 +67,10 @@ export interface FidsResponse {
   fids: number[];
 }
 
+export interface MessagesResponse {
+  messages: Message[];
+}
+
 export interface ReactionRequest {
   fid: number;
   reactionType: ReactionType;
@@ -88,7 +89,7 @@ export interface ReactionsByCastRequest {
 
 export interface AmpRequest {
   fid: number;
-  userId: UserId | undefined;
+  targetFid: number;
 }
 
 export interface UserDataRequest {
@@ -630,6 +631,61 @@ export const FidsResponse = {
   },
 };
 
+function createBaseMessagesResponse(): MessagesResponse {
+  return { messages: [] };
+}
+
+export const MessagesResponse = {
+  encode(message: MessagesResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.messages) {
+      Message.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): MessagesResponse {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMessagesResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.messages.push(Message.decode(reader, reader.uint32()));
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MessagesResponse {
+    return { messages: Array.isArray(object?.messages) ? object.messages.map((e: any) => Message.fromJSON(e)) : [] };
+  },
+
+  toJSON(message: MessagesResponse): unknown {
+    const obj: any = {};
+    if (message.messages) {
+      obj.messages = message.messages.map((e) => e ? Message.toJSON(e) : undefined);
+    } else {
+      obj.messages = [];
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MessagesResponse>, I>>(base?: I): MessagesResponse {
+    return MessagesResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<MessagesResponse>, I>>(object: I): MessagesResponse {
+    const message = createBaseMessagesResponse();
+    message.messages = object.messages?.map((e) => Message.fromPartial(e)) || [];
+    return message;
+  },
+};
+
 function createBaseReactionRequest(): ReactionRequest {
   return { fid: 0, reactionType: 0, castId: undefined };
 }
@@ -830,7 +886,7 @@ export const ReactionsByCastRequest = {
 };
 
 function createBaseAmpRequest(): AmpRequest {
-  return { fid: 0, userId: undefined };
+  return { fid: 0, targetFid: 0 };
 }
 
 export const AmpRequest = {
@@ -838,8 +894,8 @@ export const AmpRequest = {
     if (message.fid !== 0) {
       writer.uint32(8).uint64(message.fid);
     }
-    if (message.userId !== undefined) {
-      UserId.encode(message.userId, writer.uint32(18).fork()).ldelim();
+    if (message.targetFid !== 0) {
+      writer.uint32(16).uint64(message.targetFid);
     }
     return writer;
   },
@@ -855,7 +911,7 @@ export const AmpRequest = {
           message.fid = longToNumber(reader.uint64() as Long);
           break;
         case 2:
-          message.userId = UserId.decode(reader, reader.uint32());
+          message.targetFid = longToNumber(reader.uint64() as Long);
           break;
         default:
           reader.skipType(tag & 7);
@@ -868,14 +924,14 @@ export const AmpRequest = {
   fromJSON(object: any): AmpRequest {
     return {
       fid: isSet(object.fid) ? Number(object.fid) : 0,
-      userId: isSet(object.userId) ? UserId.fromJSON(object.userId) : undefined,
+      targetFid: isSet(object.targetFid) ? Number(object.targetFid) : 0,
     };
   },
 
   toJSON(message: AmpRequest): unknown {
     const obj: any = {};
     message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    message.userId !== undefined && (obj.userId = message.userId ? UserId.toJSON(message.userId) : undefined);
+    message.targetFid !== undefined && (obj.targetFid = Math.round(message.targetFid));
     return obj;
   },
 
@@ -886,9 +942,7 @@ export const AmpRequest = {
   fromPartial<I extends Exact<DeepPartial<AmpRequest>, I>>(object: I): AmpRequest {
     const message = createBaseAmpRequest();
     message.fid = object.fid ?? 0;
-    message.userId = (object.userId !== undefined && object.userId !== null)
-      ? UserId.fromPartial(object.userId)
-      : undefined;
+    message.targetFid = object.targetFid ?? 0;
     return message;
   },
 };
@@ -1175,29 +1229,29 @@ export const HubServiceService = {
   getCastsByFid: {
     path: "/HubService/GetCastsByFid",
     requestStream: false,
-    responseStream: true,
+    responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
     requestDeserialize: (value: Buffer) => FidRequest.decode(value),
-    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => Message.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getCastsByParent: {
     path: "/HubService/GetCastsByParent",
     requestStream: false,
-    responseStream: true,
+    responseStream: false,
     requestSerialize: (value: CastId) => Buffer.from(CastId.encode(value).finish()),
     requestDeserialize: (value: Buffer) => CastId.decode(value),
-    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => Message.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getCastsByMention: {
     path: "/HubService/GetCastsByMention",
     requestStream: false,
-    responseStream: true,
+    responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
     requestDeserialize: (value: Buffer) => FidRequest.decode(value),
-    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => Message.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   /** Reactions */
   getReaction: {
@@ -1212,20 +1266,20 @@ export const HubServiceService = {
   getReactionsByFid: {
     path: "/HubService/GetReactionsByFid",
     requestStream: false,
-    responseStream: true,
+    responseStream: false,
     requestSerialize: (value: ReactionsByFidRequest) => Buffer.from(ReactionsByFidRequest.encode(value).finish()),
     requestDeserialize: (value: Buffer) => ReactionsByFidRequest.decode(value),
-    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => Message.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getReactionsByCast: {
     path: "/HubService/GetReactionsByCast",
     requestStream: false,
-    responseStream: true,
+    responseStream: false,
     requestSerialize: (value: ReactionsByCastRequest) => Buffer.from(ReactionsByCastRequest.encode(value).finish()),
     requestDeserialize: (value: Buffer) => ReactionsByCastRequest.decode(value),
-    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => Message.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   /** Amps */
   getAmp: {
@@ -1240,20 +1294,20 @@ export const HubServiceService = {
   getAmpsByFid: {
     path: "/HubService/GetAmpsByFid",
     requestStream: false,
-    responseStream: true,
+    responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
     requestDeserialize: (value: Buffer) => FidRequest.decode(value),
-    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => Message.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getAmpsByUser: {
     path: "/HubService/GetAmpsByUser",
     requestStream: false,
-    responseStream: true,
-    requestSerialize: (value: UserId) => Buffer.from(UserId.encode(value).finish()),
-    requestDeserialize: (value: Buffer) => UserId.decode(value),
-    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => Message.decode(value),
+    responseStream: false,
+    requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => FidRequest.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   /** User Data */
   getUserData: {
@@ -1268,11 +1322,11 @@ export const HubServiceService = {
   getUserDataByFid: {
     path: "/HubService/GetUserDataByFid",
     requestStream: false,
-    responseStream: true,
+    responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
     requestDeserialize: (value: Buffer) => FidRequest.decode(value),
-    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => Message.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getNameRegistryEvent: {
     path: "/HubService/GetNameRegistryEvent",
@@ -1296,11 +1350,11 @@ export const HubServiceService = {
   getVerificationsByFid: {
     path: "/HubService/GetVerificationsByFid",
     requestStream: false,
-    responseStream: true,
+    responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
     requestDeserialize: (value: Buffer) => FidRequest.decode(value),
-    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => Message.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   /** Signer */
   getSigner: {
@@ -1315,11 +1369,11 @@ export const HubServiceService = {
   getSignersByFid: {
     path: "/HubService/GetSignersByFid",
     requestStream: false,
-    responseStream: true,
+    responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
     requestDeserialize: (value: Buffer) => FidRequest.decode(value),
-    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => Message.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getCustodyEvent: {
     path: "/HubService/GetCustodyEvent",
@@ -1343,56 +1397,56 @@ export const HubServiceService = {
   getAllCastMessagesByFid: {
     path: "/HubService/GetAllCastMessagesByFid",
     requestStream: false,
-    responseStream: true,
+    responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
     requestDeserialize: (value: Buffer) => FidRequest.decode(value),
-    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => Message.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getAllReactionMessagesByFid: {
     path: "/HubService/GetAllReactionMessagesByFid",
     requestStream: false,
-    responseStream: true,
+    responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
     requestDeserialize: (value: Buffer) => FidRequest.decode(value),
-    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => Message.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getAllAmpMessagesByFid: {
     path: "/HubService/GetAllAmpMessagesByFid",
     requestStream: false,
-    responseStream: true,
+    responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
     requestDeserialize: (value: Buffer) => FidRequest.decode(value),
-    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => Message.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getAllVerificationMessagesByFid: {
     path: "/HubService/GetAllVerificationMessagesByFid",
     requestStream: false,
-    responseStream: true,
+    responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
     requestDeserialize: (value: Buffer) => FidRequest.decode(value),
-    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => Message.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getAllSignerMessagesByFid: {
     path: "/HubService/GetAllSignerMessagesByFid",
     requestStream: false,
-    responseStream: true,
+    responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
     requestDeserialize: (value: Buffer) => FidRequest.decode(value),
-    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => Message.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getAllUserDataMessagesByFid: {
     path: "/HubService/GetAllUserDataMessagesByFid",
     requestStream: false,
-    responseStream: true,
+    responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
     requestDeserialize: (value: Buffer) => FidRequest.decode(value),
-    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => Message.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   /** Sync Methods */
   getInfo: {
@@ -1416,11 +1470,11 @@ export const HubServiceService = {
   getAllMessagesBySyncIds: {
     path: "/HubService/GetAllMessagesBySyncIds",
     requestStream: false,
-    responseStream: true,
+    responseStream: false,
     requestSerialize: (value: SyncIds) => Buffer.from(SyncIds.encode(value).finish()),
     requestDeserialize: (value: Buffer) => SyncIds.decode(value),
-    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => Message.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getSyncMetadataByPrefix: {
     path: "/HubService/GetSyncMetadataByPrefix",
@@ -1451,40 +1505,40 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   submitNameRegistryEvent: handleUnaryCall<NameRegistryEvent, NameRegistryEvent>;
   /** Casts */
   getCast: handleUnaryCall<CastId, Message>;
-  getCastsByFid: handleServerStreamingCall<FidRequest, Message>;
-  getCastsByParent: handleServerStreamingCall<CastId, Message>;
-  getCastsByMention: handleServerStreamingCall<FidRequest, Message>;
+  getCastsByFid: handleUnaryCall<FidRequest, MessagesResponse>;
+  getCastsByParent: handleUnaryCall<CastId, MessagesResponse>;
+  getCastsByMention: handleUnaryCall<FidRequest, MessagesResponse>;
   /** Reactions */
   getReaction: handleUnaryCall<ReactionRequest, Message>;
-  getReactionsByFid: handleServerStreamingCall<ReactionsByFidRequest, Message>;
-  getReactionsByCast: handleServerStreamingCall<ReactionsByCastRequest, Message>;
+  getReactionsByFid: handleUnaryCall<ReactionsByFidRequest, MessagesResponse>;
+  getReactionsByCast: handleUnaryCall<ReactionsByCastRequest, MessagesResponse>;
   /** Amps */
   getAmp: handleUnaryCall<AmpRequest, Message>;
-  getAmpsByFid: handleServerStreamingCall<FidRequest, Message>;
-  getAmpsByUser: handleServerStreamingCall<UserId, Message>;
+  getAmpsByFid: handleUnaryCall<FidRequest, MessagesResponse>;
+  getAmpsByUser: handleUnaryCall<FidRequest, MessagesResponse>;
   /** User Data */
   getUserData: handleUnaryCall<UserDataRequest, Message>;
-  getUserDataByFid: handleServerStreamingCall<FidRequest, Message>;
+  getUserDataByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getNameRegistryEvent: handleUnaryCall<NameRegistryEventRequest, NameRegistryEvent>;
   /** Verifications */
   getVerification: handleUnaryCall<VerificationRequest, Message>;
-  getVerificationsByFid: handleServerStreamingCall<FidRequest, Message>;
+  getVerificationsByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   /** Signer */
   getSigner: handleUnaryCall<SignerRequest, Message>;
-  getSignersByFid: handleServerStreamingCall<FidRequest, Message>;
+  getSignersByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getCustodyEvent: handleUnaryCall<FidRequest, IdRegistryEvent>;
   getFids: handleUnaryCall<Empty, FidsResponse>;
   /** Bulk Methods */
-  getAllCastMessagesByFid: handleServerStreamingCall<FidRequest, Message>;
-  getAllReactionMessagesByFid: handleServerStreamingCall<FidRequest, Message>;
-  getAllAmpMessagesByFid: handleServerStreamingCall<FidRequest, Message>;
-  getAllVerificationMessagesByFid: handleServerStreamingCall<FidRequest, Message>;
-  getAllSignerMessagesByFid: handleServerStreamingCall<FidRequest, Message>;
-  getAllUserDataMessagesByFid: handleServerStreamingCall<FidRequest, Message>;
+  getAllCastMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
+  getAllReactionMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
+  getAllAmpMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
+  getAllVerificationMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
+  getAllSignerMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
+  getAllUserDataMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   /** Sync Methods */
   getInfo: handleUnaryCall<Empty, HubInfoResponse>;
   getAllSyncIdsByPrefix: handleUnaryCall<TrieNodePrefix, SyncIds>;
-  getAllMessagesBySyncIds: handleServerStreamingCall<SyncIds, Message>;
+  getAllMessagesBySyncIds: handleUnaryCall<SyncIds, MessagesResponse>;
   getSyncMetadataByPrefix: handleUnaryCall<TrieNodePrefix, TrieNodeMetadataResponse>;
   getSyncSnapshotByPrefix: handleUnaryCall<TrieNodePrefix, TrieNodeSnapshotResponse>;
 }
@@ -1546,20 +1600,51 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: Message) => void,
   ): ClientUnaryCall;
-  getCastsByFid(request: FidRequest, options?: Partial<CallOptions>): ClientReadableStream<Message>;
   getCastsByFid(
     request: FidRequest,
-    metadata?: Metadata,
-    options?: Partial<CallOptions>,
-  ): ClientReadableStream<Message>;
-  getCastsByParent(request: CastId, options?: Partial<CallOptions>): ClientReadableStream<Message>;
-  getCastsByParent(request: CastId, metadata?: Metadata, options?: Partial<CallOptions>): ClientReadableStream<Message>;
-  getCastsByMention(request: FidRequest, options?: Partial<CallOptions>): ClientReadableStream<Message>;
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getCastsByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getCastsByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getCastsByParent(
+    request: CastId,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getCastsByParent(
+    request: CastId,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getCastsByParent(
+    request: CastId,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
   getCastsByMention(
     request: FidRequest,
-    metadata?: Metadata,
-    options?: Partial<CallOptions>,
-  ): ClientReadableStream<Message>;
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getCastsByMention(
+    request: FidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getCastsByMention(
+    request: FidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
   /** Reactions */
   getReaction(
     request: ReactionRequest,
@@ -1576,18 +1661,36 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: Message) => void,
   ): ClientUnaryCall;
-  getReactionsByFid(request: ReactionsByFidRequest, options?: Partial<CallOptions>): ClientReadableStream<Message>;
   getReactionsByFid(
     request: ReactionsByFidRequest,
-    metadata?: Metadata,
-    options?: Partial<CallOptions>,
-  ): ClientReadableStream<Message>;
-  getReactionsByCast(request: ReactionsByCastRequest, options?: Partial<CallOptions>): ClientReadableStream<Message>;
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getReactionsByFid(
+    request: ReactionsByFidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getReactionsByFid(
+    request: ReactionsByFidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
   getReactionsByCast(
     request: ReactionsByCastRequest,
-    metadata?: Metadata,
-    options?: Partial<CallOptions>,
-  ): ClientReadableStream<Message>;
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getReactionsByCast(
+    request: ReactionsByCastRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getReactionsByCast(
+    request: ReactionsByCastRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
   /** Amps */
   getAmp(request: AmpRequest, callback: (error: ServiceError | null, response: Message) => void): ClientUnaryCall;
   getAmp(
@@ -1601,10 +1704,36 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: Message) => void,
   ): ClientUnaryCall;
-  getAmpsByFid(request: FidRequest, options?: Partial<CallOptions>): ClientReadableStream<Message>;
-  getAmpsByFid(request: FidRequest, metadata?: Metadata, options?: Partial<CallOptions>): ClientReadableStream<Message>;
-  getAmpsByUser(request: UserId, options?: Partial<CallOptions>): ClientReadableStream<Message>;
-  getAmpsByUser(request: UserId, metadata?: Metadata, options?: Partial<CallOptions>): ClientReadableStream<Message>;
+  getAmpsByFid(
+    request: FidRequest,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAmpsByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAmpsByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAmpsByUser(
+    request: FidRequest,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAmpsByUser(
+    request: FidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAmpsByUser(
+    request: FidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
   /** User Data */
   getUserData(
     request: UserDataRequest,
@@ -1621,12 +1750,21 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: Message) => void,
   ): ClientUnaryCall;
-  getUserDataByFid(request: FidRequest, options?: Partial<CallOptions>): ClientReadableStream<Message>;
   getUserDataByFid(
     request: FidRequest,
-    metadata?: Metadata,
-    options?: Partial<CallOptions>,
-  ): ClientReadableStream<Message>;
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getUserDataByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getUserDataByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
   getNameRegistryEvent(
     request: NameRegistryEventRequest,
     callback: (error: ServiceError | null, response: NameRegistryEvent) => void,
@@ -1658,12 +1796,21 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: Message) => void,
   ): ClientUnaryCall;
-  getVerificationsByFid(request: FidRequest, options?: Partial<CallOptions>): ClientReadableStream<Message>;
   getVerificationsByFid(
     request: FidRequest,
-    metadata?: Metadata,
-    options?: Partial<CallOptions>,
-  ): ClientReadableStream<Message>;
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getVerificationsByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getVerificationsByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
   /** Signer */
   getSigner(request: SignerRequest, callback: (error: ServiceError | null, response: Message) => void): ClientUnaryCall;
   getSigner(
@@ -1677,12 +1824,21 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: Message) => void,
   ): ClientUnaryCall;
-  getSignersByFid(request: FidRequest, options?: Partial<CallOptions>): ClientReadableStream<Message>;
   getSignersByFid(
     request: FidRequest,
-    metadata?: Metadata,
-    options?: Partial<CallOptions>,
-  ): ClientReadableStream<Message>;
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getSignersByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getSignersByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
   getCustodyEvent(
     request: FidRequest,
     callback: (error: ServiceError | null, response: IdRegistryEvent) => void,
@@ -1711,42 +1867,96 @@ export interface HubServiceClient extends Client {
     callback: (error: ServiceError | null, response: FidsResponse) => void,
   ): ClientUnaryCall;
   /** Bulk Methods */
-  getAllCastMessagesByFid(request: FidRequest, options?: Partial<CallOptions>): ClientReadableStream<Message>;
   getAllCastMessagesByFid(
     request: FidRequest,
-    metadata?: Metadata,
-    options?: Partial<CallOptions>,
-  ): ClientReadableStream<Message>;
-  getAllReactionMessagesByFid(request: FidRequest, options?: Partial<CallOptions>): ClientReadableStream<Message>;
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAllCastMessagesByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAllCastMessagesByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
   getAllReactionMessagesByFid(
     request: FidRequest,
-    metadata?: Metadata,
-    options?: Partial<CallOptions>,
-  ): ClientReadableStream<Message>;
-  getAllAmpMessagesByFid(request: FidRequest, options?: Partial<CallOptions>): ClientReadableStream<Message>;
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAllReactionMessagesByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAllReactionMessagesByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
   getAllAmpMessagesByFid(
     request: FidRequest,
-    metadata?: Metadata,
-    options?: Partial<CallOptions>,
-  ): ClientReadableStream<Message>;
-  getAllVerificationMessagesByFid(request: FidRequest, options?: Partial<CallOptions>): ClientReadableStream<Message>;
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAllAmpMessagesByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAllAmpMessagesByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
   getAllVerificationMessagesByFid(
     request: FidRequest,
-    metadata?: Metadata,
-    options?: Partial<CallOptions>,
-  ): ClientReadableStream<Message>;
-  getAllSignerMessagesByFid(request: FidRequest, options?: Partial<CallOptions>): ClientReadableStream<Message>;
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAllVerificationMessagesByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAllVerificationMessagesByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
   getAllSignerMessagesByFid(
     request: FidRequest,
-    metadata?: Metadata,
-    options?: Partial<CallOptions>,
-  ): ClientReadableStream<Message>;
-  getAllUserDataMessagesByFid(request: FidRequest, options?: Partial<CallOptions>): ClientReadableStream<Message>;
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAllSignerMessagesByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAllSignerMessagesByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
   getAllUserDataMessagesByFid(
     request: FidRequest,
-    metadata?: Metadata,
-    options?: Partial<CallOptions>,
-  ): ClientReadableStream<Message>;
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAllUserDataMessagesByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAllUserDataMessagesByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
   /** Sync Methods */
   getInfo(request: Empty, callback: (error: ServiceError | null, response: HubInfoResponse) => void): ClientUnaryCall;
   getInfo(
@@ -1775,12 +1985,21 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: SyncIds) => void,
   ): ClientUnaryCall;
-  getAllMessagesBySyncIds(request: SyncIds, options?: Partial<CallOptions>): ClientReadableStream<Message>;
   getAllMessagesBySyncIds(
     request: SyncIds,
-    metadata?: Metadata,
-    options?: Partial<CallOptions>,
-  ): ClientReadableStream<Message>;
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAllMessagesBySyncIds(
+    request: SyncIds,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAllMessagesBySyncIds(
+    request: SyncIds,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
   getSyncMetadataByPrefix(
     request: TrieNodePrefix,
     callback: (error: ServiceError | null, response: TrieNodeMetadataResponse) => void,

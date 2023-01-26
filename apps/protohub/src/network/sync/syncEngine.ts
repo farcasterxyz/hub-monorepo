@@ -112,22 +112,19 @@ class SyncEngine {
   }
 
   public async fetchAndMergeMessages(syncIds: string[], rpcClient: protobufs.HubServiceClient): Promise<boolean> {
-    let result = true;
     if (syncIds.length === 0) {
       return false;
     }
 
     return new Promise((resolve) => {
-      const messagesStream = rpcClient.getAllMessagesBySyncIds(protobufs.SyncIds.create({ syncIds }));
-      messagesStream.on('data', async (msg: protobufs.Message) => {
-        await this.mergeMessages([msg], rpcClient);
-      });
-      messagesStream.on('error', (err) => {
-        log.warn(err, `Error fetching messages for sync`);
-        result = false;
-      });
-      messagesStream.on('end', () => {
-        resolve(result);
+      rpcClient.getAllMessagesBySyncIds(protobufs.SyncIds.create({ syncIds }), async (err, messagesResponse) => {
+        if (err) {
+          log.warn(err, `Error fetching messages for sync`);
+          resolve(false);
+        } else {
+          await this.mergeMessages(messagesResponse.messages, rpcClient);
+          resolve(true);
+        }
       });
     });
   }
@@ -273,41 +270,48 @@ class SyncEngine {
 
   private async syncUserAndRetryMessage(
     message: protobufs.Message,
-    _rpcClient: protobufs.HubServiceClient
+    rpcClient: protobufs.HubServiceClient
   ): Promise<HubResult<void>> {
     const fid = message.data?.fid;
     if (!fid) {
       return err(new HubError('bad_request.invalid_param', 'Invalid fid'));
     }
 
-    // const custodyEventResult = await rpcClient.getIdRegistryEvent(fid);
-    // if (custodyEventResult.isErr()) {
-    //   return err(new HubError('unavailable.network_failure', 'Failed to fetch custody event'));
-    // }
-    // const custodyModel = custodyEventResult.value as protobufs.IdRegistryEvent;
-    // const custodyResult = await this.engine.mergeIdRegistryEvent(custodyModel);
-    // if (custodyResult.isErr()) {
-    //   return err(new HubError('unavailable.storage_failure', 'Failed to merge custody event'));
-    // }
+    return new Promise((resolve) => {
+      rpcClient.getCustodyEvent(protobufs.FidRequest.create({ fid }), async (e, custodyEvent) => {
+        if (e) {
+          resolve(err(new HubError('unavailable.network_failure', 'Failed to fetch custody event')));
+        }
 
-    // // Probably not required to fetch the signer messages, but doing it here means
-    // //  sync will complete in one round (prevents messages failing to merge due to missed or out of order signer message)
-    // const signerMessagesResult = await rpcClient.getAllSignerMessagesByFid(fid);
-    // if (signerMessagesResult.isErr()) {
-    //   return err(new HubError('unavailable.network_failure', 'Failed to fetch signer messages'));
-    // }
-    // const messageModels = signerMessagesResult.value.map((message) => new MessageModel(message));
-    // const results = await this.engine.mergeMessages(messageModels);
-    // if (results.every((r) => r.isErr())) {
-    //   return err(new HubError('unavailable.storage_failure', 'Failed to merge signer messages'));
-    // } else {
-    //   // if at least one signer message was merged, retry the original message
-    //   return (await this.engine.mergeMessage(message)).mapErr((e) => {
-    //     log.warn(e, `Failed to merge message type ${message.type()}`);
-    //     return new HubError('unavailable.storage_failure', e);
-    //   });
-    // }
-    return ok(undefined);
+        const custodyResult = await this.engine.mergeIdRegistryEvent(custodyEvent);
+        if (custodyResult.isErr()) {
+          resolve(err(new HubError('unavailable.storage_failure', 'Failed to merge custody event')));
+        }
+
+        // Probably not required to fetch the signer messages, but doing it here means
+        // sync will complete in one round (prevents messages failing to merge due to missed or out of
+        // order signer message)
+        rpcClient.getAllSignerMessagesByFid(protobufs.FidRequest.create({ fid }), async (e, messagesResponse) => {
+          if (e) {
+            resolve(err(new HubError('unavailable.network_failure', 'Failed to fetch signer messages')));
+          }
+
+          const results = await this.engine.mergeMessages(messagesResponse.messages);
+          if (results.every((r) => r.isErr())) {
+            resolve(err(new HubError('unavailable.storage_failure', 'Failed to merge signer messages')));
+          } else {
+            // if at least one signer message was merged, retry the original message
+            const retryResult = await this.engine.mergeMessage(message);
+            if (retryResult.isErr()) {
+              log.warn(e, `Failed to merge message type ${message.data?.type}`);
+              resolve(err(new HubError('unavailable.storage_failure', 'Failed to merge message')));
+            } else {
+              resolve(ok(undefined));
+            }
+          }
+        });
+      });
+    });
   }
 }
 
