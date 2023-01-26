@@ -159,8 +159,7 @@ class SignerStore extends SequentialMergeStore {
     const prefix = Buffer.from([RootPrefix.IdRegistryEvent]);
     const fids: number[] = [];
     for await (const [key] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
-      const view = new DataView((key as Buffer).buffer);
-      fids.push(Number(view.getBigUint64(1, false)));
+      fids.push(Number((key as Buffer).readBigUint64BE(1)));
     }
     return fids;
   }

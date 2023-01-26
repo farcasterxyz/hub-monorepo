@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+message RevokeSignerJobPayload {
+  uint64 fid = 1;
+  bytes signer = 2;
+}
