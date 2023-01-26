@@ -17,7 +17,8 @@ import CastStore from '~/storage/stores/castStore';
 import ReactionStore from '~/storage/stores/reactionStore';
 import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import UserDataStore from '../stores/userDataStore';
+import UserDataStore from '~/storage/stores/userDataStore';
+import VerificationStore from '~/storage/stores/verificationStore';
 
 class Engine {
   public eventHandler: StoreEventHandler;
@@ -30,6 +31,7 @@ class Engine {
   private _castStore: CastStore;
   private _ampStore: AmpStore;
   private _userDataStore: UserDataStore;
+  private _verificationStore: VerificationStore;
 
   constructor(db: RocksDB, network: protobufs.FarcasterNetwork) {
     this.eventHandler = new StoreEventHandler();
@@ -42,6 +44,7 @@ class Engine {
     this._castStore = new CastStore(db, this.eventHandler);
     this._ampStore = new AmpStore(db, this.eventHandler);
     this._userDataStore = new UserDataStore(db, this.eventHandler);
+    this._verificationStore = new VerificationStore(db, this.eventHandler);
   }
 
   async mergeMessages(messages: protobufs.Message[]): Promise<Array<HubResult<void>>> {
@@ -67,6 +70,8 @@ class Engine {
       return ResultAsync.fromPromise(this._ampStore.merge(message), (e) => e as HubError);
     } else if (setPostfix === UserPostfix.UserDataMessage) {
       return ResultAsync.fromPromise(this._userDataStore.merge(message), (e) => e as HubError);
+    } else if (setPostfix === UserPostfix.VerificationMessage) {
+      return ResultAsync.fromPromise(this._verificationStore.merge(message), (e) => e as HubError);
     } else {
       return err(new HubError('bad_request.validation_failure', 'invalid message type'));
     }
@@ -100,7 +105,7 @@ class Engine {
     await this._castStore.revokeMessagesBySigner(fid, signer);
     await this._ampStore.revokeMessagesBySigner(fid, signer);
     await this._reactionStore.revokeMessagesBySigner(fid, signer);
-    // await this._verificationStore.revokeMessagesBySigner(fid, signer);
+    await this._verificationStore.revokeMessagesBySigner(fid, signer);
     await this._userDataStore.revokeMessagesBySigner(fid, signer);
     await this._signerStore.revokeMessagesBySigner(fid, signer);
 
@@ -111,7 +116,7 @@ class Engine {
     await this._castStore.pruneMessages(fid);
     await this._ampStore.pruneMessages(fid);
     await this._reactionStore.pruneMessages(fid);
-    // await this._verificationStore.pruneMessages(fid);
+    await this._verificationStore.pruneMessages(fid);
     await this._userDataStore.pruneMessages(fid);
     await this._signerStore.pruneMessages(fid);
 
@@ -274,50 +279,35 @@ class Engine {
   /*                          Verification Store Methods                        */
   /* -------------------------------------------------------------------------- */
 
-  // async getVerification(fid: Uint8Array, address: Uint8Array): HubAsyncResult<types.VerificationAddEthAddressModel> {
-  //   const validatedFid = validations.validateFid(fid);
-  //   if (validatedFid.isErr()) {
-  //     return err(validatedFid.error);
-  //   }
+  async getVerification(fid: number, address: Uint8Array): HubAsyncResult<protobufs.VerificationAddEthAddressMessage> {
+    return ResultAsync.fromPromise(this._verificationStore.getVerificationAdd(fid, address), (e) => e as HubError);
+  }
 
-  //   const validatedAddress = validations.validateEthAddress(address);
-  //   if (validatedAddress.isErr()) {
-  //     return err(validatedAddress.error);
-  //   }
+  async getVerificationsByFid(fid: number): HubAsyncResult<protobufs.VerificationAddEthAddressMessage[]> {
+    return ResultAsync.fromPromise(this._verificationStore.getVerificationAddsByFid(fid), (e) => e as HubError);
+  }
 
-  //   return ResultAsync.fromPromise(this._verificationStore.getVerificationAdd(fid, address), (e) => e as HubError);
-  // }
+  async getAllVerificationMessagesByFid(
+    fid: number
+  ): HubAsyncResult<(protobufs.VerificationAddEthAddressMessage | protobufs.VerificationRemoveMessage)[]> {
+    const adds = await ResultAsync.fromPromise(
+      this._verificationStore.getVerificationAddsByFid(fid),
+      (e) => e as HubError
+    );
+    if (adds.isErr()) {
+      return err(adds.error);
+    }
 
-  // async getVerificationsByFid(fid: Uint8Array): HubAsyncResult<types.VerificationAddEthAddressModel[]> {
-  //   const validatedFid = validations.validateFid(fid);
-  //   if (validatedFid.isErr()) {
-  //     return err(validatedFid.error);
-  //   }
+    const removes = await ResultAsync.fromPromise(
+      this._verificationStore.getVerificationRemovesByFid(fid),
+      (e) => e as HubError
+    );
+    if (removes.isErr()) {
+      return err(removes.error);
+    }
 
-  //   return ResultAsync.fromPromise(this._verificationStore.getVerificationAddsByUser(fid), (e) => e as HubError);
-  // }
-
-  // async getAllVerificationMessagesByFid(
-  //   fid: Uint8Array
-  // ): HubAsyncResult<(types.VerificationAddEthAddressModel | types.VerificationRemoveModel)[]> {
-  //   const adds = await ResultAsync.fromPromise(
-  //     this._verificationStore.getVerificationAddsByUser(fid),
-  //     (e) => e as HubError
-  //   );
-  //   if (adds.isErr()) {
-  //     return err(adds.error);
-  //   }
-
-  //   const removes = await ResultAsync.fromPromise(
-  //     this._verificationStore.getVerificationRemovesByUser(fid),
-  //     (e) => e as HubError
-  //   );
-  //   if (removes.isErr()) {
-  //     return err(removes.error);
-  //   }
-
-  //   return ok([...adds.value, ...removes.value]);
-  // }
+    return ok([...adds.value, ...removes.value]);
+  }
 
   /* -------------------------------------------------------------------------- */
   /*                              Signer Store Methods                          */

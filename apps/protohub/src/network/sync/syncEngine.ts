@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesToUtf8String, getFarcasterTime, hexStringToBytes, HubError, HubResult } from '@farcaster/utils';
+import { bytesToUtf8String, getFarcasterTime, hexStringToBytes, HubError, HubResult } from '@farcaster/protoutils';
 import { err, ok } from 'neverthrow';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';

@@ -4,6 +4,7 @@ import { err, ok } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import SignerStore from '~/storage/stores/signerStore';
+import { getMessage, makeTsHash, typeToSetPostfix } from '../db/message';
 
 const db = jestRocksDB('flatbuffers.engine.test');
 const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
@@ -24,7 +25,7 @@ let signerRemove: protobufs.SignerRemoveMessage;
 let castAdd: protobufs.CastAddMessage;
 let ampAdd: protobufs.AmpAddMessage;
 let reactionAdd: protobufs.ReactionAddMessage;
-// let verificationAdd: protobufs.VerificationAddEthAddressMessage;
+let verificationAdd: protobufs.VerificationAddEthAddressMessage;
 let userDataAdd: protobufs.UserDataAddMessage;
 
 beforeAll(async () => {
@@ -44,6 +45,10 @@ beforeAll(async () => {
   castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
   ampAdd = await Factories.AmpAddMessage.create({ data: { fid, network } }, { transient: { signer } });
   reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid, network } }, { transient: { signer } });
+  verificationAdd = await Factories.VerificationAddEthAddressMessage.create(
+    { data: { fid, network } },
+    { transient: { signer } }
+  );
   userDataAdd = await Factories.UserDataAddMessage.create(
     { data: { fid, network, userDataBody: { type: protobufs.UserDataType.USER_DATA_TYPE_PFP } } },
     { transient: { signer } }
@@ -130,15 +135,15 @@ describe('mergeMessage', () => {
       });
     });
 
-    // describe('VerificationAddEthAddress', () => {
-    //   test('succeeds', async () => {
-    //     await expect(engine.mergeMessage(verificationAdd)).resolves.toEqual(ok(undefined));
-    //     await expect(
-    //       verificationStore.getVerificationAdd(fid, verificationAdd.body().addressArray() ?? new Uint8Array())
-    //     ).resolves.toEqual(verificationAdd);
-    //     expect(mergedMessages).toEqual([signerAdd, verificationAdd]);
-    //   });
-    // });
+    describe('VerificationAddEthAddress', () => {
+      test('succeeds', async () => {
+        await expect(engine.mergeMessage(verificationAdd)).resolves.toEqual(ok(undefined));
+        await expect(
+          engine.getVerification(fid, verificationAdd.data.verificationAddEthAddressBody.address)
+        ).resolves.toEqual(ok(verificationAdd));
+        expect(mergedMessages).toEqual([signerAdd, verificationAdd]);
+      });
+    });
 
     describe('UserDataAdd', () => {
       test('succeeds', async () => {
@@ -268,71 +273,66 @@ describe('mergeMessages', () => {
 
   test('succeeds and merges messages in parallel', async () => {
     await expect(
-      engine.mergeMessages([
-        castAdd,
-        reactionAdd,
-        ampAdd,
-        userDataAdd,
-        signerRemove,
-        // verificationAdd,
-      ])
-    ).resolves.toEqual([ok(undefined), ok(undefined), ok(undefined), ok(undefined), ok(undefined)]);
+      engine.mergeMessages([castAdd, reactionAdd, ampAdd, userDataAdd, verificationAdd, signerRemove])
+    ).resolves.toEqual([ok(undefined), ok(undefined), ok(undefined), ok(undefined), ok(undefined), ok(undefined)]);
     expect(new Set(mergedMessages)).toEqual(
-      new Set([signerAdd, castAdd, reactionAdd, ampAdd, userDataAdd, signerRemove])
+      new Set([signerAdd, castAdd, reactionAdd, ampAdd, userDataAdd, verificationAdd, signerRemove])
     );
   });
 });
 
-// describe('revokeMessagesBySigner', () => {
-//   let revokedMessages: MessageModel[];
-//   const handleRevokedMessage = (message: MessageModel) => {
-//     revokedMessages.push(message);
-//   };
+describe('revokeMessagesBySigner', () => {
+  let revokedMessages: protobufs.Message[];
+  const handleRevokedMessage = (message: protobufs.Message) => {
+    revokedMessages.push(message);
+  };
 
-//   beforeAll(() => {
-//     engine.eventHandler.on('revokeMessage', handleRevokedMessage);
-//   });
+  beforeAll(() => {
+    engine.eventHandler.on('revokeMessage', handleRevokedMessage);
+  });
 
-//   afterAll(() => {
-//     engine.eventHandler.off('revokeMessage', handleRevokedMessage);
-//   });
+  afterAll(() => {
+    engine.eventHandler.off('revokeMessage', handleRevokedMessage);
+  });
 
-//   beforeEach(async () => {
-//     revokedMessages = [];
-//     await engine.mergeIdRegistryEvent(custodyEvent);
-//     await engine.mergeMessage(signerAdd);
-//     await engine.mergeMessage(castAdd);
-//     await engine.mergeMessage(ampAdd);
-//     await engine.mergeMessage(reactionAdd);
-//     await engine.mergeMessage(verificationAdd);
-//     await engine.mergeMessage(userDataAdd);
-//   });
+  beforeEach(async () => {
+    revokedMessages = [];
+    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeMessage(signerAdd);
+    await engine.mergeMessage(castAdd);
+    await engine.mergeMessage(ampAdd);
+    await engine.mergeMessage(reactionAdd);
+    await engine.mergeMessage(verificationAdd);
+    await engine.mergeMessage(userDataAdd);
+  });
 
-//   test('revokes messages signed by EIP-712 signer', async () => {
-//     const signerMessages = [signerAdd];
-//     for (const message of signerMessages) {
-//       const getMessage = MessageModel.get(db, message.fid(), message.setPostfix(), message.tsHash());
-//       await expect(getMessage).resolves.toEqual(message);
-//     }
-//     await expect(engine.revokeMessagesBySigner(fid, custodyAddress)).resolves.toEqual(ok(undefined));
-//     for (const message of signerMessages) {
-//       const getMessage = MessageModel.get(db, message.fid(), message.setPostfix(), message.tsHash());
-//       await expect(getMessage).rejects.toThrow();
-//     }
-//     expect(revokedMessages).toEqual(signerMessages);
-//   });
+  const checkMessage = (message: protobufs.Message): Promise<protobufs.Message> => {
+    const data = message.data as protobufs.MessageData;
+    const tsHash = makeTsHash(data.timestamp, message.hash)._unsafeUnwrap();
+    return getMessage(db, data.fid, typeToSetPostfix(data.type), tsHash);
+  };
 
-//   test('revokes messages signed by Ed25519 signer', async () => {
-//     const signerMessages = [castAdd, ampAdd, reactionAdd, verificationAdd, userDataAdd];
-//     for (const message of signerMessages) {
-//       const getMessage = MessageModel.get(db, message.fid(), message.setPostfix(), message.tsHash());
-//       await expect(getMessage).resolves.toEqual(message);
-//     }
-//     await expect(engine.revokeMessagesBySigner(fid, signer.signerKey)).resolves.toEqual(ok(undefined));
-//     for (const message of signerMessages) {
-//       const getMessage = MessageModel.get(db, message.fid(), message.setPostfix(), message.tsHash());
-//       await expect(getMessage).rejects.toThrow();
-//     }
-//     expect(revokedMessages).toEqual(signerMessages);
-//   });
-// });
+  test('revokes messages signed by EIP-712 signer', async () => {
+    const signerMessages = [signerAdd];
+    for (const message of signerMessages) {
+      await expect(checkMessage(message)).resolves.toEqual(message);
+    }
+    await expect(engine.revokeMessagesBySigner(fid, custodySigner.signerKey)).resolves.toEqual(ok(undefined));
+    for (const message of signerMessages) {
+      await expect(checkMessage(message)).rejects.toThrow();
+    }
+    expect(revokedMessages).toEqual(signerMessages);
+  });
+
+  test('revokes messages signed by Ed25519 signer', async () => {
+    const signerMessages = [castAdd, ampAdd, reactionAdd, verificationAdd, userDataAdd];
+    for (const message of signerMessages) {
+      await expect(checkMessage(message)).resolves.toEqual(message);
+    }
+    await expect(engine.revokeMessagesBySigner(fid, signer.signerKey)).resolves.toEqual(ok(undefined));
+    for (const message of signerMessages) {
+      await expect(checkMessage(message)).rejects.toThrow();
+    }
+    expect(revokedMessages).toEqual(signerMessages);
+  });
+});
