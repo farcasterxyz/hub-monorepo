@@ -2,7 +2,7 @@ import { bytesToUtf8String, Factories, HubError, utf8StringToBytes } from '@farc
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { getNameRegistryEvent, makeNameRegistryEventPrimaryKey, putNameRegistryEvent } from './nameRegistryEvent';
 
-const db = jestRocksDB('storage.db.idRegistryEvent.test');
+const db = jestRocksDB('storage.db.nameRegistryEvent.test');
 
 const fname = Factories.Fname.build();
 const nameRegistryEvent = Factories.NameRegistryEvent.build({ fname });
