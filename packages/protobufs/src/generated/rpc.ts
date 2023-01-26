@@ -1144,8 +1144,8 @@ export const HubServiceService = {
     responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
     responseDeserialize: (value: Buffer) => Message.decode(value),
   },
-  subitIdRegistryEvent: {
-    path: "/HubService/SubitIdRegistryEvent",
+  submitIdRegistryEvent: {
+    path: "/HubService/SubmitIdRegistryEvent",
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: IdRegistryEvent) => Buffer.from(IdRegistryEvent.encode(value).finish()),
@@ -1154,7 +1154,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => IdRegistryEvent.decode(value),
   },
   submitNameRegistryEvent: {
-    path: "/HubService/submitNameRegistryEvent",
+    path: "/HubService/SubmitNameRegistryEvent",
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: NameRegistryEvent) => Buffer.from(NameRegistryEvent.encode(value).finish()),
@@ -1447,7 +1447,7 @@ export const HubServiceService = {
 export interface HubServiceServer extends UntypedServiceImplementation {
   /** Submit Methods */
   submitMessage: handleUnaryCall<Message, Message>;
-  subitIdRegistryEvent: handleUnaryCall<IdRegistryEvent, IdRegistryEvent>;
+  submitIdRegistryEvent: handleUnaryCall<IdRegistryEvent, IdRegistryEvent>;
   submitNameRegistryEvent: handleUnaryCall<NameRegistryEvent, NameRegistryEvent>;
   /** Casts */
   getCast: handleUnaryCall<CastId, Message>;
@@ -1503,16 +1503,16 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: Message) => void,
   ): ClientUnaryCall;
-  subitIdRegistryEvent(
+  submitIdRegistryEvent(
     request: IdRegistryEvent,
     callback: (error: ServiceError | null, response: IdRegistryEvent) => void,
   ): ClientUnaryCall;
-  subitIdRegistryEvent(
+  submitIdRegistryEvent(
     request: IdRegistryEvent,
     metadata: Metadata,
     callback: (error: ServiceError | null, response: IdRegistryEvent) => void,
   ): ClientUnaryCall;
-  subitIdRegistryEvent(
+  submitIdRegistryEvent(
     request: IdRegistryEvent,
     metadata: Metadata,
     options: Partial<CallOptions>,

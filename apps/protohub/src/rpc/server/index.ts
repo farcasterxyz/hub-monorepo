@@ -1,6 +1,6 @@
 import { getServer, HubServiceServer, HubServiceService } from '@farcaster/protobufs';
 
-export const SyncServiceGrpc: HubServiceServer = {
+export const HubServiceGrpc: HubServiceServer = {
   getInfo: (_call, _callback) => {
     // Not implemented
   },
@@ -19,7 +19,7 @@ export const SyncServiceGrpc: HubServiceServer = {
   submitMessage: (_call) => {
     // Not implemented
   },
-  subitIdRegistryEvent: (_call) => {
+  submitIdRegistryEvent: (_call) => {
     // Not implemented
   },
   submitNameRegistryEvent: (_call) => {
@@ -103,4 +103,4 @@ export const SyncServiceGrpc: HubServiceServer = {
 };
 
 const server = getServer();
-server.addService(HubServiceService, SyncServiceGrpc);
+server.addService(HubServiceService, HubServiceGrpc);

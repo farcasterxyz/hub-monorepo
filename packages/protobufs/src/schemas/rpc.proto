@@ -87,8 +87,8 @@ message SignerRequest {
 service HubService {
     // Submit Methods
     rpc SubmitMessage (Message) returns (Message);
-    rpc SubitIdRegistryEvent (IdRegistryEvent) returns (IdRegistryEvent);
-    rpc submitNameRegistryEvent (NameRegistryEvent) returns (NameRegistryEvent);
+    rpc SubmitIdRegistryEvent (IdRegistryEvent) returns (IdRegistryEvent);
+    rpc SubmitNameRegistryEvent (NameRegistryEvent) returns (NameRegistryEvent);
 
     // Casts
     rpc GetCast(CastId) returns (Message);

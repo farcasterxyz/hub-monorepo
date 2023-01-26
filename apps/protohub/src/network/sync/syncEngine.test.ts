@@ -86,95 +86,87 @@ describe('SyncEngine', () => {
     expect(syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
   });
 
-  test(
-    'trie is updated when a message is removed',
-    async () => {
-      await engine.mergeIdRegistryEvent(custodyEvent);
-      await engine.mergeMessage(signerAdd);
-      let result = await engine.mergeMessage(castAdd);
-      expect(result.isOk()).toBeTruthy();
+  test('trie is updated when a message is removed', async () => {
+    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeMessage(signerAdd);
+    let result = await engine.mergeMessage(castAdd);
+    expect(result.isOk()).toBeTruthy();
 
-      // Remove this cast.
-      const castRemove = await Factories.CastRemoveMessage.create(
-        { data: { fid, network, castRemoveBody: { targetHash: castAdd.hash } } },
-        { transient: { signer } }
-      );
+    // Remove this cast.
+    const castRemove = await Factories.CastRemoveMessage.create(
+      { data: { fid, network, castRemoveBody: { targetHash: castAdd.hash } } },
+      { transient: { signer } }
+    );
 
-      // Merging the cast remove deletes the cast add in the db, and it should be reflected in the trie
-      result = await engine.mergeMessage(castRemove);
-      expect(result.isOk()).toBeTruthy();
+    // Merging the cast remove deletes the cast add in the db, and it should be reflected in the trie
+    result = await engine.mergeMessage(castRemove);
+    expect(result.isOk()).toBeTruthy();
 
-      const id = new SyncId(castRemove);
-      // eslint-disable-next-line security/detect-non-literal-fs-filename
-      expect(syncEngine.trie.exists(id)).toBeTruthy();
+    const id = new SyncId(castRemove);
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
+    expect(syncEngine.trie.exists(id)).toBeTruthy();
 
-      // const allMessages = await engine.getAllMessagesBySyncIds([id.idString()]);
-      // expect(allMessages.isOk()).toBeTruthy();
-      // expect(allMessages._unsafeUnwrap()[0]?.type()).toEqual(MessageType.MESSAGE_TYPE_CAST_REMOVE);
+    const allMessages = await engine.getAllMessagesBySyncIds([id.idString()]);
+    expect(allMessages.isOk()).toBeTruthy();
+    expect(allMessages._unsafeUnwrap()[0]?.data?.type).toEqual(protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE);
 
-      // The trie should contain the message remove
-      // eslint-disable-next-line security/detect-non-literal-fs-filename
-      expect(syncEngine.trie.exists(id)).toBeTruthy();
+    // The trie should contain the message remove
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
+    expect(syncEngine.trie.exists(id)).toBeTruthy();
 
-      // The trie should not contain the castAdd anymore
-      // eslint-disable-next-line security/detect-non-literal-fs-filename
-      expect(syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
-    },
-    100 * 60 * 1000
-  );
+    // The trie should not contain the castAdd anymore
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
+    expect(syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
+  });
 
-  test(
-    'trie is updated when message with higher order is merged',
-    async () => {
-      const rcustody = await engine.mergeIdRegistryEvent(custodyEvent);
-      expect(rcustody.isOk()).toBeTruthy();
+  test('trie is updated when message with higher order is merged', async () => {
+    const rcustody = await engine.mergeIdRegistryEvent(custodyEvent);
+    expect(rcustody.isOk()).toBeTruthy();
 
-      const rsigneradd = await engine.mergeMessage(signerAdd);
-      expect(rsigneradd.isOk()).toBeTruthy();
+    const rsigneradd = await engine.mergeMessage(signerAdd);
+    expect(rsigneradd.isOk()).toBeTruthy();
 
-      // Reaction
-      const reactionBody = {
-        targetCastId: { fid, hash: castAdd.hash },
-        type: protobufs.ReactionType.REACTION_TYPE_LIKE,
-      };
-      const reaction1 = await Factories.ReactionAddMessage.create(
-        { data: { fid, network, timestamp: 30662167, reactionBody } },
-        { transient: { signer } }
-      );
+    // Reaction
+    const reactionBody = {
+      targetCastId: { fid, hash: castAdd.hash },
+      type: protobufs.ReactionType.REACTION_TYPE_LIKE,
+    };
+    const reaction1 = await Factories.ReactionAddMessage.create(
+      { data: { fid, network, timestamp: 30662167, reactionBody } },
+      { transient: { signer } }
+    );
 
-      // Same reaction, but with different timestamp
-      const reaction2 = await Factories.ReactionAddMessage.create(
-        { data: { fid, network, timestamp: 30662168, reactionBody } },
-        { transient: { signer } }
-      );
+    // Same reaction, but with different timestamp
+    const reaction2 = await Factories.ReactionAddMessage.create(
+      { data: { fid, network, timestamp: 30662168, reactionBody } },
+      { transient: { signer } }
+    );
 
-      // Merging the first reaction should succeed
-      let result = await engine.mergeMessage(reaction1);
-      expect(result.isOk()).toBeTruthy();
-      expect(syncEngine.trie.items).toEqual(2); // signerAdd + reaction1
+    // Merging the first reaction should succeed
+    let result = await engine.mergeMessage(reaction1);
+    expect(result.isOk()).toBeTruthy();
+    expect(syncEngine.trie.items).toEqual(2); // signerAdd + reaction1
 
-      // Then merging the second reaction should also succeed and remove reaction1
-      result = await engine.mergeMessage(reaction2);
-      expect(result.isOk()).toBeTruthy();
-      expect(syncEngine.trie.items).toEqual(2); // signerAdd + reaction2 (reaction1 is removed)
+    // Then merging the second reaction should also succeed and remove reaction1
+    result = await engine.mergeMessage(reaction2);
+    expect(result.isOk()).toBeTruthy();
+    expect(syncEngine.trie.items).toEqual(2); // signerAdd + reaction2 (reaction1 is removed)
 
-      // Create a new engine and sync engine
-      testDb2.clear();
-      const engine2 = new Engine(testDb2, FarcasterNetwork.FARCASTER_NETWORK_TESTNET);
-      const syncEngine2 = new SyncEngine(engine2);
-      await engine2.mergeIdRegistryEvent(custodyEvent);
-      await engine2.mergeMessage(signerAdd);
+    // Create a new engine and sync engine
+    testDb2.clear();
+    const engine2 = new Engine(testDb2, FarcasterNetwork.FARCASTER_NETWORK_TESTNET);
+    const syncEngine2 = new SyncEngine(engine2);
+    await engine2.mergeIdRegistryEvent(custodyEvent);
+    await engine2.mergeMessage(signerAdd);
 
-      // Only merge reaction2
-      result = await engine2.mergeMessage(reaction2);
-      expect(result.isOk()).toBeTruthy();
-      expect(syncEngine2.trie.items).toEqual(2); // signerAdd + reaction2
+    // Only merge reaction2
+    result = await engine2.mergeMessage(reaction2);
+    expect(result.isOk()).toBeTruthy();
+    expect(syncEngine2.trie.items).toEqual(2); // signerAdd + reaction2
 
-      // Roothashes must match
-      expect(syncEngine2.trie.rootHash).toEqual(syncEngine.trie.rootHash);
-    },
-    100 * 60 * 1000
-  );
+    // Roothashes must match
+    expect(syncEngine2.trie.rootHash).toEqual(syncEngine.trie.rootHash);
+  });
 
   test('snapshotTimestampPrefix trims the seconds', async () => {
     const nowInSeconds = getFarcasterTime()._unsafeUnwrap();
