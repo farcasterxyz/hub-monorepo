@@ -87,7 +87,7 @@ class SyncEngine {
     });
   }
 
-  async performSync(excludedHashes: string[], rpcClient: protobufs.SyncServiceClient) {
+  async performSync(excludedHashes: string[], rpcClient: protobufs.HubServiceClient) {
     try {
       this._isSyncing = true;
       await this.snapshot
@@ -111,7 +111,7 @@ class SyncEngine {
     }
   }
 
-  public async fetchAndMergeMessages(syncIds: string[], rpcClient: protobufs.SyncServiceClient): Promise<boolean> {
+  public async fetchAndMergeMessages(syncIds: string[], rpcClient: protobufs.HubServiceClient): Promise<boolean> {
     let result = true;
     if (syncIds.length === 0) {
       return false;
@@ -134,7 +134,7 @@ class SyncEngine {
 
   public async mergeMessages(
     messages: protobufs.Message[],
-    rpcClient: protobufs.SyncServiceClient
+    rpcClient: protobufs.HubServiceClient
   ): Promise<HubResult<void>[]> {
     const mergeResults: HubResult<void>[] = [];
     // First, sort the messages by timestamp to reduce thrashing and refetching
@@ -169,7 +169,7 @@ class SyncEngine {
   async fetchMissingHashesByNode(
     theirNode: NodeMetadata,
     ourNode: NodeMetadata | undefined,
-    rpcClient: protobufs.SyncServiceClient
+    rpcClient: protobufs.HubServiceClient
   ): Promise<string[]> {
     return new Promise((resolve) => {
       const missingHashes: string[] = [];
@@ -202,7 +202,7 @@ class SyncEngine {
     });
   }
 
-  async fetchMissingHashesByPrefix(prefix: string, rpcClient: protobufs.SyncServiceClient): Promise<string[]> {
+  async fetchMissingHashesByPrefix(prefix: string, rpcClient: protobufs.HubServiceClient): Promise<string[]> {
     const ourNode = this._trie.getTrieNodeMetadata(prefix);
 
     return new Promise((resolve) => {
@@ -273,7 +273,7 @@ class SyncEngine {
 
   private async syncUserAndRetryMessage(
     message: protobufs.Message,
-    _rpcClient: protobufs.SyncServiceClient
+    _rpcClient: protobufs.HubServiceClient
   ): Promise<HubResult<void>> {
     const fid = message.data?.fid;
     if (!fid) {
