@@ -113,11 +113,13 @@ class TrieNode {
         this._children.delete(char);
       }
 
-      if (this._children.size === 1 && current_index >= TIMESTAMP_LENGTH) {
+      if (this._items === 1 && this._children.size === 1 && current_index >= TIMESTAMP_LENGTH) {
         // Compact the node if it has only one child
         const [char, child] = this._children.entries().next().value;
-        this._setKeyValue(child._key);
-        this._children.delete(char);
+        if (child._key) {
+          this._setKeyValue(child._key);
+          this._children.delete(char);
+        }
       }
 
       this._updateHash();
