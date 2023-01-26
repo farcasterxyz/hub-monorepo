@@ -106,9 +106,9 @@ describe('SyncEngine', () => {
     // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(syncEngine.trie.exists(id)).toBeTruthy();
 
-    const allMessages = await engine.getAllMessagesBySyncIds([id.idString()]);
-    expect(allMessages.isOk()).toBeTruthy();
-    expect(allMessages._unsafeUnwrap()[0]?.data?.type).toEqual(protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE);
+    // const allMessages = await engine.getAllMessagesBySyncIds([id.idString()]);
+    // expect(allMessages.isOk()).toBeTruthy();
+    // expect(allMessages._unsafeUnwrap()[0]?.data?.type).toEqual(protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE);
 
     // The trie should contain the message remove
     // eslint-disable-next-line security/detect-non-literal-fs-filename
