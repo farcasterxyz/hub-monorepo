@@ -29,14 +29,14 @@ type OriginalCall<T, U> = (
 
 type PromisifiedCall<T, U> = (request: T, metadata?: Metadata, options?: Partial<CallOptions>) => Promise<HubResult<U>>;
 
-export type PromisifiedClient<C> = { $: C } & {
+type PromisifiedClient<C> = { $: C } & {
   [prop in Exclude<keyof C, keyof Client>]: C[prop] extends OriginalCall<infer T, infer U>
     ? PromisifiedCall<T, U>
     : never;
 };
 
 // eslint-disable-next-line prefer-arrow-functions/prefer-arrow-functions
-export function promisifyClient<C extends Client>(client: C) {
+function promisifyClient<C extends Client>(client: C) {
   return new Proxy(client, {
     get: (target, descriptor) => {
       const key = descriptor as keyof PromisifiedClient<C>;
