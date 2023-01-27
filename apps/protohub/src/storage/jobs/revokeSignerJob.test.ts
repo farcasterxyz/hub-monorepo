@@ -69,7 +69,7 @@ describe('makePayload', () => {
 
   test('fails with invalid fid', () => {
     const newPayload = RevokeSignerJobQueue.makePayload(0, payload.signer);
-    expect(newPayload).toEqual(err(new HubError('bad_request.validation_failure', 'fid must be positive')));
+    expect(newPayload).toEqual(err(new HubError('bad_request.validation_failure', 'fid is missing')));
   });
 
   test('fails with invalid signer', () => {

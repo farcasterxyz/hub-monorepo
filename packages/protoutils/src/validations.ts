@@ -43,11 +43,11 @@ export const validateCastId = (castId?: protobufs.CastId): HubResult<protobufs.C
 };
 
 export const validateFid = (fid?: number | null): HubResult<number> => {
-  if (typeof fid !== 'number') {
+  if (typeof fid !== 'number' || fid === 0) {
     return err(new HubError('bad_request.validation_failure', 'fid is missing'));
   }
 
-  if (fid <= 0) {
+  if (fid < 0) {
     return err(new HubError('bad_request.validation_failure', 'fid must be positive'));
   }
 

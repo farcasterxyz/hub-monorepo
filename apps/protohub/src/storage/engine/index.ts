@@ -172,10 +172,20 @@ class Engine {
   /* -------------------------------------------------------------------------- */
 
   async getCast(fid: number, hash: Uint8Array): HubAsyncResult<protobufs.CastAddMessage> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
     return ResultAsync.fromPromise(this._castStore.getCastAdd(fid, hash), (e) => e as HubError);
   }
 
   async getCastsByFid(fid: number): HubAsyncResult<protobufs.CastAddMessage[]> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
     return ResultAsync.fromPromise(this._castStore.getCastAddsByFid(fid), (e) => e as HubError);
   }
 
@@ -184,6 +194,11 @@ class Engine {
   }
 
   async getCastsByMention(mentionFid: number): HubAsyncResult<protobufs.CastAddMessage[]> {
+    const validatedFid = validations.validateFid(mentionFid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
     return ResultAsync.fromPromise(this._castStore.getCastsByMention(mentionFid), (e) => e as HubError);
   }
 

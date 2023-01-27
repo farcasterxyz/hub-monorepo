@@ -18,9 +18,7 @@ describe('validateFid', () => {
   });
 
   test('fails with 0', () => {
-    expect(validations.validateFid(0)).toEqual(
-      err(new HubError('bad_request.validation_failure', 'fid must be positive'))
-    );
+    expect(validations.validateFid(0)).toEqual(err(new HubError('bad_request.validation_failure', 'fid is missing')));
   });
 
   test('fails with negative number', () => {
@@ -84,7 +82,7 @@ describe('validateCastId', () => {
   test('fails when fid is invalid', async () => {
     const castId = await Factories.CastId.build({ fid: 0 });
     expect(validations.validateCastId(castId)).toEqual(
-      err(new HubError('bad_request.validation_failure', 'fid must be positive'))
+      err(new HubError('bad_request.validation_failure', 'fid is missing'))
     );
   });
 
@@ -450,7 +448,7 @@ describe('validateAmpBody', () => {
     });
 
     test('with invalid user fid', () => {
-      body = Factories.AmpBody.build({ targetFid: 0 });
+      body = Factories.AmpBody.build({ targetFid: -1 });
       hubErrorMessage = 'fid must be positive';
     });
   });
