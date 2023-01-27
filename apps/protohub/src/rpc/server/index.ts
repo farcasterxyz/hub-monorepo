@@ -13,6 +13,8 @@ import {
   Metadata,
   NameRegistryEvent,
   ReactionAddMessage,
+  Server as GrpcServer,
+  ServerCredentials,
   ServiceError,
   SignerAddMessage,
   status,
@@ -27,6 +29,8 @@ import { APP_NICKNAME, APP_VERSION, HubInterface } from '~/hub';
 import { NodeMetadata } from '~/network/sync/merkleTrie';
 import SyncEngine from '~/network/sync/syncEngine';
 import Engine from '~/storage/engine';
+import { logger } from '~/utils/logger';
+import { addressInfoFromParts } from '~/utils/p2p';
 
 export const toServiceError = (err: HubError): ServiceError => {
   let grpcCode: number;
@@ -63,15 +67,60 @@ export const toServiceError = (err: HubError): ServiceError => {
   });
 };
 
-class Server {
+export class Server {
   private hub: HubInterface | undefined;
   private engine: Engine | undefined;
   private syncEngine: SyncEngine | undefined;
+
+  private grpcServer: GrpcServer;
+  private port: number;
 
   constructor(hub?: HubInterface, engine?: Engine, syncEngine?: SyncEngine) {
     this.hub = hub;
     this.engine = engine;
     this.syncEngine = syncEngine;
+
+    this.grpcServer = getServer();
+    this.port = 0;
+    this.grpcServer.addService(HubServiceService, new Server().HubServiceGrpc());
+  }
+
+  async start(port = 0): Promise<number> {
+    return new Promise((resolve, reject) => {
+      this.grpcServer.bindAsync(`0.0.0.0:${port}`, ServerCredentials.createInsecure(), (err, port) => {
+        if (err) {
+          reject(err);
+        } else {
+          this.grpcServer.start();
+          this.port = port;
+
+          logger.info({ component: 'gRPC Server', address: this.address }, 'Starting gRPC Server');
+          resolve(port);
+        }
+      });
+    });
+  }
+
+  async stop(force = false): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (force) {
+        this.grpcServer.forceShutdown();
+        resolve();
+      } else {
+        this.grpcServer.tryShutdown((err) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve();
+          }
+        });
+      }
+    });
+  }
+
+  get address() {
+    const addr = addressInfoFromParts('0.0.0.0', this.port);
+    return addr;
   }
 
   HubServiceGrpc = (): HubServiceServer => {
@@ -530,6 +579,3 @@ class Server {
     };
   };
 }
-
-const grpcServer = getServer();
-grpcServer.addService(HubServiceService, new Server().HubServiceGrpc());
