@@ -24,7 +24,7 @@ describe('Ed25519Signer', () => {
     describe('signMessageHash', () => {
       test('generates valid signature', async () => {
         const bytes = randomBytes(32);
-        const hash = blake3(bytes, { dkLen: 16 });
+        const hash = blake3(bytes, { dkLen: 20 });
         const signature = await signer.signMessageHash(hash);
         const isValid = await ed25519.verifyMessageHashSignature(signature._unsafeUnwrap(), hash, signer.signerKey);
         expect(isValid._unsafeUnwrap()).toBe(true);

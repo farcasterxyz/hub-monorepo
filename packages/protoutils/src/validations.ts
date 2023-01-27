@@ -24,8 +24,8 @@ export const validateMessageHash = (hash?: Uint8Array): HubResult<Uint8Array> =>
     return err(new HubError('bad_request.validation_failure', 'hash is missing'));
   }
 
-  if (hash.length > 20) {
-    return err(new HubError('bad_request.validation_failure', 'hash > 20 bytes'));
+  if (hash.length !== 20) {
+    return err(new HubError('bad_request.validation_failure', 'hash must be 20 bytes'));
   }
 
   return ok(hash);
@@ -54,42 +54,25 @@ export const validateFid = (fid?: number | null): HubResult<number> => {
   return ok(fid);
 };
 
-// TODO: do we need this anymore?
-export const validateTsHash = (tsHash?: Uint8Array | null): HubResult<Uint8Array> => {
-  if (!tsHash || tsHash.byteLength === 0) {
-    return err(new HubError('bad_request.validation_failure', 'tsHash is missing'));
-  }
-
-  if (tsHash.byteLength !== 20) {
-    return err(new HubError('bad_request.validation_failure', 'tsHash must be 20 bytes'));
-  }
-
-  return ok(tsHash);
-};
-
 export const validateEthAddress = (address?: Uint8Array | null): HubResult<Uint8Array> => {
   if (!address || address.length === 0) {
     return err(new HubError('bad_request.validation_failure', 'address is missing'));
   }
 
-  if (address.length > 20) {
-    return err(new HubError('bad_request.validation_failure', 'address > 20 bytes'));
+  if (address.length !== 20) {
+    return err(new HubError('bad_request.validation_failure', 'address must be 20 bytes'));
   }
 
   return ok(address);
 };
 
 export const validateEthBlockHash = (blockHash?: Uint8Array | null): HubResult<Uint8Array> => {
-  if (!blockHash || blockHash.byteLength === 0) {
+  if (!blockHash || blockHash.length === 0) {
     return err(new HubError('bad_request.validation_failure', 'blockHash is missing'));
   }
 
-  if (blockHash.byteLength > 32) {
-    return err(new HubError('bad_request.validation_failure', 'blockHash > 32 bytes'));
-  }
-
-  if (blockHash[blockHash.byteLength - 1] === 0) {
-    return err(new HubError('bad_request.validation_failure', 'blockHash is padded'));
+  if (blockHash.length !== 32) {
+    return err(new HubError('bad_request.validation_failure', 'blockHash must be 32 bytes'));
   }
 
   return ok(blockHash);
@@ -100,12 +83,8 @@ export const validateEd25519PublicKey = (publicKey?: Uint8Array | null): HubResu
     return err(new HubError('bad_request.validation_failure', 'publicKey is missing'));
   }
 
-  if (publicKey.length > 32) {
-    return err(new HubError('bad_request.validation_failure', 'publicKey > 32 bytes'));
-  }
-
-  if (publicKey[publicKey.length - 1] === 0) {
-    return err(new HubError('bad_request.validation_failure', 'publicKey is padded'));
+  if (publicKey.length !== 32) {
+    return err(new HubError('bad_request.validation_failure', 'publicKey must be 32 bytes'));
   }
 
   return ok(publicKey);
@@ -130,7 +109,7 @@ export const validateMessage = async (message: protobufs.Message): HubAsyncResul
 
   const dataBytes = protobufs.MessageData.encode(data).finish();
   if (message.hashScheme === protobufs.HashScheme.HASH_SCHEME_BLAKE3) {
-    const computedHash = blake3(dataBytes, { dkLen: 16 });
+    const computedHash = blake3(dataBytes, { dkLen: 20 });
     // we have to use bytesCompare, because TypedArrays cannot be compared directly
     if (bytesCompare(hash, computedHash) !== 0) {
       return err(new HubError('bad_request.validation_failure', 'invalid hash'));
@@ -373,13 +352,17 @@ export const validateAmpBody = (body: protobufs.AmpBody): HubResult<protobufs.Am
   return validateFid(body.targetFid).map(() => body);
 };
 
-// export const validateUserDataType = (type: number): HubResult<flatbuffers.UserDataType> => {
-//   if (!Object.values(flatbuffers.UserDataType).includes(type)) {
-//     return err(new HubError('bad_request.validation_failure', 'invalid user data type'));
-//   }
+export const validateUserDataType = (type: number): HubResult<protobufs.UserDataType> => {
+  if (
+    !Object.values(protobufs.UserDataType).includes(type) ||
+    type === protobufs.UserDataType.USER_DATA_TYPE_NONE ||
+    type === protobufs.UserDataType.USER_DATA_TYPE_NONE
+  ) {
+    return err(new HubError('bad_request.validation_failure', 'invalid user data type'));
+  }
 
-//   return ok(type);
-// };
+  return ok(type);
+};
 
 export const validateUserDataAddBody = (body: protobufs.UserDataBody): HubResult<protobufs.UserDataBody> => {
   const { type, value } = body;
