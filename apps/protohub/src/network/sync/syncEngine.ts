@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesToUtf8String, getFarcasterTime, hexStringToBytes, HubError, HubResult } from '@farcaster/protoutils';
+import { getFarcasterTime, HubError, HubResult } from '@farcaster/protoutils';
 import { err, ok } from 'neverthrow';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
@@ -174,7 +174,7 @@ class SyncEngine {
       // iterate through the node's children and fetch them in batches.
       if (theirNode.numMessages <= HASHES_PER_FETCH) {
         rpcClient.getAllSyncIdsByPrefix(
-          protobufs.TrieNodePrefix.create({ prefix: hexStringToBytes(theirNode.prefix)._unsafeUnwrap() }),
+          protobufs.TrieNodePrefix.create({ prefix: theirNode.prefix }),
           (err, syncIds) => {
             if (err) {
               log.warn(err, `Error fetching ids for prefix ${theirNode.prefix}`);
@@ -203,20 +203,17 @@ class SyncEngine {
     const ourNode = this._trie.getTrieNodeMetadata(prefix);
 
     return new Promise((resolve) => {
-      rpcClient.getSyncMetadataByPrefix(
-        protobufs.TrieNodePrefix.create({ prefix: hexStringToBytes(prefix)._unsafeUnwrap() }),
-        async (err, theirNodeMetadata) => {
-          const missingHashes: string[] = [];
-          if (err) {
-            log.warn(err, `Error fetching metadata for prefix ${prefix}`);
-          } else {
-            missingHashes.push(
-              ...(await this.fetchMissingHashesByNode(fromNodeMetadataResponse(theirNodeMetadata), ourNode, rpcClient))
-            );
-          }
-          resolve(missingHashes);
+      rpcClient.getSyncMetadataByPrefix(protobufs.TrieNodePrefix.create({ prefix }), async (err, theirNodeMetadata) => {
+        const missingHashes: string[] = [];
+        if (err) {
+          log.warn(err, `Error fetching metadata for prefix ${prefix}`);
+        } else {
+          missingHashes.push(
+            ...(await this.fetchMissingHashesByNode(fromNodeMetadataResponse(theirNodeMetadata), ourNode, rpcClient))
+          );
         }
-      );
+        resolve(missingHashes);
+      });
     });
   }
 
@@ -235,7 +232,7 @@ class SyncEngine {
     return this._trie.getTrieNodeMetadata(prefix);
   }
 
-  public getIdsByPrefix(prefix: string): string[] {
+  public getAllSyncIdsByPrefix(prefix: string): string[] {
     return this._trie.root.getNode(prefix)?.getAllValues() ?? [];
   }
 
@@ -320,21 +317,21 @@ const fromNodeMetadataResponse = (response: protobufs.TrieNodeMetadataResponse):
   for (let i = 0; i < response.children.length; i++) {
     const child = response.children[i];
 
-    const prefix = bytesToUtf8String(child?.prefix ?? new Uint8Array())._unsafeUnwrap();
+    const prefix = child?.prefix ?? '';
     // Char is the last char of prefix
     const char = prefix[prefix.length - 1] ?? '';
 
     children.set(char, {
       numMessages: Number(child?.numMessages),
       prefix,
-      hash: bytesToUtf8String(child?.hash ?? new Uint8Array())._unsafeUnwrap(),
+      hash: child?.hash ?? '',
     });
   }
 
   return {
-    prefix: bytesToUtf8String(response.prefix ?? new Uint8Array())._unsafeUnwrap(),
+    prefix: response.prefix ?? '',
     numMessages: Number(response.numMessages),
-    hash: bytesToUtf8String(response.hash ?? new Uint8Array())._unsafeUnwrap(),
+    hash: response.hash ?? '',
     children,
   };
 };

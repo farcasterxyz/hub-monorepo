@@ -11,25 +11,25 @@ message HubInfoResponse {
     string version = 1;
     bool is_synced = 2;
     string nickname = 3;
-    bytes root_hash = 4;
+    string root_hash = 4;
 }
 
 message TrieNodeMetadataResponse {
-    bytes prefix = 1;
+    string prefix = 1;
     uint64 num_messages = 2;
-    bytes hash = 3;
+    string hash = 3;
     repeated TrieNodeMetadataResponse children = 4;
 }
 
 message TrieNodeSnapshotResponse {
-    bytes prefix = 1;
+    string prefix = 1;
     repeated string excluded_hashes = 2;
     uint64 num_messages = 3;
-    bytes root_hash = 4;
+    string root_hash = 4;
 }
 
 message TrieNodePrefix {
-    bytes prefix = 1;
+    string prefix = 1;
 }
 
 message SyncIds {
@@ -75,7 +75,7 @@ message UserDataRequest {
 }
 
 message NameRegistryEventRequest {
-    string name = 1;
+    bytes name = 1;
 }
 
 message VerificationRequest {

@@ -1,5 +1,6 @@
 import * as grpc from '@grpc/grpc-js';
 
+export type { Metadata, ServiceError, status } from '@grpc/grpc-js';
 export * from './generated/gossip';
 export * from './generated/hub_state';
 export * from './generated/id_registry_event';

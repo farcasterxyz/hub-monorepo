@@ -34,25 +34,25 @@ export interface HubInfoResponse {
   version: string;
   isSynced: boolean;
   nickname: string;
-  rootHash: Uint8Array;
+  rootHash: string;
 }
 
 export interface TrieNodeMetadataResponse {
-  prefix: Uint8Array;
+  prefix: string;
   numMessages: number;
-  hash: Uint8Array;
+  hash: string;
   children: TrieNodeMetadataResponse[];
 }
 
 export interface TrieNodeSnapshotResponse {
-  prefix: Uint8Array;
+  prefix: string;
   excludedHashes: string[];
   numMessages: number;
-  rootHash: Uint8Array;
+  rootHash: string;
 }
 
 export interface TrieNodePrefix {
-  prefix: Uint8Array;
+  prefix: string;
 }
 
 export interface SyncIds {
@@ -98,7 +98,7 @@ export interface UserDataRequest {
 }
 
 export interface NameRegistryEventRequest {
-  name: string;
+  name: Uint8Array;
 }
 
 export interface VerificationRequest {
@@ -155,7 +155,7 @@ export const Empty = {
 };
 
 function createBaseHubInfoResponse(): HubInfoResponse {
-  return { version: "", isSynced: false, nickname: "", rootHash: new Uint8Array() };
+  return { version: "", isSynced: false, nickname: "", rootHash: "" };
 }
 
 export const HubInfoResponse = {
@@ -169,8 +169,8 @@ export const HubInfoResponse = {
     if (message.nickname !== "") {
       writer.uint32(26).string(message.nickname);
     }
-    if (message.rootHash.length !== 0) {
-      writer.uint32(34).bytes(message.rootHash);
+    if (message.rootHash !== "") {
+      writer.uint32(34).string(message.rootHash);
     }
     return writer;
   },
@@ -192,7 +192,7 @@ export const HubInfoResponse = {
           message.nickname = reader.string();
           break;
         case 4:
-          message.rootHash = reader.bytes();
+          message.rootHash = reader.string();
           break;
         default:
           reader.skipType(tag & 7);
@@ -207,7 +207,7 @@ export const HubInfoResponse = {
       version: isSet(object.version) ? String(object.version) : "",
       isSynced: isSet(object.isSynced) ? Boolean(object.isSynced) : false,
       nickname: isSet(object.nickname) ? String(object.nickname) : "",
-      rootHash: isSet(object.rootHash) ? bytesFromBase64(object.rootHash) : new Uint8Array(),
+      rootHash: isSet(object.rootHash) ? String(object.rootHash) : "",
     };
   },
 
@@ -216,8 +216,7 @@ export const HubInfoResponse = {
     message.version !== undefined && (obj.version = message.version);
     message.isSynced !== undefined && (obj.isSynced = message.isSynced);
     message.nickname !== undefined && (obj.nickname = message.nickname);
-    message.rootHash !== undefined &&
-      (obj.rootHash = base64FromBytes(message.rootHash !== undefined ? message.rootHash : new Uint8Array()));
+    message.rootHash !== undefined && (obj.rootHash = message.rootHash);
     return obj;
   },
 
@@ -230,25 +229,25 @@ export const HubInfoResponse = {
     message.version = object.version ?? "";
     message.isSynced = object.isSynced ?? false;
     message.nickname = object.nickname ?? "";
-    message.rootHash = object.rootHash ?? new Uint8Array();
+    message.rootHash = object.rootHash ?? "";
     return message;
   },
 };
 
 function createBaseTrieNodeMetadataResponse(): TrieNodeMetadataResponse {
-  return { prefix: new Uint8Array(), numMessages: 0, hash: new Uint8Array(), children: [] };
+  return { prefix: "", numMessages: 0, hash: "", children: [] };
 }
 
 export const TrieNodeMetadataResponse = {
   encode(message: TrieNodeMetadataResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.prefix.length !== 0) {
-      writer.uint32(10).bytes(message.prefix);
+    if (message.prefix !== "") {
+      writer.uint32(10).string(message.prefix);
     }
     if (message.numMessages !== 0) {
       writer.uint32(16).uint64(message.numMessages);
     }
-    if (message.hash.length !== 0) {
-      writer.uint32(26).bytes(message.hash);
+    if (message.hash !== "") {
+      writer.uint32(26).string(message.hash);
     }
     for (const v of message.children) {
       TrieNodeMetadataResponse.encode(v!, writer.uint32(34).fork()).ldelim();
@@ -264,13 +263,13 @@ export const TrieNodeMetadataResponse = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.prefix = reader.bytes();
+          message.prefix = reader.string();
           break;
         case 2:
           message.numMessages = longToNumber(reader.uint64() as Long);
           break;
         case 3:
-          message.hash = reader.bytes();
+          message.hash = reader.string();
           break;
         case 4:
           message.children.push(TrieNodeMetadataResponse.decode(reader, reader.uint32()));
@@ -285,9 +284,9 @@ export const TrieNodeMetadataResponse = {
 
   fromJSON(object: any): TrieNodeMetadataResponse {
     return {
-      prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array(),
+      prefix: isSet(object.prefix) ? String(object.prefix) : "",
       numMessages: isSet(object.numMessages) ? Number(object.numMessages) : 0,
-      hash: isSet(object.hash) ? bytesFromBase64(object.hash) : new Uint8Array(),
+      hash: isSet(object.hash) ? String(object.hash) : "",
       children: Array.isArray(object?.children)
         ? object.children.map((e: any) => TrieNodeMetadataResponse.fromJSON(e))
         : [],
@@ -296,11 +295,9 @@ export const TrieNodeMetadataResponse = {
 
   toJSON(message: TrieNodeMetadataResponse): unknown {
     const obj: any = {};
-    message.prefix !== undefined &&
-      (obj.prefix = base64FromBytes(message.prefix !== undefined ? message.prefix : new Uint8Array()));
+    message.prefix !== undefined && (obj.prefix = message.prefix);
     message.numMessages !== undefined && (obj.numMessages = Math.round(message.numMessages));
-    message.hash !== undefined &&
-      (obj.hash = base64FromBytes(message.hash !== undefined ? message.hash : new Uint8Array()));
+    message.hash !== undefined && (obj.hash = message.hash);
     if (message.children) {
       obj.children = message.children.map((e) => e ? TrieNodeMetadataResponse.toJSON(e) : undefined);
     } else {
@@ -315,22 +312,22 @@ export const TrieNodeMetadataResponse = {
 
   fromPartial<I extends Exact<DeepPartial<TrieNodeMetadataResponse>, I>>(object: I): TrieNodeMetadataResponse {
     const message = createBaseTrieNodeMetadataResponse();
-    message.prefix = object.prefix ?? new Uint8Array();
+    message.prefix = object.prefix ?? "";
     message.numMessages = object.numMessages ?? 0;
-    message.hash = object.hash ?? new Uint8Array();
+    message.hash = object.hash ?? "";
     message.children = object.children?.map((e) => TrieNodeMetadataResponse.fromPartial(e)) || [];
     return message;
   },
 };
 
 function createBaseTrieNodeSnapshotResponse(): TrieNodeSnapshotResponse {
-  return { prefix: new Uint8Array(), excludedHashes: [], numMessages: 0, rootHash: new Uint8Array() };
+  return { prefix: "", excludedHashes: [], numMessages: 0, rootHash: "" };
 }
 
 export const TrieNodeSnapshotResponse = {
   encode(message: TrieNodeSnapshotResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.prefix.length !== 0) {
-      writer.uint32(10).bytes(message.prefix);
+    if (message.prefix !== "") {
+      writer.uint32(10).string(message.prefix);
     }
     for (const v of message.excludedHashes) {
       writer.uint32(18).string(v!);
@@ -338,8 +335,8 @@ export const TrieNodeSnapshotResponse = {
     if (message.numMessages !== 0) {
       writer.uint32(24).uint64(message.numMessages);
     }
-    if (message.rootHash.length !== 0) {
-      writer.uint32(34).bytes(message.rootHash);
+    if (message.rootHash !== "") {
+      writer.uint32(34).string(message.rootHash);
     }
     return writer;
   },
@@ -352,7 +349,7 @@ export const TrieNodeSnapshotResponse = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.prefix = reader.bytes();
+          message.prefix = reader.string();
           break;
         case 2:
           message.excludedHashes.push(reader.string());
@@ -361,7 +358,7 @@ export const TrieNodeSnapshotResponse = {
           message.numMessages = longToNumber(reader.uint64() as Long);
           break;
         case 4:
-          message.rootHash = reader.bytes();
+          message.rootHash = reader.string();
           break;
         default:
           reader.skipType(tag & 7);
@@ -373,25 +370,23 @@ export const TrieNodeSnapshotResponse = {
 
   fromJSON(object: any): TrieNodeSnapshotResponse {
     return {
-      prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array(),
+      prefix: isSet(object.prefix) ? String(object.prefix) : "",
       excludedHashes: Array.isArray(object?.excludedHashes) ? object.excludedHashes.map((e: any) => String(e)) : [],
       numMessages: isSet(object.numMessages) ? Number(object.numMessages) : 0,
-      rootHash: isSet(object.rootHash) ? bytesFromBase64(object.rootHash) : new Uint8Array(),
+      rootHash: isSet(object.rootHash) ? String(object.rootHash) : "",
     };
   },
 
   toJSON(message: TrieNodeSnapshotResponse): unknown {
     const obj: any = {};
-    message.prefix !== undefined &&
-      (obj.prefix = base64FromBytes(message.prefix !== undefined ? message.prefix : new Uint8Array()));
+    message.prefix !== undefined && (obj.prefix = message.prefix);
     if (message.excludedHashes) {
       obj.excludedHashes = message.excludedHashes.map((e) => e);
     } else {
       obj.excludedHashes = [];
     }
     message.numMessages !== undefined && (obj.numMessages = Math.round(message.numMessages));
-    message.rootHash !== undefined &&
-      (obj.rootHash = base64FromBytes(message.rootHash !== undefined ? message.rootHash : new Uint8Array()));
+    message.rootHash !== undefined && (obj.rootHash = message.rootHash);
     return obj;
   },
 
@@ -401,22 +396,22 @@ export const TrieNodeSnapshotResponse = {
 
   fromPartial<I extends Exact<DeepPartial<TrieNodeSnapshotResponse>, I>>(object: I): TrieNodeSnapshotResponse {
     const message = createBaseTrieNodeSnapshotResponse();
-    message.prefix = object.prefix ?? new Uint8Array();
+    message.prefix = object.prefix ?? "";
     message.excludedHashes = object.excludedHashes?.map((e) => e) || [];
     message.numMessages = object.numMessages ?? 0;
-    message.rootHash = object.rootHash ?? new Uint8Array();
+    message.rootHash = object.rootHash ?? "";
     return message;
   },
 };
 
 function createBaseTrieNodePrefix(): TrieNodePrefix {
-  return { prefix: new Uint8Array() };
+  return { prefix: "" };
 }
 
 export const TrieNodePrefix = {
   encode(message: TrieNodePrefix, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.prefix.length !== 0) {
-      writer.uint32(10).bytes(message.prefix);
+    if (message.prefix !== "") {
+      writer.uint32(10).string(message.prefix);
     }
     return writer;
   },
@@ -429,7 +424,7 @@ export const TrieNodePrefix = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.prefix = reader.bytes();
+          message.prefix = reader.string();
           break;
         default:
           reader.skipType(tag & 7);
@@ -440,13 +435,12 @@ export const TrieNodePrefix = {
   },
 
   fromJSON(object: any): TrieNodePrefix {
-    return { prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array() };
+    return { prefix: isSet(object.prefix) ? String(object.prefix) : "" };
   },
 
   toJSON(message: TrieNodePrefix): unknown {
     const obj: any = {};
-    message.prefix !== undefined &&
-      (obj.prefix = base64FromBytes(message.prefix !== undefined ? message.prefix : new Uint8Array()));
+    message.prefix !== undefined && (obj.prefix = message.prefix);
     return obj;
   },
 
@@ -456,7 +450,7 @@ export const TrieNodePrefix = {
 
   fromPartial<I extends Exact<DeepPartial<TrieNodePrefix>, I>>(object: I): TrieNodePrefix {
     const message = createBaseTrieNodePrefix();
-    message.prefix = object.prefix ?? new Uint8Array();
+    message.prefix = object.prefix ?? "";
     return message;
   },
 };
@@ -1010,13 +1004,13 @@ export const UserDataRequest = {
 };
 
 function createBaseNameRegistryEventRequest(): NameRegistryEventRequest {
-  return { name: "" };
+  return { name: new Uint8Array() };
 }
 
 export const NameRegistryEventRequest = {
   encode(message: NameRegistryEventRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.name !== "") {
-      writer.uint32(10).string(message.name);
+    if (message.name.length !== 0) {
+      writer.uint32(10).bytes(message.name);
     }
     return writer;
   },
@@ -1029,7 +1023,7 @@ export const NameRegistryEventRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.name = reader.string();
+          message.name = reader.bytes();
           break;
         default:
           reader.skipType(tag & 7);
@@ -1040,12 +1034,13 @@ export const NameRegistryEventRequest = {
   },
 
   fromJSON(object: any): NameRegistryEventRequest {
-    return { name: isSet(object.name) ? String(object.name) : "" };
+    return { name: isSet(object.name) ? bytesFromBase64(object.name) : new Uint8Array() };
   },
 
   toJSON(message: NameRegistryEventRequest): unknown {
     const obj: any = {};
-    message.name !== undefined && (obj.name = message.name);
+    message.name !== undefined &&
+      (obj.name = base64FromBytes(message.name !== undefined ? message.name : new Uint8Array()));
     return obj;
   },
 
@@ -1055,7 +1050,7 @@ export const NameRegistryEventRequest = {
 
   fromPartial<I extends Exact<DeepPartial<NameRegistryEventRequest>, I>>(object: I): NameRegistryEventRequest {
     const message = createBaseNameRegistryEventRequest();
-    message.name = object.name ?? "";
+    message.name = object.name ?? new Uint8Array();
     return message;
   },
 };
