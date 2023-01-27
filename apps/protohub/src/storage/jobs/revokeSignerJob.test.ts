@@ -1,5 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
 import { Factories, HubError } from '@farcaster/protoutils';
+import { err, ok } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { seedSigner } from '~/storage/engine/seed';
@@ -37,7 +38,9 @@ beforeAll(async () => {
   payload3 = JobFactories.RevokeSignerJobPayload.build();
 
   // Integration test data
-  revokeSignerPayload = RevokeSignerJobQueue.makePayload(fid, signer.signerKey)._unsafeUnwrap();
+  const constructedPayload = RevokeSignerJobQueue.makePayload(fid, signer.signerKey);
+  expect(constructedPayload.isOk()).toBeTruthy();
+  revokeSignerPayload = constructedPayload._unsafeUnwrap();
 
   castAdd = await Factories.CastAddMessage.create({ data: { fid } }, { transient: { signer } });
   ampAdd = await Factories.AmpAddMessage.create({ data: { fid } }, { transient: { signer } });
@@ -54,27 +57,25 @@ describe('jobKeyToTimestamp', () => {
     const hash = Factories.Bytes.build({}, { transient: { length: 4 } });
     const jobKey = RevokeSignerJobQueue.makeJobKey(timestamp, hash);
     const recoveredTimestamp = RevokeSignerJobQueue.jobKeyToTimestamp(jobKey._unsafeUnwrap());
-    expect(recoveredTimestamp._unsafeUnwrap()).toEqual(timestamp);
+    expect(recoveredTimestamp).toEqual(ok(timestamp));
   });
 });
 
 describe('makePayload', () => {
-  test('makes flatbuffer RevokeSignerJobPayload', () => {
+  test('makes protobuf RevokeSignerJobPayload', () => {
     const newPayload = RevokeSignerJobQueue.makePayload(payload.fid, payload.signer);
-    expect(newPayload._unsafeUnwrap()).toEqual(payload);
+    expect(newPayload).toEqual(ok(payload));
   });
 
   test('fails with invalid fid', () => {
     const newPayload = RevokeSignerJobQueue.makePayload(0, payload.signer);
-    expect(newPayload._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'fid must be positive')
-    );
+    expect(newPayload).toEqual(err(new HubError('bad_request.validation_failure', 'fid must be positive')));
   });
 
   test('fails with invalid signer', () => {
     const newPayload = RevokeSignerJobQueue.makePayload(payload.fid, new Uint8Array());
-    expect(newPayload._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'signer is not a valid Ed25519 or Eth signer')
+    expect(newPayload).toEqual(
+      err(new HubError('bad_request.validation_failure', 'signer is not a valid Ed25519 or Eth signer'))
     );
   });
 });
@@ -96,7 +97,7 @@ describe('enqueueJob', () => {
     const result = await queue.enqueueJob(payload, timestamp);
     expect(result.isOk()).toBeTruthy();
     const jobs = await queue.getAllJobs();
-    expect(jobs._unsafeUnwrap()).toEqual([[timestamp, payload]]);
+    expect(jobs).toEqual(ok([[timestamp, payload]]));
   });
 
   test('appends hash to key for each enqueued job', async () => {

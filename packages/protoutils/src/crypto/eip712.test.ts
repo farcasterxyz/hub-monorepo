@@ -56,7 +56,7 @@ describe('signMessageHash', () => {
   test('succeeds', async () => {
     const messageData = Factories.SignerAddData.build();
     const bytes = protobufs.MessageData.encode(messageData).finish();
-    const hash = blake3(bytes, { dkLen: 16 });
+    const hash = blake3(bytes, { dkLen: 20 });
     const signature = await eip712.signMessageHash(hash, wallet);
     expect(signature.isOk()).toBeTruthy();
     const recoveredAddress = eip712.verifyMessageHashSignature(hash, signature._unsafeUnwrap());

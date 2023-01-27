@@ -107,50 +107,47 @@ describe('validateEthAddress', () => {
   const address = ethSigner.signerKey;
 
   test('succeeds', () => {
-    expect(validations.validateEthAddress(address)._unsafeUnwrap()).toEqual(address);
+    expect(validations.validateEthAddress(address)).toEqual(ok(address));
   });
 
   test('fails with longer address', () => {
     const longAddress = Factories.Bytes.build({}, { transient: { length: 21 } });
-    expect(validations.validateEthAddress(longAddress)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'address > 20 bytes')
+    expect(validations.validateEthAddress(longAddress)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'address must be 20 bytes'))
     );
   });
 
-  test('succeeds with shorter address', () => {
+  test('fails with shorter address', () => {
     const shortAddress = address.subarray(0, -1);
-    expect(validations.validateEthAddress(shortAddress)._unsafeUnwrap()).toEqual(shortAddress);
+    expect(validations.validateEthAddress(shortAddress)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'address must be 20 bytes'))
+    );
   });
 });
 
 describe('validateEthBlockHash', () => {
   test('succeeds', () => {
     const blockHash = Factories.Bytes.build({}, { transient: { length: 32 } });
-    expect(validations.validateEthBlockHash(blockHash)._unsafeUnwrap()).toEqual(blockHash);
+    expect(validations.validateEthBlockHash(blockHash)).toEqual(ok(blockHash));
   });
 
   test('fails when greater than 32 bytes', () => {
     const blockHash = Factories.Bytes.build({}, { transient: { length: 33 } });
-    expect(validations.validateEthBlockHash(blockHash)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'blockHash > 32 bytes')
+    expect(validations.validateEthBlockHash(blockHash)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'blockHash must be 32 bytes'))
     );
   });
 
-  test('succeeds when less than 32 bytes', () => {
+  test('fails when less than 32 bytes', () => {
     const blockHash = Factories.Bytes.build({}, { transient: { length: 31 } });
-    expect(validations.validateEthBlockHash(blockHash)._unsafeUnwrap()).toEqual(blockHash);
-  });
-
-  test('fails when padded', () => {
-    const blockHash = Factories.Bytes.build({}, { transient: { length: 31 } });
-    expect(validations.validateEthBlockHash(new Uint8Array([...blockHash, 0]))._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'blockHash is padded')
+    expect(validations.validateEthBlockHash(blockHash)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'blockHash must be 32 bytes'))
     );
   });
 
   test('fails when undefined', () => {
-    expect(validations.validateEthBlockHash(undefined)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'blockHash is missing')
+    expect(validations.validateEthBlockHash(undefined)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'blockHash is missing'))
     );
   });
 });
@@ -159,19 +156,21 @@ describe('validateEd25519PublicKey', () => {
   const publicKey = signer.signerKey;
 
   test('succeeds', () => {
-    expect(validations.validateEd25519PublicKey(publicKey)._unsafeUnwrap()).toEqual(publicKey);
+    expect(validations.validateEd25519PublicKey(publicKey)).toEqual(ok(publicKey));
   });
 
   test('fails with longer key', () => {
     const longKey = Factories.Bytes.build({}, { transient: { length: 33 } });
-    expect(validations.validateEd25519PublicKey(longKey)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'publicKey > 32 bytes')
+    expect(validations.validateEd25519PublicKey(longKey)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'publicKey must be 32 bytes'))
     );
   });
 
-  test('succeeds with shorter key', () => {
+  test('fails with shorter key', () => {
     const shortKey = publicKey.subarray(0, -1);
-    expect(validations.validateEd25519PublicKey(shortKey)._unsafeUnwrap()).toEqual(shortKey);
+    expect(validations.validateEd25519PublicKey(shortKey)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'publicKey must be 32 bytes'))
+    );
   });
 });
 
@@ -291,7 +290,7 @@ describe('validateVerificationAddEthAddressBody', () => {
   test('succeeds', async () => {
     const body = await Factories.VerificationAddEthAddressBody.build();
     const result = await validations.validateVerificationAddEthAddressBody(body);
-    expect(result._unsafeUnwrap()).toEqual(body);
+    expect(result).toEqual(ok(body));
   });
 
   describe('fails', () => {
@@ -301,7 +300,7 @@ describe('validateVerificationAddEthAddressBody', () => {
     afterEach(async () => {
       // TODO: improve VerificationAddEthAddressBody factory so that it doesn't always try to generate ethSignature
       const result = await validations.validateVerificationAddEthAddressBody(body);
-      expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', hubErrorMessage));
+      expect(result).toEqual(err(new HubError('bad_request.validation_failure', hubErrorMessage)));
     });
 
     test('with missing eth address', async () => {
@@ -313,7 +312,7 @@ describe('validateVerificationAddEthAddressBody', () => {
       body = await Factories.VerificationAddEthAddressBody.create({
         address: Factories.Bytes.build({}, { transient: { length: 21 } }),
       });
-      hubErrorMessage = 'address > 20 bytes';
+      hubErrorMessage = 'address must be 20 bytes';
     });
 
     test('with missing block hash', async () => {
@@ -325,7 +324,7 @@ describe('validateVerificationAddEthAddressBody', () => {
       body = await Factories.VerificationAddEthAddressBody.create({
         blockHash: Factories.Bytes.build({}, { transient: { length: 33 } }),
       });
-      hubErrorMessage = 'blockHash > 32 bytes';
+      hubErrorMessage = 'blockHash must be 32 bytes';
     });
   });
 });
@@ -390,7 +389,7 @@ describe('validateVerificationRemoveBody', () => {
       body = Factories.VerificationRemoveBody.build({
         address: Factories.Bytes.build({}, { transient: { length: 21 } }),
       });
-      hubErrorMessage = 'address > 20 bytes';
+      hubErrorMessage = 'address must be 20 bytes';
     });
   });
 });
@@ -422,7 +421,7 @@ describe('validateSignerBody', () => {
       body = Factories.SignerBody.build({
         signer: Factories.Bytes.build({}, { transient: { length: 33 } }),
       });
-      hubErrorMessage = 'publicKey > 32 bytes';
+      hubErrorMessage = 'publicKey must be 32 bytes';
     });
   });
 });

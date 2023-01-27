@@ -182,7 +182,7 @@ const MessageFactory = Factory.define<protobufs.Message, { signer?: Ed25519Signe
       // Generate hash
       const dataBytes = protobufs.MessageData.encode(message.data).finish();
       if (message.hash.length === 0) {
-        message.hash = blake3(dataBytes, { dkLen: 16 });
+        message.hash = blake3(dataBytes, { dkLen: 20 });
       }
 
       // Set signer
