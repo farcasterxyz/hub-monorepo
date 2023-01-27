@@ -13,7 +13,7 @@ import VerificationStore from '~/storage/stores/verificationStore';
 import { getMessage, makeTsHash } from '../db/message';
 import { UserPostfix } from '../db/types';
 
-const db = jestRocksDB('flatbuffers.verificationStore.test');
+const db = jestRocksDB('protobufs.verificationStore.test');
 const eventHandler = new StoreEventHandler();
 const set = new VerificationStore(db, eventHandler);
 const fid = Factories.Fid.build();

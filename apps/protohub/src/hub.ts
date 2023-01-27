@@ -1,11 +1,9 @@
 import * as protobufs from '@farcaster/protobufs';
 import {
   ContactInfoContent,
-  credentials,
   FarcasterNetwork,
   GossipAddressInfo,
   GossipMessage,
-  HubServiceClient,
   HubState,
   IdRegistryEvent,
   Message,
@@ -22,7 +20,8 @@ import { TypedEmitter } from 'tiny-typed-emitter';
 import { GossipNode } from './network/p2p/gossipNode';
 import { NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY } from './network/p2p/protocol';
 import SyncEngine from './network/sync/syncEngine';
-import { Server } from './rpc/server';
+import { getHubRpcClient, HubRpcClient } from './rpc/client';
+import Server from './rpc/server';
 import RocksDB from './storage/db/rocksdb';
 import Engine from './storage/engine';
 import { PruneMessagesJobScheduler } from './storage/jobs/pruneMessagesJob';
@@ -135,7 +134,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   engine: Engine;
   //   ethRegistryProvider: EthEventsProvider;
 
-  private currentHubRpcClients: Map<string, HubServiceClient> = new Map();
+  private currentHubRpcClients: Map<string, HubRpcClient> = new Map();
 
   constructor(options: HubOptions) {
     super();
@@ -350,7 +349,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     }
   }
 
-  private async diffSyncIfRequired(message: ContactInfoContent, rpcClient: HubServiceClient) {
+  private async diffSyncIfRequired(message: ContactInfoContent, rpcClient: HubRpcClient) {
     this.emit('syncStart');
     if (!rpcClient) {
       log.warn(`No RPC client for peer, skipping sync`);
@@ -359,35 +358,35 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     }
 
     // First, get the latest state from the peer
-    rpcClient.getSyncSnapshotByPrefix(protobufs.TrieNodePrefix.create({ prefix: '' }), async (e, peerState) => {
-      if (e) {
-        log.warn(`Failed to get sync snapshot, skipping sync`);
-        this.emit('syncComplete', false);
-        return;
-      }
-
-      const shouldSync = this.syncEngine.shouldSync(peerState.excludedHashes);
-      if (shouldSync.isErr()) {
-        log.warn(`Failed to get shouldSync`);
-        this.emit('syncComplete', false);
-        return;
-      }
-
-      if (shouldSync.value === true) {
-        log.info(`Syncing with peer`);
-        await this.syncEngine.performSync(peerState.excludedHashes, rpcClient);
-      } else {
-        log.info(`No need to sync`);
-        this.emit('syncComplete', false);
-        return;
-      }
-
+    const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(protobufs.TrieNodePrefix.create({ prefix: '' }));
+    if (peerStateResult.isErr()) {
+      log.warn(`Failed to get peer state, skipping sync`);
       this.emit('syncComplete', false);
       return;
-    });
+    }
+
+    const peerState = peerStateResult.value;
+    const shouldSync = this.syncEngine.shouldSync(peerState.excludedHashes);
+    if (shouldSync.isErr()) {
+      log.warn(`Failed to get shouldSync`);
+      this.emit('syncComplete', false);
+      return;
+    }
+
+    if (shouldSync.value === true) {
+      log.info(`Syncing with peer`);
+      await this.syncEngine.performSync(peerState.excludedHashes, rpcClient);
+    } else {
+      log.info(`No need to sync`);
+      this.emit('syncComplete', false);
+      return;
+    }
+
+    this.emit('syncComplete', false);
+    return;
   }
 
-  private async getRPCClientForPeer(peerId: PeerId, peer: ContactInfoContent): Promise<HubServiceClient | undefined> {
+  private async getRPCClientForPeer(peerId: PeerId, peer: ContactInfoContent): Promise<HubRpcClient | undefined> {
     /*
      * Find the peer's addrs from our peer list because we cannot use the address
      * in the contact info directly
@@ -404,7 +403,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     }
 
     if (isIP(rpcAddressInfo.value.address)) {
-      return new HubServiceClient(rpcAddressInfo.value.address, credentials.createInsecure());
+      return getHubRpcClient(`${rpcAddressInfo.value.address}:${rpcAddressInfo.value.port}`);
     }
 
     log.info({ peerId }, 'falling back to addressbook lookup for peer');
@@ -437,7 +436,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
       port: rpcAddressInfo.value.port,
     };
 
-    return new HubServiceClient(addressInfoToString(ai), credentials.createInsecure());
+    return getHubRpcClient(addressInfoToString(ai));
   }
 
   private registerEventHandlers() {

@@ -6,7 +6,7 @@ import UserDataStore from '~/storage/stores/userDataStore';
 import { getMessage, makeTsHash } from '../db/message';
 import { UserPostfix } from '../db/types';
 
-const db = jestRocksDB('flatbuffers.userDataSet.test');
+const db = jestRocksDB('protobufs.userDataSet.test');
 
 const eventHandler = new StoreEventHandler();
 const set = new UserDataStore(db, eventHandler);

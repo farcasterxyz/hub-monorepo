@@ -1,9 +1,11 @@
 import * as protobufs from '@farcaster/protobufs';
 import { FarcasterNetwork } from '@farcaster/protobufs';
 import { Factories, getFarcasterTime } from '@farcaster/protoutils';
+import { ok } from 'neverthrow';
 import { anything, instance, mock, when } from 'ts-mockito';
 import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';
+import { HubRpcClient } from '~/rpc/client';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 
@@ -176,10 +178,10 @@ describe('SyncEngine', () => {
   });
 
   test('shouldSync returns false when already syncing', async () => {
-    const mockRPCClient = mock(protobufs.HubServiceClient);
+    const mockRPCClient = mock<HubRpcClient>();
     const rpcClient = instance(mockRPCClient);
     let called = false;
-    when(mockRPCClient.getSyncMetadataByPrefix(anything(), anything())).thenCall((_a, callback) => {
+    when(mockRPCClient.getSyncMetadataByPrefix(anything())).thenCall(() => {
       expect(syncEngine.shouldSync([])._unsafeUnwrap()).toBeFalsy();
       called = true;
 
@@ -190,7 +192,7 @@ describe('SyncEngine', () => {
         hash: '',
         children: [],
       });
-      callback(null, emptyMetadata);
+      return Promise.resolve(ok(emptyMetadata));
     });
     await syncEngine.performSync(['some-divergence'], rpcClient);
     expect(called).toBeTruthy();
