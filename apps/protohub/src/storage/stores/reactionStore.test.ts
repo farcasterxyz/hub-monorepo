@@ -6,7 +6,7 @@ import { UserPostfix } from '~/storage/db/types';
 import ReactionStore from '~/storage/stores/reactionStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 
-const db = jestRocksDB('flatbuffers.reactionStore.test');
+const db = jestRocksDB('protobufs.reactionStore.test');
 const eventHandler = new StoreEventHandler();
 const set = new ReactionStore(db, eventHandler);
 const fid = Factories.Fid.build();

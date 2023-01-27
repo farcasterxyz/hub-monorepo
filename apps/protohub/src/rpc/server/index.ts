@@ -67,7 +67,7 @@ export const toServiceError = (err: HubError): ServiceError => {
   });
 };
 
-export class Server {
+export default class Server {
   private hub: HubInterface | undefined;
   private engine: Engine | undefined;
   private syncEngine: SyncEngine | undefined;
@@ -82,7 +82,7 @@ export class Server {
 
     this.grpcServer = getServer();
     this.port = 0;
-    this.grpcServer.addService(HubServiceService, new Server().HubServiceGrpc());
+    this.grpcServer.addService(HubServiceService, this.getImpl());
   }
 
   async start(port = 0): Promise<number> {
@@ -123,7 +123,7 @@ export class Server {
     return addr;
   }
 
-  HubServiceGrpc = (): HubServiceServer => {
+  getImpl = (): HubServiceServer => {
     return {
       getInfo: (call, callback) => {
         const info = HubInfoResponse.create({

@@ -4,6 +4,7 @@ import { err, ok } from 'neverthrow';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
 import { TrieSnapshot } from '~/network/sync/trieNode';
+import { HubRpcClient } from '~/rpc/client';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
 
@@ -87,7 +88,7 @@ class SyncEngine {
     });
   }
 
-  async performSync(excludedHashes: string[], rpcClient: protobufs.HubServiceClient) {
+  async performSync(excludedHashes: string[], rpcClient: HubRpcClient) {
     try {
       this._isSyncing = true;
       await this.snapshot
@@ -111,28 +112,27 @@ class SyncEngine {
     }
   }
 
-  public async fetchAndMergeMessages(syncIds: string[], rpcClient: protobufs.HubServiceClient): Promise<boolean> {
+  public async fetchAndMergeMessages(syncIds: string[], rpcClient: HubRpcClient): Promise<boolean> {
     if (syncIds.length === 0) {
       return false;
     }
 
-    return new Promise((resolve) => {
-      rpcClient.getAllMessagesBySyncIds(protobufs.SyncIds.create({ syncIds }), async (err, messagesResponse) => {
-        if (err) {
-          log.warn(err, `Error fetching messages for sync`);
-          resolve(false);
-        } else {
-          await this.mergeMessages(messagesResponse.messages, rpcClient);
-          resolve(true);
-        }
-      });
-    });
+    let result = true;
+    const messagesResult = await rpcClient.getAllMessagesBySyncIds(protobufs.SyncIds.create({ syncIds }));
+    await messagesResult.match(
+      async (msgs) => {
+        await this.mergeMessages(msgs.messages, rpcClient);
+      },
+      async (err) => {
+        // e.g. Node goes down while we're performing the sync. No need to handle it, the next round of sync will retry.
+        log.warn(err, `Error fetching messages for sync`);
+        result = false;
+      }
+    );
+    return result;
   }
 
-  public async mergeMessages(
-    messages: protobufs.Message[],
-    rpcClient: protobufs.HubServiceClient
-  ): Promise<HubResult<void>[]> {
+  public async mergeMessages(messages: protobufs.Message[], rpcClient: HubRpcClient): Promise<HubResult<void>[]> {
     const mergeResults: HubResult<void>[] = [];
     // First, sort the messages by timestamp to reduce thrashing and refetching
     messages.sort((a, b) => (a.data?.timestamp || 0) - (b.data?.timestamp || 0));
@@ -166,55 +166,50 @@ class SyncEngine {
   async fetchMissingHashesByNode(
     theirNode: NodeMetadata,
     ourNode: NodeMetadata | undefined,
-    rpcClient: protobufs.HubServiceClient
+    rpcClient: HubRpcClient
   ): Promise<string[]> {
-    return new Promise((resolve) => {
-      const missingHashes: string[] = [];
-      // If the node has fewer than HASHES_PER_FETCH, just fetch them all in go, otherwise,
-      // iterate through the node's children and fetch them in batches.
-      if (theirNode.numMessages <= HASHES_PER_FETCH) {
-        rpcClient.getAllSyncIdsByPrefix(
-          protobufs.TrieNodePrefix.create({ prefix: theirNode.prefix }),
-          (err, syncIds) => {
-            if (err) {
-              log.warn(err, `Error fetching ids for prefix ${theirNode.prefix}`);
-              resolve(missingHashes);
-            } else {
-              resolve(syncIds.syncIds);
-            }
-          }
-        );
-      } else
-        (async () => {
-          if (theirNode.children) {
-            for (const [theirChildChar, theirChild] of theirNode.children.entries()) {
-              // recursively fetch hashes for every node where the hashes don't match
-              if (ourNode?.children?.get(theirChildChar)?.hash !== theirChild.hash) {
-                missingHashes.push(...(await this.fetchMissingHashesByPrefix(theirChild.prefix, rpcClient)));
-              }
-            }
-          }
-          resolve(missingHashes);
-        })();
-    });
+    const missingHashes: string[] = [];
+    // If the node has fewer than HASHES_PER_FETCH, just fetch them all in go, otherwise,
+    // iterate through the node's children and fetch them in batches.
+    if (theirNode.numMessages <= HASHES_PER_FETCH) {
+      const result = await rpcClient.getAllSyncIdsByPrefix(
+        protobufs.TrieNodePrefix.create({ prefix: theirNode.prefix })
+      );
+      result.match(
+        (ids) => {
+          missingHashes.push(...ids.syncIds);
+        },
+        (err) => {
+          log.warn(err, `Error fetching ids for prefix ${theirNode.prefix}`);
+        }
+      );
+    } else if (theirNode.children) {
+      for (const [theirChildChar, theirChild] of theirNode.children.entries()) {
+        // recursively fetch hashes for every node where the hashes don't match
+        if (ourNode?.children?.get(theirChildChar)?.hash !== theirChild.hash) {
+          missingHashes.push(...(await this.fetchMissingHashesByPrefix(theirChild.prefix, rpcClient)));
+        }
+      }
+    }
+    return missingHashes;
   }
 
-  async fetchMissingHashesByPrefix(prefix: string, rpcClient: protobufs.HubServiceClient): Promise<string[]> {
+  async fetchMissingHashesByPrefix(prefix: string, rpcClient: HubRpcClient): Promise<string[]> {
     const ourNode = this._trie.getTrieNodeMetadata(prefix);
+    const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(protobufs.TrieNodePrefix.create({ prefix }));
 
-    return new Promise((resolve) => {
-      rpcClient.getSyncMetadataByPrefix(protobufs.TrieNodePrefix.create({ prefix }), async (err, theirNodeMetadata) => {
-        const missingHashes: string[] = [];
-        if (err) {
-          log.warn(err, `Error fetching metadata for prefix ${prefix}`);
-        } else {
-          missingHashes.push(
-            ...(await this.fetchMissingHashesByNode(fromNodeMetadataResponse(theirNodeMetadata), ourNode, rpcClient))
-          );
-        }
-        resolve(missingHashes);
-      });
-    });
+    const missingHashes: string[] = [];
+    await theirNodeResult.match(
+      async (theirNode) => {
+        missingHashes.push(
+          ...(await this.fetchMissingHashesByNode(fromNodeMetadataResponse(theirNode), ourNode, rpcClient))
+        );
+      },
+      async (err) => {
+        log.warn(err, `Error fetching metadata for prefix ${prefix}`);
+      }
+    );
+    return missingHashes;
   }
 
   /** ---------------------------------------------------------------------------------- */
@@ -265,50 +260,40 @@ class SyncEngine {
     });
   }
 
-  private async syncUserAndRetryMessage(
-    message: protobufs.Message,
-    rpcClient: protobufs.HubServiceClient
-  ): Promise<HubResult<void>> {
+  private async syncUserAndRetryMessage(message: protobufs.Message, rpcClient: HubRpcClient): Promise<HubResult<void>> {
     const fid = message.data?.fid;
     if (!fid) {
       return err(new HubError('bad_request.invalid_param', 'Invalid fid'));
     }
 
-    return new Promise((resolve) => {
-      rpcClient.getCustodyEvent(protobufs.FidRequest.create({ fid }), async (e, custodyEvent) => {
-        if (e) {
-          resolve(err(new HubError('unavailable.network_failure', 'Failed to fetch custody event')));
-        }
+    const custodyEventResult = await rpcClient.getCustodyEvent(protobufs.FidRequest.create({ fid }));
+    if (custodyEventResult.isErr()) {
+      return err(new HubError('unavailable.network_failure', 'Failed to fetch custody event'));
+    }
 
-        const custodyResult = await this.engine.mergeIdRegistryEvent(custodyEvent);
-        if (custodyResult.isErr()) {
-          resolve(err(new HubError('unavailable.storage_failure', 'Failed to merge custody event')));
-        }
+    const custodyResult = await this.engine.mergeIdRegistryEvent(custodyEventResult._unsafeUnwrap());
+    if (custodyResult.isErr()) {
+      return err(new HubError('unavailable.storage_failure', 'Failed to merge custody event'));
+    }
 
-        // Probably not required to fetch the signer messages, but doing it here means
-        // sync will complete in one round (prevents messages failing to merge due to missed or out of
-        // order signer message)
-        rpcClient.getAllSignerMessagesByFid(protobufs.FidRequest.create({ fid }), async (e, messagesResponse) => {
-          if (e) {
-            resolve(err(new HubError('unavailable.network_failure', 'Failed to fetch signer messages')));
-          }
+    // Probably not required to fetch the signer messages, but doing it here means
+    // sync will complete in one round (prevents messages failing to merge due to missed or out of
+    // order signer message)
+    const signerMessagesResult = await rpcClient.getAllSignerMessagesByFid(protobufs.FidRequest.create({ fid }));
+    if (signerMessagesResult.isErr()) {
+      return err(new HubError('unavailable.network_failure', 'Failed to fetch signer messages'));
+    }
 
-          const results = await this.engine.mergeMessages(messagesResponse.messages);
-          if (results.every((r) => r.isErr())) {
-            resolve(err(new HubError('unavailable.storage_failure', 'Failed to merge signer messages')));
-          } else {
-            // if at least one signer message was merged, retry the original message
-            const retryResult = await this.engine.mergeMessage(message);
-            if (retryResult.isErr()) {
-              log.warn(e, `Failed to merge message type ${message.data?.type}`);
-              resolve(err(new HubError('unavailable.storage_failure', 'Failed to merge message')));
-            } else {
-              resolve(ok(undefined));
-            }
-          }
-        });
+    const results = await this.engine.mergeMessages(signerMessagesResult._unsafeUnwrap().messages);
+    if (results.every((r) => r.isErr())) {
+      return err(new HubError('unavailable.storage_failure', 'Failed to merge signer messages'));
+    } else {
+      // if at least one signer message was merged, retry the original message
+      return (await this.engine.mergeMessage(message)).mapErr((e) => {
+        log.warn(e, `Failed to merge message type ${message.data?.type}`);
+        return new HubError('unavailable.storage_failure', e);
       });
-    });
+    }
   }
 }
 

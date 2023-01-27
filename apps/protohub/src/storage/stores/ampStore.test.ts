@@ -6,7 +6,7 @@ import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { getMessage, makeTsHash } from '../db/message';
 import { UserPostfix } from '../db/types';
 
-const db = jestRocksDB('flatbuffers.ampStore.test');
+const db = jestRocksDB('protobufs.ampStore.test');
 const eventHandler = new StoreEventHandler();
 const store = new AmpStore(db, eventHandler);
 const fid = Factories.Fid.build();

@@ -6,7 +6,7 @@ import { UserPostfix } from '~/storage/db/types';
 import CastStore from '~/storage/stores/castStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 
-const db = jestRocksDB('flatbuffers.castStore.test');
+const db = jestRocksDB('protobufs.castStore.test');
 const eventHandler = new StoreEventHandler();
 const store = new CastStore(db, eventHandler);
 const fid = Factories.Fid.build();

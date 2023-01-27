@@ -6,7 +6,7 @@ import Engine from '~/storage/engine';
 import SignerStore from '~/storage/stores/signerStore';
 import { getMessage, makeTsHash, typeToSetPostfix } from '../db/message';
 
-const db = jestRocksDB('flatbuffers.engine.test');
+const db = jestRocksDB('protobufs.engine.test');
 const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
 const engine = new Engine(db, network);
 

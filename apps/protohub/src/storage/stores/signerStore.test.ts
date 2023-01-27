@@ -7,7 +7,7 @@ import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { getAllMessagesBySigner, getMessage, makeTsHash } from '../db/message';
 import { UserPostfix } from '../db/types';
 
-const db = jestRocksDB('flatbuffers.signerStore.test');
+const db = jestRocksDB('protobufs.signerStore.test');
 const eventHandler = new StoreEventHandler();
 const set = new SignerStore(db, eventHandler);
 const fid = Factories.Fid.build();
