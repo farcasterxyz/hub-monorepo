@@ -50,22 +50,22 @@ export const messageToLog = (message: protobufs.Message) => {
   };
 };
 
-// export const idRegistryEventToLog = (event: IdRegistryEventModel) => {
-//   return {
-//     blockNumber: event.blockNumber(),
-//     transactionHash: bytesToHexString(event.transactionHash())._unsafeUnwrap(),
-//     fid: bytesToNumber(event.fid())._unsafeUnwrap(),
-//     to: bytesToHexString(event.to())._unsafeUnwrap(),
-//     type: event.typeName(),
-//   };
-// };
+export const idRegistryEventToLog = (event: protobufs.IdRegistryEvent) => {
+  return {
+    blockNumber: event.blockNumber,
+    transactionHash: bytesToHexString(event.transactionHash)._unsafeUnwrap(),
+    fid: event.fid,
+    to: bytesToHexString(event.to)._unsafeUnwrap(),
+    type: event.type,
+  };
+};
 
-// export const nameRegistryEventToLog = (event: NameRegistryEventModel) => {
-//   return {
-//     blockNumber: event.blockNumber(),
-//     transactionHash: bytesToHexString(event.transactionHash())._unsafeUnwrap(),
-//     fname: Buffer.from(event.fname()).toString('utf-8').replace(/\0/g, ''),
-//     to: bytesToHexString(event.to())._unsafeUnwrap(),
-//     type: event.typeName(),
-//   };
-// };
+export const nameRegistryEventToLog = (event: protobufs.NameRegistryEvent) => {
+  return {
+    blockNumber: event.blockNumber,
+    transactionHash: bytesToHexString(event.transactionHash)._unsafeUnwrap(),
+    fname: Buffer.from(event.fname).toString('utf-8').replace(/\0/g, ''),
+    to: bytesToHexString(event.to)._unsafeUnwrap(),
+    type: event.type,
+  };
+};
