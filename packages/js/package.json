@@ -21,8 +21,7 @@
     "@farcaster/protoutils": "0.1.4",
     "ethers": "^5.7.2",
     "flatbuffers": "^22.11.23",
-    "neverthrow": "^6.0.0",
-    "nice-grpc": "^2.1.0"
+    "neverthrow": "^6.0.0"
   },
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --clean",
