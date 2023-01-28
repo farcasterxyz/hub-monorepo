@@ -2641,6 +2641,11 @@ JSONStream@^1.3.5:
     jsonparse "^1.2.0"
     through ">=2.2.7 <3"
 
+abort-controller-x@^0.4.0:
+  version "0.4.1"
+  resolved "https://registry.npmjs.org/abort-controller-x/-/abort-controller-x-0.4.1.tgz#b2eefab8503897e0bbdf3dd7a4d33e05ea1ffce9"
+  integrity sha512-lJ2ssrl3FoTK3cX/g15lRCkXFWKiwRTRtBjfwounO2EM/Q65rI/MEZsfsch1juWU2pH2aLSaq0HGowlDP/imrw==
+
 abort-controller@^3.0.0:
   version "3.0.0"
   resolved "https://registry.npmjs.org/abort-controller/-/abort-controller-3.0.0.tgz#eaf54d53b62bae4138e809ca225c8439a6efb392"
@@ -5968,6 +5973,22 @@ neverthrow@^6.0.0:
   resolved "https://registry.npmjs.org/neverthrow/-/neverthrow-6.0.0.tgz#bacd7661cade296ccc5c35760bb3b679214155b6"
   integrity sha512-kPZKRs4VkdloCGQXPoP84q4sT/1Z+lYM61AXyV8wWa2hnuo5KpPBF2S3crSFnMrOgUISmEBP8Vo/ngGZX60NhA==
 
+nice-grpc-common@^2.0.1:
+  version "2.0.1"
+  resolved "https://registry.npmjs.org/nice-grpc-common/-/nice-grpc-common-2.0.1.tgz#2291d3d9c321eb9829a48d6e1c061b29363bc283"
+  integrity sha512-QbQ8nAALQagN4VukmTGwEWKzVtgQr3YwWP9okIzoMCmx0mLTswBFpyOUbKlG4cOm7NDaIFmbmtleQR9EWmNtrw==
+  dependencies:
+    ts-error "^1.0.6"
+
+nice-grpc@^2.1.0:
+  version "2.1.0"
+  resolved "https://registry.npmjs.org/nice-grpc/-/nice-grpc-2.1.0.tgz#ee2546db9aed6fde55972768c1adcc0925f9f06f"
+  integrity sha512-O2ShDuvZhFC8yo1jtP3EpmnnlCxtDSoaFrBCSDGTDka6sO4SbmHTJdZDqsi61+l4dyXUPUNilKo5e1z7cMCzAw==
+  dependencies:
+    "@grpc/grpc-js" "^1.7.3"
+    abort-controller-x "^0.4.0"
+    nice-grpc-common "^2.0.1"
+
 node-cron@^3.0.2:
   version "3.0.2"
   resolved "https://registry.npmjs.org/node-cron/-/node-cron-3.0.2.tgz#bb0681342bd2dfb568f28e464031280e7f06bd01"
@@ -7333,6 +7354,11 @@ truncate-utf8-bytes@^1.0.0:
   integrity sha512-95Pu1QXQvruGEhv62XCMO3Mm90GscOCClvrIUwCM0PYOXK3kaF3l3sIHxx71ThJfcbM2O5Au6SO3AWCSEfW4mQ==
   dependencies:
     utf8-byte-length "^1.0.1"
+
+ts-error@^1.0.6:
+  version "1.0.6"
+  resolved "https://registry.npmjs.org/ts-error/-/ts-error-1.0.6.tgz#277496f2a28de6c184cfce8dfd5cdd03a4e6b0fc"
+  integrity sha512-tLJxacIQUM82IR7JO1UUkKlYuUTmoY9HBJAmNWFzheSlDS5SPMcNIepejHJa4BpPQLAcbRhRf3GDJzyj6rbKvA==
 
 ts-interface-checker@^0.1.9:
   version "0.1.13"

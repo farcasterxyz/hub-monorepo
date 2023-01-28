@@ -9,7 +9,7 @@ import {
   Message,
   NameRegistryEvent,
 } from '@farcaster/protobufs';
-import { HubAsyncResult, HubError, HubResult } from '@farcaster/protoutils';
+import { getHubRpcClient, HubAsyncResult, HubError, HubResult, HubRpcClient } from '@farcaster/protoutils';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import { publicAddressesFirst } from '@libp2p/utils/address-sort';
@@ -20,7 +20,6 @@ import { TypedEmitter } from 'tiny-typed-emitter';
 import { GossipNode } from './network/p2p/gossipNode';
 import { NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY } from './network/p2p/protocol';
 import SyncEngine from './network/sync/syncEngine';
-import { getHubRpcClient, HubRpcClient } from './rpc/client';
 import Server from './rpc/server';
 import RocksDB from './storage/db/rocksdb';
 import Engine from './storage/engine';

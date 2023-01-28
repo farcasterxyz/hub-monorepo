@@ -1,11 +1,10 @@
 import * as protobufs from '@farcaster/protobufs';
 import { FarcasterNetwork } from '@farcaster/protobufs';
-import { Factories, getFarcasterTime } from '@farcaster/protoutils';
+import { Factories, getFarcasterTime, HubRpcClient } from '@farcaster/protoutils';
 import { ok } from 'neverthrow';
 import { anything, instance, mock, when } from 'ts-mockito';
 import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';
-import { HubRpcClient } from '~/rpc/client';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 

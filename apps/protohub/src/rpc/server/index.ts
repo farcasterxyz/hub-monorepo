@@ -474,7 +474,7 @@ export default class Server {
           }
         );
       },
-      getCustodyEvent: async (call, callback) => {
+      getIdRegistryEvent: async (call, callback) => {
         const request = call.request;
 
         const custodyEventResult = await this.engine?.getIdRegistryEvent(request.fid);
