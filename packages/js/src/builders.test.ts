@@ -1,16 +1,15 @@
 import { faker } from '@faker-js/faker';
-import * as flatbuffers from '@farcaster/flatbuffers';
-import { bytesToHexString, Factories, HubError, validations } from '@farcaster/utils';
+import * as protobufs from '@farcaster/protobufs';
+import { Factories, HubError, validations } from '@farcaster/protoutils';
 import { ethers } from 'ethers';
 import { err, ok } from 'neverthrow';
 import * as builders from './builders';
 import { Ed25519Signer, Eip712Signer } from './signers';
 import * as types from './types';
 
-const fid = faker.datatype.number({ min: 1 });
+const fid = Factories.Fid.build();
 const timestamp = Date.now();
-const network = flatbuffers.FarcasterNetwork.Testnet;
-const tsHash = bytesToHexString(Factories.TsHash.build())._unsafeUnwrap();
+const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
 
 const ed25519Signer = Ed25519Signer.fromPrivateKey(Factories.Ed25519PrivateKey.build())._unsafeUnwrap();
 const wallet = new ethers.Wallet(ethers.utils.randomBytes(32));
@@ -20,23 +19,25 @@ describe('makeCastAddData', () => {
   test('succeeds', async () => {
     const body: types.CastAddBody = {
       text: faker.random.alphaNumeric(200),
-      mentions: [faker.datatype.number({ min: 1 }), faker.datatype.number({ min: 1 })],
-      parent: { fid: faker.datatype.number({ min: 1 }), tsHash },
+      mentions: [Factories.Fid.build(), Factories.Fid.build()],
+      parent: { fid: Factories.Fid.build(), hash: Factories.MessageHashHex.build() },
       embeds: [faker.internet.url()],
     };
     const data = await builders.makeCastAddData(body, { fid, timestamp, network });
-    const isValid = await validations.validateMessageData(data._unsafeUnwrap().flatbuffer);
+    expect(data.isOk()).toBeTruthy();
+    const isValid = await validations.validateMessageData(data._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
 
 describe('makeCastRemoveData', () => {
-  const tsHash = Factories.TsHash.build();
-  const tsHashHex = bytesToHexString(tsHash)._unsafeUnwrap();
-
   test('succeeds', async () => {
-    const data = await builders.makeCastRemoveData({ targetTsHash: tsHashHex }, { fid, timestamp, network });
-    const isValid = await validations.validateMessageData(data._unsafeUnwrap().flatbuffer);
+    const data = await builders.makeCastRemoveData(
+      { targetHash: Factories.MessageHashHex.build() },
+      { fid, timestamp, network }
+    );
+    expect(data.isOk()).toBeTruthy();
+    const isValid = await validations.validateMessageData(data._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -45,27 +46,26 @@ describe('makeCastAdd', () => {
   test('succeeds', async () => {
     const body: types.CastAddBody = {
       text: faker.random.alphaNumeric(200),
-      mentions: [faker.datatype.number({ min: 1 }), faker.datatype.number({ min: 1 })],
-      parent: { fid: faker.datatype.number({ min: 1 }), tsHash },
+      mentions: [Factories.Fid.build(), Factories.Fid.build()],
+      parent: { fid: Factories.Fid.build(), hash: Factories.MessageHashHex.build() },
       embeds: [faker.internet.url()],
     };
     const message = await builders.makeCastAdd(body, { fid, timestamp, network }, ed25519Signer);
-    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
+    expect(message.isOk()).toBeTruthy();
+    const isValid = await validations.validateMessage(message._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
 
 describe('makeCastRemove', () => {
-  const tsHash = Factories.TsHash.build();
-  const tsHashHex = bytesToHexString(tsHash)._unsafeUnwrap();
-
   test('succeeds', async () => {
     const message = await builders.makeCastRemove(
-      { targetTsHash: tsHashHex },
+      { targetHash: Factories.MessageHashHex.build() },
       { fid, timestamp, network },
       ed25519Signer
     );
-    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
+    expect(message.isOk()).toBeTruthy();
+    const isValid = await validations.validateMessage(message._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -73,10 +73,11 @@ describe('makeCastRemove', () => {
 describe('makeReactionAddData', () => {
   test('succeeds', async () => {
     const data = await builders.makeReactionAddData(
-      { type: Factories.ReactionType.build(), target: { fid, tsHash } },
+      { type: Factories.ReactionType.build(), target: { fid, hash: Factories.MessageHashHex.build() } },
       { fid, timestamp, network }
     );
-    const isValid = await validations.validateMessageData(data._unsafeUnwrap().flatbuffer);
+    expect(data.isOk()).toBeTruthy();
+    const isValid = await validations.validateMessageData(data._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -84,10 +85,11 @@ describe('makeReactionAddData', () => {
 describe('makeReactionRemoveData', () => {
   test('succeeds', async () => {
     const data = await builders.makeReactionRemoveData(
-      { type: Factories.ReactionType.build(), target: { fid, tsHash } },
+      { type: Factories.ReactionType.build(), target: { fid, hash: Factories.MessageHashHex.build() } },
       { fid, timestamp, network }
     );
-    const isValid = await validations.validateMessageData(data._unsafeUnwrap().flatbuffer);
+    expect(data.isOk()).toBeTruthy();
+    const isValid = await validations.validateMessageData(data._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -95,11 +97,12 @@ describe('makeReactionRemoveData', () => {
 describe('makeReactionAdd', () => {
   test('succeeds', async () => {
     const message = await builders.makeReactionAdd(
-      { type: Factories.ReactionType.build(), target: { fid, tsHash } },
+      { type: Factories.ReactionType.build(), target: { fid, hash: Factories.MessageHashHex.build() } },
       { fid, timestamp, network },
       ed25519Signer
     );
-    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
+    expect(message.isOk()).toBeTruthy();
+    const isValid = await validations.validateMessage(message._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -107,33 +110,30 @@ describe('makeReactionAdd', () => {
 describe('makeReactionRemove', () => {
   test('succeeds', async () => {
     const message = await builders.makeReactionRemove(
-      { type: Factories.ReactionType.build(), target: { fid, tsHash } },
+      { type: Factories.ReactionType.build(), target: { fid, hash: Factories.MessageHashHex.build() } },
       { fid, timestamp, network },
       ed25519Signer
     );
-    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
+    expect(message.isOk()).toBeTruthy();
+    const isValid = await validations.validateMessage(message._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
 
 describe('makeAmpAddData', () => {
   test('succeeds', async () => {
-    const data = await builders.makeAmpAddData(
-      { user: faker.datatype.number({ min: 1 }) },
-      { fid, timestamp, network }
-    );
-    const isValid = await validations.validateMessageData(data._unsafeUnwrap().flatbuffer);
+    const data = await builders.makeAmpAddData({ targetFid: Factories.Fid.build() }, { fid, timestamp, network });
+    expect(data.isOk()).toBeTruthy();
+    const isValid = await validations.validateMessageData(data._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
 
 describe('makeAmpRemoveData', () => {
   test('succeeds', async () => {
-    const data = await builders.makeAmpRemoveData(
-      { user: faker.datatype.number({ min: 1 }) },
-      { fid, timestamp, network }
-    );
-    const isValid = await validations.validateMessageData(data._unsafeUnwrap().flatbuffer);
+    const data = await builders.makeAmpRemoveData({ targetFid: Factories.Fid.build() }, { fid, timestamp, network });
+    expect(data.isOk()).toBeTruthy();
+    const isValid = await validations.validateMessageData(data._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -141,11 +141,11 @@ describe('makeAmpRemoveData', () => {
 describe('makeAmpAdd', () => {
   test('succeeds', async () => {
     const message = await builders.makeAmpAdd(
-      { user: faker.datatype.number({ min: 1 }) },
+      { targetFid: Factories.Fid.build() },
       { fid, timestamp, network },
       ed25519Signer
     );
-    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessage(message._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -153,81 +153,87 @@ describe('makeAmpAdd', () => {
 describe('makeAmpRemove', () => {
   test('succeeds', async () => {
     const message = await builders.makeAmpRemove(
-      { user: faker.datatype.number({ min: 1 }) },
+      { targetFid: Factories.Fid.build() },
       { fid, timestamp, network },
       ed25519Signer
     );
-    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessage(message._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
 
 describe('makeVerificationAddEthAddressData', () => {
-  let ethSignature: Uint8Array;
-  const signer = Factories.Eip712Signer.build();
-  const address = signer.signerKeyHex;
+  let ethSignature: string;
+  const address = eip712Signer.signerKeyHex;
   const blockHash = Factories.BlockHashHex.build();
-  const claim = Factories.VerificationEthAddressClaim.build({ blockHash, fid }, { transient: { signer } });
+  const claim = Factories.VerificationEthAddressClaim.build(
+    { blockHash, fid, network },
+    { transient: { signer: eip712Signer } }
+  );
 
   beforeAll(async () => {
-    ethSignature = (await signer.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
+    const signatureHex = await eip712Signer.signVerificationEthAddressClaimHex(claim);
+    expect(signatureHex.isOk()).toBeTruthy();
+    ethSignature = signatureHex._unsafeUnwrap();
   });
 
   test('succeeds', async () => {
     const data = await builders.makeVerificationAddEthAddressData(
-      { address, blockHash, ethSignature: bytesToHexString(ethSignature)._unsafeUnwrap() },
+      { address, blockHash, ethSignature },
       { fid, timestamp, network }
     );
-    const isValid = await validations.validateMessageData(data._unsafeUnwrap().flatbuffer);
+    expect(data.isOk()).toBeTruthy();
+    const isValid = await validations.validateMessageData(data._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
 
 describe('makeVerificationRemoveData', () => {
-  const signer = Factories.Eip712Signer.build();
-
   test('succeeds', async () => {
     const data = await builders.makeVerificationRemoveData(
-      { address: signer.signerKeyHex },
+      { address: eip712Signer.signerKeyHex },
       { fid, timestamp, network }
     );
-    const isValid = await validations.validateMessageData(data._unsafeUnwrap().flatbuffer);
+    expect(data.isOk()).toBeTruthy();
+    const isValid = await validations.validateMessageData(data._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
 
 describe('makeVerificationAddEthAddress', () => {
-  let ethSignature: Uint8Array;
-  const signer = Factories.Eip712Signer.build();
-  const address = signer.signerKeyHex;
+  let ethSignature: string;
+  const address = eip712Signer.signerKeyHex;
   const blockHash = Factories.BlockHashHex.build();
-  const claim = Factories.VerificationEthAddressClaim.build({ blockHash, fid }, { transient: { signer } });
+  const claim = Factories.VerificationEthAddressClaim.build(
+    { blockHash, fid, network },
+    { transient: { signer: eip712Signer } }
+  );
 
   beforeAll(async () => {
-    ethSignature = (await signer.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
+    const signatureHex = await eip712Signer.signVerificationEthAddressClaimHex(claim);
+    expect(signatureHex.isOk()).toBeTruthy();
+    ethSignature = signatureHex._unsafeUnwrap();
   });
 
   test('succeeds', async () => {
     const message = await builders.makeVerificationAddEthAddress(
-      { address, blockHash, ethSignature: bytesToHexString(ethSignature)._unsafeUnwrap() },
+      { address, blockHash, ethSignature },
       { fid, timestamp, network },
       ed25519Signer
     );
-    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessage(message._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
 
 describe('makeVerificationRemove', () => {
-  const signer = Factories.Eip712Signer.build();
-
   test('succeeds', async () => {
     const message = await builders.makeVerificationRemove(
-      { address: signer.signerKeyHex },
+      { address: eip712Signer.signerKeyHex },
       { fid, timestamp, network },
       ed25519Signer
     );
-    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessage(message._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -235,7 +241,7 @@ describe('makeVerificationRemove', () => {
 describe('makeSignerAddData', () => {
   test('succeeds', async () => {
     const data = await builders.makeSignerAddData({ signer: ed25519Signer.signerKeyHex }, { fid, timestamp, network });
-    const isValid = await validations.validateMessageData(data._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessageData(data._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -246,7 +252,7 @@ describe('makeSignerRemoveData', () => {
       { signer: ed25519Signer.signerKeyHex },
       { fid, timestamp, network }
     );
-    const isValid = await validations.validateMessageData(data._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessageData(data._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -258,7 +264,7 @@ describe('makeSignerAdd', () => {
       { fid, timestamp, network },
       eip712Signer
     );
-    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessage(message._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -270,7 +276,7 @@ describe('makeSignerRemove', () => {
       { fid, timestamp, network },
       eip712Signer
     );
-    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessage(message._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -278,10 +284,10 @@ describe('makeSignerRemove', () => {
 describe('makeUserDataAddData', () => {
   test('succeeds', async () => {
     const data = await builders.makeUserDataAddData(
-      { type: flatbuffers.UserDataType.Bio, value: faker.lorem.word() },
+      { type: protobufs.UserDataType.USER_DATA_TYPE_BIO, value: faker.lorem.word() },
       { fid, timestamp, network }
     );
-    const isValid = await validations.validateMessageData(data._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessageData(data._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -289,11 +295,11 @@ describe('makeUserDataAddData', () => {
 describe('makeUserDataAdd', () => {
   test('succeeds', async () => {
     const message = await builders.makeUserDataAdd(
-      { type: flatbuffers.UserDataType.Bio, value: faker.lorem.word() },
+      { type: protobufs.UserDataType.USER_DATA_TYPE_PFP, value: faker.random.alphaNumeric(100) },
       { fid, timestamp, network },
       ed25519Signer
     );
-    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessage(message._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });
 });
@@ -302,7 +308,9 @@ describe('makeMessageHash', () => {
   test('succeeds', async () => {
     const body = { text: faker.random.alphaNumeric(200) };
     const message = await builders.makeCastAdd(body, { fid, network, timestamp }, ed25519Signer);
+    expect(message.isOk()).toBeTruthy();
     const data = builders.makeCastAddData(body, { fid, network, timestamp });
+    expect(data.isOk()).toBeTruthy();
     const hash = await builders.makeMessageHash(data._unsafeUnwrap());
     expect(hash).toEqual(ok(message._unsafeUnwrap().hash));
   });
@@ -322,7 +330,7 @@ describe('makeMessageWithSignature', () => {
       signature._unsafeUnwrap()
     );
 
-    const isValid = await validations.validateMessage(message._unsafeUnwrap().flatbuffer);
+    const isValid = await validations.validateMessage(message._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
 
     expect(message).toEqual(signerAdd);
