@@ -17,22 +17,23 @@ import { multiaddr, Multiaddr } from '@multiformats/multiaddr';
 import { isIP } from 'net';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import { GossipNode } from './network/p2p/gossipNode';
-import { NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY } from './network/p2p/protocol';
-import SyncEngine from './network/sync/syncEngine';
-import Server from './rpc/server';
-import RocksDB from './storage/db/rocksdb';
-import Engine from './storage/engine';
-import { PruneMessagesJobScheduler } from './storage/jobs/pruneMessagesJob';
-import { RevokeSignerJobQueue, RevokeSignerJobScheduler } from './storage/jobs/revokeSignerJob';
-import { idRegistryEventToLog, logger, messageToLog, nameRegistryEventToLog } from './utils/logger';
+import { EthEventsProvider, GoerliEthConstants } from '~/eth/ethEventsProvider';
+import { GossipNode } from '~/network/p2p/gossipNode';
+import { NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
+import SyncEngine from '~/network/sync/syncEngine';
+import Server from '~/rpc/server';
+import RocksDB from '~/storage/db/rocksdb';
+import Engine from '~/storage/engine';
+import { PruneMessagesJobScheduler } from '~/storage/jobs/pruneMessagesJob';
+import { RevokeSignerJobQueue, RevokeSignerJobScheduler } from '~/storage/jobs/revokeSignerJob';
+import { idRegistryEventToLog, logger, messageToLog, nameRegistryEventToLog } from '~/utils/logger';
 import {
   addressInfoFromGossip,
   addressInfoToString,
   getPublicIp,
   ipFamilyToString,
   p2pMultiAddrStr,
-} from './utils/p2p';
+} from '~/utils/p2p';
 
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
 
@@ -131,7 +132,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
 
   engine: Engine;
-  //   ethRegistryProvider: EthEventsProvider;
+  ethRegistryProvider: EthEventsProvider;
 
   private currentHubRpcClients: Map<string, HubRpcClient> = new Map();
 
@@ -146,12 +147,12 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     this.rpcServer = new Server(this, this.engine, this.syncEngine);
 
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
-    // this.ethRegistryProvider = EthEventsProvider.makeWithGoerli(
-    //   this,
-    //   options.ethRpcUrl ?? '',
-    //   GoerliEthConstants.IdRegistryAddress,
-    //   GoerliEthConstants.NameRegistryAddress
-    // );
+    this.ethRegistryProvider = EthEventsProvider.makeWithGoerli(
+      this,
+      options.ethRpcUrl ?? '',
+      GoerliEthConstants.IdRegistryAddress,
+      GoerliEthConstants.NameRegistryAddress
+    );
 
     // Setup job queues
     this.revokeSignerJobQueue = new RevokeSignerJobQueue(this.rocksDB);
@@ -196,7 +197,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     }
 
     // Start the ETH registry provider first
-    // await this.ethRegistryProvider.start();
+    await this.ethRegistryProvider.start();
 
     // Start the sync engine
     await this.syncEngine.initialize();
@@ -244,7 +245,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     this.revokeSignerJobScheduler.stop();
     this.pruneMessagesJobScheduler.stop();
 
-    // await this.ethRegistryProvider.stop();
+    await this.ethRegistryProvider.stop();
     await this.rpcServer.stop();
     await this.gossipNode.stop();
     await this.rocksDB.close();
