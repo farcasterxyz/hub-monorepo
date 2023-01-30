@@ -1,135 +1,123 @@
-import * as flatbuffers from '@farcaster/flatbuffers';
-import { blake3 } from '@noble/hashes/blake3';
-import * as ed25519 from './crypto/ed25519';
-import { verifyVerificationEthAddressClaimSignature } from './crypto/eip712';
+import * as protobufs from '@farcaster/protobufs';
+import { ok } from 'neverthrow';
 import { Factories } from './factories';
-import { toFarcasterTime } from './time';
-import { makeVerificationEthAddressClaim } from './verifications';
+import * as validations from './validations';
 
-describe('UserIdFactory', () => {
-  test('accepts fid', async () => {
-    const id = await Factories.UserId.create({ fid: [1] });
-    expect(id.fidArray()).toEqual(new Uint8Array([1]));
+describe('CastAddMessageFactory', () => {
+  test('generates a valid CastAdd', async () => {
+    const message = await Factories.CastAddMessage.create();
+    expect(protobufs.isCastAddMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+  });
+
+  test('generates new data each time', async () => {
+    const message1 = await Factories.CastAddMessage.create();
+    const message2 = await Factories.CastAddMessage.create();
+    expect(message1.data.castAddBody.text).not.toEqual(message2.data.castAddBody.text);
+    expect(message1.hash).not.toEqual(message2.hash);
   });
 });
 
-describe('FidFactory', () => {
-  test('generates 4 byte value', () => {
-    const fid = Factories.FID.build();
-    expect(fid.byteLength).toBeLessThan(32);
-  });
-
-  test('accepts number as input', async () => {
-    const fid = Factories.FID.build({}, { transient: { fid: 24 } });
-    expect(fid.byteLength).toBeLessThan(32);
-    expect(Buffer.from(fid).readUIntLE(0, fid.length)).toBe(24);
+describe('CastRemoveMessageFactory', () => {
+  test('generates a valid CastRemove', async () => {
+    const message = await Factories.CastRemoveMessage.create();
+    expect(protobufs.isCastRemoveMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
 });
 
-describe('TsHashFactory', () => {
-  test('generates 24 byte value', () => {
-    const tsHash = Factories.TsHash.build();
-    expect(tsHash.byteLength).toEqual(24);
-  });
-
-  test('accepts timestamp', () => {
-    const tsHash = Factories.TsHash.build(
-      {},
-      { transient: { timestamp: toFarcasterTime(Date.now())._unsafeUnwrap() } }
-    );
-    expect(tsHash.byteLength).toEqual(24);
+describe('ReactionAddMessageFactory', () => {
+  test('generates a valid ReactionAdd', async () => {
+    const message = await Factories.ReactionAddMessage.create();
+    expect(protobufs.isReactionAddMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
 });
 
-describe('CastAddBodyFactory', () => {
-  test('accepts text', async () => {
-    const body = await Factories.CastAddBody.create({ text: 'foo' });
-    expect(body.text()).toEqual('foo');
+describe('ReactionRemoveMessageFactory', () => {
+  test('generates a valid ReactionRemove', async () => {
+    const message = await Factories.ReactionRemoveMessage.create();
+    expect(protobufs.isReactionRemoveMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
 });
 
-describe('MessageFactory', () => {
-  let data: flatbuffers.MessageData;
-  let message: flatbuffers.Message;
-
-  beforeAll(async () => {
-    data = await Factories.MessageData.create();
-    message = await Factories.Message.create({ data: Array.from(data.bb?.bytes() || new Uint8Array()) });
-  });
-
-  test('accepts data', async () => {
-    expect(message.dataArray()).toEqual(data.bb?.bytes());
-  });
-
-  test('generates hash', async () => {
-    expect(message.hashArray()).toEqual(blake3(data.bb?.bytes() || new Uint8Array(), { dkLen: 20 }));
-  });
-
-  test('generates signature', async () => {
-    const verifySignature = await ed25519.verifyMessageHashSignature(
-      message.signatureArray() || new Uint8Array(),
-      message.hashArray() || new Uint8Array(),
-      message.signerArray() || new Uint8Array()
-    );
-    expect(verifySignature._unsafeUnwrap()).toEqual(true);
+describe('AmpAddMessageFactory', () => {
+  test('generates a valid AmpAdd', async () => {
+    const message = await Factories.AmpAddMessage.create();
+    expect(protobufs.isAmpAddMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
 });
 
-describe('VerificationAddEthAddressBodyFactory', () => {
-  let fid: Uint8Array;
-  let network: flatbuffers.FarcasterNetwork;
-  let body: flatbuffers.VerificationAddEthAddressBody;
-
-  beforeAll(async () => {
-    fid = Factories.FID.build();
-    network = flatbuffers.FarcasterNetwork.Testnet;
-    body = await Factories.VerificationAddEthAddressBody.create({}, { transient: { fid, network } });
-  });
-
-  test('generates valid ethSignature', async () => {
-    const signature = body.ethSignatureArray();
-    expect(signature).toBeTruthy();
-    const reconstructedClaim = makeVerificationEthAddressClaim(
-      fid,
-      body.addressArray() ?? new Uint8Array(),
-      network,
-      body.blockHashArray() ?? new Uint8Array()
-    );
-    const verifiedAddress = await verifyVerificationEthAddressClaimSignature(
-      reconstructedClaim._unsafeUnwrap(),
-      signature ?? new Uint8Array()
-    );
-    expect(verifiedAddress._unsafeUnwrap()).toEqual(body.addressArray());
+describe('AmpRemoveMessageFactory', () => {
+  test('generates a valid AmpRemove', async () => {
+    const message = await Factories.AmpRemoveMessage.create();
+    expect(protobufs.isAmpRemoveMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
 });
 
-describe('BytesFactory', () => {
-  describe('with length', () => {
-    test('succeeds with unpadded little endian', () => {
-      const bytes = Factories.Bytes.build({}, { transient: { length: 32 } });
-      expect(bytes[bytes.length - 1]).not.toEqual(0);
-    });
+describe('VerificationAddEthAddressMessageFactory', () => {
+  test('generates a valid VerificationAddEthAddress', async () => {
+    const message = await Factories.VerificationAddEthAddressMessage.create();
+    expect(protobufs.isVerificationAddEthAddressMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
 });
 
-describe('EventResponseFactory', () => {
-  describe('build', () => {
-    const eventResponse = Factories.EventResponse.build();
+describe('VerificationRemoveMessageFactory', () => {
+  test('generates a valid VerificationRemove', async () => {
+    const message = await Factories.VerificationRemoveMessage.create();
+    expect(protobufs.isVerificationRemoveMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+  });
+});
 
-    test('generates an EventResponseT', () => {
-      expect(eventResponse).toBeInstanceOf(flatbuffers.EventResponseT);
-    });
+describe('SignerAddMessageFactory', () => {
+  test('generates a valid SignerAdd', async () => {
+    const message = await Factories.SignerAddMessage.create();
+    expect(protobufs.isSignerAddMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
 
-  describe('create', () => {
-    let eventResponse: flatbuffers.EventResponse;
+  test('generates new data each time', async () => {
+    const message1 = await Factories.SignerAddMessage.create();
+    const message2 = await Factories.SignerAddMessage.create();
+    expect(message1.hash).not.toEqual(message2.hash);
+  });
+});
 
-    beforeAll(async () => {
-      eventResponse = await Factories.EventResponse.create();
-    });
+describe('SignerRemoveMessageFactory', () => {
+  test('generates a valid SignerRemove', async () => {
+    const message = await Factories.SignerRemoveMessage.create();
+    expect(protobufs.isSignerRemoveMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+  });
+});
 
-    test('generates an EventResponse', () => {
-      expect(eventResponse).toBeInstanceOf(flatbuffers.EventResponse);
-    });
+describe('UserDataAddMessageFactory', () => {
+  test('generates a valid UserDataAdd', async () => {
+    const message = await Factories.UserDataAddMessage.create();
+    expect(protobufs.isUserDataAddMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+  });
+});
+
+describe('IdRegistryEventFactory', () => {
+  test('succeeds', () => {
+    const event = Factories.IdRegistryEvent.build();
+    const encoded = protobufs.IdRegistryEvent.encode(event).finish();
+    const decoded = protobufs.IdRegistryEvent.decode(encoded);
+    expect(protobufs.IdRegistryEvent.toJSON(decoded)).toEqual(protobufs.IdRegistryEvent.toJSON(event));
+  });
+});
+
+describe('NameRegistryEventFactory', () => {
+  test('succeeds', () => {
+    const event = Factories.NameRegistryEvent.build();
+    const encoded = protobufs.NameRegistryEvent.encode(event).finish();
+    const decoded = protobufs.NameRegistryEvent.decode(encoded);
+    expect(protobufs.NameRegistryEvent.toJSON(decoded)).toEqual(protobufs.NameRegistryEvent.toJSON(event));
   });
 });

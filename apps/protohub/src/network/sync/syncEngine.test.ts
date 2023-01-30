@@ -1,6 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
 import { FarcasterNetwork } from '@farcaster/protobufs';
-import { Factories, getFarcasterTime, HubRpcClient } from '@farcaster/protoutils';
+import { Factories, getFarcasterTime, HubRpcClient } from '@farcaster/utils';
 import { ok } from 'neverthrow';
 import { anything, instance, mock, when } from 'ts-mockito';
 import SyncEngine from '~/network/sync/syncEngine';

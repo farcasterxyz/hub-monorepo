@@ -1,6 +1,5 @@
-import * as flatbuffers from '@farcaster/flatbuffers';
+import * as protobufs from '@farcaster/protobufs';
 import { blake3 } from '@noble/hashes/blake3';
-import { ByteBuffer } from 'flatbuffers';
 import { err, ok, Result } from 'neverthrow';
 import { bytesCompare, bytesToUtf8String } from './bytes';
 import { ed25519, eip712 } from './crypto';
@@ -12,135 +11,104 @@ import { makeVerificationEthAddressClaim } from './verifications';
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
 
 /** Message types that must be signed by EIP712 signer */
-export const EIP712_MESSAGE_TYPES = [flatbuffers.MessageType.SignerAdd, flatbuffers.MessageType.SignerRemove];
+export const EIP712_MESSAGE_TYPES = [
+  protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD,
+  protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
+];
 
 export const FNAME_REGEX = /^[a-z0-9][a-z0-9-]{0,15}$/;
 export const HEX_REGEX = /^(0x)?[0-9A-Fa-f]+$/;
 
-export interface ValidatedCastId extends flatbuffers.CastId {
-  fidArray(): Uint8Array;
-  tsHashArray(): Uint8Array;
-}
+export const validateMessageHash = (hash?: Uint8Array): HubResult<Uint8Array> => {
+  if (!hash || hash.length === 0) {
+    return err(new HubError('bad_request.validation_failure', 'hash is missing'));
+  }
 
-export const validateCastId = (castId?: flatbuffers.CastId | null): HubResult<ValidatedCastId> => {
+  if (hash.length !== 20) {
+    return err(new HubError('bad_request.validation_failure', 'hash must be 20 bytes'));
+  }
+
+  return ok(hash);
+};
+
+export const validateCastId = (castId?: protobufs.CastId): HubResult<protobufs.CastId> => {
   if (!castId) {
     return err(new HubError('bad_request.validation_failure', 'castId is missing'));
   }
-  return Result.combineWithAllErrors([validateFid(castId.fidArray()), validateTsHash(castId.tsHashArray())])
-    .map(() => castId as ValidatedCastId)
+  return Result.combineWithAllErrors([validateFid(castId.fid), validateMessageHash(castId.hash)])
+    .map(() => castId)
     .mapErr(
       (errs: HubError[]) => new HubError('bad_request.validation_failure', errs.map((e) => e.message).join(', '))
     );
 };
 
-export interface ValidatedUserId extends flatbuffers.UserId {
-  fidArray(): Uint8Array;
-}
-
-export const validateUserId = (userId?: flatbuffers.UserId | null): HubResult<ValidatedUserId> => {
-  if (!userId) {
-    return err(new HubError('bad_request.validation_failure', 'userId is missing'));
-  }
-  return validateFid(userId.fidArray()).map(() => userId as ValidatedUserId);
-};
-
-export const validateFid = (fid?: Uint8Array | null): HubResult<Uint8Array> => {
-  if (!fid || fid.byteLength === 0) {
+export const validateFid = (fid?: number | null): HubResult<number> => {
+  if (typeof fid !== 'number' || fid === 0) {
     return err(new HubError('bad_request.validation_failure', 'fid is missing'));
   }
 
-  if (fid.byteLength > 32) {
-    return err(new HubError('bad_request.validation_failure', 'fid > 32 bytes'));
-  }
-
-  if (fid[fid.byteLength - 1] === 0) {
-    return err(new HubError('bad_request.validation_failure', 'fid is padded'));
+  if (fid < 0) {
+    return err(new HubError('bad_request.validation_failure', 'fid must be positive'));
   }
 
   return ok(fid);
 };
 
-export const validateTsHash = (tsHash?: Uint8Array | null): HubResult<Uint8Array> => {
-  if (!tsHash || tsHash.byteLength === 0) {
-    return err(new HubError('bad_request.validation_failure', 'tsHash is missing'));
-  }
-
-  if (tsHash.byteLength !== 24) {
-    return err(
-      new HubError('bad_request.validation_failure', `tsHash must be 24 bytes, was ${tsHash.byteLength} bytes`)
-    );
-  }
-
-  return ok(tsHash);
-};
-
 export const validateEthAddress = (address?: Uint8Array | null): HubResult<Uint8Array> => {
-  if (!address || address.byteLength === 0) {
+  if (!address || address.length === 0) {
     return err(new HubError('bad_request.validation_failure', 'address is missing'));
   }
 
-  if (address.byteLength > 20) {
-    return err(new HubError('bad_request.validation_failure', 'address > 20 bytes'));
-  }
-
-  if (address[address.byteLength - 1] === 0) {
-    return err(new HubError('bad_request.validation_failure', 'address is padded'));
+  if (address.length !== 20) {
+    return err(new HubError('bad_request.validation_failure', 'address must be 20 bytes'));
   }
 
   return ok(address);
 };
 
 export const validateEthBlockHash = (blockHash?: Uint8Array | null): HubResult<Uint8Array> => {
-  if (!blockHash || blockHash.byteLength === 0) {
+  if (!blockHash || blockHash.length === 0) {
     return err(new HubError('bad_request.validation_failure', 'blockHash is missing'));
   }
 
-  if (blockHash.byteLength > 32) {
-    return err(new HubError('bad_request.validation_failure', 'blockHash > 32 bytes'));
-  }
-
-  if (blockHash[blockHash.byteLength - 1] === 0) {
-    return err(new HubError('bad_request.validation_failure', 'blockHash is padded'));
+  if (blockHash.length !== 32) {
+    return err(new HubError('bad_request.validation_failure', 'blockHash must be 32 bytes'));
   }
 
   return ok(blockHash);
 };
 
 export const validateEd25519PublicKey = (publicKey?: Uint8Array | null): HubResult<Uint8Array> => {
-  if (!publicKey || publicKey.byteLength === 0) {
+  if (!publicKey || publicKey.length === 0) {
     return err(new HubError('bad_request.validation_failure', 'publicKey is missing'));
   }
 
-  if (publicKey.byteLength > 32) {
-    return err(new HubError('bad_request.validation_failure', 'publicKey > 32 bytes'));
-  }
-
-  if (publicKey[publicKey.byteLength - 1] === 0) {
-    return err(new HubError('bad_request.validation_failure', 'publicKey is padded'));
+  if (publicKey.length !== 32) {
+    return err(new HubError('bad_request.validation_failure', 'publicKey must be 32 bytes'));
   }
 
   return ok(publicKey);
 };
 
-export const validateMessage = async (message: flatbuffers.Message): HubAsyncResult<flatbuffers.Message> => {
+export const validateMessage = async (message: protobufs.Message): HubAsyncResult<protobufs.Message> => {
   // 1. Check the message data
-  const dataBytes = message.dataArray();
-  if (!dataBytes) {
+  const data = message.data;
+  if (!data) {
     return err(new HubError('bad_request.validation_failure', 'data is missing'));
   }
-  const data = flatbuffers.MessageData.getRootAsMessageData(new ByteBuffer(dataBytes));
   const validData = validateMessageData(data);
   if (validData.isErr()) {
     return err(validData.error);
   }
 
   // 2. Check that the hashScheme and hash are valid
-  const hash = message.hashArray();
+  const hash = message.hash;
   if (!hash) {
     return err(new HubError('bad_request.validation_failure', 'hash is missing'));
   }
 
-  if (message.hashScheme() === flatbuffers.HashScheme.Blake3) {
+  const dataBytes = protobufs.MessageData.encode(data).finish();
+  if (message.hashScheme === protobufs.HashScheme.HASH_SCHEME_BLAKE3) {
     const computedHash = blake3(dataBytes, { dkLen: 20 });
     // we have to use bytesCompare, because TypedArrays cannot be compared directly
     if (bytesCompare(hash, computedHash) !== 0) {
@@ -151,18 +119,18 @@ export const validateMessage = async (message: flatbuffers.Message): HubAsyncRes
   }
 
   // 2. Check that the signatureScheme and signature are valid
-  const signature = message.signatureArray();
+  const signature = message.signature;
   if (!signature) {
     return err(new HubError('bad_request.validation_failure', 'signature is missing'));
   }
 
-  const signer = message.signerArray();
+  const signer = message.signer;
   if (!signer) {
     return err(new HubError('bad_request.validation_failure', 'signer is missing'));
   }
 
-  const eip712SignerRequired = EIP712_MESSAGE_TYPES.includes(data.type() as flatbuffers.MessageType);
-  if (message.signatureScheme() === flatbuffers.SignatureScheme.Eip712 && eip712SignerRequired) {
+  const eip712SignerRequired = EIP712_MESSAGE_TYPES.includes(data.type);
+  if (message.signatureScheme === protobufs.SignatureScheme.SIGNATURE_SCHEME_EIP712 && eip712SignerRequired) {
     const verifiedSigner = eip712.verifyMessageHashSignature(hash, signature);
     if (verifiedSigner.isErr()) {
       return err(verifiedSigner.error);
@@ -170,7 +138,7 @@ export const validateMessage = async (message: flatbuffers.Message): HubAsyncRes
     if (bytesCompare(verifiedSigner.value, signer) !== 0) {
       return err(new HubError('bad_request.validation_failure', 'signature does not match signer'));
     }
-  } else if (message.signatureScheme() === flatbuffers.SignatureScheme.Ed25519 && !eip712SignerRequired) {
+  } else if (message.signatureScheme === protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519 && !eip712SignerRequired) {
     const signatureIsValid = await ed25519.verifyMessageHashSignature(signature, hash, signer);
     if (signatureIsValid.isErr() || (signatureIsValid.isOk() && !signatureIsValid.value)) {
       return err(new HubError('bad_request.validation_failure', 'invalid signature'));
@@ -182,9 +150,9 @@ export const validateMessage = async (message: flatbuffers.Message): HubAsyncRes
   return ok(message);
 };
 
-export const validateMessageData = (data: flatbuffers.MessageData): HubResult<flatbuffers.MessageData> => {
+export const validateMessageData = (data: protobufs.MessageData): HubResult<protobufs.MessageData> => {
   // 1. Validate fid
-  const validFid = validateFid(data.fidArray());
+  const validFid = validateFid(data.fid);
   if (validFid.isErr()) {
     return err(validFid.error);
   }
@@ -195,81 +163,61 @@ export const validateMessageData = (data: flatbuffers.MessageData): HubResult<fl
   }
 
   // 2. Validate timestamp
-  if (data.timestamp() - farcasterTime.value > ALLOWED_CLOCK_SKEW_SECONDS) {
+  if (data.timestamp - farcasterTime.value > ALLOWED_CLOCK_SKEW_SECONDS) {
     return err(new HubError('bad_request.validation_failure', 'timestamp more than 10 mins in the future'));
   }
 
   // 3. Validate network
-  const validNetwork = validateNetwork(data.network() as number);
+  const validNetwork = validateNetwork(data.network);
   if (validNetwork.isErr()) {
     return err(validNetwork.error);
   }
 
   // 4. Validate type
-  if (!data.type()) {
-    return err(new HubError('bad_request.validation_failure', 'message type is missing'));
-  }
-
-  const validType = validateMessageType(data.type() as number);
+  const validType = validateMessageType(data.type);
   if (validType.isErr()) {
     return err(validType.error);
   }
 
   // 5. Validate body
   let bodyResult: HubResult<any>;
-  if (validType.value === flatbuffers.MessageType.CastAdd && data.bodyType() === flatbuffers.MessageBody.CastAddBody) {
-    bodyResult = validateCastAddBody(data.body(new flatbuffers.CastAddBody()));
+  if (validType.value === protobufs.MessageType.MESSAGE_TYPE_CAST_ADD && !!data.castAddBody) {
+    bodyResult = validateCastAddBody(data.castAddBody);
+  } else if (validType.value === protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE && !!data.castRemoveBody) {
+    bodyResult = validateCastRemoveBody(data.castRemoveBody);
   } else if (
-    validType.value === flatbuffers.MessageType.CastRemove &&
-    data.bodyType() === flatbuffers.MessageBody.CastRemoveBody
+    (validType.value === protobufs.MessageType.MESSAGE_TYPE_AMP_ADD ||
+      validType.value === protobufs.MessageType.MESSAGE_TYPE_AMP_REMOVE) &&
+    !!data.ampBody
   ) {
-    bodyResult = validateCastRemoveBody(data.body(new flatbuffers.CastRemoveBody()));
+    bodyResult = validateAmpBody(data.ampBody);
   } else if (
-    (validType.value === flatbuffers.MessageType.AmpAdd || validType.value === flatbuffers.MessageType.AmpRemove) &&
-    data.bodyType() === flatbuffers.MessageBody.AmpBody
+    (validType.value === protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD ||
+      validType.value === protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE) &&
+    !!data.reactionBody
   ) {
-    bodyResult = validateAmpBody(data.body(new flatbuffers.AmpBody()));
+    bodyResult = validateReactionBody(data.reactionBody);
   } else if (
-    (validType.value === flatbuffers.MessageType.ReactionAdd ||
-      validType.value === flatbuffers.MessageType.ReactionRemove) &&
-    data.bodyType() === flatbuffers.MessageBody.ReactionBody
+    (validType.value === protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD ||
+      validType.value === protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE) &&
+    !!data.signerBody
   ) {
-    bodyResult = validateReactionBody(data.body(new flatbuffers.ReactionBody()));
+    bodyResult = validateSignerBody(data.signerBody);
+  } else if (validType.value === protobufs.MessageType.MESSAGE_TYPE_USER_DATA_ADD && !!data.userDataBody) {
+    bodyResult = validateUserDataAddBody(data.userDataBody);
   } else if (
-    (validType.value === flatbuffers.MessageType.SignerAdd ||
-      validType.value === flatbuffers.MessageType.SignerRemove) &&
-    data.bodyType() === flatbuffers.MessageBody.SignerBody
-  ) {
-    bodyResult = validateSignerBody(data.body(new flatbuffers.SignerBody()));
-  } else if (
-    validType.value === flatbuffers.MessageType.UserDataAdd &&
-    data.bodyType() === flatbuffers.MessageBody.UserDataBody
-  ) {
-    bodyResult = validateUserDataAddBody(data.body(new flatbuffers.UserDataBody()));
-  } else if (
-    validType.value === flatbuffers.MessageType.VerificationAddEthAddress &&
-    data.bodyType() === flatbuffers.MessageBody.VerificationAddEthAddressBody
+    validType.value === protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS &&
+    !!data.verificationAddEthAddressBody
   ) {
     // Special check for verification claim
-    const body = data.body(
-      new flatbuffers.VerificationAddEthAddressBody()
-    ) as flatbuffers.VerificationAddEthAddressBody;
-    bodyResult = validateVerificationAddEthAddressBody(data.body(new flatbuffers.VerificationAddEthAddressBody()));
-    if (bodyResult.isOk()) {
-      const validVerificationSignature = validateVerificationAddEthAddressSignature(
-        body,
-        validFid.value,
-        validNetwork.value
-      );
-      if (validVerificationSignature.isErr()) {
-        return err(validVerificationSignature.error);
-      }
-    }
+    bodyResult = validateVerificationAddEthAddressBody(data.verificationAddEthAddressBody).andThen((body) => {
+      return validateVerificationAddEthAddressSignature(body, validFid.value, validNetwork.value);
+    });
   } else if (
-    validType.value === flatbuffers.MessageType.VerificationRemove &&
-    data.bodyType() === flatbuffers.MessageBody.VerificationRemoveBody
+    validType.value === protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE &&
+    !!data.verificationRemoveBody
   ) {
-    bodyResult = validateVerificationRemoveBody(data.body(new flatbuffers.VerificationRemoveBody()));
+    bodyResult = validateVerificationRemoveBody(data.verificationRemoveBody);
   } else {
     return err(new HubError('bad_request.invalid_param', 'bodyType is invalid'));
   }
@@ -282,38 +230,32 @@ export const validateMessageData = (data: flatbuffers.MessageData): HubResult<fl
 };
 
 export const validateVerificationAddEthAddressSignature = (
-  body: flatbuffers.VerificationAddEthAddressBody,
-  fid: Uint8Array,
-  network: flatbuffers.FarcasterNetwork
+  body: protobufs.VerificationAddEthAddressBody,
+  fid: number,
+  network: protobufs.FarcasterNetwork
 ): HubResult<Uint8Array> => {
-  const reconstructedClaim = makeVerificationEthAddressClaim(
-    fid,
-    body.addressArray() ?? new Uint8Array(),
-    network,
-    body.blockHashArray() ?? new Uint8Array()
-  );
+  const reconstructedClaim = makeVerificationEthAddressClaim(fid, body.address, network, body.blockHash);
   if (reconstructedClaim.isErr()) {
     return err(reconstructedClaim.error);
   }
 
-  const recoveredAddress = eip712.verifyVerificationEthAddressClaimSignature(
-    reconstructedClaim.value,
-    body.ethSignatureArray() ?? new Uint8Array()
-  );
+  const recoveredAddress = eip712
+    .verifyVerificationEthAddressClaimSignature(reconstructedClaim.value, body.ethSignature)
+    .mapErr(() => new HubError('bad_request.validation_failure', 'invalid ethSignature'));
 
   if (recoveredAddress.isErr()) {
-    return err(new HubError('bad_request.validation_failure', 'invalid ethSignature'));
+    return err(recoveredAddress.error);
   }
 
-  if (bytesCompare(recoveredAddress.value, body.addressArray() ?? new Uint8Array()) !== 0) {
+  if (bytesCompare(recoveredAddress.value, body.address ?? new Uint8Array()) !== 0) {
     return err(new HubError('bad_request.validation_failure', 'ethSignature does not match address'));
   }
 
-  return ok(body.ethSignatureArray() ?? new Uint8Array());
+  return ok(body.ethSignature);
 };
 
-export const validateCastAddBody = (body: flatbuffers.CastAddBody): HubResult<flatbuffers.CastAddBody> => {
-  const text = body.text();
+export const validateCastAddBody = (body: protobufs.CastAddBody): HubResult<protobufs.CastAddBody> => {
+  const text = body.text;
   if (!text) {
     return err(new HubError('bad_request.validation_failure', 'text is missing'));
   }
@@ -322,17 +264,17 @@ export const validateCastAddBody = (body: flatbuffers.CastAddBody): HubResult<fl
     return err(new HubError('bad_request.validation_failure', 'text > 320 chars'));
   }
 
-  if (body.embedsLength() > 2) {
+  if (body.embeds.length > 2) {
     return err(new HubError('bad_request.validation_failure', 'embeds > 2'));
   }
 
-  if (body.mentionsLength() > 5) {
+  // TODO: validate mentions are actually fids
+  if (body.mentions.length > 5) {
     return err(new HubError('bad_request.validation_failure', 'mentions > 5'));
   }
 
-  if (body.parentType() === flatbuffers.TargetId.CastId) {
-    const parent = body.parent(new flatbuffers.CastId()) as flatbuffers.CastId;
-    const validateParent = validateCastId(parent);
+  if (body.parentCastId) {
+    const validateParent = validateCastId(body.parentCastId);
     if (validateParent.isErr()) {
       return err(validateParent.error);
     }
@@ -341,52 +283,52 @@ export const validateCastAddBody = (body: flatbuffers.CastAddBody): HubResult<fl
   return ok(body);
 };
 
-export const validateCastRemoveBody = (body: flatbuffers.CastRemoveBody): HubResult<flatbuffers.CastRemoveBody> => {
-  return validateTsHash(body.targetTsHashArray()).map(() => body);
+export const validateCastRemoveBody = (body: protobufs.CastRemoveBody): HubResult<protobufs.CastRemoveBody> => {
+  return validateMessageHash(body.targetHash).map(() => body);
 };
 
-export const validateReactionType = (type: number): HubResult<flatbuffers.ReactionType> => {
-  if (!Object.values(flatbuffers.ReactionType).includes(type)) {
+export const validateReactionType = (type: number): HubResult<protobufs.ReactionType> => {
+  if (!Object.values(protobufs.ReactionType).includes(type)) {
     return err(new HubError('bad_request.validation_failure', 'invalid reaction type'));
   }
 
   return ok(type);
 };
 
-export const validateMessageType = (type: number): HubResult<flatbuffers.MessageType> => {
-  if (!Object.values(flatbuffers.MessageType).includes(type)) {
+export const validateMessageType = (type: number): HubResult<protobufs.MessageType> => {
+  if (!Object.values(protobufs.MessageType).includes(type)) {
     return err(new HubError('bad_request.validation_failure', 'invalid message type'));
   }
 
   return ok(type);
 };
 
-export const validateNetwork = (network: number): HubResult<flatbuffers.FarcasterNetwork> => {
-  if (!Object.values(flatbuffers.FarcasterNetwork).includes(network)) {
+export const validateNetwork = (network: number): HubResult<protobufs.FarcasterNetwork> => {
+  if (!Object.values(protobufs.FarcasterNetwork).includes(network)) {
     return err(new HubError('bad_request.validation_failure', 'invalid network'));
   }
 
   return ok(network);
 };
 
-export const validateReactionBody = (body: flatbuffers.ReactionBody): HubResult<flatbuffers.ReactionBody> => {
-  const validatedType = validateReactionType(body.type());
+export const validateReactionBody = (body: protobufs.ReactionBody): HubResult<protobufs.ReactionBody> => {
+  const validatedType = validateReactionType(body.type);
   if (validatedType.isErr()) {
     return err(validatedType.error);
   }
 
-  return validateCastId(body.target(new flatbuffers.CastId())).map(() => body);
+  return validateCastId(body.targetCastId).map(() => body);
 };
 
 export const validateVerificationAddEthAddressBody = (
-  body: flatbuffers.VerificationAddEthAddressBody
-): HubResult<flatbuffers.VerificationAddEthAddressBody> => {
-  const validAddress = validateEthAddress(body.addressArray());
+  body: protobufs.VerificationAddEthAddressBody
+): HubResult<protobufs.VerificationAddEthAddressBody> => {
+  const validAddress = validateEthAddress(body.address);
   if (validAddress.isErr()) {
     return err(validAddress.error);
   }
 
-  const validBlockHash = validateEthBlockHash(body.blockHashArray());
+  const validBlockHash = validateEthBlockHash(body.blockHash);
   if (validBlockHash.isErr()) {
     return err(validBlockHash.error);
   }
@@ -397,50 +339,54 @@ export const validateVerificationAddEthAddressBody = (
 };
 
 export const validateVerificationRemoveBody = (
-  body: flatbuffers.VerificationRemoveBody
-): HubResult<flatbuffers.VerificationRemoveBody> => {
-  return validateEthAddress(body.addressArray()).map(() => body);
+  body: protobufs.VerificationRemoveBody
+): HubResult<protobufs.VerificationRemoveBody> => {
+  return validateEthAddress(body.address).map(() => body);
 };
 
-export const validateSignerBody = (body: flatbuffers.SignerBody): HubResult<flatbuffers.SignerBody> => {
-  return validateEd25519PublicKey(body.signerArray()).map(() => body);
+export const validateSignerBody = (body: protobufs.SignerBody): HubResult<protobufs.SignerBody> => {
+  return validateEd25519PublicKey(body.signer).map(() => body);
 };
 
-export const validateAmpBody = (body: flatbuffers.AmpBody): HubResult<flatbuffers.AmpBody> => {
-  return validateFid(body.user()?.fidArray()).map(() => body);
+export const validateAmpBody = (body: protobufs.AmpBody): HubResult<protobufs.AmpBody> => {
+  return validateFid(body.targetFid).map(() => body);
 };
 
-export const validateUserDataType = (type: number): HubResult<flatbuffers.UserDataType> => {
-  if (!Object.values(flatbuffers.UserDataType).includes(type)) {
+export const validateUserDataType = (type: number): HubResult<protobufs.UserDataType> => {
+  if (
+    !Object.values(protobufs.UserDataType).includes(type) ||
+    type === protobufs.UserDataType.USER_DATA_TYPE_NONE ||
+    type === protobufs.UserDataType.USER_DATA_TYPE_NONE
+  ) {
     return err(new HubError('bad_request.validation_failure', 'invalid user data type'));
   }
 
   return ok(type);
 };
 
-export const validateUserDataAddBody = (body: flatbuffers.UserDataBody): HubResult<flatbuffers.UserDataBody> => {
-  const value = body.value();
-  if (body.type() === flatbuffers.UserDataType.Pfp) {
+export const validateUserDataAddBody = (body: protobufs.UserDataBody): HubResult<protobufs.UserDataBody> => {
+  const { type, value } = body;
+  if (type === protobufs.UserDataType.USER_DATA_TYPE_PFP) {
     if (value && value.length > 256) {
       return err(new HubError('bad_request.validation_failure', 'pfp value > 256'));
     }
-  } else if (body.type() === flatbuffers.UserDataType.Display) {
+  } else if (type === protobufs.UserDataType.USER_DATA_TYPE_DISPLAY) {
     if (value && value.length > 32) {
       return err(new HubError('bad_request.validation_failure', 'display value > 32'));
     }
-  } else if (body.type() === flatbuffers.UserDataType.Bio) {
+  } else if (type === protobufs.UserDataType.USER_DATA_TYPE_BIO) {
     if (value && value.length > 256) {
       return err(new HubError('bad_request.validation_failure', 'bio value > 256'));
     }
-  } else if (body.type() === flatbuffers.UserDataType.Location) {
+  } else if (type === protobufs.UserDataType.USER_DATA_TYPE_LOCATION) {
     if (value && value.length > 32) {
       return err(new HubError('bad_request.validation_failure', 'location value > 32'));
     }
-  } else if (body.type() === flatbuffers.UserDataType.Url) {
+  } else if (type === protobufs.UserDataType.USER_DATA_TYPE_URL) {
     if (value && value.length > 256) {
       return err(new HubError('bad_request.validation_failure', 'url value > 256'));
     }
-  } else if (body.type() === flatbuffers.UserDataType.Fname) {
+  } else if (type === protobufs.UserDataType.USER_DATA_TYPE_FNAME) {
     // Users are allowed to set fname = '' to remove their fname, otherwise we need a valid fname to add
     if (value !== '') {
       const validatedFname = validateFname(value);
@@ -522,7 +468,7 @@ export const validateBlockHashHex = buildValidateHex(64, 'block hash');
 export const validateTransactionHashHex = buildValidateHex(64, 'transaction hash');
 export const validateEip712SignatureHex = buildValidateHex(130, 'EIP-712 signature');
 export const validateEd25519ignatureHex = buildValidateHex(128, 'Ed25519 signature');
-export const validateMessageHashHex = buildValidateHex(32, 'message hash');
+export const validateMessageHashHex = buildValidateHex(40, 'message hash');
 export const validateEthAddressHex = buildValidateHex(40, 'eth address');
 export const validateEd25519PublicKeyHex = buildValidateHex(64, 'Ed25519 public key');
-export const validateTsHashHex = buildValidateHex(48, 'tsHash');
+export const validateTsHashHex = buildValidateHex(40, 'ts-hash');

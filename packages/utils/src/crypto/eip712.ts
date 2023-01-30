@@ -1,7 +1,7 @@
 import { TypedDataSigner } from '@ethersproject/abstract-signer';
 import { utils } from 'ethers';
-import { err, Result } from 'neverthrow';
-import { bytesToHexString, hexStringToBytes } from '../bytes';
+import { Result, ResultAsync } from 'neverthrow';
+import { hexStringToBytes } from '../bytes';
 import { HubAsyncResult, HubError, HubResult } from '../errors';
 import { VerificationEthAddressClaim } from '../verifications';
 
@@ -42,24 +42,23 @@ export const signVerificationEthAddressClaim = async (
   claim: VerificationEthAddressClaim,
   ethersTypedDataSigner: TypedDataSigner
 ): HubAsyncResult<Uint8Array> => {
-  const hexSignature = await ethersTypedDataSigner._signTypedData(
-    EIP_712_FARCASTER_DOMAIN,
-    { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
-    claim
+  const hexSignature = await ResultAsync.fromPromise(
+    ethersTypedDataSigner._signTypedData(
+      EIP_712_FARCASTER_DOMAIN,
+      { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
+      claim
+    ),
+    (e) => new HubError('bad_request.invalid_param', e as Error)
   );
-  return hexStringToBytes(hexSignature);
+
+  // Convert hex signature to bytes
+  return hexSignature.andThen((hex) => hexStringToBytes(hex));
 };
 
 export const verifyVerificationEthAddressClaimSignature = (
   claim: VerificationEthAddressClaim,
   signature: Uint8Array
 ): HubResult<Uint8Array> => {
-  // Convert little endian signature to hex
-  const hexSignature = bytesToHexString(signature, { endianness: 'little', size: 130 });
-  if (hexSignature.isErr()) {
-    return err(hexSignature.error);
-  }
-
   // Recover address from signature
   const recoveredHexAddress = Result.fromThrowable(
     () =>
@@ -67,45 +66,45 @@ export const verifyVerificationEthAddressClaimSignature = (
         EIP_712_FARCASTER_DOMAIN,
         { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
         claim,
-        hexSignature.value
+        signature
       ),
-    () => new HubError('bad_request.parse_failure', 'Invalid signature')
+    (e) => new HubError('bad_request.invalid_param', e as Error)
   )();
-  if (recoveredHexAddress.isErr()) {
-    return err(recoveredHexAddress.error);
-  }
 
-  // Convert hex recovered address to little endian bytes
-  return hexStringToBytes(recoveredHexAddress.value, { endianness: 'little' });
+  // Convert hex recovered address to bytes
+  return recoveredHexAddress.andThen((hex) => hexStringToBytes(hex));
 };
 
 export const signMessageHash = async (
   hash: Uint8Array,
   ethersTypedDataSigner: TypedDataSigner
 ): HubAsyncResult<Uint8Array> => {
-  const hexSignature = await ethersTypedDataSigner._signTypedData(
-    EIP_712_FARCASTER_DOMAIN,
-    { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
-    { hash }
+  const hexSignature = await ResultAsync.fromPromise(
+    ethersTypedDataSigner._signTypedData(
+      EIP_712_FARCASTER_DOMAIN,
+      { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
+      { hash }
+    ),
+    (e) => new HubError('bad_request.invalid_param', e as Error)
   );
-  return hexStringToBytes(hexSignature);
+
+  // Convert hex signature to bytes
+  return hexSignature.andThen((hex) => hexStringToBytes(hex));
 };
 
 export const verifyMessageHashSignature = (hash: Uint8Array, signature: Uint8Array): HubResult<Uint8Array> => {
-  // Convert little endian signature to fixed size hex string
-  const hexSignature = bytesToHexString(signature, { endianness: 'little', size: 130 });
-  if (hexSignature.isErr()) {
-    return err(hexSignature.error);
-  }
-
   // Recover address from signature
-  const recoveredHexAddress = utils.verifyTypedData(
-    EIP_712_FARCASTER_DOMAIN,
-    { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
-    { hash },
-    hexSignature.value
-  );
+  const recoveredHexAddress = Result.fromThrowable(
+    () =>
+      utils.verifyTypedData(
+        EIP_712_FARCASTER_DOMAIN,
+        { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
+        { hash },
+        signature
+      ),
+    (e) => new HubError('bad_request.invalid_param', e as Error)
+  )();
 
-  // Convert hex address to little endian bytes
-  return hexStringToBytes(recoveredHexAddress, { endianness: 'little' });
+  // Convert hex recovered address to bytes
+  return recoveredHexAddress.andThen((hex) => hexStringToBytes(hex));
 };

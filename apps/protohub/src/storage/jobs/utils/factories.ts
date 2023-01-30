@@ -1,5 +1,5 @@
 import { RevokeSignerJobPayload } from '@farcaster/protobufs';
-import { Factories } from '@farcaster/protoutils';
+import { Factories } from '@farcaster/utils';
 import { Factory } from 'fishery';
 
 const RevokeSignerJobPayloadFactory = Factory.define<RevokeSignerJobPayload>(() => {

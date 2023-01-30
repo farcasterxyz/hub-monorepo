@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { hexStringToBytes, HubAsyncResult } from '@farcaster/protoutils';
+import { hexStringToBytes, HubAsyncResult } from '@farcaster/utils';
 import { BigNumber, Contract, Event, providers } from 'ethers';
 import { err, ok, ResultAsync } from 'neverthrow';
 import { IdRegistry, NameRegistry } from '~/eth/abis';

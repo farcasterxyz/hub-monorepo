@@ -1,5 +1,5 @@
 ---
-'@farcaster/protoutils': patch
+'@farcaster/utils': patch
 '@farcaster/protobufs': patch
 '@farcaster/utils': patch
 ---

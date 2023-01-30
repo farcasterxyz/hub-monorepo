@@ -9,7 +9,7 @@ import {
   Message,
   NameRegistryEvent,
 } from '@farcaster/protobufs';
-import { getHubRpcClient, HubAsyncResult, HubError, HubResult, HubRpcClient } from '@farcaster/protoutils';
+import { getHubRpcClient, HubAsyncResult, HubError, HubResult, HubRpcClient } from '@farcaster/utils';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import { publicAddressesFirst } from '@libp2p/utils/address-sort';

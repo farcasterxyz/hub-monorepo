@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { HubError, HubResult } from '@farcaster/protoutils';
+import { HubError, HubResult } from '@farcaster/utils';
 import { err, ok } from 'neverthrow';
 import AbstractRocksDB from 'rocksdb';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';

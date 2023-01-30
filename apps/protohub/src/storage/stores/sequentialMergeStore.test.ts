@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Factories, HubResult } from '@farcaster/protoutils';
+import { Factories, HubResult } from '@farcaster/utils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { seedSigner } from '~/storage/engine/seed';
@@ -24,39 +24,33 @@ describe('mergeSequential', () => {
     await seedSigner(engine, fid, signer.signerKey);
   });
 
-  // test('succeeds with concurrent, conflicting cast messages', async () => {
-  //   const addData = await Factories.CastAddData.create({ fid: Array.from(fid) });
-  //   const castAdd = await Factories..create(
-  //     { data: Array.from(addData.bb?.bytes() ?? []) },
-  //     { transient: { signer } }
-  //   );
-  //   const castTsHash = toTsHash(addData.timestamp(), castAdd.hashArray() ?? new Uint8Array())._unsafeUnwrap();
+  test('succeeds with concurrent, conflicting cast messages', async () => {
+    const castAdd = await Factories.CastAddMessage.create({ data: { fid } }, { transient: { signer } });
 
-  //   const generateCastRemove = async (): Promise<flatbuffers.Message> => {
-  //     const removeData = await Factories.CastRemoveData.create({
-  //       fid: Array.from(fid),
-  //       body: Factories.CastRemoveBody.build({ targetTsHash: Array.from(castTsHash) }),
-  //     });
-  //     return Factories.Message.create({ data: Array.from(removeData.bb?.bytes() ?? []) }, { transient: { signer } });
-  //   };
+    const generateCastRemove = async (): Promise<protobufs.CastRemoveMessage> => {
+      return Factories.CastRemoveMessage.create(
+        { data: { fid, castRemoveBody: { targetHash: castAdd.hash } } },
+        { transient: { signer } }
+      );
+    };
 
-  //   // Generate 10 cast removes with different timestamps
-  //   const castRemoves: flatbuffers.Message[] = [];
-  //   for (let i = 0; i < 10; i++) {
-  //     const castRemove = await generateCastRemove();
-  //     castRemoves.push(castRemove);
-  //   }
+    // Generate 10 cast removes with different timestamps
+    const castRemoves: protobufs.CastRemoveMessage[] = [];
+    for (let i = 0; i < 10; i++) {
+      const castRemove = await generateCastRemove();
+      castRemoves.push(castRemove);
+    }
 
-  //   const messages = [castAdd, ...castRemoves, castAdd];
+    const messages = [castAdd, ...castRemoves, castAdd];
 
-  //   const promises = messages.map((message) => engine.mergeMessage(new MessageModel(message)));
+    const promises = messages.map((message) => engine.mergeMessage(message));
 
-  //   const results = await Promise.all(promises);
-  //   assertNoTimeouts(results);
+    const results = await Promise.all(promises);
+    assertNoTimeouts(results);
 
-  //   const allMessages = await engine.getAllCastMessagesByFid(fid);
-  //   expect(allMessages._unsafeUnwrap().length).toEqual(1);
-  // });
+    const allMessages = await engine.getAllCastMessagesByFid(fid);
+    expect(allMessages._unsafeUnwrap().length).toEqual(1);
+  });
 
   test('succeeds with concurrent, conflicting reaction messages', async () => {
     const castId = Factories.CastId.build();

@@ -1,4 +1,4 @@
-import { bytesIncrement, HubError } from '@farcaster/protoutils';
+import { bytesIncrement, HubError } from '@farcaster/utils';
 import { AbstractBatch, AbstractChainedBatch } from 'abstract-leveldown';
 import { mkdir } from 'fs';
 import AbstractRocksDB from 'rocksdb';

@@ -1,4 +1,4 @@
-import { FarcasterNetwork } from '@farcaster/flatbuffers';
+import { FarcasterNetwork } from '@farcaster/protobufs';
 import { HubError, validations } from '@farcaster/utils';
 
 export const parseNetwork = (network: string): FarcasterNetwork => {

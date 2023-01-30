@@ -8,7 +8,7 @@ import {
   HubResult,
   TypedDataSigner,
   VerificationEthAddressClaim,
-} from '@farcaster/protoutils';
+} from '@farcaster/utils';
 import { err } from 'neverthrow';
 
 export class Eip712Signer extends BaseEip712Signer {

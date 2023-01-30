@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { getHubRpcClient, HubAsyncResult, HubResult, HubRpcClient } from '@farcaster/protoutils';
+import { getHubRpcClient, HubAsyncResult, HubResult, HubRpcClient } from '@farcaster/utils';
 import { err, Result } from 'neverthrow';
 import * as types from './types';
 import * as utils from './utils';

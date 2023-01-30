@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Ed25519Signer, Factories } from '@farcaster/protoutils';
+import { Ed25519Signer, Factories } from '@farcaster/utils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { seedSigner } from '~/storage/engine/seed';

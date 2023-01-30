@@ -1,4 +1,4 @@
-import { hexStringToBytes, HubResult } from '@farcaster/protoutils';
+import { hexStringToBytes, HubResult } from '@farcaster/utils';
 import { BigNumber } from 'ethers';
 
 export const bytes32ToBytes = (value: BigNumber): HubResult<Uint8Array> => {

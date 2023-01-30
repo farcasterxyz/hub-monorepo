@@ -1,8 +1,9 @@
-import { FarcasterNetwork } from '@farcaster/flatbuffers';
+import { FarcasterNetwork } from '@farcaster/protobufs';
 import { BigNumber } from 'ethers';
 import { err, ok } from 'neverthrow';
-import { bytesToBigNumber, bytesToHexString } from './bytes';
+import { bytesToHexString } from './bytes';
 import { HubResult } from './errors';
+import { validateBlockHashHex, validateEthAddressHex } from './validations';
 
 export type VerificationEthAddressClaim = {
   fid: BigNumber;
@@ -12,29 +13,24 @@ export type VerificationEthAddressClaim = {
 };
 
 export const makeVerificationEthAddressClaim = (
-  fid: Uint8Array,
+  fid: number,
   ethAddress: Uint8Array,
   network: FarcasterNetwork,
   blockHash: Uint8Array
 ): HubResult<VerificationEthAddressClaim> => {
-  const fidBigNumber = bytesToBigNumber(fid);
-  if (fidBigNumber.isErr()) {
-    return err(fidBigNumber.error);
+  const ethAddressHex = bytesToHexString(ethAddress).andThen((ethAddressHex) => validateEthAddressHex(ethAddressHex));
+  if (ethAddressHex.isErr()) {
+    return err(ethAddressHex.error);
   }
 
-  const addressHex = bytesToHexString(ethAddress, { size: 40 });
-  if (addressHex.isErr()) {
-    return err(addressHex.error);
-  }
-
-  const blockHashHex = bytesToHexString(blockHash, { size: 64 });
+  const blockHashHex = bytesToHexString(blockHash).andThen((blockHashHex) => validateBlockHashHex(blockHashHex));
   if (blockHashHex.isErr()) {
     return err(blockHashHex.error);
   }
 
   return ok({
-    fid: fidBigNumber.value,
-    address: addressHex.value,
+    fid: BigNumber.from(fid),
+    address: ethAddressHex.value,
     network: network,
     blockHash: blockHashHex.value,
   });

@@ -1,4 +1,4 @@
-import { bytesCompare, Factories, HubError } from '@farcaster/protoutils';
+import { bytesCompare, Factories, HubError } from '@farcaster/utils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import {
   getIdRegistryEvent,

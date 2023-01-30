@@ -1,4 +1,4 @@
-import { getHubRpcClient } from '@farcaster/protoutils';
+import { getHubRpcClient } from '@farcaster/utils';
 import { AddressInfo } from 'net';
 import path from 'path';
 import * as repl from 'repl';

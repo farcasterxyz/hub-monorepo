@@ -1,11 +1,11 @@
-import { SignatureScheme } from '@farcaster/flatbuffers';
+import { SignatureScheme } from '@farcaster/protobufs';
 import { bytesToHexString } from '../bytes';
 import { ed25519 } from '../crypto';
 import { HubAsyncResult, HubResult } from '../errors';
 import { Signer } from './signer';
 
 export class Ed25519Signer implements Signer {
-  public readonly scheme = SignatureScheme.Ed25519;
+  public readonly scheme = SignatureScheme.SIGNATURE_SCHEME_ED25519;
 
   /** 20-byte wallet address */
   public readonly signerKey: Uint8Array;
@@ -15,7 +15,7 @@ export class Ed25519Signer implements Signer {
 
   public static fromPrivateKey(privateKey: Uint8Array): HubResult<Ed25519Signer> {
     const signerKey = ed25519.getPublicKeySync(privateKey);
-    return bytesToHexString(signerKey, { size: 64 }).map((signerKeyHex) => {
+    return bytesToHexString(signerKey).map((signerKeyHex) => {
       return new this(privateKey, signerKey, signerKeyHex);
     });
   }

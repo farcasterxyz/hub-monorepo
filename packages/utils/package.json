@@ -17,11 +17,10 @@
   "license": "MIT",
   "dependencies": {
     "@faker-js/faker": "^7.6.0",
-    "@farcaster/flatbuffers": "0.1.5",
+    "@farcaster/protobufs": "0.1.0",
     "@noble/ed25519": "^1.7.1",
     "@noble/hashes": "^1.1.5",
     "ethers": "^5.7.2",
-    "flatbuffers": "^22.11.23",
     "neverthrow": "^6.0.0"
   },
   "scripts": {
@@ -33,6 +32,6 @@
   },
   "devDependencies": {
     "eslint-config-custom": "*",
-    "fishery": "^2.2.2"
+    "@farcaster/fishery": "2.2.3"
   }
 }

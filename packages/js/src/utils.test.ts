@@ -6,7 +6,7 @@ import {
   hexStringToBytes,
   HubResult,
   utf8StringToBytes,
-} from '@farcaster/protoutils';
+} from '@farcaster/utils';
 import { ok } from 'neverthrow';
 import { makeCastAdd } from './builders';
 import * as types from './types';

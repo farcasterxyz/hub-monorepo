@@ -8,7 +8,7 @@ import {
   HubResult,
   utf8StringToBytes,
   validations,
-} from '@farcaster/protoutils';
+} from '@farcaster/utils';
 import { err, ok, Result } from 'neverthrow';
 import * as types from './types';
 

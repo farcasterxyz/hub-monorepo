@@ -12,7 +12,6 @@
     "build": "./node_modules/.bin/turbo run build",
     "clean": "./node_modules/.bin/turbo run clean",
     "dev": "./node_modules/.bin/turbo run dev --parallel",
-    "flatc": "flatc --ts --ts-flat-files --gen-object-api -o packages/flatbuffers/src/generated packages/flatbuffers/src/schemas/*.fbs",
     "test": "./node_modules/.bin/turbo run test",
     "test:ci": "./node_modules/.bin/turbo run test:ci -- --passWithNoTests",
     "lint": "./node_modules/.bin/turbo run lint --parallel",

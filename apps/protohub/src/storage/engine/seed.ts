@@ -1,4 +1,4 @@
-import { Factories } from '@farcaster/protoutils';
+import { Factories } from '@farcaster/utils';
 import Engine from '~/storage/engine';
 
 /** Util to seed engine with all the data needed to make a signer valid for an fid */

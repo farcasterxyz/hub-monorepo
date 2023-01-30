@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { HubAsyncResult, HubError } from '@farcaster/protoutils';
+import { HubAsyncResult, HubError } from '@farcaster/utils';
 import { err } from 'neverthrow';
 import { HubInterface } from '~/hub';
 import RocksDB from '~/storage/db/rocksdb';

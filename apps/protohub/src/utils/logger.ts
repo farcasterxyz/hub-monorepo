@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesToHexString, fromFarcasterTime } from '@farcaster/protoutils';
+import { bytesToHexString, fromFarcasterTime } from '@farcaster/utils';
 import { default as Pino } from 'pino';
 
 /**

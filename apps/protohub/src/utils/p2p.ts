@@ -1,5 +1,5 @@
 import { GossipAddressInfo } from '@farcaster/protobufs';
-import { HubAsyncResult, HubError, HubResult } from '@farcaster/protoutils';
+import { HubAsyncResult, HubError, HubResult } from '@farcaster/utils';
 import { Multiaddr, multiaddr, NodeAddress } from '@multiformats/multiaddr';
 import { get } from 'http';
 import { AddressInfo, isIP } from 'net';
