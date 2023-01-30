@@ -1,9 +1,10 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bigNumberToBytes, hexStringToBytes, HubAsyncResult } from '@farcaster/protoutils';
+import { hexStringToBytes, HubAsyncResult } from '@farcaster/protoutils';
 import { BigNumber, Contract, Event, providers } from 'ethers';
 import { err, ok, ResultAsync } from 'neverthrow';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
 import { bytes32ToBytes } from '~/eth/utils';
+import { HubInterface } from '~/hub';
 import { logger } from '~/utils/logger';
 
 const log = logger.child({
@@ -20,7 +21,7 @@ export class GoerliEthConstants {
  * Class that follows the Ethereum chain to handle on-chain events from the ID Registry and Name Registry contracts.
  */
 export class EthEventsProvider {
-  // private _hub: HubInterface;
+  private _hub: HubInterface;
   private _jsonRpcProvider: providers.BaseProvider;
 
   private _idRegistryContract: Contract;
@@ -37,12 +38,12 @@ export class EthEventsProvider {
   private _isHistoricalSyncDone = false;
 
   constructor(
-    // hub: HubInterface,
+    hub: HubInterface,
     jsonRpcProvider: providers.BaseProvider,
     idRegistryContract: Contract,
     nameRegistryContract: Contract
   ) {
-    // this._hub = hub;
+    this._hub = hub;
     this._jsonRpcProvider = jsonRpcProvider;
     this._idRegistryContract = idRegistryContract;
     this._nameRegistryContract = nameRegistryContract;
@@ -92,7 +93,7 @@ export class EthEventsProvider {
    * Setup a Eth Events Provider with Goerli testnet, which is currently used for Production Farcaster Hubs.
    */
   public static makeWithGoerli(
-    // hub: HubInterface,
+    hub: HubInterface,
     ethRpcUrl: string,
     IdRegistryAddress: string,
     NameRegistryAddress: string
@@ -103,7 +104,7 @@ export class EthEventsProvider {
     const idRegistryContract = new Contract(IdRegistryAddress, IdRegistry.abi, jsonRpcProvider);
     const nameRegistryContract = new Contract(NameRegistryAddress, NameRegistry.abi, jsonRpcProvider);
 
-    const provider = new EthEventsProvider(jsonRpcProvider, idRegistryContract, nameRegistryContract);
+    const provider = new EthEventsProvider(hub, jsonRpcProvider, idRegistryContract, nameRegistryContract);
 
     return provider;
   }
@@ -151,15 +152,15 @@ export class EthEventsProvider {
     log.info({ latestBlock: latestBlock.number }, 'connected to ethereum node');
 
     // Find how how much we need to sync
-    const lastSyncedBlock = BigInt(GoerliEthConstants.FirstBlock);
+    let lastSyncedBlock = GoerliEthConstants.FirstBlock;
 
-    // const hubState = await this._hub.getHubState();
-    // if (hubState.isOk()) {
-    //   lastSyncedBlock = hubState.value.lastEthBlock();
-    // }
+    const hubState = await this._hub.getHubState();
+    if (hubState.isOk()) {
+      lastSyncedBlock = hubState.value.lastEthBlock;
+    }
 
     log.info({ lastSyncedBlock }, 'last synced block');
-    const toBlock = BigInt(latestBlock.number);
+    const toBlock = latestBlock.number;
 
     // Sync old Id events
     await this.syncHistoricalIdEvents(
@@ -188,7 +189,7 @@ export class EthEventsProvider {
    * Sync old Id events that may have happened before hub was started. We'll put them all
    * in the sync queue to be processed later, to make sure we don't process any unconfirmed events.
    */
-  private async syncHistoricalIdEvents(type: protobufs.IdRegistryEventType, fromBlock: bigint, toBlock: bigint) {
+  private async syncHistoricalIdEvents(type: protobufs.IdRegistryEventType, fromBlock: number, toBlock: number) {
     const typeString = type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ? 'Register' : 'Transfer';
 
     const oldIdEvents = await ResultAsync.fromPromise(
@@ -222,7 +223,7 @@ export class EthEventsProvider {
    * Sync old Name events that may have happened before hub was started. We'll put them all
    * in the sync queue to be processed later, to make sure we don't process any unconfirmed events.
    */
-  private async syncHistoricalNameEvents(type: protobufs.NameRegistryEventType, fromBlock: bigint, toBlock: bigint) {
+  private async syncHistoricalNameEvents(type: protobufs.NameRegistryEventType, fromBlock: number, toBlock: number) {
     const typeString =
       type === protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER ? 'Transfer' : 'Renew';
 
@@ -269,7 +270,7 @@ export class EthEventsProvider {
         if (idEvents) {
           for (const idEvent of idEvents) {
             log.info(idEvent);
-            // await this._hub.submitIdRegistryEvent(idEvent, 'eth-provider');
+            await this._hub.submitIdRegistryEvent(idEvent, 'eth-provider');
           }
         }
 
@@ -279,7 +280,7 @@ export class EthEventsProvider {
         if (nameEvents) {
           for (const nameEvent of nameEvents) {
             log.info(nameEvent);
-            // await this._hub.submitNameRegistryEvent(nameEvent, 'eth-provider');
+            await this._hub.submitNameRegistryEvent(nameEvent, 'eth-provider');
           }
         }
       }
@@ -360,7 +361,6 @@ export class EthEventsProvider {
     const { blockNumber, blockHash, transactionHash, logIndex } = event;
     log.info({ from, to, tokenId: tokenId.toString(), type, blockNumber, transactionHash }, 'cacheNameRegistryEvent');
 
-    // Convert name registry datatypes to little endian byte arrays
     const blockHashBytes = hexStringToBytes(blockHash);
     if (blockHashBytes.isErr()) {
       return err(blockHashBytes.error);
@@ -386,30 +386,16 @@ export class EthEventsProvider {
       return err(fnameBytes.error);
     }
 
-    const expiryBytes = bigNumberToBytes(expiry);
-    if (expiryBytes.isErr()) {
-      return err(expiryBytes.error);
-    }
-
-    // Construct the flatbuffer event
-    const builder = new Builder(1);
-    const eventT = new flatbuffers.NameRegistryEventT(
+    const nameRegistryEvent = protobufs.NameRegistryEvent.create({
       blockNumber,
-      Array.from(blockHashBytes.value),
-      Array.from(transactionHashBytes.value),
+      blockHash: blockHashBytes.value,
+      transactionHash: transactionHashBytes.value,
       logIndex,
-      Array.from(fnameBytes.value),
-      fromBytes.value ? Array.from(fromBytes.value) : undefined,
-      Array.from(toBytes.value),
+      fname: fnameBytes.value,
+      from: fromBytes.value ?? new Uint8Array(),
+      to: toBytes.value,
       type,
-      Array.from(expiryBytes.value)
-    );
-    builder.finish(eventT.pack(builder));
-
-    const nameRegistryEvent = flatbuffers.NameRegistryEvent.getRootAsNameRegistryEvent(
-      new ByteBuffer(builder.asUint8Array())
-    );
-    const nameRegistryEventModel = new NameRegistryEventModel(nameRegistryEvent);
+    });
 
     // Add it to the cache
     let nameEvents = this._nameEventsByBlock.get(blockNumber);
@@ -417,7 +403,7 @@ export class EthEventsProvider {
       nameEvents = [];
       this._nameEventsByBlock.set(blockNumber, nameEvents);
     }
-    nameEvents.push(nameRegistryEventModel);
+    nameEvents.push(nameRegistryEvent);
 
     return ok(undefined);
   }

@@ -1,44 +1,52 @@
+import * as protobufs from '@farcaster/protobufs';
 import {
   ContactInfoContent,
-  ContactInfoContentT,
   FarcasterNetwork,
   GossipAddressInfo,
-  GossipAddressInfoT,
-  GossipContent,
   GossipMessage,
+  HubState,
   IdRegistryEvent,
-  MessageBytes,
-} from '@farcaster/flatbuffers';
-import { HubAsyncResult, HubError, HubResult } from '@farcaster/utils';
+  Message,
+  NameRegistryEvent,
+} from '@farcaster/protobufs';
+import { getHubRpcClient, HubAsyncResult, HubError, HubResult, HubRpcClient } from '@farcaster/protoutils';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import { publicAddressesFirst } from '@libp2p/utils/address-sort';
 import { multiaddr, Multiaddr } from '@multiformats/multiaddr';
-import { Builder, ByteBuffer } from 'flatbuffers';
 import { isIP } from 'net';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { EthEventsProvider, GoerliEthConstants } from '~/eth/ethEventsProvider';
-import HubStateModel from '~/flatbuffers/models/hubStateModel';
-import IdRegistryEventModel from '~/flatbuffers/models/idRegistryEventModel';
-import MessageModel from '~/flatbuffers/models/messageModel';
-import NameRegistryEventModel from '~/flatbuffers/models/nameRegistryEventModel';
-import { isSignerRemove } from '~/flatbuffers/models/typeguards';
-import { HubInterface, HubSubmitSource } from '~/flatbuffers/models/types';
 import { GossipNode } from '~/network/p2p/gossipNode';
 import { NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import SyncEngine from '~/network/sync/syncEngine';
-import HubRpcClient from '~/rpc/client';
 import Server from '~/rpc/server';
-import BinaryRocksDB from '~/storage/db/rocksdb';
+import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
 import { PruneMessagesJobScheduler } from '~/storage/jobs/pruneMessagesJob';
 import { RevokeSignerJobQueue, RevokeSignerJobScheduler } from '~/storage/jobs/revokeSignerJob';
 import { idRegistryEventToLog, logger, messageToLog, nameRegistryEventToLog } from '~/utils/logger';
-import { addressInfoFromGossip, getPublicIp, ipFamilyToString, p2pMultiAddrStr } from '~/utils/p2p';
+import {
+  addressInfoFromGossip,
+  addressInfoToString,
+  getPublicIp,
+  ipFamilyToString,
+  p2pMultiAddrStr,
+} from '~/utils/p2p';
+
+export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
 
 export const APP_VERSION = process.env['npm_package_version'] ?? '1.0.0';
 export const APP_NICKNAME = 'Farcaster Hub';
+
+export interface HubInterface {
+  submitMessage(message: protobufs.Message, source?: HubSubmitSource): HubAsyncResult<void>;
+  submitIdRegistryEvent(event: protobufs.IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<void>;
+  submitNameRegistryEvent(event: protobufs.NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<void>;
+  getHubState(): HubAsyncResult<protobufs.HubState>;
+  putHubState(hubState: protobufs.HubState): HubAsyncResult<void>;
+}
 
 export interface HubOptions {
   /** Farcaster network */
@@ -116,7 +124,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   private gossipNode: GossipNode;
   private rpcServer: Server;
   private contactTimer?: NodeJS.Timer;
-  private rocksDB: BinaryRocksDB;
+  private rocksDB: RocksDB;
   private syncEngine: SyncEngine;
 
   private revokeSignerJobQueue: RevokeSignerJobQueue;
@@ -131,7 +139,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   constructor(options: HubOptions) {
     super();
     this.options = options;
-    this.rocksDB = new BinaryRocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
+    this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
     this.gossipNode = new GossipNode();
     this.engine = new Engine(this.rocksDB, options.network);
     this.syncEngine = new SyncEngine(this.engine);
@@ -212,26 +220,22 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   }
 
   getContactInfoContent(): HubResult<ContactInfoContent> {
-    const nodeMultiAddr = this.gossipAddresses[0];
+    const nodeMultiAddr = this.gossipAddresses[0] as Multiaddr;
     const family = nodeMultiAddr?.nodeAddress().family;
     const announceIp = this.options.announceIp ?? nodeMultiAddr?.nodeAddress().address;
     const gossipPort = nodeMultiAddr?.nodeAddress().port;
     const rpcPort = this.rpcServer.address?.map((addr) => addr.port).unwrapOr(0);
 
-    const gossipAddressContactInfo = new GossipAddressInfoT(announceIp, family, gossipPort);
-    const rpcAddressContactInfo = new GossipAddressInfoT(announceIp, family, rpcPort);
+    const gossipAddressContactInfo = GossipAddressInfo.create({ address: announceIp, family, port: gossipPort });
+    const rpcAddressContactInfo = GossipAddressInfo.create({ address: announceIp, family, port: rpcPort });
 
     return this.syncEngine.snapshot.map((snapshot) => {
-      const contactInfoT = new ContactInfoContentT(
-        gossipAddressContactInfo,
-        rpcAddressContactInfo,
-        snapshot.excludedHashes,
-        BigInt(snapshot.numMessages)
-      );
-
-      const builder = new Builder(1);
-      builder.finish(contactInfoT.pack(builder));
-      return ContactInfoContent.getRootAsContactInfoContent(new ByteBuffer(builder.asUint8Array()));
+      return ContactInfoContent.create({
+        gossipAddress: gossipAddressContactInfo,
+        rpcAddress: rpcAddressContactInfo,
+        excludedHashes: snapshot.excludedHashes,
+        count: snapshot.numMessages,
+      });
     });
   }
 
@@ -247,14 +251,16 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     await this.rocksDB.close();
   }
 
-  async getHubState(): HubAsyncResult<HubStateModel> {
-    return ResultAsync.fromPromise(HubStateModel.get(this.rocksDB), (e) => e as HubError);
+  async getHubState(): HubAsyncResult<HubState> {
+    // return ResultAsync.fromPromise(HubState.get(this.rocksDB), (e) => e as HubError);
+    return err(new HubError('unavailable', 'not implemented'));
   }
 
-  async putHubState(hubState: HubStateModel): HubAsyncResult<void> {
-    const txn = this.rocksDB.transaction();
-    HubStateModel.putTransaction(txn, hubState);
-    return await ResultAsync.fromPromise(this.rocksDB.commit(txn), (e) => e as HubError);
+  async putHubState(_hubState: HubState): HubAsyncResult<void> {
+    // const txn = this.rocksDB.transaction();
+    // HubStateModel.putTransaction(txn, hubState);
+    // return await ResultAsync.fromPromise(this.rocksDB.commit(txn), (e) => e as HubError);
+    return err(new HubError('unavailable', 'not implemented'));
   }
 
   async connectAddress(address: Multiaddr): HubAsyncResult<void> {
@@ -266,9 +272,8 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   /* -------------------------------------------------------------------------- */
 
   private async handleGossipMessage(gossipMessage: GossipMessage): HubAsyncResult<void> {
-    const contentType = gossipMessage.contentType();
     const peerIdResult = Result.fromThrowable(
-      () => peerIdFromBytes(gossipMessage.peerIdArray() ?? new Uint8Array([])),
+      () => peerIdFromBytes(gossipMessage.peerId ?? new Uint8Array([])),
       (error) => new HubError('bad_request.parse_failure', error as Error)
     )();
     if (peerIdResult.isErr()) {
@@ -276,10 +281,8 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     }
     const peerId = peerIdResult.value;
 
-    if (contentType === GossipContent.MessageBytes) {
-      const messageBytes: MessageBytes = gossipMessage.content(new MessageBytes());
-      const bytes = messageBytes.messageBytesArray() ?? new Uint8Array([]);
-      const message = MessageModel.from(bytes);
+    if (gossipMessage.message) {
+      const message = gossipMessage.message;
 
       // Get the RPC Client to use to merge this message
       const rpcClient = this.currentHubRpcClients.get(peerId.toString());
@@ -289,14 +292,11 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
         log.error('No RPC clients available to merge message, attempting to merge directly into the engine');
         return this.submitMessage(message, 'gossip');
       }
-    } else if (contentType === GossipContent.IdRegistryEvent) {
-      const event = new IdRegistryEventModel(gossipMessage.content(new IdRegistryEvent()) as IdRegistryEvent);
-      return this.submitIdRegistryEvent(event, 'gossip');
-    } else if (contentType === GossipContent.ContactInfoContent) {
-      const message: ContactInfoContent = gossipMessage.content(new ContactInfoContent());
-
+    } else if (gossipMessage.idRegistryEvent) {
+      return this.submitIdRegistryEvent(gossipMessage.idRegistryEvent, 'gossip');
+    } else if (gossipMessage.contactInfoContent) {
       if (peerIdResult.isOk()) {
-        await this.handleContactInfo(peerIdResult.value, message);
+        await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
       }
       return ok(undefined);
     } else {
@@ -306,7 +306,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
 
   private async handleContactInfo(peerId: PeerId, message: ContactInfoContent) {
     // Updates the address book for this peer
-    const gossipAddress = message.gossipAddress();
+    const gossipAddress = message.gossipAddress;
     if (gossipAddress) {
       const addressInfo = addressInfoFromGossip(gossipAddress);
       if (addressInfo.isErr()) {
@@ -335,10 +335,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     }
 
     const rpcClient = await this.getRPCClientForPeer(peerId, message);
-    log.info(
-      { identity: this.identity, peer: peerId, ip: rpcClient?.serverMultiaddr },
-      'received a Contact Info for sync'
-    );
+    log.info({ identity: this.identity, peer: peerId }, 'received a Contact Info for sync');
 
     // Check if we already have this client
     if (rpcClient) {
@@ -361,7 +358,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     }
 
     // First, get the latest state from the peer
-    const peerStateResult = await rpcClient.getSyncTrieNodeSnapshotByPrefix('');
+    const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(protobufs.TrieNodePrefix.create({ prefix: '' }));
     if (peerStateResult.isErr()) {
       log.warn(`Failed to get peer state, skipping sync`);
       this.emit('syncComplete', false);
@@ -369,7 +366,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     }
 
     const peerState = peerStateResult.value;
-    const shouldSync = this.syncEngine.shouldSync(peerState.snapshot.excludedHashes);
+    const shouldSync = this.syncEngine.shouldSync(peerState.excludedHashes);
     if (shouldSync.isErr()) {
       log.warn(`Failed to get shouldSync`);
       this.emit('syncComplete', false);
@@ -378,7 +375,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
 
     if (shouldSync.value === true) {
       log.info(`Syncing with peer`);
-      await this.syncEngine.performSync(peerState.snapshot.excludedHashes, rpcClient);
+      await this.syncEngine.performSync(peerState.excludedHashes, rpcClient);
     } else {
       log.info(`No need to sync`);
       this.emit('syncComplete', false);
@@ -394,19 +391,19 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
      * Find the peer's addrs from our peer list because we cannot use the address
      * in the contact info directly
      */
-    if (!peer.rpcAddress()) {
+    if (!peer.rpcAddress) {
       return;
     }
 
     // prefer the advertised address if it's available
-    const addressInfo = addressInfoFromGossip(peer.rpcAddress() as GossipAddressInfo);
-    if (addressInfo.isErr()) {
-      log.error(addressInfo.error, 'unable to parse gossip address for peer');
+    const rpcAddressInfo = addressInfoFromGossip(peer.rpcAddress as GossipAddressInfo);
+    if (rpcAddressInfo.isErr()) {
+      log.error(rpcAddressInfo.error, 'unable to parse gossip address for peer');
       return;
     }
 
-    if (isIP(addressInfo.value.address)) {
-      return new HubRpcClient(addressInfo.value);
+    if (isIP(rpcAddressInfo.value.address)) {
+      return getHubRpcClient(`${rpcAddressInfo.value.address}:${rpcAddressInfo.value.port}`);
     }
 
     log.info({ peerId }, 'falling back to addressbook lookup for peer');
@@ -425,30 +422,32 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     if (addr === undefined) {
       log.info(
         { function: 'getRPCClientForPeer', identity: this.identity, peer: peer },
-        `peer found but no address is available to request simple sync`
+        `peer found but no address is available to request sync`
       );
 
       return;
     }
 
     const nodeAddress = addr.multiaddr.nodeAddress();
-    return new HubRpcClient({
+    const ai = {
       address: nodeAddress.address,
       family: ipFamilyToString(nodeAddress.family),
-      // Use the gossip rpc port instead of the port used by libp2p
-      port: addressInfo.value.port,
-    });
+      // Use the rpc port instead of the port used by libp2p
+      port: rpcAddressInfo.value.port,
+    };
+
+    return getHubRpcClient(addressInfoToString(ai));
   }
 
   private registerEventHandlers() {
     // Subscribe to store events
-    this.engine.eventHandler.on('mergeMessage', async (message: MessageModel) => {
+    this.engine.eventHandler.on('mergeMessage', async (message: Message) => {
       log.info(messageToLog(message), 'mergeMessage');
 
-      if (isSignerRemove(message)) {
+      if (protobufs.isSignerRemoveMessage(message)) {
         const revokeSignerPayload = RevokeSignerJobQueue.makePayload(
-          message.fid(),
-          message.body().signerArray() ?? new Uint8Array()
+          message.data?.fid ?? 0,
+          message.data?.signerBody?.signer ?? new Uint8Array()
         );
         if (revokeSignerPayload.isOk()) {
           // Revoke signer in one hour
@@ -459,12 +458,12 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
       this.gossipNode.gossipMessage(message);
     });
 
-    this.engine.eventHandler.on('mergeIdRegistryEvent', async (event: IdRegistryEventModel) => {
+    this.engine.eventHandler.on('mergeIdRegistryEvent', async (event: IdRegistryEvent) => {
       log.info(idRegistryEventToLog(event), 'mergeIdRegistryEvent');
 
-      const fromAddress = event.from();
+      const fromAddress = event.from;
       if (fromAddress && fromAddress.length > 0) {
-        const revokeSignerPayload = RevokeSignerJobQueue.makePayload(event.fid(), fromAddress);
+        const revokeSignerPayload = RevokeSignerJobQueue.makePayload(event.fid, fromAddress);
         if (revokeSignerPayload.isOk()) {
           // Revoke eth address in one hour
           await this.revokeSignerJobQueue.enqueueJob(revokeSignerPayload.value);
@@ -474,7 +473,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
       // TODO: Should we gossip ID registry events?
     });
 
-    this.engine.eventHandler.on('mergeNameRegistryEvent', (event: NameRegistryEventModel) => {
+    this.engine.eventHandler.on('mergeNameRegistryEvent', (event: NameRegistryEvent) => {
       log.info(nameRegistryEventToLog(event), 'mergeNameRegistryEvent');
     });
 
@@ -500,7 +499,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
         this.getContactInfoContent()
           .map(async (contactInfo) => {
             log.info(
-              { rpcAddress: contactInfo.rpcAddress()?.address(), rpcPort: contactInfo.rpcAddress()?.port },
+              { rpcAddress: contactInfo.rpcAddress?.address, rpcPort: contactInfo.rpcAddress?.port },
               'gossiping contact info'
             );
             await this.gossipNode.gossipContactInfo(contactInfo);
@@ -521,7 +520,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   /*                               RPC Handler API                              */
   /* -------------------------------------------------------------------------- */
 
-  async submitMessage(message: MessageModel, source?: HubSubmitSource): HubAsyncResult<void> {
+  async submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<void> {
     log.info({ ...messageToLog(message), source }, 'submitMessage');
 
     // push this message into the storage engine
@@ -535,7 +534,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     return mergeResult;
   }
 
-  async submitIdRegistryEvent(event: IdRegistryEventModel, source?: HubSubmitSource): HubAsyncResult<void> {
+  async submitIdRegistryEvent(event: IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<void> {
     log.info({ ...idRegistryEventToLog(event), source }, 'submitIdRegistryEvent');
 
     // push this message into the storage engine
@@ -548,7 +547,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     return mergeResult;
   }
 
-  async submitNameRegistryEvent(event: NameRegistryEventModel, source?: HubSubmitSource): HubAsyncResult<void> {
+  async submitNameRegistryEvent(event: NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<void> {
     log.info({ ...nameRegistryEventToLog(event), source }, 'submitNameRegistryEvent');
 
     // push this message into the storage engine

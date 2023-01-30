@@ -1,3 +1,4 @@
+export * as protobufs from '@farcaster/protobufs';
 export * from './builders';
 export * from './client';
 export * from './signers';

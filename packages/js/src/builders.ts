@@ -1,18 +1,16 @@
-import * as flatbuffers from '@farcaster/flatbuffers';
+import * as protobufs from '@farcaster/protobufs';
 import {
   bytesToHexString,
   hexStringToBytes,
   HubAsyncResult,
-  HubError,
   HubResult,
   MessageSigner,
   Signer,
   toFarcasterTime,
   validations,
-} from '@farcaster/utils';
+} from '@farcaster/protoutils';
 import { blake3 } from '@noble/hashes/blake3';
-import { Builder, ByteBuffer } from 'flatbuffers';
-import { err, ok } from 'neverthrow';
+import { err } from 'neverthrow';
 import * as types from './types';
 import * as utils from './utils';
 
@@ -20,7 +18,7 @@ import * as utils from './utils';
 
 type MessageDataOptions = {
   fid: number;
-  network: flatbuffers.FarcasterNetwork;
+  network: protobufs.FarcasterNetwork;
   timestamp?: number;
 };
 
@@ -29,38 +27,49 @@ type MessageSignerOptions = {
   signerKeyHex: string;
 };
 
-type MessageBodyT =
-  | flatbuffers.AmpBodyT
-  | flatbuffers.CastAddBodyT
-  | flatbuffers.CastRemoveBodyT
-  | flatbuffers.ReactionBodyT
-  | flatbuffers.SignerBodyT
-  | flatbuffers.UserDataBodyT
-  | flatbuffers.VerificationAddEthAddressBodyT
-  | flatbuffers.VerificationRemoveBodyT;
+type MessageBody =
+  | protobufs.CastAddBody
+  | protobufs.CastRemoveBody
+  | protobufs.ReactionBody
+  | protobufs.AmpBody
+  | protobufs.VerificationAddEthAddressBody
+  | protobufs.VerificationRemoveBody
+  | protobufs.SignerBody
+  | protobufs.UserDataBody;
+
+type MessageBodyOptions = {
+  castAddBody?: protobufs.CastAddBody | undefined;
+  castRemoveBody?: protobufs.CastRemoveBody | undefined;
+  reactionBody?: protobufs.ReactionBody | undefined;
+  ampBody?: protobufs.AmpBody | undefined;
+  verificationAddEthAddressBody?: protobufs.VerificationAddEthAddressBody | undefined;
+  verificationRemoveBody?: protobufs.VerificationRemoveBody | undefined;
+  signerBody?: protobufs.SignerBody | undefined;
+  userDataBody?: protobufs.UserDataBody | undefined;
+};
 
 /** Internal Methods */
 
 const buildMakeMessageMethod = <
-  TMessageType extends flatbuffers.MessageType,
-  TMessageBodyT extends MessageBodyT,
+  TMessageType extends protobufs.MessageType,
+  TMessageBody extends MessageBody,
   TBodyJson extends types.MessageBody
 >(
   messageType: TMessageType,
-  messageBody: flatbuffers.MessageBody,
-  bodyTFromJson: (bodyJson: TBodyJson) => HubResult<TMessageBodyT>
+  messageBodyKey: keyof MessageBodyOptions,
+  serializeBody: (bodyJson: TBodyJson) => HubResult<TMessageBody>
 ) => {
   return async (
     bodyJson: TBodyJson,
     dataOptions: MessageDataOptions,
     signer: MessageSigner<TMessageType>
-  ): HubAsyncResult<types.Message> => {
-    const bodyT = bodyTFromJson(bodyJson);
-    if (bodyT.isErr()) {
-      return err(bodyT.error);
+  ): HubAsyncResult<types.Message<types.MessageData<TBodyJson, TMessageType>>> => {
+    const body = serializeBody(bodyJson);
+    if (body.isErr()) {
+      return err(body.error);
     }
 
-    const messageData = makeMessageData(messageBody, bodyT.value, messageType, dataOptions);
+    const messageData = makeMessageData({ [messageBodyKey]: body.value }, messageType, dataOptions);
 
     if (messageData.isErr()) {
       return err(messageData.error);
@@ -71,24 +80,24 @@ const buildMakeMessageMethod = <
 };
 
 const buildMakeMessageDataMethod = <
-  TMessageType extends flatbuffers.MessageType,
-  TMessageBodyT extends MessageBodyT,
+  TMessageType extends protobufs.MessageType,
+  TMessageBody extends MessageBody,
   TBodyJson extends types.MessageBody
 >(
   messageType: TMessageType,
-  messageBody: flatbuffers.MessageBody,
-  bodyTFromJson: (bodyJson: TBodyJson) => HubResult<TMessageBodyT>
+  messageBodyKey: keyof MessageBodyOptions,
+  serializeBody: (bodyJson: TBodyJson) => HubResult<TMessageBody>
 ) => {
   return (
     bodyJson: TBodyJson,
     dataOptions: MessageDataOptions
   ): HubResult<types.MessageData<TBodyJson, TMessageType>> => {
-    const bodyT = bodyTFromJson(bodyJson);
-    if (bodyT.isErr()) {
-      return err(bodyT.error);
+    const body = serializeBody(bodyJson);
+    if (body.isErr()) {
+      return err(body.error);
     }
 
-    const messageData = makeMessageData(messageBody, bodyT.value, messageType, dataOptions);
+    const messageData = makeMessageData({ [messageBodyKey]: body.value }, messageType, dataOptions);
 
     return messageData.andThen(
       (data) => utils.deserializeMessageData(data) as HubResult<types.MessageData<TBodyJson, TMessageType>>
@@ -97,50 +106,31 @@ const buildMakeMessageDataMethod = <
 };
 
 const makeMessageData = (
-  bodyType: flatbuffers.MessageBody,
-  bodyT: MessageBodyT,
-  messageType: flatbuffers.MessageType,
+  bodyOptions: MessageBodyOptions,
+  messageType: protobufs.MessageType,
   dataOptions: MessageDataOptions
-): HubResult<flatbuffers.MessageData> => {
-  const serializedFid = utils.serializeFid(dataOptions.fid);
-  if (serializedFid.isErr()) {
-    return err(serializedFid.error);
-  }
-
+): HubResult<protobufs.MessageData> => {
   const timestamp = toFarcasterTime(dataOptions.timestamp || Date.now());
   if (timestamp.isErr()) {
     return err(timestamp.error);
   }
 
-  const dataT = new flatbuffers.MessageDataT(
-    bodyType,
-    bodyT,
-    messageType,
-    timestamp.value,
-    Array.from(serializedFid.value),
-    dataOptions.network
-  );
+  const data = protobufs.MessageData.create({
+    ...bodyOptions,
+    type: messageType,
+    timestamp: timestamp.value,
+    fid: dataOptions.fid,
+    network: dataOptions.network,
+  });
 
-  const fbb = new Builder(1);
-  fbb.finish(dataT.pack(fbb));
-
-  const dataBytes = fbb.asUint8Array();
-
-  const messageData = flatbuffers.MessageData.getRootAsMessageData(new ByteBuffer(dataBytes));
-
-  const validMessageData = validations.validateMessageData(messageData);
-  if (validMessageData.isErr()) {
-    return err(validMessageData.error);
-  }
-
-  return ok(messageData);
+  return validations.validateMessageData(data);
 };
 
-const makeMessage = async (messageData: flatbuffers.MessageData, signer: Signer): HubAsyncResult<types.Message> => {
-  const dataBytes = messageData.bb?.bytes();
-  if (!dataBytes) {
-    return err(new HubError('bad_request.invalid_param', 'data is missing'));
-  }
+const makeMessage = async <TMessageData extends types.MessageData>(
+  messageData: protobufs.MessageData,
+  signer: Signer
+): HubAsyncResult<types.Message<TMessageData>> => {
+  const dataBytes = protobufs.MessageData.encode(messageData).finish();
 
   const hash = blake3(dataBytes, { dkLen: 20 });
 
@@ -149,28 +139,24 @@ const makeMessage = async (messageData: flatbuffers.MessageData, signer: Signer)
     return err(signature.error);
   }
 
-  const messageT = new flatbuffers.MessageT(
-    Array.from(dataBytes),
-    Array.from(hash),
-    flatbuffers.HashScheme.Blake3,
-    Array.from(signature.value),
-    signer.scheme,
-    Array.from(signer.signerKey)
-  );
+  const message = protobufs.Message.create({
+    data: messageData,
+    hash,
+    hashScheme: protobufs.HashScheme.HASH_SCHEME_BLAKE3,
+    signature: signature.value,
+    signatureScheme: signer.scheme,
+    signer: signer.signerKey,
+  });
 
-  const fbb = new Builder(1);
-  fbb.finish(messageT.pack(fbb));
-
-  const flatbuffer = flatbuffers.Message.getRootAsMessage(new ByteBuffer(fbb.asUint8Array()));
-
-  return utils.deserializeMessage(flatbuffer);
+  return utils.deserializeMessage(message) as HubResult<types.Message<TMessageData>>;
 };
 
 /** Generic Methods */
 
 export const makeMessageHash = async (messageData: types.MessageData): HubAsyncResult<string> => {
-  const hashBytes = blake3(messageData.flatbuffer.bb?.bytes() ?? new Uint8Array(), { dkLen: 20 });
-  return bytesToHexString(hashBytes, { size: 40 });
+  const dataBytes = protobufs.MessageData.encode(messageData._protobuf).finish();
+  const hashBytes = blake3(dataBytes, { dkLen: 20 });
+  return bytesToHexString(hashBytes);
 };
 
 export const makeMessageWithSignature = async (
@@ -178,10 +164,7 @@ export const makeMessageWithSignature = async (
   signerOptions: MessageSignerOptions,
   signature: string
 ): HubAsyncResult<types.Message> => {
-  const dataBytes = messageData.flatbuffer.bb?.bytes();
-  if (!dataBytes) {
-    return err(new HubError('bad_request.invalid_param', 'data is missing'));
-  }
+  const dataBytes = protobufs.MessageData.encode(messageData._protobuf).finish();
 
   const hash = blake3(dataBytes, { dkLen: 20 });
 
@@ -195,165 +178,158 @@ export const makeMessageWithSignature = async (
     return err(signerKey.error);
   }
 
-  const messageT = new flatbuffers.MessageT(
-    Array.from(dataBytes),
-    Array.from(hash),
-    flatbuffers.HashScheme.Blake3,
-    Array.from(signatureBytes.value),
-    signerOptions.scheme,
-    Array.from(signerKey.value)
-  );
+  const message = protobufs.Message.create({
+    data: messageData._protobuf,
+    hash,
+    hashScheme: protobufs.HashScheme.HASH_SCHEME_BLAKE3,
+    signature: signatureBytes.value,
+    signatureScheme: signerOptions.scheme,
+    signer: signerKey.value,
+  });
 
-  const fbb = new Builder(1);
-  fbb.finish(messageT.pack(fbb));
-
-  const flatbuffer = flatbuffers.Message.getRootAsMessage(new ByteBuffer(fbb.asUint8Array()));
-
-  const isValid = await validations.validateMessage(flatbuffer);
-
-  return isValid.andThen((validFlatbuffer) => utils.deserializeMessage(validFlatbuffer));
+  return (await validations.validateMessage(message)).andThen((validMessage) => utils.deserializeMessage(validMessage));
 };
 
 /** Cast Methods */
 
 export const makeCastAdd = buildMakeMessageMethod(
-  flatbuffers.MessageType.CastAdd,
-  flatbuffers.MessageBody.CastAddBody,
+  protobufs.MessageType.MESSAGE_TYPE_CAST_ADD,
+  'castAddBody',
   utils.serializeCastAddBody
 );
 
 export const makeCastRemove = buildMakeMessageMethod(
-  flatbuffers.MessageType.CastRemove,
-  flatbuffers.MessageBody.CastRemoveBody,
+  protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE,
+  'castRemoveBody',
   utils.serializeCastRemoveBody
 );
 
 export const makeCastAddData = buildMakeMessageDataMethod(
-  flatbuffers.MessageType.CastAdd,
-  flatbuffers.MessageBody.CastAddBody,
+  protobufs.MessageType.MESSAGE_TYPE_CAST_ADD,
+  'castAddBody',
   utils.serializeCastAddBody
 );
 
 export const makeCastRemoveData = buildMakeMessageDataMethod(
-  flatbuffers.MessageType.CastRemove,
-  flatbuffers.MessageBody.CastRemoveBody,
+  protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE,
+  'castRemoveBody',
   utils.serializeCastRemoveBody
 );
 
 /** Amp Methods */
 
 export const makeReactionAdd = buildMakeMessageMethod(
-  flatbuffers.MessageType.ReactionAdd,
-  flatbuffers.MessageBody.ReactionBody,
+  protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD,
+  'reactionBody',
   utils.serializeReactionBody
 );
 
 export const makeReactionRemove = buildMakeMessageMethod(
-  flatbuffers.MessageType.ReactionRemove,
-  flatbuffers.MessageBody.ReactionBody,
+  protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE,
+  'reactionBody',
   utils.serializeReactionBody
 );
 
 export const makeReactionAddData = buildMakeMessageDataMethod(
-  flatbuffers.MessageType.ReactionAdd,
-  flatbuffers.MessageBody.ReactionBody,
+  protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD,
+  'reactionBody',
   utils.serializeReactionBody
 );
 
 export const makeReactionRemoveData = buildMakeMessageDataMethod(
-  flatbuffers.MessageType.ReactionRemove,
-  flatbuffers.MessageBody.ReactionBody,
+  protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE,
+  'reactionBody',
   utils.serializeReactionBody
 );
 
 /** Amp Methods */
 
 export const makeAmpAdd = buildMakeMessageMethod(
-  flatbuffers.MessageType.AmpAdd,
-  flatbuffers.MessageBody.AmpBody,
+  protobufs.MessageType.MESSAGE_TYPE_AMP_ADD,
+  'ampBody',
   utils.serializeAmpBody
 );
 
 export const makeAmpRemove = buildMakeMessageMethod(
-  flatbuffers.MessageType.AmpRemove,
-  flatbuffers.MessageBody.AmpBody,
+  protobufs.MessageType.MESSAGE_TYPE_AMP_REMOVE,
+  'ampBody',
   utils.serializeAmpBody
 );
 
 export const makeAmpAddData = buildMakeMessageDataMethod(
-  flatbuffers.MessageType.AmpAdd,
-  flatbuffers.MessageBody.AmpBody,
+  protobufs.MessageType.MESSAGE_TYPE_AMP_ADD,
+  'ampBody',
   utils.serializeAmpBody
 );
 
 export const makeAmpRemoveData = buildMakeMessageDataMethod(
-  flatbuffers.MessageType.AmpRemove,
-  flatbuffers.MessageBody.AmpBody,
+  protobufs.MessageType.MESSAGE_TYPE_AMP_REMOVE,
+  'ampBody',
   utils.serializeAmpBody
 );
 
 /** Verification Methods */
 
 export const makeVerificationAddEthAddress = buildMakeMessageMethod(
-  flatbuffers.MessageType.VerificationAddEthAddress,
-  flatbuffers.MessageBody.VerificationAddEthAddressBody,
+  protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS,
+  'verificationAddEthAddressBody',
   utils.serializeVerificationAddEthAddressBody
 );
 
 export const makeVerificationRemove = buildMakeMessageMethod(
-  flatbuffers.MessageType.VerificationRemove,
-  flatbuffers.MessageBody.VerificationRemoveBody,
+  protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE,
+  'verificationRemoveBody',
   utils.serializeVerificationRemoveBody
 );
 
 export const makeVerificationAddEthAddressData = buildMakeMessageDataMethod(
-  flatbuffers.MessageType.VerificationAddEthAddress,
-  flatbuffers.MessageBody.VerificationAddEthAddressBody,
+  protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS,
+  'verificationAddEthAddressBody',
   utils.serializeVerificationAddEthAddressBody
 );
 
 export const makeVerificationRemoveData = buildMakeMessageDataMethod(
-  flatbuffers.MessageType.VerificationRemove,
-  flatbuffers.MessageBody.VerificationRemoveBody,
+  protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE,
+  'verificationRemoveBody',
   utils.serializeVerificationRemoveBody
 );
 
 /** Signer Methods */
 
 export const makeSignerAdd = buildMakeMessageMethod(
-  flatbuffers.MessageType.SignerAdd,
-  flatbuffers.MessageBody.SignerBody,
+  protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD,
+  'signerBody',
   utils.serializeSignerBody
 );
 
 export const makeSignerRemove = buildMakeMessageMethod(
-  flatbuffers.MessageType.SignerRemove,
-  flatbuffers.MessageBody.SignerBody,
+  protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
+  'signerBody',
   utils.serializeSignerBody
 );
 
 export const makeSignerAddData = buildMakeMessageDataMethod(
-  flatbuffers.MessageType.SignerAdd,
-  flatbuffers.MessageBody.SignerBody,
+  protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD,
+  'signerBody',
   utils.serializeSignerBody
 );
 
 export const makeSignerRemoveData = buildMakeMessageDataMethod(
-  flatbuffers.MessageType.SignerRemove,
-  flatbuffers.MessageBody.SignerBody,
+  protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
+  'signerBody',
   utils.serializeSignerBody
 );
 
 /** User Data Methods */
 
 export const makeUserDataAdd = buildMakeMessageMethod(
-  flatbuffers.MessageType.UserDataAdd,
-  flatbuffers.MessageBody.UserDataBody,
+  protobufs.MessageType.MESSAGE_TYPE_USER_DATA_ADD,
+  'userDataBody',
   utils.serializeUserDataBody
 );
 
 export const makeUserDataAddData = buildMakeMessageDataMethod(
-  flatbuffers.MessageType.UserDataAdd,
-  flatbuffers.MessageBody.UserDataBody,
+  protobufs.MessageType.MESSAGE_TYPE_USER_DATA_ADD,
+  'userDataBody',
   utils.serializeUserDataBody
 );
