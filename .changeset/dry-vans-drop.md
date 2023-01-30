@@ -1,7 +1,7 @@
 ---
 '@farcaster/utils': patch
 '@farcaster/protobufs': patch
-'@farcaster/protohub': patch
+'@farcaster/hub': patch
 ---
 
 feat: add protobufs IdRegistryEvent and SignerStore
