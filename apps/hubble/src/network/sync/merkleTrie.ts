@@ -10,10 +10,10 @@ import { TrieNode, TrieSnapshot } from '~/network/sync/trieNode';
  * @children - The immediate children of this node
  */
 export type NodeMetadata = {
-  prefix: string;
+  prefix: Uint8Array;
   numMessages: number;
   hash: string;
-  children?: Map<string, NodeMetadata>;
+  children?: Map<number, NodeMetadata>;
 };
 
 /**
@@ -41,29 +41,28 @@ class MerkleTrie {
   }
 
   public insert(id: SyncId): boolean {
-    // TODO(aditya): We should insert Uint8Array instead of string
-    return this._root.insert(id.idString());
+    return this._root.insert(id.syncId());
   }
 
   public delete(id: SyncId): boolean {
-    return this._root.delete(id.idString());
+    return this._root.delete(id.syncId());
   }
 
   public exists(id: SyncId): boolean {
     // NOTE: eslint falsely identifies as `fs.exists`.
     // eslint-disable-next-line security/detect-non-literal-fs-filename
-    return this._root.exists(id.idString());
+    return this._root.exists(id.syncId());
   }
 
   // A snapshot captures the state of the trie excluding the nodes
   // specified in the prefix. See TrieSnapshot for more
-  public getSnapshot(prefix: string): TrieSnapshot {
+  public getSnapshot(prefix: Uint8Array): TrieSnapshot {
     return this._root.getSnapshot(prefix);
   }
 
   // Compares excluded hashes of another trie with this trie to determine at which prefix the
   // states differ. Returns the subset of prefix that's common to both tries.
-  public getDivergencePrefix(prefix: string, excludedHashes: string[]): string {
+  public getDivergencePrefix(prefix: Uint8Array, excludedHashes: string[]): Uint8Array {
     const ourExcludedHashes = this.getSnapshot(prefix).excludedHashes;
     for (let i = 0; i < prefix.length; i++) {
       // NOTE: `i` is controlled by for loop and hence not at risk of object injection.
@@ -75,17 +74,18 @@ class MerkleTrie {
     return prefix;
   }
 
-  public getTrieNodeMetadata(prefix: string): NodeMetadata | undefined {
+  public getTrieNodeMetadata(prefix: Uint8Array): NodeMetadata | undefined {
     const node = this._root.getNode(prefix);
     if (node === undefined) {
       return undefined;
     }
     const children = node?.children || new Map();
-    const result = new Map<string, NodeMetadata>();
+    const result = new Map<number, NodeMetadata>();
     for (const [char, child] of children) {
+      const newPrefix = Buffer.concat([prefix, Buffer.from([char])]);
       result.set(char, {
         numMessages: child.items,
-        prefix: prefix + char,
+        prefix: newPrefix,
         hash: child.hash,
       });
     }

@@ -154,6 +154,23 @@ describe('MerkleTrie', () => {
     expect(trie.exists(nonExistingSyncId)).toBeFalsy();
   });
 
+  test('test multiple items with delete', async () => {
+    const trie = new MerkleTrie();
+    const syncIds = await NetworkFactories.SyncId.createList(20);
+
+    // Keep track of start time and memory used
+    syncIds.forEach((syncId) => trie.insert(syncId));
+
+    // Delete half of the items
+    syncIds.slice(0, syncIds.length / 2).forEach((syncId) => trie.delete(syncId));
+
+    // Check that the items are still there
+    syncIds.slice(0, syncIds.length / 2).forEach((syncId) => expect(trie.exists(syncId)).toBeFalsy());
+    syncIds.slice(syncIds.length / 2).forEach((syncId) => {
+      expect(trie.exists(syncId)).toBeTruthy();
+    });
+  });
+
   test('value is always undefined for non-leaf nodes', async () => {
     const trie = new MerkleTrie();
     const syncId = await NetworkFactories.SyncId.create();
@@ -169,7 +186,7 @@ describe('MerkleTrie', () => {
       const trie = new MerkleTrie();
       trie.insert(syncId);
 
-      expect(trie.getTrieNodeMetadata('166518234')).toBeUndefined();
+      expect(trie.getTrieNodeMetadata(Buffer.from('166518234'))).toBeUndefined();
     });
 
     test('returns the root metadata if the prefix is empty', async () => {
@@ -177,24 +194,24 @@ describe('MerkleTrie', () => {
       const trie = new MerkleTrie();
       trie.insert(syncId);
 
-      const nodeMetadata = trie.getTrieNodeMetadata('');
+      const nodeMetadata = trie.getTrieNodeMetadata(new Uint8Array());
       expect(nodeMetadata).toBeDefined();
       expect(nodeMetadata?.numMessages).toEqual(1);
-      expect(nodeMetadata?.prefix).toEqual('');
+      expect(nodeMetadata?.prefix).toEqual(new Uint8Array());
       expect(nodeMetadata?.children?.size).toEqual(1);
-      expect(nodeMetadata?.children?.get('1')).toBeDefined();
+      expect(nodeMetadata?.children?.get(syncId.syncId()[0] as number)).toBeDefined();
     });
 
     test('returns the correct metadata if prefix is present', async () => {
       const trie = await trieWithIds([1665182332, 1665182343]);
-      const nodeMetadata = trie.getTrieNodeMetadata('16651823');
+      const nodeMetadata = trie.getTrieNodeMetadata(Buffer.from('16651823'));
 
       expect(nodeMetadata).toBeDefined();
       expect(nodeMetadata?.numMessages).toEqual(2);
-      expect(nodeMetadata?.prefix).toEqual('16651823');
+      expect(nodeMetadata?.prefix).toEqual(Buffer.from('16651823'));
       expect(nodeMetadata?.children?.size).toEqual(2);
-      expect(nodeMetadata?.children?.get('3')).toBeDefined();
-      expect(nodeMetadata?.children?.get('4')).toBeDefined();
+      expect(nodeMetadata?.children?.get(Buffer.from('3')[0] as number)).toBeDefined();
+      expect(nodeMetadata?.children?.get(Buffer.from('4')[0] as number)).toBeDefined();
     });
   });
 
@@ -202,8 +219,8 @@ describe('MerkleTrie', () => {
     test('returns basic information', async () => {
       const trie = await trieWithIds([1665182332, 1665182343]);
 
-      const snapshot = trie.getSnapshot('1665182343');
-      expect(snapshot.prefix).toEqual('1665182343');
+      const snapshot = trie.getSnapshot(Buffer.from('1665182343'));
+      expect(snapshot.prefix).toEqual(Buffer.from('1665182343'));
       expect(snapshot.numMessages).toEqual(1);
       expect(snapshot.excludedHashes.length).toEqual('1665182343'.length);
     });
@@ -211,22 +228,22 @@ describe('MerkleTrie', () => {
     test('returns early when prefix is only partially present', async () => {
       const trie = await trieWithIds([1665182332, 1665182343]);
 
-      const snapshot = trie.getSnapshot('1677123');
-      expect(snapshot.prefix).toEqual('167');
+      const snapshot = trie.getSnapshot(Buffer.from('1677123'));
+      expect(snapshot.prefix).toEqual(Buffer.from('167'));
       expect(snapshot.numMessages).toEqual(2);
       expect(snapshot.excludedHashes.length).toEqual('167'.length);
     });
 
     test('excluded hashes excludes the prefix char at every level', async () => {
       const trie = await trieWithIds([1665182332, 1665182343, 1665182345, 1665182351]);
-      let snapshot = trie.getSnapshot('1665182351');
-      let node = trie.getTrieNodeMetadata('16651823');
+      let snapshot = trie.getSnapshot(Buffer.from('1665182351'));
+      let node = trie.getTrieNodeMetadata(Buffer.from('16651823'));
       // We expect the excluded hash to be the hash of the 3 and 4 child nodes, and excludes the 5 child node
       const expectedHash = Buffer.from(
         blake3
           .create({ dkLen: 20 })
-          .update(node?.children?.get('3')?.hash || '')
-          .update(node?.children?.get('4')?.hash || '')
+          .update(node?.children?.get(Buffer.from('3')[0] as number)?.hash || '')
+          .update(node?.children?.get(Buffer.from('4')[0] as number)?.hash || '')
           .digest()
       ).toString('hex');
       expect(snapshot.excludedHashes).toEqual([
@@ -242,15 +259,17 @@ describe('MerkleTrie', () => {
         EMPTY_HASH, // 1
       ]);
 
-      snapshot = trie.getSnapshot('1665182343');
-      node = trie.getTrieNodeMetadata('166518234');
-      const expectedLastHash = Buffer.from(blake3(node?.children?.get('5')?.hash || '', { dkLen: 20 })).toString('hex');
-      node = trie.getTrieNodeMetadata('16651823');
+      snapshot = trie.getSnapshot(Buffer.from('1665182343'));
+      node = trie.getTrieNodeMetadata(Buffer.from('166518234'));
+      const expectedLastHash = Buffer.from(
+        blake3(node?.children?.get(Buffer.from('5')[0] as number)?.hash || '', { dkLen: 20 })
+      ).toString('hex');
+      node = trie.getTrieNodeMetadata(Buffer.from('16651823'));
       const expectedPenultimateHash = Buffer.from(
         blake3
           .create({ dkLen: 20 })
-          .update(node?.children?.get('3')?.hash || '')
-          .update(node?.children?.get('5')?.hash || '')
+          .update(node?.children?.get(Buffer.from('3')[0] as number)?.hash || '')
+          .update(node?.children?.get(Buffer.from('5')[0] as number)?.hash || '')
           .digest()
       ).toString('hex');
       expect(snapshot.excludedHashes).toEqual([
@@ -271,22 +290,22 @@ describe('MerkleTrie', () => {
   test('getAllValues returns all values for child nodes', async () => {
     const trie = await trieWithIds([1665182332, 1665182343, 1665182345]);
 
-    let values = trie.root.getNode('16651823')?.getAllValues();
+    let values = trie.root.getNode(Buffer.from('16651823'))?.getAllValues();
     expect(values?.length).toEqual(3);
-    values = trie.root.getNode('166518233')?.getAllValues();
+    values = trie.root.getNode(Buffer.from('166518233'))?.getAllValues();
     expect(values?.length).toEqual(1);
   });
 
   describe('getDivergencePrefix', () => {
     test('returns the prefix with the most common excluded hashes', async () => {
       const trie = await trieWithIds([1665182332, 1665182343, 1665182345]);
-      const prefixToTest = '1665182343';
+      const prefixToTest = Buffer.from('1665182343');
       const oldSnapshot = trie.getSnapshot(prefixToTest);
       trie.insert(await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(1665182353000) } }));
 
       // Since message above was added at 1665182353, the two tries diverged at 16651823 for our prefix
       let divergencePrefix = trie.getDivergencePrefix(prefixToTest, oldSnapshot.excludedHashes);
-      expect(divergencePrefix).toEqual('16651823');
+      expect(divergencePrefix).toEqual(Buffer.from('16651823'));
 
       // divergence prefix should be the full prefix, if snapshots are the same
       const currentSnapshot = trie.getSnapshot(prefixToTest);
@@ -295,10 +314,11 @@ describe('MerkleTrie', () => {
 
       // divergence prefix should empty if excluded hashes are empty
       divergencePrefix = trie.getDivergencePrefix(prefixToTest, []);
-      expect(divergencePrefix).toEqual('');
+      expect(divergencePrefix.length).toEqual(0);
 
       // divergence prefix should be our prefix if provided hashes are longer
-      divergencePrefix = trie.getDivergencePrefix(prefixToTest + '5', [...currentSnapshot.excludedHashes, 'different']);
+      const with5 = Buffer.concat([prefixToTest, Buffer.from('5')]);
+      divergencePrefix = trie.getDivergencePrefix(with5, [...currentSnapshot.excludedHashes, 'different']);
       expect(divergencePrefix).toEqual(prefixToTest);
     });
   });

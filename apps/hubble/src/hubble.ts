@@ -355,7 +355,9 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     }
 
     // First, get the latest state from the peer
-    const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(protobufs.TrieNodePrefix.create({ prefix: '' }));
+    const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(
+      protobufs.TrieNodePrefix.create({ prefix: new Uint8Array() })
+    );
     if (peerStateResult.isErr()) {
       log.warn(`Failed to get peer state, skipping sync`);
       this.emit('syncComplete', false);

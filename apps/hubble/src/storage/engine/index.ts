@@ -153,8 +153,8 @@ class Engine {
       callback(message);
     }
   }
-  async getAllMessagesBySyncIds(syncIds: string[]): HubAsyncResult<protobufs.Message[]> {
-    const hashesBuf = syncIds.map((syncIdHash) => SyncId.pkFromIdString(syncIdHash));
+  async getAllMessagesBySyncIds(syncIds: Uint8Array[]): HubAsyncResult<protobufs.Message[]> {
+    const hashesBuf = syncIds.map((syncIdHash) => SyncId.pkFromSyncId(syncIdHash));
     const messages = await ResultAsync.fromPromise(getManyMessages(this._db, hashesBuf), (e) => e as HubError);
 
     return messages;

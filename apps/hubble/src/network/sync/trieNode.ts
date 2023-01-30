@@ -1,5 +1,6 @@
-import { HubError } from '@farcaster/utils';
+import { bytesCompare, HubError } from '@farcaster/utils';
 import { blake3 } from '@noble/hashes/blake3';
+import { assert } from 'console';
 import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
 
 export const EMPTY_HASH = Buffer.from(blake3('', { dkLen: 20 })).toString('hex');
@@ -13,7 +14,7 @@ export const EMPTY_HASH = Buffer.from(blake3('', { dkLen: 20 })).toString('hex')
  * @numMessages - The total number of messages captured in the snapshot (excludes the prefix nodes)
  */
 export type TrieSnapshot = {
-  prefix: string;
+  prefix: Uint8Array;
   excludedHashes: string[];
   numMessages: number;
 };
@@ -25,8 +26,8 @@ export type TrieSnapshot = {
 class TrieNode {
   private _hash: string;
   private _items: number;
-  private _children: Map<string, TrieNode>;
-  private _key: string | undefined;
+  private _children: Map<number, TrieNode>;
+  private _key: Uint8Array | undefined;
 
   constructor() {
     this._hash = '';
@@ -45,8 +46,12 @@ class TrieNode {
    * Recursively traverses the trie by prefix and inserts the value at the end. Updates the hashes for
    * every node that was traversed.
    */
-  public insert(key: string, current_index = 0): boolean {
-    const char = key.charAt(current_index);
+  public insert(key: Uint8Array, current_index = 0): boolean {
+    assert(current_index < key.length, 'Key length exceeded');
+    if (current_index >= key.length) {
+      throw 'Key length exceeded';
+    }
+    const char = key.at(current_index) as number;
 
     // Do not compact the timestamp portion of the trie, since it's used to compare snapshots
     if (current_index >= TIMESTAMP_LENGTH && this.isLeaf && !this._key) {
@@ -57,7 +62,7 @@ class TrieNode {
     }
 
     if (current_index >= TIMESTAMP_LENGTH && this.isLeaf) {
-      if (this._key == key) {
+      if (bytesCompare(this._key ?? new Uint8Array(), key) === 0) {
         // If the same key exists, do nothing
         return false;
       }
@@ -88,9 +93,9 @@ class TrieNode {
    * Ensures that there are no empty nodes after deletion. This is important to make sure the hashes
    * will match exactly with another trie that never had the value (e.g. in another hub).
    */
-  public delete(key: string, current_index = 0): boolean {
+  public delete(key: Uint8Array, current_index = 0): boolean {
     if (this.isLeaf) {
-      if (this._key === key) {
+      if (bytesCompare(this._key ?? new Uint8Array(), key) === 0) {
         this._items -= 1;
         this._setKeyValue(undefined);
         return true;
@@ -99,7 +104,11 @@ class TrieNode {
       }
     }
 
-    const char = key.charAt(current_index);
+    assert(current_index < key.length, 'Key length exceeded2');
+    if (current_index >= key.length) {
+      throw 'Key length exceeded2';
+    }
+    const char = key.at(current_index) as number;
     if (!this._children.has(char)) {
       return false;
     }
@@ -134,12 +143,16 @@ class TrieNode {
    * @param key - The key to look for
    * @param current_index - The index of the current character in the key (only used internally)
    */
-  public exists(key: string, current_index = 0): boolean {
-    if (this.isLeaf && this._key === key) {
+  public exists(key: Uint8Array, current_index = 0): boolean {
+    if (this.isLeaf && bytesCompare(this._key ?? new Uint8Array(), key) === 0) {
       return true;
     }
 
-    const char = key.charAt(current_index);
+    assert(current_index < key.length, 'Key length exceeded3');
+    if (current_index >= key.length) {
+      throw 'Key length exceeded3';
+    }
+    const char = key.at(current_index) as number;
     if (!this._children.has(char)) {
       return false;
     }
@@ -149,9 +162,10 @@ class TrieNode {
     return this._children.get(char)?.exists(key, current_index + 1) || false;
   }
 
-  // Generates a snapshot for the current node and below. current_index is the index of the prefix the method is operating on
-  public getSnapshot(prefix: string, current_index = 0): TrieSnapshot {
-    const char = prefix.charAt(current_index);
+  // Generates a snapshot for the current node and below. current_index is the index of the prefix the method
+  // is operating on
+  public getSnapshot(prefix: Uint8Array, current_index = 0): TrieSnapshot {
+    const char = prefix.at(current_index) as number;
     if (current_index === prefix.length - 1) {
       const excludedHash = this._excludedHash(char);
       return {
@@ -183,33 +197,33 @@ class TrieNode {
   }
 
   // Only available on leaf nodes
-  public get value(): string | undefined {
+  public get value(): Uint8Array | undefined {
     if (this.isLeaf) {
       return this._key;
     }
     return undefined;
   }
 
-  public getNode(prefix: string): TrieNode | undefined {
+  public getNode(prefix: Uint8Array): TrieNode | undefined {
     if (prefix.length === 0) {
       return this;
     }
-    const char = prefix.charAt(0);
+    const char = prefix.at(0) as number;
     if (!this._children.has(char)) {
       return undefined;
     }
     return this._children.get(char)?.getNode(prefix.slice(1));
   }
 
-  public get children(): IterableIterator<[string, TrieNode]> {
+  public get children(): IterableIterator<[number, TrieNode]> {
     return this._children.entries();
   }
 
-  public getAllValues(): string[] {
+  public getAllValues(): Uint8Array[] {
     if (this.isLeaf) {
       return this._key ? [this._key] : [];
     }
-    const values: string[] = [];
+    const values: Uint8Array[] = [];
     this._children.forEach((child) => {
       values.push(...child.getAllValues());
     });
@@ -218,7 +232,7 @@ class TrieNode {
 
   /* Private methods */
 
-  private _excludedHash(char: string): { items: number; hash: string } {
+  private _excludedHash(char: number): { items: number; hash: string } {
     // TODO: Cache this for performance
     const hash = blake3.create({ dkLen: 20 });
     let excludedItems = 0;
@@ -231,14 +245,14 @@ class TrieNode {
     return { hash: Buffer.from(hash.digest()).toString('hex'), items: excludedItems };
   }
 
-  private _addChild(char: string) {
+  private _addChild(char: number) {
     this._children.set(char, new TrieNode());
     // The hash requires the children to be sorted, and sorting on insert/update is cheaper than
     // sorting each time we need to update the hash
     this._children = new Map([...this._children.entries()].sort());
   }
 
-  private _setKeyValue(key: string | undefined) {
+  private _setKeyValue(key: Uint8Array | undefined) {
     this._key = key;
     this._updateHash();
   }
@@ -250,7 +264,10 @@ class TrieNode {
       // This should never happen, check is here for type safety
       throw new HubError('bad_request', 'Cannot split a leaf node without a key and value');
     }
-    const newChildChar = this._key.charAt(current_index);
+
+    assert(current_index < this._key.length, 'Cannot split a leaf node at an index greater than its key length');
+
+    const newChildChar = this._key.at(current_index) as number;
     this._addChild(newChildChar);
     this._children.get(newChildChar)?.insert(this._key, current_index + 1);
     this._setKeyValue(undefined);

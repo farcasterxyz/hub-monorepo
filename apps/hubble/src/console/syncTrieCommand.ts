@@ -20,7 +20,7 @@ export class SyncTrieCommand implements ConsoleCommandInterface {
   }
 
   rootHash = async () => {
-    const result = await this.rpcClient.getSyncSnapshotByPrefix(TrieNodePrefix.create({ prefix: '' }));
+    const result = await this.rpcClient.getSyncSnapshotByPrefix(TrieNodePrefix.create({ prefix: new Uint8Array() }));
     return result.match(
       (snapshot) => {
         return snapshot.rootHash;
@@ -31,8 +31,10 @@ export class SyncTrieCommand implements ConsoleCommandInterface {
     );
   };
 
-  snapshot = async (prefix?: string) => {
-    const result = await this.rpcClient.getSyncSnapshotByPrefix(TrieNodePrefix.create({ prefix: prefix ?? '' }));
+  snapshot = async (prefix?: Uint8Array) => {
+    const result = await this.rpcClient.getSyncSnapshotByPrefix(
+      TrieNodePrefix.create({ prefix: prefix ?? new Uint8Array() })
+    );
     return result.match<any>(
       (snapshot) => {
         return snapshot;
@@ -43,8 +45,10 @@ export class SyncTrieCommand implements ConsoleCommandInterface {
     );
   };
 
-  metadata = async (prefix?: string) => {
-    const result = await this.rpcClient.getSyncMetadataByPrefix(TrieNodePrefix.create({ prefix: prefix ?? '' }));
+  metadata = async (prefix?: Uint8Array) => {
+    const result = await this.rpcClient.getSyncMetadataByPrefix(
+      TrieNodePrefix.create({ prefix: prefix ?? new Uint8Array() })
+    );
     return result.match<any>(
       (metadata) => {
         return metadata;
@@ -55,8 +59,10 @@ export class SyncTrieCommand implements ConsoleCommandInterface {
     );
   };
 
-  syncIds = async (prefix?: string) => {
-    const result = await this.rpcClient.getAllSyncIdsByPrefix(TrieNodePrefix.create({ prefix: prefix ?? '' }));
+  syncIds = async (prefix?: Uint8Array) => {
+    const result = await this.rpcClient.getAllSyncIdsByPrefix(
+      TrieNodePrefix.create({ prefix: prefix ?? new Uint8Array() })
+    );
     return result.match<any>(
       (syncIds) => {
         return syncIds;
