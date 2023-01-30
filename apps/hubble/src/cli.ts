@@ -6,7 +6,7 @@ import { existsSync } from 'fs';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { dirname, resolve } from 'path';
 import { exit } from 'process';
-import { APP_VERSION, Hub, HubOptions } from '~/hub';
+import { APP_VERSION, Hub, HubOptions } from '~/hubble';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 import { DEFAULT_RPC_CONSOLE, parseServerAddress, startConsole } from './console/console';

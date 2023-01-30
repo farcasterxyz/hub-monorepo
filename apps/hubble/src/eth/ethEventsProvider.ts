@@ -4,7 +4,7 @@ import { BigNumber, Contract, Event, providers } from 'ethers';
 import { err, ok, ResultAsync } from 'neverthrow';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
 import { bytes32ToBytes } from '~/eth/utils';
-import { HubInterface } from '~/hub';
+import { HubInterface } from '~/hubble';
 import { logger } from '~/utils/logger';
 
 const log = logger.child({

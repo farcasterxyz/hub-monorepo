@@ -26,7 +26,7 @@ import {
   VerificationAddEthAddressMessage,
 } from '@farcaster/protobufs';
 import { HubError } from '@farcaster/utils';
-import { APP_NICKNAME, APP_VERSION, HubInterface } from '~/hub';
+import { APP_NICKNAME, APP_VERSION, HubInterface } from '~/hubble';
 import { NodeMetadata } from '~/network/sync/merkleTrie';
 import SyncEngine from '~/network/sync/syncEngine';
 import Engine from '~/storage/engine';
