@@ -22,6 +22,7 @@ import { GossipNode } from '~/network/p2p/gossipNode';
 import { NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import SyncEngine from '~/network/sync/syncEngine';
 import Server from '~/rpc/server';
+import { getHubState, putHubState } from '~/storage/db/hubState';
 import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
 import { PruneMessagesJobScheduler } from '~/storage/jobs/pruneMessagesJob';
@@ -252,15 +253,11 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   }
 
   async getHubState(): HubAsyncResult<HubState> {
-    // return ResultAsync.fromPromise(HubState.get(this.rocksDB), (e) => e as HubError);
-    return err(new HubError('unavailable', 'not implemented'));
+    return ResultAsync.fromPromise(getHubState(this.rocksDB), (e) => e as HubError);
   }
 
-  async putHubState(_hubState: HubState): HubAsyncResult<void> {
-    // const txn = this.rocksDB.transaction();
-    // HubStateModel.putTransaction(txn, hubState);
-    // return await ResultAsync.fromPromise(this.rocksDB.commit(txn), (e) => e as HubError);
-    return err(new HubError('unavailable', 'not implemented'));
+  async putHubState(hubState: HubState): HubAsyncResult<void> {
+    return await ResultAsync.fromPromise(putHubState(this.rocksDB, hubState), (e) => e as HubError);
   }
 
   async connectAddress(address: Multiaddr): HubAsyncResult<void> {

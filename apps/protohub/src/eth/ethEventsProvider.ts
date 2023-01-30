@@ -174,13 +174,13 @@ export class EthEventsProvider {
       toBlock
     );
 
-    // Sync old Name events
+    // Sync old Name Transfer events
     await this.syncHistoricalNameEvents(
       protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER,
       lastSyncedBlock,
       toBlock
     );
-    // await this.syncHistoricalNameEvents(flatbuffers.NameRegistryEventType.NameRegistryRenew, lastSyncedBlock, toBlock);
+    // TODO: sync old Name Renew events
 
     this._isHistoricalSyncDone = true;
   }
@@ -269,7 +269,7 @@ export class EthEventsProvider {
 
         if (idEvents) {
           for (const idEvent of idEvents) {
-            log.info(idEvent);
+            log.info(protobufs.IdRegistryEvent.toJSON(idEvent));
             await this._hub.submitIdRegistryEvent(idEvent, 'eth-provider');
           }
         }
@@ -279,7 +279,7 @@ export class EthEventsProvider {
 
         if (nameEvents) {
           for (const nameEvent of nameEvents) {
-            log.info(nameEvent);
+            log.info(protobufs.NameRegistryEvent.toJSON(nameEvent));
             await this._hub.submitNameRegistryEvent(nameEvent, 'eth-provider');
           }
         }
@@ -287,13 +287,10 @@ export class EthEventsProvider {
     }
 
     // Update the last synced block if all the historical events have been synced
-    // if (this._isHistoricalSyncDone) {
-    //   const builder = new Builder(1);
-    //   const hubStateT = new flatbuffers.HubStateT(BigInt(blockNumber));
-    //   builder.finish(hubStateT.pack(builder));
-    //   const hubState = flatbuffers.HubState.getRootAsHubState(new ByteBuffer(builder.asUint8Array()));
-    //   await this._hub.putHubState(new HubStateModel(hubState));
-    // }
+    if (this._isHistoricalSyncDone) {
+      const hubState = protobufs.HubState.create({ lastEthBlock: blockNumber });
+      await this._hub.putHubState(hubState);
+    }
 
     this._lastBlockNumber = blockNumber;
   }
