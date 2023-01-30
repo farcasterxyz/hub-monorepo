@@ -14,7 +14,7 @@ WORKDIR /home/node/app
 # Run turbo prune to create a pruned version of monorepo
 RUN yarn global add turbo
 COPY --chown=node:node . .
-RUN /home/node/.yarn/bin/turbo prune --scope=@farcaster/hub --docker
+RUN /home/node/.yarn/bin/turbo prune --scope=@farcaster/hubble --docker
 
 ###############################################################################
 ############## Stage 2: Build the code using a full node image ################

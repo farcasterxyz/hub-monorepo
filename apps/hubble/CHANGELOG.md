@@ -1,4 +1,4 @@
-# @farcaster/hub
+# @farcaster/hubble
 
 ## 1.0.3
 
