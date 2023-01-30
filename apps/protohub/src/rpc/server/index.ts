@@ -318,7 +318,7 @@ export default class Server {
       getReactionsByFid: async (call, callback) => {
         const request = call.request;
 
-        const reactionsResult = await this.engine?.getReactionsByFid(request.fid);
+        const reactionsResult = await this.engine?.getReactionsByFid(request.fid, request.reactionType);
         reactionsResult?.match(
           (reactions: ReactionAddMessage[]) => {
             callback(null, MessagesResponse.create({ messages: reactions }));

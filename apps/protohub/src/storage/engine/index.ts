@@ -257,10 +257,25 @@ class Engine {
     type: protobufs.ReactionType,
     cast: protobufs.CastId
   ): HubAsyncResult<protobufs.ReactionAddMessage> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    const validatedCastId = validations.validateCastId(cast);
+    if (validatedCastId.isErr()) {
+      return err(validatedCastId.error);
+    }
+
     return ResultAsync.fromPromise(this._reactionStore.getReactionAdd(fid, type, cast), (e) => e as HubError);
   }
 
   async getReactionsByFid(fid: number, type?: protobufs.ReactionType): HubAsyncResult<protobufs.ReactionAddMessage[]> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
     return ResultAsync.fromPromise(this._reactionStore.getReactionAddsByFid(fid, type), (e) => e as HubError);
   }
 
@@ -268,12 +283,22 @@ class Engine {
     castId: protobufs.CastId,
     type?: protobufs.ReactionType
   ): HubAsyncResult<protobufs.ReactionAddMessage[]> {
+    const validatedCastId = validations.validateCastId(castId);
+    if (validatedCastId.isErr()) {
+      return err(validatedCastId.error);
+    }
+
     return ResultAsync.fromPromise(this._reactionStore.getReactionsByTargetCast(castId, type), (e) => e as HubError);
   }
 
   async getAllReactionMessagesByFid(
     fid: number
   ): HubAsyncResult<(protobufs.ReactionAddMessage | protobufs.ReactionRemoveMessage)[]> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
     const adds = await ResultAsync.fromPromise(this._reactionStore.getReactionAddsByFid(fid), (e) => e as HubError);
     if (adds.isErr()) {
       return err(adds.error);
