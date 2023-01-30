@@ -111,7 +111,7 @@ class SyncEngine {
     }
   }
 
-  public async fetchAndMergeMessages(syncIds: string[], rpcClient: HubRpcClient): Promise<boolean> {
+  public async fetchAndMergeMessages(syncIds: Uint8Array[], rpcClient: HubRpcClient): Promise<boolean> {
     if (syncIds.length === 0) {
       return false;
     }
@@ -166,8 +166,8 @@ class SyncEngine {
     theirNode: NodeMetadata,
     ourNode: NodeMetadata | undefined,
     rpcClient: HubRpcClient
-  ): Promise<string[]> {
-    const missingHashes: string[] = [];
+  ): Promise<Uint8Array[]> {
+    const missingHashes: Uint8Array[] = [];
     // If the node has fewer than HASHES_PER_FETCH, just fetch them all in go, otherwise,
     // iterate through the node's children and fetch them in batches.
     if (theirNode.numMessages <= HASHES_PER_FETCH) {
@@ -193,11 +193,11 @@ class SyncEngine {
     return missingHashes;
   }
 
-  async fetchMissingHashesByPrefix(prefix: string, rpcClient: HubRpcClient): Promise<string[]> {
+  async fetchMissingHashesByPrefix(prefix: Uint8Array, rpcClient: HubRpcClient): Promise<Uint8Array[]> {
     const ourNode = this._trie.getTrieNodeMetadata(prefix);
     const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(protobufs.TrieNodePrefix.create({ prefix }));
 
-    const missingHashes: string[] = [];
+    const missingHashes: Uint8Array[] = [];
     await theirNodeResult.match(
       async (theirNode) => {
         missingHashes.push(
@@ -222,11 +222,11 @@ class SyncEngine {
     this._trie.delete(new SyncId(message));
   }
 
-  public getTrieNodeMetadata(prefix: string): NodeMetadata | undefined {
+  public getTrieNodeMetadata(prefix: Uint8Array): NodeMetadata | undefined {
     return this._trie.getTrieNodeMetadata(prefix);
   }
 
-  public getAllSyncIdsByPrefix(prefix: string): string[] {
+  public getAllSyncIdsByPrefix(prefix: Uint8Array): Uint8Array[] {
     return this._trie.root.getNode(prefix)?.getAllValues() ?? [];
   }
 
@@ -234,8 +234,8 @@ class SyncEngine {
     return this._trie;
   }
 
-  public getSnapshotByPrefix(prefix?: string): HubResult<TrieSnapshot> {
-    if (!prefix || prefix === '') {
+  public getSnapshotByPrefix(prefix?: Uint8Array): HubResult<TrieSnapshot> {
+    if (!prefix || prefix.length === 0) {
       return this.snapshot;
     } else {
       return ok(this._trie.getSnapshot(prefix));
@@ -246,7 +246,7 @@ class SyncEngine {
     return this.snapshotTimestamp.map((snapshotTimestamp) => {
       // Ignore the least significant digit when fetching the snapshot timestamp because
       // second resolution is too fine grained, and fall outside sync threshold anyway
-      return this._trie.getSnapshot(timestampToPaddedTimestampPrefix(snapshotTimestamp / 10).toString());
+      return this._trie.getSnapshot(Buffer.from(timestampToPaddedTimestampPrefix(snapshotTimestamp / 10)));
     });
   }
 
@@ -297,19 +297,21 @@ class SyncEngine {
 }
 
 const fromNodeMetadataResponse = (response: protobufs.TrieNodeMetadataResponse): NodeMetadata => {
-  const children = new Map<string, NodeMetadata>();
+  const children = new Map<number, NodeMetadata>();
   for (let i = 0; i < response.children.length; i++) {
     const child = response.children[i];
 
-    const prefix = child?.prefix ?? '';
-    // Char is the last char of prefix
-    const char = prefix[prefix.length - 1] ?? '';
+    if (child && child.prefix.length > 0) {
+      const prefix = child.prefix;
+      // Char is the last char of prefix
+      const char = prefix[prefix.length - 1] as number;
 
-    children.set(char, {
-      numMessages: Number(child?.numMessages),
-      prefix,
-      hash: child?.hash ?? '',
-    });
+      children.set(char, {
+        numMessages: Number(child?.numMessages),
+        prefix,
+        hash: child?.hash ?? '',
+      });
+    }
   }
 
   return {

@@ -186,7 +186,7 @@ describe('SyncEngine', () => {
 
       // Return an empty child map so sync will finish with a noop
       const emptyMetadata = protobufs.TrieNodeMetadataResponse.create({
-        prefix: '',
+        prefix: new Uint8Array(),
         numMessages: 1000,
         hash: '',
         children: [],

@@ -46,15 +46,14 @@ const SyncIdFactory = Factory.define<undefined, { date: Date; hash: string; fid:
   ({ onCreate, transientParams }) => {
     onCreate(async () => {
       const { date, hash, fid } = transientParams;
-      const hashBytes = hexStringToBytes(hash || faker.datatype.hexadecimal({ length: HASH_LENGTH }))._unsafeUnwrap();
-      const ethSigner = Factories.Eip712Signer.build();
-      const signerMessage = await Factories.SignerAddMessage.create(
-        {
-          hash: hashBytes,
-          data: { fid: fid || Factories.Fid.build(), timestamp: (date || faker.date.recent()).getTime() / 1000 },
-        },
-        { transient: { signer: ethSigner } }
-      );
+      const hashBytes = hexStringToBytes(
+        hash || faker.datatype.hexadecimal({ length: HASH_LENGTH * 2 })
+      )._unsafeUnwrap();
+
+      const signerMessage = await Factories.SignerAddMessage.create({
+        hash: hashBytes,
+        data: { fid: fid || Factories.Fid.build(), timestamp: (date || faker.date.recent()).getTime() / 1000 },
+      });
 
       return new SyncId(signerMessage);
     });

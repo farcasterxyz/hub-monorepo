@@ -15,25 +15,25 @@ message HubInfoResponse {
 }
 
 message TrieNodeMetadataResponse {
-  string prefix = 1;
-  uint64 num_messages = 2;
-  string hash = 3;
-  repeated TrieNodeMetadataResponse children = 4;
+    bytes prefix = 1;
+    uint64 num_messages = 2;
+    string hash = 3;
+    repeated TrieNodeMetadataResponse children = 4;
 }
 
 message TrieNodeSnapshotResponse {
-  string prefix = 1;
-  repeated string excluded_hashes = 2;
-  uint64 num_messages = 3;
-  string root_hash = 4;
+    bytes prefix = 1;
+    repeated string excluded_hashes = 2;
+    uint64 num_messages = 3;
+    string root_hash = 4;
 }
 
 message TrieNodePrefix {
-  string prefix = 1;
+    bytes prefix = 1;
 }
 
 message SyncIds {
-  repeated string sync_ids = 1;
+    repeated bytes sync_ids = 1;
 }
 
 message FidRequest {

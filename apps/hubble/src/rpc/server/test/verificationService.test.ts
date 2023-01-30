@@ -111,7 +111,7 @@ describe('getVerificationsByFid', () => {
     expect(verifications._unsafeUnwrap().messages.map((m) => protobufs.Message.toJSON(m))).toEqual(
       [verificationAdd].map((m) => protobufs.Message.toJSON(m))
     );
-  }, 1000000);
+  });
 
   test('returns empty array without messages', async () => {
     const verifications = await client.getVerificationsByFid(protobufs.FidRequest.create({ fid }));

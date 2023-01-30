@@ -2,7 +2,7 @@ import * as protobufs from '@farcaster/protobufs';
 import { makeUserKey, typeToSetPostfix } from '~/storage/db/message';
 
 const TIMESTAMP_LENGTH = 10; // 10 bytes for timestamp in decimal
-const HASH_LENGTH = 160; // We're using 20 byte blake2b hashes
+const HASH_LENGTH = 20; // We're using 20 byte blake2b hashes
 
 /**
  * SyncId allows for a stable, time ordered lexicographic sorting of messages across hubs
@@ -11,32 +11,33 @@ const HASH_LENGTH = 160; // We're using 20 byte blake2b hashes
  */
 class SyncId {
   private readonly _fid: number;
-  private readonly _tsHash: Uint8Array;
+  private readonly _hash: Uint8Array;
   private readonly _timestamp: number;
   private readonly _type: number;
 
   constructor(message: protobufs.Message) {
     this._fid = message.data?.fid || 0;
-    this._tsHash = message.hash;
+    this._hash = message.hash;
     this._timestamp = message.data?.timestamp || 0;
     this._type = message.data?.type || 0;
   }
 
-  public idString(): string {
+  public syncId(): Uint8Array {
     // For our MerkleTrie, seconds is a good enough resolution
     // We also want to normalize the length to 10 characters, so that the MerkleTrie
     // will always have the same depth for any timestamp (even 0).
     const timestampString = timestampToPaddedTimestampPrefix(this._timestamp);
 
-    const buf = makeMessagePrimaryKey(this._fid, this._type, this._tsHash);
-    return timestampString + buf.toString('hex');
+    const buf = makeMessagePrimaryKey(this._fid, this._type, this._hash);
+    // We prepend the timestamp to the hash so that the MerkleTrie is sorted by timestamp
+    return Buffer.concat([Buffer.from(timestampString), buf]);
   }
 
-  static pkFromIdString(idString: string): Buffer {
+  static pkFromSyncId(syncId: Uint8Array): Buffer {
     // The first 10 bytes are the timestamp, so we skip them
-    const pk = idString.slice(TIMESTAMP_LENGTH);
+    const pk = syncId.slice(TIMESTAMP_LENGTH);
 
-    return Buffer.from(pk, 'hex');
+    return Buffer.from(pk);
   }
 }
 
