@@ -320,16 +320,36 @@ class Engine {
   /* -------------------------------------------------------------------------- */
 
   async getVerification(fid: number, address: Uint8Array): HubAsyncResult<protobufs.VerificationAddEthAddressMessage> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    const validatedAddress = validations.validateEthAddress(address);
+    if (validatedAddress.isErr()) {
+      return err(validatedAddress.error);
+    }
+
     return ResultAsync.fromPromise(this._verificationStore.getVerificationAdd(fid, address), (e) => e as HubError);
   }
 
   async getVerificationsByFid(fid: number): HubAsyncResult<protobufs.VerificationAddEthAddressMessage[]> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
     return ResultAsync.fromPromise(this._verificationStore.getVerificationAddsByFid(fid), (e) => e as HubError);
   }
 
   async getAllVerificationMessagesByFid(
     fid: number
   ): HubAsyncResult<(protobufs.VerificationAddEthAddressMessage | protobufs.VerificationRemoveMessage)[]> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
     const adds = await ResultAsync.fromPromise(
       this._verificationStore.getVerificationAddsByFid(fid),
       (e) => e as HubError
