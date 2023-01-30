@@ -1,9 +1,0 @@
-// IDL file for Farcaster Hub's state
-
-namespace Farcaster;
-
-table HubState {
-    last_eth_block: uint64;
-}
-
-root_type HubState;

@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import * as protobufs from '@farcaster/protobufs';
-import { Factories, hexStringToBytes } from '@farcaster/protoutils';
+import { Factories, hexStringToBytes } from '@farcaster/utils';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { Factory } from 'fishery';

@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesDecrement, bytesIncrement, Factories, HubError } from '@farcaster/protoutils';
+import { bytesDecrement, bytesIncrement, Factories, HubError } from '@farcaster/utils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { getMessage, makeTsHash } from '~/storage/db/message';
 import { UserPostfix } from '~/storage/db/types';

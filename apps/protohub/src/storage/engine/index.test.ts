@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesToUtf8String, Factories, HubError } from '@farcaster/protoutils';
+import { bytesToUtf8String, Factories, HubError } from '@farcaster/utils';
 import { err, ok } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';

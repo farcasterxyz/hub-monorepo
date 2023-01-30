@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesIncrement, HubAsyncResult, HubError, HubResult, validations } from '@farcaster/protoutils';
+import { bytesIncrement, HubAsyncResult, HubError, HubResult, validations } from '@farcaster/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { err, ok, ResultAsync } from 'neverthrow';
 import cron from 'node-cron';

@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { HubAsyncResult, HubError, HubResult } from '@farcaster/protoutils';
+import { HubAsyncResult, HubError, HubResult } from '@farcaster/utils';
 import { err, ok, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
 

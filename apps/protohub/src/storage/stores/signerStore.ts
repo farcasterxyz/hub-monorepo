@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, HubAsyncResult, HubError } from '@farcaster/protoutils';
+import { bytesCompare, HubAsyncResult, HubError } from '@farcaster/utils';
 import { err, ok, ResultAsync } from 'neverthrow';
 import {
   deleteMessageTransaction,

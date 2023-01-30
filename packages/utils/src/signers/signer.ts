@@ -1,4 +1,4 @@
-import { SignatureScheme } from '@farcaster/flatbuffers';
+import { SignatureScheme } from '@farcaster/protobufs';
 import { HubAsyncResult } from '../errors';
 
 export interface Signer {

@@ -2,17 +2,17 @@ import {
   Signer as EthersAbstractSigner,
   TypedDataSigner as EthersTypedDataSigner,
 } from '@ethersproject/abstract-signer';
-import { SignatureScheme } from '@farcaster/flatbuffers';
+import { SignatureScheme } from '@farcaster/protobufs';
 import { hexStringToBytes } from '../bytes';
 import { eip712 } from '../crypto';
-import { HubAsyncResult } from '../errors';
+import { HubAsyncResult, HubResult } from '../errors';
 import { VerificationEthAddressClaim } from '../verifications';
 import { Signer } from './signer';
 
 export type TypedDataSigner = EthersAbstractSigner & EthersTypedDataSigner;
 
 export class Eip712Signer implements Signer {
-  public readonly scheme = SignatureScheme.Eip712;
+  public readonly scheme = SignatureScheme.SIGNATURE_SCHEME_EIP712;
 
   /** 20-byte wallet address */
   public readonly signerKey: Uint8Array;
@@ -20,7 +20,7 @@ export class Eip712Signer implements Signer {
 
   private readonly _typedDataSigner: TypedDataSigner;
 
-  public static fromSigner(typedDataSigner: TypedDataSigner, address: string) {
+  public static fromSigner(typedDataSigner: TypedDataSigner, address: string): HubResult<Eip712Signer> {
     const signerKeyHex = address.toLowerCase();
     return hexStringToBytes(signerKeyHex).map((signerKey) => new this(typedDataSigner, address, signerKey));
   }

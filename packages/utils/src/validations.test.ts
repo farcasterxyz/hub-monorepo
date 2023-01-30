@@ -1,8 +1,7 @@
 import { faker } from '@faker-js/faker';
-import * as flatbuffers from '@farcaster/flatbuffers';
-import { Builder, ByteBuffer } from 'flatbuffers';
+import * as protobufs from '@farcaster/protobufs';
 import { err, ok } from 'neverthrow';
-import { bytesToUtf8String, hexStringToBytes } from './bytes';
+import { bytesToUtf8String } from './bytes';
 import { HubError, HubResult } from './errors';
 import { Factories } from './factories';
 import { getFarcasterTime } from './time';
@@ -14,32 +13,23 @@ const signer = Factories.Ed25519Signer.build();
 
 describe('validateFid', () => {
   test('succeeds', () => {
-    const fid = Factories.FID.build();
-    expect(validations.validateFid(fid)._unsafeUnwrap()).toEqual(fid);
+    const fid = Factories.Fid.build();
+    expect(validations.validateFid(fid)).toEqual(ok(fid));
   });
 
-  test('fails with empty array', () => {
-    expect(validations.validateFid(new Uint8Array())._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'fid is missing')
-    );
+  test('fails with 0', () => {
+    expect(validations.validateFid(0)).toEqual(err(new HubError('bad_request.validation_failure', 'fid is missing')));
   });
 
-  test('fails when greater than 32 bytes', () => {
-    const fid = Factories.Bytes.build({}, { transient: { length: 33 } });
-    expect(validations.validateFid(fid)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'fid > 32 bytes')
+  test('fails with negative number', () => {
+    expect(validations.validateFid(-1)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'fid must be positive'))
     );
   });
 
   test('fails when undefined', () => {
-    expect(validations.validateFid(undefined)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'fid is missing')
-    );
-  });
-
-  test('fails with padded little endian byte array', () => {
-    expect(validations.validateFid(new Uint8Array([1, 0]))._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'fid is padded')
+    expect(validations.validateFid(undefined)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'fid is missing'))
     );
   });
 });
@@ -83,63 +73,30 @@ describe('validateFname', () => {
   });
 });
 
-describe('validateTsHash', () => {
-  test('succeeds', () => {
-    const tsHash = Factories.TsHash.build();
-    expect(validations.validateTsHash(tsHash)._unsafeUnwrap()).toEqual(tsHash);
-  });
-
-  test('fails with empty array', () => {
-    expect(validations.validateTsHash(new Uint8Array())._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'tsHash is missing')
-    );
-  });
-
-  test('fails when greater than 24 bytes', () => {
-    const tsHash = Factories.Bytes.build({}, { transient: { length: 25 } });
-    expect(validations.validateTsHash(tsHash)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', `tsHash must be 24 bytes, was ${tsHash.byteLength} bytes`)
-    );
-  });
-
-  test('fails when less than 24 bytes', () => {
-    const tsHash = Factories.Bytes.build({}, { transient: { length: 20 } });
-    expect(validations.validateTsHash(tsHash)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', `tsHash must be 24 bytes, was ${tsHash.byteLength} bytes`)
-    );
-  });
-
-  test('fails when undefined', () => {
-    expect(validations.validateTsHash(undefined)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'tsHash is missing')
-    );
-  });
-});
-
 describe('validateCastId', () => {
   test('succeeds', async () => {
-    const castId = await Factories.CastId.create();
-    expect(validations.validateCastId(castId)._unsafeUnwrap()).toEqual(castId);
+    const castId = Factories.CastId.build();
+    expect(validations.validateCastId(castId)).toEqual(ok(castId));
   });
 
   test('fails when fid is invalid', async () => {
-    const castId = await Factories.CastId.create({ fid: [] });
-    expect(validations.validateCastId(castId)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'fid is missing')
+    const castId = await Factories.CastId.build({ fid: 0 });
+    expect(validations.validateCastId(castId)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'fid is missing'))
     );
   });
 
-  test('fails when tsHash is invalid', async () => {
-    const castId = await Factories.CastId.create({ tsHash: [] });
-    expect(validations.validateCastId(castId)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'tsHash is missing')
+  test('fails when hash is invalid', async () => {
+    const castId = await Factories.CastId.build({ hash: new Uint8Array() });
+    expect(validations.validateCastId(castId)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'hash is missing'))
     );
   });
 
   test('fails when both fid and tsHash are invalid', async () => {
-    const castId = await Factories.CastId.create({ fid: [], tsHash: [] });
-    expect(validations.validateCastId(castId)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'fid is missing, tsHash is missing')
+    const castId = await Factories.CastId.build({ fid: undefined, hash: undefined });
+    expect(validations.validateCastId(castId)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'fid is missing, hash is missing'))
     );
   });
 });
@@ -148,50 +105,47 @@ describe('validateEthAddress', () => {
   const address = ethSigner.signerKey;
 
   test('succeeds', () => {
-    expect(validations.validateEthAddress(address)._unsafeUnwrap()).toEqual(address);
+    expect(validations.validateEthAddress(address)).toEqual(ok(address));
   });
 
   test('fails with longer address', () => {
     const longAddress = Factories.Bytes.build({}, { transient: { length: 21 } });
-    expect(validations.validateEthAddress(longAddress)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'address > 20 bytes')
+    expect(validations.validateEthAddress(longAddress)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'address must be 20 bytes'))
     );
   });
 
-  test('succeeds with shorter address', () => {
+  test('fails with shorter address', () => {
     const shortAddress = address.subarray(0, -1);
-    expect(validations.validateEthAddress(shortAddress)._unsafeUnwrap()).toEqual(shortAddress);
+    expect(validations.validateEthAddress(shortAddress)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'address must be 20 bytes'))
+    );
   });
 });
 
 describe('validateEthBlockHash', () => {
   test('succeeds', () => {
     const blockHash = Factories.Bytes.build({}, { transient: { length: 32 } });
-    expect(validations.validateEthBlockHash(blockHash)._unsafeUnwrap()).toEqual(blockHash);
+    expect(validations.validateEthBlockHash(blockHash)).toEqual(ok(blockHash));
   });
 
   test('fails when greater than 32 bytes', () => {
     const blockHash = Factories.Bytes.build({}, { transient: { length: 33 } });
-    expect(validations.validateEthBlockHash(blockHash)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'blockHash > 32 bytes')
+    expect(validations.validateEthBlockHash(blockHash)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'blockHash must be 32 bytes'))
     );
   });
 
-  test('succeeds when less than 32 bytes', () => {
+  test('fails when less than 32 bytes', () => {
     const blockHash = Factories.Bytes.build({}, { transient: { length: 31 } });
-    expect(validations.validateEthBlockHash(blockHash)._unsafeUnwrap()).toEqual(blockHash);
-  });
-
-  test('fails when padded', () => {
-    const blockHash = Factories.Bytes.build({}, { transient: { length: 31 } });
-    expect(validations.validateEthBlockHash(new Uint8Array([...blockHash, 0]))._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'blockHash is padded')
+    expect(validations.validateEthBlockHash(blockHash)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'blockHash must be 32 bytes'))
     );
   });
 
   test('fails when undefined', () => {
-    expect(validations.validateEthBlockHash(undefined)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'blockHash is missing')
+    expect(validations.validateEthBlockHash(undefined)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'blockHash is missing'))
     );
   });
 });
@@ -200,30 +154,32 @@ describe('validateEd25519PublicKey', () => {
   const publicKey = signer.signerKey;
 
   test('succeeds', () => {
-    expect(validations.validateEd25519PublicKey(publicKey)._unsafeUnwrap()).toEqual(publicKey);
+    expect(validations.validateEd25519PublicKey(publicKey)).toEqual(ok(publicKey));
   });
 
   test('fails with longer key', () => {
     const longKey = Factories.Bytes.build({}, { transient: { length: 33 } });
-    expect(validations.validateEd25519PublicKey(longKey)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'publicKey > 32 bytes')
+    expect(validations.validateEd25519PublicKey(longKey)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'publicKey must be 32 bytes'))
     );
   });
 
-  test('succeeds with shorter key', () => {
+  test('fails with shorter key', () => {
     const shortKey = publicKey.subarray(0, -1);
-    expect(validations.validateEd25519PublicKey(shortKey)._unsafeUnwrap()).toEqual(shortKey);
+    expect(validations.validateEd25519PublicKey(shortKey)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'publicKey must be 32 bytes'))
+    );
   });
 });
 
 describe('validateCastAddBody', () => {
   test('succeeds', async () => {
-    const body = await Factories.CastAddBody.create();
+    const body = await Factories.CastAddBody.build();
     expect(validations.validateCastAddBody(body)._unsafeUnwrap()).toEqual(body);
   });
 
   describe('fails', () => {
-    let body: flatbuffers.CastAddBody;
+    let body: protobufs.CastAddBody;
     let hubErrorMessage: string;
 
     afterEach(async () => {
@@ -233,43 +189,43 @@ describe('validateCastAddBody', () => {
     });
 
     test('when text is missing', async () => {
-      body = await Factories.CastAddBody.create({ text: '' });
+      body = await Factories.CastAddBody.build({ text: '' });
       hubErrorMessage = 'text is missing';
     });
 
     test('when text is longer than 320 characters', async () => {
-      body = await Factories.CastAddBody.create({ text: faker.random.alphaNumeric(321) });
+      body = await Factories.CastAddBody.build({ text: faker.random.alphaNumeric(321) });
       hubErrorMessage = 'text > 320 chars';
     });
 
     test('with more than 2 embeds', async () => {
-      body = await Factories.CastAddBody.create({
+      body = await Factories.CastAddBody.build({
         embeds: [faker.internet.url(), faker.internet.url(), faker.internet.url()],
       });
       hubErrorMessage = 'embeds > 2';
     });
 
     test('when parent fid is missing', async () => {
-      body = await Factories.CastAddBody.create({
-        parent: Factories.CastId.build({ fid: [] }),
+      body = await Factories.CastAddBody.build({
+        parentCastId: Factories.CastId.build({ fid: undefined }),
       });
       hubErrorMessage = 'fid is missing';
     });
 
-    test('when parent tsHash is missing', async () => {
-      body = await Factories.CastAddBody.create({ parent: Factories.CastId.build({ tsHash: [] }) });
-      hubErrorMessage = 'tsHash is missing';
+    test('when parent hash is missing', async () => {
+      body = await Factories.CastAddBody.build({ parentCastId: Factories.CastId.build({ hash: undefined }) });
+      hubErrorMessage = 'hash is missing';
     });
 
     test('with more than 5 mentions', async () => {
-      body = await Factories.CastAddBody.create({
+      body = await Factories.CastAddBody.build({
         mentions: [
-          Factories.UserId.build(),
-          Factories.UserId.build(),
-          Factories.UserId.build(),
-          Factories.UserId.build(),
-          Factories.UserId.build(),
-          Factories.UserId.build(),
+          Factories.Fid.build(),
+          Factories.Fid.build(),
+          Factories.Fid.build(),
+          Factories.Fid.build(),
+          Factories.Fid.build(),
+          Factories.Fid.build(),
         ],
       });
       hubErrorMessage = 'mentions > 5';
@@ -279,26 +235,26 @@ describe('validateCastAddBody', () => {
 
 describe('validateCastRemoveBody', () => {
   test('succeeds', async () => {
-    const body = await Factories.CastRemoveBody.create();
+    const body = await Factories.CastRemoveBody.build();
     expect(validations.validateCastRemoveBody(body)._unsafeUnwrap()).toEqual(body);
   });
 
-  test('fails when tsHash is missing', async () => {
-    const body = await Factories.CastRemoveBody.create({ targetTsHash: [] });
+  test('fails when targetHash is missing', async () => {
+    const body = await Factories.CastRemoveBody.build({ targetHash: undefined });
     expect(validations.validateCastRemoveBody(body)._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'tsHash is missing')
+      new HubError('bad_request.validation_failure', 'hash is missing')
     );
   });
 });
 
 describe('validateReactionBody', () => {
   test('succeeds', async () => {
-    const body = await Factories.ReactionBody.create();
+    const body = await Factories.ReactionBody.build();
     expect(validations.validateReactionBody(body)._unsafeUnwrap()).toEqual(body);
   });
 
   describe('fails', () => {
-    let body: flatbuffers.ReactionBody;
+    let body: protobufs.ReactionBody;
     let hubErrorMessage: string;
 
     afterEach(async () => {
@@ -308,262 +264,247 @@ describe('validateReactionBody', () => {
     });
 
     test('with invalid reaction type', async () => {
-      body = await Factories.ReactionBody.create({ type: 100 as unknown as flatbuffers.ReactionType });
+      body = await Factories.ReactionBody.build({ type: 100 as unknown as protobufs.ReactionType });
       hubErrorMessage = 'invalid reaction type';
     });
 
     test('when cast fid is missing', async () => {
-      body = await Factories.ReactionBody.create({
-        target: Factories.CastId.build({ fid: [] }),
+      body = await Factories.ReactionBody.build({
+        targetCastId: Factories.CastId.build({ fid: undefined }),
       });
       hubErrorMessage = 'fid is missing';
     });
 
-    test('when cast tsHash is missing', async () => {
-      body = await Factories.ReactionBody.create({
-        target: Factories.CastId.build({ tsHash: [] }),
+    test('when cast hash is missing', async () => {
+      body = Factories.ReactionBody.build({
+        targetCastId: Factories.CastId.build({ hash: undefined }),
       });
-      hubErrorMessage = 'tsHash is missing';
+      hubErrorMessage = 'hash is missing';
     });
   });
 });
 
 describe('validateVerificationAddEthAddressBody', () => {
   test('succeeds', async () => {
-    const body = await Factories.VerificationAddEthAddressBody.create();
+    const body = await Factories.VerificationAddEthAddressBody.build();
     const result = await validations.validateVerificationAddEthAddressBody(body);
-    expect(result._unsafeUnwrap()).toEqual(body);
+    expect(result).toEqual(ok(body));
   });
 
   describe('fails', () => {
-    let body: flatbuffers.VerificationAddEthAddressBodyT;
+    let body: protobufs.VerificationAddEthAddressBody;
     let hubErrorMessage: string;
 
     afterEach(async () => {
       // TODO: improve VerificationAddEthAddressBody factory so that it doesn't always try to generate ethSignature
-      const builder = new Builder(1);
-      builder.finish(body.pack(builder));
-      const fbb = flatbuffers.VerificationAddEthAddressBody.getRootAsVerificationAddEthAddressBody(
-        new ByteBuffer(builder.asUint8Array())
-      );
-
-      const result = await validations.validateVerificationAddEthAddressBody(fbb);
-      expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', hubErrorMessage));
+      const result = await validations.validateVerificationAddEthAddressBody(body);
+      expect(result).toEqual(err(new HubError('bad_request.validation_failure', hubErrorMessage)));
     });
 
-    test('with missing eth address', () => {
-      body = Factories.VerificationAddEthAddressBody.build({ address: [] });
+    test('with missing eth address', async () => {
+      body = await Factories.VerificationAddEthAddressBody.create({ address: undefined });
       hubErrorMessage = 'address is missing';
     });
 
-    test('with eth address larger than 20 bytes', () => {
-      body = Factories.VerificationAddEthAddressBody.build({
-        address: Array.from(Factories.Bytes.build({}, { transient: { length: 21 } })),
+    test('with eth address larger than 20 bytes', async () => {
+      body = await Factories.VerificationAddEthAddressBody.create({
+        address: Factories.Bytes.build({}, { transient: { length: 21 } }),
       });
-      hubErrorMessage = 'address > 20 bytes';
+      hubErrorMessage = 'address must be 20 bytes';
     });
 
     test('with missing block hash', async () => {
-      body = Factories.VerificationAddEthAddressBody.build({ blockHash: [] });
+      body = await Factories.VerificationAddEthAddressBody.create({ blockHash: undefined });
       hubErrorMessage = 'blockHash is missing';
     });
 
-    test('with block hash larger than 32 bytes', () => {
-      body = Factories.VerificationAddEthAddressBody.build({
-        blockHash: Array.from(Factories.Bytes.build({}, { transient: { length: 33 } })),
+    test('with block hash larger than 32 bytes', async () => {
+      body = await Factories.VerificationAddEthAddressBody.create({
+        blockHash: Factories.Bytes.build({}, { transient: { length: 33 } }),
       });
-      hubErrorMessage = 'blockHash > 32 bytes';
+      hubErrorMessage = 'blockHash must be 32 bytes';
     });
   });
 });
 
 describe('validateVerificationAddEthAddressSignature', () => {
+  const fid = Factories.Fid.build();
+  const network = Factories.FarcasterNetwork.build();
+
   test('succeeds', async () => {
-    const fid = Factories.FID.build();
-    const network = flatbuffers.FarcasterNetwork.Testnet;
     const body = await Factories.VerificationAddEthAddressBody.create({}, { transient: { fid, network } });
     const result = validations.validateVerificationAddEthAddressSignature(body, fid, network);
     expect(result.isOk()).toBeTruthy();
   });
 
   test('fails with invalid eth signature', async () => {
-    const fid = Factories.FID.build();
-    const network = flatbuffers.FarcasterNetwork.Testnet;
-    const claim = makeVerificationEthAddressClaim(
-      fid,
-      Factories.Bytes.build({}, { transient: { length: 20 } }),
-      network,
-      Factories.Bytes.build({}, { transient: { length: 32 } })
-    )._unsafeUnwrap();
-    const signature = await ethSigner.signVerificationEthAddressClaim(claim);
-
-    const bodyT = new flatbuffers.VerificationAddEthAddressBodyT(
-      Array.from(ethSigner.signerKey),
-      Array.from(signature._unsafeUnwrap()),
-      Array.from(hexStringToBytes(claim.blockHash)._unsafeUnwrap())
-    );
-
-    // TODO: improve VerificationAddEthAddressBody factory so that it doesn't always try to generate ethSignature
-    const builder = new Builder(1);
-    builder.finish(bodyT.pack(builder));
-    const body = flatbuffers.VerificationAddEthAddressBody.getRootAsVerificationAddEthAddressBody(
-      new ByteBuffer(builder.asUint8Array())
-    );
-
+    const body = await Factories.VerificationAddEthAddressBody.create({
+      ethSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
+    });
     const result = validations.validateVerificationAddEthAddressSignature(body, fid, network);
-    expect(result._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'ethSignature does not match address')
-    );
+    expect(result).toEqual(err(new HubError('bad_request.validation_failure', 'invalid ethSignature')));
+  });
+
+  test('fails with eth signature from different address', async () => {
+    const blockHash = Factories.BlockHash.build();
+    const claim = makeVerificationEthAddressClaim(fid, ethSigner.signerKey, network, blockHash)._unsafeUnwrap();
+    const ethSignature = await ethSigner.signVerificationEthAddressClaim(claim);
+    expect(ethSignature.isOk()).toBeTruthy();
+    const body = await Factories.VerificationAddEthAddressBody.create({
+      ethSignature: ethSignature._unsafeUnwrap(),
+      blockHash,
+      address: Factories.EthAddress.build(),
+    });
+    const result = validations.validateVerificationAddEthAddressSignature(body, fid, network);
+    expect(result).toEqual(err(new HubError('bad_request.validation_failure', 'ethSignature does not match address')));
   });
 });
 
 describe('validateVerificationRemoveBody', () => {
-  test('succeeds', async () => {
-    const body = await Factories.VerificationRemoveBody.create();
-    expect(validations.validateVerificationRemoveBody(body)._unsafeUnwrap()).toEqual(body);
+  test('succeeds', () => {
+    const body = Factories.VerificationRemoveBody.build();
+    expect(validations.validateVerificationRemoveBody(body)).toEqual(ok(body));
   });
 
   describe('fails', () => {
-    let body: flatbuffers.VerificationRemoveBody;
+    let body: protobufs.VerificationRemoveBody;
     let hubErrorMessage: string;
 
     afterEach(async () => {
-      expect(validations.validateVerificationRemoveBody(body)._unsafeUnwrapErr()).toEqual(
-        new HubError('bad_request.validation_failure', hubErrorMessage)
+      expect(validations.validateVerificationRemoveBody(body)).toEqual(
+        err(new HubError('bad_request.validation_failure', hubErrorMessage))
       );
     });
 
     test('when address is missing', async () => {
-      body = await Factories.VerificationRemoveBody.create({
-        address: [],
+      body = Factories.VerificationRemoveBody.build({
+        address: undefined,
       });
       hubErrorMessage = 'address is missing';
     });
 
     test('with invalid address', async () => {
-      body = await Factories.VerificationRemoveBody.create({
-        address: Array.from(Factories.Bytes.build({}, { transient: { length: 21 } })),
+      body = Factories.VerificationRemoveBody.build({
+        address: Factories.Bytes.build({}, { transient: { length: 21 } }),
       });
-      hubErrorMessage = 'address > 20 bytes';
+      hubErrorMessage = 'address must be 20 bytes';
     });
   });
 });
 
 describe('validateSignerBody', () => {
   test('succeeds', async () => {
-    const body = await Factories.SignerBody.create();
-    expect(validations.validateSignerBody(body)._unsafeUnwrap()).toEqual(body);
+    const body = Factories.SignerBody.build();
+    expect(validations.validateSignerBody(body)).toEqual(ok(body));
   });
 
   describe('fails', () => {
-    let body: flatbuffers.SignerBody;
+    let body: protobufs.SignerBody;
     let hubErrorMessage: string;
 
-    afterEach(async () => {
-      expect(validations.validateSignerBody(body)._unsafeUnwrapErr()).toEqual(
-        new HubError('bad_request.validation_failure', hubErrorMessage)
+    afterEach(() => {
+      expect(validations.validateSignerBody(body)).toEqual(
+        err(new HubError('bad_request.validation_failure', hubErrorMessage))
       );
     });
 
-    test('when signer is missing', async () => {
-      body = await Factories.SignerBody.create({
-        signer: [],
+    test('when signer is missing', () => {
+      body = Factories.SignerBody.build({
+        signer: undefined,
       });
       hubErrorMessage = 'publicKey is missing';
     });
 
-    test('with invalid signer', async () => {
-      body = await Factories.SignerBody.create({
-        signer: Array.from(Factories.Bytes.build({}, { transient: { length: 33 } })),
+    test('with invalid signer', () => {
+      body = Factories.SignerBody.build({
+        signer: Factories.Bytes.build({}, { transient: { length: 33 } }),
       });
-      hubErrorMessage = 'publicKey > 32 bytes';
+      hubErrorMessage = 'publicKey must be 32 bytes';
     });
   });
 });
 
 describe('validateAmpBody', () => {
-  test('succeeds', async () => {
-    const body = await Factories.AmpBody.create();
-    expect(validations.validateAmpBody(body)._unsafeUnwrap()).toEqual(body);
+  test('succeeds', () => {
+    const body = Factories.AmpBody.build();
+    expect(validations.validateAmpBody(body)).toEqual(ok(body));
   });
 
   describe('fails', () => {
-    let body: flatbuffers.AmpBody;
+    let body: protobufs.AmpBody;
     let hubErrorMessage: string;
 
-    afterEach(async () => {
-      expect(validations.validateAmpBody(body)._unsafeUnwrapErr()).toEqual(
-        new HubError('bad_request.validation_failure', hubErrorMessage)
+    afterEach(() => {
+      expect(validations.validateAmpBody(body)).toEqual(
+        err(new HubError('bad_request.validation_failure', hubErrorMessage))
       );
     });
 
-    test('when user fid is missing', async () => {
-      body = await Factories.AmpBody.create({
-        user: new flatbuffers.UserIdT([]),
+    test('when target fid is missing', () => {
+      body = Factories.AmpBody.build({
+        targetFid: undefined,
       });
       hubErrorMessage = 'fid is missing';
     });
 
-    test('with invalid user fid', async () => {
-      body = await Factories.AmpBody.create({
-        user: new flatbuffers.UserIdT(Array.from(Factories.Bytes.build({}, { transient: { length: 33 } }))),
-      });
-      hubErrorMessage = 'fid > 32 bytes';
+    test('with invalid user fid', () => {
+      body = Factories.AmpBody.build({ targetFid: -1 });
+      hubErrorMessage = 'fid must be positive';
     });
   });
 });
 
 describe('validateUserDataAddBody', () => {
   test('succeeds', async () => {
-    const body = await Factories.UserDataBody.create();
-    expect(validations.validateUserDataAddBody(body)._unsafeUnwrap()).toEqual(body);
+    const body = Factories.UserDataBody.build();
+    expect(validations.validateUserDataAddBody(body)).toEqual(ok(body));
   });
 
   describe('fails', () => {
-    let body: flatbuffers.UserDataBody;
+    let body: protobufs.UserDataBody;
     let hubErrorMessage: string;
 
-    afterEach(async () => {
-      expect(validations.validateUserDataAddBody(body)._unsafeUnwrapErr()).toEqual(
-        new HubError('bad_request.validation_failure', hubErrorMessage)
+    afterEach(() => {
+      expect(validations.validateUserDataAddBody(body)).toEqual(
+        err(new HubError('bad_request.validation_failure', hubErrorMessage))
       );
     });
 
-    test('when pfp > 256', async () => {
-      body = await Factories.UserDataBody.create({
-        type: flatbuffers.UserDataType.Pfp,
+    test('when pfp > 256', () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.USER_DATA_TYPE_PFP,
         value: faker.random.alphaNumeric(257),
       });
       hubErrorMessage = 'pfp value > 256';
     });
 
-    test('when display > 32', async () => {
-      body = await Factories.UserDataBody.create({
-        type: flatbuffers.UserDataType.Display,
+    test('when display > 32', () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.USER_DATA_TYPE_DISPLAY,
         value: faker.random.alphaNumeric(33),
       });
       hubErrorMessage = 'display value > 32';
     });
 
-    test('when bio > 256', async () => {
-      body = await Factories.UserDataBody.create({
-        type: flatbuffers.UserDataType.Bio,
+    test('when bio > 256', () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.USER_DATA_TYPE_BIO,
         value: faker.random.alphaNumeric(257),
       });
       hubErrorMessage = 'bio value > 256';
     });
 
-    test('when location > 32', async () => {
-      body = await Factories.UserDataBody.create({
-        type: flatbuffers.UserDataType.Location,
+    test('when location > 32', () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.USER_DATA_TYPE_LOCATION,
         value: faker.random.alphaNumeric(33),
       });
       hubErrorMessage = 'location value > 32';
     });
 
-    test('when url > 256', async () => {
-      body = await Factories.UserDataBody.create({
-        type: flatbuffers.UserDataType.Url,
+    test('when url > 256', () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.USER_DATA_TYPE_URL,
         value: faker.random.alphaNumeric(257),
       });
       hubErrorMessage = 'url value > 256';
@@ -579,10 +520,9 @@ describe('validateMessage', () => {
   });
 
   test('succeeds with EIP712 signer', async () => {
-    const signerAddData = await Factories.SignerAddData.create();
     const message = await Factories.Message.create(
-      { data: Array.from(signerAddData.bb?.bytes() ?? []) },
-      { transient: { ethSigner } }
+      { data: Factories.SignerAddData.build() },
+      { transient: { signer: ethSigner } }
     );
 
     const result = await validations.validateMessage(message);
@@ -591,74 +531,67 @@ describe('validateMessage', () => {
 
   test('fails with EIP712 signer and non-signer message type', async () => {
     // Default message type is CastAdd
-    const message = await Factories.Message.create({}, { transient: { ethSigner } });
+    const message = await Factories.Message.create({}, { transient: { signer: ethSigner } });
     const result = await validations.validateMessage(message);
-    expect(result._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'invalid signatureScheme')
-    );
+    expect(result).toEqual(err(new HubError('bad_request.validation_failure', 'invalid signatureScheme')));
   });
 
   test('fails with Ed25519 signer and signer message type', async () => {
-    const signerAddData = await Factories.SignerAddData.create();
     const message = await Factories.Message.create(
-      { data: Array.from(signerAddData.bb?.bytes() ?? []) },
+      { data: Factories.SignerAddData.build() },
       { transient: { signer } }
     );
 
     const result = await validations.validateMessage(message);
-    expect(result._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'invalid signatureScheme')
-    );
+    expect(result).toEqual(err(new HubError('bad_request.validation_failure', 'invalid signatureScheme')));
   });
 
   test('fails with invalid hashScheme', async () => {
     const message = await Factories.Message.create({
-      hashScheme: 10 as unknown as flatbuffers.HashScheme.Blake3,
+      hashScheme: 10 as unknown as protobufs.HashScheme.HASH_SCHEME_BLAKE3,
     });
 
     const result = await validations.validateMessage(message);
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid hashScheme'));
+    expect(result).toEqual(err(new HubError('bad_request.validation_failure', 'invalid hashScheme')));
   });
 
   test('fails with invalid hash', async () => {
     const message = await Factories.Message.create({
-      hash: Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 8 }))._unsafeUnwrap()),
+      hash: Factories.Bytes.build({}, { transient: { length: 1 } }),
     });
 
     const result = await validations.validateMessage(message);
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid hash'));
+    expect(result).toEqual(err(new HubError('bad_request.validation_failure', 'invalid hash')));
   });
 
   test('fails with invalid signatureScheme', async () => {
     const message = await Factories.Message.create({
-      signatureScheme: 10 as unknown as flatbuffers.SignatureScheme.Ed25519,
+      signatureScheme: 10 as unknown as protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519,
     });
 
     const result = await validations.validateMessage(message);
-    expect(result._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'invalid signatureScheme')
-    );
+    expect(result).toEqual(err(new HubError('bad_request.validation_failure', 'invalid signatureScheme')));
   });
 
   test('fails with invalid signature', async () => {
     const message = await Factories.Message.create({
-      signature: Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 128 }))._unsafeUnwrap()),
-      signer: Array.from(hexStringToBytes(faker.datatype.hexadecimal({ length: 64 }))._unsafeUnwrap()),
+      signature: Factories.Ed25519Signature.build(),
+      signer: Factories.Ed25519Signer.build().signerKey,
     });
 
     const result = await validations.validateMessage(message);
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid signature'));
+    expect(result).toEqual(err(new HubError('bad_request.validation_failure', 'invalid signature')));
   });
 });
 
 describe('validateMessageData', () => {
   test('fails with timestamp more than 10 mins in the future', async () => {
-    const data = await Factories.MessageData.create({
+    const data = Factories.MessageData.build({
       timestamp: getFarcasterTime()._unsafeUnwrap() + validations.ALLOWED_CLOCK_SKEW_SECONDS + 1,
     });
-    const result = await validations.validateMessageData(data);
-    expect(result._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'timestamp more than 10 mins in the future')
+    const result = validations.validateMessageData(data);
+    expect(result).toEqual(
+      err(new HubError('bad_request.validation_failure', 'timestamp more than 10 mins in the future'))
     );
   });
 });
@@ -723,7 +656,7 @@ describe('validateEd25519SignatureHex', () => {
 });
 
 describe('validateMessageHashHex', () => {
-  testHexValidation(validations.validateMessageHashHex, Factories.MessageHashHex.build(), 32, 'message hash');
+  testHexValidation(validations.validateMessageHashHex, Factories.MessageHashHex.build(), 40, 'message hash');
 });
 
 describe('validateEthAddressHex', () => {
@@ -737,8 +670,4 @@ describe('validateEd25519PublicKeyHex', () => {
     64,
     'Ed25519 public key'
   );
-});
-
-describe('validateTsHashHex', () => {
-  testHexValidation(validations.validateTsHashHex, Factories.TsHashHex.build(), 48, 'tsHash');
 });

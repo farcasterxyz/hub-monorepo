@@ -1,12 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import {
-  bytesCompare,
-  HubAsyncResult,
-  HubError,
-  HubResult,
-  utf8StringToBytes,
-  validations,
-} from '@farcaster/protoutils';
+import { bytesCompare, HubAsyncResult, HubError, HubResult, utf8StringToBytes, validations } from '@farcaster/utils';
 import { err, ok, ResultAsync } from 'neverthrow';
 import { SyncId } from '~/network/sync/syncId';
 import { getManyMessages, typeToSetPostfix } from '~/storage/db/message';

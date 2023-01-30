@@ -1,4 +1,4 @@
-import { HubAsyncResult } from '@farcaster/protoutils';
+import { HubAsyncResult } from '@farcaster/utils';
 import { err, ok } from 'neverthrow';
 import cron from 'node-cron';
 import Engine from '~/storage/engine';

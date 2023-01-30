@@ -8,7 +8,7 @@ import {
   Signer,
   toFarcasterTime,
   validations,
-} from '@farcaster/protoutils';
+} from '@farcaster/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { err } from 'neverthrow';
 import * as types from './types';

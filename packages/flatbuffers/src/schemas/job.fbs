@@ -1,8 +1,0 @@
-// IDL file for Farcaster job payloads
-
-namespace Farcaster;
-
-table RevokeSignerJobPayload {
-  fid: [ubyte] (required);
-  signer: [ubyte] (required);
-}

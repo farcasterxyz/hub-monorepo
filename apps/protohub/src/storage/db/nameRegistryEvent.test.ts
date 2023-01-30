@@ -1,4 +1,4 @@
-import { bytesToUtf8String, Factories, HubError, utf8StringToBytes } from '@farcaster/protoutils';
+import { bytesToUtf8String, Factories, HubError, utf8StringToBytes } from '@farcaster/utils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { getNameRegistryEvent, makeNameRegistryEventPrimaryKey, putNameRegistryEvent } from './nameRegistryEvent';
 

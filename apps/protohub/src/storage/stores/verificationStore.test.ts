@@ -1,12 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import {
-  bytesDecrement,
-  bytesIncrement,
-  Eip712Signer,
-  Factories,
-  getFarcasterTime,
-  HubError,
-} from '@farcaster/protoutils';
+import { bytesDecrement, bytesIncrement, Eip712Signer, Factories, getFarcasterTime, HubError } from '@farcaster/utils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import VerificationStore from '~/storage/stores/verificationStore';

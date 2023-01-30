@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Factories } from '@farcaster/protoutils';
+import { Factories } from '@farcaster/utils';
 import { isPeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import { GOSSIP_PROTOCOL_VERSION } from '~/network/p2p/protocol';

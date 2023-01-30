@@ -1,4 +1,4 @@
-import { Factories } from '@farcaster/protoutils';
+import { Factories } from '@farcaster/utils';
 import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
 import { EMPTY_HASH, TrieNode } from '~/network/sync/trieNode';
 import { NetworkFactories } from '~/network/utils/factories';
