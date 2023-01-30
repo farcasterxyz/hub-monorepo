@@ -1370,8 +1370,8 @@ export const HubServiceService = {
     responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
-  getCustodyEvent: {
-    path: "/HubService/GetCustodyEvent",
+  getIdRegistryEvent: {
+    path: "/HubService/GetIdRegistryEvent",
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
@@ -1521,7 +1521,7 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   /** Signer */
   getSigner: handleUnaryCall<SignerRequest, Message>;
   getSignersByFid: handleUnaryCall<FidRequest, MessagesResponse>;
-  getCustodyEvent: handleUnaryCall<FidRequest, IdRegistryEvent>;
+  getIdRegistryEvent: handleUnaryCall<FidRequest, IdRegistryEvent>;
   getFids: handleUnaryCall<Empty, FidsResponse>;
   /** Bulk Methods */
   getAllCastMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
@@ -1834,16 +1834,16 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: MessagesResponse) => void,
   ): ClientUnaryCall;
-  getCustodyEvent(
+  getIdRegistryEvent(
     request: FidRequest,
     callback: (error: ServiceError | null, response: IdRegistryEvent) => void,
   ): ClientUnaryCall;
-  getCustodyEvent(
+  getIdRegistryEvent(
     request: FidRequest,
     metadata: Metadata,
     callback: (error: ServiceError | null, response: IdRegistryEvent) => void,
   ): ClientUnaryCall;
-  getCustodyEvent(
+  getIdRegistryEvent(
     request: FidRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,

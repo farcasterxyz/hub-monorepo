@@ -1,10 +1,9 @@
 import * as protobufs from '@farcaster/protobufs';
-import { getFarcasterTime, HubError, HubResult } from '@farcaster/protoutils';
+import { getFarcasterTime, HubError, HubResult, HubRpcClient } from '@farcaster/protoutils';
 import { err, ok } from 'neverthrow';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
 import { TrieSnapshot } from '~/network/sync/trieNode';
-import { HubRpcClient } from '~/rpc/client';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
 
@@ -266,7 +265,7 @@ class SyncEngine {
       return err(new HubError('bad_request.invalid_param', 'Invalid fid'));
     }
 
-    const custodyEventResult = await rpcClient.getCustodyEvent(protobufs.FidRequest.create({ fid }));
+    const custodyEventResult = await rpcClient.getIdRegistryEvent(protobufs.FidRequest.create({ fid }));
     if (custodyEventResult.isErr()) {
       return err(new HubError('unavailable.network_failure', 'Failed to fetch custody event'));
     }

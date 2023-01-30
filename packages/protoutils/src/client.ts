@@ -7,8 +7,8 @@ import {
   Metadata,
   ServiceError,
 } from '@farcaster/protobufs';
-import { HubError, HubErrorCode, HubResult } from '@farcaster/protoutils';
 import { err, ok } from 'neverthrow';
+import { HubError, HubErrorCode, HubResult } from './errors';
 
 const fromServiceError = (err: ServiceError): HubError => {
   return new HubError(err.metadata.get('errCode')[0] as HubErrorCode, err.details);
@@ -35,14 +35,14 @@ type PromisifiedClient<C> = { $: C } & {
     : never;
 };
 
-// eslint-disable-next-line prefer-arrow-functions/prefer-arrow-functions
-function promisifyClient<C extends Client>(client: C) {
+const promisifyClient = <C extends Client>(client: C) => {
   return new Proxy(client, {
     get: (target, descriptor) => {
       const key = descriptor as keyof PromisifiedClient<C>;
 
       if (key === '$') return target;
 
+      // eslint-disable-next-line security/detect-object-injection
       const func = target[key];
       if (typeof func === 'function') {
         return (...args: unknown[]) =>
@@ -61,7 +61,7 @@ function promisifyClient<C extends Client>(client: C) {
       return func;
     },
   }) as unknown as PromisifiedClient<C>;
-}
+};
 
 export type HubRpcClient = PromisifiedClient<HubServiceClient>;
 

@@ -1,6 +1,5 @@
 import { Empty } from '@farcaster/protobufs';
-import { HubError } from '@farcaster/protoutils';
-import { HubRpcClient } from '~/rpc/client';
+import { HubError, HubRpcClient } from '@farcaster/protoutils';
 import { ConsoleCommandInterface } from './console';
 
 export class InfoCommand implements ConsoleCommandInterface {

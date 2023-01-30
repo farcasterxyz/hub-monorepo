@@ -1,7 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Factories, HubError } from '@farcaster/protoutils';
+import { Factories, getHubRpcClient, HubError, HubRpcClient } from '@farcaster/protoutils';
 import SyncEngine from '~/network/sync/syncEngine';
-import { getHubRpcClient, HubRpcClient } from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';

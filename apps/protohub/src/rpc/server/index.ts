@@ -13,6 +13,7 @@ import {
   Metadata,
   NameRegistryEvent,
   ReactionAddMessage,
+  ReactionType,
   Server as GrpcServer,
   ServerCredentials,
   ServiceError,
@@ -317,8 +318,9 @@ export default class Server {
       },
       getReactionsByFid: async (call, callback) => {
         const request = call.request;
-
-        const reactionsResult = await this.engine?.getReactionsByFid(request.fid, request.reactionType);
+        const reactionType =
+          request.reactionType === ReactionType.REACTION_TYPE_NONE ? undefined : request.reactionType;
+        const reactionsResult = await this.engine?.getReactionsByFid(request.fid, reactionType);
         reactionsResult?.match(
           (reactions: ReactionAddMessage[]) => {
             callback(null, MessagesResponse.create({ messages: reactions }));
@@ -330,11 +332,9 @@ export default class Server {
       },
       getReactionsByCast: async (call, callback) => {
         const request = call.request;
-
-        const reactionsResult = await this.engine?.getReactionsByCast(
-          request.castId ?? CastId.create(),
-          request.reactionType
-        );
+        const reactionType =
+          request.reactionType === ReactionType.REACTION_TYPE_NONE ? undefined : request.reactionType;
+        const reactionsResult = await this.engine?.getReactionsByCast(request.castId ?? CastId.create(), reactionType);
         reactionsResult?.match(
           (reactions: ReactionAddMessage[]) => {
             callback(null, MessagesResponse.create({ messages: reactions }));
@@ -474,7 +474,7 @@ export default class Server {
           }
         );
       },
-      getCustodyEvent: async (call, callback) => {
+      getIdRegistryEvent: async (call, callback) => {
         const request = call.request;
 
         const custodyEventResult = await this.engine?.getIdRegistryEvent(request.fid);

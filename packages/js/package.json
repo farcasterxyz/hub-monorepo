@@ -16,9 +16,9 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@farcaster/flatbuffers": "0.1.5",
     "@farcaster/grpc": "0.1.5",
-    "@farcaster/utils": "0.1.5",
+    "@farcaster/protobufs": "0.1.0",
+    "@farcaster/protoutils": "0.1.4",
     "ethers": "^5.7.2",
     "flatbuffers": "^22.11.23",
     "neverthrow": "^6.0.0"

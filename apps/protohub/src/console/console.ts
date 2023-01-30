@@ -1,7 +1,7 @@
+import { getHubRpcClient } from '@farcaster/protoutils';
 import { AddressInfo } from 'net';
 import path from 'path';
 import * as repl from 'repl';
-import { getHubRpcClient } from '~/rpc/client';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts, addressInfoToString } from '~/utils/p2p';
 import { CastsCommand } from './castsCommand';

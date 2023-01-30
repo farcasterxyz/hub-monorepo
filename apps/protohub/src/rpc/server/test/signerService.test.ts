@@ -1,7 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Factories, HubError } from '@farcaster/protoutils';
+import { Factories, getHubRpcClient, HubError, HubRpcClient } from '@farcaster/protoutils';
 import SyncEngine from '~/network/sync/syncEngine';
-import { getHubRpcClient, HubRpcClient } from '~/rpc/client';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -104,7 +103,7 @@ describe('getIdRegistryEvent', () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     // const result = await client.getIdRegistryEvent(fid);
     // expect(result._unsafeUnwrap()).toEqual(custodyEvent.event);
-    const result = await client.getCustodyEvent(protobufs.FidRequest.create({ fid }));
+    const result = await client.getIdRegistryEvent(protobufs.FidRequest.create({ fid }));
     expect(protobufs.IdRegistryEvent.toJSON(result._unsafeUnwrap())).toEqual(
       protobufs.IdRegistryEvent.toJSON(custodyEvent)
     );
@@ -113,7 +112,7 @@ describe('getIdRegistryEvent', () => {
   test('fails when event is missing', async () => {
     // const result = await client.getIdRegistryEvent(fid);
     // expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
-    const result = await client.getCustodyEvent(protobufs.FidRequest.create({ fid }));
+    const result = await client.getIdRegistryEvent(protobufs.FidRequest.create({ fid }));
     expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
   });
 });

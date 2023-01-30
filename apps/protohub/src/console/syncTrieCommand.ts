@@ -1,6 +1,5 @@
 import { TrieNodePrefix } from '@farcaster/protobufs';
-import { HubError } from '@farcaster/protoutils';
-import { HubRpcClient } from '~/rpc/client';
+import { HubError, HubRpcClient } from '@farcaster/protoutils';
 import { ConsoleCommandInterface } from './console';
 
 export class SyncTrieCommand implements ConsoleCommandInterface {
