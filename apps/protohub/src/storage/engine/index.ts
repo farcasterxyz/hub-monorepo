@@ -354,10 +354,25 @@ class Engine {
   /* -------------------------------------------------------------------------- */
 
   async getSigner(fid: number, signerPubKey: Uint8Array): HubAsyncResult<protobufs.SignerAddMessage> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    const validatedPubKey = validations.validateEd25519PublicKey(signerPubKey);
+    if (validatedPubKey.isErr()) {
+      return err(validatedPubKey.error);
+    }
+
     return ResultAsync.fromPromise(this._signerStore.getSignerAdd(fid, signerPubKey), (e) => e as HubError);
   }
 
   async getSignersByFid(fid: number): HubAsyncResult<protobufs.SignerAddMessage[]> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
     return ResultAsync.fromPromise(this._signerStore.getSignerAddsByFid(fid), (e) => e as HubError);
   }
 
