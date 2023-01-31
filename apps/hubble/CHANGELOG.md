@@ -1,5 +1,13 @@
 # @farcaster/hubble
 
+## 1.0.4
+
+### Patch Changes
+
+- Updated dependencies [78d9050]
+  - @farcaster/protobufs@0.1.2
+  - @farcaster/utils@0.2.1
+
 ## 1.0.3
 
 ### Patch Changes

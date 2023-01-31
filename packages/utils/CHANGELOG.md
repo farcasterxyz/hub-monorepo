@@ -1,5 +1,13 @@
 # @farcaster/utils
 
+## 0.2.1
+
+### Patch Changes
+
+- 78d9050: only add require banner for esm files in protobufs and update bytesIncrement method to assume big endian
+- Updated dependencies [78d9050]
+  - @farcaster/protobufs@0.1.2
+
 ## 0.2.0
 
 ### Minor Changes
