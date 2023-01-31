@@ -5,5 +5,9 @@ export default defineConfig({
   format: ['esm', 'cjs'],
   dts: true,
   clean: true,
-  banner: { js: 'import { createRequire } from "module";const require = createRequire(import.meta.url);' },
+  banner: ({ format }) => {
+    if (format === 'esm') {
+      return { js: 'import { createRequire } from "module";const require = createRequire(import.meta.url);' };
+    }
+  },
 });

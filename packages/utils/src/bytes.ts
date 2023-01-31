@@ -40,7 +40,7 @@ export const bytesCompare = (a: Uint8Array, b: Uint8Array): number => {
 export const bytesIncrement = (inputBytes: Uint8Array, options: BytesOptions = {}): Uint8Array => {
   const bytes = new Uint8Array(inputBytes); // avoid mutating input
 
-  const endianness: Endianness = options.endianness ?? 'little';
+  const endianness: Endianness = options.endianness ?? 'big';
 
   // Start from least significant byte
   let i = bytes.length - 1;
@@ -65,7 +65,7 @@ export const bytesIncrement = (inputBytes: Uint8Array, options: BytesOptions = {
 export const bytesDecrement = (inputBytes: Uint8Array, options: BytesOptions = {}): HubResult<Uint8Array> => {
   const bytes = new Uint8Array(inputBytes); // avoid mutating input
 
-  const endianness: Endianness = options.endianness ?? 'little';
+  const endianness: Endianness = options.endianness ?? 'big';
 
   // start from least significant byte
   let i = bytes.length - 1;
