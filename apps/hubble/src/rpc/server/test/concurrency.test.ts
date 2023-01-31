@@ -104,7 +104,7 @@ describe('submitMessage', () => {
 
   test('succeeds with concurrent, conflicting cast message', async () => {
     const cast1 = await Factories.CastAddMessage.create({ data: { fid } }, { transient: { signer: signer1 } });
-    const cast2 = await Factories.CastAddMessage.create({ data: { fid } }, { transient: { signer: signer2 } });
+    const cast2 = await Factories.CastAddMessage.create({ data: { fid } }, { transient: { signer: signer1 } });
 
     const removeCast1 = await Factories.CastRemoveMessage.create(
       { data: { fid, castRemoveBody: { targetHash: cast1.hash } } },
@@ -124,7 +124,11 @@ describe('submitMessage', () => {
     ]);
     assertNoTimeouts(results);
 
-    const messages = await engine.getAllCastMessagesByFid(fid);
-    expect(messages._unsafeUnwrap().length).toEqual(1);
+    const messages = (await engine.getAllCastMessagesByFid(fid))._unsafeUnwrap();
+
+    // We are expecting 2 messages. cast1add and cast2remove
+    expect(messages.length).toEqual(2);
+    expect(protobufs.Message.toJSON(messages[0] as protobufs.Message)).toEqual(protobufs.Message.toJSON(cast2));
+    expect(protobufs.Message.toJSON(messages[1] as protobufs.Message)).toEqual(protobufs.Message.toJSON(removeCast1));
   });
 });
