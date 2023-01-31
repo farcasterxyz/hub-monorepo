@@ -17,21 +17,17 @@ export type NodeMetadata = {
 };
 
 /**
- * Represents a MerkleTrie. It's conceptually very similar to a Merkle Patricia Tree (see
- * https://ethereum.org/en/developers/docs/data-structures-and-encoding/patricia-merkle-trie/).
- * We don't have extension nodes currently, so this is essentially a Merkle Radix Trie as
- * defined in the link above.
+ * MerkleTrie is a trie that contains Farcaster Messages SyncId and is used to diff the state of
+ * two hubs on the network.
  *
- * The first 10 levels of the trie are used to represent the timestamp of the messages (see SyncID).
- * The "prefix" refers to a subset of the timestamp string. This is used to determine the state of the trie
- * (and therefore the hub's messages) at a particular point in time.
+ * Levels 1 to 10 of the trie represent the messages's timestamp while the remaining levels
+ * represent its hash. It is conceptually similar to a Merkle Patricia Tree, but the current
+ * implementation is closer to a Merkle Radix Trie, since it is missing extension nodes. See:
+ * https://ethereum.org/en/developers/docs/data-structures-and-encoding/patricia-merkle-trie/.
  *
- * Comparing the state of two tries (represented by the snapshot) for the same prefix allows us to determine
- * whether two hubs are in sync, and the earliest point of divergence if not.
  *
- * Note about concurrency: This class and TrieNode are not thread-safe. This is fine because there are no async
- * methods, which means the operations won't be interrupted. DO NOT add async methods without considering
- * impact on concurrency-safety.
+ * Note: MerkleTrie and TrieNode are not thread-safe, which is ok because there are no async
+ * methods. DO NOT add async methods without considering impact on concurrency-safety.
  */
 class MerkleTrie {
   private readonly _root: TrieNode;
@@ -54,14 +50,16 @@ class MerkleTrie {
     return this._root.exists(id.syncId());
   }
 
-  // A snapshot captures the state of the trie excluding the nodes
-  // specified in the prefix. See TrieSnapshot for more
   public getSnapshot(prefix: Uint8Array): TrieSnapshot {
     return this._root.getSnapshot(prefix);
   }
 
-  // Compares excluded hashes of another trie with this trie to determine at which prefix the
-  // states differ. Returns the subset of prefix that's common to both tries.
+  /**
+   * Returns the subset of the prefix common to two different tries by comparing excluded hashes.
+   *
+   * @param prefix - the prefix of the external trie.
+   * @param excludedHashes - the excluded hashes of the external trie.
+   */
   public getDivergencePrefix(prefix: Uint8Array, excludedHashes: string[]): Uint8Array {
     const ourExcludedHashes = this.getSnapshot(prefix).excludedHashes;
     for (let i = 0; i < prefix.length; i++) {

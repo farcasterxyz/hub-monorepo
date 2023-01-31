@@ -38,6 +38,7 @@ class TrieNode {
 
   /**
    * Inserts a value into the trie. Returns true if the value was inserted, false if it already existed
+   *
    * @param key - The key to insert
    * @param value - The value to insert
    * @param current_index - The index of the current character in the key (only used internally)
@@ -53,7 +54,7 @@ class TrieNode {
     }
     const char = key.at(current_index) as number;
 
-    // Do not compact the timestamp portion of the trie, since it's used to compare snapshots
+    // Do not compact the timestamp portion of the trie, since it is used to compare snapshots
     if (current_index >= TIMESTAMP_LENGTH && this.isLeaf && !this._key) {
       // Reached a leaf node with no value, insert it
       this._setKeyValue(key);
@@ -87,6 +88,7 @@ class TrieNode {
 
   /**
    * Deletes a value from the trie by key. Returns true if the value was deleted, false if it didn't exist
+   *
    * @param key - The key to delete
    * @param current_index - The index of the current character in the key (only used internally)
    *
