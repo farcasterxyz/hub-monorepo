@@ -126,7 +126,11 @@ export class RevokeSignerJobQueue {
       }
       lt = maxJobKey.value;
     } else {
-      lt = Buffer.from(bytesIncrement(new Uint8Array(gte), { endianness: 'big' }));
+      const nextKey = bytesIncrement(new Uint8Array(gte));
+      if (nextKey.isErr()) {
+        return err(nextKey.error);
+      }
+      lt = Buffer.from(nextKey.value);
     }
 
     return ok(this._db.iterator({ gte, lt }));

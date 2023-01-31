@@ -266,7 +266,7 @@ describe('merge', () => {
       test('fails with an earlier hash', async () => {
         const castRemoveLater = await Factories.CastRemoveMessage.create({
           data: { ...castRemove.data, timestamp: castAdd.data.timestamp },
-          hash: bytesIncrement(castAdd.hash),
+          hash: bytesIncrement(castAdd.hash)._unsafeUnwrap(),
         });
 
         await store.merge(castRemoveLater);
@@ -344,7 +344,7 @@ describe('merge', () => {
       beforeAll(async () => {
         castRemoveLater = await Factories.CastRemoveMessage.create({
           ...castRemove,
-          hash: bytesIncrement(castRemove.hash),
+          hash: bytesIncrement(castRemove.hash)._unsafeUnwrap(),
         });
       });
 
@@ -424,7 +424,7 @@ describe('merge', () => {
       test('succeeds with a later hash', async () => {
         const castRemoveLater = await Factories.CastRemoveMessage.create({
           data: { ...castRemove.data, timestamp: castAdd.data.timestamp },
-          hash: bytesIncrement(castAdd.hash),
+          hash: bytesIncrement(castAdd.hash)._unsafeUnwrap(),
         });
 
         await store.merge(castAdd);

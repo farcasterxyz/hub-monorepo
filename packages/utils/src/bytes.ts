@@ -1,19 +1,9 @@
+/* eslint-disable security/detect-object-injection */
 import { utils } from '@noble/ed25519';
 import { BigNumber } from 'ethers';
 import { err, ok, Result } from 'neverthrow';
 import { HubError, HubResult } from './errors';
 
-export const DEFAULT_ENDIANNESS: Endianness = 'little';
-
-export type Endianness = 'little' | 'big';
-export type BytesOptions = {
-  endianness?: Endianness; // Endianness of byte array
-};
-export type SizableBytesOptions = BytesOptions & {
-  size?: number; // Size of byte array
-};
-
-// TODO: support both big and little endian
 export const bytesCompare = (a: Uint8Array, b: Uint8Array): number => {
   const aValue = a[0];
   const bValue = b[0];
@@ -35,51 +25,39 @@ export const bytesCompare = (a: Uint8Array, b: Uint8Array): number => {
   }
 };
 
-// TODO: should return HubResult
-/* eslint-disable security/detect-object-injection */
-export const bytesIncrement = (inputBytes: Uint8Array, options: BytesOptions = {}): Uint8Array => {
+export const bytesIncrement = (inputBytes: Uint8Array): HubResult<Uint8Array> => {
   const bytes = new Uint8Array(inputBytes); // avoid mutating input
-
-  const endianness: Endianness = options.endianness ?? 'little';
 
   // Start from least significant byte
   let i = bytes.length - 1;
   while (i >= 0) {
-    const pos = endianness === 'little' ? bytes.length - 1 - i : i;
-    if ((bytes[pos] as number) < 255) {
-      bytes[pos] = (bytes[pos] as number) + 1;
-      return bytes;
+    if ((bytes[i] as number) < 255) {
+      bytes[i] = (bytes[i] as number) + 1;
+      return ok(bytes);
     } else {
-      bytes[pos] = 0;
+      bytes[i] = 0;
     }
     i = i - 1;
   }
 
-  if (endianness === 'little') {
-    return new Uint8Array([...bytes, 1]);
-  } else {
-    return new Uint8Array([1, ...bytes]);
-  }
+  return ok(new Uint8Array([1, ...bytes]));
 };
 
-export const bytesDecrement = (inputBytes: Uint8Array, options: BytesOptions = {}): HubResult<Uint8Array> => {
+export const bytesDecrement = (inputBytes: Uint8Array): HubResult<Uint8Array> => {
   const bytes = new Uint8Array(inputBytes); // avoid mutating input
-
-  const endianness: Endianness = options.endianness ?? 'little';
 
   // start from least significant byte
   let i = bytes.length - 1;
   while (i >= 0) {
-    const pos = endianness === 'little' ? bytes.length - 1 - i : i;
-    if ((bytes[pos] as number) > 0) {
-      bytes[pos] = (bytes[pos] as number) - 1;
+    if ((bytes[i] as number) > 0) {
+      bytes[i] = (bytes[i] as number) - 1;
       return ok(bytes);
     } else {
       if (i === 0) {
         return err(new HubError('bad_request.invalid_param', 'Cannot decrement zero'));
       }
 
-      bytes[pos] = 255;
+      bytes[i] = 255;
     }
     i = i - 1;
   }

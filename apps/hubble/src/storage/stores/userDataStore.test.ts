@@ -167,7 +167,7 @@ describe('merge', () => {
       beforeAll(async () => {
         addPfpLater = await Factories.UserDataAddMessage.create({
           ...addPfp,
-          hash: bytesIncrement(addPfp.hash),
+          hash: bytesIncrement(addPfp.hash)._unsafeUnwrap(),
         });
       });
 

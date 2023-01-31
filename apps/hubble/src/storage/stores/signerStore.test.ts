@@ -328,7 +328,7 @@ describe('merge', () => {
         signerAddLater = await Factories.SignerAddMessage.create(
           {
             data: { ...signerAdd.data },
-            hash: bytesIncrement(signerAdd.hash),
+            hash: bytesIncrement(signerAdd.hash)._unsafeUnwrap(),
           },
           { transient: { signer: custody1 } }
         );
@@ -488,7 +488,7 @@ describe('merge', () => {
         signerRemoveLater = await Factories.SignerRemoveMessage.create(
           {
             data: { ...signerRemove.data },
-            hash: bytesIncrement(signerRemove.hash),
+            hash: bytesIncrement(signerRemove.hash)._unsafeUnwrap(),
           },
           { transient: { signer: custody1 } }
         );

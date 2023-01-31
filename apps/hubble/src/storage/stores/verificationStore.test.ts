@@ -176,7 +176,7 @@ describe('merge', () => {
       beforeAll(async () => {
         verificationAddLater = await Factories.VerificationAddEthAddressMessage.create({
           ...verificationAdd,
-          hash: bytesIncrement(verificationAdd.hash),
+          hash: bytesIncrement(verificationAdd.hash)._unsafeUnwrap(),
         });
       });
 
@@ -313,7 +313,7 @@ describe('merge', () => {
       beforeAll(async () => {
         verificationRemoveLater = await Factories.VerificationRemoveMessage.create({
           ...verificationRemove,
-          hash: bytesIncrement(verificationRemove.hash),
+          hash: bytesIncrement(verificationRemove.hash)._unsafeUnwrap(),
         });
       });
 

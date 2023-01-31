@@ -340,7 +340,7 @@ describe('merge', () => {
       beforeAll(async () => {
         reactionAddLater = await Factories.ReactionAddMessage.create({
           ...reactionAdd,
-          hash: bytesIncrement(reactionAdd.hash),
+          hash: bytesIncrement(reactionAdd.hash)._unsafeUnwrap(),
         });
       });
 
@@ -404,7 +404,7 @@ describe('merge', () => {
             ...reactionRemove.data,
             timestamp: reactionAdd.data.timestamp,
           },
-          hash: bytesIncrement(reactionAdd.hash),
+          hash: bytesIncrement(reactionAdd.hash)._unsafeUnwrap(),
         });
 
         await set.merge(reactionRemoveLater);
@@ -493,7 +493,7 @@ describe('merge', () => {
       beforeAll(async () => {
         reactionRemoveLater = await Factories.ReactionRemoveMessage.create({
           ...reactionRemove,
-          hash: bytesIncrement(reactionRemove.hash),
+          hash: bytesIncrement(reactionRemove.hash)._unsafeUnwrap(),
         });
       });
 
@@ -556,7 +556,7 @@ describe('merge', () => {
       test('succeeds with a lower hash', async () => {
         const reactionAddLater = await Factories.ReactionAddMessage.create({
           data: { ...reactionRemove.data, type: protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD },
-          hash: bytesIncrement(reactionRemove.hash),
+          hash: bytesIncrement(reactionRemove.hash)._unsafeUnwrap(),
         });
 
         await set.merge(reactionAddLater);

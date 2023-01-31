@@ -158,9 +158,12 @@ class RocksDB {
    */
   iteratorByPrefix(prefix: Buffer, options: AbstractRocksDB.IteratorOptions = {}): AbstractRocksDB.Iterator {
     options.gte = prefix;
-    const nextPrefix = bytesIncrement(new Uint8Array(prefix), { endianness: 'big' });
-    if (nextPrefix.length === prefix.length) {
-      options.lt = Buffer.from(nextPrefix);
+    const nextPrefix = bytesIncrement(new Uint8Array(prefix));
+    if (nextPrefix.isErr()) {
+      throw nextPrefix.error;
+    }
+    if (nextPrefix.value.length === prefix.length) {
+      options.lt = Buffer.from(nextPrefix.value);
     }
     return this._db.iterator(options);
   }

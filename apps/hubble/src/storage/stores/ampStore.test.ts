@@ -227,7 +227,7 @@ describe('merge', () => {
       beforeAll(async () => {
         ampAddLater = await Factories.AmpAddMessage.create({
           ...ampAdd,
-          hash: bytesIncrement(ampAdd.hash),
+          hash: bytesIncrement(ampAdd.hash)._unsafeUnwrap(),
         });
       });
 
@@ -288,7 +288,7 @@ describe('merge', () => {
       test('fails if remove has a higher hash', async () => {
         const ampRemoveLater = await Factories.AmpRemoveMessage.create({
           data: { ...ampRemove.data, timestamp: ampAdd.data.timestamp },
-          hash: bytesIncrement(ampAdd.hash),
+          hash: bytesIncrement(ampAdd.hash)._unsafeUnwrap(),
         });
 
         await store.merge(ampRemoveLater);
@@ -372,7 +372,7 @@ describe('merge', () => {
       beforeAll(async () => {
         ampRemoveLater = await Factories.AmpRemoveMessage.create({
           ...ampRemove,
-          hash: bytesIncrement(ampRemove.hash),
+          hash: bytesIncrement(ampRemove.hash)._unsafeUnwrap(),
         });
       });
 
@@ -434,7 +434,7 @@ describe('merge', () => {
             ...ampAdd.data,
             timestamp: ampRemove.data.timestamp,
           },
-          hash: bytesIncrement(ampRemove.hash),
+          hash: bytesIncrement(ampRemove.hash)._unsafeUnwrap(),
         });
 
         await store.merge(ampAddHigherHash);
