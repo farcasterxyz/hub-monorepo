@@ -20,89 +20,81 @@ const MultiaddrLocalHost = '/ip4/127.0.0.1';
 
 const log = logger.child({ component: 'Node' });
 
+/** Events emitted by a Farcaster Gossip Node */
 interface NodeEvents {
-  /**
-   * Triggered when a new message is received. Provides the topic the message was received on
-   * as well as the result of decoding the message
-   */
+  /** Triggers on receipt of a new message and includes the topic and message contents */
   message: (topic: string, message: HubResult<protobufs.GossipMessage>) => void;
-  /** Triggered when a peer is connected. Provides the Libp2p Connection object. */
+  /** Triggers when a peer connects and includes the libp2p Connection object*/
   peerConnect: (connection: Connection) => void;
-  /** Triggered when a peer is disconnected. Provides the Libp2p Connecion object. */
+  /** Triggers when a peer disconnects and includes the libp2p Connection object */
   peerDisconnect: (connection: Connection) => void;
 }
 
-/** Node create options */
+/** Optional arguments provided when creating a Farcaster Gossip Node */
 interface NodeOptions {
-  /** PeerId to use as the Node's Identity. Generates a new ephemeral PeerId if not specified*/
+  /** A libp2p PeerId to use as the node's identity. A random key pair is generated if undefined */
   peerId?: PeerId | undefined;
-  /** IP address in MultiAddr format to bind to */
+  /** A IP address that the node binds to, provided in MultiAddr format */
   ipMultiAddr?: string | undefined;
-  /** External Ip address to announce */
+  /** An external IP address that is announced to peers */
   announceIp?: string | undefined;
-  /** Port to listen for gossip. Picks a port at random if not specified. This is combined with the IPMultiAddr */
+  /** A port used to listen for gossip messages. A random value is selected if not specified */
   gossipPort?: number | undefined;
-  /** A list of addresses to peer with. PeersIds outside of this list will not be able to connect to this node */
+  /** A list of PeedIds that are allowed to connect to this node */
   allowedPeerIdStrs?: string[] | undefined;
 }
 
 /**
- * A representation of a libp2p network node.
+ * A GossipNode allows a Hubble instance to connect and gossip messages to its peers.
  *
- * Nodes participate in the p2p GossipSub network we create using libp2p.
+ * Hubble instances communicate using the gossipsub protocol implemented by libp2p. Each GossipNode
+ * wraps around a libp2p node which manages the gossip network and provides convenience methods to
+ * interact with the network.
  */
 export class GossipNode extends TypedEmitter<NodeEvents> {
   private _node?: Libp2p;
 
-  /**
-   * Returns the PublicKey of the node
-   */
+  /** Returns the PeerId (public key) of this node */
   get peerId() {
     return this._node?.peerId;
   }
 
-  /**
-   * Returns all known addresses of the node
-   *
-   * This contains local addresses as well and will need to be
-   * checked for reachability prior to establishing connections
-   */
+  /** Returns the node's addresses in MultiAddr form, including unreachable local addresses */
   get multiaddrs() {
     return this._node?.getMultiaddrs();
   }
 
+  /** Returns the node's libp2p AddressBook */
   get addressBook() {
     return this._node?.peerStore.addressBook;
   }
 
+  /** Returns the libp2p Peer instance after updating the connections in the AddressBook */
   async getPeerInfo(peerId: PeerId) {
     const existingConnections = this._node?.connectionManager.getConnections(peerId);
     for (const conn of existingConnections ?? []) {
       const knownAddrs = await this._node?.peerStore.addressBook.get(peerId);
       if (knownAddrs && !knownAddrs.find((addr) => addr.multiaddr.equals(conn.remoteAddr))) {
-        // updates the peer store
         await this._node?.peerStore.addressBook.add(peerId, [conn.remoteAddr]);
       }
     }
     return await this._node?.peerStore.get(peerId);
   }
 
-  /**
-   * Returns a the GossipSub implementation used by the Node
-   */
+  /** Returns the GossipSub instance used by the Node */
   get gossip() {
     const pubsub = this._node?.pubsub;
     return pubsub ? (pubsub as GossipSub) : undefined;
   }
 
   /**
-   * Creates and Starts the underlying libp2p node. Nodes must be started prior to any network configuration or communication.
+   * Initializes the libp2p node, which must be done before any configuration or communication.
    *
-   * @param bootstrapAddrs  A list of addresses to bootstrap from. Attempts to connect with each peer in the list
-   * @param startOptions    Options to configure the node's behavior
+   * @param bootstrapAddrs  A list of bootstrap addresses which the node will attempt to connect to
+   * @param options         Options to configure node
    */
-  async start(bootstrapAddrs: Multiaddr[], startOptions?: NodeOptions): Promise<HubResult<void>> {
-    const createResult = await this.createNode(startOptions ?? {});
+  async start(bootstrapAddrs: Multiaddr[], options?: NodeOptions): Promise<HubResult<void>> {
+    const createResult = await this.createNode(options ?? {});
     if (createResult.isErr()) return err(createResult.error);
 
     this._node = createResult.value;
@@ -123,9 +115,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this._node?.isStarted();
   }
 
-  /**
-   * Stops the node's participation on the libp2p network and tears down pubsub
-   */
+  /** Removes the node from the libp2p network and tears down pubsub */
   async stop() {
     await this._node?.stop();
     log.info({ identity: this.identity }, 'Stopped libp2p...');
@@ -135,10 +125,27 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this.peerId?.toString();
   }
 
-  /**
-   * Publishes a message to the GossipSub network
-   * @message The GossipMessage to publish to the network
-   */
+  /** Serializes and publishes a Farcaster Message to the network */
+  async gossipMessage(message: protobufs.Message) {
+    const gossipMessage = protobufs.GossipMessage.create({
+      message,
+      topics: [NETWORK_TOPIC_PRIMARY],
+      peerId: this.peerId?.toBytes() ?? new Uint8Array(),
+    });
+    await this.publish(gossipMessage);
+  }
+
+  /** Serializes and publishes this node's ContactInfo to the network */
+  async gossipContactInfo(contactInfo: protobufs.ContactInfoContent) {
+    const gossipMessage = protobufs.GossipMessage.create({
+      contactInfoContent: contactInfo,
+      topics: [NETWORK_TOPIC_PRIMARY],
+      peerId: this.peerId?.toBytes() ?? new Uint8Array(),
+    });
+    await this.publish(gossipMessage);
+  }
+
+  /** Publishes a Gossip Message to the network */
   async publish(message: protobufs.GossipMessage) {
     const topics = message.topics;
     const encodedMessage = GossipNode.encodeMessage(message);
@@ -155,63 +162,29 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     );
   }
 
-  /**
-   * Gossip out a Message to the network
-   */
-  async gossipMessage(message: protobufs.Message) {
-    const gossipMessage = protobufs.GossipMessage.create({
-      message,
-      topics: [NETWORK_TOPIC_PRIMARY],
-      peerId: this.peerId?.toBytes() ?? new Uint8Array(),
-    });
-    await this.publish(gossipMessage);
-  }
-
-  /** Gossip out our contact info to the network */
-  async gossipContactInfo(contactInfo: protobufs.ContactInfoContent) {
-    const gossipMessage = protobufs.GossipMessage.create({
-      contactInfoContent: contactInfo,
-      topics: [NETWORK_TOPIC_PRIMARY],
-      peerId: this.peerId?.toBytes() ?? new Uint8Array(),
-    });
-    await this.publish(gossipMessage);
-  }
-
-  /**
-   * Connect with a peer Node
-   *
-   * @param node The peer Node to attempt a connection with
-   */
-  async connect(node: GossipNode): Promise<HubResult<void>> {
-    const multiaddrs = node.multiaddrs;
-    if (multiaddrs) {
-      // how to select an addr here?
-      for (const addr of multiaddrs) {
-        try {
-          const result = await this.connectAddress(addr);
-          // bail after the first successful connection
-          if (result.isOk()) return ok(undefined);
-        } catch (error: any) {
-          log.error(error, 'Failed to connect to addr');
-          continue;
-        }
-      }
-    } else {
+  /** Connects to a peer GossipNode */
+  async connect(peerNode: GossipNode): Promise<HubResult<void>> {
+    const multiaddrs = peerNode.multiaddrs;
+    if (!multiaddrs) {
       return err(new HubError('unavailable', { message: 'no peer id' }));
     }
+
+    for (const addr of multiaddrs) {
+      const result = await this.connectAddress(addr);
+      // Short-circuit and return if we connect to at least one address
+      if (result.isOk()) return ok(undefined);
+      log.error(result.error, 'Failed to connect to addr');
+    }
+
     return err(new HubError('unavailable', { message: 'cannot connect to any peer' }));
   }
 
-  /**
-   * Connect with a peer's NodeAddress
-   *
-   * @param address The NodeAddress to attempt a connection with
-   */
+  /** Connect to a peer Gossip Node using a specific address */
   async connectAddress(address: Multiaddr): Promise<HubResult<void>> {
     log.debug({ identity: this.identity, address }, `Attempting to connect to address ${address}`);
     try {
-      const result = await this._node?.dial(address);
-      if (result) {
+      const conn = await this._node?.dial(address);
+      if (conn) {
         log.info({ identity: this.identity, address }, `Connected to peer at address: ${address}`);
         return ok(undefined);
       }
@@ -230,7 +203,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       this.emit('peerDisconnect', event.detail);
     });
     this.gossip?.addEventListener('message', (event) => {
-      // ignore messages that aren't in our list of topics (ignores gossipsub peer discovery messages)
+      // ignore messages not in our topic lists (e.g. GossipSub peer discovery messages)
       if (GOSSIP_TOPICS.includes(event.detail.topic)) {
         this.emit('message', event.detail.topic, GossipNode.decodeMessage(event.detail.data));
       }
@@ -238,7 +211,6 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   registerDebugListeners() {
-    // Debug
     this._node?.addEventListener('peer:discovery', (event) => {
       log.info({ identity: this.identity }, `Found peer: ${event.detail.multiaddrs}  }`);
     });
@@ -261,10 +233,6 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     });
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                               Private Methods                              */
-  /* -------------------------------------------------------------------------- */
-
   //TODO: Needs better typesafety
   static encodeMessage(message: protobufs.GossipMessage): HubResult<Uint8Array> {
     // Serialize the message
@@ -276,6 +244,10 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     // Deserialize the message
     return ok(protobufs.GossipMessage.decode(message));
   }
+
+  /* -------------------------------------------------------------------------- */
+  /*                               Private Methods                              */
+  /* -------------------------------------------------------------------------- */
 
   /* Attempts to dial all the addresses in the bootstrap list */
   private async bootstrap(bootstrapAddrs: Multiaddr[]): Promise<HubResult<void>> {
@@ -291,9 +263,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return ok(undefined);
   }
 
-  /**
-   * Creates a Libp2p node with GossipSub
-   */
+  /** Creates a Libp2p node with GossipSub */
   private async createNode(options: NodeOptions): Promise<HubResult<Libp2p>> {
     const listenIPMultiAddr = options.ipMultiAddr ?? MultiaddrLocalHost;
     const listenPort = options.gossipPort ?? 0;

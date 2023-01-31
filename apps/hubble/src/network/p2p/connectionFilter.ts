@@ -4,14 +4,14 @@ import { Multiaddr } from '@multiformats/multiaddr';
 import { logger } from '~/utils/logger';
 
 /**
- * Implementes the libp2p ConnectionGater interface
+ * ConnectionFilter ensures that nodes only collect to peers in a specific allowlist.
  *
- * These APIs are called in a particular sequence for each inbound/outbound connection.
- * We just want to intercept at the lowest possible point which is why every API here is implemented.
+ * It implements the entire libp2p ConnectionGater interface to intercept calls at the lowest level
+ * and prevent the connection.
  *
- * Note - arrow functions are used here because libp2p's createLibp2p (see `src/network/node.ts`)
- * uses a "recursivePartial" on the passed in object and class methods are not enumerated.
- * Using arrow functions allows their recursivePartial enumerator to parse the object.
+ * Note: arrow functions are used since libp2p's createLibp2p uses a "recursivePartial" on the
+ * passed in object and class methods are not enumerated. Using arrow functions allows their
+ * recursivePartial enumerator to parse the object (see `./gossipNode.ts`)
  */
 export class ConnectionFilter implements ConnectionGater {
   private allowedPeers: string[] | undefined;
@@ -37,10 +37,7 @@ export class ConnectionFilter implements ConnectionGater {
   };
 
   denyInboundConnection = async (_maConn: MultiaddrConnection): Promise<boolean> => {
-    /**
-     * A PeerId is not always known on incipient connections.
-     * Don't filter incipient connections, later filters will catch it.
-     */
+    /** PeerId may not be known yet, let it pass and other filters will catch it. */
     return false;
   };
 
