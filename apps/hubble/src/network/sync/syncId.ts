@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { makeUserKey, typeToSetPostfix } from '~/storage/db/message';
+import { makeMessagePrimaryKey, makeTsHash, typeToSetPostfix } from '~/storage/db/message';
 
 const TIMESTAMP_LENGTH = 10; // 10 bytes for timestamp in decimal
 const HASH_LENGTH = 20; // We're using 20 byte blake2b hashes
@@ -28,7 +28,9 @@ class SyncId {
     // will always have the same depth for any timestamp (even 0).
     const timestampString = timestampToPaddedTimestampPrefix(this._timestamp);
 
-    const buf = makeMessagePrimaryKey(this._fid, this._type, this._hash);
+    const tsHash = makeTsHash(this._timestamp, this._hash);
+    const buf = makeMessagePrimaryKey(this._fid, typeToSetPostfix(this._type), tsHash._unsafeUnwrap());
+
     // We prepend the timestamp to the hash so that the MerkleTrie is sorted by timestamp
     return Buffer.concat([Buffer.from(timestampString), buf]);
   }
@@ -43,10 +45,6 @@ class SyncId {
 
 const timestampToPaddedTimestampPrefix = (timestamp: number): string => {
   return Math.floor(timestamp).toString().padStart(TIMESTAMP_LENGTH, '0');
-};
-
-const makeMessagePrimaryKey = (fid: number, type: number, hash: Uint8Array): Buffer => {
-  return Buffer.concat([makeUserKey(fid), Buffer.from([typeToSetPostfix(type)]), Buffer.from(hash)]);
 };
 
 export { SyncId, timestampToPaddedTimestampPrefix, TIMESTAMP_LENGTH, HASH_LENGTH };
