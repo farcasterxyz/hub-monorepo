@@ -6,7 +6,7 @@ const jestConfig: Config = {
   extensionsToTreatAsEsm: ['.ts'],
   /**
    * For high performance with minimal configuration transform with TS with swc.
-   * @see https://github.com/farcasterxyz/hub/issues/314
+   * @see https://github.com/farcasterxyz/hubble/issues/314
    */
   transform: {
     '^.+\\.(t|j)sx?$': '@swc/jest',
