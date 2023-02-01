@@ -47,11 +47,6 @@ type PromisifiedStream<T, U> = (
 ) => Promise<HubResult<ClientReadableStream<U>>>;
 
 type PromisifiedClient<C> = { $: C } & {
-  // [prop in Exclude<keyof C, keyof Client>]: C[prop] extends OriginalUnaryCall<infer T, infer U>
-  //   ? PromisifiedUnaryCall<T, U>
-  //   : C[prop] extends OriginalStream<infer A, infer B>
-  //   ? PromisifiedStream<A, B>
-  //   : never;
   [prop in Exclude<keyof C, keyof Client>]: C[prop] extends OriginalStream<infer T, infer U>
     ? PromisifiedStream<T, U>
     : C[prop] extends OriginalUnaryCall<infer T, infer U>
