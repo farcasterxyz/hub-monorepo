@@ -333,8 +333,9 @@ export class EthEventsProvider {
       logIndex,
       fid: id.toNumber(),
       to: toBytes.value,
+      transactionHash: transactionHashBytes.value,
       type,
-      ...(fromBytes.value ? { from: fromBytes.value } : {}), // Ugh typescript
+      from: fromBytes.value ?? new Uint8Array(),
     });
 
     // Add it to the cache
