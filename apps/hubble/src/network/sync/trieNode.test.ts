@@ -174,6 +174,9 @@ describe('TrieNode', () => {
         root.insert(ids[i] as Uint8Array);
       }
 
+      // Except the recalculatedHash to match the root hash
+      expect(root.hash).toEqual(Buffer.from(root.recalculateHash()).toString('hex'));
+
       // Remove the first id
       root.delete(ids[0] as Uint8Array);
 
