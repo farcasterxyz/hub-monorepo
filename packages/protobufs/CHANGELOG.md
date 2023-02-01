@@ -1,5 +1,12 @@
 # @farcaster/protobufs
 
+## 0.1.3
+
+### Patch Changes
+
+- 9558382: chore: delete unused dependencies in packages
+- 6be9983: add subscribe grpc method and support event streaming
+
 ## 0.1.2
 
 ### Patch Changes
