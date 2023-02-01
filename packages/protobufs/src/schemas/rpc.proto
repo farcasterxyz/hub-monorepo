@@ -6,6 +6,27 @@ import "name_registry_event.proto";
 
 message Empty {}
 
+enum EventType {
+  EVENT_TYPE_NONE = 0;
+  EVENT_TYPE_MERGE_MESSAGE = 1;
+  EVENT_TYPE_PRUNE_MESSAGE = 2;
+  EVENT_TYPE_REVOKE_MESSAGE = 3;
+  EVENT_TYPE_MERGE_ID_REGISTRY_EVENT = 4;
+  EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT = 5;
+}
+
+message EventResponse {
+  EventType type = 1;
+  Message message = 2;
+  repeated Message deleted_messages = 3;
+  IdRegistryEvent id_registry_event = 4;
+  NameRegistryEvent name_registry_event = 5;
+}
+
+message SubscribeRequest {
+  repeated EventType event_types = 1;
+}
+
 // Response Types for the Sync RPC Methods
 message HubInfoResponse {
   string version = 1;
@@ -90,9 +111,12 @@ message SignerRequest {
 
 service HubService {
   // Submit Methods
-  rpc SubmitMessage (Message) returns (Message);
-  rpc SubmitIdRegistryEvent (IdRegistryEvent) returns (IdRegistryEvent);
-  rpc SubmitNameRegistryEvent (NameRegistryEvent) returns (NameRegistryEvent);
+  rpc SubmitMessage(Message) returns (Message);
+  rpc SubmitIdRegistryEvent(IdRegistryEvent) returns (IdRegistryEvent);
+  rpc SubmitNameRegistryEvent(NameRegistryEvent) returns (NameRegistryEvent);
+
+  // Event Methods
+  rpc Subscribe(SubscribeRequest) returns (stream EventResponse);
 
   // Casts
   rpc GetCast(CastId) returns (Message);
@@ -134,9 +158,9 @@ service HubService {
   rpc GetAllUserDataMessagesByFid(FidRequest) returns (MessagesResponse);
   
   // Sync Methods
-  rpc GetInfo (Empty) returns (HubInfoResponse);
-  rpc GetAllSyncIdsByPrefix (TrieNodePrefix) returns (SyncIds);
-  rpc GetAllMessagesBySyncIds (SyncIds) returns (MessagesResponse);
-  rpc GetSyncMetadataByPrefix (TrieNodePrefix) returns (TrieNodeMetadataResponse);
-  rpc GetSyncSnapshotByPrefix (TrieNodePrefix) returns (TrieNodeSnapshotResponse);
+  rpc GetInfo(Empty) returns (HubInfoResponse);
+  rpc GetAllSyncIdsByPrefix(TrieNodePrefix) returns (SyncIds);
+  rpc GetAllMessagesBySyncIds(SyncIds) returns (MessagesResponse);
+  rpc GetSyncMetadataByPrefix(TrieNodePrefix) returns (TrieNodeMetadataResponse);
+  rpc GetSyncSnapshotByPrefix(TrieNodePrefix) returns (TrieNodeSnapshotResponse);
 }

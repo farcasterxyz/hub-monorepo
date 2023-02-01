@@ -16,49 +16,47 @@ import * as types from './types';
 /*                           Event Response                                   */
 /* -------------------------------------------------------------------------- */
 
-// export const deserializeEventResponse = (protobuf: protobufs.EventResponse): HubResult<types.EventResponse> => {
-//   const type = protobuf.type();
+export const deserializeEventResponse = (protobuf: protobufs.EventResponse): HubResult<types.EventResponse> => {
+  const type = protobuf.type;
 
-//   switch (type) {
-//     case protobufs.EventType.MergeMessage:
-//     case protobufs.EventType.PruneMessage:
-//     case protobufs.EventType.RevokeMessage: {
-//       return deserializeMessage(
-//         protobufs.Message.getRootAsMessage(new ByteBuffer(protobuf.bytesArray() ?? new Uint8Array()))
-//       ).map((message) => {
-//         return {
-//           flatbuffer: protobuf,
-//           type,
-//           message,
-//         };
-//       });
-//     }
-//     case protobufs.EventType.MergeIdRegistryEvent: {
-//       return deserializeIdRegistryEvent(
-//         protobufs.IdRegistryEvent.getRootAsIdRegistryEvent(new ByteBuffer(protobuf.bytesArray() ?? new Uint8Array()))
-//       ).map((idRegistryEvent) => {
-//         return {
-//           flatbuffer: protobuf,
-//           type,
-//           idRegistryEvent,
-//         };
-//       });
-//     }
-//     case protobufs.EventType.MergeNameRegistryEvent: {
-//       return deserializeNameRegistryEvent(
-//         protobufs.NameRegistryEvent.getRootAsNameRegistryEvent(new ByteBuffer(protobuf.bytesArray() ?? new Uint8Array()))
-//       ).map((nameRegistryEvent) => {
-//         return {
-//           flatbuffer: protobuf,
-//           type,
-//           nameRegistryEvent,
-//         };
-//       });
-//     }
-//     default:
-//       return err(new HubError('bad_request.invalid_param', `unknown EventType '${type}'`));
-//   }
-// };
+  switch (type) {
+    case protobufs.EventType.EVENT_TYPE_MERGE_MESSAGE:
+    case protobufs.EventType.EVENT_TYPE_PRUNE_MESSAGE:
+    case protobufs.EventType.EVENT_TYPE_REVOKE_MESSAGE: {
+      return deserializeMessage(protobuf.message as protobufs.Message).map((message) => {
+        return {
+          _protobuf: protobuf,
+          type,
+          message,
+        };
+      });
+    }
+    case protobufs.EventType.EVENT_TYPE_MERGE_ID_REGISTRY_EVENT: {
+      return deserializeIdRegistryEvent(protobuf.idRegistryEvent as protobufs.IdRegistryEvent).map(
+        (idRegistryEvent) => {
+          return {
+            _protobuf: protobuf,
+            type,
+            idRegistryEvent,
+          };
+        }
+      );
+    }
+    case protobufs.EventType.EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT: {
+      return deserializeNameRegistryEvent(protobuf.nameRegistryEvent as protobufs.NameRegistryEvent).map(
+        (nameRegistryEvent) => {
+          return {
+            _protobuf: protobuf,
+            type,
+            nameRegistryEvent,
+          };
+        }
+      );
+    }
+    default:
+      return err(new HubError('bad_request.invalid_param', `unknown EventType '${type}'`));
+  }
+};
 
 /* -------------------------------------------------------------------------- */
 /*                             Registry Events                                */

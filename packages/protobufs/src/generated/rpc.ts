@@ -4,7 +4,9 @@ import {
   ChannelCredentials,
   Client,
   ClientOptions,
+  ClientReadableStream,
   ClientUnaryCall,
+  handleServerStreamingCall,
   handleUnaryCall,
   makeGenericClientConstructor,
   Metadata,
@@ -26,7 +28,76 @@ import {
 } from "./message";
 import { NameRegistryEvent } from "./name_registry_event";
 
+export enum EventType {
+  EVENT_TYPE_NONE = 0,
+  EVENT_TYPE_MERGE_MESSAGE = 1,
+  EVENT_TYPE_PRUNE_MESSAGE = 2,
+  EVENT_TYPE_REVOKE_MESSAGE = 3,
+  EVENT_TYPE_MERGE_ID_REGISTRY_EVENT = 4,
+  EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT = 5,
+  UNRECOGNIZED = -1,
+}
+
+export function eventTypeFromJSON(object: any): EventType {
+  switch (object) {
+    case 0:
+    case "EVENT_TYPE_NONE":
+      return EventType.EVENT_TYPE_NONE;
+    case 1:
+    case "EVENT_TYPE_MERGE_MESSAGE":
+      return EventType.EVENT_TYPE_MERGE_MESSAGE;
+    case 2:
+    case "EVENT_TYPE_PRUNE_MESSAGE":
+      return EventType.EVENT_TYPE_PRUNE_MESSAGE;
+    case 3:
+    case "EVENT_TYPE_REVOKE_MESSAGE":
+      return EventType.EVENT_TYPE_REVOKE_MESSAGE;
+    case 4:
+    case "EVENT_TYPE_MERGE_ID_REGISTRY_EVENT":
+      return EventType.EVENT_TYPE_MERGE_ID_REGISTRY_EVENT;
+    case 5:
+    case "EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT":
+      return EventType.EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return EventType.UNRECOGNIZED;
+  }
+}
+
+export function eventTypeToJSON(object: EventType): string {
+  switch (object) {
+    case EventType.EVENT_TYPE_NONE:
+      return "EVENT_TYPE_NONE";
+    case EventType.EVENT_TYPE_MERGE_MESSAGE:
+      return "EVENT_TYPE_MERGE_MESSAGE";
+    case EventType.EVENT_TYPE_PRUNE_MESSAGE:
+      return "EVENT_TYPE_PRUNE_MESSAGE";
+    case EventType.EVENT_TYPE_REVOKE_MESSAGE:
+      return "EVENT_TYPE_REVOKE_MESSAGE";
+    case EventType.EVENT_TYPE_MERGE_ID_REGISTRY_EVENT:
+      return "EVENT_TYPE_MERGE_ID_REGISTRY_EVENT";
+    case EventType.EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT:
+      return "EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT";
+    case EventType.UNRECOGNIZED:
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
 export interface Empty {
+}
+
+export interface EventResponse {
+  type: EventType;
+  message: Message | undefined;
+  deletedMessages: Message[];
+  idRegistryEvent: IdRegistryEvent | undefined;
+  nameRegistryEvent: NameRegistryEvent | undefined;
+}
+
+export interface SubscribeRequest {
+  eventTypes: EventType[];
 }
 
 /** Response Types for the Sync RPC Methods */
@@ -150,6 +221,178 @@ export const Empty = {
 
   fromPartial<I extends Exact<DeepPartial<Empty>, I>>(_: I): Empty {
     const message = createBaseEmpty();
+    return message;
+  },
+};
+
+function createBaseEventResponse(): EventResponse {
+  return { type: 0, message: undefined, deletedMessages: [], idRegistryEvent: undefined, nameRegistryEvent: undefined };
+}
+
+export const EventResponse = {
+  encode(message: EventResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.type !== 0) {
+      writer.uint32(8).int32(message.type);
+    }
+    if (message.message !== undefined) {
+      Message.encode(message.message, writer.uint32(18).fork()).ldelim();
+    }
+    for (const v of message.deletedMessages) {
+      Message.encode(v!, writer.uint32(26).fork()).ldelim();
+    }
+    if (message.idRegistryEvent !== undefined) {
+      IdRegistryEvent.encode(message.idRegistryEvent, writer.uint32(34).fork()).ldelim();
+    }
+    if (message.nameRegistryEvent !== undefined) {
+      NameRegistryEvent.encode(message.nameRegistryEvent, writer.uint32(42).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): EventResponse {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseEventResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.type = reader.int32() as any;
+          break;
+        case 2:
+          message.message = Message.decode(reader, reader.uint32());
+          break;
+        case 3:
+          message.deletedMessages.push(Message.decode(reader, reader.uint32()));
+          break;
+        case 4:
+          message.idRegistryEvent = IdRegistryEvent.decode(reader, reader.uint32());
+          break;
+        case 5:
+          message.nameRegistryEvent = NameRegistryEvent.decode(reader, reader.uint32());
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): EventResponse {
+    return {
+      type: isSet(object.type) ? eventTypeFromJSON(object.type) : 0,
+      message: isSet(object.message) ? Message.fromJSON(object.message) : undefined,
+      deletedMessages: Array.isArray(object?.deletedMessages)
+        ? object.deletedMessages.map((e: any) => Message.fromJSON(e))
+        : [],
+      idRegistryEvent: isSet(object.idRegistryEvent) ? IdRegistryEvent.fromJSON(object.idRegistryEvent) : undefined,
+      nameRegistryEvent: isSet(object.nameRegistryEvent)
+        ? NameRegistryEvent.fromJSON(object.nameRegistryEvent)
+        : undefined,
+    };
+  },
+
+  toJSON(message: EventResponse): unknown {
+    const obj: any = {};
+    message.type !== undefined && (obj.type = eventTypeToJSON(message.type));
+    message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
+    if (message.deletedMessages) {
+      obj.deletedMessages = message.deletedMessages.map((e) => e ? Message.toJSON(e) : undefined);
+    } else {
+      obj.deletedMessages = [];
+    }
+    message.idRegistryEvent !== undefined &&
+      (obj.idRegistryEvent = message.idRegistryEvent ? IdRegistryEvent.toJSON(message.idRegistryEvent) : undefined);
+    message.nameRegistryEvent !== undefined && (obj.nameRegistryEvent = message.nameRegistryEvent
+      ? NameRegistryEvent.toJSON(message.nameRegistryEvent)
+      : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<EventResponse>, I>>(base?: I): EventResponse {
+    return EventResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<EventResponse>, I>>(object: I): EventResponse {
+    const message = createBaseEventResponse();
+    message.type = object.type ?? 0;
+    message.message = (object.message !== undefined && object.message !== null)
+      ? Message.fromPartial(object.message)
+      : undefined;
+    message.deletedMessages = object.deletedMessages?.map((e) => Message.fromPartial(e)) || [];
+    message.idRegistryEvent = (object.idRegistryEvent !== undefined && object.idRegistryEvent !== null)
+      ? IdRegistryEvent.fromPartial(object.idRegistryEvent)
+      : undefined;
+    message.nameRegistryEvent = (object.nameRegistryEvent !== undefined && object.nameRegistryEvent !== null)
+      ? NameRegistryEvent.fromPartial(object.nameRegistryEvent)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseSubscribeRequest(): SubscribeRequest {
+  return { eventTypes: [] };
+}
+
+export const SubscribeRequest = {
+  encode(message: SubscribeRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    writer.uint32(10).fork();
+    for (const v of message.eventTypes) {
+      writer.int32(v);
+    }
+    writer.ldelim();
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): SubscribeRequest {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSubscribeRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if ((tag & 7) === 2) {
+            const end2 = reader.uint32() + reader.pos;
+            while (reader.pos < end2) {
+              message.eventTypes.push(reader.int32() as any);
+            }
+          } else {
+            message.eventTypes.push(reader.int32() as any);
+          }
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SubscribeRequest {
+    return {
+      eventTypes: Array.isArray(object?.eventTypes) ? object.eventTypes.map((e: any) => eventTypeFromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: SubscribeRequest): unknown {
+    const obj: any = {};
+    if (message.eventTypes) {
+      obj.eventTypes = message.eventTypes.map((e) => eventTypeToJSON(e));
+    } else {
+      obj.eventTypes = [];
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SubscribeRequest>, I>>(base?: I): SubscribeRequest {
+    return SubscribeRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<SubscribeRequest>, I>>(object: I): SubscribeRequest {
+    const message = createBaseSubscribeRequest();
+    message.eventTypes = object.eventTypes?.map((e) => e) || [];
     return message;
   },
 };
@@ -1214,6 +1457,16 @@ export const HubServiceService = {
     responseSerialize: (value: NameRegistryEvent) => Buffer.from(NameRegistryEvent.encode(value).finish()),
     responseDeserialize: (value: Buffer) => NameRegistryEvent.decode(value),
   },
+  /** Event Methods */
+  subscribe: {
+    path: "/HubService/Subscribe",
+    requestStream: false,
+    responseStream: true,
+    requestSerialize: (value: SubscribeRequest) => Buffer.from(SubscribeRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => SubscribeRequest.decode(value),
+    responseSerialize: (value: EventResponse) => Buffer.from(EventResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => EventResponse.decode(value),
+  },
   /** Casts */
   getCast: {
     path: "/HubService/GetCast",
@@ -1501,6 +1754,8 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   submitMessage: handleUnaryCall<Message, Message>;
   submitIdRegistryEvent: handleUnaryCall<IdRegistryEvent, IdRegistryEvent>;
   submitNameRegistryEvent: handleUnaryCall<NameRegistryEvent, NameRegistryEvent>;
+  /** Event Methods */
+  subscribe: handleServerStreamingCall<SubscribeRequest, EventResponse>;
   /** Casts */
   getCast: handleUnaryCall<CastId, Message>;
   getCastsByFid: handleUnaryCall<FidRequest, MessagesResponse>;
@@ -1585,6 +1840,13 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: NameRegistryEvent) => void,
   ): ClientUnaryCall;
+  /** Event Methods */
+  subscribe(request: SubscribeRequest, options?: Partial<CallOptions>): ClientReadableStream<EventResponse>;
+  subscribe(
+    request: SubscribeRequest,
+    metadata?: Metadata,
+    options?: Partial<CallOptions>,
+  ): ClientReadableStream<EventResponse>;
   /** Casts */
   getCast(request: CastId, callback: (error: ServiceError | null, response: Message) => void): ClientUnaryCall;
   getCast(

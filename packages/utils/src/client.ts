@@ -1,6 +1,7 @@
 import {
   CallOptions,
   Client,
+  ClientReadableStream,
   ClientUnaryCall,
   getClient,
   HubServiceClient,
@@ -20,18 +21,41 @@ const fromServiceError = (err: ServiceError): HubError => {
 // same API as the original client, and we can also keep the same type definitions,
 // which ensures type safety.
 
-type OriginalCall<T, U> = (
+type OriginalUnaryCall<T, U> = (
   request: T,
   metadata: Metadata,
   options: Partial<CallOptions>,
   callback: (err: ServiceError | null, res?: U) => void
 ) => ClientUnaryCall;
 
-type PromisifiedCall<T, U> = (request: T, metadata?: Metadata, options?: Partial<CallOptions>) => Promise<HubResult<U>>;
+type OriginalStream<T, U> = (
+  request: T,
+  metadata?: Metadata,
+  options?: Partial<CallOptions>
+) => ClientReadableStream<U>;
+
+type PromisifiedUnaryCall<T, U> = (
+  request: T,
+  metadata?: Metadata,
+  options?: Partial<CallOptions>
+) => Promise<HubResult<U>>;
+
+type PromisifiedStream<T, U> = (
+  request: T,
+  metadata?: Metadata,
+  options?: Partial<CallOptions>
+) => Promise<HubResult<ClientReadableStream<U>>>;
 
 type PromisifiedClient<C> = { $: C } & {
-  [prop in Exclude<keyof C, keyof Client>]: C[prop] extends OriginalCall<infer T, infer U>
-    ? PromisifiedCall<T, U>
+  // [prop in Exclude<keyof C, keyof Client>]: C[prop] extends OriginalUnaryCall<infer T, infer U>
+  //   ? PromisifiedUnaryCall<T, U>
+  //   : C[prop] extends OriginalStream<infer A, infer B>
+  //   ? PromisifiedStream<A, B>
+  //   : never;
+  [prop in Exclude<keyof C, keyof Client>]: C[prop] extends OriginalStream<infer T, infer U>
+    ? PromisifiedStream<T, U>
+    : C[prop] extends OriginalUnaryCall<infer T, infer U>
+    ? PromisifiedUnaryCall<T, U>
     : never;
 };
 
@@ -44,7 +68,7 @@ const promisifyClient = <C extends Client>(client: C) => {
 
       // eslint-disable-next-line security/detect-object-injection
       const func = target[key];
-      if (typeof func === 'function') {
+      if (typeof func === 'function' && (func as any).responseStream === false) {
         return (...args: unknown[]) =>
           new Promise((resolve, _reject) =>
             func.call(
@@ -56,6 +80,32 @@ const promisifyClient = <C extends Client>(client: C) => {
               ]
             )
           );
+      }
+
+      if (typeof func === 'function' && (func as any).responseStream === true) {
+        return (...args: unknown[]) => {
+          return new Promise((resolve) => {
+            const stream = func.call(target, ...args);
+
+            stream.on('error', (e: unknown) => {
+              return e; // Suppress exceptions
+            });
+
+            const timeout = setTimeout(() => {
+              stream.cancel(); // Cancel if not connected within timeout
+              resolve(err(new HubError('unavailable.network_failure', 'subscribe timed out')));
+            }, 1_000);
+
+            stream.on('metadata', (metadata: Metadata) => {
+              clearTimeout(timeout);
+              if (metadata.get('status')[0] === 'ready') {
+                resolve(ok(stream));
+              } else {
+                resolve(err(new HubError('unavailable.network_failure', 'subscribe failed')));
+              }
+            });
+          });
+        };
       }
 
       return func;
