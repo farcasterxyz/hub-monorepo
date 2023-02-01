@@ -137,22 +137,28 @@ export type NameRegistryEvent = Readonly<{
   expiry: number;
 }>;
 
-// export type MessageEventResponse = {
-//   flatbuffer: flatbuffers.EventResponse;
-//   type: flatbuffers.EventType.MergeMessage | flatbuffers.EventType.PruneMessage | flatbuffers.EventType.RevokeMessage;
-//   message: Message;
-// };
+type GenericEventResponse = {
+  _protobuf: protobufs.EventResponse;
+  type: protobufs.EventType;
+};
 
-// export type IdRegistryEventResponse = {
-//   flatbuffer: flatbuffers.EventResponse;
-//   type: flatbuffers.EventType.MergeIdRegistryEvent;
-//   idRegistryEvent: IdRegistryEvent;
-// };
+export type MessageEventResponse = GenericEventResponse & {
+  type:
+    | protobufs.EventType.EVENT_TYPE_MERGE_MESSAGE
+    | protobufs.EventType.EVENT_TYPE_PRUNE_MESSAGE
+    | protobufs.EventType.EVENT_TYPE_REVOKE_MESSAGE;
+  message: Message;
+  deleted_messages?: Message[];
+};
 
-// export type NameRegistryEventResponse = {
-//   flatbuffer: flatbuffers.EventResponse;
-//   type: flatbuffers.EventType.MergeNameRegistryEvent;
-//   nameRegistryEvent: NameRegistryEvent;
-// };
+export type IdRegistryEventResponse = GenericEventResponse & {
+  type: protobufs.EventType.EVENT_TYPE_MERGE_ID_REGISTRY_EVENT;
+  idRegistryEvent: IdRegistryEvent;
+};
 
-// export type EventResponse = NameRegistryEventResponse | IdRegistryEventResponse | MessageEventResponse;
+export type NameRegistryEventResponse = GenericEventResponse & {
+  type: protobufs.EventType.EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT;
+  nameRegistryEvent: NameRegistryEvent;
+};
+
+export type EventResponse = NameRegistryEventResponse | IdRegistryEventResponse | MessageEventResponse;

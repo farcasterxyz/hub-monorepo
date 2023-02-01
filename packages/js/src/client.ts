@@ -4,9 +4,9 @@ import { err, Result } from 'neverthrow';
 import * as types from './types';
 import * as utils from './utils';
 
-// export type EventFilters = {
-//   eventTypes?: flatbuffers.EventType[];
-// };
+export type EventFilters = {
+  eventTypes?: protobufs.EventType[];
+};
 
 const deserializeCall = async <TDeserialized, TProtobuf>(
   call: HubAsyncResult<TProtobuf>,
@@ -247,14 +247,15 @@ export class Client {
     return wrapGrpcMessagesCall(this._grpcClient.getAllUserDataMessagesByFid(request));
   }
 
-  // /* -------------------------------------------------------------------------- */
-  // /*                                  Event Methods                             */
-  // /* -------------------------------------------------------------------------- */
+  /* -------------------------------------------------------------------------- */
+  /*                                  Event Methods                             */
+  /* -------------------------------------------------------------------------- */
 
-  // /**
-  //  * Data from this stream can be parsed using `deserializeEventResponse`.
-  //  */
-  // async subscribe(filters: EventFilters = {}) {
-  //   return this._grpcClient.subscribe(filters.eventTypes);
-  // }
+  /**
+   * Data from this stream can be parsed using `deserializeEventResponse`.
+   */
+  async subscribe(filters: EventFilters = {}) {
+    const request = protobufs.SubscribeRequest.create({ ...filters });
+    return this._grpcClient.subscribe(request);
+  }
 }

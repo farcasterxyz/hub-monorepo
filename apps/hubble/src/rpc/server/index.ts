@@ -2,6 +2,8 @@ import {
   AmpAddMessage,
   CastAddMessage,
   CastId,
+  EventResponse,
+  EventType,
   FidsResponse,
   getServer,
   HubInfoResponse,
@@ -575,6 +577,79 @@ export default class Server {
             callback(toServiceError(err));
           }
         );
+      },
+      subscribe: async (stream) => {
+        const mergeMessageListener = (message: Message) => {
+          const response = EventResponse.create({ type: EventType.EVENT_TYPE_MERGE_MESSAGE, message });
+          stream.write(response);
+        };
+
+        const pruneMessageListener = (message: Message) => {
+          const response = EventResponse.create({ type: EventType.EVENT_TYPE_PRUNE_MESSAGE, message });
+          stream.write(response);
+        };
+
+        const revokeMessageListener = (message: Message) => {
+          const response = EventResponse.create({ type: EventType.EVENT_TYPE_REVOKE_MESSAGE, message });
+          stream.write(response);
+        };
+
+        const mergeIdRegistryEventListener = (event: IdRegistryEvent) => {
+          const response = EventResponse.create({
+            type: EventType.EVENT_TYPE_MERGE_ID_REGISTRY_EVENT,
+            idRegistryEvent: event,
+          });
+          stream.write(response);
+        };
+
+        const mergeNameRegistryEventListener = (event: NameRegistryEvent) => {
+          const response = EventResponse.create({
+            type: EventType.EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT,
+            nameRegistryEvent: event,
+          });
+          stream.write(response);
+        };
+
+        const { request } = stream;
+
+        // if no type filters are provided, subscribe to all event types
+        if (request.eventTypes.length === 0) {
+          this.engine?.eventHandler.on('mergeMessage', mergeMessageListener);
+          this.engine?.eventHandler.on('pruneMessage', pruneMessageListener);
+          this.engine?.eventHandler.on('revokeMessage', revokeMessageListener);
+          this.engine?.eventHandler.on('mergeIdRegistryEvent', mergeIdRegistryEventListener);
+          this.engine?.eventHandler.on('mergeNameRegistryEvent', mergeNameRegistryEventListener);
+        } else {
+          for (const eventType of request.eventTypes) {
+            if (eventType === EventType.EVENT_TYPE_MERGE_MESSAGE) {
+              this.engine?.eventHandler.on('mergeMessage', mergeMessageListener);
+            } else if (eventType === EventType.EVENT_TYPE_PRUNE_MESSAGE) {
+              this.engine?.eventHandler.on('pruneMessage', pruneMessageListener);
+            } else if (eventType === EventType.EVENT_TYPE_REVOKE_MESSAGE) {
+              this.engine?.eventHandler.on('revokeMessage', revokeMessageListener);
+            } else if (eventType === EventType.EVENT_TYPE_MERGE_ID_REGISTRY_EVENT) {
+              this.engine?.eventHandler.on('mergeIdRegistryEvent', mergeIdRegistryEventListener);
+            } else if (eventType === EventType.EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT) {
+              this.engine?.eventHandler.on('mergeNameRegistryEvent', mergeNameRegistryEventListener);
+            }
+          }
+        }
+
+        stream.on('cancelled', () => {
+          stream.destroy();
+        });
+
+        stream.on('close', () => {
+          this.engine?.eventHandler.off('mergeMessage', mergeMessageListener);
+          this.engine?.eventHandler.off('pruneMessage', pruneMessageListener);
+          this.engine?.eventHandler.off('revokeMessage', revokeMessageListener);
+          this.engine?.eventHandler.off('mergeIdRegistryEvent', mergeIdRegistryEventListener);
+          this.engine?.eventHandler.off('mergeNameRegistryEvent', mergeNameRegistryEventListener);
+        });
+
+        const readyMetadata = new Metadata();
+        readyMetadata.add('status', 'ready');
+        stream.sendMetadata(readyMetadata);
       },
     };
   };
