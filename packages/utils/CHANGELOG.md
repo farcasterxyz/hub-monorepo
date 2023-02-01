@@ -1,5 +1,14 @@
 # @farcaster/utils
 
+## 0.2.2
+
+### Patch Changes
+
+- 6be9983: add subscribe grpc method and support event streaming
+- Updated dependencies [9558382]
+- Updated dependencies [6be9983]
+  - @farcaster/protobufs@0.1.3
+
 ## 0.2.1
 
 ### Patch Changes
