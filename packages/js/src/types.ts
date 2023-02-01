@@ -8,6 +8,7 @@ export {
   SignatureScheme,
   UserDataType,
 } from '@farcaster/protobufs';
+export type { VerificationEthAddressClaim } from '@farcaster/utils';
 
 export type Message<TData = MessageData> = Readonly<{
   _protobuf: protobufs.Message;

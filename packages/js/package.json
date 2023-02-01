@@ -18,8 +18,8 @@
   "dependencies": {
     "@farcaster/protobufs": "0.1.2",
     "@farcaster/utils": "0.2.1",
+    "@noble/hashes": "^1.1.5",
     "ethers": "^5.7.2",
-    "flatbuffers": "^22.11.23",
     "neverthrow": "^6.0.0"
   },
   "scripts": {
@@ -31,8 +31,7 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^7.6.0",
-    "eslint-config-custom": "*",
-    "fishery": "^2.2.2"
+    "eslint-config-custom": "*"
   },
   "publishConfig": {
     "access": "public"
