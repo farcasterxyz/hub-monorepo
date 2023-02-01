@@ -242,8 +242,8 @@ describe('MerkleTrie', () => {
       const expectedHash = Buffer.from(
         blake3
           .create({ dkLen: 20 })
-          .update(node?.children?.get(Buffer.from('3')[0] as number)?.hash || '')
-          .update(node?.children?.get(Buffer.from('4')[0] as number)?.hash || '')
+          .update(Buffer.from(node?.children?.get(Buffer.from('3')[0] as number)?.hash || '', 'hex'))
+          .update(Buffer.from(node?.children?.get(Buffer.from('4')[0] as number)?.hash || '', 'hex'))
           .digest()
       ).toString('hex');
       expect(snapshot.excludedHashes).toEqual([
@@ -262,14 +262,14 @@ describe('MerkleTrie', () => {
       snapshot = trie.getSnapshot(Buffer.from('1665182343'));
       node = trie.getTrieNodeMetadata(Buffer.from('166518234'));
       const expectedLastHash = Buffer.from(
-        blake3(node?.children?.get(Buffer.from('5')[0] as number)?.hash || '', { dkLen: 20 })
+        blake3(Buffer.from(node?.children?.get(Buffer.from('5')[0] as number)?.hash || '', 'hex'), { dkLen: 20 })
       ).toString('hex');
       node = trie.getTrieNodeMetadata(Buffer.from('16651823'));
       const expectedPenultimateHash = Buffer.from(
         blake3
           .create({ dkLen: 20 })
-          .update(node?.children?.get(Buffer.from('3')[0] as number)?.hash || '')
-          .update(node?.children?.get(Buffer.from('5')[0] as number)?.hash || '')
+          .update(Buffer.from(node?.children?.get(Buffer.from('3')[0] as number)?.hash || '', 'hex'))
+          .update(Buffer.from(node?.children?.get(Buffer.from('5')[0] as number)?.hash || '', 'hex'))
           .digest()
       ).toString('hex');
       expect(snapshot.excludedHashes).toEqual([

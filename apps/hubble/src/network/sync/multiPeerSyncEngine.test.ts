@@ -303,6 +303,9 @@ describe('Multi peer sync engine', () => {
         totalMessages += batchSize;
       }
 
+      // Make sure the recalculatedHash matches root hash
+      expect(Buffer.from(syncEngine1.trie.root.recalculateHash()).toString('hex')).toEqual(syncEngine1.trie.rootHash);
+
       const engine2 = new Engine(testDb2, network);
       const syncEngine2 = new SyncEngine(engine2);
       syncEngine2.initialize();
