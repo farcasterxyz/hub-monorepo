@@ -1005,13 +1005,6 @@
   dependencies:
     lodash.mergewith "^4.6.2"
 
-"@farcaster/protobufs@0.1.3":
-  version "0.1.3"
-  resolved "https://registry.npmjs.org/@farcaster/protobufs/-/protobufs-0.1.3.tgz#39fe777c614231c912676fa09fc060f917816ed5"
-  integrity sha512-BSrXQpLLMN675pIWBBoHFsWGmtbko+OVF7UxQNLPEgtt4Lubylok4dCO/IQgGXxUZckQ4iwKxmB5PGYdcPDslA==
-  dependencies:
-    "@grpc/grpc-js" "^1.7.3"
-
 "@grpc/grpc-js@^1.7.3":
   version "1.8.1"
   resolved "https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.8.1.tgz#71f809c148e52ac9c15da4b8d4a65ecd7063dff7"

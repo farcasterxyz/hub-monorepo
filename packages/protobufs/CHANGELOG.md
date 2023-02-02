@@ -1,5 +1,11 @@
 # @farcaster/protobufs
 
+## 1.0.0
+
+### Major Changes
+
+- Created a new package to hold RPC implementation called grpc. Removed all grpc requirements from protobuf package. Redirected all imports to grpc.
+
 ## 0.1.3
 
 ### Patch Changes

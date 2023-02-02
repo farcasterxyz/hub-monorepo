@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/grpc",
-  "version": "0.1.1",
+  "version": "0.0.2",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -22,7 +22,7 @@
     "lint:fix": "yarn run lint -- --fix"
   },
   "dependencies": {
-    "@farcaster/protobufs": "1.0.2",
+    "@farcaster/protobufs": "1.0.0",
     "@grpc/grpc-js": "^1.7.3"
   }
 }
