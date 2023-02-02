@@ -1,8 +1,11 @@
 /** Used when index keys are sufficiently descriptive */
 export const TRUE_VALUE = Buffer.from([1]);
 
-/** Size in bytes of a Farcaster ID */
-export const FID_BYTES = 8;
+/**
+ * Size in bytes of a Farcaster ID. Even though it's technically 64 bit, we use 32-bit keys in the DB
+ * to save 4 bytes per key. This is fine until 4 billion users, after which we'll need to do a migration
+ */
+export const FID_BYTES = 4;
 
 /**
  * RootPrefix indicates the purpose of the key. It is the 1st byte of every key.

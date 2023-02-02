@@ -1,5 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
-import { makeMessagePrimaryKey, makeTsHash, typeToSetPostfix } from '~/storage/db/message';
+import { makeMessagePrimaryKey, typeToSetPostfix } from '~/storage/db/message';
+import { FID_BYTES } from '~/storage/db/types';
 
 const TIMESTAMP_LENGTH = 10; // Used to represent a decimal timestamp
 const HASH_LENGTH = 20; // Used to represent a 160-bit BLAKE3 hash
@@ -29,12 +30,10 @@ class SyncId {
   public syncId(): Uint8Array {
     const timestampString = timestampToPaddedTimestampPrefix(this._timestamp);
 
-    const tsHash = makeTsHash(this._timestamp, this._hash);
-
-    // Construct the rocksdb message key, which contains the fid, rocksdb prefix and hash
-
-    // TODO - Safety: why do we unwrap wrap here instead of handling the error?
-    const buf = makeMessagePrimaryKey(this._fid, typeToSetPostfix(this._type), tsHash._unsafeUnwrap());
+    // Note: We use the hash directly instead of the tsHash because the "ts" part of the tsHash is
+    // just the timestamp, which is already a part of the key (first 10 bytes)
+    // When we do the reverse lookup (`pkFromSyncId), we'll remember to add the timestamp back.
+    const buf = makeMessagePrimaryKey(this._fid, typeToSetPostfix(this._type), this._hash);
 
     // Construct and returns the Sync Id by prepending the timestamp to the rocksdb message key
     return Buffer.concat([Buffer.from(timestampString), buf]);
@@ -42,7 +41,21 @@ class SyncId {
 
   /** Returns the rocks db primary key used to look up the message */
   static pkFromSyncId(syncId: Uint8Array): Buffer {
-    const pk = syncId.slice(TIMESTAMP_LENGTH); // Skips the timestamp
+    const ts = syncId.slice(0, TIMESTAMP_LENGTH);
+    const tsBE = Buffer.alloc(4);
+    tsBE.writeUInt32BE(parseInt(ts.toString(), 10), 0);
+
+    const syncIDpart = syncId.slice(TIMESTAMP_LENGTH); // Skips the timestamp
+
+    // We need to add the timestamp back to the primary key so that we can look up the message
+    const ts_offset = 1 + FID_BYTES + 1; // 1 byte for the rocksdb prefix, 4 bytes for the fid, 1 byte for the set
+
+    const pk = new Uint8Array(ts_offset + 4 + HASH_LENGTH);
+
+    pk.set(syncIDpart.slice(0, ts_offset), 0); // copy the 1 byte prefix, 4 bytes fid, 1 byte set
+    pk.set(tsBE, ts_offset); // 4 bytes timestamp
+    pk.set(syncIDpart.slice(ts_offset), ts_offset + 4); // 20 byte hash
+
     return Buffer.from(pk);
   }
 }

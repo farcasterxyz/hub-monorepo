@@ -5,10 +5,8 @@ import { NetworkFactories } from '~/network/utils/factories';
 
 const fid = Factories.Fid.build();
 const sharedDate = new Date(1665182332000);
-const sharedPrefixHashA =
-  '0x09bc3dad4e7f2a77bbb2cccbecb06febfc3f0cbe7ea6a774d2dc043fd45c2c9912f130bf502c88fdedf7bbc4cd20b47aab2079e2d5cbd0a35afd2deec86a4321';
-const sharedPrefixHashB =
-  '0x09bc3dad4e7f2a77bbb2cccbecb06febfc3f0cbe7ea6a774d2dc043fd45c2c9912f130bf502c88fdedf7bbc4cd20b47aab2079e2d5cbd0a35afd2deec86b1234';
+const sharedPrefixHashA = '09bc3dad4e7f2a77bbb2cccbecb06febfc6a4321';
+const sharedPrefixHashB = '09bc3dad4e7f2a77bbb2cccbecb06febfc6b1234';
 
 describe('TrieNode', () => {
   // Traverse the node until we find a leaf or path splits into multiple choices

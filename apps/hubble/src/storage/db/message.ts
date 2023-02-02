@@ -14,7 +14,9 @@ import {
 
 export const makeFidKey = (fid: number): Buffer => {
   const buffer = Buffer.alloc(FID_BYTES);
-  buffer.writeBigUInt64BE(BigInt(fid), 0);
+  // Even though fid is 64 bits, we're only using 32 bits for now, to save 4 bytes per key.
+  // This is fine until 4 billion users, after which we'll need to do a migration of this key in the DB.
+  buffer.writeUInt32BE(fid, 0);
   return buffer;
 };
 
