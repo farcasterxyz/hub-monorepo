@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/grpc';
+import * as protobufs from '@farcaster/protobufs';
 import {
   bytesToHexString,
   bytesToUtf8String,

@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import * as protobufs from '@farcaster/grpc';
+import * as protobufs from '@farcaster/protobufs';
 import { Factories, HubError, validations } from '@farcaster/utils';
 import { ethers } from 'ethers';
 import { err, ok } from 'neverthrow';
