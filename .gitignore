@@ -34,3 +34,8 @@ coverage/
 out
 
 dist
+
+# Editor Cache
+.vscode
+.idea
+.fleet
