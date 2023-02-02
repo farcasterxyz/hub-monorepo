@@ -1,5 +1,5 @@
 {
-  "name": "hub",
+  "name": "hubble",
   "description": "A monorepo for the Farcaster Hub",
   "version": "0.0.0",
   "private": true,

@@ -65,14 +65,13 @@ COPY --chown=node:node --from=prune /home/node/app/out/yarn.lock ./yarn.lock
 RUN yarn install --frozen-lockfile --production --network-timeout 1800000
 
 # Copy results from previous stage
-COPY --chown=node:node --from=build /home/node/app/packages/flatbuffers/dist ./packages/flatbuffers/dist
-COPY --chown=node:node --from=build /home/node/app/packages/grpc/dist ./packages/grpc/dist
+COPY --chown=node:node --from=build /home/node/app/packages/protobufs/dist ./packages/protobufs/dist
 COPY --chown=node:node --from=build /home/node/app/packages/utils/dist ./packages/utils/dist
 COPY --chown=node:node tsconfig.json tsconfig.json
 
 # TODO: determine if this can be removed while using tsx (or find alternative)
 # since we should be able to run with just the compiled javascript in build/
-COPY --chown=node:node ./apps/hub ./apps/hub
+COPY --chown=node:node ./apps/hubble ./apps/hub
 
 # TODO: load identity from some secure store instead of generating a new one
 RUN yarn --cwd=apps/hub identity create
