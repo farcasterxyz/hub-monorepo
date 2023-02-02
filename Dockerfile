@@ -12,7 +12,8 @@ RUN mkdir /home/node/app
 WORKDIR /home/node/app
 
 # Run turbo prune to create a pruned version of monorepo
-RUN yarn global add turbo
+COPY --chown=node:node ./package.json ./package.json
+RUN yarn global add turbo@$(node -e "console.log(require('./package.json').devDependencies.turbo)")
 COPY --chown=node:node . .
 RUN /home/node/.yarn/bin/turbo prune --scope=@farcaster/hubble --docker
 

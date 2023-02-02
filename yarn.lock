@@ -7449,47 +7449,47 @@ tty-table@^4.1.5:
     wcwidth "^1.0.1"
     yargs "^17.1.1"
 
-turbo-darwin-64@1.7.3-canary.1:
-  version "1.7.3-canary.1"
-  resolved "https://registry.npmjs.org/turbo-darwin-64/-/turbo-darwin-64-1.7.3-canary.1.tgz#849243cbfae33420925bd6809b9d692cb56234c7"
-  integrity sha512-Xs7AsZEkWhXtZcBstCTbfMNb5SIqh6HaO2zS7it8zEbJUI+/GyND2YNUfkOswoD7hLYxBqFkaEzFOAlxJ5R28Q==
+turbo-darwin-64@1.7.0:
+  version "1.7.0"
+  resolved "https://registry.npmjs.org/turbo-darwin-64/-/turbo-darwin-64-1.7.0.tgz#e53ed2e791ce4d146a76aa7c276c84d590134550"
+  integrity sha512-hSGAueSf5Ko8J67mpqjpt9FsP6ePn1nMcl7IVPoJq5dHsgX3anCP/BPlexJ502bNK+87DDyhQhJ/LPSJXKrSYQ==
 
-turbo-darwin-arm64@1.7.3-canary.1:
-  version "1.7.3-canary.1"
-  resolved "https://registry.npmjs.org/turbo-darwin-arm64/-/turbo-darwin-arm64-1.7.3-canary.1.tgz#a1c273c6c4b75804166790375bacd898f07287fc"
-  integrity sha512-zs/RawpVFuvVu3o4XShxTsET8q3ZbgCzC8Sn/ZtBEIzL3Ixfg1Cta8AcC8fIUvL8BBqoehMcT1XLyKHp0nAfdQ==
+turbo-darwin-arm64@1.7.0:
+  version "1.7.0"
+  resolved "https://registry.npmjs.org/turbo-darwin-arm64/-/turbo-darwin-arm64-1.7.0.tgz#d5fdeccb38f1092b5c888f83a2dcd9ae97068dad"
+  integrity sha512-BLLOW5W6VZxk5+0ZOj5AO1qjM0P5isIgjbEuyAl8lHZ4s9antUbY4CtFrspT32XxPTYoDl4UjviPMcSsbcl3WQ==
 
-turbo-linux-64@1.7.3-canary.1:
-  version "1.7.3-canary.1"
-  resolved "https://registry.npmjs.org/turbo-linux-64/-/turbo-linux-64-1.7.3-canary.1.tgz#fddf586eb6862aa8d74fe76ff243824bb3f9f012"
-  integrity sha512-n92Y7sUxFrR8/hl6642QFXGYIUyUualw1bGT8buqjZKmhVaYquTKHIWTm2HT+GkxWfALYSBk8UYrwT3FiuaGQA==
+turbo-linux-64@1.7.0:
+  version "1.7.0"
+  resolved "https://registry.npmjs.org/turbo-linux-64/-/turbo-linux-64-1.7.0.tgz#48cf63aa51cde67d5a56eb70df6d7a93548376fa"
+  integrity sha512-aw2qxmfZa+kT87SB3GNUoFimqEPzTlzlRqhPgHuAAT6Uf0JHnmebPt4K+ZPtDNl5yfVmtB05bhHPqw+5QV97Yg==
 
-turbo-linux-arm64@1.7.3-canary.1:
-  version "1.7.3-canary.1"
-  resolved "https://registry.npmjs.org/turbo-linux-arm64/-/turbo-linux-arm64-1.7.3-canary.1.tgz#920da4d81bd686a5dd2977f6f2f82fb7bfbb9956"
-  integrity sha512-KtOnSuYaFNM+0EH/YzNs+sc+p+BB1Yshte7nQ5Gg7tomRRRV9t4YPoPVTwIvqxJbb8of1Pnf56pYvzISi9ipUw==
+turbo-linux-arm64@1.7.0:
+  version "1.7.0"
+  resolved "https://registry.npmjs.org/turbo-linux-arm64/-/turbo-linux-arm64-1.7.0.tgz#1b9b047d72071f9b8090057ede40ca54db945ae7"
+  integrity sha512-AJEx2jX+zO5fQtJpO3r6uhTabj4oSA5ZhB7zTs/rwu/XqoydsvStA4X8NDW4poTbOjF7DcSHizqwi04tSMzpJw==
 
-turbo-windows-64@1.7.3-canary.1:
-  version "1.7.3-canary.1"
-  resolved "https://registry.npmjs.org/turbo-windows-64/-/turbo-windows-64-1.7.3-canary.1.tgz#9223988e04a2104ae276bf8f68ffb3bab1665d5f"
-  integrity sha512-k/G1gvyRoquI5Y0m5jiqpiWm+PRMXd4LrO5Pb4GQH+fGajjwdqn9IGFkGorVJ+9u8yAzgxfBpeMpOED7KeoPWQ==
+turbo-windows-64@1.7.0:
+  version "1.7.0"
+  resolved "https://registry.npmjs.org/turbo-windows-64/-/turbo-windows-64-1.7.0.tgz#4683b84c5ba806cba8ab3ec28e4a62f46bdc9901"
+  integrity sha512-ewj7PPv2uxqv0r31hgnBa3E5qwUu7eyVRP5M1gB/TJXfSHduU79gbxpKCyxIZv2fL/N2/3U7EPOQPSZxBAoljA==
 
-turbo-windows-arm64@1.7.3-canary.1:
-  version "1.7.3-canary.1"
-  resolved "https://registry.npmjs.org/turbo-windows-arm64/-/turbo-windows-arm64-1.7.3-canary.1.tgz#faf4b58a1b8b1c02c596f7c2101f45eaaf1e446c"
-  integrity sha512-wGhSry3OkVMT54AvuiUi8hV3QiN7L+pRaS8Vjm12fh/5ZAJgS41maUFDVEdJlvHJnL88/8y46ww19+pUqtGgGw==
+turbo-windows-arm64@1.7.0:
+  version "1.7.0"
+  resolved "https://registry.npmjs.org/turbo-windows-arm64/-/turbo-windows-arm64-1.7.0.tgz#4cdcae60868df73e2af06dcaf39e1c725176cf7f"
+  integrity sha512-LzjOUzveWkvTD0jP8DBMYiAnYemmydsvqxdSmsUapHHJkl6wKZIOQNSO7pxsy+9XM/1/+0f9Y9F9ZNl5lePTEA==
 
-turbo@^1.7.3-canary.1:
-  version "1.7.3-canary.1"
-  resolved "https://registry.npmjs.org/turbo/-/turbo-1.7.3-canary.1.tgz#8a3bd8d21ccfafb044f3352b85b879ed03c2ce93"
-  integrity sha512-CAD2Oz0LajNDgIJtAWfwcjfYMoLnfTFe8maDjuh4c1r95nHtipHs+A8YIm7cifCop56R+tOx5eFyWMe+Drxkww==
+turbo@1.7.0:
+  version "1.7.0"
+  resolved "https://registry.npmjs.org/turbo/-/turbo-1.7.0.tgz#8e7d2fbc0b57f8835d51195e957766969929616f"
+  integrity sha512-cwympNwQNnQZ/TffBd8yT0i0O10Cf/hlxccCYgUcwhcGEb9rDjE5thDbHoHw1hlJQUF/5ua7ERJe7Zr0lNE/ww==
   optionalDependencies:
-    turbo-darwin-64 "1.7.3-canary.1"
-    turbo-darwin-arm64 "1.7.3-canary.1"
-    turbo-linux-64 "1.7.3-canary.1"
-    turbo-linux-arm64 "1.7.3-canary.1"
-    turbo-windows-64 "1.7.3-canary.1"
-    turbo-windows-arm64 "1.7.3-canary.1"
+    turbo-darwin-64 "1.7.0"
+    turbo-darwin-arm64 "1.7.0"
+    turbo-linux-64 "1.7.0"
+    turbo-linux-arm64 "1.7.0"
+    turbo-windows-64 "1.7.0"
+    turbo-windows-arm64 "1.7.0"
 
 type-check@^0.4.0, type-check@~0.4.0:
   version "0.4.0"
