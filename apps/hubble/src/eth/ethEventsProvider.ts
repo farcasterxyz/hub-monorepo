@@ -251,32 +251,6 @@ export class EthEventsProvider {
         }
       }
     }
-
-    // const oldIdEvents = await ResultAsync.fromPromise(
-    //   this._idRegistryContract.queryFilter(typeString, Number(fromBlock), Number(toBlock)),
-    //   (e) => e
-    // );
-    // if (oldIdEvents.isErr()) {
-    //   log.error({ err: oldIdEvents.error }, 'failed to get old Id events');
-    //   return;
-    // }
-    //
-    // for (const event of oldIdEvents.value) {
-    //   const toIndex = type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ? 0 : 1;
-    //   const idIndex = type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ? 1 : 2;
-    //
-    //   // Parsing can throw errors, so we'll just log them and continue
-    //   try {
-    //     const to: string = event.args?.at(toIndex);
-    //     const id: BigNumber = BigNumber.from(event.args?.at(idIndex));
-    //     const from: string =
-    //       type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ? null : event.args?.at(0);
-    //
-    //     await this.cacheIdRegistryEvent(from, to, id, type, event);
-    //   } catch (e) {
-    //     log.error({ event }, 'failed to parse event args');
-    //   }
-    // }
   }
 
   /**
