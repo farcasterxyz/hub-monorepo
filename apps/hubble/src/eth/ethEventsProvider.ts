@@ -223,16 +223,27 @@ export class EthEventsProvider {
       }
 
       // Fetch our batch of blocks
-      const batchIdEvents = await ResultAsync.fromPromise(
+      let batchIdEvents = await ResultAsync.fromPromise(
         this._idRegistryContract.queryFilter(typeString, Number(nextFromBlock), Number(nextToBlock)),
         (e) => e
       );
 
       // Make sure the batch didn't error, and if it did, retry.
       if (batchIdEvents.isErr()) {
-        // TODO: Implement error handling/retries
-        log.error({ err: batchIdEvents.error }, 'failed to get a batch of old ID events');
-        return;
+        // Query for the blocks again, in a last ditch effort
+        const retryBatchIdEvents = await ResultAsync.fromPromise(
+          this._idRegistryContract.queryFilter(typeString, Number(nextFromBlock), Number(nextToBlock)),
+          (e) => e
+        );
+
+        // If our new query succeeded, update our variable and cache the blocks
+        if (retryBatchIdEvents.isOk()) {
+          batchIdEvents = retryBatchIdEvents;
+        } else {
+          // If we still hit an error, just log the error and return
+          log.error({ err: batchIdEvents.error }, 'failed to get a batch of old ID events');
+          return;
+        }
       }
 
       // Loop through each event, get the right values, and cache it
@@ -289,14 +300,25 @@ export class EthEventsProvider {
         nextFromBlock += 1;
       }
 
-      const oldNameBatchEvents = await ResultAsync.fromPromise(
+      let oldNameBatchEvents = await ResultAsync.fromPromise(
         this._nameRegistryContract.queryFilter(typeString, Number(nextFromBlock), Number(nextToBlock)),
         (e) => e
       );
 
       if (oldNameBatchEvents.isErr()) {
-        log.error({ err: oldNameBatchEvents.error }, 'failed to get old Name events');
-        return;
+        const retryNameBatchEvents = await ResultAsync.fromPromise(
+          this._nameRegistryContract.queryFilter(typeString, Number(nextFromBlock), Number(nextToBlock)),
+          (e) => e
+        );
+
+        // If our new query succeeded, update our variable and cache the blocks
+        if (retryNameBatchEvents.isOk()) {
+          oldNameBatchEvents = retryNameBatchEvents;
+        } else {
+          // If we still hit an error, just log the error and return
+          log.error({ err: oldNameBatchEvents.error }, 'failed to get old Name events');
+          return;
+        }
       }
 
       for (const event of oldNameBatchEvents.value) {
