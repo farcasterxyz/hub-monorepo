@@ -145,7 +145,7 @@ class AmpStore extends SequentialMergeStore {
     const byTargetFidPrefix = makeAmpsByTargetFidKey(targetFid);
     const messageKeys: Buffer[] = [];
     for await (const [key] of this._db.iteratorByPrefix(byTargetFidPrefix, { keyAsBuffer: true, values: false })) {
-      const fid = Number((key as Buffer).readBigUint64BE(byTargetFidPrefix.length));
+      const fid = Number((key as Buffer).readUint32BE(byTargetFidPrefix.length));
       const tsHash = Uint8Array.from(key).subarray(byTargetFidPrefix.length + FID_BYTES);
       messageKeys.push(makeMessagePrimaryKey(fid, UserPostfix.AmpMessage, tsHash));
     }

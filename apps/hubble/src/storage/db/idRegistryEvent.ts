@@ -6,7 +6,7 @@ import { FID_BYTES, RootPrefix } from '~/storage/db/types';
 export const makeIdRegistryEventPrimaryKey = (fid: number): Buffer => {
   const buffer = Buffer.alloc(1 + FID_BYTES);
   buffer.writeUint8(RootPrefix.IdRegistryEvent, 0);
-  buffer.writeBigUint64BE(BigInt(fid), 1); // Big endian for ordering
+  buffer.writeUint32BE(fid, 1); // Big endian for ordering
   return buffer;
 };
 

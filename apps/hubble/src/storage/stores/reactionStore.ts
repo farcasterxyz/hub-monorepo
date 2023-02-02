@@ -215,7 +215,7 @@ class ReactionStore extends SequentialMergeStore {
 
     const messageKeys: Buffer[] = [];
     for await (const [key] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
-      const fid = Number((key as Buffer).readBigUint64BE(fidOffset));
+      const fid = Number((key as Buffer).readUint32BE(fidOffset));
       const tsHash = Uint8Array.from(key).subarray(tsHashOffset);
       messageKeys.push(makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage, tsHash));
     }
