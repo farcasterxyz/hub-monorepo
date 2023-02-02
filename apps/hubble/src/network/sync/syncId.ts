@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/grpc';
 import { makeMessagePrimaryKey, makeTsHash, typeToSetPostfix } from '~/storage/db/message';
 
 const TIMESTAMP_LENGTH = 10; // Used to represent a decimal timestamp

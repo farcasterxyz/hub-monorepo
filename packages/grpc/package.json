@@ -1,6 +1,6 @@
 {
-  "name": "@farcaster/protobufs",
-  "version": "1.0.2",
+  "name": "@farcaster/grpc",
+  "version": "0.1.1",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -18,12 +18,11 @@
   "scripts": {
     "build": "tsup --config tsup.config.ts",
     "clean": "rimraf ./dist",
-    "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/generated/ --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputServices=grpc-js,useOptionals=none --proto_path=./src/schemas ./src/schemas/*",
     "lint": "eslint  src/ --color --ext .ts",
     "lint:fix": "yarn run lint -- --fix"
   },
-  "devDependencies": {
-    "eslint-config-custom": "*",
-    "ts-proto": "^1.138.0"
+  "dependencies": {
+    "@farcaster/protobufs": "1.0.2",
+    "@grpc/grpc-js": "^1.7.3"
   }
 }

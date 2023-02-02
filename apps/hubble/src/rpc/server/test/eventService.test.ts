@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/grpc';
 import { Factories, getHubRpcClient, HubRpcClient } from '@farcaster/utils';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';

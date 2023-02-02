@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/grpc';
 import { FarcasterNetwork } from '@farcaster/protobufs';
 import { Factories, getFarcasterTime, HubRpcClient } from '@farcaster/utils';
 import { ok } from 'neverthrow';

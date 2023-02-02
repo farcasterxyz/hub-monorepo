@@ -26,7 +26,7 @@ import {
   TrieNodeSnapshotResponse,
   UserDataAddMessage,
   VerificationAddEthAddressMessage,
-} from '@farcaster/protobufs';
+} from '@farcaster/grpc';
 import { HubError } from '@farcaster/utils';
 import { APP_NICKNAME, APP_VERSION, HubInterface } from '~/hubble';
 import { NodeMetadata } from '~/network/sync/merkleTrie';

@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/grpc';
 import { bytesCompare, HubAsyncResult, HubError } from '@farcaster/utils';
 import { err, ok, ResultAsync } from 'neverthrow';
 import { getIdRegistryEventByCustodyAddress } from '~/storage/db/idRegistryEvent';

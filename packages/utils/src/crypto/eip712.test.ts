@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/grpc';
 import { blake3 } from '@noble/hashes/blake3';
 import { utils, Wallet } from 'ethers';
 import { ok } from 'neverthrow';

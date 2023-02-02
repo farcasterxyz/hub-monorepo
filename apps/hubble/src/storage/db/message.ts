@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/grpc';
 import { HubError, HubResult } from '@farcaster/utils';
 import { err, ok } from 'neverthrow';
 import AbstractRocksDB from 'rocksdb';

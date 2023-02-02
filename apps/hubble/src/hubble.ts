@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/grpc';
 import {
   ContactInfoContent,
   FarcasterNetwork,
@@ -8,7 +8,7 @@ import {
   IdRegistryEvent,
   Message,
   NameRegistryEvent,
-} from '@farcaster/protobufs';
+} from '@farcaster/grpc';
 import { getHubRpcClient, HubAsyncResult, HubError, HubResult, HubRpcClient } from '@farcaster/utils';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';

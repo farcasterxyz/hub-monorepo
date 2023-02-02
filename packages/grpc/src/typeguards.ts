@@ -1,4 +1,4 @@
-import * as protobufs from './generated/message';
+import * as protobufs from '@farcaster/protobufs/src/generated/message';
 import * as types from './types';
 
 export const isCastAddData = (data: protobufs.MessageData): data is types.CastAddData => {

@@ -1,4 +1,4 @@
-import * as protobufs from './generated/message';
+import * as protobufs from '@farcaster/protobufs/src/generated/message';
 
 export type CastAddData = protobufs.MessageData & {
   type: protobufs.MessageType.MESSAGE_TYPE_CAST_ADD;

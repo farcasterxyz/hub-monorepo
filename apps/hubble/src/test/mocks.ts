@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/grpc';
 import { HubAsyncResult, HubError } from '@farcaster/utils';
 import { err } from 'neverthrow';
 import { HubInterface } from '~/hubble';

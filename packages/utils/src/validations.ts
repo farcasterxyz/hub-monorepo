@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/grpc';
 import { blake3 } from '@noble/hashes/blake3';
 import { err, ok, Result } from 'neverthrow';
 import { bytesCompare, bytesToUtf8String } from './bytes';
