@@ -65,7 +65,7 @@ describe('TrieNode', () => {
       }
 
       expect(node.isLeaf).toEqual(true);
-      expect(node.value).toEqual(id.syncId());
+      expect(Buffer.from(node.value ?? [])).toEqual(id.syncId());
     });
 
     test('inserting another key with a common prefix splits the node', async () => {
@@ -99,12 +99,12 @@ describe('TrieNode', () => {
       // eslint-disable-next-line security/detect-object-injection
       expect(firstChild[0]).toEqual(hash1[firstDiffPos]);
       expect(firstChild[1].isLeaf).toBeTruthy();
-      expect(firstChild[1].value).toEqual(id1.syncId());
+      expect(Buffer.from(firstChild[1].value ?? [])).toEqual(id1.syncId());
       // hash2 node
       // eslint-disable-next-line security/detect-object-injection
       expect(secondChild[0]).toEqual(hash2[firstDiffPos]);
       expect(secondChild[1].isLeaf).toBeTruthy();
-      expect(secondChild[1].value).toEqual(id2.syncId());
+      expect(Buffer.from(secondChild[1].value ?? [])).toEqual(id2.syncId());
     });
   });
 

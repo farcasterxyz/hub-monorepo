@@ -2,8 +2,9 @@ import { bytesCompare, HubError } from '@farcaster/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { assert } from 'console';
 import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
+import { blake3Truncate160, BLAKE3TRUNCATE160_EMPTY_HASH } from '~/utils/crypto';
 
-export const EMPTY_HASH = Buffer.from(blake3(new Uint8Array(), { dkLen: 20 })).toString('hex');
+export const EMPTY_HASH = BLAKE3TRUNCATE160_EMPTY_HASH.toString('hex');
 
 /**
  * A snapshot of the trie at a particular timestamp which can be used to determine if two
@@ -180,7 +181,7 @@ class TrieNode {
     const innerSnapshot = this._children.get(char)?.getSnapshot(prefix, current_index + 1);
     const excludedHash = this._excludedHash(char);
     return {
-      prefix: innerSnapshot?.prefix || prefix.slice(0, current_index + 1),
+      prefix: innerSnapshot?.prefix || prefix.subarray(0, current_index + 1),
       excludedHashes: [excludedHash.hash, ...(innerSnapshot?.excludedHashes || [])],
       numMessages: excludedHash.items + (innerSnapshot?.numMessages || 0),
     };
@@ -233,23 +234,20 @@ class TrieNode {
   }
 
   public recalculateHash(): Uint8Array {
+    let digest;
     if (this.isLeaf) {
-      const hashBytes = Buffer.from(blake3(this.value ?? new Uint8Array(), { dkLen: 20 }));
-      if (!this._hash) {
-        this._hash = hashBytes.toString('hex');
-      }
-      return hashBytes;
+      digest = blake3Truncate160(this.value);
     } else {
       const hash = blake3.create({ dkLen: 20 });
       this._children.forEach((child) => {
         hash.update(child.recalculateHash());
       });
-      const hashBytes = Buffer.from(hash.digest());
-      if (!this._hash) {
-        this._hash = hashBytes.toString('hex');
-      }
-      return hashBytes;
+      digest = hash.digest();
     }
+    if (!this._hash) {
+      this._hash = Buffer.from(digest.buffer, digest.byteOffset, digest.byteLength).toString('hex');
+    }
+    return digest;
   }
 
   /* Private methods */
@@ -263,7 +261,11 @@ class TrieNode {
         excludedItems += child.items;
       }
     });
-    return { hash: Buffer.from(hash.digest()).toString('hex'), items: excludedItems };
+    const digest = hash.digest();
+    return {
+      hash: Buffer.from(digest.buffer, digest.byteOffset, digest.byteLength).toString('hex'),
+      items: excludedItems,
+    };
   }
 
   private _addChild(char: number) {
@@ -274,7 +276,10 @@ class TrieNode {
   }
 
   private _setKeyValue(key: Uint8Array | undefined) {
-    this._key = key;
+    // The key is copied to a new Uint8Array to avoid using Buffer's shared memory pool. Since
+    // TrieNode are long-lived objects, referencing shared memory pool will prevent them from being
+    // freed and leak memory.
+    this._key = key === undefined ? undefined : new Uint8Array(key);
     this._updateHash();
   }
 
@@ -295,15 +300,17 @@ class TrieNode {
   }
 
   private _updateHash() {
+    let digest;
     if (this.isLeaf) {
-      this._hash = Buffer.from(blake3(this.value ?? new Uint8Array(), { dkLen: 20 })).toString('hex');
+      digest = blake3Truncate160(this.value);
     } else {
       const hash = blake3.create({ dkLen: 20 });
       this._children.forEach((child) => {
         hash.update(Buffer.from(child.hash, 'hex'));
       });
-      this._hash = Buffer.from(hash.digest()).toString('hex');
+      digest = hash.digest();
     }
+    this._hash = Buffer.from(digest.buffer, digest.byteOffset, digest.byteLength).toString('hex');
   }
 }
 
