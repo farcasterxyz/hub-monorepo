@@ -1,5 +1,18 @@
 # @farcaster/js
 
+## 0.2.4
+
+### Patch Changes
+
+- Updated dependencies
+  - @farcaster/utils@0.2.3
+
+## 0.2.3
+
+### Patch Changes
+
+- remove grpc dependency and strictly use protobuf package
+
 ## 0.2.2
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @farcaster/utils
 
+## 0.2.3
+
+### Patch Changes
+
+- Add grpc package dependency
+
 ## 0.2.2
 
 ### Patch Changes

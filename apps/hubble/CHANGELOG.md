@@ -1,5 +1,18 @@
 # @farcaster/hubble
 
+## 1.0.7
+
+### Patch Changes
+
+- Updated dependencies
+  - @farcaster/utils@0.2.3
+
+## 1.0.6
+
+### Patch Changes
+
+- Add grpc package dependency. Replace protobuf imports source with grpc package.
+
 ## 1.0.5
 
 ### Patch Changes
