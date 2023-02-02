@@ -166,12 +166,14 @@ export class EthEventsProvider {
     await this.syncHistoricalIdEvents(
       protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER,
       lastSyncedBlock,
-      toBlock
+      toBlock,
+      10000
     );
     await this.syncHistoricalIdEvents(
       protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_TRANSFER,
       lastSyncedBlock,
-      toBlock
+      toBlock,
+      10000
     );
 
     // Sync old Name Transfer events
@@ -189,34 +191,92 @@ export class EthEventsProvider {
    * Sync old Id events that may have happened before hub was started. We'll put them all
    * in the sync queue to be processed later, to make sure we don't process any unconfirmed events.
    */
-  private async syncHistoricalIdEvents(type: protobufs.IdRegistryEventType, fromBlock: number, toBlock: number) {
+  private async syncHistoricalIdEvents(
+    type: protobufs.IdRegistryEventType,
+    fromBlock: number,
+    toBlock: number,
+    batchSize: number
+  ) {
     const typeString = type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ? 'Register' : 'Transfer';
 
-    const oldIdEvents = await ResultAsync.fromPromise(
-      this._idRegistryContract.queryFilter(typeString, Number(fromBlock), Number(toBlock)),
-      (e) => e
-    );
-    if (oldIdEvents.isErr()) {
-      log.error({ err: oldIdEvents.error }, 'failed to get old Id events');
-      return;
-    }
+    /*
+     * How querying blocks in batches works
+     * We calculate the difference in blocks, for example, lets say we need to sync/cache 769,531 blocks (difference between the contracts FirstBlock, and the latest Goerli block at time of writing, 8418326)
+     * After that, we divide our difference in blocks by the batchSize. For example, over 769,531 blocks, at a 10,000 block batchSize, we need to run our loop 76.9531 times, which obviously just rounds up to 77 loops
+     * During this whole process, we're using a for(let i=0;) loop, which means to get the correct from block, we need to calculate new fromBlock's and toBlock's on every loop
+     * fromBlock: FirstBlock + (loopIndex * batchSize) - Example w/ batchSize 10,000: Run 0 - FirstBlock + 0, Run 1 - FirstBlock + 10,000, Run 2 - FirstBlock + 20,000, etc....
+     * toBlock: fromBlock + batchSize - Example w/ batchSize 10,000: Run 0: fromBlock + 10,000, Run 1 - fromBlock + 10,000, etc...
+     */
 
-    for (const event of oldIdEvents.value) {
-      const toIndex = type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ? 0 : 1;
-      const idIndex = type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ? 1 : 2;
+    // Calculate amount of runs required based on batchSize, and round up to capture all blocks
+    const numOfRuns = Math.ceil((toBlock - fromBlock) / batchSize);
 
-      // Parsing can throw errors, so we'll just log them and continue
-      try {
-        const to: string = event.args?.at(toIndex);
-        const id: BigNumber = BigNumber.from(event.args?.at(idIndex));
-        const from: string =
-          type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ? null : event.args?.at(0);
+    for (let i = 0; i < numOfRuns; i++) {
+      let nextFromBlock = fromBlock + i * batchSize;
+      const nextToBlock = nextFromBlock + batchSize;
 
-        await this.cacheIdRegistryEvent(from, to, id, type, event);
-      } catch (e) {
-        log.error({ event }, 'failed to parse event args');
+      if (i > 0) {
+        // If this isn't our first loop, we need to up the fromBlock by 1, or else we will be re-caching an already cached block.
+        nextFromBlock += 1;
+      }
+
+      // Fetch our batch of blocks
+      const batchIdEvents = await ResultAsync.fromPromise(
+        this._idRegistryContract.queryFilter(typeString, Number(nextFromBlock), Number(nextToBlock)),
+        (e) => e
+      );
+
+      // Make sure the batch didn't error, and if it did, retry.
+      if (batchIdEvents.isErr()) {
+        // TODO: Implement error handling/retries
+        log.error({ err: batchIdEvents.error }, 'failed to get a batch of old ID events');
+        return;
+      }
+
+      // Loop through each event, get the right values, and cache it
+      for (const event of batchIdEvents.value) {
+        const toIndex = type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ? 0 : 1;
+        const idIndex = type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ? 1 : 2;
+
+        // Parsing can throw errors, so we'll just log them and continue
+        try {
+          const to: string = event.args?.at(toIndex);
+          const id: BigNumber = BigNumber.from(event.args?.at(idIndex));
+          const from: string =
+            type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ? null : event.args?.at(0);
+
+          await this.cacheIdRegistryEvent(from, to, id, type, event);
+        } catch (e) {
+          log.error({ event }, 'failed to parse event args');
+        }
       }
     }
+
+    // const oldIdEvents = await ResultAsync.fromPromise(
+    //   this._idRegistryContract.queryFilter(typeString, Number(fromBlock), Number(toBlock)),
+    //   (e) => e
+    // );
+    // if (oldIdEvents.isErr()) {
+    //   log.error({ err: oldIdEvents.error }, 'failed to get old Id events');
+    //   return;
+    // }
+    //
+    // for (const event of oldIdEvents.value) {
+    //   const toIndex = type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ? 0 : 1;
+    //   const idIndex = type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ? 1 : 2;
+    //
+    //   // Parsing can throw errors, so we'll just log them and continue
+    //   try {
+    //     const to: string = event.args?.at(toIndex);
+    //     const id: BigNumber = BigNumber.from(event.args?.at(idIndex));
+    //     const from: string =
+    //       type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ? null : event.args?.at(0);
+    //
+    //     await this.cacheIdRegistryEvent(from, to, id, type, event);
+    //   } catch (e) {
+    //     log.error({ event }, 'failed to parse event args');
+    //   }
+    // }
   }
 
   /**
