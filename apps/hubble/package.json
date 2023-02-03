@@ -73,7 +73,7 @@
     "rocksdb": "^5.2.1",
     "tiny-typed-emitter": "^2.1.0",
     "tsx": "^3.12.2",
-    "undici": "^5.10.0",
+    "undici": "^5.16.0",
     "uri-js": "^4.4.1"
   }
 }
