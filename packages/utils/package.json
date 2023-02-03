@@ -19,7 +19,7 @@
     "@faker-js/faker": "^7.6.0",
     "@farcaster/protobufs": "0.1.3",
     "@noble/ed25519": "^1.7.1",
-    "@noble/hashes": "^1.1.5",
+    "@noble/hashes": "^1.2.0",
     "ethers": "^5.7.2",
     "neverthrow": "^6.0.0"
   },
@@ -31,7 +31,7 @@
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"
   },
   "devDependencies": {
-    "eslint-config-custom": "*",
-    "@farcaster/fishery": "2.2.3"
+    "@farcaster/fishery": "2.2.3",
+    "eslint-config-custom": "*"
   }
 }
