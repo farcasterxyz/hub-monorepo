@@ -98,12 +98,12 @@ export const addressInfoToString = (addressInfo: AddressInfo): string => {
   }
 };
 
-/**
- * Returns publicly visible IPv4 or IPv6 address of the running process
- */
 let lastIpFetch = { timestamp: new Date().getTime(), ip: '' };
 
+/** Returns a publicly visible IPv4 or IPv6 address of the running process */
 export const getPublicIp = async (): HubAsyncResult<string> => {
+  // TODO: refactor to make this more readable, the nested promise/return/try-catch is hard to
+  // reason about
   return new Promise((resolve, reject) => {
     const now = new Date().getTime();
     const since = now - lastIpFetch.timestamp;

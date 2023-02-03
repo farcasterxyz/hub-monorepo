@@ -280,12 +280,20 @@ export class EthEventsProvider {
       type === protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER ? 'Transfer' : 'Renew';
 
     /*
-     * How querying blocks in batches works
-     * We calculate the difference in blocks, for example, lets say we need to sync/cache 769,531 blocks (difference between the contracts FirstBlock, and the latest Goerli block at time of writing, 8418326)
-     * After that, we divide our difference in blocks by the batchSize. For example, over 769,531 blocks, at a 10,000 block batchSize, we need to run our loop 76.9531 times, which obviously just rounds up to 77 loops
-     * During this whole process, we're using a for(let i=0;) loop, which means to get the correct from block, we need to calculate new fromBlock's and toBlock's on every loop
-     * fromBlock: FirstBlock + (loopIndex * batchSize) - Example w/ batchSize 10,000: Run 0 - FirstBlock + 0, Run 1 - FirstBlock + 10,000, Run 2 - FirstBlock + 20,000, etc....
-     * toBlock: fromBlock + batchSize - Example w/ batchSize 10,000: Run 0: fromBlock + 10,000, Run 1 - fromBlock + 10,000, etc...
+     * Querying Blocks in Batches
+     *   
+     * 1. Calculate difference between the first and last sync blocks (e.g. )
+     * 2. Divide by batch size and round up to get runs, and iterate with for-loop
+     * 3. Compute the fromBlock in each run as firstBlock + (loopIndex * batchSize)
+     * 4. Compute the toBlock in each run as fromBlock + batchSize
+     * 5. In every run after the first one, increment fromBlock by 1 to avoid duplication
+
+     * To sync blocks from 7,648,795 to 8,418,326, the diff is 769,531
+     * The run size for a 10k batch would be =  76.9531 ~= 77 runs
+     * For the 1st run, fromBlock = 7,648,795 + (0 * 10,000) =  7,648,795
+     * For the 1st run, toBlock = 7,648,795 + 10,000 =  7,658,795
+     * For the 2nd run, fromBlock = 7,648,795 + (1 * 10,000) + 1 =  7,658,796
+     * For the 2nd run, toBlock = 7,658,796 + 10,000 =  7,668,796
      */
 
     // Calculate amount of runs required based on batchSize, and round up to capture all blocks
@@ -323,6 +331,7 @@ export class EthEventsProvider {
 
       for (const event of oldNameBatchEvents.value) {
         if (type === protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER) {
+          // Handling: use try-catch + log since errors are expected and not importrant to surface
           try {
             const from: string = event.args?.at(0);
             const to: string = event.args?.at(1);

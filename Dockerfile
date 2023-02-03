@@ -5,14 +5,17 @@
 ############## Stage 1: Create pruned version of monorepo #####################
 ###############################################################################
 
-FROM node:18 AS prune
+FROM node:18-alpine AS prune
+
+RUN apk add --no-cache libc6-compat
 
 USER node
 RUN mkdir /home/node/app
 WORKDIR /home/node/app
 
 # Run turbo prune to create a pruned version of monorepo
-RUN yarn global add turbo
+COPY --chown=node:node ./package.json ./package.json
+RUN yarn global add turbo@$(node -e "console.log(require('./package.json').devDependencies.turbo)")
 COPY --chown=node:node . .
 RUN /home/node/.yarn/bin/turbo prune --scope=@farcaster/hubble --docker
 
@@ -20,7 +23,10 @@ RUN /home/node/.yarn/bin/turbo prune --scope=@farcaster/hubble --docker
 ############## Stage 2: Build the code using a full node image ################
 ###############################################################################
 
-FROM node:18 AS build
+FROM node:18-alpine AS build
+
+# Needed for compilation step
+RUN apk add --no-cache libc6-compat python3 make g++ linux-headers
 
 USER node
 RUN mkdir /home/node/app
@@ -40,17 +46,20 @@ COPY --chown=node:node tsconfig.json tsconfig.json
 # Build code
 RUN yarn build
 
+# Purge dev dependencies. It is not equivalent to a fresh `yarn install --production` but it is
+# close enough (https://github.com/yarnpkg/yarn/issues/696).
+RUN yarn install --production --ignore-scripts --prefer-offline --force --frozen-lockfile
+
 ###############################################################################
 ########## Stage 3: Copy over the built code to a leaner alpine image #########
 ###############################################################################
 
-FROM node:18-alpine
-
-RUN apk update && apk add --no-cache g++ make python3 linux-headers
+FROM node:18-alpine as app
 
 # Set non-root user and expose port 8080
 USER node
 EXPOSE 8080
+EXPOSE 9090
 
 # Many npm packages use this to trigger production optimized behaviors
 ENV NODE_ENV production
@@ -58,22 +67,32 @@ ENV NODE_ENV production
 RUN mkdir /home/node/app
 WORKDIR /home/node/app
 
-# Copy dependency information and install dependencies
+# Copy results from previous stage.
+# The base image is same as the build stage, so it is safe to copy node_modules over to this stage.
 COPY --chown=node:node --from=prune /home/node/app/out/json/ .
 COPY --chown=node:node --from=prune /home/node/app/out/yarn.lock ./yarn.lock
-
-RUN yarn install --frozen-lockfile --production --network-timeout 1800000
-
-# Copy results from previous stage
-COPY --chown=node:node --from=build /home/node/app/packages/protobufs/dist ./packages/protobufs/dist
-COPY --chown=node:node --from=build /home/node/app/packages/utils/dist ./packages/utils/dist
-COPY --chown=node:node tsconfig.json tsconfig.json
+COPY --chown=node:node --from=build /home/node/app/tsconfig.json ./tsconfig.json
+COPY --chown=node:node --from=build /home/node/app/node_modules ./node_modules
+COPY --chown=node:node --from=build /home/node/app/packages/protobufs/dist ./packages/protobufs/dist/
+COPY --chown=node:node --from=build /home/node/app/packages/protobufs/node_modules ./packages/protobufs/node_modules/
+COPY --chown=node:node --from=build /home/node/app/packages/utils/dist ./packages/utils/dist/
+COPY --chown=node:node --from=build /home/node/app/packages/utils/node_modules ./packages/utils/node_modules/
 
 # TODO: determine if this can be removed while using tsx (or find alternative)
 # since we should be able to run with just the compiled javascript in build/
-COPY --chown=node:node ./apps/hubble ./apps/hub
+COPY --chown=node:node --from=build /home/node/app/apps/hubble ./apps/hubble
 
 # TODO: load identity from some secure store instead of generating a new one
-RUN yarn --cwd=apps/hub identity create
+RUN yarn --cwd=apps/hubble identity create
 
-CMD ["yarn", "--cwd=apps/hub", "start", "--rpc-port", "8080", "--gossip-port", "9090", "--eth-rpc-url", "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd"]
+# BuildKit doesn't support --squash flag, so emulate by copying into fewer layers
+FROM scratch
+COPY --from=app / /
+
+# Repeat of above since it is lost between build stages
+USER node
+EXPOSE 8080
+EXPOSE 9090
+WORKDIR /home/node/app
+
+CMD ["yarn", "--cwd=apps/hubble", "start", "--rpc-port", "8080", "--ip", "0.0.0.0", "--gossip-port", "9090", "--eth-rpc-url", "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd", "--network", "1"]

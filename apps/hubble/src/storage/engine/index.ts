@@ -216,6 +216,16 @@ class Engine {
   /* -------------------------------------------------------------------------- */
 
   async getAmp(fid: number, targetFid: number): HubAsyncResult<protobufs.AmpAddMessage> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    const validatedTargetFid = validations.validateFid(targetFid);
+    if (validatedTargetFid.isErr()) {
+      return err(validatedTargetFid.error);
+    }
+
     return ResultAsync.fromPromise(this._ampStore.getAmpAdd(fid, targetFid), (e) => e as HubError);
   }
 
@@ -418,14 +428,29 @@ class Engine {
   /* -------------------------------------------------------------------------- */
 
   async getUserData(fid: number, type: protobufs.UserDataType): HubAsyncResult<protobufs.UserDataAddMessage> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
     return ResultAsync.fromPromise(this._userDataStore.getUserDataAdd(fid, type), (e) => e as HubError);
   }
 
   async getUserDataByFid(fid: number): HubAsyncResult<protobufs.UserDataAddMessage[]> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
     return ResultAsync.fromPromise(this._userDataStore.getUserDataAddsByFid(fid), (e) => e as HubError);
   }
 
   async getNameRegistryEvent(fname: Uint8Array): HubAsyncResult<protobufs.NameRegistryEvent> {
+    const validatedFname = validations.validateFname(fname);
+    if (validatedFname.isErr()) {
+      return err(validatedFname.error);
+    }
+
     return ResultAsync.fromPromise(this._userDataStore.getNameRegistryEvent(fname), (e) => e as HubError);
   }
 
