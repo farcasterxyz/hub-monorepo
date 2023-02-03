@@ -77,4 +77,4 @@ COPY --chown=node:node ./apps/hubble ./apps/hub
 # TODO: load identity from some secure store instead of generating a new one
 RUN yarn --cwd=apps/hub identity create
 
-CMD ["yarn", "--cwd=apps/hub", "start", "--rpc-port", "8080", "--gossip-port", "9090", "--eth-rpc-url", "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd"]
+CMD ["yarn", "--cwd=apps/hub", "start", "--rpc-port", "8080", "--ip", "0.0.0.0", "--gossip-port", "9090", "--eth-rpc-url", "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd"]
