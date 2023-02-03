@@ -127,6 +127,8 @@ const parseNumber = (string: string) => {
 const writePeerId = async (peerId: PeerId, filepath: string) => {
   const directory = dirname(filepath);
   const proto = exportToProtobuf(peerId);
+  // Handling: using try-catch is more ergonomic than capturing and handling throwable, since we
+  // want a fast failure back to the CLI
   try {
     if (!existsSync(directory)) {
       await mkdir(directory, { recursive: true });
