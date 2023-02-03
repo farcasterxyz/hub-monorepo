@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "eslint-config-custom": "*",
-    "ts-proto": "^1.138.0"
+    "ts-proto": "^1.139.0"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.7.3"
