@@ -4,7 +4,7 @@ import cron from 'node-cron';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
 
-export const DEFAULT_PRUNE_MESSAGES_JOB_CRON = '0 * * * *'; // Every hour
+export const DEFAULT_PRUNE_MESSAGES_JOB_CRON = '0 * * * *'; // Every hour at :00
 
 const log = logger.child({
   component: 'PruneMessagesJob',
@@ -21,9 +21,7 @@ export class PruneMessagesJobScheduler {
   }
 
   start(cronSchedule?: string) {
-    this._cronTask = cron.schedule(cronSchedule ?? DEFAULT_PRUNE_MESSAGES_JOB_CRON, () => {
-      this.doJobs();
-    });
+    this._cronTask = cron.schedule(cronSchedule ?? DEFAULT_PRUNE_MESSAGES_JOB_CRON, this.doJobs);
   }
 
   stop() {

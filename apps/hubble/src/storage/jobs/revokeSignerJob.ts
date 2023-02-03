@@ -10,7 +10,7 @@ import { logger } from '~/utils/logger';
 import { RootPrefix } from '../db/types';
 
 export const DEFAULT_REVOKE_SIGNER_JOB_DELAY = 1000 * 60 * 60; // 1 hour in ms
-export const DEFAULT_REVOKE_SIGNER_JOB_CRON = '0 * * * *'; // Every hour
+export const DEFAULT_REVOKE_SIGNER_JOB_CRON = '10 * * * *'; // Every hour at :10
 
 const log = logger.child({
   component: 'RevokeSignerJob',
@@ -30,13 +30,13 @@ export class RevokeSignerJobScheduler {
 
   start(cronSchedule?: string) {
     this._cronTask = cron.schedule(cronSchedule ?? DEFAULT_REVOKE_SIGNER_JOB_CRON, () => {
-      this.doJobs();
+      return this.doJobs();
     });
   }
 
   stop() {
     if (this._cronTask) {
-      this._cronTask.stop();
+      return this._cronTask.stop();
     }
   }
 
