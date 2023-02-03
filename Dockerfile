@@ -49,7 +49,7 @@ RUN yarn install --production --ignore-scripts --prefer-offline --force --frozen
 ########## Stage 3: Copy over the built code to a leaner alpine image #########
 ###############################################################################
 
-FROM node:18-slim
+FROM node:18-slim as app
 
 # Set non-root user and expose port 8080
 USER node
@@ -80,4 +80,14 @@ COPY --chown=node:node --from=build /home/node/app/apps/hubble ./apps/hubble
 # TODO: load identity from some secure store instead of generating a new one
 RUN yarn --cwd=apps/hubble identity create
 
-CMD ["yarn", "--cwd=apps/hubble", "start", "--rpc-port", "8080", "--ip", "0.0.0.0", "--gossip-port", "9090", "--eth-rpc-url", "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd"]
+# BuildKit doesn't support --squash flag, so emulate by copying into fewer layers
+FROM scratch
+COPY --from=app / /
+
+# Repeat of above since it is lost between build stages
+USER node
+EXPOSE 8080
+EXPOSE 9090
+WORKDIR /home/node/app
+
+CMD ["yarn", "--cwd=apps/hubble", "start", "--rpc-port", "8080", "--ip", "0.0.0.0", "--gossip-port", "9090", "--eth-rpc-url", "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd", "--network", "1"]
