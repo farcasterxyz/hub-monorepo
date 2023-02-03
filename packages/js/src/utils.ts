@@ -100,7 +100,7 @@ export const deserializeIdRegistryEvent = (protobuf: protobufs.IdRegistryEvent):
     deserializeBlockHash(protobuf.blockHash),
     deserializeTransactionHash(protobuf.transactionHash),
     deserializeEthAddress(protobuf.to),
-    deserializeEthAddress(protobuf.from),
+    protobuf.from && protobuf.from.length > 0 ? deserializeEthAddress(protobuf.from) : ok(undefined),
   ]);
 
   if (deserialized.isErr()) {

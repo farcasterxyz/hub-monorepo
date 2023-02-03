@@ -122,7 +122,7 @@ export type IdRegistryEvent = Readonly<{
   fid: number;
   to: string; // Hex string
   type: protobufs.IdRegistryEventType;
-  from: string; // Hex string
+  from: string | undefined; // Hex string
 }>;
 
 export type NameRegistryEvent = Readonly<{
