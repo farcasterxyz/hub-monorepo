@@ -1,10 +1,9 @@
-import { BigNumber } from 'ethers';
 import { bytes32ToBytes } from '~/eth/utils';
 
 describe('bytes32ToBytes', () => {
-  const passingCases: [BigNumber, Uint8Array][] = [
+  const passingCases: [bigint, Uint8Array][] = [
     [
-      BigNumber.from('50839975223553296918063695500986414185067076564032165621192833738513116561408'),
+      BigInt('50839975223553296918063695500986414185067076564032165621192833738513116561408'),
       new Uint8Array([112, 102, 104]),
     ],
   ];

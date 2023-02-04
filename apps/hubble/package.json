@@ -57,7 +57,7 @@
     "@libp2p/utils": "^3.0.2",
     "@multiformats/multiaddr": "^11.0.0",
     "commander": "^10.0.0",
-    "ethers": "^5.6.1",
+    "ethers": "^6.0.0",
     "libp2p": "^0.39.5",
     "neverthrow": "^6.0.0",
     "node-cron": "^3.0.2",
