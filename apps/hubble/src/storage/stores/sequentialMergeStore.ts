@@ -4,7 +4,7 @@ import { err, ok, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
 
 const MIN_NONCE = 1;
-const MERGE_TIMEOUT = 2 * 1000; // 2 seconds
+const MERGE_TIMEOUT = 10 * 1000; // 10 seconds
 
 export type MergeProcessingEvents = {
   processed: (messageId: string, result?: HubResult<void>) => void;
