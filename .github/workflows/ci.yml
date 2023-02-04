@@ -60,10 +60,6 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        shard: [1/2, 2/2]
-
     steps:
       - uses: actions/checkout@v3
 
@@ -85,7 +81,7 @@ jobs:
         run: yarn build
 
       - name: Run tests
-        run: yarn test:ci --shard=${{ matrix.shard }}
+        run: yarn test:ci
 
       - name: Upload coverage results
         uses: codecov/codecov-action@v3
