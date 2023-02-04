@@ -1,5 +1,4 @@
-import { TypedDataSigner } from '@ethersproject/abstract-signer';
-import { utils } from 'ethers';
+import { recoverAddress, Signer, TypedDataEncoder } from 'ethers';
 import { Result, ResultAsync } from 'neverthrow';
 import { hexStringToBytes } from '../bytes';
 import { HubAsyncResult, HubError, HubResult } from '../errors';
@@ -40,10 +39,10 @@ export const EIP_712_FARCASTER_MESSAGE_DATA = [
 
 export const signVerificationEthAddressClaim = async (
   claim: VerificationEthAddressClaim,
-  ethersTypedDataSigner: TypedDataSigner
+  ethersTypedDataSigner: Signer
 ): HubAsyncResult<Uint8Array> => {
   const hexSignature = await ResultAsync.fromPromise(
-    ethersTypedDataSigner._signTypedData(
+    ethersTypedDataSigner.signTypedData(
       EIP_712_FARCASTER_DOMAIN,
       { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
       claim
@@ -62,12 +61,16 @@ export const verifyVerificationEthAddressClaimSignature = (
   // Recover address from signature
   const recoveredHexAddress = Result.fromThrowable(
     () =>
-      utils.verifyTypedData(
-        EIP_712_FARCASTER_DOMAIN,
-        { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
-        claim,
-        signature
+      recoverAddress(
+        TypedDataEncoder.hash(
+          EIP_712_FARCASTER_DOMAIN,
+          { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
+          claim
+        ),
+        // TOFIX: v6 does not yet support uint8
+        signature as any
       ),
+
     (e) => new HubError('bad_request.invalid_param', e as Error)
   )();
 
@@ -75,16 +78,9 @@ export const verifyVerificationEthAddressClaimSignature = (
   return recoveredHexAddress.andThen((hex) => hexStringToBytes(hex));
 };
 
-export const signMessageHash = async (
-  hash: Uint8Array,
-  ethersTypedDataSigner: TypedDataSigner
-): HubAsyncResult<Uint8Array> => {
+export const signMessageHash = async (hash: Uint8Array, signer: Signer): HubAsyncResult<Uint8Array> => {
   const hexSignature = await ResultAsync.fromPromise(
-    ethersTypedDataSigner._signTypedData(
-      EIP_712_FARCASTER_DOMAIN,
-      { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
-      { hash }
-    ),
+    signer.signTypedData(EIP_712_FARCASTER_DOMAIN, { MessageData: EIP_712_FARCASTER_MESSAGE_DATA }, { hash }),
     (e) => new HubError('bad_request.invalid_param', e as Error)
   );
 
@@ -96,11 +92,10 @@ export const verifyMessageHashSignature = (hash: Uint8Array, signature: Uint8Arr
   // Recover address from signature
   const recoveredHexAddress = Result.fromThrowable(
     () =>
-      utils.verifyTypedData(
-        EIP_712_FARCASTER_DOMAIN,
-        { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
-        { hash },
-        signature
+      recoverAddress(
+        TypedDataEncoder.hash(EIP_712_FARCASTER_DOMAIN, { MessageData: EIP_712_FARCASTER_MESSAGE_DATA }, { hash }),
+        // temporary workaround, until ethers v6 implements support for uint8array here
+        signature as any
       ),
     (e) => new HubError('bad_request.invalid_param', e as Error)
   )();

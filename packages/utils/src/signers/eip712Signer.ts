@@ -1,15 +1,12 @@
-import {
-  Signer as EthersAbstractSigner,
-  TypedDataSigner as EthersTypedDataSigner,
-} from '@ethersproject/abstract-signer';
 import { SignatureScheme } from '@farcaster/protobufs';
+import { Signer as EthersSigner } from 'ethers';
 import { hexStringToBytes } from '../bytes';
 import { eip712 } from '../crypto';
 import { HubAsyncResult, HubResult } from '../errors';
 import { VerificationEthAddressClaim } from '../verifications';
 import { Signer } from './signer';
 
-export type TypedDataSigner = EthersAbstractSigner & EthersTypedDataSigner;
+// export type TypedDataSigner = EthersAbstractSigner & EthersTypedDataSigner;
 
 export class Eip712Signer implements Signer {
   public readonly scheme = SignatureScheme.SIGNATURE_SCHEME_EIP712;
@@ -18,14 +15,15 @@ export class Eip712Signer implements Signer {
   public readonly signerKey: Uint8Array;
   public readonly signerKeyHex: string;
 
-  private readonly _typedDataSigner: TypedDataSigner;
+  // TODO: rename if this works
+  private readonly _typedDataSigner: EthersSigner;
 
-  public static fromSigner(typedDataSigner: TypedDataSigner, address: string): HubResult<Eip712Signer> {
+  public static fromSigner(typedDataSigner: EthersSigner, address: string): HubResult<Eip712Signer> {
     const signerKeyHex = address.toLowerCase();
     return hexStringToBytes(signerKeyHex).map((signerKey) => new this(typedDataSigner, address, signerKey));
   }
 
-  constructor(typedDataSigner: TypedDataSigner, address: string, signerKey: Uint8Array) {
+  constructor(typedDataSigner: EthersSigner, address: string, signerKey: Uint8Array) {
     this._typedDataSigner = typedDataSigner;
     this.signerKeyHex = address.toLowerCase();
     this.signerKey = signerKey;

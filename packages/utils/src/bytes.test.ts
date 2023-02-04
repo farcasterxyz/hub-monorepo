@@ -1,4 +1,3 @@
-import { BigNumber } from 'ethers';
 import { err, ok } from 'neverthrow';
 import {
   bigNumberToBytes,
@@ -180,9 +179,9 @@ describe('utf8StringToBytes', () => {
 });
 
 describe('bigNumberToBytes', () => {
-  const passingCases: [BigNumber, Uint8Array][] = [
-    [BigNumber.from(1000), new Uint8Array([3, 232])],
-    [BigNumber.from(`${Number.MAX_SAFE_INTEGER}`).add(BigNumber.from(1)), new Uint8Array([32, 0, 0, 0, 0, 0, 0])],
+  const passingCases: [bigint, Uint8Array][] = [
+    [BigInt(1000), new Uint8Array([3, 232])],
+    [BigInt(`${Number.MAX_SAFE_INTEGER}`) + BigInt(1), new Uint8Array([32, 0, 0, 0, 0, 0, 0])],
   ];
 
   for (const [input, output] of passingCases) {

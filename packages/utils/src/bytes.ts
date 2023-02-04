@@ -1,6 +1,5 @@
 /* eslint-disable security/detect-object-injection */
 import { utils } from '@noble/ed25519';
-import { BigNumber } from 'ethers';
 import { err, ok, Result } from 'neverthrow';
 import { HubError, HubResult } from './errors';
 
@@ -89,10 +88,10 @@ export const utf8StringToBytes = (utf8: string): HubResult<Uint8Array> => {
   return ok(encoder.encode(utf8));
 };
 
-export const bigNumberToBytes = (value: BigNumber): HubResult<Uint8Array> => {
-  return hexStringToBytes(value._hex);
+export const bigNumberToBytes = (value: bigint): HubResult<Uint8Array> => {
+  return hexStringToBytes(value.toString(16));
 };
 
-export const bytesToBigNumber = (bytes: Uint8Array): HubResult<BigNumber> => {
-  return bytesToHexString(bytes).map((hexString) => BigNumber.from(hexString));
+export const bytesToBigNumber = (bytes: Uint8Array): HubResult<bigint> => {
+  return bytesToHexString(bytes).map((hexString) => BigInt(hexString));
 };
