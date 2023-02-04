@@ -76,7 +76,6 @@ COPY --chown=node:node --from=build /home/node/app/node_modules ./node_modules
 COPY --chown=node:node --from=build /home/node/app/packages/protobufs/dist ./packages/protobufs/dist/
 COPY --chown=node:node --from=build /home/node/app/packages/protobufs/node_modules ./packages/protobufs/node_modules/
 COPY --chown=node:node --from=build /home/node/app/packages/utils/dist ./packages/utils/dist/
-COPY --chown=node:node --from=build /home/node/app/packages/utils/node_modules ./packages/utils/node_modules/
 
 # TODO: determine if this can be removed while using tsx (or find alternative)
 # since we should be able to run with just the compiled javascript in build/
