@@ -3,6 +3,9 @@ import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
 import { EMPTY_HASH, TrieNode } from '~/network/sync/trieNode';
 import { NetworkFactories } from '~/network/utils/factories';
 
+// Safety: fs inputs are always safe in tests
+/* eslint-disable security/detect-non-literal-fs-filename */
+
 const fid = Factories.Fid.build();
 const sharedDate = new Date(1665182332000);
 const sharedPrefixHashA = '09bc3dad4e7f2a77bbb2cccbecb06febfc6a4321';
@@ -131,7 +134,6 @@ describe('TrieNode', () => {
 
       root.delete(id2.syncId());
       expect(root.items).toEqual(1);
-      // eslint-disable-next-line security/detect-non-literal-fs-filename
       expect(root.exists(id2.syncId())).toBeFalsy();
       expect(root.hash).toEqual(previousHash);
     });
@@ -169,6 +171,8 @@ describe('TrieNode', () => {
       const root = new TrieNode();
 
       for (let i = 0; i < ids.length; i++) {
+        // Safety: i is controlled by the loop and cannot be used to inject
+        // eslint-disable-next-line security/detect-object-injection
         root.insert(ids[i] as Uint8Array);
       }
 
@@ -179,9 +183,7 @@ describe('TrieNode', () => {
       root.delete(ids[0] as Uint8Array);
 
       // Expect the other two ids to be present
-      // eslint-disable-next-line security/detect-non-literal-fs-filename
       expect(root.exists(ids[1] as Uint8Array)).toBeTruthy();
-      // eslint-disable-next-line security/detect-non-literal-fs-filename
       expect(root.exists(ids[2] as Uint8Array)).toBeTruthy();
       expect(root.items).toEqual(2);
     });
@@ -195,7 +197,6 @@ describe('TrieNode', () => {
       root.insert(id.syncId());
       expect(root.items).toEqual(1);
 
-      // eslint-disable-next-line security/detect-non-literal-fs-filename
       expect(root.exists(id.syncId())).toBeTruthy();
     });
 
@@ -207,7 +208,6 @@ describe('TrieNode', () => {
       expect(root.items).toEqual(1);
 
       root.delete(id.syncId());
-      // eslint-disable-next-line security/detect-non-literal-fs-filename
       expect(root.exists(id.syncId())).toBeFalsy();
       expect(root.items).toEqual(0);
     });
@@ -224,7 +224,6 @@ describe('TrieNode', () => {
       root.insert(id1.syncId());
 
       // id2 shares the same prefix, but doesn't exist, so it should return undefined
-      // eslint-disable-next-line security/detect-non-literal-fs-filename
       expect(root.exists(id2.syncId())).toBeFalsy();
     });
   });

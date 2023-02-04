@@ -130,10 +130,13 @@ const writePeerId = async (peerId: PeerId, filepath: string) => {
   // Handling: using try-catch is more ergonomic than capturing and handling throwable, since we
   // want a fast failure back to the CLI
   try {
+    // Safety: directory, writefile are provided from the command line, and safe to trust
+    /* eslint-disable security/detect-non-literal-fs-filename */
     if (!existsSync(directory)) {
       await mkdir(directory, { recursive: true });
     }
     await writeFile(filepath, proto, 'binary');
+    /* eslint-enable security/detect-non-literal-fs-filename */
   } catch (err: any) {
     throw new Error(err);
   }
@@ -190,6 +193,8 @@ app
   });
 
 const readPeerId = async (filePath: string) => {
+  /* eslint-disable security/detect-non-literal-fs-filename */
+
   const proto = await readFile(filePath);
   return createFromProtobuf(proto);
 };

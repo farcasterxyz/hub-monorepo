@@ -299,6 +299,8 @@ class SyncEngine {
 const fromNodeMetadataResponse = (response: protobufs.TrieNodeMetadataResponse): NodeMetadata => {
   const children = new Map<number, NodeMetadata>();
   for (let i = 0; i < response.children.length; i++) {
+    // Safety: i is controlled by the loop
+    // eslint-disable security/detect-object-injection
     const child = response.children[i];
 
     if (child && child.prefix.length > 0) {

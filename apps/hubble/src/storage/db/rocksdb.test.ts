@@ -4,6 +4,9 @@ import { existsSync, mkdirSync, rmdirSync } from 'fs';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import RocksDB from '~/storage/db/rocksdb';
 
+//Safety: fs is safe to use in tests
+/* eslint-disable security/detect-non-literal-fs-filename */
+
 const randomDbName = () => `rocksdb.test.${faker.name.lastName().toLowerCase()}.${faker.random.alphaNumeric(8)}`;
 
 describe('open', () => {
