@@ -1,9 +1,9 @@
 import { GossipAddressInfo } from '@farcaster/protobufs';
 import { HubAsyncResult, HubError, HubResult } from '@farcaster/utils';
-import { Multiaddr, multiaddr, NodeAddress } from '@multiformats/multiaddr';
+import { Multiaddr, NodeAddress, multiaddr } from '@multiformats/multiaddr';
 import { get } from 'http';
 import { AddressInfo, isIP } from 'net';
-import { err, ok, Result } from 'neverthrow';
+import { Result, err, ok } from 'neverthrow';
 import { logger } from '~/utils/logger';
 
 /** Parses an address to verify it is actually a valid MultiAddr */

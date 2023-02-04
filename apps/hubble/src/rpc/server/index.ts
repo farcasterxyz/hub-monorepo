@@ -5,7 +5,7 @@ import {
   EventResponse,
   EventType,
   FidsResponse,
-  getServer,
+  Server as GrpcServer,
   HubInfoResponse,
   HubServiceServer,
   HubServiceService,
@@ -16,16 +16,16 @@ import {
   NameRegistryEvent,
   ReactionAddMessage,
   ReactionType,
-  Server as GrpcServer,
   ServerCredentials,
   ServiceError,
   SignerAddMessage,
-  status,
   SyncIds,
   TrieNodeMetadataResponse,
   TrieNodeSnapshotResponse,
   UserDataAddMessage,
   VerificationAddEthAddressMessage,
+  getServer,
+  status,
 } from '@farcaster/protobufs';
 import { HubError } from '@farcaster/utils';
 import { APP_NICKNAME, APP_VERSION, HubInterface } from '~/hubble';

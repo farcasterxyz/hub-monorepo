@@ -9,13 +9,13 @@ import {
   Message,
   NameRegistryEvent,
 } from '@farcaster/protobufs';
-import { getHubRpcClient, HubAsyncResult, HubError, HubResult, HubRpcClient } from '@farcaster/utils';
+import { HubAsyncResult, HubError, HubResult, HubRpcClient, getHubRpcClient } from '@farcaster/utils';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import { publicAddressesFirst } from '@libp2p/utils/address-sort';
-import { multiaddr, Multiaddr } from '@multiformats/multiaddr';
+import { Multiaddr, multiaddr } from '@multiformats/multiaddr';
 import { isIP } from 'net';
-import { err, ok, Result, ResultAsync } from 'neverthrow';
+import { Result, ResultAsync, err, ok } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { EthEventsProvider, GoerliEthConstants } from '~/eth/ethEventsProvider';
 import { GossipNode } from '~/network/p2p/gossipNode';

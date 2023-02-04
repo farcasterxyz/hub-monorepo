@@ -1,13 +1,13 @@
 import {
-  bytesToHexString,
-  ed25519,
   Ed25519Signer as BaseEd25519Signer,
   Eip712Signer as BaseEip712Signer,
-  hexStringToBytes,
   HubAsyncResult,
   HubResult,
   TypedDataSigner,
   VerificationEthAddressClaim,
+  bytesToHexString,
+  ed25519,
+  hexStringToBytes,
 } from '@farcaster/utils';
 import { err } from 'neverthrow';
 

@@ -1,6 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
 import { HubAsyncResult, HubError, HubResult } from '@farcaster/utils';
-import { err, ok, ResultAsync } from 'neverthrow';
+import { ResultAsync, err, ok } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
 
 const MIN_NONCE = 1;
