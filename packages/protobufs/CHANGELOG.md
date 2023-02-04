@@ -1,5 +1,14 @@
 # @farcaster/protobufs
 
+## 0.1.4
+
+### Patch Changes
+
+- d21a8f2: chore: upgrade packages [feb 2023]
+- shared package for tsconfig
+- Updated dependencies
+  - tsconfig@0.0.1
+
 ## 0.1.3
 
 ### Patch Changes
