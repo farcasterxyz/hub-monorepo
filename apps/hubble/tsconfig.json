@@ -6,8 +6,6 @@
     },
 
     "baseUrl": "./src",
-    "outDir": "build",
-    "rootDir": "src"
   },
   "exclude": ["node_modules", "jest.config.ts"]
 }

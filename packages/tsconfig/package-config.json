@@ -3,5 +3,6 @@
   "compilerOptions": {
     "declaration": true,
     "isolatedModules": true
-  }
+  },
+  "exclude": ["build", "node_modules", "jest.config.ts"]
 }

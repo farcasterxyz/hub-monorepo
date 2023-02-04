@@ -27,7 +27,9 @@
     "noPropertyAccessFromIndexSignature": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": false, // causes hard failures when iterating in dev, enforce with eslint instead
-    "noUnusedParameters": false
+    "noUnusedParameters": false,
+    "outDir": "build",
+    "rootDir": "src"
   },
 
   "ts-node": {
