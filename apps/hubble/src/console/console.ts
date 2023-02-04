@@ -1,21 +1,12 @@
 import { getHubRpcClient } from '@farcaster/utils';
-import { AddressInfo } from 'net';
 import path from 'path';
 import * as repl from 'repl';
 import { logger } from '~/utils/logger';
-import { addressInfoFromParts, addressInfoToString } from '~/utils/p2p';
 import { CastsCommand } from './castsCommand';
 import { InfoCommand } from './infoCommand';
 import { SyncTrieCommand } from './syncTrieCommand';
 
-export const DEFAULT_RPC_CONSOLE = addressInfoFromParts('127.0.0.1', 13112)._unsafeUnwrap();
-
-export const parseServerAddress = (server: string): AddressInfo => {
-  const [host, port] = server.split(':');
-  if (!host || !port) throw new Error('Invalid server address');
-
-  return addressInfoFromParts(host, parseInt(port))._unsafeUnwrap();
-};
+export const DEFAULT_RPC_CONSOLE = '127.0.0.1:13112';
 
 export interface ConsoleCommandInterface {
   commandName(): string;
@@ -23,7 +14,7 @@ export interface ConsoleCommandInterface {
   help(): string;
 }
 
-export const startConsole = async (addressInfo: AddressInfo) => {
+export const startConsole = async (addressString: string) => {
   const replServer = repl
     .start({
       prompt: 'hub> ',
@@ -36,7 +27,7 @@ export const startConsole = async (addressInfo: AddressInfo) => {
     });
 
   replServer.output.write("\nWelcome to the Hub console. Type '.help' for a list of commands.\n");
-  replServer.output.write('Connected to hub at ' + JSON.stringify(addressInfo) + '\n');
+  replServer.output.write('Connecting to hub at "' + addressString + '"\n');
 
   replServer.setupHistory(path.join(process.cwd(), '.hub_history'), (err) => {
     if (err) {
@@ -44,10 +35,10 @@ export const startConsole = async (addressInfo: AddressInfo) => {
     }
   });
 
-  const rpcClient = getHubRpcClient(addressInfoToString(addressInfo));
+  const rpcClient = getHubRpcClient(addressString);
   const commands: ConsoleCommandInterface[] = [
-    new SyncTrieCommand(rpcClient),
     new InfoCommand(rpcClient),
+    new SyncTrieCommand(rpcClient),
     new CastsCommand(rpcClient),
   ];
 
@@ -68,6 +59,9 @@ export const startConsole = async (addressInfo: AddressInfo) => {
   commands.forEach((command) => {
     replServer.context[command.commandName()] = command;
   });
+
+  // Run the info command to start
+  replServer.output.write('Connected Info: ' + JSON.stringify(await (commands[0] as InfoCommand).info()) + '\n');
 
   replServer.displayPrompt();
 };

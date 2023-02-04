@@ -9,7 +9,7 @@ import { exit } from 'process';
 import { APP_VERSION, Hub, HubOptions } from '~/hubble';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
-import { DEFAULT_RPC_CONSOLE, parseServerAddress, startConsole } from './console/console';
+import { DEFAULT_RPC_CONSOLE, startConsole } from './console/console';
 import { parseNetwork } from './utils/command';
 
 /** A CLI to accept options from the user and start the Hub */
@@ -183,7 +183,6 @@ app
   .option(
     '-s, --server <url>',
     'Farcaster RPC server address:port to connect to (eg. 127.0.0.1:13112)',
-    parseServerAddress,
     DEFAULT_RPC_CONSOLE
   )
   .action(async (cliOptions) => {
