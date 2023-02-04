@@ -21,7 +21,8 @@
     "@noble/ed25519": "^1.7.1",
     "@noble/hashes": "^1.2.0",
     "ethers": "^5.7.2",
-    "neverthrow": "^6.0.0"
+    "neverthrow": "^6.0.0",
+    "tsconfig": "*"
   },
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --clean",
