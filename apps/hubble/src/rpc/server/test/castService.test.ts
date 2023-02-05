@@ -131,6 +131,8 @@ describe('getCast', () => {
       await engine.mergeMessage(castAdd);
       for (let i = 0; i < (castAdd.data?.castAddBody?.mentions.length as number); i++) {
         const casts = await client.getCastsByMention(
+          // Safety: i is controlled by the loop and cannot be used to inject
+          // eslint-disable-next-line security/detect-object-injection
           protobufs.FidRequest.create({ fid: castAdd.data?.castAddBody?.mentions[i] as number })
         );
         expect(protobufs.Message.toJSON(casts._unsafeUnwrap().messages.at(0) as protobufs.Message)).toEqual(
@@ -142,6 +144,8 @@ describe('getCast', () => {
     test('returns empty array without casts', async () => {
       for (let i = 0; i < (castAdd.data?.castAddBody?.mentions.length as number); i++) {
         const casts = await client.getCastsByMention(
+          // Safety: i is controlled by the loop and cannot be used to inject
+          // eslint-disable-next-line security/detect-object-injection
           protobufs.FidRequest.create({ fid: castAdd.data?.castAddBody?.mentions[i] as number })
         );
         expect(casts._unsafeUnwrap().messages).toEqual([]);

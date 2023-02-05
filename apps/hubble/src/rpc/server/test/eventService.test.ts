@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import * as protobufs from '@farcaster/protobufs';
 import { Factories, getHubRpcClient, HubRpcClient } from '@farcaster/utils';
 import Server from '~/rpc/server';
