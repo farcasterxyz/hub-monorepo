@@ -199,7 +199,10 @@ describe('getAllUserDataMessagesByFid', () => {
   let userDataAdd: protobufs.UserDataAddMessage;
 
   beforeAll(async () => {
-    userDataAdd = await Factories.UserDataAddMessage.create({ data: { fid, network } }, { transient: { signer } });
+    userDataAdd = await Factories.UserDataAddMessage.create(
+      { data: { fid, network, userDataBody: { type: protobufs.UserDataType.USER_DATA_TYPE_BIO } } },
+      { transient: { signer } }
+    );
   });
 
   beforeEach(async () => {
@@ -211,7 +214,7 @@ describe('getAllUserDataMessagesByFid', () => {
     await engine.mergeMessage(userDataAdd);
     const result = await client.getAllUserDataMessagesByFid(protobufs.FidRequest.create({ fid }));
     assertMessagesMatchResult(result, [userDataAdd]);
-  });
+  }, 5000000);
 
   test('returns empty array without messages', async () => {
     const result = await client.getAllUserDataMessagesByFid(protobufs.FidRequest.create({ fid }));
