@@ -66,6 +66,7 @@ class SyncEngine {
 
   public async initialize() {
     // Wait for the Merkle trie to be fully loaded
+    await this._trie.initialize();
     const rootHash = await this._trie.rootHash();
     log.info({ rootHash }, 'Sync engine initialized');
   }
