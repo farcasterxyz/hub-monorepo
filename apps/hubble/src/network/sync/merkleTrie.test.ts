@@ -169,6 +169,7 @@ describe('MerkleTrie', () => {
 
         // Now initialize a new merkle trie from the same DB
         const trie2 = new MerkleTrie(db);
+        await trie2.initialize();
 
         // expect the root hashes to be the same
         expect(await trie.rootHash()).toEqual(await trie2.rootHash());
@@ -182,6 +183,7 @@ describe('MerkleTrie', () => {
 
         // Initialize a new trie from the same DB
         const trie3 = new MerkleTrie(db);
+        await trie3.initialize();
 
         // expect the root hashes to be the same
         expect(await trie.rootHash()).toEqual(await trie3.rootHash());
@@ -345,6 +347,8 @@ describe('MerkleTrie', () => {
       const rootHash = await trie.rootHash();
 
       const trie2 = new MerkleTrie(db);
+      await trie2.initialize();
+
       expect(await trie2.rootHash()).toEqual(rootHash);
 
       expect(await trie2.delete(syncId1)).toBeTruthy();

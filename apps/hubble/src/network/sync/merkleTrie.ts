@@ -46,6 +46,9 @@ class MerkleTrie {
     this._lock = new ReadWriteLock();
 
     this._root = new TrieNode();
+  }
+
+  public async initialize(): Promise<void> {
     this._lock.writeLock(async (release) => {
       try {
         const rootBytes = await this._db.get(TrieNode.makePrimaryKey(new Uint8Array()));
@@ -55,7 +58,6 @@ class MerkleTrie {
         }
       } catch {
         // There is no Root node in the DB, just use an empty one
-        this._root = new TrieNode();
       }
 
       release();
