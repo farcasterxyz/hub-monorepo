@@ -8,6 +8,21 @@ export const sleep = (ms: number) => {
   });
 };
 
+export const sleepWhile = (condition: () => boolean, timeoutMs: number): Promise<void> => {
+  return new Promise((resolve) => {
+    const interval = setInterval(() => {
+      if (!condition()) {
+        clearInterval(interval);
+        resolve();
+      }
+    }, 10);
+    setTimeout(() => {
+      clearInterval(interval);
+      resolve();
+    }, timeoutMs);
+  });
+};
+
 /**
  * Compute Blake3-Truncate-160 digest.
  *

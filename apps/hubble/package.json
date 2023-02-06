@@ -40,6 +40,7 @@
     "fishery": "^2.2.2",
     "pino-pretty": "^9.1.1",
     "progress": "^2.0.3",
+    "@types/rwlock": "^5.0.3",
     "ts-mockito": "^2.6.1"
   },
   "dependencies": {
@@ -63,6 +64,7 @@
     "node-cron": "^3.0.2",
     "pino": "^8.6.1",
     "rocksdb": "^5.2.1",
+    "rwlock": "^5.0.0",
     "tiny-typed-emitter": "^2.1.0",
     "tsx": "^3.12.2"
   }

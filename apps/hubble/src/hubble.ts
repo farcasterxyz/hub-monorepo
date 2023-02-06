@@ -143,7 +143,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
     this.gossipNode = new GossipNode();
     this.engine = new Engine(this.rocksDB, options.network);
-    this.syncEngine = new SyncEngine(this.engine);
+    this.syncEngine = new SyncEngine(this.engine, this.rocksDB);
 
     this.rpcServer = new Server(this, this.engine, this.syncEngine);
 
@@ -220,7 +220,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     this.pruneMessagesJobScheduler.start(this.options.pruneMessagesJobCron);
   }
 
-  getContactInfoContent(): HubResult<ContactInfoContent> {
+  async getContactInfoContent(): HubAsyncResult<ContactInfoContent> {
     const nodeMultiAddr = this.gossipAddresses[0] as Multiaddr;
     const family = nodeMultiAddr?.nodeAddress().family;
     const announceIp = this.options.announceIp ?? nodeMultiAddr?.nodeAddress().address;
@@ -230,7 +230,8 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     const gossipAddressContactInfo = GossipAddressInfo.create({ address: announceIp, family, port: gossipPort });
     const rpcAddressContactInfo = GossipAddressInfo.create({ address: announceIp, family, port: rpcPort });
 
-    return this.syncEngine.snapshot.map((snapshot) => {
+    const snapshot = await this.syncEngine.getSnapshot();
+    return snapshot.map((snapshot) => {
       return ContactInfoContent.create({
         gossipAddress: gossipAddressContactInfo,
         rpcAddress: rpcAddressContactInfo,
@@ -365,7 +366,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     }
 
     const peerState = peerStateResult.value;
-    const shouldSync = this.syncEngine.shouldSync(peerState.excludedHashes);
+    const shouldSync = await this.syncEngine.shouldSync(peerState.excludedHashes);
     if (shouldSync.isErr()) {
       log.warn(`Failed to get shouldSync`);
       this.emit('syncComplete', false);
@@ -495,7 +496,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
       // When we connect to a new node, gossip out our contact info 1 second later.
       // The setTimeout is to ensure that we have a chance to receive the peer's info properly.
       setTimeout(async () => {
-        this.getContactInfoContent()
+        (await this.getContactInfoContent())
           .map(async (contactInfo) => {
             log.info(
               { rpcAddress: contactInfo.rpcAddress?.address, rpcPort: contactInfo.rpcAddress?.port },

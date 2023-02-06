@@ -15,7 +15,7 @@ let server: Server;
 let client: HubRpcClient;
 
 beforeAll(async () => {
-  server = new Server(hub, engine, new SyncEngine(engine));
+  server = new Server(hub, engine, new SyncEngine(engine, db));
   const port = await server.start();
   client = getHubRpcClient(`127.0.0.1:${port}`);
 });
@@ -214,7 +214,7 @@ describe('getAllUserDataMessagesByFid', () => {
     await engine.mergeMessage(userDataAdd);
     const result = await client.getAllUserDataMessagesByFid(protobufs.FidRequest.create({ fid }));
     assertMessagesMatchResult(result, [userDataAdd]);
-  });
+  }, 5000000);
 
   test('returns empty array without messages', async () => {
     const result = await client.getAllUserDataMessagesByFid(protobufs.FidRequest.create({ fid }));

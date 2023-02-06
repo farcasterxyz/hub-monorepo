@@ -129,20 +129,24 @@ export default class Server {
   getImpl = (): HubServiceServer => {
     return {
       getInfo: (call, callback) => {
-        const info = HubInfoResponse.create({
-          version: APP_VERSION,
-          isSynced: !this.syncEngine?.isSyncing(),
-          nickname: APP_NICKNAME,
-          rootHash: this.syncEngine?.trie.rootHash ?? '',
-        });
+        (async () => {
+          const info = HubInfoResponse.create({
+            version: APP_VERSION,
+            isSynced: !this.syncEngine?.isSyncing(),
+            nickname: APP_NICKNAME,
+            rootHash: (await this.syncEngine?.trie.rootHash()) ?? '',
+          });
 
-        callback(null, info);
+          callback(null, info);
+        })();
       },
       getAllSyncIdsByPrefix: (call, callback) => {
         const request = call.request;
 
-        const syncIdsResponse = this.syncEngine?.getAllSyncIdsByPrefix(request.prefix);
-        callback(null, SyncIds.create({ syncIds: syncIdsResponse ?? [] }));
+        (async () => {
+          const syncIdsResponse = await this.syncEngine?.getAllSyncIdsByPrefix(request.prefix);
+          callback(null, SyncIds.create({ syncIds: syncIdsResponse ?? [] }));
+        })();
       },
       getAllMessagesBySyncIds: async (call, callback) => {
         const request = call.request;
@@ -190,27 +194,32 @@ export default class Server {
 
         const request = call.request;
 
-        const metadata = this.syncEngine?.getTrieNodeMetadata(request.prefix);
-        callback(null, toTrieNodeMetadataResponse(metadata));
+        (async () => {
+          const metadata = await this.syncEngine?.getTrieNodeMetadata(request.prefix);
+          callback(null, toTrieNodeMetadataResponse(metadata));
+        })();
       },
       getSyncSnapshotByPrefix: (call, callback) => {
         const request = call.request;
 
-        const snapshot = this.syncEngine?.getSnapshotByPrefix(request.prefix);
-        snapshot?.match(
-          (snapshot) => {
-            const snapshotResponse = TrieNodeSnapshotResponse.create({
-              prefix: snapshot.prefix,
-              numMessages: snapshot.numMessages,
-              rootHash: this.syncEngine?.trie.rootHash ?? '',
-              excludedHashes: snapshot.excludedHashes,
-            });
-            callback(null, snapshotResponse);
-          },
-          (err: HubError) => {
-            callback(toServiceError(err));
-          }
-        );
+        (async () => {
+          const rootHash = (await this.syncEngine?.trie.rootHash()) ?? '';
+          const snapshot = await this.syncEngine?.getSnapshotByPrefix(request.prefix);
+          snapshot?.match(
+            (snapshot) => {
+              const snapshotResponse = TrieNodeSnapshotResponse.create({
+                prefix: snapshot.prefix,
+                numMessages: snapshot.numMessages,
+                rootHash,
+                excludedHashes: snapshot.excludedHashes,
+              });
+              callback(null, snapshotResponse);
+            },
+            (err: HubError) => {
+              callback(toServiceError(err));
+            }
+          );
+        })();
       },
       submitMessage: async (call, callback) => {
         const message = call.request;

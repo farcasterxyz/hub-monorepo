@@ -18,7 +18,7 @@ let client2: HubRpcClient;
 let client3: HubRpcClient;
 
 beforeAll(async () => {
-  server = new Server(hub, engine, new SyncEngine(engine));
+  server = new Server(hub, engine, new SyncEngine(engine, db));
   const port = await server.start();
   client1 = getHubRpcClient(`127.0.0.1:${port}`);
   client2 = getHubRpcClient(`127.0.0.1:${port}`);

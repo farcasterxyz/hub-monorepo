@@ -1,3 +1,5 @@
+// eslint-disable-file security/detect-non-literal-fs-filename
+
 import * as protobufs from '@farcaster/protobufs';
 import { FarcasterNetwork } from '@farcaster/protobufs';
 import { Factories, getFarcasterTime, HubRpcClient } from '@farcaster/utils';
@@ -7,6 +9,7 @@ import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
+import { sleepWhile } from '~/utils/crypto';
 
 const testDb = jestRocksDB(`engine.syncEngine.test`);
 const testDb2 = jestRocksDB(`engine2.syncEngine.test`);
@@ -39,7 +42,7 @@ describe('SyncEngine', () => {
   beforeEach(async () => {
     await testDb.clear();
     engine = new Engine(testDb, FarcasterNetwork.FARCASTER_NETWORK_TESTNET);
-    syncEngine = new SyncEngine(engine);
+    syncEngine = new SyncEngine(engine, testDb);
   });
 
   const addMessagesWithTimestamps = async (timestamps: number[]) => {
@@ -58,7 +61,7 @@ describe('SyncEngine', () => {
   };
 
   test('trie is updated on successful merge', async () => {
-    const existingItems = syncEngine.trie.items;
+    const existingItems = await syncEngine.trie.items();
 
     const rcustody = await engine.mergeIdRegistryEvent(custodyEvent);
     expect(rcustody.isOk()).toBeTruthy();
@@ -69,22 +72,29 @@ describe('SyncEngine', () => {
     const result = await engine.mergeMessage(castAdd);
     expect(result.isOk()).toBeTruthy();
 
+    // Wait for the trie to be updated
+    await sleepWhile(() => syncEngine.messagesQueuedForSync > 0, 1000);
+
     // Two messages (signerAdd + castAdd) was added to the trie
-    expect(syncEngine.trie.items - existingItems).toEqual(2);
+    expect((await syncEngine.trie.items()) - existingItems).toEqual(2);
     // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(syncEngine.trie.exists(new SyncId(castAdd))).toBeTruthy();
   });
 
   test('trie is not updated on merge failure', async () => {
-    expect(syncEngine.trie.items).toEqual(0);
+    expect(await syncEngine.trie.items()).toEqual(0);
 
     // Merging a message without the custody event should fail
     const result = await engine.mergeMessage(castAdd);
 
     expect(result.isErr()).toBeTruthy();
-    expect(syncEngine.trie.items).toEqual(0);
+
+    // Wait for the trie to be updated
+    await sleepWhile(() => syncEngine.messagesQueuedForSync > 0, 1000);
+
+    expect(await syncEngine.trie.items()).toEqual(0);
     // eslint-disable-next-line security/detect-non-literal-fs-filename
-    expect(syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
+    expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
   });
 
   test('trie is updated when a message is removed', async () => {
@@ -103,9 +113,12 @@ describe('SyncEngine', () => {
     result = await engine.mergeMessage(castRemove);
     expect(result.isOk()).toBeTruthy();
 
+    // Wait for the trie to be updated
+    await sleepWhile(() => syncEngine.messagesQueuedForSync > 0, 1000);
+
     const id = new SyncId(castRemove);
     // eslint-disable-next-line security/detect-non-literal-fs-filename
-    expect(syncEngine.trie.exists(id)).toBeTruthy();
+    expect(await syncEngine.trie.exists(id)).toBeTruthy();
 
     // const allMessages = await engine.getAllMessagesBySyncIds([id.idString()]);
     // expect(allMessages.isOk()).toBeTruthy();
@@ -113,11 +126,11 @@ describe('SyncEngine', () => {
 
     // The trie should contain the message remove
     // eslint-disable-next-line security/detect-non-literal-fs-filename
-    expect(syncEngine.trie.exists(id)).toBeTruthy();
+    expect(await syncEngine.trie.exists(id)).toBeTruthy();
 
     // The trie should not contain the castAdd anymore
     // eslint-disable-next-line security/detect-non-literal-fs-filename
-    expect(syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
+    expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
   });
 
   test('trie is updated when message with higher order is merged', async () => {
@@ -146,27 +159,36 @@ describe('SyncEngine', () => {
     // Merging the first reaction should succeed
     let result = await engine.mergeMessage(reaction1);
     expect(result.isOk()).toBeTruthy();
-    expect(syncEngine.trie.items).toEqual(2); // signerAdd + reaction1
+
+    // Wait for the trie to be updated
+    await sleepWhile(() => syncEngine.messagesQueuedForSync > 0, 1000);
+    expect(await syncEngine.trie.items()).toEqual(2); // signerAdd + reaction1
 
     // Then merging the second reaction should also succeed and remove reaction1
     result = await engine.mergeMessage(reaction2);
     expect(result.isOk()).toBeTruthy();
-    expect(syncEngine.trie.items).toEqual(2); // signerAdd + reaction2 (reaction1 is removed)
+
+    // Wait for the trie to be updated
+    await sleepWhile(() => syncEngine.messagesQueuedForSync > 0, 1000);
+    expect(await syncEngine.trie.items()).toEqual(2); // signerAdd + reaction2 (reaction1 is removed)
 
     // Create a new engine and sync engine
     testDb2.clear();
     const engine2 = new Engine(testDb2, FarcasterNetwork.FARCASTER_NETWORK_TESTNET);
-    const syncEngine2 = new SyncEngine(engine2);
+    const syncEngine2 = new SyncEngine(engine2, testDb2);
     await engine2.mergeIdRegistryEvent(custodyEvent);
     await engine2.mergeMessage(signerAdd);
 
     // Only merge reaction2
     result = await engine2.mergeMessage(reaction2);
     expect(result.isOk()).toBeTruthy();
-    expect(syncEngine2.trie.items).toEqual(2); // signerAdd + reaction2
+
+    // Wait for the trie to be updated
+    await sleepWhile(() => syncEngine.messagesQueuedForSync > 0, 1000);
+    expect(await syncEngine2.trie.items()).toEqual(2); // signerAdd + reaction2
 
     // Roothashes must match
-    expect(syncEngine2.trie.rootHash).toEqual(syncEngine.trie.rootHash);
+    expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
   });
 
   test('snapshotTimestampPrefix trims the seconds', async () => {
@@ -180,8 +202,10 @@ describe('SyncEngine', () => {
     const mockRPCClient = mock<HubRpcClient>();
     const rpcClient = instance(mockRPCClient);
     let called = false;
-    when(mockRPCClient.getSyncMetadataByPrefix(anything())).thenCall(() => {
-      expect(syncEngine.shouldSync([])._unsafeUnwrap()).toBeFalsy();
+    when(mockRPCClient.getSyncMetadataByPrefix(anything())).thenCall(async () => {
+      const shouldSync = await syncEngine.shouldSync([]);
+      expect(shouldSync.isOk()).toBeTruthy();
+      expect(shouldSync._unsafeUnwrap()).toBeFalsy();
       called = true;
 
       // Return an empty child map so sync will finish with a noop
@@ -202,7 +226,9 @@ describe('SyncEngine', () => {
     await engine.mergeMessage(signerAdd);
 
     await addMessagesWithTimestamps([30662167, 30662169, 30662172]);
-    expect(syncEngine.shouldSync(syncEngine.snapshot._unsafeUnwrap().excludedHashes)._unsafeUnwrap()).toBeFalsy();
+    expect(
+      (await syncEngine.shouldSync((await syncEngine.getSnapshot())._unsafeUnwrap().excludedHashes))._unsafeUnwrap()
+    ).toBeFalsy();
   });
 
   test('shouldSync returns true when hashes dont match', async () => {
@@ -210,10 +236,10 @@ describe('SyncEngine', () => {
     await engine.mergeMessage(signerAdd);
 
     await addMessagesWithTimestamps([30662167, 30662169, 30662172]);
-    const oldSnapshot = syncEngine.snapshot._unsafeUnwrap();
+    const oldSnapshot = (await syncEngine.getSnapshot())._unsafeUnwrap();
     await addMessagesWithTimestamps([30662372]);
-    expect(oldSnapshot.excludedHashes).not.toEqual(syncEngine.snapshot._unsafeUnwrap().excludedHashes);
-    expect(syncEngine.shouldSync(oldSnapshot.excludedHashes)._unsafeUnwrap()).toBeTruthy();
+    expect(oldSnapshot.excludedHashes).not.toEqual((await syncEngine.getSnapshot())._unsafeUnwrap().excludedHashes);
+    expect((await syncEngine.shouldSync(oldSnapshot.excludedHashes))._unsafeUnwrap()).toBeTruthy();
   });
 
   test('initialize populates the trie with all existing messages', async () => {
@@ -222,19 +248,14 @@ describe('SyncEngine', () => {
 
     const messages = await addMessagesWithTimestamps([30662167, 30662169, 30662172]);
 
-    const syncEngine = new SyncEngine(engine);
-    expect(syncEngine.trie.items).toEqual(0);
-
+    const syncEngine = new SyncEngine(engine, testDb);
     await syncEngine.initialize();
 
     // There might be more messages related to user creation, but it's sufficient to check for casts
-    expect(syncEngine.trie.items).toBeGreaterThanOrEqual(3);
-    expect(syncEngine.trie.rootHash).toBeTruthy();
-    // eslint-disable-next-line security/detect-non-literal-fs-filename
-    expect(syncEngine.trie.exists(new SyncId(messages[0] as protobufs.Message))).toBeTruthy();
-    // eslint-disable-next-line security/detect-non-literal-fs-filename
-    expect(syncEngine.trie.exists(new SyncId(messages[1] as protobufs.Message))).toBeTruthy();
-    // eslint-disable-next-line security/detect-non-literal-fs-filename
-    expect(syncEngine.trie.exists(new SyncId(messages[2] as protobufs.Message))).toBeTruthy();
+    expect(await syncEngine.trie.items()).toBeGreaterThanOrEqual(3);
+    expect(await syncEngine.trie.rootHash()).toBeTruthy();
+    expect(await syncEngine.trie.exists(new SyncId(messages[0] as protobufs.Message))).toBeTruthy();
+    expect(await syncEngine.trie.exists(new SyncId(messages[1] as protobufs.Message))).toBeTruthy();
+    expect(await syncEngine.trie.exists(new SyncId(messages[2] as protobufs.Message))).toBeTruthy();
   });
 });

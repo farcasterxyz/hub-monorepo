@@ -7,6 +7,7 @@ import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
+import { sleepWhile } from '~/utils/crypto';
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
 
@@ -42,6 +43,7 @@ describe('Multi peer sync engine', () => {
 
         const result = await engine.mergeMessage(cast);
         expect(result.isOk()).toBeTruthy();
+
         return Promise.resolve(cast);
       })
     );
@@ -81,7 +83,7 @@ describe('Multi peer sync engine', () => {
     // Engine 1 is where we add events, and see if engine 2 will sync them
     engine1 = new Engine(testDb1, network);
     hub1 = new MockHub(testDb1, engine1);
-    syncEngine1 = new SyncEngine(engine1);
+    syncEngine1 = new SyncEngine(engine1, testDb1);
     syncEngine1.initialize();
     server1 = new Server(hub1, engine1, syncEngine1);
     port1 = await server1.start();
@@ -117,11 +119,10 @@ describe('Multi peer sync engine', () => {
 
     // Create a new sync engine from the existing engine, and see if all the messages from the engine
     // are loaded into the sync engine Merkle Trie properly.
-    const reinitSyncEngine = new SyncEngine(engine1);
-    expect(reinitSyncEngine.trie.rootHash).toEqual('');
+    const reinitSyncEngine = new SyncEngine(engine1, testDb1);
     await reinitSyncEngine.initialize();
 
-    expect(reinitSyncEngine.trie.rootHash).toEqual(syncEngine1.trie.rootHash);
+    expect(await reinitSyncEngine.trie.rootHash()).toEqual(await syncEngine1.trie.rootHash());
   });
 
   test(
@@ -133,21 +134,26 @@ describe('Multi peer sync engine', () => {
 
       // Add messages to engine 1
       await addMessagesWithTimestamps(engine1, [30662167, 30662169, 30662172]);
+      await sleepWhile(() => syncEngine1.messagesQueuedForSync > 0, 1000);
 
       const engine2 = new Engine(testDb2, network);
-      const syncEngine2 = new SyncEngine(engine2);
+      const syncEngine2 = new SyncEngine(engine2, testDb2);
 
       // Engine 2 should sync with engine1
-      expect(syncEngine2.shouldSync(syncEngine1.snapshot._unsafeUnwrap().excludedHashes)._unsafeUnwrap()).toBeTruthy();
+      expect(
+        (await syncEngine2.shouldSync((await syncEngine1.getSnapshot())._unsafeUnwrap().excludedHashes))._unsafeUnwrap()
+      ).toBeTruthy();
 
       // Sync engine 2 with engine 1
-      await syncEngine2.performSync(syncEngine1.snapshot._unsafeUnwrap().excludedHashes, clientForServer1);
+      await syncEngine2.performSync((await syncEngine1.getSnapshot())._unsafeUnwrap().excludedHashes, clientForServer1);
 
       // Make sure root hash matches
-      expect(syncEngine1.trie.rootHash).toEqual(syncEngine2.trie.rootHash);
+      expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
 
       // Should sync should now be false with the new excluded hashes
-      expect(syncEngine2.shouldSync(syncEngine1.snapshot._unsafeUnwrap().excludedHashes)._unsafeUnwrap()).toBeFalsy();
+      expect(
+        (await syncEngine2.shouldSync((await syncEngine1.getSnapshot())._unsafeUnwrap().excludedHashes))._unsafeUnwrap()
+      ).toBeFalsy();
 
       // Add more messages
       await addMessagesWithTimestamps(engine1, [30663167, 30663169, 30663172]);
@@ -158,19 +164,19 @@ describe('Multi peer sync engine', () => {
       const newSnapshot = newSnapshotResult._unsafeUnwrap();
 
       // Sanity check snapshot
-      const localSnapshot = syncEngine1.snapshot._unsafeUnwrap();
+      const localSnapshot = (await syncEngine1.getSnapshot())._unsafeUnwrap();
       expect(localSnapshot.excludedHashes).toEqual(newSnapshot.excludedHashes);
       expect(localSnapshot.excludedHashes.length).toEqual(newSnapshot.excludedHashes.length);
-      expect(syncEngine1.trie.rootHash).toEqual(newSnapshot.rootHash);
+      expect(await syncEngine1.trie.rootHash()).toEqual(newSnapshot.rootHash);
 
       // Should sync should now be true
-      expect(syncEngine2.shouldSync(newSnapshot.excludedHashes)._unsafeUnwrap()).toBeTruthy();
+      expect((await syncEngine2.shouldSync(newSnapshot.excludedHashes))._unsafeUnwrap()).toBeTruthy();
 
       // Do the sync again
       await syncEngine2.performSync(newSnapshot.excludedHashes, clientForServer1);
 
       // Make sure root hash matches
-      expect(syncEngine1.trie.rootHash).toEqual(syncEngine2.trie.rootHash);
+      expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
     },
     TEST_TIMEOUT_LONG
   );
@@ -182,17 +188,18 @@ describe('Multi peer sync engine', () => {
 
     // Add a cast to engine1
     const castAdd = (await addMessagesWithTimestamps(engine1, [30662167]))[0] as protobufs.Message;
+    await sleepWhile(() => syncEngine1.messagesQueuedForSync > 0, 1000);
 
     const engine2 = new Engine(testDb2, network);
-    const syncEngine2 = new SyncEngine(engine2);
+    const syncEngine2 = new SyncEngine(engine2, testDb2);
     // Sync engine 2 with engine 1
     await syncEngine2.performSync([], clientForServer1);
 
     // Make sure the castAdd is in the trie
     // eslint-disable-next-line security/detect-non-literal-fs-filename
-    expect(syncEngine1.trie.exists(new SyncId(castAdd))).toBeTruthy();
+    expect(await syncEngine1.trie.exists(new SyncId(castAdd))).toBeTruthy();
     // eslint-disable-next-line security/detect-non-literal-fs-filename
-    expect(syncEngine2.trie.exists(new SyncId(castAdd))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(new SyncId(castAdd))).toBeTruthy();
 
     const castRemove = await Factories.CastRemoveMessage.create(
       {
@@ -212,10 +219,10 @@ describe('Multi peer sync engine', () => {
 
     const castRemoveId = new SyncId(castRemove);
     // eslint-disable-next-line security/detect-non-literal-fs-filename
-    expect(syncEngine1.trie.exists(castRemoveId)).toBeTruthy();
+    expect(await syncEngine1.trie.exists(castRemoveId)).toBeTruthy();
     // The trie should not contain the castAdd anymore
     // eslint-disable-next-line security/detect-non-literal-fs-filename
-    expect(syncEngine1.trie.exists(new SyncId(castAdd))).toBeFalsy();
+    expect(await syncEngine1.trie.exists(new SyncId(castAdd))).toBeFalsy();
 
     // Syncing engine2 --> engine1 should do nothing, even though engine2 has the castAdd and it has been removed
     // from engine1.
@@ -223,10 +230,10 @@ describe('Multi peer sync engine', () => {
       const server2 = new Server(new MockHub(testDb2, engine2), engine2, syncEngine2);
       const port2 = await server2.start();
       const clientForServer2 = getHubRpcClient(`127.0.0.1:${port2}`);
-      const engine1RootHashBefore = syncEngine1.trie.rootHash;
+      const engine1RootHashBefore = await syncEngine1.trie.rootHash();
 
-      await syncEngine1.performSync(syncEngine2.snapshot._unsafeUnwrap().excludedHashes, clientForServer2);
-      expect(syncEngine1.trie.rootHash).toEqual(engine1RootHashBefore);
+      await syncEngine1.performSync((await syncEngine2.getSnapshot())._unsafeUnwrap().excludedHashes, clientForServer2);
+      expect(await syncEngine1.trie.rootHash()).toEqual(engine1RootHashBefore);
 
       clientForServer2.$.close();
       await server2.stop();
@@ -234,22 +241,22 @@ describe('Multi peer sync engine', () => {
 
     // castRemove doesn't yet exist in engine2
     // eslint-disable-next-line security/detect-non-literal-fs-filename
-    expect(syncEngine2.trie.exists(castRemoveId)).toBeFalsy();
+    expect(await syncEngine2.trie.exists(castRemoveId)).toBeFalsy();
 
     // Syncing engine2 with engine1 should delete the castAdd from the trie and add the castRemove
-    await syncEngine2.performSync(syncEngine1.snapshot._unsafeUnwrap().excludedHashes, clientForServer1);
+    await syncEngine2.performSync((await syncEngine1.getSnapshot())._unsafeUnwrap().excludedHashes, clientForServer1);
 
     // eslint-disable-next-line security/detect-non-literal-fs-filename
-    expect(syncEngine2.trie.exists(castRemoveId)).toBeTruthy();
+    expect(await syncEngine2.trie.exists(castRemoveId)).toBeTruthy();
     // eslint-disable-next-line security/detect-non-literal-fs-filename
-    expect(syncEngine2.trie.exists(new SyncId(castAdd))).toBeFalsy();
-    expect(syncEngine2.trie.rootHash).toEqual(syncEngine1.trie.rootHash);
+    expect(await syncEngine2.trie.exists(new SyncId(castAdd))).toBeFalsy();
+    expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine1.trie.rootHash());
 
     // Adding the castAdd to engine2 should not change the root hash,
     // because it has already been removed, so adding it is a no-op
-    const beforeRootHash = syncEngine2.trie.rootHash;
+    const beforeRootHash = await syncEngine2.trie.rootHash();
     await engine2.mergeMessage(castAdd);
-    expect(syncEngine2.trie.rootHash).toEqual(beforeRootHash);
+    expect(await syncEngine2.trie.rootHash()).toEqual(beforeRootHash);
   });
 
   xtest(
@@ -278,71 +285,85 @@ describe('Multi peer sync engine', () => {
 
       let totalMessages = 0;
 
-      for (let i = 0; i < numBatches; i++) {
-        // Remove a few messages from the previous batch
-        const timestampsToRemove = [];
-        for (let j = 0; j < castMessagesToRemove.length; j++) {
-          timestampsToRemove.push(msgTimestamp + j);
+      let totalTime = await timedTest(async () => {
+        for (let i = 0; i < numBatches; i++) {
+          // Remove a few messages from the previous batch
+          const timestampsToRemove = [];
+          for (let j = 0; j < castMessagesToRemove.length; j++) {
+            timestampsToRemove.push(msgTimestamp + j);
+          }
+
+          await removeMessagesWithTsHashes(engine1, castMessagesToRemove);
+
+          msgTimestamp += timestampsToRemove.length;
+          totalMessages += timestampsToRemove.length;
+
+          // Add new timestamped messages
+          const timestamps = [];
+          for (let j = 0; j < batchSize; j++) {
+            timestamps.push(msgTimestamp + j);
+          }
+          // console.log('adding batch', i, ' of ', numBatches);
+          const addedMessages = await addMessagesWithTimestamps(engine1, timestamps);
+          await sleepWhile(() => syncEngine1.messagesQueuedForSync > 0, 1000);
+          castMessagesToRemove = addedMessages.slice(0, 10);
+
+          msgTimestamp += batchSize;
+          totalMessages += batchSize;
         }
-
-        await removeMessagesWithTsHashes(engine1, castMessagesToRemove);
-
-        msgTimestamp += timestampsToRemove.length;
-        totalMessages += timestampsToRemove.length;
-
-        // Add new timestamped messages
-        const timestamps = [];
-        for (let j = 0; j < batchSize; j++) {
-          timestamps.push(msgTimestamp + j);
-        }
-        // console.log('adding batch', i, ' of ', numBatches);
-        const addedMessages = await addMessagesWithTimestamps(engine1, timestamps);
-        castMessagesToRemove = addedMessages.slice(0, 10);
-
-        msgTimestamp += batchSize;
-        totalMessages += batchSize;
-      }
+        await sleepWhile(() => syncEngine1.messagesQueuedForSync > 0, 1000);
+      });
+      expect(totalTime).toBeGreaterThan(0);
+      expect(totalMessages).toBeGreaterThan(numBatches * batchSize);
+      // console.log('Merge total time', totalTime, 'seconds. Messages per second:', totalMessages / totalTime);
 
       // Make sure the recalculatedHash matches root hash
-      expect(Buffer.from(syncEngine1.trie.root.recalculateHash()).toString('hex')).toEqual(syncEngine1.trie.rootHash);
+      expect(Buffer.from(await syncEngine1.trie.recalculateHash()).toString('hex')).toEqual(
+        await syncEngine1.trie.rootHash()
+      );
 
       const engine2 = new Engine(testDb2, network);
-      const syncEngine2 = new SyncEngine(engine2);
+      const syncEngine2 = new SyncEngine(engine2, testDb2);
       syncEngine2.initialize();
 
       // Engine 2 should sync with engine1
-      expect(syncEngine2.shouldSync(syncEngine1.snapshot._unsafeUnwrap().excludedHashes)._unsafeUnwrap()).toBeTruthy();
+      expect(
+        (await syncEngine2.shouldSync((await syncEngine1.getSnapshot())._unsafeUnwrap().excludedHashes))._unsafeUnwrap()
+      ).toBeTruthy();
 
       await engine2.mergeIdRegistryEvent(custodyEvent);
       await engine2.mergeMessage(signerAdd);
 
       // Sync engine 2 with engine 1, and measure the time taken
-      let totalTime = await timedTest(async () => {
-        await syncEngine2.performSync(syncEngine1.snapshot._unsafeUnwrap().excludedHashes, clientForServer1);
+      totalTime = await timedTest(async () => {
+        await syncEngine2.performSync(
+          (await syncEngine1.getSnapshot())._unsafeUnwrap().excludedHashes,
+          clientForServer1
+        );
       });
 
       expect(totalTime).toBeGreaterThan(0);
       expect(totalMessages).toBeGreaterThan(numBatches * batchSize);
       // console.log('Sync total time', totalTime, 'seconds. Messages per second:', totalMessages / totalTime);
 
-      expect(syncEngine1.snapshot._unsafeUnwrap().excludedHashes).toEqual(
-        syncEngine2.snapshot._unsafeUnwrap().excludedHashes
+      expect((await syncEngine1.getSnapshot())._unsafeUnwrap().excludedHashes).toEqual(
+        (await syncEngine2.getSnapshot())._unsafeUnwrap().excludedHashes
       );
-      expect(syncEngine1.snapshot._unsafeUnwrap().numMessages).toEqual(
-        syncEngine2.snapshot._unsafeUnwrap().numMessages
+      expect((await syncEngine1.getSnapshot())._unsafeUnwrap().numMessages).toEqual(
+        (await syncEngine2.getSnapshot())._unsafeUnwrap().numMessages
       );
 
       // Create a new sync engine from the existing engine, and see if all the messages from the engine
       // are loaded into the sync engine Merkle Trie properly.
-      const reinitSyncEngine = new SyncEngine(engine1);
-      expect(reinitSyncEngine.trie.rootHash).toEqual('');
+      const reinitSyncEngine = new SyncEngine(engine1, testDb1);
+      expect(await reinitSyncEngine.trie.rootHash()).toEqual('');
 
       totalTime = await timedTest(async () => {
         await reinitSyncEngine.initialize();
       });
       // console.log('MerkleTrie total time', totalTime, 'seconds. Messages per second:', totalMessages / totalTime);
 
-      expect(reinitSyncEngine.trie.rootHash).toEqual(syncEngine1.trie.rootHash);
+      expect(await reinitSyncEngine.trie.rootHash()).toEqual(await syncEngine1.trie.rootHash());
     },
     TEST_TIMEOUT_LONG
   );

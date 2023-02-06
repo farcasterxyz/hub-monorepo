@@ -10,6 +10,7 @@ import ProgressBar from 'progress';
 
 import { MerkleTrie } from '~/network/sync/merkleTrie';
 
+import { jestRocksDB } from '~/storage/db/jestUtils';
 import { generateSyncIds } from './helpers';
 import { yieldToEventLoop } from './utils';
 
@@ -55,7 +56,9 @@ export const benchMerkleTrie = async ({
   });
 
   const syncIds = generateSyncIds(count, 100_000, 300);
-  const trie = new MerkleTrie();
+  const db = jestRocksDB('protobufs.bench.merkleTrie.test');
+
+  const trie = new MerkleTrie(db);
 
   let i = 0;
   progress.tick(0);

@@ -2518,6 +2518,11 @@
   resolved "https://registry.npmjs.org/@types/retry/-/retry-0.12.1.tgz#d8f1c0d0dc23afad6dc16a9e993a0865774b4065"
   integrity sha512-xoDlM2S4ortawSWORYqsdU+2rxdh4LRW9ytc3zmT37RIKQh6IHyKwwtKhKis9ah8ol07DCkZxPt8BBvPjC6v4g==
 
+"@types/rwlock@^5.0.3":
+  version "5.0.3"
+  resolved "https://registry.npmjs.org/@types/rwlock/-/rwlock-5.0.3.tgz#6e869fbede0b3bc441a046c4a447c2e3658960ad"
+  integrity sha512-R30oM++aVJ0Lcv4pHPTJWV8HvikNDroDbLxoRX9d5piGyhZzRAENXTBIMtceWKcnmscKfASk1Yg6Gr9+X5CTBw==
+
 "@types/semver@^6.0.0":
   version "6.2.3"
   resolved "https://registry.npmjs.org/@types/semver/-/semver-6.2.3.tgz#5798ecf1bec94eaa64db39ee52808ec0693315aa"
@@ -6963,6 +6968,11 @@ run-parallel@^1.1.9:
   integrity sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==
   dependencies:
     queue-microtask "^1.2.2"
+
+rwlock@^5.0.0:
+  version "5.0.0"
+  resolved "https://registry.npmjs.org/rwlock/-/rwlock-5.0.0.tgz#888d6a77a3351cc1a209204ef2ee1722093836cf"
+  integrity sha512-XgzRqLMfCcm9QfZuPav9cV3Xin5TRcIlp4X/SH3CvB+x5D2AakdlEepfJKDd8ByncvfpcxNWdRZVUl38PS6ZJg==
 
 rxjs@^7.5.7:
   version "7.8.0"
