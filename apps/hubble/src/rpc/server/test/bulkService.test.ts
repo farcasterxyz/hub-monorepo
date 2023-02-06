@@ -214,7 +214,7 @@ describe('getAllUserDataMessagesByFid', () => {
     await engine.mergeMessage(userDataAdd);
     const result = await client.getAllUserDataMessagesByFid(protobufs.FidRequest.create({ fid }));
     assertMessagesMatchResult(result, [userDataAdd]);
-  }, 5000000);
+  });
 
   test('returns empty array without messages', async () => {
     const result = await client.getAllUserDataMessagesByFid(protobufs.FidRequest.create({ fid }));

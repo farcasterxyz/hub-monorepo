@@ -4,10 +4,12 @@ import _m0 from "protobufjs/minimal";
 export interface DbTrieNode {
   key: Uint8Array;
   childChars: number[];
+  items: number;
+  hash: Uint8Array;
 }
 
 function createBaseDbTrieNode(): DbTrieNode {
-  return { key: new Uint8Array(), childChars: [] };
+  return { key: new Uint8Array(), childChars: [], items: 0, hash: new Uint8Array() };
 }
 
 export const DbTrieNode = {
@@ -20,6 +22,12 @@ export const DbTrieNode = {
       writer.uint32(v);
     }
     writer.ldelim();
+    if (message.items !== 0) {
+      writer.uint32(24).uint32(message.items);
+    }
+    if (message.hash.length !== 0) {
+      writer.uint32(34).bytes(message.hash);
+    }
     return writer;
   },
 
@@ -43,6 +51,12 @@ export const DbTrieNode = {
             message.childChars.push(reader.uint32());
           }
           break;
+        case 3:
+          message.items = reader.uint32();
+          break;
+        case 4:
+          message.hash = reader.bytes();
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -55,6 +69,8 @@ export const DbTrieNode = {
     return {
       key: isSet(object.key) ? bytesFromBase64(object.key) : new Uint8Array(),
       childChars: Array.isArray(object?.childChars) ? object.childChars.map((e: any) => Number(e)) : [],
+      items: isSet(object.items) ? Number(object.items) : 0,
+      hash: isSet(object.hash) ? bytesFromBase64(object.hash) : new Uint8Array(),
     };
   },
 
@@ -67,6 +83,9 @@ export const DbTrieNode = {
     } else {
       obj.childChars = [];
     }
+    message.items !== undefined && (obj.items = Math.round(message.items));
+    message.hash !== undefined &&
+      (obj.hash = base64FromBytes(message.hash !== undefined ? message.hash : new Uint8Array()));
     return obj;
   },
 
@@ -78,6 +97,8 @@ export const DbTrieNode = {
     const message = createBaseDbTrieNode();
     message.key = object.key ?? new Uint8Array();
     message.childChars = object.childChars?.map((e) => e) || [];
+    message.items = object.items ?? 0;
+    message.hash = object.hash ?? new Uint8Array();
     return message;
   },
 };

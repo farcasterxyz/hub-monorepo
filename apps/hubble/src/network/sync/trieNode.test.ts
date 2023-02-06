@@ -99,8 +99,11 @@ describe('TrieNode', () => {
       const firstDiffPos = hash1.findIndex((c, i) => c !== hash2[i]);
 
       const root = new TrieNode();
-      await root.insert(id1.syncId(), db, db.transaction());
-      await root.insert(id2.syncId(), db, db.transaction());
+
+      let txn = (await root.insert(id1.syncId(), db, db.transaction())).txn;
+      await db.commit(txn);
+      txn = (await root.insert(id2.syncId(), db, db.transaction())).txn;
+      await db.commit(txn);
 
       const splitNode = traverse(root);
       expect(splitNode.items).toEqual(2);
@@ -187,11 +190,6 @@ describe('TrieNode', () => {
         // eslint-disable-next-line security/detect-object-injection
         await root.insert(ids[i] as Uint8Array, db, db.transaction());
       }
-
-      // Except the recalculatedHash to match the root hash
-      expect(Buffer.from(root.hash).toString('hex')).toEqual(
-        Buffer.from(await root.recalculateHash(new Uint8Array(), db)).toString('hex')
-      );
 
       // Remove the first id
       await root.delete(ids[0] as Uint8Array, db, db.transaction());

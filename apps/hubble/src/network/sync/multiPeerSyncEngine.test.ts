@@ -217,6 +217,7 @@ describe('Multi peer sync engine', () => {
     const result = await engine1.mergeMessage(castRemove);
     expect(result.isOk()).toBeTruthy();
 
+    await sleepWhile(() => syncEngine1.messagesQueuedForSync > 0, 1000);
     const castRemoveId = new SyncId(castRemove);
     // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(await syncEngine1.trie.exists(castRemoveId)).toBeTruthy();
@@ -316,11 +317,6 @@ describe('Multi peer sync engine', () => {
       expect(totalTime).toBeGreaterThan(0);
       expect(totalMessages).toBeGreaterThan(numBatches * batchSize);
       // console.log('Merge total time', totalTime, 'seconds. Messages per second:', totalMessages / totalTime);
-
-      // Make sure the recalculatedHash matches root hash
-      expect(Buffer.from(await syncEngine1.trie.recalculateHash()).toString('hex')).toEqual(
-        await syncEngine1.trie.rootHash()
-      );
 
       const engine2 = new Engine(testDb2, network);
       const syncEngine2 = new SyncEngine(engine2, testDb2);

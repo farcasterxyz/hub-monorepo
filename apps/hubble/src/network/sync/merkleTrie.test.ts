@@ -134,8 +134,7 @@ describe('MerkleTrie', () => {
 
       // Add another item
       const syncId2 = await NetworkFactories.SyncId.create(undefined, { transient: { date: dt } });
-      await trie.insert(syncId2);
-
+      expect(await trie.insert(syncId2)).toBeTruthy();
       expect(await trie.exists(syncId2)).toBeTruthy();
 
       leafs = 0;
@@ -154,8 +153,6 @@ describe('MerkleTrie', () => {
 
       // Unload the trie
       (await trie.getNode(new Uint8Array()))?.unloadChildren();
-      // Reload the trie from DB and calculate the hash
-      await trie.recalculateHash();
 
       // Expect the root hash to be the same
       expect(await trie.rootHash()).toEqual(rootHash);
@@ -334,6 +331,52 @@ describe('MerkleTrie', () => {
           expect(await trie.exists(syncId)).toBeTruthy();
         })
       );
+    });
+
+    test('delete after loading from DB', async () => {
+      const trie = new MerkleTrie(db);
+
+      const syncId1 = await NetworkFactories.SyncId.create();
+      const syncId2 = await NetworkFactories.SyncId.create();
+
+      await trie.insert(syncId1);
+      await trie.insert(syncId2);
+
+      const rootHash = await trie.rootHash();
+
+      const trie2 = new MerkleTrie(db);
+      expect(await trie2.rootHash()).toEqual(rootHash);
+
+      expect(await trie2.delete(syncId1)).toBeTruthy();
+
+      expect(await trie2.rootHash()).not.toEqual(rootHash);
+      expect(await trie2.exists(syncId1)).toBeFalsy();
+      expect(await trie2.exists(syncId2)).toBeTruthy();
+    });
+
+    test('delete after unloading some nodes', async () => {
+      const trie = new MerkleTrie(db);
+
+      const syncId1 = await NetworkFactories.SyncId.create();
+      const syncId2 = await NetworkFactories.SyncId.create();
+
+      await trie.insert(syncId1);
+      await trie.insert(syncId2);
+
+      const rootHash = await trie.rootHash();
+
+      // Unload all the children of the first node
+      (await trie.getNode(new Uint8Array()))?.unloadChildren();
+
+      // Now try deleting syncId1
+      expect(await trie.delete(syncId1)).toBeTruthy();
+
+      expect(await trie.rootHash()).not.toEqual(rootHash);
+      expect(await trie.exists(syncId1)).toBeFalsy();
+      expect(await trie.exists(syncId2)).toBeTruthy();
+
+      // Ensure the trie was compacted
+      expect(await forEachDbItem(db)).toEqual(1 + TIMESTAMP_LENGTH);
     });
   });
 

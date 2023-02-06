@@ -45,15 +45,12 @@ class MerkleTrie {
     this._db = rocksDb;
     this._lock = new ReadWriteLock();
 
-    // TODO If the root node is available in the DB load it from there
     this._root = new TrieNode();
     this._lock.writeLock(async (release) => {
       try {
         const rootBytes = await this._db.get(TrieNode.makePrimaryKey(new Uint8Array()));
         if (rootBytes && rootBytes.length > 0) {
           this._root = TrieNode.deserialize(rootBytes);
-          log.info({}, 'Loaded MerkleTrie root from DB. Reclculating hash');
-          await this._root.recalculateHash(new Uint8Array(), this._db);
           log.info({ rootHash: this._root.hash, items: this.items }, 'Merkle Trie loaded from DB');
         }
       } catch {
@@ -170,15 +167,15 @@ class MerkleTrie {
     });
   }
 
-  public async recalculateHash(): Promise<Uint8Array> {
-    return new Promise((resolve) => {
-      this._lock.writeLock(async (release) => {
-        const r = await this._root.recalculateHash(new Uint8Array(), this._db);
-        release();
-        resolve(r);
-      });
-    });
-  }
+  // public async recalculateHash(): Promise<Uint8Array> {
+  //   return new Promise((resolve) => {
+  //     this._lock.writeLock(async (release) => {
+  //       const r = await this._root.computeHash(new Uint8Array(), this._db);
+  //       release();
+  //       resolve(r);
+  //     });
+  //   });
+  // }
 
   public async getNode(prefix: Uint8Array): Promise<TrieNode | undefined> {
     return new Promise((resolve) => {

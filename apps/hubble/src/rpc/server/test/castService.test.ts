@@ -45,19 +45,15 @@ beforeAll(async () => {
 });
 
 describe('getCast', () => {
-  test(
-    'succeeds',
-    async () => {
-      await engine.mergeIdRegistryEvent(custodyEvent);
-      await engine.mergeMessage(signerAdd);
-      await engine.mergeMessage(castAdd);
+  test('succeeds', async () => {
+    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeMessage(signerAdd);
+    await engine.mergeMessage(castAdd);
 
-      const result = await client.getCast(protobufs.CastId.create({ fid, hash: castAdd.hash }));
-      expect(result.isOk()).toBeTruthy();
-      expect(protobufs.Message.toJSON(result._unsafeUnwrap())).toEqual(protobufs.Message.toJSON(castAdd));
-    },
-    10000 * 1000
-  );
+    const result = await client.getCast(protobufs.CastId.create({ fid, hash: castAdd.hash }));
+    expect(result.isOk()).toBeTruthy();
+    expect(protobufs.Message.toJSON(result._unsafeUnwrap())).toEqual(protobufs.Message.toJSON(castAdd));
+  });
 
   test('fails if cast is missing', async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
