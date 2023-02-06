@@ -1,5 +1,8 @@
+import ReadWriteLock from 'rwlock';
 import { SyncId } from '~/network/sync/syncId';
 import { TrieNode, TrieSnapshot } from '~/network/sync/trieNode';
+import RocksDB from '~/storage/db/rocksdb';
+import { logger } from '~/utils/logger';
 
 /**
  * Represents a node in the trie, and it's immediate children
@@ -16,6 +19,10 @@ export type NodeMetadata = {
   children?: Map<number, NodeMetadata>;
 };
 
+const log = logger.child({
+  component: 'SyncMerkleTrie',
+});
+
 /**
  * MerkleTrie is a trie that contains Farcaster Messages SyncId and is used to diff the state of
  * two hubs on the network.
@@ -30,28 +37,94 @@ export type NodeMetadata = {
  * methods. DO NOT add async methods without considering impact on concurrency-safety.
  */
 class MerkleTrie {
-  private readonly _root: TrieNode;
+  private _root: TrieNode;
+  private _db: RocksDB;
+  private _lock: ReadWriteLock;
 
-  constructor() {
+  constructor(rocksDb: RocksDB) {
+    this._db = rocksDb;
+    this._lock = new ReadWriteLock();
+
     this._root = new TrieNode();
+    this._lock.writeLock(async (release) => {
+      try {
+        const rootBytes = await this._db.get(TrieNode.makePrimaryKey(new Uint8Array()));
+        if (rootBytes && rootBytes.length > 0) {
+          this._root = TrieNode.deserialize(rootBytes);
+          log.info({ rootHash: this._root.hash, items: this.items }, 'Merkle Trie loaded from DB');
+        }
+      } catch {
+        // There is no Root node in the DB, just use an empty one
+        this._root = new TrieNode();
+      }
+
+      release();
+    });
   }
 
-  public insert(id: SyncId): boolean {
-    return this._root.insert(id.syncId());
+  public async insert(id: SyncId): Promise<boolean> {
+    return new Promise((resolve) => {
+      this._lock.writeLock(async (release) => {
+        try {
+          // Create a new DB transaction
+          const { status, txn } = await this._root.insert(id.syncId(), this._db, this._db.transaction());
+
+          // Write the transaction to the DB
+          await this._db.commit(txn);
+
+          release();
+          resolve(status);
+        } catch (e) {
+          log.error('Insert Error', e);
+
+          release();
+          resolve(false);
+        }
+      });
+    });
   }
 
-  public delete(id: SyncId): boolean {
-    return this._root.delete(id.syncId());
+  public async delete(id: SyncId): Promise<boolean> {
+    return new Promise((resolve) => {
+      this._lock.writeLock(async (release) => {
+        try {
+          // Create a new DB transaction
+          const { status, txn } = await this._root.delete(id.syncId(), this._db, this._db.transaction());
+
+          // Write the transaction to the DB
+          await this._db.commit(txn);
+
+          release();
+          resolve(status);
+        } catch (e) {
+          log.error('Delete Error', e);
+
+          release();
+          resolve(false);
+        }
+      });
+    });
   }
 
-  public exists(id: SyncId): boolean {
-    // NOTE: eslint falsely identifies as `fs.exists`.
-    // eslint-disable-next-line security/detect-non-literal-fs-filename
-    return this._root.exists(id.syncId());
+  public async exists(id: SyncId): Promise<boolean> {
+    return new Promise((resolve) => {
+      this._lock.readLock(async (release) => {
+        // eslint-disable-next-line security/detect-non-literal-fs-filename
+        const r = await this._root.exists(id.syncId(), this._db);
+        release();
+        resolve(r);
+      });
+    });
   }
 
-  public getSnapshot(prefix: Uint8Array): TrieSnapshot {
-    return this._root.getSnapshot(prefix);
+  public async getSnapshot(prefix: Uint8Array): Promise<TrieSnapshot> {
+    return new Promise((resolve) => {
+      this._lock.readLock(async (release) => {
+        const r = await this._root.getSnapshot(prefix, this._db);
+        release();
+        resolve(r);
+      });
+    });
   }
 
   /**
@@ -60,46 +133,92 @@ class MerkleTrie {
    * @param prefix - the prefix of the external trie.
    * @param excludedHashes - the excluded hashes of the external trie.
    */
-  public getDivergencePrefix(prefix: Uint8Array, excludedHashes: string[]): Uint8Array {
-    const ourExcludedHashes = this.getSnapshot(prefix).excludedHashes;
-    for (let i = 0; i < prefix.length; i++) {
-      // NOTE: `i` is controlled by for loop and hence not at risk of object injection.
-      // eslint-disable-next-line security/detect-object-injection
-      if (ourExcludedHashes[i] !== excludedHashes[i]) {
-        return prefix.slice(0, i);
-      }
-    }
-    return prefix;
-  }
-
-  public getTrieNodeMetadata(prefix: Uint8Array): NodeMetadata | undefined {
-    const node = this._root.getNode(prefix);
-    if (node === undefined) {
-      return undefined;
-    }
-    const children = node?.children || new Map();
-    const result = new Map<number, NodeMetadata>();
-    for (const [char, child] of children) {
-      const newPrefix = Buffer.concat([prefix, Buffer.from([char])]);
-      result.set(char, {
-        numMessages: child.items,
-        prefix: newPrefix,
-        hash: child.hash,
+  public async getDivergencePrefix(prefix: Uint8Array, excludedHashes: string[]): Promise<Uint8Array> {
+    return new Promise((resolve) => {
+      this._lock.readLock(async (release) => {
+        const ourExcludedHashes = (await this.getSnapshot(prefix)).excludedHashes;
+        for (let i = 0; i < prefix.length; i++) {
+          // NOTE: `i` is controlled by for loop and hence not at risk of object injection.
+          // eslint-disable-next-line security/detect-object-injection
+          if (ourExcludedHashes[i] !== excludedHashes[i]) {
+            release();
+            resolve(prefix.slice(0, i));
+          }
+        }
+        release();
+        resolve(prefix);
       });
-    }
-    return { prefix, children: result, numMessages: node.items, hash: node.hash };
+    });
   }
 
-  public get root(): TrieNode {
-    return this._root;
+  public async getTrieNodeMetadata(prefix: Uint8Array): Promise<NodeMetadata | undefined> {
+    return new Promise((resolve) => {
+      this._lock.readLock(async (release) => {
+        const node = await this._root.getNode(prefix, this._db);
+        if (node === undefined) {
+          release();
+          resolve(undefined);
+        } else {
+          const md = await node.getNodeMetadata(prefix, this._db);
+          release();
+          resolve(md);
+        }
+      });
+    });
   }
 
-  public get items(): number {
-    return this._root.items;
+  // public async recalculateHash(): Promise<Uint8Array> {
+  //   return new Promise((resolve) => {
+  //     this._lock.writeLock(async (release) => {
+  //       const r = await this._root.computeHash(new Uint8Array(), this._db);
+  //       release();
+  //       resolve(r);
+  //     });
+  //   });
+  // }
+
+  public async getNode(prefix: Uint8Array): Promise<TrieNode | undefined> {
+    return new Promise((resolve) => {
+      this._lock.readLock(async (release) => {
+        const r = await this._root.getNode(prefix, this._db);
+        release();
+        resolve(r);
+      });
+    });
   }
 
-  public get rootHash(): string {
-    return this._root.hash;
+  public async getAllValues(prefix: Uint8Array): Promise<Uint8Array[]> {
+    return new Promise((resolve) => {
+      this._lock.readLock(async (release) => {
+        const node = await this._root.getNode(prefix, this._db);
+        if (node === undefined) {
+          release();
+          resolve([]);
+        } else {
+          const r = await node.getAllValues(prefix, this._db);
+          release();
+          resolve(r);
+        }
+      });
+    });
+  }
+
+  public async items(): Promise<number> {
+    return new Promise((resolve) => {
+      this._lock.readLock(async (release) => {
+        release();
+        resolve(this._root.items);
+      });
+    });
+  }
+
+  public async rootHash(): Promise<string> {
+    return new Promise((resolve) => {
+      this._lock.readLock(async (release) => {
+        release();
+        resolve(Buffer.from(this._root.hash).toString('hex'));
+      });
+    });
   }
 }
 

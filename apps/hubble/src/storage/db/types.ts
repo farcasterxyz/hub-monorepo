@@ -31,6 +31,8 @@ export enum RootPrefix {
   HubState = 9,
   /* Revoke signer jobs */
   JobRevokeSigner = 10,
+  /* Sync Merkle Trie Node */
+  SyncMerkleTrieNode = 11,
 }
 
 /**

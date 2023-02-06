@@ -1,9 +1,11 @@
 import * as protobufs from '@farcaster/protobufs';
-import { getFarcasterTime, HubError, HubResult, HubRpcClient } from '@farcaster/utils';
+import { getFarcasterTime, HubAsyncResult, HubError, HubResult, HubRpcClient } from '@farcaster/utils';
 import { err, ok } from 'neverthrow';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
 import { TrieSnapshot } from '~/network/sync/trieNode';
+import RocksDB from '~/storage/db/rocksdb';
+
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
 
@@ -21,18 +23,24 @@ class SyncEngine {
   private readonly engine: Engine;
   private _isSyncing = false;
 
-  constructor(engine: Engine) {
-    this._trie = new MerkleTrie();
+  private _messagesQueuedForSync = 0;
+
+  constructor(engine: Engine, rocksDb: RocksDB) {
+    this._trie = new MerkleTrie(rocksDb);
     this.engine = engine;
 
     this.engine.eventHandler.on(
       'mergeMessage',
       async (message: protobufs.Message, deletedMessages?: protobufs.Message[]) => {
-        this.addMessage(message);
+        const totalMessages = 1 + (deletedMessages?.length ?? 0);
+        this._messagesQueuedForSync += totalMessages;
+
+        await this.addMessage(message);
 
         for (const deletedMessage of deletedMessages ?? []) {
-          this.removeMessage(deletedMessage);
+          await this.removeMessage(deletedMessage);
         }
+        this._messagesQueuedForSync -= totalMessages;
       }
     );
 
@@ -41,24 +49,25 @@ class SyncEngine {
     // the trie to diverge in a way that's not recoverable without reconstructing it from the db.
     // Order of events does not matter. The trie will always converge to the same state.
     this.engine.eventHandler.on('pruneMessage', async (message) => {
-      this.removeMessage(message);
+      this._messagesQueuedForSync += 1;
+      await this.removeMessage(message);
+      this._messagesQueuedForSync -= 1;
     });
     this.engine.eventHandler.on('revokeMessage', async (message) => {
-      this.removeMessage(message);
+      this._messagesQueuedForSync += 1;
+      await this.removeMessage(message);
+      this._messagesQueuedForSync -= 1;
     });
   }
 
+  public get messagesQueuedForSync(): number {
+    return this._messagesQueuedForSync;
+  }
+
   public async initialize() {
-    // TODO: cache the trie to disk, and use this only when the cache doesn't exist
-    let processedMessages = 0;
-    await this.engine.forEachMessage((message) => {
-      this.addMessage(message);
-      processedMessages += 1;
-      if (processedMessages % 10_000 === 0) {
-        log.info({ processedMessages }, 'Initializing sync engine');
-      }
-    });
-    log.info({ processedMessages }, 'Sync engine initialized');
+    // Wait for the Merkle trie to be fully loaded
+    const rootHash = await this._trie.rootHash();
+    log.info({ rootHash }, 'Sync engine initialized');
   }
 
   public isSyncing(): boolean {
@@ -69,13 +78,13 @@ class SyncEngine {
   /**                                      Sync Methods                                  */
   /** ---------------------------------------------------------------------------------- */
 
-  public shouldSync(excludedHashes: string[]): HubResult<boolean> {
+  public async shouldSync(excludedHashes: string[]): HubAsyncResult<boolean> {
     if (this._isSyncing) {
       log.debug('shouldSync: already syncing');
       return ok(false);
     }
 
-    return this.snapshot.map((ourSnapshot) => {
+    return (await this.getSnapshot()).map((ourSnapshot) => {
       const excludedHashesMatch =
         ourSnapshot.excludedHashes.length === excludedHashes.length &&
         // NOTE: `index` is controlled by `every` and so not at risk of object injection.
@@ -87,28 +96,32 @@ class SyncEngine {
     });
   }
 
-  async performSync(excludedHashes: string[], rpcClient: HubRpcClient) {
+  async performSync(excludedHashes: string[], rpcClient: HubRpcClient): Promise<boolean> {
+    let success = false;
     try {
       this._isSyncing = true;
-      await this.snapshot
-        .asyncMap(async (ourSnapshot) => {
-          const divergencePrefix = this._trie.getDivergencePrefix(ourSnapshot.prefix, excludedHashes);
-          log.info({ divergencePrefix, prefix: ourSnapshot.prefix }, 'Divergence prefix');
-          const missingIds = await this.fetchMissingHashesByPrefix(divergencePrefix, rpcClient);
-          log.info({ missingCount: missingIds.length }, 'Fetched missing hashes');
+      const snapshot = await this.getSnapshot();
+      if (snapshot.isErr()) {
+        log.warn(snapshot.error, `Error performing sync`);
+      } else {
+        const ourSnapshot = snapshot.value;
+        const divergencePrefix = await this._trie.getDivergencePrefix(ourSnapshot.prefix, excludedHashes);
+        log.info({ divergencePrefix, prefix: ourSnapshot.prefix }, 'Divergence prefix');
+        const missingIds = await this.fetchMissingHashesByPrefix(divergencePrefix, rpcClient);
+        log.info({ missingCount: missingIds.length }, 'Fetched missing hashes');
 
-          // TODO: fetch messages in batches
-          await this.fetchAndMergeMessages(missingIds, rpcClient);
-          log.info(`Sync complete`);
-        })
-        .mapErr((error) => {
-          log.warn(error, `Error performing sync`);
-        });
+        // TODO: fetch messages in batches
+        await this.fetchAndMergeMessages(missingIds, rpcClient);
+        log.info(`Sync complete`);
+        success = true;
+      }
     } catch (e) {
       log.warn(e, `Error performing sync`);
     } finally {
       this._isSyncing = false;
     }
+
+    return success;
   }
 
   public async fetchAndMergeMessages(syncIds: Uint8Array[], rpcClient: HubRpcClient): Promise<boolean> {
@@ -194,7 +207,7 @@ class SyncEngine {
   }
 
   async fetchMissingHashesByPrefix(prefix: Uint8Array, rpcClient: HubRpcClient): Promise<Uint8Array[]> {
-    const ourNode = this._trie.getTrieNodeMetadata(prefix);
+    const ourNode = await this._trie.getTrieNodeMetadata(prefix);
     const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(protobufs.TrieNodePrefix.create({ prefix }));
 
     const missingHashes: Uint8Array[] = [];
@@ -214,36 +227,36 @@ class SyncEngine {
   /** ---------------------------------------------------------------------------------- */
   /**                                      Trie Methods                                  */
   /** ---------------------------------------------------------------------------------- */
-  public addMessage(message: protobufs.Message): void {
-    this._trie.insert(new SyncId(message));
+  public async addMessage(message: protobufs.Message): Promise<void> {
+    await this._trie.insert(new SyncId(message));
   }
 
-  public removeMessage(message: protobufs.Message): void {
-    this._trie.delete(new SyncId(message));
+  public async removeMessage(message: protobufs.Message): Promise<void> {
+    await this._trie.delete(new SyncId(message));
   }
 
-  public getTrieNodeMetadata(prefix: Uint8Array): NodeMetadata | undefined {
+  public async getTrieNodeMetadata(prefix: Uint8Array): Promise<NodeMetadata | undefined> {
     return this._trie.getTrieNodeMetadata(prefix);
   }
 
-  public getAllSyncIdsByPrefix(prefix: Uint8Array): Uint8Array[] {
-    return this._trie.root.getNode(prefix)?.getAllValues() ?? [];
+  public async getAllSyncIdsByPrefix(prefix: Uint8Array): Promise<Uint8Array[]> {
+    return await this._trie.getAllValues(prefix);
   }
 
   public get trie(): MerkleTrie {
     return this._trie;
   }
 
-  public getSnapshotByPrefix(prefix?: Uint8Array): HubResult<TrieSnapshot> {
+  public async getSnapshotByPrefix(prefix?: Uint8Array): HubAsyncResult<TrieSnapshot> {
     if (!prefix || prefix.length === 0) {
-      return this.snapshot;
+      return this.getSnapshot();
     } else {
-      return ok(this._trie.getSnapshot(prefix));
+      return ok(await this._trie.getSnapshot(prefix));
     }
   }
 
-  public get snapshot(): HubResult<TrieSnapshot> {
-    return this.snapshotTimestamp.map((snapshotTimestamp) => {
+  public async getSnapshot(): HubAsyncResult<TrieSnapshot> {
+    return this.snapshotTimestamp.asyncMap((snapshotTimestamp) => {
       // Ignore the least significant digit when fetching the snapshot timestamp because
       // second resolution is too fine grained, and fall outside sync threshold anyway
       return this._trie.getSnapshot(Buffer.from(timestampToPaddedTimestampPrefix(snapshotTimestamp / 10)));

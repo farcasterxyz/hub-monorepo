@@ -120,7 +120,7 @@ class Engine {
   /*                             Sync Methods                                   */
   /* -------------------------------------------------------------------------- */
 
-  async forEachMessage(callback: (message: protobufs.Message) => void): Promise<void> {
+  async forEachMessage(callback: (message: protobufs.Message) => Promise<void>): Promise<void> {
     const allUserPrefix = Buffer.from([RootPrefix.User]);
 
     for await (const [key, value] of this._db.iteratorByPrefix(allUserPrefix, { keys: true, valueAsBuffer: true })) {
@@ -150,7 +150,7 @@ class Engine {
 
       const message = protobufs.Message.decode(new Uint8Array(value));
 
-      callback(message);
+      await callback(message);
     }
   }
   async getAllMessagesBySyncIds(syncIds: Uint8Array[]): HubAsyncResult<protobufs.Message[]> {

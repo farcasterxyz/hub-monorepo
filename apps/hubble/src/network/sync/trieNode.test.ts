@@ -2,6 +2,7 @@ import { Factories, hexStringToBytes } from '@farcaster/utils';
 import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
 import { EMPTY_HASH, TrieNode } from '~/network/sync/trieNode';
 import { NetworkFactories } from '~/network/utils/factories';
+import { jestRocksDB } from '~/storage/db/jestUtils';
 
 // Safety: fs inputs are always safe in tests
 /* eslint-disable security/detect-non-literal-fs-filename */
@@ -10,6 +11,8 @@ const fid = Factories.Fid.build();
 const sharedDate = new Date(1665182332000);
 const sharedPrefixHashA = '09bc3dad4e7f2a77bbb2cccbecb06febfc6a4321';
 const sharedPrefixHashB = '09bc3dad4e7f2a77bbb2cccbecb06febfc6b1234';
+
+const db = jestRocksDB('protobufs.network.trienode.test');
 
 describe('TrieNode', () => {
   // Traverse the node until we find a leaf or path splits into multiple choices
@@ -30,9 +33,9 @@ describe('TrieNode', () => {
       const id = await NetworkFactories.SyncId.create();
 
       expect(root.items).toEqual(0);
-      expect(root.hash).toEqual('');
+      expect(root.hash.length).toEqual(0);
 
-      root.insert(id.syncId());
+      await root.insert(id.syncId(), db, db.transaction());
 
       expect(root.items).toEqual(1);
       expect(root.hash).toBeTruthy();
@@ -42,20 +45,29 @@ describe('TrieNode', () => {
       const root = new TrieNode();
       const id = await NetworkFactories.SyncId.create();
 
-      root.insert(id.syncId());
+      await root.insert(id.syncId(), db, db.transaction());
       expect(root.items).toEqual(1);
       const previousHash = root.hash;
-      root.insert(id.syncId());
+      await root.insert(id.syncId(), db, db.transaction());
 
       expect(root.hash).toEqual(previousHash);
       expect(root.items).toEqual(1);
+    });
+
+    test('value is always undefined for non-leaf nodes', async () => {
+      const trie = new TrieNode();
+      const syncId = await NetworkFactories.SyncId.create();
+
+      await trie.insert(syncId.syncId(), db, db.transaction());
+
+      expect(trie.value).toBeFalsy();
     });
 
     test('insert compacts hashstring component of syncid to single node for efficiency', async () => {
       const root = new TrieNode();
       const id = await NetworkFactories.SyncId.create();
 
-      root.insert(id.syncId());
+      await root.insert(id.syncId(), db, db.transaction());
       let node = root;
       // Timestamp portion of the key is not collapsed, but the hash portion is
       for (let i = 0; i < TIMESTAMP_LENGTH; i++) {
@@ -87,8 +99,11 @@ describe('TrieNode', () => {
       const firstDiffPos = hash1.findIndex((c, i) => c !== hash2[i]);
 
       const root = new TrieNode();
-      root.insert(id1.syncId());
-      root.insert(id2.syncId());
+
+      let txn = (await root.insert(id1.syncId(), db, db.transaction())).txn;
+      await db.commit(txn);
+      txn = (await root.insert(id2.syncId(), db, db.transaction())).txn;
+      await db.commit(txn);
 
       const splitNode = traverse(root);
       expect(splitNode.items).toEqual(2);
@@ -114,12 +129,12 @@ describe('TrieNode', () => {
       const root = new TrieNode();
       const id = await NetworkFactories.SyncId.create();
 
-      root.insert(id.syncId());
+      await root.insert(id.syncId(), db, db.transaction());
       expect(root.items).toEqual(1);
 
-      root.delete(id.syncId());
+      await root.delete(id.syncId(), db, db.transaction());
       expect(root.items).toEqual(0);
-      expect(root.hash).toEqual(EMPTY_HASH);
+      expect(Buffer.from(root.hash).toString('hex')).toEqual(EMPTY_HASH);
     });
 
     test('deleting a single item from a node with multiple items removes the item', async () => {
@@ -127,14 +142,14 @@ describe('TrieNode', () => {
       const id1 = await NetworkFactories.SyncId.create(undefined, { transient: { date: sharedDate } });
       const id2 = await NetworkFactories.SyncId.create(undefined, { transient: { date: sharedDate } });
 
-      root.insert(id1.syncId());
+      await root.insert(id1.syncId(), db, db.transaction());
       const previousHash = root.hash;
-      root.insert(id2.syncId());
+      await root.insert(id2.syncId(), db, db.transaction());
       expect(root.items).toEqual(2);
 
-      root.delete(id2.syncId());
+      await root.delete(id2.syncId(), db, db.transaction());
       expect(root.items).toEqual(1);
-      expect(root.exists(id2.syncId())).toBeFalsy();
+      expect(await root.exists(id2.syncId(), db)).toBeFalsy();
       expect(root.hash).toEqual(previousHash);
     });
 
@@ -147,14 +162,14 @@ describe('TrieNode', () => {
       });
 
       const root = new TrieNode();
-      root.insert(id1.syncId());
+      await root.insert(id1.syncId(), db, db.transaction());
       const previousRootHash = root.hash;
       const leafNode = traverse(root);
-      root.insert(id2.syncId());
+      await root.insert(id2.syncId(), db, db.transaction());
 
       expect(root.hash).not.toEqual(previousRootHash);
 
-      root.delete(id2.syncId());
+      await root.delete(id2.syncId(), db, db.transaction());
 
       const newLeafNode = traverse(root);
       expect(newLeafNode).toEqual(leafNode);
@@ -173,18 +188,15 @@ describe('TrieNode', () => {
       for (let i = 0; i < ids.length; i++) {
         // Safety: i is controlled by the loop and cannot be used to inject
         // eslint-disable-next-line security/detect-object-injection
-        root.insert(ids[i] as Uint8Array);
+        await root.insert(ids[i] as Uint8Array, db, db.transaction());
       }
 
-      // Except the recalculatedHash to match the root hash
-      expect(root.hash).toEqual(Buffer.from(root.recalculateHash()).toString('hex'));
-
       // Remove the first id
-      root.delete(ids[0] as Uint8Array);
+      await root.delete(ids[0] as Uint8Array, db, db.transaction());
 
       // Expect the other two ids to be present
-      expect(root.exists(ids[1] as Uint8Array)).toBeTruthy();
-      expect(root.exists(ids[2] as Uint8Array)).toBeTruthy();
+      expect(await root.exists(ids[1] as Uint8Array, db)).toBeTruthy();
+      expect(await root.exists(ids[2] as Uint8Array, db)).toBeTruthy();
       expect(root.items).toEqual(2);
     });
   });
@@ -194,21 +206,21 @@ describe('TrieNode', () => {
       const root = new TrieNode();
       const id = await NetworkFactories.SyncId.create();
 
-      root.insert(id.syncId());
+      await root.insert(id.syncId(), db, db.transaction());
       expect(root.items).toEqual(1);
 
-      expect(root.exists(id.syncId())).toBeTruthy();
+      expect(await root.exists(id.syncId(), db)).toBeTruthy();
     });
 
     test('getting an item after deleting it returns undefined', async () => {
       const root = new TrieNode();
       const id = await NetworkFactories.SyncId.create();
 
-      root.insert(id.syncId());
+      await root.insert(id.syncId(), db, db.transaction());
       expect(root.items).toEqual(1);
 
-      root.delete(id.syncId());
-      expect(root.exists(id.syncId())).toBeFalsy();
+      await root.delete(id.syncId(), db, db.transaction());
+      expect(await root.exists(id.syncId(), db)).toBeFalsy();
       expect(root.items).toEqual(0);
     });
 
@@ -221,10 +233,11 @@ describe('TrieNode', () => {
       });
 
       const root = new TrieNode();
-      root.insert(id1.syncId());
+      await root.insert(id1.syncId(), db, db.transaction());
 
       // id2 shares the same prefix, but doesn't exist, so it should return undefined
-      expect(root.exists(id2.syncId())).toBeFalsy();
+
+      expect(await root.exists(id2.syncId(), db)).toBeFalsy();
     });
   });
 });

@@ -10,6 +10,7 @@ import ProgressBar from 'progress';
 
 import { MerkleTrie } from '~/network/sync/merkleTrie';
 
+import RocksDB from '~/storage/db/rocksdb';
 import { generateSyncIds } from './helpers';
 import { yieldToEventLoop } from './utils';
 
@@ -55,7 +56,10 @@ export const benchMerkleTrie = async ({
   });
 
   const syncIds = generateSyncIds(count, 100_000, 300);
-  const trie = new MerkleTrie();
+  const db = new RocksDB('protobufs.bench.merkleTrie');
+  await db.open();
+
+  const trie = new MerkleTrie(db);
 
   let i = 0;
   progress.tick(0);
@@ -76,7 +80,7 @@ export const benchMerkleTrie = async ({
   while (i < syncIds.length) {
     let start = performance.now();
     for (let j = 0; j < cycle; j++) {
-      trie.insert(syncIds[(i + j) % syncIds.length]!);
+      await trie.insert(syncIds[(i + j) % syncIds.length]!);
     }
     const insertDuration = performance.now() - start;
 
@@ -84,7 +88,7 @@ export const benchMerkleTrie = async ({
 
     start = performance.now();
     for (let j = 0; j < cycle; j++) {
-      trie.getSnapshot(syncIds[(i - 1) % syncIds.length]!.syncId().slice(0, 10));
+      await trie.getSnapshot(syncIds[(i - 1) % syncIds.length]!.syncId().slice(0, 10));
     }
     const snapshotDuration = performance.now() - start;
 
@@ -109,5 +113,6 @@ export const benchMerkleTrie = async ({
     await yieldToEventLoop();
   }
 
+  db.clear();
   process.stderr.write('finished\n');
 };
