@@ -28,8 +28,7 @@
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": false, // causes hard failures when iterating in dev, enforce with eslint instead
     "noUnusedParameters": false,
-    "outDir": "build",
-    "rootDir": "src"
+    "outDir": "build"
   },
 
   "ts-node": {

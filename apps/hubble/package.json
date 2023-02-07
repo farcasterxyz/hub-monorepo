@@ -40,7 +40,8 @@
     "pino-pretty": "~9.1.1",
     "progress": "~2.0.3",
     "@types/rwlock": "^5.0.3",
-    "ts-mockito": "~2.6.1"
+    "ts-mockito": "~2.6.1",
+    "tsconfig": "*"
   },
   "dependencies": {
     "@chainsafe/libp2p-gossipsub": "4.1.1",

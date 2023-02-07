@@ -20,8 +20,7 @@
     "@farcaster/utils": "0.2.3",
     "@noble/hashes": "^1.2.0",
     "ethers": "^5.7.2",
-    "neverthrow": "^6.0.0",
-    "tsconfig": "*"
+    "neverthrow": "^6.0.0"
   },
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --clean",
@@ -32,7 +31,8 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^7.6.0",
-    "eslint-config-custom": "*"
+    "eslint-config-custom": "*",
+    "tsconfig": "*"
   },
   "publishConfig": {
     "access": "public"
