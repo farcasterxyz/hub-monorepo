@@ -258,4 +258,20 @@ describe('SyncEngine', () => {
     expect(await syncEngine.trie.exists(new SyncId(messages[1] as protobufs.Message))).toBeTruthy();
     expect(await syncEngine.trie.exists(new SyncId(messages[2] as protobufs.Message))).toBeTruthy();
   });
+
+  test('getSnapshot should use a prefix of 10-seconds resolution timestamp', async () => {
+    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeMessage(signerAdd);
+
+    await addMessagesWithTimestamps([30662167, 30662169, 30662172]);
+    const nowOrig = Date.now;
+    Date.now = () => 16409952e5 + 30662167 * 1000;
+    try {
+      const result = await syncEngine.getSnapshot();
+      const snapshot = result._unsafeUnwrap();
+      expect(snapshot.prefix).toEqual(Buffer.from('0030662160'));
+    } finally {
+      Date.now = nowOrig;
+    }
+  });
 });
