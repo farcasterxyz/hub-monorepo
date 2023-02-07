@@ -1,17 +1,5 @@
 # @farcaster/js
 
-## 0.2.3
-
-### Patch Changes
-
-- d21a8f2: chore: upgrade packages [feb 2023]
-- shared package for tsconfig
-- Updated dependencies [d21a8f2]
-- Updated dependencies
-  - @farcaster/protobufs@0.1.4
-  - @farcaster/utils@0.2.3
-  - tsconfig@0.0.1
-
 ## 0.2.2
 
 ### Patch Changes
