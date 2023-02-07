@@ -324,7 +324,7 @@ class TrieNode {
       });
     }
 
-    // if (prefix.length === TIMESTAMP_LENGTH) {
+    // if (prefix.length >= TIMESTAMP_LENGTH) {
     //   this.unloadChildren();
     // }
 
@@ -336,6 +336,7 @@ class TrieNode {
   }
 
   public async getAllValues(key: Uint8Array, db: RocksDB, current_index = 0): Promise<Uint8Array[]> {
+    // TODO: Get this straight from the DB with an iterator
     if (this.isLeaf) {
       return this._key ? [this._key] : [];
     }
