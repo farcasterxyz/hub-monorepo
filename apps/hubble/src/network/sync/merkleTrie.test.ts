@@ -14,6 +14,8 @@ const TEST_TIMEOUT_LONG = 60 * 1000;
 const db = jestRocksDB('protobufs.network.merkleTrie.test');
 const db2 = jestRocksDB('protobufs.network.merkleTrie2.test');
 
+let trie: MerkleTrie;
+
 describe('MerkleTrie', () => {
   const trieWithIds = async (timestamps: number[]) => {
     const syncIds = await Promise.all(
@@ -42,8 +44,12 @@ describe('MerkleTrie', () => {
   };
 
   describe('insert', () => {
+    beforeEach(async () => {
+      trie = new MerkleTrie(db);
+      await trie.initialize();
+    });
+
     test('succeeds inserting a single item', async () => {
-      const trie = new MerkleTrie(db);
       const syncId = await NetworkFactories.SyncId.create();
 
       expect(await trie.items()).toEqual(0);
@@ -106,7 +112,6 @@ describe('MerkleTrie', () => {
       const syncId = await NetworkFactories.SyncId.create(undefined, { transient: { date: dt } });
       const syncIdStr = Buffer.from(syncId.syncId()).toString('hex');
 
-      const trie = new MerkleTrie(db);
       await trie.insert(syncId);
 
       expect(await trie.exists(syncId)).toBeTruthy();
@@ -162,9 +167,7 @@ describe('MerkleTrie', () => {
     test(
       'Load trie from DB',
       async () => {
-        const trie = new MerkleTrie(db);
         const syncIds = await NetworkFactories.SyncId.createList(20);
-
         await Promise.all(syncIds.map(async (syncId) => await trie.insert(syncId)));
 
         // Now initialize a new merkle trie from the same DB
@@ -204,10 +207,14 @@ describe('MerkleTrie', () => {
   });
 
   describe('delete', () => {
+    beforeEach(async () => {
+      trie = new MerkleTrie(db);
+      await trie.initialize();
+    });
+
     test('deletes an item', async () => {
       const syncId = await NetworkFactories.SyncId.create();
 
-      const trie = new MerkleTrie(db);
       await trie.insert(syncId);
       expect(await trie.items()).toEqual(1);
       expect(await trie.rootHash()).toBeTruthy();
@@ -223,7 +230,6 @@ describe('MerkleTrie', () => {
 
     test('deleting an item that does not exist does not change the trie', async () => {
       const syncId = await NetworkFactories.SyncId.create();
-      const trie = new MerkleTrie(db);
       expect(await trie.insert(syncId)).toBeTruthy();
 
       const rootHashBeforeDelete = await trie.rootHash();
@@ -239,7 +245,6 @@ describe('MerkleTrie', () => {
       const syncId1 = await NetworkFactories.SyncId.create();
       const syncId2 = await NetworkFactories.SyncId.create();
 
-      const trie = new MerkleTrie(db);
       trie.insert(syncId1);
       const rootHashBeforeDelete = await trie.rootHash();
       trie.insert(syncId2);
@@ -268,7 +273,6 @@ describe('MerkleTrie', () => {
     });
 
     test('Deleting single node deletes all nodes from the DB', async () => {
-      const trie = new MerkleTrie(db);
       const id = await NetworkFactories.SyncId.create();
 
       await trie.insert(id);
@@ -284,7 +288,6 @@ describe('MerkleTrie', () => {
     });
 
     test('Deleting one of two nodes leaves only 1 item in the DB', async () => {
-      const trie = new MerkleTrie(db);
       const syncId1 = await NetworkFactories.SyncId.create();
       const syncId2 = await NetworkFactories.SyncId.create();
 
@@ -301,7 +304,6 @@ describe('MerkleTrie', () => {
     });
 
     test('succeeds with single item', async () => {
-      const trie = new MerkleTrie(db);
       const syncId = await NetworkFactories.SyncId.create();
 
       expect(await trie.exists(syncId)).toBeFalsy();
@@ -316,7 +318,6 @@ describe('MerkleTrie', () => {
     });
 
     test('test multiple items with delete', async () => {
-      const trie = new MerkleTrie(db);
       const syncIds = await NetworkFactories.SyncId.createList(20);
 
       await Promise.all(syncIds.map(async (syncId) => trie.insert(syncId)));
@@ -336,8 +337,6 @@ describe('MerkleTrie', () => {
     });
 
     test('delete after loading from DB', async () => {
-      const trie = new MerkleTrie(db);
-
       const syncId1 = await NetworkFactories.SyncId.create();
       const syncId2 = await NetworkFactories.SyncId.create();
 
@@ -359,8 +358,6 @@ describe('MerkleTrie', () => {
     });
 
     test('delete after unloading some nodes', async () => {
-      const trie = new MerkleTrie(db);
-
       const syncId1 = await NetworkFactories.SyncId.create();
       const syncId2 = await NetworkFactories.SyncId.create();
 
@@ -385,9 +382,14 @@ describe('MerkleTrie', () => {
   });
 
   describe('getNodeMetadata', () => {
+    beforeEach(async () => {
+      trie = new MerkleTrie(db);
+      await trie.initialize();
+    });
+
     test('returns undefined if prefix is not present', async () => {
       const syncId = await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(1665182332000) } });
-      const trie = new MerkleTrie(db);
+
       await trie.insert(syncId);
 
       expect(await trie.getTrieNodeMetadata(Buffer.from('166518234'))).toBeUndefined();
@@ -395,8 +397,8 @@ describe('MerkleTrie', () => {
 
     test('returns the root metadata if the prefix is empty', async () => {
       const syncId = await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(1665182332000) } });
-      const trie = new MerkleTrie(db);
-      trie.insert(syncId);
+
+      await trie.insert(syncId);
 
       const nodeMetadata = await trie.getTrieNodeMetadata(new Uint8Array());
       expect(nodeMetadata).toBeDefined();
