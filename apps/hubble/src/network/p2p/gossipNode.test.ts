@@ -1,5 +1,12 @@
+import * as protobufs from '@farcaster/protobufs';
+import { Factories, getHubRpcClient, HubRpcClient } from '@farcaster/utils';
 import { multiaddr } from '@multiformats/multiaddr/';
 import { GossipNode } from '~/network/p2p/gossipNode';
+import Server from '~/rpc/server';
+import { jestRocksDB } from '~/storage/db/jestUtils';
+import Engine from '~/storage/engine';
+import { MockHub } from '~/test/mocks';
+import SyncEngine from '../sync/syncEngine';
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 
@@ -85,4 +92,62 @@ describe('GossipNode', () => {
     },
     TEST_TIMEOUT_SHORT
   );
+
+  describe('gossip messages', () => {
+    const db = jestRocksDB('protobufs.rpc.gossipMessageTest.test');
+    const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
+    const engine = new Engine(db, network);
+    const hub = new MockHub(db, engine);
+
+    const fid = Factories.Fid.build();
+    const custodySigner = Factories.Eip712Signer.build();
+    const signer = Factories.Ed25519Signer.build();
+
+    let server: Server;
+    let client: HubRpcClient;
+
+    let custodyEvent: protobufs.IdRegistryEvent;
+    let signerAdd: protobufs.Message;
+    let castAdd: protobufs.Message;
+
+    beforeAll(async () => {
+      custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
+
+      signerAdd = await Factories.SignerAddMessage.create(
+        { data: { fid, network, signerBody: { signer: signer.signerKey } } },
+        { transient: { signer: custodySigner } }
+      );
+
+      castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
+    });
+
+    test('gossip messages only from rpc', async () => {
+      let numMessagesGossiped = 0;
+      const mockGossipNode = {
+        gossipMessage: (_msg: protobufs.Message) => {
+          numMessagesGossiped += 1;
+        },
+      } as unknown as GossipNode;
+
+      server = new Server(hub, engine, new SyncEngine(engine, db), mockGossipNode);
+      const port = await server.start();
+      client = getHubRpcClient(`127.0.0.1:${port}`);
+
+      await client.submitIdRegistryEvent(custodyEvent);
+
+      // Messages from rpc are gossiped
+      await client.submitMessage(signerAdd);
+      await client.submitMessage(castAdd);
+
+      expect(numMessagesGossiped).toEqual(2);
+
+      // Directly merged messages don't gossip
+      const castAdd2 = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
+      await hub.submitMessage(castAdd2);
+      expect(numMessagesGossiped).toEqual(2);
+
+      client.$.close();
+      await server.stop();
+    });
+  });
 });
