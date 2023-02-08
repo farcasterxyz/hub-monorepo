@@ -141,18 +141,18 @@ describe('Multi peer sync engine', () => {
 
       // Engine 2 should sync with engine1
       expect(
-        (await syncEngine2.shouldSync((await syncEngine1.getSnapshot())._unsafeUnwrap().excludedHashes))._unsafeUnwrap()
+        (await syncEngine2.shouldSync((await syncEngine1.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap()
       ).toBeTruthy();
 
       // Sync engine 2 with engine 1
-      await syncEngine2.performSync((await syncEngine1.getSnapshot())._unsafeUnwrap().excludedHashes, clientForServer1);
+      await syncEngine2.performSync((await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
 
       // Make sure root hash matches
       expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
 
       // Should sync should now be false with the new excluded hashes
       expect(
-        (await syncEngine2.shouldSync((await syncEngine1.getSnapshot())._unsafeUnwrap().excludedHashes))._unsafeUnwrap()
+        (await syncEngine2.shouldSync((await syncEngine1.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap()
       ).toBeFalsy();
 
       // Add more messages
@@ -170,10 +170,10 @@ describe('Multi peer sync engine', () => {
       expect(await syncEngine1.trie.rootHash()).toEqual(newSnapshot.rootHash);
 
       // Should sync should now be true
-      expect((await syncEngine2.shouldSync(newSnapshot.excludedHashes))._unsafeUnwrap()).toBeTruthy();
+      expect((await syncEngine2.shouldSync(newSnapshot))._unsafeUnwrap()).toBeTruthy();
 
       // Do the sync again
-      await syncEngine2.performSync(newSnapshot.excludedHashes, clientForServer1);
+      await syncEngine2.performSync(newSnapshot, clientForServer1);
 
       // Make sure root hash matches
       expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
@@ -193,7 +193,7 @@ describe('Multi peer sync engine', () => {
     const engine2 = new Engine(testDb2, network);
     const syncEngine2 = new SyncEngine(engine2, testDb2);
     // Sync engine 2 with engine 1
-    await syncEngine2.performSync([], clientForServer1);
+    await syncEngine2.performSync((await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
 
     // Make sure the castAdd is in the trie
     // eslint-disable-next-line security/detect-non-literal-fs-filename
@@ -233,7 +233,7 @@ describe('Multi peer sync engine', () => {
       const clientForServer2 = getHubRpcClient(`127.0.0.1:${port2}`);
       const engine1RootHashBefore = await syncEngine1.trie.rootHash();
 
-      await syncEngine1.performSync((await syncEngine2.getSnapshot())._unsafeUnwrap().excludedHashes, clientForServer2);
+      await syncEngine1.performSync((await syncEngine2.getSnapshot())._unsafeUnwrap(), clientForServer2);
       expect(await syncEngine1.trie.rootHash()).toEqual(engine1RootHashBefore);
 
       clientForServer2.$.close();
@@ -245,7 +245,7 @@ describe('Multi peer sync engine', () => {
     expect(await syncEngine2.trie.exists(castRemoveId)).toBeFalsy();
 
     // Syncing engine2 with engine1 should delete the castAdd from the trie and add the castRemove
-    await syncEngine2.performSync((await syncEngine1.getSnapshot())._unsafeUnwrap().excludedHashes, clientForServer1);
+    await syncEngine2.performSync((await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
 
     // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(await syncEngine2.trie.exists(castRemoveId)).toBeTruthy();
@@ -324,7 +324,7 @@ describe('Multi peer sync engine', () => {
 
       // Engine 2 should sync with engine1
       expect(
-        (await syncEngine2.shouldSync((await syncEngine1.getSnapshot())._unsafeUnwrap().excludedHashes))._unsafeUnwrap()
+        (await syncEngine2.shouldSync((await syncEngine1.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap()
       ).toBeTruthy();
 
       await engine2.mergeIdRegistryEvent(custodyEvent);
@@ -332,10 +332,7 @@ describe('Multi peer sync engine', () => {
 
       // Sync engine 2 with engine 1, and measure the time taken
       totalTime = await timedTest(async () => {
-        await syncEngine2.performSync(
-          (await syncEngine1.getSnapshot())._unsafeUnwrap().excludedHashes,
-          clientForServer1
-        );
+        await syncEngine2.performSync((await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
       });
 
       expect(totalTime).toBeGreaterThan(0);

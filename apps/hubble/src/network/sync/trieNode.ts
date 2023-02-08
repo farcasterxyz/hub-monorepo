@@ -409,6 +409,7 @@ class TrieNode {
     trieNode._hash = dbtrieNode.hash;
 
     for (let i = 0; i < dbtrieNode.childChars.length; i++) {
+      // eslint-disable-next-line security/detect-object-injection
       trieNode._children.set(dbtrieNode.childChars[i] as number, new SerializedTrieNode());
     }
 
