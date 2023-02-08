@@ -119,3 +119,14 @@ If a Hub receives gossip via P2P:
 If an ETH node sends a new contract event via RPC:
 
 - The Storage engine receives the message and updates internal state accordingly
+
+## TroubleShooting
+
+### Upgrading Libp2p
+
+1. Pick a [libp2p release](https://github.com/libp2p/js-libp2p/releases) and navigate to its [package.json](https://github.com/libp2p/js-libp2p/blob/master/package.json) file
+2. Copy the required versions of `libp2p`, `@libp2p/*`, `@chainsafe/*` `@multiformats/*` packages to our package.json
+3. For unspecified packages read their changelog and make a best guess about versions (e.g. `@chainsafe/libp2p-gossipsub` and `@libp2p/pubsub-peer-discovery`)
+4. Follow the [migration guide](https://github.com/libp2p/js-libp2p/tree/master/doc/migrations) for the versions you are upgrading to
+
+If you run into any unexpected issues open a discussion in the [libp2p forum](https://discuss.libp2p.io/). @achingbrain on the Filecoin slack maintains this project and can be helpful with major issues.
