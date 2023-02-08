@@ -108,11 +108,14 @@ class SyncEngine {
         const ourSnapshot = snapshot.value;
         const divergencePrefix = await this._trie.getDivergencePrefix(ourSnapshot.prefix, otherSnapshot.excludedHashes);
         log.info({ divergencePrefix, prefix: ourSnapshot.prefix }, 'Divergence prefix');
-        const missingIds = await this.fetchMissingHashesByPrefix(divergencePrefix, rpcClient);
-        log.info({ missingCount: missingIds.length }, 'Fetched missing hashes');
 
-        // TODO: fetch messages in batches
-        await this.fetchAndMergeMessages(missingIds, rpcClient);
+        let missingCount = 0;
+        await this.fetchMissingHashesByPrefix(divergencePrefix, rpcClient, async (missingIds: Uint8Array[]) => {
+          missingCount += missingIds.length;
+          await this.fetchAndMergeMessages(missingIds, rpcClient);
+        });
+
+        log.info({ missingCount }, 'Fetched missing hashes');
         log.info(`Sync complete`);
         success = true;
       }
@@ -176,53 +179,54 @@ class SyncEngine {
     return mergeResults;
   }
 
+  async fetchMissingHashesByPrefix(
+    prefix: Uint8Array,
+    rpcClient: HubRpcClient,
+    onMissingHashes: (missingHashes: Uint8Array[]) => Promise<void>
+  ): Promise<void> {
+    const ourNode = await this._trie.getTrieNodeMetadata(prefix);
+    const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(protobufs.TrieNodePrefix.create({ prefix }));
+
+    if (theirNodeResult.isErr()) {
+      log.warn(theirNodeResult.error, `Error fetching metadata for prefix ${prefix}`);
+    } else {
+      await this.fetchMissingHashesByNode(
+        fromNodeMetadataResponse(theirNodeResult.value),
+        ourNode,
+        rpcClient,
+        onMissingHashes
+      );
+    }
+  }
+
   async fetchMissingHashesByNode(
     theirNode: NodeMetadata,
     ourNode: NodeMetadata | undefined,
-    rpcClient: HubRpcClient
-  ): Promise<Uint8Array[]> {
-    const missingHashes: Uint8Array[] = [];
+    rpcClient: HubRpcClient,
+    onMissingHashes: (missingHashes: Uint8Array[]) => Promise<void>
+  ): Promise<void> {
     // If the node has fewer than HASHES_PER_FETCH, just fetch them all in go, otherwise,
     // iterate through the node's children and fetch them in batches.
     if (theirNode.numMessages <= HASHES_PER_FETCH) {
       const result = await rpcClient.getAllSyncIdsByPrefix(
         protobufs.TrieNodePrefix.create({ prefix: theirNode.prefix })
       );
-      result.match(
-        (ids) => {
-          missingHashes.push(...ids.syncIds);
-        },
-        (err) => {
-          log.warn(err, `Error fetching ids for prefix ${theirNode.prefix}`);
-        }
-      );
+
+      if (result.isErr()) {
+        log.warn(result.error, `Error fetching ids for prefix ${theirNode.prefix}`);
+      } else {
+        await onMissingHashes(result.value.syncIds);
+      }
     } else if (theirNode.children) {
       for (const [theirChildChar, theirChild] of theirNode.children.entries()) {
         // recursively fetch hashes for every node where the hashes don't match
+        const allPromises = [];
         if (ourNode?.children?.get(theirChildChar)?.hash !== theirChild.hash) {
-          missingHashes.push(...(await this.fetchMissingHashesByPrefix(theirChild.prefix, rpcClient)));
+          allPromises.push(this.fetchMissingHashesByPrefix(theirChild.prefix, rpcClient, onMissingHashes));
         }
+        await Promise.all(allPromises);
       }
     }
-    return missingHashes;
-  }
-
-  async fetchMissingHashesByPrefix(prefix: Uint8Array, rpcClient: HubRpcClient): Promise<Uint8Array[]> {
-    const ourNode = await this._trie.getTrieNodeMetadata(prefix);
-    const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(protobufs.TrieNodePrefix.create({ prefix }));
-
-    const missingHashes: Uint8Array[] = [];
-    await theirNodeResult.match(
-      async (theirNode) => {
-        missingHashes.push(
-          ...(await this.fetchMissingHashesByNode(fromNodeMetadataResponse(theirNode), ourNode, rpcClient))
-        );
-      },
-      async (err) => {
-        log.warn(err, `Error fetching metadata for prefix ${prefix}`);
-      }
-    );
-    return missingHashes;
   }
 
   /** ---------------------------------------------------------------------------------- */
