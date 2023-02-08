@@ -29,6 +29,7 @@ import {
 } from '@farcaster/protobufs';
 import { HubError } from '@farcaster/utils';
 import { APP_NICKNAME, APP_VERSION, HubInterface } from '~/hubble';
+import { GossipNode } from '~/network/p2p/gossipNode';
 import { NodeMetadata } from '~/network/sync/merkleTrie';
 import SyncEngine from '~/network/sync/syncEngine';
 import Engine from '~/storage/engine';
@@ -74,14 +75,16 @@ export default class Server {
   private hub: HubInterface | undefined;
   private engine: Engine | undefined;
   private syncEngine: SyncEngine | undefined;
+  private gossipNode: GossipNode | undefined;
 
   private grpcServer: GrpcServer;
   private port: number;
 
-  constructor(hub?: HubInterface, engine?: Engine, syncEngine?: SyncEngine) {
+  constructor(hub?: HubInterface, engine?: Engine, syncEngine?: SyncEngine, gossipNode?: GossipNode) {
     this.hub = hub;
     this.engine = engine;
     this.syncEngine = syncEngine;
+    this.gossipNode = gossipNode;
 
     this.grpcServer = getServer();
     this.port = 0;
@@ -226,6 +229,11 @@ export default class Server {
         const result = await this.hub?.submitMessage(message, 'rpc');
         result?.match(
           () => {
+            if (this.gossipNode) {
+              // When submitting a message via RPC, we want to gossip it to other nodes.
+              // This is a promise, but we won't await it.
+              this.gossipNode.gossipMessage(message);
+            }
             callback(null, message);
           },
           (err: HubError) => {
@@ -239,6 +247,8 @@ export default class Server {
         const result = await this.hub?.submitIdRegistryEvent(idRegistryEvent, 'rpc');
         result?.match(
           () => {
+            // Note: We don't gossip ID registry events, since we assume each node has its own connection
+            // to an ETH node.
             callback(null, idRegistryEvent);
           },
           (err: HubError) => {
