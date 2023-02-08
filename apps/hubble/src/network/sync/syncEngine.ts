@@ -79,34 +79,34 @@ class SyncEngine {
   /**                                      Sync Methods                                  */
   /** ---------------------------------------------------------------------------------- */
 
-  public async shouldSync(excludedHashes: string[]): HubAsyncResult<boolean> {
+  public async shouldSync(otherSnapshot: TrieSnapshot): HubAsyncResult<boolean> {
     if (this._isSyncing) {
       log.debug('shouldSync: already syncing');
       return ok(false);
     }
 
-    return (await this.getSnapshot()).map((ourSnapshot) => {
+    return (await this.getSnapshot(otherSnapshot.prefix)).map((ourSnapshot) => {
       const excludedHashesMatch =
-        ourSnapshot.excludedHashes.length === excludedHashes.length &&
+        ourSnapshot.excludedHashes.length === otherSnapshot.excludedHashes.length &&
         // NOTE: `index` is controlled by `every` and so not at risk of object injection.
         // eslint-disable-next-line security/detect-object-injection
-        ourSnapshot.excludedHashes.every((value, index) => value === excludedHashes[index]);
+        ourSnapshot.excludedHashes.every((value, index) => value === otherSnapshot.excludedHashes[index]);
 
-      log.debug(`shouldSync: excluded hashes check: ${excludedHashes}`);
+      log.debug(`shouldSync: excluded hashes check: ${otherSnapshot.excludedHashes}`);
       return !excludedHashesMatch;
     });
   }
 
-  async performSync(excludedHashes: string[], rpcClient: HubRpcClient): Promise<boolean> {
+  async performSync(otherSnapshot: TrieSnapshot, rpcClient: HubRpcClient): Promise<boolean> {
     let success = false;
     try {
       this._isSyncing = true;
-      const snapshot = await this.getSnapshot();
+      const snapshot = await this.getSnapshot(otherSnapshot.prefix);
       if (snapshot.isErr()) {
         log.warn(snapshot.error, `Error performing sync`);
       } else {
         const ourSnapshot = snapshot.value;
-        const divergencePrefix = await this._trie.getDivergencePrefix(ourSnapshot.prefix, excludedHashes);
+        const divergencePrefix = await this._trie.getDivergencePrefix(ourSnapshot.prefix, otherSnapshot.excludedHashes);
         log.info({ divergencePrefix, prefix: ourSnapshot.prefix }, 'Divergence prefix');
         const missingIds = await this.fetchMissingHashesByPrefix(divergencePrefix, rpcClient);
         log.info({ missingCount: missingIds.length }, 'Fetched missing hashes');
@@ -256,11 +256,11 @@ class SyncEngine {
     }
   }
 
-  public async getSnapshot(): HubAsyncResult<TrieSnapshot> {
+  public async getSnapshot(prefix?: Uint8Array): HubAsyncResult<TrieSnapshot> {
     return this.snapshotTimestamp.asyncMap((snapshotTimestamp) => {
       // Ignore the least significant digit when fetching the snapshot timestamp because
       // second resolution is too fine grained, and fall outside sync threshold anyway
-      return this._trie.getSnapshot(Buffer.from(timestampToPaddedTimestampPrefix(snapshotTimestamp)));
+      return this._trie.getSnapshot(prefix ?? Buffer.from(timestampToPaddedTimestampPrefix(snapshotTimestamp)));
     });
   }
 
@@ -314,7 +314,7 @@ const fromNodeMetadataResponse = (response: protobufs.TrieNodeMetadataResponse):
   const children = new Map<number, NodeMetadata>();
   for (let i = 0; i < response.children.length; i++) {
     // Safety: i is controlled by the loop
-    // eslint-disable security/detect-object-injection
+    // eslint-disable-next-line security/detect-object-injection
     const child = response.children[i];
 
     if (child && child.prefix.length > 0) {

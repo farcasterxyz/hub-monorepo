@@ -366,7 +366,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     }
 
     const peerState = peerStateResult.value;
-    const shouldSync = await this.syncEngine.shouldSync(peerState.excludedHashes);
+    const shouldSync = await this.syncEngine.shouldSync(peerState);
     if (shouldSync.isErr()) {
       log.warn(`Failed to get shouldSync`);
       this.emit('syncComplete', false);
@@ -375,7 +375,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
 
     if (shouldSync.value === true) {
       log.info(`Syncing with peer`);
-      await this.syncEngine.performSync(peerState.excludedHashes, rpcClient);
+      await this.syncEngine.performSync(peerState, rpcClient);
     } else {
       log.info(`No need to sync`);
       this.emit('syncComplete', false);

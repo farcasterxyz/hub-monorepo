@@ -45,7 +45,7 @@ describe('SyncEngine', () => {
     syncEngine = new SyncEngine(engine, testDb);
   });
 
-  const addMessagesWithTimestamps = async (timestamps: number[]) => {
+  const addMessagesWithTimestamps = async (timestamps: number[], mergeEngine?: Engine) => {
     return await Promise.all(
       timestamps.map(async (t) => {
         const cast = await Factories.CastAddMessage.create(
@@ -53,7 +53,7 @@ describe('SyncEngine', () => {
           { transient: { signer } }
         );
 
-        const result = await engine.mergeMessage(cast);
+        const result = await (mergeEngine || engine).mergeMessage(cast);
         expect(result.isOk()).toBeTruthy();
         return Promise.resolve(cast);
       })
@@ -203,7 +203,11 @@ describe('SyncEngine', () => {
     const rpcClient = instance(mockRPCClient);
     let called = false;
     when(mockRPCClient.getSyncMetadataByPrefix(anything())).thenCall(async () => {
-      const shouldSync = await syncEngine.shouldSync([]);
+      const shouldSync = await syncEngine.shouldSync({
+        prefix: new Uint8Array(),
+        numMessages: 10,
+        excludedHashes: [],
+      });
       expect(shouldSync.isOk()).toBeTruthy();
       expect(shouldSync._unsafeUnwrap()).toBeFalsy();
       called = true;
@@ -217,7 +221,14 @@ describe('SyncEngine', () => {
       });
       return Promise.resolve(ok(emptyMetadata));
     });
-    await syncEngine.performSync(['some-divergence'], rpcClient);
+    await syncEngine.performSync(
+      {
+        prefix: new Uint8Array(),
+        numMessages: 10,
+        excludedHashes: ['some-divergence'],
+      },
+      rpcClient
+    );
     expect(called).toBeTruthy();
   });
 
@@ -226,9 +237,7 @@ describe('SyncEngine', () => {
     await engine.mergeMessage(signerAdd);
 
     await addMessagesWithTimestamps([30662167, 30662169, 30662172]);
-    expect(
-      (await syncEngine.shouldSync((await syncEngine.getSnapshot())._unsafeUnwrap().excludedHashes))._unsafeUnwrap()
-    ).toBeFalsy();
+    expect((await syncEngine.shouldSync((await syncEngine.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap()).toBeFalsy();
   });
 
   test('shouldSync returns true when hashes dont match', async () => {
@@ -239,7 +248,7 @@ describe('SyncEngine', () => {
     const oldSnapshot = (await syncEngine.getSnapshot())._unsafeUnwrap();
     await addMessagesWithTimestamps([30662372]);
     expect(oldSnapshot.excludedHashes).not.toEqual((await syncEngine.getSnapshot())._unsafeUnwrap().excludedHashes);
-    expect((await syncEngine.shouldSync(oldSnapshot.excludedHashes))._unsafeUnwrap()).toBeTruthy();
+    expect((await syncEngine.shouldSync(oldSnapshot))._unsafeUnwrap()).toBeTruthy();
   });
 
   test('initialize populates the trie with all existing messages', async () => {
