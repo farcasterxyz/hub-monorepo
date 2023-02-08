@@ -1,4 +1,4 @@
-// eslint-disable-file security/detect-non-literal-fs-filename
+/* eslint-disable security/detect-non-literal-fs-filename */
 
 import * as protobufs from '@farcaster/protobufs';
 import { FarcasterNetwork } from '@farcaster/protobufs';
@@ -77,7 +77,6 @@ describe('SyncEngine', () => {
 
     // Two messages (signerAdd + castAdd) was added to the trie
     expect((await syncEngine.trie.items()) - existingItems).toEqual(2);
-    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(syncEngine.trie.exists(new SyncId(castAdd))).toBeTruthy();
   });
 
@@ -93,7 +92,6 @@ describe('SyncEngine', () => {
     await sleepWhile(() => syncEngine.messagesQueuedForSync > 0, 1000);
 
     expect(await syncEngine.trie.items()).toEqual(0);
-    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
   });
 
@@ -117,19 +115,16 @@ describe('SyncEngine', () => {
     await sleepWhile(() => syncEngine.messagesQueuedForSync > 0, 1000);
 
     const id = new SyncId(castRemove);
-    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(await syncEngine.trie.exists(id)).toBeTruthy();
 
-    // const allMessages = await engine.getAllMessagesBySyncIds([id.idString()]);
-    // expect(allMessages.isOk()).toBeTruthy();
-    // expect(allMessages._unsafeUnwrap()[0]?.data?.type).toEqual(protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE);
+    const allMessages = await engine.getAllMessagesBySyncIds([id.syncId()]);
+    expect(allMessages.isOk()).toBeTruthy();
+    expect(allMessages._unsafeUnwrap()[0]?.data?.type).toEqual(protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE);
 
     // The trie should contain the message remove
-    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(await syncEngine.trie.exists(id)).toBeTruthy();
 
     // The trie should not contain the castAdd anymore
-    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
   });
 
