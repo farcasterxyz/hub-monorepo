@@ -8,6 +8,7 @@ import SyncEngine from '~/network/sync/syncEngine';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { NodeMetadata } from './merkleTrie';
+import { EMPTY_HASH } from './trieNode';
 
 const testDb = jestRocksDB(`engine.syncEnginePerf.test`);
 const testDb2 = jestRocksDB(`engine2.syncEnginePerf.test`);
@@ -69,6 +70,7 @@ describe('SyncEngine', () => {
       await engine2.mergeIdRegistryEvent(custodyEvent);
       await engine2.mergeMessage(signerAdd);
 
+      // Merge the same messages into both engines.
       const messages = await addMessagesWithTimestamps([30662167, 30662169, 30662172], engine1);
       for (const message of messages) {
         await engine2.mergeMessage(message);
@@ -77,17 +79,32 @@ describe('SyncEngine', () => {
       // Sanity check, they should equal
       expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
 
+      // A timestamp after all the messages
       Date.now = () => 1640995200000 + 30662200 * 1000;
 
       const snapshot2 = (await syncEngine2.getSnapshot())._unsafeUnwrap();
       expect((snapshot2.prefix as Buffer).toString('utf8')).toEqual('00306622');
 
-      const rpcClient = new MockRpcClient(engine2, syncEngine2);
+      let rpcClient = new MockRpcClient(engine2, syncEngine2);
       await syncEngine1.performSync(snapshot2, rpcClient as unknown as HubRpcClient);
-      expect(rpcClient.getAllSyncIdsByPrefixCalls.length).toEqual(1);
-      expect(rpcClient.getAllSyncIdsByPrefixCalls[0].prefix.toString('utf8')).toEqual('');
-      expect(rpcClient.getAllMessagesBySyncIdsCalls.length).toEqual(1);
-      expect(rpcClient.getAllMessagesBySyncIdsCalls[0].syncIds.length).toEqual(4);
+      expect(rpcClient.getAllSyncIdsByPrefixCalls.length).toEqual(0);
+      expect(rpcClient.getAllMessagesBySyncIdsCalls.length).toEqual(0);
+
+      // Sanity check, they should equal
+      expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
+
+      // Even with a bad snapshot, we should still not call the sync APIs because the hashes match
+      rpcClient = new MockRpcClient(engine2, syncEngine2);
+      await syncEngine1.performSync(
+        {
+          numMessages: 1000,
+          prefix: Buffer.from('999999'),
+          excludedHashes: [EMPTY_HASH],
+        },
+        rpcClient as unknown as HubRpcClient
+      );
+      expect(rpcClient.getAllSyncIdsByPrefixCalls.length).toEqual(0);
+      expect(rpcClient.getAllMessagesBySyncIdsCalls.length).toEqual(0);
     } finally {
       Date.now = nowOrig;
     }

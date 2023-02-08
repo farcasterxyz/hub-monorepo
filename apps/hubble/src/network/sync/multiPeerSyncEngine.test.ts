@@ -9,6 +9,8 @@ import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
 import { sleepWhile } from '~/utils/crypto';
 
+/* eslint-disable security/detect-non-literal-fs-filename */
+
 const TEST_TIMEOUT_LONG = 60 * 1000;
 
 const testDb1 = jestRocksDB(`engine1.peersyncEngine.test`);
@@ -196,9 +198,8 @@ describe('Multi peer sync engine', () => {
     await syncEngine2.performSync((await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
 
     // Make sure the castAdd is in the trie
-    // eslint-disable-next-line security/detect-non-literal-fs-filename
+    await sleepWhile(() => syncEngine2.messagesQueuedForSync > 0, 1000);
     expect(await syncEngine1.trie.exists(new SyncId(castAdd))).toBeTruthy();
-    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(await syncEngine2.trie.exists(new SyncId(castAdd))).toBeTruthy();
 
     const castRemove = await Factories.CastRemoveMessage.create(
@@ -219,10 +220,9 @@ describe('Multi peer sync engine', () => {
 
     await sleepWhile(() => syncEngine1.messagesQueuedForSync > 0, 1000);
     const castRemoveId = new SyncId(castRemove);
-    // eslint-disable-next-line security/detect-non-literal-fs-filename
+
     expect(await syncEngine1.trie.exists(castRemoveId)).toBeTruthy();
     // The trie should not contain the castAdd anymore
-    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(await syncEngine1.trie.exists(new SyncId(castAdd))).toBeFalsy();
 
     // Syncing engine2 --> engine1 should do nothing, even though engine2 has the castAdd and it has been removed
@@ -241,15 +241,14 @@ describe('Multi peer sync engine', () => {
     }
 
     // castRemove doesn't yet exist in engine2
-    // eslint-disable-next-line security/detect-non-literal-fs-filename
     expect(await syncEngine2.trie.exists(castRemoveId)).toBeFalsy();
 
     // Syncing engine2 with engine1 should delete the castAdd from the trie and add the castRemove
     await syncEngine2.performSync((await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
 
-    // eslint-disable-next-line security/detect-non-literal-fs-filename
+    await sleepWhile(() => syncEngine2.messagesQueuedForSync > 0, 1000);
     expect(await syncEngine2.trie.exists(castRemoveId)).toBeTruthy();
-    // eslint-disable-next-line security/detect-non-literal-fs-filename
+
     expect(await syncEngine2.trie.exists(new SyncId(castAdd))).toBeFalsy();
     expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine1.trie.rootHash());
 

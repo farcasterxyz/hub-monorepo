@@ -189,6 +189,23 @@ class SyncEngine {
 
     if (theirNodeResult.isErr()) {
       log.warn(theirNodeResult.error, `Error fetching metadata for prefix ${prefix}`);
+    } else if (theirNodeResult.value.numMessages === 0) {
+      // If there are no messages, we're done, but something is probably wrong, since we should never have
+      // a node with no messages.
+      log.warn({ prefix }, `No messages for prefix, skipping`);
+      return;
+    } else if (ourNode?.hash === theirNodeResult.value.hash) {
+      // Hashes match, we're done.
+      return;
+    } else if ((ourNode?.numMessages ?? 0) > theirNodeResult.value.numMessages) {
+      // If we have more messages than the other node, we're done. This might happen if the remote node is
+      // still syncing, or if they have deleted messages (because of pruning), in which case we should
+      // just wait, and our node will also prune the messages.
+      log.info(
+        { ourNum: ourNode?.numMessages, theirNum: theirNodeResult.value.numMessages, prefix },
+        `Our node has more messages, skipping this node.`
+      );
+      return;
     } else {
       await this.fetchMissingHashesByNode(
         fromNodeMetadataResponse(theirNodeResult.value),
