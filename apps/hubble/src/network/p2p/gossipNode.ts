@@ -1,15 +1,15 @@
-import { GossipSub } from '@chainsafe/libp2p-gossipsub';
-import { Noise } from '@chainsafe/libp2p-noise';
+import { gossipsub, GossipSub } from '@chainsafe/libp2p-gossipsub';
+import { noise } from '@chainsafe/libp2p-noise';
 import * as protobufs from '@farcaster/protobufs';
 import { HubError, HubResult } from '@farcaster/utils';
 import { Connection } from '@libp2p/interface-connection';
 import { PeerId } from '@libp2p/interface-peer-id';
-import { Mplex } from '@libp2p/mplex';
-import { PubSubPeerDiscovery } from '@libp2p/pubsub-peer-discovery';
-import { TCP } from '@libp2p/tcp';
+import { mplex } from '@libp2p/mplex';
+import { pubsubPeerDiscovery } from '@libp2p/pubsub-peer-discovery';
+import { tcp } from '@libp2p/tcp';
 import { Multiaddr } from '@multiformats/multiaddr';
-import { Libp2p, createLibp2p } from 'libp2p';
-import { Result, ResultAsync, err, ok } from 'neverthrow';
+import { createLibp2p, Libp2p } from 'libp2p';
+import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { ConnectionFilter } from '~/network/p2p/connectionFilter';
 import { GOSSIP_TOPICS, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
@@ -71,7 +71,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
   /** Returns the libp2p Peer instance after updating the connections in the AddressBook */
   async getPeerInfo(peerId: PeerId) {
-    const existingConnections = this._node?.connectionManager.getConnections(peerId);
+    const existingConnections = this._node?.getConnections(peerId);
     for (const conn of existingConnections ?? []) {
       const knownAddrs = await this._node?.peerStore.addressBook.get(peerId);
       if (knownAddrs && !knownAddrs.find((addr) => addr.multiaddr.equals(conn.remoteAddr))) {
@@ -196,10 +196,10 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   registerListeners() {
-    this._node?.connectionManager.addEventListener('peer:connect', (event) => {
+    this._node?.addEventListener('peer:connect', (event) => {
       this.emit('peerConnect', event.detail);
     });
-    this._node?.connectionManager.addEventListener('peer:disconnect', (event) => {
+    this._node?.addEventListener('peer:disconnect', (event) => {
       this.emit('peerDisconnect', event.detail);
     });
     this.gossip?.addEventListener('message', (event) => {
@@ -214,10 +214,10 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     this._node?.addEventListener('peer:discovery', (event) => {
       log.info({ identity: this.identity }, `Found peer: ${event.detail.multiaddrs}  }`);
     });
-    this._node?.connectionManager.addEventListener('peer:connect', (event) => {
+    this._node?.addEventListener('peer:connect', (event) => {
       log.info({ identity: this.identity }, `Connection established to: ${event.detail.remotePeer.toString()}`);
     });
-    this._node?.connectionManager.addEventListener('peer:disconnect', (event) => {
+    this._node?.addEventListener('peer:disconnect', (event) => {
       log.info({ identity: this.identity }, `Disconnected from: ${event.detail.remotePeer.toString()} `);
     });
     this.gossip?.addEventListener('message', (event) => {
@@ -235,14 +235,13 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
   //TODO: Needs better typesafety
   static encodeMessage(message: protobufs.GossipMessage): HubResult<Uint8Array> {
-    // Serialize the message
     return ok(protobufs.GossipMessage.encode(message).finish());
   }
 
   //TODO: Needs better typesafety
   static decodeMessage(message: Uint8Array): HubResult<protobufs.GossipMessage> {
-    // Deserialize the message
-    return ok(protobufs.GossipMessage.decode(message));
+    // Convert GossipMessage to Uint8Array or decode will return nested Uint8Arrays as Buffers
+    return ok(protobufs.GossipMessage.decode(Uint8Array.from(message)));
   }
 
   /* -------------------------------------------------------------------------- */
@@ -284,7 +283,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     const checkResult = checkNodeAddrs(listenIPMultiAddr, listenMultiAddrStr);
     if (checkResult.isErr()) return err(new HubError('unavailable', checkResult.error));
 
-    const gossip = new GossipSub({
+    const gossip = gossipsub({
       emitSelf: false,
       allowPublishToZeroPeers: true,
       globalSignaturePolicy: 'StrictSign',
@@ -300,18 +299,18 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
     return ResultAsync.fromPromise(
       createLibp2p({
-        // setting these optional fields to `undefined` throws an error, only set them if they're defined
+        // Only set optional fields if defined to avoid errors
         ...(options.peerId && { peerId: options.peerId }),
         connectionGater,
         addresses: {
           listen: [listenMultiAddrStr],
           announce: announceMultiAddrStrList,
         },
-        transports: [new TCP()],
-        streamMuxers: [new Mplex()],
-        connectionEncryption: [new Noise()],
+        transports: [tcp()],
+        streamMuxers: [mplex()],
+        connectionEncryption: [noise()],
         pubsub: gossip,
-        peerDiscovery: [new PubSubPeerDiscovery()],
+        peerDiscovery: [pubsubPeerDiscovery()],
       }),
       (e) => new HubError('unavailable', { message: 'failed to create libp2p node', cause: e as Error })
     );

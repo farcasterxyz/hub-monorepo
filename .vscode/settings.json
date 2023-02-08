@@ -22,6 +22,8 @@
   "cSpell.words": [
     "farcaster",
     "flatbuffer",
-    "flatbuffers"
+    "flatbuffers",
+    "gossipsub",
+    "protobufs"
   ]
 }
