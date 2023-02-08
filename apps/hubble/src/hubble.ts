@@ -145,7 +145,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     this.engine = new Engine(this.rocksDB, options.network);
     this.syncEngine = new SyncEngine(this.engine, this.rocksDB);
 
-    this.rpcServer = new Server(this, this.engine, this.syncEngine);
+    this.rpcServer = new Server(this, this.engine, this.syncEngine, this.gossipNode);
 
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
     this.ethRegistryProvider = EthEventsProvider.makeWithGoerli(
@@ -454,8 +454,6 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
           await this.revokeSignerJobQueue.enqueueJob(revokeSignerPayload.value);
         }
       }
-
-      this.gossipNode.gossipMessage(message);
     });
 
     this.engine.eventHandler.on('mergeIdRegistryEvent', async (event: IdRegistryEvent) => {
@@ -469,8 +467,6 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
           await this.revokeSignerJobQueue.enqueueJob(revokeSignerPayload.value);
         }
       }
-
-      // TODO: Should we gossip ID registry events?
     });
 
     this.engine.eventHandler.on('mergeNameRegistryEvent', (event: NameRegistryEvent) => {
