@@ -18,9 +18,10 @@ import {
 } from '~/storage/db/message';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { FID_BYTES, RootPrefix, TRUE_VALUE, UserPostfix } from '~/storage/db/types';
-import SequentialMergeStore from '~/storage/stores/sequentialMergeStore';
+import SequentialMergeStore, { MAX_QUEUE_SIZE, MERGE_TIMEOUT } from '~/storage/stores/sequentialMergeStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { StorePruneOptions } from '~/storage/stores/types';
+import { sleepWhile } from '~/utils/crypto';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 10_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 365; // 1 year
@@ -191,6 +192,13 @@ class CastStore extends SequentialMergeStore {
   async merge(message: protobufs.Message): Promise<void> {
     if (!protobufs.isCastAddMessage(message) && !protobufs.isCastRemoveMessage(message)) {
       throw new HubError('bad_request.validation_failure', 'invalid message type');
+    }
+
+    // Block call if message queue is full until timeout.
+    // This creates backpressure if the queue is full for anyone that is merging (rpc, sync, gossip)
+    // This is to prevent the queue from growing indefinitely and timing out.
+    if (this.queueSize() >= MAX_QUEUE_SIZE) {
+      await sleepWhile(() => this.queueSize() >= MAX_QUEUE_SIZE, MERGE_TIMEOUT);
     }
 
     const mergeResult = await this.mergeSequential(message);

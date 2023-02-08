@@ -4,7 +4,8 @@ import { ResultAsync, err, ok } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
 
 const MIN_NONCE = 1;
-const MERGE_TIMEOUT = 10 * 1000; // 10 seconds
+export const MERGE_TIMEOUT = 10 * 1000; // 10 seconds
+export const MAX_QUEUE_SIZE = 1000;
 
 export type MergeProcessingEvents = {
   processed: (messageId: string, result?: HubResult<void>) => void;
@@ -28,6 +29,10 @@ abstract class SequentialMergeStore extends TypedEmitter<MergeProcessingEvents> 
     this._mergeIdsStore = new Map();
     this._mergeIsProcessing = false;
     this.setMaxListeners(1_000);
+  }
+
+  public queueSize(): number {
+    return this._mergeIdsQueue.length;
   }
 
   /**
