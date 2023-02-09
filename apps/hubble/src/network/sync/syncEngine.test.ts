@@ -267,13 +267,13 @@ describe('SyncEngine', () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
 
-    await addMessagesWithTimestamps([30662167, 30662169, 30662172]);
+    await addMessagesWithTimestamps([30662160, 30662169, 30662172]);
     const nowOrig = Date.now;
     Date.now = () => 16409952e5 + 30662167 * 1000;
     try {
       const result = await syncEngine.getSnapshot();
       const snapshot = result._unsafeUnwrap();
-      expect(snapshot.prefix).toEqual(Buffer.from('0030662160'));
+      expect((snapshot.prefix as Buffer).toString('utf8')).toEqual('0030662160');
     } finally {
       Date.now = nowOrig;
     }
