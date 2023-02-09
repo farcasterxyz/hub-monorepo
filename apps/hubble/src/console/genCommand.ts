@@ -69,19 +69,39 @@ export class GenCommand implements ConsoleCommandInterface {
           return `Failed to submit signer add message for fid ${fid}: ${signerResult.error}`;
         }
 
-        for (let i = 0; i < numMessages; i++) {
-          const castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
-          const r = await this.rpcClient.submitMessage(castAdd);
-          if (r.isOk()) {
-            numSuccess++;
-          } else {
-            numFail++;
-            errorMessage = `Failed to submit cast add message for fid ${fid}: ${r.error}`;
+        const submitBatch = async (batch: protobufs.Message[]) => {
+          const promises = [];
+          for (const castAdd of batch) {
+            promises.push(this.rpcClient.submitMessage(castAdd));
           }
+          const results = await Promise.all(promises);
 
-          if (i > 0 && i % 100 === 0) {
-            console.log(`Submitted ${i} messages`);
+          let numSuccess = 0;
+          let numFail = 0;
+          let errorMessage = '';
+          for (const r of results) {
+            if (r.isOk()) {
+              numSuccess++;
+            } else {
+              numFail++;
+              errorMessage = `Failed to submit cast add message for fid ${fid}: ${r.error}`;
+            }
           }
+          return { numSuccess, numFail, errorMessage };
+        };
+
+        for (let i = 0; i < numMessages; i += 100) {
+          const batch = [];
+          for (let j = i; j < i + 100 && j < numMessages; j++) {
+            batch.push(await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } }));
+          }
+          const result = await submitBatch(batch, signer);
+
+          numSuccess += result.numSuccess;
+          numFail += result.numFail;
+          errorMessage = result.errorMessage;
+
+          console.log(`Submitted ${numFail + numSuccess} messages`);
         }
 
         const totalDuration = performance.now() - start;
