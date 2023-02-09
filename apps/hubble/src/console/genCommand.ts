@@ -95,7 +95,7 @@ export class GenCommand implements ConsoleCommandInterface {
           for (let j = i; j < i + 100 && j < numMessages; j++) {
             batch.push(await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } }));
           }
-          const result = await submitBatch(batch, signer);
+          const result = await submitBatch(batch);
 
           numSuccess += result.numSuccess;
           numFail += result.numFail;
