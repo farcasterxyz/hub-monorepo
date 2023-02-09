@@ -4,8 +4,7 @@ import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { sleep } from '~/utils/crypto';
 import { NetworkFactories } from '../../network/utils/factories';
 
-// TODO: fix, why do we fail at anything above 6?
-const NUM_NODES = 6;
+const NUM_NODES = 10;
 const PROPAGATION_DELAY = 3 * 1000; // between 2 and 3 full heartbeat ticks
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
@@ -37,8 +36,12 @@ describe('gossip network tests', () => {
     'broadcast a message via gossip to other nodes',
     async () => {
       // Connect the first node to every other node by dialing them manually
-      const connectResults = await Promise.all(nodes.slice(1).map((n) => n.connect(nodes[0] as GossipNode)));
-      connectResults.forEach((r) => expect(r?.isOk()).toBeTruthy());
+      for (const n of nodes.slice(1)) {
+        // sleep to stay under the rate limit of 5 connections per second
+        await sleep(200);
+        const result = await n.connect(nodes[0] as GossipNode);
+        expect(result.isOk()).toBeTruthy();
+      }
 
       // Subscribe each node to the test topic
       nodes.forEach((n) => n.gossip?.subscribe(NETWORK_TOPIC_PRIMARY));
