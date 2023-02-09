@@ -54,7 +54,10 @@ class MerkleTrie {
         const rootBytes = await this._db.get(TrieNode.makePrimaryKey(new Uint8Array()));
         if (rootBytes && rootBytes.length > 0) {
           this._root = TrieNode.deserialize(rootBytes);
-          log.info({ rootHash: this._root.hash, items: this.items }, 'Merkle Trie loaded from DB');
+          log.info(
+            { rootHash: Buffer.from(this._root.hash).toString('hex'), items: this.items },
+            'Merkle Trie loaded from DB'
+          );
         }
       } catch {
         // There is no Root node in the DB, just use an empty one

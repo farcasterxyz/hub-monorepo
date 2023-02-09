@@ -142,9 +142,10 @@ describe('GossipNode', () => {
       expect(numMessagesGossiped).toEqual(2);
 
       // Directly merged messages don't gossip
+      numMessagesGossiped = 0;
       const castAdd2 = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
       await hub.submitMessage(castAdd2);
-      expect(numMessagesGossiped).toEqual(2);
+      expect(numMessagesGossiped).toEqual(0);
 
       client.$.close();
       await server.stop();
