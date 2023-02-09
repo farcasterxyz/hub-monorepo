@@ -239,37 +239,33 @@ class TrieNode {
     return exists;
   }
 
-  // Generates a snapshot for the current node and below until the prefix. current_index is the index of the prefix the method
+  // Generates a snapshot for the current node and below until the prefix. currentIndex is the index of the prefix the method
   // is operating on
-  public async getSnapshot(prefix: Uint8Array, db: RocksDB, current_index = 0): Promise<TrieSnapshot> {
-    const char = prefix.at(current_index) as number;
-    if (current_index === prefix.length - 1) {
-      const excludedHash = await this._excludedHash(prefix, char, db);
-      return {
-        prefix: prefix,
-        excludedHashes: [excludedHash.hash],
-        numMessages: excludedHash.items,
-      };
+  public async getSnapshot(prefix: Uint8Array, db: RocksDB, currentIndex = 0): Promise<TrieSnapshot> {
+    const excludedHashes: string[] = [];
+    let numMessages = 0;
+
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    let currentNode: TrieNode = this; // traverse from current node
+    for (let i = currentIndex; i < prefix.length; i++) {
+      const currentPrefix = prefix.subarray(0, i);
+      const char = prefix.at(i) as number;
+      if (!currentNode._children.has(char)) {
+        return {
+          prefix: currentPrefix,
+          excludedHashes,
+          numMessages,
+        };
+      }
+      const excludedHash = await currentNode._excludedHash(currentPrefix, char, db);
+      excludedHashes.push(excludedHash.hash);
+      numMessages += excludedHash.items;
+      currentNode = await currentNode._getOrLoadChild(currentPrefix, char, db);
     }
-
-    // Check if child is present
-    let innerSnapshot: TrieSnapshot | undefined = undefined;
-    if (this._children.has(char)) {
-      innerSnapshot = await (
-        await this._getOrLoadChild(prefix.slice(0, current_index), char, db)
-      ).getSnapshot(prefix, db, current_index + 1);
-    }
-
-    const excludedHash = await this._excludedHash(prefix, char, db);
-
-    // if (current_index === TIMESTAMP_LENGTH) {
-    //   this.unloadChildren();
-    // }
-
     return {
-      prefix: innerSnapshot?.prefix || prefix.subarray(0, current_index + 1),
-      excludedHashes: [excludedHash.hash, ...(innerSnapshot?.excludedHashes || [])],
-      numMessages: excludedHash.items + (innerSnapshot?.numMessages || 0),
+      prefix,
+      excludedHashes,
+      numMessages,
     };
   }
 
@@ -324,7 +320,7 @@ class TrieNode {
       });
     }
 
-    // if (prefix.length === TIMESTAMP_LENGTH) {
+    // if (prefix.length >= TIMESTAMP_LENGTH) {
     //   this.unloadChildren();
     // }
 
@@ -335,14 +331,15 @@ class TrieNode {
     return this._children.entries();
   }
 
-  public async getAllValues(key: Uint8Array, db: RocksDB, current_index = 0): Promise<Uint8Array[]> {
+  public async getAllValues(prefix: Uint8Array, db: RocksDB): Promise<Uint8Array[]> {
+    // TODO: Get this straight from the DB with an iterator
     if (this.isLeaf) {
       return this._key ? [this._key] : [];
     }
     const values: Uint8Array[] = [];
     for (const [char] of this._children) {
-      const child = await this._getOrLoadChild(key.slice(0, current_index), char, db);
-      values.push(...(await child.getAllValues(key, db, current_index + 1)));
+      const child = await this._getOrLoadChild(prefix, char, db);
+      values.push(...(await child.getAllValues(Buffer.concat([prefix, Buffer.from([char])]), db)));
 
       // if (current_index >= TIMESTAMP_LENGTH) {
       //   this.unloadChildren();
@@ -408,6 +405,7 @@ class TrieNode {
     trieNode._hash = dbtrieNode.hash;
 
     for (let i = 0; i < dbtrieNode.childChars.length; i++) {
+      // eslint-disable-next-line security/detect-object-injection
       trieNode._children.set(dbtrieNode.childChars[i] as number, new SerializedTrieNode());
     }
 

@@ -1,5 +1,12 @@
 import * as protobufs from '@farcaster/protobufs';
-import { getFarcasterTime, HubAsyncResult, HubError, HubResult, HubRpcClient } from '@farcaster/utils';
+import {
+  bytesToUtf8String,
+  getFarcasterTime,
+  HubAsyncResult,
+  HubError,
+  HubResult,
+  HubRpcClient,
+} from '@farcaster/utils';
 import { err, ok } from 'neverthrow';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
@@ -79,40 +86,43 @@ class SyncEngine {
   /**                                      Sync Methods                                  */
   /** ---------------------------------------------------------------------------------- */
 
-  public async shouldSync(excludedHashes: string[]): HubAsyncResult<boolean> {
+  public async shouldSync(otherSnapshot: TrieSnapshot): HubAsyncResult<boolean> {
     if (this._isSyncing) {
       log.debug('shouldSync: already syncing');
       return ok(false);
     }
 
-    return (await this.getSnapshot()).map((ourSnapshot) => {
+    return (await this.getSnapshot(otherSnapshot.prefix)).map((ourSnapshot) => {
       const excludedHashesMatch =
-        ourSnapshot.excludedHashes.length === excludedHashes.length &&
+        ourSnapshot.excludedHashes.length === otherSnapshot.excludedHashes.length &&
         // NOTE: `index` is controlled by `every` and so not at risk of object injection.
         // eslint-disable-next-line security/detect-object-injection
-        ourSnapshot.excludedHashes.every((value, index) => value === excludedHashes[index]);
+        ourSnapshot.excludedHashes.every((value, index) => value === otherSnapshot.excludedHashes[index]);
 
-      log.debug(`shouldSync: excluded hashes check: ${excludedHashes}`);
+      log.debug(`shouldSync: excluded hashes check: ${otherSnapshot.excludedHashes}`);
       return !excludedHashesMatch;
     });
   }
 
-  async performSync(excludedHashes: string[], rpcClient: HubRpcClient): Promise<boolean> {
+  async performSync(otherSnapshot: TrieSnapshot, rpcClient: HubRpcClient): Promise<boolean> {
     let success = false;
     try {
       this._isSyncing = true;
-      const snapshot = await this.getSnapshot();
+      const snapshot = await this.getSnapshot(otherSnapshot.prefix);
       if (snapshot.isErr()) {
         log.warn(snapshot.error, `Error performing sync`);
       } else {
         const ourSnapshot = snapshot.value;
-        const divergencePrefix = await this._trie.getDivergencePrefix(ourSnapshot.prefix, excludedHashes);
+        const divergencePrefix = await this._trie.getDivergencePrefix(ourSnapshot.prefix, otherSnapshot.excludedHashes);
         log.info({ divergencePrefix, prefix: ourSnapshot.prefix }, 'Divergence prefix');
-        const missingIds = await this.fetchMissingHashesByPrefix(divergencePrefix, rpcClient);
-        log.info({ missingCount: missingIds.length }, 'Fetched missing hashes');
 
-        // TODO: fetch messages in batches
-        await this.fetchAndMergeMessages(missingIds, rpcClient);
+        let missingCount = 0;
+        await this.fetchMissingHashesByPrefix(divergencePrefix, rpcClient, async (missingIds: Uint8Array[]) => {
+          missingCount += missingIds.length;
+          await this.fetchAndMergeMessages(missingIds, rpcClient);
+        });
+
+        log.info({ missingCount }, 'Fetched missing hashes');
         log.info(`Sync complete`);
         success = true;
       }
@@ -176,53 +186,75 @@ class SyncEngine {
     return mergeResults;
   }
 
+  async fetchMissingHashesByPrefix(
+    prefix: Uint8Array,
+    rpcClient: HubRpcClient,
+    onMissingHashes: (missingHashes: Uint8Array[]) => Promise<void>
+  ): Promise<void> {
+    const ourNode = await this._trie.getTrieNodeMetadata(prefix);
+    const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(protobufs.TrieNodePrefix.create({ prefix }));
+
+    if (theirNodeResult.isErr()) {
+      log.warn(theirNodeResult.error, `Error fetching metadata for prefix ${prefix}`);
+    } else if (theirNodeResult.value.numMessages === 0) {
+      // If there are no messages, we're done, but something is probably wrong, since we should never have
+      // a node with no messages.
+      log.warn({ prefix }, `No messages for prefix, skipping`);
+      return;
+    } else if (ourNode?.hash === theirNodeResult.value.hash) {
+      // Hashes match, we're done.
+      return;
+    } else if ((ourNode?.numMessages ?? 0) > theirNodeResult.value.numMessages) {
+      // If we have more messages than the other node, we're done. This might happen if the remote node is
+      // still syncing, or if they have deleted messages (because of pruning), in which case we should
+      // just wait, and our node will also prune the messages.
+      log.info(
+        {
+          ourNum: ourNode?.numMessages,
+          theirNum: theirNodeResult.value.numMessages,
+          prefix: bytesToUtf8String(prefix),
+        },
+        `Our node has more messages, skipping this node.`
+      );
+      return;
+    } else {
+      await this.fetchMissingHashesByNode(
+        fromNodeMetadataResponse(theirNodeResult.value),
+        ourNode,
+        rpcClient,
+        onMissingHashes
+      );
+    }
+  }
+
   async fetchMissingHashesByNode(
     theirNode: NodeMetadata,
     ourNode: NodeMetadata | undefined,
-    rpcClient: HubRpcClient
-  ): Promise<Uint8Array[]> {
-    const missingHashes: Uint8Array[] = [];
+    rpcClient: HubRpcClient,
+    onMissingHashes: (missingHashes: Uint8Array[]) => Promise<void>
+  ): Promise<void> {
     // If the node has fewer than HASHES_PER_FETCH, just fetch them all in go, otherwise,
     // iterate through the node's children and fetch them in batches.
     if (theirNode.numMessages <= HASHES_PER_FETCH) {
       const result = await rpcClient.getAllSyncIdsByPrefix(
         protobufs.TrieNodePrefix.create({ prefix: theirNode.prefix })
       );
-      result.match(
-        (ids) => {
-          missingHashes.push(...ids.syncIds);
-        },
-        (err) => {
-          log.warn(err, `Error fetching ids for prefix ${theirNode.prefix}`);
-        }
-      );
+
+      if (result.isErr()) {
+        log.warn(result.error, `Error fetching ids for prefix ${theirNode.prefix}`);
+      } else {
+        await onMissingHashes(result.value.syncIds);
+      }
     } else if (theirNode.children) {
       for (const [theirChildChar, theirChild] of theirNode.children.entries()) {
         // recursively fetch hashes for every node where the hashes don't match
+        const allPromises = [];
         if (ourNode?.children?.get(theirChildChar)?.hash !== theirChild.hash) {
-          missingHashes.push(...(await this.fetchMissingHashesByPrefix(theirChild.prefix, rpcClient)));
+          allPromises.push(this.fetchMissingHashesByPrefix(theirChild.prefix, rpcClient, onMissingHashes));
         }
+        await Promise.all(allPromises);
       }
     }
-    return missingHashes;
-  }
-
-  async fetchMissingHashesByPrefix(prefix: Uint8Array, rpcClient: HubRpcClient): Promise<Uint8Array[]> {
-    const ourNode = await this._trie.getTrieNodeMetadata(prefix);
-    const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(protobufs.TrieNodePrefix.create({ prefix }));
-
-    const missingHashes: Uint8Array[] = [];
-    await theirNodeResult.match(
-      async (theirNode) => {
-        missingHashes.push(
-          ...(await this.fetchMissingHashesByNode(fromNodeMetadataResponse(theirNode), ourNode, rpcClient))
-        );
-      },
-      async (err) => {
-        log.warn(err, `Error fetching metadata for prefix ${prefix}`);
-      }
-    );
-    return missingHashes;
   }
 
   /** ---------------------------------------------------------------------------------- */
@@ -256,11 +288,11 @@ class SyncEngine {
     }
   }
 
-  public async getSnapshot(): HubAsyncResult<TrieSnapshot> {
+  public async getSnapshot(prefix?: Uint8Array): HubAsyncResult<TrieSnapshot> {
     return this.snapshotTimestamp.asyncMap((snapshotTimestamp) => {
       // Ignore the least significant digit when fetching the snapshot timestamp because
       // second resolution is too fine grained, and fall outside sync threshold anyway
-      return this._trie.getSnapshot(Buffer.from(timestampToPaddedTimestampPrefix(snapshotTimestamp)));
+      return this._trie.getSnapshot(prefix ?? Buffer.from(timestampToPaddedTimestampPrefix(snapshotTimestamp)));
     });
   }
 
@@ -314,7 +346,7 @@ const fromNodeMetadataResponse = (response: protobufs.TrieNodeMetadataResponse):
   const children = new Map<number, NodeMetadata>();
   for (let i = 0; i < response.children.length; i++) {
     // Safety: i is controlled by the loop
-    // eslint-disable security/detect-object-injection
+    // eslint-disable-next-line security/detect-object-injection
     const child = response.children[i];
 
     if (child && child.prefix.length > 0) {
