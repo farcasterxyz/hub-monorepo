@@ -517,7 +517,8 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   /* -------------------------------------------------------------------------- */
 
   async submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<void> {
-    const logMessage = log.child({ message: messageToLog(message), source });
+    // message is a reserved key in some logging systems, so we use msg instead
+    const logMessage = log.child({ msg: messageToLog(message), source });
 
     const mergeResult = await this.engine.mergeMessage(message);
 
