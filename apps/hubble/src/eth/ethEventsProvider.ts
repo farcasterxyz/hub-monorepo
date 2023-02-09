@@ -349,7 +349,7 @@ export class EthEventsProvider {
 
   /** Handle a new block. Processes all events in the cache that have now been confirmed */
   private async handleNewBlock(blockNumber: number) {
-    log.info({ blockNumber }, 'new block');
+    log.info({ blockNumber }, `new block: ${blockNumber}`);
 
     // Get all blocks that have been confirmed into a single array and sort.
     const cachedBlocksSet = new Set([...this._nameEventsByBlock.keys(), ...this._idEventsByBlock.keys()]);
@@ -363,7 +363,6 @@ export class EthEventsProvider {
 
         if (idEvents) {
           for (const idEvent of idEvents) {
-            log.info(protobufs.IdRegistryEvent.toJSON(idEvent));
             await this._hub.submitIdRegistryEvent(idEvent, 'eth-provider');
           }
         }
@@ -373,7 +372,6 @@ export class EthEventsProvider {
 
         if (nameEvents) {
           for (const nameEvent of nameEvents) {
-            log.info(protobufs.NameRegistryEvent.toJSON(nameEvent));
             await this._hub.submitNameRegistryEvent(nameEvent, 'eth-provider');
           }
         }
@@ -397,7 +395,10 @@ export class EthEventsProvider {
     event: Event
   ): HubAsyncResult<void> {
     const { blockNumber, blockHash, transactionHash, logIndex } = event;
-    log.info({ from, to, id: id.toString(), type, blockNumber, transactionHash }, 'cacheIdRegistryEvent');
+    log.info(
+      { event: { to, id: id.toString(), blockNumber } },
+      `cacheIdRegistryEvent: fid ${id.toString()} assigned to ${to} in block ${blockNumber}`
+    );
 
     // Convert id registry datatypes to bytes
     const fromBytes = from && from.length > 0 ? hexStringToBytes(from) : ok(undefined);
@@ -451,7 +452,10 @@ export class EthEventsProvider {
     event: Event
   ): HubAsyncResult<void> {
     const { blockNumber, blockHash, transactionHash, logIndex } = event;
-    log.info({ from, to, tokenId: tokenId.toString(), type, blockNumber, transactionHash }, 'cacheNameRegistryEvent');
+    log.info(
+      { event: { to, blockNumber } },
+      `cacheNameRegistryEvent: token id ${tokenId.toString()} assigned to ${to} in block ${blockNumber}`
+    );
 
     const blockHashBytes = hexStringToBytes(blockHash);
     if (blockHashBytes.isErr()) {
