@@ -9,7 +9,15 @@ import {
   Message,
   NameRegistryEvent,
 } from '@farcaster/protobufs';
-import { HubAsyncResult, HubError, HubResult, HubRpcClient, getHubRpcClient } from '@farcaster/utils';
+import {
+  HubAsyncResult,
+  HubError,
+  HubResult,
+  HubRpcClient,
+  bytesToHexString,
+  bytesToUtf8String,
+  getHubRpcClient,
+} from '@farcaster/utils';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import { publicAddressesFirst } from '@libp2p/utils/address-sort';
@@ -27,7 +35,7 @@ import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
 import { PruneMessagesJobScheduler } from '~/storage/jobs/pruneMessagesJob';
 import { RevokeSignerJobQueue, RevokeSignerJobScheduler } from '~/storage/jobs/revokeSignerJob';
-import { idRegistryEventToLog, logger, messageToLog, nameRegistryEventToLog } from '~/utils/logger';
+import { idRegistryEventToLog, logger, messageToLog, messageTypeToName, nameRegistryEventToLog } from '~/utils/logger';
 import {
   addressInfoFromGossip,
   addressInfoToString,
@@ -442,8 +450,6 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   private registerEventHandlers() {
     // Subscribe to store events
     this.engine.eventHandler.on('mergeMessage', async (message: Message) => {
-      log.info(messageToLog(message), 'mergeMessage');
-
       if (protobufs.isSignerRemoveMessage(message)) {
         const revokeSignerPayload = RevokeSignerJobQueue.makePayload(
           message.data?.fid ?? 0,
@@ -459,8 +465,6 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
     });
 
     this.engine.eventHandler.on('mergeIdRegistryEvent', async (event: IdRegistryEvent) => {
-      log.info(idRegistryEventToLog(event), 'mergeIdRegistryEvent');
-
       const fromAddress = event.from;
       if (fromAddress && fromAddress.length > 0) {
         const revokeSignerPayload = RevokeSignerJobQueue.makePayload(event.fid, fromAddress);
@@ -471,10 +475,6 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
       }
 
       // TODO: Should we gossip ID registry events?
-    });
-
-    this.engine.eventHandler.on('mergeNameRegistryEvent', (event: NameRegistryEvent) => {
-      log.info(nameRegistryEventToLog(event), 'mergeNameRegistryEvent');
     });
 
     // Subscribes to all relevant topics
@@ -521,41 +521,64 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   /* -------------------------------------------------------------------------- */
 
   async submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<void> {
-    log.info({ ...messageToLog(message), source }, 'submitMessage');
+    const logMessage = log.child({ message: messageToLog(message), source });
 
-    // push this message into the storage engine
     const mergeResult = await this.engine.mergeMessage(message);
-    if (mergeResult.isErr()) {
-      log.error(mergeResult.error);
-      return mergeResult;
-    }
 
-    log.info({ ...messageToLog(message) }, `submitMessage: ${mergeResult.isOk()}`);
+    mergeResult.match(
+      () => {
+        logMessage.info(
+          `submitMessage success: fid ${message.data?.fid} merged ${messageTypeToName(
+            message.data?.type
+          )} ${bytesToHexString(message.hash)._unsafeUnwrap()}`
+        );
+      },
+      (e) => {
+        logMessage.error({ errCode: e.errCode }, `submitMessage error: ${e.message}`);
+      }
+    );
+
     return mergeResult;
   }
 
   async submitIdRegistryEvent(event: IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<void> {
-    log.info({ ...idRegistryEventToLog(event), source }, 'submitIdRegistryEvent');
+    const logEvent = log.child({ event: idRegistryEventToLog(event), source });
 
-    // push this message into the storage engine
     const mergeResult = await this.engine.mergeIdRegistryEvent(event);
-    if (mergeResult.isErr()) {
-      log.error(mergeResult.error);
-      return mergeResult;
-    }
+
+    mergeResult.match(
+      () => {
+        logEvent.info(
+          `submitIdRegistryEvent success: fid ${event.fid} assigned to ${bytesToHexString(
+            event.to
+          )._unsafeUnwrap()} in block ${event.blockNumber}`
+        );
+      },
+      (e) => {
+        logEvent.error({ errCode: e.errCode }, `submitIdRegistryEvent error: ${e.message}`);
+      }
+    );
 
     return mergeResult;
   }
 
   async submitNameRegistryEvent(event: NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<void> {
-    log.info({ ...nameRegistryEventToLog(event), source }, 'submitNameRegistryEvent');
+    const logEvent = log.child({ event: nameRegistryEventToLog(event), source });
 
-    // push this message into the storage engine
     const mergeResult = await this.engine.mergeNameRegistryEvent(event);
-    if (mergeResult.isErr()) {
-      log.error(mergeResult.error);
-      return mergeResult;
-    }
+
+    mergeResult.match(
+      () => {
+        logEvent.info(
+          `submitNameRegistryEvent success: fname ${bytesToUtf8String(
+            event.fname
+          )._unsafeUnwrap()} assigned to ${bytesToHexString(event.to)._unsafeUnwrap()} in block ${event.blockNumber}`
+        );
+      },
+      (e) => {
+        logEvent.error({ errCode: e.errCode }, `submitNameRegistryEvent error: ${e.message}`);
+      }
+    );
 
     return mergeResult;
   }

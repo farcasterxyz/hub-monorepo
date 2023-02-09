@@ -41,10 +41,15 @@ if (process.env['NODE_ENV'] === 'test' || process.env['CI']) {
 
 export const logger = Pino(defaultOptions);
 
+export const messageTypeToName = (type?: protobufs.MessageType) => {
+  if (!type) return '';
+  return (protobufs.MessageType[type] as string).replace('MESSAGE_TYPE_', '');
+};
+
 export const messageToLog = (message: protobufs.Message) => {
   return {
     timestamp: fromFarcasterTime(message.data?.timestamp || 0),
-    hash: bytesToHexString(message.hash),
+    hash: bytesToHexString(message.hash)._unsafeUnwrap(),
     fid: message.data?.fid,
     type: message.data?.type,
   };
@@ -53,19 +58,15 @@ export const messageToLog = (message: protobufs.Message) => {
 export const idRegistryEventToLog = (event: protobufs.IdRegistryEvent) => {
   return {
     blockNumber: event.blockNumber,
-    transactionHash: bytesToHexString(event.transactionHash)._unsafeUnwrap(),
     fid: event.fid,
     to: bytesToHexString(event.to)._unsafeUnwrap(),
-    type: event.type,
   };
 };
 
 export const nameRegistryEventToLog = (event: protobufs.NameRegistryEvent) => {
   return {
     blockNumber: event.blockNumber,
-    transactionHash: bytesToHexString(event.transactionHash)._unsafeUnwrap(),
     fname: Buffer.from(event.fname).toString('utf-8').replace(/\0/g, ''),
     to: bytesToHexString(event.to)._unsafeUnwrap(),
-    type: event.type,
   };
 };
