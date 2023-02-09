@@ -1,5 +1,12 @@
 import * as protobufs from '@farcaster/protobufs';
-import { getFarcasterTime, HubAsyncResult, HubError, HubResult, HubRpcClient } from '@farcaster/utils';
+import {
+  bytesToUtf8String,
+  getFarcasterTime,
+  HubAsyncResult,
+  HubError,
+  HubResult,
+  HubRpcClient,
+} from '@farcaster/utils';
 import { err, ok } from 'neverthrow';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
@@ -202,7 +209,11 @@ class SyncEngine {
       // still syncing, or if they have deleted messages (because of pruning), in which case we should
       // just wait, and our node will also prune the messages.
       log.info(
-        { ourNum: ourNode?.numMessages, theirNum: theirNodeResult.value.numMessages, prefix },
+        {
+          ourNum: ourNode?.numMessages,
+          theirNum: theirNodeResult.value.numMessages,
+          prefix: bytesToUtf8String(prefix),
+        },
         `Our node has more messages, skipping this node.`
       );
       return;

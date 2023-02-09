@@ -12,7 +12,11 @@ export const parseAddress = (multiaddrStr: string): HubResult<Multiaddr> => {
 
   return Result.fromThrowable(
     () => multiaddr(multiaddrStr),
-    (err) => new HubError('bad_request.parse_failure', { cause: err as Error, message: 'invalid multiaddr' })
+    (err) =>
+      new HubError('bad_request.parse_failure', {
+        cause: err as Error,
+        message: `'${multiaddrStr}': invalid multiaddr`,
+      })
   )();
 };
 

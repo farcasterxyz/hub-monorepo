@@ -17,7 +17,7 @@ export const Config = {
   /** Address of the IdRegistry Contract  */
   // firAddress: '',
   /** A list of MultiAddrs to use for bootstrapping */
-  // bootstrapAddresses: [],
+  // bootstrap: [],
   /** An "allow list" of Peer Ids. Blocks all other connections */
   // allowedPeers: [],
   /** The IP address libp2p should listen on. */

@@ -8,7 +8,7 @@ import { dirname, resolve } from 'path';
 import { exit } from 'process';
 import { APP_VERSION, Hub, HubOptions } from '~/hubble';
 import { logger } from '~/utils/logger';
-import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
+import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo, parseAddress } from '~/utils/p2p';
 import { DEFAULT_RPC_CONSOLE, startConsole } from './console/console';
 import { parseNetwork } from './utils/command';
 
@@ -70,6 +70,20 @@ app
       throw ipMultiAddrResult.error;
     }
 
+    const bootstrapAddrs = ((cliOptions.bootstrap ?? hubConfig.bootstrap ?? []) as string[])
+      .map((a) => parseAddress(a))
+      .map((a) => {
+        if (a.isErr()) {
+          logger.warn(
+            { errorCode: a.error.errCode, message: a.error.message },
+            "Couldn't parse bootstrap address, ignoring"
+          );
+        }
+        return a;
+      })
+      .filter((a) => a.isOk())
+      .map((a) => a._unsafeUnwrap());
+
     const options: HubOptions = {
       peerId,
       ipMultiAddr: ipMultiAddrResult.value,
@@ -79,7 +93,7 @@ app
       network: cliOptions.network ?? hubConfig.network,
       ethRpcUrl: cliOptions.ethRpcUrl ?? hubConfig.ethRpcUrl,
       IdRegistryAddress: cliOptions.firAddress ?? hubConfig.firAddress,
-      bootstrapAddrs: cliOptions.bootstrap ?? hubConfig.bootstrap,
+      bootstrapAddrs,
       allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort,
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
