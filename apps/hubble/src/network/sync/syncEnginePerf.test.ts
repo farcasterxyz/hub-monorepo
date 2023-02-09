@@ -83,7 +83,9 @@ describe('SyncEngine', () => {
       Date.now = () => 1640995200000 + 30662200 * 1000;
 
       const snapshot2 = (await syncEngine2.getSnapshot())._unsafeUnwrap();
-      expect((snapshot2.prefix as Buffer).toString('utf8')).toEqual('00306622');
+      expect((snapshot2.prefix as Buffer).toString('utf8')).toEqual('0030662');
+      // Force a non-existent prefix (the original bug #536 is fixed)
+      snapshot2.prefix = Buffer.from('00306622', 'hex');
 
       let rpcClient = new MockRpcClient(engine2, syncEngine2);
       await syncEngine1.performSync(snapshot2, rpcClient as unknown as HubRpcClient);
