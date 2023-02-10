@@ -2,12 +2,11 @@
 
 import * as protobufs from '@farcaster/protobufs';
 import { FarcasterNetwork } from '@farcaster/protobufs';
-import { Factories, HubResult, HubRpcClient } from '@farcaster/utils';
-import { ok } from 'neverthrow';
+import { Factories, HubRpcClient } from '@farcaster/utils';
 import SyncEngine from '~/network/sync/syncEngine';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
-import { NodeMetadata } from './merkleTrie';
+import { MockRpcClient } from './mock';
 import { EMPTY_HASH } from './trieNode';
 
 const testDb = jestRocksDB(`engine.syncEnginePerf.test`);
@@ -112,72 +111,3 @@ describe('SyncEngine', () => {
     }
   });
 });
-
-class MockRpcClient {
-  engine: Engine;
-  syncEngine: SyncEngine;
-
-  getSyncMetadataByPrefixCalls: Array<any> = [];
-  getAllSyncIdsByPrefixCalls: Array<any> = [];
-  getAllMessagesBySyncIdsCalls: Array<any> = [];
-
-  constructor(engine: Engine, syncEngine: SyncEngine) {
-    this.engine = engine;
-    this.syncEngine = syncEngine;
-  }
-
-  async getSyncMetadataByPrefix(
-    request: protobufs.TrieNodePrefix
-  ): Promise<HubResult<protobufs.TrieNodeMetadataResponse>> {
-    this.getSyncMetadataByPrefixCalls.push(request);
-    const toTrieNodeMetadataResponse = (metadata?: NodeMetadata): protobufs.TrieNodeMetadataResponse => {
-      const childrenTrie = [];
-
-      if (!metadata) {
-        return protobufs.TrieNodeMetadataResponse.create({});
-      }
-
-      if (metadata.children) {
-        for (const [, child] of metadata.children) {
-          childrenTrie.push(
-            protobufs.TrieNodeMetadataResponse.create({
-              prefix: child.prefix,
-              numMessages: child.numMessages,
-              hash: child.hash,
-              children: [],
-            })
-          );
-        }
-      }
-
-      const metadataResponse = protobufs.TrieNodeMetadataResponse.create({
-        prefix: metadata.prefix,
-        numMessages: metadata.numMessages,
-        hash: metadata.hash,
-        children: childrenTrie,
-      });
-
-      return metadataResponse;
-    };
-
-    const metadata = await this.syncEngine.getTrieNodeMetadata(request.prefix);
-    return ok(toTrieNodeMetadataResponse(metadata));
-  }
-
-  async getAllSyncIdsByPrefix(request: protobufs.TrieNodePrefix): Promise<HubResult<protobufs.SyncIds>> {
-    this.getAllSyncIdsByPrefixCalls.push(request);
-    return ok(
-      protobufs.SyncIds.create({
-        syncIds: await this.syncEngine.getAllSyncIdsByPrefix(request.prefix),
-      })
-    );
-  }
-
-  async getAllMessagesBySyncIds(request: protobufs.SyncIds): Promise<HubResult<protobufs.MessagesResponse>> {
-    this.getAllMessagesBySyncIdsCalls.push(request);
-    const messagesResult = await this.engine.getAllMessagesBySyncIds(request.syncIds);
-    return messagesResult.map((messages) => {
-      return protobufs.MessagesResponse.create({ messages: messages ?? [] });
-    });
-  }
-}
