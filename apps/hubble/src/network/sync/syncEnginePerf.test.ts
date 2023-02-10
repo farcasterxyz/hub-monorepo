@@ -79,7 +79,7 @@ describe('SyncEngine', () => {
       expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
 
       // A timestamp after all the messages
-      Date.now = () => 1640995200000 + 30662200 * 1000;
+      Date.now = () => 1609459200000 + 30662200 * 1000;
 
       const snapshot2 = (await syncEngine2.getSnapshot())._unsafeUnwrap();
       expect((snapshot2.prefix as Buffer).toString('utf8')).toEqual('0030662');

@@ -269,7 +269,7 @@ describe('SyncEngine', () => {
 
     await addMessagesWithTimestamps([30662160, 30662169, 30662172]);
     const nowOrig = Date.now;
-    Date.now = () => 16409952e5 + 30662167 * 1000;
+    Date.now = () => 1609459200000 + 30662167 * 1000;
     try {
       const result = await syncEngine.getSnapshot();
       const snapshot = result._unsafeUnwrap();
