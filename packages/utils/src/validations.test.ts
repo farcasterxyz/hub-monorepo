@@ -175,7 +175,7 @@ describe('validateEd25519PublicKey', () => {
 describe('validateCastAddBody', () => {
   test('succeeds', async () => {
     const body = await Factories.CastAddBody.build();
-    expect(validations.validateCastAddBody(body)._unsafeUnwrap()).toEqual(body);
+    expect(validations.validateCastAddBody(body)).toEqual(ok(body));
   });
 
   describe('fails', () => {
@@ -183,8 +183,8 @@ describe('validateCastAddBody', () => {
     let hubErrorMessage: string;
 
     afterEach(async () => {
-      expect(validations.validateCastAddBody(body)._unsafeUnwrapErr()).toEqual(
-        new HubError('bad_request.validation_failure', hubErrorMessage)
+      expect(validations.validateCastAddBody(body)).toEqual(
+        err(new HubError('bad_request.validation_failure', hubErrorMessage))
       );
     });
 
@@ -195,6 +195,15 @@ describe('validateCastAddBody', () => {
 
     test('when text is longer than 320 characters', async () => {
       body = await Factories.CastAddBody.build({ text: faker.random.alphaNumeric(321) });
+      hubErrorMessage = 'text > 320 chars';
+    });
+
+    test('when text is longer than 320 bytes', async () => {
+      let text = '';
+      for (let i = 0; i < 320; i++) {
+        text = text + '🤓';
+      }
+      body = await Factories.CastAddBody.build({ text });
       hubErrorMessage = 'text > 320 chars';
     });
 

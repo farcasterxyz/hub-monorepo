@@ -48,7 +48,7 @@ export const messageTypeToName = (type?: protobufs.MessageType) => {
 
 export const messageToLog = (message: protobufs.Message) => {
   return {
-    timestamp: fromFarcasterTime(message.data?.timestamp || 0),
+    timestamp: fromFarcasterTime(message.data?.timestamp || 0)._unsafeUnwrap(),
     hash: bytesToHexString(message.hash)._unsafeUnwrap(),
     fid: message.data?.fid,
     type: message.data?.type,

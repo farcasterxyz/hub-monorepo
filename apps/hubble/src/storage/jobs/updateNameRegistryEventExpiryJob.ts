@@ -52,7 +52,9 @@ export class UpdateNameRegistryEventExpiryJobWorker {
         (event) => {
           log.info(
             { event: nameRegistryEventToLog(event) },
-            `updated ${bytesToUtf8String(event.fname)._unsafeUnwrap()} expiry to ${fromFarcasterTime(event.expiry)}`
+            `updated ${bytesToUtf8String(event.fname)._unsafeUnwrap()} expiry to ${fromFarcasterTime(
+              event.expiry
+            )._unsafeUnwrap()}`
           );
         },
         (e) => {
