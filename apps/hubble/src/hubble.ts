@@ -43,6 +43,10 @@ import {
   ipFamilyToString,
   p2pMultiAddrStr,
 } from '~/utils/p2p';
+import {
+  UpdateNameRegistryEventExpiryJobQueue,
+  UpdateNameRegistryEventExpiryJobWorker,
+} from './storage/jobs/updateNameRegistryEventExpiryJob';
 
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
 
@@ -139,6 +143,8 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   private revokeSignerJobQueue: RevokeSignerJobQueue;
   private revokeSignerJobScheduler: RevokeSignerJobScheduler;
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
+  private updateNameRegistryEventExpiryJobQueue: UpdateNameRegistryEventExpiryJobQueue;
+  private updateNameRegistryEventExpiryJobWorker: UpdateNameRegistryEventExpiryJobWorker;
 
   engine: Engine;
   ethRegistryProvider: EthEventsProvider;
@@ -165,10 +171,16 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
 
     // Setup job queues
     this.revokeSignerJobQueue = new RevokeSignerJobQueue(this.rocksDB);
+    this.updateNameRegistryEventExpiryJobQueue = new UpdateNameRegistryEventExpiryJobQueue(this.rocksDB);
 
-    // Setup job schedulers
+    // Setup job schedulers/workers
     this.revokeSignerJobScheduler = new RevokeSignerJobScheduler(this.revokeSignerJobQueue, this.engine);
     this.pruneMessagesJobScheduler = new PruneMessagesJobScheduler(this.engine);
+    this.updateNameRegistryEventExpiryJobWorker = new UpdateNameRegistryEventExpiryJobWorker(
+      this.updateNameRegistryEventExpiryJobQueue,
+      this.rocksDB,
+      this.ethRegistryProvider
+    );
   }
 
   get rpcAddress() {
@@ -576,6 +588,11 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
         logEvent.error({ errCode: e.errCode }, `submitNameRegistryEvent error: ${e.message}`);
       }
     );
+
+    if (!event.expiry) {
+      const payload = protobufs.UpdateNameRegistryEventExpiryJobPayload.create({ fname: event.fname });
+      await this.updateNameRegistryEventExpiryJobQueue.enqueueJob(payload);
+    }
 
     return mergeResult;
   }

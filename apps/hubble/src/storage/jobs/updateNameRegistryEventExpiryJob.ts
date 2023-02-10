@@ -1,55 +1,99 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesIncrement, HubAsyncResult, HubError, HubResult, validations } from '@farcaster/utils';
+import {
+  bytesIncrement,
+  bytesToUtf8String,
+  fromFarcasterTime,
+  HubAsyncResult,
+  HubError,
+  HubResult,
+  toFarcasterTime,
+  validations,
+} from '@farcaster/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { err, ok, ResultAsync } from 'neverthrow';
 import AbstractRocksDB from 'rocksdb';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { EthEventsProvider } from '~/eth/ethEventsProvider';
 import RocksDB from '~/storage/db/rocksdb';
+import { logger, nameRegistryEventToLog } from '~/utils/logger';
+import { getNameRegistryEvent, putNameRegistryEvent } from '../db/nameRegistryEvent';
 import { RootPrefix } from '../db/types';
 
 export type JobQueueEvents = {
   enqueueJob: (jobKey: Buffer) => void;
 };
 
-// const log = logger.child({
-//   component: 'UpdateNameRegistryEventExpiryJob',
-// });
-
 export class UpdateNameRegistryEventExpiryJobWorker {
   private _queue: UpdateNameRegistryEventExpiryJobQueue;
+  private _db: RocksDB;
   private _ethEventsProvider: EthEventsProvider;
   private _status: 'working' | 'waiting';
 
-  constructor(queue: UpdateNameRegistryEventExpiryJobQueue, ethEventsProvider: EthEventsProvider) {
+  constructor(queue: UpdateNameRegistryEventExpiryJobQueue, db: RocksDB, ethEventsProvider: EthEventsProvider) {
     this._queue = queue;
+    this._db = db;
     this._ethEventsProvider = ethEventsProvider;
     this._status = 'waiting';
 
-    this._queue.on('enqueueJob', this.processJobs);
-  }
-
-  async processJob(payload: protobufs.UpdateNameRegistryEventExpiryJobPayload): HubAsyncResult<void> {
-    const expiry = await this._ethEventsProvider.getFnameExpiry(payload.fname);
-    if (expiry.isErr()) {
-      return err(expiry.error);
-    }
-
-    return ok(undefined);
+    this._queue.on('enqueueJob', () => this.processJobs());
   }
 
   async processJobs(): HubAsyncResult<void> {
     if (this._status === 'working') {
       return err(new HubError('unavailable', 'worker is already processing jobs'));
     }
+    const log = logger.child({ component: 'UpdateNameRegistryEventExpiryJobWorker' });
+    log.info('UpdateNameRegistryEventExpiryJobWorker starting');
     this._status = 'working';
     let nextJob = await this._queue.popNextJob();
     while (nextJob.isOk()) {
-      await this.processJob(nextJob.value);
+      const result = await this.processJob(nextJob.value);
+      result.match(
+        (event) => {
+          log.info(
+            { event: nameRegistryEventToLog(event) },
+            `updated ${bytesToUtf8String(event.fname)._unsafeUnwrap()} expiry to ${fromFarcasterTime(event.expiry)}`
+          );
+        },
+        (e) => {
+          log.error(e, `error updating expiry for ${bytesToUtf8String(nextJob._unsafeUnwrap().fname)._unsafeUnwrap()}`);
+        }
+      );
       nextJob = await this._queue.popNextJob();
     }
     this._status = 'waiting';
+    log.info('UpdateNameRegistryEventExpiryJobWorker stopping');
     return ok(undefined);
+  }
+
+  private async processJob(
+    payload: protobufs.UpdateNameRegistryEventExpiryJobPayload
+  ): HubAsyncResult<protobufs.NameRegistryEvent> {
+    const eventResult = await ResultAsync.fromPromise(
+      getNameRegistryEvent(this._db, payload.fname),
+      (e) => e as HubError
+    );
+    if (eventResult.isErr()) {
+      return err(eventResult.error);
+    }
+
+    const expiryResult = await this._ethEventsProvider.getFnameExpiry(payload.fname);
+    if (expiryResult.isErr()) {
+      return err(expiryResult.error);
+    }
+
+    const farcasterTimeExpiry = toFarcasterTime(expiryResult.value);
+    if (farcasterTimeExpiry.isErr()) {
+      return err(farcasterTimeExpiry.error);
+    }
+
+    const updatedEvent: protobufs.NameRegistryEvent = { ...eventResult.value, expiry: farcasterTimeExpiry.value };
+    const result = await ResultAsync.fromPromise(putNameRegistryEvent(this._db, updatedEvent), (e) => e as HubError);
+    if (result.isErr()) {
+      return err(result.error);
+    }
+
+    return ok(updatedEvent);
   }
 }
 
@@ -143,9 +187,18 @@ export class UpdateNameRegistryEventExpiryJobQueue extends TypedEmitter<JobQueue
     }
 
     // Save to rocksdb
-    return (
-      await ResultAsync.fromPromise(this._db.put(key.value, Buffer.from(payloadBytes)), (e) => e as HubError)
-    ).asyncMap(async () => key.value);
+    const result = await ResultAsync.fromPromise(
+      this._db.put(key.value, Buffer.from(payloadBytes)),
+      (e) => e as HubError
+    );
+
+    if (result.isErr()) {
+      return err(result.error);
+    }
+
+    this.emit('enqueueJob', key.value);
+
+    return ok(key.value);
   }
 
   async popNextJob(doBefore?: number): HubAsyncResult<protobufs.UpdateNameRegistryEventExpiryJobPayload> {

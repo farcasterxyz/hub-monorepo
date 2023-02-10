@@ -12,6 +12,7 @@ export const bytes32ToBytes = (value: BigNumber): HubResult<Uint8Array> => {
 };
 
 export const bytesToBytes32 = (value: Uint8Array): HubResult<BigNumber> => {
-  // TODO
-  return bytesToBigNumber(value);
+  const bytes = new Uint8Array(32);
+  bytes.set(value, 0);
+  return bytesToBigNumber(bytes);
 };

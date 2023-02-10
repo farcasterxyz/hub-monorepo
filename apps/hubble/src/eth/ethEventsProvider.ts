@@ -134,13 +134,14 @@ export class EthEventsProvider {
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
 
+  /** Returns expiry for fname in ms from unix epoch */
   public async getFnameExpiry(fname: Uint8Array): HubAsyncResult<number> {
     const encodedFname = bytesToBytes32(fname);
     if (encodedFname.isErr()) {
       return err(encodedFname.error);
     }
     const expiry: BigNumber = await this._nameRegistryContract['expiryOf'](encodedFname.value);
-    return ok(expiry.toNumber());
+    return ok(expiry.toNumber() * 1000);
   }
 
   /* -------------------------------------------------------------------------- */
