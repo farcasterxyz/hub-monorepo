@@ -1,3 +1,4 @@
+/* eslint-disable security/detect-object-injection */
 import Chance from 'chance';
 
 import { Message } from '@farcaster/protobufs';
@@ -48,3 +49,9 @@ export const fastSyncId = (fid: number, hash: Uint8Array, timestamp: number, typ
     hash,
   } as Message);
 };
+
+export const sumRecords = (series: Record<string, number>[]): Record<string, number> =>
+  series.reduce((prev, curr) => Object.fromEntries(Object.entries(curr).map(([k, v]) => [k, (prev[k] ?? 0) + v])));
+
+export const avgRecords = (series: Record<string, number>[]): Record<string, number> =>
+  Object.fromEntries(Object.entries(sumRecords(series)).map(([k, v]) => [k, v / series.length]));
