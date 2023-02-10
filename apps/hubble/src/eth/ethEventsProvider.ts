@@ -3,7 +3,7 @@ import { hexStringToBytes, HubAsyncResult } from '@farcaster/utils';
 import { BigNumber, Contract, Event, providers } from 'ethers';
 import { err, ok, ResultAsync } from 'neverthrow';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
-import { bytes32ToBytes } from '~/eth/utils';
+import { bytes32ToBytes, bytesToBytes32 } from '~/eth/utils';
 import { HubInterface } from '~/hubble';
 import { logger } from '~/utils/logger';
 
@@ -132,6 +132,16 @@ export class EthEventsProvider {
 
     // Wait for all async promises to resolve
     await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  /** Returns expiry for fname in ms from unix epoch */
+  public async getFnameExpiry(fname: Uint8Array): HubAsyncResult<number> {
+    const encodedFname = bytesToBytes32(fname);
+    if (encodedFname.isErr()) {
+      return err(encodedFname.error);
+    }
+    const expiry: BigNumber = await this._nameRegistryContract['expiryOf'](encodedFname.value);
+    return ok(expiry.toNumber() * 1000);
   }
 
   /* -------------------------------------------------------------------------- */
