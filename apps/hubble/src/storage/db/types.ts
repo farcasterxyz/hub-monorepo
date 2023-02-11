@@ -33,6 +33,10 @@ export enum RootPrefix {
   JobRevokeSigner = 10,
   /* Sync Merkle Trie Node */
   SyncMerkleTrieNode = 11,
+  /* Update NameRegistryEvent expiry job */
+  JobUpdateNameExpiry = 12,
+  /* Index name registry events by expiry */
+  NameRegistryEventsByExpiry = 13,
 }
 
 /**

@@ -43,6 +43,10 @@ import {
   ipFamilyToString,
   p2pMultiAddrStr,
 } from '~/utils/p2p';
+import {
+  UpdateNameRegistryEventExpiryJobQueue,
+  UpdateNameRegistryEventExpiryJobWorker,
+} from './storage/jobs/updateNameRegistryEventExpiryJob';
 
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
 
@@ -73,11 +77,8 @@ export interface HubOptions {
   /** IP address string in MultiAddr format to bind to */
   ipMultiAddr?: string;
 
-  /** External IP address to announce to peers */
+  /** External IP address to announce to peers. If not provided, it'll fetch the IP from an external service */
   announceIp?: string;
-
-  /** Fetch IP from external service if announceIp is not provided? */
-  fetchIp?: boolean;
 
   /** Port for libp2p to listen for gossip */
   gossipPort?: number;
@@ -139,6 +140,8 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   private revokeSignerJobQueue: RevokeSignerJobQueue;
   private revokeSignerJobScheduler: RevokeSignerJobScheduler;
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
+  private updateNameRegistryEventExpiryJobQueue: UpdateNameRegistryEventExpiryJobQueue;
+  private updateNameRegistryEventExpiryJobWorker: UpdateNameRegistryEventExpiryJobWorker;
 
   engine: Engine;
   ethRegistryProvider: EthEventsProvider;
@@ -165,10 +168,16 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
 
     // Setup job queues
     this.revokeSignerJobQueue = new RevokeSignerJobQueue(this.rocksDB);
+    this.updateNameRegistryEventExpiryJobQueue = new UpdateNameRegistryEventExpiryJobQueue(this.rocksDB);
 
-    // Setup job schedulers
+    // Setup job schedulers/workers
     this.revokeSignerJobScheduler = new RevokeSignerJobScheduler(this.revokeSignerJobQueue, this.engine);
     this.pruneMessagesJobScheduler = new PruneMessagesJobScheduler(this.engine);
+    this.updateNameRegistryEventExpiryJobWorker = new UpdateNameRegistryEventExpiryJobWorker(
+      this.updateNameRegistryEventExpiryJobQueue,
+      this.rocksDB,
+      this.ethRegistryProvider
+    );
   }
 
   get rpcAddress() {
@@ -190,10 +199,10 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   /* Start the GossipNode and RPC server  */
   async start() {
     // See if we have to fetch the IP address
-    if (!this.options.announceIp && this.options.fetchIp) {
+    if (!this.options.announceIp || this.options.announceIp.trim().length === 0) {
       const ipResult = await getPublicIp();
       if (ipResult.isErr()) {
-        log.error('failed to fetch public IP address', { error: ipResult.error });
+        log.error(`failed to fetch public IP address, using ${this.options.ipMultiAddr}`, { error: ipResult.error });
       } else {
         this.options.announceIp = ipResult.value;
       }
@@ -576,6 +585,11 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
         logEvent.error({ errCode: e.errCode }, `submitNameRegistryEvent error: ${e.message}`);
       }
     );
+
+    if (!event.expiry) {
+      const payload = protobufs.UpdateNameRegistryEventExpiryJobPayload.create({ fname: event.fname });
+      await this.updateNameRegistryEventExpiryJobQueue.enqueueJob(payload);
+    }
 
     return mergeResult;
   }
