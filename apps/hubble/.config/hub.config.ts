@@ -24,8 +24,6 @@ export const Config = {
   ip: '127.0.0.1',
   /** The IP address that libp2p should announce to peers */
   announceIp: '',
-  /** Fetch the IP address from an external service? */
-  fetchIp: false,
   /** The TCP port libp2p should listen on. */
   gossipPort: DEFAULT_GOSSIP_PORT,
   /** The RPC port to use. */
