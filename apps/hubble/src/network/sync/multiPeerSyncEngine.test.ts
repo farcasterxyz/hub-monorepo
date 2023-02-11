@@ -34,7 +34,6 @@ beforeAll(async () => {
 });
 
 describe('Multi peer sync engine', () => {
-  //   const addMessagesWithTimestamps = async (engine: Engine, timestamps: number[]) => {
   const addMessagesWithTimestamps = async (engine: Engine, timestamps: number[]) => {
     return await Promise.all(
       timestamps.map(async (t) => {
@@ -159,6 +158,7 @@ describe('Multi peer sync engine', () => {
 
       // Add more messages
       await addMessagesWithTimestamps(engine1, [30663167, 30663169, 30663172]);
+      await sleepWhile(() => syncEngine1.messagesQueuedForSync > 0, 1000);
 
       // grab a new snapshot from the RPC for engine1
       const newSnapshotResult = await clientForServer1.getSyncSnapshotByPrefix(protobufs.TrieNodePrefix.create());
@@ -194,11 +194,14 @@ describe('Multi peer sync engine', () => {
 
     const engine2 = new Engine(testDb2, network);
     const syncEngine2 = new SyncEngine(engine2, testDb2);
+
     // Sync engine 2 with engine 1
     await syncEngine2.performSync((await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
+    await sleepWhile(() => syncEngine2.messagesQueuedForSync > 0, 1000);
+
+    expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine1.trie.rootHash());
 
     // Make sure the castAdd is in the trie
-    await sleepWhile(() => syncEngine2.messagesQueuedForSync > 0, 1000);
     expect(await syncEngine1.trie.exists(new SyncId(castAdd))).toBeTruthy();
     expect(await syncEngine2.trie.exists(new SyncId(castAdd))).toBeTruthy();
 
@@ -216,11 +219,11 @@ describe('Multi peer sync engine', () => {
 
     // Merging the cast remove deletes the cast add in the db, and it should be reflected in the trie
     const result = await engine1.mergeMessage(castRemove);
+    await sleepWhile(() => syncEngine1.messagesQueuedForSync > 0, 1000);
+
     expect(result.isOk()).toBeTruthy();
 
-    await sleepWhile(() => syncEngine1.messagesQueuedForSync > 0, 1000);
     const castRemoveId = new SyncId(castRemove);
-
     expect(await syncEngine1.trie.exists(castRemoveId)).toBeTruthy();
     // The trie should not contain the castAdd anymore
     expect(await syncEngine1.trie.exists(new SyncId(castAdd))).toBeFalsy();
@@ -234,6 +237,8 @@ describe('Multi peer sync engine', () => {
       const engine1RootHashBefore = await syncEngine1.trie.rootHash();
 
       await syncEngine1.performSync((await syncEngine2.getSnapshot())._unsafeUnwrap(), clientForServer2);
+      await sleepWhile(() => syncEngine1.messagesQueuedForSync > 0, 1000);
+
       expect(await syncEngine1.trie.rootHash()).toEqual(engine1RootHashBefore);
 
       clientForServer2.$.close();
@@ -243,19 +248,20 @@ describe('Multi peer sync engine', () => {
     // castRemove doesn't yet exist in engine2
     expect(await syncEngine2.trie.exists(castRemoveId)).toBeFalsy();
 
-    // Syncing engine2 with engine1 should delete the castAdd from the trie and add the castRemove
     await syncEngine2.performSync((await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
-
     await sleepWhile(() => syncEngine2.messagesQueuedForSync > 0, 1000);
-    expect(await syncEngine2.trie.exists(castRemoveId)).toBeTruthy();
 
+    expect(await syncEngine2.trie.exists(castRemoveId)).toBeTruthy();
     expect(await syncEngine2.trie.exists(new SyncId(castAdd))).toBeFalsy();
+
     expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine1.trie.rootHash());
 
     // Adding the castAdd to engine2 should not change the root hash,
     // because it has already been removed, so adding it is a no-op
     const beforeRootHash = await syncEngine2.trie.rootHash();
     await engine2.mergeMessage(castAdd);
+    await sleepWhile(() => syncEngine2.messagesQueuedForSync > 0, 1000);
+
     expect(await syncEngine2.trie.rootHash()).toEqual(beforeRootHash);
   });
 

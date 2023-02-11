@@ -1,4 +1,4 @@
-import { Factories, hexStringToBytes } from '@farcaster/utils';
+import { Factories, hexStringToBytes, utf8StringToBytes } from '@farcaster/utils';
 import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
 import { EMPTY_HASH, TrieNode } from '~/network/sync/trieNode';
 import { NetworkFactories } from '~/network/utils/factories';
@@ -198,6 +198,31 @@ describe('TrieNode', () => {
       expect(await root.exists(ids[1] as Uint8Array, db)).toBeTruthy();
       expect(await root.exists(ids[2] as Uint8Array, db)).toBeTruthy();
       expect(root.items).toEqual(2);
+    });
+
+    test('deleting from a deeper node still compacts the trie', async () => {
+      const ids = ['0030662167axxxx', '0030662167bcdxxxx', '0035059000xxxx'].map((id) =>
+        utf8StringToBytes(id)._unsafeUnwrap()
+      );
+      const root = new TrieNode();
+
+      for (let i = 0; i < ids.length; i++) {
+        // Safety: i is controlled by the loop and cannot be used to inject
+        // eslint-disable-next-line security/detect-object-injection
+        await root.insert(ids[i] as Uint8Array, db, db.transaction());
+      }
+
+      // Remove the first id
+      await root.delete(ids[0] as Uint8Array, db, db.transaction());
+
+      // Expect the other  ids to be present
+      expect(await root.exists(ids[1] as Uint8Array, db)).toBeTruthy();
+      expect(await root.exists(ids[2] as Uint8Array, db)).toBeTruthy();
+      expect(root.items).toEqual(2);
+
+      // Ensure that the branch is compacted
+      expect((await root.getNode(ids[1]?.slice(0, 10) as Uint8Array, db))?.isLeaf).toBeTruthy();
+      expect((await root.getNode(ids[2]?.slice(0, 10) as Uint8Array, db))?.isLeaf).toBeTruthy();
     });
   });
 

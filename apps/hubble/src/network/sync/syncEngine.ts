@@ -194,6 +194,11 @@ class SyncEngine {
     const ourNode = await this._trie.getTrieNodeMetadata(prefix);
     const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(protobufs.TrieNodePrefix.create({ prefix }));
 
+    if (!ourNode) {
+      log.warn({ prefix }, `No metadata for prefix, skipping`);
+      return;
+    }
+
     if (theirNodeResult.isErr()) {
       log.warn(theirNodeResult.error, `Error fetching metadata for prefix ${prefix}`);
     } else if (theirNodeResult.value.numMessages === 0) {
@@ -201,21 +206,8 @@ class SyncEngine {
       // a node with no messages.
       log.warn({ prefix }, `No messages for prefix, skipping`);
       return;
-    } else if (ourNode?.hash === theirNodeResult.value.hash) {
+    } else if (ourNode.hash === theirNodeResult.value.hash) {
       // Hashes match, we're done.
-      return;
-    } else if ((ourNode?.numMessages ?? 0) > theirNodeResult.value.numMessages) {
-      // If we have more messages than the other node, we're done. This might happen if the remote node is
-      // still syncing, or if they have deleted messages (because of pruning), in which case we should
-      // just wait, and our node will also prune the messages.
-      log.info(
-        {
-          ourNum: ourNode?.numMessages,
-          theirNum: theirNodeResult.value.numMessages,
-          prefix: bytesToUtf8String(prefix),
-        },
-        `Our node has more messages, skipping this node.`
-      );
       return;
     } else {
       await this.fetchMissingHashesByNode(
@@ -229,27 +221,41 @@ class SyncEngine {
 
   async fetchMissingHashesByNode(
     theirNode: NodeMetadata,
-    ourNode: NodeMetadata | undefined,
+    ourNode: NodeMetadata,
     rpcClient: HubRpcClient,
     onMissingHashes: (missingHashes: Uint8Array[]) => Promise<void>
   ): Promise<void> {
     // If the node has fewer than HASHES_PER_FETCH, just fetch them all in go, otherwise,
     // iterate through the node's children and fetch them in batches.
     if (theirNode.numMessages <= HASHES_PER_FETCH) {
-      const result = await rpcClient.getAllSyncIdsByPrefix(
-        protobufs.TrieNodePrefix.create({ prefix: theirNode.prefix })
-      );
-
-      if (result.isErr()) {
-        log.warn(result.error, `Error fetching ids for prefix ${theirNode.prefix}`);
+      if (ourNode.numMessages > theirNode.numMessages) {
+        // If we have more messages than the other node, we're done. This might happen if the remote node is
+        // still syncing, or if they have deleted messages (because of pruning), in which case we should
+        // just wait, and our node will also prune the messages.
+        log.info(
+          {
+            ourNum: ourNode.numMessages,
+            theirNum: theirNode.numMessages,
+            prefix: bytesToUtf8String(theirNode.prefix),
+          },
+          `Our node has more messages, skipping this node.`
+        );
       } else {
-        await onMissingHashes(result.value.syncIds);
+        const result = await rpcClient.getAllSyncIdsByPrefix(
+          protobufs.TrieNodePrefix.create({ prefix: theirNode.prefix })
+        );
+
+        if (result.isErr()) {
+          log.warn(result.error, `Error fetching ids for prefix ${theirNode.prefix}`);
+        } else {
+          await onMissingHashes(result.value.syncIds);
+        }
       }
     } else if (theirNode.children) {
       for (const [theirChildChar, theirChild] of theirNode.children.entries()) {
         // recursively fetch hashes for every node where the hashes don't match
         const allPromises = [];
-        if (ourNode?.children?.get(theirChildChar)?.hash !== theirChild.hash) {
+        if (ourNode.children?.get(theirChildChar)?.hash !== theirChild.hash) {
           allPromises.push(this.fetchMissingHashesByPrefix(theirChild.prefix, rpcClient, onMissingHashes));
         }
         await Promise.all(allPromises);
