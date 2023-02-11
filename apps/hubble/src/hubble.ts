@@ -77,11 +77,8 @@ export interface HubOptions {
   /** IP address string in MultiAddr format to bind to */
   ipMultiAddr?: string;
 
-  /** External IP address to announce to peers */
+  /** External IP address to announce to peers. If not provided, it'll fetch the IP from an external service */
   announceIp?: string;
-
-  /** Fetch IP from external service if announceIp is not provided? */
-  fetchIp?: boolean;
 
   /** Port for libp2p to listen for gossip */
   gossipPort?: number;
@@ -202,10 +199,10 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   /* Start the GossipNode and RPC server  */
   async start() {
     // See if we have to fetch the IP address
-    if (!this.options.announceIp && this.options.fetchIp) {
+    if (!this.options.announceIp || this.options.announceIp.trim().length === 0) {
       const ipResult = await getPublicIp();
       if (ipResult.isErr()) {
-        log.error('failed to fetch public IP address', { error: ipResult.error });
+        log.error(`failed to fetch public IP address, using ${this.options.ipMultiAddr}`, { error: ipResult.error });
       } else {
         this.options.announceIp = ipResult.value;
       }
