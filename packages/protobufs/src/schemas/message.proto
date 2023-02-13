@@ -61,6 +61,7 @@ message CastAddBody {
     CastId parent_cast_id = 3;
   };
   string text = 4;
+  repeated uint32 mentions_positions = 5;
 }
 
 message CastRemoveBody {
