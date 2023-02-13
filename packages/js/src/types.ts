@@ -77,6 +77,7 @@ export type MessageBody =
 export type CastAddBody = {
   embeds?: string[] | undefined;
   mentions?: number[] | undefined;
+  mentionsPositions?: number[] | undefined;
   parent?: CastId | undefined;
   text: string;
 };

@@ -51,6 +51,10 @@ export const validateFid = (fid?: number | null): HubResult<number> => {
     return err(new HubError('bad_request.validation_failure', 'fid must be positive'));
   }
 
+  if (!Number.isInteger(fid)) {
+    return err(new HubError('bad_request.validation_failure', 'fid must be an integer'));
+  }
+
   return ok(fid);
 };
 
@@ -268,9 +272,40 @@ export const validateCastAddBody = (body: protobufs.CastAddBody): HubResult<prot
     return err(new HubError('bad_request.validation_failure', 'embeds > 2'));
   }
 
-  // TODO: validate mentions are actually fids
   if (body.mentions.length > 5) {
     return err(new HubError('bad_request.validation_failure', 'mentions > 5'));
+  }
+
+  if (body.mentions.length !== body.mentionsPositions.length) {
+    return err(new HubError('bad_request.validation_failure', 'mentions and mentionsPositions must match'));
+  }
+
+  for (let i = 0; i < body.mentions.length; i++) {
+    // eslint-disable-next-line security/detect-object-injection
+    const mention = validateFid(body.mentions[i]);
+    if (mention.isErr()) {
+      return err(mention.error);
+    }
+    // eslint-disable-next-line security/detect-object-injection
+    const position = body.mentionsPositions[i];
+    if (typeof position !== 'number' || !Number.isInteger(position)) {
+      return err(new HubError('bad_request.validation_failure', 'mentionsPositions must be integers'));
+    }
+    if (position < 0 || position > text.length) {
+      return err(new HubError('bad_request.validation_failure', 'mentionsPositions must be a position in text'));
+    }
+    if (i > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const prevPosition = body.mentionsPositions[i - 1]!;
+      if (position === prevPosition) {
+        return err(new HubError('bad_request.validation_failure', 'mentionsPositions must be unique'));
+      }
+      if (position < prevPosition) {
+        return err(
+          new HubError('bad_request.validation_failure', 'mentionsPositions must be sorted in ascending order')
+        );
+      }
+    }
   }
 
   if (body.parentCastId) {
