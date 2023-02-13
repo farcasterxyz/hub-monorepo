@@ -1,7 +1,7 @@
 import { gossipsub, GossipSub } from '@chainsafe/libp2p-gossipsub';
 import { noise } from '@chainsafe/libp2p-noise';
 import * as protobufs from '@farcaster/protobufs';
-import { HubError, HubResult } from '@farcaster/utils';
+import { HubAsyncResult, HubError, HubResult } from '@farcaster/utils';
 import { Connection } from '@libp2p/interface-connection';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { mplex } from '@libp2p/mplex';
@@ -93,13 +93,13 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
    * @param bootstrapAddrs  A list of bootstrap addresses which the node will attempt to connect to
    * @param options         Options to configure node
    */
-  async start(bootstrapAddrs: Multiaddr[], options?: NodeOptions): Promise<HubResult<void>> {
+  async start(bootstrapAddrs: Multiaddr[], options?: NodeOptions): HubAsyncResult<void> {
     const createResult = await this.createNode(options ?? {});
     if (createResult.isErr()) return err(createResult.error);
 
     this._node = createResult.value;
-    this.registerListeners();
 
+    this.registerListeners();
     this.registerDebugListeners();
 
     await this._node.start();
@@ -108,7 +108,10 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       'Starting libp2p'
     );
 
-    return this.bootstrap(bootstrapAddrs);
+    // Wait for a few seconds for everything to initialize before connecting to bootstrap nodes
+    setTimeout(() => this.bootstrap(bootstrapAddrs), 1 * 1000);
+
+    return ok(undefined);
   }
 
   isStarted() {

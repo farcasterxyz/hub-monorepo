@@ -55,14 +55,17 @@ describe('SyncEngine', () => {
 
   test('should not fetch all messages when snapshot contains non-existent prefix', async () => {
     const nowOrig = Date.now;
+    let syncEngine1;
+    let syncEngine2;
+
     try {
       testDb.clear();
       testDb2.clear();
 
       const engine1 = new Engine(testDb, FarcasterNetwork.FARCASTER_NETWORK_TESTNET);
-      const syncEngine1 = new SyncEngine(engine1, testDb);
+      syncEngine1 = new SyncEngine(engine1, testDb);
       const engine2 = new Engine(testDb2, FarcasterNetwork.FARCASTER_NETWORK_TESTNET);
-      const syncEngine2 = new SyncEngine(engine2, testDb2);
+      syncEngine2 = new SyncEngine(engine2, testDb2);
 
       await engine1.mergeIdRegistryEvent(custodyEvent);
       await engine1.mergeMessage(signerAdd);
@@ -108,6 +111,8 @@ describe('SyncEngine', () => {
       expect(rpcClient.getAllMessagesBySyncIdsCalls.length).toEqual(0);
     } finally {
       Date.now = nowOrig;
+      await syncEngine1?.stop();
+      await syncEngine2?.stop();
     }
   });
 });

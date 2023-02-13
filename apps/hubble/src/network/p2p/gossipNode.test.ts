@@ -11,14 +11,6 @@ import SyncEngine from '../sync/syncEngine';
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 
 describe('GossipNode', () => {
-  test('start fails with invalid bootstrap addresses', async () => {
-    const node = new GossipNode();
-    const error = (await node.start([multiaddr()]))._unsafeUnwrapErr();
-    expect(error.errCode).toEqual('unavailable');
-    expect(error.message).toContain('could not connect to any bootstrap nodes');
-    await node.stop();
-  });
-
   test('start fails if IpMultiAddr has port or transport addrs', async () => {
     const node = new GossipNode();
     const options = { ipMultiAddr: '/ip4/127.0.0.1/tcp/8080' };
@@ -129,7 +121,8 @@ describe('GossipNode', () => {
         },
       } as unknown as GossipNode;
 
-      server = new Server(hub, engine, new SyncEngine(engine, db), mockGossipNode);
+      const syncEngine = new SyncEngine(engine, db);
+      server = new Server(hub, engine, syncEngine, mockGossipNode);
       const port = await server.start();
       client = getHubRpcClient(`127.0.0.1:${port}`);
 
@@ -149,6 +142,7 @@ describe('GossipNode', () => {
 
       client.$.close();
       await server.stop();
+      await syncEngine.stop();
     });
   });
 });

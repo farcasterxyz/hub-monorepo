@@ -95,6 +95,7 @@ describe('Multi peer sync engine', () => {
     // Cleanup
     clientForServer1.$.close();
     await server1.stop();
+    await syncEngine1.stop();
   });
 
   test('toBytes test', async () => {
@@ -124,6 +125,8 @@ describe('Multi peer sync engine', () => {
     await reinitSyncEngine.initialize();
 
     expect(await reinitSyncEngine.trie.rootHash()).toEqual(await syncEngine1.trie.rootHash());
+
+    await reinitSyncEngine.stop();
   });
 
   test(
@@ -179,6 +182,8 @@ describe('Multi peer sync engine', () => {
 
       // Make sure root hash matches
       expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
+
+      await syncEngine2.stop();
     },
     TEST_TIMEOUT_LONG
   );
