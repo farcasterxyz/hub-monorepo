@@ -77,8 +77,12 @@ export const deserializeNameRegistryEvent = (
     return err(deserialized.error);
   }
 
+  const expiry = typeof protobuf.expiry === 'number' ? fromFarcasterTime(protobuf.expiry) : ok(undefined);
+  if (expiry.isErr()) {
+    return err(expiry.error);
+  }
+
   const [blockHash, transactionHash, to, from, fname] = deserialized.value;
-  const expiry = fromFarcasterTime(protobuf.expiry);
   const { blockNumber, logIndex, type } = protobuf;
 
   return ok({
@@ -91,7 +95,7 @@ export const deserializeNameRegistryEvent = (
     to,
     type,
     from,
-    expiry,
+    expiry: expiry.value,
   });
 };
 
@@ -157,6 +161,9 @@ export const deserializeMessage = (protobuf: protobufs.Message): HubResult<types
 
 export const deserializeMessageData = (protobuf: protobufs.MessageData): HubResult<types.MessageData> => {
   const timestamp = fromFarcasterTime(protobuf.timestamp);
+  if (timestamp.isErr()) {
+    return err(timestamp.error);
+  }
 
   if (!Object.values(protobufs.MessageType).includes(protobuf.type)) {
     return err(new HubError('bad_request.invalid_param', 'type is invalid'));
@@ -191,7 +198,7 @@ export const deserializeMessageData = (protobuf: protobufs.MessageData): HubResu
     _protobuf: protobuf,
     body: bodyResult.value,
     type: protobuf.type,
-    timestamp,
+    timestamp: timestamp.value,
     fid: protobuf.fid,
     network: protobuf.network,
   });

@@ -135,7 +135,7 @@ export type NameRegistryEvent = Readonly<{
   to: string; // Hex string
   type: protobufs.NameRegistryEventType;
   from: string; // Hex string
-  expiry: number;
+  expiry: number | undefined;
 }>;
 
 type GenericEventResponse = {
