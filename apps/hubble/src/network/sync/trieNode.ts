@@ -10,6 +10,7 @@ import { blake3Truncate160, BLAKE3TRUNCATE160_EMPTY_HASH } from '~/utils/crypto'
 import { NodeMetadata } from './merkleTrie';
 
 export const EMPTY_HASH = BLAKE3TRUNCATE160_EMPTY_HASH.toString('hex');
+export const MAX_VALUES_RETURNED_PER_CALL = 1000;
 
 /**
  * A snapshot of the trie at a particular timestamp which can be used to determine if two
@@ -122,10 +123,6 @@ class TrieNode {
       txn = this.saveToDBTx(txn, key.slice(0, current_index));
     }
 
-    // if (current_index === TIMESTAMP_LENGTH) {
-    //   this.unloadChildren();
-    // }
-
     return { status, txn };
   }
 
@@ -183,12 +180,13 @@ class TrieNode {
       }
 
       if (this._items === 1 && this._children.size === 1 && current_index >= TIMESTAMP_LENGTH) {
-        // Compact the node if it has only one child
-        const [char, child]: [number, TrieNode] = this._children.entries().next().value;
+        const char = this._children.keys().next().value;
+        const child = await this._getOrLoadChild(key.slice(0, current_index), char, db);
+
         if (child._key) {
           this._key = child._key;
-          await this._updateHash(key.slice(0, current_index), db);
           this._children.delete(char);
+          await this._updateHash(key.slice(0, current_index), db);
 
           // Delete child
           const childPrefix = Buffer.concat([key.slice(0, current_index), new Uint8Array([char])]);
@@ -197,13 +195,8 @@ class TrieNode {
       }
 
       await this._updateHash(key.slice(0, current_index), db);
-
       txn = this.saveToDBTx(txn, key.slice(0, current_index));
     }
-
-    // if (current_index === TIMESTAMP_LENGTH) {
-    //   this.unloadChildren();
-    // }
 
     return { status, txn };
   }
@@ -231,10 +224,6 @@ class TrieNode {
     // eslint-disable-next-line security/detect-non-literal-fs-filename
     const child = await this._getOrLoadChild(key.slice(0, current_index), char, db);
     const exists = (await child.exists(key, db, current_index + 1)) || false;
-
-    // if (current_index === TIMESTAMP_LENGTH) {
-    //   this.unloadChildren();
-    // }
 
     return exists;
   }
@@ -300,10 +289,6 @@ class TrieNode {
     const child = await this._getOrLoadChild(prefix.slice(0, current_index), char, db);
     const node = await child.getNode(prefix, db, current_index + 1);
 
-    // if (current_index === TIMESTAMP_LENGTH) {
-    //   this.unloadChildren();
-    // }
-
     return node;
   }
 
@@ -320,10 +305,6 @@ class TrieNode {
       });
     }
 
-    // if (prefix.length >= TIMESTAMP_LENGTH) {
-    //   this.unloadChildren();
-    // }
-
     return { prefix, children: result, numMessages: this.items, hash: Buffer.from(this.hash).toString('hex') };
   }
 
@@ -332,7 +313,6 @@ class TrieNode {
   }
 
   public async getAllValues(prefix: Uint8Array, db: RocksDB): Promise<Uint8Array[]> {
-    // TODO: Get this straight from the DB with an iterator
     if (this.isLeaf) {
       return this._key ? [this._key] : [];
     }
@@ -341,43 +321,15 @@ class TrieNode {
       const child = await this._getOrLoadChild(prefix, char, db);
       values.push(...(await child.getAllValues(Buffer.concat([prefix, Buffer.from([char])]), db)));
 
-      // if (current_index >= TIMESTAMP_LENGTH) {
-      //   this.unloadChildren();
-      // }
+      // Prevent this from growing indefinitely, since it could potentially load the whole trie.
+      // Limit to 1000 values.
+      if (values.length > MAX_VALUES_RETURNED_PER_CALL) {
+        break;
+      }
     }
 
     return values;
   }
-
-  // public async computeHash(prefix: Uint8Array, db: RocksDB): Promise<Uint8Array> {
-  //   if (this._hash.length === HASH_LENGTH) {
-  //     return this._hash;
-  //   }
-
-  //   let digest: Uint8Array;
-  //   if (this.isLeaf) {
-  //     digest = blake3Truncate160(this.value);
-  //     this._items = 1;
-  //   } else {
-  //     const hash = blake3.create({ dkLen: 20 });
-  //     let childItems = 0;
-  //     for (const [char] of this._children) {
-  //       const child = await this._getOrLoadChild(prefix, char, db);
-  //       const newPrefix = Buffer.concat([prefix, Buffer.from([char])]);
-  //       hash.update(await child.computeHash(newPrefix, db));
-  //       childItems += child.items;
-  //     }
-
-  //     this.unloadChildren();
-
-  //     digest = hash.digest();
-  //     this._items = childItems;
-  //   }
-
-  //   this._hash = digest;
-
-  //   return digest;
-  // }
 
   public unloadChildren() {
     // Replace all the children with SerializedTrieNodes. Make sure it include the hashes.
@@ -408,6 +360,7 @@ class TrieNode {
       // eslint-disable-next-line security/detect-object-injection
       trieNode._children.set(dbtrieNode.childChars[i] as number, new SerializedTrieNode());
     }
+    trieNode._children = new Map([...trieNode._children.entries()].sort());
 
     return trieNode;
   }
@@ -441,7 +394,7 @@ class TrieNode {
       const childPrefix = Buffer.concat([prefix, Buffer.from([char])]);
       const childKey = TrieNode.makePrimaryKey(childPrefix);
       const childBytes = await ResultAsync.fromPromise(db.get(childKey), (e) => {
-        return new Error(`Failed to load child node: ${e}`);
+        return new Error(`Failed to load child node: ${e}. Prefix: ${prefix.toString()}, char: ${char}`);
       });
       if (childBytes.isErr()) {
         // TODO: Should we throw here?
@@ -449,6 +402,10 @@ class TrieNode {
       } else {
         const childNode = TrieNode.deserialize(childBytes.value);
         this._children.set(char, childNode);
+
+        // Sort the child chars
+        this._children = new Map([...this._children.entries()].sort());
+
         return childNode;
       }
     }
@@ -531,6 +488,21 @@ class TrieNode {
     }
     this._hash = digest;
   }
+
+  // Commented out, but useful for debugging
+  // public async printTrie(prefix: Uint8Array, db: RocksDB): Promise<string> {
+  //   let r = `${Buffer.from(prefix).toString('hex')}, ${this.items}, ${Buffer.from(this._hash).toString(
+  //     'hex'
+  //   )}, ${Buffer.from(this.value || new Uint8Array()).toString('hex')} \n`;
+
+  //   for (const [char] of this._children) {
+  //     const child = await this._getOrLoadChild(prefix, char, db);
+  //     const newPrefix = Buffer.concat([prefix, Buffer.from([char])]);
+  //     r = r + (await child.printTrie(newPrefix, db));
+  //   }
+
+  //   return r;
+  // }
 }
 
 export { TrieNode };

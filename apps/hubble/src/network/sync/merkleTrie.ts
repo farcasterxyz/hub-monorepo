@@ -4,6 +4,8 @@ import { TrieNode, TrieSnapshot } from '~/network/sync/trieNode';
 import RocksDB from '~/storage/db/rocksdb';
 import { logger } from '~/utils/logger';
 
+const TRIE_UNLOAD_THRESHOLD = 1000;
+
 /**
  * Represents a node in the trie, and it's immediate children
  *
@@ -41,6 +43,8 @@ class MerkleTrie {
   private _db: RocksDB;
   private _lock: ReadWriteLock;
 
+  private _callsSinceLastUnload = 0;
+
   constructor(rocksDb: RocksDB) {
     this._db = rocksDb;
     this._lock = new ReadWriteLock();
@@ -49,21 +53,24 @@ class MerkleTrie {
   }
 
   public async initialize(): Promise<void> {
-    this._lock.writeLock(async (release) => {
-      try {
-        const rootBytes = await this._db.get(TrieNode.makePrimaryKey(new Uint8Array()));
-        if (rootBytes && rootBytes.length > 0) {
-          this._root = TrieNode.deserialize(rootBytes);
-          log.info(
-            { rootHash: Buffer.from(this._root.hash).toString('hex'), items: this.items },
-            'Merkle Trie loaded from DB'
-          );
+    return new Promise((resolve) => {
+      this._lock.writeLock(async (release) => {
+        try {
+          const rootBytes = await this._db.get(TrieNode.makePrimaryKey(new Uint8Array()));
+          if (rootBytes && rootBytes.length > 0) {
+            this._root = TrieNode.deserialize(rootBytes);
+            log.info(
+              { rootHash: Buffer.from(this._root.hash).toString('hex'), items: this.items },
+              'Merkle Trie loaded from DB'
+            );
+          }
+        } catch (e) {
+          // There is no Root node in the DB, just use an empty one
         }
-      } catch {
-        // There is no Root node in the DB, just use an empty one
-      }
 
-      release();
+        release();
+        resolve();
+      });
     });
   }
 
@@ -76,12 +83,14 @@ class MerkleTrie {
 
           // Write the transaction to the DB
           await this._db.commit(txn);
+          this._unloadFromMemory();
 
           release();
           resolve(status);
         } catch (e) {
           log.error('Insert Error', e);
 
+          this._unloadFromMemory();
           release();
           resolve(false);
         }
@@ -98,12 +107,14 @@ class MerkleTrie {
 
           // Write the transaction to the DB
           await this._db.commit(txn);
+          this._unloadFromMemory();
 
           release();
           resolve(status);
         } catch (e) {
           log.error('Delete Error', e);
 
+          this._unloadFromMemory();
           release();
           resolve(false);
         }
@@ -111,21 +122,35 @@ class MerkleTrie {
     });
   }
 
+  /**
+   * Check if the SyncId exists in the trie.
+   *
+   * Note: This method is only used in tests and benchmarks, and should not be needed in production.
+   */
   public async exists(id: SyncId): Promise<boolean> {
     return new Promise((resolve) => {
       this._lock.readLock(async (release) => {
         // eslint-disable-next-line security/detect-non-literal-fs-filename
         const r = await this._root.exists(id.syncId(), this._db);
+
+        this._unloadFromMemory();
+
         release();
         resolve(r);
       });
     });
   }
 
+  /**
+   * Get a snapshot of the trie at a given prefix.
+   */
   public async getSnapshot(prefix: Uint8Array): Promise<TrieSnapshot> {
     return new Promise((resolve) => {
       this._lock.readLock(async (release) => {
         const r = await this._root.getSnapshot(prefix, this._db);
+
+        this._unloadFromMemory();
+
         release();
         resolve(r);
       });
@@ -142,29 +167,39 @@ class MerkleTrie {
     return new Promise((resolve) => {
       this._lock.readLock(async (release) => {
         const ourExcludedHashes = (await this.getSnapshot(prefix)).excludedHashes;
+
+        this._unloadFromMemory();
+        release();
+
         for (let i = 0; i < prefix.length; i++) {
           // NOTE: `i` is controlled by for loop and hence not at risk of object injection.
           // eslint-disable-next-line security/detect-object-injection
           if (ourExcludedHashes[i] !== excludedHashes[i]) {
-            release();
             resolve(prefix.slice(0, i));
           }
         }
-        release();
         resolve(prefix);
       });
     });
   }
 
+  /**
+   * Get the metadata for a node in the trie at the given prefix.
+   */
   public async getTrieNodeMetadata(prefix: Uint8Array): Promise<NodeMetadata | undefined> {
     return new Promise((resolve) => {
       this._lock.readLock(async (release) => {
         const node = await this._root.getNode(prefix, this._db);
+
+        this._unloadFromMemory();
+
         if (node === undefined) {
           release();
           resolve(undefined);
         } else {
           const md = await node.getNodeMetadata(prefix, this._db);
+
+          this._unloadFromMemory();
           release();
           resolve(md);
         }
@@ -172,35 +207,37 @@ class MerkleTrie {
     });
   }
 
-  // public async recalculateHash(): Promise<Uint8Array> {
-  //   return new Promise((resolve) => {
-  //     this._lock.writeLock(async (release) => {
-  //       const r = await this._root.computeHash(new Uint8Array(), this._db);
-  //       release();
-  //       resolve(r);
-  //     });
-  //   });
-  // }
-
   public async getNode(prefix: Uint8Array): Promise<TrieNode | undefined> {
     return new Promise((resolve) => {
       this._lock.readLock(async (release) => {
         const r = await this._root.getNode(prefix, this._db);
+
+        this._unloadFromMemory();
+
         release();
         resolve(r);
       });
     });
   }
 
+  /**
+   * Get all the values at the prefix. This is a recursive operation.
+   * TODO: This method might become very expensive, since it loads all the nodes under the trie at the given prefix,
+   * so we should probably check the size of the trie before calling this method.
+   */
   public async getAllValues(prefix: Uint8Array): Promise<Uint8Array[]> {
     return new Promise((resolve) => {
       this._lock.readLock(async (release) => {
         const node = await this._root.getNode(prefix, this._db);
+        this._unloadFromMemory();
+
         if (node === undefined) {
           release();
           resolve([]);
         } else {
           const r = await node.getAllValues(prefix, this._db);
+
+          this._unloadFromMemory();
           release();
           resolve(r);
         }
@@ -224,6 +261,25 @@ class MerkleTrie {
         resolve(Buffer.from(this._root.hash).toString('hex'));
       });
     });
+  }
+
+  /**
+   * Check if we need to unload the trie from memory. This is not protected by a lock, since it is only called
+   * from within a lock.
+   */
+  private _unloadFromMemory(): void {
+    // Every TRIE_UNLOAD_THRESHOLD calls, we unload the trie from memory to avoid memory leaks.
+    // Every call in this class usually loads one root-to-leaf path of the trie, so
+    // we unload the trie from memory every 1000 calls. This allows us to keep the
+    // most recently used parts of the trie in memory, while still "garbage collecting"
+    // the rest of the trie.
+    if (this._callsSinceLastUnload >= TRIE_UNLOAD_THRESHOLD) {
+      this._callsSinceLastUnload = 0;
+      logger.info('Unloading trie from memory');
+      this._root.unloadChildren();
+    } else {
+      this._callsSinceLastUnload++;
+    }
   }
 }
 
