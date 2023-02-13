@@ -275,6 +275,14 @@ describe('validateCastAddBody', () => {
       body = Factories.CastAddBody.build({ mentions: [Factories.Fid.build()], mentionsPositions: [1.5] });
       hubErrorMessage = 'mentionsPositions must be integers';
     });
+
+    test('with out of order mentionsPositions', () => {
+      body = Factories.CastAddBody.build({
+        mentions: [Factories.Fid.build(), Factories.Fid.build()],
+        mentionsPositions: [2, 1],
+      });
+      hubErrorMessage = 'mentionsPositions must be sorted in ascending order';
+    });
   });
 });
 

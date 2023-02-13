@@ -280,10 +280,6 @@ export const validateCastAddBody = (body: protobufs.CastAddBody): HubResult<prot
     return err(new HubError('bad_request.validation_failure', 'mentions and mentionsPositions must match'));
   }
 
-  if (body.mentionsPositions.length > 0 && body.mentionsPositions.length !== new Set(body.mentionsPositions).size) {
-    return err(new HubError('bad_request.validation_failure', 'mentionsPositions must be unique'));
-  }
-
   for (let i = 0; i < body.mentions.length; i++) {
     // eslint-disable-next-line security/detect-object-injection
     const mention = validateFid(body.mentions[i]);
@@ -297,6 +293,18 @@ export const validateCastAddBody = (body: protobufs.CastAddBody): HubResult<prot
     }
     if (position < 0 || position > text.length) {
       return err(new HubError('bad_request.validation_failure', 'mentionsPositions must be a position in text'));
+    }
+    if (i > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const prevPosition = body.mentionsPositions[i - 1]!;
+      if (position === prevPosition) {
+        return err(new HubError('bad_request.validation_failure', 'mentionsPositions must be unique'));
+      }
+      if (position < prevPosition) {
+        return err(
+          new HubError('bad_request.validation_failure', 'mentionsPositions must be sorted in ascending order')
+        );
+      }
     }
   }
 
