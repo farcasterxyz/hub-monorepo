@@ -10,7 +10,7 @@ import {
   validations,
 } from '@farcaster/utils';
 import { blake3 } from '@noble/hashes/blake3';
-import { err, ok, ResultAsync } from 'neverthrow';
+import { err, ok, Result, ResultAsync } from 'neverthrow';
 import AbstractRocksDB from 'rocksdb';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { EthEventsProvider } from '~/eth/ethEventsProvider';
@@ -213,10 +213,17 @@ export class UpdateNameRegistryEventExpiryJobQueue extends TypedEmitter<JobQueue
         } else if (!key && !value) {
           resolve(err(new HubError('not_found', 'record not found')));
         } else {
-          const payload = protobufs.UpdateNameRegistryEventExpiryJobPayload.decode(Uint8Array.from(value as Buffer));
+          const payload = Result.fromThrowable(
+            () => protobufs.UpdateNameRegistryEventExpiryJobPayload.decode(Uint8Array.from(value as Buffer)),
+            (err) =>
+              new HubError('bad_request.parse_failure', {
+                cause: err as Error,
+                message: `Failed to parse UpdateNameRegistryEventExpiryJobPayload`,
+              })
+          )();
           // Delete job from rocksdb to prevent it from being done multiple times
           await this._db.del(key as Buffer);
-          resolve(ok(payload));
+          resolve(payload);
         }
       });
     });
