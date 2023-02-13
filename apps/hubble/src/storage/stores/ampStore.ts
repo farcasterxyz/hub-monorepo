@@ -1,6 +1,7 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesCompare, getFarcasterTime, HubAsyncResult, HubError } from '@farcaster/utils';
 import { err, ok, ResultAsync } from 'neverthrow';
+import ReadWriteLock from 'rwlock';
 import {
   deleteMessageTransaction,
   getAllMessagesBySigner,
@@ -96,6 +97,7 @@ class AmpStore extends SequentialMergeStore {
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
   private _pruneTimeLimit: number;
+  private _mergeLock: ReadWriteLock;
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
     super();
@@ -104,6 +106,7 @@ class AmpStore extends SequentialMergeStore {
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
     this._pruneTimeLimit = options.pruneTimeLimit ?? PRUNE_TIME_LIMIT_DEFAULT;
+    this._mergeLock = new ReadWriteLock();
   }
 
   /** Look up AmpAdd message by target user */
@@ -158,12 +161,22 @@ class AmpStore extends SequentialMergeStore {
       throw new HubError('bad_request.validation_failure', 'invalid amp message');
     }
 
-    const mergeResult = await this.mergeSequential(message);
-    if (mergeResult.isErr()) {
-      throw mergeResult.error;
-    }
-
-    return mergeResult.value;
+    return new Promise((resolve, reject) => {
+      this._mergeLock.writeLock(message.data.fid.toString(), async (release) => {
+        try {
+          if (protobufs.isAmpAddMessage(message)) {
+            await this.mergeAdd(message);
+          } else if (protobufs.isAmpRemoveMessage(message)) {
+            await this.mergeRemove(message);
+          }
+          release();
+          resolve(undefined);
+        } catch (e: unknown) {
+          release();
+          reject(e as HubError);
+        }
+      });
+    });
   }
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {

@@ -34,14 +34,14 @@ describe('mergeSequential', () => {
       );
     };
 
-    // Generate 10 cast removes with different timestamps
+    // Generate 100 cast removes with different timestamps
     const castRemoves: protobufs.CastRemoveMessage[] = [];
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 100; i++) {
       const castRemove = await generateCastRemove();
       castRemoves.push(castRemove);
     }
 
-    const messages = [castAdd, ...castRemoves, castAdd];
+    const messages = [castAdd, ...castRemoves, castAdd, castAdd];
 
     const promises = messages.map((message) => engine.mergeMessage(message));
 
@@ -60,7 +60,7 @@ describe('mergeSequential', () => {
     });
 
     const messages: protobufs.Message[] = [];
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 1000; i++) {
       if (Math.random() < 0.5) {
         messages.push(
           await Factories.ReactionAddMessage.create(

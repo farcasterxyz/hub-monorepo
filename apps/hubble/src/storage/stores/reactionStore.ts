@@ -1,6 +1,7 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesCompare, getFarcasterTime, HubAsyncResult, HubError } from '@farcaster/utils';
 import { err, ok, ResultAsync } from 'neverthrow';
+import ReadWriteLock from 'rwlock';
 import {
   deleteMessageTransaction,
   getAllMessagesBySigner,
@@ -21,6 +22,7 @@ import { FID_BYTES, RootPrefix, TRUE_VALUE, UserPostfix } from '~/storage/db/typ
 import SequentialMergeStore from '~/storage/stores/sequentialMergeStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { StorePruneOptions } from '~/storage/stores/types';
+import { sleep } from '~/utils/crypto';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 5_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
@@ -129,6 +131,7 @@ class ReactionStore extends SequentialMergeStore {
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
   private _pruneTimeLimit: number;
+  private _mergeLock: ReadWriteLock;
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
     super();
@@ -137,6 +140,7 @@ class ReactionStore extends SequentialMergeStore {
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
     this._pruneTimeLimit = options.pruneTimeLimit ?? PRUNE_TIME_LIMIT_DEFAULT;
+    this._mergeLock = new ReadWriteLock();
   }
 
   /* -------------------------------------------------------------------------- */
@@ -228,12 +232,23 @@ class ReactionStore extends SequentialMergeStore {
       throw new HubError('bad_request.validation_failure', 'invalid message type');
     }
 
-    const mergeResult = await this.mergeSequential(message);
-    if (mergeResult.isErr()) {
-      throw mergeResult.error;
-    }
-
-    return mergeResult.value;
+    return new Promise((resolve, reject) => {
+      this._mergeLock.writeLock(message.data.fid.toString(), async (release) => {
+        try {
+          if (protobufs.isReactionAddMessage(message)) {
+            await sleep(500);
+            await this.mergeAdd(message);
+          } else if (protobufs.isReactionRemoveMessage(message)) {
+            await this.mergeRemove(message);
+          }
+          release();
+          resolve(undefined);
+        } catch (e: unknown) {
+          release();
+          reject(e as HubError);
+        }
+      });
+    });
   }
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {
