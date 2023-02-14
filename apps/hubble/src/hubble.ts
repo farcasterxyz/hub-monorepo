@@ -249,13 +249,22 @@ export class Hub implements HubInterface {
   /** Stop the GossipNode and RPC Server */
   async stop() {
     clearInterval(this.contactTimer);
+
+    // First, stop the RPC server so we don't get any more messages
+    await this.rpcServer.stop();
+
+    // Stop cron tasks
     this.revokeSignerJobScheduler.stop();
     this.pruneMessagesJobScheduler.stop();
 
-    await this.syncEngine.stop();
-    await this.ethRegistryProvider.stop();
-    await this.rpcServer.stop();
+    // Stop sync and gossip
     await this.gossipNode.stop();
+    await this.syncEngine.stop();
+
+    // Stop the ETH registry provider
+    await this.ethRegistryProvider.stop();
+
+    // Close the DB, which will flush all data to disk
     await this.rocksDB.close();
   }
 
