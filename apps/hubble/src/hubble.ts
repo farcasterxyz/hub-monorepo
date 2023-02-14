@@ -24,7 +24,6 @@ import { publicAddressesFirst } from '@libp2p/utils/address-sort';
 import { Multiaddr, multiaddr } from '@multiformats/multiaddr';
 import { isIP } from 'net';
 import { Result, ResultAsync, err, ok } from 'neverthrow';
-import { TypedEmitter } from 'tiny-typed-emitter';
 import { EthEventsProvider, GoerliEthConstants } from '~/eth/ethEventsProvider';
 import { GossipNode } from '~/network/p2p/gossipNode';
 import { NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
@@ -117,19 +116,11 @@ const randomDbName = () => {
   return `rocksdb.tmp.${(new Date().getUTCDate() * Math.random()).toString(36).substring(2)}`;
 };
 
-interface HubEvents {
-  /** Emit an event when diff starts */
-  syncStart: () => void;
-
-  /** Emit an event when diff sync completes */
-  syncComplete: (success: boolean) => void;
-}
-
 const log = logger.child({
   component: 'Hub',
 });
 
-export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
+export class Hub implements HubInterface {
   private options: HubOptions;
   private gossipNode: GossipNode;
   private rpcServer: Server;
@@ -146,10 +137,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
   engine: Engine;
   ethRegistryProvider: EthEventsProvider;
 
-  private currentHubRpcClients: Map<string, HubRpcClient> = new Map();
-
   constructor(options: HubOptions) {
-    super();
     this.options = options;
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
     this.gossipNode = new GossipNode();
@@ -260,14 +248,26 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
 
   /** Stop the GossipNode and RPC Server */
   async stop() {
+    log.info('stopping hub...');
     clearInterval(this.contactTimer);
+
+    // First, stop the RPC server so we don't get any more messages
+    await this.rpcServer.stop();
+
+    // Stop cron tasks
     this.revokeSignerJobScheduler.stop();
     this.pruneMessagesJobScheduler.stop();
 
-    await this.ethRegistryProvider.stop();
-    await this.rpcServer.stop();
+    // Stop sync and gossip
     await this.gossipNode.stop();
+    await this.syncEngine.stop();
+
+    // Stop the ETH registry provider
+    await this.ethRegistryProvider.stop();
+
+    // Close the DB, which will flush all data to disk
     await this.rocksDB.close();
+    log.info('hub stopped');
   }
 
   async getHubState(): HubAsyncResult<HubState> {
@@ -300,7 +300,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
       const message = gossipMessage.message;
 
       // Get the RPC Client to use to merge this message
-      const rpcClient = this.currentHubRpcClients.get(peerId.toString());
+      const rpcClient = this.syncEngine.getRpcClientForPeerId(peerId.toString());
       if (rpcClient) {
         return this.syncEngine.mergeMessages([message], rpcClient).then((result) => result[0] as HubResult<void>);
       } else {
@@ -354,53 +354,14 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
 
     // Check if we already have this client
     if (rpcClient) {
-      if (this.currentHubRpcClients.has(peerId.toString())) {
+      if (this.syncEngine.getRpcClientForPeerId(peerId.toString())) {
         log.info('Already have this client, skipping sync');
         return;
       } else {
-        this.currentHubRpcClients.set(peerId.toString(), rpcClient);
-        await this.diffSyncIfRequired(message, rpcClient);
+        this.syncEngine.addRpcClientForPeerId(peerId.toString(), rpcClient);
+        await this.syncEngine.diffSyncIfRequired(peerId.toString());
       }
     }
-  }
-
-  private async diffSyncIfRequired(message: ContactInfoContent, rpcClient: HubRpcClient) {
-    this.emit('syncStart');
-    if (!rpcClient) {
-      log.warn(`No RPC client for peer, skipping sync`);
-      this.emit('syncComplete', false);
-      return;
-    }
-
-    // First, get the latest state from the peer
-    const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(
-      protobufs.TrieNodePrefix.create({ prefix: new Uint8Array() })
-    );
-    if (peerStateResult.isErr()) {
-      log.warn(`Failed to get peer state, skipping sync`);
-      this.emit('syncComplete', false);
-      return;
-    }
-
-    const peerState = peerStateResult.value;
-    const shouldSync = await this.syncEngine.shouldSync(peerState);
-    if (shouldSync.isErr()) {
-      log.warn(`Failed to get shouldSync`);
-      this.emit('syncComplete', false);
-      return;
-    }
-
-    if (shouldSync.value === true) {
-      log.info(`Syncing with peer`);
-      await this.syncEngine.performSync(peerState, rpcClient);
-    } else {
-      log.info(`No need to sync`);
-      this.emit('syncComplete', false);
-      return;
-    }
-
-    this.emit('syncComplete', false);
-    return;
   }
 
   private async getRPCClientForPeer(peerId: PeerId, peer: ContactInfoContent): Promise<HubRpcClient | undefined> {
@@ -517,7 +478,7 @@ export class Hub extends TypedEmitter<HubEvents> implements HubInterface {
 
     this.gossipNode.on('peerDisconnect', async (connection) => {
       // Remove this peer's connection
-      this.currentHubRpcClients.delete(connection.remotePeer.toString());
+      this.syncEngine.removeRpcClientForPeerId(connection.remotePeer.toString());
     });
   }
 

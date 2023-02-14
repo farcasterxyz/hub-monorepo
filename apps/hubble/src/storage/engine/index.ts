@@ -1,6 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesCompare, HubAsyncResult, HubError, HubResult, utf8StringToBytes, validations } from '@farcaster/utils';
-import { err, ok, ResultAsync } from 'neverthrow';
+import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { SyncId } from '~/network/sync/syncId';
 import { getManyMessages, typeToSetPostfix } from '~/storage/db/message';
 import RocksDB from '~/storage/db/rocksdb';
@@ -143,14 +143,14 @@ class Engine {
         continue;
       }
 
-      if (!value || value.length <= 20) {
-        // This is a hash and not a message, we need to skip it.
-        continue;
+      const message = Result.fromThrowable(
+        () => protobufs.Message.decode(new Uint8Array(value)),
+        (e) => e as HubError
+      )();
+
+      if (message.isOk()) {
+        await callback(message.value);
       }
-
-      const message = protobufs.Message.decode(new Uint8Array(value));
-
-      await callback(message);
     }
   }
   async getAllMessagesBySyncIds(syncIds: Uint8Array[]): HubAsyncResult<protobufs.Message[]> {

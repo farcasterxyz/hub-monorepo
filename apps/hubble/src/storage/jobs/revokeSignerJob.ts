@@ -188,7 +188,7 @@ export class RevokeSignerJobQueue {
     }
     for await (const [key, value] of iterator.value) {
       const timestamp = RevokeSignerJobQueue.jobKeyToTimestamp(key as Buffer);
-      const payload = protobufs.RevokeSignerJobPayload.decode(Uint8Array.from(value));
+      const payload = protobufs.RevokeSignerJobPayload.decode(Uint8Array.from(value as Buffer));
       if (timestamp.isOk()) {
         jobs.push([timestamp.value, payload]);
       }

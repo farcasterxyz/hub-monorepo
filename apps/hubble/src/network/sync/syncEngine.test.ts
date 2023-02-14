@@ -45,6 +45,10 @@ describe('SyncEngine', () => {
     syncEngine = new SyncEngine(engine, testDb);
   });
 
+  afterEach(async () => {
+    await syncEngine.stop();
+  });
+
   const addMessagesWithTimestamps = async (timestamps: number[]) => {
     const results = await Promise.all(
       timestamps.map(async (t) => {
@@ -188,6 +192,8 @@ describe('SyncEngine', () => {
 
     // Roothashes must match
     expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
+
+    await syncEngine2.stop();
   });
 
   test('snapshotTimestampPrefix trims the seconds', async () => {
@@ -267,6 +273,8 @@ describe('SyncEngine', () => {
     expect(await syncEngine2.trie.exists(new SyncId(messages[0] as protobufs.Message))).toBeTruthy();
     expect(await syncEngine2.trie.exists(new SyncId(messages[1] as protobufs.Message))).toBeTruthy();
     expect(await syncEngine2.trie.exists(new SyncId(messages[2] as protobufs.Message))).toBeTruthy();
+
+    await syncEngine2.stop();
   });
 
   test('getSnapshot should use a prefix of 10-seconds resolution timestamp', async () => {

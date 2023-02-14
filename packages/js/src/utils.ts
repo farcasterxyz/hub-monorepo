@@ -218,6 +218,7 @@ export const deserializeCastAddBody = (protobuf: protobufs.CastAddBody): HubResu
     text: protobuf.text,
     embeds: protobuf.embeds,
     mentions: protobuf.mentions,
+    mentionsPositions: protobuf.mentionsPositions,
     parent: parent.value,
   });
 };
@@ -232,6 +233,7 @@ export const serializeCastAddBody = (body: types.CastAddBody): HubResult<protobu
     protobufs.CastAddBody.create({
       embeds: body.embeds ?? [],
       mentions: body.mentions ?? [],
+      mentionsPositions: body.mentionsPositions ?? [],
       parentCastId: parent.value,
       text: body.text,
     })

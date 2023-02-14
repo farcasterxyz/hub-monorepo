@@ -239,6 +239,11 @@ class TrieNode {
     for (let i = currentIndex; i < prefix.length; i++) {
       const currentPrefix = prefix.subarray(0, i);
       const char = prefix.at(i) as number;
+
+      const excludedHash = await currentNode._excludedHash(currentPrefix, char, db);
+      excludedHashes.push(excludedHash.hash);
+      numMessages += excludedHash.items;
+
       if (!currentNode._children.has(char)) {
         return {
           prefix: currentPrefix,
@@ -246,11 +251,11 @@ class TrieNode {
           numMessages,
         };
       }
-      const excludedHash = await currentNode._excludedHash(currentPrefix, char, db);
-      excludedHashes.push(excludedHash.hash);
-      numMessages += excludedHash.items;
       currentNode = await currentNode._getOrLoadChild(currentPrefix, char, db);
     }
+
+    excludedHashes.push(Buffer.from(currentNode.hash).toString('hex'));
+
     return {
       prefix,
       excludedHashes,
