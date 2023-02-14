@@ -248,6 +248,7 @@ export class Hub implements HubInterface {
 
   /** Stop the GossipNode and RPC Server */
   async stop() {
+    log.info('stopping hub...');
     clearInterval(this.contactTimer);
 
     // First, stop the RPC server so we don't get any more messages
@@ -266,6 +267,7 @@ export class Hub implements HubInterface {
 
     // Close the DB, which will flush all data to disk
     await this.rocksDB.close();
+    log.info('hub stopped');
   }
 
   async getHubState(): HubAsyncResult<HubState> {
