@@ -15,8 +15,9 @@ import { TrieSnapshot } from '~/network/sync/trieNode';
 import RocksDB from '~/storage/db/rocksdb';
 
 import Engine from '~/storage/engine';
+import { sleepWhile } from '~/utils/crypto';
 import { logger } from '~/utils/logger';
-import { PeriodicSyncJobScheduler } from './periodSyncJob';
+import { PeriodicSyncJobScheduler } from './periodicSyncJob';
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
@@ -100,6 +101,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
   public async stop() {
     this.periodSyncJobScheduler.stop();
+
+    // Wait for syncing to stop.
+    await sleepWhile(() => this._isSyncing, 10 * 1000);
+    await sleepWhile(() => this.messagesQueuedForSync > 0, 10 * 1000);
   }
 
   public isSyncing(): boolean {
