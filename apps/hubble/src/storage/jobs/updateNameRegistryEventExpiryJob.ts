@@ -108,7 +108,7 @@ export class UpdateNameRegistryEventExpiryJobQueue extends TypedEmitter<JobQueue
   }
 
   static jobKeyPrefix(): Buffer {
-    return Buffer.from([RootPrefix.JobRevokeSigner]);
+    return Buffer.from([RootPrefix.JobUpdateNameExpiry]);
   }
 
   static jobKeyToTimestamp(key: Buffer): HubResult<number> {

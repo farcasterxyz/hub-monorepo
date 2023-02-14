@@ -8,7 +8,7 @@ const log = logger.child({
 
 type SchedulerStatus = 'started' | 'stopped';
 
-const DEFAULT_PERIODIC_JOB_CRON = '* */2 * * * *'; // Every 2 minutes
+const DEFAULT_PERIODIC_JOB_CRON = '*/2 * * * *'; // Every 2 minutes
 
 export class PeriodicSyncJobScheduler {
   private _syncEngine: SyncEngine;
