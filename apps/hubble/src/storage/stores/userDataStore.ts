@@ -117,7 +117,7 @@ class UserDataStore {
 
     // When there is a NameRegistryEvent, we need to check if we need to revoke UserDataAdd messages from the
     // previous owner of the name.
-    if (event.from) {
+    if (event.type === protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER && event.from) {
       // Check to see if the from address has an fid
       const idRegistryEvent = await ResultAsync.fromPromise(
         getIdRegistryEventByCustodyAddress(this._db, event.from),

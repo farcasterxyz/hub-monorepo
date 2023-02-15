@@ -1,10 +1,11 @@
 import { Event } from '@ethersproject/contracts';
 import { BaseProvider, Block, TransactionReceipt, TransactionResponse } from '@ethersproject/providers';
 import * as protobufs from '@farcaster/protobufs';
-import { Factories, bytesToHexString, hexStringToBytes } from '@farcaster/utils';
+import { Factories, hexStringToBytes } from '@farcaster/utils';
 import { BigNumber, Contract, utils } from 'ethers';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
 import { EthEventsProvider } from '~/eth/ethEventsProvider';
+import { bytesToBytes32 } from '~/eth/utils';
 import { getIdRegistryEvent } from '~/storage/db/idRegistryEvent';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { getNameRegistryEvent } from '~/storage/db/nameRegistryEvent';
@@ -163,7 +164,7 @@ describe('process events', () => {
       'Transfer',
       '0x000001',
       '0x000002',
-      BigNumber.from(bytesToHexString(fname)._unsafeUnwrap()),
+      bytesToBytes32(fname)._unsafeUnwrap(),
       new MockEvent(blockNumber++, '0xb00001', '0x400001', 0)
     );
     expect(rTransfer).toBeTruthy();
@@ -177,25 +178,25 @@ describe('process events', () => {
     // The event is now available
     expect((await getNameRegistryEvent(db, fname)).fname).toEqual(fname);
 
-    // // Renew the fname
-    // mockNameRegistry.emit(
-    //   'Renew',
-    //   BigNumber.from(bytesToHexString(fname)._unsafeUnwrap()),
-    //   BigNumber.from(1000),
-    //   new MockEvent(blockNumber++, '0xb00002', '0x400002', 0)
-    // );
-    // // The event is not immediately available, since it has to wait for confirmations. We should still get the Transfer event
-    // expect((await getNameRegistryEvent(db, fname)).type).toEqual(
-    //   protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER
-    // );
+    // Renew the fname
+    mockNameRegistry.emit(
+      'Renew',
+      bytesToBytes32(fname)._unsafeUnwrap(),
+      BigNumber.from(Date.now() + 1000),
+      new MockEvent(blockNumber++, '0xb00002', '0x400002', 0)
+    );
+    // The event is not immediately available, since it has to wait for confirmations. We should still get the Transfer event
+    expect(await getNameRegistryEvent(db, fname)).toMatchObject({
+      type: protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER,
+    });
 
-    // // Add 6 confirmations
-    // blockNumber = await addBlocks(blockNumber, 6);
+    // Add 6 confirmations
+    blockNumber = await addBlocks(blockNumber, 6);
 
-    // // The renew event is now available
-    // expect((await getNameRegistryEvent(db, fname)).fname).toEqual(fname);
-    // expect((await getNameRegistryEvent(db, fname)).type).toEqual(
-    //   protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_RENEW
-    // );
+    // The renew event is now available
+    expect(await getNameRegistryEvent(db, fname)).toMatchObject({
+      fname,
+      type: protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_RENEW,
+    });
   });
 });

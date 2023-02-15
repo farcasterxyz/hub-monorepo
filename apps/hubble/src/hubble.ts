@@ -53,6 +53,7 @@ export const APP_VERSION = process.env['npm_package_version'] ?? '1.0.0';
 export const APP_NICKNAME = 'Farcaster Hub';
 
 export interface HubInterface {
+  engine: Engine;
   submitMessage(message: protobufs.Message, source?: HubSubmitSource): HubAsyncResult<void>;
   submitIdRegistryEvent(event: protobufs.IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<void>;
   submitNameRegistryEvent(event: protobufs.NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<void>;
