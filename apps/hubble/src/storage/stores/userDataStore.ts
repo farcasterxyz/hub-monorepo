@@ -1,5 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, HubAsyncResult, HubError } from '@farcaster/utils';
+import { bytesCompare, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
+import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
 import { getIdRegistryEventByCustodyAddress } from '~/storage/db/idRegistryEvent';
 import {
@@ -17,9 +18,8 @@ import {
 import { getNameRegistryEvent, putNameRegistryEventTransaction } from '~/storage/db/nameRegistryEvent';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { UserPostfix } from '~/storage/db/types';
-import SequentialMergeStore from '~/storage/stores/sequentialMergeStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import { StorePruneOptions } from '~/storage/stores/types';
+import { MERGE_TIMEOUT_DEFAULT, StorePruneOptions } from '~/storage/stores/types';
 import { eventCompare } from '~/storage/stores/utils';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
@@ -58,17 +58,17 @@ const makeUserDataAddsKey = (fid: number, dataType?: protobufs.UserDataType): Bu
  * 1. fid:tsHash -> cast message
  * 2. fid:set:datatype -> fid:tsHash (adds set index)
  */
-class UserDataStore extends SequentialMergeStore {
+class UserDataStore {
   private _db: RocksDB;
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
+  private _mergeLock: AsyncLock;
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
-    super();
-
     this._db = db;
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
+    this._mergeLock = new AsyncLock();
   }
 
   /**
@@ -155,12 +155,17 @@ class UserDataStore extends SequentialMergeStore {
       throw new HubError('bad_request.validation_failure', 'invalid message type');
     }
 
-    const mergeResult = await this.mergeSequential(message);
-    if (mergeResult.isErr()) {
-      throw mergeResult.error;
-    }
-
-    return mergeResult.value;
+    return this._mergeLock
+      .acquire(
+        message.data.fid.toString(),
+        async () => {
+          return this.mergeDataAdd(message);
+        },
+        { timeout: MERGE_TIMEOUT_DEFAULT }
+      )
+      .catch((e: any) => {
+        throw isHubError(e) ? e : new HubError('unavailable.storage_failure', 'merge timed out');
+      });
   }
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {
@@ -243,14 +248,6 @@ class UserDataStore extends SequentialMergeStore {
     }
 
     return ok(undefined);
-  }
-
-  protected async mergeFromSequentialQueue(message: protobufs.Message): Promise<void> {
-    if (protobufs.isUserDataAddMessage(message)) {
-      return this.mergeDataAdd(message);
-    } else {
-      throw new HubError('bad_request.validation_failure', 'invalid message type');
-    }
   }
 
   /* -------------------------------------------------------------------------- */

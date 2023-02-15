@@ -1,7 +1,7 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, getFarcasterTime, HubAsyncResult, HubError } from '@farcaster/utils';
+import { bytesCompare, getFarcasterTime, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
+import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
-import ReadWriteLock from 'rwlock';
 import {
   deleteMessageTransaction,
   getAllMessagesBySigner,
@@ -20,7 +20,7 @@ import {
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { FID_BYTES, RootPrefix, TRUE_VALUE, UserPostfix } from '~/storage/db/types';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import { StorePruneOptions } from '~/storage/stores/types';
+import { MERGE_TIMEOUT_DEFAULT, StorePruneOptions } from '~/storage/stores/types';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 10_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 365; // 1 year
@@ -117,14 +117,14 @@ class CastStore {
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
   private _pruneTimeLimit: number;
-  private _mergeLock: ReadWriteLock;
+  private _mergeLock: AsyncLock;
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
     this._db = db;
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
     this._pruneTimeLimit = options.pruneTimeLimit ?? PRUNE_TIME_LIMIT_DEFAULT;
-    this._mergeLock = new ReadWriteLock();
+    this._mergeLock = new AsyncLock();
   }
 
   /** Looks up CastAdd message by cast tsHash */
@@ -193,22 +193,21 @@ class CastStore {
       throw new HubError('bad_request.validation_failure', 'invalid message type');
     }
 
-    return new Promise((resolve, reject) => {
-      this._mergeLock.writeLock(message.data.fid.toString(), async (release) => {
-        try {
+    return this._mergeLock
+      .acquire(
+        message.data.fid.toString(),
+        async () => {
           if (protobufs.isCastAddMessage(message)) {
-            await this.mergeAdd(message);
+            return this.mergeAdd(message);
           } else if (protobufs.isCastRemoveMessage(message)) {
-            await this.mergeRemove(message);
+            return this.mergeRemove(message);
           }
-          release();
-          resolve(undefined);
-        } catch (e: unknown) {
-          release();
-          reject(e as HubError);
-        }
+        },
+        { timeout: MERGE_TIMEOUT_DEFAULT }
+      )
+      .catch((e: any) => {
+        throw isHubError(e) ? e : new HubError('unavailable.storage_failure', 'merge timed out');
       });
-    });
   }
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {
@@ -318,16 +317,6 @@ class CastStore {
     }
 
     return ok(undefined);
-  }
-
-  protected async mergeFromSequentialQueue(message: protobufs.Message): Promise<void> {
-    if (protobufs.isCastAddMessage(message)) {
-      return this.mergeAdd(message);
-    } else if (protobufs.isCastRemoveMessage(message)) {
-      return this.mergeRemove(message);
-    } else {
-      throw new HubError('bad_request.validation_failure', 'invalid message type');
-    }
   }
 
   /* -------------------------------------------------------------------------- */

@@ -1,7 +1,7 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, getFarcasterTime, HubAsyncResult, HubError } from '@farcaster/utils';
+import { bytesCompare, getFarcasterTime, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
+import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
-import ReadWriteLock from 'rwlock';
 import {
   deleteMessageTransaction,
   getAllMessagesBySigner,
@@ -19,10 +19,8 @@ import {
 } from '~/storage/db/message';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { FID_BYTES, RootPrefix, TRUE_VALUE, UserPostfix } from '~/storage/db/types';
-import SequentialMergeStore from '~/storage/stores/sequentialMergeStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import { StorePruneOptions } from '~/storage/stores/types';
-import { sleep } from '~/utils/crypto';
+import { MERGE_TIMEOUT_DEFAULT, StorePruneOptions } from '~/storage/stores/types';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 5_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
@@ -126,21 +124,19 @@ const makeReactionsByTargetKey = (
  * 2. fid:set:targetCastTsHash:reactionType -> fid:tsHash (Set Index)
  * 3. reactionTarget:reactionType:targetCastTsHash -> fid:tsHash (Target Index)
  */
-class ReactionStore extends SequentialMergeStore {
+class ReactionStore {
   private _db: RocksDB;
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
   private _pruneTimeLimit: number;
-  private _mergeLock: ReadWriteLock;
+  private _mergeLock: AsyncLock;
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
-    super();
-
     this._db = db;
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
     this._pruneTimeLimit = options.pruneTimeLimit ?? PRUNE_TIME_LIMIT_DEFAULT;
-    this._mergeLock = new ReadWriteLock();
+    this._mergeLock = new AsyncLock();
   }
 
   /* -------------------------------------------------------------------------- */
@@ -232,23 +228,21 @@ class ReactionStore extends SequentialMergeStore {
       throw new HubError('bad_request.validation_failure', 'invalid message type');
     }
 
-    return new Promise((resolve, reject) => {
-      this._mergeLock.writeLock(message.data.fid.toString(), async (release) => {
-        try {
+    return this._mergeLock
+      .acquire(
+        message.data.fid.toString(),
+        async () => {
           if (protobufs.isReactionAddMessage(message)) {
-            await sleep(500);
-            await this.mergeAdd(message);
+            return this.mergeAdd(message);
           } else if (protobufs.isReactionRemoveMessage(message)) {
-            await this.mergeRemove(message);
+            return this.mergeRemove(message);
           }
-          release();
-          resolve(undefined);
-        } catch (e: unknown) {
-          release();
-          reject(e as HubError);
-        }
+        },
+        { timeout: MERGE_TIMEOUT_DEFAULT }
+      )
+      .catch((e: any) => {
+        throw isHubError(e) ? e : new HubError('unavailable.storage_failure', 'merge timed out');
       });
-    });
   }
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {
@@ -358,20 +352,6 @@ class ReactionStore extends SequentialMergeStore {
     }
 
     return ok(undefined);
-  }
-
-  /* -------------------------------------------------------------------------- */
-  /*                              Abstract Methods                              */
-  /* -------------------------------------------------------------------------- */
-
-  protected async mergeFromSequentialQueue(message: protobufs.Message): Promise<void> {
-    if (protobufs.isReactionAddMessage(message)) {
-      return this.mergeAdd(message);
-    } else if (protobufs.isReactionRemoveMessage(message)) {
-      return this.mergeRemove(message);
-    } else {
-      throw new HubError('bad_request.validation_failure', 'invalid message type');
-    }
   }
 
   /* -------------------------------------------------------------------------- */
