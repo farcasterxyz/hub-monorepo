@@ -5,12 +5,12 @@ import { Factories, hexStringToBytes } from '@farcaster/utils';
 import { BigNumber, Contract, utils } from 'ethers';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
 import { EthEventsProvider } from '~/eth/ethEventsProvider';
+import { bytesToBytes32 } from '~/eth/utils';
 import { getIdRegistryEvent } from '~/storage/db/idRegistryEvent';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { getNameRegistryEvent } from '~/storage/db/nameRegistryEvent';
 import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
-import { bytesToBytes32 } from './utils';
 
 const db = jestRocksDB('flatbuffers.ethEventsProvider.test');
 const engine = new Engine(db, protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET);
