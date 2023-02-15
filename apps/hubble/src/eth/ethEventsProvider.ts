@@ -18,7 +18,7 @@ export class GoerliEthConstants {
   public static ChunkSize = 10000;
 }
 
-type NameRegistryRenewEvent = { fname: Uint8Array; expiry: number };
+type NameRegistryRenewEvent = Omit<protobufs.NameRegistryEvent, 'to' | 'from'>;
 
 /**
  * Class that follows the Ethereum chain to handle on-chain events from the ID Registry and Name Registry contracts.
@@ -75,13 +75,7 @@ export class EthEventsProvider {
 
     // Setup NameRegistry contract
     this._nameRegistryContract.on('Transfer', (from: string, to: string, tokenId: BigNumber, event: Event) => {
-      this.cacheNameRegistryEvent(
-        from,
-        to,
-        tokenId,
-        protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER,
-        event
-      );
+      this.cacheNameRegistryEvent(from, to, tokenId, event);
     });
 
     this._nameRegistryContract.on('Renew', (tokenId: BigNumber, expiry: BigNumber, event: Event) => {
@@ -351,7 +345,7 @@ export class EthEventsProvider {
             const from: string = event.args?.at(0);
             const to: string = event.args?.at(1);
             const tokenId: BigNumber = BigNumber.from(event.args?.at(2));
-            await this.cacheNameRegistryEvent(from, to, tokenId, type, event);
+            await this.cacheNameRegistryEvent(from, to, tokenId, event);
           } catch (e) {
             log.error({ event }, 'failed to parse event args');
           }
@@ -365,7 +359,11 @@ export class EthEventsProvider {
     log.info({ blockNumber }, `new block: ${blockNumber}`);
 
     // Get all blocks that have been confirmed into a single array and sort.
-    const cachedBlocksSet = new Set([...this._nameEventsByBlock.keys(), ...this._idEventsByBlock.keys()]);
+    const cachedBlocksSet = new Set([
+      ...this._nameEventsByBlock.keys(),
+      ...this._idEventsByBlock.keys(),
+      ...this._renewEventsByBlock.keys(),
+    ]);
     const cachedBlocks = Array.from(cachedBlocksSet);
     cachedBlocks.sort();
 
@@ -402,8 +400,7 @@ export class EthEventsProvider {
 
             const updatedEvent: protobufs.NameRegistryEvent = {
               ...nameRegistryEvent.value,
-              expiry: renewEvent.expiry,
-              type: protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_RENEW,
+              ...renewEvent,
             };
 
             await this._hub.submitNameRegistryEvent(updatedEvent);
@@ -482,7 +479,6 @@ export class EthEventsProvider {
     from: string,
     to: string,
     tokenId: BigNumber,
-    type: protobufs.NameRegistryEventType,
     event: Event
   ): HubAsyncResult<void> {
     const { blockNumber, blockHash, transactionHash, logIndex } = event;
@@ -524,7 +520,7 @@ export class EthEventsProvider {
       fname: fnameBytes.value,
       from: fromBytes.value ?? new Uint8Array(),
       to: toBytes.value,
-      type,
+      type: protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER,
     });
 
     // Add it to the cache
@@ -539,11 +535,21 @@ export class EthEventsProvider {
   }
 
   private async cacheRenewEvent(tokenId: BigNumber, expiry: BigNumber, event: Event): HubAsyncResult<void> {
-    const { blockNumber } = event;
+    const { blockHash, transactionHash, blockNumber, logIndex } = event;
     log.info(
       { event: { blockNumber } },
       `cacheNameRegistryEvent: token id ${tokenId.toString()} renewed in block ${blockNumber}`
     );
+
+    const blockHashBytes = hexStringToBytes(blockHash);
+    if (blockHashBytes.isErr()) {
+      return err(blockHashBytes.error);
+    }
+
+    const transactionHashBytes = hexStringToBytes(transactionHash);
+    if (transactionHashBytes.isErr()) {
+      return err(transactionHashBytes.error);
+    }
 
     const fnameBytes = bytes32ToBytes(tokenId);
     if (fnameBytes.isErr()) {
@@ -555,8 +561,13 @@ export class EthEventsProvider {
       return err(farcasterTimeExpiry.error);
     }
 
-    const renewEvent = {
+    const renewEvent: NameRegistryRenewEvent = {
+      blockNumber,
+      blockHash: blockHashBytes.value,
+      transactionHash: transactionHashBytes.value,
+      logIndex,
       fname: fnameBytes.value,
+      type: protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_RENEW,
       expiry: farcasterTimeExpiry.value,
     };
 
