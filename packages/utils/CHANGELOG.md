@@ -1,5 +1,17 @@
 # @farcaster/utils
 
+## 0.2.3
+
+### Patch Changes
+
+- d21a8f2: chore: upgrade packages [feb 2023]
+- 6a66bae: feat: add mentionsPositions to CastAddBody
+- 1151fea: feat: update farcaster epoch to Jan 1, 2021
+- Updated dependencies [d21a8f2]
+- Updated dependencies [6a66bae]
+- Updated dependencies [cf9c64c]
+  - @farcaster/protobufs@0.1.4
+
 ## 0.2.2
 
 ### Patch Changes
