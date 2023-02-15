@@ -1,6 +1,8 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, HubAsyncResult, HubError } from '@farcaster/utils';
+import { bytesCompare, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
+import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
+import { getIdRegistryEvent, putIdRegistryEvent } from '~/storage/db/idRegistryEvent';
 import {
   deleteMessageTransaction,
   getAllMessagesBySigner,
@@ -15,11 +17,9 @@ import {
 } from '~/storage/db/message';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix, UserPostfix } from '~/storage/db/types';
-import SequentialMergeStore from '~/storage/stores/sequentialMergeStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import { StorePruneOptions } from '~/storage/stores/types';
-import { getIdRegistryEvent, putIdRegistryEvent } from '../db/idRegistryEvent';
-import { eventCompare } from './utils';
+import { MERGE_TIMEOUT_DEFAULT, StorePruneOptions } from '~/storage/stores/types';
+import { eventCompare } from '~/storage/stores/utils';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 
@@ -81,17 +81,17 @@ const makeSignerRemovesKey = (fid: number, signerPubKey?: Uint8Array): Buffer =>
  * 1. fid:tsHash -> signer message
  * 2. fid:set:signerAddress -> fid:tsHash (Set Index)
  */
-class SignerStore extends SequentialMergeStore {
+class SignerStore {
   private _db: RocksDB;
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
+  private _mergeLock: AsyncLock;
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
-    super();
-
     this._db = db;
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
+    this._mergeLock = new AsyncLock();
   }
 
   /** Returns the most recent event from the IdRegistry contract that affected the fid  */
@@ -186,12 +186,21 @@ class SignerStore extends SequentialMergeStore {
       throw new HubError('bad_request.validation_failure', 'invalid message type');
     }
 
-    const mergeResult = await this.mergeSequential(message);
-    if (mergeResult.isErr()) {
-      throw mergeResult.error;
-    }
-
-    return mergeResult.value;
+    return this._mergeLock
+      .acquire(
+        message.data.fid.toString(),
+        async () => {
+          if (protobufs.isSignerAddMessage(message)) {
+            return this.mergeAdd(message);
+          } else if (protobufs.isSignerRemoveMessage(message)) {
+            return this.mergeRemove(message);
+          }
+        },
+        { timeout: MERGE_TIMEOUT_DEFAULT }
+      )
+      .catch((e: any) => {
+        throw isHubError(e) ? e : new HubError('unavailable.storage_failure', 'merge timed out');
+      });
   }
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {
@@ -294,16 +303,6 @@ class SignerStore extends SequentialMergeStore {
     }
 
     return ok(undefined);
-  }
-
-  protected async mergeFromSequentialQueue(message: protobufs.Message): Promise<void> {
-    if (protobufs.isSignerAddMessage(message)) {
-      return this.mergeAdd(message);
-    } else if (protobufs.isSignerRemoveMessage(message)) {
-      return this.mergeRemove(message);
-    } else {
-      throw new HubError('bad_request.validation_failure', 'invalid message type');
-    }
   }
 
   /* -------------------------------------------------------------------------- */
