@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { hexStringToBytes, HubAsyncResult } from '@farcaster/utils';
+import { hexStringToBytes, HubAsyncResult, toFarcasterTime } from '@farcaster/utils';
 import { BigNumber, Contract, Event, providers } from 'ethers';
 import { err, ok, ResultAsync } from 'neverthrow';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
@@ -18,6 +18,8 @@ export class GoerliEthConstants {
   public static ChunkSize = 10000;
 }
 
+type NameRegistryRenewEvent = { fname: Uint8Array; expiry: number };
+
 /**
  * Class that follows the Ethereum chain to handle on-chain events from the ID Registry and Name Registry contracts.
  */
@@ -32,6 +34,7 @@ export class EthEventsProvider {
 
   private _idEventsByBlock: Map<number, Array<protobufs.IdRegistryEvent>>;
   private _nameEventsByBlock: Map<number, Array<protobufs.NameRegistryEvent>>;
+  private _renewEventsByBlock: Map<number, Array<NameRegistryRenewEvent>>;
 
   private _lastBlockNumber: number;
 
@@ -60,6 +63,7 @@ export class EthEventsProvider {
     // numConfirmations blocks have been mined.
     this._nameEventsByBlock = new Map();
     this._idEventsByBlock = new Map();
+    this._renewEventsByBlock = new Map();
 
     // Setup IdRegistry contract
     this._idRegistryContract.on('Register', (to: string, id: BigNumber, _recovery, _url, event: Event) => {
@@ -80,10 +84,9 @@ export class EthEventsProvider {
       );
     });
 
-    // TODO: handle Renew events separately from Transfer events
-    // this._nameRegistryContract.on('Renew', (tokenId: BigNumber, expiry: BigNumber, event: Event) => {
-    //   this.cacheNameRegistryEvent('', '', tokenId, flatbuffers.NameRegistryEventType.NameRegistryRenew, expiry, event);
-    // });
+    this._nameRegistryContract.on('Renew', (tokenId: BigNumber, expiry: BigNumber, event: Event) => {
+      this.cacheRenewEvent(tokenId, expiry, event);
+    });
 
     // Set up block listener to confirm blocks
     this._jsonRpcProvider.on('block', (blockNumber: number) => this.handleNewBlock(blockNumber));
@@ -194,7 +197,9 @@ export class EthEventsProvider {
       toBlock,
       GoerliEthConstants.ChunkSize
     );
-    // TODO: sync old Name Renew events
+
+    // We don't need to sync historical Renew events because the expiry
+    // is pulled when NameRegistryEvents are merged
 
     this._isHistoricalSyncDone = true;
   }
@@ -350,8 +355,6 @@ export class EthEventsProvider {
           } catch (e) {
             log.error({ event }, 'failed to parse event args');
           }
-        } else if (type === protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_RENEW) {
-          // TODO: create NameRegistryEvent using attributes of Renew events and previous Transfer event
         }
       }
     }
@@ -383,6 +386,27 @@ export class EthEventsProvider {
         if (nameEvents) {
           for (const nameEvent of nameEvents) {
             await this._hub.submitNameRegistryEvent(nameEvent, 'eth-provider');
+          }
+        }
+
+        const renewEvents = this._renewEventsByBlock.get(cachedBlock);
+        this._renewEventsByBlock.delete(cachedBlock);
+
+        if (renewEvents) {
+          for (const renewEvent of renewEvents) {
+            const nameRegistryEvent = await this._hub.engine.getNameRegistryEvent(renewEvent.fname);
+            if (nameRegistryEvent.isErr()) {
+              // TODO
+              continue;
+            }
+
+            const updatedEvent: protobufs.NameRegistryEvent = {
+              ...nameRegistryEvent.value,
+              expiry: renewEvent.expiry,
+              type: protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_RENEW,
+            };
+
+            await this._hub.submitNameRegistryEvent(updatedEvent);
           }
         }
       }
@@ -510,6 +534,39 @@ export class EthEventsProvider {
       this._nameEventsByBlock.set(blockNumber, nameEvents);
     }
     nameEvents.push(nameRegistryEvent);
+
+    return ok(undefined);
+  }
+
+  private async cacheRenewEvent(tokenId: BigNumber, expiry: BigNumber, event: Event): HubAsyncResult<void> {
+    const { blockNumber } = event;
+    log.info(
+      { event: { blockNumber } },
+      `cacheNameRegistryEvent: token id ${tokenId.toString()} renewed in block ${blockNumber}`
+    );
+
+    const fnameBytes = bytes32ToBytes(tokenId);
+    if (fnameBytes.isErr()) {
+      return err(fnameBytes.error);
+    }
+
+    const farcasterTimeExpiry = toFarcasterTime(expiry.toNumber());
+    if (farcasterTimeExpiry.isErr()) {
+      return err(farcasterTimeExpiry.error);
+    }
+
+    const renewEvent = {
+      fname: fnameBytes.value,
+      expiry: farcasterTimeExpiry.value,
+    };
+
+    // Add it to the cache
+    let renewEvents = this._renewEventsByBlock.get(blockNumber);
+    if (!renewEvents) {
+      renewEvents = [];
+      this._renewEventsByBlock.set(blockNumber, renewEvents);
+    }
+    renewEvents.push(renewEvent);
 
     return ok(undefined);
   }
