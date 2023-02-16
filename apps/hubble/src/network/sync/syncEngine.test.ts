@@ -267,7 +267,28 @@ describe('SyncEngine', () => {
     const syncEngine2 = new SyncEngine(engine, testDb);
     await syncEngine2.initialize();
 
-    // There might be more messages related to user creation, but it's sufficient to check for casts
+    // Make sure all messages exist
+    expect(await syncEngine2.trie.items()).toEqual(4);
+    expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
+    expect(await syncEngine2.trie.exists(new SyncId(messages[0] as protobufs.Message))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(new SyncId(messages[1] as protobufs.Message))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(new SyncId(messages[2] as protobufs.Message))).toBeTruthy();
+
+    await syncEngine2.stop();
+  });
+
+  test('Rebuild trie from engine messages', async () => {
+    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeMessage(signerAdd);
+
+    const messages = await addMessagesWithTimestamps([30662167, 30662169, 30662172]);
+
+    expect(await syncEngine.trie.items()).toEqual(4); // signerAdd + 3 messages
+
+    const syncEngine2 = new SyncEngine(engine, testDb);
+    await syncEngine2.initialize(true); // Rebuild from engine messages
+
+    // Make sure all messages exist
     expect(await syncEngine2.trie.items()).toEqual(4);
     expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
     expect(await syncEngine2.trie.exists(new SyncId(messages[0] as protobufs.Message))).toBeTruthy();

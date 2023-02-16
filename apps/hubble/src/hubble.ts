@@ -42,6 +42,7 @@ import {
   ipFamilyToString,
   p2pMultiAddrStr,
 } from '~/utils/p2p';
+import { RootPrefix } from './storage/db/types';
 import {
   UpdateNameRegistryEventExpiryJobQueue,
   UpdateNameRegistryEventExpiryJobWorker,
@@ -97,6 +98,9 @@ export interface HubOptions {
 
   /** Resets the DB on start, if true */
   resetDB?: boolean;
+
+  /** Rebuild the sync trie from messages in the DB on startup */
+  rebuildSyncTrie?: boolean;
 
   /**
    * Only allows the Hub to connect to and advertise local IP addresses
@@ -201,13 +205,21 @@ export class Hub implements HubInterface {
     if (this.options.resetDB === true) {
       log.info('clearing rocksdb');
       await this.rocksDB.clear();
+    } else {
+      // Read if the Hub was cleanly shutdown last time
+      const cleanShutdownR = await this.wasHubCleanShutdown();
+      if (cleanShutdownR.isOk() && !cleanShutdownR.value) {
+        // TODO: Should we forcibly rebuild the sync trie if the Hub was cleanly shutdown?
+        log.warn('Hub was NOT shutdown cleanly.');
+        log.warn('You should rebuild the sync trie (with --rebuild-sync-trie) to avoid inconsistencies');
+      }
     }
 
     // Start the ETH registry provider first
     await this.ethRegistryProvider.start();
 
     // Start the sync engine
-    await this.syncEngine.initialize();
+    await this.syncEngine.initialize(this.options.rebuildSyncTrie ?? false);
 
     await this.gossipNode.start(this.options.bootstrapAddrs ?? [], {
       peerId: this.options.peerId,
@@ -224,6 +236,11 @@ export class Hub implements HubInterface {
     // Start cron tasks
     this.revokeSignerJobScheduler.start(this.options.revokeSignerJobCron);
     this.pruneMessagesJobScheduler.start(this.options.pruneMessagesJobCron);
+
+    // When we startup, we write into the DB that we have not yet cleanly shutdown. And when we do
+    // shutdown, we'll write "true" to this key, indicating that we've cleanly shutdown.
+    // This way, when starting up, we'll know if the previous shutdown was clean or not.
+    await this.writeHubCleanShutdown(false);
   }
 
   async getContactInfoContent(): HubAsyncResult<ContactInfoContent> {
@@ -249,7 +266,7 @@ export class Hub implements HubInterface {
 
   /** Stop the GossipNode and RPC Server */
   async stop() {
-    log.info('stopping hub...');
+    log.info('Stopping Hubble...');
     clearInterval(this.contactTimer);
 
     // First, stop the RPC server so we don't get any more messages
@@ -266,9 +283,12 @@ export class Hub implements HubInterface {
     // Stop the ETH registry provider
     await this.ethRegistryProvider.stop();
 
-    // Close the DB, which will flush all data to disk
+    // Close the DB, which will flush all data to disk. Just before we close, though, write that
+    // we've cleanly shutdown.
+    await this.writeHubCleanShutdown(true);
     await this.rocksDB.close();
-    log.info('hub stopped');
+
+    log.info('Hubble stopped, exiting normally');
   }
 
   async getHubState(): HubAsyncResult<HubState> {
@@ -554,6 +574,21 @@ export class Hub implements HubInterface {
     }
 
     return mergeResult;
+  }
+
+  async writeHubCleanShutdown(clean: boolean): HubAsyncResult<void> {
+    const txn = this.rocksDB.transaction();
+    const value = clean ? Buffer.from([1]) : Buffer.from([0]);
+    txn.put(Buffer.from([RootPrefix.HubCleanShutdown]), value);
+
+    return ResultAsync.fromPromise(this.rocksDB.commit(txn), (e) => e as HubError);
+  }
+
+  async wasHubCleanShutdown(): HubAsyncResult<boolean> {
+    return ResultAsync.fromPromise(
+      this.rocksDB.get(Buffer.from([RootPrefix.HubCleanShutdown])),
+      (e) => e as HubError
+    ).map((value) => value?.[0] === 1);
   }
 
   /* -------------------------------------------------------------------------- */
