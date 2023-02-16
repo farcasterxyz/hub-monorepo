@@ -89,9 +89,16 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return this._messagesQueuedForSync;
   }
 
-  public async initialize() {
-    // Wait for the Merkle trie to be fully loaded
-    await this._trie.initialize();
+  public async initialize(rebuildSyncTrie = false) {
+    // Check if we need to rebuild sync trie
+    if (rebuildSyncTrie) {
+      log.info('Rebuilding sync trie...');
+      await this._trie.rebuild(this.engine);
+      log.info('Rebuilding sync trie complete');
+    } else {
+      // Wait for the Merkle trie to be fully loaded
+      await this._trie.initialize();
+    }
     const rootHash = await this._trie.rootHash();
 
     this.periodSyncJobScheduler.start();

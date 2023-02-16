@@ -2,6 +2,7 @@ import ReadWriteLock from 'rwlock';
 import { SyncId } from '~/network/sync/syncId';
 import { TrieNode, TrieSnapshot } from '~/network/sync/trieNode';
 import RocksDB from '~/storage/db/rocksdb';
+import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
 
 const TRIE_UNLOAD_THRESHOLD = 1000;
@@ -71,6 +72,21 @@ class MerkleTrie {
         release();
         resolve();
       });
+    });
+  }
+
+  public async rebuild(engine: Engine): Promise<void> {
+    // First, delete the root node
+    const txn = this._db.transaction();
+    txn.del(TrieNode.makePrimaryKey(new Uint8Array()));
+    await this._db.commit(txn);
+
+    // Brand new empty root node
+    this._root = new TrieNode();
+
+    // Rebuild the trie
+    await engine.forEachMessage(async (message) => {
+      await this.insert(new SyncId(message));
     });
   }
 

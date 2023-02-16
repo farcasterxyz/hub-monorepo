@@ -4,7 +4,7 @@ import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { SyncId } from '~/network/sync/syncId';
 import { getManyMessages, typeToSetPostfix } from '~/storage/db/message';
 import RocksDB from '~/storage/db/rocksdb';
-import { FID_BYTES, RootPrefix, UserPostfix } from '~/storage/db/types';
+import { FID_BYTES, RootPrefix, TSHASH_LENGTH, UserPostfix } from '~/storage/db/types';
 import AmpStore from '~/storage/stores/ampStore';
 import CastStore from '~/storage/stores/castStore';
 import ReactionStore from '~/storage/stores/reactionStore';
@@ -124,7 +124,7 @@ class Engine {
     const allUserPrefix = Buffer.from([RootPrefix.User]);
 
     for await (const [key, value] of this._db.iteratorByPrefix(allUserPrefix, { keys: true, valueAsBuffer: true })) {
-      if (key.length < 2 + FID_BYTES) {
+      if (key.length !== 1 + FID_BYTES + 1 + TSHASH_LENGTH) {
         // Not a message key, so we can skip it.
         continue;
       }

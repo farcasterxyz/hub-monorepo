@@ -1,9 +1,8 @@
 import * as protobufs from '@farcaster/protobufs';
 import { makeMessagePrimaryKey, typeToSetPostfix } from '~/storage/db/message';
-import { FID_BYTES } from '~/storage/db/types';
+import { FID_BYTES, HASH_LENGTH } from '~/storage/db/types';
 
 const TIMESTAMP_LENGTH = 10; // Used to represent a decimal timestamp
-const HASH_LENGTH = 20; // Used to represent a 160-bit BLAKE3 hash
 
 /**
  * SyncIds are used to represent a Farcaster Message in the MerkleTrie and are ordered by timestamp
