@@ -289,9 +289,21 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     log.info(
-      { messages: mergeResults.length, success: mergeResults.filter((r) => r.isOk()).length },
+      {
+        total: mergeResults.length,
+        success: mergeResults.filter((r) => r.isOk()).length,
+      },
       'Merged messages'
     );
+
+    // If there was a failed merge, log the error and move on. We'll only log one error, since they're likely all the same.
+    const failedMerge = mergeResults.find((r) => r.isErr());
+    if (failedMerge) {
+      log.warn(
+        { error: failedMerge._unsafeUnwrapErr(), errorMessage: failedMerge._unsafeUnwrapErr().message },
+        'Failed to merge message'
+      );
+    }
 
     return mergeResults;
   }
