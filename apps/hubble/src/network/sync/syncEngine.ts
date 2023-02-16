@@ -23,6 +23,7 @@ import { PeriodicSyncJobScheduler } from './periodicSyncJob';
 // attempt to sync messages that are older than this time.
 const SYNC_THRESHOLD_IN_SECONDS = 10;
 const HASHES_PER_FETCH = 50;
+const SYNC_INTERRUPT_TIMEOUT = 30 * 1000; // 30 seconds
 
 const log = logger.child({
   component: 'SyncEngine',
@@ -39,7 +40,9 @@ interface SyncEvents {
 class SyncEngine extends TypedEmitter<SyncEvents> {
   private readonly _trie: MerkleTrie;
   private readonly engine: Engine;
+
   private _isSyncing = false;
+  private _interruptSync = false;
 
   private currentHubRpcClients: Map<string, HubRpcClient> = new Map();
   private periodSyncJobScheduler: PeriodicSyncJobScheduler;
@@ -107,11 +110,16 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   public async stop() {
+    // Interrupt any ongoing sync
+    this._interruptSync = true;
+
     this.periodSyncJobScheduler.stop();
 
     // Wait for syncing to stop.
-    await sleepWhile(() => this._isSyncing, 10 * 1000);
-    await sleepWhile(() => this.messagesQueuedForSync > 0, 10 * 1000);
+    await sleepWhile(() => this._isSyncing, SYNC_INTERRUPT_TIMEOUT);
+    await sleepWhile(() => this.messagesQueuedForSync > 0, SYNC_INTERRUPT_TIMEOUT);
+
+    this._interruptSync = false;
   }
 
   public isSyncing(): boolean {
@@ -313,6 +321,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     rpcClient: HubRpcClient,
     onMissingHashes: (missingHashes: Uint8Array[]) => Promise<void>
   ): Promise<void> {
+    // Check if we should interrupt the sync
+    if (this._interruptSync) {
+      log.info(`Interrupting sync`);
+      return;
+    }
+
     const ourNode = await this._trie.getTrieNodeMetadata(prefix);
     const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(protobufs.TrieNodePrefix.create({ prefix }));
 
@@ -342,6 +356,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     rpcClient: HubRpcClient,
     onMissingHashes: (missingHashes: Uint8Array[]) => Promise<void>
   ): Promise<void> {
+    if (this._interruptSync) {
+      log.info(`Interrupting sync`);
+      return;
+    }
+
     // If the node has fewer than HASHES_PER_FETCH, just fetch them all in go, otherwise,
     // iterate through the node's children and fetch them in batches.
     if (theirNode.numMessages <= HASHES_PER_FETCH) {
