@@ -7,8 +7,10 @@ import {
   HubResult,
   HubRpcClient,
 } from '@farcaster/utils';
-import { err, ok } from 'neverthrow';
+import { peerIdFromString } from '@libp2p/peer-id';
+import { err, ok, Result } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
+import { Hub } from '~/hubble';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
 import { TrieSnapshot } from '~/network/sync/trieNode';
@@ -17,7 +19,6 @@ import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
 import { sleepWhile } from '~/utils/crypto';
 import { logger } from '~/utils/logger';
-import { PeriodicSyncJobScheduler } from './periodicSyncJob';
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
@@ -44,8 +45,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private _isSyncing = false;
   private _interruptSync = false;
 
-  private currentHubRpcClients: Map<string, HubRpcClient> = new Map();
-  private periodSyncJobScheduler: PeriodicSyncJobScheduler;
+  private currentHubPeerContacts: Map<string, protobufs.ContactInfoContent> = new Map();
 
   private _messagesQueuedForSync = 0;
 
@@ -54,8 +54,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     this._trie = new MerkleTrie(rocksDb);
     this.engine = engine;
-
-    this.periodSyncJobScheduler = new PeriodicSyncJobScheduler(this);
 
     this.engine.eventHandler.on(
       'mergeMessage',
@@ -104,16 +102,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
     const rootHash = await this._trie.rootHash();
 
-    this.periodSyncJobScheduler.start();
-
     log.info({ rootHash }, 'Sync engine initialized');
   }
 
   public async stop() {
     // Interrupt any ongoing sync
     this._interruptSync = true;
-
-    this.periodSyncJobScheduler.stop();
 
     // Wait for syncing to stop.
     await sleepWhile(() => this._isSyncing, SYNC_INTERRUPT_TIMEOUT);
@@ -126,49 +120,64 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return this._isSyncing;
   }
 
-  public getRpcClientForPeerId(peerId: string): HubRpcClient | undefined {
-    return this.currentHubRpcClients.get(peerId);
+  public getContactInfoForPeerId(peerId: string): protobufs.ContactInfoContent | undefined {
+    return this.currentHubPeerContacts.get(peerId);
   }
 
-  public addRpcClientForPeerId(peerId: string, rpcClient: HubRpcClient) {
-    this.currentHubRpcClients.set(peerId, rpcClient);
+  public addContactInfoForPeerId(peerId: string, contactInfo: protobufs.ContactInfoContent) {
+    this.currentHubPeerContacts.set(peerId, contactInfo);
   }
 
-  public removeRpcClientForPeerId(peerId: string) {
-    this.currentHubRpcClients.delete(peerId);
+  public removeContactInfoForPeerId(peerId: string) {
+    this.currentHubPeerContacts.delete(peerId);
   }
 
   /** ---------------------------------------------------------------------------------- */
   /**                                      Sync Methods                                  */
   /** ---------------------------------------------------------------------------------- */
 
-  public async diffSyncIfRequired(peerId?: string) {
+  public async diffSyncIfRequired(hub: Hub, peerId?: string) {
     this.emit('syncStart');
 
-    let rpcClient;
-
-    if (peerId) {
-      rpcClient = this.currentHubRpcClients.get(peerId);
-    }
-
-    if (this.currentHubRpcClients.size === 0) {
-      log.warn(`No RPC clients, skipping sync`);
+    if (this.currentHubPeerContacts.size === 0) {
+      log.warn(`No peer contacts, skipping sync`);
       this.emit('syncComplete', false);
       return;
     }
 
-    // If we don't have an RPC client, get a random one from the current clients
-    if (!rpcClient) {
-      // Pick a random key from the current clients
-      const randomPeer = Array.from(this.currentHubRpcClients.keys())[
-        Math.floor(Math.random() * this.currentHubRpcClients.size)
-      ] as string;
-      rpcClient = this.currentHubRpcClients.get(randomPeer);
+    let peerContact;
+
+    if (peerId) {
+      peerContact = this.currentHubPeerContacts.get(peerId);
     }
 
-    // If we still don't have an RPC client, skip the sync
+    // If we don't have a peer contact, get a random one from the current list
+    if (!peerContact) {
+      // Pick a random key
+      const randomPeer = Array.from(this.currentHubPeerContacts.keys())[
+        Math.floor(Math.random() * this.currentHubPeerContacts.size)
+      ] as string;
+      peerContact = this.currentHubPeerContacts.get(randomPeer);
+    }
+
+    // If we still don't have a peer, skip the sync
+    if (!peerContact) {
+      log.warn(`No contact info for peer, skipping sync`);
+      this.emit('syncComplete', false);
+      return;
+    }
+
+    const peerIdResult = Result.fromThrowable(
+      () => peerIdFromString(peerId ?? ''),
+      (error) => new HubError('bad_request.parse_failure', error as Error)
+    )();
+    if (peerIdResult.isErr()) {
+      return Promise.resolve(err(peerIdResult.error));
+    }
+
+    const rpcClient = await hub.getRPCClientForPeer(peerIdResult.value, peerContact);
     if (!rpcClient) {
-      log.warn(`No RPC client for peer, skipping sync`);
+      log.warn(`Failed to get RPC client for peer, skipping sync`);
       this.emit('syncComplete', false);
       return;
     }

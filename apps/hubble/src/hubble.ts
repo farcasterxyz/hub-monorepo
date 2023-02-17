@@ -42,6 +42,7 @@ import {
   ipFamilyToString,
   p2pMultiAddrStr,
 } from '~/utils/p2p';
+import { PeriodicSyncJobScheduler } from './network/sync/periodicSyncJob';
 import { RootPrefix } from './storage/db/types';
 import {
   UpdateNameRegistryEventExpiryJobQueue,
@@ -136,6 +137,7 @@ export class Hub implements HubInterface {
   private revokeSignerJobQueue: RevokeSignerJobQueue;
   private revokeSignerJobScheduler: RevokeSignerJobScheduler;
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
+  private periodSyncJobScheduler: PeriodicSyncJobScheduler;
   private updateNameRegistryEventExpiryJobQueue: UpdateNameRegistryEventExpiryJobQueue;
   private updateNameRegistryEventExpiryJobWorker: UpdateNameRegistryEventExpiryJobWorker;
 
@@ -166,6 +168,7 @@ export class Hub implements HubInterface {
     // Setup job schedulers/workers
     this.revokeSignerJobScheduler = new RevokeSignerJobScheduler(this.revokeSignerJobQueue, this.engine);
     this.pruneMessagesJobScheduler = new PruneMessagesJobScheduler(this.engine);
+    this.periodSyncJobScheduler = new PeriodicSyncJobScheduler(this, this.syncEngine);
     this.updateNameRegistryEventExpiryJobWorker = new UpdateNameRegistryEventExpiryJobWorker(
       this.updateNameRegistryEventExpiryJobQueue,
       this.rocksDB,
@@ -236,6 +239,7 @@ export class Hub implements HubInterface {
     // Start cron tasks
     this.revokeSignerJobScheduler.start(this.options.revokeSignerJobCron);
     this.pruneMessagesJobScheduler.start(this.options.pruneMessagesJobCron);
+    this.periodSyncJobScheduler.start();
 
     // When we startup, we write into the DB that we have not yet cleanly shutdown. And when we do
     // shutdown, we'll write "true" to this key, indicating that we've cleanly shutdown.
@@ -275,6 +279,7 @@ export class Hub implements HubInterface {
     // Stop cron tasks
     this.revokeSignerJobScheduler.stop();
     this.pruneMessagesJobScheduler.stop();
+    this.periodSyncJobScheduler.stop();
 
     // Stop sync and gossip
     await this.gossipNode.stop();
@@ -321,11 +326,17 @@ export class Hub implements HubInterface {
       const message = gossipMessage.message;
 
       // Get the RPC Client to use to merge this message
-      const rpcClient = this.syncEngine.getRpcClientForPeerId(peerId.toString());
-      if (rpcClient) {
-        return this.syncEngine.mergeMessages([message], rpcClient).then((result) => result[0] as HubResult<void>);
+      const contactInfo = this.syncEngine.getContactInfoForPeerId(peerId.toString());
+      if (contactInfo) {
+        const rpcClient = await this.getRPCClientForPeer(peerId, contactInfo);
+        if (rpcClient) {
+          return this.syncEngine.mergeMessages([message], rpcClient).then((result) => result[0] as HubResult<void>);
+        } else {
+          log.error('No RPC clients available to merge message, attempting to merge directly into the engine');
+          return this.submitMessage(message, 'gossip');
+        }
       } else {
-        log.error('No RPC clients available to merge message, attempting to merge directly into the engine');
+        log.error('No contact info available for peer, attempting to merge directly into the engine');
         return this.submitMessage(message, 'gossip');
       }
     } else if (gossipMessage.idRegistryEvent) {
@@ -375,17 +386,17 @@ export class Hub implements HubInterface {
 
     // Check if we already have this client
     if (rpcClient) {
-      if (this.syncEngine.getRpcClientForPeerId(peerId.toString())) {
+      if (this.syncEngine.getContactInfoForPeerId(peerId.toString())) {
         log.info('Already have this client, skipping sync');
         return;
       } else {
-        this.syncEngine.addRpcClientForPeerId(peerId.toString(), rpcClient);
-        await this.syncEngine.diffSyncIfRequired(peerId.toString());
+        this.syncEngine.addContactInfoForPeerId(peerId.toString(), message);
+        await this.syncEngine.diffSyncIfRequired(this, peerId.toString());
       }
     }
   }
 
-  private async getRPCClientForPeer(peerId: PeerId, peer: ContactInfoContent): Promise<HubRpcClient | undefined> {
+  public async getRPCClientForPeer(peerId: PeerId, peer: ContactInfoContent): Promise<HubRpcClient | undefined> {
     /*
      * Find the peer's addrs from our peer list because we cannot use the address
      * in the contact info directly
@@ -408,10 +419,7 @@ export class Hub implements HubInterface {
     log.info({ peerId }, 'falling back to addressbook lookup for peer');
     const peerInfo = await this.gossipNode.getPeerInfo(peerId);
     if (!peerInfo) {
-      log.info(
-        { function: 'getRPCClientForPeer', identity: this.identity, peer: peer },
-        `failed to find peer's address to request simple sync`
-      );
+      log.info({ function: 'getRPCClientForPeer', peer }, `failed to find peer's address to request simple sync`);
 
       return;
     }
@@ -419,10 +427,7 @@ export class Hub implements HubInterface {
     // sorts addresses by Public IPs first
     const addr = peerInfo.addresses.sort((a, b) => publicAddressesFirst(a, b))[0];
     if (addr === undefined) {
-      log.info(
-        { function: 'getRPCClientForPeer', identity: this.identity, peer: peer },
-        `peer found but no address is available to request sync`
-      );
+      log.info({ function: 'getRPCClientForPeer', peer }, `peer found but no address is available to request sync`);
 
       return;
     }
@@ -499,7 +504,7 @@ export class Hub implements HubInterface {
 
     this.gossipNode.on('peerDisconnect', async (connection) => {
       // Remove this peer's connection
-      this.syncEngine.removeRpcClientForPeerId(connection.remotePeer.toString());
+      this.syncEngine.removeContactInfoForPeerId(connection.remotePeer.toString());
     });
   }
 
