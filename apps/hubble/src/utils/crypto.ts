@@ -8,17 +8,17 @@ export const sleep = (ms: number) => {
   });
 };
 
-export const sleepWhile = (condition: () => boolean, timeoutMs: number): Promise<void> => {
+export const sleepWhile = (condition: () => boolean, timeoutMs: number): Promise<boolean> => {
   return new Promise((resolve) => {
     const interval = setInterval(() => {
       if (!condition()) {
         clearInterval(interval);
-        resolve();
+        resolve(false);
       }
     }, 10);
     setTimeout(() => {
       clearInterval(interval);
-      resolve();
+      resolve(true);
     }, timeoutMs);
   });
 };
