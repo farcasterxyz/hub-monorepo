@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesToUtf8String, hexStringToBytes, HubAsyncResult, toFarcasterTime } from '@farcaster/utils';
+import { bytesToUtf8String, hexStringToBytes, HubAsyncResult, HubError, toFarcasterTime } from '@farcaster/utils';
 import { BigNumber, Contract, Event, providers } from 'ethers';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
@@ -137,8 +137,13 @@ export class EthEventsProvider {
     if (encodedFname.isErr()) {
       return err(encodedFname.error);
     }
-    const expiry: BigNumber = await this._nameRegistryContract['expiryOf'](encodedFname.value);
-    return ok(expiry.toNumber() * 1000);
+
+    const expiryResult: Result<BigNumber, HubError> = await ResultAsync.fromPromise(
+      this._nameRegistryContract['expiryOf'](encodedFname.value),
+      (err) => new HubError('unavailable.network_failure', err as Error)
+    );
+
+    return expiryResult.map((expiry) => expiry.toNumber() * 1000);
   }
 
   /* -------------------------------------------------------------------------- */
