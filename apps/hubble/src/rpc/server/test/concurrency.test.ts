@@ -67,7 +67,7 @@ describe('submitMessage', () => {
       { transient: { signer: signer2 } }
     );
 
-    const results = await Promise.all([
+    const promises = Promise.all([
       client1.submitMessage(like1),
       client1.submitMessage(like2),
       client1.submitMessage(removeLike2),
@@ -96,6 +96,9 @@ describe('submitMessage', () => {
       client3.submitMessage(like2),
       client3.submitMessage(removeLike2),
     ]);
+
+    const results = await promises;
+
     assertNoTimeouts(results);
 
     const messages = await engine.getAllReactionMessagesByFid(fid);

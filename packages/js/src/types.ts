@@ -77,6 +77,7 @@ export type MessageBody =
 export type CastAddBody = {
   embeds?: string[] | undefined;
   mentions?: number[] | undefined;
+  mentionsPositions?: number[] | undefined;
   parent?: CastId | undefined;
   text: string;
 };
@@ -135,7 +136,7 @@ export type NameRegistryEvent = Readonly<{
   to: string; // Hex string
   type: protobufs.NameRegistryEventType;
   from: string; // Hex string
-  expiry: number;
+  expiry: number | undefined;
 }>;
 
 type GenericEventResponse = {

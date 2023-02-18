@@ -225,11 +225,13 @@ const MessageDataFactory = Factory.define<protobufs.MessageData>(() => {
 });
 
 const CastAddBodyFactory = Factory.define<protobufs.CastAddBody>(() => {
+  const text = faker.lorem.sentence(12);
   return protobufs.CastAddBody.create({
     embeds: [faker.internet.url(), faker.internet.url()],
     mentions: [FidFactory.build(), FidFactory.build(), FidFactory.build()],
+    mentionsPositions: [0, Math.floor(text.length / 2), text.length], // Hack to avoid duplicates
     parentCastId: CastIdFactory.build(),
-    text: faker.lorem.sentence(4),
+    text,
   });
 });
 

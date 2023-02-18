@@ -324,6 +324,7 @@ export interface CastAddBody {
   mentions: number[];
   parentCastId?: CastId | undefined;
   text: string;
+  mentionsPositions: number[];
 }
 
 export interface CastRemoveBody {
@@ -446,7 +447,7 @@ export const CastId = {
 };
 
 function createBaseCastAddBody(): CastAddBody {
-  return { embeds: [], mentions: [], parentCastId: undefined, text: "" };
+  return { embeds: [], mentions: [], parentCastId: undefined, text: "", mentionsPositions: [] };
 }
 
 export const CastAddBody = {
@@ -465,6 +466,11 @@ export const CastAddBody = {
     if (message.text !== "") {
       writer.uint32(34).string(message.text);
     }
+    writer.uint32(42).fork();
+    for (const v of message.mentionsPositions) {
+      writer.uint32(v);
+    }
+    writer.ldelim();
     return writer;
   },
 
@@ -494,6 +500,16 @@ export const CastAddBody = {
         case 4:
           message.text = reader.string();
           break;
+        case 5:
+          if ((tag & 7) === 2) {
+            const end2 = reader.uint32() + reader.pos;
+            while (reader.pos < end2) {
+              message.mentionsPositions.push(reader.uint32());
+            }
+          } else {
+            message.mentionsPositions.push(reader.uint32());
+          }
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -508,6 +524,9 @@ export const CastAddBody = {
       mentions: Array.isArray(object?.mentions) ? object.mentions.map((e: any) => Number(e)) : [],
       parentCastId: isSet(object.parentCastId) ? CastId.fromJSON(object.parentCastId) : undefined,
       text: isSet(object.text) ? String(object.text) : "",
+      mentionsPositions: Array.isArray(object?.mentionsPositions)
+        ? object.mentionsPositions.map((e: any) => Number(e))
+        : [],
     };
   },
 
@@ -526,6 +545,11 @@ export const CastAddBody = {
     message.parentCastId !== undefined &&
       (obj.parentCastId = message.parentCastId ? CastId.toJSON(message.parentCastId) : undefined);
     message.text !== undefined && (obj.text = message.text);
+    if (message.mentionsPositions) {
+      obj.mentionsPositions = message.mentionsPositions.map((e) => Math.round(e));
+    } else {
+      obj.mentionsPositions = [];
+    }
     return obj;
   },
 
@@ -541,6 +565,7 @@ export const CastAddBody = {
       ? CastId.fromPartial(object.parentCastId)
       : undefined;
     message.text = object.text ?? "";
+    message.mentionsPositions = object.mentionsPositions?.map((e) => e) || [];
     return message;
   },
 };

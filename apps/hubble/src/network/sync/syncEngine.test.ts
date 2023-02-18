@@ -45,19 +45,26 @@ describe('SyncEngine', () => {
     syncEngine = new SyncEngine(engine, testDb);
   });
 
-  const addMessagesWithTimestamps = async (timestamps: number[], mergeEngine?: Engine) => {
-    return await Promise.all(
+  afterEach(async () => {
+    await syncEngine.stop();
+  });
+
+  const addMessagesWithTimestamps = async (timestamps: number[]) => {
+    const results = await Promise.all(
       timestamps.map(async (t) => {
         const cast = await Factories.CastAddMessage.create(
           { data: { fid, network, timestamp: t } },
           { transient: { signer } }
         );
 
-        const result = await (mergeEngine || engine).mergeMessage(cast);
+        const result = await engine.mergeMessage(cast);
         expect(result.isOk()).toBeTruthy();
         return Promise.resolve(cast);
       })
     );
+
+    await sleepWhile(() => syncEngine.messagesQueuedForSync > 0, 1000);
+    return results;
   };
 
   test('trie is updated on successful merge', async () => {
@@ -77,7 +84,7 @@ describe('SyncEngine', () => {
 
     // Two messages (signerAdd + castAdd) was added to the trie
     expect((await syncEngine.trie.items()) - existingItems).toEqual(2);
-    expect(syncEngine.trie.exists(new SyncId(castAdd))).toBeTruthy();
+    expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeTruthy();
   });
 
   test('trie is not updated on merge failure', async () => {
@@ -99,6 +106,7 @@ describe('SyncEngine', () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
     let result = await engine.mergeMessage(castAdd);
+
     expect(result.isOk()).toBeTruthy();
 
     // Remove this cast.
@@ -184,6 +192,8 @@ describe('SyncEngine', () => {
 
     // Roothashes must match
     expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
+
+    await syncEngine2.stop();
   });
 
   test('snapshotTimestampPrefix trims the seconds', async () => {
@@ -252,15 +262,40 @@ describe('SyncEngine', () => {
 
     const messages = await addMessagesWithTimestamps([30662167, 30662169, 30662172]);
 
-    const syncEngine = new SyncEngine(engine, testDb);
-    await syncEngine.initialize();
+    expect(await syncEngine.trie.items()).toEqual(4); // signerAdd + 3 messages
 
-    // There might be more messages related to user creation, but it's sufficient to check for casts
-    expect(await syncEngine.trie.items()).toBeGreaterThanOrEqual(3);
-    expect(await syncEngine.trie.rootHash()).toBeTruthy();
-    expect(await syncEngine.trie.exists(new SyncId(messages[0] as protobufs.Message))).toBeTruthy();
-    expect(await syncEngine.trie.exists(new SyncId(messages[1] as protobufs.Message))).toBeTruthy();
-    expect(await syncEngine.trie.exists(new SyncId(messages[2] as protobufs.Message))).toBeTruthy();
+    const syncEngine2 = new SyncEngine(engine, testDb);
+    await syncEngine2.initialize();
+
+    // Make sure all messages exist
+    expect(await syncEngine2.trie.items()).toEqual(4);
+    expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
+    expect(await syncEngine2.trie.exists(new SyncId(messages[0] as protobufs.Message))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(new SyncId(messages[1] as protobufs.Message))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(new SyncId(messages[2] as protobufs.Message))).toBeTruthy();
+
+    await syncEngine2.stop();
+  });
+
+  test('Rebuild trie from engine messages', async () => {
+    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeMessage(signerAdd);
+
+    const messages = await addMessagesWithTimestamps([30662167, 30662169, 30662172]);
+
+    expect(await syncEngine.trie.items()).toEqual(4); // signerAdd + 3 messages
+
+    const syncEngine2 = new SyncEngine(engine, testDb);
+    await syncEngine2.initialize(true); // Rebuild from engine messages
+
+    // Make sure all messages exist
+    expect(await syncEngine2.trie.items()).toEqual(4);
+    expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
+    expect(await syncEngine2.trie.exists(new SyncId(messages[0] as protobufs.Message))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(new SyncId(messages[1] as protobufs.Message))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(new SyncId(messages[2] as protobufs.Message))).toBeTruthy();
+
+    await syncEngine2.stop();
   });
 
   test('getSnapshot should use a prefix of 10-seconds resolution timestamp', async () => {
@@ -269,7 +304,7 @@ describe('SyncEngine', () => {
 
     await addMessagesWithTimestamps([30662160, 30662169, 30662172]);
     const nowOrig = Date.now;
-    Date.now = () => 16409952e5 + 30662167 * 1000;
+    Date.now = () => 1609459200000 + 30662167 * 1000;
     try {
       const result = await syncEngine.getSnapshot();
       const snapshot = result._unsafeUnwrap();

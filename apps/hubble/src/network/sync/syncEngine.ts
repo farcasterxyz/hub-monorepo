@@ -7,32 +7,51 @@ import {
   HubResult,
   HubRpcClient,
 } from '@farcaster/utils';
-import { err, ok } from 'neverthrow';
+import { peerIdFromString } from '@libp2p/peer-id';
+import { err, ok, Result } from 'neverthrow';
+import { TypedEmitter } from 'tiny-typed-emitter';
+import { Hub } from '~/hubble';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
 import { TrieSnapshot } from '~/network/sync/trieNode';
 import RocksDB from '~/storage/db/rocksdb';
 
 import Engine from '~/storage/engine';
+import { sleepWhile } from '~/utils/crypto';
 import { logger } from '~/utils/logger';
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
 const SYNC_THRESHOLD_IN_SECONDS = 10;
 const HASHES_PER_FETCH = 50;
+const SYNC_INTERRUPT_TIMEOUT = 30 * 1000; // 30 seconds
 
 const log = logger.child({
   component: 'SyncEngine',
 });
 
-class SyncEngine {
+interface SyncEvents {
+  /** Emit an event when diff starts */
+  syncStart: () => void;
+
+  /** Emit an event when diff sync completes */
+  syncComplete: (success: boolean) => void;
+}
+
+class SyncEngine extends TypedEmitter<SyncEvents> {
   private readonly _trie: MerkleTrie;
   private readonly engine: Engine;
+
   private _isSyncing = false;
+  private _interruptSync = false;
+
+  private currentHubPeerContacts: Map<string, protobufs.ContactInfoContent> = new Map();
 
   private _messagesQueuedForSync = 0;
 
   constructor(engine: Engine, rocksDb: RocksDB) {
+    super();
+
     this._trie = new MerkleTrie(rocksDb);
     this.engine = engine;
 
@@ -71,20 +90,128 @@ class SyncEngine {
     return this._messagesQueuedForSync;
   }
 
-  public async initialize() {
-    // Wait for the Merkle trie to be fully loaded
-    await this._trie.initialize();
+  public async initialize(rebuildSyncTrie = false) {
+    // Check if we need to rebuild sync trie
+    if (rebuildSyncTrie) {
+      log.info('Rebuilding sync trie...');
+      await this._trie.rebuild(this.engine);
+      log.info('Rebuilding sync trie complete');
+    } else {
+      // Wait for the Merkle trie to be fully loaded
+      await this._trie.initialize();
+    }
     const rootHash = await this._trie.rootHash();
+
     log.info({ rootHash }, 'Sync engine initialized');
+  }
+
+  public async stop() {
+    // Interrupt any ongoing sync
+    this._interruptSync = true;
+
+    // Wait for syncing to stop.
+    await sleepWhile(() => this._isSyncing, SYNC_INTERRUPT_TIMEOUT);
+    await sleepWhile(() => this.messagesQueuedForSync > 0, SYNC_INTERRUPT_TIMEOUT);
+
+    this._interruptSync = false;
   }
 
   public isSyncing(): boolean {
     return this._isSyncing;
   }
 
+  public getContactInfoForPeerId(peerId: string): protobufs.ContactInfoContent | undefined {
+    return this.currentHubPeerContacts.get(peerId);
+  }
+
+  public addContactInfoForPeerId(peerId: string, contactInfo: protobufs.ContactInfoContent) {
+    this.currentHubPeerContacts.set(peerId, contactInfo);
+  }
+
+  public removeContactInfoForPeerId(peerId: string) {
+    this.currentHubPeerContacts.delete(peerId);
+  }
+
   /** ---------------------------------------------------------------------------------- */
   /**                                      Sync Methods                                  */
   /** ---------------------------------------------------------------------------------- */
+
+  public async diffSyncIfRequired(hub: Hub, peerId?: string) {
+    this.emit('syncStart');
+
+    if (this.currentHubPeerContacts.size === 0) {
+      log.warn(`No peer contacts, skipping sync`);
+      this.emit('syncComplete', false);
+      return;
+    }
+
+    let peerContact;
+
+    if (peerId) {
+      peerContact = this.currentHubPeerContacts.get(peerId);
+    }
+
+    // If we don't have a peer contact, get a random one from the current list
+    if (!peerContact) {
+      // Pick a random key
+      const randomPeer = Array.from(this.currentHubPeerContacts.keys())[
+        Math.floor(Math.random() * this.currentHubPeerContacts.size)
+      ] as string;
+      peerContact = this.currentHubPeerContacts.get(randomPeer);
+    }
+
+    // If we still don't have a peer, skip the sync
+    if (!peerContact) {
+      log.warn(`No contact info for peer, skipping sync`);
+      this.emit('syncComplete', false);
+      return;
+    }
+
+    const peerIdResult = Result.fromThrowable(
+      () => peerIdFromString(peerId ?? ''),
+      (error) => new HubError('bad_request.parse_failure', error as Error)
+    )();
+    if (peerIdResult.isErr()) {
+      return Promise.resolve(err(peerIdResult.error));
+    }
+
+    const rpcClient = await hub.getRPCClientForPeer(peerIdResult.value, peerContact);
+    if (!rpcClient) {
+      log.warn(`Failed to get RPC client for peer, skipping sync`);
+      this.emit('syncComplete', false);
+      return;
+    }
+
+    // First, get the latest state from the peer
+    const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(
+      protobufs.TrieNodePrefix.create({ prefix: new Uint8Array() })
+    );
+    if (peerStateResult.isErr()) {
+      log.warn(`Failed to get peer state, skipping sync`);
+      this.emit('syncComplete', false);
+      return;
+    }
+
+    const peerState = peerStateResult.value;
+    const shouldSync = await this.shouldSync(peerState);
+    if (shouldSync.isErr()) {
+      log.warn(`Failed to get shouldSync`);
+      this.emit('syncComplete', false);
+      return;
+    }
+
+    if (shouldSync.value === true) {
+      log.info(`Syncing with peer`);
+      await this.performSync(peerState, rpcClient);
+    } else {
+      log.info(`No need to sync`);
+      this.emit('syncComplete', false);
+      return;
+    }
+
+    this.emit('syncComplete', false);
+    return;
+  }
 
   public async shouldSync(otherSnapshot: TrieSnapshot): HubAsyncResult<boolean> {
     if (this._isSyncing) {
@@ -179,9 +306,21 @@ class SyncEngine {
     }
 
     log.info(
-      { messages: mergeResults.length, success: mergeResults.filter((r) => r.isOk()).length },
+      {
+        total: mergeResults.length,
+        success: mergeResults.filter((r) => r.isOk()).length,
+      },
       'Merged messages'
     );
+
+    // If there was a failed merge, log the error and move on. We'll only log one error, since they're likely all the same.
+    const failedMerge = mergeResults.find((r) => r.isErr());
+    if (failedMerge) {
+      log.warn(
+        { error: failedMerge._unsafeUnwrapErr(), errorMessage: failedMerge._unsafeUnwrapErr().message },
+        'Failed to merge message'
+      );
+    }
 
     return mergeResults;
   }
@@ -191,6 +330,12 @@ class SyncEngine {
     rpcClient: HubRpcClient,
     onMissingHashes: (missingHashes: Uint8Array[]) => Promise<void>
   ): Promise<void> {
+    // Check if we should interrupt the sync
+    if (this._interruptSync) {
+      log.info(`Interrupting sync`);
+      return;
+    }
+
     const ourNode = await this._trie.getTrieNodeMetadata(prefix);
     const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(protobufs.TrieNodePrefix.create({ prefix }));
 
@@ -203,19 +348,6 @@ class SyncEngine {
       return;
     } else if (ourNode?.hash === theirNodeResult.value.hash) {
       // Hashes match, we're done.
-      return;
-    } else if ((ourNode?.numMessages ?? 0) > theirNodeResult.value.numMessages) {
-      // If we have more messages than the other node, we're done. This might happen if the remote node is
-      // still syncing, or if they have deleted messages (because of pruning), in which case we should
-      // just wait, and our node will also prune the messages.
-      log.info(
-        {
-          ourNum: ourNode?.numMessages,
-          theirNum: theirNodeResult.value.numMessages,
-          prefix: bytesToUtf8String(prefix),
-        },
-        `Our node has more messages, skipping this node.`
-      );
       return;
     } else {
       await this.fetchMissingHashesByNode(
@@ -233,17 +365,36 @@ class SyncEngine {
     rpcClient: HubRpcClient,
     onMissingHashes: (missingHashes: Uint8Array[]) => Promise<void>
   ): Promise<void> {
+    if (this._interruptSync) {
+      log.info(`Interrupting sync`);
+      return;
+    }
+
     // If the node has fewer than HASHES_PER_FETCH, just fetch them all in go, otherwise,
     // iterate through the node's children and fetch them in batches.
     if (theirNode.numMessages <= HASHES_PER_FETCH) {
-      const result = await rpcClient.getAllSyncIdsByPrefix(
-        protobufs.TrieNodePrefix.create({ prefix: theirNode.prefix })
-      );
-
-      if (result.isErr()) {
-        log.warn(result.error, `Error fetching ids for prefix ${theirNode.prefix}`);
+      if (ourNode && ourNode.numMessages > theirNode.numMessages) {
+        // If we have more messages than the other node, we're done. This might happen if the remote node is
+        // still syncing, or if they have deleted messages (because of pruning), in which case we should
+        // just wait, and our node will also prune the messages.
+        log.info(
+          {
+            ourNum: ourNode.numMessages,
+            theirNum: theirNode.numMessages,
+            prefix: bytesToUtf8String(theirNode.prefix),
+          },
+          `Our node has more messages, skipping this node.`
+        );
       } else {
-        await onMissingHashes(result.value.syncIds);
+        const result = await rpcClient.getAllSyncIdsByPrefix(
+          protobufs.TrieNodePrefix.create({ prefix: theirNode.prefix })
+        );
+
+        if (result.isErr()) {
+          log.warn(result.error, `Error fetching ids for prefix ${theirNode.prefix}`);
+        } else {
+          await onMissingHashes(result.value.syncIds);
+        }
       }
     } else if (theirNode.children) {
       for (const [theirChildChar, theirChild] of theirNode.children.entries()) {

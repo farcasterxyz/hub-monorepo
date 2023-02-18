@@ -1,107 +1,27 @@
 syntax = "proto3";
 
-enum MessageType {
-  MESSAGE_TYPE_NONE = 0;
-  MESSAGE_TYPE_CAST_ADD = 1;
-  MESSAGE_TYPE_CAST_REMOVE = 2;
-  MESSAGE_TYPE_REACTION_ADD = 3;
-  MESSAGE_TYPE_REACTION_REMOVE = 4;
-  MESSAGE_TYPE_AMP_ADD = 5;
-  MESSAGE_TYPE_AMP_REMOVE = 6;
-  MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS = 7;
-  MESSAGE_TYPE_VERIFICATION_REMOVE = 8;
-  MESSAGE_TYPE_SIGNER_ADD = 9;
-  MESSAGE_TYPE_SIGNER_REMOVE = 10;
-  MESSAGE_TYPE_USER_DATA_ADD = 11;
+/** 
+  * A Message is a delta operation on the Farcaster network. The message protobuf is an envelope 
+  * that wraps a MessageData object and contains a hash and signature which can verify its authenticity. 
+  */
+message Message {
+  MessageData data = 1; // Contents of the message
+  bytes hash = 2; // Hash digest of data
+  HashScheme hash_scheme = 3; // Hash scheme that produced the hash digest
+  bytes signature = 4; // Signature of the hash digest
+  SignatureScheme signature_scheme = 5; // Signature scheme that produced the signature
+  bytes signer = 6; // Public key or address of the key pair that produced the signature
 }
 
-enum SignatureScheme {
-  SIGNATURE_SCHEME_NONE = 0;
-  SIGNATURE_SCHEME_ED25519 = 1;
-  SIGNATURE_SCHEME_EIP712 = 2;
-}
-
-enum HashScheme {
-  HASH_SCHEME_NONE = 0;
-  HASH_SCHEME_BLAKE3 = 1;
-}
-
-enum FarcasterNetwork {
-  FARCASTER_NETWORK_NONE = 0;
-  FARCASTER_NETWORK_MAINNET = 1;
-  FARCASTER_NETWORK_TESTNET = 2;
-  FARCASTER_NETWORK_DEVNET = 3;
-}
-
-enum ReactionType {
-  REACTION_TYPE_NONE = 0;
-  REACTION_TYPE_LIKE = 1;
-  REACTION_TYPE_RECAST = 2;
-}
-
-enum UserDataType {
-  USER_DATA_TYPE_NONE = 0;
-  USER_DATA_TYPE_PFP = 1;
-  USER_DATA_TYPE_DISPLAY = 2;
-  USER_DATA_TYPE_BIO = 3;
-  USER_DATA_TYPE_LOCATION = 4;
-  USER_DATA_TYPE_URL = 5;
-  USER_DATA_TYPE_FNAME = 6;
-}
-
-message CastId {
-  uint64 fid = 1;
-  bytes hash = 2;
-}
-
-message CastAddBody {
-  repeated string embeds = 1;
-  repeated uint64 mentions = 2;
-  oneof parent {
-    CastId parent_cast_id = 3;
-  };
-  string text = 4;
-}
-
-message CastRemoveBody {
-  bytes target_hash = 1;
-}
-
-message ReactionBody {
-  ReactionType type = 1;
-  oneof target {
-    CastId target_cast_id = 2;
-  }
-}
-
-message AmpBody {
-  uint64 target_fid = 1;
-}
-
-message VerificationAddEthAddressBody {
-  bytes address = 1;
-  bytes eth_signature = 2;
-  bytes block_hash = 3;
-}
-
-message VerificationRemoveBody {
-  bytes address = 1;
-}
-
-message SignerBody {
-  bytes signer = 1;
-}
-
-message UserDataBody {
-  UserDataType type = 1;
-  string value = 2;
-}
-
+  /** 
+ * A MessageData object contains properties common to all messages and wraps a body object which 
+ * contains properties specific to the MessageType.
+ */
 message MessageData {
-  MessageType type = 1;
-  uint64 fid = 2;
-  uint32 timestamp = 3;
-  FarcasterNetwork network = 4;
+  MessageType type = 1; // Type of message contained in the body 
+  uint64 fid = 2; // Farcaster ID of the user producing the message
+  uint32 timestamp = 3; // Farcaster epoch timestamp in seconds
+  FarcasterNetwork network = 4; // Farcaster network the message is intended for
   oneof body {
     CastAddBody cast_add_body = 5;
     CastRemoveBody cast_remove_body = 6;
@@ -111,14 +31,117 @@ message MessageData {
     VerificationRemoveBody verification_remove_body = 10;
     SignerBody signer_body = 11;
     UserDataBody user_data_body = 12;
+  } // Properties specific to the MessageType
+}
+
+/** Type of hashing scheme used to produce a digest of MessageData */
+enum HashScheme {
+  HASH_SCHEME_NONE = 0;
+  HASH_SCHEME_BLAKE3 = 1; // Default scheme for hashing MessageData
+}
+
+/** Type of signature scheme used to sign the Message hash  */
+enum SignatureScheme {
+  SIGNATURE_SCHEME_NONE = 0;
+  SIGNATURE_SCHEME_ED25519 = 1; // Ed25519 signature (default)
+  SIGNATURE_SCHEME_EIP712 = 2; // ECDSA signature using EIP-712 scheme 
+}
+
+/** Type of the MessageBody */
+enum MessageType {
+  MESSAGE_TYPE_NONE = 0;
+  MESSAGE_TYPE_CAST_ADD = 1; // Add a new Cast
+  MESSAGE_TYPE_CAST_REMOVE = 2; // Remove an existing Cast
+  MESSAGE_TYPE_REACTION_ADD = 3; // Add a Reaction to a Cast
+  MESSAGE_TYPE_REACTION_REMOVE = 4; // Remove a Reaction from a Cast
+  MESSAGE_TYPE_AMP_ADD = 5; 
+  MESSAGE_TYPE_AMP_REMOVE = 6;
+  MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS = 7; // Add a Verification of an Ethereum Address
+  MESSAGE_TYPE_VERIFICATION_REMOVE = 8; // Remove a Verification
+  MESSAGE_TYPE_SIGNER_ADD = 9; // Add a new Ed25519 key pair that signs messages for a user
+  MESSAGE_TYPE_SIGNER_REMOVE = 10; // Remove an Ed25519 key pair that signs messages for a user
+  MESSAGE_TYPE_USER_DATA_ADD = 11; // Add metadata about a user
+}
+
+/** Farcaster network the mne is intended for */
+enum FarcasterNetwork {
+  FARCASTER_NETWORK_NONE = 0;
+  FARCASTER_NETWORK_MAINNET = 1; // Public primary network
+  FARCASTER_NETWORK_TESTNET = 2; // Public test network
+  FARCASTER_NETWORK_DEVNET = 3; // Private test network
+}
+
+/** Adds or removes an Ed25519 key pair that signs messages for a user */
+message SignerBody {
+  bytes signer = 1; // Public key of the Ed25519 key pair
+}
+
+/** Adds metadata about a user */
+message UserDataBody {
+  UserDataType type = 1; // Type of metadata
+  string value = 2; // Value of the metadata
+}
+
+/** Type of UserData */
+enum UserDataType {
+  USER_DATA_TYPE_NONE = 0;
+  USER_DATA_TYPE_PFP = 1; // Profile Picture for the user
+  USER_DATA_TYPE_DISPLAY = 2; // Display Name for the user
+  USER_DATA_TYPE_BIO = 3; // Bio for the user
+  USER_DATA_TYPE_LOCATION = 4; // Location of the user
+  USER_DATA_TYPE_URL = 5; // URL of the user
+  USER_DATA_TYPE_FNAME = 6; // Preferred Farcaster Name for the user
+}
+
+/** Adds a new Cast */
+message CastAddBody {
+  repeated string embeds = 1; // URLs to be embedded in the cast
+  repeated uint64 mentions = 2; // Fids mentioned in the cast
+  oneof parent {
+    CastId parent_cast_id = 3; // Parent cast of the cast
+  };
+  string text = 4; // Text of the cast
+  repeated uint32 mentions_positions = 5; // Positions of the mentions in the text
+}
+
+/** Removes an existing Cast */
+message CastRemoveBody {
+  bytes target_hash = 1; // Hash of the cast to remove
+}
+
+/** Identifier used to look up a Cast */
+message CastId {
+  uint64 fid = 1; // Fid of the user who created the cast
+  bytes hash = 2; // Hash of the cast
+}
+
+/** Adds or removes a Reaction from a Cast */
+message ReactionBody {
+  ReactionType type = 1; // Type of reaction
+  oneof target {
+    CastId target_cast_id = 2; // CastId of the Cast to react to
   }
 }
 
-message Message {
-  MessageData data = 1;
-  bytes hash = 2;
-  HashScheme hash_scheme = 3;
-  bytes signature = 4;
-  SignatureScheme signature_scheme = 5;
-  bytes signer = 6;
+/** Type of Reaction */
+enum ReactionType {
+  REACTION_TYPE_NONE = 0;
+  REACTION_TYPE_LIKE = 1; // Like the target cast
+  REACTION_TYPE_RECAST = 2; // Share target cast to the user's audience
+}
+
+/** Adds a Verification of ownership of an Ethereum Address */
+message VerificationAddEthAddressBody {
+  bytes address = 1; // Ethereum address being verified
+  bytes eth_signature = 2; // Signature produced by the user's Ethereum address
+  bytes block_hash = 3; // Hash of the latest Ethereum block when the signature was produced
+}
+
+/** Removes a Verification of any type */
+message VerificationRemoveBody {
+  bytes address = 1; // Address of the Verification to remove
+}
+
+message AmpBody {
+  uint64 target_fid = 1;
 }

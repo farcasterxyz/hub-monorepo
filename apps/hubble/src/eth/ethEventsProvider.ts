@@ -1,7 +1,7 @@
 import * as protobufs from '@farcaster/protobufs';
-import { hexStringToBytes, HubAsyncResult } from '@farcaster/utils';
+import { bytesToUtf8String, hexStringToBytes, HubAsyncResult, HubError, toFarcasterTime } from '@farcaster/utils';
 import { BigNumber, Contract, Event, providers } from 'ethers';
-import { err, ok, ResultAsync } from 'neverthrow';
+import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
 import { bytes32ToBytes, bytesToBytes32 } from '~/eth/utils';
 import { HubInterface } from '~/hubble';
@@ -18,6 +18,8 @@ export class GoerliEthConstants {
   public static ChunkSize = 10000;
 }
 
+type NameRegistryRenewEvent = Omit<protobufs.NameRegistryEvent, 'to' | 'from'>;
+
 /**
  * Class that follows the Ethereum chain to handle on-chain events from the ID Registry and Name Registry contracts.
  */
@@ -32,6 +34,7 @@ export class EthEventsProvider {
 
   private _idEventsByBlock: Map<number, Array<protobufs.IdRegistryEvent>>;
   private _nameEventsByBlock: Map<number, Array<protobufs.NameRegistryEvent>>;
+  private _renewEventsByBlock: Map<number, Array<NameRegistryRenewEvent>>;
 
   private _lastBlockNumber: number;
 
@@ -60,6 +63,7 @@ export class EthEventsProvider {
     // numConfirmations blocks have been mined.
     this._nameEventsByBlock = new Map();
     this._idEventsByBlock = new Map();
+    this._renewEventsByBlock = new Map();
 
     // Setup IdRegistry contract
     this._idRegistryContract.on('Register', (to: string, id: BigNumber, _recovery, _url, event: Event) => {
@@ -71,19 +75,12 @@ export class EthEventsProvider {
 
     // Setup NameRegistry contract
     this._nameRegistryContract.on('Transfer', (from: string, to: string, tokenId: BigNumber, event: Event) => {
-      this.cacheNameRegistryEvent(
-        from,
-        to,
-        tokenId,
-        protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER,
-        event
-      );
+      this.cacheNameRegistryEvent(from, to, tokenId, event);
     });
 
-    // TODO: handle Renew events separately from Transfer events
-    // this._nameRegistryContract.on('Renew', (tokenId: BigNumber, expiry: BigNumber, event: Event) => {
-    //   this.cacheNameRegistryEvent('', '', tokenId, flatbuffers.NameRegistryEventType.NameRegistryRenew, expiry, event);
-    // });
+    this._nameRegistryContract.on('Renew', (tokenId: BigNumber, expiry: BigNumber, event: Event) => {
+      this.cacheRenewEvent(tokenId, expiry, event);
+    });
 
     // Set up block listener to confirm blocks
     this._jsonRpcProvider.on('block', (blockNumber: number) => this.handleNewBlock(blockNumber));
@@ -140,8 +137,13 @@ export class EthEventsProvider {
     if (encodedFname.isErr()) {
       return err(encodedFname.error);
     }
-    const expiry: BigNumber = await this._nameRegistryContract['expiryOf'](encodedFname.value);
-    return ok(expiry.toNumber() * 1000);
+
+    const expiryResult: Result<BigNumber, HubError> = await ResultAsync.fromPromise(
+      this._nameRegistryContract['expiryOf'](encodedFname.value),
+      (err) => new HubError('unavailable.network_failure', err as Error)
+    );
+
+    return expiryResult.map((expiry) => expiry.toNumber() * 1000);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -194,7 +196,9 @@ export class EthEventsProvider {
       toBlock,
       GoerliEthConstants.ChunkSize
     );
-    // TODO: sync old Name Renew events
+
+    // We don't need to sync historical Renew events because the expiry
+    // is pulled when NameRegistryEvents are merged
 
     this._isHistoricalSyncDone = true;
   }
@@ -346,12 +350,10 @@ export class EthEventsProvider {
             const from: string = event.args?.at(0);
             const to: string = event.args?.at(1);
             const tokenId: BigNumber = BigNumber.from(event.args?.at(2));
-            await this.cacheNameRegistryEvent(from, to, tokenId, type, event);
+            await this.cacheNameRegistryEvent(from, to, tokenId, event);
           } catch (e) {
             log.error({ event }, 'failed to parse event args');
           }
-        } else if (type === protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_RENEW) {
-          // TODO: create NameRegistryEvent using attributes of Renew events and previous Transfer event
         }
       }
     }
@@ -362,7 +364,11 @@ export class EthEventsProvider {
     log.info({ blockNumber }, `new block: ${blockNumber}`);
 
     // Get all blocks that have been confirmed into a single array and sort.
-    const cachedBlocksSet = new Set([...this._nameEventsByBlock.keys(), ...this._idEventsByBlock.keys()]);
+    const cachedBlocksSet = new Set([
+      ...this._nameEventsByBlock.keys(),
+      ...this._idEventsByBlock.keys(),
+      ...this._renewEventsByBlock.keys(),
+    ]);
     const cachedBlocks = Array.from(cachedBlocksSet);
     cachedBlocks.sort();
 
@@ -385,6 +391,31 @@ export class EthEventsProvider {
             await this._hub.submitNameRegistryEvent(nameEvent, 'eth-provider');
           }
         }
+
+        const renewEvents = this._renewEventsByBlock.get(cachedBlock);
+        this._renewEventsByBlock.delete(cachedBlock);
+
+        if (renewEvents) {
+          for (const renewEvent of renewEvents) {
+            const nameRegistryEvent = await this._hub.engine.getNameRegistryEvent(renewEvent.fname);
+            if (nameRegistryEvent.isErr()) {
+              log.error(
+                { blockNumber, errCode: nameRegistryEvent.error.errCode },
+                `failed to get event for fname ${bytesToUtf8String(
+                  renewEvent.fname
+                )._unsafeUnwrap()} from renew event: ${nameRegistryEvent.error.message}`
+              );
+              continue;
+            }
+
+            const updatedEvent: protobufs.NameRegistryEvent = {
+              ...nameRegistryEvent.value,
+              ...renewEvent,
+            };
+
+            await this._hub.submitNameRegistryEvent(updatedEvent);
+          }
+        }
       }
     }
 
@@ -405,42 +436,33 @@ export class EthEventsProvider {
     event: Event
   ): HubAsyncResult<void> {
     const { blockNumber, blockHash, transactionHash, logIndex } = event;
-    log.info(
-      { event: { to, id: id.toString(), blockNumber } },
-      `cacheIdRegistryEvent: fid ${id.toString()} assigned to ${to} in block ${blockNumber}`
-    );
 
-    // Convert id registry datatypes to bytes
-    const fromBytes = from && from.length > 0 ? hexStringToBytes(from) : ok(undefined);
-    if (fromBytes.isErr()) {
-      return err(fromBytes.error);
+    const logEvent = log.child({ event: { to, id: id.toString(), blockNumber } });
+
+    const serialized = Result.combine([
+      from && from.length > 0 ? hexStringToBytes(from) : ok(new Uint8Array()),
+      hexStringToBytes(blockHash),
+      hexStringToBytes(transactionHash),
+      hexStringToBytes(to),
+    ]);
+
+    if (serialized.isErr()) {
+      logEvent.error({ errCode: serialized.error.errCode }, `cacheIdRegistryEvent error: ${serialized.error.message}`);
+      return err(serialized.error);
     }
 
-    const blockHashBytes = hexStringToBytes(blockHash);
-    if (blockHashBytes.isErr()) {
-      return err(blockHashBytes.error);
-    }
-
-    const transactionHashBytes = hexStringToBytes(transactionHash);
-    if (transactionHashBytes.isErr()) {
-      return err(transactionHashBytes.error);
-    }
-
-    const toBytes = hexStringToBytes(to);
-    if (toBytes.isErr()) {
-      return err(toBytes.error);
-    }
+    const [fromBytes, blockHashBytes, transactionHashBytes, toBytes] = serialized.value;
 
     // Construct the protobuf
     const idRegistryEvent = protobufs.IdRegistryEvent.create({
       blockNumber,
-      blockHash: blockHashBytes.value,
+      blockHash: blockHashBytes,
       logIndex,
       fid: id.toNumber(),
-      to: toBytes.value,
-      transactionHash: transactionHashBytes.value,
+      to: toBytes,
+      transactionHash: transactionHashBytes,
       type,
-      from: fromBytes.value ?? new Uint8Array(),
+      from: fromBytes,
     });
 
     // Add it to the cache
@@ -451,6 +473,11 @@ export class EthEventsProvider {
     }
     idEvents.push(idRegistryEvent);
 
+    log.info(
+      { event: { to, id: id.toString(), blockNumber } },
+      `cacheIdRegistryEvent: fid ${id.toString()} assigned to ${to} in block ${blockNumber}`
+    );
+
     return ok(undefined);
   }
 
@@ -458,49 +485,39 @@ export class EthEventsProvider {
     from: string,
     to: string,
     tokenId: BigNumber,
-    type: protobufs.NameRegistryEventType,
     event: Event
   ): HubAsyncResult<void> {
     const { blockNumber, blockHash, transactionHash, logIndex } = event;
-    log.info(
-      { event: { to, blockNumber } },
-      `cacheNameRegistryEvent: token id ${tokenId.toString()} assigned to ${to} in block ${blockNumber}`
-    );
 
-    const blockHashBytes = hexStringToBytes(blockHash);
-    if (blockHashBytes.isErr()) {
-      return err(blockHashBytes.error);
+    const logEvent = log.child({ event: { to, blockNumber } });
+
+    const serialized = Result.combine([
+      hexStringToBytes(blockHash),
+      hexStringToBytes(transactionHash),
+      from && from.length > 0 ? hexStringToBytes(from) : ok(new Uint8Array()),
+      hexStringToBytes(to),
+      bytes32ToBytes(tokenId),
+    ]);
+
+    if (serialized.isErr()) {
+      logEvent.error(
+        { errCode: serialized.error.errCode },
+        `cacheNameRegistryEvent error: ${serialized.error.message}`
+      );
+      return err(serialized.error);
     }
 
-    const transactionHashBytes = hexStringToBytes(transactionHash);
-    if (transactionHashBytes.isErr()) {
-      return err(transactionHashBytes.error);
-    }
-
-    const fromBytes = from.length > 0 ? hexStringToBytes(from) : ok(undefined);
-    if (fromBytes.isErr()) {
-      return err(fromBytes.error);
-    }
-
-    const toBytes = hexStringToBytes(to);
-    if (toBytes.isErr()) {
-      return err(toBytes.error);
-    }
-
-    const fnameBytes = bytes32ToBytes(tokenId);
-    if (fnameBytes.isErr()) {
-      return err(fnameBytes.error);
-    }
+    const [blockHashBytes, transactionHashBytes, fromBytes, toBytes, fnameBytes] = serialized.value;
 
     const nameRegistryEvent = protobufs.NameRegistryEvent.create({
       blockNumber,
-      blockHash: blockHashBytes.value,
-      transactionHash: transactionHashBytes.value,
+      blockHash: blockHashBytes,
+      transactionHash: transactionHashBytes,
       logIndex,
-      fname: fnameBytes.value,
-      from: fromBytes.value ?? new Uint8Array(),
-      to: toBytes.value,
-      type,
+      fname: fnameBytes,
+      from: fromBytes,
+      to: toBytes,
+      type: protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER,
     });
 
     // Add it to the cache
@@ -510,6 +527,50 @@ export class EthEventsProvider {
       this._nameEventsByBlock.set(blockNumber, nameEvents);
     }
     nameEvents.push(nameRegistryEvent);
+
+    logEvent.info(`cacheNameRegistryEvent: token id ${tokenId.toString()} assigned to ${to} in block ${blockNumber}`);
+
+    return ok(undefined);
+  }
+
+  private async cacheRenewEvent(tokenId: BigNumber, expiry: BigNumber, event: Event): HubAsyncResult<void> {
+    const { blockHash, transactionHash, blockNumber, logIndex } = event;
+
+    const logEvent = log.child({ event: { blockNumber } });
+
+    const serialized = Result.combine([
+      hexStringToBytes(blockHash),
+      hexStringToBytes(transactionHash),
+      bytes32ToBytes(tokenId),
+      toFarcasterTime(expiry.toNumber()),
+    ]);
+
+    if (serialized.isErr()) {
+      logEvent.error({ errCode: serialized.error.errCode }, `cacheRenewEvent error: ${serialized.error.message}`);
+      return err(serialized.error);
+    }
+
+    const [blockHashBytes, transactionHashBytes, fnameBytes, farcasterTimeExpiry] = serialized.value;
+
+    const renewEvent: NameRegistryRenewEvent = {
+      blockNumber,
+      blockHash: blockHashBytes,
+      transactionHash: transactionHashBytes,
+      logIndex,
+      fname: fnameBytes,
+      type: protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_RENEW,
+      expiry: farcasterTimeExpiry,
+    };
+
+    // Add it to the cache
+    let renewEvents = this._renewEventsByBlock.get(blockNumber);
+    if (!renewEvents) {
+      renewEvents = [];
+      this._renewEventsByBlock.set(blockNumber, renewEvents);
+    }
+    renewEvents.push(renewEvent);
+
+    logEvent.info(`cacheRenewEvent: token id ${tokenId.toString()} renewed in block ${blockNumber}`);
 
     return ok(undefined);
   }

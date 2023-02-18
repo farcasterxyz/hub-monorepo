@@ -40,6 +40,7 @@ app
   .option('-r, --rpc-port <port>', 'The tcp port that the rpc server should listen on.  (default: 13112)')
   .option('--db-name <name>', 'The name of the RocksDB instance')
   .option('--db-reset', 'Clears the database before starting')
+  .option('--rebuild-sync-trie', 'Rebuilds the sync trie before starting')
   .option('-i, --id <filepath>', 'Path to the PeerId file')
   .option('-n --network <network>', 'Farcaster network ID', parseNetwork)
   .action(async (cliOptions) => {
@@ -86,6 +87,8 @@ app
       .filter((a) => a.isOk())
       .map((a) => a._unsafeUnwrap());
 
+    const rebuildSyncTrie = cliOptions.rebuildSyncTrie ?? hubConfig.rebuildSyncTrie ?? false;
+
     const options: HubOptions = {
       peerId,
       ipMultiAddr: ipMultiAddrResult.value,
@@ -99,6 +102,7 @@ app
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort,
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
       resetDB: cliOptions.dbReset ?? hubConfig.dbReset,
+      rebuildSyncTrie,
     };
 
     const hub = new Hub(options);

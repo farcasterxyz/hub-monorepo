@@ -32,6 +32,12 @@ describe('validateFid', () => {
       err(new HubError('bad_request.validation_failure', 'fid is missing'))
     );
   });
+
+  test('fails with non-integer number', () => {
+    expect(validations.validateFid(1.5)).toEqual(
+      err(new HubError('bad_request.validation_failure', 'fid must be an integer'))
+    );
+  });
 });
 
 describe('validateFname', () => {
@@ -173,52 +179,61 @@ describe('validateEd25519PublicKey', () => {
 });
 
 describe('validateCastAddBody', () => {
-  test('succeeds', async () => {
-    const body = await Factories.CastAddBody.build();
-    expect(validations.validateCastAddBody(body)._unsafeUnwrap()).toEqual(body);
+  test('succeeds', () => {
+    const body = Factories.CastAddBody.build();
+    expect(validations.validateCastAddBody(body)).toEqual(ok(body));
   });
 
   describe('fails', () => {
     let body: protobufs.CastAddBody;
     let hubErrorMessage: string;
 
-    afterEach(async () => {
-      expect(validations.validateCastAddBody(body)._unsafeUnwrapErr()).toEqual(
-        new HubError('bad_request.validation_failure', hubErrorMessage)
+    afterEach(() => {
+      expect(validations.validateCastAddBody(body)).toEqual(
+        err(new HubError('bad_request.validation_failure', hubErrorMessage))
       );
     });
 
-    test('when text is missing', async () => {
-      body = await Factories.CastAddBody.build({ text: '' });
+    test('when text is missing', () => {
+      body = Factories.CastAddBody.build({ text: '' });
       hubErrorMessage = 'text is missing';
     });
 
-    test('when text is longer than 320 characters', async () => {
-      body = await Factories.CastAddBody.build({ text: faker.random.alphaNumeric(321) });
+    test('when text is longer than 320 characters', () => {
+      body = Factories.CastAddBody.build({ text: faker.random.alphaNumeric(321) });
       hubErrorMessage = 'text > 320 chars';
     });
 
-    test('with more than 2 embeds', async () => {
-      body = await Factories.CastAddBody.build({
+    test('when text is longer than 320 bytes', () => {
+      let text = '';
+      for (let i = 0; i < 320; i++) {
+        text = text + '🤓';
+      }
+      body = Factories.CastAddBody.build({ text });
+      hubErrorMessage = 'text > 320 chars';
+    });
+
+    test('with more than 2 embeds', () => {
+      body = Factories.CastAddBody.build({
         embeds: [faker.internet.url(), faker.internet.url(), faker.internet.url()],
       });
       hubErrorMessage = 'embeds > 2';
     });
 
-    test('when parent fid is missing', async () => {
-      body = await Factories.CastAddBody.build({
+    test('when parent fid is missing', () => {
+      body = Factories.CastAddBody.build({
         parentCastId: Factories.CastId.build({ fid: undefined }),
       });
       hubErrorMessage = 'fid is missing';
     });
 
-    test('when parent hash is missing', async () => {
-      body = await Factories.CastAddBody.build({ parentCastId: Factories.CastId.build({ hash: undefined }) });
+    test('when parent hash is missing', () => {
+      body = Factories.CastAddBody.build({ parentCastId: Factories.CastId.build({ hash: undefined }) });
       hubErrorMessage = 'hash is missing';
     });
 
-    test('with more than 5 mentions', async () => {
-      body = await Factories.CastAddBody.build({
+    test('with more than 5 mentions', () => {
+      body = Factories.CastAddBody.build({
         mentions: [
           Factories.Fid.build(),
           Factories.Fid.build(),
@@ -229,6 +244,44 @@ describe('validateCastAddBody', () => {
         ],
       });
       hubErrorMessage = 'mentions > 5';
+    });
+
+    test('with more mentions than mentionsPositions', () => {
+      body = Factories.CastAddBody.build({
+        mentions: [Factories.Fid.build(), Factories.Fid.build()],
+        mentionsPositions: [0],
+      });
+      hubErrorMessage = 'mentions and mentionsPositions must match';
+    });
+
+    test('with repeated mentionsPositions', () => {
+      body = Factories.CastAddBody.build({
+        mentions: [Factories.Fid.build(), Factories.Fid.build()],
+        mentionsPositions: [10, 10],
+      });
+      hubErrorMessage = 'mentionsPositions must be unique';
+    });
+
+    test('with out of range mentionsPositions', () => {
+      body = Factories.CastAddBody.build({
+        text: 'a',
+        mentions: [Factories.Fid.build()],
+        mentionsPositions: [2],
+      });
+      hubErrorMessage = 'mentionsPositions must be a position in text';
+    });
+
+    test('with non-integer mentionsPositions', () => {
+      body = Factories.CastAddBody.build({ mentions: [Factories.Fid.build()], mentionsPositions: [1.5] });
+      hubErrorMessage = 'mentionsPositions must be integers';
+    });
+
+    test('with out of order mentionsPositions', () => {
+      body = Factories.CastAddBody.build({
+        mentions: [Factories.Fid.build(), Factories.Fid.build()],
+        mentionsPositions: [2, 1],
+      });
+      hubErrorMessage = 'mentionsPositions must be sorted in ascending order';
     });
   });
 });

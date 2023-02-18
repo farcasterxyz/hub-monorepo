@@ -229,6 +229,13 @@ describe('NameRegistryEvent', () => {
     const deserialized = utils.deserializeNameRegistryEvent(event);
     expect(deserialized.isOk()).toBeTruthy();
   });
+
+  test('succeeds when expiry is missing', () => {
+    const event = Factories.NameRegistryEvent.build({ expiry: undefined });
+    const deserialized = utils.deserializeNameRegistryEvent(event);
+    expect(deserialized.isOk()).toBeTruthy();
+    expect(deserialized._unsafeUnwrap().expiry).toEqual(undefined);
+  });
 });
 
 describe('IdRegistryEvent', () => {

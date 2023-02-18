@@ -1,9 +1,7 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, HubAsyncResult, HubError } from '@farcaster/utils';
+import { bytesCompare, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
+import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
-import RocksDB, { Transaction } from '~/storage/db/rocksdb';
-import SequentialMergeStore from '~/storage/stores/sequentialMergeStore';
-import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import {
   deleteMessageTransaction,
   getAllMessagesBySigner,
@@ -15,9 +13,11 @@ import {
   makeTsHash,
   makeUserKey,
   putMessageTransaction,
-} from '../db/message';
-import { UserPostfix } from '../db/types';
-import { StorePruneOptions } from './types';
+} from '~/storage/db/message';
+import RocksDB, { Transaction } from '~/storage/db/rocksdb';
+import { UserPostfix } from '~/storage/db/types';
+import StoreEventHandler from '~/storage/stores/storeEventHandler';
+import { MERGE_TIMEOUT_DEFAULT, StorePruneOptions } from '~/storage/stores/types';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 50;
 
@@ -70,17 +70,17 @@ const makeVerificationRemovesKey = (fid: number, address?: Uint8Array): Buffer =
  * 2. fid:set:address -> fid:tsHash (Set Index)
  */
 
-class VerificationStore extends SequentialMergeStore {
+class VerificationStore {
   private _db: RocksDB;
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
+  private _mergeLock: AsyncLock;
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
-    super();
-
     this._db = db;
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
+    this._mergeLock = new AsyncLock();
   }
 
   /**
@@ -166,12 +166,21 @@ class VerificationStore extends SequentialMergeStore {
       throw new HubError('bad_request.validation_failure', 'invalid message type');
     }
 
-    const mergeResult = await this.mergeSequential(message);
-    if (mergeResult.isErr()) {
-      throw mergeResult.error;
-    }
-
-    return mergeResult.value;
+    return this._mergeLock
+      .acquire(
+        message.data.fid.toString(),
+        async () => {
+          if (protobufs.isVerificationAddEthAddressMessage(message)) {
+            return this.mergeAdd(message);
+          } else if (protobufs.isVerificationRemoveMessage(message)) {
+            return this.mergeRemove(message);
+          }
+        },
+        { timeout: MERGE_TIMEOUT_DEFAULT }
+      )
+      .catch((e: any) => {
+        throw isHubError(e) ? e : new HubError('unavailable.storage_failure', 'merge timed out');
+      });
   }
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {
@@ -269,16 +278,6 @@ class VerificationStore extends SequentialMergeStore {
     }
 
     return ok(undefined);
-  }
-
-  protected async mergeFromSequentialQueue(message: protobufs.Message): Promise<void> {
-    if (protobufs.isVerificationAddEthAddressMessage(message)) {
-      return this.mergeAdd(message);
-    } else if (protobufs.isVerificationRemoveMessage(message)) {
-      return this.mergeRemove(message);
-    } else {
-      throw new HubError('bad_request.validation_failure', 'invalid message type');
-    }
   }
 
   /* -------------------------------------------------------------------------- */

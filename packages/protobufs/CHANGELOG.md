@@ -1,5 +1,13 @@
 # @farcaster/protobufs
 
+## 0.1.4
+
+### Patch Changes
+
+- d21a8f2: chore: upgrade packages [feb 2023]
+- 6a66bae: feat: add mentionsPositions to CastAddBody
+- cf9c64c: add UpdateNameRegistryEventExpiryJobPayload message to job.proto
+
 ## 0.1.3
 
 ### Patch Changes
