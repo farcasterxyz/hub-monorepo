@@ -32,6 +32,8 @@ export const Config = {
   dbName: 'rocks.hub._default',
   /** Clear the RocksDB instance before starting */
   dbReset: false,
+  /** Rebuild the sync trie before starting */
+  rebuildSyncTrie: false,
   /** Farcaster network */
   network: DEFAULT_NETWORK,
 };

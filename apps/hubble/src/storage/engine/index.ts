@@ -1,10 +1,10 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesCompare, HubAsyncResult, HubError, HubResult, utf8StringToBytes, validations } from '@farcaster/utils';
-import { err, ok, ResultAsync } from 'neverthrow';
+import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { SyncId } from '~/network/sync/syncId';
 import { getManyMessages, typeToSetPostfix } from '~/storage/db/message';
 import RocksDB from '~/storage/db/rocksdb';
-import { FID_BYTES, RootPrefix, UserPostfix } from '~/storage/db/types';
+import { FID_BYTES, RootPrefix, TSHASH_LENGTH, UserPostfix } from '~/storage/db/types';
 import AmpStore from '~/storage/stores/ampStore';
 import CastStore from '~/storage/stores/castStore';
 import ReactionStore from '~/storage/stores/reactionStore';
@@ -124,7 +124,7 @@ class Engine {
     const allUserPrefix = Buffer.from([RootPrefix.User]);
 
     for await (const [key, value] of this._db.iteratorByPrefix(allUserPrefix, { keys: true, valueAsBuffer: true })) {
-      if (key.length < 2 + FID_BYTES) {
+      if (key.length !== 1 + FID_BYTES + 1 + TSHASH_LENGTH) {
         // Not a message key, so we can skip it.
         continue;
       }
@@ -143,14 +143,14 @@ class Engine {
         continue;
       }
 
-      if (!value || value.length <= 20) {
-        // This is a hash and not a message, we need to skip it.
-        continue;
+      const message = Result.fromThrowable(
+        () => protobufs.Message.decode(new Uint8Array(value)),
+        (e) => e as HubError
+      )();
+
+      if (message.isOk()) {
+        await callback(message.value);
       }
-
-      const message = protobufs.Message.decode(new Uint8Array(value));
-
-      await callback(message);
     }
   }
   async getAllMessagesBySyncIds(syncIds: Uint8Array[]): HubAsyncResult<protobufs.Message[]> {

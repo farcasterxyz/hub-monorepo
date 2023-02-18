@@ -43,17 +43,17 @@ export class Client {
     this._grpcClient = getHubRpcClient(address);
   }
 
-  // /* -------------------------------------------------------------------------- */
-  // /*                                Submit Methods                              */
-  // /* -------------------------------------------------------------------------- */
+  /* -------------------------------------------------------------------------- */
+  /*                                Submit Methods                              */
+  /* -------------------------------------------------------------------------- */
 
   async submitMessage(message: types.Message): HubAsyncResult<types.Message> {
     return wrapGrpcMessageCall(this._grpcClient.submitMessage(message._protobuf));
   }
 
-  // /* -------------------------------------------------------------------------- */
-  // /*                                 Cast Methods                               */
-  // /* -------------------------------------------------------------------------- */
+  /* -------------------------------------------------------------------------- */
+  /*                                 Cast Methods                               */
+  /* -------------------------------------------------------------------------- */
 
   async getCast(fid: number, hash: string): HubAsyncResult<types.CastAddMessage> {
     const castId = utils.serializeCastId({ fid, hash });
@@ -83,9 +83,14 @@ export class Client {
     return wrapGrpcMessagesCall(this._grpcClient.getCastsByMention(fidRequest));
   }
 
-  // /* -------------------------------------------------------------------------- */
-  // /*                                Amp Methods                              */
-  // /* -------------------------------------------------------------------------- */
+  async getAllCastMessagesByFid(fid: number): HubAsyncResult<(types.CastAddMessage | types.CastRemoveMessage)[]> {
+    const request = protobufs.FidRequest.create({ fid });
+    return wrapGrpcMessagesCall(this._grpcClient.getAllCastMessagesByFid(request));
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                                Amp Methods                              */
+  /* -------------------------------------------------------------------------- */
 
   async getAmp(fid: number, targetFid: number): HubAsyncResult<types.AmpAddMessage> {
     const ampRequest = protobufs.AmpRequest.create({ fid, targetFid });
@@ -102,9 +107,14 @@ export class Client {
     return wrapGrpcMessagesCall(this._grpcClient.getAmpsByUser(fidRequest));
   }
 
-  // /* -------------------------------------------------------------------------- */
-  // /*                               Reaction Methods                             */
-  // /* -------------------------------------------------------------------------- */
+  async getAllAmpMessagesByFid(fid: number): HubAsyncResult<(types.AmpAddMessage | types.AmpRemoveMessage)[]> {
+    const request = protobufs.FidRequest.create({ fid });
+    return wrapGrpcMessagesCall(this._grpcClient.getAllAmpMessagesByFid(request));
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                               Reaction Methods                             */
+  /* -------------------------------------------------------------------------- */
 
   async getReaction(
     fid: number,
@@ -144,9 +154,16 @@ export class Client {
     return wrapGrpcMessagesCall(this._grpcClient.getReactionsByCast(request));
   }
 
-  // /* -------------------------------------------------------------------------- */
-  // /*                             Verification Methods                           */
-  // /* -------------------------------------------------------------------------- */
+  async getAllReactionMessagesByFid(
+    fid: number
+  ): HubAsyncResult<(types.ReactionAddMessage | types.ReactionRemoveMessage)[]> {
+    const request = protobufs.FidRequest.create({ fid });
+    return wrapGrpcMessagesCall(this._grpcClient.getAllReactionMessagesByFid(request));
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                             Verification Methods                           */
+  /* -------------------------------------------------------------------------- */
 
   async getVerification(fid: number, address: string): HubAsyncResult<types.VerificationAddEthAddressMessage> {
     const serializedAddress = utils.serializeEthAddress(address);
@@ -162,9 +179,16 @@ export class Client {
     return wrapGrpcMessagesCall(this._grpcClient.getVerificationsByFid(request));
   }
 
-  // /* -------------------------------------------------------------------------- */
-  // /*                                 Signer Methods                             */
-  // /* -------------------------------------------------------------------------- */
+  async getAllVerificationMessagesByFid(
+    fid: number
+  ): HubAsyncResult<(types.VerificationAddEthAddressMessage | types.VerificationRemoveMessage)[]> {
+    const request = protobufs.FidRequest.create({ fid });
+    return wrapGrpcMessagesCall(this._grpcClient.getAllVerificationMessagesByFid(request));
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                                 Signer Methods                             */
+  /* -------------------------------------------------------------------------- */
 
   async getSigner(fid: number, signer: string): HubAsyncResult<types.SignerAddMessage> {
     const serializedSigner = utils.serializeEd25519PublicKey(signer);
@@ -180,14 +204,14 @@ export class Client {
     return wrapGrpcMessagesCall(this._grpcClient.getSignersByFid(request));
   }
 
-  async getIdRegistryEvent(fid: number): HubAsyncResult<types.IdRegistryEvent> {
+  async getAllSignerMessagesByFid(fid: number): HubAsyncResult<(types.SignerAddMessage | types.SignerRemoveMessage)[]> {
     const request = protobufs.FidRequest.create({ fid });
-    return deserializeCall(this._grpcClient.getIdRegistryEvent(request), utils.deserializeIdRegistryEvent);
+    return wrapGrpcMessagesCall(this._grpcClient.getAllSignerMessagesByFid(request));
   }
 
-  // /* -------------------------------------------------------------------------- */
-  // /*                                User Data Methods                           */
-  // /* -------------------------------------------------------------------------- */
+  /* -------------------------------------------------------------------------- */
+  /*                                User Data Methods                           */
+  /* -------------------------------------------------------------------------- */
 
   async getUserData(fid: number, type: types.UserDataType): HubAsyncResult<types.UserDataAddMessage> {
     const request = protobufs.UserDataRequest.create({ fid, userDataType: type });
@@ -197,6 +221,20 @@ export class Client {
   async getUserDataByFid(fid: number): HubAsyncResult<types.UserDataAddMessage[]> {
     const request = protobufs.FidRequest.create({ fid });
     return wrapGrpcMessagesCall(this._grpcClient.getUserDataByFid(request));
+  }
+
+  async getAllUserDataMessagesByFid(fid: number): HubAsyncResult<types.UserDataAddMessage[]> {
+    const request = protobufs.FidRequest.create({ fid });
+    return wrapGrpcMessagesCall(this._grpcClient.getAllUserDataMessagesByFid(request));
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                               Contract Methods                             */
+  /* -------------------------------------------------------------------------- */
+
+  async getIdRegistryEvent(fid: number): HubAsyncResult<types.IdRegistryEvent> {
+    const request = protobufs.FidRequest.create({ fid });
+    return deserializeCall(this._grpcClient.getIdRegistryEvent(request), utils.deserializeIdRegistryEvent);
   }
 
   async getNameRegistryEvent(fname: string): HubAsyncResult<types.NameRegistryEvent> {
@@ -209,46 +247,8 @@ export class Client {
     return deserializeCall(this._grpcClient.getNameRegistryEvent(request), utils.deserializeNameRegistryEvent);
   }
 
-  // /* -------------------------------------------------------------------------- */
-  // /*                                   Bulk Methods                             */
-  // /* -------------------------------------------------------------------------- */
-
-  async getAllCastMessagesByFid(fid: number): HubAsyncResult<(types.CastAddMessage | types.CastRemoveMessage)[]> {
-    const request = protobufs.FidRequest.create({ fid });
-    return wrapGrpcMessagesCall(this._grpcClient.getAllCastMessagesByFid(request));
-  }
-
-  async getAllAmpMessagesByFid(fid: number): HubAsyncResult<(types.AmpAddMessage | types.AmpRemoveMessage)[]> {
-    const request = protobufs.FidRequest.create({ fid });
-    return wrapGrpcMessagesCall(this._grpcClient.getAllAmpMessagesByFid(request));
-  }
-
-  async getAllReactionMessagesByFid(
-    fid: number
-  ): HubAsyncResult<(types.ReactionAddMessage | types.ReactionRemoveMessage)[]> {
-    const request = protobufs.FidRequest.create({ fid });
-    return wrapGrpcMessagesCall(this._grpcClient.getAllReactionMessagesByFid(request));
-  }
-
-  async getAllVerificationMessagesByFid(
-    fid: number
-  ): HubAsyncResult<(types.VerificationAddEthAddressMessage | types.VerificationRemoveMessage)[]> {
-    const request = protobufs.FidRequest.create({ fid });
-    return wrapGrpcMessagesCall(this._grpcClient.getAllVerificationMessagesByFid(request));
-  }
-
-  async getAllSignerMessagesByFid(fid: number): HubAsyncResult<(types.SignerAddMessage | types.SignerRemoveMessage)[]> {
-    const request = protobufs.FidRequest.create({ fid });
-    return wrapGrpcMessagesCall(this._grpcClient.getAllSignerMessagesByFid(request));
-  }
-
-  async getAllUserDataMessagesByFid(fid: number): HubAsyncResult<types.UserDataAddMessage[]> {
-    const request = protobufs.FidRequest.create({ fid });
-    return wrapGrpcMessagesCall(this._grpcClient.getAllUserDataMessagesByFid(request));
-  }
-
   /* -------------------------------------------------------------------------- */
-  /*                                  Event Methods                             */
+  /*                                 Submit Methods                             */
   /* -------------------------------------------------------------------------- */
 
   /**

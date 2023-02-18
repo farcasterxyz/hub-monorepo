@@ -202,6 +202,73 @@ describe('mergeMessage', () => {
         expect(mergedMessages).toEqual([signerAdd, signerRemove]);
       });
     });
+
+    test('succeeds with concurrent, conflicting cast messages', async () => {
+      const castAdd = await Factories.CastAddMessage.create({ data: { fid } }, { transient: { signer } });
+
+      const generateCastRemove = async (): Promise<protobufs.CastRemoveMessage> => {
+        return Factories.CastRemoveMessage.create(
+          { data: { fid, castRemoveBody: { targetHash: castAdd.hash } } },
+          { transient: { signer } }
+        );
+      };
+
+      // Generate 100 cast removes with different timestamps
+      const castRemoves: protobufs.CastRemoveMessage[] = [];
+      for (let i = 0; i < 100; i++) {
+        const castRemove = await generateCastRemove();
+        castRemoves.push(castRemove);
+      }
+
+      const messages = [castAdd, ...castRemoves, castAdd, castAdd];
+
+      const results = await Promise.all(messages.map((message) => engine.mergeMessage(message)));
+      expect(
+        results.every(
+          (result) => result.isOk() || (result.isErr() && result.error.errCode !== 'unavailable.storage_failure')
+        )
+      ).toBeTruthy();
+
+      const allMessages = await engine.getAllCastMessagesByFid(fid);
+      expect(allMessages._unsafeUnwrap().length).toEqual(1);
+    });
+
+    test('succeeds with concurrent, conflicting reaction messages', async () => {
+      const castId = Factories.CastId.build();
+      const body = Factories.ReactionBody.build({
+        type: protobufs.ReactionType.REACTION_TYPE_LIKE,
+        targetCastId: castId,
+      });
+
+      const messages: protobufs.Message[] = [];
+      for (let i = 0; i < 10; i++) {
+        if (Math.random() < 0.5) {
+          messages.push(
+            await Factories.ReactionAddMessage.create(
+              { data: { reactionBody: body, fid, network } },
+              { transient: { signer } }
+            )
+          );
+        } else {
+          messages.push(
+            await Factories.ReactionRemoveMessage.create(
+              { data: { reactionBody: body, fid, network } },
+              { transient: { signer } }
+            )
+          );
+        }
+      }
+
+      const results = await Promise.all(messages.map((message) => engine.mergeMessage(message)));
+      expect(
+        results.every(
+          (result) => result.isOk() || (result.isErr() && result.error.errCode !== 'unavailable.storage_failure')
+        )
+      ).toBeTruthy();
+
+      const allMessages = await engine.getAllReactionMessagesByFid(fid);
+      expect(allMessages._unsafeUnwrap().length).toEqual(1);
+    });
   });
 
   describe('fails when missing signer', () => {
