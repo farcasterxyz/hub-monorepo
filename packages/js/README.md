@@ -4,61 +4,54 @@ A collection of Typescript classes and methods for easily creating Farcaster mes
 
 ## Classes
 
-| Class                                     | Description                                        | Docs                                  |
-| ----------------------------------------- | -------------------------------------------------- | ------------------------------------- |
-| [Client](classes/Client.md)               | Class for interacting with the Farcaster protocol. | [docs](docs/classes/Client.md)        |
-| [Ed25519Signer](classes/Ed25519Signer.md) | Class for signing messages with Ed25519.           | [docs](docs/classes/Ed25519Signer.md) |
-| [Eip712Signer](classes/Eip712Signer.md)   | Class for signing messages with EIP-712.           | [docs](docs/classes/Eip712Signer.md)  |
+| Class         | Description                                        | Docs                            |
+| ------------- | -------------------------------------------------- | ------------------------------- |
+| Client        | Class for interacting with the Farcaster protocol. | [docs](./docs/Client.md)        |
+| Ed25519Signer | Class for signing messages with Ed25519.           | [docs](./docs/Ed25519Signer.md) |
+| Eip712Signer  | Class for signing messages with EIP-712.           | [docs](./docs/Eip712Signer.md)  |
 
 ## Functions
 
-| Function                                                                          | Description                                                       | Docs                                                      |
-| --------------------------------------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------- |
-| [makeAmpAdd](modules.md#makeampadd)                                               | Creates a message for adding AMP liquidity.                       | [docs](docs/modules.md#makeampadd)                        |
-| [makeAmpAddData](modules.md#makeampadddata)                                       | Creates data for adding AMP liquidity.                            | [docs](docs/modules.md#makeampadddata)                    |
-| [makeAmpRemove](modules.md#makeampremove)                                         | Creates a message for removing AMP liquidity.                     | [docs](docs/modules.md#makeampremove)                     |
-| [makeAmpRemoveData](modules.md#makeampremovedata)                                 | Creates data for removing AMP liquidity.                          | [docs](docs/modules.md#makeampremovedata)                 |
-| [makeCastAdd](modules.md#makecastadd)                                             | Creates a message for adding CAST liquidity.                      | [docs](docs/modules.md#makecastadd)                       |
-| [makeCastAddData](modules.md#makecastadddata)                                     | Creates data for adding CAST liquidity.                           | [docs](docs/modules.md#makecastadddata)                   |
-| [makeCastRemove](modules.md#makecastremove)                                       | Creates a message for removing CAST liquidity.                    | [docs](docs/modules.md#makecastremove)                    |
-| [makeCastRemoveData](modules.md#makecastremovedata)                               | Creates data for removing CAST liquidity.                         | [docs](docs/modules.md#makecastremovedata)                |
-| [makeMessageHash](modules.md#makemessagehash)                                     | Creates a hash of a message.                                      | [docs](docs/modules.md#makemessagehash)                   |
-| [makeMessageWithSignature](modules.md#makemessagewithsignature)                   | Adds a signature to a message.                                    | [docs](docs/modules.md#makemessagewithsignature)          |
-| [makeReactionAdd](modules.md#makereactionadd)                                     | Creates a message for adding a reaction.                          | [docs](docs/modules.md#makereactionadd)                   |
-| [makeReactionAddData](modules.md#makereactionadddata)                             | Creates data for adding a reaction.                               | [docs](docs/modules.md#makereactionadddata)               |
-| [makeReactionRemove](modules.md#makereactionremove)                               | Creates a message for removing a reaction.                        | [docs](docs/modules.md#makereactionremove)                |
-| [makeReactionRemoveData](modules.md#makereactionremovedata)                       | Creates data for removing a reaction.                             | [docs](docs/modules.md#makereactionremovedata)            |
-| [makeSignerAdd](modules.md#makesigneradd)                                         | Creates a message for adding a signer.                            | [docs](docs/modules.md#makesigneradd)                     |
-| [makeSignerAddData](modules.md#makesigneradddata)                                 | Creates data for adding a signer.                                 | [docs](docs/modules.md#makesigneradddata)                 |
-| [makeSignerRemove](modules.md#makesignerremove)                                   | Creates a message for removing a signer.                          | [docs](docs/modules.md#makesignerremove)                  |
-| [makeSignerRemoveData](modules.md#makesignerremovedata)                           | Creates data for removing a signer from an account.               | [docs](docs/modules.md#makesignerremovedata)              |
-| [makeUserDataAdd](modules.md#makeuserdataadd)                                     | Creates a message for adding user data.                           | [docs](docs/modules.md#makeuserdataadd)                   |
-| [makeUserDataAddData](modules.md#makeuserdataadddata)                             | Creates data for adding user data.                                | [docs](docs/modules.md#makeuserdataadddata)               |
-| [makeVerificationAddEthAddress](modules.md#makeverificationaddethaddress)         | Creates a message for adding an Ethereum address to verification. | [docs](docs/modules.md#makeverificationaddethaddress)     |
-| [makeVerificationAddEthAddressData](modules.md#makeverificationaddethaddressdata) | Creates data for adding an Ethereum address to verification.      | [docs](docs/modules.md#makeverificationaddethaddressdata) |
-| [makeVerificationRemove](modules.md#makeverificationremove)                       | Creates a message for removing a verification.                    | [docs](docs/modules.md#makeverificationremove)            |
-| [makeVerificationRemoveData](modules.md#makeverificationremovedata)               | Creates data for removing a verification.                         | [docs](docs/modules.md#makeverificationremovedata)        |
+| Function                          | Description                                                       | Docs                                                          |
+| --------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------- |
+| makeAmpAdd                        | Creates a message for adding AMP liquidity.                       | [docs](./docs/functions.md#makeampadd)                        |
+| makeAmpAddData                    | Creates data for adding AMP liquidity.                            | [docs](./docs/functions.md#makeampadddata)                    |
+| makeAmpRemove                     | Creates a message for removing AMP liquidity.                     | [docs](./docs/functions.md#makeampremove)                     |
+| makeAmpRemoveData                 | Creates data for removing AMP liquidity.                          | [docs](./docs/functions.md#makeampremovedata)                 |
+| makeCastAdd                       | Creates a message for adding CAST liquidity.                      | [docs](./docs/functions.md#makecastadd)                       |
+| makeCastAddData                   | Creates data for adding CAST liquidity.                           | [docs](./docs/functions.md#makecastadddata)                   |
+| makeCastRemove                    | Creates a message for removing CAST liquidity.                    | [docs](./docs/functions.md#makecastremove)                    |
+| makeCastRemoveData                | Creates data for removing CAST liquidity.                         | [docs](./docs/functions.md#makecastremovedata)                |
+| makeMessageHash                   | Creates a hash of a message.                                      | [docs](./docs/functions.md#makemessagehash)                   |
+| makeMessageWithSignature          | Adds a signature to a message.                                    | [docs](./docs/functions.md#makemessagewithsignature)          |
+| makeReactionAdd                   | Creates a message for adding a reaction.                          | [docs](./docs/functions.md#makereactionadd)                   |
+| makeReactionAddData               | Creates data for adding a reaction.                               | [docs](./docs/functions.md#makereactionadddata)               |
+| makeReactionRemove                | Creates a message for removing a reaction.                        | [docs](./docs/functions.md#makereactionremove)                |
+| makeReactionRemoveData            | Creates data for removing a reaction.                             | [docs](./docs/functions.md#makereactionremovedata)            |
+| makeSignerAdd                     | Creates a message for adding a signer.                            | [docs](./docs/functions.md#makesigneradd)                     |
+| makeSignerAddData                 | Creates data for adding a signer.                                 | [docs](./docs/functions.md#makesigneradddata)                 |
+| makeSignerRemove                  | Creates a message for removing a signer.                          | [docs](./docs/functions.md#makesignerremove)                  |
+| makeSignerRemoveData              | Creates data for removing a signer from an account.               | [docs](./docs/functions.md#makesignerremovedata)              |
+| makeUserDataAdd                   | Creates a message for adding user data.                           | [docs](./docs/functions.md#makeuserdataadd)                   |
+| makeUserDataAddData               | Creates data for adding user data.                                | [docs](./docs/functions.md#makeuserdataadddata)               |
+| makeVerificationAddEthAddress     | Creates a message for adding an Ethereum address to verification. | [docs](./docs/functions.md#makeverificationaddethaddress)     |
+| makeVerificationAddEthAddressData | Creates data for adding an Ethereum address to verification.      | [docs](./docs/functions.md#makeverificationaddethaddressdata) |
+| makeVerificationRemove            | Creates a message for removing a verification.                    | [docs](./docs/functions.md#makeverificationremove)            |
+| makeVerificationRemoveData        | Creates data for removing a verification.                         | [docs](./functions.md#makeverificationremovedata)             |
 
 ## Namespaces
 
-### protobufs
-
-Contains protobuf types used in Hubble.
-
-| Schema                                                     | Type Description                         | Docs                      |
-| ---------------------------------------------------------- | ---------------------------------------- | ------------------------- |
-| [Message](src/schemas/message.proto)                       | Types for Farcaster deltas               | [docs](docs/message.md)   |
-| [Gossip](src/schemas/gossip.proto)                         | Types for gossiping data between Hubs    | [docs](docs/gossip.md)    |
-| [RPC](src/schemas/rpc.proto)                               | Types for gRPC APIs exposed by Hubs      | [docs](docs/rpc.md)       |
-| [IdRegistryEvent](src/schemas/id_registry_event.proto)     | Types for representing on-chain activity | [docs](docs/events.md)    |
-| [NameRegistryEvent](src/schemas/name_registry_event.proto) | Types for representing on-chain activity | [docs](docs/events.md)    |
-| [HubState](src/schemas/hub_state.proto)                    | Types for for maintaining internal state | [docs](docs/hub_state.md) |
+| Namespace | Description                      | Docs                        |
+| --------- | -------------------------------- | --------------------------- |
+| protobufs | Protobuf types used in Hubble    | [docs](./docs/protobufs.md) |
+| types     | Types defined in Hubble          | [docs](./docs/types.md)     |
+| utils     | Utility functions used in Hubble | [docs](./docs/utils.md)     |
 
 ## Type Aliases
 
-| Alias                                   | Description                                                  | Docs                                 |
-| --------------------------------------- | ------------------------------------------------------------ | ------------------------------------ |
-| [EventFilters](modules.md#eventfilters) | Type alias for event filters used in the Farcaster protocol. | [docs](docs/modules.md#eventfilters) |
+| Alias        | Description                                                  | Docs                                 |
+| ------------ | ------------------------------------------------------------ | ------------------------------------ |
+| EventFilters | Type alias for event filters used in the Farcaster protocol. | [docs](./docs/types.md#eventfilters) |
 
 ## Example
 
