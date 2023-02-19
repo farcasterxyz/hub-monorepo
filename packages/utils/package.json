@@ -29,7 +29,7 @@
     "lint": "eslint  src/ --color --ext .ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage",
-    "prepublishOnly": "yarn run build lint"
+    "prepublishOnly": "yarn run build"
   },
   "devDependencies": {
     "@farcaster/fishery": "2.2.3",
