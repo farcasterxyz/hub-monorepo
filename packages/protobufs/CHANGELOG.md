@@ -4,7 +4,7 @@
 
 ### Patch Changes
 
-- add prepublishOnly scripts to packages"
+- add prepublishOnly scripts to packages
 
 ## 0.1.4
 

@@ -4,7 +4,7 @@
 
 ### Patch Changes
 
-- add prepublishOnly scripts to packages"
+- add prepublishOnly scripts to packages
 - Updated dependencies
   - @farcaster/protobufs@0.1.5
   - @farcaster/utils@0.2.5
