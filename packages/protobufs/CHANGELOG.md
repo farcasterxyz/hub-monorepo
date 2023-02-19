@@ -1,5 +1,11 @@
 # @farcaster/protobufs
 
+## 0.1.5
+
+### Patch Changes
+
+- add prepublishOnly scripts to packages
+
 ## 0.1.4
 
 ### Patch Changes
