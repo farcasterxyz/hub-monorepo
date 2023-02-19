@@ -81,8 +81,7 @@ COPY --chown=node:node --from=build /home/node/app/packages/utils/dist ./package
 # since we should be able to run with just the compiled javascript in build/
 COPY --chown=node:node --from=build /home/node/app/apps/hubble ./apps/hubble
 
-# TODO: load identity from some secure store instead of generating a new one
-RUN yarn --cwd=apps/hubble identity create
+# TODO: load identity from some secure store. It is currently passed in via the 'IDENTITY_B64' env var
 
 # BuildKit doesn't support --squash flag, so emulate by copying into fewer layers
 FROM scratch
