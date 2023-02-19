@@ -4,6 +4,7 @@ import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from '@libp
 import { Command } from 'commander';
 import { existsSync } from 'fs';
 import { mkdir, readFile, writeFile } from 'fs/promises';
+import { ResultAsync } from 'neverthrow';
 import { dirname, resolve } from 'path';
 import { exit } from 'process';
 import { APP_VERSION, Hub, HubOptions } from '~/hubble';
@@ -55,6 +56,19 @@ app
     let peerId;
     if (cliOptions.id) {
       peerId = await readPeerId(resolve(cliOptions.id));
+    } else if (process.env['IDENTITY_B64']) {
+      // Read from the environment variable
+      const identityProtoBytes = Buffer.from(process.env['IDENTITY_B64'], 'base64');
+      const peerIdResult = await ResultAsync.fromPromise(createFromProtobuf(identityProtoBytes), (e) => {
+        return new Error(`Failed to read identity from environment: ${e}`);
+      });
+
+      if (peerIdResult.isErr()) {
+        throw peerIdResult.error;
+      }
+
+      peerId = peerIdResult.value;
+      logger.info({ identity: peerId.toString() }, 'Read identity from environment');
     } else {
       peerId = await readPeerId(resolve(hubConfig.id));
     }
