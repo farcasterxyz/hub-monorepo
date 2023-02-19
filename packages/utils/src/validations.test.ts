@@ -184,6 +184,11 @@ describe('validateCastAddBody', () => {
     expect(validations.validateCastAddBody(body)).toEqual(ok(body));
   });
 
+  test('when text is empty', () => {
+    const body = Factories.CastAddBody.build({ text: '', mentions: [], mentionsPositions: [] });
+    expect(validations.validateCastAddBody(body)).toEqual(ok(body));
+  });
+
   describe('fails', () => {
     let body: protobufs.CastAddBody;
     let hubErrorMessage: string;
@@ -194,8 +199,13 @@ describe('validateCastAddBody', () => {
       );
     });
 
-    test('when text is missing', () => {
-      body = Factories.CastAddBody.build({ text: '' });
+    test('when text is undefined', () => {
+      body = Factories.CastAddBody.build({ text: undefined });
+      hubErrorMessage = 'text is missing';
+    });
+
+    test('when text is null', () => {
+      body = Factories.CastAddBody.build({ text: null });
       hubErrorMessage = 'text is missing';
     });
 
