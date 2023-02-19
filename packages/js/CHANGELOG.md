@@ -1,5 +1,12 @@
 # @farcaster/js
 
+## 0.2.4
+
+### Patch Changes
+
+- Updated dependencies [3096e00]
+  - @farcaster/utils@0.2.4
+
 ## 0.2.3
 
 ### Patch Changes
