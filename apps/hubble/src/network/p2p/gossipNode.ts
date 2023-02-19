@@ -100,7 +100,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     this._node = createResult.value;
 
     this.registerListeners();
-    this.registerDebugListeners();
+    // this.registerDebugListeners();
 
     await this._node.start();
     log.info(
@@ -200,9 +200,11 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
   registerListeners() {
     this._node?.addEventListener('peer:connect', (event) => {
+      log.info({ peer: event.detail.remotePeer }, `P2P Connection established`);
       this.emit('peerConnect', event.detail);
     });
     this._node?.addEventListener('peer:disconnect', (event) => {
+      log.info({ peer: event.detail.remotePeer }, `P2P Connection disconnected`);
       this.emit('peerDisconnect', event.detail);
     });
     this.gossip?.addEventListener('message', (event) => {

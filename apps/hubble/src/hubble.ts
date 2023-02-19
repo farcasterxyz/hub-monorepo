@@ -273,16 +273,16 @@ export class Hub implements HubInterface {
     log.info('Stopping Hubble...');
     clearInterval(this.contactTimer);
 
-    // First, stop the RPC server so we don't get any more messages
+    // First, stop the RPC/Gossip server so we don't get any more messages
     await this.rpcServer.stop();
+    await this.gossipNode.stop();
 
     // Stop cron tasks
     this.revokeSignerJobScheduler.stop();
     this.pruneMessagesJobScheduler.stop();
     this.periodSyncJobScheduler.stop();
 
-    // Stop sync and gossip
-    await this.gossipNode.stop();
+    // Stop sync
     await this.syncEngine.stop();
 
     // Stop the ETH registry provider
