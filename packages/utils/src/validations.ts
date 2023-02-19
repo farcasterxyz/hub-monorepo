@@ -260,7 +260,7 @@ export const validateVerificationAddEthAddressSignature = (
 
 export const validateCastAddBody = (body: protobufs.CastAddBody): HubResult<protobufs.CastAddBody> => {
   const text = body.text;
-  if (!text) {
+  if (text === undefined || text === null) {
     return err(new HubError('bad_request.validation_failure', 'text is missing'));
   }
 
