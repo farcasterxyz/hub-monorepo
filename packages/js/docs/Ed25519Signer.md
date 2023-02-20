@@ -2,33 +2,27 @@
 
 A Typescript class for signing messages with Ed25519.
 
-## Classes
-
-| Class         | Description                              | Docs                            |
-| ------------- | ---------------------------------------- | ------------------------------- |
-| Ed25519Signer | Class for signing messages with Ed25519. | [docs](./docs/Ed25519Signer.md) |
-
 ## Constructors
 
-| Constructor   | Description                                        | Docs                                        |
-| ------------- | -------------------------------------------------- | ------------------------------------------- |
-| Ed25519Signer | Creates a new instance of the Ed25519Signer class. | [docs](./docs/Ed25519Signer.md#constructor) |
+| Constructor   | Description                                        | Docs                                   |
+| ------------- | -------------------------------------------------- | -------------------------------------- |
+| Ed25519Signer | Creates a new instance of the Ed25519Signer class. | [docs](./Ed25519Signer.md#constructor) |
 
 ## Properties
 
-| Property     | Description                                     | Docs                                         |
-| ------------ | ----------------------------------------------- | -------------------------------------------- |
-| scheme       | Gets the scheme used by the signer.             | [docs](./docs/Ed25519Signer.md#scheme)       |
-| signerKey    | Gets the private key used by the signer.        | [docs](./docs/Ed25519Signer.md#signerkey)    |
-| signerKeyHex | Gets the private key used by the signer in hex. | [docs](./docs/Ed25519Signer.md#signerkeyhex) |
+| Property     | Description                                     | Docs                                    |
+| ------------ | ----------------------------------------------- | --------------------------------------- |
+| scheme       | Gets the scheme used by the signer.             | [docs](./Ed25519Signer.md#scheme)       |
+| signerKey    | Gets the private key used by the signer.        | [docs](./Ed25519Signer.md#signerkey)    |
+| signerKeyHex | Gets the private key used by the signer in hex. | [docs](./Ed25519Signer.md#signerkeyhex) |
 
 ## Methods
 
-| Method             | Description                                                                                  | Docs                                               |
-| ------------------ | -------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| signMessageHash    | Signs a message hash with the signer's private key.                                          | [docs](./docs/Ed25519Signer.md#signmessagehash)    |
-| signMessageHashHex | Signs a message hash with the signer's private key, returning the signature as a hex string. | [docs](./docs/Ed25519Signer.md#signmessagehashhex) |
-| fromPrivateKey     | Creates a new instance of the Ed25519Signer class from a given private key.                  | [docs](./docs/Ed25519Signer.md#fromprivatekey)     |
+| Method             | Description                                                                                  | Docs                                          |
+| ------------------ | -------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| signMessageHash    | Signs a message hash with the signer's private key.                                          | [docs](./Ed25519Signer.md#signmessagehash)    |
+| signMessageHashHex | Signs a message hash with the signer's private key, returning the signature as a hex string. | [docs](./Ed25519Signer.md#signmessagehashhex) |
+| fromPrivateKey     | Creates a new instance of the Ed25519Signer class from a given private key.                  | [docs](./Ed25519Signer.md#fromprivatekey)     |
 
 **`Example`**
 
