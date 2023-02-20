@@ -189,6 +189,15 @@ describe('validateCastAddBody', () => {
     expect(validations.validateCastAddBody(body)).toEqual(ok(body));
   });
 
+  test('with repeated mentionsPositions', () => {
+    const body = Factories.CastAddBody.build({
+      text: 'Hello ',
+      mentions: [Factories.Fid.build(), Factories.Fid.build()],
+      mentionsPositions: [6, 6],
+    });
+    expect(validations.validateCastAddBody(body)).toEqual(ok(body));
+  });
+
   describe('fails', () => {
     let body: protobufs.CastAddBody;
     let hubErrorMessage: string;
@@ -262,14 +271,6 @@ describe('validateCastAddBody', () => {
         mentionsPositions: [0],
       });
       hubErrorMessage = 'mentions and mentionsPositions must match';
-    });
-
-    test('with repeated mentionsPositions', () => {
-      body = Factories.CastAddBody.build({
-        mentions: [Factories.Fid.build(), Factories.Fid.build()],
-        mentionsPositions: [10, 10],
-      });
-      hubErrorMessage = 'mentionsPositions must be unique';
     });
 
     test('with out of range mentionsPositions', () => {

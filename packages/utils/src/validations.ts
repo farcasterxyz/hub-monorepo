@@ -297,9 +297,6 @@ export const validateCastAddBody = (body: protobufs.CastAddBody): HubResult<prot
     if (i > 0) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const prevPosition = body.mentionsPositions[i - 1]!;
-      if (position === prevPosition) {
-        return err(new HubError('bad_request.validation_failure', 'mentionsPositions must be unique'));
-      }
       if (position < prevPosition) {
         return err(
           new HubError('bad_request.validation_failure', 'mentionsPositions must be sorted in ascending order')
