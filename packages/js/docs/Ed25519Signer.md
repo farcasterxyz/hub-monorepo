@@ -12,9 +12,9 @@ A Typescript class for signing messages with Ed25519.
 
 | Property     | Description                                     | Docs                                    |
 | ------------ | ----------------------------------------------- | --------------------------------------- |
-| scheme       | Gets the scheme used by the signer.             | [docs](./Ed25519Signer.md#scheme)       |
-| signerKey    | Gets the private key used by the signer.        | [docs](./Ed25519Signer.md#signerkey)    |
-| signerKeyHex | Gets the private key used by the signer in hex. | [docs](./Ed25519Signer.md#signerkeyhex) |
+| scheme       | Gets the scheme used by the signer.             | [docs](./Ed25519Signer.md#ed25519signer.scheme)       |
+| signerKey    | Gets the private key used by the signer.        | [docs](./Ed25519Signer.md#ed25519signer.signerkey)    |
+| signerKeyHex | Gets the private key used by the signer in hex. | [docs](./Ed25519Signer.md#ed25519signer.signerkeyhex) |
 
 ## Methods
 
