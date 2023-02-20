@@ -10,11 +10,11 @@ A Typescript class for signing messages with Ed25519.
 
 ## Properties
 
-| Property     | Description                                     | Docs                                    |
-| ------------ | ----------------------------------------------- | --------------------------------------- |
-| scheme       | Gets the scheme used by the signer.             | [docs](./Ed25519Signer.md#ed25519signer.scheme)       |
-| signerKey    | Gets the private key used by the signer.        | [docs](./Ed25519Signer.md#ed25519signer.signerkey)    |
-| signerKeyHex | Gets the private key used by the signer in hex. | [docs](./Ed25519Signer.md#ed25519signer.signerkeyhex) |
+| Property     | Description                                     | Docs                                                 |
+| ------------ | ----------------------------------------------- | ---------------------------------------------------- |
+| scheme       | Gets the scheme used by the signer.             | [docs](./Ed25519Signer.md#ed25519signerscheme)       |
+| signerKey    | Gets the private key used by the signer.        | [docs](./Ed25519Signer.md#ed25519signersignerkey)    |
+| signerKeyHex | Gets the private key used by the signer in hex. | [docs](./Ed25519Signer.md#ed25519signersignerkeyhex) |
 
 ## Methods
 
@@ -32,6 +32,7 @@ import import { Ed25519Signer } from "@farcaster/js";
 import * as ed from "@noble/ed25519";
 
 // TODO: safer way to generate keys?
+// TODO: maybe use `new Ed25519Signer()` instead?
 const randomKey = ed.utils.randomPrivateKey();
 const signer = Ed25519Signer.fromPrivateKey(randomKey)._unsafeUnwrap();
 
@@ -52,9 +53,23 @@ signer.signMessageHash(messageBytes).then(unwrapHex);
 signer.signMessageHashHex(message).then(unwrapHex);
 ```
 
+## Constructor
+
+### Ed25519Signer
+
+Creates a new instance of the Ed25519Signer class.
+
+#### Parameters
+
+| Name           | Type         | Description                                                    |
+| :------------- | :----------- | :------------------------------------------------------------- |
+| `privateKey`   | `Uint8Array` | The ECDSA private key                                          |
+| `signerKey`    | `Uint8Array` | The EdDSA private key used by the signer                       |
+| `signerKeyHex` | `string`     | The EdDSA private key used by the signer in hexadecimal format |
+
 ## Properties
 
-### Ed25519.scheme
+### Ed25519Signer.scheme
 
 Gets the scheme used by the signer.
 
@@ -66,17 +81,17 @@ Gets the scheme used by the signer.
 | :----------------------------------------- | :---- | :------------------------------------------- |
 | `SignatureScheme.SIGNATURE_SCHEME_ED25519` | 1     | The signature scheme as defined in protobufs |
 
-### Ed25519.signerKey
+### Ed25519Signer.signerKey
 
 Gets the private key used by the signer.
 
 #### Returns
 
-| Name        | Type             | Description                                  |
-| :---------- | :--------------- | :------------------------------------------- |
-| `signerKey` | `Uint8Array(32)` | The signature scheme as defined in protobufs |
+| Name        | Type             | Description            |
+| :---------- | :--------------- | :--------------------- |
+| `signerKey` | `Uint8Array(32)` | 20-byte wallet address |
 
-### Ed25519.signerKeyHex
+### Ed25519Signer.signerKeyHex
 
 Gets the private key used by the signer in hex.
 
