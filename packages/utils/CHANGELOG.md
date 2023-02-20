@@ -1,5 +1,11 @@
 # @farcaster/utils
 
+## 0.2.6
+
+### Patch Changes
+
+- 96468718: Allow duplicate mentions positions
+
 ## 0.2.5
 
 ### Patch Changes

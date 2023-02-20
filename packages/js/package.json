@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/js",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -17,7 +17,7 @@
   "license": "MIT",
   "dependencies": {
     "@farcaster/protobufs": "0.1.5",
-    "@farcaster/utils": "0.2.5",
+    "@farcaster/utils": "0.2.6",
     "@noble/hashes": "^1.2.0",
     "ethers": "^5.7.2",
     "neverthrow": "^6.0.0"
