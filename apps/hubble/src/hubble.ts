@@ -326,7 +326,7 @@ export class Hub implements HubInterface {
       const message = gossipMessage.message;
 
       // Get the RPC Client to use to merge this message
-      const contactInfo = this.syncEngine.getContactInfoForPeerId(peerId.toString());
+      const contactInfo = this.syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo;
       if (contactInfo) {
         const rpcClient = await this.getRPCClientForPeer(peerId, contactInfo);
         if (rpcClient) {
@@ -390,7 +390,7 @@ export class Hub implements HubInterface {
         log.info('Already have this client, skipping sync');
         return;
       } else {
-        this.syncEngine.addContactInfoForPeerId(peerId.toString(), message);
+        this.syncEngine.addContactInfoForPeerId(peerId, message);
         await this.syncEngine.diffSyncIfRequired(this, peerId.toString());
       }
     }

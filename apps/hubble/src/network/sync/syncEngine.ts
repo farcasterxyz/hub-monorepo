@@ -7,8 +7,8 @@ import {
   HubResult,
   HubRpcClient,
 } from '@farcaster/utils';
-import { peerIdFromString } from '@libp2p/peer-id';
-import { err, ok, Result } from 'neverthrow';
+import { PeerId } from '@libp2p/interface-peer-id';
+import { err, ok } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { Hub } from '~/hubble';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
@@ -38,6 +38,11 @@ interface SyncEvents {
   syncComplete: (success: boolean) => void;
 }
 
+type PeerContact = {
+  contactInfo: protobufs.ContactInfoContent;
+  peerId: PeerId;
+};
+
 class SyncEngine extends TypedEmitter<SyncEvents> {
   private readonly _trie: MerkleTrie;
   private readonly engine: Engine;
@@ -45,8 +50,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private _isSyncing = false;
   private _interruptSync = false;
 
-  private currentHubPeerContacts: Map<string, protobufs.ContactInfoContent> = new Map();
-
+  private currentHubPeerContacts: Map<string, PeerContact> = new Map();
   private _messagesQueuedForSync = 0;
 
   constructor(engine: Engine, rocksDb: RocksDB) {
@@ -120,12 +124,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return this._isSyncing;
   }
 
-  public getContactInfoForPeerId(peerId: string): protobufs.ContactInfoContent | undefined {
+  public getContactInfoForPeerId(peerId: string): PeerContact | undefined {
     return this.currentHubPeerContacts.get(peerId);
   }
 
-  public addContactInfoForPeerId(peerId: string, contactInfo: protobufs.ContactInfoContent) {
-    this.currentHubPeerContacts.set(peerId, contactInfo);
+  public addContactInfoForPeerId(peerId: PeerId, contactInfo: protobufs.ContactInfoContent) {
+    this.currentHubPeerContacts.set(peerId.toString(), { peerId, contactInfo });
   }
 
   public removeContactInfoForPeerId(peerId: string) {
@@ -136,7 +140,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   /**                                      Sync Methods                                  */
   /** ---------------------------------------------------------------------------------- */
 
-  public async diffSyncIfRequired(hub: Hub, peerId?: string) {
+  public async diffSyncIfRequired(hub: Hub, peerIdString?: string) {
     this.emit('syncStart');
 
     if (this.currentHubPeerContacts.size === 0) {
@@ -146,9 +150,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     let peerContact;
+    let peerId;
 
-    if (peerId) {
-      peerContact = this.currentHubPeerContacts.get(peerId);
+    if (peerIdString) {
+      const c = this.currentHubPeerContacts.get(peerIdString);
+      peerContact = c?.contactInfo;
+      peerId = c?.peerId;
     }
 
     // If we don't have a peer contact, get a random one from the current list
@@ -157,25 +164,20 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       const randomPeer = Array.from(this.currentHubPeerContacts.keys())[
         Math.floor(Math.random() * this.currentHubPeerContacts.size)
       ] as string;
-      peerContact = this.currentHubPeerContacts.get(randomPeer);
+
+      const c = this.currentHubPeerContacts.get(randomPeer);
+      peerContact = c?.contactInfo;
+      peerId = c?.peerId;
     }
 
     // If we still don't have a peer, skip the sync
-    if (!peerContact) {
-      log.warn(`No contact info for peer, skipping sync`);
+    if (!peerContact || !peerId) {
+      log.warn({ peerContact, peerId }, `No contact info for peer, skipping sync`);
       this.emit('syncComplete', false);
       return;
     }
 
-    const peerIdResult = Result.fromThrowable(
-      () => peerIdFromString(peerId ?? ''),
-      (error) => new HubError('bad_request.parse_failure', error as Error)
-    )();
-    if (peerIdResult.isErr()) {
-      return Promise.resolve(err(peerIdResult.error));
-    }
-
-    const rpcClient = await hub.getRPCClientForPeer(peerIdResult.value, peerContact);
+    const rpcClient = await hub.getRPCClientForPeer(peerId, peerContact);
     if (!rpcClient) {
       log.warn(`Failed to get RPC client for peer, skipping sync`);
       this.emit('syncComplete', false);
