@@ -10,11 +10,11 @@ A Typescript class for signing messages with Ed25519.
 
 ## Properties
 
-| Property     | Description                                     | Docs                                                 |
-| ------------ | ----------------------------------------------- | ---------------------------------------------------- |
-| scheme       | Gets the scheme used by the signer.             | [docs](./Ed25519Signer.md#ed25519signerscheme)       |
-| signerKey    | Gets the private key used by the signer.        | [docs](./Ed25519Signer.md#ed25519signersignerkey)    |
-| signerKeyHex | Gets the private key used by the signer in hex. | [docs](./Ed25519Signer.md#ed25519signersignerkeyhex) |
+| Property     | Description                         | Docs                                                 |
+| ------------ | ----------------------------------- | ---------------------------------------------------- |
+| scheme       | Gets the scheme used by the signer. | [docs](./Ed25519Signer.md#ed25519signerscheme)       |
+| signerKey    | TODO                                | [docs](./Ed25519Signer.md#ed25519signersignerkey)    |
+| signerKeyHex | TODO                                | [docs](./Ed25519Signer.md#ed25519signersignerkeyhex) |
 
 ## Methods
 
@@ -87,9 +87,9 @@ Gets the private key used by the signer.
 
 #### Returns
 
-| Name        | Type             | Description            |
-| :---------- | :--------------- | :--------------------- |
-| `signerKey` | `Uint8Array(32)` | 20-byte wallet address |
+| Name        | Type             | Description |
+| :---------- | :--------------- | :---------- |
+| `signerKey` | `Uint8Array(32)` | TODO        |
 
 ### Ed25519Signer.signerKeyHex
 
@@ -97,9 +97,9 @@ Gets the private key used by the signer in hex.
 
 #### Returns
 
-| Name           | Type    | Description                   |
-| :------------- | :------ | :---------------------------- |
-| `signerKeyHex` | `string | The signer private key in hex |
+| Name           | Type    | Description |
+| :------------- | :------ | :---------- |
+| `signerKeyHex` | `string | TODO        |
 
 ## Methods
 

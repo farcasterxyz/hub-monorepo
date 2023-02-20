@@ -4,24 +4,24 @@ A collection of Typescript classes and methods for easily creating Farcaster mes
 
 ## Classes
 
-| Class         | Description                                        | Docs                            |
-| ------------- | -------------------------------------------------- | ------------------------------- |
-| Client        | Class for interacting with the Farcaster protocol. | [docs](./docs/Client.md)        |
-| Ed25519Signer | Class for signing messages with Ed25519.           | [docs](./docs/Ed25519Signer.md) |
-| Eip712Signer  | Class for signing messages with EIP-712.           | [docs](./docs/Eip712Signer.md)  |
+| Class         | Description                                       | Docs                            |
+| ------------- | ------------------------------------------------- | ------------------------------- |
+| Client        | Class for interacting with the Farcaster protocol | [docs](./docs/Client.md)        |
+| Ed25519Signer | Class for signing messages with Ed25519           | [docs](./docs/Ed25519Signer.md) |
+| Eip712Signer  | Class for signing message in the EIP712 format    | [docs](./docs/Eip712Signer.md)  |
 
 ## Functions
 
 | Function                          | Description                                                       | Docs                                                          |
 | --------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------- |
-| makeAmpAdd                        | Creates a message for adding AMP liquidity.                       | [docs](./docs/functions.md#makeampadd)                        |
-| makeAmpAddData                    | Creates data for adding AMP liquidity.                            | [docs](./docs/functions.md#makeampadddata)                    |
-| makeAmpRemove                     | Creates a message for removing AMP liquidity.                     | [docs](./docs/functions.md#makeampremove)                     |
-| makeAmpRemoveData                 | Creates data for removing AMP liquidity.                          | [docs](./docs/functions.md#makeampremovedata)                 |
-| makeCastAdd                       | Creates a message for adding CAST liquidity.                      | [docs](./docs/functions.md#makecastadd)                       |
-| makeCastAddData                   | Creates data for adding CAST liquidity.                           | [docs](./docs/functions.md#makecastadddata)                   |
-| makeCastRemove                    | Creates a message for removing CAST liquidity.                    | [docs](./docs/functions.md#makecastremove)                    |
-| makeCastRemoveData                | Creates data for removing CAST liquidity.                         | [docs](./docs/functions.md#makecastremovedata)                |
+| makeAmpAdd                        | TODO                                                              | [docs](./docs/functions.md#makeampadd)                        |
+| makeAmpAddData                    | TODO                                                              | [docs](./docs/functions.md#makeampadddata)                    |
+| makeAmpRemove                     | TODO                                                              | [docs](./docs/functions.md#makeampremove)                     |
+| makeAmpRemoveData                 | TODO                                                              | [docs](./docs/functions.md#makeampremovedata)                 |
+| makeCastAdd                       | TODO                                                              | [docs](./docs/functions.md#makecastadd)                       |
+| makeCastAddData                   | TODO                                                              | [docs](./docs/functions.md#makecastadddata)                   |
+| makeCastRemove                    | TODO                                                              | [docs](./docs/functions.md#makecastremove)                    |
+| makeCastRemoveData                | TODO                                                              | [docs](./docs/functions.md#makecastremovedata)                |
 | makeMessageHash                   | Creates a hash of a message.                                      | [docs](./docs/functions.md#makemessagehash)                   |
 | makeMessageWithSignature          | Adds a signature to a message.                                    | [docs](./docs/functions.md#makemessagewithsignature)          |
 | makeReactionAdd                   | Creates a message for adding a reaction.                          | [docs](./docs/functions.md#makereactionadd)                   |
@@ -31,7 +31,7 @@ A collection of Typescript classes and methods for easily creating Farcaster mes
 | makeSignerAdd                     | Creates a message for adding a signer.                            | [docs](./docs/functions.md#makesigneradd)                     |
 | makeSignerAddData                 | Creates data for adding a signer.                                 | [docs](./docs/functions.md#makesigneradddata)                 |
 | makeSignerRemove                  | Creates a message for removing a signer.                          | [docs](./docs/functions.md#makesignerremove)                  |
-| makeSignerRemoveData              | Creates data for removing a signer from an account.               | [docs](./docs/functions.md#makesignerremovedata)              |
+| makeSignerRemoveData              | Creates data for removing a signer.                               | [docs](./docs/functions.md#makesignerremovedata)              |
 | makeUserDataAdd                   | Creates a message for adding user data.                           | [docs](./docs/functions.md#makeuserdataadd)                   |
 | makeUserDataAddData               | Creates data for adding user data.                                | [docs](./docs/functions.md#makeuserdataadddata)               |
 | makeVerificationAddEthAddress     | Creates a message for adding an Ethereum address to verification. | [docs](./docs/functions.md#makeverificationaddethaddress)     |
@@ -41,17 +41,17 @@ A collection of Typescript classes and methods for easily creating Farcaster mes
 
 ## Namespaces
 
-| Namespace | Description                      | Docs                        |
-| --------- | -------------------------------- | --------------------------- |
-| protobufs | Protobuf types used in Hubble    | [docs](./docs/protobufs.md) |
-| types     | Types defined in Hubble          | [docs](./docs/types.md)     |
-| utils     | Utility functions used in Hubble | [docs](./docs/utils.md)     |
+| Namespace | Description | Docs                        |
+| --------- | ----------- | --------------------------- |
+| protobufs | TODO        | [docs](./docs/protobufs.md) |
+| types     | TOOD        | [docs](./docs/types.md)     |
+| utils     | TODO        | [docs](./docs/utils.md)     |
 
 ## Type Aliases
 
-| Alias        | Description                                                  | Docs                                 |
-| ------------ | ------------------------------------------------------------ | ------------------------------------ |
-| EventFilters | Type alias for event filters used in the Farcaster protocol. | [docs](./docs/types.md#eventfilters) |
+| Alias        | Description | Docs                                 |
+| ------------ | ----------- | ------------------------------------ |
+| EventFilters | TODO        | [docs](./docs/types.md#eventfilters) |
 
 ## Example
 
