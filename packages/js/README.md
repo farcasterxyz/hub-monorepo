@@ -98,7 +98,18 @@ console.log(result);
  * the signer key we've previously initialized
  */
 
-import { Client, Ed25519Signer, makeSignerAdd } from '@farcaster/js';
+import {
+  Client,
+  Ed25519Signer,
+  Eip712Signer,
+  makeCastRemove,
+  makeReactionAdd,
+  makeReactionRemove,
+  makeSignerAdd,
+  makeSignerRemove,
+  makeUserDataAdd,
+  types,
+} from '@farcaster/js';
 
 import * as ed from '@noble/ed25519';
 
