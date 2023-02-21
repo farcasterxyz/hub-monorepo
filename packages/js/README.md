@@ -2,6 +2,106 @@
 
 A collection of Typescript classes and methods for easily creating Farcaster messages and interacting with Farcaster hubs over gRPC.
 
+TODO: explain what protobufs are, and what this package does under the hood
+
+## Quickstart
+
+```bash
+npm install @farcaster/js ethers@5.7.2 @noble/ed25519
+```
+
+```typescript
+/* -------------------------------------------------------------------------- */
+/*                          Signer key registration                           */
+/* -------------------------------------------------------------------------- */
+
+import { Client, Ed25519Signer, Eip712Signer, makeSignerAdd, types } from '@farcaster/js';
+import { ethers } from 'ethers';
+import * as ed from '@noble/ed25519';
+
+const rpcUrl = '<rpc-url>';
+const client = new Client(rpcUrl);
+
+// developers should safely store this signing key on behalf of users
+const privateKey = ed.utils.randomPrivateKey();
+
+// _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+
+const mnemonic = 'your mnemonic apple orange banana ...';
+const wallet = ethers.Wallet.fromMnemonic(mnemonic);
+
+// _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+const eip712Signer = Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwrap();
+
+// TODO: value could be fetched from smart contract?
+const dataOptions = {
+  fid: -9999, // must be changed to fid of the custody address, or else it will fail
+  network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+};
+
+const signerAdd = await makeSignerAdd({ signer: ed25519Signer.signerKeyHex }, dataOptions, eip712Signer);
+
+if (signerAdd.isErr()) {
+  // handle error
+}
+
+const result = await client.submitMessage(signerAdd.value);
+
+console.log(result);
+
+/**
+ * if everything goes well, it should return something like this:
+ *
+ *  {
+ *  _protobuf: { // raw bytes },
+ *  data: {
+ *    _protobuf: { // raw bytes },
+ *     body: {
+ *    signer: '0xa1ae695cc61bedcf4787ddfe1de63640f3e3ccd2e2734f80ceb4dee27baa8aaa'
+ *    },
+ *    type: 9,
+ *    timestamp: 1676960015000,
+ *    fid: 4640,
+ *    network: 3
+ *  },
+ *  hash: '0x7ff7a6c7a3bc86a1b03b535cefaa7c855c917f8a',
+ *  hashScheme: 1,
+ *  signature: '0xd5e186bee6b560af60bcb9...',
+ *  signatureScheme: 2,
+ *  signer: '0x86dd7e4af49829b895d24ea2ab581c7c32e87332'
+ *  }
+ *
+ *
+ * this means is the signer key was successfully added to the hub
+ * and the hub will now accept messages signed by this key
+ *
+ * result.signer is the custody address (the ones with fid and fname)
+ * result.body.signer is the signer's public key (Ed25519 key)
+ *
+ * to read more about the signer key:
+ * https://github.com/farcasterxyz/protocol#92-signers
+ */
+
+/* -------------------------------------------------------------- */
+/*                       Interacting with hub                     */
+/* -------------------------------------------------------------- */
+
+// make a cast
+const cast = await makeCastAdd({ text: 'hello world' }, dataOptions, ed25519Signer);
+
+// And submit the new reaction to the hub
+await client.submitMessage(like._unsafeUnwrap());
+
+/**
+ * the flow of interacting with hub:
+ * 1. create a message with signer key (cast message, reactions message, verification message, etc)
+ * 2. submit the message to the hub
+ * 3. to see all the available function, see the "Functions" part below
+ *    (the ones that starts with "makeAmpAdd", "makeAmpAddData", etc)
+ */
+```
+
 ## Classes
 
 | Class         | Description                                       | Docs                            |
@@ -52,60 +152,3 @@ A collection of Typescript classes and methods for easily creating Farcaster mes
 | Alias        | Description | Docs                                 |
 | ------------ | ----------- | ------------------------------------ |
 | EventFilters | TODO        | [docs](./docs/types.md#eventfilters) |
-
-## Example
-
-To use the @farcaster/js library, you'll need to install it from npm:
-
-```bash
-npm install @farcaster/js
-```
-
-Then, you can use it in your JavaScript/TypeScript project like so:
-
-```typescript
-import { Client, Ed25519Signer, Eip712Signer, makeCastAdd, makeReactionAdd, makeSignerAdd, types } from '@farcaster/js';
-import { ethers } from 'ethers';
-
-// Create client for interacting with hub over gRPC
-const client = new Client('<insert hub address and port>');
-
-// Define default fid and network for created messages
-const dataOptions = { fid: 15, network: types.FarcasterNetwork.Testnet };
-
-// Create EIP-712 signer from ethers wallet (can be ethers.Wallet or ethers.JsonRpcSigner) (avoid _unsafeWrap in production)
-const custodyWallet = ethers.Wallet.fromMnemonic('<custody address mnemonic>');
-const eip712Signer = Eip712Signer.fromSigner(custodyWallet, custodyWallet.address)._unsafeUnwrap();
-
-// Create Ed25519 signer (i.e. a delegate signer) (avoid _unsafeWrap in production)
-const ed25519Signer = Ed25519Signer.fromPrivateKey('<ed25519 private key>')._unsafeUnwrap();
-
-// Make SignerAdd message, signed by the EIP-712 signer
-const signerAdd = await makeSignerAdd({ signer: ed25519Signer.signerKeyHex }, dataOptions, eip712Signer);
-
-// Submit the newly created SignerAdd message to the hub. Builder methods return neverthrow
-// results, so we have to access the successful result via value or _unsafeUnwrap()
-await client.submitMessage(signerAdd._unsafeUnwrap());
-
-// Query the hub to confirm the SignerAdd was merged successfully
-const checkSigner = await client.getSigner(15, ed25519Signer.signerKeyHex);
-
-// Make CastAdd message, signed by the Ed25519 signer
-const cast = await makeCastAdd({ text: 'hello world' }, dataOptions, ed25519Signer);
-
-// Submit the new cast to the hub
-await client.submitMessage(cast._unsafeUnwrap());
-
-// Make a ReactionAdd message (i.e. a like) for the cast we just created
-const like = await makeReactionAdd(
-  {
-    type: types.ReactionType.Like,
-    target: { fid: 15, tsHash: cast._unsafeUnwrap().tsHash },
-  },
-  dataOptions,
-  ed25519Signer
-);
-
-// And submit the new reaction to the hub
-await client.submitMessage(like._unsafeUnwrap());
-```
