@@ -86,16 +86,101 @@ console.log(result);
  * to read more about the signer key:
  * https://github.com/farcasterxyz/protocol#92-signers
  */
+```
 
+```typescript
 /* -------------------------------------------------------------- */
 /*                       Interacting with hub                     */
 /* -------------------------------------------------------------- */
 
-// make a cast
-const cast = await makeCastAdd({ text: 'hello world' }, dataOptions, ed25519Signer);
+/**
+ * let us suppose we are in a brand-new file, here's how we can use
+ * the signer key we've previously initialized
+ */
 
-// And submit the new reaction to the hub
+import { Client, Ed25519Signer, makeSignerAdd } from '@farcaster/js';
+
+import * as ed from '@noble/ed25519';
+
+const rpcUrl = '<rpc-url>';
+const client = new Client(rpcUrl);
+
+const privateKeyHex = '86be7f6f8dcf18...'; // EdDSA hex private key
+const privateKey = ed.utils.hexToBytes(privateKeyHex);
+
+// _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+
+const checkSigner = await client.getSigner(-9999, ed25519Signer.signerKeyHex);
+console.log(checkSigner);
+
+/**
+ * valid signer key would return an object like makeSignerAdd() above
+ *
+ * now that we have a valid signer key object, we can use it to interact with hubs
+ */
+
+const dataOptions = {
+  fid: -9999, // must be changed to fid of the custody address, or else it will fail
+  network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+};
+
+/* ============= make a cast ============== */
+const cast = await makeCastAdd({ text: 'hello world' }, dataOptions, ed25519Signer);
+await client.submitMessage(cast._unsafeUnwrap());
+
+/* ============= like a cast ============== */
+const reactionLikeBody = {
+  type: types.ReactionType.REACTION_TYPE_LIKE,
+  target: { fid: -9998, tsHash: '0x455a6caad5dfd4d...' },
+};
+const like = await makeReactionAdd(reactionLikeBody, dataOptions, ed25519Signer);
 await client.submitMessage(like._unsafeUnwrap());
+
+/* ============= undo a like ============== */
+const unlike = await makeReactionRemove(reactionLikeBody, dataOptions, ed25519Signer);
+await client.submitMessage(unlike._unsafeUnwrap());
+
+/* ============= recast a cast ============== */
+const reactionRecastBody = {
+  type: types.ReactionType.REACTION_TYPE_RECAST,
+  target: { fid: -9998, tsHash: '0x455a6caad5dfd4d...' },
+};
+const recast = await makeReactionAdd(reactionRecastBody, dataOptions, ed25519Signer);
+client.submitMessage(recast._unsafeUnwrap());
+
+/* ============= undo a recast ============== */
+const unrecast = await makeReactionRemove(reactionRecastBody, dataOptions, ed25519Signer);
+client.submit(unrecast._unsafeUnwrap());
+
+/* ============= delete a cast ============== */
+const removeBody = { targetHash: '0xf88d738eb7145f4cea40fbe8f3bdf...' };
+const castRemove = await makeCastRemove(removeBody, dataOptions, ed25519Signer);
+await client.submitMessage(castRemove._unsafeUnwrap());
+
+/* ============= make a signer key ============== */
+const mnemonic = 'your mnemonic here apple orange banana';
+const wallet = ethers.Wallet.fromMnemonic(mnemonic);
+const eip712Signer = Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwrap();
+
+const newPrivateKey = ed.utils.randomPrivateKey();
+const newEd25519Signer = Ed25519Signer.fromPrivateKey(newPrivateKey)._unsafeUnwrap();
+
+const signerBody = { signer: newEd25519Signer.signerKeyHex };
+const signerAdd = await makeSignerAdd(signerBody, dataOptions, eip712Signer);
+await client.submitMessage(signerAdd._unsafeUnwrap());
+
+/* ============= remove a signer key ============== */
+const signerRemove = makeSignerRemove(signerBody, dataOptions, eip712Signer);
+await client.submitMessage(signerRemove._unsafeUnwrap());
+
+/* ============= set user pfp ============== */
+const userDataPfpBody = {
+  type: types.UserDataType.USER_DATA_TYPE_PFP,
+  value: 'https://i.imgur.com/yed5Zfk.gif',
+};
+const userDataPfpAdd = await makeUserDataAdd(userDataPfpBody, dataOptions, ed25519Signer);
+await client.submitMessage(userDataPfpAdd._unsafeUnwrap());
 
 /**
  * the flow of interacting with hub:
@@ -141,7 +226,7 @@ await client.submitMessage(like._unsafeUnwrap());
 | makeVerificationAddEthAddress     | Creates a message for adding an Ethereum address to verification. | [docs](./docs/functions.md#makeverificationaddethaddress)     |
 | makeVerificationAddEthAddressData | Creates data for adding an Ethereum address to verification.      | [docs](./docs/functions.md#makeverificationaddethaddressdata) |
 | makeVerificationRemove            | Creates a message for removing a verification.                    | [docs](./docs/functions.md#makeverificationremove)            |
-| makeVerificationRemoveData        | Creates data for removing a verification.                         | [docs](./functions.md#makeverificationremovedata)             |
+| makeVerificationRemoveData        | Creates data for removing a verification.                         | [docs](./docs/functions.md#makeverificationremovedata)        |
 
 ## Namespaces
 
