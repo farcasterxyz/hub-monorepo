@@ -15,6 +15,13 @@ npm install @farcaster/js ethers@5.7.2 @noble/ed25519
 /*                          Signer key registration                           */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * this package uses `neverthrow` to handle errors, that's why
+ * there are things like isOk() and _unsafeUnwrap() in the code
+ *
+ * read more: https://github.com/supermacro/neverthrow
+ */
+
 import { Client, Ed25519Signer, Eip712Signer, makeSignerAdd, types } from '@farcaster/js';
 import { ethers } from 'ethers';
 import * as ed from '@noble/ed25519';
@@ -34,7 +41,7 @@ const wallet = ethers.Wallet.fromMnemonic(mnemonic);
 // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
 const eip712Signer = Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwrap();
 
-// TODO: value could be fetched from smart contract?
+// todo: could the fid value be fetched from smart contract?
 const dataOptions = {
   fid: -9999, // must be changed to fid of the custody address, or else it will fail
   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
@@ -75,9 +82,6 @@ console.log(result);
  *
  * this means is the signer key was successfully added to the hub
  * and the hub will now accept messages signed by this key
- *
- * result.signer is the custody address (the ones with fid and fname)
- * result.body.signer is the signer's public key (Ed25519 key)
  *
  * to read more about the signer key:
  * https://github.com/farcasterxyz/protocol#92-signers
