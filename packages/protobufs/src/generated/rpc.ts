@@ -2297,6 +2297,68 @@ export const HubServiceClient = makeGenericClientConstructor(HubServiceService, 
   service: typeof HubServiceService;
 };
 
+export type AdminServiceService = typeof AdminServiceService;
+export const AdminServiceService = {
+  rebuildSyncTrie: {
+    path: "/AdminService/RebuildSyncTrie",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => Empty.decode(value),
+    responseSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => Empty.decode(value),
+  },
+  deleteAllMessagesFromDb: {
+    path: "/AdminService/DeleteAllMessagesFromDb",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => Empty.decode(value),
+    responseSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => Empty.decode(value),
+  },
+} as const;
+
+export interface AdminServiceServer extends UntypedServiceImplementation {
+  rebuildSyncTrie: handleUnaryCall<Empty, Empty>;
+  deleteAllMessagesFromDb: handleUnaryCall<Empty, Empty>;
+}
+
+export interface AdminServiceClient extends Client {
+  rebuildSyncTrie(request: Empty, callback: (error: ServiceError | null, response: Empty) => void): ClientUnaryCall;
+  rebuildSyncTrie(
+    request: Empty,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: Empty) => void,
+  ): ClientUnaryCall;
+  rebuildSyncTrie(
+    request: Empty,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: Empty) => void,
+  ): ClientUnaryCall;
+  deleteAllMessagesFromDb(
+    request: Empty,
+    callback: (error: ServiceError | null, response: Empty) => void,
+  ): ClientUnaryCall;
+  deleteAllMessagesFromDb(
+    request: Empty,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: Empty) => void,
+  ): ClientUnaryCall;
+  deleteAllMessagesFromDb(
+    request: Empty,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: Empty) => void,
+  ): ClientUnaryCall;
+}
+
+export const AdminServiceClient = makeGenericClientConstructor(AdminServiceService, "AdminService") as unknown as {
+  new (address: string, credentials: ChannelCredentials, options?: Partial<ClientOptions>): AdminServiceClient;
+  service: typeof AdminServiceService;
+};
+
 declare var self: any | undefined;
 declare var window: any | undefined;
 declare var global: any | undefined;

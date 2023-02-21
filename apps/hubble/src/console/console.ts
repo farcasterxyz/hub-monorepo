@@ -1,8 +1,11 @@
+import * as protobufs from '@farcaster/protobufs';
 import { Empty } from '@farcaster/protobufs';
 import { getHubRpcClient } from '@farcaster/utils';
 import path from 'path';
 import * as repl from 'repl';
+import { getAdminSocket } from '~/rpc/server/adminServer';
 import { logger } from '~/utils/logger';
+import { AdminCommand } from './adminCommand';
 import { GenCommand } from './genCommand';
 import { FactoriesCommand, ProtobufCommand } from './protobufCommand';
 import { RpcClientCommand } from './rpcClientCommand';
@@ -38,11 +41,14 @@ export const startConsole = async (addressString: string) => {
   });
 
   const rpcClient = getHubRpcClient(addressString);
+  const adminClient = protobufs.getAdminClient(getAdminSocket());
+
   const commands: ConsoleCommandInterface[] = [
     new RpcClientCommand(rpcClient),
     new ProtobufCommand(),
     new FactoriesCommand(),
     new GenCommand(rpcClient),
+    new AdminCommand(adminClient),
   ];
 
   replServer.defineCommand('help', {
