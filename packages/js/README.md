@@ -206,7 +206,7 @@ await client.submitMessage(userDataPfpAdd._unsafeUnwrap());
 
 ## `Client`
 
-Class to interact with hubble. See the [docs](./docs/client.md) for more details.
+Class to interact with hubble. See the [docs](./docs/Client.md) for more details.
 
 | Function                            | Description                                                       |
 | ----------------------------------- | ----------------------------------------------------------------- |
@@ -237,7 +237,7 @@ Class to interact with hubble. See the [docs](./docs/client.md) for more details
 
 ## `Ed25519Signer`
 
-Class to sign messages with ed25519. See the [docs](./docs/ed25519signer.md) for more details.
+Class to sign messages with ed25519. See the [docs](./docs/Ed25519Signer.md) for more details.
 
 | Name                   | Description                                                                   |
 | :--------------------- | :---------------------------------------------------------------------------- |
@@ -251,7 +251,7 @@ Class to sign messages with ed25519. See the [docs](./docs/ed25519signer.md) for
 
 ## `Eip712Signer`
 
-Class to sign messages in the EIP712 format. See the [docs](./docs/eip712signer.md) for more details.
+Class to sign messages in the EIP712 format. See the [docs](./docs/Eip712Signer.md) for more details.
 
 | Name                                   | Description                                                                                                                         |
 | :------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
@@ -267,7 +267,7 @@ Class to sign messages in the EIP712 format. See the [docs](./docs/eip712signer.
 
 ## `Functions`
 
-Functions to make messages. See the [docs](./docs/functions.md) for more details. Note: these functions only make messages, they do not submit them to the hub. To submit, use `client.submitMessage(message)`.
+Functions to make messages. See the [docs](./docs/Functions.md) for more details. Note: these functions only make messages, they do not submit them to the hub. To submit, use `client.submitMessage(message)`.
 
 | Name                              | Description                                                         |
 | --------------------------------- | ------------------------------------------------------------------- |
