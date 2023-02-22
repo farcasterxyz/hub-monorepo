@@ -204,232 +204,80 @@ await client.submitMessage(userDataPfpAdd._unsafeUnwrap());
  */
 ```
 
+## `Client`
+
+Class to interact with hubble. See the [docs](./docs/client.md) for more details.
+
+| Function                            | Description                                                       |
+| ----------------------------------- | ----------------------------------------------------------------- |
+| `Client()`                          | Creates an instance of the client                                 |
+| `_grpcClient`                       | Property: contains the gRPC client used to connect to the service |
+| `getAllCastMessagesByFid()`         | Gets all cast messages by a given fid                             |
+| `getAllReactionMessagesByFid()`     | Gets all reaction messages by a given fid                         |
+| `getAllSignerMessagesByFid()`       | Gets all signer messages by a given fid                           |
+| `getAllUserDataMessagesByFid()`     | Gets all user data messages by a given fid                        |
+| `getAllVerificationMessagesByFid()` | Gets all verification messages by a given fid                     |
+| `getCast()`                         | Gets the cast with a given ID                                     |
+| `getCastsByFid()`                   | Gets all casts by a given fid                                     |
+| `getCastsByMention()`               | Gets all casts by a given mention                                 |
+| `getCastsByParent()`                | Gets all casts with a given parent cast hash                      |
+| `getIdRegistryEvent()`              | TODO                                                              |
+| `getNameRegistryEvent()`            | TODO                                                              |
+| `getReaction()`                     | TODO                                                              |
+| `getReactionsByCast()`              | Gets all reactions for a given cast hash                          |
+| `getReactionsByFid()`               | Gets all reactions by a given fid                                 |
+| `getSigner()`                       | TODO                                                              |
+| `getSignersByFid()`                 | Gets all signers by a given fid                                   |
+| `getUserData()`                     | Gets user data (pfp, display name, bio, etc)                      |
+| `getUserDataByFid()`                | Gets all user data by a given fid                                 |
+| `getVerification()`                 | TODO                                                              |
+| `getVerificationsByFid()`           | TODO                                                              |
+| `submitMessage()`                   | Submits a message to hubble                                       |
+| `subscribe()`                       | Subscribes to updates from hubble                                 |
+
 ## `Ed25519Signer`
 
-### `new Ed25519Signer(privateKey, signerKey, signerKeyHex)`
-
-Creates a new instance of the `Ed25519Signer` class.
-
-**Parameters**
-
-| Name           | Type         | Description                        |
-| :------------- | :----------- | :--------------------------------- |
-| `privateKey`   | `Uint8Array` | The EdDSA private key              |
-| `signerKey`    | `Uint8Array` | The EdDSA public key               |
-| `signerKeyHex` | `string`     | The EdDSA public key in hex format |
-
-## Properties
-
-### `Ed25519Signer.scheme`
-
-Gets the scheme used by the signer.
-
-**Returns**
-
-| Name                                       | Value | Description                                  |
-| :----------------------------------------- | :---- | :------------------------------------------- |
-| `SignatureScheme.SIGNATURE_SCHEME_ED25519` | 1     | The signature scheme as defined in protobufs |
-
-### `Ed25519Signer.signerKey`
-
-Gets EdDSA public key in bytes.
-
-**Returns**
-
-| Name        | Type             | Description |
-| :---------- | :--------------- | :---------- |
-| `signerKey` | `Uint8Array(32)` | TODO        |
-
-### `Ed25519Signer.signerKeyHex`
-
-Gets EdDSA public key in hexadecimal format.
-
-**Returns**
-
-| Name           | Type     | Description |
-| :------------- | :------- | :---------- |
-| `signerKeyHex` | `string` | TODO        |
-
-## Methods
-
-### `Ed25519Signer.signMessageHash()`
-
-TODO
-
-**Parameters**
-
-| Name   | Type         | Description               |
-| :----- | :----------- | :------------------------ |
-| `hash` | `Uint8Array` | The hash to sign in bytes |
-
-### `Ed25519Signer.signMessageHashHex()`
-
-TODO
-
-**Parameters**
-
-| Name   | Type     | Description      |
-| :----- | :------- | :--------------- |
-| `hash` | `string` | The hash to sign |
-
-### `Ed25519Signer.fromPrivateKey()`
-
-Creates a new instance of the `Ed25519Signer` class from a EdDSA private key.
-
-**Parameters**
-
-| Name         | Type         | Description                  |
-| :----------- | :----------- | :--------------------------- |
-| `privateKey` | `Uint8Array` | Ed25519 Private key in bytes |
-
-## `EIP712Signer`
-
-### `new EIP712Signer(privateKey, signerKey, signerKeyHex)`
-
-Creates a new instance of the EIP712Signer class.
-
-**Parameters**
-
-| Name           | Type         | Description           |
-| :------------- | :----------- | :-------------------- |
-| `privateKey`   | `Uint8Array` | The ECDSA private key |
-| `signerKey`    | `Uint8Array` | TODO                  |
-| `signerKeyHex` | `string`     | TODO                  |
-
-## Properties
-
-### `EIP712Signer.scheme`
-
-Gets the scheme used by the signer.
-
-**Returns**
-
-// TODO: fact-check the description of this
-
-| Name                                      | Value | Description                                  |
-| :---------------------------------------- | :---- | :------------------------------------------- |
-| `SignatureScheme.SIGNATURE_SCHEME_EIP712` | 2     | The signature scheme as defined in protobufs |
-
-### `EIP712Signer.signerKey`
-
-TODO explanation.
-
-**Returns**
-
-| Name        | Type             | Description |
-| :---------- | :--------------- | :---------- |
-| `signerKey` | `Uint8Array(32)` | TODO        |
-
-### `EIP712Signer.signerKeyHex`
-
-TODO explanation.
-
-**Returns**
-
-| Name           | Type    | Description |
-| :------------- | :------ | :---------- |
-| `signerKeyHex` | `string | TODO        |
-
-## Methods
-
-### `EIP712Signer.signMessageHash()`
-
-Signs a message hash with the signer's private key using the EIP-712 message format.
-
-**Parameters**
-
-| Name   | Type         | Description               |
-| :----- | :----------- | :------------------------ |
-| `hash` | `Uint8Array` | The hash to sign in bytes |
-
-### `EIP712Signer.signMessageHashHex()`
-
-Signs a message hash with the signer's private key, returning the signature as a hex string using the EIP-712 message format.
-
-**Parameters**
-
-| Name   | Type     | Description      |
-| :----- | :------- | :--------------- |
-| `hash` | `string` | The hash to sign |
-
-### `EIP712Signer.signVerificationEthAddressClaim()`
-
-TODO explanation
-
-**Parameters**
-
-| Name    | Type                          | Description    |
-| :------ | :---------------------------- | :------------- |
-| `claim` | `VerificationEthAddressClaim` | The claim type |
-
-Where the `VerificationEthAddressClaim` type is defined as:
-
-```ts
-type VerificationEthAddressClaim = {
-  fid: BigNumber;
-  address: string;
-  network: FarcasterNetwork;
-  blockHash: string;
-};
-```
-
-### `EIP712Signer.signVerificationEthAddressClaimHex`
-
-TODO explanation
-
-**Parameters**
-
-| Name    | Type                          | Description |
-| :------ | :---------------------------- | :---------- |
-| `claim` | `VerificationEthAddressClaim` | The claim   |
-
-Where the `VerificationEthAddressClaim` type is defined as:
-
-```ts
-type VerificationEthAddressClaim = {
-  fid: BigNumber;
-  address: string;
-  network: FarcasterNetwork;
-  blockHash: string;
-};
-```
-
-### `Eip712Signer.fromSigner()`
-
-Instantiate a new EIP712Signer from an ECDSA private key (Ethereum)
-
-**Parameters**
-
-| Name              | Type              | Description                 |
-| :---------------- | :---------------- | :-------------------------- |
-| `typedDataSigner` | `TypedDataSigner` | an `ethers.Wallet` instance |
-| `address`         | `string`          | address of wallet           |
-
-## Functions
-
-| Function                      | Description                                                         | Docs                                                      |
-| ----------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------- |
-| makeCastAdd                   | Creates a message to add cast                                       | [docs](./docs/functions.md#makecastadd)                   |
-| makeCastRemove                | creates a message to delete cast                                    | [docs](./docs/functions.md#makecastremove)                |
-| makeMessageHash               | TODO                                                                | [docs](./docs/functions.md#makemessagehash)               |
-| makeReactionAdd               | Creates a message to react to cast (like or recast)                 | [docs](./docs/functions.md#makereactionadd)               |
-| makeReactionRemove            | Creates a message to remove reaction from cast (unlike or unrecast) | [docs](./docs/functions.md#makereactionremove)            |
-| makeSignerAdd                 | Creates a message to add a ed25519 signer key                       | [docs](./docs/functions.md#makesigneradd)                 |
-| makeSignerRemove              | Creates a message to remove a ed25519 signer key                    | [docs](./docs/functions.md#makesignerremove)              |
-| makeUserDataAdd               | Creates a message to set user data (pfp, link, display name, etc)   | [docs](./docs/functions.md#makeuserdataadd)               |
-| makeVerificationAddEthAddress | TODO                                                                | [docs](./docs/functions.md#makeverificationaddethaddress) |
-| makeVerificationRemove        | TODO                                                                | [docs](./docs/functions.md#makeverificationremove)        |
-
-## Namespaces
-
-| Namespace | Description | Docs                        |
-| --------- | ----------- | --------------------------- |
-| protobufs | TODO        | [docs](./docs/protobufs.md) |
-| types     | TOOD        | [docs](./docs/types.md)     |
-| utils     | TODO        | [docs](./docs/utils.md)     |
-
-## Type Aliases
-
-| Alias        | Description | Docs                                 |
-| ------------ | ----------- | ------------------------------------ |
-| EventFilters | TODO        | [docs](./docs/types.md#eventfilters) |
+Class to sign messages with ed25519. See the [docs](./docs/ed25519signer.md) for more details.
+
+| Name                   | Description                                                                   |
+| :--------------------- | :---------------------------------------------------------------------------- |
+| `Ed25519Signer()`      | Creates a new instance of the `Ed25519Signer` class.                          |
+| `scheme`               | Property: scheme used by the signer as defined in protobufs.                  |
+| `signerKey`            | Property: EdDSA public key in bytes.                                          |
+| `signerKeyHex`         | Property: EdDSA public key in hex.                                            |
+| `signMessageHash()`    | Signs a given hash.                                                           |
+| `signMessageHashHex()` | Signs a given hash in hexadecimal format.                                     |
+| `fromPrivateKey()`     | Creates a new instance of the `Ed25519Signer` class from a EdDSA private key. |
+
+## `Eip712Signer`
+
+Class to sign messages in the EIP712 format. See the [docs](./docs/eip712signer.md) for more details.
+
+| Name                                   | Description                                                                                                                         |
+| :------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
+| `EIP712Signer()`                       | Creates a new instance of the EIP712Signer class.                                                                                   |
+| `scheme`                               | Property: scheme used by the signer.                                                                                                |
+| `signerKey`                            | Property: signer's ECDSA public key in bytes.                                                                                       |
+| `signerKeyHex`                         | Property: signer's ECDSA public key in hex.                                                                                         |
+| `signMessageHash()`                    | Signs a message hash with the signer's private key using the EIP-712 message format.                                                |
+| `signMessageHashHex()`                 | Signs a message hash with the signer's private key, returning the signature as a hex string using the EIP-712 message format.       |
+| `signVerificationEthAddressClaim()`    | Signs a verification claim with the signer's private key using the EIP-712 message format.                                          |
+| `signVerificationEthAddressClaimHex()` | Signs a verification claim with the signer's private key, returning the signature as a hex string using the EIP-712 message format. |
+| `fromSigner()`                         | Instantiate a new EIP712Signer from an ECDSA private key (Ethereum).                                                                |
+
+## `Functions`
+
+Functions to make messages. See the [docs](./docs/functions.md) for more details. Note: these functions only make messages, they do not submit them to the hub. To submit, use `client.submitMessage(message)`.
+
+| Name                              | Description                                                         |
+| --------------------------------- | ------------------------------------------------------------------- |
+| `makeCastAdd()`                   | Creates a message to add cast                                       |
+| `makeCastRemove()`                | Creates a message to delete cast                                    |
+| `makeMessageHash()`               | TODO                                                                |
+| `makeReactionAdd()`               | Creates a message to react to cast (like or recast)                 |
+| `makeReactionRemove()`            | Creates a message to remove reaction from cast (unlike or unrecast) |
+| `makeSignerAdd()`                 | Creates a message to add a ed25519 signer key                       |
+| `makeSignerRemove()`              | Creates a message to remove a ed25519 signer key                    |
+| `makeUserDataAdd()`               | Creates a message to set user data (pfp, link, display name, etc)   |
+| `makeVerificationAddEthAddress()` | TODO                                                                |
+| `makeVerificationRemove()`        | TODO                                                                |

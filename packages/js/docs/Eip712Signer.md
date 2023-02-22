@@ -38,13 +38,13 @@ const eip712Signer = Eip712Signer.fromSigner(custodyWallet, custodyWallet.addres
 // maybe have Ed25519Signer stuffs in the example here?
 ```
 
-## Constructor
+## `EIP712Signer`
 
-### EIP712Signer
+### `new EIP712Signer(privateKey, signerKey, signerKeyHex)`
 
 Creates a new instance of the EIP712Signer class.
 
-#### Parameters
+**Parameters**
 
 | Name           | Type         | Description           |
 | :------------- | :----------- | :-------------------- |
@@ -54,11 +54,11 @@ Creates a new instance of the EIP712Signer class.
 
 ## Properties
 
-### EIP712Signer.scheme
+### `EIP712Signer.scheme`
 
 Gets the scheme used by the signer.
 
-#### Returns
+**Returns**
 
 // TODO: fact-check the description of this
 
@@ -66,21 +66,21 @@ Gets the scheme used by the signer.
 | :---------------------------------------- | :---- | :------------------------------------------- |
 | `SignatureScheme.SIGNATURE_SCHEME_EIP712` | 2     | The signature scheme as defined in protobufs |
 
-### EIP712Signer.signerKey
+### `EIP712Signer.signerKey`
 
 TODO explanation.
 
-#### Returns
+**Returns**
 
 | Name        | Type             | Description |
 | :---------- | :--------------- | :---------- |
 | `signerKey` | `Uint8Array(32)` | TODO        |
 
-### EIP712Signer.signerKeyHex
+### `EIP712Signer.signerKeyHex`
 
 TODO explanation.
 
-#### Returns
+**Returns**
 
 | Name           | Type    | Description |
 | :------------- | :------ | :---------- |
@@ -88,31 +88,31 @@ TODO explanation.
 
 ## Methods
 
-### signMessageHash
+### `EIP712Signer.signMessageHash()`
 
 Signs a message hash with the signer's private key using the EIP-712 message format.
 
-#### Parameters
+**Parameters**
 
 | Name   | Type         | Description               |
 | :----- | :----------- | :------------------------ |
 | `hash` | `Uint8Array` | The hash to sign in bytes |
 
-### signMessageHashHex
+### `EIP712Signer.signMessageHashHex()`
 
 Signs a message hash with the signer's private key, returning the signature as a hex string using the EIP-712 message format.
 
-#### Parameters
+**Parameters**
 
 | Name   | Type     | Description      |
 | :----- | :------- | :--------------- |
 | `hash` | `string` | The hash to sign |
 
-### signVerificationEthAddressClaim
+### `EIP712Signer.signVerificationEthAddressClaim()`
 
 TODO explanation
 
-#### Parameters
+**Parameters**
 
 | Name    | Type                          | Description    |
 | :------ | :---------------------------- | :------------- |
@@ -129,11 +129,11 @@ type VerificationEthAddressClaim = {
 };
 ```
 
-### signVerificationEthAddressClaimHex
+### `EIP712Signer.signVerificationEthAddressClaimHex`
 
 TODO explanation
 
-#### Parameters
+**Parameters**
 
 | Name    | Type                          | Description |
 | :------ | :---------------------------- | :---------- |
@@ -149,3 +149,14 @@ type VerificationEthAddressClaim = {
   blockHash: string;
 };
 ```
+
+### `Eip712Signer.fromSigner()`
+
+Instantiate a new EIP712Signer from an ECDSA private key (Ethereum)
+
+**Parameters**
+
+| Name              | Type              | Description                 |
+| :---------------- | :---------------- | :-------------------------- |
+| `typedDataSigner` | `TypedDataSigner` | an `ethers.Wallet` instance |
+| `address`         | `string`          | address of wallet           |

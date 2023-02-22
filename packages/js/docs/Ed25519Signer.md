@@ -53,81 +53,77 @@ signer.signMessageHash(messageBytes).then(unwrapHex);
 signer.signMessageHashHex(message).then(unwrapHex);
 ```
 
-## Constructor
+### `Ed25519Signer()`
 
-### Ed25519Signer
+Creates a new instance of the `Ed25519Signer` class.
 
-Creates a new instance of the Ed25519Signer class.
+**Parameters**
 
-#### Parameters
-
-| Name           | Type         | Description                                                    |
-| :------------- | :----------- | :------------------------------------------------------------- |
-| `privateKey`   | `Uint8Array` | The ECDSA private key                                          |
-| `signerKey`    | `Uint8Array` | The EdDSA private key used by the signer                       |
-| `signerKeyHex` | `string`     | The EdDSA private key used by the signer in hexadecimal format |
+| Name           | Type         | Description                        |
+| :------------- | :----------- | :--------------------------------- |
+| `privateKey`   | `Uint8Array` | The EdDSA private key              |
+| `signerKey`    | `Uint8Array` | The EdDSA public key               |
+| `signerKeyHex` | `string`     | The EdDSA public key in hex format |
 
 ## Properties
 
-### Ed25519Signer.scheme
+### `Ed25519Signer.scheme`
 
 Gets the scheme used by the signer.
 
-#### Returns
-
-// TODO: fact-check the description of this
+**Returns**
 
 | Name                                       | Value | Description                                  |
 | :----------------------------------------- | :---- | :------------------------------------------- |
 | `SignatureScheme.SIGNATURE_SCHEME_ED25519` | 1     | The signature scheme as defined in protobufs |
 
-### Ed25519Signer.signerKey
+### `Ed25519Signer.signerKey`
 
-Gets the private key used by the signer.
+Gets EdDSA public key in bytes.
 
-#### Returns
+**Returns**
 
 | Name        | Type             | Description |
 | :---------- | :--------------- | :---------- |
 | `signerKey` | `Uint8Array(32)` | TODO        |
 
-### Ed25519Signer.signerKeyHex
+### `Ed25519Signer.signerKeyHex`
 
-Gets the private key used by the signer in hex.
+Gets EdDSA public key in hexadecimal format.
 
-#### Returns
+**Returns**
 
-| Name           | Type    | Description |
-| :------------- | :------ | :---------- |
-| `signerKeyHex` | `string | TODO        |
+| Name           | Type     | Description |
+| :------------- | :------- | :---------- |
+| `signerKeyHex` | `string` | TODO        |
 
 ## Methods
 
-### signMessageHash
+### `Ed25519Signer.signMessageHash()`
 
-Signs a message hash with the signer's private key.
+TODO
 
-#### Parameters
+**Parameters**
 
 | Name   | Type         | Description               |
 | :----- | :----------- | :------------------------ |
 | `hash` | `Uint8Array` | The hash to sign in bytes |
 
-### signMessageHashHex
+### `Ed25519Signer.signMessageHashHex()`
 
-Signs a message hash with the signer's private key, returning the signature as a hex string.
+TODO
 
-#### Parameters
+**Parameters**
 
 | Name   | Type     | Description      |
 | :----- | :------- | :--------------- |
 | `hash` | `string` | The hash to sign |
 
-### fromPrivateKey
+### `Ed25519Signer.fromPrivateKey()`
 
-Creates a new instance of the Ed25519Signer class from a given private key.
+Creates a new instance of the `Ed25519Signer` class from a EdDSA private key.
 
-#### Parameters
+**Parameters**
 
 | Name         | Type         | Description                  |
 | :----------- | :----------- | :--------------------------- |
