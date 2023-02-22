@@ -2,6 +2,141 @@
 
 A Typescript class for signing messages with EIP712.
 
+```ts
+import { Eip712Signer, types } from '@farcaster/js';
+import { ethers, utils } from 'ethers';
+
+const custodyWallet = ethers.Wallet.fromMnemonic('your mnemonic here apple orange banana');
+const eip712Signer = Eip712Signer.fromSigner(custodyWallet, custodyWallet.address)._unsafeUnwrap();
+
+/**
+ * Eip712Signer properties:
+ *
+ * - scheme: the scheme used to sign the message, as defined in protobufs
+ * - signerKey: the 20-byte Ethereum address of the signer
+ * - signerKeyHex: the 20-byte Ethereum address of the signer, as a hex string
+ */
+console.log(eip712Signer.scheme); // 2
+console.log(eip712Signer.signerKey); // Uint8Array(20) [134, 221, 126, ...]
+console.log(eip712Signer.signerKeyHex); // 0x86dd7e4af49829b895d24ea2ab581c7c32e87332
+
+/* -------------------------------------------------------------------------- */
+/*                         eip712Signer.signMessageHash()                     */
+/* -------------------------------------------------------------------------- */
+/**
+ *
+ * Generates a 256-bit signature from an Ethereum address using the EIP-712 standard.
+ *
+ * @param messageHashBytes - The 256-bit hash of the message to be signed.
+ * @returns A HubAsyncResult containing the 256-bit signature as a Uint8Array.
+ */
+const message = 'Hello World';
+const messageHash = ethers.utils.keccak256(utils.toUtf8Bytes(message));
+const messageHashBytes = ethers.utils.arrayify(messageHash);
+const messageHashResult = await eip712Signer.signMessageHash(messageHashBytes);
+
+console.log(messageHashResult._unsafeUnwrap());
+/**
+ * Will output:
+ *
+ * value: Uint8Array(65) [
+ *   166, 32, 71, 26, 36, 205, ...
+ * ]
+ */
+
+/* -------------------------------------------------------------------------- */
+/*                    eip712Signer.signMessageHashHex()                       */
+/* -------------------------------------------------------------------------- */
+/**
+ * Generates a 256-bit hex signature from an Ethereum address using the EIP-712 standard.
+ *
+ * @param messageHash - The 256-bit hash of the message to be signed.
+ * @returns A HubAsyncResult containing the 256-bit signature as a hex string.
+ */
+const message = 'Hello World';
+const messageHash = ethers.utils.keccak256(utils.toUtf8Bytes(message));
+const messageHashResultHex = await eip712Signer.signMessageHashHex(messageHash);
+
+console.log(messageHashResultHex._unsafeUnwrap());
+/**
+ * Will output:
+ *
+ * 0xa620471a24cd101b99b7f69efcd9fe2437715924b...
+ */
+
+/* -------------------------------------------------------------------------- */
+/*              eip712Signer.signVerificationEthAddressClaim()                */
+/* -------------------------------------------------------------------------- */
+/**
+ * TODO description
+ *
+ * @param claim - The body of the claim to be signed as an object
+ * interface claim {
+ *     fid: number,
+ *     address: string,
+ *     network: types.FarcasterNetwork,
+ *     blockHash: string,
+ *   }
+ *
+ * @returns A HubAsyncResult containing the 256-bit signature as a Uint8Array.
+ */
+const claimBody = {
+  fid: -1,
+  address: eip712Signer.signerKeyHex,
+  network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+  blockHash: '2c87468704d6b0f4c46f480dc54251de50753af02e5d63702f85bde3da4f7a3d',
+};
+const verificationResult = await eip712Signer.signVerificationEthAddressClaim(claimBody);
+console.log(verificationResult._unsafeUnwrap());
+/**
+ * Will output:
+ *
+ * Uint8Array(65) [ 166, 32, 71, 26, 36, 205, ... ]
+ */
+
+/* -------------------------------------------------------------------------- */
+/*               eip712Signer.signVerificationEthAddressClaimHex()            */
+/* -------------------------------------------------------------------------- */
+/**
+ * TODO description
+ *
+ * @param claim - The body of the claim to be signed as an object
+ * interface claim {
+ *     fid: number,
+ *     address: string,
+ *     network: types.FarcasterNetwork,
+ *     blockHash: string,
+ *   }
+ *
+ * @returns A HubAsyncResult containing the 256-bit signature as a hex string.
+ */
+const claimBody = {
+  fid: -1,
+  address: eip712Signer.signerKeyHex,
+  network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+  blockHash: '2c87468704d6b0f4c46f480dc54251de50753af02e5d63702f85bde3da4f7a3d',
+};
+const verificationResultHex = await eip712Signer.signVerificationEthAddressClaimHex(claimBody);
+console.log(verificationResultHex._unsafeUnwrap());
+/**
+ * Will output:
+ *
+ * 0xa620471a24cd101b99b7f69efcd9fe2437715924b...
+ */
+```
+
+**`Example`**
+
+```ts
+import { Eip712Signer } from '@farcaster/js';
+import { ethers } from 'ethers';
+
+const custodyWallet = ethers.Wallet.fromMnemonic('<custody address mnemonic>');
+const eip712Signer = Eip712Signer.fromSigner(custodyWallet, custodyWallet.address)._unsafeUnwrap();
+
+console.
+```
+
 ## Constructors
 
 | Constructor  | Description                                       | Docs                                  |
