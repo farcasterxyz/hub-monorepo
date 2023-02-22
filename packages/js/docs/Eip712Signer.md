@@ -25,7 +25,7 @@ console.log(eip712Signer.signerKeyHex); // 0x86dd7e4af49829b895d24ea2ab581c7c32e
 /* -------------------------------------------------------------------------- */
 /**
  *
- * Generates a 256-bit signature from an Ethereum address using the EIP-712 standard.
+ * Generates a 256-bit signature from an Ethereum address
  *
  * @param messageHashBytes - The 256-bit hash of the message to be signed.
  * @returns A HubAsyncResult containing the 256-bit signature as a Uint8Array.
@@ -48,7 +48,7 @@ console.log(messageHashResult._unsafeUnwrap());
 /*                    eip712Signer.signMessageHashHex()                       */
 /* -------------------------------------------------------------------------- */
 /**
- * Generates a 256-bit hex signature from an Ethereum address using the EIP-712 standard.
+ * Generates a 256-bit hex signature from an Ethereum address
  *
  * @param messageHash - The 256-bit hash of the message to be signed.
  * @returns A HubAsyncResult containing the 256-bit signature as a hex string.
