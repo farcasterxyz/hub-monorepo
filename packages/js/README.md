@@ -204,13 +204,206 @@ await client.submitMessage(userDataPfpAdd._unsafeUnwrap());
  */
 ```
 
-## Classes
+## `Ed25519Signer`
 
-| Class         | Description                                    | Docs                            |
-| ------------- | ---------------------------------------------- | ------------------------------- |
-| Client        | Class for interacting with Hubble              | [docs](./docs/Client.md)        |
-| Ed25519Signer | Class for signing messages with Ed25519        | [docs](./docs/Ed25519Signer.md) |
-| Eip712Signer  | Class for signing message in the EIP712 format | [docs](./docs/Eip712Signer.md)  |
+### `new Ed25519Signer(privateKey, signerKey, signerKeyHex)`
+
+Creates a new instance of the `Ed25519Signer` class.
+
+**Parameters**
+
+| Name           | Type         | Description                        |
+| :------------- | :----------- | :--------------------------------- |
+| `privateKey`   | `Uint8Array` | The EdDSA private key              |
+| `signerKey`    | `Uint8Array` | The EdDSA public key               |
+| `signerKeyHex` | `string`     | The EdDSA public key in hex format |
+
+## Properties
+
+### `Ed25519Signer.scheme`
+
+Gets the scheme used by the signer.
+
+**Returns**
+
+| Name                                       | Value | Description                                  |
+| :----------------------------------------- | :---- | :------------------------------------------- |
+| `SignatureScheme.SIGNATURE_SCHEME_ED25519` | 1     | The signature scheme as defined in protobufs |
+
+### `Ed25519Signer.signerKey`
+
+Gets EdDSA public key in bytes.
+
+**Returns**
+
+| Name        | Type             | Description |
+| :---------- | :--------------- | :---------- |
+| `signerKey` | `Uint8Array(32)` | TODO        |
+
+### `Ed25519Signer.signerKeyHex`
+
+Gets EdDSA public key in hexadecimal format.
+
+**Returns**
+
+| Name           | Type     | Description |
+| :------------- | :------- | :---------- |
+| `signerKeyHex` | `string` | TODO        |
+
+## Methods
+
+### `Ed25519Signer.signMessageHash()`
+
+TODO
+
+**Parameters**
+
+| Name   | Type         | Description               |
+| :----- | :----------- | :------------------------ |
+| `hash` | `Uint8Array` | The hash to sign in bytes |
+
+### `Ed25519Signer.signMessageHashHex()`
+
+TODO
+
+**Parameters**
+
+| Name   | Type     | Description      |
+| :----- | :------- | :--------------- |
+| `hash` | `string` | The hash to sign |
+
+### `Ed25519Signer.fromPrivateKey()`
+
+Creates a new instance of the `Ed25519Signer` class from a EdDSA private key.
+
+**Parameters**
+
+| Name         | Type         | Description                  |
+| :----------- | :----------- | :--------------------------- |
+| `privateKey` | `Uint8Array` | Ed25519 Private key in bytes |
+
+## `EIP712Signer`
+
+### `new EIP712Signer(privateKey, signerKey, signerKeyHex)`
+
+Creates a new instance of the EIP712Signer class.
+
+**Parameters**
+
+| Name           | Type         | Description           |
+| :------------- | :----------- | :-------------------- |
+| `privateKey`   | `Uint8Array` | The ECDSA private key |
+| `signerKey`    | `Uint8Array` | TODO                  |
+| `signerKeyHex` | `string`     | TODO                  |
+
+## Properties
+
+### `EIP712Signer.scheme`
+
+Gets the scheme used by the signer.
+
+**Returns**
+
+// TODO: fact-check the description of this
+
+| Name                                      | Value | Description                                  |
+| :---------------------------------------- | :---- | :------------------------------------------- |
+| `SignatureScheme.SIGNATURE_SCHEME_EIP712` | 2     | The signature scheme as defined in protobufs |
+
+### `EIP712Signer.signerKey`
+
+TODO explanation.
+
+**Returns**
+
+| Name        | Type             | Description |
+| :---------- | :--------------- | :---------- |
+| `signerKey` | `Uint8Array(32)` | TODO        |
+
+### `EIP712Signer.signerKeyHex`
+
+TODO explanation.
+
+**Returns**
+
+| Name           | Type    | Description |
+| :------------- | :------ | :---------- |
+| `signerKeyHex` | `string | TODO        |
+
+## Methods
+
+### `EIP712Signer.signMessageHash()`
+
+Signs a message hash with the signer's private key using the EIP-712 message format.
+
+**Parameters**
+
+| Name   | Type         | Description               |
+| :----- | :----------- | :------------------------ |
+| `hash` | `Uint8Array` | The hash to sign in bytes |
+
+### `EIP712Signer.signMessageHashHex()`
+
+Signs a message hash with the signer's private key, returning the signature as a hex string using the EIP-712 message format.
+
+**Parameters**
+
+| Name   | Type     | Description      |
+| :----- | :------- | :--------------- |
+| `hash` | `string` | The hash to sign |
+
+### `EIP712Signer.signVerificationEthAddressClaim()`
+
+TODO explanation
+
+**Parameters**
+
+| Name    | Type                          | Description    |
+| :------ | :---------------------------- | :------------- |
+| `claim` | `VerificationEthAddressClaim` | The claim type |
+
+Where the `VerificationEthAddressClaim` type is defined as:
+
+```ts
+type VerificationEthAddressClaim = {
+  fid: BigNumber;
+  address: string;
+  network: FarcasterNetwork;
+  blockHash: string;
+};
+```
+
+### `EIP712Signer.signVerificationEthAddressClaimHex`
+
+TODO explanation
+
+**Parameters**
+
+| Name    | Type                          | Description |
+| :------ | :---------------------------- | :---------- |
+| `claim` | `VerificationEthAddressClaim` | The claim   |
+
+Where the `VerificationEthAddressClaim` type is defined as:
+
+```ts
+type VerificationEthAddressClaim = {
+  fid: BigNumber;
+  address: string;
+  network: FarcasterNetwork;
+  blockHash: string;
+};
+```
+
+### `Eip712Signer.fromSigner()`
+
+Instantiate a new EIP712Signer from an ECDSA private key (Ethereum)
+
+**Parameters**
+
+| Name              | Type              | Description                 |
+| :---------------- | :---------------- | :-------------------------- |
+| `typedDataSigner` | `TypedDataSigner` | an `ethers.Wallet` instance |
+| `address`         | `string`          | address of wallet           |
 
 ## Functions
 
