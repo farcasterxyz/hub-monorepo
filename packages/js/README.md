@@ -29,8 +29,10 @@ import * as ed from '@noble/ed25519';
 const rpcUrl = '<rpc-url>';
 const client = new Client(rpcUrl);
 
-// developers should safely store this signing key on behalf of users
 const privateKey = ed.utils.randomPrivateKey();
+const privateKeyHex = ed.utils.bytesToHex(privateKey);
+console.log(privateKeyHex); // 86be7f6f8dcf18...
+// developers should safely store this EdDSA private key on behalf of users
 
 // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
 const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
@@ -81,7 +83,7 @@ console.log(result);
  *
  *
  * this means is the signer key was successfully added to the hub
- * and the hub will now accept messages signed by this key
+ * and the hub will now accept messages signed by ed25519Signer above
  *
  * to read more about the signer key:
  * https://github.com/farcasterxyz/protocol#92-signers
@@ -94,8 +96,8 @@ console.log(result);
 /* -------------------------------------------------------------- */
 
 /**
- * let us suppose we are in a brand-new file, here's how we can use
- * the signer key we've previously initialized
+ * let us suppose we are in a brand-new file, here's how we can make
+ * an ed25519Signer from a previously registered signer key
  */
 
 import {
