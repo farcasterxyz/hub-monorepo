@@ -46,12 +46,18 @@ message SyncIds {
   repeated bytes sync_ids = 1;
 }
 
+message ListRequest {
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
 message FidRequest {
   uint64 fid = 1;
 }
 
 message FidsResponse {
   repeated uint64 fids = 1;
+  string next_page_token = 2;
 }
 
 message MessagesResponse {
@@ -127,7 +133,7 @@ service HubService {
   rpc GetSigner(SignerRequest) returns (Message);
   rpc GetSignersByFid(FidRequest) returns (MessagesResponse);
   rpc GetIdRegistryEvent(FidRequest) returns (IdRegistryEvent);
-  rpc GetFids(Empty) returns (FidsResponse);
+  rpc GetFids(ListRequest) returns (FidsResponse);
 
   // Bulk Methods
   rpc GetAllCastMessagesByFid(FidRequest) returns (MessagesResponse);
@@ -135,7 +141,7 @@ service HubService {
   rpc GetAllVerificationMessagesByFid(FidRequest) returns (MessagesResponse);
   rpc GetAllSignerMessagesByFid(FidRequest) returns (MessagesResponse);
   rpc GetAllUserDataMessagesByFid(FidRequest) returns (MessagesResponse);
-  
+
   // Sync Methods
   rpc GetInfo(Empty) returns (HubInfoResponse);
   rpc GetAllSyncIdsByPrefix(TrieNodePrefix) returns (SyncIds);

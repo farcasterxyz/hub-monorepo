@@ -71,12 +71,18 @@ export interface SyncIds {
   syncIds: Uint8Array[];
 }
 
+export interface ListRequest {
+  pageSize: number;
+  pageToken: string;
+}
+
 export interface FidRequest {
   fid: number;
 }
 
 export interface FidsResponse {
   fids: number[];
+  nextPageToken: string;
 }
 
 export interface MessagesResponse {
@@ -646,6 +652,68 @@ export const SyncIds = {
   },
 };
 
+function createBaseListRequest(): ListRequest {
+  return { pageSize: 0, pageToken: "" };
+}
+
+export const ListRequest = {
+  encode(message: ListRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.pageSize !== 0) {
+      writer.uint32(16).int32(message.pageSize);
+    }
+    if (message.pageToken !== "") {
+      writer.uint32(26).string(message.pageToken);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ListRequest {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 2:
+          message.pageSize = reader.int32();
+          break;
+        case 3:
+          message.pageToken = reader.string();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListRequest {
+    return {
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : 0,
+      pageToken: isSet(object.pageToken) ? String(object.pageToken) : "",
+    };
+  },
+
+  toJSON(message: ListRequest): unknown {
+    const obj: any = {};
+    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
+    message.pageToken !== undefined && (obj.pageToken = message.pageToken);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ListRequest>, I>>(base?: I): ListRequest {
+    return ListRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ListRequest>, I>>(object: I): ListRequest {
+    const message = createBaseListRequest();
+    message.pageSize = object.pageSize ?? 0;
+    message.pageToken = object.pageToken ?? "";
+    return message;
+  },
+};
+
 function createBaseFidRequest(): FidRequest {
   return { fid: 0 };
 }
@@ -698,7 +766,7 @@ export const FidRequest = {
 };
 
 function createBaseFidsResponse(): FidsResponse {
-  return { fids: [] };
+  return { fids: [], nextPageToken: "" };
 }
 
 export const FidsResponse = {
@@ -708,6 +776,9 @@ export const FidsResponse = {
       writer.uint64(v);
     }
     writer.ldelim();
+    if (message.nextPageToken !== "") {
+      writer.uint32(18).string(message.nextPageToken);
+    }
     return writer;
   },
 
@@ -728,6 +799,9 @@ export const FidsResponse = {
             message.fids.push(longToNumber(reader.uint64() as Long));
           }
           break;
+        case 2:
+          message.nextPageToken = reader.string();
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -737,7 +811,10 @@ export const FidsResponse = {
   },
 
   fromJSON(object: any): FidsResponse {
-    return { fids: Array.isArray(object?.fids) ? object.fids.map((e: any) => Number(e)) : [] };
+    return {
+      fids: Array.isArray(object?.fids) ? object.fids.map((e: any) => Number(e)) : [],
+      nextPageToken: isSet(object.nextPageToken) ? String(object.nextPageToken) : "",
+    };
   },
 
   toJSON(message: FidsResponse): unknown {
@@ -747,6 +824,7 @@ export const FidsResponse = {
     } else {
       obj.fids = [];
     }
+    message.nextPageToken !== undefined && (obj.nextPageToken = message.nextPageToken);
     return obj;
   },
 
@@ -757,6 +835,7 @@ export const FidsResponse = {
   fromPartial<I extends Exact<DeepPartial<FidsResponse>, I>>(object: I): FidsResponse {
     const message = createBaseFidsResponse();
     message.fids = object.fids?.map((e) => e) || [];
+    message.nextPageToken = object.nextPageToken ?? "";
     return message;
   },
 };
@@ -1448,8 +1527,8 @@ export const HubServiceService = {
     path: "/HubService/GetFids",
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
-    requestDeserialize: (value: Buffer) => Empty.decode(value),
+    requestSerialize: (value: ListRequest) => Buffer.from(ListRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => ListRequest.decode(value),
     responseSerialize: (value: FidsResponse) => Buffer.from(FidsResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => FidsResponse.decode(value),
   },
@@ -1577,7 +1656,7 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getSigner: handleUnaryCall<SignerRequest, Message>;
   getSignersByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getIdRegistryEvent: handleUnaryCall<FidRequest, IdRegistryEvent>;
-  getFids: handleUnaryCall<Empty, FidsResponse>;
+  getFids: handleUnaryCall<ListRequest, FidsResponse>;
   /** Bulk Methods */
   getAllCastMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getAllReactionMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
@@ -1879,14 +1958,17 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: IdRegistryEvent) => void,
   ): ClientUnaryCall;
-  getFids(request: Empty, callback: (error: ServiceError | null, response: FidsResponse) => void): ClientUnaryCall;
   getFids(
-    request: Empty,
+    request: ListRequest,
+    callback: (error: ServiceError | null, response: FidsResponse) => void,
+  ): ClientUnaryCall;
+  getFids(
+    request: ListRequest,
     metadata: Metadata,
     callback: (error: ServiceError | null, response: FidsResponse) => void,
   ): ClientUnaryCall;
   getFids(
-    request: Empty,
+    request: ListRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: FidsResponse) => void,

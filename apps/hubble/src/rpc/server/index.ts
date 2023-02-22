@@ -73,6 +73,9 @@ export const toServiceError = (err: HubError): ServiceError => {
   });
 };
 
+const pagePrefixFromToken = (token: string): Buffer => Buffer.from(token, 'base64url');
+const pageTokenFromPrefix = (prefix: Buffer): string => prefix.toString('base64url');
+
 export default class Server {
   private hub: HubInterface | undefined;
   private engine: Engine | undefined;
@@ -535,10 +538,20 @@ export default class Server {
         );
       },
       getFids: async (call, callback) => {
-        const result = await this.engine?.getFids();
+        const request = call.request;
+
+        const pageSize = request.pageSize === 0 ? -1 : request.pageSize;
+        const pagePrefix = pagePrefixFromToken(request.pageToken);
+        const result = await this.engine?.getFids(pageSize, pagePrefix);
         result?.match(
-          (fids: number[]) => {
-            callback(null, FidsResponse.create({ fids }));
+          ({ fids, nextPagePrefix }: { fids: number[]; nextPagePrefix: Buffer | undefined }) => {
+            callback(
+              null,
+              FidsResponse.create({
+                fids,
+                nextPageToken: nextPagePrefix ? pageTokenFromPrefix(nextPagePrefix) : '',
+              })
+            );
           },
           (err: HubError) => {
             callback(toServiceError(err));

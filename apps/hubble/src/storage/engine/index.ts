@@ -367,8 +367,14 @@ class Engine {
     return ResultAsync.fromPromise(this._signerStore.getIdRegistryEvent(fid), (e) => e as HubError);
   }
 
-  async getFids(): HubAsyncResult<number[]> {
-    return ResultAsync.fromPromise(this._signerStore.getFids(), (e) => e as HubError);
+  async getFids(
+    pageSize?: number,
+    pagePrefix?: Buffer
+  ): HubAsyncResult<{
+    fids: number[];
+    nextPagePrefix: Buffer | undefined;
+  }> {
+    return ResultAsync.fromPromise(this._signerStore.getFids(pageSize, pagePrefix), (e) => e as HubError);
   }
 
   async getAllSignerMessagesByFid(

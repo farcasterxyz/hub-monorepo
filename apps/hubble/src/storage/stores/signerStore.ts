@@ -155,13 +155,30 @@ class SignerStore {
     return getManyMessagesByFid(this._db, fid, UserPostfix.SignerMessage, messageKeys);
   }
 
-  async getFids(): Promise<number[]> {
+  async getFids(
+    pageSize?: number,
+    pagePrefix?: Buffer
+  ): Promise<{
+    fids: number[];
+    nextPagePrefix: Buffer | undefined;
+  }> {
     const prefix = Buffer.from([RootPrefix.IdRegistryEvent]);
     const fids: number[] = [];
-    for await (const [key] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
+    for await (const [key] of this._db.iteratorByPrefixPaged(prefix, pagePrefix, {
+      keyAsBuffer: true,
+      values: false,
+      limit: pageSize,
+    })) {
       fids.push(Number((key as Buffer).readUint32BE(1)));
     }
-    return fids;
+
+    const buf = Buffer.alloc(4);
+    buf.writeUInt32BE(fids[fids.length - 1] ?? 0, 0);
+
+    return {
+      fids,
+      nextPagePrefix: Buffer.concat([Buffer.from([RootPrefix.IdRegistryEvent]), buf]),
+    };
   }
 
   /**
