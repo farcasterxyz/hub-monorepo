@@ -204,40 +204,26 @@ await client.submitMessage(userDataPfpAdd._unsafeUnwrap());
 
 ## Classes
 
-| Class         | Description                                       | Docs                            |
-| ------------- | ------------------------------------------------- | ------------------------------- |
-| Client        | Class for interacting with the Farcaster protocol | [docs](./docs/Client.md)        |
-| Ed25519Signer | Class for signing messages with Ed25519           | [docs](./docs/Ed25519Signer.md) |
-| Eip712Signer  | Class for signing message in the EIP712 format    | [docs](./docs/Eip712Signer.md)  |
+| Class         | Description                                    | Docs                            |
+| ------------- | ---------------------------------------------- | ------------------------------- |
+| Client        | Class for interacting with Hubble              | [docs](./docs/Client.md)        |
+| Ed25519Signer | Class for signing messages with Ed25519        | [docs](./docs/Ed25519Signer.md) |
+| Eip712Signer  | Class for signing message in the EIP712 format | [docs](./docs/Eip712Signer.md)  |
 
 ## Functions
 
-| Function                          | Description                                                       | Docs                                                          |
-| --------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------- |
-| makeAmpAdd                        | TODO                                                              | [docs](./docs/functions.md#makeampadd)                        |
-| makeAmpAddData                    | TODO                                                              | [docs](./docs/functions.md#makeampadddata)                    |
-| makeAmpRemove                     | TODO                                                              | [docs](./docs/functions.md#makeampremove)                     |
-| makeAmpRemoveData                 | TODO                                                              | [docs](./docs/functions.md#makeampremovedata)                 |
-| makeCastAdd                       | TODO                                                              | [docs](./docs/functions.md#makecastadd)                       |
-| makeCastAddData                   | TODO                                                              | [docs](./docs/functions.md#makecastadddata)                   |
-| makeCastRemove                    | TODO                                                              | [docs](./docs/functions.md#makecastremove)                    |
-| makeCastRemoveData                | TODO                                                              | [docs](./docs/functions.md#makecastremovedata)                |
-| makeMessageHash                   | Creates a hash of a message.                                      | [docs](./docs/functions.md#makemessagehash)                   |
-| makeMessageWithSignature          | Adds a signature to a message.                                    | [docs](./docs/functions.md#makemessagewithsignature)          |
-| makeReactionAdd                   | Creates a message for adding a reaction.                          | [docs](./docs/functions.md#makereactionadd)                   |
-| makeReactionAddData               | Creates data for adding a reaction.                               | [docs](./docs/functions.md#makereactionadddata)               |
-| makeReactionRemove                | Creates a message for removing a reaction.                        | [docs](./docs/functions.md#makereactionremove)                |
-| makeReactionRemoveData            | Creates data for removing a reaction.                             | [docs](./docs/functions.md#makereactionremovedata)            |
-| makeSignerAdd                     | Creates a message for adding a signer.                            | [docs](./docs/functions.md#makesigneradd)                     |
-| makeSignerAddData                 | Creates data for adding a signer.                                 | [docs](./docs/functions.md#makesigneradddata)                 |
-| makeSignerRemove                  | Creates a message for removing a signer.                          | [docs](./docs/functions.md#makesignerremove)                  |
-| makeSignerRemoveData              | Creates data for removing a signer.                               | [docs](./docs/functions.md#makesignerremovedata)              |
-| makeUserDataAdd                   | Creates a message for adding user data.                           | [docs](./docs/functions.md#makeuserdataadd)                   |
-| makeUserDataAddData               | Creates data for adding user data.                                | [docs](./docs/functions.md#makeuserdataadddata)               |
-| makeVerificationAddEthAddress     | Creates a message for adding an Ethereum address to verification. | [docs](./docs/functions.md#makeverificationaddethaddress)     |
-| makeVerificationAddEthAddressData | Creates data for adding an Ethereum address to verification.      | [docs](./docs/functions.md#makeverificationaddethaddressdata) |
-| makeVerificationRemove            | Creates a message for removing a verification.                    | [docs](./docs/functions.md#makeverificationremove)            |
-| makeVerificationRemoveData        | Creates data for removing a verification.                         | [docs](./docs/functions.md#makeverificationremovedata)        |
+| Function                      | Description                                                         | Docs                                                      |
+| ----------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------- |
+| makeCastAdd                   | Creates a message to add cast                                       | [docs](./docs/functions.md#makecastadd)                   |
+| makeCastRemove                | creates a message to delete cast                                    | [docs](./docs/functions.md#makecastremove)                |
+| makeMessageHash               | TODO                                                                | [docs](./docs/functions.md#makemessagehash)               |
+| makeReactionAdd               | Creates a message to react to cast (like or recast)                 | [docs](./docs/functions.md#makereactionadd)               |
+| makeReactionRemove            | Creates a message to remove reaction from cast (unlike or unrecast) | [docs](./docs/functions.md#makereactionremove)            |
+| makeSignerAdd                 | Creates a message to add a ed25519 signer key                       | [docs](./docs/functions.md#makesigneradd)                 |
+| makeSignerRemove              | Creates a message to remove a ed25519 signer key                    | [docs](./docs/functions.md#makesignerremove)              |
+| makeUserDataAdd               | Creates a message to set user data (pfp, link, display name, etc)   | [docs](./docs/functions.md#makeuserdataadd)               |
+| makeVerificationAddEthAddress | TODO                                                                | [docs](./docs/functions.md#makeverificationaddethaddress) |
+| makeVerificationRemove        | TODO                                                                | [docs](./docs/functions.md#makeverificationremove)        |
 
 ## Namespaces
 
