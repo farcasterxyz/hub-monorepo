@@ -42,22 +42,6 @@ describe('ReactionRemoveMessageFactory', () => {
   });
 });
 
-describe('AmpAddMessageFactory', () => {
-  test('generates a valid AmpAdd', async () => {
-    const message = await Factories.AmpAddMessage.create();
-    expect(protobufs.isAmpAddMessage(message)).toBeTruthy();
-    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
-  });
-});
-
-describe('AmpRemoveMessageFactory', () => {
-  test('generates a valid AmpRemove', async () => {
-    const message = await Factories.AmpRemoveMessage.create();
-    expect(protobufs.isAmpRemoveMessage(message)).toBeTruthy();
-    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
-  });
-});
-
 describe('VerificationAddEthAddressMessageFactory', () => {
   test('generates a valid VerificationAddEthAddress', async () => {
     const message = await Factories.VerificationAddEthAddressMessage.create();

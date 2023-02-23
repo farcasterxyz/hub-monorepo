@@ -90,10 +90,6 @@ export const typeToSetPostfix = (type: protobufs.MessageType): UserMessagePostfi
     return UserPostfix.ReactionMessage;
   }
 
-  if (type === protobufs.MessageType.MESSAGE_TYPE_AMP_ADD || type === protobufs.MessageType.MESSAGE_TYPE_AMP_REMOVE) {
-    return UserPostfix.AmpMessage;
-  }
-
   if (
     type === protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS ||
     type === protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE

@@ -13,14 +13,17 @@ const scheduler = new PruneMessagesJobScheduler(engine);
 // Use farcaster timestamp
 const seedMessagesFromTimestamp = async (engine: Engine, fid: number, signer: Ed25519Signer, timestamp: number) => {
   const castAdd = await Factories.CastAddMessage.create({ data: { fid, timestamp } }, { transient: { signer } });
-  const ampAdd = await Factories.AmpAddMessage.create({ data: { fid, timestamp } }, { transient: { signer } });
-  return engine.mergeMessages([castAdd, ampAdd]);
+  const reactionAdd = await Factories.ReactionAddMessage.create(
+    { data: { fid, timestamp } },
+    { transient: { signer } }
+  );
+  return engine.mergeMessages([castAdd, reactionAdd]);
 };
 
 let prunedMessages: protobufs.Message[] = [];
 
-const pruneMessageListener = (message: protobufs.Message) => {
-  prunedMessages.push(message);
+const pruneMessageListener = (event: protobufs.PruneMessageHubEvent) => {
+  prunedMessages.push(event.pruneMessageBody.message);
 };
 
 beforeAll(() => {
@@ -60,8 +63,8 @@ describe('doJobs', () => {
       const casts = await engine.getCastsByFid(fid);
       expect(casts._unsafeUnwrap().length).toEqual(1);
 
-      const amps = await engine.getAmpsByFid(fid);
-      expect(amps._unsafeUnwrap().length).toEqual(1);
+      const reactions = await engine.getReactionsByFid(fid);
+      expect(reactions._unsafeUnwrap().length).toEqual(1);
     }
 
     const result = await scheduler.doJobs();
@@ -71,8 +74,8 @@ describe('doJobs', () => {
       const casts = await engine.getCastsByFid(fid);
       expect(casts._unsafeUnwrap()).toEqual([]);
 
-      const amps = await engine.getAmpsByFid(fid);
-      expect(amps._unsafeUnwrap()).toEqual([]);
+      const reactions = await engine.getReactionsByFid(fid);
+      expect(reactions._unsafeUnwrap()).toEqual([]);
     }
 
     expect(prunedMessages.length).toEqual(4);

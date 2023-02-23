@@ -49,6 +49,8 @@ export enum RootPrefix {
   NameRegistryEventsByExpiry = 13,
   /* To check if the Hub was cleanly shutdown */
   HubCleanShutdown = 14,
+  /* Event log */
+  HubEvents = 15,
 }
 
 /**

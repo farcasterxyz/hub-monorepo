@@ -20,7 +20,7 @@ const db = jestRocksDB('storage.db.message.test');
 const signer = Factories.Ed25519Signer.build();
 
 const castMessage = await Factories.CastAddMessage.create({}, { transient: { signer } });
-const ampMessage = await Factories.AmpAddMessage.create({}, { transient: { signer } });
+const reactionMessage = await Factories.ReactionAddMessage.create({}, { transient: { signer } });
 
 describe('makeUserKey', () => {
   test('orders keys by fid', () => {
@@ -121,20 +121,20 @@ describe('getMessage', () => {
 describe('getManyMessages', () => {
   test('succeeds', async () => {
     await putMessage(db, castMessage);
-    await putMessage(db, ampMessage);
+    await putMessage(db, reactionMessage);
     const primaryKey = makeMessagePrimaryKeyFromMessage(castMessage);
-    const ampPrimaryKey = makeMessagePrimaryKeyFromMessage(ampMessage);
+    const ampPrimaryKey = makeMessagePrimaryKeyFromMessage(reactionMessage);
     const results = await getManyMessages(db, [primaryKey, ampPrimaryKey]);
-    expect(new Set(results)).toEqual(new Set([castMessage, ampMessage]));
+    expect(new Set(results)).toEqual(new Set([castMessage, reactionMessage]));
   });
 });
 
 describe('getAllMessagesByFid', () => {
   test('succeeds', async () => {
     await putMessage(db, castMessage);
-    await putMessage(db, ampMessage);
+    await putMessage(db, reactionMessage);
     await expect(getAllMessagesByFid(db, castMessage.data.fid)).resolves.toEqual([castMessage]);
-    await expect(getAllMessagesByFid(db, ampMessage.data.fid)).resolves.toEqual([ampMessage]);
+    await expect(getAllMessagesByFid(db, reactionMessage.data.fid)).resolves.toEqual([reactionMessage]);
   });
 
   test('succeeds with no results', async () => {
@@ -145,19 +145,21 @@ describe('getAllMessagesByFid', () => {
 describe('getAllMessagesBySigner', () => {
   test('succeeds', async () => {
     await putMessage(db, castMessage);
-    await putMessage(db, ampMessage);
+    await putMessage(db, reactionMessage);
     await expect(getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer)).resolves.toEqual([castMessage]);
-    await expect(getAllMessagesBySigner(db, ampMessage.data.fid, ampMessage.signer)).resolves.toEqual([ampMessage]);
+    await expect(getAllMessagesBySigner(db, reactionMessage.data.fid, reactionMessage.signer)).resolves.toEqual([
+      reactionMessage,
+    ]);
   });
 
   test('succeeds with type', async () => {
     await putMessage(db, castMessage);
-    await putMessage(db, ampMessage);
+    await putMessage(db, reactionMessage);
     await expect(
       getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer, MessageType.MESSAGE_TYPE_CAST_ADD)
     ).resolves.toEqual([castMessage]);
     await expect(
-      getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer, MessageType.MESSAGE_TYPE_AMP_ADD)
+      getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer, MessageType.MESSAGE_TYPE_REACTION_ADD)
     ).resolves.toEqual([]);
   });
 

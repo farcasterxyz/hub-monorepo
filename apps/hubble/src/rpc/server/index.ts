@@ -1,11 +1,10 @@
 import {
-  AmpAddMessage,
   CastAddMessage,
   CastId,
-  EventResponse,
-  EventType,
   FidsResponse,
   Server as GrpcServer,
+  HubEvent,
+  HubEventType,
   HubInfoResponse,
   HubServiceServer,
   HubServiceService,
@@ -365,45 +364,6 @@ export default class Server {
           }
         );
       },
-      getAmp: async (call, callback) => {
-        const request = call.request;
-
-        const ampResult = await this.engine?.getAmp(request.fid, request.targetFid);
-        ampResult?.match(
-          (amp: AmpAddMessage) => {
-            callback(null, amp);
-          },
-          (err: HubError) => {
-            callback(toServiceError(err));
-          }
-        );
-      },
-      getAmpsByFid: async (call, callback) => {
-        const request = call.request;
-
-        const ampsResult = await this.engine?.getAmpsByFid(request.fid);
-        ampsResult?.match(
-          (amps: AmpAddMessage[]) => {
-            callback(null, MessagesResponse.create({ messages: amps }));
-          },
-          (err: HubError) => {
-            callback(toServiceError(err));
-          }
-        );
-      },
-      getAmpsByUser: async (call, callback) => {
-        const request = call.request;
-
-        const ampsResult = await this.engine?.getAmpsByTargetFid(request.fid);
-        ampsResult?.match(
-          (amps: AmpAddMessage[]) => {
-            callback(null, MessagesResponse.create({ messages: amps }));
-          },
-          (err: HubError) => {
-            callback(toServiceError(err));
-          }
-        );
-      },
       getUserData: async (call, callback) => {
         const request = call.request;
 
@@ -545,19 +505,6 @@ export default class Server {
           }
         );
       },
-      getAllAmpMessagesByFid: async (call, callback) => {
-        const request = call.request;
-
-        const result = await this.engine?.getAllAmpMessagesByFid(request.fid);
-        result?.match(
-          (messages: Message[]) => {
-            callback(null, MessagesResponse.create({ messages }));
-          },
-          (err: HubError) => {
-            callback(toServiceError(err));
-          }
-        );
-      },
       getAllVerificationMessagesByFid: async (call, callback) => {
         const request = call.request;
 
@@ -598,58 +545,31 @@ export default class Server {
         );
       },
       subscribe: async (stream) => {
-        const mergeMessageListener = (message: Message) => {
-          const response = EventResponse.create({ type: EventType.EVENT_TYPE_MERGE_MESSAGE, message });
-          stream.write(response);
-        };
-
-        const pruneMessageListener = (message: Message) => {
-          const response = EventResponse.create({ type: EventType.EVENT_TYPE_PRUNE_MESSAGE, message });
-          stream.write(response);
-        };
-
-        const revokeMessageListener = (message: Message) => {
-          const response = EventResponse.create({ type: EventType.EVENT_TYPE_REVOKE_MESSAGE, message });
-          stream.write(response);
-        };
-
-        const mergeIdRegistryEventListener = (event: IdRegistryEvent) => {
-          const response = EventResponse.create({
-            type: EventType.EVENT_TYPE_MERGE_ID_REGISTRY_EVENT,
-            idRegistryEvent: event,
-          });
-          stream.write(response);
-        };
-
-        const mergeNameRegistryEventListener = (event: NameRegistryEvent) => {
-          const response = EventResponse.create({
-            type: EventType.EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT,
-            nameRegistryEvent: event,
-          });
-          stream.write(response);
+        const eventListener = (event: HubEvent) => {
+          stream.write(event);
         };
 
         const { request } = stream;
 
         // if no type filters are provided, subscribe to all event types
         if (request.eventTypes.length === 0) {
-          this.engine?.eventHandler.on('mergeMessage', mergeMessageListener);
-          this.engine?.eventHandler.on('pruneMessage', pruneMessageListener);
-          this.engine?.eventHandler.on('revokeMessage', revokeMessageListener);
-          this.engine?.eventHandler.on('mergeIdRegistryEvent', mergeIdRegistryEventListener);
-          this.engine?.eventHandler.on('mergeNameRegistryEvent', mergeNameRegistryEventListener);
+          this.engine?.eventHandler.on('mergeMessage', eventListener);
+          this.engine?.eventHandler.on('pruneMessage', eventListener);
+          this.engine?.eventHandler.on('revokeMessage', eventListener);
+          this.engine?.eventHandler.on('mergeIdRegistryEvent', eventListener);
+          this.engine?.eventHandler.on('mergeNameRegistryEvent', eventListener);
         } else {
           for (const eventType of request.eventTypes) {
-            if (eventType === EventType.EVENT_TYPE_MERGE_MESSAGE) {
-              this.engine?.eventHandler.on('mergeMessage', mergeMessageListener);
-            } else if (eventType === EventType.EVENT_TYPE_PRUNE_MESSAGE) {
-              this.engine?.eventHandler.on('pruneMessage', pruneMessageListener);
-            } else if (eventType === EventType.EVENT_TYPE_REVOKE_MESSAGE) {
-              this.engine?.eventHandler.on('revokeMessage', revokeMessageListener);
-            } else if (eventType === EventType.EVENT_TYPE_MERGE_ID_REGISTRY_EVENT) {
-              this.engine?.eventHandler.on('mergeIdRegistryEvent', mergeIdRegistryEventListener);
-            } else if (eventType === EventType.EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT) {
-              this.engine?.eventHandler.on('mergeNameRegistryEvent', mergeNameRegistryEventListener);
+            if (eventType === HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE) {
+              this.engine?.eventHandler.on('mergeMessage', eventListener);
+            } else if (eventType === HubEventType.HUB_EVENT_TYPE_PRUNE_MESSAGE) {
+              this.engine?.eventHandler.on('pruneMessage', eventListener);
+            } else if (eventType === HubEventType.HUB_EVENT_TYPE_REVOKE_MESSAGE) {
+              this.engine?.eventHandler.on('revokeMessage', eventListener);
+            } else if (eventType === HubEventType.HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT) {
+              this.engine?.eventHandler.on('mergeIdRegistryEvent', eventListener);
+            } else if (eventType === HubEventType.HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT) {
+              this.engine?.eventHandler.on('mergeNameRegistryEvent', eventListener);
             }
           }
         }
@@ -659,11 +579,11 @@ export default class Server {
         });
 
         stream.on('close', () => {
-          this.engine?.eventHandler.off('mergeMessage', mergeMessageListener);
-          this.engine?.eventHandler.off('pruneMessage', pruneMessageListener);
-          this.engine?.eventHandler.off('revokeMessage', revokeMessageListener);
-          this.engine?.eventHandler.off('mergeIdRegistryEvent', mergeIdRegistryEventListener);
-          this.engine?.eventHandler.off('mergeNameRegistryEvent', mergeNameRegistryEventListener);
+          this.engine?.eventHandler.off('mergeMessage', eventListener);
+          this.engine?.eventHandler.off('pruneMessage', eventListener);
+          this.engine?.eventHandler.off('revokeMessage', eventListener);
+          this.engine?.eventHandler.off('mergeIdRegistryEvent', eventListener);
+          this.engine?.eventHandler.off('mergeNameRegistryEvent', eventListener);
         });
 
         const readyMetadata = new Metadata();

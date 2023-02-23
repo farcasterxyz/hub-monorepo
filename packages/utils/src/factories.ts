@@ -158,8 +158,6 @@ const UserDataTypeFactory = Factory.define<protobufs.UserDataType>(() => {
 
 const MessageTypeFactory = Factory.define<protobufs.MessageType>(() => {
   return faker.helpers.arrayElement([
-    protobufs.MessageType.MESSAGE_TYPE_AMP_ADD,
-    protobufs.MessageType.MESSAGE_TYPE_AMP_REMOVE,
     protobufs.MessageType.MESSAGE_TYPE_CAST_ADD,
     protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE,
     protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD,
@@ -325,52 +323,6 @@ const ReactionRemoveMessageFactory = Factory.define<protobufs.ReactionRemoveMess
       { data: ReactionRemoveDataFactory.build(), signatureScheme: protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519 },
       { transient: transientParams }
     ) as protobufs.ReactionRemoveMessage;
-  }
-);
-
-const AmpBodyFactory = Factory.define<protobufs.AmpBody>(() => {
-  return protobufs.AmpBody.create({
-    targetFid: FidFactory.build(),
-  });
-});
-
-const AmpAddDataFactory = Factory.define<protobufs.AmpAddData>(() => {
-  return MessageDataFactory.build({
-    ampBody: AmpBodyFactory.build(),
-    type: protobufs.MessageType.MESSAGE_TYPE_AMP_ADD,
-  }) as protobufs.AmpAddData;
-});
-
-const AmpAddMessageFactory = Factory.define<protobufs.AmpAddMessage, { signer?: Ed25519Signer }>(
-  ({ onCreate, transientParams }) => {
-    onCreate((message) => {
-      return MessageFactory.create(message, { transient: transientParams }) as Promise<protobufs.AmpAddMessage>;
-    });
-
-    return MessageFactory.build(
-      { data: AmpAddDataFactory.build(), signatureScheme: protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519 },
-      { transient: transientParams }
-    ) as protobufs.AmpAddMessage;
-  }
-);
-
-const AmpRemoveDataFactory = Factory.define<protobufs.AmpRemoveData>(() => {
-  return MessageDataFactory.build({
-    ampBody: AmpBodyFactory.build(),
-    type: protobufs.MessageType.MESSAGE_TYPE_AMP_REMOVE,
-  }) as protobufs.AmpRemoveData;
-});
-
-const AmpRemoveMessageFactory = Factory.define<protobufs.AmpRemoveMessage, { signer?: Ed25519Signer }>(
-  ({ onCreate, transientParams }) => {
-    onCreate((message) => {
-      return MessageFactory.create(message, { transient: transientParams }) as Promise<protobufs.AmpRemoveMessage>;
-    });
-
-    return MessageFactory.build(
-      { data: AmpRemoveDataFactory.build(), signatureScheme: protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519 },
-      { transient: transientParams }
-    ) as protobufs.AmpRemoveMessage;
   }
 );
 
@@ -634,11 +586,6 @@ export const Factories = {
   ReactionAddMessage: ReactionAddMessageFactory,
   ReactionRemoveData: ReactionRemoveDataFactory,
   ReactionRemoveMessage: ReactionRemoveMessageFactory,
-  AmpBody: AmpBodyFactory,
-  AmpAddData: AmpAddDataFactory,
-  AmpAddMessage: AmpAddMessageFactory,
-  AmpRemoveData: AmpRemoveDataFactory,
-  AmpRemoveMessage: AmpRemoveMessageFactory,
   SignerBody: SignerBodyFactory,
   SignerAddData: SignerAddDataFactory,
   SignerAddMessage: SignerAddMessageFactory,

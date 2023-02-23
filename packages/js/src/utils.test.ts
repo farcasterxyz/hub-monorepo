@@ -148,16 +148,6 @@ describe('CastRemoveBody', () => {
   });
 });
 
-describe('AmpBody', () => {
-  test('suceeds when deserialized and serialized', () => {
-    const body = Factories.AmpBody.build();
-    const deserialized = utils.deserializeAmpBody(body);
-    expect(deserialized.isOk()).toBeTruthy();
-    const serialized = utils.serializeAmpBody(deserialized._unsafeUnwrap());
-    expect(serialized).toEqual(ok(body));
-  });
-});
-
 describe('VerificationAddEthAddressBody', () => {
   test('suceeds when deserialized and serialized', async () => {
     const body = await Factories.VerificationAddEthAddressBody.create();

@@ -1,6 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesToUtf8String, Factories, getHubRpcClient, HubError, HubRpcClient } from '@farcaster/utils';
-import { ok } from 'neverthrow';
+import { Ok } from 'neverthrow';
 import SyncEngine from '~/network/sync/syncEngine';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
@@ -77,8 +77,8 @@ describe('getUserData', () => {
   });
 
   test('succeeds', async () => {
-    expect(await engine.mergeMessage(pfpAdd)).toEqual(ok(undefined));
-    expect(await engine.mergeMessage(locationAdd)).toEqual(ok(undefined));
+    expect(await engine.mergeMessage(pfpAdd)).toBeInstanceOf(Ok);
+    expect(await engine.mergeMessage(locationAdd)).toBeInstanceOf(Ok);
 
     const pfp = await client.getUserData(
       protobufs.UserDataRequest.create({ fid, userDataType: protobufs.UserDataType.USER_DATA_TYPE_PFP })
@@ -93,7 +93,7 @@ describe('getUserData', () => {
     const nameRegistryEvent = Factories.NameRegistryEvent.build({ fname, to: custodySigner.signerKey });
     await engine.mergeNameRegistryEvent(nameRegistryEvent);
 
-    expect(await engine.mergeMessage(addFname)).toEqual(ok(undefined));
+    expect(await engine.mergeMessage(addFname)).toBeInstanceOf(Ok);
     const fnameData = await client.getUserData(
       protobufs.UserDataRequest.create({ fid, userDataType: protobufs.UserDataType.USER_DATA_TYPE_FNAME })
     );

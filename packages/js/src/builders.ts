@@ -31,7 +31,6 @@ type MessageBody =
   | protobufs.CastAddBody
   | protobufs.CastRemoveBody
   | protobufs.ReactionBody
-  | protobufs.AmpBody
   | protobufs.VerificationAddEthAddressBody
   | protobufs.VerificationRemoveBody
   | protobufs.SignerBody
@@ -41,7 +40,6 @@ type MessageBodyOptions = {
   castAddBody?: protobufs.CastAddBody | undefined;
   castRemoveBody?: protobufs.CastRemoveBody | undefined;
   reactionBody?: protobufs.ReactionBody | undefined;
-  ampBody?: protobufs.AmpBody | undefined;
   verificationAddEthAddressBody?: protobufs.VerificationAddEthAddressBody | undefined;
   verificationRemoveBody?: protobufs.VerificationRemoveBody | undefined;
   signerBody?: protobufs.SignerBody | undefined;
@@ -240,32 +238,6 @@ export const makeReactionRemoveData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE,
   'reactionBody',
   utils.serializeReactionBody
-);
-
-/** Amp Methods */
-
-export const makeAmpAdd = buildMakeMessageMethod(
-  protobufs.MessageType.MESSAGE_TYPE_AMP_ADD,
-  'ampBody',
-  utils.serializeAmpBody
-);
-
-export const makeAmpRemove = buildMakeMessageMethod(
-  protobufs.MessageType.MESSAGE_TYPE_AMP_REMOVE,
-  'ampBody',
-  utils.serializeAmpBody
-);
-
-export const makeAmpAddData = buildMakeMessageDataMethod(
-  protobufs.MessageType.MESSAGE_TYPE_AMP_ADD,
-  'ampBody',
-  utils.serializeAmpBody
-);
-
-export const makeAmpRemoveData = buildMakeMessageDataMethod(
-  protobufs.MessageType.MESSAGE_TYPE_AMP_REMOVE,
-  'ampBody',
-  utils.serializeAmpBody
 );
 
 /** Verification Methods */
