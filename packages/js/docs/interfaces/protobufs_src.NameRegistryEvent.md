@@ -26,7 +26,7 @@
 
 #### Defined in
 
-[protobufs/src/generated/name_registry_event.ts:45](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/name_registry_event.ts#L45)
+[protobufs/src/generated/name_registry_event.ts:45](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/name_registry_event.ts#L45)
 
 ___
 
@@ -36,7 +36,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/name_registry_event.ts:44](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/name_registry_event.ts#L44)
+[protobufs/src/generated/name_registry_event.ts:44](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/name_registry_event.ts#L44)
 
 ___
 
@@ -46,7 +46,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/name_registry_event.ts:52](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/name_registry_event.ts#L52)
+[protobufs/src/generated/name_registry_event.ts:52](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/name_registry_event.ts#L52)
 
 ___
 
@@ -56,7 +56,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/name_registry_event.ts:48](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/name_registry_event.ts#L48)
+[protobufs/src/generated/name_registry_event.ts:48](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/name_registry_event.ts#L48)
 
 ___
 
@@ -66,7 +66,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/name_registry_event.ts:49](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/name_registry_event.ts#L49)
+[protobufs/src/generated/name_registry_event.ts:49](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/name_registry_event.ts#L49)
 
 ___
 
@@ -76,7 +76,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/name_registry_event.ts:47](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/name_registry_event.ts#L47)
+[protobufs/src/generated/name_registry_event.ts:47](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/name_registry_event.ts#L47)
 
 ___
 
@@ -86,7 +86,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/name_registry_event.ts:50](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/name_registry_event.ts#L50)
+[protobufs/src/generated/name_registry_event.ts:50](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/name_registry_event.ts#L50)
 
 ___
 
@@ -96,7 +96,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/name_registry_event.ts:46](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/name_registry_event.ts#L46)
+[protobufs/src/generated/name_registry_event.ts:46](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/name_registry_event.ts#L46)
 
 ___
 
@@ -106,4 +106,4 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/name_registry_event.ts:51](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/name_registry_event.ts#L51)
+[protobufs/src/generated/name_registry_event.ts:51](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/name_registry_event.ts#L51)

@@ -23,7 +23,7 @@ Response Types for the Sync RPC Methods
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:106](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L106)
+[protobufs/src/generated/rpc.ts:106](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/rpc.ts#L106)
 
 ___
 
@@ -33,7 +33,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:107](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L107)
+[protobufs/src/generated/rpc.ts:107](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/rpc.ts#L107)
 
 ___
 
@@ -43,7 +43,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:108](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L108)
+[protobufs/src/generated/rpc.ts:108](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/rpc.ts#L108)
 
 ___
 
@@ -53,4 +53,4 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:105](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L105)
+[protobufs/src/generated/rpc.ts:105](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/rpc.ts#L105)

@@ -29,7 +29,7 @@
 
 #### Defined in
 
-[utils/src/signers/signer.ts:5](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/signer.ts#L5)
+[utils/src/signers/signer.ts:5](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/signers/signer.ts#L5)
 
 ___
 
@@ -39,7 +39,7 @@ ___
 
 #### Defined in
 
-[utils/src/signers/signer.ts:6](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/signer.ts#L6)
+[utils/src/signers/signer.ts:6](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/signers/signer.ts#L6)
 
 ___
 
@@ -49,7 +49,7 @@ ___
 
 #### Defined in
 
-[utils/src/signers/signer.ts:7](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/signer.ts#L7)
+[utils/src/signers/signer.ts:7](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/signers/signer.ts#L7)
 
 ## Methods
 
@@ -69,4 +69,4 @@ ___
 
 #### Defined in
 
-[utils/src/signers/signer.ts:9](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/signer.ts#L9)
+[utils/src/signers/signer.ts:9](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/signers/signer.ts#L9)

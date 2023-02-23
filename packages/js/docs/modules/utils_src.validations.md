@@ -56,7 +56,7 @@ Number of seconds (10 minutes) that is appropriate for clock skew
 
 #### Defined in
 
-[utils/src/validations.ts:11](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L11)
+[utils/src/validations.ts:11](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L11)
 
 ___
 
@@ -68,7 +68,7 @@ Message types that must be signed by EIP712 signer
 
 #### Defined in
 
-[utils/src/validations.ts:14](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L14)
+[utils/src/validations.ts:14](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L14)
 
 ___
 
@@ -78,7 +78,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:19](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L19)
+[utils/src/validations.ts:19](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L19)
 
 ___
 
@@ -88,7 +88,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:20](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L20)
+[utils/src/validations.ts:20](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L20)
 
 ## Functions
 
@@ -108,7 +108,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:386](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L386)
+[utils/src/validations.ts:386](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L386)
 
 ___
 
@@ -128,7 +128,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:471](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L471)
+[utils/src/validations.ts:471](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L471)
 
 ___
 
@@ -148,7 +148,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:261](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L261)
+[utils/src/validations.ts:261](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L261)
 
 ___
 
@@ -168,7 +168,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:34](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L34)
+[utils/src/validations.ts:34](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L34)
 
 ___
 
@@ -188,7 +188,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:321](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L321)
+[utils/src/validations.ts:321](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L321)
 
 ___
 
@@ -208,7 +208,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:85](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L85)
+[utils/src/validations.ts:85](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L85)
 
 ___
 
@@ -228,7 +228,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:471](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L471)
+[utils/src/validations.ts:471](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L471)
 
 ___
 
@@ -248,7 +248,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:471](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L471)
+[utils/src/validations.ts:471](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L471)
 
 ___
 
@@ -268,7 +268,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:471](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L471)
+[utils/src/validations.ts:471](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L471)
 
 ___
 
@@ -288,7 +288,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:61](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L61)
+[utils/src/validations.ts:61](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L61)
 
 ___
 
@@ -308,7 +308,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:471](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L471)
+[utils/src/validations.ts:471](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L471)
 
 ___
 
@@ -328,7 +328,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:73](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L73)
+[utils/src/validations.ts:73](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L73)
 
 ___
 
@@ -348,7 +348,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:45](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L45)
+[utils/src/validations.ts:45](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L45)
 
 ___
 
@@ -374,7 +374,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:439](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L439)
+[utils/src/validations.ts:439](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L439)
 
 ___
 
@@ -394,7 +394,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:97](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L97)
+[utils/src/validations.ts:97](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L97)
 
 ___
 
@@ -414,7 +414,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:157](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L157)
+[utils/src/validations.ts:157](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L157)
 
 ___
 
@@ -434,7 +434,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:22](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L22)
+[utils/src/validations.ts:22](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L22)
 
 ___
 
@@ -454,7 +454,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:471](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L471)
+[utils/src/validations.ts:471](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L471)
 
 ___
 
@@ -474,7 +474,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:333](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L333)
+[utils/src/validations.ts:333](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L333)
 
 ___
 
@@ -494,7 +494,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:341](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L341)
+[utils/src/validations.ts:341](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L341)
 
 ___
 
@@ -514,7 +514,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:349](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L349)
+[utils/src/validations.ts:349](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L349)
 
 ___
 
@@ -534,7 +534,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:325](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L325)
+[utils/src/validations.ts:325](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L325)
 
 ___
 
@@ -554,7 +554,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:382](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L382)
+[utils/src/validations.ts:382](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L382)
 
 ___
 
@@ -574,7 +574,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:471](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L471)
+[utils/src/validations.ts:471](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L471)
 
 ___
 
@@ -594,7 +594,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:471](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L471)
+[utils/src/validations.ts:471](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L471)
 
 ___
 
@@ -614,7 +614,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:402](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L402)
+[utils/src/validations.ts:402](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L402)
 
 ___
 
@@ -634,7 +634,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:390](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L390)
+[utils/src/validations.ts:390](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L390)
 
 ___
 
@@ -654,7 +654,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:358](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L358)
+[utils/src/validations.ts:358](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L358)
 
 ___
 
@@ -676,7 +676,7 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:236](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L236)
+[utils/src/validations.ts:236](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L236)
 
 ___
 
@@ -696,4 +696,4 @@ ___
 
 #### Defined in
 
-[utils/src/validations.ts:376](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/validations.ts#L376)
+[utils/src/validations.ts:376](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/validations.ts#L376)

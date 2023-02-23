@@ -18,4 +18,4 @@
 
 #### Defined in
 
-[protobufs/src/generated/message.ts:331](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/message.ts#L331)
+[protobufs/src/generated/message.ts:331](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/message.ts#L331)

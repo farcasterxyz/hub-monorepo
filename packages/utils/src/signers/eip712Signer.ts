@@ -64,7 +64,6 @@ export class Eip712Signer implements Signer {
     return eip712.signMessageHash(hash, this._typedDataSigner);
   }
 
-  // TODO: this doesn't compile to docs
   /**
    * Signs a verification claim for an Ethereum address.
    *

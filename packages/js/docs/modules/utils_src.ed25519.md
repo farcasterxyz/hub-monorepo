@@ -31,7 +31,7 @@
 
 #### Defined in
 
-[utils/src/crypto/ed25519.ts:13](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/crypto/ed25519.ts#L13)
+[utils/src/crypto/ed25519.ts:13](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/crypto/ed25519.ts#L13)
 
 ___
 
@@ -51,7 +51,7 @@ ___
 
 #### Defined in
 
-[utils/src/crypto/ed25519.ts:9](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/crypto/ed25519.ts#L9)
+[utils/src/crypto/ed25519.ts:9](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/crypto/ed25519.ts#L9)
 
 ___
 
@@ -72,7 +72,7 @@ ___
 
 #### Defined in
 
-[utils/src/crypto/ed25519.ts:17](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/crypto/ed25519.ts#L17)
+[utils/src/crypto/ed25519.ts:17](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/crypto/ed25519.ts#L17)
 
 ___
 
@@ -94,4 +94,4 @@ ___
 
 #### Defined in
 
-[utils/src/crypto/ed25519.ts:21](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/crypto/ed25519.ts#L21)
+[utils/src/crypto/ed25519.ts:21](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/crypto/ed25519.ts#L21)

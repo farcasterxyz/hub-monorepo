@@ -42,7 +42,7 @@
 
 #### Defined in
 
-[utils/src/signers/ed25519Signer.ts:23](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/ed25519Signer.ts#L23)
+[utils/src/signers/ed25519Signer.ts:23](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/signers/ed25519Signer.ts#L23)
 
 ## Properties
 
@@ -52,7 +52,7 @@
 
 #### Defined in
 
-[utils/src/signers/ed25519Signer.ts:14](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/ed25519Signer.ts#L14)
+[utils/src/signers/ed25519Signer.ts:14](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/signers/ed25519Signer.ts#L14)
 
 ___
 
@@ -66,7 +66,7 @@ ___
 
 #### Defined in
 
-[utils/src/signers/ed25519Signer.ts:8](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/ed25519Signer.ts#L8)
+[utils/src/signers/ed25519Signer.ts:8](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/signers/ed25519Signer.ts#L8)
 
 ___
 
@@ -82,7 +82,7 @@ ___
 
 #### Defined in
 
-[utils/src/signers/ed25519Signer.ts:11](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/ed25519Signer.ts#L11)
+[utils/src/signers/ed25519Signer.ts:11](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/signers/ed25519Signer.ts#L11)
 
 ___
 
@@ -96,7 +96,7 @@ ___
 
 #### Defined in
 
-[utils/src/signers/ed25519Signer.ts:12](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/ed25519Signer.ts#L12)
+[utils/src/signers/ed25519Signer.ts:12](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/signers/ed25519Signer.ts#L12)
 
 ## Methods
 
@@ -148,7 +148,7 @@ A HubAsyncResult containing the signature as a Uint8Array.
 
 #### Defined in
 
-[utils/src/signers/ed25519Signer.ts:56](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/ed25519Signer.ts#L56)
+[utils/src/signers/ed25519Signer.ts:56](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/signers/ed25519Signer.ts#L56)
 
 ___
 
@@ -168,4 +168,4 @@ ___
 
 #### Defined in
 
-[utils/src/signers/ed25519Signer.ts:16](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/ed25519Signer.ts#L16)
+[utils/src/signers/ed25519Signer.ts:16](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/signers/ed25519Signer.ts#L16)

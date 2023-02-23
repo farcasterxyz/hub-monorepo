@@ -57,7 +57,7 @@
 
 #### Defined in
 
-[js/src/client.ts:42](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L42)
+[js/src/client.ts:42](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L42)
 
 ## Properties
 
@@ -67,7 +67,7 @@
 
 #### Defined in
 
-[js/src/client.ts:40](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L40)
+[js/src/client.ts:40](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L40)
 
 ## Methods
 
@@ -87,7 +87,7 @@
 
 #### Defined in
 
-[js/src/client.ts:110](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L110)
+[js/src/client.ts:110](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L110)
 
 ___
 
@@ -107,7 +107,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:86](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L86)
+[js/src/client.ts:86](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L86)
 
 ___
 
@@ -127,7 +127,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:157](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L157)
+[js/src/client.ts:157](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L157)
 
 ___
 
@@ -147,7 +147,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:207](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L207)
+[js/src/client.ts:207](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L207)
 
 ___
 
@@ -167,7 +167,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:226](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L226)
+[js/src/client.ts:226](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L226)
 
 ___
 
@@ -187,7 +187,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:182](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L182)
+[js/src/client.ts:182](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L182)
 
 ___
 
@@ -208,7 +208,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:95](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L95)
+[js/src/client.ts:95](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L95)
 
 ___
 
@@ -228,7 +228,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:100](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L100)
+[js/src/client.ts:100](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L100)
 
 ___
 
@@ -248,7 +248,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:105](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L105)
+[js/src/client.ts:105](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L105)
 
 ___
 
@@ -269,7 +269,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:58](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L58)
+[js/src/client.ts:58](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L58)
 
 ___
 
@@ -289,7 +289,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:67](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L67)
+[js/src/client.ts:67](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L67)
 
 ___
 
@@ -309,7 +309,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:81](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L81)
+[js/src/client.ts:81](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L81)
 
 ___
 
@@ -329,7 +329,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:72](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L72)
+[js/src/client.ts:72](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L72)
 
 ___
 
@@ -349,7 +349,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:235](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L235)
+[js/src/client.ts:235](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L235)
 
 ___
 
@@ -369,7 +369,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:240](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L240)
+[js/src/client.ts:240](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L240)
 
 ___
 
@@ -391,7 +391,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:119](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L119)
+[js/src/client.ts:119](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L119)
 
 ___
 
@@ -412,7 +412,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:145](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L145)
+[js/src/client.ts:145](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L145)
 
 ___
 
@@ -433,7 +433,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:137](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L137)
+[js/src/client.ts:137](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L137)
 
 ___
 
@@ -454,7 +454,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:193](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L193)
+[js/src/client.ts:193](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L193)
 
 ___
 
@@ -474,7 +474,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:202](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L202)
+[js/src/client.ts:202](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L202)
 
 ___
 
@@ -495,7 +495,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:216](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L216)
+[js/src/client.ts:216](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L216)
 
 ___
 
@@ -515,7 +515,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:221](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L221)
+[js/src/client.ts:221](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L221)
 
 ___
 
@@ -536,7 +536,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:168](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L168)
+[js/src/client.ts:168](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L168)
 
 ___
 
@@ -556,7 +556,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:177](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L177)
+[js/src/client.ts:177](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L177)
 
 ___
 
@@ -576,7 +576,7 @@ ___
 
 #### Defined in
 
-[js/src/client.ts:50](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L50)
+[js/src/client.ts:50](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L50)
 
 ___
 
@@ -598,4 +598,4 @@ Data from this stream can be parsed using `deserializeEventResponse`.
 
 #### Defined in
 
-[js/src/client.ts:257](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/client.ts#L257)
+[js/src/client.ts:257](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/client.ts#L257)

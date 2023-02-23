@@ -196,7 +196,7 @@ A HubAsyncResult containing the 256-bit signature as a hex string.
 
 #### Defined in
 
-[js/src/signers.ts:69](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/signers.ts#L69)
+[js/src/signers.ts:69](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/signers.ts#L69)
 
 ___
 
@@ -214,7 +214,7 @@ Eip712Signer#signVerificationEthAddressClaim
 
 **`Example`**
 
-```
+```typescript
 const claimBody = {
   fid: -1,
   address: eip712Signer.signerKeyHex,
@@ -297,7 +297,7 @@ A HubAsyncResult containing the 256-bit signature as a Uint8Array.
 
 #### Defined in
 
-[js/src/signers.ts:115](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/signers.ts#L115)
+[js/src/signers.ts:115](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/signers.ts#L115)
 
 ___
 
@@ -345,4 +345,4 @@ BaseEip712Signer.fromSigner
 
 #### Defined in
 
-[js/src/signers.ts:37](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/signers.ts#L37)
+[js/src/signers.ts:37](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/signers.ts#L37)

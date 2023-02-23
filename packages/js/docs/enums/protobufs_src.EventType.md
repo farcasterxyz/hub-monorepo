@@ -24,7 +24,7 @@
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:36](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L36)
+[protobufs/src/generated/rpc.ts:36](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/rpc.ts#L36)
 
 ___
 
@@ -34,7 +34,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:33](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L33)
+[protobufs/src/generated/rpc.ts:33](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/rpc.ts#L33)
 
 ___
 
@@ -44,7 +44,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:37](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L37)
+[protobufs/src/generated/rpc.ts:37](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/rpc.ts#L37)
 
 ___
 
@@ -54,7 +54,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:32](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L32)
+[protobufs/src/generated/rpc.ts:32](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/rpc.ts#L32)
 
 ___
 
@@ -64,7 +64,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:34](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L34)
+[protobufs/src/generated/rpc.ts:34](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/rpc.ts#L34)
 
 ___
 
@@ -74,7 +74,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:35](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L35)
+[protobufs/src/generated/rpc.ts:35](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/rpc.ts#L35)
 
 ___
 
@@ -84,4 +84,4 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:38](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L38)
+[protobufs/src/generated/rpc.ts:38](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/rpc.ts#L38)

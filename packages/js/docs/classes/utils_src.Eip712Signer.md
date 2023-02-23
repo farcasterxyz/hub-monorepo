@@ -43,7 +43,7 @@
 
 #### Defined in
 
-[utils/src/signers/eip712Signer.ts:28](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/eip712Signer.ts#L28)
+[utils/src/signers/eip712Signer.ts:28](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/signers/eip712Signer.ts#L28)
 
 ## Properties
 
@@ -53,7 +53,7 @@
 
 #### Defined in
 
-[utils/src/signers/eip712Signer.ts:21](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/eip712Signer.ts#L21)
+[utils/src/signers/eip712Signer.ts:21](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/signers/eip712Signer.ts#L21)
 
 ___
 
@@ -67,7 +67,7 @@ ___
 
 #### Defined in
 
-[utils/src/signers/eip712Signer.ts:15](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/eip712Signer.ts#L15)
+[utils/src/signers/eip712Signer.ts:15](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/signers/eip712Signer.ts#L15)
 
 ___
 
@@ -83,7 +83,7 @@ ___
 
 #### Defined in
 
-[utils/src/signers/eip712Signer.ts:18](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/eip712Signer.ts#L18)
+[utils/src/signers/eip712Signer.ts:18](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/signers/eip712Signer.ts#L18)
 
 ___
 
@@ -97,7 +97,7 @@ ___
 
 #### Defined in
 
-[utils/src/signers/eip712Signer.ts:19](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/eip712Signer.ts#L19)
+[utils/src/signers/eip712Signer.ts:19](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/signers/eip712Signer.ts#L19)
 
 ## Methods
 
@@ -151,7 +151,7 @@ A HubAsyncResult containing the 256-bit signature as a Uint8Array.
 
 #### Defined in
 
-[utils/src/signers/eip712Signer.ts:63](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/eip712Signer.ts#L63)
+[utils/src/signers/eip712Signer.ts:63](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/signers/eip712Signer.ts#L63)
 
 ___
 
@@ -169,7 +169,7 @@ Eip712Signer#signVerificationEthAddressClaim
 
 **`Example`**
 
-```
+```typescript
 const claimBody = {
   fid: -1,
   address: eip712Signer.signerKeyHex,
@@ -196,7 +196,7 @@ A HubAsyncResult containing the 256-bit signature as a Uint8Array.
 
 #### Defined in
 
-[utils/src/signers/eip712Signer.ts:96](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/eip712Signer.ts#L96)
+[utils/src/signers/eip712Signer.ts:95](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/signers/eip712Signer.ts#L95)
 
 ___
 
@@ -217,4 +217,4 @@ ___
 
 #### Defined in
 
-[utils/src/signers/eip712Signer.ts:23](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/eip712Signer.ts#L23)
+[utils/src/signers/eip712Signer.ts:23](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/signers/eip712Signer.ts#L23)

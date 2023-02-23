@@ -47,7 +47,7 @@ Error.constructor
 
 #### Defined in
 
-[utils/src/errors.ts:32](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/errors.ts#L32)
+[utils/src/errors.ts:32](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/errors.ts#L32)
 
 ## Properties
 
@@ -57,7 +57,7 @@ Error.constructor
 
 #### Defined in
 
-[utils/src/errors.ts:23](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/errors.ts#L23)
+[utils/src/errors.ts:23](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/errors.ts#L23)
 
 ___
 
@@ -67,4 +67,4 @@ ___
 
 #### Defined in
 
-[utils/src/errors.ts:26](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/errors.ts#L26)
+[utils/src/errors.ts:26](https://github.com/vinliao/hubble/blob/4e20c6c/packages/utils/src/errors.ts#L26)

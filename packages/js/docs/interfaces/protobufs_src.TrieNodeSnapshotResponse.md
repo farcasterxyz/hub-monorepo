@@ -21,7 +21,7 @@
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:120](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L120)
+[protobufs/src/generated/rpc.ts:120](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/rpc.ts#L120)
 
 ___
 
@@ -31,7 +31,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:121](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L121)
+[protobufs/src/generated/rpc.ts:121](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/rpc.ts#L121)
 
 ___
 
@@ -41,7 +41,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:119](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L119)
+[protobufs/src/generated/rpc.ts:119](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/rpc.ts#L119)
 
 ___
 
@@ -51,4 +51,4 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:122](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L122)
+[protobufs/src/generated/rpc.ts:122](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/rpc.ts#L122)

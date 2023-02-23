@@ -18,4 +18,4 @@
 
 #### Defined in
 
-[protobufs/src/generated/hub_state.ts:5](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/hub_state.ts#L5)
+[protobufs/src/generated/hub_state.ts:5](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/hub_state.ts#L5)

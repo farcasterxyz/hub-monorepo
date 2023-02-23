@@ -19,7 +19,7 @@
 
 #### Defined in
 
-[protobufs/src/generated/gossip.ts:7](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/gossip.ts#L7)
+[protobufs/src/generated/gossip.ts:7](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/gossip.ts#L7)
 
 ___
 
@@ -29,4 +29,4 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/gossip.ts:8](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/gossip.ts#L8)
+[protobufs/src/generated/gossip.ts:8](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/gossip.ts#L8)

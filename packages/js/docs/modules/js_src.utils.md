@@ -64,7 +64,7 @@
 
 #### Defined in
 
-[js/src/utils.ts:283](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L283)
+[js/src/utils.ts:283](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L283)
 
 ___
 
@@ -86,7 +86,7 @@ Deserialize a block hash from a byte array to hex string.
 
 #### Defined in
 
-[js/src/utils.ts:408](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L408)
+[js/src/utils.ts:408](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L408)
 
 ___
 
@@ -106,7 +106,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:211](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L211)
+[js/src/utils.ts:211](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L211)
 
 ___
 
@@ -126,7 +126,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:380](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L380)
+[js/src/utils.ts:380](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L380)
 
 ___
 
@@ -146,7 +146,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:243](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L243)
+[js/src/utils.ts:243](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L243)
 
 ___
 
@@ -166,7 +166,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:477](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L477)
+[js/src/utils.ts:477](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L477)
 
 ___
 
@@ -188,7 +188,7 @@ Deserialize an Ed25519 signature from a byte array to hex string.
 
 #### Defined in
 
-[js/src/utils.ts:443](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L443)
+[js/src/utils.ts:443](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L443)
 
 ___
 
@@ -210,7 +210,7 @@ Deserialize an EIP-712 signature from a byte array to hex string.
 
 #### Defined in
 
-[js/src/utils.ts:429](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L429)
+[js/src/utils.ts:429](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L429)
 
 ___
 
@@ -230,7 +230,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:466](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L466)
+[js/src/utils.ts:466](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L466)
 
 ___
 
@@ -250,7 +250,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:19](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L19)
+[js/src/utils.ts:19](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L19)
 
 ___
 
@@ -270,7 +270,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:458](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L458)
+[js/src/utils.ts:458](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L458)
 
 ___
 
@@ -290,7 +290,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:102](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L102)
+[js/src/utils.ts:102](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L102)
 
 ___
 
@@ -310,7 +310,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:134](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L134)
+[js/src/utils.ts:134](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L134)
 
 ___
 
@@ -330,7 +330,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:162](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L162)
+[js/src/utils.ts:162](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L162)
 
 ___
 
@@ -352,7 +352,7 @@ Deserialize a message hash from a byte array to hex string.
 
 #### Defined in
 
-[js/src/utils.ts:450](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L450)
+[js/src/utils.ts:450](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L450)
 
 ___
 
@@ -372,7 +372,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:65](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L65)
+[js/src/utils.ts:65](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L65)
 
 ___
 
@@ -392,7 +392,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:358](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L358)
+[js/src/utils.ts:358](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L358)
 
 ___
 
@@ -412,7 +412,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:291](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L291)
+[js/src/utils.ts:291](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L291)
 
 ___
 
@@ -434,7 +434,7 @@ Deserialize a transaction hash from a byte array to hex string.
 
 #### Defined in
 
-[js/src/utils.ts:422](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L422)
+[js/src/utils.ts:422](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L422)
 
 ___
 
@@ -454,7 +454,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:347](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L347)
+[js/src/utils.ts:347](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L347)
 
 ___
 
@@ -474,7 +474,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:261](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L261)
+[js/src/utils.ts:261](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L261)
 
 ___
 
@@ -494,7 +494,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:329](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L329)
+[js/src/utils.ts:329](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L329)
 
 ___
 
@@ -514,7 +514,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:287](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L287)
+[js/src/utils.ts:287](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L287)
 
 ___
 
@@ -536,7 +536,7 @@ Serializes a block hash from a hex string to byte array.
 
 #### Defined in
 
-[js/src/utils.ts:415](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L415)
+[js/src/utils.ts:415](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L415)
 
 ___
 
@@ -556,7 +556,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:226](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L226)
+[js/src/utils.ts:226](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L226)
 
 ___
 
@@ -576,7 +576,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:392](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L392)
+[js/src/utils.ts:392](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L392)
 
 ___
 
@@ -596,7 +596,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:252](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L252)
+[js/src/utils.ts:252](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L252)
 
 ___
 
@@ -616,7 +616,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:481](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L481)
+[js/src/utils.ts:481](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L481)
 
 ___
 
@@ -638,7 +638,7 @@ Serializes an EIP-712 from a hex string to byte array.
 
 #### Defined in
 
-[js/src/utils.ts:436](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L436)
+[js/src/utils.ts:436](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L436)
 
 ___
 
@@ -658,7 +658,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:470](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L470)
+[js/src/utils.ts:470](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L470)
 
 ___
 
@@ -678,7 +678,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:462](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L462)
+[js/src/utils.ts:462](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L462)
 
 ___
 
@@ -698,7 +698,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:454](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L454)
+[js/src/utils.ts:454](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L454)
 
 ___
 
@@ -718,7 +718,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:372](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L372)
+[js/src/utils.ts:372](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L372)
 
 ___
 
@@ -738,7 +738,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:302](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L302)
+[js/src/utils.ts:302](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L302)
 
 ___
 
@@ -758,7 +758,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:354](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L354)
+[js/src/utils.ts:354](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L354)
 
 ___
 
@@ -778,7 +778,7 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:311](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L311)
+[js/src/utils.ts:311](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L311)
 
 ___
 
@@ -798,4 +798,4 @@ ___
 
 #### Defined in
 
-[js/src/utils.ts:339](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/utils.ts#L339)
+[js/src/utils.ts:339](https://github.com/vinliao/hubble/blob/4e20c6c/packages/js/src/utils.ts#L339)

@@ -18,4 +18,4 @@
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:100](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L100)
+[protobufs/src/generated/rpc.ts:100](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/rpc.ts#L100)

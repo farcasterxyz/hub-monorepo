@@ -22,9 +22,6 @@
     "test:ci": {
       "dependsOn": ["lint", "build"],
       "outputs": ["coverage/**"]
-    },
-    "docs": {
-      "dependsOn": ["build"]
     }
   },
   "globalDependencies": ["tsconfig.json", ".eslintrc.cjs"]

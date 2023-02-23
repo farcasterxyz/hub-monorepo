@@ -21,7 +21,7 @@
 
 #### Defined in
 
-[protobufs/src/generated/id_registry_event.ts:6](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/id_registry_event.ts#L6)
+[protobufs/src/generated/id_registry_event.ts:6](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/id_registry_event.ts#L6)
 
 ___
 
@@ -31,7 +31,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/id_registry_event.ts:7](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/id_registry_event.ts#L7)
+[protobufs/src/generated/id_registry_event.ts:7](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/id_registry_event.ts#L7)
 
 ___
 
@@ -41,7 +41,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/id_registry_event.ts:8](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/id_registry_event.ts#L8)
+[protobufs/src/generated/id_registry_event.ts:8](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/id_registry_event.ts#L8)
 
 ___
 
@@ -51,4 +51,4 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/id_registry_event.ts:9](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/id_registry_event.ts#L9)
+[protobufs/src/generated/id_registry_event.ts:9](https://github.com/vinliao/hubble/blob/4e20c6c/packages/protobufs/src/generated/id_registry_event.ts#L9)
