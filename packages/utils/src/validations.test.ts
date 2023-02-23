@@ -528,14 +528,6 @@ describe('validateUserDataAddBody', () => {
       hubErrorMessage = 'bio value > 256';
     });
 
-    test('when location > 32', () => {
-      body = Factories.UserDataBody.build({
-        type: protobufs.UserDataType.USER_DATA_TYPE_LOCATION,
-        value: faker.random.alphaNumeric(33),
-      });
-      hubErrorMessage = 'location value > 32';
-    });
-
     test('when url > 256', () => {
       body = Factories.UserDataBody.build({
         type: protobufs.UserDataType.USER_DATA_TYPE_URL,

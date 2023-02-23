@@ -400,10 +400,6 @@ export const validateUserDataAddBody = (body: protobufs.UserDataBody): HubResult
     if (value && value.length > 256) {
       return err(new HubError('bad_request.validation_failure', 'bio value > 256'));
     }
-  } else if (type === protobufs.UserDataType.USER_DATA_TYPE_LOCATION) {
-    if (value && value.length > 32) {
-      return err(new HubError('bad_request.validation_failure', 'location value > 32'));
-    }
   } else if (type === protobufs.UserDataType.USER_DATA_TYPE_URL) {
     if (value && value.length > 256) {
       return err(new HubError('bad_request.validation_failure', 'url value > 256'));

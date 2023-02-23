@@ -150,7 +150,6 @@ const UserDataTypeFactory = Factory.define<protobufs.UserDataType>(() => {
     protobufs.UserDataType.USER_DATA_TYPE_BIO,
     protobufs.UserDataType.USER_DATA_TYPE_DISPLAY,
     protobufs.UserDataType.USER_DATA_TYPE_FNAME,
-    protobufs.UserDataType.USER_DATA_TYPE_LOCATION,
     protobufs.UserDataType.USER_DATA_TYPE_PFP,
     protobufs.UserDataType.USER_DATA_TYPE_URL,
   ]);
