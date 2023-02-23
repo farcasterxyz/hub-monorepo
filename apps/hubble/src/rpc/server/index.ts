@@ -95,6 +95,7 @@ export default class Server {
     return new Promise((resolve, reject) => {
       this.grpcServer.bindAsync(`0.0.0.0:${port}`, ServerCredentials.createInsecure(), (err, port) => {
         if (err) {
+          logger.error({ component: 'gRPC Server', err }, 'Failed to start gRPC Server');
           reject(err);
         } else {
           this.grpcServer.start();

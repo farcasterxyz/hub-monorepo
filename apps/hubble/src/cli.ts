@@ -120,7 +120,15 @@ app
     };
 
     const hub = new Hub(options);
-    hub.start();
+    const startResult = await ResultAsync.fromPromise(hub.start(), (e) => new Error(`Failed to start hub: ${e}`));
+    if (startResult.isErr()) {
+      logger.fatal({ error: startResult.error, reason: 'Hub Startup failed' }, 'shutting down hub');
+      try {
+        await teardown(hub);
+      } finally {
+        process.exit(1);
+      }
+    }
 
     process.stdin.resume();
 
@@ -140,11 +148,13 @@ app
     });
 
     process.on('uncaughtException', (err) => {
+      logger.error({ reason: 'Uncaught exception' }, 'shutting down hub');
       logger.fatal(err);
       process.exit(1);
     });
 
     process.on('unhandledRejection', (err) => {
+      logger.error({ reason: 'Unhandled Rejection' }, 'shutting down hub');
       logger.fatal(err);
       process.exit(1);
     });
