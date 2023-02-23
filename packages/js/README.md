@@ -131,6 +131,11 @@ console.log(checkSigner);
  * valid signer key would return an object like makeSignerAdd() above
  *
  * now that we have a valid signer key object, we can use it to interact with hubs
+ *
+ * the flow of interacting with hub:
+ * 1. create a message with signer key (cast message, reactions message, verification message, etc)
+ * 2. submit the message to the hub
+ * 3. to see all the available function, see the "Functions" part below
  */
 
 const dataOptions = {
@@ -194,14 +199,6 @@ const userDataPfpBody = {
 };
 const userDataPfpAdd = await makeUserDataAdd(userDataPfpBody, dataOptions, ed25519Signer);
 await client.submitMessage(userDataPfpAdd._unsafeUnwrap());
-
-/**
- * the flow of interacting with hub:
- * 1. create a message with signer key (cast message, reactions message, verification message, etc)
- * 2. submit the message to the hub
- * 3. to see all the available function, see the "Functions" part below
- *    (the ones that starts with "makeAmpAdd", "makeAmpAddData", etc)
- */
 ```
 
 ## `Client`
