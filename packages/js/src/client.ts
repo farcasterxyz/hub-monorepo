@@ -229,7 +229,7 @@ export class Client {
   /* -------------------------------------------------------------------------- */
 
   /**
-   * Data from this stream can be parsed using `deserializeEventResponse`.
+   * Data from this stream can be parsed using `deserializeHubEvent`.
    */
   async subscribe(filters: EventFilters = {}) {
     const request = protobufs.SubscribeRequest.create({ ...filters });

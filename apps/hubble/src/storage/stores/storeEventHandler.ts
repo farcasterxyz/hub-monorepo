@@ -141,9 +141,9 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     return ok(this._db.iterator({ gte: minKey, lt: Buffer.from(maxKey.value), keys: false, valueAsBuffer: true }));
   }
 
-  async getEvents(): HubAsyncResult<HubEvent[]> {
+  async getEvents(fromId?: number): HubAsyncResult<HubEvent[]> {
     const events: HubEvent[] = [];
-    const iterator = this.getEventsIterator();
+    const iterator = this.getEventsIterator(fromId);
     if (iterator.isErr()) {
       return err(iterator.error);
     }

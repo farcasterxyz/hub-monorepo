@@ -171,13 +171,39 @@ describe('subscribe', () => {
       ]);
     });
 
-    test('fails with invalid id', async () => {
+    test('emits events with early id', async () => {
       await engine.mergeIdRegistryEvent(custodyEvent);
       await engine.mergeMessage(signerAdd);
 
       stream = await setupSubscription(events, { fromId: 1 });
 
-      expect(events).toEqual([]);
+      expect(events).toEqual([
+        [protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT, protobufs.IdRegistryEvent.toJSON(custodyEvent)],
+        [protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE, protobufs.Message.toJSON(signerAdd)],
+      ]);
+    });
+  });
+
+  describe('with fromId and type filters', () => {
+    test('emits events', async () => {
+      const idResult = await engine.mergeNameRegistryEvent(nameRegistryEvent);
+      await engine.mergeIdRegistryEvent(custodyEvent);
+      stream = await setupSubscription(events, {
+        fromId: idResult._unsafeUnwrap(),
+        eventTypes: [
+          protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE,
+          protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT,
+        ],
+      });
+      await engine.mergeMessage(signerAdd);
+      await engine.mergeMessages([castAdd, reactionAdd]);
+      await sleep(100);
+      expect(events).toEqual([
+        [protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT, protobufs.IdRegistryEvent.toJSON(custodyEvent)],
+        [protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE, protobufs.Message.toJSON(signerAdd)],
+        [protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE, protobufs.Message.toJSON(castAdd)],
+        [protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE, protobufs.Message.toJSON(reactionAdd)],
+      ]);
     });
   });
 });

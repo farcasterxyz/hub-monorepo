@@ -555,11 +555,6 @@ export default class Server {
         const { request } = stream;
 
         if (this.engine && request.fromId) {
-          const fromEvent = await this.engine.getEvent(request.fromId);
-          if (fromEvent.isErr()) {
-            stream.destroy(fromEvent.error);
-            return;
-          }
           const eventsIterator = this.engine.eventHandler.getEventsIterator(request.fromId);
           if (eventsIterator.isErr()) {
             stream.destroy(eventsIterator.error);
@@ -567,7 +562,9 @@ export default class Server {
           }
           for await (const [, value] of eventsIterator.value) {
             const event = HubEvent.decode(Uint8Array.from(value as Buffer));
-            stream.write(event);
+            if (request.eventTypes.length === 0 || request.eventTypes.includes(event.type)) {
+              stream.write(event);
+            }
           }
         }
 

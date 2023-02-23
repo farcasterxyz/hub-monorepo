@@ -531,9 +531,9 @@ export class Hub implements HubInterface {
     const mergeResult = await this.engine.mergeMessage(message);
 
     mergeResult.match(
-      () => {
+      (eventId) => {
         logMessage.info(
-          `submitMessage success: fid ${message.data?.fid} merged ${messageTypeToName(
+          `submitMessage success ${eventId}: fid ${message.data?.fid} merged ${messageTypeToName(
             message.data?.type
           )} ${bytesToHexString(message.hash)._unsafeUnwrap()}`
         );
@@ -552,9 +552,9 @@ export class Hub implements HubInterface {
     const mergeResult = await this.engine.mergeIdRegistryEvent(event);
 
     mergeResult.match(
-      () => {
+      (eventId) => {
         logEvent.info(
-          `submitIdRegistryEvent success: fid ${event.fid} assigned to ${bytesToHexString(
+          `submitIdRegistryEvent success ${eventId}: fid ${event.fid} assigned to ${bytesToHexString(
             event.to
           )._unsafeUnwrap()} in block ${event.blockNumber}`
         );
@@ -573,9 +573,9 @@ export class Hub implements HubInterface {
     const mergeResult = await this.engine.mergeNameRegistryEvent(event);
 
     mergeResult.match(
-      () => {
+      (eventId) => {
         logEvent.info(
-          `submitNameRegistryEvent success: fname ${bytesToUtf8String(
+          `submitNameRegistryEvent success ${eventId}: fname ${bytesToUtf8String(
             event.fname
           )._unsafeUnwrap()} assigned to ${bytesToHexString(event.to)._unsafeUnwrap()} in block ${event.blockNumber}`
         );
