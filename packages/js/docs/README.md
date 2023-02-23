@@ -133,6 +133,11 @@ console.log(checkSigner);
  * valid signer key would return an object like makeSignerAdd() above
  *
  * now that we have a valid signer key object, we can use it to interact with hubs
+ *
+ * the flow of interacting with hub:
+ * 1. create a message with signer key (cast message, reactions message, verification message, etc)
+ * 2. submit the message to the hub
+ * 3. to see all the available function, see the "Functions" part below
  */
 
 const dataOptions = {
@@ -196,19 +201,11 @@ const userDataPfpBody = {
 };
 const userDataPfpAdd = await makeUserDataAdd(userDataPfpBody, dataOptions, ed25519Signer);
 await client.submitMessage(userDataPfpAdd._unsafeUnwrap());
-
-/**
- * the flow of interacting with hub:
- * 1. create a message with signer key (cast message, reactions message, verification message, etc)
- * 2. submit the message to the hub
- * 3. to see all the available function, see the "Functions" part below
- *    (the ones that starts with "makeAmpAdd", "makeAmpAddData", etc)
- */
 ```
 
 ## `Client`
 
-Class to interact with hubble. See the [docs](./docs/Client.md) for more details.
+Class to interact with hubble. See the [docs](./docs/classes/Client.md) for more details.
 
 | Function                            | Description                                                       |
 | ----------------------------------- | ----------------------------------------------------------------- |
@@ -239,7 +236,7 @@ Class to interact with hubble. See the [docs](./docs/Client.md) for more details
 
 ## `Ed25519Signer`
 
-Class to sign messages with ed25519. See the [docs](./docs/Ed25519Signer.md) for more details.
+Class to sign messages with ed25519. See the [docs](./docs/classes/Ed25519Signer.md) for more details.
 
 | Name                   | Description                                                                   |
 | :--------------------- | :---------------------------------------------------------------------------- |
@@ -248,28 +245,28 @@ Class to sign messages with ed25519. See the [docs](./docs/Ed25519Signer.md) for
 | `signerKey`            | Property: EdDSA public key in bytes.                                          |
 | `signerKeyHex`         | Property: EdDSA public key in hex.                                            |
 | `signMessageHash()`    | Signs a given hash.                                                           |
-| `signMessageHashHex()` | Signs a given hash in hexadecimal format.                                     |
+| `signMessageHashHex()` | Signs a given hash, returns result in hex format.                             |
 | `fromPrivateKey()`     | Creates a new instance of the `Ed25519Signer` class from a EdDSA private key. |
 
 ## `Eip712Signer`
 
-Class to sign messages in the EIP712 format. See the [docs](./docs/Eip712Signer.md) for more details.
+Class to sign messages in the EIP712 format. See the [docs](./docs/classes/Eip712Signer.md) for more details.
 
-| Name                                   | Description                                                                                                                         |
-| :------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
-| `EIP712Signer()`                       | Creates a new instance of the EIP712Signer class.                                                                                   |
-| `scheme`                               | Property: scheme used by the signer.                                                                                                |
-| `signerKey`                            | Property: signer's ECDSA public key in bytes.                                                                                       |
-| `signerKeyHex`                         | Property: signer's ECDSA public key in hex.                                                                                         |
-| `signMessageHash()`                    | Signs a message hash with the signer's private key using the EIP-712 message format.                                                |
-| `signMessageHashHex()`                 | Signs a message hash with the signer's private key, returning the signature as a hex string using the EIP-712 message format.       |
-| `signVerificationEthAddressClaim()`    | Signs a verification claim with the signer's private key using the EIP-712 message format.                                          |
-| `signVerificationEthAddressClaimHex()` | Signs a verification claim with the signer's private key, returning the signature as a hex string using the EIP-712 message format. |
-| `fromSigner()`                         | Instantiate a new EIP712Signer from an ECDSA private key (Ethereum).                                                                |
+| Name                                   | Description                                                                            |
+| :------------------------------------- | :------------------------------------------------------------------------------------- |
+| `EIP712Signer()`                       | Creates a new instance of the EIP712Signer class.                                      |
+| `scheme`                               | Property: scheme used by the signer.                                                   |
+| `signerKey`                            | Property: signer's ECDSA public key in bytes.                                          |
+| `signerKeyHex`                         | Property: signer's ECDSA public key in hex.                                            |
+| `signMessageHash()`                    | Signs a message hash with the signer's Ethereum address.                               |
+| `signMessageHashHex()`                 | Signs a message hash with the signer's Ethereum address, returns result in hex format. |
+| `signVerificationEthAddressClaim()`    | TODO                                                                                   |
+| `signVerificationEthAddressClaimHex()` | TODO                                                                                   |
+| `fromSigner()`                         | Instantiate a new EIP712Signer from an ECDSA private key (Ethereum).                   |
 
 ## `Functions`
 
-Functions to make messages. See the [docs](./docs/Functions.md) for more details. Note: these functions only make messages, they do not submit them to the hub. To submit, use `client.submitMessage(message)`.
+Functions to make messages. See the [docs](./docs/modules.md#functions) for more details. Note: these functions only make messages, they do not submit them to the hub. To submit, use `client.submitMessage(message)`.
 
 | Name                              | Description                                                         |
 | --------------------------------- | ------------------------------------------------------------------- |

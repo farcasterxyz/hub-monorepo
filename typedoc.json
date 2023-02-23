@@ -2,5 +2,6 @@
   "entryPoints": ["./packages/js/src/index.ts"],
   "out": "./packages/js/docs",
   "exclude": ["**/*.test.ts", "**/*.spec.ts", "**/node_modules/**"],
+  "plugin": ["typedoc-plugin-markdown"],
   "skipErrorChecking": true
 }

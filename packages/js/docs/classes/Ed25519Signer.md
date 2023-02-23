@@ -182,7 +182,7 @@ A HubAsyncResult containing the signature in hex format.
 
 #### Defined in
 
-[js/src/signers.ts:160](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/signers.ts#L160)
+[js/src/signers.ts:160](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/signers.ts#L160)
 
 ___
 
@@ -220,4 +220,4 @@ BaseEd25519Signer.fromPrivateKey
 
 #### Defined in
 
-[js/src/signers.ts:128](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/signers.ts#L128)
+[js/src/signers.ts:128](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/signers.ts#L128)

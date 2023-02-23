@@ -186,7 +186,7 @@ A HubAsyncResult containing the 256-bit signature as a hex string.
 
 #### Defined in
 
-[js/src/signers.ts:62](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/signers.ts#L62)
+[js/src/signers.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/signers.ts#L62)
 
 ___
 
@@ -275,7 +275,7 @@ A HubAsyncResult containing the 256-bit signature as a Uint8Array.
 
 #### Defined in
 
-[js/src/signers.ts:105](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/signers.ts#L105)
+[js/src/signers.ts:105](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/signers.ts#L105)
 
 ___
 
@@ -315,4 +315,4 @@ BaseEip712Signer.fromSigner
 
 #### Defined in
 
-[js/src/signers.ts:33](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/signers.ts#L33)
+[js/src/signers.ts:33](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/signers.ts#L33)

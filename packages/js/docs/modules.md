@@ -61,7 +61,7 @@
 
 #### Defined in
 
-[js/src/client.ts:7](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/client.ts#L7)
+[js/src/client.ts:7](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L7)
 
 ## Functions
 
@@ -85,7 +85,7 @@ Amp Methods
 
 #### Defined in
 
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L62)
+[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
 
 ___
 
@@ -106,7 +106,7 @@ ___
 
 #### Defined in
 
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L91)
+[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -128,7 +128,7 @@ ___
 
 #### Defined in
 
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L62)
+[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
 
 ___
 
@@ -149,7 +149,7 @@ ___
 
 #### Defined in
 
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L91)
+[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -173,7 +173,7 @@ Cast Methods
 
 #### Defined in
 
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L62)
+[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
 
 ___
 
@@ -194,7 +194,7 @@ ___
 
 #### Defined in
 
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L91)
+[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -216,7 +216,7 @@ ___
 
 #### Defined in
 
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L62)
+[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
 
 ___
 
@@ -237,7 +237,7 @@ ___
 
 #### Defined in
 
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L91)
+[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -259,7 +259,7 @@ Generic Methods
 
 #### Defined in
 
-[js/src/builders.ts:156](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L156)
+[js/src/builders.ts:156](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L156)
 
 ___
 
@@ -281,7 +281,7 @@ ___
 
 #### Defined in
 
-[js/src/builders.ts:162](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L162)
+[js/src/builders.ts:162](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L162)
 
 ___
 
@@ -305,7 +305,7 @@ Amp Methods
 
 #### Defined in
 
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L62)
+[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
 
 ___
 
@@ -326,7 +326,7 @@ ___
 
 #### Defined in
 
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L91)
+[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -348,7 +348,7 @@ ___
 
 #### Defined in
 
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L62)
+[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
 
 ___
 
@@ -369,7 +369,7 @@ ___
 
 #### Defined in
 
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L91)
+[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -393,7 +393,7 @@ Signer Methods
 
 #### Defined in
 
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L62)
+[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
 
 ___
 
@@ -414,7 +414,7 @@ ___
 
 #### Defined in
 
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L91)
+[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -436,7 +436,7 @@ ___
 
 #### Defined in
 
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L62)
+[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
 
 ___
 
@@ -457,7 +457,7 @@ ___
 
 #### Defined in
 
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L91)
+[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -481,7 +481,7 @@ User Data Methods
 
 #### Defined in
 
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L62)
+[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
 
 ___
 
@@ -502,7 +502,7 @@ ___
 
 #### Defined in
 
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L91)
+[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -526,7 +526,7 @@ Verification Methods
 
 #### Defined in
 
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L62)
+[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
 
 ___
 
@@ -547,7 +547,7 @@ ___
 
 #### Defined in
 
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L91)
+[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -569,7 +569,7 @@ ___
 
 #### Defined in
 
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L62)
+[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
 
 ___
 
@@ -590,4 +590,4 @@ ___
 
 #### Defined in
 
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/builders.ts#L91)
+[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
