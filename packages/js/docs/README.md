@@ -1,4 +1,4 @@
-hubble / [Modules](modules.md)
+@farcaster/js / [Exports](modules.md)
 
 # @farcaster/js
 
