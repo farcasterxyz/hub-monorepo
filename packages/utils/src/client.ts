@@ -83,22 +83,10 @@ const promisifyClient = <C extends Client>(client: C) => {
             const stream = func.call(target, ...args);
 
             stream.on('error', (e: unknown) => {
-              return e; // Suppress exceptions
+              return e; // TODO: improve stream error handling
             });
 
-            const timeout = setTimeout(() => {
-              stream.cancel(); // Cancel if not connected within timeout
-              resolve(err(new HubError('unavailable.network_failure', 'subscribe timed out')));
-            }, 1_000);
-
-            stream.on('metadata', (metadata: Metadata) => {
-              clearTimeout(timeout);
-              if (metadata.get('status')[0] === 'ready') {
-                resolve(ok(stream));
-              } else {
-                resolve(err(new HubError('unavailable.network_failure', 'subscribe failed')));
-              }
-            });
+            resolve(ok(stream));
           });
         };
       }

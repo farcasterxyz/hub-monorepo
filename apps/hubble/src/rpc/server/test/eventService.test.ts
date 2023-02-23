@@ -32,6 +32,20 @@ let custodyEvent: protobufs.IdRegistryEvent;
 let nameRegistryEvent: protobufs.NameRegistryEvent;
 let signerAdd: protobufs.SignerAddMessage;
 let castAdd: protobufs.CastAddMessage;
+let reactionAdd: protobufs.ReactionAddMessage;
+
+let events: [protobufs.HubEventType, any][];
+let stream: protobufs.ClientReadableStream<protobufs.HubEvent>;
+
+beforeEach(() => {
+  events = [];
+});
+
+afterEach(() => {
+  if (stream) {
+    stream.cancel();
+  }
+});
 
 beforeAll(async () => {
   custodyEvent = Factories.IdRegistryEvent.build({ to: ethSigner.signerKey, fid });
@@ -41,51 +55,49 @@ beforeAll(async () => {
     { transient: { signer: ethSigner } }
   );
   castAdd = await Factories.CastAddMessage.create({ data: { fid } }, { transient: { signer } });
+  reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid } }, { transient: { signer } });
 });
 
+const setupSubscription = async (
+  events: [protobufs.HubEventType, any][],
+  options: { eventTypes?: protobufs.HubEventType[]; fromId?: number } = {}
+): Promise<protobufs.ClientReadableStream<protobufs.HubEvent>> => {
+  const request = protobufs.SubscribeRequest.create(options);
+
+  const streamResult = await client.subscribe(request);
+  expect(streamResult.isOk()).toBeTruthy();
+  const stream = streamResult._unsafeUnwrap();
+
+  stream.on('data', (event: protobufs.HubEvent) => {
+    if (protobufs.isMergeMessageHubEvent(event)) {
+      events.push([event.type, protobufs.Message.toJSON(event.mergeMessageBody.message!)]);
+    } else if (protobufs.isPruneMessageHubEvent(event)) {
+      events.push([event.type, protobufs.Message.toJSON(event.pruneMessageBody.message!)]);
+    } else if (protobufs.isRevokeMessageHubEvent(event)) {
+      events.push([event.type, protobufs.Message.toJSON(event.revokeMessageBody.message!)]);
+    } else if (protobufs.isMergeIdRegistryEventHubEvent(event)) {
+      events.push([event.type, protobufs.IdRegistryEvent.toJSON(event.mergeIdRegistryEventBody.idRegistryEvent!)]);
+    } else if (protobufs.isMergeNameRegistryEventHubEvent(event)) {
+      events.push([
+        event.type,
+        protobufs.NameRegistryEvent.toJSON(event.mergeNameRegistryEventBody.nameRegistryEvent!),
+      ]);
+    }
+  });
+
+  await sleep(100); // Wait for server to start listeners
+
+  return stream;
+};
+
 describe('subscribe', () => {
-  const setupSubscription = (eventTypes?: protobufs.HubEventType[]) => {
-    let stream: protobufs.ClientReadableStream<protobufs.HubEvent>;
-    const events: [protobufs.HubEventType, any][] = [];
-
-    beforeEach(async () => {
-      const request = protobufs.SubscribeRequest.create({ eventTypes: eventTypes ?? [] });
-
-      stream = (await client.subscribe(request))._unsafeUnwrap();
-      stream.on('data', (event: protobufs.HubEvent) => {
-        // events.push(protobufs.HubEvent.toJSON(event));
-        if (protobufs.isMergeMessageHubEvent(event)) {
-          events.push([event.type, protobufs.Message.toJSON(event.mergeMessageBody.message!)]);
-        } else if (protobufs.isPruneMessageHubEvent(event)) {
-          events.push([event.type, protobufs.Message.toJSON(event.pruneMessageBody.message!)]);
-        } else if (protobufs.isRevokeMessageHubEvent(event)) {
-          events.push([event.type, protobufs.Message.toJSON(event.revokeMessageBody.message!)]);
-        } else if (protobufs.isMergeIdRegistryEventHubEvent(event)) {
-          events.push([event.type, protobufs.IdRegistryEvent.toJSON(event.mergeIdRegistryEventBody.idRegistryEvent!)]);
-        } else if (protobufs.isMergeNameRegistryEventHubEvent(event)) {
-          events.push([
-            event.type,
-            protobufs.NameRegistryEvent.toJSON(event.mergeNameRegistryEventBody.nameRegistryEvent!),
-          ]);
-        }
-      });
-    });
-
-    afterEach(async () => {
-      await stream?.cancel();
-    });
-
-    return { events };
-  };
-
   describe('without type filters', () => {
-    const { events } = setupSubscription();
-
-    test('emits event', async () => {
+    test('emits events', async () => {
+      stream = await setupSubscription(events);
       await engine.mergeIdRegistryEvent(custodyEvent);
       await engine.mergeMessage(signerAdd);
       await engine.mergeMessage(castAdd);
-      await sleep(1_000); // Wait for server to send events over stream
+      await sleep(100); // Wait for server to send events over stream
       expect(events).toEqual([
         [protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT, protobufs.IdRegistryEvent.toJSON(custodyEvent)],
         [protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE, protobufs.Message.toJSON(signerAdd)],
@@ -95,14 +107,16 @@ describe('subscribe', () => {
   });
 
   describe('with one type filter', () => {
-    const { events } = setupSubscription([protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE]);
+    test('emits events', async () => {
+      stream = await setupSubscription(events, {
+        eventTypes: [protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE],
+      });
 
-    test('emits event', async () => {
       await engine.mergeIdRegistryEvent(custodyEvent);
       await engine.mergeNameRegistryEvent(nameRegistryEvent);
       await engine.mergeMessage(signerAdd);
       await engine.mergeMessage(castAdd);
-      await sleep(1_000); // Wait for server to send events over stream
+      await sleep(100); // Wait for server to send events over stream
       expect(events).toEqual([
         [protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE, protobufs.Message.toJSON(signerAdd)],
         [protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE, protobufs.Message.toJSON(castAdd)],
@@ -111,18 +125,20 @@ describe('subscribe', () => {
   });
 
   describe('with multiple type filters', () => {
-    const { events } = setupSubscription([
-      protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE,
-      protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT,
-      protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT,
-    ]);
+    test('emits events', async () => {
+      stream = await setupSubscription(events, {
+        eventTypes: [
+          protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE,
+          protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT,
+          protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT,
+        ],
+      });
 
-    test('emits event', async () => {
       await engine.mergeIdRegistryEvent(custodyEvent);
       await engine.mergeNameRegistryEvent(nameRegistryEvent);
       await engine.mergeMessage(signerAdd);
       await engine.mergeMessage(castAdd);
-      await sleep(1_000); // Wait for server to send events over stream
+      await sleep(100); // Wait for server to send events over stream
       expect(events).toEqual([
         [protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT, protobufs.IdRegistryEvent.toJSON(custodyEvent)],
         [
@@ -132,6 +148,36 @@ describe('subscribe', () => {
         [protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE, protobufs.Message.toJSON(signerAdd)],
         [protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE, protobufs.Message.toJSON(castAdd)],
       ]);
+    });
+  });
+
+  describe('with fromId', () => {
+    test('emits events from id onwards', async () => {
+      await engine.mergeIdRegistryEvent(custodyEvent);
+      const idResult = await engine.mergeMessage(signerAdd);
+      await engine.mergeMessage(castAdd);
+      stream = await setupSubscription(events, { fromId: idResult._unsafeUnwrap() });
+      await engine.mergeNameRegistryEvent(nameRegistryEvent);
+      await engine.mergeMessage(reactionAdd);
+      await sleep(100);
+      expect(events).toEqual([
+        [protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE, protobufs.Message.toJSON(signerAdd)],
+        [protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE, protobufs.Message.toJSON(castAdd)],
+        [
+          protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT,
+          protobufs.NameRegistryEvent.toJSON(nameRegistryEvent),
+        ],
+        [protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE, protobufs.Message.toJSON(reactionAdd)],
+      ]);
+    });
+
+    test('fails with invalid id', async () => {
+      await engine.mergeIdRegistryEvent(custodyEvent);
+      await engine.mergeMessage(signerAdd);
+
+      stream = await setupSubscription(events, { fromId: 1 });
+
+      expect(events).toEqual([]);
     });
   });
 });

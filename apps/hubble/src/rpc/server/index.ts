@@ -544,12 +544,36 @@ export default class Server {
           }
         );
       },
+      getEvent: async (call, callback) => {
+        const result = await this.engine?.getEvent(call.request.id);
+        result?.match(
+          (event: HubEvent) => callback(null, event),
+          (err: HubError) => callback(toServiceError(err))
+        );
+      },
       subscribe: async (stream) => {
+        const { request } = stream;
+
+        if (this.engine && request.fromId) {
+          const fromEvent = await this.engine.getEvent(request.fromId);
+          if (fromEvent.isErr()) {
+            stream.destroy(fromEvent.error);
+            return;
+          }
+          const eventsIterator = this.engine.eventHandler.getEventsIterator(request.fromId);
+          if (eventsIterator.isErr()) {
+            stream.destroy(eventsIterator.error);
+            return;
+          }
+          for await (const [, value] of eventsIterator.value) {
+            const event = HubEvent.decode(Uint8Array.from(value as Buffer));
+            stream.write(event);
+          }
+        }
+
         const eventListener = (event: HubEvent) => {
           stream.write(event);
         };
-
-        const { request } = stream;
 
         // if no type filters are provided, subscribe to all event types
         if (request.eventTypes.length === 0) {
@@ -585,10 +609,6 @@ export default class Server {
           this.engine?.eventHandler.off('mergeIdRegistryEvent', eventListener);
           this.engine?.eventHandler.off('mergeNameRegistryEvent', eventListener);
         });
-
-        const readyMetadata = new Metadata();
-        readyMetadata.add('status', 'ready');
-        stream.sendMetadata(readyMetadata);
       },
     };
   };

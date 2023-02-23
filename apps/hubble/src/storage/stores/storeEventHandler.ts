@@ -15,7 +15,7 @@ import {
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
 } from '@farcaster/protobufs';
-import { FARCASTER_EPOCH, HubAsyncResult, HubError, HubResult } from '@farcaster/utils';
+import { bytesIncrement, FARCASTER_EPOCH, HubAsyncResult, HubError, HubResult } from '@farcaster/utils';
 import { err, ok, ResultAsync } from 'neverthrow';
 import AbstractRocksDB from 'rocksdb';
 import { TypedEmitter } from 'tiny-typed-emitter';
@@ -126,14 +126,28 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     this._generator = new HubEventIdGenerator({ epoch: FARCASTER_EPOCH });
   }
 
-  getEventsIterator(): AbstractRocksDB.Iterator {
-    const prefix = Buffer.from([RootPrefix.HubEvents]);
-    return this._db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true });
+  async getEvent(id: number): HubAsyncResult<HubEvent> {
+    const key = makeEventKey(id);
+    const result = await ResultAsync.fromPromise(this._db.get(key), (e) => e as HubError);
+    return result.map((buffer) => HubEvent.decode(new Uint8Array(buffer as Buffer)));
+  }
+
+  getEventsIterator(fromId?: number): HubResult<AbstractRocksDB.Iterator> {
+    const minKey = makeEventKey(fromId);
+    const maxKey = bytesIncrement(Uint8Array.from(makeEventKey()));
+    if (maxKey.isErr()) {
+      return err(maxKey.error);
+    }
+    return ok(this._db.iterator({ gte: minKey, lt: Buffer.from(maxKey.value), keys: false, valueAsBuffer: true }));
   }
 
   async getEvents(): HubAsyncResult<HubEvent[]> {
     const events: HubEvent[] = [];
-    for await (const [, value] of this.getEventsIterator()) {
+    const iterator = this.getEventsIterator();
+    if (iterator.isErr()) {
+      return err(iterator.error);
+    }
+    for await (const [, value] of iterator.value) {
       const event = HubEvent.decode(Uint8Array.from(value as Buffer));
       events.push(event);
     }
