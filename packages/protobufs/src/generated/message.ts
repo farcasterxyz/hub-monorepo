@@ -228,8 +228,6 @@ export enum UserDataType {
   USER_DATA_TYPE_DISPLAY = 2,
   /** USER_DATA_TYPE_BIO - Bio for the user */
   USER_DATA_TYPE_BIO = 3,
-  /** USER_DATA_TYPE_LOCATION - Location of the user */
-  USER_DATA_TYPE_LOCATION = 4,
   /** USER_DATA_TYPE_URL - URL of the user */
   USER_DATA_TYPE_URL = 5,
   /** USER_DATA_TYPE_FNAME - Preferred Farcaster Name for the user */
@@ -251,9 +249,6 @@ export function userDataTypeFromJSON(object: any): UserDataType {
     case 3:
     case "USER_DATA_TYPE_BIO":
       return UserDataType.USER_DATA_TYPE_BIO;
-    case 4:
-    case "USER_DATA_TYPE_LOCATION":
-      return UserDataType.USER_DATA_TYPE_LOCATION;
     case 5:
     case "USER_DATA_TYPE_URL":
       return UserDataType.USER_DATA_TYPE_URL;
@@ -277,8 +272,6 @@ export function userDataTypeToJSON(object: UserDataType): string {
       return "USER_DATA_TYPE_DISPLAY";
     case UserDataType.USER_DATA_TYPE_BIO:
       return "USER_DATA_TYPE_BIO";
-    case UserDataType.USER_DATA_TYPE_LOCATION:
-      return "USER_DATA_TYPE_LOCATION";
     case UserDataType.USER_DATA_TYPE_URL:
       return "USER_DATA_TYPE_URL";
     case UserDataType.USER_DATA_TYPE_FNAME:

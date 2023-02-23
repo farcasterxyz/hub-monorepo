@@ -220,7 +220,6 @@ describe('pruneMessages', () => {
   let add2: protobufs.UserDataAddMessage;
   let add3: protobufs.UserDataAddMessage;
   let add4: protobufs.UserDataAddMessage;
-  let add5: protobufs.UserDataAddMessage;
 
   const generateAddWithTimestamp = async (
     fid: number,
@@ -235,12 +234,11 @@ describe('pruneMessages', () => {
     add1 = await generateAddWithTimestamp(fid, time + 1, protobufs.UserDataType.USER_DATA_TYPE_PFP);
     add2 = await generateAddWithTimestamp(fid, time + 2, protobufs.UserDataType.USER_DATA_TYPE_DISPLAY);
     add3 = await generateAddWithTimestamp(fid, time + 3, protobufs.UserDataType.USER_DATA_TYPE_BIO);
-    add4 = await generateAddWithTimestamp(fid, time + 4, protobufs.UserDataType.USER_DATA_TYPE_LOCATION);
-    add5 = await generateAddWithTimestamp(fid, time + 5, protobufs.UserDataType.USER_DATA_TYPE_URL);
+    add4 = await generateAddWithTimestamp(fid, time + 5, protobufs.UserDataType.USER_DATA_TYPE_URL);
   });
 
   describe('with size limit', () => {
-    const sizePrunedStore = new UserDataStore(db, eventHandler, { pruneSizeLimit: 3 });
+    const sizePrunedStore = new UserDataStore(db, eventHandler, { pruneSizeLimit: 2 });
 
     test('no-ops when no messages have been merged', async () => {
       const result = await sizePrunedStore.pruneMessages(fid);
@@ -249,7 +247,7 @@ describe('pruneMessages', () => {
     });
 
     test('prunes earliest add messages', async () => {
-      const messages = [add1, add2, add3, add4, add5];
+      const messages = [add1, add2, add3, add4];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
       }
