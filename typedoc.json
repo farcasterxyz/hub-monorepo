@@ -1,0 +1,6 @@
+{
+  "entryPoints": ["./packages/js/src/index.ts"],
+  "out": "./packages/js/docs",
+  "exclude": ["**/*.test.ts", "**/*.spec.ts", "**/node_modules/**"],
+  "skipErrorChecking": true
+}
