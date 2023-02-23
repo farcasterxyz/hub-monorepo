@@ -29,9 +29,6 @@ export class Ed25519Signer implements Signer {
   /**
    * Generates a 256-bit signature using from EdDSA key pair.
    *
-   * @function
-   * @name ed25519Signer.signMessageHash
-   *
    * @param {Uint8Array} hash - The 256-bit hash of the message to be signed.
    *
    * @returns {Promise<HubAsyncResult<Uint8Array>>} A HubAsyncResult containing the signature as a Uint8Array.

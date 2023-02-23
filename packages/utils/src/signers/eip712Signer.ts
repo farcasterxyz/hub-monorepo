@@ -34,9 +34,6 @@ export class Eip712Signer implements Signer {
   /**
    * Generates a 256-bit signature from an Ethereum address.
    *
-   * @function
-   * @name eip712Signer.signMessageHash
-   *
    * @param {Uint8Array} hash - The 256-bit hash of the message to be signed.
    *
    * @returns {Promise<HubAsyncResult<Uint8Array>>} A HubAsyncResult containing the 256-bit signature as a Uint8Array.
@@ -66,9 +63,6 @@ export class Eip712Signer implements Signer {
 
   /**
    * Signs a verification claim for an Ethereum address.
-   *
-   * @function
-   * @name Eip712Signer#signVerificationEthAddressClaim
    *
    * @param {Object} claim - The body of the claim to be signed.
    * @param {number} claim.fid - The Farcaster ID.

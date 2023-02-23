@@ -48,7 +48,7 @@ BaseEip712Signer.constructor
 
 #### Defined in
 
-utils/dist/index.d.ts:179
+utils/dist/index.d.ts:176
 
 ## Properties
 
@@ -62,7 +62,7 @@ BaseEip712Signer.scheme
 
 #### Defined in
 
-utils/dist/index.d.ts:173
+utils/dist/index.d.ts:170
 
 ___
 
@@ -78,7 +78,7 @@ BaseEip712Signer.signerKey
 
 #### Defined in
 
-utils/dist/index.d.ts:175
+utils/dist/index.d.ts:172
 
 ___
 
@@ -92,7 +92,7 @@ BaseEip712Signer.signerKeyHex
 
 #### Defined in
 
-utils/dist/index.d.ts:176
+utils/dist/index.d.ts:173
 
 ## Methods
 
@@ -101,12 +101,6 @@ utils/dist/index.d.ts:176
 ▸ **signMessageHash**(`hash`): `HubAsyncResult`<`Uint8Array`\>
 
 Generates a 256-bit signature from an Ethereum address.
-
-**`Function`**
-
-**`Name`**
-
-eip712Signer.signMessageHash
 
 **`Example`**
 
@@ -146,7 +140,7 @@ BaseEip712Signer.signMessageHash
 
 #### Defined in
 
-utils/dist/index.d.ts:209
+utils/dist/index.d.ts:203
 
 ___
 
@@ -155,12 +149,6 @@ ___
 ▸ **signMessageHashHex**(`hash`): `HubAsyncResult`<`string`\>
 
 Generates a 256-bit hex signature from an Ethereum address.
-
-**`Function`**
-
-**`Name`**
-
-eip712Signer.signMessageHashHex
 
 **`Example`**
 
@@ -194,7 +182,7 @@ A HubAsyncResult containing the 256-bit signature as a hex string.
 
 #### Defined in
 
-[js/src/signers.ts:69](https://github.com/vinliao/hubble/blob/4dc86a3/packages/js/src/signers.ts#L69)
+[js/src/signers.ts:62](https://github.com/vinliao/hubble/blob/06f86da/packages/js/src/signers.ts#L62)
 
 ___
 
@@ -203,12 +191,6 @@ ___
 ▸ **signVerificationEthAddressClaim**(`claim`): `HubAsyncResult`<`Uint8Array`\>
 
 Signs a verification claim for an Ethereum address.
-
-**`Function`**
-
-**`Name`**
-
-Eip712Signer#signVerificationEthAddressClaim
 
 **`Example`**
 
@@ -243,7 +225,7 @@ BaseEip712Signer.signVerificationEthAddressClaim
 
 #### Defined in
 
-utils/dist/index.d.ts:238
+utils/dist/index.d.ts:229
 
 ___
 
@@ -251,13 +233,7 @@ ___
 
 ▸ **signVerificationEthAddressClaimHex**(`claim`): `HubAsyncResult`<`string`\>
 
-TODO descriptionmessageHash
-
-**`Function`**
-
-**`Name`**
-
-eip712Signer.signVerificationEthAddressClaim
+TODO description
 
 **`Example`**
 
@@ -295,7 +271,7 @@ A HubAsyncResult containing the 256-bit signature as a Uint8Array.
 
 #### Defined in
 
-[js/src/signers.ts:115](https://github.com/vinliao/hubble/blob/4dc86a3/packages/js/src/signers.ts#L115)
+[js/src/signers.ts:105](https://github.com/vinliao/hubble/blob/06f86da/packages/js/src/signers.ts#L105)
 
 ___
 
@@ -304,14 +280,6 @@ ___
 ▸ `Static` **fromSigner**(`typedDataSigner`, `address`): `HubResult`<[`Eip712Signer`](Eip712Signer.md)\>
 
 Creates an instance of Eip712Signer from a TypedDataSigner and an Ethereum address.
-
-**`Static`**
-
-**`Function`**
-
-**`Name`**
-
-Eip712Signer.fromSigner
 
 **`Example`**
 
@@ -343,4 +311,4 @@ BaseEip712Signer.fromSigner
 
 #### Defined in
 
-[js/src/signers.ts:37](https://github.com/vinliao/hubble/blob/4dc86a3/packages/js/src/signers.ts#L37)
+[js/src/signers.ts:33](https://github.com/vinliao/hubble/blob/06f86da/packages/js/src/signers.ts#L33)

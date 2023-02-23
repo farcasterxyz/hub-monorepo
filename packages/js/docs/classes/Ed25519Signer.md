@@ -100,12 +100,6 @@ utils/dist/index.d.ts:137
 
 Generates a 256-bit signature using from EdDSA key pair.
 
-**`Function`**
-
-**`Name`**
-
-ed25519Signer.signMessageHash
-
 **`Example`**
 
 ```typescript
@@ -142,7 +136,7 @@ BaseEd25519Signer.signMessageHash
 
 #### Defined in
 
-utils/dist/index.d.ts:168
+utils/dist/index.d.ts:165
 
 ___
 
@@ -151,12 +145,6 @@ ___
 ▸ **signMessageHashHex**(`hash`): `HubAsyncResult`<`string`\>
 
 Generates a 256-bit hex signature from an EdDSA key pair for a given message hash in hex format.
-
-**`Function`**
-
-**`Name`**
-
-ed25519Signer.signMessageHashHex
 
 **`Example`**
 
@@ -190,7 +178,7 @@ A HubAsyncResult containing the signature in hex format.
 
 #### Defined in
 
-[js/src/signers.ts:175](https://github.com/vinliao/hubble/blob/4dc86a3/packages/js/src/signers.ts#L175)
+[js/src/signers.ts:159](https://github.com/vinliao/hubble/blob/06f86da/packages/js/src/signers.ts#L159)
 
 ___
 
@@ -199,12 +187,6 @@ ___
 ▸ `Static` **fromPrivateKey**(`privateKey`): `HubResult`<[`Ed25519Signer`](Ed25519Signer.md)\>
 
 Creates an Ed25519 signer from a private key.
-
-**`Function`**
-
-**`Name`**
-
-Ed25519Signer.fromPrivateKey
 
 **`Example`**
 
@@ -234,4 +216,4 @@ BaseEd25519Signer.fromPrivateKey
 
 #### Defined in
 
-[js/src/signers.ts:141](https://github.com/vinliao/hubble/blob/4dc86a3/packages/js/src/signers.ts#L141)
+[js/src/signers.ts:128](https://github.com/vinliao/hubble/blob/06f86da/packages/js/src/signers.ts#L128)

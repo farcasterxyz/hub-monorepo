@@ -15,10 +15,6 @@ export class Eip712Signer extends BaseEip712Signer {
   /**
    * Creates an instance of Eip712Signer from a TypedDataSigner and an Ethereum address.
    *
-   * @static
-   * @function
-   * @name Eip712Signer.fromSigner
-   *
    * @param {TypedDataSigner} typedDataSigner - The TypedDataSigner instance to use for signing.
    * @param {string} address - The Ethereum address associated with the signer.
    *
@@ -41,9 +37,6 @@ export class Eip712Signer extends BaseEip712Signer {
 
   /**
    * Generates a 256-bit hex signature from an Ethereum address.
-   *
-   * @function
-   * @name eip712Signer.signMessageHashHex
    *
    * @param {string} hash - The 256-bit hash of the message to be signed.
    *
@@ -78,10 +71,7 @@ export class Eip712Signer extends BaseEip712Signer {
   }
 
   /**
-   * TODO descriptionmessageHash
-   *
-   * @function
-   * @name eip712Signer.signVerificationEthAddressClaim
+   * TODO description
    *
    * @param {Object} claim - The body of the claim to be signed as an object
    * @param {number} claim.fid - The fid of the claim.
@@ -122,9 +112,6 @@ export class Ed25519Signer extends BaseEd25519Signer {
   /**
    * Creates an Ed25519 signer from a private key.
    *
-   * @function
-   * @name Ed25519Signer.fromPrivateKey
-   *
    * @param {Uint8Array} privateKey - The 32-byte private key to use for signing.
    *
    * @returns {HubResult<Ed25519Signer>} A HubResult containing an Ed25519Signer instance on success, or an error message on failure.
@@ -147,9 +134,6 @@ export class Ed25519Signer extends BaseEd25519Signer {
 
   /**
    * Generates a 256-bit hex signature from an EdDSA key pair for a given message hash in hex format.
-   *
-   * @function
-   * @name ed25519Signer.signMessageHashHex
    *
    * @param {string} hash - The hash of the message to be signed in hex format.
    *
