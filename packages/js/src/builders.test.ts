@@ -122,48 +122,6 @@ describe('makeReactionRemove', () => {
   });
 });
 
-describe('makeAmpAddData', () => {
-  test('succeeds', async () => {
-    const data = await builders.makeAmpAddData({ targetFid: Factories.Fid.build() }, { fid, timestamp, network });
-    expect(data.isOk()).toBeTruthy();
-    const isValid = await validations.validateMessageData(data._unsafeUnwrap()._protobuf);
-    expect(isValid.isOk()).toBeTruthy();
-  });
-});
-
-describe('makeAmpRemoveData', () => {
-  test('succeeds', async () => {
-    const data = await builders.makeAmpRemoveData({ targetFid: Factories.Fid.build() }, { fid, timestamp, network });
-    expect(data.isOk()).toBeTruthy();
-    const isValid = await validations.validateMessageData(data._unsafeUnwrap()._protobuf);
-    expect(isValid.isOk()).toBeTruthy();
-  });
-});
-
-describe('makeAmpAdd', () => {
-  test('succeeds', async () => {
-    const message = await builders.makeAmpAdd(
-      { targetFid: Factories.Fid.build() },
-      { fid, timestamp, network },
-      ed25519Signer
-    );
-    const isValid = await validations.validateMessage(message._unsafeUnwrap()._protobuf);
-    expect(isValid.isOk()).toBeTruthy();
-  });
-});
-
-describe('makeAmpRemove', () => {
-  test('succeeds', async () => {
-    const message = await builders.makeAmpRemove(
-      { targetFid: Factories.Fid.build() },
-      { fid, timestamp, network },
-      ed25519Signer
-    );
-    const isValid = await validations.validateMessage(message._unsafeUnwrap()._protobuf);
-    expect(isValid.isOk()).toBeTruthy();
-  });
-});
-
 describe('makeVerificationAddEthAddressData', () => {
   let ethSignature: string;
   const address = eip712Signer.signerKeyHex;

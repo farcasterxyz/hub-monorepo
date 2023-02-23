@@ -7,7 +7,7 @@ import { getMessage, makeTsHash } from '../db/message';
 import { UserPostfix } from '../db/types';
 
 const db = jestRocksDB('protobufs.verificationStore.test');
-const eventHandler = new StoreEventHandler();
+const eventHandler = new StoreEventHandler(db);
 const set = new VerificationStore(db, eventHandler);
 const fid = Factories.Fid.build();
 
@@ -75,11 +75,13 @@ describe('getVerificationRemovesByFid', () => {
 });
 
 describe('merge', () => {
-  let mergeEvents: [protobufs.Message, protobufs.Message[]][] = [];
+  let mergeEvents: [protobufs.Message | undefined, protobufs.Message[]][] = [];
 
-  const mergeMessageHandler = (message: protobufs.Message, deletedMessages?: protobufs.Message[]) => {
+  const mergeMessageHandler = (event: protobufs.MergeMessageHubEvent) => {
+    const { message, deletedMessages } = event.mergeMessageBody;
     mergeEvents.push([message, deletedMessages ?? []]);
   };
+
   beforeAll(() => {
     eventHandler.on('mergeMessage', mergeMessageHandler);
   });
@@ -125,13 +127,13 @@ describe('merge', () => {
 
   describe('VerificationAddEthAddress', () => {
     test('succeeds', async () => {
-      await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
+      await expect(set.merge(verificationAdd)).resolves.toBeGreaterThan(0);
       await assertVerificationAddWins(verificationAdd);
       expect(mergeEvents).toEqual([[verificationAdd, []]]);
     });
 
     test('fails if merged twice', async () => {
-      await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
+      await expect(set.merge(verificationAdd)).resolves.toBeGreaterThan(0);
       await expect(set.merge(verificationAdd)).rejects.toEqual(
         new HubError('bad_request.duplicate', 'message has already been merged')
       );
@@ -150,7 +152,7 @@ describe('merge', () => {
 
       test('succeeds with a later timestamp', async () => {
         await set.merge(verificationAdd);
-        await expect(set.merge(verificationAddLater)).resolves.toEqual(undefined);
+        await expect(set.merge(verificationAddLater)).resolves.toBeGreaterThan(0);
         await assertVerificationDoesNotExist(verificationAdd);
         await assertVerificationAddWins(verificationAddLater);
         expect(mergeEvents).toEqual([
@@ -182,7 +184,7 @@ describe('merge', () => {
 
       test('succeeds with a higher hash', async () => {
         await set.merge(verificationAdd);
-        await expect(set.merge(verificationAddLater)).resolves.toEqual(undefined);
+        await expect(set.merge(verificationAddLater)).resolves.toBeGreaterThan(0);
         await assertVerificationDoesNotExist(verificationAdd);
         await assertVerificationAddWins(verificationAddLater);
         expect(mergeEvents).toEqual([
@@ -208,7 +210,7 @@ describe('merge', () => {
           data: { ...verificationRemove.data, timestamp: verificationAdd.data.timestamp - 1 },
         });
         await set.merge(verificationRemoveEarlier);
-        await expect(set.merge(verificationAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(verificationAdd)).resolves.toBeGreaterThan(0);
         await assertVerificationAddWins(verificationAdd);
         await assertVerificationDoesNotExist(verificationRemoveEarlier);
         expect(mergeEvents).toEqual([
@@ -262,13 +264,13 @@ describe('merge', () => {
 
   describe('VerificationRemove', () => {
     test('succeeds', async () => {
-      await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+      await expect(set.merge(verificationRemove)).resolves.toBeGreaterThan(0);
       await assertVerificationRemoveWins(verificationRemove);
       expect(mergeEvents).toEqual([[verificationRemove, []]]);
     });
 
     test('fails if merged twice', async () => {
-      await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+      await expect(set.merge(verificationRemove)).resolves.toBeGreaterThan(0);
       await expect(set.merge(verificationRemove)).rejects.toEqual(
         new HubError('bad_request.duplicate', 'message has already been merged')
       );
@@ -287,7 +289,7 @@ describe('merge', () => {
 
       test('succeeds with a later timestamp', async () => {
         await set.merge(verificationRemove);
-        await expect(set.merge(verificationRemoveLater)).resolves.toEqual(undefined);
+        await expect(set.merge(verificationRemoveLater)).resolves.toBeGreaterThan(0);
         await assertVerificationDoesNotExist(verificationRemove);
         await assertVerificationRemoveWins(verificationRemoveLater);
         expect(mergeEvents).toEqual([
@@ -319,7 +321,7 @@ describe('merge', () => {
 
       test('succeeds with a higher hash', async () => {
         await set.merge(verificationRemove);
-        await expect(set.merge(verificationRemoveLater)).resolves.toEqual(undefined);
+        await expect(set.merge(verificationRemoveLater)).resolves.toBeGreaterThan(0);
         await assertVerificationDoesNotExist(verificationRemove);
         await assertVerificationRemoveWins(verificationRemoveLater);
         expect(mergeEvents).toEqual([
@@ -342,7 +344,7 @@ describe('merge', () => {
     describe('with conflicting VerificationAddEthAddress with different timestamps', () => {
       test('succeeds with a later timestamp', async () => {
         await set.merge(verificationAdd);
-        await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(verificationRemove)).resolves.toBeGreaterThan(0);
         await assertVerificationRemoveWins(verificationRemove);
         await assertVerificationDoesNotExist(verificationAdd);
         expect(mergeEvents).toEqual([
@@ -373,7 +375,7 @@ describe('merge', () => {
         });
 
         await set.merge(verificationAddSameTime);
-        await expect(set.merge(verificationRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(verificationRemove)).resolves.toBeGreaterThan(0);
         await assertVerificationDoesNotExist(verificationAddSameTime);
         await assertVerificationRemoveWins(verificationRemove);
         expect(mergeEvents).toEqual([
@@ -387,8 +389,8 @@ describe('merge', () => {
 
 describe('pruneMessages', () => {
   let prunedMessages: protobufs.Message[];
-  const pruneMessageListener = (message: protobufs.Message) => {
-    prunedMessages.push(message);
+  const pruneMessageListener = (event: protobufs.PruneMessageHubEvent) => {
+    prunedMessages.push(event.pruneMessageBody.message);
   };
 
   beforeAll(() => {
@@ -452,7 +454,7 @@ describe('pruneMessages', () => {
 
     test('no-ops when no messages have been merged', async () => {
       const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result.isOk()).toBeTruthy();
       expect(prunedMessages).toEqual([]);
     });
 
@@ -463,7 +465,7 @@ describe('pruneMessages', () => {
       }
 
       const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result.isOk()).toBeTruthy();
 
       expect(prunedMessages).toEqual([add1, add2]);
 
@@ -481,7 +483,7 @@ describe('pruneMessages', () => {
       }
 
       const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result.isOk()).toBeTruthy();
 
       expect(prunedMessages).toEqual([remove1, remove2]);
 
@@ -498,7 +500,7 @@ describe('pruneMessages', () => {
       }
 
       const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result.isOk()).toBeTruthy();
 
       expect(prunedMessages).toEqual([add1, remove2]);
     });
@@ -510,7 +512,7 @@ describe('pruneMessages', () => {
       }
 
       const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result.isOk()).toBeTruthy();
 
       expect(prunedMessages).toEqual([]);
     });

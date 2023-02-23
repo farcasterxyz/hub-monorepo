@@ -5,7 +5,6 @@ import { SyncId } from '~/network/sync/syncId';
 import { getManyMessages, typeToSetPostfix } from '~/storage/db/message';
 import RocksDB from '~/storage/db/rocksdb';
 import { FID_BYTES, RootPrefix, TSHASH_LENGTH, UserPostfix } from '~/storage/db/types';
-import AmpStore from '~/storage/stores/ampStore';
 import CastStore from '~/storage/stores/castStore';
 import ReactionStore from '~/storage/stores/reactionStore';
 import SignerStore from '~/storage/stores/signerStore';
@@ -22,29 +21,27 @@ class Engine {
   private _reactionStore: ReactionStore;
   private _signerStore: SignerStore;
   private _castStore: CastStore;
-  private _ampStore: AmpStore;
   private _userDataStore: UserDataStore;
   private _verificationStore: VerificationStore;
 
   constructor(db: RocksDB, network: protobufs.FarcasterNetwork) {
-    this.eventHandler = new StoreEventHandler();
-
     this._db = db;
     this._network = network;
+
+    this.eventHandler = new StoreEventHandler(db);
 
     this._reactionStore = new ReactionStore(db, this.eventHandler);
     this._signerStore = new SignerStore(db, this.eventHandler);
     this._castStore = new CastStore(db, this.eventHandler);
-    this._ampStore = new AmpStore(db, this.eventHandler);
     this._userDataStore = new UserDataStore(db, this.eventHandler);
     this._verificationStore = new VerificationStore(db, this.eventHandler);
   }
 
-  async mergeMessages(messages: protobufs.Message[]): Promise<Array<HubResult<void>>> {
+  async mergeMessages(messages: protobufs.Message[]): Promise<Array<HubResult<number>>> {
     return Promise.all(messages.map((message) => this.mergeMessage(message)));
   }
 
-  async mergeMessage(message: protobufs.Message): HubAsyncResult<void> {
+  async mergeMessage(message: protobufs.Message): HubAsyncResult<number> {
     const validatedMessage = await this.validateMessage(message);
     if (validatedMessage.isErr()) {
       return err(validatedMessage.error);
@@ -59,8 +56,6 @@ class Engine {
       return ResultAsync.fromPromise(this._signerStore.merge(message), (e) => e as HubError);
     } else if (setPostfix === UserPostfix.CastMessage) {
       return ResultAsync.fromPromise(this._castStore.merge(message), (e) => e as HubError);
-    } else if (setPostfix === UserPostfix.AmpMessage) {
-      return ResultAsync.fromPromise(this._ampStore.merge(message), (e) => e as HubError);
     } else if (setPostfix === UserPostfix.UserDataMessage) {
       return ResultAsync.fromPromise(this._userDataStore.merge(message), (e) => e as HubError);
     } else if (setPostfix === UserPostfix.VerificationMessage) {
@@ -70,7 +65,7 @@ class Engine {
     }
   }
 
-  async mergeIdRegistryEvent(event: protobufs.IdRegistryEvent): HubAsyncResult<void> {
+  async mergeIdRegistryEvent(event: protobufs.IdRegistryEvent): HubAsyncResult<number> {
     // TODO: validate event
     if (
       event.type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ||
@@ -82,7 +77,7 @@ class Engine {
     }
   }
 
-  async mergeNameRegistryEvent(event: protobufs.NameRegistryEvent): HubAsyncResult<void> {
+  async mergeNameRegistryEvent(event: protobufs.NameRegistryEvent): HubAsyncResult<number> {
     // TODO: validate event
     if (
       event.type === protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER ||
@@ -96,7 +91,6 @@ class Engine {
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {
     await this._castStore.revokeMessagesBySigner(fid, signer);
-    await this._ampStore.revokeMessagesBySigner(fid, signer);
     await this._reactionStore.revokeMessagesBySigner(fid, signer);
     await this._verificationStore.revokeMessagesBySigner(fid, signer);
     await this._userDataStore.revokeMessagesBySigner(fid, signer);
@@ -107,7 +101,6 @@ class Engine {
 
   async pruneMessages(fid: number): HubAsyncResult<void> {
     await this._castStore.pruneMessages(fid);
-    await this._ampStore.pruneMessages(fid);
     await this._reactionStore.pruneMessages(fid);
     await this._verificationStore.pruneMessages(fid);
     await this._userDataStore.pruneMessages(fid);
@@ -204,46 +197,6 @@ class Engine {
     }
 
     const removes = await ResultAsync.fromPromise(this._castStore.getCastRemovesByFid(fid), (e) => e as HubError);
-    if (removes.isErr()) {
-      return err(removes.error);
-    }
-
-    return ok([...adds.value, ...removes.value]);
-  }
-
-  /* -------------------------------------------------------------------------- */
-  /*                             Amp Store Methods                           */
-  /* -------------------------------------------------------------------------- */
-
-  async getAmp(fid: number, targetFid: number): HubAsyncResult<protobufs.AmpAddMessage> {
-    const validatedFid = validations.validateFid(fid);
-    if (validatedFid.isErr()) {
-      return err(validatedFid.error);
-    }
-
-    const validatedTargetFid = validations.validateFid(targetFid);
-    if (validatedTargetFid.isErr()) {
-      return err(validatedTargetFid.error);
-    }
-
-    return ResultAsync.fromPromise(this._ampStore.getAmpAdd(fid, targetFid), (e) => e as HubError);
-  }
-
-  async getAmpsByFid(fid: number): HubAsyncResult<protobufs.AmpAddMessage[]> {
-    return ResultAsync.fromPromise(this._ampStore.getAmpAddsByFid(fid), (e) => e as HubError);
-  }
-
-  async getAmpsByTargetFid(targetFid: number): HubAsyncResult<protobufs.AmpAddMessage[]> {
-    return ResultAsync.fromPromise(this._ampStore.getAmpsByTargetFid(targetFid), (e) => e as HubError);
-  }
-
-  async getAllAmpMessagesByFid(fid: number): HubAsyncResult<(protobufs.AmpAddMessage | protobufs.AmpRemoveMessage)[]> {
-    const adds = await ResultAsync.fromPromise(this._ampStore.getAmpAddsByFid(fid), (e) => e as HubError);
-    if (adds.isErr()) {
-      return err(adds.error);
-    }
-
-    const removes = await ResultAsync.fromPromise(this._ampStore.getAmpRemovesByFid(fid), (e) => e as HubError);
     if (removes.isErr()) {
       return err(removes.error);
     }

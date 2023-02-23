@@ -12,7 +12,6 @@ import {
 import {
   HubAsyncResult,
   HubError,
-  HubResult,
   HubRpcClient,
   bytesToHexString,
   bytesToUtf8String,
@@ -56,9 +55,9 @@ export const APP_NICKNAME = 'Farcaster Hub';
 
 export interface HubInterface {
   engine: Engine;
-  submitMessage(message: protobufs.Message, source?: HubSubmitSource): HubAsyncResult<void>;
-  submitIdRegistryEvent(event: protobufs.IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<void>;
-  submitNameRegistryEvent(event: protobufs.NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<void>;
+  submitMessage(message: protobufs.Message, source?: HubSubmitSource): HubAsyncResult<number>;
+  submitIdRegistryEvent(event: protobufs.IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
+  submitNameRegistryEvent(event: protobufs.NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   getHubState(): HubAsyncResult<protobufs.HubState>;
   putHubState(hubState: protobufs.HubState): HubAsyncResult<void>;
 }
@@ -330,17 +329,21 @@ export class Hub implements HubInterface {
       if (contactInfo) {
         const rpcClient = await this.getRPCClientForPeer(peerId, contactInfo);
         if (rpcClient) {
-          return this.syncEngine.mergeMessages([message], rpcClient).then((result) => result[0] as HubResult<void>);
+          const results = await this.syncEngine.mergeMessages([message], rpcClient);
+          return Result.combine(results).map(() => undefined);
         } else {
           log.error('No RPC clients available to merge message, attempting to merge directly into the engine');
-          return this.submitMessage(message, 'gossip');
+          const result = await this.submitMessage(message, 'gossip');
+          return result.map(() => undefined);
         }
       } else {
         log.error('No contact info available for peer, attempting to merge directly into the engine');
-        return this.submitMessage(message, 'gossip');
+        const result = await this.submitMessage(message, 'gossip');
+        return result.map(() => undefined);
       }
     } else if (gossipMessage.idRegistryEvent) {
-      return this.submitIdRegistryEvent(gossipMessage.idRegistryEvent, 'gossip');
+      const result = await this.submitIdRegistryEvent(gossipMessage.idRegistryEvent, 'gossip');
+      return result.map(() => undefined);
     } else if (gossipMessage.contactInfoContent) {
       if (peerIdResult.isOk()) {
         await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
@@ -445,7 +448,8 @@ export class Hub implements HubInterface {
 
   private registerEventHandlers() {
     // Subscribe to store events
-    this.engine.eventHandler.on('mergeMessage', async (message: Message) => {
+    this.engine.eventHandler.on('mergeMessage', async (event: protobufs.MergeMessageHubEvent) => {
+      const message = event.mergeMessageBody.message;
       if (protobufs.isSignerRemoveMessage(message)) {
         const revokeSignerPayload = RevokeSignerJobQueue.makePayload(
           message.data?.fid ?? 0,
@@ -458,10 +462,13 @@ export class Hub implements HubInterface {
       }
     });
 
-    this.engine.eventHandler.on('mergeIdRegistryEvent', async (event: IdRegistryEvent) => {
-      const fromAddress = event.from;
+    this.engine.eventHandler.on('mergeIdRegistryEvent', async (event: protobufs.MergeIdRegistryEventHubEvent) => {
+      const fromAddress = event.mergeIdRegistryEventBody.idRegistryEvent.from;
       if (fromAddress && fromAddress.length > 0) {
-        const revokeSignerPayload = RevokeSignerJobQueue.makePayload(event.fid, fromAddress);
+        const revokeSignerPayload = RevokeSignerJobQueue.makePayload(
+          event.mergeIdRegistryEventBody.idRegistryEvent.fid,
+          fromAddress
+        );
         if (revokeSignerPayload.isOk()) {
           // Revoke eth address in one hour
           await this.revokeSignerJobQueue.enqueueJob(revokeSignerPayload.value);
@@ -512,7 +519,7 @@ export class Hub implements HubInterface {
   /*                               RPC Handler API                              */
   /* -------------------------------------------------------------------------- */
 
-  async submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<void> {
+  async submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number> {
     // message is a reserved key in some logging systems, so we use submittedMessage instead
     const logMessage = log.child({ submittedMessage: messageToLog(message), source });
 
@@ -534,7 +541,7 @@ export class Hub implements HubInterface {
     return mergeResult;
   }
 
-  async submitIdRegistryEvent(event: IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<void> {
+  async submitIdRegistryEvent(event: IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number> {
     const logEvent = log.child({ event: idRegistryEventToLog(event), source });
 
     const mergeResult = await this.engine.mergeIdRegistryEvent(event);
@@ -555,7 +562,7 @@ export class Hub implements HubInterface {
     return mergeResult;
   }
 
-  async submitNameRegistryEvent(event: NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<void> {
+  async submitNameRegistryEvent(event: NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number> {
     const logEvent = log.child({ event: nameRegistryEventToLog(event), source });
 
     const mergeResult = await this.engine.mergeNameRegistryEvent(event);

@@ -26,7 +26,6 @@ message MessageData {
     CastAddBody cast_add_body = 5;
     CastRemoveBody cast_remove_body = 6;
     ReactionBody reaction_body = 7;
-    AmpBody amp_body = 8;
     VerificationAddEthAddressBody verification_add_eth_address_body = 9;
     VerificationRemoveBody verification_remove_body = 10;
     SignerBody signer_body = 11;
@@ -54,8 +53,6 @@ enum MessageType {
   MESSAGE_TYPE_CAST_REMOVE = 2; // Remove an existing Cast
   MESSAGE_TYPE_REACTION_ADD = 3; // Add a Reaction to a Cast
   MESSAGE_TYPE_REACTION_REMOVE = 4; // Remove a Reaction from a Cast
-  MESSAGE_TYPE_AMP_ADD = 5; 
-  MESSAGE_TYPE_AMP_REMOVE = 6;
   MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS = 7; // Add a Verification of an Ethereum Address
   MESSAGE_TYPE_VERIFICATION_REMOVE = 8; // Remove a Verification
   MESSAGE_TYPE_SIGNER_ADD = 9; // Add a new Ed25519 key pair that signs messages for a user
@@ -142,6 +139,3 @@ message VerificationRemoveBody {
   bytes address = 1; // Address of the Verification to remove
 }
 
-message AmpBody {
-  uint64 target_fid = 1;
-}

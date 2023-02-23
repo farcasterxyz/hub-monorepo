@@ -8,7 +8,7 @@ import { UserPostfix } from '../db/types';
 
 const db = jestRocksDB('protobufs.userDataSet.test');
 
-const eventHandler = new StoreEventHandler();
+const eventHandler = new StoreEventHandler(db);
 const set = new UserDataStore(db, eventHandler);
 const fid = Factories.Fid.build();
 
@@ -63,9 +63,10 @@ describe('getUserDataAddsByFid', () => {
 });
 
 describe('merge', () => {
-  let mergeEvents: [protobufs.Message, protobufs.Message[]][] = [];
+  let mergeEvents: [protobufs.Message | undefined, protobufs.Message[]][] = [];
 
-  const mergeMessageHandler = (message: protobufs.Message, deletedMessages?: protobufs.Message[]) => {
+  const mergeMessageHandler = (event: protobufs.MergeMessageHubEvent) => {
+    const { message, deletedMessages } = event.mergeMessageBody;
     mergeEvents.push([message, deletedMessages ?? []]);
   };
   beforeAll(() => {
@@ -102,13 +103,13 @@ describe('merge', () => {
 
   describe('UserDataAdd', () => {
     test('succeeds', async () => {
-      await expect(set.merge(addPfp)).resolves.toEqual(undefined);
+      await expect(set.merge(addPfp)).resolves.toBeGreaterThan(0);
       await assertUserDataAddWins(addPfp);
       expect(mergeEvents).toEqual([[addPfp, []]]);
     });
 
     test('fails if merged twice', async () => {
-      await expect(set.merge(addPfp)).resolves.toEqual(undefined);
+      await expect(set.merge(addPfp)).resolves.toBeGreaterThan(0);
       await expect(set.merge(addPfp)).rejects.toEqual(
         new HubError('bad_request.duplicate', 'message has already been merged')
       );
@@ -139,7 +140,7 @@ describe('merge', () => {
 
       test('succeeds with a later timestamp', async () => {
         await set.merge(addPfp);
-        await expect(set.merge(addPfpLater)).resolves.toEqual(undefined);
+        await expect(set.merge(addPfpLater)).resolves.toBeGreaterThan(0);
 
         await assertUserDataDoesNotExist(addPfp);
         await assertUserDataAddWins(addPfpLater);
@@ -173,7 +174,7 @@ describe('merge', () => {
 
       test('succeeds with a higher hash', async () => {
         await set.merge(addPfp);
-        await expect(set.merge(addPfpLater)).resolves.toEqual(undefined);
+        await expect(set.merge(addPfpLater)).resolves.toBeGreaterThan(0);
 
         await assertUserDataDoesNotExist(addPfp);
         await assertUserDataAddWins(addPfpLater);
@@ -199,8 +200,8 @@ describe('merge', () => {
 
 describe('pruneMessages', () => {
   let prunedMessages: protobufs.Message[];
-  const pruneMessageListener = (message: protobufs.Message) => {
-    prunedMessages.push(message);
+  const pruneMessageListener = (event: protobufs.PruneMessageHubEvent) => {
+    prunedMessages.push(event.pruneMessageBody.message);
   };
 
   beforeAll(() => {
@@ -243,7 +244,7 @@ describe('pruneMessages', () => {
 
     test('no-ops when no messages have been merged', async () => {
       const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result._unsafeUnwrap()).toEqual([]);
       expect(prunedMessages).toEqual([]);
     });
 
@@ -254,7 +255,7 @@ describe('pruneMessages', () => {
       }
 
       const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result.isOk()).toBeTruthy();
 
       expect(prunedMessages).toEqual([add1, add2]);
 

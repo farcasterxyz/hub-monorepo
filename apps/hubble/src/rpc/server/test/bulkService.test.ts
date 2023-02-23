@@ -75,34 +75,6 @@ describe('getAllCastMessagesByFid', () => {
   });
 });
 
-describe('getAllAmpMessagesByFid', () => {
-  let ampAdd: protobufs.AmpAddMessage;
-  let ampRemove: protobufs.AmpRemoveMessage;
-
-  beforeAll(async () => {
-    ampAdd = await Factories.AmpAddMessage.create({ data: { fid, network } }, { transient: { signer } });
-
-    ampRemove = await Factories.AmpRemoveMessage.create({ data: { fid, network } }, { transient: { signer } });
-  });
-
-  beforeEach(async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
-  });
-
-  test('succeeds', async () => {
-    await engine.mergeMessage(ampAdd);
-    await engine.mergeMessage(ampRemove);
-    const result = await client.getAllAmpMessagesByFid(protobufs.FidRequest.create({ fid }));
-    assertMessagesMatchResult(result, [ampAdd, ampRemove]);
-  });
-
-  test('returns empty array without messages', async () => {
-    const result = await client.getAllAmpMessagesByFid(protobufs.FidRequest.create({ fid }));
-    expect(result._unsafeUnwrap().messages.length).toEqual(0);
-  });
-});
-
 describe('getAllReactionMessagesByFid', () => {
   let reactionAdd: protobufs.ReactionAddMessage;
   let reactionRemove: protobufs.ReactionRemoveMessage;

@@ -28,7 +28,7 @@ const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 let revokeSignerPayload: protobufs.RevokeSignerJobPayload;
 let castAdd: protobufs.CastAddMessage;
-let ampAdd: protobufs.AmpAddMessage;
+let reactionAdd: protobufs.ReactionAddMessage;
 let verificationRemove: protobufs.VerificationRemoveMessage;
 
 beforeAll(async () => {
@@ -43,7 +43,7 @@ beforeAll(async () => {
   revokeSignerPayload = constructedPayload._unsafeUnwrap();
 
   castAdd = await Factories.CastAddMessage.create({ data: { fid } }, { transient: { signer } });
-  ampAdd = await Factories.AmpAddMessage.create({ data: { fid } }, { transient: { signer } });
+  reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid } }, { transient: { signer } });
   verificationRemove = await Factories.VerificationRemoveMessage.create({ data: { fid } }, { transient: { signer } });
 });
 
@@ -201,13 +201,13 @@ describe('doJobs', () => {
 
   describe('with jobs and messages to revoke', () => {
     beforeEach(async () => {
-      await engine.mergeMessages([castAdd, ampAdd, verificationRemove]);
+      await engine.mergeMessages([castAdd, reactionAdd, verificationRemove]);
       await queue.enqueueJob(revokeSignerPayload, Date.now() - DEFAULT_REVOKE_SIGNER_JOB_DELAY - 1000);
     });
 
     test('processes jobs and deletes messages from signer', async () => {
       const getMessages = () => getAllMessagesBySigner(db, fid, signer.signerKey);
-      expect(await getMessages()).toEqual([castAdd, ampAdd, verificationRemove]);
+      expect(await getMessages()).toEqual([castAdd, reactionAdd, verificationRemove]);
       const result = await scheduler.doJobs();
       expect(result._unsafeUnwrap()).toEqual(undefined);
       expect(await getMessages()).toEqual([]);

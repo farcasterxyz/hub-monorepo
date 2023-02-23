@@ -59,33 +59,31 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this._trie = new MerkleTrie(rocksDb);
     this.engine = engine;
 
-    this.engine.eventHandler.on(
-      'mergeMessage',
-      async (message: protobufs.Message, deletedMessages?: protobufs.Message[]) => {
-        const totalMessages = 1 + (deletedMessages?.length ?? 0);
-        this._messagesQueuedForSync += totalMessages;
+    this.engine.eventHandler.on('mergeMessage', async (event: protobufs.MergeMessageHubEvent) => {
+      const { message, deletedMessages } = event.mergeMessageBody;
+      const totalMessages = 1 + (deletedMessages?.length ?? 0);
+      this._messagesQueuedForSync += totalMessages;
 
-        await this.addMessage(message);
+      await this.addMessage(message);
 
-        for (const deletedMessage of deletedMessages ?? []) {
-          await this.removeMessage(deletedMessage);
-        }
-        this._messagesQueuedForSync -= totalMessages;
+      for (const deletedMessage of deletedMessages ?? []) {
+        await this.removeMessage(deletedMessage);
       }
-    );
+      this._messagesQueuedForSync -= totalMessages;
+    });
 
     // Note: There's no guarantee that the message is actually deleted, because the transaction could fail.
     // This is fine, because we'll just end up syncing the message again. It's much worse to miss a removal and cause
     // the trie to diverge in a way that's not recoverable without reconstructing it from the db.
     // Order of events does not matter. The trie will always converge to the same state.
-    this.engine.eventHandler.on('pruneMessage', async (message) => {
+    this.engine.eventHandler.on('pruneMessage', async (event: protobufs.PruneMessageHubEvent) => {
       this._messagesQueuedForSync += 1;
-      await this.removeMessage(message);
+      await this.removeMessage(event.pruneMessageBody.message);
       this._messagesQueuedForSync -= 1;
     });
-    this.engine.eventHandler.on('revokeMessage', async (message) => {
+    this.engine.eventHandler.on('revokeMessage', async (event: protobufs.RevokeMessageHubEvent) => {
       this._messagesQueuedForSync += 1;
-      await this.removeMessage(message);
+      await this.removeMessage(event.revokeMessageBody.message);
       this._messagesQueuedForSync -= 1;
     });
   }
@@ -284,8 +282,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return result;
   }
 
-  public async mergeMessages(messages: protobufs.Message[], rpcClient: HubRpcClient): Promise<HubResult<void>[]> {
-    const mergeResults: HubResult<void>[] = [];
+  public async mergeMessages(messages: protobufs.Message[], rpcClient: HubRpcClient): Promise<HubResult<number>[]> {
+    const mergeResults: HubResult<number>[] = [];
     // First, sort the messages by timestamp to reduce thrashing and refetching
     messages.sort((a, b) => (a.data?.timestamp || 0) - (b.data?.timestamp || 0));
 
@@ -458,7 +456,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     });
   }
 
-  private async syncUserAndRetryMessage(message: protobufs.Message, rpcClient: HubRpcClient): Promise<HubResult<void>> {
+  private async syncUserAndRetryMessage(
+    message: protobufs.Message,
+    rpcClient: HubRpcClient
+  ): Promise<HubResult<number>> {
     const fid = message.data?.fid;
     if (!fid) {
       return err(new HubError('bad_request.invalid_param', 'Invalid fid'));

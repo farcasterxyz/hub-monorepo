@@ -1,4 +1,9 @@
+import { IdRegistryEvent } from 'generated/id_registry_event';
+import { NameRegistryEvent } from 'generated/name_registry_event';
+import * as hubEventProtobufs from './generated/hub_event';
 import * as protobufs from './generated/message';
+
+/** Message types */
 
 export type CastAddData = protobufs.MessageData & {
   type: protobufs.MessageType.MESSAGE_TYPE_CAST_ADD;
@@ -37,26 +42,6 @@ export type ReactionRemoveData = protobufs.MessageData & {
 
 export type ReactionRemoveMessage = protobufs.Message & {
   data: ReactionRemoveData;
-  signatureScheme: protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519;
-};
-
-export type AmpAddData = protobufs.MessageData & {
-  type: protobufs.MessageType.MESSAGE_TYPE_AMP_ADD;
-  ampBody: protobufs.AmpBody;
-};
-
-export type AmpAddMessage = protobufs.Message & {
-  data: AmpAddData;
-  signatureScheme: protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519;
-};
-
-export type AmpRemoveData = protobufs.MessageData & {
-  type: protobufs.MessageType.MESSAGE_TYPE_AMP_REMOVE;
-  ampBody: protobufs.AmpBody;
-};
-
-export type AmpRemoveMessage = protobufs.Message & {
-  data: AmpRemoveData;
   signatureScheme: protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519;
 };
 
@@ -108,4 +93,41 @@ export type UserDataAddData = protobufs.MessageData & {
 export type UserDataAddMessage = protobufs.Message & {
   data: UserDataAddData;
   signatureScheme: protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519;
+};
+
+/** Hub event types */
+
+export type MergeMessageHubEvent = hubEventProtobufs.HubEvent & {
+  type: hubEventProtobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE;
+  mergeMessageBody: hubEventProtobufs.MergeMessageBody & {
+    message: protobufs.Message;
+  };
+};
+
+export type RevokeMessageHubEvent = hubEventProtobufs.HubEvent & {
+  type: hubEventProtobufs.HubEventType.HUB_EVENT_TYPE_REVOKE_MESSAGE;
+  revokeMessageBody: hubEventProtobufs.RevokeMessageBody & {
+    message: protobufs.Message;
+  };
+};
+
+export type PruneMessageHubEvent = hubEventProtobufs.HubEvent & {
+  type: hubEventProtobufs.HubEventType.HUB_EVENT_TYPE_PRUNE_MESSAGE;
+  pruneMessageBody: hubEventProtobufs.PruneMessageBody & {
+    message: protobufs.Message;
+  };
+};
+
+export type MergeIdRegistryEventHubEvent = hubEventProtobufs.HubEvent & {
+  type: hubEventProtobufs.HubEventType.HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT;
+  mergeIdRegistryEventBody: hubEventProtobufs.MergeIdRegistryEventBody & {
+    idRegistryEvent: IdRegistryEvent;
+  };
+};
+
+export type MergeNameRegistryEventHubEvent = hubEventProtobufs.HubEvent & {
+  type: hubEventProtobufs.HubEventType.HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT;
+  mergeNameRegistryEventBody: hubEventProtobufs.MergeNameRegistryEventBody & {
+    nameRegistryEvent: NameRegistryEvent;
+  };
 };

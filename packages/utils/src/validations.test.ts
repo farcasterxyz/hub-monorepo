@@ -214,7 +214,7 @@ describe('validateCastAddBody', () => {
     });
 
     test('when text is null', () => {
-      body = Factories.CastAddBody.build({ text: null });
+      body = Factories.CastAddBody.build({ text: null as unknown as undefined });
       hubErrorMessage = 'text is missing';
     });
 
@@ -484,36 +484,6 @@ describe('validateSignerBody', () => {
         signer: Factories.Bytes.build({}, { transient: { length: 33 } }),
       });
       hubErrorMessage = 'publicKey must be 32 bytes';
-    });
-  });
-});
-
-describe('validateAmpBody', () => {
-  test('succeeds', () => {
-    const body = Factories.AmpBody.build();
-    expect(validations.validateAmpBody(body)).toEqual(ok(body));
-  });
-
-  describe('fails', () => {
-    let body: protobufs.AmpBody;
-    let hubErrorMessage: string;
-
-    afterEach(() => {
-      expect(validations.validateAmpBody(body)).toEqual(
-        err(new HubError('bad_request.validation_failure', hubErrorMessage))
-      );
-    });
-
-    test('when target fid is missing', () => {
-      body = Factories.AmpBody.build({
-        targetFid: undefined,
-      });
-      hubErrorMessage = 'fid is missing';
-    });
-
-    test('with invalid user fid', () => {
-      body = Factories.AmpBody.build({ targetFid: -1 });
-      hubErrorMessage = 'fid must be positive';
     });
   });
 });

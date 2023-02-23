@@ -3,28 +3,12 @@ syntax = "proto3";
 import "message.proto";
 import "id_registry_event.proto";
 import "name_registry_event.proto";
+import "hub_event.proto";
 
 message Empty {}
 
-enum EventType {
-  EVENT_TYPE_NONE = 0;
-  EVENT_TYPE_MERGE_MESSAGE = 1;
-  EVENT_TYPE_PRUNE_MESSAGE = 2;
-  EVENT_TYPE_REVOKE_MESSAGE = 3;
-  EVENT_TYPE_MERGE_ID_REGISTRY_EVENT = 4;
-  EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT = 5;
-}
-
-message EventResponse {
-  EventType type = 1;
-  Message message = 2;
-  repeated Message deleted_messages = 3;
-  IdRegistryEvent id_registry_event = 4;
-  NameRegistryEvent name_registry_event = 5;
-}
-
 message SubscribeRequest {
-  repeated EventType event_types = 1;
+  repeated HubEventType event_types = 1;
 }
 
 // Response Types for the Sync RPC Methods
@@ -85,11 +69,6 @@ message ReactionsByCastRequest {
   ReactionType reaction_type = 2;
 }
 
-message AmpRequest {
-  uint64 fid = 1;
-  uint64 target_fid = 2;
-}
-
 message UserDataRequest {
   uint64 fid = 1;
   UserDataType user_data_type = 2;
@@ -116,7 +95,7 @@ service HubService {
   rpc SubmitNameRegistryEvent(NameRegistryEvent) returns (NameRegistryEvent);
 
   // Event Methods
-  rpc Subscribe(SubscribeRequest) returns (stream EventResponse);
+  rpc Subscribe(SubscribeRequest) returns (stream HubEvent);
 
   // Casts
   rpc GetCast(CastId) returns (Message);
@@ -128,11 +107,6 @@ service HubService {
   rpc GetReaction(ReactionRequest) returns (Message);
   rpc GetReactionsByFid(ReactionsByFidRequest) returns (MessagesResponse);
   rpc GetReactionsByCast(ReactionsByCastRequest) returns (MessagesResponse);
-
-  // Amps
-  rpc GetAmp(AmpRequest) returns (Message);
-  rpc GetAmpsByFid(FidRequest) returns (MessagesResponse);
-  rpc GetAmpsByUser(FidRequest) returns (MessagesResponse);
 
   // User Data
   rpc GetUserData(UserDataRequest) returns (Message);
@@ -152,7 +126,6 @@ service HubService {
   // Bulk Methods
   rpc GetAllCastMessagesByFid(FidRequest) returns (MessagesResponse);
   rpc GetAllReactionMessagesByFid(FidRequest) returns (MessagesResponse);
-  rpc GetAllAmpMessagesByFid(FidRequest) returns (MessagesResponse);
   rpc GetAllVerificationMessagesByFid(FidRequest) returns (MessagesResponse);
   rpc GetAllSignerMessagesByFid(FidRequest) returns (MessagesResponse);
   rpc GetAllUserDataMessagesByFid(FidRequest) returns (MessagesResponse);

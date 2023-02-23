@@ -190,12 +190,6 @@ export const validateMessageData = (data: protobufs.MessageData): HubResult<prot
   } else if (validType.value === protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE && !!data.castRemoveBody) {
     bodyResult = validateCastRemoveBody(data.castRemoveBody);
   } else if (
-    (validType.value === protobufs.MessageType.MESSAGE_TYPE_AMP_ADD ||
-      validType.value === protobufs.MessageType.MESSAGE_TYPE_AMP_REMOVE) &&
-    !!data.ampBody
-  ) {
-    bodyResult = validateAmpBody(data.ampBody);
-  } else if (
     (validType.value === protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD ||
       validType.value === protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE) &&
     !!data.reactionBody
@@ -378,10 +372,6 @@ export const validateVerificationRemoveBody = (
 
 export const validateSignerBody = (body: protobufs.SignerBody): HubResult<protobufs.SignerBody> => {
   return validateEd25519PublicKey(body.signer).map(() => body);
-};
-
-export const validateAmpBody = (body: protobufs.AmpBody): HubResult<protobufs.AmpBody> => {
-  return validateFid(body.targetFid).map(() => body);
 };
 
 export const validateUserDataType = (type: number): HubResult<protobufs.UserDataType> => {
