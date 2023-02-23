@@ -6,6 +6,7 @@ import * as utils from './utils';
 
 export type EventFilters = {
   eventTypes?: protobufs.HubEventType[];
+  fromId?: number;
 };
 
 const deserializeCall = async <TDeserialized, TProtobuf>(
