@@ -10,6 +10,7 @@
    2. [Writing Docs](#32-writing-docs)
    3. [Handling Errors](#33-handling-errors)
    4. [Creating the PR](#34-creating-the-pr)
+4. [Troubleshooting](#4-troubleshooting)
 
 ## 1. How to Contribute
 
@@ -156,14 +157,14 @@ const parseMessage = (message: string): string => {
 const parseMessage = (message: string): HubResult<string> => {
   return Result.fromThrowable(
     () => JSON.parse(message),
-    (err) => new HubError("bad_request.parse_failure", err as Error)
+    (err) => new HubError('bad_request.parse_failure', err as Error)
   )();
 };
 
 // correct usage: build a convenience method so you can call it easily
 const safeJsonStringify = Result.fromThrowable(
   JSON.stringify,
-  () => new HubError("bad_request", "json stringify failure")
+  () => new HubError('bad_request', 'json stringify failure')
 );
 
 const result = safeJsonStringify(json);
@@ -203,8 +204,8 @@ Use `_unsafeUnwrap()` and `_unsafeUnwrapErr()` in tests to assert results
 ```ts
 // when expecting an error
 const error = foo()._unsafeUnwrapErr();
-expect(error.errCode).toEqual("bad_request");
-expect(error.message).toMatch("invalid AddressInfo family");
+expect(error.errCode).toEqual('bad_request');
+expect(error.message).toMatch('invalid AddressInfo family');
 ```
 
 ---
@@ -215,22 +216,15 @@ Prefer `combine` and `combineWithAllErrors` when operating on multiple results
 const results = await Promise.all(things.map((thing) => foo(thing)));
 
 // 1. Only fail if all failed
-const combinedResults = Result.combineWithAllErrors(results) as Result<
-  void[],
-  HubError[]
->;
+const combinedResults = Result.combineWithAllErrors(results) as Result<void[], HubError[]>;
 if (combinedResults.isErr() && combinedResults.error.length == things.length) {
-  return err(
-    new HubError("unavailable", "could not connect to any bootstrap nodes")
-  );
+  return err(new HubError('unavailable', 'could not connect to any bootstrap nodes'));
 }
 
 // 2. Fail if at least one failed
 const combinedResults = Result.combine(results);
 if (combinedResults.isErr()) {
-  return err(
-    new HubError("unavailable", "could not connect to any bootstrap nodes")
-  );
+  return err(new HubError('unavailable', 'could not connect to any bootstrap nodes'));
 }
 ```
 
@@ -258,3 +252,14 @@ fix(signers): validate signatures correctly
 Called Signer.verify with the correct parameter to ensure that older signature
 types would not pass verification in our Signer Sets
 ```
+
+## 4. TroubleShooting
+
+### Upgrading Libp2p
+
+1. Pick a [libp2p release](https://github.com/libp2p/js-libp2p/releases) and navigate to its [package.json](https://github.com/libp2p/js-libp2p/blob/master/package.json) file
+2. Copy the required versions of `libp2p`, `@libp2p/*`, `@chainsafe/*` `@multiformats/*` packages to our package.json
+3. For unspecified packages read their changelog and make a best guess about versions (e.g. `@chainsafe/libp2p-gossipsub` and `@libp2p/pubsub-peer-discovery`)
+4. Follow the [migration guide](https://github.com/libp2p/js-libp2p/tree/master/doc/migrations) for the versions you are upgrading to
+
+If you run into any unexpected issues open a discussion in the [libp2p forum](https://discuss.libp2p.io/). @achingbrain on the Filecoin slack maintains this project and can be helpful with major issues.

@@ -1,19 +1,25 @@
 # @farcaster/protobufs
 
-Contains protobuf types used in Hubble.
+Specifications for API's and data formats used in Hubble, including both Farcaster protocol types and Hubble specific types.
 
 | Schema                                                     | Type Description                         | Docs                    |
 | ---------------------------------------------------------- | ---------------------------------------- | ----------------------- |
 | [Message](src/schemas/message.proto)                       | Types for Farcaster deltas               | [docs](docs/message.md) |
-| [Gossip](src/schemas/gossip.proto)                         | Types for gossiping data between Hubs    |                         |
 | [RPC](src/schemas/rpc.proto)                               | Types for gRPC APIs exposed by Hubs      | [docs](docs/rpc.md)     |
+| [Gossip](src/schemas/gossip.proto)                         | Types for gossiping data between Hubs    |                         |
 | [IdRegistryEvent](src/schemas/id_registry_event.proto)     | Types for representing on-chain activity |                         |
 | [NameRegistryEvent](src/schemas/name_registry_event.proto) | Types for representing on-chain activity |                         |
 | [HubState](src/schemas/hub_state.proto)                    | Types for for maintaining internal state |                         |
 
+## Getting Started
+
+### Generate Bindings
+
+Coming soon
+
 ### Generate Docs
 
-Documentation of gRPC endpoints is done manually, but `protoc` can be used to generate protofbuf docs. To do this:
+Documentation of gRPC endpoints is done manually, but `protoc` can be used to generate Message docs:
 
 1. Install [protoc](https://grpc.io/docs/protoc-installation/)
 2. Download latest `protoc-gen-doc` binary from the [repo](https://github.com/pseudomuto/protoc-gen-doc) and place in this folder
