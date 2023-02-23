@@ -243,24 +243,24 @@ Class to sign messages with ed25519. See the [docs](./docs/classes/Ed25519Signer
 | `signerKey`            | Property: EdDSA public key in bytes.                                          |
 | `signerKeyHex`         | Property: EdDSA public key in hex.                                            |
 | `signMessageHash()`    | Signs a given hash.                                                           |
-| `signMessageHashHex()` | Signs a given hash in hexadecimal format.                                     |
+| `signMessageHashHex()` | Signs a given hash, returns result in hex format.                             |
 | `fromPrivateKey()`     | Creates a new instance of the `Ed25519Signer` class from a EdDSA private key. |
 
 ## `Eip712Signer`
 
 Class to sign messages in the EIP712 format. See the [docs](./docs/classes/Eip712Signer.md) for more details.
 
-| Name                                   | Description                                                                                                                         |
-| :------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
-| `EIP712Signer()`                       | Creates a new instance of the EIP712Signer class.                                                                                   |
-| `scheme`                               | Property: scheme used by the signer.                                                                                                |
-| `signerKey`                            | Property: signer's ECDSA public key in bytes.                                                                                       |
-| `signerKeyHex`                         | Property: signer's ECDSA public key in hex.                                                                                         |
-| `signMessageHash()`                    | Signs a message hash with the signer's private key using the EIP-712 message format.                                                |
-| `signMessageHashHex()`                 | Signs a message hash with the signer's private key, returning the signature as a hex string using the EIP-712 message format.       |
-| `signVerificationEthAddressClaim()`    | Signs a verification claim with the signer's private key using the EIP-712 message format.                                          |
-| `signVerificationEthAddressClaimHex()` | Signs a verification claim with the signer's private key, returning the signature as a hex string using the EIP-712 message format. |
-| `fromSigner()`                         | Instantiate a new EIP712Signer from an ECDSA private key (Ethereum).                                                                |
+| Name                                   | Description                                                                            |
+| :------------------------------------- | :------------------------------------------------------------------------------------- |
+| `EIP712Signer()`                       | Creates a new instance of the EIP712Signer class.                                      |
+| `scheme`                               | Property: scheme used by the signer.                                                   |
+| `signerKey`                            | Property: signer's ECDSA public key in bytes.                                          |
+| `signerKeyHex`                         | Property: signer's ECDSA public key in hex.                                            |
+| `signMessageHash()`                    | Signs a message hash with the signer's Ethereum address.                               |
+| `signMessageHashHex()`                 | Signs a message hash with the signer's Ethereum address, returns result in hex format. |
+| `signVerificationEthAddressClaim()`    | TODO                                                                                   |
+| `signVerificationEthAddressClaimHex()` | TODO                                                                                   |
+| `fromSigner()`                         | Instantiate a new EIP712Signer from an ECDSA private key (Ethereum).                   |
 
 ## `Functions`
 
