@@ -42,6 +42,7 @@ import {
   p2pMultiAddrStr,
 } from '~/utils/p2p';
 import { PeriodicSyncJobScheduler } from './network/sync/periodicSyncJob';
+import AdminServer from './rpc/server/adminServer';
 import { RootPrefix } from './storage/db/types';
 import {
   UpdateNameRegistryEventExpiryJobQueue,
@@ -129,6 +130,7 @@ export class Hub implements HubInterface {
   private options: HubOptions;
   private gossipNode: GossipNode;
   private rpcServer: Server;
+  private adminServer: AdminServer;
   private contactTimer?: NodeJS.Timer;
   private rocksDB: RocksDB;
   private syncEngine: SyncEngine;
@@ -151,6 +153,7 @@ export class Hub implements HubInterface {
     this.syncEngine = new SyncEngine(this.engine, this.rocksDB);
 
     this.rpcServer = new Server(this, this.engine, this.syncEngine, this.gossipNode);
+    this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine);
 
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
     this.ethRegistryProvider = EthEventsProvider.makeWithGoerli(
@@ -233,6 +236,7 @@ export class Hub implements HubInterface {
 
     // Start the RPC server
     await this.rpcServer.start(this.options.rpcPort ? this.options.rpcPort : 0);
+    await this.adminServer.start();
     this.registerEventHandlers();
 
     // Start cron tasks
@@ -274,6 +278,7 @@ export class Hub implements HubInterface {
 
     // First, stop the RPC/Gossip server so we don't get any more messages
     await this.rpcServer.stop();
+    await this.adminServer.stop();
     await this.gossipNode.stop();
 
     // Stop cron tasks

@@ -95,9 +95,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   public async initialize(rebuildSyncTrie = false) {
     // Check if we need to rebuild sync trie
     if (rebuildSyncTrie) {
-      log.info('Rebuilding sync trie...');
-      await this._trie.rebuild(this.engine);
-      log.info('Rebuilding sync trie complete');
+      await this.rebuildSyncTrie();
     } else {
       // Wait for the Merkle trie to be fully loaded
       await this._trie.initialize();
@@ -105,6 +103,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     const rootHash = await this._trie.rootHash();
 
     log.info({ rootHash }, 'Sync engine initialized');
+  }
+
+  public async rebuildSyncTrie() {
+    log.info('Rebuilding sync trie...');
+    await this._trie.rebuild(this.engine);
+    log.info('Rebuilding sync trie complete');
   }
 
   public async stop() {

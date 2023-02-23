@@ -137,3 +137,8 @@ service HubService {
   rpc GetSyncMetadataByPrefix(TrieNodePrefix) returns (TrieNodeMetadataResponse);
   rpc GetSyncSnapshotByPrefix(TrieNodePrefix) returns (TrieNodeSnapshotResponse);
 }
+
+service AdminService {
+  rpc RebuildSyncTrie(Empty) returns (Empty);
+  rpc DeleteAllMessagesFromDb(Empty) returns (Empty);
+}

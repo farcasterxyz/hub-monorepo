@@ -113,7 +113,7 @@ class Engine {
   /*                             Sync Methods                                   */
   /* -------------------------------------------------------------------------- */
 
-  async forEachMessage(callback: (message: protobufs.Message) => Promise<void>): Promise<void> {
+  async forEachMessage(callback: (message: protobufs.Message, key: Buffer) => Promise<boolean | void>): Promise<void> {
     const allUserPrefix = Buffer.from([RootPrefix.User]);
 
     for await (const [key, value] of this._db.iteratorByPrefix(allUserPrefix, { keys: true, valueAsBuffer: true })) {
@@ -142,7 +142,10 @@ class Engine {
       )();
 
       if (message.isOk()) {
-        await callback(message.value);
+        const done = await callback(message.value, key);
+        if (done) {
+          break;
+        }
       }
     }
   }
