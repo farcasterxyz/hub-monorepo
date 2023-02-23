@@ -105,6 +105,7 @@ All changes should have supporting documentation that makes reviewing and unders
 - Do not comment obvious changes (e.g. `starts the db` before the line `db.start()`)
 - Add a `Safety: ..` comment explaining every use of `as`.
 - Prefer active, present-tense doing form (`Gets the connection`) over other forms (`Connection is obtained`, `Get the connection`, `We get the connection`, `will get a connection`)
+- To generate docs for `packages/*`, run `yarn docs` in the root of the monorepo. To see how the TSDoc comment is formatted, see [signMessageHash() in ed25519Signer.ts](packages/utils/src/signers/ed25519Signer.ts).
 
 ### 3.4. Handling Errors
 
