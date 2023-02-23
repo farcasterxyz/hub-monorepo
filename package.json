@@ -16,7 +16,8 @@
     "test:ci": "./node_modules/.bin/turbo run test:ci -- --passWithNoTests",
     "lint": "./node_modules/.bin/turbo run lint --parallel",
     "prepare": "husky install",
-    "publish-packages": "./node_modules/.bin/turbo run build lint && changeset version && changeset publish"
+    "publish-packages": "./node_modules/.bin/turbo run build lint && changeset version && changeset publish",
+    "docs": "typedoc --out ./packages/js/docs --exclude '**/*.test.ts' --exclude '**/*.spec.ts' --exclude '**/node_modules/**' --entryPoints ./packages/js/src/index.ts --entryPoints ./packages/protobufs/src/index.ts --entryPoints ./packages/utils/src/index.ts --skipErrorChecking --readme ./packages/js/README.md"
   },
   "engines": {
     "npm": ">=8.0.0",
@@ -37,6 +38,8 @@
     "ts-node": "^10.9.1",
     "tsup": "^6.5.0",
     "turbo": "1.7.3",
+    "typedoc": "^0.23.25",
+    "typedoc-plugin-markdown": "^3.14.0",
     "typescript": "^5.0.0-beta"
   },
   "lint-staged": {

@@ -51,7 +51,7 @@ export class Client {
     return wrapGrpcMessageCall(this._grpcClient.submitMessage(message._protobuf));
   }
 
- ee the [docs](./docs/functions.md) for more details. /* -------------------------------------------------------------------------- */
+  /* -------------------------------------------------------------------------- */
   /*                                 Cast Methods                               */
   /* -------------------------------------------------------------------------- */
 
