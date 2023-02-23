@@ -29,10 +29,6 @@ export class Ed25519Signer implements Signer {
   /**
    * Generates a 256-bit signature using from EdDSA key pair.
    *
-   * @param {Uint8Array} hash - The 256-bit hash of the message to be signed.
-   *
-   * @returns {Promise<HubAsyncResult<Uint8Array>>} A HubAsyncResult containing the signature as a Uint8Array.
-   *
    * @example
    * ```typescript
    * import { Ed25519Signer } from '@farcaster/js';
@@ -49,6 +45,11 @@ export class Ed25519Signer implements Signer {
    *
    * console.log(signature._unsafeUnwrap());
    * ```
+   *
+   * @param {Uint8Array} hash - The 256-bit hash of the message to be signed.
+   *
+   * @returns {Promise<HubAsyncResult<Uint8Array>>} A HubAsyncResult containing the signature as a Uint8Array.
+   *
    */
   public async signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array> {
     return ed25519.signMessageHash(hash, this._privateKey);

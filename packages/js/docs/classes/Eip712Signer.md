@@ -48,7 +48,7 @@ BaseEip712Signer.constructor
 
 #### Defined in
 
-utils/dist/index.d.ts:176
+utils/dist/index.d.ts:177
 
 ## Properties
 
@@ -62,7 +62,7 @@ BaseEip712Signer.scheme
 
 #### Defined in
 
-utils/dist/index.d.ts:170
+utils/dist/index.d.ts:171
 
 ___
 
@@ -78,7 +78,7 @@ BaseEip712Signer.signerKey
 
 #### Defined in
 
-utils/dist/index.d.ts:172
+utils/dist/index.d.ts:173
 
 ___
 
@@ -92,7 +92,7 @@ BaseEip712Signer.signerKeyHex
 
 #### Defined in
 
-utils/dist/index.d.ts:173
+utils/dist/index.d.ts:174
 
 ## Methods
 
@@ -140,7 +140,7 @@ BaseEip712Signer.signMessageHash
 
 #### Defined in
 
-utils/dist/index.d.ts:203
+utils/dist/index.d.ts:204
 
 ___
 
@@ -182,7 +182,7 @@ A HubAsyncResult containing the 256-bit signature as a hex string.
 
 #### Defined in
 
-[js/src/signers.ts:62](https://github.com/vinliao/hubble/blob/06f86da/packages/js/src/signers.ts#L62)
+[js/src/signers.ts:62](https://github.com/vinliao/hubble/blob/14483bd/packages/js/src/signers.ts#L62)
 
 ___
 
@@ -225,7 +225,7 @@ BaseEip712Signer.signVerificationEthAddressClaim
 
 #### Defined in
 
-utils/dist/index.d.ts:229
+utils/dist/index.d.ts:230
 
 ___
 
@@ -271,7 +271,7 @@ A HubAsyncResult containing the 256-bit signature as a Uint8Array.
 
 #### Defined in
 
-[js/src/signers.ts:105](https://github.com/vinliao/hubble/blob/06f86da/packages/js/src/signers.ts#L105)
+[js/src/signers.ts:105](https://github.com/vinliao/hubble/blob/14483bd/packages/js/src/signers.ts#L105)
 
 ___
 
@@ -311,4 +311,4 @@ BaseEip712Signer.fromSigner
 
 #### Defined in
 
-[js/src/signers.ts:33](https://github.com/vinliao/hubble/blob/06f86da/packages/js/src/signers.ts#L33)
+[js/src/signers.ts:33](https://github.com/vinliao/hubble/blob/14483bd/packages/js/src/signers.ts#L33)

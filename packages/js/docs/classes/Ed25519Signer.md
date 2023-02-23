@@ -136,7 +136,7 @@ BaseEd25519Signer.signMessageHash
 
 #### Defined in
 
-utils/dist/index.d.ts:165
+utils/dist/index.d.ts:166
 
 ___
 
@@ -178,7 +178,7 @@ A HubAsyncResult containing the signature in hex format.
 
 #### Defined in
 
-[js/src/signers.ts:159](https://github.com/vinliao/hubble/blob/06f86da/packages/js/src/signers.ts#L159)
+[js/src/signers.ts:160](https://github.com/vinliao/hubble/blob/14483bd/packages/js/src/signers.ts#L160)
 
 ___
 
@@ -216,4 +216,4 @@ BaseEd25519Signer.fromPrivateKey
 
 #### Defined in
 
-[js/src/signers.ts:128](https://github.com/vinliao/hubble/blob/06f86da/packages/js/src/signers.ts#L128)
+[js/src/signers.ts:128](https://github.com/vinliao/hubble/blob/14483bd/packages/js/src/signers.ts#L128)
