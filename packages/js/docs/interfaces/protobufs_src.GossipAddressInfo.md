@@ -20,7 +20,7 @@
 
 #### Defined in
 
-[protobufs/src/generated/gossip.ts:34](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/gossip.ts#L34)
+[protobufs/src/generated/gossip.ts:34](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/gossip.ts#L34)
 
 ___
 
@@ -30,7 +30,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/gossip.ts:35](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/gossip.ts#L35)
+[protobufs/src/generated/gossip.ts:35](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/gossip.ts#L35)
 
 ___
 
@@ -40,4 +40,4 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/gossip.ts:36](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/gossip.ts#L36)
+[protobufs/src/generated/gossip.ts:36](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/gossip.ts#L36)

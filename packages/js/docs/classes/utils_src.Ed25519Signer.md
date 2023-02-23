@@ -42,7 +42,7 @@
 
 #### Defined in
 
-[utils/src/signers/ed25519Signer.ts:23](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/signers/ed25519Signer.ts#L23)
+[utils/src/signers/ed25519Signer.ts:23](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/ed25519Signer.ts#L23)
 
 ## Properties
 
@@ -52,7 +52,7 @@
 
 #### Defined in
 
-[utils/src/signers/ed25519Signer.ts:14](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/signers/ed25519Signer.ts#L14)
+[utils/src/signers/ed25519Signer.ts:14](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/ed25519Signer.ts#L14)
 
 ___
 
@@ -66,7 +66,7 @@ ___
 
 #### Defined in
 
-[utils/src/signers/ed25519Signer.ts:8](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/signers/ed25519Signer.ts#L8)
+[utils/src/signers/ed25519Signer.ts:8](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/ed25519Signer.ts#L8)
 
 ___
 
@@ -82,7 +82,7 @@ ___
 
 #### Defined in
 
-[utils/src/signers/ed25519Signer.ts:11](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/signers/ed25519Signer.ts#L11)
+[utils/src/signers/ed25519Signer.ts:11](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/ed25519Signer.ts#L11)
 
 ___
 
@@ -96,7 +96,7 @@ ___
 
 #### Defined in
 
-[utils/src/signers/ed25519Signer.ts:12](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/signers/ed25519Signer.ts#L12)
+[utils/src/signers/ed25519Signer.ts:12](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/ed25519Signer.ts#L12)
 
 ## Methods
 
@@ -104,17 +104,43 @@ ___
 
 ▸ **signMessageHash**(`hash`): [`HubAsyncResult`](../modules/utils_src.md#hubasyncresult)<`Uint8Array`\>
 
-generates 256-bit signature from an EdDSA key pair
+Generates a 256-bit signature using from EdDSA key pair.
+
+**`Function`**
+
+**`Name`**
+
+ed25519Signer.signMessageHash
+
+**`Example`**
+
+```typescript
+import { Ed25519Signer } from '@farcaster/js';
+import { randomBytes } from 'crypto';
+import * as ed from '@noble/ed25519';
+
+const privateKeyBytes = ed.utils.randomPrivateKey();
+const signer = new Ed25519Signer(privateKeyBytes);
+
+const messageBytes = randomBytes(32);
+const messageHash = crypto.createHash('sha256').update(messageBytes).digest();
+
+const signature = await signer.signMessageHash(messageHash);
+
+console.log(signature._unsafeUnwrap());
+```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `hash` | `Uint8Array` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `hash` | `Uint8Array` | The 256-bit hash of the message to be signed. |
 
 #### Returns
 
 [`HubAsyncResult`](../modules/utils_src.md#hubasyncresult)<`Uint8Array`\>
+
+A HubAsyncResult containing the signature as a Uint8Array.
 
 #### Implementation of
 
@@ -122,7 +148,7 @@ generates 256-bit signature from an EdDSA key pair
 
 #### Defined in
 
-[utils/src/signers/ed25519Signer.ts:30](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/signers/ed25519Signer.ts#L30)
+[utils/src/signers/ed25519Signer.ts:56](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/ed25519Signer.ts#L56)
 
 ___
 
@@ -142,4 +168,4 @@ ___
 
 #### Defined in
 
-[utils/src/signers/ed25519Signer.ts:16](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/signers/ed25519Signer.ts#L16)
+[utils/src/signers/ed25519Signer.ts:16](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/ed25519Signer.ts#L16)

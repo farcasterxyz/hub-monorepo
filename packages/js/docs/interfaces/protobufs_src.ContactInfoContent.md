@@ -21,7 +21,7 @@
 
 #### Defined in
 
-[protobufs/src/generated/gossip.ts:43](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/gossip.ts#L43)
+[protobufs/src/generated/gossip.ts:43](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/gossip.ts#L43)
 
 ___
 
@@ -31,7 +31,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/gossip.ts:42](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/gossip.ts#L42)
+[protobufs/src/generated/gossip.ts:42](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/gossip.ts#L42)
 
 ___
 
@@ -41,7 +41,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/gossip.ts:40](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/gossip.ts#L40)
+[protobufs/src/generated/gossip.ts:40](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/gossip.ts#L40)
 
 ___
 
@@ -51,4 +51,4 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/gossip.ts:41](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/gossip.ts#L41)
+[protobufs/src/generated/gossip.ts:41](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/gossip.ts#L41)

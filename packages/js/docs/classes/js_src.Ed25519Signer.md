@@ -100,17 +100,43 @@ utils/dist/index.d.ts:137
 
 ▸ **signMessageHash**(`hash`): `HubAsyncResult`<`Uint8Array`\>
 
-generates 256-bit signature from an EdDSA key pair
+Generates a 256-bit signature using from EdDSA key pair.
+
+**`Function`**
+
+**`Name`**
+
+ed25519Signer.signMessageHash
+
+**`Example`**
+
+```typescript
+import { Ed25519Signer } from '@farcaster/js';
+import { randomBytes } from 'crypto';
+import * as ed from '@noble/ed25519';
+
+const privateKeyBytes = ed.utils.randomPrivateKey();
+const signer = new Ed25519Signer(privateKeyBytes);
+
+const messageBytes = randomBytes(32);
+const messageHash = crypto.createHash('sha256').update(messageBytes).digest();
+
+const signature = await signer.signMessageHash(messageHash);
+
+console.log(signature._unsafeUnwrap());
+```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `hash` | `Uint8Array` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `hash` | `Uint8Array` | The 256-bit hash of the message to be signed. |
 
 #### Returns
 
 `HubAsyncResult`<`Uint8Array`\>
+
+A HubAsyncResult containing the signature as a Uint8Array.
 
 #### Inherited from
 
@@ -118,7 +144,7 @@ BaseEd25519Signer.signMessageHash
 
 #### Defined in
 
-utils/dist/index.d.ts:142
+utils/dist/index.d.ts:168
 
 ___
 
@@ -126,19 +152,47 @@ ___
 
 ▸ **signMessageHashHex**(`hash`): `HubAsyncResult`<`string`\>
 
+Generates a 256-bit hex signature from an EdDSA key pair for a given message hash in hex format.
+
+**`Function`**
+
+**`Name`**
+
+ed25519Signer.signMessageHashHex
+
+**`Example`**
+
+```typescript
+import { Ed25519Signer } from '@farcaster/js';
+import { randomBytes } from 'crypto';
+import * as ed from '@noble/ed25519';
+
+const privateKeyBytes = ed.utils.randomPrivateKey();
+const signer = new Ed25519Signer(privateKeyBytes);
+
+const messageBytes = randomBytes(32);
+const messageHash = messageBytes.toString('hex');
+
+const signature = await signer.signMessageHashHex(messageHash);
+
+console.log(signature._unsafeUnwrap()); // 0x9f1c7e13b9d0b8...
+```
+
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `hash` | `string` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `hash` | `string` | The hash of the message to be signed in hex format. |
 
 #### Returns
 
 `HubAsyncResult`<`string`\>
 
+A HubAsyncResult containing the signature in hex format.
+
 #### Defined in
 
-[js/src/signers.ts:129](https://github.com/vinliao/hubble/blob/b933e0c/packages/js/src/signers.ts#L129)
+[js/src/signers.ts:175](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/signers.ts#L175)
 
 ___
 
@@ -146,15 +200,35 @@ ___
 
 ▸ `Static` **fromPrivateKey**(`privateKey`): `HubResult`<[`Ed25519Signer`](js_src.Ed25519Signer.md)\>
 
+Creates an Ed25519 signer from a private key.
+
+**`Function`**
+
+**`Name`**
+
+Ed25519Signer.fromPrivateKey
+
+**`Example`**
+
+```typescript
+import { Ed25519Signer } from '@farcaster/js';
+import * as ed from '@noble/ed25519';
+
+const privateKeyBytes = ed.utils.randomPrivateKey();
+const signer = Ed25519Signer.fromPrivateKey(privateKeyBytes)._unsafeUnwrap();
+```
+
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `privateKey` | `Uint8Array` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `privateKey` | `Uint8Array` | The 32-byte private key to use for signing. |
 
 #### Returns
 
 `HubResult`<[`Ed25519Signer`](js_src.Ed25519Signer.md)\>
+
+A HubResult containing an Ed25519Signer instance on success, or an error message on failure.
 
 #### Overrides
 
@@ -162,4 +236,4 @@ BaseEd25519Signer.fromPrivateKey
 
 #### Defined in
 
-[js/src/signers.ts:122](https://github.com/vinliao/hubble/blob/b933e0c/packages/js/src/signers.ts#L122)
+[js/src/signers.ts:141](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/signers.ts#L141)

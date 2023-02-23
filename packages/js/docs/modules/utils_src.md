@@ -67,7 +67,7 @@
 
 #### Defined in
 
-[utils/src/errors.ts:83](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/errors.ts#L83)
+[utils/src/errors.ts:83](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/errors.ts#L83)
 
 ___
 
@@ -83,7 +83,7 @@ https://www.executeprogram.com/blog/typescript-features-to-avoid
 
 #### Defined in
 
-[utils/src/errors.ts:57](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/errors.ts#L57)
+[utils/src/errors.ts:57](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/errors.ts#L57)
 
 ___
 
@@ -101,7 +101,7 @@ Type alias for shorthand when handling errors
 
 #### Defined in
 
-[utils/src/errors.ts:82](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/errors.ts#L82)
+[utils/src/errors.ts:82](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/errors.ts#L82)
 
 ___
 
@@ -111,7 +111,7 @@ ___
 
 #### Defined in
 
-[utils/src/client.ts:111](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/client.ts#L111)
+[utils/src/client.ts:111](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/client.ts#L111)
 
 ___
 
@@ -127,7 +127,7 @@ ___
 
 #### Defined in
 
-[utils/src/signers/types.ts:5](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/signers/types.ts#L5)
+[utils/src/signers/types.ts:5](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/types.ts#L5)
 
 ___
 
@@ -137,7 +137,7 @@ ___
 
 #### Defined in
 
-[utils/src/signers/eip712Signer.ts:12](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/signers/eip712Signer.ts#L12)
+[utils/src/signers/eip712Signer.ts:12](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/signers/eip712Signer.ts#L12)
 
 ___
 
@@ -156,7 +156,7 @@ ___
 
 #### Defined in
 
-[utils/src/verifications.ts:8](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/verifications.ts#L8)
+[utils/src/verifications.ts:8](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/verifications.ts#L8)
 
 ## Variables
 
@@ -166,7 +166,7 @@ ___
 
 #### Defined in
 
-[utils/src/time.ts:4](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/time.ts#L4)
+[utils/src/time.ts:4](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/time.ts#L4)
 
 ___
 
@@ -241,7 +241,7 @@ ___
 
 #### Defined in
 
-[utils/src/factories.ts:600](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/factories.ts#L600)
+[utils/src/factories.ts:600](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/factories.ts#L600)
 
 ## Functions
 
@@ -261,7 +261,7 @@ ___
 
 #### Defined in
 
-[utils/src/bytes.ts:92](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/bytes.ts#L92)
+[utils/src/bytes.ts:92](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/bytes.ts#L92)
 
 ___
 
@@ -282,7 +282,7 @@ ___
 
 #### Defined in
 
-[utils/src/bytes.ts:7](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/bytes.ts#L7)
+[utils/src/bytes.ts:7](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/bytes.ts#L7)
 
 ___
 
@@ -302,7 +302,7 @@ ___
 
 #### Defined in
 
-[utils/src/bytes.ts:46](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/bytes.ts#L46)
+[utils/src/bytes.ts:46](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/bytes.ts#L46)
 
 ___
 
@@ -322,7 +322,7 @@ ___
 
 #### Defined in
 
-[utils/src/bytes.ts:28](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/bytes.ts#L28)
+[utils/src/bytes.ts:28](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/bytes.ts#L28)
 
 ___
 
@@ -342,7 +342,7 @@ ___
 
 #### Defined in
 
-[utils/src/bytes.ts:96](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/bytes.ts#L96)
+[utils/src/bytes.ts:96](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/bytes.ts#L96)
 
 ___
 
@@ -362,7 +362,7 @@ ___
 
 #### Defined in
 
-[utils/src/bytes.ts:68](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/bytes.ts#L68)
+[utils/src/bytes.ts:68](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/bytes.ts#L68)
 
 ___
 
@@ -382,7 +382,7 @@ ___
 
 #### Defined in
 
-[utils/src/bytes.ts:82](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/bytes.ts#L82)
+[utils/src/bytes.ts:82](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/bytes.ts#L82)
 
 ___
 
@@ -402,7 +402,7 @@ ___
 
 #### Defined in
 
-[utils/src/time.ts:20](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/time.ts#L20)
+[utils/src/time.ts:20](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/time.ts#L20)
 
 ___
 
@@ -416,7 +416,7 @@ ___
 
 #### Defined in
 
-[utils/src/time.ts:5](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/time.ts#L5)
+[utils/src/time.ts:5](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/time.ts#L5)
 
 ___
 
@@ -436,7 +436,7 @@ ___
 
 #### Defined in
 
-[utils/src/client.ts:113](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/client.ts#L113)
+[utils/src/client.ts:113](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/client.ts#L113)
 
 ___
 
@@ -456,7 +456,7 @@ ___
 
 #### Defined in
 
-[utils/src/bytes.ts:75](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/bytes.ts#L75)
+[utils/src/bytes.ts:75](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/bytes.ts#L75)
 
 ___
 
@@ -476,7 +476,7 @@ e is HubError
 
 #### Defined in
 
-[utils/src/errors.ts:9](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/errors.ts#L9)
+[utils/src/errors.ts:9](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/errors.ts#L9)
 
 ___
 
@@ -499,7 +499,7 @@ ___
 
 #### Defined in
 
-[utils/src/verifications.ts:15](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/verifications.ts#L15)
+[utils/src/verifications.ts:15](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/verifications.ts#L15)
 
 ___
 
@@ -519,7 +519,7 @@ ___
 
 #### Defined in
 
-[utils/src/time.ts:9](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/time.ts#L9)
+[utils/src/time.ts:9](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/time.ts#L9)
 
 ___
 
@@ -539,4 +539,4 @@ ___
 
 #### Defined in
 
-[utils/src/bytes.ts:87](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/bytes.ts#L87)
+[utils/src/bytes.ts:87](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/bytes.ts#L87)

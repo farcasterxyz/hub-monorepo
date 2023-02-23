@@ -19,7 +19,7 @@
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:177](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L177)
+[protobufs/src/generated/rpc.ts:177](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L177)
 
 ___
 
@@ -29,4 +29,4 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:176](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L176)
+[protobufs/src/generated/rpc.ts:176](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L176)

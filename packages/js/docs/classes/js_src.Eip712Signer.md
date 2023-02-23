@@ -50,7 +50,7 @@ BaseEip712Signer.constructor
 
 #### Defined in
 
-utils/dist/index.d.ts:153
+utils/dist/index.d.ts:179
 
 ## Properties
 
@@ -64,7 +64,7 @@ BaseEip712Signer.scheme
 
 #### Defined in
 
-utils/dist/index.d.ts:147
+utils/dist/index.d.ts:173
 
 ___
 
@@ -80,7 +80,7 @@ BaseEip712Signer.signerKey
 
 #### Defined in
 
-utils/dist/index.d.ts:149
+utils/dist/index.d.ts:175
 
 ___
 
@@ -94,7 +94,7 @@ BaseEip712Signer.signerKeyHex
 
 #### Defined in
 
-utils/dist/index.d.ts:150
+utils/dist/index.d.ts:176
 
 ## Methods
 
@@ -148,7 +148,7 @@ BaseEip712Signer.signMessageHash
 
 #### Defined in
 
-utils/dist/index.d.ts:183
+utils/dist/index.d.ts:209
 
 ___
 
@@ -196,7 +196,7 @@ A HubAsyncResult containing the 256-bit signature as a hex string.
 
 #### Defined in
 
-[js/src/signers.ts:69](https://github.com/vinliao/hubble/blob/b933e0c/packages/js/src/signers.ts#L69)
+[js/src/signers.ts:69](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/signers.ts#L69)
 
 ___
 
@@ -204,15 +204,40 @@ ___
 
 ▸ **signVerificationEthAddressClaim**(`claim`): `HubAsyncResult`<`Uint8Array`\>
 
+Signs a verification claim for an Ethereum address.
+
+**`Function`**
+
+**`Name`**
+
+Eip712Signer#signVerificationEthAddressClaim
+
+**`Example`**
+
+```
+const claimBody = {
+  fid: -1,
+  address: eip712Signer.signerKeyHex,
+  network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+  blockHash: '2c87468704d6b0f4c46f480dc54251de50753af02e5d63702f85bde3da4f7a3d',
+};
+const verificationResult = await eip712Signer.signVerificationEthAddressClaim(claimBody);
+console.log(verificationResult._unsafeUnwrap());
+
+// Will output: Uint8Array(65) [ 166, 32, 71, 26, 36, 205, ... ]
+```
+
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `claim` | [`VerificationEthAddressClaim`](../modules/js_src.types.md#verificationethaddressclaim) |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `claim` | [`VerificationEthAddressClaim`](../modules/js_src.types.md#verificationethaddressclaim) | The body of the claim to be signed. |
 
 #### Returns
 
 `HubAsyncResult`<`Uint8Array`\>
+
+A HubAsyncResult containing the 256-bit signature as a Uint8Array.
 
 #### Inherited from
 
@@ -220,7 +245,7 @@ BaseEip712Signer.signVerificationEthAddressClaim
 
 #### Defined in
 
-utils/dist/index.d.ts:184
+utils/dist/index.d.ts:238
 
 ___
 
@@ -272,7 +297,7 @@ A HubAsyncResult containing the 256-bit signature as a Uint8Array.
 
 #### Defined in
 
-[js/src/signers.ts:115](https://github.com/vinliao/hubble/blob/b933e0c/packages/js/src/signers.ts#L115)
+[js/src/signers.ts:115](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/signers.ts#L115)
 
 ___
 
@@ -320,4 +345,4 @@ BaseEip712Signer.fromSigner
 
 #### Defined in
 
-[js/src/signers.ts:37](https://github.com/vinliao/hubble/blob/b933e0c/packages/js/src/signers.ts#L37)
+[js/src/signers.ts:37](https://github.com/vinliao/hubble/blob/f898740/packages/js/src/signers.ts#L37)

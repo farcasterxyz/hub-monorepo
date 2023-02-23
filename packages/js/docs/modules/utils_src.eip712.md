@@ -35,7 +35,7 @@
 
 #### Defined in
 
-[utils/src/crypto/eip712.ts:8](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/crypto/eip712.ts#L8)
+[utils/src/crypto/eip712.ts:8](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/crypto/eip712.ts#L8)
 
 ___
 
@@ -45,7 +45,7 @@ ___
 
 #### Defined in
 
-[utils/src/crypto/eip712.ts:34](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/crypto/eip712.ts#L34)
+[utils/src/crypto/eip712.ts:34](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/crypto/eip712.ts#L34)
 
 ___
 
@@ -55,7 +55,7 @@ ___
 
 #### Defined in
 
-[utils/src/crypto/eip712.ts:15](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/crypto/eip712.ts#L15)
+[utils/src/crypto/eip712.ts:15](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/crypto/eip712.ts#L15)
 
 ## Functions
 
@@ -76,7 +76,7 @@ ___
 
 #### Defined in
 
-[utils/src/crypto/eip712.ts:78](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/crypto/eip712.ts#L78)
+[utils/src/crypto/eip712.ts:78](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/crypto/eip712.ts#L78)
 
 ___
 
@@ -97,7 +97,7 @@ ___
 
 #### Defined in
 
-[utils/src/crypto/eip712.ts:41](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/crypto/eip712.ts#L41)
+[utils/src/crypto/eip712.ts:41](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/crypto/eip712.ts#L41)
 
 ___
 
@@ -118,7 +118,7 @@ ___
 
 #### Defined in
 
-[utils/src/crypto/eip712.ts:95](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/crypto/eip712.ts#L95)
+[utils/src/crypto/eip712.ts:95](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/crypto/eip712.ts#L95)
 
 ___
 
@@ -139,4 +139,4 @@ ___
 
 #### Defined in
 
-[utils/src/crypto/eip712.ts:58](https://github.com/vinliao/hubble/blob/b933e0c/packages/utils/src/crypto/eip712.ts#L58)
+[utils/src/crypto/eip712.ts:58](https://github.com/vinliao/hubble/blob/f898740/packages/utils/src/crypto/eip712.ts#L58)

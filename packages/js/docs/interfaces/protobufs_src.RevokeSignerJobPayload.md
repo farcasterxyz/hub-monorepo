@@ -19,7 +19,7 @@
 
 #### Defined in
 
-[protobufs/src/generated/job.ts:6](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/job.ts#L6)
+[protobufs/src/generated/job.ts:6](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/job.ts#L6)
 
 ___
 
@@ -29,4 +29,4 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/job.ts:7](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/job.ts#L7)
+[protobufs/src/generated/job.ts:7](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/job.ts#L7)

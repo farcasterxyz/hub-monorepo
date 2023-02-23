@@ -64,6 +64,7 @@ export class Eip712Signer implements Signer {
     return eip712.signMessageHash(hash, this._typedDataSigner);
   }
 
+  // TODO: this doesn't compile to docs
   /**
    * Signs a verification claim for an Ethereum address.
    *
@@ -79,7 +80,7 @@ export class Eip712Signer implements Signer {
    * @returns {HubAsyncResult<Uint8Array>} A HubAsyncResult containing the 256-bit signature as a Uint8Array.
    *
    * @example
-   * ```
+   * ```typescript
    * const claimBody = {
    *   fid: -1,
    *   address: eip712Signer.signerKeyHex,

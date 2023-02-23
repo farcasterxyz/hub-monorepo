@@ -119,6 +119,25 @@ export class Eip712Signer extends BaseEip712Signer {
 }
 
 export class Ed25519Signer extends BaseEd25519Signer {
+  /**
+   * Creates an Ed25519 signer from a private key.
+   *
+   * @function
+   * @name Ed25519Signer.fromPrivateKey
+   *
+   * @param {Uint8Array} privateKey - The 32-byte private key to use for signing.
+   *
+   * @returns {HubResult<Ed25519Signer>} A HubResult containing an Ed25519Signer instance on success, or an error message on failure.
+   *
+   * @example
+   * ```typescript
+   * import { Ed25519Signer } from '@farcaster/js';
+   * import * as ed from '@noble/ed25519';
+   *
+   * const privateKeyBytes = ed.utils.randomPrivateKey();
+   * const signer = Ed25519Signer.fromPrivateKey(privateKeyBytes)._unsafeUnwrap();
+   * ```
+   */
   public static override fromPrivateKey(privateKey: Uint8Array): HubResult<Ed25519Signer> {
     const signerKey = ed25519.getPublicKeySync(privateKey);
     return bytesToHexString(signerKey).map((signerKeyHex) => {
@@ -126,6 +145,33 @@ export class Ed25519Signer extends BaseEd25519Signer {
     });
   }
 
+  /**
+   * Generates a 256-bit hex signature from an EdDSA key pair for a given message hash in hex format.
+   *
+   * @function
+   * @name ed25519Signer.signMessageHashHex
+   *
+   * @param {string} hash - The hash of the message to be signed in hex format.
+   *
+   * @returns {Promise<HubAsyncResult<string>>} A HubAsyncResult containing the signature in hex format.
+   *
+   * @example
+   * ```typescript
+   * import { Ed25519Signer } from '@farcaster/js';
+   * import { randomBytes } from 'crypto';
+   * import * as ed from '@noble/ed25519';
+   *
+   * const privateKeyBytes = ed.utils.randomPrivateKey();
+   * const signer = new Ed25519Signer(privateKeyBytes);
+   *
+   * const messageBytes = randomBytes(32);
+   * const messageHash = messageBytes.toString('hex');
+   *
+   * const signature = await signer.signMessageHashHex(messageHash);
+   *
+   * console.log(signature._unsafeUnwrap()); // 0x9f1c7e13b9d0b8...
+   * ```
+   */
   async signMessageHashHex(hash: string): HubAsyncResult<string> {
     const hashBytes = hexStringToBytes(hash);
     if (hashBytes.isErr()) {

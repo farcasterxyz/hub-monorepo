@@ -21,7 +21,7 @@
 
 #### Defined in
 
-[protobufs/src/generated/sync_trie.ts:6](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/sync_trie.ts#L6)
+[protobufs/src/generated/sync_trie.ts:6](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/sync_trie.ts#L6)
 
 ___
 
@@ -31,7 +31,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/sync_trie.ts:8](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/sync_trie.ts#L8)
+[protobufs/src/generated/sync_trie.ts:8](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/sync_trie.ts#L8)
 
 ___
 
@@ -41,7 +41,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/sync_trie.ts:7](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/sync_trie.ts#L7)
+[protobufs/src/generated/sync_trie.ts:7](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/sync_trie.ts#L7)
 
 ___
 
@@ -51,4 +51,4 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/sync_trie.ts:5](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/sync_trie.ts#L5)
+[protobufs/src/generated/sync_trie.ts:5](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/sync_trie.ts#L5)

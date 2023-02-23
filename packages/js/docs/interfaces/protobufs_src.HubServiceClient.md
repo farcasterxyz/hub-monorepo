@@ -68,7 +68,7 @@
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2160](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2160)
+[protobufs/src/generated/rpc.ts:2160](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2160)
 
 ▸ **getAllAmpMessagesByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -86,7 +86,7 @@
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2164](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2164)
+[protobufs/src/generated/rpc.ts:2164](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2164)
 
 ▸ **getAllAmpMessagesByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -105,7 +105,7 @@
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2169](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2169)
+[protobufs/src/generated/rpc.ts:2169](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2169)
 
 ___
 
@@ -128,7 +128,7 @@ Bulk Methods
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2130](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2130)
+[protobufs/src/generated/rpc.ts:2130](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2130)
 
 ▸ **getAllCastMessagesByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -146,7 +146,7 @@ Bulk Methods
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2134](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2134)
+[protobufs/src/generated/rpc.ts:2134](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2134)
 
 ▸ **getAllCastMessagesByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -165,7 +165,7 @@ Bulk Methods
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2139](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2139)
+[protobufs/src/generated/rpc.ts:2139](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2139)
 
 ___
 
@@ -186,7 +186,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2248](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2248)
+[protobufs/src/generated/rpc.ts:2248](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2248)
 
 ▸ **getAllMessagesBySyncIds**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -204,7 +204,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2252](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2252)
+[protobufs/src/generated/rpc.ts:2252](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2252)
 
 ▸ **getAllMessagesBySyncIds**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -223,7 +223,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2257](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2257)
+[protobufs/src/generated/rpc.ts:2257](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2257)
 
 ___
 
@@ -244,7 +244,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2145](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2145)
+[protobufs/src/generated/rpc.ts:2145](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2145)
 
 ▸ **getAllReactionMessagesByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -262,7 +262,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2149](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2149)
+[protobufs/src/generated/rpc.ts:2149](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2149)
 
 ▸ **getAllReactionMessagesByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -281,7 +281,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2154](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2154)
+[protobufs/src/generated/rpc.ts:2154](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2154)
 
 ___
 
@@ -302,7 +302,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2190](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2190)
+[protobufs/src/generated/rpc.ts:2190](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2190)
 
 ▸ **getAllSignerMessagesByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -320,7 +320,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2194](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2194)
+[protobufs/src/generated/rpc.ts:2194](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2194)
 
 ▸ **getAllSignerMessagesByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -339,7 +339,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2199](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2199)
+[protobufs/src/generated/rpc.ts:2199](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2199)
 
 ___
 
@@ -360,7 +360,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2233](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2233)
+[protobufs/src/generated/rpc.ts:2233](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2233)
 
 ▸ **getAllSyncIdsByPrefix**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -378,7 +378,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2237](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2237)
+[protobufs/src/generated/rpc.ts:2237](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2237)
 
 ▸ **getAllSyncIdsByPrefix**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -397,7 +397,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2242](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2242)
+[protobufs/src/generated/rpc.ts:2242](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2242)
 
 ___
 
@@ -418,7 +418,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2205](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2205)
+[protobufs/src/generated/rpc.ts:2205](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2205)
 
 ▸ **getAllUserDataMessagesByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -436,7 +436,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2209](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2209)
+[protobufs/src/generated/rpc.ts:2209](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2209)
 
 ▸ **getAllUserDataMessagesByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -455,7 +455,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2214](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2214)
+[protobufs/src/generated/rpc.ts:2214](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2214)
 
 ___
 
@@ -476,7 +476,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2175](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2175)
+[protobufs/src/generated/rpc.ts:2175](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2175)
 
 ▸ **getAllVerificationMessagesByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -494,7 +494,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2179](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2179)
+[protobufs/src/generated/rpc.ts:2179](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2179)
 
 ▸ **getAllVerificationMessagesByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -513,7 +513,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2184](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2184)
+[protobufs/src/generated/rpc.ts:2184](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2184)
 
 ___
 
@@ -536,7 +536,7 @@ Amps
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1955](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1955)
+[protobufs/src/generated/rpc.ts:1955](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1955)
 
 ▸ **getAmp**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -554,7 +554,7 @@ Amps
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1956](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1956)
+[protobufs/src/generated/rpc.ts:1956](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1956)
 
 ▸ **getAmp**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -573,7 +573,7 @@ Amps
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1961](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1961)
+[protobufs/src/generated/rpc.ts:1961](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1961)
 
 ___
 
@@ -594,7 +594,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1967](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1967)
+[protobufs/src/generated/rpc.ts:1967](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1967)
 
 ▸ **getAmpsByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -612,7 +612,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1971](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1971)
+[protobufs/src/generated/rpc.ts:1971](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1971)
 
 ▸ **getAmpsByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -631,7 +631,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1976](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1976)
+[protobufs/src/generated/rpc.ts:1976](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1976)
 
 ___
 
@@ -652,7 +652,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1982](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1982)
+[protobufs/src/generated/rpc.ts:1982](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1982)
 
 ▸ **getAmpsByUser**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -670,7 +670,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1986](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1986)
+[protobufs/src/generated/rpc.ts:1986](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1986)
 
 ▸ **getAmpsByUser**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -689,7 +689,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1991](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1991)
+[protobufs/src/generated/rpc.ts:1991](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1991)
 
 ___
 
@@ -712,7 +712,7 @@ Casts
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1851](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1851)
+[protobufs/src/generated/rpc.ts:1851](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1851)
 
 ▸ **getCast**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -730,7 +730,7 @@ Casts
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1852](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1852)
+[protobufs/src/generated/rpc.ts:1852](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1852)
 
 ▸ **getCast**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -749,7 +749,7 @@ Casts
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1857](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1857)
+[protobufs/src/generated/rpc.ts:1857](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1857)
 
 ___
 
@@ -770,7 +770,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1863](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1863)
+[protobufs/src/generated/rpc.ts:1863](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1863)
 
 ▸ **getCastsByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -788,7 +788,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1867](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1867)
+[protobufs/src/generated/rpc.ts:1867](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1867)
 
 ▸ **getCastsByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -807,7 +807,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1872](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1872)
+[protobufs/src/generated/rpc.ts:1872](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1872)
 
 ___
 
@@ -828,7 +828,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1893](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1893)
+[protobufs/src/generated/rpc.ts:1893](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1893)
 
 ▸ **getCastsByMention**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -846,7 +846,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1897](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1897)
+[protobufs/src/generated/rpc.ts:1897](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1897)
 
 ▸ **getCastsByMention**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -865,7 +865,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1902](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1902)
+[protobufs/src/generated/rpc.ts:1902](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1902)
 
 ___
 
@@ -886,7 +886,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1878](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1878)
+[protobufs/src/generated/rpc.ts:1878](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1878)
 
 ▸ **getCastsByParent**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -904,7 +904,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1882](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1882)
+[protobufs/src/generated/rpc.ts:1882](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1882)
 
 ▸ **getCastsByParent**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -923,7 +923,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1887](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1887)
+[protobufs/src/generated/rpc.ts:1887](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1887)
 
 ___
 
@@ -944,7 +944,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2117](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2117)
+[protobufs/src/generated/rpc.ts:2117](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2117)
 
 ▸ **getFids**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -962,7 +962,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2118](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2118)
+[protobufs/src/generated/rpc.ts:2118](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2118)
 
 ▸ **getFids**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -981,7 +981,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2123](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2123)
+[protobufs/src/generated/rpc.ts:2123](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2123)
 
 ___
 
@@ -1002,7 +1002,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2102](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2102)
+[protobufs/src/generated/rpc.ts:2102](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2102)
 
 ▸ **getIdRegistryEvent**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -1020,7 +1020,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2106](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2106)
+[protobufs/src/generated/rpc.ts:2106](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2106)
 
 ▸ **getIdRegistryEvent**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1039,7 +1039,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2111](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2111)
+[protobufs/src/generated/rpc.ts:2111](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2111)
 
 ___
 
@@ -1062,7 +1062,7 @@ Sync Methods
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2221](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2221)
+[protobufs/src/generated/rpc.ts:2221](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2221)
 
 ▸ **getInfo**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -1080,7 +1080,7 @@ Sync Methods
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2222](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2222)
+[protobufs/src/generated/rpc.ts:2222](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2222)
 
 ▸ **getInfo**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1099,7 +1099,7 @@ Sync Methods
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2227](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2227)
+[protobufs/src/generated/rpc.ts:2227](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2227)
 
 ___
 
@@ -1120,7 +1120,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2028](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2028)
+[protobufs/src/generated/rpc.ts:2028](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2028)
 
 ▸ **getNameRegistryEvent**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -1138,7 +1138,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2032](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2032)
+[protobufs/src/generated/rpc.ts:2032](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2032)
 
 ▸ **getNameRegistryEvent**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1157,7 +1157,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2037](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2037)
+[protobufs/src/generated/rpc.ts:2037](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2037)
 
 ___
 
@@ -1180,7 +1180,7 @@ Reactions
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1909](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1909)
+[protobufs/src/generated/rpc.ts:1909](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1909)
 
 ▸ **getReaction**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -1198,7 +1198,7 @@ Reactions
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1913](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1913)
+[protobufs/src/generated/rpc.ts:1913](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1913)
 
 ▸ **getReaction**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1217,7 +1217,7 @@ Reactions
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1918](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1918)
+[protobufs/src/generated/rpc.ts:1918](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1918)
 
 ___
 
@@ -1238,7 +1238,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1939](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1939)
+[protobufs/src/generated/rpc.ts:1939](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1939)
 
 ▸ **getReactionsByCast**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -1256,7 +1256,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1943](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1943)
+[protobufs/src/generated/rpc.ts:1943](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1943)
 
 ▸ **getReactionsByCast**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1275,7 +1275,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1948](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1948)
+[protobufs/src/generated/rpc.ts:1948](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1948)
 
 ___
 
@@ -1296,7 +1296,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1924](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1924)
+[protobufs/src/generated/rpc.ts:1924](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1924)
 
 ▸ **getReactionsByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -1314,7 +1314,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1928](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1928)
+[protobufs/src/generated/rpc.ts:1928](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1928)
 
 ▸ **getReactionsByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1333,7 +1333,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1933](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1933)
+[protobufs/src/generated/rpc.ts:1933](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1933)
 
 ___
 
@@ -1356,7 +1356,7 @@ Signer
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2075](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2075)
+[protobufs/src/generated/rpc.ts:2075](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2075)
 
 ▸ **getSigner**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -1374,7 +1374,7 @@ Signer
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2076](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2076)
+[protobufs/src/generated/rpc.ts:2076](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2076)
 
 ▸ **getSigner**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1393,7 +1393,7 @@ Signer
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2081](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2081)
+[protobufs/src/generated/rpc.ts:2081](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2081)
 
 ___
 
@@ -1414,7 +1414,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2087](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2087)
+[protobufs/src/generated/rpc.ts:2087](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2087)
 
 ▸ **getSignersByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -1432,7 +1432,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2091](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2091)
+[protobufs/src/generated/rpc.ts:2091](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2091)
 
 ▸ **getSignersByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1451,7 +1451,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2096](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2096)
+[protobufs/src/generated/rpc.ts:2096](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2096)
 
 ___
 
@@ -1472,7 +1472,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2263](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2263)
+[protobufs/src/generated/rpc.ts:2263](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2263)
 
 ▸ **getSyncMetadataByPrefix**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -1490,7 +1490,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2267](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2267)
+[protobufs/src/generated/rpc.ts:2267](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2267)
 
 ▸ **getSyncMetadataByPrefix**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1509,7 +1509,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2272](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2272)
+[protobufs/src/generated/rpc.ts:2272](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2272)
 
 ___
 
@@ -1530,7 +1530,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2278](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2278)
+[protobufs/src/generated/rpc.ts:2278](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2278)
 
 ▸ **getSyncSnapshotByPrefix**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -1548,7 +1548,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2282](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2282)
+[protobufs/src/generated/rpc.ts:2282](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2282)
 
 ▸ **getSyncSnapshotByPrefix**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1567,7 +1567,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2287](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2287)
+[protobufs/src/generated/rpc.ts:2287](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2287)
 
 ___
 
@@ -1590,7 +1590,7 @@ User Data
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1998](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1998)
+[protobufs/src/generated/rpc.ts:1998](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1998)
 
 ▸ **getUserData**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -1608,7 +1608,7 @@ User Data
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2002](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2002)
+[protobufs/src/generated/rpc.ts:2002](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2002)
 
 ▸ **getUserData**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1627,7 +1627,7 @@ User Data
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2007](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2007)
+[protobufs/src/generated/rpc.ts:2007](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2007)
 
 ___
 
@@ -1648,7 +1648,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2013](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2013)
+[protobufs/src/generated/rpc.ts:2013](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2013)
 
 ▸ **getUserDataByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -1666,7 +1666,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2017](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2017)
+[protobufs/src/generated/rpc.ts:2017](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2017)
 
 ▸ **getUserDataByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1685,7 +1685,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2022](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2022)
+[protobufs/src/generated/rpc.ts:2022](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2022)
 
 ___
 
@@ -1708,7 +1708,7 @@ Verifications
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2044](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2044)
+[protobufs/src/generated/rpc.ts:2044](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2044)
 
 ▸ **getVerification**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -1726,7 +1726,7 @@ Verifications
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2048](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2048)
+[protobufs/src/generated/rpc.ts:2048](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2048)
 
 ▸ **getVerification**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1745,7 +1745,7 @@ Verifications
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2053](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2053)
+[protobufs/src/generated/rpc.ts:2053](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2053)
 
 ___
 
@@ -1766,7 +1766,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2059](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2059)
+[protobufs/src/generated/rpc.ts:2059](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2059)
 
 ▸ **getVerificationsByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -1784,7 +1784,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2063](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2063)
+[protobufs/src/generated/rpc.ts:2063](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2063)
 
 ▸ **getVerificationsByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1803,7 +1803,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:2068](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L2068)
+[protobufs/src/generated/rpc.ts:2068](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L2068)
 
 ___
 
@@ -1824,7 +1824,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1813](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1813)
+[protobufs/src/generated/rpc.ts:1813](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1813)
 
 ▸ **submitIdRegistryEvent**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -1842,7 +1842,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1817](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1817)
+[protobufs/src/generated/rpc.ts:1817](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1817)
 
 ▸ **submitIdRegistryEvent**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1861,7 +1861,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1822](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1822)
+[protobufs/src/generated/rpc.ts:1822](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1822)
 
 ___
 
@@ -1884,7 +1884,7 @@ Submit Methods
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1801](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1801)
+[protobufs/src/generated/rpc.ts:1801](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1801)
 
 ▸ **submitMessage**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -1902,7 +1902,7 @@ Submit Methods
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1802](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1802)
+[protobufs/src/generated/rpc.ts:1802](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1802)
 
 ▸ **submitMessage**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1921,7 +1921,7 @@ Submit Methods
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1807](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1807)
+[protobufs/src/generated/rpc.ts:1807](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1807)
 
 ___
 
@@ -1942,7 +1942,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1828](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1828)
+[protobufs/src/generated/rpc.ts:1828](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1828)
 
 ▸ **submitNameRegistryEvent**(`request`, `metadata`, `callback`): `SurfaceCall`
 
@@ -1960,7 +1960,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1832](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1832)
+[protobufs/src/generated/rpc.ts:1832](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1832)
 
 ▸ **submitNameRegistryEvent**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1979,7 +1979,7 @@ ___
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1837](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1837)
+[protobufs/src/generated/rpc.ts:1837](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1837)
 
 ___
 
@@ -2002,7 +2002,7 @@ Event Methods
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1844](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1844)
+[protobufs/src/generated/rpc.ts:1844](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1844)
 
 ▸ **subscribe**(`request`, `metadata?`, `options?`): `ClientReadableStream`<[`EventResponse`](../modules/protobufs_src.md#eventresponse)\>
 
@@ -2020,4 +2020,4 @@ Event Methods
 
 #### Defined in
 
-[protobufs/src/generated/rpc.ts:1845](https://github.com/vinliao/hubble/blob/b933e0c/packages/protobufs/src/generated/rpc.ts#L1845)
+[protobufs/src/generated/rpc.ts:1845](https://github.com/vinliao/hubble/blob/f898740/packages/protobufs/src/generated/rpc.ts#L1845)
