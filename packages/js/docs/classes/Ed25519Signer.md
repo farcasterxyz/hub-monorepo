@@ -46,7 +46,7 @@ BaseEd25519Signer.constructor
 
 #### Defined in
 
-utils/dist/index.d.ts:140
+utils/dist/index.d.ts:142
 
 ## Properties
 
@@ -54,13 +54,15 @@ utils/dist/index.d.ts:140
 
 • `Readonly` **scheme**: [`SIGNATURE_SCHEME_ED25519`](../enums/protobufs.SignatureScheme.md#signature_scheme_ed25519) = `SignatureScheme.SIGNATURE_SCHEME_ED25519`
 
+Signature scheme as defined in protobufs
+
 #### Inherited from
 
 BaseEd25519Signer.scheme
 
 #### Defined in
 
-utils/dist/index.d.ts:134
+utils/dist/index.d.ts:135
 
 ___
 
@@ -68,7 +70,7 @@ ___
 
 • `Readonly` **signerKey**: `Uint8Array`
 
-20-byte wallet address
+32-byte EdDSA public key
 
 #### Inherited from
 
@@ -76,7 +78,7 @@ BaseEd25519Signer.signerKey
 
 #### Defined in
 
-utils/dist/index.d.ts:136
+utils/dist/index.d.ts:137
 
 ___
 
@@ -84,13 +86,15 @@ ___
 
 • `Readonly` **signerKeyHex**: `string`
 
+32-byte EdDSA public key in hex format
+
 #### Inherited from
 
 BaseEd25519Signer.signerKeyHex
 
 #### Defined in
 
-utils/dist/index.d.ts:137
+utils/dist/index.d.ts:139
 
 ## Methods
 
@@ -136,7 +140,7 @@ BaseEd25519Signer.signMessageHash
 
 #### Defined in
 
-utils/dist/index.d.ts:166
+utils/dist/index.d.ts:168
 
 ___
 
@@ -178,7 +182,7 @@ A HubAsyncResult containing the signature in hex format.
 
 #### Defined in
 
-[js/src/signers.ts:160](https://github.com/vinliao/hubble/blob/14483bd/packages/js/src/signers.ts#L160)
+[js/src/signers.ts:160](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/signers.ts#L160)
 
 ___
 
@@ -216,4 +220,4 @@ BaseEd25519Signer.fromPrivateKey
 
 #### Defined in
 
-[js/src/signers.ts:128](https://github.com/vinliao/hubble/blob/14483bd/packages/js/src/signers.ts#L128)
+[js/src/signers.ts:128](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/signers.ts#L128)

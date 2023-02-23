@@ -5,10 +5,13 @@ import { HubAsyncResult, HubResult } from '../errors';
 import { Signer } from './signer';
 
 export class Ed25519Signer implements Signer {
+  /** Signature scheme as defined in protobufs */
   public readonly scheme = SignatureScheme.SIGNATURE_SCHEME_ED25519;
 
-  /** 20-byte wallet address */
+  /** 32-byte EdDSA public key */
   public readonly signerKey: Uint8Array;
+
+  /** 32-byte EdDSA public key in hex format */
   public readonly signerKeyHex: string;
 
   private readonly _privateKey: Uint8Array;

@@ -12,10 +12,13 @@ import { Signer } from './signer';
 export type TypedDataSigner = EthersAbstractSigner & EthersTypedDataSigner;
 
 export class Eip712Signer implements Signer {
+  /** Signature scheme as defined in protobufs */
   public readonly scheme = SignatureScheme.SIGNATURE_SCHEME_EIP712;
 
   /** 20-byte wallet address */
   public readonly signerKey: Uint8Array;
+
+  /** 20-byte wallet in hex format */
   public readonly signerKeyHex: string;
 
   private readonly _typedDataSigner: TypedDataSigner;

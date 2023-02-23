@@ -48,7 +48,7 @@ BaseEip712Signer.constructor
 
 #### Defined in
 
-utils/dist/index.d.ts:177
+utils/dist/index.d.ts:181
 
 ## Properties
 
@@ -56,13 +56,15 @@ utils/dist/index.d.ts:177
 
 • `Readonly` **scheme**: [`SIGNATURE_SCHEME_EIP712`](../enums/protobufs.SignatureScheme.md#signature_scheme_eip712) = `SignatureScheme.SIGNATURE_SCHEME_EIP712`
 
+Signature scheme as defined in protobufs
+
 #### Inherited from
 
 BaseEip712Signer.scheme
 
 #### Defined in
 
-utils/dist/index.d.ts:171
+utils/dist/index.d.ts:174
 
 ___
 
@@ -78,7 +80,7 @@ BaseEip712Signer.signerKey
 
 #### Defined in
 
-utils/dist/index.d.ts:173
+utils/dist/index.d.ts:176
 
 ___
 
@@ -86,13 +88,15 @@ ___
 
 • `Readonly` **signerKeyHex**: `string`
 
+20-byte wallet in hex format
+
 #### Inherited from
 
 BaseEip712Signer.signerKeyHex
 
 #### Defined in
 
-utils/dist/index.d.ts:174
+utils/dist/index.d.ts:178
 
 ## Methods
 
@@ -140,7 +144,7 @@ BaseEip712Signer.signMessageHash
 
 #### Defined in
 
-utils/dist/index.d.ts:204
+utils/dist/index.d.ts:208
 
 ___
 
@@ -182,7 +186,7 @@ A HubAsyncResult containing the 256-bit signature as a hex string.
 
 #### Defined in
 
-[js/src/signers.ts:62](https://github.com/vinliao/hubble/blob/14483bd/packages/js/src/signers.ts#L62)
+[js/src/signers.ts:62](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/signers.ts#L62)
 
 ___
 
@@ -225,7 +229,7 @@ BaseEip712Signer.signVerificationEthAddressClaim
 
 #### Defined in
 
-utils/dist/index.d.ts:230
+utils/dist/index.d.ts:234
 
 ___
 
@@ -271,7 +275,7 @@ A HubAsyncResult containing the 256-bit signature as a Uint8Array.
 
 #### Defined in
 
-[js/src/signers.ts:105](https://github.com/vinliao/hubble/blob/14483bd/packages/js/src/signers.ts#L105)
+[js/src/signers.ts:105](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/signers.ts#L105)
 
 ___
 
@@ -311,4 +315,4 @@ BaseEip712Signer.fromSigner
 
 #### Defined in
 
-[js/src/signers.ts:33](https://github.com/vinliao/hubble/blob/14483bd/packages/js/src/signers.ts#L33)
+[js/src/signers.ts:33](https://github.com/vinliao/hubble/blob/704a6fb/packages/js/src/signers.ts#L33)
