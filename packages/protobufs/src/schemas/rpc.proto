@@ -9,6 +9,11 @@ message Empty {}
 
 message SubscribeRequest {
   repeated HubEventType event_types = 1;
+  uint64 from_id = 2;
+}
+
+message EventRequest {
+  uint64 id = 1;
 }
 
 // Response Types for the Sync RPC Methods
@@ -20,25 +25,25 @@ message HubInfoResponse {
 }
 
 message TrieNodeMetadataResponse {
-    bytes prefix = 1;
-    uint64 num_messages = 2;
-    string hash = 3;
-    repeated TrieNodeMetadataResponse children = 4;
+  bytes prefix = 1;
+  uint64 num_messages = 2;
+  string hash = 3;
+  repeated TrieNodeMetadataResponse children = 4;
 }
 
 message TrieNodeSnapshotResponse {
-    bytes prefix = 1;
-    repeated string excluded_hashes = 2;
-    uint64 num_messages = 3;
-    string root_hash = 4;
+  bytes prefix = 1;
+  repeated string excluded_hashes = 2;
+  uint64 num_messages = 3;
+  string root_hash = 4;
 }
 
 message TrieNodePrefix {
-    bytes prefix = 1;
+  bytes prefix = 1;
 }
 
 message SyncIds {
-    repeated bytes sync_ids = 1;
+  repeated bytes sync_ids = 1;
 }
 
 message FidRequest {
@@ -96,6 +101,7 @@ service HubService {
 
   // Event Methods
   rpc Subscribe(SubscribeRequest) returns (stream HubEvent);
+  rpc GetEvent(EventRequest) returns (HubEvent);
 
   // Casts
   rpc GetCast(CastId) returns (Message);

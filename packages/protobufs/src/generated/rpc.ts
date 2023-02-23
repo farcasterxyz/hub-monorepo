@@ -34,6 +34,11 @@ export interface Empty {
 
 export interface SubscribeRequest {
   eventTypes: HubEventType[];
+  fromId: number;
+}
+
+export interface EventRequest {
+  id: number;
 }
 
 /** Response Types for the Sync RPC Methods */
@@ -157,7 +162,7 @@ export const Empty = {
 };
 
 function createBaseSubscribeRequest(): SubscribeRequest {
-  return { eventTypes: [] };
+  return { eventTypes: [], fromId: 0 };
 }
 
 export const SubscribeRequest = {
@@ -167,6 +172,9 @@ export const SubscribeRequest = {
       writer.int32(v);
     }
     writer.ldelim();
+    if (message.fromId !== 0) {
+      writer.uint32(16).uint64(message.fromId);
+    }
     return writer;
   },
 
@@ -187,6 +195,9 @@ export const SubscribeRequest = {
             message.eventTypes.push(reader.int32() as any);
           }
           break;
+        case 2:
+          message.fromId = longToNumber(reader.uint64() as Long);
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -198,6 +209,7 @@ export const SubscribeRequest = {
   fromJSON(object: any): SubscribeRequest {
     return {
       eventTypes: Array.isArray(object?.eventTypes) ? object.eventTypes.map((e: any) => hubEventTypeFromJSON(e)) : [],
+      fromId: isSet(object.fromId) ? Number(object.fromId) : 0,
     };
   },
 
@@ -208,6 +220,7 @@ export const SubscribeRequest = {
     } else {
       obj.eventTypes = [];
     }
+    message.fromId !== undefined && (obj.fromId = Math.round(message.fromId));
     return obj;
   },
 
@@ -218,6 +231,58 @@ export const SubscribeRequest = {
   fromPartial<I extends Exact<DeepPartial<SubscribeRequest>, I>>(object: I): SubscribeRequest {
     const message = createBaseSubscribeRequest();
     message.eventTypes = object.eventTypes?.map((e) => e) || [];
+    message.fromId = object.fromId ?? 0;
+    return message;
+  },
+};
+
+function createBaseEventRequest(): EventRequest {
+  return { id: 0 };
+}
+
+export const EventRequest = {
+  encode(message: EventRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.id !== 0) {
+      writer.uint32(8).uint64(message.id);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): EventRequest {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseEventRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.id = longToNumber(reader.uint64() as Long);
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): EventRequest {
+    return { id: isSet(object.id) ? Number(object.id) : 0 };
+  },
+
+  toJSON(message: EventRequest): unknown {
+    const obj: any = {};
+    message.id !== undefined && (obj.id = Math.round(message.id));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<EventRequest>, I>>(base?: I): EventRequest {
+    return EventRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<EventRequest>, I>>(object: I): EventRequest {
+    const message = createBaseEventRequest();
+    message.id = object.id ?? 0;
     return message;
   },
 };
@@ -1230,6 +1295,15 @@ export const HubServiceService = {
     responseSerialize: (value: HubEvent) => Buffer.from(HubEvent.encode(value).finish()),
     responseDeserialize: (value: Buffer) => HubEvent.decode(value),
   },
+  getEvent: {
+    path: "/HubService/GetEvent",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: EventRequest) => Buffer.from(EventRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => EventRequest.decode(value),
+    responseSerialize: (value: HubEvent) => Buffer.from(HubEvent.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => HubEvent.decode(value),
+  },
   /** Casts */
   getCast: {
     path: "/HubService/GetCast",
@@ -1482,6 +1556,7 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   submitNameRegistryEvent: handleUnaryCall<NameRegistryEvent, NameRegistryEvent>;
   /** Event Methods */
   subscribe: handleServerStreamingCall<SubscribeRequest, HubEvent>;
+  getEvent: handleUnaryCall<EventRequest, HubEvent>;
   /** Casts */
   getCast: handleUnaryCall<CastId, Message>;
   getCastsByFid: handleUnaryCall<FidRequest, MessagesResponse>;
@@ -1568,6 +1643,18 @@ export interface HubServiceClient extends Client {
     metadata?: Metadata,
     options?: Partial<CallOptions>,
   ): ClientReadableStream<HubEvent>;
+  getEvent(request: EventRequest, callback: (error: ServiceError | null, response: HubEvent) => void): ClientUnaryCall;
+  getEvent(
+    request: EventRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: HubEvent) => void,
+  ): ClientUnaryCall;
+  getEvent(
+    request: EventRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: HubEvent) => void,
+  ): ClientUnaryCall;
   /** Casts */
   getCast(request: CastId, callback: (error: ServiceError | null, response: Message) => void): ClientUnaryCall;
   getCast(
