@@ -1,3 +1,4 @@
+import { ResultAsync } from 'neverthrow';
 import ReadWriteLock from 'rwlock';
 import { SyncId } from '~/network/sync/syncId';
 import { TrieNode, TrieSnapshot } from '~/network/sync/trieNode';
@@ -77,9 +78,12 @@ class MerkleTrie {
 
   public async rebuild(engine: Engine): Promise<void> {
     // First, delete the root node
-    const txn = this._db.transaction();
-    txn.del(TrieNode.makePrimaryKey(new Uint8Array()));
-    await this._db.commit(txn);
+    let txn = this._db.transaction();
+    txn = txn.del(TrieNode.makePrimaryKey(new Uint8Array()));
+    const dbStatus = await ResultAsync.fromPromise(this._db.commit(txn), (e) => e as Error);
+    if (dbStatus.isErr()) {
+      log.warn('Error Deleting trie root node. Ignoring', dbStatus.error);
+    }
 
     // Brand new empty root node
     this._root = new TrieNode();
@@ -98,8 +102,12 @@ class MerkleTrie {
           const { status, txn } = await this._root.insert(id.syncId(), this._db, this._db.transaction());
 
           // Write the transaction to the DB
-          await this._db.commit(txn);
-          this._unloadFromMemory();
+          const dbStatus = await ResultAsync.fromPromise(this._db.commit(txn), (e) => e as Error);
+          if (dbStatus.isErr()) {
+            log.error('Insert Error', dbStatus.error);
+          } else {
+            this._unloadFromMemory();
+          }
 
           release();
           resolve(status);
@@ -122,8 +130,13 @@ class MerkleTrie {
           const { status, txn } = await this._root.delete(id.syncId(), this._db, this._db.transaction());
 
           // Write the transaction to the DB
-          await this._db.commit(txn);
-          this._unloadFromMemory();
+          // Write the transaction to the DB
+          const dbStatus = await ResultAsync.fromPromise(this._db.commit(txn), (e) => e as Error);
+          if (dbStatus.isErr()) {
+            log.error('Delete Error', dbStatus.error);
+          } else {
+            this._unloadFromMemory();
+          }
 
           release();
           resolve(status);

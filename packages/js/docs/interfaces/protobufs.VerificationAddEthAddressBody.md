@@ -4,6 +4,8 @@
 
 [protobufs](../modules/protobufs.md).VerificationAddEthAddressBody
 
+Adds a Verification of ownership of an Ethereum Address
+
 ## Table of contents
 
 ### Properties
@@ -18,14 +20,20 @@
 
 • **address**: `Uint8Array`
 
+Ethereum address being verified
+
 ___
 
 ### blockHash
 
 • **blockHash**: `Uint8Array`
 
+Hash of the latest Ethereum block when the signature was produced
+
 ___
 
 ### ethSignature
 
 • **ethSignature**: `Uint8Array`
+
+Signature produced by the user's Ethereum address

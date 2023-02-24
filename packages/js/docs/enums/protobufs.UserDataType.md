@@ -4,6 +4,8 @@
 
 [protobufs](../modules/protobufs.md).UserDataType
 
+Type of UserData
+
 ## Table of contents
 
 ### Enumeration Members
@@ -12,7 +14,6 @@
 - [USER\_DATA\_TYPE\_BIO](protobufs.UserDataType.md#user_data_type_bio)
 - [USER\_DATA\_TYPE\_DISPLAY](protobufs.UserDataType.md#user_data_type_display)
 - [USER\_DATA\_TYPE\_FNAME](protobufs.UserDataType.md#user_data_type_fname)
-- [USER\_DATA\_TYPE\_LOCATION](protobufs.UserDataType.md#user_data_type_location)
 - [USER\_DATA\_TYPE\_NONE](protobufs.UserDataType.md#user_data_type_none)
 - [USER\_DATA\_TYPE\_PFP](protobufs.UserDataType.md#user_data_type_pfp)
 - [USER\_DATA\_TYPE\_URL](protobufs.UserDataType.md#user_data_type_url)
@@ -29,11 +30,15 @@ ___
 
 • **USER\_DATA\_TYPE\_BIO** = ``3``
 
+USER_DATA_TYPE_BIO - Bio for the user
+
 ___
 
 ### USER\_DATA\_TYPE\_DISPLAY
 
 • **USER\_DATA\_TYPE\_DISPLAY** = ``2``
+
+USER_DATA_TYPE_DISPLAY - Display Name for the user
 
 ___
 
@@ -41,11 +46,7 @@ ___
 
 • **USER\_DATA\_TYPE\_FNAME** = ``6``
 
-___
-
-### USER\_DATA\_TYPE\_LOCATION
-
-• **USER\_DATA\_TYPE\_LOCATION** = ``4``
+USER_DATA_TYPE_FNAME - Preferred Farcaster Name for the user
 
 ___
 
@@ -59,8 +60,12 @@ ___
 
 • **USER\_DATA\_TYPE\_PFP** = ``1``
 
+USER_DATA_TYPE_PFP - Profile Picture for the user
+
 ___
 
 ### USER\_DATA\_TYPE\_URL
 
 • **USER\_DATA\_TYPE\_URL** = ``5``
+
+USER_DATA_TYPE_URL - URL of the user

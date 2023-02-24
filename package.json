@@ -16,7 +16,6 @@
     "test:ci": "./node_modules/.bin/turbo run test:ci -- --passWithNoTests",
     "lint": "./node_modules/.bin/turbo run lint --parallel",
     "prepare": "husky install",
-    "publish-packages": "./node_modules/.bin/turbo run build lint && changeset version && changeset publish",
     "docs": "./node_modules/.bin/turbo run build && typedoc"
   },
   "engines": {

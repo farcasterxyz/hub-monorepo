@@ -14,15 +14,11 @@
 
 ### Methods
 
-- [getAllAmpMessagesByFid](Client.md#getallampmessagesbyfid)
 - [getAllCastMessagesByFid](Client.md#getallcastmessagesbyfid)
 - [getAllReactionMessagesByFid](Client.md#getallreactionmessagesbyfid)
 - [getAllSignerMessagesByFid](Client.md#getallsignermessagesbyfid)
 - [getAllUserDataMessagesByFid](Client.md#getalluserdatamessagesbyfid)
 - [getAllVerificationMessagesByFid](Client.md#getallverificationmessagesbyfid)
-- [getAmp](Client.md#getamp)
-- [getAmpsByFid](Client.md#getampsbyfid)
-- [getAmpsByUser](Client.md#getampsbyuser)
 - [getCast](Client.md#getcast)
 - [getCastsByFid](Client.md#getcastsbyfid)
 - [getCastsByMention](Client.md#getcastsbymention)
@@ -60,22 +56,6 @@
 • **\_grpcClient**: `HubRpcClient`
 
 ## Methods
-
-### getAllAmpMessagesByFid
-
-▸ **getAllAmpMessagesByFid**(`fid`): `HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`AmpAddData`](../modules/types.md#ampadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`AmpRemoveData`](../modules/types.md#ampremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-
-#### Returns
-
-`HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`AmpAddData`](../modules/types.md#ampadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`AmpRemoveData`](../modules/types.md#ampremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
-
-___
 
 ### getAllCastMessagesByFid
 
@@ -154,55 +134,6 @@ ___
 #### Returns
 
 `HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationAddEthAddressData`](../modules/types.md#verificationaddethaddressdata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationRemoveData`](../modules/types.md#verificationremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
-
-___
-
-### getAmp
-
-▸ **getAmp**(`fid`, `targetFid`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`AmpAddData`](../modules/types.md#ampadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-| `targetFid` | `number` |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`AmpAddData`](../modules/types.md#ampadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-___
-
-### getAmpsByFid
-
-▸ **getAmpsByFid**(`fid`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`AmpAddData`](../modules/types.md#ampadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`AmpAddData`](../modules/types.md#ampadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-___
-
-### getAmpsByUser
-
-▸ **getAmpsByUser**(`targetFid`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`AmpAddData`](../modules/types.md#ampadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `targetFid` | `number` |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`AmpAddData`](../modules/types.md#ampadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
 
 ___
 
@@ -472,9 +403,9 @@ ___
 
 ### subscribe
 
-▸ **subscribe**(`filters?`): `Promise`<`HubResult`<`ClientReadableStream`<[`EventResponse`](../modules/protobufs.md#eventresponse)\>\>\>
+▸ **subscribe**(`filters?`): `Promise`<`HubResult`<`ClientReadableStream`<[`HubEvent`](../modules/protobufs.md#hubevent)\>\>\>
 
-Data from this stream can be parsed using `deserializeEventResponse`.
+Data from this stream can be parsed using `deserializeHubEvent`.
 
 #### Parameters
 
@@ -484,4 +415,4 @@ Data from this stream can be parsed using `deserializeEventResponse`.
 
 #### Returns
 
-`Promise`<`HubResult`<`ClientReadableStream`<[`EventResponse`](../modules/protobufs.md#eventresponse)\>\>\>
+`Promise`<`HubResult`<`ClientReadableStream`<[`HubEvent`](../modules/protobufs.md#hubevent)\>\>\>

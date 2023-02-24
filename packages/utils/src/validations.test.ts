@@ -184,6 +184,20 @@ describe('validateCastAddBody', () => {
     expect(validations.validateCastAddBody(body)).toEqual(ok(body));
   });
 
+  test('when text is empty', () => {
+    const body = Factories.CastAddBody.build({ text: '', mentions: [], mentionsPositions: [] });
+    expect(validations.validateCastAddBody(body)).toEqual(ok(body));
+  });
+
+  test('with repeated mentionsPositions', () => {
+    const body = Factories.CastAddBody.build({
+      text: 'Hello ',
+      mentions: [Factories.Fid.build(), Factories.Fid.build()],
+      mentionsPositions: [6, 6],
+    });
+    expect(validations.validateCastAddBody(body)).toEqual(ok(body));
+  });
+
   describe('fails', () => {
     let body: protobufs.CastAddBody;
     let hubErrorMessage: string;
@@ -194,8 +208,13 @@ describe('validateCastAddBody', () => {
       );
     });
 
-    test('when text is missing', () => {
-      body = Factories.CastAddBody.build({ text: '' });
+    test('when text is undefined', () => {
+      body = Factories.CastAddBody.build({ text: undefined });
+      hubErrorMessage = 'text is missing';
+    });
+
+    test('when text is null', () => {
+      body = Factories.CastAddBody.build({ text: null as unknown as undefined });
       hubErrorMessage = 'text is missing';
     });
 
@@ -252,14 +271,6 @@ describe('validateCastAddBody', () => {
         mentionsPositions: [0],
       });
       hubErrorMessage = 'mentions and mentionsPositions must match';
-    });
-
-    test('with repeated mentionsPositions', () => {
-      body = Factories.CastAddBody.build({
-        mentions: [Factories.Fid.build(), Factories.Fid.build()],
-        mentionsPositions: [10, 10],
-      });
-      hubErrorMessage = 'mentionsPositions must be unique';
     });
 
     test('with out of range mentionsPositions', () => {
@@ -477,36 +488,6 @@ describe('validateSignerBody', () => {
   });
 });
 
-describe('validateAmpBody', () => {
-  test('succeeds', () => {
-    const body = Factories.AmpBody.build();
-    expect(validations.validateAmpBody(body)).toEqual(ok(body));
-  });
-
-  describe('fails', () => {
-    let body: protobufs.AmpBody;
-    let hubErrorMessage: string;
-
-    afterEach(() => {
-      expect(validations.validateAmpBody(body)).toEqual(
-        err(new HubError('bad_request.validation_failure', hubErrorMessage))
-      );
-    });
-
-    test('when target fid is missing', () => {
-      body = Factories.AmpBody.build({
-        targetFid: undefined,
-      });
-      hubErrorMessage = 'fid is missing';
-    });
-
-    test('with invalid user fid', () => {
-      body = Factories.AmpBody.build({ targetFid: -1 });
-      hubErrorMessage = 'fid must be positive';
-    });
-  });
-});
-
 describe('validateUserDataAddBody', () => {
   test('succeeds', async () => {
     const body = Factories.UserDataBody.build();
@@ -545,14 +526,6 @@ describe('validateUserDataAddBody', () => {
         value: faker.random.alphaNumeric(257),
       });
       hubErrorMessage = 'bio value > 256';
-    });
-
-    test('when location > 32', () => {
-      body = Factories.UserDataBody.build({
-        type: protobufs.UserDataType.USER_DATA_TYPE_LOCATION,
-        value: faker.random.alphaNumeric(33),
-      });
-      hubErrorMessage = 'location value > 32';
     });
 
     test('when url > 256', () => {

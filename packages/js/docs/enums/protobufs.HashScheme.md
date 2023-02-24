@@ -4,6 +4,8 @@
 
 [protobufs](../modules/protobufs.md).HashScheme
 
+Type of hashing scheme used to produce a digest of MessageData
+
 ## Table of contents
 
 ### Enumeration Members
@@ -17,6 +19,8 @@
 ### HASH\_SCHEME\_BLAKE3
 
 • **HASH\_SCHEME\_BLAKE3** = ``1``
+
+HASH_SCHEME_BLAKE3 - Default scheme for hashing MessageData
 
 ___
 

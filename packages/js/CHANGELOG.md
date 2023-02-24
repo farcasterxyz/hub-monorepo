@@ -1,5 +1,28 @@
 # @farcaster/js
 
+## 0.2.6
+
+### Patch Changes
+
+- Updated dependencies [96468718]
+  - @farcaster/utils@0.2.6
+
+## 0.2.5
+
+### Patch Changes
+
+- add prepublishOnly scripts to packages
+- Updated dependencies
+  - @farcaster/protobufs@0.1.5
+  - @farcaster/utils@0.2.5
+
+## 0.2.4
+
+### Patch Changes
+
+- Updated dependencies [3096e00]
+  - @farcaster/utils@0.2.4
+
 ## 0.2.3
 
 ### Patch Changes

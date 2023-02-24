@@ -22,10 +22,6 @@
 
 ### Functions
 
-- [makeAmpAdd](modules.md#makeampadd)
-- [makeAmpAddData](modules.md#makeampadddata)
-- [makeAmpRemove](modules.md#makeampremove)
-- [makeAmpRemoveData](modules.md#makeampremovedata)
 - [makeCastAdd](modules.md#makecastadd)
 - [makeCastAddData](modules.md#makecastadddata)
 - [makeCastRemove](modules.md#makecastremove)
@@ -57,81 +53,10 @@
 
 | Name | Type |
 | :------ | :------ |
-| `eventTypes?` | [`EventType`](enums/protobufs.EventType.md)[] |
+| `eventTypes?` | [`HubEventType`](enums/protobufs.HubEventType.md)[] |
+| `fromId?` | `number` |
 
 ## Functions
-
-### makeAmpAdd
-
-▸ **makeAmpAdd**(`bodyJson`, `dataOptions`, `signer`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`AmpBody`](modules/types.md#ampbody), [`MESSAGE_TYPE_AMP_ADD`](enums/protobufs.MessageType.md#message_type_amp_add)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-Amp Methods
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`AmpBody`](modules/types.md#ampbody) |
-| `dataOptions` | `MessageDataOptions` |
-| `signer` | `Ed25519Signer` |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`AmpBody`](modules/types.md#ampbody), [`MESSAGE_TYPE_AMP_ADD`](enums/protobufs.MessageType.md#message_type_amp_add)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-___
-
-### makeAmpAddData
-
-▸ **makeAmpAddData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`AmpBody`](modules/types.md#ampbody), [`MESSAGE_TYPE_AMP_ADD`](enums/protobufs.MessageType.md#message_type_amp_add)\>\>
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`AmpBody`](modules/types.md#ampbody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`AmpBody`](modules/types.md#ampbody), [`MESSAGE_TYPE_AMP_ADD`](enums/protobufs.MessageType.md#message_type_amp_add)\>\>
-
-___
-
-### makeAmpRemove
-
-▸ **makeAmpRemove**(`bodyJson`, `dataOptions`, `signer`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`AmpBody`](modules/types.md#ampbody), [`MESSAGE_TYPE_AMP_REMOVE`](enums/protobufs.MessageType.md#message_type_amp_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`AmpBody`](modules/types.md#ampbody) |
-| `dataOptions` | `MessageDataOptions` |
-| `signer` | `Ed25519Signer` |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`AmpBody`](modules/types.md#ampbody), [`MESSAGE_TYPE_AMP_REMOVE`](enums/protobufs.MessageType.md#message_type_amp_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-___
-
-### makeAmpRemoveData
-
-▸ **makeAmpRemoveData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`AmpBody`](modules/types.md#ampbody), [`MESSAGE_TYPE_AMP_REMOVE`](enums/protobufs.MessageType.md#message_type_amp_remove)\>\>
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`AmpBody`](modules/types.md#ampbody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`AmpBody`](modules/types.md#ampbody), [`MESSAGE_TYPE_AMP_REMOVE`](enums/protobufs.MessageType.md#message_type_amp_remove)\>\>
-
-___
 
 ### makeCastAdd
 

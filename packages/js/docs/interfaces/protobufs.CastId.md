@@ -4,6 +4,8 @@
 
 [protobufs](../modules/protobufs.md).CastId
 
+Identifier used to look up a Cast
+
 ## Table of contents
 
 ### Properties
@@ -17,8 +19,12 @@
 
 • **fid**: `number`
 
+Fid of the user who created the cast
+
 ___
 
 ### hash
 
 • **hash**: `Uint8Array`
+
+Hash of the cast

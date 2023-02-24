@@ -4,6 +4,8 @@
 
 [protobufs](../modules/protobufs.md).ReactionType
 
+Type of Reaction
+
 ## Table of contents
 
 ### Enumeration Members
@@ -19,6 +21,8 @@
 
 • **REACTION\_TYPE\_LIKE** = ``1``
 
+REACTION_TYPE_LIKE - Like the target cast
+
 ___
 
 ### REACTION\_TYPE\_NONE
@@ -30,6 +34,8 @@ ___
 ### REACTION\_TYPE\_RECAST
 
 • **REACTION\_TYPE\_RECAST** = ``2``
+
+REACTION_TYPE_RECAST - Share target cast to the user's audience
 
 ___
 

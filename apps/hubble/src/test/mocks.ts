@@ -14,15 +14,15 @@ export class MockHub implements HubInterface {
     this.engine = engine ?? new Engine(db, protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET);
   }
 
-  async submitMessage(message: protobufs.Message): HubAsyncResult<void> {
+  async submitMessage(message: protobufs.Message): HubAsyncResult<number> {
     return this.engine.mergeMessage(message);
   }
 
-  async submitIdRegistryEvent(event: protobufs.IdRegistryEvent): HubAsyncResult<void> {
+  async submitIdRegistryEvent(event: protobufs.IdRegistryEvent): HubAsyncResult<number> {
     return this.engine.mergeIdRegistryEvent(event);
   }
 
-  async submitNameRegistryEvent(event: protobufs.NameRegistryEvent): HubAsyncResult<void> {
+  async submitNameRegistryEvent(event: protobufs.NameRegistryEvent): HubAsyncResult<number> {
     return this.engine.mergeNameRegistryEvent(event);
   }
 

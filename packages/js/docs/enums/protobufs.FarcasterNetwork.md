@@ -4,6 +4,8 @@
 
 [protobufs](../modules/protobufs.md).FarcasterNetwork
 
+Farcaster network the mne is intended for
+
 ## Table of contents
 
 ### Enumeration Members
@@ -20,11 +22,15 @@
 
 • **FARCASTER\_NETWORK\_DEVNET** = ``3``
 
+FARCASTER_NETWORK_DEVNET - Private test network
+
 ___
 
 ### FARCASTER\_NETWORK\_MAINNET
 
 • **FARCASTER\_NETWORK\_MAINNET** = ``1``
+
+FARCASTER_NETWORK_MAINNET - Public primary network
 
 ___
 
@@ -37,6 +43,8 @@ ___
 ### FARCASTER\_NETWORK\_TESTNET
 
 • **FARCASTER\_NETWORK\_TESTNET** = ``2``
+
+FARCASTER_NETWORK_TESTNET - Public test network
 
 ___
 

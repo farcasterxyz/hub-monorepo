@@ -2,6 +2,7 @@ import { err, ok } from 'neverthrow';
 import { HubError, HubResult } from './errors';
 
 export const FARCASTER_EPOCH = 1609459200000; // January 1, 2021 UTC
+
 export const getFarcasterTime = (): HubResult<number> => {
   return toFarcasterTime(Date.now());
 };

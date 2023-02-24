@@ -6,10 +6,10 @@
 
 ### Enumerations
 
-- [EventType](../enums/protobufs.EventType.md)
 - [FarcasterNetwork](../enums/protobufs.FarcasterNetwork.md)
 - [GossipVersion](../enums/protobufs.GossipVersion.md)
 - [HashScheme](../enums/protobufs.HashScheme.md)
+- [HubEventType](../enums/protobufs.HubEventType.md)
 - [IdRegistryEventType](../enums/protobufs.IdRegistryEventType.md)
 - [MessageType](../enums/protobufs.MessageType.md)
 - [NameRegistryEventType](../enums/protobufs.NameRegistryEventType.md)
@@ -19,33 +19,39 @@
 
 ### Interfaces
 
-- [AmpBody](../interfaces/protobufs.AmpBody.md)
-- [AmpRequest](../interfaces/protobufs.AmpRequest.md)
+- [AdminServiceClient](../interfaces/protobufs.AdminServiceClient.md)
+- [AdminServiceServer](../interfaces/protobufs.AdminServiceServer.md)
 - [CastAddBody](../interfaces/protobufs.CastAddBody.md)
 - [CastId](../interfaces/protobufs.CastId.md)
 - [CastRemoveBody](../interfaces/protobufs.CastRemoveBody.md)
 - [ContactInfoContent](../interfaces/protobufs.ContactInfoContent.md)
 - [DbTrieNode](../interfaces/protobufs.DbTrieNode.md)
 - [Empty](../interfaces/protobufs.Empty.md)
-- [EventResponse](../interfaces/protobufs.EventResponse.md)
+- [EventRequest](../interfaces/protobufs.EventRequest.md)
 - [FidRequest](../interfaces/protobufs.FidRequest.md)
 - [FidsResponse](../interfaces/protobufs.FidsResponse.md)
 - [GossipAddressInfo](../interfaces/protobufs.GossipAddressInfo.md)
 - [GossipMessage](../interfaces/protobufs.GossipMessage.md)
+- [HubEvent](../interfaces/protobufs.HubEvent.md)
 - [HubInfoResponse](../interfaces/protobufs.HubInfoResponse.md)
 - [HubServiceClient](../interfaces/protobufs.HubServiceClient.md)
 - [HubServiceServer](../interfaces/protobufs.HubServiceServer.md)
 - [HubState](../interfaces/protobufs.HubState.md)
 - [IdRegistryEvent](../interfaces/protobufs.IdRegistryEvent.md)
+- [MergeIdRegistryEventBody](../interfaces/protobufs.MergeIdRegistryEventBody.md)
+- [MergeMessageBody](../interfaces/protobufs.MergeMessageBody.md)
+- [MergeNameRegistryEventBody](../interfaces/protobufs.MergeNameRegistryEventBody.md)
 - [Message](../interfaces/protobufs.Message.md)
 - [MessageData](../interfaces/protobufs.MessageData.md)
 - [MessagesResponse](../interfaces/protobufs.MessagesResponse.md)
 - [NameRegistryEvent](../interfaces/protobufs.NameRegistryEvent.md)
 - [NameRegistryEventRequest](../interfaces/protobufs.NameRegistryEventRequest.md)
+- [PruneMessageBody](../interfaces/protobufs.PruneMessageBody.md)
 - [ReactionBody](../interfaces/protobufs.ReactionBody.md)
 - [ReactionRequest](../interfaces/protobufs.ReactionRequest.md)
 - [ReactionsByCastRequest](../interfaces/protobufs.ReactionsByCastRequest.md)
 - [ReactionsByFidRequest](../interfaces/protobufs.ReactionsByFidRequest.md)
+- [RevokeMessageBody](../interfaces/protobufs.RevokeMessageBody.md)
 - [RevokeSignerJobPayload](../interfaces/protobufs.RevokeSignerJobPayload.md)
 - [SignerBody](../interfaces/protobufs.SignerBody.md)
 - [SignerRequest](../interfaces/protobufs.SignerRequest.md)
@@ -63,19 +69,21 @@
 
 ### Type Aliases
 
-- [AmpAddData](protobufs.md#ampadddata)
-- [AmpAddMessage](protobufs.md#ampaddmessage)
-- [AmpRemoveData](protobufs.md#ampremovedata)
-- [AmpRemoveMessage](protobufs.md#ampremovemessage)
+- [AdminServiceService](protobufs.md#adminserviceservice)
 - [CastAddData](protobufs.md#castadddata)
 - [CastAddMessage](protobufs.md#castaddmessage)
 - [CastRemoveData](protobufs.md#castremovedata)
 - [CastRemoveMessage](protobufs.md#castremovemessage)
 - [HubServiceService](protobufs.md#hubserviceservice)
+- [MergeIdRegistryEventHubEvent](protobufs.md#mergeidregistryeventhubevent)
+- [MergeMessageHubEvent](protobufs.md#mergemessagehubevent)
+- [MergeNameRegistryEventHubEvent](protobufs.md#mergenameregistryeventhubevent)
+- [PruneMessageHubEvent](protobufs.md#prunemessagehubevent)
 - [ReactionAddData](protobufs.md#reactionadddata)
 - [ReactionAddMessage](protobufs.md#reactionaddmessage)
 - [ReactionRemoveData](protobufs.md#reactionremovedata)
 - [ReactionRemoveMessage](protobufs.md#reactionremovemessage)
+- [RevokeMessageHubEvent](protobufs.md#revokemessagehubevent)
 - [SignerAddData](protobufs.md#signeradddata)
 - [SignerAddMessage](protobufs.md#signeraddmessage)
 - [SignerRemoveData](protobufs.md#signerremovedata)
@@ -89,33 +97,39 @@
 
 ### Variables
 
-- [AmpBody](protobufs.md#ampbody)
-- [AmpRequest](protobufs.md#amprequest)
+- [AdminServiceClient](protobufs.md#adminserviceclient)
+- [AdminServiceService](protobufs.md#adminserviceservice-1)
 - [CastAddBody](protobufs.md#castaddbody)
 - [CastId](protobufs.md#castid)
 - [CastRemoveBody](protobufs.md#castremovebody)
 - [ContactInfoContent](protobufs.md#contactinfocontent)
 - [DbTrieNode](protobufs.md#dbtrienode)
 - [Empty](protobufs.md#empty)
-- [EventResponse](protobufs.md#eventresponse)
+- [EventRequest](protobufs.md#eventrequest)
 - [FidRequest](protobufs.md#fidrequest)
 - [FidsResponse](protobufs.md#fidsresponse)
 - [GossipAddressInfo](protobufs.md#gossipaddressinfo)
 - [GossipMessage](protobufs.md#gossipmessage)
+- [HubEvent](protobufs.md#hubevent)
 - [HubInfoResponse](protobufs.md#hubinforesponse)
 - [HubServiceClient](protobufs.md#hubserviceclient)
 - [HubServiceService](protobufs.md#hubserviceservice-1)
 - [HubState](protobufs.md#hubstate)
 - [IdRegistryEvent](protobufs.md#idregistryevent)
+- [MergeIdRegistryEventBody](protobufs.md#mergeidregistryeventbody)
+- [MergeMessageBody](protobufs.md#mergemessagebody)
+- [MergeNameRegistryEventBody](protobufs.md#mergenameregistryeventbody)
 - [Message](protobufs.md#message)
 - [MessageData](protobufs.md#messagedata)
 - [MessagesResponse](protobufs.md#messagesresponse)
 - [NameRegistryEvent](protobufs.md#nameregistryevent)
 - [NameRegistryEventRequest](protobufs.md#nameregistryeventrequest)
+- [PruneMessageBody](protobufs.md#prunemessagebody)
 - [ReactionBody](protobufs.md#reactionbody)
 - [ReactionRequest](protobufs.md#reactionrequest)
 - [ReactionsByCastRequest](protobufs.md#reactionsbycastrequest)
 - [ReactionsByFidRequest](protobufs.md#reactionsbyfidrequest)
+- [RevokeMessageBody](protobufs.md#revokemessagebody)
 - [RevokeSignerJobPayload](protobufs.md#revokesignerjobpayload)
 - [SignerBody](protobufs.md#signerbody)
 - [SignerRequest](protobufs.md#signerrequest)
@@ -133,30 +147,32 @@
 
 ### Functions
 
-- [eventTypeFromJSON](protobufs.md#eventtypefromjson)
-- [eventTypeToJSON](protobufs.md#eventtypetojson)
 - [farcasterNetworkFromJSON](protobufs.md#farcasternetworkfromjson)
 - [farcasterNetworkToJSON](protobufs.md#farcasternetworktojson)
+- [getAdminClient](protobufs.md#getadminclient)
 - [getClient](protobufs.md#getclient)
 - [getServer](protobufs.md#getserver)
 - [gossipVersionFromJSON](protobufs.md#gossipversionfromjson)
 - [gossipVersionToJSON](protobufs.md#gossipversiontojson)
 - [hashSchemeFromJSON](protobufs.md#hashschemefromjson)
 - [hashSchemeToJSON](protobufs.md#hashschemetojson)
+- [hubEventTypeFromJSON](protobufs.md#hubeventtypefromjson)
+- [hubEventTypeToJSON](protobufs.md#hubeventtypetojson)
 - [idRegistryEventTypeFromJSON](protobufs.md#idregistryeventtypefromjson)
 - [idRegistryEventTypeToJSON](protobufs.md#idregistryeventtypetojson)
-- [isAmpAddData](protobufs.md#isampadddata)
-- [isAmpAddMessage](protobufs.md#isampaddmessage)
-- [isAmpRemoveData](protobufs.md#isampremovedata)
-- [isAmpRemoveMessage](protobufs.md#isampremovemessage)
 - [isCastAddData](protobufs.md#iscastadddata)
 - [isCastAddMessage](protobufs.md#iscastaddmessage)
 - [isCastRemoveData](protobufs.md#iscastremovedata)
 - [isCastRemoveMessage](protobufs.md#iscastremovemessage)
+- [isMergeIdRegistryEventHubEvent](protobufs.md#ismergeidregistryeventhubevent)
+- [isMergeMessageHubEvent](protobufs.md#ismergemessagehubevent)
+- [isMergeNameRegistryEventHubEvent](protobufs.md#ismergenameregistryeventhubevent)
+- [isPruneMessageHubEvent](protobufs.md#isprunemessagehubevent)
 - [isReactionAddData](protobufs.md#isreactionadddata)
 - [isReactionAddMessage](protobufs.md#isreactionaddmessage)
 - [isReactionRemoveData](protobufs.md#isreactionremovedata)
 - [isReactionRemoveMessage](protobufs.md#isreactionremovemessage)
+- [isRevokeMessageHubEvent](protobufs.md#isrevokemessagehubevent)
 - [isSignerAddData](protobufs.md#issigneradddata)
 - [isSignerAddMessage](protobufs.md#issigneraddmessage)
 - [isSignerRemoveData](protobufs.md#issignerremovedata)
@@ -180,33 +196,17 @@
 
 ## Type Aliases
 
-### AmpAddData
+### AdminServiceService
 
-Ƭ **AmpAddData**: [`MessageData`](protobufs.md#messagedata) & { `ampBody`: [`AmpBody`](protobufs.md#ampbody) ; `type`: [`MESSAGE_TYPE_AMP_ADD`](../enums/protobufs.MessageType.md#message_type_amp_add)  }
-
-___
-
-### AmpAddMessage
-
-Ƭ **AmpAddMessage**: [`Message`](protobufs.md#message) & { `data`: [`AmpAddData`](protobufs.md#ampadddata) ; `signatureScheme`: [`SIGNATURE_SCHEME_ED25519`](../enums/protobufs.SignatureScheme.md#signature_scheme_ed25519)  }
-
-___
-
-### AmpRemoveData
-
-Ƭ **AmpRemoveData**: [`MessageData`](protobufs.md#messagedata) & { `ampBody`: [`AmpBody`](protobufs.md#ampbody) ; `type`: [`MESSAGE_TYPE_AMP_REMOVE`](../enums/protobufs.MessageType.md#message_type_amp_remove)  }
-
-___
-
-### AmpRemoveMessage
-
-Ƭ **AmpRemoveMessage**: [`Message`](protobufs.md#message) & { `data`: [`AmpRemoveData`](protobufs.md#ampremovedata) ; `signatureScheme`: [`SIGNATURE_SCHEME_ED25519`](../enums/protobufs.SignatureScheme.md#signature_scheme_ed25519)  }
+Ƭ **AdminServiceService**: typeof [`AdminServiceService`](protobufs.md#adminserviceservice-1)
 
 ___
 
 ### CastAddData
 
 Ƭ **CastAddData**: [`MessageData`](protobufs.md#messagedata) & { `castAddBody`: [`CastAddBody`](protobufs.md#castaddbody) ; `type`: [`MESSAGE_TYPE_CAST_ADD`](../enums/protobufs.MessageType.md#message_type_cast_add)  }
+
+Message types
 
 ___
 
@@ -234,6 +234,32 @@ ___
 
 ___
 
+### MergeIdRegistryEventHubEvent
+
+Ƭ **MergeIdRegistryEventHubEvent**: [`HubEvent`](protobufs.md#hubevent) & { `mergeIdRegistryEventBody`: [`MergeIdRegistryEventBody`](protobufs.md#mergeidregistryeventbody) & { `idRegistryEvent`: [`IdRegistryEvent`](protobufs.md#idregistryevent)  } ; `type`: [`HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT`](../enums/protobufs.HubEventType.md#hub_event_type_merge_id_registry_event)  }
+
+___
+
+### MergeMessageHubEvent
+
+Ƭ **MergeMessageHubEvent**: [`HubEvent`](protobufs.md#hubevent) & { `mergeMessageBody`: [`MergeMessageBody`](protobufs.md#mergemessagebody) & { `message`: [`Message`](protobufs.md#message)  } ; `type`: [`HUB_EVENT_TYPE_MERGE_MESSAGE`](../enums/protobufs.HubEventType.md#hub_event_type_merge_message)  }
+
+Hub event types
+
+___
+
+### MergeNameRegistryEventHubEvent
+
+Ƭ **MergeNameRegistryEventHubEvent**: [`HubEvent`](protobufs.md#hubevent) & { `mergeNameRegistryEventBody`: [`MergeNameRegistryEventBody`](protobufs.md#mergenameregistryeventbody) & { `nameRegistryEvent`: [`NameRegistryEvent`](protobufs.md#nameregistryevent)  } ; `type`: [`HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT`](../enums/protobufs.HubEventType.md#hub_event_type_merge_name_registry_event)  }
+
+___
+
+### PruneMessageHubEvent
+
+Ƭ **PruneMessageHubEvent**: [`HubEvent`](protobufs.md#hubevent) & { `pruneMessageBody`: [`PruneMessageBody`](protobufs.md#prunemessagebody) & { `message`: [`Message`](protobufs.md#message)  } ; `type`: [`HUB_EVENT_TYPE_PRUNE_MESSAGE`](../enums/protobufs.HubEventType.md#hub_event_type_prune_message)  }
+
+___
+
 ### ReactionAddData
 
 Ƭ **ReactionAddData**: [`MessageData`](protobufs.md#messagedata) & { `reactionBody`: [`ReactionBody`](protobufs.md#reactionbody) ; `type`: [`MESSAGE_TYPE_REACTION_ADD`](../enums/protobufs.MessageType.md#message_type_reaction_add)  }
@@ -255,6 +281,12 @@ ___
 ### ReactionRemoveMessage
 
 Ƭ **ReactionRemoveMessage**: [`Message`](protobufs.md#message) & { `data`: [`ReactionRemoveData`](protobufs.md#reactionremovedata) ; `signatureScheme`: [`SIGNATURE_SCHEME_ED25519`](../enums/protobufs.SignatureScheme.md#signature_scheme_ed25519)  }
+
+___
+
+### RevokeMessageHubEvent
+
+Ƭ **RevokeMessageHubEvent**: [`HubEvent`](protobufs.md#hubevent) & { `revokeMessageBody`: [`RevokeMessageBody`](protobufs.md#revokemessagebody) & { `message`: [`Message`](protobufs.md#message)  } ; `type`: [`HUB_EVENT_TYPE_REVOKE_MESSAGE`](../enums/protobufs.HubEventType.md#hub_event_type_revoke_message)  }
 
 ___
 
@@ -318,37 +350,74 @@ ___
 
 ## Variables
 
-### AmpBody
+### AdminServiceClient
 
-• **AmpBody**: `Object`
+• **AdminServiceClient**: `Object`
+
+#### Call signature
+
+• **new AdminServiceClient**(`address`, `credentials`, `options?`): [`AdminServiceClient`](protobufs.md#adminserviceclient)
+
+##### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `address` | `string` |
+| `credentials` | `ChannelCredentials` |
+| `options?` | `Partial`<`ClientOptions`\> |
+
+##### Returns
+
+[`AdminServiceClient`](protobufs.md#adminserviceclient)
 
 #### Type declaration
 
 | Name | Type |
 | :------ | :------ |
-| `create` | <I\>(`base?`: `I`) => [`AmpBody`](protobufs.md#ampbody) |
-| `decode` | (`input`: `Reader` \| `Uint8Array`, `length?`: `number`) => [`AmpBody`](protobufs.md#ampbody) |
-| `encode` | (`message`: [`AmpBody`](protobufs.md#ampbody), `writer?`: `Writer`) => `Writer` |
-| `fromJSON` | (`object`: `any`) => [`AmpBody`](protobufs.md#ampbody) |
-| `fromPartial` | <I_1\>(`object`: `I_1`) => [`AmpBody`](protobufs.md#ampbody) |
-| `toJSON` | (`message`: [`AmpBody`](protobufs.md#ampbody)) => `unknown` |
+| `service` | { `deleteAllMessagesFromDb`: { `path`: ``"/AdminService/DeleteAllMessagesFromDb"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) ; `requestSerialize`: (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) ; `responseSerialize`: (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` ; `responseStream`: ``false``  } ; `rebuildSyncTrie`: { `path`: ``"/AdminService/RebuildSyncTrie"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) ; `requestSerialize`: (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) ; `responseSerialize`: (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` ; `responseStream`: ``false``  }  } |
+| `service.deleteAllMessagesFromDb` | { `path`: ``"/AdminService/DeleteAllMessagesFromDb"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) ; `requestSerialize`: (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) ; `responseSerialize`: (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` ; `responseStream`: ``false``  } |
+| `service.deleteAllMessagesFromDb.path` | ``"/AdminService/DeleteAllMessagesFromDb"`` |
+| `service.deleteAllMessagesFromDb.requestDeserialize` | (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) |
+| `service.deleteAllMessagesFromDb.requestSerialize` | (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` |
+| `service.deleteAllMessagesFromDb.requestStream` | ``false`` |
+| `service.deleteAllMessagesFromDb.responseDeserialize` | (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) |
+| `service.deleteAllMessagesFromDb.responseSerialize` | (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` |
+| `service.deleteAllMessagesFromDb.responseStream` | ``false`` |
+| `service.rebuildSyncTrie` | { `path`: ``"/AdminService/RebuildSyncTrie"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) ; `requestSerialize`: (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) ; `responseSerialize`: (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` ; `responseStream`: ``false``  } |
+| `service.rebuildSyncTrie.path` | ``"/AdminService/RebuildSyncTrie"`` |
+| `service.rebuildSyncTrie.requestDeserialize` | (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) |
+| `service.rebuildSyncTrie.requestSerialize` | (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` |
+| `service.rebuildSyncTrie.requestStream` | ``false`` |
+| `service.rebuildSyncTrie.responseDeserialize` | (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) |
+| `service.rebuildSyncTrie.responseSerialize` | (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` |
+| `service.rebuildSyncTrie.responseStream` | ``false`` |
 
 ___
 
-### AmpRequest
+### AdminServiceService
 
-• **AmpRequest**: `Object`
+• **AdminServiceService**: `Object`
 
 #### Type declaration
 
 | Name | Type |
 | :------ | :------ |
-| `create` | <I\>(`base?`: `I`) => [`AmpRequest`](protobufs.md#amprequest) |
-| `decode` | (`input`: `Reader` \| `Uint8Array`, `length?`: `number`) => [`AmpRequest`](protobufs.md#amprequest) |
-| `encode` | (`message`: [`AmpRequest`](protobufs.md#amprequest), `writer?`: `Writer`) => `Writer` |
-| `fromJSON` | (`object`: `any`) => [`AmpRequest`](protobufs.md#amprequest) |
-| `fromPartial` | <I_1\>(`object`: `I_1`) => [`AmpRequest`](protobufs.md#amprequest) |
-| `toJSON` | (`message`: [`AmpRequest`](protobufs.md#amprequest)) => `unknown` |
+| `deleteAllMessagesFromDb` | { `path`: ``"/AdminService/DeleteAllMessagesFromDb"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) ; `requestSerialize`: (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) ; `responseSerialize`: (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` ; `responseStream`: ``false``  } |
+| `deleteAllMessagesFromDb.path` | ``"/AdminService/DeleteAllMessagesFromDb"`` |
+| `deleteAllMessagesFromDb.requestDeserialize` | (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) |
+| `deleteAllMessagesFromDb.requestSerialize` | (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` |
+| `deleteAllMessagesFromDb.requestStream` | ``false`` |
+| `deleteAllMessagesFromDb.responseDeserialize` | (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) |
+| `deleteAllMessagesFromDb.responseSerialize` | (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` |
+| `deleteAllMessagesFromDb.responseStream` | ``false`` |
+| `rebuildSyncTrie` | { `path`: ``"/AdminService/RebuildSyncTrie"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) ; `requestSerialize`: (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) ; `responseSerialize`: (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` ; `responseStream`: ``false``  } |
+| `rebuildSyncTrie.path` | ``"/AdminService/RebuildSyncTrie"`` |
+| `rebuildSyncTrie.requestDeserialize` | (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) |
+| `rebuildSyncTrie.requestSerialize` | (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` |
+| `rebuildSyncTrie.requestStream` | ``false`` |
+| `rebuildSyncTrie.responseDeserialize` | (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) |
+| `rebuildSyncTrie.responseSerialize` | (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` |
+| `rebuildSyncTrie.responseStream` | ``false`` |
 
 ___
 
@@ -454,20 +523,20 @@ ___
 
 ___
 
-### EventResponse
+### EventRequest
 
-• **EventResponse**: `Object`
+• **EventRequest**: `Object`
 
 #### Type declaration
 
 | Name | Type |
 | :------ | :------ |
-| `create` | <I\>(`base?`: `I`) => [`EventResponse`](protobufs.md#eventresponse) |
-| `decode` | (`input`: `Reader` \| `Uint8Array`, `length?`: `number`) => [`EventResponse`](protobufs.md#eventresponse) |
-| `encode` | (`message`: [`EventResponse`](protobufs.md#eventresponse), `writer?`: `Writer`) => `Writer` |
-| `fromJSON` | (`object`: `any`) => [`EventResponse`](protobufs.md#eventresponse) |
-| `fromPartial` | <I_1\>(`object`: `I_1`) => [`EventResponse`](protobufs.md#eventresponse) |
-| `toJSON` | (`message`: [`EventResponse`](protobufs.md#eventresponse)) => `unknown` |
+| `create` | <I\>(`base?`: `I`) => [`EventRequest`](protobufs.md#eventrequest) |
+| `decode` | (`input`: `Reader` \| `Uint8Array`, `length?`: `number`) => [`EventRequest`](protobufs.md#eventrequest) |
+| `encode` | (`message`: [`EventRequest`](protobufs.md#eventrequest), `writer?`: `Writer`) => `Writer` |
+| `fromJSON` | (`object`: `any`) => [`EventRequest`](protobufs.md#eventrequest) |
+| `fromPartial` | <I_1\>(`object`: `I_1`) => [`EventRequest`](protobufs.md#eventrequest) |
+| `toJSON` | (`message`: [`EventRequest`](protobufs.md#eventrequest)) => `unknown` |
 
 ___
 
@@ -539,6 +608,23 @@ ___
 
 ___
 
+### HubEvent
+
+• **HubEvent**: `Object`
+
+#### Type declaration
+
+| Name | Type |
+| :------ | :------ |
+| `create` | <I\>(`base?`: `I`) => [`HubEvent`](protobufs.md#hubevent) |
+| `decode` | (`input`: `Reader` \| `Uint8Array`, `length?`: `number`) => [`HubEvent`](protobufs.md#hubevent) |
+| `encode` | (`message`: [`HubEvent`](protobufs.md#hubevent), `writer?`: `Writer`) => `Writer` |
+| `fromJSON` | (`object`: `any`) => [`HubEvent`](protobufs.md#hubevent) |
+| `fromPartial` | <I_1\>(`object`: `I_1`) => [`HubEvent`](protobufs.md#hubevent) |
+| `toJSON` | (`message`: [`HubEvent`](protobufs.md#hubevent)) => `unknown` |
+
+___
+
 ### HubInfoResponse
 
 • **HubInfoResponse**: `Object`
@@ -580,15 +666,7 @@ ___
 
 | Name | Type |
 | :------ | :------ |
-| `service` | { `getAllAmpMessagesByFid`: { `path`: ``"/HubService/GetAllAmpMessagesByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getAllCastMessagesByFid`: { `path`: ``"/HubService/GetAllCastMessagesByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getAllMessagesBySyncIds`: { `path`: ``"/HubService/GetAllMessagesBySyncIds"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`SyncIds`](protobufs.md#syncids) ; `requestSerialize`: (`value`: [`SyncIds`](protobufs.md#syncids)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getAllReactionMessagesByFid`: { `path`: ``"/HubService/GetAllReactionMessagesByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getAllSignerMessagesByFid`: { `path`: ``"/HubService/GetAllSignerMessagesByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getAllSyncIdsByPrefix`: { `path`: ``"/HubService/GetAllSyncIdsByPrefix"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`TrieNodePrefix`](protobufs.md#trienodeprefix) ; `requestSerialize`: (`value`: [`TrieNodePrefix`](protobufs.md#trienodeprefix)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`SyncIds`](protobufs.md#syncids) ; `responseSerialize`: (`value`: [`SyncIds`](protobufs.md#syncids)) => `Buffer` ; `responseStream`: ``false``  } ; `getAllUserDataMessagesByFid`: { `path`: ``"/HubService/GetAllUserDataMessagesByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getAllVerificationMessagesByFid`: { `path`: ``"/HubService/GetAllVerificationMessagesByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getAmp`: { `path`: ``"/HubService/GetAmp"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`AmpRequest`](protobufs.md#amprequest) ; `requestSerialize`: (`value`: [`AmpRequest`](protobufs.md#amprequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Message`](protobufs.md#message) ; `responseSerialize`: (`value`: [`Message`](protobufs.md#message)) => `Buffer` ; `responseStream`: ``false``  } ; `getAmpsByFid`: { `path`: ``"/HubService/GetAmpsByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getAmpsByUser`: { `path`: ``"/HubService/GetAmpsByUser"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getCast`: { `path`: ``"/HubService/GetCast"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`CastId`](protobufs.md#castid) ; `requestSerialize`: (`value`: [`CastId`](protobufs.md#castid)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Message`](protobufs.md#message) ; `responseSerialize`: (`value`: [`Message`](protobufs.md#message)) => `Buffer` ; `responseStream`: ``false``  } ; `getCastsByFid`: { `path`: ``"/HubService/GetCastsByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getCastsByMention`: { `path`: ``"/HubService/GetCastsByMention"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getCastsByParent`: { `path`: ``"/HubService/GetCastsByParent"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`CastId`](protobufs.md#castid) ; `requestSerialize`: (`value`: [`CastId`](protobufs.md#castid)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getFids`: { `path`: ``"/HubService/GetFids"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) ; `requestSerialize`: (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`FidsResponse`](protobufs.md#fidsresponse) ; `responseSerialize`: (`value`: [`FidsResponse`](protobufs.md#fidsresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getIdRegistryEvent`: { `path`: ``"/HubService/GetIdRegistryEvent"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`IdRegistryEvent`](protobufs.md#idregistryevent) ; `responseSerialize`: (`value`: [`IdRegistryEvent`](protobufs.md#idregistryevent)) => `Buffer` ; `responseStream`: ``false``  } ; `getInfo`: { `path`: ``"/HubService/GetInfo"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) ; `requestSerialize`: (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`HubInfoResponse`](protobufs.md#hubinforesponse) ; `responseSerialize`: (`value`: [`HubInfoResponse`](protobufs.md#hubinforesponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getNameRegistryEvent`: { `path`: ``"/HubService/GetNameRegistryEvent"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`NameRegistryEventRequest`](protobufs.md#nameregistryeventrequest) ; `requestSerialize`: (`value`: [`NameRegistryEventRequest`](protobufs.md#nameregistryeventrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`NameRegistryEvent`](protobufs.md#nameregistryevent) ; `responseSerialize`: (`value`: [`NameRegistryEvent`](protobufs.md#nameregistryevent)) => `Buffer` ; `responseStream`: ``false``  } ; `getReaction`: { `path`: ``"/HubService/GetReaction"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`ReactionRequest`](protobufs.md#reactionrequest) ; `requestSerialize`: (`value`: [`ReactionRequest`](protobufs.md#reactionrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Message`](protobufs.md#message) ; `responseSerialize`: (`value`: [`Message`](protobufs.md#message)) => `Buffer` ; `responseStream`: ``false``  } ; `getReactionsByCast`: { `path`: ``"/HubService/GetReactionsByCast"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`ReactionsByCastRequest`](protobufs.md#reactionsbycastrequest) ; `requestSerialize`: (`value`: [`ReactionsByCastRequest`](protobufs.md#reactionsbycastrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getReactionsByFid`: { `path`: ``"/HubService/GetReactionsByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`ReactionsByFidRequest`](protobufs.md#reactionsbyfidrequest) ; `requestSerialize`: (`value`: [`ReactionsByFidRequest`](protobufs.md#reactionsbyfidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getSigner`: { `path`: ``"/HubService/GetSigner"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`SignerRequest`](protobufs.md#signerrequest) ; `requestSerialize`: (`value`: [`SignerRequest`](protobufs.md#signerrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Message`](protobufs.md#message) ; `responseSerialize`: (`value`: [`Message`](protobufs.md#message)) => `Buffer` ; `responseStream`: ``false``  } ; `getSignersByFid`: { `path`: ``"/HubService/GetSignersByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getSyncMetadataByPrefix`: { `path`: ``"/HubService/GetSyncMetadataByPrefix"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`TrieNodePrefix`](protobufs.md#trienodeprefix) ; `requestSerialize`: (`value`: [`TrieNodePrefix`](protobufs.md#trienodeprefix)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`TrieNodeMetadataResponse`](protobufs.md#trienodemetadataresponse) ; `responseSerialize`: (`value`: [`TrieNodeMetadataResponse`](protobufs.md#trienodemetadataresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getSyncSnapshotByPrefix`: { `path`: ``"/HubService/GetSyncSnapshotByPrefix"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`TrieNodePrefix`](protobufs.md#trienodeprefix) ; `requestSerialize`: (`value`: [`TrieNodePrefix`](protobufs.md#trienodeprefix)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`TrieNodeSnapshotResponse`](protobufs.md#trienodesnapshotresponse) ; `responseSerialize`: (`value`: [`TrieNodeSnapshotResponse`](protobufs.md#trienodesnapshotresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getUserData`: { `path`: ``"/HubService/GetUserData"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`UserDataRequest`](protobufs.md#userdatarequest) ; `requestSerialize`: (`value`: [`UserDataRequest`](protobufs.md#userdatarequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Message`](protobufs.md#message) ; `responseSerialize`: (`value`: [`Message`](protobufs.md#message)) => `Buffer` ; `responseStream`: ``false``  } ; `getUserDataByFid`: { `path`: ``"/HubService/GetUserDataByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getVerification`: { `path`: ``"/HubService/GetVerification"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`VerificationRequest`](protobufs.md#verificationrequest) ; `requestSerialize`: (`value`: [`VerificationRequest`](protobufs.md#verificationrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Message`](protobufs.md#message) ; `responseSerialize`: (`value`: [`Message`](protobufs.md#message)) => `Buffer` ; `responseStream`: ``false``  } ; `getVerificationsByFid`: { `path`: ``"/HubService/GetVerificationsByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `submitIdRegistryEvent`: { `path`: ``"/HubService/SubmitIdRegistryEvent"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`IdRegistryEvent`](protobufs.md#idregistryevent) ; `requestSerialize`: (`value`: [`IdRegistryEvent`](protobufs.md#idregistryevent)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`IdRegistryEvent`](protobufs.md#idregistryevent) ; `responseSerialize`: (`value`: [`IdRegistryEvent`](protobufs.md#idregistryevent)) => `Buffer` ; `responseStream`: ``false``  } ; `submitMessage`: { `path`: ``"/HubService/SubmitMessage"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`Message`](protobufs.md#message) ; `requestSerialize`: (`value`: [`Message`](protobufs.md#message)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Message`](protobufs.md#message) ; `responseSerialize`: (`value`: [`Message`](protobufs.md#message)) => `Buffer` ; `responseStream`: ``false``  } ; `submitNameRegistryEvent`: { `path`: ``"/HubService/SubmitNameRegistryEvent"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`NameRegistryEvent`](protobufs.md#nameregistryevent) ; `requestSerialize`: (`value`: [`NameRegistryEvent`](protobufs.md#nameregistryevent)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`NameRegistryEvent`](protobufs.md#nameregistryevent) ; `responseSerialize`: (`value`: [`NameRegistryEvent`](protobufs.md#nameregistryevent)) => `Buffer` ; `responseStream`: ``false``  } ; `subscribe`: { `path`: ``"/HubService/Subscribe"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`SubscribeRequest`](protobufs.md#subscriberequest) ; `requestSerialize`: (`value`: [`SubscribeRequest`](protobufs.md#subscriberequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`EventResponse`](protobufs.md#eventresponse) ; `responseSerialize`: (`value`: [`EventResponse`](protobufs.md#eventresponse)) => `Buffer` ; `responseStream`: ``true``  }  } |
-| `service.getAllAmpMessagesByFid` | { `path`: ``"/HubService/GetAllAmpMessagesByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } |
-| `service.getAllAmpMessagesByFid.path` | ``"/HubService/GetAllAmpMessagesByFid"`` |
-| `service.getAllAmpMessagesByFid.requestDeserialize` | (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) |
-| `service.getAllAmpMessagesByFid.requestSerialize` | (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` |
-| `service.getAllAmpMessagesByFid.requestStream` | ``false`` |
-| `service.getAllAmpMessagesByFid.responseDeserialize` | (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) |
-| `service.getAllAmpMessagesByFid.responseSerialize` | (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` |
-| `service.getAllAmpMessagesByFid.responseStream` | ``false`` |
+| `service` | { `getAllCastMessagesByFid`: { `path`: ``"/HubService/GetAllCastMessagesByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getAllMessagesBySyncIds`: { `path`: ``"/HubService/GetAllMessagesBySyncIds"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`SyncIds`](protobufs.md#syncids) ; `requestSerialize`: (`value`: [`SyncIds`](protobufs.md#syncids)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getAllReactionMessagesByFid`: { `path`: ``"/HubService/GetAllReactionMessagesByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getAllSignerMessagesByFid`: { `path`: ``"/HubService/GetAllSignerMessagesByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getAllSyncIdsByPrefix`: { `path`: ``"/HubService/GetAllSyncIdsByPrefix"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`TrieNodePrefix`](protobufs.md#trienodeprefix) ; `requestSerialize`: (`value`: [`TrieNodePrefix`](protobufs.md#trienodeprefix)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`SyncIds`](protobufs.md#syncids) ; `responseSerialize`: (`value`: [`SyncIds`](protobufs.md#syncids)) => `Buffer` ; `responseStream`: ``false``  } ; `getAllUserDataMessagesByFid`: { `path`: ``"/HubService/GetAllUserDataMessagesByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getAllVerificationMessagesByFid`: { `path`: ``"/HubService/GetAllVerificationMessagesByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getCast`: { `path`: ``"/HubService/GetCast"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`CastId`](protobufs.md#castid) ; `requestSerialize`: (`value`: [`CastId`](protobufs.md#castid)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Message`](protobufs.md#message) ; `responseSerialize`: (`value`: [`Message`](protobufs.md#message)) => `Buffer` ; `responseStream`: ``false``  } ; `getCastsByFid`: { `path`: ``"/HubService/GetCastsByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getCastsByMention`: { `path`: ``"/HubService/GetCastsByMention"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getCastsByParent`: { `path`: ``"/HubService/GetCastsByParent"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`CastId`](protobufs.md#castid) ; `requestSerialize`: (`value`: [`CastId`](protobufs.md#castid)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getEvent`: { `path`: ``"/HubService/GetEvent"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`EventRequest`](protobufs.md#eventrequest) ; `requestSerialize`: (`value`: [`EventRequest`](protobufs.md#eventrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`HubEvent`](protobufs.md#hubevent) ; `responseSerialize`: (`value`: [`HubEvent`](protobufs.md#hubevent)) => `Buffer` ; `responseStream`: ``false``  } ; `getFids`: { `path`: ``"/HubService/GetFids"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) ; `requestSerialize`: (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`FidsResponse`](protobufs.md#fidsresponse) ; `responseSerialize`: (`value`: [`FidsResponse`](protobufs.md#fidsresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getIdRegistryEvent`: { `path`: ``"/HubService/GetIdRegistryEvent"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`IdRegistryEvent`](protobufs.md#idregistryevent) ; `responseSerialize`: (`value`: [`IdRegistryEvent`](protobufs.md#idregistryevent)) => `Buffer` ; `responseStream`: ``false``  } ; `getInfo`: { `path`: ``"/HubService/GetInfo"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) ; `requestSerialize`: (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`HubInfoResponse`](protobufs.md#hubinforesponse) ; `responseSerialize`: (`value`: [`HubInfoResponse`](protobufs.md#hubinforesponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getNameRegistryEvent`: { `path`: ``"/HubService/GetNameRegistryEvent"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`NameRegistryEventRequest`](protobufs.md#nameregistryeventrequest) ; `requestSerialize`: (`value`: [`NameRegistryEventRequest`](protobufs.md#nameregistryeventrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`NameRegistryEvent`](protobufs.md#nameregistryevent) ; `responseSerialize`: (`value`: [`NameRegistryEvent`](protobufs.md#nameregistryevent)) => `Buffer` ; `responseStream`: ``false``  } ; `getReaction`: { `path`: ``"/HubService/GetReaction"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`ReactionRequest`](protobufs.md#reactionrequest) ; `requestSerialize`: (`value`: [`ReactionRequest`](protobufs.md#reactionrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Message`](protobufs.md#message) ; `responseSerialize`: (`value`: [`Message`](protobufs.md#message)) => `Buffer` ; `responseStream`: ``false``  } ; `getReactionsByCast`: { `path`: ``"/HubService/GetReactionsByCast"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`ReactionsByCastRequest`](protobufs.md#reactionsbycastrequest) ; `requestSerialize`: (`value`: [`ReactionsByCastRequest`](protobufs.md#reactionsbycastrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getReactionsByFid`: { `path`: ``"/HubService/GetReactionsByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`ReactionsByFidRequest`](protobufs.md#reactionsbyfidrequest) ; `requestSerialize`: (`value`: [`ReactionsByFidRequest`](protobufs.md#reactionsbyfidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getSigner`: { `path`: ``"/HubService/GetSigner"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`SignerRequest`](protobufs.md#signerrequest) ; `requestSerialize`: (`value`: [`SignerRequest`](protobufs.md#signerrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Message`](protobufs.md#message) ; `responseSerialize`: (`value`: [`Message`](protobufs.md#message)) => `Buffer` ; `responseStream`: ``false``  } ; `getSignersByFid`: { `path`: ``"/HubService/GetSignersByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getSyncMetadataByPrefix`: { `path`: ``"/HubService/GetSyncMetadataByPrefix"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`TrieNodePrefix`](protobufs.md#trienodeprefix) ; `requestSerialize`: (`value`: [`TrieNodePrefix`](protobufs.md#trienodeprefix)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`TrieNodeMetadataResponse`](protobufs.md#trienodemetadataresponse) ; `responseSerialize`: (`value`: [`TrieNodeMetadataResponse`](protobufs.md#trienodemetadataresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getSyncSnapshotByPrefix`: { `path`: ``"/HubService/GetSyncSnapshotByPrefix"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`TrieNodePrefix`](protobufs.md#trienodeprefix) ; `requestSerialize`: (`value`: [`TrieNodePrefix`](protobufs.md#trienodeprefix)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`TrieNodeSnapshotResponse`](protobufs.md#trienodesnapshotresponse) ; `responseSerialize`: (`value`: [`TrieNodeSnapshotResponse`](protobufs.md#trienodesnapshotresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getUserData`: { `path`: ``"/HubService/GetUserData"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`UserDataRequest`](protobufs.md#userdatarequest) ; `requestSerialize`: (`value`: [`UserDataRequest`](protobufs.md#userdatarequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Message`](protobufs.md#message) ; `responseSerialize`: (`value`: [`Message`](protobufs.md#message)) => `Buffer` ; `responseStream`: ``false``  } ; `getUserDataByFid`: { `path`: ``"/HubService/GetUserDataByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `getVerification`: { `path`: ``"/HubService/GetVerification"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`VerificationRequest`](protobufs.md#verificationrequest) ; `requestSerialize`: (`value`: [`VerificationRequest`](protobufs.md#verificationrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Message`](protobufs.md#message) ; `responseSerialize`: (`value`: [`Message`](protobufs.md#message)) => `Buffer` ; `responseStream`: ``false``  } ; `getVerificationsByFid`: { `path`: ``"/HubService/GetVerificationsByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } ; `submitIdRegistryEvent`: { `path`: ``"/HubService/SubmitIdRegistryEvent"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`IdRegistryEvent`](protobufs.md#idregistryevent) ; `requestSerialize`: (`value`: [`IdRegistryEvent`](protobufs.md#idregistryevent)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`IdRegistryEvent`](protobufs.md#idregistryevent) ; `responseSerialize`: (`value`: [`IdRegistryEvent`](protobufs.md#idregistryevent)) => `Buffer` ; `responseStream`: ``false``  } ; `submitMessage`: { `path`: ``"/HubService/SubmitMessage"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`Message`](protobufs.md#message) ; `requestSerialize`: (`value`: [`Message`](protobufs.md#message)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Message`](protobufs.md#message) ; `responseSerialize`: (`value`: [`Message`](protobufs.md#message)) => `Buffer` ; `responseStream`: ``false``  } ; `submitNameRegistryEvent`: { `path`: ``"/HubService/SubmitNameRegistryEvent"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`NameRegistryEvent`](protobufs.md#nameregistryevent) ; `requestSerialize`: (`value`: [`NameRegistryEvent`](protobufs.md#nameregistryevent)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`NameRegistryEvent`](protobufs.md#nameregistryevent) ; `responseSerialize`: (`value`: [`NameRegistryEvent`](protobufs.md#nameregistryevent)) => `Buffer` ; `responseStream`: ``false``  } ; `subscribe`: { `path`: ``"/HubService/Subscribe"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`SubscribeRequest`](protobufs.md#subscriberequest) ; `requestSerialize`: (`value`: [`SubscribeRequest`](protobufs.md#subscriberequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`HubEvent`](protobufs.md#hubevent) ; `responseSerialize`: (`value`: [`HubEvent`](protobufs.md#hubevent)) => `Buffer` ; `responseStream`: ``true``  }  } |
 | `service.getAllCastMessagesByFid` | { `path`: ``"/HubService/GetAllCastMessagesByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } |
 | `service.getAllCastMessagesByFid.path` | ``"/HubService/GetAllCastMessagesByFid"`` |
 | `service.getAllCastMessagesByFid.requestDeserialize` | (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) |
@@ -645,30 +723,6 @@ ___
 | `service.getAllVerificationMessagesByFid.responseDeserialize` | (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) |
 | `service.getAllVerificationMessagesByFid.responseSerialize` | (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` |
 | `service.getAllVerificationMessagesByFid.responseStream` | ``false`` |
-| `service.getAmp` | { `path`: ``"/HubService/GetAmp"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`AmpRequest`](protobufs.md#amprequest) ; `requestSerialize`: (`value`: [`AmpRequest`](protobufs.md#amprequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Message`](protobufs.md#message) ; `responseSerialize`: (`value`: [`Message`](protobufs.md#message)) => `Buffer` ; `responseStream`: ``false``  } |
-| `service.getAmp.path` | ``"/HubService/GetAmp"`` |
-| `service.getAmp.requestDeserialize` | (`value`: `Buffer`) => [`AmpRequest`](protobufs.md#amprequest) |
-| `service.getAmp.requestSerialize` | (`value`: [`AmpRequest`](protobufs.md#amprequest)) => `Buffer` |
-| `service.getAmp.requestStream` | ``false`` |
-| `service.getAmp.responseDeserialize` | (`value`: `Buffer`) => [`Message`](protobufs.md#message) |
-| `service.getAmp.responseSerialize` | (`value`: [`Message`](protobufs.md#message)) => `Buffer` |
-| `service.getAmp.responseStream` | ``false`` |
-| `service.getAmpsByFid` | { `path`: ``"/HubService/GetAmpsByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } |
-| `service.getAmpsByFid.path` | ``"/HubService/GetAmpsByFid"`` |
-| `service.getAmpsByFid.requestDeserialize` | (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) |
-| `service.getAmpsByFid.requestSerialize` | (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` |
-| `service.getAmpsByFid.requestStream` | ``false`` |
-| `service.getAmpsByFid.responseDeserialize` | (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) |
-| `service.getAmpsByFid.responseSerialize` | (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` |
-| `service.getAmpsByFid.responseStream` | ``false`` |
-| `service.getAmpsByUser` | { `path`: ``"/HubService/GetAmpsByUser"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } |
-| `service.getAmpsByUser.path` | ``"/HubService/GetAmpsByUser"`` |
-| `service.getAmpsByUser.requestDeserialize` | (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) |
-| `service.getAmpsByUser.requestSerialize` | (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` |
-| `service.getAmpsByUser.requestStream` | ``false`` |
-| `service.getAmpsByUser.responseDeserialize` | (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) |
-| `service.getAmpsByUser.responseSerialize` | (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` |
-| `service.getAmpsByUser.responseStream` | ``false`` |
 | `service.getCast` | { `path`: ``"/HubService/GetCast"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`CastId`](protobufs.md#castid) ; `requestSerialize`: (`value`: [`CastId`](protobufs.md#castid)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Message`](protobufs.md#message) ; `responseSerialize`: (`value`: [`Message`](protobufs.md#message)) => `Buffer` ; `responseStream`: ``false``  } |
 | `service.getCast.path` | ``"/HubService/GetCast"`` |
 | `service.getCast.requestDeserialize` | (`value`: `Buffer`) => [`CastId`](protobufs.md#castid) |
@@ -701,6 +755,14 @@ ___
 | `service.getCastsByParent.responseDeserialize` | (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) |
 | `service.getCastsByParent.responseSerialize` | (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` |
 | `service.getCastsByParent.responseStream` | ``false`` |
+| `service.getEvent` | { `path`: ``"/HubService/GetEvent"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`EventRequest`](protobufs.md#eventrequest) ; `requestSerialize`: (`value`: [`EventRequest`](protobufs.md#eventrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`HubEvent`](protobufs.md#hubevent) ; `responseSerialize`: (`value`: [`HubEvent`](protobufs.md#hubevent)) => `Buffer` ; `responseStream`: ``false``  } |
+| `service.getEvent.path` | ``"/HubService/GetEvent"`` |
+| `service.getEvent.requestDeserialize` | (`value`: `Buffer`) => [`EventRequest`](protobufs.md#eventrequest) |
+| `service.getEvent.requestSerialize` | (`value`: [`EventRequest`](protobufs.md#eventrequest)) => `Buffer` |
+| `service.getEvent.requestStream` | ``false`` |
+| `service.getEvent.responseDeserialize` | (`value`: `Buffer`) => [`HubEvent`](protobufs.md#hubevent) |
+| `service.getEvent.responseSerialize` | (`value`: [`HubEvent`](protobufs.md#hubevent)) => `Buffer` |
+| `service.getEvent.responseStream` | ``false`` |
 | `service.getFids` | { `path`: ``"/HubService/GetFids"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) ; `requestSerialize`: (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`FidsResponse`](protobufs.md#fidsresponse) ; `responseSerialize`: (`value`: [`FidsResponse`](protobufs.md#fidsresponse)) => `Buffer` ; `responseStream`: ``false``  } |
 | `service.getFids.path` | ``"/HubService/GetFids"`` |
 | `service.getFids.requestDeserialize` | (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) |
@@ -845,13 +907,13 @@ ___
 | `service.submitNameRegistryEvent.responseDeserialize` | (`value`: `Buffer`) => [`NameRegistryEvent`](protobufs.md#nameregistryevent) |
 | `service.submitNameRegistryEvent.responseSerialize` | (`value`: [`NameRegistryEvent`](protobufs.md#nameregistryevent)) => `Buffer` |
 | `service.submitNameRegistryEvent.responseStream` | ``false`` |
-| `service.subscribe` | { `path`: ``"/HubService/Subscribe"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`SubscribeRequest`](protobufs.md#subscriberequest) ; `requestSerialize`: (`value`: [`SubscribeRequest`](protobufs.md#subscriberequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`EventResponse`](protobufs.md#eventresponse) ; `responseSerialize`: (`value`: [`EventResponse`](protobufs.md#eventresponse)) => `Buffer` ; `responseStream`: ``true``  } |
+| `service.subscribe` | { `path`: ``"/HubService/Subscribe"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`SubscribeRequest`](protobufs.md#subscriberequest) ; `requestSerialize`: (`value`: [`SubscribeRequest`](protobufs.md#subscriberequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`HubEvent`](protobufs.md#hubevent) ; `responseSerialize`: (`value`: [`HubEvent`](protobufs.md#hubevent)) => `Buffer` ; `responseStream`: ``true``  } |
 | `service.subscribe.path` | ``"/HubService/Subscribe"`` |
 | `service.subscribe.requestDeserialize` | (`value`: `Buffer`) => [`SubscribeRequest`](protobufs.md#subscriberequest) |
 | `service.subscribe.requestSerialize` | (`value`: [`SubscribeRequest`](protobufs.md#subscriberequest)) => `Buffer` |
 | `service.subscribe.requestStream` | ``false`` |
-| `service.subscribe.responseDeserialize` | (`value`: `Buffer`) => [`EventResponse`](protobufs.md#eventresponse) |
-| `service.subscribe.responseSerialize` | (`value`: [`EventResponse`](protobufs.md#eventresponse)) => `Buffer` |
+| `service.subscribe.responseDeserialize` | (`value`: `Buffer`) => [`HubEvent`](protobufs.md#hubevent) |
+| `service.subscribe.responseSerialize` | (`value`: [`HubEvent`](protobufs.md#hubevent)) => `Buffer` |
 | `service.subscribe.responseStream` | ``true`` |
 
 ___
@@ -864,14 +926,6 @@ ___
 
 | Name | Type | Description |
 | :------ | :------ | :------ |
-| `getAllAmpMessagesByFid` | { `path`: ``"/HubService/GetAllAmpMessagesByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } | - |
-| `getAllAmpMessagesByFid.path` | ``"/HubService/GetAllAmpMessagesByFid"`` | - |
-| `getAllAmpMessagesByFid.requestDeserialize` | (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) | - |
-| `getAllAmpMessagesByFid.requestSerialize` | (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` | - |
-| `getAllAmpMessagesByFid.requestStream` | ``false`` | - |
-| `getAllAmpMessagesByFid.responseDeserialize` | (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) | - |
-| `getAllAmpMessagesByFid.responseSerialize` | (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` | - |
-| `getAllAmpMessagesByFid.responseStream` | ``false`` | - |
 | `getAllCastMessagesByFid` | { `path`: ``"/HubService/GetAllCastMessagesByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } | Bulk Methods |
 | `getAllCastMessagesByFid.path` | ``"/HubService/GetAllCastMessagesByFid"`` | - |
 | `getAllCastMessagesByFid.requestDeserialize` | (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) | - |
@@ -928,30 +982,6 @@ ___
 | `getAllVerificationMessagesByFid.responseDeserialize` | (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) | - |
 | `getAllVerificationMessagesByFid.responseSerialize` | (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` | - |
 | `getAllVerificationMessagesByFid.responseStream` | ``false`` | - |
-| `getAmp` | { `path`: ``"/HubService/GetAmp"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`AmpRequest`](protobufs.md#amprequest) ; `requestSerialize`: (`value`: [`AmpRequest`](protobufs.md#amprequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Message`](protobufs.md#message) ; `responseSerialize`: (`value`: [`Message`](protobufs.md#message)) => `Buffer` ; `responseStream`: ``false``  } | Amps |
-| `getAmp.path` | ``"/HubService/GetAmp"`` | - |
-| `getAmp.requestDeserialize` | (`value`: `Buffer`) => [`AmpRequest`](protobufs.md#amprequest) | - |
-| `getAmp.requestSerialize` | (`value`: [`AmpRequest`](protobufs.md#amprequest)) => `Buffer` | - |
-| `getAmp.requestStream` | ``false`` | - |
-| `getAmp.responseDeserialize` | (`value`: `Buffer`) => [`Message`](protobufs.md#message) | - |
-| `getAmp.responseSerialize` | (`value`: [`Message`](protobufs.md#message)) => `Buffer` | - |
-| `getAmp.responseStream` | ``false`` | - |
-| `getAmpsByFid` | { `path`: ``"/HubService/GetAmpsByFid"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } | - |
-| `getAmpsByFid.path` | ``"/HubService/GetAmpsByFid"`` | - |
-| `getAmpsByFid.requestDeserialize` | (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) | - |
-| `getAmpsByFid.requestSerialize` | (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` | - |
-| `getAmpsByFid.requestStream` | ``false`` | - |
-| `getAmpsByFid.responseDeserialize` | (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) | - |
-| `getAmpsByFid.responseSerialize` | (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` | - |
-| `getAmpsByFid.responseStream` | ``false`` | - |
-| `getAmpsByUser` | { `path`: ``"/HubService/GetAmpsByUser"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) ; `requestSerialize`: (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) ; `responseSerialize`: (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` ; `responseStream`: ``false``  } | - |
-| `getAmpsByUser.path` | ``"/HubService/GetAmpsByUser"`` | - |
-| `getAmpsByUser.requestDeserialize` | (`value`: `Buffer`) => [`FidRequest`](protobufs.md#fidrequest) | - |
-| `getAmpsByUser.requestSerialize` | (`value`: [`FidRequest`](protobufs.md#fidrequest)) => `Buffer` | - |
-| `getAmpsByUser.requestStream` | ``false`` | - |
-| `getAmpsByUser.responseDeserialize` | (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) | - |
-| `getAmpsByUser.responseSerialize` | (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` | - |
-| `getAmpsByUser.responseStream` | ``false`` | - |
 | `getCast` | { `path`: ``"/HubService/GetCast"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`CastId`](protobufs.md#castid) ; `requestSerialize`: (`value`: [`CastId`](protobufs.md#castid)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`Message`](protobufs.md#message) ; `responseSerialize`: (`value`: [`Message`](protobufs.md#message)) => `Buffer` ; `responseStream`: ``false``  } | Casts |
 | `getCast.path` | ``"/HubService/GetCast"`` | - |
 | `getCast.requestDeserialize` | (`value`: `Buffer`) => [`CastId`](protobufs.md#castid) | - |
@@ -984,6 +1014,14 @@ ___
 | `getCastsByParent.responseDeserialize` | (`value`: `Buffer`) => [`MessagesResponse`](protobufs.md#messagesresponse) | - |
 | `getCastsByParent.responseSerialize` | (`value`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `Buffer` | - |
 | `getCastsByParent.responseStream` | ``false`` | - |
+| `getEvent` | { `path`: ``"/HubService/GetEvent"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`EventRequest`](protobufs.md#eventrequest) ; `requestSerialize`: (`value`: [`EventRequest`](protobufs.md#eventrequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`HubEvent`](protobufs.md#hubevent) ; `responseSerialize`: (`value`: [`HubEvent`](protobufs.md#hubevent)) => `Buffer` ; `responseStream`: ``false``  } | - |
+| `getEvent.path` | ``"/HubService/GetEvent"`` | - |
+| `getEvent.requestDeserialize` | (`value`: `Buffer`) => [`EventRequest`](protobufs.md#eventrequest) | - |
+| `getEvent.requestSerialize` | (`value`: [`EventRequest`](protobufs.md#eventrequest)) => `Buffer` | - |
+| `getEvent.requestStream` | ``false`` | - |
+| `getEvent.responseDeserialize` | (`value`: `Buffer`) => [`HubEvent`](protobufs.md#hubevent) | - |
+| `getEvent.responseSerialize` | (`value`: [`HubEvent`](protobufs.md#hubevent)) => `Buffer` | - |
+| `getEvent.responseStream` | ``false`` | - |
 | `getFids` | { `path`: ``"/HubService/GetFids"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) ; `requestSerialize`: (`value`: [`Empty`](protobufs.md#empty)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`FidsResponse`](protobufs.md#fidsresponse) ; `responseSerialize`: (`value`: [`FidsResponse`](protobufs.md#fidsresponse)) => `Buffer` ; `responseStream`: ``false``  } | - |
 | `getFids.path` | ``"/HubService/GetFids"`` | - |
 | `getFids.requestDeserialize` | (`value`: `Buffer`) => [`Empty`](protobufs.md#empty) | - |
@@ -1128,13 +1166,13 @@ ___
 | `submitNameRegistryEvent.responseDeserialize` | (`value`: `Buffer`) => [`NameRegistryEvent`](protobufs.md#nameregistryevent) | - |
 | `submitNameRegistryEvent.responseSerialize` | (`value`: [`NameRegistryEvent`](protobufs.md#nameregistryevent)) => `Buffer` | - |
 | `submitNameRegistryEvent.responseStream` | ``false`` | - |
-| `subscribe` | { `path`: ``"/HubService/Subscribe"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`SubscribeRequest`](protobufs.md#subscriberequest) ; `requestSerialize`: (`value`: [`SubscribeRequest`](protobufs.md#subscriberequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`EventResponse`](protobufs.md#eventresponse) ; `responseSerialize`: (`value`: [`EventResponse`](protobufs.md#eventresponse)) => `Buffer` ; `responseStream`: ``true``  } | Event Methods |
+| `subscribe` | { `path`: ``"/HubService/Subscribe"`` ; `requestDeserialize`: (`value`: `Buffer`) => [`SubscribeRequest`](protobufs.md#subscriberequest) ; `requestSerialize`: (`value`: [`SubscribeRequest`](protobufs.md#subscriberequest)) => `Buffer` ; `requestStream`: ``false`` ; `responseDeserialize`: (`value`: `Buffer`) => [`HubEvent`](protobufs.md#hubevent) ; `responseSerialize`: (`value`: [`HubEvent`](protobufs.md#hubevent)) => `Buffer` ; `responseStream`: ``true``  } | Event Methods |
 | `subscribe.path` | ``"/HubService/Subscribe"`` | - |
 | `subscribe.requestDeserialize` | (`value`: `Buffer`) => [`SubscribeRequest`](protobufs.md#subscriberequest) | - |
 | `subscribe.requestSerialize` | (`value`: [`SubscribeRequest`](protobufs.md#subscriberequest)) => `Buffer` | - |
 | `subscribe.requestStream` | ``false`` | - |
-| `subscribe.responseDeserialize` | (`value`: `Buffer`) => [`EventResponse`](protobufs.md#eventresponse) | - |
-| `subscribe.responseSerialize` | (`value`: [`EventResponse`](protobufs.md#eventresponse)) => `Buffer` | - |
+| `subscribe.responseDeserialize` | (`value`: `Buffer`) => [`HubEvent`](protobufs.md#hubevent) | - |
+| `subscribe.responseSerialize` | (`value`: [`HubEvent`](protobufs.md#hubevent)) => `Buffer` | - |
 | `subscribe.responseStream` | ``true`` | - |
 
 ___
@@ -1170,6 +1208,57 @@ ___
 | `fromJSON` | (`object`: `any`) => [`IdRegistryEvent`](protobufs.md#idregistryevent) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`IdRegistryEvent`](protobufs.md#idregistryevent) |
 | `toJSON` | (`message`: [`IdRegistryEvent`](protobufs.md#idregistryevent)) => `unknown` |
+
+___
+
+### MergeIdRegistryEventBody
+
+• **MergeIdRegistryEventBody**: `Object`
+
+#### Type declaration
+
+| Name | Type |
+| :------ | :------ |
+| `create` | <I\>(`base?`: `I`) => [`MergeIdRegistryEventBody`](protobufs.md#mergeidregistryeventbody) |
+| `decode` | (`input`: `Reader` \| `Uint8Array`, `length?`: `number`) => [`MergeIdRegistryEventBody`](protobufs.md#mergeidregistryeventbody) |
+| `encode` | (`message`: [`MergeIdRegistryEventBody`](protobufs.md#mergeidregistryeventbody), `writer?`: `Writer`) => `Writer` |
+| `fromJSON` | (`object`: `any`) => [`MergeIdRegistryEventBody`](protobufs.md#mergeidregistryeventbody) |
+| `fromPartial` | <I_1\>(`object`: `I_1`) => [`MergeIdRegistryEventBody`](protobufs.md#mergeidregistryeventbody) |
+| `toJSON` | (`message`: [`MergeIdRegistryEventBody`](protobufs.md#mergeidregistryeventbody)) => `unknown` |
+
+___
+
+### MergeMessageBody
+
+• **MergeMessageBody**: `Object`
+
+#### Type declaration
+
+| Name | Type |
+| :------ | :------ |
+| `create` | <I\>(`base?`: `I`) => [`MergeMessageBody`](protobufs.md#mergemessagebody) |
+| `decode` | (`input`: `Reader` \| `Uint8Array`, `length?`: `number`) => [`MergeMessageBody`](protobufs.md#mergemessagebody) |
+| `encode` | (`message`: [`MergeMessageBody`](protobufs.md#mergemessagebody), `writer?`: `Writer`) => `Writer` |
+| `fromJSON` | (`object`: `any`) => [`MergeMessageBody`](protobufs.md#mergemessagebody) |
+| `fromPartial` | <I_1\>(`object`: `I_1`) => [`MergeMessageBody`](protobufs.md#mergemessagebody) |
+| `toJSON` | (`message`: [`MergeMessageBody`](protobufs.md#mergemessagebody)) => `unknown` |
+
+___
+
+### MergeNameRegistryEventBody
+
+• **MergeNameRegistryEventBody**: `Object`
+
+#### Type declaration
+
+| Name | Type |
+| :------ | :------ |
+| `create` | <I\>(`base?`: `I`) => [`MergeNameRegistryEventBody`](protobufs.md#mergenameregistryeventbody) |
+| `decode` | (`input`: `Reader` \| `Uint8Array`, `length?`: `number`) => [`MergeNameRegistryEventBody`](protobufs.md#mergenameregistryeventbody) |
+| `encode` | (`message`: [`MergeNameRegistryEventBody`](protobufs.md#mergenameregistryeventbody), `writer?`: `Writer`) => `Writer` |
+| `fromJSON` | (`object`: `any`) => [`MergeNameRegistryEventBody`](protobufs.md#mergenameregistryeventbody) |
+| `fromPartial` | <I_1\>(`object`: `I_1`) => [`MergeNameRegistryEventBody`](protobufs.md#mergenameregistryeventbody) |
+| `toJSON` | (`message`: [`MergeNameRegistryEventBody`](protobufs.md#mergenameregistryeventbody)) => `unknown` |
 
 ___
 
@@ -1258,6 +1347,23 @@ ___
 
 ___
 
+### PruneMessageBody
+
+• **PruneMessageBody**: `Object`
+
+#### Type declaration
+
+| Name | Type |
+| :------ | :------ |
+| `create` | <I\>(`base?`: `I`) => [`PruneMessageBody`](protobufs.md#prunemessagebody) |
+| `decode` | (`input`: `Reader` \| `Uint8Array`, `length?`: `number`) => [`PruneMessageBody`](protobufs.md#prunemessagebody) |
+| `encode` | (`message`: [`PruneMessageBody`](protobufs.md#prunemessagebody), `writer?`: `Writer`) => `Writer` |
+| `fromJSON` | (`object`: `any`) => [`PruneMessageBody`](protobufs.md#prunemessagebody) |
+| `fromPartial` | <I_1\>(`object`: `I_1`) => [`PruneMessageBody`](protobufs.md#prunemessagebody) |
+| `toJSON` | (`message`: [`PruneMessageBody`](protobufs.md#prunemessagebody)) => `unknown` |
+
+___
+
 ### ReactionBody
 
 • **ReactionBody**: `Object`
@@ -1323,6 +1429,23 @@ ___
 | `fromJSON` | (`object`: `any`) => [`ReactionsByFidRequest`](protobufs.md#reactionsbyfidrequest) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`ReactionsByFidRequest`](protobufs.md#reactionsbyfidrequest) |
 | `toJSON` | (`message`: [`ReactionsByFidRequest`](protobufs.md#reactionsbyfidrequest)) => `unknown` |
+
+___
+
+### RevokeMessageBody
+
+• **RevokeMessageBody**: `Object`
+
+#### Type declaration
+
+| Name | Type |
+| :------ | :------ |
+| `create` | <I\>(`base?`: `I`) => [`RevokeMessageBody`](protobufs.md#revokemessagebody) |
+| `decode` | (`input`: `Reader` \| `Uint8Array`, `length?`: `number`) => [`RevokeMessageBody`](protobufs.md#revokemessagebody) |
+| `encode` | (`message`: [`RevokeMessageBody`](protobufs.md#revokemessagebody), `writer?`: `Writer`) => `Writer` |
+| `fromJSON` | (`object`: `any`) => [`RevokeMessageBody`](protobufs.md#revokemessagebody) |
+| `fromPartial` | <I_1\>(`object`: `I_1`) => [`RevokeMessageBody`](protobufs.md#revokemessagebody) |
+| `toJSON` | (`message`: [`RevokeMessageBody`](protobufs.md#revokemessagebody)) => `unknown` |
 
 ___
 
@@ -1564,38 +1687,6 @@ ___
 
 ## Functions
 
-### eventTypeFromJSON
-
-▸ **eventTypeFromJSON**(`object`): [`EventType`](../enums/protobufs.EventType.md)
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `object` | `any` |
-
-#### Returns
-
-[`EventType`](../enums/protobufs.EventType.md)
-
-___
-
-### eventTypeToJSON
-
-▸ **eventTypeToJSON**(`object`): `string`
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `object` | [`EventType`](../enums/protobufs.EventType.md) |
-
-#### Returns
-
-`string`
-
-___
-
 ### farcasterNetworkFromJSON
 
 ▸ **farcasterNetworkFromJSON**(`object`): [`FarcasterNetwork`](../enums/protobufs.FarcasterNetwork.md)
@@ -1625,6 +1716,22 @@ ___
 #### Returns
 
 `string`
+
+___
+
+### getAdminClient
+
+▸ **getAdminClient**(`address`): [`AdminServiceClient`](protobufs.md#adminserviceclient)
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `address` | `string` |
+
+#### Returns
+
+[`AdminServiceClient`](protobufs.md#adminserviceclient)
 
 ___
 
@@ -1718,6 +1825,38 @@ ___
 
 ___
 
+### hubEventTypeFromJSON
+
+▸ **hubEventTypeFromJSON**(`object`): [`HubEventType`](../enums/protobufs.HubEventType.md)
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `object` | `any` |
+
+#### Returns
+
+[`HubEventType`](../enums/protobufs.HubEventType.md)
+
+___
+
+### hubEventTypeToJSON
+
+▸ **hubEventTypeToJSON**(`object`): `string`
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `object` | [`HubEventType`](../enums/protobufs.HubEventType.md) |
+
+#### Returns
+
+`string`
+
+___
+
 ### idRegistryEventTypeFromJSON
 
 ▸ **idRegistryEventTypeFromJSON**(`object`): [`IdRegistryEventType`](../enums/protobufs.IdRegistryEventType.md)
@@ -1750,73 +1889,11 @@ ___
 
 ___
 
-### isAmpAddData
-
-▸ **isAmpAddData**(`data`): data is AmpAddData
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `data` | [`MessageData`](protobufs.md#messagedata) |
-
-#### Returns
-
-data is AmpAddData
-
-___
-
-### isAmpAddMessage
-
-▸ **isAmpAddMessage**(`message`): message is AmpAddMessage
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `message` | [`Message`](protobufs.md#message) |
-
-#### Returns
-
-message is AmpAddMessage
-
-___
-
-### isAmpRemoveData
-
-▸ **isAmpRemoveData**(`data`): data is AmpRemoveData
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `data` | [`MessageData`](protobufs.md#messagedata) |
-
-#### Returns
-
-data is AmpRemoveData
-
-___
-
-### isAmpRemoveMessage
-
-▸ **isAmpRemoveMessage**(`message`): message is AmpRemoveMessage
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `message` | [`Message`](protobufs.md#message) |
-
-#### Returns
-
-message is AmpRemoveMessage
-
-___
-
 ### isCastAddData
 
 ▸ **isCastAddData**(`data`): data is CastAddData
+
+Message typeguards
 
 #### Parameters
 
@@ -1875,6 +1952,72 @@ ___
 #### Returns
 
 message is CastRemoveMessage
+
+___
+
+### isMergeIdRegistryEventHubEvent
+
+▸ **isMergeIdRegistryEventHubEvent**(`event`): event is MergeIdRegistryEventHubEvent
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `event` | [`HubEvent`](protobufs.md#hubevent) |
+
+#### Returns
+
+event is MergeIdRegistryEventHubEvent
+
+___
+
+### isMergeMessageHubEvent
+
+▸ **isMergeMessageHubEvent**(`event`): event is MergeMessageHubEvent
+
+Hub event typeguards
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `event` | [`HubEvent`](protobufs.md#hubevent) |
+
+#### Returns
+
+event is MergeMessageHubEvent
+
+___
+
+### isMergeNameRegistryEventHubEvent
+
+▸ **isMergeNameRegistryEventHubEvent**(`event`): event is MergeNameRegistryEventHubEvent
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `event` | [`HubEvent`](protobufs.md#hubevent) |
+
+#### Returns
+
+event is MergeNameRegistryEventHubEvent
+
+___
+
+### isPruneMessageHubEvent
+
+▸ **isPruneMessageHubEvent**(`event`): event is PruneMessageHubEvent
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `event` | [`HubEvent`](protobufs.md#hubevent) |
+
+#### Returns
+
+event is PruneMessageHubEvent
 
 ___
 
@@ -1939,6 +2082,22 @@ ___
 #### Returns
 
 message is ReactionRemoveMessage
+
+___
+
+### isRevokeMessageHubEvent
+
+▸ **isRevokeMessageHubEvent**(`event`): event is RevokeMessageHubEvent
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `event` | [`HubEvent`](protobufs.md#hubevent) |
+
+#### Returns
+
+event is RevokeMessageHubEvent
 
 ___
 

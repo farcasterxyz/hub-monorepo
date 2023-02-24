@@ -190,12 +190,6 @@ export const validateMessageData = (data: protobufs.MessageData): HubResult<prot
   } else if (validType.value === protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE && !!data.castRemoveBody) {
     bodyResult = validateCastRemoveBody(data.castRemoveBody);
   } else if (
-    (validType.value === protobufs.MessageType.MESSAGE_TYPE_AMP_ADD ||
-      validType.value === protobufs.MessageType.MESSAGE_TYPE_AMP_REMOVE) &&
-    !!data.ampBody
-  ) {
-    bodyResult = validateAmpBody(data.ampBody);
-  } else if (
     (validType.value === protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD ||
       validType.value === protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE) &&
     !!data.reactionBody
@@ -260,7 +254,7 @@ export const validateVerificationAddEthAddressSignature = (
 
 export const validateCastAddBody = (body: protobufs.CastAddBody): HubResult<protobufs.CastAddBody> => {
   const text = body.text;
-  if (!text) {
+  if (text === undefined || text === null) {
     return err(new HubError('bad_request.validation_failure', 'text is missing'));
   }
 
@@ -297,9 +291,6 @@ export const validateCastAddBody = (body: protobufs.CastAddBody): HubResult<prot
     if (i > 0) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const prevPosition = body.mentionsPositions[i - 1]!;
-      if (position === prevPosition) {
-        return err(new HubError('bad_request.validation_failure', 'mentionsPositions must be unique'));
-      }
       if (position < prevPosition) {
         return err(
           new HubError('bad_request.validation_failure', 'mentionsPositions must be sorted in ascending order')
@@ -383,10 +374,6 @@ export const validateSignerBody = (body: protobufs.SignerBody): HubResult<protob
   return validateEd25519PublicKey(body.signer).map(() => body);
 };
 
-export const validateAmpBody = (body: protobufs.AmpBody): HubResult<protobufs.AmpBody> => {
-  return validateFid(body.targetFid).map(() => body);
-};
-
 export const validateUserDataType = (type: number): HubResult<protobufs.UserDataType> => {
   if (
     !Object.values(protobufs.UserDataType).includes(type) ||
@@ -412,10 +399,6 @@ export const validateUserDataAddBody = (body: protobufs.UserDataBody): HubResult
   } else if (type === protobufs.UserDataType.USER_DATA_TYPE_BIO) {
     if (value && value.length > 256) {
       return err(new HubError('bad_request.validation_failure', 'bio value > 256'));
-    }
-  } else if (type === protobufs.UserDataType.USER_DATA_TYPE_LOCATION) {
-    if (value && value.length > 32) {
-      return err(new HubError('bad_request.validation_failure', 'location value > 32'));
     }
   } else if (type === protobufs.UserDataType.USER_DATA_TYPE_URL) {
     if (value && value.length > 256) {

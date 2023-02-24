@@ -5,7 +5,8 @@ import * as types from './types';
 import * as utils from './utils';
 
 export type EventFilters = {
-  eventTypes?: protobufs.EventType[];
+  eventTypes?: protobufs.HubEventType[];
+  fromId?: number;
 };
 
 const deserializeCall = async <TDeserialized, TProtobuf>(
@@ -86,30 +87,6 @@ export class Client {
   async getAllCastMessagesByFid(fid: number): HubAsyncResult<(types.CastAddMessage | types.CastRemoveMessage)[]> {
     const request = protobufs.FidRequest.create({ fid });
     return wrapGrpcMessagesCall(this._grpcClient.getAllCastMessagesByFid(request));
-  }
-
-  /* -------------------------------------------------------------------------- */
-  /*                                Amp Methods                              */
-  /* -------------------------------------------------------------------------- */
-
-  async getAmp(fid: number, targetFid: number): HubAsyncResult<types.AmpAddMessage> {
-    const ampRequest = protobufs.AmpRequest.create({ fid, targetFid });
-    return wrapGrpcMessageCall(this._grpcClient.getAmp(ampRequest));
-  }
-
-  async getAmpsByFid(fid: number): HubAsyncResult<types.AmpAddMessage[]> {
-    const fidRequest = protobufs.FidRequest.create({ fid });
-    return wrapGrpcMessagesCall(this._grpcClient.getAmpsByFid(fidRequest));
-  }
-
-  async getAmpsByUser(targetFid: number): HubAsyncResult<types.AmpAddMessage[]> {
-    const fidRequest = protobufs.FidRequest.create({ fid: targetFid });
-    return wrapGrpcMessagesCall(this._grpcClient.getAmpsByUser(fidRequest));
-  }
-
-  async getAllAmpMessagesByFid(fid: number): HubAsyncResult<(types.AmpAddMessage | types.AmpRemoveMessage)[]> {
-    const request = protobufs.FidRequest.create({ fid });
-    return wrapGrpcMessagesCall(this._grpcClient.getAllAmpMessagesByFid(request));
   }
 
   /* -------------------------------------------------------------------------- */
@@ -252,7 +229,7 @@ export class Client {
   /* -------------------------------------------------------------------------- */
 
   /**
-   * Data from this stream can be parsed using `deserializeEventResponse`.
+   * Data from this stream can be parsed using `deserializeHubEvent`.
    */
   async subscribe(filters: EventFilters = {}) {
     const request = protobufs.SubscribeRequest.create({ ...filters });

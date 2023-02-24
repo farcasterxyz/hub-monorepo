@@ -4,6 +4,8 @@
 
 [protobufs](../modules/protobufs.md).ReactionBody
 
+Adds or removes a Reaction from a Cast
+
 ## Table of contents
 
 ### Properties
@@ -17,8 +19,12 @@
 
 • `Optional` **targetCastId**: [`CastId`](../modules/protobufs.md#castid)
 
+CastId of the Cast to react to
+
 ___
 
 ### type
 
 • **type**: [`ReactionType`](../enums/protobufs.ReactionType.md)
+
+Type of reaction

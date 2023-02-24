@@ -4,11 +4,13 @@
 
 [protobufs](../modules/protobufs.md).MessageData
 
+A MessageData object contains properties common to all messages and wraps a body object which
+contains properties specific to the MessageType.
+
 ## Table of contents
 
 ### Properties
 
-- [ampBody](protobufs.MessageData.md#ampbody)
 - [castAddBody](protobufs.MessageData.md#castaddbody)
 - [castRemoveBody](protobufs.MessageData.md#castremovebody)
 - [fid](protobufs.MessageData.md#fid)
@@ -22,12 +24,6 @@
 - [verificationRemoveBody](protobufs.MessageData.md#verificationremovebody)
 
 ## Properties
-
-### ampBody
-
-• `Optional` **ampBody**: [`AmpBody`](../modules/protobufs.md#ampbody)
-
-___
 
 ### castAddBody
 
@@ -45,11 +41,15 @@ ___
 
 • **fid**: `number`
 
+Farcaster ID of the user producing the message
+
 ___
 
 ### network
 
 • **network**: [`FarcasterNetwork`](../enums/protobufs.FarcasterNetwork.md)
+
+Farcaster network the message is intended for
 
 ___
 
@@ -69,11 +69,15 @@ ___
 
 • **timestamp**: `number`
 
+Farcaster epoch timestamp in seconds
+
 ___
 
 ### type
 
 • **type**: [`MessageType`](../enums/protobufs.MessageType.md)
+
+Type of message contained in the body
 
 ___
 

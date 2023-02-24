@@ -1,5 +1,25 @@
 # @farcaster/utils
 
+## 0.2.6
+
+### Patch Changes
+
+- 96468718: Allow duplicate mentions positions
+
+## 0.2.5
+
+### Patch Changes
+
+- add prepublishOnly scripts to packages
+- Updated dependencies
+  - @farcaster/protobufs@0.1.5
+
+## 0.2.4
+
+### Patch Changes
+
+- 3096e00: Allow empty cast text
+
 ## 0.2.3
 
 ### Patch Changes

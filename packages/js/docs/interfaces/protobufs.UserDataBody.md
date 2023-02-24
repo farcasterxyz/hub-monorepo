@@ -4,6 +4,8 @@
 
 [protobufs](../modules/protobufs.md).UserDataBody
 
+Adds metadata about a user
+
 ## Table of contents
 
 ### Properties
@@ -17,8 +19,12 @@
 
 • **type**: [`UserDataType`](../enums/protobufs.UserDataType.md)
 
+Type of metadata
+
 ___
 
 ### value
 
 • **value**: `string`
+
+Value of the metadata

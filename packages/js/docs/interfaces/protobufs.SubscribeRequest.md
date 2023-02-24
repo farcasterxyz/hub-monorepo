@@ -9,9 +9,16 @@
 ### Properties
 
 - [eventTypes](protobufs.SubscribeRequest.md#eventtypes)
+- [fromId](protobufs.SubscribeRequest.md#fromid)
 
 ## Properties
 
 ### eventTypes
 
-• **eventTypes**: [`EventType`](../enums/protobufs.EventType.md)[]
+• **eventTypes**: [`HubEventType`](../enums/protobufs.HubEventType.md)[]
+
+___
+
+### fromId
+
+• **fromId**: `number`

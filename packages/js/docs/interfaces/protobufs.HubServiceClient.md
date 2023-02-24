@@ -14,7 +14,6 @@
 
 ### Methods
 
-- [getAllAmpMessagesByFid](protobufs.HubServiceClient.md#getallampmessagesbyfid)
 - [getAllCastMessagesByFid](protobufs.HubServiceClient.md#getallcastmessagesbyfid)
 - [getAllMessagesBySyncIds](protobufs.HubServiceClient.md#getallmessagesbysyncids)
 - [getAllReactionMessagesByFid](protobufs.HubServiceClient.md#getallreactionmessagesbyfid)
@@ -22,13 +21,11 @@
 - [getAllSyncIdsByPrefix](protobufs.HubServiceClient.md#getallsyncidsbyprefix)
 - [getAllUserDataMessagesByFid](protobufs.HubServiceClient.md#getalluserdatamessagesbyfid)
 - [getAllVerificationMessagesByFid](protobufs.HubServiceClient.md#getallverificationmessagesbyfid)
-- [getAmp](protobufs.HubServiceClient.md#getamp)
-- [getAmpsByFid](protobufs.HubServiceClient.md#getampsbyfid)
-- [getAmpsByUser](protobufs.HubServiceClient.md#getampsbyuser)
 - [getCast](protobufs.HubServiceClient.md#getcast)
 - [getCastsByFid](protobufs.HubServiceClient.md#getcastsbyfid)
 - [getCastsByMention](protobufs.HubServiceClient.md#getcastsbymention)
 - [getCastsByParent](protobufs.HubServiceClient.md#getcastsbyparent)
+- [getEvent](protobufs.HubServiceClient.md#getevent)
 - [getFids](protobufs.HubServiceClient.md#getfids)
 - [getIdRegistryEvent](protobufs.HubServiceClient.md#getidregistryevent)
 - [getInfo](protobufs.HubServiceClient.md#getinfo)
@@ -50,52 +47,6 @@
 - [subscribe](protobufs.HubServiceClient.md#subscribe)
 
 ## Methods
-
-### getAllAmpMessagesByFid
-
-▸ **getAllAmpMessagesByFid**(`request`, `callback`): `SurfaceCall`
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAllAmpMessagesByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAllAmpMessagesByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `metadata` | `Metadata` |
-| `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
-
-___
 
 ### getAllCastMessagesByFid
 
@@ -421,146 +372,6 @@ ___
 
 ___
 
-### getAmp
-
-▸ **getAmp**(`request`, `callback`): `SurfaceCall`
-
-Amps
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `request` | [`AmpRequest`](../modules/protobufs.md#amprequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAmp**(`request`, `metadata`, `callback`): `SurfaceCall`
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `request` | [`AmpRequest`](../modules/protobufs.md#amprequest) |
-| `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAmp**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `request` | [`AmpRequest`](../modules/protobufs.md#amprequest) |
-| `metadata` | `Metadata` |
-| `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
-
-___
-
-### getAmpsByFid
-
-▸ **getAmpsByFid**(`request`, `callback`): `SurfaceCall`
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAmpsByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAmpsByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `metadata` | `Metadata` |
-| `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
-
-___
-
-### getAmpsByUser
-
-▸ **getAmpsByUser**(`request`, `callback`): `SurfaceCall`
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAmpsByUser**(`request`, `metadata`, `callback`): `SurfaceCall`
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAmpsByUser**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `metadata` | `Metadata` |
-| `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
-
-___
-
 ### getCast
 
 ▸ **getCast**(`request`, `callback`): `SurfaceCall`
@@ -740,6 +551,52 @@ ___
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
 | `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+
+#### Returns
+
+`SurfaceCall`
+
+___
+
+### getEvent
+
+▸ **getEvent**(`request`, `callback`): `SurfaceCall`
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `request` | [`EventRequest`](../modules/protobufs.md#eventrequest) |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`HubEvent`](../modules/protobufs.md#hubevent)) => `void` |
+
+#### Returns
+
+`SurfaceCall`
+
+▸ **getEvent**(`request`, `metadata`, `callback`): `SurfaceCall`
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `request` | [`EventRequest`](../modules/protobufs.md#eventrequest) |
+| `metadata` | `Metadata` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`HubEvent`](../modules/protobufs.md#hubevent)) => `void` |
+
+#### Returns
+
+`SurfaceCall`
+
+▸ **getEvent**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `request` | [`EventRequest`](../modules/protobufs.md#eventrequest) |
+| `metadata` | `Metadata` |
+| `options` | `Partial`<`CallOptions`\> |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`HubEvent`](../modules/protobufs.md#hubevent)) => `void` |
 
 #### Returns
 
@@ -1589,7 +1446,7 @@ ___
 
 ### subscribe
 
-▸ **subscribe**(`request`, `options?`): `ClientReadableStream`<[`EventResponse`](../modules/protobufs.md#eventresponse)\>
+▸ **subscribe**(`request`, `options?`): `ClientReadableStream`<[`HubEvent`](../modules/protobufs.md#hubevent)\>
 
 Event Methods
 
@@ -1602,9 +1459,9 @@ Event Methods
 
 #### Returns
 
-`ClientReadableStream`<[`EventResponse`](../modules/protobufs.md#eventresponse)\>
+`ClientReadableStream`<[`HubEvent`](../modules/protobufs.md#hubevent)\>
 
-▸ **subscribe**(`request`, `metadata?`, `options?`): `ClientReadableStream`<[`EventResponse`](../modules/protobufs.md#eventresponse)\>
+▸ **subscribe**(`request`, `metadata?`, `options?`): `ClientReadableStream`<[`HubEvent`](../modules/protobufs.md#hubevent)\>
 
 #### Parameters
 
@@ -1616,4 +1473,4 @@ Event Methods
 
 #### Returns
 
-`ClientReadableStream`<[`EventResponse`](../modules/protobufs.md#eventresponse)\>
+`ClientReadableStream`<[`HubEvent`](../modules/protobufs.md#hubevent)\>

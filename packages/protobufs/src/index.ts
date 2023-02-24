@@ -1,9 +1,10 @@
 import * as grpc from '@grpc/grpc-js';
-import { HubServiceClient } from './generated/rpc';
+import { AdminServiceClient, HubServiceClient } from './generated/rpc';
 
 export { Metadata, Server, ServerCredentials, status } from '@grpc/grpc-js';
 export type { CallOptions, Client, ClientReadableStream, ClientUnaryCall, ServiceError } from '@grpc/grpc-js';
 export * from './generated/gossip';
+export * from './generated/hub_event';
 export * from './generated/hub_state';
 export * from './generated/id_registry_event';
 export * from './generated/job';
@@ -22,4 +23,8 @@ export const getServer = (): grpc.Server => {
 
 export const getClient = (address: string): HubServiceClient => {
   return new HubServiceClient(address, grpc.credentials.createInsecure());
+};
+
+export const getAdminClient = (address: string): AdminServiceClient => {
+  return new AdminServiceClient(address, grpc.credentials.createInsecure());
 };

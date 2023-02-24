@@ -1,6 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesDecrement, bytesIncrement, Factories, getFarcasterTime, HubError } from '@farcaster/utils';
-import { ok } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
@@ -8,7 +7,7 @@ import { getAllMessagesBySigner, getMessage, makeTsHash } from '../db/message';
 import { UserPostfix } from '../db/types';
 
 const db = jestRocksDB('protobufs.signerStore.test');
-const eventHandler = new StoreEventHandler();
+const eventHandler = new StoreEventHandler(db);
 const set = new SignerStore(db, eventHandler);
 const fid = Factories.Fid.build();
 const custody1 = Factories.Eip712Signer.build();
@@ -98,8 +97,8 @@ describe('getSignerRemovesByFid', () => {
 describe('mergeIdRegistryEvent', () => {
   let mergedContractEvents: protobufs.IdRegistryEvent[];
 
-  const handleMergeEvent = (event: protobufs.IdRegistryEvent) => {
-    mergedContractEvents.push(event);
+  const handleMergeEvent = (event: protobufs.MergeIdRegistryEventHubEvent) => {
+    mergedContractEvents.push(event.mergeIdRegistryEventBody.idRegistryEvent);
   };
 
   beforeAll(() => {
@@ -115,8 +114,9 @@ describe('mergeIdRegistryEvent', () => {
   });
 
   test('succeeds', async () => {
-    await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toEqual(undefined);
+    await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toBeGreaterThan(0);
     await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
+
     expect(mergedContractEvents).toEqual([custody1Event]);
   });
 
@@ -130,6 +130,7 @@ describe('mergeIdRegistryEvent', () => {
     await expect(set.mergeIdRegistryEvent(blockHashConflictEvent)).rejects.toThrow(
       new HubError('bad_request.invalid_param', 'block hash mismatch')
     );
+
     expect(mergedContractEvents).toEqual([custody1Event]);
   });
 
@@ -141,6 +142,7 @@ describe('mergeIdRegistryEvent', () => {
 
     await set.mergeIdRegistryEvent(custody1Event);
     await expect(set.mergeIdRegistryEvent(txHashConflictEvent)).rejects.toThrow(HubError);
+
     expect(mergedContractEvents).toEqual([custody1Event]);
   });
 
@@ -154,7 +156,7 @@ describe('mergeIdRegistryEvent', () => {
     });
 
     afterEach(async () => {
-      await expect(set.mergeIdRegistryEvent(newEvent)).resolves.toEqual(undefined);
+      await expect(set.mergeIdRegistryEvent(newEvent)).resolves.toBeGreaterThan(0);
       await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(newEvent);
       expect(mergedContractEvents).toEqual([custody1Event, newEvent]);
       // SignerAdd should still be valid until messages signed by old custody address are revoked
@@ -190,10 +192,13 @@ describe('mergeIdRegistryEvent', () => {
     });
 
     afterEach(async () => {
-      await expect(set.mergeIdRegistryEvent(newEvent)).resolves.toEqual(undefined);
+      await expect(set.mergeIdRegistryEvent(newEvent)).rejects.toThrow(
+        new HubError('bad_request.conflict', 'event conflicts with a more recent IdRegistryEvent')
+      );
       await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
-      expect(mergedContractEvents).toEqual([custody1Event]);
       await expect(set.getSignerAdd(fid, signer.signerKey)).resolves.toEqual(signerAdd);
+
+      expect(mergedContractEvents).toEqual([custody1Event]);
     });
 
     test('when it has a lower block number', async () => {
@@ -220,11 +225,13 @@ describe('mergeIdRegistryEvent', () => {
 });
 
 describe('merge', () => {
-  let mergeEvents: [protobufs.Message, protobufs.Message[]][] = [];
+  let mergeEvents: [protobufs.Message | undefined, protobufs.Message[]][] = [];
 
-  const mergeMessageHandler = (message: protobufs.Message, deletedMessages?: protobufs.Message[]) => {
+  const mergeMessageHandler = (event: protobufs.MergeMessageHubEvent) => {
+    const { message, deletedMessages } = event.mergeMessageBody;
     mergeEvents.push([message, deletedMessages ?? []]);
   };
+
   beforeAll(() => {
     eventHandler.on('mergeMessage', mergeMessageHandler);
   });
@@ -262,23 +269,26 @@ describe('merge', () => {
   test('fails with invalid message type', async () => {
     const message = await Factories.CastAddMessage.create();
     await expect(set.merge(message)).rejects.toThrow(HubError);
+
     expect(mergeEvents).toEqual([]);
   });
 
   describe('SignerAdd', () => {
     test('succeeds', async () => {
-      await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+      await expect(set.merge(signerAdd)).resolves.toBeGreaterThan(0);
       await assertSignerAddWins(signerAdd);
+
       expect(mergeEvents).toEqual([[signerAdd, []]]);
     });
 
     test('fails when merged twice', async () => {
-      await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+      await expect(set.merge(signerAdd)).resolves.toBeGreaterThan(0);
       await expect(set.merge(signerAdd)).rejects.toEqual(
         new HubError('bad_request.duplicate', 'message has already been merged')
       );
 
       await assertSignerAddWins(signerAdd);
+
       expect(mergeEvents).toEqual([[signerAdd, []]]);
     });
 
@@ -299,10 +309,11 @@ describe('merge', () => {
 
       test('succeeds with a later timestamp', async () => {
         await set.merge(signerAdd);
-        await expect(set.merge(signerAddLater)).resolves.toEqual(undefined);
+        await expect(set.merge(signerAddLater)).resolves.toBeGreaterThan(0);
 
         await assertSignerDoesNotExist(signerAdd);
         await assertSignerAddWins(signerAddLater);
+
         expect(mergeEvents).toEqual([
           [signerAdd, []],
           [signerAddLater, [signerAdd]],
@@ -317,6 +328,7 @@ describe('merge', () => {
 
         await assertSignerDoesNotExist(signerAdd);
         await assertSignerAddWins(signerAddLater);
+
         expect(mergeEvents).toEqual([[signerAddLater, []]]);
       });
     });
@@ -336,7 +348,7 @@ describe('merge', () => {
 
       test('succeeds with a higher hash', async () => {
         await set.merge(signerAdd);
-        await expect(set.merge(signerAddLater)).resolves.toEqual(undefined);
+        await expect(set.merge(signerAddLater)).resolves.toBeGreaterThan(0);
 
         await assertSignerDoesNotExist(signerAdd);
         await assertSignerAddWins(signerAddLater);
@@ -368,7 +380,7 @@ describe('merge', () => {
         );
 
         await set.merge(signerRemoveEarlier);
-        await expect(set.merge(signerAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(signerAdd)).resolves.toBeGreaterThan(0);
 
         await assertSignerAddWins(signerAdd);
         await assertSignerDoesNotExist(signerRemoveEarlier);
@@ -429,14 +441,14 @@ describe('merge', () => {
 
   describe('SignerRemove', () => {
     test('succeeds', async () => {
-      await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+      await expect(set.merge(signerRemove)).resolves.toBeGreaterThan(0);
 
       await assertSignerRemoveWins(signerRemove);
       expect(mergeEvents).toEqual([[signerRemove, []]]);
     });
 
     test('fails if merged twice', async () => {
-      await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+      await expect(set.merge(signerRemove)).resolves.toBeGreaterThan(0);
       await expect(set.merge(signerRemove)).rejects.toEqual(
         new HubError('bad_request.duplicate', 'message has already been merged')
       );
@@ -459,7 +471,7 @@ describe('merge', () => {
 
       test('succeeds with a later timestamp', async () => {
         await set.merge(signerRemove);
-        await expect(set.merge(signerRemoveLater)).resolves.toEqual(undefined);
+        await expect(set.merge(signerRemoveLater)).resolves.toBeGreaterThan(0);
 
         await assertSignerDoesNotExist(signerRemove);
         await assertSignerRemoveWins(signerRemoveLater);
@@ -496,7 +508,7 @@ describe('merge', () => {
 
       test('succeeds with a higher hash', async () => {
         await set.merge(signerRemove);
-        await expect(set.merge(signerRemoveLater)).resolves.toEqual(undefined);
+        await expect(set.merge(signerRemoveLater)).resolves.toBeGreaterThan(0);
 
         await assertSignerDoesNotExist(signerRemove);
         await assertSignerRemoveWins(signerRemoveLater);
@@ -521,7 +533,7 @@ describe('merge', () => {
     describe('with conflicting SignerAdd with different timestamps', () => {
       test('succeeds with a later timestamp', async () => {
         await set.merge(signerAdd);
-        await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(signerRemove)).resolves.toBeGreaterThan(0);
 
         await assertSignerRemoveWins(signerRemove);
         await assertSignerDoesNotExist(signerAdd);
@@ -560,7 +572,7 @@ describe('merge', () => {
         );
 
         await set.merge(signerAddLater);
-        await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(signerRemove)).resolves.toBeGreaterThan(0);
 
         await assertSignerDoesNotExist(signerAddLater);
         await assertSignerRemoveWins(signerRemove);
@@ -580,7 +592,7 @@ describe('merge', () => {
         );
 
         await set.merge(signerAddEarlier);
-        await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(signerRemove)).resolves.toBeGreaterThan(0);
 
         await assertSignerDoesNotExist(signerAddEarlier);
         await assertSignerRemoveWins(signerRemove);
@@ -617,8 +629,9 @@ describe('revokeMessagesBySigner', () => {
   let signerAdd2: protobufs.SignerAddMessage;
 
   let revokedMessages: protobufs.Message[];
-  const handleRevokeMessage = (message: protobufs.Message) => {
-    revokedMessages.push(message);
+
+  const handleRevokeMessage = (event: protobufs.RevokeMessageHubEvent) => {
+    revokedMessages.push(event.revokeMessageBody.message);
   };
 
   beforeAll(async () => {
@@ -627,6 +640,7 @@ describe('revokeMessagesBySigner', () => {
       from: custody1Address,
       fid,
       to: custody2Address,
+      blockNumber: custody1Event.blockNumber + 1,
     });
 
     signerAdd1 = await Factories.SignerAddMessage.create(
@@ -651,23 +665,26 @@ describe('revokeMessagesBySigner', () => {
 
   describe('with messages', () => {
     beforeEach(async () => {
-      await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toEqual(undefined);
-      await expect(set.merge(signerAdd1)).resolves.toEqual(undefined);
-      await expect(set.merge(signerRemove)).resolves.toEqual(undefined);
-      await expect(set.mergeIdRegistryEvent(custody2Transfer)).resolves.toEqual(undefined);
-      await expect(set.merge(signerAdd2)).resolves.toEqual(undefined);
+      await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toBeGreaterThan(0);
+      await expect(set.merge(signerAdd1)).resolves.toBeGreaterThan(0);
+      await expect(set.merge(signerRemove)).resolves.toBeGreaterThan(0);
+      await expect(set.mergeIdRegistryEvent(custody2Transfer)).resolves.toBeGreaterThan(0);
+      await expect(set.merge(signerAdd2)).resolves.toBeGreaterThan(0);
 
       const custody1Messages = await getAllMessagesBySigner(db, fid, custody1Address);
       expect(new Set(custody1Messages)).toEqual(new Set([signerAdd1, signerRemove]));
 
       const custody2Messages = await getAllMessagesBySigner(db, fid, custody2Address);
+
       expect(custody2Messages).toEqual([signerAdd2]);
     });
 
     test('deletes messages and emits revokeMessage events for custody1', async () => {
-      await expect(set.revokeMessagesBySigner(fid, custody1Address)).resolves.toEqual(ok(undefined));
+      const result = await set.revokeMessagesBySigner(fid, custody1Address);
+      expect(result.isOk()).toBeTruthy();
       const custody1Messages = await getAllMessagesBySigner(db, fid, custody1Address);
       expect(custody1Messages).toEqual([]);
+
       expect(revokedMessages).toEqual([signerAdd1, signerRemove]);
     });
 
@@ -675,6 +692,7 @@ describe('revokeMessagesBySigner', () => {
       await set.revokeMessagesBySigner(fid, custody2Address);
       const custody2Messages = await getAllMessagesBySigner(db, fid, custody2Address);
       expect(custody2Messages).toEqual([]);
+
       expect(revokedMessages).toEqual([signerAdd2]);
     });
   });
@@ -695,8 +713,8 @@ describe('revokeMessagesBySigner', () => {
 
 describe('pruneMessages', () => {
   let prunedMessages: protobufs.Message[];
-  const pruneMessageListener = (message: protobufs.Message) => {
-    prunedMessages.push(message);
+  const pruneMessageListener = (event: protobufs.PruneMessageHubEvent) => {
+    prunedMessages.push(event.pruneMessageBody.message);
   };
 
   beforeAll(() => {
@@ -759,7 +777,8 @@ describe('pruneMessages', () => {
 
     test('no-ops when no messages have been merged', async () => {
       const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result.isOk()).toBeTruthy();
+
       expect(prunedMessages).toEqual([]);
     });
 
@@ -770,7 +789,7 @@ describe('pruneMessages', () => {
       }
 
       const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result.isOk()).toBeTruthy();
 
       expect(prunedMessages).toEqual([add1, add2]);
 
@@ -787,7 +806,7 @@ describe('pruneMessages', () => {
       }
 
       const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result.isOk()).toBeTruthy();
 
       expect(prunedMessages).toEqual([remove1, remove2]);
 
@@ -804,7 +823,7 @@ describe('pruneMessages', () => {
       }
 
       const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result.isOk()).toBeTruthy();
 
       expect(prunedMessages).toEqual([add1, remove2]);
     });
@@ -816,7 +835,7 @@ describe('pruneMessages', () => {
       }
 
       const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result.isOk()).toBeTruthy();
 
       expect(prunedMessages).toEqual([]);
     });

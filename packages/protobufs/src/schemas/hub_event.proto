@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+import "message.proto";
+import "id_registry_event.proto";
+import "name_registry_event.proto";
+
+enum HubEventType {
+  HUB_EVENT_TYPE_NONE = 0;
+  HUB_EVENT_TYPE_MERGE_MESSAGE = 1;
+  HUB_EVENT_TYPE_PRUNE_MESSAGE = 2;
+  HUB_EVENT_TYPE_REVOKE_MESSAGE = 3;
+  HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT = 4;
+  HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT = 5;
+}
+
+message MergeMessageBody {
+  Message message = 1;
+  repeated Message deleted_messages = 2;
+}
+
+message PruneMessageBody {
+  Message message = 1;
+}
+
+message RevokeMessageBody {
+  Message message = 1;
+}
+
+message MergeIdRegistryEventBody {
+  IdRegistryEvent id_registry_event = 1;
+}
+
+message MergeNameRegistryEventBody {
+  NameRegistryEvent name_registry_event = 1;
+}
+
+message HubEvent {
+  HubEventType type = 1;
+  uint64 id = 2;
+  oneof body {
+    MergeMessageBody merge_message_body = 3;
+    PruneMessageBody prune_message_body = 4;
+    RevokeMessageBody revoke_message_body = 5;
+    MergeIdRegistryEventBody merge_id_registry_event_body = 6;
+    MergeNameRegistryEventBody merge_name_registry_event_body = 7;
+  };
+}

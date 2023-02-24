@@ -33,8 +33,6 @@ export type CastAddData = MessageData<CastAddBody, protobufs.MessageType.MESSAGE
 export type CastRemoveData = MessageData<CastRemoveBody, protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE>;
 export type ReactionAddData = MessageData<ReactionBody, protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD>;
 export type ReactionRemoveData = MessageData<ReactionBody, protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE>;
-export type AmpAddData = MessageData<AmpBody, protobufs.MessageType.MESSAGE_TYPE_AMP_ADD>;
-export type AmpRemoveData = MessageData<AmpBody, protobufs.MessageType.MESSAGE_TYPE_AMP_REMOVE>;
 export type VerificationAddEthAddressData = MessageData<
   VerificationAddEthAddressBody,
   protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS
@@ -51,8 +49,6 @@ export type CastAddMessage = Message<CastAddData>;
 export type CastRemoveMessage = Message<CastRemoveData>;
 export type ReactionAddMessage = Message<ReactionAddData>;
 export type ReactionRemoveMessage = Message<ReactionRemoveData>;
-export type AmpAddMessage = Message<AmpAddData>;
-export type AmpRemoveMessage = Message<AmpRemoveData>;
 export type VerificationAddEthAddressMessage = Message<VerificationAddEthAddressData>;
 export type VerificationRemoveMessage = Message<VerificationRemoveData>;
 export type SignerAddMessage = Message<SignerAddData>;
@@ -68,7 +64,6 @@ export type MessageBody =
   | CastAddBody
   | CastRemoveBody
   | ReactionBody
-  | AmpBody
   | VerificationAddEthAddressBody
   | VerificationRemoveBody
   | SignerBody
@@ -139,28 +134,41 @@ export type NameRegistryEvent = Readonly<{
   expiry: number | undefined;
 }>;
 
-type GenericEventResponse = {
-  _protobuf: protobufs.EventResponse;
-  type: protobufs.EventType;
+type GenericHubEvent = {
+  _protobuf: protobufs.HubEvent;
+  id: number;
+  type: protobufs.HubEventType;
 };
 
-export type MessageEventResponse = GenericEventResponse & {
-  type:
-    | protobufs.EventType.EVENT_TYPE_MERGE_MESSAGE
-    | protobufs.EventType.EVENT_TYPE_PRUNE_MESSAGE
-    | protobufs.EventType.EVENT_TYPE_REVOKE_MESSAGE;
+export type MergeMessageHubEvent = GenericHubEvent & {
+  type: protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE;
   message: Message;
-  deleted_messages?: Message[];
+  deletedMessages?: Message[];
 };
 
-export type IdRegistryEventResponse = GenericEventResponse & {
-  type: protobufs.EventType.EVENT_TYPE_MERGE_ID_REGISTRY_EVENT;
+export type PruneMessageHubEvent = GenericHubEvent & {
+  type: protobufs.HubEventType.HUB_EVENT_TYPE_PRUNE_MESSAGE;
+  message: Message;
+};
+
+export type RevokeMessageHubEvent = GenericHubEvent & {
+  type: protobufs.HubEventType.HUB_EVENT_TYPE_REVOKE_MESSAGE;
+  message: Message;
+};
+
+export type MergeIdRegistryEventHubEvent = GenericHubEvent & {
+  type: protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT;
   idRegistryEvent: IdRegistryEvent;
 };
 
-export type NameRegistryEventResponse = GenericEventResponse & {
-  type: protobufs.EventType.EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT;
+export type MergeNameRegistryEventHubEvent = GenericHubEvent & {
+  type: protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT;
   nameRegistryEvent: NameRegistryEvent;
 };
 
-export type EventResponse = NameRegistryEventResponse | IdRegistryEventResponse | MessageEventResponse;
+export type HubEvent =
+  | MergeMessageHubEvent
+  | PruneMessageHubEvent
+  | RevokeMessageHubEvent
+  | MergeIdRegistryEventHubEvent
+  | MergeNameRegistryEventHubEvent;

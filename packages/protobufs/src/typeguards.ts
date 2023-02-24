@@ -1,5 +1,8 @@
+import * as hubEventProtobufs from './generated/hub_event';
 import * as protobufs from './generated/message';
 import * as types from './types';
+
+/** Message typeguards */
 
 export const isCastAddData = (data: protobufs.MessageData): data is types.CastAddData => {
   return data.type === protobufs.MessageType.MESSAGE_TYPE_CAST_ADD && typeof data.castAddBody !== 'undefined';
@@ -22,30 +25,6 @@ export const isCastRemoveMessage = (message: protobufs.Message): message is type
     message.signatureScheme === protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519 &&
     typeof message.data !== 'undefined' &&
     isCastRemoveData(message.data)
-  );
-};
-
-export const isAmpAddData = (data: protobufs.MessageData): data is types.AmpAddData => {
-  return data.type === protobufs.MessageType.MESSAGE_TYPE_AMP_ADD && typeof data.ampBody !== 'undefined';
-};
-
-export const isAmpAddMessage = (message: protobufs.Message): message is types.AmpAddMessage => {
-  return (
-    message.signatureScheme === protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519 &&
-    typeof message.data !== 'undefined' &&
-    isAmpAddData(message.data)
-  );
-};
-
-export const isAmpRemoveData = (data: protobufs.MessageData): data is types.AmpRemoveData => {
-  return data.type === protobufs.MessageType.MESSAGE_TYPE_AMP_REMOVE && typeof data.ampBody !== 'undefined';
-};
-
-export const isAmpRemoveMessage = (message: protobufs.Message): message is types.AmpRemoveMessage => {
-  return (
-    message.signatureScheme === protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519 &&
-    typeof message.data !== 'undefined' &&
-    isAmpRemoveData(message.data)
   );
 };
 
@@ -140,5 +119,51 @@ export const isUserDataAddMessage = (message: protobufs.Message): message is typ
     message.signatureScheme === protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519 &&
     typeof message.data !== 'undefined' &&
     isUserDataAddData(message.data)
+  );
+};
+
+/** Hub event typeguards */
+
+export const isMergeMessageHubEvent = (event: hubEventProtobufs.HubEvent): event is types.MergeMessageHubEvent => {
+  return (
+    event.type === hubEventProtobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE &&
+    typeof event.mergeMessageBody !== 'undefined' &&
+    typeof event.mergeMessageBody.message !== 'undefined'
+  );
+};
+
+export const isRevokeMessageHubEvent = (event: hubEventProtobufs.HubEvent): event is types.RevokeMessageHubEvent => {
+  return (
+    event.type === hubEventProtobufs.HubEventType.HUB_EVENT_TYPE_REVOKE_MESSAGE &&
+    typeof event.revokeMessageBody !== 'undefined' &&
+    typeof event.revokeMessageBody.message !== 'undefined'
+  );
+};
+
+export const isPruneMessageHubEvent = (event: hubEventProtobufs.HubEvent): event is types.PruneMessageHubEvent => {
+  return (
+    event.type === hubEventProtobufs.HubEventType.HUB_EVENT_TYPE_PRUNE_MESSAGE &&
+    typeof event.pruneMessageBody !== 'undefined' &&
+    typeof event.pruneMessageBody.message !== 'undefined'
+  );
+};
+
+export const isMergeIdRegistryEventHubEvent = (
+  event: hubEventProtobufs.HubEvent
+): event is types.MergeIdRegistryEventHubEvent => {
+  return (
+    event.type === hubEventProtobufs.HubEventType.HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT &&
+    typeof event.mergeIdRegistryEventBody !== 'undefined' &&
+    typeof event.mergeIdRegistryEventBody.idRegistryEvent !== 'undefined'
+  );
+};
+
+export const isMergeNameRegistryEventHubEvent = (
+  event: hubEventProtobufs.HubEvent
+): event is types.MergeNameRegistryEventHubEvent => {
+  return (
+    event.type === hubEventProtobufs.HubEventType.HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT &&
+    typeof event.mergeNameRegistryEventBody !== 'undefined' &&
+    typeof event.mergeNameRegistryEventBody.nameRegistryEvent !== 'undefined'
   );
 };

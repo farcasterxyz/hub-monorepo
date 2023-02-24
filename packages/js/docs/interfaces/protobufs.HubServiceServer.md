@@ -14,7 +14,6 @@
 
 ### Properties
 
-- [getAllAmpMessagesByFid](protobufs.HubServiceServer.md#getallampmessagesbyfid)
 - [getAllCastMessagesByFid](protobufs.HubServiceServer.md#getallcastmessagesbyfid)
 - [getAllMessagesBySyncIds](protobufs.HubServiceServer.md#getallmessagesbysyncids)
 - [getAllReactionMessagesByFid](protobufs.HubServiceServer.md#getallreactionmessagesbyfid)
@@ -22,13 +21,11 @@
 - [getAllSyncIdsByPrefix](protobufs.HubServiceServer.md#getallsyncidsbyprefix)
 - [getAllUserDataMessagesByFid](protobufs.HubServiceServer.md#getalluserdatamessagesbyfid)
 - [getAllVerificationMessagesByFid](protobufs.HubServiceServer.md#getallverificationmessagesbyfid)
-- [getAmp](protobufs.HubServiceServer.md#getamp)
-- [getAmpsByFid](protobufs.HubServiceServer.md#getampsbyfid)
-- [getAmpsByUser](protobufs.HubServiceServer.md#getampsbyuser)
 - [getCast](protobufs.HubServiceServer.md#getcast)
 - [getCastsByFid](protobufs.HubServiceServer.md#getcastsbyfid)
 - [getCastsByMention](protobufs.HubServiceServer.md#getcastsbymention)
 - [getCastsByParent](protobufs.HubServiceServer.md#getcastsbyparent)
+- [getEvent](protobufs.HubServiceServer.md#getevent)
 - [getFids](protobufs.HubServiceServer.md#getfids)
 - [getIdRegistryEvent](protobufs.HubServiceServer.md#getidregistryevent)
 - [getInfo](protobufs.HubServiceServer.md#getinfo)
@@ -50,12 +47,6 @@
 - [subscribe](protobufs.HubServiceServer.md#subscribe)
 
 ## Properties
-
-### getAllAmpMessagesByFid
-
-• **getAllAmpMessagesByFid**: `handleUnaryCall`<[`FidRequest`](../modules/protobufs.md#fidrequest), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
-
-___
 
 ### getAllCastMessagesByFid
 
@@ -101,26 +92,6 @@ ___
 
 ___
 
-### getAmp
-
-• **getAmp**: `handleUnaryCall`<[`AmpRequest`](../modules/protobufs.md#amprequest), [`Message`](../modules/protobufs.md#message)\>
-
-Amps
-
-___
-
-### getAmpsByFid
-
-• **getAmpsByFid**: `handleUnaryCall`<[`FidRequest`](../modules/protobufs.md#fidrequest), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
-
-___
-
-### getAmpsByUser
-
-• **getAmpsByUser**: `handleUnaryCall`<[`FidRequest`](../modules/protobufs.md#fidrequest), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
-
-___
-
 ### getCast
 
 • **getCast**: `handleUnaryCall`<[`CastId`](../modules/protobufs.md#castid), [`Message`](../modules/protobufs.md#message)\>
@@ -144,6 +115,12 @@ ___
 ### getCastsByParent
 
 • **getCastsByParent**: `handleUnaryCall`<[`CastId`](../modules/protobufs.md#castid), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
+
+___
+
+### getEvent
+
+• **getEvent**: `handleUnaryCall`<[`EventRequest`](../modules/protobufs.md#eventrequest), [`HubEvent`](../modules/protobufs.md#hubevent)\>
 
 ___
 
@@ -269,6 +246,6 @@ ___
 
 ### subscribe
 
-• **subscribe**: `handleServerStreamingCall`<[`SubscribeRequest`](../modules/protobufs.md#subscriberequest), [`EventResponse`](../modules/protobufs.md#eventresponse)\>
+• **subscribe**: `handleServerStreamingCall`<[`SubscribeRequest`](../modules/protobufs.md#subscriberequest), [`HubEvent`](../modules/protobufs.md#hubevent)\>
 
 Event Methods

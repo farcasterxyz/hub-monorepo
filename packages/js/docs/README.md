@@ -4,12 +4,12 @@
 
 A collection of Typescript classes and methods for easily creating Farcaster messages and interacting with Farcaster hubs over gRPC.
 
-TODO: explain what protobufs are, and what this package does under the hood
+TODO DOCS: explain what protobufs are, and what this package does under the hood
 
 ## Quickstart
 
 ```bash
-yarn add @farcaster/js ethers@5.7.2 @noble/ed25519
+npm install @farcaster/js ethers@5.7.2 @noble/ed25519
 ```
 
 ```typescript

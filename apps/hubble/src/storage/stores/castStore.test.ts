@@ -5,9 +5,10 @@ import { getMessage, makeTsHash } from '~/storage/db/message';
 import { UserPostfix } from '~/storage/db/types';
 import CastStore from '~/storage/stores/castStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
+import { sleep } from '~/utils/crypto';
 
 const db = jestRocksDB('protobufs.castStore.test');
-const eventHandler = new StoreEventHandler();
+const eventHandler = new StoreEventHandler(db);
 const store = new CastStore(db, eventHandler);
 const fid = Factories.Fid.build();
 
@@ -62,7 +63,7 @@ describe('getCastRemove', () => {
   });
 
   test('returns message', async () => {
-    await expect(store.merge(castRemove)).resolves.toEqual(undefined);
+    await expect(store.merge(castRemove)).resolves.toBeGreaterThan(0);
     await expect(store.getCastRemove(fid, castAdd.hash)).resolves.toEqual(castRemove);
   });
 });
@@ -146,11 +147,13 @@ describe('getCastsByMention', () => {
 });
 
 describe('merge', () => {
-  let mergeEvents: [protobufs.Message, protobufs.Message[]][] = [];
+  let mergeEvents: [protobufs.Message | undefined, protobufs.Message[]][] = [];
 
-  const mergeMessageHandler = (message: protobufs.Message, deletedMessages?: protobufs.Message[]) => {
+  const mergeMessageHandler = (event: protobufs.MergeMessageHubEvent) => {
+    const { message, deletedMessages } = event.mergeMessageBody;
     mergeEvents.push([message, deletedMessages ?? []]);
   };
+
   beforeAll(() => {
     eventHandler.on('mergeMessage', mergeMessageHandler);
   });
@@ -204,14 +207,14 @@ describe('merge', () => {
 
   describe('CastAdd', () => {
     test('succeeds', async () => {
-      await expect(store.merge(castAdd)).resolves.toEqual(undefined);
+      await expect(store.merge(castAdd)).resolves.toBeGreaterThan(0);
       await assertCastAddWins(castAdd);
 
       expect(mergeEvents).toEqual([[castAdd, []]]);
     });
 
     test('fails if merged twice', async () => {
-      await expect(store.merge(castAdd)).resolves.toEqual(undefined);
+      await expect(store.merge(castAdd)).resolves.toBeGreaterThan(0);
       await expect(store.merge(castAdd)).rejects.toEqual(
         new HubError('bad_request.duplicate', 'message has already been merged')
       );
@@ -283,7 +286,7 @@ describe('merge', () => {
   describe('CastRemove', () => {
     test('succeeds', async () => {
       await store.merge(castAdd);
-      await expect(store.merge(castRemove)).resolves.toEqual(undefined);
+      await expect(store.merge(castRemove)).resolves.toBeGreaterThan(0);
 
       await assertCastRemoveWins(castRemove);
       await assertMessageDoesNotExist(castAdd);
@@ -295,7 +298,7 @@ describe('merge', () => {
     });
 
     test('fails if merged twice', async () => {
-      await expect(store.merge(castRemove)).resolves.toEqual(undefined);
+      await expect(store.merge(castRemove)).resolves.toBeGreaterThan(0);
       await expect(store.merge(castRemove)).rejects.toEqual(
         new HubError('bad_request.duplicate', 'message has already been merged')
       );
@@ -316,7 +319,7 @@ describe('merge', () => {
 
       test('succeeds with a later timestamp', async () => {
         await store.merge(castRemove);
-        await expect(store.merge(castRemoveLater)).resolves.toEqual(undefined);
+        await expect(store.merge(castRemoveLater)).resolves.toBeGreaterThan(0);
 
         await assertMessageDoesNotExist(castRemove);
         await assertCastRemoveWins(castRemoveLater);
@@ -350,11 +353,12 @@ describe('merge', () => {
 
       test('succeeds with a later hash', async () => {
         await store.merge(castRemove);
-        await expect(store.merge(castRemoveLater)).resolves.toEqual(undefined);
+        await expect(store.merge(castRemoveLater)).resolves.toBeGreaterThan(0);
 
         await assertMessageDoesNotExist(castRemove);
         await assertCastRemoveWins(castRemoveLater);
 
+        await sleep(100);
         expect(mergeEvents).toEqual([
           [castRemove, []],
           [castRemoveLater, [castRemove]],
@@ -375,7 +379,7 @@ describe('merge', () => {
     describe('with conflicting CastAdd with different timestamps', () => {
       test('succeeds with a later timestamp', async () => {
         await store.merge(castAdd);
-        await expect(store.merge(castRemove)).resolves.toEqual(undefined);
+        await expect(store.merge(castRemove)).resolves.toBeGreaterThan(0);
         await assertCastRemoveWins(castRemove);
         await assertMessageDoesNotExist(castAdd);
 
@@ -391,7 +395,7 @@ describe('merge', () => {
         });
 
         await store.merge(castAdd);
-        await expect(store.merge(castRemoveEarlier)).resolves.toEqual(undefined);
+        await expect(store.merge(castRemoveEarlier)).resolves.toBeGreaterThan(0);
         await assertMessageDoesNotExist(castAdd);
         await assertCastRemoveWins(castRemoveEarlier);
 
@@ -410,7 +414,7 @@ describe('merge', () => {
         });
 
         await store.merge(castAdd);
-        await expect(store.merge(castRemoveEarlier)).resolves.toEqual(undefined);
+        await expect(store.merge(castRemoveEarlier)).resolves.toBeGreaterThan(0);
 
         await assertMessageDoesNotExist(castAdd);
         await assertCastRemoveWins(castRemoveEarlier);
@@ -428,10 +432,15 @@ describe('merge', () => {
         });
 
         await store.merge(castAdd);
-        await expect(store.merge(castRemoveLater)).resolves.toEqual(undefined);
+        await expect(store.merge(castRemoveLater)).resolves.toBeGreaterThan(0);
 
         await assertMessageDoesNotExist(castAdd);
         await assertCastRemoveWins(castRemoveLater);
+
+        const events = await eventHandler.getEvents();
+        const mergeEvents = events._unsafeUnwrap().map((event) => {
+          return [event.mergeMessageBody?.message, event.mergeMessageBody?.deletedMessages];
+        });
 
         expect(mergeEvents).toEqual([
           [castAdd, []],
@@ -444,8 +453,8 @@ describe('merge', () => {
 
 describe('pruneMessages', () => {
   let prunedMessages: protobufs.Message[];
-  const pruneMessageListener = (message: protobufs.Message) => {
-    prunedMessages.push(message);
+  const pruneMessageListener = (event: protobufs.PruneMessageHubEvent) => {
+    prunedMessages.push(event.pruneMessageBody.message);
   };
 
   beforeAll(() => {
@@ -514,7 +523,7 @@ describe('pruneMessages', () => {
 
     test('no-ops when no messages have been merged', async () => {
       const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result.isOk()).toBeTruthy();
       expect(prunedMessages).toEqual([]);
     });
 
@@ -525,7 +534,7 @@ describe('pruneMessages', () => {
       }
 
       const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result.isOk()).toBeTruthy();
 
       expect(prunedMessages).toEqual([add1, add2]);
 
@@ -542,7 +551,7 @@ describe('pruneMessages', () => {
       }
 
       const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result.isOk()).toBeTruthy();
 
       expect(prunedMessages).toEqual([remove1, remove2]);
 
@@ -559,7 +568,7 @@ describe('pruneMessages', () => {
       }
 
       const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result.isOk()).toBeTruthy();
 
       expect(prunedMessages).toEqual([add1, remove2]);
     });
@@ -571,7 +580,7 @@ describe('pruneMessages', () => {
       }
 
       const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result.isOk()).toBeTruthy();
 
       expect(prunedMessages).toEqual([]);
     });
@@ -587,7 +596,7 @@ describe('pruneMessages', () => {
       }
 
       const result = await timePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result.isOk()).toBeTruthy();
 
       expect(prunedMessages).toEqual([addOld1, addOld2, removeOld3]);
 

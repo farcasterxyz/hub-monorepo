@@ -4,6 +4,7 @@ import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from '@libp
 import { Command } from 'commander';
 import { existsSync } from 'fs';
 import { mkdir, readFile, writeFile } from 'fs/promises';
+import { ResultAsync } from 'neverthrow';
 import { dirname, resolve } from 'path';
 import { exit } from 'process';
 import { APP_VERSION, Hub, HubOptions } from '~/hubble';
@@ -55,6 +56,19 @@ app
     let peerId;
     if (cliOptions.id) {
       peerId = await readPeerId(resolve(cliOptions.id));
+    } else if (process.env['IDENTITY_B64']) {
+      // Read from the environment variable
+      const identityProtoBytes = Buffer.from(process.env['IDENTITY_B64'], 'base64');
+      const peerIdResult = await ResultAsync.fromPromise(createFromProtobuf(identityProtoBytes), (e) => {
+        return new Error(`Failed to read identity from environment: ${e}`);
+      });
+
+      if (peerIdResult.isErr()) {
+        throw peerIdResult.error;
+      }
+
+      peerId = peerIdResult.value;
+      logger.info({ identity: peerId.toString() }, 'Read identity from environment');
     } else {
       peerId = await readPeerId(resolve(hubConfig.id));
     }
@@ -106,7 +120,15 @@ app
     };
 
     const hub = new Hub(options);
-    hub.start();
+    const startResult = await ResultAsync.fromPromise(hub.start(), (e) => new Error(`Failed to start hub: ${e}`));
+    if (startResult.isErr()) {
+      logger.fatal({ error: startResult.error, reason: 'Hub Startup failed' }, 'shutting down hub');
+      try {
+        await teardown(hub);
+      } finally {
+        process.exit(1);
+      }
+    }
 
     process.stdin.resume();
 
@@ -126,11 +148,13 @@ app
     });
 
     process.on('uncaughtException', (err) => {
+      logger.error({ reason: 'Uncaught exception' }, 'shutting down hub');
       logger.fatal(err);
       process.exit(1);
     });
 
     process.on('unhandledRejection', (err) => {
+      logger.error({ reason: 'Unhandled Rejection' }, 'shutting down hub');
       logger.fatal(err);
       process.exit(1);
     });

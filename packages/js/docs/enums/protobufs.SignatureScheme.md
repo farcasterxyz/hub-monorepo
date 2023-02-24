@@ -4,6 +4,8 @@
 
 [protobufs](../modules/protobufs.md).SignatureScheme
 
+Type of signature scheme used to sign the Message hash
+
 ## Table of contents
 
 ### Enumeration Members
@@ -19,11 +21,15 @@
 
 • **SIGNATURE\_SCHEME\_ED25519** = ``1``
 
+SIGNATURE_SCHEME_ED25519 - Ed25519 signature (default)
+
 ___
 
 ### SIGNATURE\_SCHEME\_EIP712
 
 • **SIGNATURE\_SCHEME\_EIP712** = ``2``
+
+SIGNATURE_SCHEME_EIP712 - ECDSA signature using EIP-712 scheme
 
 ___
 

@@ -8,7 +8,7 @@ import { UserPostfix } from '../db/types';
 
 const db = jestRocksDB('protobufs.userDataSet.test');
 
-const eventHandler = new StoreEventHandler();
+const eventHandler = new StoreEventHandler(db);
 const set = new UserDataStore(db, eventHandler);
 const fid = Factories.Fid.build();
 
@@ -63,9 +63,10 @@ describe('getUserDataAddsByFid', () => {
 });
 
 describe('merge', () => {
-  let mergeEvents: [protobufs.Message, protobufs.Message[]][] = [];
+  let mergeEvents: [protobufs.Message | undefined, protobufs.Message[]][] = [];
 
-  const mergeMessageHandler = (message: protobufs.Message, deletedMessages?: protobufs.Message[]) => {
+  const mergeMessageHandler = (event: protobufs.MergeMessageHubEvent) => {
+    const { message, deletedMessages } = event.mergeMessageBody;
     mergeEvents.push([message, deletedMessages ?? []]);
   };
   beforeAll(() => {
@@ -102,13 +103,13 @@ describe('merge', () => {
 
   describe('UserDataAdd', () => {
     test('succeeds', async () => {
-      await expect(set.merge(addPfp)).resolves.toEqual(undefined);
+      await expect(set.merge(addPfp)).resolves.toBeGreaterThan(0);
       await assertUserDataAddWins(addPfp);
       expect(mergeEvents).toEqual([[addPfp, []]]);
     });
 
     test('fails if merged twice', async () => {
-      await expect(set.merge(addPfp)).resolves.toEqual(undefined);
+      await expect(set.merge(addPfp)).resolves.toBeGreaterThan(0);
       await expect(set.merge(addPfp)).rejects.toEqual(
         new HubError('bad_request.duplicate', 'message has already been merged')
       );
@@ -139,7 +140,7 @@ describe('merge', () => {
 
       test('succeeds with a later timestamp', async () => {
         await set.merge(addPfp);
-        await expect(set.merge(addPfpLater)).resolves.toEqual(undefined);
+        await expect(set.merge(addPfpLater)).resolves.toBeGreaterThan(0);
 
         await assertUserDataDoesNotExist(addPfp);
         await assertUserDataAddWins(addPfpLater);
@@ -173,7 +174,7 @@ describe('merge', () => {
 
       test('succeeds with a higher hash', async () => {
         await set.merge(addPfp);
-        await expect(set.merge(addPfpLater)).resolves.toEqual(undefined);
+        await expect(set.merge(addPfpLater)).resolves.toBeGreaterThan(0);
 
         await assertUserDataDoesNotExist(addPfp);
         await assertUserDataAddWins(addPfpLater);
@@ -199,8 +200,8 @@ describe('merge', () => {
 
 describe('pruneMessages', () => {
   let prunedMessages: protobufs.Message[];
-  const pruneMessageListener = (message: protobufs.Message) => {
-    prunedMessages.push(message);
+  const pruneMessageListener = (event: protobufs.PruneMessageHubEvent) => {
+    prunedMessages.push(event.pruneMessageBody.message);
   };
 
   beforeAll(() => {
@@ -219,7 +220,6 @@ describe('pruneMessages', () => {
   let add2: protobufs.UserDataAddMessage;
   let add3: protobufs.UserDataAddMessage;
   let add4: protobufs.UserDataAddMessage;
-  let add5: protobufs.UserDataAddMessage;
 
   const generateAddWithTimestamp = async (
     fid: number,
@@ -234,27 +234,26 @@ describe('pruneMessages', () => {
     add1 = await generateAddWithTimestamp(fid, time + 1, protobufs.UserDataType.USER_DATA_TYPE_PFP);
     add2 = await generateAddWithTimestamp(fid, time + 2, protobufs.UserDataType.USER_DATA_TYPE_DISPLAY);
     add3 = await generateAddWithTimestamp(fid, time + 3, protobufs.UserDataType.USER_DATA_TYPE_BIO);
-    add4 = await generateAddWithTimestamp(fid, time + 4, protobufs.UserDataType.USER_DATA_TYPE_LOCATION);
-    add5 = await generateAddWithTimestamp(fid, time + 5, protobufs.UserDataType.USER_DATA_TYPE_URL);
+    add4 = await generateAddWithTimestamp(fid, time + 5, protobufs.UserDataType.USER_DATA_TYPE_URL);
   });
 
   describe('with size limit', () => {
-    const sizePrunedStore = new UserDataStore(db, eventHandler, { pruneSizeLimit: 3 });
+    const sizePrunedStore = new UserDataStore(db, eventHandler, { pruneSizeLimit: 2 });
 
     test('no-ops when no messages have been merged', async () => {
       const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result._unsafeUnwrap()).toEqual([]);
       expect(prunedMessages).toEqual([]);
     });
 
     test('prunes earliest add messages', async () => {
-      const messages = [add1, add2, add3, add4, add5];
+      const messages = [add1, add2, add3, add4];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
       }
 
       const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      expect(result.isOk()).toBeTruthy();
 
       expect(prunedMessages).toEqual([add1, add2]);
 

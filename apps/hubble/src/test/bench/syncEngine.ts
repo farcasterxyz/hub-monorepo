@@ -24,10 +24,18 @@ const messages: protobufs.Message[] = [];
 const peers: SyncEngine[] = [];
 
 class MockEngine {
-  eventHandler = new StoreEventHandler();
+  eventHandler: StoreEventHandler;
+
+  constructor(db: RocksDB) {
+    this.eventHandler = new StoreEventHandler(db);
+  }
 
   async mergeMessage(message: protobufs.Message): Promise<HubResult<void>> {
-    this.eventHandler.emit('mergeMessage', message);
+    this.eventHandler.makeMergeMessage(message).map(async (event) => {
+      await this.eventHandler.putEvent(event);
+      this.eventHandler.broadcastEvent(event);
+    });
+
     return ok(undefined);
   }
 
@@ -54,7 +62,7 @@ const makeSyncEninge = async (id: number) => {
   const db = new RocksDB(`engine.syncEngine${id}.benchmark`);
   await db.open();
   await db.clear();
-  const syncEngine = new SyncEngine(new MockEngine() as unknown as Engine, db);
+  const syncEngine = new SyncEngine(new MockEngine(db) as unknown as Engine, db);
   (syncEngine as any)['_id'] = id;
   return syncEngine;
 };

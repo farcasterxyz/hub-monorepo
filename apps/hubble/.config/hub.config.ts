@@ -19,11 +19,14 @@ export const Config = {
   /** A list of MultiAddrs to use for bootstrapping */
   // bootstrap: [],
   /** An "allow list" of Peer Ids. Blocks all other connections */
-  // allowedPeers: [],
+  allowedPeers: [
+    '12D3KooWGNNs8uJkmJfThyrnESRBhfuNUAGeGrLb1PYssNnwQy11', // prod hub
+    '12D3KooWMDdQaMWCkQ8Gf3C6zdJdMEfFs8R2pw8YQw2HgoY8qhzA', // @adityapk00
+  ],
   /** The IP address libp2p should listen on. */
   ip: '127.0.0.1',
   /** The IP address that libp2p should announce to peers */
-  announceIp: '',
+  // announceIp: '',
   /** The TCP port libp2p should listen on. */
   gossipPort: DEFAULT_GOSSIP_PORT,
   /** The RPC port to use. */

@@ -15,11 +15,7 @@
 
 ### Type Aliases
 
-- [AmpAddData](types.md#ampadddata)
-- [AmpAddMessage](types.md#ampaddmessage)
 - [AmpBody](types.md#ampbody)
-- [AmpRemoveData](types.md#ampremovedata)
-- [AmpRemoveMessage](types.md#ampremovemessage)
 - [CastAddBody](types.md#castaddbody)
 - [CastAddData](types.md#castadddata)
 - [CastAddMessage](types.md#castaddmessage)
@@ -27,20 +23,22 @@
 - [CastRemoveBody](types.md#castremovebody)
 - [CastRemoveData](types.md#castremovedata)
 - [CastRemoveMessage](types.md#castremovemessage)
-- [EventResponse](types.md#eventresponse)
+- [HubEvent](types.md#hubevent)
 - [IdRegistryEvent](types.md#idregistryevent)
-- [IdRegistryEventResponse](types.md#idregistryeventresponse)
+- [MergeIdRegistryEventHubEvent](types.md#mergeidregistryeventhubevent)
+- [MergeMessageHubEvent](types.md#mergemessagehubevent)
+- [MergeNameRegistryEventHubEvent](types.md#mergenameregistryeventhubevent)
 - [Message](types.md#message)
 - [MessageBody](types.md#messagebody)
 - [MessageData](types.md#messagedata)
-- [MessageEventResponse](types.md#messageeventresponse)
 - [NameRegistryEvent](types.md#nameregistryevent)
-- [NameRegistryEventResponse](types.md#nameregistryeventresponse)
+- [PruneMessageHubEvent](types.md#prunemessagehubevent)
 - [ReactionAddData](types.md#reactionadddata)
 - [ReactionAddMessage](types.md#reactionaddmessage)
 - [ReactionBody](types.md#reactionbody)
 - [ReactionRemoveData](types.md#reactionremovedata)
 - [ReactionRemoveMessage](types.md#reactionremovemessage)
+- [RevokeMessageHubEvent](types.md#revokemessagehubevent)
 - [SignerAddData](types.md#signeradddata)
 - [SignerAddMessage](types.md#signeraddmessage)
 - [SignerBody](types.md#signerbody)
@@ -95,18 +93,6 @@ Re-exports [UserDataType](../enums/protobufs.UserDataType.md)
 
 ## Type Aliases
 
-### AmpAddData
-
-Ƭ **AmpAddData**: [`MessageData`](types.md#messagedata)<[`AmpBody`](types.md#ampbody), [`MESSAGE_TYPE_AMP_ADD`](../enums/protobufs.MessageType.md#message_type_amp_add)\>
-
-___
-
-### AmpAddMessage
-
-Ƭ **AmpAddMessage**: [`Message`](types.md#message)<[`AmpAddData`](types.md#ampadddata)\>
-
-___
-
 ### AmpBody
 
 Ƭ **AmpBody**: `Object`
@@ -116,18 +102,6 @@ ___
 | Name | Type |
 | :------ | :------ |
 | `targetFid` | `number` |
-
-___
-
-### AmpRemoveData
-
-Ƭ **AmpRemoveData**: [`MessageData`](types.md#messagedata)<[`AmpBody`](types.md#ampbody), [`MESSAGE_TYPE_AMP_REMOVE`](../enums/protobufs.MessageType.md#message_type_amp_remove)\>
-
-___
-
-### AmpRemoveMessage
-
-Ƭ **AmpRemoveMessage**: [`Message`](types.md#message)<[`AmpRemoveData`](types.md#ampremovedata)\>
 
 ___
 
@@ -196,9 +170,9 @@ ___
 
 ___
 
-### EventResponse
+### HubEvent
 
-Ƭ **EventResponse**: [`NameRegistryEventResponse`](types.md#nameregistryeventresponse) \| [`IdRegistryEventResponse`](types.md#idregistryeventresponse) \| [`MessageEventResponse`](types.md#messageeventresponse)
+Ƭ **HubEvent**: [`MergeMessageHubEvent`](types.md#mergemessagehubevent) \| [`PruneMessageHubEvent`](types.md#prunemessagehubevent) \| [`RevokeMessageHubEvent`](types.md#revokemessagehubevent) \| [`MergeIdRegistryEventHubEvent`](types.md#mergeidregistryeventhubevent) \| [`MergeNameRegistryEventHubEvent`](types.md#mergenameregistryeventhubevent)
 
 ___
 
@@ -208,9 +182,21 @@ ___
 
 ___
 
-### IdRegistryEventResponse
+### MergeIdRegistryEventHubEvent
 
-Ƭ **IdRegistryEventResponse**: `GenericEventResponse` & { `idRegistryEvent`: [`IdRegistryEvent`](types.md#idregistryevent) ; `type`: [`EVENT_TYPE_MERGE_ID_REGISTRY_EVENT`](../enums/protobufs.EventType.md#event_type_merge_id_registry_event)  }
+Ƭ **MergeIdRegistryEventHubEvent**: `GenericHubEvent` & { `idRegistryEvent`: [`IdRegistryEvent`](types.md#idregistryevent) ; `type`: [`HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT`](../enums/protobufs.HubEventType.md#hub_event_type_merge_id_registry_event)  }
+
+___
+
+### MergeMessageHubEvent
+
+Ƭ **MergeMessageHubEvent**: `GenericHubEvent` & { `deletedMessages?`: [`Message`](types.md#message)[] ; `message`: [`Message`](types.md#message) ; `type`: [`HUB_EVENT_TYPE_MERGE_MESSAGE`](../enums/protobufs.HubEventType.md#hub_event_type_merge_message)  }
+
+___
+
+### MergeNameRegistryEventHubEvent
+
+Ƭ **MergeNameRegistryEventHubEvent**: `GenericHubEvent` & { `nameRegistryEvent`: [`NameRegistryEvent`](types.md#nameregistryevent) ; `type`: [`HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT`](../enums/protobufs.HubEventType.md#hub_event_type_merge_name_registry_event)  }
 
 ___
 
@@ -228,7 +214,7 @@ ___
 
 ### MessageBody
 
-Ƭ **MessageBody**: [`CastAddBody`](types.md#castaddbody) \| [`CastRemoveBody`](types.md#castremovebody) \| [`ReactionBody`](types.md#reactionbody) \| [`AmpBody`](types.md#ampbody) \| [`VerificationAddEthAddressBody`](types.md#verificationaddethaddressbody) \| [`VerificationRemoveBody`](types.md#verificationremovebody) \| [`SignerBody`](types.md#signerbody) \| [`UserDataBody`](types.md#userdatabody)
+Ƭ **MessageBody**: [`CastAddBody`](types.md#castaddbody) \| [`CastRemoveBody`](types.md#castremovebody) \| [`ReactionBody`](types.md#reactionbody) \| [`VerificationAddEthAddressBody`](types.md#verificationaddethaddressbody) \| [`VerificationRemoveBody`](types.md#verificationremovebody) \| [`SignerBody`](types.md#signerbody) \| [`UserDataBody`](types.md#userdatabody)
 
 ___
 
@@ -256,21 +242,15 @@ ___
 
 ___
 
-### MessageEventResponse
-
-Ƭ **MessageEventResponse**: `GenericEventResponse` & { `deleted_messages?`: [`Message`](types.md#message)[] ; `message`: [`Message`](types.md#message) ; `type`: [`EVENT_TYPE_MERGE_MESSAGE`](../enums/protobufs.EventType.md#event_type_merge_message) \| [`EVENT_TYPE_PRUNE_MESSAGE`](../enums/protobufs.EventType.md#event_type_prune_message) \| [`EVENT_TYPE_REVOKE_MESSAGE`](../enums/protobufs.EventType.md#event_type_revoke_message)  }
-
-___
-
 ### NameRegistryEvent
 
 Ƭ **NameRegistryEvent**: `Readonly`<{ `_protobuf`: [`NameRegistryEvent`](protobufs.md#nameregistryevent) ; `blockHash`: `string` ; `blockNumber`: `number` ; `expiry`: `number` \| `undefined` ; `fname`: `string` ; `from`: `string` ; `logIndex`: `number` ; `to`: `string` ; `transactionHash`: `string` ; `type`: [`NameRegistryEventType`](../enums/protobufs.NameRegistryEventType.md)  }\>
 
 ___
 
-### NameRegistryEventResponse
+### PruneMessageHubEvent
 
-Ƭ **NameRegistryEventResponse**: `GenericEventResponse` & { `nameRegistryEvent`: [`NameRegistryEvent`](types.md#nameregistryevent) ; `type`: [`EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT`](../enums/protobufs.EventType.md#event_type_merge_name_registry_event)  }
+Ƭ **PruneMessageHubEvent**: `GenericHubEvent` & { `message`: [`Message`](types.md#message) ; `type`: [`HUB_EVENT_TYPE_PRUNE_MESSAGE`](../enums/protobufs.HubEventType.md#hub_event_type_prune_message)  }
 
 ___
 
@@ -308,6 +288,12 @@ ___
 ### ReactionRemoveMessage
 
 Ƭ **ReactionRemoveMessage**: [`Message`](types.md#message)<[`ReactionRemoveData`](types.md#reactionremovedata)\>
+
+___
+
+### RevokeMessageHubEvent
+
+Ƭ **RevokeMessageHubEvent**: `GenericHubEvent` & { `message`: [`Message`](types.md#message) ; `type`: [`HUB_EVENT_TYPE_REVOKE_MESSAGE`](../enums/protobufs.HubEventType.md#hub_event_type_revoke_message)  }
 
 ___
 

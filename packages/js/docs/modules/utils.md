@@ -6,7 +6,6 @@
 
 ### Functions
 
-- [deserializeAmpBody](utils.md#deserializeampbody)
 - [deserializeBlockHash](utils.md#deserializeblockhash)
 - [deserializeCastAddBody](utils.md#deserializecastaddbody)
 - [deserializeCastId](utils.md#deserializecastid)
@@ -15,8 +14,8 @@
 - [deserializeEd25519Signature](utils.md#deserializeed25519signature)
 - [deserializeEip712Signature](utils.md#deserializeeip712signature)
 - [deserializeEthAddress](utils.md#deserializeethaddress)
-- [deserializeEventResponse](utils.md#deserializeeventresponse)
 - [deserializeFname](utils.md#deserializefname)
+- [deserializeHubEvent](utils.md#deserializehubevent)
 - [deserializeIdRegistryEvent](utils.md#deserializeidregistryevent)
 - [deserializeMessage](utils.md#deserializemessage)
 - [deserializeMessageData](utils.md#deserializemessagedata)
@@ -28,7 +27,6 @@
 - [deserializeUserDataBody](utils.md#deserializeuserdatabody)
 - [deserializeVerificationAddEthAddressBody](utils.md#deserializeverificationaddethaddressbody)
 - [deserializeVerificationRemoveBody](utils.md#deserializeverificationremovebody)
-- [serializeAmpBody](utils.md#serializeampbody)
 - [serializeBlockHash](utils.md#serializeblockhash)
 - [serializeCastAddBody](utils.md#serializecastaddbody)
 - [serializeCastId](utils.md#serializecastid)
@@ -45,22 +43,6 @@
 - [serializeVerificationRemoveBody](utils.md#serializeverificationremovebody)
 
 ## Functions
-
-### deserializeAmpBody
-
-▸ **deserializeAmpBody**(`protobuf`): `HubResult`<[`AmpBody`](types.md#ampbody)\>
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `protobuf` | [`AmpBody`](protobufs.md#ampbody) |
-
-#### Returns
-
-`HubResult`<[`AmpBody`](types.md#ampbody)\>
-
-___
 
 ### deserializeBlockHash
 
@@ -196,22 +178,6 @@ ___
 
 ___
 
-### deserializeEventResponse
-
-▸ **deserializeEventResponse**(`protobuf`): `HubResult`<[`EventResponse`](types.md#eventresponse)\>
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `protobuf` | [`EventResponse`](protobufs.md#eventresponse) |
-
-#### Returns
-
-`HubResult`<[`EventResponse`](types.md#eventresponse)\>
-
-___
-
 ### deserializeFname
 
 ▸ **deserializeFname**(`fname`): `HubResult`<`string`\>
@@ -225,6 +191,22 @@ ___
 #### Returns
 
 `HubResult`<`string`\>
+
+___
+
+### deserializeHubEvent
+
+▸ **deserializeHubEvent**(`protobuf`): `HubResult`<[`HubEvent`](types.md#hubevent)\>
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `protobuf` | [`HubEvent`](protobufs.md#hubevent) |
+
+#### Returns
+
+`HubResult`<[`HubEvent`](types.md#hubevent)\>
 
 ___
 
@@ -405,22 +387,6 @@ ___
 #### Returns
 
 `HubResult`<[`VerificationRemoveBody`](types.md#verificationremovebody)\>
-
-___
-
-### serializeAmpBody
-
-▸ **serializeAmpBody**(`body`): `HubResult`<[`AmpBody`](protobufs.md#ampbody)\>
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `body` | [`AmpBody`](types.md#ampbody) |
-
-#### Returns
-
-`HubResult`<[`AmpBody`](protobufs.md#ampbody)\>
 
 ___
 
