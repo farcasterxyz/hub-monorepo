@@ -9,7 +9,7 @@ TODO: explain what protobufs are, and what this package does under the hood
 ## Quickstart
 
 ```bash
-npm install @farcaster/js ethers@5.7.2 @noble/ed25519
+yarn add @farcaster/js ethers@5.7.2 @noble/ed25519
 ```
 
 ```typescript
