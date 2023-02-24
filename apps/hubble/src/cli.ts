@@ -122,7 +122,8 @@ app
     const hub = new Hub(options);
     const startResult = await ResultAsync.fromPromise(hub.start(), (e) => new Error(`Failed to start hub: ${e}`));
     if (startResult.isErr()) {
-      logger.fatal({ error: startResult.error, reason: 'Hub Startup failed' }, 'shutting down hub');
+      logger.fatal(startResult.error);
+      logger.fatal({ reason: 'Hub Startup failed' }, 'shutting down hub');
       try {
         await teardown(hub);
       } finally {

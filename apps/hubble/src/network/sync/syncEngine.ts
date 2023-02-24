@@ -15,7 +15,6 @@ import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
 import { TrieSnapshot } from '~/network/sync/trieNode';
 import RocksDB from '~/storage/db/rocksdb';
-
 import Engine from '~/storage/engine';
 import { sleepWhile } from '~/utils/crypto';
 import { logger } from '~/utils/logger';
@@ -23,7 +22,7 @@ import { logger } from '~/utils/logger';
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
 const SYNC_THRESHOLD_IN_SECONDS = 10;
-const HASHES_PER_FETCH = 50;
+const HASHES_PER_FETCH = 256;
 const SYNC_INTERRUPT_TIMEOUT = 30 * 1000; // 30 seconds
 
 const log = logger.child({
@@ -51,7 +50,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private _interruptSync = false;
 
   private currentHubPeerContacts: Map<string, PeerContact> = new Map();
-  private _messagesQueuedForSync = 0;
+
+  // Number of messages waiting to get into the SyncTrie.
+  private _syncTrieQ = 0;
+  // Number of messages waiting to get into the merge stores.
+  private _syncMergeQ = 0;
 
   constructor(engine: Engine, rocksDb: RocksDB) {
     super();
@@ -62,14 +65,14 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this.engine.eventHandler.on('mergeMessage', async (event: protobufs.MergeMessageHubEvent) => {
       const { message, deletedMessages } = event.mergeMessageBody;
       const totalMessages = 1 + (deletedMessages?.length ?? 0);
-      this._messagesQueuedForSync += totalMessages;
+      this._syncTrieQ += totalMessages;
 
       await this.addMessage(message);
 
       for (const deletedMessage of deletedMessages ?? []) {
         await this.removeMessage(deletedMessage);
       }
-      this._messagesQueuedForSync -= totalMessages;
+      this._syncTrieQ -= totalMessages;
     });
 
     // Note: There's no guarantee that the message is actually deleted, because the transaction could fail.
@@ -77,19 +80,23 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // the trie to diverge in a way that's not recoverable without reconstructing it from the db.
     // Order of events does not matter. The trie will always converge to the same state.
     this.engine.eventHandler.on('pruneMessage', async (event: protobufs.PruneMessageHubEvent) => {
-      this._messagesQueuedForSync += 1;
+      this._syncTrieQ += 1;
       await this.removeMessage(event.pruneMessageBody.message);
-      this._messagesQueuedForSync -= 1;
+      this._syncTrieQ -= 1;
     });
     this.engine.eventHandler.on('revokeMessage', async (event: protobufs.RevokeMessageHubEvent) => {
-      this._messagesQueuedForSync += 1;
+      this._syncTrieQ += 1;
       await this.removeMessage(event.revokeMessageBody.message);
-      this._messagesQueuedForSync -= 1;
+      this._syncTrieQ -= 1;
     });
   }
 
-  public get messagesQueuedForSync(): number {
-    return this._messagesQueuedForSync;
+  public get syncTrieQSize(): number {
+    return this._syncTrieQ;
+  }
+
+  public get syncMergeQSize(): number {
+    return this._syncMergeQ;
   }
 
   public async initialize(rebuildSyncTrie = false) {
@@ -117,7 +124,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     // Wait for syncing to stop.
     await sleepWhile(() => this._isSyncing, SYNC_INTERRUPT_TIMEOUT);
-    await sleepWhile(() => this.messagesQueuedForSync > 0, SYNC_INTERRUPT_TIMEOUT);
+    await sleepWhile(() => this.syncTrieQSize > 0, SYNC_INTERRUPT_TIMEOUT);
 
     this._interruptSync = false;
   }
@@ -293,21 +300,30 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     // Merge messages sequentially, so we can handle missing users.
     // TODO: Optimize by collecting all failures and retrying them in a batch
+    this._syncMergeQ += messages.length;
     for (const msg of messages) {
       const result = await this.engine.mergeMessage(msg);
-      // Unknown user error
-      if (
-        result.isErr() &&
-        result.error.errCode === 'bad_request.validation_failure' &&
-        (result.error.message === 'invalid signer' || result.error.message.startsWith('unknown fid'))
-      ) {
-        log.warn({ fid: msg.data?.fid }, 'Unknown user, fetching custody event');
-        const result = await this.syncUserAndRetryMessage(msg, rpcClient);
-        mergeResults.push(result);
+
+      if (result.isErr()) {
+        if (
+          result.error.errCode === 'bad_request.validation_failure' &&
+          (result.error.message === 'invalid signer' || result.error.message.startsWith('unknown fid'))
+        ) {
+          // Unknown user error. Fetch the custody event and retry the message.
+          log.warn({ fid: msg.data?.fid }, 'Unknown user, fetching custody event');
+          const result = await this.syncUserAndRetryMessage(msg, rpcClient);
+          mergeResults.push(result);
+        } else if (result.error.errCode === 'bad_request.duplicate') {
+          // This message has been merged into the DB, but for some reason is not in the Trie.
+          // Just update the trie.
+          await this.trie.insert(new SyncId(msg));
+          mergeResults.push(result);
+        }
       } else {
         mergeResults.push(result);
       }
     }
+    this._syncMergeQ -= messages.length;
 
     log.info(
       {
@@ -360,6 +376,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         rpcClient,
         onMissingHashes
       );
+      return;
     }
   }
 
@@ -385,7 +402,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           {
             ourNum: ourNode.numMessages,
             theirNum: theirNode.numMessages,
-            prefix: bytesToUtf8String(theirNode.prefix),
+            prefix: `${bytesToUtf8String(theirNode.prefix.slice(0, 10))._unsafeUnwrap()}/${Buffer.from(
+              theirNode.prefix.slice(10)
+            ).toString('hex')}`,
           },
           `Our node has more messages, skipping this node.`
         );
@@ -403,11 +422,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     } else if (theirNode.children) {
       for (const [theirChildChar, theirChild] of theirNode.children.entries()) {
         // recursively fetch hashes for every node where the hashes don't match
-        const allPromises = [];
         if (ourNode?.children?.get(theirChildChar)?.hash !== theirChild.hash) {
-          allPromises.push(this.fetchMissingHashesByPrefix(theirChild.prefix, rpcClient, onMissingHashes));
+          await this.fetchMissingHashesByPrefix(theirChild.prefix, rpcClient, onMissingHashes);
         }
-        await Promise.all(allPromises);
       }
     }
   }
@@ -476,7 +493,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     const custodyResult = await this.engine.mergeIdRegistryEvent(custodyEventResult._unsafeUnwrap());
     if (custodyResult.isErr()) {
-      return err(new HubError('unavailable.storage_failure', 'Failed to merge custody event'));
+      return err(
+        new HubError('unavailable.storage_failure', `Failed to merge custody event: ${custodyResult.error.message}`)
+      );
     }
 
     // Probably not required to fetch the signer messages, but doing it here means

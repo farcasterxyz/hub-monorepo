@@ -253,7 +253,7 @@ export const benchSyncEngine = async ({
               staled: messages.length > nodeMetadata!.numMessages,
               ...rpcClient.stats(),
             };
-            await sleepWhile(() => ourSyncEngine.messagesQueuedForSync > 0, 1000);
+            await sleepWhile(() => ourSyncEngine.syncTrieQSize > 0, 1000);
           }
         }
 

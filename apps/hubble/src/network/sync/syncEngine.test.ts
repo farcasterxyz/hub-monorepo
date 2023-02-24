@@ -63,7 +63,7 @@ describe('SyncEngine', () => {
       })
     );
 
-    await sleepWhile(() => syncEngine.messagesQueuedForSync > 0, 1000);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
     return results;
   };
 
@@ -80,7 +80,7 @@ describe('SyncEngine', () => {
     expect(result.isOk()).toBeTruthy();
 
     // Wait for the trie to be updated
-    await sleepWhile(() => syncEngine.messagesQueuedForSync > 0, 1000);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
 
     // Two messages (signerAdd + castAdd) was added to the trie
     expect((await syncEngine.trie.items()) - existingItems).toEqual(2);
@@ -96,7 +96,7 @@ describe('SyncEngine', () => {
     expect(result.isErr()).toBeTruthy();
 
     // Wait for the trie to be updated
-    await sleepWhile(() => syncEngine.messagesQueuedForSync > 0, 1000);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
 
     expect(await syncEngine.trie.items()).toEqual(0);
     expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
@@ -120,7 +120,7 @@ describe('SyncEngine', () => {
     expect(result.isOk()).toBeTruthy();
 
     // Wait for the trie to be updated
-    await sleepWhile(() => syncEngine.messagesQueuedForSync > 0, 1000);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
 
     const id = new SyncId(castRemove);
     expect(await syncEngine.trie.exists(id)).toBeTruthy();
@@ -164,7 +164,7 @@ describe('SyncEngine', () => {
     expect(result.isOk()).toBeTruthy();
 
     // Wait for the trie to be updated
-    await sleepWhile(() => syncEngine.messagesQueuedForSync > 0, 1000);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
     expect(await syncEngine.trie.items()).toEqual(2); // signerAdd + reaction1
 
     // Then merging the second reaction should also succeed and remove reaction1
@@ -172,7 +172,7 @@ describe('SyncEngine', () => {
     expect(result.isOk()).toBeTruthy();
 
     // Wait for the trie to be updated
-    await sleepWhile(() => syncEngine.messagesQueuedForSync > 0, 1000);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
     expect(await syncEngine.trie.items()).toEqual(2); // signerAdd + reaction2 (reaction1 is removed)
 
     // Create a new engine and sync engine
@@ -187,7 +187,7 @@ describe('SyncEngine', () => {
     expect(result.isOk()).toBeTruthy();
 
     // Wait for the trie to be updated
-    await sleepWhile(() => syncEngine.messagesQueuedForSync > 0, 1000);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
     expect(await syncEngine2.trie.items()).toEqual(2); // signerAdd + reaction2
 
     // Roothashes must match

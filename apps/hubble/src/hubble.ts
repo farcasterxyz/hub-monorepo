@@ -24,7 +24,7 @@ import { Multiaddr, multiaddr } from '@multiformats/multiaddr';
 import { isIP } from 'net';
 import { Result, ResultAsync, err, ok } from 'neverthrow';
 import { EthEventsProvider, GoerliEthConstants } from '~/eth/ethEventsProvider';
-import { GossipNode } from '~/network/p2p/gossipNode';
+import { GossipNode, MAX_MESSAGE_QUEUE_SIZE } from '~/network/p2p/gossipNode';
 import { NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import SyncEngine from '~/network/sync/syncEngine';
 import Server from '~/rpc/server';
@@ -329,6 +329,16 @@ export class Hub implements HubInterface {
     if (gossipMessage.message) {
       const message = gossipMessage.message;
 
+      if (this.syncEngine.syncMergeQSize + this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
+        // If there are too many messages in the queue, drop this message. This is a gossip message, so the sync
+        // will eventually re-fetch and merge this message in anyway.
+        log.warn(
+          { syncTrieQ: this.syncEngine.syncTrieQSize, syncMergeQ: this.syncEngine.syncMergeQSize },
+          `Sync queue is full, dropping gossip message`
+        );
+        return err(new HubError('unavailable', 'Sync queue is full'));
+      }
+
       // Get the RPC Client to use to merge this message
       const contactInfo = this.syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo;
       if (contactInfo) {
@@ -527,6 +537,11 @@ export class Hub implements HubInterface {
   async submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number> {
     // message is a reserved key in some logging systems, so we use submittedMessage instead
     const logMessage = log.child({ submittedMessage: messageToLog(message), source });
+
+    if (this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
+      log.warn({ syncTrieQSize: this.syncEngine.syncTrieQSize }, 'SubmitMessage rejected: Sync trie queue is full');
+      return err(new HubError('unavailable.storage_failure', 'Sync trie queue is full'));
+    }
 
     const mergeResult = await this.engine.mergeMessage(message);
 

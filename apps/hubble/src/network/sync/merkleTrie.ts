@@ -6,7 +6,7 @@ import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
 
-const TRIE_UNLOAD_THRESHOLD = 1000;
+const TRIE_UNLOAD_THRESHOLD = 10_000;
 
 /**
  * Represents a node in the trie, and it's immediate children
@@ -89,8 +89,13 @@ class MerkleTrie {
     this._root = new TrieNode();
 
     // Rebuild the trie
+    let count = 0;
     await engine.forEachMessage(async (message) => {
       await this.insert(new SyncId(message));
+      count += 1;
+      if (count % 10_000 === 0) {
+        log.info({ count }, 'Rebuilding Merkle Trie');
+      }
     });
   }
 

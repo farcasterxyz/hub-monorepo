@@ -138,7 +138,7 @@ describe('Multi peer sync engine', () => {
 
       // Add messages to engine 1
       await addMessagesWithTimestamps(engine1, [30662167, 30662169, 30662172]);
-      await sleepWhile(() => syncEngine1.messagesQueuedForSync > 0, 1000);
+      await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
 
       const engine2 = new Engine(testDb2, network);
       const syncEngine2 = new SyncEngine(engine2, testDb2);
@@ -161,7 +161,7 @@ describe('Multi peer sync engine', () => {
 
       // Add more messages
       await addMessagesWithTimestamps(engine1, [30663167, 30663169, 30663172]);
-      await sleepWhile(() => syncEngine1.messagesQueuedForSync > 0, 1000);
+      await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
 
       // grab a new snapshot from the RPC for engine1
       const newSnapshotResult = await clientForServer1.getSyncSnapshotByPrefix(protobufs.TrieNodePrefix.create());
@@ -195,14 +195,14 @@ describe('Multi peer sync engine', () => {
 
     // Add a cast to engine1
     const castAdd = (await addMessagesWithTimestamps(engine1, [30662167]))[0] as protobufs.Message;
-    await sleepWhile(() => syncEngine1.messagesQueuedForSync > 0, 1000);
+    await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
 
     const engine2 = new Engine(testDb2, network);
     const syncEngine2 = new SyncEngine(engine2, testDb2);
 
     // Sync engine 2 with engine 1
     await syncEngine2.performSync((await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
-    await sleepWhile(() => syncEngine2.messagesQueuedForSync > 0, 1000);
+    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, 1000);
 
     expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine1.trie.rootHash());
 
@@ -224,7 +224,7 @@ describe('Multi peer sync engine', () => {
 
     // Merging the cast remove deletes the cast add in the db, and it should be reflected in the trie
     const result = await engine1.mergeMessage(castRemove);
-    await sleepWhile(() => syncEngine1.messagesQueuedForSync > 0, 1000);
+    await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
 
     expect(result.isOk()).toBeTruthy();
 
@@ -242,7 +242,7 @@ describe('Multi peer sync engine', () => {
       const engine1RootHashBefore = await syncEngine1.trie.rootHash();
 
       await syncEngine1.performSync((await syncEngine2.getSnapshot())._unsafeUnwrap(), clientForServer2);
-      await sleepWhile(() => syncEngine1.messagesQueuedForSync > 0, 1000);
+      await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
 
       expect(await syncEngine1.trie.rootHash()).toEqual(engine1RootHashBefore);
 
@@ -254,7 +254,7 @@ describe('Multi peer sync engine', () => {
     expect(await syncEngine2.trie.exists(castRemoveId)).toBeFalsy();
 
     await syncEngine2.performSync((await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
-    await sleepWhile(() => syncEngine2.messagesQueuedForSync > 0, 1000);
+    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, 1000);
 
     expect(await syncEngine2.trie.exists(castRemoveId)).toBeTruthy();
     expect(await syncEngine2.trie.exists(new SyncId(castAdd))).toBeFalsy();
@@ -265,7 +265,7 @@ describe('Multi peer sync engine', () => {
     // because it has already been removed, so adding it is a no-op
     const beforeRootHash = await syncEngine2.trie.rootHash();
     await engine2.mergeMessage(castAdd);
-    await sleepWhile(() => syncEngine2.messagesQueuedForSync > 0, 1000);
+    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, 1000);
 
     expect(await syncEngine2.trie.rootHash()).toEqual(beforeRootHash);
   });
@@ -316,13 +316,13 @@ describe('Multi peer sync engine', () => {
           }
           // console.log('adding batch', i, ' of ', numBatches);
           const addedMessages = await addMessagesWithTimestamps(engine1, timestamps);
-          await sleepWhile(() => syncEngine1.messagesQueuedForSync > 0, 1000);
+          await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
           castMessagesToRemove = addedMessages.slice(0, 10);
 
           msgTimestamp += batchSize;
           totalMessages += batchSize;
         }
-        await sleepWhile(() => syncEngine1.messagesQueuedForSync > 0, 1000);
+        await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
       });
       expect(totalTime).toBeGreaterThan(0);
       expect(totalMessages).toBeGreaterThan(numBatches * batchSize);
