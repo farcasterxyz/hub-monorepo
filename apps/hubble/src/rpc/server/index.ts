@@ -73,11 +73,9 @@ export const toServiceError = (err: HubError): ServiceError => {
   });
 };
 
-const prefixFromToken = (token: string): Buffer | undefined =>
-  token !== '' ? Buffer.from(token, 'base64url') : undefined;
+const prefixFromToken = (token: string): Buffer => Buffer.from(token, 'base64url');
 
-const pageTokenFromPrefix = (prefix: Buffer | undefined): string | undefined =>
-  prefix ? prefix.toString('base64url') : undefined;
+const pageTokenFromPrefix = (prefix: Buffer): string => prefix.toString('base64url');
 
 export default class Server {
   private hub: HubInterface | undefined;
