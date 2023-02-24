@@ -71,7 +71,7 @@ export class Eip712Signer extends BaseEip712Signer {
   }
 
   /**
-   * TODO description
+   Signs an Ethereum address verification claim.
    *
    * @example
    * ```typescript
