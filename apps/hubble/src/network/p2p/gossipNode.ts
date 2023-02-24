@@ -17,6 +17,7 @@ import { logger } from '~/utils/logger';
 import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
+export const MAX_GOSSIP_MESSAGE_QUEUE_SIZE = 1000;
 
 const log = logger.child({ component: 'Node' });
 
