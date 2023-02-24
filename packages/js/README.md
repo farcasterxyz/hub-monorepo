@@ -2,7 +2,7 @@
 
 A collection of Typescript classes and methods for easily creating Farcaster messages and interacting with Farcaster hubs over gRPC.
 
-TODO: explain what protobufs are, and what this package does under the hood
+TODO DOCS: explain what protobufs are, and what this package does under the hood
 
 ## Quickstart
 

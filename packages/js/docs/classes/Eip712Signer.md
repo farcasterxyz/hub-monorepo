@@ -209,7 +209,7 @@ ___
 
 ▸ **signVerificationEthAddressClaimHex**(`claim`): `HubAsyncResult`<`string`\>
 
-TODO description
+TODO DOCS: description
 
 **`Example`**
 
