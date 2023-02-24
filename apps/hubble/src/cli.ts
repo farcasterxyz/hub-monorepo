@@ -8,7 +8,7 @@ import { ResultAsync } from 'neverthrow';
 import { dirname, resolve } from 'path';
 import { exit } from 'process';
 import { APP_VERSION, Hub, HubOptions } from '~/hubble';
-import { logger } from '~/utils/logger';
+import { logger, loggerLevels } from '~/utils/logger';
 import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo, parseAddress } from '~/utils/p2p';
 import { DEFAULT_RPC_CONSOLE, startConsole } from './console/console';
 import { DB_DIRECTORY } from './storage/db/rocksdb';
@@ -33,7 +33,8 @@ app.name('hub').description('Farcaster Hub').version(APP_VERSION);
 
 app
   .command('start')
-  .description('Start a Hub')
+  .description("Start a Hub\n")
+  .description('Set minimum log level with FARCASTER_LOG_LEVEL from ' + loggerLevels )
   .option('-e, --eth-rpc-url <url>', 'RPC URL of a Goerli Ethereum Node')
   .option('-c, --config <filepath>', 'Path to a config file with options', DEFAULT_CONFIG_FILE)
   .option('--fir-address <address>', 'The address of the Farcaster ID Registry contract')
@@ -63,6 +64,7 @@ app
   .option('--rebuild-sync-trie', 'Rebuilds the sync trie before starting')
   .option('-i, --id <filepath>', 'Path to the PeerId file')
   .option('-n --network <network>', 'Farcaster network ID', parseNetwork)
+  .option('-v --version', "Display Farcaster version")
   .action(async (cliOptions) => {
     const teardown = async (hub: Hub) => {
       await hub.stop();

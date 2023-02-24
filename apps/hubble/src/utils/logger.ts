@@ -31,15 +31,20 @@ import { default as Pino } from 'pino';
  * More info on best practices:
  * https://betterstack.com/community/guides/logging/how-to-install-setup-and-use-pino-to-log-node-js-applications/
  */
-const defaultOptions: Pino.LoggerOptions = {};
+const loggerOptions: Pino.LoggerOptions = {};
 
 // Disable logging in tests and CI to reduce noise
 if (process.env['NODE_ENV'] === 'test' || process.env['CI']) {
-  // defaultOptions.level = 'debug';
-  defaultOptions.level = 'silent';
+  // loggerOptions.level = 'debug';
+  loggerOptions.level = 'silent';
 }
 
-export const logger = Pino(defaultOptions);
+if (process.env['FARCASTER_LOG_LEVEL']) {
+  loggerOptions.level = process.env['FARCASTER_LOG_LEVEL'];
+}
+
+export const logger = Pino(loggerOptions);
+export const loggerLevels = [ 'trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent'];
 
 export const messageTypeToName = (type?: protobufs.MessageType) => {
   if (!type) return '';
