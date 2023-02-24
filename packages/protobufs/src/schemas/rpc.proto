@@ -46,13 +46,15 @@ message SyncIds {
   repeated bytes sync_ids = 1;
 }
 
-message ListRequest {
+message FidRequest {
+  uint64 fid = 1;
   int32 page_size = 2;
   string page_token = 3;
 }
 
-message FidRequest {
-  uint64 fid = 1;
+message FidsRequest {
+  int32 page_size = 1;
+  string page_token = 2;
 }
 
 message FidsResponse {
@@ -62,6 +64,7 @@ message FidsResponse {
 
 message MessagesResponse {
   repeated Message messages = 1;
+  string next_page_token = 2;
 }
 
 message ReactionRequest {
@@ -133,7 +136,7 @@ service HubService {
   rpc GetSigner(SignerRequest) returns (Message);
   rpc GetSignersByFid(FidRequest) returns (MessagesResponse);
   rpc GetIdRegistryEvent(FidRequest) returns (IdRegistryEvent);
-  rpc GetFids(ListRequest) returns (FidsResponse);
+  rpc GetFids(FidsRequest) returns (FidsResponse);
 
   // Bulk Methods
   rpc GetAllCastMessagesByFid(FidRequest) returns (MessagesResponse);

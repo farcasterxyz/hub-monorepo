@@ -161,9 +161,40 @@ describe('getAllSignerMessagesByFid', () => {
     assertMessagesMatchResult(result, [signerAdd, signerRemove]);
   });
 
+  test('returns pageSize results', async () => {
+    await engine.mergeMessage(signerAdd);
+    await engine.mergeMessage(signerRemove);
+    const result = await client.getAllSignerMessagesByFid(protobufs.FidRequest.create({ fid, pageSize: 1 }));
+    assertMessagesMatchResult(result, [signerAdd]);
+  });
+
+  test('returns all signer messages when pageSize > events', async () => {
+    await engine.mergeMessage(signerAdd);
+    await engine.mergeMessage(signerRemove);
+    const result = await client.getAllSignerMessagesByFid(protobufs.FidRequest.create({ fid, pageSize: 3 }));
+    assertMessagesMatchResult(result, [signerAdd, signerRemove]);
+  });
+
+  test('returns results after pageToken', async () => {
+    await engine.mergeMessage(signerAdd);
+    await engine.mergeMessage(signerRemove);
+    const page1Result = await client.getAllSignerMessagesByFid(protobufs.FidRequest.create({ fid, pageSize: 1 }));
+    const page2Result = await client.getAllSignerMessagesByFid(
+      protobufs.FidRequest.create({ fid, pageSize: 1, pageToken: page1Result._unsafeUnwrap().nextPageToken })
+    );
+    assertMessagesMatchResult(page2Result, [signerRemove]);
+  });
+
+  test('returns empty array with invalid page token', async () => {
+    await engine.mergeMessage(signerAdd);
+    await engine.mergeMessage(signerRemove);
+    const result = await client.getAllSignerMessagesByFid(protobufs.FidRequest.create({ fid, pageToken: '0000' }));
+    assertMessagesMatchResult(result, []);
+  });
+
   test('returns empty array without messages', async () => {
     const result = await client.getAllSignerMessagesByFid(protobufs.FidRequest.create({ fid }));
-    expect(result._unsafeUnwrap().messages.length).toEqual(0);
+    assertMessagesMatchResult(result, []);
   });
 });
 

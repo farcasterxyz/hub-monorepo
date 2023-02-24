@@ -167,31 +167,6 @@ class RocksDB {
     }
     return this._db.iterator(options);
   }
-
-  /**
-   * Return an iterator for all key/values that start with the given prefix. RocksDB stores keys in lexicographical
-   * order, so this iterator will continue serving keys in order until it receives one that has a lexicographic order
-   * greater than the prefix.
-   */
-  iteratorByPrefixPaged(
-    prefix: Buffer,
-    pagePrefix?: Buffer,
-    options: AbstractRocksDB.IteratorOptions = {}
-  ): AbstractRocksDB.Iterator {
-    if (pagePrefix) {
-      options.gt = pagePrefix;
-    } else {
-      options.gte = prefix;
-    }
-    const nextPrefix = bytesIncrement(new Uint8Array(prefix));
-    if (nextPrefix.isErr()) {
-      throw nextPrefix.error;
-    }
-    if (nextPrefix.value.length === prefix.length) {
-      options.lt = Buffer.from(nextPrefix.value);
-    }
-    return this._db.iterator(options);
-  }
 }
 
 export default RocksDB;

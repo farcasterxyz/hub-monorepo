@@ -73,8 +73,11 @@ export const toServiceError = (err: HubError): ServiceError => {
   });
 };
 
-const pagePrefixFromToken = (token: string): Buffer => Buffer.from(token, 'base64url');
-const pageTokenFromPrefix = (prefix: Buffer): string => prefix.toString('base64url');
+const prefixFromToken = (token: string): Buffer | undefined =>
+  token !== '' ? Buffer.from(token, 'base64url') : undefined;
+
+const pageTokenFromPrefix = (prefix: Buffer | undefined): string | undefined =>
+  prefix ? prefix.toString('base64url') : undefined;
 
 export default class Server {
   private hub: HubInterface | undefined;
@@ -540,16 +543,23 @@ export default class Server {
       getFids: async (call, callback) => {
         const request = call.request;
 
-        const pageSize = request.pageSize === 0 ? -1 : request.pageSize;
-        const pagePrefix = pagePrefixFromToken(request.pageToken);
-        const result = await this.engine?.getFids(pageSize, pagePrefix);
+        if (request.pageSize < 0 || request.pageSize > 10_000) {
+          return callback(
+            toServiceError(new HubError('bad_request.invalid_param', 'pageSize must be between 0 and 10,000'))
+          );
+        }
+
+        // TODO move limit into constant
+        const limit = request.pageSize === 0 ? 10_000 : request.pageSize;
+        const startPrefix = request.pageToken === '' ? undefined : prefixFromToken(request.pageToken);
+        const result = await this.engine?.getFids({ limit, startPrefix });
         result?.match(
-          ({ fids, nextPagePrefix }: { fids: number[]; nextPagePrefix: Buffer | undefined }) => {
+          ({ fids, nextPrefix }: { fids: number[]; nextPrefix: Buffer | undefined }) => {
             callback(
               null,
               FidsResponse.create({
                 fids,
-                nextPageToken: nextPagePrefix ? pageTokenFromPrefix(nextPagePrefix) : '',
+                nextPageToken: nextPrefix ? pageTokenFromPrefix(nextPrefix) : '',
               })
             );
           },
@@ -600,10 +610,25 @@ export default class Server {
       getAllSignerMessagesByFid: async (call, callback) => {
         const request = call.request;
 
-        const result = await this.engine?.getAllSignerMessagesByFid(request.fid);
+        if (request.pageSize < 0 || request.pageSize > 10_000) {
+          return callback(
+            toServiceError(new HubError('bad_request.invalid_param', 'pageSize must be between 0 and 10,000'))
+          );
+        }
+
+        // TODO move limit into constant
+        const limit = request.pageSize === 0 ? 10_000 : request.pageSize;
+        const startPrefix = request.pageToken === '' ? undefined : prefixFromToken(request.pageToken);
+        const result = await this.engine?.getAllSignerMessagesByFid(request.fid, { startPrefix, limit });
         result?.match(
-          (messages: Message[]) => {
-            callback(null, MessagesResponse.create({ messages }));
+          ({ messages, nextPrefix }: { messages: Message[]; nextPrefix: Buffer | undefined }) => {
+            callback(
+              null,
+              MessagesResponse.create({
+                messages,
+                nextPageToken: nextPrefix ? pageTokenFromPrefix(nextPrefix) : '',
+              })
+            );
           },
           (err: HubError) => {
             callback(toServiceError(err));

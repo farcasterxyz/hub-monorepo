@@ -125,35 +125,43 @@ describe('getFids', () => {
   test('succeeds', async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeIdRegistryEvent(custodyEvent2);
-    // const result = await client.getFids();
-    // expect(result._unsafeUnwrap()).toEqual([custodyEvent.fid()]);
-    const result = await client.getFids(protobufs.ListRequest.create());
+    const result = await client.getFids(protobufs.FidsRequest.create());
     expect(result._unsafeUnwrap().fids).toEqual([custodyEvent.fid, custodyEvent2.fid]);
   });
 
   test('returns pageSize results', async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeIdRegistryEvent(custodyEvent2);
-    // const result = await client.getFids();
-    // expect(result._unsafeUnwrap()).toEqual([custodyEvent.fid()]);
-    const result = await client.getFids(protobufs.ListRequest.create({ pageSize: 1 }));
+    const result = await client.getFids(protobufs.FidsRequest.create({ pageSize: 1 }));
     expect(result._unsafeUnwrap().fids).toEqual([custodyEvent.fid]);
+  });
+
+  test('returns all fids when pageSize > events', async () => {
+    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeIdRegistryEvent(custodyEvent2);
+    const result = await client.getFids(protobufs.FidsRequest.create({ pageSize: 3 }));
+    expect(result._unsafeUnwrap().fids).toEqual([custodyEvent.fid, custodyEvent2.fid]);
   });
 
   test('returns results after pageToken', async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeIdRegistryEvent(custodyEvent2);
-    // const result = await client.getFids();
-    // expect(result._unsafeUnwrap()).toEqual([custodyEvent.fid()]);
-    const page1Result = await client.getFids(protobufs.ListRequest.create({ pageSize: 1 }));
+    const page1Result = await client.getFids(protobufs.FidsRequest.create({ pageSize: 1 }));
     const page2Result = await client.getFids(
-      protobufs.ListRequest.create({ pageSize: 1, pageToken: page1Result._unsafeUnwrap().nextPageToken })
+      protobufs.FidsRequest.create({ pageSize: 1, pageToken: page1Result._unsafeUnwrap().nextPageToken })
     );
     expect(page2Result._unsafeUnwrap().fids).toEqual([custodyEvent2.fid]);
   });
 
+  test('returns empty array with invalid page token', async () => {
+    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeIdRegistryEvent(custodyEvent2);
+    const result = await client.getFids(protobufs.FidsRequest.create({ pageSize: 1, pageToken: '0000' }));
+    expect(result._unsafeUnwrap().fids).toEqual([]);
+  });
+
   test('returns empty array without events', async () => {
-    const result = await client.getFids(protobufs.ListRequest.create());
+    const result = await client.getFids(protobufs.FidsRequest.create());
     expect(result._unsafeUnwrap().fids).toEqual([]);
   });
 });
