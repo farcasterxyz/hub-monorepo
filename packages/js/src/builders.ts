@@ -151,12 +151,48 @@ const makeMessage = async <TMessageData extends types.MessageData>(
 
 /** Generic Methods */
 
+/**
+ * TODO DOCS: description
+ *
+ * TODO DOCS: usage example, here's the structure:
+ * @example
+ * ```typescript
+ * import { ... } from '@farcaster/js';
+ *
+ * const client = new Client(...)
+ *
+ * const message = makeCastAdd(...)
+ * await client.submitMessage(message)
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeMessageHash = async (messageData: types.MessageData): HubAsyncResult<string> => {
   const dataBytes = protobufs.MessageData.encode(messageData._protobuf).finish();
   const hashBytes = blake3(dataBytes, { dkLen: 20 });
   return bytesToHexString(hashBytes);
 };
 
+/**
+ * TODO DOCS: description
+ *
+ * TODO DOCS: usage example, here's the structure:
+ * @example
+ * ```typescript
+ * import { ... } from '@farcaster/js';
+ *
+ * const client = new Client(...)
+ *
+ * const message = makeCastAdd(...)
+ * await client.submitMessage(message)
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeMessageWithSignature = async (
   messageData: types.MessageData,
   signerOptions: MessageSignerOptions,
@@ -190,24 +226,114 @@ export const makeMessageWithSignature = async (
 
 /** Cast Methods */
 
+/**
+ * Make a message to add a cast
+ *
+ * @example
+ * ```typescript
+ * import {
+ *   Client,
+ *   Ed25519Signer,
+ *   makeCastAdd,
+ *   makeCastRemove,
+ *   types,
+ * } from '@farcaster/js';
+ * import * as ed from '@noble/ed25519';
+ *
+ * const rpcUrl = '<rpc-url>';
+ * const client = new Client(rpcUrl);
+ *
+ * const privateKeyHex = '86be7f6f8dcf18...'; // EdDSA hex private key
+ * const privateKey = ed.utils.hexToBytes(privateKeyHex);
+ *
+ * // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+ * const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+ *
+ * const dataOptions = {
+ *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
+ *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ * };
+ *
+ * const cast = await makeCastAdd({ text: 'hello world' }, dataOptions, ed25519Signer);
+ * await client.submitMessage(cast._unsafeUnwrap());
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeCastAdd = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_CAST_ADD,
   'castAddBody',
   utils.serializeCastAddBody
 );
 
+/**
+ * TODO DOCS: description
+ *
+ * TODO DOCS: usage example, here's the structure:
+ * @example
+ * ```typescript
+ * import { ... } from '@farcaster/js';
+ *
+ * const client = new Client(...)
+ *
+ * const message = makeCastAdd(...)
+ * await client.submitMessage(message)
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeCastRemove = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE,
   'castRemoveBody',
   utils.serializeCastRemoveBody
 );
 
+/**
+ * TODO DOCS: description
+ *
+ * TODO DOCS: usage example, here's the structure:
+ * @example
+ * ```typescript
+ * import { ... } from '@farcaster/js';
+ *
+ * const client = new Client(...)
+ *
+ * const message = makeCastAdd(...)
+ * await client.submitMessage(message)
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeCastAddData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_CAST_ADD,
   'castAddBody',
   utils.serializeCastAddBody
 );
 
+/**
+ * TODO DOCS: description
+ *
+ * TODO DOCS: usage example, here's the structure:
+ * @example
+ * ```typescript
+ * import { ... } from '@farcaster/js';
+ *
+ * const client = new Client(...)
+ *
+ * const message = makeCastAdd(...)
+ * await client.submitMessage(message)
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeCastRemoveData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE,
   'castRemoveBody',
@@ -216,24 +342,96 @@ export const makeCastRemoveData = buildMakeMessageDataMethod(
 
 /** Amp Methods */
 
+/**
+ * TODO DOCS: description
+ *
+ * TODO DOCS: usage example, here's the structure:
+ * @example
+ * ```typescript
+ * import { ... } from '@farcaster/js';
+ *
+ * const client = new Client(...)
+ *
+ * const message = makeCastAdd(...)
+ * await client.submitMessage(message)
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeReactionAdd = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD,
   'reactionBody',
   utils.serializeReactionBody
 );
 
+/**
+ * TODO DOCS: description
+ *
+ * TODO DOCS: usage example, here's the structure:
+ * @example
+ * ```typescript
+ * import { ... } from '@farcaster/js';
+ *
+ * const client = new Client(...)
+ *
+ * const message = makeCastAdd(...)
+ * await client.submitMessage(message)
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeReactionRemove = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE,
   'reactionBody',
   utils.serializeReactionBody
 );
 
+/**
+ * TODO DOCS: description
+ *
+ * TODO DOCS: usage example, here's the structure:
+ * @example
+ * ```typescript
+ * import { ... } from '@farcaster/js';
+ *
+ * const client = new Client(...)
+ *
+ * const message = makeCastAdd(...)
+ * await client.submitMessage(message)
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeReactionAddData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD,
   'reactionBody',
   utils.serializeReactionBody
 );
 
+/**
+ * TODO DOCS: description
+ *
+ * TODO DOCS: usage example, here's the structure:
+ * @example
+ * ```typescript
+ * import { ... } from '@farcaster/js';
+ *
+ * const client = new Client(...)
+ *
+ * const message = makeCastAdd(...)
+ * await client.submitMessage(message)
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeReactionRemoveData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE,
   'reactionBody',
@@ -242,24 +440,96 @@ export const makeReactionRemoveData = buildMakeMessageDataMethod(
 
 /** Verification Methods */
 
+/**
+ * TODO DOCS: description
+ *
+ * TODO DOCS: usage example, here's the structure:
+ * @example
+ * ```typescript
+ * import { ... } from '@farcaster/js';
+ *
+ * const client = new Client(...)
+ *
+ * const message = makeCastAdd(...)
+ * await client.submitMessage(message)
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeVerificationAddEthAddress = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS,
   'verificationAddEthAddressBody',
   utils.serializeVerificationAddEthAddressBody
 );
 
+/**
+ * TODO DOCS: description
+ *
+ * TODO DOCS: usage example, here's the structure:
+ * @example
+ * ```typescript
+ * import { ... } from '@farcaster/js';
+ *
+ * const client = new Client(...)
+ *
+ * const message = makeCastAdd(...)
+ * await client.submitMessage(message)
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeVerificationRemove = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE,
   'verificationRemoveBody',
   utils.serializeVerificationRemoveBody
 );
 
+/**
+ * TODO DOCS: description
+ *
+ * TODO DOCS: usage example, here's the structure:
+ * @example
+ * ```typescript
+ * import { ... } from '@farcaster/js';
+ *
+ * const client = new Client(...)
+ *
+ * const message = makeCastAdd(...)
+ * await client.submitMessage(message)
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeVerificationAddEthAddressData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS,
   'verificationAddEthAddressBody',
   utils.serializeVerificationAddEthAddressBody
 );
 
+/**
+ * TODO DOCS: description
+ *
+ * TODO DOCS: usage example, here's the structure:
+ * @example
+ * ```typescript
+ * import { ... } from '@farcaster/js';
+ *
+ * const client = new Client(...)
+ *
+ * const message = makeCastAdd(...)
+ * await client.submitMessage(message)
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeVerificationRemoveData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE,
   'verificationRemoveBody',
@@ -268,24 +538,96 @@ export const makeVerificationRemoveData = buildMakeMessageDataMethod(
 
 /** Signer Methods */
 
+/**
+ * TODO DOCS: description
+ *
+ * TODO DOCS: usage example, here's the structure:
+ * @example
+ * ```typescript
+ * import { ... } from '@farcaster/js';
+ *
+ * const client = new Client(...)
+ *
+ * const message = makeCastAdd(...)
+ * await client.submitMessage(message)
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeSignerAdd = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD,
   'signerBody',
   utils.serializeSignerBody
 );
 
+/**
+ * TODO DOCS: description
+ *
+ * TODO DOCS: usage example, here's the structure:
+ * @example
+ * ```typescript
+ * import { ... } from '@farcaster/js';
+ *
+ * const client = new Client(...)
+ *
+ * const message = makeCastAdd(...)
+ * await client.submitMessage(message)
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeSignerRemove = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
   'signerBody',
   utils.serializeSignerBody
 );
 
+/**
+ * TODO DOCS: description
+ *
+ * TODO DOCS: usage example, here's the structure:
+ * @example
+ * ```typescript
+ * import { ... } from '@farcaster/js';
+ *
+ * const client = new Client(...)
+ *
+ * const message = makeCastAdd(...)
+ * await client.submitMessage(message)
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeSignerAddData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD,
   'signerBody',
   utils.serializeSignerBody
 );
 
+/**
+ * TODO DOCS: description
+ *
+ * TODO DOCS: usage example, here's the structure:
+ * @example
+ * ```typescript
+ * import { ... } from '@farcaster/js';
+ *
+ * const client = new Client(...)
+ *
+ * const message = makeCastAdd(...)
+ * await client.submitMessage(message)
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeSignerRemoveData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
   'signerBody',
@@ -294,12 +636,48 @@ export const makeSignerRemoveData = buildMakeMessageDataMethod(
 
 /** User Data Methods */
 
+/**
+ * TODO DOCS: description
+ *
+ * TODO DOCS: usage example, here's the structure:
+ * @example
+ * ```typescript
+ * import { ... } from '@farcaster/js';
+ *
+ * const client = new Client(...)
+ *
+ * const message = makeCastAdd(...)
+ * await client.submitMessage(message)
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeUserDataAdd = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_USER_DATA_ADD,
   'userDataBody',
   utils.serializeUserDataBody
 );
 
+/**
+ * TODO DOCS: description
+ *
+ * TODO DOCS: usage example, here's the structure:
+ * @example
+ * ```typescript
+ * import { ... } from '@farcaster/js';
+ *
+ * const client = new Client(...)
+ *
+ * const message = makeCastAdd(...)
+ * await client.submitMessage(message)
+ * ```
+ *
+ * @param ...
+ *
+ * @returns ...
+ */
 export const makeUserDataAddData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_USER_DATA_ADD,
   'userDataBody',
