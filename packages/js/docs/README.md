@@ -1,3 +1,5 @@
+@farcaster/js / [Exports](modules.md)
+
 # @farcaster/js
 
 A collection of Typescript classes and methods for easily creating Farcaster messages and interacting with Farcaster hubs over gRPC.
