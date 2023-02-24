@@ -209,39 +209,35 @@ ___
 
 ▸ **signVerificationEthAddressClaimHex**(`claim`): `HubAsyncResult`<`string`\>
 
-Signs an Ethereum address verification claim.
-*
-*
+Signs an Ethereum address verification claim, returns hex.
 
 **`Example`**
 
-* ```typescript
-* import { Eip712Signer, types } from '@farcaster/js';
-* import { ethers, utils } from 'ethers';
-*
-* const custodyWallet = ethers.Wallet.fromMnemonic('your mnemonic here apple orange banana');
-* const eip712Signer = Eip712Signer.fromSigner(custodyWallet, custodyWallet.address)._unsafeUnwrap();
-*
-* const claimBody = {
-*   fid: -1,
-*   address: eip712Signer.signerKeyHex,
-*   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
-*   blockHash: '2c87468704d6b0f4c46f480dc54251de50753af02e5d63702f85bde3da4f7a3d',
-* };
-*
-* const verificationResult = await eip712Signer.signVerificationEthAddressClaim(claimBody);
-* console.log(verificationResult._unsafeUnwrap());
-*
-* // Output: Uint8Array(65) [ 166, 32, 71, 26, 36, 205, ... ]
-* ```
-*
-*
+```typescript
+import { Eip712Signer, types } from '@farcaster/js';
+import { ethers, utils } from 'ethers';
+
+const custodyWallet = ethers.Wallet.fromMnemonic('your mnemonic here apple orange banana');
+const eip712Signer = Eip712Signer.fromSigner(custodyWallet, custodyWallet.address)._unsafeUnwrap();
+
+const claimBody = {
+  fid: -1,
+  address: eip712Signer.signerKeyHex,
+  network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+  blockHash: '2c87468704d6b0f4c46f480dc54251de50753af02e5d63702f85bde3da4f7a3d',
+};
+
+const verificationResult = await eip712Signer.signVerificationEthAddressClaimHex(claimBody);
+console.log(verificationResult._unsafeUnwrap());
+
+// Output: "0xa620471a24cd101b99b7f69efcd9fe2437715924b..."
+```
 
 #### Parameters
 
 | Name | Type | Description |
 | :------ | :------ | :------ |
-| `claim` | [`VerificationEthAddressClaim`](../modules/types.md#verificationethaddressclaim) | The body of the claim to be signed as an object * |
+| `claim` | [`VerificationEthAddressClaim`](../modules/types.md#verificationethaddressclaim) | The body of the claim to be signed as an object |
 
 #### Returns
 

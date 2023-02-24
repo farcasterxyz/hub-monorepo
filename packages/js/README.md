@@ -218,17 +218,17 @@ Class to interact with hubble. See the [docs](./docs/classes/Client.md) for more
 | `getCastsByFid()`                   | Gets all casts by a given fid                                     |
 | `getCastsByMention()`               | Gets all casts by a given mention                                 |
 | `getCastsByParent()`                | Gets all casts with a given parent cast hash                      |
-| `getIdRegistryEvent()`              | TODO                                                              |
-| `getNameRegistryEvent()`            | TODO                                                              |
-| `getReaction()`                     | TODO                                                              |
+| `getIdRegistryEvent()`              | TODO DOCS                                                              |
+| `getNameRegistryEvent()`            | TODO DOCS                                                              |
+| `getReaction()`                     | TODO DOCS                                                              |
 | `getReactionsByCast()`              | Gets all reactions for a given cast hash                          |
 | `getReactionsByFid()`               | Gets all reactions by a given fid                                 |
-| `getSigner()`                       | TODO                                                              |
+| `getSigner()`                       | TODO DOCS                                                              |
 | `getSignersByFid()`                 | Gets all signers by a given fid                                   |
 | `getUserData()`                     | Gets user data (pfp, display name, bio, etc)                      |
 | `getUserDataByFid()`                | Gets all user data by a given fid                                 |
-| `getVerification()`                 | TODO                                                              |
-| `getVerificationsByFid()`           | TODO                                                              |
+| `getVerification()`                 | TODO DOCS                                                              |
+| `getVerificationsByFid()`           | TODO DOCS                                                              |
 | `submitMessage()`                   | Submits a message to hubble                                       |
 | `subscribe()`                       | Subscribes to updates from hubble                                 |
 
@@ -258,8 +258,8 @@ Class to sign messages in the EIP712 format. See the [docs](./docs/classes/Eip71
 | `signerKeyHex`                         | Property: signer's ECDSA public key in hex.                                            |
 | `signMessageHash()`                    | Signs a message hash with the signer's Ethereum address.                               |
 | `signMessageHashHex()`                 | Signs a message hash with the signer's Ethereum address, returns result in hex format. |
-| `signVerificationEthAddressClaim()`    | TODO                                                                                   |
-| `signVerificationEthAddressClaimHex()` | TODO                                                                                   |
+| `signVerificationEthAddressClaim()`    | TODO DOCS                                                                                   |
+| `signVerificationEthAddressClaimHex()` | TODO DOCS                                                                                   |
 | `fromSigner()`                         | Instantiate a new EIP712Signer from an ECDSA private key (Ethereum).                   |
 
 ## `Functions`
@@ -270,11 +270,11 @@ Functions to make messages. See the [docs](./docs/modules.md#functions) for more
 | --------------------------------- | ------------------------------------------------------------------- |
 | `makeCastAdd()`                   | Creates a message to add cast                                       |
 | `makeCastRemove()`                | Creates a message to delete cast                                    |
-| `makeMessageHash()`               | TODO                                                                |
+| `makeMessageHash()`               | TODO DOCS                                                                |
 | `makeReactionAdd()`               | Creates a message to react to cast (like or recast)                 |
 | `makeReactionRemove()`            | Creates a message to remove reaction from cast (unlike or unrecast) |
 | `makeSignerAdd()`                 | Creates a message to add a ed25519 signer key                       |
 | `makeSignerRemove()`              | Creates a message to remove a ed25519 signer key                    |
 | `makeUserDataAdd()`               | Creates a message to set user data (pfp, link, display name, etc)   |
-| `makeVerificationAddEthAddress()` | TODO                                                                |
-| `makeVerificationRemove()`        | TODO                                                                |
+| `makeVerificationAddEthAddress()` | TODO DOCS                                                                |
+| `makeVerificationRemove()`        | TODO DOCS                                                                |

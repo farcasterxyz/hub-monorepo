@@ -71,7 +71,7 @@ export class Eip712Signer extends BaseEip712Signer {
   }
 
   /**
-   Signs an Ethereum address verification claim.
+   * Signs an Ethereum address verification claim, returns hex.
    *
    * @example
    * ```typescript
@@ -88,10 +88,10 @@ export class Eip712Signer extends BaseEip712Signer {
    *   blockHash: '2c87468704d6b0f4c46f480dc54251de50753af02e5d63702f85bde3da4f7a3d',
    * };
    *
-   * const verificationResult = await eip712Signer.signVerificationEthAddressClaim(claimBody);
+   * const verificationResult = await eip712Signer.signVerificationEthAddressClaimHex(claimBody);
    * console.log(verificationResult._unsafeUnwrap());
    *
-   * // Output: Uint8Array(65) [ 166, 32, 71, 26, 36, 205, ... ]
+   * // Output: "0xa620471a24cd101b99b7f69efcd9fe2437715924b..."
    * ```
    *
    * @param {Object} claim - The body of the claim to be signed as an object
