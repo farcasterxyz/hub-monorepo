@@ -15,7 +15,3 @@
 ### fid
 
 • **fid**: `number`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:2752

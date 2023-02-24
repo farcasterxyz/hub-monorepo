@@ -19,19 +19,11 @@
 
 • **excludedHashes**: `string`[]
 
-#### Defined in
-
-protobufs/dist/index.d.ts:2681
-
 ___
 
 ### numMessages
 
 • **numMessages**: `number`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:2682
 
 ___
 
@@ -39,16 +31,8 @@ ___
 
 • **prefix**: `Uint8Array`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:2680
-
 ___
 
 ### rootHash
 
 • **rootHash**: `string`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:2683

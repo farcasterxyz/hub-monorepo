@@ -19,19 +19,11 @@
 
 • **count**: `number`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4216
-
 ___
 
 ### excludedHashes
 
 • **excludedHashes**: `string`[]
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4215
 
 ___
 
@@ -39,16 +31,8 @@ ___
 
 • **gossipAddress**: `undefined` \| [`GossipAddressInfo`](../modules/protobufs.md#gossipaddressinfo)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4213
-
 ___
 
 ### rpcAddress
 
 • **rpcAddress**: `undefined` \| [`GossipAddressInfo`](../modules/protobufs.md#gossipaddressinfo)
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4214

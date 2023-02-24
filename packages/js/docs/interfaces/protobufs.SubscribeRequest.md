@@ -15,7 +15,3 @@
 ### eventTypes
 
 • **eventTypes**: [`EventType`](../enums/protobufs.EventType.md)[]
-
-#### Defined in
-
-protobufs/dist/index.d.ts:2382

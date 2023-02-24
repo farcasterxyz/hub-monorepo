@@ -22,19 +22,11 @@
 
 • **EVENT\_TYPE\_MERGE\_ID\_REGISTRY\_EVENT** = ``4``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:1096
-
 ___
 
 ### EVENT\_TYPE\_MERGE\_MESSAGE
 
 • **EVENT\_TYPE\_MERGE\_MESSAGE** = ``1``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:1093
 
 ___
 
@@ -42,19 +34,11 @@ ___
 
 • **EVENT\_TYPE\_MERGE\_NAME\_REGISTRY\_EVENT** = ``5``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:1097
-
 ___
 
 ### EVENT\_TYPE\_NONE
 
 • **EVENT\_TYPE\_NONE** = ``0``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:1092
 
 ___
 
@@ -62,26 +46,14 @@ ___
 
 • **EVENT\_TYPE\_PRUNE\_MESSAGE** = ``2``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:1094
-
 ___
 
 ### EVENT\_TYPE\_REVOKE\_MESSAGE
 
 • **EVENT\_TYPE\_REVOKE\_MESSAGE** = ``3``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:1095
-
 ___
 
 ### UNRECOGNIZED
 
 • **UNRECOGNIZED** = ``-1``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:1098

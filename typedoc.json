@@ -3,5 +3,6 @@
   "out": "./packages/js/docs",
   "exclude": ["**/*.test.ts", "**/*.spec.ts", "**/node_modules/**"],
   "plugin": ["typedoc-plugin-markdown"],
-  "skipErrorChecking": true
+  "skipErrorChecking": true,
+  "disableSources": true
 }

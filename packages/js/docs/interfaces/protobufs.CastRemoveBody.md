@@ -15,7 +15,3 @@
 ### targetHash
 
 • **targetHash**: `Uint8Array`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:280

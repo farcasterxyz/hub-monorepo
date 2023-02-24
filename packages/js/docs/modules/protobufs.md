@@ -184,19 +184,11 @@
 
 Ƭ **AmpAddData**: [`MessageData`](protobufs.md#messagedata) & { `ampBody`: [`AmpBody`](protobufs.md#ampbody) ; `type`: [`MESSAGE_TYPE_AMP_ADD`](../enums/protobufs.MessageType.md#message_type_amp_add)  }
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5076
-
 ___
 
 ### AmpAddMessage
 
 Ƭ **AmpAddMessage**: [`Message`](protobufs.md#message) & { `data`: [`AmpAddData`](protobufs.md#ampadddata) ; `signatureScheme`: [`SIGNATURE_SCHEME_ED25519`](../enums/protobufs.SignatureScheme.md#signature_scheme_ed25519)  }
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5080
 
 ___
 
@@ -204,19 +196,11 @@ ___
 
 Ƭ **AmpRemoveData**: [`MessageData`](protobufs.md#messagedata) & { `ampBody`: [`AmpBody`](protobufs.md#ampbody) ; `type`: [`MESSAGE_TYPE_AMP_REMOVE`](../enums/protobufs.MessageType.md#message_type_amp_remove)  }
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5084
-
 ___
 
 ### AmpRemoveMessage
 
 Ƭ **AmpRemoveMessage**: [`Message`](protobufs.md#message) & { `data`: [`AmpRemoveData`](protobufs.md#ampremovedata) ; `signatureScheme`: [`SIGNATURE_SCHEME_ED25519`](../enums/protobufs.SignatureScheme.md#signature_scheme_ed25519)  }
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5088
 
 ___
 
@@ -224,19 +208,11 @@ ___
 
 Ƭ **CastAddData**: [`MessageData`](protobufs.md#messagedata) & { `castAddBody`: [`CastAddBody`](protobufs.md#castaddbody) ; `type`: [`MESSAGE_TYPE_CAST_ADD`](../enums/protobufs.MessageType.md#message_type_cast_add)  }
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5044
-
 ___
 
 ### CastAddMessage
 
 Ƭ **CastAddMessage**: [`Message`](protobufs.md#message) & { `data`: [`CastAddData`](protobufs.md#castadddata) ; `signatureScheme`: [`SIGNATURE_SCHEME_ED25519`](../enums/protobufs.SignatureScheme.md#signature_scheme_ed25519)  }
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5048
 
 ___
 
@@ -244,19 +220,11 @@ ___
 
 Ƭ **CastRemoveData**: [`MessageData`](protobufs.md#messagedata) & { `castRemoveBody`: [`CastRemoveBody`](protobufs.md#castremovebody) ; `type`: [`MESSAGE_TYPE_CAST_REMOVE`](../enums/protobufs.MessageType.md#message_type_cast_remove)  }
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5052
-
 ___
 
 ### CastRemoveMessage
 
 Ƭ **CastRemoveMessage**: [`Message`](protobufs.md#message) & { `data`: [`CastRemoveData`](protobufs.md#castremovedata) ; `signatureScheme`: [`SIGNATURE_SCHEME_ED25519`](../enums/protobufs.SignatureScheme.md#signature_scheme_ed25519)  }
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5056
 
 ___
 
@@ -264,21 +232,11 @@ ___
 
 Ƭ **HubServiceService**: typeof [`HubServiceService`](protobufs.md#hubserviceservice-1)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:3694
-
-protobufs/dist/index.d.ts:3695
-
 ___
 
 ### ReactionAddData
 
 Ƭ **ReactionAddData**: [`MessageData`](protobufs.md#messagedata) & { `reactionBody`: [`ReactionBody`](protobufs.md#reactionbody) ; `type`: [`MESSAGE_TYPE_REACTION_ADD`](../enums/protobufs.MessageType.md#message_type_reaction_add)  }
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5060
 
 ___
 
@@ -286,19 +244,11 @@ ___
 
 Ƭ **ReactionAddMessage**: [`Message`](protobufs.md#message) & { `data`: [`ReactionAddData`](protobufs.md#reactionadddata) ; `signatureScheme`: [`SIGNATURE_SCHEME_ED25519`](../enums/protobufs.SignatureScheme.md#signature_scheme_ed25519)  }
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5064
-
 ___
 
 ### ReactionRemoveData
 
 Ƭ **ReactionRemoveData**: [`MessageData`](protobufs.md#messagedata) & { `reactionBody`: [`ReactionBody`](protobufs.md#reactionbody) ; `type`: [`MESSAGE_TYPE_REACTION_REMOVE`](../enums/protobufs.MessageType.md#message_type_reaction_remove)  }
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5068
 
 ___
 
@@ -306,19 +256,11 @@ ___
 
 Ƭ **ReactionRemoveMessage**: [`Message`](protobufs.md#message) & { `data`: [`ReactionRemoveData`](protobufs.md#reactionremovedata) ; `signatureScheme`: [`SIGNATURE_SCHEME_ED25519`](../enums/protobufs.SignatureScheme.md#signature_scheme_ed25519)  }
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5072
-
 ___
 
 ### SignerAddData
 
 Ƭ **SignerAddData**: [`MessageData`](protobufs.md#messagedata) & { `signerBody`: [`SignerBody`](protobufs.md#signerbody) ; `type`: [`MESSAGE_TYPE_SIGNER_ADD`](../enums/protobufs.MessageType.md#message_type_signer_add)  }
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5108
 
 ___
 
@@ -326,19 +268,11 @@ ___
 
 Ƭ **SignerAddMessage**: [`Message`](protobufs.md#message) & { `data`: [`SignerAddData`](protobufs.md#signeradddata) ; `signatureScheme`: [`SIGNATURE_SCHEME_EIP712`](../enums/protobufs.SignatureScheme.md#signature_scheme_eip712)  }
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5112
-
 ___
 
 ### SignerRemoveData
 
 Ƭ **SignerRemoveData**: [`MessageData`](protobufs.md#messagedata) & { `signerBody`: [`SignerBody`](protobufs.md#signerbody) ; `type`: [`MESSAGE_TYPE_SIGNER_REMOVE`](../enums/protobufs.MessageType.md#message_type_signer_remove)  }
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5116
 
 ___
 
@@ -346,19 +280,11 @@ ___
 
 Ƭ **SignerRemoveMessage**: [`Message`](protobufs.md#message) & { `data`: [`SignerRemoveData`](protobufs.md#signerremovedata) ; `signatureScheme`: [`SIGNATURE_SCHEME_EIP712`](../enums/protobufs.SignatureScheme.md#signature_scheme_eip712)  }
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5120
-
 ___
 
 ### UserDataAddData
 
 Ƭ **UserDataAddData**: [`MessageData`](protobufs.md#messagedata) & { `type`: [`MESSAGE_TYPE_USER_DATA_ADD`](../enums/protobufs.MessageType.md#message_type_user_data_add) ; `userDataBody`: [`UserDataBody`](protobufs.md#userdatabody)  }
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5124
 
 ___
 
@@ -366,19 +292,11 @@ ___
 
 Ƭ **UserDataAddMessage**: [`Message`](protobufs.md#message) & { `data`: [`UserDataAddData`](protobufs.md#userdataadddata) ; `signatureScheme`: [`SIGNATURE_SCHEME_ED25519`](../enums/protobufs.SignatureScheme.md#signature_scheme_ed25519)  }
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5128
-
 ___
 
 ### VerificationAddEthAddressData
 
 Ƭ **VerificationAddEthAddressData**: [`MessageData`](protobufs.md#messagedata) & { `type`: [`MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS`](../enums/protobufs.MessageType.md#message_type_verification_add_eth_address) ; `verificationAddEthAddressBody`: [`VerificationAddEthAddressBody`](protobufs.md#verificationaddethaddressbody)  }
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5092
 
 ___
 
@@ -386,29 +304,17 @@ ___
 
 Ƭ **VerificationAddEthAddressMessage**: [`Message`](protobufs.md#message) & { `data`: [`VerificationAddEthAddressData`](protobufs.md#verificationaddethaddressdata) ; `signatureScheme`: [`SIGNATURE_SCHEME_ED25519`](../enums/protobufs.SignatureScheme.md#signature_scheme_ed25519)  }
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5096
-
 ___
 
 ### VerificationRemoveData
 
 Ƭ **VerificationRemoveData**: [`MessageData`](protobufs.md#messagedata) & { `type`: [`MESSAGE_TYPE_VERIFICATION_REMOVE`](../enums/protobufs.MessageType.md#message_type_verification_remove) ; `verificationRemoveBody`: [`VerificationRemoveBody`](protobufs.md#verificationremovebody)  }
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5100
-
 ___
 
 ### VerificationRemoveMessage
 
 Ƭ **VerificationRemoveMessage**: [`Message`](protobufs.md#message) & { `data`: [`VerificationRemoveData`](protobufs.md#verificationremovedata) ; `signatureScheme`: [`SIGNATURE_SCHEME_ED25519`](../enums/protobufs.SignatureScheme.md#signature_scheme_ed25519)  }
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5104
 
 ## Variables
 
@@ -427,12 +333,6 @@ protobufs/dist/index.d.ts:5104
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`AmpBody`](protobufs.md#ampbody) |
 | `toJSON` | (`message`: [`AmpBody`](protobufs.md#ampbody)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:340
-
-protobufs/dist/index.d.ts:343
-
 ___
 
 ### AmpRequest
@@ -449,12 +349,6 @@ ___
 | `fromJSON` | (`object`: `any`) => [`AmpRequest`](protobufs.md#amprequest) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`AmpRequest`](protobufs.md#amprequest) |
 | `toJSON` | (`message`: [`AmpRequest`](protobufs.md#amprequest)) => `unknown` |
-
-#### Defined in
-
-protobufs/dist/index.d.ts:3579
-
-protobufs/dist/index.d.ts:3583
 
 ___
 
@@ -473,12 +367,6 @@ ___
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`CastAddBody`](protobufs.md#castaddbody) |
 | `toJSON` | (`message`: [`CastAddBody`](protobufs.md#castaddbody)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:222
-
-protobufs/dist/index.d.ts:229
-
 ___
 
 ### CastId
@@ -495,12 +383,6 @@ ___
 | `fromJSON` | (`object`: `any`) => [`CastId`](protobufs.md#castid) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`CastId`](protobufs.md#castid) |
 | `toJSON` | (`message`: [`CastId`](protobufs.md#castid)) => `unknown` |
-
-#### Defined in
-
-protobufs/dist/index.d.ts:198
-
-protobufs/dist/index.d.ts:202
 
 ___
 
@@ -519,12 +401,6 @@ ___
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`CastRemoveBody`](protobufs.md#castremovebody) |
 | `toJSON` | (`message`: [`CastRemoveBody`](protobufs.md#castremovebody)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:279
-
-protobufs/dist/index.d.ts:282
-
 ___
 
 ### ContactInfoContent
@@ -541,12 +417,6 @@ ___
 | `fromJSON` | (`object`: `any`) => [`ContactInfoContent`](protobufs.md#contactinfocontent) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`ContactInfoContent`](protobufs.md#contactinfocontent) |
 | `toJSON` | (`message`: [`ContactInfoContent`](protobufs.md#contactinfocontent)) => `unknown` |
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4212
-
-protobufs/dist/index.d.ts:4218
 
 ___
 
@@ -565,12 +435,6 @@ ___
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`DbTrieNode`](protobufs.md#dbtrienode) |
 | `toJSON` | (`message`: [`DbTrieNode`](protobufs.md#dbtrienode)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5009
-
-protobufs/dist/index.d.ts:5015
-
 ___
 
 ### Empty
@@ -587,12 +451,6 @@ ___
 | `fromJSON` | (`_`: `any`) => [`Empty`](protobufs.md#empty) |
 | `fromPartial` | <I_1\>(`_`: `I_1`) => [`Empty`](protobufs.md#empty) |
 | `toJSON` | (`_`: [`Empty`](protobufs.md#empty)) => `unknown` |
-
-#### Defined in
-
-protobufs/dist/index.d.ts:1102
-
-protobufs/dist/index.d.ts:1104
 
 ___
 
@@ -611,12 +469,6 @@ ___
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`EventResponse`](protobufs.md#eventresponse) |
 | `toJSON` | (`message`: [`EventResponse`](protobufs.md#eventresponse)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:1112
-
-protobufs/dist/index.d.ts:1119
-
 ___
 
 ### FidRequest
@@ -633,12 +485,6 @@ ___
 | `fromJSON` | (`object`: `any`) => [`FidRequest`](protobufs.md#fidrequest) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`FidRequest`](protobufs.md#fidrequest) |
 | `toJSON` | (`message`: [`FidRequest`](protobufs.md#fidrequest)) => `unknown` |
-
-#### Defined in
-
-protobufs/dist/index.d.ts:2751
-
-protobufs/dist/index.d.ts:2754
 
 ___
 
@@ -657,12 +503,6 @@ ___
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`FidsResponse`](protobufs.md#fidsresponse) |
 | `toJSON` | (`message`: [`FidsResponse`](protobufs.md#fidsresponse)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:2770
-
-protobufs/dist/index.d.ts:2773
-
 ___
 
 ### GossipAddressInfo
@@ -679,12 +519,6 @@ ___
 | `fromJSON` | (`object`: `any`) => [`GossipAddressInfo`](protobufs.md#gossipaddressinfo) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`GossipAddressInfo`](protobufs.md#gossipaddressinfo) |
 | `toJSON` | (`message`: [`GossipAddressInfo`](protobufs.md#gossipaddressinfo)) => `unknown` |
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4183
-
-protobufs/dist/index.d.ts:4188
 
 ___
 
@@ -703,12 +537,6 @@ ___
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`GossipMessage`](protobufs.md#gossipmessage) |
 | `toJSON` | (`message`: [`GossipMessage`](protobufs.md#gossipmessage)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4294
-
-protobufs/dist/index.d.ts:4302
-
 ___
 
 ### HubInfoResponse
@@ -725,12 +553,6 @@ ___
 | `fromJSON` | (`object`: `any`) => [`HubInfoResponse`](protobufs.md#hubinforesponse) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`HubInfoResponse`](protobufs.md#hubinforesponse) |
 | `toJSON` | (`message`: [`HubInfoResponse`](protobufs.md#hubinforesponse)) => `unknown` |
-
-#### Defined in
-
-protobufs/dist/index.d.ts:2401
-
-protobufs/dist/index.d.ts:2407
 
 ___
 
@@ -1032,12 +854,6 @@ ___
 | `service.subscribe.responseSerialize` | (`value`: [`EventResponse`](protobufs.md#eventresponse)) => `Buffer` |
 | `service.subscribe.responseStream` | ``true`` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4059
-
-protobufs/dist/index.d.ts:4172
-
 ___
 
 ### HubServiceService
@@ -1321,12 +1137,6 @@ ___
 | `subscribe.responseSerialize` | (`value`: [`EventResponse`](protobufs.md#eventresponse)) => `Buffer` | - |
 | `subscribe.responseStream` | ``true`` | - |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:3694
-
-protobufs/dist/index.d.ts:3695
-
 ___
 
 ### HubState
@@ -1343,12 +1153,6 @@ ___
 | `fromJSON` | (`object`: `any`) => [`HubState`](protobufs.md#hubstate) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`HubState`](protobufs.md#hubstate) |
 | `toJSON` | (`message`: [`HubState`](protobufs.md#hubstate)) => `unknown` |
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4945
-
-protobufs/dist/index.d.ts:4948
 
 ___
 
@@ -1367,12 +1171,6 @@ ___
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`IdRegistryEvent`](protobufs.md#idregistryevent) |
 | `toJSON` | (`message`: [`IdRegistryEvent`](protobufs.md#idregistryevent)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:82
-
-protobufs/dist/index.d.ts:92
-
 ___
 
 ### Message
@@ -1389,12 +1187,6 @@ ___
 | `fromJSON` | (`object`: `any`) => [`Message`](protobufs.md#message) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`Message`](protobufs.md#message) |
 | `toJSON` | (`message`: [`Message`](protobufs.md#message)) => `unknown` |
-
-#### Defined in
-
-protobufs/dist/index.d.ts:716
-
-protobufs/dist/index.d.ts:724
 
 ___
 
@@ -1413,12 +1205,6 @@ ___
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`MessageData`](protobufs.md#messagedata) |
 | `toJSON` | (`message`: [`MessageData`](protobufs.md#messagedata)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:450
-
-protobufs/dist/index.d.ts:464
-
 ___
 
 ### MessagesResponse
@@ -1435,12 +1221,6 @@ ___
 | `fromJSON` | (`object`: `any`) => [`MessagesResponse`](protobufs.md#messagesresponse) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`MessagesResponse`](protobufs.md#messagesresponse) |
 | `toJSON` | (`message`: [`MessagesResponse`](protobufs.md#messagesresponse)) => `unknown` |
-
-#### Defined in
-
-protobufs/dist/index.d.ts:2789
-
-protobufs/dist/index.d.ts:2792
 
 ___
 
@@ -1459,12 +1239,6 @@ ___
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`NameRegistryEvent`](protobufs.md#nameregistryevent) |
 | `toJSON` | (`message`: [`NameRegistryEvent`](protobufs.md#nameregistryevent)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:14
-
-protobufs/dist/index.d.ts:25
-
 ___
 
 ### NameRegistryEventRequest
@@ -1481,12 +1255,6 @@ ___
 | `fromJSON` | (`object`: `any`) => [`NameRegistryEventRequest`](protobufs.md#nameregistryeventrequest) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`NameRegistryEventRequest`](protobufs.md#nameregistryeventrequest) |
 | `toJSON` | (`message`: [`NameRegistryEventRequest`](protobufs.md#nameregistryeventrequest)) => `unknown` |
-
-#### Defined in
-
-protobufs/dist/index.d.ts:3627
-
-protobufs/dist/index.d.ts:3630
 
 ___
 
@@ -1505,12 +1273,6 @@ ___
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`ReactionBody`](protobufs.md#reactionbody) |
 | `toJSON` | (`message`: [`ReactionBody`](protobufs.md#reactionbody)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:298
-
-protobufs/dist/index.d.ts:302
-
 ___
 
 ### ReactionRequest
@@ -1527,12 +1289,6 @@ ___
 | `fromJSON` | (`object`: `any`) => [`ReactionRequest`](protobufs.md#reactionrequest) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`ReactionRequest`](protobufs.md#reactionrequest) |
 | `toJSON` | (`message`: [`ReactionRequest`](protobufs.md#reactionrequest)) => `unknown` |
-
-#### Defined in
-
-protobufs/dist/index.d.ts:3466
-
-protobufs/dist/index.d.ts:3471
 
 ___
 
@@ -1551,12 +1307,6 @@ ___
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`ReactionsByCastRequest`](protobufs.md#reactionsbycastrequest) |
 | `toJSON` | (`message`: [`ReactionsByCastRequest`](protobufs.md#reactionsbycastrequest)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:3537
-
-protobufs/dist/index.d.ts:3541
-
 ___
 
 ### ReactionsByFidRequest
@@ -1573,12 +1323,6 @@ ___
 | `fromJSON` | (`object`: `any`) => [`ReactionsByFidRequest`](protobufs.md#reactionsbyfidrequest) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`ReactionsByFidRequest`](protobufs.md#reactionsbyfidrequest) |
 | `toJSON` | (`message`: [`ReactionsByFidRequest`](protobufs.md#reactionsbyfidrequest)) => `unknown` |
-
-#### Defined in
-
-protobufs/dist/index.d.ts:3513
-
-protobufs/dist/index.d.ts:3517
 
 ___
 
@@ -1597,12 +1341,6 @@ ___
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`RevokeSignerJobPayload`](protobufs.md#revokesignerjobpayload) |
 | `toJSON` | (`message`: [`RevokeSignerJobPayload`](protobufs.md#revokesignerjobpayload)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4965
-
-protobufs/dist/index.d.ts:4969
-
 ___
 
 ### SignerBody
@@ -1619,12 +1357,6 @@ ___
 | `fromJSON` | (`object`: `any`) => [`SignerBody`](protobufs.md#signerbody) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`SignerBody`](protobufs.md#signerbody) |
 | `toJSON` | (`message`: [`SignerBody`](protobufs.md#signerbody)) => `unknown` |
-
-#### Defined in
-
-protobufs/dist/index.d.ts:407
-
-protobufs/dist/index.d.ts:410
 
 ___
 
@@ -1643,12 +1375,6 @@ ___
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`SignerRequest`](protobufs.md#signerrequest) |
 | `toJSON` | (`message`: [`SignerRequest`](protobufs.md#signerrequest)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:3670
-
-protobufs/dist/index.d.ts:3674
-
 ___
 
 ### SubscribeRequest
@@ -1665,12 +1391,6 @@ ___
 | `fromJSON` | (`object`: `any`) => [`SubscribeRequest`](protobufs.md#subscriberequest) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`SubscribeRequest`](protobufs.md#subscriberequest) |
 | `toJSON` | (`message`: [`SubscribeRequest`](protobufs.md#subscriberequest)) => `unknown` |
-
-#### Defined in
-
-protobufs/dist/index.d.ts:2381
-
-protobufs/dist/index.d.ts:2384
 
 ___
 
@@ -1689,12 +1409,6 @@ ___
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`SyncIds`](protobufs.md#syncids) |
 | `toJSON` | (`message`: [`SyncIds`](protobufs.md#syncids)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:2732
-
-protobufs/dist/index.d.ts:2735
-
 ___
 
 ### TrieNodeMetadataResponse
@@ -1711,12 +1425,6 @@ ___
 | `fromJSON` | (`object`: `any`) => [`TrieNodeMetadataResponse`](protobufs.md#trienodemetadataresponse) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`TrieNodeMetadataResponse`](protobufs.md#trienodemetadataresponse) |
 | `toJSON` | (`message`: [`TrieNodeMetadataResponse`](protobufs.md#trienodemetadataresponse)) => `unknown` |
-
-#### Defined in
-
-protobufs/dist/index.d.ts:2435
-
-protobufs/dist/index.d.ts:2441
 
 ___
 
@@ -1735,12 +1443,6 @@ ___
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`TrieNodePrefix`](protobufs.md#trienodeprefix) |
 | `toJSON` | (`message`: [`TrieNodePrefix`](protobufs.md#trienodeprefix)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:2713
-
-protobufs/dist/index.d.ts:2716
-
 ___
 
 ### TrieNodeSnapshotResponse
@@ -1757,12 +1459,6 @@ ___
 | `fromJSON` | (`object`: `any`) => [`TrieNodeSnapshotResponse`](protobufs.md#trienodesnapshotresponse) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`TrieNodeSnapshotResponse`](protobufs.md#trienodesnapshotresponse) |
 | `toJSON` | (`message`: [`TrieNodeSnapshotResponse`](protobufs.md#trienodesnapshotresponse)) => `unknown` |
-
-#### Defined in
-
-protobufs/dist/index.d.ts:2679
-
-protobufs/dist/index.d.ts:2685
 
 ___
 
@@ -1781,12 +1477,6 @@ ___
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`UpdateNameRegistryEventExpiryJobPayload`](protobufs.md#updatenameregistryeventexpiryjobpayload) |
 | `toJSON` | (`message`: [`UpdateNameRegistryEventExpiryJobPayload`](protobufs.md#updatenameregistryeventexpiryjobpayload)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4989
-
-protobufs/dist/index.d.ts:4992
-
 ___
 
 ### UserDataBody
@@ -1803,12 +1493,6 @@ ___
 | `fromJSON` | (`object`: `any`) => [`UserDataBody`](protobufs.md#userdatabody) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`UserDataBody`](protobufs.md#userdatabody) |
 | `toJSON` | (`message`: [`UserDataBody`](protobufs.md#userdatabody)) => `unknown` |
-
-#### Defined in
-
-protobufs/dist/index.d.ts:426
-
-protobufs/dist/index.d.ts:430
 
 ___
 
@@ -1827,12 +1511,6 @@ ___
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`UserDataRequest`](protobufs.md#userdatarequest) |
 | `toJSON` | (`message`: [`UserDataRequest`](protobufs.md#userdatarequest)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:3603
-
-protobufs/dist/index.d.ts:3607
-
 ___
 
 ### VerificationAddEthAddressBody
@@ -1849,12 +1527,6 @@ ___
 | `fromJSON` | (`object`: `any`) => [`VerificationAddEthAddressBody`](protobufs.md#verificationaddethaddressbody) |
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`VerificationAddEthAddressBody`](protobufs.md#verificationaddethaddressbody) |
 | `toJSON` | (`message`: [`VerificationAddEthAddressBody`](protobufs.md#verificationaddethaddressbody)) => `unknown` |
-
-#### Defined in
-
-protobufs/dist/index.d.ts:359
-
-protobufs/dist/index.d.ts:364
 
 ___
 
@@ -1873,12 +1545,6 @@ ___
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`VerificationRemoveBody`](protobufs.md#verificationremovebody) |
 | `toJSON` | (`message`: [`VerificationRemoveBody`](protobufs.md#verificationremovebody)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:388
-
-protobufs/dist/index.d.ts:391
-
 ___
 
 ### VerificationRequest
@@ -1896,12 +1562,6 @@ ___
 | `fromPartial` | <I_1\>(`object`: `I_1`) => [`VerificationRequest`](protobufs.md#verificationrequest) |
 | `toJSON` | (`message`: [`VerificationRequest`](protobufs.md#verificationrequest)) => `unknown` |
 
-#### Defined in
-
-protobufs/dist/index.d.ts:3646
-
-protobufs/dist/index.d.ts:3650
-
 ## Functions
 
 ### eventTypeFromJSON
@@ -1917,10 +1577,6 @@ protobufs/dist/index.d.ts:3650
 #### Returns
 
 [`EventType`](../enums/protobufs.EventType.md)
-
-#### Defined in
-
-protobufs/dist/index.d.ts:1100
 
 ___
 
@@ -1938,10 +1594,6 @@ ___
 
 `string`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:1101
-
 ___
 
 ### farcasterNetworkFromJSON
@@ -1957,10 +1609,6 @@ ___
 #### Returns
 
 [`FarcasterNetwork`](../enums/protobufs.FarcasterNetwork.md)
-
-#### Defined in
-
-protobufs/dist/index.d.ts:176
 
 ___
 
@@ -1978,10 +1626,6 @@ ___
 
 `string`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:177
-
 ___
 
 ### getClient
@@ -1998,10 +1642,6 @@ ___
 
 [`HubServiceClient`](protobufs.md#hubserviceclient)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5157
-
 ___
 
 ### getServer
@@ -2011,10 +1651,6 @@ ___
 #### Returns
 
 `Server`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5156
 
 ___
 
@@ -2032,10 +1668,6 @@ ___
 
 [`GossipVersion`](../enums/protobufs.GossipVersion.md)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4181
-
 ___
 
 ### gossipVersionToJSON
@@ -2051,10 +1683,6 @@ ___
 #### Returns
 
 `string`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4182
 
 ___
 
@@ -2072,10 +1700,6 @@ ___
 
 [`HashScheme`](../enums/protobufs.HashScheme.md)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:167
-
 ___
 
 ### hashSchemeToJSON
@@ -2091,10 +1715,6 @@ ___
 #### Returns
 
 `string`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:168
 
 ___
 
@@ -2112,10 +1732,6 @@ ___
 
 [`IdRegistryEventType`](../enums/protobufs.IdRegistryEventType.md)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:80
-
 ___
 
 ### idRegistryEventTypeToJSON
@@ -2131,10 +1747,6 @@ ___
 #### Returns
 
 `string`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:81
 
 ___
 
@@ -2152,10 +1764,6 @@ ___
 
 data is AmpAddData
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5137
-
 ___
 
 ### isAmpAddMessage
@@ -2171,10 +1779,6 @@ ___
 #### Returns
 
 message is AmpAddMessage
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5138
 
 ___
 
@@ -2192,10 +1796,6 @@ ___
 
 data is AmpRemoveData
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5139
-
 ___
 
 ### isAmpRemoveMessage
@@ -2211,10 +1811,6 @@ ___
 #### Returns
 
 message is AmpRemoveMessage
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5140
 
 ___
 
@@ -2232,10 +1828,6 @@ ___
 
 data is CastAddData
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5133
-
 ___
 
 ### isCastAddMessage
@@ -2251,10 +1843,6 @@ ___
 #### Returns
 
 message is CastAddMessage
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5134
 
 ___
 
@@ -2272,10 +1860,6 @@ ___
 
 data is CastRemoveData
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5135
-
 ___
 
 ### isCastRemoveMessage
@@ -2291,10 +1875,6 @@ ___
 #### Returns
 
 message is CastRemoveMessage
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5136
 
 ___
 
@@ -2312,10 +1892,6 @@ ___
 
 data is ReactionAddData
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5141
-
 ___
 
 ### isReactionAddMessage
@@ -2331,10 +1907,6 @@ ___
 #### Returns
 
 message is ReactionAddMessage
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5142
 
 ___
 
@@ -2352,10 +1924,6 @@ ___
 
 data is ReactionRemoveData
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5143
-
 ___
 
 ### isReactionRemoveMessage
@@ -2371,10 +1939,6 @@ ___
 #### Returns
 
 message is ReactionRemoveMessage
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5144
 
 ___
 
@@ -2392,10 +1956,6 @@ ___
 
 data is SignerAddData
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5149
-
 ___
 
 ### isSignerAddMessage
@@ -2411,10 +1971,6 @@ ___
 #### Returns
 
 message is SignerAddMessage
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5150
 
 ___
 
@@ -2432,10 +1988,6 @@ ___
 
 data is SignerRemoveData
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5151
-
 ___
 
 ### isSignerRemoveMessage
@@ -2451,10 +2003,6 @@ ___
 #### Returns
 
 message is SignerRemoveMessage
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5152
 
 ___
 
@@ -2472,10 +2020,6 @@ ___
 
 data is UserDataAddData
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5153
-
 ___
 
 ### isUserDataAddMessage
@@ -2491,10 +2035,6 @@ ___
 #### Returns
 
 message is UserDataAddMessage
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5154
 
 ___
 
@@ -2512,10 +2052,6 @@ ___
 
 data is VerificationAddEthAddressData
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5145
-
 ___
 
 ### isVerificationAddEthAddressMessage
@@ -2531,10 +2067,6 @@ ___
 #### Returns
 
 message is VerificationAddEthAddressMessage
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5146
 
 ___
 
@@ -2552,10 +2084,6 @@ ___
 
 data is VerificationRemoveData
 
-#### Defined in
-
-protobufs/dist/index.d.ts:5147
-
 ___
 
 ### isVerificationRemoveMessage
@@ -2571,10 +2099,6 @@ ___
 #### Returns
 
 message is VerificationRemoveMessage
-
-#### Defined in
-
-protobufs/dist/index.d.ts:5148
 
 ___
 
@@ -2592,10 +2116,6 @@ ___
 
 [`MessageType`](../enums/protobufs.MessageType.md)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:152
-
 ___
 
 ### messageTypeToJSON
@@ -2611,10 +2131,6 @@ ___
 #### Returns
 
 `string`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:153
 
 ___
 
@@ -2632,10 +2148,6 @@ ___
 
 [`NameRegistryEventType`](../enums/protobufs.NameRegistryEventType.md)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:12
-
 ___
 
 ### nameRegistryEventTypeToJSON
@@ -2651,10 +2163,6 @@ ___
 #### Returns
 
 `string`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:13
 
 ___
 
@@ -2672,10 +2180,6 @@ ___
 
 [`ReactionType`](../enums/protobufs.ReactionType.md)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:184
-
 ___
 
 ### reactionTypeToJSON
@@ -2691,10 +2195,6 @@ ___
 #### Returns
 
 `string`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:185
 
 ___
 
@@ -2712,10 +2212,6 @@ ___
 
 [`SignatureScheme`](../enums/protobufs.SignatureScheme.md)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:160
-
 ___
 
 ### signatureSchemeToJSON
@@ -2731,10 +2227,6 @@ ___
 #### Returns
 
 `string`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:161
 
 ___
 
@@ -2752,10 +2244,6 @@ ___
 
 [`UserDataType`](../enums/protobufs.UserDataType.md)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:196
-
 ___
 
 ### userDataTypeToJSON
@@ -2771,7 +2259,3 @@ ___
 #### Returns
 
 `string`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:197

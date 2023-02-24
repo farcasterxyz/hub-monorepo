@@ -15,7 +15,3 @@
 ### fids
 
 • **fids**: `number`[]
-
-#### Defined in
-
-protobufs/dist/index.d.ts:2771

@@ -17,16 +17,8 @@
 
 • **castId**: `undefined` \| [`CastId`](../modules/protobufs.md#castid)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:3538
-
 ___
 
 ### reactionType
 
 • **reactionType**: [`ReactionType`](../enums/protobufs.ReactionType.md)
-
-#### Defined in
-
-protobufs/dist/index.d.ts:3539

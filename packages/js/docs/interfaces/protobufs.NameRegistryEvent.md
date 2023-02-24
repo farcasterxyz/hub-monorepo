@@ -24,19 +24,11 @@
 
 • **blockHash**: `Uint8Array`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:16
-
 ___
 
 ### blockNumber
 
 • **blockNumber**: `number`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:15
 
 ___
 
@@ -44,19 +36,11 @@ ___
 
 • **expiry**: `number`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:23
-
 ___
 
 ### fname
 
 • **fname**: `Uint8Array`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:19
 
 ___
 
@@ -64,19 +48,11 @@ ___
 
 • **from**: `Uint8Array`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:20
-
 ___
 
 ### logIndex
 
 • **logIndex**: `number`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:18
 
 ___
 
@@ -84,26 +60,14 @@ ___
 
 • **to**: `Uint8Array`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:21
-
 ___
 
 ### transactionHash
 
 • **transactionHash**: `Uint8Array`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:17
-
 ___
 
 ### type
 
 • **type**: [`NameRegistryEventType`](../enums/protobufs.NameRegistryEventType.md)
-
-#### Defined in
-
-protobufs/dist/index.d.ts:22

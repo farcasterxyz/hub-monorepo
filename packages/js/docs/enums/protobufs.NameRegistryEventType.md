@@ -19,19 +19,11 @@
 
 • **NAME\_REGISTRY\_EVENT\_TYPE\_NONE** = ``0``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:7
-
 ___
 
 ### NAME\_REGISTRY\_EVENT\_TYPE\_RENEW
 
 • **NAME\_REGISTRY\_EVENT\_TYPE\_RENEW** = ``2``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:9
 
 ___
 
@@ -39,16 +31,8 @@ ___
 
 • **NAME\_REGISTRY\_EVENT\_TYPE\_TRANSFER** = ``1``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:8
-
 ___
 
 ### UNRECOGNIZED
 
 • **UNRECOGNIZED** = ``-1``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:10

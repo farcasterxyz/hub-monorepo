@@ -15,7 +15,3 @@
 ### targetFid
 
 • **targetFid**: `number`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:341

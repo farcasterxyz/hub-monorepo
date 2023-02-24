@@ -99,19 +99,11 @@ Re-exports [UserDataType](../enums/protobufs.UserDataType.md)
 
 Ƭ **AmpAddData**: [`MessageData`](types.md#messagedata)<[`AmpBody`](types.md#ampbody), [`MESSAGE_TYPE_AMP_ADD`](../enums/protobufs.MessageType.md#message_type_amp_add)\>
 
-#### Defined in
-
-[js/src/types.ts:36](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L36)
-
 ___
 
 ### AmpAddMessage
 
 Ƭ **AmpAddMessage**: [`Message`](types.md#message)<[`AmpAddData`](types.md#ampadddata)\>
-
-#### Defined in
-
-[js/src/types.ts:54](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L54)
 
 ___
 
@@ -125,29 +117,17 @@ ___
 | :------ | :------ |
 | `targetFid` | `number` |
 
-#### Defined in
-
-[js/src/types.ts:94](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L94)
-
 ___
 
 ### AmpRemoveData
 
 Ƭ **AmpRemoveData**: [`MessageData`](types.md#messagedata)<[`AmpBody`](types.md#ampbody), [`MESSAGE_TYPE_AMP_REMOVE`](../enums/protobufs.MessageType.md#message_type_amp_remove)\>
 
-#### Defined in
-
-[js/src/types.ts:37](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L37)
-
 ___
 
 ### AmpRemoveMessage
 
 Ƭ **AmpRemoveMessage**: [`Message`](types.md#message)<[`AmpRemoveData`](types.md#ampremovedata)\>
-
-#### Defined in
-
-[js/src/types.ts:55](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L55)
 
 ___
 
@@ -165,29 +145,17 @@ ___
 | `parent?` | [`CastId`](types.md#castid) |
 | `text` | `string` |
 
-#### Defined in
-
-[js/src/types.ts:77](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L77)
-
 ___
 
 ### CastAddData
 
 Ƭ **CastAddData**: [`MessageData`](types.md#messagedata)<[`CastAddBody`](types.md#castaddbody), [`MESSAGE_TYPE_CAST_ADD`](../enums/protobufs.MessageType.md#message_type_cast_add)\>
 
-#### Defined in
-
-[js/src/types.ts:32](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L32)
-
 ___
 
 ### CastAddMessage
 
 Ƭ **CastAddMessage**: [`Message`](types.md#message)<[`CastAddData`](types.md#castadddata)\>
-
-#### Defined in
-
-[js/src/types.ts:50](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L50)
 
 ___
 
@@ -202,10 +170,6 @@ ___
 | `fid` | `number` |
 | `hash` | `string` |
 
-#### Defined in
-
-[js/src/types.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L62)
-
 ___
 
 ### CastRemoveBody
@@ -218,19 +182,11 @@ ___
 | :------ | :------ |
 | `targetHash` | `string` |
 
-#### Defined in
-
-[js/src/types.ts:85](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L85)
-
 ___
 
 ### CastRemoveData
 
 Ƭ **CastRemoveData**: [`MessageData`](types.md#messagedata)<[`CastRemoveBody`](types.md#castremovebody), [`MESSAGE_TYPE_CAST_REMOVE`](../enums/protobufs.MessageType.md#message_type_cast_remove)\>
-
-#### Defined in
-
-[js/src/types.ts:33](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L33)
 
 ___
 
@@ -238,19 +194,11 @@ ___
 
 Ƭ **CastRemoveMessage**: [`Message`](types.md#message)<[`CastRemoveData`](types.md#castremovedata)\>
 
-#### Defined in
-
-[js/src/types.ts:51](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L51)
-
 ___
 
 ### EventResponse
 
 Ƭ **EventResponse**: [`NameRegistryEventResponse`](types.md#nameregistryeventresponse) \| [`IdRegistryEventResponse`](types.md#idregistryeventresponse) \| [`MessageEventResponse`](types.md#messageeventresponse)
-
-#### Defined in
-
-[js/src/types.ts:166](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L166)
 
 ___
 
@@ -258,19 +206,11 @@ ___
 
 Ƭ **IdRegistryEvent**: `Readonly`<{ `_protobuf`: [`IdRegistryEvent`](protobufs.md#idregistryevent) ; `blockHash`: `string` ; `blockNumber`: `number` ; `fid`: `number` ; `from`: `string` \| `undefined` ; `logIndex`: `number` ; `to`: `string` ; `transactionHash`: `string` ; `type`: [`IdRegistryEventType`](../enums/protobufs.IdRegistryEventType.md)  }\>
 
-#### Defined in
-
-[js/src/types.ts:117](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L117)
-
 ___
 
 ### IdRegistryEventResponse
 
 Ƭ **IdRegistryEventResponse**: `GenericEventResponse` & { `idRegistryEvent`: [`IdRegistryEvent`](types.md#idregistryevent) ; `type`: [`EVENT_TYPE_MERGE_ID_REGISTRY_EVENT`](../enums/protobufs.EventType.md#event_type_merge_id_registry_event)  }
-
-#### Defined in
-
-[js/src/types.ts:156](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L156)
 
 ___
 
@@ -284,19 +224,11 @@ ___
 | :------ | :------ |
 | `TData` | [`MessageData`](types.md#messagedata) |
 
-#### Defined in
-
-[js/src/types.ts:13](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L13)
-
 ___
 
 ### MessageBody
 
 Ƭ **MessageBody**: [`CastAddBody`](types.md#castaddbody) \| [`CastRemoveBody`](types.md#castremovebody) \| [`ReactionBody`](types.md#reactionbody) \| [`AmpBody`](types.md#ampbody) \| [`VerificationAddEthAddressBody`](types.md#verificationaddethaddressbody) \| [`VerificationRemoveBody`](types.md#verificationremovebody) \| [`SignerBody`](types.md#signerbody) \| [`UserDataBody`](types.md#userdatabody)
-
-#### Defined in
-
-[js/src/types.ts:67](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L67)
 
 ___
 
@@ -322,19 +254,11 @@ ___
 | `timestamp` | `number` |
 | `type` | `TType` |
 
-#### Defined in
-
-[js/src/types.ts:23](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L23)
-
 ___
 
 ### MessageEventResponse
 
 Ƭ **MessageEventResponse**: `GenericEventResponse` & { `deleted_messages?`: [`Message`](types.md#message)[] ; `message`: [`Message`](types.md#message) ; `type`: [`EVENT_TYPE_MERGE_MESSAGE`](../enums/protobufs.EventType.md#event_type_merge_message) \| [`EVENT_TYPE_PRUNE_MESSAGE`](../enums/protobufs.EventType.md#event_type_prune_message) \| [`EVENT_TYPE_REVOKE_MESSAGE`](../enums/protobufs.EventType.md#event_type_revoke_message)  }
-
-#### Defined in
-
-[js/src/types.ts:147](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L147)
 
 ___
 
@@ -342,19 +266,11 @@ ___
 
 Ƭ **NameRegistryEvent**: `Readonly`<{ `_protobuf`: [`NameRegistryEvent`](protobufs.md#nameregistryevent) ; `blockHash`: `string` ; `blockNumber`: `number` ; `expiry`: `number` \| `undefined` ; `fname`: `string` ; `from`: `string` ; `logIndex`: `number` ; `to`: `string` ; `transactionHash`: `string` ; `type`: [`NameRegistryEventType`](../enums/protobufs.NameRegistryEventType.md)  }\>
 
-#### Defined in
-
-[js/src/types.ts:129](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L129)
-
 ___
 
 ### NameRegistryEventResponse
 
 Ƭ **NameRegistryEventResponse**: `GenericEventResponse` & { `nameRegistryEvent`: [`NameRegistryEvent`](types.md#nameregistryevent) ; `type`: [`EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT`](../enums/protobufs.EventType.md#event_type_merge_name_registry_event)  }
-
-#### Defined in
-
-[js/src/types.ts:161](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L161)
 
 ___
 
@@ -362,19 +278,11 @@ ___
 
 Ƭ **ReactionAddData**: [`MessageData`](types.md#messagedata)<[`ReactionBody`](types.md#reactionbody), [`MESSAGE_TYPE_REACTION_ADD`](../enums/protobufs.MessageType.md#message_type_reaction_add)\>
 
-#### Defined in
-
-[js/src/types.ts:34](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L34)
-
 ___
 
 ### ReactionAddMessage
 
 Ƭ **ReactionAddMessage**: [`Message`](types.md#message)<[`ReactionAddData`](types.md#reactionadddata)\>
-
-#### Defined in
-
-[js/src/types.ts:52](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L52)
 
 ___
 
@@ -389,19 +297,11 @@ ___
 | `target` | [`CastId`](types.md#castid) |
 | `type` | [`ReactionType`](../enums/protobufs.ReactionType.md) |
 
-#### Defined in
-
-[js/src/types.ts:89](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L89)
-
 ___
 
 ### ReactionRemoveData
 
 Ƭ **ReactionRemoveData**: [`MessageData`](types.md#messagedata)<[`ReactionBody`](types.md#reactionbody), [`MESSAGE_TYPE_REACTION_REMOVE`](../enums/protobufs.MessageType.md#message_type_reaction_remove)\>
-
-#### Defined in
-
-[js/src/types.ts:35](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L35)
 
 ___
 
@@ -409,29 +309,17 @@ ___
 
 Ƭ **ReactionRemoveMessage**: [`Message`](types.md#message)<[`ReactionRemoveData`](types.md#reactionremovedata)\>
 
-#### Defined in
-
-[js/src/types.ts:53](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L53)
-
 ___
 
 ### SignerAddData
 
 Ƭ **SignerAddData**: [`MessageData`](types.md#messagedata)<[`SignerBody`](types.md#signerbody), [`MESSAGE_TYPE_SIGNER_ADD`](../enums/protobufs.MessageType.md#message_type_signer_add)\>
 
-#### Defined in
-
-[js/src/types.ts:46](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L46)
-
 ___
 
 ### SignerAddMessage
 
 Ƭ **SignerAddMessage**: [`Message`](types.md#message)<[`SignerAddData`](types.md#signeradddata)\>
-
-#### Defined in
-
-[js/src/types.ts:58](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L58)
 
 ___
 
@@ -445,19 +333,11 @@ ___
 | :------ | :------ |
 | `signer` | `string` |
 
-#### Defined in
-
-[js/src/types.ts:108](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L108)
-
 ___
 
 ### SignerRemoveData
 
 Ƭ **SignerRemoveData**: [`MessageData`](types.md#messagedata)<[`SignerBody`](types.md#signerbody), [`MESSAGE_TYPE_SIGNER_REMOVE`](../enums/protobufs.MessageType.md#message_type_signer_remove)\>
-
-#### Defined in
-
-[js/src/types.ts:47](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L47)
 
 ___
 
@@ -465,29 +345,17 @@ ___
 
 Ƭ **SignerRemoveMessage**: [`Message`](types.md#message)<[`SignerRemoveData`](types.md#signerremovedata)\>
 
-#### Defined in
-
-[js/src/types.ts:59](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L59)
-
 ___
 
 ### UserDataAddData
 
 Ƭ **UserDataAddData**: [`MessageData`](types.md#messagedata)<[`UserDataBody`](types.md#userdatabody), [`MESSAGE_TYPE_USER_DATA_ADD`](../enums/protobufs.MessageType.md#message_type_user_data_add)\>
 
-#### Defined in
-
-[js/src/types.ts:48](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L48)
-
 ___
 
 ### UserDataAddMessage
 
 Ƭ **UserDataAddMessage**: [`Message`](types.md#message)<[`UserDataAddData`](types.md#userdataadddata)\>
-
-#### Defined in
-
-[js/src/types.ts:60](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L60)
 
 ___
 
@@ -501,10 +369,6 @@ ___
 | :------ | :------ |
 | `type` | [`UserDataType`](../enums/protobufs.UserDataType.md) |
 | `value` | `string` |
-
-#### Defined in
-
-[js/src/types.ts:112](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L112)
 
 ___
 
@@ -520,29 +384,17 @@ ___
 | `blockHash` | `string` |
 | `ethSignature` | `string` |
 
-#### Defined in
-
-[js/src/types.ts:98](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L98)
-
 ___
 
 ### VerificationAddEthAddressData
 
 Ƭ **VerificationAddEthAddressData**: [`MessageData`](types.md#messagedata)<[`VerificationAddEthAddressBody`](types.md#verificationaddethaddressbody), [`MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS`](../enums/protobufs.MessageType.md#message_type_verification_add_eth_address)\>
 
-#### Defined in
-
-[js/src/types.ts:38](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L38)
-
 ___
 
 ### VerificationAddEthAddressMessage
 
 Ƭ **VerificationAddEthAddressMessage**: [`Message`](types.md#message)<[`VerificationAddEthAddressData`](types.md#verificationaddethaddressdata)\>
-
-#### Defined in
-
-[js/src/types.ts:56](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L56)
 
 ___
 
@@ -559,10 +411,6 @@ ___
 | `fid` | `BigNumber` |
 | `network` | [`FarcasterNetwork`](../enums/protobufs.FarcasterNetwork.md) |
 
-#### Defined in
-
-utils/dist/index.d.ts:81
-
 ___
 
 ### VerificationRemoveBody
@@ -575,26 +423,14 @@ ___
 | :------ | :------ |
 | `address` | `string` |
 
-#### Defined in
-
-[js/src/types.ts:104](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L104)
-
 ___
 
 ### VerificationRemoveData
 
 Ƭ **VerificationRemoveData**: [`MessageData`](types.md#messagedata)<[`VerificationRemoveBody`](types.md#verificationremovebody), [`MESSAGE_TYPE_VERIFICATION_REMOVE`](../enums/protobufs.MessageType.md#message_type_verification_remove)\>
 
-#### Defined in
-
-[js/src/types.ts:42](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L42)
-
 ___
 
 ### VerificationRemoveMessage
 
 Ƭ **VerificationRemoveMessage**: [`Message`](types.md#message)<[`VerificationRemoveData`](types.md#verificationremovedata)\>
-
-#### Defined in
-
-[js/src/types.ts:57](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/types.ts#L57)

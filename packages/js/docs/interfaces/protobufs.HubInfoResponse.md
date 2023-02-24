@@ -21,19 +21,11 @@ Response Types for the Sync RPC Methods
 
 • **isSynced**: `boolean`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:2403
-
 ___
 
 ### nickname
 
 • **nickname**: `string`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:2404
 
 ___
 
@@ -41,16 +33,8 @@ ___
 
 • **rootHash**: `string`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:2405
-
 ___
 
 ### version
 
 • **version**: `string`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:2402

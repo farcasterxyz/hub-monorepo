@@ -44,10 +44,6 @@
 
 BaseEd25519Signer.constructor
 
-#### Defined in
-
-utils/dist/index.d.ts:142
-
 ## Properties
 
 ### scheme
@@ -59,10 +55,6 @@ Signature scheme as defined in protobufs
 #### Inherited from
 
 BaseEd25519Signer.scheme
-
-#### Defined in
-
-utils/dist/index.d.ts:135
 
 ___
 
@@ -76,10 +68,6 @@ ___
 
 BaseEd25519Signer.signerKey
 
-#### Defined in
-
-utils/dist/index.d.ts:137
-
 ___
 
 ### signerKeyHex
@@ -91,10 +79,6 @@ ___
 #### Inherited from
 
 BaseEd25519Signer.signerKeyHex
-
-#### Defined in
-
-utils/dist/index.d.ts:139
 
 ## Methods
 
@@ -138,10 +122,6 @@ A HubAsyncResult containing the signature as a Uint8Array.
 
 BaseEd25519Signer.signMessageHash
 
-#### Defined in
-
-utils/dist/index.d.ts:168
-
 ___
 
 ### signMessageHashHex
@@ -180,10 +160,6 @@ console.log(signature._unsafeUnwrap()); // 0x9f1c7e13b9d0b8...
 
 A HubAsyncResult containing the signature in hex format.
 
-#### Defined in
-
-[js/src/signers.ts:160](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/signers.ts#L160)
-
 ___
 
 ### fromPrivateKey
@@ -217,7 +193,3 @@ A HubResult containing an Ed25519Signer instance on success, or an error message
 #### Overrides
 
 BaseEd25519Signer.fromPrivateKey
-
-#### Defined in
-
-[js/src/signers.ts:128](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/signers.ts#L128)

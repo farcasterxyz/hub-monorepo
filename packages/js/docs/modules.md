@@ -59,10 +59,6 @@
 | :------ | :------ |
 | `eventTypes?` | [`EventType`](enums/protobufs.EventType.md)[] |
 
-#### Defined in
-
-[js/src/client.ts:7](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L7)
-
 ## Functions
 
 ### makeAmpAdd
@@ -83,10 +79,6 @@ Amp Methods
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`AmpBody`](modules/types.md#ampbody), [`MESSAGE_TYPE_AMP_ADD`](enums/protobufs.MessageType.md#message_type_amp_add)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-#### Defined in
-
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
-
 ___
 
 ### makeAmpAddData
@@ -103,10 +95,6 @@ ___
 #### Returns
 
 `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`AmpBody`](modules/types.md#ampbody), [`MESSAGE_TYPE_AMP_ADD`](enums/protobufs.MessageType.md#message_type_amp_add)\>\>
-
-#### Defined in
-
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -126,10 +114,6 @@ ___
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`AmpBody`](modules/types.md#ampbody), [`MESSAGE_TYPE_AMP_REMOVE`](enums/protobufs.MessageType.md#message_type_amp_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-#### Defined in
-
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
-
 ___
 
 ### makeAmpRemoveData
@@ -146,10 +130,6 @@ ___
 #### Returns
 
 `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`AmpBody`](modules/types.md#ampbody), [`MESSAGE_TYPE_AMP_REMOVE`](enums/protobufs.MessageType.md#message_type_amp_remove)\>\>
-
-#### Defined in
-
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -171,10 +151,6 @@ Cast Methods
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`CastAddBody`](modules/types.md#castaddbody), [`MESSAGE_TYPE_CAST_ADD`](enums/protobufs.MessageType.md#message_type_cast_add)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-#### Defined in
-
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
-
 ___
 
 ### makeCastAddData
@@ -191,10 +167,6 @@ ___
 #### Returns
 
 `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`CastAddBody`](modules/types.md#castaddbody), [`MESSAGE_TYPE_CAST_ADD`](enums/protobufs.MessageType.md#message_type_cast_add)\>\>
-
-#### Defined in
-
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -214,10 +186,6 @@ ___
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`CastRemoveBody`](modules/types.md#castremovebody), [`MESSAGE_TYPE_CAST_REMOVE`](enums/protobufs.MessageType.md#message_type_cast_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-#### Defined in
-
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
-
 ___
 
 ### makeCastRemoveData
@@ -234,10 +202,6 @@ ___
 #### Returns
 
 `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`CastRemoveBody`](modules/types.md#castremovebody), [`MESSAGE_TYPE_CAST_REMOVE`](enums/protobufs.MessageType.md#message_type_cast_remove)\>\>
-
-#### Defined in
-
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -257,10 +221,6 @@ Generic Methods
 
 `HubAsyncResult`<`string`\>
 
-#### Defined in
-
-[js/src/builders.ts:156](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L156)
-
 ___
 
 ### makeMessageWithSignature
@@ -278,10 +238,6 @@ ___
 #### Returns
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`MessageBody`](modules/types.md#messagebody), [`MessageType`](enums/protobufs.MessageType.md)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-#### Defined in
-
-[js/src/builders.ts:162](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L162)
 
 ___
 
@@ -303,10 +259,6 @@ Amp Methods
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`ReactionBody`](modules/types.md#reactionbody), [`MESSAGE_TYPE_REACTION_ADD`](enums/protobufs.MessageType.md#message_type_reaction_add)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-#### Defined in
-
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
-
 ___
 
 ### makeReactionAddData
@@ -323,10 +275,6 @@ ___
 #### Returns
 
 `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`ReactionBody`](modules/types.md#reactionbody), [`MESSAGE_TYPE_REACTION_ADD`](enums/protobufs.MessageType.md#message_type_reaction_add)\>\>
-
-#### Defined in
-
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -346,10 +294,6 @@ ___
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`ReactionBody`](modules/types.md#reactionbody), [`MESSAGE_TYPE_REACTION_REMOVE`](enums/protobufs.MessageType.md#message_type_reaction_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-#### Defined in
-
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
-
 ___
 
 ### makeReactionRemoveData
@@ -366,10 +310,6 @@ ___
 #### Returns
 
 `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`ReactionBody`](modules/types.md#reactionbody), [`MESSAGE_TYPE_REACTION_REMOVE`](enums/protobufs.MessageType.md#message_type_reaction_remove)\>\>
-
-#### Defined in
-
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -391,10 +331,6 @@ Signer Methods
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`SignerBody`](modules/types.md#signerbody), [`MESSAGE_TYPE_SIGNER_ADD`](enums/protobufs.MessageType.md#message_type_signer_add)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-#### Defined in
-
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
-
 ___
 
 ### makeSignerAddData
@@ -411,10 +347,6 @@ ___
 #### Returns
 
 `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`SignerBody`](modules/types.md#signerbody), [`MESSAGE_TYPE_SIGNER_ADD`](enums/protobufs.MessageType.md#message_type_signer_add)\>\>
-
-#### Defined in
-
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -434,10 +366,6 @@ ___
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`SignerBody`](modules/types.md#signerbody), [`MESSAGE_TYPE_SIGNER_REMOVE`](enums/protobufs.MessageType.md#message_type_signer_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-#### Defined in
-
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
-
 ___
 
 ### makeSignerRemoveData
@@ -454,10 +382,6 @@ ___
 #### Returns
 
 `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`SignerBody`](modules/types.md#signerbody), [`MESSAGE_TYPE_SIGNER_REMOVE`](enums/protobufs.MessageType.md#message_type_signer_remove)\>\>
-
-#### Defined in
-
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -479,10 +403,6 @@ User Data Methods
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`UserDataBody`](modules/types.md#userdatabody), [`MESSAGE_TYPE_USER_DATA_ADD`](enums/protobufs.MessageType.md#message_type_user_data_add)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-#### Defined in
-
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
-
 ___
 
 ### makeUserDataAddData
@@ -499,10 +419,6 @@ ___
 #### Returns
 
 `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`UserDataBody`](modules/types.md#userdatabody), [`MESSAGE_TYPE_USER_DATA_ADD`](enums/protobufs.MessageType.md#message_type_user_data_add)\>\>
-
-#### Defined in
-
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -524,10 +440,6 @@ Verification Methods
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`VerificationAddEthAddressBody`](modules/types.md#verificationaddethaddressbody), [`MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS`](enums/protobufs.MessageType.md#message_type_verification_add_eth_address)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-#### Defined in
-
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
-
 ___
 
 ### makeVerificationAddEthAddressData
@@ -544,10 +456,6 @@ ___
 #### Returns
 
 `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`VerificationAddEthAddressBody`](modules/types.md#verificationaddethaddressbody), [`MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS`](enums/protobufs.MessageType.md#message_type_verification_add_eth_address)\>\>
-
-#### Defined in
-
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)
 
 ___
 
@@ -567,10 +475,6 @@ ___
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`VerificationRemoveBody`](modules/types.md#verificationremovebody), [`MESSAGE_TYPE_VERIFICATION_REMOVE`](enums/protobufs.MessageType.md#message_type_verification_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-#### Defined in
-
-[js/src/builders.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L62)
-
 ___
 
 ### makeVerificationRemoveData
@@ -587,7 +491,3 @@ ___
 #### Returns
 
 `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`VerificationRemoveBody`](modules/types.md#verificationremovebody), [`MESSAGE_TYPE_VERIFICATION_REMOVE`](enums/protobufs.MessageType.md#message_type_verification_remove)\>\>
-
-#### Defined in
-
-[js/src/builders.ts:91](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/builders.ts#L91)

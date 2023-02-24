@@ -15,7 +15,3 @@
 ### fname
 
 • **fname**: `Uint8Array`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4990

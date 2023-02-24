@@ -19,19 +19,11 @@
 
 • **REACTION\_TYPE\_LIKE** = ``1``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:180
-
 ___
 
 ### REACTION\_TYPE\_NONE
 
 • **REACTION\_TYPE\_NONE** = ``0``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:179
 
 ___
 
@@ -39,16 +31,8 @@ ___
 
 • **REACTION\_TYPE\_RECAST** = ``2``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:181
-
 ___
 
 ### UNRECOGNIZED
 
 • **UNRECOGNIZED** = ``-1``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:182

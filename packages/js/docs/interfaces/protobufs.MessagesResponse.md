@@ -15,7 +15,3 @@
 ### messages
 
 • **messages**: [`Message`](../modules/protobufs.md#message)[]
-
-#### Defined in
-
-protobufs/dist/index.d.ts:2790

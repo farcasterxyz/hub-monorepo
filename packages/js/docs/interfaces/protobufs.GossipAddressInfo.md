@@ -18,26 +18,14 @@
 
 • **address**: `string`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4184
-
 ___
 
 ### family
 
 • **family**: `number`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4185
-
 ___
 
 ### port
 
 • **port**: `number`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4186

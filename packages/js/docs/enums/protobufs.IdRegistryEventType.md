@@ -19,19 +19,11 @@
 
 • **ID\_REGISTRY\_EVENT\_TYPE\_NONE** = ``0``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:75
-
 ___
 
 ### ID\_REGISTRY\_EVENT\_TYPE\_REGISTER
 
 • **ID\_REGISTRY\_EVENT\_TYPE\_REGISTER** = ``1``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:76
 
 ___
 
@@ -39,16 +31,8 @@ ___
 
 • **ID\_REGISTRY\_EVENT\_TYPE\_TRANSFER** = ``2``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:77
-
 ___
 
 ### UNRECOGNIZED
 
 • **UNRECOGNIZED** = ``-1``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:78

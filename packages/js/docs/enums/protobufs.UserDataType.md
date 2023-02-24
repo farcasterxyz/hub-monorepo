@@ -23,19 +23,11 @@
 
 • **UNRECOGNIZED** = ``-1``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:194
-
 ___
 
 ### USER\_DATA\_TYPE\_BIO
 
 • **USER\_DATA\_TYPE\_BIO** = ``3``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:190
 
 ___
 
@@ -43,19 +35,11 @@ ___
 
 • **USER\_DATA\_TYPE\_DISPLAY** = ``2``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:189
-
 ___
 
 ### USER\_DATA\_TYPE\_FNAME
 
 • **USER\_DATA\_TYPE\_FNAME** = ``6``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:193
 
 ___
 
@@ -63,19 +47,11 @@ ___
 
 • **USER\_DATA\_TYPE\_LOCATION** = ``4``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:191
-
 ___
 
 ### USER\_DATA\_TYPE\_NONE
 
 • **USER\_DATA\_TYPE\_NONE** = ``0``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:187
 
 ___
 
@@ -83,16 +59,8 @@ ___
 
 • **USER\_DATA\_TYPE\_PFP** = ``1``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:188
-
 ___
 
 ### USER\_DATA\_TYPE\_URL
 
 • **USER\_DATA\_TYPE\_URL** = ``5``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:192

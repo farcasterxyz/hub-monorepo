@@ -46,10 +46,6 @@
 
 BaseEip712Signer.constructor
 
-#### Defined in
-
-utils/dist/index.d.ts:181
-
 ## Properties
 
 ### scheme
@@ -61,10 +57,6 @@ Signature scheme as defined in protobufs
 #### Inherited from
 
 BaseEip712Signer.scheme
-
-#### Defined in
-
-utils/dist/index.d.ts:174
 
 ___
 
@@ -78,10 +70,6 @@ ___
 
 BaseEip712Signer.signerKey
 
-#### Defined in
-
-utils/dist/index.d.ts:176
-
 ___
 
 ### signerKeyHex
@@ -93,10 +81,6 @@ ___
 #### Inherited from
 
 BaseEip712Signer.signerKeyHex
-
-#### Defined in
-
-utils/dist/index.d.ts:178
 
 ## Methods
 
@@ -142,10 +126,6 @@ A HubAsyncResult containing the 256-bit signature as a Uint8Array.
 
 BaseEip712Signer.signMessageHash
 
-#### Defined in
-
-utils/dist/index.d.ts:208
-
 ___
 
 ### signMessageHashHex
@@ -183,10 +163,6 @@ console.log(messageHashResultHex._unsafeUnwrap());
 `HubAsyncResult`<`string`\>
 
 A HubAsyncResult containing the 256-bit signature as a hex string.
-
-#### Defined in
-
-[js/src/signers.ts:62](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/signers.ts#L62)
 
 ___
 
@@ -226,10 +202,6 @@ A HubAsyncResult containing the 256-bit signature as a Uint8Array.
 #### Inherited from
 
 BaseEip712Signer.signVerificationEthAddressClaim
-
-#### Defined in
-
-utils/dist/index.d.ts:234
 
 ___
 
@@ -273,10 +245,6 @@ console.log(verificationResult._unsafeUnwrap());
 
 A HubAsyncResult containing the 256-bit signature as a Uint8Array.
 
-#### Defined in
-
-[js/src/signers.ts:105](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/signers.ts#L105)
-
 ___
 
 ### fromSigner
@@ -312,7 +280,3 @@ a failure with an error message on error.
 #### Overrides
 
 BaseEip712Signer.fromSigner
-
-#### Defined in
-
-[js/src/signers.ts:33](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/signers.ts#L33)

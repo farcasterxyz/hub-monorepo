@@ -27,19 +27,11 @@
 
 • `Optional` **ampBody**: [`AmpBody`](../modules/protobufs.md#ampbody)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:458
-
 ___
 
 ### castAddBody
 
 • `Optional` **castAddBody**: [`CastAddBody`](../modules/protobufs.md#castaddbody)
-
-#### Defined in
-
-protobufs/dist/index.d.ts:455
 
 ___
 
@@ -47,19 +39,11 @@ ___
 
 • `Optional` **castRemoveBody**: [`CastRemoveBody`](../modules/protobufs.md#castremovebody)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:456
-
 ___
 
 ### fid
 
 • **fid**: `number`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:452
 
 ___
 
@@ -67,19 +51,11 @@ ___
 
 • **network**: [`FarcasterNetwork`](../enums/protobufs.FarcasterNetwork.md)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:454
-
 ___
 
 ### reactionBody
 
 • `Optional` **reactionBody**: [`ReactionBody`](../modules/protobufs.md#reactionbody)
-
-#### Defined in
-
-protobufs/dist/index.d.ts:457
 
 ___
 
@@ -87,19 +63,11 @@ ___
 
 • `Optional` **signerBody**: [`SignerBody`](../modules/protobufs.md#signerbody)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:461
-
 ___
 
 ### timestamp
 
 • **timestamp**: `number`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:453
 
 ___
 
@@ -107,19 +75,11 @@ ___
 
 • **type**: [`MessageType`](../enums/protobufs.MessageType.md)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:451
-
 ___
 
 ### userDataBody
 
 • `Optional` **userDataBody**: [`UserDataBody`](../modules/protobufs.md#userdatabody)
-
-#### Defined in
-
-protobufs/dist/index.d.ts:462
 
 ___
 
@@ -127,16 +87,8 @@ ___
 
 • `Optional` **verificationAddEthAddressBody**: [`VerificationAddEthAddressBody`](../modules/protobufs.md#verificationaddethaddressbody)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:459
-
 ___
 
 ### verificationRemoveBody
 
 • `Optional` **verificationRemoveBody**: [`VerificationRemoveBody`](../modules/protobufs.md#verificationremovebody)
-
-#### Defined in
-
-protobufs/dist/index.d.ts:460

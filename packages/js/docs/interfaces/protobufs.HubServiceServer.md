@@ -55,10 +55,6 @@
 
 • **getAllAmpMessagesByFid**: `handleUnaryCall`<[`FidRequest`](../modules/protobufs.md#fidrequest), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4048
-
 ___
 
 ### getAllCastMessagesByFid
@@ -67,19 +63,11 @@ ___
 
 Bulk Methods
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4046
-
 ___
 
 ### getAllMessagesBySyncIds
 
 • **getAllMessagesBySyncIds**: `handleUnaryCall`<[`SyncIds`](../modules/protobufs.md#syncids), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4055
 
 ___
 
@@ -87,19 +75,11 @@ ___
 
 • **getAllReactionMessagesByFid**: `handleUnaryCall`<[`FidRequest`](../modules/protobufs.md#fidrequest), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4047
-
 ___
 
 ### getAllSignerMessagesByFid
 
 • **getAllSignerMessagesByFid**: `handleUnaryCall`<[`FidRequest`](../modules/protobufs.md#fidrequest), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4050
 
 ___
 
@@ -107,29 +87,17 @@ ___
 
 • **getAllSyncIdsByPrefix**: `handleUnaryCall`<[`TrieNodePrefix`](../modules/protobufs.md#trienodeprefix), [`SyncIds`](../modules/protobufs.md#syncids)\>
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4054
-
 ___
 
 ### getAllUserDataMessagesByFid
 
 • **getAllUserDataMessagesByFid**: `handleUnaryCall`<[`FidRequest`](../modules/protobufs.md#fidrequest), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4051
-
 ___
 
 ### getAllVerificationMessagesByFid
 
 • **getAllVerificationMessagesByFid**: `handleUnaryCall`<[`FidRequest`](../modules/protobufs.md#fidrequest), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4049
 
 ___
 
@@ -139,29 +107,17 @@ ___
 
 Amps
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4030
-
 ___
 
 ### getAmpsByFid
 
 • **getAmpsByFid**: `handleUnaryCall`<[`FidRequest`](../modules/protobufs.md#fidrequest), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4031
-
 ___
 
 ### getAmpsByUser
 
 • **getAmpsByUser**: `handleUnaryCall`<[`FidRequest`](../modules/protobufs.md#fidrequest), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4032
 
 ___
 
@@ -171,19 +127,11 @@ ___
 
 Casts
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4021
-
 ___
 
 ### getCastsByFid
 
 • **getCastsByFid**: `handleUnaryCall`<[`FidRequest`](../modules/protobufs.md#fidrequest), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4022
 
 ___
 
@@ -191,19 +139,11 @@ ___
 
 • **getCastsByMention**: `handleUnaryCall`<[`FidRequest`](../modules/protobufs.md#fidrequest), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4024
-
 ___
 
 ### getCastsByParent
 
 • **getCastsByParent**: `handleUnaryCall`<[`CastId`](../modules/protobufs.md#castid), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4023
 
 ___
 
@@ -211,19 +151,11 @@ ___
 
 • **getFids**: `handleUnaryCall`<[`Empty`](../modules/protobufs.md#empty), [`FidsResponse`](../modules/protobufs.md#fidsresponse)\>
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4044
-
 ___
 
 ### getIdRegistryEvent
 
 • **getIdRegistryEvent**: `handleUnaryCall`<[`FidRequest`](../modules/protobufs.md#fidrequest), [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent)\>
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4043
 
 ___
 
@@ -233,19 +165,11 @@ ___
 
 Sync Methods
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4053
-
 ___
 
 ### getNameRegistryEvent
 
 • **getNameRegistryEvent**: `handleUnaryCall`<[`NameRegistryEventRequest`](../modules/protobufs.md#nameregistryeventrequest), [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent)\>
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4036
 
 ___
 
@@ -255,29 +179,17 @@ ___
 
 Reactions
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4026
-
 ___
 
 ### getReactionsByCast
 
 • **getReactionsByCast**: `handleUnaryCall`<[`ReactionsByCastRequest`](../modules/protobufs.md#reactionsbycastrequest), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4028
-
 ___
 
 ### getReactionsByFid
 
 • **getReactionsByFid**: `handleUnaryCall`<[`ReactionsByFidRequest`](../modules/protobufs.md#reactionsbyfidrequest), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4027
 
 ___
 
@@ -287,19 +199,11 @@ ___
 
 Signer
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4041
-
 ___
 
 ### getSignersByFid
 
 • **getSignersByFid**: `handleUnaryCall`<[`FidRequest`](../modules/protobufs.md#fidrequest), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4042
 
 ___
 
@@ -307,19 +211,11 @@ ___
 
 • **getSyncMetadataByPrefix**: `handleUnaryCall`<[`TrieNodePrefix`](../modules/protobufs.md#trienodeprefix), [`TrieNodeMetadataResponse`](../modules/protobufs.md#trienodemetadataresponse)\>
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4056
-
 ___
 
 ### getSyncSnapshotByPrefix
 
 • **getSyncSnapshotByPrefix**: `handleUnaryCall`<[`TrieNodePrefix`](../modules/protobufs.md#trienodeprefix), [`TrieNodeSnapshotResponse`](../modules/protobufs.md#trienodesnapshotresponse)\>
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4057
 
 ___
 
@@ -329,19 +225,11 @@ ___
 
 User Data
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4034
-
 ___
 
 ### getUserDataByFid
 
 • **getUserDataByFid**: `handleUnaryCall`<[`FidRequest`](../modules/protobufs.md#fidrequest), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4035
 
 ___
 
@@ -351,29 +239,17 @@ ___
 
 Verifications
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4038
-
 ___
 
 ### getVerificationsByFid
 
 • **getVerificationsByFid**: `handleUnaryCall`<[`FidRequest`](../modules/protobufs.md#fidrequest), [`MessagesResponse`](../modules/protobufs.md#messagesresponse)\>
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4039
-
 ___
 
 ### submitIdRegistryEvent
 
 • **submitIdRegistryEvent**: `handleUnaryCall`<[`IdRegistryEvent`](../modules/protobufs.md#idregistryevent), [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent)\>
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4016
 
 ___
 
@@ -383,19 +259,11 @@ ___
 
 Submit Methods
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4015
-
 ___
 
 ### submitNameRegistryEvent
 
 • **submitNameRegistryEvent**: `handleUnaryCall`<[`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent), [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent)\>
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4017
 
 ___
 
@@ -404,7 +272,3 @@ ___
 • **subscribe**: `handleServerStreamingCall`<[`SubscribeRequest`](../modules/protobufs.md#subscriberequest), [`EventResponse`](../modules/protobufs.md#eventresponse)\>
 
 Event Methods
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4019

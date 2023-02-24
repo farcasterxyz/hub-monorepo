@@ -20,19 +20,11 @@
 
 • **embeds**: `string`[]
 
-#### Defined in
-
-protobufs/dist/index.d.ts:223
-
 ___
 
 ### mentions
 
 • **mentions**: `number`[]
-
-#### Defined in
-
-protobufs/dist/index.d.ts:224
 
 ___
 
@@ -40,26 +32,14 @@ ___
 
 • **mentionsPositions**: `number`[]
 
-#### Defined in
-
-protobufs/dist/index.d.ts:227
-
 ___
 
 ### parentCastId
 
 • `Optional` **parentCastId**: [`CastId`](../modules/protobufs.md#castid)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:225
-
 ___
 
 ### text
 
 • **text**: `string`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:226

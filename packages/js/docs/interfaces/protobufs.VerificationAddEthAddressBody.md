@@ -18,26 +18,14 @@
 
 • **address**: `Uint8Array`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:360
-
 ___
 
 ### blockHash
 
 • **blockHash**: `Uint8Array`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:362
-
 ___
 
 ### ethSignature
 
 • **ethSignature**: `Uint8Array`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:361

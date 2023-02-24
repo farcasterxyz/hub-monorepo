@@ -17,16 +17,8 @@
 
 • **fid**: `number`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:3604
-
 ___
 
 ### userDataType
 
 • **userDataType**: [`UserDataType`](../enums/protobufs.UserDataType.md)
-
-#### Defined in
-
-protobufs/dist/index.d.ts:3605

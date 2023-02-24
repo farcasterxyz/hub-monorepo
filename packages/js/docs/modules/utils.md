@@ -60,10 +60,6 @@
 
 `HubResult`<[`AmpBody`](types.md#ampbody)\>
 
-#### Defined in
-
-[js/src/utils.ts:283](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L283)
-
 ___
 
 ### deserializeBlockHash
@@ -82,10 +78,6 @@ Deserialize a block hash from a byte array to hex string.
 
 `HubResult`<`string`\>
 
-#### Defined in
-
-[js/src/utils.ts:408](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L408)
-
 ___
 
 ### deserializeCastAddBody
@@ -101,10 +93,6 @@ ___
 #### Returns
 
 `HubResult`<[`CastAddBody`](types.md#castaddbody)\>
-
-#### Defined in
-
-[js/src/utils.ts:211](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L211)
 
 ___
 
@@ -122,10 +110,6 @@ ___
 
 `HubResult`<[`CastId`](types.md#castid)\>
 
-#### Defined in
-
-[js/src/utils.ts:380](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L380)
-
 ___
 
 ### deserializeCastRemoveBody
@@ -142,10 +126,6 @@ ___
 
 `HubResult`<[`CastRemoveBody`](types.md#castremovebody)\>
 
-#### Defined in
-
-[js/src/utils.ts:243](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L243)
-
 ___
 
 ### deserializeEd25519PublicKey
@@ -161,10 +141,6 @@ ___
 #### Returns
 
 `HubResult`<`string`\>
-
-#### Defined in
-
-[js/src/utils.ts:477](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L477)
 
 ___
 
@@ -184,10 +160,6 @@ Deserialize an Ed25519 signature from a byte array to hex string.
 
 `HubResult`<`string`\>
 
-#### Defined in
-
-[js/src/utils.ts:443](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L443)
-
 ___
 
 ### deserializeEip712Signature
@@ -206,10 +178,6 @@ Deserialize an EIP-712 signature from a byte array to hex string.
 
 `HubResult`<`string`\>
 
-#### Defined in
-
-[js/src/utils.ts:429](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L429)
-
 ___
 
 ### deserializeEthAddress
@@ -225,10 +193,6 @@ ___
 #### Returns
 
 `HubResult`<`string`\>
-
-#### Defined in
-
-[js/src/utils.ts:466](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L466)
 
 ___
 
@@ -246,10 +210,6 @@ ___
 
 `HubResult`<[`EventResponse`](types.md#eventresponse)\>
 
-#### Defined in
-
-[js/src/utils.ts:19](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L19)
-
 ___
 
 ### deserializeFname
@@ -265,10 +225,6 @@ ___
 #### Returns
 
 `HubResult`<`string`\>
-
-#### Defined in
-
-[js/src/utils.ts:458](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L458)
 
 ___
 
@@ -286,10 +242,6 @@ ___
 
 `HubResult`<`Readonly`<{ `_protobuf`: [`IdRegistryEvent`](protobufs.md#idregistryevent) ; `blockHash`: `string` ; `blockNumber`: `number` ; `fid`: `number` ; `from`: `undefined` \| `string` ; `logIndex`: `number` ; `to`: `string` ; `transactionHash`: `string` ; `type`: [`IdRegistryEventType`](../enums/protobufs.IdRegistryEventType.md)  }\>\>
 
-#### Defined in
-
-[js/src/utils.ts:102](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L102)
-
 ___
 
 ### deserializeMessage
@@ -306,10 +258,6 @@ ___
 
 `HubResult`<`Readonly`<{ `_protobuf`: [`Message`](protobufs.md#message) ; `data`: [`MessageData`](types.md#messagedata)<[`MessageBody`](types.md#messagebody), [`MessageType`](../enums/protobufs.MessageType.md)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-#### Defined in
-
-[js/src/utils.ts:134](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L134)
-
 ___
 
 ### deserializeMessageData
@@ -325,10 +273,6 @@ ___
 #### Returns
 
 `HubResult`<[`MessageData`](types.md#messagedata)<[`MessageBody`](types.md#messagebody), [`MessageType`](../enums/protobufs.MessageType.md)\>\>
-
-#### Defined in
-
-[js/src/utils.ts:162](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L162)
 
 ___
 
@@ -348,10 +292,6 @@ Deserialize a message hash from a byte array to hex string.
 
 `HubResult`<`string`\>
 
-#### Defined in
-
-[js/src/utils.ts:450](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L450)
-
 ___
 
 ### deserializeNameRegistryEvent
@@ -367,10 +307,6 @@ ___
 #### Returns
 
 `HubResult`<`Readonly`<{ `_protobuf`: [`NameRegistryEvent`](protobufs.md#nameregistryevent) ; `blockHash`: `string` ; `blockNumber`: `number` ; `expiry`: `undefined` \| `number` ; `fname`: `string` ; `from`: `string` ; `logIndex`: `number` ; `to`: `string` ; `transactionHash`: `string` ; `type`: [`NameRegistryEventType`](../enums/protobufs.NameRegistryEventType.md)  }\>\>
-
-#### Defined in
-
-[js/src/utils.ts:65](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L65)
 
 ___
 
@@ -388,10 +324,6 @@ ___
 
 `HubResult`<[`ReactionBody`](types.md#reactionbody)\>
 
-#### Defined in
-
-[js/src/utils.ts:358](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L358)
-
 ___
 
 ### deserializeSignerBody
@@ -407,10 +339,6 @@ ___
 #### Returns
 
 `HubResult`<[`SignerBody`](types.md#signerbody)\>
-
-#### Defined in
-
-[js/src/utils.ts:291](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L291)
 
 ___
 
@@ -430,10 +358,6 @@ Deserialize a transaction hash from a byte array to hex string.
 
 `HubResult`<`string`\>
 
-#### Defined in
-
-[js/src/utils.ts:422](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L422)
-
 ___
 
 ### deserializeUserDataBody
@@ -449,10 +373,6 @@ ___
 #### Returns
 
 `HubResult`<[`UserDataBody`](types.md#userdatabody)\>
-
-#### Defined in
-
-[js/src/utils.ts:347](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L347)
 
 ___
 
@@ -470,10 +390,6 @@ ___
 
 `HubResult`<[`VerificationAddEthAddressBody`](types.md#verificationaddethaddressbody)\>
 
-#### Defined in
-
-[js/src/utils.ts:261](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L261)
-
 ___
 
 ### deserializeVerificationRemoveBody
@@ -490,10 +406,6 @@ ___
 
 `HubResult`<[`VerificationRemoveBody`](types.md#verificationremovebody)\>
 
-#### Defined in
-
-[js/src/utils.ts:329](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L329)
-
 ___
 
 ### serializeAmpBody
@@ -509,10 +421,6 @@ ___
 #### Returns
 
 `HubResult`<[`AmpBody`](protobufs.md#ampbody)\>
-
-#### Defined in
-
-[js/src/utils.ts:287](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L287)
 
 ___
 
@@ -532,10 +440,6 @@ Serializes a block hash from a hex string to byte array.
 
 `HubResult`<`Uint8Array`\>
 
-#### Defined in
-
-[js/src/utils.ts:415](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L415)
-
 ___
 
 ### serializeCastAddBody
@@ -551,10 +455,6 @@ ___
 #### Returns
 
 `HubResult`<[`CastAddBody`](protobufs.md#castaddbody)\>
-
-#### Defined in
-
-[js/src/utils.ts:226](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L226)
 
 ___
 
@@ -572,10 +472,6 @@ ___
 
 `HubResult`<[`CastId`](protobufs.md#castid)\>
 
-#### Defined in
-
-[js/src/utils.ts:392](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L392)
-
 ___
 
 ### serializeCastRemoveBody
@@ -592,10 +488,6 @@ ___
 
 `HubResult`<[`CastRemoveBody`](protobufs.md#castremovebody)\>
 
-#### Defined in
-
-[js/src/utils.ts:252](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L252)
-
 ___
 
 ### serializeEd25519PublicKey
@@ -611,10 +503,6 @@ ___
 #### Returns
 
 `HubResult`<`Uint8Array`\>
-
-#### Defined in
-
-[js/src/utils.ts:481](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L481)
 
 ___
 
@@ -634,10 +522,6 @@ Serializes an EIP-712 from a hex string to byte array.
 
 `HubResult`<`Uint8Array`\>
 
-#### Defined in
-
-[js/src/utils.ts:436](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L436)
-
 ___
 
 ### serializeEthAddress
@@ -653,10 +537,6 @@ ___
 #### Returns
 
 `HubResult`<`Uint8Array`\>
-
-#### Defined in
-
-[js/src/utils.ts:470](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L470)
 
 ___
 
@@ -674,10 +554,6 @@ ___
 
 `HubResult`<`Uint8Array`\>
 
-#### Defined in
-
-[js/src/utils.ts:462](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L462)
-
 ___
 
 ### serializeMessageHash
@@ -693,10 +569,6 @@ ___
 #### Returns
 
 `HubResult`<`Uint8Array`\>
-
-#### Defined in
-
-[js/src/utils.ts:454](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L454)
 
 ___
 
@@ -714,10 +586,6 @@ ___
 
 `HubResult`<[`ReactionBody`](protobufs.md#reactionbody)\>
 
-#### Defined in
-
-[js/src/utils.ts:372](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L372)
-
 ___
 
 ### serializeSignerBody
@@ -733,10 +601,6 @@ ___
 #### Returns
 
 `HubResult`<[`SignerBody`](protobufs.md#signerbody)\>
-
-#### Defined in
-
-[js/src/utils.ts:302](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L302)
 
 ___
 
@@ -754,10 +618,6 @@ ___
 
 `HubResult`<[`UserDataBody`](protobufs.md#userdatabody)\>
 
-#### Defined in
-
-[js/src/utils.ts:354](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L354)
-
 ___
 
 ### serializeVerificationAddEthAddressBody
@@ -774,10 +634,6 @@ ___
 
 `HubResult`<[`VerificationAddEthAddressBody`](protobufs.md#verificationaddethaddressbody)\>
 
-#### Defined in
-
-[js/src/utils.ts:311](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L311)
-
 ___
 
 ### serializeVerificationRemoveBody
@@ -793,7 +649,3 @@ ___
 #### Returns
 
 `HubResult`<[`VerificationRemoveBody`](protobufs.md#verificationremovebody)\>
-
-#### Defined in
-
-[js/src/utils.ts:339](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/utils.ts#L339)

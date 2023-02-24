@@ -15,7 +15,3 @@
 ### lastEthBlock
 
 • **lastEthBlock**: `number`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4946

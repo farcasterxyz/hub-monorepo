@@ -66,10 +66,6 @@
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4143
-
 ▸ **getAllAmpMessagesByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -83,10 +79,6 @@ protobufs/dist/index.d.ts:4143
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4144
 
 ▸ **getAllAmpMessagesByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -102,10 +94,6 @@ protobufs/dist/index.d.ts:4144
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4145
 
 ___
 
@@ -126,10 +114,6 @@ Bulk Methods
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4137
-
 ▸ **getAllCastMessagesByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -143,10 +127,6 @@ protobufs/dist/index.d.ts:4137
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4138
 
 ▸ **getAllCastMessagesByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -162,10 +142,6 @@ protobufs/dist/index.d.ts:4138
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4139
 
 ___
 
@@ -184,10 +160,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4162
-
 ▸ **getAllMessagesBySyncIds**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -201,10 +173,6 @@ protobufs/dist/index.d.ts:4162
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4163
 
 ▸ **getAllMessagesBySyncIds**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -220,10 +188,6 @@ protobufs/dist/index.d.ts:4163
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4164
 
 ___
 
@@ -242,10 +206,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4140
-
 ▸ **getAllReactionMessagesByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -259,10 +219,6 @@ protobufs/dist/index.d.ts:4140
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4141
 
 ▸ **getAllReactionMessagesByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -278,10 +234,6 @@ protobufs/dist/index.d.ts:4141
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4142
 
 ___
 
@@ -300,10 +252,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4149
-
 ▸ **getAllSignerMessagesByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -317,10 +265,6 @@ protobufs/dist/index.d.ts:4149
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4150
 
 ▸ **getAllSignerMessagesByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -336,10 +280,6 @@ protobufs/dist/index.d.ts:4150
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4151
 
 ___
 
@@ -358,10 +298,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4159
-
 ▸ **getAllSyncIdsByPrefix**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -375,10 +311,6 @@ protobufs/dist/index.d.ts:4159
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4160
 
 ▸ **getAllSyncIdsByPrefix**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -394,10 +326,6 @@ protobufs/dist/index.d.ts:4160
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4161
 
 ___
 
@@ -416,10 +344,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4152
-
 ▸ **getAllUserDataMessagesByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -433,10 +357,6 @@ protobufs/dist/index.d.ts:4152
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4153
 
 ▸ **getAllUserDataMessagesByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -452,10 +372,6 @@ protobufs/dist/index.d.ts:4153
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4154
 
 ___
 
@@ -474,10 +390,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4146
-
 ▸ **getAllVerificationMessagesByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -491,10 +403,6 @@ protobufs/dist/index.d.ts:4146
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4147
 
 ▸ **getAllVerificationMessagesByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -510,10 +418,6 @@ protobufs/dist/index.d.ts:4147
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4148
 
 ___
 
@@ -534,10 +438,6 @@ Amps
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4097
-
 ▸ **getAmp**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -551,10 +451,6 @@ protobufs/dist/index.d.ts:4097
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4098
 
 ▸ **getAmp**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -570,10 +466,6 @@ protobufs/dist/index.d.ts:4098
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4099
 
 ___
 
@@ -592,10 +484,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4100
-
 ▸ **getAmpsByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -609,10 +497,6 @@ protobufs/dist/index.d.ts:4100
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4101
 
 ▸ **getAmpsByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -628,10 +512,6 @@ protobufs/dist/index.d.ts:4101
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4102
 
 ___
 
@@ -650,10 +530,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4103
-
 ▸ **getAmpsByUser**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -667,10 +543,6 @@ protobufs/dist/index.d.ts:4103
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4104
 
 ▸ **getAmpsByUser**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -686,10 +558,6 @@ protobufs/dist/index.d.ts:4104
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4105
 
 ___
 
@@ -710,10 +578,6 @@ Casts
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4074
-
 ▸ **getCast**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -727,10 +591,6 @@ protobufs/dist/index.d.ts:4074
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4075
 
 ▸ **getCast**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -746,10 +606,6 @@ protobufs/dist/index.d.ts:4075
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4076
 
 ___
 
@@ -768,10 +624,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4077
-
 ▸ **getCastsByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -785,10 +637,6 @@ protobufs/dist/index.d.ts:4077
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4078
 
 ▸ **getCastsByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -804,10 +652,6 @@ protobufs/dist/index.d.ts:4078
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4079
 
 ___
 
@@ -826,10 +670,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4083
-
 ▸ **getCastsByMention**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -843,10 +683,6 @@ protobufs/dist/index.d.ts:4083
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4084
 
 ▸ **getCastsByMention**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -862,10 +698,6 @@ protobufs/dist/index.d.ts:4084
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4085
 
 ___
 
@@ -884,10 +716,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4080
-
 ▸ **getCastsByParent**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -901,10 +729,6 @@ protobufs/dist/index.d.ts:4080
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4081
 
 ▸ **getCastsByParent**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -920,10 +744,6 @@ protobufs/dist/index.d.ts:4081
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4082
 
 ___
 
@@ -942,10 +762,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4133
-
 ▸ **getFids**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -959,10 +775,6 @@ protobufs/dist/index.d.ts:4133
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4134
 
 ▸ **getFids**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -978,10 +790,6 @@ protobufs/dist/index.d.ts:4134
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4135
 
 ___
 
@@ -1000,10 +808,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4130
-
 ▸ **getIdRegistryEvent**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -1017,10 +821,6 @@ protobufs/dist/index.d.ts:4130
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4131
 
 ▸ **getIdRegistryEvent**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1036,10 +836,6 @@ protobufs/dist/index.d.ts:4131
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4132
 
 ___
 
@@ -1060,10 +856,6 @@ Sync Methods
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4156
-
 ▸ **getInfo**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -1077,10 +869,6 @@ protobufs/dist/index.d.ts:4156
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4157
 
 ▸ **getInfo**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1096,10 +884,6 @@ protobufs/dist/index.d.ts:4157
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4158
 
 ___
 
@@ -1118,10 +902,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4113
-
 ▸ **getNameRegistryEvent**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -1135,10 +915,6 @@ protobufs/dist/index.d.ts:4113
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4114
 
 ▸ **getNameRegistryEvent**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1154,10 +930,6 @@ protobufs/dist/index.d.ts:4114
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4115
 
 ___
 
@@ -1178,10 +950,6 @@ Reactions
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4087
-
 ▸ **getReaction**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -1195,10 +963,6 @@ protobufs/dist/index.d.ts:4087
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4088
 
 ▸ **getReaction**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1214,10 +978,6 @@ protobufs/dist/index.d.ts:4088
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4089
 
 ___
 
@@ -1236,10 +996,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4093
-
 ▸ **getReactionsByCast**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -1253,10 +1009,6 @@ protobufs/dist/index.d.ts:4093
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4094
 
 ▸ **getReactionsByCast**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1272,10 +1024,6 @@ protobufs/dist/index.d.ts:4094
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4095
 
 ___
 
@@ -1294,10 +1042,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4090
-
 ▸ **getReactionsByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -1311,10 +1055,6 @@ protobufs/dist/index.d.ts:4090
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4091
 
 ▸ **getReactionsByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1330,10 +1070,6 @@ protobufs/dist/index.d.ts:4091
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4092
 
 ___
 
@@ -1354,10 +1090,6 @@ Signer
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4124
-
 ▸ **getSigner**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -1371,10 +1103,6 @@ protobufs/dist/index.d.ts:4124
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4125
 
 ▸ **getSigner**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1390,10 +1118,6 @@ protobufs/dist/index.d.ts:4125
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4126
 
 ___
 
@@ -1412,10 +1136,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4127
-
 ▸ **getSignersByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -1429,10 +1149,6 @@ protobufs/dist/index.d.ts:4127
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4128
 
 ▸ **getSignersByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1448,10 +1164,6 @@ protobufs/dist/index.d.ts:4128
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4129
 
 ___
 
@@ -1470,10 +1182,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4165
-
 ▸ **getSyncMetadataByPrefix**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -1487,10 +1195,6 @@ protobufs/dist/index.d.ts:4165
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4166
 
 ▸ **getSyncMetadataByPrefix**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1506,10 +1210,6 @@ protobufs/dist/index.d.ts:4166
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4167
 
 ___
 
@@ -1528,10 +1228,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4168
-
 ▸ **getSyncSnapshotByPrefix**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -1545,10 +1241,6 @@ protobufs/dist/index.d.ts:4168
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4169
 
 ▸ **getSyncSnapshotByPrefix**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1564,10 +1256,6 @@ protobufs/dist/index.d.ts:4169
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4170
 
 ___
 
@@ -1588,10 +1276,6 @@ User Data
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4107
-
 ▸ **getUserData**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -1605,10 +1289,6 @@ protobufs/dist/index.d.ts:4107
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4108
 
 ▸ **getUserData**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1624,10 +1304,6 @@ protobufs/dist/index.d.ts:4108
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4109
 
 ___
 
@@ -1646,10 +1322,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4110
-
 ▸ **getUserDataByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -1663,10 +1335,6 @@ protobufs/dist/index.d.ts:4110
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4111
 
 ▸ **getUserDataByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1682,10 +1350,6 @@ protobufs/dist/index.d.ts:4111
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4112
 
 ___
 
@@ -1706,10 +1370,6 @@ Verifications
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4117
-
 ▸ **getVerification**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -1723,10 +1383,6 @@ protobufs/dist/index.d.ts:4117
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4118
 
 ▸ **getVerification**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1742,10 +1398,6 @@ protobufs/dist/index.d.ts:4118
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4119
 
 ___
 
@@ -1764,10 +1416,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4120
-
 ▸ **getVerificationsByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -1781,10 +1429,6 @@ protobufs/dist/index.d.ts:4120
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4121
 
 ▸ **getVerificationsByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1800,10 +1444,6 @@ protobufs/dist/index.d.ts:4121
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4122
 
 ___
 
@@ -1822,10 +1462,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4064
-
 ▸ **submitIdRegistryEvent**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -1839,10 +1475,6 @@ protobufs/dist/index.d.ts:4064
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4065
 
 ▸ **submitIdRegistryEvent**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1858,10 +1490,6 @@ protobufs/dist/index.d.ts:4065
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4066
 
 ___
 
@@ -1882,10 +1510,6 @@ Submit Methods
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4061
-
 ▸ **submitMessage**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -1899,10 +1523,6 @@ protobufs/dist/index.d.ts:4061
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4062
 
 ▸ **submitMessage**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1918,10 +1538,6 @@ protobufs/dist/index.d.ts:4062
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4063
 
 ___
 
@@ -1940,10 +1556,6 @@ ___
 
 `SurfaceCall`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4067
-
 ▸ **submitNameRegistryEvent**(`request`, `metadata`, `callback`): `SurfaceCall`
 
 #### Parameters
@@ -1957,10 +1569,6 @@ protobufs/dist/index.d.ts:4067
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4068
 
 ▸ **submitNameRegistryEvent**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
 
@@ -1976,10 +1584,6 @@ protobufs/dist/index.d.ts:4068
 #### Returns
 
 `SurfaceCall`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4069
 
 ___
 
@@ -2000,10 +1604,6 @@ Event Methods
 
 `ClientReadableStream`<[`EventResponse`](../modules/protobufs.md#eventresponse)\>
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4071
-
 ▸ **subscribe**(`request`, `metadata?`, `options?`): `ClientReadableStream`<[`EventResponse`](../modules/protobufs.md#eventresponse)\>
 
 #### Parameters
@@ -2017,7 +1617,3 @@ protobufs/dist/index.d.ts:4071
 #### Returns
 
 `ClientReadableStream`<[`EventResponse`](../modules/protobufs.md#eventresponse)\>
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4072

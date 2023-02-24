@@ -17,16 +17,8 @@
 
 • **address**: `Uint8Array`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:3648
-
 ___
 
 ### fid
 
 • **fid**: `number`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:3647

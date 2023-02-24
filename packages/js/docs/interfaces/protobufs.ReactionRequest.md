@@ -18,26 +18,14 @@
 
 • **castId**: `undefined` \| [`CastId`](../modules/protobufs.md#castid)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:3469
-
 ___
 
 ### fid
 
 • **fid**: `number`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:3467
-
 ___
 
 ### reactionType
 
 • **reactionType**: [`ReactionType`](../enums/protobufs.ReactionType.md)
-
-#### Defined in
-
-protobufs/dist/index.d.ts:3468

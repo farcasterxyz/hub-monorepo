@@ -17,16 +17,8 @@
 
 • **fid**: `number`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:199
-
 ___
 
 ### hash
 
 • **hash**: `Uint8Array`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:200

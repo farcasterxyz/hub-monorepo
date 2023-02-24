@@ -17,16 +17,8 @@
 
 • **fid**: `number`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4966
-
 ___
 
 ### signer
 
 • **signer**: `Uint8Array`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4967

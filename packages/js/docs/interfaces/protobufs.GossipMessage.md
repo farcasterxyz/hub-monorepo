@@ -21,19 +21,11 @@
 
 • `Optional` **contactInfoContent**: [`ContactInfoContent`](../modules/protobufs.md#contactinfocontent)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4297
-
 ___
 
 ### idRegistryEvent
 
 • `Optional` **idRegistryEvent**: [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent)
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4296
 
 ___
 
@@ -41,19 +33,11 @@ ___
 
 • `Optional` **message**: [`Message`](../modules/protobufs.md#message)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4295
-
 ___
 
 ### peerId
 
 • **peerId**: `Uint8Array`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4299
 
 ___
 
@@ -61,16 +45,8 @@ ___
 
 • **topics**: `string`[]
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4298
-
 ___
 
 ### version
 
 • **version**: [`GossipVersion`](../enums/protobufs.GossipVersion.md)
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4300

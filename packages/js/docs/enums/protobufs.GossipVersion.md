@@ -17,16 +17,8 @@
 
 • **GOSSIP\_VERSION\_1** = ``0``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:4178
-
 ___
 
 ### UNRECOGNIZED
 
 • **UNRECOGNIZED** = ``-1``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:4179

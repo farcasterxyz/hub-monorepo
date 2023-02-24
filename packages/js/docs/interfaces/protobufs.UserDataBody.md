@@ -17,16 +17,8 @@
 
 • **type**: [`UserDataType`](../enums/protobufs.UserDataType.md)
 
-#### Defined in
-
-protobufs/dist/index.d.ts:427
-
 ___
 
 ### value
 
 • **value**: `string`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:428

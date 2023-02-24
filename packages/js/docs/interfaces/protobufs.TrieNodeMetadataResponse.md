@@ -19,19 +19,11 @@
 
 • **children**: [`TrieNodeMetadataResponse`](../modules/protobufs.md#trienodemetadataresponse)[]
 
-#### Defined in
-
-protobufs/dist/index.d.ts:2439
-
 ___
 
 ### hash
 
 • **hash**: `string`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:2438
 
 ___
 
@@ -39,16 +31,8 @@ ___
 
 • **numMessages**: `number`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:2437
-
 ___
 
 ### prefix
 
 • **prefix**: `Uint8Array`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:2436

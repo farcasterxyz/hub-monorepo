@@ -53,19 +53,11 @@
 | :------ | :------ |
 | `address` | `string` |
 
-#### Defined in
-
-[js/src/client.ts:42](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L42)
-
 ## Properties
 
 ### \_grpcClient
 
 • **\_grpcClient**: `HubRpcClient`
-
-#### Defined in
-
-[js/src/client.ts:40](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L40)
 
 ## Methods
 
@@ -83,10 +75,6 @@
 
 `HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`AmpAddData`](../modules/types.md#ampadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`AmpRemoveData`](../modules/types.md#ampremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
 
-#### Defined in
-
-[js/src/client.ts:110](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L110)
-
 ___
 
 ### getAllCastMessagesByFid
@@ -102,10 +90,6 @@ ___
 #### Returns
 
 `HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastRemoveData`](../modules/types.md#castremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
-
-#### Defined in
-
-[js/src/client.ts:86](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L86)
 
 ___
 
@@ -123,10 +107,6 @@ ___
 
 `HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionRemoveData`](../modules/types.md#reactionremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
 
-#### Defined in
-
-[js/src/client.ts:157](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L157)
-
 ___
 
 ### getAllSignerMessagesByFid
@@ -142,10 +122,6 @@ ___
 #### Returns
 
 `HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerAddData`](../modules/types.md#signeradddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerRemoveData`](../modules/types.md#signerremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
-
-#### Defined in
-
-[js/src/client.ts:207](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L207)
 
 ___
 
@@ -163,10 +139,6 @@ ___
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`UserDataAddData`](../modules/types.md#userdataadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
 
-#### Defined in
-
-[js/src/client.ts:226](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L226)
-
 ___
 
 ### getAllVerificationMessagesByFid
@@ -182,10 +154,6 @@ ___
 #### Returns
 
 `HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationAddEthAddressData`](../modules/types.md#verificationaddethaddressdata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationRemoveData`](../modules/types.md#verificationremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
-
-#### Defined in
-
-[js/src/client.ts:182](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L182)
 
 ___
 
@@ -204,10 +172,6 @@ ___
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`AmpAddData`](../modules/types.md#ampadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-#### Defined in
-
-[js/src/client.ts:95](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L95)
-
 ___
 
 ### getAmpsByFid
@@ -224,10 +188,6 @@ ___
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`AmpAddData`](../modules/types.md#ampadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
 
-#### Defined in
-
-[js/src/client.ts:100](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L100)
-
 ___
 
 ### getAmpsByUser
@@ -243,10 +203,6 @@ ___
 #### Returns
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`AmpAddData`](../modules/types.md#ampadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-#### Defined in
-
-[js/src/client.ts:105](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L105)
 
 ___
 
@@ -265,10 +221,6 @@ ___
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-#### Defined in
-
-[js/src/client.ts:58](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L58)
-
 ___
 
 ### getCastsByFid
@@ -284,10 +236,6 @@ ___
 #### Returns
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-#### Defined in
-
-[js/src/client.ts:67](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L67)
 
 ___
 
@@ -305,10 +253,6 @@ ___
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
 
-#### Defined in
-
-[js/src/client.ts:81](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L81)
-
 ___
 
 ### getCastsByParent
@@ -324,10 +268,6 @@ ___
 #### Returns
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-#### Defined in
-
-[js/src/client.ts:72](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L72)
 
 ___
 
@@ -345,10 +285,6 @@ ___
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent) ; `blockHash`: `string` ; `blockNumber`: `number` ; `fid`: `number` ; `from`: `undefined` \| `string` ; `logIndex`: `number` ; `to`: `string` ; `transactionHash`: `string` ; `type`: [`IdRegistryEventType`](../enums/protobufs.IdRegistryEventType.md)  }\>\>
 
-#### Defined in
-
-[js/src/client.ts:235](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L235)
-
 ___
 
 ### getNameRegistryEvent
@@ -364,10 +300,6 @@ ___
 #### Returns
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent) ; `blockHash`: `string` ; `blockNumber`: `number` ; `expiry`: `undefined` \| `number` ; `fname`: `string` ; `from`: `string` ; `logIndex`: `number` ; `to`: `string` ; `transactionHash`: `string` ; `type`: [`NameRegistryEventType`](../enums/protobufs.NameRegistryEventType.md)  }\>\>
-
-#### Defined in
-
-[js/src/client.ts:240](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L240)
 
 ___
 
@@ -387,10 +319,6 @@ ___
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-#### Defined in
-
-[js/src/client.ts:119](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L119)
-
 ___
 
 ### getReactionsByCast
@@ -407,10 +335,6 @@ ___
 #### Returns
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-#### Defined in
-
-[js/src/client.ts:145](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L145)
 
 ___
 
@@ -429,10 +353,6 @@ ___
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
 
-#### Defined in
-
-[js/src/client.ts:137](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L137)
-
 ___
 
 ### getSigner
@@ -450,10 +370,6 @@ ___
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerAddData`](../modules/types.md#signeradddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-#### Defined in
-
-[js/src/client.ts:193](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L193)
-
 ___
 
 ### getSignersByFid
@@ -469,10 +385,6 @@ ___
 #### Returns
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerAddData`](../modules/types.md#signeradddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-#### Defined in
-
-[js/src/client.ts:202](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L202)
 
 ___
 
@@ -491,10 +403,6 @@ ___
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`UserDataAddData`](../modules/types.md#userdataadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-#### Defined in
-
-[js/src/client.ts:216](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L216)
-
 ___
 
 ### getUserDataByFid
@@ -510,10 +418,6 @@ ___
 #### Returns
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`UserDataAddData`](../modules/types.md#userdataadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-#### Defined in
-
-[js/src/client.ts:221](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L221)
 
 ___
 
@@ -532,10 +436,6 @@ ___
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationAddEthAddressData`](../modules/types.md#verificationaddethaddressdata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-#### Defined in
-
-[js/src/client.ts:168](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L168)
-
 ___
 
 ### getVerificationsByFid
@@ -552,10 +452,6 @@ ___
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationAddEthAddressData`](../modules/types.md#verificationaddethaddressdata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
 
-#### Defined in
-
-[js/src/client.ts:177](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L177)
-
 ___
 
 ### submitMessage
@@ -571,10 +467,6 @@ ___
 #### Returns
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`MessageData`](../modules/types.md#messagedata)<[`MessageBody`](../modules/types.md#messagebody), [`MessageType`](../enums/protobufs.MessageType.md)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-#### Defined in
-
-[js/src/client.ts:50](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L50)
 
 ___
 
@@ -593,7 +485,3 @@ Data from this stream can be parsed using `deserializeEventResponse`.
 #### Returns
 
 `Promise`<`HubResult`<`ClientReadableStream`<[`EventResponse`](../modules/protobufs.md#eventresponse)\>\>\>
-
-#### Defined in
-
-[js/src/client.ts:257](https://github.com/vinliao/hubble/blob/7629cfa/packages/js/src/client.ts#L257)

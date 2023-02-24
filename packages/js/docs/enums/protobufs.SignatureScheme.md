@@ -19,19 +19,11 @@
 
 • **SIGNATURE\_SCHEME\_ED25519** = ``1``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:156
-
 ___
 
 ### SIGNATURE\_SCHEME\_EIP712
 
 • **SIGNATURE\_SCHEME\_EIP712** = ``2``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:157
 
 ___
 
@@ -39,16 +31,8 @@ ___
 
 • **SIGNATURE\_SCHEME\_NONE** = ``0``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:155
-
 ___
 
 ### UNRECOGNIZED
 
 • **UNRECOGNIZED** = ``-1``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:158

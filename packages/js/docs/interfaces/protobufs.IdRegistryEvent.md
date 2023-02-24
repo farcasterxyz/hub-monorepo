@@ -23,19 +23,11 @@
 
 • **blockHash**: `Uint8Array`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:84
-
 ___
 
 ### blockNumber
 
 • **blockNumber**: `number`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:83
 
 ___
 
@@ -43,19 +35,11 @@ ___
 
 • **fid**: `number`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:87
-
 ___
 
 ### from
 
 • **from**: `Uint8Array`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:90
 
 ___
 
@@ -63,19 +47,11 @@ ___
 
 • **logIndex**: `number`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:86
-
 ___
 
 ### to
 
 • **to**: `Uint8Array`
-
-#### Defined in
-
-protobufs/dist/index.d.ts:88
 
 ___
 
@@ -83,16 +59,8 @@ ___
 
 • **transactionHash**: `Uint8Array`
 
-#### Defined in
-
-protobufs/dist/index.d.ts:85
-
 ___
 
 ### type
 
 • **type**: [`IdRegistryEventType`](../enums/protobufs.IdRegistryEventType.md)
-
-#### Defined in
-
-protobufs/dist/index.d.ts:89

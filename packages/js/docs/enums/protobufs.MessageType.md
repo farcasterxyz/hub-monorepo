@@ -28,19 +28,11 @@
 
 • **MESSAGE\_TYPE\_AMP\_ADD** = ``5``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:143
-
 ___
 
 ### MESSAGE\_TYPE\_AMP\_REMOVE
 
 • **MESSAGE\_TYPE\_AMP\_REMOVE** = ``6``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:144
 
 ___
 
@@ -48,19 +40,11 @@ ___
 
 • **MESSAGE\_TYPE\_CAST\_ADD** = ``1``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:139
-
 ___
 
 ### MESSAGE\_TYPE\_CAST\_REMOVE
 
 • **MESSAGE\_TYPE\_CAST\_REMOVE** = ``2``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:140
 
 ___
 
@@ -68,19 +52,11 @@ ___
 
 • **MESSAGE\_TYPE\_NONE** = ``0``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:138
-
 ___
 
 ### MESSAGE\_TYPE\_REACTION\_ADD
 
 • **MESSAGE\_TYPE\_REACTION\_ADD** = ``3``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:141
 
 ___
 
@@ -88,19 +64,11 @@ ___
 
 • **MESSAGE\_TYPE\_REACTION\_REMOVE** = ``4``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:142
-
 ___
 
 ### MESSAGE\_TYPE\_SIGNER\_ADD
 
 • **MESSAGE\_TYPE\_SIGNER\_ADD** = ``9``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:147
 
 ___
 
@@ -108,19 +76,11 @@ ___
 
 • **MESSAGE\_TYPE\_SIGNER\_REMOVE** = ``10``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:148
-
 ___
 
 ### MESSAGE\_TYPE\_USER\_DATA\_ADD
 
 • **MESSAGE\_TYPE\_USER\_DATA\_ADD** = ``11``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:149
 
 ___
 
@@ -128,26 +88,14 @@ ___
 
 • **MESSAGE\_TYPE\_VERIFICATION\_ADD\_ETH\_ADDRESS** = ``7``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:145
-
 ___
 
 ### MESSAGE\_TYPE\_VERIFICATION\_REMOVE
 
 • **MESSAGE\_TYPE\_VERIFICATION\_REMOVE** = ``8``
 
-#### Defined in
-
-protobufs/dist/index.d.ts:146
-
 ___
 
 ### UNRECOGNIZED
 
 • **UNRECOGNIZED** = ``-1``
-
-#### Defined in
-
-protobufs/dist/index.d.ts:150
