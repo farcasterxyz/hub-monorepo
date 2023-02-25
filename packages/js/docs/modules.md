@@ -23,25 +23,16 @@
 ### Functions
 
 - [makeCastAdd](modules.md#makecastadd)
-- [makeCastAddData](modules.md#makecastadddata)
 - [makeCastRemove](modules.md#makecastremove)
-- [makeCastRemoveData](modules.md#makecastremovedata)
 - [makeMessageHash](modules.md#makemessagehash)
 - [makeMessageWithSignature](modules.md#makemessagewithsignature)
 - [makeReactionAdd](modules.md#makereactionadd)
-- [makeReactionAddData](modules.md#makereactionadddata)
 - [makeReactionRemove](modules.md#makereactionremove)
-- [makeReactionRemoveData](modules.md#makereactionremovedata)
 - [makeSignerAdd](modules.md#makesigneradd)
-- [makeSignerAddData](modules.md#makesigneradddata)
 - [makeSignerRemove](modules.md#makesignerremove)
-- [makeSignerRemoveData](modules.md#makesignerremovedata)
 - [makeUserDataAdd](modules.md#makeuserdataadd)
-- [makeUserDataAddData](modules.md#makeuserdataadddata)
 - [makeVerificationAddEthAddress](modules.md#makeverificationaddethaddress)
-- [makeVerificationAddEthAddressData](modules.md#makeverificationaddethaddressdata)
 - [makeVerificationRemove](modules.md#makeverificationremove)
-- [makeVerificationRemoveData](modules.md#makeverificationremovedata)
 
 ## Type Aliases
 
@@ -110,40 +101,6 @@ await client.submitMessage(cast._unsafeUnwrap());
 
 ___
 
-### makeCastAddData
-
-▸ **makeCastAddData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`CastAddBody`](modules/types.md#castaddbody), [`MESSAGE_TYPE_CAST_ADD`](enums/protobufs.MessageType.md#message_type_cast_add)\>\>
-
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
-
-**`Example`**
-
-```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-
-const message = makeCastAdd(...)
-await client.submitMessage(message)
-```
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`CastAddBody`](modules/types.md#castaddbody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`CastAddBody`](modules/types.md#castaddbody), [`MESSAGE_TYPE_CAST_ADD`](enums/protobufs.MessageType.md#message_type_cast_add)\>\>
-
-...
-
-___
-
 ### makeCastRemove
 
 ▸ **makeCastRemove**(`bodyJson`, `dataOptions`, `signer`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`CastRemoveBody`](modules/types.md#castremovebody), [`MESSAGE_TYPE_CAST_REMOVE`](enums/protobufs.MessageType.md#message_type_cast_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
@@ -174,40 +131,6 @@ await client.submitMessage(message)
 #### Returns
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`CastRemoveBody`](modules/types.md#castremovebody), [`MESSAGE_TYPE_CAST_REMOVE`](enums/protobufs.MessageType.md#message_type_cast_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-...
-
-___
-
-### makeCastRemoveData
-
-▸ **makeCastRemoveData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`CastRemoveBody`](modules/types.md#castremovebody), [`MESSAGE_TYPE_CAST_REMOVE`](enums/protobufs.MessageType.md#message_type_cast_remove)\>\>
-
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
-
-**`Example`**
-
-```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-
-const message = makeCastAdd(...)
-await client.submitMessage(message)
-```
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`CastRemoveBody`](modules/types.md#castremovebody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`CastRemoveBody`](modules/types.md#castremovebody), [`MESSAGE_TYPE_CAST_REMOVE`](enums/protobufs.MessageType.md#message_type_cast_remove)\>\>
 
 ...
 
@@ -316,40 +239,6 @@ await client.submitMessage(message)
 
 ___
 
-### makeReactionAddData
-
-▸ **makeReactionAddData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`ReactionBody`](modules/types.md#reactionbody), [`MESSAGE_TYPE_REACTION_ADD`](enums/protobufs.MessageType.md#message_type_reaction_add)\>\>
-
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
-
-**`Example`**
-
-```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-
-const message = makeCastAdd(...)
-await client.submitMessage(message)
-```
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`ReactionBody`](modules/types.md#reactionbody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`ReactionBody`](modules/types.md#reactionbody), [`MESSAGE_TYPE_REACTION_ADD`](enums/protobufs.MessageType.md#message_type_reaction_add)\>\>
-
-...
-
-___
-
 ### makeReactionRemove
 
 ▸ **makeReactionRemove**(`bodyJson`, `dataOptions`, `signer`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`ReactionBody`](modules/types.md#reactionbody), [`MESSAGE_TYPE_REACTION_REMOVE`](enums/protobufs.MessageType.md#message_type_reaction_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
@@ -380,40 +269,6 @@ await client.submitMessage(message)
 #### Returns
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`ReactionBody`](modules/types.md#reactionbody), [`MESSAGE_TYPE_REACTION_REMOVE`](enums/protobufs.MessageType.md#message_type_reaction_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-...
-
-___
-
-### makeReactionRemoveData
-
-▸ **makeReactionRemoveData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`ReactionBody`](modules/types.md#reactionbody), [`MESSAGE_TYPE_REACTION_REMOVE`](enums/protobufs.MessageType.md#message_type_reaction_remove)\>\>
-
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
-
-**`Example`**
-
-```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-
-const message = makeCastAdd(...)
-await client.submitMessage(message)
-```
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`ReactionBody`](modules/types.md#reactionbody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`ReactionBody`](modules/types.md#reactionbody), [`MESSAGE_TYPE_REACTION_REMOVE`](enums/protobufs.MessageType.md#message_type_reaction_remove)\>\>
 
 ...
 
@@ -454,40 +309,6 @@ await client.submitMessage(message)
 
 ___
 
-### makeSignerAddData
-
-▸ **makeSignerAddData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`SignerBody`](modules/types.md#signerbody), [`MESSAGE_TYPE_SIGNER_ADD`](enums/protobufs.MessageType.md#message_type_signer_add)\>\>
-
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
-
-**`Example`**
-
-```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-
-const message = makeCastAdd(...)
-await client.submitMessage(message)
-```
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`SignerBody`](modules/types.md#signerbody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`SignerBody`](modules/types.md#signerbody), [`MESSAGE_TYPE_SIGNER_ADD`](enums/protobufs.MessageType.md#message_type_signer_add)\>\>
-
-...
-
-___
-
 ### makeSignerRemove
 
 ▸ **makeSignerRemove**(`bodyJson`, `dataOptions`, `signer`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`SignerBody`](modules/types.md#signerbody), [`MESSAGE_TYPE_SIGNER_REMOVE`](enums/protobufs.MessageType.md#message_type_signer_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
@@ -518,40 +339,6 @@ await client.submitMessage(message)
 #### Returns
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`SignerBody`](modules/types.md#signerbody), [`MESSAGE_TYPE_SIGNER_REMOVE`](enums/protobufs.MessageType.md#message_type_signer_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-...
-
-___
-
-### makeSignerRemoveData
-
-▸ **makeSignerRemoveData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`SignerBody`](modules/types.md#signerbody), [`MESSAGE_TYPE_SIGNER_REMOVE`](enums/protobufs.MessageType.md#message_type_signer_remove)\>\>
-
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
-
-**`Example`**
-
-```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-
-const message = makeCastAdd(...)
-await client.submitMessage(message)
-```
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`SignerBody`](modules/types.md#signerbody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`SignerBody`](modules/types.md#signerbody), [`MESSAGE_TYPE_SIGNER_REMOVE`](enums/protobufs.MessageType.md#message_type_signer_remove)\>\>
 
 ...
 
@@ -592,40 +379,6 @@ await client.submitMessage(message)
 
 ___
 
-### makeUserDataAddData
-
-▸ **makeUserDataAddData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`UserDataBody`](modules/types.md#userdatabody), [`MESSAGE_TYPE_USER_DATA_ADD`](enums/protobufs.MessageType.md#message_type_user_data_add)\>\>
-
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
-
-**`Example`**
-
-```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-
-const message = makeCastAdd(...)
-await client.submitMessage(message)
-```
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`UserDataBody`](modules/types.md#userdatabody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`UserDataBody`](modules/types.md#userdatabody), [`MESSAGE_TYPE_USER_DATA_ADD`](enums/protobufs.MessageType.md#message_type_user_data_add)\>\>
-
-...
-
-___
-
 ### makeVerificationAddEthAddress
 
 ▸ **makeVerificationAddEthAddress**(`bodyJson`, `dataOptions`, `signer`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`VerificationAddEthAddressBody`](modules/types.md#verificationaddethaddressbody), [`MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS`](enums/protobufs.MessageType.md#message_type_verification_add_eth_address)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
@@ -661,40 +414,6 @@ await client.submitMessage(message)
 
 ___
 
-### makeVerificationAddEthAddressData
-
-▸ **makeVerificationAddEthAddressData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`VerificationAddEthAddressBody`](modules/types.md#verificationaddethaddressbody), [`MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS`](enums/protobufs.MessageType.md#message_type_verification_add_eth_address)\>\>
-
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
-
-**`Example`**
-
-```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-
-const message = makeCastAdd(...)
-await client.submitMessage(message)
-```
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`VerificationAddEthAddressBody`](modules/types.md#verificationaddethaddressbody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`VerificationAddEthAddressBody`](modules/types.md#verificationaddethaddressbody), [`MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS`](enums/protobufs.MessageType.md#message_type_verification_add_eth_address)\>\>
-
-...
-
-___
-
 ### makeVerificationRemove
 
 ▸ **makeVerificationRemove**(`bodyJson`, `dataOptions`, `signer`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`VerificationRemoveBody`](modules/types.md#verificationremovebody), [`MESSAGE_TYPE_VERIFICATION_REMOVE`](enums/protobufs.MessageType.md#message_type_verification_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
@@ -725,39 +444,5 @@ await client.submitMessage(message)
 #### Returns
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`VerificationRemoveBody`](modules/types.md#verificationremovebody), [`MESSAGE_TYPE_VERIFICATION_REMOVE`](enums/protobufs.MessageType.md#message_type_verification_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-...
-
-___
-
-### makeVerificationRemoveData
-
-▸ **makeVerificationRemoveData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`VerificationRemoveBody`](modules/types.md#verificationremovebody), [`MESSAGE_TYPE_VERIFICATION_REMOVE`](enums/protobufs.MessageType.md#message_type_verification_remove)\>\>
-
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
-
-**`Example`**
-
-```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-
-const message = makeCastAdd(...)
-await client.submitMessage(message)
-```
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`VerificationRemoveBody`](modules/types.md#verificationremovebody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`VerificationRemoveBody`](modules/types.md#verificationremovebody), [`MESSAGE_TYPE_VERIFICATION_REMOVE`](enums/protobufs.MessageType.md#message_type_verification_remove)\>\>
 
 ...

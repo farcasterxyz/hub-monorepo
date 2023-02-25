@@ -292,48 +292,14 @@ export const makeCastRemove = buildMakeMessageMethod(
   utils.serializeCastRemoveBody
 );
 
-/**
- * TODO DOCS: description
- *
- * TODO DOCS: usage example, here's the structure:
- * @example
- * ```typescript
- * import { ... } from '@farcaster/js';
- *
- * const client = new Client(...)
- *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
- * ```
- *
- * @param ...
- *
- * @returns ...
- */
+/** @ignore */
 export const makeCastAddData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_CAST_ADD,
   'castAddBody',
   utils.serializeCastAddBody
 );
 
-/**
- * TODO DOCS: description
- *
- * TODO DOCS: usage example, here's the structure:
- * @example
- * ```typescript
- * import { ... } from '@farcaster/js';
- *
- * const client = new Client(...)
- *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
- * ```
- *
- * @param ...
- *
- * @returns ...
- */
+/** @ignore */
 export const makeCastRemoveData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE,
   'castRemoveBody',
@@ -390,48 +356,14 @@ export const makeReactionRemove = buildMakeMessageMethod(
   utils.serializeReactionBody
 );
 
-/**
- * TODO DOCS: description
- *
- * TODO DOCS: usage example, here's the structure:
- * @example
- * ```typescript
- * import { ... } from '@farcaster/js';
- *
- * const client = new Client(...)
- *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
- * ```
- *
- * @param ...
- *
- * @returns ...
- */
+/** @ignore */
 export const makeReactionAddData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD,
   'reactionBody',
   utils.serializeReactionBody
 );
 
-/**
- * TODO DOCS: description
- *
- * TODO DOCS: usage example, here's the structure:
- * @example
- * ```typescript
- * import { ... } from '@farcaster/js';
- *
- * const client = new Client(...)
- *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
- * ```
- *
- * @param ...
- *
- * @returns ...
- */
+/** @ignore */
 export const makeReactionRemoveData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE,
   'reactionBody',
@@ -488,48 +420,14 @@ export const makeVerificationRemove = buildMakeMessageMethod(
   utils.serializeVerificationRemoveBody
 );
 
-/**
- * TODO DOCS: description
- *
- * TODO DOCS: usage example, here's the structure:
- * @example
- * ```typescript
- * import { ... } from '@farcaster/js';
- *
- * const client = new Client(...)
- *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
- * ```
- *
- * @param ...
- *
- * @returns ...
- */
+/** @ignore */
 export const makeVerificationAddEthAddressData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS,
   'verificationAddEthAddressBody',
   utils.serializeVerificationAddEthAddressBody
 );
 
-/**
- * TODO DOCS: description
- *
- * TODO DOCS: usage example, here's the structure:
- * @example
- * ```typescript
- * import { ... } from '@farcaster/js';
- *
- * const client = new Client(...)
- *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
- * ```
- *
- * @param ...
- *
- * @returns ...
- */
+/** @ignore */
 export const makeVerificationRemoveData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE,
   'verificationRemoveBody',
@@ -586,48 +484,14 @@ export const makeSignerRemove = buildMakeMessageMethod(
   utils.serializeSignerBody
 );
 
-/**
- * TODO DOCS: description
- *
- * TODO DOCS: usage example, here's the structure:
- * @example
- * ```typescript
- * import { ... } from '@farcaster/js';
- *
- * const client = new Client(...)
- *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
- * ```
- *
- * @param ...
- *
- * @returns ...
- */
+/** @ignore */
 export const makeSignerAddData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD,
   'signerBody',
   utils.serializeSignerBody
 );
 
-/**
- * TODO DOCS: description
- *
- * TODO DOCS: usage example, here's the structure:
- * @example
- * ```typescript
- * import { ... } from '@farcaster/js';
- *
- * const client = new Client(...)
- *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
- * ```
- *
- * @param ...
- *
- * @returns ...
- */
+/** @ignore */
 export const makeSignerRemoveData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
   'signerBody',
@@ -660,24 +524,7 @@ export const makeUserDataAdd = buildMakeMessageMethod(
   utils.serializeUserDataBody
 );
 
-/**
- * TODO DOCS: description
- *
- * TODO DOCS: usage example, here's the structure:
- * @example
- * ```typescript
- * import { ... } from '@farcaster/js';
- *
- * const client = new Client(...)
- *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
- * ```
- *
- * @param ...
- *
- * @returns ...
- */
+/** @ignore */
 export const makeUserDataAddData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_USER_DATA_ADD,
   'userDataBody',
