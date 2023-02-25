@@ -426,20 +426,64 @@ export const makeReactionRemoveData = buildMakeMessageDataMethod(
 /**
  * TODO DOCS: description
  *
- * TODO DOCS: usage example, here's the structure:
  * @example
  * ```typescript
- * import { ... } from '@farcaster/js';
+ *  import {
+ *   Client,
+ *   Ed25519Signer,
+ *   Eip712Signer,
+ *   makeVerificationAddEthAddress,
+ *   types,
+ * } from "@farcaster/js";
+ * import { ethers } from "ethers";
+ * import * as ed from "@noble/ed25519";
  *
- * const client = new Client(...)
+ * const rpcUrl = "<rpc-url>";
+ * const client = new Client(rpcUrl);
  *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
+ * const privateKey = ed.utils.randomPrivateKey();
+ * const privateKeyHex = ed.utils.bytesToHex(privateKey);
+ * console.log(privateKeyHex); // 86be7f6f8dcf18...
+ * // developers should safely store this EdDSA private key on behalf of users
+ *
+ * // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+ * const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+ *
+ * const mnemonic = "your mnemonic apple orange banana ...";
+ * const wallet = ethers.Wallet.fromMnemonic(mnemonic);
+ *
+ * // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+ * const eip712Signer = Eip712Signer.fromSigner(
+ *   wallet,
+ *   wallet.address
+ * )._unsafeUnwrap();
+ *
+ * const dataOptions = {
+ *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
+ *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ * };
+ *
+ * const claimBody = {
+ *   fid: -1,
+ *   address: eip712Signer.signerKeyHex,
+ *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ *   blockHash: "2c87468704d6b0f4c46f480dc54251de...",
+ * };
+ * const ethSig = await eip712Signer.signVerificationEthAddressClaimHex(claimBody);
+ *
+ * const verificationBody = {
+ *   address: eip712Signer.signerKeyHex,
+ *   signature: ethSig._unsafeUnwrap(),
+ *   blockHash: "2c87468704d6b0f4c46f480dc54251de...",
+ * };
+ *
+ * const verificationMessage = await makeVerificationAddEthAddress(
+ *   verificationBody,
+ *   dataOptions,
+ *   ed25519Signer
+ * );
+ * await client.submitMessage(verificationMessage._unsafeUnwrap());
  * ```
- *
- * @param ...
- *
- * @returns ...
  */
 export const makeVerificationAddEthAddress = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS,
@@ -450,20 +494,55 @@ export const makeVerificationAddEthAddress = buildMakeMessageMethod(
 /**
  * TODO DOCS: description
  *
- * TODO DOCS: usage example, here's the structure:
  * @example
  * ```typescript
- * import { ... } from '@farcaster/js';
+ * import {
+ *   Client,
+ *   Ed25519Signer,
+ *   Eip712Signer,
+ *   makeVerificationRemove,
+ *   types,
+ * } from "@farcaster/js";
+ * import { ethers } from "ethers";
+ * import * as ed from "@noble/ed25519";
  *
- * const client = new Client(...)
+ * const rpcUrl = "<rpc-url>";
+ * const client = new Client(rpcUrl);
  *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
+ * const privateKey = ed.utils.randomPrivateKey();
+ * const privateKeyHex = ed.utils.bytesToHex(privateKey);
+ * console.log(privateKeyHex); // 86be7f6f8dcf18...
+ * // developers should safely store this EdDSA private key on behalf of users
+ *
+ * // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+ * const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+ *
+ * const mnemonic = "your mnemonic apple orange banana ...";
+ * const wallet = ethers.Wallet.fromMnemonic(mnemonic);
+ *
+ * // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+ * const eip712Signer = Eip712Signer.fromSigner(
+ *   wallet,
+ *   wallet.address
+ * )._unsafeUnwrap();
+ *
+ * const dataOptions = {
+ *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
+ *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ * };
+ *
+ * const verificationRemoveBody = {
+ *   address: eip712Signer.signerKeyHex,
+ * };
+ *
+ * const verificationRemoveMessage = await makeVerificationRemove(
+ *   verificationRemoveBody,
+ *   dataOptions,
+ *   ed25519Signer
+ * );
+ *
+ * await client.submitMessage(verificationRemoveMessage._unsafeUnwrap());
  * ```
- *
- * @param ...
- *
- * @returns ...
  */
 export const makeVerificationRemove = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE,
@@ -529,22 +608,39 @@ export const makeSignerAdd = buildMakeMessageMethod(
 );
 
 /**
- * TODO DOCS: description
+ * Make a message to remove an EdDSA signer
  *
- * TODO DOCS: usage example, here's the structure:
  * @example
  * ```typescript
- * import { ... } from '@farcaster/js';
+ * import { Client, Ed25519Signer, Eip712Signer, makeSignerAdd, types } from '@farcaster/js';
+ * import { ethers } from 'ethers';
+ * import * as ed from '@noble/ed25519';
  *
- * const client = new Client(...)
+ * const rpcUrl = '<rpc-url>';
+ * const client = new Client(rpcUrl);
  *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
+ * const privateKey = ed.utils.randomPrivateKey();
+ * const privateKeyHex = ed.utils.bytesToHex(privateKey);
+ * console.log(privateKeyHex); // 86be7f6f8dcf18...
+ * // developers should safely store this EdDSA private key on behalf of users
+ *
+ * // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+ * const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+ *
+ * const mnemonic = 'your mnemonic apple orange banana ...';
+ * const wallet = ethers.Wallet.fromMnemonic(mnemonic);
+ *
+ * // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+ * const eip712Signer = Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwrap();
+ *
+ * const dataOptions = {
+ *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
+ *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ * };
+ *
+ * const signerRemove = await makeSignerRemove({ signer: ed25519Signer.signerKeyHex }, dataOptions, eip712Signer);
+ * await client.submitMessage(signerRemove._unsafeUnwrap());
  * ```
- *
- * @param ...
- *
- * @returns ...
  */
 export const makeSignerRemove = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
