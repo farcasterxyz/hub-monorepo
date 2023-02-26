@@ -1,5 +1,13 @@
 # @farcaster/protobufs
 
+## 0.1.6
+
+### Patch Changes
+
+- d04d5d4a: add fromId to SubscribeRequest protobuf and subscribe gRPC method
+- 4056b5d4: add HubEvent protobuf and types
+- 22a9d460: remove UserData location type
+
 ## 0.1.5
 
 ### Patch Changes
