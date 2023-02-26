@@ -6,7 +6,6 @@ export enum IdRegistryEventType {
   ID_REGISTRY_EVENT_TYPE_NONE = 0,
   ID_REGISTRY_EVENT_TYPE_REGISTER = 1,
   ID_REGISTRY_EVENT_TYPE_TRANSFER = 2,
-  UNRECOGNIZED = -1,
 }
 
 export function idRegistryEventTypeFromJSON(object: any): IdRegistryEventType {
@@ -20,10 +19,8 @@ export function idRegistryEventTypeFromJSON(object: any): IdRegistryEventType {
     case 2:
     case "ID_REGISTRY_EVENT_TYPE_TRANSFER":
       return IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_TRANSFER;
-    case -1:
-    case "UNRECOGNIZED":
     default:
-      return IdRegistryEventType.UNRECOGNIZED;
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum IdRegistryEventType");
   }
 }
 
@@ -35,9 +32,8 @@ export function idRegistryEventTypeToJSON(object: IdRegistryEventType): string {
       return "ID_REGISTRY_EVENT_TYPE_REGISTER";
     case IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_TRANSFER:
       return "ID_REGISTRY_EVENT_TYPE_TRANSFER";
-    case IdRegistryEventType.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum IdRegistryEventType");
   }
 }
 

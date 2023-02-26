@@ -5,7 +5,6 @@ export enum NameRegistryEventType {
   NAME_REGISTRY_EVENT_TYPE_NONE = 0,
   NAME_REGISTRY_EVENT_TYPE_TRANSFER = 1,
   NAME_REGISTRY_EVENT_TYPE_RENEW = 2,
-  UNRECOGNIZED = -1,
 }
 
 export function nameRegistryEventTypeFromJSON(object: any): NameRegistryEventType {
@@ -19,10 +18,8 @@ export function nameRegistryEventTypeFromJSON(object: any): NameRegistryEventTyp
     case 2:
     case "NAME_REGISTRY_EVENT_TYPE_RENEW":
       return NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_RENEW;
-    case -1:
-    case "UNRECOGNIZED":
     default:
-      return NameRegistryEventType.UNRECOGNIZED;
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum NameRegistryEventType");
   }
 }
 
@@ -34,9 +31,8 @@ export function nameRegistryEventTypeToJSON(object: NameRegistryEventType): stri
       return "NAME_REGISTRY_EVENT_TYPE_TRANSFER";
     case NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_RENEW:
       return "NAME_REGISTRY_EVENT_TYPE_RENEW";
-    case NameRegistryEventType.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum NameRegistryEventType");
   }
 }
 

@@ -1,32 +1,30 @@
 import * as protobufs from '@farcaster/protobufs';
 
-export {
-  FarcasterNetwork,
-  HashScheme,
-  MessageType,
-  ReactionType,
-  SignatureScheme,
-  UserDataType,
-} from '@farcaster/protobufs';
 export type { VerificationEthAddressClaim } from '@farcaster/utils';
+
+export type HashScheme = Exclude<protobufs.HashScheme, protobufs.HashScheme.HASH_SCHEME_NONE>;
+export type SignatureScheme = Exclude<protobufs.SignatureScheme, protobufs.SignatureScheme.SIGNATURE_SCHEME_NONE>;
 
 export type Message<TData = MessageData> = Readonly<{
   _protobuf: protobufs.Message;
   data: TData;
   hash: string; // Hex string
-  hashScheme: protobufs.HashScheme;
+  hashScheme: HashScheme;
   signature: string; // Hex string
-  signatureScheme: protobufs.SignatureScheme;
+  signatureScheme: SignatureScheme;
   signer: string; // Hex string
 }>;
 
-export type MessageData<TBody = MessageBody, TType = protobufs.MessageType> = {
+export type MessageType = Exclude<protobufs.MessageType, protobufs.MessageType.MESSAGE_TYPE_NONE>;
+export type FarcasterNetwork = Exclude<protobufs.FarcasterNetwork, protobufs.FarcasterNetwork.FARCASTER_NETWORK_NONE>;
+
+export type MessageData<TBody = MessageBody, TType = MessageType> = {
   _protobuf: protobufs.MessageData;
   body: TBody;
   type: TType;
   timestamp: number;
   fid: number;
-  network: protobufs.FarcasterNetwork;
+  network: FarcasterNetwork;
 };
 
 export type CastAddData = MessageData<CastAddBody, protobufs.MessageType.MESSAGE_TYPE_CAST_ADD>;
@@ -81,9 +79,11 @@ export type CastRemoveBody = {
   targetHash: string;
 };
 
+export type ReactionType = Exclude<protobufs.ReactionType, protobufs.ReactionType.REACTION_TYPE_NONE>;
+
 export type ReactionBody = {
   target: CastId;
-  type: protobufs.ReactionType;
+  type: ReactionType;
 };
 
 export type AmpBody = {
@@ -104,8 +104,10 @@ export type SignerBody = {
   signer: string; // Hex string
 };
 
+export type UserDataType = Exclude<protobufs.UserDataType, protobufs.UserDataType.USER_DATA_TYPE_NONE>;
+
 export type UserDataBody = {
-  type: protobufs.UserDataType;
+  type: UserDataType;
   value: string;
 };
 

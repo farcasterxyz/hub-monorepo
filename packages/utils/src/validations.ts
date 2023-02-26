@@ -314,6 +314,10 @@ export const validateCastRemoveBody = (body: protobufs.CastRemoveBody): HubResul
 };
 
 export const validateReactionType = (type: number): HubResult<protobufs.ReactionType> => {
+  if (type === 0) {
+    return err(new HubError('bad_request.validation_failure', 'missing reaction type'));
+  }
+
   if (!Object.values(protobufs.ReactionType).includes(type)) {
     return err(new HubError('bad_request.validation_failure', 'invalid reaction type'));
   }
@@ -322,6 +326,10 @@ export const validateReactionType = (type: number): HubResult<protobufs.Reaction
 };
 
 export const validateMessageType = (type: number): HubResult<protobufs.MessageType> => {
+  if (type === 0) {
+    return err(new HubError('bad_request.validation_failure', 'missing message type'));
+  }
+
   if (!Object.values(protobufs.MessageType).includes(type)) {
     return err(new HubError('bad_request.validation_failure', 'invalid message type'));
   }
@@ -330,6 +338,10 @@ export const validateMessageType = (type: number): HubResult<protobufs.MessageTy
 };
 
 export const validateNetwork = (network: number): HubResult<protobufs.FarcasterNetwork> => {
+  if (network === 0) {
+    return err(new HubError('bad_request.validation_failure', 'missing network'));
+  }
+
   if (!Object.values(protobufs.FarcasterNetwork).includes(network)) {
     return err(new HubError('bad_request.validation_failure', 'invalid network'));
   }
@@ -375,6 +387,10 @@ export const validateSignerBody = (body: protobufs.SignerBody): HubResult<protob
 };
 
 export const validateUserDataType = (type: number): HubResult<protobufs.UserDataType> => {
+  if (type === 0) {
+    return err(new HubError('bad_request.validation_failure', 'missing user data type'));
+  }
+
   if (
     !Object.values(protobufs.UserDataType).includes(type) ||
     type === protobufs.UserDataType.USER_DATA_TYPE_NONE ||

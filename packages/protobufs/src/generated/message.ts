@@ -7,7 +7,6 @@ export enum HashScheme {
   HASH_SCHEME_NONE = 0,
   /** HASH_SCHEME_BLAKE3 - Default scheme for hashing MessageData */
   HASH_SCHEME_BLAKE3 = 1,
-  UNRECOGNIZED = -1,
 }
 
 export function hashSchemeFromJSON(object: any): HashScheme {
@@ -18,10 +17,8 @@ export function hashSchemeFromJSON(object: any): HashScheme {
     case 1:
     case "HASH_SCHEME_BLAKE3":
       return HashScheme.HASH_SCHEME_BLAKE3;
-    case -1:
-    case "UNRECOGNIZED":
     default:
-      return HashScheme.UNRECOGNIZED;
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HashScheme");
   }
 }
 
@@ -31,9 +28,8 @@ export function hashSchemeToJSON(object: HashScheme): string {
       return "HASH_SCHEME_NONE";
     case HashScheme.HASH_SCHEME_BLAKE3:
       return "HASH_SCHEME_BLAKE3";
-    case HashScheme.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HashScheme");
   }
 }
 
@@ -44,7 +40,6 @@ export enum SignatureScheme {
   SIGNATURE_SCHEME_ED25519 = 1,
   /** SIGNATURE_SCHEME_EIP712 - ECDSA signature using EIP-712 scheme */
   SIGNATURE_SCHEME_EIP712 = 2,
-  UNRECOGNIZED = -1,
 }
 
 export function signatureSchemeFromJSON(object: any): SignatureScheme {
@@ -58,10 +53,8 @@ export function signatureSchemeFromJSON(object: any): SignatureScheme {
     case 2:
     case "SIGNATURE_SCHEME_EIP712":
       return SignatureScheme.SIGNATURE_SCHEME_EIP712;
-    case -1:
-    case "UNRECOGNIZED":
     default:
-      return SignatureScheme.UNRECOGNIZED;
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum SignatureScheme");
   }
 }
 
@@ -73,9 +66,8 @@ export function signatureSchemeToJSON(object: SignatureScheme): string {
       return "SIGNATURE_SCHEME_ED25519";
     case SignatureScheme.SIGNATURE_SCHEME_EIP712:
       return "SIGNATURE_SCHEME_EIP712";
-    case SignatureScheme.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum SignatureScheme");
   }
 }
 
@@ -100,7 +92,6 @@ export enum MessageType {
   MESSAGE_TYPE_SIGNER_REMOVE = 10,
   /** MESSAGE_TYPE_USER_DATA_ADD - Add metadata about a user */
   MESSAGE_TYPE_USER_DATA_ADD = 11,
-  UNRECOGNIZED = -1,
 }
 
 export function messageTypeFromJSON(object: any): MessageType {
@@ -135,10 +126,8 @@ export function messageTypeFromJSON(object: any): MessageType {
     case 11:
     case "MESSAGE_TYPE_USER_DATA_ADD":
       return MessageType.MESSAGE_TYPE_USER_DATA_ADD;
-    case -1:
-    case "UNRECOGNIZED":
     default:
-      return MessageType.UNRECOGNIZED;
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
 }
 
@@ -164,9 +153,8 @@ export function messageTypeToJSON(object: MessageType): string {
       return "MESSAGE_TYPE_SIGNER_REMOVE";
     case MessageType.MESSAGE_TYPE_USER_DATA_ADD:
       return "MESSAGE_TYPE_USER_DATA_ADD";
-    case MessageType.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
 }
 
@@ -179,7 +167,6 @@ export enum FarcasterNetwork {
   FARCASTER_NETWORK_TESTNET = 2,
   /** FARCASTER_NETWORK_DEVNET - Private test network */
   FARCASTER_NETWORK_DEVNET = 3,
-  UNRECOGNIZED = -1,
 }
 
 export function farcasterNetworkFromJSON(object: any): FarcasterNetwork {
@@ -196,10 +183,8 @@ export function farcasterNetworkFromJSON(object: any): FarcasterNetwork {
     case 3:
     case "FARCASTER_NETWORK_DEVNET":
       return FarcasterNetwork.FARCASTER_NETWORK_DEVNET;
-    case -1:
-    case "UNRECOGNIZED":
     default:
-      return FarcasterNetwork.UNRECOGNIZED;
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum FarcasterNetwork");
   }
 }
 
@@ -213,9 +198,8 @@ export function farcasterNetworkToJSON(object: FarcasterNetwork): string {
       return "FARCASTER_NETWORK_TESTNET";
     case FarcasterNetwork.FARCASTER_NETWORK_DEVNET:
       return "FARCASTER_NETWORK_DEVNET";
-    case FarcasterNetwork.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum FarcasterNetwork");
   }
 }
 
@@ -232,7 +216,6 @@ export enum UserDataType {
   USER_DATA_TYPE_URL = 5,
   /** USER_DATA_TYPE_FNAME - Preferred Farcaster Name for the user */
   USER_DATA_TYPE_FNAME = 6,
-  UNRECOGNIZED = -1,
 }
 
 export function userDataTypeFromJSON(object: any): UserDataType {
@@ -255,10 +238,8 @@ export function userDataTypeFromJSON(object: any): UserDataType {
     case 6:
     case "USER_DATA_TYPE_FNAME":
       return UserDataType.USER_DATA_TYPE_FNAME;
-    case -1:
-    case "UNRECOGNIZED":
     default:
-      return UserDataType.UNRECOGNIZED;
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserDataType");
   }
 }
 
@@ -276,9 +257,8 @@ export function userDataTypeToJSON(object: UserDataType): string {
       return "USER_DATA_TYPE_URL";
     case UserDataType.USER_DATA_TYPE_FNAME:
       return "USER_DATA_TYPE_FNAME";
-    case UserDataType.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserDataType");
   }
 }
 
@@ -289,7 +269,6 @@ export enum ReactionType {
   REACTION_TYPE_LIKE = 1,
   /** REACTION_TYPE_RECAST - Share target cast to the user's audience */
   REACTION_TYPE_RECAST = 2,
-  UNRECOGNIZED = -1,
 }
 
 export function reactionTypeFromJSON(object: any): ReactionType {
@@ -303,10 +282,8 @@ export function reactionTypeFromJSON(object: any): ReactionType {
     case 2:
     case "REACTION_TYPE_RECAST":
       return ReactionType.REACTION_TYPE_RECAST;
-    case -1:
-    case "UNRECOGNIZED":
     default:
-      return ReactionType.UNRECOGNIZED;
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ReactionType");
   }
 }
 
@@ -318,9 +295,8 @@ export function reactionTypeToJSON(object: ReactionType): string {
       return "REACTION_TYPE_LIKE";
     case ReactionType.REACTION_TYPE_RECAST:
       return "REACTION_TYPE_RECAST";
-    case ReactionType.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ReactionType");
   }
 }
 
