@@ -62,8 +62,6 @@ Type of the MessageBody
 | MESSAGE_TYPE_CAST_REMOVE                  | 2      | Remove an existing Cast                                   |
 | MESSAGE_TYPE_REACTION_ADD                 | 3      | Add a Reaction to a Cast                                  |
 | MESSAGE_TYPE_REACTION_REMOVE              | 4      | Remove a Reaction from a Cast                             |
-| MESSAGE_TYPE_AMP_ADD                      | 5      |                                                           |
-| MESSAGE_TYPE_AMP_REMOVE                   | 6      |                                                           |
 | MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS | 7      | Add a Verification of an Ethereum Address                 |
 | MESSAGE_TYPE_VERIFICATION_REMOVE          | 8      | Remove a Verification                                     |
 | MESSAGE_TYPE_SIGNER_ADD                   | 9      | Add a new Ed25519 key pair that signs messages for a user |
