@@ -257,10 +257,6 @@ export const makeMessageWithSignature = async (
  * const cast = await makeCastAdd({ text: 'hello world' }, dataOptions, ed25519Signer);
  * await client.submitMessage(cast._unsafeUnwrap());
  * ```
- *
- * @param ...
- *
- * @returns ...
  */
 export const makeCastAdd = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_CAST_ADD,
@@ -269,22 +265,37 @@ export const makeCastAdd = buildMakeMessageMethod(
 );
 
 /**
- * TODO DOCS: description
+ * Make a message to remove a cast
  *
- * TODO DOCS: usage example, here's the structure:
  * @example
  * ```typescript
- * import { ... } from '@farcaster/js';
+ * import {
+ *   Client,
+ *   Ed25519Signer,
+ *   makeCastAdd,
+ *   makeCastRemove,
+ *   types,
+ * } from '@farcaster/js';
+ * import * as ed from '@noble/ed25519';
  *
- * const client = new Client(...)
+ * const rpcUrl = '<rpc-url>';
+ * const client = new Client(rpcUrl);
  *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
+ * const privateKeyHex = '86be7f6f8dcf18...'; // EdDSA hex private key
+ * const privateKey = ed.utils.hexToBytes(privateKeyHex);
+ *
+ * // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+ * const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+ *
+ * const dataOptions = {
+ *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
+ *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ * };
+ *
+ * const removeBody = { targetHash: '0xf88d738eb7145f4cea40fbe8f3bdf...' };
+ * const castRemove = await makeCastRemove(removeBody, dataOptions, ed25519Signer);
+ * await client.submitMessage(castRemove._unsafeUnwrap());
  * ```
- *
- * @param ...
- *
- * @returns ...
  */
 export const makeCastRemove = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE,
@@ -292,48 +303,14 @@ export const makeCastRemove = buildMakeMessageMethod(
   utils.serializeCastRemoveBody
 );
 
-/**
- * TODO DOCS: description
- *
- * TODO DOCS: usage example, here's the structure:
- * @example
- * ```typescript
- * import { ... } from '@farcaster/js';
- *
- * const client = new Client(...)
- *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
- * ```
- *
- * @param ...
- *
- * @returns ...
- */
+/** @ignore */
 export const makeCastAddData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_CAST_ADD,
   'castAddBody',
   utils.serializeCastAddBody
 );
 
-/**
- * TODO DOCS: description
- *
- * TODO DOCS: usage example, here's the structure:
- * @example
- * ```typescript
- * import { ... } from '@farcaster/js';
- *
- * const client = new Client(...)
- *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
- * ```
- *
- * @param ...
- *
- * @returns ...
- */
+/** @ignore */
 export const makeCastRemoveData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE,
   'castRemoveBody',
@@ -343,22 +320,42 @@ export const makeCastRemoveData = buildMakeMessageDataMethod(
 /** Amp Methods */
 
 /**
- * TODO DOCS: description
+ * Make a message to react a cast (like or recast)
  *
- * TODO DOCS: usage example, here's the structure:
  * @example
  * ```typescript
- * import { ... } from '@farcaster/js';
+ * import {
+ *   Client,
+ *   Ed25519Signer,
+ *   makeCastAdd,
+ *   makeCastRemove,
+ *   types,
+ * } from '@farcaster/js';
+ * import * as ed from '@noble/ed25519';
  *
- * const client = new Client(...)
+ * const rpcUrl = '<rpc-url>';
+ * const client = new Client(rpcUrl);
  *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
+ * const privateKeyHex = '86be7f6f8dcf18...'; // EdDSA hex private key
+ * const privateKey = ed.utils.hexToBytes(privateKeyHex);
+ *
+ * // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+ * const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+ *
+ * const dataOptions = {
+ *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
+ *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ * };
+ *
+ * // fid here is the fid of the author of the cast
+ * const reactionLikeBody = {
+ *   type: types.ReactionType.REACTION_TYPE_LIKE,
+ *   target: { fid: -9998, tsHash: '0x455a6caad5dfd4d...' },
+ * };
+ *
+ * const like = await makeReactionAdd(reactionLikeBody, dataOptions, ed25519Signer);
+ * await client.submitMessage(like._unsafeUnwrap());
  * ```
- *
- * @param ...
- *
- * @returns ...
  */
 export const makeReactionAdd = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD,
@@ -367,22 +364,42 @@ export const makeReactionAdd = buildMakeMessageMethod(
 );
 
 /**
- * TODO DOCS: description
+ * Make a message to undo a reaction to a cast (unlike or undo recast)
  *
- * TODO DOCS: usage example, here's the structure:
  * @example
  * ```typescript
- * import { ... } from '@farcaster/js';
+ * import {
+ *   Client,
+ *   Ed25519Signer,
+ *   makeCastAdd,
+ *   makeCastRemove,
+ *   types,
+ * } from '@farcaster/js';
+ * import * as ed from '@noble/ed25519';
  *
- * const client = new Client(...)
+ * const rpcUrl = '<rpc-url>';
+ * const client = new Client(rpcUrl);
  *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
+ * const privateKeyHex = '86be7f6f8dcf18...'; // EdDSA hex private key
+ * const privateKey = ed.utils.hexToBytes(privateKeyHex);
+ *
+ * // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+ * const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+ *
+ * const dataOptions = {
+ *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
+ *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ * };
+ *
+ * // fid here is the fid of the author of the cast
+ * const reactionLikeBody = {
+ *   type: types.ReactionType.REACTION_TYPE_LIKE,
+ *   target: { fid: -9998, tsHash: '0x455a6caad5dfd4d...' },
+ * };
+ *
+ * const unlike = await makeReactionRemove(reactionLikeBody, dataOptions, ed25519Signer);
+ * await client.submitMessage(unlike._unsafeUnwrap());
  * ```
- *
- * @param ...
- *
- * @returns ...
  */
 export const makeReactionRemove = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE,
@@ -390,48 +407,14 @@ export const makeReactionRemove = buildMakeMessageMethod(
   utils.serializeReactionBody
 );
 
-/**
- * TODO DOCS: description
- *
- * TODO DOCS: usage example, here's the structure:
- * @example
- * ```typescript
- * import { ... } from '@farcaster/js';
- *
- * const client = new Client(...)
- *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
- * ```
- *
- * @param ...
- *
- * @returns ...
- */
+/** @ignore */
 export const makeReactionAddData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD,
   'reactionBody',
   utils.serializeReactionBody
 );
 
-/**
- * TODO DOCS: description
- *
- * TODO DOCS: usage example, here's the structure:
- * @example
- * ```typescript
- * import { ... } from '@farcaster/js';
- *
- * const client = new Client(...)
- *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
- * ```
- *
- * @param ...
- *
- * @returns ...
- */
+/** @ignore */
 export const makeReactionRemoveData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE,
   'reactionBody',
@@ -443,20 +426,64 @@ export const makeReactionRemoveData = buildMakeMessageDataMethod(
 /**
  * TODO DOCS: description
  *
- * TODO DOCS: usage example, here's the structure:
  * @example
  * ```typescript
- * import { ... } from '@farcaster/js';
+ *  import {
+ *   Client,
+ *   Ed25519Signer,
+ *   Eip712Signer,
+ *   makeVerificationAddEthAddress,
+ *   types,
+ * } from "@farcaster/js";
+ * import { ethers } from "ethers";
+ * import * as ed from "@noble/ed25519";
  *
- * const client = new Client(...)
+ * const rpcUrl = "<rpc-url>";
+ * const client = new Client(rpcUrl);
  *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
+ * const privateKey = ed.utils.randomPrivateKey();
+ * const privateKeyHex = ed.utils.bytesToHex(privateKey);
+ * console.log(privateKeyHex); // 86be7f6f8dcf18...
+ * // developers should safely store this EdDSA private key on behalf of users
+ *
+ * // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+ * const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+ *
+ * const mnemonic = "your mnemonic apple orange banana ...";
+ * const wallet = ethers.Wallet.fromMnemonic(mnemonic);
+ *
+ * // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+ * const eip712Signer = Eip712Signer.fromSigner(
+ *   wallet,
+ *   wallet.address
+ * )._unsafeUnwrap();
+ *
+ * const dataOptions = {
+ *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
+ *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ * };
+ *
+ * const claimBody = {
+ *   fid: -1,
+ *   address: eip712Signer.signerKeyHex,
+ *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ *   blockHash: "2c87468704d6b0f4c46f480dc54251de...",
+ * };
+ * const ethSig = await eip712Signer.signVerificationEthAddressClaimHex(claimBody);
+ *
+ * const verificationBody = {
+ *   address: eip712Signer.signerKeyHex,
+ *   signature: ethSig._unsafeUnwrap(),
+ *   blockHash: "2c87468704d6b0f4c46f480dc54251de...",
+ * };
+ *
+ * const verificationMessage = await makeVerificationAddEthAddress(
+ *   verificationBody,
+ *   dataOptions,
+ *   ed25519Signer
+ * );
+ * await client.submitMessage(verificationMessage._unsafeUnwrap());
  * ```
- *
- * @param ...
- *
- * @returns ...
  */
 export const makeVerificationAddEthAddress = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS,
@@ -467,20 +494,55 @@ export const makeVerificationAddEthAddress = buildMakeMessageMethod(
 /**
  * TODO DOCS: description
  *
- * TODO DOCS: usage example, here's the structure:
  * @example
  * ```typescript
- * import { ... } from '@farcaster/js';
+ * import {
+ *   Client,
+ *   Ed25519Signer,
+ *   Eip712Signer,
+ *   makeVerificationRemove,
+ *   types,
+ * } from "@farcaster/js";
+ * import { ethers } from "ethers";
+ * import * as ed from "@noble/ed25519";
  *
- * const client = new Client(...)
+ * const rpcUrl = "<rpc-url>";
+ * const client = new Client(rpcUrl);
  *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
+ * const privateKey = ed.utils.randomPrivateKey();
+ * const privateKeyHex = ed.utils.bytesToHex(privateKey);
+ * console.log(privateKeyHex); // 86be7f6f8dcf18...
+ * // developers should safely store this EdDSA private key on behalf of users
+ *
+ * // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+ * const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+ *
+ * const mnemonic = "your mnemonic apple orange banana ...";
+ * const wallet = ethers.Wallet.fromMnemonic(mnemonic);
+ *
+ * // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+ * const eip712Signer = Eip712Signer.fromSigner(
+ *   wallet,
+ *   wallet.address
+ * )._unsafeUnwrap();
+ *
+ * const dataOptions = {
+ *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
+ *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ * };
+ *
+ * const verificationRemoveBody = {
+ *   address: eip712Signer.signerKeyHex,
+ * };
+ *
+ * const verificationRemoveMessage = await makeVerificationRemove(
+ *   verificationRemoveBody,
+ *   dataOptions,
+ *   ed25519Signer
+ * );
+ *
+ * await client.submitMessage(verificationRemoveMessage._unsafeUnwrap());
  * ```
- *
- * @param ...
- *
- * @returns ...
  */
 export const makeVerificationRemove = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE,
@@ -488,48 +550,14 @@ export const makeVerificationRemove = buildMakeMessageMethod(
   utils.serializeVerificationRemoveBody
 );
 
-/**
- * TODO DOCS: description
- *
- * TODO DOCS: usage example, here's the structure:
- * @example
- * ```typescript
- * import { ... } from '@farcaster/js';
- *
- * const client = new Client(...)
- *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
- * ```
- *
- * @param ...
- *
- * @returns ...
- */
+/** @ignore */
 export const makeVerificationAddEthAddressData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS,
   'verificationAddEthAddressBody',
   utils.serializeVerificationAddEthAddressBody
 );
 
-/**
- * TODO DOCS: description
- *
- * TODO DOCS: usage example, here's the structure:
- * @example
- * ```typescript
- * import { ... } from '@farcaster/js';
- *
- * const client = new Client(...)
- *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
- * ```
- *
- * @param ...
- *
- * @returns ...
- */
+/** @ignore */
 export const makeVerificationRemoveData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE,
   'verificationRemoveBody',
@@ -539,22 +567,39 @@ export const makeVerificationRemoveData = buildMakeMessageDataMethod(
 /** Signer Methods */
 
 /**
- * TODO DOCS: description
+ * Make a message to add an EdDSA signer
  *
- * TODO DOCS: usage example, here's the structure:
  * @example
  * ```typescript
- * import { ... } from '@farcaster/js';
+ * import { Client, Ed25519Signer, Eip712Signer, makeSignerAdd, types } from '@farcaster/js';
+ * import { ethers } from 'ethers';
+ * import * as ed from '@noble/ed25519';
  *
- * const client = new Client(...)
+ * const rpcUrl = '<rpc-url>';
+ * const client = new Client(rpcUrl);
  *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
+ * const privateKey = ed.utils.randomPrivateKey();
+ * const privateKeyHex = ed.utils.bytesToHex(privateKey);
+ * console.log(privateKeyHex); // 86be7f6f8dcf18...
+ * // developers should safely store this EdDSA private key on behalf of users
+ *
+ * // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+ * const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+ *
+ * const mnemonic = 'your mnemonic apple orange banana ...';
+ * const wallet = ethers.Wallet.fromMnemonic(mnemonic);
+ *
+ * // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+ * const eip712Signer = Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwrap();
+ *
+ * const dataOptions = {
+ *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
+ *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ * };
+ *
+ * const signerAdd = await makeSignerAdd({ signer: ed25519Signer.signerKeyHex }, dataOptions, eip712Signer);
+ * await client.submitMessage(signerAdd._unsafeUnwrap());
  * ```
- *
- * @param ...
- *
- * @returns ...
  */
 export const makeSignerAdd = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD,
@@ -563,22 +608,39 @@ export const makeSignerAdd = buildMakeMessageMethod(
 );
 
 /**
- * TODO DOCS: description
+ * Make a message to remove an EdDSA signer
  *
- * TODO DOCS: usage example, here's the structure:
  * @example
  * ```typescript
- * import { ... } from '@farcaster/js';
+ * import { Client, Ed25519Signer, Eip712Signer, makeSignerAdd, types } from '@farcaster/js';
+ * import { ethers } from 'ethers';
+ * import * as ed from '@noble/ed25519';
  *
- * const client = new Client(...)
+ * const rpcUrl = '<rpc-url>';
+ * const client = new Client(rpcUrl);
  *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
+ * const privateKey = ed.utils.randomPrivateKey();
+ * const privateKeyHex = ed.utils.bytesToHex(privateKey);
+ * console.log(privateKeyHex); // 86be7f6f8dcf18...
+ * // developers should safely store this EdDSA private key on behalf of users
+ *
+ * // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+ * const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+ *
+ * const mnemonic = 'your mnemonic apple orange banana ...';
+ * const wallet = ethers.Wallet.fromMnemonic(mnemonic);
+ *
+ * // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+ * const eip712Signer = Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwrap();
+ *
+ * const dataOptions = {
+ *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
+ *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ * };
+ *
+ * const signerRemove = await makeSignerRemove({ signer: ed25519Signer.signerKeyHex }, dataOptions, eip712Signer);
+ * await client.submitMessage(signerRemove._unsafeUnwrap());
  * ```
- *
- * @param ...
- *
- * @returns ...
  */
 export const makeSignerRemove = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
@@ -586,48 +648,14 @@ export const makeSignerRemove = buildMakeMessageMethod(
   utils.serializeSignerBody
 );
 
-/**
- * TODO DOCS: description
- *
- * TODO DOCS: usage example, here's the structure:
- * @example
- * ```typescript
- * import { ... } from '@farcaster/js';
- *
- * const client = new Client(...)
- *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
- * ```
- *
- * @param ...
- *
- * @returns ...
- */
+/** @ignore */
 export const makeSignerAddData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD,
   'signerBody',
   utils.serializeSignerBody
 );
 
-/**
- * TODO DOCS: description
- *
- * TODO DOCS: usage example, here's the structure:
- * @example
- * ```typescript
- * import { ... } from '@farcaster/js';
- *
- * const client = new Client(...)
- *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
- * ```
- *
- * @param ...
- *
- * @returns ...
- */
+/** @ignore */
 export const makeSignerRemoveData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
   'signerBody',
@@ -637,22 +665,40 @@ export const makeSignerRemoveData = buildMakeMessageDataMethod(
 /** User Data Methods */
 
 /**
- * TODO DOCS: description
+ * Make a message to set user data (pfp, bio, display name, etc)
  *
- * TODO DOCS: usage example, here's the structure:
  * @example
  * ```typescript
- * import { ... } from '@farcaster/js';
+ * import {
+ *   Client,
+ *   Ed25519Signer,
+ *   makeCastAdd,
+ *   makeCastRemove,
+ *   types,
+ * } from '@farcaster/js';
+ * import * as ed from '@noble/ed25519';
  *
- * const client = new Client(...)
+ * const rpcUrl = '<rpc-url>';
+ * const client = new Client(rpcUrl);
  *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
+ * const privateKeyHex = '86be7f6f8dcf18...'; // EdDSA hex private key
+ * const privateKey = ed.utils.hexToBytes(privateKeyHex);
+ *
+ * // _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+ * const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+ *
+ * const dataOptions = {
+ *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
+ *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ * };
+ *
+ * const userDataPfpBody = {
+ *   type: types.UserDataType.USER_DATA_TYPE_PFP,
+ *   value: 'https://i.imgur.com/yed5Zfk.gif',
+ * };
+ * const userDataPfpAdd = await makeUserDataAdd(userDataPfpBody, dataOptions, ed25519Signer);
+ * await client.submitMessage(userDataPfpAdd._unsafeUnwrap());
  * ```
- *
- * @param ...
- *
- * @returns ...
  */
 export const makeUserDataAdd = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_USER_DATA_ADD,
@@ -660,24 +706,7 @@ export const makeUserDataAdd = buildMakeMessageMethod(
   utils.serializeUserDataBody
 );
 
-/**
- * TODO DOCS: description
- *
- * TODO DOCS: usage example, here's the structure:
- * @example
- * ```typescript
- * import { ... } from '@farcaster/js';
- *
- * const client = new Client(...)
- *
- * const message = makeCastAdd(...)
- * await client.submitMessage(message)
- * ```
- *
- * @param ...
- *
- * @returns ...
- */
+/** @ignore */
 export const makeUserDataAddData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_USER_DATA_ADD,
   'userDataBody',

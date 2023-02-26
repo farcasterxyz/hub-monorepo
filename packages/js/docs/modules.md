@@ -23,25 +23,16 @@
 ### Functions
 
 - [makeCastAdd](modules.md#makecastadd)
-- [makeCastAddData](modules.md#makecastadddata)
 - [makeCastRemove](modules.md#makecastremove)
-- [makeCastRemoveData](modules.md#makecastremovedata)
 - [makeMessageHash](modules.md#makemessagehash)
 - [makeMessageWithSignature](modules.md#makemessagewithsignature)
 - [makeReactionAdd](modules.md#makereactionadd)
-- [makeReactionAddData](modules.md#makereactionadddata)
 - [makeReactionRemove](modules.md#makereactionremove)
-- [makeReactionRemoveData](modules.md#makereactionremovedata)
 - [makeSignerAdd](modules.md#makesigneradd)
-- [makeSignerAddData](modules.md#makesigneradddata)
 - [makeSignerRemove](modules.md#makesignerremove)
-- [makeSignerRemoveData](modules.md#makesignerremovedata)
 - [makeUserDataAdd](modules.md#makeuserdataadd)
-- [makeUserDataAddData](modules.md#makeuserdataadddata)
 - [makeVerificationAddEthAddress](modules.md#makeverificationaddethaddress)
-- [makeVerificationAddEthAddressData](modules.md#makeverificationaddethaddressdata)
 - [makeVerificationRemove](modules.md#makeverificationremove)
-- [makeVerificationRemoveData](modules.md#makeverificationremovedata)
 
 ## Type Aliases
 
@@ -106,61 +97,43 @@ await client.submitMessage(cast._unsafeUnwrap());
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`CastAddBody`](modules/types.md#castaddbody), [`MESSAGE_TYPE_CAST_ADD`](enums/protobufs.MessageType.md#message_type_cast_add)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-...
-
-___
-
-### makeCastAddData
-
-▸ **makeCastAddData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`CastAddBody`](modules/types.md#castaddbody), [`MESSAGE_TYPE_CAST_ADD`](enums/protobufs.MessageType.md#message_type_cast_add)\>\>
-
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
-
-**`Example`**
-
-```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-
-const message = makeCastAdd(...)
-await client.submitMessage(message)
-```
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`CastAddBody`](modules/types.md#castaddbody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`CastAddBody`](modules/types.md#castaddbody), [`MESSAGE_TYPE_CAST_ADD`](enums/protobufs.MessageType.md#message_type_cast_add)\>\>
-
-...
-
 ___
 
 ### makeCastRemove
 
 ▸ **makeCastRemove**(`bodyJson`, `dataOptions`, `signer`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`CastRemoveBody`](modules/types.md#castremovebody), [`MESSAGE_TYPE_CAST_REMOVE`](enums/protobufs.MessageType.md#message_type_cast_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
+Make a message to remove a cast
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
+import {
+  Client,
+  Ed25519Signer,
+  makeCastAdd,
+  makeCastRemove,
+  types,
+} from '@farcaster/js';
+import * as ed from '@noble/ed25519';
 
-const client = new Client(...)
+const rpcUrl = '<rpc-url>';
+const client = new Client(rpcUrl);
 
-const message = makeCastAdd(...)
-await client.submitMessage(message)
+const privateKeyHex = '86be7f6f8dcf18...'; // EdDSA hex private key
+const privateKey = ed.utils.hexToBytes(privateKeyHex);
+
+// _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+
+const dataOptions = {
+  fid: -9999, // must be changed to fid of the custody address, or else it will fail
+  network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+};
+
+const removeBody = { targetHash: '0xf88d738eb7145f4cea40fbe8f3bdf...' };
+const castRemove = await makeCastRemove(removeBody, dataOptions, ed25519Signer);
+await client.submitMessage(castRemove._unsafeUnwrap());
 ```
 
 #### Parameters
@@ -174,42 +147,6 @@ await client.submitMessage(message)
 #### Returns
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`CastRemoveBody`](modules/types.md#castremovebody), [`MESSAGE_TYPE_CAST_REMOVE`](enums/protobufs.MessageType.md#message_type_cast_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-...
-
-___
-
-### makeCastRemoveData
-
-▸ **makeCastRemoveData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`CastRemoveBody`](modules/types.md#castremovebody), [`MESSAGE_TYPE_CAST_REMOVE`](enums/protobufs.MessageType.md#message_type_cast_remove)\>\>
-
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
-
-**`Example`**
-
-```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-
-const message = makeCastAdd(...)
-await client.submitMessage(message)
-```
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`CastRemoveBody`](modules/types.md#castremovebody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`CastRemoveBody`](modules/types.md#castremovebody), [`MESSAGE_TYPE_CAST_REMOVE`](enums/protobufs.MessageType.md#message_type_cast_remove)\>\>
-
-...
 
 ___
 
@@ -285,19 +222,42 @@ ___
 
 ▸ **makeReactionAdd**(`bodyJson`, `dataOptions`, `signer`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`ReactionBody`](modules/types.md#reactionbody), [`MESSAGE_TYPE_REACTION_ADD`](enums/protobufs.MessageType.md#message_type_reaction_add)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
+Make a message to react a cast (like or recast)
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
+import {
+  Client,
+  Ed25519Signer,
+  makeCastAdd,
+  makeCastRemove,
+  types,
+} from '@farcaster/js';
+import * as ed from '@noble/ed25519';
 
-const client = new Client(...)
+const rpcUrl = '<rpc-url>';
+const client = new Client(rpcUrl);
 
-const message = makeCastAdd(...)
-await client.submitMessage(message)
+const privateKeyHex = '86be7f6f8dcf18...'; // EdDSA hex private key
+const privateKey = ed.utils.hexToBytes(privateKeyHex);
+
+// _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+
+const dataOptions = {
+  fid: -9999, // must be changed to fid of the custody address, or else it will fail
+  network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+};
+
+// fid here is the fid of the author of the cast
+const reactionLikeBody = {
+  type: types.ReactionType.REACTION_TYPE_LIKE,
+  target: { fid: -9998, tsHash: '0x455a6caad5dfd4d...' },
+};
+
+const like = await makeReactionAdd(reactionLikeBody, dataOptions, ed25519Signer);
+await client.submitMessage(like._unsafeUnwrap());
 ```
 
 #### Parameters
@@ -312,61 +272,48 @@ await client.submitMessage(message)
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`ReactionBody`](modules/types.md#reactionbody), [`MESSAGE_TYPE_REACTION_ADD`](enums/protobufs.MessageType.md#message_type_reaction_add)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-...
-
-___
-
-### makeReactionAddData
-
-▸ **makeReactionAddData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`ReactionBody`](modules/types.md#reactionbody), [`MESSAGE_TYPE_REACTION_ADD`](enums/protobufs.MessageType.md#message_type_reaction_add)\>\>
-
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
-
-**`Example`**
-
-```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-
-const message = makeCastAdd(...)
-await client.submitMessage(message)
-```
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`ReactionBody`](modules/types.md#reactionbody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`ReactionBody`](modules/types.md#reactionbody), [`MESSAGE_TYPE_REACTION_ADD`](enums/protobufs.MessageType.md#message_type_reaction_add)\>\>
-
-...
-
 ___
 
 ### makeReactionRemove
 
 ▸ **makeReactionRemove**(`bodyJson`, `dataOptions`, `signer`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`ReactionBody`](modules/types.md#reactionbody), [`MESSAGE_TYPE_REACTION_REMOVE`](enums/protobufs.MessageType.md#message_type_reaction_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
+Make a message to undo a reaction to a cast (unlike or undo recast)
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
+import {
+  Client,
+  Ed25519Signer,
+  makeCastAdd,
+  makeCastRemove,
+  types,
+} from '@farcaster/js';
+import * as ed from '@noble/ed25519';
 
-const client = new Client(...)
+const rpcUrl = '<rpc-url>';
+const client = new Client(rpcUrl);
 
-const message = makeCastAdd(...)
-await client.submitMessage(message)
+const privateKeyHex = '86be7f6f8dcf18...'; // EdDSA hex private key
+const privateKey = ed.utils.hexToBytes(privateKeyHex);
+
+// _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+
+const dataOptions = {
+  fid: -9999, // must be changed to fid of the custody address, or else it will fail
+  network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+};
+
+// fid here is the fid of the author of the cast
+const reactionLikeBody = {
+  type: types.ReactionType.REACTION_TYPE_LIKE,
+  target: { fid: -9998, tsHash: '0x455a6caad5dfd4d...' },
+};
+
+const unlike = await makeReactionRemove(reactionLikeBody, dataOptions, ed25519Signer);
+await client.submitMessage(unlike._unsafeUnwrap());
 ```
 
 #### Parameters
@@ -381,61 +328,45 @@ await client.submitMessage(message)
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`ReactionBody`](modules/types.md#reactionbody), [`MESSAGE_TYPE_REACTION_REMOVE`](enums/protobufs.MessageType.md#message_type_reaction_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-...
-
-___
-
-### makeReactionRemoveData
-
-▸ **makeReactionRemoveData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`ReactionBody`](modules/types.md#reactionbody), [`MESSAGE_TYPE_REACTION_REMOVE`](enums/protobufs.MessageType.md#message_type_reaction_remove)\>\>
-
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
-
-**`Example`**
-
-```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-
-const message = makeCastAdd(...)
-await client.submitMessage(message)
-```
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`ReactionBody`](modules/types.md#reactionbody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`ReactionBody`](modules/types.md#reactionbody), [`MESSAGE_TYPE_REACTION_REMOVE`](enums/protobufs.MessageType.md#message_type_reaction_remove)\>\>
-
-...
-
 ___
 
 ### makeSignerAdd
 
 ▸ **makeSignerAdd**(`bodyJson`, `dataOptions`, `signer`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`SignerBody`](modules/types.md#signerbody), [`MESSAGE_TYPE_SIGNER_ADD`](enums/protobufs.MessageType.md#message_type_signer_add)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
+Make a message to add an EdDSA signer
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
+import { Client, Ed25519Signer, Eip712Signer, makeSignerAdd, types } from '@farcaster/js';
+import { ethers } from 'ethers';
+import * as ed from '@noble/ed25519';
 
-const client = new Client(...)
+const rpcUrl = '<rpc-url>';
+const client = new Client(rpcUrl);
 
-const message = makeCastAdd(...)
-await client.submitMessage(message)
+const privateKey = ed.utils.randomPrivateKey();
+const privateKeyHex = ed.utils.bytesToHex(privateKey);
+console.log(privateKeyHex); // 86be7f6f8dcf18...
+// developers should safely store this EdDSA private key on behalf of users
+
+// _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+
+const mnemonic = 'your mnemonic apple orange banana ...';
+const wallet = ethers.Wallet.fromMnemonic(mnemonic);
+
+// _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+const eip712Signer = Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwrap();
+
+const dataOptions = {
+  fid: -9999, // must be changed to fid of the custody address, or else it will fail
+  network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+};
+
+const signerAdd = await makeSignerAdd({ signer: ed25519Signer.signerKeyHex }, dataOptions, eip712Signer);
+await client.submitMessage(signerAdd._unsafeUnwrap());
 ```
 
 #### Parameters
@@ -450,61 +381,45 @@ await client.submitMessage(message)
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`SignerBody`](modules/types.md#signerbody), [`MESSAGE_TYPE_SIGNER_ADD`](enums/protobufs.MessageType.md#message_type_signer_add)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-...
-
-___
-
-### makeSignerAddData
-
-▸ **makeSignerAddData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`SignerBody`](modules/types.md#signerbody), [`MESSAGE_TYPE_SIGNER_ADD`](enums/protobufs.MessageType.md#message_type_signer_add)\>\>
-
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
-
-**`Example`**
-
-```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-
-const message = makeCastAdd(...)
-await client.submitMessage(message)
-```
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`SignerBody`](modules/types.md#signerbody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`SignerBody`](modules/types.md#signerbody), [`MESSAGE_TYPE_SIGNER_ADD`](enums/protobufs.MessageType.md#message_type_signer_add)\>\>
-
-...
-
 ___
 
 ### makeSignerRemove
 
 ▸ **makeSignerRemove**(`bodyJson`, `dataOptions`, `signer`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`SignerBody`](modules/types.md#signerbody), [`MESSAGE_TYPE_SIGNER_REMOVE`](enums/protobufs.MessageType.md#message_type_signer_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
+Make a message to remove an EdDSA signer
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
+import { Client, Ed25519Signer, Eip712Signer, makeSignerAdd, types } from '@farcaster/js';
+import { ethers } from 'ethers';
+import * as ed from '@noble/ed25519';
 
-const client = new Client(...)
+const rpcUrl = '<rpc-url>';
+const client = new Client(rpcUrl);
 
-const message = makeCastAdd(...)
-await client.submitMessage(message)
+const privateKey = ed.utils.randomPrivateKey();
+const privateKeyHex = ed.utils.bytesToHex(privateKey);
+console.log(privateKeyHex); // 86be7f6f8dcf18...
+// developers should safely store this EdDSA private key on behalf of users
+
+// _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+
+const mnemonic = 'your mnemonic apple orange banana ...';
+const wallet = ethers.Wallet.fromMnemonic(mnemonic);
+
+// _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+const eip712Signer = Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwrap();
+
+const dataOptions = {
+  fid: -9999, // must be changed to fid of the custody address, or else it will fail
+  network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+};
+
+const signerRemove = await makeSignerRemove({ signer: ed25519Signer.signerKeyHex }, dataOptions, eip712Signer);
+await client.submitMessage(signerRemove._unsafeUnwrap());
 ```
 
 #### Parameters
@@ -519,61 +434,46 @@ await client.submitMessage(message)
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`SignerBody`](modules/types.md#signerbody), [`MESSAGE_TYPE_SIGNER_REMOVE`](enums/protobufs.MessageType.md#message_type_signer_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-...
-
-___
-
-### makeSignerRemoveData
-
-▸ **makeSignerRemoveData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`SignerBody`](modules/types.md#signerbody), [`MESSAGE_TYPE_SIGNER_REMOVE`](enums/protobufs.MessageType.md#message_type_signer_remove)\>\>
-
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
-
-**`Example`**
-
-```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-
-const message = makeCastAdd(...)
-await client.submitMessage(message)
-```
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`SignerBody`](modules/types.md#signerbody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`SignerBody`](modules/types.md#signerbody), [`MESSAGE_TYPE_SIGNER_REMOVE`](enums/protobufs.MessageType.md#message_type_signer_remove)\>\>
-
-...
-
 ___
 
 ### makeUserDataAdd
 
 ▸ **makeUserDataAdd**(`bodyJson`, `dataOptions`, `signer`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`UserDataBody`](modules/types.md#userdatabody), [`MESSAGE_TYPE_USER_DATA_ADD`](enums/protobufs.MessageType.md#message_type_user_data_add)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
+Make a message to set user data (pfp, bio, display name, etc)
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
+import {
+  Client,
+  Ed25519Signer,
+  makeCastAdd,
+  makeCastRemove,
+  types,
+} from '@farcaster/js';
+import * as ed from '@noble/ed25519';
 
-const client = new Client(...)
+const rpcUrl = '<rpc-url>';
+const client = new Client(rpcUrl);
 
-const message = makeCastAdd(...)
-await client.submitMessage(message)
+const privateKeyHex = '86be7f6f8dcf18...'; // EdDSA hex private key
+const privateKey = ed.utils.hexToBytes(privateKeyHex);
+
+// _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+
+const dataOptions = {
+  fid: -9999, // must be changed to fid of the custody address, or else it will fail
+  network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+};
+
+const userDataPfpBody = {
+  type: types.UserDataType.USER_DATA_TYPE_PFP,
+  value: 'https://i.imgur.com/yed5Zfk.gif',
+};
+const userDataPfpAdd = await makeUserDataAdd(userDataPfpBody, dataOptions, ed25519Signer);
+await client.submitMessage(userDataPfpAdd._unsafeUnwrap());
 ```
 
 #### Parameters
@@ -588,42 +488,6 @@ await client.submitMessage(message)
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`UserDataBody`](modules/types.md#userdatabody), [`MESSAGE_TYPE_USER_DATA_ADD`](enums/protobufs.MessageType.md#message_type_user_data_add)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-...
-
-___
-
-### makeUserDataAddData
-
-▸ **makeUserDataAddData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`UserDataBody`](modules/types.md#userdatabody), [`MESSAGE_TYPE_USER_DATA_ADD`](enums/protobufs.MessageType.md#message_type_user_data_add)\>\>
-
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
-
-**`Example`**
-
-```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-
-const message = makeCastAdd(...)
-await client.submitMessage(message)
-```
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`UserDataBody`](modules/types.md#userdatabody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`UserDataBody`](modules/types.md#userdatabody), [`MESSAGE_TYPE_USER_DATA_ADD`](enums/protobufs.MessageType.md#message_type_user_data_add)\>\>
-
-...
-
 ___
 
 ### makeVerificationAddEthAddress
@@ -632,17 +496,64 @@ ___
 
 TODO DOCS: description
 
-TODO DOCS: usage example, here's the structure:
-
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
+ import {
+  Client,
+  Ed25519Signer,
+  Eip712Signer,
+  makeVerificationAddEthAddress,
+  types,
+} from "@farcaster/js";
+import { ethers } from "ethers";
+import * as ed from "@noble/ed25519";
 
-const client = new Client(...)
+const rpcUrl = "<rpc-url>";
+const client = new Client(rpcUrl);
 
-const message = makeCastAdd(...)
-await client.submitMessage(message)
+const privateKey = ed.utils.randomPrivateKey();
+const privateKeyHex = ed.utils.bytesToHex(privateKey);
+console.log(privateKeyHex); // 86be7f6f8dcf18...
+// developers should safely store this EdDSA private key on behalf of users
+
+// _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+
+const mnemonic = "your mnemonic apple orange banana ...";
+const wallet = ethers.Wallet.fromMnemonic(mnemonic);
+
+// _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+const eip712Signer = Eip712Signer.fromSigner(
+  wallet,
+  wallet.address
+)._unsafeUnwrap();
+
+const dataOptions = {
+  fid: -9999, // must be changed to fid of the custody address, or else it will fail
+  network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+};
+
+const claimBody = {
+  fid: -1,
+  address: eip712Signer.signerKeyHex,
+  network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+  blockHash: "2c87468704d6b0f4c46f480dc54251de...",
+};
+const ethSig = await eip712Signer.signVerificationEthAddressClaimHex(claimBody);
+
+const verificationBody = {
+  address: eip712Signer.signerKeyHex,
+  signature: ethSig._unsafeUnwrap(),
+  blockHash: "2c87468704d6b0f4c46f480dc54251de...",
+};
+
+const verificationMessage = await makeVerificationAddEthAddress(
+  verificationBody,
+  dataOptions,
+  ed25519Signer
+);
+await client.submitMessage(verificationMessage._unsafeUnwrap());
 ```
 
 #### Parameters
@@ -657,42 +568,6 @@ await client.submitMessage(message)
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`VerificationAddEthAddressBody`](modules/types.md#verificationaddethaddressbody), [`MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS`](enums/protobufs.MessageType.md#message_type_verification_add_eth_address)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
 
-...
-
-___
-
-### makeVerificationAddEthAddressData
-
-▸ **makeVerificationAddEthAddressData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`VerificationAddEthAddressBody`](modules/types.md#verificationaddethaddressbody), [`MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS`](enums/protobufs.MessageType.md#message_type_verification_add_eth_address)\>\>
-
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
-
-**`Example`**
-
-```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-
-const message = makeCastAdd(...)
-await client.submitMessage(message)
-```
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`VerificationAddEthAddressBody`](modules/types.md#verificationaddethaddressbody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`VerificationAddEthAddressBody`](modules/types.md#verificationaddethaddressbody), [`MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS`](enums/protobufs.MessageType.md#message_type_verification_add_eth_address)\>\>
-
-...
-
 ___
 
 ### makeVerificationRemove
@@ -701,17 +576,55 @@ ___
 
 TODO DOCS: description
 
-TODO DOCS: usage example, here's the structure:
-
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
+import {
+  Client,
+  Ed25519Signer,
+  Eip712Signer,
+  makeVerificationRemove,
+  types,
+} from "@farcaster/js";
+import { ethers } from "ethers";
+import * as ed from "@noble/ed25519";
 
-const client = new Client(...)
+const rpcUrl = "<rpc-url>";
+const client = new Client(rpcUrl);
 
-const message = makeCastAdd(...)
-await client.submitMessage(message)
+const privateKey = ed.utils.randomPrivateKey();
+const privateKeyHex = ed.utils.bytesToHex(privateKey);
+console.log(privateKeyHex); // 86be7f6f8dcf18...
+// developers should safely store this EdDSA private key on behalf of users
+
+// _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
+
+const mnemonic = "your mnemonic apple orange banana ...";
+const wallet = ethers.Wallet.fromMnemonic(mnemonic);
+
+// _unsafeUnwrap() is used here for simplicity, but should be avoided in production
+const eip712Signer = Eip712Signer.fromSigner(
+  wallet,
+  wallet.address
+)._unsafeUnwrap();
+
+const dataOptions = {
+  fid: -9999, // must be changed to fid of the custody address, or else it will fail
+  network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+};
+
+const verificationRemoveBody = {
+  address: eip712Signer.signerKeyHex,
+};
+
+const verificationRemoveMessage = await makeVerificationRemove(
+  verificationRemoveBody,
+  dataOptions,
+  ed25519Signer
+);
+
+await client.submitMessage(verificationRemoveMessage._unsafeUnwrap());
 ```
 
 #### Parameters
@@ -725,39 +638,3 @@ await client.submitMessage(message)
 #### Returns
 
 `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](modules/protobufs.md#message) ; `data`: [`MessageData`](modules/types.md#messagedata)<[`VerificationRemoveBody`](modules/types.md#verificationremovebody), [`MESSAGE_TYPE_VERIFICATION_REMOVE`](enums/protobufs.MessageType.md#message_type_verification_remove)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-...
-
-___
-
-### makeVerificationRemoveData
-
-▸ **makeVerificationRemoveData**(`bodyJson`, `dataOptions`): `HubResult`<[`MessageData`](modules/types.md#messagedata)<[`VerificationRemoveBody`](modules/types.md#verificationremovebody), [`MESSAGE_TYPE_VERIFICATION_REMOVE`](enums/protobufs.MessageType.md#message_type_verification_remove)\>\>
-
-TODO DOCS: description
-
-TODO DOCS: usage example, here's the structure:
-
-**`Example`**
-
-```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-
-const message = makeCastAdd(...)
-await client.submitMessage(message)
-```
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`VerificationRemoveBody`](modules/types.md#verificationremovebody) |
-| `dataOptions` | `MessageDataOptions` |
-
-#### Returns
-
-`HubResult`<[`MessageData`](modules/types.md#messagedata)<[`VerificationRemoveBody`](modules/types.md#verificationremovebody), [`MESSAGE_TYPE_VERIFICATION_REMOVE`](enums/protobufs.MessageType.md#message_type_verification_remove)\>\>
-
-...
