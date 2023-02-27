@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Factories, getHubRpcClient, HubRpcClient } from '@farcaster/utils';
+import { Ed25519Signer, Factories, getHubRpcClient, HubRpcClient } from '@farcaster/utils';
 import { APP_NICKNAME, APP_VERSION } from '~/hubble';
 import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';
@@ -268,6 +268,60 @@ describe('Multi peer sync engine', () => {
     await sleepWhile(() => syncEngine2.syncTrieQSize > 0, 1000);
 
     expect(await syncEngine2.trie.rootHash()).toEqual(beforeRootHash);
+  });
+
+  test('Merge with multiple signers', async () => {
+    await engine1.mergeIdRegistryEvent(custodyEvent);
+
+    // Create 5 different signers
+    const signers: Ed25519Signer[] = await Promise.all(
+      Array.from({ length: 5 }, async (_) => {
+        const signer = Factories.Ed25519Signer.build();
+        const signerAdd = await Factories.SignerAddMessage.create(
+          { data: { fid, network, signerBody: { signer: signer.signerKey } } },
+          { transient: { signer: custodySigner } }
+        );
+        await engine1.mergeMessage(signerAdd);
+        return signer;
+      })
+    );
+
+    // Create 2 messages for each signer
+    const castAdds: protobufs.CastAddMessage[] = [];
+    for (const signer of signers) {
+      for (let i = 0; i < 2; i++) {
+        const castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
+        await engine1.mergeMessage(castAdd);
+        castAdds.push(castAdd);
+      }
+    }
+
+    // Make sure all messages exist
+    castAdds.forEach((castAdd) => {
+      expect(syncEngine1.trie.exists(new SyncId(castAdd))).toBeTruthy();
+    });
+
+    // Create a new sync engine with a new test db
+    const engine2 = new Engine(testDb2, network);
+    const syncEngine2 = new SyncEngine(engine2, testDb2);
+    await syncEngine2.initialize();
+
+    // Try to merge all the messages, to see if it fetches the right signers
+    const results = await syncEngine2.mergeMessages(castAdds, clientForServer1);
+    results.forEach((result) => {
+      expect(result.isOk()).toBeTruthy();
+    });
+
+    // Make sure all messages exist
+    castAdds.forEach((castAdd) => {
+      expect(syncEngine2.trie.exists(new SyncId(castAdd))).toBeTruthy();
+    });
+
+    // Make sure the root hashes are the same
+    expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
+    expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
+
+    await syncEngine2.stop();
   });
 
   xtest(
