@@ -1,5 +1,49 @@
 # @farcaster/utils
 
+## 0.2.7
+
+### Patch Changes
+
+- d04d5d4a: add fromId to SubscribeRequest protobuf and subscribe gRPC method
+- 4056b5d4: add HubEvent protobuf and types
+- 22a9d460: remove UserData location type
+- Updated dependencies [d04d5d4a]
+- Updated dependencies [4056b5d4]
+- Updated dependencies [22a9d460]
+  - @farcaster/protobufs@0.1.6
+
+## 0.2.6
+
+### Patch Changes
+
+- 96468718: Allow duplicate mentions positions
+
+## 0.2.5
+
+### Patch Changes
+
+- add prepublishOnly scripts to packages
+- Updated dependencies
+  - @farcaster/protobufs@0.1.5
+
+## 0.2.4
+
+### Patch Changes
+
+- 3096e00: Allow empty cast text
+
+## 0.2.3
+
+### Patch Changes
+
+- d21a8f2: chore: upgrade packages [feb 2023]
+- 6a66bae: feat: add mentionsPositions to CastAddBody
+- 1151fea: feat: update farcaster epoch to Jan 1, 2021
+- Updated dependencies [d21a8f2]
+- Updated dependencies [6a66bae]
+- Updated dependencies [cf9c64c]
+  - @farcaster/protobufs@0.1.4
+
 ## 0.2.2
 
 ### Patch Changes

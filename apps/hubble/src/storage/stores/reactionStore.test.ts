@@ -1,5 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesDecrement, bytesIncrement, Factories, HubError } from '@farcaster/utils';
+import { Factories, HubError, bytesDecrement, bytesIncrement, getFarcasterTime } from '@farcaster/utils';
+import { ok } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { getMessage, makeTsHash } from '~/storage/db/message';
 import { UserPostfix } from '~/storage/db/types';
@@ -7,7 +8,7 @@ import ReactionStore from '~/storage/stores/reactionStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 
 const db = jestRocksDB('protobufs.reactionStore.test');
-const eventHandler = new StoreEventHandler();
+const eventHandler = new StoreEventHandler(db);
 const set = new ReactionStore(db, eventHandler);
 const fid = Factories.Fid.build();
 const castId = Factories.CastId.build();
@@ -205,11 +206,13 @@ describe('getReactionsByTargetCast', () => {
 });
 
 describe('merge', () => {
-  let mergeEvents: [protobufs.Message, protobufs.Message[]][] = [];
+  let mergeEvents: [protobufs.Message | undefined, protobufs.Message[]][] = [];
 
-  const mergeMessageHandler = (message: protobufs.Message, deletedMessages?: protobufs.Message[]) => {
+  const mergeMessageHandler = (event: protobufs.MergeMessageHubEvent) => {
+    const { message, deletedMessages } = event.mergeMessageBody;
     mergeEvents.push([message, deletedMessages ?? []]);
   };
+
   beforeAll(() => {
     eventHandler.on('mergeMessage', mergeMessageHandler);
   });
@@ -283,7 +286,7 @@ describe('merge', () => {
 
   describe('ReactionAdd', () => {
     test('succeeds', async () => {
-      await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+      await expect(set.merge(reactionAdd)).resolves.toBeGreaterThan(0);
 
       await assertReactionAddWins(reactionAdd);
 
@@ -291,7 +294,7 @@ describe('merge', () => {
     });
 
     test('fails if merged twice', async () => {
-      await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+      await expect(set.merge(reactionAdd)).resolves.toBeGreaterThan(0);
       await expect(set.merge(reactionAdd)).rejects.toEqual(
         new HubError('bad_request.duplicate', 'message has already been merged')
       );
@@ -312,7 +315,7 @@ describe('merge', () => {
 
       test('succeeds with a later timestamp', async () => {
         await set.merge(reactionAdd);
-        await expect(set.merge(reactionAddLater)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionAddLater)).resolves.toBeGreaterThan(0);
 
         await assertReactionDoesNotExist(reactionAdd);
         await assertReactionAddWins(reactionAddLater);
@@ -346,7 +349,7 @@ describe('merge', () => {
 
       test('succeeds with a higher hash', async () => {
         await set.merge(reactionAdd);
-        await expect(set.merge(reactionAddLater)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionAddLater)).resolves.toBeGreaterThan(0);
 
         await assertReactionDoesNotExist(reactionAdd);
         await assertReactionAddWins(reactionAddLater);
@@ -375,7 +378,7 @@ describe('merge', () => {
         });
 
         await set.merge(reactionRemoveEarlier);
-        await expect(set.merge(reactionAdd)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionAdd)).resolves.toBeGreaterThan(0);
 
         await assertReactionAddWins(reactionAdd);
         await assertReactionDoesNotExist(reactionRemoveEarlier);
@@ -438,7 +441,7 @@ describe('merge', () => {
 
   describe('ReactionRemove', () => {
     test('succeeds', async () => {
-      await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+      await expect(set.merge(reactionRemove)).resolves.toBeGreaterThan(0);
 
       await assertReactionRemoveWins(reactionRemove);
 
@@ -446,7 +449,7 @@ describe('merge', () => {
     });
 
     test('fails if merged twice', async () => {
-      await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+      await expect(set.merge(reactionRemove)).resolves.toBeGreaterThan(0);
       await expect(set.merge(reactionRemove)).rejects.toEqual(
         new HubError('bad_request.duplicate', 'message has already been merged')
       );
@@ -465,7 +468,7 @@ describe('merge', () => {
 
       test('succeeds with a later timestamp', async () => {
         await set.merge(reactionRemove);
-        await expect(set.merge(reactionRemoveLater)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionRemoveLater)).resolves.toBeGreaterThan(0);
 
         await assertReactionDoesNotExist(reactionRemove);
         await assertReactionRemoveWins(reactionRemoveLater);
@@ -499,7 +502,7 @@ describe('merge', () => {
 
       test('succeeds with a higher hash', async () => {
         await set.merge(reactionRemove);
-        await expect(set.merge(reactionRemoveLater)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionRemoveLater)).resolves.toBeGreaterThan(0);
 
         await assertReactionDoesNotExist(reactionRemove);
         await assertReactionRemoveWins(reactionRemoveLater);
@@ -524,7 +527,7 @@ describe('merge', () => {
     describe('with conflicting ReactionAdd with different timestamps', () => {
       test('succeeds with a later timestamp', async () => {
         await set.merge(reactionAdd);
-        await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionRemove)).resolves.toBeGreaterThan(0);
         await assertReactionRemoveWins(reactionRemove);
         await assertReactionDoesNotExist(reactionAdd);
 
@@ -560,7 +563,7 @@ describe('merge', () => {
         });
 
         await set.merge(reactionAddLater);
-        await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionRemove)).resolves.toBeGreaterThan(0);
 
         await assertReactionDoesNotExist(reactionAddLater);
         await assertReactionRemoveWins(reactionRemove);
@@ -578,7 +581,7 @@ describe('merge', () => {
         });
 
         await set.merge(reactionAddEarlier);
-        await expect(set.merge(reactionRemove)).resolves.toEqual(undefined);
+        await expect(set.merge(reactionRemove)).resolves.toBeGreaterThan(0);
 
         await assertReactionDoesNotExist(reactionAddEarlier);
         await assertReactionRemoveWins(reactionRemove);
@@ -592,182 +595,192 @@ describe('merge', () => {
   });
 });
 
-// describe('pruneMessages', () => {
-//   let prunedMessages: MessageModel[];
-//   const pruneMessageListener = (message: MessageModel) => {
-//     prunedMessages.push(message);
-//   };
+describe('pruneMessages', () => {
+  let prunedMessages: protobufs.Message[];
 
-//   beforeAll(() => {
-//     eventHandler.on('pruneMessage', pruneMessageListener);
-//   });
+  const pruneMessageListener = (event: protobufs.PruneMessageHubEvent) => {
+    prunedMessages.push(event.pruneMessageBody.message);
+  };
 
-//   beforeEach(() => {
-//     prunedMessages = [];
-//   });
+  beforeAll(() => {
+    eventHandler.on('pruneMessage', pruneMessageListener);
+  });
 
-//   afterAll(() => {
-//     eventHandler.off('pruneMessage', pruneMessageListener);
-//   });
+  beforeEach(() => {
+    prunedMessages = [];
+  });
 
-//   let add1: protobufs.ReactionAddMessage;
-//   let add2: protobufs.ReactionAddMessage;
-//   let add3: protobufs.ReactionAddMessage;
-//   let add4: protobufs.ReactionAddMessage;
-//   let add5: protobufs.ReactionAddMessage;
-//   let addOld1: protobufs.ReactionAddMessage;
-//   let addOld2: protobufs.ReactionAddMessage;
+  afterAll(() => {
+    eventHandler.off('pruneMessage', pruneMessageListener);
+  });
 
-//   let remove1: protobufs.ReactionRemoveMessage;
-//   let remove2: protobufs.ReactionRemoveMessage;
-//   let remove3: protobufs.ReactionRemoveMessage;
-//   let remove4: protobufs.ReactionRemoveMessage;
-//   let remove5: protobufs.ReactionRemoveMessage;
-//   let removeOld3: protobufs.ReactionRemoveMessage;
+  let add1: protobufs.ReactionAddMessage;
+  let add2: protobufs.ReactionAddMessage;
+  let add3: protobufs.ReactionAddMessage;
+  let add4: protobufs.ReactionAddMessage;
+  let add5: protobufs.ReactionAddMessage;
+  let addOld1: protobufs.ReactionAddMessage;
+  let addOld2: protobufs.ReactionAddMessage;
 
-//   const generateAddWithTimestamp = async (
-//     fid: Uint8Array,
-//     timestamp: number
-//   ): Promise<protobufs.ReactionAddMessage> => {
-//     const addData = await Factories.ReactionAddData.create({ fid: Array.from(fid), timestamp });
-//     const addMessage = await Factories.Message.create({ data: Array.from(addData.bb?.bytes() ?? []) });
-//     return new MessageModel(addMessage) as protobufs.ReactionAddMessage;
-//   };
+  let remove1: protobufs.ReactionRemoveMessage;
+  let remove2: protobufs.ReactionRemoveMessage;
+  let remove3: protobufs.ReactionRemoveMessage;
+  let remove4: protobufs.ReactionRemoveMessage;
+  let remove5: protobufs.ReactionRemoveMessage;
+  let removeOld3: protobufs.ReactionRemoveMessage;
 
-//   const generateRemoveWithTimestamp = async (
-//     fid: Uint8Array,
-//     timestamp: number,
-//     cast?: CastId | null
-//   ): Promise<protobufs.ReactionRemoveMessage> => {
-//     const removeBody = await Factories.ReactionBody.build(cast ? { target: cast.unpack() } : {});
-//     const removeData = await Factories.ReactionRemoveData.create({ fid: Array.from(fid), timestamp, body: removeBody });
-//     const removeMessage = await Factories.Message.create({ data: Array.from(removeData.bb?.bytes() ?? []) });
-//     return new MessageModel(removeMessage) as protobufs.ReactionRemoveMessage;
-//   };
+  const generateAddWithTimestamp = async (fid: number, timestamp: number): Promise<protobufs.ReactionAddMessage> => {
+    return Factories.ReactionAddMessage.create({ data: { fid, timestamp } });
+  };
 
-//   beforeAll(async () => {
-//     const time = getFarcasterTime()._unsafeUnwrap() - 10;
-//     add1 = await generateAddWithTimestamp(fid, time + 1);
-//     add2 = await generateAddWithTimestamp(fid, time + 2);
-//     add3 = await generateAddWithTimestamp(fid, time + 3);
-//     add4 = await generateAddWithTimestamp(fid, time + 4);
-//     add5 = await generateAddWithTimestamp(fid, time + 5);
-//     addOld1 = await generateAddWithTimestamp(fid, time - 60 * 60);
-//     addOld2 = await generateAddWithTimestamp(fid, time - 60 * 60 + 1);
+  const generateRemoveWithTimestamp = async (
+    fid: number,
+    timestamp: number,
+    addBody?: protobufs.ReactionBody
+  ): Promise<protobufs.ReactionRemoveMessage> => {
+    return Factories.ReactionRemoveMessage.create({
+      data: {
+        fid,
+        timestamp,
+        reactionBody: addBody ?? Factories.ReactionBody.build(),
+      },
+    });
+  };
 
-//     remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1.body().target(new CastId()));
-//     remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2.body().target(new CastId()));
-//     remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.body().target(new CastId()));
-//     remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.body().target(new CastId()));
-//     remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.body().target(new CastId()));
-//     removeOld3 = await generateRemoveWithTimestamp(fid, time - 60 * 60 + 2);
-//   });
+  beforeAll(async () => {
+    const time = getFarcasterTime()._unsafeUnwrap() - 10;
+    add1 = await generateAddWithTimestamp(fid, time + 1);
+    add2 = await generateAddWithTimestamp(fid, time + 2);
+    add3 = await generateAddWithTimestamp(fid, time + 3);
+    add4 = await generateAddWithTimestamp(fid, time + 4);
+    add5 = await generateAddWithTimestamp(fid, time + 5);
+    addOld1 = await generateAddWithTimestamp(fid, time - 60 * 60);
+    addOld2 = await generateAddWithTimestamp(fid, time - 60 * 60 + 1);
 
-//   describe('with size limit', () => {
-//     const sizePrunedStore = new ReactionStore(db, eventHandler, { pruneSizeLimit: 3 });
+    remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1.data.reactionBody);
+    remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2.data.reactionBody);
+    remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.data.reactionBody);
+    remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.data.reactionBody);
+    remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.data.reactionBody);
+    removeOld3 = await generateRemoveWithTimestamp(fid, time - 60 * 60 + 2);
+  });
 
-//     test('no-ops when no messages have been merged', async () => {
-//       const result = await sizePrunedStore.pruneMessages(fid);
-//       expect(result._unsafeUnwrap()).toEqual(undefined);
-//       expect(prunedMessages).toEqual([]);
-//     });
+  describe('with size limit', () => {
+    const sizePrunedStore = new ReactionStore(db, eventHandler, { pruneSizeLimit: 3 });
 
-//     test('prunes earliest add messages', async () => {
-//       const messages = [add1, add2, add3, add4, add5];
-//       for (const message of messages) {
-//         await sizePrunedStore.merge(message);
-//       }
+    test('no-ops when no messages have been merged', async () => {
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result._unsafeUnwrap()).toEqual([]);
+      expect(prunedMessages).toEqual([]);
+    });
 
-//       const result = await sizePrunedStore.pruneMessages(fid);
-//       expect(result._unsafeUnwrap()).toEqual(undefined);
+    test('prunes earliest add messages', async () => {
+      const messages = [add1, add2, add3, add4, add5];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
 
-//       expect(prunedMessages).toEqual([add1, add2]);
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result.isOk()).toBeTruthy();
+      expect(result._unsafeUnwrap().length).toEqual(2);
 
-//       for (const message of prunedMessages as protobufs.ReactionAddMessage[]) {
-//         const getAdd = () =>
-//           sizePrunedStore.getReactionAdd(
-//             fid,
-//             message.body().type(),
-//             message.body().target(new CastId()) ?? new CastId()
-//           );
-//         await expect(getAdd()).rejects.toThrow(HubError);
-//       }
-//     });
+      expect(prunedMessages).toEqual([add1, add2]);
 
-//     test('prunes earliest remove messages', async () => {
-//       const messages = [remove1, remove2, remove3, remove4, remove5];
-//       for (const message of messages) {
-//         await sizePrunedStore.merge(message);
-//       }
+      for (const message of prunedMessages as protobufs.ReactionAddMessage[]) {
+        const getAdd = () =>
+          sizePrunedStore.getReactionAdd(
+            fid,
+            message.data.reactionBody.type,
+            message.data.reactionBody.targetCastId ?? Factories.CastId.build()
+          );
+        await expect(getAdd()).rejects.toThrow(HubError);
+      }
+    });
 
-//       const result = await sizePrunedStore.pruneMessages(fid);
-//       expect(result._unsafeUnwrap()).toEqual(undefined);
+    test('prunes earliest remove messages', async () => {
+      const messages = [remove1, remove2, remove3, remove4, remove5];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
 
-//       expect(prunedMessages).toEqual([remove1, remove2]);
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result.isOk()).toBeTruthy();
+      expect(result._unsafeUnwrap().length).toEqual(2);
 
-//       for (const message of prunedMessages as protobufs.ReactionRemoveMessage[]) {
-//         const getRemove = () =>
-//           sizePrunedStore.getReactionRemove(
-//             fid,
-//             message.body().type(),
-//             message.body().target(new CastId()) ?? new CastId()
-//           );
-//         await expect(getRemove()).rejects.toThrow(HubError);
-//       }
-//     });
+      expect(prunedMessages).toEqual([remove1, remove2]);
 
-//     test('prunes earliest messages', async () => {
-//       const messages = [add1, remove2, add3, remove4, add5];
-//       for (const message of messages) {
-//         await sizePrunedStore.merge(message);
-//       }
+      for (const message of prunedMessages as protobufs.ReactionRemoveMessage[]) {
+        const getRemove = () =>
+          sizePrunedStore.getReactionRemove(
+            fid,
+            message.data.reactionBody.type,
+            message.data.reactionBody.targetCastId ?? Factories.CastId.build()
+          );
+        await expect(getRemove()).rejects.toThrow(HubError);
+      }
+    });
 
-//       const result = await sizePrunedStore.pruneMessages(fid);
-//       expect(result._unsafeUnwrap()).toEqual(undefined);
+    test('prunes earliest messages', async () => {
+      const messages = [add1, remove2, add3, remove4, add5];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
 
-//       expect(prunedMessages).toEqual([add1, remove2]);
-//     });
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result.isOk()).toBeTruthy();
+      expect(result._unsafeUnwrap().length).toEqual(2);
 
-//     test('no-ops when adds have been removed', async () => {
-//       const messages = [add1, remove1, add2, remove2, add3];
-//       for (const message of messages) {
-//         await sizePrunedStore.merge(message);
-//       }
+      expect(prunedMessages).toEqual([add1, remove2]);
+    });
 
-//       const result = await sizePrunedStore.pruneMessages(fid);
-//       expect(result._unsafeUnwrap()).toEqual(undefined);
+    test('no-ops when adds have been removed', async () => {
+      const messages = [add1, remove1, add2, remove2, add3];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
 
-//       expect(prunedMessages).toEqual([]);
-//     });
-//   });
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result).toEqual(ok([]));
 
-//   describe('with time limit', () => {
-//     const timePrunedStore = new ReactionStore(db, eventHandler, { pruneTimeLimit: 60 * 60 - 1 });
+      expect(prunedMessages).toEqual([]);
+    });
+  });
 
-//     test('prunes earliest messages', async () => {
-//       const messages = [add1, remove2, addOld1, addOld2, removeOld3];
-//       for (const message of messages) {
-//         await timePrunedStore.merge(message);
-//       }
+  describe('with time limit', () => {
+    const timePrunedStore = new ReactionStore(db, eventHandler, { pruneTimeLimit: 60 * 60 - 1 });
 
-//       const result = await timePrunedStore.pruneMessages(fid);
-//       expect(result._unsafeUnwrap()).toEqual(undefined);
+    test('prunes earliest messages', async () => {
+      const messages = [add1, remove2, addOld1, addOld2, removeOld3];
+      for (const message of messages) {
+        await timePrunedStore.merge(message);
+      }
 
-//       expect(prunedMessages).toEqual([addOld1, addOld2, removeOld3]);
+      const result = await timePrunedStore.pruneMessages(fid);
+      expect(result.isOk()).toBeTruthy();
 
-//       await expect(
-//         timePrunedStore.getReactionAdd(fid, addOld1.body().type(), addOld1.body().target(new CastId()) ?? new CastId())
-//       ).rejects.toThrow(HubError);
-//       await expect(
-//         timePrunedStore.getReactionAdd(fid, addOld2.body().type(), addOld2.body().target(new CastId()) ?? new CastId())
-//       ).rejects.toThrow(HubError);
-//       await expect(
-//         timePrunedStore.getReactionRemove(
-//           fid,
-//           removeOld3.body().type(),
-//           removeOld3.body().target(new CastId()) ?? new CastId()
-//         )
-//       ).rejects.toThrow(HubError);
-//     });
-//   });
-// });
+      expect(prunedMessages).toEqual([addOld1, addOld2, removeOld3]);
+
+      await expect(
+        timePrunedStore.getReactionAdd(
+          fid,
+          addOld1.data.reactionBody.type,
+          addOld1.data.reactionBody.targetCastId ?? Factories.CastId.build()
+        )
+      ).rejects.toThrow(HubError);
+      await expect(
+        timePrunedStore.getReactionAdd(
+          fid,
+          addOld2.data.reactionBody.type,
+          addOld2.data.reactionBody.targetCastId ?? Factories.CastId.build()
+        )
+      ).rejects.toThrow(HubError);
+      await expect(
+        timePrunedStore.getReactionRemove(
+          fid,
+          removeOld3.data.reactionBody.type,
+          removeOld3.data.reactionBody.targetCastId ?? Factories.CastId.build()
+        )
+      ).rejects.toThrow(HubError);
+    });
+  });
+});

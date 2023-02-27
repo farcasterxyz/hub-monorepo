@@ -6,6 +6,10 @@ interface HubErrorOpts {
   presentable: boolean;
 }
 
+export const isHubError = (e: any): e is HubError => {
+  return typeof e.errCode !== 'undefined';
+};
+
 /**
  * HubError should be used to construct all types exceptions in the Hub.
  *

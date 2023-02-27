@@ -16,7 +16,7 @@
     "test:ci": "./node_modules/.bin/turbo run test:ci -- --passWithNoTests",
     "lint": "./node_modules/.bin/turbo run lint --parallel",
     "prepare": "husky install",
-    "publish-packages": "./node_modules/.bin/turbo run build lint && changeset version && changeset publish"
+    "docs": "./node_modules/.bin/turbo run build && typedoc"
   },
   "engines": {
     "npm": ">=8.0.0",
@@ -37,6 +37,8 @@
     "ts-node": "^10.9.1",
     "tsup": "^6.5.0",
     "turbo": "1.7.3",
+    "typedoc": "^0.23.25",
+    "typedoc-plugin-markdown": "^3.14.0",
     "typescript": "^5.0.0-beta"
   },
   "lint-staged": {

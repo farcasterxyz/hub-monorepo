@@ -20,6 +20,7 @@ describe('makeCastAddData', () => {
     const body: types.CastAddBody = {
       text: faker.random.alphaNumeric(200),
       mentions: [Factories.Fid.build(), Factories.Fid.build()],
+      mentionsPositions: [10, 20],
       parent: { fid: Factories.Fid.build(), hash: Factories.MessageHashHex.build() },
       embeds: [faker.internet.url()],
     };
@@ -47,6 +48,7 @@ describe('makeCastAdd', () => {
     const body: types.CastAddBody = {
       text: faker.random.alphaNumeric(200),
       mentions: [Factories.Fid.build(), Factories.Fid.build()],
+      mentionsPositions: [10, 20],
       parent: { fid: Factories.Fid.build(), hash: Factories.MessageHashHex.build() },
       embeds: [faker.internet.url()],
     };
@@ -115,48 +117,6 @@ describe('makeReactionRemove', () => {
       ed25519Signer
     );
     expect(message.isOk()).toBeTruthy();
-    const isValid = await validations.validateMessage(message._unsafeUnwrap()._protobuf);
-    expect(isValid.isOk()).toBeTruthy();
-  });
-});
-
-describe('makeAmpAddData', () => {
-  test('succeeds', async () => {
-    const data = await builders.makeAmpAddData({ targetFid: Factories.Fid.build() }, { fid, timestamp, network });
-    expect(data.isOk()).toBeTruthy();
-    const isValid = await validations.validateMessageData(data._unsafeUnwrap()._protobuf);
-    expect(isValid.isOk()).toBeTruthy();
-  });
-});
-
-describe('makeAmpRemoveData', () => {
-  test('succeeds', async () => {
-    const data = await builders.makeAmpRemoveData({ targetFid: Factories.Fid.build() }, { fid, timestamp, network });
-    expect(data.isOk()).toBeTruthy();
-    const isValid = await validations.validateMessageData(data._unsafeUnwrap()._protobuf);
-    expect(isValid.isOk()).toBeTruthy();
-  });
-});
-
-describe('makeAmpAdd', () => {
-  test('succeeds', async () => {
-    const message = await builders.makeAmpAdd(
-      { targetFid: Factories.Fid.build() },
-      { fid, timestamp, network },
-      ed25519Signer
-    );
-    const isValid = await validations.validateMessage(message._unsafeUnwrap()._protobuf);
-    expect(isValid.isOk()).toBeTruthy();
-  });
-});
-
-describe('makeAmpRemove', () => {
-  test('succeeds', async () => {
-    const message = await builders.makeAmpRemove(
-      { targetFid: Factories.Fid.build() },
-      { fid, timestamp, network },
-      ed25519Signer
-    );
     const isValid = await validations.validateMessage(message._unsafeUnwrap()._protobuf);
     expect(isValid.isOk()).toBeTruthy();
   });

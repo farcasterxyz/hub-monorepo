@@ -50,8 +50,8 @@ jobs:
       - name: Install dependencies
         run: yarn install
 
-      - name: Run audit
-        run: yarn audit
+      # - name: Run audit
+      #   run: yarn audit
 
       - name: Run linter
         run: yarn lint

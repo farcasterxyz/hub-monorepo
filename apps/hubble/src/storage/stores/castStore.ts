@@ -1,5 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, getFarcasterTime, HubAsyncResult, HubError } from '@farcaster/utils';
+import { bytesCompare, getFarcasterTime, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
+import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
 import {
   deleteMessageTransaction,
@@ -18,9 +19,8 @@ import {
 } from '~/storage/db/message';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { FID_BYTES, RootPrefix, TRUE_VALUE, UserPostfix } from '~/storage/db/types';
-import SequentialMergeStore from '~/storage/stores/sequentialMergeStore';
-import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import { StorePruneOptions } from '~/storage/stores/types';
+import StoreEventHandler, { putEventTransaction } from '~/storage/stores/storeEventHandler';
+import { MERGE_TIMEOUT_DEFAULT, StorePruneOptions } from '~/storage/stores/types';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 10_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 365; // 1 year
@@ -112,19 +112,19 @@ const makeCastsByMentionKey = (mentionFid: number, fid?: number, tsHash?: Uint8A
  * 4. parentFid:parentTsHash:fid:tsHash -> fid:tsHash (Child Set Index)
  * 5. mentionFid:fid:tsHash -> fid:tsHash (Mentions Set Index)
  */
-class CastStore extends SequentialMergeStore {
+class CastStore {
   private _db: RocksDB;
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
   private _pruneTimeLimit: number;
+  private _mergeLock: AsyncLock;
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
-    super();
-
     this._db = db;
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
     this._pruneTimeLimit = options.pruneTimeLimit ?? PRUNE_TIME_LIMIT_DEFAULT;
+    this._mergeLock = new AsyncLock();
   }
 
   /** Looks up CastAdd message by cast tsHash */
@@ -188,20 +188,31 @@ class CastStore extends SequentialMergeStore {
   }
 
   /** Merges a CastAdd or CastRemove message into the set */
-  async merge(message: protobufs.Message): Promise<void> {
+  async merge(message: protobufs.Message): Promise<number> {
     if (!protobufs.isCastAddMessage(message) && !protobufs.isCastRemoveMessage(message)) {
       throw new HubError('bad_request.validation_failure', 'invalid message type');
     }
 
-    const mergeResult = await this.mergeSequential(message);
-    if (mergeResult.isErr()) {
-      throw mergeResult.error;
-    }
-
-    return mergeResult.value;
+    return this._mergeLock
+      .acquire(
+        message.data.fid.toString(),
+        async () => {
+          if (protobufs.isCastAddMessage(message)) {
+            return this.mergeAdd(message);
+          } else if (protobufs.isCastRemoveMessage(message)) {
+            return this.mergeRemove(message);
+          } else {
+            throw new HubError('bad_request.validation_failure', 'invalid message type');
+          }
+        },
+        { timeout: MERGE_TIMEOUT_DEFAULT }
+      )
+      .catch((e: any) => {
+        throw isHubError(e) ? e : new HubError('unavailable.storage_failure', 'merge timed out');
+      });
   }
 
-  async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {
+  async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<number[]> {
     // Get all CastAdd messages signed by signer
     const castAdds = await getAllMessagesBySigner<protobufs.CastAddMessage>(
       this._db,
@@ -221,27 +232,43 @@ class CastStore extends SequentialMergeStore {
     // Create a rocksdb transaction
     let txn = this._db.transaction();
 
+    // Create list of events to broadcast
+    const events: protobufs.RevokeMessageHubEvent[] = [];
+
     // Add a delete operation to the transaction for each CastAdd
     for (const message of castAdds) {
       txn = this.deleteCastAddTransaction(txn, message);
+
+      const event = this._eventHandler.makeRevokeMessage(message);
+      if (event.isErr()) {
+        throw event.error;
+      }
+
+      events.push(event.value);
+      txn = putEventTransaction(txn, event.value);
     }
 
     // Add a delete operation to the transaction for each CastRemove
     for (const message of castRemoves) {
       txn = this.deleteCastRemoveTransaction(txn, message);
+
+      const event = this._eventHandler.makeRevokeMessage(message);
+      if (event.isErr()) {
+        throw event.error;
+      }
+
+      txn = putEventTransaction(txn, event.value);
     }
 
     await this._db.commit(txn);
 
     // Emit a revokeMessage event for each message
-    for (const message of [...castAdds, ...castRemoves]) {
-      this._eventHandler.emit('revokeMessage', message);
-    }
+    this._eventHandler.broadcastEvents(events);
 
-    return ok(undefined);
+    return ok(events.map((event) => event.id));
   }
 
-  async pruneMessages(fid: number): HubAsyncResult<void> {
+  async pruneMessages(fid: number): HubAsyncResult<number[]> {
     // Count number of CastAdd and CastRemove messages for this fid
     // TODO: persist this count to avoid having to retrieve it with each call
     const prefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
@@ -262,10 +289,10 @@ class CastStore extends SequentialMergeStore {
     const timestampToPrune = farcasterTime.value - this._pruneTimeLimit;
 
     // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
-    const messageToPrune: (protobufs.CastAddMessage | protobufs.CastRemoveMessage)[] = [];
+    const events: protobufs.PruneMessageHubEvent[] = [];
 
     // Create a rocksdb transaction to include all the mutations
-    let pruneTsx = this._db.transaction();
+    let pruneTxn = this._db.transaction();
 
     // Create a rocksdb iterator for all messages with the given prefix
     const pruneIterator = getMessagesPruneIterator(this._db, fid, UserPostfix.CastMessage);
@@ -283,48 +310,42 @@ class CastStore extends SequentialMergeStore {
 
       // Add a delete operation to the transaction depending on the message type
       if (protobufs.isCastAddMessage(message)) {
-        pruneTsx = this.deleteCastAddTransaction(pruneTsx, message);
+        pruneTxn = this.deleteCastAddTransaction(pruneTxn, message);
       } else if (protobufs.isCastRemoveMessage(message)) {
-        pruneTsx = this.deleteCastRemoveTransaction(pruneTsx, message);
+        pruneTxn = this.deleteCastRemoveTransaction(pruneTxn, message);
       } else {
         throw new HubError('unknown', 'invalid message type');
       }
 
-      // Store the message in order to emit the pruneMessage event later, decrement the number of messages
-      // yet to prune, and try to get the next message from the iterator
-      messageToPrune.push(message);
+      // Create prune event and store for broadcasting later
+      const pruneEvent = this._eventHandler.makePruneMessage(message);
+      if (pruneEvent.isErr()) {
+        return err(pruneEvent.error);
+      }
+      pruneTxn = putEventTransaction(pruneTxn, pruneEvent.value);
+      events.push(pruneEvent.value);
+
+      // Decrement the number of messages yet to prune, and try to get the next message from the iterator
       sizeToPrune = Math.max(0, sizeToPrune - 1);
       nextMessage = await getNextResult();
     }
 
-    if (messageToPrune.length > 0) {
+    if (events.length > 0) {
       // Commit the transaction to rocksdb
-      await this._db.commit(pruneTsx);
+      await this._db.commit(pruneTxn);
 
-      // For each of the pruned messages, emit a pruneMessage event
-      for (const message of messageToPrune) {
-        this._eventHandler.emit('pruneMessage', message);
-      }
+      // Emit prune events
+      this._eventHandler.broadcastEvents(events);
     }
 
-    return ok(undefined);
-  }
-
-  protected async mergeFromSequentialQueue(message: protobufs.Message): Promise<void> {
-    if (protobufs.isCastAddMessage(message)) {
-      return this.mergeAdd(message);
-    } else if (protobufs.isCastRemoveMessage(message)) {
-      return this.mergeRemove(message);
-    } else {
-      throw new HubError('bad_request.validation_failure', 'invalid message type');
-    }
+    return ok(events.map((event) => event.id));
   }
 
   /* -------------------------------------------------------------------------- */
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async mergeAdd(message: protobufs.CastAddMessage): Promise<void> {
+  private async mergeAdd(message: protobufs.CastAddMessage): Promise<number> {
     // Start RocksDB transaction
     let txn = this._db.transaction();
 
@@ -353,16 +374,22 @@ class CastStore extends SequentialMergeStore {
     // Add putCastAdd operations to the RocksDB transaction
     txn = this.putCastAddTransaction(txn, message);
 
+    const hubEvent = this._eventHandler.makeMergeMessage(message);
+    if (hubEvent.isErr()) {
+      throw hubEvent.error;
+    }
+    txn = putEventTransaction(txn, hubEvent.value);
+
     // Commit the RocksDB transaction
     await this._db.commit(txn);
 
     // Emit store event
-    this._eventHandler.emit('mergeMessage', message);
+    this._eventHandler.broadcastEvent(hubEvent.value);
 
-    return undefined;
+    return hubEvent.value.id;
   }
 
-  private async mergeRemove(message: protobufs.CastRemoveMessage): Promise<void> {
+  private async mergeRemove(message: protobufs.CastRemoveMessage): Promise<number> {
     // Define cast hash for lookups
     const removeTargetHash = message.data.castRemoveBody.targetHash;
 
@@ -426,11 +453,19 @@ class CastStore extends SequentialMergeStore {
     // Add putCastRemove operations to the RocksDB transaction
     txn = this.putCastRemoveTransaction(txn, message);
 
+    const hubEvent = this._eventHandler.makeMergeMessage(message, mergeConflicts);
+    if (hubEvent.isErr()) {
+      throw hubEvent.error;
+    }
+    txn = putEventTransaction(txn, hubEvent.value);
+
     // Commit the RocksDB transaction
     await this._db.commit(txn);
 
     // Emit store event
-    this._eventHandler.emit('mergeMessage', message, mergeConflicts);
+    this._eventHandler.broadcastEvent(hubEvent.value);
+
+    return hubEvent.value.id;
   }
 
   /* Builds a RocksDB transaction to insert a CastAdd message and construct its indices */

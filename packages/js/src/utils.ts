@@ -16,45 +16,61 @@ import * as types from './types';
 /*                           Event Response                                   */
 /* -------------------------------------------------------------------------- */
 
-export const deserializeEventResponse = (protobuf: protobufs.EventResponse): HubResult<types.EventResponse> => {
-  const type = protobuf.type;
-
-  switch (type) {
-    case protobufs.EventType.EVENT_TYPE_MERGE_MESSAGE:
-    case protobufs.EventType.EVENT_TYPE_PRUNE_MESSAGE:
-    case protobufs.EventType.EVENT_TYPE_REVOKE_MESSAGE: {
-      return deserializeMessage(protobuf.message as protobufs.Message).map((message) => {
+export const deserializeHubEvent = (protobuf: protobufs.HubEvent): HubResult<types.HubEvent> => {
+  if (protobufs.isMergeMessageHubEvent(protobuf)) {
+    return deserializeMessage(protobuf.mergeMessageBody.message).andThen((message) => {
+      return Result.combine(
+        protobuf.mergeMessageBody.deletedMessages.map((deletedMessage) => deserializeMessage(deletedMessage))
+      ).map((deletedMessages) => {
         return {
           _protobuf: protobuf,
-          type,
+          type: protobuf.type,
+          id: protobuf.id,
           message,
+          deletedMessages,
         };
       });
-    }
-    case protobufs.EventType.EVENT_TYPE_MERGE_ID_REGISTRY_EVENT: {
-      return deserializeIdRegistryEvent(protobuf.idRegistryEvent as protobufs.IdRegistryEvent).map(
-        (idRegistryEvent) => {
-          return {
-            _protobuf: protobuf,
-            type,
-            idRegistryEvent,
-          };
-        }
-      );
-    }
-    case protobufs.EventType.EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT: {
-      return deserializeNameRegistryEvent(protobuf.nameRegistryEvent as protobufs.NameRegistryEvent).map(
-        (nameRegistryEvent) => {
-          return {
-            _protobuf: protobuf,
-            type,
-            nameRegistryEvent,
-          };
-        }
-      );
-    }
-    default:
-      return err(new HubError('bad_request.invalid_param', `unknown EventType '${type}'`));
+    });
+  } else if (protobufs.isPruneMessageHubEvent(protobuf)) {
+    return deserializeMessage(protobuf.pruneMessageBody.message).map((message) => {
+      return {
+        _protobuf: protobuf,
+        type: protobuf.type,
+        id: protobuf.id,
+        message,
+      };
+    });
+  } else if (protobufs.isRevokeMessageHubEvent(protobuf)) {
+    return deserializeMessage(protobuf.revokeMessageBody.message).map((message) => {
+      return {
+        _protobuf: protobuf,
+        type: protobuf.type,
+        id: protobuf.id,
+        message,
+      };
+    });
+  } else if (protobufs.isMergeIdRegistryEventHubEvent(protobuf)) {
+    return deserializeIdRegistryEvent(protobuf.mergeIdRegistryEventBody.idRegistryEvent).map((idRegistryEvent) => {
+      return {
+        _protobuf: protobuf,
+        type: protobuf.type,
+        id: protobuf.id,
+        idRegistryEvent,
+      };
+    });
+  } else if (protobufs.isMergeNameRegistryEventHubEvent(protobuf)) {
+    return deserializeNameRegistryEvent(protobuf.mergeNameRegistryEventBody.nameRegistryEvent).map(
+      (nameRegistryEvent) => {
+        return {
+          _protobuf: protobuf,
+          type: protobuf.type,
+          id: protobuf.id,
+          nameRegistryEvent,
+        };
+      }
+    );
+  } else {
+    return err(new HubError('bad_request.invalid_param', `unknown EventType '${protobuf.type}'`));
   }
 };
 
@@ -77,8 +93,12 @@ export const deserializeNameRegistryEvent = (
     return err(deserialized.error);
   }
 
+  const expiry = typeof protobuf.expiry === 'number' ? fromFarcasterTime(protobuf.expiry) : ok(undefined);
+  if (expiry.isErr()) {
+    return err(expiry.error);
+  }
+
   const [blockHash, transactionHash, to, from, fname] = deserialized.value;
-  const expiry = fromFarcasterTime(protobuf.expiry);
   const { blockNumber, logIndex, type } = protobuf;
 
   return ok({
@@ -91,7 +111,7 @@ export const deserializeNameRegistryEvent = (
     to,
     type,
     from,
-    expiry,
+    expiry: expiry.value,
   });
 };
 
@@ -157,6 +177,9 @@ export const deserializeMessage = (protobuf: protobufs.Message): HubResult<types
 
 export const deserializeMessageData = (protobuf: protobufs.MessageData): HubResult<types.MessageData> => {
   const timestamp = fromFarcasterTime(protobuf.timestamp);
+  if (timestamp.isErr()) {
+    return err(timestamp.error);
+  }
 
   if (!Object.values(protobufs.MessageType).includes(protobuf.type)) {
     return err(new HubError('bad_request.invalid_param', 'type is invalid'));
@@ -167,8 +190,6 @@ export const deserializeMessageData = (protobuf: protobufs.MessageData): HubResu
     bodyResult = deserializeCastAddBody(protobuf.castAddBody);
   } else if (protobuf.castRemoveBody) {
     bodyResult = deserializeCastRemoveBody(protobuf.castRemoveBody);
-  } else if (protobuf.ampBody) {
-    bodyResult = deserializeAmpBody(protobuf.ampBody);
   } else if (protobuf.reactionBody) {
     bodyResult = deserializeReactionBody(protobuf.reactionBody);
   } else if (protobuf.signerBody) {
@@ -191,7 +212,7 @@ export const deserializeMessageData = (protobuf: protobufs.MessageData): HubResu
     _protobuf: protobuf,
     body: bodyResult.value,
     type: protobuf.type,
-    timestamp,
+    timestamp: timestamp.value,
     fid: protobuf.fid,
     network: protobuf.network,
   });
@@ -211,6 +232,7 @@ export const deserializeCastAddBody = (protobuf: protobufs.CastAddBody): HubResu
     text: protobuf.text,
     embeds: protobuf.embeds,
     mentions: protobuf.mentions,
+    mentionsPositions: protobuf.mentionsPositions,
     parent: parent.value,
   });
 };
@@ -225,6 +247,7 @@ export const serializeCastAddBody = (body: types.CastAddBody): HubResult<protobu
     protobufs.CastAddBody.create({
       embeds: body.embeds ?? [],
       mentions: body.mentions ?? [],
+      mentionsPositions: body.mentionsPositions ?? [],
       parentCastId: parent.value,
       text: body.text,
     })
@@ -269,14 +292,6 @@ export const deserializeVerificationAddEthAddressBody = (
     ethSignature,
     blockHash,
   });
-};
-
-export const deserializeAmpBody = (protobuf: protobufs.AmpBody): HubResult<types.AmpBody> => {
-  return ok({ targetFid: protobuf.targetFid });
-};
-
-export const serializeAmpBody = (body: types.AmpBody): HubResult<protobufs.AmpBody> => {
-  return validations.validateAmpBody({ targetFid: body.targetFid });
 };
 
 export const deserializeSignerBody = (protobuf: protobufs.SignerBody): HubResult<types.SignerBody> => {

@@ -1,5 +1,48 @@
 # @farcaster/hubble
 
+## 1.0.10
+
+### Patch Changes
+
+- Updated dependencies [d04d5d4a]
+- Updated dependencies [4056b5d4]
+- Updated dependencies [22a9d460]
+  - @farcaster/protobufs@0.1.6
+  - @farcaster/utils@0.2.7
+
+## 1.0.9
+
+### Patch Changes
+
+- Updated dependencies [96468718]
+  - @farcaster/utils@0.2.6
+
+## 1.0.8
+
+### Patch Changes
+
+- Updated dependencies
+  - @farcaster/protobufs@0.1.5
+  - @farcaster/utils@0.2.5
+
+## 1.0.7
+
+### Patch Changes
+
+- Updated dependencies [3096e00]
+  - @farcaster/utils@0.2.4
+
+## 1.0.6
+
+### Patch Changes
+
+- Updated dependencies [d21a8f2]
+- Updated dependencies [6a66bae]
+- Updated dependencies [1151fea]
+- Updated dependencies [cf9c64c]
+  - @farcaster/protobufs@0.1.4
+  - @farcaster/utils@0.2.3
+
 ## 1.0.5
 
 ### Patch Changes

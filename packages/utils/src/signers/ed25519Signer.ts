@@ -5,10 +5,13 @@ import { HubAsyncResult, HubResult } from '../errors';
 import { Signer } from './signer';
 
 export class Ed25519Signer implements Signer {
+  /** Signature scheme as defined in protobufs */
   public readonly scheme = SignatureScheme.SIGNATURE_SCHEME_ED25519;
 
-  /** 20-byte wallet address */
+  /** 32-byte EdDSA public key */
   public readonly signerKey: Uint8Array;
+
+  /** 32-byte EdDSA public key in hex format */
   public readonly signerKeyHex: string;
 
   private readonly _privateKey: Uint8Array;
@@ -26,7 +29,31 @@ export class Ed25519Signer implements Signer {
     this.signerKeyHex = signerKeyHex;
   }
 
-  /** generates 256-bit signature from an EdDSA key pair */
+  /**
+   * Generates a 256-bit signature using from EdDSA key pair.
+   *
+   * @example
+   * ```typescript
+   * import { Ed25519Signer } from '@farcaster/js';
+   * import { randomBytes } from 'crypto';
+   * import * as ed from '@noble/ed25519';
+   *
+   * const privateKeyBytes = ed.utils.randomPrivateKey();
+   * const signer = new Ed25519Signer(privateKeyBytes);
+   *
+   * const messageBytes = randomBytes(32);
+   * const messageHash = crypto.createHash('sha256').update(messageBytes).digest();
+   *
+   * const signature = await signer.signMessageHash(messageHash);
+   *
+   * console.log(signature._unsafeUnwrap());
+   * ```
+   *
+   * @param {Uint8Array} hash - The 256-bit hash of the message to be signed.
+   *
+   * @returns {Promise<HubAsyncResult<Uint8Array>>} A HubAsyncResult containing the signature as a Uint8Array.
+   *
+   */
   public async signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array> {
     return ed25519.signMessageHash(hash, this._privateKey);
   }

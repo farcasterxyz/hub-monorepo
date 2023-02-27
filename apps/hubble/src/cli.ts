@@ -4,11 +4,12 @@ import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from '@libp
 import { Command } from 'commander';
 import { existsSync } from 'fs';
 import { mkdir, readFile, writeFile } from 'fs/promises';
+import { ResultAsync } from 'neverthrow';
 import { dirname, resolve } from 'path';
 import { exit } from 'process';
 import { APP_VERSION, Hub, HubOptions } from '~/hubble';
 import { logger } from '~/utils/logger';
-import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
+import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo, parseAddress } from '~/utils/p2p';
 import { DEFAULT_RPC_CONSOLE, startConsole } from './console/console';
 import { parseNetwork } from './utils/command';
 
@@ -32,12 +33,15 @@ app
   .option('-b, --bootstrap <peer-multiaddrs...>', 'A list of peer multiaddrs to bootstrap libp2p')
   .option('-a, --allowed-peers <peerIds...>', 'An allow-list of peer ids permitted to connect to the hub')
   .option('--ip <ip-address>', 'The IP address libp2p should listen on. (default: "127.0.0.1")')
-  .option('--announce-ip <ip-address>', 'The IP address libp2p should announce to other peers')
-  .option('--no-fetch-ip', 'Do not fetch the IP address from an external service (default: false)')
+  .option(
+    '--announce-ip <ip-address>',
+    'The IP address libp2p should announce to other peers. If not provided, the IP address will be fetched from an external service'
+  )
   .option('-g, --gossip-port <port>', 'The tcp port libp2p should gossip over. (default: 13111)')
   .option('-r, --rpc-port <port>', 'The tcp port that the rpc server should listen on.  (default: 13112)')
   .option('--db-name <name>', 'The name of the RocksDB instance')
   .option('--db-reset', 'Clears the database before starting')
+  .option('--rebuild-sync-trie', 'Rebuilds the sync trie before starting')
   .option('-i, --id <filepath>', 'Path to the PeerId file')
   .option('-n --network <network>', 'Farcaster network ID', parseNetwork)
   .action(async (cliOptions) => {
@@ -52,6 +56,19 @@ app
     let peerId;
     if (cliOptions.id) {
       peerId = await readPeerId(resolve(cliOptions.id));
+    } else if (process.env['IDENTITY_B64']) {
+      // Read from the environment variable
+      const identityProtoBytes = Buffer.from(process.env['IDENTITY_B64'], 'base64');
+      const peerIdResult = await ResultAsync.fromPromise(createFromProtobuf(identityProtoBytes), (e) => {
+        return new Error(`Failed to read identity from environment: ${e}`);
+      });
+
+      if (peerIdResult.isErr()) {
+        throw peerIdResult.error;
+      }
+
+      peerId = peerIdResult.value;
+      logger.info({ identity: peerId.toString() }, 'Read identity from environment');
     } else {
       peerId = await readPeerId(resolve(hubConfig.id));
     }
@@ -70,24 +87,49 @@ app
       throw ipMultiAddrResult.error;
     }
 
+    const bootstrapAddrs = ((cliOptions.bootstrap ?? hubConfig.bootstrap ?? []) as string[])
+      .map((a) => parseAddress(a))
+      .map((a) => {
+        if (a.isErr()) {
+          logger.warn(
+            { errorCode: a.error.errCode, message: a.error.message },
+            "Couldn't parse bootstrap address, ignoring"
+          );
+        }
+        return a;
+      })
+      .filter((a) => a.isOk())
+      .map((a) => a._unsafeUnwrap());
+
+    const rebuildSyncTrie = cliOptions.rebuildSyncTrie ?? hubConfig.rebuildSyncTrie ?? false;
+
     const options: HubOptions = {
       peerId,
       ipMultiAddr: ipMultiAddrResult.value,
       announceIp: cliOptions.announceIp ?? hubConfig.announceIp,
-      fetchIp: cliOptions.fetchIp ?? hubConfig.fetchIp,
       gossipPort: hubAddressInfo.value.port,
       network: cliOptions.network ?? hubConfig.network,
       ethRpcUrl: cliOptions.ethRpcUrl ?? hubConfig.ethRpcUrl,
       IdRegistryAddress: cliOptions.firAddress ?? hubConfig.firAddress,
-      bootstrapAddrs: cliOptions.bootstrap ?? hubConfig.bootstrap,
+      bootstrapAddrs,
       allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort,
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
       resetDB: cliOptions.dbReset ?? hubConfig.dbReset,
+      rebuildSyncTrie,
     };
 
     const hub = new Hub(options);
-    hub.start();
+    const startResult = await ResultAsync.fromPromise(hub.start(), (e) => new Error(`Failed to start hub: ${e}`));
+    if (startResult.isErr()) {
+      logger.fatal(startResult.error);
+      logger.fatal({ reason: 'Hub Startup failed' }, 'shutting down hub');
+      try {
+        await teardown(hub);
+      } finally {
+        process.exit(1);
+      }
+    }
 
     process.stdin.resume();
 
@@ -107,11 +149,13 @@ app
     });
 
     process.on('uncaughtException', (err) => {
+      logger.error({ reason: 'Uncaught exception' }, 'shutting down hub');
       logger.fatal(err);
       process.exit(1);
     });
 
     process.on('unhandledRejection', (err) => {
+      logger.error({ reason: 'Unhandled Rejection' }, 'shutting down hub');
       logger.fatal(err);
       process.exit(1);
     });

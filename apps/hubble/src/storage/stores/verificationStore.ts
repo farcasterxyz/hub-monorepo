@@ -1,9 +1,7 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, HubAsyncResult, HubError } from '@farcaster/utils';
+import { bytesCompare, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
+import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
-import RocksDB, { Transaction } from '~/storage/db/rocksdb';
-import SequentialMergeStore from '~/storage/stores/sequentialMergeStore';
-import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import {
   deleteMessageTransaction,
   getAllMessagesBySigner,
@@ -15,9 +13,11 @@ import {
   makeTsHash,
   makeUserKey,
   putMessageTransaction,
-} from '../db/message';
-import { UserPostfix } from '../db/types';
-import { StorePruneOptions } from './types';
+} from '~/storage/db/message';
+import RocksDB, { Transaction } from '~/storage/db/rocksdb';
+import { UserPostfix } from '~/storage/db/types';
+import StoreEventHandler, { putEventTransaction } from '~/storage/stores/storeEventHandler';
+import { MERGE_TIMEOUT_DEFAULT, StorePruneOptions } from '~/storage/stores/types';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 50;
 
@@ -70,17 +70,17 @@ const makeVerificationRemovesKey = (fid: number, address?: Uint8Array): Buffer =
  * 2. fid:set:address -> fid:tsHash (Set Index)
  */
 
-class VerificationStore extends SequentialMergeStore {
+class VerificationStore {
   private _db: RocksDB;
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
+  private _mergeLock: AsyncLock;
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
-    super();
-
     this._db = db;
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
+    this._mergeLock = new AsyncLock();
   }
 
   /**
@@ -161,20 +161,31 @@ class VerificationStore extends SequentialMergeStore {
   }
 
   /** Merge a VerificationAdd or VerificationRemove message into the VerificationStore */
-  async merge(message: protobufs.Message): Promise<void> {
+  async merge(message: protobufs.Message): Promise<number> {
     if (!protobufs.isVerificationRemoveMessage(message) && !protobufs.isVerificationAddEthAddressMessage(message)) {
       throw new HubError('bad_request.validation_failure', 'invalid message type');
     }
 
-    const mergeResult = await this.mergeSequential(message);
-    if (mergeResult.isErr()) {
-      throw mergeResult.error;
-    }
-
-    return mergeResult.value;
+    return this._mergeLock
+      .acquire(
+        message.data.fid.toString(),
+        async () => {
+          if (protobufs.isVerificationAddEthAddressMessage(message)) {
+            return this.mergeAdd(message);
+          } else if (protobufs.isVerificationRemoveMessage(message)) {
+            return this.mergeRemove(message);
+          } else {
+            throw new HubError('bad_request.validation_failure', 'invalid message type');
+          }
+        },
+        { timeout: MERGE_TIMEOUT_DEFAULT }
+      )
+      .catch((e: any) => {
+        throw isHubError(e) ? e : new HubError('unavailable.storage_failure', 'merge timed out');
+      });
   }
 
-  async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {
+  async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<number[]> {
     // Get all VerificationAddEthAddress messages signed by signer
     const verificationAdds = await getAllMessagesBySigner<protobufs.VerificationAddEthAddressMessage>(
       this._db,
@@ -194,27 +205,44 @@ class VerificationStore extends SequentialMergeStore {
     // Create a rocksdb transaction
     let txn = this._db.transaction();
 
+    // Create list of events to broadcast
+    const events: protobufs.RevokeMessageHubEvent[] = [];
+
     // Add a delete operation to the transaction for each VerificationAddEthAddress
     for (const message of verificationAdds) {
       txn = this.deleteVerificationAddTransaction(txn, message);
+
+      const event = this._eventHandler.makeRevokeMessage(message);
+      if (event.isErr()) {
+        throw event.error;
+      }
+
+      events.push(event.value);
+      txn = putEventTransaction(txn, event.value);
     }
 
     // Add a delete operation to the transaction for each SignerRemove
     for (const message of castRemoves) {
       txn = this.deleteVerificationRemoveTransaction(txn, message);
+
+      const event = this._eventHandler.makeRevokeMessage(message);
+      if (event.isErr()) {
+        throw event.error;
+      }
+
+      events.push(event.value);
+      txn = putEventTransaction(txn, event.value);
     }
 
     await this._db.commit(txn);
 
     // Emit a revokeMessage event for each message
-    for (const message of [...verificationAdds, ...castRemoves]) {
-      this._eventHandler.emit('revokeMessage', message);
-    }
+    this._eventHandler.broadcastEvents(events);
 
-    return ok(undefined);
+    return ok(events.map((event) => event.id));
   }
 
-  async pruneMessages(fid: number): HubAsyncResult<void> {
+  async pruneMessages(fid: number): HubAsyncResult<number[]> {
     // Count number of verification messages for this fid
     // TODO: persist this count to avoid having to retrieve it with each call
     const prefix = makeMessagePrimaryKey(fid, UserPostfix.VerificationMessage);
@@ -227,10 +255,10 @@ class VerificationStore extends SequentialMergeStore {
     let sizeToPrune = count - this._pruneSizeLimit;
 
     // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
-    const messageToPrune: (protobufs.VerificationAddEthAddressMessage | protobufs.VerificationRemoveMessage)[] = [];
+    const events: protobufs.PruneMessageHubEvent[] = [];
 
     // Create a rocksdb transaction to include all the mutations
-    let pruneTsx = this._db.transaction();
+    let pruneTxn = this._db.transaction();
 
     // Create a rocksdb iterator for all messages with the given prefix
     const pruneIterator = getMessagesPruneIterator(this._db, fid, UserPostfix.VerificationMessage);
@@ -244,48 +272,42 @@ class VerificationStore extends SequentialMergeStore {
 
       // Add a delete operation to the transaction depending on the message type
       if (protobufs.isVerificationAddEthAddressMessage(message)) {
-        pruneTsx = this.deleteVerificationAddTransaction(pruneTsx, message);
+        pruneTxn = this.deleteVerificationAddTransaction(pruneTxn, message);
       } else if (protobufs.isVerificationRemoveMessage(message)) {
-        pruneTsx = this.deleteVerificationRemoveTransaction(pruneTsx, message);
+        pruneTxn = this.deleteVerificationRemoveTransaction(pruneTxn, message);
       } else {
         throw new HubError('unknown', 'invalid message type');
       }
 
-      // Store the message in order to emit the pruneMessage event later, decrement the number of messages
-      // yet to prune, and try to get the next message from the iterator
-      messageToPrune.push(message);
+      // Create prune event and store for broadcasting later
+      const pruneEvent = this._eventHandler.makePruneMessage(message);
+      if (pruneEvent.isErr()) {
+        return err(pruneEvent.error);
+      }
+      pruneTxn = putEventTransaction(pruneTxn, pruneEvent.value);
+      events.push(pruneEvent.value);
+
+      // Decrement the number of messages yet to prune, and try to get the next message from the iterator
       sizeToPrune = Math.max(0, sizeToPrune - 1);
       nextMessage = await getNextResult();
     }
 
-    if (messageToPrune.length > 0) {
+    if (events.length > 0) {
       // Commit the transaction to rocksdb
-      await this._db.commit(pruneTsx);
+      await this._db.commit(pruneTxn);
 
       // For each of the pruned messages, emit a pruneMessage event
-      for (const message of messageToPrune) {
-        this._eventHandler.emit('pruneMessage', message);
-      }
+      this._eventHandler.broadcastEvents(events);
     }
 
-    return ok(undefined);
-  }
-
-  protected async mergeFromSequentialQueue(message: protobufs.Message): Promise<void> {
-    if (protobufs.isVerificationAddEthAddressMessage(message)) {
-      return this.mergeAdd(message);
-    } else if (protobufs.isVerificationRemoveMessage(message)) {
-      return this.mergeRemove(message);
-    } else {
-      throw new HubError('bad_request.validation_failure', 'invalid message type');
-    }
+    return ok(events.map((event) => event.id));
   }
 
   /* -------------------------------------------------------------------------- */
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async mergeAdd(message: protobufs.VerificationAddEthAddressMessage): Promise<void> {
+  private async mergeAdd(message: protobufs.VerificationAddEthAddressMessage): Promise<number> {
     // Define address for lookups
     const address = message.data.verificationAddEthAddressBody.address;
     if (!address) {
@@ -303,14 +325,22 @@ class VerificationStore extends SequentialMergeStore {
     // Add putVerificationAdd operations to the RocksDB transaction
     txn = this.putVerificationAddTransaction(txn, message);
 
+    const hubEvent = this._eventHandler.makeMergeMessage(message, mergeConflicts.value);
+    if (hubEvent.isErr()) {
+      throw hubEvent.error;
+    }
+    txn = putEventTransaction(txn, hubEvent.value);
+
     // Commit the RocksDB transaction
     await this._db.commit(txn);
 
     // Emit store event
-    this._eventHandler.emit('mergeMessage', message, mergeConflicts.value);
+    this._eventHandler.broadcastEvent(hubEvent.value);
+
+    return hubEvent.value.id;
   }
 
-  private async mergeRemove(message: protobufs.VerificationRemoveMessage): Promise<void> {
+  private async mergeRemove(message: protobufs.VerificationRemoveMessage): Promise<number> {
     // Define address for lookups
     const address = message.data.verificationRemoveBody.address;
     if (!address) {
@@ -328,11 +358,19 @@ class VerificationStore extends SequentialMergeStore {
     // Add putVerificationRemove operations to the RocksDB transaction
     txn = this.putVerificationRemoveTransaction(txn, message);
 
+    const hubEvent = this._eventHandler.makeMergeMessage(message, mergeConflicts.value);
+    if (hubEvent.isErr()) {
+      throw hubEvent.error;
+    }
+    txn = putEventTransaction(txn, hubEvent.value);
+
     // Commit the RocksDB transaction
     await this._db.commit(txn);
 
     // Emit store event
-    this._eventHandler.emit('mergeMessage', message, mergeConflicts.value);
+    this._eventHandler.broadcastEvent(hubEvent.value);
+
+    return hubEvent.value.id;
   }
 
   private verificationMessageCompare(

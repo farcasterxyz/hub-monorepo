@@ -15,6 +15,7 @@ import {
 } from "@grpc/grpc-js";
 import Long from "long";
 import _m0 from "protobufjs/minimal";
+import { HubEvent, HubEventType, hubEventTypeFromJSON, hubEventTypeToJSON } from "./hub_event";
 import { IdRegistryEvent } from "./id_registry_event";
 import {
   CastId,
@@ -28,76 +29,16 @@ import {
 } from "./message";
 import { NameRegistryEvent } from "./name_registry_event";
 
-export enum EventType {
-  EVENT_TYPE_NONE = 0,
-  EVENT_TYPE_MERGE_MESSAGE = 1,
-  EVENT_TYPE_PRUNE_MESSAGE = 2,
-  EVENT_TYPE_REVOKE_MESSAGE = 3,
-  EVENT_TYPE_MERGE_ID_REGISTRY_EVENT = 4,
-  EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT = 5,
-  UNRECOGNIZED = -1,
-}
-
-export function eventTypeFromJSON(object: any): EventType {
-  switch (object) {
-    case 0:
-    case "EVENT_TYPE_NONE":
-      return EventType.EVENT_TYPE_NONE;
-    case 1:
-    case "EVENT_TYPE_MERGE_MESSAGE":
-      return EventType.EVENT_TYPE_MERGE_MESSAGE;
-    case 2:
-    case "EVENT_TYPE_PRUNE_MESSAGE":
-      return EventType.EVENT_TYPE_PRUNE_MESSAGE;
-    case 3:
-    case "EVENT_TYPE_REVOKE_MESSAGE":
-      return EventType.EVENT_TYPE_REVOKE_MESSAGE;
-    case 4:
-    case "EVENT_TYPE_MERGE_ID_REGISTRY_EVENT":
-      return EventType.EVENT_TYPE_MERGE_ID_REGISTRY_EVENT;
-    case 5:
-    case "EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT":
-      return EventType.EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT;
-    case -1:
-    case "UNRECOGNIZED":
-    default:
-      return EventType.UNRECOGNIZED;
-  }
-}
-
-export function eventTypeToJSON(object: EventType): string {
-  switch (object) {
-    case EventType.EVENT_TYPE_NONE:
-      return "EVENT_TYPE_NONE";
-    case EventType.EVENT_TYPE_MERGE_MESSAGE:
-      return "EVENT_TYPE_MERGE_MESSAGE";
-    case EventType.EVENT_TYPE_PRUNE_MESSAGE:
-      return "EVENT_TYPE_PRUNE_MESSAGE";
-    case EventType.EVENT_TYPE_REVOKE_MESSAGE:
-      return "EVENT_TYPE_REVOKE_MESSAGE";
-    case EventType.EVENT_TYPE_MERGE_ID_REGISTRY_EVENT:
-      return "EVENT_TYPE_MERGE_ID_REGISTRY_EVENT";
-    case EventType.EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT:
-      return "EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT";
-    case EventType.UNRECOGNIZED:
-    default:
-      return "UNRECOGNIZED";
-  }
-}
-
 export interface Empty {
 }
 
-export interface EventResponse {
-  type: EventType;
-  message: Message | undefined;
-  deletedMessages: Message[];
-  idRegistryEvent: IdRegistryEvent | undefined;
-  nameRegistryEvent: NameRegistryEvent | undefined;
+export interface SubscribeRequest {
+  eventTypes: HubEventType[];
+  fromId: number;
 }
 
-export interface SubscribeRequest {
-  eventTypes: EventType[];
+export interface EventRequest {
+  id: number;
 }
 
 /** Response Types for the Sync RPC Methods */
@@ -156,11 +97,6 @@ export interface ReactionsByFidRequest {
 export interface ReactionsByCastRequest {
   castId: CastId | undefined;
   reactionType: ReactionType;
-}
-
-export interface AmpRequest {
-  fid: number;
-  targetFid: number;
 }
 
 export interface UserDataRequest {
@@ -225,114 +161,8 @@ export const Empty = {
   },
 };
 
-function createBaseEventResponse(): EventResponse {
-  return { type: 0, message: undefined, deletedMessages: [], idRegistryEvent: undefined, nameRegistryEvent: undefined };
-}
-
-export const EventResponse = {
-  encode(message: EventResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.type !== 0) {
-      writer.uint32(8).int32(message.type);
-    }
-    if (message.message !== undefined) {
-      Message.encode(message.message, writer.uint32(18).fork()).ldelim();
-    }
-    for (const v of message.deletedMessages) {
-      Message.encode(v!, writer.uint32(26).fork()).ldelim();
-    }
-    if (message.idRegistryEvent !== undefined) {
-      IdRegistryEvent.encode(message.idRegistryEvent, writer.uint32(34).fork()).ldelim();
-    }
-    if (message.nameRegistryEvent !== undefined) {
-      NameRegistryEvent.encode(message.nameRegistryEvent, writer.uint32(42).fork()).ldelim();
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): EventResponse {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseEventResponse();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          message.type = reader.int32() as any;
-          break;
-        case 2:
-          message.message = Message.decode(reader, reader.uint32());
-          break;
-        case 3:
-          message.deletedMessages.push(Message.decode(reader, reader.uint32()));
-          break;
-        case 4:
-          message.idRegistryEvent = IdRegistryEvent.decode(reader, reader.uint32());
-          break;
-        case 5:
-          message.nameRegistryEvent = NameRegistryEvent.decode(reader, reader.uint32());
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
-      }
-    }
-    return message;
-  },
-
-  fromJSON(object: any): EventResponse {
-    return {
-      type: isSet(object.type) ? eventTypeFromJSON(object.type) : 0,
-      message: isSet(object.message) ? Message.fromJSON(object.message) : undefined,
-      deletedMessages: Array.isArray(object?.deletedMessages)
-        ? object.deletedMessages.map((e: any) => Message.fromJSON(e))
-        : [],
-      idRegistryEvent: isSet(object.idRegistryEvent) ? IdRegistryEvent.fromJSON(object.idRegistryEvent) : undefined,
-      nameRegistryEvent: isSet(object.nameRegistryEvent)
-        ? NameRegistryEvent.fromJSON(object.nameRegistryEvent)
-        : undefined,
-    };
-  },
-
-  toJSON(message: EventResponse): unknown {
-    const obj: any = {};
-    message.type !== undefined && (obj.type = eventTypeToJSON(message.type));
-    message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
-    if (message.deletedMessages) {
-      obj.deletedMessages = message.deletedMessages.map((e) => e ? Message.toJSON(e) : undefined);
-    } else {
-      obj.deletedMessages = [];
-    }
-    message.idRegistryEvent !== undefined &&
-      (obj.idRegistryEvent = message.idRegistryEvent ? IdRegistryEvent.toJSON(message.idRegistryEvent) : undefined);
-    message.nameRegistryEvent !== undefined && (obj.nameRegistryEvent = message.nameRegistryEvent
-      ? NameRegistryEvent.toJSON(message.nameRegistryEvent)
-      : undefined);
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<EventResponse>, I>>(base?: I): EventResponse {
-    return EventResponse.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<EventResponse>, I>>(object: I): EventResponse {
-    const message = createBaseEventResponse();
-    message.type = object.type ?? 0;
-    message.message = (object.message !== undefined && object.message !== null)
-      ? Message.fromPartial(object.message)
-      : undefined;
-    message.deletedMessages = object.deletedMessages?.map((e) => Message.fromPartial(e)) || [];
-    message.idRegistryEvent = (object.idRegistryEvent !== undefined && object.idRegistryEvent !== null)
-      ? IdRegistryEvent.fromPartial(object.idRegistryEvent)
-      : undefined;
-    message.nameRegistryEvent = (object.nameRegistryEvent !== undefined && object.nameRegistryEvent !== null)
-      ? NameRegistryEvent.fromPartial(object.nameRegistryEvent)
-      : undefined;
-    return message;
-  },
-};
-
 function createBaseSubscribeRequest(): SubscribeRequest {
-  return { eventTypes: [] };
+  return { eventTypes: [], fromId: 0 };
 }
 
 export const SubscribeRequest = {
@@ -342,6 +172,9 @@ export const SubscribeRequest = {
       writer.int32(v);
     }
     writer.ldelim();
+    if (message.fromId !== 0) {
+      writer.uint32(16).uint64(message.fromId);
+    }
     return writer;
   },
 
@@ -362,6 +195,9 @@ export const SubscribeRequest = {
             message.eventTypes.push(reader.int32() as any);
           }
           break;
+        case 2:
+          message.fromId = longToNumber(reader.uint64() as Long);
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -372,17 +208,19 @@ export const SubscribeRequest = {
 
   fromJSON(object: any): SubscribeRequest {
     return {
-      eventTypes: Array.isArray(object?.eventTypes) ? object.eventTypes.map((e: any) => eventTypeFromJSON(e)) : [],
+      eventTypes: Array.isArray(object?.eventTypes) ? object.eventTypes.map((e: any) => hubEventTypeFromJSON(e)) : [],
+      fromId: isSet(object.fromId) ? Number(object.fromId) : 0,
     };
   },
 
   toJSON(message: SubscribeRequest): unknown {
     const obj: any = {};
     if (message.eventTypes) {
-      obj.eventTypes = message.eventTypes.map((e) => eventTypeToJSON(e));
+      obj.eventTypes = message.eventTypes.map((e) => hubEventTypeToJSON(e));
     } else {
       obj.eventTypes = [];
     }
+    message.fromId !== undefined && (obj.fromId = Math.round(message.fromId));
     return obj;
   },
 
@@ -393,6 +231,58 @@ export const SubscribeRequest = {
   fromPartial<I extends Exact<DeepPartial<SubscribeRequest>, I>>(object: I): SubscribeRequest {
     const message = createBaseSubscribeRequest();
     message.eventTypes = object.eventTypes?.map((e) => e) || [];
+    message.fromId = object.fromId ?? 0;
+    return message;
+  },
+};
+
+function createBaseEventRequest(): EventRequest {
+  return { id: 0 };
+}
+
+export const EventRequest = {
+  encode(message: EventRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.id !== 0) {
+      writer.uint32(8).uint64(message.id);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): EventRequest {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseEventRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.id = longToNumber(reader.uint64() as Long);
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): EventRequest {
+    return { id: isSet(object.id) ? Number(object.id) : 0 };
+  },
+
+  toJSON(message: EventRequest): unknown {
+    const obj: any = {};
+    message.id !== undefined && (obj.id = Math.round(message.id));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<EventRequest>, I>>(base?: I): EventRequest {
+    return EventRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<EventRequest>, I>>(object: I): EventRequest {
+    const message = createBaseEventRequest();
+    message.id = object.id ?? 0;
     return message;
   },
 };
@@ -1125,68 +1015,6 @@ export const ReactionsByCastRequest = {
   },
 };
 
-function createBaseAmpRequest(): AmpRequest {
-  return { fid: 0, targetFid: 0 };
-}
-
-export const AmpRequest = {
-  encode(message: AmpRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.fid !== 0) {
-      writer.uint32(8).uint64(message.fid);
-    }
-    if (message.targetFid !== 0) {
-      writer.uint32(16).uint64(message.targetFid);
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): AmpRequest {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseAmpRequest();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          message.fid = longToNumber(reader.uint64() as Long);
-          break;
-        case 2:
-          message.targetFid = longToNumber(reader.uint64() as Long);
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
-      }
-    }
-    return message;
-  },
-
-  fromJSON(object: any): AmpRequest {
-    return {
-      fid: isSet(object.fid) ? Number(object.fid) : 0,
-      targetFid: isSet(object.targetFid) ? Number(object.targetFid) : 0,
-    };
-  },
-
-  toJSON(message: AmpRequest): unknown {
-    const obj: any = {};
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    message.targetFid !== undefined && (obj.targetFid = Math.round(message.targetFid));
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<AmpRequest>, I>>(base?: I): AmpRequest {
-    return AmpRequest.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<AmpRequest>, I>>(object: I): AmpRequest {
-    const message = createBaseAmpRequest();
-    message.fid = object.fid ?? 0;
-    message.targetFid = object.targetFid ?? 0;
-    return message;
-  },
-};
-
 function createBaseUserDataRequest(): UserDataRequest {
   return { fid: 0, userDataType: 0 };
 }
@@ -1464,8 +1292,17 @@ export const HubServiceService = {
     responseStream: true,
     requestSerialize: (value: SubscribeRequest) => Buffer.from(SubscribeRequest.encode(value).finish()),
     requestDeserialize: (value: Buffer) => SubscribeRequest.decode(value),
-    responseSerialize: (value: EventResponse) => Buffer.from(EventResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => EventResponse.decode(value),
+    responseSerialize: (value: HubEvent) => Buffer.from(HubEvent.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => HubEvent.decode(value),
+  },
+  getEvent: {
+    path: "/HubService/GetEvent",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: EventRequest) => Buffer.from(EventRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => EventRequest.decode(value),
+    responseSerialize: (value: HubEvent) => Buffer.from(HubEvent.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => HubEvent.decode(value),
   },
   /** Casts */
   getCast: {
@@ -1529,34 +1366,6 @@ export const HubServiceService = {
     responseStream: false,
     requestSerialize: (value: ReactionsByCastRequest) => Buffer.from(ReactionsByCastRequest.encode(value).finish()),
     requestDeserialize: (value: Buffer) => ReactionsByCastRequest.decode(value),
-    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
-  },
-  /** Amps */
-  getAmp: {
-    path: "/HubService/GetAmp",
-    requestStream: false,
-    responseStream: false,
-    requestSerialize: (value: AmpRequest) => Buffer.from(AmpRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer) => AmpRequest.decode(value),
-    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => Message.decode(value),
-  },
-  getAmpsByFid: {
-    path: "/HubService/GetAmpsByFid",
-    requestStream: false,
-    responseStream: false,
-    requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer) => FidRequest.decode(value),
-    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
-  },
-  getAmpsByUser: {
-    path: "/HubService/GetAmpsByUser",
-    requestStream: false,
-    responseStream: false,
-    requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer) => FidRequest.decode(value),
     responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
@@ -1663,15 +1472,6 @@ export const HubServiceService = {
     responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
-  getAllAmpMessagesByFid: {
-    path: "/HubService/GetAllAmpMessagesByFid",
-    requestStream: false,
-    responseStream: false,
-    requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer) => FidRequest.decode(value),
-    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
-  },
   getAllVerificationMessagesByFid: {
     path: "/HubService/GetAllVerificationMessagesByFid",
     requestStream: false,
@@ -1755,7 +1555,8 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   submitIdRegistryEvent: handleUnaryCall<IdRegistryEvent, IdRegistryEvent>;
   submitNameRegistryEvent: handleUnaryCall<NameRegistryEvent, NameRegistryEvent>;
   /** Event Methods */
-  subscribe: handleServerStreamingCall<SubscribeRequest, EventResponse>;
+  subscribe: handleServerStreamingCall<SubscribeRequest, HubEvent>;
+  getEvent: handleUnaryCall<EventRequest, HubEvent>;
   /** Casts */
   getCast: handleUnaryCall<CastId, Message>;
   getCastsByFid: handleUnaryCall<FidRequest, MessagesResponse>;
@@ -1765,10 +1566,6 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getReaction: handleUnaryCall<ReactionRequest, Message>;
   getReactionsByFid: handleUnaryCall<ReactionsByFidRequest, MessagesResponse>;
   getReactionsByCast: handleUnaryCall<ReactionsByCastRequest, MessagesResponse>;
-  /** Amps */
-  getAmp: handleUnaryCall<AmpRequest, Message>;
-  getAmpsByFid: handleUnaryCall<FidRequest, MessagesResponse>;
-  getAmpsByUser: handleUnaryCall<FidRequest, MessagesResponse>;
   /** User Data */
   getUserData: handleUnaryCall<UserDataRequest, Message>;
   getUserDataByFid: handleUnaryCall<FidRequest, MessagesResponse>;
@@ -1784,7 +1581,6 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   /** Bulk Methods */
   getAllCastMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getAllReactionMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
-  getAllAmpMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getAllVerificationMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getAllSignerMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getAllUserDataMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
@@ -1841,12 +1637,24 @@ export interface HubServiceClient extends Client {
     callback: (error: ServiceError | null, response: NameRegistryEvent) => void,
   ): ClientUnaryCall;
   /** Event Methods */
-  subscribe(request: SubscribeRequest, options?: Partial<CallOptions>): ClientReadableStream<EventResponse>;
+  subscribe(request: SubscribeRequest, options?: Partial<CallOptions>): ClientReadableStream<HubEvent>;
   subscribe(
     request: SubscribeRequest,
     metadata?: Metadata,
     options?: Partial<CallOptions>,
-  ): ClientReadableStream<EventResponse>;
+  ): ClientReadableStream<HubEvent>;
+  getEvent(request: EventRequest, callback: (error: ServiceError | null, response: HubEvent) => void): ClientUnaryCall;
+  getEvent(
+    request: EventRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: HubEvent) => void,
+  ): ClientUnaryCall;
+  getEvent(
+    request: EventRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: HubEvent) => void,
+  ): ClientUnaryCall;
   /** Casts */
   getCast(request: CastId, callback: (error: ServiceError | null, response: Message) => void): ClientUnaryCall;
   getCast(
@@ -1947,49 +1755,6 @@ export interface HubServiceClient extends Client {
   ): ClientUnaryCall;
   getReactionsByCast(
     request: ReactionsByCastRequest,
-    metadata: Metadata,
-    options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
-  ): ClientUnaryCall;
-  /** Amps */
-  getAmp(request: AmpRequest, callback: (error: ServiceError | null, response: Message) => void): ClientUnaryCall;
-  getAmp(
-    request: AmpRequest,
-    metadata: Metadata,
-    callback: (error: ServiceError | null, response: Message) => void,
-  ): ClientUnaryCall;
-  getAmp(
-    request: AmpRequest,
-    metadata: Metadata,
-    options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: Message) => void,
-  ): ClientUnaryCall;
-  getAmpsByFid(
-    request: FidRequest,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
-  ): ClientUnaryCall;
-  getAmpsByFid(
-    request: FidRequest,
-    metadata: Metadata,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
-  ): ClientUnaryCall;
-  getAmpsByFid(
-    request: FidRequest,
-    metadata: Metadata,
-    options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
-  ): ClientUnaryCall;
-  getAmpsByUser(
-    request: FidRequest,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
-  ): ClientUnaryCall;
-  getAmpsByUser(
-    request: FidRequest,
-    metadata: Metadata,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
-  ): ClientUnaryCall;
-  getAmpsByUser(
-    request: FidRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: MessagesResponse) => void,
@@ -2157,21 +1922,6 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: MessagesResponse) => void,
   ): ClientUnaryCall;
-  getAllAmpMessagesByFid(
-    request: FidRequest,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
-  ): ClientUnaryCall;
-  getAllAmpMessagesByFid(
-    request: FidRequest,
-    metadata: Metadata,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
-  ): ClientUnaryCall;
-  getAllAmpMessagesByFid(
-    request: FidRequest,
-    metadata: Metadata,
-    options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
-  ): ClientUnaryCall;
   getAllVerificationMessagesByFid(
     request: FidRequest,
     callback: (error: ServiceError | null, response: MessagesResponse) => void,
@@ -2295,6 +2045,68 @@ export interface HubServiceClient extends Client {
 export const HubServiceClient = makeGenericClientConstructor(HubServiceService, "HubService") as unknown as {
   new (address: string, credentials: ChannelCredentials, options?: Partial<ClientOptions>): HubServiceClient;
   service: typeof HubServiceService;
+};
+
+export type AdminServiceService = typeof AdminServiceService;
+export const AdminServiceService = {
+  rebuildSyncTrie: {
+    path: "/AdminService/RebuildSyncTrie",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => Empty.decode(value),
+    responseSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => Empty.decode(value),
+  },
+  deleteAllMessagesFromDb: {
+    path: "/AdminService/DeleteAllMessagesFromDb",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => Empty.decode(value),
+    responseSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => Empty.decode(value),
+  },
+} as const;
+
+export interface AdminServiceServer extends UntypedServiceImplementation {
+  rebuildSyncTrie: handleUnaryCall<Empty, Empty>;
+  deleteAllMessagesFromDb: handleUnaryCall<Empty, Empty>;
+}
+
+export interface AdminServiceClient extends Client {
+  rebuildSyncTrie(request: Empty, callback: (error: ServiceError | null, response: Empty) => void): ClientUnaryCall;
+  rebuildSyncTrie(
+    request: Empty,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: Empty) => void,
+  ): ClientUnaryCall;
+  rebuildSyncTrie(
+    request: Empty,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: Empty) => void,
+  ): ClientUnaryCall;
+  deleteAllMessagesFromDb(
+    request: Empty,
+    callback: (error: ServiceError | null, response: Empty) => void,
+  ): ClientUnaryCall;
+  deleteAllMessagesFromDb(
+    request: Empty,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: Empty) => void,
+  ): ClientUnaryCall;
+  deleteAllMessagesFromDb(
+    request: Empty,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: Empty) => void,
+  ): ClientUnaryCall;
+}
+
+export const AdminServiceClient = makeGenericClientConstructor(AdminServiceService, "AdminService") as unknown as {
+  new (address: string, credentials: ChannelCredentials, options?: Partial<ClientOptions>): AdminServiceClient;
+  service: typeof AdminServiceService;
 };
 
 declare var self: any | undefined;

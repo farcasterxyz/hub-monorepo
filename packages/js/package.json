@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/js",
-  "version": "0.2.2",
+  "version": "0.2.7",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -16,8 +16,8 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@farcaster/protobufs": "0.1.3",
-    "@farcaster/utils": "0.2.2",
+    "@farcaster/protobufs": "0.1.6",
+    "@farcaster/utils": "0.2.7",
     "@noble/hashes": "^1.2.0",
     "ethers": "^5.7.2",
     "neverthrow": "^6.0.0"
@@ -27,7 +27,8 @@
     "clean": "rimraf ./dist",
     "lint": "eslint  src/ --color --ext .ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
-    "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"
+    "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage",
+    "prepublishOnly": "yarn run build"
   },
   "devDependencies": {
     "@faker-js/faker": "^7.6.0",

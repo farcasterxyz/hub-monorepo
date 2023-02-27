@@ -3,28 +3,17 @@ syntax = "proto3";
 import "message.proto";
 import "id_registry_event.proto";
 import "name_registry_event.proto";
+import "hub_event.proto";
 
 message Empty {}
 
-enum EventType {
-  EVENT_TYPE_NONE = 0;
-  EVENT_TYPE_MERGE_MESSAGE = 1;
-  EVENT_TYPE_PRUNE_MESSAGE = 2;
-  EVENT_TYPE_REVOKE_MESSAGE = 3;
-  EVENT_TYPE_MERGE_ID_REGISTRY_EVENT = 4;
-  EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT = 5;
-}
-
-message EventResponse {
-  EventType type = 1;
-  Message message = 2;
-  repeated Message deleted_messages = 3;
-  IdRegistryEvent id_registry_event = 4;
-  NameRegistryEvent name_registry_event = 5;
-}
-
 message SubscribeRequest {
-  repeated EventType event_types = 1;
+  repeated HubEventType event_types = 1;
+  uint64 from_id = 2;
+}
+
+message EventRequest {
+  uint64 id = 1;
 }
 
 // Response Types for the Sync RPC Methods
@@ -36,25 +25,25 @@ message HubInfoResponse {
 }
 
 message TrieNodeMetadataResponse {
-    bytes prefix = 1;
-    uint64 num_messages = 2;
-    string hash = 3;
-    repeated TrieNodeMetadataResponse children = 4;
+  bytes prefix = 1;
+  uint64 num_messages = 2;
+  string hash = 3;
+  repeated TrieNodeMetadataResponse children = 4;
 }
 
 message TrieNodeSnapshotResponse {
-    bytes prefix = 1;
-    repeated string excluded_hashes = 2;
-    uint64 num_messages = 3;
-    string root_hash = 4;
+  bytes prefix = 1;
+  repeated string excluded_hashes = 2;
+  uint64 num_messages = 3;
+  string root_hash = 4;
 }
 
 message TrieNodePrefix {
-    bytes prefix = 1;
+  bytes prefix = 1;
 }
 
 message SyncIds {
-    repeated bytes sync_ids = 1;
+  repeated bytes sync_ids = 1;
 }
 
 message FidRequest {
@@ -85,11 +74,6 @@ message ReactionsByCastRequest {
   ReactionType reaction_type = 2;
 }
 
-message AmpRequest {
-  uint64 fid = 1;
-  uint64 target_fid = 2;
-}
-
 message UserDataRequest {
   uint64 fid = 1;
   UserDataType user_data_type = 2;
@@ -116,7 +100,8 @@ service HubService {
   rpc SubmitNameRegistryEvent(NameRegistryEvent) returns (NameRegistryEvent);
 
   // Event Methods
-  rpc Subscribe(SubscribeRequest) returns (stream EventResponse);
+  rpc Subscribe(SubscribeRequest) returns (stream HubEvent);
+  rpc GetEvent(EventRequest) returns (HubEvent);
 
   // Casts
   rpc GetCast(CastId) returns (Message);
@@ -128,11 +113,6 @@ service HubService {
   rpc GetReaction(ReactionRequest) returns (Message);
   rpc GetReactionsByFid(ReactionsByFidRequest) returns (MessagesResponse);
   rpc GetReactionsByCast(ReactionsByCastRequest) returns (MessagesResponse);
-
-  // Amps
-  rpc GetAmp(AmpRequest) returns (Message);
-  rpc GetAmpsByFid(FidRequest) returns (MessagesResponse);
-  rpc GetAmpsByUser(FidRequest) returns (MessagesResponse);
 
   // User Data
   rpc GetUserData(UserDataRequest) returns (Message);
@@ -152,7 +132,6 @@ service HubService {
   // Bulk Methods
   rpc GetAllCastMessagesByFid(FidRequest) returns (MessagesResponse);
   rpc GetAllReactionMessagesByFid(FidRequest) returns (MessagesResponse);
-  rpc GetAllAmpMessagesByFid(FidRequest) returns (MessagesResponse);
   rpc GetAllVerificationMessagesByFid(FidRequest) returns (MessagesResponse);
   rpc GetAllSignerMessagesByFid(FidRequest) returns (MessagesResponse);
   rpc GetAllUserDataMessagesByFid(FidRequest) returns (MessagesResponse);
@@ -163,4 +142,9 @@ service HubService {
   rpc GetAllMessagesBySyncIds(SyncIds) returns (MessagesResponse);
   rpc GetSyncMetadataByPrefix(TrieNodePrefix) returns (TrieNodeMetadataResponse);
   rpc GetSyncSnapshotByPrefix(TrieNodePrefix) returns (TrieNodeSnapshotResponse);
+}
+
+service AdminService {
+  rpc RebuildSyncTrie(Empty) returns (Empty);
+  rpc DeleteAllMessagesFromDb(Empty) returns (Empty);
 }

@@ -1,6 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesToUtf8String, Factories, HubError } from '@farcaster/utils';
-import { err, ok } from 'neverthrow';
+import { err, Ok, ok } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import SignerStore from '~/storage/stores/signerStore';
@@ -23,7 +23,6 @@ let fnameTransfer: protobufs.NameRegistryEvent;
 let signerAdd: protobufs.SignerAddMessage;
 let signerRemove: protobufs.SignerRemoveMessage;
 let castAdd: protobufs.CastAddMessage;
-let ampAdd: protobufs.AmpAddMessage;
 let reactionAdd: protobufs.ReactionAddMessage;
 let verificationAdd: protobufs.VerificationAddEthAddressMessage;
 let userDataAdd: protobufs.UserDataAddMessage;
@@ -43,7 +42,6 @@ beforeAll(async () => {
   );
 
   castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
-  ampAdd = await Factories.AmpAddMessage.create({ data: { fid, network } }, { transient: { signer } });
   reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid, network } }, { transient: { signer } });
   verificationAdd = await Factories.VerificationAddEthAddressMessage.create(
     { data: { fid, network } },
@@ -57,7 +55,7 @@ beforeAll(async () => {
 
 describe('mergeIdRegistryEvent', () => {
   test('succeeds', async () => {
-    await expect(engine.mergeIdRegistryEvent(custodyEvent)).resolves.toEqual(ok(undefined));
+    await expect(engine.mergeIdRegistryEvent(custodyEvent)).resolves.toBeInstanceOf(Ok);
     await expect(engine.getIdRegistryEvent(fid)).resolves.toEqual(ok(custodyEvent));
   });
 
@@ -70,7 +68,7 @@ describe('mergeIdRegistryEvent', () => {
 
 describe('mergeNameRegistryEvent', () => {
   test('succeeds', async () => {
-    await expect(engine.mergeNameRegistryEvent(fnameTransfer)).resolves.toEqual(ok(undefined));
+    await expect(engine.mergeNameRegistryEvent(fnameTransfer)).resolves.toBeInstanceOf(Ok);
     await expect(engine.getNameRegistryEvent(fname)).resolves.toEqual(ok(fnameTransfer));
   });
 
@@ -83,8 +81,8 @@ describe('mergeNameRegistryEvent', () => {
 
 describe('mergeMessage', () => {
   let mergedMessages: protobufs.Message[];
-  const handleMergeMessage = (message: protobufs.Message) => {
-    mergedMessages.push(message);
+  const handleMergeMessage = (event: protobufs.MergeMessageHubEvent) => {
+    mergedMessages.push(event.mergeMessageBody.message);
   };
 
   beforeAll(() => {
@@ -101,29 +99,21 @@ describe('mergeMessage', () => {
 
   describe('with valid signer', () => {
     beforeEach(async () => {
-      await expect(engine.mergeIdRegistryEvent(custodyEvent)).resolves.toEqual(ok(undefined));
-      await expect(engine.mergeMessage(signerAdd)).resolves.toEqual(ok(undefined));
+      await expect(engine.mergeIdRegistryEvent(custodyEvent)).resolves.toBeInstanceOf(Ok);
+      await expect(engine.mergeMessage(signerAdd)).resolves.toBeInstanceOf(Ok);
     });
 
     describe('CastAdd', () => {
       test('succeeds', async () => {
-        await expect(engine.mergeMessage(castAdd)).resolves.toEqual(ok(undefined));
+        await expect(engine.mergeMessage(castAdd)).resolves.toBeInstanceOf(Ok);
         await expect(engine.getCast(fid, castAdd.hash)).resolves.toEqual(ok(castAdd));
         expect(mergedMessages).toEqual([signerAdd, castAdd]);
       });
     });
 
-    describe('AmpAdd', () => {
-      test('succeeds', async () => {
-        await expect(engine.mergeMessage(ampAdd)).resolves.toEqual(ok(undefined));
-        await expect(engine.getAmp(fid, ampAdd.data.ampBody.targetFid)).resolves.toEqual(ok(ampAdd));
-        expect(mergedMessages).toEqual([signerAdd, ampAdd]);
-      });
-    });
-
     describe('ReactionAdd', () => {
       test('succeeds', async () => {
-        await expect(engine.mergeMessage(reactionAdd)).resolves.toEqual(ok(undefined));
+        await expect(engine.mergeMessage(reactionAdd)).resolves.toBeInstanceOf(Ok);
         await expect(
           engine.getReaction(
             fid,
@@ -137,7 +127,7 @@ describe('mergeMessage', () => {
 
     describe('VerificationAddEthAddress', () => {
       test('succeeds', async () => {
-        await expect(engine.mergeMessage(verificationAdd)).resolves.toEqual(ok(undefined));
+        await expect(engine.mergeMessage(verificationAdd)).resolves.toBeInstanceOf(Ok);
         await expect(
           engine.getVerification(fid, verificationAdd.data.verificationAddEthAddressBody.address)
         ).resolves.toEqual(ok(verificationAdd));
@@ -147,7 +137,7 @@ describe('mergeMessage', () => {
 
     describe('UserDataAdd', () => {
       test('succeeds', async () => {
-        await expect(engine.mergeMessage(userDataAdd)).resolves.toEqual(ok(undefined));
+        await expect(engine.mergeMessage(userDataAdd)).resolves.toBeInstanceOf(Ok);
         await expect(engine.getUserData(fid, userDataAdd.data.userDataBody.type)).resolves.toEqual(ok(userDataAdd));
         expect(mergedMessages).toEqual([signerAdd, userDataAdd]);
       });
@@ -170,8 +160,8 @@ describe('mergeMessage', () => {
         });
 
         test('succeeds when fname owned by custody address', async () => {
-          await expect(engine.mergeNameRegistryEvent(fnameTransfer)).resolves.toEqual(ok(undefined));
-          await expect(engine.mergeMessage(fnameAdd)).resolves.toEqual(ok(undefined));
+          await expect(engine.mergeNameRegistryEvent(fnameTransfer)).resolves.toBeInstanceOf(Ok);
+          await expect(engine.mergeMessage(fnameAdd)).resolves.toBeInstanceOf(Ok);
         });
 
         test('fails when fname transfer event is missing', async () => {
@@ -185,7 +175,7 @@ describe('mergeMessage', () => {
             ...fnameTransfer,
             to: Factories.EthAddress.build(),
           });
-          await expect(engine.mergeNameRegistryEvent(fnameEvent)).resolves.toEqual(ok(undefined));
+          await expect(engine.mergeNameRegistryEvent(fnameEvent)).resolves.toBeInstanceOf(Ok);
           await expect(engine.mergeMessage(fnameAdd)).resolves.toEqual(
             err(
               new HubError('bad_request.validation_failure', 'fname custody address does not match fid custody address')
@@ -197,10 +187,77 @@ describe('mergeMessage', () => {
 
     describe('SignerRemove', () => {
       test('succeeds ', async () => {
-        await expect(engine.mergeMessage(signerRemove)).resolves.toEqual(ok(undefined));
+        await expect(engine.mergeMessage(signerRemove)).resolves.toBeInstanceOf(Ok);
         await expect(signerStore.getSignerRemove(fid, signer.signerKey)).resolves.toEqual(signerRemove);
         expect(mergedMessages).toEqual([signerAdd, signerRemove]);
       });
+    });
+
+    test('succeeds with concurrent, conflicting cast messages', async () => {
+      const castAdd = await Factories.CastAddMessage.create({ data: { fid } }, { transient: { signer } });
+
+      const generateCastRemove = async (): Promise<protobufs.CastRemoveMessage> => {
+        return Factories.CastRemoveMessage.create(
+          { data: { fid, castRemoveBody: { targetHash: castAdd.hash } } },
+          { transient: { signer } }
+        );
+      };
+
+      // Generate 100 cast removes with different timestamps
+      const castRemoves: protobufs.CastRemoveMessage[] = [];
+      for (let i = 0; i < 100; i++) {
+        const castRemove = await generateCastRemove();
+        castRemoves.push(castRemove);
+      }
+
+      const messages = [castAdd, ...castRemoves, castAdd, castAdd];
+
+      const results = await Promise.all(messages.map((message) => engine.mergeMessage(message)));
+      expect(
+        results.every(
+          (result) => result.isOk() || (result.isErr() && result.error.errCode !== 'unavailable.storage_failure')
+        )
+      ).toBeTruthy();
+
+      const allMessages = await engine.getAllCastMessagesByFid(fid);
+      expect(allMessages._unsafeUnwrap().length).toEqual(1);
+    });
+
+    test('succeeds with concurrent, conflicting reaction messages', async () => {
+      const castId = Factories.CastId.build();
+      const body = Factories.ReactionBody.build({
+        type: protobufs.ReactionType.REACTION_TYPE_LIKE,
+        targetCastId: castId,
+      });
+
+      const messages: protobufs.Message[] = [];
+      for (let i = 0; i < 10; i++) {
+        if (Math.random() < 0.5) {
+          messages.push(
+            await Factories.ReactionAddMessage.create(
+              { data: { reactionBody: body, fid, network } },
+              { transient: { signer } }
+            )
+          );
+        } else {
+          messages.push(
+            await Factories.ReactionRemoveMessage.create(
+              { data: { reactionBody: body, fid, network } },
+              { transient: { signer } }
+            )
+          );
+        }
+      }
+
+      const results = await Promise.all(messages.map((message) => engine.mergeMessage(message)));
+      expect(
+        results.every(
+          (result) => result.isOk() || (result.isErr() && result.error.errCode !== 'unavailable.storage_failure')
+        )
+      ).toBeTruthy();
+
+      const allMessages = await engine.getAllReactionMessagesByFid(fid);
+      expect(allMessages._unsafeUnwrap().length).toEqual(1);
     });
   });
 
@@ -253,8 +310,8 @@ describe('mergeMessage', () => {
 
 describe('mergeMessages', () => {
   let mergedMessages: protobufs.Message[];
-  const handleMergeMessage = (message: protobufs.Message) => {
-    mergedMessages.push(message);
+  const handleMergeMessage = (event: protobufs.MergeMessageHubEvent) => {
+    mergedMessages.push(event.mergeMessageBody.message);
   };
 
   beforeAll(() => {
@@ -272,19 +329,20 @@ describe('mergeMessages', () => {
   });
 
   test('succeeds and merges messages in parallel', async () => {
-    await expect(
-      engine.mergeMessages([castAdd, reactionAdd, ampAdd, userDataAdd, verificationAdd, signerRemove])
-    ).resolves.toEqual([ok(undefined), ok(undefined), ok(undefined), ok(undefined), ok(undefined), ok(undefined)]);
+    const results = await engine.mergeMessages([castAdd, reactionAdd, userDataAdd, verificationAdd, signerRemove]);
+    for (const result of results) {
+      expect(result).toBeInstanceOf(Ok);
+    }
     expect(new Set(mergedMessages)).toEqual(
-      new Set([signerAdd, castAdd, reactionAdd, ampAdd, userDataAdd, verificationAdd, signerRemove])
+      new Set([signerAdd, castAdd, reactionAdd, userDataAdd, verificationAdd, signerRemove])
     );
   });
 });
 
 describe('revokeMessagesBySigner', () => {
   let revokedMessages: protobufs.Message[];
-  const handleRevokedMessage = (message: protobufs.Message) => {
-    revokedMessages.push(message);
+  const handleRevokedMessage = (event: protobufs.RevokeMessageHubEvent) => {
+    revokedMessages.push(event.revokeMessageBody.message);
   };
 
   beforeAll(() => {
@@ -300,7 +358,6 @@ describe('revokeMessagesBySigner', () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(castAdd);
-    await engine.mergeMessage(ampAdd);
     await engine.mergeMessage(reactionAdd);
     await engine.mergeMessage(verificationAdd);
     await engine.mergeMessage(userDataAdd);
@@ -317,7 +374,7 @@ describe('revokeMessagesBySigner', () => {
     for (const message of signerMessages) {
       await expect(checkMessage(message)).resolves.toEqual(message);
     }
-    await expect(engine.revokeMessagesBySigner(fid, custodySigner.signerKey)).resolves.toEqual(ok(undefined));
+    await expect(engine.revokeMessagesBySigner(fid, custodySigner.signerKey)).resolves.toBeInstanceOf(Ok);
     for (const message of signerMessages) {
       await expect(checkMessage(message)).rejects.toThrow();
     }
@@ -325,11 +382,11 @@ describe('revokeMessagesBySigner', () => {
   });
 
   test('revokes messages signed by Ed25519 signer', async () => {
-    const signerMessages = [castAdd, ampAdd, reactionAdd, verificationAdd, userDataAdd];
+    const signerMessages = [castAdd, reactionAdd, verificationAdd, userDataAdd];
     for (const message of signerMessages) {
       await expect(checkMessage(message)).resolves.toEqual(message);
     }
-    await expect(engine.revokeMessagesBySigner(fid, signer.signerKey)).resolves.toEqual(ok(undefined));
+    await expect(engine.revokeMessagesBySigner(fid, signer.signerKey)).resolves.toBeInstanceOf(Ok);
     for (const message of signerMessages) {
       await expect(checkMessage(message)).rejects.toThrow();
     }

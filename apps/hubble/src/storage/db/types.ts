@@ -8,6 +8,16 @@ export const TRUE_VALUE = Buffer.from([1]);
 export const FID_BYTES = 4;
 
 /**
+ * The size of the hash
+ */
+export const HASH_LENGTH = 20; // Used to represent a 160-bit BLAKE3 hash
+
+/**
+ * Size of the TS_HASH which is 4 byte timestamp + 20 byte hash
+ */
+export const TSHASH_LENGTH = 4 + HASH_LENGTH;
+
+/**
  * RootPrefix indicates the purpose of the key. It is the 1st byte of every key.
  */
 export enum RootPrefix {
@@ -33,6 +43,14 @@ export enum RootPrefix {
   JobRevokeSigner = 10,
   /* Sync Merkle Trie Node */
   SyncMerkleTrieNode = 11,
+  /* Update NameRegistryEvent expiry job */
+  JobUpdateNameExpiry = 12,
+  /* Index name registry events by expiry */
+  NameRegistryEventsByExpiry = 13,
+  /* To check if the Hub was cleanly shutdown */
+  HubCleanShutdown = 14,
+  /* Event log */
+  HubEvents = 15,
 }
 
 /**

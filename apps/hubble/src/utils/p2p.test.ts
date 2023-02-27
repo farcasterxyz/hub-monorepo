@@ -18,7 +18,7 @@ describe('p2p utils tests', () => {
   test('fail to parse an invalid multiaddr', async () => {
     const error = parseAddress('/ip6/127.0.0.1/8080')._unsafeUnwrapErr();
     expect(error.errCode).toEqual('bad_request.parse_failure');
-    expect(error.message).toEqual('invalid multiaddr');
+    expect(error.message).toEqual("'/ip6/127.0.0.1/8080': invalid multiaddr");
   });
 
   test('fail to parse an empty string', async () => {
@@ -39,7 +39,7 @@ describe('p2p utils tests', () => {
       '/ip4/127.0.0.1/tcp/8080'
     )._unsafeUnwrapErr();
     expect(error.errCode).toEqual('bad_request.parse_failure');
-    expect(error.message).toEqual('invalid multiaddr');
+    expect(error.message).toEqual("'/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a': invalid multiaddr");
 
     // valid IP multiaddr but invalid combined multiaddr
     error = checkNodeAddrs(
@@ -47,7 +47,7 @@ describe('p2p utils tests', () => {
       '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a/tcp/8080'
     )._unsafeUnwrapErr();
     expect(error.errCode).toEqual('bad_request.parse_failure');
-    expect(error.message).toEqual('invalid multiaddr');
+    expect(error.message).toEqual("'/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a/tcp/8080': invalid multiaddr");
 
     // both invalid IP and combined multiaddrs
     error = checkNodeAddrs(
@@ -55,7 +55,7 @@ describe('p2p utils tests', () => {
       '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a/tcp/8080'
     )._unsafeUnwrapErr();
     expect(error.errCode).toEqual('bad_request.parse_failure');
-    expect(error.message).toEqual('invalid multiaddr');
+    expect(error.message).toEqual("'/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a': invalid multiaddr");
   });
 
   test('p2p multiaddr formatted string', async () => {
