@@ -1,7 +1,9 @@
 {
-  "extends": "tsconfig/package-config.json",
+  "extends": "tsconfig/packages-config.json",
   "compilerOptions": {
     "baseUrl": "./src",
+    "rootDir": "src",
+    "outDir": "build",
   },
   "include": ["src/index.ts"],
   "exclude": ["build", "dist", "node_modules", "jest.config.ts"]

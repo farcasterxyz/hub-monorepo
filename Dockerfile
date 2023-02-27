@@ -71,7 +71,7 @@ WORKDIR /home/node/app
 # The base image is same as the build stage, so it is safe to copy node_modules over to this stage.
 COPY --chown=node:node --from=prune /home/node/app/out/json/ .
 COPY --chown=node:node --from=prune /home/node/app/out/yarn.lock ./yarn.lock
-COPY --chown=node:node --from=build /home/node/app/tsconfig.json ./tsconfig.json
+COPY --chown=node:node --from=build /home/node/app/tsconfig.json ./packages/tsconfig/base.json
 COPY --chown=node:node --from=build /home/node/app/node_modules ./node_modules
 COPY --chown=node:node --from=build /home/node/app/packages/protobufs/dist ./packages/protobufs/dist/
 COPY --chown=node:node --from=build /home/node/app/packages/protobufs/node_modules ./packages/protobufs/node_modules/

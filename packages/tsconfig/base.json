@@ -1,3 +1,4 @@
+/* All relative file configs must be put in the inheriting tsconfig */
 {
   "compilerOptions": {
     /* Needed to import CJS modules like Jest */
@@ -27,13 +28,10 @@
     "noPropertyAccessFromIndexSignature": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": false, // causes hard failures when iterating in dev, enforce with eslint instead
-    "noUnusedParameters": false,
-    "outDir": "build"
+    "noUnusedParameters": false
   },
 
   "ts-node": {
     "swc": true
-  },
-
-  "exclude": ["node_modules"]
+  }
 }
