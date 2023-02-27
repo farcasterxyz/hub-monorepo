@@ -19,6 +19,7 @@ import * as utils from './utils';
 type MessageDataOptions = {
   fid: number;
   network: protobufs.FarcasterNetwork;
+  /** Unix milliseconds */
   timestamp?: number;
 };
 

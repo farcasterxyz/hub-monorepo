@@ -24,6 +24,7 @@ export type MessageData<TBody = MessageBody, TType = protobufs.MessageType> = {
   _protobuf: protobufs.MessageData;
   body: TBody;
   type: TType;
+  /** Unix milleseconds */
   timestamp: number;
   fid: number;
   network: protobufs.FarcasterNetwork;
