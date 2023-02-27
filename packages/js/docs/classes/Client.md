@@ -75,7 +75,7 @@ const client = new Client(...)
 
 ### getAllCastMessagesByFid
 
-▸ **getAllCastMessagesByFid**(`fid`): `HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastRemoveData`](../modules/types.md#castremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
+▸ **getAllCastMessagesByFid**(`fid`)
 
 TODO DOCS: description
 
@@ -98,18 +98,12 @@ console.log(result)
 | Name | Type |
 | :------ | :------ |
 | `fid` | `number` |
-
-#### Returns
-
-`HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastRemoveData`](../modules/types.md#castremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
-
-...
 
 ___
 
 ### getAllReactionMessagesByFid
 
-▸ **getAllReactionMessagesByFid**(`fid`): `HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionRemoveData`](../modules/types.md#reactionremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
+▸ **getAllReactionMessagesByFid**(`fid`)
 
 TODO DOCS: description
 
@@ -132,18 +126,12 @@ console.log(result)
 | Name | Type |
 | :------ | :------ |
 | `fid` | `number` |
-
-#### Returns
-
-`HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionRemoveData`](../modules/types.md#reactionremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
-
-...
 
 ___
 
 ### getAllSignerMessagesByFid
 
-▸ **getAllSignerMessagesByFid**(`fid`): `HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerAddData`](../modules/types.md#signeradddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerRemoveData`](../modules/types.md#signerremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
+▸ **getAllSignerMessagesByFid**(`fid`)
 
 TODO DOCS: description
 
@@ -166,18 +154,12 @@ console.log(result)
 | Name | Type |
 | :------ | :------ |
 | `fid` | `number` |
-
-#### Returns
-
-`HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerAddData`](../modules/types.md#signeradddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerRemoveData`](../modules/types.md#signerremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
-
-...
 
 ___
 
 ### getAllUserDataMessagesByFid
 
-▸ **getAllUserDataMessagesByFid**(`fid`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`UserDataAddData`](../modules/types.md#userdataadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
+▸ **getAllUserDataMessagesByFid**(`fid`)
 
 TODO DOCS: description
 
@@ -200,18 +182,12 @@ console.log(result)
 | Name | Type |
 | :------ | :------ |
 | `fid` | `number` |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`UserDataAddData`](../modules/types.md#userdataadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-...
 
 ___
 
 ### getAllVerificationMessagesByFid
 
-▸ **getAllVerificationMessagesByFid**(`fid`): `HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationAddEthAddressData`](../modules/types.md#verificationaddethaddressdata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationRemoveData`](../modules/types.md#verificationremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
+▸ **getAllVerificationMessagesByFid**(`fid`)
 
 TODO DOCS: description
 
@@ -235,17 +211,11 @@ console.log(result)
 | :------ | :------ |
 | `fid` | `number` |
 
-#### Returns
-
-`HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationAddEthAddressData`](../modules/types.md#verificationaddethaddressdata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationRemoveData`](../modules/types.md#verificationremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
-
-...
-
 ___
 
 ### getCast
 
-▸ **getCast**(`fid`, `hash`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
+▸ **getCast**(`fid`, `hash`)
 
 TODO DOCS: description
 
@@ -270,17 +240,11 @@ console.log(result)
 | `fid` | `number` |
 | `hash` | `string` |
 
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-...
-
 ___
 
 ### getCastsByFid
 
-▸ **getCastsByFid**(`fid`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
+▸ **getCastsByFid**(`fid`)
 
 TODO DOCS: description
 
@@ -304,17 +268,11 @@ console.log(result)
 | :------ | :------ |
 | `fid` | `number` |
 
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-...
-
 ___
 
 ### getCastsByMention
 
-▸ **getCastsByMention**(`mentionFid`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
+▸ **getCastsByMention**(`mentionFid`)
 
 TODO DOCS: description
 
@@ -338,17 +296,11 @@ console.log(result)
 | :------ | :------ |
 | `mentionFid` | `number` |
 
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-...
-
 ___
 
 ### getCastsByParent
 
-▸ **getCastsByParent**(`parent`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
+▸ **getCastsByParent**(`parent`)
 
 TODO DOCS: description
 
@@ -372,17 +324,11 @@ console.log(result)
 | :------ | :------ |
 | `parent` | [`CastId`](../modules/types.md#castid) |
 
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-...
-
 ___
 
 ### getIdRegistryEvent
 
-▸ **getIdRegistryEvent**(`fid`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent) ; `blockHash`: `string` ; `blockNumber`: `number` ; `fid`: `number` ; `from`: `undefined` \| `string` ; `logIndex`: `number` ; `to`: `string` ; `transactionHash`: `string` ; `type`: [`IdRegistryEventType`](../enums/protobufs.IdRegistryEventType.md)  }\>\>
+▸ **getIdRegistryEvent**(`fid`)
 
 TODO DOCS: description
 
@@ -406,17 +352,11 @@ console.log(result)
 | :------ | :------ |
 | `fid` | `number` |
 
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent) ; `blockHash`: `string` ; `blockNumber`: `number` ; `fid`: `number` ; `from`: `undefined` \| `string` ; `logIndex`: `number` ; `to`: `string` ; `transactionHash`: `string` ; `type`: [`IdRegistryEventType`](../enums/protobufs.IdRegistryEventType.md)  }\>\>
-
-...
-
 ___
 
 ### getNameRegistryEvent
 
-▸ **getNameRegistryEvent**(`fname`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent) ; `blockHash`: `string` ; `blockNumber`: `number` ; `expiry`: `undefined` \| `number` ; `fname`: `string` ; `from`: `string` ; `logIndex`: `number` ; `to`: `string` ; `transactionHash`: `string` ; `type`: [`NameRegistryEventType`](../enums/protobufs.NameRegistryEventType.md)  }\>\>
+▸ **getNameRegistryEvent**(`fname`)
 
 TODO DOCS: description
 
@@ -440,17 +380,11 @@ console.log(result)
 | :------ | :------ |
 | `fname` | `string` |
 
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent) ; `blockHash`: `string` ; `blockNumber`: `number` ; `expiry`: `undefined` \| `number` ; `fname`: `string` ; `from`: `string` ; `logIndex`: `number` ; `to`: `string` ; `transactionHash`: `string` ; `type`: [`NameRegistryEventType`](../enums/protobufs.NameRegistryEventType.md)  }\>\>
-
-...
-
 ___
 
 ### getReaction
 
-▸ **getReaction**(`fid`, `type`, `cast`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
+▸ **getReaction**(`fid`, `type`, `cast`)
 
 TODO DOCS: description
 
@@ -476,17 +410,11 @@ console.log(result)
 | `type` | [`ReactionType`](../enums/protobufs.ReactionType.md) |
 | `cast` | [`CastId`](../modules/types.md#castid) |
 
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-...
-
 ___
 
 ### getReactionsByCast
 
-▸ **getReactionsByCast**(`cast`, `type?`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
+▸ **getReactionsByCast**(`cast`, `type?`)
 
 TODO DOCS: description
 
@@ -511,17 +439,11 @@ console.log(result)
 | `cast` | [`CastId`](../modules/types.md#castid) |
 | `type?` | [`ReactionType`](../enums/protobufs.ReactionType.md) |
 
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-...
-
 ___
 
 ### getReactionsByFid
 
-▸ **getReactionsByFid**(`fid`, `type?`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
+▸ **getReactionsByFid**(`fid`, `type?`)
 
 TODO DOCS: description
 
@@ -546,17 +468,11 @@ console.log(result)
 | `fid` | `number` |
 | `type?` | [`ReactionType`](../enums/protobufs.ReactionType.md) |
 
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-...
-
 ___
 
 ### getSigner
 
-▸ **getSigner**(`fid`, `signer`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerAddData`](../modules/types.md#signeradddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
+▸ **getSigner**(`fid`, `signer`)
 
 TODO DOCS: description
 
@@ -581,17 +497,11 @@ console.log(result)
 | `fid` | `number` |
 | `signer` | `string` |
 
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerAddData`](../modules/types.md#signeradddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-...
-
 ___
 
 ### getSignersByFid
 
-▸ **getSignersByFid**(`fid`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerAddData`](../modules/types.md#signeradddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
+▸ **getSignersByFid**(`fid`)
 
 TODO DOCS: description
 
@@ -615,17 +525,11 @@ console.log(result)
 | :------ | :------ |
 | `fid` | `number` |
 
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerAddData`](../modules/types.md#signeradddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-...
-
 ___
 
 ### getUserData
 
-▸ **getUserData**(`fid`, `type`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`UserDataAddData`](../modules/types.md#userdataadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
+▸ **getUserData**(`fid`, `type`)
 
 TODO DOCS: description
 
@@ -650,17 +554,11 @@ console.log(result)
 | `fid` | `number` |
 | `type` | [`UserDataType`](../enums/protobufs.UserDataType.md) |
 
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`UserDataAddData`](../modules/types.md#userdataadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-...
-
 ___
 
 ### getUserDataByFid
 
-▸ **getUserDataByFid**(`fid`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`UserDataAddData`](../modules/types.md#userdataadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
+▸ **getUserDataByFid**(`fid`)
 
 TODO DOCS: description
 
@@ -684,17 +582,11 @@ console.log(result)
 | :------ | :------ |
 | `fid` | `number` |
 
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`UserDataAddData`](../modules/types.md#userdataadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-...
-
 ___
 
 ### getVerification
 
-▸ **getVerification**(`fid`, `address`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationAddEthAddressData`](../modules/types.md#verificationaddethaddressdata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
+▸ **getVerification**(`fid`, `address`)
 
 TODO DOCS: description
 
@@ -719,17 +611,11 @@ console.log(result)
 | `fid` | `number` |
 | `address` | `string` |
 
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationAddEthAddressData`](../modules/types.md#verificationaddethaddressdata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-...
-
 ___
 
 ### getVerificationsByFid
 
-▸ **getVerificationsByFid**(`fid`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationAddEthAddressData`](../modules/types.md#verificationaddethaddressdata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
+▸ **getVerificationsByFid**(`fid`)
 
 TODO DOCS: description
 
@@ -753,17 +639,11 @@ console.log(result)
 | :------ | :------ |
 | `fid` | `number` |
 
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationAddEthAddressData`](../modules/types.md#verificationaddethaddressdata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-...
-
 ___
 
 ### submitMessage
 
-▸ **submitMessage**(`message`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`MessageData`](../modules/types.md#messagedata)<[`MessageBody`](../modules/types.md#messagebody), [`MessageType`](../enums/protobufs.MessageType.md)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
+▸ **submitMessage**(`message`)
 
 TODO DOCS: description
 
@@ -787,17 +667,11 @@ console.log(result)
 | :------ | :------ |
 | `message` | `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`MessageData`](../modules/types.md#messagedata)<[`MessageBody`](../modules/types.md#messagebody), [`MessageType`](../enums/protobufs.MessageType.md)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> |
 
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`MessageData`](../modules/types.md#messagedata)<[`MessageBody`](../modules/types.md#messagebody), [`MessageType`](../enums/protobufs.MessageType.md)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-...
-
 ___
 
 ### subscribe
 
-▸ **subscribe**(`filters?`): `Promise`<`HubResult`<`ClientReadableStream`<[`HubEvent`](../modules/protobufs.md#hubevent)\>\>\>
+▸ **subscribe**(`filters?`)
 
 TODO DOCS: description
 
@@ -822,9 +696,3 @@ console.log(result)
 | Name | Type |
 | :------ | :------ |
 | `filters` | [`EventFilters`](../modules.md#eventfilters) |
-
-#### Returns
-
-`Promise`<`HubResult`<`ClientReadableStream`<[`HubEvent`](../modules/protobufs.md#hubevent)\>\>\>
-
-...

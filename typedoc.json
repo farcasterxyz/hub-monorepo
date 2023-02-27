@@ -2,7 +2,7 @@
   "entryPoints": ["./packages/js/src/index.ts"],
   "out": "./packages/js/docs",
   "exclude": ["**/*.test.ts", "**/*.spec.ts", "**/node_modules/**"],
-  "plugin": ["typedoc-plugin-markdown"],
+  "plugin": ["typedoc-plugin-markdown", "./hideSig.js"],
   "skipErrorChecking": true,
   "disableSources": true
 }

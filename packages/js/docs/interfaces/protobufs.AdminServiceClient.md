@@ -21,20 +21,16 @@
 
 ### deleteAllMessagesFromDb
 
-▸ **deleteAllMessagesFromDb**(`request`, `callback`): `SurfaceCall`
+▸ **deleteAllMessagesFromDb**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`Empty`](../modules/protobufs.md#empty) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Empty`](../modules/protobufs.md#empty)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Empty`](../modules/protobufs.md#empty)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **deleteAllMessagesFromDb**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **deleteAllMessagesFromDb**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -42,13 +38,9 @@
 | :------ | :------ |
 | `request` | [`Empty`](../modules/protobufs.md#empty) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Empty`](../modules/protobufs.md#empty)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Empty`](../modules/protobufs.md#empty)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **deleteAllMessagesFromDb**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **deleteAllMessagesFromDb**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -57,30 +49,22 @@
 | `request` | [`Empty`](../modules/protobufs.md#empty) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Empty`](../modules/protobufs.md#empty)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Empty`](../modules/protobufs.md#empty)) =>  |
 
 ___
 
 ### rebuildSyncTrie
 
-▸ **rebuildSyncTrie**(`request`, `callback`): `SurfaceCall`
+▸ **rebuildSyncTrie**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`Empty`](../modules/protobufs.md#empty) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Empty`](../modules/protobufs.md#empty)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Empty`](../modules/protobufs.md#empty)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **rebuildSyncTrie**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **rebuildSyncTrie**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -88,13 +72,9 @@ ___
 | :------ | :------ |
 | `request` | [`Empty`](../modules/protobufs.md#empty) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Empty`](../modules/protobufs.md#empty)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Empty`](../modules/protobufs.md#empty)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **rebuildSyncTrie**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **rebuildSyncTrie**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -103,8 +83,4 @@ ___
 | `request` | [`Empty`](../modules/protobufs.md#empty) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Empty`](../modules/protobufs.md#empty)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Empty`](../modules/protobufs.md#empty)) =>  |
