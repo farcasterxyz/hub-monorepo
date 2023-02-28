@@ -348,7 +348,7 @@ Make a message to add an EdDSA signer
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<VerificationAddEd25519Message>` | [`VerificationAddEd25519Message`](modules/types.md#verificationadded25519message) | A `HubAsyncResult` that contains the valid `VerificationAddEd25519Message`. |
+| `HubAsyncResult<VerificationAddEthAddressMessage>` | [`VerificationAddEthAddressMessage`](modules/types.md#verificationaddethaddressmessage) | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage`. |
 
 **`Example`**
 
@@ -466,7 +466,7 @@ Make a message to set user data (pfp, bio, display name, etc)
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<UserDataMessage>` | [`UserDataMessage`](modules/types.md#userdatamessage) | A `HubAsyncResult` that contains the valid `UserDataMessage`. |
+| `HubAsyncResult<UserDataAddMessage>` | [`UserDataAddMessage`](modules/types.md#userdataaddmessage) | A `HubAsyncResult` that contains the valid `UserDataMessage`. |
 
 **`Example`**
 

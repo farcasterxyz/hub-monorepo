@@ -655,7 +655,8 @@ export const makeVerificationRemoveData = buildMakeMessageDataMethod(
  *
  * | Value | Type | Description |
  * | :---- | :--- | :---------- |
- * | `HubAsyncResult<VerificationAddEd25519Message>` | [`VerificationAddEd25519Message`](modules/types.md#verificationadded25519message) | A `HubAsyncResult` that contains the valid `VerificationAddEd25519Message`. |
+ * | `HubAsyncResult<VerificationAddEthAddressMessage>` | [`VerificationAddEthAddressMessage`](modules/types.md#verificationaddethaddressmessage) | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage`. |
+ *
  *
  * @param bodyJson - A valid VerificationAddEd25519 body object containing the data to be sent.
  * @param dataOptions - Optional arguments to construct the message.
@@ -781,7 +782,7 @@ export const makeSignerRemoveData = buildMakeMessageDataMethod(
  *
  * | Value | Type | Description |
  * | :---- | :--- | :---------- |
- * | `HubAsyncResult<UserDataMessage>` | [`UserDataMessage`](modules/types.md#userdatamessage) | A `HubAsyncResult` that contains the valid `UserDataMessage`. |
+ * | `HubAsyncResult<UserDataAddMessage>` | [`UserDataAddMessage`](modules/types.md#userdataaddmessage) | A `HubAsyncResult` that contains the valid `UserDataMessage`. |
  *
  * @param bodyJson - A valid UserData body object containing the data to be sent.
  * @param dataOptions - Optional arguments to construct the message.
