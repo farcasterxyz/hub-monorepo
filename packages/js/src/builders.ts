@@ -231,13 +231,13 @@ export const makeMessageWithSignature = async (
  *
  * #### Returns
  *
- * | Value                            | Type          | Description                                     |
- * | -------------------------------- | ------------- | ----------------------------------------------- |
- * | `HubAsyncResult<CastAddMessage>` | `CastAddBody` | A Result that contains the valid CastAddMessage |
+ * | Value                            | Type                                          | Description                                     |
+ * | -------------------------------- | --------------------------------------------- | ----------------------------------------------- |
+ * | `HubAsyncResult<CastAddMessage>` | [`CastAddMessage`](modules/types.md#castaddmessage) | A Result that contains the valid CastAddMessage |
  *
- * @param bodyJson - The body of the message
- * @param dataOptions - The data of the message
- * @param signer - The signer of the message
+ * @param bodyJson - A valid CastAdd body object containing the data to be sent.
+ * @param dataOptions - Optional arguments to construct the Cast.
+ * @param signer - A valid Ed25519Signer that will sign the message.
  *
  * @example
  * ```typescript

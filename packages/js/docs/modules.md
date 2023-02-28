@@ -57,9 +57,9 @@ Make a message to add a cast
 
 #### Returns
 
-| Value                            | Type          | Description                                     |
-| -------------------------------- | ------------- | ----------------------------------------------- |
-| `HubAsyncResult<CastAddMessage>` | `CastAddBody` | A Result that contains the valid CastAddMessage |
+| Value                            | Type                                          | Description                                     |
+| -------------------------------- | --------------------------------------------- | ----------------------------------------------- |
+| `HubAsyncResult<CastAddMessage>` | [`CastAddMessage`](modules/types.md#castaddmessage) | A Result that contains the valid CastAddMessage |
 
 **`Example`**
 
@@ -95,9 +95,9 @@ await client.submitMessage(cast._unsafeUnwrap());
 
 | Name | Type | Description |
 | :------ | :------ | :------ |
-| `bodyJson` | [`CastAddBody`](modules/types.md#castaddbody) | The body of the message |
-| `dataOptions` | `MessageDataOptions` | The data of the message |
-| `signer` | `Ed25519Signer` | The signer of the message |
+| `bodyJson` | [`CastAddBody`](modules/types.md#castaddbody) | A valid CastAdd body object containing the data to be sent. |
+| `dataOptions` | `MessageDataOptions` | Optional arguments to construct the Cast. |
+| `signer` | `Ed25519Signer` | A valid Ed25519Signer that will sign the message. |
 
 ___
 
