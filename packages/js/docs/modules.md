@@ -144,10 +144,6 @@ const castRemove = await makeCastRemove(removeBody, dataOptions, ed25519Signer);
 await client.submitMessage(castRemove._unsafeUnwrap());
 ```
 
-**`signature`**
-
-`makeCastRemove(bodyJson, dataOptions, signer): HubAsyncResult<CastRemoveMessage>`
-
 #### Parameters
 
 | Name | Type | Description |
@@ -262,10 +258,6 @@ const like = await makeReactionAdd(reactionLikeBody, dataOptions, ed25519Signer)
 await client.submitMessage(like._unsafeUnwrap());
 ```
 
-**`signature`**
-
-`makeReactCast(bodyJson, dataOptions, signer): HubAsyncResult<ReactionAddMessage>`
-
 #### Parameters
 
 | Name | Type | Description |
@@ -324,10 +316,6 @@ const unlike = await makeReactionRemove(reactionLikeBody, dataOptions, ed25519Si
 await client.submitMessage(unlike._unsafeUnwrap());
 ```
 
-**`signature`**
-
-`makeReactionRemove(bodyJson, dataOptions, signer): HubAsyncResult<ReactionRemoveMessage>`
-
 #### Parameters
 
 | Name | Type | Description |
@@ -383,10 +371,6 @@ const signerAdd = await makeSignerAdd({ signer: ed25519Signer.signerKeyHex }, da
 await client.submitMessage(signerAdd._unsafeUnwrap());
 ```
 
-**`signature`**
-
-`makeSignerAdd(bodyJson, dataOptions, signer): HubAsyncResult<SignerAddMessage>`
-
 #### Parameters
 
 | Name | Type | Description |
@@ -441,10 +425,6 @@ const dataOptions = {
 const signerRemove = await makeSignerRemove({ signer: ed25519Signer.signerKeyHex }, dataOptions, eip712Signer);
 await client.submitMessage(signerRemove._unsafeUnwrap());
 ```
-
-**`signature`**
-
-`makeSignerRemove(bodyJson, dataOptions, signer): HubAsyncResult<SignerRemoveMessage>`
 
 #### Parameters
 
@@ -502,10 +482,6 @@ const userDataPfpAdd = await makeUserDataAdd(userDataPfpBody, dataOptions, ed255
 await client.submitMessage(userDataPfpAdd._unsafeUnwrap());
 ```
 
-**`signature`**
-
-`makeUserData(bodyJson, dataOptions, signer): HubAsyncResult<UserDataAddMessage>`
-
 #### Parameters
 
 | Name | Type | Description |
@@ -526,7 +502,7 @@ TODO DOCS
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<VerificationAddMessage>` | [`VerificationAddMessage`](modules/types.md#verificationaddmessage) | A `HubAsyncResult` that contains the valid `VerificationAddMessage`. |
+| `HubAsyncResult<VerificationAddEthAddressMessage>` | [`VerificationAddEthAddressMessage`](modules/types.md#verificationaddethaddressmessage) | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage`. |
 
 **`Example`**
 
@@ -587,10 +563,6 @@ const verificationMessage = await makeVerificationAddEthAddress(
 );
 await client.submitMessage(verificationMessage._unsafeUnwrap());
 ```
-
-**`signature`**
-
-`makeVerificationAddEthAddress(bodyJson, dataOptions, signer): HubAsyncResult<VerificationAddEthAddressMessage>`
 
 #### Parameters
 
@@ -664,10 +636,6 @@ const verificationRemoveMessage = await makeVerificationRemove(
 
 await client.submitMessage(verificationRemoveMessage._unsafeUnwrap());
 ```
-
-**`signature`**
-
-`makeVerificationRemove(bodyJson, dataOptions, signer): HubAsyncResult<VerificationRemoveMessage>`
 
 #### Parameters
 

@@ -318,10 +318,6 @@ export const makeCastAdd = buildMakeMessageMethod(
  * const castRemove = await makeCastRemove(removeBody, dataOptions, ed25519Signer);
  * await client.submitMessage(castRemove._unsafeUnwrap());
  * ```
- *
- * **`signature`**
- *
- * `makeCastRemove(bodyJson, dataOptions, signer): HubAsyncResult<CastRemoveMessage>`
  */
 export const makeCastRemove = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE,
@@ -392,10 +388,6 @@ export const makeCastRemoveData = buildMakeMessageDataMethod(
  * const like = await makeReactionAdd(reactionLikeBody, dataOptions, ed25519Signer);
  * await client.submitMessage(like._unsafeUnwrap());
  * ```
- *
- * **`signature`**
- *
- * `makeReactCast(bodyJson, dataOptions, signer): HubAsyncResult<ReactionAddMessage>`
  */
 export const makeReactionAdd = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD,
@@ -450,10 +442,6 @@ export const makeReactionAdd = buildMakeMessageMethod(
  * const unlike = await makeReactionRemove(reactionLikeBody, dataOptions, ed25519Signer);
  * await client.submitMessage(unlike._unsafeUnwrap());
  * ```
- *
- * **`signature`**
- *
- * `makeReactionRemove(bodyJson, dataOptions, signer): HubAsyncResult<ReactionRemoveMessage>`
  */
 export const makeReactionRemove = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE,
@@ -484,7 +472,7 @@ export const makeReactionRemoveData = buildMakeMessageDataMethod(
  *
  * | Value | Type | Description |
  * | :---- | :--- | :---------- |
- * | `HubAsyncResult<VerificationAddMessage>` | [`VerificationAddMessage`](modules/types.md#verificationaddmessage) | A `HubAsyncResult` that contains the valid `VerificationAddMessage`. |
+ * | `HubAsyncResult<VerificationAddEthAddressMessage>` | [`VerificationAddEthAddressMessage`](modules/types.md#verificationaddethaddressmessage) | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage`. |
  *
  * @param bodyJson - A valid VerificationAdd body object containing the data to be sent.
  * @param dataOptions - Optional arguments to construct the message.
@@ -548,10 +536,6 @@ export const makeReactionRemoveData = buildMakeMessageDataMethod(
  * );
  * await client.submitMessage(verificationMessage._unsafeUnwrap());
  * ```
- *
- * **`signature`**
- *
- * `makeVerificationAddEthAddress(bodyJson, dataOptions, signer): HubAsyncResult<VerificationAddEthAddressMessage>`
  */
 export const makeVerificationAddEthAddress = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS,
@@ -621,10 +605,6 @@ export const makeVerificationAddEthAddress = buildMakeMessageMethod(
  *
  * await client.submitMessage(verificationRemoveMessage._unsafeUnwrap());
  * ```
- *
- * **`signature`**
- *
- * `makeVerificationRemove(bodyJson, dataOptions, signer): HubAsyncResult<VerificationRemoveMessage>`
  */
 export const makeVerificationRemove = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE,
@@ -693,10 +673,6 @@ export const makeVerificationRemoveData = buildMakeMessageDataMethod(
  * const signerAdd = await makeSignerAdd({ signer: ed25519Signer.signerKeyHex }, dataOptions, eip712Signer);
  * await client.submitMessage(signerAdd._unsafeUnwrap());
  * ```
- *
- * **`signature`**
- *
- * `makeSignerAdd(bodyJson, dataOptions, signer): HubAsyncResult<SignerAddMessage>`
  */
 export const makeSignerAdd = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD,
@@ -748,10 +724,6 @@ export const makeSignerAdd = buildMakeMessageMethod(
  * const signerRemove = await makeSignerRemove({ signer: ed25519Signer.signerKeyHex }, dataOptions, eip712Signer);
  * await client.submitMessage(signerRemove._unsafeUnwrap());
  * ```
- *
- * **`signature`**
- *
- * `makeSignerRemove(bodyJson, dataOptions, signer): HubAsyncResult<SignerRemoveMessage>`
  */
 export const makeSignerRemove = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
@@ -820,10 +792,6 @@ export const makeSignerRemoveData = buildMakeMessageDataMethod(
  * const userDataPfpAdd = await makeUserDataAdd(userDataPfpBody, dataOptions, ed25519Signer);
  * await client.submitMessage(userDataPfpAdd._unsafeUnwrap());
  * ```
- *
- * **`signature`**
- *
- * `makeUserData(bodyJson, dataOptions, signer): HubAsyncResult<UserDataAddMessage>`
  */
 export const makeUserDataAdd = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_USER_DATA_ADD,
