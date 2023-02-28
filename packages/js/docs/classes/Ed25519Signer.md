@@ -88,6 +88,12 @@ BaseEd25519Signer.signerKeyHex
 
 Generates a 256-bit signature using from EdDSA key pair.
 
+#### Returns
+
+| Value | Description |
+| :---- | :---------- |
+| `HubAsyncResult<Uint8Array>` | A HubAsyncResult containing the 256-bit signature as a Uint8Array. |
+
 **`Example`**
 
 ```typescript
@@ -124,6 +130,12 @@ ___
 
 Generates a 256-bit hex signature from an EdDSA key pair for a given message hash in hex format.
 
+#### Returns
+
+| Value | Description |
+| :---- | :---------- |
+| `HubAsyncResult<string>` | A HubAsyncResult containing the 256-bit signature as a hex string. |
+
 **`Example`**
 
 ```typescript
@@ -155,6 +167,12 @@ ___
 ▸ `Static` **fromPrivateKey**(`privateKey`)
 
 Creates an Ed25519 signer from a private key.
+
+#### Returns
+
+| Value | Description |
+| :---- | :---------- |
+| `HubResult<Ed25519Signer>` | A HubResult containing an Ed25519Signer instance |
 
 **`Example`**
 

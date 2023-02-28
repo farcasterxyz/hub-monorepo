@@ -37,6 +37,14 @@ export class Eip712Signer implements Signer {
   /**
    * Generates a 256-bit signature from an Ethereum address.
    *
+   * #### Returns
+   *
+   * | Value | Description |
+   * | :---- | :---------- |
+   * | `HubAsyncResult<Uint8Array>` | A HubAsyncResult containing the 256-bit signature as a Uint8Array. |
+   *
+   * @param {Uint8Array} hash - The 256-bit hash of the message to be signed.
+   *
    * @example
    * ```typescript
    * import { Eip712Signer } from '@farcaster/js';
@@ -55,10 +63,6 @@ export class Eip712Signer implements Signer {
    *
    * // Output: Uint8Array(65) [ 166, 32, 71, 26, 36, 205, ... ]
    * ```
-   *
-   * @param {Uint8Array} hash - The 256-bit hash of the message to be signed.
-   *
-   * @returns {Promise<HubAsyncResult<Uint8Array>>} A HubAsyncResult containing the 256-bit signature as a Uint8Array.
    */
   public signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array> {
     return eip712.signMessageHash(hash, this._typedDataSigner);
@@ -66,6 +70,20 @@ export class Eip712Signer implements Signer {
 
   /**
    * Signs a verification claim for an Ethereum address.
+   *
+   * #### Returns
+   *
+   * | Value | Description |
+   * | :---- | :---------- |
+   * | `HubAsyncResult<Uint8Array>` | A HubAsyncResult containing the 256-bit signature as a Uint8Array. |
+   *
+   *
+   * @param {Object} claim - The body of the claim to be signed.
+   * @param {number} claim.fid - The Farcaster ID.
+   * @param {string} claim.address - The Ethereum address to verify.
+   * @param {types.FarcasterNetwork} claim.network - The Farcaster network to use.
+   * @param {string} claim.blockHash - The hash of the Ethereum block to use for verification.
+   *
    *
    * @example
    * ```typescript
@@ -80,14 +98,6 @@ export class Eip712Signer implements Signer {
    *
    * // Will output: Uint8Array(65) [ 166, 32, 71, 26, 36, 205, ... ]
    * ```
-   *
-   * @param {Object} claim - The body of the claim to be signed.
-   * @param {number} claim.fid - The Farcaster ID.
-   * @param {string} claim.address - The Ethereum address to verify.
-   * @param {types.FarcasterNetwork} claim.network - The Farcaster network to use.
-   * @param {string} claim.blockHash - The hash of the Ethereum block to use for verification.
-   *
-   * @returns {HubAsyncResult<Uint8Array>} A HubAsyncResult containing the 256-bit signature as a Uint8Array.
    */
   public signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): HubAsyncResult<Uint8Array> {
     return eip712.signVerificationEthAddressClaim(claim, this._typedDataSigner);
