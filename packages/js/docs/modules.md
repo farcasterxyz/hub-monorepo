@@ -57,8 +57,8 @@ Make a message to add a cast
 
 #### Returns
 
-| Value                            | Type                                                | Description                                     |
-| :------------------------------- | :-------------------------------------------------- | :---------------------------------------------- |
+| Value | Type | Description |
+| :---- | :--- | :---------- |
 | `HubAsyncResult<CastAddMessage>` | [`CastAddMessage`](modules/types.md#castaddmessage) | A Result that contains the valid CastAddMessage |
 
 **`Example`**
@@ -96,7 +96,7 @@ await client.submitMessage(cast._unsafeUnwrap());
 | Name | Type | Description |
 | :------ | :------ | :------ |
 | `bodyJson` | [`CastAddBody`](modules/types.md#castaddbody) | A valid CastAdd body object containing the data to be sent. |
-| `dataOptions` | `MessageDataOptions` | Optional arguments to construct the Cast. |
+| `dataOptions` | `MessageDataOptions` | Optional arguments to construct the message. |
 | `signer` | `Ed25519Signer` | A valid Ed25519Signer that will sign the message. |
 
 ___
@@ -109,8 +109,8 @@ Make a message to remove a cast
 
 #### Returns
 
-| Value                                | Type                                                | Description                                      |
-| :----------------------------------- | :-------------------------------------------------- | :----------------------------------------------- |
+| Value | Type | Description |
+| :---- | :--- | :---------- |
 | `HubAsyncResult<CastRemoveMessage>` | [`CastRemoveMessage`](modules/types.md#castremovemessage) | A `HubAsyncResult` that contains the valid `CastRemoveMessage`. |
 
 **`Example`**
@@ -153,7 +153,7 @@ await client.submitMessage(castRemove._unsafeUnwrap());
 | Name | Type | Description |
 | :------ | :------ | :------ |
 | `bodyJson` | [`CastRemoveBody`](modules/types.md#castremovebody) | A valid CastRemove body object containing the data to be sent. |
-| `dataOptions` | `MessageDataOptions` | Optional arguments to construct the Cast. |
+| `dataOptions` | `MessageDataOptions` | Optional arguments to construct the message. |
 | `signer` | `Ed25519Signer` | A valid Ed25519Signer that will sign the message. |
 
 ___
@@ -220,6 +220,12 @@ ___
 
 Make a message to react a cast (like or recast)
 
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<ReactionAddMessage>` | [`ReactionAddMessage`](modules/types.md#reactionaddmessage) | A `HubAsyncResult` that contains the valid `ReactionAddMessage`. |
+
 **`Example`**
 
 ```typescript
@@ -262,11 +268,11 @@ await client.submitMessage(like._unsafeUnwrap());
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`ReactionBody`](modules/types.md#reactionbody) |
-| `dataOptions` | `MessageDataOptions` |
-| `signer` | `Ed25519Signer` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `bodyJson` | [`ReactionBody`](modules/types.md#reactionbody) | A valid ReactionAdd body object containing the data to be sent. |
+| `dataOptions` | `MessageDataOptions` | Optional arguments to construct the message. |
+| `signer` | `Ed25519Signer` | A valid Ed25519Signer that will sign the message. |
 
 ___
 
@@ -275,6 +281,12 @@ ___
 ▸ **makeReactionRemove**(`bodyJson`, `dataOptions`, `signer`)
 
 Make a message to undo a reaction to a cast (unlike or undo recast)
+
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<ReactionRemoveMessage>` | [`ReactionRemoveMessage`](modules/types.md#reactionremovemessage) | A `HubAsyncResult` that contains the valid `ReactionRemoveMessage`. |
 
 **`Example`**
 
@@ -318,11 +330,11 @@ await client.submitMessage(unlike._unsafeUnwrap());
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`ReactionBody`](modules/types.md#reactionbody) |
-| `dataOptions` | `MessageDataOptions` |
-| `signer` | `Ed25519Signer` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `bodyJson` | [`ReactionBody`](modules/types.md#reactionbody) | A valid ReactionRemove body object containing the data to be sent. |
+| `dataOptions` | `MessageDataOptions` | Optional arguments to construct the message. |
+| `signer` | `Ed25519Signer` | A valid Ed25519Signer that will sign the message. |
 
 ___
 
@@ -331,6 +343,12 @@ ___
 ▸ **makeSignerAdd**(`bodyJson`, `dataOptions`, `signer`)
 
 Make a message to add an EdDSA signer
+
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<VerificationAddEd25519Message>` | [`VerificationAddEd25519Message`](modules/types.md#verificationadded25519message) | A `HubAsyncResult` that contains the valid `VerificationAddEd25519Message`. |
 
 **`Example`**
 
@@ -371,11 +389,11 @@ await client.submitMessage(signerAdd._unsafeUnwrap());
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`SignerBody`](modules/types.md#signerbody) |
-| `dataOptions` | `MessageDataOptions` |
-| `signer` | `Eip712Signer` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `bodyJson` | [`SignerBody`](modules/types.md#signerbody) | A valid VerificationAddEd25519 body object containing the data to be sent. |
+| `dataOptions` | `MessageDataOptions` | Optional arguments to construct the message. |
+| `signer` | `Eip712Signer` | A valid Eip712Signer that will sign the message. |
 
 ___
 
@@ -384,6 +402,12 @@ ___
 ▸ **makeSignerRemove**(`bodyJson`, `dataOptions`, `signer`)
 
 Make a message to remove an EdDSA signer
+
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<SignerRemoveMessage>` | [`SignerRemoveMessage`](modules/types.md#signerremovemessage) | A `HubAsyncResult` that contains the valid `SignerRemoveMessage`. |
 
 **`Example`**
 
@@ -424,11 +448,11 @@ await client.submitMessage(signerRemove._unsafeUnwrap());
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`SignerBody`](modules/types.md#signerbody) |
-| `dataOptions` | `MessageDataOptions` |
-| `signer` | `Eip712Signer` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `bodyJson` | [`SignerBody`](modules/types.md#signerbody) | A valid SignerRemove body object containing the data to be sent. |
+| `dataOptions` | `MessageDataOptions` | Optional arguments to construct the message. |
+| `signer` | `Eip712Signer` | A valid Eip712Signer that will sign the message. |
 
 ___
 
@@ -437,6 +461,12 @@ ___
 ▸ **makeUserDataAdd**(`bodyJson`, `dataOptions`, `signer`)
 
 Make a message to set user data (pfp, bio, display name, etc)
+
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<UserDataMessage>` | [`UserDataMessage`](modules/types.md#userdatamessage) | A `HubAsyncResult` that contains the valid `UserDataMessage`. |
 
 **`Example`**
 
@@ -478,11 +508,11 @@ await client.submitMessage(userDataPfpAdd._unsafeUnwrap());
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`UserDataBody`](modules/types.md#userdatabody) |
-| `dataOptions` | `MessageDataOptions` |
-| `signer` | `Ed25519Signer` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `bodyJson` | [`UserDataBody`](modules/types.md#userdatabody) | A valid UserData body object containing the data to be sent. |
+| `dataOptions` | `MessageDataOptions` | Optional arguments to construct the message. |
+| `signer` | `Ed25519Signer` | A valid Eip712Signer that will sign the message. |
 
 ___
 
@@ -491,6 +521,12 @@ ___
 ▸ **makeVerificationAddEthAddress**(`bodyJson`, `dataOptions`, `signer`)
 
 TODO DOCS
+
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<VerificationAddMessage>` | [`VerificationAddMessage`](modules/types.md#verificationaddmessage) | A `HubAsyncResult` that contains the valid `VerificationAddMessage`. |
 
 **`Example`**
 
@@ -558,11 +594,11 @@ await client.submitMessage(verificationMessage._unsafeUnwrap());
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`VerificationAddEthAddressBody`](modules/types.md#verificationaddethaddressbody) |
-| `dataOptions` | `MessageDataOptions` |
-| `signer` | `Ed25519Signer` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `bodyJson` | [`VerificationAddEthAddressBody`](modules/types.md#verificationaddethaddressbody) | A valid VerificationAdd body object containing the data to be sent. |
+| `dataOptions` | `MessageDataOptions` | Optional arguments to construct the message. |
+| `signer` | `Ed25519Signer` | A valid Ed25519Signer that will sign the message. |
 
 ___
 
@@ -571,6 +607,12 @@ ___
 ▸ **makeVerificationRemove**(`bodyJson`, `dataOptions`, `signer`)
 
 TODO DOCS: description
+
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<VerificationRemoveMessage>` | [`VerificationRemoveMessage`](modules/types.md#verificationremovemessage) | A `HubAsyncResult` that contains the valid `VerificationRemoveMessage`. |
 
 **`Example`**
 
@@ -629,8 +671,8 @@ await client.submitMessage(verificationRemoveMessage._unsafeUnwrap());
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`VerificationRemoveBody`](modules/types.md#verificationremovebody) |
-| `dataOptions` | `MessageDataOptions` |
-| `signer` | `Ed25519Signer` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `bodyJson` | [`VerificationRemoveBody`](modules/types.md#verificationremovebody) | A valid VerificationRemove body object containing the data to be sent. |
+| `dataOptions` | `MessageDataOptions` | Optional arguments to construct the message. |
+| `signer` | `Ed25519Signer` | A valid Ed25519Signer that will sign the message. |

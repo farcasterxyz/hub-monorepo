@@ -231,12 +231,12 @@ export const makeMessageWithSignature = async (
  *
  * #### Returns
  *
- * | Value                            | Type                                                | Description                                     |
- * | :------------------------------- | :-------------------------------------------------- | :---------------------------------------------- |
+ * | Value | Type | Description |
+ * | :---- | :--- | :---------- |
  * | `HubAsyncResult<CastAddMessage>` | [`CastAddMessage`](modules/types.md#castaddmessage) | A Result that contains the valid CastAddMessage |
  *
  * @param bodyJson - A valid CastAdd body object containing the data to be sent.
- * @param dataOptions - Optional arguments to construct the Cast.
+ * @param dataOptions - Optional arguments to construct the message.
  * @param signer - A valid Ed25519Signer that will sign the message.
  *
  * @example
@@ -280,13 +280,13 @@ export const makeCastAdd = buildMakeMessageMethod(
  *
  * #### Returns
  *
- * | Value                                | Type                                                | Description                                      |
- * | :----------------------------------- | :-------------------------------------------------- | :----------------------------------------------- |
+ * | Value | Type | Description |
+ * | :---- | :--- | :---------- |
  * | `HubAsyncResult<CastRemoveMessage>` | [`CastRemoveMessage`](modules/types.md#castremovemessage) | A `HubAsyncResult` that contains the valid `CastRemoveMessage`. |
  *
  *
  * @param bodyJson - A valid CastRemove body object containing the data to be sent.
- * @param dataOptions - Optional arguments to construct the Cast.
+ * @param dataOptions - Optional arguments to construct the message.
  * @param signer - A valid Ed25519Signer that will sign the message.
  *
  * @example
@@ -348,6 +348,16 @@ export const makeCastRemoveData = buildMakeMessageDataMethod(
 /**
  * Make a message to react a cast (like or recast)
  *
+ * #### Returns
+ *
+ * | Value | Type | Description |
+ * | :---- | :--- | :---------- |
+ * | `HubAsyncResult<ReactionAddMessage>` | [`ReactionAddMessage`](modules/types.md#reactionaddmessage) | A `HubAsyncResult` that contains the valid `ReactionAddMessage`. |
+ *
+ * @param bodyJson - A valid ReactionAdd body object containing the data to be sent.
+ * @param dataOptions - Optional arguments to construct the message.
+ * @param signer - A valid Ed25519Signer that will sign the message.
+ *
  * @example
  * ```typescript
  * import {
@@ -395,6 +405,16 @@ export const makeReactionAdd = buildMakeMessageMethod(
 
 /**
  * Make a message to undo a reaction to a cast (unlike or undo recast)
+ *
+ * #### Returns
+ *
+ * | Value | Type | Description |
+ * | :---- | :--- | :---------- |
+ * | `HubAsyncResult<ReactionRemoveMessage>` | [`ReactionRemoveMessage`](modules/types.md#reactionremovemessage) | A `HubAsyncResult` that contains the valid `ReactionRemoveMessage`. |
+ *
+ * @param bodyJson - A valid ReactionRemove body object containing the data to be sent.
+ * @param dataOptions - Optional arguments to construct the message.
+ * @param signer - A valid Ed25519Signer that will sign the message.
  *
  * @example
  * ```typescript
@@ -459,6 +479,16 @@ export const makeReactionRemoveData = buildMakeMessageDataMethod(
 
 /**
  * TODO DOCS
+ *
+ * #### Returns
+ *
+ * | Value | Type | Description |
+ * | :---- | :--- | :---------- |
+ * | `HubAsyncResult<VerificationAddMessage>` | [`VerificationAddMessage`](modules/types.md#verificationaddmessage) | A `HubAsyncResult` that contains the valid `VerificationAddMessage`. |
+ *
+ * @param bodyJson - A valid VerificationAdd body object containing the data to be sent.
+ * @param dataOptions - Optional arguments to construct the message.
+ * @param signer - A valid Ed25519Signer that will sign the message.
  *
  * @example
  * ```typescript
@@ -531,6 +561,16 @@ export const makeVerificationAddEthAddress = buildMakeMessageMethod(
 
 /**
  * TODO DOCS: description
+ *
+ * #### Returns
+ *
+ * | Value | Type | Description |
+ * | :---- | :--- | :---------- |
+ * | `HubAsyncResult<VerificationRemoveMessage>` | [`VerificationRemoveMessage`](modules/types.md#verificationremovemessage) | A `HubAsyncResult` that contains the valid `VerificationRemoveMessage`. |
+ *
+ * @param bodyJson - A valid VerificationRemove body object containing the data to be sent.
+ * @param dataOptions - Optional arguments to construct the message.
+ * @param signer - A valid Ed25519Signer that will sign the message.
  *
  * @example
  * ```typescript
@@ -611,6 +651,16 @@ export const makeVerificationRemoveData = buildMakeMessageDataMethod(
 /**
  * Make a message to add an EdDSA signer
  *
+ * #### Returns
+ *
+ * | Value | Type | Description |
+ * | :---- | :--- | :---------- |
+ * | `HubAsyncResult<VerificationAddEd25519Message>` | [`VerificationAddEd25519Message`](modules/types.md#verificationadded25519message) | A `HubAsyncResult` that contains the valid `VerificationAddEd25519Message`. |
+ *
+ * @param bodyJson - A valid VerificationAddEd25519 body object containing the data to be sent.
+ * @param dataOptions - Optional arguments to construct the message.
+ * @param signer - A valid Eip712Signer that will sign the message.
+ *
  * @example
  * ```typescript
  * import { Client, Ed25519Signer, Eip712Signer, makeSignerAdd, types } from '@farcaster/js';
@@ -655,6 +705,16 @@ export const makeSignerAdd = buildMakeMessageMethod(
 
 /**
  * Make a message to remove an EdDSA signer
+ *
+ * #### Returns
+ *
+ * | Value | Type | Description |
+ * | :---- | :--- | :---------- |
+ * | `HubAsyncResult<SignerRemoveMessage>` | [`SignerRemoveMessage`](modules/types.md#signerremovemessage) | A `HubAsyncResult` that contains the valid `SignerRemoveMessage`. |
+ *
+ * @param bodyJson - A valid SignerRemove body object containing the data to be sent.
+ * @param dataOptions - Optional arguments to construct the message.
+ * @param signer - A valid Eip712Signer that will sign the message.
  *
  * @example
  * ```typescript
@@ -716,6 +776,16 @@ export const makeSignerRemoveData = buildMakeMessageDataMethod(
 
 /**
  * Make a message to set user data (pfp, bio, display name, etc)
+ *
+ * #### Returns
+ *
+ * | Value | Type | Description |
+ * | :---- | :--- | :---------- |
+ * | `HubAsyncResult<UserDataMessage>` | [`UserDataMessage`](modules/types.md#userdatamessage) | A `HubAsyncResult` that contains the valid `UserDataMessage`. |
+ *
+ * @param bodyJson - A valid UserData body object containing the data to be sent.
+ * @param dataOptions - Optional arguments to construct the message.
+ * @param signer - A valid Eip712Signer that will sign the message.
  *
  * @example
  * ```typescript
