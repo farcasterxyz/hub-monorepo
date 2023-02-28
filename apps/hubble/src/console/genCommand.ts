@@ -39,7 +39,9 @@ export class GenCommand implements ConsoleCommandInterface {
         numMessages = 100,
         network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_DEVNET
       ): Promise<string | SubmitStats> => {
-        const fid = Factories.Fid.build();
+        // Generate a random number from 100_000 to 100_000_000 to use as an fid
+        const fid = Math.floor(Math.random() * 100_000_000 + 100_000);
+
         const custodySigner = Factories.Eip712Signer.build();
         const signer = Factories.Ed25519Signer.build();
 
@@ -50,7 +52,7 @@ export class GenCommand implements ConsoleCommandInterface {
         const start = performance.now();
 
         const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
-        const idResult = await this.rpcClient.submitIdRegistryEvent(custodyEvent);
+        const idResult = await this.rpcClient.submitIdRegistryEvent(custodyEvent, new protobufs.Metadata());
         if (idResult.isOk()) {
           numSuccess++;
         } else {
@@ -62,7 +64,7 @@ export class GenCommand implements ConsoleCommandInterface {
           { transient: { signer: custodySigner } }
         );
 
-        const signerResult = await this.rpcClient.submitMessage(signerAdd);
+        const signerResult = await this.rpcClient.submitMessage(signerAdd, new protobufs.Metadata());
         if (signerResult.isOk()) {
           numSuccess++;
         } else {
@@ -72,7 +74,7 @@ export class GenCommand implements ConsoleCommandInterface {
         const submitBatch = async (batch: protobufs.Message[]) => {
           const promises = [];
           for (const castAdd of batch) {
-            promises.push(this.rpcClient.submitMessage(castAdd));
+            promises.push(this.rpcClient.submitMessage(castAdd, new protobufs.Metadata()));
           }
           const results = await Promise.all(promises);
 
