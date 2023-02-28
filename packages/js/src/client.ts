@@ -99,7 +99,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<CastAddMessage>` | [`CastAddMessage`](modules/types.md#castaddmessage) | A `HubAsyncResult` that contains the valid `CastAddMessage`. |
+   * | `HubAsyncResult<CastAddMessage>` | [`CastAddMessage`](../modules/types.md#castaddmessage) | A `HubAsyncResult` that contains the valid `CastAddMessage`. |
    *
    * @param {number} fid - The fid from which the cast originates from.
    * @param {string} hash - The hash of the cast.
@@ -125,7 +125,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
+   * | `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](../modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
    *
    * @param {number} fid - The fid from which the cast originates from.
    *
@@ -147,7 +147,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
+   * | `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](../modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
    *
    * @param {CastId} parent - The parent cast id.
    * @param {number} parent.fid - The fid from which the cast originates from.
@@ -175,7 +175,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
+   * | `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](../modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
    *
    * @param {number} mentionFid - The fid from which the cast originates from.
    *
@@ -197,7 +197,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
+   * | `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](../modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
    *
    * @param {number} fid - The fid from which the cast originates from.
    *
@@ -222,7 +222,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<ReactionAddMessage>` | [`ReactionAddMessage`](modules/types.md#reactionaddmessage) | A `HubAsyncResult` that contains the valid `ReactionAddMessage`. |
+   * | `HubAsyncResult<ReactionAddMessage>` | [`ReactionAddMessage`](../modules/types.md#reactionaddmessage) | A `HubAsyncResult` that contains the valid `ReactionAddMessage`. |
    *
    * @param {number} fid - The fid from which the cast originates from.
    * @param {ReactionType} type - The type of the reaction (like or recast).
@@ -260,7 +260,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
+   * | `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](../modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
    *
    * @param {number} fid - The fid from which the cast originates from.
    * @param {ReactionType} type - The type of the reaction (like or recast).
@@ -285,7 +285,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
+   * | `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](../modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
    *
    * @param {CastId} cast - The cast id.
    * @param {number} cast.fid - The fid from which the cast originates from.
@@ -316,7 +316,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
+   * | `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](../modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
    *
    * @param {number} fid - The fid from which the cast originates from.
    *
@@ -343,7 +343,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<VerificationAddEthAddressMessage>` | [`VerificationAddEthAddressMessage`](modules/types.md#verificationaddethaddressmessage) | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage`. |
+   * | `HubAsyncResult<VerificationAddEthAddressMessage>` | [`VerificationAddEthAddressMessage`](../modules/types.md#verificationaddethaddressmessage) | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage`. |
    *
    * @param {number} fid - The fid to verify.
    * @param {string} address - The custody address to verify.
@@ -370,7 +370,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<VerificationAddEthAddressMessage[]>` | [`VerificationAddEthAddressMessage`](modules/types.md#verificationaddethaddressmessage)[] | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage` array. |
+   * | `HubAsyncResult<VerificationAddEthAddressMessage[]>` | [`VerificationAddEthAddressMessage`](../modules/types.md#verificationaddethaddressmessage)[] | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage` array. |
    *
    * @param {number} fid - The fid to verify.
    *
@@ -391,7 +391,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<(VerificationAddEthAddressMessage | VerificationRemoveMessage)[]>` | [`VerificationAddEthAddressMessage`](modules/types.md#verificationaddethaddressmessage)[] | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage` array. |
+   * | `HubAsyncResult<(VerificationAddEthAddressMessage | VerificationRemoveMessage)[]>` | [`VerificationAddEthAddressMessage`](../modules/types.md#verificationaddethaddressmessage)[] | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage` array. |
    *
    * @param {number} fid - The fid to get all verifications for.
    *
@@ -418,7 +418,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<SignerAddMessage>` | [`SignerAddMessage`](modules/types.md#signeraddmessage) | A `HubAsyncResult` that contains the valid `SignerAddMessage`. |
+   * | `HubAsyncResult<SignerAddMessage>` | [`SignerAddMessage`](../modules/types.md#signeraddmessage) | A `HubAsyncResult` that contains the valid `SignerAddMessage`. |
    *
    * @example
    * ```typescript
@@ -441,7 +441,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<SignerAddMessage[]>` | [`SignerAddMessage`](modules/types.md#signeraddmessage)[] | A `HubAsyncResult` that contains the valid `SignerAddMessage` array. |
+   * | `HubAsyncResult<SignerAddMessage[]>` | [`SignerAddMessage`](../modules/types.md#signeraddmessage)[] | A `HubAsyncResult` that contains the valid `SignerAddMessage` array. |
    *
    * @param {number} fid - The fid to get signers for.
    *
@@ -462,7 +462,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<(SignerAddMessage | SignerRemoveMessage)[]>` | [`SignerAddMessage`](modules/types.md#signeraddmessage)[] | A `HubAsyncResult` that contains the valid `SignerAddMessage` array. |
+   * | `HubAsyncResult<(SignerAddMessage | SignerRemoveMessage)[]>` | [`SignerAddMessage`](../modules/types.md#signeraddmessage)[] | A `HubAsyncResult` that contains the valid `SignerAddMessage` array. |
    *
    * @param {number} fid - The fid to get all signers for.
    *
@@ -487,7 +487,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<UserDataAddMessage>` | [`UserDataAddMessage`](modules/types.md#userdataaddmessage) | A `HubAsyncResult` that contains the valid `UserDataAddMessage`. |
+   * | `HubAsyncResult<UserDataAddMessage>` | [`UserDataAddMessage`](../modules/types.md#userdataaddmessage) | A `HubAsyncResult` that contains the valid `UserDataAddMessage`. |
    *
    * @param {number} fid - The fid to get user data for.
    * @param {UserDataType} type - The type of user data to get.
@@ -509,7 +509,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<UserDataAddMessage[]>` | [`UserDataAddMessage`](modules/types.md#userdataaddmessage)[] | A `HubAsyncResult` that contains the valid `UserDataAddMessage` array. |
+   * | `HubAsyncResult<UserDataAddMessage[]>` | [`UserDataAddMessage`](../modules/types.md#userdataaddmessage)[] | A `HubAsyncResult` that contains the valid `UserDataAddMessage` array. |
    *
    * @param {number} fid - The fid to get user data for.
    *
@@ -530,7 +530,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<(UserDataAddMessage | UserDataRemoveMessage)[]>` | [`UserDataAddMessage`](modules/types.md#userdataaddmessage)[] | A `HubAsyncResult` that contains the valid `UserDataAddMessage` array. |
+   * | `HubAsyncResult<(UserDataAddMessage | UserDataRemoveMessage)[]>` | [`UserDataAddMessage`](../modules/types.md#userdataaddmessage)[] | A `HubAsyncResult` that contains the valid `UserDataAddMessage` array. |
    *
    * @param {number} fid - The fid to get all user data for.
    *
@@ -555,7 +555,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<IdRegistryEvent>` | [`IdRegistryEvent`](modules/types.md#idregistryevent) | A `HubAsyncResult` that contains the valid `IdRegistryEvent`. |
+   * | `HubAsyncResult<IdRegistryEvent>` | [`IdRegistryEvent`](../modules/types.md#idregistryevent) | A `HubAsyncResult` that contains the valid `IdRegistryEvent`. |
    *
    * @param {number} fid - The fid to get registry event for.
    *
@@ -576,7 +576,7 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<NameRegistryEvent>` | [`NameRegistryEvent`](modules/types.md#nameregistryevent) | A `HubAsyncResult` that contains the valid `NameRegistryEvent`. |
+   * | `HubAsyncResult<NameRegistryEvent>` | [`NameRegistryEvent`](../modules/types.md#nameregistryevent) | A `HubAsyncResult` that contains the valid `NameRegistryEvent`. |
    *
    * @param {string} fname - The fname to get registry event for.
    *

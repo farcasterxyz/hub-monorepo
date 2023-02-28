@@ -83,7 +83,7 @@ TODO DOCS: description
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
+| `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](../modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
 
 **`Example`**
 
@@ -109,7 +109,7 @@ TODO DOCS: description
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
+| `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](../modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
 
 **`Example`**
 
@@ -135,7 +135,7 @@ TODO DOCS: description
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<(SignerAddMessage | SignerRemoveMessage)[]>` | [`SignerAddMessage`](modules/types.md#signeraddmessage)[] | A `HubAsyncResult` that contains the valid `SignerAddMessage` array. |
+| `HubAsyncResult<(SignerAddMessage | SignerRemoveMessage)[]>` | [`SignerAddMessage`](../modules/types.md#signeraddmessage)[] | A `HubAsyncResult` that contains the valid `SignerAddMessage` array. |
 
 **`Example`**
 
@@ -161,7 +161,7 @@ TODO DOCS: description
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<(UserDataAddMessage | UserDataRemoveMessage)[]>` | [`UserDataAddMessage`](modules/types.md#userdataaddmessage)[] | A `HubAsyncResult` that contains the valid `UserDataAddMessage` array. |
+| `HubAsyncResult<(UserDataAddMessage | UserDataRemoveMessage)[]>` | [`UserDataAddMessage`](../modules/types.md#userdataaddmessage)[] | A `HubAsyncResult` that contains the valid `UserDataAddMessage` array. |
 
 **`Example`**
 
@@ -187,7 +187,7 @@ Get all verifications for a specific address.
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<(VerificationAddEthAddressMessage | VerificationRemoveMessage)[]>` | [`VerificationAddEthAddressMessage`](modules/types.md#verificationaddethaddressmessage)[] | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage` array. |
+| `HubAsyncResult<(VerificationAddEthAddressMessage | VerificationRemoveMessage)[]>` | [`VerificationAddEthAddressMessage`](../modules/types.md#verificationaddethaddressmessage)[] | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage` array. |
 
 **`Example`**
 
@@ -213,7 +213,7 @@ Get a cast.
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<CastAddMessage>` | [`CastAddMessage`](modules/types.md#castaddmessage) | A `HubAsyncResult` that contains the valid `CastAddMessage`. |
+| `HubAsyncResult<CastAddMessage>` | [`CastAddMessage`](../modules/types.md#castaddmessage) | A `HubAsyncResult` that contains the valid `CastAddMessage`. |
 
 **`Example`**
 
@@ -240,7 +240,7 @@ Get casts by fid.
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
+| `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](../modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
 
 **`Example`**
 
@@ -266,7 +266,7 @@ TODO DOCS: description
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
+| `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](../modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
 
 **`Example`**
 
@@ -292,7 +292,7 @@ Get direct children of a cast.
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
+| `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](../modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
 
 **`Example`**
 
@@ -318,7 +318,7 @@ Get fid registry event for a specific fid.
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<IdRegistryEvent>` | [`IdRegistryEvent`](modules/types.md#idregistryevent) | A `HubAsyncResult` that contains the valid `IdRegistryEvent`. |
+| `HubAsyncResult<IdRegistryEvent>` | [`IdRegistryEvent`](../modules/types.md#idregistryevent) | A `HubAsyncResult` that contains the valid `IdRegistryEvent`. |
 
 **`Example`**
 
@@ -344,7 +344,7 @@ Get fname registry event for a specific fname.
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<NameRegistryEvent>` | [`NameRegistryEvent`](modules/types.md#nameregistryevent) | A `HubAsyncResult` that contains the valid `NameRegistryEvent`. |
+| `HubAsyncResult<NameRegistryEvent>` | [`NameRegistryEvent`](../modules/types.md#nameregistryevent) | A `HubAsyncResult` that contains the valid `NameRegistryEvent`. |
 
 **`Example`**
 
@@ -370,7 +370,7 @@ Get reaction for a specific cast.
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<ReactionAddMessage>` | [`ReactionAddMessage`](modules/types.md#reactionaddmessage) | A `HubAsyncResult` that contains the valid `ReactionAddMessage`. |
+| `HubAsyncResult<ReactionAddMessage>` | [`ReactionAddMessage`](../modules/types.md#reactionaddmessage) | A `HubAsyncResult` that contains the valid `ReactionAddMessage`. |
 
 **`Example`**
 
@@ -398,7 +398,7 @@ TODO DOCS: description
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
+| `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](../modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
 
 **`Example`**
 
@@ -425,7 +425,7 @@ Get reactions from a specific fid.
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
+| `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](../modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
 
 **`Example`**
 
@@ -452,7 +452,7 @@ TODO DOCS: description
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<SignerAddMessage>` | [`SignerAddMessage`](modules/types.md#signeraddmessage) | A `HubAsyncResult` that contains the valid `SignerAddMessage`. |
+| `HubAsyncResult<SignerAddMessage>` | [`SignerAddMessage`](../modules/types.md#signeraddmessage) | A `HubAsyncResult` that contains the valid `SignerAddMessage`. |
 
 **`Example`**
 
@@ -479,7 +479,7 @@ Get signers of a fid.
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<SignerAddMessage[]>` | [`SignerAddMessage`](modules/types.md#signeraddmessage)[] | A `HubAsyncResult` that contains the valid `SignerAddMessage` array. |
+| `HubAsyncResult<SignerAddMessage[]>` | [`SignerAddMessage`](../modules/types.md#signeraddmessage)[] | A `HubAsyncResult` that contains the valid `SignerAddMessage` array. |
 
 **`Example`**
 
@@ -505,7 +505,7 @@ Get user data (pfp, username, fname, etc).
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<UserDataAddMessage>` | [`UserDataAddMessage`](modules/types.md#userdataaddmessage) | A `HubAsyncResult` that contains the valid `UserDataAddMessage`. |
+| `HubAsyncResult<UserDataAddMessage>` | [`UserDataAddMessage`](../modules/types.md#userdataaddmessage) | A `HubAsyncResult` that contains the valid `UserDataAddMessage`. |
 
 **`Example`**
 
@@ -532,7 +532,7 @@ Get user data (pfp, username, fname, etc) by fid.
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<UserDataAddMessage[]>` | [`UserDataAddMessage`](modules/types.md#userdataaddmessage)[] | A `HubAsyncResult` that contains the valid `UserDataAddMessage` array. |
+| `HubAsyncResult<UserDataAddMessage[]>` | [`UserDataAddMessage`](../modules/types.md#userdataaddmessage)[] | A `HubAsyncResult` that contains the valid `UserDataAddMessage` array. |
 
 **`Example`**
 
@@ -558,7 +558,7 @@ Get verification for a specific address and fid.
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<VerificationAddEthAddressMessage>` | [`VerificationAddEthAddressMessage`](modules/types.md#verificationaddethaddressmessage) | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage`. |
+| `HubAsyncResult<VerificationAddEthAddressMessage>` | [`VerificationAddEthAddressMessage`](../modules/types.md#verificationaddethaddressmessage) | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage`. |
 
 **`Example`**
 
@@ -585,7 +585,7 @@ Get verifications for a specific fid.
 
 | Value | Type | Description |
 | :---- | :--- | :---------- |
-| `HubAsyncResult<VerificationAddEthAddressMessage[]>` | [`VerificationAddEthAddressMessage`](modules/types.md#verificationaddethaddressmessage)[] | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage` array. |
+| `HubAsyncResult<VerificationAddEthAddressMessage[]>` | [`VerificationAddEthAddressMessage`](../modules/types.md#verificationaddethaddressmessage)[] | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage` array. |
 
 **`Example`**
 
