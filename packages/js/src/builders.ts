@@ -231,8 +231,8 @@ export const makeMessageWithSignature = async (
  *
  * #### Returns
  *
- * | Value                            | Type                                          | Description                                     |
- * | -------------------------------- | --------------------------------------------- | ----------------------------------------------- |
+ * | Value                            | Type                                                | Description                                     |
+ * | :------------------------------- | :-------------------------------------------------- | :---------------------------------------------- |
  * | `HubAsyncResult<CastAddMessage>` | [`CastAddMessage`](modules/types.md#castaddmessage) | A Result that contains the valid CastAddMessage |
  *
  * @param bodyJson - A valid CastAdd body object containing the data to be sent.
@@ -277,6 +277,17 @@ export const makeCastAdd = buildMakeMessageMethod(
 
 /**
  * Make a message to remove a cast
+ *
+ * #### Returns
+ *
+ * | Value                                | Type                                                | Description                                      |
+ * | :----------------------------------- | :-------------------------------------------------- | :----------------------------------------------- |
+ * | `HubAsyncResult<CastRemoveMessage>` | [`CastRemoveMessage`](modules/types.md#castremovemessage) | A `HubAsyncResult` that contains the valid `CastRemoveMessage`. |
+ *
+ *
+ * @param bodyJson - A valid CastRemove body object containing the data to be sent.
+ * @param dataOptions - Optional arguments to construct the Cast.
+ * @param signer - A valid Ed25519Signer that will sign the message.
  *
  * @example
  * ```typescript

@@ -57,8 +57,8 @@ Make a message to add a cast
 
 #### Returns
 
-| Value                            | Type                                          | Description                                     |
-| -------------------------------- | --------------------------------------------- | ----------------------------------------------- |
+| Value                            | Type                                                | Description                                     |
+| :------------------------------- | :-------------------------------------------------- | :---------------------------------------------- |
 | `HubAsyncResult<CastAddMessage>` | [`CastAddMessage`](modules/types.md#castaddmessage) | A Result that contains the valid CastAddMessage |
 
 **`Example`**
@@ -107,6 +107,12 @@ ___
 
 Make a message to remove a cast
 
+#### Returns
+
+| Value                                | Type                                                | Description                                      |
+| :----------------------------------- | :-------------------------------------------------- | :----------------------------------------------- |
+| `HubAsyncResult<CastRemoveMessage>` | [`CastRemoveMessage`](modules/types.md#castremovemessage) | A `HubAsyncResult` that contains the valid `CastRemoveMessage`. |
+
 **`Example`**
 
 ```typescript
@@ -144,11 +150,11 @@ await client.submitMessage(castRemove._unsafeUnwrap());
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`CastRemoveBody`](modules/types.md#castremovebody) |
-| `dataOptions` | `MessageDataOptions` |
-| `signer` | `Ed25519Signer` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `bodyJson` | [`CastRemoveBody`](modules/types.md#castremovebody) | A valid CastRemove body object containing the data to be sent. |
+| `dataOptions` | `MessageDataOptions` | Optional arguments to construct the Cast. |
+| `signer` | `Ed25519Signer` | A valid Ed25519Signer that will sign the message. |
 
 ___
 
