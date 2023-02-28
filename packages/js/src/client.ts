@@ -391,7 +391,9 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<(VerificationAddEthAddressMessage | VerificationRemoveMessage)[]>` | [`VerificationAddEthAddressMessage`](../modules/types.md#verificationaddethaddressmessage)[] | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage` array. |
+   * | `HubAsyncResult<(VerificationAddEthAddressMessage)[]>` | [`VerificationAddEthAddressMessage`](../modules/types.md#verificationaddethaddressmessage)[] | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage` or `VerificationRemoveMessageMessage` array. |
+   * | OR | | |
+   * | `HubAsyncResult<(VerificationRemoveMessage)[]>` | [`VerificationRemoveMessage`](../modules/types.md#verificationremovemessage)[] | - |
    *
    * @param {number} fid - The fid to get all verifications for.
    *
@@ -460,9 +462,11 @@ export class Client {
    *
    * #### Returns
    *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<(SignerAddMessage | SignerRemoveMessage)[]>` | [`SignerAddMessage`](../modules/types.md#signeraddmessage)[] | A `HubAsyncResult` that contains the valid `SignerAddMessage` array. |
+   * | Value                                          | Type                                     | Description                                                               |
+   * | :--------------------------------------------- | :--------------------------------------- | :------------------------------------------------------------------------ |
+   * | `HubAsyncResult<(SignerAddMessage)>` | [`SignerAddMessage`](../modules/types.md#signeraddmessage)[] | A `HubAsyncResult` that contains the valid `SignerAddMessage` or `SignerRemoveMessage` array. |
+   * | OR                                           |                                         |                                                                          |
+   * | `HubAsyncResult<(SignerRemoveMessage)>` | [`SignerRemoveMessage`](../modules/types.md#signerremovemessage)[] | - |
    *
    * @param {number} fid - The fid to get all signers for.
    *
@@ -530,7 +534,9 @@ export class Client {
    *
    * | Value | Type | Description |
    * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<(UserDataAddMessage | UserDataRemoveMessage)[]>` | [`UserDataAddMessage`](../modules/types.md#userdataaddmessage)[] | A `HubAsyncResult` that contains the valid `UserDataAddMessage` array. |
+   * | `HubAsyncResult<(UserDataAddMessage>` | [`UserDataAddMessage`](../modules/types.md#userdataaddmessage)[] | A `HubAsyncResult` that contains the valid `UserDataAddMessage` or `UserDataRemoveMessage` array. |
+   * | OR    |                                         |                                                                          |
+   * | `HubAsyncResult<(UserDataRemoveMessage>` | [`UserDataRemoveMessage`](../modules/types.md#userdataremovemessage)[] | - |
    *
    * @param {number} fid - The fid to get all user data for.
    *
