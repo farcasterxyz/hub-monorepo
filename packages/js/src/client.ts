@@ -93,23 +93,21 @@ export class Client {
   /* -------------------------------------------------------------------------- */
 
   /**
-   * TODO DOCS: description
+   * Get a cast.
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<CastAddMessage>` | [`CastAddMessage`](modules/types.md#castaddmessage) | A `HubAsyncResult` that contains the valid `CastAddMessage`. |
+   *
+   * @param {number} fid - The fid from which the cast originates from.
+   * @param {string} hash - The hash of the cast.
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
-   *
-   * @param ...
-   *
-   * @returns ...
    */
   async getCast(fid: number, hash: string): HubAsyncResult<types.CastAddMessage> {
     const castId = utils.serializeCastId({ fid, hash });
@@ -121,23 +119,21 @@ export class Client {
   }
 
   /**
-   * TODO DOCS: description
+   * Get casts by fid.
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
+   *
+   * @param {number} fid - The fid from which the cast originates from.
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
    *
-   * @param ...
-   *
-   * @returns ...
    */
   async getCastsByFid(fid: number): HubAsyncResult<types.CastAddMessage[]> {
     const fidRequest = protobufs.FidRequest.create({ fid });
@@ -145,23 +141,23 @@ export class Client {
   }
 
   /**
-   * TODO DOCS: description
+   * Get direct children of a cast.
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
+   *
+   * @param {CastId} parent - The parent cast id.
+   * @param {number} parent.fid - The fid from which the cast originates from.
+   * @param {string} parent.hash - The hash of the cast.
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
    *
-   * @param ...
-   *
-   * @returns ...
    */
   async getCastsByParent(parent: types.CastId): HubAsyncResult<types.CastAddMessage[]> {
     const serializedCastId = utils.serializeCastId(parent);
@@ -175,21 +171,19 @@ export class Client {
   /**
    * TODO DOCS: description
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
+   *
+   * @param {number} mentionFid - The fid from which the cast originates from.
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
    *
-   * @param ...
-   *
-   * @returns ...
    */
   async getCastsByMention(mentionFid: number): HubAsyncResult<types.CastAddMessage[]> {
     const fidRequest = protobufs.FidRequest.create({ fid: mentionFid });
@@ -199,21 +193,18 @@ export class Client {
   /**
    * TODO DOCS: description
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
+   *
+   * @param {number} fid - The fid from which the cast originates from.
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
-   *
-   * @param ...
-   *
-   * @returns ...
    */
   async getAllCastMessagesByFid(fid: number): HubAsyncResult<(types.CastAddMessage | types.CastRemoveMessage)[]> {
     const request = protobufs.FidRequest.create({ fid });
@@ -225,23 +216,24 @@ export class Client {
   /* -------------------------------------------------------------------------- */
 
   /**
-   * TODO DOCS: description
+   * Get reaction for a specific cast.
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<ReactionAddMessage>` | [`ReactionAddMessage`](modules/types.md#reactionaddmessage) | A `HubAsyncResult` that contains the valid `ReactionAddMessage`. |
+   *
+   * @param {number} fid - The fid from which the cast originates from.
+   * @param {ReactionType} type - The type of the reaction (like or recast).
+   * @param {CastId} cast - The cast id.
+   * @param {number} cast.fid - The fid from which the cast originates from.
+   * @param {string} cast.hash - The hash of the cast.
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
-   *
-   * @param ...
-   *
-   * @returns ...
    */
   async getReaction(
     fid: number,
@@ -262,23 +254,21 @@ export class Client {
   }
 
   /**
-   * TODO DOCS: description
+   * Get reactions from a specific fid.
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
+   *
+   * @param {number} fid - The fid from which the cast originates from.
+   * @param {ReactionType} type - The type of the reaction (like or recast).
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
-   *
-   * @param ...
-   *
-   * @returns ...
    */
   async getReactionsByFid(fid: number, type?: types.ReactionType): HubAsyncResult<types.ReactionAddMessage[]> {
     const request = protobufs.ReactionsByFidRequest.create({
@@ -291,21 +281,21 @@ export class Client {
   /**
    * TODO DOCS: description
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
+   *
+   * @param {CastId} cast - The cast id.
+   * @param {number} cast.fid - The fid from which the cast originates from.
+   * @param {string} cast.hash - The hash of the cast.
+   * @param {ReactionType} type - The type of the reaction (like or recast).
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
-   *
-   * @param ...
-   *
-   * @returns ...
    */
   async getReactionsByCast(cast: types.CastId, type?: types.ReactionType): HubAsyncResult<types.ReactionAddMessage[]> {
     const serializedCastId = utils.serializeCastId(cast);
@@ -322,21 +312,18 @@ export class Client {
   /**
    * TODO DOCS: description
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
+   *
+   * @param {number} fid - The fid from which the cast originates from.
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
-   *
-   * @param ...
-   *
-   * @returns ...
    */
   async getAllReactionMessagesByFid(
     fid: number
@@ -350,23 +337,22 @@ export class Client {
   /* -------------------------------------------------------------------------- */
 
   /**
-   * TODO DOCS: description
+   * Get verification for a specific address and fid.
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<VerificationAddEthAddressMessage>` | [`VerificationAddEthAddressMessage`](modules/types.md#verificationaddethaddressmessage) | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage`. |
+   *
+   * @param {number} fid - The fid to verify.
+   * @param {string} address - The custody address to verify.
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
    *
-   * @param ...
-   *
-   * @returns ...
    */
   async getVerification(fid: number, address: string): HubAsyncResult<types.VerificationAddEthAddressMessage> {
     const serializedAddress = utils.serializeEthAddress(address);
@@ -378,23 +364,20 @@ export class Client {
   }
 
   /**
-   * TODO DOCS: description
+   * Get verifications for a specific fid.
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<VerificationAddEthAddressMessage[]>` | [`VerificationAddEthAddressMessage`](modules/types.md#verificationaddethaddressmessage)[] | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage` array. |
+   *
+   * @param {number} fid - The fid to verify.
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
-   *
-   * @param ...
-   *
-   * @returns ...
    */
   async getVerificationsByFid(fid: number): HubAsyncResult<types.VerificationAddEthAddressMessage[]> {
     const request = protobufs.FidRequest.create({ fid });
@@ -402,23 +385,20 @@ export class Client {
   }
 
   /**
-   * TODO DOCS: description
+   * Get all verifications for a specific address.
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<(VerificationAddEthAddressMessage | VerificationRemoveMessage)[]>` | [`VerificationAddEthAddressMessage`](modules/types.md#verificationaddethaddressmessage)[] | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage` array. |
+   *
+   * @param {number} fid - The fid to get all verifications for.
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
-   *
-   * @param ...
-   *
-   * @returns ...
    */
   async getAllVerificationMessagesByFid(
     fid: number
@@ -434,21 +414,16 @@ export class Client {
   /**
    * TODO DOCS: description
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<SignerAddMessage>` | [`SignerAddMessage`](modules/types.md#signeraddmessage) | A `HubAsyncResult` that contains the valid `SignerAddMessage`. |
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
-   *
-   * @param ...
-   *
-   * @returns ...
    */
   async getSigner(fid: number, signer: string): HubAsyncResult<types.SignerAddMessage> {
     const serializedSigner = utils.serializeEd25519PublicKey(signer);
@@ -460,23 +435,20 @@ export class Client {
   }
 
   /**
-   * TODO DOCS: description
+   * Get signers of a fid.
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<SignerAddMessage[]>` | [`SignerAddMessage`](modules/types.md#signeraddmessage)[] | A `HubAsyncResult` that contains the valid `SignerAddMessage` array. |
+   *
+   * @param {number} fid - The fid to get signers for.
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
-   *
-   * @param ...
-   *
-   * @returns ...
    */
   async getSignersByFid(fid: number): HubAsyncResult<types.SignerAddMessage[]> {
     const request = protobufs.FidRequest.create({ fid });
@@ -486,21 +458,18 @@ export class Client {
   /**
    * TODO DOCS: description
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<(SignerAddMessage | SignerRemoveMessage)[]>` | [`SignerAddMessage`](modules/types.md#signeraddmessage)[] | A `HubAsyncResult` that contains the valid `SignerAddMessage` array. |
+   *
+   * @param {number} fid - The fid to get all signers for.
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
-   *
-   * @param ...
-   *
-   * @returns ...
    */
   async getAllSignerMessagesByFid(fid: number): HubAsyncResult<(types.SignerAddMessage | types.SignerRemoveMessage)[]> {
     const request = protobufs.FidRequest.create({ fid });
@@ -512,23 +481,21 @@ export class Client {
   /* -------------------------------------------------------------------------- */
 
   /**
-   * TODO DOCS: description
+   * Get user data (pfp, username, fname, etc).
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<UserDataAddMessage>` | [`UserDataAddMessage`](modules/types.md#userdataaddmessage) | A `HubAsyncResult` that contains the valid `UserDataAddMessage`. |
+   *
+   * @param {number} fid - The fid to get user data for.
+   * @param {UserDataType} type - The type of user data to get.
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
-   *
-   * @param ...
-   *
-   * @returns ...
    */
   async getUserData(fid: number, type: types.UserDataType): HubAsyncResult<types.UserDataAddMessage> {
     const request = protobufs.UserDataRequest.create({ fid, userDataType: type });
@@ -536,23 +503,20 @@ export class Client {
   }
 
   /**
-   * TODO DOCS: description
+   * Get user data (pfp, username, fname, etc) by fid.
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<UserDataAddMessage[]>` | [`UserDataAddMessage`](modules/types.md#userdataaddmessage)[] | A `HubAsyncResult` that contains the valid `UserDataAddMessage` array. |
+   *
+   * @param {number} fid - The fid to get user data for.
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
-   *
-   * @param ...
-   *
-   * @returns ...
    */
   async getUserDataByFid(fid: number): HubAsyncResult<types.UserDataAddMessage[]> {
     const request = protobufs.FidRequest.create({ fid });
@@ -562,21 +526,18 @@ export class Client {
   /**
    * TODO DOCS: description
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<(UserDataAddMessage | UserDataRemoveMessage)[]>` | [`UserDataAddMessage`](modules/types.md#userdataaddmessage)[] | A `HubAsyncResult` that contains the valid `UserDataAddMessage` array. |
+   *
+   * @param {number} fid - The fid to get all user data for.
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
-   *
-   * @param ...
-   *
-   * @returns ...
    */
   async getAllUserDataMessagesByFid(fid: number): HubAsyncResult<types.UserDataAddMessage[]> {
     const request = protobufs.FidRequest.create({ fid });
@@ -588,23 +549,20 @@ export class Client {
   /* -------------------------------------------------------------------------- */
 
   /**
-   * TODO DOCS: description
+   * Get fid registry event for a specific fid.
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<IdRegistryEvent>` | [`IdRegistryEvent`](modules/types.md#idregistryevent) | A `HubAsyncResult` that contains the valid `IdRegistryEvent`. |
+   *
+   * @param {number} fid - The fid to get registry event for.
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
-   *
-   * @param ...
-   *
-   * @returns ...
    */
   async getIdRegistryEvent(fid: number): HubAsyncResult<types.IdRegistryEvent> {
     const request = protobufs.FidRequest.create({ fid });
@@ -612,23 +570,20 @@ export class Client {
   }
 
   /**
-   * TODO DOCS: description
+   * Get fname registry event for a specific fname.
    *
-   * TODO DOCS: usage example, here's the structure:
+   * #### Returns
+   *
+   * | Value | Type | Description |
+   * | :---- | :--- | :---------- |
+   * | `HubAsyncResult<NameRegistryEvent>` | [`NameRegistryEvent`](modules/types.md#nameregistryevent) | A `HubAsyncResult` that contains the valid `NameRegistryEvent`. |
+   *
+   * @param {string} fname - The fname to get registry event for.
+   *
    * @example
    * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
+   * // TODO DOCS: usage example
    * ```
-   *
-   * @param ...
-   *
-   * @returns ...
    */
   async getNameRegistryEvent(fname: string): HubAsyncResult<types.NameRegistryEvent> {
     const serializedFname = utils.serializeFname(fname);

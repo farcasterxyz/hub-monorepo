@@ -79,25 +79,23 @@ const client = new Client(...)
 
 TODO DOCS: description
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid from which the cast originates from. |
 
 ___
 
@@ -107,25 +105,23 @@ ___
 
 TODO DOCS: description
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid from which the cast originates from. |
 
 ___
 
@@ -135,25 +131,23 @@ ___
 
 TODO DOCS: description
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<(SignerAddMessage | SignerRemoveMessage)[]>` | [`SignerAddMessage`](modules/types.md#signeraddmessage)[] | A `HubAsyncResult` that contains the valid `SignerAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid to get all signers for. |
 
 ___
 
@@ -163,25 +157,23 @@ ___
 
 TODO DOCS: description
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<(UserDataAddMessage | UserDataRemoveMessage)[]>` | [`UserDataAddMessage`](modules/types.md#userdataaddmessage)[] | A `HubAsyncResult` that contains the valid `UserDataAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid to get all user data for. |
 
 ___
 
@@ -189,27 +181,25 @@ ___
 
 ▸ **getAllVerificationMessagesByFid**(`fid`)
 
-TODO DOCS: description
+Get all verifications for a specific address.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<(VerificationAddEthAddressMessage | VerificationRemoveMessage)[]>` | [`VerificationAddEthAddressMessage`](modules/types.md#verificationaddethaddressmessage)[] | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid to get all verifications for. |
 
 ___
 
@@ -217,28 +207,26 @@ ___
 
 ▸ **getCast**(`fid`, `hash`)
 
-TODO DOCS: description
+Get a cast.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<CastAddMessage>` | [`CastAddMessage`](modules/types.md#castaddmessage) | A `HubAsyncResult` that contains the valid `CastAddMessage`. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-| `hash` | `string` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid from which the cast originates from. |
+| `hash` | `string` | The hash of the cast. |
 
 ___
 
@@ -246,27 +234,25 @@ ___
 
 ▸ **getCastsByFid**(`fid`)
 
-TODO DOCS: description
+Get casts by fid.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid from which the cast originates from. |
 
 ___
 
@@ -276,25 +262,23 @@ ___
 
 TODO DOCS: description
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `mentionFid` | `number` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `mentionFid` | `number` | The fid from which the cast originates from. |
 
 ___
 
@@ -302,27 +286,25 @@ ___
 
 ▸ **getCastsByParent**(`parent`)
 
-TODO DOCS: description
+Get direct children of a cast.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `parent` | [`CastId`](../modules/types.md#castid) |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `parent` | [`CastId`](../modules/types.md#castid) | The parent cast id. |
 
 ___
 
@@ -330,27 +312,25 @@ ___
 
 ▸ **getIdRegistryEvent**(`fid`)
 
-TODO DOCS: description
+Get fid registry event for a specific fid.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<IdRegistryEvent>` | [`IdRegistryEvent`](modules/types.md#idregistryevent) | A `HubAsyncResult` that contains the valid `IdRegistryEvent`. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid to get registry event for. |
 
 ___
 
@@ -358,27 +338,25 @@ ___
 
 ▸ **getNameRegistryEvent**(`fname`)
 
-TODO DOCS: description
+Get fname registry event for a specific fname.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<NameRegistryEvent>` | [`NameRegistryEvent`](modules/types.md#nameregistryevent) | A `HubAsyncResult` that contains the valid `NameRegistryEvent`. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fname` | `string` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fname` | `string` | The fname to get registry event for. |
 
 ___
 
@@ -386,29 +364,27 @@ ___
 
 ▸ **getReaction**(`fid`, `type`, `cast`)
 
-TODO DOCS: description
+Get reaction for a specific cast.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<ReactionAddMessage>` | [`ReactionAddMessage`](modules/types.md#reactionaddmessage) | A `HubAsyncResult` that contains the valid `ReactionAddMessage`. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-| `type` | [`ReactionType`](../enums/protobufs.ReactionType.md) |
-| `cast` | [`CastId`](../modules/types.md#castid) |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid from which the cast originates from. |
+| `type` | [`ReactionType`](../enums/protobufs.ReactionType.md) | The type of the reaction (like or recast). |
+| `cast` | [`CastId`](../modules/types.md#castid) | The cast id. |
 
 ___
 
@@ -418,26 +394,24 @@ ___
 
 TODO DOCS: description
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `cast` | [`CastId`](../modules/types.md#castid) |
-| `type?` | [`ReactionType`](../enums/protobufs.ReactionType.md) |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `cast` | [`CastId`](../modules/types.md#castid) | The cast id. |
+| `type?` | [`ReactionType`](../enums/protobufs.ReactionType.md) | The type of the reaction (like or recast). |
 
 ___
 
@@ -445,28 +419,26 @@ ___
 
 ▸ **getReactionsByFid**(`fid`, `type?`)
 
-TODO DOCS: description
+Get reactions from a specific fid.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-| `type?` | [`ReactionType`](../enums/protobufs.ReactionType.md) |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid from which the cast originates from. |
+| `type?` | [`ReactionType`](../enums/protobufs.ReactionType.md) | The type of the reaction (like or recast). |
 
 ___
 
@@ -476,18 +448,16 @@ ___
 
 TODO DOCS: description
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<SignerAddMessage>` | [`SignerAddMessage`](modules/types.md#signeraddmessage) | A `HubAsyncResult` that contains the valid `SignerAddMessage`. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
@@ -503,27 +473,25 @@ ___
 
 ▸ **getSignersByFid**(`fid`)
 
-TODO DOCS: description
+Get signers of a fid.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<SignerAddMessage[]>` | [`SignerAddMessage`](modules/types.md#signeraddmessage)[] | A `HubAsyncResult` that contains the valid `SignerAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid to get signers for. |
 
 ___
 
@@ -531,28 +499,26 @@ ___
 
 ▸ **getUserData**(`fid`, `type`)
 
-TODO DOCS: description
+Get user data (pfp, username, fname, etc).
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<UserDataAddMessage>` | [`UserDataAddMessage`](modules/types.md#userdataaddmessage) | A `HubAsyncResult` that contains the valid `UserDataAddMessage`. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-| `type` | [`UserDataType`](../enums/protobufs.UserDataType.md) |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid to get user data for. |
+| `type` | [`UserDataType`](../enums/protobufs.UserDataType.md) | The type of user data to get. |
 
 ___
 
@@ -560,27 +526,25 @@ ___
 
 ▸ **getUserDataByFid**(`fid`)
 
-TODO DOCS: description
+Get user data (pfp, username, fname, etc) by fid.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<UserDataAddMessage[]>` | [`UserDataAddMessage`](modules/types.md#userdataaddmessage)[] | A `HubAsyncResult` that contains the valid `UserDataAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid to get user data for. |
 
 ___
 
@@ -588,28 +552,26 @@ ___
 
 ▸ **getVerification**(`fid`, `address`)
 
-TODO DOCS: description
+Get verification for a specific address and fid.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<VerificationAddEthAddressMessage>` | [`VerificationAddEthAddressMessage`](modules/types.md#verificationaddethaddressmessage) | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage`. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-| `address` | `string` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid to verify. |
+| `address` | `string` | The custody address to verify. |
 
 ___
 
@@ -617,27 +579,25 @@ ___
 
 ▸ **getVerificationsByFid**(`fid`)
 
-TODO DOCS: description
+Get verifications for a specific fid.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<VerificationAddEthAddressMessage[]>` | [`VerificationAddEthAddressMessage`](modules/types.md#verificationaddethaddressmessage)[] | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid to verify. |
 
 ___
 
