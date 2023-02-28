@@ -229,6 +229,16 @@ export const makeMessageWithSignature = async (
 /**
  * Make a message to add a cast
  *
+ * #### Returns
+ *
+ * | Value                            | Type          | Description                                     |
+ * | -------------------------------- | ------------- | ----------------------------------------------- |
+ * | `HubAsyncResult<CastAddMessage>` | `CastAddBody` | A Result that contains the valid CastAddMessage |
+ *
+ * @param bodyJson - The body of the message
+ * @param dataOptions - The data of the message
+ * @param signer - The signer of the message
+ *
  * @example
  * ```typescript
  * import {
@@ -258,9 +268,6 @@ export const makeMessageWithSignature = async (
  * await client.submitMessage(cast._unsafeUnwrap());
  * ```
  *
- * **`signature`**
- *
- * `makeCastAdd(bodyJson, dataOptions, signer): HubAsyncResult<CastAddMessage>`
  */
 export const makeCastAdd = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_CAST_ADD,

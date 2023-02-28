@@ -55,6 +55,12 @@
 
 Make a message to add a cast
 
+#### Returns
+
+| Value                            | Type          | Description                                     |
+| -------------------------------- | ------------- | ----------------------------------------------- |
+| `HubAsyncResult<CastAddMessage>` | `CastAddBody` | A Result that contains the valid CastAddMessage |
+
 **`Example`**
 
 ```typescript
@@ -85,17 +91,13 @@ const cast = await makeCastAdd({ text: 'hello world' }, dataOptions, ed25519Sign
 await client.submitMessage(cast._unsafeUnwrap());
 ```
 
-**`signature`**
-
-`makeCastAdd(bodyJson, dataOptions, signer): HubAsyncResult<CastAddMessage>`
-
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `bodyJson` | [`CastAddBody`](modules/types.md#castaddbody) |
-| `dataOptions` | `MessageDataOptions` |
-| `signer` | `Ed25519Signer` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `bodyJson` | [`CastAddBody`](modules/types.md#castaddbody) | The body of the message |
+| `dataOptions` | `MessageDataOptions` | The data of the message |
+| `signer` | `Ed25519Signer` | The signer of the message |
 
 ___
 
