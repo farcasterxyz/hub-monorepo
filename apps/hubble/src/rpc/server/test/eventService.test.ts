@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import * as protobufs from '@farcaster/protobufs';
-import { Factories, getHubRpcClient, HubRpcClient } from '@farcaster/utils';
+import { Factories, getInsecureHubRpcClient, HubRpcClient } from '@farcaster/utils';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -17,7 +17,7 @@ let client: HubRpcClient;
 beforeAll(async () => {
   server = new Server(hub, engine);
   const port = await server.start();
-  client = getHubRpcClient(`127.0.0.1:${port}`);
+  client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {

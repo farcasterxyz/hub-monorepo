@@ -41,7 +41,7 @@ export const startConsole = async (addressString: string) => {
     }
   });
 
-  const rpcClient = getHubRpcClient(addressString);
+  const rpcClient = await getHubRpcClient(addressString);
   const adminClient = protobufs.getAdminClient(getAdminSocket());
 
   const commands: ConsoleCommandInterface[] = [

@@ -1,5 +1,12 @@
 import * as protobufs from '@farcaster/protobufs';
-import { getHubRpcClient, HubAsyncResult, HubResult, HubRpcClient } from '@farcaster/utils';
+import {
+  getInsecureHubRpcClient,
+  getSSLHubRpcClient,
+  HubAsyncResult,
+  HubError,
+  HubResult,
+  HubRpcClient,
+} from '@farcaster/utils';
 import { err, Result } from 'neverthrow';
 import * as types from './types';
 import * as utils from './utils';
@@ -56,9 +63,15 @@ export class Client {
    * @returns ...
    */
   public _grpcClient: HubRpcClient;
+  private usingSSL: boolean;
 
-  constructor(address: string) {
-    this._grpcClient = getHubRpcClient(address);
+  constructor(address: string, ssl = false) {
+    this.usingSSL = ssl;
+    if (!ssl) {
+      this._grpcClient = getInsecureHubRpcClient(address);
+    } else {
+      this._grpcClient = getSSLHubRpcClient(address);
+    }
   }
 
   /* -------------------------------------------------------------------------- */
@@ -84,8 +97,16 @@ export class Client {
    *
    * @returns ...
    */
-  async submitMessage(message: types.Message): HubAsyncResult<types.Message> {
-    return wrapGrpcMessageCall(this._grpcClient.submitMessage(message._protobuf));
+  async submitMessage(message: types.Message, username?: string, password?: string): HubAsyncResult<types.Message> {
+    const metadata = new protobufs.Metadata();
+    if (username && password) {
+      if (this.usingSSL) {
+        metadata.set('authorization', `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`);
+      } else {
+        return err(new HubError('unavailable', 'Cannot use basic auth without SSL'));
+      }
+    }
+    return wrapGrpcMessageCall(this._grpcClient.submitMessage(message._protobuf, metadata));
   }
 
   /* -------------------------------------------------------------------------- */

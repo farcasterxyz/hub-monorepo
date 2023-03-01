@@ -31,6 +31,8 @@ export const Config = {
   gossipPort: DEFAULT_GOSSIP_PORT,
   /** The RPC port to use. */
   rpcPort: DEFAULT_RPC_PORT,
+  /** RPC Auth, disabled by default */
+  // rpcAuth: 'admin:password',
   /** The name of the RocksDB instance */
   dbName: 'rocks.hub._default',
   /** Clear the RocksDB instance before starting */
