@@ -95,7 +95,16 @@ export interface HubOptions {
   ethRpcUrl?: string;
 
   /** Address of the IdRegistry contract  */
-  IdRegistryAddress?: string;
+  idRegistryAddress?: string;
+
+  /** Address of the NameRegistryAddress contract  */
+  nameRegistryAddress?: string;
+
+  /** Block number to begin syncing events from  */
+  firstBlock?: number;
+
+  /** Number of blocks to batch when syncing historical events  */
+  chunkSize?: number;
 
   /** Name of the RocksDB instance */
   rocksDBName?: string;
@@ -159,11 +168,14 @@ export class Hub implements HubInterface {
     this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine);
 
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
-    this.ethRegistryProvider = EthEventsProvider.makeWithGoerli(
+    // Defaults to Goerli testnet, which is currently used for Production Farcaster Hubs.
+    this.ethRegistryProvider = EthEventsProvider.build(
       this,
       options.ethRpcUrl ?? '',
-      GoerliEthConstants.IdRegistryAddress,
-      GoerliEthConstants.NameRegistryAddress
+      options.idRegistryAddress ?? GoerliEthConstants.IdRegistryAddress,
+      options.nameRegistryAddress ?? GoerliEthConstants.NameRegistryAddress,
+      options.firstBlock ?? GoerliEthConstants.FirstBlock,
+      options.chunkSize ?? GoerliEthConstants.ChunkSize
     );
 
     // Setup job queues
