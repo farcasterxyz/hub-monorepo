@@ -29,7 +29,13 @@ app
   .description('Start a Hub')
   .option('-e, --eth-rpc-url <url>', 'RPC URL of a Goerli Ethereum Node')
   .option('-c, --config <filepath>', 'Path to a config file with options', DEFAULT_CONFIG_FILE)
-  .option('-f, --fir-address <address>', 'The address of the FIR contract')
+  .option('--fir-address <address>', 'The address of the Farcaster ID Registry contract')
+  .option('--fnr-address <address>', 'The address of the Farcaster Name Registry contract')
+  .option('--first-block <number>', 'The block number to begin syncing events from Farcaster contracts')
+  .option(
+    '--chunk-size <number>',
+    'The number of blocks to batch when syncing historical events from Farcaster contracts'
+  )
   .option('-b, --bootstrap <peer-multiaddrs...>', 'A list of peer multiaddrs to bootstrap libp2p')
   .option('-a, --allowed-peers <peerIds...>', 'An allow-list of peer ids permitted to connect to the hub')
   .option('--ip <ip-address>', 'The IP address libp2p should listen on. (default: "127.0.0.1")')
@@ -110,7 +116,10 @@ app
       gossipPort: hubAddressInfo.value.port,
       network: cliOptions.network ?? hubConfig.network,
       ethRpcUrl: cliOptions.ethRpcUrl ?? hubConfig.ethRpcUrl,
-      IdRegistryAddress: cliOptions.firAddress ?? hubConfig.firAddress,
+      idRegistryAddress: cliOptions.firAddress ?? hubConfig.firAddress,
+      nameRegistryAddress: cliOptions.fnrAddress ?? hubConfig.fnrAddress,
+      firstBlock: cliOptions.firstBlock ?? hubConfig.firstBlock,
+      chunkSize: cliOptions.chunkSize ?? hubConfig.chunkSize,
       bootstrapAddrs,
       allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort,
