@@ -20,7 +20,7 @@ const PEER_ID_FILENAME = 'id.protobuf';
 const DEFAULT_PEER_ID_DIR = './.hub';
 const DEFAULT_PEER_ID_FILENAME = `default_${PEER_ID_FILENAME}`;
 const DEFAULT_PEER_ID_LOCATION = `${DEFAULT_PEER_ID_DIR}/${DEFAULT_PEER_ID_FILENAME}`;
-const DEFAULT_CHUNK_SIZE = '10000';
+const DEFAULT_CHUNK_SIZE = 10000;
 
 const app = new Command();
 app.name('hub').description('Farcaster Hub').version(APP_VERSION);
@@ -35,8 +35,7 @@ app
   .option('--first-block <number>', 'The block number to begin syncing events from Farcaster contracts')
   .option(
     '--chunk-size <number>',
-    'The number of blocks to batch when syncing historical events from Farcaster contracts. (default: 10000)',
-    DEFAULT_CHUNK_SIZE
+    'The number of blocks to batch when syncing historical events from Farcaster contracts. (default: 10000)'
   )
   .option('-b, --bootstrap <peer-multiaddrs...>', 'A list of peer multiaddrs to bootstrap libp2p')
   .option('-a, --allowed-peers <peerIds...>', 'An allow-list of peer ids permitted to connect to the hub')
