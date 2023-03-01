@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Factories, getHubRpcClient, HubRpcClient } from '@farcaster/utils';
+import { Factories, getInsecureHubRpcClient, HubRpcClient } from '@farcaster/utils';
 import { multiaddr } from '@multiformats/multiaddr/';
 import { GossipNode } from '~/network/p2p/gossipNode';
 import Server from '~/rpc/server';
@@ -124,7 +124,7 @@ describe('GossipNode', () => {
       const syncEngine = new SyncEngine(engine, db);
       server = new Server(hub, engine, syncEngine, mockGossipNode);
       const port = await server.start();
-      client = getHubRpcClient(`127.0.0.1:${port}`);
+      client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 
       await client.submitIdRegistryEvent(custodyEvent);
 

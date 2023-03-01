@@ -39,6 +39,10 @@ app
   )
   .option('-g, --gossip-port <port>', 'The tcp port libp2p should gossip over. (default: 13111)')
   .option('-r, --rpc-port <port>', 'The tcp port that the rpc server should listen on.  (default: 13112)')
+  .option(
+    '--rpc-auth <username:password>',
+    'Enable Auth for RPC submit methods with the username and password. (default: disabled)'
+  )
   .option('--db-name <name>', 'The name of the RocksDB instance')
   .option('--db-reset', 'Clears the database before starting')
   .option('--rebuild-sync-trie', 'Rebuilds the sync trie before starting')
@@ -114,6 +118,7 @@ app
       bootstrapAddrs,
       allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort,
+      rpcAuth: cliOptions.rpcAuth ?? hubConfig.rpcAuth,
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
       resetDB: cliOptions.dbReset ?? hubConfig.dbReset,
       rebuildSyncTrie,

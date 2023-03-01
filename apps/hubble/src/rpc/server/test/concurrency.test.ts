@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Factories, getHubRpcClient, HubResult, HubRpcClient } from '@farcaster/utils';
+import { Factories, getInsecureHubRpcClient, HubResult, HubRpcClient } from '@farcaster/utils';
 import SyncEngine from '~/network/sync/syncEngine';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
@@ -20,9 +20,9 @@ let client3: HubRpcClient;
 beforeAll(async () => {
   server = new Server(hub, engine, new SyncEngine(engine, db));
   const port = await server.start();
-  client1 = getHubRpcClient(`127.0.0.1:${port}`);
-  client2 = getHubRpcClient(`127.0.0.1:${port}`);
-  client3 = getHubRpcClient(`127.0.0.1:${port}`);
+  client1 = getInsecureHubRpcClient(`127.0.0.1:${port}`);
+  client2 = getInsecureHubRpcClient(`127.0.0.1:${port}`);
+  client3 = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {

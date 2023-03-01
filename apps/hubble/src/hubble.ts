@@ -88,6 +88,9 @@ export interface HubOptions {
   /** Port for the RPC Client */
   rpcPort?: number;
 
+  /** Username and Password to use for RPC submit methods */
+  rpcAuth?: string;
+
   /** Network URL of the IdRegistry Contract */
   ethRpcUrl?: string;
 
@@ -152,7 +155,7 @@ export class Hub implements HubInterface {
     this.engine = new Engine(this.rocksDB, options.network);
     this.syncEngine = new SyncEngine(this.engine, this.rocksDB);
 
-    this.rpcServer = new Server(this, this.engine, this.syncEngine, this.gossipNode);
+    this.rpcServer = new Server(this, this.engine, this.syncEngine, this.gossipNode, options.rpcAuth);
     this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine);
 
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
@@ -431,7 +434,7 @@ export class Hub implements HubInterface {
     }
 
     if (isIP(rpcAddressInfo.value.address)) {
-      return getHubRpcClient(`${rpcAddressInfo.value.address}:${rpcAddressInfo.value.port}`);
+      return await getHubRpcClient(`${rpcAddressInfo.value.address}:${rpcAddressInfo.value.port}`);
     }
 
     log.info({ peerId }, 'falling back to addressbook lookup for peer');
@@ -458,7 +461,7 @@ export class Hub implements HubInterface {
       port: rpcAddressInfo.value.port,
     };
 
-    return getHubRpcClient(addressInfoToString(ai));
+    return await getHubRpcClient(addressInfoToString(ai));
   }
 
   private registerEventHandlers() {

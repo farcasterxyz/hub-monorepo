@@ -37,8 +37,16 @@ export class GenCommand implements ConsoleCommandInterface {
     return {
       submitMessages: async (
         numMessages = 100,
-        network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_DEVNET
+        network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+        username?: string,
+        password?: string
       ): Promise<string | SubmitStats> => {
+        // Submit messages might need a username/password
+        const metadata = new protobufs.Metadata();
+        if (username && password) {
+          metadata.set('authorization', `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`);
+        }
+
         // Generate a random number from 100_000 to 100_000_000 to use as an fid
         const fid = Math.floor(Math.random() * 100_000_000 + 100_000);
 
@@ -52,7 +60,7 @@ export class GenCommand implements ConsoleCommandInterface {
         const start = performance.now();
 
         const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
-        const idResult = await this.rpcClient.submitIdRegistryEvent(custodyEvent, new protobufs.Metadata());
+        const idResult = await this.rpcClient.submitIdRegistryEvent(custodyEvent, metadata);
         if (idResult.isOk()) {
           numSuccess++;
         } else {
@@ -64,7 +72,7 @@ export class GenCommand implements ConsoleCommandInterface {
           { transient: { signer: custodySigner } }
         );
 
-        const signerResult = await this.rpcClient.submitMessage(signerAdd, new protobufs.Metadata());
+        const signerResult = await this.rpcClient.submitMessage(signerAdd, metadata);
         if (signerResult.isOk()) {
           numSuccess++;
         } else {
@@ -74,7 +82,7 @@ export class GenCommand implements ConsoleCommandInterface {
         const submitBatch = async (batch: protobufs.Message[]) => {
           const promises = [];
           for (const castAdd of batch) {
-            promises.push(this.rpcClient.submitMessage(castAdd, new protobufs.Metadata()));
+            promises.push(this.rpcClient.submitMessage(castAdd, metadata));
           }
           const results = await Promise.all(promises);
 

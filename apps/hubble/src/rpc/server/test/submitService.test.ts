@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Factories, getHubRpcClient, HubError, HubRpcClient } from '@farcaster/utils';
+import { Factories, getInsecureHubRpcClient, HubError, HubRpcClient } from '@farcaster/utils';
 import { err } from 'neverthrow';
 import SyncEngine from '~/network/sync/syncEngine';
 
@@ -19,7 +19,7 @@ let client: HubRpcClient;
 beforeAll(async () => {
   server = new Server(hub, engine, new SyncEngine(engine, db));
   const port = await server.start();
-  client = getHubRpcClient(`127.0.0.1:${port}`);
+  client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {

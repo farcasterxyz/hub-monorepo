@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Ed25519Signer, Factories, getHubRpcClient, HubRpcClient } from '@farcaster/utils';
+import { Ed25519Signer, Factories, getInsecureHubRpcClient, HubRpcClient } from '@farcaster/utils';
 import { APP_NICKNAME, APP_VERSION } from '~/hubble';
 import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';
@@ -88,7 +88,7 @@ describe('Multi peer sync engine', () => {
     syncEngine1.initialize();
     server1 = new Server(hub1, engine1, syncEngine1);
     port1 = await server1.start();
-    clientForServer1 = getHubRpcClient(`127.0.0.1:${port1}`);
+    clientForServer1 = getInsecureHubRpcClient(`127.0.0.1:${port1}`);
   });
 
   afterEach(async () => {
@@ -238,7 +238,7 @@ describe('Multi peer sync engine', () => {
     {
       const server2 = new Server(new MockHub(testDb2, engine2), engine2, syncEngine2);
       const port2 = await server2.start();
-      const clientForServer2 = getHubRpcClient(`127.0.0.1:${port2}`);
+      const clientForServer2 = getInsecureHubRpcClient(`127.0.0.1:${port2}`);
       const engine1RootHashBefore = await syncEngine1.trie.rootHash();
 
       await syncEngine1.performSync((await syncEngine2.getSnapshot())._unsafeUnwrap(), clientForServer2);
