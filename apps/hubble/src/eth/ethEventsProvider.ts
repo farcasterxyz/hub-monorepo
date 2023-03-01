@@ -29,6 +29,8 @@ export class EthEventsProvider {
 
   private _idRegistryContract: Contract;
   private _nameRegistryContract: Contract;
+  private _firstBlock: number;
+  private _chunkSize: number;
 
   private _numConfirmations: number;
 
@@ -45,12 +47,16 @@ export class EthEventsProvider {
     hub: HubInterface,
     jsonRpcProvider: providers.BaseProvider,
     idRegistryContract: Contract,
-    nameRegistryContract: Contract
+    nameRegistryContract: Contract,
+    firstBlock: number,
+    chunkSize: number
   ) {
     this._hub = hub;
     this._jsonRpcProvider = jsonRpcProvider;
     this._idRegistryContract = idRegistryContract;
     this._nameRegistryContract = nameRegistryContract;
+    this._firstBlock = firstBlock;
+    this._chunkSize = chunkSize;
 
     // Number of blocks to wait before processing an event.
     // This is hardcoded to 6 for now, because that's the threshold beyond which blocks are unlikely to reorg anymore.
@@ -88,21 +94,30 @@ export class EthEventsProvider {
 
   /**
    *
-   * Setup a Eth Events Provider with Goerli testnet, which is currently used for Production Farcaster Hubs.
+   * Build an Eth Events Provider for the ID Registry and Name Registry contracts.
    */
-  public static makeWithGoerli(
+  public static build(
     hub: HubInterface,
     ethRpcUrl: string,
-    IdRegistryAddress: string,
-    NameRegistryAddress: string
+    idRegistryAddress: string,
+    nameRegistryAddress: string,
+    firstBlock: number,
+    chunkSize: number
   ): EthEventsProvider {
     // Setup provider and the contracts
     const jsonRpcProvider = new providers.JsonRpcProvider(ethRpcUrl);
 
-    const idRegistryContract = new Contract(IdRegistryAddress, IdRegistry.abi, jsonRpcProvider);
-    const nameRegistryContract = new Contract(NameRegistryAddress, NameRegistry.abi, jsonRpcProvider);
+    const idRegistryContract = new Contract(idRegistryAddress, IdRegistry.abi, jsonRpcProvider);
+    const nameRegistryContract = new Contract(nameRegistryAddress, NameRegistry.abi, jsonRpcProvider);
 
-    const provider = new EthEventsProvider(hub, jsonRpcProvider, idRegistryContract, nameRegistryContract);
+    const provider = new EthEventsProvider(
+      hub,
+      jsonRpcProvider,
+      idRegistryContract,
+      nameRegistryContract,
+      firstBlock,
+      chunkSize
+    );
 
     return provider;
   }
@@ -165,7 +180,7 @@ export class EthEventsProvider {
     log.info({ latestBlock: latestBlock.number }, 'connected to ethereum node');
 
     // Find how how much we need to sync
-    let lastSyncedBlock = GoerliEthConstants.FirstBlock;
+    let lastSyncedBlock = this._firstBlock;
 
     const hubState = await this._hub.getHubState();
     if (hubState.isOk()) {
@@ -180,13 +195,13 @@ export class EthEventsProvider {
       protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER,
       lastSyncedBlock,
       toBlock,
-      GoerliEthConstants.ChunkSize
+      this._chunkSize
     );
     await this.syncHistoricalIdEvents(
       protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_TRANSFER,
       lastSyncedBlock,
       toBlock,
-      GoerliEthConstants.ChunkSize
+      this._chunkSize
     );
 
     // Sync old Name Transfer events
@@ -194,7 +209,7 @@ export class EthEventsProvider {
       protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER,
       lastSyncedBlock,
       toBlock,
-      GoerliEthConstants.ChunkSize
+      this._chunkSize
     );
 
     // We don't need to sync historical Renew events because the expiry

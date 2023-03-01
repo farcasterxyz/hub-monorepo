@@ -80,7 +80,7 @@ beforeAll(async () => {
 
 describe('process events', () => {
   beforeEach(async () => {
-    ethEventsProvider = new EthEventsProvider(hub, mockRPCProvider, mockIdRegistry, mockNameRegistry);
+    ethEventsProvider = new EthEventsProvider(hub, mockRPCProvider, mockIdRegistry, mockNameRegistry, 1, 10000);
     mockRPCProvider.polling = true;
     await ethEventsProvider.start();
   });
