@@ -1,3 +1,5 @@
+import * as protobufs from '@farcaster/protobufs';
+
 export const MERGE_TIMEOUT_DEFAULT = 10_000; // 10 seconds
 
 export type StorePruneOptions = {
@@ -8,4 +10,9 @@ export type StorePruneOptions = {
 export type PrefixRangeOptions = {
   startPrefix?: Buffer | undefined;
   limit?: number | undefined;
+};
+
+export type MessageRange<T extends protobufs.Message> = {
+  messages: T[];
+  nextPrefix?: Buffer | undefined;
 };

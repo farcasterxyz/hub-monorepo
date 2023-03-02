@@ -511,10 +511,22 @@ export default class Server {
       getSignersByFid: async (call, callback) => {
         const request = call.request;
 
-        const signersResult = await this.engine?.getSignersByFid(request.fid);
+        if (request.pageSize < 0 || request.pageSize > 10_000) {
+          return callback(
+            toServiceError(new HubError('bad_request.invalid_param', 'pageSize must be between 0 and 10,000'))
+          );
+        }
+
+        // TODO move limit into constant
+        const limit = request.pageSize === 0 ? 10_000 : request.pageSize;
+        const startPrefix = request.pageToken.length > 0 ? Buffer.from(request.pageToken) : undefined;
+        const signersResult = await this.engine?.getSignersByFid(request.fid, { startPrefix, limit });
         signersResult?.match(
-          (signers: SignerAddMessage[]) => {
-            callback(null, MessagesResponse.create({ messages: signers }));
+          ({ messages, nextPrefix }) => {
+            callback(
+              null,
+              MessagesResponse.create({ messages, nextPageToken: nextPrefix ? nextPrefix : new Uint8Array() })
+            );
           },
           (err: HubError) => {
             callback(toServiceError(err));

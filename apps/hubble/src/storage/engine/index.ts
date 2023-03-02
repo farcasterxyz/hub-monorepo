@@ -11,7 +11,7 @@ import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import UserDataStore from '~/storage/stores/userDataStore';
 import VerificationStore from '~/storage/stores/verificationStore';
-import { PrefixRangeOptions } from '../stores/types';
+import { MessageRange, PrefixRangeOptions } from '../stores/types';
 
 class Engine {
   public eventHandler: StoreEventHandler;
@@ -355,13 +355,16 @@ class Engine {
     return ResultAsync.fromPromise(this._signerStore.getSignerAdd(fid, signerPubKey), (e) => e as HubError);
   }
 
-  async getSignersByFid(fid: number): HubAsyncResult<protobufs.SignerAddMessage[]> {
+  async getSignersByFid(
+    fid: number,
+    rangeOptions?: PrefixRangeOptions
+  ): HubAsyncResult<MessageRange<protobufs.SignerAddMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    return ResultAsync.fromPromise(this._signerStore.getSignerAddsByFid(fid), (e) => e as HubError);
+    return ResultAsync.fromPromise(this._signerStore.getSignerAddsByFid(fid, rangeOptions), (e) => e as HubError);
   }
 
   async getIdRegistryEvent(fid: number): HubAsyncResult<protobufs.IdRegistryEvent> {

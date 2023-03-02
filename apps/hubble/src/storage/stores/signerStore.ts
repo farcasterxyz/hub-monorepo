@@ -135,21 +135,59 @@ class SignerStore {
    * @param fid fid of the user who created the signers
    * @returns the SignerRemove messages if it exists, throws HubError otherwise
    */
-  async getSignerAddsByFid(fid: number): Promise<protobufs.SignerAddMessage[]> {
+  async getSignerAddsByFid(
+    fid: number,
+    rangeOptions: PrefixRangeOptions = {}
+  ): Promise<{
+    messages: protobufs.SignerAddMessage[];
+    nextPrefix: Buffer | undefined;
+  }> {
+    rangeOptions.limit = rangeOptions.limit ?? -1;
+
     const addsPrefix = makeSignerAddsKey(fid);
+    const startPrefix = rangeOptions.startPrefix ?? addsPrefix;
+    const endPrefix = makeEndPrefix(addsPrefix);
+    const signerKeys: Buffer[] = [];
     const messageKeys: Buffer[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(addsPrefix, { keys: false, valueAsBuffer: true })) {
+    for await (const [key, value] of this._db.iterator({
+      gte: startPrefix,
+      lt: endPrefix,
+      // If a limit was specified, fetch limit + 1 to determine the next prefix
+      limit: rangeOptions.limit !== -1 ? rangeOptions.limit + 1 : rangeOptions.limit,
+      keysAsBuffer: true,
+      valueAsBuffer: true,
+    })) {
+      signerKeys.push(key);
       messageKeys.push(value);
     }
-    return getManyMessagesByFid(this._db, fid, UserPostfix.SignerMessage, messageKeys);
+
+    /**
+     * If a limit was specified and limit + 1 were fetched, return limit results and
+     * next prefix, otherwise return all results and undefined next prefix.
+     */
+    if (rangeOptions.limit !== -1 && messageKeys.length === rangeOptions.limit + 1) {
+      const nextPrefix = signerKeys[signerKeys.length - 1];
+      const rangeMessageKeys = messageKeys.slice(0, messageKeys.length - 1);
+
+      return {
+        messages: await getManyMessagesByFid(this._db, fid, UserPostfix.SignerMessage, rangeMessageKeys),
+        nextPrefix,
+      };
+    } else {
+      return {
+        messages: await getManyMessagesByFid(this._db, fid, UserPostfix.SignerMessage, messageKeys),
+        nextPrefix: undefined,
+      };
+    }
+    // return getManyMessagesByFid(this._db, fid, UserPostfix.SignerMessage, messageKeys);
   }
 
   /**
-   * Finds all SignerRemove Messages for a user's custody address
+   * Finds all SignerAdd and SignerRemove messages for a user's custody address.
    *
    * @param fid fid of the user who created the signers
    * @param rangeOptions options for limiting the range of the query
-   * @returns the SignerRemove message if it exists, throws HubError otherwise
+   * @returns Signer messages and nextPrefix if available
    */
   async getSignerMessagesByFid(
     fid: number,

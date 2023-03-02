@@ -72,22 +72,78 @@ describe('getSignerRemove', () => {
 });
 
 describe('getSignerAddsByFid', () => {
-  test('returns signer adds for an fid', async () => {
-    await set.merge(signerAdd);
-    await expect(set.getSignerAddsByFid(fid)).resolves.toEqual([signerAdd]);
+  const otherSigner = Factories.Ed25519Signer.build();
+  let signerAdd2: protobufs.SignerAddMessage;
+
+  beforeAll(async () => {
+    signerAdd2 = await Factories.SignerAddMessage.create(
+      { data: { fid, signerBody: { signer: otherSigner.signerKey } } },
+      { transient: { signer: custody1 } }
+    );
   });
 
-  test('returns empty array when messages have not been merged', async () => {
-    await expect(set.getSignerAddsByFid(fid)).resolves.toEqual([]);
+  describe('no startPrefix or limit', () => {
+    test('returns all signer messages for an fid', async () => {
+      await set.merge(signerAdd);
+      await set.merge(signerAdd2);
+      const result = await set.getSignerAddsByFid(fid);
+      expect(result.messages).toEqual([signerAdd, signerAdd2]);
+    });
+
+    test('returns empty array when messages have not been merged', async () => {
+      const result = await set.getSignerAddsByFid(fid);
+      expect(result.messages).toEqual([]);
+    });
+  });
+
+  describe('with limit < number of messages', () => {
+    test('returns limit messages', async () => {
+      await set.merge(signerAdd);
+      await set.merge(signerAdd2);
+      const result = await set.getSignerAddsByFid(fid, { limit: 1 });
+      expect(result.messages).toEqual([signerAdd]);
+    });
+  });
+
+  describe('with limit > merged events', () => {
+    test('returns all messages', async () => {
+      await set.merge(signerAdd);
+      await set.merge(signerAdd2);
+      const result = await set.getSignerAddsByFid(fid, { limit: 3 });
+      expect(result.messages).toEqual([signerAdd, signerAdd2]);
+    });
+  });
+
+  describe('with valid startPrefix', () => {
+    test('returns messages from startPrefix', async () => {
+      await set.merge(signerAdd);
+      await set.merge(signerAdd2);
+      const result1 = await set.getSignerAddsByFid(fid, { limit: 1 });
+      const result2 = await set.getSignerAddsByFid(fid, { startPrefix: result1.nextPrefix, limit: 1 });
+      expect(result2.messages).toEqual([signerAdd2]);
+      expect(result2.nextPrefix).toEqual(undefined);
+    });
+  });
+
+  describe('with invalid startPrefix', () => {
+    test('returns empty array', async () => {
+      await set.merge(signerAdd);
+      await set.merge(signerAdd2);
+      const invalidPrefix = Buffer.alloc(1);
+      invalidPrefix.writeUint8(RootPrefix.NameRegistryEvent, 0);
+      const result2 = await set.getSignerAddsByFid(fid, { startPrefix: invalidPrefix });
+      expect(result2.messages).toEqual([]);
+      expect(result2.nextPrefix).toEqual(undefined);
+    });
   });
 });
 
 describe('getSignerMessagesByFid', () => {
   const otherSigner = Factories.Ed25519Signer.build();
-  let otherSignerAdd: protobufs.SignerAddMessage;
+  let signerAdd2: protobufs.SignerAddMessage;
 
   beforeAll(async () => {
-    otherSignerAdd = await Factories.SignerAddMessage.create(
+    signerAdd2 = await Factories.SignerAddMessage.create(
       { data: { fid, signerBody: { signer: otherSigner.signerKey } } },
       { transient: { signer: custody1 } }
     );
@@ -97,9 +153,9 @@ describe('getSignerMessagesByFid', () => {
     test('returns all signer messages for an fid', async () => {
       await set.merge(signerAdd);
       await set.merge(signerRemove);
-      await set.merge(otherSignerAdd);
+      await set.merge(signerAdd2);
       const result = await set.getSignerMessagesByFid(fid);
-      expect(result.messages).toEqual([otherSignerAdd, signerRemove]);
+      expect(result.messages).toEqual([signerAdd2, signerRemove]);
     });
 
     test('returns empty array when messages have not been merged', async () => {
@@ -108,13 +164,13 @@ describe('getSignerMessagesByFid', () => {
     });
   });
 
-  describe('with valid limit', () => {
+  describe('with limit < number of messages', () => {
     test('returns limit messages', async () => {
       await set.merge(signerAdd);
       await set.merge(signerRemove);
-      await set.merge(otherSignerAdd);
+      await set.merge(signerAdd2);
       const result = await set.getSignerMessagesByFid(fid, { limit: 1 });
-      expect(result.messages).toEqual([otherSignerAdd]);
+      expect(result.messages).toEqual([signerAdd2]);
     });
   });
 
@@ -122,9 +178,9 @@ describe('getSignerMessagesByFid', () => {
     test('returns all messages', async () => {
       await set.merge(signerAdd);
       await set.merge(signerRemove);
-      await set.merge(otherSignerAdd);
+      await set.merge(signerAdd2);
       const result = await set.getSignerMessagesByFid(fid, { limit: 3 });
-      expect(result.messages).toEqual([otherSignerAdd, signerRemove]);
+      expect(result.messages).toEqual([signerAdd2, signerRemove]);
     });
   });
 
@@ -132,7 +188,7 @@ describe('getSignerMessagesByFid', () => {
     test('returns messages from startPrefix', async () => {
       await set.merge(signerAdd);
       await set.merge(signerRemove);
-      await set.merge(otherSignerAdd);
+      await set.merge(signerAdd2);
       const result1 = await set.getSignerMessagesByFid(fid, { limit: 1 });
       const result2 = await set.getSignerMessagesByFid(fid, { startPrefix: result1.nextPrefix, limit: 1 });
       expect(result2.messages).toEqual([signerRemove]);
@@ -144,7 +200,7 @@ describe('getSignerMessagesByFid', () => {
     test('returns empty array', async () => {
       await set.merge(signerAdd);
       await set.merge(signerRemove);
-      await set.merge(otherSignerAdd);
+      await set.merge(signerAdd2);
       const invalidPrefix = Buffer.alloc(1);
       invalidPrefix.writeUint8(RootPrefix.NameRegistryEvent, 0);
       const result2 = await set.getSignerMessagesByFid(fid, { startPrefix: invalidPrefix });
@@ -691,7 +747,7 @@ describe('getFids', () => {
     });
   });
 
-  describe('with valid limit', () => {
+  describe('with limit < number of messages', () => {
     test('returns limit fids', async () => {
       await set.mergeIdRegistryEvent(custody1Event);
       await set.mergeIdRegistryEvent(custody2Event);
