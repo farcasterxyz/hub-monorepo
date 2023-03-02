@@ -685,7 +685,7 @@ describe('getFids', () => {
     });
 
     test('returns empty array without custody events', async () => {
-      const result = await set.getFids({ limit: 3 });
+      const result = await set.getFids();
       expect(result.fids).toEqual([]);
       expect(result.nextPrefix).toEqual(undefined);
     });

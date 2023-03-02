@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, bytesIncrement, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
+import { bytesCompare, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
 import {
@@ -23,22 +23,9 @@ import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix, UserPostfix } from '~/storage/db/types';
 import StoreEventHandler, { putEventTransaction } from '~/storage/stores/storeEventHandler';
 import { MERGE_TIMEOUT_DEFAULT, PrefixRangeOptions, StorePruneOptions } from '~/storage/stores/types';
-import { eventCompare } from '~/storage/stores/utils';
+import { eventCompare, makeEndPrefix } from '~/storage/stores/utils';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
-
-const makeEndPrefix = (prefix: Buffer): Buffer | undefined => {
-  const endPrefix = bytesIncrement(prefix);
-  if (endPrefix.isErr()) {
-    throw endPrefix.error;
-  }
-
-  if (endPrefix.value.length === prefix.length) {
-    return Buffer.from(endPrefix.value);
-  }
-
-  return undefined;
-};
 
 /**
  * Generates a unique key used to store a SignerAdd message key in the SignerAdds set index
