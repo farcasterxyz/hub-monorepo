@@ -48,23 +48,23 @@ message SyncIds {
 
 message FidRequest {
   uint64 fid = 1;
-  int32 page_size = 2;
-  string page_token = 3;
+  uint32 page_size = 2;
+  bytes page_token = 3;
 }
 
 message FidsRequest {
-  int32 page_size = 1;
-  string page_token = 2;
+  uint32 page_size = 1;
+  bytes page_token = 2;
 }
 
 message FidsResponse {
   repeated uint64 fids = 1;
-  string next_page_token = 2;
+  bytes next_page_token = 2;
 }
 
 message MessagesResponse {
   repeated Message messages = 1;
-  string next_page_token = 2;
+  bytes next_page_token = 2;
 }
 
 message ReactionRequest {

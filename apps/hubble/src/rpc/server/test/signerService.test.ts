@@ -156,7 +156,7 @@ describe('getFids', () => {
   test('returns empty array with invalid page token', async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeIdRegistryEvent(custodyEvent2);
-    const result = await client.getFids(protobufs.FidsRequest.create({ pageSize: 1, pageToken: '0000' }));
+    const result = await client.getFids(protobufs.FidsRequest.create({ pageSize: 1, pageToken: new Uint8Array([0]) }));
     expect(result._unsafeUnwrap().fids).toEqual([]);
   });
 

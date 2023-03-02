@@ -188,7 +188,9 @@ describe('getAllSignerMessagesByFid', () => {
   test('returns empty array with invalid page token', async () => {
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(signerRemove);
-    const result = await client.getAllSignerMessagesByFid(protobufs.FidRequest.create({ fid, pageToken: '0000' }));
+    const result = await client.getAllSignerMessagesByFid(
+      protobufs.FidRequest.create({ fid, pageToken: new Uint8Array([0]) })
+    );
     assertMessagesMatchResult(result, []);
   });
 

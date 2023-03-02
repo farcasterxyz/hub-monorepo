@@ -73,10 +73,6 @@ export const toServiceError = (err: HubError): ServiceError => {
   });
 };
 
-const prefixFromToken = (token: string): Buffer => Buffer.from(token, 'base64url');
-
-const pageTokenFromPrefix = (prefix: Buffer): string => prefix.toString('base64url');
-
 export default class Server {
   private hub: HubInterface | undefined;
   private engine: Engine | undefined;
@@ -549,7 +545,7 @@ export default class Server {
 
         // TODO move limit into constant
         const limit = request.pageSize === 0 ? 10_000 : request.pageSize;
-        const startPrefix = request.pageToken === '' ? undefined : prefixFromToken(request.pageToken);
+        const startPrefix = request.pageToken.length > 0 ? Buffer.from(request.pageToken) : undefined;
         const result = await this.engine?.getFids({ limit, startPrefix });
         result?.match(
           ({ fids, nextPrefix }: { fids: number[]; nextPrefix: Buffer | undefined }) => {
@@ -557,7 +553,7 @@ export default class Server {
               null,
               FidsResponse.create({
                 fids,
-                nextPageToken: nextPrefix ? pageTokenFromPrefix(nextPrefix) : '',
+                nextPageToken: nextPrefix ? nextPrefix : new Uint8Array(),
               })
             );
           },
@@ -616,7 +612,7 @@ export default class Server {
 
         // TODO move limit into constant
         const limit = request.pageSize === 0 ? 10_000 : request.pageSize;
-        const startPrefix = request.pageToken === '' ? undefined : prefixFromToken(request.pageToken);
+        const startPrefix = request.pageToken.length > 0 ? Buffer.from(request.pageToken) : undefined;
         const result = await this.engine?.getAllSignerMessagesByFid(request.fid, { startPrefix, limit });
         result?.match(
           ({ messages, nextPrefix }: { messages: Message[]; nextPrefix: Buffer | undefined }) => {
@@ -624,7 +620,7 @@ export default class Server {
               null,
               MessagesResponse.create({
                 messages,
-                nextPageToken: nextPrefix ? pageTokenFromPrefix(nextPrefix) : '',
+                nextPageToken: nextPrefix ? nextPrefix : new Uint8Array(),
               })
             );
           },
