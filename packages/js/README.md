@@ -19,7 +19,7 @@ yarn add @farcaster/js
 pnpm install @farcaster/js
 ```
 
-Read the [documentation](./docs/) or get started with an simple example below.
+Read the [documentation](./docs/modules.md) or get started with an simple example below.
 
 ## Quickstart
 

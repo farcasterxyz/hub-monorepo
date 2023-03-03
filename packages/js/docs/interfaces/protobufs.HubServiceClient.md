@@ -50,7 +50,7 @@
 
 ### getAllCastMessagesByFid
 
-▸ **getAllCastMessagesByFid**(`request`, `callback`): `SurfaceCall`
+▸ **getAllCastMessagesByFid**(`request`, `callback`)
 
 Bulk Methods
 
@@ -59,13 +59,9 @@ Bulk Methods
 | Name | Type |
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAllCastMessagesByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getAllCastMessagesByFid**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -73,13 +69,9 @@ Bulk Methods
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAllCastMessagesByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getAllCastMessagesByFid**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -88,30 +80,22 @@ Bulk Methods
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
 ___
 
 ### getAllMessagesBySyncIds
 
-▸ **getAllMessagesBySyncIds**(`request`, `callback`): `SurfaceCall`
+▸ **getAllMessagesBySyncIds**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`SyncIds`](../modules/protobufs.md#syncids) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAllMessagesBySyncIds**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getAllMessagesBySyncIds**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -119,13 +103,9 @@ ___
 | :------ | :------ |
 | `request` | [`SyncIds`](../modules/protobufs.md#syncids) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAllMessagesBySyncIds**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getAllMessagesBySyncIds**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -134,30 +114,22 @@ ___
 | `request` | [`SyncIds`](../modules/protobufs.md#syncids) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
 ___
 
 ### getAllReactionMessagesByFid
 
-▸ **getAllReactionMessagesByFid**(`request`, `callback`): `SurfaceCall`
+▸ **getAllReactionMessagesByFid**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAllReactionMessagesByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getAllReactionMessagesByFid**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -165,13 +137,9 @@ ___
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAllReactionMessagesByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getAllReactionMessagesByFid**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -180,30 +148,22 @@ ___
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
 ___
 
 ### getAllSignerMessagesByFid
 
-▸ **getAllSignerMessagesByFid**(`request`, `callback`): `SurfaceCall`
+▸ **getAllSignerMessagesByFid**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAllSignerMessagesByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getAllSignerMessagesByFid**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -211,13 +171,9 @@ ___
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAllSignerMessagesByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getAllSignerMessagesByFid**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -226,30 +182,22 @@ ___
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
 ___
 
 ### getAllSyncIdsByPrefix
 
-▸ **getAllSyncIdsByPrefix**(`request`, `callback`): `SurfaceCall`
+▸ **getAllSyncIdsByPrefix**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`TrieNodePrefix`](../modules/protobufs.md#trienodeprefix) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`SyncIds`](../modules/protobufs.md#syncids)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`SyncIds`](../modules/protobufs.md#syncids)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAllSyncIdsByPrefix**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getAllSyncIdsByPrefix**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -257,13 +205,9 @@ ___
 | :------ | :------ |
 | `request` | [`TrieNodePrefix`](../modules/protobufs.md#trienodeprefix) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`SyncIds`](../modules/protobufs.md#syncids)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`SyncIds`](../modules/protobufs.md#syncids)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAllSyncIdsByPrefix**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getAllSyncIdsByPrefix**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -272,30 +216,22 @@ ___
 | `request` | [`TrieNodePrefix`](../modules/protobufs.md#trienodeprefix) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`SyncIds`](../modules/protobufs.md#syncids)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`SyncIds`](../modules/protobufs.md#syncids)) =>  |
 
 ___
 
 ### getAllUserDataMessagesByFid
 
-▸ **getAllUserDataMessagesByFid**(`request`, `callback`): `SurfaceCall`
+▸ **getAllUserDataMessagesByFid**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAllUserDataMessagesByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getAllUserDataMessagesByFid**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -303,13 +239,9 @@ ___
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAllUserDataMessagesByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getAllUserDataMessagesByFid**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -318,30 +250,22 @@ ___
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
 ___
 
 ### getAllVerificationMessagesByFid
 
-▸ **getAllVerificationMessagesByFid**(`request`, `callback`): `SurfaceCall`
+▸ **getAllVerificationMessagesByFid**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAllVerificationMessagesByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getAllVerificationMessagesByFid**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -349,13 +273,9 @@ ___
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getAllVerificationMessagesByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getAllVerificationMessagesByFid**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -364,17 +284,13 @@ ___
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
 ___
 
 ### getCast
 
-▸ **getCast**(`request`, `callback`): `SurfaceCall`
+▸ **getCast**(`request`, `callback`)
 
 Casts
 
@@ -383,13 +299,9 @@ Casts
 | Name | Type |
 | :------ | :------ |
 | `request` | [`CastId`](../modules/protobufs.md#castid) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getCast**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getCast**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -397,13 +309,9 @@ Casts
 | :------ | :------ |
 | `request` | [`CastId`](../modules/protobufs.md#castid) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getCast**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getCast**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -412,30 +320,22 @@ Casts
 | `request` | [`CastId`](../modules/protobufs.md#castid) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) =>  |
 
 ___
 
 ### getCastsByFid
 
-▸ **getCastsByFid**(`request`, `callback`): `SurfaceCall`
+▸ **getCastsByFid**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getCastsByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getCastsByFid**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -443,13 +343,9 @@ ___
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getCastsByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getCastsByFid**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -458,30 +354,22 @@ ___
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
 ___
 
 ### getCastsByMention
 
-▸ **getCastsByMention**(`request`, `callback`): `SurfaceCall`
+▸ **getCastsByMention**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getCastsByMention**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getCastsByMention**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -489,13 +377,9 @@ ___
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getCastsByMention**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getCastsByMention**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -504,30 +388,22 @@ ___
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
 ___
 
 ### getCastsByParent
 
-▸ **getCastsByParent**(`request`, `callback`): `SurfaceCall`
+▸ **getCastsByParent**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`CastId`](../modules/protobufs.md#castid) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getCastsByParent**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getCastsByParent**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -535,13 +411,9 @@ ___
 | :------ | :------ |
 | `request` | [`CastId`](../modules/protobufs.md#castid) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getCastsByParent**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getCastsByParent**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -550,30 +422,22 @@ ___
 | `request` | [`CastId`](../modules/protobufs.md#castid) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
 ___
 
 ### getEvent
 
-▸ **getEvent**(`request`, `callback`): `SurfaceCall`
+▸ **getEvent**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`EventRequest`](../modules/protobufs.md#eventrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`HubEvent`](../modules/protobufs.md#hubevent)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`HubEvent`](../modules/protobufs.md#hubevent)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getEvent**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getEvent**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -581,13 +445,9 @@ ___
 | :------ | :------ |
 | `request` | [`EventRequest`](../modules/protobufs.md#eventrequest) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`HubEvent`](../modules/protobufs.md#hubevent)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`HubEvent`](../modules/protobufs.md#hubevent)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getEvent**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getEvent**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -596,30 +456,22 @@ ___
 | `request` | [`EventRequest`](../modules/protobufs.md#eventrequest) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`HubEvent`](../modules/protobufs.md#hubevent)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`HubEvent`](../modules/protobufs.md#hubevent)) =>  |
 
 ___
 
 ### getFids
 
-▸ **getFids**(`request`, `callback`): `SurfaceCall`
+▸ **getFids**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`Empty`](../modules/protobufs.md#empty) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`FidsResponse`](../modules/protobufs.md#fidsresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`FidsResponse`](../modules/protobufs.md#fidsresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getFids**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getFids**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -627,13 +479,9 @@ ___
 | :------ | :------ |
 | `request` | [`Empty`](../modules/protobufs.md#empty) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`FidsResponse`](../modules/protobufs.md#fidsresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`FidsResponse`](../modules/protobufs.md#fidsresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getFids**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getFids**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -642,30 +490,22 @@ ___
 | `request` | [`Empty`](../modules/protobufs.md#empty) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`FidsResponse`](../modules/protobufs.md#fidsresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`FidsResponse`](../modules/protobufs.md#fidsresponse)) =>  |
 
 ___
 
 ### getIdRegistryEvent
 
-▸ **getIdRegistryEvent**(`request`, `callback`): `SurfaceCall`
+▸ **getIdRegistryEvent**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getIdRegistryEvent**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getIdRegistryEvent**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -673,13 +513,9 @@ ___
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getIdRegistryEvent**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getIdRegistryEvent**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -688,17 +524,13 @@ ___
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent)) =>  |
 
 ___
 
 ### getInfo
 
-▸ **getInfo**(`request`, `callback`): `SurfaceCall`
+▸ **getInfo**(`request`, `callback`)
 
 Sync Methods
 
@@ -707,13 +539,9 @@ Sync Methods
 | Name | Type |
 | :------ | :------ |
 | `request` | [`Empty`](../modules/protobufs.md#empty) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`HubInfoResponse`](../modules/protobufs.md#hubinforesponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`HubInfoResponse`](../modules/protobufs.md#hubinforesponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getInfo**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getInfo**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -721,13 +549,9 @@ Sync Methods
 | :------ | :------ |
 | `request` | [`Empty`](../modules/protobufs.md#empty) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`HubInfoResponse`](../modules/protobufs.md#hubinforesponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`HubInfoResponse`](../modules/protobufs.md#hubinforesponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getInfo**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getInfo**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -736,30 +560,22 @@ Sync Methods
 | `request` | [`Empty`](../modules/protobufs.md#empty) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`HubInfoResponse`](../modules/protobufs.md#hubinforesponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`HubInfoResponse`](../modules/protobufs.md#hubinforesponse)) =>  |
 
 ___
 
 ### getNameRegistryEvent
 
-▸ **getNameRegistryEvent**(`request`, `callback`): `SurfaceCall`
+▸ **getNameRegistryEvent**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`NameRegistryEventRequest`](../modules/protobufs.md#nameregistryeventrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getNameRegistryEvent**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getNameRegistryEvent**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -767,13 +583,9 @@ ___
 | :------ | :------ |
 | `request` | [`NameRegistryEventRequest`](../modules/protobufs.md#nameregistryeventrequest) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getNameRegistryEvent**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getNameRegistryEvent**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -782,17 +594,13 @@ ___
 | `request` | [`NameRegistryEventRequest`](../modules/protobufs.md#nameregistryeventrequest) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent)) =>  |
 
 ___
 
 ### getReaction
 
-▸ **getReaction**(`request`, `callback`): `SurfaceCall`
+▸ **getReaction**(`request`, `callback`)
 
 Reactions
 
@@ -801,13 +609,9 @@ Reactions
 | Name | Type |
 | :------ | :------ |
 | `request` | [`ReactionRequest`](../modules/protobufs.md#reactionrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getReaction**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getReaction**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -815,13 +619,9 @@ Reactions
 | :------ | :------ |
 | `request` | [`ReactionRequest`](../modules/protobufs.md#reactionrequest) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getReaction**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getReaction**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -830,30 +630,22 @@ Reactions
 | `request` | [`ReactionRequest`](../modules/protobufs.md#reactionrequest) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) =>  |
 
 ___
 
 ### getReactionsByCast
 
-▸ **getReactionsByCast**(`request`, `callback`): `SurfaceCall`
+▸ **getReactionsByCast**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`ReactionsByCastRequest`](../modules/protobufs.md#reactionsbycastrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getReactionsByCast**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getReactionsByCast**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -861,13 +653,9 @@ ___
 | :------ | :------ |
 | `request` | [`ReactionsByCastRequest`](../modules/protobufs.md#reactionsbycastrequest) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getReactionsByCast**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getReactionsByCast**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -876,30 +664,22 @@ ___
 | `request` | [`ReactionsByCastRequest`](../modules/protobufs.md#reactionsbycastrequest) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
 ___
 
 ### getReactionsByFid
 
-▸ **getReactionsByFid**(`request`, `callback`): `SurfaceCall`
+▸ **getReactionsByFid**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`ReactionsByFidRequest`](../modules/protobufs.md#reactionsbyfidrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getReactionsByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getReactionsByFid**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -907,13 +687,9 @@ ___
 | :------ | :------ |
 | `request` | [`ReactionsByFidRequest`](../modules/protobufs.md#reactionsbyfidrequest) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getReactionsByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getReactionsByFid**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -922,17 +698,13 @@ ___
 | `request` | [`ReactionsByFidRequest`](../modules/protobufs.md#reactionsbyfidrequest) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
 ___
 
 ### getSigner
 
-▸ **getSigner**(`request`, `callback`): `SurfaceCall`
+▸ **getSigner**(`request`, `callback`)
 
 Signer
 
@@ -941,13 +713,9 @@ Signer
 | Name | Type |
 | :------ | :------ |
 | `request` | [`SignerRequest`](../modules/protobufs.md#signerrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getSigner**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getSigner**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -955,13 +723,9 @@ Signer
 | :------ | :------ |
 | `request` | [`SignerRequest`](../modules/protobufs.md#signerrequest) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getSigner**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getSigner**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -970,30 +734,22 @@ Signer
 | `request` | [`SignerRequest`](../modules/protobufs.md#signerrequest) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) =>  |
 
 ___
 
 ### getSignersByFid
 
-▸ **getSignersByFid**(`request`, `callback`): `SurfaceCall`
+▸ **getSignersByFid**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getSignersByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getSignersByFid**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -1001,13 +757,9 @@ ___
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getSignersByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getSignersByFid**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -1016,30 +768,22 @@ ___
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
 ___
 
 ### getSyncMetadataByPrefix
 
-▸ **getSyncMetadataByPrefix**(`request`, `callback`): `SurfaceCall`
+▸ **getSyncMetadataByPrefix**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`TrieNodePrefix`](../modules/protobufs.md#trienodeprefix) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`TrieNodeMetadataResponse`](../modules/protobufs.md#trienodemetadataresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`TrieNodeMetadataResponse`](../modules/protobufs.md#trienodemetadataresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getSyncMetadataByPrefix**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getSyncMetadataByPrefix**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -1047,13 +791,9 @@ ___
 | :------ | :------ |
 | `request` | [`TrieNodePrefix`](../modules/protobufs.md#trienodeprefix) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`TrieNodeMetadataResponse`](../modules/protobufs.md#trienodemetadataresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`TrieNodeMetadataResponse`](../modules/protobufs.md#trienodemetadataresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getSyncMetadataByPrefix**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getSyncMetadataByPrefix**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -1062,30 +802,22 @@ ___
 | `request` | [`TrieNodePrefix`](../modules/protobufs.md#trienodeprefix) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`TrieNodeMetadataResponse`](../modules/protobufs.md#trienodemetadataresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`TrieNodeMetadataResponse`](../modules/protobufs.md#trienodemetadataresponse)) =>  |
 
 ___
 
 ### getSyncSnapshotByPrefix
 
-▸ **getSyncSnapshotByPrefix**(`request`, `callback`): `SurfaceCall`
+▸ **getSyncSnapshotByPrefix**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`TrieNodePrefix`](../modules/protobufs.md#trienodeprefix) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`TrieNodeSnapshotResponse`](../modules/protobufs.md#trienodesnapshotresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`TrieNodeSnapshotResponse`](../modules/protobufs.md#trienodesnapshotresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getSyncSnapshotByPrefix**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getSyncSnapshotByPrefix**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -1093,13 +825,9 @@ ___
 | :------ | :------ |
 | `request` | [`TrieNodePrefix`](../modules/protobufs.md#trienodeprefix) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`TrieNodeSnapshotResponse`](../modules/protobufs.md#trienodesnapshotresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`TrieNodeSnapshotResponse`](../modules/protobufs.md#trienodesnapshotresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getSyncSnapshotByPrefix**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getSyncSnapshotByPrefix**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -1108,17 +836,13 @@ ___
 | `request` | [`TrieNodePrefix`](../modules/protobufs.md#trienodeprefix) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`TrieNodeSnapshotResponse`](../modules/protobufs.md#trienodesnapshotresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`TrieNodeSnapshotResponse`](../modules/protobufs.md#trienodesnapshotresponse)) =>  |
 
 ___
 
 ### getUserData
 
-▸ **getUserData**(`request`, `callback`): `SurfaceCall`
+▸ **getUserData**(`request`, `callback`)
 
 User Data
 
@@ -1127,13 +851,9 @@ User Data
 | Name | Type |
 | :------ | :------ |
 | `request` | [`UserDataRequest`](../modules/protobufs.md#userdatarequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getUserData**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getUserData**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -1141,13 +861,9 @@ User Data
 | :------ | :------ |
 | `request` | [`UserDataRequest`](../modules/protobufs.md#userdatarequest) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getUserData**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getUserData**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -1156,30 +872,22 @@ User Data
 | `request` | [`UserDataRequest`](../modules/protobufs.md#userdatarequest) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) =>  |
 
 ___
 
 ### getUserDataByFid
 
-▸ **getUserDataByFid**(`request`, `callback`): `SurfaceCall`
+▸ **getUserDataByFid**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getUserDataByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getUserDataByFid**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -1187,13 +895,9 @@ ___
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getUserDataByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getUserDataByFid**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -1202,17 +906,13 @@ ___
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
 ___
 
 ### getVerification
 
-▸ **getVerification**(`request`, `callback`): `SurfaceCall`
+▸ **getVerification**(`request`, `callback`)
 
 Verifications
 
@@ -1221,13 +921,9 @@ Verifications
 | Name | Type |
 | :------ | :------ |
 | `request` | [`VerificationRequest`](../modules/protobufs.md#verificationrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getVerification**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getVerification**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -1235,13 +931,9 @@ Verifications
 | :------ | :------ |
 | `request` | [`VerificationRequest`](../modules/protobufs.md#verificationrequest) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getVerification**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getVerification**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -1250,30 +942,22 @@ Verifications
 | `request` | [`VerificationRequest`](../modules/protobufs.md#verificationrequest) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) =>  |
 
 ___
 
 ### getVerificationsByFid
 
-▸ **getVerificationsByFid**(`request`, `callback`): `SurfaceCall`
+▸ **getVerificationsByFid**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getVerificationsByFid**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **getVerificationsByFid**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -1281,13 +965,9 @@ ___
 | :------ | :------ |
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **getVerificationsByFid**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **getVerificationsByFid**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -1296,30 +976,22 @@ ___
 | `request` | [`FidRequest`](../modules/protobufs.md#fidrequest) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`MessagesResponse`](../modules/protobufs.md#messagesresponse)) =>  |
 
 ___
 
 ### submitIdRegistryEvent
 
-▸ **submitIdRegistryEvent**(`request`, `callback`): `SurfaceCall`
+▸ **submitIdRegistryEvent**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **submitIdRegistryEvent**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **submitIdRegistryEvent**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -1327,13 +999,9 @@ ___
 | :------ | :------ |
 | `request` | [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **submitIdRegistryEvent**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **submitIdRegistryEvent**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -1342,17 +1010,13 @@ ___
 | `request` | [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent)) =>  |
 
 ___
 
 ### submitMessage
 
-▸ **submitMessage**(`request`, `callback`): `SurfaceCall`
+▸ **submitMessage**(`request`, `callback`)
 
 Submit Methods
 
@@ -1361,13 +1025,9 @@ Submit Methods
 | Name | Type |
 | :------ | :------ |
 | `request` | [`Message`](../modules/protobufs.md#message) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **submitMessage**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **submitMessage**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -1375,13 +1035,9 @@ Submit Methods
 | :------ | :------ |
 | `request` | [`Message`](../modules/protobufs.md#message) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **submitMessage**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **submitMessage**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -1390,30 +1046,22 @@ Submit Methods
 | `request` | [`Message`](../modules/protobufs.md#message) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`Message`](../modules/protobufs.md#message)) =>  |
 
 ___
 
 ### submitNameRegistryEvent
 
-▸ **submitNameRegistryEvent**(`request`, `callback`): `SurfaceCall`
+▸ **submitNameRegistryEvent**(`request`, `callback`)
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
 | `request` | [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent) |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **submitNameRegistryEvent**(`request`, `metadata`, `callback`): `SurfaceCall`
+▸ **submitNameRegistryEvent**(`request`, `metadata`, `callback`)
 
 #### Parameters
 
@@ -1421,13 +1069,9 @@ ___
 | :------ | :------ |
 | `request` | [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent) |
 | `metadata` | `Metadata` |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent)) => `void` |
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent)) =>  |
 
-#### Returns
-
-`SurfaceCall`
-
-▸ **submitNameRegistryEvent**(`request`, `metadata`, `options`, `callback`): `SurfaceCall`
+▸ **submitNameRegistryEvent**(`request`, `metadata`, `options`, `callback`)
 
 #### Parameters
 
@@ -1436,17 +1080,13 @@ ___
 | `request` | [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent) |
 | `metadata` | `Metadata` |
 | `options` | `Partial`<`CallOptions`\> |
-| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent)) => `void` |
-
-#### Returns
-
-`SurfaceCall`
+| `callback` | (`error`: ``null`` \| `ServiceError`, `response`: [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent)) =>  |
 
 ___
 
 ### subscribe
 
-▸ **subscribe**(`request`, `options?`): `ClientReadableStream`<[`HubEvent`](../modules/protobufs.md#hubevent)\>
+▸ **subscribe**(`request`, `options?`)
 
 Event Methods
 
@@ -1457,11 +1097,7 @@ Event Methods
 | `request` | [`SubscribeRequest`](../modules/protobufs.md#subscriberequest) |
 | `options?` | `Partial`<`CallOptions`\> |
 
-#### Returns
-
-`ClientReadableStream`<[`HubEvent`](../modules/protobufs.md#hubevent)\>
-
-▸ **subscribe**(`request`, `metadata?`, `options?`): `ClientReadableStream`<[`HubEvent`](../modules/protobufs.md#hubevent)\>
+▸ **subscribe**(`request`, `metadata?`, `options?`)
 
 #### Parameters
 
@@ -1470,7 +1106,3 @@ Event Methods
 | `request` | [`SubscribeRequest`](../modules/protobufs.md#subscriberequest) |
 | `metadata?` | `Metadata` |
 | `options?` | `Partial`<`CallOptions`\> |
-
-#### Returns
-
-`ClientReadableStream`<[`HubEvent`](../modules/protobufs.md#hubevent)\>

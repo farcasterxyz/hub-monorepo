@@ -75,503 +75,395 @@ const client = new Client(...)
 
 ### getAllCastMessagesByFid
 
-▸ **getAllCastMessagesByFid**(`fid`): `HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastRemoveData`](../modules/types.md#castremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
+▸ **getAllCastMessagesByFid**(`fid`)
 
 TODO DOCS: description
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](../modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-
-#### Returns
-
-`HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastRemoveData`](../modules/types.md#castremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
-
-...
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid from which the cast originates from. |
 
 ___
 
 ### getAllReactionMessagesByFid
 
-▸ **getAllReactionMessagesByFid**(`fid`): `HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionRemoveData`](../modules/types.md#reactionremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
+▸ **getAllReactionMessagesByFid**(`fid`)
 
 TODO DOCS: description
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](../modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-
-#### Returns
-
-`HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionRemoveData`](../modules/types.md#reactionremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
-
-...
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid from which the cast originates from. |
 
 ___
 
 ### getAllSignerMessagesByFid
 
-▸ **getAllSignerMessagesByFid**(`fid`): `HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerAddData`](../modules/types.md#signeradddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerRemoveData`](../modules/types.md#signerremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
+▸ **getAllSignerMessagesByFid**(`fid`)
 
 TODO DOCS: description
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value                                          | Type                                     | Description                                                               |
+| :--------------------------------------------- | :--------------------------------------- | :------------------------------------------------------------------------ |
+| `HubAsyncResult<(SignerAddMessage)>` | [`SignerAddMessage`](../modules/types.md#signeraddmessage)[] | A `HubAsyncResult` that contains the valid `SignerAddMessage` or `SignerRemoveMessage` array. |
+| OR                                           |                                         |                                                                          |
+| `HubAsyncResult<(SignerRemoveMessage)>` | [`SignerRemoveMessage`](../modules/types.md#signerremovemessage)[] | - |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-
-#### Returns
-
-`HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerAddData`](../modules/types.md#signeradddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerRemoveData`](../modules/types.md#signerremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
-
-...
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid to get all signers for. |
 
 ___
 
 ### getAllUserDataMessagesByFid
 
-▸ **getAllUserDataMessagesByFid**(`fid`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`UserDataAddData`](../modules/types.md#userdataadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
+▸ **getAllUserDataMessagesByFid**(`fid`)
 
 TODO DOCS: description
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<(UserDataAddMessage>` | [`UserDataAddMessage`](../modules/types.md#userdataaddmessage)[] | A `HubAsyncResult` that contains the valid `UserDataAddMessage` or `UserDataRemoveMessage` array. |
+| OR    |                                         |                                                                          |
+| `HubAsyncResult<(UserDataRemoveMessage>` | [`UserDataRemoveMessage`](../modules/types.md#userdataremovemessage)[] | - |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`UserDataAddData`](../modules/types.md#userdataadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-...
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid to get all user data for. |
 
 ___
 
 ### getAllVerificationMessagesByFid
 
-▸ **getAllVerificationMessagesByFid**(`fid`): `HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationAddEthAddressData`](../modules/types.md#verificationaddethaddressdata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationRemoveData`](../modules/types.md#verificationremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
+▸ **getAllVerificationMessagesByFid**(`fid`)
 
-TODO DOCS: description
+Get all verifications for a specific address.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<(VerificationAddEthAddressMessage)[]>` | [`VerificationAddEthAddressMessage`](../modules/types.md#verificationaddethaddressmessage)[] | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage` or `VerificationRemoveMessageMessage` array. |
+| OR | | |
+| `HubAsyncResult<(VerificationRemoveMessage)[]>` | [`VerificationRemoveMessage`](../modules/types.md#verificationremovemessage)[] | - |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-
-#### Returns
-
-`HubAsyncResult`<(`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationAddEthAddressData`](../modules/types.md#verificationaddethaddressdata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> \| `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationRemoveData`](../modules/types.md#verificationremovedata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>)[]\>
-
-...
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid to get all verifications for. |
 
 ___
 
 ### getCast
 
-▸ **getCast**(`fid`, `hash`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
+▸ **getCast**(`fid`, `hash`)
 
-TODO DOCS: description
+Get a cast.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<CastAddMessage>` | [`CastAddMessage`](../modules/types.md#castaddmessage) | A `HubAsyncResult` that contains the valid `CastAddMessage`. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-| `hash` | `string` |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-...
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid from which the cast originates from. |
+| `hash` | `string` | The hash of the cast. |
 
 ___
 
 ### getCastsByFid
 
-▸ **getCastsByFid**(`fid`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
+▸ **getCastsByFid**(`fid`)
 
-TODO DOCS: description
+Get casts by fid.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](../modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-...
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid from which the cast originates from. |
 
 ___
 
 ### getCastsByMention
 
-▸ **getCastsByMention**(`mentionFid`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
+▸ **getCastsByMention**(`mentionFid`)
 
 TODO DOCS: description
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](../modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `mentionFid` | `number` |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-...
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `mentionFid` | `number` | The fid from which the cast originates from. |
 
 ___
 
 ### getCastsByParent
 
-▸ **getCastsByParent**(`parent`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
+▸ **getCastsByParent**(`parent`)
 
-TODO DOCS: description
+Get direct children of a cast.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](../modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `parent` | [`CastId`](../modules/types.md#castid) |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`CastAddData`](../modules/types.md#castadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-...
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `parent` | [`CastId`](../modules/types.md#castid) | The parent cast id. |
 
 ___
 
 ### getIdRegistryEvent
 
-▸ **getIdRegistryEvent**(`fid`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent) ; `blockHash`: `string` ; `blockNumber`: `number` ; `fid`: `number` ; `from`: `undefined` \| `string` ; `logIndex`: `number` ; `to`: `string` ; `transactionHash`: `string` ; `type`: [`IdRegistryEventType`](../enums/protobufs.IdRegistryEventType.md)  }\>\>
+▸ **getIdRegistryEvent**(`fid`)
 
-TODO DOCS: description
+Get fid registry event for a specific fid.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<IdRegistryEvent>` | [`IdRegistryEvent`](../modules/types.md#idregistryevent) | A `HubAsyncResult` that contains the valid `IdRegistryEvent`. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`IdRegistryEvent`](../modules/protobufs.md#idregistryevent) ; `blockHash`: `string` ; `blockNumber`: `number` ; `fid`: `number` ; `from`: `undefined` \| `string` ; `logIndex`: `number` ; `to`: `string` ; `transactionHash`: `string` ; `type`: [`IdRegistryEventType`](../enums/protobufs.IdRegistryEventType.md)  }\>\>
-
-...
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid to get registry event for. |
 
 ___
 
 ### getNameRegistryEvent
 
-▸ **getNameRegistryEvent**(`fname`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent) ; `blockHash`: `string` ; `blockNumber`: `number` ; `expiry`: `undefined` \| `number` ; `fname`: `string` ; `from`: `string` ; `logIndex`: `number` ; `to`: `string` ; `transactionHash`: `string` ; `type`: [`NameRegistryEventType`](../enums/protobufs.NameRegistryEventType.md)  }\>\>
+▸ **getNameRegistryEvent**(`fname`)
 
-TODO DOCS: description
+Get fname registry event for a specific fname.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<NameRegistryEvent>` | [`NameRegistryEvent`](../modules/types.md#nameregistryevent) | A `HubAsyncResult` that contains the valid `NameRegistryEvent`. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fname` | `string` |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`NameRegistryEvent`](../modules/protobufs.md#nameregistryevent) ; `blockHash`: `string` ; `blockNumber`: `number` ; `expiry`: `undefined` \| `number` ; `fname`: `string` ; `from`: `string` ; `logIndex`: `number` ; `to`: `string` ; `transactionHash`: `string` ; `type`: [`NameRegistryEventType`](../enums/protobufs.NameRegistryEventType.md)  }\>\>
-
-...
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fname` | `string` | The fname to get registry event for. |
 
 ___
 
 ### getReaction
 
-▸ **getReaction**(`fid`, `type`, `cast`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
+▸ **getReaction**(`fid`, `type`, `cast`)
 
-TODO DOCS: description
+Get reaction for a specific cast.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<ReactionAddMessage>` | [`ReactionAddMessage`](../modules/types.md#reactionaddmessage) | A `HubAsyncResult` that contains the valid `ReactionAddMessage`. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-| `type` | [`ReactionType`](../enums/protobufs.ReactionType.md) |
-| `cast` | [`CastId`](../modules/types.md#castid) |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-...
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid from which the cast originates from. |
+| `type` | [`ReactionType`](../enums/protobufs.ReactionType.md) | The type of the reaction (like or recast). |
+| `cast` | [`CastId`](../modules/types.md#castid) | The cast id. |
 
 ___
 
 ### getReactionsByCast
 
-▸ **getReactionsByCast**(`cast`, `type?`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
+▸ **getReactionsByCast**(`cast`, `type?`)
 
 TODO DOCS: description
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](../modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `cast` | [`CastId`](../modules/types.md#castid) |
-| `type?` | [`ReactionType`](../enums/protobufs.ReactionType.md) |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-...
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `cast` | [`CastId`](../modules/types.md#castid) | The cast id. |
+| `type?` | [`ReactionType`](../enums/protobufs.ReactionType.md) | The type of the reaction (like or recast). |
 
 ___
 
 ### getReactionsByFid
 
-▸ **getReactionsByFid**(`fid`, `type?`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
+▸ **getReactionsByFid**(`fid`, `type?`)
 
-TODO DOCS: description
+Get reactions from a specific fid.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](../modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-| `type?` | [`ReactionType`](../enums/protobufs.ReactionType.md) |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`ReactionAddData`](../modules/types.md#reactionadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-...
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid from which the cast originates from. |
+| `type?` | [`ReactionType`](../enums/protobufs.ReactionType.md) | The type of the reaction (like or recast). |
 
 ___
 
 ### getSigner
 
-▸ **getSigner**(`fid`, `signer`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerAddData`](../modules/types.md#signeradddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
+▸ **getSigner**(`fid`, `signer`)
 
 TODO DOCS: description
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<SignerAddMessage>` | [`SignerAddMessage`](../modules/types.md#signeraddmessage) | A `HubAsyncResult` that contains the valid `SignerAddMessage`. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
@@ -581,189 +473,143 @@ console.log(result)
 | `fid` | `number` |
 | `signer` | `string` |
 
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerAddData`](../modules/types.md#signeradddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-...
-
 ___
 
 ### getSignersByFid
 
-▸ **getSignersByFid**(`fid`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerAddData`](../modules/types.md#signeradddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
+▸ **getSignersByFid**(`fid`)
 
-TODO DOCS: description
+Get signers of a fid.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<SignerAddMessage[]>` | [`SignerAddMessage`](../modules/types.md#signeraddmessage)[] | A `HubAsyncResult` that contains the valid `SignerAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`SignerAddData`](../modules/types.md#signeradddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-...
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid to get signers for. |
 
 ___
 
 ### getUserData
 
-▸ **getUserData**(`fid`, `type`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`UserDataAddData`](../modules/types.md#userdataadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
+▸ **getUserData**(`fid`, `type`)
 
-TODO DOCS: description
+Get user data (pfp, username, fname, etc).
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<UserDataAddMessage>` | [`UserDataAddMessage`](../modules/types.md#userdataaddmessage) | A `HubAsyncResult` that contains the valid `UserDataAddMessage`. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-| `type` | [`UserDataType`](../enums/protobufs.UserDataType.md) |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`UserDataAddData`](../modules/types.md#userdataadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-...
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid to get user data for. |
+| `type` | [`UserDataType`](../enums/protobufs.UserDataType.md) | The type of user data to get. |
 
 ___
 
 ### getUserDataByFid
 
-▸ **getUserDataByFid**(`fid`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`UserDataAddData`](../modules/types.md#userdataadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
+▸ **getUserDataByFid**(`fid`)
 
-TODO DOCS: description
+Get user data (pfp, username, fname, etc) by fid.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<UserDataAddMessage[]>` | [`UserDataAddMessage`](../modules/types.md#userdataaddmessage)[] | A `HubAsyncResult` that contains the valid `UserDataAddMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`UserDataAddData`](../modules/types.md#userdataadddata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-...
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid to get user data for. |
 
 ___
 
 ### getVerification
 
-▸ **getVerification**(`fid`, `address`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationAddEthAddressData`](../modules/types.md#verificationaddethaddressdata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
+▸ **getVerification**(`fid`, `address`)
 
-TODO DOCS: description
+Get verification for a specific address and fid.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<VerificationAddEthAddressMessage>` | [`VerificationAddEthAddressMessage`](../modules/types.md#verificationaddethaddressmessage) | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage`. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-| `address` | `string` |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationAddEthAddressData`](../modules/types.md#verificationaddethaddressdata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-...
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid to verify. |
+| `address` | `string` | The custody address to verify. |
 
 ___
 
 ### getVerificationsByFid
 
-▸ **getVerificationsByFid**(`fid`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationAddEthAddressData`](../modules/types.md#verificationaddethaddressdata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
+▸ **getVerificationsByFid**(`fid`)
 
-TODO DOCS: description
+Get verifications for a specific fid.
 
-TODO DOCS: usage example, here's the structure:
+#### Returns
+
+| Value | Type | Description |
+| :---- | :--- | :---------- |
+| `HubAsyncResult<VerificationAddEthAddressMessage[]>` | [`VerificationAddEthAddressMessage`](../modules/types.md#verificationaddethaddressmessage)[] | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage` array. |
 
 **`Example`**
 
 ```typescript
-import { ... } from '@farcaster/js';
-
-const client = new Client(...)
-const result = await client.get...
-console.log(result)
-
-// Output: ...
+// TODO DOCS: usage example
 ```
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `fid` | `number` |
-
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`VerificationAddEthAddressData`](../modules/types.md#verificationaddethaddressdata) ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>[]\>
-
-...
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `fid` | `number` | The fid to verify. |
 
 ___
 
 ### submitMessage
 
-▸ **submitMessage**(`message`): `HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`MessageData`](../modules/types.md#messagedata)<[`MessageBody`](../modules/types.md#messagebody), [`MessageType`](../enums/protobufs.MessageType.md)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
+▸ **submitMessage**(`message`)
 
 TODO DOCS: description
 
@@ -787,17 +633,11 @@ console.log(result)
 | :------ | :------ |
 | `message` | `Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`MessageData`](../modules/types.md#messagedata)<[`MessageBody`](../modules/types.md#messagebody), [`MessageType`](../enums/protobufs.MessageType.md)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\> |
 
-#### Returns
-
-`HubAsyncResult`<`Readonly`<{ `_protobuf`: [`Message`](../modules/protobufs.md#message) ; `data`: [`MessageData`](../modules/types.md#messagedata)<[`MessageBody`](../modules/types.md#messagebody), [`MessageType`](../enums/protobufs.MessageType.md)\> ; `hash`: `string` ; `hashScheme`: [`HashScheme`](../enums/protobufs.HashScheme.md) ; `signature`: `string` ; `signatureScheme`: [`SignatureScheme`](../enums/protobufs.SignatureScheme.md) ; `signer`: `string`  }\>\>
-
-...
-
 ___
 
 ### subscribe
 
-▸ **subscribe**(`filters?`): `Promise`<`HubResult`<`ClientReadableStream`<[`HubEvent`](../modules/protobufs.md#hubevent)\>\>\>
+▸ **subscribe**(`filters?`)
 
 TODO DOCS: description
 
@@ -822,9 +662,3 @@ console.log(result)
 | Name | Type |
 | :------ | :------ |
 | `filters` | [`EventFilters`](../modules.md#eventfilters) |
-
-#### Returns
-
-`Promise`<`HubResult`<`ClientReadableStream`<[`HubEvent`](../modules/protobufs.md#hubevent)\>\>\>
-
-...
