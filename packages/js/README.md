@@ -74,8 +74,6 @@ import {
 } from '@farcaster/js';
 import * as ed from '@noble/ed25519';
 import { ethers } from 'ethers';
-import * as ed from '@noble/ed25519';
-import { ethers } from 'ethers';
 
 // Safety: we use unsafeUnwrap() and crash on failure in a few places, since it can't be handled
 //  any other way
