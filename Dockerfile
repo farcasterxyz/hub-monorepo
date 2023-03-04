@@ -41,7 +41,6 @@ RUN yarn install --frozen-lockfile --network-timeout 1800000
 # Copy source code (and all other relevant files)
 COPY --chown=node:node --from=prune /home/node/app/out/full/ .
 # turbo prune doesn't include global tsconfig.json (https://github.com/vercel/turbo/issues/2177)
-COPY --chown=node:node tsconfig.json tsconfig.json
 
 # Build code
 RUN yarn build
@@ -71,11 +70,11 @@ WORKDIR /home/node/app
 # The base image is same as the build stage, so it is safe to copy node_modules over to this stage.
 COPY --chown=node:node --from=prune /home/node/app/out/json/ .
 COPY --chown=node:node --from=prune /home/node/app/out/yarn.lock ./yarn.lock
-COPY --chown=node:node --from=build /home/node/app/tsconfig.json ./packages/tsconfig/base.json
 COPY --chown=node:node --from=build /home/node/app/node_modules ./node_modules
 COPY --chown=node:node --from=build /home/node/app/packages/protobufs/dist ./packages/protobufs/dist/
 COPY --chown=node:node --from=build /home/node/app/packages/protobufs/node_modules ./packages/protobufs/node_modules/
 COPY --chown=node:node --from=build /home/node/app/packages/utils/dist ./packages/utils/dist/
+COPY --chown=node:node --from=build /home/node/app/packages/tsconfig ./packages/tsconfig/
 
 # TODO: determine if this can be removed while using tsx (or find alternative)
 # since we should be able to run with just the compiled javascript in build/
