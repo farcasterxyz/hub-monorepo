@@ -88,13 +88,14 @@ const eip712Signer = Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwr
 // Generate a new Ed25519 key pair which will become the Signer and store the private key securely
 const signerPrivateKey = ed.utils.randomPrivateKey();
 const signerPrivateKeyHex = ed.utils.bytesToHex(signerPrivateKey);
+const ed25519Signer = Ed25519Signer.fromPrivateKey(signerPrivateKey)._unsafeUnwrap();
 
 // Create a SignerAdd message that contains the public key of the signer
 const dataOptions = {
   fid: -9999, // Set to the fid of the user
   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
 };
-const signerAddResult = await makeSignerAdd({ signer: signerPrivateKeyHex }, dataOptions, eip712Signer);
+const signerAddResult = await makeSignerAdd({ signer: ed25519Signer.signerKeyHex }, dataOptions, eip712Signer);
 const signerAdd = signerAddResult._unsafeUnwrap();
 
 // Submit the SignerAdd message to the Hub
@@ -106,8 +107,6 @@ result.isOk() ? console.log('SignerAdd was published successfully!') : console.l
 Once a SignerAdd is accepted the Signer can be used publish other types of Farcaster messages to a Hub, as shown below.
 
 ```typescript
-const ed25519Signer = Ed25519Signer.fromPrivateKey(signerPrivateKey)._unsafeUnwrap();
-
 // Make a new cast
 const cast = await makeCastAdd({ text: 'hello world' }, dataOptions, ed25519Signer);
 await client.submitMessage(cast._unsafeUnwrap());
