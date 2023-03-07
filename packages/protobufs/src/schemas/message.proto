@@ -28,9 +28,9 @@ message MessageData {
     ReactionBody reaction_body = 7;
     VerificationAddEthAddressBody verification_add_eth_address_body = 9;
     VerificationRemoveBody verification_remove_body = 10;
-    SignerAddBody signer_body = 11;
-    UserDataBody user_data_body = 12;
-    string 
+    SignerAddBody signer_add_body = 11;
+    SignerRemoveBody signer_remove_body = 12;
+    UserDataBody user_data_body = 13;   
   } // Properties specific to the MessageType
 }
 
