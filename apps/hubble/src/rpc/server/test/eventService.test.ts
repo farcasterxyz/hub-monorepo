@@ -51,7 +51,7 @@ beforeAll(async () => {
   custodyEvent = Factories.IdRegistryEvent.build({ to: ethSigner.signerKey, fid });
   nameRegistryEvent = Factories.NameRegistryEvent.build({ to: ethSigner.signerKey, fname });
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, signerBody: { signer: signer.signerKey } } },
+    { data: { fid, signerAddBody: { signer: signer.signerKey } } },
     { transient: { signer: ethSigner } }
   );
   castAdd = await Factories.CastAddMessage.create({ data: { fid } }, { transient: { signer } });

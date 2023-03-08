@@ -7,7 +7,6 @@ export enum HashScheme {
   HASH_SCHEME_NONE = 0,
   /** HASH_SCHEME_BLAKE3 - Default scheme for hashing MessageData */
   HASH_SCHEME_BLAKE3 = 1,
-  UNRECOGNIZED = -1,
 }
 
 export function hashSchemeFromJSON(object: any): HashScheme {
@@ -18,10 +17,8 @@ export function hashSchemeFromJSON(object: any): HashScheme {
     case 1:
     case "HASH_SCHEME_BLAKE3":
       return HashScheme.HASH_SCHEME_BLAKE3;
-    case -1:
-    case "UNRECOGNIZED":
     default:
-      return HashScheme.UNRECOGNIZED;
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HashScheme");
   }
 }
 
@@ -31,9 +28,8 @@ export function hashSchemeToJSON(object: HashScheme): string {
       return "HASH_SCHEME_NONE";
     case HashScheme.HASH_SCHEME_BLAKE3:
       return "HASH_SCHEME_BLAKE3";
-    case HashScheme.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HashScheme");
   }
 }
 
@@ -44,7 +40,6 @@ export enum SignatureScheme {
   SIGNATURE_SCHEME_ED25519 = 1,
   /** SIGNATURE_SCHEME_EIP712 - ECDSA signature using EIP-712 scheme */
   SIGNATURE_SCHEME_EIP712 = 2,
-  UNRECOGNIZED = -1,
 }
 
 export function signatureSchemeFromJSON(object: any): SignatureScheme {
@@ -58,10 +53,8 @@ export function signatureSchemeFromJSON(object: any): SignatureScheme {
     case 2:
     case "SIGNATURE_SCHEME_EIP712":
       return SignatureScheme.SIGNATURE_SCHEME_EIP712;
-    case -1:
-    case "UNRECOGNIZED":
     default:
-      return SignatureScheme.UNRECOGNIZED;
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum SignatureScheme");
   }
 }
 
@@ -73,9 +66,8 @@ export function signatureSchemeToJSON(object: SignatureScheme): string {
       return "SIGNATURE_SCHEME_ED25519";
     case SignatureScheme.SIGNATURE_SCHEME_EIP712:
       return "SIGNATURE_SCHEME_EIP712";
-    case SignatureScheme.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum SignatureScheme");
   }
 }
 
@@ -100,7 +92,6 @@ export enum MessageType {
   MESSAGE_TYPE_SIGNER_REMOVE = 10,
   /** MESSAGE_TYPE_USER_DATA_ADD - Add metadata about a user */
   MESSAGE_TYPE_USER_DATA_ADD = 11,
-  UNRECOGNIZED = -1,
 }
 
 export function messageTypeFromJSON(object: any): MessageType {
@@ -135,10 +126,8 @@ export function messageTypeFromJSON(object: any): MessageType {
     case 11:
     case "MESSAGE_TYPE_USER_DATA_ADD":
       return MessageType.MESSAGE_TYPE_USER_DATA_ADD;
-    case -1:
-    case "UNRECOGNIZED":
     default:
-      return MessageType.UNRECOGNIZED;
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
 }
 
@@ -164,13 +153,12 @@ export function messageTypeToJSON(object: MessageType): string {
       return "MESSAGE_TYPE_SIGNER_REMOVE";
     case MessageType.MESSAGE_TYPE_USER_DATA_ADD:
       return "MESSAGE_TYPE_USER_DATA_ADD";
-    case MessageType.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
 }
 
-/** Farcaster network the mne is intended for */
+/** Farcaster network the message is intended for */
 export enum FarcasterNetwork {
   FARCASTER_NETWORK_NONE = 0,
   /** FARCASTER_NETWORK_MAINNET - Public primary network */
@@ -179,7 +167,6 @@ export enum FarcasterNetwork {
   FARCASTER_NETWORK_TESTNET = 2,
   /** FARCASTER_NETWORK_DEVNET - Private test network */
   FARCASTER_NETWORK_DEVNET = 3,
-  UNRECOGNIZED = -1,
 }
 
 export function farcasterNetworkFromJSON(object: any): FarcasterNetwork {
@@ -196,10 +183,8 @@ export function farcasterNetworkFromJSON(object: any): FarcasterNetwork {
     case 3:
     case "FARCASTER_NETWORK_DEVNET":
       return FarcasterNetwork.FARCASTER_NETWORK_DEVNET;
-    case -1:
-    case "UNRECOGNIZED":
     default:
-      return FarcasterNetwork.UNRECOGNIZED;
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum FarcasterNetwork");
   }
 }
 
@@ -213,9 +198,8 @@ export function farcasterNetworkToJSON(object: FarcasterNetwork): string {
       return "FARCASTER_NETWORK_TESTNET";
     case FarcasterNetwork.FARCASTER_NETWORK_DEVNET:
       return "FARCASTER_NETWORK_DEVNET";
-    case FarcasterNetwork.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum FarcasterNetwork");
   }
 }
 
@@ -232,7 +216,6 @@ export enum UserDataType {
   USER_DATA_TYPE_URL = 5,
   /** USER_DATA_TYPE_FNAME - Preferred Farcaster Name for the user */
   USER_DATA_TYPE_FNAME = 6,
-  UNRECOGNIZED = -1,
 }
 
 export function userDataTypeFromJSON(object: any): UserDataType {
@@ -255,10 +238,8 @@ export function userDataTypeFromJSON(object: any): UserDataType {
     case 6:
     case "USER_DATA_TYPE_FNAME":
       return UserDataType.USER_DATA_TYPE_FNAME;
-    case -1:
-    case "UNRECOGNIZED":
     default:
-      return UserDataType.UNRECOGNIZED;
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserDataType");
   }
 }
 
@@ -276,9 +257,8 @@ export function userDataTypeToJSON(object: UserDataType): string {
       return "USER_DATA_TYPE_URL";
     case UserDataType.USER_DATA_TYPE_FNAME:
       return "USER_DATA_TYPE_FNAME";
-    case UserDataType.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserDataType");
   }
 }
 
@@ -289,7 +269,6 @@ export enum ReactionType {
   REACTION_TYPE_LIKE = 1,
   /** REACTION_TYPE_RECAST - Share target cast to the user's audience */
   REACTION_TYPE_RECAST = 2,
-  UNRECOGNIZED = -1,
 }
 
 export function reactionTypeFromJSON(object: any): ReactionType {
@@ -303,10 +282,8 @@ export function reactionTypeFromJSON(object: any): ReactionType {
     case 2:
     case "REACTION_TYPE_RECAST":
       return ReactionType.REACTION_TYPE_RECAST;
-    case -1:
-    case "UNRECOGNIZED":
     default:
-      return ReactionType.UNRECOGNIZED;
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ReactionType");
   }
 }
 
@@ -318,9 +295,8 @@ export function reactionTypeToJSON(object: ReactionType): string {
       return "REACTION_TYPE_LIKE";
     case ReactionType.REACTION_TYPE_RECAST:
       return "REACTION_TYPE_RECAST";
-    case ReactionType.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ReactionType");
   }
 }
 
@@ -364,8 +340,8 @@ export interface MessageData {
   verificationAddEthAddressBody?: VerificationAddEthAddressBody | undefined;
   verificationRemoveBody?: VerificationRemoveBody | undefined;
   signerAddBody?: SignerAddBody | undefined;
-  signerRemoveBody?: SignerRemoveBody | undefined;
   userDataBody?: UserDataBody | undefined;
+  signerRemoveBody?: SignerRemoveBody | undefined;
 }
 
 /** Adds an Ed25519 key pair that signs messages for a user */
@@ -566,8 +542,8 @@ function createBaseMessageData(): MessageData {
     verificationAddEthAddressBody: undefined,
     verificationRemoveBody: undefined,
     signerAddBody: undefined,
-    signerRemoveBody: undefined,
     userDataBody: undefined,
+    signerRemoveBody: undefined,
   };
 }
 
@@ -603,11 +579,11 @@ export const MessageData = {
     if (message.signerAddBody !== undefined) {
       SignerAddBody.encode(message.signerAddBody, writer.uint32(90).fork()).ldelim();
     }
-    if (message.signerRemoveBody !== undefined) {
-      SignerRemoveBody.encode(message.signerRemoveBody, writer.uint32(98).fork()).ldelim();
-    }
     if (message.userDataBody !== undefined) {
-      UserDataBody.encode(message.userDataBody, writer.uint32(106).fork()).ldelim();
+      UserDataBody.encode(message.userDataBody, writer.uint32(98).fork()).ldelim();
+    }
+    if (message.signerRemoveBody !== undefined) {
+      SignerRemoveBody.encode(message.signerRemoveBody, writer.uint32(106).fork()).ldelim();
     }
     return writer;
   },
@@ -650,10 +626,10 @@ export const MessageData = {
           message.signerAddBody = SignerAddBody.decode(reader, reader.uint32());
           break;
         case 12:
-          message.signerRemoveBody = SignerRemoveBody.decode(reader, reader.uint32());
+          message.userDataBody = UserDataBody.decode(reader, reader.uint32());
           break;
         case 13:
-          message.userDataBody = UserDataBody.decode(reader, reader.uint32());
+          message.signerRemoveBody = SignerRemoveBody.decode(reader, reader.uint32());
           break;
         default:
           reader.skipType(tag & 7);
@@ -679,8 +655,8 @@ export const MessageData = {
         ? VerificationRemoveBody.fromJSON(object.verificationRemoveBody)
         : undefined,
       signerAddBody: isSet(object.signerAddBody) ? SignerAddBody.fromJSON(object.signerAddBody) : undefined,
-      signerRemoveBody: isSet(object.signerRemoveBody) ? SignerRemoveBody.fromJSON(object.signerRemoveBody) : undefined,
       userDataBody: isSet(object.userDataBody) ? UserDataBody.fromJSON(object.userDataBody) : undefined,
+      signerRemoveBody: isSet(object.signerRemoveBody) ? SignerRemoveBody.fromJSON(object.signerRemoveBody) : undefined,
     };
   },
 
@@ -705,10 +681,10 @@ export const MessageData = {
       : undefined);
     message.signerAddBody !== undefined &&
       (obj.signerAddBody = message.signerAddBody ? SignerAddBody.toJSON(message.signerAddBody) : undefined);
-    message.signerRemoveBody !== undefined &&
-      (obj.signerRemoveBody = message.signerRemoveBody ? SignerRemoveBody.toJSON(message.signerRemoveBody) : undefined);
     message.userDataBody !== undefined &&
       (obj.userDataBody = message.userDataBody ? UserDataBody.toJSON(message.userDataBody) : undefined);
+    message.signerRemoveBody !== undefined &&
+      (obj.signerRemoveBody = message.signerRemoveBody ? SignerRemoveBody.toJSON(message.signerRemoveBody) : undefined);
     return obj;
   },
 
@@ -742,11 +718,11 @@ export const MessageData = {
     message.signerAddBody = (object.signerAddBody !== undefined && object.signerAddBody !== null)
       ? SignerAddBody.fromPartial(object.signerAddBody)
       : undefined;
-    message.signerRemoveBody = (object.signerRemoveBody !== undefined && object.signerRemoveBody !== null)
-      ? SignerRemoveBody.fromPartial(object.signerRemoveBody)
-      : undefined;
     message.userDataBody = (object.userDataBody !== undefined && object.userDataBody !== null)
       ? UserDataBody.fromPartial(object.userDataBody)
+      : undefined;
+    message.signerRemoveBody = (object.signerRemoveBody !== undefined && object.signerRemoveBody !== null)
+      ? SignerRemoveBody.fromPartial(object.signerRemoveBody)
       : undefined;
     return message;
   },

@@ -29,8 +29,8 @@ message MessageData {
     VerificationAddEthAddressBody verification_add_eth_address_body = 9;
     VerificationRemoveBody verification_remove_body = 10;
     SignerAddBody signer_add_body = 11;
-    SignerRemoveBody signer_remove_body = 12;
-    UserDataBody user_data_body = 13;   
+    UserDataBody user_data_body = 12;
+    SignerRemoveBody signer_remove_body = 13;
   } // Properties specific to the MessageType
 }
 
@@ -61,7 +61,7 @@ enum MessageType {
   MESSAGE_TYPE_USER_DATA_ADD = 11; // Add metadata about a user
 }
 
-/** Farcaster network the mne is intended for */
+/** Farcaster network the message is intended for */
 enum FarcasterNetwork {
   FARCASTER_NETWORK_NONE = 0;
   FARCASTER_NETWORK_MAINNET = 1; // Public primary network

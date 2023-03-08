@@ -195,12 +195,10 @@ export const validateMessageData = (data: protobufs.MessageData): HubResult<prot
     !!data.reactionBody
   ) {
     bodyResult = validateReactionBody(data.reactionBody);
-  } else if (
-    (validType.value === protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD ||
-      validType.value === protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE) &&
-    !!data.signerAddBody
-  ) {
+  } else if (validType.value === protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD && !!data.signerAddBody) {
     bodyResult = validateSignerAddBody(data.signerAddBody);
+  } else if (validType.value === protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE && !!data.signerRemoveBody) {
+    bodyResult = validateSignerRemoveBody(data.signerRemoveBody);
   } else if (validType.value === protobufs.MessageType.MESSAGE_TYPE_USER_DATA_ADD && !!data.userDataBody) {
     bodyResult = validateUserDataAddBody(data.userDataBody);
   } else if (
@@ -375,6 +373,10 @@ export const validateSignerAddBody = (body: protobufs.SignerAddBody): HubResult<
     return err(new HubError('bad_request.validation_failure', 'name > 32 bytes'));
   }
 
+  return validateEd25519PublicKey(body.signer).map(() => body);
+};
+
+export const validateSignerRemoveBody = (body: protobufs.SignerRemoveBody): HubResult<protobufs.SignerRemoveBody> => {
   return validateEd25519PublicKey(body.signer).map(() => body);
 };
 

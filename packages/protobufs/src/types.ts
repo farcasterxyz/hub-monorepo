@@ -67,7 +67,7 @@ export type VerificationRemoveMessage = protobufs.Message & {
 
 export type SignerAddData = protobufs.MessageData & {
   type: protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD;
-  signerBody: protobufs.SignerAddBody;
+  signerAddBody: protobufs.SignerAddBody;
 };
 
 export type SignerAddMessage = protobufs.Message & {
@@ -77,7 +77,7 @@ export type SignerAddMessage = protobufs.Message & {
 
 export type SignerRemoveData = protobufs.MessageData & {
   type: protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE;
-  signerBody: protobufs.SignerRemoveBody;
+  signerRemoveBody: protobufs.SignerRemoveBody;
 };
 
 export type SignerRemoveMessage = protobufs.Message & {

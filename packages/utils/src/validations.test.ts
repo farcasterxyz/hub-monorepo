@@ -456,31 +456,76 @@ describe('validateVerificationRemoveBody', () => {
   });
 });
 
-describe('validateSignerBody', () => {
+describe('validateSignerAddBody', () => {
   test('succeeds', async () => {
-    const body = Factories.SignerBody.build();
-    expect(validations.validateSignerBody(body)).toEqual(ok(body));
+    const body = Factories.SignerAddBody.build();
+    expect(validations.validateSignerAddBody(body)).toEqual(ok(body));
   });
 
   describe('fails', () => {
-    let body: protobufs.SignerBody;
+    let body: protobufs.SignerAddBody;
     let hubErrorMessage: string;
 
     afterEach(() => {
-      expect(validations.validateSignerBody(body)).toEqual(
+      expect(validations.validateSignerAddBody(body)).toEqual(
         err(new HubError('bad_request.validation_failure', hubErrorMessage))
       );
     });
 
     test('when signer is missing', () => {
-      body = Factories.SignerBody.build({
+      body = Factories.SignerAddBody.build({
         signer: undefined,
       });
       hubErrorMessage = 'publicKey is missing';
     });
 
     test('with invalid signer', () => {
-      body = Factories.SignerBody.build({
+      body = Factories.SignerAddBody.build({
+        signer: Factories.Bytes.build({}, { transient: { length: 33 } }),
+      });
+      hubErrorMessage = 'publicKey must be 32 bytes';
+    });
+
+    test('with name > 32 chars', () => {
+      body = Factories.SignerAddBody.build({ name: faker.random.alphaNumeric(33) });
+      hubErrorMessage = 'name > 32 bytes';
+    });
+
+    test('with name > 32 bytes', () => {
+      let name = '';
+      for (let i = 0; i < 10; i++) {
+        name = name + '🔥';
+      }
+      body = Factories.SignerAddBody.build({ name });
+    });
+  });
+});
+
+describe('validateSignerRemoveBody', () => {
+  test('succeeds', async () => {
+    const body = Factories.SignerRemoveBody.build();
+    expect(validations.validateSignerRemoveBody(body)).toEqual(ok(body));
+  });
+
+  describe('fails', () => {
+    let body: protobufs.SignerRemoveBody;
+    let hubErrorMessage: string;
+
+    afterEach(() => {
+      expect(validations.validateSignerRemoveBody(body)).toEqual(
+        err(new HubError('bad_request.validation_failure', hubErrorMessage))
+      );
+    });
+
+    test('when signer is missing', () => {
+      body = Factories.SignerRemoveBody.build({
+        signer: undefined,
+      });
+      hubErrorMessage = 'publicKey is missing';
+    });
+
+    test('with invalid signer', () => {
+      body = Factories.SignerRemoveBody.build({
         signer: Factories.Bytes.build({}, { transient: { length: 33 } }),
       });
       hubErrorMessage = 'publicKey must be 32 bytes';

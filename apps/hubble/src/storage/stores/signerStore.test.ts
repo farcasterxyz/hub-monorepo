@@ -26,12 +26,12 @@ beforeAll(async () => {
     to: custody1Address,
   });
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, signerBody: { signer: signer.signerKey } } },
+    { data: { fid, signerAddBody: { signer: signer.signerKey } } },
     { transient: { signer: custody1 } }
   );
   signerRemove = await Factories.SignerRemoveMessage.create(
     {
-      data: { fid, signerBody: { signer: signer.signerKey }, timestamp: signerAdd.data.timestamp + 1 },
+      data: { fid, signerRemoveBody: { signer: signer.signerKey }, timestamp: signerAdd.data.timestamp + 1 },
     },
     { transient: { signer: custody1 } }
   );
@@ -753,7 +753,7 @@ describe('pruneMessages', () => {
     signer?: Uint8Array | null
   ): Promise<protobufs.SignerRemoveMessage> => {
     return Factories.SignerRemoveMessage.create({
-      data: { fid, timestamp, signerBody: { signer: signer ?? Factories.Ed25519Signer.build().signerKey } },
+      data: { fid, timestamp, signerRemoveBody: { signer: signer ?? Factories.Ed25519Signer.build().signerKey } },
     });
   };
 
@@ -765,11 +765,11 @@ describe('pruneMessages', () => {
     add4 = await generateAddWithTimestamp(fid, time + 4);
     add5 = await generateAddWithTimestamp(fid, time + 5);
 
-    remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1.data.signerBody.signer);
-    remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2.data.signerBody.signer);
-    remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.data.signerBody.signer);
-    remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.data.signerBody.signer);
-    remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.data.signerBody.signer);
+    remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1.data.signerAddBody.signer);
+    remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2.data.signerAddBody.signer);
+    remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.data.signerAddBody.signer);
+    remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.data.signerAddBody.signer);
+    remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.data.signerAddBody.signer);
   });
 
   describe('with size limit', () => {
@@ -794,7 +794,7 @@ describe('pruneMessages', () => {
       expect(prunedMessages).toEqual([add1, add2]);
 
       for (const message of prunedMessages as protobufs.SignerAddMessage[]) {
-        const getAdd = () => sizePrunedStore.getSignerAdd(fid, message.data.signerBody.signer);
+        const getAdd = () => sizePrunedStore.getSignerAdd(fid, message.data.signerAddBody.signer);
         await expect(getAdd()).rejects.toThrow(HubError);
       }
     });
@@ -811,7 +811,7 @@ describe('pruneMessages', () => {
       expect(prunedMessages).toEqual([remove1, remove2]);
 
       for (const message of prunedMessages as protobufs.SignerRemoveMessage[]) {
-        const getRemove = () => sizePrunedStore.getSignerRemove(fid, message.data.signerBody.signer);
+        const getRemove = () => sizePrunedStore.getSignerRemove(fid, message.data.signerRemoveBody.signer);
         await expect(getRemove()).rejects.toThrow(HubError);
       }
     });
