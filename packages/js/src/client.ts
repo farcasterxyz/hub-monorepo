@@ -294,7 +294,7 @@ export class Client {
   async getReactionsByFid(fid: number, type?: types.ReactionType): HubAsyncResult<types.ReactionAddMessage[]> {
     const request = protobufs.ReactionsByFidRequest.create({
       fid,
-      reactionType: type ?? types.ReactionType.REACTION_TYPE_NONE,
+      reactionType: type ?? types.ReactionType.NONE,
     });
     return wrapGrpcMessagesCall(this._grpcClient.getReactionsByFid(request));
   }
@@ -325,7 +325,7 @@ export class Client {
     }
     const request = protobufs.ReactionsByCastRequest.create({
       castId: serializedCastId.value,
-      reactionType: type ?? types.ReactionType.REACTION_TYPE_NONE,
+      reactionType: type ?? types.ReactionType.NONE,
     });
     return wrapGrpcMessagesCall(this._grpcClient.getReactionsByCast(request));
   }

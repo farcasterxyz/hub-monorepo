@@ -4,29 +4,29 @@ import "message.proto";
 import "id_registry_event.proto";
 
 enum GossipVersion {
-    GOSSIP_VERSION_1 = 0;
+  GOSSIP_VERSION_V1 = 0;
 }
 
 message GossipAddressInfo {
-    string address = 1;
-    uint32 family = 2;
-    uint32 port = 3;
+  string address = 1;
+  uint32 family = 2;
+  uint32 port = 3;
 }
 
 message ContactInfoContent {
-    GossipAddressInfo gossip_address = 1;
-    GossipAddressInfo rpc_address = 2;
-    repeated string excluded_hashes = 3;
-    uint32 count = 4;
+  GossipAddressInfo gossip_address = 1;
+  GossipAddressInfo rpc_address = 2;
+  repeated string excluded_hashes = 3;
+  uint32 count = 4;
 }
 
 message GossipMessage {
-    oneof content {
-        Message message = 1;
-        IdRegistryEvent id_registry_event = 2;
-        ContactInfoContent contact_info_content = 3;
-    }
-    repeated string topics = 4;
-    bytes peer_id = 5;
-    GossipVersion version = 6;
+  oneof content {
+    Message message = 1;
+    IdRegistryEvent id_registry_event = 2;
+    ContactInfoContent contact_info_content = 3;
+  }
+  repeated string topics = 4;
+  bytes peer_id = 5;
+  GossipVersion version = 6;
 }

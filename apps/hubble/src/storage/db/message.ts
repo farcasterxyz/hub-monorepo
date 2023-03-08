@@ -79,32 +79,26 @@ export const makeTsHash = (timestamp: number, hash: Uint8Array): HubResult<Uint8
 };
 
 export const typeToSetPostfix = (type: protobufs.MessageType): UserMessagePostfix => {
-  if (type === protobufs.MessageType.MESSAGE_TYPE_CAST_ADD || type === protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE) {
+  if (type === protobufs.MessageType.CAST_ADD || type === protobufs.MessageType.CAST_REMOVE) {
     return UserPostfix.CastMessage;
   }
 
-  if (
-    type === protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD ||
-    type === protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE
-  ) {
+  if (type === protobufs.MessageType.REACTION_ADD || type === protobufs.MessageType.REACTION_REMOVE) {
     return UserPostfix.ReactionMessage;
   }
 
   if (
-    type === protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS ||
-    type === protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE
+    type === protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS ||
+    type === protobufs.MessageType.VERIFICATION_REMOVE
   ) {
     return UserPostfix.VerificationMessage;
   }
 
-  if (
-    type === protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD ||
-    type === protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE
-  ) {
+  if (type === protobufs.MessageType.SIGNER_ADD || type === protobufs.MessageType.SIGNER_REMOVE) {
     return UserPostfix.SignerMessage;
   }
 
-  if (type === protobufs.MessageType.MESSAGE_TYPE_USER_DATA_ADD) {
+  if (type === protobufs.MessageType.USER_DATA_ADD) {
     return UserPostfix.UserDataMessage;
   }
 

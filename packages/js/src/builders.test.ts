@@ -9,7 +9,7 @@ import * as types from './types';
 
 const fid = Factories.Fid.build();
 const timestamp = Date.now();
-const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
+const network = protobufs.FarcasterNetwork.TESTNET;
 
 const ed25519Signer = Ed25519Signer.fromPrivateKey(Factories.Ed25519PrivateKey.build())._unsafeUnwrap();
 const wallet = new ethers.Wallet(ethers.utils.randomBytes(32));
@@ -244,7 +244,7 @@ describe('makeSignerRemove', () => {
 describe('makeUserDataAddData', () => {
   test('succeeds', async () => {
     const data = await builders.makeUserDataAddData(
-      { type: protobufs.UserDataType.USER_DATA_TYPE_BIO, value: faker.lorem.word() },
+      { type: protobufs.UserDataType.BIO, value: faker.lorem.word() },
       { fid, timestamp, network }
     );
     const isValid = await validations.validateMessageData(data._unsafeUnwrap()._protobuf);
@@ -255,7 +255,7 @@ describe('makeUserDataAddData', () => {
 describe('makeUserDataAdd', () => {
   test('succeeds', async () => {
     const message = await builders.makeUserDataAdd(
-      { type: protobufs.UserDataType.USER_DATA_TYPE_PFP, value: faker.random.alphaNumeric(100) },
+      { type: protobufs.UserDataType.PFP, value: faker.random.alphaNumeric(100) },
       { fid, timestamp, network },
       ed25519Signer
     );

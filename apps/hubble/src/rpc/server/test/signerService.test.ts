@@ -7,7 +7,7 @@ import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
 
 const db = jestRocksDB('protobufs.rpc.signerService.test');
-const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
+const network = protobufs.FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
 

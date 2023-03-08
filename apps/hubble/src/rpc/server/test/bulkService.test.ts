@@ -7,7 +7,7 @@ import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
 
 const db = jestRocksDB('protobufs.rpc.bulkService.test');
-const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
+const network = protobufs.FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
 
@@ -172,7 +172,7 @@ describe('getAllUserDataMessagesByFid', () => {
 
   beforeAll(async () => {
     userDataAdd = await Factories.UserDataAddMessage.create(
-      { data: { fid, network, userDataBody: { type: protobufs.UserDataType.USER_DATA_TYPE_BIO } } },
+      { data: { fid, network, userDataBody: { type: protobufs.UserDataType.BIO } } },
       { transient: { signer } }
     );
   });

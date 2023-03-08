@@ -404,8 +404,7 @@ export default class Server {
       },
       getReactionsByFid: async (call, callback) => {
         const request = call.request;
-        const reactionType =
-          request.reactionType === ReactionType.REACTION_TYPE_NONE ? undefined : request.reactionType;
+        const reactionType = request.reactionType === ReactionType.NONE ? undefined : request.reactionType;
         const reactionsResult = await this.engine?.getReactionsByFid(request.fid, reactionType);
         reactionsResult?.match(
           (reactions: ReactionAddMessage[]) => {
@@ -418,8 +417,7 @@ export default class Server {
       },
       getReactionsByCast: async (call, callback) => {
         const request = call.request;
-        const reactionType =
-          request.reactionType === ReactionType.REACTION_TYPE_NONE ? undefined : request.reactionType;
+        const reactionType = request.reactionType === ReactionType.NONE ? undefined : request.reactionType;
         const reactionsResult = await this.engine?.getReactionsByCast(request.castId ?? CastId.create(), reactionType);
         reactionsResult?.match(
           (reactions: ReactionAddMessage[]) => {
@@ -647,15 +645,15 @@ export default class Server {
           this.engine?.eventHandler.on('mergeNameRegistryEvent', eventListener);
         } else {
           for (const eventType of request.eventTypes) {
-            if (eventType === HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE) {
+            if (eventType === HubEventType.MERGE_MESSAGE) {
               this.engine?.eventHandler.on('mergeMessage', eventListener);
-            } else if (eventType === HubEventType.HUB_EVENT_TYPE_PRUNE_MESSAGE) {
+            } else if (eventType === HubEventType.PRUNE_MESSAGE) {
               this.engine?.eventHandler.on('pruneMessage', eventListener);
-            } else if (eventType === HubEventType.HUB_EVENT_TYPE_REVOKE_MESSAGE) {
+            } else if (eventType === HubEventType.REVOKE_MESSAGE) {
               this.engine?.eventHandler.on('revokeMessage', eventListener);
-            } else if (eventType === HubEventType.HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT) {
+            } else if (eventType === HubEventType.MERGE_ID_REGISTRY_EVENT) {
               this.engine?.eventHandler.on('mergeIdRegistryEvent', eventListener);
-            } else if (eventType === HubEventType.HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT) {
+            } else if (eventType === HubEventType.MERGE_NAME_REGISTRY_EVENT) {
               this.engine?.eventHandler.on('mergeNameRegistryEvent', eventListener);
             }
           }

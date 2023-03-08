@@ -16,7 +16,7 @@ const TEST_TIMEOUT_LONG = 60 * 1000;
 const testDb1 = jestRocksDB(`engine1.peersyncEngine.test`);
 const testDb2 = jestRocksDB(`engine2.peersyncEngine.test`);
 
-const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
+const network = protobufs.FarcasterNetwork.TESTNET;
 
 const fid = Factories.Fid.build();
 const custodySigner = Factories.Eip712Signer.build();

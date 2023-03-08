@@ -36,11 +36,11 @@
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name              | Type              |
+| :---------------- | :---------------- |
 | `typedDataSigner` | `TypedDataSigner` |
-| `address` | `string` |
-| `signerKey` | `Uint8Array` |
+| `address`         | `string`          |
+| `signerKey`       | `Uint8Array`      |
 
 #### Inherited from
 
@@ -50,7 +50,7 @@ BaseEip712Signer.constructor
 
 ### scheme
 
-• `Readonly` **scheme**: [`SIGNATURE_SCHEME_EIP712`](../enums/protobufs.SignatureScheme.md#signature_scheme_eip712) = `SignatureScheme.SIGNATURE_SCHEME_EIP712`
+• `Readonly` **scheme**: [`SIGNATURE_SCHEME_EIP712`](../enums/protobufs.SignatureScheme.md#signature_scheme_eip712) = `SignatureScheme.EIP712`
 
 Signature scheme as defined in protobufs
 
@@ -58,7 +58,7 @@ Signature scheme as defined in protobufs
 
 BaseEip712Signer.scheme
 
-___
+---
 
 ### signerKey
 
@@ -70,7 +70,7 @@ ___
 
 BaseEip712Signer.signerKey
 
-___
+---
 
 ### signerKeyHex
 
@@ -92,8 +92,8 @@ Generates a 256-bit signature from an Ethereum address.
 
 #### Returns
 
-| Value | Description |
-| :---- | :---------- |
+| Value                        | Description                                                        |
+| :--------------------------- | :----------------------------------------------------------------- |
 | `HubAsyncResult<Uint8Array>` | A HubAsyncResult containing the 256-bit signature as a Uint8Array. |
 
 **`Example`**
@@ -118,15 +118,15 @@ console.log(signature._unsafeUnwrap());
 
 #### Parameters
 
-| Name | Type | Description |
-| :------ | :------ | :------ |
+| Name   | Type         | Description                                   |
+| :----- | :----------- | :-------------------------------------------- |
 | `hash` | `Uint8Array` | The 256-bit hash of the message to be signed. |
 
 #### Inherited from
 
 BaseEip712Signer.signMessageHash
 
-___
+---
 
 ### signMessageHashHex
 
@@ -136,8 +136,8 @@ Generates a 256-bit hex signature from an Ethereum address.
 
 #### Returns
 
-| Value | Description |
-| :---- | :---------- |
+| Value                    | Description                                                        |
+| :----------------------- | :----------------------------------------------------------------- |
 | `HubAsyncResult<string>` | A HubAsyncResult containing the 256-bit signature as a hex string. |
 
 **`Example`**
@@ -160,11 +160,11 @@ console.log(messageHashResultHex._unsafeUnwrap());
 
 #### Parameters
 
-| Name | Type | Description |
-| :------ | :------ | :------ |
+| Name   | Type     | Description                                   |
+| :----- | :------- | :-------------------------------------------- |
 | `hash` | `string` | The 256-bit hash of the message to be signed. |
 
-___
+---
 
 ### signVerificationEthAddressClaim
 
@@ -174,8 +174,8 @@ Signs a verification claim for an Ethereum address.
 
 #### Returns
 
-| Value | Description |
-| :---- | :---------- |
+| Value                        | Description                                                        |
+| :--------------------------- | :----------------------------------------------------------------- |
 | `HubAsyncResult<Uint8Array>` | A HubAsyncResult containing the 256-bit signature as a Uint8Array. |
 
 **`Example`**
@@ -184,7 +184,7 @@ Signs a verification claim for an Ethereum address.
 const claimBody = {
   fid: -1,
   address: eip712Signer.signerKeyHex,
-  network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+  network: types.FarcasterNetwork.DEVNET,
   blockHash: '2c87468704d6b0f4c46f480dc54251de50753af02e5d63702f85bde3da4f7a3d',
 };
 const verificationResult = await eip712Signer.signVerificationEthAddressClaim(claimBody);
@@ -195,15 +195,15 @@ console.log(verificationResult._unsafeUnwrap());
 
 #### Parameters
 
-| Name | Type | Description |
-| :------ | :------ | :------ |
+| Name    | Type                                                                             | Description                         |
+| :------ | :------------------------------------------------------------------------------- | :---------------------------------- |
 | `claim` | [`VerificationEthAddressClaim`](../modules/types.md#verificationethaddressclaim) | The body of the claim to be signed. |
 
 #### Inherited from
 
 BaseEip712Signer.signVerificationEthAddressClaim
 
-___
+---
 
 ### signVerificationEthAddressClaimHex
 
@@ -213,8 +213,8 @@ Signs an Ethereum address verification claim, returns hex.
 
 #### Returns
 
-| Value | Description |
-| :---- | :---------- |
+| Value                    | Description                                                        |
+| :----------------------- | :----------------------------------------------------------------- |
 | `HubAsyncResult<string>` | A HubAsyncResult containing the 256-bit signature as a hex string. |
 
 **`Example`**
@@ -229,7 +229,7 @@ const eip712Signer = Eip712Signer.fromSigner(custodyWallet, custodyWallet.addres
 const claimBody = {
   fid: -1,
   address: eip712Signer.signerKeyHex,
-  network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+  network: types.FarcasterNetwork.DEVNET,
   blockHash: '2c87468704d6b0f4c46f480dc54251de50753af02e5d63702f85bde3da4f7a3d',
 };
 
@@ -241,11 +241,11 @@ console.log(verificationResult._unsafeUnwrap());
 
 #### Parameters
 
-| Name | Type | Description |
-| :------ | :------ | :------ |
+| Name    | Type                                                                             | Description                                     |
+| :------ | :------------------------------------------------------------------------------- | :---------------------------------------------- |
 | `claim` | [`VerificationEthAddressClaim`](../modules/types.md#verificationethaddressclaim) | The body of the claim to be signed as an object |
 
-___
+---
 
 ### fromSigner
 
@@ -255,8 +255,8 @@ Creates an instance of Eip712Signer from a TypedDataSigner and an Ethereum addre
 
 #### Returns
 
-| Value | Description |
-| :---- | :---------- |
+| Value                     | Description                                      |
+| :------------------------ | :----------------------------------------------- |
 | `HubResult<Eip712Signer>` | A HubResult containing an Eip712Signer instance. |
 
 **`Example`**
@@ -271,10 +271,10 @@ const eip712Signer = Eip712Signer.fromSigner(custodyWallet, custodyWallet.addres
 
 #### Parameters
 
-| Name | Type | Description |
-| :------ | :------ | :------ |
+| Name              | Type              | Description                                      |
+| :---------------- | :---------------- | :----------------------------------------------- |
 | `typedDataSigner` | `TypedDataSigner` | The TypedDataSigner instance to use for signing. |
-| `address` | `string` | The Ethereum address associated with the signer. |
+| `address`         | `string`          | The Ethereum address associated with the signer. |
 
 #### Overrides
 

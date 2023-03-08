@@ -218,7 +218,7 @@ class CastStore {
       this._db,
       fid,
       signer,
-      protobufs.MessageType.MESSAGE_TYPE_CAST_ADD
+      protobufs.MessageType.CAST_ADD
     );
 
     // Get all CastRemove messages signed by signer
@@ -226,7 +226,7 @@ class CastStore {
       this._db,
       fid,
       signer,
-      protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE
+      protobufs.MessageType.CAST_REMOVE
     );
 
     // Create a rocksdb transaction

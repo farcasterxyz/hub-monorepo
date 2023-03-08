@@ -636,7 +636,7 @@ describe('revokeMessagesBySigner', () => {
 
   beforeAll(async () => {
     custody2Transfer = Factories.IdRegistryEvent.build({
-      type: protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_TRANSFER,
+      type: protobufs.IdRegistryEventType.TRANSFER,
       from: custody1Address,
       fid,
       to: custody2Address,

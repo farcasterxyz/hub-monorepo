@@ -37,7 +37,7 @@ export class GenCommand implements ConsoleCommandInterface {
     return {
       submitMessages: async (
         numMessages = 100,
-        network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+        network = protobufs.FarcasterNetwork.DEVNET,
         username?: string,
         password?: string
       ): Promise<string | SubmitStats> => {

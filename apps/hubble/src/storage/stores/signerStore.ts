@@ -222,7 +222,7 @@ class SignerStore {
       this._db,
       fid,
       signer,
-      protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD
+      protobufs.MessageType.SIGNER_ADD
     );
 
     // Get all SignerRemove messages signed by signer
@@ -230,7 +230,7 @@ class SignerStore {
       this._db,
       fid,
       signer,
-      protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE
+      protobufs.MessageType.SIGNER_REMOVE
     );
 
     // Return if no messages found
@@ -400,9 +400,9 @@ class SignerStore {
   }
 
   private signerMessageCompare(
-    aType: protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD | protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
+    aType: protobufs.MessageType.SIGNER_ADD | protobufs.MessageType.SIGNER_REMOVE,
     aTsHash: Uint8Array,
-    bType: protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD | protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
+    bType: protobufs.MessageType.SIGNER_ADD | protobufs.MessageType.SIGNER_REMOVE,
     bTsHash: Uint8Array
   ): number {
     // Compare timestamps (first 4 bytes of tsHash) to enforce Last-Write-Wins
@@ -411,15 +411,9 @@ class SignerStore {
       return timestampOrder;
     }
 
-    if (
-      aType === protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE &&
-      bType === protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD
-    ) {
+    if (aType === protobufs.MessageType.SIGNER_REMOVE && bType === protobufs.MessageType.SIGNER_ADD) {
       return 1;
-    } else if (
-      aType === protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD &&
-      bType === protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE
-    ) {
+    } else if (aType === protobufs.MessageType.SIGNER_ADD && bType === protobufs.MessageType.SIGNER_REMOVE) {
       return -1;
     }
 
@@ -455,7 +449,7 @@ class SignerStore {
 
     if (removeTsHash.isOk()) {
       const removeCompare = this.signerMessageCompare(
-        protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
+        protobufs.MessageType.SIGNER_REMOVE,
         removeTsHash.value,
         message.data.type,
         tsHash.value
@@ -485,7 +479,7 @@ class SignerStore {
 
     if (addTsHash.isOk()) {
       const addCompare = this.signerMessageCompare(
-        protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD,
+        protobufs.MessageType.SIGNER_ADD,
         addTsHash.value,
         message.data.type,
         tsHash.value

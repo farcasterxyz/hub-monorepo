@@ -23,7 +23,7 @@ const getSigners = async (fid: number, network: number, rpcClient: HubRpcClient)
 
 const revokeSignerWithData = async (rpcClient: HubRpcClient) => {
   const nextFid = 300_000;
-  const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_MAINNET;
+  const network = protobufs.FarcasterNetwork.MAINNET;
   const { fid, signer, custodySigner } = await getSigners(nextFid, network, rpcClient);
 
   // Add 100 casts, reactions, userdatas
@@ -76,7 +76,7 @@ const revokeSignerWithData = async (rpcClient: HubRpcClient) => {
 
 const highVolumeActions = async (rpcClient: HubRpcClient) => {
   const nextFid = 200_000;
-  const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_MAINNET;
+  const network = protobufs.FarcasterNetwork.MAINNET;
   const { fid, signer, custodySigner } = await getSigners(nextFid, network, rpcClient);
 
   // 1. 10_000 CastAdd messages and reactions
@@ -137,7 +137,7 @@ const highVolumeActions = async (rpcClient: HubRpcClient) => {
  */
 const messageOrderingActions = async (rpcClient: HubRpcClient) => {
   let nextFid = 100_000;
-  const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_MAINNET;
+  const network = protobufs.FarcasterNetwork.MAINNET;
 
   // Message Ordering
   // 1. A CastAdd arrives followed by a CastRemove
@@ -314,7 +314,7 @@ const messageOrderingActions = async (rpcClient: HubRpcClient) => {
     const timestamp = toFarcasterTime(Date.now())._unsafeUnwrap();
 
     const userDataT = await Factories.UserDataAddMessage.create(
-      { data: { timestamp, fid, network, userDataBody: { type: protobufs.UserDataType.USER_DATA_TYPE_BIO } } },
+      { data: { timestamp, fid, network, userDataBody: { type: protobufs.UserDataType.BIO } } },
       { transient: { signer: signer } }
     );
     const userDataT1 = await Factories.UserDataAddMessage.create(
@@ -323,7 +323,7 @@ const messageOrderingActions = async (rpcClient: HubRpcClient) => {
           timestamp: timestamp + 1,
           fid,
           network,
-          userDataBody: { type: protobufs.UserDataType.USER_DATA_TYPE_BIO },
+          userDataBody: { type: protobufs.UserDataType.BIO },
         },
       },
       { transient: { signer: signer } }

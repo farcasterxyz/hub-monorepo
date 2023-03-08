@@ -143,7 +143,7 @@ const makeMessage = async <TMessageData extends types.MessageData>(
   const message = protobufs.Message.create({
     data: messageData,
     hash,
-    hashScheme: protobufs.HashScheme.HASH_SCHEME_BLAKE3,
+    hashScheme: protobufs.HashScheme.BLAKE3,
     signature: signature.value,
     signatureScheme: signer.scheme,
     signer: signer.signerKey,
@@ -218,7 +218,7 @@ export const makeMessageWithSignature = async (
   const message = protobufs.Message.create({
     data: messageData._protobuf,
     hash,
-    hashScheme: protobufs.HashScheme.HASH_SCHEME_BLAKE3,
+    hashScheme: protobufs.HashScheme.BLAKE3,
     signature: signatureBytes.value,
     signatureScheme: signerOptions.scheme,
     signer: signerKey.value,
@@ -264,7 +264,7 @@ export const makeMessageWithSignature = async (
  *
  * const dataOptions = {
  *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
- *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ *   network: types.FarcasterNetwork.DEVNET,
  * };
  *
  * const cast = await makeCastAdd({ text: 'hello world' }, dataOptions, ed25519Signer);
@@ -273,7 +273,7 @@ export const makeMessageWithSignature = async (
  *
  */
 export const makeCastAdd = buildMakeMessageMethod(
-  protobufs.MessageType.MESSAGE_TYPE_CAST_ADD,
+  protobufs.MessageType.CAST_ADD,
   'castAddBody',
   utils.serializeCastAddBody
 );
@@ -314,7 +314,7 @@ export const makeCastAdd = buildMakeMessageMethod(
  *
  * const dataOptions = {
  *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
- *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ *   network: types.FarcasterNetwork.DEVNET,
  * };
  *
  * const removeBody = { targetHash: '0xf88d738eb7145f4cea40fbe8f3bdf...' };
@@ -323,21 +323,21 @@ export const makeCastAdd = buildMakeMessageMethod(
  * ```
  */
 export const makeCastRemove = buildMakeMessageMethod(
-  protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE,
+  protobufs.MessageType.CAST_REMOVE,
   'castRemoveBody',
   utils.serializeCastRemoveBody
 );
 
 /** @ignore */
 export const makeCastAddData = buildMakeMessageDataMethod(
-  protobufs.MessageType.MESSAGE_TYPE_CAST_ADD,
+  protobufs.MessageType.CAST_ADD,
   'castAddBody',
   utils.serializeCastAddBody
 );
 
 /** @ignore */
 export const makeCastRemoveData = buildMakeMessageDataMethod(
-  protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE,
+  protobufs.MessageType.CAST_REMOVE,
   'castRemoveBody',
   utils.serializeCastRemoveBody
 );
@@ -379,12 +379,12 @@ export const makeCastRemoveData = buildMakeMessageDataMethod(
  *
  * const dataOptions = {
  *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
- *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ *   network: types.FarcasterNetwork.DEVNET,
  * };
  *
  * // fid here is the fid of the author of the cast
  * const reactionLikeBody = {
- *   type: types.ReactionType.REACTION_TYPE_LIKE,
+ *   type: types.ReactionType.LIKE,
  *   target: { fid: -9998, tsHash: '0x455a6caad5dfd4d...' },
  * };
  *
@@ -393,7 +393,7 @@ export const makeCastRemoveData = buildMakeMessageDataMethod(
  * ```
  */
 export const makeReactionAdd = buildMakeMessageMethod(
-  protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD,
+  protobufs.MessageType.REACTION_ADD,
   'reactionBody',
   utils.serializeReactionBody
 );
@@ -433,12 +433,12 @@ export const makeReactionAdd = buildMakeMessageMethod(
  *
  * const dataOptions = {
  *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
- *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ *   network: types.FarcasterNetwork.DEVNET,
  * };
  *
  * // fid here is the fid of the author of the cast
  * const reactionLikeBody = {
- *   type: types.ReactionType.REACTION_TYPE_LIKE,
+ *   type: types.ReactionType.LIKE,
  *   target: { fid: -9998, tsHash: '0x455a6caad5dfd4d...' },
  * };
  *
@@ -447,21 +447,21 @@ export const makeReactionAdd = buildMakeMessageMethod(
  * ```
  */
 export const makeReactionRemove = buildMakeMessageMethod(
-  protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE,
+  protobufs.MessageType.REACTION_REMOVE,
   'reactionBody',
   utils.serializeReactionBody
 );
 
 /** @ignore */
 export const makeReactionAddData = buildMakeMessageDataMethod(
-  protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD,
+  protobufs.MessageType.REACTION_ADD,
   'reactionBody',
   utils.serializeReactionBody
 );
 
 /** @ignore */
 export const makeReactionRemoveData = buildMakeMessageDataMethod(
-  protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE,
+  protobufs.MessageType.REACTION_REMOVE,
   'reactionBody',
   utils.serializeReactionBody
 );
@@ -515,13 +515,13 @@ export const makeReactionRemoveData = buildMakeMessageDataMethod(
  *
  * const dataOptions = {
  *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
- *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ *   network: types.FarcasterNetwork.DEVNET,
  * };
  *
  * const claimBody = {
  *   fid: -1,
  *   address: eip712Signer.signerKeyHex,
- *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ *   network: types.FarcasterNetwork.DEVNET,
  *   blockHash: "2c87468704d6b0f4c46f480dc54251de...",
  * };
  * const ethSig = await eip712Signer.signVerificationEthAddressClaimHex(claimBody);
@@ -541,7 +541,7 @@ export const makeReactionRemoveData = buildMakeMessageDataMethod(
  * ```
  */
 export const makeVerificationAddEthAddress = buildMakeMessageMethod(
-  protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS,
+  protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS,
   'verificationAddEthAddressBody',
   utils.serializeVerificationAddEthAddressBody
 );
@@ -593,7 +593,7 @@ export const makeVerificationAddEthAddress = buildMakeMessageMethod(
  *
  * const dataOptions = {
  *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
- *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ *   network: types.FarcasterNetwork.DEVNET,
  * };
  *
  * const verificationRemoveBody = {
@@ -610,21 +610,21 @@ export const makeVerificationAddEthAddress = buildMakeMessageMethod(
  * ```
  */
 export const makeVerificationRemove = buildMakeMessageMethod(
-  protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE,
+  protobufs.MessageType.VERIFICATION_REMOVE,
   'verificationRemoveBody',
   utils.serializeVerificationRemoveBody
 );
 
 /** @ignore */
 export const makeVerificationAddEthAddressData = buildMakeMessageDataMethod(
-  protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS,
+  protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS,
   'verificationAddEthAddressBody',
   utils.serializeVerificationAddEthAddressBody
 );
 
 /** @ignore */
 export const makeVerificationRemoveData = buildMakeMessageDataMethod(
-  protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE,
+  protobufs.MessageType.VERIFICATION_REMOVE,
   'verificationRemoveBody',
   utils.serializeVerificationRemoveBody
 );
@@ -670,7 +670,7 @@ export const makeVerificationRemoveData = buildMakeMessageDataMethod(
  *
  * const dataOptions = {
  *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
- *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ *   network: types.FarcasterNetwork.DEVNET,
  * };
  *
  * const signerAdd = await makeSignerAdd({ signer: ed25519Signer.signerKeyHex }, dataOptions, eip712Signer);
@@ -678,7 +678,7 @@ export const makeVerificationRemoveData = buildMakeMessageDataMethod(
  * ```
  */
 export const makeSignerAdd = buildMakeMessageMethod(
-  protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD,
+  protobufs.MessageType.SIGNER_ADD,
   'signerAddBody',
   utils.serializeSignerAddBody
 );
@@ -721,7 +721,7 @@ export const makeSignerAdd = buildMakeMessageMethod(
  *
  * const dataOptions = {
  *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
- *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ *   network: types.FarcasterNetwork.DEVNET,
  * };
  *
  * const signerRemove = await makeSignerRemove({ signer: ed25519Signer.signerKeyHex }, dataOptions, eip712Signer);
@@ -729,21 +729,21 @@ export const makeSignerAdd = buildMakeMessageMethod(
  * ```
  */
 export const makeSignerRemove = buildMakeMessageMethod(
-  protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
+  protobufs.MessageType.SIGNER_REMOVE,
   'signerRemoveBody',
   utils.serializeSignerRemoveBody
 );
 
 /** @ignore */
 export const makeSignerAddData = buildMakeMessageDataMethod(
-  protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD,
+  protobufs.MessageType.SIGNER_ADD,
   'signerAddBody',
   utils.serializeSignerAddBody
 );
 
 /** @ignore */
 export const makeSignerRemoveData = buildMakeMessageDataMethod(
-  protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
+  protobufs.MessageType.SIGNER_REMOVE,
   'signerRemoveBody',
   utils.serializeSignerRemoveBody
 );
@@ -785,11 +785,11 @@ export const makeSignerRemoveData = buildMakeMessageDataMethod(
  *
  * const dataOptions = {
  *   fid: -9999, // must be changed to fid of the custody address, or else it will fail
- *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+ *   network: types.FarcasterNetwork.DEVNET,
  * };
  *
  * const userDataPfpBody = {
- *   type: types.UserDataType.USER_DATA_TYPE_PFP,
+ *   type: types.UserDataType.PFP,
  *   value: 'https://i.imgur.com/yed5Zfk.gif',
  * };
  * const userDataPfpAdd = await makeUserDataAdd(userDataPfpBody, dataOptions, ed25519Signer);
@@ -797,14 +797,14 @@ export const makeSignerRemoveData = buildMakeMessageDataMethod(
  * ```
  */
 export const makeUserDataAdd = buildMakeMessageMethod(
-  protobufs.MessageType.MESSAGE_TYPE_USER_DATA_ADD,
+  protobufs.MessageType.USER_DATA_ADD,
   'userDataBody',
   utils.serializeUserDataBody
 );
 
 /** @ignore */
 export const makeUserDataAddData = buildMakeMessageDataMethod(
-  protobufs.MessageType.MESSAGE_TYPE_USER_DATA_ADD,
+  protobufs.MessageType.USER_DATA_ADD,
   'userDataBody',
   utils.serializeUserDataBody
 );
