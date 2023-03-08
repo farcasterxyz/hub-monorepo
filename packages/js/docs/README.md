@@ -94,7 +94,7 @@ const signerPrivateKeyHex = ed.utils.bytesToHex(signerPrivateKey);
 // Create a SignerAdd message that contains the public key of the signer
 const dataOptions = {
   fid: -9999, // Set to the fid of the user
-  network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+  network: types.FarcasterNetwork.DEVNET,
 };
 const signerAddResult = await makeSignerAdd({ signer: signerPrivateKeyHex }, dataOptions, eip712Signer);
 const signerAdd = signerAddResult._unsafeUnwrap();
@@ -116,7 +116,7 @@ await client.submitMessage(cast._unsafeUnwrap());
 
 // Like an existing cast
 const reactionLikeBody = {
-  type: types.ReactionType.REACTION_TYPE_LIKE,
+  type: types.ReactionType.LIKE,
   target: { fid: -9998, hash: '0x455a6caad5dfd4d...' },
 };
 const like = await makeReactionAdd(reactionLikeBody, dataOptions, ed25519Signer);
@@ -133,7 +133,7 @@ await client.submitMessage(castRemove._unsafeUnwrap());
 
 // Set a profile picture
 const userDataPfpBody = {
-  type: types.UserDataType.USER_DATA_TYPE_PFP,
+  type: types.UserDataType.PFP,
   value: 'https://i.imgur.com/yed5Zfk.gif',
 };
 const userDataPfpAdd = await makeUserDataAdd(userDataPfpBody, dataOptions, ed25519Signer);

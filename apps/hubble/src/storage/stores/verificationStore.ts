@@ -191,7 +191,7 @@ class VerificationStore {
       this._db,
       fid,
       signer,
-      protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS
+      protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS
     );
 
     // Get all VerificationRemove messages signed by signer
@@ -199,7 +199,7 @@ class VerificationStore {
       this._db,
       fid,
       signer,
-      protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE
+      protobufs.MessageType.VERIFICATION_REMOVE
     );
 
     // Create a rocksdb transaction
@@ -374,13 +374,9 @@ class VerificationStore {
   }
 
   private verificationMessageCompare(
-    aType:
-      | protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS
-      | protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE,
+    aType: protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS | protobufs.MessageType.VERIFICATION_REMOVE,
     aTsHash: Uint8Array,
-    bType:
-      | protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS
-      | protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE,
+    bType: protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS | protobufs.MessageType.VERIFICATION_REMOVE,
     bTsHash: Uint8Array
   ): number {
     // Compare timestamps (first 4 bytes of tsHash) to enforce Last-Write-Wins
@@ -390,13 +386,13 @@ class VerificationStore {
     }
 
     if (
-      aType === protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE &&
-      bType === protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS
+      aType === protobufs.MessageType.VERIFICATION_REMOVE &&
+      bType === protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS
     ) {
       return 1;
     } else if (
-      aType === protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS &&
-      bType === protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE
+      aType === protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS &&
+      bType === protobufs.MessageType.VERIFICATION_REMOVE
     ) {
       return -1;
     }
@@ -424,7 +420,7 @@ class VerificationStore {
 
     if (removeTsHash.isOk()) {
       const removeCompare = this.verificationMessageCompare(
-        protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE,
+        protobufs.MessageType.VERIFICATION_REMOVE,
         removeTsHash.value,
         message.data.type,
         tsHash.value
@@ -454,7 +450,7 @@ class VerificationStore {
 
     if (addTsHash.isOk()) {
       const addCompare = this.verificationMessageCompare(
-        protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS,
+        protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS,
         addTsHash.value,
         message.data.type,
         tsHash.value

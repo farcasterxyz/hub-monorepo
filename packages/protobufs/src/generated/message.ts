@@ -4,19 +4,19 @@ import _m0 from "protobufjs/minimal";
 
 /** Type of hashing scheme used to produce a digest of MessageData */
 export enum HashScheme {
-  HASH_SCHEME_NONE = 0,
-  /** HASH_SCHEME_BLAKE3 - Default scheme for hashing MessageData */
-  HASH_SCHEME_BLAKE3 = 1,
+  NONE = 0,
+  /** BLAKE3 - Default scheme for hashing MessageData */
+  BLAKE3 = 1,
 }
 
 export function hashSchemeFromJSON(object: any): HashScheme {
   switch (object) {
     case 0:
     case "HASH_SCHEME_NONE":
-      return HashScheme.HASH_SCHEME_NONE;
+      return HashScheme.NONE;
     case 1:
     case "HASH_SCHEME_BLAKE3":
-      return HashScheme.HASH_SCHEME_BLAKE3;
+      return HashScheme.BLAKE3;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HashScheme");
   }
@@ -24,9 +24,9 @@ export function hashSchemeFromJSON(object: any): HashScheme {
 
 export function hashSchemeToJSON(object: HashScheme): string {
   switch (object) {
-    case HashScheme.HASH_SCHEME_NONE:
+    case HashScheme.NONE:
       return "HASH_SCHEME_NONE";
-    case HashScheme.HASH_SCHEME_BLAKE3:
+    case HashScheme.BLAKE3:
       return "HASH_SCHEME_BLAKE3";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HashScheme");
@@ -35,24 +35,24 @@ export function hashSchemeToJSON(object: HashScheme): string {
 
 /** Type of signature scheme used to sign the Message hash */
 export enum SignatureScheme {
-  SIGNATURE_SCHEME_NONE = 0,
-  /** SIGNATURE_SCHEME_ED25519 - Ed25519 signature (default) */
-  SIGNATURE_SCHEME_ED25519 = 1,
-  /** SIGNATURE_SCHEME_EIP712 - ECDSA signature using EIP-712 scheme */
-  SIGNATURE_SCHEME_EIP712 = 2,
+  NONE = 0,
+  /** ED25519 - Ed25519 signature (default) */
+  ED25519 = 1,
+  /** EIP712 - ECDSA signature using EIP-712 scheme */
+  EIP712 = 2,
 }
 
 export function signatureSchemeFromJSON(object: any): SignatureScheme {
   switch (object) {
     case 0:
     case "SIGNATURE_SCHEME_NONE":
-      return SignatureScheme.SIGNATURE_SCHEME_NONE;
+      return SignatureScheme.NONE;
     case 1:
     case "SIGNATURE_SCHEME_ED25519":
-      return SignatureScheme.SIGNATURE_SCHEME_ED25519;
+      return SignatureScheme.ED25519;
     case 2:
     case "SIGNATURE_SCHEME_EIP712":
-      return SignatureScheme.SIGNATURE_SCHEME_EIP712;
+      return SignatureScheme.EIP712;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum SignatureScheme");
   }
@@ -60,11 +60,11 @@ export function signatureSchemeFromJSON(object: any): SignatureScheme {
 
 export function signatureSchemeToJSON(object: SignatureScheme): string {
   switch (object) {
-    case SignatureScheme.SIGNATURE_SCHEME_NONE:
+    case SignatureScheme.NONE:
       return "SIGNATURE_SCHEME_NONE";
-    case SignatureScheme.SIGNATURE_SCHEME_ED25519:
+    case SignatureScheme.ED25519:
       return "SIGNATURE_SCHEME_ED25519";
-    case SignatureScheme.SIGNATURE_SCHEME_EIP712:
+    case SignatureScheme.EIP712:
       return "SIGNATURE_SCHEME_EIP712";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum SignatureScheme");
@@ -73,59 +73,59 @@ export function signatureSchemeToJSON(object: SignatureScheme): string {
 
 /** Type of the MessageBody */
 export enum MessageType {
-  MESSAGE_TYPE_NONE = 0,
-  /** MESSAGE_TYPE_CAST_ADD - Add a new Cast */
-  MESSAGE_TYPE_CAST_ADD = 1,
-  /** MESSAGE_TYPE_CAST_REMOVE - Remove an existing Cast */
-  MESSAGE_TYPE_CAST_REMOVE = 2,
-  /** MESSAGE_TYPE_REACTION_ADD - Add a Reaction to a Cast */
-  MESSAGE_TYPE_REACTION_ADD = 3,
-  /** MESSAGE_TYPE_REACTION_REMOVE - Remove a Reaction from a Cast */
-  MESSAGE_TYPE_REACTION_REMOVE = 4,
-  /** MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS - Add a Verification of an Ethereum Address */
-  MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS = 7,
-  /** MESSAGE_TYPE_VERIFICATION_REMOVE - Remove a Verification */
-  MESSAGE_TYPE_VERIFICATION_REMOVE = 8,
-  /** MESSAGE_TYPE_SIGNER_ADD - Add a new Ed25519 key pair that signs messages for a user */
-  MESSAGE_TYPE_SIGNER_ADD = 9,
-  /** MESSAGE_TYPE_SIGNER_REMOVE - Remove an Ed25519 key pair that signs messages for a user */
-  MESSAGE_TYPE_SIGNER_REMOVE = 10,
-  /** MESSAGE_TYPE_USER_DATA_ADD - Add metadata about a user */
-  MESSAGE_TYPE_USER_DATA_ADD = 11,
+  NONE = 0,
+  /** CAST_ADD - Add a new Cast */
+  CAST_ADD = 1,
+  /** CAST_REMOVE - Remove an existing Cast */
+  CAST_REMOVE = 2,
+  /** REACTION_ADD - Add a Reaction to a Cast */
+  REACTION_ADD = 3,
+  /** REACTION_REMOVE - Remove a Reaction from a Cast */
+  REACTION_REMOVE = 4,
+  /** VERIFICATION_ADD_ETH_ADDRESS - Add a Verification of an Ethereum Address */
+  VERIFICATION_ADD_ETH_ADDRESS = 7,
+  /** VERIFICATION_REMOVE - Remove a Verification */
+  VERIFICATION_REMOVE = 8,
+  /** SIGNER_ADD - Add a new Ed25519 key pair that signs messages for a user */
+  SIGNER_ADD = 9,
+  /** SIGNER_REMOVE - Remove an Ed25519 key pair that signs messages for a user */
+  SIGNER_REMOVE = 10,
+  /** USER_DATA_ADD - Add metadata about a user */
+  USER_DATA_ADD = 11,
 }
 
 export function messageTypeFromJSON(object: any): MessageType {
   switch (object) {
     case 0:
     case "MESSAGE_TYPE_NONE":
-      return MessageType.MESSAGE_TYPE_NONE;
+      return MessageType.NONE;
     case 1:
     case "MESSAGE_TYPE_CAST_ADD":
-      return MessageType.MESSAGE_TYPE_CAST_ADD;
+      return MessageType.CAST_ADD;
     case 2:
     case "MESSAGE_TYPE_CAST_REMOVE":
-      return MessageType.MESSAGE_TYPE_CAST_REMOVE;
+      return MessageType.CAST_REMOVE;
     case 3:
     case "MESSAGE_TYPE_REACTION_ADD":
-      return MessageType.MESSAGE_TYPE_REACTION_ADD;
+      return MessageType.REACTION_ADD;
     case 4:
     case "MESSAGE_TYPE_REACTION_REMOVE":
-      return MessageType.MESSAGE_TYPE_REACTION_REMOVE;
+      return MessageType.REACTION_REMOVE;
     case 7:
     case "MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS":
-      return MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS;
+      return MessageType.VERIFICATION_ADD_ETH_ADDRESS;
     case 8:
     case "MESSAGE_TYPE_VERIFICATION_REMOVE":
-      return MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE;
+      return MessageType.VERIFICATION_REMOVE;
     case 9:
     case "MESSAGE_TYPE_SIGNER_ADD":
-      return MessageType.MESSAGE_TYPE_SIGNER_ADD;
+      return MessageType.SIGNER_ADD;
     case 10:
     case "MESSAGE_TYPE_SIGNER_REMOVE":
-      return MessageType.MESSAGE_TYPE_SIGNER_REMOVE;
+      return MessageType.SIGNER_REMOVE;
     case 11:
     case "MESSAGE_TYPE_USER_DATA_ADD":
-      return MessageType.MESSAGE_TYPE_USER_DATA_ADD;
+      return MessageType.USER_DATA_ADD;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
@@ -133,25 +133,25 @@ export function messageTypeFromJSON(object: any): MessageType {
 
 export function messageTypeToJSON(object: MessageType): string {
   switch (object) {
-    case MessageType.MESSAGE_TYPE_NONE:
+    case MessageType.NONE:
       return "MESSAGE_TYPE_NONE";
-    case MessageType.MESSAGE_TYPE_CAST_ADD:
+    case MessageType.CAST_ADD:
       return "MESSAGE_TYPE_CAST_ADD";
-    case MessageType.MESSAGE_TYPE_CAST_REMOVE:
+    case MessageType.CAST_REMOVE:
       return "MESSAGE_TYPE_CAST_REMOVE";
-    case MessageType.MESSAGE_TYPE_REACTION_ADD:
+    case MessageType.REACTION_ADD:
       return "MESSAGE_TYPE_REACTION_ADD";
-    case MessageType.MESSAGE_TYPE_REACTION_REMOVE:
+    case MessageType.REACTION_REMOVE:
       return "MESSAGE_TYPE_REACTION_REMOVE";
-    case MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS:
+    case MessageType.VERIFICATION_ADD_ETH_ADDRESS:
       return "MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS";
-    case MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE:
+    case MessageType.VERIFICATION_REMOVE:
       return "MESSAGE_TYPE_VERIFICATION_REMOVE";
-    case MessageType.MESSAGE_TYPE_SIGNER_ADD:
+    case MessageType.SIGNER_ADD:
       return "MESSAGE_TYPE_SIGNER_ADD";
-    case MessageType.MESSAGE_TYPE_SIGNER_REMOVE:
+    case MessageType.SIGNER_REMOVE:
       return "MESSAGE_TYPE_SIGNER_REMOVE";
-    case MessageType.MESSAGE_TYPE_USER_DATA_ADD:
+    case MessageType.USER_DATA_ADD:
       return "MESSAGE_TYPE_USER_DATA_ADD";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
@@ -160,29 +160,29 @@ export function messageTypeToJSON(object: MessageType): string {
 
 /** Farcaster network the message is intended for */
 export enum FarcasterNetwork {
-  FARCASTER_NETWORK_NONE = 0,
-  /** FARCASTER_NETWORK_MAINNET - Public primary network */
-  FARCASTER_NETWORK_MAINNET = 1,
-  /** FARCASTER_NETWORK_TESTNET - Public test network */
-  FARCASTER_NETWORK_TESTNET = 2,
-  /** FARCASTER_NETWORK_DEVNET - Private test network */
-  FARCASTER_NETWORK_DEVNET = 3,
+  NONE = 0,
+  /** MAINNET - Public primary network */
+  MAINNET = 1,
+  /** TESTNET - Public test network */
+  TESTNET = 2,
+  /** DEVNET - Private test network */
+  DEVNET = 3,
 }
 
 export function farcasterNetworkFromJSON(object: any): FarcasterNetwork {
   switch (object) {
     case 0:
     case "FARCASTER_NETWORK_NONE":
-      return FarcasterNetwork.FARCASTER_NETWORK_NONE;
+      return FarcasterNetwork.NONE;
     case 1:
     case "FARCASTER_NETWORK_MAINNET":
-      return FarcasterNetwork.FARCASTER_NETWORK_MAINNET;
+      return FarcasterNetwork.MAINNET;
     case 2:
     case "FARCASTER_NETWORK_TESTNET":
-      return FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
+      return FarcasterNetwork.TESTNET;
     case 3:
     case "FARCASTER_NETWORK_DEVNET":
-      return FarcasterNetwork.FARCASTER_NETWORK_DEVNET;
+      return FarcasterNetwork.DEVNET;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum FarcasterNetwork");
   }
@@ -190,13 +190,13 @@ export function farcasterNetworkFromJSON(object: any): FarcasterNetwork {
 
 export function farcasterNetworkToJSON(object: FarcasterNetwork): string {
   switch (object) {
-    case FarcasterNetwork.FARCASTER_NETWORK_NONE:
+    case FarcasterNetwork.NONE:
       return "FARCASTER_NETWORK_NONE";
-    case FarcasterNetwork.FARCASTER_NETWORK_MAINNET:
+    case FarcasterNetwork.MAINNET:
       return "FARCASTER_NETWORK_MAINNET";
-    case FarcasterNetwork.FARCASTER_NETWORK_TESTNET:
+    case FarcasterNetwork.TESTNET:
       return "FARCASTER_NETWORK_TESTNET";
-    case FarcasterNetwork.FARCASTER_NETWORK_DEVNET:
+    case FarcasterNetwork.DEVNET:
       return "FARCASTER_NETWORK_DEVNET";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum FarcasterNetwork");
@@ -205,39 +205,39 @@ export function farcasterNetworkToJSON(object: FarcasterNetwork): string {
 
 /** Type of UserData */
 export enum UserDataType {
-  USER_DATA_TYPE_NONE = 0,
-  /** USER_DATA_TYPE_PFP - Profile Picture for the user */
-  USER_DATA_TYPE_PFP = 1,
-  /** USER_DATA_TYPE_DISPLAY - Display Name for the user */
-  USER_DATA_TYPE_DISPLAY = 2,
-  /** USER_DATA_TYPE_BIO - Bio for the user */
-  USER_DATA_TYPE_BIO = 3,
-  /** USER_DATA_TYPE_URL - URL of the user */
-  USER_DATA_TYPE_URL = 5,
-  /** USER_DATA_TYPE_FNAME - Preferred Farcaster Name for the user */
-  USER_DATA_TYPE_FNAME = 6,
+  NONE = 0,
+  /** PFP - Profile Picture for the user */
+  PFP = 1,
+  /** DISPLAY - Display Name for the user */
+  DISPLAY = 2,
+  /** BIO - Bio for the user */
+  BIO = 3,
+  /** URL - URL of the user */
+  URL = 5,
+  /** FNAME - Preferred Farcaster Name for the user */
+  FNAME = 6,
 }
 
 export function userDataTypeFromJSON(object: any): UserDataType {
   switch (object) {
     case 0:
     case "USER_DATA_TYPE_NONE":
-      return UserDataType.USER_DATA_TYPE_NONE;
+      return UserDataType.NONE;
     case 1:
     case "USER_DATA_TYPE_PFP":
-      return UserDataType.USER_DATA_TYPE_PFP;
+      return UserDataType.PFP;
     case 2:
     case "USER_DATA_TYPE_DISPLAY":
-      return UserDataType.USER_DATA_TYPE_DISPLAY;
+      return UserDataType.DISPLAY;
     case 3:
     case "USER_DATA_TYPE_BIO":
-      return UserDataType.USER_DATA_TYPE_BIO;
+      return UserDataType.BIO;
     case 5:
     case "USER_DATA_TYPE_URL":
-      return UserDataType.USER_DATA_TYPE_URL;
+      return UserDataType.URL;
     case 6:
     case "USER_DATA_TYPE_FNAME":
-      return UserDataType.USER_DATA_TYPE_FNAME;
+      return UserDataType.FNAME;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserDataType");
   }
@@ -245,17 +245,17 @@ export function userDataTypeFromJSON(object: any): UserDataType {
 
 export function userDataTypeToJSON(object: UserDataType): string {
   switch (object) {
-    case UserDataType.USER_DATA_TYPE_NONE:
+    case UserDataType.NONE:
       return "USER_DATA_TYPE_NONE";
-    case UserDataType.USER_DATA_TYPE_PFP:
+    case UserDataType.PFP:
       return "USER_DATA_TYPE_PFP";
-    case UserDataType.USER_DATA_TYPE_DISPLAY:
+    case UserDataType.DISPLAY:
       return "USER_DATA_TYPE_DISPLAY";
-    case UserDataType.USER_DATA_TYPE_BIO:
+    case UserDataType.BIO:
       return "USER_DATA_TYPE_BIO";
-    case UserDataType.USER_DATA_TYPE_URL:
+    case UserDataType.URL:
       return "USER_DATA_TYPE_URL";
-    case UserDataType.USER_DATA_TYPE_FNAME:
+    case UserDataType.FNAME:
       return "USER_DATA_TYPE_FNAME";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserDataType");
@@ -264,24 +264,24 @@ export function userDataTypeToJSON(object: UserDataType): string {
 
 /** Type of Reaction */
 export enum ReactionType {
-  REACTION_TYPE_NONE = 0,
-  /** REACTION_TYPE_LIKE - Like the target cast */
-  REACTION_TYPE_LIKE = 1,
-  /** REACTION_TYPE_RECAST - Share target cast to the user's audience */
-  REACTION_TYPE_RECAST = 2,
+  NONE = 0,
+  /** LIKE - Like the target cast */
+  LIKE = 1,
+  /** RECAST - Share target cast to the user's audience */
+  RECAST = 2,
 }
 
 export function reactionTypeFromJSON(object: any): ReactionType {
   switch (object) {
     case 0:
     case "REACTION_TYPE_NONE":
-      return ReactionType.REACTION_TYPE_NONE;
+      return ReactionType.NONE;
     case 1:
     case "REACTION_TYPE_LIKE":
-      return ReactionType.REACTION_TYPE_LIKE;
+      return ReactionType.LIKE;
     case 2:
     case "REACTION_TYPE_RECAST":
-      return ReactionType.REACTION_TYPE_RECAST;
+      return ReactionType.RECAST;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ReactionType");
   }
@@ -289,11 +289,11 @@ export function reactionTypeFromJSON(object: any): ReactionType {
 
 export function reactionTypeToJSON(object: ReactionType): string {
   switch (object) {
-    case ReactionType.REACTION_TYPE_NONE:
+    case ReactionType.NONE:
       return "REACTION_TYPE_NONE";
-    case ReactionType.REACTION_TYPE_LIKE:
+    case ReactionType.LIKE:
       return "REACTION_TYPE_LIKE";
-    case ReactionType.REACTION_TYPE_RECAST:
+    case ReactionType.RECAST:
       return "REACTION_TYPE_RECAST";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ReactionType");

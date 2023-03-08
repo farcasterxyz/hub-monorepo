@@ -156,10 +156,10 @@ describe('getAllMessagesBySigner', () => {
     await putMessage(db, castMessage);
     await putMessage(db, reactionMessage);
     await expect(
-      getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer, MessageType.MESSAGE_TYPE_CAST_ADD)
+      getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer, MessageType.CAST_ADD)
     ).resolves.toEqual([castMessage]);
     await expect(
-      getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer, MessageType.MESSAGE_TYPE_REACTION_ADD)
+      getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer, MessageType.REACTION_ADD)
     ).resolves.toEqual([]);
   });
 

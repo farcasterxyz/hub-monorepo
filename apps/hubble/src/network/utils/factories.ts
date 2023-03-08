@@ -37,7 +37,7 @@ const GossipMessageFactory = Factory.define<protobufs.GossipMessage, { peerId?: 
       peerId: transientParams.peerId ? transientParams.peerId.toBytes() : new Uint8Array(),
       message: Factories.Message.build(),
       topics: [NETWORK_TOPIC_PRIMARY],
-      version: protobufs.GossipVersion.GOSSIP_VERSION_1,
+      version: protobufs.GossipVersion.V1,
     });
   }
 );

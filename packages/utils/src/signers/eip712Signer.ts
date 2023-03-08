@@ -13,7 +13,7 @@ export type TypedDataSigner = EthersAbstractSigner & EthersTypedDataSigner;
 
 export class Eip712Signer implements Signer {
   /** Signature scheme as defined in protobufs */
-  public readonly scheme = SignatureScheme.SIGNATURE_SCHEME_EIP712;
+  public readonly scheme = SignatureScheme.EIP712;
 
   /** 20-byte wallet address */
   public readonly signerKey: Uint8Array;
@@ -90,7 +90,7 @@ export class Eip712Signer implements Signer {
    * const claimBody = {
    *   fid: -1,
    *   address: eip712Signer.signerKeyHex,
-   *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+   *   network: types.FarcasterNetwork.DEVNET,
    *   blockHash: '2c87468704d6b0f4c46f480dc54251de50753af02e5d63702f85bde3da4f7a3d',
    * };
    * const verificationResult = await eip712Signer.signVerificationEthAddressClaim(claimBody);

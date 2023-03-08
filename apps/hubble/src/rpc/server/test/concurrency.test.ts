@@ -8,7 +8,7 @@ import { seedSigner } from '~/storage/engine/seed';
 import { MockHub } from '~/test/mocks';
 
 const db = jestRocksDB('protobufs.rpc.concurrency.test');
-const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
+const network = protobufs.FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
 
@@ -53,17 +53,17 @@ describe('submitMessage', () => {
   test('succeeds with concurrent, conflicting reaction messages', async () => {
     const castId = Factories.CastId.build();
     const like1 = await Factories.ReactionAddMessage.create(
-      { data: { fid, reactionBody: { type: protobufs.ReactionType.REACTION_TYPE_LIKE, targetCastId: castId } } },
+      { data: { fid, reactionBody: { type: protobufs.ReactionType.LIKE, targetCastId: castId } } },
       { transient: { signer: signer1 } }
     );
 
     const like2 = await Factories.ReactionAddMessage.create(
-      { data: { fid, reactionBody: { type: protobufs.ReactionType.REACTION_TYPE_LIKE, targetCastId: castId } } },
+      { data: { fid, reactionBody: { type: protobufs.ReactionType.LIKE, targetCastId: castId } } },
       { transient: { signer: signer2 } }
     );
 
     const removeLike2 = await Factories.ReactionRemoveMessage.create(
-      { data: { fid, reactionBody: { type: protobufs.ReactionType.REACTION_TYPE_LIKE, targetCastId: castId } } },
+      { data: { fid, reactionBody: { type: protobufs.ReactionType.LIKE, targetCastId: castId } } },
       { transient: { signer: signer2 } }
     );
 

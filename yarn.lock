@@ -7421,10 +7421,10 @@ ts-proto-descriptors@1.7.1:
     long "^4.0.0"
     protobufjs "^6.8.8"
 
-ts-proto@^1.139.0:
-  version "1.139.0"
-  resolved "https://registry.npmjs.org/ts-proto/-/ts-proto-1.139.0.tgz#de681b59aae145fc2e55cbb00f7fdb5846e8dbc6"
-  integrity sha512-DXfRVbsEnzan/tpb7RxuJOgjhzwuxDsyXbYSnF8JHCIDcJ/JxeqeUyDUVICFGmgqrsPcnjn5t3iqOUZRNRm9tg==
+ts-proto@^1.140.0:
+  version "1.140.0"
+  resolved "https://registry.npmjs.org/ts-proto/-/ts-proto-1.140.0.tgz#cb1528cd5945a4de0ef50637beabf6a70d039f4a"
+  integrity sha512-0FhFT+S8u7ES3O6b+yEQJ3eSOtW1Sp9F5b4TAfsIs+ojQozghz8Zr5dTHXcuibwoUIZibzt45OxvXLhmJyFMMQ==
   dependencies:
     "@types/object-hash" "^1.3.0"
     case-anything "^2.1.10"

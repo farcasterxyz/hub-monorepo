@@ -11,10 +11,7 @@ import { makeVerificationEthAddressClaim } from './verifications';
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
 
 /** Message types that must be signed by EIP712 signer */
-export const EIP712_MESSAGE_TYPES = [
-  protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD,
-  protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
-];
+export const EIP712_MESSAGE_TYPES = [protobufs.MessageType.SIGNER_ADD, protobufs.MessageType.SIGNER_REMOVE];
 
 export const FNAME_REGEX = /^[a-z0-9][a-z0-9-]{0,15}$/;
 export const HEX_REGEX = /^(0x)?[0-9A-Fa-f]+$/;
@@ -112,7 +109,7 @@ export const validateMessage = async (message: protobufs.Message): HubAsyncResul
   }
 
   const dataBytes = protobufs.MessageData.encode(data).finish();
-  if (message.hashScheme === protobufs.HashScheme.HASH_SCHEME_BLAKE3) {
+  if (message.hashScheme === protobufs.HashScheme.BLAKE3) {
     const computedHash = blake3(dataBytes, { dkLen: 20 });
     // we have to use bytesCompare, because TypedArrays cannot be compared directly
     if (bytesCompare(hash, computedHash) !== 0) {
@@ -134,7 +131,7 @@ export const validateMessage = async (message: protobufs.Message): HubAsyncResul
   }
 
   const eip712SignerRequired = EIP712_MESSAGE_TYPES.includes(data.type);
-  if (message.signatureScheme === protobufs.SignatureScheme.SIGNATURE_SCHEME_EIP712 && eip712SignerRequired) {
+  if (message.signatureScheme === protobufs.SignatureScheme.EIP712 && eip712SignerRequired) {
     const verifiedSigner = eip712.verifyMessageHashSignature(hash, signature);
     if (verifiedSigner.isErr()) {
       return err(verifiedSigner.error);
@@ -142,7 +139,7 @@ export const validateMessage = async (message: protobufs.Message): HubAsyncResul
     if (bytesCompare(verifiedSigner.value, signer) !== 0) {
       return err(new HubError('bad_request.validation_failure', 'signature does not match signer'));
     }
-  } else if (message.signatureScheme === protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519 && !eip712SignerRequired) {
+  } else if (message.signatureScheme === protobufs.SignatureScheme.ED25519 && !eip712SignerRequired) {
     const signatureIsValid = await ed25519.verifyMessageHashSignature(signature, hash, signer);
     if (signatureIsValid.isErr() || (signatureIsValid.isOk() && !signatureIsValid.value)) {
       return err(new HubError('bad_request.validation_failure', 'invalid signature'));
@@ -185,34 +182,31 @@ export const validateMessageData = (data: protobufs.MessageData): HubResult<prot
 
   // 5. Validate body
   let bodyResult: HubResult<any>;
-  if (validType.value === protobufs.MessageType.MESSAGE_TYPE_CAST_ADD && !!data.castAddBody) {
+  if (validType.value === protobufs.MessageType.CAST_ADD && !!data.castAddBody) {
     bodyResult = validateCastAddBody(data.castAddBody);
-  } else if (validType.value === protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE && !!data.castRemoveBody) {
+  } else if (validType.value === protobufs.MessageType.CAST_REMOVE && !!data.castRemoveBody) {
     bodyResult = validateCastRemoveBody(data.castRemoveBody);
   } else if (
-    (validType.value === protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD ||
-      validType.value === protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE) &&
+    (validType.value === protobufs.MessageType.REACTION_ADD ||
+      validType.value === protobufs.MessageType.REACTION_REMOVE) &&
     !!data.reactionBody
   ) {
     bodyResult = validateReactionBody(data.reactionBody);
-  } else if (validType.value === protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD && !!data.signerAddBody) {
+  } else if (validType.value === protobufs.MessageType.SIGNER_ADD && !!data.signerAddBody) {
     bodyResult = validateSignerAddBody(data.signerAddBody);
-  } else if (validType.value === protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE && !!data.signerRemoveBody) {
+  } else if (validType.value === protobufs.MessageType.SIGNER_REMOVE && !!data.signerRemoveBody) {
     bodyResult = validateSignerRemoveBody(data.signerRemoveBody);
-  } else if (validType.value === protobufs.MessageType.MESSAGE_TYPE_USER_DATA_ADD && !!data.userDataBody) {
+  } else if (validType.value === protobufs.MessageType.USER_DATA_ADD && !!data.userDataBody) {
     bodyResult = validateUserDataAddBody(data.userDataBody);
   } else if (
-    validType.value === protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS &&
+    validType.value === protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS &&
     !!data.verificationAddEthAddressBody
   ) {
     // Special check for verification claim
     bodyResult = validateVerificationAddEthAddressBody(data.verificationAddEthAddressBody).andThen((body) => {
       return validateVerificationAddEthAddressSignature(body, validFid.value, validNetwork.value);
     });
-  } else if (
-    validType.value === protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE &&
-    !!data.verificationRemoveBody
-  ) {
+  } else if (validType.value === protobufs.MessageType.VERIFICATION_REMOVE && !!data.verificationRemoveBody) {
     bodyResult = validateVerificationRemoveBody(data.verificationRemoveBody);
   } else {
     return err(new HubError('bad_request.invalid_param', 'bodyType is invalid'));
@@ -383,8 +377,8 @@ export const validateSignerRemoveBody = (body: protobufs.SignerRemoveBody): HubR
 export const validateUserDataType = (type: number): HubResult<protobufs.UserDataType> => {
   if (
     !Object.values(protobufs.UserDataType).includes(type) ||
-    type === protobufs.UserDataType.USER_DATA_TYPE_NONE ||
-    type === protobufs.UserDataType.USER_DATA_TYPE_NONE
+    type === protobufs.UserDataType.NONE ||
+    type === protobufs.UserDataType.NONE
   ) {
     return err(new HubError('bad_request.validation_failure', 'invalid user data type'));
   }
@@ -394,23 +388,23 @@ export const validateUserDataType = (type: number): HubResult<protobufs.UserData
 
 export const validateUserDataAddBody = (body: protobufs.UserDataBody): HubResult<protobufs.UserDataBody> => {
   const { type, value } = body;
-  if (type === protobufs.UserDataType.USER_DATA_TYPE_PFP) {
+  if (type === protobufs.UserDataType.PFP) {
     if (value && value.length > 256) {
       return err(new HubError('bad_request.validation_failure', 'pfp value > 256'));
     }
-  } else if (type === protobufs.UserDataType.USER_DATA_TYPE_DISPLAY) {
+  } else if (type === protobufs.UserDataType.DISPLAY) {
     if (value && value.length > 32) {
       return err(new HubError('bad_request.validation_failure', 'display value > 32'));
     }
-  } else if (type === protobufs.UserDataType.USER_DATA_TYPE_BIO) {
+  } else if (type === protobufs.UserDataType.BIO) {
     if (value && value.length > 256) {
       return err(new HubError('bad_request.validation_failure', 'bio value > 256'));
     }
-  } else if (type === protobufs.UserDataType.USER_DATA_TYPE_URL) {
+  } else if (type === protobufs.UserDataType.URL) {
     if (value && value.length > 256) {
       return err(new HubError('bad_request.validation_failure', 'url value > 256'));
     }
-  } else if (type === protobufs.UserDataType.USER_DATA_TYPE_FNAME) {
+  } else if (type === protobufs.UserDataType.FNAME) {
     // Users are allowed to set fname = '' to remove their fname, otherwise we need a valid fname to add
     if (value !== '') {
       const validatedFname = validateFname(value);

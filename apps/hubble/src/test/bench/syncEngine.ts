@@ -73,10 +73,10 @@ const makeMessage = (fid: number, messageId: number, timestamp: number) => {
   hash.write(messageId.toString(), 10);
   return protobufs.Message.create({
     data: protobufs.MessageData.create({
-      type: protobufs.MessageType.MESSAGE_TYPE_CAST_ADD,
+      type: protobufs.MessageType.CAST_ADD,
       fid,
       timestamp,
-      network: protobufs.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+      network: protobufs.FarcasterNetwork.DEVNET,
       castAddBody: protobufs.CastAddBody.create({
         text: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam pharetra dolor leo, vitae tincidunt justo scelerisque vel. Praesent ac leo at nibh rutrum aliquet. Fusce rhoncus ligula a ipsum porta, nec.',
       }),

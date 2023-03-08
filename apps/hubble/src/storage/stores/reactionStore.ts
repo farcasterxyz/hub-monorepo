@@ -253,7 +253,7 @@ class ReactionStore {
       this._db,
       fid,
       signer,
-      protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD
+      protobufs.MessageType.REACTION_ADD
     );
 
     // Get all ReactionRemove messages signed by signer
@@ -261,7 +261,7 @@ class ReactionStore {
       this._db,
       fid,
       signer,
-      protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE
+      protobufs.MessageType.REACTION_REMOVE
     );
 
     // Create a rocksdb transaction
@@ -437,9 +437,9 @@ class ReactionStore {
   }
 
   private reactionMessageCompare(
-    aType: protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD | protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE,
+    aType: protobufs.MessageType.REACTION_ADD | protobufs.MessageType.REACTION_REMOVE,
     aTsHash: Uint8Array,
-    bType: protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD | protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE,
+    bType: protobufs.MessageType.REACTION_ADD | protobufs.MessageType.REACTION_REMOVE,
     bTsHash: Uint8Array
   ): number {
     // Compare timestamps (first 4 bytes of tsHash) to enforce Last-Write-Wins
@@ -449,15 +449,9 @@ class ReactionStore {
     }
 
     // Compare message types to enforce that RemoveWins in case of LWW ties.
-    if (
-      aType === protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE &&
-      bType === protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD
-    ) {
+    if (aType === protobufs.MessageType.REACTION_REMOVE && bType === protobufs.MessageType.REACTION_ADD) {
       return 1;
-    } else if (
-      aType === protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD &&
-      bType === protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE
-    ) {
+    } else if (aType === protobufs.MessageType.REACTION_ADD && bType === protobufs.MessageType.REACTION_REMOVE) {
       return -1;
     }
 
@@ -492,7 +486,7 @@ class ReactionStore {
 
     if (reactionRemoveTsHash.isOk()) {
       const removeCompare = this.reactionMessageCompare(
-        protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE,
+        protobufs.MessageType.REACTION_REMOVE,
         new Uint8Array(reactionRemoveTsHash.value),
         message.data.type,
         tsHash.value
@@ -520,7 +514,7 @@ class ReactionStore {
 
     if (reactionAddTsHash.isOk()) {
       const addCompare = this.reactionMessageCompare(
-        protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD,
+        protobufs.MessageType.REACTION_ADD,
         new Uint8Array(reactionAddTsHash.value),
         message.data.type,
         tsHash.value

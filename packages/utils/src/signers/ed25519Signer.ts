@@ -6,7 +6,7 @@ import { Signer } from './signer';
 
 export class Ed25519Signer implements Signer {
   /** Signature scheme as defined in protobufs */
-  public readonly scheme = SignatureScheme.SIGNATURE_SCHEME_ED25519;
+  public readonly scheme = SignatureScheme.ED25519;
 
   /** 32-byte EdDSA public key */
   public readonly signerKey: Uint8Array;

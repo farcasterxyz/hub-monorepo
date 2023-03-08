@@ -87,7 +87,7 @@ describe('GossipNode', () => {
 
   describe('gossip messages', () => {
     const db = jestRocksDB('protobufs.rpc.gossipMessageTest.test');
-    const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
+    const network = protobufs.FarcasterNetwork.TESTNET;
     const engine = new Engine(db, network);
     const hub = new MockHub(db, engine);
 

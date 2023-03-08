@@ -34,11 +34,11 @@
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `privateKey` | `Uint8Array` |
-| `signerKey` | `Uint8Array` |
-| `signerKeyHex` | `string` |
+| Name           | Type         |
+| :------------- | :----------- |
+| `privateKey`   | `Uint8Array` |
+| `signerKey`    | `Uint8Array` |
+| `signerKeyHex` | `string`     |
 
 #### Inherited from
 
@@ -48,7 +48,7 @@ BaseEd25519Signer.constructor
 
 ### scheme
 
-• `Readonly` **scheme**: [`SIGNATURE_SCHEME_ED25519`](../enums/protobufs.SignatureScheme.md#signature_scheme_ed25519) = `SignatureScheme.SIGNATURE_SCHEME_ED25519`
+• `Readonly` **scheme**: [`SIGNATURE_SCHEME_ED25519`](../enums/protobufs.SignatureScheme.md#signature_scheme_ed25519) = `SignatureScheme.ED25519`
 
 Signature scheme as defined in protobufs
 
@@ -56,7 +56,7 @@ Signature scheme as defined in protobufs
 
 BaseEd25519Signer.scheme
 
-___
+---
 
 ### signerKey
 
@@ -68,7 +68,7 @@ ___
 
 BaseEd25519Signer.signerKey
 
-___
+---
 
 ### signerKeyHex
 
@@ -90,8 +90,8 @@ Generates a 256-bit signature using from EdDSA key pair.
 
 #### Returns
 
-| Value | Description |
-| :---- | :---------- |
+| Value                        | Description                                                        |
+| :--------------------------- | :----------------------------------------------------------------- |
 | `HubAsyncResult<Uint8Array>` | A HubAsyncResult containing the 256-bit signature as a Uint8Array. |
 
 **`Example`**
@@ -114,15 +114,15 @@ console.log(signature._unsafeUnwrap());
 
 #### Parameters
 
-| Name | Type | Description |
-| :------ | :------ | :------ |
+| Name   | Type         | Description                                   |
+| :----- | :----------- | :-------------------------------------------- |
 | `hash` | `Uint8Array` | The 256-bit hash of the message to be signed. |
 
 #### Inherited from
 
 BaseEd25519Signer.signMessageHash
 
-___
+---
 
 ### signMessageHashHex
 
@@ -132,8 +132,8 @@ Generates a 256-bit hex signature from an EdDSA key pair for a given message has
 
 #### Returns
 
-| Value | Description |
-| :---- | :---------- |
+| Value                    | Description                                                        |
+| :----------------------- | :----------------------------------------------------------------- |
 | `HubAsyncResult<string>` | A HubAsyncResult containing the 256-bit signature as a hex string. |
 
 **`Example`**
@@ -156,11 +156,11 @@ console.log(signature._unsafeUnwrap()); // 0x9f1c7e13b9d0b8...
 
 #### Parameters
 
-| Name | Type | Description |
-| :------ | :------ | :------ |
+| Name   | Type     | Description                                         |
+| :----- | :------- | :-------------------------------------------------- |
 | `hash` | `string` | The hash of the message to be signed in hex format. |
 
-___
+---
 
 ### fromPrivateKey
 
@@ -170,8 +170,8 @@ Creates an Ed25519 signer from a private key.
 
 #### Returns
 
-| Value | Description |
-| :---- | :---------- |
+| Value                      | Description                                      |
+| :------------------------- | :----------------------------------------------- |
 | `HubResult<Ed25519Signer>` | A HubResult containing an Ed25519Signer instance |
 
 **`Example`**
@@ -186,8 +186,8 @@ const signer = Ed25519Signer.fromPrivateKey(privateKeyBytes)._unsafeUnwrap();
 
 #### Parameters
 
-| Name | Type | Description |
-| :------ | :------ | :------ |
+| Name         | Type         | Description                                 |
+| :----------- | :----------- | :------------------------------------------ |
 | `privateKey` | `Uint8Array` | The 32-byte private key to use for signing. |
 
 #### Overrides

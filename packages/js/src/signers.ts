@@ -104,7 +104,7 @@ export class Eip712Signer extends BaseEip712Signer {
    * const claimBody = {
    *   fid: -1,
    *   address: eip712Signer.signerKeyHex,
-   *   network: types.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
+   *   network: types.FarcasterNetwork.DEVNET,
    *   blockHash: '2c87468704d6b0f4c46f480dc54251de50753af02e5d63702f85bde3da4f7a3d',
    * };
    *

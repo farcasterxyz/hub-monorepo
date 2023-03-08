@@ -132,40 +132,37 @@ const CastIdFactory = Factory.define<protobufs.CastId>(() => {
 
 const FarcasterNetworkFactory = Factory.define<protobufs.FarcasterNetwork>(() => {
   return faker.helpers.arrayElement([
-    protobufs.FarcasterNetwork.FARCASTER_NETWORK_DEVNET,
-    protobufs.FarcasterNetwork.FARCASTER_NETWORK_MAINNET,
-    protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET,
+    protobufs.FarcasterNetwork.DEVNET,
+    protobufs.FarcasterNetwork.MAINNET,
+    protobufs.FarcasterNetwork.TESTNET,
   ]);
 });
 
 const ReactionTypeFactory = Factory.define<protobufs.ReactionType>(() => {
-  return faker.helpers.arrayElement([
-    protobufs.ReactionType.REACTION_TYPE_LIKE,
-    protobufs.ReactionType.REACTION_TYPE_RECAST,
-  ]);
+  return faker.helpers.arrayElement([protobufs.ReactionType.LIKE, protobufs.ReactionType.RECAST]);
 });
 
 const UserDataTypeFactory = Factory.define<protobufs.UserDataType>(() => {
   return faker.helpers.arrayElement([
-    protobufs.UserDataType.USER_DATA_TYPE_BIO,
-    protobufs.UserDataType.USER_DATA_TYPE_DISPLAY,
-    protobufs.UserDataType.USER_DATA_TYPE_FNAME,
-    protobufs.UserDataType.USER_DATA_TYPE_PFP,
-    protobufs.UserDataType.USER_DATA_TYPE_URL,
+    protobufs.UserDataType.BIO,
+    protobufs.UserDataType.DISPLAY,
+    protobufs.UserDataType.FNAME,
+    protobufs.UserDataType.PFP,
+    protobufs.UserDataType.URL,
   ]);
 });
 
 const MessageTypeFactory = Factory.define<protobufs.MessageType>(() => {
   return faker.helpers.arrayElement([
-    protobufs.MessageType.MESSAGE_TYPE_CAST_ADD,
-    protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE,
-    protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD,
-    protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE,
-    protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD,
-    protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
-    protobufs.MessageType.MESSAGE_TYPE_USER_DATA_ADD,
-    protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS,
-    protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE,
+    protobufs.MessageType.CAST_ADD,
+    protobufs.MessageType.CAST_REMOVE,
+    protobufs.MessageType.REACTION_ADD,
+    protobufs.MessageType.REACTION_REMOVE,
+    protobufs.MessageType.SIGNER_ADD,
+    protobufs.MessageType.SIGNER_REMOVE,
+    protobufs.MessageType.USER_DATA_ADD,
+    protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS,
+    protobufs.MessageType.VERIFICATION_REMOVE,
   ]);
 });
 
@@ -184,8 +181,8 @@ const MessageFactory = Factory.define<protobufs.Message, { signer?: Ed25519Signe
 
       // Set signer
       const isEip712Signer =
-        message.data.type === protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD ||
-        message.data.type === protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE;
+        message.data.type === protobufs.MessageType.SIGNER_ADD ||
+        message.data.type === protobufs.MessageType.SIGNER_REMOVE;
       const signer: Signer =
         transientParams.signer ?? (isEip712Signer ? Eip712SignerFactory.build() : Ed25519SignerFactory.build());
 
@@ -208,7 +205,7 @@ const MessageFactory = Factory.define<protobufs.Message, { signer?: Ed25519Signe
 
     return protobufs.Message.create({
       data: CastAddDataFactory.build(),
-      hashScheme: protobufs.HashScheme.HASH_SCHEME_BLAKE3,
+      hashScheme: protobufs.HashScheme.BLAKE3,
     });
   }
 );
@@ -217,7 +214,7 @@ const MessageDataFactory = Factory.define<protobufs.MessageData>(() => {
   return protobufs.MessageData.create({
     fid: FidFactory.build(),
     timestamp: getFarcasterTime()._unsafeUnwrap(),
-    network: protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET,
+    network: protobufs.FarcasterNetwork.TESTNET,
   });
 });
 
@@ -235,7 +232,7 @@ const CastAddBodyFactory = Factory.define<protobufs.CastAddBody>(() => {
 const CastAddDataFactory = Factory.define<protobufs.CastAddData>(() => {
   return MessageDataFactory.build({
     castAddBody: CastAddBodyFactory.build(),
-    type: protobufs.MessageType.MESSAGE_TYPE_CAST_ADD,
+    type: protobufs.MessageType.CAST_ADD,
   }) as protobufs.CastAddData;
 });
 
@@ -246,7 +243,7 @@ const CastAddMessageFactory = Factory.define<protobufs.CastAddMessage, { signer?
     });
 
     return MessageFactory.build(
-      { data: CastAddDataFactory.build(), signatureScheme: protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519 },
+      { data: CastAddDataFactory.build(), signatureScheme: protobufs.SignatureScheme.ED25519 },
       { transient: transientParams }
     ) as protobufs.CastAddMessage;
   }
@@ -261,7 +258,7 @@ const CastRemoveBodyFactory = Factory.define<protobufs.CastRemoveBody>(() => {
 const CastRemoveDataFactory = Factory.define<protobufs.CastRemoveData>(() => {
   return MessageDataFactory.build({
     castRemoveBody: CastRemoveBodyFactory.build(),
-    type: protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE,
+    type: protobufs.MessageType.CAST_REMOVE,
   }) as protobufs.CastRemoveData;
 });
 
@@ -272,7 +269,7 @@ const CastRemoveMessageFactory = Factory.define<protobufs.CastRemoveMessage, { s
     });
 
     return MessageFactory.build(
-      { data: CastRemoveDataFactory.build(), signatureScheme: protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519 },
+      { data: CastRemoveDataFactory.build(), signatureScheme: protobufs.SignatureScheme.ED25519 },
       { transient: transientParams }
     ) as protobufs.CastRemoveMessage;
   }
@@ -288,7 +285,7 @@ const ReactionBodyFactory = Factory.define<protobufs.ReactionBody>(() => {
 const ReactionAddDataFactory = Factory.define<protobufs.ReactionAddData>(() => {
   return MessageDataFactory.build({
     reactionBody: ReactionBodyFactory.build(),
-    type: protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD,
+    type: protobufs.MessageType.REACTION_ADD,
   }) as protobufs.ReactionAddData;
 });
 
@@ -299,7 +296,7 @@ const ReactionAddMessageFactory = Factory.define<protobufs.ReactionAddMessage, {
     });
 
     return MessageFactory.build(
-      { data: ReactionAddDataFactory.build(), signatureScheme: protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519 },
+      { data: ReactionAddDataFactory.build(), signatureScheme: protobufs.SignatureScheme.ED25519 },
       { transient: transientParams }
     ) as protobufs.ReactionAddMessage;
   }
@@ -308,7 +305,7 @@ const ReactionAddMessageFactory = Factory.define<protobufs.ReactionAddMessage, {
 const ReactionRemoveDataFactory = Factory.define<protobufs.ReactionRemoveData>(() => {
   return MessageDataFactory.build({
     reactionBody: ReactionBodyFactory.build(),
-    type: protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE,
+    type: protobufs.MessageType.REACTION_REMOVE,
   }) as protobufs.ReactionRemoveData;
 });
 
@@ -319,7 +316,7 @@ const ReactionRemoveMessageFactory = Factory.define<protobufs.ReactionRemoveMess
     });
 
     return MessageFactory.build(
-      { data: ReactionRemoveDataFactory.build(), signatureScheme: protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519 },
+      { data: ReactionRemoveDataFactory.build(), signatureScheme: protobufs.SignatureScheme.ED25519 },
       { transient: transientParams }
     ) as protobufs.ReactionRemoveMessage;
   }
@@ -335,7 +332,7 @@ const SignerAddBodyFactory = Factory.define<protobufs.SignerAddBody>(() => {
 const SignerAddDataFactory = Factory.define<protobufs.SignerAddData>(() => {
   return MessageDataFactory.build({
     signerAddBody: SignerAddBodyFactory.build(),
-    type: protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD,
+    type: protobufs.MessageType.SIGNER_ADD,
   }) as protobufs.SignerAddData;
 });
 
@@ -346,7 +343,7 @@ const SignerAddMessageFactory = Factory.define<protobufs.SignerAddMessage, { sig
     });
 
     return MessageFactory.build(
-      { data: SignerAddDataFactory.build(), signatureScheme: protobufs.SignatureScheme.SIGNATURE_SCHEME_EIP712 },
+      { data: SignerAddDataFactory.build(), signatureScheme: protobufs.SignatureScheme.EIP712 },
       { transient: transientParams }
     ) as protobufs.SignerAddMessage;
   }
@@ -361,7 +358,7 @@ const SignerRemoveBodyFactory = Factory.define<protobufs.SignerRemoveBody>(() =>
 const SignerRemoveDataFactory = Factory.define<protobufs.SignerRemoveData>(() => {
   return MessageDataFactory.build({
     signerRemoveBody: SignerRemoveBodyFactory.build(),
-    type: protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
+    type: protobufs.MessageType.SIGNER_REMOVE,
   }) as protobufs.SignerRemoveData;
 });
 
@@ -372,7 +369,7 @@ const SignerRemoveMessageFactory = Factory.define<protobufs.SignerRemoveMessage,
     });
 
     return MessageFactory.build(
-      { data: SignerRemoveDataFactory.build(), signatureScheme: protobufs.SignatureScheme.SIGNATURE_SCHEME_EIP712 },
+      { data: SignerRemoveDataFactory.build(), signatureScheme: protobufs.SignatureScheme.EIP712 },
       { transient: transientParams }
     ) as protobufs.SignerRemoveMessage;
   }
@@ -443,7 +440,7 @@ const VerificationAddEthAddressDataFactory = Factory.define<
   return MessageDataFactory.build({
     // verificationAddEthAddressBody will not be valid until onCreate
     verificationAddEthAddressBody: VerificationAddEthAddressBodyFactory.build({}, { transient: { ethSigner } }),
-    type: protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS,
+    type: protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS,
   }) as protobufs.VerificationAddEthAddressData;
 });
 
@@ -477,12 +474,12 @@ const VerificationRemoveBodyFactory = Factory.define<protobufs.VerificationRemov
 
 const VerificationRemoveDataFactory = MessageDataFactory.params({
   verificationRemoveBody: VerificationRemoveBodyFactory.build(),
-  type: protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE,
+  type: protobufs.MessageType.VERIFICATION_REMOVE,
 }) as Factory<protobufs.VerificationRemoveData>;
 
 const VerificationRemoveMessageFactory = MessageFactory.params({
   data: VerificationRemoveDataFactory.build(),
-  signatureScheme: protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519,
+  signatureScheme: protobufs.SignatureScheme.ED25519,
 }) as Factory<protobufs.VerificationRemoveMessage, { signer?: Ed25519Signer }>;
 
 const UserDataBodyFactory = Factory.define<protobufs.UserDataBody>(() => {
@@ -495,7 +492,7 @@ const UserDataBodyFactory = Factory.define<protobufs.UserDataBody>(() => {
 const UserDataAddDataFactory = Factory.define<protobufs.UserDataAddData>(() => {
   return MessageDataFactory.build({
     userDataBody: UserDataBodyFactory.build(),
-    type: protobufs.MessageType.MESSAGE_TYPE_USER_DATA_ADD,
+    type: protobufs.MessageType.USER_DATA_ADD,
   }) as protobufs.UserDataAddData;
 });
 
@@ -506,7 +503,7 @@ const UserDataAddMessageFactory = Factory.define<protobufs.UserDataAddMessage, {
     });
 
     return MessageFactory.build(
-      { data: UserDataAddDataFactory.build(), signatureScheme: protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519 },
+      { data: UserDataAddDataFactory.build(), signatureScheme: protobufs.SignatureScheme.ED25519 },
       { transient: transientParams }
     ) as protobufs.UserDataAddMessage;
   }
@@ -515,10 +512,7 @@ const UserDataAddMessageFactory = Factory.define<protobufs.UserDataAddMessage, {
 /** Event Protobufs */
 
 const IdRegistryEventTypeFactory = Factory.define<protobufs.IdRegistryEventType>(() => {
-  return faker.helpers.arrayElement([
-    protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER,
-    protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_TRANSFER,
-  ]);
+  return faker.helpers.arrayElement([protobufs.IdRegistryEventType.REGISTER, protobufs.IdRegistryEventType.TRANSFER]);
 });
 
 const IdRegistryEventFactory = Factory.define<protobufs.IdRegistryEvent>(() => {
@@ -535,10 +529,7 @@ const IdRegistryEventFactory = Factory.define<protobufs.IdRegistryEvent>(() => {
 });
 
 const NameRegistryEventTypeFactory = Factory.define<protobufs.NameRegistryEventType>(() => {
-  return faker.helpers.arrayElement([
-    protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_RENEW,
-    protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER,
-  ]);
+  return faker.helpers.arrayElement([protobufs.NameRegistryEventType.RENEW, protobufs.NameRegistryEventType.TRANSFER]);
 });
 
 const NameRegistryEventFactory = Factory.define<protobufs.NameRegistryEvent>(() => {

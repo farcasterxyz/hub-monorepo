@@ -7,7 +7,7 @@ import SignerStore from '~/storage/stores/signerStore';
 import { getMessage, makeTsHash, typeToSetPostfix } from '../db/message';
 
 const db = jestRocksDB('protobufs.engine.test');
-const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
+const network = protobufs.FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 
 // init signer store for checking state changes from engine
@@ -48,7 +48,7 @@ beforeAll(async () => {
     { transient: { signer } }
   );
   userDataAdd = await Factories.UserDataAddMessage.create(
-    { data: { fid, network, userDataBody: { type: protobufs.UserDataType.USER_DATA_TYPE_PFP } } },
+    { data: { fid, network, userDataBody: { type: protobufs.UserDataType.PFP } } },
     { transient: { signer } }
   );
 });
@@ -152,7 +152,7 @@ describe('mergeMessage', () => {
               data: {
                 fid,
                 network,
-                userDataBody: { type: protobufs.UserDataType.USER_DATA_TYPE_FNAME, value: fnameString },
+                userDataBody: { type: protobufs.UserDataType.FNAME, value: fnameString },
               },
             },
             { transient: { signer } }
@@ -226,7 +226,7 @@ describe('mergeMessage', () => {
     test('succeeds with concurrent, conflicting reaction messages', async () => {
       const castId = Factories.CastId.build();
       const body = Factories.ReactionBody.build({
-        type: protobufs.ReactionType.REACTION_TYPE_LIKE,
+        type: protobufs.ReactionType.LIKE,
         targetCastId: castId,
       });
 
@@ -295,13 +295,13 @@ describe('mergeMessage', () => {
   });
 
   test('fails with mismatched farcaster network', async () => {
-    const mainnetEngine = new Engine(db, protobufs.FarcasterNetwork.FARCASTER_NETWORK_MAINNET);
+    const mainnetEngine = new Engine(db, protobufs.FarcasterNetwork.MAINNET);
     const result = await mainnetEngine.mergeMessage(reactionAdd);
     expect(result).toEqual(
       err(
         new HubError(
           'bad_request.validation_failure',
-          `incorrect network: ${protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET} (expected: ${protobufs.FarcasterNetwork.FARCASTER_NETWORK_MAINNET})`
+          `incorrect network: ${protobufs.FarcasterNetwork.TESTNET} (expected: ${protobufs.FarcasterNetwork.MAINNET})`
         )
       )
     );

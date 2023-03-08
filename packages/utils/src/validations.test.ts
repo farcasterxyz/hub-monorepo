@@ -551,7 +551,7 @@ describe('validateUserDataAddBody', () => {
 
     test('when pfp > 256', () => {
       body = Factories.UserDataBody.build({
-        type: protobufs.UserDataType.USER_DATA_TYPE_PFP,
+        type: protobufs.UserDataType.PFP,
         value: faker.random.alphaNumeric(257),
       });
       hubErrorMessage = 'pfp value > 256';
@@ -559,7 +559,7 @@ describe('validateUserDataAddBody', () => {
 
     test('when display > 32', () => {
       body = Factories.UserDataBody.build({
-        type: protobufs.UserDataType.USER_DATA_TYPE_DISPLAY,
+        type: protobufs.UserDataType.DISPLAY,
         value: faker.random.alphaNumeric(33),
       });
       hubErrorMessage = 'display value > 32';
@@ -567,7 +567,7 @@ describe('validateUserDataAddBody', () => {
 
     test('when bio > 256', () => {
       body = Factories.UserDataBody.build({
-        type: protobufs.UserDataType.USER_DATA_TYPE_BIO,
+        type: protobufs.UserDataType.BIO,
         value: faker.random.alphaNumeric(257),
       });
       hubErrorMessage = 'bio value > 256';
@@ -575,7 +575,7 @@ describe('validateUserDataAddBody', () => {
 
     test('when url > 256', () => {
       body = Factories.UserDataBody.build({
-        type: protobufs.UserDataType.USER_DATA_TYPE_URL,
+        type: protobufs.UserDataType.URL,
         value: faker.random.alphaNumeric(257),
       });
       hubErrorMessage = 'url value > 256';
@@ -619,7 +619,7 @@ describe('validateMessage', () => {
 
   test('fails with invalid hashScheme', async () => {
     const message = await Factories.Message.create({
-      hashScheme: 10 as unknown as protobufs.HashScheme.HASH_SCHEME_BLAKE3,
+      hashScheme: 10 as unknown as protobufs.HashScheme.BLAKE3,
     });
 
     const result = await validations.validateMessage(message);
@@ -637,7 +637,7 @@ describe('validateMessage', () => {
 
   test('fails with invalid signatureScheme', async () => {
     const message = await Factories.Message.create({
-      signatureScheme: 10 as unknown as protobufs.SignatureScheme.SIGNATURE_SCHEME_ED25519,
+      signatureScheme: 10 as unknown as protobufs.SignatureScheme.ED25519,
     });
 
     const result = await validations.validateMessage(message);

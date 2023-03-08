@@ -179,7 +179,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   makeMergeMessage(message: Message, deletedMessages?: Message[]): HubResult<MergeMessageHubEvent> {
     return this._generator.generateId().andThen((id) => {
       const event = HubEvent.create({
-        type: HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE,
+        type: HubEventType.MERGE_MESSAGE,
         id,
         mergeMessageBody: {
           message,
@@ -193,7 +193,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   makePruneMessage(message: Message): HubResult<PruneMessageHubEvent> {
     return this._generator.generateId().andThen((id) => {
       const event = HubEvent.create({
-        type: HubEventType.HUB_EVENT_TYPE_PRUNE_MESSAGE,
+        type: HubEventType.PRUNE_MESSAGE,
         id,
         pruneMessageBody: {
           message,
@@ -206,7 +206,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   makeRevokeMessage(message: Message): HubResult<RevokeMessageHubEvent> {
     return this._generator.generateId().andThen((id) => {
       const event = HubEvent.create({
-        type: HubEventType.HUB_EVENT_TYPE_REVOKE_MESSAGE,
+        type: HubEventType.REVOKE_MESSAGE,
         id,
         revokeMessageBody: {
           message,
@@ -219,7 +219,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   makeMergeIdRegistryEvent(idRegistryEvent: IdRegistryEvent): HubResult<MergeIdRegistryEventHubEvent> {
     return this._generator.generateId().andThen((id) => {
       const event = HubEvent.create({
-        type: HubEventType.HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT,
+        type: HubEventType.MERGE_ID_REGISTRY_EVENT,
         id,
         mergeIdRegistryEventBody: {
           idRegistryEvent,
@@ -232,7 +232,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   makeMergeNameRegistryEvent(nameRegistryEvent: NameRegistryEvent): HubResult<MergeNameRegistryEventHubEvent> {
     return this._generator.generateId().andThen((id) => {
       const event = HubEvent.create({
-        type: HubEventType.HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT,
+        type: HubEventType.MERGE_NAME_REGISTRY_EVENT,
         id,
         mergeNameRegistryEventBody: {
           nameRegistryEvent,
