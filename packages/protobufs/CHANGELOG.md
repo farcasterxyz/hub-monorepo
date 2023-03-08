@@ -1,5 +1,12 @@
 # @farcaster/protobufs
 
+## 0.1.7
+
+### Patch Changes
+
+- 6f1c5a9: chore: use removeEnumPrefix ts-proto flag and abbreviate protobuf enum names
+- ea7b9c9: feat: add name to SignerAdd message
+
 ## 0.1.6
 
 ### Patch Changes
