@@ -325,15 +325,16 @@ const ReactionRemoveMessageFactory = Factory.define<protobufs.ReactionRemoveMess
   }
 );
 
-const SignerBodyFactory = Factory.define<protobufs.SignerBody>(() => {
-  return protobufs.SignerBody.create({
+const SignerAddBodyFactory = Factory.define<protobufs.SignerAddBody>(() => {
+  return protobufs.SignerAddBody.create({
+    name: faker.random.alphaNumeric(16),
     signer: Ed25519SignerFactory.build().signerKey,
   });
 });
 
 const SignerAddDataFactory = Factory.define<protobufs.SignerAddData>(() => {
   return MessageDataFactory.build({
-    signerBody: SignerBodyFactory.build(),
+    signerAddBody: SignerAddBodyFactory.build(),
     type: protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD,
   }) as protobufs.SignerAddData;
 });
@@ -351,9 +352,15 @@ const SignerAddMessageFactory = Factory.define<protobufs.SignerAddMessage, { sig
   }
 );
 
+const SignerRemoveBodyFactory = Factory.define<protobufs.SignerRemoveBody>(() => {
+  return protobufs.SignerRemoveBody.create({
+    signer: Ed25519SignerFactory.build().signerKey,
+  });
+});
+
 const SignerRemoveDataFactory = Factory.define<protobufs.SignerRemoveData>(() => {
   return MessageDataFactory.build({
-    signerBody: SignerBodyFactory.build(),
+    signerRemoveBody: SignerRemoveBodyFactory.build(),
     type: protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
   }) as protobufs.SignerRemoveData;
 });
@@ -585,7 +592,8 @@ export const Factories = {
   ReactionAddMessage: ReactionAddMessageFactory,
   ReactionRemoveData: ReactionRemoveDataFactory,
   ReactionRemoveMessage: ReactionRemoveMessageFactory,
-  SignerBody: SignerBodyFactory,
+  SignerAddBody: SignerAddBodyFactory,
+  SignerRemoveBody: SignerRemoveBodyFactory,
   SignerAddData: SignerAddDataFactory,
   SignerAddMessage: SignerAddMessageFactory,
   SignerRemoveData: SignerRemoveDataFactory,

@@ -12,7 +12,6 @@ export enum HubEventType {
   HUB_EVENT_TYPE_REVOKE_MESSAGE = 3,
   HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT = 4,
   HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT = 5,
-  UNRECOGNIZED = -1,
 }
 
 export function hubEventTypeFromJSON(object: any): HubEventType {
@@ -35,10 +34,8 @@ export function hubEventTypeFromJSON(object: any): HubEventType {
     case 5:
     case "HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT":
       return HubEventType.HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT;
-    case -1:
-    case "UNRECOGNIZED":
     default:
-      return HubEventType.UNRECOGNIZED;
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HubEventType");
   }
 }
 
@@ -56,9 +53,8 @@ export function hubEventTypeToJSON(object: HubEventType): string {
       return "HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT";
     case HubEventType.HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT:
       return "HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT";
-    case HubEventType.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HubEventType");
   }
 }
 

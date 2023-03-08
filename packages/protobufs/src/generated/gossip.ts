@@ -5,7 +5,6 @@ import { Message } from "./message";
 
 export enum GossipVersion {
   GOSSIP_VERSION_1 = 0,
-  UNRECOGNIZED = -1,
 }
 
 export function gossipVersionFromJSON(object: any): GossipVersion {
@@ -13,10 +12,8 @@ export function gossipVersionFromJSON(object: any): GossipVersion {
     case 0:
     case "GOSSIP_VERSION_1":
       return GossipVersion.GOSSIP_VERSION_1;
-    case -1:
-    case "UNRECOGNIZED":
     default:
-      return GossipVersion.UNRECOGNIZED;
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum GossipVersion");
   }
 }
 
@@ -24,9 +21,8 @@ export function gossipVersionToJSON(object: GossipVersion): string {
   switch (object) {
     case GossipVersion.GOSSIP_VERSION_1:
       return "GOSSIP_VERSION_1";
-    case GossipVersion.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum GossipVersion");
   }
 }
 

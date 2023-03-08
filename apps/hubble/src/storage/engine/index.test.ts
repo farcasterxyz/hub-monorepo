@@ -33,11 +33,11 @@ beforeAll(async () => {
   fnameTransfer = Factories.NameRegistryEvent.build({ fname, to: custodyEvent.to });
 
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerBody: { signer: signer.signerKey } } },
+    { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
     { transient: { signer: custodySigner } }
   );
   signerRemove = await Factories.SignerRemoveMessage.create(
-    { data: { fid, network, timestamp: signerAdd.data.timestamp + 1, signerBody: { signer: signer.signerKey } } },
+    { data: { fid, network, timestamp: signerAdd.data.timestamp + 1, signerRemoveBody: { signer: signer.signerKey } } },
     { transient: { signer: custodySigner } }
   );
 

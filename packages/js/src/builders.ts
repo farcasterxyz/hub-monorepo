@@ -34,7 +34,8 @@ type MessageBody =
   | protobufs.ReactionBody
   | protobufs.VerificationAddEthAddressBody
   | protobufs.VerificationRemoveBody
-  | protobufs.SignerBody
+  | protobufs.SignerAddBody
+  | protobufs.SignerRemoveBody
   | protobufs.UserDataBody;
 
 type MessageBodyOptions = {
@@ -43,7 +44,8 @@ type MessageBodyOptions = {
   reactionBody?: protobufs.ReactionBody | undefined;
   verificationAddEthAddressBody?: protobufs.VerificationAddEthAddressBody | undefined;
   verificationRemoveBody?: protobufs.VerificationRemoveBody | undefined;
-  signerBody?: protobufs.SignerBody | undefined;
+  signerAddBody?: protobufs.SignerAddBody | undefined;
+  signerRemoveBody?: protobufs.SignerRemoveBody | undefined;
   userDataBody?: protobufs.UserDataBody | undefined;
 };
 
@@ -677,8 +679,8 @@ export const makeVerificationRemoveData = buildMakeMessageDataMethod(
  */
 export const makeSignerAdd = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD,
-  'signerBody',
-  utils.serializeSignerBody
+  'signerAddBody',
+  utils.serializeSignerAddBody
 );
 
 /**
@@ -728,22 +730,22 @@ export const makeSignerAdd = buildMakeMessageMethod(
  */
 export const makeSignerRemove = buildMakeMessageMethod(
   protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
-  'signerBody',
-  utils.serializeSignerBody
+  'signerRemoveBody',
+  utils.serializeSignerRemoveBody
 );
 
 /** @ignore */
 export const makeSignerAddData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD,
-  'signerBody',
-  utils.serializeSignerBody
+  'signerAddBody',
+  utils.serializeSignerAddBody
 );
 
 /** @ignore */
 export const makeSignerRemoveData = buildMakeMessageDataMethod(
   protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
-  'signerBody',
-  utils.serializeSignerBody
+  'signerRemoveBody',
+  utils.serializeSignerRemoveBody
 );
 
 /** User Data Methods */

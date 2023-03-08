@@ -12,7 +12,7 @@ const getSigners = async (fid: number, network: number, rpcClient: HubRpcClient)
 
   const signerAdd = await Factories.SignerAddMessage.create(
     {
-      data: { fid, network, signerBody: { signer: signer.signerKey } },
+      data: { fid, network, signerAddBody: { signer: signer.signerKey } },
     },
     { transient: { signer: custodySigner } }
   );
@@ -53,7 +53,7 @@ const revokeSignerWithData = async (rpcClient: HubRpcClient) => {
     const signer = Factories.Ed25519Signer.build();
     const signerAdd = await Factories.SignerAddMessage.create(
       {
-        data: { fid, network, signerBody: { signer: signer.signerKey } },
+        data: { fid, network, signerAddBody: { signer: signer.signerKey } },
       },
       { transient: { signer: custodySigner } }
     );
@@ -68,7 +68,7 @@ const revokeSignerWithData = async (rpcClient: HubRpcClient) => {
 
   // And then revoke the signer
   const signerRevoke = await Factories.SignerRemoveMessage.create(
-    { data: { fid, network, signerBody: { signer: signer.signerKey } } },
+    { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
     { transient: { signer: custodySigner } }
   );
   const _msgResult = await rpcClient.submitMessage(signerRevoke, new protobufs.Metadata());
@@ -103,7 +103,7 @@ const highVolumeActions = async (rpcClient: HubRpcClient) => {
       const signer = Factories.Ed25519Signer.build();
       const signerAdd = await Factories.SignerAddMessage.create(
         {
-          data: { fid, network, signerBody: { signer: signer.signerKey } },
+          data: { fid, network, signerAddBody: { signer: signer.signerKey } },
         },
         { transient: { signer: custodySigner } }
       );

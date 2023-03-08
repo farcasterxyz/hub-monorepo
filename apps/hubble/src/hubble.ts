@@ -483,7 +483,7 @@ export class Hub implements HubInterface {
       if (protobufs.isSignerRemoveMessage(message)) {
         const revokeSignerPayload = RevokeSignerJobQueue.makePayload(
           message.data?.fid ?? 0,
-          message.data?.signerBody?.signer ?? new Uint8Array()
+          message.data?.signerRemoveBody?.signer ?? new Uint8Array()
         );
         if (revokeSignerPayload.isOk()) {
           // Revoke signer in one hour

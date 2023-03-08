@@ -87,7 +87,7 @@ export const isVerificationRemoveMessage = (message: protobufs.Message): message
 };
 
 export const isSignerAddData = (data: protobufs.MessageData): data is types.SignerAddData => {
-  return data.type === protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD && typeof data.signerBody !== 'undefined';
+  return data.type === protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD && typeof data.signerAddBody !== 'undefined';
 };
 
 export const isSignerAddMessage = (message: protobufs.Message): message is types.SignerAddMessage => {
@@ -99,7 +99,7 @@ export const isSignerAddMessage = (message: protobufs.Message): message is types
 };
 
 export const isSignerRemoveData = (data: protobufs.MessageData): data is types.SignerRemoveData => {
-  return data.type === protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE && typeof data.signerBody !== 'undefined';
+  return data.type === protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE && typeof data.signerRemoveBody !== 'undefined';
 };
 
 export const isSignerRemoveMessage = (message: protobufs.Message): message is types.SignerRemoveMessage => {

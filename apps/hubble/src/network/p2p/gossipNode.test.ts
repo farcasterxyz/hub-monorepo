@@ -106,7 +106,7 @@ describe('GossipNode', () => {
       custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
 
       signerAdd = await Factories.SignerAddMessage.create(
-        { data: { fid, network, signerBody: { signer: signer.signerKey } } },
+        { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
         { transient: { signer: custodySigner } }
       );
 

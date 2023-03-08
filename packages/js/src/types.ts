@@ -42,8 +42,8 @@ export type VerificationRemoveData = MessageData<
   VerificationRemoveBody,
   protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE
 >;
-export type SignerAddData = MessageData<SignerBody, protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD>;
-export type SignerRemoveData = MessageData<SignerBody, protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE>;
+export type SignerAddData = MessageData<SignerAddBody, protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD>;
+export type SignerRemoveData = MessageData<SignerRemoveBody, protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE>;
 export type UserDataAddData = MessageData<UserDataBody, protobufs.MessageType.MESSAGE_TYPE_USER_DATA_ADD>;
 
 export type CastAddMessage = Message<CastAddData>;
@@ -67,7 +67,8 @@ export type MessageBody =
   | ReactionBody
   | VerificationAddEthAddressBody
   | VerificationRemoveBody
-  | SignerBody
+  | SignerAddBody
+  | SignerRemoveBody
   | UserDataBody;
 
 export type CastAddBody = {
@@ -101,7 +102,12 @@ export type VerificationRemoveBody = {
   address: string; // Hex string
 };
 
-export type SignerBody = {
+export type SignerAddBody = {
+  signer: string; // Hex string
+  name: string;
+};
+
+export type SignerRemoveBody = {
   signer: string; // Hex string
 };
 
