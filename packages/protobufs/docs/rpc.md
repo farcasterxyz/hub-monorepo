@@ -11,7 +11,7 @@
 
 ## 1. Signer Service
 
-User to retrieve valid and revoked Signers
+Used to retrieve valid and revoked Signers
 
 | Method Name               | Request Type  | Response Type    | Description                                    |
 | ------------------------- | ------------- | ---------------- | ---------------------------------------------- |
