@@ -126,12 +126,15 @@ export default class Server {
     return new Promise((resolve, reject) => {
       if (force) {
         this.grpcServer.forceShutdown();
+        log.info({ component: 'gRPC Server' }, `Force shutdown succeeded`);
         resolve();
       } else {
         this.grpcServer.tryShutdown((err) => {
           if (err) {
+            log.error({ component: 'gRPC Server' }, `Shutdown failed: ${err}`);
             reject(err);
           } else {
+            log.info({ component: 'gRPC Server' }, `Shutdown succeeded`);
             resolve();
           }
         });

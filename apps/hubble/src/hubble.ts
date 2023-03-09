@@ -292,7 +292,7 @@ export class Hub implements HubInterface {
     clearInterval(this.contactTimer);
 
     // First, stop the RPC/Gossip server so we don't get any more messages
-    await this.rpcServer.stop();
+    await this.rpcServer.stop(true); // Force shutdown until we have a graceful way of ending active streams
     await this.adminServer.stop();
     await this.gossipNode.stop();
 
