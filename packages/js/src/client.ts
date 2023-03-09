@@ -45,28 +45,11 @@ const wrapGrpcMessagesCall = async <T extends types.Message>(
 };
 
 export class Client {
-  /**
-   * TODO DOCS: description
-   *
-   * TODO DOCS: usage example, here's the structure:
-   * @example
-   * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   *
-   * ...
-   * ```
-   *
-   * @param ...
-   *
-   * @returns ...
-   */
   public _grpcClient: HubRpcClient;
-  private usingSSL: boolean;
+  private usingSsl: boolean;
 
   constructor(address: string, ssl = false) {
-    this.usingSSL = ssl;
+    this.usingSsl = ssl;
     if (!ssl) {
       this._grpcClient = getInsecureHubRpcClient(address);
     } else {
@@ -78,29 +61,10 @@ export class Client {
   /*                                Submit Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  /**
-   * TODO DOCS: description
-   *
-   * TODO DOCS: usage example, here's the structure:
-   * @example
-   * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
-   * ```
-   *
-   * @param ...
-   *
-   * @returns ...
-   */
   async submitMessage(message: types.Message, username?: string, password?: string): HubAsyncResult<types.Message> {
     const metadata = new protobufs.Metadata();
     if (username && password) {
-      if (this.usingSSL) {
+      if (this.usingSsl) {
         metadata.set('authorization', `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`);
       } else {
         return err(new HubError('unavailable', 'Cannot use basic auth without SSL'));
@@ -113,23 +77,6 @@ export class Client {
   /*                                 Cast Methods                               */
   /* -------------------------------------------------------------------------- */
 
-  /**
-   * Get a cast.
-   *
-   * #### Returns
-   *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<CastAddMessage>` | [`CastAddMessage`](../modules/types.md#castaddmessage) | A `HubAsyncResult` that contains the valid `CastAddMessage`. |
-   *
-   * @param {number} fid - The fid from which the cast originates from.
-   * @param {string} hash - The hash of the cast.
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   */
   async getCast(fid: number, hash: string): HubAsyncResult<types.CastAddMessage> {
     const castId = utils.serializeCastId({ fid, hash });
     if (castId.isErr()) {
@@ -139,47 +86,11 @@ export class Client {
     return wrapGrpcMessageCall(this._grpcClient.getCast(castId.value));
   }
 
-  /**
-   * Get casts by fid.
-   *
-   * #### Returns
-   *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](../modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
-   *
-   * @param {number} fid - The fid from which the cast originates from.
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   *
-   */
   async getCastsByFid(fid: number): HubAsyncResult<types.CastAddMessage[]> {
     const fidRequest = protobufs.FidRequest.create({ fid });
     return wrapGrpcMessagesCall(this._grpcClient.getCastsByFid(fidRequest));
   }
 
-  /**
-   * Get direct children of a cast.
-   *
-   * #### Returns
-   *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](../modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
-   *
-   * @param {CastId} parent - The parent cast id.
-   * @param {number} parent.fid - The fid from which the cast originates from.
-   * @param {string} parent.hash - The hash of the cast.
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   *
-   */
   async getCastsByParent(parent: types.CastId): HubAsyncResult<types.CastAddMessage[]> {
     const serializedCastId = utils.serializeCastId(parent);
     if (serializedCastId.isErr()) {
@@ -189,44 +100,11 @@ export class Client {
     return wrapGrpcMessagesCall(this._grpcClient.getCastsByParent(serializedCastId.value));
   }
 
-  /**
-   * TODO DOCS: description
-   *
-   * #### Returns
-   *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](../modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
-   *
-   * @param {number} mentionFid - The fid from which the cast originates from.
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   *
-   */
   async getCastsByMention(mentionFid: number): HubAsyncResult<types.CastAddMessage[]> {
     const fidRequest = protobufs.FidRequest.create({ fid: mentionFid });
     return wrapGrpcMessagesCall(this._grpcClient.getCastsByMention(fidRequest));
   }
 
-  /**
-   * TODO DOCS: description
-   *
-   * #### Returns
-   *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<CastAddMessage[]>` | [`CastAddMessage`](../modules/types.md#castaddmessage)[] | A `HubAsyncResult` that contains the valid `CastAddMessage` array. |
-   *
-   * @param {number} fid - The fid from which the cast originates from.
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   */
   async getAllCastMessagesByFid(fid: number): HubAsyncResult<(types.CastAddMessage | types.CastRemoveMessage)[]> {
     const request = protobufs.FidRequest.create({ fid });
     return wrapGrpcMessagesCall(this._grpcClient.getAllCastMessagesByFid(request));
@@ -236,26 +114,6 @@ export class Client {
   /*                               Reaction Methods                             */
   /* -------------------------------------------------------------------------- */
 
-  /**
-   * Get reaction for a specific cast.
-   *
-   * #### Returns
-   *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<ReactionAddMessage>` | [`ReactionAddMessage`](../modules/types.md#reactionaddmessage) | A `HubAsyncResult` that contains the valid `ReactionAddMessage`. |
-   *
-   * @param {number} fid - The fid from which the cast originates from.
-   * @param {ReactionType} type - The type of the reaction (like or recast).
-   * @param {CastId} cast - The cast id.
-   * @param {number} cast.fid - The fid from which the cast originates from.
-   * @param {string} cast.hash - The hash of the cast.
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   */
   async getReaction(
     fid: number,
     type: types.ReactionType,
@@ -274,23 +132,6 @@ export class Client {
     return wrapGrpcMessageCall(this._grpcClient.getReaction(reactionRequest));
   }
 
-  /**
-   * Get reactions from a specific fid.
-   *
-   * #### Returns
-   *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](../modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
-   *
-   * @param {number} fid - The fid from which the cast originates from.
-   * @param {ReactionType} type - The type of the reaction (like or recast).
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   */
   async getReactionsByFid(fid: number, type?: types.ReactionType): HubAsyncResult<types.ReactionAddMessage[]> {
     const request = protobufs.ReactionsByFidRequest.create({
       fid,
@@ -299,25 +140,6 @@ export class Client {
     return wrapGrpcMessagesCall(this._grpcClient.getReactionsByFid(request));
   }
 
-  /**
-   * TODO DOCS: description
-   *
-   * #### Returns
-   *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](../modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
-   *
-   * @param {CastId} cast - The cast id.
-   * @param {number} cast.fid - The fid from which the cast originates from.
-   * @param {string} cast.hash - The hash of the cast.
-   * @param {ReactionType} type - The type of the reaction (like or recast).
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   */
   async getReactionsByCast(cast: types.CastId, type?: types.ReactionType): HubAsyncResult<types.ReactionAddMessage[]> {
     const serializedCastId = utils.serializeCastId(cast);
     if (serializedCastId.isErr()) {
@@ -330,22 +152,6 @@ export class Client {
     return wrapGrpcMessagesCall(this._grpcClient.getReactionsByCast(request));
   }
 
-  /**
-   * TODO DOCS: description
-   *
-   * #### Returns
-   *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<ReactionAddMessage[]>` | [`ReactionAddMessage`](../modules/types.md#reactionaddmessage)[] | A `HubAsyncResult` that contains the valid `ReactionAddMessage` array. |
-   *
-   * @param {number} fid - The fid from which the cast originates from.
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   */
   async getAllReactionMessagesByFid(
     fid: number
   ): HubAsyncResult<(types.ReactionAddMessage | types.ReactionRemoveMessage)[]> {
@@ -357,24 +163,6 @@ export class Client {
   /*                             Verification Methods                           */
   /* -------------------------------------------------------------------------- */
 
-  /**
-   * Get verification for a specific address and fid.
-   *
-   * #### Returns
-   *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<VerificationAddEthAddressMessage>` | [`VerificationAddEthAddressMessage`](../modules/types.md#verificationaddethaddressmessage) | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage`. |
-   *
-   * @param {number} fid - The fid to verify.
-   * @param {string} address - The custody address to verify.
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   *
-   */
   async getVerification(fid: number, address: string): HubAsyncResult<types.VerificationAddEthAddressMessage> {
     const serializedAddress = utils.serializeEthAddress(address);
     if (serializedAddress.isErr()) {
@@ -384,45 +172,11 @@ export class Client {
     return wrapGrpcMessageCall(this._grpcClient.getVerification(request));
   }
 
-  /**
-   * Get verifications for a specific fid.
-   *
-   * #### Returns
-   *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<VerificationAddEthAddressMessage[]>` | [`VerificationAddEthAddressMessage`](../modules/types.md#verificationaddethaddressmessage)[] | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage` array. |
-   *
-   * @param {number} fid - The fid to verify.
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   */
   async getVerificationsByFid(fid: number): HubAsyncResult<types.VerificationAddEthAddressMessage[]> {
     const request = protobufs.FidRequest.create({ fid });
     return wrapGrpcMessagesCall(this._grpcClient.getVerificationsByFid(request));
   }
 
-  /**
-   * Get all verifications for a specific address.
-   *
-   * #### Returns
-   *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<(VerificationAddEthAddressMessage)[]>` | [`VerificationAddEthAddressMessage`](../modules/types.md#verificationaddethaddressmessage)[] | A `HubAsyncResult` that contains the valid `VerificationAddEthAddressMessage` or `VerificationRemoveMessageMessage` array. |
-   * | OR | | |
-   * | `HubAsyncResult<(VerificationRemoveMessage)[]>` | [`VerificationRemoveMessage`](../modules/types.md#verificationremovemessage)[] | - |
-   *
-   * @param {number} fid - The fid to get all verifications for.
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   */
   async getAllVerificationMessagesByFid(
     fid: number
   ): HubAsyncResult<(types.VerificationAddEthAddressMessage | types.VerificationRemoveMessage)[]> {
@@ -434,20 +188,6 @@ export class Client {
   /*                                 Signer Methods                             */
   /* -------------------------------------------------------------------------- */
 
-  /**
-   * TODO DOCS: description
-   *
-   * #### Returns
-   *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<SignerAddMessage>` | [`SignerAddMessage`](../modules/types.md#signeraddmessage) | A `HubAsyncResult` that contains the valid `SignerAddMessage`. |
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   */
   async getSigner(fid: number, signer: string): HubAsyncResult<types.SignerAddMessage> {
     const serializedSigner = utils.serializeEd25519PublicKey(signer);
     if (serializedSigner.isErr()) {
@@ -457,45 +197,11 @@ export class Client {
     return wrapGrpcMessageCall(this._grpcClient.getSigner(request));
   }
 
-  /**
-   * Get signers of a fid.
-   *
-   * #### Returns
-   *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<SignerAddMessage[]>` | [`SignerAddMessage`](../modules/types.md#signeraddmessage)[] | A `HubAsyncResult` that contains the valid `SignerAddMessage` array. |
-   *
-   * @param {number} fid - The fid to get signers for.
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   */
   async getSignersByFid(fid: number): HubAsyncResult<types.SignerAddMessage[]> {
     const request = protobufs.FidRequest.create({ fid });
     return wrapGrpcMessagesCall(this._grpcClient.getSignersByFid(request));
   }
 
-  /**
-   * TODO DOCS: description
-   *
-   * #### Returns
-   *
-   * | Value                                          | Type                                     | Description                                                               |
-   * | :--------------------------------------------- | :--------------------------------------- | :------------------------------------------------------------------------ |
-   * | `HubAsyncResult<(SignerAddMessage)>` | [`SignerAddMessage`](../modules/types.md#signeraddmessage)[] | A `HubAsyncResult` that contains the valid `SignerAddMessage` or `SignerRemoveMessage` array. |
-   * | OR                                           |                                         |                                                                          |
-   * | `HubAsyncResult<(SignerRemoveMessage)>` | [`SignerRemoveMessage`](../modules/types.md#signerremovemessage)[] | - |
-   *
-   * @param {number} fid - The fid to get all signers for.
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   */
   async getAllSignerMessagesByFid(fid: number): HubAsyncResult<(types.SignerAddMessage | types.SignerRemoveMessage)[]> {
     const request = protobufs.FidRequest.create({ fid });
     return wrapGrpcMessagesCall(this._grpcClient.getAllSignerMessagesByFid(request));
@@ -505,67 +211,16 @@ export class Client {
   /*                                User Data Methods                           */
   /* -------------------------------------------------------------------------- */
 
-  /**
-   * Get user data (pfp, username, fname, etc).
-   *
-   * #### Returns
-   *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<UserDataAddMessage>` | [`UserDataAddMessage`](../modules/types.md#userdataaddmessage) | A `HubAsyncResult` that contains the valid `UserDataAddMessage`. |
-   *
-   * @param {number} fid - The fid to get user data for.
-   * @param {UserDataType} type - The type of user data to get.
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   */
   async getUserData(fid: number, type: types.UserDataType): HubAsyncResult<types.UserDataAddMessage> {
     const request = protobufs.UserDataRequest.create({ fid, userDataType: type });
     return wrapGrpcMessageCall(this._grpcClient.getUserData(request));
   }
 
-  /**
-   * Get user data (pfp, username, fname, etc) by fid.
-   *
-   * #### Returns
-   *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<UserDataAddMessage[]>` | [`UserDataAddMessage`](../modules/types.md#userdataaddmessage)[] | A `HubAsyncResult` that contains the valid `UserDataAddMessage` array. |
-   *
-   * @param {number} fid - The fid to get user data for.
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   */
   async getUserDataByFid(fid: number): HubAsyncResult<types.UserDataAddMessage[]> {
     const request = protobufs.FidRequest.create({ fid });
     return wrapGrpcMessagesCall(this._grpcClient.getUserDataByFid(request));
   }
 
-  /**
-   * TODO DOCS: description
-   *
-   * #### Returns
-   *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<(UserDataAddMessage>` | [`UserDataAddMessage`](../modules/types.md#userdataaddmessage)[] | A `HubAsyncResult` that contains the valid `UserDataAddMessage` or `UserDataRemoveMessage` array. |
-   * | OR    |                                         |                                                                          |
-   * | `HubAsyncResult<(UserDataRemoveMessage>` | [`UserDataRemoveMessage`](../modules/types.md#userdataremovemessage)[] | - |
-   *
-   * @param {number} fid - The fid to get all user data for.
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   */
   async getAllUserDataMessagesByFid(fid: number): HubAsyncResult<types.UserDataAddMessage[]> {
     const request = protobufs.FidRequest.create({ fid });
     return wrapGrpcMessagesCall(this._grpcClient.getAllUserDataMessagesByFid(request));
@@ -575,43 +230,11 @@ export class Client {
   /*                               Contract Methods                             */
   /* -------------------------------------------------------------------------- */
 
-  /**
-   * Get fid registry event for a specific fid.
-   *
-   * #### Returns
-   *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<IdRegistryEvent>` | [`IdRegistryEvent`](../modules/types.md#idregistryevent) | A `HubAsyncResult` that contains the valid `IdRegistryEvent`. |
-   *
-   * @param {number} fid - The fid to get registry event for.
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   */
   async getIdRegistryEvent(fid: number): HubAsyncResult<types.IdRegistryEvent> {
     const request = protobufs.FidRequest.create({ fid });
     return deserializeCall(this._grpcClient.getIdRegistryEvent(request), utils.deserializeIdRegistryEvent);
   }
 
-  /**
-   * Get fname registry event for a specific fname.
-   *
-   * #### Returns
-   *
-   * | Value | Type | Description |
-   * | :---- | :--- | :---------- |
-   * | `HubAsyncResult<NameRegistryEvent>` | [`NameRegistryEvent`](../modules/types.md#nameregistryevent) | A `HubAsyncResult` that contains the valid `NameRegistryEvent`. |
-   *
-   * @param {string} fname - The fname to get registry event for.
-   *
-   * @example
-   * ```typescript
-   * // TODO DOCS: usage example
-   * ```
-   */
   async getNameRegistryEvent(fname: string): HubAsyncResult<types.NameRegistryEvent> {
     const serializedFname = utils.serializeFname(fname);
 
@@ -626,27 +249,6 @@ export class Client {
   /*                                 Submit Methods                             */
   /* -------------------------------------------------------------------------- */
 
-  /**
-   * TODO DOCS: description
-   *
-   * Note: Data from this stream can be parsed using `deserializeHubEvent`.
-   *
-   * TODO DOCS: usage example, here's the structure:
-   * @example
-   * ```typescript
-   * import { ... } from '@farcaster/js';
-   *
-   * const client = new Client(...)
-   * const result = await client.get...
-   * console.log(result)
-   *
-   * // Output: ...
-   * ```
-   *
-   * @param ...
-   *
-   * @returns ...
-   */
   async subscribe(filters: EventFilters = {}) {
     const request = protobufs.SubscribeRequest.create({ ...filters });
     return this._grpcClient.subscribe(request);
