@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/protobufs",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -18,14 +18,14 @@
   "scripts": {
     "build": "tsup --config tsup.config.ts",
     "clean": "rimraf ./dist",
-    "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/generated/ --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputServices=grpc-js,useOptionals=none --proto_path=./src/schemas ./src/schemas/*",
+    "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/generated/ --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputServices=grpc-js,useOptionals=none,unrecognizedEnum=false,removeEnumPrefix=true --proto_path=./src/schemas ./src/schemas/*",
     "lint": "eslint  src/ --color --ext .ts",
     "lint:fix": "yarn run lint -- --fix",
     "prepublishOnly": "yarn run build"
   },
   "devDependencies": {
     "eslint-config-custom": "*",
-    "ts-proto": "^1.139.0",
+    "ts-proto": "^1.140.0",
     "tsconfig": "*"
   },
   "dependencies": {

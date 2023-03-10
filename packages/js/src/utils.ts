@@ -192,8 +192,10 @@ export const deserializeMessageData = (protobuf: protobufs.MessageData): HubResu
     bodyResult = deserializeCastRemoveBody(protobuf.castRemoveBody);
   } else if (protobuf.reactionBody) {
     bodyResult = deserializeReactionBody(protobuf.reactionBody);
-  } else if (protobuf.signerBody) {
-    bodyResult = deserializeSignerBody(protobuf.signerBody);
+  } else if (protobuf.signerAddBody) {
+    bodyResult = deserializeSignerAddBody(protobuf.signerAddBody);
+  } else if (protobuf.signerRemoveBody) {
+    bodyResult = deserializeSignerRemoveBody(protobuf.signerRemoveBody);
   } else if (protobuf.userDataBody) {
     bodyResult = deserializeUserDataBody(protobuf.userDataBody);
   } else if (protobuf.verificationAddEthAddressBody) {
@@ -294,7 +296,30 @@ export const deserializeVerificationAddEthAddressBody = (
   });
 };
 
-export const deserializeSignerBody = (protobuf: protobufs.SignerBody): HubResult<types.SignerBody> => {
+export const deserializeSignerAddBody = (protobuf: protobufs.SignerAddBody): HubResult<types.SignerAddBody> => {
+  const signerJson = deserializeEd25519PublicKey(protobuf.signer);
+  if (signerJson.isErr()) {
+    return err(signerJson.error);
+  }
+
+  return ok({
+    signer: signerJson.value,
+    name: protobuf.name,
+  });
+};
+
+export const serializeSignerAddBody = (body: types.SignerAddBody): HubResult<protobufs.SignerAddBody> => {
+  const signer = serializeEd25519PublicKey(body.signer);
+  if (signer.isErr()) {
+    return err(signer.error);
+  }
+
+  return ok(protobufs.SignerAddBody.create({ signer: signer.value, name: body.name }));
+};
+
+export const deserializeSignerRemoveBody = (
+  protobuf: protobufs.SignerRemoveBody
+): HubResult<types.SignerRemoveBody> => {
   const signerJson = deserializeEd25519PublicKey(protobuf.signer);
   if (signerJson.isErr()) {
     return err(signerJson.error);
@@ -305,13 +330,13 @@ export const deserializeSignerBody = (protobuf: protobufs.SignerBody): HubResult
   });
 };
 
-export const serializeSignerBody = (body: types.SignerBody): HubResult<protobufs.SignerBody> => {
+export const serializeSignerRemoveBody = (body: types.SignerRemoveBody): HubResult<protobufs.SignerRemoveBody> => {
   const signer = serializeEd25519PublicKey(body.signer);
   if (signer.isErr()) {
     return err(signer.error);
   }
 
-  return ok(protobufs.SignerBody.create({ signer: signer.value }));
+  return ok(protobufs.SignerRemoveBody.create({ signer: signer.value }));
 };
 
 export const serializeVerificationAddEthAddressBody = (

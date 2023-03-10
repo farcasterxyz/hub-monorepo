@@ -168,12 +168,22 @@ describe('VerificationRemoveBody', () => {
   });
 });
 
-describe('SignerBody', () => {
+describe('SignerAddBody', () => {
   test('suceeds when deserialized and serialized', () => {
-    const body = Factories.SignerBody.build();
-    const deserialized = utils.deserializeSignerBody(body);
+    const body = Factories.SignerAddBody.build();
+    const deserialized = utils.deserializeSignerAddBody(body);
     expect(deserialized.isOk()).toBeTruthy();
-    const serialized = utils.serializeSignerBody(deserialized._unsafeUnwrap());
+    const serialized = utils.serializeSignerAddBody(deserialized._unsafeUnwrap());
+    expect(serialized).toEqual(ok(body));
+  });
+});
+
+describe('SignerRemoveBody', () => {
+  test('suceeds when deserialized and serialized', () => {
+    const body = Factories.SignerRemoveBody.build();
+    const deserialized = utils.deserializeSignerRemoveBody(body);
+    expect(deserialized.isOk()).toBeTruthy();
+    const serialized = utils.serializeSignerRemoveBody(deserialized._unsafeUnwrap());
     expect(serialized).toEqual(ok(body));
   });
 });

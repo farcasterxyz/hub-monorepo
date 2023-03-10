@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Factories, getHubRpcClient, HubRpcClient } from '@farcaster/utils';
+import { Factories, getInsecureHubRpcClient, HubRpcClient } from '@farcaster/utils';
 import { multiaddr } from '@multiformats/multiaddr/';
 import { GossipNode } from '~/network/p2p/gossipNode';
 import Server from '~/rpc/server';
@@ -87,7 +87,7 @@ describe('GossipNode', () => {
 
   describe('gossip messages', () => {
     const db = jestRocksDB('protobufs.rpc.gossipMessageTest.test');
-    const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
+    const network = protobufs.FarcasterNetwork.TESTNET;
     const engine = new Engine(db, network);
     const hub = new MockHub(db, engine);
 
@@ -106,7 +106,7 @@ describe('GossipNode', () => {
       custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
 
       signerAdd = await Factories.SignerAddMessage.create(
-        { data: { fid, network, signerBody: { signer: signer.signerKey } } },
+        { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
         { transient: { signer: custodySigner } }
       );
 
@@ -124,7 +124,7 @@ describe('GossipNode', () => {
       const syncEngine = new SyncEngine(engine, db);
       server = new Server(hub, engine, syncEngine, mockGossipNode);
       const port = await server.start();
-      client = getHubRpcClient(`127.0.0.1:${port}`);
+      client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 
       await client.submitIdRegistryEvent(custodyEvent);
 

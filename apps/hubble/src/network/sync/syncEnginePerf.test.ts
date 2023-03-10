@@ -12,7 +12,7 @@ import { EMPTY_HASH } from './trieNode';
 const testDb = jestRocksDB(`engine.syncEnginePerf.test`);
 const testDb2 = jestRocksDB(`engine2.syncEnginePerf.test`);
 
-const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
+const network = protobufs.FarcasterNetwork.TESTNET;
 
 const fid = Factories.Fid.build();
 const custodySigner = Factories.Eip712Signer.build();
@@ -25,7 +25,7 @@ beforeAll(async () => {
   custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
 
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerBody: { signer: signer.signerKey } } },
+    { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
     { transient: { signer: custodySigner } }
   );
 });
@@ -35,7 +35,7 @@ describe('SyncEngine', () => {
 
   beforeEach(async () => {
     await testDb.clear();
-    engine = new Engine(testDb, FarcasterNetwork.FARCASTER_NETWORK_TESTNET);
+    engine = new Engine(testDb, FarcasterNetwork.TESTNET);
   });
 
   const addMessagesWithTimestamps = async (timestamps: number[], mergeEngine?: Engine) => {
@@ -62,9 +62,9 @@ describe('SyncEngine', () => {
       testDb.clear();
       testDb2.clear();
 
-      const engine1 = new Engine(testDb, FarcasterNetwork.FARCASTER_NETWORK_TESTNET);
+      const engine1 = new Engine(testDb, FarcasterNetwork.TESTNET);
       syncEngine1 = new SyncEngine(engine1, testDb);
-      const engine2 = new Engine(testDb2, FarcasterNetwork.FARCASTER_NETWORK_TESTNET);
+      const engine2 = new Engine(testDb2, FarcasterNetwork.TESTNET);
       syncEngine2 = new SyncEngine(engine2, testDb2);
 
       await engine1.mergeIdRegistryEvent(custodyEvent);

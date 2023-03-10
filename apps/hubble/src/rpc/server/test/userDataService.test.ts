@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesToUtf8String, Factories, getHubRpcClient, HubError, HubRpcClient } from '@farcaster/utils';
+import { bytesToUtf8String, Factories, getInsecureHubRpcClient, HubError, HubRpcClient } from '@farcaster/utils';
 import { Ok } from 'neverthrow';
 import SyncEngine from '~/network/sync/syncEngine';
 import Server from '~/rpc/server';
@@ -8,7 +8,7 @@ import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
 
 const db = jestRocksDB('protobufs.rpc.userdataservice.test');
-const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
+const network = protobufs.FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
 
@@ -18,7 +18,7 @@ let client: HubRpcClient;
 beforeAll(async () => {
   server = new Server(hub, engine, new SyncEngine(engine, db));
   const port = await server.start();
-  client = getHubRpcClient(`127.0.0.1:${port}`);
+  client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {
@@ -42,17 +42,17 @@ beforeAll(async () => {
   custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
 
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerBody: { signer: signer.signerKey } } },
+    { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
     { transient: { signer: custodySigner } }
   );
 
   pfpAdd = await Factories.UserDataAddMessage.create(
-    { data: { fid, userDataBody: { type: protobufs.UserDataType.USER_DATA_TYPE_PFP } } },
+    { data: { fid, userDataBody: { type: protobufs.UserDataType.PFP } } },
     { transient: { signer } }
   );
 
   displayAdd = await Factories.UserDataAddMessage.create(
-    { data: { fid, userDataBody: { type: protobufs.UserDataType.USER_DATA_TYPE_DISPLAY } } },
+    { data: { fid, userDataBody: { type: protobufs.UserDataType.DISPLAY } } },
     { transient: { signer } }
   );
 
@@ -61,7 +61,7 @@ beforeAll(async () => {
       data: {
         fid,
         userDataBody: {
-          type: protobufs.UserDataType.USER_DATA_TYPE_FNAME,
+          type: protobufs.UserDataType.FNAME,
           value: bytesToUtf8String(fname)._unsafeUnwrap(),
         },
       },
@@ -81,12 +81,12 @@ describe('getUserData', () => {
     expect(await engine.mergeMessage(displayAdd)).toBeInstanceOf(Ok);
 
     const pfp = await client.getUserData(
-      protobufs.UserDataRequest.create({ fid, userDataType: protobufs.UserDataType.USER_DATA_TYPE_PFP })
+      protobufs.UserDataRequest.create({ fid, userDataType: protobufs.UserDataType.PFP })
     );
     expect(protobufs.Message.toJSON(pfp._unsafeUnwrap())).toEqual(protobufs.Message.toJSON(pfpAdd));
 
     const display = await client.getUserData(
-      protobufs.UserDataRequest.create({ fid, userDataType: protobufs.UserDataType.USER_DATA_TYPE_DISPLAY })
+      protobufs.UserDataRequest.create({ fid, userDataType: protobufs.UserDataType.DISPLAY })
     );
     expect(protobufs.Message.toJSON(display._unsafeUnwrap())).toEqual(protobufs.Message.toJSON(displayAdd));
 
@@ -95,25 +95,25 @@ describe('getUserData', () => {
 
     expect(await engine.mergeMessage(addFname)).toBeInstanceOf(Ok);
     const fnameData = await client.getUserData(
-      protobufs.UserDataRequest.create({ fid, userDataType: protobufs.UserDataType.USER_DATA_TYPE_FNAME })
+      protobufs.UserDataRequest.create({ fid, userDataType: protobufs.UserDataType.FNAME })
     );
     expect(protobufs.Message.toJSON(fnameData._unsafeUnwrap())).toEqual(protobufs.Message.toJSON(addFname));
   });
 
   test('fails when user data is missing', async () => {
     const pfp = await client.getUserData(
-      protobufs.UserDataRequest.create({ fid, userDataType: protobufs.UserDataType.USER_DATA_TYPE_PFP })
+      protobufs.UserDataRequest.create({ fid, userDataType: protobufs.UserDataType.PFP })
     );
     expect(pfp._unsafeUnwrapErr().errCode).toEqual('not_found');
     const fname = await client.getUserData(
-      protobufs.UserDataRequest.create({ fid, userDataType: protobufs.UserDataType.USER_DATA_TYPE_FNAME })
+      protobufs.UserDataRequest.create({ fid, userDataType: protobufs.UserDataType.FNAME })
     );
     expect(fname._unsafeUnwrapErr().errCode).toEqual('not_found');
   });
 
   test('fails without fid', async () => {
     const result = await client.getUserData(
-      protobufs.UserDataRequest.create({ fid: 0, userDataType: protobufs.UserDataType.USER_DATA_TYPE_PFP })
+      protobufs.UserDataRequest.create({ fid: 0, userDataType: protobufs.UserDataType.PFP })
     );
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is missing'));
   });

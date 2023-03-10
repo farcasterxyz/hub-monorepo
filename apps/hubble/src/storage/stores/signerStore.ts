@@ -222,7 +222,7 @@ class SignerStore {
       this._db,
       fid,
       signer,
-      protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD
+      protobufs.MessageType.SIGNER_ADD
     );
 
     // Get all SignerRemove messages signed by signer
@@ -230,7 +230,7 @@ class SignerStore {
       this._db,
       fid,
       signer,
-      protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE
+      protobufs.MessageType.SIGNER_REMOVE
     );
 
     // Return if no messages found
@@ -400,9 +400,9 @@ class SignerStore {
   }
 
   private signerMessageCompare(
-    aType: protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD | protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
+    aType: protobufs.MessageType.SIGNER_ADD | protobufs.MessageType.SIGNER_REMOVE,
     aTsHash: Uint8Array,
-    bType: protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD | protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
+    bType: protobufs.MessageType.SIGNER_ADD | protobufs.MessageType.SIGNER_REMOVE,
     bTsHash: Uint8Array
   ): number {
     // Compare timestamps (first 4 bytes of tsHash) to enforce Last-Write-Wins
@@ -411,15 +411,9 @@ class SignerStore {
       return timestampOrder;
     }
 
-    if (
-      aType === protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE &&
-      bType === protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD
-    ) {
+    if (aType === protobufs.MessageType.SIGNER_REMOVE && bType === protobufs.MessageType.SIGNER_ADD) {
       return 1;
-    } else if (
-      aType === protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD &&
-      bType === protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE
-    ) {
+    } else if (aType === protobufs.MessageType.SIGNER_ADD && bType === protobufs.MessageType.SIGNER_REMOVE) {
       return -1;
     }
 
@@ -437,7 +431,7 @@ class SignerStore {
   ): HubAsyncResult<(protobufs.SignerAddMessage | protobufs.SignerRemoveMessage)[]> {
     const conflicts: (protobufs.SignerAddMessage | protobufs.SignerRemoveMessage)[] = [];
 
-    const signer = message.data.signerBody.signer;
+    const signer = (message.data.signerAddBody ?? message.data.signerRemoveBody)?.signer;
     if (!signer) {
       return err(new HubError('bad_request.validation_failure', 'signer is missing'));
     }
@@ -455,7 +449,7 @@ class SignerStore {
 
     if (removeTsHash.isOk()) {
       const removeCompare = this.signerMessageCompare(
-        protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE,
+        protobufs.MessageType.SIGNER_REMOVE,
         removeTsHash.value,
         message.data.type,
         tsHash.value
@@ -485,7 +479,7 @@ class SignerStore {
 
     if (addTsHash.isOk()) {
       const addCompare = this.signerMessageCompare(
-        protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD,
+        protobufs.MessageType.SIGNER_ADD,
         addTsHash.value,
         message.data.type,
         tsHash.value
@@ -535,7 +529,7 @@ class SignerStore {
     txn = putMessageTransaction(txn, message);
 
     // Put signerAdds index
-    txn = txn.put(makeSignerAddsKey(message.data.fid, message.data.signerBody.signer), Buffer.from(tsHash.value));
+    txn = txn.put(makeSignerAddsKey(message.data.fid, message.data.signerAddBody.signer), Buffer.from(tsHash.value));
 
     return txn;
   }
@@ -543,7 +537,7 @@ class SignerStore {
   /* Builds a RocksDB transaction to remove a SignerAdd message and delete its indices */
   private deleteSignerAddTransaction(txn: Transaction, message: protobufs.SignerAddMessage): Transaction {
     // Delete from signerAdds
-    txn = txn.del(makeSignerAddsKey(message.data.fid, message.data.signerBody.signer));
+    txn = txn.del(makeSignerAddsKey(message.data.fid, message.data.signerAddBody.signer));
 
     // Delete message
     return deleteMessageTransaction(txn, message);
@@ -560,7 +554,10 @@ class SignerStore {
     txn = putMessageTransaction(txn, message);
 
     // Put signerRemoves index
-    txn = txn.put(makeSignerRemovesKey(message.data.fid, message.data.signerBody.signer), Buffer.from(tsHash.value));
+    txn = txn.put(
+      makeSignerRemovesKey(message.data.fid, message.data.signerRemoveBody.signer),
+      Buffer.from(tsHash.value)
+    );
 
     return txn;
   }
@@ -568,7 +565,7 @@ class SignerStore {
   /* Builds a RocksDB transaction to remove a SignerRemove message and delete its indices */
   private deleteSignerRemoveTransaction(txn: Transaction, message: protobufs.SignerRemoveMessage): Transaction {
     // Delete from signerRemoves
-    txn = txn.del(makeSignerRemovesKey(message.data.fid, message.data.signerBody.signer));
+    txn = txn.del(makeSignerRemovesKey(message.data.fid, message.data.signerRemoveBody.signer));
 
     // Delete message
     return deleteMessageTransaction(txn, message);

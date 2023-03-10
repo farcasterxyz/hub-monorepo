@@ -26,7 +26,8 @@ import {
   getServer,
   status,
 } from '@farcaster/protobufs';
-import { HubError } from '@farcaster/utils';
+import { HubAsyncResult, HubError } from '@farcaster/utils';
+import { err, ok } from 'neverthrow';
 import { APP_NICKNAME, APP_VERSION, HubInterface } from '~/hubble';
 import { GossipNode } from '~/network/p2p/gossipNode';
 import { NodeMetadata } from '~/network/sync/merkleTrie';
@@ -34,6 +35,8 @@ import SyncEngine from '~/network/sync/syncEngine';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts } from '~/utils/p2p';
+
+const log = logger.child({ component: 'rpcServer' });
 
 export const toServiceError = (err: HubError): ServiceError => {
   let grpcCode: number;
@@ -79,7 +82,10 @@ export default class Server {
   private grpcServer: GrpcServer;
   private port: number;
 
-  constructor(hub?: HubInterface, engine?: Engine, syncEngine?: SyncEngine, gossipNode?: GossipNode) {
+  private rpcAuthUser: string | undefined;
+  private rpcAuthPass: string | undefined;
+
+  constructor(hub?: HubInterface, engine?: Engine, syncEngine?: SyncEngine, gossipNode?: GossipNode, rpcAuth?: string) {
     this.hub = hub;
     this.engine = engine;
     this.syncEngine = syncEngine;
@@ -87,6 +93,15 @@ export default class Server {
 
     this.grpcServer = getServer();
     this.port = 0;
+
+    const [rpcAuthUser, rpcAuthPass] = rpcAuth?.split(':') ?? [undefined, undefined];
+    if (rpcAuthUser && rpcAuthPass) {
+      this.rpcAuthUser = rpcAuthUser;
+      this.rpcAuthPass = rpcAuthPass;
+
+      log.info({ username: this.rpcAuthUser }, 'RPC auth enabled');
+    }
+
     this.grpcServer.addService(HubServiceService, this.getImpl());
   }
 
@@ -111,12 +126,15 @@ export default class Server {
     return new Promise((resolve, reject) => {
       if (force) {
         this.grpcServer.forceShutdown();
+        log.info({ component: 'gRPC Server' }, `Force shutdown succeeded`);
         resolve();
       } else {
         this.grpcServer.tryShutdown((err) => {
           if (err) {
+            log.error({ component: 'gRPC Server' }, `Shutdown failed: ${err}`);
             reject(err);
           } else {
+            log.info({ component: 'gRPC Server' }, `Shutdown succeeded`);
             resolve();
           }
         });
@@ -127,6 +145,35 @@ export default class Server {
   get address() {
     const addr = addressInfoFromParts('0.0.0.0', this.port);
     return addr;
+  }
+
+  // Check if the user is authenticated via the metadata
+  async authenticateUser(metadata: Metadata): HubAsyncResult<boolean> {
+    // If there is no auth user/pass, we don't need to authenticate
+    if (!this.rpcAuthUser || !this.rpcAuthPass) {
+      return ok(true);
+    }
+
+    if (metadata.get('authorization')) {
+      const authHeader = metadata.get('authorization')[0] as string;
+      if (!authHeader) {
+        return err(new HubError('unauthenticated', 'Authorization header is empty'));
+      }
+
+      const encodedCredentials = authHeader.replace('Basic ', '');
+      const decodedCredentials = Buffer.from(encodedCredentials, 'base64').toString('utf-8');
+      const [username, password] = decodedCredentials.split(':');
+      if (!username || !password) {
+        return err(new HubError('unauthenticated', `Invalid username: ${username}`));
+      }
+
+      if (username === this.rpcAuthUser && password === this.rpcAuthPass) {
+        return ok(true);
+      } else {
+        return err(new HubError('unauthenticated', `Invalid password for user: ${username}`));
+      }
+    }
+    return err(new HubError('unauthenticated', 'No authorization header'));
   }
 
   getImpl = (): HubServiceServer => {
@@ -225,6 +272,13 @@ export default class Server {
         })();
       },
       submitMessage: async (call, callback) => {
+        const authResult = await this.authenticateUser(call.metadata);
+        if (authResult.isErr()) {
+          logger.warn({ errMsg: authResult.error.message }, 'submitMessage failed');
+          callback(toServiceError(new HubError('unauthenticated', 'User is not authenticated')));
+          return;
+        }
+
         const message = call.request;
         const result = await this.hub?.submitMessage(message, 'rpc');
         result?.match(
@@ -242,6 +296,13 @@ export default class Server {
         );
       },
       submitIdRegistryEvent: async (call, callback) => {
+        const authResult = await this.authenticateUser(call.metadata);
+        if (authResult.isErr()) {
+          logger.warn({ errMsg: authResult.error.message }, 'submitIdRegistry failed');
+          callback(toServiceError(new HubError('unauthenticated', 'User is not authenticated')));
+          return;
+        }
+
         const idRegistryEvent = call.request;
 
         const result = await this.hub?.submitIdRegistryEvent(idRegistryEvent, 'rpc');
@@ -257,6 +318,13 @@ export default class Server {
         );
       },
       submitNameRegistryEvent: async (call, callback) => {
+        const authResult = await this.authenticateUser(call.metadata);
+        if (authResult.isErr()) {
+          logger.warn({ errMsg: authResult.error.message }, 'submitNameRegistry failed');
+          callback(toServiceError(new HubError('unauthenticated', 'User is not authenticated')));
+          return;
+        }
+
         const nameRegistryEvent = call.request;
         const result = await this.hub?.submitNameRegistryEvent(nameRegistryEvent, 'rpc');
         result?.match(
@@ -339,8 +407,7 @@ export default class Server {
       },
       getReactionsByFid: async (call, callback) => {
         const request = call.request;
-        const reactionType =
-          request.reactionType === ReactionType.REACTION_TYPE_NONE ? undefined : request.reactionType;
+        const reactionType = request.reactionType === ReactionType.NONE ? undefined : request.reactionType;
         const reactionsResult = await this.engine?.getReactionsByFid(request.fid, reactionType);
         reactionsResult?.match(
           (reactions: ReactionAddMessage[]) => {
@@ -353,8 +420,7 @@ export default class Server {
       },
       getReactionsByCast: async (call, callback) => {
         const request = call.request;
-        const reactionType =
-          request.reactionType === ReactionType.REACTION_TYPE_NONE ? undefined : request.reactionType;
+        const reactionType = request.reactionType === ReactionType.NONE ? undefined : request.reactionType;
         const reactionsResult = await this.engine?.getReactionsByCast(request.castId ?? CastId.create(), reactionType);
         reactionsResult?.match(
           (reactions: ReactionAddMessage[]) => {
@@ -582,15 +648,15 @@ export default class Server {
           this.engine?.eventHandler.on('mergeNameRegistryEvent', eventListener);
         } else {
           for (const eventType of request.eventTypes) {
-            if (eventType === HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE) {
+            if (eventType === HubEventType.MERGE_MESSAGE) {
               this.engine?.eventHandler.on('mergeMessage', eventListener);
-            } else if (eventType === HubEventType.HUB_EVENT_TYPE_PRUNE_MESSAGE) {
+            } else if (eventType === HubEventType.PRUNE_MESSAGE) {
               this.engine?.eventHandler.on('pruneMessage', eventListener);
-            } else if (eventType === HubEventType.HUB_EVENT_TYPE_REVOKE_MESSAGE) {
+            } else if (eventType === HubEventType.REVOKE_MESSAGE) {
               this.engine?.eventHandler.on('revokeMessage', eventListener);
-            } else if (eventType === HubEventType.HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT) {
+            } else if (eventType === HubEventType.MERGE_ID_REGISTRY_EVENT) {
               this.engine?.eventHandler.on('mergeIdRegistryEvent', eventListener);
-            } else if (eventType === HubEventType.HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT) {
+            } else if (eventType === HubEventType.MERGE_NAME_REGISTRY_EVENT) {
               this.engine?.eventHandler.on('mergeNameRegistryEvent', eventListener);
             }
           }

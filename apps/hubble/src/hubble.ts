@@ -88,11 +88,23 @@ export interface HubOptions {
   /** Port for the RPC Client */
   rpcPort?: number;
 
+  /** Username and Password to use for RPC submit methods */
+  rpcAuth?: string;
+
   /** Network URL of the IdRegistry Contract */
   ethRpcUrl?: string;
 
   /** Address of the IdRegistry contract  */
-  IdRegistryAddress?: string;
+  idRegistryAddress?: string;
+
+  /** Address of the NameRegistryAddress contract  */
+  nameRegistryAddress?: string;
+
+  /** Block number to begin syncing events from  */
+  firstBlock?: number;
+
+  /** Number of blocks to batch when syncing historical events  */
+  chunkSize?: number;
 
   /** Name of the RocksDB instance */
   rocksDBName?: string;
@@ -152,15 +164,18 @@ export class Hub implements HubInterface {
     this.engine = new Engine(this.rocksDB, options.network);
     this.syncEngine = new SyncEngine(this.engine, this.rocksDB);
 
-    this.rpcServer = new Server(this, this.engine, this.syncEngine, this.gossipNode);
+    this.rpcServer = new Server(this, this.engine, this.syncEngine, this.gossipNode, options.rpcAuth);
     this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine);
 
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
-    this.ethRegistryProvider = EthEventsProvider.makeWithGoerli(
+    // Defaults to Goerli testnet, which is currently used for Production Farcaster Hubs.
+    this.ethRegistryProvider = EthEventsProvider.build(
       this,
       options.ethRpcUrl ?? '',
-      GoerliEthConstants.IdRegistryAddress,
-      GoerliEthConstants.NameRegistryAddress
+      options.idRegistryAddress ?? GoerliEthConstants.IdRegistryAddress,
+      options.nameRegistryAddress ?? GoerliEthConstants.NameRegistryAddress,
+      options.firstBlock ?? GoerliEthConstants.FirstBlock,
+      options.chunkSize ?? GoerliEthConstants.ChunkSize
     );
 
     // Setup job queues
@@ -277,7 +292,7 @@ export class Hub implements HubInterface {
     clearInterval(this.contactTimer);
 
     // First, stop the RPC/Gossip server so we don't get any more messages
-    await this.rpcServer.stop();
+    await this.rpcServer.stop(true); // Force shutdown until we have a graceful way of ending active streams
     await this.adminServer.stop();
     await this.gossipNode.stop();
 
@@ -431,7 +446,7 @@ export class Hub implements HubInterface {
     }
 
     if (isIP(rpcAddressInfo.value.address)) {
-      return getHubRpcClient(`${rpcAddressInfo.value.address}:${rpcAddressInfo.value.port}`);
+      return await getHubRpcClient(`${rpcAddressInfo.value.address}:${rpcAddressInfo.value.port}`);
     }
 
     log.info({ peerId }, 'falling back to addressbook lookup for peer');
@@ -458,7 +473,7 @@ export class Hub implements HubInterface {
       port: rpcAddressInfo.value.port,
     };
 
-    return getHubRpcClient(addressInfoToString(ai));
+    return await getHubRpcClient(addressInfoToString(ai));
   }
 
   private registerEventHandlers() {
@@ -468,7 +483,7 @@ export class Hub implements HubInterface {
       if (protobufs.isSignerRemoveMessage(message)) {
         const revokeSignerPayload = RevokeSignerJobQueue.makePayload(
           message.data?.fid ?? 0,
-          message.data?.signerBody?.signer ?? new Uint8Array()
+          message.data?.signerRemoveBody?.signer ?? new Uint8Array()
         );
         if (revokeSignerPayload.isOk()) {
           // Revoke signer in one hour

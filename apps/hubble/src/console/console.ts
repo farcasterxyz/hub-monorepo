@@ -9,6 +9,7 @@ import { AdminCommand } from './adminCommand';
 import { GenCommand } from './genCommand';
 import { FactoriesCommand, ProtobufCommand } from './protobufCommand';
 import { RpcClientCommand } from './rpcClientCommand';
+import { WarpcastTestCommand } from './warpcastTestCommand';
 
 export const DEFAULT_RPC_CONSOLE = '127.0.0.1:13112';
 
@@ -40,7 +41,7 @@ export const startConsole = async (addressString: string) => {
     }
   });
 
-  const rpcClient = getHubRpcClient(addressString);
+  const rpcClient = await getHubRpcClient(addressString);
   const adminClient = protobufs.getAdminClient(getAdminSocket());
 
   const commands: ConsoleCommandInterface[] = [
@@ -48,6 +49,7 @@ export const startConsole = async (addressString: string) => {
     new ProtobufCommand(),
     new FactoriesCommand(),
     new GenCommand(rpcClient),
+    new WarpcastTestCommand(rpcClient),
     new AdminCommand(adminClient),
   ];
 

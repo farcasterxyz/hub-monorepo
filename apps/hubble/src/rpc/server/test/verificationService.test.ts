@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Factories, getHubRpcClient, HubError, HubRpcClient } from '@farcaster/utils';
+import { Factories, getInsecureHubRpcClient, HubError, HubRpcClient } from '@farcaster/utils';
 import SyncEngine from '~/network/sync/syncEngine';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
@@ -7,7 +7,7 @@ import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
 
 const db = jestRocksDB('protobufs.rpc.verificationService.test');
-const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
+const network = protobufs.FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
 
@@ -17,7 +17,7 @@ let client: HubRpcClient;
 beforeAll(async () => {
   server = new Server(hub, engine, new SyncEngine(engine, db));
   const port = await server.start();
-  client = getHubRpcClient(`127.0.0.1:${port}`);
+  client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {
@@ -38,7 +38,7 @@ beforeAll(async () => {
   custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
 
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerBody: { signer: signer.signerKey } } },
+    { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
     { transient: { signer: custodySigner } }
   );
 

@@ -24,7 +24,7 @@ export const seedSigner = async (
   /** Generate and merge SignerAdd linking the signer to the fid and signed by the eth wallet */
   const signerAdd = await Factories.SignerAddMessage.create(
     {
-      data: { fid, signerBody: { signer } },
+      data: { fid, signerAddBody: { signer } },
     },
     { transient: { signer: ethSigner } }
   );

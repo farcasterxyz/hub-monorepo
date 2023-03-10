@@ -29,6 +29,8 @@ export class EthEventsProvider {
 
   private _idRegistryContract: Contract;
   private _nameRegistryContract: Contract;
+  private _firstBlock: number;
+  private _chunkSize: number;
 
   private _numConfirmations: number;
 
@@ -45,12 +47,16 @@ export class EthEventsProvider {
     hub: HubInterface,
     jsonRpcProvider: providers.BaseProvider,
     idRegistryContract: Contract,
-    nameRegistryContract: Contract
+    nameRegistryContract: Contract,
+    firstBlock: number,
+    chunkSize: number
   ) {
     this._hub = hub;
     this._jsonRpcProvider = jsonRpcProvider;
     this._idRegistryContract = idRegistryContract;
     this._nameRegistryContract = nameRegistryContract;
+    this._firstBlock = firstBlock;
+    this._chunkSize = chunkSize;
 
     // Number of blocks to wait before processing an event.
     // This is hardcoded to 6 for now, because that's the threshold beyond which blocks are unlikely to reorg anymore.
@@ -67,10 +73,10 @@ export class EthEventsProvider {
 
     // Setup IdRegistry contract
     this._idRegistryContract.on('Register', (to: string, id: BigNumber, _recovery, _url, event: Event) => {
-      this.cacheIdRegistryEvent(null, to, id, protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER, event);
+      this.cacheIdRegistryEvent(null, to, id, protobufs.IdRegistryEventType.REGISTER, event);
     });
     this._idRegistryContract.on('Transfer', (from: string, to: string, id: BigNumber, event: Event) => {
-      this.cacheIdRegistryEvent(from, to, id, protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_TRANSFER, event);
+      this.cacheIdRegistryEvent(from, to, id, protobufs.IdRegistryEventType.TRANSFER, event);
     });
 
     // Setup NameRegistry contract
@@ -88,21 +94,30 @@ export class EthEventsProvider {
 
   /**
    *
-   * Setup a Eth Events Provider with Goerli testnet, which is currently used for Production Farcaster Hubs.
+   * Build an Eth Events Provider for the ID Registry and Name Registry contracts.
    */
-  public static makeWithGoerli(
+  public static build(
     hub: HubInterface,
     ethRpcUrl: string,
-    IdRegistryAddress: string,
-    NameRegistryAddress: string
+    idRegistryAddress: string,
+    nameRegistryAddress: string,
+    firstBlock: number,
+    chunkSize: number
   ): EthEventsProvider {
     // Setup provider and the contracts
     const jsonRpcProvider = new providers.JsonRpcProvider(ethRpcUrl);
 
-    const idRegistryContract = new Contract(IdRegistryAddress, IdRegistry.abi, jsonRpcProvider);
-    const nameRegistryContract = new Contract(NameRegistryAddress, NameRegistry.abi, jsonRpcProvider);
+    const idRegistryContract = new Contract(idRegistryAddress, IdRegistry.abi, jsonRpcProvider);
+    const nameRegistryContract = new Contract(nameRegistryAddress, NameRegistry.abi, jsonRpcProvider);
 
-    const provider = new EthEventsProvider(hub, jsonRpcProvider, idRegistryContract, nameRegistryContract);
+    const provider = new EthEventsProvider(
+      hub,
+      jsonRpcProvider,
+      idRegistryContract,
+      nameRegistryContract,
+      firstBlock,
+      chunkSize
+    );
 
     return provider;
   }
@@ -165,7 +180,7 @@ export class EthEventsProvider {
     log.info({ latestBlock: latestBlock.number }, 'connected to ethereum node');
 
     // Find how how much we need to sync
-    let lastSyncedBlock = GoerliEthConstants.FirstBlock;
+    let lastSyncedBlock = this._firstBlock;
 
     const hubState = await this._hub.getHubState();
     if (hubState.isOk()) {
@@ -177,24 +192,24 @@ export class EthEventsProvider {
 
     // Sync old Id events
     await this.syncHistoricalIdEvents(
-      protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER,
+      protobufs.IdRegistryEventType.REGISTER,
       lastSyncedBlock,
       toBlock,
-      GoerliEthConstants.ChunkSize
+      this._chunkSize
     );
     await this.syncHistoricalIdEvents(
-      protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_TRANSFER,
+      protobufs.IdRegistryEventType.TRANSFER,
       lastSyncedBlock,
       toBlock,
-      GoerliEthConstants.ChunkSize
+      this._chunkSize
     );
 
     // Sync old Name Transfer events
     await this.syncHistoricalNameEvents(
-      protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER,
+      protobufs.NameRegistryEventType.TRANSFER,
       lastSyncedBlock,
       toBlock,
-      GoerliEthConstants.ChunkSize
+      this._chunkSize
     );
 
     // We don't need to sync historical Renew events because the expiry
@@ -213,7 +228,7 @@ export class EthEventsProvider {
     toBlock: number,
     batchSize: number
   ) {
-    const typeString = type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ? 'Register' : 'Transfer';
+    const typeString = type === protobufs.IdRegistryEventType.REGISTER ? 'Register' : 'Transfer';
 
     /*
      * How querying blocks in batches works
@@ -262,15 +277,14 @@ export class EthEventsProvider {
 
       // Loop through each event, get the right values, and cache it
       for (const event of batchIdEvents.value) {
-        const toIndex = type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ? 0 : 1;
-        const idIndex = type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ? 1 : 2;
+        const toIndex = type === protobufs.IdRegistryEventType.REGISTER ? 0 : 1;
+        const idIndex = type === protobufs.IdRegistryEventType.REGISTER ? 1 : 2;
 
         // Parsing can throw errors, so we'll just log them and continue
         try {
           const to: string = event.args?.at(toIndex);
           const id: BigNumber = BigNumber.from(event.args?.at(idIndex));
-          const from: string =
-            type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ? null : event.args?.at(0);
+          const from: string = type === protobufs.IdRegistryEventType.REGISTER ? null : event.args?.at(0);
 
           await this.cacheIdRegistryEvent(from, to, id, type, event);
         } catch (e) {
@@ -290,8 +304,7 @@ export class EthEventsProvider {
     toBlock: number,
     batchSize: number
   ) {
-    const typeString =
-      type === protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER ? 'Transfer' : 'Renew';
+    const typeString = type === protobufs.NameRegistryEventType.TRANSFER ? 'Transfer' : 'Renew';
 
     /*
      * Querying Blocks in Batches
@@ -344,7 +357,7 @@ export class EthEventsProvider {
       }
 
       for (const event of oldNameBatchEvents.value) {
-        if (type === protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER) {
+        if (type === protobufs.NameRegistryEventType.TRANSFER) {
           // Handling: use try-catch + log since errors are expected and not importrant to surface
           try {
             const from: string = event.args?.at(0);
@@ -517,7 +530,7 @@ export class EthEventsProvider {
       fname: fnameBytes,
       from: fromBytes,
       to: toBytes,
-      type: protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER,
+      type: protobufs.NameRegistryEventType.TRANSFER,
     });
 
     // Add it to the cache
@@ -558,7 +571,7 @@ export class EthEventsProvider {
       transactionHash: transactionHashBytes,
       logIndex,
       fname: fnameBytes,
-      type: protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_RENEW,
+      type: protobufs.NameRegistryEventType.RENEW,
       expiry: farcasterTimeExpiry,
     };
 

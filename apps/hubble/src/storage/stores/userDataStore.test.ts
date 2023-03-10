@@ -17,30 +17,30 @@ let addBio: protobufs.UserDataAddMessage;
 
 beforeAll(async () => {
   addPfp = await Factories.UserDataAddMessage.create({
-    data: { fid, userDataBody: { type: protobufs.UserDataType.USER_DATA_TYPE_PFP } },
+    data: { fid, userDataBody: { type: protobufs.UserDataType.PFP } },
   });
   addBio = await Factories.UserDataAddMessage.create({
-    data: { fid, userDataBody: { type: protobufs.UserDataType.USER_DATA_TYPE_BIO } },
+    data: { fid, userDataBody: { type: protobufs.UserDataType.BIO } },
   });
 });
 
 describe('getUserDataAdd', () => {
   test('fails if missing', async () => {
-    await expect(set.getUserDataAdd(fid, protobufs.UserDataType.USER_DATA_TYPE_PFP)).rejects.toThrow(HubError);
-    await expect(set.getUserDataAdd(fid, protobufs.UserDataType.USER_DATA_TYPE_FNAME)).rejects.toThrow(HubError);
+    await expect(set.getUserDataAdd(fid, protobufs.UserDataType.PFP)).rejects.toThrow(HubError);
+    await expect(set.getUserDataAdd(fid, protobufs.UserDataType.FNAME)).rejects.toThrow(HubError);
   });
 
   test('fails if the wrong fid or datatype is provided', async () => {
     const unknownFid = Factories.Fid.build();
     await set.merge(addPfp);
 
-    await expect(set.getUserDataAdd(unknownFid, protobufs.UserDataType.USER_DATA_TYPE_PFP)).rejects.toThrow(HubError);
-    await expect(set.getUserDataAdd(fid, protobufs.UserDataType.USER_DATA_TYPE_BIO)).rejects.toThrow(HubError);
+    await expect(set.getUserDataAdd(unknownFid, protobufs.UserDataType.PFP)).rejects.toThrow(HubError);
+    await expect(set.getUserDataAdd(fid, protobufs.UserDataType.BIO)).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
     await set.merge(addPfp);
-    await expect(set.getUserDataAdd(fid, protobufs.UserDataType.USER_DATA_TYPE_PFP)).resolves.toEqual(addPfp);
+    await expect(set.getUserDataAdd(fid, protobufs.UserDataType.PFP)).resolves.toEqual(addPfp);
   });
 });
 
@@ -231,10 +231,10 @@ describe('pruneMessages', () => {
 
   beforeAll(async () => {
     const time = getFarcasterTime()._unsafeUnwrap() - 10;
-    add1 = await generateAddWithTimestamp(fid, time + 1, protobufs.UserDataType.USER_DATA_TYPE_PFP);
-    add2 = await generateAddWithTimestamp(fid, time + 2, protobufs.UserDataType.USER_DATA_TYPE_DISPLAY);
-    add3 = await generateAddWithTimestamp(fid, time + 3, protobufs.UserDataType.USER_DATA_TYPE_BIO);
-    add4 = await generateAddWithTimestamp(fid, time + 5, protobufs.UserDataType.USER_DATA_TYPE_URL);
+    add1 = await generateAddWithTimestamp(fid, time + 1, protobufs.UserDataType.PFP);
+    add2 = await generateAddWithTimestamp(fid, time + 2, protobufs.UserDataType.DISPLAY);
+    add3 = await generateAddWithTimestamp(fid, time + 3, protobufs.UserDataType.BIO);
+    add4 = await generateAddWithTimestamp(fid, time + 5, protobufs.UserDataType.URL);
   });
 
   describe('with size limit', () => {

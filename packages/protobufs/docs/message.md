@@ -181,11 +181,11 @@ A Verification is a delta that contains a bi-directional signature proving that 
 
 Adds a Verification of ownership of an Ethereum Address
 
-| Field         | Type  | Label | Description                                                       |
-| ------------- | ----- | ----- | ----------------------------------------------------------------- |
-| address       | bytes |       | Ethereum address being verified                                   |
-| eth_signature | bytes |       | Signature produced by the user&#39;s Ethereum address             |
-| block_hash    | bytes |       | Hash of the latest Ethereum block when the signature was produced |
+| Field         | Type  | Label | Description                                                   |
+| ------------- | ----- | ----- | ------------------------------------------------------------- |
+| address       | bytes |       | Ethereum address being verified                               |
+| block_hash    | bytes |       | Hash of the latest Ethereum block when the claim was produced |
+| eth_signature | bytes |       | Signature produced by the user&#39;s Ethereum address         |
 
 ### 6.2 VerificationRemoveBody
 
@@ -194,3 +194,5 @@ Removes a Verification of any type
 | Field   | Type  | Label | Description                           |
 | ------- | ----- | ----- | ------------------------------------- |
 | address | bytes |       | Address of the Verification to remove |
+
+### 6.3 VerificationClaim

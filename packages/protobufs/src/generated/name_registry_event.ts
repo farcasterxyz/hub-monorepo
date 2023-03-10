@@ -2,41 +2,37 @@
 import _m0 from "protobufjs/minimal";
 
 export enum NameRegistryEventType {
-  NAME_REGISTRY_EVENT_TYPE_NONE = 0,
-  NAME_REGISTRY_EVENT_TYPE_TRANSFER = 1,
-  NAME_REGISTRY_EVENT_TYPE_RENEW = 2,
-  UNRECOGNIZED = -1,
+  NONE = 0,
+  TRANSFER = 1,
+  RENEW = 2,
 }
 
 export function nameRegistryEventTypeFromJSON(object: any): NameRegistryEventType {
   switch (object) {
     case 0:
     case "NAME_REGISTRY_EVENT_TYPE_NONE":
-      return NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_NONE;
+      return NameRegistryEventType.NONE;
     case 1:
     case "NAME_REGISTRY_EVENT_TYPE_TRANSFER":
-      return NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER;
+      return NameRegistryEventType.TRANSFER;
     case 2:
     case "NAME_REGISTRY_EVENT_TYPE_RENEW":
-      return NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_RENEW;
-    case -1:
-    case "UNRECOGNIZED":
+      return NameRegistryEventType.RENEW;
     default:
-      return NameRegistryEventType.UNRECOGNIZED;
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum NameRegistryEventType");
   }
 }
 
 export function nameRegistryEventTypeToJSON(object: NameRegistryEventType): string {
   switch (object) {
-    case NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_NONE:
+    case NameRegistryEventType.NONE:
       return "NAME_REGISTRY_EVENT_TYPE_NONE";
-    case NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER:
+    case NameRegistryEventType.TRANSFER:
       return "NAME_REGISTRY_EVENT_TYPE_TRANSFER";
-    case NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_RENEW:
+    case NameRegistryEventType.RENEW:
       return "NAME_REGISTRY_EVENT_TYPE_RENEW";
-    case NameRegistryEventType.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum NameRegistryEventType");
   }
 }
 

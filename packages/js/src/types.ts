@@ -30,21 +30,18 @@ export type MessageData<TBody = MessageBody, TType = protobufs.MessageType> = {
   network: protobufs.FarcasterNetwork;
 };
 
-export type CastAddData = MessageData<CastAddBody, protobufs.MessageType.MESSAGE_TYPE_CAST_ADD>;
-export type CastRemoveData = MessageData<CastRemoveBody, protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE>;
-export type ReactionAddData = MessageData<ReactionBody, protobufs.MessageType.MESSAGE_TYPE_REACTION_ADD>;
-export type ReactionRemoveData = MessageData<ReactionBody, protobufs.MessageType.MESSAGE_TYPE_REACTION_REMOVE>;
+export type CastAddData = MessageData<CastAddBody, protobufs.MessageType.CAST_ADD>;
+export type CastRemoveData = MessageData<CastRemoveBody, protobufs.MessageType.CAST_REMOVE>;
+export type ReactionAddData = MessageData<ReactionBody, protobufs.MessageType.REACTION_ADD>;
+export type ReactionRemoveData = MessageData<ReactionBody, protobufs.MessageType.REACTION_REMOVE>;
 export type VerificationAddEthAddressData = MessageData<
   VerificationAddEthAddressBody,
-  protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS
+  protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS
 >;
-export type VerificationRemoveData = MessageData<
-  VerificationRemoveBody,
-  protobufs.MessageType.MESSAGE_TYPE_VERIFICATION_REMOVE
->;
-export type SignerAddData = MessageData<SignerBody, protobufs.MessageType.MESSAGE_TYPE_SIGNER_ADD>;
-export type SignerRemoveData = MessageData<SignerBody, protobufs.MessageType.MESSAGE_TYPE_SIGNER_REMOVE>;
-export type UserDataAddData = MessageData<UserDataBody, protobufs.MessageType.MESSAGE_TYPE_USER_DATA_ADD>;
+export type VerificationRemoveData = MessageData<VerificationRemoveBody, protobufs.MessageType.VERIFICATION_REMOVE>;
+export type SignerAddData = MessageData<SignerAddBody, protobufs.MessageType.SIGNER_ADD>;
+export type SignerRemoveData = MessageData<SignerRemoveBody, protobufs.MessageType.SIGNER_REMOVE>;
+export type UserDataAddData = MessageData<UserDataBody, protobufs.MessageType.USER_DATA_ADD>;
 
 export type CastAddMessage = Message<CastAddData>;
 export type CastRemoveMessage = Message<CastRemoveData>;
@@ -67,7 +64,8 @@ export type MessageBody =
   | ReactionBody
   | VerificationAddEthAddressBody
   | VerificationRemoveBody
-  | SignerBody
+  | SignerAddBody
+  | SignerRemoveBody
   | UserDataBody;
 
 export type CastAddBody = {
@@ -101,7 +99,12 @@ export type VerificationRemoveBody = {
   address: string; // Hex string
 };
 
-export type SignerBody = {
+export type SignerAddBody = {
+  signer: string; // Hex string
+  name: string;
+};
+
+export type SignerRemoveBody = {
   signer: string; // Hex string
 };
 
@@ -142,28 +145,28 @@ type GenericHubEvent = {
 };
 
 export type MergeMessageHubEvent = GenericHubEvent & {
-  type: protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE;
+  type: protobufs.HubEventType.MERGE_MESSAGE;
   message: Message;
   deletedMessages?: Message[];
 };
 
 export type PruneMessageHubEvent = GenericHubEvent & {
-  type: protobufs.HubEventType.HUB_EVENT_TYPE_PRUNE_MESSAGE;
+  type: protobufs.HubEventType.PRUNE_MESSAGE;
   message: Message;
 };
 
 export type RevokeMessageHubEvent = GenericHubEvent & {
-  type: protobufs.HubEventType.HUB_EVENT_TYPE_REVOKE_MESSAGE;
+  type: protobufs.HubEventType.REVOKE_MESSAGE;
   message: Message;
 };
 
 export type MergeIdRegistryEventHubEvent = GenericHubEvent & {
-  type: protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT;
+  type: protobufs.HubEventType.MERGE_ID_REGISTRY_EVENT;
   idRegistryEvent: IdRegistryEvent;
 };
 
 export type MergeNameRegistryEventHubEvent = GenericHubEvent & {
-  type: protobufs.HubEventType.HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT;
+  type: protobufs.HubEventType.MERGE_NAME_REGISTRY_EVENT;
   nameRegistryEvent: NameRegistryEvent;
 };
 

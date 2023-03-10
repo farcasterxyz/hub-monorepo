@@ -13,4 +13,4 @@ export const GOSSIP_CONTACT_INTERVAL = 10_000;
 export const GOSSIP_TOPICS = [NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY];
 
 // Current gossip protocol version
-export const GOSSIP_PROTOCOL_VERSION = GossipVersion.GOSSIP_VERSION_1;
+export const GOSSIP_PROTOCOL_VERSION = GossipVersion.V1;

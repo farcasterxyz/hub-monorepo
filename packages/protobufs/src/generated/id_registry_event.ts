@@ -3,41 +3,37 @@ import Long from "long";
 import _m0 from "protobufjs/minimal";
 
 export enum IdRegistryEventType {
-  ID_REGISTRY_EVENT_TYPE_NONE = 0,
-  ID_REGISTRY_EVENT_TYPE_REGISTER = 1,
-  ID_REGISTRY_EVENT_TYPE_TRANSFER = 2,
-  UNRECOGNIZED = -1,
+  NONE = 0,
+  REGISTER = 1,
+  TRANSFER = 2,
 }
 
 export function idRegistryEventTypeFromJSON(object: any): IdRegistryEventType {
   switch (object) {
     case 0:
     case "ID_REGISTRY_EVENT_TYPE_NONE":
-      return IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_NONE;
+      return IdRegistryEventType.NONE;
     case 1:
     case "ID_REGISTRY_EVENT_TYPE_REGISTER":
-      return IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER;
+      return IdRegistryEventType.REGISTER;
     case 2:
     case "ID_REGISTRY_EVENT_TYPE_TRANSFER":
-      return IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_TRANSFER;
-    case -1:
-    case "UNRECOGNIZED":
+      return IdRegistryEventType.TRANSFER;
     default:
-      return IdRegistryEventType.UNRECOGNIZED;
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum IdRegistryEventType");
   }
 }
 
 export function idRegistryEventTypeToJSON(object: IdRegistryEventType): string {
   switch (object) {
-    case IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_NONE:
+    case IdRegistryEventType.NONE:
       return "ID_REGISTRY_EVENT_TYPE_NONE";
-    case IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER:
+    case IdRegistryEventType.REGISTER:
       return "ID_REGISTRY_EVENT_TYPE_REGISTER";
-    case IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_TRANSFER:
+    case IdRegistryEventType.TRANSFER:
       return "ID_REGISTRY_EVENT_TYPE_TRANSFER";
-    case IdRegistryEventType.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum IdRegistryEventType");
   }
 }
 

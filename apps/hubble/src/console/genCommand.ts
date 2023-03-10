@@ -37,9 +37,19 @@ export class GenCommand implements ConsoleCommandInterface {
     return {
       submitMessages: async (
         numMessages = 100,
-        network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_DEVNET
+        network = protobufs.FarcasterNetwork.DEVNET,
+        username?: string,
+        password?: string
       ): Promise<string | SubmitStats> => {
-        const fid = Factories.Fid.build();
+        // Submit messages might need a username/password
+        const metadata = new protobufs.Metadata();
+        if (username && password) {
+          metadata.set('authorization', `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`);
+        }
+
+        // Generate a random number from 100_000 to 100_000_000 to use as an fid
+        const fid = Math.floor(Math.random() * 100_000_000 + 100_000);
+
         const custodySigner = Factories.Eip712Signer.build();
         const signer = Factories.Ed25519Signer.build();
 
@@ -50,7 +60,7 @@ export class GenCommand implements ConsoleCommandInterface {
         const start = performance.now();
 
         const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
-        const idResult = await this.rpcClient.submitIdRegistryEvent(custodyEvent);
+        const idResult = await this.rpcClient.submitIdRegistryEvent(custodyEvent, metadata);
         if (idResult.isOk()) {
           numSuccess++;
         } else {
@@ -58,11 +68,11 @@ export class GenCommand implements ConsoleCommandInterface {
         }
 
         const signerAdd = await Factories.SignerAddMessage.create(
-          { data: { fid, network, signerBody: { signer: signer.signerKey } } },
+          { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
           { transient: { signer: custodySigner } }
         );
 
-        const signerResult = await this.rpcClient.submitMessage(signerAdd);
+        const signerResult = await this.rpcClient.submitMessage(signerAdd, metadata);
         if (signerResult.isOk()) {
           numSuccess++;
         } else {
@@ -72,7 +82,7 @@ export class GenCommand implements ConsoleCommandInterface {
         const submitBatch = async (batch: protobufs.Message[]) => {
           const promises = [];
           for (const castAdd of batch) {
-            promises.push(this.rpcClient.submitMessage(castAdd));
+            promises.push(this.rpcClient.submitMessage(castAdd, metadata));
           }
           const results = await Promise.all(promises);
 

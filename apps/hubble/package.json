@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/hubble",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Farcaster Hub",
   "author": "",
   "license": "",
@@ -47,8 +47,8 @@
   "dependencies": {
     "@chainsafe/libp2p-gossipsub": "6.1.0",
     "@chainsafe/libp2p-noise": "^11.0.0 ",
-    "@farcaster/protobufs": "0.1.6",
-    "@farcaster/utils": "0.2.7",
+    "@farcaster/protobufs": "0.1.7",
+    "@farcaster/utils": "0.2.8",
     "@grpc/grpc-js": "~1.8.7",
     "@libp2p/interface-connection": "^3.0.2",
     "@libp2p/interface-peer-id": "^2.0.0",

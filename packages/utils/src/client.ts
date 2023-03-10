@@ -4,6 +4,8 @@ import {
   ClientReadableStream,
   ClientUnaryCall,
   getClient,
+  getInsecureClient,
+  getSSLClient,
   HubServiceClient,
   Metadata,
   ServiceError,
@@ -98,6 +100,14 @@ const promisifyClient = <C extends Client>(client: C) => {
 
 export type HubRpcClient = PromisifiedClient<HubServiceClient>;
 
-export const getHubRpcClient = (address: string): HubRpcClient => {
-  return promisifyClient(getClient(address));
+export const getHubRpcClient = async (address: string): Promise<HubRpcClient> => {
+  return promisifyClient(await getClient(address));
+};
+
+export const getSSLHubRpcClient = (address: string): HubRpcClient => {
+  return promisifyClient(getSSLClient(address));
+};
+
+export const getInsecureHubRpcClient = (address: string): HubRpcClient => {
+  return promisifyClient(getInsecureClient(address));
 };

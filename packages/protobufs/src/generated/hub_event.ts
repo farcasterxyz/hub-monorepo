@@ -6,59 +6,55 @@ import { Message } from "./message";
 import { NameRegistryEvent } from "./name_registry_event";
 
 export enum HubEventType {
-  HUB_EVENT_TYPE_NONE = 0,
-  HUB_EVENT_TYPE_MERGE_MESSAGE = 1,
-  HUB_EVENT_TYPE_PRUNE_MESSAGE = 2,
-  HUB_EVENT_TYPE_REVOKE_MESSAGE = 3,
-  HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT = 4,
-  HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT = 5,
-  UNRECOGNIZED = -1,
+  NONE = 0,
+  MERGE_MESSAGE = 1,
+  PRUNE_MESSAGE = 2,
+  REVOKE_MESSAGE = 3,
+  MERGE_ID_REGISTRY_EVENT = 4,
+  MERGE_NAME_REGISTRY_EVENT = 5,
 }
 
 export function hubEventTypeFromJSON(object: any): HubEventType {
   switch (object) {
     case 0:
     case "HUB_EVENT_TYPE_NONE":
-      return HubEventType.HUB_EVENT_TYPE_NONE;
+      return HubEventType.NONE;
     case 1:
     case "HUB_EVENT_TYPE_MERGE_MESSAGE":
-      return HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE;
+      return HubEventType.MERGE_MESSAGE;
     case 2:
     case "HUB_EVENT_TYPE_PRUNE_MESSAGE":
-      return HubEventType.HUB_EVENT_TYPE_PRUNE_MESSAGE;
+      return HubEventType.PRUNE_MESSAGE;
     case 3:
     case "HUB_EVENT_TYPE_REVOKE_MESSAGE":
-      return HubEventType.HUB_EVENT_TYPE_REVOKE_MESSAGE;
+      return HubEventType.REVOKE_MESSAGE;
     case 4:
     case "HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT":
-      return HubEventType.HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT;
+      return HubEventType.MERGE_ID_REGISTRY_EVENT;
     case 5:
     case "HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT":
-      return HubEventType.HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT;
-    case -1:
-    case "UNRECOGNIZED":
+      return HubEventType.MERGE_NAME_REGISTRY_EVENT;
     default:
-      return HubEventType.UNRECOGNIZED;
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HubEventType");
   }
 }
 
 export function hubEventTypeToJSON(object: HubEventType): string {
   switch (object) {
-    case HubEventType.HUB_EVENT_TYPE_NONE:
+    case HubEventType.NONE:
       return "HUB_EVENT_TYPE_NONE";
-    case HubEventType.HUB_EVENT_TYPE_MERGE_MESSAGE:
+    case HubEventType.MERGE_MESSAGE:
       return "HUB_EVENT_TYPE_MERGE_MESSAGE";
-    case HubEventType.HUB_EVENT_TYPE_PRUNE_MESSAGE:
+    case HubEventType.PRUNE_MESSAGE:
       return "HUB_EVENT_TYPE_PRUNE_MESSAGE";
-    case HubEventType.HUB_EVENT_TYPE_REVOKE_MESSAGE:
+    case HubEventType.REVOKE_MESSAGE:
       return "HUB_EVENT_TYPE_REVOKE_MESSAGE";
-    case HubEventType.HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT:
+    case HubEventType.MERGE_ID_REGISTRY_EVENT:
       return "HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT";
-    case HubEventType.HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT:
+    case HubEventType.MERGE_NAME_REGISTRY_EVENT:
       return "HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT";
-    case HubEventType.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HubEventType");
   }
 }
 

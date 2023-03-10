@@ -7,7 +7,7 @@ import { PruneMessagesJobScheduler } from '~/storage/jobs/pruneMessagesJob';
 
 const db = jestRocksDB('jobs.pruneMessagesJob.test');
 
-const engine = new Engine(db, protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET);
+const engine = new Engine(db, protobufs.FarcasterNetwork.TESTNET);
 const scheduler = new PruneMessagesJobScheduler(engine);
 
 // Use farcaster timestamp

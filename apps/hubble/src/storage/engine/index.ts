@@ -68,8 +68,8 @@ class Engine {
   async mergeIdRegistryEvent(event: protobufs.IdRegistryEvent): HubAsyncResult<number> {
     // TODO: validate event
     if (
-      event.type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_REGISTER ||
-      event.type === protobufs.IdRegistryEventType.ID_REGISTRY_EVENT_TYPE_TRANSFER
+      event.type === protobufs.IdRegistryEventType.REGISTER ||
+      event.type === protobufs.IdRegistryEventType.TRANSFER
     ) {
       return ResultAsync.fromPromise(this._signerStore.mergeIdRegistryEvent(event), (e) => e as HubError);
     } else {
@@ -80,8 +80,8 @@ class Engine {
   async mergeNameRegistryEvent(event: protobufs.NameRegistryEvent): HubAsyncResult<number> {
     // TODO: validate event
     if (
-      event.type === protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_TRANSFER ||
-      event.type === protobufs.NameRegistryEventType.NAME_REGISTRY_EVENT_TYPE_RENEW
+      event.type === protobufs.NameRegistryEventType.TRANSFER ||
+      event.type === protobufs.NameRegistryEventType.RENEW
     ) {
       return ResultAsync.fromPromise(this._userDataStore.mergeNameRegistryEvent(event), (e) => e as HubError);
     }
@@ -461,10 +461,7 @@ class Engine {
     }
 
     // 5. For fname add UserDataAdd messages, check that the user actually owns the fname
-    if (
-      protobufs.isUserDataAddMessage(message) &&
-      message.data.userDataBody.type === protobufs.UserDataType.USER_DATA_TYPE_FNAME
-    ) {
+    if (protobufs.isUserDataAddMessage(message) && message.data.userDataBody.type === protobufs.UserDataType.FNAME) {
       // For fname messages, check if the user actually owns the fname.
       const fnameBytes = utf8StringToBytes(message.data.userDataBody.value);
       if (fnameBytes.isErr()) {

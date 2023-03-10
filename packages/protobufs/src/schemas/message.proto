@@ -28,8 +28,9 @@ message MessageData {
     ReactionBody reaction_body = 7;
     VerificationAddEthAddressBody verification_add_eth_address_body = 9;
     VerificationRemoveBody verification_remove_body = 10;
-    SignerBody signer_body = 11;
+    SignerAddBody signer_add_body = 11;
     UserDataBody user_data_body = 12;
+    SignerRemoveBody signer_remove_body = 13;
   } // Properties specific to the MessageType
 }
 
@@ -60,7 +61,7 @@ enum MessageType {
   MESSAGE_TYPE_USER_DATA_ADD = 11; // Add metadata about a user
 }
 
-/** Farcaster network the mne is intended for */
+/** Farcaster network the message is intended for */
 enum FarcasterNetwork {
   FARCASTER_NETWORK_NONE = 0;
   FARCASTER_NETWORK_MAINNET = 1; // Public primary network
@@ -68,8 +69,14 @@ enum FarcasterNetwork {
   FARCASTER_NETWORK_DEVNET = 3; // Private test network
 }
 
-/** Adds or removes an Ed25519 key pair that signs messages for a user */
-message SignerBody {
+/** Adds an Ed25519 key pair that signs messages for a user */
+message SignerAddBody {
+  bytes signer = 1; // Public key of the Ed25519 key pair
+  string name = 2; // Name of the key pair
+}
+
+/** Removes an Ed25519 key pair that signs messages for a user */
+message SignerRemoveBody {
   bytes signer = 1; // Public key of the Ed25519 key pair
 }
 

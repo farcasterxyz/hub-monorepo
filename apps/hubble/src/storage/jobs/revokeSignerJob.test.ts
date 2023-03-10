@@ -15,7 +15,7 @@ import { getAllMessagesBySigner } from '../db/message';
 const db = jestRocksDB('jobs.revokeSignerJob.test');
 
 const queue = new RevokeSignerJobQueue(db);
-const engine = new Engine(db, protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET);
+const engine = new Engine(db, protobufs.FarcasterNetwork.TESTNET);
 const scheduler = new RevokeSignerJobScheduler(queue, engine);
 
 // Test payloads

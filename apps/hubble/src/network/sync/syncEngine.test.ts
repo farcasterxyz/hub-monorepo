@@ -14,7 +14,7 @@ import { sleepWhile } from '~/utils/crypto';
 const testDb = jestRocksDB(`engine.syncEngine.test`);
 const testDb2 = jestRocksDB(`engine2.syncEngine.test`);
 
-const network = protobufs.FarcasterNetwork.FARCASTER_NETWORK_TESTNET;
+const network = protobufs.FarcasterNetwork.TESTNET;
 
 const fid = Factories.Fid.build();
 const custodySigner = Factories.Eip712Signer.build();
@@ -28,7 +28,7 @@ beforeAll(async () => {
   custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
 
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerBody: { signer: signer.signerKey } } },
+    { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
     { transient: { signer: custodySigner } }
   );
 
@@ -41,7 +41,7 @@ describe('SyncEngine', () => {
 
   beforeEach(async () => {
     await testDb.clear();
-    engine = new Engine(testDb, FarcasterNetwork.FARCASTER_NETWORK_TESTNET);
+    engine = new Engine(testDb, FarcasterNetwork.TESTNET);
     syncEngine = new SyncEngine(engine, testDb);
   });
 
@@ -127,7 +127,7 @@ describe('SyncEngine', () => {
 
     const allMessages = await engine.getAllMessagesBySyncIds([id.syncId()]);
     expect(allMessages.isOk()).toBeTruthy();
-    expect(allMessages._unsafeUnwrap()[0]?.data?.type).toEqual(protobufs.MessageType.MESSAGE_TYPE_CAST_REMOVE);
+    expect(allMessages._unsafeUnwrap()[0]?.data?.type).toEqual(protobufs.MessageType.CAST_REMOVE);
 
     // The trie should contain the message remove
     expect(await syncEngine.trie.exists(id)).toBeTruthy();
@@ -146,7 +146,7 @@ describe('SyncEngine', () => {
     // Reaction
     const reactionBody = {
       targetCastId: { fid, hash: castAdd.hash },
-      type: protobufs.ReactionType.REACTION_TYPE_LIKE,
+      type: protobufs.ReactionType.LIKE,
     };
     const reaction1 = await Factories.ReactionAddMessage.create(
       { data: { fid, network, timestamp: 30662167, reactionBody } },
@@ -177,7 +177,7 @@ describe('SyncEngine', () => {
 
     // Create a new engine and sync engine
     testDb2.clear();
-    const engine2 = new Engine(testDb2, FarcasterNetwork.FARCASTER_NETWORK_TESTNET);
+    const engine2 = new Engine(testDb2, FarcasterNetwork.TESTNET);
     const syncEngine2 = new SyncEngine(engine2, testDb2);
     await engine2.mergeIdRegistryEvent(custodyEvent);
     await engine2.mergeMessage(signerAdd);
