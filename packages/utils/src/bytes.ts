@@ -84,8 +84,8 @@ export const bytesToUtf8String = (bytes: Uint8Array): HubResult<string> => {
   return ok(decoder.decode(bytes));
 };
 
+const encoder = new TextEncoder();
 export const utf8StringToBytes = (utf8: string): HubResult<Uint8Array> => {
-  const encoder = new TextEncoder();
   return ok(encoder.encode(utf8));
 };
 
