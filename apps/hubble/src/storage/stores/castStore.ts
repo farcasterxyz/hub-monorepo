@@ -4,6 +4,7 @@ import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
 import {
   deleteMessageTransaction,
+  getAllMessagesByFid,
   getAllMessagesBySigner,
   getManyMessages,
   getManyMessagesByFid,
@@ -143,12 +144,9 @@ class CastStore {
 
   /** Gets all CastAdd messages for an fid */
   async getCastAddsByFid(fid: number): Promise<protobufs.CastAddMessage[]> {
-    const castAddsPrefix = makeCastAddsKey(fid);
-    const messageKeys: Buffer[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(castAddsPrefix, { keys: false, valueAsBuffer: true })) {
-      messageKeys.push(value);
-    }
-    return getManyMessagesByFid(this._db, fid, UserPostfix.CastMessage, messageKeys);
+    return (await getAllMessagesByFid(this._db, fid))
+      .filter((message) => message.data?.type === protobufs.MessageType.CAST_ADD)
+      .reverse() as protobufs.CastAddMessage[];
   }
 
   /** Gets all CastRemove messages for an fid */
