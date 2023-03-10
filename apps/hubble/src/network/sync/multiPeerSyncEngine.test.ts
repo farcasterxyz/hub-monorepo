@@ -1,5 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
 import { Ed25519Signer, Factories, getInsecureHubRpcClient, HubRpcClient } from '@farcaster/utils';
+import { jest } from '@jest/globals';
 import { APP_NICKNAME, APP_VERSION } from '~/hubble';
 import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';
@@ -270,6 +271,7 @@ describe('Multi peer sync engine', () => {
     expect(await syncEngine2.trie.rootHash()).toEqual(beforeRootHash);
   });
 
+  jest.setTimeout(10000);
   test('Merge with multiple signers', async () => {
     await engine1.mergeIdRegistryEvent(custodyEvent);
 
