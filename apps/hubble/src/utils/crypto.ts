@@ -15,11 +15,11 @@ export const sleepWhile = (condition: () => boolean, timeoutMs: number): Promise
         clearInterval(interval);
         resolve(false);
       }
-    }, 10);
+    }, 10).unref();
     setTimeout(() => {
       clearInterval(interval);
       resolve(true);
-    }, timeoutMs);
+    }, timeoutMs).unref();
   });
 };
 
