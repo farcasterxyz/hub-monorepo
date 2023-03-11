@@ -218,18 +218,16 @@ describe('validateCastAddBody', () => {
       hubErrorMessage = 'text is missing';
     });
 
-    test('when text is longer than 320 characters', () => {
+    test('when text is longer than 320 ASCII characters', () => {
       body = Factories.CastAddBody.build({ text: faker.random.alphaNumeric(321) });
-      hubErrorMessage = 'text > 320 chars';
+      hubErrorMessage = 'text > 320 bytes';
     });
 
     test('when text is longer than 320 bytes', () => {
-      let text = '';
-      for (let i = 0; i < 320; i++) {
-        text = text + '🤓';
-      }
+      const text = faker.random.alphaNumeric(318) + '🤓';
+      expect(text.length).toEqual(320);
       body = Factories.CastAddBody.build({ text });
-      hubErrorMessage = 'text > 320 chars';
+      hubErrorMessage = 'text > 320 bytes';
     });
 
     test('with more than 2 embeds', () => {
@@ -251,7 +249,27 @@ describe('validateCastAddBody', () => {
       hubErrorMessage = 'hash is missing';
     });
 
-    test('with more than 5 mentions', () => {
+    test('with up to 10 mentions', () => {
+      const body = Factories.CastAddBody.build({
+        text: '',
+        mentions: [
+          Factories.Fid.build(),
+          Factories.Fid.build(),
+          Factories.Fid.build(),
+          Factories.Fid.build(),
+          Factories.Fid.build(),
+          Factories.Fid.build(),
+          Factories.Fid.build(),
+          Factories.Fid.build(),
+          Factories.Fid.build(),
+          Factories.Fid.build(),
+        ],
+        mentionsPositions: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      });
+      expect(validations.validateCastAddBody(body)).toEqual(ok(body));
+    });
+
+    test('with more than 10 mentions', () => {
       body = Factories.CastAddBody.build({
         mentions: [
           Factories.Fid.build(),
@@ -260,9 +278,14 @@ describe('validateCastAddBody', () => {
           Factories.Fid.build(),
           Factories.Fid.build(),
           Factories.Fid.build(),
+          Factories.Fid.build(),
+          Factories.Fid.build(),
+          Factories.Fid.build(),
+          Factories.Fid.build(),
+          Factories.Fid.build(),
         ],
       });
-      hubErrorMessage = 'mentions > 5';
+      hubErrorMessage = 'mentions > 10';
     });
 
     test('with more mentions than mentionsPositions', () => {
@@ -278,6 +301,24 @@ describe('validateCastAddBody', () => {
         text: 'a',
         mentions: [Factories.Fid.build()],
         mentionsPositions: [2],
+      });
+      hubErrorMessage = 'mentionsPositions must be a position in text';
+    });
+
+    test('with mentionsPositions within byte length of text', () => {
+      const body = Factories.CastAddBody.build({
+        text: '🤓', // 4 bytes in utf8
+        mentions: [Factories.Fid.build()],
+        mentionsPositions: [4],
+      });
+      expect(validations.validateCastAddBody(body)).toEqual(ok(body));
+    });
+
+    test('with mentionsPositions out of range of byte length of text', () => {
+      body = Factories.CastAddBody.build({
+        text: '🤓', // 4 bytes in utf8
+        mentions: [Factories.Fid.build()],
+        mentionsPositions: [5],
       });
       hubErrorMessage = 'mentionsPositions must be a position in text';
     });

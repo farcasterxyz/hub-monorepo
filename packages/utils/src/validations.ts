@@ -1,7 +1,7 @@
 import * as protobufs from '@farcaster/protobufs';
 import { blake3 } from '@noble/hashes/blake3';
 import { err, ok, Result } from 'neverthrow';
-import { bytesCompare, bytesToUtf8String } from './bytes';
+import { bytesCompare, bytesToUtf8String, utf8StringToBytes } from './bytes';
 import { ed25519, eip712 } from './crypto';
 import { HubAsyncResult, HubError, HubResult } from './errors';
 import { getFarcasterTime } from './time';
@@ -250,16 +250,22 @@ export const validateCastAddBody = (body: protobufs.CastAddBody): HubResult<prot
     return err(new HubError('bad_request.validation_failure', 'text is missing'));
   }
 
-  if (text.length > 320) {
-    return err(new HubError('bad_request.validation_failure', 'text > 320 chars'));
+  const textUtf8BytesResult = utf8StringToBytes(text);
+  if (textUtf8BytesResult.isErr()) {
+    return err(new HubError('bad_request.invalid_param', 'text cannot be encoded as utf8'));
+  }
+  const textBytes = textUtf8BytesResult.value;
+
+  if (textBytes.length > 320) {
+    return err(new HubError('bad_request.validation_failure', 'text > 320 bytes'));
   }
 
   if (body.embeds.length > 2) {
     return err(new HubError('bad_request.validation_failure', 'embeds > 2'));
   }
 
-  if (body.mentions.length > 5) {
-    return err(new HubError('bad_request.validation_failure', 'mentions > 5'));
+  if (body.mentions.length > 10) {
+    return err(new HubError('bad_request.validation_failure', 'mentions > 10'));
   }
 
   if (body.mentions.length !== body.mentionsPositions.length) {
@@ -277,7 +283,7 @@ export const validateCastAddBody = (body: protobufs.CastAddBody): HubResult<prot
     if (typeof position !== 'number' || !Number.isInteger(position)) {
       return err(new HubError('bad_request.validation_failure', 'mentionsPositions must be integers'));
     }
-    if (position < 0 || position > text.length) {
+    if (position < 0 || position > textBytes.length) {
       return err(new HubError('bad_request.validation_failure', 'mentionsPositions must be a position in text'));
     }
     if (i > 0) {
@@ -363,7 +369,12 @@ export const validateVerificationRemoveBody = (
 };
 
 export const validateSignerAddBody = (body: protobufs.SignerAddBody): HubResult<protobufs.SignerAddBody> => {
-  if (new TextEncoder().encode(body.name).length > 32) {
+  const textUtf8BytesResult = utf8StringToBytes(body.name);
+  if (textUtf8BytesResult.isErr()) {
+    return err(new HubError('bad_request.invalid_param', 'name cannot be encoded as utf8'));
+  }
+
+  if (textUtf8BytesResult.value.length > 32) {
     return err(new HubError('bad_request.validation_failure', 'name > 32 bytes'));
   }
 
@@ -388,32 +399,47 @@ export const validateUserDataType = (type: number): HubResult<protobufs.UserData
 
 export const validateUserDataAddBody = (body: protobufs.UserDataBody): HubResult<protobufs.UserDataBody> => {
   const { type, value } = body;
-  if (type === protobufs.UserDataType.PFP) {
-    if (value && value.length > 256) {
-      return err(new HubError('bad_request.validation_failure', 'pfp value > 256'));
-    }
-  } else if (type === protobufs.UserDataType.DISPLAY) {
-    if (value && value.length > 32) {
-      return err(new HubError('bad_request.validation_failure', 'display value > 32'));
-    }
-  } else if (type === protobufs.UserDataType.BIO) {
-    if (value && value.length > 256) {
-      return err(new HubError('bad_request.validation_failure', 'bio value > 256'));
-    }
-  } else if (type === protobufs.UserDataType.URL) {
-    if (value && value.length > 256) {
-      return err(new HubError('bad_request.validation_failure', 'url value > 256'));
-    }
-  } else if (type === protobufs.UserDataType.FNAME) {
-    // Users are allowed to set fname = '' to remove their fname, otherwise we need a valid fname to add
-    if (value !== '') {
-      const validatedFname = validateFname(value);
-      if (validatedFname.isErr()) {
-        return err(validatedFname.error);
+
+  const textUtf8BytesResult = utf8StringToBytes(value);
+  if (textUtf8BytesResult.isErr()) {
+    return err(new HubError('bad_request.invalid_param', 'value cannot be encoded as utf8'));
+  }
+
+  const valueBytes = textUtf8BytesResult.value;
+
+  switch (type) {
+    case protobufs.UserDataType.PFP:
+      if (valueBytes.length > 256) {
+        return err(new HubError('bad_request.validation_failure', 'pfp value > 256'));
       }
+      break;
+    case protobufs.UserDataType.DISPLAY:
+      if (valueBytes.length > 32) {
+        return err(new HubError('bad_request.validation_failure', 'display value > 32'));
+      }
+      break;
+    case protobufs.UserDataType.BIO:
+      if (valueBytes.length > 256) {
+        return err(new HubError('bad_request.validation_failure', 'bio value > 256'));
+      }
+      break;
+    case protobufs.UserDataType.URL:
+      if (valueBytes.length > 256) {
+        return err(new HubError('bad_request.validation_failure', 'url value > 256'));
+      }
+      break;
+    case protobufs.UserDataType.FNAME: {
+      // Users are allowed to set fname = '' to remove their fname, otherwise we need a valid fname to add
+      if (value !== '') {
+        const validatedFname = validateFname(value);
+        if (validatedFname.isErr()) {
+          return err(validatedFname.error);
+        }
+      }
+      break;
     }
-  } else {
-    return err(new HubError('bad_request.validation_failure', 'invalid user data type'));
+    default:
+      return err(new HubError('bad_request.validation_failure', 'invalid user data type'));
   }
 
   return ok(body);
