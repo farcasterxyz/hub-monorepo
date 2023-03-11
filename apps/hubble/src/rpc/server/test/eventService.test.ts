@@ -187,7 +187,8 @@ describe('subscribe', () => {
         eventTypes: [protobufs.HubEventType.MERGE_MESSAGE, protobufs.HubEventType.MERGE_ID_REGISTRY_EVENT],
       });
       await engine.mergeMessage(signerAdd);
-      await engine.mergeMessages([castAdd, reactionAdd]);
+      await engine.mergeMessage(castAdd);
+      await engine.mergeMessage(reactionAdd);
       await sleep(100);
       expect(events).toEqual([
         [protobufs.HubEventType.MERGE_ID_REGISTRY_EVENT, protobufs.IdRegistryEvent.toJSON(custodyEvent)],

@@ -24,10 +24,6 @@ const MessageHashFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build({}, { transient: { length: 20 } }); // 160 bits
 });
 
-const MessageHashHexFactory = Factory.define<string>(() => {
-  return faker.datatype.hexadecimal({ length: 40, case: 'lower' });
-});
-
 const FnameFactory = Factory.define<Uint8Array>(() => {
   const length = faker.datatype.number({ min: 1, max: 16 });
   const bytes = new Uint8Array(length);
@@ -66,34 +62,18 @@ const BlockHashFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build({}, { transient: { length: 32 } });
 });
 
-const BlockHashHexFactory = Factory.define<string>(() => {
-  return faker.datatype.hexadecimal({ length: 64, case: 'lower' });
-});
-
 const EthAddressFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build({}, { transient: { length: 20 } });
-});
-
-const EthAddressHexFactory = Factory.define<string>(() => {
-  return faker.datatype.hexadecimal({ length: 40, case: 'lower' });
 });
 
 const TransactionHashFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build(undefined, { transient: { length: 32 } });
 });
 
-const TransactionHashHexFactory = Factory.define<string>(() => {
-  return faker.datatype.hexadecimal({ length: 64, case: 'lower' });
-});
-
 /** Signers */
 
 const Ed25519PrivateKeyFactory = Factory.define<Uint8Array>(() => {
   return utils.randomPrivateKey();
-});
-
-const Ed25519PublicKeyHexFactory = Factory.define<string>(() => {
-  return faker.datatype.hexadecimal({ length: 64, case: 'lower' });
 });
 
 const Ed25519SignerFactory = Factory.define<Ed25519Signer>(() => {
@@ -104,10 +84,6 @@ const Ed25519SignatureFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build({}, { transient: { length: 64 } });
 });
 
-const Ed25519SignatureHexFactory = Factory.define<string>(() => {
-  return faker.datatype.hexadecimal({ length: 128, case: 'lower' });
-});
-
 const Eip712SignerFactory = Factory.define<Eip712Signer>(() => {
   const wallet = new ethers.Wallet(utils.randomBytes(32));
   return Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwrap();
@@ -115,10 +91,6 @@ const Eip712SignerFactory = Factory.define<Eip712Signer>(() => {
 
 const Eip712SignatureFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build(undefined, { transient: { length: 65 } });
-});
-
-const Eip712SignatureHexFactory = Factory.define<string>(() => {
-  return faker.datatype.hexadecimal({ length: 130, case: 'lower' });
 });
 
 /** Message Protobufs */
@@ -379,12 +351,13 @@ const VerificationEthAddressClaimFactory = Factory.define<VerificationEthAddress
   ({ transientParams }) => {
     const signer = transientParams.signer ?? Eip712SignerFactory.build();
     const address = bytesToHexString(signer.signerKey)._unsafeUnwrap();
+    const blockHash = bytesToHexString(BlockHashFactory.build())._unsafeUnwrap();
 
     return {
       fid: BigNumber.from(FidFactory.build()),
       address,
       network: FarcasterNetworkFactory.build(),
-      blockHash: BlockHashHexFactory.build(),
+      blockHash,
     };
   }
 );
@@ -552,21 +525,14 @@ export const Factories = {
   Fname: FnameFactory,
   Bytes: BytesFactory,
   MessageHash: MessageHashFactory,
-  MessageHashHex: MessageHashHexFactory,
   BlockHash: BlockHashFactory,
-  BlockHashHex: BlockHashHexFactory,
   EthAddress: EthAddressFactory,
-  EthAddressHex: EthAddressHexFactory,
   TransactionHash: TransactionHashFactory,
-  TransactionHashHex: TransactionHashHexFactory,
   Ed25519PrivateKey: Ed25519PrivateKeyFactory,
-  Ed25519PublicKeyHex: Ed25519PublicKeyHexFactory,
   Ed25519Signer: Ed25519SignerFactory,
   Ed25519Signature: Ed25519SignatureFactory,
-  Ed25519SignatureHex: Ed25519SignatureHexFactory,
   Eip712Signer: Eip712SignerFactory,
   Eip712Signature: Eip712SignatureFactory,
-  Eip712SignatureHex: Eip712SignatureHexFactory,
   CastId: CastIdFactory,
   FarcasterNetwork: FarcasterNetworkFactory,
   ReactionType: ReactionTypeFactory,

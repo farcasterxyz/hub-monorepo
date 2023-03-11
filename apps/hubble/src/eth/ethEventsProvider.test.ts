@@ -1,7 +1,7 @@
 import { Event } from '@ethersproject/contracts';
 import { BaseProvider, Block, TransactionReceipt, TransactionResponse } from '@ethersproject/providers';
 import * as protobufs from '@farcaster/protobufs';
-import { Factories, hexStringToBytes } from '@farcaster/utils';
+import { Factories, bytesToHexString, hexStringToBytes } from '@farcaster/utils';
 import { BigNumber, Contract, utils } from 'ethers';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
 import { EthEventsProvider } from '~/eth/ethEventsProvider';
@@ -23,6 +23,10 @@ let ethEventsProvider: EthEventsProvider;
 let mockRPCProvider: MockRPCProvider;
 let mockIdRegistry: Contract;
 let mockNameRegistry: Contract;
+
+const generateEthAddressHex = () => {
+  return bytesToHexString(Factories.EthAddress.build())._unsafeUnwrap();
+};
 
 /** A Mock RPC provider */
 class MockRPCProvider extends BaseProvider {
@@ -109,8 +113,8 @@ describe('process events', () => {
   test('processes IdRegistry events', async () => {
     let blockNumber = 1;
 
-    const address1 = Factories.EthAddressHex.build();
-    const address2 = Factories.EthAddressHex.build();
+    const address1 = generateEthAddressHex();
+    const address2 = generateEthAddressHex();
 
     // Emit a "Register event"
     const rRegister = mockIdRegistry.emit(
