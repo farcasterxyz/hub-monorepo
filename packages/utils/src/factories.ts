@@ -378,10 +378,11 @@ const SignerRemoveMessageFactory = Factory.define<protobufs.SignerRemoveMessage,
 const VerificationEthAddressClaimFactory = Factory.define<VerificationEthAddressClaim, { signer?: Eip712Signer }>(
   ({ transientParams }) => {
     const signer = transientParams.signer ?? Eip712SignerFactory.build();
+    const address = bytesToHexString(signer.signerKey)._unsafeUnwrap();
 
     return {
       fid: BigNumber.from(FidFactory.build()),
-      address: signer.signerKeyHex,
+      address,
       network: FarcasterNetworkFactory.build(),
       blockHash: BlockHashHexFactory.build(),
     };

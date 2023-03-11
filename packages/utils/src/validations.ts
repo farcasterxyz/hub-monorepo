@@ -151,7 +151,7 @@ export const validateMessage = async (message: protobufs.Message): HubAsyncResul
   return ok(message);
 };
 
-export const validateMessageData = (data: protobufs.MessageData): HubResult<protobufs.MessageData> => {
+export const validateMessageData = <T extends protobufs.MessageData>(data: T): HubResult<T> => {
   // 1. Validate fid
   const validFid = validateFid(data.fid);
   if (validFid.isErr()) {
