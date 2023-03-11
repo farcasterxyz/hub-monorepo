@@ -18,19 +18,14 @@ export class Eip712Signer implements Signer {
   /** 20-byte wallet address */
   public readonly signerKey: Uint8Array;
 
-  /** 20-byte wallet in hex format */
-  public readonly signerKeyHex: string;
-
   private readonly _typedDataSigner: TypedDataSigner;
 
   public static fromSigner(typedDataSigner: TypedDataSigner, address: string): HubResult<Eip712Signer> {
-    const signerKeyHex = address.toLowerCase();
-    return hexStringToBytes(signerKeyHex).map((signerKey) => new this(typedDataSigner, address, signerKey));
+    return hexStringToBytes(address).map((signerKey) => new this(typedDataSigner, address, signerKey));
   }
 
   constructor(typedDataSigner: TypedDataSigner, address: string, signerKey: Uint8Array) {
     this._typedDataSigner = typedDataSigner;
-    this.signerKeyHex = address.toLowerCase();
     this.signerKey = signerKey;
   }
 

@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import * as protobufs from '@farcaster/protobufs';
 import { err, ok } from 'neverthrow';
 import { bytesToUtf8String } from './bytes';
-import { HubError, HubResult } from './errors';
+import { HubError } from './errors';
 import { Factories } from './factories';
 import { getFarcasterTime } from './time';
 import * as validations from './validations';
@@ -706,80 +706,4 @@ describe('validateMessageData', () => {
       err(new HubError('bad_request.validation_failure', 'timestamp more than 10 mins in the future'))
     );
   });
-});
-
-const testHexValidation = (
-  validateHexFn: (hex: string) => HubResult<string>,
-  validHex: string,
-  length?: number,
-  label?: string
-) => {
-  test('succeeds with valid string', async () => {
-    const result = validateHexFn(validHex);
-    expect(result).toEqual(ok(validHex));
-  });
-
-  test('fails if string is not valid hexadecimal', async () => {
-    const invalidHex = validHex.substring(0, validHex.length - 1) + 'G';
-    const result = validateHexFn(invalidHex);
-    expect(result).toEqual(
-      err(new HubError('bad_request.validation_failure', `${label} "${invalidHex}" is not valid hex`))
-    );
-  });
-
-  test(`fails if string is not length ${length}`, async () => {
-    const invalidHex = validHex.substring(0, validHex.length - 1);
-    const result = validateHexFn(invalidHex);
-    expect(result).toEqual(
-      err(new HubError('bad_request.validation_failure', `${label} "${invalidHex} is not ${length} characters`))
-    );
-  });
-};
-
-describe('validateBlockHashHex', () => {
-  testHexValidation(validations.validateBlockHashHex, Factories.BlockHashHex.build(), 64, 'block hash');
-});
-
-describe('validateTransactionHashHex', () => {
-  testHexValidation(
-    validations.validateTransactionHashHex,
-    Factories.TransactionHashHex.build(),
-    64,
-    'transaction hash'
-  );
-});
-
-describe('validateEip712SignatureHex', () => {
-  testHexValidation(
-    validations.validateEip712SignatureHex,
-    Factories.Eip712SignatureHex.build(),
-    130,
-    'EIP-712 signature'
-  );
-});
-
-describe('validateEd25519SignatureHex', () => {
-  testHexValidation(
-    validations.validateEd25519ignatureHex,
-    Factories.Ed25519SignatureHex.build(),
-    128,
-    'Ed25519 signature'
-  );
-});
-
-describe('validateMessageHashHex', () => {
-  testHexValidation(validations.validateMessageHashHex, Factories.MessageHashHex.build(), 40, 'message hash');
-});
-
-describe('validateEthAddressHex', () => {
-  testHexValidation(validations.validateEthAddressHex, Factories.EthAddressHex.build(), 40, 'eth address');
-});
-
-describe('validateEd25519PublicKeyHex', () => {
-  testHexValidation(
-    validations.validateEd25519PublicKeyHex,
-    Factories.Ed25519PublicKeyHex.build(),
-    64,
-    'Ed25519 public key'
-  );
 });

@@ -1,11 +1,11 @@
 import { FarcasterNetwork } from '@farcaster/protobufs';
 import { blake3 } from '@noble/hashes/blake3';
-import { BigNumber, ethers } from 'ethers';
+import { ethers } from 'ethers';
 import { randomBytes } from 'ethers/lib/utils';
 import { bytesToHexString, hexStringToBytes } from '../bytes';
 import { eip712 } from '../crypto';
 import { Factories } from '../factories';
-import { VerificationEthAddressClaim } from '../verifications';
+import { VerificationEthAddressClaim, makeVerificationEthAddressClaim } from '../verifications';
 import { Eip712Signer, TypedDataSigner } from './eip712Signer';
 
 describe('Eip712Signer', () => {
@@ -43,12 +43,12 @@ describe('Eip712Signer', () => {
       let signature: Uint8Array;
 
       beforeAll(async () => {
-        claim = {
-          fid: BigNumber.from(Factories.Fid.build()),
-          address: signer.signerKeyHex,
-          blockHash: Factories.BlockHashHex.build(undefined, { transient: { case: 'mixed' } }),
-          network: FarcasterNetwork.TESTNET,
-        };
+        claim = makeVerificationEthAddressClaim(
+          Factories.Fid.build(),
+          signer.signerKey,
+          FarcasterNetwork.TESTNET,
+          Factories.BlockHash.build()
+        )._unsafeUnwrap();
         signature = (await signer.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
       });
 
