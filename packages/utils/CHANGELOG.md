@@ -1,5 +1,11 @@
 # @farcaster/utils
 
+## 0.2.9
+
+### Patch Changes
+
+- e75e46b3: Validate using UTF8 byte count instead of character length
+
 ## 0.2.8
 
 ### Patch Changes
