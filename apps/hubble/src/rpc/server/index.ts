@@ -512,10 +512,22 @@ export default class Server {
       getSignersByFid: async (call, callback) => {
         const request = call.request;
 
-        const signersResult = await this.engine?.getSignersByFid(request.fid);
+        if (request.pageSize < 0 || request.pageSize > 10_000) {
+          return callback(
+            toServiceError(new HubError('bad_request.invalid_param', 'pageSize must be between 0 and 10,000'))
+          );
+        }
+
+        // TODO move limit into constant
+        const limit = request.pageSize === 0 ? 10_000 : request.pageSize;
+        const startPrefix = request.pageToken.length > 0 ? Buffer.from(request.pageToken) : undefined;
+        const signersResult = await this.engine?.getSignersByFid(request.fid, { startPrefix, limit });
         signersResult?.match(
-          (signers: SignerAddMessage[]) => {
-            callback(null, MessagesResponse.create({ messages: signers }));
+          ({ messages, nextPrefix }) => {
+            callback(
+              null,
+              MessagesResponse.create({ messages, nextPageToken: nextPrefix ? nextPrefix : new Uint8Array() })
+            );
           },
           (err: HubError) => {
             callback(toServiceError(err));
@@ -536,10 +548,27 @@ export default class Server {
         );
       },
       getFids: async (call, callback) => {
-        const result = await this.engine?.getFids();
+        const request = call.request;
+
+        if (request.pageSize < 0 || request.pageSize > 10_000) {
+          return callback(
+            toServiceError(new HubError('bad_request.invalid_param', 'pageSize must be between 0 and 10,000'))
+          );
+        }
+
+        // TODO move limit into constant
+        const limit = request.pageSize === 0 ? 10_000 : request.pageSize;
+        const startPrefix = request.pageToken.length > 0 ? Buffer.from(request.pageToken) : undefined;
+        const result = await this.engine?.getFids({ limit, startPrefix });
         result?.match(
-          (fids: number[]) => {
-            callback(null, FidsResponse.create({ fids }));
+          ({ fids, nextPrefix }: { fids: number[]; nextPrefix: Buffer | undefined }) => {
+            callback(
+              null,
+              FidsResponse.create({
+                fids,
+                nextPageToken: nextPrefix ? nextPrefix : new Uint8Array(),
+              })
+            );
           },
           (err: HubError) => {
             callback(toServiceError(err));
@@ -588,10 +617,25 @@ export default class Server {
       getAllSignerMessagesByFid: async (call, callback) => {
         const request = call.request;
 
-        const result = await this.engine?.getAllSignerMessagesByFid(request.fid);
+        if (request.pageSize < 0 || request.pageSize > 10_000) {
+          return callback(
+            toServiceError(new HubError('bad_request.invalid_param', 'pageSize must be between 0 and 10,000'))
+          );
+        }
+
+        // TODO move limit into constant
+        const limit = request.pageSize === 0 ? 10_000 : request.pageSize;
+        const startPrefix = request.pageToken.length > 0 ? Buffer.from(request.pageToken) : undefined;
+        const result = await this.engine?.getAllSignerMessagesByFid(request.fid, { startPrefix, limit });
         result?.match(
-          (messages: Message[]) => {
-            callback(null, MessagesResponse.create({ messages }));
+          ({ messages, nextPrefix }: { messages: Message[]; nextPrefix: Buffer | undefined }) => {
+            callback(
+              null,
+              MessagesResponse.create({
+                messages,
+                nextPageToken: nextPrefix ? nextPrefix : new Uint8Array(),
+              })
+            );
           },
           (err: HubError) => {
             callback(toServiceError(err));

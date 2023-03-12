@@ -2,7 +2,11 @@ import * as protobufs from '@farcaster/protobufs';
 import { bytesCompare, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
-import { getIdRegistryEvent, putIdRegistryEventTransaction } from '~/storage/db/idRegistryEvent';
+import {
+  getIdRegistryEvent,
+  makeIdRegistryEventPrimaryKey,
+  putIdRegistryEventTransaction,
+} from '~/storage/db/idRegistryEvent';
 import {
   deleteMessageTransaction,
   getAllMessagesBySigner,
@@ -18,8 +22,8 @@ import {
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix, UserPostfix } from '~/storage/db/types';
 import StoreEventHandler, { putEventTransaction } from '~/storage/stores/storeEventHandler';
-import { MERGE_TIMEOUT_DEFAULT, StorePruneOptions } from '~/storage/stores/types';
-import { eventCompare } from '~/storage/stores/utils';
+import { MERGE_TIMEOUT_DEFAULT, PrefixRangeOptions, StorePruneOptions } from '~/storage/stores/types';
+import { eventCompare, makeEndPrefix } from '~/storage/stores/utils';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 
@@ -131,37 +135,145 @@ class SignerStore {
    * @param fid fid of the user who created the signers
    * @returns the SignerRemove messages if it exists, throws HubError otherwise
    */
-  async getSignerAddsByFid(fid: number): Promise<protobufs.SignerAddMessage[]> {
+  async getSignerAddsByFid(
+    fid: number,
+    rangeOptions: PrefixRangeOptions = {}
+  ): Promise<{
+    messages: protobufs.SignerAddMessage[];
+    nextPrefix: Buffer | undefined;
+  }> {
+    rangeOptions.limit = rangeOptions.limit ?? -1;
+
     const addsPrefix = makeSignerAddsKey(fid);
+    const startPrefix = rangeOptions.startPrefix ?? addsPrefix;
+    const endPrefix = makeEndPrefix(addsPrefix);
+    const signerKeys: Buffer[] = [];
     const messageKeys: Buffer[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(addsPrefix, { keys: false, valueAsBuffer: true })) {
+    for await (const [key, value] of this._db.iterator({
+      gte: startPrefix,
+      lt: endPrefix,
+      // If a limit was specified, fetch limit + 1 to determine the next prefix
+      limit: rangeOptions.limit !== -1 ? rangeOptions.limit + 1 : rangeOptions.limit,
+      keysAsBuffer: true,
+      valueAsBuffer: true,
+    })) {
+      signerKeys.push(key);
       messageKeys.push(value);
     }
-    return getManyMessagesByFid(this._db, fid, UserPostfix.SignerMessage, messageKeys);
+
+    /**
+     * If a limit was specified and limit + 1 were fetched, return limit results and
+     * next prefix, otherwise return all results and undefined next prefix.
+     */
+    if (rangeOptions.limit !== -1 && messageKeys.length === rangeOptions.limit + 1) {
+      const nextPrefix = signerKeys[signerKeys.length - 1];
+      const rangeMessageKeys = messageKeys.slice(0, messageKeys.length - 1);
+
+      return {
+        messages: await getManyMessagesByFid(this._db, fid, UserPostfix.SignerMessage, rangeMessageKeys),
+        nextPrefix,
+      };
+    } else {
+      return {
+        messages: await getManyMessagesByFid(this._db, fid, UserPostfix.SignerMessage, messageKeys),
+        nextPrefix: undefined,
+      };
+    }
+    // return getManyMessagesByFid(this._db, fid, UserPostfix.SignerMessage, messageKeys);
   }
 
   /**
-   * Finds all SignerRemove Messages for a user's custody address
+   * Finds all SignerAdd and SignerRemove messages for a user's custody address.
    *
    * @param fid fid of the user who created the signers
-   * @returns the SignerRemove message if it exists, throws HubError otherwise
+   * @param rangeOptions options for limiting the range of the query
+   * @returns Signer messages and nextPrefix if available
    */
-  async getSignerRemovesByFid(fid: number): Promise<protobufs.SignerRemoveMessage[]> {
-    const removesPrefix = makeSignerRemovesKey(fid);
+  async getSignerMessagesByFid(
+    fid: number,
+    rangeOptions: PrefixRangeOptions = {}
+  ): Promise<{
+    messages: protobufs.SignerRemoveMessage[];
+    nextPrefix: Buffer | undefined;
+  }> {
+    rangeOptions.limit = rangeOptions.limit ?? -1;
+
+    const startPrefix = rangeOptions.startPrefix ?? makeSignerAddsKey(fid);
+    const endPrefix = makeEndPrefix(makeSignerRemovesKey(fid));
+
+    const signerKeys: Buffer[] = [];
     const messageKeys: Buffer[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(removesPrefix, { keys: false, valueAsBuffer: true })) {
+    for await (const [key, value] of this._db.iterator({
+      gte: startPrefix,
+      lt: endPrefix,
+      // If a limit was specified, fetch limit + 1 to determine the next prefix
+      limit: rangeOptions.limit !== -1 ? rangeOptions.limit + 1 : rangeOptions.limit,
+      keyAsBuffer: true,
+      valueAsBuffer: true,
+    })) {
+      signerKeys.push(key);
       messageKeys.push(value);
     }
-    return getManyMessagesByFid(this._db, fid, UserPostfix.SignerMessage, messageKeys);
+
+    /**
+     * If a limit was specified and limit + 1 were fetched, return limit results and
+     * next prefix, otherwise return all results and undefined next prefix.
+     */
+    if (rangeOptions.limit !== -1 && messageKeys.length === rangeOptions.limit + 1) {
+      const nextPrefix = signerKeys[signerKeys.length - 1];
+      const rangeMessageKeys = messageKeys.slice(0, messageKeys.length - 1);
+
+      return {
+        messages: await getManyMessagesByFid(this._db, fid, UserPostfix.SignerMessage, rangeMessageKeys),
+        nextPrefix,
+      };
+    } else {
+      return {
+        messages: await getManyMessagesByFid(this._db, fid, UserPostfix.SignerMessage, messageKeys),
+        nextPrefix: undefined,
+      };
+    }
   }
 
-  async getFids(): Promise<number[]> {
-    const prefix = Buffer.from([RootPrefix.IdRegistryEvent]);
+  async getFids(rangeOptions: PrefixRangeOptions = {}): Promise<{
+    fids: number[];
+    nextPrefix: Buffer | undefined;
+  }> {
+    rangeOptions.limit = rangeOptions.limit ?? -1;
+
+    const startPrefix = rangeOptions.startPrefix ?? Buffer.from([RootPrefix.IdRegistryEvent]);
+    const endPrefix = makeEndPrefix(startPrefix);
     const fids: number[] = [];
-    for await (const [key] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
+    for await (const [key] of this._db.iterator({
+      gte: startPrefix,
+      lt: endPrefix,
+      // If a limit was specified, fetch limit + 1 to determine the next prefix
+      limit: rangeOptions.limit !== -1 ? rangeOptions.limit + 1 : rangeOptions.limit,
+      keyAsBuffer: true,
+      values: false,
+    })) {
       fids.push(Number((key as Buffer).readUint32BE(1)));
     }
-    return fids;
+
+    /**
+     * If a limit was specified and limit + 1 were fetched, return limit fids and
+     * next prefix, otherwise return all fids and undefined next prefix.
+     */
+    if (rangeOptions.limit !== -1 && fids.length === rangeOptions.limit + 1) {
+      const nextFid = fids[fids.length - 1];
+      const nextPrefix = nextFid ? makeIdRegistryEventPrimaryKey(nextFid) : undefined;
+      const rangeFids = fids.slice(0, fids.length - 1);
+
+      return {
+        fids: rangeFids,
+        nextPrefix,
+      };
+    } else {
+      return {
+        fids,
+        nextPrefix: undefined,
+      };
+    }
   }
 
   /**

@@ -42,7 +42,7 @@ export class PruneMessagesJobScheduler {
       return err(fids.error);
     }
 
-    for (const fid of fids.value) {
+    for (const fid of fids.value.fids) {
       await this._engine.pruneMessages(fid);
     }
 

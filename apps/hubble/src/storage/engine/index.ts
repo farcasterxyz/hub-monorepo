@@ -11,6 +11,7 @@ import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import UserDataStore from '~/storage/stores/userDataStore';
 import VerificationStore from '~/storage/stores/verificationStore';
+import { MessageRange, PrefixRangeOptions } from '../stores/types';
 
 class Engine {
   public eventHandler: StoreEventHandler;
@@ -354,37 +355,37 @@ class Engine {
     return ResultAsync.fromPromise(this._signerStore.getSignerAdd(fid, signerPubKey), (e) => e as HubError);
   }
 
-  async getSignersByFid(fid: number): HubAsyncResult<protobufs.SignerAddMessage[]> {
+  async getSignersByFid(
+    fid: number,
+    rangeOptions?: PrefixRangeOptions
+  ): HubAsyncResult<MessageRange<protobufs.SignerAddMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    return ResultAsync.fromPromise(this._signerStore.getSignerAddsByFid(fid), (e) => e as HubError);
+    return ResultAsync.fromPromise(this._signerStore.getSignerAddsByFid(fid, rangeOptions), (e) => e as HubError);
   }
 
   async getIdRegistryEvent(fid: number): HubAsyncResult<protobufs.IdRegistryEvent> {
     return ResultAsync.fromPromise(this._signerStore.getIdRegistryEvent(fid), (e) => e as HubError);
   }
 
-  async getFids(): HubAsyncResult<number[]> {
-    return ResultAsync.fromPromise(this._signerStore.getFids(), (e) => e as HubError);
+  async getFids(rangeOptions: PrefixRangeOptions = {}): HubAsyncResult<{
+    fids: number[];
+    nextPrefix: Buffer | undefined;
+  }> {
+    return ResultAsync.fromPromise(this._signerStore.getFids(rangeOptions), (e) => e as HubError);
   }
 
   async getAllSignerMessagesByFid(
-    fid: number
-  ): HubAsyncResult<(protobufs.SignerAddMessage | protobufs.SignerRemoveMessage)[]> {
-    const adds = await ResultAsync.fromPromise(this._signerStore.getSignerAddsByFid(fid), (e) => e as HubError);
-    if (adds.isErr()) {
-      return err(adds.error);
-    }
-
-    const removes = await ResultAsync.fromPromise(this._signerStore.getSignerRemovesByFid(fid), (e) => e as HubError);
-    if (removes.isErr()) {
-      return err(removes.error);
-    }
-
-    return ok([...adds.value, ...removes.value]);
+    fid: number,
+    rangeOptions: PrefixRangeOptions = {}
+  ): HubAsyncResult<{
+    messages: (protobufs.SignerAddMessage | protobufs.SignerRemoveMessage)[];
+    nextPrefix: Buffer | undefined;
+  }> {
+    return ResultAsync.fromPromise(this._signerStore.getSignerMessagesByFid(fid, rangeOptions), (e) => e as HubError);
   }
 
   /* -------------------------------------------------------------------------- */

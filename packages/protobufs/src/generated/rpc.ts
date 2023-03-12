@@ -73,14 +73,23 @@ export interface SyncIds {
 
 export interface FidRequest {
   fid: number;
+  pageSize: number;
+  pageToken: Uint8Array;
+}
+
+export interface FidsRequest {
+  pageSize: number;
+  pageToken: Uint8Array;
 }
 
 export interface FidsResponse {
   fids: number[];
+  nextPageToken: Uint8Array;
 }
 
 export interface MessagesResponse {
   messages: Message[];
+  nextPageToken: Uint8Array;
 }
 
 export interface ReactionRequest {
@@ -647,13 +656,19 @@ export const SyncIds = {
 };
 
 function createBaseFidRequest(): FidRequest {
-  return { fid: 0 };
+  return { fid: 0, pageSize: 0, pageToken: new Uint8Array() };
 }
 
 export const FidRequest = {
   encode(message: FidRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.fid !== 0) {
       writer.uint32(8).uint64(message.fid);
+    }
+    if (message.pageSize !== 0) {
+      writer.uint32(16).uint32(message.pageSize);
+    }
+    if (message.pageToken.length !== 0) {
+      writer.uint32(26).bytes(message.pageToken);
     }
     return writer;
   },
@@ -668,6 +683,12 @@ export const FidRequest = {
         case 1:
           message.fid = longToNumber(reader.uint64() as Long);
           break;
+        case 2:
+          message.pageSize = reader.uint32();
+          break;
+        case 3:
+          message.pageToken = reader.bytes();
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -677,12 +698,19 @@ export const FidRequest = {
   },
 
   fromJSON(object: any): FidRequest {
-    return { fid: isSet(object.fid) ? Number(object.fid) : 0 };
+    return {
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : 0,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : new Uint8Array(),
+    };
   },
 
   toJSON(message: FidRequest): unknown {
     const obj: any = {};
     message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
+    message.pageToken !== undefined &&
+      (obj.pageToken = base64FromBytes(message.pageToken !== undefined ? message.pageToken : new Uint8Array()));
     return obj;
   },
 
@@ -693,12 +721,77 @@ export const FidRequest = {
   fromPartial<I extends Exact<DeepPartial<FidRequest>, I>>(object: I): FidRequest {
     const message = createBaseFidRequest();
     message.fid = object.fid ?? 0;
+    message.pageSize = object.pageSize ?? 0;
+    message.pageToken = object.pageToken ?? new Uint8Array();
+    return message;
+  },
+};
+
+function createBaseFidsRequest(): FidsRequest {
+  return { pageSize: 0, pageToken: new Uint8Array() };
+}
+
+export const FidsRequest = {
+  encode(message: FidsRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.pageSize !== 0) {
+      writer.uint32(8).uint32(message.pageSize);
+    }
+    if (message.pageToken.length !== 0) {
+      writer.uint32(18).bytes(message.pageToken);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): FidsRequest {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseFidsRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.pageSize = reader.uint32();
+          break;
+        case 2:
+          message.pageToken = reader.bytes();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): FidsRequest {
+    return {
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : 0,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : new Uint8Array(),
+    };
+  },
+
+  toJSON(message: FidsRequest): unknown {
+    const obj: any = {};
+    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
+    message.pageToken !== undefined &&
+      (obj.pageToken = base64FromBytes(message.pageToken !== undefined ? message.pageToken : new Uint8Array()));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<FidsRequest>, I>>(base?: I): FidsRequest {
+    return FidsRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<FidsRequest>, I>>(object: I): FidsRequest {
+    const message = createBaseFidsRequest();
+    message.pageSize = object.pageSize ?? 0;
+    message.pageToken = object.pageToken ?? new Uint8Array();
     return message;
   },
 };
 
 function createBaseFidsResponse(): FidsResponse {
-  return { fids: [] };
+  return { fids: [], nextPageToken: new Uint8Array() };
 }
 
 export const FidsResponse = {
@@ -708,6 +801,9 @@ export const FidsResponse = {
       writer.uint64(v);
     }
     writer.ldelim();
+    if (message.nextPageToken.length !== 0) {
+      writer.uint32(18).bytes(message.nextPageToken);
+    }
     return writer;
   },
 
@@ -728,6 +824,9 @@ export const FidsResponse = {
             message.fids.push(longToNumber(reader.uint64() as Long));
           }
           break;
+        case 2:
+          message.nextPageToken = reader.bytes();
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -737,7 +836,10 @@ export const FidsResponse = {
   },
 
   fromJSON(object: any): FidsResponse {
-    return { fids: Array.isArray(object?.fids) ? object.fids.map((e: any) => Number(e)) : [] };
+    return {
+      fids: Array.isArray(object?.fids) ? object.fids.map((e: any) => Number(e)) : [],
+      nextPageToken: isSet(object.nextPageToken) ? bytesFromBase64(object.nextPageToken) : new Uint8Array(),
+    };
   },
 
   toJSON(message: FidsResponse): unknown {
@@ -747,6 +849,10 @@ export const FidsResponse = {
     } else {
       obj.fids = [];
     }
+    message.nextPageToken !== undefined &&
+      (obj.nextPageToken = base64FromBytes(
+        message.nextPageToken !== undefined ? message.nextPageToken : new Uint8Array(),
+      ));
     return obj;
   },
 
@@ -757,18 +863,22 @@ export const FidsResponse = {
   fromPartial<I extends Exact<DeepPartial<FidsResponse>, I>>(object: I): FidsResponse {
     const message = createBaseFidsResponse();
     message.fids = object.fids?.map((e) => e) || [];
+    message.nextPageToken = object.nextPageToken ?? new Uint8Array();
     return message;
   },
 };
 
 function createBaseMessagesResponse(): MessagesResponse {
-  return { messages: [] };
+  return { messages: [], nextPageToken: new Uint8Array() };
 }
 
 export const MessagesResponse = {
   encode(message: MessagesResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     for (const v of message.messages) {
       Message.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.nextPageToken.length !== 0) {
+      writer.uint32(18).bytes(message.nextPageToken);
     }
     return writer;
   },
@@ -783,6 +893,9 @@ export const MessagesResponse = {
         case 1:
           message.messages.push(Message.decode(reader, reader.uint32()));
           break;
+        case 2:
+          message.nextPageToken = reader.bytes();
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -792,7 +905,10 @@ export const MessagesResponse = {
   },
 
   fromJSON(object: any): MessagesResponse {
-    return { messages: Array.isArray(object?.messages) ? object.messages.map((e: any) => Message.fromJSON(e)) : [] };
+    return {
+      messages: Array.isArray(object?.messages) ? object.messages.map((e: any) => Message.fromJSON(e)) : [],
+      nextPageToken: isSet(object.nextPageToken) ? bytesFromBase64(object.nextPageToken) : new Uint8Array(),
+    };
   },
 
   toJSON(message: MessagesResponse): unknown {
@@ -802,6 +918,10 @@ export const MessagesResponse = {
     } else {
       obj.messages = [];
     }
+    message.nextPageToken !== undefined &&
+      (obj.nextPageToken = base64FromBytes(
+        message.nextPageToken !== undefined ? message.nextPageToken : new Uint8Array(),
+      ));
     return obj;
   },
 
@@ -812,6 +932,7 @@ export const MessagesResponse = {
   fromPartial<I extends Exact<DeepPartial<MessagesResponse>, I>>(object: I): MessagesResponse {
     const message = createBaseMessagesResponse();
     message.messages = object.messages?.map((e) => Message.fromPartial(e)) || [];
+    message.nextPageToken = object.nextPageToken ?? new Uint8Array();
     return message;
   },
 };
@@ -1448,8 +1569,8 @@ export const HubServiceService = {
     path: "/HubService/GetFids",
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
-    requestDeserialize: (value: Buffer) => Empty.decode(value),
+    requestSerialize: (value: FidsRequest) => Buffer.from(FidsRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => FidsRequest.decode(value),
     responseSerialize: (value: FidsResponse) => Buffer.from(FidsResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => FidsResponse.decode(value),
   },
@@ -1577,7 +1698,7 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getSigner: handleUnaryCall<SignerRequest, Message>;
   getSignersByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getIdRegistryEvent: handleUnaryCall<FidRequest, IdRegistryEvent>;
-  getFids: handleUnaryCall<Empty, FidsResponse>;
+  getFids: handleUnaryCall<FidsRequest, FidsResponse>;
   /** Bulk Methods */
   getAllCastMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getAllReactionMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
@@ -1879,14 +2000,17 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: IdRegistryEvent) => void,
   ): ClientUnaryCall;
-  getFids(request: Empty, callback: (error: ServiceError | null, response: FidsResponse) => void): ClientUnaryCall;
   getFids(
-    request: Empty,
+    request: FidsRequest,
+    callback: (error: ServiceError | null, response: FidsResponse) => void,
+  ): ClientUnaryCall;
+  getFids(
+    request: FidsRequest,
     metadata: Metadata,
     callback: (error: ServiceError | null, response: FidsResponse) => void,
   ): ClientUnaryCall;
   getFids(
-    request: Empty,
+    request: FidsRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: FidsResponse) => void,
