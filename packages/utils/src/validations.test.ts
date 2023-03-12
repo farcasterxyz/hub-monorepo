@@ -237,6 +237,27 @@ describe('validateCastAddBody', () => {
       hubErrorMessage = 'embeds > 2';
     });
 
+    test('with an empty embed string', () => {
+      body = Factories.CastAddBody.build({
+        embeds: [''],
+      });
+      hubErrorMessage = 'embed < 1 byte';
+    });
+
+    test('with an embed string over 256 ASCII characters', () => {
+      body = Factories.CastAddBody.build({
+        embeds: [faker.random.alphaNumeric(257)],
+      });
+      hubErrorMessage = 'embed > 256 bytes';
+    });
+
+    test('with an embed string over 256 bytes', () => {
+      body = Factories.CastAddBody.build({
+        embeds: [faker.random.alphaNumeric(254) + '🤓'],
+      });
+      hubErrorMessage = 'embed > 256 bytes';
+    });
+
     test('when parent fid is missing', () => {
       body = Factories.CastAddBody.build({
         parentCastId: Factories.CastId.build({ fid: undefined }),
