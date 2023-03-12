@@ -252,7 +252,7 @@ export const validateCastAddBody = (body: protobufs.CastAddBody): HubResult<prot
 
   const textUtf8BytesResult = utf8StringToBytes(text);
   if (textUtf8BytesResult.isErr()) {
-    return err(new HubError('bad_request.invalid_param', 'text cannot be encoded as utf8'));
+    return err(new HubError('bad_request.invalid_param', 'text must be encodable as utf8'));
   }
   const textBytes = textUtf8BytesResult.value;
 
@@ -270,6 +270,28 @@ export const validateCastAddBody = (body: protobufs.CastAddBody): HubResult<prot
 
   if (body.mentions.length !== body.mentionsPositions.length) {
     return err(new HubError('bad_request.validation_failure', 'mentions and mentionsPositions must match'));
+  }
+
+  for (let i = 0; i < body.embeds.length; i++) {
+    // eslint-disable-next-line security/detect-object-injection
+    const embed = body.embeds[i];
+    if (typeof embed !== 'string') {
+      return err(new HubError('bad_request.validation_failure', 'embeds must be strings'));
+    }
+
+    const embedUtf8BytesResult = utf8StringToBytes(embed);
+    if (embedUtf8BytesResult.isErr()) {
+      return err(new HubError('bad_request.invalid_param', 'embed must be encodable as utf8'));
+    }
+    const embedBytes = embedUtf8BytesResult.value;
+
+    if (embedBytes.length < 1) {
+      return err(new HubError('bad_request.invalid_param', 'embed < 1 byte'));
+    }
+
+    if (embedBytes.length > 256) {
+      return err(new HubError('bad_request.invalid_param', 'embed > 256 bytes'));
+    }
   }
 
   for (let i = 0; i < body.mentions.length; i++) {
