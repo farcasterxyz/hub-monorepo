@@ -1,5 +1,11 @@
 # @farcaster/utils
 
+## 0.2.10
+
+### Patch Changes
+
+- 2d90f5bf: Validate embed URLs using utf8 byte length
+
 ## 0.2.9
 
 ### Patch Changes

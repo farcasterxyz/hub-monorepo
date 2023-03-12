@@ -1,5 +1,12 @@
 # @farcaster/hubble
 
+## 1.0.13
+
+### Patch Changes
+
+- Updated dependencies [2d90f5bf]
+  - @farcaster/utils@0.2.10
+
 ## 1.0.12
 
 ### Patch Changes

@@ -1,5 +1,16 @@
 # @farcaster/js
 
+## 0.3.0
+
+### Minor Changes
+
+- f55fa8a2: move builders to utils and use bytes rather than hex
+
+### Patch Changes
+
+- Updated dependencies [2d90f5bf]
+  - @farcaster/utils@0.2.10
+
 ## 0.2.9
 
 ### Patch Changes
