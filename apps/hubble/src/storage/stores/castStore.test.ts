@@ -84,6 +84,16 @@ describe('getCastAddsByFid', () => {
   test('returns empty array without messages', async () => {
     await expect(store.getCastAddsByFid(fid)).resolves.toEqual([]);
   });
+
+  test('returns cast adds in chronological order', async () => {
+    const castAdd2 = await Factories.CastAddMessage.create({ data: { fid, timestamp: castAdd.data.timestamp + 1 } });
+    const castRemove2 = await Factories.CastRemoveMessage.create({ data: { fid } });
+    await store.merge(castRemove2);
+    await store.merge(castAdd);
+    await store.merge(castAdd2);
+    const results = await store.getCastAddsByFid(fid);
+    expect(results).toEqual([castAdd, castAdd2]);
+  });
 });
 
 describe('getCastRemovesByFid', () => {
@@ -101,6 +111,18 @@ describe('getCastRemovesByFid', () => {
 
   test('returns empty array without messages', async () => {
     await expect(store.getCastRemovesByFid(fid)).resolves.toEqual([]);
+  });
+
+  test('returns cast removes in chronological order', async () => {
+    const castAdd2 = await Factories.CastAddMessage.create({ data: { fid } });
+    const castRemove2 = await Factories.CastRemoveMessage.create({
+      data: { fid, timestamp: castRemove.data.timestamp + 1 },
+    });
+    await store.merge(castRemove);
+    await store.merge(castRemove2);
+    await store.merge(castAdd2);
+    const results = await store.getCastRemovesByFid(fid);
+    expect(results).toEqual([castRemove, castRemove2]);
   });
 });
 

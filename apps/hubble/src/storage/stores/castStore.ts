@@ -6,7 +6,6 @@ import {
   deleteMessageTransaction,
   getAllMessagesBySigner,
   getManyMessages,
-  getManyMessagesByFid,
   getMessage,
   getMessagesPruneIterator,
   getNextMessageToPrune,
@@ -143,22 +142,28 @@ class CastStore {
 
   /** Gets all CastAdd messages for an fid */
   async getCastAddsByFid(fid: number): Promise<protobufs.CastAddMessage[]> {
-    const castAddsPrefix = makeCastAddsKey(fid);
-    const messageKeys: Buffer[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(castAddsPrefix, { keys: false, valueAsBuffer: true })) {
-      messageKeys.push(value);
+    const castMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
+    const messages: protobufs.CastAddMessage[] = [];
+    for await (const [, value] of this._db.iteratorByPrefix(castMessagesPrefix, { keys: false, valueAsBuffer: true })) {
+      const message = protobufs.Message.decode(Uint8Array.from(value as Buffer));
+      if (protobufs.isCastAddMessage(message)) {
+        messages.push(message);
+      }
     }
-    return getManyMessagesByFid(this._db, fid, UserPostfix.CastMessage, messageKeys);
+    return messages;
   }
 
   /** Gets all CastRemove messages for an fid */
   async getCastRemovesByFid(fid: number): Promise<protobufs.CastRemoveMessage[]> {
-    const castRemovesPrefix = makeCastRemovesKey(fid);
-    const messageKeys: Buffer[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(castRemovesPrefix, { keys: false, valueAsBuffer: true })) {
-      messageKeys.push(value);
+    const castMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
+    const messages: protobufs.CastRemoveMessage[] = [];
+    for await (const [, value] of this._db.iteratorByPrefix(castMessagesPrefix, { keys: false, valueAsBuffer: true })) {
+      const message = protobufs.Message.decode(Uint8Array.from(value as Buffer));
+      if (protobufs.isCastRemoveMessage(message)) {
+        messages.push(message);
+      }
     }
-    return getManyMessagesByFid(this._db, fid, UserPostfix.CastMessage, messageKeys);
+    return messages;
   }
 
   /** Gets all CastAdd messages for a parent cast (fid and tsHash) */
