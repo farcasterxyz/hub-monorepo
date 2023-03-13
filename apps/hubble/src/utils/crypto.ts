@@ -9,7 +9,7 @@ export const sleep = (ms: number) => {
 };
 
 export const sleepWhile = (condition: () => boolean, timeoutMs: number): Promise<boolean> => {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const interval = setInterval(() => {
       if (!condition()) {
         clearInterval(interval);
@@ -18,7 +18,7 @@ export const sleepWhile = (condition: () => boolean, timeoutMs: number): Promise
     }, 10);
     setTimeout(() => {
       clearInterval(interval);
-      resolve(true);
+      reject(true);
     }, timeoutMs);
   });
 };
