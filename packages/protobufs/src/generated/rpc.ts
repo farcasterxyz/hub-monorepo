@@ -92,6 +92,12 @@ export interface MessagesResponse {
   nextPageToken: Uint8Array;
 }
 
+export interface CastsByParentRequest {
+  castId: CastId | undefined;
+  pageSize: number;
+  pageToken: Uint8Array;
+}
+
 export interface ReactionRequest {
   fid: number;
   reactionType: ReactionType;
@@ -101,11 +107,15 @@ export interface ReactionRequest {
 export interface ReactionsByFidRequest {
   fid: number;
   reactionType: ReactionType;
+  pageSize: number;
+  pageToken: Uint8Array;
 }
 
 export interface ReactionsByCastRequest {
   castId: CastId | undefined;
   reactionType: ReactionType;
+  pageSize: number;
+  pageToken: Uint8Array;
 }
 
 export interface UserDataRequest {
@@ -937,6 +947,80 @@ export const MessagesResponse = {
   },
 };
 
+function createBaseCastsByParentRequest(): CastsByParentRequest {
+  return { castId: undefined, pageSize: 0, pageToken: new Uint8Array() };
+}
+
+export const CastsByParentRequest = {
+  encode(message: CastsByParentRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.castId !== undefined) {
+      CastId.encode(message.castId, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.pageSize !== 0) {
+      writer.uint32(16).uint32(message.pageSize);
+    }
+    if (message.pageToken.length !== 0) {
+      writer.uint32(26).bytes(message.pageToken);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): CastsByParentRequest {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseCastsByParentRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.castId = CastId.decode(reader, reader.uint32());
+          break;
+        case 2:
+          message.pageSize = reader.uint32();
+          break;
+        case 3:
+          message.pageToken = reader.bytes();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): CastsByParentRequest {
+    return {
+      castId: isSet(object.castId) ? CastId.fromJSON(object.castId) : undefined,
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : 0,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : new Uint8Array(),
+    };
+  },
+
+  toJSON(message: CastsByParentRequest): unknown {
+    const obj: any = {};
+    message.castId !== undefined && (obj.castId = message.castId ? CastId.toJSON(message.castId) : undefined);
+    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
+    message.pageToken !== undefined &&
+      (obj.pageToken = base64FromBytes(message.pageToken !== undefined ? message.pageToken : new Uint8Array()));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<CastsByParentRequest>, I>>(base?: I): CastsByParentRequest {
+    return CastsByParentRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<CastsByParentRequest>, I>>(object: I): CastsByParentRequest {
+    const message = createBaseCastsByParentRequest();
+    message.castId = (object.castId !== undefined && object.castId !== null)
+      ? CastId.fromPartial(object.castId)
+      : undefined;
+    message.pageSize = object.pageSize ?? 0;
+    message.pageToken = object.pageToken ?? new Uint8Array();
+    return message;
+  },
+};
+
 function createBaseReactionRequest(): ReactionRequest {
   return { fid: 0, reactionType: 0, castId: undefined };
 }
@@ -1011,7 +1095,7 @@ export const ReactionRequest = {
 };
 
 function createBaseReactionsByFidRequest(): ReactionsByFidRequest {
-  return { fid: 0, reactionType: 0 };
+  return { fid: 0, reactionType: 0, pageSize: 0, pageToken: new Uint8Array() };
 }
 
 export const ReactionsByFidRequest = {
@@ -1021,6 +1105,12 @@ export const ReactionsByFidRequest = {
     }
     if (message.reactionType !== 0) {
       writer.uint32(16).int32(message.reactionType);
+    }
+    if (message.pageSize !== 0) {
+      writer.uint32(24).uint32(message.pageSize);
+    }
+    if (message.pageToken.length !== 0) {
+      writer.uint32(34).bytes(message.pageToken);
     }
     return writer;
   },
@@ -1038,6 +1128,12 @@ export const ReactionsByFidRequest = {
         case 2:
           message.reactionType = reader.int32() as any;
           break;
+        case 3:
+          message.pageSize = reader.uint32();
+          break;
+        case 4:
+          message.pageToken = reader.bytes();
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -1050,6 +1146,8 @@ export const ReactionsByFidRequest = {
     return {
       fid: isSet(object.fid) ? Number(object.fid) : 0,
       reactionType: isSet(object.reactionType) ? reactionTypeFromJSON(object.reactionType) : 0,
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : 0,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : new Uint8Array(),
     };
   },
 
@@ -1057,6 +1155,9 @@ export const ReactionsByFidRequest = {
     const obj: any = {};
     message.fid !== undefined && (obj.fid = Math.round(message.fid));
     message.reactionType !== undefined && (obj.reactionType = reactionTypeToJSON(message.reactionType));
+    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
+    message.pageToken !== undefined &&
+      (obj.pageToken = base64FromBytes(message.pageToken !== undefined ? message.pageToken : new Uint8Array()));
     return obj;
   },
 
@@ -1068,12 +1169,14 @@ export const ReactionsByFidRequest = {
     const message = createBaseReactionsByFidRequest();
     message.fid = object.fid ?? 0;
     message.reactionType = object.reactionType ?? 0;
+    message.pageSize = object.pageSize ?? 0;
+    message.pageToken = object.pageToken ?? new Uint8Array();
     return message;
   },
 };
 
 function createBaseReactionsByCastRequest(): ReactionsByCastRequest {
-  return { castId: undefined, reactionType: 0 };
+  return { castId: undefined, reactionType: 0, pageSize: 0, pageToken: new Uint8Array() };
 }
 
 export const ReactionsByCastRequest = {
@@ -1083,6 +1186,12 @@ export const ReactionsByCastRequest = {
     }
     if (message.reactionType !== 0) {
       writer.uint32(16).int32(message.reactionType);
+    }
+    if (message.pageSize !== 0) {
+      writer.uint32(24).uint32(message.pageSize);
+    }
+    if (message.pageToken.length !== 0) {
+      writer.uint32(34).bytes(message.pageToken);
     }
     return writer;
   },
@@ -1100,6 +1209,12 @@ export const ReactionsByCastRequest = {
         case 2:
           message.reactionType = reader.int32() as any;
           break;
+        case 3:
+          message.pageSize = reader.uint32();
+          break;
+        case 4:
+          message.pageToken = reader.bytes();
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -1112,6 +1227,8 @@ export const ReactionsByCastRequest = {
     return {
       castId: isSet(object.castId) ? CastId.fromJSON(object.castId) : undefined,
       reactionType: isSet(object.reactionType) ? reactionTypeFromJSON(object.reactionType) : 0,
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : 0,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : new Uint8Array(),
     };
   },
 
@@ -1119,6 +1236,9 @@ export const ReactionsByCastRequest = {
     const obj: any = {};
     message.castId !== undefined && (obj.castId = message.castId ? CastId.toJSON(message.castId) : undefined);
     message.reactionType !== undefined && (obj.reactionType = reactionTypeToJSON(message.reactionType));
+    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
+    message.pageToken !== undefined &&
+      (obj.pageToken = base64FromBytes(message.pageToken !== undefined ? message.pageToken : new Uint8Array()));
     return obj;
   },
 
@@ -1132,6 +1252,8 @@ export const ReactionsByCastRequest = {
       ? CastId.fromPartial(object.castId)
       : undefined;
     message.reactionType = object.reactionType ?? 0;
+    message.pageSize = object.pageSize ?? 0;
+    message.pageToken = object.pageToken ?? new Uint8Array();
     return message;
   },
 };
@@ -1448,8 +1570,8 @@ export const HubServiceService = {
     path: "/HubService/GetCastsByParent",
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: CastId) => Buffer.from(CastId.encode(value).finish()),
-    requestDeserialize: (value: Buffer) => CastId.decode(value),
+    requestSerialize: (value: CastsByParentRequest) => Buffer.from(CastsByParentRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => CastsByParentRequest.decode(value),
     responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
@@ -1681,7 +1803,7 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   /** Casts */
   getCast: handleUnaryCall<CastId, Message>;
   getCastsByFid: handleUnaryCall<FidRequest, MessagesResponse>;
-  getCastsByParent: handleUnaryCall<CastId, MessagesResponse>;
+  getCastsByParent: handleUnaryCall<CastsByParentRequest, MessagesResponse>;
   getCastsByMention: handleUnaryCall<FidRequest, MessagesResponse>;
   /** Reactions */
   getReaction: handleUnaryCall<ReactionRequest, Message>;
@@ -1805,16 +1927,16 @@ export interface HubServiceClient extends Client {
     callback: (error: ServiceError | null, response: MessagesResponse) => void,
   ): ClientUnaryCall;
   getCastsByParent(
-    request: CastId,
+    request: CastsByParentRequest,
     callback: (error: ServiceError | null, response: MessagesResponse) => void,
   ): ClientUnaryCall;
   getCastsByParent(
-    request: CastId,
+    request: CastsByParentRequest,
     metadata: Metadata,
     callback: (error: ServiceError | null, response: MessagesResponse) => void,
   ): ClientUnaryCall;
   getCastsByParent(
-    request: CastId,
+    request: CastsByParentRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: MessagesResponse) => void,

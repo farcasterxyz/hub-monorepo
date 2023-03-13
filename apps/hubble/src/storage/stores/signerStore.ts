@@ -1,17 +1,14 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
+import { bytesCompare, bytesIncrement, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
-import {
-  getIdRegistryEvent,
-  makeIdRegistryEventPrimaryKey,
-  putIdRegistryEventTransaction,
-} from '~/storage/db/idRegistryEvent';
+import AbstractRocksDB from 'rocksdb';
+import { getIdRegistryEvent, putIdRegistryEventTransaction } from '~/storage/db/idRegistryEvent';
 import {
   deleteMessageTransaction,
   getAllMessagesBySigner,
-  getManyMessagesByFid,
   getMessage,
+  getMessagesPageByPrefix,
   getMessagesPruneIterator,
   getNextMessageToPrune,
   makeMessagePrimaryKey,
@@ -22,8 +19,14 @@ import {
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix, UserPostfix } from '~/storage/db/types';
 import StoreEventHandler, { putEventTransaction } from '~/storage/stores/storeEventHandler';
-import { MERGE_TIMEOUT_DEFAULT, PrefixRangeOptions, StorePruneOptions } from '~/storage/stores/types';
-import { eventCompare, makeEndPrefix } from '~/storage/stores/utils';
+import {
+  MERGE_TIMEOUT_DEFAULT,
+  MessagesPage,
+  PAGE_LIMIT_MAX,
+  PageOptions,
+  StorePruneOptions,
+} from '~/storage/stores/types';
+import { eventCompare } from '~/storage/stores/utils';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 
@@ -133,147 +136,141 @@ class SignerStore {
    * Finds all SignerAdd messages for a user's custody address
    *
    * @param fid fid of the user who created the signers
-   * @returns the SignerRemove messages if it exists, throws HubError otherwise
+   * @returns the SignerAdd messages if it exists, throws HubError otherwise
    */
   async getSignerAddsByFid(
     fid: number,
-    rangeOptions: PrefixRangeOptions = {}
-  ): Promise<{
-    messages: protobufs.SignerAddMessage[];
-    nextPrefix: Buffer | undefined;
-  }> {
-    rangeOptions.limit = rangeOptions.limit ?? -1;
-
-    const addsPrefix = makeSignerAddsKey(fid);
-    const startPrefix = rangeOptions.startPrefix ?? addsPrefix;
-    const endPrefix = makeEndPrefix(addsPrefix);
-    const signerKeys: Buffer[] = [];
-    const messageKeys: Buffer[] = [];
-    for await (const [key, value] of this._db.iterator({
-      gte: startPrefix,
-      lt: endPrefix,
-      // If a limit was specified, fetch limit + 1 to determine the next prefix
-      limit: rangeOptions.limit !== -1 ? rangeOptions.limit + 1 : rangeOptions.limit,
-      keysAsBuffer: true,
-      valueAsBuffer: true,
-    })) {
-      signerKeys.push(key);
-      messageKeys.push(value);
-    }
-
-    /**
-     * If a limit was specified and limit + 1 were fetched, return limit results and
-     * next prefix, otherwise return all results and undefined next prefix.
-     */
-    if (rangeOptions.limit !== -1 && messageKeys.length === rangeOptions.limit + 1) {
-      const nextPrefix = signerKeys[signerKeys.length - 1];
-      const rangeMessageKeys = messageKeys.slice(0, messageKeys.length - 1);
-
-      return {
-        messages: await getManyMessagesByFid(this._db, fid, UserPostfix.SignerMessage, rangeMessageKeys),
-        nextPrefix,
-      };
-    } else {
-      return {
-        messages: await getManyMessagesByFid(this._db, fid, UserPostfix.SignerMessage, messageKeys),
-        nextPrefix: undefined,
-      };
-    }
-    // return getManyMessagesByFid(this._db, fid, UserPostfix.SignerMessage, messageKeys);
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.SignerAddMessage>> {
+    const signerMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.SignerMessage);
+    return getMessagesPageByPrefix(this._db, signerMessagesPrefix, protobufs.isSignerAddMessage, pageOptions);
   }
 
   /**
-   * Finds all SignerAdd and SignerRemove messages for a user's custody address.
+   * Finds all SignerRemove messages for a user's custody address
    *
    * @param fid fid of the user who created the signers
-   * @param rangeOptions options for limiting the range of the query
-   * @returns Signer messages and nextPrefix if available
+   * @returns the SignerRemove messages if it exists, throws HubError otherwise
    */
-  async getSignerMessagesByFid(
+  async getSignerRemovesByFid(
     fid: number,
-    rangeOptions: PrefixRangeOptions = {}
-  ): Promise<{
-    messages: protobufs.SignerRemoveMessage[];
-    nextPrefix: Buffer | undefined;
-  }> {
-    rangeOptions.limit = rangeOptions.limit ?? -1;
-
-    const startPrefix = rangeOptions.startPrefix ?? makeSignerAddsKey(fid);
-    const endPrefix = makeEndPrefix(makeSignerRemovesKey(fid));
-
-    const signerKeys: Buffer[] = [];
-    const messageKeys: Buffer[] = [];
-    for await (const [key, value] of this._db.iterator({
-      gte: startPrefix,
-      lt: endPrefix,
-      // If a limit was specified, fetch limit + 1 to determine the next prefix
-      limit: rangeOptions.limit !== -1 ? rangeOptions.limit + 1 : rangeOptions.limit,
-      keyAsBuffer: true,
-      valueAsBuffer: true,
-    })) {
-      signerKeys.push(key);
-      messageKeys.push(value);
-    }
-
-    /**
-     * If a limit was specified and limit + 1 were fetched, return limit results and
-     * next prefix, otherwise return all results and undefined next prefix.
-     */
-    if (rangeOptions.limit !== -1 && messageKeys.length === rangeOptions.limit + 1) {
-      const nextPrefix = signerKeys[signerKeys.length - 1];
-      const rangeMessageKeys = messageKeys.slice(0, messageKeys.length - 1);
-
-      return {
-        messages: await getManyMessagesByFid(this._db, fid, UserPostfix.SignerMessage, rangeMessageKeys),
-        nextPrefix,
-      };
-    } else {
-      return {
-        messages: await getManyMessagesByFid(this._db, fid, UserPostfix.SignerMessage, messageKeys),
-        nextPrefix: undefined,
-      };
-    }
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.SignerRemoveMessage>> {
+    const signerMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.SignerMessage);
+    return getMessagesPageByPrefix(this._db, signerMessagesPrefix, protobufs.isSignerRemoveMessage, pageOptions);
   }
 
-  async getFids(rangeOptions: PrefixRangeOptions = {}): Promise<{
+  async getAllSignerMessagesByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.SignerAddMessage | protobufs.SignerRemoveMessage>> {
+    const signerMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.SignerMessage);
+    const filter = (
+      message: protobufs.Message
+    ): message is protobufs.SignerAddMessage | protobufs.SignerRemoveMessage => {
+      return protobufs.isSignerAddMessage(message) || protobufs.isSignerRemoveMessage(message);
+    };
+    return getMessagesPageByPrefix(this._db, signerMessagesPrefix, filter, pageOptions);
+  }
+
+  async getFids(pageOptions: PageOptions = {}): Promise<{
     fids: number[];
-    nextPrefix: Buffer | undefined;
+    nextPageKey: Buffer | undefined;
   }> {
-    rangeOptions.limit = rangeOptions.limit ?? -1;
+    const prefix = Buffer.from([RootPrefix.IdRegistryEvent]);
 
-    const startPrefix = rangeOptions.startPrefix ?? Buffer.from([RootPrefix.IdRegistryEvent]);
-    const endPrefix = makeEndPrefix(startPrefix);
+    if (pageOptions.pageKey && bytesCompare(Uint8Array.from(pageOptions.pageKey), Uint8Array.from(prefix)) < 0) {
+      throw new HubError('bad_request.invalid_param', 'invalid pageKey');
+    }
+    const startKey = pageOptions.pageKey ?? prefix;
+
+    if (pageOptions.limit && pageOptions.limit > PAGE_LIMIT_MAX) {
+      throw new HubError('bad_request.invalid_param', `limit > ${PAGE_LIMIT_MAX}`);
+    }
+    const limit = pageOptions.limit ?? PAGE_LIMIT_MAX;
+
+    const endKey = bytesIncrement(Uint8Array.from(prefix));
+    if (endKey.isErr()) {
+      throw endKey.error;
+    }
+
     const fids: number[] = [];
-    for await (const [key] of this._db.iterator({
-      gte: startPrefix,
-      lt: endPrefix,
-      // If a limit was specified, fetch limit + 1 to determine the next prefix
-      limit: rangeOptions.limit !== -1 ? rangeOptions.limit + 1 : rangeOptions.limit,
+    const iterator = this._db.iterator({
+      gte: startKey,
+      lt: Buffer.from(endKey.value),
       keyAsBuffer: true,
-      values: false,
-    })) {
-      fids.push(Number((key as Buffer).readUint32BE(1)));
-    }
+      valueAsBuffer: true,
+    });
 
-    /**
-     * If a limit was specified and limit + 1 were fetched, return limit fids and
-     * next prefix, otherwise return all fids and undefined next prefix.
-     */
-    if (rangeOptions.limit !== -1 && fids.length === rangeOptions.limit + 1) {
-      const nextFid = fids[fids.length - 1];
-      const nextPrefix = nextFid ? makeIdRegistryEventPrimaryKey(nextFid) : undefined;
-      const rangeFids = fids.slice(0, fids.length - 1);
+    /** Custom to retrieve fid from key */
+    const getNextIteratorRecord = (iterator: AbstractRocksDB.Iterator): Promise<[Buffer, number]> => {
+      return new Promise((resolve, reject) => {
+        iterator.next((err: Error | undefined, key: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
+          if (err || !value) {
+            reject(err);
+          } else {
+            resolve([key as Buffer, Number((key as Buffer).readUint32BE(1))]);
+          }
+        });
+      });
+    };
 
-      return {
-        fids: rangeFids,
-        nextPrefix,
-      };
+    let iteratorFinished = false;
+    let lastKey: Buffer = startKey;
+    do {
+      const result = await ResultAsync.fromPromise(getNextIteratorRecord(iterator), (e) => e as HubError);
+      if (result.isErr()) {
+        iteratorFinished = true;
+        break;
+      }
+
+      const [key, fid] = result.value;
+      lastKey = key;
+      fids.push(fid);
+    } while (fids.length < limit);
+
+    const nextPageKey = bytesIncrement(Uint8Array.from(lastKey));
+    if (!iteratorFinished && nextPageKey.isOk()) {
+      return { fids, nextPageKey: Buffer.from(nextPageKey.value) };
     } else {
-      return {
-        fids,
-        nextPrefix: undefined,
-      };
+      return { fids, nextPageKey: undefined };
     }
+
+    // pageOptions.limit = pageOptions.limit ?? -1;
+
+    // const startPrefix = pageOptions.pageKey ?? Buffer.from([RootPrefix.IdRegistryEvent]);
+    // const endPrefix = makeEndPrefix(startPrefix);
+    // const fids: number[] = [];
+    // for await (const [key] of this._db.iterator({
+    //   gte: startPrefix,
+    //   lt: endPrefix,
+    //   // If a limit was specified, fetch limit + 1 to determine the next prefix
+    //   limit: pageOptions.limit !== -1 ? pageOptions.limit + 1 : pageOptions.limit,
+    //   keyAsBuffer: true,
+    //   values: false,
+    // })) {
+    //   fids.push(Number((key as Buffer).readUint32BE(1)));
+    // }
+
+    // /**
+    //  * If a limit was specified and limit + 1 were fetched, return limit fids and
+    //  * next prefix, otherwise return all fids and undefined next prefix.
+    //  */
+    // if (pageOptions.limit !== -1 && fids.length === pageOptions.limit + 1) {
+    //   const nextFid = fids[fids.length - 1];
+    //   const nextPrefix = nextFid ? makeIdRegistryEventPrimaryKey(nextFid) : undefined;
+    //   const rangeFids = fids.slice(0, fids.length - 1);
+
+    //   return {
+    //     fids: rangeFids,
+    //     nextPrefix,
+    //   };
+    // } else {
+    //   return {
+    //     fids,
+    //     nextPrefix: undefined,
+    //   };
+    // }
   }
 
   /**

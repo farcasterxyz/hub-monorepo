@@ -9,9 +9,9 @@ import CastStore from '~/storage/stores/castStore';
 import ReactionStore from '~/storage/stores/reactionStore';
 import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
+import { MessagesPage, PageOptions, PrefixRangeOptions } from '~/storage/stores/types';
 import UserDataStore from '~/storage/stores/userDataStore';
 import VerificationStore from '~/storage/stores/verificationStore';
-import { MessageRange, PrefixRangeOptions } from '../stores/types';
 
 class Engine {
   public eventHandler: StoreEventHandler;
@@ -357,14 +357,14 @@ class Engine {
 
   async getSignersByFid(
     fid: number,
-    rangeOptions?: PrefixRangeOptions
-  ): HubAsyncResult<MessageRange<protobufs.SignerAddMessage>> {
+    pageOptions: PageOptions = {}
+  ): HubAsyncResult<MessagesPage<protobufs.SignerAddMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    return ResultAsync.fromPromise(this._signerStore.getSignerAddsByFid(fid, rangeOptions), (e) => e as HubError);
+    return ResultAsync.fromPromise(this._signerStore.getSignerAddsByFid(fid, pageOptions), (e) => e as HubError);
   }
 
   async getIdRegistryEvent(fid: number): HubAsyncResult<protobufs.IdRegistryEvent> {

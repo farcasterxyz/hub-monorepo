@@ -1,6 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
-import { HubError, HubResult } from '@farcaster/utils';
-import { err, ok } from 'neverthrow';
+import { bytesCompare, bytesIncrement, HubError, HubResult } from '@farcaster/utils';
+import { err, ok, ResultAsync } from 'neverthrow';
 import AbstractRocksDB from 'rocksdb';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import {
@@ -11,6 +11,7 @@ import {
   UserMessagePostfixMax,
   UserPostfix,
 } from '~/storage/db/types';
+import { MessagesPage, PAGE_LIMIT_MAX, PageOptions } from '../stores/types';
 
 export const makeFidKey = (fid: number): Buffer => {
   const buffer = Buffer.alloc(FID_BYTES);
@@ -159,6 +160,71 @@ export const getAllMessagesByFid = async (db: RocksDB, fid: number): Promise<pro
     messages.push(protobufs.Message.decode(new Uint8Array(buffer)));
   }
   return messages;
+};
+
+export const getMessagesPageByPrefix = async <T extends protobufs.Message>(
+  db: RocksDB,
+  prefix: Buffer,
+  filter: (message: protobufs.Message) => message is T,
+  pageOptions: PageOptions = {}
+): Promise<MessagesPage<T>> => {
+  if (pageOptions.pageKey && bytesCompare(Uint8Array.from(pageOptions.pageKey), Uint8Array.from(prefix)) < 0) {
+    throw new HubError('bad_request.invalid_param', 'invalid pageKey');
+  }
+  const startKey = pageOptions.pageKey ?? prefix;
+
+  if (pageOptions.limit && pageOptions.limit > PAGE_LIMIT_MAX) {
+    throw new HubError('bad_request.invalid_param', `limit > ${PAGE_LIMIT_MAX}`);
+  }
+  const limit = pageOptions.limit ?? PAGE_LIMIT_MAX;
+
+  const endKey = bytesIncrement(Uint8Array.from(prefix));
+  if (endKey.isErr()) {
+    throw endKey.error;
+  }
+
+  const messages: T[] = [];
+  const iterator = db.iterator({
+    gte: startKey,
+    lt: Buffer.from(endKey.value),
+    keyAsBuffer: true,
+    valueAsBuffer: true,
+  });
+
+  const getNextIteratorRecord = (iterator: AbstractRocksDB.Iterator): Promise<[Buffer, protobufs.Message]> => {
+    return new Promise((resolve, reject) => {
+      iterator.next((err: Error | undefined, key: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
+        if (err || !value) {
+          reject(err);
+        } else {
+          resolve([key as Buffer, protobufs.Message.decode(new Uint8Array(value as Buffer))]);
+        }
+      });
+    });
+  };
+
+  let iteratorFinished = false;
+  let lastKey: Buffer = startKey;
+  do {
+    const result = await ResultAsync.fromPromise(getNextIteratorRecord(iterator), (e) => e as HubError);
+    if (result.isErr()) {
+      iteratorFinished = true;
+      break;
+    }
+
+    const [key, message] = result.value;
+    lastKey = key;
+    if (filter(message)) {
+      messages.push(message);
+    }
+  } while (messages.length < limit);
+
+  const nextPageKey = bytesIncrement(Uint8Array.from(lastKey));
+  if (!iteratorFinished && nextPageKey.isOk()) {
+    return { messages, nextPageKey: Buffer.from(nextPageKey.value) };
+  } else {
+    return { messages, nextPageKey: undefined };
+  }
 };
 
 /** Get an array of messages for a given fid and signer */

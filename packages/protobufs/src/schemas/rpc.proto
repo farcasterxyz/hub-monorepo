@@ -67,6 +67,12 @@ message MessagesResponse {
   bytes next_page_token = 2;
 }
 
+message CastsByParentRequest {
+  CastId cast_id = 1;
+  uint32 page_size = 2;
+  bytes page_token = 3;
+}
+
 message ReactionRequest {
   uint64 fid = 1;
   ReactionType reaction_type = 2;
@@ -76,11 +82,15 @@ message ReactionRequest {
 message ReactionsByFidRequest {
   uint64 fid = 1;
   ReactionType reaction_type = 2;
+  uint32 page_size = 3;
+  bytes page_token = 4;
 }
 
 message ReactionsByCastRequest {
   CastId cast_id = 1;
   ReactionType reaction_type = 2;
+  uint32 page_size = 3;
+  bytes page_token = 4;
 }
 
 message UserDataRequest {
@@ -115,7 +125,7 @@ service HubService {
   // Casts
   rpc GetCast(CastId) returns (Message);
   rpc GetCastsByFid(FidRequest) returns (MessagesResponse);
-  rpc GetCastsByParent(CastId) returns (MessagesResponse);
+  rpc GetCastsByParent(CastsByParentRequest) returns (MessagesResponse);
   rpc GetCastsByMention(FidRequest) returns (MessagesResponse);
 
   // Reactions
