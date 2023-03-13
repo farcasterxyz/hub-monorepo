@@ -91,7 +91,7 @@ describe('getCast', () => {
       );
     });
 
-    test('returns casts in reverse chronological order', async () => {
+    test('returns casts in chronological order', async () => {
       const castsAsJson = [];
       let latestCast;
       for (let i = 0; i < 4; i++) {
@@ -111,7 +111,7 @@ describe('getCast', () => {
       expect(castsAsJson.length).toEqual(4);
       expect(clientRetrievedCastsAsJson.length).toEqual(4);
 
-      expect(clientRetrievedCastsAsJson).toEqual(castsAsJson.reverse());
+      expect(clientRetrievedCastsAsJson).toEqual(castsAsJson);
     });
 
     test('returns empty array without casts', async () => {

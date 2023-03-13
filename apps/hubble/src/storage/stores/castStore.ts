@@ -4,7 +4,6 @@ import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
 import {
   deleteMessageTransaction,
-  getAllMessagesByFid,
   getAllMessagesBySigner,
   getManyMessages,
   getManyMessagesByFid,
@@ -27,11 +26,22 @@ const PRUNE_SIZE_LIMIT_DEFAULT = 10_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 365; // 1 year
 
 /**
+ * Generates unique keys used to store or fetch CastMessage messages
+ *
+ * @param fid farcaster id of the user who created the cast
+ * @param hash hash of the cast
+ * @returns RocksDB key of the form <fid>:<user_postfix>:<tsHash?>
+ */
+const makeCastMessageKey = (fid: number, hash?: Uint8Array): Buffer => {
+  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.CastMessage]), Buffer.from(hash ?? '')]);
+};
+
+/**
  * Generates unique keys used to store or fetch CastAdd messages in the adds set index
  *
  * @param fid farcaster id of the user who created the cast
  * @param hash hash of the cast
- * @returns RocksDB key of the form <root_prefix>:<fid>:<user_postfix>:<tsHash?>
+ * @returns RocksDB key of the form <fid>:<user_postfix>:<tsHash?>
  */
 const makeCastAddsKey = (fid: number, hash?: Uint8Array): Buffer => {
   return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.CastAdds]), Buffer.from(hash ?? '')]);
@@ -42,7 +52,7 @@ const makeCastAddsKey = (fid: number, hash?: Uint8Array): Buffer => {
  *
  * @param fid farcaster id of the user who created the cast
  * @param hash hash of the cast
- * @returns RocksDB key of the form <root_prefix>:<fid>:<user_postfix>:<tsHash?>
+ * @returns RocksDB key of the form <fid>:<user_postfix>:<tsHash?>
  */
 const makeCastRemovesKey = (fid: number, hash?: Uint8Array): Buffer => {
   return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.CastRemoves]), Buffer.from(hash ?? '')]);
@@ -144,9 +154,21 @@ class CastStore {
 
   /** Gets all CastAdd messages for an fid */
   async getCastAddsByFid(fid: number): Promise<protobufs.CastAddMessage[]> {
-    return (await getAllMessagesByFid(this._db, fid))
-      .filter((message) => message.data?.type === protobufs.MessageType.CAST_ADD)
-      .reverse() as protobufs.CastAddMessage[];
+    const castMessagePrefix = makeCastMessageKey(fid);
+
+    const messageKeys: Uint8Array[] = [];
+    for await (const [key, value] of this._db.iteratorByPrefix(castMessagePrefix, {
+      keyAsBuffer: true,
+      valueAsBuffer: true,
+    })) {
+      const tsHash = Uint8Array.from(key).subarray(castMessagePrefix.length);
+      const msg = protobufs.Message.decode(value);
+      if (msg?.data?.type == protobufs.MessageType.CAST_ADD) {
+        messageKeys.push(tsHash);
+      }
+    }
+
+    return getManyMessagesByFid(this._db, fid, UserPostfix.CastMessage, messageKeys);
   }
 
   /** Gets all CastRemove messages for an fid */
