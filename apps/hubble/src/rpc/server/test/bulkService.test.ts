@@ -54,7 +54,10 @@ describe('getAllCastMessagesByFid', () => {
   beforeAll(async () => {
     castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 
-    castRemove = await Factories.CastRemoveMessage.create({ data: { fid, network } }, { transient: { signer } });
+    castRemove = await Factories.CastRemoveMessage.create(
+      { data: { fid, network, timestamp: castAdd.data.timestamp + 1 } },
+      { transient: { signer } }
+    );
   });
 
   beforeEach(async () => {
@@ -83,7 +86,7 @@ describe('getAllReactionMessagesByFid', () => {
     reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 
     reactionRemove = await Factories.ReactionRemoveMessage.create(
-      { data: { fid, network } },
+      { data: { fid, network, timestamp: reactionAdd.data.timestamp + 1 } },
       { transient: { signer } }
     );
   });
@@ -117,7 +120,7 @@ describe('getAllVerificationMessagesByFid', () => {
     );
 
     verificationRemove = await Factories.VerificationRemoveMessage.create(
-      { data: { fid, network } },
+      { data: { fid, network, timestamp: verificationAdd.data.timestamp + 1 } },
       { transient: { signer } }
     );
   });

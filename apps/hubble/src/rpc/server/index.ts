@@ -366,7 +366,7 @@ export default class Server {
 
         const castsResult = await this.engine?.getCastsByFid(fid, {
           pageSize,
-          pageToken: pageToken.length > 0 ? pageToken : undefined,
+          pageToken,
         });
         castsResult?.match(
           (page: MessagesPage<CastAddMessage>) => {
@@ -421,11 +421,10 @@ export default class Server {
         );
       },
       getReactionsByFid: async (call, callback) => {
-        const request = call.request;
-        const reactionType = request.reactionType === ReactionType.NONE ? undefined : request.reactionType;
-        const reactionsResult = await this.engine?.getReactionsByFid(request.fid, reactionType, {
-          pageSize: request.pageSize,
-          pageToken: request.pageToken.length > 0 ? request.pageToken : undefined,
+        const { fid, reactionType, pageSize, pageToken } = call.request;
+        const reactionsResult = await this.engine?.getReactionsByFid(fid, reactionType, {
+          pageSize,
+          pageToken,
         });
         reactionsResult?.match(
           (page: MessagesPage<ReactionAddMessage>) => {
@@ -467,7 +466,7 @@ export default class Server {
 
         const userDataResult = await this.engine?.getUserDataByFid(fid, {
           pageSize,
-          pageToken: pageToken.length > 0 ? pageToken : undefined,
+          pageToken,
         });
         userDataResult?.match(
           (page: MessagesPage<UserDataAddMessage>) => {
@@ -509,7 +508,7 @@ export default class Server {
 
         const verificationsResult = await this.engine?.getVerificationsByFid(fid, {
           pageSize,
-          pageToken: pageToken.length > 0 ? pageToken : undefined,
+          pageToken,
         });
         verificationsResult?.match(
           (page: MessagesPage<VerificationAddEthAddressMessage>) => {
@@ -537,7 +536,7 @@ export default class Server {
         const { fid, pageSize, pageToken } = call.request;
         const signersResult = await this.engine?.getSignersByFid(fid, {
           pageSize,
-          pageToken: pageToken.length > 0 ? pageToken : undefined,
+          pageToken,
         });
         signersResult?.match(
           (page: MessagesPage<SignerAddMessage>) => {
@@ -566,17 +565,11 @@ export default class Server {
 
         const result = await this.engine?.getFids({
           pageSize,
-          pageToken: pageToken.length > 0 ? pageToken : undefined,
+          pageToken,
         });
         result?.match(
-          ({ fids, nextPageToken }: { fids: number[]; nextPageToken: Uint8Array | undefined }) => {
-            callback(
-              null,
-              FidsResponse.create({
-                fids,
-                nextPageToken: nextPageToken ?? new Uint8Array(),
-              })
-            );
+          (page: { fids: number[]; nextPageToken: Uint8Array | undefined }) => {
+            callback(null, FidsResponse.create(page));
           },
           (err: HubError) => {
             callback(toServiceError(err));
@@ -587,7 +580,7 @@ export default class Server {
         const { fid, pageSize, pageToken } = call.request;
         const result = await this.engine?.getAllCastMessagesByFid(fid, {
           pageSize,
-          pageToken: pageToken.length > 0 ? pageToken : undefined,
+          pageToken,
         });
         result?.match(
           (page: MessagesPage<CastAddMessage | CastRemoveMessage>) => {
@@ -602,7 +595,7 @@ export default class Server {
         const { fid, pageSize, pageToken } = call.request;
         const result = await this.engine?.getAllReactionMessagesByFid(fid, {
           pageSize,
-          pageToken: pageToken.length > 0 ? pageToken : undefined,
+          pageToken,
         });
         result?.match(
           (page: MessagesPage<ReactionAddMessage | ReactionRemoveMessage>) => {
@@ -617,7 +610,7 @@ export default class Server {
         const { fid, pageSize, pageToken } = call.request;
         const result = await this.engine?.getAllVerificationMessagesByFid(fid, {
           pageSize,
-          pageToken: pageToken.length > 0 ? pageToken : undefined,
+          pageToken,
         });
         result?.match(
           (page: MessagesPage<VerificationAddEthAddressMessage | VerificationRemoveMessage>) => {
@@ -632,7 +625,7 @@ export default class Server {
         const { fid, pageSize, pageToken } = call.request;
         const result = await this.engine?.getAllSignerMessagesByFid(fid, {
           pageSize,
-          pageToken: pageToken.length > 0 ? pageToken : undefined,
+          pageToken,
         });
         result?.match(
           (page: MessagesPage<SignerAddMessage | SignerRemoveMessage>) => {
@@ -647,7 +640,7 @@ export default class Server {
         const { fid, pageSize, pageToken } = call.request;
         const result = await this.engine?.getUserDataByFid(fid, {
           pageSize,
-          pageToken: pageToken.length > 0 ? pageToken : undefined,
+          pageToken,
         });
         result?.match(
           (page: MessagesPage<UserDataAddMessage>) => {

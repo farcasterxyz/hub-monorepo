@@ -52,7 +52,7 @@ beforeAll(async () => {
   );
 
   displayAdd = await Factories.UserDataAddMessage.create(
-    { data: { fid, userDataBody: { type: protobufs.UserDataType.DISPLAY } } },
+    { data: { fid, userDataBody: { type: protobufs.UserDataType.DISPLAY }, timestamp: pfpAdd.data.timestamp + 1 } },
     { transient: { signer } }
   );
 
@@ -64,6 +64,7 @@ beforeAll(async () => {
           type: protobufs.UserDataType.FNAME,
           value: bytesToUtf8String(fname)._unsafeUnwrap(),
         },
+        timestamp: pfpAdd.data.timestamp + 2,
       },
     },
     { transient: { signer } }

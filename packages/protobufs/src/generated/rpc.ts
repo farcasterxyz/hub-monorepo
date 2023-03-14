@@ -73,29 +73,29 @@ export interface SyncIds {
 
 export interface FidRequest {
   fid: number;
-  pageSize: number;
-  pageToken: Uint8Array;
+  pageSize?: number | undefined;
+  pageToken?: Uint8Array | undefined;
 }
 
 export interface FidsRequest {
-  pageSize: number;
-  pageToken: Uint8Array;
+  pageSize?: number | undefined;
+  pageToken?: Uint8Array | undefined;
 }
 
 export interface FidsResponse {
   fids: number[];
-  nextPageToken: Uint8Array;
+  nextPageToken?: Uint8Array | undefined;
 }
 
 export interface MessagesResponse {
   messages: Message[];
-  nextPageToken: Uint8Array;
+  nextPageToken?: Uint8Array | undefined;
 }
 
 export interface CastsByParentRequest {
   castId: CastId | undefined;
-  pageSize: number;
-  pageToken: Uint8Array;
+  pageSize?: number | undefined;
+  pageToken?: Uint8Array | undefined;
 }
 
 export interface ReactionRequest {
@@ -106,16 +106,16 @@ export interface ReactionRequest {
 
 export interface ReactionsByFidRequest {
   fid: number;
-  reactionType: ReactionType;
-  pageSize: number;
-  pageToken: Uint8Array;
+  reactionType?: ReactionType | undefined;
+  pageSize?: number | undefined;
+  pageToken?: Uint8Array | undefined;
 }
 
 export interface ReactionsByCastRequest {
   castId: CastId | undefined;
-  reactionType: ReactionType;
-  pageSize: number;
-  pageToken: Uint8Array;
+  reactionType?: ReactionType | undefined;
+  pageSize?: number | undefined;
+  pageToken?: Uint8Array | undefined;
 }
 
 export interface UserDataRequest {
@@ -666,7 +666,7 @@ export const SyncIds = {
 };
 
 function createBaseFidRequest(): FidRequest {
-  return { fid: 0, pageSize: 0, pageToken: new Uint8Array() };
+  return { fid: 0, pageSize: undefined, pageToken: undefined };
 }
 
 export const FidRequest = {
@@ -674,10 +674,10 @@ export const FidRequest = {
     if (message.fid !== 0) {
       writer.uint32(8).uint64(message.fid);
     }
-    if (message.pageSize !== 0) {
+    if (message.pageSize !== undefined) {
       writer.uint32(16).uint32(message.pageSize);
     }
-    if (message.pageToken.length !== 0) {
+    if (message.pageToken !== undefined) {
       writer.uint32(26).bytes(message.pageToken);
     }
     return writer;
@@ -710,8 +710,8 @@ export const FidRequest = {
   fromJSON(object: any): FidRequest {
     return {
       fid: isSet(object.fid) ? Number(object.fid) : 0,
-      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : 0,
-      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : new Uint8Array(),
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
     };
   },
 
@@ -720,7 +720,7 @@ export const FidRequest = {
     message.fid !== undefined && (obj.fid = Math.round(message.fid));
     message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
     message.pageToken !== undefined &&
-      (obj.pageToken = base64FromBytes(message.pageToken !== undefined ? message.pageToken : new Uint8Array()));
+      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
     return obj;
   },
 
@@ -731,22 +731,22 @@ export const FidRequest = {
   fromPartial<I extends Exact<DeepPartial<FidRequest>, I>>(object: I): FidRequest {
     const message = createBaseFidRequest();
     message.fid = object.fid ?? 0;
-    message.pageSize = object.pageSize ?? 0;
-    message.pageToken = object.pageToken ?? new Uint8Array();
+    message.pageSize = object.pageSize ?? undefined;
+    message.pageToken = object.pageToken ?? undefined;
     return message;
   },
 };
 
 function createBaseFidsRequest(): FidsRequest {
-  return { pageSize: 0, pageToken: new Uint8Array() };
+  return { pageSize: undefined, pageToken: undefined };
 }
 
 export const FidsRequest = {
   encode(message: FidsRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.pageSize !== 0) {
+    if (message.pageSize !== undefined) {
       writer.uint32(8).uint32(message.pageSize);
     }
-    if (message.pageToken.length !== 0) {
+    if (message.pageToken !== undefined) {
       writer.uint32(18).bytes(message.pageToken);
     }
     return writer;
@@ -775,8 +775,8 @@ export const FidsRequest = {
 
   fromJSON(object: any): FidsRequest {
     return {
-      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : 0,
-      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : new Uint8Array(),
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
     };
   },
 
@@ -784,7 +784,7 @@ export const FidsRequest = {
     const obj: any = {};
     message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
     message.pageToken !== undefined &&
-      (obj.pageToken = base64FromBytes(message.pageToken !== undefined ? message.pageToken : new Uint8Array()));
+      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
     return obj;
   },
 
@@ -794,14 +794,14 @@ export const FidsRequest = {
 
   fromPartial<I extends Exact<DeepPartial<FidsRequest>, I>>(object: I): FidsRequest {
     const message = createBaseFidsRequest();
-    message.pageSize = object.pageSize ?? 0;
-    message.pageToken = object.pageToken ?? new Uint8Array();
+    message.pageSize = object.pageSize ?? undefined;
+    message.pageToken = object.pageToken ?? undefined;
     return message;
   },
 };
 
 function createBaseFidsResponse(): FidsResponse {
-  return { fids: [], nextPageToken: new Uint8Array() };
+  return { fids: [], nextPageToken: undefined };
 }
 
 export const FidsResponse = {
@@ -811,7 +811,7 @@ export const FidsResponse = {
       writer.uint64(v);
     }
     writer.ldelim();
-    if (message.nextPageToken.length !== 0) {
+    if (message.nextPageToken !== undefined) {
       writer.uint32(18).bytes(message.nextPageToken);
     }
     return writer;
@@ -848,7 +848,7 @@ export const FidsResponse = {
   fromJSON(object: any): FidsResponse {
     return {
       fids: Array.isArray(object?.fids) ? object.fids.map((e: any) => Number(e)) : [],
-      nextPageToken: isSet(object.nextPageToken) ? bytesFromBase64(object.nextPageToken) : new Uint8Array(),
+      nextPageToken: isSet(object.nextPageToken) ? bytesFromBase64(object.nextPageToken) : undefined,
     };
   },
 
@@ -860,9 +860,7 @@ export const FidsResponse = {
       obj.fids = [];
     }
     message.nextPageToken !== undefined &&
-      (obj.nextPageToken = base64FromBytes(
-        message.nextPageToken !== undefined ? message.nextPageToken : new Uint8Array(),
-      ));
+      (obj.nextPageToken = message.nextPageToken !== undefined ? base64FromBytes(message.nextPageToken) : undefined);
     return obj;
   },
 
@@ -873,13 +871,13 @@ export const FidsResponse = {
   fromPartial<I extends Exact<DeepPartial<FidsResponse>, I>>(object: I): FidsResponse {
     const message = createBaseFidsResponse();
     message.fids = object.fids?.map((e) => e) || [];
-    message.nextPageToken = object.nextPageToken ?? new Uint8Array();
+    message.nextPageToken = object.nextPageToken ?? undefined;
     return message;
   },
 };
 
 function createBaseMessagesResponse(): MessagesResponse {
-  return { messages: [], nextPageToken: new Uint8Array() };
+  return { messages: [], nextPageToken: undefined };
 }
 
 export const MessagesResponse = {
@@ -887,7 +885,7 @@ export const MessagesResponse = {
     for (const v of message.messages) {
       Message.encode(v!, writer.uint32(10).fork()).ldelim();
     }
-    if (message.nextPageToken.length !== 0) {
+    if (message.nextPageToken !== undefined) {
       writer.uint32(18).bytes(message.nextPageToken);
     }
     return writer;
@@ -917,7 +915,7 @@ export const MessagesResponse = {
   fromJSON(object: any): MessagesResponse {
     return {
       messages: Array.isArray(object?.messages) ? object.messages.map((e: any) => Message.fromJSON(e)) : [],
-      nextPageToken: isSet(object.nextPageToken) ? bytesFromBase64(object.nextPageToken) : new Uint8Array(),
+      nextPageToken: isSet(object.nextPageToken) ? bytesFromBase64(object.nextPageToken) : undefined,
     };
   },
 
@@ -929,9 +927,7 @@ export const MessagesResponse = {
       obj.messages = [];
     }
     message.nextPageToken !== undefined &&
-      (obj.nextPageToken = base64FromBytes(
-        message.nextPageToken !== undefined ? message.nextPageToken : new Uint8Array(),
-      ));
+      (obj.nextPageToken = message.nextPageToken !== undefined ? base64FromBytes(message.nextPageToken) : undefined);
     return obj;
   },
 
@@ -942,13 +938,13 @@ export const MessagesResponse = {
   fromPartial<I extends Exact<DeepPartial<MessagesResponse>, I>>(object: I): MessagesResponse {
     const message = createBaseMessagesResponse();
     message.messages = object.messages?.map((e) => Message.fromPartial(e)) || [];
-    message.nextPageToken = object.nextPageToken ?? new Uint8Array();
+    message.nextPageToken = object.nextPageToken ?? undefined;
     return message;
   },
 };
 
 function createBaseCastsByParentRequest(): CastsByParentRequest {
-  return { castId: undefined, pageSize: 0, pageToken: new Uint8Array() };
+  return { castId: undefined, pageSize: undefined, pageToken: undefined };
 }
 
 export const CastsByParentRequest = {
@@ -956,10 +952,10 @@ export const CastsByParentRequest = {
     if (message.castId !== undefined) {
       CastId.encode(message.castId, writer.uint32(10).fork()).ldelim();
     }
-    if (message.pageSize !== 0) {
+    if (message.pageSize !== undefined) {
       writer.uint32(16).uint32(message.pageSize);
     }
-    if (message.pageToken.length !== 0) {
+    if (message.pageToken !== undefined) {
       writer.uint32(26).bytes(message.pageToken);
     }
     return writer;
@@ -992,8 +988,8 @@ export const CastsByParentRequest = {
   fromJSON(object: any): CastsByParentRequest {
     return {
       castId: isSet(object.castId) ? CastId.fromJSON(object.castId) : undefined,
-      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : 0,
-      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : new Uint8Array(),
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
     };
   },
 
@@ -1002,7 +998,7 @@ export const CastsByParentRequest = {
     message.castId !== undefined && (obj.castId = message.castId ? CastId.toJSON(message.castId) : undefined);
     message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
     message.pageToken !== undefined &&
-      (obj.pageToken = base64FromBytes(message.pageToken !== undefined ? message.pageToken : new Uint8Array()));
+      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
     return obj;
   },
 
@@ -1015,8 +1011,8 @@ export const CastsByParentRequest = {
     message.castId = (object.castId !== undefined && object.castId !== null)
       ? CastId.fromPartial(object.castId)
       : undefined;
-    message.pageSize = object.pageSize ?? 0;
-    message.pageToken = object.pageToken ?? new Uint8Array();
+    message.pageSize = object.pageSize ?? undefined;
+    message.pageToken = object.pageToken ?? undefined;
     return message;
   },
 };
@@ -1095,7 +1091,7 @@ export const ReactionRequest = {
 };
 
 function createBaseReactionsByFidRequest(): ReactionsByFidRequest {
-  return { fid: 0, reactionType: 0, pageSize: 0, pageToken: new Uint8Array() };
+  return { fid: 0, reactionType: undefined, pageSize: undefined, pageToken: undefined };
 }
 
 export const ReactionsByFidRequest = {
@@ -1103,13 +1099,13 @@ export const ReactionsByFidRequest = {
     if (message.fid !== 0) {
       writer.uint32(8).uint64(message.fid);
     }
-    if (message.reactionType !== 0) {
+    if (message.reactionType !== undefined) {
       writer.uint32(16).int32(message.reactionType);
     }
-    if (message.pageSize !== 0) {
+    if (message.pageSize !== undefined) {
       writer.uint32(24).uint32(message.pageSize);
     }
-    if (message.pageToken.length !== 0) {
+    if (message.pageToken !== undefined) {
       writer.uint32(34).bytes(message.pageToken);
     }
     return writer;
@@ -1145,19 +1141,20 @@ export const ReactionsByFidRequest = {
   fromJSON(object: any): ReactionsByFidRequest {
     return {
       fid: isSet(object.fid) ? Number(object.fid) : 0,
-      reactionType: isSet(object.reactionType) ? reactionTypeFromJSON(object.reactionType) : 0,
-      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : 0,
-      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : new Uint8Array(),
+      reactionType: isSet(object.reactionType) ? reactionTypeFromJSON(object.reactionType) : undefined,
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
     };
   },
 
   toJSON(message: ReactionsByFidRequest): unknown {
     const obj: any = {};
     message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    message.reactionType !== undefined && (obj.reactionType = reactionTypeToJSON(message.reactionType));
+    message.reactionType !== undefined &&
+      (obj.reactionType = message.reactionType !== undefined ? reactionTypeToJSON(message.reactionType) : undefined);
     message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
     message.pageToken !== undefined &&
-      (obj.pageToken = base64FromBytes(message.pageToken !== undefined ? message.pageToken : new Uint8Array()));
+      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
     return obj;
   },
 
@@ -1168,15 +1165,15 @@ export const ReactionsByFidRequest = {
   fromPartial<I extends Exact<DeepPartial<ReactionsByFidRequest>, I>>(object: I): ReactionsByFidRequest {
     const message = createBaseReactionsByFidRequest();
     message.fid = object.fid ?? 0;
-    message.reactionType = object.reactionType ?? 0;
-    message.pageSize = object.pageSize ?? 0;
-    message.pageToken = object.pageToken ?? new Uint8Array();
+    message.reactionType = object.reactionType ?? undefined;
+    message.pageSize = object.pageSize ?? undefined;
+    message.pageToken = object.pageToken ?? undefined;
     return message;
   },
 };
 
 function createBaseReactionsByCastRequest(): ReactionsByCastRequest {
-  return { castId: undefined, reactionType: 0, pageSize: 0, pageToken: new Uint8Array() };
+  return { castId: undefined, reactionType: undefined, pageSize: undefined, pageToken: undefined };
 }
 
 export const ReactionsByCastRequest = {
@@ -1184,13 +1181,13 @@ export const ReactionsByCastRequest = {
     if (message.castId !== undefined) {
       CastId.encode(message.castId, writer.uint32(10).fork()).ldelim();
     }
-    if (message.reactionType !== 0) {
+    if (message.reactionType !== undefined) {
       writer.uint32(16).int32(message.reactionType);
     }
-    if (message.pageSize !== 0) {
+    if (message.pageSize !== undefined) {
       writer.uint32(24).uint32(message.pageSize);
     }
-    if (message.pageToken.length !== 0) {
+    if (message.pageToken !== undefined) {
       writer.uint32(34).bytes(message.pageToken);
     }
     return writer;
@@ -1226,19 +1223,20 @@ export const ReactionsByCastRequest = {
   fromJSON(object: any): ReactionsByCastRequest {
     return {
       castId: isSet(object.castId) ? CastId.fromJSON(object.castId) : undefined,
-      reactionType: isSet(object.reactionType) ? reactionTypeFromJSON(object.reactionType) : 0,
-      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : 0,
-      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : new Uint8Array(),
+      reactionType: isSet(object.reactionType) ? reactionTypeFromJSON(object.reactionType) : undefined,
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
     };
   },
 
   toJSON(message: ReactionsByCastRequest): unknown {
     const obj: any = {};
     message.castId !== undefined && (obj.castId = message.castId ? CastId.toJSON(message.castId) : undefined);
-    message.reactionType !== undefined && (obj.reactionType = reactionTypeToJSON(message.reactionType));
+    message.reactionType !== undefined &&
+      (obj.reactionType = message.reactionType !== undefined ? reactionTypeToJSON(message.reactionType) : undefined);
     message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
     message.pageToken !== undefined &&
-      (obj.pageToken = base64FromBytes(message.pageToken !== undefined ? message.pageToken : new Uint8Array()));
+      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
     return obj;
   },
 
@@ -1251,9 +1249,9 @@ export const ReactionsByCastRequest = {
     message.castId = (object.castId !== undefined && object.castId !== null)
       ? CastId.fromPartial(object.castId)
       : undefined;
-    message.reactionType = object.reactionType ?? 0;
-    message.pageSize = object.pageSize ?? 0;
-    message.pageToken = object.pageToken ?? new Uint8Array();
+    message.reactionType = object.reactionType ?? undefined;
+    message.pageSize = object.pageSize ?? undefined;
+    message.pageToken = object.pageToken ?? undefined;
     return message;
   },
 };

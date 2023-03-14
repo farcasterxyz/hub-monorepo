@@ -48,29 +48,29 @@ message SyncIds {
 
 message FidRequest {
   uint64 fid = 1;
-  uint32 page_size = 2;
-  bytes page_token = 3;
+  optional uint32 page_size = 2;
+  optional bytes page_token = 3;
 }
 
 message FidsRequest {
-  uint32 page_size = 1;
-  bytes page_token = 2;
+  optional uint32 page_size = 1;
+  optional bytes page_token = 2;
 }
 
 message FidsResponse {
   repeated uint64 fids = 1;
-  bytes next_page_token = 2;
+  optional bytes next_page_token = 2;
 }
 
 message MessagesResponse {
   repeated Message messages = 1;
-  bytes next_page_token = 2;
+  optional bytes next_page_token = 2;
 }
 
 message CastsByParentRequest {
   CastId cast_id = 1;
-  uint32 page_size = 2;
-  bytes page_token = 3;
+  optional uint32 page_size = 2;
+  optional bytes page_token = 3;
 }
 
 message ReactionRequest {
@@ -81,16 +81,16 @@ message ReactionRequest {
 
 message ReactionsByFidRequest {
   uint64 fid = 1;
-  ReactionType reaction_type = 2;
-  uint32 page_size = 3;
-  bytes page_token = 4;
+  optional ReactionType reaction_type = 2;
+  optional uint32 page_size = 3;
+  optional bytes page_token = 4;
 }
 
 message ReactionsByCastRequest {
   CastId cast_id = 1;
-  ReactionType reaction_type = 2;
-  uint32 page_size = 3;
-  bytes page_token = 4;
+  optional ReactionType reaction_type = 2;
+  optional uint32 page_size = 3;
+  optional bytes page_token = 4;
 }
 
 message UserDataRequest {

@@ -187,7 +187,7 @@ class SignerStore {
     if (pageOptions.pageSize && pageOptions.pageSize > PAGE_SIZE_MAX) {
       throw new HubError('bad_request.invalid_param', `pageSize > ${PAGE_SIZE_MAX}`);
     }
-    const limit = pageOptions.pageSize ?? PAGE_SIZE_MAX;
+    const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
 
     const endKey = bytesIncrement(Uint8Array.from(prefix));
     if (endKey.isErr()) {

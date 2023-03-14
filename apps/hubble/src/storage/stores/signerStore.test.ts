@@ -788,8 +788,7 @@ describe('getFids', () => {
   });
 
   describe('with fids', () => {
-    // Increment fid to guarantee ordering
-    const fid2 = fid + 1;
+    const fid2 = fid + 1; // Increment fid to guarantee ordering
     const custody2Event = Factories.IdRegistryEvent.build({
       fid: fid2,
       to: custody2Address,
@@ -810,7 +809,7 @@ describe('getFids', () => {
     describe('with limit < number of messages', () => {
       test('returns limit fids', async () => {
         const result = await set.getFids({ pageSize: 1 });
-        expect(result).toEqual({ fids: [fid], nextPageToken: makeIdRegistryEventPrimaryKey(fid2) });
+        expect(result).toEqual({ fids: [fid], nextPageToken: Uint8Array.from(makeIdRegistryEventPrimaryKey(fid2)) });
       });
     });
 

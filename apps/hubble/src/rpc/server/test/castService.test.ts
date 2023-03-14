@@ -30,8 +30,8 @@ const custodySigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
 
 let custodyEvent: protobufs.IdRegistryEvent;
-let signerAdd: protobufs.Message;
-let castAdd: protobufs.Message;
+let signerAdd: protobufs.SignerAddMessage;
+let castAdd: protobufs.CastAddMessage;
 
 beforeAll(async () => {
   custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
@@ -105,14 +105,16 @@ describe('getCast', () => {
 
     test('succeeds', async () => {
       await engine.mergeMessage(castAdd);
-      const casts = await client.getCastsByParent(castAdd.data?.castAddBody?.parentCastId as protobufs.CastId);
+      const request = protobufs.CastsByParentRequest.create({ castId: castAdd.data.castAddBody.parentCastId });
+      const casts = await client.getCastsByParent(request);
       expect(protobufs.Message.toJSON(casts._unsafeUnwrap().messages.at(0) as protobufs.Message)).toEqual(
         protobufs.Message.toJSON(castAdd)
       );
     });
 
     test('returns empty array without casts', async () => {
-      const casts = await client.getCastsByParent(castAdd.data?.castAddBody?.parentCastId as protobufs.CastId);
+      const request = protobufs.CastsByParentRequest.create({ castId: castAdd.data.castAddBody.parentCastId });
+      const casts = await client.getCastsByParent(request);
       expect(casts._unsafeUnwrap().messages).toEqual([]);
     });
   });
