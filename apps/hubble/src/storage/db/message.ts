@@ -11,7 +11,7 @@ import {
   UserMessagePostfixMax,
   UserPostfix,
 } from '~/storage/db/types';
-import { MessagesPage, PAGE_LIMIT_MAX, PageOptions } from '../stores/types';
+import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from '../stores/types';
 
 export const makeFidKey = (fid: number): Buffer => {
   const buffer = Buffer.alloc(FID_BYTES);
@@ -168,15 +168,15 @@ export const getMessagesPageByPrefix = async <T extends protobufs.Message>(
   filter: (message: protobufs.Message) => message is T,
   pageOptions: PageOptions = {}
 ): Promise<MessagesPage<T>> => {
-  if (pageOptions.pageKey && bytesCompare(Uint8Array.from(pageOptions.pageKey), Uint8Array.from(prefix)) < 0) {
-    throw new HubError('bad_request.invalid_param', 'invalid pageKey');
+  if (pageOptions.pageToken && bytesCompare(pageOptions.pageToken, Uint8Array.from(prefix)) < 0) {
+    throw new HubError('bad_request.invalid_param', 'invalid pageToken');
   }
-  const startKey = pageOptions.pageKey ?? prefix;
+  const startKey = pageOptions.pageToken ? Buffer.from(pageOptions.pageToken) : prefix;
 
-  if (pageOptions.limit && pageOptions.limit > PAGE_LIMIT_MAX) {
-    throw new HubError('bad_request.invalid_param', `limit > ${PAGE_LIMIT_MAX}`);
+  if (pageOptions.pageSize && pageOptions.pageSize > PAGE_SIZE_MAX) {
+    throw new HubError('bad_request.invalid_param', `pageSize > ${PAGE_SIZE_MAX}`);
   }
-  const limit = pageOptions.limit ?? PAGE_LIMIT_MAX;
+  const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
 
   const endKey = bytesIncrement(Uint8Array.from(prefix));
   if (endKey.isErr()) {
@@ -219,11 +219,11 @@ export const getMessagesPageByPrefix = async <T extends protobufs.Message>(
     }
   } while (messages.length < limit);
 
-  const nextPageKey = bytesIncrement(Uint8Array.from(lastKey));
-  if (!iteratorFinished && nextPageKey.isOk()) {
-    return { messages, nextPageKey: Buffer.from(nextPageKey.value) };
+  const nextPageToken = bytesIncrement(Uint8Array.from(lastKey));
+  if (!iteratorFinished && nextPageToken.isOk()) {
+    return { messages, nextPageToken: nextPageToken.value };
   } else {
-    return { messages, nextPageKey: undefined };
+    return { messages, nextPageToken: undefined };
   }
 };
 

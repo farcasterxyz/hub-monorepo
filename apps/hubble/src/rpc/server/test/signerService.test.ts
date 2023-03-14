@@ -1,5 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, Factories, getInsecureHubRpcClient, HubError, HubResult, HubRpcClient } from '@farcaster/utils';
+import { Factories, getInsecureHubRpcClient, HubError, HubResult, HubRpcClient } from '@farcaster/utils';
+import { ok } from 'neverthrow';
 import SyncEngine from '~/network/sync/syncEngine';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
@@ -39,7 +40,8 @@ const signer = Factories.Ed25519Signer.build();
 
 let custodyEvent: protobufs.IdRegistryEvent;
 let custodyEvent2: protobufs.IdRegistryEvent;
-let signerAdd: protobufs.Message;
+let signerAdd: protobufs.SignerAddMessage;
+
 beforeAll(async () => {
   custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
   custodyEvent2 = Factories.IdRegistryEvent.build({ fid: fid2, to: custodySigner2.signerKey });
@@ -57,29 +59,21 @@ describe('getSigner', () => {
 
   test('succeeds', async () => {
     await engine.mergeMessage(signerAdd);
-    // const result = await client.getSigner(fid, signer.signerKey);
-    // expect(result._unsafeUnwrap()).toEqual(signerAdd.message);
     const result = await client.getSigner(protobufs.SignerRequest.create({ fid, signer: signer.signerKey }));
-    expect(protobufs.Message.toJSON(result._unsafeUnwrap())).toEqual(protobufs.Message.toJSON(signerAdd));
+    expect(result).toEqual(ok(signerAdd));
   });
 
   test('fails if signer is missing', async () => {
-    // const result = await client.getSigner(fid, signer.signerKey);
-    // expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
     const result = await client.getSigner(protobufs.SignerRequest.create({ fid, signer: signer.signerKey }));
     expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
   });
 
   test('fails without signer key', async () => {
-    // const result = await client.getSigner(fid, new Uint8Array());
-    // expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'publicKey is missing'));
     const result = await client.getSigner(protobufs.SignerRequest.create({ fid, signer: new Uint8Array() }));
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'publicKey is missing'));
   });
 
   test('fails without fid', async () => {
-    // const result = await client.getSigner(new Uint8Array(), signer.signerKey);
-    // expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is missing'));
     const result = await client.getSigner(protobufs.SignerRequest.create({ fid: 0, signer: signer.signerKey }));
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is missing'));
   });
@@ -88,7 +82,6 @@ describe('getSigner', () => {
 describe('getSignersByFid', () => {
   const signer2 = Factories.Ed25519Signer.build();
   let signerAdd2: protobufs.Message;
-  let orderedSignerAdds: protobufs.Message[];
 
   beforeAll(async () => {
     signerAdd2 = await Factories.SignerAddMessage.create(
@@ -96,14 +89,11 @@ describe('getSignersByFid', () => {
         data: {
           fid,
           network,
-          signerBody: { signer: signer2.signerKey },
+          timestamp: signerAdd.data?.timestamp + 1,
+          signerAddBody: { signer: signer2.signerKey },
         },
       },
       { transient: { signer: custodySigner } }
-    );
-
-    orderedSignerAdds = [signerAdd, signerAdd2].sort((a, b) =>
-      bytesCompare(a.data?.signerBody?.signer as Uint8Array, b.data?.signerBody?.signer as Uint8Array)
     );
   });
 
@@ -115,21 +105,21 @@ describe('getSignersByFid', () => {
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(signerAdd2);
     const result = await client.getSignersByFid(protobufs.FidRequest.create({ fid }));
-    assertMessagesMatchResult(result, orderedSignerAdds);
+    assertMessagesMatchResult(result, [signerAdd, signerAdd2]);
   });
 
   test('returns pageSize messages', async () => {
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(signerAdd2);
     const result = await client.getSignersByFid(protobufs.FidRequest.create({ fid, pageSize: 1 }));
-    assertMessagesMatchResult(result, orderedSignerAdds.slice(0, 1));
+    assertMessagesMatchResult(result, [signerAdd]);
   });
 
-  test('returns all messages when pageSize > events', async () => {
+  test('returns all messages when pageSize > messages count', async () => {
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(signerAdd2);
     const result = await client.getSignersByFid(protobufs.FidRequest.create({ fid, pageSize: 3 }));
-    assertMessagesMatchResult(result, orderedSignerAdds);
+    assertMessagesMatchResult(result, [signerAdd, signerAdd2]);
   });
 
   test('returns results after pageToken', async () => {
@@ -137,9 +127,9 @@ describe('getSignersByFid', () => {
     await engine.mergeMessage(signerAdd2);
     const page1Result = await client.getSignersByFid(protobufs.FidRequest.create({ fid, pageSize: 1 }));
     const page2Result = await client.getSignersByFid(
-      protobufs.FidRequest.create({ fid, pageSize: 1, pageToken: page1Result._unsafeUnwrap().nextPageToken })
+      protobufs.FidRequest.create({ fid, pageToken: page1Result._unsafeUnwrap().nextPageToken })
     );
-    assertMessagesMatchResult(page2Result, orderedSignerAdds.slice(1, 2));
+    assertMessagesMatchResult(page2Result, [signerAdd2]);
   });
 
   test('returns empty array with invalid page token', async () => {

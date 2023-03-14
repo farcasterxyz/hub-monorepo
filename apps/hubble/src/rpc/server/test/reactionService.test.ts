@@ -52,7 +52,13 @@ beforeAll(async () => {
   );
 
   reactionAddRecast = await Factories.ReactionAddMessage.create(
-    { data: { fid, reactionBody: { type: protobufs.ReactionType.RECAST, targetCastId: castId } } },
+    {
+      data: {
+        fid,
+        reactionBody: { type: protobufs.ReactionType.RECAST, targetCastId: castId },
+        timestamp: reactionAddLike.data.timestamp + 1,
+      },
+    },
     { transient: { signer } }
   );
 });

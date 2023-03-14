@@ -220,7 +220,7 @@ describe('mergeMessage', () => {
       ).toBeTruthy();
 
       const allMessages = await engine.getAllCastMessagesByFid(fid);
-      expect(allMessages._unsafeUnwrap().length).toEqual(1);
+      expect(allMessages._unsafeUnwrap().messages.length).toEqual(1);
     });
 
     test('succeeds with concurrent, conflicting reaction messages', async () => {
@@ -257,7 +257,7 @@ describe('mergeMessage', () => {
       ).toBeTruthy();
 
       const allMessages = await engine.getAllReactionMessagesByFid(fid);
-      expect(allMessages._unsafeUnwrap().length).toEqual(1);
+      expect(allMessages._unsafeUnwrap().messages.length).toEqual(1);
     });
   });
 

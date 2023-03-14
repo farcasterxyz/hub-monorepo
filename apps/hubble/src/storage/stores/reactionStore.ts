@@ -6,8 +6,8 @@ import {
   deleteMessageTransaction,
   getAllMessagesBySigner,
   getManyMessages,
-  getManyMessagesByFid,
   getMessage,
+  getMessagesPageByPrefix,
   getMessagesPruneIterator,
   getNextMessageToPrune,
   makeCastIdKey,
@@ -20,7 +20,7 @@ import {
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { FID_BYTES, RootPrefix, TRUE_VALUE, UserPostfix } from '~/storage/db/types';
 import StoreEventHandler, { putEventTransaction } from '~/storage/stores/storeEventHandler';
-import { MERGE_TIMEOUT_DEFAULT, StorePruneOptions } from '~/storage/stores/types';
+import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PageOptions, StorePruneOptions } from '~/storage/stores/types';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 5_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
@@ -183,26 +183,46 @@ class ReactionStore {
   }
 
   /** Finds all ReactionAdd Messages by iterating through the prefixes */
-  async getReactionAddsByFid(fid: number, type?: protobufs.ReactionType): Promise<protobufs.ReactionAddMessage[]> {
-    const prefix = makeReactionAddsKey(fid, type);
-    const messageKeys: Buffer[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true })) {
-      messageKeys.push(value);
-    }
-    return getManyMessagesByFid(this._db, fid, UserPostfix.ReactionMessage, messageKeys);
+  async getReactionAddsByFid(
+    fid: number,
+    type?: protobufs.ReactionType,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.ReactionAddMessage>> {
+    const prefix = makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage);
+    const filter = (message: protobufs.Message): message is protobufs.ReactionAddMessage => {
+      return protobufs.isReactionAddMessage(message) && (type ? message.data.reactionBody.type === type : true);
+    };
+    return getMessagesPageByPrefix(this._db, prefix, filter, pageOptions);
   }
 
   /** Finds all ReactionRemove Messages by iterating through the prefixes */
-  async getReactionRemovesByFid(fid: number): Promise<protobufs.ReactionRemoveMessage[]> {
-    const prefix = makeReactionRemovesKey(fid);
-    const messageKeys: Buffer[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true })) {
-      messageKeys.push(value);
-    }
-    return getManyMessagesByFid(this._db, fid, UserPostfix.ReactionMessage, messageKeys);
+  async getReactionRemovesByFid(
+    fid: number,
+    type?: protobufs.ReactionType,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.ReactionRemoveMessage>> {
+    const prefix = makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage);
+    const filter = (message: protobufs.Message): message is protobufs.ReactionRemoveMessage => {
+      return protobufs.isReactionRemoveMessage(message) && (type ? message.data.reactionBody.type === type : true);
+    };
+    return getMessagesPageByPrefix(this._db, prefix, filter, pageOptions);
+  }
+
+  async getAllReactionMessagesByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.ReactionAddMessage | protobufs.ReactionRemoveMessage>> {
+    const prefix = makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage);
+    const filter = (
+      message: protobufs.Message
+    ): message is protobufs.ReactionAddMessage | protobufs.ReactionRemoveMessage => {
+      return protobufs.isReactionAddMessage(message) || protobufs.isReactionRemoveMessage(message);
+    };
+    return getMessagesPageByPrefix(this._db, prefix, filter, pageOptions);
   }
 
   /** Finds all ReactionAdds that point to a specific target by iterating through the prefixes */
+  // TODO: paginate
   async getReactionsByTargetCast(
     castId: protobufs.CastId,
     type?: protobufs.ReactionType

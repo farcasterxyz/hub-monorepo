@@ -1,6 +1,7 @@
 import {
   CastAddMessage,
   CastId,
+  CastRemoveMessage,
   FidsResponse,
   Server as GrpcServer,
   HubEvent,
@@ -14,15 +15,18 @@ import {
   Metadata,
   NameRegistryEvent,
   ReactionAddMessage,
+  ReactionRemoveMessage,
   ReactionType,
   ServerCredentials,
   ServiceError,
   SignerAddMessage,
+  SignerRemoveMessage,
   SyncIds,
   TrieNodeMetadataResponse,
   TrieNodeSnapshotResponse,
   UserDataAddMessage,
   VerificationAddEthAddressMessage,
+  VerificationRemoveMessage,
   getServer,
   status,
 } from '@farcaster/protobufs';
@@ -33,6 +37,7 @@ import { GossipNode } from '~/network/p2p/gossipNode';
 import { NodeMetadata } from '~/network/sync/merkleTrie';
 import SyncEngine from '~/network/sync/syncEngine';
 import Engine from '~/storage/engine';
+import { MessagesPage } from '~/storage/stores/types';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts } from '~/utils/p2p';
 
@@ -70,6 +75,13 @@ export const toServiceError = (err: HubError): ServiceError => {
     code: grpcCode,
     details: err.message,
     metadata,
+  });
+};
+
+const messagesPageToResponse = ({ messages, nextPageToken }: MessagesPage<Message>) => {
+  return MessagesResponse.create({
+    messages,
+    nextPageToken: nextPageToken ?? new Uint8Array(),
   });
 };
 
@@ -350,12 +362,15 @@ export default class Server {
         );
       },
       getCastsByFid: async (call, callback) => {
-        const request = call.request;
+        const { fid, pageSize, pageToken } = call.request;
 
-        const castsResult = await this.engine?.getCastsByFid(request.fid);
+        const castsResult = await this.engine?.getCastsByFid(fid, {
+          pageSize,
+          pageToken: pageToken.length > 0 ? pageToken : undefined,
+        });
         castsResult?.match(
-          (casts: CastAddMessage[]) => {
-            callback(null, MessagesResponse.create({ messages: casts }));
+          (page: MessagesPage<CastAddMessage>) => {
+            callback(null, messagesPageToResponse(page));
           },
           (err: HubError) => {
             callback(toServiceError(err));
@@ -365,7 +380,7 @@ export default class Server {
       getCastsByParent: async (call, callback) => {
         const request = call.request;
 
-        const castsResult = await this.engine?.getCastsByParent(request);
+        const castsResult = await this.engine?.getCastsByParent(request.castId as CastId);
         castsResult?.match(
           (casts: CastAddMessage[]) => {
             callback(null, MessagesResponse.create({ messages: casts }));
@@ -408,10 +423,13 @@ export default class Server {
       getReactionsByFid: async (call, callback) => {
         const request = call.request;
         const reactionType = request.reactionType === ReactionType.NONE ? undefined : request.reactionType;
-        const reactionsResult = await this.engine?.getReactionsByFid(request.fid, reactionType);
+        const reactionsResult = await this.engine?.getReactionsByFid(request.fid, reactionType, {
+          pageSize: request.pageSize,
+          pageToken: request.pageToken.length > 0 ? request.pageToken : undefined,
+        });
         reactionsResult?.match(
-          (reactions: ReactionAddMessage[]) => {
-            callback(null, MessagesResponse.create({ messages: reactions }));
+          (page: MessagesPage<ReactionAddMessage>) => {
+            callback(null, messagesPageToResponse(page));
           },
           (err: HubError) => {
             callback(toServiceError(err));
@@ -445,12 +463,15 @@ export default class Server {
         );
       },
       getUserDataByFid: async (call, callback) => {
-        const request = call.request;
+        const { fid, pageSize, pageToken } = call.request;
 
-        const userDataResult = await this.engine?.getUserDataByFid(request.fid);
+        const userDataResult = await this.engine?.getUserDataByFid(fid, {
+          pageSize,
+          pageToken: pageToken.length > 0 ? pageToken : undefined,
+        });
         userDataResult?.match(
-          (userData: UserDataAddMessage[]) => {
-            callback(null, MessagesResponse.create({ messages: userData }));
+          (page: MessagesPage<UserDataAddMessage>) => {
+            callback(null, messagesPageToResponse(page));
           },
           (err: HubError) => {
             callback(toServiceError(err));
@@ -484,12 +505,15 @@ export default class Server {
         );
       },
       getVerificationsByFid: async (call, callback) => {
-        const request = call.request;
+        const { fid, pageSize, pageToken } = call.request;
 
-        const verificationsResult = await this.engine?.getVerificationsByFid(request.fid);
+        const verificationsResult = await this.engine?.getVerificationsByFid(fid, {
+          pageSize,
+          pageToken: pageToken.length > 0 ? pageToken : undefined,
+        });
         verificationsResult?.match(
-          (verifications: VerificationAddEthAddressMessage[]) => {
-            callback(null, MessagesResponse.create({ messages: verifications }));
+          (page: MessagesPage<VerificationAddEthAddressMessage>) => {
+            callback(null, messagesPageToResponse(page));
           },
           (err: HubError) => {
             callback(toServiceError(err));
@@ -510,24 +534,14 @@ export default class Server {
         );
       },
       getSignersByFid: async (call, callback) => {
-        const request = call.request;
-
-        if (request.pageSize < 0 || request.pageSize > 10_000) {
-          return callback(
-            toServiceError(new HubError('bad_request.invalid_param', 'pageSize must be between 0 and 10,000'))
-          );
-        }
-
-        // TODO move limit into constant
-        const limit = request.pageSize === 0 ? 10_000 : request.pageSize;
-        const startPrefix = request.pageToken.length > 0 ? Buffer.from(request.pageToken) : undefined;
-        const signersResult = await this.engine?.getSignersByFid(request.fid, { startPrefix, limit });
+        const { fid, pageSize, pageToken } = call.request;
+        const signersResult = await this.engine?.getSignersByFid(fid, {
+          pageSize,
+          pageToken: pageToken.length > 0 ? pageToken : undefined,
+        });
         signersResult?.match(
-          ({ messages, nextPrefix }) => {
-            callback(
-              null,
-              MessagesResponse.create({ messages, nextPageToken: nextPrefix ? nextPrefix : new Uint8Array() })
-            );
+          (page: MessagesPage<SignerAddMessage>) => {
+            callback(null, messagesPageToResponse(page));
           },
           (err: HubError) => {
             callback(toServiceError(err));
@@ -548,25 +562,19 @@ export default class Server {
         );
       },
       getFids: async (call, callback) => {
-        const request = call.request;
+        const { pageSize, pageToken } = call.request;
 
-        if (request.pageSize < 0 || request.pageSize > 10_000) {
-          return callback(
-            toServiceError(new HubError('bad_request.invalid_param', 'pageSize must be between 0 and 10,000'))
-          );
-        }
-
-        // TODO move limit into constant
-        const limit = request.pageSize === 0 ? 10_000 : request.pageSize;
-        const startPrefix = request.pageToken.length > 0 ? Buffer.from(request.pageToken) : undefined;
-        const result = await this.engine?.getFids({ limit, startPrefix });
+        const result = await this.engine?.getFids({
+          pageSize,
+          pageToken: pageToken.length > 0 ? pageToken : undefined,
+        });
         result?.match(
-          ({ fids, nextPrefix }: { fids: number[]; nextPrefix: Buffer | undefined }) => {
+          ({ fids, nextPageToken }: { fids: number[]; nextPageToken: Uint8Array | undefined }) => {
             callback(
               null,
               FidsResponse.create({
                 fids,
-                nextPageToken: nextPrefix ? nextPrefix : new Uint8Array(),
+                nextPageToken: nextPageToken ?? new Uint8Array(),
               })
             );
           },
@@ -576,12 +584,14 @@ export default class Server {
         );
       },
       getAllCastMessagesByFid: async (call, callback) => {
-        const request = call.request;
-
-        const result = await this.engine?.getAllCastMessagesByFid(request.fid);
+        const { fid, pageSize, pageToken } = call.request;
+        const result = await this.engine?.getAllCastMessagesByFid(fid, {
+          pageSize,
+          pageToken: pageToken.length > 0 ? pageToken : undefined,
+        });
         result?.match(
-          (messages: Message[]) => {
-            callback(null, MessagesResponse.create({ messages }));
+          (page: MessagesPage<CastAddMessage | CastRemoveMessage>) => {
+            callback(null, messagesPageToResponse(page));
           },
           (err: HubError) => {
             callback(toServiceError(err));
@@ -589,12 +599,14 @@ export default class Server {
         );
       },
       getAllReactionMessagesByFid: async (call, callback) => {
-        const request = call.request;
-
-        const result = await this.engine?.getAllReactionMessagesByFid(request.fid);
+        const { fid, pageSize, pageToken } = call.request;
+        const result = await this.engine?.getAllReactionMessagesByFid(fid, {
+          pageSize,
+          pageToken: pageToken.length > 0 ? pageToken : undefined,
+        });
         result?.match(
-          (messages: Message[]) => {
-            callback(null, MessagesResponse.create({ messages }));
+          (page: MessagesPage<ReactionAddMessage | ReactionRemoveMessage>) => {
+            callback(null, messagesPageToResponse(page));
           },
           (err: HubError) => {
             callback(toServiceError(err));
@@ -602,12 +614,14 @@ export default class Server {
         );
       },
       getAllVerificationMessagesByFid: async (call, callback) => {
-        const request = call.request;
-
-        const result = await this.engine?.getAllVerificationMessagesByFid(request.fid);
+        const { fid, pageSize, pageToken } = call.request;
+        const result = await this.engine?.getAllVerificationMessagesByFid(fid, {
+          pageSize,
+          pageToken: pageToken.length > 0 ? pageToken : undefined,
+        });
         result?.match(
-          (messages: Message[]) => {
-            callback(null, MessagesResponse.create({ messages }));
+          (page: MessagesPage<VerificationAddEthAddressMessage | VerificationRemoveMessage>) => {
+            callback(null, messagesPageToResponse(page));
           },
           (err: HubError) => {
             callback(toServiceError(err));
@@ -615,27 +629,14 @@ export default class Server {
         );
       },
       getAllSignerMessagesByFid: async (call, callback) => {
-        const request = call.request;
-
-        if (request.pageSize < 0 || request.pageSize > 10_000) {
-          return callback(
-            toServiceError(new HubError('bad_request.invalid_param', 'pageSize must be between 0 and 10,000'))
-          );
-        }
-
-        // TODO move limit into constant
-        const limit = request.pageSize === 0 ? 10_000 : request.pageSize;
-        const startPrefix = request.pageToken.length > 0 ? Buffer.from(request.pageToken) : undefined;
-        const result = await this.engine?.getAllSignerMessagesByFid(request.fid, { startPrefix, limit });
+        const { fid, pageSize, pageToken } = call.request;
+        const result = await this.engine?.getAllSignerMessagesByFid(fid, {
+          pageSize,
+          pageToken: pageToken.length > 0 ? pageToken : undefined,
+        });
         result?.match(
-          ({ messages, nextPrefix }: { messages: Message[]; nextPrefix: Buffer | undefined }) => {
-            callback(
-              null,
-              MessagesResponse.create({
-                messages,
-                nextPageToken: nextPrefix ? nextPrefix : new Uint8Array(),
-              })
-            );
+          (page: MessagesPage<SignerAddMessage | SignerRemoveMessage>) => {
+            callback(null, messagesPageToResponse(page));
           },
           (err: HubError) => {
             callback(toServiceError(err));
@@ -643,12 +644,14 @@ export default class Server {
         );
       },
       getAllUserDataMessagesByFid: async (call, callback) => {
-        const request = call.request;
-
-        const result = await this.engine?.getUserDataByFid(request.fid);
+        const { fid, pageSize, pageToken } = call.request;
+        const result = await this.engine?.getUserDataByFid(fid, {
+          pageSize,
+          pageToken: pageToken.length > 0 ? pageToken : undefined,
+        });
         result?.match(
-          (messages: Message[]) => {
-            callback(null, MessagesResponse.create({ messages }));
+          (page: MessagesPage<UserDataAddMessage>) => {
+            callback(null, messagesPageToResponse(page));
           },
           (err: HubError) => {
             callback(toServiceError(err));

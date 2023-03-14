@@ -30,7 +30,7 @@ const custodySigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
 
 let custodyEvent: protobufs.IdRegistryEvent;
-let signerAdd: protobufs.Message;
+let signerAdd: protobufs.SignerAddMessage;
 
 beforeAll(async () => {
   custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
@@ -145,7 +145,7 @@ describe('getAllSignerMessagesByFid', () => {
 
   beforeAll(async () => {
     signerRemove = await Factories.SignerRemoveMessage.create(
-      { data: { fid, network } },
+      { data: { fid, network, timestamp: signerAdd.data?.timestamp + 1 } },
       { transient: { signer: custodySigner } }
     );
   });
@@ -185,13 +185,11 @@ describe('getAllSignerMessagesByFid', () => {
     assertMessagesMatchResult(page2Result, [signerRemove]);
   });
 
-  test('returns empty array with invalid page token', async () => {
-    await engine.mergeMessage(signerAdd);
-    await engine.mergeMessage(signerRemove);
+  test('fails with invalid page token', async () => {
     const result = await client.getAllSignerMessagesByFid(
       protobufs.FidRequest.create({ fid, pageToken: new Uint8Array([0]) })
     );
-    assertMessagesMatchResult(result, []);
+    expect(result.isOk()).toBeFalsy();
   });
 
   test('returns empty array without messages', async () => {

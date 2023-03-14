@@ -22,7 +22,7 @@ import StoreEventHandler, { putEventTransaction } from '~/storage/stores/storeEv
 import {
   MERGE_TIMEOUT_DEFAULT,
   MessagesPage,
-  PAGE_LIMIT_MAX,
+  PAGE_SIZE_MAX,
   PageOptions,
   StorePruneOptions,
 } from '~/storage/stores/types';
@@ -175,19 +175,19 @@ class SignerStore {
 
   async getFids(pageOptions: PageOptions = {}): Promise<{
     fids: number[];
-    nextPageKey: Buffer | undefined;
+    nextPageToken: Uint8Array | undefined;
   }> {
     const prefix = Buffer.from([RootPrefix.IdRegistryEvent]);
 
-    if (pageOptions.pageKey && bytesCompare(Uint8Array.from(pageOptions.pageKey), Uint8Array.from(prefix)) < 0) {
-      throw new HubError('bad_request.invalid_param', 'invalid pageKey');
+    if (pageOptions.pageToken && bytesCompare(Uint8Array.from(pageOptions.pageToken), Uint8Array.from(prefix)) < 0) {
+      throw new HubError('bad_request.invalid_param', 'invalid pageToken');
     }
-    const startKey = pageOptions.pageKey ?? prefix;
+    const startKey = pageOptions.pageToken ? Buffer.from(pageOptions.pageToken) : prefix;
 
-    if (pageOptions.limit && pageOptions.limit > PAGE_LIMIT_MAX) {
-      throw new HubError('bad_request.invalid_param', `limit > ${PAGE_LIMIT_MAX}`);
+    if (pageOptions.pageSize && pageOptions.pageSize > PAGE_SIZE_MAX) {
+      throw new HubError('bad_request.invalid_param', `pageSize > ${PAGE_SIZE_MAX}`);
     }
-    const limit = pageOptions.limit ?? PAGE_LIMIT_MAX;
+    const limit = pageOptions.pageSize ?? PAGE_SIZE_MAX;
 
     const endKey = bytesIncrement(Uint8Array.from(prefix));
     if (endKey.isErr()) {
@@ -229,48 +229,12 @@ class SignerStore {
       fids.push(fid);
     } while (fids.length < limit);
 
-    const nextPageKey = bytesIncrement(Uint8Array.from(lastKey));
-    if (!iteratorFinished && nextPageKey.isOk()) {
-      return { fids, nextPageKey: Buffer.from(nextPageKey.value) };
+    const nextPageToken = bytesIncrement(Uint8Array.from(lastKey));
+    if (!iteratorFinished && nextPageToken.isOk()) {
+      return { fids, nextPageToken: nextPageToken.value };
     } else {
-      return { fids, nextPageKey: undefined };
+      return { fids, nextPageToken: undefined };
     }
-
-    // pageOptions.limit = pageOptions.limit ?? -1;
-
-    // const startPrefix = pageOptions.pageKey ?? Buffer.from([RootPrefix.IdRegistryEvent]);
-    // const endPrefix = makeEndPrefix(startPrefix);
-    // const fids: number[] = [];
-    // for await (const [key] of this._db.iterator({
-    //   gte: startPrefix,
-    //   lt: endPrefix,
-    //   // If a limit was specified, fetch limit + 1 to determine the next prefix
-    //   limit: pageOptions.limit !== -1 ? pageOptions.limit + 1 : pageOptions.limit,
-    //   keyAsBuffer: true,
-    //   values: false,
-    // })) {
-    //   fids.push(Number((key as Buffer).readUint32BE(1)));
-    // }
-
-    // /**
-    //  * If a limit was specified and limit + 1 were fetched, return limit fids and
-    //  * next prefix, otherwise return all fids and undefined next prefix.
-    //  */
-    // if (pageOptions.limit !== -1 && fids.length === pageOptions.limit + 1) {
-    //   const nextFid = fids[fids.length - 1];
-    //   const nextPrefix = nextFid ? makeIdRegistryEventPrimaryKey(nextFid) : undefined;
-    //   const rangeFids = fids.slice(0, fids.length - 1);
-
-    //   return {
-    //     fids: rangeFids,
-    //     nextPrefix,
-    //   };
-    // } else {
-    //   return {
-    //     fids,
-    //     nextPrefix: undefined,
-    //   };
-    // }
   }
 
   /**

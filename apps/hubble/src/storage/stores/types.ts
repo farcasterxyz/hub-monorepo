@@ -7,14 +7,14 @@ export type StorePruneOptions = {
   pruneTimeLimit?: number; // Max age (in seconds) of any message in the store
 };
 
-export const PAGE_LIMIT_MAX = 10_000;
+export const PAGE_SIZE_MAX = 10_000;
 
 export type PageOptions = {
-  pageKey?: Buffer | undefined;
-  limit?: number | undefined;
+  pageToken?: Uint8Array | undefined;
+  pageSize?: number | undefined;
 };
 
 export type MessagesPage<T extends protobufs.Message> = {
   messages: T[];
-  nextPageKey?: Buffer | undefined;
+  nextPageToken?: Uint8Array | undefined;
 };

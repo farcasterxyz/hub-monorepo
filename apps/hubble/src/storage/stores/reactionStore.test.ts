@@ -38,7 +38,7 @@ beforeAll(async () => {
   });
 
   reactionAddRecast = await Factories.ReactionAddMessage.create({
-    data: { fid, reactionBody: recastBody },
+    data: { fid, reactionBody: recastBody, timestamp: reactionAdd.data.timestamp + 1 },
   });
 
   reactionRemoveRecast = await Factories.ReactionRemoveMessage.create({
@@ -119,19 +119,45 @@ describe('getReactionRemove', () => {
 });
 
 describe('getReactionAddsByFid', () => {
-  test('returns reactionAdds if they exist', async () => {
+  test('returns ReactionAdd messages in chronological order according to pageOptions', async () => {
+    const reactionAdd2 = await Factories.ReactionAddMessage.create({
+      data: { fid, timestamp: reactionAdd.data.timestamp + 2 },
+    });
+    await set.merge(reactionAdd2);
     await set.merge(reactionAdd);
     await set.merge(reactionAddRecast);
-    await expect(set.getReactionAddsByFid(fid)).resolves.toEqual([reactionAdd, reactionAddRecast]);
+    await expect(set.getReactionAddsByFid(fid)).resolves.toEqual({
+      messages: [reactionAdd, reactionAddRecast, reactionAdd2],
+      nextPageToken: undefined,
+    });
+
+    const results1 = await set.getReactionAddsByFid(fid, undefined, { pageSize: 1 });
+    expect(results1.messages).toEqual([reactionAdd]);
+
+    const results2 = await set.getReactionAddsByFid(fid, undefined, { pageToken: results1.nextPageToken });
+    expect(results2).toEqual({ messages: [reactionAddRecast, reactionAdd2], nextPageToken: undefined });
+  });
+
+  test('returns ReactionAdd messages by type', async () => {
+    await set.merge(reactionAdd);
+    await set.merge(reactionAddRecast);
+    await expect(set.getReactionAddsByFid(fid, protobufs.ReactionType.LIKE)).resolves.toEqual({
+      messages: [reactionAdd],
+      nextPageToken: undefined,
+    });
+    await expect(set.getReactionAddsByFid(fid, protobufs.ReactionType.RECAST)).resolves.toEqual({
+      messages: [reactionAddRecast],
+      nextPageToken: undefined,
+    });
   });
 
   test('returns empty array if no ReactionAdd exists', async () => {
-    await expect(set.getReactionAddsByFid(fid)).resolves.toEqual([]);
+    await expect(set.getReactionAddsByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 
   test('returns empty array if no ReactionAdd exists, even if ReactionRemove exists', async () => {
     await set.merge(reactionRemove);
-    await expect(set.getReactionAddsByFid(fid)).resolves.toEqual([]);
+    await expect(set.getReactionAddsByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 });
 
@@ -139,18 +165,23 @@ describe('getReactionRemovesByFid', () => {
   test('returns ReactionRemove if it exists', async () => {
     await set.merge(reactionRemove);
     await set.merge(reactionRemoveRecast);
-    await expect(set.getReactionRemovesByFid(fid)).resolves.toEqual([reactionRemove, reactionRemoveRecast]);
+    await expect(set.getReactionRemovesByFid(fid)).resolves.toEqual({
+      messages: [reactionRemove, reactionRemoveRecast],
+      nextPageToken: undefined,
+    });
   });
 
   test('returns empty array if no ReactionRemove exists', async () => {
-    await expect(set.getReactionRemovesByFid(fid)).resolves.toEqual([]);
+    await expect(set.getReactionRemovesByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 
   test('returns empty array if no ReactionRemove exists, even if ReactionAdds exists', async () => {
     await set.merge(reactionAdd);
-    await expect(set.getReactionRemovesByFid(fid)).resolves.toEqual([]);
+    await expect(set.getReactionRemovesByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 });
+
+// TODO: getAllReactionMessagesByFid
 
 describe('getReactionsByTargetCast', () => {
   test('returns empty array if no reactions exist', async () => {

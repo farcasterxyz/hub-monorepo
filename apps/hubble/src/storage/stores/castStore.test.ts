@@ -71,49 +71,51 @@ describe('getCastRemove', () => {
 describe('getCastAddsByFid', () => {
   test('returns cast adds for an fid', async () => {
     await store.merge(castAdd);
-    await expect(store.getCastAddsByFid(fid)).resolves.toEqual([castAdd]);
+    await expect(store.getCastAddsByFid(fid)).resolves.toEqual({ messages: [castAdd], nextPageToken: undefined });
   });
 
   test('fails if incorrect values are passed in', async () => {
     await store.merge(castAdd);
 
     const invalidFid = Factories.Fid.build();
-    await expect(store.getCastAddsByFid(invalidFid)).resolves.toEqual([]);
+    await expect(store.getCastAddsByFid(invalidFid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 
   test('returns empty array without messages', async () => {
-    await expect(store.getCastAddsByFid(fid)).resolves.toEqual([]);
+    await expect(store.getCastAddsByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns cast adds in chronological order', async () => {
+  test('returns cast adds in chronological order according to pageOptions', async () => {
     const castAdd2 = await Factories.CastAddMessage.create({ data: { fid, timestamp: castAdd.data.timestamp + 1 } });
     const castRemove2 = await Factories.CastRemoveMessage.create({ data: { fid } });
     await store.merge(castRemove2);
     await store.merge(castAdd);
     await store.merge(castAdd2);
+
     const results = await store.getCastAddsByFid(fid);
-    expect(results).toEqual([castAdd, castAdd2]);
+    expect(results).toEqual({ messages: [castAdd, castAdd2], nextPageToken: undefined });
+
+    const results1 = await store.getCastAddsByFid(fid, { pageSize: 1 });
+    expect(results1.messages).toEqual([castAdd]);
+
+    const results2 = await store.getCastAddsByFid(fid, { pageToken: results1.nextPageToken });
+    expect(results2).toEqual({ messages: [castAdd2], nextPageToken: undefined });
   });
 });
 
 describe('getCastRemovesByFid', () => {
-  test('returns cast removes for an fid', async () => {
-    await store.merge(castRemove);
-    await expect(store.getCastRemovesByFid(fid)).resolves.toEqual([castRemove]);
-  });
-
   test('fails if incorrect values are passed in', async () => {
     await store.merge(castRemove);
 
     const invalidFid = Factories.Fid.build();
-    await expect(store.getCastRemovesByFid(invalidFid)).resolves.toEqual([]);
+    await expect(store.getCastRemovesByFid(invalidFid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 
   test('returns empty array without messages', async () => {
-    await expect(store.getCastRemovesByFid(fid)).resolves.toEqual([]);
+    await expect(store.getCastRemovesByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns cast removes in chronological order', async () => {
+  test('returns cast removes in chronological order according to pageOptions', async () => {
     const castAdd2 = await Factories.CastAddMessage.create({ data: { fid } });
     const castRemove2 = await Factories.CastRemoveMessage.create({
       data: { fid, timestamp: castRemove.data.timestamp + 1 },
@@ -121,8 +123,15 @@ describe('getCastRemovesByFid', () => {
     await store.merge(castRemove);
     await store.merge(castRemove2);
     await store.merge(castAdd2);
+
     const results = await store.getCastRemovesByFid(fid);
-    expect(results).toEqual([castRemove, castRemove2]);
+    expect(results).toEqual({ messages: [castRemove, castRemove2], nextPageToken: undefined });
+
+    const results1 = await store.getCastRemovesByFid(fid, { pageSize: 1 });
+    expect(results1.messages).toEqual([castRemove]);
+
+    const results2 = await store.getCastRemovesByFid(fid, { pageToken: results1.nextPageToken });
+    expect(results2).toEqual({ messages: [castRemove2], nextPageToken: undefined });
   });
 });
 

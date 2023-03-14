@@ -5,8 +5,8 @@ import { err, ok, ResultAsync } from 'neverthrow';
 import {
   deleteMessageTransaction,
   getAllMessagesBySigner,
-  getManyMessagesByFid,
   getMessage,
+  getMessagesPageByPrefix,
   getMessagesPruneIterator,
   getNextMessageToPrune,
   makeMessagePrimaryKey,
@@ -17,7 +17,7 @@ import {
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { UserPostfix } from '~/storage/db/types';
 import StoreEventHandler, { putEventTransaction } from '~/storage/stores/storeEventHandler';
-import { MERGE_TIMEOUT_DEFAULT, StorePruneOptions } from '~/storage/stores/types';
+import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PageOptions, StorePruneOptions } from '~/storage/stores/types';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 50;
 
@@ -126,18 +126,12 @@ class VerificationStore {
    * @param fid fid of the user who created the signers
    * @returns the VerificationAddEthAddresses if they exists, throws HubError otherwise
    */
-  async getVerificationAddsByFid(fid: number): Promise<protobufs.VerificationAddEthAddressMessage[]> {
-    const addsPrefix = makeVerificationAddsKey(fid);
-    const messageKeys: Buffer[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(addsPrefix, { keys: false, valueAsBuffer: true })) {
-      messageKeys.push(value);
-    }
-    return getManyMessagesByFid<protobufs.VerificationAddEthAddressMessage>(
-      this._db,
-      fid,
-      UserPostfix.VerificationMessage,
-      messageKeys
-    );
+  async getVerificationAddsByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.VerificationAddEthAddressMessage>> {
+    const prefix = makeMessagePrimaryKey(fid, UserPostfix.VerificationMessage);
+    return getMessagesPageByPrefix(this._db, prefix, protobufs.isVerificationAddEthAddressMessage, pageOptions);
   }
 
   /**
@@ -146,18 +140,25 @@ class VerificationStore {
    * @param fid fid of the user who created the signers
    * @returns the VerificationRemoves messages if it exists, throws HubError otherwise
    */
-  async getVerificationRemovesByFid(fid: number): Promise<protobufs.VerificationRemoveMessage[]> {
-    const removesPrefix = makeVerificationRemovesKey(fid);
-    const messageKeys: Buffer[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(removesPrefix, { keys: false, valueAsBuffer: true })) {
-      messageKeys.push(value);
-    }
-    return getManyMessagesByFid<protobufs.VerificationRemoveMessage>(
-      this._db,
-      fid,
-      UserPostfix.VerificationMessage,
-      messageKeys
-    );
+  async getVerificationRemovesByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.VerificationRemoveMessage>> {
+    const prefix = makeMessagePrimaryKey(fid, UserPostfix.VerificationMessage);
+    return getMessagesPageByPrefix(this._db, prefix, protobufs.isVerificationRemoveMessage, pageOptions);
+  }
+
+  async getAllVerificationMessagesByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.VerificationAddEthAddressMessage | protobufs.VerificationRemoveMessage>> {
+    const prefix = makeMessagePrimaryKey(fid, UserPostfix.VerificationMessage);
+    const filter = (
+      message: protobufs.Message
+    ): message is protobufs.VerificationAddEthAddressMessage | protobufs.VerificationRemoveMessage => {
+      return protobufs.isVerificationAddEthAddressMessage(message) || protobufs.isVerificationRemoveMessage(message);
+    };
+    return getMessagesPageByPrefix(this._db, prefix, filter, pageOptions);
   }
 
   /** Merge a VerificationAdd or VerificationRemove message into the VerificationStore */

@@ -20,7 +20,7 @@ beforeAll(async () => {
     data: { fid, userDataBody: { type: protobufs.UserDataType.PFP } },
   });
   addBio = await Factories.UserDataAddMessage.create({
-    data: { fid, userDataBody: { type: protobufs.UserDataType.BIO } },
+    data: { fid, userDataBody: { type: protobufs.UserDataType.BIO }, timestamp: addPfp.data.timestamp + 1 },
   });
 });
 
@@ -45,20 +45,21 @@ describe('getUserDataAdd', () => {
 });
 
 describe('getUserDataAddsByFid', () => {
-  test('returns user data adds for an fid', async () => {
+  test('returns user data adds for an fid in chronological order', async () => {
     await set.merge(addPfp);
     await set.merge(addBio);
-    expect(new Set(await set.getUserDataAddsByFid(fid))).toEqual(new Set([addPfp, addBio]));
+    const results = await set.getUserDataAddsByFid(fid);
+    expect(results.messages).toEqual([addPfp, addBio]);
   });
 
   test('returns empty array if the wrong fid or datatype is provided', async () => {
     const unknownFid = Factories.Fid.build();
     await set.merge(addPfp);
-    await expect(set.getUserDataAddsByFid(unknownFid)).resolves.toEqual([]);
+    await expect(set.getUserDataAddsByFid(unknownFid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 
   test('returns empty array without messages', async () => {
-    await expect(set.getUserDataAddsByFid(fid)).resolves.toEqual([]);
+    await expect(set.getUserDataAddsByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 });
 

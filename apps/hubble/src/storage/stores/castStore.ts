@@ -7,6 +7,7 @@ import {
   getAllMessagesBySigner,
   getManyMessages,
   getMessage,
+  getMessagesPageByPrefix,
   getMessagesPruneIterator,
   getNextMessageToPrune,
   makeCastIdKey,
@@ -19,7 +20,7 @@ import {
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { FID_BYTES, RootPrefix, TRUE_VALUE, UserPostfix } from '~/storage/db/types';
 import StoreEventHandler, { putEventTransaction } from '~/storage/stores/storeEventHandler';
-import { MERGE_TIMEOUT_DEFAULT, StorePruneOptions } from '~/storage/stores/types';
+import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PageOptions, StorePruneOptions } from '~/storage/stores/types';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 10_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 365; // 1 year
@@ -141,32 +142,35 @@ class CastStore {
   }
 
   /** Gets all CastAdd messages for an fid */
-  async getCastAddsByFid(fid: number): Promise<protobufs.CastAddMessage[]> {
+  async getCastAddsByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<protobufs.CastAddMessage>> {
     const castMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
-    const messages: protobufs.CastAddMessage[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(castMessagesPrefix, { keys: false, valueAsBuffer: true })) {
-      const message = protobufs.Message.decode(Uint8Array.from(value as Buffer));
-      if (protobufs.isCastAddMessage(message)) {
-        messages.push(message);
-      }
-    }
-    return messages;
+    return getMessagesPageByPrefix(this._db, castMessagesPrefix, protobufs.isCastAddMessage, pageOptions);
   }
 
   /** Gets all CastRemove messages for an fid */
-  async getCastRemovesByFid(fid: number): Promise<protobufs.CastRemoveMessage[]> {
+  async getCastRemovesByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.CastRemoveMessage>> {
     const castMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
-    const messages: protobufs.CastRemoveMessage[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(castMessagesPrefix, { keys: false, valueAsBuffer: true })) {
-      const message = protobufs.Message.decode(Uint8Array.from(value as Buffer));
-      if (protobufs.isCastRemoveMessage(message)) {
-        messages.push(message);
-      }
-    }
-    return messages;
+    return getMessagesPageByPrefix(this._db, castMessagesPrefix, protobufs.isCastRemoveMessage, pageOptions);
+  }
+
+  async getAllCastMessagesByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.CastAddMessage | protobufs.CastRemoveMessage>> {
+    const castMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
+    const isCastMessage = (
+      message: protobufs.Message
+    ): message is protobufs.CastAddMessage | protobufs.CastRemoveMessage => {
+      return protobufs.isCastAddMessage(message) || protobufs.isCastRemoveMessage(message);
+    };
+    return getMessagesPageByPrefix(this._db, castMessagesPrefix, isCastMessage, pageOptions);
   }
 
   /** Gets all CastAdd messages for a parent cast (fid and tsHash) */
+  // TODO: paginate
   async getCastsByParent(parentId: protobufs.CastId): Promise<protobufs.CastAddMessage[]> {
     const byParentPrefix = makeCastsByParentKey(parentId);
     const messageKeys: Buffer[] = [];
@@ -180,6 +184,7 @@ class CastStore {
   }
 
   /** Gets all CastAdd messages for a mention (fid) */
+  // TODO: paginate
   async getCastsByMention(mentionFid: number): Promise<protobufs.CastAddMessage[]> {
     const byMentionPrefix = makeCastsByMentionKey(mentionFid);
     const messageKeys: Buffer[] = [];
