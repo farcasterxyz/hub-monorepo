@@ -506,7 +506,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       return err(new HubError('unavailable.network_failure', 'Failed to fetch signer messages'));
     }
 
-    const results = await this.engine.mergeMessages(signerMessagesResult._unsafeUnwrap().messages);
+    const results = await this.engine.mergeMessages(signerMessagesResult.value.messages);
     if (results.every((r) => r.isErr())) {
       return err(new HubError('unavailable.storage_failure', 'Failed to merge signer messages'));
     } else {

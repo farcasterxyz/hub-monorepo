@@ -37,14 +37,21 @@ export class PruneMessagesJobScheduler {
   async doJobs(): HubAsyncResult<void> {
     log.info({}, 'starting doJobs');
 
-    const fids = await this._engine.getFids();
-    if (fids.isErr()) {
-      return err(fids.error);
-    }
+    let finished = false;
+    do {
+      const fidsPage = await this._engine.getFids();
+      if (fidsPage.isErr()) {
+        return err(fidsPage.error);
+      }
+      const { fids, nextPageToken } = fidsPage.value;
+      if (!nextPageToken) {
+        finished = true;
+      }
 
-    for (const fid of fids.value.fids) {
-      await this._engine.pruneMessages(fid);
-    }
+      for (const fid of fids) {
+        await this._engine.pruneMessages(fid);
+      }
+    } while (!finished);
 
     return ok(undefined);
   }

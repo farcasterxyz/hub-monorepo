@@ -3,8 +3,7 @@ import { bytesDecrement, bytesIncrement, Factories, getFarcasterTime, HubError }
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import { makeIdRegistryEventPrimaryKey } from '../db/idRegistryEvent';
-import { getAllMessagesBySigner, getMessage, makeTsHash } from '../db/message';
+import { getAllMessagesBySigner, getMessage, makeFidKey, makeTsHash } from '../db/message';
 import { UserPostfix } from '../db/types';
 
 const db = jestRocksDB('protobufs.signerStore.test');
@@ -133,11 +132,10 @@ describe('getSignerAddsByFid', () => {
       expect(result3.messages).toEqual([signerAdd3]);
     });
 
-    test('fails with invalid pageToken', async () => {
-      const invalidPageKey = Buffer.from([1]);
-      await expect(set.getSignerAddsByFid(fid, { pageToken: invalidPageKey })).rejects.toThrow(
-        new HubError('bad_request.invalid_param', 'invalid pageToken')
-      );
+    test('returns empty array with invalid pageToken', async () => {
+      const invalidPageKey = new Uint8Array([255]);
+      const results = await set.getSignerAddsByFid(fid, { pageToken: invalidPageKey });
+      expect(results).toEqual({ messages: [], nextPageToken: undefined });
     });
   });
 });
@@ -190,17 +188,16 @@ describe('getSignerRemovesByFid', () => {
     });
 
     test('returns messages from pageToken', async () => {
-      const result1 = await set.getSignerRemovesByFid(fid, { pageSize: 1 });
-      expect(result1.messages).toEqual([signerRemove]);
-      const result2 = await set.getSignerRemovesByFid(fid, { pageToken: result1.nextPageToken, pageSize: 1 });
-      expect(result2.messages).toEqual([signerRemove2]);
+      const results1 = await set.getSignerRemovesByFid(fid, { pageSize: 1 });
+      expect(results1.messages).toEqual([signerRemove]);
+      const results2 = await set.getSignerRemovesByFid(fid, { pageToken: results1.nextPageToken, pageSize: 1 });
+      expect(results2.messages).toEqual([signerRemove2]);
     });
 
-    test('fails with invalid pageToken', async () => {
-      const invalidPageKey = Buffer.from([1]);
-      await expect(set.getSignerRemovesByFid(fid, { pageToken: invalidPageKey })).rejects.toThrow(
-        new HubError('bad_request.invalid_param', 'invalid pageToken')
-      );
+    test('returns empty array with invalid pageToken', async () => {
+      const invalidPageKey = new Uint8Array([255]);
+      const results = await set.getSignerRemovesByFid(fid, { pageToken: invalidPageKey });
+      expect(results).toEqual({ messages: [], nextPageToken: undefined });
     });
   });
 });
@@ -259,11 +256,10 @@ describe('getAllSignerMessagesByFid', () => {
       expect(result2.messages).toEqual([signerRemove2, signerAdd3]);
     });
 
-    test('fails with invalid pageToken', async () => {
-      const invalidPageKey = Buffer.from([1]);
-      await expect(set.getAllSignerMessagesByFid(fid, { pageToken: invalidPageKey })).rejects.toThrow(
-        new HubError('bad_request.invalid_param', 'invalid pageToken')
-      );
+    test('returns empty array with invalid pageToken', async () => {
+      const invalidPageKey = new Uint8Array([255]);
+      const results = await set.getAllSignerMessagesByFid(fid, { pageToken: invalidPageKey });
+      expect(results).toEqual({ messages: [], nextPageToken: undefined });
     });
   });
 });
@@ -799,43 +795,32 @@ describe('getFids', () => {
       await set.mergeIdRegistryEvent(custody2Event);
     });
 
-    describe('without pageOptions', () => {
-      test('returns all fids for merged custody events', async () => {
-        const result = await set.getFids();
-        expect(result).toEqual({ fids: [fid, fid2], nextPageToken: undefined });
-      });
+    test('returns all fids for merged custody events without pageOptions', async () => {
+      const result = await set.getFids();
+      expect(result).toEqual({ fids: [fid, fid2], nextPageToken: undefined });
     });
 
-    describe('with limit < number of messages', () => {
-      test('returns limit fids', async () => {
-        const result = await set.getFids({ pageSize: 1 });
-        expect(result).toEqual({ fids: [fid], nextPageToken: Uint8Array.from(makeIdRegistryEventPrimaryKey(fid2)) });
-      });
+    test('returns limit fids with pageSize < number of messages', async () => {
+      const result = await set.getFids({ pageSize: 1 });
+      expect(result).toEqual({ fids: [fid], nextPageToken: Uint8Array.from(makeFidKey(fid)) });
     });
 
-    describe('with limit > merged events', () => {
-      test('returns all fids', async () => {
-        const result = await set.getFids({ pageSize: 3 });
-        expect(result).toEqual({ fids: [fid, fid2], nextPageToken: undefined });
-      });
+    test('returns all fids with pageSize > number of messages', async () => {
+      const result = await set.getFids({ pageSize: 3 });
+      expect(result).toEqual({ fids: [fid, fid2], nextPageToken: undefined });
     });
 
-    describe('with valid pageToken', () => {
-      test('returns fids from pageToken', async () => {
-        const result1 = await set.getFids({ pageSize: 1 });
-        expect(result1.fids).toEqual([fid]);
-        const result2 = await set.getFids({ pageToken: result1.nextPageToken });
-        expect(result2).toEqual({ fids: [fid2], nextPageToken: undefined });
-      });
+    test('returns fids from pageToken', async () => {
+      const result1 = await set.getFids({ pageSize: 1 });
+      expect(result1.fids).toEqual([fid]);
+      const result2 = await set.getFids({ pageToken: result1.nextPageToken });
+      expect(result2).toEqual({ fids: [fid2], nextPageToken: undefined });
     });
 
-    describe('with invalid pageToken', () => {
-      test('returns empty array', async () => {
-        const invalidPageKey = Buffer.from([1]);
-        await expect(set.getFids({ pageToken: invalidPageKey })).rejects.toThrow(
-          new HubError('bad_request.invalid_param', 'invalid pageToken')
-        );
-      });
+    test('returns empty array with invalid pageToken', async () => {
+      const invalidPageKey = Buffer.from([255]);
+      const results = await set.getFids({ pageToken: invalidPageKey });
+      expect(results).toEqual({ fids: [], nextPageToken: undefined });
     });
   });
 });

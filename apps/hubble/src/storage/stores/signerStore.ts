@@ -179,10 +179,7 @@ class SignerStore {
   }> {
     const prefix = Buffer.from([RootPrefix.IdRegistryEvent]);
 
-    if (pageOptions.pageToken && bytesCompare(Uint8Array.from(pageOptions.pageToken), Uint8Array.from(prefix)) < 0) {
-      throw new HubError('bad_request.invalid_param', 'invalid pageToken');
-    }
-    const startKey = pageOptions.pageToken ? Buffer.from(pageOptions.pageToken) : prefix;
+    const startAfterKey = Buffer.concat([prefix, Buffer.from(pageOptions.pageToken ?? '')]);
 
     if (pageOptions.pageSize && pageOptions.pageSize > PAGE_SIZE_MAX) {
       throw new HubError('bad_request.invalid_param', `pageSize > ${PAGE_SIZE_MAX}`);
@@ -196,7 +193,7 @@ class SignerStore {
 
     const fids: number[] = [];
     const iterator = this._db.iterator({
-      gte: startKey,
+      gt: startAfterKey,
       lt: Buffer.from(endKey.value),
       keyAsBuffer: true,
       valueAsBuffer: true,
@@ -216,7 +213,7 @@ class SignerStore {
     };
 
     let iteratorFinished = false;
-    let lastKey: Buffer = startKey;
+    let lastPageToken: Uint8Array | undefined;
     do {
       const result = await ResultAsync.fromPromise(getNextIteratorRecord(iterator), (e) => e as HubError);
       if (result.isErr()) {
@@ -225,13 +222,12 @@ class SignerStore {
       }
 
       const [key, fid] = result.value;
-      lastKey = key;
+      lastPageToken = Uint8Array.from(key.subarray(prefix.length));
       fids.push(fid);
     } while (fids.length < limit);
 
-    const nextPageToken = bytesIncrement(Uint8Array.from(lastKey));
-    if (!iteratorFinished && nextPageToken.isOk()) {
-      return { fids, nextPageToken: nextPageToken.value };
+    if (!iteratorFinished) {
+      return { fids, nextPageToken: lastPageToken };
     } else {
       return { fids, nextPageToken: undefined };
     }

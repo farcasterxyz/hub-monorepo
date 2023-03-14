@@ -1,6 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
 import { Factories, getInsecureHubRpcClient, HubError, HubResult, HubRpcClient } from '@farcaster/utils';
-import { err, ok } from 'neverthrow';
+import { ok } from 'neverthrow';
 import SyncEngine from '~/network/sync/syncEngine';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
@@ -134,7 +134,7 @@ describe('getSignersByFid', () => {
 
   test('returns empty array with invalid page token', async () => {
     await engine.mergeMessage(signerAdd);
-    const result = await client.getSignersByFid(protobufs.FidRequest.create({ fid, pageToken: new Uint8Array([9]) }));
+    const result = await client.getSignersByFid(protobufs.FidRequest.create({ fid, pageToken: new Uint8Array([255]) }));
     expect(result._unsafeUnwrap().messages).toEqual([]);
   });
 
@@ -147,8 +147,6 @@ describe('getSignersByFid', () => {
 describe('getIdRegistryEvent', () => {
   test('succeeds', async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
-    // const result = await client.getIdRegistryEvent(fid);
-    // expect(result._unsafeUnwrap()).toEqual(custodyEvent.event);
     const result = await client.getIdRegistryEvent(protobufs.FidRequest.create({ fid }));
     expect(protobufs.IdRegistryEvent.toJSON(result._unsafeUnwrap())).toEqual(
       protobufs.IdRegistryEvent.toJSON(custodyEvent)
@@ -156,8 +154,6 @@ describe('getIdRegistryEvent', () => {
   });
 
   test('fails when event is missing', async () => {
-    // const result = await client.getIdRegistryEvent(fid);
-    // expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
     const result = await client.getIdRegistryEvent(protobufs.FidRequest.create({ fid }));
     expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
   });
@@ -193,13 +189,6 @@ describe('getFids', () => {
       protobufs.FidsRequest.create({ pageSize: 1, pageToken: page1Result._unsafeUnwrap().nextPageToken })
     );
     expect(page2Result._unsafeUnwrap().fids).toEqual([custodyEvent2.fid]);
-  });
-
-  test('fails with invalid page token', async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeIdRegistryEvent(custodyEvent2);
-    const result = await client.getFids(protobufs.FidsRequest.create({ pageSize: 1, pageToken: new Uint8Array([0]) }));
-    expect(result).toEqual(err(new HubError('bad_request.invalid_param', 'invalid pageToken')));
   });
 
   test('returns empty array without events', async () => {

@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, bytesIncrement, HubError, HubResult } from '@farcaster/utils';
+import { bytesIncrement, HubError, HubResult } from '@farcaster/utils';
 import { err, ok, ResultAsync } from 'neverthrow';
 import AbstractRocksDB from 'rocksdb';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
@@ -168,10 +168,11 @@ export const getMessagesPageByPrefix = async <T extends protobufs.Message>(
   filter: (message: protobufs.Message) => message is T,
   pageOptions: PageOptions = {}
 ): Promise<MessagesPage<T>> => {
-  if (pageOptions.pageToken && bytesCompare(pageOptions.pageToken, Uint8Array.from(prefix)) < 0) {
-    throw new HubError('bad_request.invalid_param', 'invalid pageToken');
-  }
-  const startKey = pageOptions.pageToken ? Buffer.from(pageOptions.pageToken) : prefix;
+  // if (pageOptions.pageToken && bytesCompare(pageOptions.pageToken, Uint8Array.from(prefix)) < 0) {
+  //   throw new HubError('bad_request.invalid_param', 'invalid pageToken');
+  // }
+  // const startKey = pageOptions.pageToken ? Buffer.from(pageOptions.pageToken) : prefix;
+  const startAfterKey = Buffer.concat([prefix, Buffer.from(pageOptions.pageToken ?? '')]);
 
   if (pageOptions.pageSize && pageOptions.pageSize > PAGE_SIZE_MAX) {
     throw new HubError('bad_request.invalid_param', `pageSize > ${PAGE_SIZE_MAX}`);
@@ -185,7 +186,7 @@ export const getMessagesPageByPrefix = async <T extends protobufs.Message>(
 
   const messages: T[] = [];
   const iterator = db.iterator({
-    gte: startKey,
+    gt: startAfterKey,
     lt: Buffer.from(endKey.value),
     keyAsBuffer: true,
     valueAsBuffer: true,
@@ -204,7 +205,7 @@ export const getMessagesPageByPrefix = async <T extends protobufs.Message>(
   };
 
   let iteratorFinished = false;
-  let lastKey: Buffer = startKey;
+  let lastPageToken: Uint8Array | undefined;
   do {
     const result = await ResultAsync.fromPromise(getNextIteratorRecord(iterator), (e) => e as HubError);
     if (result.isErr()) {
@@ -213,18 +214,28 @@ export const getMessagesPageByPrefix = async <T extends protobufs.Message>(
     }
 
     const [key, message] = result.value;
-    lastKey = key;
+    lastPageToken = Uint8Array.from(key.subarray(prefix.length));
+    // lastKey = key;
     if (filter(message)) {
       messages.push(message);
     }
   } while (messages.length < limit);
 
-  const nextPageToken = bytesIncrement(Uint8Array.from(lastKey));
-  if (!iteratorFinished && nextPageToken.isOk()) {
-    return { messages, nextPageToken: nextPageToken.value };
+  if (!iteratorFinished) {
+    return { messages, nextPageToken: lastPageToken };
   } else {
     return { messages, nextPageToken: undefined };
   }
+  // if (lastPageToken === undefined) {
+  //   return { messages, nextPageToken: undefined };
+  // }
+
+  // const nextPageToken = bytesIncrement(lastPageToken);
+  // if (!iteratorFinished && nextPageToken.isOk()) {
+  //   return { messages, nextPageToken: nextPageToken.value };
+  // } else {
+  //   return { messages, nextPageToken: undefined };
+  // }
 };
 
 /** Get an array of messages for a given fid and signer */
