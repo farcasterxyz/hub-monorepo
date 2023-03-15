@@ -138,41 +138,46 @@ describe('getCastRemovesByFid', () => {
 describe('getCastsByParent', () => {
   test('returns empty array if no casts exist', async () => {
     const byTargetUser = await store.getCastsByParent(parentCastId);
-    expect(byTargetUser).toEqual([]);
+    expect(byTargetUser).toEqual({ messages: [], nextPageToken: undefined });
   });
 
   test('returns empty array if casts exist, but for a different cast id', async () => {
     await store.merge(castAdd);
-    expect(await store.getCastsByParent(Factories.CastId.build())).toEqual([]);
+    expect(await store.getCastsByParent(Factories.CastId.build())).toEqual({ messages: [], nextPageToken: undefined });
   });
 
   test('returns casts that reply to a parent cast', async () => {
-    const castAddSameParent = await Factories.CastAddMessage.create({ data: { castAddBody: { parentCastId } } });
+    const castAddSameParent = await Factories.CastAddMessage.create({
+      data: { castAddBody: { parentCastId }, timestamp: castAdd.data.timestamp + 1 },
+    });
 
     await store.merge(castAdd);
     await store.merge(castAddSameParent);
 
     const byParent = await store.getCastsByParent(parentCastId);
-    expect(new Set(byParent)).toEqual(new Set([castAdd, castAddSameParent]));
+    expect(byParent).toEqual({ messages: [castAdd, castAddSameParent], nextPageToken: undefined });
   });
 });
 
 describe('getCastsByMention', () => {
   test('returns empty array if no casts exist', async () => {
     const byTargetUser = await store.getCastsByMention(Factories.Fid.build());
-    expect(byTargetUser).toEqual([]);
+    expect(byTargetUser).toEqual({ messages: [], nextPageToken: undefined });
   });
 
   test('returns empty array if casts exist, but for a different fid or hash', async () => {
     await store.merge(castAdd);
-    expect(await store.getCastsByMention(Factories.Fid.build())).toEqual([]);
+    expect(await store.getCastsByMention(Factories.Fid.build())).toEqual({ messages: [], nextPageToken: undefined });
   });
 
   test('returns casts that mention an fid', async () => {
     await store.merge(castAdd);
     expect(castAdd.data.castAddBody.mentions.length).toBeGreaterThan(0);
     for (const mentionFid of castAdd.data.castAddBody.mentions) {
-      await expect(store.getCastsByMention(mentionFid)).resolves.toEqual([castAdd]);
+      await expect(store.getCastsByMention(mentionFid)).resolves.toEqual({
+        messages: [castAdd],
+        nextPageToken: undefined,
+      });
     }
   });
 });
@@ -211,10 +216,16 @@ describe('merge', () => {
     await assetMessageExists(message);
     await expect(store.getCastAdd(fid, message.hash)).resolves.toEqual(message);
     for (const mentionFid of message.data.castAddBody.mentions) {
-      await expect(store.getCastsByMention(mentionFid)).resolves.toEqual([message]);
+      await expect(store.getCastsByMention(mentionFid)).resolves.toEqual({
+        messages: [message],
+        nextPageToken: undefined,
+      });
     }
     if (message.data.castAddBody.parentCastId) {
-      await expect(store.getCastsByParent(message.data.castAddBody.parentCastId)).resolves.toEqual([message]);
+      await expect(store.getCastsByParent(message.data.castAddBody.parentCastId)).resolves.toEqual({
+        messages: [message],
+        nextPageToken: undefined,
+      });
     }
 
     if (removeMessage) {

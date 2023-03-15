@@ -1,7 +1,8 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, getFarcasterTime, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
+import { bytesCompare, bytesIncrement, getFarcasterTime, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
+import AbstractRocksDB from 'rocksdb';
 import {
   deleteMessageTransaction,
   getAllMessagesBySigner,
@@ -20,7 +21,13 @@ import {
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { FID_BYTES, RootPrefix, TRUE_VALUE, UserPostfix } from '~/storage/db/types';
 import StoreEventHandler, { putEventTransaction } from '~/storage/stores/storeEventHandler';
-import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PageOptions, StorePruneOptions } from '~/storage/stores/types';
+import {
+  MERGE_TIMEOUT_DEFAULT,
+  MessagesPage,
+  PAGE_SIZE_MAX,
+  PageOptions,
+  StorePruneOptions,
+} from '~/storage/stores/types';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 5_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
@@ -222,24 +229,76 @@ class ReactionStore {
   }
 
   /** Finds all ReactionAdds that point to a specific target by iterating through the prefixes */
-  // TODO: paginate
+  // TODO: DRY up this method
   async getReactionsByTargetCast(
     castId: protobufs.CastId,
-    type?: protobufs.ReactionType
-  ): Promise<protobufs.ReactionAddMessage[]> {
+    type?: protobufs.ReactionType,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.ReactionAddMessage>> {
     const prefix = makeReactionsByTargetKey(castId, type);
 
-    // Calculates the positions in the key where the fid and tsHash begin
-    const fidOffset = prefix.length + (type ? 0 : 1); // compensate for fact that prefix is 1 byte longer if type was provided
-    const tsHashOffset = fidOffset + FID_BYTES;
+    const startKey = Buffer.concat([prefix, Buffer.from(pageOptions.pageToken ?? '')]);
+
+    if (pageOptions.pageSize && pageOptions.pageSize > PAGE_SIZE_MAX) {
+      throw new HubError('bad_request.invalid_param', `pageSize > ${PAGE_SIZE_MAX}`);
+    }
+    const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
+
+    const endKey = bytesIncrement(Uint8Array.from(prefix));
+    if (endKey.isErr()) {
+      throw endKey.error;
+    }
 
     const messageKeys: Buffer[] = [];
-    for await (const [key] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
-      const fid = Number((key as Buffer).readUint32BE(fidOffset));
-      const tsHash = Uint8Array.from(key).subarray(tsHashOffset);
-      messageKeys.push(makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage, tsHash));
+    const iterator = this._db.iterator({
+      gt: startKey,
+      lt: Buffer.from(endKey.value),
+      keyAsBuffer: true,
+      values: false,
+    });
+
+    // Custom method to retrieve message key from key
+    const getNextIteratorRecord = (iterator: AbstractRocksDB.Iterator): Promise<[Buffer, Buffer]> => {
+      return new Promise((resolve, reject) => {
+        iterator.next((err: Error | undefined, key: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
+          if (err || !value) {
+            reject(err);
+          } else {
+            // Calculates the positions in the key where the fid and tsHash begin
+            const fidOffset = prefix.length + (type ? 0 : 1); // compensate for fact that prefix is 1 byte longer if type was provided
+            const tsHashOffset = fidOffset + FID_BYTES;
+
+            const fid = Number((key as Buffer).readUint32BE(fidOffset));
+            const tsHash = Uint8Array.from(key as Buffer).subarray(tsHashOffset);
+            const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage, tsHash);
+
+            resolve([key as Buffer, messagePrimaryKey]);
+          }
+        });
+      });
+    };
+
+    let iteratorFinished = false;
+    let lastPageToken: Uint8Array | undefined;
+    do {
+      const result = await ResultAsync.fromPromise(getNextIteratorRecord(iterator), (e) => e as HubError);
+      if (result.isErr()) {
+        iteratorFinished = true;
+        break;
+      }
+
+      const [key, messageKey] = result.value;
+      lastPageToken = Uint8Array.from(key.subarray(prefix.length));
+      messageKeys.push(messageKey);
+    } while (messageKeys.length < limit);
+
+    const messages = await getManyMessages<protobufs.ReactionAddMessage>(this._db, messageKeys);
+
+    if (!iteratorFinished) {
+      return { messages, nextPageToken: lastPageToken };
+    } else {
+      return { messages, nextPageToken: undefined };
     }
-    return getManyMessages(this._db, messageKeys);
   }
 
   /** Merges a ReactionAdd or ReactionRemove message into the ReactionStore */

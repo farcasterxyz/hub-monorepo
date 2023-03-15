@@ -186,7 +186,7 @@ describe('getReactionRemovesByFid', () => {
 describe('getReactionsByTargetCast', () => {
   test('returns empty array if no reactions exist', async () => {
     const byCast = await set.getReactionsByTargetCast(castId);
-    expect(byCast).toEqual([]);
+    expect(byCast).toEqual({ messages: [], nextPageToken: undefined });
   });
 
   test('returns reactions if they exist for a target', async () => {
@@ -194,7 +194,7 @@ describe('getReactionsByTargetCast', () => {
     await set.merge(reactionAddRecast);
 
     const byCast = await set.getReactionsByTargetCast(castId);
-    expect(byCast).toEqual([reactionAdd, reactionAddRecast]);
+    expect(byCast).toEqual({ messages: [reactionAdd, reactionAddRecast], nextPageToken: undefined });
   });
 
   test('returns empty array if reactions exist for a different target', async () => {
@@ -202,32 +202,32 @@ describe('getReactionsByTargetCast', () => {
 
     const unknownCastId = Factories.CastId.build();
     const byCast = await set.getReactionsByTargetCast(unknownCastId);
-    expect(byCast).toEqual([]);
+    expect(byCast).toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  describe('AndType', () => {
+  describe('with type', () => {
     test('returns empty array if no reactions exist', async () => {
       const byCast = await set.getReactionsByTargetCast(castId, protobufs.ReactionType.LIKE);
-      expect(byCast).toEqual([]);
+      expect(byCast).toEqual({ messages: [], nextPageToken: undefined });
     });
 
     test('returns empty array if reactions exist for the target with different type', async () => {
       await set.merge(reactionAddRecast);
       const byCast = await set.getReactionsByTargetCast(castId, protobufs.ReactionType.LIKE);
-      expect(byCast).toEqual([]);
+      expect(byCast).toEqual({ messages: [], nextPageToken: undefined });
     });
 
     test('returns empty array if reactions exist for the type with different target', async () => {
       await set.merge(reactionAdd);
       const unknownCastId = Factories.CastId.build();
       const byCast = await set.getReactionsByTargetCast(unknownCastId, protobufs.ReactionType.LIKE);
-      expect(byCast).toEqual([]);
+      expect(byCast).toEqual({ messages: [], nextPageToken: undefined });
     });
 
     test('returns reactions if they exist for the target and type', async () => {
       await set.merge(reactionAdd);
       const byCast = await set.getReactionsByTargetCast(castId, protobufs.ReactionType.LIKE);
-      expect(byCast).toEqual([reactionAdd]);
+      expect(byCast).toEqual({ messages: [reactionAdd], nextPageToken: undefined });
     });
   });
 });
@@ -275,7 +275,7 @@ describe('merge', () => {
     ).resolves.toEqual(message);
     await expect(
       set.getReactionsByTargetCast(message.data.reactionBody.targetCastId as protobufs.CastId)
-    ).resolves.toEqual([message]);
+    ).resolves.toEqual({ messages: [message], nextPageToken: undefined });
     await expect(
       set.getReactionRemove(
         fid,
@@ -296,7 +296,7 @@ describe('merge', () => {
     ).resolves.toEqual(message);
     await expect(
       set.getReactionsByTargetCast(message.data.reactionBody.targetCastId as protobufs.CastId)
-    ).resolves.toEqual([]);
+    ).resolves.toEqual({ messages: [], nextPageToken: undefined });
     await expect(
       set.getReactionAdd(
         fid,

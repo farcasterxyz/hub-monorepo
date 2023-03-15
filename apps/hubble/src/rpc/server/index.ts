@@ -16,7 +16,6 @@ import {
   NameRegistryEvent,
   ReactionAddMessage,
   ReactionRemoveMessage,
-  ReactionType,
   ServerCredentials,
   ServiceError,
   SignerAddMessage,
@@ -378,12 +377,12 @@ export default class Server {
         );
       },
       getCastsByParent: async (call, callback) => {
-        const request = call.request;
+        const { castId, pageSize, pageToken } = call.request;
 
-        const castsResult = await this.engine?.getCastsByParent(request.castId as CastId);
+        const castsResult = await this.engine?.getCastsByParent(castId as CastId, { pageSize, pageToken });
         castsResult?.match(
-          (casts: CastAddMessage[]) => {
-            callback(null, MessagesResponse.create({ messages: casts }));
+          (page: MessagesPage<CastAddMessage>) => {
+            callback(null, messagesPageToResponse(page));
           },
           (err: HubError) => {
             callback(toServiceError(err));
@@ -391,12 +390,12 @@ export default class Server {
         );
       },
       getCastsByMention: async (call, callback) => {
-        const request = call.request;
+        const { fid, pageSize, pageToken } = call.request;
 
-        const castsResult = await this.engine?.getCastsByMention(request.fid);
+        const castsResult = await this.engine?.getCastsByMention(fid, { pageSize, pageToken });
         castsResult?.match(
-          (casts: CastAddMessage[]) => {
-            callback(null, MessagesResponse.create({ messages: casts }));
+          (page: MessagesPage<CastAddMessage>) => {
+            callback(null, messagesPageToResponse(page));
           },
           (err: HubError) => {
             callback(toServiceError(err));
@@ -436,12 +435,14 @@ export default class Server {
         );
       },
       getReactionsByCast: async (call, callback) => {
-        const request = call.request;
-        const reactionType = request.reactionType === ReactionType.NONE ? undefined : request.reactionType;
-        const reactionsResult = await this.engine?.getReactionsByCast(request.castId ?? CastId.create(), reactionType);
+        const { castId, reactionType, pageSize, pageToken } = call.request;
+        const reactionsResult = await this.engine?.getReactionsByCast(castId ?? CastId.create(), reactionType, {
+          pageSize,
+          pageToken,
+        });
         reactionsResult?.match(
-          (reactions: ReactionAddMessage[]) => {
-            callback(null, MessagesResponse.create({ messages: reactions }));
+          (page: MessagesPage<ReactionAddMessage>) => {
+            callback(null, messagesPageToResponse(page));
           },
           (err: HubError) => {
             callback(toServiceError(err));

@@ -190,19 +190,28 @@ class Engine {
     return ResultAsync.fromPromise(this._castStore.getCastAddsByFid(fid, pageOptions), (e) => e as HubError);
   }
 
-  // TODO: paginate
-  async getCastsByParent(parentId: protobufs.CastId): HubAsyncResult<protobufs.CastAddMessage[]> {
-    return ResultAsync.fromPromise(this._castStore.getCastsByParent(parentId), (e) => e as HubError);
+  async getCastsByParent(
+    parentId: protobufs.CastId,
+    pageOptions: PageOptions = {}
+  ): HubAsyncResult<MessagesPage<protobufs.CastAddMessage>> {
+    const validatedCastId = validations.validateCastId(parentId);
+    if (validatedCastId.isErr()) {
+      return err(validatedCastId.error);
+    }
+
+    return ResultAsync.fromPromise(this._castStore.getCastsByParent(parentId, pageOptions), (e) => e as HubError);
   }
 
-  // TODO: paginate
-  async getCastsByMention(mentionFid: number): HubAsyncResult<protobufs.CastAddMessage[]> {
+  async getCastsByMention(
+    mentionFid: number,
+    pageOptions: PageOptions = {}
+  ): HubAsyncResult<MessagesPage<protobufs.CastAddMessage>> {
     const validatedFid = validations.validateFid(mentionFid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    return ResultAsync.fromPromise(this._castStore.getCastsByMention(mentionFid), (e) => e as HubError);
+    return ResultAsync.fromPromise(this._castStore.getCastsByMention(mentionFid, pageOptions), (e) => e as HubError);
   }
 
   async getAllCastMessagesByFid(
@@ -250,17 +259,20 @@ class Engine {
     );
   }
 
-  // TODO: paginate
   async getReactionsByCast(
     castId: protobufs.CastId,
-    type?: protobufs.ReactionType
-  ): HubAsyncResult<protobufs.ReactionAddMessage[]> {
+    type?: protobufs.ReactionType,
+    pageOptions: PageOptions = {}
+  ): HubAsyncResult<MessagesPage<protobufs.ReactionAddMessage>> {
     const validatedCastId = validations.validateCastId(castId);
     if (validatedCastId.isErr()) {
       return err(validatedCastId.error);
     }
 
-    return ResultAsync.fromPromise(this._reactionStore.getReactionsByTargetCast(castId, type), (e) => e as HubError);
+    return ResultAsync.fromPromise(
+      this._reactionStore.getReactionsByTargetCast(castId, type, pageOptions),
+      (e) => e as HubError
+    );
   }
 
   async getAllReactionMessagesByFid(
