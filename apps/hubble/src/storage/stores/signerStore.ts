@@ -1,13 +1,14 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
+import { bytesCompare, bytesIncrement, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
+import AbstractRocksDB from 'rocksdb';
 import { getIdRegistryEvent, putIdRegistryEventTransaction } from '~/storage/db/idRegistryEvent';
 import {
   deleteMessageTransaction,
   getAllMessagesBySigner,
-  getManyMessagesByFid,
   getMessage,
+  getMessagesPageByPrefix,
   getMessagesPruneIterator,
   getNextMessageToPrune,
   makeMessagePrimaryKey,
@@ -18,7 +19,13 @@ import {
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix, UserPostfix } from '~/storage/db/types';
 import StoreEventHandler, { putEventTransaction } from '~/storage/stores/storeEventHandler';
-import { MERGE_TIMEOUT_DEFAULT, StorePruneOptions } from '~/storage/stores/types';
+import {
+  MERGE_TIMEOUT_DEFAULT,
+  MessagesPage,
+  PAGE_SIZE_MAX,
+  PageOptions,
+  StorePruneOptions,
+} from '~/storage/stores/types';
 import { eventCompare } from '~/storage/stores/utils';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
@@ -129,39 +136,101 @@ class SignerStore {
    * Finds all SignerAdd messages for a user's custody address
    *
    * @param fid fid of the user who created the signers
-   * @returns the SignerRemove messages if it exists, throws HubError otherwise
+   * @returns the SignerAdd messages if it exists, throws HubError otherwise
    */
-  async getSignerAddsByFid(fid: number): Promise<protobufs.SignerAddMessage[]> {
-    const addsPrefix = makeSignerAddsKey(fid);
-    const messageKeys: Buffer[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(addsPrefix, { keys: false, valueAsBuffer: true })) {
-      messageKeys.push(value);
-    }
-    return getManyMessagesByFid(this._db, fid, UserPostfix.SignerMessage, messageKeys);
+  async getSignerAddsByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.SignerAddMessage>> {
+    const signerMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.SignerMessage);
+    return getMessagesPageByPrefix(this._db, signerMessagesPrefix, protobufs.isSignerAddMessage, pageOptions);
   }
 
   /**
-   * Finds all SignerRemove Messages for a user's custody address
+   * Finds all SignerRemove messages for a user's custody address
    *
    * @param fid fid of the user who created the signers
-   * @returns the SignerRemove message if it exists, throws HubError otherwise
+   * @returns the SignerRemove messages if it exists, throws HubError otherwise
    */
-  async getSignerRemovesByFid(fid: number): Promise<protobufs.SignerRemoveMessage[]> {
-    const removesPrefix = makeSignerRemovesKey(fid);
-    const messageKeys: Buffer[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(removesPrefix, { keys: false, valueAsBuffer: true })) {
-      messageKeys.push(value);
-    }
-    return getManyMessagesByFid(this._db, fid, UserPostfix.SignerMessage, messageKeys);
+  async getSignerRemovesByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.SignerRemoveMessage>> {
+    const signerMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.SignerMessage);
+    return getMessagesPageByPrefix(this._db, signerMessagesPrefix, protobufs.isSignerRemoveMessage, pageOptions);
   }
 
-  async getFids(): Promise<number[]> {
+  async getAllSignerMessagesByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.SignerAddMessage | protobufs.SignerRemoveMessage>> {
+    const signerMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.SignerMessage);
+    const filter = (
+      message: protobufs.Message
+    ): message is protobufs.SignerAddMessage | protobufs.SignerRemoveMessage => {
+      return protobufs.isSignerAddMessage(message) || protobufs.isSignerRemoveMessage(message);
+    };
+    return getMessagesPageByPrefix(this._db, signerMessagesPrefix, filter, pageOptions);
+  }
+
+  async getFids(pageOptions: PageOptions = {}): Promise<{
+    fids: number[];
+    nextPageToken: Uint8Array | undefined;
+  }> {
     const prefix = Buffer.from([RootPrefix.IdRegistryEvent]);
-    const fids: number[] = [];
-    for await (const [key] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
-      fids.push(Number((key as Buffer).readUint32BE(1)));
+
+    const startAfterKey = Buffer.concat([prefix, Buffer.from(pageOptions.pageToken ?? '')]);
+
+    if (pageOptions.pageSize && pageOptions.pageSize > PAGE_SIZE_MAX) {
+      throw new HubError('bad_request.invalid_param', `pageSize > ${PAGE_SIZE_MAX}`);
     }
-    return fids;
+    const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
+
+    const endKey = bytesIncrement(Uint8Array.from(prefix));
+    if (endKey.isErr()) {
+      throw endKey.error;
+    }
+
+    const fids: number[] = [];
+    const iterator = this._db.iterator({
+      gt: startAfterKey,
+      lt: Buffer.from(endKey.value),
+      keyAsBuffer: true,
+      valueAsBuffer: true,
+    });
+
+    /** Custom to retrieve fid from key */
+    const getNextIteratorRecord = (iterator: AbstractRocksDB.Iterator): Promise<[Buffer, number]> => {
+      return new Promise((resolve, reject) => {
+        iterator.next((err: Error | undefined, key: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
+          if (err || !value) {
+            reject(err);
+          } else {
+            resolve([key as Buffer, Number((key as Buffer).readUint32BE(1))]);
+          }
+        });
+      });
+    };
+
+    let iteratorFinished = false;
+    let lastPageToken: Uint8Array | undefined;
+    do {
+      const result = await ResultAsync.fromPromise(getNextIteratorRecord(iterator), (e) => e as HubError);
+      if (result.isErr()) {
+        iteratorFinished = true;
+        break;
+      }
+
+      const [key, fid] = result.value;
+      lastPageToken = Uint8Array.from(key.subarray(prefix.length));
+      fids.push(fid);
+    } while (fids.length < limit);
+
+    if (!iteratorFinished) {
+      return { fids, nextPageToken: lastPageToken };
+    } else {
+      return { fids, nextPageToken: undefined };
+    }
   }
 
   /**

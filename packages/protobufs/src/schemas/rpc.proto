@@ -48,14 +48,29 @@ message SyncIds {
 
 message FidRequest {
   uint64 fid = 1;
+  optional uint32 page_size = 2;
+  optional bytes page_token = 3;
+}
+
+message FidsRequest {
+  optional uint32 page_size = 1;
+  optional bytes page_token = 2;
 }
 
 message FidsResponse {
   repeated uint64 fids = 1;
+  optional bytes next_page_token = 2;
 }
 
 message MessagesResponse {
   repeated Message messages = 1;
+  optional bytes next_page_token = 2;
+}
+
+message CastsByParentRequest {
+  CastId cast_id = 1;
+  optional uint32 page_size = 2;
+  optional bytes page_token = 3;
 }
 
 message ReactionRequest {
@@ -66,12 +81,16 @@ message ReactionRequest {
 
 message ReactionsByFidRequest {
   uint64 fid = 1;
-  ReactionType reaction_type = 2;
+  optional ReactionType reaction_type = 2;
+  optional uint32 page_size = 3;
+  optional bytes page_token = 4;
 }
 
 message ReactionsByCastRequest {
   CastId cast_id = 1;
-  ReactionType reaction_type = 2;
+  optional ReactionType reaction_type = 2;
+  optional uint32 page_size = 3;
+  optional bytes page_token = 4;
 }
 
 message UserDataRequest {
@@ -106,7 +125,7 @@ service HubService {
   // Casts
   rpc GetCast(CastId) returns (Message);
   rpc GetCastsByFid(FidRequest) returns (MessagesResponse);
-  rpc GetCastsByParent(CastId) returns (MessagesResponse);
+  rpc GetCastsByParent(CastsByParentRequest) returns (MessagesResponse);
   rpc GetCastsByMention(FidRequest) returns (MessagesResponse);
 
   // Reactions
@@ -127,7 +146,7 @@ service HubService {
   rpc GetSigner(SignerRequest) returns (Message);
   rpc GetSignersByFid(FidRequest) returns (MessagesResponse);
   rpc GetIdRegistryEvent(FidRequest) returns (IdRegistryEvent);
-  rpc GetFids(Empty) returns (FidsResponse);
+  rpc GetFids(FidsRequest) returns (FidsResponse);
 
   // Bulk Methods
   rpc GetAllCastMessagesByFid(FidRequest) returns (MessagesResponse);
@@ -135,7 +154,7 @@ service HubService {
   rpc GetAllVerificationMessagesByFid(FidRequest) returns (MessagesResponse);
   rpc GetAllSignerMessagesByFid(FidRequest) returns (MessagesResponse);
   rpc GetAllUserDataMessagesByFid(FidRequest) returns (MessagesResponse);
-  
+
   // Sync Methods
   rpc GetInfo(Empty) returns (HubInfoResponse);
   rpc GetAllSyncIdsByPrefix(TrieNodePrefix) returns (SyncIds);

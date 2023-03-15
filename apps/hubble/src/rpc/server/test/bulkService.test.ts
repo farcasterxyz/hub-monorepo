@@ -30,7 +30,7 @@ const custodySigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
 
 let custodyEvent: protobufs.IdRegistryEvent;
-let signerAdd: protobufs.Message;
+let signerAdd: protobufs.SignerAddMessage;
 
 beforeAll(async () => {
   custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
@@ -54,7 +54,10 @@ describe('getAllCastMessagesByFid', () => {
   beforeAll(async () => {
     castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 
-    castRemove = await Factories.CastRemoveMessage.create({ data: { fid, network } }, { transient: { signer } });
+    castRemove = await Factories.CastRemoveMessage.create(
+      { data: { fid, network, timestamp: castAdd.data.timestamp + 1 } },
+      { transient: { signer } }
+    );
   });
 
   beforeEach(async () => {
@@ -83,7 +86,7 @@ describe('getAllReactionMessagesByFid', () => {
     reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 
     reactionRemove = await Factories.ReactionRemoveMessage.create(
-      { data: { fid, network } },
+      { data: { fid, network, timestamp: reactionAdd.data.timestamp + 1 } },
       { transient: { signer } }
     );
   });
@@ -117,7 +120,7 @@ describe('getAllVerificationMessagesByFid', () => {
     );
 
     verificationRemove = await Factories.VerificationRemoveMessage.create(
-      { data: { fid, network } },
+      { data: { fid, network, timestamp: verificationAdd.data.timestamp + 1 } },
       { transient: { signer } }
     );
   });
@@ -145,7 +148,7 @@ describe('getAllSignerMessagesByFid', () => {
 
   beforeAll(async () => {
     signerRemove = await Factories.SignerRemoveMessage.create(
-      { data: { fid, network } },
+      { data: { fid, network, timestamp: signerAdd.data?.timestamp + 1 } },
       { transient: { signer: custodySigner } }
     );
   });
@@ -161,9 +164,33 @@ describe('getAllSignerMessagesByFid', () => {
     assertMessagesMatchResult(result, [signerAdd, signerRemove]);
   });
 
+  test('returns pageSize results', async () => {
+    await engine.mergeMessage(signerAdd);
+    await engine.mergeMessage(signerRemove);
+    const result = await client.getAllSignerMessagesByFid(protobufs.FidRequest.create({ fid, pageSize: 1 }));
+    assertMessagesMatchResult(result, [signerAdd]);
+  });
+
+  test('returns all signer messages when pageSize > events', async () => {
+    await engine.mergeMessage(signerAdd);
+    await engine.mergeMessage(signerRemove);
+    const result = await client.getAllSignerMessagesByFid(protobufs.FidRequest.create({ fid, pageSize: 3 }));
+    assertMessagesMatchResult(result, [signerAdd, signerRemove]);
+  });
+
+  test('returns results after pageToken', async () => {
+    await engine.mergeMessage(signerAdd);
+    await engine.mergeMessage(signerRemove);
+    const page1Result = await client.getAllSignerMessagesByFid(protobufs.FidRequest.create({ fid, pageSize: 1 }));
+    const page2Result = await client.getAllSignerMessagesByFid(
+      protobufs.FidRequest.create({ fid, pageSize: 1, pageToken: page1Result._unsafeUnwrap().nextPageToken })
+    );
+    assertMessagesMatchResult(page2Result, [signerRemove]);
+  });
+
   test('returns empty array without messages', async () => {
     const result = await client.getAllSignerMessagesByFid(protobufs.FidRequest.create({ fid }));
-    expect(result._unsafeUnwrap().messages.length).toEqual(0);
+    assertMessagesMatchResult(result, []);
   });
 });
 

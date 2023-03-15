@@ -30,8 +30,8 @@ const custodySigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
 
 let custodyEvent: protobufs.IdRegistryEvent;
-let signerAdd: protobufs.Message;
-let castAdd: protobufs.Message;
+let signerAdd: protobufs.SignerAddMessage;
+let castAdd: protobufs.CastAddMessage;
 
 beforeAll(async () => {
   custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
@@ -91,6 +91,29 @@ describe('getCast', () => {
       );
     });
 
+    test('returns casts in chronological order', async () => {
+      const castsAsJson = [];
+      let latestCast;
+      for (let i = 0; i < 4; i++) {
+        latestCast = await Factories.CastAddMessage.create(
+          {
+            data: { fid, network, timestamp: i },
+          },
+          { transient: { signer } }
+        );
+        await engine.mergeMessage(latestCast);
+        castsAsJson.push(protobufs.Message.toJSON(latestCast));
+      }
+
+      const clientRetrievedCasts = await client.getCastsByFid(protobufs.FidRequest.create({ fid }));
+      const clientRetrievedCastsAsJson = clientRetrievedCasts._unsafeUnwrap().messages.map(protobufs.Message.toJSON);
+
+      expect(castsAsJson.length).toEqual(4);
+      expect(clientRetrievedCastsAsJson.length).toEqual(4);
+
+      expect(clientRetrievedCastsAsJson).toEqual(castsAsJson);
+    });
+
     test('returns empty array without casts', async () => {
       const casts = await client.getCastsByFid(protobufs.FidRequest.create({ fid }));
       expect(casts._unsafeUnwrap().messages).toEqual([]);
@@ -105,14 +128,16 @@ describe('getCast', () => {
 
     test('succeeds', async () => {
       await engine.mergeMessage(castAdd);
-      const casts = await client.getCastsByParent(castAdd.data?.castAddBody?.parentCastId as protobufs.CastId);
+      const request = protobufs.CastsByParentRequest.create({ castId: castAdd.data.castAddBody.parentCastId });
+      const casts = await client.getCastsByParent(request);
       expect(protobufs.Message.toJSON(casts._unsafeUnwrap().messages.at(0) as protobufs.Message)).toEqual(
         protobufs.Message.toJSON(castAdd)
       );
     });
 
     test('returns empty array without casts', async () => {
-      const casts = await client.getCastsByParent(castAdd.data?.castAddBody?.parentCastId as protobufs.CastId);
+      const request = protobufs.CastsByParentRequest.create({ castId: castAdd.data.castAddBody.parentCastId });
+      const casts = await client.getCastsByParent(request);
       expect(casts._unsafeUnwrap().messages).toEqual([]);
     });
   });

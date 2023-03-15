@@ -61,10 +61,10 @@ describe('doJobs', () => {
 
     for (const fid of [fid1, fid2]) {
       const casts = await engine.getCastsByFid(fid);
-      expect(casts._unsafeUnwrap().length).toEqual(1);
+      expect(casts._unsafeUnwrap().messages.length).toEqual(1);
 
       const reactions = await engine.getReactionsByFid(fid);
-      expect(reactions._unsafeUnwrap().length).toEqual(1);
+      expect(reactions._unsafeUnwrap().messages.length).toEqual(1);
     }
 
     const result = await scheduler.doJobs();
@@ -72,10 +72,10 @@ describe('doJobs', () => {
 
     for (const fid of [fid1, fid2]) {
       const casts = await engine.getCastsByFid(fid);
-      expect(casts._unsafeUnwrap()).toEqual([]);
+      expect(casts._unsafeUnwrap().messages).toEqual([]);
 
       const reactions = await engine.getReactionsByFid(fid);
-      expect(reactions._unsafeUnwrap()).toEqual([]);
+      expect(reactions._unsafeUnwrap().messages).toEqual([]);
     }
 
     expect(prunedMessages.length).toEqual(4);

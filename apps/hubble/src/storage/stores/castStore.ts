@@ -1,13 +1,14 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, getFarcasterTime, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
+import { bytesCompare, bytesIncrement, getFarcasterTime, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
+import AbstractRocksDB from 'rocksdb';
 import {
   deleteMessageTransaction,
   getAllMessagesBySigner,
   getManyMessages,
-  getManyMessagesByFid,
   getMessage,
+  getMessagesPageByPrefix,
   getMessagesPruneIterator,
   getNextMessageToPrune,
   makeCastIdKey,
@@ -20,7 +21,13 @@ import {
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { FID_BYTES, RootPrefix, TRUE_VALUE, UserPostfix } from '~/storage/db/types';
 import StoreEventHandler, { putEventTransaction } from '~/storage/stores/storeEventHandler';
-import { MERGE_TIMEOUT_DEFAULT, StorePruneOptions } from '~/storage/stores/types';
+import {
+  MERGE_TIMEOUT_DEFAULT,
+  MessagesPage,
+  PAGE_SIZE_MAX,
+  PageOptions,
+  StorePruneOptions,
+} from '~/storage/stores/types';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 10_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 365; // 1 year
@@ -142,49 +149,165 @@ class CastStore {
   }
 
   /** Gets all CastAdd messages for an fid */
-  async getCastAddsByFid(fid: number): Promise<protobufs.CastAddMessage[]> {
-    const castAddsPrefix = makeCastAddsKey(fid);
-    const messageKeys: Buffer[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(castAddsPrefix, { keys: false, valueAsBuffer: true })) {
-      messageKeys.push(value);
-    }
-    return getManyMessagesByFid(this._db, fid, UserPostfix.CastMessage, messageKeys);
+  async getCastAddsByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<protobufs.CastAddMessage>> {
+    const castMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
+    return getMessagesPageByPrefix(this._db, castMessagesPrefix, protobufs.isCastAddMessage, pageOptions);
   }
 
   /** Gets all CastRemove messages for an fid */
-  async getCastRemovesByFid(fid: number): Promise<protobufs.CastRemoveMessage[]> {
-    const castRemovesPrefix = makeCastRemovesKey(fid);
-    const messageKeys: Buffer[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(castRemovesPrefix, { keys: false, valueAsBuffer: true })) {
-      messageKeys.push(value);
-    }
-    return getManyMessagesByFid(this._db, fid, UserPostfix.CastMessage, messageKeys);
+  async getCastRemovesByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.CastRemoveMessage>> {
+    const castMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
+    return getMessagesPageByPrefix(this._db, castMessagesPrefix, protobufs.isCastRemoveMessage, pageOptions);
+  }
+
+  async getAllCastMessagesByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.CastAddMessage | protobufs.CastRemoveMessage>> {
+    const castMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
+    const isCastMessage = (
+      message: protobufs.Message
+    ): message is protobufs.CastAddMessage | protobufs.CastRemoveMessage => {
+      return protobufs.isCastAddMessage(message) || protobufs.isCastRemoveMessage(message);
+    };
+    return getMessagesPageByPrefix(this._db, castMessagesPrefix, isCastMessage, pageOptions);
   }
 
   /** Gets all CastAdd messages for a parent cast (fid and tsHash) */
-  async getCastsByParent(parentId: protobufs.CastId): Promise<protobufs.CastAddMessage[]> {
-    const byParentPrefix = makeCastsByParentKey(parentId);
-    const messageKeys: Buffer[] = [];
-    for await (const [key] of this._db.iteratorByPrefix(byParentPrefix, { keyAsBuffer: true, values: false })) {
-      const fid = Number((key as Buffer).readUint32BE(byParentPrefix.length));
-      const tsHash = Uint8Array.from(key).subarray(byParentPrefix.length + FID_BYTES);
-      const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.CastMessage, tsHash);
-      messageKeys.push(messagePrimaryKey);
+  // TODO: DRY up this method
+  async getCastsByParent(
+    parentId: protobufs.CastId,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.CastAddMessage>> {
+    const prefix = makeCastsByParentKey(parentId);
+
+    const startKey = Buffer.concat([prefix, Buffer.from(pageOptions.pageToken ?? '')]);
+
+    if (pageOptions.pageSize && pageOptions.pageSize > PAGE_SIZE_MAX) {
+      throw new HubError('bad_request.invalid_param', `pageSize > ${PAGE_SIZE_MAX}`);
     }
-    return getManyMessages(this._db, messageKeys);
+    const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
+
+    const endKey = bytesIncrement(Uint8Array.from(prefix));
+    if (endKey.isErr()) {
+      throw endKey.error;
+    }
+
+    const messageKeys: Buffer[] = [];
+    const iterator = this._db.iterator({
+      gt: startKey,
+      lt: Buffer.from(endKey.value),
+      keyAsBuffer: true,
+      values: false,
+    });
+
+    // Custom method to retrieve message key from key
+    const getNextIteratorRecord = (iterator: AbstractRocksDB.Iterator): Promise<[Buffer, Buffer]> => {
+      return new Promise((resolve, reject) => {
+        iterator.next((err: Error | undefined, key: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
+          if (err || !value) {
+            reject(err);
+          } else {
+            const fid = Number((key as Buffer).readUint32BE(prefix.length));
+            const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length + FID_BYTES);
+            const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.CastMessage, tsHash);
+            resolve([key as Buffer, messagePrimaryKey]);
+          }
+        });
+      });
+    };
+
+    let iteratorFinished = false;
+    let lastPageToken: Uint8Array | undefined;
+    do {
+      const result = await ResultAsync.fromPromise(getNextIteratorRecord(iterator), (e) => e as HubError);
+      if (result.isErr()) {
+        iteratorFinished = true;
+        break;
+      }
+
+      const [key, messageKey] = result.value;
+      lastPageToken = Uint8Array.from(key.subarray(prefix.length));
+      messageKeys.push(messageKey);
+    } while (messageKeys.length < limit);
+
+    const messages = await getManyMessages<protobufs.CastAddMessage>(this._db, messageKeys);
+
+    if (!iteratorFinished) {
+      return { messages, nextPageToken: lastPageToken };
+    } else {
+      return { messages, nextPageToken: undefined };
+    }
   }
 
   /** Gets all CastAdd messages for a mention (fid) */
-  async getCastsByMention(mentionFid: number): Promise<protobufs.CastAddMessage[]> {
-    const byMentionPrefix = makeCastsByMentionKey(mentionFid);
-    const messageKeys: Buffer[] = [];
-    for await (const [key] of this._db.iteratorByPrefix(byMentionPrefix, { keyAsBuffer: true, values: false })) {
-      const fid = Number((key as Buffer).readUint32BE(byMentionPrefix.length));
-      const tsHash = Uint8Array.from(key).subarray(byMentionPrefix.length + FID_BYTES);
-      const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.CastMessage, tsHash);
-      messageKeys.push(messagePrimaryKey);
+  // TODO: DRY up this method
+  async getCastsByMention(
+    mentionFid: number,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.CastAddMessage>> {
+    const prefix = makeCastsByMentionKey(mentionFid);
+
+    const startKey = Buffer.concat([prefix, Buffer.from(pageOptions.pageToken ?? '')]);
+
+    if (pageOptions.pageSize && pageOptions.pageSize > PAGE_SIZE_MAX) {
+      throw new HubError('bad_request.invalid_param', `pageSize > ${PAGE_SIZE_MAX}`);
     }
-    return getManyMessages(this._db, messageKeys);
+    const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
+
+    const endKey = bytesIncrement(Uint8Array.from(prefix));
+    if (endKey.isErr()) {
+      throw endKey.error;
+    }
+
+    const messageKeys: Buffer[] = [];
+    const iterator = this._db.iterator({
+      gt: startKey,
+      lt: Buffer.from(endKey.value),
+      keyAsBuffer: true,
+      values: false,
+    });
+
+    // Custom method to retrieve message key from key
+    const getNextIteratorRecord = (iterator: AbstractRocksDB.Iterator): Promise<[Buffer, Buffer]> => {
+      return new Promise((resolve, reject) => {
+        iterator.next((err: Error | undefined, key: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
+          if (err || !value) {
+            reject(err);
+          } else {
+            const fid = Number((key as Buffer).readUint32BE(prefix.length));
+            const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length + FID_BYTES);
+            const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.CastMessage, tsHash);
+            resolve([key as Buffer, messagePrimaryKey]);
+          }
+        });
+      });
+    };
+
+    let iteratorFinished = false;
+    let lastPageToken: Uint8Array | undefined;
+    do {
+      const result = await ResultAsync.fromPromise(getNextIteratorRecord(iterator), (e) => e as HubError);
+      if (result.isErr()) {
+        iteratorFinished = true;
+        break;
+      }
+
+      const [key, messageKey] = result.value;
+      lastPageToken = Uint8Array.from(key.subarray(prefix.length));
+      messageKeys.push(messageKey);
+    } while (messageKeys.length < limit);
+
+    const messages = await getManyMessages<protobufs.CastAddMessage>(this._db, messageKeys);
+
+    if (!iteratorFinished) {
+      return { messages, nextPageToken: lastPageToken };
+    } else {
+      return { messages, nextPageToken: undefined };
+    }
   }
 
   /** Merges a CastAdd or CastRemove message into the set */

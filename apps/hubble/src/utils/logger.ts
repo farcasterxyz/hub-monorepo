@@ -43,6 +43,7 @@ export const logger = Pino(defaultOptions);
 
 export const messageTypeToName = (type?: protobufs.MessageType) => {
   if (!type) return '';
+  // eslint-disable-next-line security/detect-object-injection
   return (protobufs.MessageType[type] as string).replace('MESSAGE_TYPE_', '');
 };
 

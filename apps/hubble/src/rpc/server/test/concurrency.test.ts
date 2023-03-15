@@ -101,8 +101,9 @@ describe('submitMessage', () => {
 
     assertNoTimeouts(results);
 
-    const messages = await engine.getAllReactionMessagesByFid(fid);
-    expect(messages._unsafeUnwrap().length).toEqual(1);
+    const response = await engine.getAllReactionMessagesByFid(fid);
+    expect(response.isOk()).toBeTruthy();
+    expect(response._unsafeUnwrap().messages.length).toEqual(1);
   });
 
   test('succeeds with concurrent, conflicting cast message', async () => {
@@ -127,15 +128,18 @@ describe('submitMessage', () => {
     ]);
     assertNoTimeouts(results);
 
-    const messages = (await engine.getAllCastMessagesByFid(fid))._unsafeUnwrap();
+    const response = await engine.getAllCastMessagesByFid(fid);
+    expect(response.isOk()).toBeTruthy();
 
     // We are expecting 2 messages. cast1add and cast2remove
-    expect(messages.length).toEqual(2);
-    expect(protobufs.Message.toJSON(messages.find((m) => m.data.castAddBody) as protobufs.Message)).toEqual(
-      protobufs.Message.toJSON(cast2)
-    );
-    expect(protobufs.Message.toJSON(messages.find((m) => m.data.castRemoveBody) as protobufs.Message)).toEqual(
-      protobufs.Message.toJSON(removeCast1)
-    );
+    expect(response._unsafeUnwrap().messages.length).toEqual(2);
+    expect(
+      protobufs.Message.toJSON(response._unsafeUnwrap().messages.find((m) => m.data.castAddBody) as protobufs.Message)
+    ).toEqual(protobufs.Message.toJSON(cast2));
+    expect(
+      protobufs.Message.toJSON(
+        response._unsafeUnwrap().messages.find((m) => m.data.castRemoveBody) as protobufs.Message
+      )
+    ).toEqual(protobufs.Message.toJSON(removeCast1));
   });
 });

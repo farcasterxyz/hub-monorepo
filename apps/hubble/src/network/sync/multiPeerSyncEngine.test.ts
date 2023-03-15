@@ -111,10 +111,10 @@ describe('Multi peer sync engine', () => {
     expect(infoResult.nickname).toEqual(APP_NICKNAME);
 
     // Fetch the signerAdd message from engine 1
-    const rpcResult = await clientForServer1.getAllSignerMessagesByFid(protobufs.FidRequest.create({ fid }));
+    const rpcResult = await clientForServer1.getAllSignerMessagesByFid({ fid });
     expect(rpcResult.isOk()).toBeTruthy();
     expect(rpcResult._unsafeUnwrap().messages.length).toEqual(1);
-    const rpcSignerAdd = rpcResult._unsafeUnwrap().messages[0] as protobufs.Message;
+    const rpcSignerAdd = rpcResult._unsafeUnwrap().messages[0] as protobufs.SignerAddMessage;
 
     expect(protobufs.Message.toJSON(signerAdd)).toEqual(protobufs.Message.toJSON(rpcSignerAdd));
     expect(signerAdd.data?.fid).toEqual(rpcSignerAdd.data?.fid);

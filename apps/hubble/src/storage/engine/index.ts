@@ -9,6 +9,7 @@ import CastStore from '~/storage/stores/castStore';
 import ReactionStore from '~/storage/stores/reactionStore';
 import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
+import { MessagesPage, PageOptions } from '~/storage/stores/types';
 import UserDataStore from '~/storage/stores/userDataStore';
 import VerificationStore from '~/storage/stores/verificationStore';
 
@@ -177,42 +178,47 @@ class Engine {
     return ResultAsync.fromPromise(this._castStore.getCastAdd(fid, hash), (e) => e as HubError);
   }
 
-  async getCastsByFid(fid: number): HubAsyncResult<protobufs.CastAddMessage[]> {
+  async getCastsByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): HubAsyncResult<MessagesPage<protobufs.CastAddMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    return ResultAsync.fromPromise(this._castStore.getCastAddsByFid(fid), (e) => e as HubError);
+    return ResultAsync.fromPromise(this._castStore.getCastAddsByFid(fid, pageOptions), (e) => e as HubError);
   }
 
-  async getCastsByParent(parentId: protobufs.CastId): HubAsyncResult<protobufs.CastAddMessage[]> {
-    return ResultAsync.fromPromise(this._castStore.getCastsByParent(parentId), (e) => e as HubError);
+  async getCastsByParent(
+    parentId: protobufs.CastId,
+    pageOptions: PageOptions = {}
+  ): HubAsyncResult<MessagesPage<protobufs.CastAddMessage>> {
+    const validatedCastId = validations.validateCastId(parentId);
+    if (validatedCastId.isErr()) {
+      return err(validatedCastId.error);
+    }
+
+    return ResultAsync.fromPromise(this._castStore.getCastsByParent(parentId, pageOptions), (e) => e as HubError);
   }
 
-  async getCastsByMention(mentionFid: number): HubAsyncResult<protobufs.CastAddMessage[]> {
+  async getCastsByMention(
+    mentionFid: number,
+    pageOptions: PageOptions = {}
+  ): HubAsyncResult<MessagesPage<protobufs.CastAddMessage>> {
     const validatedFid = validations.validateFid(mentionFid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    return ResultAsync.fromPromise(this._castStore.getCastsByMention(mentionFid), (e) => e as HubError);
+    return ResultAsync.fromPromise(this._castStore.getCastsByMention(mentionFid, pageOptions), (e) => e as HubError);
   }
 
   async getAllCastMessagesByFid(
-    fid: number
-  ): HubAsyncResult<(protobufs.CastAddMessage | protobufs.CastRemoveMessage)[]> {
-    const adds = await ResultAsync.fromPromise(this._castStore.getCastAddsByFid(fid), (e) => e as HubError);
-    if (adds.isErr()) {
-      return err(adds.error);
-    }
-
-    const removes = await ResultAsync.fromPromise(this._castStore.getCastRemovesByFid(fid), (e) => e as HubError);
-    if (removes.isErr()) {
-      return err(removes.error);
-    }
-
-    return ok([...adds.value, ...removes.value]);
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): HubAsyncResult<MessagesPage<protobufs.CastAddMessage | protobufs.CastRemoveMessage>> {
+    return ResultAsync.fromPromise(this._castStore.getAllCastMessagesByFid(fid, pageOptions), (e) => e as HubError);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -237,49 +243,51 @@ class Engine {
     return ResultAsync.fromPromise(this._reactionStore.getReactionAdd(fid, type, cast), (e) => e as HubError);
   }
 
-  async getReactionsByFid(fid: number, type?: protobufs.ReactionType): HubAsyncResult<protobufs.ReactionAddMessage[]> {
+  async getReactionsByFid(
+    fid: number,
+    type?: protobufs.ReactionType,
+    pageOptions: PageOptions = {}
+  ): HubAsyncResult<MessagesPage<protobufs.ReactionAddMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    return ResultAsync.fromPromise(this._reactionStore.getReactionAddsByFid(fid, type), (e) => e as HubError);
+    return ResultAsync.fromPromise(
+      this._reactionStore.getReactionAddsByFid(fid, type, pageOptions),
+      (e) => e as HubError
+    );
   }
 
   async getReactionsByCast(
     castId: protobufs.CastId,
-    type?: protobufs.ReactionType
-  ): HubAsyncResult<protobufs.ReactionAddMessage[]> {
+    type?: protobufs.ReactionType,
+    pageOptions: PageOptions = {}
+  ): HubAsyncResult<MessagesPage<protobufs.ReactionAddMessage>> {
     const validatedCastId = validations.validateCastId(castId);
     if (validatedCastId.isErr()) {
       return err(validatedCastId.error);
     }
 
-    return ResultAsync.fromPromise(this._reactionStore.getReactionsByTargetCast(castId, type), (e) => e as HubError);
+    return ResultAsync.fromPromise(
+      this._reactionStore.getReactionsByTargetCast(castId, type, pageOptions),
+      (e) => e as HubError
+    );
   }
 
   async getAllReactionMessagesByFid(
-    fid: number
-  ): HubAsyncResult<(protobufs.ReactionAddMessage | protobufs.ReactionRemoveMessage)[]> {
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): HubAsyncResult<MessagesPage<protobufs.ReactionAddMessage | protobufs.ReactionRemoveMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    const adds = await ResultAsync.fromPromise(this._reactionStore.getReactionAddsByFid(fid), (e) => e as HubError);
-    if (adds.isErr()) {
-      return err(adds.error);
-    }
-
-    const removes = await ResultAsync.fromPromise(
-      this._reactionStore.getReactionRemovesByFid(fid),
+    return ResultAsync.fromPromise(
+      this._reactionStore.getAllReactionMessagesByFid(fid, pageOptions),
       (e) => e as HubError
     );
-    if (removes.isErr()) {
-      return err(removes.error);
-    }
-
-    return ok([...adds.value, ...removes.value]);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -300,40 +308,34 @@ class Engine {
     return ResultAsync.fromPromise(this._verificationStore.getVerificationAdd(fid, address), (e) => e as HubError);
   }
 
-  async getVerificationsByFid(fid: number): HubAsyncResult<protobufs.VerificationAddEthAddressMessage[]> {
+  async getVerificationsByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): HubAsyncResult<MessagesPage<protobufs.VerificationAddEthAddressMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    return ResultAsync.fromPromise(this._verificationStore.getVerificationAddsByFid(fid), (e) => e as HubError);
+    return ResultAsync.fromPromise(
+      this._verificationStore.getVerificationAddsByFid(fid, pageOptions),
+      (e) => e as HubError
+    );
   }
 
   async getAllVerificationMessagesByFid(
-    fid: number
-  ): HubAsyncResult<(protobufs.VerificationAddEthAddressMessage | protobufs.VerificationRemoveMessage)[]> {
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): HubAsyncResult<MessagesPage<protobufs.VerificationAddEthAddressMessage | protobufs.VerificationRemoveMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    const adds = await ResultAsync.fromPromise(
-      this._verificationStore.getVerificationAddsByFid(fid),
+    return ResultAsync.fromPromise(
+      this._verificationStore.getAllVerificationMessagesByFid(fid, pageOptions),
       (e) => e as HubError
     );
-    if (adds.isErr()) {
-      return err(adds.error);
-    }
-
-    const removes = await ResultAsync.fromPromise(
-      this._verificationStore.getVerificationRemovesByFid(fid),
-      (e) => e as HubError
-    );
-    if (removes.isErr()) {
-      return err(removes.error);
-    }
-
-    return ok([...adds.value, ...removes.value]);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -354,37 +356,34 @@ class Engine {
     return ResultAsync.fromPromise(this._signerStore.getSignerAdd(fid, signerPubKey), (e) => e as HubError);
   }
 
-  async getSignersByFid(fid: number): HubAsyncResult<protobufs.SignerAddMessage[]> {
+  async getSignersByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): HubAsyncResult<MessagesPage<protobufs.SignerAddMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    return ResultAsync.fromPromise(this._signerStore.getSignerAddsByFid(fid), (e) => e as HubError);
+    return ResultAsync.fromPromise(this._signerStore.getSignerAddsByFid(fid, pageOptions), (e) => e as HubError);
   }
 
   async getIdRegistryEvent(fid: number): HubAsyncResult<protobufs.IdRegistryEvent> {
     return ResultAsync.fromPromise(this._signerStore.getIdRegistryEvent(fid), (e) => e as HubError);
   }
 
-  async getFids(): HubAsyncResult<number[]> {
-    return ResultAsync.fromPromise(this._signerStore.getFids(), (e) => e as HubError);
+  async getFids(pageOptions: PageOptions = {}): HubAsyncResult<{
+    fids: number[];
+    nextPageToken: Uint8Array | undefined;
+  }> {
+    return ResultAsync.fromPromise(this._signerStore.getFids(pageOptions), (e) => e as HubError);
   }
 
   async getAllSignerMessagesByFid(
-    fid: number
-  ): HubAsyncResult<(protobufs.SignerAddMessage | protobufs.SignerRemoveMessage)[]> {
-    const adds = await ResultAsync.fromPromise(this._signerStore.getSignerAddsByFid(fid), (e) => e as HubError);
-    if (adds.isErr()) {
-      return err(adds.error);
-    }
-
-    const removes = await ResultAsync.fromPromise(this._signerStore.getSignerRemovesByFid(fid), (e) => e as HubError);
-    if (removes.isErr()) {
-      return err(removes.error);
-    }
-
-    return ok([...adds.value, ...removes.value]);
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): HubAsyncResult<MessagesPage<protobufs.SignerAddMessage | protobufs.SignerRemoveMessage>> {
+    return ResultAsync.fromPromise(this._signerStore.getAllSignerMessagesByFid(fid, pageOptions), (e) => e as HubError);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -400,13 +399,16 @@ class Engine {
     return ResultAsync.fromPromise(this._userDataStore.getUserDataAdd(fid, type), (e) => e as HubError);
   }
 
-  async getUserDataByFid(fid: number): HubAsyncResult<protobufs.UserDataAddMessage[]> {
+  async getUserDataByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): HubAsyncResult<MessagesPage<protobufs.UserDataAddMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    return ResultAsync.fromPromise(this._userDataStore.getUserDataAddsByFid(fid), (e) => e as HubError);
+    return ResultAsync.fromPromise(this._userDataStore.getUserDataAddsByFid(fid, pageOptions), (e) => e as HubError);
   }
 
   async getNameRegistryEvent(fname: Uint8Array): HubAsyncResult<protobufs.NameRegistryEvent> {

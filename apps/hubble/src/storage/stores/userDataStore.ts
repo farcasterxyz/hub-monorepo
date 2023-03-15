@@ -6,8 +6,8 @@ import { getIdRegistryEventByCustodyAddress } from '~/storage/db/idRegistryEvent
 import {
   deleteMessageTransaction,
   getAllMessagesBySigner,
-  getManyMessagesByFid,
   getMessage,
+  getMessagesPageByPrefix,
   getMessagesPruneIterator,
   getNextMessageToPrune,
   makeMessagePrimaryKey,
@@ -19,7 +19,7 @@ import { getNameRegistryEvent, putNameRegistryEventTransaction } from '~/storage
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { UserPostfix } from '~/storage/db/types';
 import StoreEventHandler, { putEventTransaction } from '~/storage/stores/storeEventHandler';
-import { MERGE_TIMEOUT_DEFAULT, StorePruneOptions } from '~/storage/stores/types';
+import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PageOptions, StorePruneOptions } from '~/storage/stores/types';
 import { eventCompare } from '~/storage/stores/utils';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
@@ -85,13 +85,12 @@ class UserDataStore {
   }
 
   /** Finds all UserDataAdd messages for an fid */
-  async getUserDataAddsByFid(fid: number): Promise<protobufs.UserDataAddMessage[]> {
-    const addsPrefix = makeUserDataAddsKey(fid);
-    const messageKeys: Buffer[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(addsPrefix, { keys: false, valueAsBuffer: true })) {
-      messageKeys.push(value);
-    }
-    return getManyMessagesByFid<protobufs.UserDataAddMessage>(this._db, fid, UserPostfix.UserDataMessage, messageKeys);
+  async getUserDataAddsByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.UserDataAddMessage>> {
+    const prefix = makeMessagePrimaryKey(fid, UserPostfix.UserDataMessage);
+    return getMessagesPageByPrefix(this._db, prefix, protobufs.isUserDataAddMessage, pageOptions);
   }
 
   /** Returns the most recent event from the NameEventRegistry contract for an fname */

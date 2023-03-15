@@ -55,24 +55,32 @@ describe('getVerificationRemove', () => {
 describe('getVerificationAddsByFid', () => {
   test('returns verification adds for an fid', async () => {
     await set.merge(verificationAdd);
-    await expect(set.getVerificationAddsByFid(fid)).resolves.toEqual([verificationAdd]);
+    await expect(set.getVerificationAddsByFid(fid)).resolves.toEqual({
+      messages: [verificationAdd],
+      nextPageToken: undefined,
+    });
   });
 
   test('returns empty array without messages', async () => {
-    await expect(set.getVerificationAddsByFid(fid)).resolves.toEqual([]);
+    await expect(set.getVerificationAddsByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 });
 
 describe('getVerificationRemovesByFid', () => {
   test('returns verification removes for an fid', async () => {
     await set.merge(verificationRemove);
-    await expect(set.getVerificationRemovesByFid(fid)).resolves.toEqual([verificationRemove]);
+    await expect(set.getVerificationRemovesByFid(fid)).resolves.toEqual({
+      messages: [verificationRemove],
+      nextPageToken: undefined,
+    });
   });
 
   test('returns empty array without messages', async () => {
-    await expect(set.getVerificationRemovesByFid(fid)).resolves.toEqual([]);
+    await expect(set.getVerificationRemovesByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 });
+
+// TODO: getAllVerificationMessagesByFid
 
 describe('merge', () => {
   let mergeEvents: [protobufs.Message | undefined, protobufs.Message[]][] = [];
