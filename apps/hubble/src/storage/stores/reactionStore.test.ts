@@ -181,7 +181,20 @@ describe('getReactionRemovesByFid', () => {
   });
 });
 
-// TODO: getAllReactionMessagesByFid
+describe('getAllReactionMessagesByFid', () => {
+  test('returns ReactionRemove if it exists', async () => {
+    await set.merge(reactionAdd);
+    await set.merge(reactionRemoveRecast);
+    await expect(set.getAllReactionMessagesByFid(fid)).resolves.toEqual({
+      messages: [reactionAdd, reactionRemoveRecast],
+      nextPageToken: undefined,
+    });
+  });
+
+  test('returns empty array if no messages exist', async () => {
+    await expect(set.getAllReactionMessagesByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
+  });
+});
 
 describe('getReactionsByTargetCast', () => {
   test('returns empty array if no reactions exist', async () => {
@@ -189,12 +202,18 @@ describe('getReactionsByTargetCast', () => {
     expect(byCast).toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns reactions if they exist for a target', async () => {
+  test('returns reactions if they exist for a target in chronological order and according to pageOptions', async () => {
     await set.merge(reactionAdd);
     await set.merge(reactionAddRecast);
 
     const byCast = await set.getReactionsByTargetCast(castId);
     expect(byCast).toEqual({ messages: [reactionAdd, reactionAddRecast], nextPageToken: undefined });
+
+    const results1 = await set.getReactionsByTargetCast(castId, undefined, { pageSize: 1 });
+    expect(results1.messages).toEqual([reactionAdd]);
+
+    const results2 = await set.getReactionsByTargetCast(castId, undefined, { pageToken: results1.nextPageToken });
+    expect(results2).toEqual({ messages: [reactionAddRecast], nextPageToken: undefined });
   });
 
   test('returns empty array if reactions exist for a different target', async () => {

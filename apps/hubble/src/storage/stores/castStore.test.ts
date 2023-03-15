@@ -146,9 +146,9 @@ describe('getCastsByParent', () => {
     expect(await store.getCastsByParent(Factories.CastId.build())).toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns casts that reply to a parent cast', async () => {
+  test('returns casts that reply to a parent cast according to pageOptions', async () => {
     const castAddSameParent = await Factories.CastAddMessage.create({
-      data: { castAddBody: { parentCastId }, timestamp: castAdd.data.timestamp + 1 },
+      data: { fid: castAdd.data.fid + 1, castAddBody: { parentCastId }, timestamp: castAdd.data.timestamp + 1 },
     });
 
     await store.merge(castAdd);
@@ -156,6 +156,12 @@ describe('getCastsByParent', () => {
 
     const byParent = await store.getCastsByParent(parentCastId);
     expect(byParent).toEqual({ messages: [castAdd, castAddSameParent], nextPageToken: undefined });
+
+    const results1 = await store.getCastsByParent(parentCastId, { pageSize: 1 });
+    expect(results1.messages).toEqual([castAdd]);
+
+    const results2 = await store.getCastsByParent(parentCastId, { pageToken: results1.nextPageToken });
+    expect(results2).toEqual({ messages: [castAddSameParent], nextPageToken: undefined });
   });
 });
 
@@ -170,14 +176,27 @@ describe('getCastsByMention', () => {
     expect(await store.getCastsByMention(Factories.Fid.build())).toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns casts that mention an fid', async () => {
+  test('returns casts that mention an fid in chronological order and according to pageOptions', async () => {
+    const castAdd2 = await Factories.CastAddMessage.create({
+      data: {
+        fid,
+        timestamp: castAdd.data.timestamp + 1,
+        castAddBody: { mentions: castAdd.data.castAddBody.mentions },
+      },
+    });
     await store.merge(castAdd);
+    await store.merge(castAdd2);
     expect(castAdd.data.castAddBody.mentions.length).toBeGreaterThan(0);
     for (const mentionFid of castAdd.data.castAddBody.mentions) {
       await expect(store.getCastsByMention(mentionFid)).resolves.toEqual({
-        messages: [castAdd],
+        messages: [castAdd, castAdd2],
         nextPageToken: undefined,
       });
+
+      const results1 = await store.getCastsByMention(mentionFid, { pageSize: 1 });
+      expect(results1.messages).toEqual([castAdd]);
+      const results2 = await store.getCastsByMention(mentionFid, { pageToken: results1.nextPageToken });
+      expect(results2).toEqual({ messages: [castAdd2], nextPageToken: undefined });
     }
   });
 });
