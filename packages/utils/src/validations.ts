@@ -391,13 +391,19 @@ export const validateVerificationRemoveBody = (
 };
 
 export const validateSignerAddBody = (body: protobufs.SignerAddBody): HubResult<protobufs.SignerAddBody> => {
-  const textUtf8BytesResult = utf8StringToBytes(body.name);
-  if (textUtf8BytesResult.isErr()) {
-    return err(new HubError('bad_request.invalid_param', 'name cannot be encoded as utf8'));
-  }
+  if (body.name !== undefined) {
+    const textUtf8BytesResult = utf8StringToBytes(body.name);
+    if (textUtf8BytesResult.isErr()) {
+      return err(new HubError('bad_request.invalid_param', 'name cannot be encoded as utf8'));
+    }
 
-  if (textUtf8BytesResult.value.length > 32) {
-    return err(new HubError('bad_request.validation_failure', 'name > 32 bytes'));
+    if (textUtf8BytesResult.value.length === 0) {
+      return err(new HubError('bad_request.validation_failure', 'name cannot be empty string'));
+    }
+
+    if (textUtf8BytesResult.value.length > 32) {
+      return err(new HubError('bad_request.validation_failure', 'name > 32 bytes'));
+    }
   }
 
   return validateEd25519PublicKey(body.signer).map(() => body);

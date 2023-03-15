@@ -195,7 +195,7 @@ describe('makeVerificationRemove', () => {
 
 describe('makeSignerAddData', () => {
   test('succeeds', async () => {
-    const data = await builders.makeSignerAddData({ signer: ed25519Signer.signerKey, name: '' }, { fid, network });
+    const data = await builders.makeSignerAddData({ signer: ed25519Signer.signerKey }, { fid, network });
     const isValid = await validations.validateMessageData(data._unsafeUnwrap());
     expect(isValid.isOk()).toBeTruthy();
   });
@@ -212,10 +212,16 @@ describe('makeSignerRemoveData', () => {
 describe('makeSignerAdd', () => {
   test('succeeds', async () => {
     const message = await builders.makeSignerAdd(
-      { signer: ed25519Signer.signerKey, name: '' },
+      { signer: ed25519Signer.signerKey, name: 'test signer' },
       { fid, network },
       eip712Signer
     );
+    const isValid = await validations.validateMessage(message._unsafeUnwrap());
+    expect(isValid.isOk()).toBeTruthy();
+  });
+
+  test('succeeds without name', async () => {
+    const message = await builders.makeSignerAdd({ signer: ed25519Signer.signerKey }, { fid, network }, eip712Signer);
     const isValid = await validations.validateMessage(message._unsafeUnwrap());
     expect(isValid.isOk()).toBeTruthy();
   });
@@ -294,7 +300,7 @@ describe('makeMessageWithSignature', () => {
     const signature = hexStringToBytes(
       '0xf8dc77d52468483806addab7d397836e802551bfb692604e2d7df4bc4820556c63524399a63d319ae4b027090ce296ade08286878dc1f414b62412f89e8bc4e01b'
     )._unsafeUnwrap();
-    const data = builders.makeSignerAddData({ signer: ed25519Signer.signerKey, name: '' }, { fid, network });
+    const data = builders.makeSignerAddData({ signer: ed25519Signer.signerKey }, { fid, network });
     expect(data.isOk()).toBeTruthy();
     const message = await builders.makeMessageWithSignature(data._unsafeUnwrap(), {
       signer: eip712Signer.signerKey,

@@ -72,7 +72,7 @@ enum FarcasterNetwork {
 /** Adds an Ed25519 key pair that signs messages for a user */
 message SignerAddBody {
   bytes signer = 1; // Public key of the Ed25519 key pair
-  string name = 2; // Name of the key pair
+  optional string name = 2; // Name of the key pair
 }
 
 /** Removes an Ed25519 key pair that signs messages for a user */

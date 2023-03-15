@@ -548,6 +548,11 @@ describe('validateSignerAddBody', () => {
       hubErrorMessage = 'publicKey must be 32 bytes';
     });
 
+    test('with name as empty string', () => {
+      body = Factories.SignerAddBody.build({ name: '' });
+      hubErrorMessage = 'name cannot be empty string';
+    });
+
     test('with name > 32 chars', () => {
       body = Factories.SignerAddBody.build({ name: faker.random.alphaNumeric(33) });
       hubErrorMessage = 'name > 32 bytes';
