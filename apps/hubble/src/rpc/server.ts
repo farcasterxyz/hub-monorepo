@@ -306,47 +306,6 @@ export default class Server {
           }
         );
       },
-      submitIdRegistryEvent: async (call, callback) => {
-        const authResult = await this.authenticateUser(call.metadata);
-        if (authResult.isErr()) {
-          logger.warn({ errMsg: authResult.error.message }, 'submitIdRegistry failed');
-          callback(toServiceError(new HubError('unauthenticated', 'User is not authenticated')));
-          return;
-        }
-
-        const idRegistryEvent = call.request;
-
-        const result = await this.hub?.submitIdRegistryEvent(idRegistryEvent, 'rpc');
-        result?.match(
-          () => {
-            // Note: We don't gossip ID registry events, since we assume each node has its own connection
-            // to an ETH node.
-            callback(null, idRegistryEvent);
-          },
-          (err: HubError) => {
-            callback(toServiceError(err));
-          }
-        );
-      },
-      submitNameRegistryEvent: async (call, callback) => {
-        const authResult = await this.authenticateUser(call.metadata);
-        if (authResult.isErr()) {
-          logger.warn({ errMsg: authResult.error.message }, 'submitNameRegistry failed');
-          callback(toServiceError(new HubError('unauthenticated', 'User is not authenticated')));
-          return;
-        }
-
-        const nameRegistryEvent = call.request;
-        const result = await this.hub?.submitNameRegistryEvent(nameRegistryEvent, 'rpc');
-        result?.match(
-          () => {
-            callback(null, nameRegistryEvent);
-          },
-          (err: HubError) => {
-            callback(toServiceError(err));
-          }
-        );
-      },
       getCast: async (call, callback) => {
         const request = call.request;
 

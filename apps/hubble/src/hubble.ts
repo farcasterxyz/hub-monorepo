@@ -42,7 +42,7 @@ import {
   p2pMultiAddrStr,
 } from '~/utils/p2p';
 import { PeriodicSyncJobScheduler } from './network/sync/periodicSyncJob';
-import AdminServer from './rpc/server/adminServer';
+import AdminServer from './rpc/adminServer';
 import { RootPrefix } from './storage/db/types';
 import {
   UpdateNameRegistryEventExpiryJobQueue,

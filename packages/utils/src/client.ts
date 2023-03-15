@@ -1,8 +1,10 @@
 import {
+  AdminServiceClient,
   CallOptions,
   Client,
   ClientReadableStream,
   ClientUnaryCall,
+  getAdminClient,
   getClient,
   getInsecureClient,
   getSSLClient,
@@ -110,4 +112,10 @@ export const getSSLHubRpcClient = (address: string): HubRpcClient => {
 
 export const getInsecureHubRpcClient = (address: string): HubRpcClient => {
   return promisifyClient(getInsecureClient(address));
+};
+
+export type AdminRpcClient = PromisifiedClient<AdminServiceClient>;
+
+export const getAdminRpcClient = async (address: string): Promise<AdminRpcClient> => {
+  return promisifyClient(await getAdminClient(address));
 };

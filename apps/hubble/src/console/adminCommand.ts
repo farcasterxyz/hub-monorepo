@@ -1,8 +1,9 @@
 import * as protobufs from '@farcaster/protobufs';
+import { AdminRpcClient } from '@farcaster/utils';
 import { ConsoleCommandInterface } from './console';
 
 export class AdminCommand implements ConsoleCommandInterface {
-  constructor(private readonly adminClient: protobufs.AdminServiceClient) {}
+  constructor(private readonly adminClient: AdminRpcClient) {}
 
   commandName(): string {
     return 'admin';
@@ -19,24 +20,20 @@ export class AdminCommand implements ConsoleCommandInterface {
   }
   object() {
     return {
-      rebuildSyncTrie: () => {
-        this.adminClient.rebuildSyncTrie(protobufs.Empty.create(), (err) => {
-          if (err) {
-            return `Error: ${err}`;
-          } else {
-            return '';
-          }
-        });
+      rebuildSyncTrie: async () => {
+        const result = await this.adminClient.rebuildSyncTrie(protobufs.Empty.create());
+        return result.match(
+          () => '',
+          (e) => `Error: ${e}`
+        );
       },
 
-      deleteAllMessagesFromDb: () => {
-        this.adminClient.deleteAllMessagesFromDb(protobufs.Empty.create(), (err) => {
-          if (err) {
-            return `Error: ${err}`;
-          } else {
-            return '';
-          }
-        });
+      deleteAllMessagesFromDb: async () => {
+        const result = await this.adminClient.deleteAllMessagesFromDb(protobufs.Empty.create());
+        return result.match(
+          () => '',
+          (e) => `Error: ${e}`
+        );
       },
     };
   }

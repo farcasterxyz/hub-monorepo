@@ -126,7 +126,7 @@ describe('GossipNode', () => {
       const port = await server.start();
       client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 
-      await client.submitIdRegistryEvent(custodyEvent);
+      await hub.submitIdRegistryEvent(custodyEvent);
 
       // Messages from rpc are gossiped
       await client.submitMessage(signerAdd);

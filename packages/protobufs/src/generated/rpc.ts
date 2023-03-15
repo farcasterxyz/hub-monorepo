@@ -1508,24 +1508,6 @@ export const HubServiceService = {
     responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
     responseDeserialize: (value: Buffer) => Message.decode(value),
   },
-  submitIdRegistryEvent: {
-    path: "/HubService/SubmitIdRegistryEvent",
-    requestStream: false,
-    responseStream: false,
-    requestSerialize: (value: IdRegistryEvent) => Buffer.from(IdRegistryEvent.encode(value).finish()),
-    requestDeserialize: (value: Buffer) => IdRegistryEvent.decode(value),
-    responseSerialize: (value: IdRegistryEvent) => Buffer.from(IdRegistryEvent.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => IdRegistryEvent.decode(value),
-  },
-  submitNameRegistryEvent: {
-    path: "/HubService/SubmitNameRegistryEvent",
-    requestStream: false,
-    responseStream: false,
-    requestSerialize: (value: NameRegistryEvent) => Buffer.from(NameRegistryEvent.encode(value).finish()),
-    requestDeserialize: (value: Buffer) => NameRegistryEvent.decode(value),
-    responseSerialize: (value: NameRegistryEvent) => Buffer.from(NameRegistryEvent.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => NameRegistryEvent.decode(value),
-  },
   /** Event Methods */
   subscribe: {
     path: "/HubService/Subscribe",
@@ -1793,8 +1775,6 @@ export const HubServiceService = {
 export interface HubServiceServer extends UntypedServiceImplementation {
   /** Submit Methods */
   submitMessage: handleUnaryCall<Message, Message>;
-  submitIdRegistryEvent: handleUnaryCall<IdRegistryEvent, IdRegistryEvent>;
-  submitNameRegistryEvent: handleUnaryCall<NameRegistryEvent, NameRegistryEvent>;
   /** Event Methods */
   subscribe: handleServerStreamingCall<SubscribeRequest, HubEvent>;
   getEvent: handleUnaryCall<EventRequest, HubEvent>;
@@ -1846,36 +1826,6 @@ export interface HubServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: Message) => void,
-  ): ClientUnaryCall;
-  submitIdRegistryEvent(
-    request: IdRegistryEvent,
-    callback: (error: ServiceError | null, response: IdRegistryEvent) => void,
-  ): ClientUnaryCall;
-  submitIdRegistryEvent(
-    request: IdRegistryEvent,
-    metadata: Metadata,
-    callback: (error: ServiceError | null, response: IdRegistryEvent) => void,
-  ): ClientUnaryCall;
-  submitIdRegistryEvent(
-    request: IdRegistryEvent,
-    metadata: Metadata,
-    options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: IdRegistryEvent) => void,
-  ): ClientUnaryCall;
-  submitNameRegistryEvent(
-    request: NameRegistryEvent,
-    callback: (error: ServiceError | null, response: NameRegistryEvent) => void,
-  ): ClientUnaryCall;
-  submitNameRegistryEvent(
-    request: NameRegistryEvent,
-    metadata: Metadata,
-    callback: (error: ServiceError | null, response: NameRegistryEvent) => void,
-  ): ClientUnaryCall;
-  submitNameRegistryEvent(
-    request: NameRegistryEvent,
-    metadata: Metadata,
-    options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: NameRegistryEvent) => void,
   ): ClientUnaryCall;
   /** Event Methods */
   subscribe(request: SubscribeRequest, options?: Partial<CallOptions>): ClientReadableStream<HubEvent>;
@@ -2311,11 +2261,31 @@ export const AdminServiceService = {
     responseSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
     responseDeserialize: (value: Buffer) => Empty.decode(value),
   },
+  submitIdRegistryEvent: {
+    path: "/AdminService/SubmitIdRegistryEvent",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: IdRegistryEvent) => Buffer.from(IdRegistryEvent.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => IdRegistryEvent.decode(value),
+    responseSerialize: (value: IdRegistryEvent) => Buffer.from(IdRegistryEvent.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => IdRegistryEvent.decode(value),
+  },
+  submitNameRegistryEvent: {
+    path: "/AdminService/SubmitNameRegistryEvent",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: NameRegistryEvent) => Buffer.from(NameRegistryEvent.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => NameRegistryEvent.decode(value),
+    responseSerialize: (value: NameRegistryEvent) => Buffer.from(NameRegistryEvent.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => NameRegistryEvent.decode(value),
+  },
 } as const;
 
 export interface AdminServiceServer extends UntypedServiceImplementation {
   rebuildSyncTrie: handleUnaryCall<Empty, Empty>;
   deleteAllMessagesFromDb: handleUnaryCall<Empty, Empty>;
+  submitIdRegistryEvent: handleUnaryCall<IdRegistryEvent, IdRegistryEvent>;
+  submitNameRegistryEvent: handleUnaryCall<NameRegistryEvent, NameRegistryEvent>;
 }
 
 export interface AdminServiceClient extends Client {
@@ -2345,6 +2315,36 @@ export interface AdminServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: Empty) => void,
+  ): ClientUnaryCall;
+  submitIdRegistryEvent(
+    request: IdRegistryEvent,
+    callback: (error: ServiceError | null, response: IdRegistryEvent) => void,
+  ): ClientUnaryCall;
+  submitIdRegistryEvent(
+    request: IdRegistryEvent,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: IdRegistryEvent) => void,
+  ): ClientUnaryCall;
+  submitIdRegistryEvent(
+    request: IdRegistryEvent,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: IdRegistryEvent) => void,
+  ): ClientUnaryCall;
+  submitNameRegistryEvent(
+    request: NameRegistryEvent,
+    callback: (error: ServiceError | null, response: NameRegistryEvent) => void,
+  ): ClientUnaryCall;
+  submitNameRegistryEvent(
+    request: NameRegistryEvent,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: NameRegistryEvent) => void,
+  ): ClientUnaryCall;
+  submitNameRegistryEvent(
+    request: NameRegistryEvent,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: NameRegistryEvent) => void,
   ): ClientUnaryCall;
 }
 
