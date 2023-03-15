@@ -1,10 +1,10 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesDecrement, bytesIncrement, Factories, getFarcasterTime, HubError } from '@farcaster/utils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
+import { getAllMessagesBySigner, getMessage, makeFidKey, makeTsHash } from '~/storage/db/message';
+import { UserPostfix } from '~/storage/db/types';
 import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import { getAllMessagesBySigner, getMessage, makeFidKey, makeTsHash } from '../db/message';
-import { UserPostfix } from '../db/types';
 
 const db = jestRocksDB('protobufs.signerStore.test');
 const eventHandler = new StoreEventHandler(db);

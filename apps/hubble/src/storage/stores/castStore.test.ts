@@ -176,7 +176,7 @@ describe('getCastsByMention', () => {
     expect(await store.getCastsByMention(Factories.Fid.build())).toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns casts that mention an fid in chronological order and according to pageOptions', async () => {
+  test('returns casts that mention an fid according to pageOptions', async () => {
     const castAdd2 = await Factories.CastAddMessage.create({
       data: {
         fid,

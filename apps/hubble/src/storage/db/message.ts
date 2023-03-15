@@ -11,7 +11,7 @@ import {
   UserMessagePostfixMax,
   UserPostfix,
 } from '~/storage/db/types';
-import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from '../stores/types';
+import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from '~/storage/stores/types';
 
 export const makeFidKey = (fid: number): Buffer => {
   const buffer = Buffer.alloc(FID_BYTES);
