@@ -115,8 +115,6 @@ message SignerRequest {
 service HubService {
   // Submit Methods
   rpc SubmitMessage(Message) returns (Message);
-  rpc SubmitIdRegistryEvent(IdRegistryEvent) returns (IdRegistryEvent);
-  rpc SubmitNameRegistryEvent(NameRegistryEvent) returns (NameRegistryEvent);
 
   // Event Methods
   rpc Subscribe(SubscribeRequest) returns (stream HubEvent);
@@ -166,4 +164,7 @@ service HubService {
 service AdminService {
   rpc RebuildSyncTrie(Empty) returns (Empty);
   rpc DeleteAllMessagesFromDb(Empty) returns (Empty);
+  
+  rpc SubmitIdRegistryEvent(IdRegistryEvent) returns (IdRegistryEvent);
+  rpc SubmitNameRegistryEvent(NameRegistryEvent) returns (NameRegistryEvent);
 }

@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Factories, HubRpcClient } from '@farcaster/utils';
+import { AdminRpcClient, Factories, HubRpcClient } from '@farcaster/utils';
 import { ConsoleCommandInterface } from './console';
 
 // We use console.log() in this file, so we disable the eslint rule. This is the REPL console, after all!
@@ -14,7 +14,7 @@ export type SubmitStats = {
 };
 
 export class GenCommand implements ConsoleCommandInterface {
-  constructor(private readonly rpcClient: HubRpcClient) {}
+  constructor(private readonly rpcClient: HubRpcClient, private readonly adminRpcClient: AdminRpcClient) {}
 
   commandName(): string {
     return 'gen';
@@ -60,7 +60,7 @@ export class GenCommand implements ConsoleCommandInterface {
         const start = performance.now();
 
         const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
-        const idResult = await this.rpcClient.submitIdRegistryEvent(custodyEvent, metadata);
+        const idResult = await this.adminRpcClient.submitIdRegistryEvent(custodyEvent);
         if (idResult.isOk()) {
           numSuccess++;
         } else {

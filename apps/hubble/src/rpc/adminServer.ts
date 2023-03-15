@@ -11,6 +11,7 @@ import * as net from 'net';
 import { err, ok } from 'neverthrow';
 import { HubInterface } from '~/hubble';
 import SyncEngine from '~/network/sync/syncEngine';
+import { toServiceError } from '~/rpc/server';
 import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
@@ -120,6 +121,32 @@ export default class AdminServer {
           log.warn('Finished deleting all messages from DB');
           callback(null, protobufs.Empty.create());
         })();
+      },
+
+      submitIdRegistryEvent: async (call, callback) => {
+        const idRegistryEvent = call.request;
+        const result = await this.hub?.submitIdRegistryEvent(idRegistryEvent, 'rpc');
+        result?.match(
+          () => {
+            callback(null, idRegistryEvent);
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          }
+        );
+      },
+
+      submitNameRegistryEvent: async (call, callback) => {
+        const nameRegistryEvent = call.request;
+        const result = await this.hub?.submitNameRegistryEvent(nameRegistryEvent, 'rpc');
+        result?.match(
+          () => {
+            callback(null, nameRegistryEvent);
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          }
+        );
       },
     };
   };
