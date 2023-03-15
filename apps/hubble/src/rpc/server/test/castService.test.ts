@@ -91,6 +91,29 @@ describe('getCast', () => {
       );
     });
 
+    test('returns casts in chronological order', async () => {
+      const castsAsJson = [];
+      let latestCast;
+      for (let i = 0; i < 4; i++) {
+        latestCast = await Factories.CastAddMessage.create(
+          {
+            data: { fid, network, timestamp: i },
+          },
+          { transient: { signer } }
+        );
+        await engine.mergeMessage(latestCast);
+        castsAsJson.push(protobufs.Message.toJSON(latestCast));
+      }
+
+      const clientRetrievedCasts = await client.getCastsByFid(protobufs.FidRequest.create({ fid }));
+      const clientRetrievedCastsAsJson = clientRetrievedCasts._unsafeUnwrap().messages.map(protobufs.Message.toJSON);
+
+      expect(castsAsJson.length).toEqual(4);
+      expect(clientRetrievedCastsAsJson.length).toEqual(4);
+
+      expect(clientRetrievedCastsAsJson).toEqual(castsAsJson);
+    });
+
     test('returns empty array without casts', async () => {
       const casts = await client.getCastsByFid(protobufs.FidRequest.create({ fid }));
       expect(casts._unsafeUnwrap().messages).toEqual([]);

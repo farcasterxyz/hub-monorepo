@@ -30,7 +30,7 @@ const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 365; // 1 year
  *
  * @param fid farcaster id of the user who created the cast
  * @param hash hash of the cast
- * @returns RocksDB key of the form <root_prefix>:<fid>:<user_postfix>:<tsHash?>
+ * @returns RocksDB key of the form <fid>:<user_postfix>:<tsHash?>
  */
 const makeCastAddsKey = (fid: number, hash?: Uint8Array): Buffer => {
   return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.CastAdds]), Buffer.from(hash ?? '')]);
@@ -41,7 +41,7 @@ const makeCastAddsKey = (fid: number, hash?: Uint8Array): Buffer => {
  *
  * @param fid farcaster id of the user who created the cast
  * @param hash hash of the cast
- * @returns RocksDB key of the form <root_prefix>:<fid>:<user_postfix>:<tsHash?>
+ * @returns RocksDB key of the form <fid>:<user_postfix>:<tsHash?>
  */
 const makeCastRemovesKey = (fid: number, hash?: Uint8Array): Buffer => {
   return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.CastRemoves]), Buffer.from(hash ?? '')]);
