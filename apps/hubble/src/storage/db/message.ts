@@ -168,11 +168,7 @@ export const getMessagesPageByPrefix = async <T extends protobufs.Message>(
   filter: (message: protobufs.Message) => message is T,
   pageOptions: PageOptions = {}
 ): Promise<MessagesPage<T>> => {
-  // if (pageOptions.pageToken && bytesCompare(pageOptions.pageToken, Uint8Array.from(prefix)) < 0) {
-  //   throw new HubError('bad_request.invalid_param', 'invalid pageToken');
-  // }
-  // const startKey = pageOptions.pageToken ? Buffer.from(pageOptions.pageToken) : prefix;
-  const startAfterKey = Buffer.concat([prefix, Buffer.from(pageOptions.pageToken ?? '')]);
+  const startKey = Buffer.concat([prefix, Buffer.from(pageOptions.pageToken ?? '')]);
 
   if (pageOptions.pageSize && pageOptions.pageSize > PAGE_SIZE_MAX) {
     throw new HubError('bad_request.invalid_param', `pageSize > ${PAGE_SIZE_MAX}`);
@@ -186,7 +182,7 @@ export const getMessagesPageByPrefix = async <T extends protobufs.Message>(
 
   const messages: T[] = [];
   const iterator = db.iterator({
-    gt: startAfterKey,
+    gt: startKey,
     lt: Buffer.from(endKey.value),
     keyAsBuffer: true,
     valueAsBuffer: true,
@@ -215,7 +211,6 @@ export const getMessagesPageByPrefix = async <T extends protobufs.Message>(
 
     const [key, message] = result.value;
     lastPageToken = Uint8Array.from(key.subarray(prefix.length));
-    // lastKey = key;
     if (filter(message)) {
       messages.push(message);
     }
@@ -226,16 +221,6 @@ export const getMessagesPageByPrefix = async <T extends protobufs.Message>(
   } else {
     return { messages, nextPageToken: undefined };
   }
-  // if (lastPageToken === undefined) {
-  //   return { messages, nextPageToken: undefined };
-  // }
-
-  // const nextPageToken = bytesIncrement(lastPageToken);
-  // if (!iteratorFinished && nextPageToken.isOk()) {
-  //   return { messages, nextPageToken: nextPageToken.value };
-  // } else {
-  //   return { messages, nextPageToken: undefined };
-  // }
 };
 
 /** Get an array of messages for a given fid and signer */
