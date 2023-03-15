@@ -123,8 +123,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this._interruptSync = true;
 
     // Wait for syncing to stop.
-    await sleepWhile(() => this._isSyncing, SYNC_INTERRUPT_TIMEOUT);
-    await sleepWhile(() => this.syncTrieQSize > 0, SYNC_INTERRUPT_TIMEOUT);
+    try {
+      await sleepWhile(() => this._isSyncing, SYNC_INTERRUPT_TIMEOUT);
+      await sleepWhile(() => this.syncTrieQSize > 0, SYNC_INTERRUPT_TIMEOUT);
+    } catch (e) {
+      log.error({ err: e }, 'Interrupting sync timed out');
+    }
 
     this._interruptSync = false;
   }
