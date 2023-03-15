@@ -26,13 +26,20 @@ import { Result, ResultAsync, err, ok } from 'neverthrow';
 import { EthEventsProvider, GoerliEthConstants } from '~/eth/ethEventsProvider';
 import { GossipNode, MAX_MESSAGE_QUEUE_SIZE } from '~/network/p2p/gossipNode';
 import { NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
+import { PeriodicSyncJobScheduler } from '~/network/sync/periodicSyncJob';
 import SyncEngine from '~/network/sync/syncEngine';
+import AdminServer from '~/rpc/adminServer';
 import Server from '~/rpc/server';
 import { getHubState, putHubState } from '~/storage/db/hubState';
 import RocksDB from '~/storage/db/rocksdb';
+import { RootPrefix } from '~/storage/db/types';
 import Engine from '~/storage/engine';
 import { PruneMessagesJobScheduler } from '~/storage/jobs/pruneMessagesJob';
 import { RevokeSignerJobQueue, RevokeSignerJobScheduler } from '~/storage/jobs/revokeSignerJob';
+import {
+  UpdateNameRegistryEventExpiryJobQueue,
+  UpdateNameRegistryEventExpiryJobWorker,
+} from '~/storage/jobs/updateNameRegistryEventExpiryJob';
 import { idRegistryEventToLog, logger, messageToLog, messageTypeToName, nameRegistryEventToLog } from '~/utils/logger';
 import {
   addressInfoFromGossip,
@@ -41,13 +48,6 @@ import {
   ipFamilyToString,
   p2pMultiAddrStr,
 } from '~/utils/p2p';
-import { PeriodicSyncJobScheduler } from './network/sync/periodicSyncJob';
-import AdminServer from './rpc/adminServer';
-import { RootPrefix } from './storage/db/types';
-import {
-  UpdateNameRegistryEventExpiryJobQueue,
-  UpdateNameRegistryEventExpiryJobWorker,
-} from './storage/jobs/updateNameRegistryEventExpiryJob';
 
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
 

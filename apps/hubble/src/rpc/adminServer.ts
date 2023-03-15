@@ -11,10 +11,10 @@ import * as net from 'net';
 import { err, ok } from 'neverthrow';
 import { HubInterface } from '~/hubble';
 import SyncEngine from '~/network/sync/syncEngine';
+import { toServiceError } from '~/rpc/server';
 import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
-import { toServiceError } from './server';
 
 const socketPath = '/tmp/hubble.admin.sock';
 export const getAdminSocket = (): string => `unix:${socketPath}`;
