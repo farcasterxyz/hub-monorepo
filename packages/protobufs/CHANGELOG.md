@@ -1,5 +1,13 @@
 # @farcaster/protobufs
 
+## 0.1.8
+
+### Patch Changes
+
+- 0a3b77c: make SignerAddBody.name and SubscribeRequest.fromId optional
+- e7602bd: add pagination to list rpc methods
+- 68230b7: chore: move submitIdRegistryEvent and submitNameRegistryEvent to admin grpc service
+
 ## 0.1.7
 
 ### Patch Changes

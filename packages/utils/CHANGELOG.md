@@ -1,5 +1,15 @@
 # @farcaster/utils
 
+## 0.2.11
+
+### Patch Changes
+
+- 0a3b77c: make SignerAddBody.name and SubscribeRequest.fromId optional
+- Updated dependencies [0a3b77c]
+- Updated dependencies [e7602bd]
+- Updated dependencies [68230b7]
+  - @farcaster/protobufs@0.1.8
+
 ## 0.2.10
 
 ### Patch Changes
