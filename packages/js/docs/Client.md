@@ -1,23 +1,32 @@
 # Client
 
-A Client can be used to connect to a Farcaster Hub.
-Clients are initialized with the IP address and gRPC port of the Hub. Once connected, you can use a Client instance to:
+A Client established a connection with a Farcaster Hub and can be used to send and receive messages. It is initialized with the IP address and gRPC port of the Hub. Once connected, a Client instance can:
 
 - Query for messages by user or type.
-- Query for on-chain Farcaster Contracts state
+- Query for on-chain Farcaster Contracts state.
 - Subscribe to changes by type.
 - Upload new messages.
 
+### Authentication
+
 Some Hubs require authentication to submit messages which is done with basic auth over SSL. Clients will automatically negotiate an SSL connection if possible, and you'll need to provide the username and password when calling `submitMessage`.
 
-## Constructor
+### getHubRpcClient
 
-### `static` new Client
+Returns a Hub RPC Client, defaulting to an SSL connection if supported.
 
 #### Usage
 
 ```typescript
-// TODO
+import { getHubRpcClient } from '@farcaster/js';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  // To manually choose the authentication method, use these methods instead.
+  // const sslClient = await getSSLHubRpcClient('127.0.0.1:8080');
+  // const insecureClient = await getInsecureClient('127.0.0.1:8080');
+})();
 ```
 
 #### Returns
@@ -28,14 +37,13 @@ Some Hubs require authentication to submit messages which is done with basic aut
 
 #### Parameters
 
-| Name      | Type      | Description                                                 |
-| :-------- | :-------- | :---------------------------------------------------------- |
-| `address` | `string`  | Address and RPC port string (e.g. `127.0.0.1:8080`)         |
-| `ssl?`    | `boolean` | (optional) Flag to connect to the Hub over SSL if supported |
+| Name      | Type     | Description                                         |
+| :-------- | :------- | :-------------------------------------------------- |
+| `address` | `string` | Address and RPC port string (e.g. `127.0.0.1:8080`) |
 
 ## Methods
 
-Client methods are logically grouped into services that correspond to particular data types or actions. These services logically map to the gRPC services exposed by Hubs. For example, the Casts Service providers four different helpers to get Cast Messages.
+Client methods are logically grouped into services corresponding to data types or actions. These services map to the gRPC services exposed by Hubs. For example, the Casts Service providers four different helpers to get Cast Messages.
 
 - **Signers Service**
   - [getSigner](#getsigner)
@@ -77,7 +85,19 @@ Returns an active signer message given an fid and the public key of the signer.
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const signerPubKeyHex = '5feb9e21f3df044197e634e3602a594a3423c71c6f208876074dc5a3e0d7b9ce';
+  const signer = Uint8Array.from(Buffer.from(signerPubKeyHex, 'hex'));
+
+  const signerResult = await client.getSigner({
+    fid: 2,
+    signer,
+  });
+
+  signerResult.map((signerAdd) => console.log(signerAdd));
+})();
 ```
 
 #### Returns
@@ -102,7 +122,15 @@ Returns all active signers created by an fid in reverse chronological order.
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient } from '@farcaster/js';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const signersResult = await client.getAllSignerMessagesByFid({ fid: 2 });
+
+  signersResult.map((signers) => console.log(signers.messages));
+})();
 ```
 
 #### Returns
@@ -126,7 +154,15 @@ Returns all active and inactive signers created by an fid in reverse chronologic
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient } from '@farcaster/js';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const signersResult = await client.getAllSignerMessagesByFid({ fid: 2 });
+
+  signersResult.map((signers) => console.log(signers.messages));
+})();
 ```
 
 #### Returns
@@ -205,7 +241,18 @@ Returns an active cast for a user.
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient } from '@farcaster/js';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const castHashHex = '460a87ace7014adefe4a2944fb62833b1bf2a6be';
+  const castHashBytes = Buffer.from(castHashHex, 'hex');
+
+  const castResult = await client.getCast({ fid: 2, hash: castHashBytes });
+
+  castResult.map((cast) => console.log(cast));
+})();
 ```
 
 #### Returns
@@ -230,7 +277,15 @@ Returns active casts for a user in reverse chronological order.
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient } from '@farcaster/js';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const castsResult = await client.getCastsByFid({ fid: 2 });
+
+  castsResult.map((casts) => console.log(casts.messages));
+})();
 ```
 
 #### Returns
@@ -254,7 +309,15 @@ Returns all active casts that mention an fid in reverse chronological order.
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient } from '@farcaster/js';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const castsResult = await client.getCastsByMention({ fid: 2 });
+
+  castsResult.map((casts) => console.log(casts.messages));
+})();
 ```
 
 #### Returns
@@ -265,9 +328,9 @@ Returns all active casts that mention an fid in reverse chronological order.
 
 #### Parameters
 
-| Name         | Type     | Description                             |
-| :----------- | :------- | :-------------------------------------- |
-| `mentionFid` | `number` | The fid that is mentioned in the casts. |
+| Name  | Type     | Description                             |
+| :---- | :------- | :-------------------------------------- |
+| `fid` | `number` | The fid that is mentioned in the casts. |
 
 ---
 
@@ -278,7 +341,18 @@ Returns all active casts that are replies to a specific cast in reverse chronolo
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient } from '@farcaster/js';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const castHashHex = 'ee04762bea3060ce3cca154bced5947de04aa253';
+  const castHashBytes = Buffer.from(castHashHex, 'hex');
+
+  const castsResult = await client.getCastsByParent({ fid: 2, hash: castHashBytes });
+
+  castsResult.map((casts) => console.log(casts.messages));
+})();
 ```
 
 #### Returns
@@ -302,7 +376,14 @@ Returns all active and inactive casts for a user in reverse chronological order.
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient } from '@farcaster/js';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const castsResult = await client.getAllCastMessagesByFid({ fid: 2 });
+  castsResult.map((casts) => console.log(casts.messages));
+})();
 ```
 
 #### Returns
@@ -326,7 +407,25 @@ Returns an active reaction of a particular type made by a user to a cast.
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient, ReactionType } from '@farcaster/js';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const castHashHex = 'ee04762bea3060ce3cca154bced5947de04aa253'; // Cast to fetch reactions for
+  const castHashBytes = Buffer.from(castHashHex, 'hex');
+
+  const reactionsResult = await client.getReaction({
+    fid: 8150,
+    reactionType: ReactionType.LIKE,
+    castId: {
+      fid: 2,
+      hash: castHashBytes,
+    },
+  });
+
+  reactionsResult.map((reaction) => console.log(reaction));
+})();
 ```
 
 #### Returns
@@ -352,7 +451,24 @@ Returns all active reactions made by users to a cast.
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient, ReactionType } from '@farcaster/js';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const castHashHex = 'ee04762bea3060ce3cca154bced5947de04aa253'; // Cast to fetch reactions for
+  const castHashBytes = Buffer.from(castHashHex, 'hex');
+
+  const reactionsResult = await client.getReactionsByCast({
+    reactionType: ReactionType.LIKE,
+    castId: {
+      fid: 2,
+      hash: castHashBytes,
+    },
+  });
+
+  reactionsResult.map((reaction) => console.log(reaction.messages));
+})();
 ```
 
 #### Returns
@@ -377,7 +493,15 @@ Returns all active reactions made by a user in reverse chronological order.
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient, ReactionType } from '@farcaster/js';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const reactionsResult = await client.getReactionsByFid({ fid: 2, reactionType: ReactionType.LIKE });
+
+  reactionsResult.map((reaction) => console.log(reaction.messages));
+})();
 ```
 
 #### Returns
@@ -388,10 +512,10 @@ Returns all active reactions made by a user in reverse chronological order.
 
 #### Parameters
 
-| Name    | Type                                         | Description              |
-| :------ | :------------------------------------------- | :----------------------- |
-| `fid`   | `number`                                     | The fid of the user      |
-| `type?` | [`ReactionType`](./Messages.md#reactiontype) | The type of the reaction |
+| Name            | Type                                         | Description              |
+| :-------------- | :------------------------------------------- | :----------------------- |
+| `fid`           | `number`                                     | The fid of the user      |
+| `reactionType?` | [`ReactionType`](./Messages.md#reactiontype) | The type of the reaction |
 
 ---
 
@@ -402,7 +526,15 @@ Returns all active and inactive reactions made by a user in reverse chronologica
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient } from '@farcaster/js';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const reactionsResult = await client.getAllReactionMessagesByFid({ fid: 2 });
+
+  reactionsResult.map((reaction) => console.log(reaction.messages));
+})();
 ```
 
 #### Returns
@@ -526,10 +658,16 @@ Submits a new message to the Hub. Basic authentication may be required by the Hu
 #### Usage
 
 ```typescript
-import { ... } from '@farcaster/js';
+import { getHubRpcClient } from '@farcaster/js';
 
-const client = new Client(...)
-const result = await client.get...
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const message; // Any valid message constructed with a Builder
+
+  const submitResult = await client.submitMessage(message);
+  console.log(submitResult);
+})();
 ```
 
 #### Returns
@@ -555,7 +693,15 @@ Returns the on-chain event most recently associated with changing an fid's owner
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient } from '@farcaster/js';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const idrResult = await client.getIdRegistryEvent({ fid: 2 });
+
+  idrResult.map((event) => console.log(event));
+})();
 ```
 
 #### Returns
@@ -579,7 +725,16 @@ Returns the on-chain event most recently associated with changing an fname's own
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient } from '@farcaster/js';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const fnameBytes = new TextEncoder().encode('v');
+  const nrResult = await client.getNameRegistryEvent({ name: fnameBytes });
+
+  nrResult.map((event) => console.log(event));
+})();
 ```
 
 #### Returns

@@ -26,22 +26,22 @@ pnpm install @farcaster/js
 ### Fetching Data from Hubs
 
 ```typescript
-import { Client } from '@farcaster/js';
+import { getHubRpcClient, isCastAddMessage } from '@farcaster/js';
 
 (async () => {
-  // Connect to a known hub using its address of the form <ip_address>:<rpc_port>
-  const client = new Client('127.0.0.1:8080');
+  const client = await getHubRpcClient('127.0.0.1:8080');
 
-  // Set the user whose casts we will be fetching
-  const fid = 2;
+  const castsResult = await client.getCastsByFid({ fid: 2 });
 
-  const castsResult = await client.getCastsByFid(fid);
-
-  if (castsResult.isErr()) {
+  if (castsResult.isOk()) {
+    for (const cast of castsResult.value.messages) {
+      if (isCastAddMessage(cast)) {
+        console.log(cast.data.castAddBody.text);
+      }
+    }
+  } else {
     console.log('Failed: ', castsResult.error);
   }
-
-  castsResult.map((casts) => casts.map((c) => console.log(`${c.data.body.text}\n`)));
 })();
 ```
 
