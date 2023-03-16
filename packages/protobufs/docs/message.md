@@ -24,13 +24,13 @@ A Message is a delta operation on the Farcaster network. The message protobuf is
 
 A MessageData object contains properties common to all MessagesTypes and wraps a body object which contains properties specific to the MessageType.
 
-| Field     | Type                                                                                                                                                                                                                                                                                                  | Label | Description                                    |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ---------------------------------------------- |
-| type      | [MessageType](#MessageType)                                                                                                                                                                                                                                                                           |       | Type of Message contained in the body          |
-| fid       | uint64                                                                                                                                                                                                                                                                                                |       | Farcaster ID of the user producing the message |
-| timestamp | uint32                                                                                                                                                                                                                                                                                                |       | Farcaster epoch timestamp in seconds           |
-| network   | [FarcasterNetwork](#FarcasterNetwork)                                                                                                                                                                                                                                                                 |       | Farcaster network the message is intended for  |
-| body      | [CastAddBody](#CastAddBody), <br> [CastRemoveBody](#CastRemoveBody), <br> [ReactionBody](#ReactionBody), <br>[VerificationAddEthAddressBody](#VerificationAddEthAddressBody), <br>[VerificationRemoveBody](#VerificationRemoveBody), <br>[SignerBody](#SignerBody),<br> [UserDataBody](#UserDataBody) | oneOf | Properties specific to the MessageType         |
+| Field     | Type                                                                                                                                                                                                                                                                                                                                                   | Label | Description                                    |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----- | ---------------------------------------------- |
+| type      | [MessageType](#MessageType)                                                                                                                                                                                                                                                                                                                            |       | Type of Message contained in the body          |
+| fid       | uint64                                                                                                                                                                                                                                                                                                                                                 |       | Farcaster ID of the user producing the message |
+| timestamp | uint32                                                                                                                                                                                                                                                                                                                                                 |       | Farcaster epoch timestamp in seconds           |
+| network   | [FarcasterNetwork](#FarcasterNetwork)                                                                                                                                                                                                                                                                                                                  |       | Farcaster network the message is intended for  |
+| body      | [CastAddBody](#CastAddBody), <br> [CastRemoveBody](#CastRemoveBody), <br> [ReactionBody](#ReactionBody), <br>[VerificationAddEthAddressBody](#VerificationAddEthAddressBody), <br>[VerificationRemoveBody](#VerificationRemoveBody), <br>[SignerAddBody](#SignerAddBody), <br>[SignerRemoveBody](#SignerRemoveBody),<br> [UserDataBody](#UserDataBody) | oneOf | Properties specific to the MessageType         |
 
 ### 1.2 HashScheme
 
@@ -83,7 +83,16 @@ Farcaster network the message is intended for
 
 A signer is a delta that authorizes a new key pair to sign Messages on behalf of the user.
 
-### 2.1 SignerBody
+### 2.1 SignerAddBody
+
+Adds or removes an Ed25519 key pair that signs messages for a user
+
+| Field  | Type   | Label | Description                                    |
+| ------ | ------ | ----- | ---------------------------------------------- |
+| signer | bytes  |       | Public key of the Ed25519 key pair             |
+| name?  | string |       | (optional) Human-readable label for the signer |
+
+### 2.1 SignerRemoveBody
 
 Adds or removes an Ed25519 key pair that signs messages for a user
 

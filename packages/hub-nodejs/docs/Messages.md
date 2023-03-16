@@ -47,9 +47,18 @@ A generic container which holds common properties and properties specific to the
 
 A composite type which holds properties unique to the type of the message (`MessageType`).
 
-Some `MessageBody` types map to multiple `MessageTypes` since the only difference is the type of the operation. For instance, both ReactionBody maps to both ReactionAdd and ReactionRemove. The type value must be one of: [`SignerBody`](#signerbody) \| [`UserDataBody`](#userdatabody) \| [`CastAddBody`](#castaddbody) \| [`CastRemoveBody`](#castremovebody) \| [`ReactionBody`](#reactionbody) \| [`VerificationAddEthAddressBody`](#verificationaddethaddressbody) \| [`VerificationRemoveBody`](#verificationremovebody)
+Some `MessageBody` types map to multiple `MessageTypes` since the only difference is the type of the operation. For instance, both ReactionBody maps to both ReactionAdd and ReactionRemove. The type value must be one of: [`SignerAddBody`](#signeraddbody) \| [`SignerRemoveBody`](#signerremovebody) \|[`UserDataBody`](#userdatabody) \| [`CastAddBody`](#castaddbody) \| [`CastRemoveBody`](#castremovebody) \| [`ReactionBody`](#reactionbody) \| [`VerificationAddEthAddressBody`](#verificationaddethaddressbody) \| [`VerificationRemoveBody`](#verificationremovebody)
 
-### SignerBody
+### SignerAddBody
+
+Body of a `MESSAGE_TYPE_SIGNER_ADD` or `MESSAGE_TYPE_SIGNER_REMOVE`
+
+| Name     | Type                  | Description                         |
+| :------- | :-------------------- | :---------------------------------- |
+| `signer` | `Uint8Array`          | Public key of the Ed25519 key pair  |
+| `name?`  | `string \| undefined` | Human-readable label for the signer |
+
+### SignerRemoveBody
 
 Body of a `MESSAGE_TYPE_SIGNER_ADD` or `MESSAGE_TYPE_SIGNER_REMOVE`
 
