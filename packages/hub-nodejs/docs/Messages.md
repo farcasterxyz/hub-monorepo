@@ -15,7 +15,7 @@ Messages are protobufs which are converted by @farcaster/hub-nodejs converts int
 | CastRemove                | Remove an existing cast                                             |
 | ReactionAdd               | Add a Reaction to an existing item (e.g. like a cast)               |
 | ReactionRemove            | Remove an existing Reaction from an existing item                   |
-| VerificationEthAddressAdd | Add a signed message verifying that a user owns an Ethereum address |
+| VerificationAddEthAddress | Add a signed message verifying that a user owns an Ethereum address |
 | VerificationRemove        | Remove a previously added verification message                      |
 
 ## Message\<Data>
