@@ -7529,10 +7529,10 @@ typed-array-length@^1.0.4:
     for-each "^0.3.3"
     is-typed-array "^1.1.9"
 
-typescript@^5.0.0-beta:
-  version "5.0.0-dev.20230206"
-  resolved "https://registry.npmjs.org/typescript/-/typescript-5.0.0-dev.20230206.tgz#04bb2d393eadfa32a9131270b26c2dd024643d91"
-  integrity sha512-pEoZbri8HyvEk/DV1ivC2V5z/Fv5Pd/riw6llt3yfx+/JMMTmbDQraCCq2JQgxgvtGYQrU2861MnrPNjI3815A==
+typescript@^5.0.2:
+  version "5.0.2"
+  resolved "https://registry.npmjs.org/typescript/-/typescript-5.0.2.tgz#891e1a90c5189d8506af64b9ef929fca99ba1ee5"
+  integrity sha512-wVORMBGO/FAs/++blGNeAVdbNKtIh1rbBL2EyQ1+J9lClJ93KiiKe8PmFIVdXhHcyv44SL9oglmfeSsndo0jRw==
 
 uint8-varint@^1.0.1, uint8-varint@^1.0.2:
   version "1.0.4"
