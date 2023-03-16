@@ -34,7 +34,7 @@ export interface Empty {
 
 export interface SubscribeRequest {
   eventTypes: HubEventType[];
-  fromId: number;
+  fromId?: number | undefined;
 }
 
 export interface EventRequest {
@@ -181,7 +181,7 @@ export const Empty = {
 };
 
 function createBaseSubscribeRequest(): SubscribeRequest {
-  return { eventTypes: [], fromId: 0 };
+  return { eventTypes: [], fromId: undefined };
 }
 
 export const SubscribeRequest = {
@@ -191,7 +191,7 @@ export const SubscribeRequest = {
       writer.int32(v);
     }
     writer.ldelim();
-    if (message.fromId !== 0) {
+    if (message.fromId !== undefined) {
       writer.uint32(16).uint64(message.fromId);
     }
     return writer;
@@ -228,7 +228,7 @@ export const SubscribeRequest = {
   fromJSON(object: any): SubscribeRequest {
     return {
       eventTypes: Array.isArray(object?.eventTypes) ? object.eventTypes.map((e: any) => hubEventTypeFromJSON(e)) : [],
-      fromId: isSet(object.fromId) ? Number(object.fromId) : 0,
+      fromId: isSet(object.fromId) ? Number(object.fromId) : undefined,
     };
   },
 
@@ -250,7 +250,7 @@ export const SubscribeRequest = {
   fromPartial<I extends Exact<DeepPartial<SubscribeRequest>, I>>(object: I): SubscribeRequest {
     const message = createBaseSubscribeRequest();
     message.eventTypes = object.eventTypes?.map((e) => e) || [];
-    message.fromId = object.fromId ?? 0;
+    message.fromId = object.fromId ?? undefined;
     return message;
   },
 };

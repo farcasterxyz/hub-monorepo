@@ -349,7 +349,7 @@ export interface SignerAddBody {
   /** Public key of the Ed25519 key pair */
   signer: Uint8Array;
   /** Name of the key pair */
-  name: string;
+  name?: string | undefined;
 }
 
 /** Removes an Ed25519 key pair that signs messages for a user */
@@ -729,7 +729,7 @@ export const MessageData = {
 };
 
 function createBaseSignerAddBody(): SignerAddBody {
-  return { signer: new Uint8Array(), name: "" };
+  return { signer: new Uint8Array(), name: undefined };
 }
 
 export const SignerAddBody = {
@@ -737,7 +737,7 @@ export const SignerAddBody = {
     if (message.signer.length !== 0) {
       writer.uint32(10).bytes(message.signer);
     }
-    if (message.name !== "") {
+    if (message.name !== undefined) {
       writer.uint32(18).string(message.name);
     }
     return writer;
@@ -767,7 +767,7 @@ export const SignerAddBody = {
   fromJSON(object: any): SignerAddBody {
     return {
       signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array(),
-      name: isSet(object.name) ? String(object.name) : "",
+      name: isSet(object.name) ? String(object.name) : undefined,
     };
   },
 
@@ -786,7 +786,7 @@ export const SignerAddBody = {
   fromPartial<I extends Exact<DeepPartial<SignerAddBody>, I>>(object: I): SignerAddBody {
     const message = createBaseSignerAddBody();
     message.signer = object.signer ?? new Uint8Array();
-    message.name = object.name ?? "";
+    message.name = object.name ?? undefined;
     return message;
   },
 };
