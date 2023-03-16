@@ -6,10 +6,18 @@
 - [Messages](./Messages.md), which are the atomic units of change on the Farcaster network.
 - [Builders](./Builders.md), which can be used to construct new messages.
 - [Signers](./signers/), which are required by Builders to sign messages.
+- [Utils](./Utils.md), which are helpers to deal with Farcaster idiosyncrasies.
 
 ## Idiosyncrasies
 
-There are a few unique things about the package that are described here:
+There are four important things to know about the package:
+
+- Fixed length data is encoded in [byte formats](./Utils.md#bytes), instead of strings.
+- Errors are handled with [a monadic pattern](./Utils.md#errors), instead of try-catch.
+- Timestamps are calculated from the [Farcaster epoch](./Utils.md#time), not the Unix epoch.
+- Only Nodejs is supported, and browser support is a [work in progress](https://github.com/farcasterxyz/hubble/issues/573).
+
+There are also a few Farcaster-specific terms that are very commonly used in this package:
 
 | Term     | Description                                                               |
 | -------- | ------------------------------------------------------------------------- |
@@ -18,27 +26,3 @@ There are a few unique things about the package that are described here:
 | Fname    | A farcaster username, issued by the Name Registry on Ethereum.            |
 | Hub      | A node in the Farcaster network which stores Farcaster Messages           |
 | Reaction | A public action between a user and a piece of content (e.g. like, recast) |
-
-### Binary and Hex Formats
-
-API responses return addresses, keys and signatures as binary data held in Uint8Arrays. To convert them to a hex strings:
-
-```typescript
-const messageHash = message.hash; // message is an object returned by the hubs
-console.log(Buffer.from(messageHash).toString('hex'));
-```
-
-Builders and API methods often require the values to be supplied in binary form. To convert a hex string to a binary Uint8Array:
-
-```typescript
-const hexString = '006f082f70dfb2de81e7852f3b79f1cdf2aa6b86';
-const bytesString = new Uint8Array(Buffer.from(hexString, 'hex'));
-```
-
-### Error Handling
-
-Error handling in @farcaster/hub-nodejs is monadic and functions do not throw exceptions. Each function call returns a Result object which contains a success value or error value. Read the [neverthrow](https://github.com/supermacro/neverthrow/blob/master/README.md) documentation to learn about handling Result types.
-
-### Environments
-
-@farcaster/hub-nodejs only works inside a NodeJS environment. Browser support is a [work in progress](https://github.com/farcasterxyz/hubble/issues/573).
