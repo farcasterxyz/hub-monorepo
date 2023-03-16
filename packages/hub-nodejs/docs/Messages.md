@@ -25,11 +25,11 @@ A generic container which holds the contents of the message(`MessageData`) and m
 | Name              | Type                                  | Description                                       |
 | :---------------- | :------------------------------------ | :------------------------------------------------ |
 | `data`            | [`MessageData`](#messagedata)         | Contents of the message                           |
-| `hash`            | `string`                              | Hash digest of data                               |
+| `hash`            | `Uint8Array`                          | Hash digest of data                               |
 | `hashScheme`      | [`HashScheme`](#hashscheme)           | Hash scheme that produced the hash digest         |
-| `signature`       | `string`                              | Signature of the hash digest                      |
+| `signature`       | `Uint8Array`                          | Signature of the hash digest                      |
 | `signatureScheme` | [`SignatureScheme`](#signaturescheme) | Signature scheme that produced the signature      |
-| `signer`          | `string`                              | Public key or address that produced the signature |
+| `signer`          | `Uint8Array`                          | Public key or address that produced the signature |
 
 ## MessageData\<Body,Type>
 
@@ -53,9 +53,9 @@ Some `MessageBody` types map to multiple `MessageTypes` since the only differenc
 
 Body of a `MESSAGE_TYPE_SIGNER_ADD` or `MESSAGE_TYPE_SIGNER_REMOVE`
 
-| Name     | Type     | Description                        |
-| :------- | :------- | :--------------------------------- |
-| `signer` | `string` | Public key of the Ed25519 key pair |
+| Name     | Type         | Description                        |
+| :------- | :----------- | :--------------------------------- |
+| `signer` | `Uint8Array` | Public key of the Ed25519 key pair |
 
 ### UserDataBody
 
@@ -99,19 +99,19 @@ Body of `MESSAGE_TYPE_REACTION_ADD` or `MESSAGE_TYPE_REACTION_REMOVE`
 
 Body of `MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS`
 
-| Name           | Type     | Description                                                   |
-| :------------- | :------- | ------------------------------------------------------------- |
-| `address`      | `string` | Ethereum address being verified                               |
-| `blockHash`    | `string` | Hash of the latest Ethereum block when the claim was produced |
-| `ethSignature` | `string` | Signature of a valid [VerificationEthAddressClaim]() hash     |
+| Name           | Type         | Description                                                   |
+| :------------- | :----------- | ------------------------------------------------------------- |
+| `address`      | `Uint8Array` | Ethereum address being verified                               |
+| `blockHash`    | `Uint8Array` | Hash of the latest Ethereum block when the claim was produced |
+| `ethSignature` | `Uint8Array` | Signature of a valid [VerificationEthAddressClaim]() hash     |
 
 ### VerificationRemoveBody
 
 Body of `MESSAGE_TYPE_VERIFICATION_REMOVE`
 
-| Name      | Type     | Description                           |
-| :-------- | :------- | ------------------------------------- |
-| `address` | `string` | Address of the Verification to remove |
+| Name      | Type         | Description                           |
+| :-------- | :----------- | ------------------------------------- |
+| `address` | `Uint8Array` | Address of the Verification to remove |
 
 ## Enumerations
 
