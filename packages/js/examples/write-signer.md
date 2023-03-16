@@ -25,11 +25,9 @@ import {
 } from '@farcaster/js';
 import * as ed from '@noble/ed25519';
 import { ethers } from 'ethers';
-import * as ed from '@noble/ed25519';
-import { ethers } from 'ethers';
 
 // Safety: we use unsafeUnwrap() and crash on failure in a few places, since it can't be handled
-//  any other way
+// any other way
 
 // Create an EIP712 Signer with the wallet that holds the custody address of the user
 const mnemonic = 'your mnemonic apple orange banana ...'; // mnemonic for the custody address' wallet
@@ -49,7 +47,7 @@ const signerAddResult = await makeSignerAdd({ signer: signerPrivateKeyHex }, dat
 const signerAdd = signerAddResult._unsafeUnwrap();
 
 // Submit the SignerAdd message to the Hub
-const client = new Client('127 .0.0.1:8080');
+const client = new Client('127.0.0.1:8080');
 const result = await client.submitMessage(signerAdd);
 result.isOk() ? console.log('SignerAdd was published successfully!') : console.log(result.error);
 ```
