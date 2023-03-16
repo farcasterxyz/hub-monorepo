@@ -10,6 +10,7 @@
    2. [Writing Docs](#32-writing-docs)
    3. [Handling Errors](#33-handling-errors)
    4. [Creating the PR](#34-creating-the-pr)
+   5. [Adding Changesets](#35-adding-changesets)
 4. [Troubleshooting](#4-troubleshooting)
 
 ## 1. How to Contribute
@@ -253,6 +254,17 @@ Called Signer.verify with the correct parameter to ensure that older signature
 types would not pass verification in our Signer Sets
 ```
 
+### 3.5. Adding Changesets
+
+All PRs with meaningful changes should have a [changeset](https://github.com/changesets/changesets) which is a short
+description of the modifications being made to each package. Changesets are automatically converted into a changelog
+when the repo manager runs a release process.
+
+1. Run `yarn changeset` to start the process
+2. Select the packages being modified with the space key
+3. Select minor version if breaking change or patch otherwise, since we haven't release 1.0 yet
+4. Commit the generates files into your branch.
+
 ## 4. TroubleShooting
 
 ### Upgrading Libp2p
@@ -263,3 +275,9 @@ types would not pass verification in our Signer Sets
 4. Follow the [migration guide](https://github.com/libp2p/js-libp2p/tree/master/doc/migrations) for the versions you are upgrading to
 
 If you run into any unexpected issues open a discussion in the [libp2p forum](https://discuss.libp2p.io/). @achingbrain on the Filecoin slack maintains this project and can be helpful with major issues.
+
+### Releasing to NPM
+
+1. Use `npm adduser` to log into the account that can publish to @farcaster on npm
+2. Make a branch, run `yarn changeset version` and merge the changes into main
+3. Pull latest main, run `yarn changeset publish`
