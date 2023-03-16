@@ -1,4 +1,4 @@
-# @farcaster/js
+# @farcaster/hub-nodejs
 
 ## 0.3.0
 
@@ -119,7 +119,7 @@
 ### Patch Changes
 
 - fix: switch to 160-bit hash
-- c20daed: feat: add support for /subscribe gRPC method in @farcaster/js
+- c20daed: feat: add support for /subscribe gRPC method in @farcaster/hub-nodejs
 - 3b84ad2: chore: refactor functions in packages/\* to return HubResult
 - Updated dependencies
 - Updated dependencies [c20daed]

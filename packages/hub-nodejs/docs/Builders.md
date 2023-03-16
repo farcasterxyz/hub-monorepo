@@ -15,7 +15,7 @@ Before you can build messages, you'll need construct the following objects:
 A [Ed25519Signer](./signers/Ed25519Signer.md) is an EdDSA key pair which is necessary for signing most messages on behalf of an fid. This example below shows how to construct a new `Ed25519Signer` using the [@noble](https://paulmillr.com/noble/) library :
 
 ```typescript
-import { Ed25519Signer } from '@farcaster/js';
+import { Ed25519Signer } from '@farcaster/hub-nodejs';
 import * as ed from '@noble/ed25519';
 
 const privateKey = ed.utils.randomPrivateKey(); // Applications must store this key securely.
@@ -28,7 +28,7 @@ const ed25519Signer = Ed25519Signer.fromPrivateKey(privateKey)._unsafeUnwrap();
 An Eip712Signer is an ECDSA key pair which is necessary signing for some messages like `SignerAdds` and `Verifications`. This example shows how to construct an `Eip712Signer` from a wallet's recovery phrase:
 
 ```typescript
-import { Eip712Signer } from '@farcaster/js';
+import { Eip712Signer } from '@farcaster/hub-nodejs';
 import { ethers } from 'ethers';
 
 const mnemonic = 'your mnemonic apple orange banana ...';
@@ -42,7 +42,7 @@ const eip712Signer = Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwr
 A DataOptions object tells the factory some metadata about the message. This example shows how to create the `dataOptions` object to pass to the Factory:
 
 ```typescript
-import { FarcasterNetwork } from '@farcaster/js';
+import { FarcasterNetwork } from '@farcaster/hub-nodejs';
 
 const dataOptions = {
   fid: -9999, // Set to the fid of the user creating the message
@@ -71,7 +71,7 @@ Returns a message which authorizes a new Ed25519 Signer to create messages on be
 #### Usage
 
 ```typescript
-import { makeSignerAdd } from '@farcaster/js';
+import { makeSignerAdd } from '@farcaster/hub-nodejs';
 
 const signerAdd = await makeSignerAdd({ signer: ed25519Signer.signerKey, name: 'foo' }, dataOptions, eip712Signer);
 ```
@@ -99,7 +99,7 @@ Returns a message which revokes a previously authorized Ed25519 Signer.
 #### Usage
 
 ```typescript
-import { makeSignerRemove } from '@farcaster/js';
+import { makeSignerRemove } from '@farcaster/hub-nodejs';
 
 const signerRemove = await makeSignerRemove({ signer: ed25519Signer.signerKey }, dataOptions, eip712Signer);
 ```
@@ -127,7 +127,7 @@ Returns a message that adds a new Cast.
 #### Usage
 
 ```typescript
-import { makeCastAdd, types } from '@farcaster/js';
+import { makeCastAdd, types } from '@farcaster/hub-nodejs';
 
 const cast = await makeCastAdd(
   { text: 'hello world', embeds: ['http://www.farcaster.xyz'], mentions: [], mentionsPositions: [] },
@@ -159,7 +159,7 @@ Returns a message that removes an existing Cast.
 #### Usage
 
 ```typescript
-import { makeCastRemove } from '@farcaster/js';
+import { makeCastRemove } from '@farcaster/hub-nodejs';
 
 const targetHashHex = '006f082f70dfb2de81e7852f3b79f1cdf2aa6b86'; // Hash of the Cast being deleted as a hex string
 const targetHashBytes = new Uint8Array(Buffer.from(targetHashHex, 'hex')); //  Hash of the Cast being deleted as bytes
@@ -196,7 +196,7 @@ Returns a message that adds a Reaction to an existing Cast.
 #### Usage
 
 ```typescript
-import { makeReactionAdd, ReactionType } from '@farcaster/js';
+import { makeReactionAdd, ReactionType } from '@farcaster/hub-nodejs';
 
 const targetHashHex = '006f082f70dfb2de81e7852f3b79f1cdf2aa6b86'; // Hash of the Cast being deleted as a hex string
 const targetHashBytes = new Uint8Array(Buffer.from(targetHashHex, 'hex')); //  Hash of the Cast being deleted as bytes
@@ -235,7 +235,7 @@ Returns a message that removes an existing Reaction to an existing Cast.
 #### Usage
 
 ```typescript
-import { makeReactionRemove, ReactionType } from '@farcaster/js';
+import { makeReactionRemove, ReactionType } from '@farcaster/hub-nodejs';
 
 const targetHashHex = '006f082f70dfb2de81e7852f3b79f1cdf2aa6b86'; // Hash of the Cast being deleted as a hex string
 const targetHashBytes = new Uint8Array(Buffer.from(targetHashHex, 'hex')); //  Hash of the Cast being deleted as bytes
@@ -274,7 +274,7 @@ Returns a message that updates metadata about the user.
 #### Usage
 
 ```typescript
-import { makeUserDataAdd, UserDataType } from '@farcaster/js';
+import { makeUserDataAdd, UserDataType } from '@farcaster/hub-nodejs';
 
 const userDataPfpBody = {
   type: UserDataType.PFP,
@@ -308,7 +308,7 @@ Returns a message that proves that a user owns an Ethereum address.
 #### Usage
 
 ```typescript
-import { makeVerificationAddEthAddress, types } from '@farcaster/js';
+import { makeVerificationAddEthAddress, types } from '@farcaster/hub-nodejs';
 
 const claimBody = {
   fid: -1, // fid of the user
@@ -352,7 +352,7 @@ Returns a message that removes a previously added Verification.
 #### Usage
 
 ```typescript
-import { makeVerificationRemove } from '@farcaster/js';
+import { makeVerificationRemove } from '@farcaster/hub-nodejs';
 
 const verificationRemoveBody = {
   address: '0x1234', // Ethereum Address of Verification to remove

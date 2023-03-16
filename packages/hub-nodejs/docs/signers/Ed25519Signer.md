@@ -17,7 +17,7 @@ An Ed25519Signer is initialized with an Ed25519 key pair and can be used with [B
 #### Usage
 
 ```typescript
-import { Ed25519Signer } from '@farcaster/js';
+import { Ed25519Signer } from '@farcaster/hub-nodejs';
 import * as ed from '@noble/ed25519';
 
 const privateKeyBytes = ed.utils.randomPrivateKey();
@@ -47,7 +47,7 @@ Creates an Ed25519 signer from a private key.
 #### Usage
 
 ```typescript
-import { Ed25519Signer } from '@farcaster/js';
+import { Ed25519Signer } from '@farcaster/hub-nodejs';
 import * as ed from '@noble/ed25519';
 
 const privateKeyBytes = ed.utils.randomPrivateKey();
@@ -77,7 +77,7 @@ Generates a 256-bit signature using from EdDSA key pair.
 #### Usage
 
 ```typescript
-import { Ed25519Signer } from '@farcaster/js';
+import { Ed25519Signer } from '@farcaster/hub-nodejs';
 import { randomBytes } from 'crypto';
 import * as ed from '@noble/ed25519';
 
@@ -111,7 +111,7 @@ Generates a 256-bit hex signature from an EdDSA key pair for a given message has
 #### Usage
 
 ```typescript
-import { Ed25519Signer } from '@farcaster/js';
+import { Ed25519Signer } from '@farcaster/hub-nodejs';
 import { randomBytes } from 'crypto';
 import * as ed from '@noble/ed25519';
 

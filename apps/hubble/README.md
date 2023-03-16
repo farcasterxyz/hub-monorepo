@@ -29,7 +29,7 @@ Hubble can be run on cloud servers with 2 vCPUs, 8 GiB RAM and 15 GiB of SSD sto
 
 Hubble exposes [gRPC](https://grpc.io/) API's and uses [Protobufs](https://github.com/protocolbuffers/protobuf) for data serialization. SDK's are available in multiple languages to interact with Hubble API's:
 
-- [Javascript / Typescript](../../packages/js/)
+- [Javascript / Typescript](../../packages/hub-nodejs/)
 - Golang (planned)
 
 If an SDK is not available in your language, you can use the definitions in the [protobufs package](../../packages/protobufs/) to auto-generate bindings.

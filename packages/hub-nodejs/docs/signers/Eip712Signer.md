@@ -17,7 +17,7 @@ An Eip712Signer is initialized with an Ethereum wallet and can be used with [Bui
 ### Usage
 
 ```typescript
-import { Eip712Signer } from '@farcaster/js';
+import { Eip712Signer } from '@farcaster/hub-nodejs';
 import { ethers } from 'ethers';
 
 const custodyWallet = ethers.Wallet.fromMnemonic('your mnemonic here apple orange banana');
@@ -41,7 +41,7 @@ Creates an instance of Eip712Signer from an ethers TypedDataSigner (Wallet) and 
 #### Usage
 
 ```typescript
-import { Eip712Signer } from '@farcaster/js';
+import { Eip712Signer } from '@farcaster/hub-nodejs';
 import { ethers } from 'ethers';
 
 const custodyWallet = ethers.Wallet.fromMnemonic('your mnemonic here apple orange banana');
@@ -157,7 +157,7 @@ Generates a 256-bit signature for a VerificationClaim and returns the hex string
 #### Usage
 
 ```typescript
-import { types } from '@farcaster/js';
+import { types } from '@farcaster/hub-nodejs';
 
 const claimBody = {
   fid: -1,
