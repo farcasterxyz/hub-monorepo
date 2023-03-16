@@ -47,7 +47,7 @@ import { Client } from '@farcaster/js';
 
 ## Contributing
 
-Please see our [contributing guidelines](../../../CONTRIBUTING.md) before making a pull request.
+Please see our [contributing guidelines](../../CONTRIBUTING.md) before making a pull request.
 
 ## License
 
