@@ -280,8 +280,8 @@ class SignerStore {
         },
         { timeout: MERGE_TIMEOUT_DEFAULT }
       )
-      .catch((e: any) => {
-        throw isHubError(e) ? e : new HubError('unavailable.storage_failure', 'merge timed out');
+      .catch((e: Error) => {
+        throw isHubError(e) ? e : new HubError('unavailable.storage_failure', e.message);
       });
   }
 

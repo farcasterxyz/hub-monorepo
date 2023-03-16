@@ -12,6 +12,11 @@ import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { MessagesPage, PageOptions } from '~/storage/stores/types';
 import UserDataStore from '~/storage/stores/userDataStore';
 import VerificationStore from '~/storage/stores/verificationStore';
+import { logger } from '~/utils/logger';
+
+const log = logger.child({
+  component: 'Engine',
+});
 
 class Engine {
   public eventHandler: StoreEventHandler;
@@ -101,11 +106,33 @@ class Engine {
   }
 
   async pruneMessages(fid: number): HubAsyncResult<void> {
-    await this._castStore.pruneMessages(fid);
-    await this._reactionStore.pruneMessages(fid);
-    await this._verificationStore.pruneMessages(fid);
-    await this._userDataStore.pruneMessages(fid);
-    await this._signerStore.pruneMessages(fid);
+    const logPruneResult = (result: HubResult<number[]>, store: string): void => {
+      result.match(
+        (ids) => {
+          if (ids.length > 0) {
+            log.info(`Pruned ${ids.length} ${store} messages for fid ${fid}`);
+          }
+        },
+        (e) => {
+          log.error(`Error pruning ${store} messages for fid ${fid}`, e);
+        }
+      );
+    };
+
+    const castResult = await this._castStore.pruneMessages(fid);
+    logPruneResult(castResult, 'cast');
+
+    const reactionResult = await this._reactionStore.pruneMessages(fid);
+    logPruneResult(reactionResult, 'reaction');
+
+    const verificationResult = await this._verificationStore.pruneMessages(fid);
+    logPruneResult(verificationResult, 'verification');
+
+    const userDataResult = await this._userDataStore.pruneMessages(fid);
+    logPruneResult(userDataResult, 'user data');
+
+    const signerResult = await this._signerStore.pruneMessages(fid);
+    logPruneResult(signerResult, 'signer');
 
     return ok(undefined);
   }
