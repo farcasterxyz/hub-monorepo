@@ -22,7 +22,7 @@ import {
   makeSignerAdd,
   makeUserDataAdd,
   types,
-} from '@farcaster/js';
+} from '@farcaster/hub-nodejs';
 import * as ed from '@noble/ed25519';
 import { ethers } from 'ethers';
 import * as ed from '@noble/ed25519';

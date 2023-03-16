@@ -18,7 +18,7 @@ Returns a Hub RPC Client, defaulting to an SSL connection if supported.
 #### Usage
 
 ```typescript
-import { getHubRpcClient } from '@farcaster/js';
+import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:8080');
@@ -122,7 +122,7 @@ Returns all active signers created by an fid in reverse chronological order.
 #### Usage
 
 ```typescript
-import { getHubRpcClient } from '@farcaster/js';
+import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:8080');
@@ -154,7 +154,7 @@ Returns all active and inactive signers created by an fid in reverse chronologic
 #### Usage
 
 ```typescript
-import { getHubRpcClient } from '@farcaster/js';
+import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:8080');
@@ -241,7 +241,7 @@ Returns an active cast for a user.
 #### Usage
 
 ```typescript
-import { getHubRpcClient } from '@farcaster/js';
+import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:8080');
@@ -277,7 +277,7 @@ Returns active casts for a user in reverse chronological order.
 #### Usage
 
 ```typescript
-import { getHubRpcClient } from '@farcaster/js';
+import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:8080');
@@ -309,7 +309,7 @@ Returns all active casts that mention an fid in reverse chronological order.
 #### Usage
 
 ```typescript
-import { getHubRpcClient } from '@farcaster/js';
+import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:8080');
@@ -341,7 +341,7 @@ Returns all active casts that are replies to a specific cast in reverse chronolo
 #### Usage
 
 ```typescript
-import { getHubRpcClient } from '@farcaster/js';
+import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:8080');
@@ -376,7 +376,7 @@ Returns all active and inactive casts for a user in reverse chronological order.
 #### Usage
 
 ```typescript
-import { getHubRpcClient } from '@farcaster/js';
+import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:8080');
@@ -407,7 +407,7 @@ Returns an active reaction of a particular type made by a user to a cast.
 #### Usage
 
 ```typescript
-import { getHubRpcClient, ReactionType } from '@farcaster/js';
+import { getHubRpcClient, ReactionType } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:8080');
@@ -451,7 +451,7 @@ Returns all active reactions made by users to a cast.
 #### Usage
 
 ```typescript
-import { getHubRpcClient, ReactionType } from '@farcaster/js';
+import { getHubRpcClient, ReactionType } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:8080');
@@ -493,7 +493,7 @@ Returns all active reactions made by a user in reverse chronological order.
 #### Usage
 
 ```typescript
-import { getHubRpcClient, ReactionType } from '@farcaster/js';
+import { getHubRpcClient, ReactionType } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:8080');
@@ -526,7 +526,7 @@ Returns all active and inactive reactions made by a user in reverse chronologica
 #### Usage
 
 ```typescript
-import { getHubRpcClient } from '@farcaster/js';
+import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:8080');
@@ -631,7 +631,7 @@ Subscribe to a stream of HubEvents from the Hub which are returned as protobufs.
 #### Usage
 
 ```typescript
-import { ... } from '@farcaster/js';
+import { ... } from '@farcaster/hub-nodejs';
 
 const client = new Client(...)
 const result = await client.get...
@@ -658,7 +658,7 @@ Submits a new message to the Hub. Basic authentication may be required by the Hu
 #### Usage
 
 ```typescript
-import { getHubRpcClient } from '@farcaster/js';
+import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:8080');
@@ -693,7 +693,7 @@ Returns the on-chain event most recently associated with changing an fid's owner
 #### Usage
 
 ```typescript
-import { getHubRpcClient } from '@farcaster/js';
+import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:8080');
@@ -725,7 +725,7 @@ Returns the on-chain event most recently associated with changing an fname's own
 #### Usage
 
 ```typescript
-import { getHubRpcClient } from '@farcaster/js';
+import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:8080');

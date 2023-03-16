@@ -1,4 +1,4 @@
-# farcaster.js
+# @farcaster/hub-nodejs
 
 A lightweight, fast Typescript interface for Farcaster Hubs. Designed to work with [Hubble](https://github.com/farcasterxyz/hubble/) and any other Hub that implements the [Farcaster protocol](https://github.com/farcasterxyz/protocol).
 
@@ -13,12 +13,12 @@ Read the [documentation](./docs/README.md), see more [examples](./examples/) or 
 
 ## Installation
 
-Install @farcaster/js with the package manager of your choice
+Install @farcaster/hub-nodejs with the package manager of your choice
 
 ```bash
-npm install @farcaster/js
-yarn add @farcaster/js
-pnpm install @farcaster/js
+npm install @farcaster/hub-nodejs
+yarn add @farcaster/hub-nodejs
+pnpm install @farcaster/hub-nodejs
 ```
 
 ## Quickstart
@@ -26,7 +26,7 @@ pnpm install @farcaster/js
 ### Fetching Data from Hubs
 
 ```typescript
-import { getHubRpcClient, isCastAddMessage } from '@farcaster/js';
+import { getHubRpcClient, isCastAddMessage } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:8080');

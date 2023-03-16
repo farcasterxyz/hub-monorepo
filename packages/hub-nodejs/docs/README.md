@@ -1,6 +1,6 @@
 # Documentation
 
-@farcaster/js has four major components:
+@farcaster/hub-nodejs has four major components:
 
 - A [Client](./Client.md), which can send and receive messages from a Farcaster Hub.
 - [Messages](./Messages.md), which are the atomic units of change on the Farcaster network.
@@ -37,8 +37,8 @@ const bytesString = new Uint8Array(Buffer.from(hexString, 'hex'));
 
 ### Error Handling
 
-Error handling in @farcaster/js is monadic and functions do not throw exceptions. Each function call returns a Result object which contains a success value or error value. Read the [neverthrow](https://github.com/supermacro/neverthrow/blob/master/README.md) documentation to learn about handling Result types.
+Error handling in @farcaster/hub-nodejs is monadic and functions do not throw exceptions. Each function call returns a Result object which contains a success value or error value. Read the [neverthrow](https://github.com/supermacro/neverthrow/blob/master/README.md) documentation to learn about handling Result types.
 
 ### Environments
 
-@farcaster/js only works inside a NodeJS environment. Browser support is a [work in progress](https://github.com/farcasterxyz/hubble/issues/573).
+@farcaster/hub-nodejs only works inside a NodeJS environment. Browser support is a [work in progress](https://github.com/farcasterxyz/hubble/issues/573).
