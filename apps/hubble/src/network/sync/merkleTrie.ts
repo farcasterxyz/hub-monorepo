@@ -6,7 +6,7 @@ import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
 
-const TRIE_UNLOAD_THRESHOLD = 10_000;
+const TRIE_UNLOAD_THRESHOLD = 25_000;
 
 /**
  * Represents a node in the trie, and it's immediate children
