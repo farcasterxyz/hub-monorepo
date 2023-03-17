@@ -1,4 +1,4 @@
-# @farcaster/protobufs
+# @farcaster/rpc
 
 ## 0.1.8
 
