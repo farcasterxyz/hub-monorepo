@@ -1,5 +1,5 @@
-import * as hubEventProtobufs from './generated/hub_event';
-import * as protobufs from './generated/message';
+import * as hubEventProtobufs from './generated/messages/hub_event';
+import * as protobufs from './generated/messages/message';
 import * as types from './types';
 
 /** Message typeguards */

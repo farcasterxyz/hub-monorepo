@@ -16,18 +16,11 @@
   ],
   "license": "MIT",
   "scripts": {
-    "build": "tsup --config tsup.config.ts",
+    "build": "cp -R ../rpc/src/generated/messages/ src/messages/ && tsup --config tsup.config.ts",
     "clean": "rimraf ./dist",
-    "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/generated/ --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputServices=grpc-js,useOptionals=none,unrecognizedEnum=false,removeEnumPrefix=true --proto_path=./src/schemas src/schemas/**/*",
+    "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./generated/ --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputServices=grpc-js,useOptionals=none,unrecognizedEnum=false,removeEnumPrefix=true --proto_path=./schemas schemas/**/*",
     "lint": "eslint  src/ --color --ext .ts",
     "lint:fix": "yarn run lint -- --fix",
     "prepublishOnly": "yarn run build"
-  },
-  "devDependencies": {
-    "eslint-config-custom": "*",
-    "ts-proto": "^1.140.0"
-  },
-  "dependencies": {
-    "@grpc/grpc-js": "^1.8.7"
   }
 }

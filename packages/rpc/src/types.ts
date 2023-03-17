@@ -1,7 +1,7 @@
-import { IdRegistryEvent } from 'generated/id_registry_event';
-import { NameRegistryEvent } from 'generated/name_registry_event';
-import * as hubEventProtobufs from './generated/hub_event';
-import * as protobufs from './generated/message';
+import { IdRegistryEvent } from 'generated/messages/id_registry_event';
+import { NameRegistryEvent } from 'generated/messages/name_registry_event';
+import * as hubEventProtobufs from './generated/messages/hub_event';
+import * as protobufs from './generated/messages/message';
 
 /** Message types */
 
