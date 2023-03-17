@@ -1,4 +1,4 @@
-# @farcaster/protobufs
+# @farcaster/rpc
 
 Specifications for API's and data formats used in Hubble, including both Farcaster protocol types and Hubble specific types.
 
