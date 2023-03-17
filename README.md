@@ -2,6 +2,8 @@
 
 Hubble is a Typescript implementation of a [Farcaster Hub](https://github.com/farcasterxyz/protocol#4-hubs).
 
+![Hubble](./images/hubble.webp | width=512)
+
 ## Getting Started
 
 Hubble is organized as a monorepo with a stand-alone Hubble application, a library to interact with Hubble and shared utility packages.
