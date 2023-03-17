@@ -31,7 +31,7 @@ An Eip712Signer is an ECDSA key pair which is necessary signing for some message
 import { Eip712Signer } from '@farcaster/hub-nodejs';
 import { ethers } from 'ethers';
 
-const mnemonic = 'your mnemonic apple orange banana ...';
+const mnemonic = 'ordinary long coach bounce thank quit become youth belt pretty diet caught attract melt bargain';
 const wallet = ethers.Wallet.fromMnemonic(mnemonic);
 
 const eip712Signer = Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwrap();
@@ -45,8 +45,8 @@ A DataOptions object tells the factory some metadata about the message. This exa
 import { FarcasterNetwork } from '@farcaster/hub-nodejs';
 
 const dataOptions = {
-  fid: -9999, // Set to the fid of the user creating the message
-  network: types.FarcasterNetwork.DEVNET, // Set to the network that the message is broadcast to.
+  fid: 1, // Set to the fid of the user creating the message
+  network: FarcasterNetwork.DEVNET, // Set to the network that the message is broadcast to.
 };
 ```
 
@@ -84,11 +84,11 @@ const signerAdd = await makeSignerAdd({ signer: ed25519Signer.signerKey, name: '
 
 #### Parameters
 
-| Name          | Type                                     | Description                                                                |
-| :------------ | :--------------------------------------- | :------------------------------------------------------------------------- |
-| `body`        | [`SignerBody`](./Messages.md#signerbody) | A valid VerificationAddEd25519 body object containing the data to be sent. |
-| `dataOptions` | `MessageDataOptions`                     | Optional arguments to construct the message.                               |
-| `signer`      | `Eip712Signer`                           | An Eip712Signer generated from the user's custody address.                 |
+| Name          | Type                                           | Description                                                                |
+| :------------ | :--------------------------------------------- | :------------------------------------------------------------------------- |
+| `body`        | [`SignerAddBody`](./Messages.md#signeraddbody) | A valid VerificationAddEd25519 body object containing the data to be sent. |
+| `dataOptions` | `MessageDataOptions`                           | Optional arguments to construct the message.                               |
+| `signer`      | `Eip712Signer`                                 | An Eip712Signer generated from the user's custody address.                 |
 
 ---
 
@@ -112,11 +112,11 @@ const signerRemove = await makeSignerRemove({ signer: ed25519Signer.signerKey },
 
 #### Parameters
 
-| Name          | Type                                     | Description                                                      |
-| :------------ | :--------------------------------------- | :--------------------------------------------------------------- |
-| `body`        | [`SignerBody`](./Messages.md#signerbody) | A valid SignerRemove body object containing the data to be sent. |
-| `dataOptions` | `MessageDataOptions`                     | Optional metadata to construct the message.                      |
-| `signer`      | `Eip712Signer`                           | An Eip712Signer generated from the user's custody address.       |
+| Name          | Type                                                 | Description                                                      |
+| :------------ | :--------------------------------------------------- | :--------------------------------------------------------------- |
+| `body`        | [`SignerRemoveBody`](./Messages.md#signerremovebody) | A valid SignerRemove body object containing the data to be sent. |
+| `dataOptions` | `MessageDataOptions`                                 | Optional metadata to construct the message.                      |
+| `signer`      | `Eip712Signer`                                       | An Eip712Signer generated from the user's custody address.       |
 
 ---
 
@@ -308,25 +308,36 @@ Returns a message that proves that a user owns an Ethereum address.
 #### Usage
 
 ```typescript
-import { makeVerificationAddEthAddress, types } from '@farcaster/hub-nodejs';
+import {
+  FarcasterNetwork,
+  hexStringToBytes,
+  makeVerificationAddEthAddress,
+  makeVerificationEthAddressClaim,
+} from '@farcaster/hub-nodejs';
 
-const claimBody = {
-  fid: -1, // fid of the user
-  address: eip712Signer.signerKeyHex, // ethereum address that owns the fid
-  network: types.FarcasterNetwork.DEVNET,
-  blockHash: '2c87468704d6b0f4c46f480dc54251de...', // block at which this claim is being made
-};
+const addressBytes = eip712Signer.signerKey;
+const blockHashHex = '0x1d3b0456c920eb503450c7efdcf9b5cf1f5184bf04e5d8ecbcead188a0d02018';
+const blockHashBytes = hexStringToBytes(blockHashHex)._unsafeUnwrap();
 
-const ethSigResult = await eip712Signer.signVerificationEthAddressClaimHex(claimBody);
-const ethSig = ethSignResult._unsafeUnwrap();
+const claimResult = makeVerificationEthAddressClaim(1, addressBytes, FarcasterNetwork.DEVNET, blockHashBytes);
 
-const verificationBody = {
-  address: eip712Signer.signerKeyHex, // address of the user's signer
-  signature: ethSig,
-  blockHash: '2c87468704d6b0f4c46f480dc54251de...', // block hash at which the claim is being made
-};
+if (claimResult.isOk()) {
+  const claim = claimResult.value;
 
-const verificationMessage = await makeVerificationAddEthAddress(verificationBody, dataOptions, ed25519Signer);
+  // Sign the claim
+  const ethSignResult = await eip712Signer.signVerificationEthAddressClaim(claim);
+  const ethSignature = ethSignResult._unsafeUnwrap();
+
+  // Construct a Verification Add Message with the claim signature
+  const verificationBody = {
+    address: addressBytes,
+    ethSignature,
+    blockHash: blockHashBytes,
+  };
+
+  const verificationMessage = await makeVerificationAddEthAddress(verificationBody, dataOptions, ed25519Signer);
+  console.log(verificationMessage);
+}
 ```
 
 #### Returns

@@ -4,7 +4,7 @@ A Farcaster Message represents an action taken by a user.
 
 Messages are atomic updates that add or remove content from the network. For example, a user can make a new cast by generating a `CastAdd` message and remove it with a `CastRemove` message. See the [protocol spec](https://github.com/farcasterxyz/protocol#3-delta-graph) for more information on how messages work.
 
-Messages are protobufs which are converted by @farcaster/hub-nodejs converts into the Typescript types documented below. Each message is signed by a key pair that is provably controlled by the user. Some messages must be signed by the Ethereum address that controls the user's fid on-chain while other messages must be signed by an EdDSA key pair known as a Signer, which is authorized to act on behalf of the Ethereum address. The protocol specification defines the message types as:
+Messages are [protobufs](https://protobuf.dev/) which are converted by @farcaster/hub-nodejs into the Typescript types documented below. Each message is signed by a key pair that is provably controlled by the user. Some messages must be signed by the Ethereum address that controls the user's fid on-chain while other messages must be signed by an EdDSA key pair known as a Signer, which is authorized to act on behalf of the Ethereum address. The protocol specification defines the message types as:
 
 | Message                   | Action                                                              |
 | ------------------------- | ------------------------------------------------------------------- |
@@ -15,7 +15,7 @@ Messages are protobufs which are converted by @farcaster/hub-nodejs converts int
 | CastRemove                | Remove an existing cast                                             |
 | ReactionAdd               | Add a Reaction to an existing item (e.g. like a cast)               |
 | ReactionRemove            | Remove an existing Reaction from an existing item                   |
-| VerificationEthAddressAdd | Add a signed message verifying that a user owns an Ethereum address |
+| VerificationAddEthAddress | Add a signed message verifying that a user owns an Ethereum address |
 | VerificationRemove        | Remove a previously added verification message                      |
 
 ## Message\<Data>
@@ -25,41 +25,47 @@ A generic container which holds the contents of the message(`MessageData`) and m
 | Name              | Type                                  | Description                                       |
 | :---------------- | :------------------------------------ | :------------------------------------------------ |
 | `data`            | [`MessageData`](#messagedata)         | Contents of the message                           |
-| `hash`            | `string`                              | Hash digest of data                               |
+| `hash`            | `Uint8Array`                          | Hash digest of data                               |
 | `hashScheme`      | [`HashScheme`](#hashscheme)           | Hash scheme that produced the hash digest         |
-| `signature`       | `string`                              | Signature of the hash digest                      |
+| `signature`       | `Uint8Array`                          | Signature of the hash digest                      |
 | `signatureScheme` | [`SignatureScheme`](#signaturescheme) | Signature scheme that produced the signature      |
-| `signer`          | `string`                              | Public key or address that produced the signature |
+| `signer`          | `Uint8Array`                          | Public key or address that produced the signature |
 
 ## MessageData\<Body,Type>
 
-A generic container which holds common properties and properties specific to the message instance (`MessageType`, `MessageBody`).
+A container which holds common properties like `fid`, `network`, `timestamp` and `type` along with properties specific to the type.
 
-| Name        | Type                                    | Description                                    |
-| :---------- | :-------------------------------------- | ---------------------------------------------- |
-| `body`      | [`MessageBody`](#messagebody)           | Properties specific to the MessageType         |
-| `fid`       | `number`                                | Farcaster ID of the user producing the message |
-| `network`   | [`FarcasterNetwork`](#farcasternetwork) | Farcaster network the message is intended for  |
-| `timestamp` | `number`                                | Farcaster epoch timestamp in seconds           |
-| `type`      | [`MessageType`](#messagetype)           | Type of Message contained in the body          |
+Due to a quirk of how gRPC compiles types to TypeScript, MessageData has many optional body containers (e.g. signerAddBody) with an implicit guarantee that one specific body will be present for a given type value.
 
-## MessageBody
+| Name                             | Type                                                              | Description                                        |
+| :------------------------------- | :---------------------------------------------------------------- | -------------------------------------------------- |
+| `fid`                            | `number`                                                          | Farcaster ID of the user producing the message     |
+| `network`                        | [`FarcasterNetwork`](#farcasternetwork)                           | Farcaster network the message is intended for      |
+| `timestamp`                      | `number`                                                          | Farcaster epoch timestamp in seconds               |
+| `type`                           | [`MessageType`](#messagetype)                                     | Type of Message contained in the body              |
+| `signerAddBody?`                 | [`SignerAddBody`](#signeraddbody)                                 | Present if type is SIGNER_ADD                      |
+| `signerRemoveBody?`              | [`SignerRemoveBody`](#signerremovebody)                           | Present if type is SIGNER_REMOVE                   |
+| `userDataBody?`                  | [`UserDataBody`](#userdatabody)                                   | Present if type is USER_DATA_ADD                   |
+| `castAddBody?`                   | [`CastAddBody`](#castaddbody)                                     | Present if type is CAST_ADD                        |
+| `castRemoveBody?`                | [`CastRemoveBody`](#messagebody)                                  | Present if type is CAST_REMOVE                     |
+| `reactionBody?`                  | [`MessageBody`](#castremovebody)                                  | Present if type is REACTION_ADD or REACTION_REMOVE |
+| `verificationAddEthAddressBody?` | [`VerificationAddEthAddressBody`](#verificationaddethaddressbody) | Present if type is VERIFICATION_ADD_ETH_ADDRESS    |
+| `verificationRemoveBody?`        | [`VerificationRemoveBody`](#verificationremovebody)               | Present if type is VERIFICATION_REMOVE             |
 
-A composite type which holds properties unique to the type of the message (`MessageType`).
+### SignerAddBody
 
-Some `MessageBody` types map to multiple `MessageTypes` since the only difference is the type of the operation. For instance, both ReactionBody maps to both ReactionAdd and ReactionRemove. The type value must be one of: [`SignerBody`](#signerbody) \| [`UserDataBody`](#userdatabody) \| [`CastAddBody`](#castaddbody) \| [`CastRemoveBody`](#castremovebody) \| [`ReactionBody`](#reactionbody) \| [`VerificationAddEthAddressBody`](#verificationaddethaddressbody) \| [`VerificationRemoveBody`](#verificationremovebody)
+| Name     | Type                  | Description                         |
+| :------- | :-------------------- | :---------------------------------- |
+| `signer` | `Uint8Array`          | Public key of the Ed25519 key pair  |
+| `name?`  | `string \| undefined` | Human-readable label for the signer |
 
-### SignerBody
+### SignerRemoveBody
 
-Body of a `MESSAGE_TYPE_SIGNER_ADD` or `MESSAGE_TYPE_SIGNER_REMOVE`
-
-| Name     | Type     | Description                        |
-| :------- | :------- | :--------------------------------- |
-| `signer` | `string` | Public key of the Ed25519 key pair |
+| Name     | Type         | Description                        |
+| :------- | :----------- | :--------------------------------- |
+| `signer` | `Uint8Array` | Public key of the Ed25519 key pair |
 
 ### UserDataBody
-
-Body of a `MESSAGE_TYPE_USER_DATA_ADD`
 
 | Name    | Type                            |
 | :------ | :------------------------------ |
@@ -67,8 +73,6 @@ Body of a `MESSAGE_TYPE_USER_DATA_ADD`
 | `value` | `string`                        |
 
 ### CastAddBody
-
-Body of a `MESSAGE_TYPE_CAST_ADD`
 
 | Name                 | Type                | Description                           |
 | :------------------- | :------------------ | ------------------------------------- |
@@ -80,15 +84,11 @@ Body of a `MESSAGE_TYPE_CAST_ADD`
 
 ### CastRemoveBody
 
-Body of a `MESSAGE_TYPE_CAST_REMOVE`
-
 | Name         | Type     | Description                |
 | :----------- | :------- | :------------------------- |
 | `targetHash` | `string` | Hash of the cast to remove |
 
 ### ReactionBody
-
-Body of `MESSAGE_TYPE_REACTION_ADD` or `MESSAGE_TYPE_REACTION_REMOVE`
 
 | Name     | Type               |
 | :------- | :----------------- |
@@ -97,21 +97,17 @@ Body of `MESSAGE_TYPE_REACTION_ADD` or `MESSAGE_TYPE_REACTION_REMOVE`
 
 ### VerificationAddEthAddressBody
 
-Body of `MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS`
-
-| Name           | Type     | Description                                                   |
-| :------------- | :------- | ------------------------------------------------------------- |
-| `address`      | `string` | Ethereum address being verified                               |
-| `blockHash`    | `string` | Hash of the latest Ethereum block when the claim was produced |
-| `ethSignature` | `string` | Signature of a valid [VerificationEthAddressClaim]() hash     |
+| Name           | Type         | Description                                                   |
+| :------------- | :----------- | ------------------------------------------------------------- |
+| `address`      | `Uint8Array` | Ethereum address being verified                               |
+| `blockHash`    | `Uint8Array` | Hash of the latest Ethereum block when the claim was produced |
+| `ethSignature` | `Uint8Array` | Signature of a valid [VerificationEthAddressClaim]() hash     |
 
 ### VerificationRemoveBody
 
-Body of `MESSAGE_TYPE_VERIFICATION_REMOVE`
-
-| Name      | Type     | Description                           |
-| :-------- | :------- | ------------------------------------- |
-| `address` | `string` | Address of the Verification to remove |
+| Name      | Type         | Description                           |
+| :-------- | :----------- | ------------------------------------- |
+| `address` | `Uint8Array` | Address of the Verification to remove |
 
 ## Enumerations
 
