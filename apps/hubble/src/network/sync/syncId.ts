@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
 import { makeMessagePrimaryKey, typeToSetPostfix } from '~/storage/db/message';
 import { FID_BYTES, HASH_LENGTH } from '~/storage/db/types';
 

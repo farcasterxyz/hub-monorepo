@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
 import { Ed25519Signer, Factories, getInsecureHubRpcClient, HubRpcClient } from '@farcaster/utils';
 import { APP_NICKNAME, APP_VERSION } from '~/hubble';
 import SyncEngine from '~/network/sync/syncEngine';

@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
 import { bytesToUtf8String, hexStringToBytes, HubAsyncResult, HubError, toFarcasterTime } from '@farcaster/utils';
 import { BigNumber, Contract, Event, providers } from 'ethers';
 import { err, ok, Result, ResultAsync } from 'neverthrow';

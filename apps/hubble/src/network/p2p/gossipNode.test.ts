@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
 import { Factories, getInsecureHubRpcClient, HubRpcClient } from '@farcaster/utils';
 import { multiaddr } from '@multiformats/multiaddr/';
 import { GossipNode } from '~/network/p2p/gossipNode';

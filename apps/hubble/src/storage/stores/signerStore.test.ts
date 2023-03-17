@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
 import { bytesDecrement, bytesIncrement, Factories, getFarcasterTime, HubError } from '@farcaster/utils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { getAllMessagesBySigner, getMessage, makeFidKey, makeTsHash } from '~/storage/db/message';

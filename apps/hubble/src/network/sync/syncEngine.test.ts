@@ -1,7 +1,7 @@
 /* eslint-disable security/detect-non-literal-fs-filename */
 
-import * as protobufs from '@farcaster/protobufs';
-import { FarcasterNetwork } from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
+import { FarcasterNetwork } from '@farcaster/rpc';
 import { Factories, getFarcasterTime, HubRpcClient } from '@farcaster/utils';
 import { ok } from 'neverthrow';
 import { anything, instance, mock, when } from 'ts-mockito';

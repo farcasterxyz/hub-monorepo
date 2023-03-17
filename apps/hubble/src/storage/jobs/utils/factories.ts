@@ -1,4 +1,4 @@
-import { RevokeSignerJobPayload } from '@farcaster/protobufs';
+import { RevokeSignerJobPayload } from '@farcaster/rpc';
 import { Factories } from '@farcaster/utils';
 import { Factory } from 'fishery';
 

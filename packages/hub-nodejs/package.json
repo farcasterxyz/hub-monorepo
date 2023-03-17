@@ -16,7 +16,7 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@farcaster/protobufs": "0.1.8",
+    "@farcaster/rpc": "file:../../packages/rpc",
     "@farcaster/utils": "0.2.11",
     "@noble/hashes": "^1.2.0",
     "ethers": "^5.7.2",

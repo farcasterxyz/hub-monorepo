@@ -1,4 +1,4 @@
-import { GossipAddressInfo } from '@farcaster/protobufs';
+import { GossipAddressInfo } from '@farcaster/rpc';
 import { HubAsyncResult, HubError, HubResult } from '@farcaster/utils';
 import { Multiaddr, NodeAddress, multiaddr } from '@multiformats/multiaddr';
 import { get } from 'http';

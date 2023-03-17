@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
 import { AdminRpcClient, Factories, HubRpcClient, toFarcasterTime } from '@farcaster/utils';
 import { ConsoleCommandInterface } from './console';
 

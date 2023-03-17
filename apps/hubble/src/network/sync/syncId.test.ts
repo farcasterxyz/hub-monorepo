@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
 import { Factories } from '@farcaster/utils';
 import { SyncId } from './syncId';
 

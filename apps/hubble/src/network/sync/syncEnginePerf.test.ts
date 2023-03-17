@@ -1,7 +1,7 @@
 // eslint-disable-file security/detect-non-literal-fs-filename
 
-import * as protobufs from '@farcaster/protobufs';
-import { FarcasterNetwork } from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
+import { FarcasterNetwork } from '@farcaster/rpc';
 import { Factories, HubRpcClient } from '@farcaster/utils';
 import SyncEngine from '~/network/sync/syncEngine';
 import { jestRocksDB } from '~/storage/db/jestUtils';

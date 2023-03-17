@@ -1,5 +1,5 @@
 // eslint-disable-file security/detect-non-literal-fs-filename
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
 import { blake3 } from '@noble/hashes/blake3';
 import { MerkleTrie } from '~/network/sync/merkleTrie';
 import { NetworkFactories } from '~/network/utils/factories';

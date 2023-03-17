@@ -5,7 +5,7 @@ import { Writable } from 'node:stream';
 import Chance from 'chance';
 import { ok } from 'neverthrow';
 
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
 import { FARCASTER_EPOCH, HubResult, HubRpcClient } from '@farcaster/utils';
 import { MockRpcClient } from '~/network/sync/mock';
 import SyncEngine from '~/network/sync/syncEngine';

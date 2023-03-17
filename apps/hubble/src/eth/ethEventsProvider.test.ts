@@ -1,6 +1,6 @@
 import { Event } from '@ethersproject/contracts';
 import { BaseProvider, Block, TransactionReceipt, TransactionResponse } from '@ethersproject/providers';
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
 import { Factories, bytesToHexString, hexStringToBytes } from '@farcaster/utils';
 import { BigNumber, Contract, utils } from 'ethers';
 import { IdRegistry, NameRegistry } from '~/eth/abis';

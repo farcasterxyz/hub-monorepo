@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
 
 export const MERGE_TIMEOUT_DEFAULT = 10_000; // 10 seconds
 

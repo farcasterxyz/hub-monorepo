@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
 import { bytesToUtf8String, Factories, getInsecureHubRpcClient, HubError, HubRpcClient } from '@farcaster/utils';
 import { Ok } from 'neverthrow';
 import SyncEngine from '~/network/sync/syncEngine';

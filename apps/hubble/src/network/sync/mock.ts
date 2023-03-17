@@ -1,6 +1,6 @@
 import { ok } from 'neverthrow';
 
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
 import { HubResult } from '@farcaster/utils';
 
 import Engine from '~/storage/engine';

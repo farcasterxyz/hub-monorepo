@@ -1,4 +1,4 @@
-import { IdRegistryEvent, NameRegistryEvent } from '@farcaster/protobufs';
+import { IdRegistryEvent, NameRegistryEvent } from '@farcaster/rpc';
 import { HubError, bytesCompare, bytesIncrement } from '@farcaster/utils';
 
 type Event = IdRegistryEvent | NameRegistryEvent;

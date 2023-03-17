@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
 import { bytesCompare, HubError } from '@farcaster/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { assert } from 'console';

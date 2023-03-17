@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
 import { Factories, HubError, bytesDecrement, bytesIncrement, getFarcasterTime } from '@farcaster/utils';
 import { ok } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';

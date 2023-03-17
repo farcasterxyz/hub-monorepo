@@ -1,4 +1,4 @@
-import { MessageType } from '@farcaster/protobufs';
+import { MessageType } from '@farcaster/rpc';
 import { bytesCompare, Factories, HubError } from '@farcaster/utils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { TRUE_VALUE, UserPostfix } from '~/storage/db/types';

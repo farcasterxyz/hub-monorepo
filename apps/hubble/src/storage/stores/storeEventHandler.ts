@@ -14,7 +14,7 @@ import {
   NameRegistryEvent,
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
-} from '@farcaster/protobufs';
+} from '@farcaster/rpc';
 import { bytesIncrement, FARCASTER_EPOCH, HubAsyncResult, HubError, HubResult } from '@farcaster/utils';
 import { err, ok, ResultAsync } from 'neverthrow';
 import AbstractRocksDB from 'rocksdb';

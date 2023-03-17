@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
 import { bytesIncrement, HubAsyncResult, HubError, HubResult, validations } from '@farcaster/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { err, ok, ResultAsync } from 'neverthrow';

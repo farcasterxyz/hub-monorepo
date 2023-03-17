@@ -7,7 +7,7 @@ import {
   isRevokeMessageHubEvent,
   Message,
   NameRegistryEvent,
-} from '@farcaster/protobufs';
+} from '@farcaster/rpc';
 import { Factories } from '@farcaster/utils';
 import { ok } from 'neverthrow';
 import { jestRocksDB } from '../db/jestUtils';

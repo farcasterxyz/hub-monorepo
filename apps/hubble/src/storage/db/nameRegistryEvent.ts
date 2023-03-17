@@ -1,4 +1,4 @@
-import { NameRegistryEvent } from '@farcaster/protobufs';
+import { NameRegistryEvent } from '@farcaster/rpc';
 import AbstractRocksDB from 'rocksdb';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix } from '~/storage/db/types';
