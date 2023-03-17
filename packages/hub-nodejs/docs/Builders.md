@@ -308,25 +308,36 @@ Returns a message that proves that a user owns an Ethereum address.
 #### Usage
 
 ```typescript
-import { makeVerificationAddEthAddress, types } from '@farcaster/hub-nodejs';
+import {
+  FarcasterNetwork,
+  hexStringToBytes,
+  makeVerificationAddEthAddress,
+  makeVerificationEthAddressClaim,
+} from '@farcaster/hub-nodejs';
 
-const claimBody = {
-  fid: -1, // fid of the user
-  address: eip712Signer.signerKeyHex, // ethereum address that owns the fid
-  network: types.FarcasterNetwork.DEVNET,
-  blockHash: '2c87468704d6b0f4c46f480dc54251de...', // block at which this claim is being made
-};
+const addressBytes = eip712Signer.signerKey;
+const blockHashHex = '0x1d3b0456c920eb503450c7efdcf9b5cf1f5184bf04e5d8ecbcead188a0d02018';
+const blockHashBytes = hexStringToBytes(blockHashHex)._unsafeUnwrap();
 
-const ethSigResult = await eip712Signer.signVerificationEthAddressClaimHex(claimBody);
-const ethSig = ethSignResult._unsafeUnwrap();
+const claimResult = makeVerificationEthAddressClaim(1, addressBytes, FarcasterNetwork.DEVNET, blockHashBytes);
 
-const verificationBody = {
-  address: eip712Signer.signerKeyHex, // address of the user's signer
-  signature: ethSig,
-  blockHash: '2c87468704d6b0f4c46f480dc54251de...', // block hash at which the claim is being made
-};
+if (claimResult.isOk()) {
+  const claim = claimResult.value;
 
-const verificationMessage = await makeVerificationAddEthAddress(verificationBody, dataOptions, ed25519Signer);
+  // Sign the claim
+  const ethSignResult = await eip712Signer.signVerificationEthAddressClaim(claim);
+  const ethSignature = ethSignResult._unsafeUnwrap();
+
+  // Construct a Verification Add Message with the claim signature
+  const verificationBody = {
+    address: addressBytes,
+    ethSignature,
+    blockHash: blockHashBytes,
+  };
+
+  const verificationMessage = await makeVerificationAddEthAddress(verificationBody, dataOptions, ed25519Signer);
+  console.log(verificationMessage);
+}
 ```
 
 #### Returns
