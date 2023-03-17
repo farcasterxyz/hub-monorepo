@@ -3,6 +3,15 @@ import { AdminServiceClient, HubServiceClient } from './generated/rpc/service';
 
 export { Metadata, Server, ServerCredentials, status } from '@grpc/grpc-js';
 export type { CallOptions, Client, ClientReadableStream, ClientUnaryCall, ServiceError } from '@grpc/grpc-js';
+export * from './generated/messages/gossip';
+export * from './generated/messages/hub_event';
+export * from './generated/messages/hub_state';
+export * from './generated/messages/id_registry_event';
+export * from './generated/messages/job';
+export * from './generated/messages/message';
+export * from './generated/messages/name_registry_event';
+export * from './generated/messages/sync_trie';
+export * from './generated/rpc/service';
 export * from './typeguards';
 export * from './types';
 

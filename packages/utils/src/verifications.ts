@@ -1,4 +1,4 @@
-import { FarcasterNetwork } from '@farcaster/protobufs';
+import { FarcasterNetwork } from '@farcaster/rpc';
 import { BigNumber } from 'ethers';
 import { err, ok } from 'neverthrow';
 import { bytesToHexString } from './bytes';

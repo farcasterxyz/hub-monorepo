@@ -6,10 +6,10 @@
       "dependsOn": ["@farcaster/rpc#build"]
     },
     "@farcaster/utils#build": {
-      "dependsOn": ["@farcaster/protobufs#build"]
+      "dependsOn": ["@farcaster/rpc#build"]
     },
     "@farcaster/hubble#build": {
-      "dependsOn": ["@farcaster/rpc#build", "@farcaster/protobufs#build", "@farcaster/utils#build"]
+      "dependsOn": ["@farcaster/rpc#build", "@farcaster/utils#build"]
     },
     "build": {
       "dependsOn": ["^build"],

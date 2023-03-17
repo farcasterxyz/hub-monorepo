@@ -11,7 +11,7 @@ import {
   HubServiceClient,
   Metadata,
   ServiceError,
-} from '@farcaster/protobufs';
+} from '@farcaster/rpc';
 import { err, ok } from 'neverthrow';
 import { HubError, HubErrorCode, HubResult } from './errors';
 
