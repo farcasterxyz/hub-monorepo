@@ -16,10 +16,8 @@ import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
 
-const socketPath = '/tmp/hubble.admin.sock';
-export const getAdminSocket = (): string => `unix:${socketPath}`;
-
 const log = logger.child({ module: 'rpc:admin' });
+export const ADMIN_SERVER_PORT = 13113;
 
 export default class AdminServer {
   private hub: HubInterface;
@@ -45,13 +43,14 @@ export default class AdminServer {
     });
 
     return new Promise((resolve) => {
-      this.grpcServer.bindAsync(getAdminSocket(), ServerCredentials.createInsecure(), (e) => {
+      // The Admin server is only available on localhost
+      this.grpcServer.bindAsync(`127.0.0.1:${ADMIN_SERVER_PORT}`, ServerCredentials.createInsecure(), (e, port) => {
         if (e) {
           log.error(`Failed to bind admin server to socket: ${e}`);
           resolve(err(new HubError('unavailable.network_failure', `Failed to bind admin server to socket: ${e}`)));
         } else {
           this.grpcServer.start();
-          log.info('Starting Admin server');
+          log.info({ port }, 'Starting Admin server');
           resolve(ok(undefined));
         }
       });

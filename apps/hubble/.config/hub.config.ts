@@ -41,4 +41,6 @@ export const Config = {
   rebuildSyncTrie: false,
   /** Farcaster network */
   network: DEFAULT_NETWORK,
+  /** Start the admin server? */
+  adminServerEnabled: false,
 };

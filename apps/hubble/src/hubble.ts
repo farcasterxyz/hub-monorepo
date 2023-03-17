@@ -115,6 +115,9 @@ export interface HubOptions {
   /** Rebuild the sync trie from messages in the DB on startup */
   rebuildSyncTrie?: boolean;
 
+  /** Enables the Admin Server */
+  adminServerEnabled?: boolean;
+
   /**
    * Only allows the Hub to connect to and advertise local IP addresses
    *
@@ -251,7 +254,9 @@ export class Hub implements HubInterface {
 
     // Start the RPC server
     await this.rpcServer.start(this.options.rpcPort ? this.options.rpcPort : 0);
-    await this.adminServer.start();
+    if (this.options.adminServerEnabled) {
+      await this.adminServer.start();
+    }
     this.registerEventHandlers();
 
     // Start cron tasks
