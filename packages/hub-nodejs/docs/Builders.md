@@ -2,6 +2,21 @@
 
 Builders are factory methods that construct and sign Farcaster Messages which can be broadcast to Hubs.
 
+- Prerequisites
+  - [Ed25519Signer](#ed25519signer)
+  - [Eip712Signer](#eip712signer)
+  - [Data Options](#data-options)
+- Methods
+  - [makeSignerAdd](#makesigneradd)
+  - [makeSignerRemove](#makesignerremove)
+  - [makeCastAdd](#makecastadd)
+  - [makeCastRemove](#makecastremove)
+  - [makeReactionAdd](#makereactionadd)
+  - [makeReactionRemove](#makereactionremove)
+  - [makeUserDataAdd](#makeuserdataadd)
+  - [makeVerificationAddEthAddress](#makeverificationaddethaddress)
+  - [makeVerificationRemove](#makeverificationremove)
+
 ## Prerequisites
 
 Before you can build messages, you'll need construct the following objects:
@@ -39,30 +54,34 @@ const eip712Signer = (await Eip712Signer.fromSigner(wallet))._unsafeUnwrap();
 
 ### Data Options
 
-A DataOptions object tells the factory some metadata about the message. This example shows how to create the `dataOptions` object to pass to the Factory:
+Common message properties that must be passed into to any Builder method to produce a valid message.
+
+#### Usage
 
 ```typescript
-import { FarcasterNetwork } from '@farcaster/hub-nodejs';
+import { FarcasterNetwork, toFarcasterTime } from '@farcaster/hub-nodejs';
+
+const unixTimestamp = 1679029607159;
+
+// unsafeUnwrap() is safe here because we know the timestamp is valid
+const farcasterTimestamp = toFarcasterTime(unixTimestamp)._unsafeUnwrap();
 
 const dataOptions = {
-  fid: 1, // Set to the fid of the user creating the message
-  network: FarcasterNetwork.DEVNET, // Set to the network that the message is broadcast to.
+  fid: 1,
+  network: FarcasterNetwork.DEVNET,
+  timestamp: farcasterTimestamp,
 };
 ```
 
+#### Properties
+
+| Name         | Type                                                 | Description                                                   |
+| :----------- | :--------------------------------------------------- | :------------------------------------------------------------ |
+| `fid`        | `number`                                             | Fid of the user creating the message                          |
+| `network`    | [`FarcasterNetwork`](./Messages.md#farcasternetwork) | Farcaster network to broadcast the message to                 |
+| `timestamp?` | `number`                                             | (optional) Farcaster epoch message timestamp, defaults to now |
+
 ## Builder Methods
-
-- [makeSignerAdd](#makesigneradd)
-- [makeSignerRemove](#makesignerremove)
-- [makeCastAdd](#makecastadd)
-- [makeCastRemove](#makecastremove)
-- [makeReactionAdd](#makereactionadd)
-- [makeReactionRemove](#makereactionremove)
-- [makeUserDataAdd](#makeuserdataadd)
-- [makeVerificationAddEthAddress](#makeverificationaddethaddress)
-- [makeVerificationRemove](#makeverificationremove)
-
----
 
 ### makeSignerAdd
 
@@ -366,10 +385,11 @@ Returns a message that removes a previously added Verification.
 import { makeVerificationRemove } from '@farcaster/hub-nodejs';
 
 const verificationRemoveBody = {
-  address: '0x1234', // Ethereum Address of Verification to remove
+  address: eip712Signer.signerKey, // Ethereum Address of Verification to remove
 };
 
 const verificationRemoveMessage = await makeVerificationRemove(verificationRemoveBody, dataOptions, ed25519Signer);
+console.log(verificationRemoveMessage);
 ```
 
 #### Returns
