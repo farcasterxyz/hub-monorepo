@@ -1,11 +1,11 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
 import {
   AdminServiceServer,
   AdminServiceService,
   Server as GrpcServer,
   ServerCredentials,
   getServer,
-} from '@farcaster/protobufs';
+} from '@farcaster/rpc';
 import { HubAsyncResult, HubError } from '@farcaster/utils';
 import * as net from 'net';
 import { err, ok } from 'neverthrow';

@@ -28,7 +28,7 @@ import {
   VerificationRemoveMessage,
   getServer,
   status,
-} from '@farcaster/protobufs';
+} from '@farcaster/rpc';
 import { HubAsyncResult, HubError } from '@farcaster/utils';
 import { err, ok } from 'neverthrow';
 import { APP_NICKNAME, APP_VERSION, HubInterface } from '~/hubble';

@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
 import { AdminRpcClient, Factories, HubRpcClient } from '@farcaster/utils';
 import { ConsoleCommandInterface } from './console';
 

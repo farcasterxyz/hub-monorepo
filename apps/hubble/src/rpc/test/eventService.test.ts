@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from '@farcaster/rpc';
 import { Factories, getInsecureHubRpcClient, HubRpcClient } from '@farcaster/utils';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';

@@ -1,4 +1,4 @@
-import { Empty } from '@farcaster/protobufs';
+import { Empty } from '@farcaster/rpc';
 import { getAdminRpcClient, getHubRpcClient } from '@farcaster/utils';
 import path from 'path';
 import * as repl from 'repl';
