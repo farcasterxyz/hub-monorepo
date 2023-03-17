@@ -42,7 +42,7 @@ const signerPrivateKeyHex = ed.utils.bytesToHex(signerPrivateKey);
 
 // Create a SignerAdd message that contains the public key of the signer
 const dataOptions = {
-  fid: -9999, // Set to the fid of the user
+  fid: 1, // Set to the fid of the user
   network: types.FarcasterNetwork.DEVNET,
 };
 const signerAddResult = await makeSignerAdd({ signer: signerPrivateKeyHex }, dataOptions, eip712Signer);

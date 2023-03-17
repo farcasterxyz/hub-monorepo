@@ -31,7 +31,7 @@ An Eip712Signer is an ECDSA key pair which is necessary signing for some message
 import { Eip712Signer } from '@farcaster/hub-nodejs';
 import { ethers } from 'ethers';
 
-const mnemonic = 'your mnemonic apple orange banana ...';
+const mnemonic = 'ordinary long coach bounce thank quit become youth belt pretty diet caught attract melt bargain';
 const wallet = ethers.Wallet.fromMnemonic(mnemonic);
 
 const eip712Signer = Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwrap();
@@ -45,8 +45,8 @@ A DataOptions object tells the factory some metadata about the message. This exa
 import { FarcasterNetwork } from '@farcaster/hub-nodejs';
 
 const dataOptions = {
-  fid: -9999, // Set to the fid of the user creating the message
-  network: types.FarcasterNetwork.DEVNET, // Set to the network that the message is broadcast to.
+  fid: 1, // Set to the fid of the user creating the message
+  network: FarcasterNetwork.DEVNET, // Set to the network that the message is broadcast to.
 };
 ```
 
