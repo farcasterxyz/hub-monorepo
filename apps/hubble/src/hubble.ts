@@ -1,14 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
-import {
-  ContactInfoContent,
-  FarcasterNetwork,
-  GossipAddressInfo,
-  GossipMessage,
-  HubState,
-  IdRegistryEvent,
-  Message,
-  NameRegistryEvent,
-} from '@farcaster/protobufs';
+import { FarcasterNetwork, HubState, IdRegistryEvent, Message, NameRegistryEvent } from '@farcaster/protobufs';
+import { ContactInfoContent, GossipAddressInfo, GossipMessage } from '@farcaster/rpc';
 import {
   HubAsyncResult,
   HubError,

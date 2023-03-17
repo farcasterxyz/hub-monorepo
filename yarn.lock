@@ -1119,6 +1119,19 @@
   dependencies:
     lodash.mergewith "^4.6.2"
 
+"@farcaster/protobufs@file:packages/protobufs":
+  version "0.1.8"
+
+"@farcaster/utils@file:packages/utils":
+  version "0.2.11"
+  dependencies:
+    "@faker-js/faker" "^7.6.0"
+    "@farcaster/protobufs" "file:../../Library/Caches/Yarn/v6/npm-@farcaster-utils-0.2.11-e5ed9524-d053-4202-9ba8-a2a072dfb8c7-1679091126339/node_modules/packages/protobufs"
+    "@noble/ed25519" "^1.7.1"
+    "@noble/hashes" "^1.2.0"
+    ethers "^5.7.2"
+    neverthrow "^6.0.0"
+
 "@grpc/grpc-js@^1.8.7", "@grpc/grpc-js@~1.8.7":
   version "1.8.7"
   resolved "https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.8.7.tgz#2154fc0134462ad45f4134e8b54682a25ed05956"
