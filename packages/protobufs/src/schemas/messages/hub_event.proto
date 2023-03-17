@@ -1,8 +1,9 @@
 syntax = "proto3";
+package messages;
 
-import "message.proto";
-import "id_registry_event.proto";
-import "name_registry_event.proto";
+import "messages/message.proto";
+import "messages/id_registry_event.proto";
+import "messages/name_registry_event.proto";
 
 enum HubEventType {
   HUB_EVENT_TYPE_NONE = 0;

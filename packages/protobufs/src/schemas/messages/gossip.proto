@@ -1,7 +1,8 @@
 syntax = "proto3";
+package messages;
 
-import "message.proto";
-import "id_registry_event.proto";
+import "messages/message.proto";
+import "messages/id_registry_event.proto";
 
 enum GossipVersion {
   GOSSIP_VERSION_V1 = 0;

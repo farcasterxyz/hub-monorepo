@@ -1,4 +1,5 @@
 syntax = "proto3";
+package messages;
 
 /** 
   * A Message is a delta operation on the Farcaster network. The message protobuf is an envelope 

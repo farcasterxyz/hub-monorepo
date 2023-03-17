@@ -15,8 +15,8 @@ import {
 } from "@grpc/grpc-js";
 import Long from "long";
 import _m0 from "protobufjs/minimal";
-import { HubEvent, HubEventType, hubEventTypeFromJSON, hubEventTypeToJSON } from "./hub_event";
-import { IdRegistryEvent } from "./id_registry_event";
+import { HubEvent, HubEventType, hubEventTypeFromJSON, hubEventTypeToJSON } from "../messages/hub_event";
+import { IdRegistryEvent } from "../messages/id_registry_event";
 import {
   CastId,
   Message,
@@ -26,8 +26,8 @@ import {
   UserDataType,
   userDataTypeFromJSON,
   userDataTypeToJSON,
-} from "./message";
-import { NameRegistryEvent } from "./name_registry_event";
+} from "../messages/message";
+import { NameRegistryEvent } from "../messages/name_registry_event";
 
 export interface Empty {
 }

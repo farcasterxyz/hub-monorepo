@@ -1,14 +1,14 @@
 syntax = "proto3";
 
-import "message.proto";
-import "id_registry_event.proto";
-import "name_registry_event.proto";
-import "hub_event.proto";
+import "messages/message.proto";
+import "messages/id_registry_event.proto";
+import "messages/name_registry_event.proto";
+import "messages/hub_event.proto";
 
 message Empty {}
 
 message SubscribeRequest {
-  repeated HubEventType event_types = 1;
+  repeated messages.HubEventType event_types = 1;
   optional uint64 from_id = 2;
 }
 
@@ -63,39 +63,39 @@ message FidsResponse {
 }
 
 message MessagesResponse {
-  repeated Message messages = 1;
+  repeated messages.Message messages = 1;
   optional bytes next_page_token = 2;
 }
 
 message CastsByParentRequest {
-  CastId cast_id = 1;
+  messages.CastId cast_id = 1;
   optional uint32 page_size = 2;
   optional bytes page_token = 3;
 }
 
 message ReactionRequest {
   uint64 fid = 1;
-  ReactionType reaction_type = 2;
-  CastId cast_id = 3;
+  messages.ReactionType reaction_type = 2;
+  messages.CastId cast_id = 3;
 }
 
 message ReactionsByFidRequest {
   uint64 fid = 1;
-  optional ReactionType reaction_type = 2;
+  optional messages.ReactionType reaction_type = 2;
   optional uint32 page_size = 3;
   optional bytes page_token = 4;
 }
 
 message ReactionsByCastRequest {
-  CastId cast_id = 1;
-  optional ReactionType reaction_type = 2;
+  messages.CastId cast_id = 1;
+  optional messages.ReactionType reaction_type = 2;
   optional uint32 page_size = 3;
   optional bytes page_token = 4;
 }
 
 message UserDataRequest {
   uint64 fid = 1;
-  UserDataType user_data_type = 2;
+  messages.UserDataType user_data_type = 2;
 }
 
 message NameRegistryEventRequest {
@@ -114,36 +114,36 @@ message SignerRequest {
 
 service HubService {
   // Submit Methods
-  rpc SubmitMessage(Message) returns (Message);
+  rpc SubmitMessage(messages.Message) returns (messages.Message);
 
   // Event Methods
-  rpc Subscribe(SubscribeRequest) returns (stream HubEvent);
-  rpc GetEvent(EventRequest) returns (HubEvent);
+  rpc Subscribe(SubscribeRequest) returns (stream messages.HubEvent);
+  rpc GetEvent(EventRequest) returns (messages.HubEvent);
 
   // Casts
-  rpc GetCast(CastId) returns (Message);
+  rpc GetCast(messages.CastId) returns (messages.Message);
   rpc GetCastsByFid(FidRequest) returns (MessagesResponse);
   rpc GetCastsByParent(CastsByParentRequest) returns (MessagesResponse);
   rpc GetCastsByMention(FidRequest) returns (MessagesResponse);
 
   // Reactions
-  rpc GetReaction(ReactionRequest) returns (Message);
+  rpc GetReaction(ReactionRequest) returns (messages.Message);
   rpc GetReactionsByFid(ReactionsByFidRequest) returns (MessagesResponse);
   rpc GetReactionsByCast(ReactionsByCastRequest) returns (MessagesResponse);
 
   // User Data
-  rpc GetUserData(UserDataRequest) returns (Message);
+  rpc GetUserData(UserDataRequest) returns (messages.Message);
   rpc GetUserDataByFid(FidRequest) returns (MessagesResponse);
-  rpc GetNameRegistryEvent(NameRegistryEventRequest) returns (NameRegistryEvent);
+  rpc GetNameRegistryEvent(NameRegistryEventRequest) returns (messages.NameRegistryEvent);
 
   // Verifications
-  rpc GetVerification(VerificationRequest) returns (Message);
+  rpc GetVerification(VerificationRequest) returns (messages.Message);
   rpc GetVerificationsByFid(FidRequest) returns (MessagesResponse);
 
   // Signer
-  rpc GetSigner(SignerRequest) returns (Message);
+  rpc GetSigner(SignerRequest) returns (messages.Message);
   rpc GetSignersByFid(FidRequest) returns (MessagesResponse);
-  rpc GetIdRegistryEvent(FidRequest) returns (IdRegistryEvent);
+  rpc GetIdRegistryEvent(FidRequest) returns (messages.IdRegistryEvent);
   rpc GetFids(FidsRequest) returns (FidsResponse);
 
   // Bulk Methods
@@ -165,6 +165,6 @@ service AdminService {
   rpc RebuildSyncTrie(Empty) returns (Empty);
   rpc DeleteAllMessagesFromDb(Empty) returns (Empty);
   
-  rpc SubmitIdRegistryEvent(IdRegistryEvent) returns (IdRegistryEvent);
-  rpc SubmitNameRegistryEvent(NameRegistryEvent) returns (NameRegistryEvent);
+  rpc SubmitIdRegistryEvent(messages.IdRegistryEvent) returns (messages.IdRegistryEvent);
+  rpc SubmitNameRegistryEvent(messages.NameRegistryEvent) returns (messages.NameRegistryEvent);
 }

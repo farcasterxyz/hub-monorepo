@@ -1,4 +1,5 @@
 syntax = "proto3";
+package messages;
 
 enum IdRegistryEventType {
   ID_REGISTRY_EVENT_TYPE_NONE = 0;
