@@ -2,7 +2,7 @@ import { Empty } from '@farcaster/protobufs';
 import { getAdminRpcClient, getHubRpcClient } from '@farcaster/utils';
 import path from 'path';
 import * as repl from 'repl';
-import { getAdminSocket } from '~/rpc/adminServer';
+import { ADMIN_SERVER_PORT } from '~/rpc/adminServer';
 import { logger } from '~/utils/logger';
 import { AdminCommand } from './adminCommand';
 import { GenCommand } from './genCommand';
@@ -41,7 +41,8 @@ export const startConsole = async (addressString: string) => {
   });
 
   const rpcClient = await getHubRpcClient(addressString);
-  const adminClient = await getAdminRpcClient(getAdminSocket());
+  // Admin server is only available on localhost
+  const adminClient = await getAdminRpcClient(`127.0.0.1:${ADMIN_SERVER_PORT}`);
 
   const commands: ConsoleCommandInterface[] = [
     new RpcClientCommand(rpcClient),
