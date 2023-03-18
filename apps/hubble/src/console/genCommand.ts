@@ -25,7 +25,7 @@ export class GenCommand implements ConsoleCommandInterface {
   help(): string {
     return `
     Usage: gen.submitMessages(numMessages = 100, network = FARCASTER_NETWORK_DEVNET)
-        Generate 'numMessages' messages and submit them to the Hub using the RPC client and print 
+        Generate 'numMessages' messages and submit them to the Hub using the RPC client and print
         perf stats.
 
     Note1: This command is async, so you'll have to await it.
@@ -50,7 +50,7 @@ export class GenCommand implements ConsoleCommandInterface {
         // Generate a random number from 100_000 to 100_000_000 to use as an fid
         const fid = Math.floor(Math.random() * 100_000_000 + 100_000);
 
-        const custodySigner = Factories.Eip712Signer.build();
+        const custodySigner = await Factories.Eip712Signer.create();
         const signer = Factories.Ed25519Signer.build();
 
         let numSuccess = 0;

@@ -4,12 +4,19 @@ import { err, ok } from 'neverthrow';
 import { bytesToUtf8String } from './bytes';
 import { HubError } from './errors';
 import { Factories } from './factories';
+import { Eip712Signer } from './signers';
 import { getFarcasterTime } from './time';
 import * as validations from './validations';
 import { makeVerificationEthAddressClaim } from './verifications';
 
-const ethSigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
+let ethSigner: Eip712Signer;
+let address: Uint8Array;
+
+beforeAll(async () => {
+  ethSigner = await Factories.Eip712Signer.create();
+  address = ethSigner.signerKey;
+});
 
 describe('validateFid', () => {
   test('succeeds', () => {
@@ -108,8 +115,6 @@ describe('validateCastId', () => {
 });
 
 describe('validateEthAddress', () => {
-  const address = ethSigner.signerKey;
-
   test('succeeds', () => {
     expect(validations.validateEthAddress(address)).toEqual(ok(address));
   });
@@ -428,12 +433,12 @@ describe('validateVerificationAddEthAddressBody', () => {
     });
 
     test('with missing eth address', async () => {
-      body = await Factories.VerificationAddEthAddressBody.create({ address: undefined });
+      body = Factories.VerificationAddEthAddressBody.build({ address: undefined });
       hubErrorMessage = 'address is missing';
     });
 
     test('with eth address larger than 20 bytes', async () => {
-      body = await Factories.VerificationAddEthAddressBody.create({
+      body = Factories.VerificationAddEthAddressBody.build({
         address: Factories.Bytes.build({}, { transient: { length: 21 } }),
       });
       hubErrorMessage = 'address must be 20 bytes';

@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesToUtf8String, Factories, HubError } from '@farcaster/utils';
+import { bytesToUtf8String, Eip712Signer, Factories, HubError } from '@farcaster/utils';
 import { err, Ok, ok } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -15,9 +15,9 @@ const signerStore = new SignerStore(db, engine.eventHandler);
 
 const fid = Factories.Fid.build();
 const fname = Factories.Fname.build();
-const custodySigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
 
+let custodySigner: Eip712Signer;
 let custodyEvent: protobufs.IdRegistryEvent;
 let fnameTransfer: protobufs.NameRegistryEvent;
 let signerAdd: protobufs.SignerAddMessage;
@@ -28,6 +28,7 @@ let verificationAdd: protobufs.VerificationAddEthAddressMessage;
 let userDataAdd: protobufs.UserDataAddMessage;
 
 beforeAll(async () => {
+  custodySigner = await Factories.Eip712Signer.create();
   custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
 
   fnameTransfer = Factories.NameRegistryEvent.build({ fname, to: custodyEvent.to });

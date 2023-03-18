@@ -34,7 +34,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
 
   private async getSigners(fid: number, network: number) {
     const signer = Factories.Ed25519Signer.build();
-    const custodySigner = Factories.Eip712Signer.build();
+    const custodySigner = await Factories.Eip712Signer.create();
 
     const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
     const _idResult = await this.adminClient.submitIdRegistryEvent(custodyEvent, new protobufs.Metadata());

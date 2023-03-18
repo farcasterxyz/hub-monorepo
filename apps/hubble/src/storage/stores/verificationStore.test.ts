@@ -16,11 +16,14 @@ let verificationAdd: protobufs.VerificationAddEthAddressMessage;
 let verificationRemove: protobufs.VerificationRemoveMessage;
 
 beforeAll(async () => {
-  ethSigner = Factories.Eip712Signer.build();
+  ethSigner = await Factories.Eip712Signer.create();
+  verificationAdd = await Factories.VerificationAddEthAddressMessage.create(
+    {
+      data: { fid, verificationAddEthAddressBody: { address: ethSigner.signerKey } },
+    },
+    { transient: { ethSigner } }
+  );
 
-  verificationAdd = await Factories.VerificationAddEthAddressMessage.create({
-    data: { fid, verificationAddEthAddressBody: { address: ethSigner.signerKey } },
-  });
   verificationRemove = await Factories.VerificationRemoveMessage.create({
     data: {
       fid,

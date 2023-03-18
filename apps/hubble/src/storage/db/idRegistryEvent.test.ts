@@ -1,4 +1,5 @@
-import { bytesCompare, Factories, HubError } from '@farcaster/utils';
+import { bytesCompare, Eip712Signer, Factories, HubError } from '@farcaster/utils';
+import { IdRegistryEvent } from '~/../../../packages/protobufs/dist';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import {
   getIdRegistryEvent,
@@ -9,8 +10,13 @@ import {
 
 const db = jestRocksDB('storage.db.idRegistryEvent.test');
 
-const custodySigner = Factories.Eip712Signer.build();
-const idRegistryEvent = Factories.IdRegistryEvent.build({ to: custodySigner.signerKey });
+let custodySigner: Eip712Signer;
+let idRegistryEvent: IdRegistryEvent;
+
+beforeAll(async () => {
+  custodySigner = await Factories.Eip712Signer.create();
+  idRegistryEvent = Factories.IdRegistryEvent.build({ to: custodySigner.signerKey });
+});
 
 describe('makeIdRegistryEventPrimaryKey', () => {
   test('orders keys by fid', () => {

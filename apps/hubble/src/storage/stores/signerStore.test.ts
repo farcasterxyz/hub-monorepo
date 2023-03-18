@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesDecrement, bytesIncrement, Factories, getFarcasterTime, HubError } from '@farcaster/utils';
+import { bytesDecrement, bytesIncrement, Eip712Signer, Factories, getFarcasterTime, HubError } from '@farcaster/utils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { getAllMessagesBySigner, getMessage, makeFidKey, makeTsHash } from '~/storage/db/message';
 import { UserPostfix } from '~/storage/db/types';
@@ -9,21 +9,32 @@ import StoreEventHandler from '~/storage/stores/storeEventHandler';
 const db = jestRocksDB('protobufs.signerStore.test');
 const eventHandler = new StoreEventHandler(db);
 const set = new SignerStore(db, eventHandler);
-const fid = Factories.Fid.build();
-const custody1 = Factories.Eip712Signer.build();
-const custody1Address = custody1.signerKey;
-const custody2 = Factories.Eip712Signer.build();
-const custody2Address = custody2.signerKey;
 const signer = Factories.Ed25519Signer.build();
+const fid = Factories.Fid.build();
+const fid2 = fid + 1; // Increment fid to guarantee ordering
+
+let custody1: Eip712Signer;
+let custody1Address: Uint8Array;
+let custody2: Eip712Signer;
+let custody2Address: Uint8Array;
 
 let custody1Event: protobufs.IdRegistryEvent;
+let custody2Event: protobufs.IdRegistryEvent;
 let signerAdd: protobufs.SignerAddMessage;
 let signerRemove: protobufs.SignerRemoveMessage;
 
 beforeAll(async () => {
+  custody1 = await Factories.Eip712Signer.create();
+  custody1Address = custody1.signerKey;
+  custody2 = await Factories.Eip712Signer.create();
+  custody2Address = custody2.signerKey;
   custody1Event = Factories.IdRegistryEvent.build({
     fid,
     to: custody1Address,
+  });
+  custody2Event = Factories.IdRegistryEvent.build({
+    fid: fid2,
+    to: custody2Address,
   });
   signerAdd = await Factories.SignerAddMessage.create(
     { data: { fid, signerAddBody: { signer: signer.signerKey } } },
@@ -784,13 +795,11 @@ describe('getFids', () => {
   });
 
   describe('with fids', () => {
-    const fid2 = fid + 1; // Increment fid to guarantee ordering
-    const custody2Event = Factories.IdRegistryEvent.build({
-      fid: fid2,
-      to: custody2Address,
-    });
-
     beforeEach(async () => {
+      custody2Event = Factories.IdRegistryEvent.build({
+        fid: fid2,
+        to: custody2Address,
+      });
       await set.mergeIdRegistryEvent(custody1Event);
       await set.mergeIdRegistryEvent(custody2Event);
     });
