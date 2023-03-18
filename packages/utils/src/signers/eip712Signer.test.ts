@@ -1,22 +1,21 @@
 import { FarcasterNetwork } from '@farcaster/protobufs';
 import { blake3 } from '@noble/hashes/blake3';
-import { ethers } from 'ethers';
-import { randomBytes } from 'ethers/lib/utils';
+import { Signer as EthersSigner, Wallet, randomBytes } from 'ethers';
 import { bytesToHexString, hexStringToBytes } from '../bytes';
 import { eip712 } from '../crypto';
 import { Factories } from '../factories';
 import { VerificationEthAddressClaim, makeVerificationEthAddressClaim } from '../verifications';
-import { Eip712Signer, TypedDataSigner } from './eip712Signer';
+import { Eip712Signer } from './eip712Signer';
 
 describe('Eip712Signer', () => {
   let signer: Eip712Signer;
-  let typedDataSigner: TypedDataSigner;
+  let ethersSigner: EthersSigner;
   let ethAddress: string;
 
   beforeAll(async () => {
-    typedDataSigner = new ethers.Wallet(ethers.utils.randomBytes(32));
-    ethAddress = await typedDataSigner.getAddress();
-    signer = Eip712Signer.fromSigner(typedDataSigner, ethAddress)._unsafeUnwrap();
+    ethersSigner = Wallet.createRandom();
+    ethAddress = await ethersSigner.getAddress();
+    signer = Eip712Signer.fromSigner(ethersSigner, ethAddress)._unsafeUnwrap();
   });
 
   describe('static methods', () => {

@@ -189,11 +189,11 @@ import {
   hexStringToBytes,
   makeVerificationEthAddressClaim,
 } from '@farcaster/hub-nodejs';
-import { ethers } from 'ethers';
+import { Wallet } from 'ethers';
 
 // Create a valid Eip712Signer from the Etherum Address making the claim
 const mnemonic = 'ordinary long coach bounce thank quit become youth belt pretty diet caught attract melt bargain';
-const wallet = ethers.Wallet.fromMnemonic(mnemonic);
+const wallet = Wallet.fromPhrase(mnemonic);
 const eip712Signer = Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwrap();
 
 // Construct the claim object with the block number of a recent block

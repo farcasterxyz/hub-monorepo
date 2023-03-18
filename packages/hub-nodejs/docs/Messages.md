@@ -200,5 +200,5 @@ An object that is hashed, signed and included in `VerificationAddEthAddressBody`
 | :---------- | :-------------------------------------- | ------------------------------------------------------------- |
 | `address`   | `string`                                | Ethereum address being verified                               |
 | `blockHash` | `string`                                | Hash of the latest Ethereum block when the claim was produced |
-| `fid`       | `BigNumber`                             | Fid of the user who claims to own the Ethereum address        |
+| `fid`       | `BigInt`                                | Fid of the user who claims to own the Ethereum address        |
 | `network`   | [`FarcasterNetwork`](#farcasternetwork) | Farcaster Network on which the claim will be broadcast        |

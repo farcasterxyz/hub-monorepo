@@ -1,15 +1,10 @@
-import {
-  Signer as EthersAbstractSigner,
-  TypedDataSigner as EthersTypedDataSigner,
-} from '@ethersproject/abstract-signer';
 import { SignatureScheme } from '@farcaster/protobufs';
+import { Signer as EthersSigner } from 'ethers';
 import { hexStringToBytes } from '../bytes';
 import { eip712 } from '../crypto';
 import { HubAsyncResult, HubResult } from '../errors';
 import { VerificationEthAddressClaim } from '../verifications';
 import { Signer } from './signer';
-
-export type TypedDataSigner = EthersAbstractSigner & EthersTypedDataSigner;
 
 export class Eip712Signer implements Signer {
   /** Signature scheme as defined in protobufs */
@@ -18,22 +13,22 @@ export class Eip712Signer implements Signer {
   /** 20-byte wallet address */
   public readonly signerKey: Uint8Array;
 
-  private readonly _typedDataSigner: TypedDataSigner;
+  private readonly _ethersSigner: EthersSigner;
 
-  public static fromSigner(typedDataSigner: TypedDataSigner, address: string): HubResult<Eip712Signer> {
-    return hexStringToBytes(address).map((signerKey) => new this(typedDataSigner, address, signerKey));
+  public static fromSigner(signer: EthersSigner, address: string): HubResult<Eip712Signer> {
+    return hexStringToBytes(address).map((signerKey) => new this(signer, address, signerKey));
   }
 
-  constructor(typedDataSigner: TypedDataSigner, address: string, signerKey: Uint8Array) {
-    this._typedDataSigner = typedDataSigner;
+  constructor(signer: EthersSigner, address: string, signerKey: Uint8Array) {
+    this._ethersSigner = signer;
     this.signerKey = signerKey;
   }
 
   public signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array> {
-    return eip712.signMessageHash(hash, this._typedDataSigner);
+    return eip712.signMessageHash(hash, this._ethersSigner);
   }
 
   public signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): HubAsyncResult<Uint8Array> {
-    return eip712.signVerificationEthAddressClaim(claim, this._typedDataSigner);
+    return eip712.signVerificationEthAddressClaim(claim, this._ethersSigner);
   }
 }
