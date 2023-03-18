@@ -721,7 +721,7 @@ describe('validateMessage', () => {
   test('fails with invalid signature', async () => {
     const message = await Factories.Message.create({
       signature: Factories.Ed25519Signature.build(),
-      signer: Factories.Ed25519Signer.build(),
+      signer: Factories.Ed25519PPublicKey.build(),
     });
 
     const result = await validations.validateMessage(message);

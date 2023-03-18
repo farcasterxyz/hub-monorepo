@@ -1,7 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
 import { blake3 } from '@noble/hashes/blake3';
 import { utils, Wallet } from 'ethers';
-import { ok } from 'neverthrow';
 import { bytesToHexString, hexStringToBytes } from '../bytes';
 import { Factories } from '../factories';
 import { VerificationEthAddressClaim } from '../verifications';
@@ -15,40 +14,38 @@ describe('signVerificationEthAddressClaim', () => {
   let signature: Uint8Array;
 
   beforeAll(async () => {
-    const sign = await eip712.signVerificationEthAddressClaim(claim, wallet);
-    expect(sign.isOk()).toBeTruthy();
-    signature = sign._unsafeUnwrap();
+    signature = await eip712.signVerificationEthAddressClaim(claim, wallet);
+    expect(signature).toBeTruthy();
   });
 
   test('succeeds', async () => {
     expect(signature).toBeTruthy();
     const recoveredAddress = eip712.verifyVerificationEthAddressClaimSignature(claim, signature);
-    expect(recoveredAddress).toEqual(ok(hexStringToBytes(wallet.address)._unsafeUnwrap()));
+    expect(recoveredAddress).toEqual(hexStringToBytes(wallet.address)._unsafeUnwrap());
   });
 
   test('succeeds when encoding twice', async () => {
     const claim2: VerificationEthAddressClaim = { ...claim };
     const signature2 = await eip712.signVerificationEthAddressClaim(claim2, wallet);
-    expect(signature2).toEqual(ok(signature));
-    expect(bytesToHexString(signature2._unsafeUnwrap())).toEqual(ok(bytesToHexString(signature)._unsafeUnwrap()));
+    expect(signature2).toEqual(signature);
+    expect(bytesToHexString(signature2)).toEqual(bytesToHexString(signature));
   });
 
   test('succeeds with lowercased address', async () => {
     const claim2: VerificationEthAddressClaim = { ...claim, address: claim.address.toLowerCase() };
     const signature2 = await eip712.signVerificationEthAddressClaim(claim2, wallet);
-    expect(signature2).toEqual(ok(signature));
+    expect(signature2).toEqual(signature);
   });
 
   test('succeeds with checksummed address', async () => {
     const claim2: VerificationEthAddressClaim = { ...claim, address: utils.getAddress(claim.address) };
     const signature2 = await eip712.signVerificationEthAddressClaim(claim2, wallet);
-    expect(signature2).toEqual(ok(signature));
+    expect(signature2).toEqual(signature);
   });
 
   test('fails with uppercased address', async () => {
     const claim2: VerificationEthAddressClaim = { ...claim, address: claim.address.toUpperCase() };
-    const signature2 = await eip712.signVerificationEthAddressClaim(claim2, wallet);
-    expect(signature2.isErr()).toBeTruthy();
+    expect(eip712.signVerificationEthAddressClaim(claim2, wallet)).rejects.toThrow();
   });
 });
 
@@ -58,8 +55,8 @@ describe('signMessageHash', () => {
     const bytes = protobufs.MessageData.encode(messageData).finish();
     const hash = blake3(bytes, { dkLen: 20 });
     const signature = await eip712.signMessageHash(hash, wallet);
-    expect(signature.isOk()).toBeTruthy();
-    const recoveredAddress = eip712.verifyMessageHashSignature(hash, signature._unsafeUnwrap());
-    expect(recoveredAddress).toEqual(ok(hexStringToBytes(wallet.address)._unsafeUnwrap()));
+    expect(signature).toBeTruthy();
+    const recoveredAddress = eip712.verifyMessageHashSignature(hash, signature);
+    expect(recoveredAddress).toEqual(hexStringToBytes(wallet.address)._unsafeUnwrap());
   });
 });

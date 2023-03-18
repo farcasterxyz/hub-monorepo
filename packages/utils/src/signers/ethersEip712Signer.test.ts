@@ -26,7 +26,7 @@ describe('EthersEip712Signer', () => {
         const hash = blake3(bytes, { dkLen: 20 });
         const signature = await signer.signMessageHash(hash);
         const recoveredAddress = await eip712.verifyMessageHashSignature(hash, signature);
-        expect(recoveredAddress._unsafeUnwrap()).toEqual(signerKey);
+        expect(recoveredAddress).toEqual(signerKey);
       });
     });
 
@@ -47,7 +47,7 @@ describe('EthersEip712Signer', () => {
       test('succeeds', async () => {
         expect(signature).toBeTruthy();
         const recoveredAddress = eip712.verifyVerificationEthAddressClaimSignature(claim, signature);
-        expect(recoveredAddress._unsafeUnwrap()).toEqual(signerKey);
+        expect(recoveredAddress).toEqual(signerKey);
       });
 
       test('succeeds when encoding twice', async () => {

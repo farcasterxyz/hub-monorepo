@@ -3,8 +3,9 @@ import { Factory } from '@farcaster/fishery';
 import * as protobufs from '@farcaster/protobufs';
 import { utils } from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
-import { BigNumber, ethers, Wallet } from 'ethers';
+import { BigNumber, Wallet, ethers } from 'ethers';
 import { bytesToHexString } from './bytes';
+import * as ed25519 from './crypto/ed25519';
 import { Ed25519Signer, Eip712Signer, EthersEip712Signer, NobleEd25519Signer, Signer } from './signers';
 import { getFarcasterTime } from './time';
 import { VerificationEthAddressClaim } from './verifications';
@@ -77,7 +78,8 @@ const Ed25519PrivateKeyFactory = Factory.define<Uint8Array>(() => {
 });
 
 const Ed25519PPublicKeyFactory = Factory.define<Uint8Array>(() => {
-  return utils.randomBytes(32);
+  const privateKey = Ed25519PrivateKeyFactory.build();
+  return ed25519.getPublicKeySync(privateKey);
 });
 
 const Ed25519SignerFactory = Factory.define<Ed25519Signer>(() => {

@@ -25,14 +25,10 @@ export class EthersEip712Signer extends Eip712Signer {
   }
 
   public async signMessageHash(hash: Uint8Array): Promise<Uint8Array> {
-    const result = await eip712.signMessageHash(hash, this._typedDataSigner);
-    if (result.isErr()) throw result.error;
-    return result.value;
+    return eip712.signMessageHash(hash, this._typedDataSigner);
   }
 
   public async signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): Promise<Uint8Array> {
-    const result = await eip712.signVerificationEthAddressClaim(claim, this._typedDataSigner);
-    if (result.isErr()) throw result.error;
-    return result.value;
+    return eip712.signVerificationEthAddressClaim(claim, this._typedDataSigner);
   }
 }

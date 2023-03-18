@@ -20,7 +20,7 @@ describe('NobleEd25519Signer', () => {
         const hash = blake3(bytes, { dkLen: 20 });
         const signature = await signer.signMessageHash(hash);
         const isValid = await ed25519.verifyMessageHashSignature(signature, hash, signerKey);
-        expect(isValid._unsafeUnwrap()).toBe(true);
+        expect(isValid).toBe(true);
       });
     });
   });
