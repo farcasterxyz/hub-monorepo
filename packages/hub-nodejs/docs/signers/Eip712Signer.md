@@ -18,26 +18,34 @@ An Eip712Signer is initialized with an Ethereum wallet and can be used with [Bui
 
 Prefer building with `Eip712Signer.fromSigner`.
 
+```typescript
+import { Eip712Signer } from '@farcaster/hub-nodejs';
+import { Wallet } from 'ethers';
+
+const custodyWallet = Wallet.fromPhrase('your mnemonic here apple orange banana');
+const eip712Signer = Eip712Signer.fromSigner(custodyWallet, custodyWallet.address)._unsafeUnwrap();
+```
+
 #### Parameters
 
-| Name              | Type              | Description              |
-| :---------------- | :---------------- | ------------------------ |
-| `typedDataSigner` | `TypedDataSigner` | A wallet instance        |
-| `signerKey`       | `Uint8Array`      | 20-byte Ethereum Address |
+| Name        | Type         | Description              |
+| :---------- | :----------- | ------------------------ |
+| `signer`    | `Signer`     | A wallet instance        |
+| `signerKey` | `Uint8Array` | 20-byte Ethereum Address |
 
 ---
 
 ### `static` fromSigner
 
-Creates an instance of Eip712Signer from an ethers TypedDataSigner (Wallet) and an Ethereum address.
+Creates an instance of Eip712Signer from an ethers Signer (Wallet) and an Ethereum address.
 
 #### Usage
 
 ```typescript
 import { Eip712Signer } from '@farcaster/hub-nodejs';
-import { ethers } from 'ethers';
+import { Wallet } from 'ethers';
 
-const custodyWallet = ethers.Wallet.fromMnemonic('your mnemonic here apple orange banana');
+const custodyWallet = Wallet.fromPhrase('your mnemonic here apple orange banana');
 const eip712Signer = (await Eip712Signer.fromSigner(custodyWallet)._unsafeUnwrap();
 ```
 
@@ -49,9 +57,9 @@ const eip712Signer = (await Eip712Signer.fromSigner(custodyWallet)._unsafeUnwrap
 
 #### Parameters
 
-| Name              | Type              | Description                                      |
-| :---------------- | :---------------- | :----------------------------------------------- |
-| `typedDataSigner` | `TypedDataSigner` | The TypedDataSigner instance to use for signing. |
+| Name     | Type     | Description                                    |
+| :------- | :------- | :--------------------------------------------- |
+| `signer` | `Signer` | The Ethers Signer instance to use for signing. |
 
 ## Instance Methods
 
@@ -62,7 +70,7 @@ Generates a 256-bit signature for a string input and returns the bytes.
 #### Usage
 
 ```typescript
-import { randomBytes } from 'ethers/lib/utils';
+import { randomBytes } from 'ethers';
 import { blake3 } from '@noble/hashes/blake3';
 
 const bytes = randomBytes(32);

@@ -1,5 +1,5 @@
 import { blake3 } from '@noble/hashes/blake3';
-import { randomBytes } from 'ethers/lib/utils';
+import { randomBytes } from 'ethers';
 import { ed25519 } from '../crypto';
 import { Factories } from '../factories';
 import { Ed25519Signer } from './ed25519Signer';
