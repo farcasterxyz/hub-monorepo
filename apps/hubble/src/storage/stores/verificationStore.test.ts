@@ -19,7 +19,7 @@ beforeAll(async () => {
   ethSigner = await Factories.Eip712Signer.create();
   verificationAdd = await Factories.VerificationAddEthAddressMessage.create(
     {
-      data: { fid, verificationAddEthAddressBody: { address: ethSigner.signerKey } },
+      data: { fid, verificationAddEthAddressBody: { address: await ethSigner.getSignerKey() } },
     },
     { transient: { ethSigner } }
   );
@@ -28,30 +28,30 @@ beforeAll(async () => {
     data: {
       fid,
       timestamp: verificationAdd.data.timestamp + 1,
-      verificationRemoveBody: { address: ethSigner.signerKey },
+      verificationRemoveBody: { address: await ethSigner.getSignerKey() },
     },
   });
 });
 
 describe('getVerificationAdd', () => {
   test('fails if missing', async () => {
-    await expect(set.getVerificationAdd(fid, ethSigner.signerKey)).rejects.toThrow(HubError);
+    await expect(set.getVerificationAdd(fid, await ethSigner.getSignerKey())).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
     await set.merge(verificationAdd);
-    await expect(set.getVerificationAdd(fid, ethSigner.signerKey)).resolves.toEqual(verificationAdd);
+    await expect(set.getVerificationAdd(fid, await ethSigner.getSignerKey())).resolves.toEqual(verificationAdd);
   });
 });
 
 describe('getVerificationRemove', () => {
   test('fails if missing', async () => {
-    await expect(set.getVerificationRemove(fid, ethSigner.signerKey)).rejects.toThrow(HubError);
+    await expect(set.getVerificationRemove(fid, await ethSigner.getSignerKey())).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
     await set.merge(verificationRemove);
-    await expect(set.getVerificationRemove(fid, ethSigner.signerKey)).resolves.toEqual(verificationRemove);
+    await expect(set.getVerificationRemove(fid, await ethSigner.getSignerKey())).resolves.toEqual(verificationRemove);
   });
 });
 
@@ -121,14 +121,14 @@ describe('merge', () => {
 
   const assertVerificationAddWins = async (message: protobufs.VerificationAddEthAddressMessage) => {
     await assertVerificationExists(message);
-    await expect(set.getVerificationAdd(fid, ethSigner.signerKey)).resolves.toEqual(message);
-    await expect(set.getVerificationRemove(fid, ethSigner.signerKey)).rejects.toThrow(HubError);
+    await expect(set.getVerificationAdd(fid, await ethSigner.getSignerKey())).resolves.toEqual(message);
+    await expect(set.getVerificationRemove(fid, await ethSigner.getSignerKey())).rejects.toThrow(HubError);
   };
 
   const assertVerificationRemoveWins = async (message: protobufs.VerificationRemoveMessage) => {
     await assertVerificationExists(message);
-    await expect(set.getVerificationRemove(fid, ethSigner.signerKey)).resolves.toEqual(message);
-    await expect(set.getVerificationAdd(fid, ethSigner.signerKey)).rejects.toThrow(HubError);
+    await expect(set.getVerificationRemove(fid, await ethSigner.getSignerKey())).resolves.toEqual(message);
+    await expect(set.getVerificationAdd(fid, await ethSigner.getSignerKey())).rejects.toThrow(HubError);
   };
 
   test('fails with invalid message type', async () => {

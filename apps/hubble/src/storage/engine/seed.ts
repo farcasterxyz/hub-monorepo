@@ -14,7 +14,7 @@ export const seedSigner = async (
     /** Generate and merge ID Registry event linking the fid to the eth wallet */
     const idRegistryEvent = Factories.IdRegistryEvent.build({
       fid,
-      to: ethSigner.signerKey,
+      to: await ethSigner.getSignerKey(),
     });
 
     const r = await engine.mergeIdRegistryEvent(idRegistryEvent);

@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Eip712Signer, Factories, getInsecureHubRpcClient, HubRpcClient } from '@farcaster/utils';
+import { Factories, getInsecureHubRpcClient, HubRpcClient } from '@farcaster/utils';
 import { multiaddr } from '@multiformats/multiaddr/';
 import { GossipNode } from '~/network/p2p/gossipNode';
 import Server from '~/rpc/server';
@@ -92,8 +92,8 @@ describe('GossipNode', () => {
     const hub = new MockHub(db, engine);
 
     const fid = Factories.Fid.build();
-    let custodySigner: Eip712Signer;
     const signer = Factories.Ed25519Signer.build();
+    const custodySigner = Factories.Eip712Signer.build();
 
     let server: Server;
     let client: HubRpcClient;
@@ -103,11 +103,10 @@ describe('GossipNode', () => {
     let castAdd: protobufs.Message;
 
     beforeAll(async () => {
-      custodySigner = await Factories.Eip712Signer.create();
-      custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
+      custodyEvent = Factories.IdRegistryEvent.build({ fid, to: await custodySigner.getSignerKey() });
 
       signerAdd = await Factories.SignerAddMessage.create(
-        { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
+        { data: { fid, network, signerAddBody: { signer: await signer.getSignerKey() } } },
         { transient: { signer: custodySigner } }
       );
 

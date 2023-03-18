@@ -29,16 +29,23 @@ let userDataAdd: protobufs.UserDataAddMessage;
 
 beforeAll(async () => {
   custodySigner = await Factories.Eip712Signer.create();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
+  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: await custodySigner.getSignerKey() });
 
   fnameTransfer = Factories.NameRegistryEvent.build({ fname, to: custodyEvent.to });
 
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
+    { data: { fid, network, signerAddBody: { signer: await signer.getSignerKey() } } },
     { transient: { signer: custodySigner } }
   );
   signerRemove = await Factories.SignerRemoveMessage.create(
-    { data: { fid, network, timestamp: signerAdd.data.timestamp + 1, signerRemoveBody: { signer: signer.signerKey } } },
+    {
+      data: {
+        fid,
+        network,
+        timestamp: signerAdd.data.timestamp + 1,
+        signerRemoveBody: { signer: await signer.getSignerKey() },
+      },
+    },
     { transient: { signer: custodySigner } }
   );
 
@@ -187,7 +194,7 @@ describe('mergeMessage', () => {
     describe('SignerRemove', () => {
       test('succeeds ', async () => {
         await expect(engine.mergeMessage(signerRemove)).resolves.toBeInstanceOf(Ok);
-        await expect(signerStore.getSignerRemove(fid, signer.signerKey)).resolves.toEqual(signerRemove);
+        await expect(signerStore.getSignerRemove(fid, await signer.getSignerKey())).resolves.toEqual(signerRemove);
         expect(mergedMessages).toEqual([signerAdd, signerRemove]);
       });
     });
@@ -371,7 +378,7 @@ describe('revokeMessagesBySigner', () => {
     for (const message of signerMessages) {
       await expect(checkMessage(message)).resolves.toEqual(message);
     }
-    await expect(engine.revokeMessagesBySigner(fid, custodySigner.signerKey)).resolves.toBeInstanceOf(Ok);
+    await expect(engine.revokeMessagesBySigner(fid, await custodySigner.getSignerKey())).resolves.toBeInstanceOf(Ok);
     for (const message of signerMessages) {
       await expect(checkMessage(message)).rejects.toThrow();
     }
@@ -383,7 +390,7 @@ describe('revokeMessagesBySigner', () => {
     for (const message of signerMessages) {
       await expect(checkMessage(message)).resolves.toEqual(message);
     }
-    await expect(engine.revokeMessagesBySigner(fid, signer.signerKey)).resolves.toBeInstanceOf(Ok);
+    await expect(engine.revokeMessagesBySigner(fid, await signer.getSignerKey())).resolves.toBeInstanceOf(Ok);
     for (const message of signerMessages) {
       await expect(checkMessage(message)).rejects.toThrow();
     }

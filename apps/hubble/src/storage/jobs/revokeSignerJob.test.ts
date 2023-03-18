@@ -38,7 +38,7 @@ beforeAll(async () => {
   payload3 = JobFactories.RevokeSignerJobPayload.build();
 
   // Integration test data
-  const constructedPayload = RevokeSignerJobQueue.makePayload(fid, signer.signerKey);
+  const constructedPayload = RevokeSignerJobQueue.makePayload(fid, await signer.getSignerKey());
   expect(constructedPayload.isOk()).toBeTruthy();
   revokeSignerPayload = constructedPayload._unsafeUnwrap();
 
@@ -48,7 +48,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await seedSigner(engine, fid, signer.signerKey);
+  await seedSigner(engine, fid, await signer.getSignerKey());
 });
 
 describe('jobKeyToTimestamp', () => {
@@ -206,7 +206,7 @@ describe('doJobs', () => {
     });
 
     test('processes jobs and deletes messages from signer', async () => {
-      const getMessages = () => getAllMessagesBySigner(db, fid, signer.signerKey);
+      const getMessages = async () => getAllMessagesBySigner(db, fid, await signer.getSignerKey());
       expect(await getMessages()).toEqual([castAdd, reactionAdd, verificationRemove]);
       const result = await scheduler.doJobs();
       expect(result._unsafeUnwrap()).toEqual(undefined);

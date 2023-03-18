@@ -34,26 +34,28 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
 
   private async getSigners(fid: number, network: number) {
     const signer = Factories.Ed25519Signer.build();
+    const signerKey = await signer.getSignerKey();
     const custodySigner = await Factories.Eip712Signer.create();
+    const custodySignerKey = await custodySigner.getSignerKey();
 
-    const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
+    const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
     const _idResult = await this.adminClient.submitIdRegistryEvent(custodyEvent, new protobufs.Metadata());
 
     const signerAdd = await Factories.SignerAddMessage.create(
       {
-        data: { fid, network, signerAddBody: { signer: signer.signerKey } },
+        data: { fid, network, signerAddBody: { signer: signerKey } },
       },
       { transient: { signer: custodySigner } }
     );
     const _msgResult = await this.rpcClient.submitMessage(signerAdd, new protobufs.Metadata());
 
-    return { fid, signer, custodySigner };
+    return { fid, signer, signerKey, custodySigner, custodySignerKey };
   }
 
   private async revokeSignerWithData() {
     const nextFid = 300_000;
     const network = protobufs.FarcasterNetwork.MAINNET;
-    const { fid, signer, custodySigner } = await this.getSigners(nextFid, network);
+    const { fid, signer, signerKey, custodySigner } = await this.getSigners(nextFid, network);
 
     // Add 100 casts, reactions, userdatas
     for (let i = 0; i < 100; i++) {
@@ -80,9 +82,10 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
     for (let i = 0; i < 100; i++) {
       // Verify a new Eth address
       const signer = Factories.Ed25519Signer.build();
+      const signerKey = await signer.getSignerKey();
       const signerAdd = await Factories.SignerAddMessage.create(
         {
-          data: { fid, network, signerAddBody: { signer: signer.signerKey } },
+          data: { fid, network, signerAddBody: { signer: signerKey } },
         },
         { transient: { signer: custodySigner } }
       );
@@ -97,7 +100,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
 
     // And then revoke the signer
     const signerRevoke = await Factories.SignerRemoveMessage.create(
-      { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
+      { data: { fid, network, signerAddBody: { signer: signerKey } } },
       { transient: { signer: custodySigner } }
     );
     const _msgResult = await this.rpcClient.submitMessage(signerRevoke, new protobufs.Metadata());
@@ -130,9 +133,10 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
       for (let i = 0; i < 100; i++) {
         // Verify a new Eth address
         const signer = Factories.Ed25519Signer.build();
+        const signerKey = await signer.getSignerKey();
         const signerAdd = await Factories.SignerAddMessage.create(
           {
-            data: { fid, network, signerAddBody: { signer: signer.signerKey } },
+            data: { fid, network, signerAddBody: { signer: signerKey } },
           },
           { transient: { signer: custodySigner } }
         );
@@ -364,10 +368,10 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
 
     // 10. A VerificationRemove arrives without a VerificationAdd.
     {
-      const { fid, signer, custodySigner } = await this.getSigners(++nextFid, network);
+      const { fid, signer, custodySignerKey, custodySigner } = await this.getSigners(++nextFid, network);
 
       const verificationRemove = await Factories.VerificationRemoveMessage.create(
-        { data: { fid, network, verificationRemoveBody: { address: custodySigner.signerKey } } },
+        { data: { fid, network, verificationRemoveBody: { address: custodySignerKey } } },
         { transient: { signer } }
       );
 
@@ -379,7 +383,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
 
     // 11. A VerificationAdd arrives after a VerificationRemove. This will fail because the VerificationAdd is not valid
     {
-      const { fid, signer, custodySigner } = await this.getSigners(++nextFid, network);
+      const { fid, signer } = await this.getSigners(++nextFid, network);
 
       const verificationAdd = await Factories.VerificationAddEthAddressMessage.create(
         { data: { fid, network } },

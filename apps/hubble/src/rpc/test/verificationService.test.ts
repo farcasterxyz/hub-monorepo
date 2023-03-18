@@ -36,10 +36,10 @@ let verificationAdd: protobufs.VerificationAddEthAddressMessage;
 
 beforeAll(async () => {
   custodySigner = await Factories.Eip712Signer.create();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
+  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: await custodySigner.getSignerKey() });
 
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
+    { data: { fid, network, signerAddBody: { signer: await signer.getSignerKey() } } },
     { transient: { signer: custodySigner } }
   );
 

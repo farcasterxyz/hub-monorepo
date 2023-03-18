@@ -59,7 +59,8 @@ export class GenCommand implements ConsoleCommandInterface {
 
         const start = performance.now();
 
-        const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
+        const to = await custodySigner.getSignerKey();
+        const custodyEvent = Factories.IdRegistryEvent.build({ fid, to });
         const idResult = await this.adminRpcClient.submitIdRegistryEvent(custodyEvent);
         if (idResult.isOk()) {
           numSuccess++;
@@ -67,8 +68,9 @@ export class GenCommand implements ConsoleCommandInterface {
           return `Failed to submit custody event for fid ${fid}: ${idResult.error}`;
         }
 
+        const signerKey = await signer.getSignerKey();
         const signerAdd = await Factories.SignerAddMessage.create(
-          { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
+          { data: { fid, network, signerAddBody: { signer: signerKey } } },
           { transient: { signer: custodySigner } }
         );
 

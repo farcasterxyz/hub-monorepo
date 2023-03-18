@@ -48,10 +48,10 @@ afterEach(() => {
 
 beforeAll(async () => {
   custodySigner = await Factories.Eip712Signer.create();
-  custodyEvent = Factories.IdRegistryEvent.build({ to: custodySigner.signerKey, fid });
-  nameRegistryEvent = Factories.NameRegistryEvent.build({ to: custodySigner.signerKey, fname });
+  custodyEvent = Factories.IdRegistryEvent.build({ to: await custodySigner.getSignerKey(), fid });
+  nameRegistryEvent = Factories.NameRegistryEvent.build({ to: await custodySigner.getSignerKey(), fname });
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, signerAddBody: { signer: signer.signerKey } } },
+    { data: { fid, signerAddBody: { signer: await signer.getSignerKey() } } },
     { transient: { signer: custodySigner } }
   );
   castAdd = await Factories.CastAddMessage.create({ data: { fid } }, { transient: { signer } });

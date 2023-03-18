@@ -5,7 +5,7 @@ import { utils } from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
 import { BigNumber, ethers, Wallet } from 'ethers';
 import { bytesToHexString } from './bytes';
-import { Ed25519Signer, Eip712Signer, Signer } from './signers';
+import { Ed25519Signer, Eip712Signer, EthersEip712Signer, NobleEd25519Signer, Signer } from './signers';
 import { getFarcasterTime } from './time';
 import { VerificationEthAddressClaim } from './verifications';
 
@@ -76,21 +76,29 @@ const Ed25519PrivateKeyFactory = Factory.define<Uint8Array>(() => {
   return utils.randomPrivateKey();
 });
 
+const Ed25519PPublicKeyFactory = Factory.define<Uint8Array>(() => {
+  return utils.randomBytes(32);
+});
+
 const Ed25519SignerFactory = Factory.define<Ed25519Signer>(() => {
-  return Ed25519Signer.fromPrivateKey(Ed25519PrivateKeyFactory.build())._unsafeUnwrap();
+  return new NobleEd25519Signer(Ed25519PrivateKeyFactory.build());
 });
 
 const Ed25519SignatureFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build({}, { transient: { length: 64 } });
 });
 
-const Eip712SignerFactory = Factory.define<void, { wallet: Wallet }, Eip712Signer>(({ onCreate, transientParams }) => {
-  onCreate(async () => {
+const Eip712SignerFactory = Factory.define<Eip712Signer, { wallet: Wallet }, Eip712Signer>(
+  ({ onCreate, transientParams }) => {
+    onCreate(async () => {
+      const wallet = transientParams.wallet ?? new ethers.Wallet(utils.randomBytes(32));
+      return new EthersEip712Signer(wallet);
+    });
+
     const wallet = transientParams.wallet ?? new ethers.Wallet(utils.randomBytes(32));
-    const signer = await Eip712Signer.fromSigner(wallet);
-    return signer._unsafeUnwrap();
-  });
-});
+    return new EthersEip712Signer(wallet);
+  }
+);
 
 const Eip712SignatureFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build(undefined, { transient: { length: 65 } });
@@ -163,8 +171,7 @@ const MessageFactory = Factory.define<protobufs.Message, { signer?: Ed25519Signe
 
       // Generate signature
       if (message.signature.length === 0) {
-        const signature = await signer.signMessageHash(message.hash);
-        message.signature = signature._unsafeUnwrap();
+        message.signature = await signer.signMessageHash(message.hash);
       }
 
       if (!message.signatureScheme) {
@@ -172,7 +179,7 @@ const MessageFactory = Factory.define<protobufs.Message, { signer?: Ed25519Signe
       }
 
       if (message.signer.length === 0) {
-        message.signer = signer.signerKey;
+        message.signer = await signer.getSignerKey();
       }
 
       return message;
@@ -300,7 +307,7 @@ const ReactionRemoveMessageFactory = Factory.define<protobufs.ReactionRemoveMess
 const SignerAddBodyFactory = Factory.define<protobufs.SignerAddBody>(() => {
   return protobufs.SignerAddBody.create({
     name: faker.random.alphaNumeric(16),
-    signer: Ed25519SignerFactory.build().signerKey,
+    signer: Ed25519PPublicKeyFactory.build(),
   });
 });
 
@@ -326,7 +333,7 @@ const SignerAddMessageFactory = Factory.define<protobufs.SignerAddMessage, { sig
 
 const SignerRemoveBodyFactory = Factory.define<protobufs.SignerRemoveBody>(() => {
   return protobufs.SignerRemoveBody.create({
-    signer: Ed25519SignerFactory.build().signerKey,
+    signer: Ed25519PPublicKeyFactory.build(),
   });
 });
 
@@ -369,7 +376,7 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
 >(({ onCreate, transientParams }) => {
   onCreate(async (body) => {
     const ethSigner = transientParams.signer ?? (await Eip712SignerFactory.create());
-    body.address = ethSigner.signerKey;
+    body.address = await ethSigner.getSignerKey();
 
     if (body.ethSignature.length === 0) {
       // Generate address and signature
@@ -382,10 +389,7 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
         blockHash: blockHash.isOk() ? blockHash.value : '0x',
         address: bytesToHexString(body.address)._unsafeUnwrap(),
       });
-      const ethSignature = await ethSigner.signVerificationEthAddressClaim(claim);
-      if (ethSignature.isOk()) {
-        body.ethSignature = ethSignature.value;
-      }
+      body.ethSignature = await ethSigner.signVerificationEthAddressClaim(claim);
     }
 
     return body;
@@ -533,6 +537,7 @@ export const Factories = {
   EthAddress: EthAddressFactory,
   TransactionHash: TransactionHashFactory,
   Ed25519PrivateKey: Ed25519PrivateKeyFactory,
+  Ed25519PPublicKey: Ed25519PPublicKeyFactory,
   Ed25519Signer: Ed25519SignerFactory,
   Ed25519Signature: Ed25519SignatureFactory,
   Eip712Signer: Eip712SignerFactory,

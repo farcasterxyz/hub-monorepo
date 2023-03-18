@@ -15,7 +15,7 @@ let idRegistryEvent: IdRegistryEvent;
 
 beforeAll(async () => {
   custodySigner = await Factories.Eip712Signer.create();
-  idRegistryEvent = Factories.IdRegistryEvent.build({ to: custodySigner.signerKey });
+  idRegistryEvent = Factories.IdRegistryEvent.build({ to: await custodySigner.getSignerKey() });
 });
 
 describe('makeIdRegistryEventPrimaryKey', () => {
@@ -49,6 +49,8 @@ describe('getIdRegistryEvent', () => {
 describe('getIdRegistryEventByCustodyAddress', () => {
   test('succeeds when event exists', async () => {
     await putIdRegistryEvent(db, idRegistryEvent);
-    await expect(getIdRegistryEventByCustodyAddress(db, custodySigner.signerKey)).resolves.toEqual(idRegistryEvent);
+    await expect(getIdRegistryEventByCustodyAddress(db, await custodySigner.getSignerKey())).resolves.toEqual(
+      idRegistryEvent
+    );
   });
 });

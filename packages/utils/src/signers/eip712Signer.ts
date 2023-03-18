@@ -1,45 +1,15 @@
-import {
-  Signer as EthersAbstractSigner,
-  TypedDataSigner as EthersTypedDataSigner,
-} from '@ethersproject/abstract-signer';
 import { SignatureScheme } from '@farcaster/protobufs';
-import { ResultAsync } from 'neverthrow';
-import { hexStringToBytes } from '../bytes';
-import { eip712 } from '../crypto';
-import { HubAsyncResult, HubError } from '../errors';
 import { VerificationEthAddressClaim } from '../verifications';
 import { Signer } from './signer';
 
-export type TypedDataSigner = EthersAbstractSigner & EthersTypedDataSigner;
-
-export class Eip712Signer implements Signer {
+/**
+ * Extend this class to implement an EIP712 signer.
+ */
+export abstract class Eip712Signer implements Signer {
   /** Signature scheme as defined in protobufs */
   public readonly scheme = SignatureScheme.EIP712;
 
-  /** 20-byte wallet address */
-  public readonly signerKey: Uint8Array;
-
-  private readonly _typedDataSigner: TypedDataSigner;
-
-  public static async fromSigner(typedDataSigner: TypedDataSigner): HubAsyncResult<Eip712Signer> {
-    return ResultAsync.fromPromise(
-      typedDataSigner.getAddress(),
-      (error) => new HubError('unknown', error as Error)
-    ).andThen((address) => {
-      return hexStringToBytes(address).map((signerKey) => new this(typedDataSigner, signerKey));
-    });
-  }
-
-  constructor(typedDataSigner: TypedDataSigner, signerKey: Uint8Array) {
-    this._typedDataSigner = typedDataSigner;
-    this.signerKey = signerKey;
-  }
-
-  public signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array> {
-    return eip712.signMessageHash(hash, this._typedDataSigner);
-  }
-
-  public signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): HubAsyncResult<Uint8Array> {
-    return eip712.signVerificationEthAddressClaim(claim, this._typedDataSigner);
-  }
+  public abstract getSignerKey(): Promise<Uint8Array>;
+  public abstract signMessageHash(hash: Uint8Array): Promise<Uint8Array>;
+  public abstract signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): Promise<Uint8Array>;
 }

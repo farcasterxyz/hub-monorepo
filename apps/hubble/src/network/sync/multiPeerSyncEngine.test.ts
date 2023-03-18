@@ -17,19 +17,18 @@ const testDb1 = jestRocksDB(`engine1.peersyncEngine.test`);
 const testDb2 = jestRocksDB(`engine2.peersyncEngine.test`);
 
 const network = protobufs.FarcasterNetwork.TESTNET;
-
 const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
-
 let custodySigner: Eip712Signer;
 let custodyEvent: protobufs.IdRegistryEvent;
 let signerAdd: protobufs.Message;
+
 beforeAll(async () => {
   custodySigner = await Factories.Eip712Signer.create();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
+  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: await custodySigner.getSignerKey() });
 
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
+    { data: { fid, network, signerAddBody: { signer: await signer.getSignerKey() } } },
     { transient: { signer: custodySigner } }
   );
 });
@@ -279,7 +278,7 @@ describe('Multi peer sync engine', () => {
       Array.from({ length: 5 }, async (_) => {
         const signer = Factories.Ed25519Signer.build();
         const signerAdd = await Factories.SignerAddMessage.create(
-          { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
+          { data: { fid, network, signerAddBody: { signer: await signer.getSignerKey() } } },
           { transient: { signer: custodySigner } }
         );
         await engine1.mergeMessage(signerAdd);

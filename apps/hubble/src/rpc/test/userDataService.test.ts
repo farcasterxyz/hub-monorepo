@@ -47,10 +47,10 @@ let addFname: protobufs.UserDataAddMessage;
 
 beforeAll(async () => {
   custodySigner = await Factories.Eip712Signer.create();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
+  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: await custodySigner.getSignerKey() });
 
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
+    { data: { fid, network, signerAddBody: { signer: await signer.getSignerKey() } } },
     { transient: { signer: custodySigner } }
   );
 
@@ -99,7 +99,7 @@ describe('getUserData', () => {
     );
     expect(protobufs.Message.toJSON(display._unsafeUnwrap())).toEqual(protobufs.Message.toJSON(displayAdd));
 
-    const nameRegistryEvent = Factories.NameRegistryEvent.build({ fname, to: custodySigner.signerKey });
+    const nameRegistryEvent = Factories.NameRegistryEvent.build({ fname, to: await custodySigner.getSignerKey() });
     await engine.mergeNameRegistryEvent(nameRegistryEvent);
 
     expect(await engine.mergeMessage(addFname)).toBeInstanceOf(Ok);

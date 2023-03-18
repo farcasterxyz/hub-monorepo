@@ -50,13 +50,13 @@ describe('doJobs', () => {
     const fid1 = Factories.Fid.build();
 
     const signer1 = Factories.Ed25519Signer.build();
-    await seedSigner(engine, fid1, signer1.signerKey);
+    await seedSigner(engine, fid1, await signer1.getSignerKey());
     await seedMessagesFromTimestamp(engine, fid1, signer1, timestampToPrune);
 
     const fid2 = Factories.Fid.build();
 
     const signer2 = Factories.Ed25519Signer.build();
-    await seedSigner(engine, fid2, signer2.signerKey);
+    await seedSigner(engine, fid2, await signer2.getSignerKey());
     await seedMessagesFromTimestamp(engine, fid2, signer2, timestampToPrune);
 
     for (const fid of [fid1, fid2]) {
