@@ -15,12 +15,15 @@ import {
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
 } from '@farcaster/protobufs';
-import { bytesIncrement, FARCASTER_EPOCH, HubAsyncResult, HubError, HubResult } from '@farcaster/utils';
+import { bytesIncrement, FARCASTER_EPOCH, HubAsyncResult, HubError, HubResult, isHubError } from '@farcaster/utils';
+import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
 import AbstractRocksDB from 'rocksdb';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix } from '~/storage/db/types';
+
+export type HubEventBody = Omit<HubEvent, 'id'>;
 
 export type StoreEvents = {
   /**
@@ -118,12 +121,14 @@ export const putEventTransaction = (txn: Transaction, event: HubEvent): Transact
 class StoreEventHandler extends TypedEmitter<StoreEvents> {
   private _db: RocksDB;
   private _generator: HubEventIdGenerator;
+  private _lock: AsyncLock;
 
   constructor(db: RocksDB) {
     super();
 
     this._db = db;
     this._generator = new HubEventIdGenerator({ epoch: FARCASTER_EPOCH });
+    this._lock = new AsyncLock({ maxPending: 10_000, timeout: 10_000 });
   }
 
   async getEvent(id: number): HubAsyncResult<HubEvent> {
@@ -152,6 +157,33 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       events.push(event);
     }
     return ok(events);
+  }
+
+  async commitTransaction(txn: Transaction, eventBodies: HubEventBody[]): HubAsyncResult<number[]> {
+    return this._lock
+      .acquire('default', async () => {
+        const events: HubEvent[] = [];
+
+        for (const eventBody of eventBodies) {
+          const eventId = this._generator.generateId();
+          if (eventId.isErr()) {
+            throw eventId.error;
+          }
+          const event = HubEvent.create({ ...eventBody, id: eventId.value });
+          // TODO: validate event
+          events.push(event);
+          txn = putEventTransaction(txn, event);
+        }
+
+        await this._db.commit(txn);
+
+        void this.broadcastEvents(events);
+
+        return ok(events.map((event) => event.id));
+      })
+      .catch((e: Error) => {
+        return err(isHubError(e) ? e : new HubError('unavailable.storage_failure', e.message));
+      });
   }
 
   broadcastEvent(event: HubEvent): HubResult<void> {

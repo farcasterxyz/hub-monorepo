@@ -1,17 +1,19 @@
 import {
+  HubEventType,
   IdRegistryEvent,
   isMergeIdRegistryEventHubEvent,
   isMergeMessageHubEvent,
   isMergeNameRegistryEventHubEvent,
   isPruneMessageHubEvent,
   isRevokeMessageHubEvent,
+  MergeMessageHubEvent,
   Message,
   NameRegistryEvent,
 } from '@farcaster/protobufs';
 import { Factories } from '@farcaster/utils';
 import { ok } from 'neverthrow';
 import { jestRocksDB } from '../db/jestUtils';
-import StoreEventHandler, { HubEventIdGenerator } from './storeEventHandler';
+import StoreEventHandler, { HubEventBody, HubEventIdGenerator } from './storeEventHandler';
 
 const db = jestRocksDB('stores.storeEventHandler.test');
 const eventHandler = new StoreEventHandler(db);
@@ -103,6 +105,49 @@ describe('HubEventIdGenerator', () => {
       const id = generator.generateId()._unsafeUnwrap();
       expect(id).toBeGreaterThan(lastId);
       lastId = id;
+    }
+  });
+});
+
+describe('commitTransaction', () => {
+  test('saves and broadcasts events in order', async () => {
+    const events: MergeMessageHubEvent[] = [];
+
+    const eventListener = (event: MergeMessageHubEvent) => {
+      events.push(event);
+    };
+
+    const events1: HubEventBody[] = [];
+    const events2: HubEventBody[] = [];
+
+    for (let i = 0; i < 10; i++) {
+      const message = await Factories.Message.create();
+      const eventBody = { type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message, deletedMessages: [] } };
+      if (Math.random() > 0.5) {
+        events1.push(eventBody);
+      } else {
+        events2.push(eventBody);
+      }
+    }
+
+    eventHandler.on('mergeMessage', eventListener);
+    const [result1, result2] = await Promise.all([
+      eventHandler.commitTransaction(db.transaction(), events1),
+      eventHandler.commitTransaction(db.transaction(), events2),
+    ]);
+    eventHandler.off('mergeMessage', eventListener);
+
+    expect(result1.isOk()).toBeTruthy();
+    expect(result2.isOk()).toBeTruthy();
+
+    expect(Math.max(...result1._unsafeUnwrap())).toBeLessThan(Math.min(...result2._unsafeUnwrap()));
+
+    expect(events.length).toEqual(10);
+
+    let lastId = 0;
+    for (const event of events) {
+      expect(event.id).toBeGreaterThan(lastId);
+      lastId = event.id;
     }
   });
 });
