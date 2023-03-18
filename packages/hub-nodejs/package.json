@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/hub-nodejs",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -17,7 +17,7 @@
   "license": "MIT",
   "dependencies": {
     "@farcaster/protobufs": "0.1.8",
-    "@farcaster/utils": "0.2.11",
+    "@farcaster/utils": "0.2.12",
     "@noble/hashes": "^1.2.0",
     "ethers": "^5.7.2",
     "neverthrow": "^6.0.0"
