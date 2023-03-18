@@ -18,7 +18,7 @@ import {
 } from '~/storage/db/message';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix, UserPostfix } from '~/storage/db/types';
-import StoreEventHandler, { HubEventBody, putEventTransaction } from '~/storage/stores/storeEventHandler';
+import StoreEventHandler, { HubEventArgs } from '~/storage/stores/storeEventHandler';
 import {
   MERGE_TIMEOUT_DEFAULT,
   MessagesPage,
@@ -243,21 +243,17 @@ class SignerStore {
       throw new HubError('bad_request.conflict', 'event conflicts with a more recent IdRegistryEvent');
     }
 
-    let txn = putIdRegistryEventTransaction(this._db.transaction(), event);
+    const txn = putIdRegistryEventTransaction(this._db.transaction(), event);
 
-    const hubEvent = this._eventHandler.makeMergeIdRegistryEvent(event);
-    if (hubEvent.isErr()) {
-      throw hubEvent.error;
+    const events: Omit<protobufs.MergeIdRegistryEventHubEvent, 'id'>[] = [
+      { type: protobufs.HubEventType.MERGE_ID_REGISTRY_EVENT, mergeIdRegistryEventBody: { idRegistryEvent: event } },
+    ];
+
+    const result = await this._eventHandler.commitTransaction(txn, events);
+    if (result.isErr()) {
+      throw result.error;
     }
-    txn = putEventTransaction(txn, hubEvent.value);
-
-    // Commit the RocksDB transaction
-    await this._db.commit(txn);
-
-    // Emit store event
-    this._eventHandler.broadcastEvent(hubEvent.value);
-
-    return hubEvent.value.id;
+    return result.value[0] as number;
   }
 
   /** Merges a SignerAdd or SignerRemove message into the SignerStore */
@@ -393,7 +389,7 @@ class SignerStore {
     // Add putSignerAdd operations to the RocksDB transaction
     txn = this.putSignerAddTransaction(txn, message);
 
-    const hubEvent: HubEventBody = {
+    const hubEvent: HubEventArgs = {
       type: protobufs.HubEventType.MERGE_MESSAGE,
       mergeMessageBody: { message, deletedMessages: mergeConflicts.value },
     };
@@ -419,7 +415,7 @@ class SignerStore {
     // Add putSignerRemove operations to the RocksDB transaction
     txn = this.putSignerRemoveTransaction(txn, message);
 
-    const hubEvent: HubEventBody = {
+    const hubEvent: HubEventArgs = {
       type: protobufs.HubEventType.MERGE_MESSAGE,
       mergeMessageBody: { message, deletedMessages: mergeConflicts.value },
     };

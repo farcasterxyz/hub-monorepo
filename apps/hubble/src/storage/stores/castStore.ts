@@ -20,7 +20,7 @@ import {
 } from '~/storage/db/message';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { FID_BYTES, RootPrefix, TRUE_VALUE, UserPostfix } from '~/storage/db/types';
-import StoreEventHandler, { HubEventBody } from '~/storage/stores/storeEventHandler';
+import StoreEventHandler, { HubEventArgs } from '~/storage/stores/storeEventHandler';
 import {
   MERGE_TIMEOUT_DEFAULT,
   MessagesPage,
@@ -468,7 +468,7 @@ class CastStore {
     // Add putCastAdd operations to the RocksDB transaction
     txn = this.putCastAddTransaction(txn, message);
 
-    const hubEvent: HubEventBody = {
+    const hubEvent: HubEventArgs = {
       type: protobufs.HubEventType.MERGE_MESSAGE,
       mergeMessageBody: { message, deletedMessages: [] },
     };
@@ -545,7 +545,7 @@ class CastStore {
     // Add putCastRemove operations to the RocksDB transaction
     txn = this.putCastRemoveTransaction(txn, message);
 
-    const hubEvent: HubEventBody = {
+    const hubEvent: HubEventArgs = {
       type: protobufs.HubEventType.MERGE_MESSAGE,
       mergeMessageBody: { message, deletedMessages: mergeConflicts },
     };

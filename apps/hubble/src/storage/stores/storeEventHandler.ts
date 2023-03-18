@@ -1,7 +1,5 @@
 import {
   HubEvent,
-  HubEventType,
-  IdRegistryEvent,
   isMergeIdRegistryEventHubEvent,
   isMergeMessageHubEvent,
   isMergeNameRegistryEventHubEvent,
@@ -10,8 +8,6 @@ import {
   MergeIdRegistryEventHubEvent,
   MergeMessageHubEvent,
   MergeNameRegistryEventHubEvent,
-  Message,
-  NameRegistryEvent,
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
 } from '@farcaster/protobufs';
@@ -22,8 +18,6 @@ import AbstractRocksDB from 'rocksdb';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix } from '~/storage/db/types';
-
-export type HubEventBody = Omit<HubEvent, 'id'>;
 
 export type StoreEvents = {
   /**
@@ -58,6 +52,8 @@ export type StoreEvents = {
    */
   mergeNameRegistryEvent: (event: MergeNameRegistryEventHubEvent) => void;
 };
+
+export type HubEventArgs = Omit<HubEvent, 'id'>;
 
 // Chosen to keep number under Number.MAX_SAFE_INTEGER
 const TIMESTAMP_BITS = 41;
@@ -112,7 +108,7 @@ const makeEventKey = (id?: number): Buffer => {
   return buffer;
 };
 
-export const putEventTransaction = (txn: Transaction, event: HubEvent): Transaction => {
+const putEventTransaction = (txn: Transaction, event: HubEvent): Transaction => {
   const key = makeEventKey(event.id);
   const value = Buffer.from(HubEvent.encode(event).finish());
   return txn.put(key, value);
@@ -159,17 +155,17 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     return ok(events);
   }
 
-  async commitTransaction(txn: Transaction, eventBodies: HubEventBody[]): HubAsyncResult<number[]> {
+  async commitTransaction(txn: Transaction, eventArgs: HubEventArgs[]): HubAsyncResult<number[]> {
     return this._lock
       .acquire('default', async () => {
         const events: HubEvent[] = [];
 
-        for (const eventBody of eventBodies) {
+        for (const args of eventArgs) {
           const eventId = this._generator.generateId();
           if (eventId.isErr()) {
             throw eventId.error;
           }
-          const event = HubEvent.create({ ...eventBody, id: eventId.value });
+          const event = HubEvent.create({ ...args, id: eventId.value });
           // TODO: validate event
           events.push(event);
           txn = putEventTransaction(txn, event);
@@ -177,7 +173,9 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
 
         await this._db.commit(txn);
 
-        void this.broadcastEvents(events);
+        for (const event of events) {
+          void this.broadcastEvent(event);
+        }
 
         return ok(events.map((event) => event.id));
       })
@@ -186,7 +184,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       });
   }
 
-  broadcastEvent(event: HubEvent): HubResult<void> {
+  private broadcastEvent(event: HubEvent): HubResult<void> {
     if (isMergeMessageHubEvent(event)) {
       this.emit('mergeMessage', event);
     } else if (isPruneMessageHubEvent(event)) {
@@ -202,81 +200,6 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     }
 
     return ok(undefined);
-  }
-
-  broadcastEvents(events: HubEvent[]): Array<HubResult<void>> {
-    return events.map((event) => this.broadcastEvent(event));
-  }
-
-  makeMergeMessage(message: Message, deletedMessages?: Message[]): HubResult<MergeMessageHubEvent> {
-    return this._generator.generateId().andThen((id) => {
-      const event = HubEvent.create({
-        type: HubEventType.MERGE_MESSAGE,
-        id,
-        mergeMessageBody: {
-          message,
-          deletedMessages: deletedMessages ?? [],
-        },
-      }) as MergeMessageHubEvent;
-      return ok(event);
-    });
-  }
-
-  makePruneMessage(message: Message): HubResult<PruneMessageHubEvent> {
-    return this._generator.generateId().andThen((id) => {
-      const event = HubEvent.create({
-        type: HubEventType.PRUNE_MESSAGE,
-        id,
-        pruneMessageBody: {
-          message,
-        },
-      }) as PruneMessageHubEvent;
-      return ok(event);
-    });
-  }
-
-  makeRevokeMessage(message: Message): HubResult<RevokeMessageHubEvent> {
-    return this._generator.generateId().andThen((id) => {
-      const event = HubEvent.create({
-        type: HubEventType.REVOKE_MESSAGE,
-        id,
-        revokeMessageBody: {
-          message,
-        },
-      }) as RevokeMessageHubEvent;
-      return ok(event);
-    });
-  }
-
-  makeMergeIdRegistryEvent(idRegistryEvent: IdRegistryEvent): HubResult<MergeIdRegistryEventHubEvent> {
-    return this._generator.generateId().andThen((id) => {
-      const event = HubEvent.create({
-        type: HubEventType.MERGE_ID_REGISTRY_EVENT,
-        id,
-        mergeIdRegistryEventBody: {
-          idRegistryEvent,
-        },
-      }) as MergeIdRegistryEventHubEvent;
-      return ok(event);
-    });
-  }
-
-  makeMergeNameRegistryEvent(nameRegistryEvent: NameRegistryEvent): HubResult<MergeNameRegistryEventHubEvent> {
-    return this._generator.generateId().andThen((id) => {
-      const event = HubEvent.create({
-        type: HubEventType.MERGE_NAME_REGISTRY_EVENT,
-        id,
-        mergeNameRegistryEventBody: {
-          nameRegistryEvent,
-        },
-      }) as MergeNameRegistryEventHubEvent;
-      return ok(event);
-    });
-  }
-
-  async putEvent(event: HubEvent): HubAsyncResult<void> {
-    const txn = putEventTransaction(this._db.transaction(), event);
-    return ResultAsync.fromPromise(this._db.commit(txn), (e) => e as HubError);
   }
 }
 

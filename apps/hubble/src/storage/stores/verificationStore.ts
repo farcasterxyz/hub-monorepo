@@ -16,7 +16,7 @@ import {
 } from '~/storage/db/message';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { UserPostfix } from '~/storage/db/types';
-import StoreEventHandler, { HubEventBody } from '~/storage/stores/storeEventHandler';
+import StoreEventHandler, { HubEventArgs } from '~/storage/stores/storeEventHandler';
 import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PageOptions, StorePruneOptions } from '~/storage/stores/types';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 50;
@@ -294,7 +294,7 @@ class VerificationStore {
     // Add putVerificationAdd operations to the RocksDB transaction
     txn = this.putVerificationAddTransaction(txn, message);
 
-    const hubEvent: HubEventBody = {
+    const hubEvent: HubEventArgs = {
       type: protobufs.HubEventType.MERGE_MESSAGE,
       mergeMessageBody: { message, deletedMessages: mergeConflicts.value },
     };
@@ -325,7 +325,7 @@ class VerificationStore {
     // Add putVerificationRemove operations to the RocksDB transaction
     txn = this.putVerificationRemoveTransaction(txn, message);
 
-    const hubEvent: HubEventBody = {
+    const hubEvent: HubEventArgs = {
       type: protobufs.HubEventType.MERGE_MESSAGE,
       mergeMessageBody: { message, deletedMessages: mergeConflicts.value },
     };

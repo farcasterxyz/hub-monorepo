@@ -18,7 +18,7 @@ import {
 import { getNameRegistryEvent, putNameRegistryEventTransaction } from '~/storage/db/nameRegistryEvent';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { UserPostfix } from '~/storage/db/types';
-import StoreEventHandler, { HubEventBody } from '~/storage/stores/storeEventHandler';
+import StoreEventHandler, { HubEventArgs } from '~/storage/stores/storeEventHandler';
 import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PageOptions, StorePruneOptions } from '~/storage/stores/types';
 import { eventCompare } from '~/storage/stores/utils';
 
@@ -253,7 +253,7 @@ class UserDataStore {
     // Add putUserDataAdd operations to the RocksDB transaction
     txn = this.putUserDataAddTransaction(txn, message);
 
-    const hubEvent: HubEventBody = {
+    const hubEvent: HubEventArgs = {
       type: protobufs.HubEventType.MERGE_MESSAGE,
       mergeMessageBody: { message, deletedMessages: mergeConflicts.value },
     };
