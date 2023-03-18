@@ -23,12 +23,13 @@
     "neverthrow": "^6.0.0"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "build": "swc src -d dist",
     "clean": "rimraf ./dist",
     "lint": "eslint  src/ --color --ext .ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage",
-    "prepublishOnly": "yarn run build"
+    "prepublishOnly": "yarn run build",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@faker-js/faker": "^7.6.0",

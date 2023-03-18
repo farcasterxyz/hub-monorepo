@@ -16,7 +16,8 @@
   "type": "module",
   "scripts": {
     "bench": "NODE_OPTIONS='--max-old-space-size=8192' tsx src/test/bench",
-    "build": "yarn clean && tsc --project ./tsconfig.json",
+    "build": "yarn clean && swc src -d dist",
+    "typecheck": "tsc --noEmit",
     "clean": "rimraf ./build",
     "dev": "yarn start | yarn pino-pretty",
     "lint": "eslint  src/ --color --ext .ts",

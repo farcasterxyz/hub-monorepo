@@ -16,12 +16,13 @@
   ],
   "license": "MIT",
   "scripts": {
-    "build": "tsup --config tsup.config.ts",
+    "build": "swc src -d dist",
     "clean": "rimraf ./dist",
     "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/generated/ --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputServices=grpc-js,useOptionals=none,unrecognizedEnum=false,removeEnumPrefix=true --proto_path=./src/schemas ./src/schemas/*",
     "lint": "eslint  src/ --color --ext .ts",
     "lint:fix": "yarn run lint -- --fix",
-    "prepublishOnly": "yarn run build"
+    "prepublishOnly": "yarn run build",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "eslint-config-custom": "*",
