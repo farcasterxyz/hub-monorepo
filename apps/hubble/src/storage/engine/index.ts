@@ -1,6 +1,8 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesCompare, HubAsyncResult, HubError, HubResult, utf8StringToBytes, validations } from '@farcaster/utils';
+import fs from 'fs';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
+import { Worker } from 'worker_threads';
 import { SyncId } from '~/network/sync/syncId';
 import { getManyMessages, typeToSetPostfix } from '~/storage/db/message';
 import RocksDB from '~/storage/db/rocksdb';
@@ -30,6 +32,10 @@ class Engine {
   private _userDataStore: UserDataStore;
   private _verificationStore: VerificationStore;
 
+  private _validationWorker: Worker | undefined;
+  private _validationWorkerJobId = 0;
+  private _validationWorkerPromiseMap = new Map<number, (resolve: HubResult<protobufs.Message>) => void>();
+
   constructor(db: RocksDB, network: protobufs.FarcasterNetwork) {
     this._db = db;
     this._network = network;
@@ -41,6 +47,32 @@ class Engine {
     this._castStore = new CastStore(db, this.eventHandler);
     this._userDataStore = new UserDataStore(db, this.eventHandler);
     this._verificationStore = new VerificationStore(db, this.eventHandler);
+
+    const workerPath = './build/storage/engine/validation.worker.js';
+    try {
+      if (fs.existsSync(workerPath)) {
+        this._validationWorker = new Worker(workerPath);
+
+        logger.info({ workerPath }, 'created validation worker thread');
+
+        this._validationWorker.on('message', (data) => {
+          const { id, messageBytes, errCode, errMessage } = data;
+          const resolve = this._validationWorkerPromiseMap.get(id);
+
+          if (resolve) {
+            this._validationWorkerPromiseMap.delete(id);
+            if (messageBytes) {
+              const message = protobufs.Message.decode(messageBytes);
+              resolve(ok(message));
+            } else {
+              resolve(err(new HubError(errCode, errMessage)));
+            }
+          }
+        });
+      }
+    } catch (e) {
+      logger.warn({ workerPath, e }, 'failed to create validation worker, falling back to main thread');
+    }
   }
 
   async mergeMessages(messages: protobufs.Message[]): Promise<Array<HubResult<number>>> {
@@ -518,7 +550,18 @@ class Engine {
     }
 
     // 6. Check message body and envelope
-    return validations.validateMessage(message);
+    if (this._validationWorker) {
+      const promise = new Promise<HubResult<protobufs.Message>>((resolve) => {
+        const id = this._validationWorkerJobId++;
+        this._validationWorkerPromiseMap.set(id, resolve);
+
+        this._validationWorker?.postMessage({ id, message });
+      });
+
+      return promise;
+    } else {
+      return validations.validateMessage(message);
+    }
   }
 }
 

@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "~/*": ["./*"]
+    },
+    
+    "moduleResolution": "Node",
+    "module": "es2022",
+    "target": "es2022",
+    "lib": ["es2022", "webworker"],
+    "outDir": "build",
+    "rootDir": "src"
+  },
+  // Add all worker files here
+  "include": ["src/storage/engine/validation.worker.ts"],
+  "exclude": ["node_modules", "jest.config.ts"]
+}
