@@ -8,14 +8,21 @@ import { HubError } from './errors';
 import { Factories } from './factories';
 import { Ed25519Signer, Eip712Signer } from './signers';
 import * as validations from './validations';
-import { makeVerificationEthAddressClaim } from './verifications';
+import { VerificationEthAddressClaim, makeVerificationEthAddressClaim } from './verifications';
 
 const fid = Factories.Fid.build();
 const network = protobufs.FarcasterNetwork.TESTNET;
 
 const ed25519Signer = Ed25519Signer.fromPrivateKey(Factories.Ed25519PrivateKey.build())._unsafeUnwrap();
 const wallet = new ethers.Wallet(ethers.utils.randomBytes(32));
-const eip712Signer = Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwrap();
+
+let eip712Signer: Eip712Signer;
+let address: Uint8Array;
+
+beforeAll(async () => {
+  eip712Signer = await Factories.Eip712Signer.create({}, { transient: { wallet } });
+  address = eip712Signer.signerKey;
+});
 
 describe('makeCastAddData', () => {
   test('succeeds', async () => {
@@ -127,12 +134,12 @@ describe('makeReactionRemove', () => {
 });
 
 describe('makeVerificationAddEthAddressData', () => {
-  let ethSignature: Uint8Array;
-  const address = eip712Signer.signerKey;
   const blockHash = Factories.BlockHash.build();
-  const claim = makeVerificationEthAddressClaim(fid, address, network, blockHash)._unsafeUnwrap();
+  let ethSignature: Uint8Array;
+  let claim: VerificationEthAddressClaim;
 
   beforeAll(async () => {
+    claim = makeVerificationEthAddressClaim(fid, address, network, blockHash)._unsafeUnwrap();
     const signature = await eip712Signer.signVerificationEthAddressClaim(claim);
     expect(signature.isOk()).toBeTruthy();
     ethSignature = signature._unsafeUnwrap();
@@ -159,12 +166,12 @@ describe('makeVerificationRemoveData', () => {
 });
 
 describe('makeVerificationAddEthAddress', () => {
-  let ethSignature: Uint8Array;
-  const address = eip712Signer.signerKey;
   const blockHash = Factories.BlockHash.build();
-  const claim = makeVerificationEthAddressClaim(fid, address, network, blockHash)._unsafeUnwrap();
+  let ethSignature: Uint8Array;
+  let claim: VerificationEthAddressClaim;
 
   beforeAll(async () => {
+    claim = makeVerificationEthAddressClaim(fid, address, network, blockHash)._unsafeUnwrap();
     const signatureHex = await eip712Signer.signVerificationEthAddressClaim(claim);
     expect(signatureHex.isOk()).toBeTruthy();
     ethSignature = signatureHex._unsafeUnwrap();

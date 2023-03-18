@@ -16,7 +16,7 @@ describe('Eip712Signer', () => {
   beforeAll(async () => {
     typedDataSigner = new ethers.Wallet(ethers.utils.randomBytes(32));
     ethAddress = await typedDataSigner.getAddress();
-    signer = Eip712Signer.fromSigner(typedDataSigner, ethAddress)._unsafeUnwrap();
+    signer = (await Eip712Signer.fromSigner(typedDataSigner))._unsafeUnwrap();
   });
 
   describe('static methods', () => {

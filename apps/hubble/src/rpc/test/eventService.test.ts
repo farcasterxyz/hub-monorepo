@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import * as protobufs from '@farcaster/protobufs';
-import { Factories, getInsecureHubRpcClient, HubRpcClient } from '@farcaster/utils';
+import { Eip712Signer, Factories, getInsecureHubRpcClient, HubRpcClient } from '@farcaster/utils';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -26,18 +26,17 @@ afterAll(async () => {
 
 const fid = Factories.Fid.build();
 const fname = Factories.Fname.build();
-const ethSigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
+let custodySigner: Eip712Signer;
 let custodyEvent: protobufs.IdRegistryEvent;
 let nameRegistryEvent: protobufs.NameRegistryEvent;
 let signerAdd: protobufs.SignerAddMessage;
 let castAdd: protobufs.CastAddMessage;
 let reactionAdd: protobufs.ReactionAddMessage;
-
 let events: [protobufs.HubEventType, any][];
 let stream: protobufs.ClientReadableStream<protobufs.HubEvent>;
 
-beforeEach(() => {
+beforeEach(async () => {
   events = [];
 });
 
@@ -48,11 +47,12 @@ afterEach(() => {
 });
 
 beforeAll(async () => {
-  custodyEvent = Factories.IdRegistryEvent.build({ to: ethSigner.signerKey, fid });
-  nameRegistryEvent = Factories.NameRegistryEvent.build({ to: ethSigner.signerKey, fname });
+  custodySigner = await Factories.Eip712Signer.create();
+  custodyEvent = Factories.IdRegistryEvent.build({ to: custodySigner.signerKey, fid });
+  nameRegistryEvent = Factories.NameRegistryEvent.build({ to: custodySigner.signerKey, fname });
   signerAdd = await Factories.SignerAddMessage.create(
     { data: { fid, signerAddBody: { signer: signer.signerKey } } },
-    { transient: { signer: ethSigner } }
+    { transient: { signer: custodySigner } }
   );
   castAdd = await Factories.CastAddMessage.create({ data: { fid } }, { transient: { signer } });
   reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid } }, { transient: { signer } });

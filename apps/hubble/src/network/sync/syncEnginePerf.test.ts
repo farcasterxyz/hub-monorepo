@@ -2,7 +2,7 @@
 
 import * as protobufs from '@farcaster/protobufs';
 import { FarcasterNetwork } from '@farcaster/protobufs';
-import { Factories, HubRpcClient } from '@farcaster/utils';
+import { Eip712Signer, Factories, HubRpcClient } from '@farcaster/utils';
 import SyncEngine from '~/network/sync/syncEngine';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -15,13 +15,14 @@ const testDb2 = jestRocksDB(`engine2.syncEnginePerf.test`);
 const network = protobufs.FarcasterNetwork.TESTNET;
 
 const fid = Factories.Fid.build();
-const custodySigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
 
+let custodySigner: Eip712Signer;
 let custodyEvent: protobufs.IdRegistryEvent;
 let signerAdd: protobufs.Message;
 
 beforeAll(async () => {
+  custodySigner = await Factories.Eip712Signer.create();
   custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
 
   signerAdd = await Factories.SignerAddMessage.create(

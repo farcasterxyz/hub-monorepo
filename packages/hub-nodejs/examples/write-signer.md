@@ -34,7 +34,7 @@ import { ethers } from 'ethers';
 // Create an EIP712 Signer with the wallet that holds the custody address of the user
 const mnemonic = 'your mnemonic apple orange banana ...'; // mnemonic for the custody address' wallet
 const wallet = ethers.Wallet.fromMnemonic(mnemonic);
-const eip712Signer = Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwrap();
+const eip712Signer = (await Eip712Signer.fromSigner(wallet))._unsafeUnwrap();
 
 // Generate a new Ed25519 key pair which will become the Signer and store the private key securely
 const signerPrivateKey = ed.utils.randomPrivateKey();

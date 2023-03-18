@@ -34,7 +34,7 @@ import { ethers } from 'ethers';
 const mnemonic = 'ordinary long coach bounce thank quit become youth belt pretty diet caught attract melt bargain';
 const wallet = ethers.Wallet.fromMnemonic(mnemonic);
 
-const eip712Signer = Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwrap();
+const eip712Signer = (await Eip712Signer.fromSigner(wallet))._unsafeUnwrap();
 ```
 
 ### Data Options

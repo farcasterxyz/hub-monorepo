@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Factories, getInsecureHubRpcClient, HubError, HubResult, HubRpcClient } from '@farcaster/utils';
+import { Eip712Signer, Factories, getInsecureHubRpcClient, HubError, HubResult, HubRpcClient } from '@farcaster/utils';
 import { ok } from 'neverthrow';
 import SyncEngine from '~/network/sync/syncEngine';
 import Server from '~/rpc/server';
@@ -34,15 +34,17 @@ const assertMessagesMatchResult = (result: HubResult<protobufs.MessagesResponse>
 
 const fid = Factories.Fid.build();
 const fid2 = fid + 1;
-const custodySigner = Factories.Eip712Signer.build();
-const custodySigner2 = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
 
+let custodySigner: Eip712Signer;
+let custodySigner2: Eip712Signer;
 let custodyEvent: protobufs.IdRegistryEvent;
 let custodyEvent2: protobufs.IdRegistryEvent;
 let signerAdd: protobufs.SignerAddMessage;
 
 beforeAll(async () => {
+  custodySigner = await Factories.Eip712Signer.create();
+  custodySigner2 = await Factories.Eip712Signer.create();
   custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
   custodyEvent2 = Factories.IdRegistryEvent.build({ fid: fid2, to: custodySigner2.signerKey });
 

@@ -16,21 +16,14 @@ An Eip712Signer is initialized with an Ethereum wallet and can be used with [Bui
 
 ### Usage
 
-```typescript
-import { Eip712Signer } from '@farcaster/hub-nodejs';
-import { ethers } from 'ethers';
-
-const custodyWallet = ethers.Wallet.fromMnemonic('your mnemonic here apple orange banana');
-const eip712Signer = Eip712Signer.fromSigner(custodyWallet, custodyWallet.address)._unsafeUnwrap();
-```
+Prefer building with `Eip712Signer.fromSigner`.
 
 #### Parameters
 
-| Name              | Type              | Description                            |
-| :---------------- | :---------------- | -------------------------------------- |
-| `typedDataSigner` | `TypedDataSigner` | A wallet instance                      |
-| `address`         | `string`          | 20-byte Ethereum Address in hex format |
-| `signerKey`       | `Uint8Array`      | 20-byte Ethereum Address               |
+| Name              | Type              | Description              |
+| :---------------- | :---------------- | ------------------------ |
+| `typedDataSigner` | `TypedDataSigner` | A wallet instance        |
+| `signerKey`       | `Uint8Array`      | 20-byte Ethereum Address |
 
 ---
 
@@ -45,7 +38,7 @@ import { Eip712Signer } from '@farcaster/hub-nodejs';
 import { ethers } from 'ethers';
 
 const custodyWallet = ethers.Wallet.fromMnemonic('your mnemonic here apple orange banana');
-const eip712Signer = Eip712Signer.fromSigner(custodyWallet, custodyWallet.address)._unsafeUnwrap();
+const eip712Signer = (await Eip712Signer.fromSigner(custodyWallet)._unsafeUnwrap();
 ```
 
 #### Returns
@@ -59,7 +52,6 @@ const eip712Signer = Eip712Signer.fromSigner(custodyWallet, custodyWallet.addres
 | Name              | Type              | Description                                      |
 | :---------------- | :---------------- | :----------------------------------------------- |
 | `typedDataSigner` | `TypedDataSigner` | The TypedDataSigner instance to use for signing. |
-| `address`         | `string`          | The Ethereum address associated with the signer. |
 
 ## Instance Methods
 
