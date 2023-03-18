@@ -475,7 +475,7 @@ describe('validateVerificationAddEthAddressSignature', () => {
       ethSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
     });
     const result = validations.validateVerificationAddEthAddressSignature(body, fid, network);
-    expect(result).toEqual(err(new HubError('bad_request.validation_failure', 'invalid ethSignature')));
+    expect(result).toEqual(err(new HubError('bad_request', 'invalid ethSignature')));
   });
 
   test('fails with eth signature from different address', async () => {

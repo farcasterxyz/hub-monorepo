@@ -1,6 +1,5 @@
-import { TypedDataSigner } from '@ethersproject/abstract-signer';
-import { utils } from 'ethers';
-import { hexStringToBytes } from '../bytes';
+import { recoverAddress, Signer, TypedDataEncoder } from 'ethers';
+import { bytesToHexString, hexStringToBytes } from '../bytes';
 import { VerificationEthAddressClaim } from '../verifications';
 
 export const EIP_712_FARCASTER_DOMAIN = {
@@ -38,14 +37,13 @@ export const EIP_712_FARCASTER_MESSAGE_DATA = [
 
 export const signVerificationEthAddressClaim = async (
   claim: VerificationEthAddressClaim,
-  ethersTypedDataSigner: TypedDataSigner
+  signer: Signer
 ): Promise<Uint8Array> => {
-  const hexSignature = await ethersTypedDataSigner._signTypedData(
+  const hexSignature = await signer.signTypedData(
     EIP_712_FARCASTER_DOMAIN,
     { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
     claim
   );
-
   const bytes = hexStringToBytes(hexSignature);
   if (bytes.isErr()) throw bytes.error;
   return bytes.value;
@@ -55,12 +53,14 @@ export const verifyVerificationEthAddressClaimSignature = (
   claim: VerificationEthAddressClaim,
   signature: Uint8Array
 ): Uint8Array => {
+  const signatureHexResult = bytesToHexString(signature);
+  if (signatureHexResult.isErr()) throw signatureHexResult.error;
+
   // Recover address from signature
-  const recoveredHexAddress = utils.verifyTypedData(
-    EIP_712_FARCASTER_DOMAIN,
-    { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
-    claim,
-    signature
+  const recoveredHexAddress = recoverAddress(
+    TypedDataEncoder.hash(EIP_712_FARCASTER_DOMAIN, { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM }, claim),
+
+    signatureHexResult.value
   );
 
   const bytes = hexStringToBytes(recoveredHexAddress);
@@ -68,11 +68,8 @@ export const verifyVerificationEthAddressClaimSignature = (
   return bytes.value;
 };
 
-export const signMessageHash = async (
-  hash: Uint8Array,
-  ethersTypedDataSigner: TypedDataSigner
-): Promise<Uint8Array> => {
-  const hexSignature = await ethersTypedDataSigner._signTypedData(
+export const signMessageHash = async (hash: Uint8Array, signer: Signer): Promise<Uint8Array> => {
+  const hexSignature = await signer.signTypedData(
     EIP_712_FARCASTER_DOMAIN,
     { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
     { hash }
@@ -85,12 +82,13 @@ export const signMessageHash = async (
 };
 
 export const verifyMessageHashSignature = (hash: Uint8Array, signature: Uint8Array): Uint8Array => {
+  const signatureHexResult = bytesToHexString(signature);
+  if (signatureHexResult.isErr()) throw signatureHexResult.error;
+
   // Recover address from signature
-  const recoveredHexAddress = utils.verifyTypedData(
-    EIP_712_FARCASTER_DOMAIN,
-    { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
-    { hash },
-    signature
+  const recoveredHexAddress = recoverAddress(
+    TypedDataEncoder.hash(EIP_712_FARCASTER_DOMAIN, { MessageData: EIP_712_FARCASTER_MESSAGE_DATA }, { hash }),
+    signatureHexResult.value
   );
 
   const bytes = hexStringToBytes(recoveredHexAddress);

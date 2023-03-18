@@ -13,8 +13,8 @@ Create a new [Signer](https://github.com/farcasterxyz/protocol#92-signers) key p
 ```typescript
 import {
   Client,
-  Ed25519Signer,
-  Eip712Signer,
+  NobleEd25519Signer,
+  EthersEip712Signer,
   makeCastAdd,
   makeCastRemove,
   makeReactionAdd,
@@ -24,17 +24,15 @@ import {
   types,
 } from '@farcaster/hub-nodejs';
 import * as ed from '@noble/ed25519';
-import { ethers } from 'ethers';
-import * as ed from '@noble/ed25519';
-import { ethers } from 'ethers';
+import { Wallet } from 'ethers';
 
 // Safety: we use unsafeUnwrap() and crash on failure in a few places, since it can't be handled
 //  any other way
 
 // Create an EIP712 Signer with the wallet that holds the custody address of the user
 const mnemonic = 'your mnemonic apple orange banana ...'; // mnemonic for the custody address' wallet
-const wallet = ethers.Wallet.fromMnemonic(mnemonic);
-const eip712Signer = (await Eip712Signer.fromSigner(wallet))._unsafeUnwrap();
+const wallet = Wallet.fromPhrase(mnemonic);
+const eip712Signer = new EthersEip712Signer(wallet);
 
 // Generate a new Ed25519 key pair which will become the Signer and store the private key securely
 const signerPrivateKey = ed.utils.randomPrivateKey();
@@ -49,7 +47,7 @@ const signerAddResult = await makeSignerAdd({ signer: signerPrivateKeyHex }, dat
 const signerAdd = signerAddResult._unsafeUnwrap();
 
 // Submit the SignerAdd message to the Hub
-const client = new Client('127 .0.0.1:8080');
+const client = new Client('127.0.0.1:8080');
 const result = await client.submitMessage(signerAdd);
 result.isOk() ? console.log('SignerAdd was published successfully!') : console.log(result.error);
 ```
@@ -57,7 +55,7 @@ result.isOk() ? console.log('SignerAdd was published successfully!') : console.l
 Once a SignerAdd is accepted the Signer can be used publish other types of Farcaster messages to a Hub, as shown below.
 
 ```typescript
-const ed25519Signer = Ed25519Signer.fromPrivateKey(signerPrivateKey)._unsafeUnwrap();
+const ed25519Signer = new Ed25519Signer(signerPrivateKey);
 
 // Make a new cast
 const cast = await makeCastAdd({ text: 'hello world' }, dataOptions, ed25519Signer);

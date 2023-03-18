@@ -3,7 +3,7 @@ import { Factory } from '@farcaster/fishery';
 import * as protobufs from '@farcaster/protobufs';
 import { utils } from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
-import { BigNumber, Wallet, ethers } from 'ethers';
+import { Wallet } from 'ethers';
 import { bytesToHexString } from './bytes';
 import * as ed25519 from './crypto/ed25519';
 import { Ed25519Signer, Eip712Signer, EthersEip712Signer, NobleEd25519Signer, Signer } from './signers';
@@ -93,11 +93,11 @@ const Ed25519SignatureFactory = Factory.define<Uint8Array>(() => {
 const Eip712SignerFactory = Factory.define<Eip712Signer, { wallet: Wallet }, Eip712Signer>(
   ({ onCreate, transientParams }) => {
     onCreate(async () => {
-      const wallet = transientParams.wallet ?? new ethers.Wallet(utils.randomBytes(32));
+      const wallet = transientParams.wallet ?? Wallet.createRandom();
       return new EthersEip712Signer(wallet);
     });
 
-    const wallet = transientParams.wallet ?? new ethers.Wallet(utils.randomBytes(32));
+    const wallet = transientParams.wallet ?? Wallet.createRandom();
     return new EthersEip712Signer(wallet);
   }
 );
@@ -364,7 +364,7 @@ const VerificationEthAddressClaimFactory = Factory.define<VerificationEthAddress
   const blockHash = bytesToHexString(BlockHashFactory.build())._unsafeUnwrap();
 
   return {
-    fid: BigNumber.from(FidFactory.build()),
+    fid: BigInt(FidFactory.build()),
     address,
     network: FarcasterNetworkFactory.build(),
     blockHash,
@@ -385,12 +385,15 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
       const fid = transientParams.fid ?? FidFactory.build();
       const network = transientParams.network ?? FarcasterNetworkFactory.build();
       const blockHash = bytesToHexString(body.blockHash);
-      const claim = VerificationEthAddressClaimFactory.build({
-        fid: BigNumber.from(fid),
-        network,
-        blockHash: blockHash.isOk() ? blockHash.value : '0x',
-        address: bytesToHexString(body.address)._unsafeUnwrap(),
-      });
+      const claim = VerificationEthAddressClaimFactory.build(
+        {
+          fid: BigInt(fid),
+          network,
+          blockHash: blockHash.isOk() ? blockHash.value : '0x',
+          address: bytesToHexString(body.address)._unsafeUnwrap(),
+        },
+        { transient: { signer: ethSigner } }
+      );
       body.ethSignature = await ethSigner.signVerificationEthAddressClaim(claim);
     }
 

@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import * as protobufs from '@farcaster/protobufs';
-import { ethers } from 'ethers';
+import { Wallet } from 'ethers';
 import { err, ok } from 'neverthrow';
 import * as builders from './builders';
 import { hexStringToBytes } from './bytes';
@@ -13,7 +13,7 @@ const fid = Factories.Fid.build();
 const network = protobufs.FarcasterNetwork.TESTNET;
 
 const ed25519Signer = Factories.Ed25519Signer.build();
-const wallet = new ethers.Wallet(ethers.utils.randomBytes(32));
+const wallet = Wallet.createRandom();
 const eip712Signer = Factories.Eip712Signer.build({}, { transient: { wallet } });
 let ethSignerKey: Uint8Array;
 let signerKey: Uint8Array;

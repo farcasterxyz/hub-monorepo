@@ -1,21 +1,20 @@
 import { FarcasterNetwork } from '@farcaster/protobufs';
 import { blake3 } from '@noble/hashes/blake3';
-import { ethers } from 'ethers';
-import { randomBytes } from 'ethers/lib/utils';
+import { Signer as EthersSigner, Wallet, randomBytes } from 'ethers';
 import { bytesToHexString } from '../bytes';
 import { eip712 } from '../crypto';
 import { Factories } from '../factories';
 import { VerificationEthAddressClaim, makeVerificationEthAddressClaim } from '../verifications';
-import { EthersEip712Signer, TypedDataSigner } from './ethersEip712Signer';
+import { EthersEip712Signer } from './ethersEip712Signer';
 
 describe('EthersEip712Signer', () => {
   let signer: EthersEip712Signer;
+  let ethersSigner: EthersSigner;
   let signerKey: Uint8Array;
-  let typedDataSigner: TypedDataSigner;
 
   beforeAll(async () => {
-    typedDataSigner = new ethers.Wallet(ethers.utils.randomBytes(32));
-    signer = new EthersEip712Signer(typedDataSigner);
+    ethersSigner = Wallet.createRandom();
+    signer = new EthersEip712Signer(ethersSigner);
     signerKey = await signer.getSignerKey();
   });
 

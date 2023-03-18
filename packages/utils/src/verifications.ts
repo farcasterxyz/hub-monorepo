@@ -1,12 +1,11 @@
 import { FarcasterNetwork } from '@farcaster/protobufs';
-import { BigNumber } from 'ethers';
 import { err, ok } from 'neverthrow';
 import { bytesToHexString } from './bytes';
 import { HubResult } from './errors';
 import { validateEthAddress, validateEthBlockHash } from './validations';
 
 export type VerificationEthAddressClaim = {
-  fid: BigNumber;
+  fid: bigint;
   address: string; // Hex string
   network: FarcasterNetwork;
   blockHash: string; // Hex string
@@ -33,7 +32,7 @@ export const makeVerificationEthAddressClaim = (
   }
 
   return ok({
-    fid: BigNumber.from(fid),
+    fid: BigInt(fid),
     address: ethAddressHex.value,
     network: network,
     blockHash: blockHashHex.value,

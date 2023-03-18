@@ -19,7 +19,7 @@
     "@farcaster/protobufs": "0.1.8",
     "@farcaster/utils": "0.2.12",
     "@noble/hashes": "^1.2.0",
-    "ethers": "^5.7.2",
+    "ethers": "~6.1.0",
     "neverthrow": "^6.0.0"
   },
   "scripts": {
