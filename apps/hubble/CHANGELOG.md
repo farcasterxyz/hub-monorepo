@@ -1,5 +1,14 @@
 # @farcaster/hubble
 
+## 1.0.15
+
+### Patch Changes
+
+- 8f2c6ef0: Increase sync trie Q limit
+- 4e6b83e1: Retry DB open on failure upto 5 times
+- Updated dependencies [86c00f53]
+  - @farcaster/utils@0.2.12
+
 ## 1.0.14
 
 ### Patch Changes
