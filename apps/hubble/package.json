@@ -67,6 +67,6 @@
     "rocksdb": "~5.2.1",
     "rwlock": "~5.0.0",
     "tiny-typed-emitter": "~2.1.0",
-    "tsx": "~3.12.2"
+    "tsx": "~3.12.5"
   }
 }
