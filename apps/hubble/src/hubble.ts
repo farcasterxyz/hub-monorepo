@@ -55,6 +55,8 @@ export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
 export const APP_VERSION = process.env['npm_package_version'] ?? '1.0.0';
 export const APP_NICKNAME = 'Farcaster Hub';
 
+export const HUB_LOCK_POLL_INTERVAL_MS = 15 * 1000;
+
 export interface HubInterface {
   engine: Engine;
   submitMessage(message: protobufs.Message, source?: HubSubmitSource): HubAsyncResult<number>;
@@ -240,7 +242,7 @@ export class Hub implements HubInterface {
         );
 
         // Sleep for 15s
-        await sleep(15 * 1000);
+        await sleep(HUB_LOCK_POLL_INTERVAL_MS);
       } else {
         break;
       }

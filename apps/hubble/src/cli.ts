@@ -7,7 +7,7 @@ import { mkdir, readFile, writeFile } from 'fs/promises';
 import { ResultAsync } from 'neverthrow';
 import { dirname, resolve } from 'path';
 import { exit } from 'process';
-import { APP_VERSION, Hub, HubOptions } from '~/hubble';
+import { APP_VERSION, HUB_LOCK_POLL_INTERVAL_MS, Hub, HubOptions } from '~/hubble';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo, parseAddress } from '~/utils/p2p';
 import { DEFAULT_RPC_CONSOLE, startConsole } from './console/console';
@@ -62,10 +62,15 @@ app
   .option('-i, --id <filepath>', 'Path to the PeerId file')
   .option('-n --network <network>', 'Farcaster network ID', parseNetwork)
   .action(async (cliOptions) => {
+    // Tear down the hub
     const teardown = async (hub: Hub) => {
+      if (processWatcher) {
+        clearInterval(processWatcher);
+      }
       await hub.stop();
     };
 
+    // Handle shutdown signals. We'll wait for a grace period before force-exiting the process.
     const handleShutdownSignal = (signal: NodeJS.Signals) => {
       logger.warn(`${signal} received`);
       if (!isExiting) {
@@ -106,22 +111,21 @@ app
 
     // Watch for the processNum file. If it changes, and we are not the process number written in the file,
     // it means that another hub process has taken over and we should exit.
-    fs.watch(processFileDir, async (eventType, filename) => {
-      if (eventType === 'change' && filename === processFileName) {
-        fs.readFile(`${processFileDir}${processFileName}`, 'utf8', async (err, data) => {
-          if (err) {
-            logger.error(`Error reading processnum file: ${err}`);
-            return;
-          }
+    // We don't use fs.watch because it doesn't work on EFS.
+    const processWatcher = setInterval(() => {
+      fs.readFile(`${processFileDir}${processFileName}`, 'utf8', async (err, data) => {
+        if (err) {
+          logger.error(`Error reading processnum file: ${err}`);
+          return;
+        }
 
-          const readProcessNum = parseInt(data.trim());
-          if (!isNaN(readProcessNum) && readProcessNum !== processNum) {
-            logger.error(`Another hub process is running with processNum ${readProcessNum}, exiting`);
-            handleShutdownSignal('SIGTERM');
-          }
-        });
-      }
-    });
+        const readProcessNum = parseInt(data.trim());
+        if (!isNaN(readProcessNum) && readProcessNum !== processNum) {
+          logger.error(`Another hub process is running with processNum ${readProcessNum}, exiting`);
+          handleShutdownSignal('SIGTERM');
+        }
+      });
+    }, HUB_LOCK_POLL_INTERVAL_MS);
 
     // try to load the config file
     const hubConfig = (await import(resolve(cliOptions.config))).Config;
