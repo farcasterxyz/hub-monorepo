@@ -43,7 +43,7 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 ## Contributing
 
-Please see our [contributing guidelines](../../../CONTRIBUTING.md) before making a pull request.
+Please see our [contributing guidelines](../../CONTRIBUTING.md) before making a pull request.
 
 ## License
 
