@@ -8,6 +8,7 @@ import {
   utf8StringToBytes,
   validations,
 } from '@farcaster/utils';
+import fs from 'fs';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { Worker } from 'worker_threads';
 import { SyncId } from '~/network/sync/syncId';
@@ -55,7 +56,7 @@ class Engine {
     this._userDataStore = new UserDataStore(db, this.eventHandler);
     this._verificationStore = new VerificationStore(db, this.eventHandler);
 
-    const workerPath = './build/storage/engine/validation.worker.js';
+    const workerPath = new URL('./validation.worker.js', import.meta.url).pathname.replace('/src/', '/build/');
     try {
       if (fs.existsSync(workerPath)) {
         this._validationWorker = new Worker(workerPath);
@@ -76,6 +77,8 @@ class Engine {
             }
           }
         });
+      } else {
+        logger.warn({ workerPath }, 'validation.worker.js not found, falling back to main thread');
       }
     } catch (e) {
       logger.warn({ workerPath, e }, 'failed to create validation worker, falling back to main thread');
