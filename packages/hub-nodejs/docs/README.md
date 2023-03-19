@@ -1,6 +1,6 @@
 # Documentation
 
-@farcaster/hub-nodejs has four major components:
+@farcaster/hub-nodejs has five major components:
 
 - A [Client](./Client.md), which can send and receive messages from a Farcaster Hub.
 - [Messages](./Messages.md), which are the atomic units of change on the Farcaster network.
