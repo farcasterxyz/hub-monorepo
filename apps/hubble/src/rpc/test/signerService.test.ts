@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Eip712Signer, Factories, getInsecureHubRpcClient, HubError, HubResult, HubRpcClient } from '@farcaster/utils';
+import { Factories, getInsecureHubRpcClient, HubError, HubResult, HubRpcClient } from '@farcaster/utils';
 import { ok } from 'neverthrow';
 import SyncEngine from '~/network/sync/syncEngine';
 import Server from '~/rpc/server';
@@ -35,17 +35,14 @@ const assertMessagesMatchResult = (result: HubResult<protobufs.MessagesResponse>
 const fid = Factories.Fid.build();
 const fid2 = fid + 1;
 const signer = Factories.Ed25519Signer.build();
-
-let custodySigner: Eip712Signer;
-let custodySigner2: Eip712Signer;
+const custodySigner = Factories.Eip712Signer.build();
+const custodySigner2 = Factories.Eip712Signer.build();
 let custodyEvent: protobufs.IdRegistryEvent;
 let custodyEvent2: protobufs.IdRegistryEvent;
 let signerAdd: protobufs.SignerAddMessage;
 let signerKey: Uint8Array;
 
 beforeAll(async () => {
-  custodySigner = await Factories.Eip712Signer.create();
-  custodySigner2 = await Factories.Eip712Signer.create();
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
   const custodySignerKey2 = (await custodySigner2.getSignerKey())._unsafeUnwrap();
   signerKey = (await signer.getSignerKey())._unsafeUnwrap();

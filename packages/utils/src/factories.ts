@@ -90,17 +90,10 @@ const Ed25519SignatureFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build({}, { transient: { length: 64 } });
 });
 
-const Eip712SignerFactory = Factory.define<Eip712Signer, { wallet: Wallet }, Eip712Signer>(
-  ({ onCreate, transientParams }) => {
-    onCreate(async () => {
-      const wallet = transientParams.wallet ?? Wallet.createRandom();
-      return new EthersEip712Signer(wallet);
-    });
-
-    const wallet = transientParams.wallet ?? Wallet.createRandom();
-    return new EthersEip712Signer(wallet);
-  }
-);
+const Eip712SignerFactory = Factory.define<Eip712Signer, { wallet: Wallet }>(({ transientParams }) => {
+  const wallet = transientParams.wallet ?? Wallet.createRandom();
+  return new EthersEip712Signer(wallet);
+});
 
 const Eip712SignatureFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build(undefined, { transient: { length: 65 } });
@@ -377,7 +370,7 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
   protobufs.VerificationAddEthAddressBody
 >(({ onCreate, transientParams }) => {
   onCreate(async (body) => {
-    const ethSigner = transientParams.signer ?? (await Eip712SignerFactory.create());
+    const ethSigner = transientParams.signer ?? Eip712SignerFactory.build();
     body.address = (await ethSigner.getSignerKey())._unsafeUnwrap();
 
     if (body.ethSignature.length === 0) {
