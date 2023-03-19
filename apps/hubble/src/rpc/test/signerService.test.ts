@@ -41,15 +41,19 @@ let custodySigner2: Eip712Signer;
 let custodyEvent: protobufs.IdRegistryEvent;
 let custodyEvent2: protobufs.IdRegistryEvent;
 let signerAdd: protobufs.SignerAddMessage;
+let signerKey: Uint8Array;
 
 beforeAll(async () => {
   custodySigner = await Factories.Eip712Signer.create();
   custodySigner2 = await Factories.Eip712Signer.create();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: await custodySigner.getSignerKey() });
-  custodyEvent2 = Factories.IdRegistryEvent.build({ fid: fid2, to: await custodySigner2.getSignerKey() });
+  const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
+  const custodySignerKey2 = (await custodySigner2.getSignerKey())._unsafeUnwrap();
+  signerKey = (await signer.getSignerKey())._unsafeUnwrap();
+  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
+  custodyEvent2 = Factories.IdRegistryEvent.build({ fid: fid2, to: custodySignerKey2 });
 
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: await signer.getSignerKey() } } },
+    { data: { fid, network, signerAddBody: { signer: signerKey } } },
     { transient: { signer: custodySigner } }
   );
 });
@@ -61,12 +65,12 @@ describe('getSigner', () => {
 
   test('succeeds', async () => {
     await engine.mergeMessage(signerAdd);
-    const result = await client.getSigner(protobufs.SignerRequest.create({ fid, signer: await signer.getSignerKey() }));
+    const result = await client.getSigner(protobufs.SignerRequest.create({ fid, signer: signerKey }));
     expect(protobufs.Message.toJSON(result._unsafeUnwrap())).toEqual(protobufs.Message.toJSON(signerAdd));
   });
 
   test('fails if signer is missing', async () => {
-    const result = await client.getSigner(protobufs.SignerRequest.create({ fid, signer: await signer.getSignerKey() }));
+    const result = await client.getSigner(protobufs.SignerRequest.create({ fid, signer: signerKey }));
     expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
   });
 
@@ -76,25 +80,25 @@ describe('getSigner', () => {
   });
 
   test('fails without fid', async () => {
-    const result = await client.getSigner(
-      protobufs.SignerRequest.create({ fid: 0, signer: await signer.getSignerKey() })
-    );
+    const result = await client.getSigner(protobufs.SignerRequest.create({ fid: 0, signer: signerKey }));
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is missing'));
   });
 });
 
 describe('getSignersByFid', () => {
   const signer2 = Factories.Ed25519Signer.build();
+  let signer2Key: Uint8Array;
   let signerAdd2: protobufs.Message;
 
   beforeAll(async () => {
+    signer2Key = (await signer2.getSignerKey())._unsafeUnwrap();
     signerAdd2 = await Factories.SignerAddMessage.create(
       {
         data: {
           fid,
           network,
           timestamp: signerAdd.data?.timestamp + 1,
-          signerAddBody: { signer: await signer2.getSignerKey() },
+          signerAddBody: { signer: signer2Key },
         },
       },
       { transient: { signer: custodySigner } }

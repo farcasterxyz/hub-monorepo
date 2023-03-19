@@ -15,7 +15,7 @@ describe('EthersEip712Signer', () => {
   beforeAll(async () => {
     ethersSigner = Wallet.createRandom();
     signer = new EthersEip712Signer(ethersSigner);
-    signerKey = await signer.getSignerKey();
+    signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   });
 
   describe('instanceMethods', () => {
@@ -23,8 +23,8 @@ describe('EthersEip712Signer', () => {
       test('generates valid signature', async () => {
         const bytes = randomBytes(32);
         const hash = blake3(bytes, { dkLen: 20 });
-        const signature = await signer.signMessageHash(hash);
-        const recoveredAddress = await eip712.verifyMessageHashSignature(hash, signature);
+        const signature = (await signer.signMessageHash(hash))._unsafeUnwrap();
+        const recoveredAddress = (await eip712.verifyMessageHashSignature(hash, signature))._unsafeUnwrap();
         expect(recoveredAddress).toEqual(signerKey);
       });
     });
@@ -40,18 +40,18 @@ describe('EthersEip712Signer', () => {
           FarcasterNetwork.TESTNET,
           Factories.BlockHash.build()
         )._unsafeUnwrap();
-        signature = await signer.signVerificationEthAddressClaim(claim);
+        signature = (await signer.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
       });
 
       test('succeeds', async () => {
         expect(signature).toBeTruthy();
-        const recoveredAddress = eip712.verifyVerificationEthAddressClaimSignature(claim, signature);
+        const recoveredAddress = eip712.verifyVerificationEthAddressClaimSignature(claim, signature)._unsafeUnwrap();
         expect(recoveredAddress).toEqual(signerKey);
       });
 
       test('succeeds when encoding twice', async () => {
         const claim2: VerificationEthAddressClaim = { ...claim };
-        const signature2 = await signer.signVerificationEthAddressClaim(claim2);
+        const signature2 = (await signer.signVerificationEthAddressClaim(claim2))._unsafeUnwrap();
         expect(signature2).toEqual(signature);
         expect(bytesToHexString(signature2)).toEqual(bytesToHexString(signature));
       });

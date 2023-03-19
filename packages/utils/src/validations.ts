@@ -132,22 +132,17 @@ export const validateMessage = async (message: protobufs.Message): HubAsyncResul
 
   const eip712SignerRequired = EIP712_MESSAGE_TYPES.includes(data.type);
   if (message.signatureScheme === protobufs.SignatureScheme.EIP712 && eip712SignerRequired) {
-    try {
-      const verifiedSigner = eip712.verifyMessageHashSignature(hash, signature);
-      if (bytesCompare(verifiedSigner, signer) !== 0) {
-        return err(new HubError('bad_request.validation_failure', 'signature does not match signer'));
-      }
-    } catch (e) {
-      return err(new HubError('bad_request', 'invalid signatureScheme'));
+    const verifiedSigner = eip712.verifyMessageHashSignature(hash, signature);
+    if (verifiedSigner.isErr()) {
+      return err(verifiedSigner.error);
+    }
+    if (bytesCompare(verifiedSigner.value, signer) !== 0) {
+      return err(new HubError('bad_request.validation_failure', 'signature does not match signer'));
     }
   } else if (message.signatureScheme === protobufs.SignatureScheme.ED25519 && !eip712SignerRequired) {
-    try {
-      const signatureIsValid = await ed25519.verifyMessageHashSignature(signature, hash, signer);
-      if (!signatureIsValid) {
-        return err(new HubError('bad_request.validation_failure', 'invalid signature'));
-      }
-    } catch (e) {
-      return err(new HubError('bad_request', 'invalid signature'));
+    const signatureIsValid = await ed25519.verifyMessageHashSignature(signature, hash, signer);
+    if (signatureIsValid.isErr() || (signatureIsValid.isOk() && !signatureIsValid.value)) {
+      return err(new HubError('bad_request.validation_failure', 'invalid signature'));
     }
   } else {
     return err(new HubError('bad_request.validation_failure', 'invalid signatureScheme'));
@@ -234,17 +229,16 @@ export const validateVerificationAddEthAddressSignature = (
     return err(reconstructedClaim.error);
   }
 
-  try {
-    const recoveredAddress = eip712.verifyVerificationEthAddressClaimSignature(
-      reconstructedClaim.value,
-      body.ethSignature
-    );
+  const recoveredAddress = eip712
+    .verifyVerificationEthAddressClaimSignature(reconstructedClaim.value, body.ethSignature)
+    .mapErr(() => new HubError('bad_request.validation_failure', 'invalid ethSignature'));
 
-    if (bytesCompare(recoveredAddress, body.address ?? new Uint8Array()) !== 0) {
-      return err(new HubError('bad_request.validation_failure', 'ethSignature does not match address'));
-    }
-  } catch (e) {
-    return err(new HubError('bad_request.invalid_param', 'invalid ethSignature'));
+  if (recoveredAddress.isErr()) {
+    return err(recoveredAddress.error);
+  }
+
+  if (bytesCompare(recoveredAddress.value, body.address ?? new Uint8Array()) !== 0) {
+    return err(new HubError('bad_request.validation_failure', 'ethSignature does not match address'));
   }
 
   return ok(body.ethSignature);

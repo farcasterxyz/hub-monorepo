@@ -13,7 +13,7 @@ const ethSigner = Factories.Eip712Signer.build();
 let ethSignerKey: Uint8Array;
 
 beforeAll(async () => {
-  ethSignerKey = await ethSigner.getSignerKey();
+  ethSignerKey = (await ethSigner.getSignerKey())._unsafeUnwrap();
 });
 
 describe('validateFid', () => {
@@ -163,7 +163,7 @@ describe('validateEd25519PublicKey', () => {
   let publicKey: Uint8Array;
 
   beforeAll(async () => {
-    publicKey = await signer.getSignerKey();
+    publicKey = (await signer.getSignerKey())._unsafeUnwrap();
   });
 
   test('succeeds', () => {
@@ -481,7 +481,7 @@ describe('validateVerificationAddEthAddressSignature', () => {
   test('fails with eth signature from different address', async () => {
     const blockHash = Factories.BlockHash.build();
     const claim = makeVerificationEthAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
-    const ethSignature = await ethSigner.signVerificationEthAddressClaim(claim);
+    const ethSignature = (await ethSigner.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
     expect(ethSignature).toBeTruthy();
     const body = await Factories.VerificationAddEthAddressBody.create({
       ethSignature,

@@ -19,7 +19,9 @@ let ethSignerKey: Uint8Array;
 let signerKey: Uint8Array;
 
 beforeAll(async () => {
-  [ethSignerKey, signerKey] = await Promise.all([eip712Signer.getSignerKey(), ed25519Signer.getSignerKey()]);
+  [ethSignerKey, signerKey] = (await Promise.all([eip712Signer.getSignerKey(), ed25519Signer.getSignerKey()])).map(
+    (res) => res._unsafeUnwrap()
+  );
 });
 
 describe('makeCastAddData', () => {
@@ -138,7 +140,7 @@ describe('makeVerificationAddEthAddressData', () => {
 
   beforeAll(async () => {
     claim = makeVerificationEthAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
-    const signature = await eip712Signer.signVerificationEthAddressClaim(claim);
+    const signature = (await eip712Signer.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
     expect(signature).toBeTruthy();
     ethSignature = signature;
   });
@@ -170,7 +172,7 @@ describe('makeVerificationAddEthAddress', () => {
 
   beforeAll(async () => {
     claim = makeVerificationEthAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
-    const signatureHex = await eip712Signer.signVerificationEthAddressClaim(claim);
+    const signatureHex = (await eip712Signer.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
     expect(signatureHex).toBeTruthy();
     ethSignature = signatureHex;
   });
@@ -280,7 +282,7 @@ describe('makeMessageWithSignature', () => {
 
     const data = builders.makeSignerAddData(body, { fid, network });
     const hash = await builders.makeMessageHash(data._unsafeUnwrap());
-    const signature = await eip712Signer.signMessageHash(hash._unsafeUnwrap());
+    const signature = (await eip712Signer.signMessageHash(hash._unsafeUnwrap()))._unsafeUnwrap();
     const message = await builders.makeMessageWithSignature(data._unsafeUnwrap(), {
       signer: ethSignerKey,
       signatureScheme: eip712Signer.scheme,

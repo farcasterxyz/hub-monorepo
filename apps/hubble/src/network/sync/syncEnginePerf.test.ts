@@ -2,7 +2,7 @@
 
 import * as protobufs from '@farcaster/protobufs';
 import { FarcasterNetwork } from '@farcaster/protobufs';
-import { Eip712Signer, Factories, HubRpcClient } from '@farcaster/utils';
+import { Factories, HubRpcClient } from '@farcaster/utils';
 import SyncEngine from '~/network/sync/syncEngine';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -13,20 +13,20 @@ const testDb = jestRocksDB(`engine.syncEnginePerf.test`);
 const testDb2 = jestRocksDB(`engine2.syncEnginePerf.test`);
 
 const network = protobufs.FarcasterNetwork.TESTNET;
-
 const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
+const custodySigner = Factories.Eip712Signer.build();
 
-let custodySigner: Eip712Signer;
 let custodyEvent: protobufs.IdRegistryEvent;
-let signerAdd: protobufs.Message;
+let signerAdd: protobufs.SignerAddMessage;
 
 beforeAll(async () => {
-  custodySigner = await Factories.Eip712Signer.create();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: await custodySigner.getSignerKey() });
+  const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
+  const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
+  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
 
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: await signer.getSignerKey() } } },
+    { data: { fid, network, signerAddBody: { signer: signerKey } } },
     { transient: { signer: custodySigner } }
   );
 });

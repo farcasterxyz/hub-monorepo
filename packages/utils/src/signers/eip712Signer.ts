@@ -1,4 +1,5 @@
 import { SignatureScheme } from '@farcaster/protobufs';
+import { HubAsyncResult } from '../errors';
 import { VerificationEthAddressClaim } from '../verifications';
 import { Signer } from './signer';
 
@@ -9,7 +10,7 @@ export abstract class Eip712Signer implements Signer {
   /** Signature scheme as defined in protobufs */
   public readonly scheme = SignatureScheme.EIP712;
 
-  public abstract getSignerKey(): Promise<Uint8Array>;
-  public abstract signMessageHash(hash: Uint8Array): Promise<Uint8Array>;
-  public abstract signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): Promise<Uint8Array>;
+  public abstract getSignerKey(): HubAsyncResult<Uint8Array>;
+  public abstract signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array>;
+  public abstract signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): HubAsyncResult<Uint8Array>;
 }

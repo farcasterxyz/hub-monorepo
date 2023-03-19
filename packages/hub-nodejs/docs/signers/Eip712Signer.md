@@ -16,21 +16,59 @@ An Eip712Signer is initialized with an Ethereum wallet and can be used with [Bui
 
 ### Usage
 
+<<<<<<< HEAD
+=======
+Prefer building with `Eip712Signer.fromSigner`.
+
 ```typescript
 import { Eip712Signer } from '@farcaster/hub-nodejs';
 import { Wallet } from 'ethers';
 
 const custodyWallet = Wallet.fromPhrase('your mnemonic here apple orange banana');
-const eip712Signer = new EthersEip712Signer(custodyWallet);
+const eip712Signer = Eip712Signer.fromSigner(custodyWallet, custodyWallet.address)._unsafeUnwrap();
 ```
 
 #### Parameters
 
+| Name        | Type         | Description              |
+| :---------- | :----------- | ------------------------ |
+| `signer`    | `Signer`     | A wallet instance        |
+| `signerKey` | `Uint8Array` | 20-byte Ethereum Address |
+
+---
+
+### `static` fromSigner
+
+Creates an instance of Eip712Signer from an ethers Signer (Wallet) and an Ethereum address.
+
+#### Usage
+
+>>>>>>> main
+```typescript
+import { Eip712Signer } from '@farcaster/hub-nodejs';
+import { Wallet } from 'ethers';
+
+const custodyWallet = Wallet.fromPhrase('your mnemonic here apple orange banana');
+<<<<<<< HEAD
+const eip712Signer = new EthersEip712Signer(custodyWallet);
+=======
+const eip712Signer = (await Eip712Signer.fromSigner(custodyWallet)._unsafeUnwrap();
+>>>>>>> main
+```
+
+#### Parameters
+
+<<<<<<< HEAD
 | Name     | Type     | Description       |
 | :------- | :------- | ----------------- |
 | `signer` | `Signer` | A wallet instance |
 
 ---
+=======
+| Name     | Type     | Description                                    |
+| :------- | :------- | :--------------------------------------------- |
+| `signer` | `Signer` | The Ethers Signer instance to use for signing. |
+>>>>>>> main
 
 ## Instance Methods
 

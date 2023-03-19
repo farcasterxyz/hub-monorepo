@@ -10,7 +10,7 @@ describe('NobleEd25519Signer', () => {
   let signerKey: Uint8Array;
 
   beforeAll(async () => {
-    signerKey = await signer.getSignerKey();
+    signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   });
 
   describe('instanceMethods', () => {
@@ -18,9 +18,9 @@ describe('NobleEd25519Signer', () => {
       test('generates valid signature', async () => {
         const bytes = randomBytes(32);
         const hash = blake3(bytes, { dkLen: 20 });
-        const signature = await signer.signMessageHash(hash);
+        const signature = (await signer.signMessageHash(hash))._unsafeUnwrap();
         const isValid = await ed25519.verifyMessageHashSignature(signature, hash, signerKey);
-        expect(isValid).toBe(true);
+        expect(isValid._unsafeUnwrap()).toBe(true);
       });
     });
   });

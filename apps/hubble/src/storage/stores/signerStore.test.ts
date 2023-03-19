@@ -13,6 +13,7 @@ const signer = Factories.Ed25519Signer.build();
 const fid = Factories.Fid.build();
 const fid2 = fid + 1; // Increment fid to guarantee ordering
 
+let signerKey: Uint8Array;
 let custody1: Eip712Signer;
 let custody1Address: Uint8Array;
 let custody2: Eip712Signer;
@@ -24,10 +25,11 @@ let signerAdd: protobufs.SignerAddMessage;
 let signerRemove: protobufs.SignerRemoveMessage;
 
 beforeAll(async () => {
-  custody1 = await Factories.Eip712Signer.create();
-  custody1Address = await custody1.getSignerKey();
-  custody2 = await Factories.Eip712Signer.create();
-  custody2Address = await custody2.getSignerKey();
+  signerKey = (await signer.getSignerKey())._unsafeUnwrap();
+  custody1 = Factories.Eip712Signer.build();
+  custody1Address = (await custody1.getSignerKey())._unsafeUnwrap();
+  custody2 = Factories.Eip712Signer.build();
+  custody2Address = (await custody2.getSignerKey())._unsafeUnwrap();
   custody1Event = Factories.IdRegistryEvent.build({
     fid,
     to: custody1Address,
@@ -37,12 +39,12 @@ beforeAll(async () => {
     to: custody2Address,
   });
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, signerAddBody: { signer: await signer.getSignerKey() } } },
+    { data: { fid, signerAddBody: { signer: signerKey } } },
     { transient: { signer: custody1 } }
   );
   signerRemove = await Factories.SignerRemoveMessage.create(
     {
-      data: { fid, signerRemoveBody: { signer: await signer.getSignerKey() }, timestamp: signerAdd.data.timestamp + 1 },
+      data: { fid, signerRemoveBody: { signer: signerKey }, timestamp: signerAdd.data.timestamp + 1 },
     },
     { transient: { signer: custody1 } }
   );
@@ -61,23 +63,23 @@ describe('getIdRegistryEvent', () => {
 
 describe('getSignerAdd', () => {
   test('fails if missing', async () => {
-    await expect(set.getSignerAdd(fid, await signer.getSignerKey())).rejects.toThrow(HubError);
+    await expect(set.getSignerAdd(fid, signerKey)).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
     await set.merge(signerAdd);
-    await expect(set.getSignerAdd(fid, await signer.getSignerKey())).resolves.toEqual(signerAdd);
+    await expect(set.getSignerAdd(fid, signerKey)).resolves.toEqual(signerAdd);
   });
 });
 
 describe('getSignerRemove', () => {
   test('fails if missing', async () => {
-    await expect(set.getSignerRemove(fid, await signer.getSignerKey())).rejects.toThrow(HubError);
+    await expect(set.getSignerRemove(fid, signerKey)).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
     await set.merge(signerRemove);
-    await expect(set.getSignerRemove(fid, await signer.getSignerKey())).resolves.toEqual(signerRemove);
+    await expect(set.getSignerRemove(fid, signerKey)).resolves.toEqual(signerRemove);
   });
 });
 
@@ -335,7 +337,7 @@ describe('mergeIdRegistryEvent', () => {
     beforeEach(async () => {
       await set.mergeIdRegistryEvent(custody1Event);
       await set.merge(signerAdd);
-      await expect(set.getSignerAdd(fid, await signer.getSignerKey())).resolves.toEqual(signerAdd);
+      await expect(set.getSignerAdd(fid, signerKey)).resolves.toEqual(signerAdd);
     });
 
     afterEach(async () => {
@@ -343,7 +345,7 @@ describe('mergeIdRegistryEvent', () => {
       await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(newEvent);
       expect(mergedContractEvents).toEqual([custody1Event, newEvent]);
       // SignerAdd should still be valid until messages signed by old custody address are revoked
-      await expect(set.getSignerAdd(fid, await signer.getSignerKey())).resolves.toEqual(signerAdd);
+      await expect(set.getSignerAdd(fid, signerKey)).resolves.toEqual(signerAdd);
     });
 
     test('when it has a higher block number', async () => {
@@ -371,7 +373,7 @@ describe('mergeIdRegistryEvent', () => {
     beforeEach(async () => {
       await set.mergeIdRegistryEvent(custody1Event);
       await set.merge(signerAdd);
-      await expect(set.getSignerAdd(fid, await signer.getSignerKey())).resolves.toEqual(signerAdd);
+      await expect(set.getSignerAdd(fid, signerKey)).resolves.toEqual(signerAdd);
     });
 
     afterEach(async () => {
@@ -379,7 +381,7 @@ describe('mergeIdRegistryEvent', () => {
         new HubError('bad_request.conflict', 'event conflicts with a more recent IdRegistryEvent')
       );
       await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
-      await expect(set.getSignerAdd(fid, await signer.getSignerKey())).resolves.toEqual(signerAdd);
+      await expect(set.getSignerAdd(fid, signerKey)).resolves.toEqual(signerAdd);
 
       expect(mergedContractEvents).toEqual([custody1Event]);
     });
@@ -439,14 +441,14 @@ describe('merge', () => {
 
   const assertSignerAddWins = async (message: protobufs.SignerAddMessage) => {
     await assertSignerExists(message);
-    await expect(set.getSignerAdd(fid, await signer.getSignerKey())).resolves.toEqual(message);
-    await expect(set.getSignerRemove(fid, await signer.getSignerKey())).rejects.toThrow(HubError);
+    await expect(set.getSignerAdd(fid, signerKey)).resolves.toEqual(message);
+    await expect(set.getSignerRemove(fid, signerKey)).rejects.toThrow(HubError);
   };
 
   const assertSignerRemoveWins = async (message: protobufs.SignerRemoveMessage) => {
     await assertSignerExists(message);
-    await expect(set.getSignerRemove(fid, await signer.getSignerKey())).resolves.toEqual(message);
-    await expect(set.getSignerAdd(fid, await signer.getSignerKey())).rejects.toThrow(HubError);
+    await expect(set.getSignerRemove(fid, signerKey)).resolves.toEqual(message);
+    await expect(set.getSignerAdd(fid, signerKey)).rejects.toThrow(HubError);
   };
 
   test('fails with invalid message type', async () => {

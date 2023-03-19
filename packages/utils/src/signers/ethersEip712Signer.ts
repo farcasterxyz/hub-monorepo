@@ -1,6 +1,6 @@
 import { Signer as EthersSigner } from 'ethers';
-import { hexStringToBytes } from '../bytes';
 import { eip712 } from '../crypto';
+import { HubAsyncResult } from '../errors';
 import { VerificationEthAddressClaim } from '../verifications';
 import { Eip712Signer } from './eip712Signer';
 
@@ -12,18 +12,15 @@ export class EthersEip712Signer extends Eip712Signer {
     this._ethersSigner = typedDataSigner;
   }
 
-  public async getSignerKey(): Promise<Uint8Array> {
-    const address = await this._ethersSigner.getAddress();
-    const addressHex = hexStringToBytes(address);
-    if (addressHex.isErr()) throw addressHex.error;
-    return addressHex.value;
+  public async getSignerKey(): HubAsyncResult<Uint8Array> {
+    return eip712.getSignerKey(this._ethersSigner);
   }
 
-  public async signMessageHash(hash: Uint8Array): Promise<Uint8Array> {
+  public async signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array> {
     return eip712.signMessageHash(hash, this._ethersSigner);
   }
 
-  public async signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): Promise<Uint8Array> {
+  public async signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): HubAsyncResult<Uint8Array> {
     return eip712.signVerificationEthAddressClaim(claim, this._ethersSigner);
   }
 }
