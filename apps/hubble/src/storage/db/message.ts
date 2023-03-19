@@ -1,8 +1,7 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesIncrement, HubError, HubResult } from '@farcaster/utils';
 import { err, ok, ResultAsync } from 'neverthrow';
-import AbstractRocksDB from 'rocksdb';
-import RocksDB, { Transaction } from '~/storage/db/rocksdb';
+import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
 import {
   FID_BYTES,
   RootPrefix,
@@ -157,7 +156,7 @@ export const getAllMessagesByFid = async (db: RocksDB, fid: number): Promise<pro
   };
   const messages = [];
   for await (const [, buffer] of db.iterator(iteratorOptions)) {
-    messages.push(protobufs.Message.decode(new Uint8Array(buffer)));
+    messages.push(protobufs.Message.decode(new Uint8Array(buffer as Buffer)));
   }
   return messages;
 };
@@ -188,16 +187,13 @@ export const getMessagesPageByPrefix = async <T extends protobufs.Message>(
     valueAsBuffer: true,
   });
 
-  const getNextIteratorRecord = (iterator: AbstractRocksDB.Iterator): Promise<[Buffer, protobufs.Message]> => {
-    return new Promise((resolve, reject) => {
-      iterator.next((err: Error | undefined, key: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
-        if (err || !value) {
-          reject(err);
-        } else {
-          resolve([key as Buffer, protobufs.Message.decode(new Uint8Array(value as Buffer))]);
-        }
-      });
-    });
+  const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, protobufs.Message]> => {
+    const record = await iterator.next();
+    if (record === undefined) {
+      throw new HubError('not_found', 'record not found');
+    }
+    const [key, value] = record;
+    return [key as Buffer, protobufs.Message.decode(new Uint8Array(value as Buffer))];
   };
 
   let iteratorFinished = false;
@@ -242,7 +238,7 @@ export const getAllMessagesBySigner = async <T extends protobufs.Message>(
     // Get the tsHash for the message using its position in the key relative to the prefix
     // If the prefix did not include type, add an extra byte to the tsHash offset
     const tsHashOffset = prefix.length + (type ? 0 : 1);
-    const tsHash = new Uint8Array(key.slice(tsHashOffset));
+    const tsHash = new Uint8Array((key as Buffer).slice(tsHashOffset));
 
     // Get the type for the message, either from the predefined type variable or by looking at the byte
     // prior to the tsHash in the key
@@ -260,25 +256,18 @@ export const getAllMessagesBySigner = async <T extends protobufs.Message>(
   return getManyMessages(db, primaryKeys);
 };
 
-export const getMessagesPruneIterator = (
-  db: RocksDB,
-  fid: number,
-  setPostfix: UserMessagePostfix
-): AbstractRocksDB.Iterator => {
+export const getMessagesPruneIterator = (db: RocksDB, fid: number, setPostfix: UserMessagePostfix): Iterator => {
   const prefix = makeMessagePrimaryKey(fid, setPostfix);
   return db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true });
 };
 
-export const getNextMessageToPrune = (iterator: AbstractRocksDB.Iterator): Promise<protobufs.Message> => {
-  return new Promise((resolve, reject) => {
-    iterator.next((err: Error | undefined, _: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
-      if (err || !value) {
-        reject(err);
-      } else {
-        resolve(protobufs.Message.decode(new Uint8Array(value as Buffer)));
-      }
-    });
-  });
+export const getNextMessageFromIterator = async (iterator: Iterator): Promise<protobufs.Message> => {
+  const record = await iterator.next();
+  if (record === undefined) {
+    throw new HubError('not_found', 'record not found');
+  }
+  const [, value] = record;
+  return protobufs.Message.decode(new Uint8Array(value as Buffer));
 };
 
 export const putMessageTransaction = (txn: Transaction, message: protobufs.Message): Transaction => {

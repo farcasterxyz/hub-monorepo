@@ -2,7 +2,6 @@ import * as protobufs from '@farcaster/protobufs';
 import { bytesCompare, bytesIncrement, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
-import AbstractRocksDB from 'rocksdb';
 import { getIdRegistryEvent, putIdRegistryEventTransaction } from '~/storage/db/idRegistryEvent';
 import {
   deleteMessageTransaction,
@@ -10,13 +9,13 @@ import {
   getMessage,
   getMessagesPageByPrefix,
   getMessagesPruneIterator,
-  getNextMessageToPrune,
+  getNextMessageFromIterator,
   makeMessagePrimaryKey,
   makeTsHash,
   makeUserKey,
   putMessageTransaction,
 } from '~/storage/db/message';
-import RocksDB, { Transaction } from '~/storage/db/rocksdb';
+import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix, UserPostfix } from '~/storage/db/types';
 import StoreEventHandler, { putEventTransaction } from '~/storage/stores/storeEventHandler';
 import {
@@ -200,16 +199,15 @@ class SignerStore {
     });
 
     /** Custom to retrieve fid from key */
-    const getNextIteratorRecord = (iterator: AbstractRocksDB.Iterator): Promise<[Buffer, number]> => {
-      return new Promise((resolve, reject) => {
-        iterator.next((err: Error | undefined, key: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
-          if (err || !value) {
-            reject(err);
-          } else {
-            resolve([key as Buffer, Number((key as Buffer).readUint32BE(1))]);
-          }
-        });
-      });
+    const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, number]> => {
+      const record = await iterator.next();
+
+      if (record === undefined) {
+        throw new HubError('not_found', 'record not found');
+      }
+
+      const [key] = record;
+      return [key as Buffer, Number((key as Buffer).readUint32BE(1))];
     };
 
     let iteratorFinished = false;
@@ -368,7 +366,7 @@ class SignerStore {
     // Create a rocksdb iterator for all messages with the given prefix
     const pruneIterator = getMessagesPruneIterator(this._db, fid, UserPostfix.SignerMessage);
 
-    const getNextResult = () => ResultAsync.fromPromise(getNextMessageToPrune(pruneIterator), () => undefined);
+    const getNextResult = () => ResultAsync.fromPromise(getNextMessageFromIterator(pruneIterator), () => undefined);
 
     // For each message in order, prune it if the store is over the size limit
     let nextMessage = await getNextResult();
@@ -398,8 +396,7 @@ class SignerStore {
     }
 
     // Close the iterator
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    pruneIterator.end(() => {});
+    await pruneIterator.end();
 
     if (events.length > 0) {
       // Commit the transaction to rocksdb

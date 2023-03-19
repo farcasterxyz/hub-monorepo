@@ -4,7 +4,7 @@ import {
   deleteNameRegistryEvent,
   getNameRegistryEvent,
   getNameRegistryEventsByExpiryIterator,
-  getNextNameRegistryEventByExpiry,
+  getNextNameRegistryEventFromIterator,
   makeNameRegistryEventByExpiryKey,
   makeNameRegistryEventPrimaryKey,
   putNameRegistryEvent,
@@ -24,8 +24,8 @@ describe('makeNameRegistryEventPrimaryKey', () => {
       await db.put(key, Buffer.from(bytes));
     }
     const orderedValues = [];
-    for await (const [, value] of db.iterator({ keys: false, valueAsBuffer: true })) {
-      orderedValues.push(bytesToUtf8String(Uint8Array.from(value))._unsafeUnwrap());
+    for await (const [, value] of db.iterator({ keys: false })) {
+      orderedValues.push(bytesToUtf8String(Uint8Array.from(value as Buffer))._unsafeUnwrap());
     }
     expect(orderedValues).toEqual(names);
   });
@@ -46,8 +46,8 @@ describe('makeNameRegistryEventByExpiryKey', () => {
       await db.put(key, Buffer.from(bytes));
     }
     const orderedValues = [];
-    for await (const [, value] of db.iterator({ keys: false, valueAsBuffer: true })) {
-      orderedValues.push(bytesToUtf8String(Uint8Array.from(value))._unsafeUnwrap());
+    for await (const [, value] of db.iterator({ keys: false })) {
+      orderedValues.push(bytesToUtf8String(Uint8Array.from(value as Buffer))._unsafeUnwrap());
     }
     expect(orderedValues).toEqual(['b', 'a', 'c', 'd', 'e']);
   });
@@ -59,10 +59,9 @@ describe('putNameRegistryEvent', () => {
     await expect(getNameRegistryEvent(db, nameRegistryEvent.fname)).resolves.toEqual(nameRegistryEvent);
 
     const byExpiryIterator = getNameRegistryEventsByExpiryIterator(db);
-    const eventByExpiry = await getNextNameRegistryEventByExpiry(byExpiryIterator);
+    const eventByExpiry = await getNextNameRegistryEventFromIterator(byExpiryIterator);
     expect(eventByExpiry).toEqual(nameRegistryEvent);
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    byExpiryIterator.end(() => {});
+    await byExpiryIterator.end();
   });
 });
 
@@ -75,9 +74,8 @@ describe('deleteNameRegistryEvent', () => {
     await expect(getNameRegistryEvent(db, nameRegistryEvent.fname)).rejects.toThrow();
 
     const byExpiryIterator = getNameRegistryEventsByExpiryIterator(db);
-    await expect(getNextNameRegistryEventByExpiry(byExpiryIterator)).rejects.toEqual(undefined);
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    byExpiryIterator.end(() => {});
+    await expect(getNextNameRegistryEventFromIterator(byExpiryIterator)).rejects.toThrow();
+    await byExpiryIterator.end();
   });
 });
 
