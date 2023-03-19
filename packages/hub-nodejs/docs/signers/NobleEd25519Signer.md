@@ -56,7 +56,7 @@ const signerKey = await ed25519Signer.getSignerKey();
 
 ### signMessageHash
 
-Generates a 256-bit signature using from EdDSA key pair.
+Generates a 256-bit signature of a message hash using the EdDSA key pair.
 
 #### Usage
 
@@ -87,35 +87,3 @@ const signature = await signer.signMessageHash(messageHash);
 | `hash` | `Uint8Array` | The 256-bit hash of the message to be signed. |
 
 ---
-
-### signMessageHashHex
-
-Generates a 256-bit hex signature from an EdDSA key pair for a given message hash in hex format.
-
-#### Usage
-
-```typescript
-import { NobleEd25519Signer } from '@farcaster/hub-nodejs';
-import { randomBytes } from 'crypto';
-import * as ed from '@noble/ed25519';
-
-const privateKeyBytes = ed.utils.randomPrivateKey();
-const signer = new NobleEd25519Signer(privateKeyBytes);
-
-const messageBytes = randomBytes(32);
-const messageHash = messageBytes.toString('hex');
-
-const signature = await signer.signMessageHashHex(messageHash);
-```
-
-#### Returns
-
-| Value                    | Description                                                        |
-| :----------------------- | :----------------------------------------------------------------- |
-| `HubAsyncResult<string>` | A HubAsyncResult containing the 256-bit signature as a hex string. |
-
-#### Parameters
-
-| Name   | Type     | Description                                         |
-| :----- | :------- | :-------------------------------------------------- |
-| `hash` | `string` | The hash of the message to be signed in hex format. |

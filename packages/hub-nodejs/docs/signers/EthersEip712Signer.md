@@ -79,7 +79,7 @@ const signature = await eip712Signer.signMessageHash(hash);
 
 ### signMessageHashHex
 
-Generates a 256-bit signature for a string input and returns the hex string value.
+Generates a 256-bit signature for a message hash and returns the hex string value.
 
 #### Usage
 
