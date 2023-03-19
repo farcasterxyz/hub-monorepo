@@ -18,6 +18,8 @@ import { TypedEmitter } from 'tiny-typed-emitter';
 import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix } from '~/storage/db/types';
 
+const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3; // 3 days
+
 export type StoreEvents = {
   /**
    * mergeMessage is emitted when a message is merged into one of the stores. If
@@ -58,6 +60,18 @@ export type HubEventArgs = Omit<HubEvent, 'id'>;
 const TIMESTAMP_BITS = 41;
 const SEQUENCE_BITS = 12;
 
+const makeEventId = (timestamp: number, seq: number): number => {
+  const binaryTimestamp = timestamp.toString(2);
+  let binarySeq = seq.toString(2);
+  if (binarySeq.length) {
+    while (binarySeq.length < SEQUENCE_BITS) {
+      binarySeq = '0' + binarySeq;
+    }
+  }
+
+  return parseInt(binaryTimestamp + binarySeq, 2);
+};
+
 export class HubEventIdGenerator {
   private _lastTimestamp: number; // ms since epoch
   private _lastSeq: number;
@@ -87,14 +101,7 @@ export class HubEventIdGenerator {
       return err(new HubError('bad_request.invalid_param', `sequence > ${SEQUENCE_BITS} bits`));
     }
 
-    const binaryTimestamp = this._lastTimestamp.toString(2);
-    let binaryIndex = this._lastSeq.toString(2);
-    if (binaryIndex.length)
-      while (binaryIndex.length < SEQUENCE_BITS) {
-        binaryIndex = '0' + binaryIndex;
-      }
-
-    return ok(parseInt(binaryTimestamp + binaryIndex, 2));
+    return ok(makeEventId(this._lastTimestamp, this._lastSeq));
   }
 }
 
@@ -132,9 +139,9 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     return result.map((buffer) => HubEvent.decode(new Uint8Array(buffer as Buffer)));
   }
 
-  getEventsIterator(fromId?: number): HubResult<Iterator> {
-    const minKey = makeEventKey(fromId);
-    const maxKey = bytesIncrement(Uint8Array.from(makeEventKey()));
+  getEventsIterator(options: { fromId?: number | undefined; toId?: number | undefined } = {}): HubResult<Iterator> {
+    const minKey = makeEventKey(options.fromId);
+    const maxKey = options.toId ? ok(makeEventKey(options.toId)) : bytesIncrement(Uint8Array.from(makeEventKey()));
     if (maxKey.isErr()) {
       return err(maxKey.error);
     }
@@ -143,7 +150,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
 
   async getEvents(fromId?: number): HubAsyncResult<HubEvent[]> {
     const events: HubEvent[] = [];
-    const iterator = this.getEventsIterator(fromId);
+    const iterator = this.getEventsIterator({ fromId });
     if (iterator.isErr()) {
       return err(iterator.error);
     }
@@ -181,6 +188,24 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       .catch((e: Error) => {
         return err(isHubError(e) ? e : new HubError('unavailable.storage_failure', e.message));
       });
+  }
+
+  async pruneEvents(): HubAsyncResult<void> {
+    const toId = makeEventId(Date.now() - FARCASTER_EPOCH - PRUNE_TIME_LIMIT_DEFAULT, 0);
+
+    const iterator = this.getEventsIterator({ toId });
+
+    if (iterator.isErr()) {
+      return err(iterator.error);
+    }
+
+    const txn = this._db.transaction();
+
+    for await (const [key] of iterator.value) {
+      txn.del(key as Buffer);
+    }
+
+    return await ResultAsync.fromPromise(this._db.commit(txn), (e) => e as HubError);
   }
 
   private broadcastEvent(event: HubEvent): HubResult<void> {
