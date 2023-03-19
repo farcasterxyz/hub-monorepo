@@ -637,7 +637,18 @@ Returns an active verification for a specific Ethereum address made by a user.
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const addressHex = '0x2D596314b27dcf1d6a4296e95D9a4897810cE4b5';
+  const addressBytes = hexStringToBytes(addressHex)._unsafeUnwrap(); // Safety: we know the address is valid
+
+  const verificationResult = await client.getVerification({ fid: 2, address: addressBytes });
+
+  verificationResult.map((verification) => console.log(verification));
+})();
 ```
 
 #### Returns
@@ -662,7 +673,19 @@ Returns all active verifications for Ethereum addresses made by a user in revers
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient } from '@farcaster/hub-nodejs';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const verificationsResult = await client.getVerificationsByFid({ fid: 2 });
+
+  verificationsResult.map((verificationsResponse) =>
+    verificationsResponse.messages.map((v) => {
+      console.log(v);
+    })
+  );
+})();
 ```
 
 #### Returns
@@ -688,7 +711,19 @@ Returns all active and inactive verifications for Ethereum addresses made by a u
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient } from '@farcaster/hub-nodejs';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const verificationsResult = await client.getAllVerificationMessagesByFid({ fid: 2 });
+
+  verificationsResult.map((verificationsResponse) =>
+    verificationsResponse.messages.map((v) => {
+      console.log(v);
+    })
+  );
+})();
 ```
 
 #### Returns
