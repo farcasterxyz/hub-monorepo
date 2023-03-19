@@ -38,6 +38,7 @@
     "chance": "~1.1.11",
     "csv-stringify": "~6.3.0",
     "eslint-config-custom": "*",
+    "prettier-config-custom": "*",
     "fishery": "~2.2.2",
     "pino-pretty": "~10.0.0",
     "progress": "~2.0.3",

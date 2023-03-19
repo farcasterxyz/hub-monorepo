@@ -33,6 +33,7 @@
   },
   "devDependencies": {
     "@farcaster/fishery": "2.2.3",
-    "eslint-config-custom": "*"
+    "eslint-config-custom": "*",
+    "prettier-config-custom": "*"
   }
 }
