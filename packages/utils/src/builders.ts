@@ -57,9 +57,10 @@ const makeMessage = async <TMessage extends protobufs.Message>(
   const hash = blake3(dataBytes, { dkLen: 20 });
 
   const signature = await signer.signMessageHash(hash);
-  if (signature.isErr()) {
-    return err(signature.error);
-  }
+  if (signature.isErr()) return err(signature.error);
+
+  const signerKey = await signer.getSignerKey();
+  if (signerKey.isErr()) return err(signerKey.error);
 
   const message = protobufs.Message.create({
     data: messageData,
@@ -67,7 +68,7 @@ const makeMessage = async <TMessage extends protobufs.Message>(
     hashScheme: protobufs.HashScheme.BLAKE3,
     signature: signature.value,
     signatureScheme: signer.scheme,
-    signer: signer.signerKey,
+    signer: signerKey.value,
   });
 
   return ok(message as TMessage);

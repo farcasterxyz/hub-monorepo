@@ -25,16 +25,17 @@ const peers: SyncEngine[] = [];
 
 class MockEngine {
   eventHandler: StoreEventHandler;
+  db: RocksDB;
 
   constructor(db: RocksDB) {
+    this.db = db;
     this.eventHandler = new StoreEventHandler(db);
   }
 
   async mergeMessage(message: protobufs.Message): Promise<HubResult<void>> {
-    this.eventHandler.makeMergeMessage(message).map(async (event) => {
-      await this.eventHandler.putEvent(event);
-      this.eventHandler.broadcastEvent(event);
-    });
+    await this.eventHandler.commitTransaction(this.db.transaction(), [
+      { type: protobufs.HubEventType.MERGE_MESSAGE, mergeMessageBody: { message, deletedMessages: [] } },
+    ]);
 
     return ok(undefined);
   }

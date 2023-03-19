@@ -1,96 +1,36 @@
-import {
-  IdRegistryEvent,
-  isMergeIdRegistryEventHubEvent,
-  isMergeMessageHubEvent,
-  isMergeNameRegistryEventHubEvent,
-  isPruneMessageHubEvent,
-  isRevokeMessageHubEvent,
-  Message,
-  NameRegistryEvent,
-} from '@farcaster/protobufs';
+import { CastAddMessage, HubEvent, HubEventType } from '@farcaster/protobufs';
 import { Factories } from '@farcaster/utils';
 import { ok } from 'neverthrow';
-import { jestRocksDB } from '../db/jestUtils';
-import StoreEventHandler, { HubEventIdGenerator } from './storeEventHandler';
+import { jestRocksDB } from '~/storage/db/jestUtils';
+import StoreEventHandler, { HubEventArgs, HubEventIdGenerator } from '~/storage/stores/storeEventHandler';
+import { getMessage, makeTsHash, putMessageTransaction } from '../db/message';
+import { UserPostfix } from '../db/types';
 
 const db = jestRocksDB('stores.storeEventHandler.test');
 const eventHandler = new StoreEventHandler(db);
 
-let message: Message;
-let idRegistryEvent: IdRegistryEvent;
-let nameRegistryEvent: NameRegistryEvent;
+let events: HubEvent[] = [];
+
+const eventListener = (event: HubEvent) => {
+  events.push(event);
+};
+
+beforeAll(() => {
+  eventHandler.on('mergeMessage', eventListener);
+});
+
+beforeEach(() => {
+  events = [];
+});
+
+afterAll(() => {
+  eventHandler.off('mergeMessage', eventListener);
+});
+
+let message: CastAddMessage;
 
 beforeAll(async () => {
-  message = await Factories.Message.create();
-  idRegistryEvent = Factories.IdRegistryEvent.build();
-  nameRegistryEvent = Factories.NameRegistryEvent.build();
-});
-
-describe('putEvent', () => {
-  test('succeeds', async () => {
-    const event = eventHandler.makeMergeMessage(message)._unsafeUnwrap();
-    const result = await eventHandler.putEvent(event);
-    expect(result.isOk()).toBeTruthy();
-    const events = await eventHandler.getEvents();
-    expect(events).toEqual(ok([event]));
-  });
-
-  test('succeeds with multiple events at the same time', async () => {
-    const event1 = eventHandler.makeMergeMessage(message)._unsafeUnwrap();
-    const event2 = eventHandler.makeRevokeMessage(message)._unsafeUnwrap();
-    const event3 = eventHandler.makeMergeIdRegistryEvent(idRegistryEvent)._unsafeUnwrap();
-
-    await Promise.all([eventHandler.putEvent(event1), eventHandler.putEvent(event2), eventHandler.putEvent(event3)]);
-    const events = await eventHandler.getEvents();
-    expect(events).toEqual(ok([event1, event2, event3]));
-  });
-});
-
-describe('makeMergeMessage', () => {
-  test('succeeds', () => {
-    const event = eventHandler.makeMergeMessage(message);
-    expect(event.isOk()).toBeTruthy();
-    expect(isMergeMessageHubEvent(event._unsafeUnwrap())).toBeTruthy();
-  });
-
-  test('succeeds with deleted messages', async () => {
-    const deletedMessage = await Factories.Message.create();
-    const event = await eventHandler.makeMergeMessage(message, [deletedMessage]);
-    expect(event.isOk()).toBeTruthy();
-    expect(isMergeMessageHubEvent(event._unsafeUnwrap())).toBeTruthy();
-  });
-});
-
-describe('makePruneMessage', () => {
-  test('succeeds', async () => {
-    const event = await eventHandler.makePruneMessage(message);
-    expect(event.isOk()).toBeTruthy();
-    expect(isPruneMessageHubEvent(event._unsafeUnwrap())).toBeTruthy();
-  });
-});
-
-describe('makeRevokeMessage', () => {
-  test('succeeds', async () => {
-    const event = await eventHandler.makeRevokeMessage(message);
-    expect(event.isOk()).toBeTruthy();
-    expect(isRevokeMessageHubEvent(event._unsafeUnwrap())).toBeTruthy();
-  });
-});
-
-describe('makeMergeIdRegistryEvent', () => {
-  test('succeeds', async () => {
-    const event = await eventHandler.makeMergeIdRegistryEvent(idRegistryEvent);
-    expect(event.isOk()).toBeTruthy();
-    expect(isMergeIdRegistryEventHubEvent(event._unsafeUnwrap())).toBeTruthy();
-  });
-});
-
-describe('makeMergeNameRegistryEvent', () => {
-  test('succeeds', async () => {
-    const event = await eventHandler.makeMergeNameRegistryEvent(nameRegistryEvent);
-    expect(event.isOk()).toBeTruthy();
-    expect(isMergeNameRegistryEventHubEvent(event._unsafeUnwrap())).toBeTruthy();
-  });
+  message = await Factories.CastAddMessage.create();
 });
 
 describe('HubEventIdGenerator', () => {
@@ -103,6 +43,65 @@ describe('HubEventIdGenerator', () => {
       const id = generator.generateId()._unsafeUnwrap();
       expect(id).toBeGreaterThan(lastId);
       lastId = id;
+    }
+  });
+});
+
+describe('commitTransaction', () => {
+  test('commits transaction and returns event id', async () => {
+    const txn = putMessageTransaction(db.transaction(), message);
+    const eventArgs: HubEventArgs = {
+      type: HubEventType.MERGE_MESSAGE,
+      mergeMessageBody: { message, deletedMessages: [] },
+    };
+
+    const result = await eventHandler.commitTransaction(txn, [eventArgs]);
+    expect(result.isOk()).toBeTruthy();
+    const [eventId] = result._unsafeUnwrap();
+    expect(eventId).toBeGreaterThan(0);
+    await expect(
+      getMessage(
+        db,
+        message.data.fid,
+        UserPostfix.CastMessage,
+        makeTsHash(message.data?.timestamp, message.hash)._unsafeUnwrap()
+      )
+    ).resolves.toEqual(message);
+    const event = await eventHandler.getEvent(eventId as number);
+    expect(event).toMatchObject(ok(eventArgs));
+    expect(events).toEqual([event._unsafeUnwrap()]);
+  });
+
+  test('saves and broadcasts events in order', async () => {
+    const events1: HubEventArgs[] = [];
+    const events2: HubEventArgs[] = [];
+
+    for (let i = 0; i < 10; i++) {
+      const message = await Factories.Message.create();
+      const eventBody = { type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message, deletedMessages: [] } };
+      if (Math.random() > 0.5) {
+        events1.push(eventBody);
+      } else {
+        events2.push(eventBody);
+      }
+    }
+
+    const [result1, result2] = await Promise.all([
+      eventHandler.commitTransaction(db.transaction(), events1),
+      eventHandler.commitTransaction(db.transaction(), events2),
+    ]);
+
+    expect(result1.isOk()).toBeTruthy();
+    expect(result2.isOk()).toBeTruthy();
+
+    expect(Math.max(...result1._unsafeUnwrap())).toBeLessThan(Math.min(...result2._unsafeUnwrap()));
+
+    expect(events.length).toEqual(10);
+
+    let lastId = 0;
+    for (const event of events) {
+      expect(event.id).toBeGreaterThan(lastId);
+      lastId = event.id;
     }
   });
 });

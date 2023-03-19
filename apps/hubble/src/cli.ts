@@ -2,7 +2,7 @@
 import { PeerId } from '@libp2p/interface-peer-id';
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from '@libp2p/peer-id-factory';
 import { Command } from 'commander';
-import { existsSync } from 'fs';
+import fs, { existsSync } from 'fs';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { ResultAsync } from 'neverthrow';
 import { dirname, resolve } from 'path';
@@ -11,6 +11,7 @@ import { APP_VERSION, Hub, HubOptions } from '~/hubble';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo, parseAddress } from '~/utils/p2p';
 import { DEFAULT_RPC_CONSOLE, startConsole } from './console/console';
+import { DB_DIRECTORY } from './storage/db/rocksdb';
 import { parseNetwork } from './utils/command';
 
 /** A CLI to accept options from the user and start the Hub */
@@ -21,6 +22,11 @@ const DEFAULT_PEER_ID_DIR = './.hub';
 const DEFAULT_PEER_ID_FILENAME = `default_${PEER_ID_FILENAME}`;
 const DEFAULT_PEER_ID_LOCATION = `${DEFAULT_PEER_ID_DIR}/${DEFAULT_PEER_ID_FILENAME}`;
 const DEFAULT_CHUNK_SIZE = 10000;
+
+// Grace period before exiting the process after receiving a SIGINT or SIGTERM
+const PROCESS_SHUTDOWN_FILE_CHECK_INTERVAL_MS = 10_000;
+const SHUTDOWN_GRACE_PERIOD_MS = 30_000;
+let isExiting = false;
 
 const app = new Command();
 app.name('hub').description('Farcaster Hub').version(APP_VERSION);
@@ -59,8 +65,70 @@ app
   .action(async (cliOptions) => {
     const teardown = async (hub: Hub) => {
       await hub.stop();
-      process.exit();
     };
+
+    const handleShutdownSignal = (signal: NodeJS.Signals) => {
+      logger.warn(`${signal} received`);
+      if (!isExiting) {
+        isExiting = true;
+        teardown(hub)
+          .then(() => {
+            logger.info('Hub stopped gracefully');
+            process.exit(0);
+          })
+          .catch((err) => {
+            logger.error({ reason: `Error stopping hub: ${err}` });
+            process.exit(1);
+          });
+
+        setTimeout(() => {
+          logger.fatal('Forcing exit after grace period');
+          process.exit(1);
+        }, SHUTDOWN_GRACE_PERIOD_MS);
+      }
+    };
+
+    // We'll write our process number to a file so that we can detect if another hub process has taken over.
+    const processFileDir = `${DB_DIRECTORY}/process/`;
+    const processFileName = `process_number.txt`;
+
+    // Generate a random number to identify this hub instance
+    // Note that we can't use the PID as the identifier, since the hub running in a docker container will
+    // always have PID 1.
+    const processNum = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+
+    // Write our processNum to the file
+    fs.mkdirSync(processFileDir, { recursive: true });
+    fs.writeFile(`${processFileDir}${processFileName}`, processNum.toString(), (err) => {
+      if (err) {
+        logger.error(`Error writing process file: ${err}`);
+      }
+    });
+
+    // Watch for the processNum file. If it changes, and we are not the process number written in the file,
+    // it means that another hub process has taken over and we should exit.
+    const checkForProcessNumChange = () => {
+      if (isExiting) return;
+
+      fs.readFile(`${processFileDir}${processFileName}`, 'utf8', async (err, data) => {
+        if (err) {
+          logger.error(`Error reading processnum file: ${err}`);
+          return;
+        }
+
+        const readProcessNum = parseInt(data.trim());
+        if (!isNaN(readProcessNum) && readProcessNum !== processNum) {
+          logger.error(`Another hub process is running with processNum ${readProcessNum}, exiting`);
+          handleShutdownSignal('SIGTERM');
+        }
+      });
+    };
+
+    // eslint-disable-next-line prefer-arrow-functions/prefer-arrow-functions
+    setTimeout(function checkLoop() {
+      checkForProcessNumChange();
+      setTimeout(checkLoop, PROCESS_SHUTDOWN_FILE_CHECK_INTERVAL_MS);
+    }, PROCESS_SHUTDOWN_FILE_CHECK_INTERVAL_MS);
 
     // try to load the config file
     const hubConfig = (await import(resolve(cliOptions.config))).Config;
@@ -150,19 +218,16 @@ app
 
     process.stdin.resume();
 
-    process.on('SIGINT', async () => {
-      logger.fatal('SIGINT received');
-      await teardown(hub);
+    process.on('SIGINT', () => {
+      handleShutdownSignal('SIGINT');
     });
 
-    process.on('SIGTERM', async () => {
-      logger.fatal('SIGTERM received');
-      await teardown(hub);
+    process.on('SIGTERM', () => {
+      handleShutdownSignal('SIGTERM');
     });
 
-    process.on('SIGQUIT', async () => {
-      logger.fatal('SIGQUIT received');
-      await teardown(hub);
+    process.on('SIGQUIT', () => {
+      handleShutdownSignal('SIGQUIT');
     });
 
     process.on('uncaughtException', (err) => {

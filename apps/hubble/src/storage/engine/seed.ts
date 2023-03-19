@@ -10,11 +10,12 @@ export const seedSigner = async (
 ): Promise<Eip712Signer> => {
   if (!ethSigner) {
     ethSigner = Factories.Eip712Signer.build();
+    const ethSignerKey = (await ethSigner.getSignerKey())._unsafeUnwrap();
 
     /** Generate and merge ID Registry event linking the fid to the eth wallet */
     const idRegistryEvent = Factories.IdRegistryEvent.build({
       fid,
-      to: ethSigner.signerKey,
+      to: ethSignerKey,
     });
 
     const r = await engine.mergeIdRegistryEvent(idRegistryEvent);

@@ -1,39 +1,19 @@
-import {
-  Signer as EthersAbstractSigner,
-  TypedDataSigner as EthersTypedDataSigner,
-} from '@ethersproject/abstract-signer';
 import { SignatureScheme } from '@farcaster/protobufs';
-import { hexStringToBytes } from '../bytes';
-import { eip712 } from '../crypto';
-import { HubAsyncResult, HubResult } from '../errors';
+import { HubAsyncResult } from '../errors';
 import { VerificationEthAddressClaim } from '../verifications';
 import { Signer } from './signer';
 
-export type TypedDataSigner = EthersAbstractSigner & EthersTypedDataSigner;
-
-export class Eip712Signer implements Signer {
+/**
+ * Extend this class to implement an EIP712 signer.
+ */
+export abstract class Eip712Signer implements Signer {
   /** Signature scheme as defined in protobufs */
   public readonly scheme = SignatureScheme.EIP712;
 
-  /** 20-byte wallet address */
-  public readonly signerKey: Uint8Array;
-
-  private readonly _typedDataSigner: TypedDataSigner;
-
-  public static fromSigner(typedDataSigner: TypedDataSigner, address: string): HubResult<Eip712Signer> {
-    return hexStringToBytes(address).map((signerKey) => new this(typedDataSigner, address, signerKey));
-  }
-
-  constructor(typedDataSigner: TypedDataSigner, address: string, signerKey: Uint8Array) {
-    this._typedDataSigner = typedDataSigner;
-    this.signerKey = signerKey;
-  }
-
-  public signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array> {
-    return eip712.signMessageHash(hash, this._typedDataSigner);
-  }
-
-  public signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): HubAsyncResult<Uint8Array> {
-    return eip712.signVerificationEthAddressClaim(claim, this._typedDataSigner);
-  }
+  /**
+   * Get the 160-bit address in bytes.
+   */
+  public abstract getSignerKey(): HubAsyncResult<Uint8Array>;
+  public abstract signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array>;
+  public abstract signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): HubAsyncResult<Uint8Array>;
 }

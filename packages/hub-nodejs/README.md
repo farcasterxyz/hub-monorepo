@@ -26,28 +26,24 @@ pnpm install @farcaster/hub-nodejs
 ### Fetching Data from Hubs
 
 ```typescript
-import { getHubRpcClient, isCastAddMessage } from '@farcaster/hub-nodejs';
+import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:8080');
 
   const castsResult = await client.getCastsByFid({ fid: 2 });
 
-  if (castsResult.isOk()) {
-    for (const cast of castsResult.value.messages) {
-      if (isCastAddMessage(cast)) {
-        console.log(cast.data.castAddBody.text);
-      }
-    }
-  } else {
-    console.log('Failed: ', castsResult.error);
-  }
+  castsResult.map((casts) =>
+    casts.messages.map((cast) => {
+      console.log(cast.data?.castAddBody?.text);
+    })
+  );
 })();
 ```
 
 ## Contributing
 
-Please see our [contributing guidelines](../../../CONTRIBUTING.md) before making a pull request.
+Please see our [contributing guidelines](../../CONTRIBUTING.md) before making a pull request.
 
 ## License
 

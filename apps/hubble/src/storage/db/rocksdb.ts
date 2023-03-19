@@ -1,9 +1,9 @@
-import { bytesIncrement, HubError } from '@farcaster/utils';
-import { AbstractBatch, AbstractChainedBatch } from 'abstract-leveldown';
+import { bytesIncrement, HubError, isHubError } from '@farcaster/utils';
+import { AbstractBatch, AbstractChainedBatch, AbstractIterator } from 'abstract-leveldown';
 import { mkdir } from 'fs';
 import AbstractRocksDB from 'rocksdb';
 
-const DB_PREFIX = '.rocks';
+export const DB_DIRECTORY = '.rocks';
 const DB_NAME_DEFAULT = 'farcaster';
 
 export type Transaction = AbstractChainedBatch<Buffer, Buffer>;
@@ -15,6 +15,51 @@ const parseError = (e: Error): HubError => {
   return new HubError('unavailable.storage_failure', e);
 };
 
+export class Iterator {
+  protected _iterator: AbstractIterator<AbstractRocksDB.Bytes, AbstractRocksDB.Bytes>;
+
+  constructor(iterator: AbstractIterator<AbstractRocksDB.Bytes, AbstractRocksDB.Bytes>) {
+    this._iterator = iterator;
+  }
+
+  async *[Symbol.asyncIterator]() {
+    try {
+      let kv: [Buffer | undefined, Buffer | undefined] | undefined;
+      while ((kv = await this.next())) {
+        yield kv;
+      }
+    } catch (e) {
+      if (!(isHubError(e) && e.errCode === 'not_found')) {
+        throw e;
+      }
+    } finally {
+      await this.end();
+    }
+  }
+
+  async next(): Promise<[Buffer | undefined, Buffer | undefined]> {
+    return new Promise((resolve, reject) => {
+      this._iterator.next((err: Error | undefined, key: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
+        if (err) {
+          reject(err);
+        } else if (key === undefined && value === undefined) {
+          reject(new HubError('not_found', 'record not found'));
+        } else {
+          resolve([key as Buffer | undefined, value as Buffer | undefined]);
+        }
+      });
+    });
+  }
+
+  async end(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this._iterator.end((err: Error | undefined) => {
+        err ? reject(err) : resolve(undefined);
+      });
+    });
+  }
+}
+
 /**
  * RocksDB extends methods from AbstractRocksDB and wraps the methods in promises. Helper methods for
  * transactions and iterating by prefix are provided at the end of the file.
@@ -25,7 +70,7 @@ class RocksDB {
   private _hasOpened = false;
 
   constructor(name?: string) {
-    this._db = new AbstractRocksDB(`${DB_PREFIX}/${name ?? DB_NAME_DEFAULT}`);
+    this._db = new AbstractRocksDB(`${DB_DIRECTORY}/${name ?? DB_NAME_DEFAULT}`);
   }
 
   get location() {
@@ -131,8 +176,8 @@ class RocksDB {
     });
   }
 
-  iterator(options?: AbstractRocksDB.IteratorOptions): AbstractRocksDB.Iterator {
-    return this._db.iterator(options);
+  iterator(options?: AbstractRocksDB.IteratorOptions): Iterator {
+    return new Iterator(this._db.iterator({ ...options, valueAsBuffer: true, keyAsBuffer: true }));
   }
 
   /* -------------------------------------------------------------------------- */
@@ -156,16 +201,18 @@ class RocksDB {
    * order, so this iterator will continue serving keys in order until it receives one that has a lexicographic order
    * greater than the prefix.
    */
-  iteratorByPrefix(prefix: Buffer, options: AbstractRocksDB.IteratorOptions = {}): AbstractRocksDB.Iterator {
-    options.gte = prefix;
+  iteratorByPrefix(prefix: Buffer, options: AbstractRocksDB.IteratorOptions = {}): Iterator {
+    const prefixOptions: AbstractRocksDB.IteratorOptions = {
+      gte: prefix,
+    };
     const nextPrefix = bytesIncrement(new Uint8Array(prefix));
     if (nextPrefix.isErr()) {
       throw nextPrefix.error;
     }
     if (nextPrefix.value.length === prefix.length) {
-      options.lt = Buffer.from(nextPrefix.value);
+      prefixOptions.lt = Buffer.from(nextPrefix.value);
     }
-    return this._db.iterator(options);
+    return this.iterator({ ...options, ...prefixOptions });
   }
 }
 

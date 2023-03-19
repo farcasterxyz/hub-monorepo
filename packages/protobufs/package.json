@@ -25,7 +25,8 @@
   },
   "devDependencies": {
     "eslint-config-custom": "*",
-    "ts-proto": "^1.140.0"
+    "prettier-config-custom": "*",
+    "ts-proto": "^1.142.1"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.8.7"

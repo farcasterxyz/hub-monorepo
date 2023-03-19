@@ -15,9 +15,11 @@ const signerStore = new SignerStore(db, engine.eventHandler);
 
 const fid = Factories.Fid.build();
 const fname = Factories.Fname.build();
-const custodySigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
+const custodySigner = Factories.Eip712Signer.build();
 
+let custodySignerKey: Uint8Array;
+let signerKey: Uint8Array;
 let custodyEvent: protobufs.IdRegistryEvent;
 let fnameTransfer: protobufs.NameRegistryEvent;
 let signerAdd: protobufs.SignerAddMessage;
@@ -28,16 +30,18 @@ let verificationAdd: protobufs.VerificationAddEthAddressMessage;
 let userDataAdd: protobufs.UserDataAddMessage;
 
 beforeAll(async () => {
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
+  signerKey = (await signer.getSignerKey())._unsafeUnwrap();
+  custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
+  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
 
   fnameTransfer = Factories.NameRegistryEvent.build({ fname, to: custodyEvent.to });
 
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
+    { data: { fid, network, signerAddBody: { signer: signerKey } } },
     { transient: { signer: custodySigner } }
   );
   signerRemove = await Factories.SignerRemoveMessage.create(
-    { data: { fid, network, timestamp: signerAdd.data.timestamp + 1, signerRemoveBody: { signer: signer.signerKey } } },
+    { data: { fid, network, timestamp: signerAdd.data.timestamp + 1, signerRemoveBody: { signer: signerKey } } },
     { transient: { signer: custodySigner } }
   );
 
@@ -165,9 +169,9 @@ describe('mergeMessage', () => {
         });
 
         test('fails when fname transfer event is missing', async () => {
-          await expect(engine.mergeMessage(fnameAdd)).resolves.toEqual(
-            err(new HubError('bad_request.validation_failure', 'fname is not registered'))
-          );
+          const result = await engine.mergeMessage(fnameAdd);
+          expect(result).toMatchObject(err({ errCode: 'bad_request.validation_failure' }));
+          expect(result._unsafeUnwrapErr().message).toMatch('is not registered');
         });
 
         test('fails when fname is owned by another custody address', async () => {
@@ -176,11 +180,9 @@ describe('mergeMessage', () => {
             to: Factories.EthAddress.build(),
           });
           await expect(engine.mergeNameRegistryEvent(fnameEvent)).resolves.toBeInstanceOf(Ok);
-          await expect(engine.mergeMessage(fnameAdd)).resolves.toEqual(
-            err(
-              new HubError('bad_request.validation_failure', 'fname custody address does not match fid custody address')
-            )
-          );
+          const result = await engine.mergeMessage(fnameAdd);
+          expect(result).toMatchObject(err({ errCode: 'bad_request.validation_failure' }));
+          expect(result._unsafeUnwrapErr().message).toMatch('does not match');
         });
       });
     });
@@ -188,7 +190,7 @@ describe('mergeMessage', () => {
     describe('SignerRemove', () => {
       test('succeeds ', async () => {
         await expect(engine.mergeMessage(signerRemove)).resolves.toBeInstanceOf(Ok);
-        await expect(signerStore.getSignerRemove(fid, signer.signerKey)).resolves.toEqual(signerRemove);
+        await expect(signerStore.getSignerRemove(fid, signerKey)).resolves.toEqual(signerRemove);
         expect(mergedMessages).toEqual([signerAdd, signerRemove]);
       });
     });
@@ -261,21 +263,19 @@ describe('mergeMessage', () => {
     });
   });
 
-  describe('fails when missing signer', () => {
-    let message: protobufs.Message;
+  describe('fails when signer is invalid', () => {
+    test('with SignerAdd', async () => {
+      await engine.mergeIdRegistryEvent(Factories.IdRegistryEvent.build({ fid }));
+      const result = await engine.mergeMessage(signerAdd);
+      expect(result).toMatchObject(err({ errCode: 'bad_request.validation_failure' }));
+      expect(result._unsafeUnwrapErr().message).toMatch('invalid signer');
+    });
 
-    beforeEach(async () => {
+    test('with ReactionAdd', async () => {
       await engine.mergeIdRegistryEvent(custodyEvent);
-    });
-
-    afterEach(async () => {
-      expect(await engine.mergeMessage(message)).toEqual(
-        err(new HubError('bad_request.validation_failure', 'invalid signer'))
-      );
-    });
-
-    test('with ReactionAdd', () => {
-      message = reactionAdd;
+      const result = await engine.mergeMessage(reactionAdd);
+      expect(result).toMatchObject(err({ errCode: 'bad_request.validation_failure' }));
+      expect(result._unsafeUnwrapErr().message).toMatch('invalid signer');
     });
   });
 
@@ -374,7 +374,7 @@ describe('revokeMessagesBySigner', () => {
     for (const message of signerMessages) {
       await expect(checkMessage(message)).resolves.toEqual(message);
     }
-    await expect(engine.revokeMessagesBySigner(fid, custodySigner.signerKey)).resolves.toBeInstanceOf(Ok);
+    await expect(engine.revokeMessagesBySigner(fid, custodySignerKey)).resolves.toBeInstanceOf(Ok);
     for (const message of signerMessages) {
       await expect(checkMessage(message)).rejects.toThrow();
     }
@@ -386,7 +386,7 @@ describe('revokeMessagesBySigner', () => {
     for (const message of signerMessages) {
       await expect(checkMessage(message)).resolves.toEqual(message);
     }
-    await expect(engine.revokeMessagesBySigner(fid, signer.signerKey)).resolves.toBeInstanceOf(Ok);
+    await expect(engine.revokeMessagesBySigner(fid, signerKey)).resolves.toBeInstanceOf(Ok);
     for (const message of signerMessages) {
       await expect(checkMessage(message)).rejects.toThrow();
     }

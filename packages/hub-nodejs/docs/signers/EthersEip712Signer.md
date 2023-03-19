@@ -1,67 +1,52 @@
-# Eip712Signer
+# EthersEip712Signer
 
-An Eip712Signer is initialized with an Ethereum wallet and can be used with [Builders](../builders/builders.md) to sign Farcaster Messages.
+An Eip712Signer that is initialized with an [ethers](https://github.com/ethers-io/ethers.js/) Ethereum wallet and can be used with [Builders](../builders/builders.md) to sign Farcaster Messages.
 
 ## Properties
 
-| Name           | Type         | Description                                 |
-| :------------- | :----------- | :------------------------------------------ |
-| `scheme`       | `Uint8Array` | Signature scheme used when signing messages |
-| `signerKey`    | `Uint8Array` | 20-byte Ethereum Address                    |
-| `signerKeyHex` | `string`     | 20-byte Ethereum Address in hex format      |
+| Name     | Type         | Description                                 |
+| :------- | :----------- | :------------------------------------------ |
+| `scheme` | `Uint8Array` | Signature scheme used when signing messages |
 
 ## Constructors
 
-### `static` new Eip712Signer
+### `static` new EthersEip712Signer
 
 ### Usage
 
 ```typescript
-import { Eip712Signer } from '@farcaster/hub-nodejs';
-import { ethers } from 'ethers';
+import { EthersEip712Signer } from '@farcaster/hub-nodejs';
+import { Wallet } from 'ethers';
 
-const custodyWallet = ethers.Wallet.fromMnemonic('your mnemonic here apple orange banana');
-const eip712Signer = Eip712Signer.fromSigner(custodyWallet, custodyWallet.address)._unsafeUnwrap();
+const custodyWallet = Wallet.fromPhrase('your mnemonic here apple orange banana');
+const eip712Signer = new EthersEip712Signer(custodyWallet);
 ```
 
 #### Parameters
 
-| Name              | Type              | Description                            |
-| :---------------- | :---------------- | -------------------------------------- |
-| `typedDataSigner` | `TypedDataSigner` | A wallet instance                      |
-| `address`         | `string`          | 20-byte Ethereum Address in hex format |
-| `signerKey`       | `Uint8Array`      | 20-byte Ethereum Address               |
+| Name     | Type     | Description       |
+| :------- | :------- | ----------------- |
+| `signer` | `Signer` | A wallet instance |
 
 ---
 
-### `static` fromSigner
+## Instance Methods
 
-Creates an instance of Eip712Signer from an ethers TypedDataSigner (Wallet) and an Ethereum address.
+### getSignerKey
+
+Returns the 160-bit address in bytes.
 
 #### Usage
 
 ```typescript
-import { Eip712Signer } from '@farcaster/hub-nodejs';
-import { ethers } from 'ethers';
-
-const custodyWallet = ethers.Wallet.fromMnemonic('your mnemonic here apple orange banana');
-const eip712Signer = Eip712Signer.fromSigner(custodyWallet, custodyWallet.address)._unsafeUnwrap();
+const signerKey = await eip712Signer.getSignerKey();
 ```
 
 #### Returns
 
-| Value                     | Description                                      |
-| :------------------------ | :----------------------------------------------- |
-| `HubResult<Eip712Signer>` | A HubResult containing an Eip712Signer instance. |
-
-#### Parameters
-
-| Name              | Type              | Description                                      |
-| :---------------- | :---------------- | :----------------------------------------------- |
-| `typedDataSigner` | `TypedDataSigner` | The TypedDataSigner instance to use for signing. |
-| `address`         | `string`          | The Ethereum address associated with the signer. |
-
-## Instance Methods
+| Value                        | Description                                                      |
+| :--------------------------- | :--------------------------------------------------------------- |
+| `HubAsyncResult<Uint8Array>` | A HubAsyncResult containing the 160-bit address as a Uint8Array. |
 
 ### signMessageHash
 
@@ -70,7 +55,7 @@ Generates a 256-bit signature for a string input and returns the bytes.
 #### Usage
 
 ```typescript
-import { randomBytes } from 'ethers/lib/utils';
+import { randomBytes } from 'ethers';
 import { blake3 } from '@noble/hashes/blake3';
 
 const bytes = randomBytes(32);
@@ -94,7 +79,7 @@ const signature = await eip712Signer.signMessageHash(hash);
 
 ### signMessageHashHex
 
-Generates a 256-bit signature for a string input and returns the hex string value.
+Generates a 256-bit signature for a message hash and returns the hex string value.
 
 #### Usage
 

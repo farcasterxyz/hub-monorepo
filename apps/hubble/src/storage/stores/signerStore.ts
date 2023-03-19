@@ -2,7 +2,6 @@ import * as protobufs from '@farcaster/protobufs';
 import { bytesCompare, bytesIncrement, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
-import AbstractRocksDB from 'rocksdb';
 import { getIdRegistryEvent, putIdRegistryEventTransaction } from '~/storage/db/idRegistryEvent';
 import {
   deleteMessageTransaction,
@@ -10,15 +9,15 @@ import {
   getMessage,
   getMessagesPageByPrefix,
   getMessagesPruneIterator,
-  getNextMessageToPrune,
+  getNextMessageFromIterator,
   makeMessagePrimaryKey,
   makeTsHash,
   makeUserKey,
   putMessageTransaction,
 } from '~/storage/db/message';
-import RocksDB, { Transaction } from '~/storage/db/rocksdb';
+import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix, UserPostfix } from '~/storage/db/types';
-import StoreEventHandler, { putEventTransaction } from '~/storage/stores/storeEventHandler';
+import StoreEventHandler, { HubEventArgs } from '~/storage/stores/storeEventHandler';
 import {
   MERGE_TIMEOUT_DEFAULT,
   MessagesPage,
@@ -200,16 +199,9 @@ class SignerStore {
     });
 
     /** Custom to retrieve fid from key */
-    const getNextIteratorRecord = (iterator: AbstractRocksDB.Iterator): Promise<[Buffer, number]> => {
-      return new Promise((resolve, reject) => {
-        iterator.next((err: Error | undefined, key: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
-          if (err || !value) {
-            reject(err);
-          } else {
-            resolve([key as Buffer, Number((key as Buffer).readUint32BE(1))]);
-          }
-        });
-      });
+    const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, number]> => {
+      const [key] = await iterator.next();
+      return [key as Buffer, Number((key as Buffer).readUint32BE(1))];
     };
 
     let iteratorFinished = false;
@@ -227,6 +219,7 @@ class SignerStore {
     } while (fids.length < limit);
 
     if (!iteratorFinished) {
+      await iterator.end(); // clear iterator if it has not finished
       return { fids, nextPageToken: lastPageToken };
     } else {
       return { fids, nextPageToken: undefined };
@@ -243,21 +236,17 @@ class SignerStore {
       throw new HubError('bad_request.conflict', 'event conflicts with a more recent IdRegistryEvent');
     }
 
-    let txn = putIdRegistryEventTransaction(this._db.transaction(), event);
+    const txn = putIdRegistryEventTransaction(this._db.transaction(), event);
 
-    const hubEvent = this._eventHandler.makeMergeIdRegistryEvent(event);
-    if (hubEvent.isErr()) {
-      throw hubEvent.error;
+    const events: Omit<protobufs.MergeIdRegistryEventHubEvent, 'id'>[] = [
+      { type: protobufs.HubEventType.MERGE_ID_REGISTRY_EVENT, mergeIdRegistryEventBody: { idRegistryEvent: event } },
+    ];
+
+    const result = await this._eventHandler.commitTransaction(txn, events);
+    if (result.isErr()) {
+      throw result.error;
     }
-    txn = putEventTransaction(txn, hubEvent.value);
-
-    // Commit the RocksDB transaction
-    await this._db.commit(txn);
-
-    // Emit store event
-    this._eventHandler.broadcastEvent(hubEvent.value);
-
-    return hubEvent.value.id;
+    return result.value[0] as number;
   }
 
   /** Merges a SignerAdd or SignerRemove message into the SignerStore */
@@ -311,40 +300,21 @@ class SignerStore {
     let txn = this._db.transaction();
 
     // Create list of events to broadcast
-    const events: protobufs.RevokeMessageHubEvent[] = [];
+    const events: Omit<protobufs.RevokeMessageHubEvent, 'id'>[] = [];
 
     // Add a delete operation to the transaction for each SignerAdd
     for (const message of signerAdds) {
       txn = this.deleteSignerAddTransaction(txn, message);
-
-      const event = this._eventHandler.makeRevokeMessage(message);
-      if (event.isErr()) {
-        throw event.error;
-      }
-
-      events.push(event.value);
-      txn = putEventTransaction(txn, event.value);
+      events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
     }
 
     // Add a delete operation to the transaction for each SignerRemove
     for (const message of signerRemoves) {
       txn = this.deleteSignerRemoveTransaction(txn, message);
-
-      const event = this._eventHandler.makeRevokeMessage(message);
-      if (event.isErr()) {
-        throw event.error;
-      }
-
-      events.push(event.value);
-      txn = putEventTransaction(txn, event.value);
+      events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
     }
 
-    await this._db.commit(txn);
-
-    // Emit a revokeMessage event for each message
-    this._eventHandler.broadcastEvents(events);
-
-    return ok(events.map((event) => event.id));
+    return this._eventHandler.commitTransaction(txn, events);
   }
 
   async pruneMessages(fid: number): HubAsyncResult<number[]> {
@@ -360,7 +330,7 @@ class SignerStore {
     let sizeToPrune = count - this._pruneSizeLimit;
 
     // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
-    const events: protobufs.PruneMessageHubEvent[] = [];
+    const events: Omit<protobufs.PruneMessageHubEvent, 'id'>[] = [];
 
     // Create a rocksdb transaction to include all the mutations
     let pruneTxn = this._db.transaction();
@@ -368,7 +338,7 @@ class SignerStore {
     // Create a rocksdb iterator for all messages with the given prefix
     const pruneIterator = getMessagesPruneIterator(this._db, fid, UserPostfix.SignerMessage);
 
-    const getNextResult = () => ResultAsync.fromPromise(getNextMessageToPrune(pruneIterator), () => undefined);
+    const getNextResult = () => ResultAsync.fromPromise(getNextMessageFromIterator(pruneIterator), () => undefined);
 
     // For each message in order, prune it if the store is over the size limit
     let nextMessage = await getNextResult();
@@ -384,28 +354,16 @@ class SignerStore {
         throw new HubError('unknown', 'invalid message type');
       }
 
-      // Create prune event and store for broadcasting later
-      const pruneEvent = this._eventHandler.makePruneMessage(message);
-      if (pruneEvent.isErr()) {
-        return err(pruneEvent.error);
-      }
-      pruneTxn = putEventTransaction(pruneTxn, pruneEvent.value);
-      events.push(pruneEvent.value);
+      // Create prune event body and store for broadcasting later
+      events.push({ type: protobufs.HubEventType.PRUNE_MESSAGE, pruneMessageBody: { message } });
 
       // Decrement the number of messages yet to prune, and try to get the next message from the iterator
       sizeToPrune = Math.max(0, sizeToPrune - 1);
       nextMessage = await getNextResult();
     }
 
-    if (events.length > 0) {
-      // Commit the transaction to rocksdb
-      await this._db.commit(pruneTxn);
-
-      // For each of the pruned messages, emit a pruneMessage event
-      this._eventHandler.broadcastEvents(events);
-    }
-
-    return ok(events.map((event) => event.id));
+    await pruneIterator.end();
+    return this._eventHandler.commitTransaction(pruneTxn, events);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -425,19 +383,17 @@ class SignerStore {
     // Add putSignerAdd operations to the RocksDB transaction
     txn = this.putSignerAddTransaction(txn, message);
 
-    const hubEvent = this._eventHandler.makeMergeMessage(message, mergeConflicts.value);
-    if (hubEvent.isErr()) {
-      throw hubEvent.error;
-    }
-    txn = putEventTransaction(txn, hubEvent.value);
+    const hubEvent: HubEventArgs = {
+      type: protobufs.HubEventType.MERGE_MESSAGE,
+      mergeMessageBody: { message, deletedMessages: mergeConflicts.value },
+    };
 
     // Commit the RocksDB transaction
-    await this._db.commit(txn);
-
-    // Emit store event
-    this._eventHandler.broadcastEvent(hubEvent.value);
-
-    return hubEvent.value.id;
+    const result = await this._eventHandler.commitTransaction(txn, [hubEvent]);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return result.value[0] as number;
   }
 
   private async mergeRemove(message: protobufs.SignerRemoveMessage): Promise<number> {
@@ -453,19 +409,17 @@ class SignerStore {
     // Add putSignerRemove operations to the RocksDB transaction
     txn = this.putSignerRemoveTransaction(txn, message);
 
-    const hubEvent = this._eventHandler.makeMergeMessage(message, mergeConflicts.value);
-    if (hubEvent.isErr()) {
-      throw hubEvent.error;
-    }
-    txn = putEventTransaction(txn, hubEvent.value);
+    const hubEvent: HubEventArgs = {
+      type: protobufs.HubEventType.MERGE_MESSAGE,
+      mergeMessageBody: { message, deletedMessages: mergeConflicts.value },
+    };
 
     // Commit the RocksDB transaction
-    await this._db.commit(txn);
-
-    // Emit store event
-    this._eventHandler.broadcastEvent(hubEvent.value);
-
-    return hubEvent.value.id;
+    const result = await this._eventHandler.commitTransaction(txn, [hubEvent]);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return result.value[0] as number;
   }
 
   private signerMessageCompare(

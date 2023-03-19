@@ -1,6 +1,13 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, HubAsyncResult, HubError, HubResult, utf8StringToBytes, validations } from '@farcaster/utils';
-import fs from 'fs';
+import {
+  bytesCompare,
+  bytesToHexString,
+  HubAsyncResult,
+  HubError,
+  HubResult,
+  utf8StringToBytes,
+  validations,
+} from '@farcaster/utils';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { Worker } from 'worker_threads';
 import { SyncId } from '~/network/sync/syncId';
@@ -184,7 +191,11 @@ class Engine {
   async forEachMessage(callback: (message: protobufs.Message, key: Buffer) => Promise<boolean | void>): Promise<void> {
     const allUserPrefix = Buffer.from([RootPrefix.User]);
 
-    for await (const [key, value] of this._db.iteratorByPrefix(allUserPrefix, { keys: true, valueAsBuffer: true })) {
+    for await (const [key, value] of this._db.iteratorByPrefix(allUserPrefix, { keys: true })) {
+      if (!key || !value) {
+        break;
+      }
+
       if (key.length !== 1 + FID_BYTES + 1 + TSHASH_LENGTH) {
         // Not a message key, so we can skip it.
         continue;
@@ -217,6 +228,7 @@ class Engine {
       }
     }
   }
+
   async getAllMessagesBySyncIds(syncIds: Uint8Array[]): HubAsyncResult<protobufs.Message[]> {
     const hashesBuf = syncIds.map((syncIdHash) => SyncId.pkFromSyncId(syncIdHash));
     const messages = await ResultAsync.fromPromise(getManyMessages(this._db, hashesBuf), (e) => e as HubError);
@@ -509,7 +521,15 @@ class Engine {
     // 4. Check that the signer is valid
     if (protobufs.isSignerAddMessage(message) || protobufs.isSignerRemoveMessage(message)) {
       if (bytesCompare(message.signer, custodyEvent.value.to) !== 0) {
-        return err(new HubError('bad_request.validation_failure', 'invalid signer'));
+        const hex = Result.combine([bytesToHexString(message.signer), bytesToHexString(custodyEvent.value.to)]);
+        return hex.andThen(([signerHex, custodyHex]) => {
+          return err(
+            new HubError(
+              'bad_request.validation_failure',
+              `invalid signer: signer ${signerHex} does not match custody address ${custodyHex}`
+            )
+          );
+        });
       }
     } else {
       const signerResult = await ResultAsync.fromPromise(
@@ -517,7 +537,15 @@ class Engine {
         (e) => e
       );
       if (signerResult.isErr()) {
-        return err(new HubError('bad_request.validation_failure', 'invalid signer'));
+        const hex = bytesToHexString(message.signer);
+        return hex.andThen((signerHex) => {
+          return err(
+            new HubError(
+              'bad_request.validation_failure',
+              `invalid signer: signer ${signerHex} not found for fid ${message.data?.fid}`
+            )
+          );
+        });
       }
     }
 
@@ -534,7 +562,12 @@ class Engine {
       if (fnameBytes.value.length > 0) {
         // Get the NameRegistryEvent for the fname
         const fnameEvent = (await this.getNameRegistryEvent(fnameBytes.value)).mapErr((e) =>
-          e.errCode === 'not_found' ? new HubError('bad_request.validation_failure', 'fname is not registered') : e
+          e.errCode === 'not_found'
+            ? new HubError(
+                'bad_request.validation_failure',
+                `fname ${message.data.userDataBody.value} is not registered`
+              )
+            : e
         );
         if (fnameEvent.isErr()) {
           return err(fnameEvent.error);
@@ -542,9 +575,15 @@ class Engine {
 
         // Check that the custody address for the fname and fid are the same
         if (bytesCompare(custodyEvent.value.to, fnameEvent.value.to) !== 0) {
-          return err(
-            new HubError('bad_request.validation_failure', 'fname custody address does not match fid custody address')
-          );
+          const hex = Result.combine([bytesToHexString(custodyEvent.value.to), bytesToHexString(fnameEvent.value.to)]);
+          return hex.andThen(([custodySignerHex, fnameSignerHex]) => {
+            return err(
+              new HubError(
+                'bad_request.validation_failure',
+                `fname custody address ${fnameSignerHex} does not match custody address ${custodySignerHex} for fid ${message.data.fid}`
+              )
+            );
+          });
         }
       }
     }

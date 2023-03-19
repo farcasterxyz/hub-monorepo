@@ -25,7 +25,7 @@ export class GenCommand implements ConsoleCommandInterface {
   help(): string {
     return `
     Usage: gen.submitMessages(numMessages = 100, network = FARCASTER_NETWORK_DEVNET)
-        Generate 'numMessages' messages and submit them to the Hub using the RPC client and print 
+        Generate 'numMessages' messages and submit them to the Hub using the RPC client and print
         perf stats.
 
     Note1: This command is async, so you'll have to await it.
@@ -51,7 +51,9 @@ export class GenCommand implements ConsoleCommandInterface {
         const fid = Math.floor(Math.random() * 100_000_000 + 100_000);
 
         const custodySigner = Factories.Eip712Signer.build();
+        const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
         const signer = Factories.Ed25519Signer.build();
+        const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
 
         let numSuccess = 0;
         let numFail = 0;
@@ -59,7 +61,7 @@ export class GenCommand implements ConsoleCommandInterface {
 
         const start = performance.now();
 
-        const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
+        const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
         const idResult = await this.adminRpcClient.submitIdRegistryEvent(custodyEvent);
         if (idResult.isOk()) {
           numSuccess++;
@@ -68,7 +70,7 @@ export class GenCommand implements ConsoleCommandInterface {
         }
 
         const signerAdd = await Factories.SignerAddMessage.create(
-          { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
+          { data: { fid, network, signerAddBody: { signer: signerKey } } },
           { transient: { signer: custodySigner } }
         );
 

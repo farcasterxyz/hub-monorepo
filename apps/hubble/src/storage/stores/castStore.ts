@@ -1,8 +1,7 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesCompare, bytesIncrement, getFarcasterTime, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
 import AsyncLock from 'async-lock';
-import { err, ok, ResultAsync } from 'neverthrow';
-import AbstractRocksDB from 'rocksdb';
+import { err, ResultAsync } from 'neverthrow';
 import {
   deleteMessageTransaction,
   getAllMessagesBySigner,
@@ -10,7 +9,7 @@ import {
   getMessage,
   getMessagesPageByPrefix,
   getMessagesPruneIterator,
-  getNextMessageToPrune,
+  getNextMessageFromIterator,
   makeCastIdKey,
   makeFidKey,
   makeMessagePrimaryKey,
@@ -18,9 +17,9 @@ import {
   makeUserKey,
   putMessageTransaction,
 } from '~/storage/db/message';
-import RocksDB, { Transaction } from '~/storage/db/rocksdb';
+import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
 import { FID_BYTES, RootPrefix, TRUE_VALUE, UserPostfix } from '~/storage/db/types';
-import StoreEventHandler, { putEventTransaction } from '~/storage/stores/storeEventHandler';
+import StoreEventHandler, { HubEventArgs } from '~/storage/stores/storeEventHandler';
 import {
   MERGE_TIMEOUT_DEFAULT,
   MessagesPage,
@@ -205,19 +204,12 @@ class CastStore {
     });
 
     // Custom method to retrieve message key from key
-    const getNextIteratorRecord = (iterator: AbstractRocksDB.Iterator): Promise<[Buffer, Buffer]> => {
-      return new Promise((resolve, reject) => {
-        iterator.next((err: Error | undefined, key: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
-          if (err || !value) {
-            reject(err);
-          } else {
-            const fid = Number((key as Buffer).readUint32BE(prefix.length));
-            const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length + FID_BYTES);
-            const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.CastMessage, tsHash);
-            resolve([key as Buffer, messagePrimaryKey]);
-          }
-        });
-      });
+    const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Buffer]> => {
+      const [key] = await iterator.next();
+      const fid = Number((key as Buffer).readUint32BE(prefix.length));
+      const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length + FID_BYTES);
+      const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.CastMessage, tsHash);
+      return [key as Buffer, messagePrimaryKey];
     };
 
     let iteratorFinished = false;
@@ -237,6 +229,7 @@ class CastStore {
     const messages = await getManyMessages<protobufs.CastAddMessage>(this._db, messageKeys);
 
     if (!iteratorFinished) {
+      await iterator.end(); // clear iterator if it has not finished
       return { messages, nextPageToken: lastPageToken };
     } else {
       return { messages, nextPageToken: undefined };
@@ -272,19 +265,12 @@ class CastStore {
     });
 
     // Custom method to retrieve message key from key
-    const getNextIteratorRecord = (iterator: AbstractRocksDB.Iterator): Promise<[Buffer, Buffer]> => {
-      return new Promise((resolve, reject) => {
-        iterator.next((err: Error | undefined, key: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
-          if (err || !value) {
-            reject(err);
-          } else {
-            const fid = Number((key as Buffer).readUint32BE(prefix.length));
-            const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length + FID_BYTES);
-            const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.CastMessage, tsHash);
-            resolve([key as Buffer, messagePrimaryKey]);
-          }
-        });
-      });
+    const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Buffer]> => {
+      const [key] = await iterator.next();
+      const fid = Number((key as Buffer).readUint32BE(prefix.length));
+      const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length + FID_BYTES);
+      const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.CastMessage, tsHash);
+      return [key as Buffer, messagePrimaryKey];
     };
 
     let iteratorFinished = false;
@@ -304,6 +290,7 @@ class CastStore {
     const messages = await getManyMessages<protobufs.CastAddMessage>(this._db, messageKeys);
 
     if (!iteratorFinished) {
+      await iterator.end(); // clear iterator if it has not finished
       return { messages, nextPageToken: lastPageToken };
     } else {
       return { messages, nextPageToken: undefined };
@@ -356,39 +343,23 @@ class CastStore {
     let txn = this._db.transaction();
 
     // Create list of events to broadcast
-    const events: protobufs.RevokeMessageHubEvent[] = [];
+    const events: Omit<protobufs.RevokeMessageHubEvent, 'id'>[] = [];
 
     // Add a delete operation to the transaction for each CastAdd
     for (const message of castAdds) {
       txn = this.deleteCastAddTransaction(txn, message);
 
-      const event = this._eventHandler.makeRevokeMessage(message);
-      if (event.isErr()) {
-        throw event.error;
-      }
-
-      events.push(event.value);
-      txn = putEventTransaction(txn, event.value);
+      events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
     }
 
     // Add a delete operation to the transaction for each CastRemove
     for (const message of castRemoves) {
       txn = this.deleteCastRemoveTransaction(txn, message);
 
-      const event = this._eventHandler.makeRevokeMessage(message);
-      if (event.isErr()) {
-        throw event.error;
-      }
-
-      txn = putEventTransaction(txn, event.value);
+      events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
     }
 
-    await this._db.commit(txn);
-
-    // Emit a revokeMessage event for each message
-    this._eventHandler.broadcastEvents(events);
-
-    return ok(events.map((event) => event.id));
+    return this._eventHandler.commitTransaction(txn, events);
   }
 
   async pruneMessages(fid: number): HubAsyncResult<number[]> {
@@ -412,7 +383,7 @@ class CastStore {
     const timestampToPrune = farcasterTime.value - this._pruneTimeLimit;
 
     // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
-    const events: protobufs.PruneMessageHubEvent[] = [];
+    const events: Omit<protobufs.PruneMessageHubEvent, 'id'>[] = [];
 
     // Create a rocksdb transaction to include all the mutations
     let pruneTxn = this._db.transaction();
@@ -420,7 +391,7 @@ class CastStore {
     // Create a rocksdb iterator for all messages with the given prefix
     const pruneIterator = getMessagesPruneIterator(this._db, fid, UserPostfix.CastMessage);
 
-    const getNextResult = () => ResultAsync.fromPromise(getNextMessageToPrune(pruneIterator), () => undefined);
+    const getNextResult = () => ResultAsync.fromPromise(getNextMessageFromIterator(pruneIterator), () => undefined);
 
     // For each message in order, prune it if the store is over the size limit or the message was signed
     // before the timestamp cut-off
@@ -440,28 +411,16 @@ class CastStore {
         throw new HubError('unknown', 'invalid message type');
       }
 
-      // Create prune event and store for broadcasting later
-      const pruneEvent = this._eventHandler.makePruneMessage(message);
-      if (pruneEvent.isErr()) {
-        return err(pruneEvent.error);
-      }
-      pruneTxn = putEventTransaction(pruneTxn, pruneEvent.value);
-      events.push(pruneEvent.value);
+      // Create prune event body and store for broadcasting later
+      events.push({ type: protobufs.HubEventType.PRUNE_MESSAGE, pruneMessageBody: { message } });
 
       // Decrement the number of messages yet to prune, and try to get the next message from the iterator
       sizeToPrune = Math.max(0, sizeToPrune - 1);
       nextMessage = await getNextResult();
     }
 
-    if (events.length > 0) {
-      // Commit the transaction to rocksdb
-      await this._db.commit(pruneTxn);
-
-      // Emit prune events
-      this._eventHandler.broadcastEvents(events);
-    }
-
-    return ok(events.map((event) => event.id));
+    await pruneIterator.end();
+    return this._eventHandler.commitTransaction(pruneTxn, events);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -497,19 +456,17 @@ class CastStore {
     // Add putCastAdd operations to the RocksDB transaction
     txn = this.putCastAddTransaction(txn, message);
 
-    const hubEvent = this._eventHandler.makeMergeMessage(message);
-    if (hubEvent.isErr()) {
-      throw hubEvent.error;
-    }
-    txn = putEventTransaction(txn, hubEvent.value);
+    const hubEvent: HubEventArgs = {
+      type: protobufs.HubEventType.MERGE_MESSAGE,
+      mergeMessageBody: { message, deletedMessages: [] },
+    };
 
     // Commit the RocksDB transaction
-    await this._db.commit(txn);
-
-    // Emit store event
-    this._eventHandler.broadcastEvent(hubEvent.value);
-
-    return hubEvent.value.id;
+    const result = await this._eventHandler.commitTransaction(txn, [hubEvent]);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return result.value[0] as number;
   }
 
   private async mergeRemove(message: protobufs.CastRemoveMessage): Promise<number> {
@@ -576,19 +533,17 @@ class CastStore {
     // Add putCastRemove operations to the RocksDB transaction
     txn = this.putCastRemoveTransaction(txn, message);
 
-    const hubEvent = this._eventHandler.makeMergeMessage(message, mergeConflicts);
-    if (hubEvent.isErr()) {
-      throw hubEvent.error;
-    }
-    txn = putEventTransaction(txn, hubEvent.value);
+    const hubEvent: HubEventArgs = {
+      type: protobufs.HubEventType.MERGE_MESSAGE,
+      mergeMessageBody: { message, deletedMessages: mergeConflicts },
+    };
 
     // Commit the RocksDB transaction
-    await this._db.commit(txn);
-
-    // Emit store event
-    this._eventHandler.broadcastEvent(hubEvent.value);
-
-    return hubEvent.value.id;
+    const result = await this._eventHandler.commitTransaction(txn, [hubEvent]);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return result.value[0] as number;
   }
 
   /* Builds a RocksDB transaction to insert a CastAdd message and construct its indices */
