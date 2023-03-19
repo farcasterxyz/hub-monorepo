@@ -94,7 +94,7 @@ app
     // Generate a random number to identify this hub instance
     // Note that we can't use the PID as the identifier, since the hub running in a docker container will
     // always have PID 1.
-    const processNum = Math.floor(Math.random() * 1_000_000_000);
+    const processNum = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
 
     // Write our processNum to the file
     fs.mkdirSync(processFileDir, { recursive: true });
