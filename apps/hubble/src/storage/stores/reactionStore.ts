@@ -288,6 +288,7 @@ class ReactionStore {
     const messages = await getManyMessages<protobufs.ReactionAddMessage>(this._db, messageKeys);
 
     if (!iteratorFinished) {
+      await iterator.end(); // clear iterator if it has not finished
       return { messages, nextPageToken: lastPageToken };
     } else {
       return { messages, nextPageToken: undefined };
