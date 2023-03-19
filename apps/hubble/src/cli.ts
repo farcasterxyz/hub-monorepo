@@ -2,7 +2,7 @@
 import { PeerId } from '@libp2p/interface-peer-id';
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from '@libp2p/peer-id-factory';
 import { Command } from 'commander';
-import { existsSync } from 'fs';
+import fs, { existsSync } from 'fs';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { ResultAsync } from 'neverthrow';
 import { dirname, resolve } from 'path';
@@ -11,6 +11,7 @@ import { APP_VERSION, Hub, HubOptions } from '~/hubble';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo, parseAddress } from '~/utils/p2p';
 import { DEFAULT_RPC_CONSOLE, startConsole } from './console/console';
+import { DB_DIRECTORY } from './storage/db/rocksdb';
 import { parseNetwork } from './utils/command';
 
 /** A CLI to accept options from the user and start the Hub */
@@ -63,7 +64,6 @@ app
   .action(async (cliOptions) => {
     const teardown = async (hub: Hub) => {
       await hub.stop();
-      process.exit();
     };
 
     const handleShutdownSignal = (signal: NodeJS.Signals) => {
@@ -86,6 +86,37 @@ app
         }, SHUTDOWN_GRACE_PERIOD_MS);
       }
     };
+
+    // We'll write our PID to a file so that we can detect if another hub process has taken over the PID
+    const pidFileDir = `${DB_DIRECTORY}/process/`;
+    const pidFilePath = `pid.txt`;
+
+    // Write our PID to the file
+    fs.mkdirSync(pidFileDir, { recursive: true });
+    fs.writeFile(`${pidFileDir}${pidFilePath}`, process.pid.toString(), (err) => {
+      if (err) {
+        logger.error(`Error writing pid file: ${err}`);
+      }
+    });
+
+    // Watch for the PID file. If it changes, and we are not the PID written in the file,
+    // it means that another hub process has taken over the PID and we should exit.
+    fs.watch(pidFileDir, async (eventType, filename) => {
+      if (eventType === 'change' && filename === pidFilePath) {
+        fs.readFile(`${pidFileDir}${pidFilePath}`, 'utf8', async (err, data) => {
+          if (err) {
+            logger.error(`Error reading pid file: ${err}`);
+            return;
+          }
+
+          const pid = parseInt(data.trim());
+          if (!isNaN(pid) && pid !== process.pid) {
+            logger.error(`Another hub process is running with pid ${pid}, exiting`);
+            handleShutdownSignal('SIGTERM');
+          }
+        });
+      }
+    });
 
     // try to load the config file
     const hubConfig = (await import(resolve(cliOptions.config))).Config;

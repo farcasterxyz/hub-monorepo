@@ -3,7 +3,7 @@ import { AbstractBatch, AbstractChainedBatch, AbstractIterator } from 'abstract-
 import { mkdir } from 'fs';
 import AbstractRocksDB from 'rocksdb';
 
-const DB_PREFIX = '.rocks';
+export const DB_DIRECTORY = '.rocks';
 const DB_NAME_DEFAULT = 'farcaster';
 
 export type Transaction = AbstractChainedBatch<Buffer, Buffer>;
@@ -70,7 +70,7 @@ class RocksDB {
   private _hasOpened = false;
 
   constructor(name?: string) {
-    this._db = new AbstractRocksDB(`${DB_PREFIX}/${name ?? DB_NAME_DEFAULT}`);
+    this._db = new AbstractRocksDB(`${DB_DIRECTORY}/${name ?? DB_NAME_DEFAULT}`);
   }
 
   get location() {

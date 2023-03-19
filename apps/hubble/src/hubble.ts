@@ -48,7 +48,6 @@ import {
   ipFamilyToString,
   p2pMultiAddrStr,
 } from '~/utils/p2p';
-import { sleep } from './utils/crypto';
 
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
 
@@ -238,11 +237,6 @@ export class Hub implements HubInterface {
           { retryCount, error: dbResult.error, errorMessage: dbResult.error.message },
           'failed to open rocksdb. Retry in 15s'
         );
-        await sleep(15 * 1000);
-
-        // It looks like we need to recreate the JS object to get a new lock on the same DB on disk
-        await ResultAsync.fromPromise(this.rocksDB.close(), (e) => e);
-        this.rocksDB = new RocksDB(this.options.rocksDBName ? this.options.rocksDBName : randomDbName());
       } else {
         break;
       }
