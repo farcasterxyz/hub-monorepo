@@ -87,31 +87,36 @@ app
       }
     };
 
-    // We'll write our PID to a file so that we can detect if another hub process has taken over the PID
-    const pidFileDir = `${DB_DIRECTORY}/process/`;
-    const pidFilePath = `pid.txt`;
+    // We'll write our process number to a file so that we can detect if another hub process has taken over.
+    const processFileDir = `${DB_DIRECTORY}/process/`;
+    const processFileName = `process_number.txt`;
 
-    // Write our PID to the file
-    fs.mkdirSync(pidFileDir, { recursive: true });
-    fs.writeFile(`${pidFileDir}${pidFilePath}`, process.pid.toString(), (err) => {
+    // Generate a random number to identify this hub instance
+    // Note that we can't use the PID as the identifier, since the hub running in a docker container will
+    // always have PID 1.
+    const processNum = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+
+    // Write our processNum to the file
+    fs.mkdirSync(processFileDir, { recursive: true });
+    fs.writeFile(`${processFileDir}${processFileName}`, processNum.toString(), (err) => {
       if (err) {
-        logger.error(`Error writing pid file: ${err}`);
+        logger.error(`Error writing process file: ${err}`);
       }
     });
 
-    // Watch for the PID file. If it changes, and we are not the PID written in the file,
-    // it means that another hub process has taken over the PID and we should exit.
-    fs.watch(pidFileDir, async (eventType, filename) => {
-      if (eventType === 'change' && filename === pidFilePath) {
-        fs.readFile(`${pidFileDir}${pidFilePath}`, 'utf8', async (err, data) => {
+    // Watch for the processNum file. If it changes, and we are not the process number written in the file,
+    // it means that another hub process has taken over and we should exit.
+    fs.watch(processFileDir, async (eventType, filename) => {
+      if (eventType === 'change' && filename === processFileName) {
+        fs.readFile(`${processFileDir}${processFileName}`, 'utf8', async (err, data) => {
           if (err) {
-            logger.error(`Error reading pid file: ${err}`);
+            logger.error(`Error reading processnum file: ${err}`);
             return;
           }
 
-          const pid = parseInt(data.trim());
-          if (!isNaN(pid) && pid !== process.pid) {
-            logger.error(`Another hub process is running with pid ${pid}, exiting`);
+          const readProcessNum = parseInt(data.trim());
+          if (!isNaN(readProcessNum) && readProcessNum !== processNum) {
+            logger.error(`Another hub process is running with processNum ${readProcessNum}, exiting`);
             handleShutdownSignal('SIGTERM');
           }
         });
