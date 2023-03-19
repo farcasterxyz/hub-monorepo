@@ -1,76 +1,52 @@
-# Eip712Signer
+# EthersEip712Signer
 
-An Eip712Signer is initialized with an Ethereum wallet and can be used with [Builders](../builders/builders.md) to sign Farcaster Messages.
+An Eip712Signer that is initialized with an [ethers](https://github.com/ethers-io/ethers.js/) Ethereum wallet and can be used with [Builders](../builders/builders.md) to sign Farcaster Messages.
 
 ## Properties
 
-| Name           | Type         | Description                                 |
-| :------------- | :----------- | :------------------------------------------ |
-| `scheme`       | `Uint8Array` | Signature scheme used when signing messages |
-| `signerKey`    | `Uint8Array` | 20-byte Ethereum Address                    |
-| `signerKeyHex` | `string`     | 20-byte Ethereum Address in hex format      |
+| Name     | Type         | Description                                 |
+| :------- | :----------- | :------------------------------------------ |
+| `scheme` | `Uint8Array` | Signature scheme used when signing messages |
 
 ## Constructors
 
-### `static` new Eip712Signer
+### `static` new EthersEip712Signer
 
 ### Usage
 
-<<<<<<< HEAD
-=======
-Prefer building with `Eip712Signer.fromSigner`.
-
 ```typescript
-import { Eip712Signer } from '@farcaster/hub-nodejs';
+import { EthersEip712Signer } from '@farcaster/hub-nodejs';
 import { Wallet } from 'ethers';
 
 const custodyWallet = Wallet.fromPhrase('your mnemonic here apple orange banana');
-const eip712Signer = Eip712Signer.fromSigner(custodyWallet, custodyWallet.address)._unsafeUnwrap();
-```
-
-#### Parameters
-
-| Name        | Type         | Description              |
-| :---------- | :----------- | ------------------------ |
-| `signer`    | `Signer`     | A wallet instance        |
-| `signerKey` | `Uint8Array` | 20-byte Ethereum Address |
-
----
-
-### `static` fromSigner
-
-Creates an instance of Eip712Signer from an ethers Signer (Wallet) and an Ethereum address.
-
-#### Usage
-
->>>>>>> main
-```typescript
-import { Eip712Signer } from '@farcaster/hub-nodejs';
-import { Wallet } from 'ethers';
-
-const custodyWallet = Wallet.fromPhrase('your mnemonic here apple orange banana');
-<<<<<<< HEAD
 const eip712Signer = new EthersEip712Signer(custodyWallet);
-=======
-const eip712Signer = (await Eip712Signer.fromSigner(custodyWallet)._unsafeUnwrap();
->>>>>>> main
 ```
 
 #### Parameters
 
-<<<<<<< HEAD
 | Name     | Type     | Description       |
 | :------- | :------- | ----------------- |
 | `signer` | `Signer` | A wallet instance |
 
 ---
-=======
-| Name     | Type     | Description                                    |
-| :------- | :------- | :--------------------------------------------- |
-| `signer` | `Signer` | The Ethers Signer instance to use for signing. |
->>>>>>> main
 
 ## Instance Methods
+
+### getSignerKey
+
+Returns the 160-bit address in bytes.
+
+#### Usage
+
+```typescript
+const signerKey = await eip712Signer.getSignerKey();
+```
+
+#### Returns
+
+| Value                        | Description                                                      |
+| :--------------------------- | :--------------------------------------------------------------- |
+| `HubAsyncResult<Uint8Array>` | A HubAsyncResult containing the 160-bit address as a Uint8Array. |
 
 ### signMessageHash
 
