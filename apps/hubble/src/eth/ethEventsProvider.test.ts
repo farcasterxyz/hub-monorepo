@@ -1,8 +1,7 @@
-import { Event } from '@ethersproject/contracts';
-import { BaseProvider, Block, TransactionReceipt, TransactionResponse } from '@ethersproject/providers';
 import * as protobufs from '@farcaster/protobufs';
 import { Factories, bytesToHexString, hexStringToBytes } from '@farcaster/utils';
-import { BigNumber, Contract, utils } from 'ethers';
+import { AbstractProvider, Block, Contract, Log, Provider, TransactionReceipt, TransactionResponse } from 'ethers';
+import { OrphanFilter } from 'ethers/types/providers';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
 import { EthEventsProvider } from '~/eth/ethEventsProvider';
 import { bytesToBytes32 } from '~/eth/utils';
@@ -29,7 +28,7 @@ const generateEthAddressHex = () => {
 };
 
 /** A Mock RPC provider */
-class MockRPCProvider extends BaseProvider {
+class MockRPCProvider extends AbstractProvider {
   constructor() {
     // The Goerli networkID is 5
     super(5);
@@ -38,41 +37,64 @@ class MockRPCProvider extends BaseProvider {
   override async getLogs() {
     return [];
   }
+
+  override async getBlockNumber() {
+    return 1;
+  }
 }
 
 /** A Mock Event. Note the disabled no-empty-function rule at the top, it is needed to allow no-op functions in the mock. */
-class MockEvent implements Event {
-  event?: string;
-  eventSignature?: string;
-  args?: utils.Result;
-  decodeError?: Error;
-  decode?: (data: string, topics?: string[] | undefined) => any;
+class MockEvent implements Log {
+  address: string;
+  blockNumber: number;
+  blockHash: string;
+  data: string;
+  index: number;
+  provider: Provider;
+  removed: boolean;
+  topics: string[];
+  transactionHash: string;
+  transactionIndex: number;
+
+  // Allow no-op functions in the mock
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   removeListener: () => void = () => {};
   getBlock: () => Promise<Block> = () => Promise.resolve({} as Block);
   getTransaction: () => Promise<TransactionResponse> = () => Promise.resolve({} as TransactionResponse);
   getTransactionReceipt: () => Promise<TransactionReceipt> = () => Promise.resolve({} as TransactionReceipt);
-  blockNumber: number;
-  blockHash: string;
-  transactionIndex: number;
-  removed: boolean;
-  address: string;
-  data: string;
-  topics: string[];
-  transactionHash: string;
-  logIndex: number;
 
-  constructor(blockNumber: number, blockHash: string, transactionHash: string, logIndex: number) {
+  constructor(
+    blockNumber: number,
+    blockHash: string,
+    transactionHash: string,
+    index: number,
+    provider: AbstractProvider
+  ) {
     this.blockNumber = blockNumber;
     this.blockHash = blockHash;
     this.transactionHash = transactionHash;
-    this.logIndex = logIndex;
+    this.index = index;
+    this.provider = provider;
 
     this.transactionIndex = 0;
     this.removed = false;
     this.address = '';
     this.data = '';
     this.topics = [];
+  }
+
+  get eventName(): string {
+    throw new Error('Method not implemented.');
+  }
+  get eventSignature(): string {
+    throw new Error('Method not implemented.');
+  }
+
+  toJSON() {
+    throw new Error('Method not implemented.');
+  }
+  removedEvent(): OrphanFilter {
+    throw new Error('Method not implemented.');
   }
 }
 
@@ -85,12 +107,12 @@ beforeAll(async () => {
 describe('process events', () => {
   beforeEach(async () => {
     ethEventsProvider = new EthEventsProvider(hub, mockRPCProvider, mockIdRegistry, mockNameRegistry, 1, 10000);
-    mockRPCProvider.polling = true;
+    mockRPCProvider._forEachSubscriber((s) => s.start());
     await ethEventsProvider.start();
   });
 
   afterEach(async () => {
-    mockRPCProvider.polling = false;
+    mockRPCProvider._forEachSubscriber((s) => s.stop());
     await ethEventsProvider.stop();
   });
 
@@ -120,10 +142,10 @@ describe('process events', () => {
     const rRegister = mockIdRegistry.emit(
       'Register',
       address1,
-      BigNumber.from(fid),
+      BigInt(fid),
       '',
       '',
-      new MockEvent(blockNumber++, '0xb00001', '0x400001', 0)
+      new MockEvent(blockNumber++, '0xb00001', '0x400001', 0, mockRPCProvider)
     );
     expect(rRegister).toBeTruthy();
 
@@ -142,8 +164,8 @@ describe('process events', () => {
       'Transfer',
       address1,
       address2,
-      BigNumber.from(fid),
-      new MockEvent(blockNumber++, '0xb00002', '0x400002', 0)
+      BigInt(fid),
+      new MockEvent(blockNumber++, '0xb00002', '0x400002', 0, mockRPCProvider)
     );
     // The event is not immediately available, since it has to wait for confirmations. We should still get the Register event
     const existingIdRegistryEvent = await getIdRegistryEvent(db, fid);
@@ -169,7 +191,7 @@ describe('process events', () => {
       '0x000001',
       '0x000002',
       bytesToBytes32(fname)._unsafeUnwrap(),
-      new MockEvent(blockNumber++, '0xb00001', '0x400001', 0)
+      new MockEvent(blockNumber++, '0xb00001', '0x400001', 0, mockRPCProvider)
     );
     expect(rTransfer).toBeTruthy();
 
@@ -186,8 +208,8 @@ describe('process events', () => {
     mockNameRegistry.emit(
       'Renew',
       bytesToBytes32(fname)._unsafeUnwrap(),
-      BigNumber.from(Date.now() + 1000),
-      new MockEvent(blockNumber++, '0xb00002', '0x400002', 0)
+      BigInt(Date.now() + 1000),
+      new MockEvent(blockNumber++, '0xb00002', '0x400002', 0, mockRPCProvider)
     );
     // The event is not immediately available, since it has to wait for confirmations. We should still get the Transfer event
     expect(await getNameRegistryEvent(db, fname)).toMatchObject({
