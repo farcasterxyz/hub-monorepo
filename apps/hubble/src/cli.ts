@@ -24,6 +24,7 @@ const DEFAULT_PEER_ID_LOCATION = `${DEFAULT_PEER_ID_DIR}/${DEFAULT_PEER_ID_FILEN
 const DEFAULT_CHUNK_SIZE = 10000;
 
 // Grace period before exiting the process after receiving a SIGINT or SIGTERM
+const PROCESS_SHUTDOWN_FILE_CHECK_INTERVAL_MS = 10_000;
 const SHUTDOWN_GRACE_PERIOD_MS = 30_000;
 let isExiting = false;
 
@@ -106,22 +107,28 @@ app
 
     // Watch for the processNum file. If it changes, and we are not the process number written in the file,
     // it means that another hub process has taken over and we should exit.
-    fs.watch(processFileDir, async (eventType, filename) => {
-      if (eventType === 'change' && filename === processFileName) {
-        fs.readFile(`${processFileDir}${processFileName}`, 'utf8', async (err, data) => {
-          if (err) {
-            logger.error(`Error reading processnum file: ${err}`);
-            return;
-          }
+    const checkForProcessNumChange = () => {
+      if (isExiting) return;
 
-          const readProcessNum = parseInt(data.trim());
-          if (!isNaN(readProcessNum) && readProcessNum !== processNum) {
-            logger.error(`Another hub process is running with processNum ${readProcessNum}, exiting`);
-            handleShutdownSignal('SIGTERM');
-          }
-        });
-      }
-    });
+      fs.readFile(`${processFileDir}${processFileName}`, 'utf8', async (err, data) => {
+        if (err) {
+          logger.error(`Error reading processnum file: ${err}`);
+          return;
+        }
+
+        const readProcessNum = parseInt(data.trim());
+        if (!isNaN(readProcessNum) && readProcessNum !== processNum) {
+          logger.error(`Another hub process is running with processNum ${readProcessNum}, exiting`);
+          handleShutdownSignal('SIGTERM');
+        }
+      });
+    };
+
+    // eslint-disable-next-line prefer-arrow-functions/prefer-arrow-functions
+    setTimeout(function checkLoop() {
+      checkForProcessNumChange();
+      setTimeout(checkLoop, PROCESS_SHUTDOWN_FILE_CHECK_INTERVAL_MS);
+    }, PROCESS_SHUTDOWN_FILE_CHECK_INTERVAL_MS);
 
     // try to load the config file
     const hubConfig = (await import(resolve(cliOptions.config))).Config;
