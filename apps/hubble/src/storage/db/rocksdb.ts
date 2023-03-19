@@ -1,4 +1,4 @@
-import { bytesIncrement, HubError } from '@farcaster/utils';
+import { bytesIncrement, HubError, isHubError } from '@farcaster/utils';
 import { AbstractBatch, AbstractChainedBatch, AbstractIterator } from 'abstract-leveldown';
 import { mkdir } from 'fs';
 import AbstractRocksDB from 'rocksdb';
@@ -25,22 +25,25 @@ export class Iterator {
   async *[Symbol.asyncIterator]() {
     try {
       let kv: [Buffer | undefined, Buffer | undefined] | undefined;
-      while ((kv = await this.next()) !== undefined) {
+      while ((kv = await this.next())) {
         yield kv;
+      }
+    } catch (e) {
+      if (!(isHubError(e) && e.errCode === 'not_found')) {
+        throw e;
       }
     } finally {
       await this.end();
     }
   }
 
-  async next(): Promise<[Buffer | undefined, Buffer | undefined] | undefined> {
+  async next(): Promise<[Buffer | undefined, Buffer | undefined]> {
     return new Promise((resolve, reject) => {
       this._iterator.next((err: Error | undefined, key: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
         if (err) {
           reject(err);
         } else if (key === undefined && value === undefined) {
-          // reject(new HubError('not_found', 'record not found'));
-          resolve(undefined);
+          reject(new HubError('not_found', 'record not found'));
         } else {
           resolve([key as Buffer | undefined, value as Buffer | undefined]);
         }

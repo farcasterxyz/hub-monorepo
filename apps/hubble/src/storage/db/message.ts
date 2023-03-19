@@ -188,11 +188,7 @@ export const getMessagesPageByPrefix = async <T extends protobufs.Message>(
   });
 
   const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, protobufs.Message]> => {
-    const record = await iterator.next();
-    if (record === undefined) {
-      throw new HubError('not_found', 'record not found');
-    }
-    const [key, value] = record;
+    const [key, value] = await iterator.next();
     return [key as Buffer, protobufs.Message.decode(new Uint8Array(value as Buffer))];
   };
 
@@ -262,11 +258,7 @@ export const getMessagesPruneIterator = (db: RocksDB, fid: number, setPostfix: U
 };
 
 export const getNextMessageFromIterator = async (iterator: Iterator): Promise<protobufs.Message> => {
-  const record = await iterator.next();
-  if (record === undefined) {
-    throw new HubError('not_found', 'record not found');
-  }
-  const [, value] = record;
+  const [, value] = await iterator.next();
   return protobufs.Message.decode(new Uint8Array(value as Buffer));
 };
 

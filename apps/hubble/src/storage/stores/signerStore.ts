@@ -200,13 +200,7 @@ class SignerStore {
 
     /** Custom to retrieve fid from key */
     const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, number]> => {
-      const record = await iterator.next();
-
-      if (record === undefined) {
-        throw new HubError('not_found', 'record not found');
-      }
-
-      const [key] = record;
+      const [key] = await iterator.next();
       return [key as Buffer, Number((key as Buffer).readUint32BE(1))];
     };
 

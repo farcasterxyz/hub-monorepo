@@ -205,11 +205,7 @@ class CastStore {
 
     // Custom method to retrieve message key from key
     const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Buffer]> => {
-      const record = await iterator.next();
-      if (record === undefined) {
-        throw new HubError('not_found', 'record not found');
-      }
-      const [key] = record;
+      const [key] = await iterator.next();
       const fid = Number((key as Buffer).readUint32BE(prefix.length));
       const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length + FID_BYTES);
       const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.CastMessage, tsHash);
@@ -269,12 +265,7 @@ class CastStore {
 
     // Custom method to retrieve message key from key
     const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Buffer]> => {
-      const record = await iterator.next();
-      if (record === undefined) {
-        throw new HubError('not_found', 'record not found');
-      }
-
-      const [key] = record;
+      const [key] = await iterator.next();
       const fid = Number((key as Buffer).readUint32BE(prefix.length));
       const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length + FID_BYTES);
       const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.CastMessage, tsHash);

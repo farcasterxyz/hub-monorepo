@@ -1,5 +1,4 @@
 import { NameRegistryEvent } from '@farcaster/protobufs';
-import { HubError } from '~/../../../packages/utils/dist';
 import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix } from '~/storage/db/types';
 
@@ -31,11 +30,7 @@ export const getNameRegistryEventsByExpiryIterator = (db: RocksDB): Iterator => 
 };
 
 export const getNextNameRegistryEventFromIterator = async (iterator: Iterator): Promise<NameRegistryEvent> => {
-  const record = await iterator.next();
-  if (!record) {
-    throw new HubError('not_found', 'record not found');
-  }
-  const [, value] = record;
+  const [, value] = await iterator.next();
   return NameRegistryEvent.decode(Uint8Array.from(value as Buffer));
 };
 

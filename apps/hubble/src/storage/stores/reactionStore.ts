@@ -258,11 +258,8 @@ class ReactionStore {
 
     // Custom method to retrieve message key from key
     const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Buffer]> => {
-      const record = await iterator.next();
-      if (record === undefined) {
-        throw new HubError('not_found', 'record not found');
-      }
-      const [key] = record;
+      const [key] = await iterator.next();
+
       // Calculates the positions in the key where the fid and tsHash begin
       const fidOffset = prefix.length + (type ? 0 : 1); // compensate for fact that prefix is 1 byte longer if type was provided
       const tsHashOffset = fidOffset + FID_BYTES;
