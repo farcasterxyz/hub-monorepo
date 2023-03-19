@@ -35,7 +35,7 @@ describe('MerkleTrie', () => {
     let count = 0;
     for await (const [key, value] of db.iteratorByPrefix(Buffer.from([RootPrefix.SyncMerkleTrieNode]))) {
       if (callback) {
-        await callback(count, key, value);
+        await callback(count, key as Buffer, value as Buffer);
       }
       count++;
     }

@@ -2,7 +2,6 @@ import * as protobufs from '@farcaster/protobufs';
 import { bytesCompare, bytesIncrement, getFarcasterTime, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
-import AbstractRocksDB from 'rocksdb';
 import {
   deleteMessageTransaction,
   getAllMessagesBySigner,
@@ -10,7 +9,7 @@ import {
   getMessage,
   getMessagesPageByPrefix,
   getMessagesPruneIterator,
-  getNextMessageToPrune,
+  getNextMessageFromIterator,
   makeCastIdKey,
   makeFidKey,
   makeMessagePrimaryKey,
@@ -18,7 +17,7 @@ import {
   makeUserKey,
   putMessageTransaction,
 } from '~/storage/db/message';
-import RocksDB, { Transaction } from '~/storage/db/rocksdb';
+import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
 import { FID_BYTES, RootPrefix, TRUE_VALUE, UserPostfix } from '~/storage/db/types';
 import StoreEventHandler, { putEventTransaction } from '~/storage/stores/storeEventHandler';
 import {
@@ -205,19 +204,12 @@ class CastStore {
     });
 
     // Custom method to retrieve message key from key
-    const getNextIteratorRecord = (iterator: AbstractRocksDB.Iterator): Promise<[Buffer, Buffer]> => {
-      return new Promise((resolve, reject) => {
-        iterator.next((err: Error | undefined, key: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
-          if (err || !value) {
-            reject(err);
-          } else {
-            const fid = Number((key as Buffer).readUint32BE(prefix.length));
-            const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length + FID_BYTES);
-            const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.CastMessage, tsHash);
-            resolve([key as Buffer, messagePrimaryKey]);
-          }
-        });
-      });
+    const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Buffer]> => {
+      const [key] = await iterator.next();
+      const fid = Number((key as Buffer).readUint32BE(prefix.length));
+      const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length + FID_BYTES);
+      const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.CastMessage, tsHash);
+      return [key as Buffer, messagePrimaryKey];
     };
 
     let iteratorFinished = false;
@@ -237,6 +229,7 @@ class CastStore {
     const messages = await getManyMessages<protobufs.CastAddMessage>(this._db, messageKeys);
 
     if (!iteratorFinished) {
+      await iterator.end(); // clear iterator if it has not finished
       return { messages, nextPageToken: lastPageToken };
     } else {
       return { messages, nextPageToken: undefined };
@@ -272,19 +265,12 @@ class CastStore {
     });
 
     // Custom method to retrieve message key from key
-    const getNextIteratorRecord = (iterator: AbstractRocksDB.Iterator): Promise<[Buffer, Buffer]> => {
-      return new Promise((resolve, reject) => {
-        iterator.next((err: Error | undefined, key: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
-          if (err || !value) {
-            reject(err);
-          } else {
-            const fid = Number((key as Buffer).readUint32BE(prefix.length));
-            const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length + FID_BYTES);
-            const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.CastMessage, tsHash);
-            resolve([key as Buffer, messagePrimaryKey]);
-          }
-        });
-      });
+    const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Buffer]> => {
+      const [key] = await iterator.next();
+      const fid = Number((key as Buffer).readUint32BE(prefix.length));
+      const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length + FID_BYTES);
+      const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.CastMessage, tsHash);
+      return [key as Buffer, messagePrimaryKey];
     };
 
     let iteratorFinished = false;
@@ -304,6 +290,7 @@ class CastStore {
     const messages = await getManyMessages<protobufs.CastAddMessage>(this._db, messageKeys);
 
     if (!iteratorFinished) {
+      await iterator.end(); // clear iterator if it has not finished
       return { messages, nextPageToken: lastPageToken };
     } else {
       return { messages, nextPageToken: undefined };
@@ -420,7 +407,7 @@ class CastStore {
     // Create a rocksdb iterator for all messages with the given prefix
     const pruneIterator = getMessagesPruneIterator(this._db, fid, UserPostfix.CastMessage);
 
-    const getNextResult = () => ResultAsync.fromPromise(getNextMessageToPrune(pruneIterator), () => undefined);
+    const getNextResult = () => ResultAsync.fromPromise(getNextMessageFromIterator(pruneIterator), () => undefined);
 
     // For each message in order, prune it if the store is over the size limit or the message was signed
     // before the timestamp cut-off
@@ -452,6 +439,9 @@ class CastStore {
       sizeToPrune = Math.max(0, sizeToPrune - 1);
       nextMessage = await getNextResult();
     }
+
+    // Close the iterator
+    await pruneIterator.end();
 
     if (events.length > 0) {
       // Commit the transaction to rocksdb

@@ -1,6 +1,5 @@
 import { NameRegistryEvent } from '@farcaster/protobufs';
-import AbstractRocksDB from 'rocksdb';
-import RocksDB, { Transaction } from '~/storage/db/rocksdb';
+import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix } from '~/storage/db/types';
 
 const EXPIRY_BYTES = 4;
@@ -25,21 +24,14 @@ export const getNameRegistryEvent = async (db: RocksDB, fname: Uint8Array): Prom
   return NameRegistryEvent.decode(new Uint8Array(buffer));
 };
 
-export const getNameRegistryEventsByExpiryIterator = (db: RocksDB): AbstractRocksDB.Iterator => {
+export const getNameRegistryEventsByExpiryIterator = (db: RocksDB): Iterator => {
   const prefix = Buffer.from([RootPrefix.NameRegistryEventsByExpiry]);
-  return db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true });
+  return db.iteratorByPrefix(prefix, { keys: false });
 };
 
-export const getNextNameRegistryEventByExpiry = (iterator: AbstractRocksDB.Iterator): Promise<NameRegistryEvent> => {
-  return new Promise((resolve, reject) => {
-    iterator.next((err: Error | undefined, _: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
-      if (err || !value) {
-        reject(err);
-      } else {
-        resolve(NameRegistryEvent.decode(new Uint8Array(value as Buffer)));
-      }
-    });
-  });
+export const getNextNameRegistryEventFromIterator = async (iterator: Iterator): Promise<NameRegistryEvent> => {
+  const [, value] = await iterator.next();
+  return NameRegistryEvent.decode(Uint8Array.from(value as Buffer));
 };
 
 export const putNameRegistryEvent = (db: RocksDB, event: NameRegistryEvent): Promise<void> => {
