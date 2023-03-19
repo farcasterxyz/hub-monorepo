@@ -235,7 +235,15 @@ Returns a specific piece of metadata about the user.
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient, UserDataType } from '@farcaster/hub-nodejs';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const userDataResult = await client.getUserData({ fid: 2, userDataType: UserDataType.DISPLAY });
+
+  userDataResult.map((userData) => console.log(userData));
+})();
 ```
 
 #### Returns
@@ -260,7 +268,15 @@ Returns all metadata about the user.
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient } from '@farcaster/hub-nodejs';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const userDataResult = await client.getAllUserDataMessagesByFid({ fid: 2 });
+
+  userDataResult.map((userData) => userData.messages.map((message) => console.log(message)));
+})();
 ```
 
 #### Returns
