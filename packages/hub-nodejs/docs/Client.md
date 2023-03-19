@@ -235,7 +235,15 @@ Returns a specific piece of metadata about the user.
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient, UserDataType } from '@farcaster/hub-nodejs';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const userDataResult = await client.getUserData({ fid: 2, userDataType: UserDataType.DISPLAY });
+
+  userDataResult.map((userData) => console.log(userData));
+})();
 ```
 
 #### Returns
@@ -260,7 +268,15 @@ Returns all metadata about the user.
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient } from '@farcaster/hub-nodejs';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const userDataResult = await client.getAllUserDataMessagesByFid({ fid: 2 });
+
+  userDataResult.map((userData) => userData.messages.map((message) => console.log(message)));
+})();
 ```
 
 #### Returns
@@ -621,7 +637,18 @@ Returns an active verification for a specific Ethereum address made by a user.
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const addressHex = '0x2D596314b27dcf1d6a4296e95D9a4897810cE4b5';
+  const addressBytes = hexStringToBytes(addressHex)._unsafeUnwrap(); // Safety: we know the address is valid
+
+  const verificationResult = await client.getVerification({ fid: 2, address: addressBytes });
+
+  verificationResult.map((verification) => console.log(verification));
+})();
 ```
 
 #### Returns
@@ -646,7 +673,19 @@ Returns all active verifications for Ethereum addresses made by a user in revers
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient } from '@farcaster/hub-nodejs';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const verificationsResult = await client.getVerificationsByFid({ fid: 2 });
+
+  verificationsResult.map((verificationsResponse) =>
+    verificationsResponse.messages.map((v) => {
+      console.log(v);
+    })
+  );
+})();
 ```
 
 #### Returns
@@ -672,7 +711,19 @@ Returns all active and inactive verifications for Ethereum addresses made by a u
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient } from '@farcaster/hub-nodejs';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const verificationsResult = await client.getAllVerificationMessagesByFid({ fid: 2 });
+
+  verificationsResult.map((verificationsResponse) =>
+    verificationsResponse.messages.map((v) => {
+      console.log(v);
+    })
+  );
+})();
 ```
 
 #### Returns
@@ -693,25 +744,46 @@ Returns all active and inactive verifications for Ethereum addresses made by a u
 
 ### subscribe
 
-Subscribe to a stream of HubEvents from the Hub which are returned as protobufs. Messages can be parsed with `deserializeHubEvent` helper in utils.
+Returns a gRPC Stream object which emits HubEvents in real-time.
+
+Streams emit events from the current timestamp onwards and gRPC guarantees ordered delivery. If a Client is
+disconnected, it can request the stream to begin from a specific Event Id. Hubs maintain a short cache of events
+which helps with recovery when clients get disconnected temporarily.
 
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient, HubEventType } from '@farcaster/hub-nodejs';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const subscribeResult = await client.subscribe({
+    eventTypes: [HubEventType.MERGE_MESSAGE],
+  });
+
+  if (subscribeResult.isOk()) {
+    const stream = subscribeResult.value;
+
+    for await (const event of stream) {
+      console.log(event);
+    }
+  }
+})();
 ```
 
 #### Returns
 
-| Value                                                           | Description                             |
-| :-------------------------------------------------------------- | :-------------------------------------- |
-| `HubResult<protobufs.ClientReadableStream<protobufs.HubEvent>>` | a readable stream that emits HubEvents. |
+| Value                                       | Description                    |
+| :------------------------------------------ | :----------------------------- |
+| `HubResult<ClientReadableStream<HubEvent>>` | A stream that emits HubEvents. |
 
 #### Parameters
 
-| Name      | Type                                         | Description                                |
-| :-------- | :------------------------------------------- | :----------------------------------------- |
-| `filters` | [`EventFilters`](../modules.md#eventfilters) | Filters that specify events to listen for. |
+| Name         | Type                                       | Description                      |
+| :----------- | :----------------------------------------- | :------------------------------- |
+| `eventTypes` | [`HubEventType`](./Events.md#hubeventtype) | Events to listen for.            |
+| `fromId?`    | `number`                                   | EventId to start streaming from. |
 
 ---
 
