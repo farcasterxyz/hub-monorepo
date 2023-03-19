@@ -46,8 +46,10 @@ const assertNoTimeouts = (results: HubResult<protobufs.Message>[]) => {
 
 describe('submitMessage', () => {
   beforeEach(async () => {
-    const ethSigner = await seedSigner(engine, fid, signer1.signerKey);
-    await seedSigner(engine, fid, signer2.signerKey, ethSigner);
+    const signerKey1 = (await signer1.getSignerKey())._unsafeUnwrap();
+    const signerKey2 = (await signer2.getSignerKey())._unsafeUnwrap();
+    const ethSigner = await seedSigner(engine, fid, signerKey1);
+    await seedSigner(engine, fid, signerKey2, ethSigner);
   });
 
   test('succeeds with concurrent, conflicting reaction messages', async () => {

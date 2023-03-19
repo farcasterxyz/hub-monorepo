@@ -1,13 +1,13 @@
 import * as protobufs from '@farcaster/protobufs';
 import { blake3 } from '@noble/hashes/blake3';
-import { utils, Wallet } from 'ethers';
+import { getAddress, Wallet } from 'ethers';
 import { ok } from 'neverthrow';
 import { bytesToHexString, hexStringToBytes } from '../bytes';
 import { Factories } from '../factories';
 import { VerificationEthAddressClaim } from '../verifications';
 import * as eip712 from './eip712';
 
-const wallet = new Wallet(utils.randomBytes(32));
+const wallet = Wallet.createRandom();
 const fid = Factories.Fid.build();
 
 describe('signVerificationEthAddressClaim', () => {
@@ -40,7 +40,7 @@ describe('signVerificationEthAddressClaim', () => {
   });
 
   test('succeeds with checksummed address', async () => {
-    const claim2: VerificationEthAddressClaim = { ...claim, address: utils.getAddress(claim.address) };
+    const claim2: VerificationEthAddressClaim = { ...claim, address: getAddress(claim.address) };
     const signature2 = await eip712.signVerificationEthAddressClaim(claim2, wallet);
     expect(signature2).toEqual(ok(signature));
   });

@@ -3,8 +3,7 @@ import { bytesIncrement, HubAsyncResult, HubError, HubResult, validations } from
 import { blake3 } from '@noble/hashes/blake3';
 import { err, ok, ResultAsync } from 'neverthrow';
 import cron from 'node-cron';
-import AbstractRocksDB from 'rocksdb';
-import RocksDB from '~/storage/db/rocksdb';
+import RocksDB, { Iterator } from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
 import { RootPrefix } from '../db/types';
@@ -116,7 +115,7 @@ export class RevokeSignerJobQueue {
   }
 
   /** Return rocksdb iterator for revoke signer jobs. If doBefore timestamp is missing, iterate over all jobs  */
-  iterator(doBefore?: number): HubResult<AbstractRocksDB.Iterator> {
+  iterator(doBefore?: number): HubResult<Iterator> {
     const gte = RevokeSignerJobQueue.jobKeyPrefix();
     let lt: Buffer;
     if (doBefore) {
@@ -164,20 +163,22 @@ export class RevokeSignerJobQueue {
     if (iterator.isErr()) {
       return err(iterator.error);
     }
-    return new Promise((resolve) => {
-      iterator.value.next(async (e: Error | undefined, key: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
-        if (e) {
-          resolve(err(new HubError('unknown', e as Error)));
-        } else if (!key && !value) {
-          resolve(err(new HubError('not_found', 'record not found')));
-        } else {
-          const payload = protobufs.RevokeSignerJobPayload.decode(Uint8Array.from(value as Buffer));
-          // Delete job from rocksdb to prevent it from being done multiple times
-          await this._db.del(key as Buffer);
-          resolve(ok(payload));
-        }
-      });
-    });
+    const result = await ResultAsync.fromPromise(iterator.value.next(), (e) => e as HubError);
+    if (result.isErr()) {
+      return err(result.error);
+    }
+
+    if (result.value === undefined) {
+      return err(new HubError('not_found', 'record not found'));
+    }
+
+    await iterator.value.end();
+
+    const [key, value] = result.value;
+    const payload = protobufs.RevokeSignerJobPayload.decode(Uint8Array.from(value as Buffer));
+    // Delete job from rocksdb to prevent it from being done multiple times
+    await this._db.del(key as Buffer);
+    return ok(payload);
   }
 
   async getAllJobs(doBefore?: number): HubAsyncResult<[number, protobufs.RevokeSignerJobPayload][]> {

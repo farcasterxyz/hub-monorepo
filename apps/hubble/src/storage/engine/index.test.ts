@@ -15,9 +15,11 @@ const signerStore = new SignerStore(db, engine.eventHandler);
 
 const fid = Factories.Fid.build();
 const fname = Factories.Fname.build();
-const custodySigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
+const custodySigner = Factories.Eip712Signer.build();
 
+let custodySignerKey: Uint8Array;
+let signerKey: Uint8Array;
 let custodyEvent: protobufs.IdRegistryEvent;
 let fnameTransfer: protobufs.NameRegistryEvent;
 let signerAdd: protobufs.SignerAddMessage;
@@ -28,16 +30,18 @@ let verificationAdd: protobufs.VerificationAddEthAddressMessage;
 let userDataAdd: protobufs.UserDataAddMessage;
 
 beforeAll(async () => {
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
+  signerKey = (await signer.getSignerKey())._unsafeUnwrap();
+  custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
+  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
 
   fnameTransfer = Factories.NameRegistryEvent.build({ fname, to: custodyEvent.to });
 
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
+    { data: { fid, network, signerAddBody: { signer: signerKey } } },
     { transient: { signer: custodySigner } }
   );
   signerRemove = await Factories.SignerRemoveMessage.create(
-    { data: { fid, network, timestamp: signerAdd.data.timestamp + 1, signerRemoveBody: { signer: signer.signerKey } } },
+    { data: { fid, network, timestamp: signerAdd.data.timestamp + 1, signerRemoveBody: { signer: signerKey } } },
     { transient: { signer: custodySigner } }
   );
 
@@ -186,7 +190,7 @@ describe('mergeMessage', () => {
     describe('SignerRemove', () => {
       test('succeeds ', async () => {
         await expect(engine.mergeMessage(signerRemove)).resolves.toBeInstanceOf(Ok);
-        await expect(signerStore.getSignerRemove(fid, signer.signerKey)).resolves.toEqual(signerRemove);
+        await expect(signerStore.getSignerRemove(fid, signerKey)).resolves.toEqual(signerRemove);
         expect(mergedMessages).toEqual([signerAdd, signerRemove]);
       });
     });
@@ -370,7 +374,7 @@ describe('revokeMessagesBySigner', () => {
     for (const message of signerMessages) {
       await expect(checkMessage(message)).resolves.toEqual(message);
     }
-    await expect(engine.revokeMessagesBySigner(fid, custodySigner.signerKey)).resolves.toBeInstanceOf(Ok);
+    await expect(engine.revokeMessagesBySigner(fid, custodySignerKey)).resolves.toBeInstanceOf(Ok);
     for (const message of signerMessages) {
       await expect(checkMessage(message)).rejects.toThrow();
     }
@@ -382,7 +386,7 @@ describe('revokeMessagesBySigner', () => {
     for (const message of signerMessages) {
       await expect(checkMessage(message)).resolves.toEqual(message);
     }
-    await expect(engine.revokeMessagesBySigner(fid, signer.signerKey)).resolves.toBeInstanceOf(Ok);
+    await expect(engine.revokeMessagesBySigner(fid, signerKey)).resolves.toBeInstanceOf(Ok);
     for (const message of signerMessages) {
       await expect(checkMessage(message)).rejects.toThrow();
     }

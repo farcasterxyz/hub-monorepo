@@ -13,19 +13,20 @@ const testDb = jestRocksDB(`engine.syncEnginePerf.test`);
 const testDb2 = jestRocksDB(`engine2.syncEnginePerf.test`);
 
 const network = protobufs.FarcasterNetwork.TESTNET;
-
 const fid = Factories.Fid.build();
-const custodySigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
+const custodySigner = Factories.Eip712Signer.build();
 
 let custodyEvent: protobufs.IdRegistryEvent;
-let signerAdd: protobufs.Message;
+let signerAdd: protobufs.SignerAddMessage;
 
 beforeAll(async () => {
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
+  const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
+  const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
+  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
 
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
+    { data: { fid, network, signerAddBody: { signer: signerKey } } },
     { transient: { signer: custodySigner } }
   );
 });

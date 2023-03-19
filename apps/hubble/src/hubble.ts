@@ -48,6 +48,7 @@ import {
   ipFamilyToString,
   p2pMultiAddrStr,
 } from '~/utils/p2p';
+import { sleep } from './utils/crypto';
 
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
 
@@ -223,7 +224,36 @@ export class Hub implements HubInterface {
         this.options.announceIp = ipResult.value;
       }
     }
-    await this.rocksDB.open();
+
+    let dbResult: Result<void, Error>;
+    let retryCount = 0;
+
+    // It is possible that we can't get a lock on the DB in prod, so we retry a few times.
+    // This happens if the EFS volume is not mounted yet or is still attached to another instance.
+    do {
+      dbResult = await ResultAsync.fromPromise(this.rocksDB.open(), (e) => e as Error);
+      if (dbResult.isErr()) {
+        retryCount++;
+        logger.error(
+          { retryCount, error: dbResult.error, errorMessage: dbResult.error.message },
+          'failed to open rocksdb. Retry in 15s'
+        );
+        await sleep(15 * 1000);
+
+        // It looks like we need to recreate the JS object to get a new lock on the same DB on disk
+        await ResultAsync.fromPromise(this.rocksDB.close(), (e) => e);
+        this.rocksDB = new RocksDB(this.options.rocksDBName ? this.options.rocksDBName : randomDbName());
+      } else {
+        break;
+      }
+    } while (dbResult.isErr() && retryCount < 5);
+
+    // If the DB is still not open, we throw an error
+    if (dbResult.isErr()) {
+      throw dbResult.error;
+    } else {
+      log.info('rocksdb opened');
+    }
 
     if (this.options.resetDB === true) {
       log.info('clearing rocksdb');

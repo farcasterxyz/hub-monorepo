@@ -14,9 +14,8 @@ import {
 import { bytesIncrement, FARCASTER_EPOCH, HubAsyncResult, HubError, HubResult, isHubError } from '@farcaster/utils';
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
-import AbstractRocksDB from 'rocksdb';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import RocksDB, { Transaction } from '~/storage/db/rocksdb';
+import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix } from '~/storage/db/types';
 
 export type StoreEvents = {
@@ -133,7 +132,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     return result.map((buffer) => HubEvent.decode(new Uint8Array(buffer as Buffer)));
   }
 
-  getEventsIterator(fromId?: number): HubResult<AbstractRocksDB.Iterator> {
+  getEventsIterator(fromId?: number): HubResult<Iterator> {
     const minKey = makeEventKey(fromId);
     const maxKey = bytesIncrement(Uint8Array.from(makeEventKey()));
     if (maxKey.isErr()) {

@@ -1,9 +1,8 @@
-import { bytesToBigNumber, hexStringToBytes, HubResult } from '@farcaster/utils';
-import { BigNumber } from 'ethers';
+import { bytesToBigInt, hexStringToBytes, HubResult } from '@farcaster/utils';
 
-export const bytes32ToBytes = (value: BigNumber): HubResult<Uint8Array> => {
+export const bytes32ToBytes = (value: bigint): HubResult<Uint8Array> => {
   // Remove right padding
-  let hex = value.toHexString();
+  let hex = value.toString(16);
   while (hex.substring(hex.length - 2) === '00') {
     hex = hex.substring(0, hex.length - 2);
   }
@@ -11,8 +10,8 @@ export const bytes32ToBytes = (value: BigNumber): HubResult<Uint8Array> => {
   return hexStringToBytes(hex);
 };
 
-export const bytesToBytes32 = (value: Uint8Array): HubResult<BigNumber> => {
+export const bytesToBytes32 = (value: Uint8Array): HubResult<bigint> => {
   const bytes = new Uint8Array(32);
   bytes.set(value, 0);
-  return bytesToBigNumber(bytes);
+  return bytesToBigInt(bytes);
 };

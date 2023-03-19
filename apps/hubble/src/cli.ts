@@ -22,6 +22,10 @@ const DEFAULT_PEER_ID_FILENAME = `default_${PEER_ID_FILENAME}`;
 const DEFAULT_PEER_ID_LOCATION = `${DEFAULT_PEER_ID_DIR}/${DEFAULT_PEER_ID_FILENAME}`;
 const DEFAULT_CHUNK_SIZE = 10000;
 
+// Grace period before exiting the process after receiving a SIGINT or SIGTERM
+const SHUTDOWN_GRACE_PERIOD_MS = 30_000;
+let isExiting = false;
+
 const app = new Command();
 app.name('hub').description('Farcaster Hub').version(APP_VERSION);
 
@@ -60,6 +64,27 @@ app
     const teardown = async (hub: Hub) => {
       await hub.stop();
       process.exit();
+    };
+
+    const handleShutdownSignal = (signal: NodeJS.Signals) => {
+      logger.warn(`${signal} received`);
+      if (!isExiting) {
+        isExiting = true;
+        teardown(hub)
+          .then(() => {
+            logger.info('Hub stopped gracefully');
+            process.exit(0);
+          })
+          .catch((err) => {
+            logger.error({ reason: `Error stopping hub: ${err}` });
+            process.exit(1);
+          });
+
+        setTimeout(() => {
+          logger.fatal('Forcing exit after grace period');
+          process.exit(1);
+        }, SHUTDOWN_GRACE_PERIOD_MS);
+      }
     };
 
     // try to load the config file
@@ -150,19 +175,16 @@ app
 
     process.stdin.resume();
 
-    process.on('SIGINT', async () => {
-      logger.fatal('SIGINT received');
-      await teardown(hub);
+    process.on('SIGINT', () => {
+      handleShutdownSignal('SIGINT');
     });
 
-    process.on('SIGTERM', async () => {
-      logger.fatal('SIGTERM received');
-      await teardown(hub);
+    process.on('SIGTERM', () => {
+      handleShutdownSignal('SIGTERM');
     });
 
-    process.on('SIGQUIT', async () => {
-      logger.fatal('SIGQUIT received');
-      await teardown(hub);
+    process.on('SIGQUIT', () => {
+      handleShutdownSignal('SIGQUIT');
     });
 
     process.on('uncaughtException', (err) => {

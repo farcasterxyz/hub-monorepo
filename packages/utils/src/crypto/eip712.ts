@@ -1,7 +1,6 @@
-import { TypedDataSigner } from '@ethersproject/abstract-signer';
-import { utils } from 'ethers';
-import { Result, ResultAsync } from 'neverthrow';
-import { hexStringToBytes } from '../bytes';
+import { recoverAddress, Signer, TypedDataEncoder } from 'ethers';
+import { err, Result, ResultAsync } from 'neverthrow';
+import { bytesToHexString, hexStringToBytes } from '../bytes';
 import { HubAsyncResult, HubError, HubResult } from '../errors';
 import { VerificationEthAddressClaim } from '../verifications';
 
@@ -38,16 +37,18 @@ export const EIP_712_FARCASTER_MESSAGE_DATA = [
   },
 ];
 
+export const getSignerKey = async (signer: Signer): HubAsyncResult<Uint8Array> => {
+  return ResultAsync.fromPromise(signer.getAddress(), (e) => new HubError('unknown', e as Error)).andThen(
+    hexStringToBytes
+  );
+};
+
 export const signVerificationEthAddressClaim = async (
   claim: VerificationEthAddressClaim,
-  ethersTypedDataSigner: TypedDataSigner
+  signer: Signer
 ): HubAsyncResult<Uint8Array> => {
   const hexSignature = await ResultAsync.fromPromise(
-    ethersTypedDataSigner._signTypedData(
-      EIP_712_FARCASTER_DOMAIN,
-      { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
-      claim
-    ),
+    signer.signTypedData(EIP_712_FARCASTER_DOMAIN, { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM }, claim),
     (e) => new HubError('bad_request.invalid_param', e as Error)
   );
 
@@ -59,14 +60,21 @@ export const verifyVerificationEthAddressClaimSignature = (
   claim: VerificationEthAddressClaim,
   signature: Uint8Array
 ): HubResult<Uint8Array> => {
+  const signatureHexResult = bytesToHexString(signature);
+  if (signatureHexResult.isErr()) {
+    return err(signatureHexResult.error);
+  }
+
   // Recover address from signature
   const recoveredHexAddress = Result.fromThrowable(
     () =>
-      utils.verifyTypedData(
-        EIP_712_FARCASTER_DOMAIN,
-        { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
-        claim,
-        signature
+      recoverAddress(
+        TypedDataEncoder.hash(
+          EIP_712_FARCASTER_DOMAIN,
+          { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
+          claim
+        ),
+        signatureHexResult.value
       ),
     (e) => new HubError('bad_request.invalid_param', e as Error)
   )();
@@ -75,16 +83,9 @@ export const verifyVerificationEthAddressClaimSignature = (
   return recoveredHexAddress.andThen((hex) => hexStringToBytes(hex));
 };
 
-export const signMessageHash = async (
-  hash: Uint8Array,
-  ethersTypedDataSigner: TypedDataSigner
-): HubAsyncResult<Uint8Array> => {
+export const signMessageHash = async (hash: Uint8Array, signer: Signer): HubAsyncResult<Uint8Array> => {
   const hexSignature = await ResultAsync.fromPromise(
-    ethersTypedDataSigner._signTypedData(
-      EIP_712_FARCASTER_DOMAIN,
-      { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
-      { hash }
-    ),
+    signer.signTypedData(EIP_712_FARCASTER_DOMAIN, { MessageData: EIP_712_FARCASTER_MESSAGE_DATA }, { hash }),
     (e) => new HubError('bad_request.invalid_param', e as Error)
   );
 
@@ -93,14 +94,18 @@ export const signMessageHash = async (
 };
 
 export const verifyMessageHashSignature = (hash: Uint8Array, signature: Uint8Array): HubResult<Uint8Array> => {
+  const signatureHexResult = bytesToHexString(signature);
+
+  if (signatureHexResult.isErr()) {
+    return err(signatureHexResult.error);
+  }
+
   // Recover address from signature
   const recoveredHexAddress = Result.fromThrowable(
     () =>
-      utils.verifyTypedData(
-        EIP_712_FARCASTER_DOMAIN,
-        { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
-        { hash },
-        signature
+      recoverAddress(
+        TypedDataEncoder.hash(EIP_712_FARCASTER_DOMAIN, { MessageData: EIP_712_FARCASTER_MESSAGE_DATA }, { hash }),
+        signatureHexResult.value
       ),
     (e) => new HubError('bad_request.invalid_param', e as Error)
   )();

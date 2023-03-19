@@ -26,18 +26,17 @@ afterAll(async () => {
 
 const fid = Factories.Fid.build();
 const fname = Factories.Fname.build();
-const ethSigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
+const custodySigner = Factories.Eip712Signer.build();
 let custodyEvent: protobufs.IdRegistryEvent;
 let nameRegistryEvent: protobufs.NameRegistryEvent;
 let signerAdd: protobufs.SignerAddMessage;
 let castAdd: protobufs.CastAddMessage;
 let reactionAdd: protobufs.ReactionAddMessage;
-
 let events: [protobufs.HubEventType, any][];
 let stream: protobufs.ClientReadableStream<protobufs.HubEvent>;
 
-beforeEach(() => {
+beforeEach(async () => {
   events = [];
 });
 
@@ -48,11 +47,13 @@ afterEach(() => {
 });
 
 beforeAll(async () => {
-  custodyEvent = Factories.IdRegistryEvent.build({ to: ethSigner.signerKey, fid });
-  nameRegistryEvent = Factories.NameRegistryEvent.build({ to: ethSigner.signerKey, fname });
+  const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
+  const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
+  custodyEvent = Factories.IdRegistryEvent.build({ to: custodySignerKey, fid });
+  nameRegistryEvent = Factories.NameRegistryEvent.build({ to: custodySignerKey, fname });
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, signerAddBody: { signer: signer.signerKey } } },
-    { transient: { signer: ethSigner } }
+    { data: { fid, signerAddBody: { signer: signerKey } } },
+    { transient: { signer: custodySigner } }
   );
   castAdd = await Factories.CastAddMessage.create({ data: { fid } }, { transient: { signer } });
   reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid } }, { transient: { signer } });

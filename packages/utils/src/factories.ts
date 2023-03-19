@@ -3,9 +3,10 @@ import { Factory } from '@farcaster/fishery';
 import * as protobufs from '@farcaster/protobufs';
 import { utils } from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
-import { BigNumber, ethers } from 'ethers';
+import { Wallet } from 'ethers';
 import { bytesToHexString } from './bytes';
-import { Ed25519Signer, Eip712Signer, Signer } from './signers';
+import * as ed25519 from './crypto/ed25519';
+import { Ed25519Signer, Eip712Signer, EthersEip712Signer, NobleEd25519Signer, Signer } from './signers';
 import { getFarcasterTime } from './time';
 import { VerificationEthAddressClaim } from './verifications';
 
@@ -76,17 +77,22 @@ const Ed25519PrivateKeyFactory = Factory.define<Uint8Array>(() => {
   return utils.randomPrivateKey();
 });
 
+const Ed25519PPublicKeyFactory = Factory.define<Uint8Array>(() => {
+  const privateKey = Ed25519PrivateKeyFactory.build();
+  return ed25519.getPublicKeySync(privateKey);
+});
+
 const Ed25519SignerFactory = Factory.define<Ed25519Signer>(() => {
-  return Ed25519Signer.fromPrivateKey(Ed25519PrivateKeyFactory.build())._unsafeUnwrap();
+  return new NobleEd25519Signer(Ed25519PrivateKeyFactory.build());
 });
 
 const Ed25519SignatureFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build({}, { transient: { length: 64 } });
 });
 
-const Eip712SignerFactory = Factory.define<Eip712Signer>(() => {
-  const wallet = new ethers.Wallet(utils.randomBytes(32));
-  return Eip712Signer.fromSigner(wallet, wallet.address)._unsafeUnwrap();
+const Eip712SignerFactory = Factory.define<Eip712Signer, { wallet: Wallet }>(({ transientParams }) => {
+  const wallet = transientParams.wallet ?? Wallet.createRandom();
+  return new EthersEip712Signer(wallet);
 });
 
 const Eip712SignatureFactory = Factory.define<Uint8Array>(() => {
@@ -160,8 +166,7 @@ const MessageFactory = Factory.define<protobufs.Message, { signer?: Ed25519Signe
 
       // Generate signature
       if (message.signature.length === 0) {
-        const signature = await signer.signMessageHash(message.hash);
-        message.signature = signature._unsafeUnwrap();
+        message.signature = (await signer.signMessageHash(message.hash))._unsafeUnwrap();
       }
 
       if (!message.signatureScheme) {
@@ -169,7 +174,7 @@ const MessageFactory = Factory.define<protobufs.Message, { signer?: Ed25519Signe
       }
 
       if (message.signer.length === 0) {
-        message.signer = signer.signerKey;
+        message.signer = (await signer.getSignerKey())._unsafeUnwrap();
       }
 
       return message;
@@ -297,7 +302,7 @@ const ReactionRemoveMessageFactory = Factory.define<protobufs.ReactionRemoveMess
 const SignerAddBodyFactory = Factory.define<protobufs.SignerAddBody>(() => {
   return protobufs.SignerAddBody.create({
     name: faker.random.alphaNumeric(16),
-    signer: Ed25519SignerFactory.build().signerKey,
+    signer: Ed25519PPublicKeyFactory.build(),
   });
 });
 
@@ -323,7 +328,7 @@ const SignerAddMessageFactory = Factory.define<protobufs.SignerAddMessage, { sig
 
 const SignerRemoveBodyFactory = Factory.define<protobufs.SignerRemoveBody>(() => {
   return protobufs.SignerRemoveBody.create({
-    signer: Ed25519SignerFactory.build().signerKey,
+    signer: Ed25519PPublicKeyFactory.build(),
   });
 });
 
@@ -347,64 +352,62 @@ const SignerRemoveMessageFactory = Factory.define<protobufs.SignerRemoveMessage,
   }
 );
 
-const VerificationEthAddressClaimFactory = Factory.define<VerificationEthAddressClaim, { signer?: Eip712Signer }>(
-  ({ transientParams }) => {
-    const signer = transientParams.signer ?? Eip712SignerFactory.build();
-    const address = bytesToHexString(signer.signerKey)._unsafeUnwrap();
-    const blockHash = bytesToHexString(BlockHashFactory.build())._unsafeUnwrap();
+const VerificationEthAddressClaimFactory = Factory.define<VerificationEthAddressClaim>(() => {
+  const address = bytesToHexString(EthAddressFactory.build())._unsafeUnwrap();
+  const blockHash = bytesToHexString(BlockHashFactory.build())._unsafeUnwrap();
 
-    return {
-      fid: BigNumber.from(FidFactory.build()),
-      address,
-      network: FarcasterNetworkFactory.build(),
-      blockHash,
-    };
-  }
-);
+  return {
+    fid: BigInt(FidFactory.build()),
+    address,
+    network: FarcasterNetworkFactory.build(),
+    blockHash,
+  };
+});
 
 const VerificationAddEthAddressBodyFactory = Factory.define<
   protobufs.VerificationAddEthAddressBody,
-  { ethSigner?: Eip712Signer; fid?: number; network?: protobufs.FarcasterNetwork },
+  { fid?: number; network?: protobufs.FarcasterNetwork; signer?: Eip712Signer | undefined },
   protobufs.VerificationAddEthAddressBody
 >(({ onCreate, transientParams }) => {
-  const ethSigner = transientParams.ethSigner ?? Eip712SignerFactory.build();
-
   onCreate(async (body) => {
+    const ethSigner = transientParams.signer ?? Eip712SignerFactory.build();
+    body.address = (await ethSigner.getSignerKey())._unsafeUnwrap();
+
     if (body.ethSignature.length === 0) {
       // Generate address and signature
       const fid = transientParams.fid ?? FidFactory.build();
       const network = transientParams.network ?? FarcasterNetworkFactory.build();
       const blockHash = bytesToHexString(body.blockHash);
       const claim = VerificationEthAddressClaimFactory.build(
-        { fid: BigNumber.from(fid), network, blockHash: blockHash.isOk() ? blockHash.value : '0x' },
+        {
+          fid: BigInt(fid),
+          network,
+          blockHash: blockHash.isOk() ? blockHash.value : '0x',
+          address: bytesToHexString(body.address)._unsafeUnwrap(),
+        },
         { transient: { signer: ethSigner } }
       );
-      const ethSignature = await ethSigner.signVerificationEthAddressClaim(claim);
-      if (ethSignature.isOk()) {
-        body.ethSignature = ethSignature.value;
-      }
+      body.ethSignature = (await ethSigner.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
     }
 
     return body;
   });
 
   return protobufs.VerificationAddEthAddressBody.create({
-    address: ethSigner.signerKey,
+    address: EthAddressFactory.build(),
     blockHash: BlockHashFactory.build(),
   });
 });
 
 const VerificationAddEthAddressDataFactory = Factory.define<
   protobufs.VerificationAddEthAddressData,
-  { ethSigner?: Eip712Signer }
+  { signer?: Eip712Signer | undefined }
 >(({ onCreate, transientParams }) => {
-  const ethSigner: Eip712Signer = transientParams.ethSigner ?? Eip712SignerFactory.build();
-
   onCreate(async (data) => {
     const body = data.verificationAddEthAddressBody;
     if (body.ethSignature.length === 0) {
       const signedBody = await VerificationAddEthAddressBodyFactory.create(body, {
-        transient: { ethSigner, fid: data.fid, network: data.network },
+        transient: { fid: data.fid, network: data.network, signer: transientParams.signer },
       });
       data.verificationAddEthAddressBody = signedBody;
     }
@@ -413,7 +416,7 @@ const VerificationAddEthAddressDataFactory = Factory.define<
 
   return MessageDataFactory.build({
     // verificationAddEthAddressBody will not be valid until onCreate
-    verificationAddEthAddressBody: VerificationAddEthAddressBodyFactory.build({}, { transient: { ethSigner } }),
+    verificationAddEthAddressBody: VerificationAddEthAddressBodyFactory.build({}),
     type: protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS,
   }) as protobufs.VerificationAddEthAddressData;
 });
@@ -421,12 +424,13 @@ const VerificationAddEthAddressDataFactory = Factory.define<
 const VerificationAddEthAddressMessageFactory = Factory.define<
   protobufs.VerificationAddEthAddressMessage,
   { signer?: Ed25519Signer; ethSigner?: Eip712Signer }
->(({ onCreate, transientParams }) => {
-  const ethSigner: Eip712Signer = transientParams.ethSigner ?? Eip712SignerFactory.build();
+>(({ onCreate, transientParams, params }) => {
   const signer: Ed25519Signer = transientParams.signer ?? Ed25519SignerFactory.build();
 
   onCreate(async (message) => {
-    message.data = await VerificationAddEthAddressDataFactory.create(message.data, { transient: { ethSigner } });
+    message.data = await VerificationAddEthAddressDataFactory.create(message.data, {
+      transient: { signer: transientParams.ethSigner },
+    });
     return MessageFactory.create(message, {
       transient: { signer },
     }) as Promise<protobufs.VerificationAddEthAddressMessage>;
@@ -434,7 +438,9 @@ const VerificationAddEthAddressMessageFactory = Factory.define<
 
   return MessageFactory.build(
     {
-      data: VerificationAddEthAddressDataFactory.build({}, { transient: { ethSigner } }),
+      data: VerificationAddEthAddressDataFactory.build(params.data, {
+        transient: { signer: transientParams.ethSigner },
+      }),
     },
     { transient: { signer } }
   ) as protobufs.VerificationAddEthAddressMessage;
@@ -529,6 +535,7 @@ export const Factories = {
   EthAddress: EthAddressFactory,
   TransactionHash: TransactionHashFactory,
   Ed25519PrivateKey: Ed25519PrivateKeyFactory,
+  Ed25519PPublicKey: Ed25519PPublicKeyFactory,
   Ed25519Signer: Ed25519SignerFactory,
   Ed25519Signature: Ed25519SignatureFactory,
   Eip712Signer: Eip712SignerFactory,

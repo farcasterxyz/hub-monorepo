@@ -1,6 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesToUtf8String, hexStringToBytes, HubAsyncResult, HubError, toFarcasterTime } from '@farcaster/utils';
-import { BigNumber, Contract, Event, providers } from 'ethers';
+import { AbstractProvider, BaseContractMethod, Contract, EventLog, JsonRpcProvider } from 'ethers';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
 import { bytes32ToBytes, bytesToBytes32 } from '~/eth/utils';
@@ -25,7 +25,7 @@ type NameRegistryRenewEvent = Omit<protobufs.NameRegistryEvent, 'to' | 'from'>;
  */
 export class EthEventsProvider {
   private _hub: HubInterface;
-  private _jsonRpcProvider: providers.BaseProvider;
+  private _jsonRpcProvider: AbstractProvider;
 
   private _idRegistryContract: Contract;
   private _nameRegistryContract: Contract;
@@ -45,7 +45,7 @@ export class EthEventsProvider {
 
   constructor(
     hub: HubInterface,
-    jsonRpcProvider: providers.BaseProvider,
+    jsonRpcProvider: AbstractProvider,
     idRegistryContract: Contract,
     nameRegistryContract: Contract,
     firstBlock: number,
@@ -72,19 +72,19 @@ export class EthEventsProvider {
     this._renewEventsByBlock = new Map();
 
     // Setup IdRegistry contract
-    this._idRegistryContract.on('Register', (to: string, id: BigNumber, _recovery, _url, event: Event) => {
+    this._idRegistryContract.on('Register', (to: string, id: bigint, _recovery, _url, event: EventLog) => {
       this.cacheIdRegistryEvent(null, to, id, protobufs.IdRegistryEventType.REGISTER, event);
     });
-    this._idRegistryContract.on('Transfer', (from: string, to: string, id: BigNumber, event: Event) => {
+    this._idRegistryContract.on('Transfer', (from: string, to: string, id: bigint, event: EventLog) => {
       this.cacheIdRegistryEvent(from, to, id, protobufs.IdRegistryEventType.TRANSFER, event);
     });
 
     // Setup NameRegistry contract
-    this._nameRegistryContract.on('Transfer', (from: string, to: string, tokenId: BigNumber, event: Event) => {
+    this._nameRegistryContract.on('Transfer', (from: string, to: string, tokenId: bigint, event: EventLog) => {
       this.cacheNameRegistryEvent(from, to, tokenId, event);
     });
 
-    this._nameRegistryContract.on('Renew', (tokenId: BigNumber, expiry: BigNumber, event: Event) => {
+    this._nameRegistryContract.on('Renew', (tokenId: bigint, expiry: bigint, event: EventLog) => {
       this.cacheRenewEvent(tokenId, expiry, event);
     });
 
@@ -105,7 +105,7 @@ export class EthEventsProvider {
     chunkSize: number
   ): EthEventsProvider {
     // Setup provider and the contracts
-    const jsonRpcProvider = new providers.JsonRpcProvider(ethRpcUrl);
+    const jsonRpcProvider = new JsonRpcProvider(ethRpcUrl);
 
     const idRegistryContract = new Contract(idRegistryAddress, IdRegistry.abi, jsonRpcProvider);
     const nameRegistryContract = new Contract(nameRegistryAddress, NameRegistry.abi, jsonRpcProvider);
@@ -135,12 +135,7 @@ export class EthEventsProvider {
     this._idRegistryContract.removeAllListeners();
     this._nameRegistryContract.removeAllListeners();
     this._jsonRpcProvider.removeAllListeners();
-
-    // Clear all polling, including the bootstrap polling. We need to reach inside the provider to do this,
-    // because the provider does not expose a way to stop the bootstrap polling.
-    // This can happen if the test runs quickly, where the bootstrap polling is still running when the test ends.
-    clearTimeout(this._jsonRpcProvider._bootstrapPoll);
-    this._jsonRpcProvider.polling = false;
+    this._jsonRpcProvider._forEachSubscriber((s) => s.stop());
 
     // Wait for all async promises to resolve
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -148,17 +143,22 @@ export class EthEventsProvider {
 
   /** Returns expiry for fname in ms from unix epoch */
   public async getFnameExpiry(fname: Uint8Array): HubAsyncResult<number> {
-    const encodedFname = bytesToBytes32(fname);
-    if (encodedFname.isErr()) {
-      return err(encodedFname.error);
+    const encodedFnameResult = bytesToBytes32(fname);
+
+    if (encodedFnameResult.isErr()) {
+      return err(encodedFnameResult.error);
     }
 
-    const expiryResult: Result<BigNumber, HubError> = await ResultAsync.fromPromise(
-      this._nameRegistryContract['expiryOf'](encodedFname.value),
+    // Safety: expiryOf exists on the contract's abi, but ethers won't infer it from the ABI though
+    // it is supposed to  in v6 https://github.com/ethers-io/ethers.js/issues/1138
+    const expiryOfMethod = this._nameRegistryContract['expiryOf'] as BaseContractMethod;
+
+    const expiryResult: Result<bigint, HubError> = await ResultAsync.fromPromise(
+      expiryOfMethod(encodedFnameResult.value),
       (err) => new HubError('unavailable.network_failure', err as Error)
     );
 
-    return expiryResult.map((expiry) => expiry.toNumber() * 1000);
+    return expiryResult.map((expiry) => Number(expiry) * 1000);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -177,6 +177,12 @@ export class EthEventsProvider {
     }
 
     const latestBlock = latestBlockResult.value;
+
+    if (!latestBlock) {
+      log.error('failed to get the latest block from the RPC provider');
+      return;
+    }
+
     log.info({ latestBlock: latestBlock.number }, 'connected to ethereum node');
 
     // Find how how much we need to sync
@@ -253,7 +259,10 @@ export class EthEventsProvider {
 
       // Fetch our batch of blocks
       let batchIdEvents = await ResultAsync.fromPromise(
-        this._idRegistryContract.queryFilter(typeString, Number(nextFromBlock), Number(nextToBlock)),
+        // Safety: queryFilter will always return EventLog as long as the ABI is valid
+        this._idRegistryContract.queryFilter(typeString, Number(nextFromBlock), Number(nextToBlock)) as Promise<
+          EventLog[]
+        >,
         (e) => e
       );
 
@@ -261,7 +270,10 @@ export class EthEventsProvider {
       if (batchIdEvents.isErr()) {
         // Query for the blocks again, in a last ditch effort
         const retryBatchIdEvents = await ResultAsync.fromPromise(
-          this._idRegistryContract.queryFilter(typeString, Number(nextFromBlock), Number(nextToBlock)),
+          // Safety: queryFilter will always return EventLog as long as the ABI is valid
+          this._idRegistryContract.queryFilter(typeString, Number(nextFromBlock), Number(nextToBlock)) as Promise<
+            EventLog[]
+          >,
           (e) => e
         );
 
@@ -282,9 +294,9 @@ export class EthEventsProvider {
 
         // Parsing can throw errors, so we'll just log them and continue
         try {
-          const to: string = event.args?.at(toIndex);
-          const id: BigNumber = BigNumber.from(event.args?.at(idIndex));
-          const from: string = type === protobufs.IdRegistryEventType.REGISTER ? null : event.args?.at(0);
+          const to: string = event.args.at(toIndex);
+          const id = BigInt(event.args.at(idIndex));
+          const from: string = type === protobufs.IdRegistryEventType.REGISTER ? null : event.args.at(0);
 
           await this.cacheIdRegistryEvent(from, to, id, type, event);
         } catch (e) {
@@ -336,13 +348,20 @@ export class EthEventsProvider {
       }
 
       let oldNameBatchEvents = await ResultAsync.fromPromise(
-        this._nameRegistryContract.queryFilter(typeString, Number(nextFromBlock), Number(nextToBlock)),
+        // Safety: queryFilter will always return EventLog as long as the ABI is valid
+
+        this._nameRegistryContract.queryFilter(typeString, Number(nextFromBlock), Number(nextToBlock)) as Promise<
+          EventLog[]
+        >,
         (e) => e
       );
 
       if (oldNameBatchEvents.isErr()) {
         const retryNameBatchEvents = await ResultAsync.fromPromise(
-          this._nameRegistryContract.queryFilter(typeString, Number(nextFromBlock), Number(nextToBlock)),
+          // Safety: queryFilter will always return EventLog as long as the ABI is valid
+          this._nameRegistryContract.queryFilter(typeString, Number(nextFromBlock), Number(nextToBlock)) as Promise<
+            EventLog[]
+          >,
           (e) => e
         );
 
@@ -358,11 +377,11 @@ export class EthEventsProvider {
 
       for (const event of oldNameBatchEvents.value) {
         if (type === protobufs.NameRegistryEventType.TRANSFER) {
-          // Handling: use try-catch + log since errors are expected and not importrant to surface
+          // Handling: use try-catch + log since errors are expected and not important to surface
           try {
-            const from: string = event.args?.at(0);
-            const to: string = event.args?.at(1);
-            const tokenId: BigNumber = BigNumber.from(event.args?.at(2));
+            const from: string = event.args.at(0);
+            const to: string = event.args.at(1);
+            const tokenId = BigInt(event.args.at(2));
             await this.cacheNameRegistryEvent(from, to, tokenId, event);
           } catch (e) {
             log.error({ event }, 'failed to parse event args');
@@ -410,12 +429,12 @@ export class EthEventsProvider {
 
         if (renewEvents) {
           for (const renewEvent of renewEvents) {
-            const nameRegistryEvent = await this._hub.engine.getNameRegistryEvent(renewEvent.fname);
+            const nameRegistryEvent = await this._hub.engine.getNameRegistryEvent(renewEvent['fname']);
             if (nameRegistryEvent.isErr()) {
               log.error(
                 { blockNumber, errCode: nameRegistryEvent.error.errCode },
                 `failed to get event for fname ${bytesToUtf8String(
-                  renewEvent.fname
+                  renewEvent['fname']
                 )._unsafeUnwrap()} from renew event: ${nameRegistryEvent.error.message}`
               );
               continue;
@@ -444,11 +463,11 @@ export class EthEventsProvider {
   private async cacheIdRegistryEvent(
     from: string | null,
     to: string,
-    id: BigNumber,
+    id: bigint,
     type: protobufs.IdRegistryEventType,
-    event: Event
+    eventLog: EventLog
   ): HubAsyncResult<void> {
-    const { blockNumber, blockHash, transactionHash, logIndex } = event;
+    const { blockNumber, blockHash, transactionHash, index } = eventLog;
 
     const logEvent = log.child({ event: { to, id: id.toString(), blockNumber } });
 
@@ -470,8 +489,8 @@ export class EthEventsProvider {
     const idRegistryEvent = protobufs.IdRegistryEvent.create({
       blockNumber,
       blockHash: blockHashBytes,
-      logIndex,
-      fid: id.toNumber(),
+      logIndex: index,
+      fid: Number(id),
       to: toBytes,
       transactionHash: transactionHashBytes,
       type,
@@ -497,10 +516,10 @@ export class EthEventsProvider {
   private async cacheNameRegistryEvent(
     from: string,
     to: string,
-    tokenId: BigNumber,
-    event: Event
+    tokenId: bigint,
+    eventLog: EventLog
   ): HubAsyncResult<void> {
-    const { blockNumber, blockHash, transactionHash, logIndex } = event;
+    const { blockNumber, blockHash, transactionHash, index } = eventLog;
 
     const logEvent = log.child({ event: { to, blockNumber } });
 
@@ -526,7 +545,7 @@ export class EthEventsProvider {
       blockNumber,
       blockHash: blockHashBytes,
       transactionHash: transactionHashBytes,
-      logIndex,
+      logIndex: index,
       fname: fnameBytes,
       from: fromBytes,
       to: toBytes,
@@ -546,8 +565,8 @@ export class EthEventsProvider {
     return ok(undefined);
   }
 
-  private async cacheRenewEvent(tokenId: BigNumber, expiry: BigNumber, event: Event): HubAsyncResult<void> {
-    const { blockHash, transactionHash, blockNumber, logIndex } = event;
+  private async cacheRenewEvent(tokenId: bigint, expiry: bigint, eventLog: EventLog): HubAsyncResult<void> {
+    const { blockHash, transactionHash, blockNumber, index } = eventLog;
 
     const logEvent = log.child({ event: { blockNumber } });
 
@@ -555,7 +574,7 @@ export class EthEventsProvider {
       hexStringToBytes(blockHash),
       hexStringToBytes(transactionHash),
       bytes32ToBytes(tokenId),
-      toFarcasterTime(expiry.toNumber()),
+      toFarcasterTime(Number(expiry)),
     ]);
 
     if (serialized.isErr()) {
@@ -569,7 +588,7 @@ export class EthEventsProvider {
       blockNumber,
       blockHash: blockHashBytes,
       transactionHash: transactionHashBytes,
-      logIndex,
+      logIndex: index,
       fname: fnameBytes,
       type: protobufs.NameRegistryEventType.RENEW,
       expiry: farcasterTimeExpiry,
