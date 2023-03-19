@@ -61,6 +61,8 @@ describe('putNameRegistryEvent', () => {
     const byExpiryIterator = getNameRegistryEventsByExpiryIterator(db);
     const eventByExpiry = await getNextNameRegistryEventByExpiry(byExpiryIterator);
     expect(eventByExpiry).toEqual(nameRegistryEvent);
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    byExpiryIterator.end(() => {});
   });
 });
 
@@ -74,6 +76,8 @@ describe('deleteNameRegistryEvent', () => {
 
     const byExpiryIterator = getNameRegistryEventsByExpiryIterator(db);
     await expect(getNextNameRegistryEventByExpiry(byExpiryIterator)).rejects.toEqual(undefined);
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    byExpiryIterator.end(() => {});
   });
 });
 
