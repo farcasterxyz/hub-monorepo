@@ -37,6 +37,12 @@ export const EIP_712_FARCASTER_MESSAGE_DATA = [
   },
 ];
 
+export const getSignerKey = async (signer: Signer): HubAsyncResult<Uint8Array> => {
+  return ResultAsync.fromPromise(signer.getAddress(), (e) => new HubError('unknown', e as Error)).andThen(
+    hexStringToBytes
+  );
+};
+
 export const signVerificationEthAddressClaim = async (
   claim: VerificationEthAddressClaim,
   signer: Signer
@@ -55,7 +61,6 @@ export const verifyVerificationEthAddressClaimSignature = (
   signature: Uint8Array
 ): HubResult<Uint8Array> => {
   const signatureHexResult = bytesToHexString(signature);
-
   if (signatureHexResult.isErr()) {
     return err(signatureHexResult.error);
   }
@@ -69,7 +74,6 @@ export const verifyVerificationEthAddressClaimSignature = (
           { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
           claim
         ),
-
         signatureHexResult.value
       ),
     (e) => new HubError('bad_request.invalid_param', e as Error)

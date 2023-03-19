@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Eip712Signer, Factories, getInsecureHubRpcClient, HubResult, HubRpcClient } from '@farcaster/utils';
+import { Factories, getInsecureHubRpcClient, HubResult, HubRpcClient } from '@farcaster/utils';
 import SyncEngine from '~/network/sync/syncEngine';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
@@ -27,17 +27,18 @@ afterAll(async () => {
 
 const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
+const custodySigner = Factories.Eip712Signer.build();
 
-let custodySigner: Eip712Signer;
 let custodyEvent: protobufs.IdRegistryEvent;
 let signerAdd: protobufs.SignerAddMessage;
 
 beforeAll(async () => {
-  custodySigner = await Factories.Eip712Signer.create();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
+  const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
+  const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
+  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
 
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
+    { data: { fid, network, signerAddBody: { signer: signerKey } } },
     { transient: { signer: custodySigner } }
   );
 });
@@ -149,7 +150,7 @@ describe('getAllSignerMessagesByFid', () => {
 
   beforeAll(async () => {
     signerRemove = await Factories.SignerRemoveMessage.create(
-      { data: { fid, network, timestamp: signerAdd.data?.timestamp + 1 } },
+      { data: { fid, network, timestamp: signerAdd.data.timestamp + 1 } },
       { transient: { signer: custodySigner } }
     );
   });

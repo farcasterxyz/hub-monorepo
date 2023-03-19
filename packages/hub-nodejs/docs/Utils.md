@@ -184,7 +184,7 @@ Converts a Farcaster milliseconds timestamp to a Unix milliseconds timestamp.
 
 ```typescript
 import {
-  Eip712Signer,
+  EthersEip712Signer,
   FarcasterNetwork,
   hexStringToBytes,
   makeVerificationEthAddressClaim,
@@ -194,7 +194,7 @@ import { Wallet } from 'ethers';
 // Create a valid Eip712Signer from the Etherum Address making the claim
 const mnemonic = 'ordinary long coach bounce thank quit become youth belt pretty diet caught attract melt bargain';
 const wallet = Wallet.fromPhrase(mnemonic);
-const eip712Signer = Eip712Signer.fromSigner(wallet)._unsafeUnwrap();
+const eip712Signer = new EthersEip712Signer(wallet);
 
 // Construct the claim object with the block number of a recent block
 const blockHashHex = '0x1d3b0456c920eb503450c7efdcf9b5cf1f5184bf04e5d8ecbcead188a0d02018';

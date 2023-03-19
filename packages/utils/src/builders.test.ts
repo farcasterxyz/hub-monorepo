@@ -6,22 +6,22 @@ import * as builders from './builders';
 import { hexStringToBytes } from './bytes';
 import { HubError } from './errors';
 import { Factories } from './factories';
-import { Ed25519Signer, Eip712Signer } from './signers';
 import * as validations from './validations';
 import { VerificationEthAddressClaim, makeVerificationEthAddressClaim } from './verifications';
 
 const fid = Factories.Fid.build();
 const network = protobufs.FarcasterNetwork.TESTNET;
 
-const ed25519Signer = Ed25519Signer.fromPrivateKey(Factories.Ed25519PrivateKey.build())._unsafeUnwrap();
+const ed25519Signer = Factories.Ed25519Signer.build();
 const wallet = Wallet.createRandom();
-
-let eip712Signer: Eip712Signer;
-let address: Uint8Array;
+const eip712Signer = Factories.Eip712Signer.build({}, { transient: { wallet } });
+let ethSignerKey: Uint8Array;
+let signerKey: Uint8Array;
 
 beforeAll(async () => {
-  eip712Signer = await Factories.Eip712Signer.create({}, { transient: { wallet } });
-  address = eip712Signer.signerKey;
+  [ethSignerKey, signerKey] = (await Promise.all([eip712Signer.getSignerKey(), ed25519Signer.getSignerKey()])).map(
+    (res) => res._unsafeUnwrap()
+  );
 });
 
 describe('makeCastAddData', () => {
@@ -139,15 +139,15 @@ describe('makeVerificationAddEthAddressData', () => {
   let claim: VerificationEthAddressClaim;
 
   beforeAll(async () => {
-    claim = makeVerificationEthAddressClaim(fid, address, network, blockHash)._unsafeUnwrap();
-    const signature = await eip712Signer.signVerificationEthAddressClaim(claim);
-    expect(signature.isOk()).toBeTruthy();
-    ethSignature = signature._unsafeUnwrap();
+    claim = makeVerificationEthAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
+    const signature = (await eip712Signer.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
+    expect(signature).toBeTruthy();
+    ethSignature = signature;
   });
 
   test('succeeds', async () => {
     const data = await builders.makeVerificationAddEthAddressData(
-      { address, blockHash, ethSignature },
+      { address: ethSignerKey, blockHash, ethSignature },
       { fid, network }
     );
     expect(data.isOk()).toBeTruthy();
@@ -158,7 +158,7 @@ describe('makeVerificationAddEthAddressData', () => {
 
 describe('makeVerificationRemoveData', () => {
   test('succeeds', async () => {
-    const data = await builders.makeVerificationRemoveData({ address: eip712Signer.signerKey }, { fid, network });
+    const data = await builders.makeVerificationRemoveData({ address: ethSignerKey }, { fid, network });
     expect(data.isOk()).toBeTruthy();
     const isValid = await validations.validateMessageData(data._unsafeUnwrap());
     expect(isValid.isOk()).toBeTruthy();
@@ -171,15 +171,15 @@ describe('makeVerificationAddEthAddress', () => {
   let claim: VerificationEthAddressClaim;
 
   beforeAll(async () => {
-    claim = makeVerificationEthAddressClaim(fid, address, network, blockHash)._unsafeUnwrap();
-    const signatureHex = await eip712Signer.signVerificationEthAddressClaim(claim);
-    expect(signatureHex.isOk()).toBeTruthy();
-    ethSignature = signatureHex._unsafeUnwrap();
+    claim = makeVerificationEthAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
+    const signatureHex = (await eip712Signer.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
+    expect(signatureHex).toBeTruthy();
+    ethSignature = signatureHex;
   });
 
   test('succeeds', async () => {
     const message = await builders.makeVerificationAddEthAddress(
-      { address, blockHash, ethSignature },
+      { address: ethSignerKey, blockHash, ethSignature },
       { fid, network },
       ed25519Signer
     );
@@ -190,11 +190,7 @@ describe('makeVerificationAddEthAddress', () => {
 
 describe('makeVerificationRemove', () => {
   test('succeeds', async () => {
-    const message = await builders.makeVerificationRemove(
-      { address: eip712Signer.signerKey },
-      { fid, network },
-      ed25519Signer
-    );
+    const message = await builders.makeVerificationRemove({ address: ethSignerKey }, { fid, network }, ed25519Signer);
     const isValid = await validations.validateMessage(message._unsafeUnwrap());
     expect(isValid.isOk()).toBeTruthy();
   });
@@ -202,7 +198,7 @@ describe('makeVerificationRemove', () => {
 
 describe('makeSignerAddData', () => {
   test('succeeds', async () => {
-    const data = await builders.makeSignerAddData({ signer: ed25519Signer.signerKey }, { fid, network });
+    const data = await builders.makeSignerAddData({ signer: signerKey }, { fid, network });
     const isValid = await validations.validateMessageData(data._unsafeUnwrap());
     expect(isValid.isOk()).toBeTruthy();
   });
@@ -210,7 +206,7 @@ describe('makeSignerAddData', () => {
 
 describe('makeSignerRemoveData', () => {
   test('succeeds', async () => {
-    const data = await builders.makeSignerRemoveData({ signer: ed25519Signer.signerKey }, { fid, network });
+    const data = await builders.makeSignerRemoveData({ signer: signerKey }, { fid, network });
     const isValid = await validations.validateMessageData(data._unsafeUnwrap());
     expect(isValid.isOk()).toBeTruthy();
   });
@@ -219,7 +215,7 @@ describe('makeSignerRemoveData', () => {
 describe('makeSignerAdd', () => {
   test('succeeds', async () => {
     const message = await builders.makeSignerAdd(
-      { signer: ed25519Signer.signerKey, name: 'test signer' },
+      { signer: signerKey, name: 'test signer' },
       { fid, network },
       eip712Signer
     );
@@ -228,7 +224,7 @@ describe('makeSignerAdd', () => {
   });
 
   test('succeeds without name', async () => {
-    const message = await builders.makeSignerAdd({ signer: ed25519Signer.signerKey }, { fid, network }, eip712Signer);
+    const message = await builders.makeSignerAdd({ signer: signerKey }, { fid, network }, eip712Signer);
     const isValid = await validations.validateMessage(message._unsafeUnwrap());
     expect(isValid.isOk()).toBeTruthy();
   });
@@ -236,11 +232,7 @@ describe('makeSignerAdd', () => {
 
 describe('makeSignerRemove', () => {
   test('succeeds', async () => {
-    const message = await builders.makeSignerRemove(
-      { signer: ed25519Signer.signerKey },
-      { fid, network },
-      eip712Signer
-    );
+    const message = await builders.makeSignerRemove({ signer: signerKey }, { fid, network }, eip712Signer);
     const isValid = await validations.validateMessage(message._unsafeUnwrap());
     expect(isValid.isOk()).toBeTruthy();
   });
@@ -285,16 +277,16 @@ describe('makeMessageHash', () => {
 
 describe('makeMessageWithSignature', () => {
   test('succeeds', async () => {
-    const body = protobufs.SignerAddBody.create({ signer: ed25519Signer.signerKey });
+    const body = protobufs.SignerAddBody.create({ signer: signerKey });
     const signerAdd = await builders.makeSignerAdd(body, { fid, network }, eip712Signer);
 
     const data = builders.makeSignerAddData(body, { fid, network });
     const hash = await builders.makeMessageHash(data._unsafeUnwrap());
-    const signature = await eip712Signer.signMessageHash(hash._unsafeUnwrap());
+    const signature = (await eip712Signer.signMessageHash(hash._unsafeUnwrap()))._unsafeUnwrap();
     const message = await builders.makeMessageWithSignature(data._unsafeUnwrap(), {
-      signer: eip712Signer.signerKey,
+      signer: ethSignerKey,
       signatureScheme: eip712Signer.scheme,
-      signature: signature._unsafeUnwrap(),
+      signature: signature,
     });
 
     const isValid = await validations.validateMessage(message._unsafeUnwrap());
@@ -307,10 +299,10 @@ describe('makeMessageWithSignature', () => {
     const signature = hexStringToBytes(
       '0xf8dc77d52468483806addab7d397836e802551bfb692604e2d7df4bc4820556c63524399a63d319ae4b027090ce296ade08286878dc1f414b62412f89e8bc4e01b'
     )._unsafeUnwrap();
-    const data = builders.makeSignerAddData({ signer: ed25519Signer.signerKey }, { fid, network });
+    const data = builders.makeSignerAddData({ signer: signerKey }, { fid, network });
     expect(data.isOk()).toBeTruthy();
     const message = await builders.makeMessageWithSignature(data._unsafeUnwrap(), {
-      signer: eip712Signer.signerKey,
+      signer: ethSignerKey,
       signatureScheme: eip712Signer.scheme,
       signature,
     });

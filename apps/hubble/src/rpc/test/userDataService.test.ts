@@ -1,12 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import {
-  bytesToUtf8String,
-  Eip712Signer,
-  Factories,
-  getInsecureHubRpcClient,
-  HubError,
-  HubRpcClient,
-} from '@farcaster/utils';
+import { bytesToUtf8String, Factories, getInsecureHubRpcClient, HubError, HubRpcClient } from '@farcaster/utils';
 import { Ok } from 'neverthrow';
 import SyncEngine from '~/network/sync/syncEngine';
 import Server from '~/rpc/server';
@@ -36,21 +29,23 @@ afterAll(async () => {
 const fid = Factories.Fid.build();
 const fname = Factories.Fname.build();
 const signer = Factories.Ed25519Signer.build();
+const custodySigner = Factories.Eip712Signer.build();
 
-let custodySigner: Eip712Signer;
+let custodySignerKey: Uint8Array;
 let custodyEvent: protobufs.IdRegistryEvent;
-let signerAdd: protobufs.Message;
+let signerAdd: protobufs.SignerAddMessage;
 
 let pfpAdd: protobufs.UserDataAddMessage;
 let displayAdd: protobufs.UserDataAddMessage;
 let addFname: protobufs.UserDataAddMessage;
 
 beforeAll(async () => {
-  custodySigner = await Factories.Eip712Signer.create();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
+  const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
+  custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
+  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
 
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
+    { data: { fid, network, signerAddBody: { signer: signerKey } } },
     { transient: { signer: custodySigner } }
   );
 
@@ -99,7 +94,7 @@ describe('getUserData', () => {
     );
     expect(protobufs.Message.toJSON(display._unsafeUnwrap())).toEqual(protobufs.Message.toJSON(displayAdd));
 
-    const nameRegistryEvent = Factories.NameRegistryEvent.build({ fname, to: custodySigner.signerKey });
+    const nameRegistryEvent = Factories.NameRegistryEvent.build({ fname, to: custodySignerKey });
     await engine.mergeNameRegistryEvent(nameRegistryEvent);
 
     expect(await engine.mergeMessage(addFname)).toBeInstanceOf(Ok);

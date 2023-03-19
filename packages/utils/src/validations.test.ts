@@ -4,18 +4,16 @@ import { err, ok } from 'neverthrow';
 import { bytesToUtf8String } from './bytes';
 import { HubError } from './errors';
 import { Factories } from './factories';
-import { Eip712Signer } from './signers';
 import { getFarcasterTime } from './time';
 import * as validations from './validations';
 import { makeVerificationEthAddressClaim } from './verifications';
 
 const signer = Factories.Ed25519Signer.build();
-let ethSigner: Eip712Signer;
-let address: Uint8Array;
+const ethSigner = Factories.Eip712Signer.build();
+let ethSignerKey: Uint8Array;
 
 beforeAll(async () => {
-  ethSigner = await Factories.Eip712Signer.create();
-  address = ethSigner.signerKey;
+  ethSignerKey = (await ethSigner.getSignerKey())._unsafeUnwrap();
 });
 
 describe('validateFid', () => {
@@ -116,7 +114,7 @@ describe('validateCastId', () => {
 
 describe('validateEthAddress', () => {
   test('succeeds', () => {
-    expect(validations.validateEthAddress(address)).toEqual(ok(address));
+    expect(validations.validateEthAddress(ethSignerKey)).toEqual(ok(ethSignerKey));
   });
 
   test('fails with longer address', () => {
@@ -127,7 +125,7 @@ describe('validateEthAddress', () => {
   });
 
   test('fails with shorter address', () => {
-    const shortAddress = address.subarray(0, -1);
+    const shortAddress = ethSignerKey.subarray(0, -1);
     expect(validations.validateEthAddress(shortAddress)).toEqual(
       err(new HubError('bad_request.validation_failure', 'address must be 20 bytes'))
     );
@@ -162,7 +160,11 @@ describe('validateEthBlockHash', () => {
 });
 
 describe('validateEd25519PublicKey', () => {
-  const publicKey = signer.signerKey;
+  let publicKey: Uint8Array;
+
+  beforeAll(async () => {
+    publicKey = (await signer.getSignerKey())._unsafeUnwrap();
+  });
 
   test('succeeds', () => {
     expect(validations.validateEd25519PublicKey(publicKey)).toEqual(ok(publicKey));
@@ -445,12 +447,12 @@ describe('validateVerificationAddEthAddressBody', () => {
     });
 
     test('with missing block hash', async () => {
-      body = await Factories.VerificationAddEthAddressBody.create({ blockHash: undefined });
+      body = Factories.VerificationAddEthAddressBody.build({ blockHash: undefined });
       hubErrorMessage = 'blockHash is missing';
     });
 
     test('with block hash larger than 32 bytes', async () => {
-      body = await Factories.VerificationAddEthAddressBody.create({
+      body = Factories.VerificationAddEthAddressBody.build({
         blockHash: Factories.Bytes.build({}, { transient: { length: 33 } }),
       });
       hubErrorMessage = 'blockHash must be 32 bytes';
@@ -473,16 +475,16 @@ describe('validateVerificationAddEthAddressSignature', () => {
       ethSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
     });
     const result = validations.validateVerificationAddEthAddressSignature(body, fid, network);
-    expect(result).toEqual(err(new HubError('bad_request.validation_failure', 'invalid ethSignature')));
+    expect(result).toEqual(err(new HubError('bad_request', 'invalid ethSignature')));
   });
 
   test('fails with eth signature from different address', async () => {
     const blockHash = Factories.BlockHash.build();
-    const claim = makeVerificationEthAddressClaim(fid, ethSigner.signerKey, network, blockHash)._unsafeUnwrap();
-    const ethSignature = await ethSigner.signVerificationEthAddressClaim(claim);
-    expect(ethSignature.isOk()).toBeTruthy();
+    const claim = makeVerificationEthAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
+    const ethSignature = (await ethSigner.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
+    expect(ethSignature).toBeTruthy();
     const body = await Factories.VerificationAddEthAddressBody.create({
-      ethSignature: ethSignature._unsafeUnwrap(),
+      ethSignature,
       blockHash,
       address: Factories.EthAddress.build(),
     });
@@ -719,7 +721,7 @@ describe('validateMessage', () => {
   test('fails with invalid signature', async () => {
     const message = await Factories.Message.create({
       signature: Factories.Ed25519Signature.build(),
-      signer: Factories.Ed25519Signer.build().signerKey,
+      signer: Factories.Ed25519PPublicKey.build(),
     });
 
     const result = await validations.validateMessage(message);

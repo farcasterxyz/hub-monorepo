@@ -13,8 +13,8 @@ Create a new [Signer](https://github.com/farcasterxyz/protocol#92-signers) key p
 ```typescript
 import {
   Client,
-  Ed25519Signer,
-  Eip712Signer,
+  NobleEd25519Signer,
+  EthersEip712Signer,
   makeCastAdd,
   makeCastRemove,
   makeReactionAdd,
@@ -32,7 +32,7 @@ import { Wallet } from 'ethers';
 // Create an EIP712 Signer with the wallet that holds the custody address of the user
 const mnemonic = 'your mnemonic apple orange banana ...'; // mnemonic for the custody address' wallet
 const wallet = Wallet.fromPhrase(mnemonic);
-const eip712Signer = (await Eip712Signer.fromSigner(wallet))._unsafeUnwrap();
+const eip712Signer = new EthersEip712Signer(wallet);
 
 // Generate a new Ed25519 key pair which will become the Signer and store the private key securely
 const signerPrivateKey = ed.utils.randomPrivateKey();
@@ -55,7 +55,7 @@ result.isOk() ? console.log('SignerAdd was published successfully!') : console.l
 Once a SignerAdd is accepted the Signer can be used publish other types of Farcaster messages to a Hub, as shown below.
 
 ```typescript
-const ed25519Signer = Ed25519Signer.fromPrivateKey(signerPrivateKey)._unsafeUnwrap();
+const ed25519Signer = new Ed25519Signer(signerPrivateKey);
 
 // Make a new cast
 const cast = await makeCastAdd({ text: 'hello world' }, dataOptions, ed25519Signer);

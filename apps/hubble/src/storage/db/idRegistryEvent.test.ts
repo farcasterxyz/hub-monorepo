@@ -1,4 +1,4 @@
-import { bytesCompare, Eip712Signer, Factories, HubError } from '@farcaster/utils';
+import { bytesCompare, Factories, HubError } from '@farcaster/utils';
 import { IdRegistryEvent } from '~/../../../packages/protobufs/dist';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import {
@@ -9,13 +9,13 @@ import {
 } from './idRegistryEvent';
 
 const db = jestRocksDB('storage.db.idRegistryEvent.test');
-
-let custodySigner: Eip712Signer;
+const custodySigner = Factories.Eip712Signer.build();
+let custodySignerKey: Uint8Array;
 let idRegistryEvent: IdRegistryEvent;
 
 beforeAll(async () => {
-  custodySigner = await Factories.Eip712Signer.create();
-  idRegistryEvent = Factories.IdRegistryEvent.build({ to: custodySigner.signerKey });
+  custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
+  idRegistryEvent = Factories.IdRegistryEvent.build({ to: custodySignerKey });
 });
 
 describe('makeIdRegistryEventPrimaryKey', () => {
@@ -49,6 +49,6 @@ describe('getIdRegistryEvent', () => {
 describe('getIdRegistryEventByCustodyAddress', () => {
   test('succeeds when event exists', async () => {
     await putIdRegistryEvent(db, idRegistryEvent);
-    await expect(getIdRegistryEventByCustodyAddress(db, custodySigner.signerKey)).resolves.toEqual(idRegistryEvent);
+    await expect(getIdRegistryEventByCustodyAddress(db, custodySignerKey)).resolves.toEqual(idRegistryEvent);
   });
 });
