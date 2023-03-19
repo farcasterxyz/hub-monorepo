@@ -1,19 +1,16 @@
 # Client
 
-A Client establishes a connection with a Farcaster Hub and can be used to send and receive messages. It is initialized with the IP address and gRPC port of the Hub. Once connected, a Client instance can:
+A Client established a connection with a Farcaster Hub and can be used to send and receive messages. It is initialized
+with the IP address and gRPC port of the Hub. Once connected, a Client instance can:
 
 - Query for messages by user or type.
 - Query for on-chain Farcaster Contracts state.
 - Subscribe to changes by type.
 - Upload new messages.
 
-### Authentication
+### Constructor
 
-Some Hubs require authentication to submit messages which is done with basic auth over SSL. Clients will automatically negotiate an SSL connection if possible, and you'll need to provide the username and password when calling `submitMessage`.
-
-### getHubRpcClient
-
-Returns a Hub RPC Client, defaulting to an SSL connection if supported.
+getHubRpcClient returns a Hub RPC Client, defaulting to an SSL connection if supported.
 
 #### Usage
 
@@ -41,42 +38,90 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 | :-------- | :------- | :-------------------------------------------------- |
 | `address` | `string` | Address and RPC port string (e.g. `127.0.0.1:8080`) |
 
-## Methods
+### Authentication
 
-Client methods are logically grouped into services corresponding to data types or actions. These services map to the gRPC services exposed by Hubs. For example, the Casts Service providers four different helpers to get Cast Messages.
+Some Hubs require authentication to submit messages which is done with basic auth over SSL. Clients will automatically
+negotiate an SSL connection if possible, and you'll need to provide the username and password when calling `submitMessage`.
 
-- **Signers Service**
+### Methods
+
+Clients expose methods grouped into logical services. Each method returns an async [Result](#results)
+object and may support [pagination](#pagination).
+
+- **Signers**
   - [getSigner](#getsigner)
   - [getSignersByFid](#getsignersbyfid)
   - [getAllSignerMessagesByFid](#getallsignermessagesbyfid)
-- **UserData Service**
+- **UserData**
   - [getUserData](#getuserdata)
   - [getUserDataByFid](#getuserdatabyfid)
   - [getAllUserDataMessagesByFid](#getalluserdatamessagesbyfid)
-- **Casts Service**
+- **Casts**
   - [getCast](#getcast)
   - [getCastsByFid](#getcastsbyfid)
   - [getCastsByMention](#getcastsbymention)
   - [getCastsByParent](#getcastsbyparent)
   - [getAllCastMessagesByFid](#getallcastmessagesbyfid)
-- **Reactions Service**
+- **Reactions**
   - [getReaction](#getreaction)
   - [getReactionsByCast](#getreactionsbycast)
   - [getReactionsByFid](#getreactionsbyfid)
   - [getAllReactionMessagesByFid](#getallreactionmessagesbyfid)
-- **Verifications Service**
+- **Verifications**
   - [getVerification](#getverification)
   - [getVerificationsByFid](#getverificationsbyfid)
   - [getAllVerificationMessagesByFid](#getallverificationmessagesbyfid)
-- **Events Service**
+- **Events**
   - [subscribe](#subscribe)
-- **Submit Service**
+- **Submit**
   - [submitMessage](#submitmessage)
-- **Contracts Service**
+- **Contracts**
   - [getIdRegistryEvent](#getidregistryevent)
   - [getNameRegistryEvent](#getnameregistryevent)
 
----
+### Results
+
+Methods are async and return a `HubAsyncResult<T>`, a wrapper around neverthrow's `Result`, which contains either a
+successful response of type `<T>` or an error value. There are three types of return values across all our methods:
+
+- [MessageResult<T>](#messageresult)
+- [MessagesResult<T>](#messagesresult)
+- [FidsResult<T>](#fidsresult)
+
+### Pagination
+
+Methods that return multiple values support pagination in requests with a `pageSize` and `pageToken` property.
+
+```typescript
+import { getHubRpcClient, HubResult, MessagesResponse } from '@farcaster/hub-nodejs';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  let nextPageToken: Uint8Array | undefined = undefined;
+  let isNextPage = true;
+
+  while (isNextPage) {
+    const castsResult: HubResult<MessagesResponse> = await client.getCastsByFid({
+      fid: 2,
+      pageSize: 10,
+      pageToken: nextPageToken,
+    });
+
+    if (castsResult.isErr()) {
+      break;
+    }
+
+    const castsResponse: MessagesResponse = castsResult.value;
+    castsResponse.messages.map((cast) => console.log(cast?.data?.castAddBody?.text));
+
+    nextPageToken = castsResponse.nextPageToken;
+    isNextPage = !!nextPageToken && nextPageToken.length > 0;
+  }
+})();
+```
+
+## Method Request Documentation
 
 ### getSigner
 
@@ -102,9 +147,9 @@ Returns an active signer message given an fid and the public key of the signer.
 
 #### Returns
 
-| Type                               | Description                                |
-| :--------------------------------- | :----------------------------------------- |
-| `HubAsyncResult<SignerAddMessage>` | A Result containing the SignerAdd message. |
+| Type                              | Description          |
+| :-------------------------------- | :------------------- |
+| `MessageResult<SignerAddMessage>` | A SignerAdd message. |
 
 #### Parameters
 
@@ -135,15 +180,17 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 #### Returns
 
-| Type                                 | Description                                           |
-| :----------------------------------- | :---------------------------------------------------- |
-| `HubAsyncResult<SignerAddMessage[]>` | A Result containing one or more `SignerAdd` messages. |
+| Type                               | Description                       |
+| :--------------------------------- | :-------------------------------- |
+| `MessagesResult<SignerAddMessage>` | One or more `SignerAdd` messages. |
 
 #### Parameters
 
-| Name  | Type     | Description          |
-| :---- | :------- | :------------------- |
-| `fid` | `number` | The fid of the user. |
+| Name         | Type         | Description                                      |
+| :----------- | :----------- | :----------------------------------------------- |
+| `fid`        | `number`     | The fid of the user.                             |
+| `pageSize?`  | `number`     | Number of results per page.                      |
+| `pageToken?` | `Uint8Array` | Token used to fetch the next page, if it exists. |
 
 ---
 
@@ -167,15 +214,17 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 #### Returns
 
-| Type                                                          | Description                                                        |
-| :------------------------------------------------------------ | :----------------------------------------------------------------- |
-| `HubAsyncResult<(SignerAddMessage \| SignerRemoveMessage)[]>` | A Result containing one or more SignerAdd or SignerRemove messages |
+| Type                                                        | Description                                     |
+| :---------------------------------------------------------- | :---------------------------------------------- |
+| `MessagesResult<(SignerAddMessage \| SignerRemoveMessage)>` | Zero or more SignerAdd or SignerRemove messages |
 
 #### Parameters
 
-| Name  | Type     | Description          |
-| :---- | :------- | :------------------- |
-| `fid` | `number` | The fid of the user. |
+| Name         | Type         | Description                                      |
+| :----------- | :----------- | :----------------------------------------------- |
+| `fid`        | `number`     | The fid of the user.                             |
+| `pageSize?`  | `number`     | Number of results per page.                      |
+| `pageToken?` | `Uint8Array` | Token used to fetch the next page, if it exists. |
 
 ---
 
@@ -191,9 +240,9 @@ Returns a specific piece of metadata about the user.
 
 #### Returns
 
-| Type                                 | Description                                       |
-| :----------------------------------- | :------------------------------------------------ |
-| `HubAsyncResult<UserDataAddMessage>` | A Result that contains the `UserDataAdd` message. |
+| Type                                | Description                |
+| :---------------------------------- | :------------------------- |
+| `MessageResult<UserDataAddMessage>` | The `UserDataAdd` message. |
 
 #### Parameters
 
@@ -216,9 +265,9 @@ Returns all metadata about the user.
 
 #### Returns
 
-| Type                                   | Description                                                 |
-| :------------------------------------- | :---------------------------------------------------------- |
-| `HubAsyncResult<UserDataAddMessage[]>` | A Result that contains zero or more `UserDataAdd` messages. |
+| Type                                 | Description                          |
+| :----------------------------------- | :----------------------------------- |
+| `MessagesResult<UserDataAddMessage>` | Zero or more `UserDataAdd` messages. |
 
 #### Parameters
 
@@ -257,9 +306,9 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 #### Returns
 
-| Type                             | Description                                  |
-| :------------------------------- | :------------------------------------------- |
-| `HubAsyncResult<CastAddMessage>` | A Result that contains the `CastAdd` message |
+| Type                            | Description           |
+| :------------------------------ | :-------------------- |
+| `MessageResult<CastAddMessage>` | The `CastAdd` message |
 
 #### Parameters
 
@@ -290,15 +339,17 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 #### Returns
 
-| Value                              | Description                                            |
-| :--------------------------------- | :----------------------------------------------------- |
-| `HubAsyncResult<CastAddMessage[]>` | A Result that contains one or more `CastAdd` messages. |
+| Value                            | Description                      |
+| :------------------------------- | :------------------------------- |
+| `MessagesResult<CastAddMessage>` | Zero or more `CastAdd` messages. |
 
 #### Parameters
 
-| Name  | Type     | Description          |
-| :---- | :------- | :------------------- |
-| `fid` | `number` | The fid of the user. |
+| Name         | Type         | Description                                      |
+| :----------- | :----------- | :----------------------------------------------- |
+| `fid`        | `number`     | The fid of the user.                             |
+| `pageSize?`  | `number`     | Number of results per page.                      |
+| `pageToken?` | `Uint8Array` | Token used to fetch the next page, if it exists. |
 
 ---
 
@@ -322,15 +373,17 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 #### Returns
 
-| Value                              | Description                                             |
-| :--------------------------------- | :------------------------------------------------------ |
-| `HubAsyncResult<CastAddMessage[]>` | A Result that contains zero or more `CastAdd` messages. |
+| Value                            | Description                      |
+| :------------------------------- | :------------------------------- |
+| `MessagesResult<CastAddMessage>` | Zero or more `CastAdd` messages. |
 
 #### Parameters
 
-| Name  | Type     | Description                             |
-| :---- | :------- | :-------------------------------------- |
-| `fid` | `number` | The fid that is mentioned in the casts. |
+| Name         | Type         | Description                                      |
+| :----------- | :----------- | :----------------------------------------------- |
+| `fid`        | `number`     | The fid that is mentioned in the casts.          |
+| `pageSize?`  | `number`     | Number of results per page.                      |
+| `pageToken?` | `Uint8Array` | Token used to fetch the next page, if it exists. |
 
 ---
 
@@ -357,15 +410,17 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 #### Returns
 
-| Value                              | Description                                                 |
-| :--------------------------------- | :---------------------------------------------------------- |
-| `HubAsyncResult<CastAddMessage[]>` | A Result that contains the zero or more `CastAdd` messages. |
+| Value                            | Description                      |
+| :------------------------------- | :------------------------------- |
+| `MessagesResult<CastAddMessage>` | Zero or more `CastAdd` messages. |
 
 #### Parameters
 
-| Name     | Type                             | Description                    |
-| :------- | :------------------------------- | :----------------------------- |
-| `parent` | [`CastId`](./Messages.md#castid) | The CastId of the parent cast. |
+| Name         | Type                             | Description                                      |
+| :----------- | :------------------------------- | :----------------------------------------------- |
+| `parent`     | [`CastId`](./Messages.md#castid) | The CastId of the parent cast.                   |
+| `pageSize?`  | `number`                         | Number of results per page.                      |
+| `pageToken?` | `Uint8Array`                     | Token used to fetch the next page, if it exists. |
 
 ---
 
@@ -388,15 +443,17 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 #### Returns
 
-| Value                                                   | Description                                                             |
-| :------------------------------------------------------ | :---------------------------------------------------------------------- |
-| `HubAsyncResult<(CastAddMessage\|CastRemoveMessage)[]>` | A Result that contains zero or more `CastAdd` or `CastRemove` messages. |
+| Value                                                 | Description                                      |
+| :---------------------------------------------------- | :----------------------------------------------- |
+| `MessagesResult<(CastAddMessage\|CastRemoveMessage)>` | Zero or more `CastAdd` or `CastRemove` messages. |
 
 #### Parameters
 
-| Name  | Type     | Description          |
-| :---- | :------- | :------------------- |
-| `fid` | `number` | The fid of the user. |
+| Name         | Type         | Description                                      |
+| :----------- | :----------- | :----------------------------------------------- |
+| `fid`        | `number`     | The fid of the user.                             |
+| `pageSize?`  | `number`     | Number of results per page.                      |
+| `pageToken?` | `Uint8Array` | Token used to fetch the next page, if it exists. |
 
 ---
 
@@ -430,9 +487,9 @@ import { getHubRpcClient, ReactionType } from '@farcaster/hub-nodejs';
 
 #### Returns
 
-| Type                                 | Description                                         |
-| :----------------------------------- | :-------------------------------------------------- |
-| `HubAsyncResult<ReactionAddMessage>` | A Result that contains the a `ReactionAdd` message. |
+| Type                                | Description              |
+| :---------------------------------- | :----------------------- |
+| `MessageResult<ReactionAddMessage>` | A `ReactionAdd` message. |
 
 #### Parameters
 
@@ -473,16 +530,18 @@ import { getHubRpcClient, ReactionType } from '@farcaster/hub-nodejs';
 
 #### Returns
 
-| Value                                  | Description                                                |
-| :------------------------------------- | :--------------------------------------------------------- |
-| `HubAsyncResult<ReactionAddMessage[]>` | A Result that contains one or more `ReactionAdd` messages. |
+| Value                                | Description                          |
+| :----------------------------------- | :----------------------------------- |
+| `MessagesResult<ReactionAddMessage>` | Zero or more `ReactionAdd` messages. |
 
 #### Parameters
 
-| Name    | Type                                         | Description                          |
-| :------ | :------------------------------------------- | :----------------------------------- |
-| `cast`  | [`CastId`](./Messages.md#castid)             | The cast id.                         |
-| `type?` | [`ReactionType`](./Messages.md#reactiontype) | (optional) The type of the reaction. |
+| Name         | Type                                         | Description                                      |
+| :----------- | :------------------------------------------- | :----------------------------------------------- |
+| `cast`       | [`CastId`](./Messages.md#castid)             | The cast id.                                     |
+| `type?`      | [`ReactionType`](./Messages.md#reactiontype) | (optional) The type of the reaction.             |
+| `pageSize?`  | `number`                                     | Number of results per page.                      |
+| `pageToken?` | `Uint8Array`                                 | Token used to fetch the next page, if it exists. |
 
 ---
 
@@ -506,16 +565,18 @@ import { getHubRpcClient, ReactionType } from '@farcaster/hub-nodejs';
 
 #### Returns
 
-| Type                                   | Description                                                 |
-| :------------------------------------- | :---------------------------------------------------------- |
-| `HubAsyncResult<ReactionAddMessage[]>` | A Result that contains zero or more `ReactionAdd` messages. |
+| Type                                 | Description                          |
+| :----------------------------------- | :----------------------------------- |
+| `MessagesResult<ReactionAddMessage>` | Zero or more `ReactionAdd` messages. |
 
 #### Parameters
 
-| Name            | Type                                         | Description              |
-| :-------------- | :------------------------------------------- | :----------------------- |
-| `fid`           | `number`                                     | The fid of the user      |
-| `reactionType?` | [`ReactionType`](./Messages.md#reactiontype) | The type of the reaction |
+| Name            | Type                                         | Description                                      |
+| :-------------- | :------------------------------------------- | :----------------------------------------------- |
+| `fid`           | `number`                                     | The fid of the user                              |
+| `reactionType?` | [`ReactionType`](./Messages.md#reactiontype) | The type of the reaction                         |
+| `pageSize?`     | `number`                                     | Number of results per page.                      |
+| `pageToken?`    | `Uint8Array`                                 | Token used to fetch the next page, if it exists. |
 
 ---
 
@@ -539,15 +600,17 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 #### Returns
 
-| Type                                                          | Description                                                                     |
-| :------------------------------------------------------------ | :------------------------------------------------------------------------------ |
-| `HubAsyncResult<ReactionAddMessage\|ReactionRemoveMessage[]>` | A Result that contains zero or more `ReactionAdd` or `ReactionRemove` messages. |
+| Type                                                        | Description                                              |
+| :---------------------------------------------------------- | :------------------------------------------------------- |
+| `MessagesResult<ReactionAddMessage\|ReactionRemoveMessage>` | Zero or more `ReactionAdd` or `ReactionRemove` messages. |
 
 #### Parameters
 
-| Name  | Type     | Description          |
-| :---- | :------- | :------------------- |
-| `fid` | `number` | The fid of the user. |
+| Name         | Type         | Description                                      |
+| :----------- | :----------- | :----------------------------------------------- |
+| `fid`        | `number`     | The fid of the user.                             |
+| `pageSize?`  | `number`     | Number of results per page.                      |
+| `pageToken?` | `Uint8Array` | Token used to fetch the next page, if it exists. |
 
 ---
 
@@ -563,9 +626,9 @@ Returns an active verification for a specific Ethereum address made by a user.
 
 #### Returns
 
-| Type                                               | Description                                                   |
-| :------------------------------------------------- | :------------------------------------------------------------ |
-| `HubAsyncResult<VerificationAddEthAddressMessage>` | A Result that contains a `VerificationAddEthAddress` message. |
+| Type                                              | Description                            |
+| :------------------------------------------------ | :------------------------------------- |
+| `MessageResult<VerificationAddEthAddressMessage>` | A `VerificationAddEthAddress` message. |
 
 #### Parameters
 
@@ -588,15 +651,17 @@ Returns all active verifications for Ethereum addresses made by a user in revers
 
 #### Returns
 
-| Value                                                | Description                                                               |
-| :--------------------------------------------------- | :------------------------------------------------------------------------ |
-| `HubAsyncResult<VerificationAddEthAddressMessage[]>` | A Result that contains zero or more `VerificationAddEthAddress` messages. |
+| Value                                              | Description                                        |
+| :------------------------------------------------- | :------------------------------------------------- |
+| `MessagesResult<VerificationAddEthAddressMessage>` | Zero or more `VerificationAddEthAddress` messages. |
 
 #### Parameters
 
-| Name  | Type     | Description          |
-| :---- | :------- | :------------------- |
-| `fid` | `number` | The fid of the user. |
+| Name         | Type         | Description                                      |
+| :----------- | :----------- | :----------------------------------------------- |
+| `fid`        | `number`     | The fid of the user.                             |
+| `pageSize?`  | `number`     | Number of results per page.                      |
+| `pageToken?` | `Uint8Array` | Token used to fetch the next page, if it exists. |
 
 ---
 
@@ -612,15 +677,17 @@ Returns all active and inactive verifications for Ethereum addresses made by a u
 
 #### Returns
 
-| Type                                                                            | Description                                                                                           |
-| :------------------------------------------------------------------------------ | :---------------------------------------------------------------------------------------------------- |
-| `HubAsyncResult<VerificationAddEthAddressMessage\|VerificationRemoveMessage[]>` | A Result that contains the zero or more `VerificationAddEthAddress` or `VerificationRemove` messages. |
+| Type                                                                          | Description                                                                |
+| :---------------------------------------------------------------------------- | :------------------------------------------------------------------------- |
+| `MessagesResult<VerificationAddEthAddressMessage\|VerificationRemoveMessage>` | Zero or more `VerificationAddEthAddress` or `VerificationRemove` messages. |
 
 #### Parameters
 
-| Name  | Type     | Description          |
-| :---- | :------- | :------------------- |
-| `fid` | `number` | The fid of the user. |
+| Name         | Type         | Description                                      |
+| :----------- | :----------- | :----------------------------------------------- |
+| `fid`        | `number`     | The fid of the user.                             |
+| `pageSize?`  | `number`     | Number of results per page.                      |
+| `pageToken?` | `Uint8Array` | Token used to fetch the next page, if it exists. |
 
 ---
 
@@ -636,9 +703,9 @@ Subscribe to a stream of HubEvents from the Hub which are returned as protobufs.
 
 #### Returns
 
-| Value                                                           | Description                                                    |
-| :-------------------------------------------------------------- | :------------------------------------------------------------- |
-| `HubResult<protobufs.ClientReadableStream<protobufs.HubEvent>>` | A Result that contains a readable stream that emits HubEvents. |
+| Value                                                           | Description                             |
+| :-------------------------------------------------------------- | :-------------------------------------- |
+| `HubResult<protobufs.ClientReadableStream<protobufs.HubEvent>>` | a readable stream that emits HubEvents. |
 
 #### Parameters
 
@@ -669,9 +736,9 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 #### Returns
 
-| Value                        | Description                                            |
-| :--------------------------- | :----------------------------------------------------- |
-| `HubAsyncResult<Message<T>>` | A Result that contains the message that was submitted. |
+| Value              | Description                     |
+| :----------------- | :------------------------------ |
+| `MessageResult<T>` | The message that was submitted. |
 
 #### Parameters
 
@@ -703,9 +770,9 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 #### Returns
 
-| Value                             | Description                                  |
-| :-------------------------------- | :------------------------------------------- |
-| `HubAsyncResult<IdRegistryEvent>` | A Result that contains an `IdRegistryEvent`. |
+| Value                             | Description           |
+| :-------------------------------- | :-------------------- |
+| `HubAsyncResult<IdRegistryEvent>` | An `IdRegistryEvent`. |
 
 #### Parameters
 
@@ -736,14 +803,37 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 #### Returns
 
-| Value                               | Description                                       |
-| :---------------------------------- | :------------------------------------------------ |
-| `HubAsyncResult<NameRegistryEvent>` | A Result that contains the a `NameRegistryEvent`. |
+| Value                               | Description            |
+| :---------------------------------- | :--------------------- |
+| `HubAsyncResult<NameRegistryEvent>` | A `NameRegistryEvent`. |
 
 #### Parameters
 
 | Name    | Type     | Description            |
 | :------ | :------- | :--------------------- |
 | `fname` | `string` | The fname of the user. |
+
+## Method Response Documentation
+
+### MessageResult
+
+A documentation alias for `HubAsyncResult<Message>` where the success value contains a single message.
+
+Message are of the type <T> requested but this is an implicit guarantee since ts-proto does not generate bindings
+correctly to reflect this in the returned types.
+
+---
+
+### MessagesResult
+
+A documentation alias for `HubAsyncResult<MessagesResponse>` where the success value contains a MessagesResponse object.
+
+Messages are of the type <T> requested but this is an implicit guarantee since ts-proto does not generate bindings
+correctly to reflect this in the returned types.
+
+| Name             | Type                      | Description                                      |
+| :--------------- | :------------------------ | :----------------------------------------------- |
+| `messages`       | `Message[]`               | Messages that were a response to the query.      |
+| `nextPageToken?` | `Uint8Array \| undefined` | Token used to fetch the next page, if it exists. |
 
 ---
