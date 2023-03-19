@@ -1,6 +1,6 @@
 # Client
 
-A Client established a connection with a Farcaster Hub and can be used to send and receive messages. It is initialized with the IP address and gRPC port of the Hub. Once connected, a Client instance can:
+A Client establishes a connection with a Farcaster Hub and can be used to send and receive messages. It is initialized with the IP address and gRPC port of the Hub. Once connected, a Client instance can:
 
 - Query for messages by user or type.
 - Query for on-chain Farcaster Contracts state.
@@ -631,10 +631,7 @@ Subscribe to a stream of HubEvents from the Hub which are returned as protobufs.
 #### Usage
 
 ```typescript
-import { ... } from '@farcaster/hub-nodejs';
-
-const client = new Client(...)
-const result = await client.get...
+// TODO DOCS: usage example
 ```
 
 #### Returns
