@@ -453,6 +453,10 @@ class CastStore {
       nextMessage = await getNextResult();
     }
 
+    // Close the iterator
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    pruneIterator.end(() => {});
+
     if (events.length > 0) {
       // Commit the transaction to rocksdb
       await this._db.commit(pruneTxn);
