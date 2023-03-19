@@ -32,7 +32,8 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^7.6.0",
-    "eslint-config-custom": "*"
+    "eslint-config-custom": "*",
+    "prettier-config-custom": "*"
   },
   "publishConfig": {
     "access": "public"

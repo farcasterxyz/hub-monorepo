@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "eslint-config-custom": "*",
+    "prettier-config-custom": "*",
     "ts-proto": "^1.142.1"
   },
   "dependencies": {
