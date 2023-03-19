@@ -160,7 +160,11 @@ class Engine {
   async forEachMessage(callback: (message: protobufs.Message, key: Buffer) => Promise<boolean | void>): Promise<void> {
     const allUserPrefix = Buffer.from([RootPrefix.User]);
 
-    for await (const [key, value] of this._db.iteratorByPrefix(allUserPrefix, { keys: true, valueAsBuffer: true })) {
+    for await (const [key, value] of this._db.iteratorByPrefix(allUserPrefix, { keys: true })) {
+      if (!key || !value) {
+        break;
+      }
+
       if (key.length !== 1 + FID_BYTES + 1 + TSHASH_LENGTH) {
         // Not a message key, so we can skip it.
         continue;
@@ -193,6 +197,7 @@ class Engine {
       }
     }
   }
+
   async getAllMessagesBySyncIds(syncIds: Uint8Array[]): HubAsyncResult<protobufs.Message[]> {
     const hashesBuf = syncIds.map((syncIdHash) => SyncId.pkFromSyncId(syncIdHash));
     const messages = await ResultAsync.fromPromise(getManyMessages(this._db, hashesBuf), (e) => e as HubError);

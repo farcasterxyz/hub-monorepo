@@ -9,7 +9,7 @@ import {
   getMessage,
   getMessagesPageByPrefix,
   getMessagesPruneIterator,
-  getNextMessageToPrune,
+  getNextMessageFromIterator,
   makeMessagePrimaryKey,
   makeTsHash,
   makeUserKey,
@@ -233,7 +233,7 @@ class UserDataStore {
     // Create a rocksdb iterator for all messages with the given prefix
     const pruneIterator = getMessagesPruneIterator(this._db, fid, UserPostfix.UserDataMessage);
 
-    const getNextResult = () => ResultAsync.fromPromise(getNextMessageToPrune(pruneIterator), () => undefined);
+    const getNextResult = () => ResultAsync.fromPromise(getNextMessageFromIterator(pruneIterator), () => undefined);
 
     // For each message in order, prune it if the store is over the size limit
     let nextMessage = await getNextResult();
@@ -261,8 +261,7 @@ class UserDataStore {
     }
 
     // Close the iterator
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    pruneIterator.end(() => {});
+    await pruneIterator.end();
 
     if (events.length > 0) {
       // Commit the transaction to rocksdb
