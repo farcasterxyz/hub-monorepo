@@ -744,25 +744,46 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 ### subscribe
 
-Subscribe to a stream of HubEvents from the Hub which are returned as protobufs. Messages can be parsed with `deserializeHubEvent` helper in utils.
+Returns a gRPC Stream object which emits HubEvents in real-time.
+
+Streams emit events from the current timestamp onwards and gRPC guarantees ordered delivery. If a Client is
+disconnected, it can request the stream to begin from a specific Event Id. Hubs maintain a short cache of events
+which helps with recovery when clients get disconnected temporarily.
 
 #### Usage
 
 ```typescript
-// TODO DOCS: usage example
+import { getHubRpcClient, HubEventType } from '@farcaster/hub-nodejs';
+
+(async () => {
+  const client = await getHubRpcClient('127.0.0.1:8080');
+
+  const subscribeResult = await client.subscribe({
+    eventTypes: [HubEventType.MERGE_MESSAGE],
+  });
+
+  if (subscribeResult.isOk()) {
+    const stream = subscribeResult.value;
+
+    for await (const event of stream) {
+      console.log(event);
+    }
+  }
+})();
 ```
 
 #### Returns
 
-| Value                                                           | Description                             |
-| :-------------------------------------------------------------- | :-------------------------------------- |
-| `HubResult<protobufs.ClientReadableStream<protobufs.HubEvent>>` | a readable stream that emits HubEvents. |
+| Value                                       | Description                    |
+| :------------------------------------------ | :----------------------------- |
+| `HubResult<ClientReadableStream<HubEvent>>` | A stream that emits HubEvents. |
 
 #### Parameters
 
-| Name      | Type                                         | Description                                |
-| :-------- | :------------------------------------------- | :----------------------------------------- |
-| `filters` | [`EventFilters`](../modules.md#eventfilters) | Filters that specify events to listen for. |
+| Name         | Type                                       | Description                      |
+| :----------- | :----------------------------------------- | :------------------------------- |
+| `eventTypes` | [`HubEventType`](./Events.md#hubeventtype) | Events to listen for.            |
+| `fromId?`    | `number`                                   | EventId to start streaming from. |
 
 ---
 
