@@ -257,9 +257,32 @@ describe('getReactionsByTargetCast', () => {
     });
 
     test('returns reactions if they exist for the target and type', async () => {
+      const reactionLike2 = await Factories.ReactionAddMessage.create({
+        data: {
+          timestamp: reactionAddRecast.data.timestamp + 1,
+          reactionBody: { type: protobufs.ReactionType.LIKE, targetCastId: castId },
+        },
+      });
+      await set.merge(reactionLike2);
       await set.merge(reactionAdd);
-      const byCast = await set.getReactionsByTargetCast(castId, protobufs.ReactionType.LIKE);
-      expect(byCast).toEqual({ messages: [reactionAdd], nextPageToken: undefined });
+      await set.merge(reactionAddRecast);
+      const results1 = await set.getReactionsByTargetCast(castId, protobufs.ReactionType.LIKE);
+      expect(results1).toEqual({ messages: [reactionAdd, reactionLike2], nextPageToken: undefined });
+
+      const results2 = await set.getReactionsByTargetCast(castId, protobufs.ReactionType.LIKE, {
+        reverse: true,
+        pageSize: 1,
+      });
+      expect(results2.messages).toEqual([reactionLike2]);
+
+      const results3 = await set.getReactionsByTargetCast(castId, protobufs.ReactionType.LIKE, {
+        reverse: true,
+        pageToken: results2.nextPageToken,
+      });
+      expect(results3).toEqual({ messages: [reactionAdd], nextPageToken: undefined });
+
+      const results4 = await set.getReactionsByTargetCast(castId, protobufs.ReactionType.RECAST);
+      expect(results4).toEqual({ messages: [reactionAddRecast], nextPageToken: undefined });
     });
   });
 });
