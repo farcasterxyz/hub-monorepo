@@ -191,6 +191,8 @@ export class Hub implements HubInterface {
         options.firstBlock ?? GoerliEthConstants.FirstBlock,
         options.chunkSize ?? GoerliEthConstants.ChunkSize
       );
+    } else {
+      log.warn('No ETH RPC URL provided, not syncing with ETH contract events');
     }
 
     // Setup job queues
