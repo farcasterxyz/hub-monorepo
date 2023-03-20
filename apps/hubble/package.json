@@ -24,7 +24,7 @@
     "start": "tsx src/cli.ts start",
     "identity": "tsx src/cli.ts identity",
     "console": "tsx src/cli.ts console",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test": "yarn build && NODE_OPTIONS=--experimental-vm-modules jest",
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"
   },
   "devDependencies": {
