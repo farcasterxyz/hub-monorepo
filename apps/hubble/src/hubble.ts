@@ -53,7 +53,7 @@ import { sleep } from './utils/crypto';
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
 
 export const APP_VERSION = process.env['npm_package_version'] ?? '1.0.0';
-export const APP_NICKNAME = 'Farcaster Hub';
+export const APP_NICKNAME = process.env['HUBBLE_NAME'] ?? 'Farcaster Hub';
 
 export interface HubInterface {
   engine: Engine;
