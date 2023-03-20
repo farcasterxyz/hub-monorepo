@@ -146,7 +146,7 @@ Returns a message that adds a new Cast.
 #### Usage
 
 ```typescript
-import { makeCastAdd, types } from '@farcaster/hub-nodejs';
+import { makeCastAdd } from '@farcaster/hub-nodejs';
 
 const cast = await makeCastAdd(
   { text: 'hello world', embeds: ['http://www.farcaster.xyz'], mentions: [], mentionsPositions: [] },

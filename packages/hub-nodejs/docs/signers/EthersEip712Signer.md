@@ -112,10 +112,12 @@ Generates a 256-bit signature for a VerificationClaim and returns the bytes.
 #### Usage
 
 ```typescript
+import { FarcasterNetwork } from '@farcaster/hub-nodejs';
+
 const claimBody = {
   fid: -1,
   address: eip712Signer.signerKeyHex,
-  network: types.FarcasterNetwork.DEVNET,
+  network: FarcasterNetwork.DEVNET,
   blockHash: '2c87468704d6b0f4c46f480dc54251de50753af02e5d63702f85bde3da4f7a3d',
 };
 const verificationResult = await eip712Signer.signVerificationEthAddressClaim(claimBody);
@@ -142,12 +144,12 @@ Generates a 256-bit signature for a VerificationClaim and returns the hex string
 #### Usage
 
 ```typescript
-import { types } from '@farcaster/hub-nodejs';
+import { FarcasterNetwork } from '@farcaster/hub-nodejs';
 
 const claimBody = {
   fid: -1,
   address: eip712Signer.signerKeyHex,
-  network: types.FarcasterNetwork.DEVNET,
+  network: FarcasterNetwork.DEVNET,
   blockHash: '2c87468704d6b0f4c46f480dc54251de50753af02e5d63702f85bde3da4f7a3d',
 };
 
