@@ -43,4 +43,6 @@ export const Config = {
   network: DEFAULT_NETWORK,
   /** Start the admin server? */
   adminServerEnabled: false,
+  /** The admin server bind host */
+  adminServerHost: '127.0.0.1',
 };

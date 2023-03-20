@@ -74,6 +74,8 @@ class Engine {
             } else {
               resolve(err(new HubError(errCode, errMessage)));
             }
+          } else {
+            logger.warn({ id }, 'validation worker promise.response not found');
           }
         });
       } else {
@@ -592,14 +594,12 @@ class Engine {
 
     // 6. Check message body and envelope
     if (this._validationWorker) {
-      const promise = new Promise<HubResult<protobufs.Message>>((resolve) => {
+      return new Promise<HubResult<protobufs.Message>>((resolve) => {
         const id = this._validationWorkerJobId++;
         this._validationWorkerPromiseMap.set(id, resolve);
 
         this._validationWorker?.postMessage({ id, message });
       });
-
-      return promise;
     } else {
       return validations.validateMessage(message);
     }
