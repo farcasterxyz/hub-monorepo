@@ -36,7 +36,7 @@ export default class AdminServer {
     this.grpcServer.addService(AdminServiceService, this.getImpl());
   }
 
-  async start(): HubAsyncResult<undefined> {
+  async start(host = '127.0.0.1'): HubAsyncResult<undefined> {
     // Create a unix socket server
     net.createServer(() => {
       log.info('Admin server socket connected');
@@ -44,13 +44,13 @@ export default class AdminServer {
 
     return new Promise((resolve) => {
       // The Admin server is only available on localhost
-      this.grpcServer.bindAsync(`127.0.0.1:${ADMIN_SERVER_PORT}`, ServerCredentials.createInsecure(), (e, port) => {
+      this.grpcServer.bindAsync(`${host}:${ADMIN_SERVER_PORT}`, ServerCredentials.createInsecure(), (e, port) => {
         if (e) {
           log.error(`Failed to bind admin server to socket: ${e}`);
           resolve(err(new HubError('unavailable.network_failure', `Failed to bind admin server to socket: ${e}`)));
         } else {
           this.grpcServer.start();
-          log.info({ port }, 'Starting Admin server');
+          log.info({ host, port }, 'Starting Admin server');
           resolve(ok(undefined));
         }
       });

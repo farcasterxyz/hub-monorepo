@@ -119,6 +119,9 @@ export interface HubOptions {
   /** Enables the Admin Server */
   adminServerEnabled?: boolean;
 
+  /** Host for the Admin Server to bind to */
+  adminServerHost?: string;
+
   /**
    * Only allows the Hub to connect to and advertise local IP addresses
    *
@@ -156,10 +159,10 @@ export class Hub implements HubInterface {
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
   private periodSyncJobScheduler: PeriodicSyncJobScheduler;
   private updateNameRegistryEventExpiryJobQueue: UpdateNameRegistryEventExpiryJobQueue;
-  private updateNameRegistryEventExpiryJobWorker: UpdateNameRegistryEventExpiryJobWorker;
+  private updateNameRegistryEventExpiryJobWorker?: UpdateNameRegistryEventExpiryJobWorker;
 
   engine: Engine;
-  ethRegistryProvider: EthEventsProvider;
+  ethRegistryProvider?: EthEventsProvider;
 
   constructor(options: HubOptions) {
     this.options = options;
@@ -173,14 +176,16 @@ export class Hub implements HubInterface {
 
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
     // Defaults to Goerli testnet, which is currently used for Production Farcaster Hubs.
-    this.ethRegistryProvider = EthEventsProvider.build(
-      this,
-      options.ethRpcUrl ?? '',
-      options.idRegistryAddress ?? GoerliEthConstants.IdRegistryAddress,
-      options.nameRegistryAddress ?? GoerliEthConstants.NameRegistryAddress,
-      options.firstBlock ?? GoerliEthConstants.FirstBlock,
-      options.chunkSize ?? GoerliEthConstants.ChunkSize
-    );
+    if (options.ethRpcUrl) {
+      this.ethRegistryProvider = EthEventsProvider.build(
+        this,
+        options.ethRpcUrl,
+        options.idRegistryAddress ?? GoerliEthConstants.IdRegistryAddress,
+        options.nameRegistryAddress ?? GoerliEthConstants.NameRegistryAddress,
+        options.firstBlock ?? GoerliEthConstants.FirstBlock,
+        options.chunkSize ?? GoerliEthConstants.ChunkSize
+      );
+    }
 
     // Setup job queues
     this.revokeSignerJobQueue = new RevokeSignerJobQueue(this.rocksDB);
@@ -190,11 +195,13 @@ export class Hub implements HubInterface {
     this.revokeSignerJobScheduler = new RevokeSignerJobScheduler(this.revokeSignerJobQueue, this.engine);
     this.pruneMessagesJobScheduler = new PruneMessagesJobScheduler(this.engine);
     this.periodSyncJobScheduler = new PeriodicSyncJobScheduler(this, this.syncEngine);
-    this.updateNameRegistryEventExpiryJobWorker = new UpdateNameRegistryEventExpiryJobWorker(
-      this.updateNameRegistryEventExpiryJobQueue,
-      this.rocksDB,
-      this.ethRegistryProvider
-    );
+    if (this.ethRegistryProvider) {
+      this.updateNameRegistryEventExpiryJobWorker = new UpdateNameRegistryEventExpiryJobWorker(
+        this.updateNameRegistryEventExpiryJobQueue,
+        this.rocksDB,
+        this.ethRegistryProvider
+      );
+    }
   }
 
   get rpcAddress() {
@@ -267,7 +274,9 @@ export class Hub implements HubInterface {
     }
 
     // Start the ETH registry provider first
-    await this.ethRegistryProvider.start();
+    if (this.ethRegistryProvider) {
+      await this.ethRegistryProvider.start();
+    }
 
     // Start the sync engine
     await this.syncEngine.initialize(this.options.rebuildSyncTrie ?? false);
@@ -283,7 +292,7 @@ export class Hub implements HubInterface {
     // Start the RPC server
     await this.rpcServer.start(this.options.rpcPort ? this.options.rpcPort : 0);
     if (this.options.adminServerEnabled) {
-      await this.adminServer.start();
+      await this.adminServer.start(this.options.adminServerHost ?? '127.0.0.1');
     }
     this.registerEventHandlers();
 
@@ -338,7 +347,9 @@ export class Hub implements HubInterface {
     await this.syncEngine.stop();
 
     // Stop the ETH registry provider
-    await this.ethRegistryProvider.stop();
+    if (this.ethRegistryProvider) {
+      await this.ethRegistryProvider.stop();
+    }
 
     // Close the DB, which will flush all data to disk. Just before we close, though, write that
     // we've cleanly shutdown.

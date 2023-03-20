@@ -57,6 +57,7 @@ app
     'Enable Auth for RPC submit methods with the username and password. (default: disabled)'
   )
   .option('--admin-server-enabled', 'Enable the admin server. (default: disabled)')
+  .option('--admin-server-host <host>', "The host the admin server should listen on. (default: '127.0.0.1')")
   .option('--db-name <name>', 'The name of the RocksDB instance')
   .option('--db-reset', 'Clears the database before starting')
   .option('--rebuild-sync-trie', 'Rebuilds the sync trie before starting')
@@ -202,6 +203,7 @@ app
       resetDB: cliOptions.dbReset ?? hubConfig.dbReset,
       rebuildSyncTrie,
       adminServerEnabled: cliOptions.adminServerEnabled ?? hubConfig.adminServerEnabled,
+      adminServerHost: cliOptions.adminServerHost ?? hubConfig.adminServerHost,
     };
 
     const hub = new Hub(options);
