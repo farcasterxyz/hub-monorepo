@@ -134,6 +134,7 @@ app
     // try to load the config file
     const hubConfig = (await import(resolve(cliOptions.config))).Config;
 
+    // Read PeerID from 1. CLI option, 2. Environment variable, 3. Config file
     let peerId;
     if (cliOptions.id) {
       peerId = await readPeerId(resolve(cliOptions.id));
@@ -152,6 +153,16 @@ app
       logger.info({ identity: peerId.toString() }, 'Read identity from environment');
     } else {
       peerId = await readPeerId(resolve(hubConfig.id));
+    }
+
+    // Read RPC Auth from 1. CLI option, 2. Environment variable, 3. Config file
+    let rpcAuth;
+    if (cliOptions.rpcAuth) {
+      rpcAuth = cliOptions.rpcAuth;
+    } else if (process.env['RPC_AUTH']) {
+      rpcAuth = process.env['RPC_AUTH'];
+    } else {
+      rpcAuth = hubConfig.rpcAuth;
     }
 
     const hubAddressInfo = addressInfoFromParts(
@@ -198,7 +209,7 @@ app
       bootstrapAddrs,
       allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort,
-      rpcAuth: cliOptions.rpcAuth ?? hubConfig.rpcAuth,
+      rpcAuth,
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
       resetDB: cliOptions.dbReset ?? hubConfig.dbReset,
       rebuildSyncTrie,

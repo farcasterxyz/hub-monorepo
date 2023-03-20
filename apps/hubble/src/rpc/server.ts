@@ -42,6 +42,39 @@ import { addressInfoFromParts } from '~/utils/p2p';
 
 const log = logger.child({ component: 'rpcServer' });
 
+// Check if the user is authenticated via the metadata
+export const authenticateUser = async (
+  metadata: Metadata,
+  rpcAuthUser?: string,
+  rpcAuthPass?: string
+): HubAsyncResult<boolean> => {
+  // If there is no auth user/pass, we don't need to authenticate
+  if (!rpcAuthUser || !rpcAuthPass) {
+    return ok(true);
+  }
+
+  if (metadata.get('authorization')) {
+    const authHeader = metadata.get('authorization')[0] as string;
+    if (!authHeader) {
+      return err(new HubError('unauthenticated', 'Authorization header is empty'));
+    }
+
+    const encodedCredentials = authHeader.replace('Basic ', '');
+    const decodedCredentials = Buffer.from(encodedCredentials, 'base64').toString('utf-8');
+    const [username, password] = decodedCredentials.split(':');
+    if (!username || !password) {
+      return err(new HubError('unauthenticated', `Invalid username: ${username}`));
+    }
+
+    if (username === rpcAuthUser && password === rpcAuthPass) {
+      return ok(true);
+    } else {
+      return err(new HubError('unauthenticated', `Invalid password for user: ${username}`));
+    }
+  }
+  return err(new HubError('unauthenticated', 'No authorization header'));
+};
+
 export const toServiceError = (err: HubError): ServiceError => {
   let grpcCode: number;
   if (err.errCode === 'unauthenticated') {
@@ -158,35 +191,6 @@ export default class Server {
     return addr;
   }
 
-  // Check if the user is authenticated via the metadata
-  async authenticateUser(metadata: Metadata): HubAsyncResult<boolean> {
-    // If there is no auth user/pass, we don't need to authenticate
-    if (!this.rpcAuthUser || !this.rpcAuthPass) {
-      return ok(true);
-    }
-
-    if (metadata.get('authorization')) {
-      const authHeader = metadata.get('authorization')[0] as string;
-      if (!authHeader) {
-        return err(new HubError('unauthenticated', 'Authorization header is empty'));
-      }
-
-      const encodedCredentials = authHeader.replace('Basic ', '');
-      const decodedCredentials = Buffer.from(encodedCredentials, 'base64').toString('utf-8');
-      const [username, password] = decodedCredentials.split(':');
-      if (!username || !password) {
-        return err(new HubError('unauthenticated', `Invalid username: ${username}`));
-      }
-
-      if (username === this.rpcAuthUser && password === this.rpcAuthPass) {
-        return ok(true);
-      } else {
-        return err(new HubError('unauthenticated', `Invalid password for user: ${username}`));
-      }
-    }
-    return err(new HubError('unauthenticated', 'No authorization header'));
-  }
-
   getImpl = (): HubServiceServer => {
     return {
       getInfo: (call, callback) => {
@@ -283,7 +287,7 @@ export default class Server {
         })();
       },
       submitMessage: async (call, callback) => {
-        const authResult = await this.authenticateUser(call.metadata);
+        const authResult = await authenticateUser(call.metadata, this.rpcAuthUser, this.rpcAuthPass);
         if (authResult.isErr()) {
           logger.warn({ errMsg: authResult.error.message }, 'submitMessage failed');
           callback(toServiceError(new HubError('unauthenticated', 'User is not authenticated')));
