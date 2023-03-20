@@ -18,7 +18,7 @@ import { TypedEmitter } from 'tiny-typed-emitter';
 import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix } from '~/storage/db/types';
 
-const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3; // 3 days
+const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3 * 1000; // 3 days in ms
 
 export type StoreEvents = {
   /**

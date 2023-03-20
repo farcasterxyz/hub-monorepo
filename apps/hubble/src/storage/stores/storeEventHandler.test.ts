@@ -136,10 +136,16 @@ describe('pruneEvents', () => {
     const allEvents1 = await eventHandler.getEvents();
     expect(allEvents1._unsafeUnwrap()).toMatchObject([eventArgs1, eventArgs2, eventArgs3, eventArgs4]);
 
-    const pruneResult = await eventHandler.pruneEvents(1_000);
-    expect(pruneResult.isOk()).toBeTruthy();
+    const pruneResult1 = await eventHandler.pruneEvents(); // Should not prune any events since none are passed the default 3 days
+    expect(pruneResult1.isOk()).toBeTruthy();
 
     const allEvents2 = await eventHandler.getEvents();
-    expect(allEvents2._unsafeUnwrap()).toMatchObject([eventArgs3, eventArgs4]);
+    expect(allEvents2._unsafeUnwrap()).toMatchObject([eventArgs1, eventArgs2, eventArgs3, eventArgs4]);
+
+    const pruneResult2 = await eventHandler.pruneEvents(1_000); // Prune the events that happened more than a second ago
+    expect(pruneResult2.isOk()).toBeTruthy();
+
+    const allEvents3 = await eventHandler.getEvents();
+    expect(allEvents3._unsafeUnwrap()).toMatchObject([eventArgs3, eventArgs4]);
   });
 });
