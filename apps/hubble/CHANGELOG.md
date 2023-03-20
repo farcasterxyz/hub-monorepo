@@ -1,5 +1,23 @@
 # @farcaster/hubble
 
+## 1.0.16
+
+### Patch Changes
+
+- a91afdb: Allow specifying hub nickname via environment variable
+- 1b0e3a7: Add RPC Auth via Env variables and a new getAuthMetadata method to make it easier to use RPC auth
+- 59920f9: upgrade ethers from v5 to v6
+- d63e05f: Switch to time-based check for process shutdown file
+- 1e4482e: updated dependencies
+- b596ec9: Yield to newer hubs started with the same RocksDB
+- Updated dependencies [469825e]
+- Updated dependencies [1b0e3a7]
+- Updated dependencies [59920f9]
+- Updated dependencies [99518ef]
+- Updated dependencies [1e4482e]
+  - @farcaster/protobufs@0.1.9
+  - @farcaster/utils@0.3.0
+
 ## 1.0.15
 
 ### Patch Changes

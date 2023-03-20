@@ -1,5 +1,12 @@
 # @farcaster/protobufs
 
+## 0.1.9
+
+### Patch Changes
+
+- 469825e: feat: add reverse param to list grpc methods
+- 1e4482e: updated dependencies
+
 ## 0.1.8
 
 ### Patch Changes
