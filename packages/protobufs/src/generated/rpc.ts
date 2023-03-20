@@ -12,11 +12,11 @@ import {
   Metadata,
   ServiceError,
   UntypedServiceImplementation,
-} from "@grpc/grpc-js";
-import Long from "long";
-import _m0 from "protobufjs/minimal";
-import { HubEvent, HubEventType, hubEventTypeFromJSON, hubEventTypeToJSON } from "./hub_event";
-import { IdRegistryEvent } from "./id_registry_event";
+} from '@grpc/grpc-js';
+import Long from 'long';
+import _m0 from 'protobufjs/minimal';
+import { HubEvent, HubEventType, hubEventTypeFromJSON, hubEventTypeToJSON } from './hub_event';
+import { IdRegistryEvent } from './id_registry_event';
 import {
   CastId,
   Message,
@@ -26,11 +26,10 @@ import {
   UserDataType,
   userDataTypeFromJSON,
   userDataTypeToJSON,
-} from "./message";
-import { NameRegistryEvent } from "./name_registry_event";
+} from './message';
+import { NameRegistryEvent } from './name_registry_event';
 
-export interface Empty {
-}
+export interface Empty {}
 
 export interface SubscribeRequest {
   eventTypes: HubEventType[];
@@ -75,11 +74,13 @@ export interface FidRequest {
   fid: number;
   pageSize?: number | undefined;
   pageToken?: Uint8Array | undefined;
+  reverse?: boolean | undefined;
 }
 
 export interface FidsRequest {
   pageSize?: number | undefined;
   pageToken?: Uint8Array | undefined;
+  reverse?: boolean | undefined;
 }
 
 export interface FidsResponse {
@@ -96,6 +97,7 @@ export interface CastsByParentRequest {
   castId: CastId | undefined;
   pageSize?: number | undefined;
   pageToken?: Uint8Array | undefined;
+  reverse?: boolean | undefined;
 }
 
 export interface ReactionRequest {
@@ -109,6 +111,7 @@ export interface ReactionsByFidRequest {
   reactionType?: ReactionType | undefined;
   pageSize?: number | undefined;
   pageToken?: Uint8Array | undefined;
+  reverse?: boolean | undefined;
 }
 
 export interface ReactionsByCastRequest {
@@ -116,6 +119,7 @@ export interface ReactionsByCastRequest {
   reactionType?: ReactionType | undefined;
   pageSize?: number | undefined;
   pageToken?: Uint8Array | undefined;
+  reverse?: boolean | undefined;
 }
 
 export interface UserDataRequest {
@@ -147,7 +151,7 @@ export const Empty = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): Empty {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseEmpty();
     while (reader.pos < end) {
@@ -198,7 +202,7 @@ export const SubscribeRequest = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): SubscribeRequest {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseSubscribeRequest();
     while (reader.pos < end) {
@@ -268,7 +272,7 @@ export const EventRequest = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): EventRequest {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseEventRequest();
     while (reader.pos < end) {
@@ -307,28 +311,28 @@ export const EventRequest = {
 };
 
 function createBaseHubInfoResponse(): HubInfoResponse {
-  return { version: "", isSynced: false, nickname: "", rootHash: "" };
+  return { version: '', isSynced: false, nickname: '', rootHash: '' };
 }
 
 export const HubInfoResponse = {
   encode(message: HubInfoResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.version !== "") {
+    if (message.version !== '') {
       writer.uint32(10).string(message.version);
     }
     if (message.isSynced === true) {
       writer.uint32(16).bool(message.isSynced);
     }
-    if (message.nickname !== "") {
+    if (message.nickname !== '') {
       writer.uint32(26).string(message.nickname);
     }
-    if (message.rootHash !== "") {
+    if (message.rootHash !== '') {
       writer.uint32(34).string(message.rootHash);
     }
     return writer;
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): HubInfoResponse {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseHubInfoResponse();
     while (reader.pos < end) {
@@ -356,10 +360,10 @@ export const HubInfoResponse = {
 
   fromJSON(object: any): HubInfoResponse {
     return {
-      version: isSet(object.version) ? String(object.version) : "",
+      version: isSet(object.version) ? String(object.version) : '',
       isSynced: isSet(object.isSynced) ? Boolean(object.isSynced) : false,
-      nickname: isSet(object.nickname) ? String(object.nickname) : "",
-      rootHash: isSet(object.rootHash) ? String(object.rootHash) : "",
+      nickname: isSet(object.nickname) ? String(object.nickname) : '',
+      rootHash: isSet(object.rootHash) ? String(object.rootHash) : '',
     };
   },
 
@@ -378,16 +382,16 @@ export const HubInfoResponse = {
 
   fromPartial<I extends Exact<DeepPartial<HubInfoResponse>, I>>(object: I): HubInfoResponse {
     const message = createBaseHubInfoResponse();
-    message.version = object.version ?? "";
+    message.version = object.version ?? '';
     message.isSynced = object.isSynced ?? false;
-    message.nickname = object.nickname ?? "";
-    message.rootHash = object.rootHash ?? "";
+    message.nickname = object.nickname ?? '';
+    message.rootHash = object.rootHash ?? '';
     return message;
   },
 };
 
 function createBaseTrieNodeMetadataResponse(): TrieNodeMetadataResponse {
-  return { prefix: new Uint8Array(), numMessages: 0, hash: "", children: [] };
+  return { prefix: new Uint8Array(), numMessages: 0, hash: '', children: [] };
 }
 
 export const TrieNodeMetadataResponse = {
@@ -398,7 +402,7 @@ export const TrieNodeMetadataResponse = {
     if (message.numMessages !== 0) {
       writer.uint32(16).uint64(message.numMessages);
     }
-    if (message.hash !== "") {
+    if (message.hash !== '') {
       writer.uint32(26).string(message.hash);
     }
     for (const v of message.children) {
@@ -408,7 +412,7 @@ export const TrieNodeMetadataResponse = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): TrieNodeMetadataResponse {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseTrieNodeMetadataResponse();
     while (reader.pos < end) {
@@ -438,7 +442,7 @@ export const TrieNodeMetadataResponse = {
     return {
       prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array(),
       numMessages: isSet(object.numMessages) ? Number(object.numMessages) : 0,
-      hash: isSet(object.hash) ? String(object.hash) : "",
+      hash: isSet(object.hash) ? String(object.hash) : '',
       children: Array.isArray(object?.children)
         ? object.children.map((e: any) => TrieNodeMetadataResponse.fromJSON(e))
         : [],
@@ -452,7 +456,7 @@ export const TrieNodeMetadataResponse = {
     message.numMessages !== undefined && (obj.numMessages = Math.round(message.numMessages));
     message.hash !== undefined && (obj.hash = message.hash);
     if (message.children) {
-      obj.children = message.children.map((e) => e ? TrieNodeMetadataResponse.toJSON(e) : undefined);
+      obj.children = message.children.map((e) => (e ? TrieNodeMetadataResponse.toJSON(e) : undefined));
     } else {
       obj.children = [];
     }
@@ -467,14 +471,14 @@ export const TrieNodeMetadataResponse = {
     const message = createBaseTrieNodeMetadataResponse();
     message.prefix = object.prefix ?? new Uint8Array();
     message.numMessages = object.numMessages ?? 0;
-    message.hash = object.hash ?? "";
+    message.hash = object.hash ?? '';
     message.children = object.children?.map((e) => TrieNodeMetadataResponse.fromPartial(e)) || [];
     return message;
   },
 };
 
 function createBaseTrieNodeSnapshotResponse(): TrieNodeSnapshotResponse {
-  return { prefix: new Uint8Array(), excludedHashes: [], numMessages: 0, rootHash: "" };
+  return { prefix: new Uint8Array(), excludedHashes: [], numMessages: 0, rootHash: '' };
 }
 
 export const TrieNodeSnapshotResponse = {
@@ -488,14 +492,14 @@ export const TrieNodeSnapshotResponse = {
     if (message.numMessages !== 0) {
       writer.uint32(24).uint64(message.numMessages);
     }
-    if (message.rootHash !== "") {
+    if (message.rootHash !== '') {
       writer.uint32(34).string(message.rootHash);
     }
     return writer;
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): TrieNodeSnapshotResponse {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseTrieNodeSnapshotResponse();
     while (reader.pos < end) {
@@ -526,7 +530,7 @@ export const TrieNodeSnapshotResponse = {
       prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array(),
       excludedHashes: Array.isArray(object?.excludedHashes) ? object.excludedHashes.map((e: any) => String(e)) : [],
       numMessages: isSet(object.numMessages) ? Number(object.numMessages) : 0,
-      rootHash: isSet(object.rootHash) ? String(object.rootHash) : "",
+      rootHash: isSet(object.rootHash) ? String(object.rootHash) : '',
     };
   },
 
@@ -553,7 +557,7 @@ export const TrieNodeSnapshotResponse = {
     message.prefix = object.prefix ?? new Uint8Array();
     message.excludedHashes = object.excludedHashes?.map((e) => e) || [];
     message.numMessages = object.numMessages ?? 0;
-    message.rootHash = object.rootHash ?? "";
+    message.rootHash = object.rootHash ?? '';
     return message;
   },
 };
@@ -571,7 +575,7 @@ export const TrieNodePrefix = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): TrieNodePrefix {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseTrieNodePrefix();
     while (reader.pos < end) {
@@ -623,7 +627,7 @@ export const SyncIds = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): SyncIds {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseSyncIds();
     while (reader.pos < end) {
@@ -666,7 +670,7 @@ export const SyncIds = {
 };
 
 function createBaseFidRequest(): FidRequest {
-  return { fid: 0, pageSize: undefined, pageToken: undefined };
+  return { fid: 0, pageSize: undefined, pageToken: undefined, reverse: undefined };
 }
 
 export const FidRequest = {
@@ -680,11 +684,14 @@ export const FidRequest = {
     if (message.pageToken !== undefined) {
       writer.uint32(26).bytes(message.pageToken);
     }
+    if (message.reverse !== undefined) {
+      writer.uint32(32).bool(message.reverse);
+    }
     return writer;
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): FidRequest {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseFidRequest();
     while (reader.pos < end) {
@@ -699,6 +706,9 @@ export const FidRequest = {
         case 3:
           message.pageToken = reader.bytes();
           break;
+        case 4:
+          message.reverse = reader.bool();
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -712,6 +722,7 @@ export const FidRequest = {
       fid: isSet(object.fid) ? Number(object.fid) : 0,
       pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
       pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
+      reverse: isSet(object.reverse) ? Boolean(object.reverse) : undefined,
     };
   },
 
@@ -721,6 +732,7 @@ export const FidRequest = {
     message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
     message.pageToken !== undefined &&
       (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
+    message.reverse !== undefined && (obj.reverse = message.reverse);
     return obj;
   },
 
@@ -733,12 +745,13 @@ export const FidRequest = {
     message.fid = object.fid ?? 0;
     message.pageSize = object.pageSize ?? undefined;
     message.pageToken = object.pageToken ?? undefined;
+    message.reverse = object.reverse ?? undefined;
     return message;
   },
 };
 
 function createBaseFidsRequest(): FidsRequest {
-  return { pageSize: undefined, pageToken: undefined };
+  return { pageSize: undefined, pageToken: undefined, reverse: undefined };
 }
 
 export const FidsRequest = {
@@ -749,11 +762,14 @@ export const FidsRequest = {
     if (message.pageToken !== undefined) {
       writer.uint32(18).bytes(message.pageToken);
     }
+    if (message.reverse !== undefined) {
+      writer.uint32(24).bool(message.reverse);
+    }
     return writer;
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): FidsRequest {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseFidsRequest();
     while (reader.pos < end) {
@@ -764,6 +780,9 @@ export const FidsRequest = {
           break;
         case 2:
           message.pageToken = reader.bytes();
+          break;
+        case 3:
+          message.reverse = reader.bool();
           break;
         default:
           reader.skipType(tag & 7);
@@ -777,6 +796,7 @@ export const FidsRequest = {
     return {
       pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
       pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
+      reverse: isSet(object.reverse) ? Boolean(object.reverse) : undefined,
     };
   },
 
@@ -785,6 +805,7 @@ export const FidsRequest = {
     message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
     message.pageToken !== undefined &&
       (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
+    message.reverse !== undefined && (obj.reverse = message.reverse);
     return obj;
   },
 
@@ -796,6 +817,7 @@ export const FidsRequest = {
     const message = createBaseFidsRequest();
     message.pageSize = object.pageSize ?? undefined;
     message.pageToken = object.pageToken ?? undefined;
+    message.reverse = object.reverse ?? undefined;
     return message;
   },
 };
@@ -818,7 +840,7 @@ export const FidsResponse = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): FidsResponse {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseFidsResponse();
     while (reader.pos < end) {
@@ -892,7 +914,7 @@ export const MessagesResponse = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): MessagesResponse {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseMessagesResponse();
     while (reader.pos < end) {
@@ -922,7 +944,7 @@ export const MessagesResponse = {
   toJSON(message: MessagesResponse): unknown {
     const obj: any = {};
     if (message.messages) {
-      obj.messages = message.messages.map((e) => e ? Message.toJSON(e) : undefined);
+      obj.messages = message.messages.map((e) => (e ? Message.toJSON(e) : undefined));
     } else {
       obj.messages = [];
     }
@@ -944,7 +966,7 @@ export const MessagesResponse = {
 };
 
 function createBaseCastsByParentRequest(): CastsByParentRequest {
-  return { castId: undefined, pageSize: undefined, pageToken: undefined };
+  return { castId: undefined, pageSize: undefined, pageToken: undefined, reverse: undefined };
 }
 
 export const CastsByParentRequest = {
@@ -958,11 +980,14 @@ export const CastsByParentRequest = {
     if (message.pageToken !== undefined) {
       writer.uint32(26).bytes(message.pageToken);
     }
+    if (message.reverse !== undefined) {
+      writer.uint32(32).bool(message.reverse);
+    }
     return writer;
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): CastsByParentRequest {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseCastsByParentRequest();
     while (reader.pos < end) {
@@ -977,6 +1002,9 @@ export const CastsByParentRequest = {
         case 3:
           message.pageToken = reader.bytes();
           break;
+        case 4:
+          message.reverse = reader.bool();
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -990,6 +1018,7 @@ export const CastsByParentRequest = {
       castId: isSet(object.castId) ? CastId.fromJSON(object.castId) : undefined,
       pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
       pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
+      reverse: isSet(object.reverse) ? Boolean(object.reverse) : undefined,
     };
   },
 
@@ -999,6 +1028,7 @@ export const CastsByParentRequest = {
     message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
     message.pageToken !== undefined &&
       (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
+    message.reverse !== undefined && (obj.reverse = message.reverse);
     return obj;
   },
 
@@ -1008,11 +1038,11 @@ export const CastsByParentRequest = {
 
   fromPartial<I extends Exact<DeepPartial<CastsByParentRequest>, I>>(object: I): CastsByParentRequest {
     const message = createBaseCastsByParentRequest();
-    message.castId = (object.castId !== undefined && object.castId !== null)
-      ? CastId.fromPartial(object.castId)
-      : undefined;
+    message.castId =
+      object.castId !== undefined && object.castId !== null ? CastId.fromPartial(object.castId) : undefined;
     message.pageSize = object.pageSize ?? undefined;
     message.pageToken = object.pageToken ?? undefined;
+    message.reverse = object.reverse ?? undefined;
     return message;
   },
 };
@@ -1036,7 +1066,7 @@ export const ReactionRequest = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): ReactionRequest {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseReactionRequest();
     while (reader.pos < end) {
@@ -1083,15 +1113,14 @@ export const ReactionRequest = {
     const message = createBaseReactionRequest();
     message.fid = object.fid ?? 0;
     message.reactionType = object.reactionType ?? 0;
-    message.castId = (object.castId !== undefined && object.castId !== null)
-      ? CastId.fromPartial(object.castId)
-      : undefined;
+    message.castId =
+      object.castId !== undefined && object.castId !== null ? CastId.fromPartial(object.castId) : undefined;
     return message;
   },
 };
 
 function createBaseReactionsByFidRequest(): ReactionsByFidRequest {
-  return { fid: 0, reactionType: undefined, pageSize: undefined, pageToken: undefined };
+  return { fid: 0, reactionType: undefined, pageSize: undefined, pageToken: undefined, reverse: undefined };
 }
 
 export const ReactionsByFidRequest = {
@@ -1108,11 +1137,14 @@ export const ReactionsByFidRequest = {
     if (message.pageToken !== undefined) {
       writer.uint32(34).bytes(message.pageToken);
     }
+    if (message.reverse !== undefined) {
+      writer.uint32(40).bool(message.reverse);
+    }
     return writer;
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): ReactionsByFidRequest {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseReactionsByFidRequest();
     while (reader.pos < end) {
@@ -1130,6 +1162,9 @@ export const ReactionsByFidRequest = {
         case 4:
           message.pageToken = reader.bytes();
           break;
+        case 5:
+          message.reverse = reader.bool();
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -1144,6 +1179,7 @@ export const ReactionsByFidRequest = {
       reactionType: isSet(object.reactionType) ? reactionTypeFromJSON(object.reactionType) : undefined,
       pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
       pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
+      reverse: isSet(object.reverse) ? Boolean(object.reverse) : undefined,
     };
   },
 
@@ -1155,6 +1191,7 @@ export const ReactionsByFidRequest = {
     message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
     message.pageToken !== undefined &&
       (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
+    message.reverse !== undefined && (obj.reverse = message.reverse);
     return obj;
   },
 
@@ -1168,12 +1205,13 @@ export const ReactionsByFidRequest = {
     message.reactionType = object.reactionType ?? undefined;
     message.pageSize = object.pageSize ?? undefined;
     message.pageToken = object.pageToken ?? undefined;
+    message.reverse = object.reverse ?? undefined;
     return message;
   },
 };
 
 function createBaseReactionsByCastRequest(): ReactionsByCastRequest {
-  return { castId: undefined, reactionType: undefined, pageSize: undefined, pageToken: undefined };
+  return { castId: undefined, reactionType: undefined, pageSize: undefined, pageToken: undefined, reverse: undefined };
 }
 
 export const ReactionsByCastRequest = {
@@ -1190,11 +1228,14 @@ export const ReactionsByCastRequest = {
     if (message.pageToken !== undefined) {
       writer.uint32(34).bytes(message.pageToken);
     }
+    if (message.reverse !== undefined) {
+      writer.uint32(40).bool(message.reverse);
+    }
     return writer;
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): ReactionsByCastRequest {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseReactionsByCastRequest();
     while (reader.pos < end) {
@@ -1212,6 +1253,9 @@ export const ReactionsByCastRequest = {
         case 4:
           message.pageToken = reader.bytes();
           break;
+        case 5:
+          message.reverse = reader.bool();
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -1226,6 +1270,7 @@ export const ReactionsByCastRequest = {
       reactionType: isSet(object.reactionType) ? reactionTypeFromJSON(object.reactionType) : undefined,
       pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
       pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
+      reverse: isSet(object.reverse) ? Boolean(object.reverse) : undefined,
     };
   },
 
@@ -1237,6 +1282,7 @@ export const ReactionsByCastRequest = {
     message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
     message.pageToken !== undefined &&
       (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
+    message.reverse !== undefined && (obj.reverse = message.reverse);
     return obj;
   },
 
@@ -1246,12 +1292,12 @@ export const ReactionsByCastRequest = {
 
   fromPartial<I extends Exact<DeepPartial<ReactionsByCastRequest>, I>>(object: I): ReactionsByCastRequest {
     const message = createBaseReactionsByCastRequest();
-    message.castId = (object.castId !== undefined && object.castId !== null)
-      ? CastId.fromPartial(object.castId)
-      : undefined;
+    message.castId =
+      object.castId !== undefined && object.castId !== null ? CastId.fromPartial(object.castId) : undefined;
     message.reactionType = object.reactionType ?? undefined;
     message.pageSize = object.pageSize ?? undefined;
     message.pageToken = object.pageToken ?? undefined;
+    message.reverse = object.reverse ?? undefined;
     return message;
   },
 };
@@ -1272,7 +1318,7 @@ export const UserDataRequest = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): UserDataRequest {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseUserDataRequest();
     while (reader.pos < end) {
@@ -1331,7 +1377,7 @@ export const NameRegistryEventRequest = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): NameRegistryEventRequest {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseNameRegistryEventRequest();
     while (reader.pos < end) {
@@ -1386,7 +1432,7 @@ export const VerificationRequest = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): VerificationRequest {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseVerificationRequest();
     while (reader.pos < end) {
@@ -1449,7 +1495,7 @@ export const SignerRequest = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): SignerRequest {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseSignerRequest();
     while (reader.pos < end) {
@@ -1500,7 +1546,7 @@ export type HubServiceService = typeof HubServiceService;
 export const HubServiceService = {
   /** Submit Methods */
   submitMessage: {
-    path: "/HubService/SubmitMessage",
+    path: '/HubService/SubmitMessage',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
@@ -1510,7 +1556,7 @@ export const HubServiceService = {
   },
   /** Event Methods */
   subscribe: {
-    path: "/HubService/Subscribe",
+    path: '/HubService/Subscribe',
     requestStream: false,
     responseStream: true,
     requestSerialize: (value: SubscribeRequest) => Buffer.from(SubscribeRequest.encode(value).finish()),
@@ -1519,7 +1565,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => HubEvent.decode(value),
   },
   getEvent: {
-    path: "/HubService/GetEvent",
+    path: '/HubService/GetEvent',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: EventRequest) => Buffer.from(EventRequest.encode(value).finish()),
@@ -1529,7 +1575,7 @@ export const HubServiceService = {
   },
   /** Casts */
   getCast: {
-    path: "/HubService/GetCast",
+    path: '/HubService/GetCast',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: CastId) => Buffer.from(CastId.encode(value).finish()),
@@ -1538,7 +1584,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => Message.decode(value),
   },
   getCastsByFid: {
-    path: "/HubService/GetCastsByFid",
+    path: '/HubService/GetCastsByFid',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
@@ -1547,7 +1593,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getCastsByParent: {
-    path: "/HubService/GetCastsByParent",
+    path: '/HubService/GetCastsByParent',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: CastsByParentRequest) => Buffer.from(CastsByParentRequest.encode(value).finish()),
@@ -1556,7 +1602,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getCastsByMention: {
-    path: "/HubService/GetCastsByMention",
+    path: '/HubService/GetCastsByMention',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
@@ -1566,7 +1612,7 @@ export const HubServiceService = {
   },
   /** Reactions */
   getReaction: {
-    path: "/HubService/GetReaction",
+    path: '/HubService/GetReaction',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: ReactionRequest) => Buffer.from(ReactionRequest.encode(value).finish()),
@@ -1575,7 +1621,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => Message.decode(value),
   },
   getReactionsByFid: {
-    path: "/HubService/GetReactionsByFid",
+    path: '/HubService/GetReactionsByFid',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: ReactionsByFidRequest) => Buffer.from(ReactionsByFidRequest.encode(value).finish()),
@@ -1584,7 +1630,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getReactionsByCast: {
-    path: "/HubService/GetReactionsByCast",
+    path: '/HubService/GetReactionsByCast',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: ReactionsByCastRequest) => Buffer.from(ReactionsByCastRequest.encode(value).finish()),
@@ -1594,7 +1640,7 @@ export const HubServiceService = {
   },
   /** User Data */
   getUserData: {
-    path: "/HubService/GetUserData",
+    path: '/HubService/GetUserData',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: UserDataRequest) => Buffer.from(UserDataRequest.encode(value).finish()),
@@ -1603,7 +1649,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => Message.decode(value),
   },
   getUserDataByFid: {
-    path: "/HubService/GetUserDataByFid",
+    path: '/HubService/GetUserDataByFid',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
@@ -1612,7 +1658,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getNameRegistryEvent: {
-    path: "/HubService/GetNameRegistryEvent",
+    path: '/HubService/GetNameRegistryEvent',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: NameRegistryEventRequest) => Buffer.from(NameRegistryEventRequest.encode(value).finish()),
@@ -1622,7 +1668,7 @@ export const HubServiceService = {
   },
   /** Verifications */
   getVerification: {
-    path: "/HubService/GetVerification",
+    path: '/HubService/GetVerification',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: VerificationRequest) => Buffer.from(VerificationRequest.encode(value).finish()),
@@ -1631,7 +1677,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => Message.decode(value),
   },
   getVerificationsByFid: {
-    path: "/HubService/GetVerificationsByFid",
+    path: '/HubService/GetVerificationsByFid',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
@@ -1641,7 +1687,7 @@ export const HubServiceService = {
   },
   /** Signer */
   getSigner: {
-    path: "/HubService/GetSigner",
+    path: '/HubService/GetSigner',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: SignerRequest) => Buffer.from(SignerRequest.encode(value).finish()),
@@ -1650,7 +1696,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => Message.decode(value),
   },
   getSignersByFid: {
-    path: "/HubService/GetSignersByFid",
+    path: '/HubService/GetSignersByFid',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
@@ -1659,7 +1705,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getIdRegistryEvent: {
-    path: "/HubService/GetIdRegistryEvent",
+    path: '/HubService/GetIdRegistryEvent',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
@@ -1668,7 +1714,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => IdRegistryEvent.decode(value),
   },
   getFids: {
-    path: "/HubService/GetFids",
+    path: '/HubService/GetFids',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: FidsRequest) => Buffer.from(FidsRequest.encode(value).finish()),
@@ -1678,7 +1724,7 @@ export const HubServiceService = {
   },
   /** Bulk Methods */
   getAllCastMessagesByFid: {
-    path: "/HubService/GetAllCastMessagesByFid",
+    path: '/HubService/GetAllCastMessagesByFid',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
@@ -1687,7 +1733,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getAllReactionMessagesByFid: {
-    path: "/HubService/GetAllReactionMessagesByFid",
+    path: '/HubService/GetAllReactionMessagesByFid',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
@@ -1696,7 +1742,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getAllVerificationMessagesByFid: {
-    path: "/HubService/GetAllVerificationMessagesByFid",
+    path: '/HubService/GetAllVerificationMessagesByFid',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
@@ -1705,7 +1751,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getAllSignerMessagesByFid: {
-    path: "/HubService/GetAllSignerMessagesByFid",
+    path: '/HubService/GetAllSignerMessagesByFid',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
@@ -1714,7 +1760,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getAllUserDataMessagesByFid: {
-    path: "/HubService/GetAllUserDataMessagesByFid",
+    path: '/HubService/GetAllUserDataMessagesByFid',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
@@ -1724,7 +1770,7 @@ export const HubServiceService = {
   },
   /** Sync Methods */
   getInfo: {
-    path: "/HubService/GetInfo",
+    path: '/HubService/GetInfo',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
@@ -1733,7 +1779,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => HubInfoResponse.decode(value),
   },
   getAllSyncIdsByPrefix: {
-    path: "/HubService/GetAllSyncIdsByPrefix",
+    path: '/HubService/GetAllSyncIdsByPrefix',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: TrieNodePrefix) => Buffer.from(TrieNodePrefix.encode(value).finish()),
@@ -1742,7 +1788,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => SyncIds.decode(value),
   },
   getAllMessagesBySyncIds: {
-    path: "/HubService/GetAllMessagesBySyncIds",
+    path: '/HubService/GetAllMessagesBySyncIds',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: SyncIds) => Buffer.from(SyncIds.encode(value).finish()),
@@ -1751,7 +1797,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
   getSyncMetadataByPrefix: {
-    path: "/HubService/GetSyncMetadataByPrefix",
+    path: '/HubService/GetSyncMetadataByPrefix',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: TrieNodePrefix) => Buffer.from(TrieNodePrefix.encode(value).finish()),
@@ -1761,7 +1807,7 @@ export const HubServiceService = {
     responseDeserialize: (value: Buffer) => TrieNodeMetadataResponse.decode(value),
   },
   getSyncSnapshotByPrefix: {
-    path: "/HubService/GetSyncSnapshotByPrefix",
+    path: '/HubService/GetSyncSnapshotByPrefix',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: TrieNodePrefix) => Buffer.from(TrieNodePrefix.encode(value).finish()),
@@ -1819,424 +1865,424 @@ export interface HubServiceClient extends Client {
   submitMessage(
     request: Message,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: Message) => void,
+    callback: (error: ServiceError | null, response: Message) => void
   ): ClientUnaryCall;
   submitMessage(
     request: Message,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: Message) => void,
+    callback: (error: ServiceError | null, response: Message) => void
   ): ClientUnaryCall;
   /** Event Methods */
   subscribe(request: SubscribeRequest, options?: Partial<CallOptions>): ClientReadableStream<HubEvent>;
   subscribe(
     request: SubscribeRequest,
     metadata?: Metadata,
-    options?: Partial<CallOptions>,
+    options?: Partial<CallOptions>
   ): ClientReadableStream<HubEvent>;
   getEvent(request: EventRequest, callback: (error: ServiceError | null, response: HubEvent) => void): ClientUnaryCall;
   getEvent(
     request: EventRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: HubEvent) => void,
+    callback: (error: ServiceError | null, response: HubEvent) => void
   ): ClientUnaryCall;
   getEvent(
     request: EventRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: HubEvent) => void,
+    callback: (error: ServiceError | null, response: HubEvent) => void
   ): ClientUnaryCall;
   /** Casts */
   getCast(request: CastId, callback: (error: ServiceError | null, response: Message) => void): ClientUnaryCall;
   getCast(
     request: CastId,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: Message) => void,
+    callback: (error: ServiceError | null, response: Message) => void
   ): ClientUnaryCall;
   getCast(
     request: CastId,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: Message) => void,
+    callback: (error: ServiceError | null, response: Message) => void
   ): ClientUnaryCall;
   getCastsByFid(
     request: FidRequest,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getCastsByFid(
     request: FidRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getCastsByFid(
     request: FidRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getCastsByParent(
     request: CastsByParentRequest,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getCastsByParent(
     request: CastsByParentRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getCastsByParent(
     request: CastsByParentRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getCastsByMention(
     request: FidRequest,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getCastsByMention(
     request: FidRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getCastsByMention(
     request: FidRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   /** Reactions */
   getReaction(
     request: ReactionRequest,
-    callback: (error: ServiceError | null, response: Message) => void,
+    callback: (error: ServiceError | null, response: Message) => void
   ): ClientUnaryCall;
   getReaction(
     request: ReactionRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: Message) => void,
+    callback: (error: ServiceError | null, response: Message) => void
   ): ClientUnaryCall;
   getReaction(
     request: ReactionRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: Message) => void,
+    callback: (error: ServiceError | null, response: Message) => void
   ): ClientUnaryCall;
   getReactionsByFid(
     request: ReactionsByFidRequest,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getReactionsByFid(
     request: ReactionsByFidRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getReactionsByFid(
     request: ReactionsByFidRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getReactionsByCast(
     request: ReactionsByCastRequest,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getReactionsByCast(
     request: ReactionsByCastRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getReactionsByCast(
     request: ReactionsByCastRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   /** User Data */
   getUserData(
     request: UserDataRequest,
-    callback: (error: ServiceError | null, response: Message) => void,
+    callback: (error: ServiceError | null, response: Message) => void
   ): ClientUnaryCall;
   getUserData(
     request: UserDataRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: Message) => void,
+    callback: (error: ServiceError | null, response: Message) => void
   ): ClientUnaryCall;
   getUserData(
     request: UserDataRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: Message) => void,
+    callback: (error: ServiceError | null, response: Message) => void
   ): ClientUnaryCall;
   getUserDataByFid(
     request: FidRequest,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getUserDataByFid(
     request: FidRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getUserDataByFid(
     request: FidRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getNameRegistryEvent(
     request: NameRegistryEventRequest,
-    callback: (error: ServiceError | null, response: NameRegistryEvent) => void,
+    callback: (error: ServiceError | null, response: NameRegistryEvent) => void
   ): ClientUnaryCall;
   getNameRegistryEvent(
     request: NameRegistryEventRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: NameRegistryEvent) => void,
+    callback: (error: ServiceError | null, response: NameRegistryEvent) => void
   ): ClientUnaryCall;
   getNameRegistryEvent(
     request: NameRegistryEventRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: NameRegistryEvent) => void,
+    callback: (error: ServiceError | null, response: NameRegistryEvent) => void
   ): ClientUnaryCall;
   /** Verifications */
   getVerification(
     request: VerificationRequest,
-    callback: (error: ServiceError | null, response: Message) => void,
+    callback: (error: ServiceError | null, response: Message) => void
   ): ClientUnaryCall;
   getVerification(
     request: VerificationRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: Message) => void,
+    callback: (error: ServiceError | null, response: Message) => void
   ): ClientUnaryCall;
   getVerification(
     request: VerificationRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: Message) => void,
+    callback: (error: ServiceError | null, response: Message) => void
   ): ClientUnaryCall;
   getVerificationsByFid(
     request: FidRequest,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getVerificationsByFid(
     request: FidRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getVerificationsByFid(
     request: FidRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   /** Signer */
   getSigner(request: SignerRequest, callback: (error: ServiceError | null, response: Message) => void): ClientUnaryCall;
   getSigner(
     request: SignerRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: Message) => void,
+    callback: (error: ServiceError | null, response: Message) => void
   ): ClientUnaryCall;
   getSigner(
     request: SignerRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: Message) => void,
+    callback: (error: ServiceError | null, response: Message) => void
   ): ClientUnaryCall;
   getSignersByFid(
     request: FidRequest,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getSignersByFid(
     request: FidRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getSignersByFid(
     request: FidRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getIdRegistryEvent(
     request: FidRequest,
-    callback: (error: ServiceError | null, response: IdRegistryEvent) => void,
+    callback: (error: ServiceError | null, response: IdRegistryEvent) => void
   ): ClientUnaryCall;
   getIdRegistryEvent(
     request: FidRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: IdRegistryEvent) => void,
+    callback: (error: ServiceError | null, response: IdRegistryEvent) => void
   ): ClientUnaryCall;
   getIdRegistryEvent(
     request: FidRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: IdRegistryEvent) => void,
+    callback: (error: ServiceError | null, response: IdRegistryEvent) => void
   ): ClientUnaryCall;
   getFids(
     request: FidsRequest,
-    callback: (error: ServiceError | null, response: FidsResponse) => void,
+    callback: (error: ServiceError | null, response: FidsResponse) => void
   ): ClientUnaryCall;
   getFids(
     request: FidsRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: FidsResponse) => void,
+    callback: (error: ServiceError | null, response: FidsResponse) => void
   ): ClientUnaryCall;
   getFids(
     request: FidsRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: FidsResponse) => void,
+    callback: (error: ServiceError | null, response: FidsResponse) => void
   ): ClientUnaryCall;
   /** Bulk Methods */
   getAllCastMessagesByFid(
     request: FidRequest,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getAllCastMessagesByFid(
     request: FidRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getAllCastMessagesByFid(
     request: FidRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getAllReactionMessagesByFid(
     request: FidRequest,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
-  ): ClientUnaryCall;
-  getAllReactionMessagesByFid(
-    request: FidRequest,
-    metadata: Metadata,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getAllReactionMessagesByFid(
     request: FidRequest,
     metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
+  ): ClientUnaryCall;
+  getAllReactionMessagesByFid(
+    request: FidRequest,
+    metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getAllVerificationMessagesByFid(
     request: FidRequest,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getAllVerificationMessagesByFid(
     request: FidRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getAllVerificationMessagesByFid(
     request: FidRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getAllSignerMessagesByFid(
     request: FidRequest,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getAllSignerMessagesByFid(
     request: FidRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getAllSignerMessagesByFid(
     request: FidRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getAllUserDataMessagesByFid(
     request: FidRequest,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getAllUserDataMessagesByFid(
     request: FidRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getAllUserDataMessagesByFid(
     request: FidRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   /** Sync Methods */
   getInfo(request: Empty, callback: (error: ServiceError | null, response: HubInfoResponse) => void): ClientUnaryCall;
   getInfo(
     request: Empty,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: HubInfoResponse) => void,
+    callback: (error: ServiceError | null, response: HubInfoResponse) => void
   ): ClientUnaryCall;
   getInfo(
     request: Empty,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: HubInfoResponse) => void,
+    callback: (error: ServiceError | null, response: HubInfoResponse) => void
   ): ClientUnaryCall;
   getAllSyncIdsByPrefix(
     request: TrieNodePrefix,
-    callback: (error: ServiceError | null, response: SyncIds) => void,
-  ): ClientUnaryCall;
-  getAllSyncIdsByPrefix(
-    request: TrieNodePrefix,
-    metadata: Metadata,
-    callback: (error: ServiceError | null, response: SyncIds) => void,
+    callback: (error: ServiceError | null, response: SyncIds) => void
   ): ClientUnaryCall;
   getAllSyncIdsByPrefix(
     request: TrieNodePrefix,
     metadata: Metadata,
+    callback: (error: ServiceError | null, response: SyncIds) => void
+  ): ClientUnaryCall;
+  getAllSyncIdsByPrefix(
+    request: TrieNodePrefix,
+    metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: SyncIds) => void,
+    callback: (error: ServiceError | null, response: SyncIds) => void
   ): ClientUnaryCall;
   getAllMessagesBySyncIds(
     request: SyncIds,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getAllMessagesBySyncIds(
     request: SyncIds,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getAllMessagesBySyncIds(
     request: SyncIds,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getSyncMetadataByPrefix(
     request: TrieNodePrefix,
-    callback: (error: ServiceError | null, response: TrieNodeMetadataResponse) => void,
+    callback: (error: ServiceError | null, response: TrieNodeMetadataResponse) => void
   ): ClientUnaryCall;
   getSyncMetadataByPrefix(
     request: TrieNodePrefix,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: TrieNodeMetadataResponse) => void,
+    callback: (error: ServiceError | null, response: TrieNodeMetadataResponse) => void
   ): ClientUnaryCall;
   getSyncMetadataByPrefix(
     request: TrieNodePrefix,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: TrieNodeMetadataResponse) => void,
+    callback: (error: ServiceError | null, response: TrieNodeMetadataResponse) => void
   ): ClientUnaryCall;
   getSyncSnapshotByPrefix(
     request: TrieNodePrefix,
-    callback: (error: ServiceError | null, response: TrieNodeSnapshotResponse) => void,
+    callback: (error: ServiceError | null, response: TrieNodeSnapshotResponse) => void
   ): ClientUnaryCall;
   getSyncSnapshotByPrefix(
     request: TrieNodePrefix,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: TrieNodeSnapshotResponse) => void,
+    callback: (error: ServiceError | null, response: TrieNodeSnapshotResponse) => void
   ): ClientUnaryCall;
   getSyncSnapshotByPrefix(
     request: TrieNodePrefix,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: TrieNodeSnapshotResponse) => void,
+    callback: (error: ServiceError | null, response: TrieNodeSnapshotResponse) => void
   ): ClientUnaryCall;
 }
 
-export const HubServiceClient = makeGenericClientConstructor(HubServiceService, "HubService") as unknown as {
+export const HubServiceClient = makeGenericClientConstructor(HubServiceService, 'HubService') as unknown as {
   new (address: string, credentials: ChannelCredentials, options?: Partial<ClientOptions>): HubServiceClient;
   service: typeof HubServiceService;
 };
@@ -2244,7 +2290,7 @@ export const HubServiceClient = makeGenericClientConstructor(HubServiceService, 
 export type AdminServiceService = typeof AdminServiceService;
 export const AdminServiceService = {
   rebuildSyncTrie: {
-    path: "/AdminService/RebuildSyncTrie",
+    path: '/AdminService/RebuildSyncTrie',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
@@ -2253,7 +2299,7 @@ export const AdminServiceService = {
     responseDeserialize: (value: Buffer) => Empty.decode(value),
   },
   deleteAllMessagesFromDb: {
-    path: "/AdminService/DeleteAllMessagesFromDb",
+    path: '/AdminService/DeleteAllMessagesFromDb',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
@@ -2262,7 +2308,7 @@ export const AdminServiceService = {
     responseDeserialize: (value: Buffer) => Empty.decode(value),
   },
   submitIdRegistryEvent: {
-    path: "/AdminService/SubmitIdRegistryEvent",
+    path: '/AdminService/SubmitIdRegistryEvent',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: IdRegistryEvent) => Buffer.from(IdRegistryEvent.encode(value).finish()),
@@ -2271,7 +2317,7 @@ export const AdminServiceService = {
     responseDeserialize: (value: Buffer) => IdRegistryEvent.decode(value),
   },
   submitNameRegistryEvent: {
-    path: "/AdminService/SubmitNameRegistryEvent",
+    path: '/AdminService/SubmitNameRegistryEvent',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: NameRegistryEvent) => Buffer.from(NameRegistryEvent.encode(value).finish()),
@@ -2293,62 +2339,62 @@ export interface AdminServiceClient extends Client {
   rebuildSyncTrie(
     request: Empty,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: Empty) => void,
+    callback: (error: ServiceError | null, response: Empty) => void
   ): ClientUnaryCall;
   rebuildSyncTrie(
     request: Empty,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: Empty) => void,
+    callback: (error: ServiceError | null, response: Empty) => void
   ): ClientUnaryCall;
   deleteAllMessagesFromDb(
     request: Empty,
-    callback: (error: ServiceError | null, response: Empty) => void,
+    callback: (error: ServiceError | null, response: Empty) => void
   ): ClientUnaryCall;
   deleteAllMessagesFromDb(
     request: Empty,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: Empty) => void,
+    callback: (error: ServiceError | null, response: Empty) => void
   ): ClientUnaryCall;
   deleteAllMessagesFromDb(
     request: Empty,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: Empty) => void,
+    callback: (error: ServiceError | null, response: Empty) => void
   ): ClientUnaryCall;
   submitIdRegistryEvent(
     request: IdRegistryEvent,
-    callback: (error: ServiceError | null, response: IdRegistryEvent) => void,
+    callback: (error: ServiceError | null, response: IdRegistryEvent) => void
   ): ClientUnaryCall;
   submitIdRegistryEvent(
     request: IdRegistryEvent,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: IdRegistryEvent) => void,
+    callback: (error: ServiceError | null, response: IdRegistryEvent) => void
   ): ClientUnaryCall;
   submitIdRegistryEvent(
     request: IdRegistryEvent,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: IdRegistryEvent) => void,
+    callback: (error: ServiceError | null, response: IdRegistryEvent) => void
   ): ClientUnaryCall;
   submitNameRegistryEvent(
     request: NameRegistryEvent,
-    callback: (error: ServiceError | null, response: NameRegistryEvent) => void,
+    callback: (error: ServiceError | null, response: NameRegistryEvent) => void
   ): ClientUnaryCall;
   submitNameRegistryEvent(
     request: NameRegistryEvent,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: NameRegistryEvent) => void,
+    callback: (error: ServiceError | null, response: NameRegistryEvent) => void
   ): ClientUnaryCall;
   submitNameRegistryEvent(
     request: NameRegistryEvent,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: NameRegistryEvent) => void,
+    callback: (error: ServiceError | null, response: NameRegistryEvent) => void
   ): ClientUnaryCall;
 }
 
-export const AdminServiceClient = makeGenericClientConstructor(AdminServiceService, "AdminService") as unknown as {
+export const AdminServiceClient = makeGenericClientConstructor(AdminServiceService, 'AdminService') as unknown as {
   new (address: string, credentials: ChannelCredentials, options?: Partial<ClientOptions>): AdminServiceClient;
   service: typeof AdminServiceService;
 };
@@ -2357,24 +2403,24 @@ declare var self: any | undefined;
 declare var window: any | undefined;
 declare var global: any | undefined;
 var tsProtoGlobalThis: any = (() => {
-  if (typeof globalThis !== "undefined") {
+  if (typeof globalThis !== 'undefined') {
     return globalThis;
   }
-  if (typeof self !== "undefined") {
+  if (typeof self !== 'undefined') {
     return self;
   }
-  if (typeof window !== "undefined") {
+  if (typeof window !== 'undefined') {
     return window;
   }
-  if (typeof global !== "undefined") {
+  if (typeof global !== 'undefined') {
     return global;
   }
-  throw "Unable to locate global object";
+  throw 'Unable to locate global object';
 })();
 
 function bytesFromBase64(b64: string): Uint8Array {
   if (tsProtoGlobalThis.Buffer) {
-    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, "base64"));
+    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, 'base64'));
   } else {
     const bin = tsProtoGlobalThis.atob(b64);
     const arr = new Uint8Array(bin.length);
@@ -2387,30 +2433,36 @@ function bytesFromBase64(b64: string): Uint8Array {
 
 function base64FromBytes(arr: Uint8Array): string {
   if (tsProtoGlobalThis.Buffer) {
-    return tsProtoGlobalThis.Buffer.from(arr).toString("base64");
+    return tsProtoGlobalThis.Buffer.from(arr).toString('base64');
   } else {
     const bin: string[] = [];
     arr.forEach((byte) => {
       bin.push(String.fromCharCode(byte));
     });
-    return tsProtoGlobalThis.btoa(bin.join(""));
+    return tsProtoGlobalThis.btoa(bin.join(''));
   }
 }
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 
-type DeepPartial<T> = T extends Builtin ? T
-  : T extends Array<infer U> ? Array<DeepPartial<U>> : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
-  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
+type DeepPartial<T> = T extends Builtin
+  ? T
+  : T extends Array<infer U>
+  ? Array<DeepPartial<U>>
+  : T extends ReadonlyArray<infer U>
+  ? ReadonlyArray<DeepPartial<U>>
+  : T extends {}
+  ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-type Exact<P, I extends P> = P extends Builtin ? P
+type Exact<P, I extends P> = P extends Builtin
+  ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
 
 function longToNumber(long: Long): number {
   if (long.gt(Number.MAX_SAFE_INTEGER)) {
-    throw new tsProtoGlobalThis.Error("Value is larger than Number.MAX_SAFE_INTEGER");
+    throw new tsProtoGlobalThis.Error('Value is larger than Number.MAX_SAFE_INTEGER');
   }
   return long.toNumber();
 }

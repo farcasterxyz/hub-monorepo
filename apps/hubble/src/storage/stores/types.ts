@@ -12,6 +12,7 @@ export const PAGE_SIZE_MAX = 10_000;
 export type PageOptions = {
   pageToken?: Uint8Array | undefined;
   pageSize?: number | undefined;
+  reverse?: boolean | undefined;
 };
 
 export type MessagesPage<T extends protobufs.Message> = {
