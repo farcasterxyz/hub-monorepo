@@ -2,9 +2,10 @@ import { CastAddMessage, HubEvent, HubEventType } from '@farcaster/protobufs';
 import { Factories } from '@farcaster/utils';
 import { ok } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
+import { getMessage, makeTsHash, putMessageTransaction } from '~/storage/db/message';
+import { UserPostfix } from '~/storage/db/types';
 import StoreEventHandler, { HubEventArgs, HubEventIdGenerator } from '~/storage/stores/storeEventHandler';
-import { getMessage, makeTsHash, putMessageTransaction } from '../db/message';
-import { UserPostfix } from '../db/types';
+import { sleep } from '~/utils/crypto';
 
 const db = jestRocksDB('stores.storeEventHandler.test');
 const eventHandler = new StoreEventHandler(db);
@@ -103,5 +104,42 @@ describe('commitTransaction', () => {
       expect(event.id).toBeGreaterThan(lastId);
       lastId = event.id;
     }
+  });
+});
+
+describe('pruneEvents', () => {
+  test('deletes events based on time limit', async () => {
+    const message1 = await Factories.Message.create();
+    const idRegistryEvent = Factories.IdRegistryEvent.build();
+    const message2 = await Factories.Message.create();
+    const message3 = await Factories.Message.create();
+
+    const eventArgs1 = {
+      type: HubEventType.MERGE_MESSAGE,
+      mergeMessageBody: { message: message1, deletedMessages: [] },
+    };
+    const eventArgs2 = { type: HubEventType.MERGE_ID_REGISTRY_EVENT, mergeIdRegistryEventBody: { idRegistryEvent } };
+    const eventArgs3 = { type: HubEventType.PRUNE_MESSAGE, pruneMessageBody: { message: message2 } };
+    const eventArgs4 = {
+      type: HubEventType.MERGE_MESSAGE,
+      mergeMessageBody: { message: message3, deletedMessages: [] },
+    };
+
+    const result1 = await eventHandler.commitTransaction(db.transaction(), [eventArgs1, eventArgs2]);
+    expect(result1.isOk()).toBeTruthy();
+
+    await sleep(2_000);
+
+    const result2 = await eventHandler.commitTransaction(db.transaction(), [eventArgs3, eventArgs4]);
+    expect(result2.isOk()).toBeTruthy();
+
+    const allEvents1 = await eventHandler.getEvents();
+    expect(allEvents1._unsafeUnwrap()).toMatchObject([eventArgs1, eventArgs2, eventArgs3, eventArgs4]);
+
+    const pruneResult = await eventHandler.pruneEvents(1_000);
+    expect(pruneResult.isOk()).toBeTruthy();
+
+    const allEvents2 = await eventHandler.getEvents();
+    expect(allEvents2._unsafeUnwrap()).toMatchObject([eventArgs3, eventArgs4]);
   });
 });

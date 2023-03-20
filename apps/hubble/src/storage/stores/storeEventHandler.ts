@@ -145,7 +145,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     if (maxKey.isErr()) {
       return err(maxKey.error);
     }
-    return ok(this._db.iterator({ gte: minKey, lt: Buffer.from(maxKey.value), keys: false, valueAsBuffer: true }));
+    return ok(this._db.iterator({ gte: minKey, lt: Buffer.from(maxKey.value) }));
   }
 
   async getEvents(fromId?: number): HubAsyncResult<HubEvent[]> {
@@ -190,8 +190,8 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       });
   }
 
-  async pruneEvents(): HubAsyncResult<void> {
-    const toId = makeEventId(Date.now() - FARCASTER_EPOCH - PRUNE_TIME_LIMIT_DEFAULT, 0);
+  async pruneEvents(timeLimit?: number): HubAsyncResult<void> {
+    const toId = makeEventId(Date.now() - FARCASTER_EPOCH - (timeLimit ?? PRUNE_TIME_LIMIT_DEFAULT), 0);
 
     const iterator = this.getEventsIterator({ toId });
 
