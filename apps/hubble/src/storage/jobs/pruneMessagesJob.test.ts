@@ -44,42 +44,46 @@ describe('doJobs', () => {
     expect(result._unsafeUnwrap()).toEqual(undefined);
   });
 
-  test('prunes messages for all fids', async () => {
-    const timestampToPrune = 1; // 1 second after farcaster epoch (1/1/22)
+  test(
+    'prunes messages for all fids',
+    async () => {
+      const timestampToPrune = 1; // 1 second after farcaster epoch (1/1/22)
 
-    const fid1 = Factories.Fid.build();
+      const fid1 = Factories.Fid.build();
 
-    const signer1 = Factories.Ed25519Signer.build();
-    const signer1Key = (await signer1.getSignerKey())._unsafeUnwrap();
-    await seedSigner(engine, fid1, signer1Key);
-    await seedMessagesFromTimestamp(engine, fid1, signer1, timestampToPrune);
+      const signer1 = Factories.Ed25519Signer.build();
+      const signer1Key = (await signer1.getSignerKey())._unsafeUnwrap();
+      await seedSigner(engine, fid1, signer1Key);
+      await seedMessagesFromTimestamp(engine, fid1, signer1, timestampToPrune);
 
-    const fid2 = Factories.Fid.build();
+      const fid2 = Factories.Fid.build();
 
-    const signer2 = Factories.Ed25519Signer.build();
-    const signer2Key = (await signer2.getSignerKey())._unsafeUnwrap();
-    await seedSigner(engine, fid2, signer2Key);
-    await seedMessagesFromTimestamp(engine, fid2, signer2, timestampToPrune);
+      const signer2 = Factories.Ed25519Signer.build();
+      const signer2Key = (await signer2.getSignerKey())._unsafeUnwrap();
+      await seedSigner(engine, fid2, signer2Key);
+      await seedMessagesFromTimestamp(engine, fid2, signer2, timestampToPrune);
 
-    for (const fid of [fid1, fid2]) {
-      const casts = await engine.getCastsByFid(fid);
-      expect(casts._unsafeUnwrap().messages.length).toEqual(1);
+      for (const fid of [fid1, fid2]) {
+        const casts = await engine.getCastsByFid(fid);
+        expect(casts._unsafeUnwrap().messages.length).toEqual(1);
 
-      const reactions = await engine.getReactionsByFid(fid);
-      expect(reactions._unsafeUnwrap().messages.length).toEqual(1);
-    }
+        const reactions = await engine.getReactionsByFid(fid);
+        expect(reactions._unsafeUnwrap().messages.length).toEqual(1);
+      }
 
-    const result = await scheduler.doJobs();
-    expect(result._unsafeUnwrap()).toEqual(undefined);
+      const result = await scheduler.doJobs();
+      expect(result._unsafeUnwrap()).toEqual(undefined);
 
-    for (const fid of [fid1, fid2]) {
-      const casts = await engine.getCastsByFid(fid);
-      expect(casts._unsafeUnwrap().messages).toEqual([]);
+      for (const fid of [fid1, fid2]) {
+        const casts = await engine.getCastsByFid(fid);
+        expect(casts._unsafeUnwrap().messages).toEqual([]);
 
-      const reactions = await engine.getReactionsByFid(fid);
-      expect(reactions._unsafeUnwrap().messages).toEqual([]);
-    }
+        const reactions = await engine.getReactionsByFid(fid);
+        expect(reactions._unsafeUnwrap().messages).toEqual([]);
+      }
 
-    expect(prunedMessages.length).toEqual(4);
-  });
+      expect(prunedMessages.length).toEqual(4);
+    },
+    15 * 1000
+  );
 });

@@ -65,6 +65,7 @@ describe('SyncEngine', () => {
     );
 
     await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
+    await syncEngine.trie.commitToDb();
     return results;
   };
 

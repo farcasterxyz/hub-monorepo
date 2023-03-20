@@ -349,14 +349,14 @@ export class Hub implements HubInterface {
     await this.adminServer.stop();
     await this.gossipNode.stop();
 
+    // Stop sync
+    await this.syncEngine.stop();
+
     // Stop cron tasks
     this.revokeSignerJobScheduler.stop();
     this.pruneMessagesJobScheduler.stop();
     this.periodSyncJobScheduler.stop();
     this.pruneEventsJobScheduler.stop();
-
-    // Stop sync
-    await this.syncEngine.stop();
 
     // Stop the ETH registry provider
     if (this.ethRegistryProvider) {

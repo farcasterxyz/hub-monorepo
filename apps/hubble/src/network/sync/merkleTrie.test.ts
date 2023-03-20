@@ -25,6 +25,7 @@ describe('MerkleTrie', () => {
     );
     const trie = new MerkleTrie(db);
     await Promise.all(syncIds.map((id) => trie.insert(id)));
+    await trie.commitToDb();
     return trie;
   };
 
@@ -113,6 +114,7 @@ describe('MerkleTrie', () => {
       const syncIdStr = Buffer.from(syncId.syncId()).toString('hex');
 
       await trie.insert(syncId);
+      await trie.commitToDb();
 
       expect(await trie.exists(syncId)).toBeTruthy();
 
@@ -142,6 +144,8 @@ describe('MerkleTrie', () => {
       expect(await trie.insert(syncId2)).toBeTruthy();
       expect(await trie.exists(syncId2)).toBeTruthy();
 
+      await trie.commitToDb();
+
       leafs = 0;
       //eslint-disable-next-line @typescript-eslint/no-unused-vars
       count = await forEachDbItem(db, async (i, key, value) => {
@@ -169,6 +173,7 @@ describe('MerkleTrie', () => {
       async () => {
         const syncIds = await NetworkFactories.SyncId.createList(20);
         await Promise.all(syncIds.map(async (syncId) => await trie.insert(syncId)));
+        await trie.commitToDb();
 
         // Now initialize a new merkle trie from the same DB
         const trie2 = new MerkleTrie(db);
@@ -183,6 +188,7 @@ describe('MerkleTrie', () => {
 
         // Delete half the items from the first trie
         await Promise.all(syncIds.slice(0, syncIds.length / 2).map(async (syncId) => trie.delete(syncId)));
+        await trie.commitToDb();
 
         // Initialize a new trie from the same DB
         const trie3 = new MerkleTrie(db);
@@ -276,6 +282,8 @@ describe('MerkleTrie', () => {
       const id = await NetworkFactories.SyncId.create();
 
       await trie.insert(id);
+      await trie.commitToDb();
+
       expect(await trie.items()).toEqual(1);
 
       let count = await forEachDbItem(db);
@@ -283,6 +291,8 @@ describe('MerkleTrie', () => {
 
       // Delete
       await trie.delete(id);
+      await trie.commitToDb();
+
       count = await forEachDbItem(db);
       expect(count).toEqual(0);
     });
@@ -293,12 +303,15 @@ describe('MerkleTrie', () => {
 
       await trie.insert(syncId1);
       await trie.insert(syncId2);
+      await trie.commitToDb();
 
       let count = await forEachDbItem(db);
       expect(count).toBeGreaterThan(1 + TIMESTAMP_LENGTH);
 
       // Delete
       await trie.delete(syncId1);
+      await trie.commitToDb();
+
       count = await forEachDbItem(db);
       expect(count).toEqual(1 + TIMESTAMP_LENGTH);
     });
@@ -342,6 +355,7 @@ describe('MerkleTrie', () => {
 
       await trie.insert(syncId1);
       await trie.insert(syncId2);
+      await trie.commitToDb();
 
       const rootHash = await trie.rootHash();
 
@@ -351,6 +365,7 @@ describe('MerkleTrie', () => {
       expect(await trie2.rootHash()).toEqual(rootHash);
 
       expect(await trie2.delete(syncId1)).toBeTruthy();
+      await trie2.commitToDb();
 
       expect(await trie2.rootHash()).not.toEqual(rootHash);
       expect(await trie2.exists(syncId1)).toBeFalsy();
@@ -363,6 +378,7 @@ describe('MerkleTrie', () => {
 
       await trie.insert(syncId1);
       await trie.insert(syncId2);
+      await trie.commitToDb();
 
       const rootHash = await trie.rootHash();
 
@@ -371,6 +387,7 @@ describe('MerkleTrie', () => {
 
       // Now try deleting syncId1
       expect(await trie.delete(syncId1)).toBeTruthy();
+      await trie.commitToDb();
 
       expect(await trie.rootHash()).not.toEqual(rootHash);
       expect(await trie.exists(syncId1)).toBeFalsy();

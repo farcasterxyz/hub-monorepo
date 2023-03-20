@@ -45,6 +45,8 @@ class MerkleTrie {
   private _db: RocksDB;
   private _lock: ReadWriteLock;
 
+  private _pendingDbUpdates = new Map<Buffer, Buffer>();
+
   private _callsSinceLastUnload = 0;
 
   constructor(rocksDb: RocksDB) {
@@ -103,23 +105,18 @@ class MerkleTrie {
     return new Promise((resolve) => {
       this._lock.writeLock(async (release) => {
         try {
-          // Create a new DB transaction
-          const { status, txn } = await this._root.insert(id.syncId(), this._db, this._db.transaction());
+          const { status, dbUpdatesMap } = await this._root.insert(id.syncId(), this._db, new Map());
+          this._updatePendingDbUpdates(dbUpdatesMap);
 
           // Write the transaction to the DB
-          const dbStatus = await ResultAsync.fromPromise(this._db.commit(txn), (e) => e as Error);
-          if (dbStatus.isErr()) {
-            log.error('Insert Error', dbStatus.error);
-          } else {
-            this._unloadFromMemory();
-          }
+          await this._unloadFromMemory();
 
           release();
           resolve(status);
         } catch (e) {
           log.error('Insert Error', e);
 
-          this._unloadFromMemory();
+          await this._unloadFromMemory();
           release();
           resolve(false);
         }
@@ -131,24 +128,16 @@ class MerkleTrie {
     return new Promise((resolve) => {
       this._lock.writeLock(async (release) => {
         try {
-          // Create a new DB transaction
-          const { status, txn } = await this._root.delete(id.syncId(), this._db, this._db.transaction());
-
-          // Write the transaction to the DB
-          // Write the transaction to the DB
-          const dbStatus = await ResultAsync.fromPromise(this._db.commit(txn), (e) => e as Error);
-          if (dbStatus.isErr()) {
-            log.error('Delete Error', dbStatus.error);
-          } else {
-            this._unloadFromMemory();
-          }
+          const { status, dbUpdatesMap } = await this._root.delete(id.syncId(), this._db, new Map());
+          this._updatePendingDbUpdates(dbUpdatesMap);
+          await this._unloadFromMemory();
 
           release();
           resolve(status);
         } catch (e) {
           log.error('Delete Error', e);
 
-          this._unloadFromMemory();
+          await this._unloadFromMemory();
           release();
           resolve(false);
         }
@@ -167,7 +156,7 @@ class MerkleTrie {
         // eslint-disable-next-line security/detect-non-literal-fs-filename
         const r = await this._root.exists(id.syncId(), this._db);
 
-        this._unloadFromMemory();
+        await this._unloadFromMemory();
 
         release();
         resolve(r);
@@ -183,7 +172,7 @@ class MerkleTrie {
       this._lock.readLock(async (release) => {
         const r = await this._root.getSnapshot(prefix, this._db);
 
-        this._unloadFromMemory();
+        await this._unloadFromMemory();
 
         release();
         resolve(r);
@@ -202,7 +191,7 @@ class MerkleTrie {
       this._lock.readLock(async (release) => {
         const ourExcludedHashes = (await this.getSnapshot(prefix)).excludedHashes;
 
-        this._unloadFromMemory();
+        await this._unloadFromMemory();
         release();
 
         for (let i = 0; i < prefix.length; i++) {
@@ -225,7 +214,7 @@ class MerkleTrie {
       this._lock.readLock(async (release) => {
         const node = await this._root.getNode(prefix, this._db);
 
-        this._unloadFromMemory();
+        await this._unloadFromMemory();
 
         if (node === undefined) {
           release();
@@ -233,7 +222,7 @@ class MerkleTrie {
         } else {
           const md = await node.getNodeMetadata(prefix, this._db);
 
-          this._unloadFromMemory();
+          await this._unloadFromMemory();
           release();
           resolve(md);
         }
@@ -246,7 +235,7 @@ class MerkleTrie {
       this._lock.readLock(async (release) => {
         const r = await this._root.getNode(prefix, this._db);
 
-        this._unloadFromMemory();
+        await this._unloadFromMemory();
 
         release();
         resolve(r);
@@ -263,7 +252,7 @@ class MerkleTrie {
     return new Promise((resolve) => {
       this._lock.readLock(async (release) => {
         const node = await this._root.getNode(prefix, this._db);
-        this._unloadFromMemory();
+        await this._unloadFromMemory();
 
         if (node === undefined) {
           release();
@@ -271,7 +260,7 @@ class MerkleTrie {
         } else {
           const r = await node.getAllValues(prefix, this._db);
 
-          this._unloadFromMemory();
+          await this._unloadFromMemory();
           release();
           resolve(r);
         }
@@ -297,19 +286,56 @@ class MerkleTrie {
     });
   }
 
+  // Save the cached DB updates to the DB
+  public async commitToDb(): Promise<void> {
+    return new Promise((resolve) => {
+      this._lock.writeLock(async (release) => {
+        await this._unloadFromMemory(true);
+
+        release();
+        resolve(undefined);
+      });
+    });
+  }
+
+  /** Incoporate the DB updates from the trie operation into the cached DB updates
+   * Note that this method only updates the cache, and does not write to the DB.
+   * call commitToDb() to write the cached DB updates to the DB.
+   */
+  private _updatePendingDbUpdates(dbUpdatesMap: Map<Buffer, Buffer>): void {
+    for (const [key, value] of dbUpdatesMap) {
+      this._pendingDbUpdates.set(key, value);
+    }
+  }
+
   /**
    * Check if we need to unload the trie from memory. This is not protected by a lock, since it is only called
    * from within a lock.
    */
-  private _unloadFromMemory(): void {
+  private async _unloadFromMemory(force = false) {
     // Every TRIE_UNLOAD_THRESHOLD calls, we unload the trie from memory to avoid memory leaks.
     // Every call in this class usually loads one root-to-leaf path of the trie, so
     // we unload the trie from memory every 1000 calls. This allows us to keep the
     // most recently used parts of the trie in memory, while still "garbage collecting"
     // the rest of the trie.
-    if (this._callsSinceLastUnload >= TRIE_UNLOAD_THRESHOLD) {
+    if (force || this._callsSinceLastUnload >= TRIE_UNLOAD_THRESHOLD) {
       this._callsSinceLastUnload = 0;
       logger.info('Unloading trie from memory');
+
+      // First, we need to commit any pending db updates.
+      const txn = this._db.transaction();
+
+      for (const [key, value] of this._pendingDbUpdates) {
+        if (value && value.length > 0) {
+          txn.put(key, value);
+        } else {
+          txn.del(key);
+        }
+      }
+
+      await this._db.commit(txn);
+      this._pendingDbUpdates.clear();
+
       this._root.unloadChildren();
     } else {
       this._callsSinceLastUnload++;
