@@ -34,12 +34,14 @@ import { getHubState, putHubState } from '~/storage/db/hubState';
 import RocksDB from '~/storage/db/rocksdb';
 import { RootPrefix } from '~/storage/db/types';
 import Engine from '~/storage/engine';
+import { PruneEventsJobScheduler } from '~/storage/jobs/pruneEventsJob';
 import { PruneMessagesJobScheduler } from '~/storage/jobs/pruneMessagesJob';
 import { RevokeSignerJobQueue, RevokeSignerJobScheduler } from '~/storage/jobs/revokeSignerJob';
 import {
   UpdateNameRegistryEventExpiryJobQueue,
   UpdateNameRegistryEventExpiryJobWorker,
 } from '~/storage/jobs/updateNameRegistryEventExpiryJob';
+import { sleep } from '~/utils/crypto';
 import { idRegistryEventToLog, logger, messageToLog, messageTypeToName, nameRegistryEventToLog } from '~/utils/logger';
 import {
   addressInfoFromGossip,
@@ -48,7 +50,6 @@ import {
   ipFamilyToString,
   p2pMultiAddrStr,
 } from '~/utils/p2p';
-import { sleep } from './utils/crypto';
 
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
 
@@ -131,6 +132,9 @@ export interface HubOptions {
 
   /** Cron schedule for prune messages job */
   pruneMessagesJobCron?: string;
+
+  /** Cron schedule for prune events job */
+  pruneEventsJobCron?: string;
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
@@ -155,6 +159,8 @@ export class Hub implements HubInterface {
   private revokeSignerJobScheduler: RevokeSignerJobScheduler;
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
   private periodSyncJobScheduler: PeriodicSyncJobScheduler;
+  private pruneEventsJobScheduler: PruneEventsJobScheduler;
+
   private updateNameRegistryEventExpiryJobQueue: UpdateNameRegistryEventExpiryJobQueue;
   private updateNameRegistryEventExpiryJobWorker: UpdateNameRegistryEventExpiryJobWorker;
 
@@ -190,6 +196,7 @@ export class Hub implements HubInterface {
     this.revokeSignerJobScheduler = new RevokeSignerJobScheduler(this.revokeSignerJobQueue, this.engine);
     this.pruneMessagesJobScheduler = new PruneMessagesJobScheduler(this.engine);
     this.periodSyncJobScheduler = new PeriodicSyncJobScheduler(this, this.syncEngine);
+    this.pruneEventsJobScheduler = new PruneEventsJobScheduler(this.engine);
     this.updateNameRegistryEventExpiryJobWorker = new UpdateNameRegistryEventExpiryJobWorker(
       this.updateNameRegistryEventExpiryJobQueue,
       this.rocksDB,
@@ -291,6 +298,7 @@ export class Hub implements HubInterface {
     this.revokeSignerJobScheduler.start(this.options.revokeSignerJobCron);
     this.pruneMessagesJobScheduler.start(this.options.pruneMessagesJobCron);
     this.periodSyncJobScheduler.start();
+    this.pruneEventsJobScheduler.start(this.options.pruneEventsJobCron);
 
     // When we startup, we write into the DB that we have not yet cleanly shutdown. And when we do
     // shutdown, we'll write "true" to this key, indicating that we've cleanly shutdown.
@@ -333,6 +341,7 @@ export class Hub implements HubInterface {
     this.revokeSignerJobScheduler.stop();
     this.pruneMessagesJobScheduler.stop();
     this.periodSyncJobScheduler.stop();
+    this.pruneEventsJobScheduler.stop();
 
     // Stop sync
     await this.syncEngine.stop();

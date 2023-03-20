@@ -35,7 +35,7 @@ export class PruneMessagesJobScheduler {
   }
 
   async doJobs(): HubAsyncResult<void> {
-    log.info({}, 'starting prune job');
+    log.info({}, 'starting prune messages job');
 
     let finished = false;
     let pageToken: Uint8Array | undefined;
@@ -56,7 +56,7 @@ export class PruneMessagesJobScheduler {
       }
     } while (!finished);
 
-    log.info({}, 'finished prune job');
+    log.info({}, 'finished prune messages job');
 
     return ok(undefined);
   }

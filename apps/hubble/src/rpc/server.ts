@@ -622,7 +622,7 @@ export default class Server {
         const { request } = stream;
 
         if (this.engine && request.fromId) {
-          const eventsIterator = this.engine.eventHandler.getEventsIterator(request.fromId);
+          const eventsIterator = this.engine.eventHandler.getEventsIterator({ fromId: request.fromId });
           if (eventsIterator.isErr()) {
             stream.destroy(eventsIterator.error);
             return;
