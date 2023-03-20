@@ -41,7 +41,9 @@ Returns the 160-bit address in bytes.
 
 ```typescript
 const ethereumAddressResult = await eip712Signer.getSignerKey();
-console.log(ethereumAddressResult._unsafeUnwrap());
+if (ethereumAddressResult.isOk()) {
+  console.log(ethereumAddressResult.value);
+}
 ```
 
 #### Returns
@@ -62,8 +64,10 @@ import { randomBytes } from 'ethers';
 
 const bytes = randomBytes(32);
 const hash = blake3(bytes, { dkLen: 20 });
-const signature = await eip712Signer.signMessageHash(hash);
-console.log(signature);
+const signatureResult = await eip712Signer.signMessageHash(hash);
+if (signatureResult.isOk()) {
+  console.log(signatureResult.value);
+}
 ```
 
 #### Returns
@@ -104,7 +108,9 @@ if (ethereumAddressResult.isOk()) {
 
   if (claimResult.isOk()) {
     const verificationResult = await eip712Signer.signVerificationEthAddressClaim(claimResult.value);
-    console.log(verificationResult);
+    if (verificationResult.isOk()) {
+      console.log(verificationResult.value);
+    }
   }
 }
 ```

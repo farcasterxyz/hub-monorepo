@@ -92,10 +92,10 @@ Returns a message which authorizes a new Ed25519 Signer to create messages on be
 ```typescript
 import { makeSignerAdd } from '@farcaster/hub-nodejs';
 
-// Safety: input is known and cannot throw, so safe to unwrap in the example
-const addressBytes = (await eip712Signer.getSignerKey())._unsafeUnwrap();
+const signer = '0x027fb58156b2733495acb24248e5e3ddf7ad8be4b85321c1e598e06ed030f51f'; // public key of the Ed25519 to authorize
+const name = 'foo'; // label to help the user identify this signers
 
-const signerAdd = await makeSignerAdd({ signer: ed25519Signer.addressBytes, name: 'foo' }, dataOptions, eip712Signer);
+const signerAdd = await makeSignerAdd({ signer, name }, dataOptions, eip712Signer);
 ```
 
 #### Returns
@@ -123,10 +123,9 @@ Returns a message which revokes a previously authorized Ed25519 Signer.
 ```typescript
 import { makeSignerRemove } from '@farcaster/hub-nodejs';
 
-// Safety: input is known and cannot throw, so safe to unwrap in the example
-const addressBytes = (await eip712Signer.getSignerKey())._unsafeUnwrap();
+const signer = '0x027fb58156b2733495acb24248e5e3ddf7ad8be4b85321c1e598e06ed030f51f'; // public key of the Ed25519 to revoke
 
-const signerRemove = await makeSignerRemove({ signer: addressBytes }, dataOptions, eip712Signer);
+const signerRemove = await makeSignerRemove({ signer }, dataOptions, eip712Signer);
 ```
 
 #### Returns
@@ -342,10 +341,11 @@ import {
 // Safety: input is known and cannot throw, so safe to unwrap in the example
 const addressBytes = (await eip712Signer.getSignerKey())._unsafeUnwrap();
 
+const fid = 1;
 const blockHashHex = '0x1d3b0456c920eb503450c7efdcf9b5cf1f5184bf04e5d8ecbcead188a0d02018';
 const blockHashBytes = hexStringToBytes(blockHashHex)._unsafeUnwrap();
 
-const claimResult = makeVerificationEthAddressClaim(1, addressBytes, FarcasterNetwork.DEVNET, blockHashBytes);
+const claimResult = makeVerificationEthAddressClaim(fid, addressBytes, FarcasterNetwork.DEVNET, blockHashBytes);
 
 if (claimResult.isOk()) {
   const claim = claimResult.value;
