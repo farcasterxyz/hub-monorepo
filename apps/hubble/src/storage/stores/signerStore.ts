@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, bytesIncrement, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
+import { bytesCompare, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
 import { getIdRegistryEvent, putIdRegistryEventTransaction } from '~/storage/db/idRegistryEvent';
@@ -10,6 +10,7 @@ import {
   getMessagesPageByPrefix,
   getMessagesPruneIterator,
   getNextMessageFromIterator,
+  getPageIteratorByPrefix,
   makeMessagePrimaryKey,
   makeTsHash,
   makeUserKey,
@@ -178,25 +179,11 @@ class SignerStore {
   }> {
     const prefix = Buffer.from([RootPrefix.IdRegistryEvent]);
 
-    const startAfterKey = Buffer.concat([prefix, Buffer.from(pageOptions.pageToken ?? '')]);
+    const iterator = getPageIteratorByPrefix(this._db, prefix, pageOptions);
 
-    if (pageOptions.pageSize && pageOptions.pageSize > PAGE_SIZE_MAX) {
-      throw new HubError('bad_request.invalid_param', `pageSize > ${PAGE_SIZE_MAX}`);
-    }
     const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
 
-    const endKey = bytesIncrement(Uint8Array.from(prefix));
-    if (endKey.isErr()) {
-      throw endKey.error;
-    }
-
     const fids: number[] = [];
-    const iterator = this._db.iterator({
-      gt: startAfterKey,
-      lt: Buffer.from(endKey.value),
-      keyAsBuffer: true,
-      valueAsBuffer: true,
-    });
 
     /** Custom to retrieve fid from key */
     const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, number]> => {

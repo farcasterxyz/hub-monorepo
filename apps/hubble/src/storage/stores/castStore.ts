@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, bytesIncrement, getFarcasterTime, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
+import { bytesCompare, getFarcasterTime, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
 import AsyncLock from 'async-lock';
 import { err, ResultAsync } from 'neverthrow';
 import {
@@ -10,6 +10,7 @@ import {
   getMessagesPageByPrefix,
   getMessagesPruneIterator,
   getNextMessageFromIterator,
+  getPageIteratorByPrefix,
   makeCastIdKey,
   makeFidKey,
   makeMessagePrimaryKey,
@@ -183,25 +184,11 @@ class CastStore {
   ): Promise<MessagesPage<protobufs.CastAddMessage>> {
     const prefix = makeCastsByParentKey(parentId);
 
-    const startKey = Buffer.concat([prefix, Buffer.from(pageOptions.pageToken ?? '')]);
+    const iterator = getPageIteratorByPrefix(this._db, prefix, pageOptions);
 
-    if (pageOptions.pageSize && pageOptions.pageSize > PAGE_SIZE_MAX) {
-      throw new HubError('bad_request.invalid_param', `pageSize > ${PAGE_SIZE_MAX}`);
-    }
     const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
 
-    const endKey = bytesIncrement(Uint8Array.from(prefix));
-    if (endKey.isErr()) {
-      throw endKey.error;
-    }
-
     const messageKeys: Buffer[] = [];
-    const iterator = this._db.iterator({
-      gt: startKey,
-      lt: Buffer.from(endKey.value),
-      keyAsBuffer: true,
-      values: false,
-    });
 
     // Custom method to retrieve message key from key
     const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Buffer]> => {
@@ -244,25 +231,11 @@ class CastStore {
   ): Promise<MessagesPage<protobufs.CastAddMessage>> {
     const prefix = makeCastsByMentionKey(mentionFid);
 
-    const startKey = Buffer.concat([prefix, Buffer.from(pageOptions.pageToken ?? '')]);
+    const iterator = getPageIteratorByPrefix(this._db, prefix, pageOptions);
 
-    if (pageOptions.pageSize && pageOptions.pageSize > PAGE_SIZE_MAX) {
-      throw new HubError('bad_request.invalid_param', `pageSize > ${PAGE_SIZE_MAX}`);
-    }
     const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
 
-    const endKey = bytesIncrement(Uint8Array.from(prefix));
-    if (endKey.isErr()) {
-      throw endKey.error;
-    }
-
     const messageKeys: Buffer[] = [];
-    const iterator = this._db.iterator({
-      gt: startKey,
-      lt: Buffer.from(endKey.value),
-      keyAsBuffer: true,
-      values: false,
-    });
 
     // Custom method to retrieve message key from key
     const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Buffer]> => {

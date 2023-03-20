@@ -320,11 +320,12 @@ export default class Server {
         );
       },
       getCastsByFid: async (call, callback) => {
-        const { fid, pageSize, pageToken } = call.request;
+        const { fid, pageSize, pageToken, reverse } = call.request;
 
         const castsResult = await this.engine?.getCastsByFid(fid, {
           pageSize,
           pageToken,
+          reverse,
         });
         castsResult?.match(
           (page: MessagesPage<CastAddMessage>) => {
@@ -336,9 +337,9 @@ export default class Server {
         );
       },
       getCastsByParent: async (call, callback) => {
-        const { castId, pageSize, pageToken } = call.request;
+        const { castId, pageSize, pageToken, reverse } = call.request;
 
-        const castsResult = await this.engine?.getCastsByParent(castId as CastId, { pageSize, pageToken });
+        const castsResult = await this.engine?.getCastsByParent(castId as CastId, { pageSize, pageToken, reverse });
         castsResult?.match(
           (page: MessagesPage<CastAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -349,9 +350,9 @@ export default class Server {
         );
       },
       getCastsByMention: async (call, callback) => {
-        const { fid, pageSize, pageToken } = call.request;
+        const { fid, pageSize, pageToken, reverse } = call.request;
 
-        const castsResult = await this.engine?.getCastsByMention(fid, { pageSize, pageToken });
+        const castsResult = await this.engine?.getCastsByMention(fid, { pageSize, pageToken, reverse });
         castsResult?.match(
           (page: MessagesPage<CastAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -379,10 +380,11 @@ export default class Server {
         );
       },
       getReactionsByFid: async (call, callback) => {
-        const { fid, reactionType, pageSize, pageToken } = call.request;
+        const { fid, reactionType, pageSize, pageToken, reverse } = call.request;
         const reactionsResult = await this.engine?.getReactionsByFid(fid, reactionType, {
           pageSize,
           pageToken,
+          reverse,
         });
         reactionsResult?.match(
           (page: MessagesPage<ReactionAddMessage>) => {
@@ -394,10 +396,11 @@ export default class Server {
         );
       },
       getReactionsByCast: async (call, callback) => {
-        const { castId, reactionType, pageSize, pageToken } = call.request;
+        const { castId, reactionType, pageSize, pageToken, reverse } = call.request;
         const reactionsResult = await this.engine?.getReactionsByCast(castId ?? CastId.create(), reactionType, {
           pageSize,
           pageToken,
+          reverse,
         });
         reactionsResult?.match(
           (page: MessagesPage<ReactionAddMessage>) => {
@@ -422,11 +425,12 @@ export default class Server {
         );
       },
       getUserDataByFid: async (call, callback) => {
-        const { fid, pageSize, pageToken } = call.request;
+        const { fid, pageSize, pageToken, reverse } = call.request;
 
         const userDataResult = await this.engine?.getUserDataByFid(fid, {
           pageSize,
           pageToken,
+          reverse,
         });
         userDataResult?.match(
           (page: MessagesPage<UserDataAddMessage>) => {
@@ -464,11 +468,12 @@ export default class Server {
         );
       },
       getVerificationsByFid: async (call, callback) => {
-        const { fid, pageSize, pageToken } = call.request;
+        const { fid, pageSize, pageToken, reverse } = call.request;
 
         const verificationsResult = await this.engine?.getVerificationsByFid(fid, {
           pageSize,
           pageToken,
+          reverse,
         });
         verificationsResult?.match(
           (page: MessagesPage<VerificationAddEthAddressMessage>) => {
@@ -493,10 +498,11 @@ export default class Server {
         );
       },
       getSignersByFid: async (call, callback) => {
-        const { fid, pageSize, pageToken } = call.request;
+        const { fid, pageSize, pageToken, reverse } = call.request;
         const signersResult = await this.engine?.getSignersByFid(fid, {
           pageSize,
           pageToken,
+          reverse,
         });
         signersResult?.match(
           (page: MessagesPage<SignerAddMessage>) => {
@@ -521,11 +527,12 @@ export default class Server {
         );
       },
       getFids: async (call, callback) => {
-        const { pageSize, pageToken } = call.request;
+        const { pageSize, pageToken, reverse } = call.request;
 
         const result = await this.engine?.getFids({
           pageSize,
           pageToken,
+          reverse,
         });
         result?.match(
           (page: { fids: number[]; nextPageToken: Uint8Array | undefined }) => {
@@ -537,10 +544,11 @@ export default class Server {
         );
       },
       getAllCastMessagesByFid: async (call, callback) => {
-        const { fid, pageSize, pageToken } = call.request;
+        const { fid, pageSize, pageToken, reverse } = call.request;
         const result = await this.engine?.getAllCastMessagesByFid(fid, {
           pageSize,
           pageToken,
+          reverse,
         });
         result?.match(
           (page: MessagesPage<CastAddMessage | CastRemoveMessage>) => {
@@ -552,10 +560,11 @@ export default class Server {
         );
       },
       getAllReactionMessagesByFid: async (call, callback) => {
-        const { fid, pageSize, pageToken } = call.request;
+        const { fid, pageSize, pageToken, reverse } = call.request;
         const result = await this.engine?.getAllReactionMessagesByFid(fid, {
           pageSize,
           pageToken,
+          reverse,
         });
         result?.match(
           (page: MessagesPage<ReactionAddMessage | ReactionRemoveMessage>) => {
@@ -567,10 +576,11 @@ export default class Server {
         );
       },
       getAllVerificationMessagesByFid: async (call, callback) => {
-        const { fid, pageSize, pageToken } = call.request;
+        const { fid, pageSize, pageToken, reverse } = call.request;
         const result = await this.engine?.getAllVerificationMessagesByFid(fid, {
           pageSize,
           pageToken,
+          reverse,
         });
         result?.match(
           (page: MessagesPage<VerificationAddEthAddressMessage | VerificationRemoveMessage>) => {
@@ -582,10 +592,11 @@ export default class Server {
         );
       },
       getAllSignerMessagesByFid: async (call, callback) => {
-        const { fid, pageSize, pageToken } = call.request;
+        const { fid, pageSize, pageToken, reverse } = call.request;
         const result = await this.engine?.getAllSignerMessagesByFid(fid, {
           pageSize,
           pageToken,
+          reverse,
         });
         result?.match(
           (page: MessagesPage<SignerAddMessage | SignerRemoveMessage>) => {
@@ -597,10 +608,11 @@ export default class Server {
         );
       },
       getAllUserDataMessagesByFid: async (call, callback) => {
-        const { fid, pageSize, pageToken } = call.request;
+        const { fid, pageSize, pageToken, reverse } = call.request;
         const result = await this.engine?.getUserDataByFid(fid, {
           pageSize,
           pageToken,
+          reverse,
         });
         result?.match(
           (page: MessagesPage<UserDataAddMessage>) => {

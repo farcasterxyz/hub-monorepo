@@ -161,31 +161,46 @@ export const getAllMessagesByFid = async (db: RocksDB, fid: number): Promise<pro
   return messages;
 };
 
+export const getPageIteratorByPrefix = (db: RocksDB, prefix: Buffer, pageOptions: PageOptions = {}): Iterator => {
+  const prefixEnd = bytesIncrement(Uint8Array.from(prefix));
+  if (prefixEnd.isErr()) {
+    throw prefixEnd.error;
+  }
+
+  let startKey: Buffer;
+  if (pageOptions.pageToken) {
+    startKey = Buffer.concat([prefix, Buffer.from(pageOptions.pageToken)]);
+  } else if (pageOptions.reverse === true) {
+    startKey = Buffer.from(prefixEnd.value);
+  } else {
+    startKey = prefix;
+  }
+
+  if (pageOptions.pageSize && pageOptions.pageSize > PAGE_SIZE_MAX) {
+    throw new HubError('bad_request.invalid_param', `pageSize > ${PAGE_SIZE_MAX}`);
+  }
+
+  return db.iterator(
+    pageOptions.reverse === true
+      ? { lt: startKey, gt: prefix, reverse: true }
+      : {
+          gt: startKey,
+          lt: Buffer.from(prefixEnd.value),
+        }
+  );
+};
+
 export const getMessagesPageByPrefix = async <T extends protobufs.Message>(
   db: RocksDB,
   prefix: Buffer,
   filter: (message: protobufs.Message) => message is T,
   pageOptions: PageOptions = {}
 ): Promise<MessagesPage<T>> => {
-  const startKey = Buffer.concat([prefix, Buffer.from(pageOptions.pageToken ?? '')]);
+  const iterator = getPageIteratorByPrefix(db, prefix, pageOptions);
 
-  if (pageOptions.pageSize && pageOptions.pageSize > PAGE_SIZE_MAX) {
-    throw new HubError('bad_request.invalid_param', `pageSize > ${PAGE_SIZE_MAX}`);
-  }
   const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
 
-  const endKey = bytesIncrement(Uint8Array.from(prefix));
-  if (endKey.isErr()) {
-    throw endKey.error;
-  }
-
   const messages: T[] = [];
-  const iterator = db.iterator({
-    gt: startKey,
-    lt: Buffer.from(endKey.value),
-    keyAsBuffer: true,
-    valueAsBuffer: true,
-  });
 
   const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, protobufs.Message]> => {
     const [key, value] = await iterator.next();

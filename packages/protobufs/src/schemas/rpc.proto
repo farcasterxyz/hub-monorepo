@@ -50,11 +50,13 @@ message FidRequest {
   uint64 fid = 1;
   optional uint32 page_size = 2;
   optional bytes page_token = 3;
+  optional bool reverse = 4;
 }
 
 message FidsRequest {
   optional uint32 page_size = 1;
   optional bytes page_token = 2;
+  optional bool reverse = 3;
 }
 
 message FidsResponse {
@@ -71,6 +73,7 @@ message CastsByParentRequest {
   CastId cast_id = 1;
   optional uint32 page_size = 2;
   optional bytes page_token = 3;
+  optional bool reverse = 4;
 }
 
 message ReactionRequest {
@@ -84,6 +87,7 @@ message ReactionsByFidRequest {
   optional ReactionType reaction_type = 2;
   optional uint32 page_size = 3;
   optional bytes page_token = 4;
+  optional bool reverse = 5;
 }
 
 message ReactionsByCastRequest {
@@ -91,6 +95,7 @@ message ReactionsByCastRequest {
   optional ReactionType reaction_type = 2;
   optional uint32 page_size = 3;
   optional bytes page_token = 4;
+  optional bool reverse = 5;
 }
 
 message UserDataRequest {

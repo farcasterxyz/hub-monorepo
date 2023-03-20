@@ -1,9 +1,9 @@
 /* eslint-disable */
-import Long from "long";
-import _m0 from "protobufjs/minimal";
-import { IdRegistryEvent } from "./id_registry_event";
-import { Message } from "./message";
-import { NameRegistryEvent } from "./name_registry_event";
+import Long from 'long';
+import _m0 from 'protobufjs/minimal';
+import { IdRegistryEvent } from './id_registry_event';
+import { Message } from './message';
+import { NameRegistryEvent } from './name_registry_event';
 
 export enum HubEventType {
   NONE = 0,
@@ -17,44 +17,44 @@ export enum HubEventType {
 export function hubEventTypeFromJSON(object: any): HubEventType {
   switch (object) {
     case 0:
-    case "HUB_EVENT_TYPE_NONE":
+    case 'HUB_EVENT_TYPE_NONE':
       return HubEventType.NONE;
     case 1:
-    case "HUB_EVENT_TYPE_MERGE_MESSAGE":
+    case 'HUB_EVENT_TYPE_MERGE_MESSAGE':
       return HubEventType.MERGE_MESSAGE;
     case 2:
-    case "HUB_EVENT_TYPE_PRUNE_MESSAGE":
+    case 'HUB_EVENT_TYPE_PRUNE_MESSAGE':
       return HubEventType.PRUNE_MESSAGE;
     case 3:
-    case "HUB_EVENT_TYPE_REVOKE_MESSAGE":
+    case 'HUB_EVENT_TYPE_REVOKE_MESSAGE':
       return HubEventType.REVOKE_MESSAGE;
     case 4:
-    case "HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT":
+    case 'HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT':
       return HubEventType.MERGE_ID_REGISTRY_EVENT;
     case 5:
-    case "HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT":
+    case 'HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT':
       return HubEventType.MERGE_NAME_REGISTRY_EVENT;
     default:
-      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HubEventType");
+      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum HubEventType');
   }
 }
 
 export function hubEventTypeToJSON(object: HubEventType): string {
   switch (object) {
     case HubEventType.NONE:
-      return "HUB_EVENT_TYPE_NONE";
+      return 'HUB_EVENT_TYPE_NONE';
     case HubEventType.MERGE_MESSAGE:
-      return "HUB_EVENT_TYPE_MERGE_MESSAGE";
+      return 'HUB_EVENT_TYPE_MERGE_MESSAGE';
     case HubEventType.PRUNE_MESSAGE:
-      return "HUB_EVENT_TYPE_PRUNE_MESSAGE";
+      return 'HUB_EVENT_TYPE_PRUNE_MESSAGE';
     case HubEventType.REVOKE_MESSAGE:
-      return "HUB_EVENT_TYPE_REVOKE_MESSAGE";
+      return 'HUB_EVENT_TYPE_REVOKE_MESSAGE';
     case HubEventType.MERGE_ID_REGISTRY_EVENT:
-      return "HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT";
+      return 'HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT';
     case HubEventType.MERGE_NAME_REGISTRY_EVENT:
-      return "HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT";
+      return 'HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT';
     default:
-      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HubEventType");
+      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum HubEventType');
   }
 }
 
@@ -105,7 +105,7 @@ export const MergeMessageBody = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): MergeMessageBody {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseMergeMessageBody();
     while (reader.pos < end) {
@@ -138,7 +138,7 @@ export const MergeMessageBody = {
     const obj: any = {};
     message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
     if (message.deletedMessages) {
-      obj.deletedMessages = message.deletedMessages.map((e) => e ? Message.toJSON(e) : undefined);
+      obj.deletedMessages = message.deletedMessages.map((e) => (e ? Message.toJSON(e) : undefined));
     } else {
       obj.deletedMessages = [];
     }
@@ -151,9 +151,8 @@ export const MergeMessageBody = {
 
   fromPartial<I extends Exact<DeepPartial<MergeMessageBody>, I>>(object: I): MergeMessageBody {
     const message = createBaseMergeMessageBody();
-    message.message = (object.message !== undefined && object.message !== null)
-      ? Message.fromPartial(object.message)
-      : undefined;
+    message.message =
+      object.message !== undefined && object.message !== null ? Message.fromPartial(object.message) : undefined;
     message.deletedMessages = object.deletedMessages?.map((e) => Message.fromPartial(e)) || [];
     return message;
   },
@@ -172,7 +171,7 @@ export const PruneMessageBody = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): PruneMessageBody {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBasePruneMessageBody();
     while (reader.pos < end) {
@@ -205,9 +204,8 @@ export const PruneMessageBody = {
 
   fromPartial<I extends Exact<DeepPartial<PruneMessageBody>, I>>(object: I): PruneMessageBody {
     const message = createBasePruneMessageBody();
-    message.message = (object.message !== undefined && object.message !== null)
-      ? Message.fromPartial(object.message)
-      : undefined;
+    message.message =
+      object.message !== undefined && object.message !== null ? Message.fromPartial(object.message) : undefined;
     return message;
   },
 };
@@ -225,7 +223,7 @@ export const RevokeMessageBody = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): RevokeMessageBody {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseRevokeMessageBody();
     while (reader.pos < end) {
@@ -258,9 +256,8 @@ export const RevokeMessageBody = {
 
   fromPartial<I extends Exact<DeepPartial<RevokeMessageBody>, I>>(object: I): RevokeMessageBody {
     const message = createBaseRevokeMessageBody();
-    message.message = (object.message !== undefined && object.message !== null)
-      ? Message.fromPartial(object.message)
-      : undefined;
+    message.message =
+      object.message !== undefined && object.message !== null ? Message.fromPartial(object.message) : undefined;
     return message;
   },
 };
@@ -278,7 +275,7 @@ export const MergeIdRegistryEventBody = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): MergeIdRegistryEventBody {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseMergeIdRegistryEventBody();
     while (reader.pos < end) {
@@ -314,9 +311,10 @@ export const MergeIdRegistryEventBody = {
 
   fromPartial<I extends Exact<DeepPartial<MergeIdRegistryEventBody>, I>>(object: I): MergeIdRegistryEventBody {
     const message = createBaseMergeIdRegistryEventBody();
-    message.idRegistryEvent = (object.idRegistryEvent !== undefined && object.idRegistryEvent !== null)
-      ? IdRegistryEvent.fromPartial(object.idRegistryEvent)
-      : undefined;
+    message.idRegistryEvent =
+      object.idRegistryEvent !== undefined && object.idRegistryEvent !== null
+        ? IdRegistryEvent.fromPartial(object.idRegistryEvent)
+        : undefined;
     return message;
   },
 };
@@ -334,7 +332,7 @@ export const MergeNameRegistryEventBody = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): MergeNameRegistryEventBody {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseMergeNameRegistryEventBody();
     while (reader.pos < end) {
@@ -361,9 +359,10 @@ export const MergeNameRegistryEventBody = {
 
   toJSON(message: MergeNameRegistryEventBody): unknown {
     const obj: any = {};
-    message.nameRegistryEvent !== undefined && (obj.nameRegistryEvent = message.nameRegistryEvent
-      ? NameRegistryEvent.toJSON(message.nameRegistryEvent)
-      : undefined);
+    message.nameRegistryEvent !== undefined &&
+      (obj.nameRegistryEvent = message.nameRegistryEvent
+        ? NameRegistryEvent.toJSON(message.nameRegistryEvent)
+        : undefined);
     return obj;
   },
 
@@ -373,9 +372,10 @@ export const MergeNameRegistryEventBody = {
 
   fromPartial<I extends Exact<DeepPartial<MergeNameRegistryEventBody>, I>>(object: I): MergeNameRegistryEventBody {
     const message = createBaseMergeNameRegistryEventBody();
-    message.nameRegistryEvent = (object.nameRegistryEvent !== undefined && object.nameRegistryEvent !== null)
-      ? NameRegistryEvent.fromPartial(object.nameRegistryEvent)
-      : undefined;
+    message.nameRegistryEvent =
+      object.nameRegistryEvent !== undefined && object.nameRegistryEvent !== null
+        ? NameRegistryEvent.fromPartial(object.nameRegistryEvent)
+        : undefined;
     return message;
   },
 };
@@ -419,7 +419,7 @@ export const HubEvent = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): HubEvent {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseHubEvent();
     while (reader.pos < end) {
@@ -480,12 +480,14 @@ export const HubEvent = {
       (obj.mergeMessageBody = message.mergeMessageBody ? MergeMessageBody.toJSON(message.mergeMessageBody) : undefined);
     message.pruneMessageBody !== undefined &&
       (obj.pruneMessageBody = message.pruneMessageBody ? PruneMessageBody.toJSON(message.pruneMessageBody) : undefined);
-    message.revokeMessageBody !== undefined && (obj.revokeMessageBody = message.revokeMessageBody
-      ? RevokeMessageBody.toJSON(message.revokeMessageBody)
-      : undefined);
-    message.mergeIdRegistryEventBody !== undefined && (obj.mergeIdRegistryEventBody = message.mergeIdRegistryEventBody
-      ? MergeIdRegistryEventBody.toJSON(message.mergeIdRegistryEventBody)
-      : undefined);
+    message.revokeMessageBody !== undefined &&
+      (obj.revokeMessageBody = message.revokeMessageBody
+        ? RevokeMessageBody.toJSON(message.revokeMessageBody)
+        : undefined);
+    message.mergeIdRegistryEventBody !== undefined &&
+      (obj.mergeIdRegistryEventBody = message.mergeIdRegistryEventBody
+        ? MergeIdRegistryEventBody.toJSON(message.mergeIdRegistryEventBody)
+        : undefined);
     message.mergeNameRegistryEventBody !== undefined &&
       (obj.mergeNameRegistryEventBody = message.mergeNameRegistryEventBody
         ? MergeNameRegistryEventBody.toJSON(message.mergeNameRegistryEventBody)
@@ -501,21 +503,24 @@ export const HubEvent = {
     const message = createBaseHubEvent();
     message.type = object.type ?? 0;
     message.id = object.id ?? 0;
-    message.mergeMessageBody = (object.mergeMessageBody !== undefined && object.mergeMessageBody !== null)
-      ? MergeMessageBody.fromPartial(object.mergeMessageBody)
-      : undefined;
-    message.pruneMessageBody = (object.pruneMessageBody !== undefined && object.pruneMessageBody !== null)
-      ? PruneMessageBody.fromPartial(object.pruneMessageBody)
-      : undefined;
-    message.revokeMessageBody = (object.revokeMessageBody !== undefined && object.revokeMessageBody !== null)
-      ? RevokeMessageBody.fromPartial(object.revokeMessageBody)
-      : undefined;
+    message.mergeMessageBody =
+      object.mergeMessageBody !== undefined && object.mergeMessageBody !== null
+        ? MergeMessageBody.fromPartial(object.mergeMessageBody)
+        : undefined;
+    message.pruneMessageBody =
+      object.pruneMessageBody !== undefined && object.pruneMessageBody !== null
+        ? PruneMessageBody.fromPartial(object.pruneMessageBody)
+        : undefined;
+    message.revokeMessageBody =
+      object.revokeMessageBody !== undefined && object.revokeMessageBody !== null
+        ? RevokeMessageBody.fromPartial(object.revokeMessageBody)
+        : undefined;
     message.mergeIdRegistryEventBody =
-      (object.mergeIdRegistryEventBody !== undefined && object.mergeIdRegistryEventBody !== null)
+      object.mergeIdRegistryEventBody !== undefined && object.mergeIdRegistryEventBody !== null
         ? MergeIdRegistryEventBody.fromPartial(object.mergeIdRegistryEventBody)
         : undefined;
     message.mergeNameRegistryEventBody =
-      (object.mergeNameRegistryEventBody !== undefined && object.mergeNameRegistryEventBody !== null)
+      object.mergeNameRegistryEventBody !== undefined && object.mergeNameRegistryEventBody !== null
         ? MergeNameRegistryEventBody.fromPartial(object.mergeNameRegistryEventBody)
         : undefined;
     return message;
@@ -526,35 +531,41 @@ declare var self: any | undefined;
 declare var window: any | undefined;
 declare var global: any | undefined;
 var tsProtoGlobalThis: any = (() => {
-  if (typeof globalThis !== "undefined") {
+  if (typeof globalThis !== 'undefined') {
     return globalThis;
   }
-  if (typeof self !== "undefined") {
+  if (typeof self !== 'undefined') {
     return self;
   }
-  if (typeof window !== "undefined") {
+  if (typeof window !== 'undefined') {
     return window;
   }
-  if (typeof global !== "undefined") {
+  if (typeof global !== 'undefined') {
     return global;
   }
-  throw "Unable to locate global object";
+  throw 'Unable to locate global object';
 })();
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 
-type DeepPartial<T> = T extends Builtin ? T
-  : T extends Array<infer U> ? Array<DeepPartial<U>> : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
-  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
+type DeepPartial<T> = T extends Builtin
+  ? T
+  : T extends Array<infer U>
+  ? Array<DeepPartial<U>>
+  : T extends ReadonlyArray<infer U>
+  ? ReadonlyArray<DeepPartial<U>>
+  : T extends {}
+  ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-type Exact<P, I extends P> = P extends Builtin ? P
+type Exact<P, I extends P> = P extends Builtin
+  ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
 
 function longToNumber(long: Long): number {
   if (long.gt(Number.MAX_SAFE_INTEGER)) {
-    throw new tsProtoGlobalThis.Error("Value is larger than Number.MAX_SAFE_INTEGER");
+    throw new tsProtoGlobalThis.Error('Value is larger than Number.MAX_SAFE_INTEGER');
   }
   return long.toNumber();
 }
