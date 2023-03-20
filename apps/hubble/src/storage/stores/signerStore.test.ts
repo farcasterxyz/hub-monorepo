@@ -854,14 +854,29 @@ describe('getFids', () => {
       expect(result).toEqual({ fids: [fid, fid2], nextPageToken: undefined });
     });
 
+    test('returns all fids for merged custody events in reverse', async () => {
+      const result = await set.getFids({ reverse: true });
+      expect(result).toEqual({ fids: [fid2, fid], nextPageToken: undefined });
+    });
+
     test('returns limit fids with pageSize < number of messages', async () => {
       const result = await set.getFids({ pageSize: 1 });
       expect(result).toEqual({ fids: [fid], nextPageToken: Uint8Array.from(makeFidKey(fid)) });
     });
 
+    test('returns limit fids with pageSize < number of messages in reverse', async () => {
+      const result = await set.getFids({ pageSize: 1, reverse: true });
+      expect(result).toEqual({ fids: [fid2], nextPageToken: Uint8Array.from(makeFidKey(fid2)) });
+    });
+
     test('returns all fids with pageSize > number of messages', async () => {
       const result = await set.getFids({ pageSize: 3 });
       expect(result).toEqual({ fids: [fid, fid2], nextPageToken: undefined });
+    });
+
+    test('returns all fids with pageSize > number of messages in reverse', async () => {
+      const result = await set.getFids({ pageSize: 3, reverse: true });
+      expect(result).toEqual({ fids: [fid2, fid], nextPageToken: undefined });
     });
 
     test('returns fids from pageToken', async () => {
@@ -871,9 +886,22 @@ describe('getFids', () => {
       expect(result2).toEqual({ fids: [fid2], nextPageToken: undefined });
     });
 
+    test('returns fids from pageToken in reverse', async () => {
+      const result1 = await set.getFids({ pageSize: 1, reverse: true });
+      expect(result1.fids).toEqual([fid2]);
+      const result2 = await set.getFids({ pageToken: result1.nextPageToken, reverse: true });
+      expect(result2).toEqual({ fids: [fid], nextPageToken: undefined });
+    });
+
     test('returns empty array with invalid pageToken', async () => {
       const invalidPageKey = Buffer.from([255]);
       const results = await set.getFids({ pageToken: invalidPageKey });
+      expect(results).toEqual({ fids: [], nextPageToken: undefined });
+    });
+
+    test('returns empty array with invalid pageToken in reverse', async () => {
+      const invalidPageKey = Buffer.from([0]);
+      const results = await set.getFids({ pageToken: invalidPageKey, reverse: true });
       expect(results).toEqual({ fids: [], nextPageToken: undefined });
     });
   });
