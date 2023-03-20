@@ -25,18 +25,18 @@ export const getClient = async (address: string): Promise<HubServiceClient> => {
   return new Promise((resolve) => {
     try {
       const sslClientResult = getSSLClient(address);
-      if (sslClientResult) {
-        sslClientResult.waitForReady(Date.now() + 1000, (err) => {
-          if (!err) {
-            resolve(sslClientResult);
-          }
-        });
-      }
+
+      sslClientResult.waitForReady(Date.now() + 2000, (err) => {
+        if (!err) {
+          resolve(sslClientResult);
+        } else {
+          resolve(getInsecureClient(address));
+        }
+      });
     } catch (e) {
       // Fall back to insecure client
+      resolve(getInsecureClient(address));
     }
-
-    resolve(getInsecureClient(address));
   });
 };
 
