@@ -1,5 +1,23 @@
 # @farcaster/utils
 
+## 0.3.0
+
+### Minor Changes
+
+- 59920f9: upgrade ethers from v5 to v6
+- 99518ef: refactor: generic and library specific signer classes
+
+  - `Eip712Signer` has been renamed to `EthersEip712Signer` and should be built with `new EthersEip712Signer(wallet)` instead of `Eip712Signer.fromSigner`
+  - `Ed25519Signer` has been renamed to `NobleEd25519Signer` and should be built with `new NobleEd25519Signer(privateKey)` instead of `Ed25519Signer.fromPrivateKey`
+
+### Patch Changes
+
+- 1b0e3a7: Add RPC Auth via Env variables and a new getAuthMetadata method to make it easier to use RPC auth
+- 1e4482e: updated dependencies
+- Updated dependencies [469825e]
+- Updated dependencies [1e4482e]
+  - @farcaster/protobufs@0.1.9
+
 ## 0.2.12
 
 ### Patch Changes
