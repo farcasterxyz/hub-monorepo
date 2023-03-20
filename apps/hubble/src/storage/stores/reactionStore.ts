@@ -18,8 +18,8 @@ import {
   makeUserKey,
   putMessageTransaction,
 } from '~/storage/db/message';
-import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
-import { FID_BYTES, RootPrefix, TRUE_VALUE, UserPostfix } from '~/storage/db/types';
+import RocksDB, { Transaction } from '~/storage/db/rocksdb';
+import { RootPrefix, TSHASH_LENGTH, UserPostfix } from '~/storage/db/types';
 import StoreEventHandler, { HubEventArgs } from '~/storage/stores/storeEventHandler';
 import {
   MERGE_TIMEOUT_DEFAULT,
@@ -80,32 +80,25 @@ const makeReactionRemovesKey = (fid: number, type?: protobufs.ReactionType, targ
  * Generates a unique key used to store a ReactionAdd Message in the ReactionsByTargetAndType index
  *
  * @param targetId the id of the object being reacted to (currently just cast id)
- * @param type the type of reaction
  * @param fid the fid of the user who created the reaction
  * @param tsHash the timestamp hash of the reaction message
  *
- * @returns RocksDB index key of the form <RootPrefix>:<target_key>:<type?>:<fid?>:<tsHash?>
+ * @returns RocksDB index key of the form <RootPrefix>:<target_key>:<fid?>:<tsHash?>
  */
-const makeReactionsByTargetKey = (
-  targetId: protobufs.CastId,
-  type?: protobufs.ReactionType,
-  fid?: number,
-  tsHash?: Uint8Array
-): Buffer => {
-  if (fid && !type) {
-    throw new HubError('bad_request.validation_failure', 'fid provided without type');
+const makeReactionsByTargetKey = (targetId: protobufs.CastId, fid?: number, tsHash?: Uint8Array): Buffer => {
+  if (fid && !tsHash) {
+    throw new HubError('bad_request.validation_failure', 'fid provided without tsHash');
   }
 
-  if (tsHash && (!type || !fid)) {
-    throw new HubError('bad_request.validation_failure', 'tsHash provided without type or fid');
+  if (tsHash && !fid) {
+    throw new HubError('bad_request.validation_failure', 'tsHash provided without fid');
   }
 
   return Buffer.concat([
     Buffer.from([RootPrefix.ReactionsByTarget]),
     makeCastIdKey(targetId),
-    Buffer.from(type ? [type] : ''),
-    fid ? makeFidKey(fid) : Buffer.from(''),
     Buffer.from(tsHash ?? ''),
+    fid ? makeFidKey(fid) : Buffer.from(''),
   ]);
 };
 
@@ -229,13 +222,12 @@ class ReactionStore {
   }
 
   /** Finds all ReactionAdds that point to a specific target by iterating through the prefixes */
-  // TODO: DRY up this method
   async getReactionsByTargetCast(
     castId: protobufs.CastId,
     type?: protobufs.ReactionType,
     pageOptions: PageOptions = {}
   ): Promise<MessagesPage<protobufs.ReactionAddMessage>> {
-    const prefix = makeReactionsByTargetKey(castId, type);
+    const prefix = makeReactionsByTargetKey(castId);
 
     const iterator = getPageIteratorByPrefix(this._db, prefix, pageOptions);
 
@@ -243,33 +235,30 @@ class ReactionStore {
 
     const messageKeys: Buffer[] = [];
 
-    // Custom method to retrieve message key from key
-    const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Buffer]> => {
-      const [key] = await iterator.next();
-
-      // Calculates the positions in the key where the fid and tsHash begin
-      const fidOffset = prefix.length + (type ? 0 : 1); // compensate for fact that prefix is 1 byte longer if type was provided
-      const tsHashOffset = fidOffset + FID_BYTES;
-
-      const fid = Number((key as Buffer).readUint32BE(fidOffset));
-      const tsHash = Uint8Array.from(key as Buffer).subarray(tsHashOffset);
-      const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage, tsHash);
-
-      return [key as Buffer, messagePrimaryKey];
-    };
-
     let iteratorFinished = false;
     let lastPageToken: Uint8Array | undefined;
     do {
-      const result = await ResultAsync.fromPromise(getNextIteratorRecord(iterator), (e) => e as HubError);
+      const result = await ResultAsync.fromPromise(iterator.next(), (e) => e as HubError);
       if (result.isErr()) {
         iteratorFinished = true;
         break;
       }
 
-      const [key, messageKey] = result.value;
-      lastPageToken = Uint8Array.from(key.subarray(prefix.length));
-      messageKeys.push(messageKey);
+      const [key, value] = result.value;
+
+      lastPageToken = Uint8Array.from((key as Buffer).subarray(prefix.length));
+
+      if (type === undefined || (value !== undefined && value.equals(Buffer.from([type])))) {
+        // Calculates the positions in the key where the fid and tsHash begin
+        const tsHashOffset = prefix.length;
+        const fidOffset = tsHashOffset + TSHASH_LENGTH;
+
+        const fid = Number((key as Buffer).readUint32BE(fidOffset));
+        const tsHash = Uint8Array.from(key as Buffer).subarray(tsHashOffset, tsHashOffset + TSHASH_LENGTH);
+        const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage, tsHash);
+
+        messageKeys.push(messagePrimaryKey);
+      }
     } while (messageKeys.length < limit);
 
     const messages = await getManyMessages<protobufs.ReactionAddMessage>(this._db, messageKeys);
@@ -602,13 +591,8 @@ class ReactionStore {
     txn = txn.put(addsKey, Buffer.from(tsHash.value));
 
     // Puts message key into the byTarget index
-    const byTargetKey = makeReactionsByTargetKey(
-      castId,
-      message.data.reactionBody.type,
-      message.data.fid,
-      tsHash.value
-    );
-    txn = txn.put(byTargetKey, TRUE_VALUE);
+    const byTargetKey = makeReactionsByTargetKey(castId, message.data.fid, tsHash.value);
+    txn = txn.put(byTargetKey, Buffer.from([message.data.reactionBody.type]));
 
     return txn;
   }
@@ -626,12 +610,7 @@ class ReactionStore {
     }
 
     // Delete the message key from byTarget index
-    const byTargetKey = makeReactionsByTargetKey(
-      castId,
-      message.data.reactionBody.type,
-      message.data.fid,
-      tsHash.value
-    );
+    const byTargetKey = makeReactionsByTargetKey(castId, message.data.fid, tsHash.value);
     txn = txn.del(byTargetKey);
 
     // Delete the message key from ReactionAdds Set index

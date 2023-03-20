@@ -19,7 +19,7 @@ import {
   putMessageTransaction,
 } from '~/storage/db/message';
 import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
-import { FID_BYTES, RootPrefix, TRUE_VALUE, UserPostfix } from '~/storage/db/types';
+import { RootPrefix, TRUE_VALUE, TSHASH_LENGTH, UserPostfix } from '~/storage/db/types';
 import StoreEventHandler, { HubEventArgs } from '~/storage/stores/storeEventHandler';
 import {
   MERGE_TIMEOUT_DEFAULT,
@@ -62,15 +62,14 @@ const makeCastRemovesKey = (fid: number, hash?: Uint8Array): Buffer => {
  * @param parentTsHash the timestamp hash of the parent message
  * @param fid the fid of the user who created the cast
  * @param tsHash the timestamp hash of the cast message
- * @returns RocksDB index key of the form <root_prefix>:<parentFid>:<parentTsHash>:<fid?>:<tsHash?>
+ * @returns RocksDB index key of the form <root_prefix>:<parentFid>:<parentTsHash>:<tsHash?>:<fid?>
  */
-/** RocksDB key of the form <castsByParent prefix byte, parent fid, parent cast tsHash, fid, cast tsHash> */
 const makeCastsByParentKey = (parentId: protobufs.CastId, fid?: number, tsHash?: Uint8Array): Buffer => {
   return Buffer.concat([
     Buffer.from([RootPrefix.CastsByParent]),
     makeCastIdKey(parentId),
-    fid ? makeFidKey(fid) : Buffer.from(''),
     Buffer.from(tsHash ?? ''),
+    fid ? makeFidKey(fid) : Buffer.from(''),
   ]);
 };
 
@@ -80,14 +79,14 @@ const makeCastsByParentKey = (parentId: protobufs.CastId, fid?: number, tsHash?:
  * @param mentionFid the fid of the user who was mentioned in the cast
  * @param fid the fid of the user who created the cast
  * @param tsHash the timestamp hash of the cast message
- * @returns RocksDB index key of the form <root_prefix>:<mentionFid>::<fid?>:<tsHash?>
+ * @returns RocksDB index key of the form <root_prefix>:<mentionFid>:<tsHash?>:<fid?>
  */
 const makeCastsByMentionKey = (mentionFid: number, fid?: number, tsHash?: Uint8Array): Buffer => {
   return Buffer.concat([
     Buffer.from([RootPrefix.CastsByMention]),
     makeFidKey(mentionFid),
-    fid ? makeFidKey(fid) : Buffer.from(''),
     Buffer.from(tsHash ?? ''),
+    fid ? makeFidKey(fid) : Buffer.from(''),
   ]);
 };
 
@@ -177,7 +176,6 @@ class CastStore {
   }
 
   /** Gets all CastAdd messages for a parent cast (fid and tsHash) */
-  // TODO: DRY up this method
   async getCastsByParent(
     parentId: protobufs.CastId,
     pageOptions: PageOptions = {}
@@ -193,8 +191,8 @@ class CastStore {
     // Custom method to retrieve message key from key
     const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Buffer]> => {
       const [key] = await iterator.next();
-      const fid = Number((key as Buffer).readUint32BE(prefix.length));
-      const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length + FID_BYTES);
+      const fid = Number((key as Buffer).readUint32BE(prefix.length + TSHASH_LENGTH));
+      const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length, prefix.length + TSHASH_LENGTH);
       const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.CastMessage, tsHash);
       return [key as Buffer, messagePrimaryKey];
     };
@@ -224,7 +222,6 @@ class CastStore {
   }
 
   /** Gets all CastAdd messages for a mention (fid) */
-  // TODO: DRY up this method
   async getCastsByMention(
     mentionFid: number,
     pageOptions: PageOptions = {}
@@ -240,8 +237,8 @@ class CastStore {
     // Custom method to retrieve message key from key
     const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Buffer]> => {
       const [key] = await iterator.next();
-      const fid = Number((key as Buffer).readUint32BE(prefix.length));
-      const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length + FID_BYTES);
+      const fid = Number((key as Buffer).readUint32BE(prefix.length + TSHASH_LENGTH));
+      const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length, prefix.length + TSHASH_LENGTH);
       const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.CastMessage, tsHash);
       return [key as Buffer, messagePrimaryKey];
     };
