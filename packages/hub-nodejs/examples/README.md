@@ -1,10 +1,10 @@
 # Examples
 
-Each example is a fully executable javascript package that can be checked out and executed, along with a link to a corresponding replit.
+Each example is a fully executable Typescript repo that can be checked out and executed.
 
 ## Reading Data
 
-- Generate a chronological feed
+- [Generate a chronological feed](./feed/)
 - Subscribe to updates about a user
 - Handle Signer Changes
 
