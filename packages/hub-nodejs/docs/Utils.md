@@ -200,9 +200,8 @@ const eip712Signer = new EthersEip712Signer(wallet);
 const blockHashHex = '0x1d3b0456c920eb503450c7efdcf9b5cf1f5184bf04e5d8ecbcead188a0d02018';
 const blockHashBytes = hexStringToBytes(blockHashHex)._unsafeUnwrap();
 
-const claimResult = makeVerificationEthAddressClaim(1, eip712Signer.signerKey, FarcasterNetwork.DEVNET, blockHashBytes);
-
-claimResult.map((c) => console.log(c));
+const addressBytes = (await eip712Signer.getSignerKey())._unsafeUnwrap();
+const claimResult = makeVerificationEthAddressClaim(1, addressBytes, FarcasterNetwork.DEVNET, blockHashBytes);
 ```
 
 #### Returns

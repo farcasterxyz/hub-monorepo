@@ -44,7 +44,7 @@ An Eip712Signer is an ECDSA key pair which is necessary signing for some message
 
 ```typescript
 import { EthersEip712Signer } from '@farcaster/hub-nodejs';
-import { wallet } from 'ethers';
+import { Wallet } from 'ethers';
 
 const mnemonic = 'ordinary long coach bounce thank quit become youth belt pretty diet caught attract melt bargain';
 const wallet = Wallet.fromPhrase(mnemonic);
@@ -92,7 +92,10 @@ Returns a message which authorizes a new Ed25519 Signer to create messages on be
 ```typescript
 import { makeSignerAdd } from '@farcaster/hub-nodejs';
 
-const signerAdd = await makeSignerAdd({ signer: ed25519Signer.signerKey, name: 'foo' }, dataOptions, eip712Signer);
+// Safety: input is known and cannot throw, so safe to unwrap in the example
+const addressBytes = (await eip712Signer.getSignerKey())._unsafeUnwrap();
+
+const signerAdd = await makeSignerAdd({ signer: ed25519Signer.addressBytes, name: 'foo' }, dataOptions, eip712Signer);
 ```
 
 #### Returns
@@ -120,7 +123,10 @@ Returns a message which revokes a previously authorized Ed25519 Signer.
 ```typescript
 import { makeSignerRemove } from '@farcaster/hub-nodejs';
 
-const signerRemove = await makeSignerRemove({ signer: ed25519Signer.signerKey }, dataOptions, eip712Signer);
+// Safety: input is known and cannot throw, so safe to unwrap in the example
+const addressBytes = (await eip712Signer.getSignerKey())._unsafeUnwrap();
+
+const signerRemove = await makeSignerRemove({ signer: addressBytes }, dataOptions, eip712Signer);
 ```
 
 #### Returns
@@ -301,7 +307,6 @@ const userDataPfpBody = {
 };
 
 const userDataPfpAdd = await makeUserDataAdd(userDataPfpBody, dataOptions, ed25519Signer);
-console.log(userDataPfpAdd);
 ```
 
 #### Returns
@@ -334,7 +339,9 @@ import {
   makeVerificationEthAddressClaim,
 } from '@farcaster/hub-nodejs';
 
-const addressBytes = eip712Signer.signerKey;
+// Safety: input is known and cannot throw, so safe to unwrap in the example
+const addressBytes = (await eip712Signer.getSignerKey())._unsafeUnwrap();
+
 const blockHashHex = '0x1d3b0456c920eb503450c7efdcf9b5cf1f5184bf04e5d8ecbcead188a0d02018';
 const blockHashBytes = hexStringToBytes(blockHashHex)._unsafeUnwrap();
 
@@ -355,7 +362,6 @@ if (claimResult.isOk()) {
   };
 
   const verificationMessage = await makeVerificationAddEthAddress(verificationBody, dataOptions, ed25519Signer);
-  console.log(verificationMessage);
 }
 ```
 
@@ -384,12 +390,14 @@ Returns a message that removes a previously added Verification.
 ```typescript
 import { makeVerificationRemove } from '@farcaster/hub-nodejs';
 
+// Safety: input is known and cannot throw, so safe to unwrap in the example
+const addressBytes = (await eip712Signer.getSignerKey())._unsafeUnwrap();
+
 const verificationRemoveBody = {
-  address: eip712Signer.signerKey, // Ethereum Address of Verification to remove
+  address: eip712Signer.addressBytes, // Ethereum Address of Verification to remove
 };
 
 const verificationRemoveMessage = await makeVerificationRemove(verificationRemoveBody, dataOptions, ed25519Signer);
-console.log(verificationRemoveMessage);
 ```
 
 #### Returns
