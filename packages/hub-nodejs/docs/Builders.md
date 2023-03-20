@@ -103,11 +103,11 @@ const signerAdd = await makeSignerAdd({ signer: ed25519Signer.signerKey, name: '
 
 #### Parameters
 
-| Name          | Type                                           | Description                                                                |
-| :------------ | :--------------------------------------------- | :------------------------------------------------------------------------- |
-| `body`        | [`SignerAddBody`](./Messages.md#signeraddbody) | A valid VerificationAddEd25519 body object containing the data to be sent. |
-| `dataOptions` | `MessageDataOptions`                           | Optional arguments to construct the message.                               |
-| `signer`      | `Eip712Signer`                                 | An Eip712Signer generated from the user's custody address.                 |
+| Name          | Type                                              | Description                                                                |
+| :------------ | :------------------------------------------------ | :------------------------------------------------------------------------- |
+| `body`        | [`SignerAddBody`](./Messages.md#signeraddbody)    | A valid VerificationAddEd25519 body object containing the data to be sent. |
+| `dataOptions` | `MessageDataOptions`                              | Optional arguments to construct the message.                               |
+| `signer`      | [`Eip712Signer`](./signers/EthersEip712Signer.md) | An Eip712Signer generated from the user's custody address.                 |
 
 ---
 
@@ -135,7 +135,7 @@ const signerRemove = await makeSignerRemove({ signer: ed25519Signer.signerKey },
 | :------------ | :--------------------------------------------------- | :--------------------------------------------------------------- |
 | `body`        | [`SignerRemoveBody`](./Messages.md#signerremovebody) | A valid SignerRemove body object containing the data to be sent. |
 | `dataOptions` | `MessageDataOptions`                                 | Optional metadata to construct the message.                      |
-| `signer`      | `Eip712Signer`                                       | An Eip712Signer generated from the user's custody address.       |
+| `signer`      | [`Eip712Signer`](./signers/EthersEip712Signer.md)    | An Eip712Signer generated from the user's custody address.       |
 
 ---
 
