@@ -45,15 +45,17 @@ Returns the 256-bit public key in bytes.
 #### Usage
 
 ```typescript
-const signerKey = await signer.getSignerKey();
-console.log(signerKey._unsafeUnwrap());
+const signerKeyResult = await signer.getSignerKey();
+if (signerKeyResult.isOk()) {
+  console.log(signerKeyResult.value);
+}
 ```
 
 #### Returns
 
 | Value                        | Description                          |
 | :--------------------------- | :----------------------------------- |
-| `HubAsyncResult<Uint8Array>` | Rhe 256-bit address as a Uint8Array. |
+| `HubAsyncResult<Uint8Array>` | The 256-bit address as a Uint8Array. |
 
 ### signMessageHash
 
@@ -67,8 +69,10 @@ import { createHash, randomBytes } from 'crypto';
 const messageBytes = randomBytes(32);
 const messageHash = createHash('sha256').update(messageBytes).digest();
 
-const signature = await signer.signMessageHash(messageHash);
-console.log(signature._unsafeUnwrap());
+const signatureResult = await signer.signMessageHash(messageHash);
+if (signatureResult.isOk()) {
+  console.log(signatureResult.value);
+}
 ```
 
 #### Returns
