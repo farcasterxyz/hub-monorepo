@@ -119,3 +119,9 @@ export type AdminRpcClient = PromisifiedClient<AdminServiceClient>;
 export const getAdminRpcClient = async (address: string): Promise<AdminRpcClient> => {
   return promisifyClient(await getAdminClient(address));
 };
+
+export const getAuthMetadata = (username: string, password: string): Metadata => {
+  const metadata = new Metadata();
+  metadata.set('authorization', `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`);
+  return metadata;
+};

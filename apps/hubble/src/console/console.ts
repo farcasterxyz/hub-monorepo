@@ -1,5 +1,5 @@
 import { Empty } from '@farcaster/protobufs';
-import { getAdminRpcClient, getHubRpcClient } from '@farcaster/utils';
+import { getAdminRpcClient, getAuthMetadata, getHubRpcClient } from '@farcaster/utils';
 import path from 'path';
 import * as repl from 'repl';
 import { ADMIN_SERVER_PORT } from '~/rpc/adminServer';
@@ -70,6 +70,9 @@ export const startConsole = async (addressString: string) => {
   commands.forEach((command) => {
     replServer.context[command.commandName()] = command.object();
   });
+
+  // Add some utility functions
+  replServer.context['getAuthMetadata'] = getAuthMetadata;
 
   // Run the info command to start
   replServer.output.write(

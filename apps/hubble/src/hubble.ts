@@ -178,7 +178,7 @@ export class Hub implements HubInterface {
     this.syncEngine = new SyncEngine(this.engine, this.rocksDB);
 
     this.rpcServer = new Server(this, this.engine, this.syncEngine, this.gossipNode, options.rpcAuth);
-    this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine);
+    this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine, options.rpcAuth);
 
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
     // Defaults to Goerli testnet, which is currently used for Production Farcaster Hubs.
