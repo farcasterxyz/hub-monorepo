@@ -4,7 +4,7 @@ import cron from 'node-cron';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
 
-export const DEFAULT_PRUNE_EVENTS_JOB_CRON = '* * * * *'; // Every hour at :20
+export const DEFAULT_PRUNE_EVENTS_JOB_CRON = '20 * * * *'; // Every hour at :20
 
 const log = logger.child({
   component: 'PruneEventsJob',
@@ -37,9 +37,15 @@ export class PruneEventsJobScheduler {
   async doJobs(): HubAsyncResult<void> {
     log.info({}, 'starting prune events job');
 
-    await this._engine.eventHandler.pruneEvents();
-
-    log.info({}, 'finished prune events job');
+    const result = await this._engine.eventHandler.pruneEvents();
+    result.match(
+      () => {
+        log.info({}, 'finished prune events job');
+      },
+      (e) => {
+        log.error({ errCode: e.errCode }, `error pruning events: ${e.message}`);
+      }
+    );
 
     return ok(undefined);
   }
