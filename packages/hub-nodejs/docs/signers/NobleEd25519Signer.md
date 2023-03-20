@@ -55,7 +55,7 @@ if (signerKeyResult.isOk()) {
 
 | Value                        | Description                          |
 | :--------------------------- | :----------------------------------- |
-| `HubAsyncResult<Uint8Array>` | Rhe 256-bit address as a Uint8Array. |
+| `HubAsyncResult<Uint8Array>` | The 256-bit address as a Uint8Array. |
 
 ### signMessageHash
 
