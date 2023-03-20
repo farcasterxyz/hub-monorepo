@@ -1,4 +1,3 @@
-import * as protobufs from '@farcaster/protobufs';
 import { validations } from '@farcaster/utils';
 import { parentPort } from 'worker_threads';
 
@@ -11,7 +10,7 @@ parentPort?.on('message', (data) => {
     if (result.isErr()) {
       parentPort?.postMessage({ id, errCode: result.error.errCode, errMessage: result.error.message });
     } else {
-      parentPort?.postMessage({ id, messageBytes: protobufs.Message.encode(result.value).finish() });
+      parentPort?.postMessage({ id, message: result.value });
     }
   })();
 });

@@ -56,7 +56,7 @@ class Engine {
     this._userDataStore = new UserDataStore(db, this.eventHandler);
     this._verificationStore = new VerificationStore(db, this.eventHandler);
 
-    const workerPath = new URL('./validation.worker.js', import.meta.url).pathname.replace('/src/', '/build/');
+    const workerPath = './build/storage/engine/validation.worker.js';
     try {
       if (fs.existsSync(workerPath)) {
         this._validationWorker = new Worker(workerPath);
@@ -64,13 +64,12 @@ class Engine {
         logger.info({ workerPath }, 'created validation worker thread');
 
         this._validationWorker.on('message', (data) => {
-          const { id, messageBytes, errCode, errMessage } = data;
+          const { id, message, errCode, errMessage } = data;
           const resolve = this._validationWorkerPromiseMap.get(id);
 
           if (resolve) {
             this._validationWorkerPromiseMap.delete(id);
-            if (messageBytes) {
-              const message = protobufs.Message.decode(messageBytes);
+            if (message) {
               resolve(ok(message));
             } else {
               resolve(err(new HubError(errCode, errMessage)));
