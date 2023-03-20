@@ -45,14 +45,15 @@ Returns the 256-bit public key in bytes.
 #### Usage
 
 ```typescript
-const signerKey = await ed25519Signer.getSignerKey();
+const signerKey = await signer.getSignerKey();
+console.log(signerKey._unsafeUnwrap());
 ```
 
 #### Returns
 
-| Value                        | Description                                                      |
-| :--------------------------- | :--------------------------------------------------------------- |
-| `HubAsyncResult<Uint8Array>` | A HubAsyncResult containing the 256-bit address as a Uint8Array. |
+| Value                        | Description                          |
+| :--------------------------- | :----------------------------------- |
+| `HubAsyncResult<Uint8Array>` | Rhe 256-bit address as a Uint8Array. |
 
 ### signMessageHash
 
@@ -61,24 +62,20 @@ Generates a 256-bit signature of a message hash using the EdDSA key pair.
 #### Usage
 
 ```typescript
-import { NobleEd25519Signer } from '@farcaster/hub-nodejs';
-import { randomBytes } from 'crypto';
-import * as ed from '@noble/ed25519';
-
-const privateKeyBytes = ed.utils.randomPrivateKey();
-const signer = new NobleEd25519Signer(privateKeyBytes);
+import { createHash, randomBytes } from 'crypto';
 
 const messageBytes = randomBytes(32);
-const messageHash = crypto.createHash('sha256').update(messageBytes).digest();
+const messageHash = createHash('sha256').update(messageBytes).digest();
 
 const signature = await signer.signMessageHash(messageHash);
+console.log(signature._unsafeUnwrap());
 ```
 
 #### Returns
 
-| Value                        | Description                                                        |
-| :--------------------------- | :----------------------------------------------------------------- |
-| `HubAsyncResult<Uint8Array>` | A HubAsyncResult containing the 256-bit signature as a Uint8Array. |
+| Value                        | Description                            |
+| :--------------------------- | :------------------------------------- |
+| `HubAsyncResult<Uint8Array>` | The 256-bit signature as a Uint8Array. |
 
 #### Parameters
 
