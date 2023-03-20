@@ -122,10 +122,16 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // Interrupt any ongoing sync
     this._interruptSync = true;
 
+    // First, save the trie to disk
+    await this._trie.commitToDb();
+
     // Wait for syncing to stop.
     try {
       await sleepWhile(() => this._isSyncing, SYNC_INTERRUPT_TIMEOUT);
       await sleepWhile(() => this.syncTrieQSize > 0, SYNC_INTERRUPT_TIMEOUT);
+
+      // Write the trie to disk one last time, in case there were any changes
+      await this._trie.commitToDb();
     } catch (e) {
       log.error({ err: e }, 'Interrupting sync timed out');
     }

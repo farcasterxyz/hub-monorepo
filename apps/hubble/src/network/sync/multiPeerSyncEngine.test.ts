@@ -124,6 +124,7 @@ describe('Multi peer sync engine', () => {
 
     // Create a new sync engine from the existing engine, and see if all the messages from the engine
     // are loaded into the sync engine Merkle Trie properly.
+    await syncEngine1.trie.commitToDb();
     const reinitSyncEngine = new SyncEngine(engine1, testDb1);
     await reinitSyncEngine.initialize();
 
