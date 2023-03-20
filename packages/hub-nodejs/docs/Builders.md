@@ -90,12 +90,13 @@ Returns a message which authorizes a new Ed25519 Signer to create messages on be
 #### Usage
 
 ```typescript
-import { makeSignerAdd } from '@farcaster/hub-nodejs';
+import { makeSignerAdd, hexStringToBytes } from '@farcaster/hub-nodejs';
 
-const signer = '0x027fb58156b2733495acb24248e5e3ddf7ad8be4b85321c1e598e06ed030f51f'; // public key of the Ed25519 key-pair to authorize
+const signerHex = '0x027fb58156b2733495acb24248e5e3ddf7ad8be4b85321c1e598e06ed030f51f'; // public key of the Ed25519 key-pair to authorize
+const signerBytes = hexStringToBytes(signerHex)._unsafeUnwrap();
 const name = 'foo'; // label to help the user identify this signers
 
-const signerAdd = await makeSignerAdd({ signer, name }, dataOptions, eip712Signer);
+const signerAdd = await makeSignerAdd({ signer: signerBytes, name }, dataOptions, eip712Signer);
 ```
 
 #### Returns
@@ -121,11 +122,12 @@ Returns a message which revokes a previously authorized Ed25519 Signer.
 #### Usage
 
 ```typescript
-import { makeSignerRemove } from '@farcaster/hub-nodejs';
+import { makeSignerRemove, hexStringToBytes } from '@farcaster/hub-nodejs';
 
-const signer = '0x027fb58156b2733495acb24248e5e3ddf7ad8be4b85321c1e598e06ed030f51f'; // public key of the Ed25519 key-pair to revoke
+const signerHex = '0x027fb58156b2733495acb24248e5e3ddf7ad8be4b85321c1e598e06ed030f51f'; // public key of the Ed25519 key-pair to revoke
+const signerBytes = hexStringToBytes(signerHex)._unsafeUnwrap();
 
-const signerRemove = await makeSignerRemove({ signer }, dataOptions, eip712Signer);
+const signerRemove = await makeSignerRemove({ signer: signerBytes }, dataOptions, eip712Signer);
 ```
 
 #### Returns
