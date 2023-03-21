@@ -86,6 +86,12 @@ class Engine {
     }
   }
 
+  async stop(): Promise<void> {
+    if (this._validationWorker) {
+      await this._validationWorker.terminate();
+    }
+  }
+
   async mergeMessages(messages: protobufs.Message[]): Promise<Array<HubResult<number>>> {
     return Promise.all(messages.map((message) => this.mergeMessage(message)));
   }

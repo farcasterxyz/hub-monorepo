@@ -48,6 +48,7 @@ describe('SyncEngine', () => {
 
   afterEach(async () => {
     await syncEngine.stop();
+    await engine.stop();
   });
 
   const addMessagesWithTimestamps = async (timestamps: number[]) => {
@@ -196,6 +197,7 @@ describe('SyncEngine', () => {
     expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
 
     await syncEngine2.stop();
+    await engine2.stop();
   });
 
   test('snapshotTimestampPrefix trims the seconds', async () => {

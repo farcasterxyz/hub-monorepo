@@ -57,6 +57,10 @@ beforeAll(async () => {
   );
 });
 
+afterAll(async () => {
+  await engine.stop();
+});
+
 describe('mergeIdRegistryEvent', () => {
   test('succeeds', async () => {
     await expect(engine.mergeIdRegistryEvent(custodyEvent)).resolves.toBeInstanceOf(Ok);
@@ -305,6 +309,7 @@ describe('mergeMessage', () => {
         )
       )
     );
+    await mainnetEngine.stop();
   });
 });
 

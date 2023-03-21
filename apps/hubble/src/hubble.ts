@@ -363,6 +363,9 @@ export class Hub implements HubInterface {
       await this.ethRegistryProvider.stop();
     }
 
+    // Stop the engine
+    await this.engine.stop();
+
     // Close the DB, which will flush all data to disk. Just before we close, though, write that
     // we've cleanly shutdown.
     await this.writeHubCleanShutdown(true);
