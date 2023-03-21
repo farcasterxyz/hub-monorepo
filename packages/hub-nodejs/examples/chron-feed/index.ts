@@ -22,7 +22,7 @@ const timeAgo = new TimeAgo('en-US');
  */
 const getPrimaryCastsByFid = async (fid: number, client: HubRpcClient): HubAsyncResult<CastAddMessage[]> => {
   // TODO: Instead of fetching N casts and returning the primary ones, loop through until N primary casts are found.
-  const result = await client.getCastsByFid({ fid: fid, pageSize: 10 });
+  const result = await client.getCastsByFid({ fid: fid, pageSize: 10, reverse: true });
 
   if (result.isErr()) {
     return err(result.error);
