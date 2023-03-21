@@ -143,14 +143,9 @@ describe('process events', () => {
     const address2 = generateEthAddressHex();
 
     // Emit a "Register event"
-    const rRegister = mockIdRegistry.emit(
-      'Register',
-      address1,
-      BigInt(fid),
-      '',
-      '',
-      new MockEvent(blockNumber++, '0xb00001', '0x400001', 0, mockRPCProvider)
-    );
+    const rRegister = mockIdRegistry.emit('Register', address1, BigInt(fid), '', '', {
+      log: new MockEvent(blockNumber++, '0xb00001', '0x400001', 0, mockRPCProvider),
+    });
     expect(rRegister).toBeTruthy();
 
     // The event is not immediately available, since it has to wait for confirmations
@@ -164,13 +159,9 @@ describe('process events', () => {
     expect(idRegistryEvent.fid).toEqual(fid);
 
     // Transfer the ID to another address
-    mockIdRegistry.emit(
-      'Transfer',
-      address1,
-      address2,
-      BigInt(fid),
-      new MockEvent(blockNumber++, '0xb00002', '0x400002', 0, mockRPCProvider)
-    );
+    mockIdRegistry.emit('Transfer', address1, address2, BigInt(fid), {
+      log: new MockEvent(blockNumber++, '0xb00002', '0x400002', 0, mockRPCProvider),
+    });
     // The event is not immediately available, since it has to wait for confirmations. We should still get the Register event
     const existingIdRegistryEvent = await getIdRegistryEvent(db, fid);
     expect(existingIdRegistryEvent.type).toEqual(protobufs.IdRegistryEventType.REGISTER);
@@ -190,13 +181,9 @@ describe('process events', () => {
     let blockNumber = 1;
 
     // Emit a "Transfer event"
-    const rTransfer = mockNameRegistry.emit(
-      'Transfer',
-      '0x000001',
-      '0x000002',
-      bytesToBytes32(fname)._unsafeUnwrap(),
-      new MockEvent(blockNumber++, '0xb00001', '0x400001', 0, mockRPCProvider)
-    );
+    const rTransfer = mockNameRegistry.emit('Transfer', '0x000001', '0x000002', bytesToBytes32(fname)._unsafeUnwrap(), {
+      log: new MockEvent(blockNumber++, '0xb00001', '0x400001', 0, mockRPCProvider),
+    });
     expect(rTransfer).toBeTruthy();
 
     // The event is not immediately available, since it has to wait for confirmations
@@ -209,12 +196,9 @@ describe('process events', () => {
     expect((await getNameRegistryEvent(db, fname)).fname).toEqual(fname);
 
     // Renew the fname
-    mockNameRegistry.emit(
-      'Renew',
-      bytesToBytes32(fname)._unsafeUnwrap(),
-      BigInt(Date.now() + 1000),
-      new MockEvent(blockNumber++, '0xb00002', '0x400002', 0, mockRPCProvider)
-    );
+    mockNameRegistry.emit('Renew', bytesToBytes32(fname)._unsafeUnwrap(), BigInt(Date.now() + 1000), {
+      log: new MockEvent(blockNumber++, '0xb00002', '0x400002', 0, mockRPCProvider),
+    });
     // The event is not immediately available, since it has to wait for confirmations. We should still get the Transfer event
     expect(await getNameRegistryEvent(db, fname)).toMatchObject({
       type: protobufs.NameRegistryEventType.TRANSFER,
