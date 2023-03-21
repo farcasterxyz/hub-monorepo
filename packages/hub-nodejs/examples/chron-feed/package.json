@@ -1,11 +1,11 @@
 {
-  "name": "example-feed",
+  "name": "example-chron-feed",
   "private": true,
   "type": "module",
   "version": "0.0.0",
   "main": "index.ts",
   "scripts": {
-    "run": "tsx index.ts"
+    "start": "tsx index.ts"
   },
   "dependencies": {
     "@farcaster/hub-nodejs": "^0.5.0",
