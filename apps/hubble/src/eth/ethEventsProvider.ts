@@ -1,6 +1,13 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesToUtf8String, hexStringToBytes, HubAsyncResult, HubError, toFarcasterTime } from '@farcaster/utils';
-import { AbstractProvider, BaseContractMethod, Contract, EventLog, JsonRpcProvider } from 'ethers';
+import {
+  AbstractProvider,
+  BaseContractMethod,
+  Contract,
+  ContractEventPayload,
+  EventLog,
+  JsonRpcProvider,
+} from 'ethers';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
 import { bytes32ToBytes, bytesToBytes32 } from '~/eth/utils';
@@ -72,20 +79,23 @@ export class EthEventsProvider {
     this._renewEventsByBlock = new Map();
 
     // Setup IdRegistry contract
-    this._idRegistryContract.on('Register', (to: string, id: bigint, _recovery, _url, event: EventLog) => {
-      this.cacheIdRegistryEvent(null, to, id, protobufs.IdRegistryEventType.REGISTER, event);
+    this._idRegistryContract.on('Register', (to: string, id: bigint, _recovery, _url, event: ContractEventPayload) => {
+      this.cacheIdRegistryEvent(null, to, id, protobufs.IdRegistryEventType.REGISTER, event.log);
     });
-    this._idRegistryContract.on('Transfer', (from: string, to: string, id: bigint, event: EventLog) => {
-      this.cacheIdRegistryEvent(from, to, id, protobufs.IdRegistryEventType.TRANSFER, event);
+    this._idRegistryContract.on('Transfer', (from: string, to: string, id: bigint, event: ContractEventPayload) => {
+      this.cacheIdRegistryEvent(from, to, id, protobufs.IdRegistryEventType.TRANSFER, event.log);
     });
 
     // Setup NameRegistry contract
-    this._nameRegistryContract.on('Transfer', (from: string, to: string, tokenId: bigint, event: EventLog) => {
-      this.cacheNameRegistryEvent(from, to, tokenId, event);
-    });
+    this._nameRegistryContract.on(
+      'Transfer',
+      (from: string, to: string, tokenId: bigint, event: ContractEventPayload) => {
+        this.cacheNameRegistryEvent(from, to, tokenId, event.log);
+      }
+    );
 
-    this._nameRegistryContract.on('Renew', (tokenId: bigint, expiry: bigint, event: EventLog) => {
-      this.cacheRenewEvent(tokenId, expiry, event);
+    this._nameRegistryContract.on('Renew', (tokenId: bigint, expiry: bigint, event: ContractEventPayload) => {
+      this.cacheRenewEvent(tokenId, expiry, event.log);
     });
 
     // Set up block listener to confirm blocks
