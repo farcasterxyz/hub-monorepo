@@ -39,6 +39,10 @@ describe('SyncEngine', () => {
     engine = new Engine(testDb, FarcasterNetwork.TESTNET);
   });
 
+  afterEach(async () => {
+    await engine.stop();
+  });
+
   const addMessagesWithTimestamps = async (timestamps: number[], mergeEngine?: Engine) => {
     return await Promise.all(
       timestamps.map(async (t) => {
@@ -61,13 +65,16 @@ describe('SyncEngine', () => {
       let syncEngine1;
       let syncEngine2;
 
+      let engine1;
+      let engine2;
+
       try {
         testDb.clear();
         testDb2.clear();
 
-        const engine1 = new Engine(testDb, FarcasterNetwork.TESTNET);
+        engine1 = new Engine(testDb, FarcasterNetwork.TESTNET);
         syncEngine1 = new SyncEngine(engine1, testDb);
-        const engine2 = new Engine(testDb2, FarcasterNetwork.TESTNET);
+        engine2 = new Engine(testDb2, FarcasterNetwork.TESTNET);
         syncEngine2 = new SyncEngine(engine2, testDb2);
 
         await engine1.mergeIdRegistryEvent(custodyEvent);
@@ -115,7 +122,10 @@ describe('SyncEngine', () => {
       } finally {
         Date.now = nowOrig;
         await syncEngine1?.stop();
+        await engine1?.stop();
+
         await syncEngine2?.stop();
+        await engine2?.stop();
       }
     },
     15 * 1000

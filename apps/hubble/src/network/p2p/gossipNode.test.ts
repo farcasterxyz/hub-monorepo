@@ -113,6 +113,10 @@ describe('GossipNode', () => {
       castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
     });
 
+    afterAll(async () => {
+      await engine.stop();
+    });
+
     test('gossip messages only from rpc', async () => {
       let numMessagesGossiped = 0;
       const mockGossipNode = {

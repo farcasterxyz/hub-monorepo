@@ -30,6 +30,10 @@ beforeAll(async () => {
   );
 });
 
+afterAll(async () => {
+  await engine.stop();
+});
+
 describe('auth tests', () => {
   test('fails with invalid password', async () => {
     const authServer = new Server(hub, engine, new SyncEngine(engine, db), undefined, 'admin:password');

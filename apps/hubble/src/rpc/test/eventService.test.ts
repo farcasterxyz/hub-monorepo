@@ -22,6 +22,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await server.stop();
+  await engine.stop();
 });
 
 const fid = Factories.Fid.build();

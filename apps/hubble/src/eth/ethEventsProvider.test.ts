@@ -104,6 +104,10 @@ beforeAll(async () => {
   mockNameRegistry = new Contract('0x000002', NameRegistry.abi, mockRPCProvider);
 });
 
+afterAll(async () => {
+  await engine.stop();
+});
+
 describe('process events', () => {
   beforeEach(async () => {
     ethEventsProvider = new EthEventsProvider(hub, mockRPCProvider, mockIdRegistry, mockNameRegistry, 1, 10000);

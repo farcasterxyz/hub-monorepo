@@ -49,6 +49,10 @@ beforeAll(async () => {
   verificationRemove = await Factories.VerificationRemoveMessage.create({ data: { fid } }, { transient: { signer } });
 });
 
+afterAll(async () => {
+  await engine.stop();
+});
+
 beforeEach(async () => {
   await seedSigner(engine, fid, signerKey);
 });
