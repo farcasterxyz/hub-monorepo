@@ -1,15 +1,15 @@
 # Examples
 
-Each example is a fully executable Typescript repo that can be checked out and executed.
+A collection of Typescript examples showcasing the things you can do with hub-nodejs.
 
-## Reading Data
+Each example is a self-contained repository that can be checked out and executed locally, and also includes a
+StackBlitz link to run it in a cloud REPL. Contributions are always welcome!
 
 - [Generate a chronological feed](./feed/)
+- [Writing data with a signer](./write-user-data/)
+
+Other examples that would be useful to developers:
+
 - Subscribe to updates about a user
-- Handle Signer Changes
-
-## Writing Data
-
-- [Create Signers to publish messages](./write-signer.md)
-- Create new Casts
-- Create new Reactions
+- Constructing a Cast with mentions and embeds
+- Rotating Signers gracefully
