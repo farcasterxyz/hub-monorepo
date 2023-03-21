@@ -191,6 +191,7 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 | `fid`        | `number`     | The fid of the user.                             |
 | `pageSize?`  | `number`     | Number of results per page.                      |
 | `pageToken?` | `Uint8Array` | Token used to fetch the next page, if it exists. |
+| `reverse?`   | `boolean`    | Reverses the chronological ordering.             |
 
 ---
 
@@ -225,6 +226,7 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 | `fid`        | `number`     | The fid of the user.                             |
 | `pageSize?`  | `number`     | Number of results per page.                      |
 | `pageToken?` | `Uint8Array` | Token used to fetch the next page, if it exists. |
+| `reverse?`   | `boolean`    | Reverses the chronological ordering.             |
 
 ---
 
@@ -287,9 +289,10 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 #### Parameters
 
-| Name  | Type     | Description          |
-| :---- | :------- | :------------------- |
-| `fid` | `number` | The fid of the user. |
+| Name       | Type      | Description                          |
+| :--------- | :-------- | :----------------------------------- |
+| `fid`      | `number`  | The fid of the user.                 |
+| `reverse?` | `boolean` | Reverses the chronological ordering. |
 
 ---
 
@@ -366,6 +369,7 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 | `fid`        | `number`     | The fid of the user.                             |
 | `pageSize?`  | `number`     | Number of results per page.                      |
 | `pageToken?` | `Uint8Array` | Token used to fetch the next page, if it exists. |
+| `reverse?`   | `boolean`    | Reverses the chronological ordering.             |
 
 ---
 
@@ -400,6 +404,7 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 | `fid`        | `number`     | The fid that is mentioned in the casts.          |
 | `pageSize?`  | `number`     | Number of results per page.                      |
 | `pageToken?` | `Uint8Array` | Token used to fetch the next page, if it exists. |
+| `reverse?`   | `boolean`    | Reverses the chronological ordering.             |
 
 ---
 
@@ -437,6 +442,7 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 | `parent`     | [`CastId`](./Messages.md#castid) | The CastId of the parent cast.                   |
 | `pageSize?`  | `number`                         | Number of results per page.                      |
 | `pageToken?` | `Uint8Array`                     | Token used to fetch the next page, if it exists. |
+| `reverse?`   | `boolean`                        | Reverses the chronological ordering.             |
 
 ---
 
@@ -470,6 +476,7 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 | `fid`        | `number`     | The fid of the user.                             |
 | `pageSize?`  | `number`     | Number of results per page.                      |
 | `pageToken?` | `Uint8Array` | Token used to fetch the next page, if it exists. |
+| `reverse?`   | `boolean`    | Reverses the chronological ordering.             |
 
 ---
 
@@ -558,6 +565,7 @@ import { getHubRpcClient, ReactionType } from '@farcaster/hub-nodejs';
 | `type?`      | [`ReactionType`](./Messages.md#reactiontype) | (optional) The type of the reaction.             |
 | `pageSize?`  | `number`                                     | Number of results per page.                      |
 | `pageToken?` | `Uint8Array`                                 | Token used to fetch the next page, if it exists. |
+| `reverse?`   | `boolean`                                    | Reverses the chronological ordering.             |
 
 ---
 
@@ -593,6 +601,7 @@ import { getHubRpcClient, ReactionType } from '@farcaster/hub-nodejs';
 | `reactionType?` | [`ReactionType`](./Messages.md#reactiontype) | The type of the reaction                         |
 | `pageSize?`     | `number`                                     | Number of results per page.                      |
 | `pageToken?`    | `Uint8Array`                                 | Token used to fetch the next page, if it exists. |
+| `reverse?`      | `boolean`                                    | Reverses the chronological ordering.             |
 
 ---
 
@@ -627,6 +636,7 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 | `fid`        | `number`     | The fid of the user.                             |
 | `pageSize?`  | `number`     | Number of results per page.                      |
 | `pageToken?` | `Uint8Array` | Token used to fetch the next page, if it exists. |
+| `reverse?`   | `boolean`    | Reverses the chronological ordering.             |
 
 ---
 
@@ -701,6 +711,7 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 | `fid`        | `number`     | The fid of the user.                             |
 | `pageSize?`  | `number`     | Number of results per page.                      |
 | `pageToken?` | `Uint8Array` | Token used to fetch the next page, if it exists. |
+| `reverse?`   | `boolean`    | Reverses the chronological ordering.             |
 
 ---
 
@@ -739,6 +750,7 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 | `fid`        | `number`     | The fid of the user.                             |
 | `pageSize?`  | `number`     | Number of results per page.                      |
 | `pageToken?` | `Uint8Array` | Token used to fetch the next page, if it exists. |
+| `reverse?`   | `boolean`    | Reverses the chronological ordering.             |
 
 ---
 
