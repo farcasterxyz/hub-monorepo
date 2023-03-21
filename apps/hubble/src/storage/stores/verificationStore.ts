@@ -236,13 +236,14 @@ class VerificationStore {
     return this._eventHandler.commitTransaction(txn, events);
   }
 
-  async pruneMessages(fid: number): HubAsyncResult<number[]> {
+  async pruneMessages(fid: number, count?: number): HubAsyncResult<number[]> {
     // Count number of verification messages for this fid
-    // TODO: persist this count to avoid having to retrieve it with each call
-    const prefix = makeMessagePrimaryKey(fid, UserPostfix.VerificationMessage);
-    let count = 0;
-    for await (const [,] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
-      count = count + 1;
+    if (count === undefined) {
+      const prefix = makeMessagePrimaryKey(fid, UserPostfix.VerificationMessage);
+      count = 0;
+      for await (const [,] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
+        count = count + 1;
+      }
     }
 
     // Calculate the number of messages that need to be pruned, based on the store's size limit

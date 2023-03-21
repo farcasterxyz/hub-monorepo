@@ -58,6 +58,10 @@ beforeAll(async () => {
   );
 });
 
+beforeAll(async () => {
+  await engine.start();
+});
+
 afterAll(async () => {
   await engine.stop();
 });

@@ -23,6 +23,7 @@ import { MessagesPage, PageOptions } from '~/storage/stores/types';
 import UserDataStore from '~/storage/stores/userDataStore';
 import VerificationStore from '~/storage/stores/verificationStore';
 import { logger } from '~/utils/logger';
+import { StorageCache } from '~/storage/engine/storageCache';
 
 const log = logger.child({
   component: 'Engine',
@@ -44,18 +45,23 @@ class Engine {
   private _validationWorkerJobId = 0;
   private _validationWorkerPromiseMap = new Map<number, (resolve: HubResult<protobufs.Message>) => void>();
 
+  private _storageCache: StorageCache;
+
   constructor(db: RocksDB, network: protobufs.FarcasterNetwork) {
     this._db = db;
     this._network = network;
 
-    this.eventHandler = new StoreEventHandler(db);
+    this._storageCache = new StorageCache();
+    this.eventHandler = new StoreEventHandler(db, this._storageCache);
 
     this._reactionStore = new ReactionStore(db, this.eventHandler);
     this._signerStore = new SignerStore(db, this.eventHandler);
     this._castStore = new CastStore(db, this.eventHandler);
     this._userDataStore = new UserDataStore(db, this.eventHandler);
     this._verificationStore = new VerificationStore(db, this.eventHandler);
+  }
 
+  async start(): Promise<void> {
     const workerPath = './build/storage/engine/validation.worker.js';
     try {
       if (fs.existsSync(workerPath)) {
@@ -84,6 +90,8 @@ class Engine {
     } catch (e) {
       logger.warn({ workerPath, e }, 'failed to create validation worker, falling back to main thread');
     }
+
+    await this._storageCache.syncFromDb(this._db);
   }
 
   async stop(): Promise<void> {
@@ -214,19 +222,33 @@ class Engine {
       );
     };
 
-    const castResult = await this._castStore.pruneMessages(fid);
+    const castCount = this._storageCache.getMessageCount(fid, UserPostfix.CastMessage);
+    const castResult = await this._castStore.pruneMessages(fid, castCount.isOk() ? castCount.value : undefined);
     logPruneResult(castResult, 'cast');
 
-    const reactionResult = await this._reactionStore.pruneMessages(fid);
+    const reactionCount = this._storageCache.getMessageCount(fid, UserPostfix.ReactionMessage);
+    const reactionResult = await this._reactionStore.pruneMessages(
+      fid,
+      reactionCount.isOk() ? reactionCount.value : undefined
+    );
     logPruneResult(reactionResult, 'reaction');
 
-    const verificationResult = await this._verificationStore.pruneMessages(fid);
+    const verificationCount = this._storageCache.getMessageCount(fid, UserPostfix.VerificationMessage);
+    const verificationResult = await this._verificationStore.pruneMessages(
+      fid,
+      verificationCount.isOk() ? verificationCount.value : undefined
+    );
     logPruneResult(verificationResult, 'verification');
 
-    const userDataResult = await this._userDataStore.pruneMessages(fid);
+    const userDataCount = this._storageCache.getMessageCount(fid, UserPostfix.UserDataMessage);
+    const userDataResult = await this._userDataStore.pruneMessages(
+      fid,
+      userDataCount.isOk() ? userDataCount.value : undefined
+    );
     logPruneResult(userDataResult, 'user data');
 
-    const signerResult = await this._signerStore.pruneMessages(fid);
+    const signerCount = this._storageCache.getMessageCount(fid, UserPostfix.SignerMessage);
+    const signerResult = await this._signerStore.pruneMessages(fid, signerCount.isOk() ? signerCount.value : undefined);
     logPruneResult(signerResult, 'signer');
 
     return ok(undefined);
