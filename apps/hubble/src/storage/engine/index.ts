@@ -99,31 +99,50 @@ class Engine {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const setPostfix = typeToSetPostfix(message.data!.type);
 
+    let mergeResult: HubResult<number>;
     if (setPostfix === UserPostfix.ReactionMessage) {
-      return ResultAsync.fromPromise(this._reactionStore.merge(message), (e) => e as HubError);
+      mergeResult = await ResultAsync.fromPromise(this._reactionStore.merge(message), (e) => e as HubError);
     } else if (setPostfix === UserPostfix.SignerMessage) {
-      return ResultAsync.fromPromise(this._signerStore.merge(message), (e) => e as HubError);
+      mergeResult = await ResultAsync.fromPromise(this._signerStore.merge(message), (e) => e as HubError);
     } else if (setPostfix === UserPostfix.CastMessage) {
-      return ResultAsync.fromPromise(this._castStore.merge(message), (e) => e as HubError);
+      mergeResult = await ResultAsync.fromPromise(this._castStore.merge(message), (e) => e as HubError);
     } else if (setPostfix === UserPostfix.UserDataMessage) {
-      return ResultAsync.fromPromise(this._userDataStore.merge(message), (e) => e as HubError);
+      mergeResult = await ResultAsync.fromPromise(this._userDataStore.merge(message), (e) => e as HubError);
     } else if (setPostfix === UserPostfix.VerificationMessage) {
-      return ResultAsync.fromPromise(this._verificationStore.merge(message), (e) => e as HubError);
+      mergeResult = await ResultAsync.fromPromise(this._verificationStore.merge(message), (e) => e as HubError);
     } else {
-      return err(new HubError('bad_request.validation_failure', 'invalid message type'));
+      mergeResult = err(new HubError('bad_request.validation_failure', 'invalid message type'));
     }
+
+    if (mergeResult.isOk()) {
+      if (protobufs.isSignerRemoveMessage(message)) {
+        this.revokeMessagesBySigner(message.data.fid, message.data.signerRemoveBody.signer);
+      }
+    }
+
+    return mergeResult;
   }
 
   async mergeIdRegistryEvent(event: protobufs.IdRegistryEvent): HubAsyncResult<number> {
-    // TODO: validate event
+    let mergeResult: HubResult<number>;
+
     if (
       event.type === protobufs.IdRegistryEventType.REGISTER ||
       event.type === protobufs.IdRegistryEventType.TRANSFER
     ) {
-      return ResultAsync.fromPromise(this._signerStore.mergeIdRegistryEvent(event), (e) => e as HubError);
+      mergeResult = await ResultAsync.fromPromise(this._signerStore.mergeIdRegistryEvent(event), (e) => e as HubError);
     } else {
-      return err(new HubError('bad_request.validation_failure', 'invalid event type'));
+      mergeResult = err(new HubError('bad_request.validation_failure', 'invalid event type'));
     }
+
+    if (mergeResult.isOk()) {
+      const fromAddress = event.from;
+      if (fromAddress && fromAddress.length > 0) {
+        this.revokeMessagesBySigner(event.fid, fromAddress);
+      }
+    }
+
+    return mergeResult;
   }
 
   async mergeNameRegistryEvent(event: protobufs.NameRegistryEvent): HubAsyncResult<number> {
@@ -139,11 +158,38 @@ class Engine {
   }
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {
-    await this._castStore.revokeMessagesBySigner(fid, signer);
-    await this._reactionStore.revokeMessagesBySigner(fid, signer);
-    await this._verificationStore.revokeMessagesBySigner(fid, signer);
-    await this._userDataStore.revokeMessagesBySigner(fid, signer);
-    await this._signerStore.revokeMessagesBySigner(fid, signer);
+    const signerHex = bytesToHexString(signer);
+    if (signerHex.isErr()) {
+      return err(signerHex.error);
+    }
+
+    const logRevokeResult = (result: HubResult<number[]>, store: string): void => {
+      result.match(
+        (ids) => {
+          if (ids.length > 0) {
+            log.info(`Revoked ${ids.length} ${store} messages from signer ${signerHex.value} for fid ${fid}`);
+          }
+        },
+        (e) => {
+          log.error(`Error pruning ${store} messages for fid ${fid}`, e);
+        }
+      );
+    };
+
+    const castResult = await this._castStore.revokeMessagesBySigner(fid, signer);
+    logRevokeResult(castResult, 'cast');
+
+    const reactionResult = await this._reactionStore.revokeMessagesBySigner(fid, signer);
+    logRevokeResult(reactionResult, 'reaction');
+
+    const verificationResult = await this._verificationStore.revokeMessagesBySigner(fid, signer);
+    logRevokeResult(verificationResult, 'verification');
+
+    const userDataResult = await this._userDataStore.revokeMessagesBySigner(fid, signer);
+    logRevokeResult(userDataResult, 'user data');
+
+    const signerResult = await this._signerStore.revokeMessagesBySigner(fid, signer);
+    logRevokeResult(signerResult, 'signer');
 
     return ok(undefined);
   }

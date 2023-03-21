@@ -36,7 +36,6 @@ import { RootPrefix } from '~/storage/db/types';
 import Engine from '~/storage/engine';
 import { PruneEventsJobScheduler } from '~/storage/jobs/pruneEventsJob';
 import { PruneMessagesJobScheduler } from '~/storage/jobs/pruneMessagesJob';
-import { RevokeSignerJobQueue, RevokeSignerJobScheduler } from '~/storage/jobs/revokeSignerJob';
 import {
   UpdateNameRegistryEventExpiryJobQueue,
   UpdateNameRegistryEventExpiryJobWorker,
@@ -130,9 +129,6 @@ export interface HubOptions {
    */
   localIpAddrsOnly?: boolean;
 
-  /** Cron schedule for revoke signer jobs */
-  revokeSignerJobCron?: string;
-
   /** Cron schedule for prune messages job */
   pruneMessagesJobCron?: string;
 
@@ -158,8 +154,6 @@ export class Hub implements HubInterface {
   private rocksDB: RocksDB;
   private syncEngine: SyncEngine;
 
-  private revokeSignerJobQueue: RevokeSignerJobQueue;
-  private revokeSignerJobScheduler: RevokeSignerJobScheduler;
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
   private periodSyncJobScheduler: PeriodicSyncJobScheduler;
   private pruneEventsJobScheduler: PruneEventsJobScheduler;
@@ -196,11 +190,9 @@ export class Hub implements HubInterface {
     }
 
     // Setup job queues
-    this.revokeSignerJobQueue = new RevokeSignerJobQueue(this.rocksDB);
     this.updateNameRegistryEventExpiryJobQueue = new UpdateNameRegistryEventExpiryJobQueue(this.rocksDB);
 
     // Setup job schedulers/workers
-    this.revokeSignerJobScheduler = new RevokeSignerJobScheduler(this.revokeSignerJobQueue, this.engine);
     this.pruneMessagesJobScheduler = new PruneMessagesJobScheduler(this.engine);
     this.periodSyncJobScheduler = new PeriodicSyncJobScheduler(this, this.syncEngine);
     this.pruneEventsJobScheduler = new PruneEventsJobScheduler(this.engine);
@@ -307,7 +299,6 @@ export class Hub implements HubInterface {
     this.registerEventHandlers();
 
     // Start cron tasks
-    this.revokeSignerJobScheduler.start(this.options.revokeSignerJobCron);
     this.pruneMessagesJobScheduler.start(this.options.pruneMessagesJobCron);
     this.periodSyncJobScheduler.start();
     this.pruneEventsJobScheduler.start(this.options.pruneEventsJobCron);
@@ -353,7 +344,6 @@ export class Hub implements HubInterface {
     await this.syncEngine.stop();
 
     // Stop cron tasks
-    this.revokeSignerJobScheduler.stop();
     this.pruneMessagesJobScheduler.stop();
     this.periodSyncJobScheduler.stop();
     this.pruneEventsJobScheduler.stop();
@@ -533,35 +523,6 @@ export class Hub implements HubInterface {
   }
 
   private registerEventHandlers() {
-    // Subscribe to store events
-    this.engine.eventHandler.on('mergeMessage', async (event: protobufs.MergeMessageHubEvent) => {
-      const message = event.mergeMessageBody.message;
-      if (protobufs.isSignerRemoveMessage(message)) {
-        const revokeSignerPayload = RevokeSignerJobQueue.makePayload(
-          message.data?.fid ?? 0,
-          message.data?.signerRemoveBody?.signer ?? new Uint8Array()
-        );
-        if (revokeSignerPayload.isOk()) {
-          // Revoke signer in one hour
-          await this.revokeSignerJobQueue.enqueueJob(revokeSignerPayload.value);
-        }
-      }
-    });
-
-    this.engine.eventHandler.on('mergeIdRegistryEvent', async (event: protobufs.MergeIdRegistryEventHubEvent) => {
-      const fromAddress = event.mergeIdRegistryEventBody.idRegistryEvent.from;
-      if (fromAddress && fromAddress.length > 0) {
-        const revokeSignerPayload = RevokeSignerJobQueue.makePayload(
-          event.mergeIdRegistryEventBody.idRegistryEvent.fid,
-          fromAddress
-        );
-        if (revokeSignerPayload.isOk()) {
-          // Revoke eth address in one hour
-          await this.revokeSignerJobQueue.enqueueJob(revokeSignerPayload.value);
-        }
-      }
-    });
-
     // Subscribes to all relevant topics
     this.gossipNode.gossip?.subscribe(NETWORK_TOPIC_PRIMARY);
     this.gossipNode.gossip?.subscribe(NETWORK_TOPIC_CONTACT);

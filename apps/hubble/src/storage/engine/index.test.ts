@@ -4,6 +4,7 @@ import { err, Ok, ok } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import SignerStore from '~/storage/stores/signerStore';
+import { sleep } from '~/utils/crypto';
 import { getMessage, makeTsHash, typeToSetPostfix } from '../db/message';
 
 const db = jestRocksDB('protobufs.engine.test');
@@ -85,20 +86,29 @@ describe('mergeNameRegistryEvent', () => {
 
 describe('mergeMessage', () => {
   let mergedMessages: protobufs.Message[];
+  let revokedMessages: protobufs.Message[];
+
   const handleMergeMessage = (event: protobufs.MergeMessageHubEvent) => {
     mergedMessages.push(event.mergeMessageBody.message);
   };
 
+  const handleRevokeMessage = (event: protobufs.RevokeMessageHubEvent) => {
+    revokedMessages.push(event.revokeMessageBody.message);
+  };
+
   beforeAll(() => {
     engine.eventHandler.on('mergeMessage', handleMergeMessage);
+    engine.eventHandler.on('revokeMessage', handleRevokeMessage);
   });
 
   afterAll(() => {
     engine.eventHandler.off('mergeMessage', handleMergeMessage);
+    engine.eventHandler.off('revokeMessage', handleRevokeMessage);
   });
 
   beforeEach(() => {
     mergedMessages = [];
+    revokedMessages = [];
   });
 
   describe('with valid signer', () => {
@@ -192,6 +202,22 @@ describe('mergeMessage', () => {
         await expect(engine.mergeMessage(signerRemove)).resolves.toBeInstanceOf(Ok);
         await expect(signerStore.getSignerRemove(fid, signerKey)).resolves.toEqual(signerRemove);
         expect(mergedMessages).toEqual([signerAdd, signerRemove]);
+      });
+
+      test('revokes messages signed by the removed signer asynchronously', async () => {
+        await engine.mergeMessages([castAdd, reactionAdd]);
+        expect(await engine.getCast(fid, castAdd.hash)).toEqual(ok(castAdd));
+        expect(
+          await engine.getReaction(
+            fid,
+            reactionAdd.data.reactionBody.type,
+            reactionAdd.data.reactionBody.targetCastId as protobufs.CastId
+          )
+        ).toEqual(ok(reactionAdd));
+        await engine.mergeMessage(signerRemove);
+        expect(revokedMessages).toEqual([]);
+        await sleep(100); // Wait for engine to revoke messages
+        expect(revokedMessages).toEqual([castAdd, reactionAdd]);
       });
     });
 
