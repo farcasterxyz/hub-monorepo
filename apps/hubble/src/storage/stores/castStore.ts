@@ -294,20 +294,22 @@ class CastStore {
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<number[]> {
     // Get all CastAdd messages signed by signer
-    const castAdds = await getAllMessagesBySigner<protobufs.CastAddMessage>(
-      this._db,
-      fid,
-      signer,
-      protobufs.MessageType.CAST_ADD
+    const castAdds = await ResultAsync.fromPromise(
+      getAllMessagesBySigner<protobufs.CastAddMessage>(this._db, fid, signer, protobufs.MessageType.CAST_ADD),
+      (e) => e as HubError
     );
+    if (castAdds.isErr()) {
+      return err(castAdds.error);
+    }
 
     // Get all CastRemove messages signed by signer
-    const castRemoves = await getAllMessagesBySigner<protobufs.CastRemoveMessage>(
-      this._db,
-      fid,
-      signer,
-      protobufs.MessageType.CAST_REMOVE
+    const castRemoves = await ResultAsync.fromPromise(
+      getAllMessagesBySigner<protobufs.CastRemoveMessage>(this._db, fid, signer, protobufs.MessageType.CAST_REMOVE),
+      (e) => e as HubError
     );
+    if (castRemoves.isErr()) {
+      return err(castRemoves.error);
+    }
 
     // Create a rocksdb transaction
     let txn = this._db.transaction();
@@ -316,14 +318,14 @@ class CastStore {
     const events: Omit<protobufs.RevokeMessageHubEvent, 'id'>[] = [];
 
     // Add a delete operation to the transaction for each CastAdd
-    for (const message of castAdds) {
+    for (const message of castAdds.value) {
       txn = this.deleteCastAddTransaction(txn, message);
 
       events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
     }
 
     // Add a delete operation to the transaction for each CastRemove
-    for (const message of castRemoves) {
+    for (const message of castRemoves.value) {
       txn = this.deleteCastRemoveTransaction(txn, message);
 
       events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
