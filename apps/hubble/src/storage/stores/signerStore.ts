@@ -263,23 +263,25 @@ class SignerStore {
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<number[]> {
     // Get all SignerAdd messages signed by signer
-    const signerAdds = await getAllMessagesBySigner<protobufs.SignerAddMessage>(
-      this._db,
-      fid,
-      signer,
-      protobufs.MessageType.SIGNER_ADD
+    const signerAdds = await ResultAsync.fromPromise(
+      getAllMessagesBySigner<protobufs.SignerAddMessage>(this._db, fid, signer, protobufs.MessageType.SIGNER_ADD),
+      (e) => e as HubError
     );
+    if (signerAdds.isErr()) {
+      return err(signerAdds.error);
+    }
 
     // Get all SignerRemove messages signed by signer
-    const signerRemoves = await getAllMessagesBySigner<protobufs.SignerRemoveMessage>(
-      this._db,
-      fid,
-      signer,
-      protobufs.MessageType.SIGNER_REMOVE
+    const signerRemoves = await ResultAsync.fromPromise(
+      getAllMessagesBySigner<protobufs.SignerRemoveMessage>(this._db, fid, signer, protobufs.MessageType.SIGNER_REMOVE),
+      (e) => e as HubError
     );
+    if (signerRemoves.isErr()) {
+      return err(signerRemoves.error);
+    }
 
     // Return if no messages found
-    if (signerAdds.length === 0 && signerRemoves.length === 0) {
+    if (signerAdds.value.length === 0 && signerRemoves.value.length === 0) {
       return ok([]);
     }
 
@@ -290,13 +292,13 @@ class SignerStore {
     const events: Omit<protobufs.RevokeMessageHubEvent, 'id'>[] = [];
 
     // Add a delete operation to the transaction for each SignerAdd
-    for (const message of signerAdds) {
+    for (const message of signerAdds.value) {
       txn = this.deleteSignerAddTransaction(txn, message);
       events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
     }
 
     // Add a delete operation to the transaction for each SignerRemove
-    for (const message of signerRemoves) {
+    for (const message of signerRemoves.value) {
       txn = this.deleteSignerRemoveTransaction(txn, message);
       events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
     }

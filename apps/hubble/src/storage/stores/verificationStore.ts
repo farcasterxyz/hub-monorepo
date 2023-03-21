@@ -188,20 +188,32 @@ class VerificationStore {
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<number[]> {
     // Get all VerificationAddEthAddress messages signed by signer
-    const verificationAdds = await getAllMessagesBySigner<protobufs.VerificationAddEthAddressMessage>(
-      this._db,
-      fid,
-      signer,
-      protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS
+    const verificationAdds = await ResultAsync.fromPromise(
+      getAllMessagesBySigner<protobufs.VerificationAddEthAddressMessage>(
+        this._db,
+        fid,
+        signer,
+        protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS
+      ),
+      (e) => e as HubError
     );
+    if (verificationAdds.isErr()) {
+      return err(verificationAdds.error);
+    }
 
     // Get all VerificationRemove messages signed by signer
-    const castRemoves = await getAllMessagesBySigner<protobufs.VerificationRemoveMessage>(
-      this._db,
-      fid,
-      signer,
-      protobufs.MessageType.VERIFICATION_REMOVE
+    const verificationRemoves = await ResultAsync.fromPromise(
+      getAllMessagesBySigner<protobufs.VerificationRemoveMessage>(
+        this._db,
+        fid,
+        signer,
+        protobufs.MessageType.VERIFICATION_REMOVE
+      ),
+      (e) => e as HubError
     );
+    if (verificationRemoves.isErr()) {
+      return err(verificationRemoves.error);
+    }
 
     // Create a rocksdb transaction
     let txn = this._db.transaction();
@@ -210,13 +222,13 @@ class VerificationStore {
     const events: Omit<protobufs.RevokeMessageHubEvent, 'id'>[] = [];
 
     // Add a delete operation to the transaction for each VerificationAddEthAddress
-    for (const message of verificationAdds) {
+    for (const message of verificationAdds.value) {
       txn = this.deleteVerificationAddTransaction(txn, message);
       events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
     }
 
     // Add a delete operation to the transaction for each SignerRemove
-    for (const message of castRemoves) {
+    for (const message of verificationRemoves.value) {
       txn = this.deleteVerificationRemoveTransaction(txn, message);
       events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
     }

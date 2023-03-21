@@ -298,20 +298,27 @@ class ReactionStore {
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<number[]> {
     // Get all ReactionAdd messages signed by signer
-    const reactionAdds = await getAllMessagesBySigner<protobufs.ReactionAddMessage>(
-      this._db,
-      fid,
-      signer,
-      protobufs.MessageType.REACTION_ADD
+    const reactionAdds = await ResultAsync.fromPromise(
+      getAllMessagesBySigner<protobufs.ReactionAddMessage>(this._db, fid, signer, protobufs.MessageType.REACTION_ADD),
+      (e) => e as HubError
     );
+    if (reactionAdds.isErr()) {
+      return err(reactionAdds.error);
+    }
 
     // Get all ReactionRemove messages signed by signer
-    const reactionRemoves = await getAllMessagesBySigner<protobufs.ReactionRemoveMessage>(
-      this._db,
-      fid,
-      signer,
-      protobufs.MessageType.REACTION_REMOVE
+    const reactionRemoves = await ResultAsync.fromPromise(
+      getAllMessagesBySigner<protobufs.ReactionRemoveMessage>(
+        this._db,
+        fid,
+        signer,
+        protobufs.MessageType.REACTION_REMOVE
+      ),
+      (e) => e as HubError
     );
+    if (reactionRemoves.isErr()) {
+      return err(reactionRemoves.error);
+    }
 
     // Create a rocksdb transaction
     let txn = this._db.transaction();
@@ -320,13 +327,13 @@ class ReactionStore {
     const events: Omit<protobufs.RevokeMessageHubEvent, 'id'>[] = [];
 
     // Add a delete operation to the transaction for each ReactionAdd
-    for (const message of reactionAdds) {
+    for (const message of reactionAdds.value) {
       txn = this.deleteReactionAddTransaction(txn, message);
       events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
     }
 
     // Add a delete operation to the transaction for each SignerRemove
-    for (const message of reactionRemoves) {
+    for (const message of reactionRemoves.value) {
       txn = this.deleteReactionRemoveTransaction(txn, message);
       events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
     }

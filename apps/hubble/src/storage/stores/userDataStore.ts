@@ -169,12 +169,13 @@ class UserDataStore {
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<number[]> {
     // Get all UserDataAdd messages signed by signer
-    const userDataAdds = await getAllMessagesBySigner<protobufs.UserDataAddMessage>(
-      this._db,
-      fid,
-      signer,
-      protobufs.MessageType.USER_DATA_ADD
+    const userDataAdds = await ResultAsync.fromPromise(
+      getAllMessagesBySigner<protobufs.UserDataAddMessage>(this._db, fid, signer, protobufs.MessageType.USER_DATA_ADD),
+      (e) => e as HubError
     );
+    if (userDataAdds.isErr()) {
+      return err(userDataAdds.error);
+    }
 
     // Create a rocksdb transaction
     let txn = this._db.transaction();
@@ -183,7 +184,7 @@ class UserDataStore {
     const events: Omit<protobufs.RevokeMessageHubEvent, 'id'>[] = [];
 
     // Add a delete operation to the transaction for each UserDataAdd
-    for (const message of userDataAdds) {
+    for (const message of userDataAdds.value) {
       txn = this.deleteUserDataAddTransaction(txn, message);
       events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
     }
