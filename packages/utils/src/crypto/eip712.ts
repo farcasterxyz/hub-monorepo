@@ -1,8 +1,11 @@
-import { recoverAddress, Signer, TypedDataEncoder } from 'ethers';
+import type { Signer } from 'ethers';
+import { recoverAddress, TypedDataEncoder } from 'ethers';
 import { err, Result, ResultAsync } from 'neverthrow';
 import { bytesToHexString, hexStringToBytes } from '../bytes';
 import { HubAsyncResult, HubError, HubResult } from '../errors';
 import { VerificationEthAddressClaim } from '../verifications';
+
+export type MinimalEthersSigner = Pick<Signer, 'signTypedData' | 'getAddress'>;
 
 export const EIP_712_FARCASTER_DOMAIN = {
   name: 'Farcaster Verify Ethereum Address',
@@ -37,7 +40,7 @@ export const EIP_712_FARCASTER_MESSAGE_DATA = [
   },
 ];
 
-export const getSignerKey = async (signer: Signer): HubAsyncResult<Uint8Array> => {
+export const getSignerKey = async (signer: MinimalEthersSigner): HubAsyncResult<Uint8Array> => {
   return ResultAsync.fromPromise(signer.getAddress(), (e) => new HubError('unknown', e as Error)).andThen(
     hexStringToBytes
   );
@@ -45,7 +48,7 @@ export const getSignerKey = async (signer: Signer): HubAsyncResult<Uint8Array> =
 
 export const signVerificationEthAddressClaim = async (
   claim: VerificationEthAddressClaim,
-  signer: Signer
+  signer: MinimalEthersSigner
 ): HubAsyncResult<Uint8Array> => {
   const hexSignature = await ResultAsync.fromPromise(
     signer.signTypedData(EIP_712_FARCASTER_DOMAIN, { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM }, claim),
@@ -83,7 +86,7 @@ export const verifyVerificationEthAddressClaimSignature = (
   return recoveredHexAddress.andThen((hex) => hexStringToBytes(hex));
 };
 
-export const signMessageHash = async (hash: Uint8Array, signer: Signer): HubAsyncResult<Uint8Array> => {
+export const signMessageHash = async (hash: Uint8Array, signer: MinimalEthersSigner): HubAsyncResult<Uint8Array> => {
   const hexSignature = await ResultAsync.fromPromise(
     signer.signTypedData(EIP_712_FARCASTER_DOMAIN, { MessageData: EIP_712_FARCASTER_MESSAGE_DATA }, { hash }),
     (e) => new HubError('bad_request.invalid_param', e as Error)
