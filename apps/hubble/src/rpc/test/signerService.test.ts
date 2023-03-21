@@ -24,6 +24,7 @@ beforeAll(async () => {
 afterAll(async () => {
   client.$.close();
   await server.stop();
+  await engine.stop();
 });
 
 const assertMessagesMatchResult = (result: HubResult<protobufs.MessagesResponse>, messages: protobufs.Message[]) => {

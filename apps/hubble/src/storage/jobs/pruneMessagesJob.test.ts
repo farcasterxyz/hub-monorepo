@@ -34,8 +34,9 @@ beforeEach(() => {
   prunedMessages = [];
 });
 
-afterAll(() => {
+afterAll(async () => {
   engine.eventHandler.off('pruneMessage', pruneMessageListener);
+  await engine.stop();
 });
 
 describe('doJobs', () => {

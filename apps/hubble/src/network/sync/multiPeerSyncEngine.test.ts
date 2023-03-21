@@ -99,6 +99,7 @@ describe('Multi peer sync engine', () => {
     clientForServer1.$.close();
     await server1.stop();
     await syncEngine1.stop();
+    await engine1.stop();
   });
 
   test('toBytes test', async () => {
@@ -188,6 +189,7 @@ describe('Multi peer sync engine', () => {
       expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
 
       await syncEngine2.stop();
+      await engine2.stop();
     },
     TEST_TIMEOUT_LONG
   );
@@ -272,6 +274,9 @@ describe('Multi peer sync engine', () => {
     await sleepWhile(() => syncEngine2.syncTrieQSize > 0, 1000);
 
     expect(await syncEngine2.trie.rootHash()).toEqual(beforeRootHash);
+
+    await syncEngine2.stop();
+    await engine2.stop();
   });
 
   test('Merge with multiple signers', async () => {
@@ -327,6 +332,7 @@ describe('Multi peer sync engine', () => {
     expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
 
     await syncEngine2.stop();
+    await engine2.stop();
   });
 
   xtest(
@@ -426,6 +432,9 @@ describe('Multi peer sync engine', () => {
       // console.log('MerkleTrie total time', totalTime, 'seconds. Messages per second:', totalMessages / totalTime);
 
       expect(await reinitSyncEngine.trie.rootHash()).toEqual(await syncEngine1.trie.rootHash());
+
+      await syncEngine2.stop();
+      await engine2.stop();
     },
     TEST_TIMEOUT_LONG
   );

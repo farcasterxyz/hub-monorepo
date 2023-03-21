@@ -30,6 +30,7 @@ afterAll(async () => {
   client2.$.close();
   client3.$.close();
   await server.stop();
+  await engine.stop();
 });
 
 const fid = Factories.Fid.build();
