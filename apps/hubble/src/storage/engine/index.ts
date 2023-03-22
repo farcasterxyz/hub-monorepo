@@ -64,6 +64,10 @@ class Engine {
     this.handleMergeIdRegistryEvent = this.handleMergeIdRegistryEvent.bind(this);
     this.handleRevokeMessageEvent = this.handleRevokeMessageEvent.bind(this);
     this.handlePruneMessageEvent = this.handlePruneMessageEvent.bind(this);
+  }
+
+  async start(): Promise<void> {
+    log.info('starting engine');
 
     const workerPath = './build/storage/engine/validation.worker.js';
     try {
@@ -93,10 +97,6 @@ class Engine {
     } catch (e) {
       logger.warn({ workerPath, e }, 'failed to create validation worker, falling back to main thread');
     }
-  }
-
-  async start(): Promise<void> {
-    log.info('starting engine');
 
     this.eventHandler.on('mergeIdRegistryEvent', this.handleMergeIdRegistryEvent);
     this.eventHandler.on('mergeMessage', this.handleMergeMessageEvent);
@@ -688,6 +688,10 @@ class Engine {
     if (fromAddress && fromAddress.length > 0) {
       const revokeResult = await this.revokeMessagesBySigner(idRegistryEvent.fid, fromAddress);
       if (revokeResult.isErr()) {
+        log.error(
+          { errCode: revokeResult.error.errCode },
+          `revokeMessagesBySigner error: ${revokeResult.error.message}`
+        );
         return err(revokeResult.error);
       }
     }
@@ -701,6 +705,10 @@ class Engine {
     if (protobufs.isSignerRemoveMessage(message)) {
       const revokeResult = await this.revokeMessagesBySigner(message.data.fid, message.data.signerRemoveBody.signer);
       if (revokeResult.isErr()) {
+        log.error(
+          { errCode: revokeResult.error.errCode },
+          `revokeMessagesBySigner error: ${revokeResult.error.message}`
+        );
         return err(revokeResult.error);
       }
     }
@@ -714,6 +722,10 @@ class Engine {
     if (protobufs.isSignerAddMessage(message)) {
       const revokeResult = await this.revokeMessagesBySigner(message.data.fid, message.data.signerAddBody.signer);
       if (revokeResult.isErr()) {
+        log.error(
+          { errCode: revokeResult.error.errCode },
+          `revokeMessagesBySigner error: ${revokeResult.error.message}`
+        );
         return err(revokeResult.error);
       }
     }
@@ -727,6 +739,10 @@ class Engine {
     if (protobufs.isSignerAddMessage(message)) {
       const revokeResult = await this.revokeMessagesBySigner(message.data.fid, message.data.signerAddBody.signer);
       if (revokeResult.isErr()) {
+        log.error(
+          { errCode: revokeResult.error.errCode },
+          `revokeMessagesBySigner error: ${revokeResult.error.message}`
+        );
         return err(revokeResult.error);
       }
     }

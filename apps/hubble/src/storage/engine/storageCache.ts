@@ -50,7 +50,9 @@ export class StorageCache {
 
   getMessageCount(fid: number, set: UserMessagePostfix): HubResult<number> {
     if (this._synced !== true) {
-      return err(new HubError('unavailable.storage_failure', 'storage cache is not synced with db'));
+      const error = new HubError('unavailable.storage_failure', 'storage cache is not synced with db');
+      log.warn({ errCode: error.errCode }, `getMessageCount error: ${error.message}`);
+      return err(error);
     }
     const key = makeKey(fid, set);
     return ok(this._usage.get(key) ?? 0);
