@@ -49,6 +49,7 @@ import {
   ipFamilyToString,
   p2pMultiAddrStr,
 } from '~/utils/p2p';
+import { PeriodicTestDataJobScheduler, TestUser } from './utils/periodicTestDataJob';
 
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
 
@@ -122,6 +123,9 @@ export interface HubOptions {
   /** Host for the Admin Server to bind to */
   adminServerHost?: string;
 
+  /** Periodically add casts & reactions for the following test users */
+  testUsers?: TestUser[];
+
   /**
    * Only allows the Hub to connect to and advertise local IP addresses
    *
@@ -157,6 +161,7 @@ export class Hub implements HubInterface {
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
   private periodSyncJobScheduler: PeriodicSyncJobScheduler;
   private pruneEventsJobScheduler: PruneEventsJobScheduler;
+  private testDataJobScheduler?: PeriodicTestDataJobScheduler;
 
   private updateNameRegistryEventExpiryJobQueue: UpdateNameRegistryEventExpiryJobQueue;
   private updateNameRegistryEventExpiryJobWorker?: UpdateNameRegistryEventExpiryJobWorker;
@@ -197,6 +202,10 @@ export class Hub implements HubInterface {
     this.pruneMessagesJobScheduler = new PruneMessagesJobScheduler(this.engine);
     this.periodSyncJobScheduler = new PeriodicSyncJobScheduler(this, this.syncEngine);
     this.pruneEventsJobScheduler = new PruneEventsJobScheduler(this.engine);
+
+    if (options.testUsers) {
+      this.testDataJobScheduler = new PeriodicTestDataJobScheduler(this, options.testUsers as TestUser[]);
+    }
 
     if (this.ethRegistryProvider) {
       this.updateNameRegistryEventExpiryJobWorker = new UpdateNameRegistryEventExpiryJobWorker(
@@ -305,6 +314,9 @@ export class Hub implements HubInterface {
     this.pruneMessagesJobScheduler.start(this.options.pruneMessagesJobCron);
     this.periodSyncJobScheduler.start();
     this.pruneEventsJobScheduler.start(this.options.pruneEventsJobCron);
+
+    // Start the test data generator
+    this.testDataJobScheduler?.start();
 
     // When we startup, we write into the DB that we have not yet cleanly shutdown. And when we do
     // shutdown, we'll write "true" to this key, indicating that we've cleanly shutdown.

@@ -33,6 +33,8 @@ const HUB_URL = '127.0.0.1:8080';
 
   // Generate a new Ed25519 key pair which will become the Signer and store the private key securely
   const signerPrivateKey = ed.utils.randomPrivateKey();
+  const ed25519Signer = new NobleEd25519Signer(signerPrivateKey);
+  const signerPublicKey = (await ed25519Signer.getSignerKey())._unsafeUnwrap();
 
   // Create a SignerAdd message that contains the public key of the signer
   const dataOptions = {
@@ -40,7 +42,7 @@ const HUB_URL = '127.0.0.1:8080';
     network: FarcasterNetwork.DEVNET,
   };
 
-  const signerAddResult = await makeSignerAdd({ signer: signerPrivateKey }, dataOptions, eip712Signer);
+  const signerAddResult = await makeSignerAdd({ signer: signerPublicKey }, dataOptions, eip712Signer);
   const signerAdd = signerAddResult._unsafeUnwrap();
 
   /**
@@ -53,8 +55,6 @@ const HUB_URL = '127.0.0.1:8080';
   const client = await getHubRpcClient(HUB_URL);
   const result = await client.submitMessage(signerAdd);
   result.isOk() ? console.log('SignerAdd was published successfully!') : console.log(result.error);
-
-  const ed25519Signer = new NobleEd25519Signer(signerPrivateKey);
 
   /**
    *
