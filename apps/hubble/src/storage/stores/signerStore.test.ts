@@ -5,7 +5,7 @@ import { getAllMessagesBySigner, getMessage, makeFidKey, makeTsHash } from '~/st
 import { UserPostfix } from '~/storage/db/types';
 import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import { StorageCache } from '../engine/storageCache';
+import { StorageCache } from '~/storage/engine/storageCache';
 
 const db = jestRocksDB('protobufs.signerStore.test');
 const cache = new StorageCache();

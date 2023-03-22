@@ -5,7 +5,7 @@ import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import UserDataStore from '~/storage/stores/userDataStore';
 import { getMessage, makeTsHash } from '../db/message';
 import { UserPostfix } from '../db/types';
-import { StorageCache } from '../engine/storageCache';
+import { StorageCache } from '~/storage/engine/storageCache';
 
 const db = jestRocksDB('protobufs.userDataSet.test');
 const cache = new StorageCache();

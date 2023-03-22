@@ -343,7 +343,7 @@ class CastStore {
       // Count number of CastAdd and CastRemove messages for this fid
       const prefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
       let calculatedCount = 0;
-      for await (const [,] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
+      for await (const [,] of this._db.iteratorByPrefix(prefix, { values: false })) {
         calculatedCount = calculatedCount + 1;
       }
       sizeToPrune = calculatedCount - this._pruneSizeLimit;
