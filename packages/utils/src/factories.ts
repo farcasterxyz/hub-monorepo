@@ -489,7 +489,7 @@ const UserDataAddMessageFactory = Factory.define<protobufs.UserDataAddMessage, {
   }
 );
 
-/** Event Protobufs */
+/** Contract event Protobufs */
 
 const IdRegistryEventTypeFactory = Factory.define<protobufs.IdRegistryEventType>(() => {
   return faker.helpers.arrayElement([protobufs.IdRegistryEventType.REGISTER, protobufs.IdRegistryEventType.TRANSFER]);

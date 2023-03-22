@@ -5,7 +5,8 @@ import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import SignerStore from '~/storage/stores/signerStore';
 import { sleep } from '~/utils/crypto';
-import { getMessage, makeTsHash, typeToSetPostfix } from '../db/message';
+import { getMessage, makeTsHash, typeToSetPostfix } from '~/storage/db/message';
+import { StoreEvents } from '~/storage/stores/storeEventHandler';
 
 const db = jestRocksDB('protobufs.engine.test');
 const network = protobufs.FarcasterNetwork.TESTNET;
@@ -58,10 +59,6 @@ beforeAll(async () => {
   );
 });
 
-afterAll(async () => {
-  await engine.stop();
-});
-
 describe('mergeIdRegistryEvent', () => {
   test('succeeds', async () => {
     await expect(engine.mergeIdRegistryEvent(custodyEvent)).resolves.toBeInstanceOf(Ok);
@@ -90,29 +87,21 @@ describe('mergeNameRegistryEvent', () => {
 
 describe('mergeMessage', () => {
   let mergedMessages: protobufs.Message[];
-  let revokedMessages: protobufs.Message[];
 
   const handleMergeMessage = (event: protobufs.MergeMessageHubEvent) => {
     mergedMessages.push(event.mergeMessageBody.message);
   };
 
-  const handleRevokeMessage = (event: protobufs.RevokeMessageHubEvent) => {
-    revokedMessages.push(event.revokeMessageBody.message);
-  };
-
-  beforeAll(() => {
+  beforeAll(async () => {
     engine.eventHandler.on('mergeMessage', handleMergeMessage);
-    engine.eventHandler.on('revokeMessage', handleRevokeMessage);
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     engine.eventHandler.off('mergeMessage', handleMergeMessage);
-    engine.eventHandler.off('revokeMessage', handleRevokeMessage);
   });
 
   beforeEach(() => {
     mergedMessages = [];
-    revokedMessages = [];
   });
 
   describe('with valid signer', () => {
@@ -206,22 +195,6 @@ describe('mergeMessage', () => {
         await expect(engine.mergeMessage(signerRemove)).resolves.toBeInstanceOf(Ok);
         await expect(signerStore.getSignerRemove(fid, signerKey)).resolves.toEqual(signerRemove);
         expect(mergedMessages).toEqual([signerAdd, signerRemove]);
-      });
-
-      test('revokes messages signed by the removed signer asynchronously', async () => {
-        await engine.mergeMessages([castAdd, reactionAdd]);
-        expect(await engine.getCast(fid, castAdd.hash)).toEqual(ok(castAdd));
-        expect(
-          await engine.getReaction(
-            fid,
-            reactionAdd.data.reactionBody.type,
-            reactionAdd.data.reactionBody.targetCastId as protobufs.CastId
-          )
-        ).toEqual(ok(reactionAdd));
-        await engine.mergeMessage(signerRemove);
-        expect(revokedMessages).toEqual([]);
-        await sleep(100); // Wait for engine to revoke messages
-        expect(revokedMessages).toEqual([castAdd, reactionAdd]);
       });
     });
 
@@ -422,5 +395,91 @@ describe('revokeMessagesBySigner', () => {
       await expect(checkMessage(message)).rejects.toThrow();
     }
     expect(revokedMessages).toEqual(signerMessages);
+  });
+});
+
+describe('with listeners and workers', () => {
+  const liveEngine = new Engine(db, protobufs.FarcasterNetwork.TESTNET);
+
+  let revokedMessages: protobufs.Message[];
+
+  const handleRevokeMessage = (event: protobufs.RevokeMessageHubEvent) => {
+    revokedMessages.push(event.revokeMessageBody.message);
+  };
+
+  beforeAll(async () => {
+    await liveEngine.start();
+    liveEngine.eventHandler.on('revokeMessage', handleRevokeMessage);
+  });
+
+  afterAll(async () => {
+    liveEngine.eventHandler.off('revokeMessage', handleRevokeMessage);
+    await liveEngine.stop();
+  });
+
+  beforeEach(() => {
+    revokedMessages = [];
+  });
+
+  describe('with messages', () => {
+    beforeEach(async () => {
+      await liveEngine.mergeIdRegistryEvent(custodyEvent);
+      await liveEngine.mergeMessage(signerAdd);
+      await liveEngine.mergeMessages([castAdd, reactionAdd]);
+      expect(await liveEngine.getCast(fid, castAdd.hash)).toEqual(ok(castAdd));
+      expect(
+        await liveEngine.getReaction(
+          fid,
+          reactionAdd.data.reactionBody.type,
+          reactionAdd.data.reactionBody.targetCastId as protobufs.CastId
+        )
+      ).toEqual(ok(reactionAdd));
+    });
+
+    test('revokes messages when SignerRemove is merged', async () => {
+      await liveEngine.mergeMessage(signerRemove);
+      expect(revokedMessages).toEqual([]);
+      await sleep(100); // Wait for engine to revoke messages
+      expect(revokedMessages).toEqual([castAdd, reactionAdd]);
+    });
+
+    test('revokes messages when fid is transferred', async () => {
+      const custodyTransfer = Factories.IdRegistryEvent.build({
+        fid,
+        from: custodyEvent.to,
+        blockNumber: custodyEvent.blockNumber + 1,
+      });
+      await liveEngine.mergeIdRegistryEvent(custodyTransfer);
+      expect(revokedMessages).toEqual([]);
+      await sleep(100); // Wait for engine to revoke messages
+      expect(revokedMessages).toEqual([signerAdd, castAdd, reactionAdd]);
+    });
+
+    test('revokes messages when SignerAdd is pruned', async () => {
+      await liveEngine.eventHandler.commitTransaction(db.transaction(), [
+        { type: protobufs.HubEventType.PRUNE_MESSAGE, pruneMessageBody: { message: signerAdd } },
+      ]); // Hack to force prune
+      expect(revokedMessages).toEqual([]);
+      await sleep(100); // Wait for engine to revoke messages
+      expect(revokedMessages).toEqual([castAdd, reactionAdd]);
+    });
+  });
+});
+
+describe('stop', () => {
+  test('removes all event listeners', async () => {
+    const eventNames: (keyof StoreEvents)[] = ['mergeMessage', 'mergeIdRegistryEvent', 'pruneMessage', 'revokeMessage'];
+    const scopedEngine = new Engine(db, protobufs.FarcasterNetwork.TESTNET);
+    for (const eventName of eventNames) {
+      expect(scopedEngine.eventHandler.listenerCount(eventName)).toEqual(0);
+    }
+    await scopedEngine.start();
+    for (const eventName of eventNames) {
+      expect(scopedEngine.eventHandler.listenerCount(eventName)).toEqual(1);
+    }
+    await scopedEngine.stop();
+    for (const eventName of eventNames) {
+      expect(scopedEngine.eventHandler.listenerCount(eventName)).toEqual(0);
+    }
   });
 });

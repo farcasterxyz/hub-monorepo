@@ -168,6 +168,7 @@ export class Hub implements HubInterface {
     this.options = options;
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
     this.gossipNode = new GossipNode();
+
     this.engine = new Engine(this.rocksDB, options.network);
     this.syncEngine = new SyncEngine(this.engine, this.rocksDB);
 
@@ -274,6 +275,8 @@ export class Hub implements HubInterface {
         log.warn('You should rebuild the sync trie (with --rebuild-sync-trie) to avoid inconsistencies');
       }
     }
+
+    await this.engine.start();
 
     // Start the ETH registry provider first
     if (this.ethRegistryProvider) {

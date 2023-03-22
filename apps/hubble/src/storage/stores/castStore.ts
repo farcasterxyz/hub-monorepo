@@ -334,13 +334,14 @@ class CastStore {
     return this._eventHandler.commitTransaction(txn, events);
   }
 
-  async pruneMessages(fid: number): HubAsyncResult<number[]> {
-    // Count number of CastAdd and CastRemove messages for this fid
-    // TODO: persist this count to avoid having to retrieve it with each call
-    const prefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
-    let count = 0;
-    for await (const [,] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
-      count = count + 1;
+  async pruneMessages(fid: number, count?: number): HubAsyncResult<number[]> {
+    if (count === undefined) {
+      // Count number of CastAdd and CastRemove messages for this fid
+      const prefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
+      count = 0;
+      for await (const [,] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
+        count = count + 1;
+      }
     }
 
     // Calculate the number of messages that need to be pruned, based on the store's size limit

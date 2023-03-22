@@ -17,6 +17,7 @@ import { err, ok, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix } from '~/storage/db/types';
+import { StorageCache } from '~/storage/engine/storageCache';
 
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3 * 1000; // 3 days in ms
 
@@ -124,13 +125,18 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   private _db: RocksDB;
   private _generator: HubEventIdGenerator;
   private _lock: AsyncLock;
+  private _storageCache?: StorageCache;
 
-  constructor(db: RocksDB) {
+  constructor(db: RocksDB, storageCache?: StorageCache) {
     super();
 
     this._db = db;
     this._generator = new HubEventIdGenerator({ epoch: FARCASTER_EPOCH });
     this._lock = new AsyncLock({ maxPending: 10_000, timeout: 10_000 });
+
+    if (storageCache) {
+      this._storageCache = storageCache;
+    }
   }
 
   async getEvent(id: number): HubAsyncResult<HubEvent> {
@@ -177,10 +183,13 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
           txn = putEventTransaction(txn, event);
         }
 
-        await ResultAsync.fromPromise(this._db.commit(txn), (e) => e as HubError);
+        await this._db.commit(txn);
 
         for (const event of events) {
-          void this.broadcastEvent(event);
+          if (this._storageCache) {
+            this._storageCache.processEvent(event);
+          }
+          this.broadcastEvent(event);
         }
 
         return ok(events.map((event) => event.id));
