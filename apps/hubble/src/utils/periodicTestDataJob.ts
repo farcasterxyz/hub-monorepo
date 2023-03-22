@@ -59,6 +59,10 @@ export class PeriodicTestDataJobScheduler {
   async insertSignerAdds() {
     // Initialize the signer add messages for the test users
     for (const user of this._testDataUsers) {
+      if (!user.mnemonic || !user.fid) {
+        continue;
+      }
+
       const wallet = Wallet.fromPhrase(user.mnemonic);
       const eip712Signer = new EthersEip712Signer(wallet);
 
