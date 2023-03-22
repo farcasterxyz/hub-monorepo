@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { FarcasterNetwork } from '@farcaster/protobufs';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from '@libp2p/peer-id-factory';
 import { Command } from 'commander';
@@ -189,6 +190,26 @@ app
       }
     }
 
+    const network = cliOptions.network ?? hubConfig.network;
+
+    let testUsers;
+    if (process.env['TEST_USERS']) {
+      if (network === FarcasterNetwork.DEVNET || network === FarcasterNetwork.TESTNET) {
+        try {
+          const testUsersResult = JSON.parse(process.env['TEST_USERS'].replaceAll("'", '"') ?? '');
+
+          if (testUsersResult && testUsersResult.length > 0) {
+            logger.info('TEST_USERS is set, will periodically add data to test users');
+            testUsers = testUsersResult;
+          }
+        } catch (err) {
+          logger.warn({ err }, 'Failed to parse TEST_USERS');
+        }
+      } else {
+        logger.warn({ network }, 'TEST_USERS is set, but network is not DEVNET or TESTNET, ignoring');
+      }
+    }
+
     const hubAddressInfo = addressInfoFromParts(
       cliOptions.ip ?? hubConfig.ip,
       cliOptions.gossipPort ?? hubConfig.gossipPort
@@ -224,7 +245,7 @@ app
       ipMultiAddr: ipMultiAddrResult.value,
       announceIp: cliOptions.announceIp ?? hubConfig.announceIp,
       gossipPort: hubAddressInfo.value.port,
-      network: cliOptions.network ?? hubConfig.network,
+      network,
       ethRpcUrl: cliOptions.ethRpcUrl ?? hubConfig.ethRpcUrl,
       idRegistryAddress: cliOptions.firAddress ?? hubConfig.firAddress,
       nameRegistryAddress: cliOptions.fnrAddress ?? hubConfig.fnrAddress,
@@ -239,6 +260,7 @@ app
       rebuildSyncTrie,
       adminServerEnabled: cliOptions.adminServerEnabled ?? hubConfig.adminServerEnabled,
       adminServerHost: cliOptions.adminServerHost ?? hubConfig.adminServerHost,
+      testUsers,
     };
 
     const hub = new Hub(options);
