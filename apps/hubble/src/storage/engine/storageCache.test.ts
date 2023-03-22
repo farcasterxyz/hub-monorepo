@@ -71,6 +71,59 @@ describe('processEvent', () => {
     expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).toEqual(ok(1));
   });
 
+  test('increments count with merge cast remove message event', async () => {
+    const fid = Factories.Fid.build();
+    const message = await Factories.CastRemoveMessage.create({ data: { fid } });
+    const event = HubEvent.create({ type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message } });
+
+    await cache.syncFromDb(db);
+    expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).toEqual(ok(0));
+    cache.processEvent(event);
+    expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).toEqual(ok(1));
+  });
+
+  test('count is unchanged when removing existing cast', async () => {
+    const fid = Factories.Fid.build();
+    const cast = await Factories.CastAddMessage.create({ data: { fid } });
+    const castRemove = await Factories.CastRemoveMessage.create({
+      data: { fid, castRemoveBody: { targetHash: cast.hash } },
+    });
+    const event = HubEvent.create({
+      type: HubEventType.MERGE_MESSAGE,
+      mergeMessageBody: { message: castRemove, deletedMessages: [cast] },
+    });
+
+    await putMessage(db, cast);
+    await cache.syncFromDb(db);
+    expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).toEqual(ok(1));
+    cache.processEvent(event);
+    expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).toEqual(ok(1));
+  });
+
+  test('count is decremented with prune message event', async () => {
+    const fid = Factories.Fid.build();
+    const message = await Factories.ReactionAddMessage.create({ data: { fid } });
+    const event = HubEvent.create({ type: HubEventType.PRUNE_MESSAGE, pruneMessageBody: { message } });
+
+    await putMessage(db, message);
+    await cache.syncFromDb(db);
+    expect(cache.getMessageCount(fid, UserPostfix.ReactionMessage)).toEqual(ok(1));
+    cache.processEvent(event);
+    expect(cache.getMessageCount(fid, UserPostfix.ReactionMessage)).toEqual(ok(0));
+  });
+
+  test('count is decremented with revoke message event', async () => {
+    const fid = Factories.Fid.build();
+    const message = await Factories.SignerAddMessage.create({ data: { fid } });
+    const event = HubEvent.create({ type: HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
+
+    await putMessage(db, message);
+    await cache.syncFromDb(db);
+    expect(cache.getMessageCount(fid, UserPostfix.SignerMessage)).toEqual(ok(1));
+    cache.processEvent(event);
+    expect(cache.getMessageCount(fid, UserPostfix.SignerMessage)).toEqual(ok(0));
+  });
+
   test('fails when cache is not synced', async () => {
     const fid = Factories.Fid.build();
     const message = await Factories.CastAddMessage.create({ data: { fid } });
