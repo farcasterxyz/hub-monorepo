@@ -52,6 +52,10 @@ const wallet = Wallet.fromPhrase(mnemonic);
 const eip712Signer = new EthersEip712Signer(wallet);
 ```
 
+### Note for Ethers v5 users
+
+If you must use Ethers v5 in your application, you'll need to use the [`EthersV5Eip712Signer`](./signers/EthersV5Eip712Signer.md).
+
 ### Data Options
 
 Common message properties that must be passed into to any Builder method to produce a valid message.
