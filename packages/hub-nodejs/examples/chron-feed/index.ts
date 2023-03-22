@@ -18,6 +18,13 @@ TimeAgo.addDefaultLocale(en);
 const timeAgo = new TimeAgo('en-US');
 
 /**
+ * Populate the following constants with your own values
+ */
+
+const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
+const FIDS = [2, 3]; // User IDs to fetch casts for
+
+/**
  * Returns a user's casts which are not replies to any other casts in reverse chronological order.
  */
 const getPrimaryCastsByFid = async (fid: number, client: HubRpcClient): HubAsyncResult<CastAddMessage[]> => {
@@ -66,15 +73,12 @@ const castToString = (cast: CastAddMessage, nameMapping: Map<number, string>) =>
 
 (async () => {
   // Set address as an environment variable or pass in directly here
-  const client = await getHubRpcClient(process.env['HUB_ADDR'] || '');
-
-  // User IDs to fetch casts for
-  const fids = [2, 3];
+  const client = await getHubRpcClient(HUB_URL);
 
   // 1. Create a mapping of fids to fnames, which we'll need later to display messages
   const fidToFname = new Map<number, string>();
 
-  const fnameResultPromises = fids.map((fid) => client.getUserData({ fid, userDataType: UserDataType.FNAME }));
+  const fnameResultPromises = FIDS.map((fid) => client.getUserData({ fid, userDataType: UserDataType.FNAME }));
   const fnameResults = Result.combine(await Promise.all(fnameResultPromises));
 
   if (fnameResults.isErr()) {
@@ -93,7 +97,7 @@ const castToString = (cast: CastAddMessage, nameMapping: Map<number, string>) =>
   );
 
   // 2. Fetch primary casts for each fid and print them
-  const castResultPromises = fids.map((fid) => getPrimaryCastsByFid(fid, client));
+  const castResultPromises = FIDS.map((fid) => getPrimaryCastsByFid(fid, client));
   const castsResult = Result.combine(await Promise.all(castResultPromises));
 
   if (castsResult.isErr()) {

@@ -12,7 +12,11 @@ import { Wallet } from 'ethers';
 
 /* eslint no-console: 0 */
 
-const HUB_URL = '127.0.0.1:8080';
+/**
+ * Populate the following constants with your own values
+ */
+
+const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
 
 (async () => {
   /**
