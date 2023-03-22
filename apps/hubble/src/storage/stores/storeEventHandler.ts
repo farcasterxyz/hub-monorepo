@@ -183,7 +183,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
           txn = putEventTransaction(txn, event);
         }
 
-        await ResultAsync.fromPromise(this._db.commit(txn), (e) => e as HubError);
+        await this._db.commit(txn);
 
         for (const event of events) {
           if (this._storageCache) {

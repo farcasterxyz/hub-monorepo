@@ -107,6 +107,7 @@ class Engine {
 
     if (this._validationWorker) {
       await this._validationWorker.terminate();
+      this._validationWorker = undefined;
     }
   }
 
@@ -150,7 +151,6 @@ class Engine {
   }
 
   async mergeNameRegistryEvent(event: protobufs.NameRegistryEvent): HubAsyncResult<number> {
-    // TODO: validate event
     if (
       event.type === protobufs.NameRegistryEventType.TRANSFER ||
       event.type === protobufs.NameRegistryEventType.RENEW
@@ -161,16 +161,19 @@ class Engine {
     return err(new HubError('bad_request.validation_failure', 'invalid event type'));
   }
 
-  async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {
+  async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<number[]> {
     const signerHex = bytesToHexString(signer);
     if (signerHex.isErr()) {
       return err(signerHex.error);
     }
 
+    const eventIds: number[] = [];
+
     const logRevokeResult = (result: HubResult<number[]>, store: string): void => {
       result.match(
         (ids) => {
           if (ids.length > 0) {
+            eventIds.push(...ids);
             log.info(`Revoked ${ids.length} ${store} messages from signer ${signerHex.value} for fid ${fid}`);
           }
         },
@@ -195,7 +198,7 @@ class Engine {
     const signerResult = await this._signerStore.revokeMessagesBySigner(fid, signer);
     logRevokeResult(signerResult, 'signer');
 
-    return ok(undefined);
+    return ok(eventIds);
   }
 
   async pruneMessages(fid: number): HubAsyncResult<void> {
