@@ -39,8 +39,27 @@ import Engine from '~/storage/engine';
 import { MessagesPage } from '~/storage/stores/types';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts } from '~/utils/p2p';
+import { RateLimiterMemory, RateLimiterAbstract } from 'rate-limiter-flexible';
 
 const log = logger.child({ component: 'rpcServer' });
+
+// Submit message are rate limited to 20_000 messages per minute
+const submitMessageRateLimiter = new RateLimiterMemory({
+  points: 20_000,
+  duration: 60,
+});
+
+export const rateLimitByIp = async (ip: string, limiter: RateLimiterAbstract): HubAsyncResult<boolean> => {
+  // Get the IP part of the address
+  const ipPart = ip.split(':')[0] ?? '';
+
+  try {
+    await limiter.consume(ipPart);
+    return ok(true);
+  } catch (e) {
+    return err(new HubError('unavailable', 'Too many requests'));
+  }
+};
 
 // Check if the user is authenticated via the metadata
 export const authenticateUser = async (
@@ -287,6 +306,15 @@ export default class Server {
         })();
       },
       submitMessage: async (call, callback) => {
+        // Check for rate limits
+        const rateLimitResult = await rateLimitByIp(call.getPeer(), submitMessageRateLimiter);
+        if (rateLimitResult.isErr()) {
+          logger.warn({ peer: call.getPeer() }, 'submitMessage rate limited');
+          callback(toServiceError(new HubError('unavailable', 'API rate limit exceeded')));
+          return;
+        }
+
+        // Authentication
         const authResult = await authenticateUser(call.metadata, this.rpcAuthUser, this.rpcAuthPass);
         if (authResult.isErr()) {
           logger.warn({ errMsg: authResult.error.message }, 'submitMessage failed');

@@ -38,9 +38,9 @@
     "chance": "~1.1.11",
     "csv-stringify": "~6.3.0",
     "eslint-config-custom": "*",
-    "prettier-config-custom": "*",
     "fishery": "~2.2.2",
     "pino-pretty": "~10.0.0",
+    "prettier-config-custom": "*",
     "progress": "~2.0.3",
     "ts-mockito": "~2.6.1"
   },
@@ -65,6 +65,7 @@
     "neverthrow": "~6.0.0",
     "node-cron": "~3.0.2",
     "pino": "~8.11.0",
+    "rate-limiter-flexible": "^2.4.1",
     "rocksdb": "~5.2.1",
     "rwlock": "~5.0.0",
     "tiny-typed-emitter": "~2.1.0",
