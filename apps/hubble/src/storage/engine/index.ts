@@ -64,10 +64,7 @@ class Engine {
     this.handleMergeIdRegistryEvent = this.handleMergeIdRegistryEvent.bind(this);
     this.handleRevokeMessageEvent = this.handleRevokeMessageEvent.bind(this);
     this.handlePruneMessageEvent = this.handlePruneMessageEvent.bind(this);
-  }
 
-  async start(): Promise<void> {
-    log.info('starting engine');
     const workerPath = './build/storage/engine/validation.worker.js';
     try {
       if (fs.existsSync(workerPath)) {
@@ -96,6 +93,10 @@ class Engine {
     } catch (e) {
       logger.warn({ workerPath, e }, 'failed to create validation worker, falling back to main thread');
     }
+  }
+
+  async start(): Promise<void> {
+    log.info('starting engine');
 
     this.eventHandler.on('mergeIdRegistryEvent', this.handleMergeIdRegistryEvent);
     this.eventHandler.on('mergeMessage', this.handleMergeMessageEvent);
