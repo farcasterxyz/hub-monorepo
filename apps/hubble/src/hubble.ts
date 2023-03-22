@@ -592,7 +592,7 @@ export class Hub implements HubInterface {
         );
       },
       (e) => {
-        logMessage.error({ errCode: e.errCode }, `submitMessage error: ${e.message}`);
+        logMessage.warn({ errCode: e.errCode }, `submitMessage error: ${e.message}`);
       }
     );
 
@@ -613,7 +613,7 @@ export class Hub implements HubInterface {
         );
       },
       (e) => {
-        logEvent.error({ errCode: e.errCode }, `submitIdRegistryEvent error: ${e.message}`);
+        logEvent.warn({ errCode: e.errCode }, `submitIdRegistryEvent error: ${e.message}`);
       }
     );
 
@@ -634,7 +634,7 @@ export class Hub implements HubInterface {
         );
       },
       (e) => {
-        logEvent.error({ errCode: e.errCode }, `submitNameRegistryEvent error: ${e.message}`);
+        logEvent.warn({ errCode: e.errCode }, `submitNameRegistryEvent error: ${e.message}`);
       }
     );
 
