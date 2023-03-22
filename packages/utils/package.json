@@ -16,6 +16,7 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@ethersproject/abstract-signer": "^5.7.0",
     "@faker-js/faker": "^7.6.0",
     "@farcaster/protobufs": "0.1.9",
     "@noble/ed25519": "^1.7.3",
@@ -34,6 +35,7 @@
   "devDependencies": {
     "@farcaster/fishery": "2.2.3",
     "eslint-config-custom": "*",
+    "ethers5": "npm:ethers@^5.7.0",
     "prettier-config-custom": "*"
   }
 }
