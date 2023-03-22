@@ -5,8 +5,8 @@
  * Note: CLI options take precedence over the options specified in a config file
  */
 
-const DEFAULT_GOSSIP_PORT = 13111;
-const DEFAULT_RPC_PORT = 13112;
+const DEFAULT_GOSSIP_PORT = 2282;
+const DEFAULT_RPC_PORT = 2283;
 const DEFAULT_NETWORK = 3; // Farcaster Devnet
 
 export const Config = {

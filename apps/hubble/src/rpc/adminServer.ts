@@ -17,7 +17,7 @@ import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
 
 const log = logger.child({ module: 'rpc:admin' });
-export const ADMIN_SERVER_PORT = 13113;
+export const ADMIN_SERVER_PORT = 2284;
 
 export default class AdminServer {
   private hub: HubInterface;
