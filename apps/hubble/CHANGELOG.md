@@ -1,5 +1,21 @@
 # @farcaster/hubble
 
+## 1.1.0
+
+### Minor Changes
+
+- minor hubble release
+
+### Patch Changes
+
+- c26fafa: Add test data to testnet hubs via TEST_USERS env variable
+- 0f6737b: Add IP-based rate limiting for submitMessage()
+- a89a5b9: Reset DB if DB_RESET_TOKEN is set
+- e29958e: Terminate webworkers when shutting down
+- Updated dependencies [12c9c40]
+- Updated dependencies [dc69b66]
+  - @farcaster/utils@0.3.1
+
 ## 1.0.16
 
 ### Patch Changes
