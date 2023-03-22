@@ -91,10 +91,20 @@ class Engine {
       logger.warn({ workerPath, e }, 'failed to create validation worker, falling back to main thread');
     }
 
+    this.eventHandler.on('mergeIdRegistryEvent', this.handleMergeIdRegistryEvent.bind(this));
+    this.eventHandler.on('mergeMessage', this.handleMergeMessageEvent.bind(this));
+    this.eventHandler.on('revokeMessage', this.handleRevokeMessageEvent.bind(this));
+    this.eventHandler.on('pruneMessage', this.handlePruneMessageEvent.bind(this));
+
     await this._storageCache.syncFromDb(this._db);
   }
 
   async stop(): Promise<void> {
+    this.eventHandler.off('mergeIdRegistryEvent', this.handleMergeIdRegistryEvent.bind(this));
+    this.eventHandler.off('mergeMessage', this.handleMergeMessageEvent.bind(this));
+    this.eventHandler.off('revokeMessage', this.handleRevokeMessageEvent.bind(this));
+    this.eventHandler.off('pruneMessage', this.handlePruneMessageEvent.bind(this));
+
     if (this._validationWorker) {
       await this._validationWorker.terminate();
     }
@@ -113,50 +123,30 @@ class Engine {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const setPostfix = typeToSetPostfix(message.data!.type);
 
-    let mergeResult: HubResult<number>;
     if (setPostfix === UserPostfix.ReactionMessage) {
-      mergeResult = await ResultAsync.fromPromise(this._reactionStore.merge(message), (e) => e as HubError);
+      return ResultAsync.fromPromise(this._reactionStore.merge(message), (e) => e as HubError);
     } else if (setPostfix === UserPostfix.SignerMessage) {
-      mergeResult = await ResultAsync.fromPromise(this._signerStore.merge(message), (e) => e as HubError);
+      return ResultAsync.fromPromise(this._signerStore.merge(message), (e) => e as HubError);
     } else if (setPostfix === UserPostfix.CastMessage) {
-      mergeResult = await ResultAsync.fromPromise(this._castStore.merge(message), (e) => e as HubError);
+      return ResultAsync.fromPromise(this._castStore.merge(message), (e) => e as HubError);
     } else if (setPostfix === UserPostfix.UserDataMessage) {
-      mergeResult = await ResultAsync.fromPromise(this._userDataStore.merge(message), (e) => e as HubError);
+      return ResultAsync.fromPromise(this._userDataStore.merge(message), (e) => e as HubError);
     } else if (setPostfix === UserPostfix.VerificationMessage) {
-      mergeResult = await ResultAsync.fromPromise(this._verificationStore.merge(message), (e) => e as HubError);
+      return ResultAsync.fromPromise(this._verificationStore.merge(message), (e) => e as HubError);
     } else {
-      mergeResult = err(new HubError('bad_request.validation_failure', 'invalid message type'));
+      return err(new HubError('bad_request.validation_failure', 'invalid message type'));
     }
-
-    if (mergeResult.isOk()) {
-      if (protobufs.isSignerRemoveMessage(message)) {
-        this.revokeMessagesBySigner(message.data.fid, message.data.signerRemoveBody.signer);
-      }
-    }
-
-    return mergeResult;
   }
 
   async mergeIdRegistryEvent(event: protobufs.IdRegistryEvent): HubAsyncResult<number> {
-    let mergeResult: HubResult<number>;
-
     if (
       event.type === protobufs.IdRegistryEventType.REGISTER ||
       event.type === protobufs.IdRegistryEventType.TRANSFER
     ) {
-      mergeResult = await ResultAsync.fromPromise(this._signerStore.mergeIdRegistryEvent(event), (e) => e as HubError);
-    } else {
-      mergeResult = err(new HubError('bad_request.validation_failure', 'invalid event type'));
+      return ResultAsync.fromPromise(this._signerStore.mergeIdRegistryEvent(event), (e) => e as HubError);
     }
 
-    if (mergeResult.isOk()) {
-      const fromAddress = event.from;
-      if (fromAddress && fromAddress.length > 0) {
-        this.revokeMessagesBySigner(event.fid, fromAddress);
-      }
-    }
-
-    return mergeResult;
+    return err(new HubError('bad_request.validation_failure', 'invalid event type'));
   }
 
   async mergeNameRegistryEvent(event: protobufs.NameRegistryEvent): HubAsyncResult<number> {
@@ -677,6 +667,58 @@ class Engine {
     } else {
       return validations.validateMessage(message);
     }
+  }
+
+  private async handleMergeIdRegistryEvent(event: protobufs.MergeIdRegistryEventHubEvent): HubAsyncResult<void> {
+    const { idRegistryEvent } = event.mergeIdRegistryEventBody;
+    const fromAddress = idRegistryEvent.from;
+    if (fromAddress && fromAddress.length > 0) {
+      const revokeResult = await this.revokeMessagesBySigner(idRegistryEvent.fid, fromAddress);
+      if (revokeResult.isErr()) {
+        return err(revokeResult.error);
+      }
+    }
+
+    return ok(undefined);
+  }
+
+  private async handleMergeMessageEvent(event: protobufs.MergeMessageHubEvent): HubAsyncResult<void> {
+    const { message } = event.mergeMessageBody;
+
+    if (protobufs.isSignerRemoveMessage(message)) {
+      const revokeResult = await this.revokeMessagesBySigner(message.data.fid, message.data.signerRemoveBody.signer);
+      if (revokeResult.isErr()) {
+        return err(revokeResult.error);
+      }
+    }
+
+    return ok(undefined);
+  }
+
+  private async handlePruneMessageEvent(event: protobufs.PruneMessageHubEvent): HubAsyncResult<void> {
+    const { message } = event.pruneMessageBody;
+
+    if (protobufs.isSignerAddMessage(message)) {
+      const revokeResult = await this.revokeMessagesBySigner(message.data.fid, message.data.signerAddBody.signer);
+      if (revokeResult.isErr()) {
+        return err(revokeResult.error);
+      }
+    }
+
+    return ok(undefined);
+  }
+
+  private async handleRevokeMessageEvent(event: protobufs.RevokeMessageHubEvent): HubAsyncResult<void> {
+    const { message } = event.revokeMessageBody;
+
+    if (protobufs.isSignerAddMessage(message)) {
+      const revokeResult = await this.revokeMessagesBySigner(message.data.fid, message.data.signerAddBody.signer);
+      if (revokeResult.isErr()) {
+        return err(revokeResult.error);
+      }
+    }
+
+    return ok(undefined);
   }
 }
 
