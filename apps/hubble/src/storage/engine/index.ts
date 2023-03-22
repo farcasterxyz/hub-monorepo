@@ -225,6 +225,9 @@ class Engine {
       );
     };
 
+    const signerResult = await this._signerStore.pruneMessages(fid);
+    logPruneResult(signerResult, 'signer');
+
     const castResult = await this._castStore.pruneMessages(fid);
     logPruneResult(castResult, 'cast');
 
@@ -236,9 +239,6 @@ class Engine {
 
     const userDataResult = await this._userDataStore.pruneMessages(fid);
     logPruneResult(userDataResult, 'user data');
-
-    const signerResult = await this._signerStore.pruneMessages(fid);
-    logPruneResult(signerResult, 'signer');
 
     return ok(undefined);
   }
