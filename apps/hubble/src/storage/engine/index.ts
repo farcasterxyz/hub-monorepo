@@ -225,33 +225,19 @@ class Engine {
       );
     };
 
-    const castCount = this._storageCache.getMessageCount(fid, UserPostfix.CastMessage);
-    const castResult = await this._castStore.pruneMessages(fid, castCount.isOk() ? castCount.value : undefined);
+    const castResult = await this._castStore.pruneMessages(fid);
     logPruneResult(castResult, 'cast');
 
-    const reactionCount = this._storageCache.getMessageCount(fid, UserPostfix.ReactionMessage);
-    const reactionResult = await this._reactionStore.pruneMessages(
-      fid,
-      reactionCount.isOk() ? reactionCount.value : undefined
-    );
+    const reactionResult = await this._reactionStore.pruneMessages(fid);
     logPruneResult(reactionResult, 'reaction');
 
-    const verificationCount = this._storageCache.getMessageCount(fid, UserPostfix.VerificationMessage);
-    const verificationResult = await this._verificationStore.pruneMessages(
-      fid,
-      verificationCount.isOk() ? verificationCount.value : undefined
-    );
+    const verificationResult = await this._verificationStore.pruneMessages(fid);
     logPruneResult(verificationResult, 'verification');
 
-    const userDataCount = this._storageCache.getMessageCount(fid, UserPostfix.UserDataMessage);
-    const userDataResult = await this._userDataStore.pruneMessages(
-      fid,
-      userDataCount.isOk() ? userDataCount.value : undefined
-    );
+    const userDataResult = await this._userDataStore.pruneMessages(fid);
     logPruneResult(userDataResult, 'user data');
 
-    const signerCount = this._storageCache.getMessageCount(fid, UserPostfix.SignerMessage);
-    const signerResult = await this._signerStore.pruneMessages(fid, signerCount.isOk() ? signerCount.value : undefined);
+    const signerResult = await this._signerStore.pruneMessages(fid);
     logPruneResult(signerResult, 'signer');
 
     return ok(undefined);

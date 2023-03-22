@@ -5,9 +5,11 @@ import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import VerificationStore from '~/storage/stores/verificationStore';
 import { getMessage, makeTsHash } from '../db/message';
 import { UserPostfix } from '../db/types';
+import { StorageCache } from '../engine/storageCache';
 
 const db = jestRocksDB('protobufs.verificationStore.test');
-const eventHandler = new StoreEventHandler(db);
+const cache = new StorageCache();
+const eventHandler = new StoreEventHandler(db, cache);
 const set = new VerificationStore(db, eventHandler);
 const fid = Factories.Fid.build();
 
@@ -460,6 +462,10 @@ describe('pruneMessages', () => {
     remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.data.verificationAddEthAddressBody.address);
     remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.data.verificationAddEthAddressBody.address);
     remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.data.verificationAddEthAddressBody.address);
+  });
+
+  beforeEach(async () => {
+    await cache.syncFromDb(db);
   });
 
   describe('with size limit', () => {

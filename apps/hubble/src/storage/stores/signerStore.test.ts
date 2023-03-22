@@ -5,9 +5,11 @@ import { getAllMessagesBySigner, getMessage, makeFidKey, makeTsHash } from '~/st
 import { UserPostfix } from '~/storage/db/types';
 import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
+import { StorageCache } from '../engine/storageCache';
 
 const db = jestRocksDB('protobufs.signerStore.test');
-const eventHandler = new StoreEventHandler(db);
+const cache = new StorageCache();
+const eventHandler = new StoreEventHandler(db, cache);
 const set = new SignerStore(db, eventHandler);
 const signer = Factories.Ed25519Signer.build();
 const fid = Factories.Fid.build();
@@ -1054,6 +1056,10 @@ describe('pruneMessages', () => {
     remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.data.signerAddBody.signer);
     remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.data.signerAddBody.signer);
     remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.data.signerAddBody.signer);
+  });
+
+  beforeEach(async () => {
+    await cache.syncFromDb(db);
   });
 
   describe('with size limit', () => {

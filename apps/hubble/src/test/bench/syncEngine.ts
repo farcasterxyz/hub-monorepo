@@ -16,6 +16,7 @@ import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { blake3Truncate160, sleepWhile } from '~/utils/crypto';
 import { avgRecords } from './helpers';
 import { yieldToEventLoop } from './utils';
+import { StorageCache } from '~/storage/engine/storageCache';
 
 const INITIAL_MESSAGES_COUNT = 10_000;
 const FID_COUNT = 10_000;
@@ -29,7 +30,7 @@ class MockEngine {
 
   constructor(db: RocksDB) {
     this.db = db;
-    this.eventHandler = new StoreEventHandler(db);
+    this.eventHandler = new StoreEventHandler(db, new StorageCache());
   }
 
   async mergeMessage(message: protobufs.Message): Promise<HubResult<void>> {
