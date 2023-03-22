@@ -59,6 +59,11 @@ class Engine {
     this._castStore = new CastStore(db, this.eventHandler);
     this._userDataStore = new UserDataStore(db, this.eventHandler);
     this._verificationStore = new VerificationStore(db, this.eventHandler);
+
+    this.handleMergeMessageEvent = this.handleMergeMessageEvent.bind(this);
+    this.handleMergeIdRegistryEvent = this.handleMergeIdRegistryEvent.bind(this);
+    this.handleRevokeMessageEvent = this.handleRevokeMessageEvent.bind(this);
+    this.handlePruneMessageEvent = this.handlePruneMessageEvent.bind(this);
   }
 
   async start(): Promise<void> {
@@ -92,10 +97,10 @@ class Engine {
       logger.warn({ workerPath, e }, 'failed to create validation worker, falling back to main thread');
     }
 
-    this.eventHandler.on('mergeIdRegistryEvent', this.handleMergeIdRegistryEvent.bind(this));
-    this.eventHandler.on('mergeMessage', this.handleMergeMessageEvent.bind(this));
-    this.eventHandler.on('revokeMessage', this.handleRevokeMessageEvent.bind(this));
-    this.eventHandler.on('pruneMessage', this.handlePruneMessageEvent.bind(this));
+    this.eventHandler.on('mergeIdRegistryEvent', this.handleMergeIdRegistryEvent);
+    this.eventHandler.on('mergeMessage', this.handleMergeMessageEvent);
+    this.eventHandler.on('revokeMessage', this.handleRevokeMessageEvent);
+    this.eventHandler.on('pruneMessage', this.handlePruneMessageEvent);
 
     await this._storageCache.syncFromDb(this._db);
     log.info('engine started');
@@ -103,10 +108,10 @@ class Engine {
 
   async stop(): Promise<void> {
     log.info('stopping engine');
-    this.eventHandler.off('mergeIdRegistryEvent', this.handleMergeIdRegistryEvent.bind(this));
-    this.eventHandler.off('mergeMessage', this.handleMergeMessageEvent.bind(this));
-    this.eventHandler.off('revokeMessage', this.handleRevokeMessageEvent.bind(this));
-    this.eventHandler.off('pruneMessage', this.handlePruneMessageEvent.bind(this));
+    this.eventHandler.off('mergeIdRegistryEvent', this.handleMergeIdRegistryEvent);
+    this.eventHandler.off('mergeMessage', this.handleMergeMessageEvent);
+    this.eventHandler.off('revokeMessage', this.handleRevokeMessageEvent);
+    this.eventHandler.off('pruneMessage', this.handlePruneMessageEvent);
 
     if (this._validationWorker) {
       await this._validationWorker.terminate();

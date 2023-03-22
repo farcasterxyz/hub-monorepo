@@ -6,6 +6,7 @@ import Engine from '~/storage/engine';
 import SignerStore from '~/storage/stores/signerStore';
 import { sleep } from '~/utils/crypto';
 import { getMessage, makeTsHash, typeToSetPostfix } from '../db/message';
+import { StoreEvents } from '../stores/storeEventHandler';
 
 const db = jestRocksDB('protobufs.engine.test');
 const network = protobufs.FarcasterNetwork.TESTNET;
@@ -462,5 +463,23 @@ describe('with listeners and workers', () => {
       await sleep(100); // Wait for engine to revoke messages
       expect(revokedMessages).toEqual([castAdd, reactionAdd]);
     });
+  });
+});
+
+describe('stop', () => {
+  test('removes all event listeners', async () => {
+    const eventNames: (keyof StoreEvents)[] = ['mergeMessage', 'mergeIdRegistryEvent', 'pruneMessage', 'revokeMessage'];
+    const scopedEngine = new Engine(db, protobufs.FarcasterNetwork.TESTNET);
+    for (const eventName of eventNames) {
+      expect(scopedEngine.eventHandler.listenerCount(eventName)).toEqual(0);
+    }
+    await scopedEngine.start();
+    for (const eventName of eventNames) {
+      expect(scopedEngine.eventHandler.listenerCount(eventName)).toEqual(1);
+    }
+    await scopedEngine.stop();
+    for (const eventName of eventNames) {
+      expect(scopedEngine.eventHandler.listenerCount(eventName)).toEqual(0);
+    }
   });
 });
