@@ -341,18 +341,20 @@ class ReactionStore {
     return this._eventHandler.commitTransaction(txn, events);
   }
 
-  async pruneMessages(fid: number, count?: number): HubAsyncResult<number[]> {
-    // Count number of ReactionAdd and ReactionRemove messages for this fid
-    if (count === undefined) {
+  async pruneMessages(fid: number): HubAsyncResult<number[]> {
+    let sizeToPrune: number;
+    const cachedCount = this._eventHandler.getCacheMessageCount(fid, UserPostfix.ReactionMessage);
+    if (cachedCount.isOk()) {
+      sizeToPrune = cachedCount.value - this._pruneSizeLimit;
+    } else {
+      // Count number of ReactionAdd and ReactionRemove messages for this fid
       const prefix = makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage);
-      count = 0;
-      for await (const [,] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
-        count = count + 1;
+      let calculatedCount = 0;
+      for await (const [,] of this._db.iteratorByPrefix(prefix, { values: false })) {
+        calculatedCount = calculatedCount + 1;
       }
+      sizeToPrune = calculatedCount - this._pruneSizeLimit;
     }
-
-    // Calculate the number of messages that need to be pruned, based on the store's size limit
-    let sizeToPrune = count - this._pruneSizeLimit;
 
     const farcasterTime = getFarcasterTime();
     if (farcasterTime.isErr()) {

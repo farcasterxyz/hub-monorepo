@@ -5,10 +5,11 @@ import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import UserDataStore from '~/storage/stores/userDataStore';
 import { getMessage, makeTsHash } from '../db/message';
 import { UserPostfix } from '../db/types';
+import { StorageCache } from '~/storage/engine/storageCache';
 
 const db = jestRocksDB('protobufs.userDataSet.test');
-
-const eventHandler = new StoreEventHandler(db);
+const cache = new StorageCache();
+const eventHandler = new StoreEventHandler(db, cache);
 const set = new UserDataStore(db, eventHandler);
 const fid = Factories.Fid.build();
 
@@ -236,6 +237,10 @@ describe('pruneMessages', () => {
     add2 = await generateAddWithTimestamp(fid, time + 2, protobufs.UserDataType.DISPLAY);
     add3 = await generateAddWithTimestamp(fid, time + 3, protobufs.UserDataType.BIO);
     add4 = await generateAddWithTimestamp(fid, time + 5, protobufs.UserDataType.URL);
+  });
+
+  beforeEach(async () => {
+    await cache.syncFromDb(db);
   });
 
   describe('with size limit', () => {

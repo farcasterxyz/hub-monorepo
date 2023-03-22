@@ -6,9 +6,11 @@ import { getMessage, makeTsHash } from '~/storage/db/message';
 import { UserPostfix } from '~/storage/db/types';
 import ReactionStore from '~/storage/stores/reactionStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
+import { StorageCache } from '~/storage/engine/storageCache';
 
 const db = jestRocksDB('protobufs.reactionStore.test');
-const eventHandler = new StoreEventHandler(db);
+const cache = new StorageCache();
+const eventHandler = new StoreEventHandler(db, cache);
 const set = new ReactionStore(db, eventHandler);
 const fid = Factories.Fid.build();
 const castId = Factories.CastId.build();
@@ -745,6 +747,10 @@ describe('pruneMessages', () => {
     remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.data.reactionBody);
     remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.data.reactionBody);
     removeOld3 = await generateRemoveWithTimestamp(fid, time - 60 * 60 + 2);
+  });
+
+  beforeEach(async () => {
+    await cache.syncFromDb(db);
   });
 
   describe('with size limit', () => {

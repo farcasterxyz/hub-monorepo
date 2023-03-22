@@ -6,9 +6,11 @@ import { getMessage, makeTsHash, putMessageTransaction } from '~/storage/db/mess
 import { UserPostfix } from '~/storage/db/types';
 import StoreEventHandler, { HubEventArgs, HubEventIdGenerator } from '~/storage/stores/storeEventHandler';
 import { sleep } from '~/utils/crypto';
+import { StorageCache } from '~/storage/engine/storageCache';
 
 const db = jestRocksDB('stores.storeEventHandler.test');
-const eventHandler = new StoreEventHandler(db);
+const cache = new StorageCache();
+const eventHandler = new StoreEventHandler(db, cache);
 
 let events: HubEvent[] = [];
 

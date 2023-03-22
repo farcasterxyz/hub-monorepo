@@ -16,7 +16,7 @@ import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
-import { RootPrefix } from '~/storage/db/types';
+import { RootPrefix, UserMessagePostfix } from '~/storage/db/types';
 import { StorageCache } from '~/storage/engine/storageCache';
 
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3 * 1000; // 3 days in ms
@@ -125,18 +125,19 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   private _db: RocksDB;
   private _generator: HubEventIdGenerator;
   private _lock: AsyncLock;
-  private _storageCache?: StorageCache;
+  private _storageCache: StorageCache;
 
-  constructor(db: RocksDB, storageCache?: StorageCache) {
+  constructor(db: RocksDB, storageCache: StorageCache) {
     super();
 
     this._db = db;
     this._generator = new HubEventIdGenerator({ epoch: FARCASTER_EPOCH });
     this._lock = new AsyncLock({ maxPending: 10_000, timeout: 10_000 });
+    this._storageCache = storageCache;
+  }
 
-    if (storageCache) {
-      this._storageCache = storageCache;
-    }
+  getCacheMessageCount(fid: number, set: UserMessagePostfix): HubResult<number> {
+    return this._storageCache.getMessageCount(fid, set);
   }
 
   async getEvent(id: number): HubAsyncResult<HubEvent> {
