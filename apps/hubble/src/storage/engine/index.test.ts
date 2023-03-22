@@ -5,8 +5,8 @@ import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import SignerStore from '~/storage/stores/signerStore';
 import { sleep } from '~/utils/crypto';
-import { getMessage, makeTsHash, typeToSetPostfix } from '../db/message';
-import { StoreEvents } from '../stores/storeEventHandler';
+import { getMessage, makeTsHash, typeToSetPostfix } from '~/storage/db/message';
+import { StoreEvents } from '~/storage/stores/storeEventHandler';
 
 const db = jestRocksDB('protobufs.engine.test');
 const network = protobufs.FarcasterNetwork.TESTNET;

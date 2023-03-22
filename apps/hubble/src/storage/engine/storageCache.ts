@@ -6,11 +6,11 @@ import {
   Message,
 } from '@farcaster/protobufs';
 import { ok, err } from 'neverthrow';
-import { HubError, HubResult } from '~/../../../packages/utils/dist';
+import { HubError, HubResult } from '@farcaster/utils';
 import RocksDB from '~/storage/db/rocksdb';
 import { FID_BYTES, RootPrefix, UserMessagePostfix, UserMessagePostfixMax } from '~/storage/db/types';
 import { logger } from '~/utils/logger';
-import { makeFidKey, typeToSetPostfix } from '../db/message';
+import { makeFidKey, typeToSetPostfix } from '~/storage/db/message';
 
 const makeKey = (fid: number, set: UserMessagePostfix): string => {
   return Buffer.concat([makeFidKey(fid), Buffer.from([set])]).toString('hex');
