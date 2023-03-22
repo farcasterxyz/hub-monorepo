@@ -62,6 +62,7 @@ class Engine {
   }
 
   async start(): Promise<void> {
+    log.info('starting engine');
     const workerPath = './build/storage/engine/validation.worker.js';
     try {
       if (fs.existsSync(workerPath)) {
@@ -97,9 +98,11 @@ class Engine {
     this.eventHandler.on('pruneMessage', this.handlePruneMessageEvent.bind(this));
 
     await this._storageCache.syncFromDb(this._db);
+    log.info('engine started');
   }
 
   async stop(): Promise<void> {
+    log.info('stopping engine');
     this.eventHandler.off('mergeIdRegistryEvent', this.handleMergeIdRegistryEvent.bind(this));
     this.eventHandler.off('mergeMessage', this.handleMergeMessageEvent.bind(this));
     this.eventHandler.off('revokeMessage', this.handleRevokeMessageEvent.bind(this));
@@ -109,6 +112,7 @@ class Engine {
       await this._validationWorker.terminate();
       this._validationWorker = undefined;
     }
+    log.info('engine stopped');
   }
 
   async mergeMessages(messages: protobufs.Message[]): Promise<Array<HubResult<number>>> {
