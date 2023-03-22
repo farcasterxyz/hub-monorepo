@@ -10,7 +10,7 @@ import { FactoriesCommand, ProtobufCommand } from './protobufCommand';
 import { RpcClientCommand } from './rpcClientCommand';
 import { WarpcastTestCommand } from './warpcastTestCommand';
 
-export const DEFAULT_RPC_CONSOLE = '127.0.0.1:13112';
+export const DEFAULT_RPC_CONSOLE = '127.0.0.1:2283';
 
 export interface ConsoleCommandInterface {
   commandName(): string;

@@ -51,8 +51,8 @@ app
     '--announce-ip <ip-address>',
     'The IP address libp2p should announce to other peers. If not provided, the IP address will be fetched from an external service'
   )
-  .option('-g, --gossip-port <port>', 'The tcp port libp2p should gossip over. (default: 13111)')
-  .option('-r, --rpc-port <port>', 'The tcp port that the rpc server should listen on.  (default: 13112)')
+  .option('-g, --gossip-port <port>', 'The tcp port libp2p should gossip over. (default: 2282)')
+  .option('-r, --rpc-port <port>', 'The tcp port that the rpc server should listen on.  (default: 2283)')
   .option(
     '--rpc-auth <username:password>',
     'Enable Auth for RPC submit methods with the username and password. (default: disabled)'
@@ -370,7 +370,7 @@ app
   .description('Start a REPL console')
   .option(
     '-s, --server <url>',
-    'Farcaster RPC server address:port to connect to (eg. 127.0.0.1:13112)',
+    'Farcaster RPC server address:port to connect to (eg. 127.0.0.1:2283)',
     DEFAULT_RPC_CONSOLE
   )
   .action(async (cliOptions) => {
