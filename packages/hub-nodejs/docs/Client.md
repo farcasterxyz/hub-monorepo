@@ -147,11 +147,14 @@ Returns an active signer message given an fid and the public key of the signer.
 #### Usage
 
 ```typescript
+import { getHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
+
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:2283');
 
   const signerPubKeyHex = '5feb9e21f3df044197e634e3602a594a3423c71c6f208876074dc5a3e0d7b9ce';
-  const signer = Uint8Array.from(Buffer.from(signerPubKeyHex, 'hex'));
+
+  const signer = hexStringToBytes(signerPubKeyHex)._unsafeUnwrap(); // Safety: signerPubKeyHex is known and can't error
 
   const signerResult = await client.getSigner({
     fid: 2,
@@ -326,13 +329,13 @@ Returns an active cast for a user.
 #### Usage
 
 ```typescript
-import { getHubRpcClient } from '@farcaster/hub-nodejs';
+import { getHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:2283');
 
   const castHashHex = '460a87ace7014adefe4a2944fb62833b1bf2a6be';
-  const castHashBytes = Buffer.from(castHashHex, 'hex');
+  const castHashBytes = hexStringToBytes(castHashHex)._unsafeUnwrap(); // Safety: castHashHex is known and can't error
 
   const castResult = await client.getCast({ fid: 2, hash: castHashBytes });
 
@@ -432,15 +435,15 @@ Returns all active casts that are replies to a specific cast in reverse chronolo
 #### Usage
 
 ```typescript
-import { getHubRpcClient } from '@farcaster/hub-nodejs';
+import { getHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:2283');
 
   const castHashHex = 'ee04762bea3060ce3cca154bced5947de04aa253';
-  const castHashBytes = Buffer.from(castHashHex, 'hex');
+  const castHashBytes = hexStringToBytes(castHashHex)._unsafeUnwrap(); // Safety: castHashHex is known
 
-  const castsResult = await client.getCastsByParent({ fid: 2, hash: castHashBytes });
+  const castsResult = await client.getCastsByParent({ castId: { fid: 2, hash: castHashBytes } });
 
   castsResult.map((casts) => console.log(casts.messages));
 })();
@@ -504,13 +507,13 @@ Returns an active reaction of a particular type made by a user to a cast.
 #### Usage
 
 ```typescript
-import { getHubRpcClient, ReactionType } from '@farcaster/hub-nodejs';
+import { getHubRpcClient, hexStringToBytes, ReactionType } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:2283');
 
   const castHashHex = 'ee04762bea3060ce3cca154bced5947de04aa253'; // Cast to fetch reactions for
-  const castHashBytes = Buffer.from(castHashHex, 'hex');
+  const castHashBytes = hexStringToBytes(castHashHex)._unsafeUnwrap(); // Safety: castHashHex is known and can't error
 
   const reactionsResult = await client.getReaction({
     fid: 8150,
@@ -548,13 +551,13 @@ Returns all active reactions made by users to a cast.
 #### Usage
 
 ```typescript
-import { getHubRpcClient, ReactionType } from '@farcaster/hub-nodejs';
+import { getHubRpcClient, hexStringToBytes, ReactionType } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = await getHubRpcClient('127.0.0.1:2283');
 
   const castHashHex = 'ee04762bea3060ce3cca154bced5947de04aa253'; // Cast to fetch reactions for
-  const castHashBytes = Buffer.from(castHashHex, 'hex');
+  const castHashBytes = hexStringToBytes(castHashHex)._unsafeUnwrap(); // Safety: castHashHex is known and can't error
 
   const reactionsResult = await client.getReactionsByCast({
     reactionType: ReactionType.LIKE,

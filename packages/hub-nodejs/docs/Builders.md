@@ -187,10 +187,12 @@ Returns a message that removes an existing Cast.
 #### Usage
 
 ```typescript
-import { makeCastRemove } from '@farcaster/hub-nodejs';
+import { hexStringToBytes, makeCastRemove } from '@farcaster/hub-nodejs';
 
-const targetHashHex = '006f082f70dfb2de81e7852f3b79f1cdf2aa6b86'; // Hash of the Cast being deleted as a hex string
-const targetHashBytes = new Uint8Array(Buffer.from(targetHashHex, 'hex')); //  Hash of the Cast being deleted as bytes
+const targetHashHex = '006f082f70dfb2de81e7852f3b79f1cdf2aa6b86';
+
+// Safety: targetHashHex is known and can't error
+const targetHashBytes = hexStringToBytes(targetHashHex)._unsafeUnwrap();
 
 const castRemove = await makeCastRemove(
   {
@@ -224,10 +226,11 @@ Returns a message that adds a Reaction to an existing Cast.
 #### Usage
 
 ```typescript
-import { makeReactionAdd, ReactionType } from '@farcaster/hub-nodejs';
+import { hexStringToBytes, makeReactionAdd, ReactionType } from '@farcaster/hub-nodejs';
 
-const targetHashHex = '006f082f70dfb2de81e7852f3b79f1cdf2aa6b86'; // Hash of the Cast being deleted as a hex string
-const targetHashBytes = new Uint8Array(Buffer.from(targetHashHex, 'hex')); //  Hash of the Cast being deleted as bytes
+const targetHashHex = '006f082f70dfb2de81e7852f3b79f1cdf2aa6b86';
+// Safety: targetHashHex is known and can't error
+const targetHashBytes = hexStringToBytes(targetHashHex)._unsafeUnwrap();
 
 const reactionLikeBody = {
   type: ReactionType.LIKE,
@@ -263,10 +266,12 @@ Returns a message that removes an existing Reaction to an existing Cast.
 #### Usage
 
 ```typescript
-import { makeReactionRemove, ReactionType } from '@farcaster/hub-nodejs';
+import { hexStringToBytes, makeReactionRemove, ReactionType } from '@farcaster/hub-nodejs';
 
-const targetHashHex = '006f082f70dfb2de81e7852f3b79f1cdf2aa6b86'; // Hash of the Cast being deleted as a hex string
-const targetHashBytes = new Uint8Array(Buffer.from(targetHashHex, 'hex')); //  Hash of the Cast being deleted as bytes
+const targetHashHex = '006f082f70dfb2de81e7852f3b79f1cdf2aa6b86';
+
+// Safety: targetHashHex is known and can't error
+const targetHashBytes = hexStringToBytes(targetHashHex)._unsafeUnwrap();
 
 const reactionLikeBody = {
   type: ReactionType.LIKE,
