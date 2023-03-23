@@ -29,7 +29,7 @@ pnpm install @farcaster/hub-nodejs
 import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = await getHubRpcClient('127.0.0.1:8080');
+  const client = await getHubRpcClient('127.0.0.1:2283');
 
   const castsResult = await client.getCastsByFid({ fid: 2 });
 
