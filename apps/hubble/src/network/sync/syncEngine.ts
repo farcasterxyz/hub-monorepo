@@ -208,7 +208,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       protobufs.TrieNodePrefix.create({ prefix: new Uint8Array() })
     );
     if (peerStateResult.isErr()) {
-      log.warn(`Failed to get peer state, skipping sync`);
+      log.warn(
+        { error: peerStateResult.error, errMsg: peerStateResult.error.message, peerId, peerContact },
+        `Failed to get peer state, skipping sync`
+      );
       this.emit('syncComplete', false);
       return;
     }
